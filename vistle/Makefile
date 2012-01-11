@@ -1,6 +1,6 @@
 CC=mpic++
 
-CXXFLAGS=-g -Wall
+CXXFLAGS=-g -Wall -DHAVE_MPI
 LDFLAGS=
 
 .SUFFIXES:
