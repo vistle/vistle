@@ -1,17 +1,26 @@
 CC=mpic++
 
 CXXFLAGS=-g -Wall -DHAVE_MPI
-LDFLAGS=
+LDFLAGS=-lrt
 
 .SUFFIXES:
 
-all: communicator2 module
+all: communicator module
 
-%.o: %.cpp
+communicator.o: communicator.cpp communicator.h
 	$(CC) $(CXXFLAGS) -c $< -o $@
 
-%: %.o
-	$(CC) $(LDFLAGS) $< -o $@
+module.o: module.cpp
+	$(CC) $(CXXFLAGS) -c $< -o $@
+
+message.o: message.cpp message.h
+	$(CC) $(CXXFLAGS) -c $< -o $@
+
+module: module.o
+	$(CC) $(LDFLAGS) $^ -o $@
+
+communicator: communicator.o message.o
+	$(CC) $(LDFLAGS) $^ -o $@
 
 clean:
-	rm -f communicator.o communicator2.o module.o communicator communicator2 module *~
+	rm -f communicator.o module.o message.o communicator module *~

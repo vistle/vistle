@@ -1,6 +1,4 @@
-#ifdef HAVE_MPI
 #include <mpi.h>
-#endif
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -11,7 +9,6 @@
 int main(int argc, char **argv) {
 
    int rank, size, irank, isize;
-#ifdef HAVE_MPI
    MPI_Init(&argc, &argv);
 
    MPI_Comm parentCommunicator;
@@ -21,7 +18,7 @@ int main(int argc, char **argv) {
 
    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
    MPI_Comm_size(MPI_COMM_WORLD, &size);
-#endif
+
    printf("  module %d [%02d/%02d]\n", getpid(), rank, size);
 
    int *local = new int[1024 * 1024];
@@ -30,13 +27,11 @@ int main(int argc, char **argv) {
    for (int count = 0; count < 256; count ++) {
       for (int index = 0; index < 1024 * 1024; index ++)
          local[index] = rand();
-#ifdef HAVE_MPI
       MPI_Allreduce(local, global, 1024 * 1024, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-#endif
    }
-#ifdef HAVE_MPI
+
    MPI_Finalize();
-#endif
+
    printf("  module %d [%02d/%02d] done\n", getpid(), rank, size);
 
    return 0;
