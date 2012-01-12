@@ -13,8 +13,28 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <sstream>
+
 #include "communicator.h"
 #include "message.h"
+
+
+int main(int argc, char **argv) {
+
+   MPI_Init(&argc, &argv);
+
+   vistle::Communicator *comm = new vistle::Communicator();
+   bool done = false;
+
+   while (!done) {
+      done = comm->dispatch();
+      usleep(1000);
+   }
+
+   delete comm;
+
+   MPI_Finalize();
+}
 
 int acceptClient() {
 
@@ -38,26 +58,7 @@ int acceptClient() {
    
    close(server);
    return client;
-}
-
-
-int main(int argc, char **argv) {
-
-   MPI_Init(&argc, &argv);
-
-   vistle::Communicator *comm = new vistle::Communicator();
-   bool done = false;
-
-   while (!done) {
-      done = comm->dispatch();
-      usleep(1000);
-   }
-
-   delete comm;
-
-   MPI_Finalize();
-}
- 
+} 
 
 namespace vistle {
 
@@ -73,10 +74,8 @@ Communicator::Communicator(): socketBuffer(0),
    rbuf = new char[1024];
    
    // post requests for length of next MPI message
-   MPI_Request r;
    MPI_Irecv(&messageLength, 1, MPI_INT, MPI_ANY_SOURCE, 0,
-             MPI_COMM_WORLD, &r); 
-   request.push_back(r);
+             MPI_COMM_WORLD, &request); 
    MPI_Barrier(MPI_COMM_WORLD);
    
    if (rank == 0)
@@ -107,23 +106,19 @@ bool Communicator::dispatch() {
       if (FD_ISSET(clientSocket, &set)) {
    
          message::Message *message = NULL;
-         int messageSize = 0;
       
          read(clientSocket, socketBuffer, 1);
-         if (socketBuffer[0] == 'q') {
-            
+
+         if (socketBuffer[0] == 'q')
             message = new message::Quit();
-         }
          
          else if (socketBuffer[0] == 's') {
             moduleID++;
             message = new message::Spawn(moduleID);
          }
 
-         else if (socketBuffer[0] != '\r' && socketBuffer[0] != '\n') {
-            
+         else if (socketBuffer[0] != '\r' && socketBuffer[0] != '\n')
             message = new message::Debug(socketBuffer[0]);
-         }
          
          if (message) {
 
@@ -145,46 +140,41 @@ bool Communicator::dispatch() {
       }
    }
 
-   // poll MPI
    int flag;
    int index;
    MPI_Status status;
    
-   MPI_Testany(request.size(), &(request[0]), &index, &flag, &status);
-   
+   // test for messages from another MPI node
+   //    - handle messages
+   //    - post another MPI receive for length of next message
+   MPI_Test(&request, &flag, &status);
+
    if (flag) {
-      
-      // message from rank 0
       if (status.MPI_TAG == 0) {
-         MPI_Recv(rbuf, messageLength, MPI_BYTE, status.MPI_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+         MPI_Recv(rbuf, messageLength, MPI_BYTE, status.MPI_SOURCE, 0,
+                  MPI_COMM_WORLD, MPI_STATUS_IGNORE);
          
          message::Message *message = (message::Message *) rbuf;
-         printf("[%02d] message from [%02d] message type %d size %d\n", rank, index, message->getType(), messageLength);
+         printf("[%02d] message from [%02d] message type %d size %d\n", rank, status.MPI_SOURCE, message->getType(), messageLength);
          
          if (!handleMessage(message))
             done = true;
          
-         MPI_Request r;
          MPI_Irecv(&messageLength, 1, MPI_INT, MPI_ANY_SOURCE, 0,
-                   MPI_COMM_WORLD, &r);
-         request[index] = r;
+                   MPI_COMM_WORLD, &request);
       }
    }
    
-   bool finishedRequest = false;
-   
+   // finish sent MPI requests if they are completed
    do {
       if (sendRequests.size()) {
          MPI_Testany(sendRequests.size(), &(sendRequests[0]), &index,
                      &flag, &status);
-         if (flag) {
+         if (flag)
             sendRequests.erase(sendRequests.begin() + index);
-            finishedRequest = true;
-         } else
-            finishedRequest = false;
       } else
-         finishedRequest = false;
-   } while (finishedRequest);
+         flag = 0;
+   } while (flag);
    
    return done;
 }
@@ -203,7 +193,7 @@ bool Communicator::handleMessage(message::Message *message) {
          
       case message::Message::QUIT: {
 
-         message::Quit *quit = (message::Quit *) message;
+         //message::Quit *quit = (message::Quit *) message;
          return false;
          break;
       }
@@ -211,9 +201,14 @@ bool Communicator::handleMessage(message::Message *message) {
       case message::Message::SPAWN: {
          
          message::Spawn *spawn = (message::Spawn *) message;
-         
+         int moduleID = spawn->getModuleID();
+         std::stringstream s;
+         s << moduleID;
+
          MPI_Comm interComm;
-         MPI_Comm_spawn("module", MPI_ARGV_NULL, size, MPI_INFO_NULL, 0,
+         
+         char *argv[2] = { (char *) s.str().c_str(), NULL };
+         MPI_Comm_spawn("module", argv, size, MPI_INFO_NULL, 0,
                         MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
          break;
       }
