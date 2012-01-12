@@ -119,7 +119,8 @@ bool Communicator::dispatch() {
 
          else if (socketBuffer[0] != '\r' && socketBuffer[0] != '\n')
             message = new message::Debug(socketBuffer[0]);
-         
+
+         // TODO: delete message when received by all MPI nodes
          if (message) {
 
             for (int index = 0; index < size; index ++)
@@ -202,12 +203,11 @@ bool Communicator::handleMessage(message::Message *message) {
          
          message::Spawn *spawn = (message::Spawn *) message;
          int moduleID = spawn->getModuleID();
-         std::stringstream s;
-         s << moduleID;
-
+         char buf[16];
+         snprintf(buf, 16, "%d", moduleID);
          MPI_Comm interComm;
          
-         char *argv[2] = { (char *) s.str().c_str(), NULL };
+         char *argv[2] = { buf, NULL };
          MPI_Comm_spawn("module", argv, size, MPI_INFO_NULL, 0,
                         MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
          break;
