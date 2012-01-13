@@ -17,7 +17,7 @@ Shm::~Shm() {
 Shm & Shm::instance() {
 
    if (!singleton)
-      singleton = new Shm(34359738368); // 32GB
+      singleton = new Shm(2147483647);//34359738368); // 32GB
 
    return *singleton;
 }

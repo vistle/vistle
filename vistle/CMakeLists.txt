@@ -5,7 +5,7 @@ add_executable(communicator communicator.cpp message.cpp object.cpp)
 add_executable(module module.cpp object.cpp)
 
 find_package(MPI REQUIRED)
-find_package(Boost 1.41 REQUIRED COMPONENTS date_time)
+find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
 
 include_directories(${Boost_INCLUDE_DIRS})
 

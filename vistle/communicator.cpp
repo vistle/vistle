@@ -43,6 +43,7 @@ int main(int argc, char **argv) {
 
    delete comm;
 
+   shared_memory_object::remove("vistle");
    MPI_Finalize();
 }
 
@@ -224,7 +225,7 @@ bool Communicator::handleMessage(message::Message *message) {
          */
          char *argv[3] = { strdup(modID.str().c_str()),
                            shmStr, NULL };
-         MPI_Comm_spawn("module", argv, size, MPI_INFO_NULL, 0,
+         MPI_Comm_spawn((char *) "module", argv, size, MPI_INFO_NULL, 0,
                         MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
 
          break;
