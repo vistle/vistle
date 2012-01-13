@@ -17,11 +17,21 @@
 
 #include "communicator.h"
 #include "message.h"
+#include "object.h"
 
+using namespace boost::interprocess;
 
 int main(int argc, char **argv) {
 
+   printf("comm\n");
    MPI_Init(&argc, &argv);
+
+   shared_memory_object::remove("vistle");
+   vistle::Shm::instance();
+   vistle::FloatArray a;
+
+   for (int index = 0; index < 128; index ++)
+      a.vec->push_back(index);
 
    vistle::Communicator *comm = new vistle::Communicator();
    bool done = false;
@@ -81,13 +91,7 @@ Communicator::Communicator(): socketBuffer(0),
    if (rank == 0)
       clientSocket = acceptClient();
 }
-   
-Communicator::~Communicator() {
       
-   if (clientSocket != -1)
-      close(clientSocket);
-}
-   
 bool Communicator::dispatch() {
    
    bool done = false;
@@ -203,13 +207,26 @@ bool Communicator::handleMessage(message::Message *message) {
          
          message::Spawn *spawn = (message::Spawn *) message;
          int moduleID = spawn->getModuleID();
-         char buf[16];
-         snprintf(buf, 16, "%d", moduleID);
-         MPI_Comm interComm;
          
-         char *argv[2] = { buf, NULL };
+         std::stringstream modID, shmID;
+         modID << moduleID;
+         shmID << "vistleSHM_" << moduleID;
+         char *shmStr = strdup(shmID.str().c_str());
+
+         MPI_Comm interComm;
+         /*
+         shared_memory_object *shm =
+            new shared_memory_object(open_or_create, shmStr, read_write);
+         shm->truncate(16);
+         mapped_region region(*shm, read_write);
+         std::memset(region.get_address(), 1, region.get_size());
+         shmObjects[moduleID] = shm;
+         */
+         char *argv[3] = { strdup(modID.str().c_str()),
+                           shmStr, NULL };
          MPI_Comm_spawn("module", argv, size, MPI_INFO_NULL, 0,
                         MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
+
          break;
       }
          
@@ -218,6 +235,17 @@ bool Communicator::handleMessage(message::Message *message) {
    }
 
    return true;
+}
+
+Communicator::~Communicator() {
+
+   if (clientSocket != -1)
+      close(clientSocket);
+
+   // remove shared memory objects
+   std::map<int, shared_memory_object *>::iterator i;
+   for (i = shmObjects.begin(); i != shmObjects.end(); i++)
+      shared_memory_object::remove(i->second->get_name());
 }
 
 } // namespace vistle

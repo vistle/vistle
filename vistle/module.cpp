@@ -8,18 +8,21 @@
 
 #include <iostream>
 
+#include <boost/interprocess/shared_memory_object.hpp>
+#include <boost/interprocess/mapped_region.hpp>
+
+using namespace boost::interprocess;
+
 int main(int argc, char **argv) {
 
    int rank, size, irank, isize;
    MPI_Init(&argc, &argv);
 
-   if (argc != 2) {
+   if (argc != 3) {
 
-      std::cerr << "module missing module ID" << std::endl;
+      std::cerr << "module missing parameters" << std::endl;
       exit(1);
    }
-
-   int moduleID = atoi(argv[1]);
 
    MPI_Comm parentCommunicator;
    MPI_Comm_get_parent(&parentCommunicator);
@@ -29,6 +32,16 @@ int main(int argc, char **argv) {
    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+   int moduleID = atoi(argv[1]);
+   /*
+   shared_memory_object shm(open_only, argv[2], read_write);
+   mapped_region region(shm, read_write);
+   char *begin = static_cast<char *>(region.get_address());
+   
+   for (unsigned int index = 0; index < region.get_size(); index ++)
+      printf("%d ", *(begin + index));
+   printf("\n");
+   */
    std::cout << "module " << moduleID << " [" << rank << "/" << size
              << "] started" << std::endl;
 
