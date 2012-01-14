@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(vistle)
 
-add_executable(communicator communicator.cpp message.cpp object.cpp)
+add_executable(communicator communicator_collective.cpp message.cpp object.cpp)
 add_executable(module module.cpp object.cpp)
 
 find_package(MPI REQUIRED)

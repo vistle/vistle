@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
    int *local = new int[1024 * 1024];
    int *global = new int[1024 * 1024];
 
-   for (int count = 0; count < 256; count ++) {
+   for (int count = 0; count < 4; count ++) {
       for (int index = 0; index < 1024 * 1024; index ++)
          local[index] = rand();
       MPI_Allreduce(local, global, 1024 * 1024, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
