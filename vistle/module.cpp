@@ -6,10 +6,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <sstream>
 #include <iostream>
+#include <iomanip>
 
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
+
+#include "object.h"
 
 using namespace boost::interprocess;
 
@@ -32,16 +36,27 @@ int main(int argc, char **argv) {
    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+   vistle::Shm::instance();
+
    int moduleID = atoi(argv[1]);
-   /*
-   shared_memory_object shm(open_only, argv[2], read_write);
-   mapped_region region(shm, read_write);
-   char *begin = static_cast<char *>(region.get_address());
+
+   std::stringstream name;
+   name << "Object_" << std::setw(8) << std::setfill('0') << moduleID
+        << "_" << std::setw(8) << std::setfill('0') << rank;
    
-   for (unsigned int index = 0; index < region.get_size(); index ++)
-      printf("%d ", *(begin + index));
-   printf("\n");
-   */
+   try {
+      vistle::FloatArray a(name.str());
+
+      std::cout << "module " << moduleID << " [" << rank << "/" << size << "]:"
+         " object [" << name.str() << "] allocated" << std::endl; 
+      
+      for (int index = 0; index < 128; index ++)
+         a.vec->push_back(index);
+   } catch (interprocess_exception e) {
+      std::cout << "module " << moduleID << " [" << rank << "/" << size << "]:"
+         " object [" << name.str() << "] already exists" << std::endl; 
+   }
+   
    std::cout << "module " << moduleID << " [" << rank << "/" << size
              << "] started" << std::endl;
 

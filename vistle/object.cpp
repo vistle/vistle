@@ -1,3 +1,4 @@
+#include <iostream>
 #include "object.h"
 
 namespace vistle {
@@ -40,6 +41,10 @@ FloatArray::FloatArray(const std::string &name): Object() {
    const FloatShmAllocator
       alloc_inst(Shm::instance().getShm().get_segment_manager());
 
+   /*
+   if (Shm::instance().getShm().find<FloatVector>(name.c_str()).first != NULL)
+      std::cerr << "object [" << name << "] already exists" << std::endl;
+   */
    vec = Shm::instance().getShm().construct<FloatVector>(name.c_str())(alloc_inst);
 }
 }

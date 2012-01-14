@@ -56,22 +56,6 @@ int main(int argc, char **argv) {
       vistle::Shm::instance();
    MPI_Barrier(MPI_COMM_WORLD);
 
-   std::stringstream name;
-   name << "Object_" << std::setw(8) << std::setfill('0') << 0
-        << "_" << std::setw(8) << std::setfill('0') << rank;
-
-   try {
-      vistle::FloatArray a(name.str());
-      std::cout << "rank " << rank << ": object [" << name.str()
-                << "] allocated" << std::endl;
-      
-      for (int index = 0; index < 128; index ++)
-         a.vec->push_back(index);
-   } catch (interprocess_exception e) {
-      std::cerr << "rank " << rank << ": object " << name.str()
-                << " already exists" << std::endl;
-   }
-
    vistle::Communicator *comm = new vistle::Communicator(rank, size);
    bool done = false;
 
@@ -126,6 +110,22 @@ Communicator::Communicator(int r, int s)
    
    if (rank == 0)
       clientSocket = acceptClient();
+
+   std::stringstream name;
+   name << "Object_" << std::setw(8) << std::setfill('0') << 0
+        << "_" << std::setw(8) << std::setfill('0') << rank;
+
+   try {
+      vistle::FloatArray a(name.str());
+      std::cout << "rank " << rank << ": object [" << name.str()
+                << "] allocated" << std::endl;
+      
+      for (int index = 0; index < 128; index ++)
+         a.vec->push_back(index);
+   } catch (interprocess_exception e) {
+      std::cerr << "rank " << rank << ": object " << name.str()
+                << " already exists" << std::endl;
+   }
 }
       
 bool Communicator::dispatch() {
