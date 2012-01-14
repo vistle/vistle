@@ -39,7 +39,7 @@ class Object {
 class FloatArray: public Object {
 
  public:
-   FloatArray();
+   FloatArray(const std::string & name);
    FloatVector *vec;
 };
 

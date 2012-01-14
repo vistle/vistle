@@ -35,11 +35,11 @@ Object::~Object() {
    
 }
 
-FloatArray::FloatArray(): Object() {
+FloatArray::FloatArray(const std::string &name): Object() {
    
    const FloatShmAllocator
       alloc_inst(Shm::instance().getShm().get_segment_manager());
 
-   vec = Shm::instance().getShm().construct<FloatVector>("FloatVector")(alloc_inst);
+   vec = Shm::instance().getShm().construct<FloatVector>(name.c_str())(alloc_inst);
 }
 }

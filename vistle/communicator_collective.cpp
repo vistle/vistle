@@ -14,6 +14,8 @@
 #include <unistd.h>
 
 #include <sstream>
+#include <iostream>
+#include <iomanip>
 
 #include "communicator_collective.h"
 #include "message.h"
@@ -23,18 +25,54 @@ using namespace boost::interprocess;
 
 int main(int argc, char **argv) {
 
-   printf("comm\n");
    MPI_Init(&argc, &argv);
 
-   /*
-   shared_memory_object::remove("vistle");
-   vistle::Shm::instance();
-   vistle::FloatArray a;
+   int rank, size;
+   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-   for (int index = 0; index < 128; index ++)
-      a.vec->push_back(index);
-   */
-   vistle::Communicator *comm = new vistle::Communicator();
+   // process with the smallest rank on each host allocates shm
+   const int HOSTNAMESIZE = 64;
+
+   char hostname[HOSTNAMESIZE];
+   char *hostnames = new char[HOSTNAMESIZE * size];
+   gethostname(hostname, HOSTNAMESIZE - 1);
+
+   MPI_Allgather(hostname, HOSTNAMESIZE, MPI_CHAR,
+                 hostnames, HOSTNAMESIZE, MPI_CHAR, MPI_COMM_WORLD);
+
+   bool first = true;
+   for (int index = 0; index < rank; index ++)
+      if (!strncmp(hostname, hostnames + index * HOSTNAMESIZE, HOSTNAMESIZE))
+         first = false;
+
+   if (first) {
+      shared_memory_object::remove("vistle");
+      vistle::Shm::instance();
+   }
+   MPI_Barrier(MPI_COMM_WORLD);
+
+   if (!first)
+      vistle::Shm::instance();
+   MPI_Barrier(MPI_COMM_WORLD);
+
+   std::stringstream name;
+   name << "Object_" << std::setw(8) << std::setfill('0') << 0
+        << "_" << std::setw(8) << std::setfill('0') << rank;
+
+   try {
+      vistle::FloatArray a(name.str());
+      std::cout << "rank " << rank << ": object [" << name.str()
+                << "] allocated" << std::endl;
+      
+      for (int index = 0; index < 128; index ++)
+         a.vec->push_back(index);
+   } catch (interprocess_exception e) {
+      std::cerr << "rank " << rank << ": object " << name.str()
+                << " already exists" << std::endl;
+   }
+
+   vistle::Communicator *comm = new vistle::Communicator(rank, size);
    bool done = false;
 
    while (!done) {
@@ -74,24 +112,15 @@ int acceptClient() {
 
 namespace vistle {
 
-Communicator::Communicator(): socketBuffer(0),
-                              clientSocket(-1),
-                              moduleID(0) {
-   
+Communicator::Communicator(int r, int s)
+   : socketBuffer(NULL), clientSocket(-1), moduleID(0), rank(r), size(s),
+     mpiReceiveBuffer(NULL), mpiMessageSize(0) {
+      
    socketBuffer = new unsigned char[64];
-   memset(socketBuffer, 0, 64);
-   
-   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-   MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-   int h, flag;
-   MPI_Comm_get_attr(MPI_COMM_WORLD, MPI_HOST, &h, &flag);
-   printf("rank %d host %d\n", rank, h);
-
-   rbuf = new char[1024];
+   mpiReceiveBuffer = new char[1024];
    
    // post requests for length of next MPI message
-   MPI_Irecv(&messageLength, 1, MPI_INT, MPI_ANY_SOURCE, 0,
+   MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, 0,
              MPI_COMM_WORLD, &request); 
    MPI_Barrier(MPI_COMM_WORLD);
    
@@ -131,7 +160,8 @@ bool Communicator::dispatch() {
          else if (socketBuffer[0] != '\r' && socketBuffer[0] != '\n')
             message = new message::Debug(socketBuffer[0]);
 
-         // TODO: delete message when received by all MPI nodes
+         // Broadcast message to other MPI partitions
+         //   - handle message, delete message
          if (message) {
 
             MPI_Request s;
@@ -153,23 +183,26 @@ bool Communicator::dispatch() {
    int flag;
    MPI_Status status;
    
-   // test for messages from another MPI node
-   //    - handle messages
-   //    - post another MPI receive for length of next message
+   // test for message size from another MPI node
+   //    - receive actual message from broadcast
+   //    - handle message
+   //    - post another MPI receive for size of next message
    MPI_Test(&request, &flag, &status);
 
    if (flag) {
       if (status.MPI_TAG == 0) {
-         MPI_Bcast(rbuf, messageLength, MPI_BYTE, status.MPI_SOURCE, 
-                   MPI_COMM_WORLD);
+         
+         MPI_Bcast(mpiReceiveBuffer, mpiMessageSize, MPI_BYTE,
+                   status.MPI_SOURCE, MPI_COMM_WORLD);
 
-         message::Message *message = (message::Message *) rbuf;
-         printf("[%02d] message from [%02d] message type %d size %d\n", rank, status.MPI_SOURCE, message->getType(), messageLength);
+         message::Message *message = (message::Message *) mpiReceiveBuffer;
+         printf("[%02d] message from [%02d] message type %d size %d\n",
+                rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
          
          if (!handleMessage(message))
             done = true;
          
-         MPI_Irecv(&messageLength, 1, MPI_INT, MPI_ANY_SOURCE, 0,
+         MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, 0,
                    MPI_COMM_WORLD, &request);
       }
    }
@@ -191,7 +224,8 @@ bool Communicator::handleMessage(message::Message *message) {
          
       case message::Message::QUIT: {
 
-         //message::Quit *quit = (message::Quit *) message;
+         message::Quit *quit = (message::Quit *) message;
+         (void) quit;
          return false;
          break;
       }
@@ -207,19 +241,10 @@ bool Communicator::handleMessage(message::Message *message) {
          char *shmStr = strdup(shmID.str().c_str());
 
          MPI_Comm interComm;
-         /*
-         shared_memory_object *shm =
-            new shared_memory_object(open_or_create, shmStr, read_write);
-         shm->truncate(16);
-         mapped_region region(*shm, read_write);
-         std::memset(region.get_address(), 1, region.get_size());
-         shmObjects[moduleID] = shm;
-         */
          char *argv[3] = { strdup(modID.str().c_str()),
                            shmStr, NULL };
          MPI_Comm_spawn((char *) "module", argv, size, MPI_INFO_NULL, 0,
                         MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
-
          break;
       }
          
@@ -234,12 +259,6 @@ Communicator::~Communicator() {
 
    if (clientSocket != -1)
       close(clientSocket);
-   /*
-   // remove shared memory objects
-   std::map<int, shared_memory_object *>::iterator i;
-   for (i = shmObjects.begin(); i != shmObjects.end(); i++)
-      shared_memory_object::remove(i->second->get_name());
-   */
 }
 
 } // namespace vistle

@@ -17,7 +17,7 @@ namespace message {
 class Communicator {
    
  public:
-   Communicator();
+   Communicator(int rank, int size);
    ~Communicator();
    
    bool dispatch();
@@ -32,14 +32,10 @@ class Communicator {
    int rank;
    int size;
    
+   char *mpiReceiveBuffer;
+   int mpiMessageSize;
+
    MPI_Request request;
-   
-   int messageLength;
-   char *rbuf;
-   /*
-   std::map<int, boost::interprocess::shared_memory_object *>
-      shmObjects;
-   */
 };
 
 } // namespace vistle
