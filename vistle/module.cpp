@@ -20,118 +20,102 @@
 
 using namespace boost::interprocess;
 
-int main(int argc, char **argv) {
+namespace vistle {
 
-   int rank, size, irank, isize;
-   MPI_Init(&argc, &argv);
+Module::Module(const std::string &n, const int r, const int s, const int m)
+   : name(n), rank(r), size(s), moduleID(m) {
 
-   if (argc != 2) {
-
-      std::cerr << "module missing parameters" << std::endl;
-      exit(1);
-   }
-
-   MPI_Comm parentCommunicator;
-   MPI_Comm_get_parent(&parentCommunicator);
-
-   MPI_Comm_rank(parentCommunicator, &irank);
-   MPI_Comm_size(parentCommunicator, &isize);
-
-   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-   MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-   int moduleID = atoi(argv[1]);
    vistle::Shm::instance();
 
-   std::cout << "module " << moduleID << " [" << rank << "/" << size
-             << "] started" << std::endl;
+   std::cout << "  module [" << name << "] [" << moduleID << "] [" << rank
+             << "/" << size << "] started" << std::endl;
 
    std::string smqName =
       vistle::MessageQueue::createName("rmq", moduleID, rank);
    std::string rmqName =
       vistle::MessageQueue::createName("smq", moduleID, rank);
 
-   vistle::MessageQueue *smq, *rmq;
    try {
-      smq = vistle::MessageQueue::open(smqName);
-      rmq = vistle::MessageQueue::open(rmqName);
+      sendMessageQueue = vistle::MessageQueue::open(smqName);
+      receiveMessageQueue = vistle::MessageQueue::open(rmqName);
    } catch (interprocess_exception &ex) {
       std::cout << "module " << moduleID << " [" << rank << "/" << size << "] "
                 << ex.what() << std::endl;
-      exit(-1);
+      exit(2);
    }
-
-   vistle::Module *module = new vistle::Module(rank, size, moduleID, *rmq, *smq);
-   (void) module;
-
-   MPI_Finalize();
-
-   std::cout << "module " << moduleID << " [" << rank << "/" << size
-             << "] done" << std::endl;
-
-   return 0;
 }
 
-namespace vistle {
-
-Module::Module(int r, int s, int m,
-               MessageQueue & rm, MessageQueue & sm)
-   : rank(r), size(s), moduleID(m),
-     receiveMessageQueue(rm), sendMessageQueue(sm) {
+bool Module::dispatch() {
 
    size_t msgSize;
    unsigned int priority;
    char msgRecvBuf[128];
 
-   receiveMessageQueue.getMessageQueue().receive((void *) msgRecvBuf,
-                                                 (size_t) 128, msgSize,
-                                                 priority);
+   receiveMessageQueue->getMessageQueue().receive((void *) msgRecvBuf,
+                                                  (size_t) 128, msgSize,
+                                                  priority);
 
    vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
 
+   bool done = handleMessage(message);
+   if (done) {
+      vistle::message::ModuleExit m(moduleID, rank);
+      sendMessageQueue->getMessageQueue().send(&m, sizeof(m), 0);
+   }
+
+   return done;
+}
+
+bool Module::handleMessage(const vistle::message::Message *message) {
+
    switch (message->getType()) {
+
       case vistle::message::Message::DEBUG: {
 
          vistle::message::Debug *debug = (vistle::message::Debug *) message;
-         std::cout << "module " << moduleID << " [" << rank << "/" << size
-                   << "] debug [" << debug->getCharacter() << "]" << std::endl;
+
+         std::cout << "    module [" << name << "] [" << moduleID << "] ["
+                   << rank << "/" << size << "] debug ["
+                   << debug->getCharacter() << "]" << std::endl;
          break;
       }
+
+      case message::Message::QUIT: {
+
+         message::Quit *quit = (message::Quit *) message;
+         (void) quit;
+         return true;
+         break;
+      }
+
+      case message::Message::COMPUTE: {
+
+         message::Compute *comp = (message::Compute *) message;
+         (void) comp;
+         std::cout << "    module [" << name << "] [" << moduleID << "] ["
+                   << rank << "/" << size << "] compute" << std::endl;
+
+         compute();
+         break;
+      }
+
       default:
+         std::cout << "    module [" << name << "] [" << moduleID << "] ["
+                   << rank << "/" << size << "] unknown message type ["
+                   << message->getType() << "]" << std::endl;
+
          break;
    }
 
-   std::stringstream name;
-   name << "Object_" << std::setw(8) << std::setfill('0') << moduleID
-        << "_" << std::setw(8) << std::setfill('0') << rank;
+   return false;
+}
 
-   try {
-      vistle::FloatArray a(name.str());
+Module::~Module() {
 
-      vistle::message::NewObject n(name.str());
-      sendMessageQueue.getMessageQueue().send(&n, sizeof(n), 0);
+   std::cout << "  module [" << name << "] [" << moduleID << "] [" << rank
+             << "/" << size << "] quit" << std::endl;
 
-      std::cout << "module " << moduleID << " [" << rank << "/" << size << "]"
-         " object [" << name.str() << "] allocated" << std::endl;
-
-      for (int index = 0; index < 128; index ++)
-         a.vec->push_back(index);
-   } catch (interprocess_exception &ex) {
-      std::cout << "module " << moduleID << " [" << rank << "/" << size << "]:"
-         " object [" << name.str() << "] already exists" << std::endl;
-   }
-
-   int *local = new int[1024 * 1024];
-   int *global = new int[1024 * 1024];
-
-   for (int count = 0; count < 128; count ++) {
-      for (int index = 0; index < 1024 * 1024; index ++)
-         local[index] = rand();
-      MPI_Allreduce(local, global, 1024 * 1024, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-   }
-
-   vistle::message::ModuleExit m(moduleID, rank);
-   sendMessageQueue.getMessageQueue().send(&m, sizeof(m), 0);
+   MPI_Finalize();
 }
 
 } // namespace vistle

@@ -67,5 +67,9 @@ int ModuleExit::getRank() const {
    return rank;
 }
 
+Compute::Compute()
+   : Message(Message::COMPUTE, sizeof(Compute)) {
+}
+
 } // namespace message
 } // namespace vistle

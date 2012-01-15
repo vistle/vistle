@@ -20,7 +20,8 @@ class Message {
       SPAWN      = 1,
       QUIT       = 2,
       NEWOBJECT  = 3,
-      MODULEEXIT = 4
+      MODULEEXIT = 4,
+      COMPUTE    = 5
    };
 
    Message(const unsigned int type, const unsigned int size);
@@ -84,6 +85,14 @@ class ModuleExit: public Message {
  private:
    const int moduleID;
    const int rank;
+};
+
+class Compute: public Message {
+
+ public:
+   Compute();
+
+ private:
 };
 
 } // namespace message

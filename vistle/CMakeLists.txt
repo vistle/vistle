@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 project(vistle)
 
 add_executable(communicator communicator_collective.cpp message.cpp messagequeue.cpp object.cpp)
-add_executable(module module.cpp message.cpp messagequeue.cpp object.cpp)
+add_executable(gendat gendat.cpp module.cpp message.cpp messagequeue.cpp object.cpp)
 
 find_package(MPI REQUIRED)
 find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
@@ -14,6 +14,6 @@ set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
 include_directories(${MPI_INCLUDE_PATH})
 
 target_link_libraries(communicator ${MPI_LIBRARIES} ${Boost_LIBRARIES})
-target_link_libraries(module ${MPI_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(gendat ${MPI_LIBRARIES} ${Boost_LIBRARIES})
 
 set(CMAKE_BUILD_TYPE Debug)

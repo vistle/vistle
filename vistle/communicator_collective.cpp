@@ -63,10 +63,11 @@ int main(int argc, char **argv) {
 
    while (!done) {
       done = comm->dispatch();
-      usleep(1000);
+      usleep(100);
    }
 
    delete comm;
+   MPI_Barrier(MPI_COMM_WORLD);
 
    shared_memory_object::remove("vistle");
    MPI_Finalize();
@@ -113,6 +114,7 @@ Communicator::Communicator(int r, int s)
    if (rank == 0)
       clientSocket = acceptClient();
 
+#if 0
    std::stringstream name;
    name << "Object_" << std::setw(8) << std::setfill('0') << 0
         << "_" << std::setw(8) << std::setfill('0') << rank;
@@ -128,6 +130,7 @@ Communicator::Communicator(int r, int s)
       std::cerr << "rank " << rank << ": object " << name.str()
                 << " already exists" << std::endl;
    }
+#endif
 }
 
 bool Communicator::dispatch() {
@@ -156,6 +159,10 @@ bool Communicator::dispatch() {
          else if (socketBuffer[0] == 's') {
             moduleID++;
             message = new message::Spawn(moduleID);
+         }
+
+         else if (socketBuffer[0] == 'c') {
+            message = new message::Compute();
          }
 
          else if (socketBuffer[0] != '\r' && socketBuffer[0] != '\n')
@@ -197,9 +204,10 @@ bool Communicator::dispatch() {
                    status.MPI_SOURCE, MPI_COMM_WORLD);
 
          message::Message *message = (message::Message *) mpiReceiveBuffer;
+#if 0
          printf("[%02d] message from [%02d] message type %d size %d\n",
                 rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
-
+#endif
          if (!handleMessage(message))
             done = true;
 
@@ -274,8 +282,10 @@ bool Communicator::handleMessage(message::Message *message) {
             MessageQueue *rmq = MessageQueue::create(rmqName);
             receiveMessageQueue[moduleID] = rmq;
 
+#if 0
             message::Debug d('A');
             smq->getMessageQueue().send(&d, sizeof(d), 0);
+#endif
          } catch (boost::interprocess::interprocess_exception &ex) {
             std::cerr << "comm [" << rank << "/" << size << "] spawn mq "
                       << ex.what() << std::endl;
@@ -285,7 +295,7 @@ bool Communicator::handleMessage(message::Message *message) {
          MPI_Comm interComm;
          char *argv[2] = { strdup(modID.str().c_str()), NULL };
 
-         MPI_Comm_spawn((char *) "module", argv, size, MPI_INFO_NULL, 0,
+         MPI_Comm_spawn((char *) "gendat", argv, size, MPI_INFO_NULL, 0,
                         MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
 
          break;
@@ -318,7 +328,18 @@ bool Communicator::handleMessage(message::Message *message) {
             delete i->second;
             receiveMessageQueue.erase(i);
          }
+         break;
       }
+
+      case message::Message::COMPUTE: {
+
+         message::Compute *comp = (message::Compute *) message;
+         std::map<int, MessageQueue *>::iterator i;
+         for (i = sendMessageQueue.begin(); i != sendMessageQueue.end(); i++)
+            i->second->getMessageQueue().send(comp, sizeof(*comp), 0);
+         break;
+      }
+
       default:
          break;
    }
@@ -327,6 +348,20 @@ bool Communicator::handleMessage(message::Message *message) {
 }
 
 Communicator::~Communicator() {
+
+   message::Quit quit;
+   std::map<int, MessageQueue *>::iterator i;
+
+   for (i = sendMessageQueue.begin(); i != sendMessageQueue.end(); i ++)
+      i->second->getMessageQueue().send(&quit, sizeof(quit), 1);
+
+   // receive all ModuleExit messages from modules
+   // retry for some time, modules that don't answer might have crashed
+   int retries = 10000;
+   while (sendMessageQueue.size() > 0 && --retries >= 0) {
+      dispatch();
+      usleep(1000);
+   }
 
    if (clientSocket != -1)
       close(clientSocket);
