@@ -4,6 +4,9 @@
 #include <iostream>
 #include <mpi.h>
 
+#include <list>
+#include <map>
+
 namespace vistle {
 
 namespace message {
@@ -21,19 +24,30 @@ class Module {
 
    bool dispatch();
 
- private:
-   bool handleMessage(const message::Message *message);
-   virtual bool compute() = 0;
-
-   MessageQueue *receiveMessageQueue;
-
  protected:
+
+   bool createInputPort(const std::string & name);
+   bool createOutputPort(const std::string & name);
+   bool addObject(const std::string &portName, const std::string &objectName);
+
    MessageQueue *sendMessageQueue;
 
    const std::string name;
    const int rank;
    const int size;
    const int moduleID;
+
+ private:
+   bool handleMessage(const message::Message *message);
+   bool addInputObject(const std::string &portName,
+                       const std::string &objectName);
+
+   virtual bool compute() = 0;
+
+   MessageQueue *receiveMessageQueue;
+
+   std::map<std::string, std::list<std::string> *> outputPorts;
+   std::map<std::string, std::list<std::string> *> inputPorts;
 };
 
 } // namespace vistle

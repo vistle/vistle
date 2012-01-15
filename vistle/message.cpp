@@ -41,8 +41,8 @@ NewObject::NewObject(const std::string &n)
    : Message(Message::NEWOBJECT, sizeof(NewObject)) {
 
    size_t size = n.size();
-   if (size > 63)
-      size = 63;
+   if (size > 31)
+      size = 31;
    n.copy(name, size);
    name[size] = 0;
 }
@@ -69,6 +69,62 @@ int ModuleExit::getRank() const {
 
 Compute::Compute()
    : Message(Message::COMPUTE, sizeof(Compute)) {
+}
+
+CreateOutputPort::CreateOutputPort(const std::string &n)
+   : Message(Message::CREATEOUTPUTPORT, sizeof(CreateOutputPort)) {
+
+   size_t size = n.size();
+   if (size > 31)
+      size = 31;
+   n.copy(name, size);
+   name[size] = 0;
+}
+
+const char * CreateOutputPort::getName() const {
+
+   return name;
+}
+
+CreateInputPort::CreateInputPort(const std::string &n)
+   : Message(Message::CREATEINPUTPORT, sizeof(CreateInputPort)) {
+
+   size_t size = n.size();
+   if (size > 31)
+      size = 31;
+   n.copy(name, size);
+   name[size] = 0;
+}
+
+const char * CreateInputPort::getName() const {
+
+   return name;
+}
+
+AddObject::AddObject(const std::string &p, const std::string &o)
+   : Message(Message::ADDOBJECT, sizeof(AddObject)) {
+
+   size_t size = p.size();
+   if (size > 31)
+      size = 31;
+   p.copy(portName, size);
+   portName[size] = 0;
+
+   size = o.size();
+   if (size > 31)
+      size = 31;
+   o.copy(objectName, size);
+   objectName[size] = 0;
+}
+
+const char * AddObject::getPortName() const {
+
+   return portName;
+}
+
+const char * AddObject::getObjectName() const {
+
+   return portName;
 }
 
 } // namespace message

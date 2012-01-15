@@ -16,12 +16,15 @@ class Message {
 
  public:
    enum {
-      DEBUG      = 0,
-      SPAWN      = 1,
-      QUIT       = 2,
-      NEWOBJECT  = 3,
-      MODULEEXIT = 4,
-      COMPUTE    = 5
+      DEBUG            =  0,
+      SPAWN            =  1,
+      QUIT             =  2,
+      NEWOBJECT        =  3,
+      MODULEEXIT       =  4,
+      COMPUTE          =  5,
+      CREATEINPUTPORT  =  6,
+      CREATEOUTPUTPORT =  7,
+      ADDOBJECT        =  8,
    };
 
    Message(const unsigned int type, const unsigned int size);
@@ -71,7 +74,7 @@ class NewObject: public Message {
    const char *getName() const;
 
  private:
-   char name[64];
+   char name[32];
 };
 
 class ModuleExit: public Message {
@@ -94,6 +97,42 @@ class Compute: public Message {
 
  private:
 };
+
+class CreateInputPort: public Message {
+
+ public:
+   CreateInputPort(const std::string &name);
+
+   const char *getName() const;
+
+ private:
+   char name[32];
+};
+
+class CreateOutputPort: public Message {
+
+ public:
+   CreateOutputPort(const std::string &name);
+
+   const char *getName() const;
+
+ private:
+   char name[32];
+};
+
+class AddObject: public Message {
+
+ public:
+   AddObject(const std::string &portName, const std::string &objectName);
+
+   const char *getPortName() const;
+   const char *getObjectName() const;
+
+ private:
+   char portName[32];
+   char objectName[32];
+};
+
 
 } // namespace message
 } // namespace vistle

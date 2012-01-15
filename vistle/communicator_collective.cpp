@@ -50,12 +50,12 @@ int main(int argc, char **argv) {
 
    if (first) {
       shared_memory_object::remove("vistle");
-      vistle::Shm::instance();
+      vistle::Shm::instance(0, rank);
    }
    MPI_Barrier(MPI_COMM_WORLD);
 
    if (!first)
-      vistle::Shm::instance();
+      vistle::Shm::instance(0, rank);
    MPI_Barrier(MPI_COMM_WORLD);
 
    vistle::Communicator *comm = new vistle::Communicator(rank, size);

@@ -11,6 +11,7 @@ MODULE_MAIN(Gendat)
 Gendat::Gendat(int rank, int size, int moduleID)
    : Module("Gendat", rank, size, moduleID) {
 
+   createOutputPort("data");
 }
 
 Gendat::~Gendat() {

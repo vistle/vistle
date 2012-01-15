@@ -16,14 +16,19 @@ namespace vistle {
 class Shm {
 
  public:
+   static Shm & instance(const int moduleID, const int rank);
    static Shm & instance();
    ~Shm();
 
    managed_shared_memory & getShm();
+   std::string createObjectID();
 
  private:
-   Shm(size_t size);
+   Shm(const int moduleID, const int rank, const size_t &size);
 
+   const int moduleID;
+   const int rank;
+   int objectID;
    static Shm *singleton;
    managed_shared_memory *shm;
 };
@@ -40,6 +45,7 @@ class FloatArray: public Object {
 
  public:
    FloatArray(const std::string & name);
+   FloatArray();
    FloatVector *vec;
 };
 
