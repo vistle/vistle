@@ -2,6 +2,7 @@
 #define MESSAGE_H
 
 #include <stdint.h>
+#include <string>
 
 namespace vistle {
 
@@ -13,44 +14,76 @@ class Message {
 
    friend class vistle::Communicator;
 
- public:      
-   enum { DEBUG = 0, SPAWN = 1, QUIT = 2 };
-   
-   Message(unsigned int type, unsigned int size);
-   
-   unsigned int getType();
+ public:
+   enum {
+      DEBUG      = 0,
+      SPAWN      = 1,
+      QUIT       = 2,
+      NEWOBJECT  = 3,
+      MODULEEXIT = 4
+   };
+
+   Message(const unsigned int type, const unsigned int size);
+
+   unsigned int getType() const;
 
  private:
    unsigned int size;
-   unsigned int type;
+   const unsigned int type;
 };
 
 class Debug: public Message {
 
  public:
-   Debug(char c);
-   char getCharacter();
+   Debug(const char c);
+
+   char getCharacter() const;
 
  private:
-   char character;
+   const char character;
 };
- 
+
 class Spawn: public Message {
 
  public:
-   Spawn(int moduleID);
-   int getModuleID();
+   Spawn(const int moduleID);
+
+   int getModuleID() const;
 
  private:
-   int moduleID;
+   const int moduleID;
 };
 
 class Quit: public Message {
 
  public:
    Quit();
+
  private:
-   char schnubb[32];
+};
+
+class NewObject: public Message {
+
+ public:
+   NewObject(const std::string &name);
+
+   const char *getName() const;
+
+ private:
+   char name[64];
+};
+
+class ModuleExit: public Message {
+
+ public:
+   ModuleExit(const int moduleID, const int rank);
+
+   int getModuleID() const;
+   int getRank() const;
+
+ private:
+   const int moduleID;
+   const int rank;
 };
 
 } // namespace message

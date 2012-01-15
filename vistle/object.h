@@ -14,7 +14,7 @@ namespace vistle {
    typedef vector<float, FloatShmAllocator> FloatVector;
 
 class Shm {
-   
+
  public:
    static Shm & instance();
    ~Shm();

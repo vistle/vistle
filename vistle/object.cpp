@@ -11,7 +11,7 @@ Shm::Shm(size_t size) {
 }
 
 Shm::~Shm() {
-   
+
    //shared_memory_object::remove("vistle");
 }
 
@@ -24,20 +24,20 @@ Shm & Shm::instance() {
 }
 
 managed_shared_memory & Shm::getShm() {
-      
+
    return *shm;
 }
 
 Object::Object() {
-   
+
 }
 
 Object::~Object() {
-   
+
 }
 
 FloatArray::FloatArray(const std::string &name): Object() {
-   
+
    const FloatShmAllocator
       alloc_inst(Shm::instance().getShm().get_segment_manager());
 

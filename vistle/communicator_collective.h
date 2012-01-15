@@ -13,29 +13,34 @@ namespace vistle {
 namespace message {
    class Message;
 }
- 
+
+class MessageQueue;
+
 class Communicator {
-   
+
  public:
    Communicator(int rank, int size);
    ~Communicator();
-   
+
    bool dispatch();
-   
+
  private:
    bool handleMessage(message::Message *message);
-   
+
+   const int rank;
+   const int size;
+
    unsigned char *socketBuffer;
    int clientSocket;
    int moduleID;
-   
-   int rank;
-   int size;
-   
+
    char *mpiReceiveBuffer;
    int mpiMessageSize;
 
    MPI_Request request;
+
+   std::map<int, MessageQueue *> sendMessageQueue;
+   std::map<int, MessageQueue *> receiveMessageQueue;
 };
 
 } // namespace vistle

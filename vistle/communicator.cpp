@@ -52,71 +52,71 @@ int acceptClient() {
    int server = socket(AF_INET, SOCK_STREAM, 0);
    int reuse = 1;
    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
-   
+
    struct sockaddr_in serv, addr;
    serv.sin_family = AF_INET;
    serv.sin_addr.s_addr = INADDR_ANY;
    serv.sin_port = htons(8192);
-   
+
    if (bind(server, (struct sockaddr *) &serv, sizeof(serv)) < 0) {
       perror("bind error");
       exit(1);
    }
    listen(server, 0);
-   
+
    socklen_t len = sizeof(addr);
    int client = accept(server, (struct sockaddr *) &addr, &len);
-   
+
    close(server);
    return client;
-} 
+}
 
 namespace vistle {
 
 Communicator::Communicator(): socketBuffer(0),
                               clientSocket(-1),
                               moduleID(0) {
-   
+
    socketBuffer = new unsigned char[64];
    memset(socketBuffer, 0, 64);
-   
+
    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
    MPI_Comm_size(MPI_COMM_WORLD, &size);
    rbuf = new char[1024];
-   
+
    // post requests for length of next MPI message
    MPI_Irecv(&messageLength, 1, MPI_INT, MPI_ANY_SOURCE, 0,
              MPI_COMM_WORLD, &request); 
    MPI_Barrier(MPI_COMM_WORLD);
-   
+
    if (rank == 0)
       clientSocket = acceptClient();
 }
-      
+
 bool Communicator::dispatch() {
-   
+
    bool done = false;
-   
+
    if (rank == 0) {
-      
+
       // poll socket
       fd_set set;
       FD_ZERO(&set);
       FD_SET(clientSocket, &set);
-      
+
       struct timeval t = { 0, 0 };
-      
+
       select(clientSocket + 1, &set, NULL, NULL, &t);
-      
+
       if (FD_ISSET(clientSocket, &set)) {
-   
+
          message::Message *message = NULL;
-      
+
          read(clientSocket, socketBuffer, 1);
 
          if (socketBuffer[0] == 'q')
             message = new message::Quit();
-         
+
          else if (socketBuffer[0] == 's') {
             moduleID++;
             message = new message::Spawn(moduleID);
@@ -149,7 +149,7 @@ bool Communicator::dispatch() {
    int flag;
    int index;
    MPI_Status status;
-   
+
    // test for messages from another MPI node
    //    - handle messages
    //    - post another MPI receive for length of next message
@@ -159,18 +159,18 @@ bool Communicator::dispatch() {
       if (status.MPI_TAG == 0) {
          MPI_Recv(rbuf, messageLength, MPI_BYTE, status.MPI_SOURCE, 0,
                   MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-         
+
          message::Message *message = (message::Message *) rbuf;
          printf("[%02d] message from [%02d] message type %d size %d\n", rank, status.MPI_SOURCE, message->getType(), messageLength);
-         
+
          if (!handleMessage(message))
             done = true;
-         
+
          MPI_Irecv(&messageLength, 1, MPI_INT, MPI_ANY_SOURCE, 0,
                    MPI_COMM_WORLD, &request);
       }
    }
-   
+
    // finish sent MPI requests if they are completed
    do {
       if (sendRequests.size()) {
@@ -181,34 +181,34 @@ bool Communicator::dispatch() {
       } else
          flag = 0;
    } while (flag);
-   
+
    return done;
 }
 
 
 bool Communicator::handleMessage(message::Message *message) {
-   
+
    switch (message->getType()) {
-      
+
       case message::Message::DEBUG: {
 
          message::Debug *debug = (message::Debug *) message;
          printf("rank %d debug %d\n", rank, debug->getCharacter());
          break;
       }
-         
+
       case message::Message::QUIT: {
 
          //message::Quit *quit = (message::Quit *) message;
          return false;
          break;
       }
-         
+
       case message::Message::SPAWN: {
-         
+
          message::Spawn *spawn = (message::Spawn *) message;
          int moduleID = spawn->getModuleID();
-         
+
          std::stringstream modID, shmID;
          modID << moduleID;
          shmID << "vistleSHM_" << moduleID;
@@ -230,7 +230,7 @@ bool Communicator::handleMessage(message::Message *message) {
 
          break;
       }
-         
+
       default:
          break;
    }

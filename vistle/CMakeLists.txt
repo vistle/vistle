@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(vistle)
 
-add_executable(communicator communicator_collective.cpp message.cpp object.cpp)
-add_executable(module module.cpp object.cpp)
+add_executable(communicator communicator_collective.cpp message.cpp messagequeue.cpp object.cpp)
+add_executable(module module.cpp message.cpp messagequeue.cpp object.cpp)
 
 find_package(MPI REQUIRED)
 find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
