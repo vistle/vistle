@@ -1,4 +1,4 @@
-#include "connectionmanager.h"
+#include "portmanager.h"
 
 namespace vistle {
 
@@ -27,11 +27,11 @@ void Port::addObject(const std::string & name) {
    objects.push_back(name);
 }
 
-ConnectionManager::ConnectionManager() {
+PortManager::PortManager() {
 
 }
 
-void ConnectionManager::addPort(const int moduleID, const std::string &name,
+void PortManager::addPort(const int moduleID, const std::string &name,
                                 const Port::Type type) {
 
    std::map<std::string, Port *> *portMap = NULL;
@@ -51,7 +51,7 @@ void ConnectionManager::addPort(const int moduleID, const std::string &name,
    connections[port] = new std::vector<const Port *>;
 }
 
-Port *ConnectionManager::getPort(const int moduleID,
+Port *PortManager::getPort(const int moduleID,
                                  const std::string name) const {
 
    std::map<int, std::map<std::string, Port *> *>::const_iterator i =
@@ -66,7 +66,7 @@ Port *ConnectionManager::getPort(const int moduleID,
    return NULL;
 }
 
-void ConnectionManager::addConnection(const Port *out, const Port *in) {
+void PortManager::addConnection(const Port *out, const Port *in) {
 
    if (out->getType() == Port::OUTPUT && in->getType() == Port::INPUT) {
 
@@ -84,7 +84,7 @@ void ConnectionManager::addConnection(const Port *out, const Port *in) {
    }
 }
 
-void ConnectionManager::addConnection(const int a, const std::string na,
+void PortManager::addConnection(const int a, const std::string na,
                                       const int b, const std::string nb) {
 
    std::map<int, std::map<std::string, Port *> *>::iterator ia =
@@ -102,7 +102,7 @@ void ConnectionManager::addConnection(const int a, const std::string na,
 }
 
 const std::vector<const Port *> *
-ConnectionManager::getConnectionList(const Port *port) const {
+PortManager::getConnectionList(const Port *port) const {
 
    std::map<const Port *, std::vector<const Port *> *>::const_iterator i =
       connections.find(port);
@@ -113,7 +113,7 @@ ConnectionManager::getConnectionList(const Port *port) const {
 }
 
 const std::vector<const Port *> *
-ConnectionManager::getConnectionList(const int moduleID,
+PortManager::getConnectionList(const int moduleID,
                                      const std::string &name) const {
 
    const Port *port = getPort(moduleID, name);

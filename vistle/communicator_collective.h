@@ -8,6 +8,8 @@
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 
+#include "portmanager.h"
+
 namespace vistle {
 
 namespace message {
@@ -44,7 +46,7 @@ class Communicator {
    std::map<int, boost::interprocess::shared_memory_object *>
       shmObjects;
 
-   ConnectionManager connectionManager;
+   PortManager portManager;
 };
 
 } // namespace vistle

@@ -1,5 +1,5 @@
-#ifndef CONNECTIONMANAGER_H
-#define CONNECTIONMANAGER_H
+#ifndef PORTMANAGER_H
+#define PORTMANAGER_H
 
 #include <string>
 #include <map>
@@ -29,10 +29,10 @@ class Port {
 };
 
 
-class ConnectionManager {
+class PortManager {
 
  public:
-   ConnectionManager();
+   PortManager();
    void addPort(const int moduleID, const std::string &name,
                 const Port::Type type);
 

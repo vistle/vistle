@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(vistle)
 
-add_executable(communicator communicator_collective.cpp message.cpp messagequeue.cpp object.cpp connectionmanager.cpp)
+add_executable(communicator communicator_collective.cpp message.cpp messagequeue.cpp object.cpp portmanager.cpp)
 add_executable(gendat gendat.cpp module.cpp message.cpp messagequeue.cpp object.cpp)
 
 find_package(MPI REQUIRED)

@@ -20,7 +20,6 @@
 #include "message.h"
 #include "messagequeue.h"
 #include "object.h"
-#include "connectionmanager.h"
 
 #include "communicator_collective.h"
 
@@ -326,16 +325,16 @@ bool Communicator::handleMessage(message::Message *message) {
       case message::Message::CREATEINPUTPORT: {
 
          message::CreateInputPort *m = (message::CreateInputPort *) message;
-         connectionManager.addPort(m->getModuleID(), m->getName(),
-                                   Port::INPUT);
+         portManager.addPort(m->getModuleID(), m->getName(),
+                             Port::INPUT);
          break;
       }
 
       case message::Message::CREATEOUTPUTPORT: {
 
          message::CreateOutputPort *m = (message::CreateOutputPort *) message;
-         connectionManager.addPort(m->getModuleID(), m->getName(),
-                                   Port::OUTPUT);
+         portManager.addPort(m->getModuleID(), m->getName(),
+                             Port::OUTPUT);
          break;
       }
 
@@ -346,8 +345,8 @@ bool Communicator::handleMessage(message::Message *message) {
          std::cout << "AddObject " << m->getObjectName()
                    << " to port " << m->getPortName() << std::endl;
 #endif
-         Port *port = connectionManager.getPort(m->getModuleID(),
-                                                m->getPortName());
+         Port *port = portManager.getPort(m->getModuleID(),
+                                          m->getPortName());
          if (port)
             port->addObject(m->getObjectName());
          else
