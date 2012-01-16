@@ -25,19 +25,20 @@ namespace vistle {
 Module::Module(const std::string &n, const int r, const int s, const int m)
    : name(n), rank(r), size(s), moduleID(m) {
 
-   vistle::Shm::instance(moduleID, rank);
-
    std::cout << "  module [" << name << "] [" << moduleID << "] [" << rank
              << "/" << size << "] started" << std::endl;
 
    std::string smqName =
-      vistle::MessageQueue::createName("rmq", moduleID, rank);
+      message::MessageQueue::createName("rmq", moduleID, rank);
    std::string rmqName =
-      vistle::MessageQueue::createName("smq", moduleID, rank);
+      message::MessageQueue::createName("smq", moduleID, rank);
 
    try {
-      sendMessageQueue = vistle::MessageQueue::open(smqName);
-      receiveMessageQueue = vistle::MessageQueue::open(rmqName);
+      sendMessageQueue = message::MessageQueue::open(smqName);
+      receiveMessageQueue = message::MessageQueue::open(rmqName);
+
+      Shm::instance(moduleID, rank, sendMessageQueue);
+
    } catch (interprocess_exception &ex) {
       std::cout << "module " << moduleID << " [" << rank << "/" << size << "] "
                 << ex.what() << std::endl;
@@ -55,7 +56,7 @@ bool Module::createInputPort(const std::string &name) {
       std::list<std::string> *l = new std::list<std::string>;
       inputPorts[name] = l;
 
-      message::CreateInputPort message(name);
+      message::CreateInputPort message(moduleID, rank, name);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return true;
    }
@@ -73,7 +74,7 @@ bool Module::createOutputPort(const std::string &name) {
       std::list<std::string> *l = new std::list<std::string>;
       outputPorts[name] = l;
 
-      message::CreateOutputPort message(name);
+      message::CreateOutputPort message(moduleID, rank, name);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return true;
    }
@@ -87,8 +88,8 @@ bool Module::addObject(const std::string &portName,
       outputPorts.find(portName);
 
    if (i != outputPorts.end()) {
-      i->second->push_back(objectName);
-      message::AddObject message(portName, objectName);
+   i->second->push_back(objectName);
+      message::AddObject message(moduleID, rank, portName, objectName);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return true;
    }

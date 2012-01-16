@@ -12,9 +12,8 @@ namespace vistle {
 
 namespace message {
    class Message;
+   class MessageQueue;
 }
-
-class MessageQueue;
 
 class Communicator {
 
@@ -39,8 +38,13 @@ class Communicator {
 
    MPI_Request request;
 
-   std::map<int, MessageQueue *> sendMessageQueue;
-   std::map<int, MessageQueue *> receiveMessageQueue;
+   std::map<int, message::MessageQueue *> sendMessageQueue;
+   std::map<int, message::MessageQueue *> receiveMessageQueue;
+
+   std::map<int, boost::interprocess::shared_memory_object *>
+      shmObjects;
+
+   ConnectionManager connectionManager;
 };
 
 } // namespace vistle

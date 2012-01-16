@@ -20,6 +20,7 @@
 #include "message.h"
 #include "messagequeue.h"
 #include "object.h"
+#include "connectionmanager.h"
 
 #include "communicator_collective.h"
 
@@ -50,12 +51,12 @@ int main(int argc, char **argv) {
 
    if (first) {
       shared_memory_object::remove("vistle");
-      vistle::Shm::instance(0, rank);
+      vistle::Shm::instance(0, rank, NULL);
    }
    MPI_Barrier(MPI_COMM_WORLD);
 
    if (!first)
-      vistle::Shm::instance(0, rank);
+      vistle::Shm::instance(0, rank, NULL);
    MPI_Barrier(MPI_COMM_WORLD);
 
    vistle::Communicator *comm = new vistle::Communicator(rank, size);
@@ -108,29 +109,11 @@ Communicator::Communicator(int r, int s)
 
    // post requests for length of next MPI message
    MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, 0,
-             MPI_COMM_WORLD, &request); 
+             MPI_COMM_WORLD, &request);
    MPI_Barrier(MPI_COMM_WORLD);
 
    if (rank == 0)
       clientSocket = acceptClient();
-
-#if 0
-   std::stringstream name;
-   name << "Object_" << std::setw(8) << std::setfill('0') << 0
-        << "_" << std::setw(8) << std::setfill('0') << rank;
-
-   try {
-      vistle::FloatArray a(name.str());
-      std::cout << "rank " << rank << ": object [" << name.str()
-                << "] allocated" << std::endl;
-
-      for (int index = 0; index < 128; index ++)
-         a.vec->push_back(index);
-   } catch (interprocess_exception &ex) {
-      std::cerr << "rank " << rank << ": object " << name.str()
-                << " already exists" << std::endl;
-   }
-#endif
 }
 
 bool Communicator::dispatch() {
@@ -154,19 +137,19 @@ bool Communicator::dispatch() {
          read(clientSocket, socketBuffer, 1);
 
          if (socketBuffer[0] == 'q')
-            message = new message::Quit();
+            message = new message::Quit(0, rank);
 
          else if (socketBuffer[0] == 's') {
             moduleID++;
-            message = new message::Spawn(moduleID);
+            message = new message::Spawn(0, rank, moduleID);
          }
 
          else if (socketBuffer[0] == 'c') {
-            message = new message::Compute();
+            message = new message::Compute(0, rank);
          }
 
          else if (socketBuffer[0] != '\r' && socketBuffer[0] != '\n')
-            message = new message::Debug(socketBuffer[0]);
+            message = new message::Debug(0, rank, socketBuffer[0]);
 
          // Broadcast message to other MPI partitions
          //   - handle message, delete message
@@ -221,11 +204,11 @@ bool Communicator::dispatch() {
    unsigned int priority;
    char msgRecvBuf[128];
 
-   std::map<int, MessageQueue *>::iterator i;
-   for (i = receiveMessageQueue.begin(); i != receiveMessageQueue.end(); i ++) {
+   std::map<int, message::MessageQueue *>::iterator i;
+   for (i = receiveMessageQueue.begin(); i != receiveMessageQueue.end(); i ++){
 
       try {
-         bool received = 
+         bool received =
             i->second->getMessageQueue().try_receive((void *) msgRecvBuf,
                                                      (size_t) 128, msgSize,
                                                      priority);
@@ -267,26 +250,23 @@ bool Communicator::handleMessage(message::Message *message) {
       case message::Message::SPAWN: {
 
          message::Spawn *spawn = (message::Spawn *) message;
-         int moduleID = spawn->getModuleID();
+         int moduleID = spawn->getSpawnID();
 
          std::stringstream modID;
          modID << moduleID;
 
-         std::string smqName = MessageQueue::createName("smq", moduleID, rank);
-         std::string rmqName = MessageQueue::createName("rmq", moduleID, rank);
+         std::string smqName =
+            message::MessageQueue::createName("smq", moduleID, rank);
+         std::string rmqName =
+            message::MessageQueue::createName("rmq", moduleID, rank);
 
          try {
-            MessageQueue *smq = MessageQueue::create(smqName);
-            sendMessageQueue[moduleID] = smq;
-
-            MessageQueue *rmq = MessageQueue::create(rmqName);
-            receiveMessageQueue[moduleID] = rmq;
-
-#if 0
-            message::Debug d('A');
-            smq->getMessageQueue().send(&d, sizeof(d), 0);
-#endif
+            sendMessageQueue[moduleID] =
+               message::MessageQueue::create(smqName);
+            receiveMessageQueue[moduleID] =
+               message::MessageQueue::create(rmqName);
          } catch (boost::interprocess::interprocess_exception &ex) {
+
             std::cerr << "comm [" << rank << "/" << size << "] spawn mq "
                       << ex.what() << std::endl;
             exit(-1);
@@ -317,14 +297,17 @@ bool Communicator::handleMessage(message::Message *message) {
          std::cout << "comm [" << rank << "/" << size << "] Module ["
                    << mod << "] quit" << std::endl;
 
-         std::map<int, MessageQueue *>::iterator i = sendMessageQueue.find(mod);
+         std::map<int, message::MessageQueue *>::iterator i =
+            sendMessageQueue.find(mod);
          if (i != sendMessageQueue.end()) {
+
             delete i->second;
             sendMessageQueue.erase(i);
          }
 
          i = receiveMessageQueue.find(mod);
          if (i != receiveMessageQueue.end()) {
+
             delete i->second;
             receiveMessageQueue.erase(i);
          }
@@ -334,14 +317,50 @@ bool Communicator::handleMessage(message::Message *message) {
       case message::Message::COMPUTE: {
 
          message::Compute *comp = (message::Compute *) message;
-         std::map<int, MessageQueue *>::iterator i;
+         std::map<int, message::MessageQueue *>::iterator i;
          for (i = sendMessageQueue.begin(); i != sendMessageQueue.end(); i++)
             i->second->getMessageQueue().send(comp, sizeof(*comp), 0);
          break;
       }
 
+      case message::Message::CREATEINPUTPORT: {
+
+         message::CreateInputPort *m = (message::CreateInputPort *) message;
+         connectionManager.addPort(m->getModuleID(), m->getName(),
+                                   Port::INPUT);
+         break;
+      }
+
+      case message::Message::CREATEOUTPUTPORT: {
+
+         message::CreateOutputPort *m = (message::CreateOutputPort *) message;
+         connectionManager.addPort(m->getModuleID(), m->getName(),
+                                   Port::OUTPUT);
+         break;
+      }
+
+      case message::Message::ADDOBJECT: {
+
+         message::AddObject *m = (message::AddObject *) message;
+#if 0
+         std::cout << "AddObject " << m->getObjectName()
+                   << " to port " << m->getPortName() << std::endl;
+#endif
+         Port *port = connectionManager.getPort(m->getModuleID(),
+                                                m->getPortName());
+         if (port)
+            port->addObject(m->getObjectName());
+         else
+            std::cout << "comm [" << rank << "/" << size << "] Addbject ["
+                      << m->getObjectName() << "] to port ["
+                      << m->getPortName() << "]: port not found" << std::endl;
+
+         break;
+      }
+
       default:
          break;
+
    }
 
    return true;
@@ -349,8 +368,8 @@ bool Communicator::handleMessage(message::Message *message) {
 
 Communicator::~Communicator() {
 
-   message::Quit quit;
-   std::map<int, MessageQueue *>::iterator i;
+   message::Quit quit(0, rank);
+   std::map<int, message::MessageQueue *>::iterator i;
 
    for (i = sendMessageQueue.begin(); i != sendMessageQueue.end(); i ++)
       i->second->getMessageQueue().send(&quit, sizeof(quit), 1);

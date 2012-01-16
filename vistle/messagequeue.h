@@ -4,6 +4,7 @@
 #include <boost/interprocess/ipc/message_queue.hpp>
 
 namespace vistle {
+namespace message {
 
 class MessageQueue {
 
@@ -28,5 +29,6 @@ class MessageQueue {
    bool removeOnExit;
 };
 
+} // namespace message
 } // namespace vistle
 #endif

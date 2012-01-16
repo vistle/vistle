@@ -11,9 +11,8 @@ namespace vistle {
 
 namespace message {
 class Message;
-}
-
 class MessageQueue;
+}
 
 class Module {
 
@@ -30,7 +29,7 @@ class Module {
    bool createOutputPort(const std::string & name);
    bool addObject(const std::string &portName, const std::string &objectName);
 
-   MessageQueue *sendMessageQueue;
+   message::MessageQueue *sendMessageQueue;
 
    const std::string name;
    const int rank;
@@ -44,7 +43,7 @@ class Module {
 
    virtual bool compute() = 0;
 
-   MessageQueue *receiveMessageQueue;
+   message::MessageQueue *receiveMessageQueue;
 
    std::map<std::string, std::list<std::string> *> outputPorts;
    std::map<std::string, std::list<std::string> *> inputPorts;

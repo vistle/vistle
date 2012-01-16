@@ -15,7 +15,7 @@ class Message {
    friend class vistle::Communicator;
 
  public:
-   enum {
+   enum Type {
       DEBUG            =  0,
       SPAWN            =  1,
       QUIT             =  2,
@@ -25,21 +25,27 @@ class Message {
       CREATEINPUTPORT  =  6,
       CREATEOUTPUTPORT =  7,
       ADDOBJECT        =  8,
+      CONNECT          =  9,
    };
 
-   Message(const unsigned int type, const unsigned int size);
+   Message(const int moduleID, const int rank,
+           const Type type, const unsigned int size);
 
-   unsigned int getType() const;
+   Type getType() const;
+   int getModuleID() const;
+   int getRank() const;
 
  private:
+   const int moduleID;
+   const int rank;
    unsigned int size;
-   const unsigned int type;
+   const Type type;
 };
 
 class Debug: public Message {
 
  public:
-   Debug(const char c);
+   Debug(const int moduleID, const int rank, const char c);
 
    char getCharacter() const;
 
@@ -50,18 +56,18 @@ class Debug: public Message {
 class Spawn: public Message {
 
  public:
-   Spawn(const int moduleID);
+   Spawn(const int moduleID, const int rank, const int spawnID);
 
-   int getModuleID() const;
+   int getSpawnID() const;
 
  private:
-   const int moduleID;
+   const int spawnID;
 };
 
 class Quit: public Message {
 
  public:
-   Quit();
+   Quit(const int moduleID, const int rank);
 
  private:
 };
@@ -69,7 +75,7 @@ class Quit: public Message {
 class NewObject: public Message {
 
  public:
-   NewObject(const std::string &name);
+   NewObject(const int moduleID, const int rank, const std::string &name);
 
    const char *getName() const;
 
@@ -82,18 +88,13 @@ class ModuleExit: public Message {
  public:
    ModuleExit(const int moduleID, const int rank);
 
-   int getModuleID() const;
-   int getRank() const;
-
  private:
-   const int moduleID;
-   const int rank;
 };
 
 class Compute: public Message {
 
  public:
-   Compute();
+   Compute(const int moduleID, const int rank);
 
  private:
 };
@@ -101,7 +102,8 @@ class Compute: public Message {
 class CreateInputPort: public Message {
 
  public:
-   CreateInputPort(const std::string &name);
+   CreateInputPort(const int moduleID, const int rank,
+                   const std::string &name);
 
    const char *getName() const;
 
@@ -112,7 +114,8 @@ class CreateInputPort: public Message {
 class CreateOutputPort: public Message {
 
  public:
-   CreateOutputPort(const std::string &name);
+   CreateOutputPort(const int moduleID, const int rank,
+                    const std::string &name);
 
    const char *getName() const;
 
@@ -123,7 +126,8 @@ class CreateOutputPort: public Message {
 class AddObject: public Message {
 
  public:
-   AddObject(const std::string &portName, const std::string &objectName);
+   AddObject(const int moduleID, const int rank,
+             const std::string &portName, const std::string &objectName);
 
    const char *getPortName() const;
    const char *getObjectName() const;
@@ -133,6 +137,25 @@ class AddObject: public Message {
    char objectName[32];
 };
 
+class Connect: public Message {
+
+ public:
+   Connect(const int moduleIDA, const int moduleIDB,
+           const std::string &portA, const std::string &portB);
+
+   const char *getPortAName() const;
+   const char *getPortBName() const;
+
+   int getModuleA() const;
+   int getModuleB() const;
+
+ private:
+   char portAName[32];
+   char portBName[32];
+
+   int moduleA;
+   int moduleB;
+};
 
 } // namespace message
 } // namespace vistle

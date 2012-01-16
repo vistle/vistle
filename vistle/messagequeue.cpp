@@ -6,6 +6,7 @@
 using namespace boost::interprocess;
 
 namespace vistle {
+namespace message {
 
 std::string MessageQueue::createName(const char *prefix,
                                      const int moduleID, const int rank) {
@@ -58,4 +59,5 @@ boost::interprocess::message_queue &  MessageQueue::getMessageQueue() {
    return mq;
 }
 
+} // namespace message
 } // namespace vistle
