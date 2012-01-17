@@ -22,9 +22,9 @@ Port::Type Port::getType() const {
    return type;
 }
 
-void Port::addObject(const std::string & name) {
+void Port::addObject(const shm_handle_t & handle) {
 
-   objects.push_back(name);
+   objects.push_back(handle);
 }
 
 PortManager::PortManager() {
@@ -32,7 +32,7 @@ PortManager::PortManager() {
 }
 
 void PortManager::addPort(const int moduleID, const std::string &name,
-                                const Port::Type type) {
+                          const Port::Type type) {
 
    std::map<std::string, Port *> *portMap = NULL;
    std::map<int, std::map<std::string, Port *> *>::iterator i =
@@ -51,8 +51,7 @@ void PortManager::addPort(const int moduleID, const std::string &name,
    connections[port] = new std::vector<const Port *>;
 }
 
-Port *PortManager::getPort(const int moduleID,
-                                 const std::string name) const {
+Port *PortManager::getPort(const int moduleID, const std::string name) const {
 
    std::map<int, std::map<std::string, Port *> *>::const_iterator i =
       ports.find(moduleID);
@@ -85,7 +84,7 @@ void PortManager::addConnection(const Port *out, const Port *in) {
 }
 
 void PortManager::addConnection(const int a, const std::string na,
-                                      const int b, const std::string nb) {
+                                const int b, const std::string nb) {
 
    std::map<int, std::map<std::string, Port *> *>::iterator ia =
       ports.find(a);
@@ -114,7 +113,7 @@ PortManager::getConnectionList(const Port *port) const {
 
 const std::vector<const Port *> *
 PortManager::getConnectionList(const int moduleID,
-                                     const std::string &name) const {
+                               const std::string &name) const {
 
    const Port *port = getPort(moduleID, name);
    return getConnectionList(port);

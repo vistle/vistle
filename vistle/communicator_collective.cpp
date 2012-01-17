@@ -283,8 +283,43 @@ bool Communicator::handleMessage(message::Message *message) {
       case message::Message::NEWOBJECT: {
 
          message::NewObject *newObject = (message::NewObject *) message;
+
+         vistle::Object *object = (vistle::Object *)
+            vistle::Shm::instance().getShm().get_address_from_handle(newObject->getHandle());
+
          std::cout << "comm [" << rank << "/" << size << "] NewObject ["
-                   << newObject->getName() << "]" << std::endl;
+                   << newObject->getHandle() << "] type ["
+                   << object->getType() << "]" << std::endl;
+
+         switch (object->getType()) {
+
+            case Object::VECFLOAT: {
+               vistle::Vec<float> *array = (vistle::Vec<float> *) object;
+               for (unsigned int index = 0; index < array->getSize(); index ++) {
+                  printf(" %f", array->x[index]);
+               }
+               printf("\n");
+               break;
+            }
+
+            default:
+               std::cout << "unknown data object" << std::endl;
+               break;
+         }
+         /*
+         vistle::Vec<float> *array = static_cast<vistle::Vec<float> *>(object);
+         printf("..---.. type %d, size %ld\n", array->getType(), array->getSize());
+         for (unsigned int index = 0; index < array->getSize(); index ++) {
+            printf(" %f", array->x[index]);
+         }
+         printf("\n");
+         */
+         /*
+         printf(".......handle: %d, object [%p]\n", newObject->getHandle(), object);
+         printf(".......%d\n", object->getType());
+         printf(".......[%s]\n", typeid(static_cast<vistle::Vec<float> *>(object)).name());
+         printf(".......[%p]\n", dynamic_cast<vistle::Vec<float> *>(object));
+         */
          break;
       }
 
@@ -341,17 +376,16 @@ bool Communicator::handleMessage(message::Message *message) {
       case message::Message::ADDOBJECT: {
 
          message::AddObject *m = (message::AddObject *) message;
-#if 0
-         std::cout << "AddObject " << m->getObjectName()
+         std::cout << "AddObject " << m->getHandle()
                    << " to port " << m->getPortName() << std::endl;
-#endif
+
          Port *port = portManager.getPort(m->getModuleID(),
                                           m->getPortName());
          if (port)
-            port->addObject(m->getObjectName());
+            port->addObject(m->getHandle());
          else
             std::cout << "comm [" << rank << "/" << size << "] Addbject ["
-                      << m->getObjectName() << "] to port ["
+                      << m->getHandle() << "] to port ["
                       << m->getPortName() << "]: port not found" << std::endl;
 
          break;

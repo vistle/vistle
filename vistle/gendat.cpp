@@ -20,18 +20,16 @@ Gendat::~Gendat() {
 
 bool Gendat::compute() {
 
-   std::string name = vistle::Shm::instance().createObjectID();
+   vistle::Vec<float> *a = vistle::Vec<float>::create(64);
+   for (unsigned int index = 0; index < a->getSize(); index ++)
+      a->x[index] = (float) index;
 
-   try {
-      vistle::FloatArray a(name);
-      for (int index = 0; index < 128; index ++)
-         a.vec->push_back(index);
-   } catch (interprocess_exception &ex) {
-      std::cout << "module " << moduleID << " [" << rank << "/" << size << "]:"
-         " object already exists" << std::endl;
-   }
+   vistle::Vec3<int> *b = vistle::Vec3<int>::create(64);
+   for (unsigned int index = 0; index < b->getSize(); index ++)
+      b->x[index] = index;
 
-   addObject("data" /* port */, name);
+   addObject("data_out", a);
+   addObject("data_out", b);
 
 #if 0
 

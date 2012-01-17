@@ -48,19 +48,16 @@ Quit::Quit(const int moduleID, const int rank)
    : Message(moduleID, rank, Message::QUIT, sizeof(Quit)) {
 }
 
-NewObject::NewObject(const int moduleID, const int rank, const std::string &n)
-   : Message(moduleID, rank, Message::NEWOBJECT, sizeof(NewObject)) {
+NewObject::NewObject(const int moduleID, const int rank,
+                     const shm_handle_t & h)
+   : Message(moduleID, rank, Message::NEWOBJECT, sizeof(NewObject)),
+     handle(h) {
 
-   size_t size = n.size();
-   if (size > 31)
-      size = 31;
-   n.copy(name, size);
-   name[size] = 0;
 }
 
-const char * NewObject::getName() const {
+const shm_handle_t & NewObject::getHandle() const {
 
-   return name;
+   return handle;
 }
 
 ModuleExit::ModuleExit(const int moduleID, const int rank)
@@ -106,21 +103,15 @@ const char * CreateInputPort::getName() const {
    return name;
 }
 
-AddObject::AddObject(const int moduleID, const int rank,
-                     const std::string &p, const std::string &o)
-   : Message(moduleID, rank, Message::ADDOBJECT, sizeof(AddObject)) {
+AddObject::AddObject(const int moduleID, const int rank, const std::string &p,
+                     const shm_handle_t & h)
+   : Message(moduleID, rank, Message::ADDOBJECT, sizeof(AddObject)), handle(h) {
 
    size_t size = p.size();
    if (size > 31)
       size = 31;
    p.copy(portName, size);
    portName[size] = 0;
-
-   size = o.size();
-   if (size > 31)
-      size = 31;
-   o.copy(objectName, size);
-   objectName[size] = 0;
 }
 
 const char * AddObject::getPortName() const {
@@ -128,9 +119,9 @@ const char * AddObject::getPortName() const {
    return portName;
 }
 
-const char * AddObject::getObjectName() const {
+const shm_handle_t & AddObject::getHandle() const {
 
-   return objectName;
+   return handle;
 }
 
 } // namespace message

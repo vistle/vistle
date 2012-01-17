@@ -6,8 +6,11 @@
 
 #include <list>
 #include <map>
+#include <boost/interprocess/managed_shared_memory.hpp>
 
 namespace vistle {
+
+typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 
 namespace message {
 class Message;
@@ -27,8 +30,8 @@ class Module {
 
    bool createInputPort(const std::string & name);
    bool createOutputPort(const std::string & name);
-   bool addObject(const std::string &portName, const std::string &objectName);
-
+   bool addObject(const std::string &portName, const shm_handle_t & handle);
+   bool addObject(const std::string & portName, const void *p);
    message::MessageQueue *sendMessageQueue;
 
    const std::string name;
@@ -39,14 +42,14 @@ class Module {
  private:
    bool handleMessage(const message::Message *message);
    bool addInputObject(const std::string &portName,
-                       const std::string &objectName);
+                       const shm_handle_t & handle);
 
    virtual bool compute() = 0;
 
    message::MessageQueue *receiveMessageQueue;
 
-   std::map<std::string, std::list<std::string> *> outputPorts;
-   std::map<std::string, std::list<std::string> *> inputPorts;
+   std::map<std::string, std::list<shm_handle_t> *> outputPorts;
+   std::map<std::string, std::list<shm_handle_t> *> inputPorts;
 };
 
 } // namespace vistle

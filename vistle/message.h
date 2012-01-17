@@ -1,10 +1,14 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
+#include <boost/interprocess/managed_shared_memory.hpp>
+
 #include <stdint.h>
 #include <string>
 
 namespace vistle {
+
+typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 
 class Communicator;
 
@@ -75,12 +79,13 @@ class Quit: public Message {
 class NewObject: public Message {
 
  public:
-   NewObject(const int moduleID, const int rank, const std::string &name);
+   NewObject(const int moduleID, const int rank,
+             const shm_handle_t & handle);
 
-   const char *getName() const;
+   const shm_handle_t & getHandle() const;
 
  private:
-   char name[32];
+   shm_handle_t handle;
 };
 
 class ModuleExit: public Message {
@@ -126,15 +131,15 @@ class CreateOutputPort: public Message {
 class AddObject: public Message {
 
  public:
-   AddObject(const int moduleID, const int rank,
-             const std::string &portName, const std::string &objectName);
+   AddObject(const int moduleID, const int rank, const std::string &portName,
+             const shm_handle_t & handle);
 
    const char *getPortName() const;
-   const char *getObjectName() const;
+   const shm_handle_t & getHandle() const;
 
  private:
    char portName[32];
-   char objectName[32];
+   const shm_handle_t handle;
 };
 
 class Connect: public Message {

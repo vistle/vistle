@@ -48,13 +48,12 @@ Module::Module(const std::string &n, const int r, const int s, const int m)
 
 bool Module::createInputPort(const std::string &name) {
 
-   std::map<std::string, std::list<std::string> *>::iterator i =
+   std::map<std::string, std::list<shm_handle_t> *>::iterator i =
       inputPorts.find(name);
 
    if (i == inputPorts.end()) {
 
-      std::list<std::string> *l = new std::list<std::string>;
-      inputPorts[name] = l;
+      inputPorts[name] = new std::list<shm_handle_t>;
 
       message::CreateInputPort message(moduleID, rank, name);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
@@ -66,13 +65,12 @@ bool Module::createInputPort(const std::string &name) {
 
 bool Module::createOutputPort(const std::string &name) {
 
-   std::map<std::string, std::list<std::string> *>::iterator i =
+   std::map<std::string, std::list<shm_handle_t> *>::iterator i =
       outputPorts.find(name);
 
    if (i == outputPorts.end()) {
 
-      std::list<std::string> *l = new std::list<std::string>;
-      outputPorts[name] = l;
+      outputPorts[name] = new std::list<shm_handle_t>;
 
       message::CreateOutputPort message(moduleID, rank, name);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
@@ -81,29 +79,37 @@ bool Module::createOutputPort(const std::string &name) {
    return false;
 }
 
-bool Module::addObject(const std::string &portName,
-                       const std::string &objectName) {
+bool Module::addObject(const std::string & portName,
+                       const shm_handle_t & handle) {
 
-   std::map<std::string, std::list<std::string> *>::iterator i =
+   std::map<std::string, std::list<shm_handle_t> *>::iterator i =
       outputPorts.find(portName);
 
    if (i != outputPorts.end()) {
-   i->second->push_back(objectName);
-      message::AddObject message(moduleID, rank, portName, objectName);
+      i->second->push_back(handle);
+      message::AddObject message(moduleID, rank, portName, handle);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return true;
    }
    return false;
 }
 
-bool Module::addInputObject(const std::string &portName,
-                            const std::string &objectName) {
+bool Module::addObject(const std::string & portName, const void *p) {
 
-   std::map<std::string, std::list<std::string> *>::iterator i =
+   boost::interprocess::managed_shared_memory::handle_t handle =
+      vistle::Shm::instance().getShm().get_handle_from_address(p);
+
+   return addObject(portName, handle);
+}
+
+bool Module::addInputObject(const std::string & portName,
+                            const shm_handle_t & handle) {
+
+   std::map<std::string, std::list<shm_handle_t> *>::iterator i =
       inputPorts.find(portName);
 
    if (i != inputPorts.end()) {
-      i->second->push_back(objectName);
+      i->second->push_back(handle);
       return true;
    }
    return false;
@@ -166,7 +172,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
       case message::Message::ADDOBJECT: {
 
          message::AddObject *add = (message::AddObject *) message;
-         addInputObject(add->getPortName(), add->getObjectName());
+         addInputObject(add->getPortName(), add->getHandle());
          break;
       }
 

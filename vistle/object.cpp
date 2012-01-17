@@ -5,6 +5,8 @@
 #include "messagequeue.h"
 #include "object.h"
 
+using namespace boost::interprocess;
+
 namespace vistle {
 
 Shm* Shm::singleton = NULL;
@@ -42,10 +44,10 @@ managed_shared_memory & Shm::getShm() {
    return *shm;
 }
 
-void Shm::publish(const std::string &name) {
+void Shm::publish(const shm_handle_t & handle) {
 
    if (messageQueue) {
-      vistle::message::NewObject n(moduleID, rank, name);
+      vistle::message::NewObject n(moduleID, rank, handle);
       messageQueue->getMessageQueue().send(&n, sizeof(n), 0);
    }
 }
@@ -54,12 +56,23 @@ std::string Shm::createObjectID() {
 
    std::stringstream name;
    name << "Object_" << std::setw(8) << std::setfill('0') << moduleID
-        << "_" << std::setw(8) << std::setfill('0') << rank;
+        << "_" << std::setw(8) << std::setfill('0') << rank
+        << "_" << std::setw(8) << std::setfill('0') << objectID ++;
 
    return name.str();
 }
 
-Object::Object() {
+
+   /*
+template <class T> Vec3<T>::Vec3(const size_t s): size(s) {
+
+   x = Shm::instance().getShm().allocate(s * sizeof(T));
+   y = Shm::instance().getShm().allocate(s * sizeof(T));
+   z = Shm::instance().getShm().allocate(s * sizeof(T));
+}
+   */
+
+Object::Object(const Type type): id(type) {
 
 }
 
@@ -67,19 +80,17 @@ Object::~Object() {
 
 }
 
-FloatArray::FloatArray(const std::string &name): Object() {
+Object::Type Object::getType() const {
 
-   const FloatShmAllocator
-      alloc_inst(Shm::instance().getShm().get_segment_manager());
-
-   /*
-   if (Shm::instance().getShm().find<FloatVector>(name.c_str()).first != NULL)
-      std::cerr << "object [" << name << "] already exists" << std::endl;
-   */
-   vec = Shm::instance().getShm().construct<FloatVector>
-      (name.c_str())(alloc_inst);
-
-   Shm::instance().publish(name);
+   return id;
 }
+
+template<> void Vec<float>::setType()  { id = Object::VECFLOAT; }
+template<> void Vec<int>::setType()    { id = Object::VECINT; }
+template<> void Vec<char>::setType()   { id = Object::VECCHAR; }
+
+template<> void Vec3<float>::setType() { id = Object::VEC3FLOAT; }
+template<> void Vec3<int>::setType()   { id = Object::VEC3INT; }
+template<> void Vec3<char>::setType()  { id = Object::VEC3CHAR; }
 
 } // namespace vistle

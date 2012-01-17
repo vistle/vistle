@@ -5,8 +5,11 @@
 #include <map>
 #include <vector>
 #include <set>
+#include <boost/interprocess/managed_shared_memory.hpp>
 
 namespace vistle {
+
+typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 
 class Port {
 
@@ -18,14 +21,14 @@ class Port {
    const std::string & getName() const;
    Type getType() const;
 
-   void addObject(const std::string &name);
+   void addObject(const shm_handle_t & handle);
 
  private:
    const int moduleID;
    const std::string name;
    const Type type;
 
-   std::vector<std::string> objects;
+   std::vector<shm_handle_t> objects;
 };
 
 
