@@ -4,7 +4,12 @@
 #include <stdio.h>
 
 #include <sys/types.h>
+#ifndef _WIN32
 #include <unistd.h>
+#else
+#include<Winsock2.h>
+#pragma comment(lib, "Ws2_32.lib")
+#endif
 
 #include <sstream>
 #include <iostream>
@@ -26,13 +31,20 @@ Module::Module(const std::string &n, const int r, const int s, const int m)
    : name(n), rank(r), size(s), moduleID(m) {
 
    const int HOSTNAMESIZE = 64;
-
+#ifdef _WIN32
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
    char hostname[HOSTNAMESIZE];
    gethostname(hostname, HOSTNAMESIZE - 1);
 
    std::cout << "  module [" << name << "] [" << moduleID << "] [" << rank
              << "/" << size << "] started as " 
+#ifndef _WIN32
              << hostname << ":" << getpid() << std::endl;
+#else
+             << hostname << ":" << std::endl;
+#endif
 
    std::string smqName =
       message::MessageQueue::createName("rmq", moduleID, rank);
@@ -138,7 +150,9 @@ void Module::removeObject(const std::string &portName, vistle::Object *object) {
       for (shmit = i->second->begin(); shmit != i->second->end(); shmit++) {
          Object *o = Shm::instance().getObjectFromHandle(*shmit);
          if (object == o)
-            shmit = i->second->erase(shmit);
+            shmit = i->second->erase(shmit); // wenn das letzte Objekt gelöscht wird  ist shmit == end(), dann darf das shmit++ aus dem for loop nicht gemacht werden 
+         if(shmit == i->second->end())
+            break;
       }
    }
 }

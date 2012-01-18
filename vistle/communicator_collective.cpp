@@ -1,17 +1,24 @@
 /*
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
+#ifndef _WIN32
+#include <sys/socket.h>
+#include <sys/select.h>
+#else
+#include<Winsock2.h>
+#pragma comment(lib, "Ws2_32.lib")
+#endif
 #include <mpi.h>
 
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/select.h>
 
+#ifndef _WIN32
 #include <netinet/in.h>
+#include <unistd.h>
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
 
 #include <sstream>
 #include <iostream>
@@ -30,6 +37,10 @@ int ADD = -1;
 
 int main(int argc, char **argv) {
 
+#ifdef _WIN32
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
    MPI_Init(&argc, &argv);
 
    int rank, size;
@@ -66,7 +77,11 @@ int main(int argc, char **argv) {
 
    while (!done) {
       done = comm->dispatch();
+#ifdef WIN32
+      Sleep(100);
+#else
       usleep(100);
+#endif
    }
 
    delete comm;
@@ -80,7 +95,11 @@ int acceptClient() {
 
    int server = socket(AF_INET, SOCK_STREAM, 0);
    int reuse = 1;
+#ifdef _WIN32
+   setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse));
+#else
    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+#endif
 
    struct sockaddr_in serv, addr;
    serv.sin_family = AF_INET;
@@ -93,10 +112,17 @@ int acceptClient() {
    }
    listen(server, 0);
 
+#ifdef _WIN32
+   int len = sizeof(addr);
+   int client = accept(server, (struct sockaddr *) &addr, &len);
+
+   closesocket(server);
+#else
    socklen_t len = sizeof(addr);
    int client = accept(server, (struct sockaddr *) &addr, &len);
 
    close(server);
+#endif
    return client;
 }
 
@@ -136,7 +162,11 @@ bool Communicator::dispatch() {
 
          message::Message *message = NULL;
 
+#ifdef _WIN32
+         recv(clientSocket, (char *)socketBuffer, 1,0);
+#else
          read(clientSocket, socketBuffer, 1);
+#endif
 
          if (socketBuffer[0] == 'q')
             message = new message::Quit(0, rank);
@@ -455,11 +485,21 @@ Communicator::~Communicator() {
    int retries = 10000;
    while (sendMessageQueue.size() > 0 && --retries >= 0) {
       dispatch();
+#ifdef _WIN32
+      Sleep(1000);
+#else
       usleep(1000);
+#endif
    }
 
    if (clientSocket != -1)
+   {
+#ifdef _WIN32
+      closesocket(clientSocket);
+#else
       close(clientSocket);
+#endif
+   }
 
    if (size > 1) {
       int dummy;

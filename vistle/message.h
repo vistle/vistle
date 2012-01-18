@@ -3,7 +3,9 @@
 
 #include <boost/interprocess/managed_shared_memory.hpp>
 
+#ifndef _WIN32
 #include <stdint.h>
+#endif
 #include <string>
 
 namespace vistle {
