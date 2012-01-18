@@ -25,8 +25,14 @@ namespace vistle {
 Module::Module(const std::string &n, const int r, const int s, const int m)
    : name(n), rank(r), size(s), moduleID(m) {
 
+   const int HOSTNAMESIZE = 64;
+
+   char hostname[HOSTNAMESIZE];
+   gethostname(hostname, HOSTNAMESIZE - 1);
+
    std::cout << "  module [" << name << "] [" << moduleID << "] [" << rank
-             << "/" << size << "] started" << std::endl;
+             << "/" << size << "] started as " 
+             << hostname << ":" << getpid() << std::endl;
 
    std::string smqName =
       message::MessageQueue::createName("rmq", moduleID, rank);
@@ -178,7 +184,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
       case vistle::message::Message::DEBUG: {
 
-         vistle::message::Debug *debug = (vistle::message::Debug *) message;
+         const vistle::message::Debug *debug =
+            static_cast<const vistle::message::Debug *>(message);
 
          std::cout << "    module [" << name << "] [" << moduleID << "] ["
                    << rank << "/" << size << "] debug ["
@@ -188,7 +195,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
       case message::Message::QUIT: {
 
-         message::Quit *quit = (message::Quit *) message;
+         const message::Quit *quit =
+            static_cast<const message::Quit *>(message);
          (void) quit;
          return true;
          break;
@@ -196,7 +204,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
       case message::Message::COMPUTE: {
 
-         message::Compute *comp = (message::Compute *) message;
+         const message::Compute *comp =
+            static_cast<const message::Compute *>(message);
          (void) comp;
          std::cout << "    module [" << name << "] [" << moduleID << "] ["
                    << rank << "/" << size << "] compute" << std::endl;
@@ -207,7 +216,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
       case message::Message::ADDOBJECT: {
 
-         message::AddObject *add = (message::AddObject *) message;
+         const message::AddObject *add =
+            static_cast<const message::AddObject *>(message);
          addInputObject(add->getPortName(), add->getHandle());
          break;
       }
@@ -228,6 +238,7 @@ Module::~Module() {
    std::cout << "  module [" << name << "] [" << moduleID << "] [" << rank
              << "/" << size << "] quit" << std::endl;
 
+   MPI_Barrier(MPI_COMM_WORLD);
    MPI_Finalize();
 }
 

@@ -70,10 +70,10 @@ int main(int argc, char **argv) {
    }
 
    delete comm;
-   MPI_Barrier(MPI_COMM_WORLD);
 
    shared_memory_object::remove("vistle");
-   MPI_Finalize();
+
+   //MPI_Finalize();
 }
 
 int acceptClient() {
@@ -460,6 +460,15 @@ Communicator::~Communicator() {
 
    if (clientSocket != -1)
       close(clientSocket);
+
+   if (size > 1) {
+      int dummy;
+      MPI_Request s;
+      MPI_Isend(&dummy, 1, MPI_INT, (rank + 1) % size, 0, MPI_COMM_WORLD, &s);
+      MPI_Wait(&request, MPI_STATUS_IGNORE);
+      MPI_Wait(&s, MPI_STATUS_IGNORE);
+   }
+   MPI_Barrier(MPI_COMM_WORLD);
 }
 
 } // namespace vistle

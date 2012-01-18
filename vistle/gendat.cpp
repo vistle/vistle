@@ -29,8 +29,22 @@ bool Gendat::compute() {
       b->z[index] = index;
    }
 
+   vistle::Triangles *t = vistle::Triangles::create(1);
+   t->vertices[0] = 0.0;
+   t->vertices[1] = 0.0;
+   t->vertices[2] = 0.0;
+
+   t->vertices[3] = 1.0;
+   t->vertices[4] = 0.0;
+   t->vertices[5] = 0.0;
+
+   t->vertices[6] = 1.0;
+   t->vertices[7] = 1.0;
+   t->vertices[8] = 0.0;
+
    addObject("data_out", a);
    addObject("data_out", b);
+   addObject("data_out", t);
 
 #if 0
    int *local = new int[1024 * 1024];

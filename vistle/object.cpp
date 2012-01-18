@@ -20,6 +20,7 @@ Shm::Shm(const int m, const int r, const size_t &size,
 
 Shm::~Shm() {
 
+   delete shm;
 }
 
 Shm & Shm::instance(const int moduleID, const int rank,
@@ -65,7 +66,8 @@ std::string Shm::createObjectID() {
 Object * Shm::getObjectFromHandle(const shm_handle_t & handle) {
 
    try {
-      Object *object = (Object *) shm->get_address_from_handle(handle);
+      Object *object = static_cast<Object *>
+         (shm->get_address_from_handle(handle));
       return object;
 
    } catch (boost::interprocess::interprocess_exception &ex) { }
@@ -94,12 +96,35 @@ Object::Type Object::getType() const {
    return id;
 }
 
-template<> void Vec<float>::setType()  { id = Object::VECFLOAT;  }
-template<> void Vec<int>::setType()    { id = Object::VECINT;    }
-template<> void Vec<char>::setType()   { id = Object::VECCHAR;   }
+Triangles::Triangles(const size_t & s): Object(Object::TRIANGLES), size(s) {
 
-template<> void Vec3<float>::setType() { id = Object::VEC3FLOAT; }
-template<> void Vec3<int>::setType()   { id = Object::VEC3INT;   }
-template<> void Vec3<char>::setType()  { id = Object::VEC3CHAR;  }
+   vertices = static_cast<float *>
+      (Shm::instance().getShm().allocate(s * 9 * sizeof(float)));
+}
+
+const size_t & Triangles::getSize() {
+
+   return size;
+}
+
+Triangles * Triangles::create(const size_t size) {
+
+   std::string name = Shm::instance().createObjectID();
+   Triangles *t = static_cast<Triangles *>
+      (Shm::instance().getShm().construct<Triangles>(name.c_str())[1](size));
+
+   shm_handle_t handle =
+      Shm::instance().getShm().get_handle_from_address(t);
+
+   Shm::instance().publish(handle);
+   return t;
+}
+
+template<> const Object::Type Vec<float>::type  = Object::VECFLOAT;
+template<> const Object::Type Vec<int>::type    = Object::VECINT;
+template<> const Object::Type Vec<char>::type   = Object::VECCHAR;
+template<> const Object::Type Vec3<float>::type = Object::VEC3FLOAT;
+template<> const Object::Type Vec3<int>::type   = Object::VEC3INT;
+template<> const Object::Type Vec3<char>::type  = Object::VEC3CHAR;
 
 } // namespace vistle
