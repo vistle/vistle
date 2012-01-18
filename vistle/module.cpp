@@ -82,6 +82,7 @@ bool Module::createOutputPort(const std::string &name) {
 bool Module::addObject(const std::string & portName,
                        const shm_handle_t & handle) {
 
+   printf("Module::addObject [%ld] to port [%s]\n", handle, portName.c_str());
    std::map<std::string, std::list<shm_handle_t> *>::iterator i =
       outputPorts.find(portName);
 
@@ -102,6 +103,40 @@ bool Module::addObject(const std::string & portName, const void *p) {
    return addObject(portName, handle);
 }
 
+std::list<vistle::Object *> Module::getObjects(const std::string &portName) {
+
+   std::list<vistle::Object *> objects;
+   std::map<std::string, std::list<shm_handle_t> *>::iterator i =
+      inputPorts.find(portName);
+
+   if (i != inputPorts.end()) {
+
+      std::list<shm_handle_t>::iterator shmit;
+      for (shmit = i->second->begin(); shmit != i->second->end(); shmit++) {
+         Object *object = Shm::instance().getObjectFromHandle(*shmit);
+         if (object)
+            objects.push_back(object);
+      }
+   }
+   return objects;
+}
+
+void Module::removeObject(const std::string &portName, vistle::Object *object) {
+
+   std::map<std::string, std::list<shm_handle_t> *>::iterator i =
+      inputPorts.find(portName);
+
+   if (i != inputPorts.end()) {
+
+      std::list<shm_handle_t>::iterator shmit;
+      for (shmit = i->second->begin(); shmit != i->second->end(); shmit++) {
+         Object *o = Shm::instance().getObjectFromHandle(*shmit);
+         if (object == o)
+            shmit = i->second->erase(shmit);
+      }
+   }
+}
+
 bool Module::addInputObject(const std::string & portName,
                             const shm_handle_t & handle) {
 
@@ -109,6 +144,7 @@ bool Module::addInputObject(const std::string & portName,
       inputPorts.find(portName);
 
    if (i != inputPorts.end()) {
+      printf("          added %ld to [%s]\n", handle, portName.c_str());
       i->second->push_back(handle);
       return true;
    }

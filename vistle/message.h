@@ -60,12 +60,14 @@ class Debug: public Message {
 class Spawn: public Message {
 
  public:
-   Spawn(const int moduleID, const int rank, const int spawnID);
+   Spawn(const int moduleID, const int rank, const int spawnID, const std::string &name);
 
    int getSpawnID() const;
+   const char *getName() const;
 
  private:
    const int spawnID;
+   char name[32];
 };
 
 class Quit: public Message {
@@ -99,9 +101,12 @@ class ModuleExit: public Message {
 class Compute: public Message {
 
  public:
-   Compute(const int moduleID, const int rank);
+   Compute(const int moduleID, const int rank, const int module);
+
+   int getModule() const;
 
  private:
+   const int module;
 };
 
 class CreateInputPort: public Message {
@@ -145,8 +150,9 @@ class AddObject: public Message {
 class Connect: public Message {
 
  public:
-   Connect(const int moduleIDA, const int moduleIDB,
-           const std::string &portA, const std::string &portB);
+   Connect(const int moduleID, const int rank,
+           const int moduleIDA, const std::string &portA,
+           const int moduleIDB, const std::string &portB);
 
    const char *getPortAName() const;
    const char *getPortBName() const;
@@ -158,8 +164,8 @@ class Connect: public Message {
    char portAName[32];
    char portBName[32];
 
-   int moduleA;
-   int moduleB;
+   const int moduleA;
+   const int moduleB;
 };
 
 } // namespace message

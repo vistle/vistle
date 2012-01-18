@@ -26,7 +26,7 @@ class Communicator {
    bool dispatch();
 
  private:
-   bool handleMessage(message::Message *message);
+   bool handleMessage(const message::Message *message);
 
    const int rank;
    const int size;

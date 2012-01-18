@@ -25,6 +25,9 @@
 
 using namespace boost::interprocess;
 
+int GENDAT = -1;
+int ADD = -1;
+
 int main(int argc, char **argv) {
 
    MPI_Init(&argc, &argv);
@@ -138,13 +141,24 @@ bool Communicator::dispatch() {
          if (socketBuffer[0] == 'q')
             message = new message::Quit(0, rank);
 
-         else if (socketBuffer[0] == 's') {
+         else if (socketBuffer[0] == 'g') {
             moduleID++;
-            message = new message::Spawn(0, rank, moduleID);
+            message = new message::Spawn(0, rank, moduleID, "gendat");
+            GENDAT = moduleID;
+         }
+
+         else if (socketBuffer[0] == 'a') {
+            moduleID++;
+            message = new message::Spawn(0, rank, moduleID, "add");
+            ADD = moduleID;
          }
 
          else if (socketBuffer[0] == 'c') {
-            message = new message::Compute(0, rank);
+            message = new message::Connect(0, rank, GENDAT, "data_out", ADD, "data_in");
+         }
+
+         else if (socketBuffer[0] == 'e') {
+            message = new message::Compute(0, rank, GENDAT);
          }
 
          else if (socketBuffer[0] != '\r' && socketBuffer[0] != '\n')
@@ -226,13 +240,13 @@ bool Communicator::dispatch() {
 }
 
 
-bool Communicator::handleMessage(message::Message *message) {
+bool Communicator::handleMessage(const message::Message *message) {
 
    switch (message->getType()) {
 
       case message::Message::DEBUG: {
 
-         message::Debug *debug = (message::Debug *) message;
+         const message::Debug *debug = (const message::Debug *) message;
          std::cout << "comm [" << rank << "/" << size << "] Debug ["
                    << debug->getCharacter() << "]" << std::endl;
          break;
@@ -240,7 +254,7 @@ bool Communicator::handleMessage(message::Message *message) {
 
       case message::Message::QUIT: {
 
-         message::Quit *quit = (message::Quit *) message;
+         const message::Quit *quit = (const message::Quit *) message;
          (void) quit;
          return false;
          break;
@@ -248,8 +262,9 @@ bool Communicator::handleMessage(message::Message *message) {
 
       case message::Message::SPAWN: {
 
-         message::Spawn *spawn = (message::Spawn *) message;
+         const message::Spawn *spawn = (const message::Spawn *) message;
          int moduleID = spawn->getSpawnID();
+         const char *name = spawn->getName();
 
          std::stringstream modID;
          modID << moduleID;
@@ -274,31 +289,54 @@ bool Communicator::handleMessage(message::Message *message) {
          MPI_Comm interComm;
          char *argv[2] = { strdup(modID.str().c_str()), NULL };
 
-         MPI_Comm_spawn((char *) "gendat", argv, size, MPI_INFO_NULL, 0,
+         MPI_Comm_spawn(strdup(name), argv, size, MPI_INFO_NULL, 0,
                         MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
 
          break;
       }
 
+      case message::Message::CONNECT: {
+
+         const message::Connect *connect = (const message::Connect *) message;
+         portManager.addConnection(connect->getModuleA(), connect->getPortAName(),
+                                   connect->getModuleB(), connect->getPortBName());
+         break;
+      }
+
       case message::Message::NEWOBJECT: {
 
-         message::NewObject *newObject = (message::NewObject *) message;
+         const message::NewObject *newObject = (const message::NewObject *) message;
 
          vistle::Object *object = (vistle::Object *)
             vistle::Shm::instance().getShm().get_address_from_handle(newObject->getHandle());
 
          std::cout << "comm [" << rank << "/" << size << "] NewObject ["
                    << newObject->getHandle() << "] type ["
-                   << object->getType() << "]" << std::endl;
+                   << object->getType() << "] from module ["
+                   << newObject->getModuleID() << "]" << std::endl;
 
          switch (object->getType()) {
 
             case Object::VECFLOAT: {
-               vistle::Vec<float> *array = (vistle::Vec<float> *) object;
-               for (unsigned int index = 0; index < array->getSize(); index ++) {
-                  printf(" %f", array->x[index]);
-               }
-               printf("\n");
+               vistle::Vec<float> *array = static_cast<vistle::Vec<float> *>(object);
+               std::cout << "Vec<float> size " << array->getSize() << std::endl;
+               /*
+               for (unsigned int index = 0; index < array->getSize(); index ++)
+                  std::cout << " " << array->x[index];
+               std::cout << std::endl;
+               */
+               break;
+            }
+
+            case Object::VEC3INT: {
+               vistle::Vec3<int> *array = static_cast<vistle::Vec3<int> *>(object);
+               std::cout << "Vec3<int> size " << array->getSize() << std::endl;
+
+               for (unsigned int index = 0; index < array->getSize(); index ++)
+                  std::cout << " (" << array->x[index] << " " << array->y[index]
+                            << " " << array->z[index] << ")";
+               std::cout << std::endl;
+
                break;
             }
 
@@ -306,26 +344,13 @@ bool Communicator::handleMessage(message::Message *message) {
                std::cout << "unknown data object" << std::endl;
                break;
          }
-         /*
-         vistle::Vec<float> *array = static_cast<vistle::Vec<float> *>(object);
-         printf("..---.. type %d, size %ld\n", array->getType(), array->getSize());
-         for (unsigned int index = 0; index < array->getSize(); index ++) {
-            printf(" %f", array->x[index]);
-         }
-         printf("\n");
-         */
-         /*
-         printf(".......handle: %d, object [%p]\n", newObject->getHandle(), object);
-         printf(".......%d\n", object->getType());
-         printf(".......[%s]\n", typeid(static_cast<vistle::Vec<float> *>(object)).name());
-         printf(".......[%p]\n", dynamic_cast<vistle::Vec<float> *>(object));
-         */
+
          break;
       }
 
       case message::Message::MODULEEXIT: {
 
-         message::ModuleExit *moduleExit = (message::ModuleExit *) message;
+         const message::ModuleExit *moduleExit = (const message::ModuleExit *) message;
          int mod = moduleExit->getModuleID();
 
          std::cout << "comm [" << rank << "/" << size << "] Module ["
@@ -350,16 +375,17 @@ bool Communicator::handleMessage(message::Message *message) {
 
       case message::Message::COMPUTE: {
 
-         message::Compute *comp = (message::Compute *) message;
-         std::map<int, message::MessageQueue *>::iterator i;
-         for (i = sendMessageQueue.begin(); i != sendMessageQueue.end(); i++)
+         const message::Compute *comp = (const message::Compute *) message;
+         std::map<int, message::MessageQueue *>::iterator i
+            = sendMessageQueue.find(comp->getModule());
+         if (i != sendMessageQueue.end())
             i->second->getMessageQueue().send(comp, sizeof(*comp), 0);
          break;
       }
 
       case message::Message::CREATEINPUTPORT: {
 
-         message::CreateInputPort *m = (message::CreateInputPort *) message;
+         const message::CreateInputPort *m = (const message::CreateInputPort *) message;
          portManager.addPort(m->getModuleID(), m->getName(),
                              Port::INPUT);
          break;
@@ -375,14 +401,31 @@ bool Communicator::handleMessage(message::Message *message) {
 
       case message::Message::ADDOBJECT: {
 
-         message::AddObject *m = (message::AddObject *) message;
+         const message::AddObject *m = (const message::AddObject *) message;
          std::cout << "AddObject " << m->getHandle()
                    << " to port " << m->getPortName() << std::endl;
 
          Port *port = portManager.getPort(m->getModuleID(),
                                           m->getPortName());
-         if (port)
+         if (port) {
             port->addObject(m->getHandle());
+            const std::vector<const Port *> *list = portManager.getConnectionList(port);
+
+            std::vector<const Port *>::const_iterator pi;
+            for (pi = list->begin(); pi != list->end(); pi ++) {
+
+               std::map<int, message::MessageQueue *>::iterator mi =
+                  sendMessageQueue.find((*pi)->getModuleID());
+               if (mi != sendMessageQueue.end()) {
+                  const message::AddObject a(m->getModuleID(), m->getRank(),
+                                             (*pi)->getName(), m->getHandle());
+                  const message::Compute c(moduleID, rank, (*pi)->getModuleID());
+
+                  mi->second->getMessageQueue().send(&a, sizeof(a), 0);
+                  mi->second->getMessageQueue().send(&c, sizeof(c), 0);
+               }
+            }
+         }
          else
             std::cout << "comm [" << rank << "/" << size << "] Addbject ["
                       << m->getHandle() << "] to port ["

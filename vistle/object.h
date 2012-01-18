@@ -20,6 +20,8 @@ namespace message {
    class MessageQueue;
 }
 
+class Object;
+
 class Shm {
 
  public:
@@ -32,6 +34,7 @@ class Shm {
    std::string createObjectID();
 
    void publish(const shm_handle_t & handle);
+   Object *getObjectFromHandle(const shm_handle_t & handle);
 
  private:
    Shm(const int moduleID, const int rank, const size_t &size,

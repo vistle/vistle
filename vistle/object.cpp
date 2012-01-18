@@ -26,7 +26,7 @@ Shm & Shm::instance(const int moduleID, const int rank,
                     message::MessageQueue *mq) {
 
    if (!singleton)
-      singleton = new Shm(moduleID, rank, 2147483647, mq);
+      singleton = new Shm(moduleID, rank, 68719476736, mq);
 
    return *singleton;
 }
@@ -34,7 +34,7 @@ Shm & Shm::instance(const int moduleID, const int rank,
 Shm & Shm::instance() {
 
    if (!singleton)
-      singleton = new Shm(-1, -1, 2147483647, NULL);//34359738368); // 32GB
+      singleton = new Shm(-1, -1, 68719476736, NULL);//34359738368); // 32GB
 
    return *singleton;
 }
@@ -62,7 +62,16 @@ std::string Shm::createObjectID() {
    return name.str();
 }
 
+Object * Shm::getObjectFromHandle(const shm_handle_t & handle) {
 
+   try {
+      Object *object = (Object *) shm->get_address_from_handle(handle);
+      return object;
+
+   } catch (boost::interprocess::interprocess_exception &ex) { }
+
+   return NULL;
+}
    /*
 template <class T> Vec3<T>::Vec3(const size_t s): size(s) {
 
@@ -85,12 +94,12 @@ Object::Type Object::getType() const {
    return id;
 }
 
-template<> void Vec<float>::setType()  { id = Object::VECFLOAT; }
-template<> void Vec<int>::setType()    { id = Object::VECINT; }
-template<> void Vec<char>::setType()   { id = Object::VECCHAR; }
+template<> void Vec<float>::setType()  { id = Object::VECFLOAT;  }
+template<> void Vec<int>::setType()    { id = Object::VECINT;    }
+template<> void Vec<char>::setType()   { id = Object::VECCHAR;   }
 
 template<> void Vec3<float>::setType() { id = Object::VEC3FLOAT; }
-template<> void Vec3<int>::setType()   { id = Object::VEC3INT; }
-template<> void Vec3<char>::setType()  { id = Object::VEC3CHAR; }
+template<> void Vec3<int>::setType()   { id = Object::VEC3INT;   }
+template<> void Vec3<char>::setType()  { id = Object::VEC3CHAR;  }
 
 } // namespace vistle

@@ -5,6 +5,8 @@ project(vistle)
 
 add_executable(communicator communicator_collective.cpp message.cpp messagequeue.cpp object.cpp portmanager.cpp)
 add_executable(gendat gendat.cpp module.cpp message.cpp messagequeue.cpp object.cpp)
+add_executable(add add.cpp module.cpp message.cpp messagequeue.cpp object.cpp)
+
 #add_executable(testshm_master testshm_master.cpp)
 #add_executable(testshm_slave testshm_slave.cpp)
 #add_executable(testshm testshm.cpp)
@@ -20,6 +22,7 @@ include_directories(${MPI_INCLUDE_PATH})
 
 target_link_libraries(communicator ${MPI_LIBRARIES} ${Boost_LIBRARIES})
 target_link_libraries(gendat ${MPI_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(add ${MPI_LIBRARIES} ${Boost_LIBRARIES})
 
 #target_link_libraries(testshm ${MPI_LIBRARIES} ${Boost_LIBRARIES} object)
 #target_link_libraries(testshm_master ${MPI_LIBRARIES} ${Boost_LIBRARIES} object)

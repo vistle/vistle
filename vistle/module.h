@@ -34,6 +34,9 @@ class Module {
    bool addObject(const std::string & portName, const void *p);
    message::MessageQueue *sendMessageQueue;
 
+   std::list<vistle::Object *> getObjects(const std::string &portName);
+   void removeObject(const std::string &portName, vistle::Object *object);
+
    const std::string name;
    const int rank;
    const int size;
