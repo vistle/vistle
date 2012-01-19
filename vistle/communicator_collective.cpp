@@ -248,22 +248,36 @@ bool Communicator::dispatch() {
    char msgRecvBuf[128];
 
    std::map<int, message::MessageQueue *>::iterator i;
-   for (i = receiveMessageQueue.begin(); i != receiveMessageQueue.end(); i ++){
+   for (i = receiveMessageQueue.begin(); i != receiveMessageQueue.end(); ){
 
+      bool moduleExit = false;
       try {
          bool received =
             i->second->getMessageQueue().try_receive((void *) msgRecvBuf,
                                                      (size_t) 128, msgSize,
                                                      priority);
 
-         if (received)
-            handleMessage((message::Message *) msgRecvBuf);
+         if (received) {
+            moduleExit = !handleMessage((message::Message *) msgRecvBuf);
 
+            if (moduleExit) {
+
+               std::map<int, message::MessageQueue *>::iterator si =
+                  sendMessageQueue.find(i->first);
+               if (si != sendMessageQueue.end()) {
+                  delete si->second;
+                  sendMessageQueue.erase(si);
+               }
+               receiveMessageQueue.erase(i++);
+            }
+         }
       } catch (boost::interprocess::interprocess_exception &ex) {
          std::cerr << "comm [" << rank << "/" << size << "] receive mq "
                    << ex.what() << std::endl;
          exit(-1);
       }
+      if (!moduleExit)
+         i++;
    }
 
    return done;
@@ -386,20 +400,7 @@ bool Communicator::handleMessage(const message::Message *message) {
          std::cout << "comm [" << rank << "/" << size << "] Module ["
                    << mod << "] quit" << std::endl;
 
-         std::map<int, message::MessageQueue *>::iterator i =
-            sendMessageQueue.find(mod);
-         if (i != sendMessageQueue.end()) {
-
-            delete i->second;
-            sendMessageQueue.erase(i);
-         }
-
-         i = receiveMessageQueue.find(mod);
-         if (i != receiveMessageQueue.end()) {
-
-            delete i->second;
-            receiveMessageQueue.erase(i);
-         }
+         return false;
          break;
       }
 

@@ -18,6 +18,8 @@ class Message;
 class MessageQueue;
 }
 
+class Object;
+
 class Module {
 
  public:
@@ -25,7 +27,7 @@ class Module {
           const int rank, const int size, const int moduleID);
    virtual ~Module();
 
-   bool dispatch();
+   virtual bool dispatch();
 
  protected:
 
@@ -43,14 +45,15 @@ class Module {
    const int size;
    const int moduleID;
 
- private:
+ protected:
+   message::MessageQueue *receiveMessageQueue;
    bool handleMessage(const message::Message *message);
+
+ private:
    bool addInputObject(const std::string &portName,
                        const shm_handle_t & handle);
 
    virtual bool compute() = 0;
-
-   message::MessageQueue *receiveMessageQueue;
 
    std::map<std::string, std::list<shm_handle_t> *> outputPorts;
    std::map<std::string, std::list<shm_handle_t> *> inputPorts;

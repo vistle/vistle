@@ -30,20 +30,21 @@ namespace vistle {
 Module::Module(const std::string &n, const int r, const int s, const int m)
    : name(n), rank(r), size(s), moduleID(m) {
 
-   const int HOSTNAMESIZE = 64;
 #ifdef _WIN32
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
 #endif
+
+   const int HOSTNAMESIZE = 64;
    char hostname[HOSTNAMESIZE];
    gethostname(hostname, HOSTNAMESIZE - 1);
 
    std::cout << "  module [" << name << "] [" << moduleID << "] [" << rank
-             << "/" << size << "] started as " 
+             << "/" << size << "] started as " << hostname << ":"
 #ifndef _WIN32
-             << hostname << ":" << getpid() << std::endl;
+             << getpid() << std::endl;
 #else
-             << hostname << ":" << std::endl;
+             << std::endl;
 #endif
 
    std::string smqName =
@@ -147,12 +148,12 @@ void Module::removeObject(const std::string &portName, vistle::Object *object) {
    if (i != inputPorts.end()) {
 
       std::list<shm_handle_t>::iterator shmit;
-      for (shmit = i->second->begin(); shmit != i->second->end(); shmit++) {
+      for (shmit = i->second->begin(); shmit != i->second->end(); ) {
          Object *o = Shm::instance().getObjectFromHandle(*shmit);
          if (object == o)
-            shmit = i->second->erase(shmit); // wenn das letzte Objekt gelöscht wird  ist shmit == end(), dann darf das shmit++ aus dem for loop nicht gemacht werden 
-         if(shmit == i->second->end())
-            break;
+            shmit = i->second->erase(shmit);
+         else
+            shmit ++;
       }
    }
 }

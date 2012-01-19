@@ -27,7 +27,7 @@ Shm & Shm::instance(const int moduleID, const int rank,
                     message::MessageQueue *mq) {
 
    if (!singleton)
-      singleton = new Shm(moduleID, rank, 1*1024*1024*1024, mq);
+      singleton = new Shm(moduleID, rank, 68719476736, mq);
 
    return *singleton;
 }
