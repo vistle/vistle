@@ -26,16 +26,16 @@ class Communicator {
    bool dispatch();
 
  private:
-   bool handleMessage(const message::Message *message);
+   bool handleMessage(const message::Message * message);
 
    const int rank;
    const int size;
 
-   unsigned char *socketBuffer;
+   unsigned char * socketBuffer;
    int clientSocket;
    int moduleID;
 
-   char *mpiReceiveBuffer;
+   char * mpiReceiveBuffer;
    int mpiMessageSize;
 
    MPI_Request request;

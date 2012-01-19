@@ -2,7 +2,7 @@
 
 namespace vistle {
 
-Port::Port(int m, const std::string &n, Port::Type t)
+Port::Port(int m, const std::string & n, Port::Type t)
    : moduleID(m), name(n), type(t) {
 
 }
@@ -31,7 +31,7 @@ PortManager::PortManager() {
 
 }
 
-void PortManager::addPort(const int moduleID, const std::string &name,
+void PortManager::addPort(const int moduleID, const std::string & name,
                           const Port::Type type) {
 
    std::map<std::string, Port *> *portMap = NULL;
@@ -51,7 +51,8 @@ void PortManager::addPort(const int moduleID, const std::string &name,
    connections[port] = new std::vector<const Port *>;
 }
 
-Port *PortManager::getPort(const int moduleID, const std::string name) const {
+Port * PortManager::getPort(const int moduleID,
+                            const std::string & name) const {
 
    std::map<int, std::map<std::string, Port *> *>::const_iterator i =
       ports.find(moduleID);
@@ -65,7 +66,7 @@ Port *PortManager::getPort(const int moduleID, const std::string name) const {
    return NULL;
 }
 
-void PortManager::addConnection(const Port *out, const Port *in) {
+void PortManager::addConnection(const Port * out, const Port * in) {
 
    if (out->getType() == Port::OUTPUT && in->getType() == Port::INPUT) {
 
@@ -83,8 +84,8 @@ void PortManager::addConnection(const Port *out, const Port *in) {
    }
 }
 
-void PortManager::addConnection(const int a, const std::string na,
-                                const int b, const std::string nb) {
+void PortManager::addConnection(const int a, const std::string & na,
+                                const int b, const std::string & nb) {
 
    std::map<int, std::map<std::string, Port *> *>::iterator ia =
       ports.find(a);
@@ -101,7 +102,7 @@ void PortManager::addConnection(const int a, const std::string na,
 }
 
 const std::vector<const Port *> *
-PortManager::getConnectionList(const Port *port) const {
+PortManager::getConnectionList(const Port * port) const {
 
    std::map<const Port *, std::vector<const Port *> *>::const_iterator i =
       connections.find(port);
@@ -113,7 +114,7 @@ PortManager::getConnectionList(const Port *port) const {
 
 const std::vector<const Port *> *
 PortManager::getConnectionList(const int moduleID,
-                               const std::string &name) const {
+                               const std::string & name) const {
 
    const Port *port = getPort(moduleID, name);
    return getConnectionList(port);

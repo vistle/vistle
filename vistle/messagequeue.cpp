@@ -8,7 +8,7 @@ using namespace boost::interprocess;
 namespace vistle {
 namespace message {
 
-std::string MessageQueue::createName(const char *prefix,
+std::string MessageQueue::createName(const char * prefix,
                                      const int moduleID, const int rank) {
 
    std::stringstream mqID;
@@ -18,18 +18,18 @@ std::string MessageQueue::createName(const char *prefix,
    return mqID.str();
 }
 
-MessageQueue * MessageQueue::create(const std::string &n) {
+MessageQueue * MessageQueue::create(const std::string & n) {
 
    message_queue::remove(n.c_str());
    return new MessageQueue(n, boost::interprocess::create_only);
 }
 
-MessageQueue * MessageQueue::open(const std::string &n) {
+MessageQueue * MessageQueue::open(const std::string & n) {
 
    return new MessageQueue(n, boost::interprocess::open_only);
 }
 
-MessageQueue::MessageQueue(const std::string &n,
+MessageQueue::MessageQueue(const std::string & n,
                            boost::interprocess::create_only_t)
    : name(n),
      mq(create_only, name.c_str(), 128 /* num msg */, 128 /* msg size */),
@@ -37,7 +37,7 @@ MessageQueue::MessageQueue(const std::string &n,
 
 }
 
-MessageQueue::MessageQueue(const std::string &n,
+MessageQueue::MessageQueue(const std::string & n,
                            boost::interprocess::open_only_t)
    : name(n), mq(open_only, name.c_str()), removeOnExit(false) {
 

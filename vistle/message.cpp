@@ -36,7 +36,8 @@ char Debug::getCharacter() const {
    return character;
 }
 
-Spawn::Spawn(const int moduleID, const int rank, const int s, const std::string & n)
+Spawn::Spawn(const int moduleID, const int rank, const int s,
+             const std::string & n)
    : Message(moduleID, rank, Message::SPAWN, sizeof(Spawn)), spawnID(s) {
 
    size_t size = MIN(n.size(), 31);
@@ -85,7 +86,7 @@ int Compute::getModule() const {
 }
 
 CreateOutputPort::CreateOutputPort(const int moduleID, const int rank,
-                                   const std::string &n)
+                                   const std::string & n)
    : Message(moduleID, rank,
              Message::CREATEOUTPUTPORT, sizeof(CreateOutputPort)) {
 
@@ -100,7 +101,7 @@ const char * CreateOutputPort::getName() const {
 }
 
 CreateInputPort::CreateInputPort(const int moduleID, const int rank,
-                                 const std::string &n)
+                                 const std::string & n)
    : Message(moduleID, rank, Message::CREATEINPUTPORT,
              sizeof(CreateInputPort)) {
 
@@ -116,9 +117,10 @@ const char * CreateInputPort::getName() const {
    return name;
 }
 
-AddObject::AddObject(const int moduleID, const int rank, const std::string &p,
+AddObject::AddObject(const int moduleID, const int rank, const std::string & p,
                      const shm_handle_t & h)
-   : Message(moduleID, rank, Message::ADDOBJECT, sizeof(AddObject)), handle(h) {
+   : Message(moduleID, rank, Message::ADDOBJECT, sizeof(AddObject)),
+     handle(h) {
 
    size_t size = MIN(p.size(), 31);
    p.copy(portName, size);
@@ -126,8 +128,8 @@ AddObject::AddObject(const int moduleID, const int rank, const std::string &p,
 }
 
 Connect::Connect(const int moduleID, const int rank,
-                 const int moduleIDA, const std::string &portA,
-                 const int moduleIDB, const std::string &portB)
+                 const int moduleIDA, const std::string & portA,
+                 const int moduleIDB, const std::string & portB)
    : Message(moduleID, rank, Message::CONNECT, sizeof(Connect)),
      moduleA(moduleIDA), moduleB(moduleIDB) {
 

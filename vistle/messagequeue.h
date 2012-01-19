@@ -9,10 +9,10 @@ namespace message {
 class MessageQueue {
 
  public:
-   static MessageQueue * create(const std::string &name);
-   static MessageQueue * open(const std::string &name);
+   static MessageQueue * create(const std::string & name);
+   static MessageQueue * open(const std::string & name);
 
-   static std::string createName(const char *prefix,
+   static std::string createName(const char * prefix,
                                  const int moduleID, const int rank);
 
    ~MessageQueue();
@@ -21,8 +21,8 @@ class MessageQueue {
    boost::interprocess::message_queue & getMessageQueue();
 
  private:
-   MessageQueue(const std::string &name, boost::interprocess::create_only_t);
-   MessageQueue(const std::string &name, boost::interprocess::open_only_t);
+   MessageQueue(const std::string & name, boost::interprocess::create_only_t);
+   MessageQueue(const std::string & name, boost::interprocess::open_only_t);
 
    const std::string name;
    boost::interprocess::message_queue mq;

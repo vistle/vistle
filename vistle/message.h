@@ -2,10 +2,6 @@
 #define MESSAGE_H
 
 #include <boost/interprocess/managed_shared_memory.hpp>
-
-#ifndef _WIN32
-#include <stdint.h>
-#endif
 #include <string>
 
 namespace vistle {
@@ -62,7 +58,8 @@ class Debug: public Message {
 class Spawn: public Message {
 
  public:
-   Spawn(const int moduleID, const int rank, const int spawnID, const std::string &name);
+   Spawn(const int moduleID, const int rank, const int spawnID,
+         const std::string &name);
 
    int getSpawnID() const;
    const char *getName() const;
@@ -115,9 +112,9 @@ class CreateInputPort: public Message {
 
  public:
    CreateInputPort(const int moduleID, const int rank,
-                   const std::string &name);
+                   const std::string & name);
 
-   const char *getName() const;
+   const char * getName() const;
 
  private:
    char name[32];
@@ -127,9 +124,9 @@ class CreateOutputPort: public Message {
 
  public:
    CreateOutputPort(const int moduleID, const int rank,
-                    const std::string &name);
+                    const std::string & name);
 
-   const char *getName() const;
+   const char * getName() const;
 
  private:
    char name[32];
@@ -138,10 +135,10 @@ class CreateOutputPort: public Message {
 class AddObject: public Message {
 
  public:
-   AddObject(const int moduleID, const int rank, const std::string &portName,
+   AddObject(const int moduleID, const int rank, const std::string & portName,
              const shm_handle_t & handle);
 
-   const char *getPortName() const;
+   const char * getPortName() const;
    const shm_handle_t & getHandle() const;
 
  private:
@@ -153,11 +150,11 @@ class Connect: public Message {
 
  public:
    Connect(const int moduleID, const int rank,
-           const int moduleIDA, const std::string &portA,
-           const int moduleIDB, const std::string &portB);
+           const int moduleIDA, const std::string & portA,
+           const int moduleIDB, const std::string & portB);
 
-   const char *getPortAName() const;
-   const char *getPortBName() const;
+   const char * getPortAName() const;
+   const char * getPortBName() const;
 
    int getModuleA() const;
    int getModuleB() const;

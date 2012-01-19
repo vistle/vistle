@@ -11,8 +11,8 @@ namespace vistle {
 
 Shm* Shm::singleton = NULL;
 
-Shm::Shm(const int m, const int r, const size_t &size,
-         message::MessageQueue *mq)
+Shm::Shm(const int m, const int r, const size_t & size,
+         message::MessageQueue * mq)
    : moduleID(m), rank(r), objectID(0), messageQueue(mq) {
 
    shm = new managed_shared_memory(open_or_create, "vistle", size);
@@ -24,7 +24,7 @@ Shm::~Shm() {
 }
 
 Shm & Shm::instance(const int moduleID, const int rank,
-                    message::MessageQueue *mq) {
+                    message::MessageQueue * mq) {
 
    if (!singleton)
       singleton = new Shm(moduleID, rank, 68719476736, mq);
@@ -107,7 +107,7 @@ const size_t & Triangles::getSize() {
    return size;
 }
 
-Triangles * Triangles::create(const size_t size) {
+Triangles * Triangles::create(const size_t & size) {
 
    std::string name = Shm::instance().createObjectID();
    Triangles *t = static_cast<Triangles *>

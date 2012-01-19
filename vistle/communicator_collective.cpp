@@ -4,18 +4,19 @@
 #ifndef _WIN32
 #include <sys/socket.h>
 #include <sys/select.h>
+#include <netinet/in.h>
+#include <unistd.h>
 #else
 #include<Winsock2.h>
 #pragma comment(lib, "Ws2_32.lib")
+#define usleep Sleep
+#define close closesocket
+typedef int socklen_t;
 #endif
+
 #include <mpi.h>
 
 #include <sys/types.h>
-
-#ifndef _WIN32
-#include <netinet/in.h>
-#include <unistd.h>
-#endif
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -35,7 +36,7 @@ using namespace boost::interprocess;
 int GENDAT = -1;
 int ADD = -1;
 
-int main(int argc, char **argv) {
+int main(int argc, char ** argv) {
 
 #ifdef _WIN32
     WSADATA wsaData;
@@ -77,11 +78,7 @@ int main(int argc, char **argv) {
 
    while (!done) {
       done = comm->dispatch();
-#ifdef WIN32
-      Sleep(100);
-#else
       usleep(100);
-#endif
    }
 
    delete comm;
@@ -95,11 +92,9 @@ int acceptClient() {
 
    int server = socket(AF_INET, SOCK_STREAM, 0);
    int reuse = 1;
-#ifdef _WIN32
-   setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse));
-#else
-   setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
-#endif
+
+   setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (char *) &reuse,
+              sizeof(reuse));
 
    struct sockaddr_in serv, addr;
    serv.sin_family = AF_INET;
@@ -112,17 +107,10 @@ int acceptClient() {
    }
    listen(server, 0);
 
-#ifdef _WIN32
-   int len = sizeof(addr);
-   int client = accept(server, (struct sockaddr *) &addr, &len);
-
-   closesocket(server);
-#else
    socklen_t len = sizeof(addr);
    int client = accept(server, (struct sockaddr *) &addr, &len);
-
    close(server);
-#endif
+
    return client;
 }
 
@@ -163,7 +151,7 @@ bool Communicator::dispatch() {
          message::Message *message = NULL;
 
 #ifdef _WIN32
-         recv(clientSocket, (char *)socketBuffer, 1,0);
+         recv(clientSocket, (char *) socketBuffer, 1,0);
 #else
          read(clientSocket, socketBuffer, 1);
 #endif
@@ -184,7 +172,8 @@ bool Communicator::dispatch() {
          }
 
          else if (socketBuffer[0] == 'c') {
-            message = new message::Connect(0, rank, GENDAT, "data_out", ADD, "data_in");
+            message = new message::Connect(0, rank, GENDAT, "data_out", ADD,
+                                           "data_in");
          }
 
          else if (socketBuffer[0] == 'e') {
@@ -284,13 +273,14 @@ bool Communicator::dispatch() {
 }
 
 
-bool Communicator::handleMessage(const message::Message *message) {
+bool Communicator::handleMessage(const message::Message * message) {
 
    switch (message->getType()) {
 
       case message::Message::DEBUG: {
 
-         const message::Debug *debug = (const message::Debug *) message;
+         const message::Debug *debug =
+            static_cast<const message::Debug *>(message);
          std::cout << "comm [" << rank << "/" << size << "] Debug ["
                    << debug->getCharacter() << "]" << std::endl;
          break;
@@ -298,7 +288,8 @@ bool Communicator::handleMessage(const message::Message *message) {
 
       case message::Message::QUIT: {
 
-         const message::Quit *quit = (const message::Quit *) message;
+         const message::Quit *quit =
+            static_cast<const message::Quit *>(message);
          (void) quit;
          return false;
          break;
@@ -306,7 +297,8 @@ bool Communicator::handleMessage(const message::Message *message) {
 
       case message::Message::SPAWN: {
 
-         const message::Spawn *spawn = (const message::Spawn *) message;
+         const message::Spawn *spawn =
+            static_cast<const message::Spawn *>(message);
          int moduleID = spawn->getSpawnID();
          const char *name = spawn->getName();
 
@@ -341,15 +333,19 @@ bool Communicator::handleMessage(const message::Message *message) {
 
       case message::Message::CONNECT: {
 
-         const message::Connect *connect = (const message::Connect *) message;
-         portManager.addConnection(connect->getModuleA(), connect->getPortAName(),
-                                   connect->getModuleB(), connect->getPortBName());
+         const message::Connect *connect =
+            static_cast<const message::Connect *>(message);
+         portManager.addConnection(connect->getModuleA(),
+                                   connect->getPortAName(),
+                                   connect->getModuleB(),
+                                   connect->getPortBName());
          break;
       }
 
       case message::Message::NEWOBJECT: {
 
-         const message::NewObject *newObject = (const message::NewObject *) message;
+         const message::NewObject *newObject =
+            static_cast<const message::NewObject *>(message);
 
          vistle::Object *object = (vistle::Object *)
             vistle::Shm::instance().getShm().get_address_from_handle(newObject->getHandle());
@@ -362,7 +358,8 @@ bool Communicator::handleMessage(const message::Message *message) {
          switch (object->getType()) {
 
             case Object::VECFLOAT: {
-               vistle::Vec<float> *array = static_cast<vistle::Vec<float> *>(object);
+               vistle::Vec<float> *array =
+                  static_cast<vistle::Vec<float> *>(object);
                std::cout << "Vec<float> size " << array->getSize() << std::endl;
                /*
                for (unsigned int index = 0; index < array->getSize(); index ++)
@@ -373,7 +370,8 @@ bool Communicator::handleMessage(const message::Message *message) {
             }
 
             case Object::VEC3INT: {
-               vistle::Vec3<int> *array = static_cast<vistle::Vec3<int> *>(object);
+               vistle::Vec3<int> *array =
+                  static_cast<vistle::Vec3<int> *>(object);
                std::cout << "Vec3<int> size " << array->getSize() << std::endl;
 
                for (unsigned int index = 0; index < array->getSize(); index ++)
@@ -394,7 +392,8 @@ bool Communicator::handleMessage(const message::Message *message) {
 
       case message::Message::MODULEEXIT: {
 
-         const message::ModuleExit *moduleExit = (const message::ModuleExit *) message;
+         const message::ModuleExit *moduleExit =
+            static_cast<const message::ModuleExit *>(message);
          int mod = moduleExit->getModuleID();
 
          std::cout << "comm [" << rank << "/" << size << "] Module ["
@@ -406,7 +405,8 @@ bool Communicator::handleMessage(const message::Message *message) {
 
       case message::Message::COMPUTE: {
 
-         const message::Compute *comp = (const message::Compute *) message;
+         const message::Compute *comp =
+            static_cast<const message::Compute *>(message);
          std::map<int, message::MessageQueue *>::iterator i
             = sendMessageQueue.find(comp->getModule());
          if (i != sendMessageQueue.end())
@@ -416,7 +416,8 @@ bool Communicator::handleMessage(const message::Message *message) {
 
       case message::Message::CREATEINPUTPORT: {
 
-         const message::CreateInputPort *m = (const message::CreateInputPort *) message;
+         const message::CreateInputPort *m =
+            static_cast<const message::CreateInputPort *>(message);
          portManager.addPort(m->getModuleID(), m->getName(),
                              Port::INPUT);
          break;
@@ -424,7 +425,8 @@ bool Communicator::handleMessage(const message::Message *message) {
 
       case message::Message::CREATEOUTPUTPORT: {
 
-         message::CreateOutputPort *m = (message::CreateOutputPort *) message;
+         const message::CreateOutputPort *m =
+            static_cast<const message::CreateOutputPort *>(message);
          portManager.addPort(m->getModuleID(), m->getName(),
                              Port::OUTPUT);
          break;
@@ -432,7 +434,8 @@ bool Communicator::handleMessage(const message::Message *message) {
 
       case message::Message::ADDOBJECT: {
 
-         const message::AddObject *m = (const message::AddObject *) message;
+         const message::AddObject *m =
+            static_cast<const message::AddObject *>(message);
          std::cout << "AddObject " << m->getHandle()
                    << " to port " << m->getPortName() << std::endl;
 
@@ -440,7 +443,8 @@ bool Communicator::handleMessage(const message::Message *message) {
                                           m->getPortName());
          if (port) {
             port->addObject(m->getHandle());
-            const std::vector<const Port *> *list = portManager.getConnectionList(port);
+            const std::vector<const Port *> *list =
+               portManager.getConnectionList(port);
 
             std::vector<const Port *>::const_iterator pi;
             for (pi = list->begin(); pi != list->end(); pi ++) {
@@ -450,7 +454,8 @@ bool Communicator::handleMessage(const message::Message *message) {
                if (mi != sendMessageQueue.end()) {
                   const message::AddObject a(m->getModuleID(), m->getRank(),
                                              (*pi)->getName(), m->getHandle());
-                  const message::Compute c(moduleID, rank, (*pi)->getModuleID());
+                  const message::Compute c(moduleID, rank,
+                                           (*pi)->getModuleID());
 
                   mi->second->getMessageQueue().send(&a, sizeof(a), 0);
                   mi->second->getMessageQueue().send(&c, sizeof(c), 0);
@@ -486,21 +491,11 @@ Communicator::~Communicator() {
    int retries = 10000;
    while (sendMessageQueue.size() > 0 && --retries >= 0) {
       dispatch();
-#ifdef _WIN32
-      Sleep(1000);
-#else
       usleep(1000);
-#endif
    }
 
    if (clientSocket != -1)
-   {
-#ifdef _WIN32
-      closesocket(clientSocket);
-#else
       close(clientSocket);
-#endif
-   }
 
    if (size > 1) {
       int dummy;

@@ -36,19 +36,19 @@ class PortManager {
 
  public:
    PortManager();
-   void addPort(const int moduleID, const std::string &name,
+   void addPort(const int moduleID, const std::string & name,
                 const Port::Type type);
 
-   void addConnection(const Port *out, const Port *in);
-   void addConnection(const int a, const std::string na,
-                      const int b, const std::string nb);
+   void addConnection(const Port * out, const Port * in);
+   void addConnection(const int a, const std::string & na,
+                      const int b, const std::string & nb);
 
-   const std::vector<const Port *> * getConnectionList(const Port *port) const;
+   const std::vector<const Port *> * getConnectionList(const Port * port) const;
    const std::vector<const Port *> * getConnectionList(const int moduleID,
-                                                       const std::string &name)
+                                                       const std::string & name)
       const;
 
-   Port *getPort(const int moduleID, const std::string name) const;
+   Port * getPort(const int moduleID, const std::string & name) const;
 
  private:
 

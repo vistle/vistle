@@ -26,7 +26,7 @@ class Shm {
 
  public:
    static Shm & instance(const int moduleID, const int rank,
-                         message::MessageQueue *messageQueue);
+                         message::MessageQueue * messageQueue);
    static Shm & instance();
    ~Shm();
 
@@ -44,7 +44,7 @@ class Shm {
    const int rank;
    int objectID;
    static Shm *singleton;
-   boost::interprocess::managed_shared_memory *shm;
+   boost::interprocess::managed_shared_memory * shm;
    message::MessageQueue *messageQueue;
 };
 
@@ -76,7 +76,7 @@ template <class T>
 class Vec: public Object {
 
  public:
-   static Vec<T> * create(const size_t size) {
+   static Vec<T> * create(const size_t & size) {
 
       std::string name = Shm::instance().createObjectID();
       Vec<T> *t = static_cast<Vec<T> *>
@@ -109,7 +109,7 @@ template <class T>
 class Vec3: public Object {
 
  public:
-   static Vec3<T> * create(const size_t size) {
+   static Vec3<T> * create(const size_t & size) {
 
       std::string name = Shm::instance().createObjectID();
       Vec3<T> *t = static_cast<Vec3<T> *>
@@ -143,7 +143,7 @@ class Vec3: public Object {
 class Triangles: public Object {
 
  public:
-   static Triangles * create(const size_t size);
+   static Triangles * create(const size_t & size);
    Triangles(const size_t & size);
 
    const size_t & getSize();
