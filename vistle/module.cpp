@@ -101,7 +101,8 @@ bool Module::createOutputPort(const std::string &name) {
 bool Module::addObject(const std::string & portName,
                        const shm_handle_t & handle) {
 
-   printf("Module::addObject [%ld] to port [%s]\n", handle, portName.c_str());
+   std::cout << "Module::addObject " << handle << " to port " <<  portName
+             << std::endl;
    std::map<std::string, std::list<shm_handle_t> *>::iterator i =
       outputPorts.find(portName);
 
@@ -165,7 +166,6 @@ bool Module::addInputObject(const std::string & portName,
       inputPorts.find(portName);
 
    if (i != inputPorts.end()) {
-      printf("          added %ld to [%s]\n", handle, portName.c_str());
       i->second->push_back(handle);
       return true;
    }

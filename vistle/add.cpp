@@ -20,7 +20,7 @@ Add::~Add() {
 bool Add::compute() {
 
    std::list<vistle::Object *> objects = getObjects("data_in");
-   printf("Add: %ld objects\n", objects.size());
+   std::cout << "Add: " << objects.size() << " objects" << std::endl;
 
    std::list<vistle::Object *>::iterator oit;
    for (oit = objects.begin(); oit != objects.end(); oit ++) {

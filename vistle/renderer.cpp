@@ -5,10 +5,20 @@
 
 namespace vistle {
 
-Renderer::Renderer(const std::string &name,
+Renderer::Renderer(const std::string & name,
                    const int rank, const int size, const int moduleID)
    : Module(name, rank, size, moduleID) {
 
+   createInputPort("data_in");
+}
+
+Renderer::~Renderer() {
+
+}
+
+bool Renderer::compute() {
+
+   return true;
 }
 
 bool Renderer::dispatch() {
@@ -18,12 +28,14 @@ bool Renderer::dispatch() {
    char msgRecvBuf[128];
 
    bool done = false;
-   bool msg = receiveMessageQueue->getMessageQueue().try_receive((void *) msgRecvBuf,
-                                                                 (size_t) 128, msgSize,
-                                                                 priority);
+   bool msg =
+      receiveMessageQueue->getMessageQueue().try_receive((void *) msgRecvBuf,
+                                                         (size_t) 128, msgSize,
+                                                         priority);
 
    if (msg) {
-      vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
+      vistle::message::Message *message =
+         (vistle::message::Message *) msgRecvBuf;
       done = handleMessage(message);
 
       if (done) {
@@ -36,15 +48,6 @@ bool Renderer::dispatch() {
       render();
 
    return done;
-}
-
-bool Renderer::compute() {
-
-   return true;
-}
-
-Renderer::~Renderer() {
-
 }
 
 } // namespace vistle

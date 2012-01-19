@@ -1,6 +1,8 @@
 #include <iostream>
 #include <iomanip>
 
+#include <limits.h>
+
 #include "message.h"
 #include "messagequeue.h"
 #include "object.h"
@@ -27,7 +29,7 @@ Shm & Shm::instance(const int moduleID, const int rank,
                     message::MessageQueue * mq) {
 
    if (!singleton)
-      singleton = new Shm(moduleID, rank, 68719476736, mq);
+      singleton = new Shm(moduleID, rank, LONG_MAX, mq);
 
    return *singleton;
 }
@@ -35,7 +37,7 @@ Shm & Shm::instance(const int moduleID, const int rank,
 Shm & Shm::instance() {
 
    if (!singleton)
-      singleton = new Shm(-1, -1, 68719476736, NULL);//34359738368); // 32GB
+      singleton = new Shm(-1, -1, ULONG_MAX, NULL);//34359738368); // 32GB
 
    return *singleton;
 }

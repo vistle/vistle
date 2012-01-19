@@ -15,19 +15,11 @@ MODULE_MAIN(OSGRenderer)
 OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    : Renderer("OSGRenderer", rank, size, moduleID), osgViewer::Viewer() {
 
-   printf("renderer\n");
-   createInputPort("data_in");
    setUpViewInWindow(0, 0, 512, 512);
    setLightingMode(osgViewer::Viewer::HEADLIGHT);
 
-   //if (rank == 0) {
-      if (!getCameraManipulator() && getCamera()->getAllowEventFocus())
-         setCameraManipulator(new osgGA::TrackballManipulator());
-      /*
-   } else {
-      getCamera()->setAllowEventFocus(false);
-   }
-      */
+   if (!getCameraManipulator() && getCamera()->getAllowEventFocus())
+      setCameraManipulator(new osgGA::TrackballManipulator());
 
    realize();
    setThreadingModel(SingleThreaded);
@@ -46,7 +38,8 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
 
    geometry->setVertexArray(vertices.get());
 
-   osg::ref_ptr<osg::DrawElementsUInt> corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
+   osg::ref_ptr<osg::DrawElementsUInt> corners =
+      new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
    corners->push_back(0);
    corners->push_back(1);
    corners->push_back(2);
@@ -75,30 +68,22 @@ void OSGRenderer::render() {
 
    if (rank == 0) {
 
-      const osg::Matrixd view = getCamera()->getViewMatrix();
+      const osg::Matrixd view = getCameraManipulator()->getMatrix();
       const osg::Matrixd proj = getCamera()->getProjectionMatrix();
-
       for (int y = 0; y < 4; y ++)
-         for (int x = 0; x < 4; x ++) {
-            matrix[x + y * 4] = view(x, y);
-            matrix[x + y * 4 + 16] = proj(x, y);
-         }
-   }
-
-   MPI_Bcast(matrix, 32, MPI_FLOAT, 0, MPI_COMM_WORLD);
-
-   if (rank != 0) {
-
-      //getCamera()->setViewMatrix(osg::Matrix(matrix));
-      getCameraManipulator()->setByMatrix(osg::Matrix(matrix));
-      getCamera()->setProjectionMatrix(osg::Matrix(matrix + 16));
-
-      for (int y = 0; y < 4; y ++) {
          for (int x = 0; x < 4; x ++)
-            printf("%0.4f ", matrix[x + y * 4]);
-         printf("\n");
-      }
-      printf("\n");
+            matrix[x + y * 4] = view(x, y);
+   }
+      
+   MPI_Bcast(matrix, 16, MPI_FLOAT, 0, MPI_COMM_WORLD);
+   
+   if (rank != 0) {
+      osg::Matrix view;
+      for (int y = 0; y < 4; y ++)
+         for (int x = 0; x < 4; x ++)
+            view(x, y) = matrix[x + y * 4];
+      
+      getCameraManipulator()->setByMatrix(osg::Matrix(view));
    }
 
    MPI_Barrier(MPI_COMM_WORLD);

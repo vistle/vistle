@@ -137,7 +137,7 @@ bool Communicator::dispatch() {
 
    bool done = false;
 
-   if (rank == 0) {
+   if (rank == 0 && clientSocket != -1) {
       // poll socket
       fd_set set;
       FD_ZERO(&set);
