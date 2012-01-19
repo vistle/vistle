@@ -16,11 +16,6 @@ Renderer::~Renderer() {
 
 }
 
-bool Renderer::compute() {
-
-   return true;
-}
-
 bool Renderer::dispatch() {
 
    size_t msgSize;

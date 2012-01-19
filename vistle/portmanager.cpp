@@ -31,7 +31,7 @@ PortManager::PortManager() {
 
 }
 
-void PortManager::addPort(const int moduleID, const std::string & name,
+Port * PortManager::addPort(const int moduleID, const std::string & name,
                           const Port::Type type) {
 
    std::map<std::string, Port *> *portMap = NULL;
@@ -44,11 +44,17 @@ void PortManager::addPort(const int moduleID, const std::string & name,
    } else
       portMap = i->second;
 
-   Port *port = new Port(moduleID, name, type);
-   portMap->insert(std::pair<std::string, Port *>
-                   (name, port));
+   std::map<std::string, Port *>::iterator pi = portMap->find(name);
 
-   connections[port] = new std::vector<const Port *>;
+   if (pi == portMap->end()) {
+      Port *port = new Port(moduleID, name, type);
+      portMap->insert(std::pair<std::string, Port *>
+                      (name, port));
+      connections[port] = new std::vector<const Port *>;
+      
+      return port;
+   } else
+      return pi->second;
 }
 
 Port * PortManager::getPort(const int moduleID,
@@ -87,18 +93,16 @@ void PortManager::addConnection(const Port * out, const Port * in) {
 void PortManager::addConnection(const int a, const std::string & na,
                                 const int b, const std::string & nb) {
 
-   std::map<int, std::map<std::string, Port *> *>::iterator ia =
-      ports.find(a);
-   std::map<int, std::map<std::string, Port *> *>::iterator ib =
-      ports.find(b);
+   Port *portA = getPort(a, na);
+   Port *portB = getPort(b, nb);
 
-   if (ia != ports.end() && ib != ports.end()) {
+   if (!portA)
+      portA = addPort(a, na, Port::OUTPUT);
+   if (!portB)
+      portB = addPort(b, nb, Port::INPUT);
 
-      std::map<std::string, Port *>::iterator pia = ia->second->find(na);
-      std::map<std::string, Port *>::iterator pib = ib->second->find(nb);
-      if (pia != ia->second->end() && pib != ib->second->end())
-         addConnection(pia->second, pib->second);
-   }
+   if (portA && portB) 
+      addConnection(portA, portB);
 }
 
 const std::vector<const Port *> *

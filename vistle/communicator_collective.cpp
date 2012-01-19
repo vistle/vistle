@@ -77,6 +77,15 @@ int main(int argc, char ** argv) {
    vistle::Communicator *comm = new vistle::Communicator(rank, size);
    bool done = false;
 
+   vistle::message::Spawn spawn(0, rank, 1, "gendat");
+   comm->handleMessage(&spawn);
+   vistle::message::Spawn renderer(0, rank, 2, "osgrenderer");
+   comm->handleMessage(&renderer);
+   vistle::message::Connect connect(0, rank, 1, "data_out", 2, "data_in");
+   comm->handleMessage(&connect);
+   vistle::message::Compute compute(0, rank, 1);
+   comm->handleMessage(&compute);
+
    while (!done) {
       done = comm->dispatch();
       usleep(100);
@@ -128,9 +137,10 @@ Communicator::Communicator(int r, int s)
    MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, 0,
              MPI_COMM_WORLD, &request);
    MPI_Barrier(MPI_COMM_WORLD);
-
+   /*
    if (rank == 0)
       clientSocket = acceptClient();
+   */
 }
 
 bool Communicator::dispatch() {
@@ -458,6 +468,7 @@ bool Communicator::handleMessage(const message::Message * message) {
             const std::vector<const Port *> *list =
                portManager.getConnectionList(port);
 
+            printf("connectionlist size %d\n", list->size());
             std::vector<const Port *>::const_iterator pi;
             for (pi = list->begin(); pi != list->end(); pi ++) {
 

@@ -5,6 +5,10 @@
 
 #include "renderer.h"
 
+namespace osg {
+   class Group;
+}
+
 class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
 
  public:
@@ -12,7 +16,10 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    ~OSGRenderer();
 
  private:
+   bool compute();
    void render();
+
+   osg::Group *scene;
 };
 
 #endif

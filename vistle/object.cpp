@@ -98,28 +98,43 @@ Object::Type Object::getType() const {
    return id;
 }
 
-Triangles::Triangles(const size_t & s): Object(Object::TRIANGLES), size(s) {
+Triangles::Triangles(const size_t & corners, const size_t & vertices)
+   : Object(Object::TRIANGLES), numCorners(corners), numVertices(vertices) {
 
-   vertices = static_cast<float *>
-      (Shm::instance().getShm().allocate(s * 9 * sizeof(float)));
+   x = static_cast<float *>
+      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
+   y = static_cast<float *>
+      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
+   z = static_cast<float *>
+      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
+
+   cl = static_cast<int *>
+      (Shm::instance().getShm().allocate(numCorners * sizeof(int)));
 }
 
-const size_t & Triangles::getSize() {
 
-   return size;
-}
-
-Triangles * Triangles::create(const size_t & size) {
+Triangles * Triangles::create(const size_t & numCorners,
+                              const size_t & numVertices) {
 
    std::string name = Shm::instance().createObjectID();
    Triangles *t = static_cast<Triangles *>
-      (Shm::instance().getShm().construct<Triangles>(name.c_str())[1](size));
+      (Shm::instance().getShm().construct<Triangles>(name.c_str())[1](numCorners, numVertices));
 
    shm_handle_t handle =
       Shm::instance().getShm().get_handle_from_address(t);
 
    Shm::instance().publish(handle);
    return t;
+}
+
+const size_t & Triangles::getNumCorners() const {
+
+   return numCorners;
+}
+
+const size_t & Triangles::getNumVertices() const {
+
+   return numVertices;
 }
 
 template<> const Object::Type Vec<float>::type  = Object::VECFLOAT;

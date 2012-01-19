@@ -36,8 +36,8 @@ class PortManager {
 
  public:
    PortManager();
-   void addPort(const int moduleID, const std::string & name,
-                const Port::Type type);
+   Port * addPort(const int moduleID, const std::string & name,
+                  const Port::Type type);
 
    void addConnection(const Port * out, const Port * in);
    void addConnection(const int a, const std::string & na,

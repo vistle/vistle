@@ -17,7 +17,7 @@ Gendat::~Gendat() {
 }
 
 bool Gendat::compute() {
-
+   /*
    vistle::Vec<float> *a = vistle::Vec<float>::create(1024 * 1024 * 4);
    for (unsigned int index = 0; index < a->getSize(); index ++)
       a->x[index] = (float) index;
@@ -28,22 +28,37 @@ bool Gendat::compute() {
       b->y[index] = index;
       b->z[index] = index;
    }
+   */
+   vistle::Triangles *t = vistle::Triangles::create(6, 4);
 
-   vistle::Triangles *t = vistle::Triangles::create(1);
-   t->vertices[0] = 0.0;
-   t->vertices[1] = 0.0;
-   t->vertices[2] = 0.0;
+   t->cl[0] = 0;
+   t->cl[1] = 1;
+   t->cl[2] = 2;
 
-   t->vertices[3] = 1.0;
-   t->vertices[4] = 0.0;
-   t->vertices[5] = 0.0;
+   t->cl[3] = 0;
+   t->cl[4] = 2;
+   t->cl[5] = 3;
 
-   t->vertices[6] = 1.0;
-   t->vertices[7] = 1.0;
-   t->vertices[8] = 0.0;
+   t->x[0] = 0.0 + rank;
+   t->y[0] = 0.0;
+   t->z[0] = 0.0;
 
+   t->x[1] = 1.0 + rank;
+   t->y[1] = 0.0;
+   t->z[1] = 0.0;
+
+   t->x[2] = 1.0 + rank;
+   t->y[2] = 1.0;
+   t->z[2] = 0.0;
+
+   t->x[3] = 0.0 + rank;
+   t->y[3] = 1.0;
+   t->z[3] = 0.0;
+
+   /*
    addObject("data_out", a);
    addObject("data_out", b);
+   */
    addObject("data_out", t);
 
 #if 0

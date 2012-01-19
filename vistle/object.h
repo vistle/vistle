@@ -143,15 +143,21 @@ class Vec3: public Object {
 class Triangles: public Object {
 
  public:
-   static Triangles * create(const size_t & size);
-   Triangles(const size_t & size);
+   static Triangles * create(const size_t & numCorners,
+                             const size_t & numVertices);
+   Triangles(const size_t & numCorners, const size_t & numVertices);
 
-   const size_t & getSize();
+   const size_t & getNumCorners() const;
+   const size_t & getNumVertices() const;
 
-   boost::interprocess::offset_ptr<float> vertices;
+   boost::interprocess::offset_ptr<int> cl;
+   boost::interprocess::offset_ptr<float> x;
+   boost::interprocess::offset_ptr<float> y;
+   boost::interprocess::offset_ptr<float> z;
 
  private:
-   const size_t size;
+   const size_t numCorners;;
+   const size_t numVertices;;
 };
 
 } // namespace vistle

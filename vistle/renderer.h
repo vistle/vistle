@@ -16,7 +16,6 @@ class Renderer: public Module {
  private:
 
    virtual void render() = 0;
-   bool compute();
 };
 
 } // namespace vistle
