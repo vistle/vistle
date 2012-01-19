@@ -16,8 +16,12 @@ find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
 
 include_directories(${Boost_INCLUDE_DIRS})
 
+
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS} "-Wall")
 set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
+
+SET (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /EHsc")
+SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
 include_directories(${MPI_INCLUDE_PATH})
 
 target_link_libraries(communicator ${MPI_LIBRARIES} ${Boost_LIBRARIES})
