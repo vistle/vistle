@@ -35,6 +35,7 @@ using namespace boost::interprocess;
 
 int GENDAT = -1;
 int ADD = -1;
+int OSGRENDERER = -1;
 
 int main(int argc, char ** argv) {
 
@@ -171,9 +172,20 @@ bool Communicator::dispatch() {
             ADD = moduleID;
          }
 
+         else if (socketBuffer[0] == 'o') {
+            moduleID++;
+            message = new message::Spawn(0, rank, moduleID, "osgrenderer");
+            OSGRENDERER = moduleID;
+         }
+
          else if (socketBuffer[0] == 'c') {
-            message = new message::Connect(0, rank, GENDAT, "data_out", ADD,
-                                           "data_in");
+            message = new message::Connect(0, rank, GENDAT, "data_out",
+                                           ADD, "data_in");
+         }
+
+         else if (socketBuffer[0] == 'r') {
+            message = new message::Connect(0, rank, ADD, "data_out",
+                                           OSGRENDERER, "data_in");
          }
 
          else if (socketBuffer[0] == 'e') {

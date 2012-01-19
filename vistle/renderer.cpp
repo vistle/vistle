@@ -32,12 +32,19 @@ bool Renderer::dispatch() {
       }
    }
 
-   return false;
+   if (!done)
+      render();
+
+   return done;
 }
 
 bool Renderer::compute() {
 
    return true;
+}
+
+Renderer::~Renderer() {
+
 }
 
 } // namespace vistle
