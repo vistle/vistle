@@ -52,14 +52,16 @@ class Object {
 
  public:
    enum Type {
-      UNKNOWN    = -1,
-      VECFLOAT   = 0,
-      VECINT     = 1,
-      VECCHAR    = 2,
-      VEC3FLOAT  = 3,
-      VEC3INT    = 4,
-      VEC3CHAR   = 5,
-      TRIANGLES  = 6,
+      UNKNOWN           = -1,
+      VECFLOAT          =  0,
+      VECINT            =  1,
+      VECCHAR           =  2,
+      VEC3FLOAT         =  3,
+      VEC3INT           =  4,
+      VEC3CHAR          =  5,
+      TRIANGLES         =  6,
+      LINES             =  7,
+      UNSTRUCTUREDGRID  =  8,
    };
 
    Object(const Type id, const std::string & name);
@@ -155,14 +157,68 @@ class Triangles: public Object {
    const size_t & getNumCorners() const;
    const size_t & getNumVertices() const;
 
-   boost::interprocess::offset_ptr<int> cl;
+   boost::interprocess::offset_ptr<size_t> cl;
    boost::interprocess::offset_ptr<float> x;
    boost::interprocess::offset_ptr<float> y;
    boost::interprocess::offset_ptr<float> z;
 
  private:
-   const size_t numCorners;;
-   const size_t numVertices;;
+   const size_t numCorners;
+   const size_t numVertices;
+};
+
+class Lines: public Object {
+
+ public:
+   static Lines * create(const size_t & numElements,
+                         const size_t & numCorners,
+                         const size_t & numVertices);
+   Lines(const size_t & numElements, const size_t & numCorners,
+         const size_t & numVertices, const std::string & name);
+
+   const size_t & getNumElements() const;
+   const size_t & getNumCorners() const;
+   const size_t & getNumVertices() const;
+
+   boost::interprocess::offset_ptr<size_t> el;
+   boost::interprocess::offset_ptr<size_t> cl;
+   boost::interprocess::offset_ptr<float> x;
+   boost::interprocess::offset_ptr<float> y;
+   boost::interprocess::offset_ptr<float> z;
+
+ private:
+   const size_t numElements;
+   const size_t numCorners;
+   const size_t numVertices;
+};
+
+
+class UnstructuredGrid: public Object {
+
+ public:
+   enum Type { HEXAHEDRON = 1 };
+   static UnstructuredGrid * create(const size_t & numElements,
+                                    const size_t & numCorners,
+                                    const size_t & numVertices);
+
+   UnstructuredGrid(const size_t & numElements, const size_t & numCorners,
+                    const size_t & numVertices, const std::string & name);
+
+   const size_t & getNumElements() const;
+   const size_t & getNumCorners() const;
+   const size_t & getNumVertices() const;
+
+   boost::interprocess::offset_ptr<Type> tl;
+   boost::interprocess::offset_ptr<size_t> el;
+   boost::interprocess::offset_ptr<size_t> cl;
+   boost::interprocess::offset_ptr<float> x;
+   boost::interprocess::offset_ptr<float> y;
+   boost::interprocess::offset_ptr<float> z;
+
+ private:
+   const size_t numElements;
+   const size_t numCorners;
+   const size_t numVertices;
 };
 
 } // namespace vistle

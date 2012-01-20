@@ -121,8 +121,8 @@ Triangles::Triangles(const size_t & corners, const size_t & vertices,
    z = static_cast<float *>
       (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
 
-   cl = static_cast<int *>
-      (Shm::instance().getShm().allocate(numCorners * sizeof(int)));
+   cl = static_cast<size_t *>
+      (Shm::instance().getShm().allocate(numCorners * sizeof(size_t)));
 }
 
 
@@ -146,6 +146,110 @@ const size_t & Triangles::getNumCorners() const {
 }
 
 const size_t & Triangles::getNumVertices() const {
+
+   return numVertices;
+}
+
+Lines::Lines(const size_t & elements, const size_t & corners,
+             const size_t & vertices, const std::string & name)
+   : Object(Object::LINES, name),
+     numElements(elements), numCorners(corners), numVertices(vertices) {
+
+   x = static_cast<float *>
+      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
+   y = static_cast<float *>
+      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
+   z = static_cast<float *>
+      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
+
+   el = static_cast<size_t *>
+      (Shm::instance().getShm().allocate(numElements * sizeof(size_t)));
+
+   cl = static_cast<size_t *>
+      (Shm::instance().getShm().allocate(numCorners * sizeof(size_t)));
+}
+
+
+Lines * Lines::create(const size_t & numElements, const size_t & numCorners,
+                      const size_t & numVertices) {
+
+   const std::string name = Shm::instance().createObjectID();
+   Lines *l = static_cast<Lines *>
+      (Shm::instance().getShm().construct<Lines>(name.c_str())[1](numElements, numCorners, numVertices, name));
+
+   shm_handle_t handle =
+      Shm::instance().getShm().get_handle_from_address(l);
+
+   Shm::instance().publish(handle);
+   return l;
+}
+
+const size_t & Lines::getNumElements() const {
+
+   return numElements;
+}
+
+const size_t & Lines::getNumCorners() const {
+
+   return numCorners;
+}
+
+const size_t & Lines::getNumVertices() const {
+
+   return numVertices;
+}
+
+
+UnstructuredGrid::UnstructuredGrid(const size_t & elements,
+                                   const size_t & corners,
+                                   const size_t & vertices,
+                                   const std::string & name)
+   : Object(Object::UNSTRUCTUREDGRID, name),
+     numElements(elements), numCorners(corners), numVertices(vertices) {
+
+   x = static_cast<float *>
+      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
+   y = static_cast<float *>
+      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
+   z = static_cast<float *>
+      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
+
+   tl = static_cast<Type *>
+      (Shm::instance().getShm().allocate(numCorners * sizeof(Type)));
+
+   el = static_cast<size_t *>
+      (Shm::instance().getShm().allocate(numCorners * sizeof(size_t)));
+
+   cl = static_cast<size_t *>
+      (Shm::instance().getShm().allocate(numCorners * sizeof(size_t)));
+}
+
+UnstructuredGrid * UnstructuredGrid::create(const size_t & numElements,
+                                            const size_t & numCorners,
+                                            const size_t & numVertices) {
+
+   const std::string name = Shm::instance().createObjectID();
+   UnstructuredGrid *u = static_cast<UnstructuredGrid *>
+      (Shm::instance().getShm().construct<UnstructuredGrid>(name.c_str())[1](numElements, numCorners, numVertices, name));
+
+   shm_handle_t handle =
+      Shm::instance().getShm().get_handle_from_address(u);
+
+   Shm::instance().publish(handle);
+   return u;
+}
+
+const size_t & UnstructuredGrid::getNumElements() const {
+
+   return numElements;
+}
+
+const size_t & UnstructuredGrid::getNumCorners() const {
+
+   return numCorners;
+}
+
+const size_t & UnstructuredGrid::getNumVertices() const {
 
    return numVertices;
 }

@@ -79,10 +79,17 @@ int main(int argc, char ** argv) {
 
    vistle::message::Spawn spawn(0, rank, 1, "gendat");
    comm->handleMessage(&spawn);
-   vistle::message::Spawn renderer(0, rank, 2, "osgrenderer");
+   vistle::message::Spawn showUSG(0, rank, 2, "showUSG");
+   comm->handleMessage(&showUSG);
+   vistle::message::Spawn renderer(0, rank, 3, "osgrenderer");
    comm->handleMessage(&renderer);
-   vistle::message::Connect connect(0, rank, 1, "data_out", 2, "data_in");
-   comm->handleMessage(&connect);
+
+   vistle::message::Connect connect12(0, rank, 1, "grid_out", 2, "grid_in");
+   comm->handleMessage(&connect12);
+
+   vistle::message::Connect connect23(0, rank, 2, "grid_out", 3, "data_in");
+   comm->handleMessage(&connect23);
+
    vistle::message::Compute compute(0, rank, 1);
    comm->handleMessage(&compute);
 

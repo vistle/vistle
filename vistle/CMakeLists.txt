@@ -16,4 +16,6 @@ add_subdirectory(core)
 add_subdirectory(communicator)
 
 add_subdirectory(gendat)
+add_subdirectory(add)
+add_subdirectory(showUSG)
 add_subdirectory(osgrenderer)

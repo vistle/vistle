@@ -114,8 +114,51 @@ bool OSGRenderer::addInputObject(const std::string & portName,
          nodes[object->getName()] = geode;
          break;
       }
-   default:
-      break;
+
+      case vistle::Object::LINES: {
+
+         const vistle::Lines *lines =
+            static_cast<const vistle::Lines *>(object);
+         const size_t numElements = lines->getNumElements();
+         const size_t numCorners = lines->getNumCorners();
+         const size_t numVertices = lines->getNumVertices();
+
+         osg::ref_ptr<osg::Geode> geode = new osg::Geode();
+         osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry();
+         osg::ref_ptr<osg::DrawArrayLengths> primitives = new osg::DrawArrayLengths(osg::PrimitiveSet::LINE_STRIP);
+
+         osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
+
+         int num = 0;
+         for (size_t index = 0; index < numElements; index ++) {
+
+            if (index == numElements - 1)
+               num = numCorners - lines->el[index];
+            else
+               num = lines->el[index + 1] - lines->el[index];
+
+            primitives->push_back(num);
+
+            for (int n = 0; n < num; n ++) {
+               int v = lines->cl[lines->el[index] + n];
+               vertices->push_back(osg::Vec3(lines->x[v],
+                                             lines->y[v],
+                                             lines->z[v]));
+            }
+         }
+
+         geometry->setVertexArray(vertices.get());
+         geometry->addPrimitiveSet(primitives.get());
+
+         geode->addDrawable(geometry.get());
+         scene->addChild(geode);
+
+         nodes[object->getName()] = geode;
+         break;
+      }
+
+      default:
+         break;
    }
 
    return true;
