@@ -322,7 +322,9 @@ bool Communicator::handleMessage(const message::Message * message) {
          const message::Spawn *spawn =
             static_cast<const message::Spawn *>(message);
          int moduleID = spawn->getSpawnID();
-         const char *name = spawn->getName();
+
+         std::stringstream name;
+         name << "bin/" << spawn->getName();
 
          std::stringstream modID;
          modID << moduleID;
@@ -347,8 +349,8 @@ bool Communicator::handleMessage(const message::Message * message) {
          MPI_Comm interComm;
          char *argv[2] = { strdup(modID.str().c_str()), NULL };
 
-         MPI_Comm_spawn(strdup(name), argv, size, MPI_INFO_NULL, 0,
-                        MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
+         MPI_Comm_spawn(strdup(name.str().c_str()), argv, size, MPI_INFO_NULL,
+                        0, MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
 
          break;
       }
@@ -468,7 +470,6 @@ bool Communicator::handleMessage(const message::Message * message) {
             const std::vector<const Port *> *list =
                portManager.getConnectionList(port);
 
-            printf("connectionlist size %d\n", list->size());
             std::vector<const Port *>::const_iterator pi;
             for (pi = list->begin(); pi != list->end(); pi ++) {
 
