@@ -7,6 +7,8 @@
 #include "messagequeue.h"
 #include "object.h"
 
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+
 using namespace boost::interprocess;
 
 namespace vistle {
@@ -76,6 +78,7 @@ Object * Shm::getObjectFromHandle(const shm_handle_t & handle) {
 
    return NULL;
 }
+
    /*
 template <class T> Vec3<T>::Vec3(const size_t s): size(s) {
 
@@ -85,8 +88,11 @@ template <class T> Vec3<T>::Vec3(const size_t s): size(s) {
 }
    */
 
-Object::Object(const Type type): id(type) {
+Object::Object(const Type type, const std::string & n): id(type) {
 
+   size_t size = MIN(n.size(), 31);
+   n.copy(name, size);
+   name[size] = 0;
 }
 
 Object::~Object() {
@@ -98,8 +104,15 @@ Object::Type Object::getType() const {
    return id;
 }
 
-Triangles::Triangles(const size_t & corners, const size_t & vertices)
-   : Object(Object::TRIANGLES), numCorners(corners), numVertices(vertices) {
+std::string Object::getName() const {
+
+   return name;
+}
+
+Triangles::Triangles(const size_t & corners, const size_t & vertices,
+                     const std::string & name)
+   : Object(Object::TRIANGLES, name),
+     numCorners(corners), numVertices(vertices) {
 
    x = static_cast<float *>
       (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
@@ -116,9 +129,9 @@ Triangles::Triangles(const size_t & corners, const size_t & vertices)
 Triangles * Triangles::create(const size_t & numCorners,
                               const size_t & numVertices) {
 
-   std::string name = Shm::instance().createObjectID();
+   const std::string name = Shm::instance().createObjectID();
    Triangles *t = static_cast<Triangles *>
-      (Shm::instance().getShm().construct<Triangles>(name.c_str())[1](numCorners, numVertices));
+      (Shm::instance().getShm().construct<Triangles>(name.c_str())[1](numCorners, numVertices, name));
 
    shm_handle_t handle =
       Shm::instance().getShm().get_handle_from_address(t);

@@ -34,7 +34,7 @@ class Shm {
    std::string createObjectID();
 
    void publish(const shm_handle_t & handle);
-   Object *getObjectFromHandle(const shm_handle_t & handle);
+   Object * getObjectFromHandle(const shm_handle_t & handle);
 
  private:
    Shm(const int moduleID, const int rank, const size_t &size,
@@ -62,13 +62,16 @@ class Object {
       TRIANGLES  = 6,
    };
 
-   Object(const Type id);
+   Object(const Type id, const std::string & name);
    virtual ~Object();
 
    Type getType() const;
+   std::string getName() const;
 
  protected:
    const Type id;
+ private:
+   char name[32];
 };
 
 
@@ -78,17 +81,17 @@ class Vec: public Object {
  public:
    static Vec<T> * create(const size_t & size) {
 
-      std::string name = Shm::instance().createObjectID();
+      const std::string name = Shm::instance().createObjectID();
       Vec<T> *t = static_cast<Vec<T> *>
-         (Shm::instance().getShm().construct<Vec<T> >(name.c_str())[1](size));
+         (Shm::instance().getShm().construct<Vec<T> >(name.c_str())[1](size, name));
       shm_handle_t handle =
          Shm::instance().getShm().get_handle_from_address(t);
       Shm::instance().publish(handle);
       return t;
    }
 
-   Vec(const size_t s)
-      : Object(type), size(s) {
+   Vec(const size_t & s, const std::string & name)
+      : Object(type, name), size(s) {
 
       x = static_cast<T*>(Shm::instance().getShm().allocate(size * sizeof(T)));
    }
@@ -111,16 +114,17 @@ class Vec3: public Object {
  public:
    static Vec3<T> * create(const size_t & size) {
 
-      std::string name = Shm::instance().createObjectID();
+      const std::string name = Shm::instance().createObjectID();
       Vec3<T> *t = static_cast<Vec3<T> *>
-         (Shm::instance().getShm().construct<Vec3<T> >(name.c_str())[1](size));
+         (Shm::instance().getShm().construct<Vec3<T> >(name.c_str())[1](size, name));
       shm_handle_t handle =
          Shm::instance().getShm().get_handle_from_address(t);
       Shm::instance().publish(handle);
       return t;
    }
 
-   Vec3(size_t s): Object(type), size(s) {
+   Vec3(const size_t & s, const std::string & name):
+      Object(type, name), size(s) {
 
       x = static_cast<T*>(Shm::instance().getShm().allocate(size * sizeof(T)));
       y = static_cast<T*>(Shm::instance().getShm().allocate(size * sizeof(T)));
@@ -145,7 +149,8 @@ class Triangles: public Object {
  public:
    static Triangles * create(const size_t & numCorners,
                              const size_t & numVertices);
-   Triangles(const size_t & numCorners, const size_t & numVertices);
+   Triangles(const size_t & numCorners, const size_t & numVertices,
+             const std::string & name);
 
    const size_t & getNumCorners() const;
    const size_t & getNumVertices() const;

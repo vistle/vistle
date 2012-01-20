@@ -50,8 +50,11 @@ class Module {
    bool handleMessage(const message::Message *message);
 
  private:
-   bool addInputObject(const std::string &portName,
+   bool addInputObject(const std::string & portName,
                        const shm_handle_t & handle);
+
+   virtual bool addInputObject(const std::string & portName,
+                               const Object * object);
 
    virtual bool compute() = 0;
 

@@ -407,7 +407,6 @@ bool Communicator::handleMessage(const message::Message * message) {
             }
 
             default:
-               std::cout << "unknown data object" << std::endl;
                break;
          }
 

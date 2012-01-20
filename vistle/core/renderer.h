@@ -14,7 +14,6 @@ class Renderer: public Module {
    bool dispatch();
 
  private:
-
    virtual void render() = 0;
 };
 

@@ -167,9 +167,16 @@ bool Module::addInputObject(const std::string & portName,
 
    if (i != inputPorts.end()) {
       i->second->push_back(handle);
-      return true;
+      return addInputObject(portName,
+                            Shm::instance().getObjectFromHandle(handle));
    }
    return false;
+}
+
+bool Module::addInputObject(const std::string & portName,
+                            const Object * object) {
+
+   return true;
 }
 
 bool Module::dispatch() {
