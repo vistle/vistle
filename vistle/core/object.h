@@ -196,7 +196,19 @@ class Lines: public Object {
 class UnstructuredGrid: public Object {
 
  public:
-   enum Type { HEXAHEDRON = 1 };
+   enum Type {
+      NONE        =  0,
+      BAR         =  1,
+      TRIANGLE    =  2,
+      QUAD        =  3,
+      TETRAHEDRON =  4,
+      PYRAMID     =  5,
+      PRISM       =  6,
+      HEXAHEDRON  =  7,
+      POINT       = 10,
+      POLYHEDRON  = 11
+   };
+
    static UnstructuredGrid * create(const size_t & numElements,
                                     const size_t & numCorners,
                                     const size_t & numVertices);

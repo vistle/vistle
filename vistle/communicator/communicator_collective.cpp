@@ -77,7 +77,7 @@ int main(int argc, char ** argv) {
    vistle::Communicator *comm = new vistle::Communicator(rank, size);
    bool done = false;
 
-   vistle::message::Spawn spawn(0, rank, 1, "gendat");
+   vistle::message::Spawn spawn(0, rank, 1, "readcovise");
    comm->handleMessage(&spawn);
    vistle::message::Spawn showUSG(0, rank, 2, "showUSG");
    comm->handleMessage(&showUSG);

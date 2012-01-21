@@ -60,15 +60,15 @@ bool ShowUSG::compute() {
 
                      out->cl[cornerIdx++] = in->cl[in->el[index]];
                      out->cl[cornerIdx++] = in->cl[in->el[index] + 1];
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 3];
                      out->cl[cornerIdx++] = in->cl[in->el[index] + 2];
+                     out->cl[cornerIdx++] = in->cl[in->el[index] + 3];
                      out->cl[cornerIdx++] = in->cl[in->el[index]];
                      out->cl[cornerIdx++] = in->cl[in->el[index] + 4];
 
                      out->el[lineIdx++] = cornerIdx;
                      out->cl[cornerIdx++] = in->cl[in->el[index] + 5];
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 7];
                      out->cl[cornerIdx++] = in->cl[in->el[index] + 6];
+                     out->cl[cornerIdx++] = in->cl[in->el[index] + 7];
                      out->cl[cornerIdx++] = in->cl[in->el[index] + 4];
                      out->cl[cornerIdx++] = in->cl[in->el[index] + 5];
                      out->cl[cornerIdx++] = in->cl[in->el[index] + 1];
