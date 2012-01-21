@@ -59,14 +59,16 @@ void ReadCovise::readAttributes(const int fd) {
 }
 
 void ReadCovise::readSETELE(const int fd,
-                            std::vector<vistle::Object *> & objects) {
+                            std::vector<vistle::Object *> & objects,
+                            bool byteswap) {
    
    int num;
    read(fd, &num, sizeof(int));
 }
 
 void ReadCovise::readUNSGRD(const int fd,
-                            std::vector<vistle::Object *> & objects) {
+                            std::vector<vistle::Object *> & objects,
+                            bool byteswap) {
 
    unsigned int numElem;
    unsigned int numConn;
@@ -74,11 +76,12 @@ void ReadCovise::readUNSGRD(const int fd,
    read(fd, &numElem, sizeof(int));
    read(fd, &numConn, sizeof(int));
    read(fd, &numVert, sizeof(int));
-   swap_int(&numElem, 1);
-   swap_int(&numConn, 1);
-   swap_int(&numVert, 1);
 
-   printf("%d elem, %d conn, %d vert\n", numElem, numConn, numVert);
+   if (byteswap) {
+      swap_int(&numElem, 1);
+      swap_int(&numConn, 1);
+      swap_int(&numVert, 1);
+   }
 
    vistle::UnstructuredGrid *usg =
       vistle::UnstructuredGrid::create(numElem, numConn, numVert);
@@ -88,11 +91,14 @@ void ReadCovise::readUNSGRD(const int fd,
    unsigned int *cl = new unsigned int[numConn];
 
    read(fd, el, numElem * sizeof(int));
-   swap_int(el, numElem);
    read(fd, tl, numElem * sizeof(int));
-   swap_int(tl, numElem);
    read(fd, cl, numConn * sizeof(int));
-   swap_int(cl, numConn);
+
+   if (byteswap) {
+      swap_int(el, numElem);
+      swap_int(tl, numElem);
+      swap_int(cl, numConn);
+   }
 
    for (unsigned int index = 0; index < numElem; index ++) {
       usg->el[index] = el[index];
@@ -100,13 +106,16 @@ void ReadCovise::readUNSGRD(const int fd,
    }
    for (unsigned int index = 0; index < numConn; index ++)
       usg->cl[index] = cl[index];
-         
+   
    read(fd, &(usg->x[0]), numVert * sizeof(float));
-   swap_float(&(usg->x[0]), numVert);
    read(fd, &(usg->y[0]), numVert * sizeof(float));
-   swap_float(&(usg->y[0]), numVert);
    read(fd, &(usg->z[0]), numVert * sizeof(float));
-   swap_float(&(usg->z[0]), numVert);
+
+   if (byteswap) {
+      swap_float(&(usg->x[0]), numVert);
+      swap_float(&(usg->y[0]), numVert);
+      swap_float(&(usg->z[0]), numVert);
+   }
 
    readAttributes(fd);
 
@@ -120,18 +129,28 @@ void ReadCovise::readUNSGRD(const int fd,
 void ReadCovise::load(const std::string & name,
                       std::vector<vistle::Object *> & objects) {
 
+   bool byteswap = true;
+
    int fd = open(name.c_str(), O_RDONLY);
    char buf[7];
    buf[6] = 0;
 
    int r = read(fd, buf, 6);
+   if (!strncmp(buf, "COV_BE", 6))
+      byteswap = true;
+   else if (!strncmp(buf, "COV_LE", 6))
+      byteswap = false;
+   else
+      lseek(fd, 0, SEEK_SET);
+
+   r = read(fd, buf, 6);
    while (r > 0) {
-      printf("ReadCovise::load [%s]\n", buf);
 
       if (!strncmp(buf, "SETELE", 6))
-         readSETELE(fd, objects);
+         readSETELE(fd, objects, byteswap);
+
       else if (!strncmp(buf, "UNSGRD", 6))
-         readUNSGRD(fd, objects);
+         readUNSGRD(fd, objects, byteswap);
 
       r = read(fd, buf, 6);
    }
