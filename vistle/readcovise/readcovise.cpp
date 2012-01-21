@@ -42,92 +42,146 @@ void swap_float(float * d, const unsigned int num) {
    }
 }
 
+size_t read_int(int fd, unsigned int * data, size_t num, bool byte_swap) {
+
+   size_t r = 0;
+   while (r != num) {
+      size_t n = read(fd, data + r, sizeof(unsigned int) * (num - r));
+      if (n <= 0)
+         break;
+      r += n;
+   }
+
+   if (byte_swap)
+      swap_int(data, r);
+
+   return r;
+}
+
+size_t read_float(int fd, float * data, size_t num, bool byte_swap) {
+
+   size_t r = 0;
+   while (r != num) {
+      size_t n = read(fd, data + r, sizeof(float) * (num - r));
+      if (n <= 0)
+         break;
+      r += n;
+   }
+   if (byte_swap)
+      swap_float(data, r);
+
+   return r;
+}
+
 ReadCovise::~ReadCovise() {
 
 }
 
-void ReadCovise::readAttributes(const int fd) {
+void ReadCovise::readAttributes(const int fd, const bool byteswap) const {
 
    unsigned int size, num;
-   read(fd, &size, sizeof(int));
-   swap_int(&size, 1);
-   size -= sizeof(int);
-   read(fd, &num, sizeof(int));
-   swap_int(&num, 1);
-   printf("size %d: %d attributes\n", size, num);
+   read_int(fd, &size, 1, byteswap);
+   size -= sizeof(unsigned int);
+   read_int(fd, &num, 1, byteswap);
+
+   std::cout << "ReadCovise::readAttributes: " << num << " attributes\n"
+             << std::endl;
+
    lseek(fd, size, SEEK_CUR);
 }
 
 void ReadCovise::readSETELE(const int fd,
                             std::vector<vistle::Object *> & objects,
-                            bool byteswap) {
-   
-   int num;
-   read(fd, &num, sizeof(int));
+                            const bool byteswap) const {
+
+   unsigned int num;
+   read_int(fd, &num, 1, byteswap);
+
+   char buf[7];
+   buf[6] = 0;
+
+   for (unsigned int index = 0; index < num; index ++) {
+      read(fd, buf, 6);
+
+      if (!strncmp(buf, "SETELE", 6))
+         readSETELE(fd, objects, byteswap);
+
+      else if (!strncmp(buf, "UNSGRD", 6))
+         readUNSGRD(fd, objects, byteswap, index);
+
+      else {
+         std:: cout << "ReadCovise: object type [" << buf << "] unsupported"
+                    << std::endl;
+         exit(1);
+      }
+   }
+   readAttributes(fd, byteswap);
 }
 
 void ReadCovise::readUNSGRD(const int fd,
                             std::vector<vistle::Object *> & objects,
-                            bool byteswap) {
+                            const bool byteswap, const int setElement) const {
 
-   unsigned int numElem;
-   unsigned int numConn;
-   unsigned int numVert;
-   read(fd, &numElem, sizeof(int));
-   read(fd, &numConn, sizeof(int));
-   read(fd, &numVert, sizeof(int));
+   if ((setElement % size) == rank) {
+      unsigned int numElem;
+      unsigned int numConn;
+      unsigned int numVert;
+      read_int(fd, &numElem, 1, byteswap);
+      read_int(fd, &numConn, 1, byteswap);
+      read_int(fd, &numVert, 1, byteswap);
 
-   if (byteswap) {
-      swap_int(&numElem, 1);
-      swap_int(&numConn, 1);
-      swap_int(&numVert, 1);
-   }
-
-   vistle::UnstructuredGrid *usg =
+      vistle::UnstructuredGrid *usg =
       vistle::UnstructuredGrid::create(numElem, numConn, numVert);
 
-   unsigned int *el = new unsigned int[numElem];
-   unsigned int *tl = new unsigned int[numElem];
-   unsigned int *cl = new unsigned int[numConn];
+      unsigned int *el = new unsigned int[numElem];
+      unsigned int *tl = new unsigned int[numElem];
+      unsigned int *cl = new unsigned int[numConn];
 
-   read(fd, el, numElem * sizeof(int));
-   read(fd, tl, numElem * sizeof(int));
-   read(fd, cl, numConn * sizeof(int));
+      read_int(fd, el, numElem, byteswap);
+      read_int(fd, tl, numElem, byteswap);
+      read_int(fd, cl, numConn, byteswap);
 
-   if (byteswap) {
-      swap_int(el, numElem);
-      swap_int(tl, numElem);
-      swap_int(cl, numConn);
+      for (unsigned int index = 0; index < numElem; index ++) {
+         usg->el[index] = el[index];
+         usg->tl[index] = (vistle::UnstructuredGrid::Type) tl[index];
+      }
+      for (unsigned int index = 0; index < numConn; index ++)
+         usg->cl[index] = cl[index];
+
+      read_float(fd, &(usg->x[0]), numVert, byteswap);
+      read_float(fd, &(usg->y[0]), numVert, byteswap);
+      read_float(fd, &(usg->z[0]), numVert, byteswap);
+
+      readAttributes(fd, byteswap);
+
+      delete[] el;
+      delete[] tl;
+      delete[] cl;
+
+      objects.push_back(usg);
+   } else {
+
+      unsigned int numElem;
+      unsigned int numConn;
+      unsigned int numVert;
+      read_int(fd, &numElem, 1, byteswap);
+      read_int(fd, &numConn, 1, byteswap);
+      read_int(fd, &numVert, 1, byteswap);
+
+      lseek(fd, numElem * sizeof(int), SEEK_CUR);
+      lseek(fd, numElem * sizeof(int), SEEK_CUR);
+      lseek(fd, numConn * sizeof(int), SEEK_CUR);
+
+      lseek(fd, numVert * sizeof(float), SEEK_CUR);
+      lseek(fd, numVert * sizeof(float), SEEK_CUR);
+      lseek(fd, numVert * sizeof(float), SEEK_CUR);
+
+      readAttributes(fd, byteswap);
    }
-
-   for (unsigned int index = 0; index < numElem; index ++) {
-      usg->el[index] = el[index];
-      usg->tl[index] = (vistle::UnstructuredGrid::Type) tl[index];
-   }
-   for (unsigned int index = 0; index < numConn; index ++)
-      usg->cl[index] = cl[index];
-   
-   read(fd, &(usg->x[0]), numVert * sizeof(float));
-   read(fd, &(usg->y[0]), numVert * sizeof(float));
-   read(fd, &(usg->z[0]), numVert * sizeof(float));
-
-   if (byteswap) {
-      swap_float(&(usg->x[0]), numVert);
-      swap_float(&(usg->y[0]), numVert);
-      swap_float(&(usg->z[0]), numVert);
-   }
-
-   readAttributes(fd);
-
-   delete[] el;
-   delete[] tl;
-   delete[] cl;
-   
-   objects.push_back(usg);
 }
 
 void ReadCovise::load(const std::string & name,
-                      std::vector<vistle::Object *> & objects) {
+                      std::vector<vistle::Object *> & objects) const {
 
    bool byteswap = true;
 
@@ -137,9 +191,9 @@ void ReadCovise::load(const std::string & name,
 
    int r = read(fd, buf, 6);
    if (!strncmp(buf, "COV_BE", 6))
-      byteswap = true;
-   else if (!strncmp(buf, "COV_LE", 6))
       byteswap = false;
+   else if (!strncmp(buf, "COV_LE", 6))
+      byteswap = true;
    else
       lseek(fd, 0, SEEK_SET);
 
@@ -152,16 +206,21 @@ void ReadCovise::load(const std::string & name,
       else if (!strncmp(buf, "UNSGRD", 6))
          readUNSGRD(fd, objects, byteswap);
 
+      else {
+         std:: cout << "ReadCovise: object type [" << buf << "] unsupported"
+                    << std::endl;
+         exit(1);
+      }
       r = read(fd, buf, 6);
    }
 
-   close(fd);  
+   close(fd);
 }
 
 bool ReadCovise::compute() {
 
    std::vector<vistle::Object *> objects;
-   load("/home/hpcflon/covise/example-data/tutorial/tiny_geo.covise", objects);
+   load("/tmp/g.covise", objects);
 
    std::vector<vistle::Object *>::iterator i;
    for (i = objects.begin(); i != objects.end(); i++)
@@ -169,29 +228,3 @@ bool ReadCovise::compute() {
 
    return true;
 }
-
-/*
-int main(int argc, char **argv) {
-
-   ReadCovise r;
-   r.compute();
-}
-
-class ReadCovise {
-   
-public:
-   ReadCovise();
-   ~ReadCovise();
-
-   void readSETELE(const int fd);
-   void readUNSGRD(const int fd);
-   void readAttributes(const int fd);
-
-   void load(const std::string & name);
-   bool compute();
-};
-
-ReadCovise::ReadCovise() {
-
-}
-*/
