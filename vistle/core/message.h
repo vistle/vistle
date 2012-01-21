@@ -17,17 +17,21 @@ class Message {
    friend class vistle::Communicator;
 
  public:
+   static const size_t MESSAGE_SIZE = 512;
+
    enum Type {
-      DEBUG            =  0,
-      SPAWN            =  1,
-      QUIT             =  2,
-      NEWOBJECT        =  3,
-      MODULEEXIT       =  4,
-      COMPUTE          =  5,
-      CREATEINPUTPORT  =  6,
-      CREATEOUTPUTPORT =  7,
-      ADDOBJECT        =  8,
-      CONNECT          =  9,
+      DEBUG            =   0,
+      SPAWN            =   1,
+      QUIT             =   2,
+      NEWOBJECT        =   3,
+      MODULEEXIT       =   4,
+      COMPUTE          =   5,
+      CREATEINPUTPORT  =   6,
+      CREATEOUTPUTPORT =   7,
+      ADDOBJECT        =   8,
+      CONNECT          =   9,
+      ADDFILEPARAMETER =  10,
+      SETFILEPARAMETER =  11,
    };
 
    Message(const int moduleID, const int rank,
@@ -165,6 +169,39 @@ class Connect: public Message {
 
    const int moduleA;
    const int moduleB;
+};
+
+class AddFileParameter: public Message {
+
+ public:
+   AddFileParameter(const int moduleID, const int rank,
+                    const std::string & name,
+                    const std::string & value);
+
+   const char * getName() const;
+   const char * getValue() const;
+
+ private:
+   char name[32];
+   char value[256];
+};
+
+class SetFileParameter: public Message {
+
+ public:
+   SetFileParameter(const int moduleID, const int rank,
+                    const int module,
+                    const std::string & name,
+                    const std::string & value);
+
+   int getModule() const;
+   const char * getName() const;
+   const char * getValue() const;
+
+ private:
+   const int module;
+   char name[32];
+   char value[256];
 };
 
 } // namespace message

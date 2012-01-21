@@ -1,6 +1,7 @@
 #include <sstream>
 #include <iomanip>
 
+#include "message.h"
 #include "messagequeue.h"
 
 using namespace boost::interprocess;
@@ -32,7 +33,8 @@ MessageQueue * MessageQueue::open(const std::string & n) {
 MessageQueue::MessageQueue(const std::string & n,
                            boost::interprocess::create_only_t)
    : name(n),
-     mq(create_only, name.c_str(), 128 /* num msg */, 128 /* msg size */),
+     mq(create_only, name.c_str(), 64 /* num msg */,
+        message::Message::MESSAGE_SIZE),
      removeOnExit(true) {
 
 }

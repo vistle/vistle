@@ -90,6 +90,10 @@ int main(int argc, char ** argv) {
    vistle::message::Connect connect23(0, rank, 2, "grid_out", 3, "data_in");
    comm->handleMessage(&connect23);
 
+   vistle::message::SetFileParameter param(0, rank, 1, "filename",
+                                           "/tmp/g.covise");
+   comm->handleMessage(&param);
+
    vistle::message::Compute compute(0, rank, 1);
    comm->handleMessage(&compute);
 
@@ -138,7 +142,7 @@ Communicator::Communicator(int r, int s)
      mpiReceiveBuffer(NULL), mpiMessageSize(0) {
 
    socketBuffer = new unsigned char[64];
-   mpiReceiveBuffer = new char[1024];
+   mpiReceiveBuffer = new char[message::Message::MESSAGE_SIZE];
 
    // post requests for length of next MPI message
    MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, 0,
@@ -263,7 +267,7 @@ bool Communicator::dispatch() {
    // test for messages from modules
    size_t msgSize;
    unsigned int priority;
-   char msgRecvBuf[128];
+   char msgRecvBuf[vistle::message::Message::MESSAGE_SIZE];
 
    std::map<int, message::MessageQueue *>::iterator i;
    for (i = receiveMessageQueue.begin(); i != receiveMessageQueue.end(); ){
@@ -271,9 +275,10 @@ bool Communicator::dispatch() {
       bool moduleExit = false;
       try {
          bool received =
-            i->second->getMessageQueue().try_receive((void *) msgRecvBuf,
-                                                     (size_t) 128, msgSize,
-                                                     priority);
+            i->second->getMessageQueue().try_receive(
+                                        (void *) msgRecvBuf,
+                                        vistle::message::Message::MESSAGE_SIZE,
+                                        msgSize, priority);
 
          if (received) {
             moduleExit = !handleMessage((message::Message *) msgRecvBuf);
@@ -497,6 +502,34 @@ bool Communicator::handleMessage(const message::Message * message) {
                       << m->getHandle() << "] to port ["
                       << m->getPortName() << "]: port not found" << std::endl;
 
+         break;
+      }
+
+      case message::Message::ADDFILEPARAMETER: {
+
+         const message::AddFileParameter *m =
+            static_cast<const message::AddFileParameter *>(message);
+
+         std::cout << "AddFileParameter " << m->getName()
+                   << " default " << m->getValue() << std::endl;
+
+         break;
+      }
+
+      case message::Message::SETFILEPARAMETER: {
+
+         const message::SetFileParameter *m =
+            static_cast<const message::SetFileParameter *>(message);
+
+         if (m->getModuleID() != m->getModule()) {
+            // message to module
+            std::map<int, message::MessageQueue *>::iterator i
+               = sendMessageQueue.find(m->getModule());
+            if (i != sendMessageQueue.end())
+               i->second->getMessageQueue().send(m, sizeof(*m), 0);
+         } else {
+            // message from module
+         }
          break;
       }
 

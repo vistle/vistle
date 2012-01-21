@@ -20,13 +20,14 @@ bool Renderer::dispatch() {
 
    size_t msgSize;
    unsigned int priority;
-   char msgRecvBuf[128];
+   char msgRecvBuf[message::Message::MESSAGE_SIZE];
 
    bool done = false;
    bool msg =
-      receiveMessageQueue->getMessageQueue().try_receive((void *) msgRecvBuf,
-                                                         (size_t) 128, msgSize,
-                                                         priority);
+      receiveMessageQueue->getMessageQueue().try_receive(
+                                               (void *) msgRecvBuf,
+                                               message::Message::MESSAGE_SIZE,
+                                               msgSize, priority);
 
    if (msg) {
       vistle::message::Message *message =

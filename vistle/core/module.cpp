@@ -21,6 +21,7 @@
 #include "object.h"
 #include "message.h"
 #include "messagequeue.h"
+#include "parameter.h"
 #include "module.h"
 
 using namespace boost::interprocess;
@@ -96,6 +97,59 @@ bool Module::createOutputPort(const std::string &name) {
       return true;
    }
    return false;
+}
+
+bool Module::addFileParameter(const std::string & name,
+                              const std::string & value) {
+
+
+   std::map<std::string, Parameter *>::iterator i =
+      parameters.find(name);
+
+   if (i == parameters.end()) {
+
+      parameters[name] = new FileParameter(name, value);
+      message::AddFileParameter message(moduleID, rank, name, value);
+      sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
+
+      return true;
+   }
+   return false;
+}
+
+void Module::setFileParameter(const std::string & name,
+                              const std::string & value) {
+
+   std::map<std::string, Parameter *>::iterator i =
+      parameters.find(name);
+
+   if (i == parameters.end())
+      parameters[name] = new FileParameter(name, value);
+   else {
+      FileParameter *param = dynamic_cast<FileParameter *>(i->second);
+      if (param)
+         param->setValue(value);
+      else
+         return;
+   }
+
+   message::SetFileParameter message(moduleID, rank, moduleID, name, value);
+   sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
+}
+
+const std::string * Module::getFileParameter(const std::string & name) {
+
+  std::map<std::string, Parameter *>::iterator i =
+      parameters.find(name);
+
+  if (i == parameters.end())
+     return NULL;
+   else {
+      FileParameter *param = dynamic_cast<FileParameter *>(i->second);
+      if (param)
+         return & param->getValue();
+   }
+  return NULL;
 }
 
 bool Module::addObject(const std::string & portName,
@@ -183,11 +237,12 @@ bool Module::dispatch() {
 
    size_t msgSize;
    unsigned int priority;
-   char msgRecvBuf[128];
+   char msgRecvBuf[message::Message::MESSAGE_SIZE];
 
-   receiveMessageQueue->getMessageQueue().receive((void *) msgRecvBuf,
-                                                  (size_t) 128, msgSize,
-                                                  priority);
+   receiveMessageQueue->getMessageQueue().receive(
+                                               (void *) msgRecvBuf,
+                                               message::Message::MESSAGE_SIZE,
+                                               msgSize, priority);
 
    vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
 
@@ -241,6 +296,15 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const message::AddObject *add =
             static_cast<const message::AddObject *>(message);
          addInputObject(add->getPortName(), add->getHandle());
+         break;
+      }
+
+      case message::Message::SETFILEPARAMETER: {
+
+         const message::SetFileParameter *param =
+            static_cast<const message::SetFileParameter *>(message);
+
+         setFileParameter(param->getName(), param->getValue());
          break;
       }
 

@@ -13,6 +13,8 @@ namespace vistle {
 
 typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 
+class Parameter;
+
 namespace message {
 class Message;
 class MessageQueue;
@@ -33,6 +35,11 @@ class Module {
 
    bool createInputPort(const std::string & name);
    bool createOutputPort(const std::string & name);
+
+   bool addFileParameter(const std::string & name, const std::string & value);
+   void setFileParameter(const std::string & name, const std::string & value);
+   const std::string * getFileParameter(const std::string & name);
+
    bool addObject(const std::string &portName, const shm_handle_t & handle);
    bool addObject(const std::string & portName, const void *p);
    message::MessageQueue *sendMessageQueue;
@@ -60,6 +67,8 @@ class Module {
 
    std::map<std::string, std::list<shm_handle_t> *> outputPorts;
    std::map<std::string, std::list<shm_handle_t> *> inputPorts;
+
+   std::map<std::string, Parameter *> parameters;
 };
 
 } // namespace vistle

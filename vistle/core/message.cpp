@@ -127,6 +127,16 @@ AddObject::AddObject(const int moduleID, const int rank, const std::string & p,
    portName[size] = 0;
 }
 
+const char * AddObject::getPortName() const {
+
+   return portName;
+}
+
+const shm_handle_t & AddObject::getHandle() const {
+
+   return handle;
+}
+
 Connect::Connect(const int moduleID, const int rank,
                  const int moduleIDA, const std::string & portA,
                  const int moduleIDB, const std::string & portB)
@@ -162,14 +172,59 @@ int Connect::getModuleB() const {
    return moduleB;
 }
 
-const char * AddObject::getPortName() const {
+AddFileParameter::AddFileParameter(const int moduleID, const int rank,
+                                   const std::string & n,
+                                   const std::string & v)
+   : Message(moduleID, rank, Message::ADDFILEPARAMETER,
+             sizeof(ADDFILEPARAMETER)) {
 
-   return portName;
+   size_t size = MIN(n.size(), 31);
+   n.copy(name, size);
+   name[size] = 0;
+
+   size = MIN(v.size(), 255);
+   v.copy(value, size);
+   value[size] = 0;
 }
 
-const shm_handle_t & AddObject::getHandle() const {
+const char * AddFileParameter::getName() const {
 
-   return handle;
+   return name;
+}
+
+const char * AddFileParameter::getValue() const {
+
+   return value;
+}
+
+SetFileParameter::SetFileParameter(const int moduleID, const int rank,
+                                   const int m, const std::string & n,
+                                   const std::string & v)
+   : Message(moduleID, rank, Message::SETFILEPARAMETER,
+             sizeof(SETFILEPARAMETER)), module(m) {
+
+   size_t size = MIN(n.size(), 31);
+   n.copy(name, size);
+   name[size] = 0;
+
+   size = MIN(v.size(), 255);
+   v.copy(value, size);
+   value[size] = 0;
+}
+
+int SetFileParameter::getModule() const {
+
+   return module;
+}
+
+const char * SetFileParameter::getName() const {
+
+   return name;
+}
+
+const char * SetFileParameter::getValue() const {
+
+   return value;
 }
 
 } // namespace message

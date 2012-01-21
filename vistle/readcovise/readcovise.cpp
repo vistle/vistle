@@ -17,6 +17,7 @@ ReadCovise::ReadCovise(int rank, int size, int moduleID)
    : Module("ReadCovise", rank, size, moduleID) {
 
    createOutputPort("grid_out");
+   addFileParameter("filename", "");
 }
 
 void swap_int(unsigned int * data, const unsigned int num) {
@@ -220,11 +221,14 @@ void ReadCovise::load(const std::string & name,
 bool ReadCovise::compute() {
 
    std::vector<vistle::Object *> objects;
-   load("/tmp/g.covise", objects);
+   const std::string * name = getFileParameter("filename");
 
-   std::vector<vistle::Object *>::iterator i;
-   for (i = objects.begin(); i != objects.end(); i++)
-      addObject("grid_out", *i);
+   if (name) {
+      load(*name, objects);
 
+      std::vector<vistle::Object *>::iterator i;
+      for (i = objects.begin(); i != objects.end(); i++)
+         addObject("grid_out", *i);
+   }
    return true;
 }
