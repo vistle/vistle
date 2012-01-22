@@ -19,11 +19,12 @@ Gendat::~Gendat() {
 }
 
 bool Gendat::compute() {
-   /*
-   vistle::Vec<float> *a = vistle::Vec<float>::create(1024 * 1024 * 4);
-   for (unsigned int index = 0; index < a->getSize(); index ++)
-      a->x[index] = (float) index;
 
+   vistle::Vec<float> *a = vistle::Vec<float>::create();
+   for (unsigned int index = 0; index < 1024 * 1024 * 4; index ++)
+      a->x->push_back(index);
+
+   /*
    vistle::Vec3<int> *b = vistle::Vec3<int>::create(16);
    for (unsigned int index = 0; index < b->getSize(); index ++) {
       b->x[index] = index;
@@ -31,6 +32,7 @@ bool Gendat::compute() {
       b->z[index] = index;
    }
    */
+   /*
    vistle::Triangles *t = vistle::Triangles::create(6, 4);
 
    t->cl[0] = 0;
@@ -56,12 +58,13 @@ bool Gendat::compute() {
    t->x[3] = 0.0 + rank;
    t->y[3] = 1.0;
    t->z[3] = 0.0;
-
-   /*
-   addObject("data_out", a);
-   addObject("data_out", b);
    */
+
+   addObject("data_out", a);
+   /*
+   addObject("data_out", b);
    addObject("data_out", t);
+   */
 
    vistle::UnstructuredGrid *usg =
       vistle::UnstructuredGrid::create(1, 8, 8);

@@ -195,7 +195,7 @@ void ReadCovise::readUSTSDT(const int fd,
    if ((setElement % size) == rank) {
 
       vistle::Vec<float> *f = vistle::Vec<float>::create(numElem);
-      read_float(fd, &(f->x[0]), numElem, byteswap);
+      read_float(fd, &((*f->x)[0]), numElem, byteswap);
       objects.push_back(f);
    } else {
 

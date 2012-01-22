@@ -98,15 +98,15 @@ bool OSGRenderer::addInputObject(const std::string & portName,
 
          osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
          for (unsigned int vertex = 0; vertex < numVertices; vertex ++)
-            vertices->push_back(osg::Vec3(triangles->x[vertex],
-                                          triangles->y[vertex],
-                                          triangles->z[vertex]));
+            vertices->push_back(osg::Vec3((*triangles->x)[vertex],
+                                          (*triangles->y)[vertex],
+                                          (*triangles->z)[vertex]));
          geometry->setVertexArray(vertices.get());
 
          osg::ref_ptr<osg::DrawElementsUInt> corners =
             new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
          for (unsigned int corner = 0; corner < numCorners; corner ++)
-            corners->push_back(triangles->cl[corner]);
+            corners->push_back((*triangles->cl)[corner]);
          geometry->addPrimitiveSet(corners.get());
 
          geode->addDrawable(geometry.get());
@@ -122,7 +122,7 @@ bool OSGRenderer::addInputObject(const std::string & portName,
             static_cast<const vistle::Lines *>(object);
          const size_t numElements = lines->getNumElements();
          const size_t numCorners = lines->getNumCorners();
-         const size_t numVertices = lines->getNumVertices();
+         //const size_t numVertices = lines->getNumVertices();
 
          osg::ref_ptr<osg::Geode> geode = new osg::Geode();
          osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry();

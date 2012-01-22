@@ -74,7 +74,7 @@ Object * Shm::getObjectFromHandle(const shm_handle_t & handle) {
          (shm->get_address_from_handle(handle));
       return object;
 
-   } catch (boost::interprocess::interprocess_exception &ex) { }
+   } catch (interprocess_exception &ex) { }
 
    return NULL;
 }
@@ -109,20 +109,27 @@ std::string Object::getName() const {
    return name;
 }
 
-Triangles::Triangles(const size_t & corners, const size_t & vertices,
+Triangles::Triangles(const size_t & numCorners, const size_t & numVertices,
                      const std::string & name)
-   : Object(Object::TRIANGLES, name),
-     numCorners(corners), numVertices(vertices) {
+   : Object(Object::TRIANGLES, name) {
 
-   x = static_cast<float *>
-      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
-   y = static_cast<float *>
-      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
-   z = static_cast<float *>
-      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
+   const allocator<float, managed_shared_memory::segment_manager>
+      alloc_inst_float(Shm::instance().getShm().get_segment_manager());
 
-   cl = static_cast<size_t *>
-      (Shm::instance().getShm().allocate(numCorners * sizeof(size_t)));
+   const allocator<size_t, managed_shared_memory::segment_manager>
+      alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
+
+   const std::string nx = Shm::instance().createObjectID();
+   const std::string ny = Shm::instance().createObjectID();
+   const std::string nz = Shm::instance().createObjectID();
+
+   const std::string nc = Shm::instance().createObjectID();
+
+   x = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(nx.c_str())(numVertices, float(), alloc_inst_float);
+   y = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(ny.c_str())(numVertices, float(), alloc_inst_float);
+   z = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(nz.c_str())(numVertices, float(), alloc_inst_float);
+
+   cl = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(nc.c_str())(numCorners, size_t(), alloc_inst_size_t);
 }
 
 
@@ -140,14 +147,14 @@ Triangles * Triangles::create(const size_t & numCorners,
    return t;
 }
 
-const size_t & Triangles::getNumCorners() const {
+size_t Triangles::getNumCorners() const {
 
-   return numCorners;
+   return cl->size();
 }
 
-const size_t & Triangles::getNumVertices() const {
+size_t Triangles::getNumVertices() const {
 
-   return numVertices;
+   return x->size();
 }
 
 Lines::Lines(const size_t & elements, const size_t & corners,

@@ -29,12 +29,12 @@ bool Add::compute() {
       switch (object->getType()) {
 
          case vistle::Object::VECFLOAT: {
-
             vistle::Vec<float> *in = static_cast<vistle::Vec<float> *>(object);
-            vistle::Vec<float> *out = vistle::Vec<float>::create(in->getSize());
+            size_t inSize = in->getSize();
 
-            for (unsigned int index = 0; index < in->getSize(); index ++)
-               out->x[index] = in->x[index] + 1 + rank;
+            vistle::Vec<float> *out = vistle::Vec<float>::create(inSize);
+            for (unsigned int index = 0; index < inSize; index ++)
+               (*out->x)[index] = (*in->x)[index] + rank + 1;
 
             addObject("data_out", out);
             break;

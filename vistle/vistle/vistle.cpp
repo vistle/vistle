@@ -83,13 +83,16 @@ int main(int argc, char ** argv) {
    vistle::message::Spawn readCovise2(0, rank, 2, "ReadCovise");
    comm->handleMessage(&readCovise2);
 
-   vistle::message::Spawn showUSG(0, rank, 3, "ShowUSG");
-   comm->handleMessage(&showUSG);
+   vistle::message::Spawn isoSurface(0, rank, 3, "IsoSurface");
+   comm->handleMessage(&isoSurface);
    vistle::message::Spawn renderer(0, rank, 4, "OSGRenderer");
    comm->handleMessage(&renderer);
 
-   vistle::message::Connect connect13(0, rank, 1, "grid_out", 3, "grid_in");
-   comm->handleMessage(&connect13);
+   vistle::message::Connect connect13g(0, rank, 1, "grid_out", 3, "grid_in");
+   comm->handleMessage(&connect13g);
+
+   vistle::message::Connect connect13d(0, rank, 2, "grid_out", 3, "data_in");
+   comm->handleMessage(&connect13d);
 
    vistle::message::Connect connect34(0, rank, 3, "grid_out", 4, "data_in");
    comm->handleMessage(&connect34);
@@ -107,6 +110,19 @@ int main(int argc, char ** argv) {
 
    vistle::message::Compute compute2(0, rank, 2);
    comm->handleMessage(&compute2);
+
+   /*
+   vistle::message::Spawn gendat(0, rank, 1, "Gendat");
+   comm->handleMessage(&gendat);
+   vistle::message::Spawn add(0, rank, 2, "Add");
+   comm->handleMessage(&add);
+
+   vistle::message::Connect connect(0, rank, 1, "data_out", 2, "data_in");
+   comm->handleMessage(&connect);
+
+   vistle::message::Compute compute(0, rank, 1);
+   comm->handleMessage(&compute);
+   */
 
    while (!done) {
       done = comm->dispatch();
@@ -401,37 +417,6 @@ bool Communicator::handleMessage(const message::Message * message) {
                    << newObject->getHandle() << "] type ["
                    << object->getType() << "] from module ["
                    << newObject->getModuleID() << "]" << std::endl;
-
-         switch (object->getType()) {
-
-            case Object::VECFLOAT: {
-               vistle::Vec<float> *array =
-                  static_cast<vistle::Vec<float> *>(object);
-               std::cout << "Vec<float> size " << array->getSize() << std::endl;
-               /*
-               for (unsigned int index = 0; index < array->getSize(); index ++)
-                  std::cout << " " << array->x[index];
-               std::cout << std::endl;
-               */
-               break;
-            }
-
-            case Object::VEC3INT: {
-               vistle::Vec3<int> *array =
-                  static_cast<vistle::Vec3<int> *>(object);
-               std::cout << "Vec3<int> size " << array->getSize() << std::endl;
-
-               for (unsigned int index = 0; index < array->getSize(); index ++)
-                  std::cout << " (" << array->x[index] << " " << array->y[index]
-                            << " " << array->z[index] << ")";
-               std::cout << std::endl;
-
-               break;
-            }
-
-            default:
-               break;
-         }
 
          break;
       }
