@@ -83,9 +83,9 @@ int main(int argc, char ** argv) {
    vistle::message::Spawn readCovise2(0, rank, 2, "ReadCovise");
    comm->handleMessage(&readCovise2);
 
-   vistle::message::Spawn showUSG(0, rank, 3, "showUSG");
+   vistle::message::Spawn showUSG(0, rank, 3, "ShowUSG");
    comm->handleMessage(&showUSG);
-   vistle::message::Spawn renderer(0, rank, 4, "osgrenderer");
+   vistle::message::Spawn renderer(0, rank, 4, "OSGRenderer");
    comm->handleMessage(&renderer);
 
    vistle::message::Connect connect13(0, rank, 1, "grid_out", 3, "grid_in");
@@ -102,8 +102,11 @@ int main(int argc, char ** argv) {
                                            "/tmp/p.covise");
    comm->handleMessage(&param2);
 
-   vistle::message::Compute compute(0, rank, 1);
-   comm->handleMessage(&compute);
+   vistle::message::Compute compute1(0, rank, 1);
+   comm->handleMessage(&compute1);
+
+   vistle::message::Compute compute2(0, rank, 2);
+   comm->handleMessage(&compute2);
 
    while (!done) {
       done = comm->dispatch();

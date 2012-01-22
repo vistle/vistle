@@ -111,6 +111,9 @@ void ReadCovise::readSETELE(const int fd,
       else if (!strncmp(buf, "UNSGRD", 6))
          readUNSGRD(fd, objects, byteswap, index);
 
+      else if (!strncmp(buf, "USTSDT", 6))
+         readUSTSDT(fd, objects, byteswap, index);
+
       else {
          std:: cout << "ReadCovise: object type [" << buf << "] unsupported"
                     << std::endl;
@@ -133,7 +136,7 @@ void ReadCovise::readUNSGRD(const int fd,
       read_int(fd, &numVert, 1, byteswap);
 
       vistle::UnstructuredGrid *usg =
-      vistle::UnstructuredGrid::create(numElem, numConn, numVert);
+         vistle::UnstructuredGrid::create(numElem, numConn, numVert);
 
       unsigned int *el = new unsigned int[numElem];
       unsigned int *tl = new unsigned int[numElem];
@@ -182,6 +185,25 @@ void ReadCovise::readUNSGRD(const int fd,
    }
 }
 
+void ReadCovise::readUSTSDT(const int fd,
+                            std::vector<vistle::Object *> & objects,
+                            const bool byteswap, const int setElement) const {
+
+   unsigned int numElem;
+   read_int(fd, &numElem, 1, byteswap);
+
+   if ((setElement % size) == rank) {
+
+      vistle::Vec<float> *f = vistle::Vec<float>::create(numElem);
+      read_float(fd, &(f->x[0]), numElem, byteswap);
+      objects.push_back(f);
+   } else {
+
+      lseek(fd, numElem * sizeof(float), SEEK_CUR);
+   }
+   readAttributes(fd, byteswap);
+}
+
 void ReadCovise::load(const std::string & name,
                       std::vector<vistle::Object *> & objects) const {
 
@@ -207,6 +229,9 @@ void ReadCovise::load(const std::string & name,
 
       else if (!strncmp(buf, "UNSGRD", 6))
          readUNSGRD(fd, objects, byteswap);
+
+      else if (!strncmp(buf, "USTSDT", 6))
+         readUSTSDT(fd, objects, byteswap);
 
       else {
          std:: cout << "ReadCovise: object type [" << buf << "] unsupported"
