@@ -77,22 +77,30 @@ int main(int argc, char ** argv) {
    vistle::Communicator *comm = new vistle::Communicator(rank, size);
    bool done = false;
 
-   vistle::message::Spawn spawn(0, rank, 1, "readcovise");
-   comm->handleMessage(&spawn);
-   vistle::message::Spawn showUSG(0, rank, 2, "showUSG");
+   vistle::message::Spawn readCovise1(0, rank, 1, "ReadCovise");
+   comm->handleMessage(&readCovise1);
+
+   vistle::message::Spawn readCovise2(0, rank, 2, "ReadCovise");
+   comm->handleMessage(&readCovise2);
+
+   vistle::message::Spawn showUSG(0, rank, 3, "showUSG");
    comm->handleMessage(&showUSG);
-   vistle::message::Spawn renderer(0, rank, 3, "osgrenderer");
+   vistle::message::Spawn renderer(0, rank, 4, "osgrenderer");
    comm->handleMessage(&renderer);
 
-   vistle::message::Connect connect12(0, rank, 1, "grid_out", 2, "grid_in");
-   comm->handleMessage(&connect12);
+   vistle::message::Connect connect13(0, rank, 1, "grid_out", 3, "grid_in");
+   comm->handleMessage(&connect13);
 
-   vistle::message::Connect connect23(0, rank, 2, "grid_out", 3, "data_in");
-   comm->handleMessage(&connect23);
+   vistle::message::Connect connect34(0, rank, 3, "grid_out", 4, "data_in");
+   comm->handleMessage(&connect34);
 
-   vistle::message::SetFileParameter param(0, rank, 1, "filename",
+   vistle::message::SetFileParameter param1(0, rank, 1, "filename",
                                            "/tmp/g.covise");
-   comm->handleMessage(&param);
+   comm->handleMessage(&param1);
+
+   vistle::message::SetFileParameter param2(0, rank, 2, "filename",
+                                           "/tmp/p.covise");
+   comm->handleMessage(&param2);
 
    vistle::message::Compute compute(0, rank, 1);
    comm->handleMessage(&compute);
