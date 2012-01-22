@@ -22,16 +22,24 @@ IsoSurface::~IsoSurface() {
 
 vistle::Triangles *
 IsoSurface::generateIsoSurface(const vistle::UnstructuredGrid * grid,
-                               const vistle::Vec<float> * data) {
+                               const vistle::Vec<float> * data,
+                               const float isoValue) {
 
    int numElem = grid->getNumElements();
 
-   for (int index = 0; index < numElem; index ++) {
+   for (int elem = 0; elem < numElem; elem ++) {
 
-      switch (grid->tl[index]) {
+      switch (grid->tl[elem]) {
 
          case vistle::UnstructuredGrid::HEXAHEDRON: {
 
+            unsigned int tableIndex = 0;
+            char conn[8] = { 5, 6, 2, 1, 4, 7, 3, 0 };
+            int shl = 0;
+            for (int index = 0; index < 8; index ++) {
+               float v = (*data->x)[grid->cl[grid->el[elem] + conn[index]]];
+               tableIndex += (((unsigned int)(v < isoValue)) << shl++);
+            }
             break;
          }
 
@@ -39,6 +47,7 @@ IsoSurface::generateIsoSurface(const vistle::UnstructuredGrid * grid,
             break;
       }
    }
+   printf("\n");
 
    vistle::Triangles *t = vistle::Triangles::create();
 
@@ -93,7 +102,7 @@ bool IsoSurface::compute() {
          vistle::Vec<float> *array =
             static_cast<vistle::Vec<float> *>(dataObjects.front());
 
-         vistle::Triangles *triangles = generateIsoSurface(usg, array);
+         vistle::Triangles *triangles = generateIsoSurface(usg, array, 0.0);
          if (triangles)
             addObject("grid_out", triangles);
       }

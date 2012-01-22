@@ -11,7 +11,8 @@ class IsoSurface: public vistle::Module {
 
  private:
    vistle::Triangles * generateIsoSurface(const vistle::UnstructuredGrid * grid,
-                                          const vistle::Vec<float> * data);
+                                          const vistle::Vec<float> * data,
+                                          const float isoValue);
 
    virtual bool compute();
 };
