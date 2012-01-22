@@ -2,7 +2,8 @@
 #include <iomanip>
 
 #include "object.h"
-#include "add.h"
+
+#include "Add.h"
 
 MODULE_MAIN(Add)
 

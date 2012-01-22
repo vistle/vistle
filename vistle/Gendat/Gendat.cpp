@@ -2,7 +2,8 @@
 #include <iomanip>
 
 #include "object.h"
-#include "gendat.h"
+
+#include "Gendat.h"
 
 MODULE_MAIN(Gendat)
 

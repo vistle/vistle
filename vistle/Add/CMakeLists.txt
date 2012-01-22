@@ -1,7 +1,7 @@
 find_package(MPI REQUIRED)
 find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
 
-add_executable(showUSG showUSG.cpp)
+add_executable(Add Add.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
@@ -9,7 +9,7 @@ include_directories(
         ../core
 )
 
-target_link_libraries(showUSG
+target_link_libraries(Add
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
         vistle_core

@@ -29,7 +29,7 @@ typedef int socklen_t;
 #include "messagequeue.h"
 #include "object.h"
 
-#include "communicator_collective.h"
+#include "vistle.h"
 
 using namespace boost::interprocess;
 

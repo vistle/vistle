@@ -2,7 +2,8 @@
 #include <iomanip>
 
 #include "object.h"
-#include "showUSG.h"
+
+#include "ShowUSG.h"
 
 MODULE_MAIN(ShowUSG)
 

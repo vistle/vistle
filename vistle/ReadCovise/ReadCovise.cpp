@@ -9,7 +9,8 @@
 #include <fcntl.h>
 
 #include "object.h"
-#include "readcovise.h"
+
+#include "ReadCovise.h"
 
 MODULE_MAIN(ReadCovise)
 

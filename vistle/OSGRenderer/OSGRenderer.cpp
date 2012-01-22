@@ -9,7 +9,8 @@
 #include <osg/Node>
 
 #include "object.h"
-#include "osgrenderer.h"
+
+#include "OSGRenderer.h"
 
 MODULE_MAIN(OSGRenderer)
 

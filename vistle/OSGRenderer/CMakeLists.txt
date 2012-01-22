@@ -1,16 +1,19 @@
 find_package(MPI REQUIRED)
 find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
+find_package(OpenSceneGraph 2.8.0 COMPONENTS osgViewer)
 
-add_executable(communicator communicator_collective.cpp portmanager.cpp)
+add_executable(OSGRenderer OSGRenderer.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
+        ${OPENSCENEGRAPH_INCLUDE_DIRS}
         ../core
 )
 
-target_link_libraries(communicator
+target_link_libraries(OSGRenderer
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
+        ${OPENSCENEGRAPH_LIBRARIES}
         vistle_core
 )

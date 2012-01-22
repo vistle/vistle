@@ -13,10 +13,10 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 add_subdirectory(core)
 
-add_subdirectory(communicator)
+add_subdirectory(vistle)
 
-add_subdirectory(gendat)
-add_subdirectory(add)
-add_subdirectory(showUSG)
-add_subdirectory(readcovise)
-add_subdirectory(osgrenderer)
+add_subdirectory(Gendat)
+add_subdirectory(Add)
+add_subdirectory(ShowUSG)
+add_subdirectory(ReadCovise)
+add_subdirectory(OSGRenderer)
