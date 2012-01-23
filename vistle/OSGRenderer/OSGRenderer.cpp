@@ -134,17 +134,17 @@ bool OSGRenderer::addInputObject(const std::string & portName,
          for (size_t index = 0; index < numElements; index ++) {
 
             if (index == numElements - 1)
-               num = numCorners - lines->el[index];
+               num = numCorners - (*lines->el)[index];
             else
-               num = lines->el[index + 1] - lines->el[index];
+               num = (*lines->el)[index + 1] - (*lines->el)[index];
 
             primitives->push_back(num);
 
             for (int n = 0; n < num; n ++) {
-               int v = lines->cl[lines->el[index] + n];
-               vertices->push_back(osg::Vec3(lines->x[v],
-                                             lines->y[v],
-                                             lines->z[v]));
+               int v = (*lines->cl)[(*lines->el)[index] + n];
+               vertices->push_back(osg::Vec3((*lines->x)[v],
+                                             (*lines->y)[v],
+                                             (*lines->z)[v]));
             }
          }
 

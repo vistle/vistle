@@ -147,15 +147,15 @@ void ReadCovise::readUNSGRD(const int fd,
       read_int(fd, cl, numConn, byteswap);
 
       for (unsigned int index = 0; index < numElem; index ++) {
-         usg->el[index] = el[index];
-         usg->tl[index] = (vistle::UnstructuredGrid::Type) tl[index];
+         (*usg->el)[index] = el[index];
+         (*usg->tl)[index] = (vistle::UnstructuredGrid::Type) tl[index];
       }
       for (unsigned int index = 0; index < numConn; index ++)
-         usg->cl[index] = cl[index];
+         (*usg->cl)[index] = cl[index];
 
-      read_float(fd, &(usg->x[0]), numVert, byteswap);
-      read_float(fd, &(usg->y[0]), numVert, byteswap);
-      read_float(fd, &(usg->z[0]), numVert, byteswap);
+      read_float(fd, &((*usg->x)[0]), numVert, byteswap);
+      read_float(fd, &((*usg->y)[0]), numVert, byteswap);
+      read_float(fd, &((*usg->z)[0]), numVert, byteswap);
 
       readAttributes(fd, byteswap);
 

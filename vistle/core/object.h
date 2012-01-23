@@ -11,11 +11,6 @@ namespace vistle {
 
 typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 
-/*
-typedef boost::interprocess::allocator<float, boost::interprocess::managed_shared_memory::segment_manager> FloatShmAllocator;
-typedef std::vector<float, FloatShmAllocator> FloatVector;
-*/
-
 namespace message {
    class MessageQueue;
 }
@@ -92,21 +87,25 @@ class Vec: public Object {
       return t;
    }
 
-   Vec(const size_t & size, const std::string & name)
+ Vec(const size_t & size, const std::string & name)
       : Object(type, name) {
 
       const boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager>
          alloc_inst(Shm::instance().getShm().get_segment_manager());
 
-      const std::string n = Shm::instance().createObjectID();
-      x = Shm::instance().getShm().construct<std::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (n.c_str())(size, T(), alloc_inst);
+      x = Shm::instance().getShm().construct<std::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
    }
 
    size_t getSize() const {
       return x->size();
    }
 
-   boost::interprocess::offset_ptr<std::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > x;
+   void setSize(const size_t & size) {
+      x->resize(size);
+   }
+
+   boost::interprocess::offset_ptr<std::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > >
+      x;
 
  private:
    static const Object::Type type;
@@ -117,7 +116,7 @@ template <class T>
 class Vec3: public Object {
 
  public:
-   static Vec3<T> * create(const size_t & size) {
+   static Vec3<T> * create(const size_t & size = 0) {
 
       const std::string name = Shm::instance().createObjectID();
       Vec3<T> *t = static_cast<Vec3<T> *>
@@ -128,25 +127,32 @@ class Vec3: public Object {
       return t;
    }
 
-   Vec3(const size_t & s, const std::string & name):
-      Object(type, name), size(s) {
+   Vec3(const size_t & size, const std::string & name)
+      : Object(type, name) {
 
-      x = static_cast<T*>(Shm::instance().getShm().allocate(size * sizeof(T)));
-      y = static_cast<T*>(Shm::instance().getShm().allocate(size * sizeof(T)));
-      z = static_cast<T*>(Shm::instance().getShm().allocate(size * sizeof(T)));
+      const boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager>
+         alloc_inst(Shm::instance().getShm().get_segment_manager());
+
+      x = Shm::instance().getShm().construct<std::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
+      y = Shm::instance().getShm().construct<std::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
+      z = Shm::instance().getShm().construct<std::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
    }
 
-   const size_t & getSize() const {
-      return size;
+   size_t getSize() const {
+      return x->size();
    }
 
-   boost::interprocess::offset_ptr<T> x;
-   boost::interprocess::offset_ptr<T> y;
-   boost::interprocess::offset_ptr<T> z;
+   void setSize(const size_t & size) {
+      x->resize(size);
+      y->resize(size);
+      z->resize(size);
+   }
+
+   boost::interprocess::offset_ptr<std::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > >
+      x, y, z;
 
  private:
    static const Object::Type type;
-   const size_t size;
 };
 
 class Triangles: public Object {
@@ -154,44 +160,40 @@ class Triangles: public Object {
  public:
    static Triangles * create(const size_t & numCorners = 0,
                              const size_t & numVertices = 0);
+
    Triangles(const size_t & numCorners, const size_t & numVertices,
              const std::string & name);
 
    size_t getNumCorners() const;
    size_t getNumVertices() const;
 
-   boost::interprocess::offset_ptr<std::vector<size_t, boost::interprocess::allocator<size_t, boost::interprocess::managed_shared_memory::segment_manager> > > cl;
+   boost::interprocess::offset_ptr<std::vector<size_t, boost::interprocess::allocator<size_t, boost::interprocess::managed_shared_memory::segment_manager> > >
+      cl;
 
-   boost::interprocess::offset_ptr<std::vector<float, boost::interprocess::allocator<float, boost::interprocess::managed_shared_memory::segment_manager> > > x;
-   boost::interprocess::offset_ptr<std::vector<float, boost::interprocess::allocator<float, boost::interprocess::managed_shared_memory::segment_manager> > > y;
-   boost::interprocess::offset_ptr<std::vector<float, boost::interprocess::allocator<float, boost::interprocess::managed_shared_memory::segment_manager> > > z;
-
+   boost::interprocess::offset_ptr<std::vector<float, boost::interprocess::allocator<float, boost::interprocess::managed_shared_memory::segment_manager> > >
+      x, y, z;
  private:
 };
 
 class Lines: public Object {
 
  public:
-   static Lines * create(const size_t & numElements,
-                         const size_t & numCorners,
-                         const size_t & numVertices);
+   static Lines * create(const size_t & numElements = 0,
+                         const size_t & numCorners = 0,
+                         const size_t & numVertices = 0);
    Lines(const size_t & numElements, const size_t & numCorners,
          const size_t & numVertices, const std::string & name);
 
-   const size_t & getNumElements() const;
-   const size_t & getNumCorners() const;
-   const size_t & getNumVertices() const;
+   size_t getNumElements() const;
+   size_t getNumCorners() const;
+   size_t getNumVertices() const;
 
-   boost::interprocess::offset_ptr<size_t> el;
-   boost::interprocess::offset_ptr<size_t> cl;
-   boost::interprocess::offset_ptr<float> x;
-   boost::interprocess::offset_ptr<float> y;
-   boost::interprocess::offset_ptr<float> z;
+   boost::interprocess::offset_ptr<std::vector<size_t, boost::interprocess::allocator<size_t, boost::interprocess::managed_shared_memory::segment_manager> > >
+      el, cl;
+   boost::interprocess::offset_ptr<std::vector<float, boost::interprocess::allocator<float, boost::interprocess::managed_shared_memory::segment_manager> > >
+      x, y, z;
 
  private:
-   const size_t numElements;
-   const size_t numCorners;
-   const size_t numVertices;
 };
 
 
@@ -211,28 +213,25 @@ class UnstructuredGrid: public Object {
       POLYHEDRON  = 11
    };
 
-   static UnstructuredGrid * create(const size_t & numElements,
-                                    const size_t & numCorners,
-                                    const size_t & numVertices);
+   static UnstructuredGrid * create(const size_t & numElements = 0,
+                                    const size_t & numCorners = 0,
+                                    const size_t & numVertices = 0);
 
    UnstructuredGrid(const size_t & numElements, const size_t & numCorners,
                     const size_t & numVertices, const std::string & name);
 
-   const size_t & getNumElements() const;
-   const size_t & getNumCorners() const;
-   const size_t & getNumVertices() const;
+   size_t getNumElements() const;
+   size_t getNumCorners() const;
+   size_t getNumVertices() const;
 
-   boost::interprocess::offset_ptr<Type> tl;
-   boost::interprocess::offset_ptr<size_t> el;
-   boost::interprocess::offset_ptr<size_t> cl;
-   boost::interprocess::offset_ptr<float> x;
-   boost::interprocess::offset_ptr<float> y;
-   boost::interprocess::offset_ptr<float> z;
+   boost::interprocess::offset_ptr<std::vector<size_t, boost::interprocess::allocator<size_t, boost::interprocess::managed_shared_memory::segment_manager> > >
+      tl, cl, el;
+
+   boost::interprocess::offset_ptr<std::vector<float, boost::interprocess::allocator<float, boost::interprocess::managed_shared_memory::segment_manager> > >
+      x, y, z;
 
  private:
-   const size_t numElements;
-   const size_t numCorners;
-   const size_t numVertices;
+
 };
 
 } // namespace vistle

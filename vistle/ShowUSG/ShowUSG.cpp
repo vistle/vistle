@@ -26,72 +26,86 @@ bool ShowUSG::compute() {
    std::list<vistle::Object *>::iterator oit;
    for (oit = objects.begin(); oit != objects.end(); oit ++) {
       vistle::Object *object = *oit;
+
       switch (object->getType()) {
 
          case vistle::Object::UNSTRUCTUREDGRID: {
 
+            vistle::Lines *out = vistle::Lines::create();
+
             vistle::UnstructuredGrid *in =
                static_cast<vistle::UnstructuredGrid *>(object);
 
-            int numLines = 0;
-            int numCorners = 0;
             for (size_t index = 0; index < in->getNumElements(); index ++)
-               switch (in->tl[index]) {
+               switch ((*in->tl)[index]) {
                   case vistle::UnstructuredGrid::HEXAHEDRON:
-                     numLines += 4;
-                     numCorners += 16;
+
+                     out->el->push_back(out->cl->size());
+                     out->cl->push_back((*in->cl)[(*in->el)[index]]);
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 1]);
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 2]);
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 3]);
+                     out->cl->push_back((*in->cl)[(*in->el)[index]]);
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 4]);
+
+                     out->el->push_back(out->cl->size());
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 5]);
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 6]);
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 7]);
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 4]);
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 5]);
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 1]);
+
+                     out->el->push_back(out->cl->size());
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 2]);
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 6]);
+
+                     out->el->push_back(out->cl->size());
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 3]);
+                     out->cl->push_back((*in->cl)[(*in->el)[index] + 7]);
+
+                     /*
+                     (*out->el)[lineIdx++] = cornerIdx;
+
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index]];
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 1];
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 2];
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 3];
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index]];
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 4];
+
+                     (*out->el)[lineIdx++] = cornerIdx;
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 5];
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 6];
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 7];
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 4];
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 5];
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 1];
+
+                     (*out->el)[lineIdx++] = cornerIdx;
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 2];
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 6];
+
+                     (*out->el)[lineIdx++] = cornerIdx;
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 3];
+                     (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 7];
+                     */
                      break;
 
                   default:
                      break;
                }
-            printf("ShowUSG: %d, %d\n", numLines, numCorners);
 
-            vistle::Lines *out = vistle::Lines::create(numLines,
-                                                       numCorners,
-                                                       in->getNumVertices());
-
-            int lineIdx = 0;
-            int cornerIdx = 0;
-
-            for (size_t index = 0; index < in->getNumElements(); index ++)
-               switch (in->tl[index]) {
-                  case vistle::UnstructuredGrid::HEXAHEDRON:
-                     out->el[lineIdx++] = cornerIdx;
-
-                     out->cl[cornerIdx++] = in->cl[in->el[index]];
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 1];
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 2];
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 3];
-                     out->cl[cornerIdx++] = in->cl[in->el[index]];
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 4];
-
-                     out->el[lineIdx++] = cornerIdx;
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 5];
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 6];
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 7];
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 4];
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 5];
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 1];
-
-                     out->el[lineIdx++] = cornerIdx;
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 2];
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 6];
-
-                     out->el[lineIdx++] = cornerIdx;
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 3];
-                     out->cl[cornerIdx++] = in->cl[in->el[index] + 7];
-
-                     break;
-
-                  default:
-                     break;
-               }
             int numVertices = in->getNumVertices();
             for (int index = 0; index < numVertices; index ++) {
-               out->x[index] = in->x[index];
-               out->y[index] = in->y[index];
-               out->z[index] = in->z[index];
+               out->x->push_back((*in->x)[index]);
+               out->y->push_back((*in->y)[index]);
+               out->z->push_back((*in->z)[index]);
+               /*
+               (*out->x)[index] = in->x[index];
+               (*out->y)[index] = in->y[index];
+               (*out->z)[index] = in->z[index];
+               */
             }
 
             addObject("grid_out", out);

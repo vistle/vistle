@@ -67,44 +67,44 @@ bool Gendat::compute() {
    */
 
    vistle::UnstructuredGrid *usg =
-      vistle::UnstructuredGrid::create(1, 8, 8);
+      vistle::UnstructuredGrid::create();
 
-   usg->tl[0] = vistle::UnstructuredGrid::HEXAHEDRON;
-   usg->el[0] = 0;
+   usg->tl->push_back(vistle::UnstructuredGrid::HEXAHEDRON);
+   usg->el->push_back(0);
    for (int index = 0; index < 8; index ++)
-      usg->cl[index] = index;
+      usg->cl->push_back(index);
 
-   usg->x[0] = 0.0;
-   usg->y[0] = 0.0;
-   usg->z[0] = 0.0;
+   usg->x->push_back(0.0);
+   usg->y->push_back(0.0);
+   usg->z->push_back(0.0);
 
-   usg->x[1] = 1.0;
-   usg->y[1] = 0.0;
-   usg->z[1] = 0.0;
+   usg->x->push_back(1.0);
+   usg->y->push_back(0.0);
+   usg->z->push_back(0.0);
 
-   usg->x[2] = 0.0;
-   usg->y[2] = 1.0;
-   usg->z[2] = 0.0;
+   usg->x->push_back(0.0);
+   usg->y->push_back(1.0);
+   usg->z->push_back(0.0);
 
-   usg->x[3] = 1.0;
-   usg->y[3] = 1.0;
-   usg->z[3] = 0.0;
+   usg->x->push_back(1.0);
+   usg->y->push_back(1.0);
+   usg->z->push_back(0.0);
 
-   usg->x[4] = 0.0;
-   usg->y[4] = 0.0;
-   usg->z[4] = 1.0;
+   usg->x->push_back(0.0);
+   usg->y->push_back(0.0);
+   usg->z->push_back(1.0);
 
-   usg->x[5] = 1.0;
-   usg->y[5] = 0.0;
-   usg->z[5] = 1.0;
+   usg->x->push_back(1.0);
+   usg->y->push_back(0.0);
+   usg->z->push_back(1.0);
 
-   usg->x[6] = 0.0;
-   usg->y[6] = 1.0;
-   usg->z[6] = 1.0;
+   usg->x->push_back(0.0);
+   usg->y->push_back(1.0);
+   usg->z->push_back(1.0);
 
-   usg->x[7] = 1.0;
-   usg->y[7] = 1.0;
-   usg->z[7] = 1.0;
+   usg->x->push_back(1.0);
+   usg->y->push_back(1.0);
+   usg->z->push_back(1.0);
 
    addObject("grid_out", usg);
 

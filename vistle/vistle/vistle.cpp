@@ -85,7 +85,11 @@ int main(int argc, char ** argv) {
 
    vistle::message::Spawn isoSurface(0, rank, 3, "IsoSurface");
    comm->handleMessage(&isoSurface);
-   vistle::message::Spawn renderer(0, rank, 4, "OSGRenderer");
+
+   vistle::message::Spawn showUSG(0, rank, 4, "ShowUSG");
+   comm->handleMessage(&showUSG);
+
+   vistle::message::Spawn renderer(0, rank, 5, "OSGRenderer");
    comm->handleMessage(&renderer);
 
    vistle::message::Connect connect13g(0, rank, 1, "grid_out", 3, "grid_in");
@@ -94,8 +98,14 @@ int main(int argc, char ** argv) {
    vistle::message::Connect connect13d(0, rank, 2, "grid_out", 3, "data_in");
    comm->handleMessage(&connect13d);
 
-   vistle::message::Connect connect34(0, rank, 3, "grid_out", 4, "data_in");
-   comm->handleMessage(&connect34);
+   vistle::message::Connect connect14(0, rank, 1, "grid_out", 4, "grid_in");
+   comm->handleMessage(&connect14);
+
+   vistle::message::Connect connect45(0, rank, 4, "grid_out", 5, "data_in");
+   comm->handleMessage(&connect45);
+
+   vistle::message::Connect connect35(0, rank, 3, "grid_out", 5, "data_in");
+   comm->handleMessage(&connect35);
 
    vistle::message::SetFileParameter param1(0, rank, 1, "filename",
                                            "/tmp/g.covise");

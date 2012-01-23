@@ -79,15 +79,6 @@ Object * Shm::getObjectFromHandle(const shm_handle_t & handle) {
    return NULL;
 }
 
-   /*
-template <class T> Vec3<T>::Vec3(const size_t s): size(s) {
-
-   x = Shm::instance().getShm().allocate(s * sizeof(T));
-   y = Shm::instance().getShm().allocate(s * sizeof(T));
-   z = Shm::instance().getShm().allocate(s * sizeof(T));
-}
-   */
-
 Object::Object(const Type type, const std::string & n): id(type) {
 
    size_t size = MIN(n.size(), 31);
@@ -119,17 +110,11 @@ Triangles::Triangles(const size_t & numCorners, const size_t & numVertices,
    const allocator<size_t, managed_shared_memory::segment_manager>
       alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
 
-   const std::string nx = Shm::instance().createObjectID();
-   const std::string ny = Shm::instance().createObjectID();
-   const std::string nz = Shm::instance().createObjectID();
+   x = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   y = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   z = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
 
-   const std::string nc = Shm::instance().createObjectID();
-
-   x = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(nx.c_str())(numVertices, float(), alloc_inst_float);
-   y = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(ny.c_str())(numVertices, float(), alloc_inst_float);
-   z = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(nz.c_str())(numVertices, float(), alloc_inst_float);
-
-   cl = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(nc.c_str())(numCorners, size_t(), alloc_inst_size_t);
+   cl = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
 }
 
 
@@ -157,23 +142,25 @@ size_t Triangles::getNumVertices() const {
    return x->size();
 }
 
-Lines::Lines(const size_t & elements, const size_t & corners,
-             const size_t & vertices, const std::string & name)
-   : Object(Object::LINES, name),
-     numElements(elements), numCorners(corners), numVertices(vertices) {
+Lines::Lines(const size_t & numElements, const size_t & numCorners,
+             const size_t & numVertices, const std::string & name)
+   : Object(Object::LINES, name) {
 
-   x = static_cast<float *>
-      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
-   y = static_cast<float *>
-      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
-   z = static_cast<float *>
-      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
+   const allocator<float, managed_shared_memory::segment_manager>
+      alloc_inst_float(Shm::instance().getShm().get_segment_manager());
 
-   el = static_cast<size_t *>
-      (Shm::instance().getShm().allocate(numElements * sizeof(size_t)));
+   const allocator<size_t, managed_shared_memory::segment_manager>
+      alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
 
-   cl = static_cast<size_t *>
-      (Shm::instance().getShm().allocate(numCorners * sizeof(size_t)));
+   x = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+
+   y = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+
+   z = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+
+   el = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
+
+   cl = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
 }
 
 
@@ -191,44 +178,45 @@ Lines * Lines::create(const size_t & numElements, const size_t & numCorners,
    return l;
 }
 
-const size_t & Lines::getNumElements() const {
+size_t Lines::getNumElements() const {
 
-   return numElements;
+   return el->size();
 }
 
-const size_t & Lines::getNumCorners() const {
+size_t Lines::getNumCorners() const {
 
-   return numCorners;
+   return cl->size();
 }
 
-const size_t & Lines::getNumVertices() const {
+size_t Lines::getNumVertices() const {
 
-   return numVertices;
+   return x->size();
 }
 
 
-UnstructuredGrid::UnstructuredGrid(const size_t & elements,
-                                   const size_t & corners,
-                                   const size_t & vertices,
+UnstructuredGrid::UnstructuredGrid(const size_t & numElements,
+                                   const size_t & numCorners,
+                                   const size_t & numVertices,
                                    const std::string & name)
-   : Object(Object::UNSTRUCTUREDGRID, name),
-     numElements(elements), numCorners(corners), numVertices(vertices) {
+   : Object(Object::UNSTRUCTUREDGRID, name) {
 
-   x = static_cast<float *>
-      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
-   y = static_cast<float *>
-      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
-   z = static_cast<float *>
-      (Shm::instance().getShm().allocate(numVertices * sizeof(float)));
+   const allocator<float, managed_shared_memory::segment_manager>
+      alloc_inst_float(Shm::instance().getShm().get_segment_manager());
 
-   tl = static_cast<Type *>
-      (Shm::instance().getShm().allocate(numCorners * sizeof(Type)));
+   const allocator<size_t, managed_shared_memory::segment_manager>
+      alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
 
-   el = static_cast<size_t *>
-      (Shm::instance().getShm().allocate(numCorners * sizeof(size_t)));
+   x = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
 
-   cl = static_cast<size_t *>
-      (Shm::instance().getShm().allocate(numCorners * sizeof(size_t)));
+   y = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+
+   z = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+
+   tl = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
+
+   el = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
+
+   cl = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
 }
 
 UnstructuredGrid * UnstructuredGrid::create(const size_t & numElements,
@@ -246,19 +234,19 @@ UnstructuredGrid * UnstructuredGrid::create(const size_t & numElements,
    return u;
 }
 
-const size_t & UnstructuredGrid::getNumElements() const {
+size_t UnstructuredGrid::getNumElements() const {
 
-   return numElements;
+   return el->size();
 }
 
-const size_t & UnstructuredGrid::getNumCorners() const {
+size_t UnstructuredGrid::getNumCorners() const {
 
-   return numCorners;
+   return cl->size();
 }
 
-const size_t & UnstructuredGrid::getNumVertices() const {
+size_t UnstructuredGrid::getNumVertices() const {
 
-   return numVertices;
+   return x->size();
 }
 
 template<> const Object::Type Vec<float>::type  = Object::VECFLOAT;

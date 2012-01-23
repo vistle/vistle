@@ -30,10 +30,12 @@ bool Add::compute() {
 
          case vistle::Object::VECFLOAT: {
             vistle::Vec<float> *in = static_cast<vistle::Vec<float> *>(object);
-            size_t inSize = in->getSize();
+            size_t size = in->getSize();
 
-            vistle::Vec<float> *out = vistle::Vec<float>::create(inSize);
-            for (unsigned int index = 0; index < inSize; index ++)
+            vistle::Vec<float> *out = vistle::Vec<float>::create(size);
+            out->setSize(size);
+
+            for (unsigned int index = 0; index < size; index ++)
                (*out->x)[index] = (*in->x)[index] + rank + 1;
 
             addObject("data_out", out);
@@ -43,11 +45,15 @@ bool Add::compute() {
          case vistle::Object::VEC3INT: {
 
             vistle::Vec3<int> *in = static_cast<vistle::Vec3<int> *>(object);
-            vistle::Vec3<int> *out = vistle::Vec3<int>::create(in->getSize());
-            for (unsigned int index = 0; index < in->getSize(); index ++) {
-               out->x[index] = in->x[index] + 1 + rank;
-               out->y[index] = in->y[index] + 1 + rank;
-               out->z[index] = in->z[index] + 1 + rank;
+            size_t size = in->getSize();
+
+            vistle::Vec3<int> *out = vistle::Vec3<int>::create(size);
+            out->setSize(size);
+
+            for (unsigned int index = 0; index < size; index ++) {
+               (*out->x)[index] = (*in->x)[index] + 1 + rank;
+               (*out->y)[index] = (*in->y)[index] + 1 + rank;
+               (*out->z)[index] = (*in->z)[index] + 1 + rank;
             }
             addObject("data_out", out);
          }
