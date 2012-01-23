@@ -160,7 +160,7 @@ Lines::Lines(const size_t & numElements, const size_t & numCorners,
 
    el = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
 
-   cl = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
+   cl = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
 }
 
 
@@ -193,6 +193,57 @@ size_t Lines::getNumVertices() const {
    return x->size();
 }
 
+Polygons::Polygons(const size_t & numElements, const size_t & numCorners,
+                   const size_t & numVertices, const std::string & name)
+   : Object(Object::POLYGONS, name) {
+
+   const allocator<float, managed_shared_memory::segment_manager>
+      alloc_inst_float(Shm::instance().getShm().get_segment_manager());
+
+   const allocator<size_t, managed_shared_memory::segment_manager>
+      alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
+
+   x = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+
+   y = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+
+   z = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+
+   el = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
+
+   cl = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
+}
+
+
+Polygons * Polygons::create(const size_t & numElements,
+                            const size_t & numCorners,
+                            const size_t & numVertices) {
+
+   const std::string name = Shm::instance().createObjectID();
+   Polygons *p = static_cast<Polygons *>
+      (Shm::instance().getShm().construct<Polygons>(name.c_str())[1](numElements, numCorners, numVertices, name));
+
+   shm_handle_t handle =
+      Shm::instance().getShm().get_handle_from_address(p);
+
+   Shm::instance().publish(handle);
+   return p;
+}
+
+size_t Polygons::getNumElements() const {
+
+   return el->size();
+}
+
+size_t Polygons::getNumCorners() const {
+
+   return cl->size();
+}
+
+size_t Polygons::getNumVertices() const {
+
+   return x->size();
+}
 
 UnstructuredGrid::UnstructuredGrid(const size_t & numElements,
                                    const size_t & numCorners,

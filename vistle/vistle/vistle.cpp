@@ -77,6 +77,7 @@ int main(int argc, char ** argv) {
    vistle::Communicator *comm = new vistle::Communicator(rank, size);
    bool done = false;
 
+   /*
    vistle::message::Spawn readCovise1(0, rank, 1, "ReadCovise");
    comm->handleMessage(&readCovise1);
 
@@ -120,6 +121,23 @@ int main(int argc, char ** argv) {
 
    vistle::message::Compute compute2(0, rank, 2);
    comm->handleMessage(&compute2);
+*/
+
+   vistle::message::Spawn readCovise(0, rank, 1, "ReadCovise");
+   comm->handleMessage(&readCovise);
+
+   vistle::message::SetFileParameter param(0, rank, 1, "filename",
+                             "/data/OpenFOAM/PumpTurbine/covise/geo2db.covise");
+   comm->handleMessage(&param);
+
+   vistle::message::Spawn renderer(0, rank, 2, "OSGRenderer");
+   comm->handleMessage(&renderer);
+
+   vistle::message::Connect connect12(0, rank, 1, "grid_out", 2, "data_in");
+   comm->handleMessage(&connect12);
+
+   vistle::message::Compute compute(0, rank, 1);
+   comm->handleMessage(&compute);
 
    /*
    vistle::message::Spawn gendat(0, rank, 1, "Gendat");
@@ -133,7 +151,6 @@ int main(int argc, char ** argv) {
    vistle::message::Compute compute(0, rank, 1);
    comm->handleMessage(&compute);
    */
-
    while (!done) {
       done = comm->dispatch();
       usleep(100);

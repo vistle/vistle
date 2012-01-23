@@ -18,6 +18,8 @@ class ReadCovise: public vistle::Module {
                    bool byteswap, const int setElement = 0) const;
    void readUSTSDT(const int fd, std::vector<vistle::Object *> & objects,
                    bool byteswap, const int setElement = 0) const;
+   void readPOLYGN(const int fd, std::vector<vistle::Object *> & objects,
+                   bool byteswap, const int setElement = 0) const;
 
    void load(const std::string & name,
              std::vector<vistle::Object *> & objects) const;

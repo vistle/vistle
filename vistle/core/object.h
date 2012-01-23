@@ -56,7 +56,8 @@ class Object {
       VEC3CHAR          =  5,
       TRIANGLES         =  6,
       LINES             =  7,
-      UNSTRUCTUREDGRID  =  8,
+      POLYGONS          =  8,
+      UNSTRUCTUREDGRID  =  9,
    };
 
    Object(const Type id, const std::string & name);
@@ -183,6 +184,27 @@ class Lines: public Object {
                          const size_t & numVertices = 0);
    Lines(const size_t & numElements, const size_t & numCorners,
          const size_t & numVertices, const std::string & name);
+
+   size_t getNumElements() const;
+   size_t getNumCorners() const;
+   size_t getNumVertices() const;
+
+   boost::interprocess::offset_ptr<std::vector<size_t, boost::interprocess::allocator<size_t, boost::interprocess::managed_shared_memory::segment_manager> > >
+      el, cl;
+   boost::interprocess::offset_ptr<std::vector<float, boost::interprocess::allocator<float, boost::interprocess::managed_shared_memory::segment_manager> > >
+      x, y, z;
+
+ private:
+};
+
+class Polygons: public Object {
+
+ public:
+   static Polygons * create(const size_t & numElements = 0,
+                         const size_t & numCorners = 0,
+                         const size_t & numVertices = 0);
+   Polygons(const size_t & numElements, const size_t & numCorners,
+            const size_t & numVertices, const std::string & name);
 
    size_t getNumElements() const;
    size_t getNumCorners() const;

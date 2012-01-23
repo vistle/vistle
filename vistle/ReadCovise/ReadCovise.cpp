@@ -114,6 +114,9 @@ void ReadCovise::readSETELE(const int fd,
       else if (!strncmp(buf, "USTSDT", 6))
          readUSTSDT(fd, objects, byteswap, index);
 
+      else if (!strncmp(buf, "POLYGN", 6))
+         readPOLYGN(fd, objects, byteswap, index);
+
       else {
          std:: cout << "ReadCovise: object type [" << buf << "] unsupported"
                     << std::endl;
@@ -204,6 +207,52 @@ void ReadCovise::readUSTSDT(const int fd,
    readAttributes(fd, byteswap);
 }
 
+void ReadCovise::readPOLYGN(const int fd,
+                            std::vector<vistle::Object *> & objects,
+                            const bool byteswap, const int setElement) const {
+
+   unsigned int numElements, numCorners, numVertices;
+   read_int(fd, &numElements, 1, byteswap);
+   read_int(fd, &numCorners, 1, byteswap);
+   read_int(fd, &numVertices, 1, byteswap);
+
+   if ((setElement % size) == rank) {
+      vistle::Polygons * polygons =
+         vistle::Polygons::create(numElements, numCorners, numVertices);
+      
+      unsigned int *el = new unsigned int[numElements];
+      unsigned int *cl = new unsigned int[numCorners];
+      
+      read_int(fd, el, numElements, byteswap);
+      read_int(fd, cl, numCorners, byteswap);
+
+      for (unsigned int index = 0; index < numElements; index ++)
+         (*polygons->el)[index] = el[index];
+      
+      for (unsigned int index = 0; index < numCorners; index ++)
+         (*polygons->cl)[index] = cl[index];
+      
+      read_float(fd, &((*polygons->x)[0]), numVertices, byteswap);
+      read_float(fd, &((*polygons->y)[0]), numVertices, byteswap);
+      read_float(fd, &((*polygons->z)[0]), numVertices, byteswap);
+
+      delete[] el;
+      delete[] cl;
+
+      objects.push_back(polygons);
+   } else {
+
+      lseek(fd, numElements * sizeof(int), SEEK_CUR);
+      lseek(fd, numCorners * sizeof(int), SEEK_CUR);
+
+      lseek(fd, numVertices * sizeof(float), SEEK_CUR);
+      lseek(fd, numVertices * sizeof(float), SEEK_CUR);
+      lseek(fd, numVertices * sizeof(float), SEEK_CUR);
+
+   }
+   readAttributes(fd, byteswap);
+}
+
 void ReadCovise::load(const std::string & name,
                       std::vector<vistle::Object *> & objects) const {
 
@@ -222,6 +271,7 @@ void ReadCovise::load(const std::string & name,
       lseek(fd, 0, SEEK_SET);
 
    r = read(fd, buf, 6);
+
    while (r > 0) {
 
       if (!strncmp(buf, "SETELE", 6))
@@ -232,6 +282,9 @@ void ReadCovise::load(const std::string & name,
 
       else if (!strncmp(buf, "USTSDT", 6))
          readUSTSDT(fd, objects, byteswap);
+
+      else if (!strncmp(buf, "POLYGN", 6))
+         readPOLYGN(fd, objects, byteswap);
 
       else {
          std:: cout << "ReadCovise: object type [" << buf << "] unsupported"
