@@ -76,7 +76,6 @@ int main(int argc, char ** argv) {
 
    vistle::Communicator *comm = new vistle::Communicator(rank, size);
    bool done = false;
-
    /*
    vistle::message::Spawn readCovise1(0, rank, 1, "ReadCovise");
    comm->handleMessage(&readCovise1);
@@ -121,13 +120,13 @@ int main(int argc, char ** argv) {
 
    vistle::message::Compute compute2(0, rank, 2);
    comm->handleMessage(&compute2);
-*/
+   */
 
    vistle::message::Spawn readCovise(0, rank, 1, "ReadCovise");
    comm->handleMessage(&readCovise);
 
    vistle::message::SetFileParameter param(0, rank, 1, "filename",
-                             "/data/OpenFOAM/PumpTurbine/covise/geo2db.covise");
+                     "/data/OpenFOAM/PumpTurbine/covise/single_geom2d.covise");
    comm->handleMessage(&param);
 
    vistle::message::Spawn renderer(0, rank, 2, "OSGRenderer");
@@ -439,12 +438,12 @@ bool Communicator::handleMessage(const message::Message * message) {
 
          vistle::Object *object = (vistle::Object *)
             vistle::Shm::instance().getShm().get_address_from_handle(newObject->getHandle());
-
+         /*
          std::cout << "comm [" << rank << "/" << size << "] NewObject ["
                    << newObject->getHandle() << "] type ["
                    << object->getType() << "] from module ["
                    << newObject->getModuleID() << "]" << std::endl;
-
+         */
          break;
       }
 

@@ -128,7 +128,7 @@ Triangles * Triangles::create(const size_t & numCorners,
    shm_handle_t handle =
       Shm::instance().getShm().get_handle_from_address(t);
 
-   Shm::instance().publish(handle);
+   //Shm::instance().publish(handle);
    return t;
 }
 
@@ -174,7 +174,7 @@ Lines * Lines::create(const size_t & numElements, const size_t & numCorners,
    shm_handle_t handle =
       Shm::instance().getShm().get_handle_from_address(l);
 
-   Shm::instance().publish(handle);
+   //Shm::instance().publish(handle);
    return l;
 }
 
@@ -226,7 +226,7 @@ Polygons * Polygons::create(const size_t & numElements,
    shm_handle_t handle =
       Shm::instance().getShm().get_handle_from_address(p);
 
-   Shm::instance().publish(handle);
+   //Shm::instance().publish(handle);
    return p;
 }
 
@@ -281,7 +281,7 @@ UnstructuredGrid * UnstructuredGrid::create(const size_t & numElements,
    shm_handle_t handle =
       Shm::instance().getShm().get_handle_from_address(u);
 
-   Shm::instance().publish(handle);
+   //Shm::instance().publish(handle);
    return u;
 }
 

@@ -154,9 +154,10 @@ const std::string * Module::getFileParameter(const std::string & name) {
 
 bool Module::addObject(const std::string & portName,
                        const shm_handle_t & handle) {
-
+   /*
    std::cout << "Module::addObject " << handle << " to port " <<  portName
              << std::endl;
+   */
    std::map<std::string, std::list<shm_handle_t> *>::iterator i =
       outputPorts.find(portName);
 

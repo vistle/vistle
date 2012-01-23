@@ -84,7 +84,7 @@ class Vec: public Object {
          (Shm::instance().getShm().construct<Vec<T> >(name.c_str())[1](size, name));
       shm_handle_t handle =
          Shm::instance().getShm().get_handle_from_address(t);
-      Shm::instance().publish(handle);
+      //Shm::instance().publish(handle);
       return t;
    }
 
@@ -124,7 +124,7 @@ class Vec3: public Object {
          (Shm::instance().getShm().construct<Vec3<T> >(name.c_str())[1](size, name));
       shm_handle_t handle =
          Shm::instance().getShm().get_handle_from_address(t);
-      Shm::instance().publish(handle);
+      //Shm::instance().publish(handle);
       return t;
    }
 

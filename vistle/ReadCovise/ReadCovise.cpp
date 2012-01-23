@@ -79,22 +79,22 @@ ReadCovise::~ReadCovise() {
 
 }
 
-void ReadCovise::readAttributes(const int fd, const bool byteswap) const {
+void ReadCovise::readAttributes(const int fd, const bool byteswap) {
 
    unsigned int size, num;
    read_int(fd, &size, 1, byteswap);
    size -= sizeof(unsigned int);
    read_int(fd, &num, 1, byteswap);
-
+   /*
    std::cout << "ReadCovise::readAttributes: " << num << " attributes\n"
              << std::endl;
-
+   */
    lseek(fd, size, SEEK_CUR);
 }
 
 void ReadCovise::readSETELE(const int fd,
                             std::vector<vistle::Object *> & objects,
-                            const bool byteswap) const {
+                            const bool byteswap) {
 
    unsigned int num;
    read_int(fd, &num, 1, byteswap);
@@ -128,7 +128,7 @@ void ReadCovise::readSETELE(const int fd,
 
 void ReadCovise::readUNSGRD(const int fd,
                             std::vector<vistle::Object *> & objects,
-                            const bool byteswap, const int setElement) const {
+                            const bool byteswap, const int setElement) {
 
    if ((setElement % size) == rank) {
       unsigned int numElem;
@@ -166,6 +166,8 @@ void ReadCovise::readUNSGRD(const int fd,
       delete[] tl;
       delete[] cl;
 
+      addObject("grid_out", usg);
+
       objects.push_back(usg);
    } else {
 
@@ -190,7 +192,7 @@ void ReadCovise::readUNSGRD(const int fd,
 
 void ReadCovise::readUSTSDT(const int fd,
                             std::vector<vistle::Object *> & objects,
-                            const bool byteswap, const int setElement) const {
+                            const bool byteswap, const int setElement) {
 
    unsigned int numElem;
    read_int(fd, &numElem, 1, byteswap);
@@ -199,7 +201,10 @@ void ReadCovise::readUSTSDT(const int fd,
 
       vistle::Vec<float> *f = vistle::Vec<float>::create(numElem);
       read_float(fd, &((*f->x)[0]), numElem, byteswap);
+
+      addObject("grid_out", f);
       objects.push_back(f);
+
    } else {
 
       lseek(fd, numElem * sizeof(float), SEEK_CUR);
@@ -209,7 +214,7 @@ void ReadCovise::readUSTSDT(const int fd,
 
 void ReadCovise::readPOLYGN(const int fd,
                             std::vector<vistle::Object *> & objects,
-                            const bool byteswap, const int setElement) const {
+                            const bool byteswap, const int setElement) {
 
    unsigned int numElements, numCorners, numVertices;
    read_int(fd, &numElements, 1, byteswap);
@@ -239,6 +244,8 @@ void ReadCovise::readPOLYGN(const int fd,
       delete[] el;
       delete[] cl;
 
+      addObject("grid_out", polygons);
+
       objects.push_back(polygons);
    } else {
 
@@ -254,7 +261,7 @@ void ReadCovise::readPOLYGN(const int fd,
 }
 
 void ReadCovise::load(const std::string & name,
-                      std::vector<vistle::Object *> & objects) const {
+                      std::vector<vistle::Object *> & objects) {
 
    bool byteswap = true;
 
@@ -304,10 +311,11 @@ bool ReadCovise::compute() {
 
    if (name) {
       load(*name, objects);
-
+      /*
       std::vector<vistle::Object *>::iterator i;
       for (i = objects.begin(); i != objects.end(); i++)
          addObject("grid_out", *i);
+      */
    }
    return true;
 }
