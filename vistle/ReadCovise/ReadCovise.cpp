@@ -98,7 +98,7 @@ void ReadCovise::readSETELE(const int fd,
 
    unsigned int num;
    read_int(fd, &num, 1, byteswap);
-
+   printf("set %d elems\n", num);
    char buf[7];
    buf[6] = 0;
 
@@ -131,34 +131,36 @@ void ReadCovise::readUNSGRD(const int fd,
                             const bool byteswap, const int setElement) {
 
    if ((setElement % size) == rank) {
-      unsigned int numElem;
-      unsigned int numConn;
-      unsigned int numVert;
-      read_int(fd, &numElem, 1, byteswap);
-      read_int(fd, &numConn, 1, byteswap);
-      read_int(fd, &numVert, 1, byteswap);
+      unsigned int numElements;
+      unsigned int numCorners;
+      unsigned int numVertices;
+
+      read_int(fd, &numElements, 1, byteswap);
+      read_int(fd, &numCorners, 1, byteswap);
+      read_int(fd, &numVertices, 1, byteswap);
 
       vistle::UnstructuredGrid *usg =
-         vistle::UnstructuredGrid::create(numElem, numConn, numVert);
+         vistle::UnstructuredGrid::create(numElements, numCorners, numVertices);
 
-      unsigned int *el = new unsigned int[numElem];
-      unsigned int *tl = new unsigned int[numElem];
-      unsigned int *cl = new unsigned int[numConn];
+      unsigned int *el = new unsigned int[numElements];
+      unsigned int *tl = new unsigned int[numElements];
+      unsigned int *cl = new unsigned int[numCorners];
 
-      read_int(fd, el, numElem, byteswap);
-      read_int(fd, tl, numElem, byteswap);
-      read_int(fd, cl, numConn, byteswap);
+      read_int(fd, el, numElements, byteswap);
+      read_int(fd, tl, numElements, byteswap);
+      read_int(fd, cl, numCorners, byteswap);
 
-      for (unsigned int index = 0; index < numElem; index ++) {
+      for (unsigned int index = 0; index < numElements; index ++) {
          (*usg->el)[index] = el[index];
          (*usg->tl)[index] = (vistle::UnstructuredGrid::Type) tl[index];
       }
-      for (unsigned int index = 0; index < numConn; index ++)
+      for (unsigned int index = 0; index < numCorners; index ++) {
          (*usg->cl)[index] = cl[index];
+      }
 
-      read_float(fd, &((*usg->x)[0]), numVert, byteswap);
-      read_float(fd, &((*usg->y)[0]), numVert, byteswap);
-      read_float(fd, &((*usg->z)[0]), numVert, byteswap);
+      read_float(fd, &((*usg->x)[0]), numVertices, byteswap);
+      read_float(fd, &((*usg->y)[0]), numVertices, byteswap);
+      read_float(fd, &((*usg->z)[0]), numVertices, byteswap);
 
       readAttributes(fd, byteswap);
 
@@ -166,25 +168,24 @@ void ReadCovise::readUNSGRD(const int fd,
       delete[] tl;
       delete[] cl;
 
-      addObject("grid_out", usg);
-
       objects.push_back(usg);
    } else {
 
-      unsigned int numElem;
-      unsigned int numConn;
-      unsigned int numVert;
-      read_int(fd, &numElem, 1, byteswap);
-      read_int(fd, &numConn, 1, byteswap);
-      read_int(fd, &numVert, 1, byteswap);
+      unsigned int numElements;
+      unsigned int numCorners;
+      unsigned int numVertices;
 
-      lseek(fd, numElem * sizeof(int), SEEK_CUR);
-      lseek(fd, numElem * sizeof(int), SEEK_CUR);
-      lseek(fd, numConn * sizeof(int), SEEK_CUR);
+      read_int(fd, &numElements, 1, byteswap);
+      read_int(fd, &numCorners, 1, byteswap);
+      read_int(fd, &numVertices, 1, byteswap);
 
-      lseek(fd, numVert * sizeof(float), SEEK_CUR);
-      lseek(fd, numVert * sizeof(float), SEEK_CUR);
-      lseek(fd, numVert * sizeof(float), SEEK_CUR);
+      lseek(fd, numElements * sizeof(int), SEEK_CUR);
+      lseek(fd, numElements * sizeof(int), SEEK_CUR);
+      lseek(fd, numCorners * sizeof(int), SEEK_CUR);
+
+      lseek(fd, numVertices * sizeof(float), SEEK_CUR);
+      lseek(fd, numVertices * sizeof(float), SEEK_CUR);
+      lseek(fd, numVertices * sizeof(float), SEEK_CUR);
 
       readAttributes(fd, byteswap);
    }
@@ -194,20 +195,17 @@ void ReadCovise::readUSTSDT(const int fd,
                             std::vector<vistle::Object *> & objects,
                             const bool byteswap, const int setElement) {
 
-   unsigned int numElem;
-   read_int(fd, &numElem, 1, byteswap);
+   unsigned int numElements;
+   read_int(fd, &numElements, 1, byteswap);
 
    if ((setElement % size) == rank) {
+      vistle::Vec<float> *f = vistle::Vec<float>::create(numElements);
+      read_float(fd, &((*f->x)[0]), numElements, byteswap);
 
-      vistle::Vec<float> *f = vistle::Vec<float>::create(numElem);
-      read_float(fd, &((*f->x)[0]), numElem, byteswap);
-
-      addObject("grid_out", f);
       objects.push_back(f);
-
    } else {
 
-      lseek(fd, numElem * sizeof(float), SEEK_CUR);
+      lseek(fd, numElements * sizeof(float), SEEK_CUR);
    }
    readAttributes(fd, byteswap);
 }
@@ -222,29 +220,25 @@ void ReadCovise::readPOLYGN(const int fd,
    read_int(fd, &numVertices, 1, byteswap);
 
    if ((setElement % size) == rank) {
+
       vistle::Polygons * polygons =
          vistle::Polygons::create(numElements, numCorners, numVertices);
-      
+
       unsigned int *el = new unsigned int[numElements];
       unsigned int *cl = new unsigned int[numCorners];
-      
+
       read_int(fd, el, numElements, byteswap);
       read_int(fd, cl, numCorners, byteswap);
 
       for (unsigned int index = 0; index < numElements; index ++)
          (*polygons->el)[index] = el[index];
-      
+
       for (unsigned int index = 0; index < numCorners; index ++)
          (*polygons->cl)[index] = cl[index];
-      
+
       read_float(fd, &((*polygons->x)[0]), numVertices, byteswap);
       read_float(fd, &((*polygons->y)[0]), numVertices, byteswap);
       read_float(fd, &((*polygons->z)[0]), numVertices, byteswap);
-
-      delete[] el;
-      delete[] cl;
-
-      addObject("grid_out", polygons);
 
       objects.push_back(polygons);
    } else {
@@ -276,6 +270,8 @@ void ReadCovise::load(const std::string & name,
       byteswap = true;
    else
       lseek(fd, 0, SEEK_SET);
+
+   printf("byteswap: %d\n", byteswap);
 
    r = read(fd, buf, 6);
 
@@ -309,8 +305,17 @@ bool ReadCovise::compute() {
    std::vector<vistle::Object *> objects;
    const std::string * name = getFileParameter("filename");
 
+   struct timeval t0, t1;
    if (name) {
+      gettimeofday(&t0, NULL);
       load(*name, objects);
+      gettimeofday(&t1, NULL);
+
+      long long usec = t1.tv_sec - t0.tv_sec;
+      usec *= 1000000;
+      usec += (t1.tv_usec - t0.tv_usec);
+
+      printf("++++++++++ ReadCovise: %ld\n", usec);
       /*
       std::vector<vistle::Object *>::iterator i;
       for (i = objects.begin(); i != objects.end(); i++)
