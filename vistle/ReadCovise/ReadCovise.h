@@ -12,17 +12,12 @@ class ReadCovise: public vistle::Module {
 
  private:
    void readAttributes(const int fd, const bool byteswap);
-   void readSETELE(const int fd, std::vector<vistle::Object *> & objects,
-                   const bool byteswap);
-   void readUNSGRD(const int fd, std::vector<vistle::Object *> & objects,
-                   bool byteswap, const int setElement = 0);
-   void readUSTSDT(const int fd, std::vector<vistle::Object *> & objects,
-                   bool byteswap, const int setElement = 0);
-   void readPOLYGN(const int fd, std::vector<vistle::Object *> & objects,
-                   bool byteswap, const int setElement = 0);
+   vistle::Object * readSETELE(const int fd, const bool byteswap);
+   vistle::Object * readUNSGRD(const int fd, bool byteswap);
+   vistle::Object * readUSTSDT(const int fd, bool byteswap);
+   vistle::Object * readPOLYGN(const int fd, bool byteswap);
 
-   void load(const std::string & name,
-             std::vector<vistle::Object *> & objects);
+   vistle::Object * load(const std::string & name);
 
    virtual bool compute();
 };

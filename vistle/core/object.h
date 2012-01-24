@@ -58,6 +58,7 @@ class Object {
       LINES             =  7,
       POLYGONS          =  8,
       UNSTRUCTUREDGRID  =  9,
+      SET               = 10,
    };
 
    Object(const Type id, const std::string & name);
@@ -82,9 +83,11 @@ class Vec: public Object {
       const std::string name = Shm::instance().createObjectID();
       Vec<T> *t = static_cast<Vec<T> *>
          (Shm::instance().getShm().construct<Vec<T> >(name.c_str())[1](size, name));
+      /*
       shm_handle_t handle =
          Shm::instance().getShm().get_handle_from_address(t);
-      //Shm::instance().publish(handle);
+      Shm::instance().publish(handle);
+      */
       return t;
    }
 
@@ -122,9 +125,11 @@ class Vec3: public Object {
       const std::string name = Shm::instance().createObjectID();
       Vec3<T> *t = static_cast<Vec3<T> *>
          (Shm::instance().getShm().construct<Vec3<T> >(name.c_str())[1](size, name));
+      /*
       shm_handle_t handle =
          Shm::instance().getShm().get_handle_from_address(t);
-      //Shm::instance().publish(handle);
+      Shm::instance().publish(handle);
+      */
       return t;
    }
 
@@ -254,6 +259,20 @@ class UnstructuredGrid: public Object {
 
  private:
 
+};
+
+class Set: public Object {
+
+ public:
+   static Set * create(const size_t & numElements = 0);
+
+   Set(const size_t & numElements, const std::string & name);
+
+   size_t getNumElements() const;
+   Object * getElement(const size_t & index) const;
+
+   boost::interprocess::offset_ptr<std::vector<boost::interprocess::offset_ptr<Object>, boost::interprocess::allocator<boost::interprocess::offset_ptr<Object>, boost::interprocess::managed_shared_memory::segment_manager> > >
+      elements;
 };
 
 } // namespace vistle

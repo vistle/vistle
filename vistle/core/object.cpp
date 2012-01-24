@@ -125,10 +125,11 @@ Triangles * Triangles::create(const size_t & numCorners,
    Triangles *t = static_cast<Triangles *>
       (Shm::instance().getShm().construct<Triangles>(name.c_str())[1](numCorners, numVertices, name));
 
+   /*
    shm_handle_t handle =
       Shm::instance().getShm().get_handle_from_address(t);
-
-   //Shm::instance().publish(handle);
+   Shm::instance().publish(handle);
+   */
    return t;
 }
 
@@ -171,10 +172,11 @@ Lines * Lines::create(const size_t & numElements, const size_t & numCorners,
    Lines *l = static_cast<Lines *>
       (Shm::instance().getShm().construct<Lines>(name.c_str())[1](numElements, numCorners, numVertices, name));
 
+   /*
    shm_handle_t handle =
       Shm::instance().getShm().get_handle_from_address(l);
-
-   //Shm::instance().publish(handle);
+   Shm::instance().publish(handle);
+   */
    return l;
 }
 
@@ -223,10 +225,11 @@ Polygons * Polygons::create(const size_t & numElements,
    Polygons *p = static_cast<Polygons *>
       (Shm::instance().getShm().construct<Polygons>(name.c_str())[1](numElements, numCorners, numVertices, name));
 
+   /*
    shm_handle_t handle =
       Shm::instance().getShm().get_handle_from_address(p);
-
-   //Shm::instance().publish(handle);
+   Shm::instance().publish(handle);
+   */
    return p;
 }
 
@@ -278,10 +281,11 @@ UnstructuredGrid * UnstructuredGrid::create(const size_t & numElements,
    UnstructuredGrid *u = static_cast<UnstructuredGrid *>
       (Shm::instance().getShm().construct<UnstructuredGrid>(name.c_str())[1](numElements, numCorners, numVertices, name));
 
+   /*
    shm_handle_t handle =
       Shm::instance().getShm().get_handle_from_address(u);
-
-   //Shm::instance().publish(handle);
+   Shm::instance().publish(handle);
+   */
    return u;
 }
 
@@ -298,6 +302,44 @@ size_t UnstructuredGrid::getNumCorners() const {
 size_t UnstructuredGrid::getNumVertices() const {
 
    return x->size();
+}
+
+
+Set::Set(const size_t & numElements, const std::string & name)
+   : Object(Object::SET, name) {
+
+   const allocator<offset_ptr<Object>, managed_shared_memory::segment_manager>
+      alloc_inst(Shm::instance().getShm().get_segment_manager());
+
+   elements = Shm::instance().getShm().construct<std::vector<offset_ptr<Object>, allocator<offset_ptr<Object>, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numElements, offset_ptr<Object>(), alloc_inst);
+}
+
+
+Set * Set::create(const size_t & numElements) {
+
+   const std::string name = Shm::instance().createObjectID();
+   Set *p = static_cast<Set *>
+      (Shm::instance().getShm().construct<Set>(name.c_str())[1](numElements, name));
+
+   /*
+   shm_handle_t handle =
+      Shm::instance().getShm().get_handle_from_address(p);
+   Shm::instance().publish(handle);
+   */
+   return p;
+}
+
+size_t Set::getNumElements() const {
+
+   return elements->size();
+}
+
+Object * Set::getElement(const size_t & index) const {
+
+   if (index >= elements->size())
+      return NULL;
+
+   return (*elements)[index].get();
 }
 
 template<> const Object::Type Vec<float>::type  = Object::VECFLOAT;
