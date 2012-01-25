@@ -44,7 +44,26 @@ void swap_float(float * d, const unsigned int num) {
    }
 }
 
-size_t read_int(int fd, unsigned int * data, size_t num, bool byte_swap) {
+size_t read_type(const int fd, char * data) {
+
+   size_t r = 0, num = 6;
+   while (r != num) {
+      size_t n = read(fd, data + r, sizeof(char) * (num - r));
+      if (n <= 0)
+         break;
+      r += n;
+   }
+
+   if (r != num) {
+      std::cout << "ERROR ReadCovise::read_type read " << r
+                << " elements instead of " << num << std::endl;
+   }
+   return r;
+}
+
+
+size_t read_int(const int fd, unsigned int * data, const size_t & num,
+                const bool byte_swap) {
 
    size_t r = 0;
    while (r != num) {
@@ -54,13 +73,20 @@ size_t read_int(int fd, unsigned int * data, size_t num, bool byte_swap) {
       r += n;
    }
 
+   if (r != num) {
+      std::cout << "ERROR ReadCovise::read_int read " << r
+                << " elements instead of " << num << std::endl;
+   }
+
    if (byte_swap)
       swap_int(data, r);
 
    return r;
 }
 
-size_t read_float(int fd, float * data, size_t num, bool byte_swap) {
+
+size_t read_float(const int fd, float * data,
+                  const size_t & num, const bool byte_swap) {
 
    size_t r = 0;
    while (r != num) {
@@ -69,6 +95,12 @@ size_t read_float(int fd, float * data, size_t num, bool byte_swap) {
          break;
       r += n;
    }
+
+   if (r != num) {
+      std::cout << "ERROR ReadCovise::read_float read " << r
+                << " elements instead of " << num << std::endl;
+   }
+
    if (byte_swap)
       swap_float(data, r);
 
@@ -103,7 +135,7 @@ vistle::Object * ReadCovise::readSETELE(const int fd, const bool byteswap) {
    buf[6] = 0;
 
    for (unsigned int index = 0; index < num; index ++) {
-      read(fd, buf, 6);
+      read_type(fd, buf);
 
       vistle::Object *object = NULL;
 
@@ -260,10 +292,19 @@ vistle::Object * ReadCovise::load(const std::string & name) {
    bool byteswap = true;
 
    int fd = open(name.c_str(), O_RDONLY);
+   if (fd == -1) {
+      std::cout << "ERROR ReadCovise::load could not open file " << name
+                << std::endl;
+      return NULL;
+   }
+
    char buf[7];
    buf[6] = 0;
 
-   int r = read(fd, buf, 6);
+   int r = read_type(fd, buf);
+   if (r != 6)
+      return NULL;
+
    if (!strncmp(buf, "COV_BE", 6))
       byteswap = false;
    else if (!strncmp(buf, "COV_LE", 6))
@@ -273,7 +314,7 @@ vistle::Object * ReadCovise::load(const std::string & name) {
 
    printf("byteswap: %d\n", byteswap);
 
-   if (read(fd, buf, 6) == 6) {
+   if (read_type(fd, buf) == 6) {
 
       if (!strncmp(buf, "SETELE", 6))
          object = readSETELE(fd, byteswap);
@@ -315,7 +356,8 @@ bool ReadCovise::compute() {
 
       printf("++++++++++ ReadCovise: %ld\n", usec);
 
-      addObject("grid_out", object);
+      if (object)
+         addObject("grid_out", object);
       /*
       std::vector<vistle::Object *>::iterator i;
       for (i = objects.begin(); i != objects.end(); i++)
