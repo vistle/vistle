@@ -59,6 +59,7 @@ class Object {
       POLYGONS          =  8,
       UNSTRUCTUREDGRID  =  9,
       SET               = 10,
+      GEOMETRY          = 11,
    };
 
    Object(const Type id, const std::string & name);
@@ -273,6 +274,22 @@ class Set: public Object {
 
    boost::interprocess::offset_ptr<std::vector<boost::interprocess::offset_ptr<Object>, boost::interprocess::allocator<boost::interprocess::offset_ptr<Object>, boost::interprocess::managed_shared_memory::segment_manager> > >
       elements;
+};
+
+class Geometry: public Object {
+
+ public:
+   static Geometry * create();
+
+   Geometry(const std::string & name);
+
+   boost::interprocess::offset_ptr<Object> geometry;
+   boost::interprocess::offset_ptr<Object> colors;
+   boost::interprocess::offset_ptr<Object> normals;
+   boost::interprocess::offset_ptr<Object> texture;
+
+ private:
+
 };
 
 } // namespace vistle

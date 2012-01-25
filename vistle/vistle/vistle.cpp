@@ -121,7 +121,7 @@ int main(int argc, char ** argv) {
    vistle::message::Compute compute2(0, rank, 2);
    comm->handleMessage(&compute2);
    */
-
+   /*
    vistle::message::Spawn readCovise(0, rank, 1, "ReadCovise");
    comm->handleMessage(&readCovise);
 
@@ -137,7 +137,7 @@ int main(int argc, char ** argv) {
 
    vistle::message::Compute compute(0, rank, 1);
    comm->handleMessage(&compute);
-
+   */
    /*
    vistle::message::Spawn gendat(0, rank, 1, "Gendat");
    comm->handleMessage(&gendat);
@@ -150,6 +150,29 @@ int main(int argc, char ** argv) {
    vistle::message::Compute compute(0, rank, 1);
    comm->handleMessage(&compute);
    */
+
+   vistle::message::Spawn readCovise(0, rank, 1, "ReadCovise");
+   comm->handleMessage(&readCovise);
+
+   vistle::message::Spawn cutGeometry(0, rank, 2, "CutGeometry");
+   comm->handleMessage(&cutGeometry);
+
+   vistle::message::SetFileParameter param(0, rank, 1, "filename",
+                                           "/tmp/single.covise");
+   comm->handleMessage(&param);
+
+   vistle::message::Spawn renderer(0, rank, 3, "OSGRenderer");
+   comm->handleMessage(&renderer);
+
+   vistle::message::Connect connect12(0, rank, 1, "grid_out", 2, "grid_in");
+   comm->handleMessage(&connect12);
+
+   vistle::message::Connect connect23(0, rank, 2, "grid_out", 3, "data_in");
+   comm->handleMessage(&connect23);
+
+   vistle::message::Compute compute(0, rank, 1);
+   comm->handleMessage(&compute);
+
    while (!done) {
       done = comm->dispatch();
       usleep(100);

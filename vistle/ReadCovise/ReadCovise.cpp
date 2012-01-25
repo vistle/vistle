@@ -130,34 +130,12 @@ vistle::Object * ReadCovise::readSETELE(const int fd, const bool byteswap) {
 
    unsigned int num;
    read_int(fd, &num, 1, byteswap);
-   printf("set %d elems\n", num);
-   char buf[7];
-   buf[6] = 0;
 
    for (unsigned int index = 0; index < num; index ++) {
-      read_type(fd, buf);
 
-      vistle::Object *object = NULL;
-
-      if (!strncmp(buf, "SETELE", 6))
-         object = readSETELE(fd, byteswap);
-
-      else if (!strncmp(buf, "UNSGRD", 6))
-         object = readUNSGRD(fd, byteswap);
-
-      else if (!strncmp(buf, "USTSDT", 6))
-         object = readUSTSDT(fd, byteswap);
-
-      else if (!strncmp(buf, "POLYGN", 6))
-         object = readPOLYGN(fd, byteswap);
-
-      else {
-         std:: cout << "ReadCovise: object type [" << buf << "] unsupported"
-                    << std::endl;
-         exit(1);
-      }
-
-      set->elements->push_back(object);
+      vistle::Object *object = readObject(fd, byteswap);
+      if (object)
+         set->elements->push_back(object);
    }
    readAttributes(fd, byteswap);
 
@@ -245,6 +223,24 @@ vistle::Object * ReadCovise::readUSTSDT(const int fd, const bool byteswap) {
    return array;
 }
 
+vistle::Object * ReadCovise::readUSTVDT(const int fd, const bool byteswap) {
+
+   vistle::Vec3<float> *array = NULL;
+   unsigned int numElements;
+
+   read_int(fd, &numElements, 1, byteswap);
+
+   array = vistle::Vec3<float>::create(numElements);
+   read_float(fd, &((*array->x)[0]), numElements, byteswap);
+   read_float(fd, &((*array->y)[0]), numElements, byteswap);
+   read_float(fd, &((*array->z)[0]), numElements, byteswap);
+
+   // lseek(fd, numElements * sizeof(float) * 3, SEEK_CUR);
+
+   readAttributes(fd, byteswap);
+   return array;
+}
+
 vistle::Object * ReadCovise::readPOLYGN(const int fd, const bool byteswap) {
 
    vistle::Polygons * polygons = NULL;
@@ -285,6 +281,70 @@ vistle::Object * ReadCovise::readPOLYGN(const int fd, const bool byteswap) {
    return polygons;
 }
 
+vistle::Object * ReadCovise::readGEOTEX(const int fd, const bool byteswap) {
+
+   vistle::Geometry *container = vistle::Geometry::create();
+   unsigned int contains[4] = { 0, 0, 0, 0 };
+   unsigned int ignore[4];
+
+   read_int(fd, contains, 4, byteswap);
+   read_int(fd, ignore, 4, byteswap);
+
+   if (contains[0])
+      container->geometry = readObject(fd, byteswap);
+
+   if (contains[1])
+      container->colors = readObject(fd, byteswap);
+
+   if (contains[2])
+      container->normals = readObject(fd, byteswap);
+
+   if (contains[3])
+      container->texture = readObject(fd, byteswap);
+
+   readAttributes(fd, byteswap);
+
+   return container;
+}
+
+vistle::Object * ReadCovise::readObject(const int fd, const bool byteswap) {
+
+   char buf[7];
+   buf[6] = 0;
+
+   vistle::Object *object = NULL;
+
+   if (read_type(fd, buf) == 6) {
+
+      std::cout << "ReadCovise::readObject " << buf << std::endl;
+
+      if (!strncmp(buf, "SETELE", 6))
+         object = readSETELE(fd, byteswap);
+
+      else if (!strncmp(buf, "UNSGRD", 6))
+         object = readUNSGRD(fd, byteswap);
+
+      else if (!strncmp(buf, "USTSDT", 6))
+         object = readUSTSDT(fd, byteswap);
+
+      else if (!strncmp(buf, "USTVDT", 6))
+         object = readUSTVDT(fd, byteswap);
+
+      else if (!strncmp(buf, "POLYGN", 6))
+         object = readPOLYGN(fd, byteswap);
+
+      else if (!strncmp(buf, "GEOTEX", 6))
+         object = readGEOTEX(fd, byteswap);
+
+      else {
+         std:: cout << "ReadCovise: object type [" << buf << "] unsupported"
+                    << std::endl;
+         exit(1);
+      }
+   }
+   return object;
+}
+
 vistle::Object * ReadCovise::load(const std::string & name) {
 
    vistle::Object *object = NULL;
@@ -312,29 +372,7 @@ vistle::Object * ReadCovise::load(const std::string & name) {
    else
       lseek(fd, 0, SEEK_SET);
 
-   printf("byteswap: %d\n", byteswap);
-
-   if (read_type(fd, buf) == 6) {
-
-      if (!strncmp(buf, "SETELE", 6))
-         object = readSETELE(fd, byteswap);
-
-      else if (!strncmp(buf, "UNSGRD", 6))
-         object = readUNSGRD(fd, byteswap);
-
-      else if (!strncmp(buf, "USTSDT", 6))
-         object = readUSTSDT(fd, byteswap);
-
-      else if (!strncmp(buf, "POLYGN", 6))
-         object = readPOLYGN(fd, byteswap);
-
-      else {
-         std:: cout << "ReadCovise: object type [" << buf << "] unsupported"
-                    << std::endl;
-         exit(1);
-      }
-   }
-
+   object = readObject(fd, byteswap);
    close(fd);
 
    return object;
@@ -354,7 +392,7 @@ bool ReadCovise::compute() {
       usec *= 1000000;
       usec += (t1.tv_usec - t0.tv_usec);
 
-      printf("++++++++++ ReadCovise: %ld\n", usec);
+      std::cout << "ReadCovise: " << usec << " usec" << std::endl;
 
       if (object)
          addObject("grid_out", object);

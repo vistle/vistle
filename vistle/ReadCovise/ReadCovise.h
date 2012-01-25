@@ -12,10 +12,15 @@ class ReadCovise: public vistle::Module {
 
  private:
    void readAttributes(const int fd, const bool byteswap);
+
    vistle::Object * readSETELE(const int fd, const bool byteswap);
-   vistle::Object * readUNSGRD(const int fd, bool byteswap);
-   vistle::Object * readUSTSDT(const int fd, bool byteswap);
-   vistle::Object * readPOLYGN(const int fd, bool byteswap);
+   vistle::Object * readUNSGRD(const int fd, const bool byteswap);
+   vistle::Object * readUSTSDT(const int fd, const bool byteswap);
+   vistle::Object * readPOLYGN(const int fd, const bool byteswap);
+   vistle::Object * readGEOTEX(const int fd, const bool byteswap);
+   vistle::Object * readUSTVDT(const int fd, const bool byteswap);
+
+   vistle::Object * readObject(const int fd, bool byteswap);
 
    vistle::Object * load(const std::string & name);
 

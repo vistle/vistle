@@ -342,6 +342,27 @@ Object * Set::getElement(const size_t & index) const {
    return (*elements)[index].get();
 }
 
+Geometry::Geometry(const std::string & name)
+   : Object(Object::GEOMETRY, name), geometry(NULL), colors(NULL),
+     normals(NULL), texture(NULL) {
+
+}
+
+
+Geometry * Geometry::create() {
+
+   const std::string name = Shm::instance().createObjectID();
+   Geometry *g = static_cast<Geometry *>
+      (Shm::instance().getShm().construct<Geometry>(name.c_str())[1](name));
+
+   /*
+   shm_handle_t handle =
+      Shm::instance().getShm().get_handle_from_address(g);
+   Shm::instance().publish(handle);
+   */
+   return g;
+}
+
 template<> const Object::Type Vec<float>::type  = Object::VECFLOAT;
 template<> const Object::Type Vec<int>::type    = Object::VECINT;
 template<> const Object::Type Vec<char>::type   = Object::VECCHAR;
