@@ -50,7 +50,6 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
             size_t numElements = in->getNumElements();
             for (size_t element = 0; element < numElements; element ++) {
 
-               // test
                size_t start = (*in->el)[element];
                size_t end;
                if (element != in->getNumElements() - 1)
@@ -72,7 +71,7 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
 
                   out->el->push_back(out->cl->size());
 
-                  for (int corner = start; corner <= end; corner ++) {
+                  for (size_t corner = start; corner <= end; corner ++) {
 
                      int vertexID = (*in->cl)[corner];
                      int outID;
@@ -97,20 +96,26 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
 
                   for (size_t corner = start; corner <= end; corner ++) {
 
+                     int vertexID = (*in->cl)[corner];
+
                      Vec3 p((*in->x)[(*in->cl)[corner]],
                             (*in->y)[(*in->cl)[corner]],
                             (*in->z)[(*in->cl)[corner]]);
 
-                     if ((p - point) * normal > 0) {
+                     size_t last = (corner == start) ? end : corner - 1;
+                     Vec3 pl((*in->x)[(*in->cl)[last]],
+                             (*in->y)[(*in->cl)[last]],
+                             (*in->z)[(*in->cl)[last]]);
 
-                        size_t vertexID = (*in->cl)[corner];
-                        Vec3 p((*in->x)[vertexID],
-                               (*in->y)[vertexID],
-                               (*in->z)[vertexID]);
+                     if (((p - point) * normal < 0 &&
+                          (pl - point) * normal >= 0) ||
+                         ((p - point) * normal >= 0 &&
+                          (pl - point) * normal < 0)) {
 
+                        // insert intersection point
                         float s = (normal * (point - p)) /
-                           (normal * normal);
-                        Vec3 pp = p + normal * s;
+                           (normal * (pl - p));
+                        Vec3 pp = p + (pl - p) * s;
 
                         size_t outID = out->x->size();
                         out->x->push_back(pp.x);
@@ -118,11 +123,11 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
                         out->z->push_back(pp.z);
 
                         out->cl->push_back(outID);
-                        break;
-                     } else {
+                     }
 
-                        int vertexID = (*in->cl)[corner];
-                        int outID;
+                     if ((p - point) * normal < 0) {
+
+                        size_t outID;
 
                         std::map<int, int>::iterator i =
                            vertexMap.find(vertexID);
