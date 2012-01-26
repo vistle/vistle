@@ -217,29 +217,69 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
       switch (geometry->getType()) {
 
          case vistle::Object::TRIANGLES: {
-
             const vistle::Triangles *triangles =
                static_cast<const vistle::Triangles *>(geometry);
             const size_t numCorners = triangles->getNumCorners();
             const size_t numVertices = triangles->getNumVertices();
 
+            size_t *cl = &((*triangles->cl)[0]);
+            float *x = &((*triangles->x)[0]);
+            float *y = &((*triangles->y)[0]);
+            float *z = &((*triangles->z)[0]);
+
             osg::ref_ptr<osg::Geode> geode = new osg::Geode();
             osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
 
             osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
-            for (unsigned int vertex = 0; vertex < numVertices; vertex ++)
-               vertices->push_back(osg::Vec3((*triangles->x)[vertex],
-                                             (*triangles->y)[vertex],
-                                             (*triangles->z)[vertex]));
+            for (unsigned int v = 0; v < numVertices; v ++)
+               vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
+
             geom->setVertexArray(vertices.get());
+
+            osg::ref_ptr<osg::Vec3Array> norm = new osg::Vec3Array();
 
             osg::ref_ptr<osg::DrawElementsUInt> corners =
                new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
             for (unsigned int corner = 0; corner < numCorners; corner ++)
-               corners->push_back((*triangles->cl)[corner]);
+               corners->push_back(cl[corner]);
+
+            std::vector<osg::Vec3> * vertexNormals =
+               new std::vector<osg::Vec3>[numVertices];
+
+            for (size_t c = 0; c < numCorners; c += 3) {
+               osg::Vec3 u(x[cl[c + 0]], y[cl[c + 0]], z[cl[c + 0]]);
+               osg::Vec3 v(x[cl[c + 1]], y[cl[c + 1]], z[cl[c + 1]]);
+               osg::Vec3 w(x[cl[c + 2]], y[cl[c + 2]], z[cl[c + 2]]);
+               osg::Vec3 normal = (w - u) ^ (v - u) * -1;
+               normal.normalize();
+               vertexNormals[cl[c]].push_back(normal);
+               vertexNormals[cl[c + 1]].push_back(normal);
+               vertexNormals[cl[c + 2]].push_back(normal);
+            }
+
+            for (size_t vertex = 0; vertex < numVertices; vertex ++) {
+               osg::Vec3 n;
+               std::vector<osg::Vec3>::iterator i;
+               for (i = vertexNormals[vertex].begin(); i != vertexNormals[vertex].end(); i ++)
+                  n += *i;
+               norm->push_back(n);
+            }
+            delete[] vertexNormals;
+
             geom->addPrimitiveSet(corners.get());
+            geom->setNormalArray(norm.get());
+            geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
 
             geode->addDrawable(geom.get());
+
+            osg::ref_ptr<osg::StateSet> state = new osg::StateSet();
+            state->setAttributeAndModes(material.get(),
+                                        osg::StateAttribute::ON);
+            state->setAttributeAndModes(lightModel.get(),
+                                        osg::StateAttribute::ON);
+            state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
+            geom->setStateSet(state.get());
+
             scene->addChild(geode);
 
             nodes[geometry->getName()] = geode;
@@ -253,6 +293,12 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             const size_t numElements = lines->getNumElements();
             const size_t numCorners = lines->getNumCorners();
 
+            size_t *el = &((*lines->el)[0]);
+            size_t *cl = &((*lines->cl)[0]);
+            float *x = &((*lines->x)[0]);
+            float *y = &((*lines->y)[0]);
+            float *z = &((*lines->z)[0]);
+
             osg::ref_ptr<osg::Geode> geode = new osg::Geode();
             osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
             osg::ref_ptr<osg::DrawArrayLengths> primitives =
@@ -264,17 +310,15 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             for (size_t index = 0; index < numElements; index ++) {
 
                if (index == numElements - 1)
-                  num = numCorners - (*lines->el)[index];
+                  num = numCorners - el[index];
                else
-                  num = (*lines->el)[index + 1] - (*lines->el)[index];
+                  num = el[index + 1] - el[index];
 
                primitives->push_back(num);
 
                for (int n = 0; n < num; n ++) {
-                  int v = (*lines->cl)[(*lines->el)[index] + n];
-                  vertices->push_back(osg::Vec3((*lines->x)[v],
-                                                (*lines->y)[v],
-                                                (*lines->z)[v]));
+                  int v = cl[el[index] + n];
+                  vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
                }
             }
 
@@ -302,6 +346,20 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             const size_t numVertices = polygons->getNumVertices();
             const size_t numNormals = vec ? vec->getSize() : 0;
 
+            size_t *el = &((*polygons->el)[0]);
+            size_t *cl = &((*polygons->cl)[0]);
+            float *x = &((*polygons->x)[0]);
+            float *y = &((*polygons->y)[0]);
+            float *z = &((*polygons->z)[0]);
+            float *nx = NULL;
+            float *ny = NULL;
+            float *nz = NULL;
+            if (numNormals) {
+               nx = &((*vec->x)[0]);
+               ny = &((*vec->y)[0]);
+               nz = &((*vec->z)[0]);
+            }
+
             osg::ref_ptr<osg::Geode> geode = new osg::Geode();
             osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
             osg::ref_ptr<osg::DrawArrayLengths> primitives = new osg::DrawArrayLengths(osg::PrimitiveSet::POLYGON);
@@ -324,21 +382,20 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
                osg::Vec3 vert[3];
 
                if (index == numElements - 1)
-                  num = numCorners - (*polygons->el)[index];
+                  num = numCorners - el[index];
                else
-                  num = (*polygons->el)[index + 1] - (*polygons->el)[index];
+                  num = el[index + 1] - el[index];
 
                primitives->push_back(num);
 
                for (int n = 0; n < num; n ++) {
-                  int v = (*polygons->cl)[(*polygons->el)[index] + n];
+                  int v = cl[el[index] + n];
 
-                  osg::Vec3 vi((*polygons->x)[v], (*polygons->y)[v],
-                               (*polygons->z)[v]);
+                  osg::Vec3 vi(x[v], y[v], z[v]);
                   vertices->push_back(vi);
 
                   if (numNormals) {
-                     osg::Vec3 no((*vec->x)[v], (*vec->y)[v], (*vec->z)[v]);
+                     osg::Vec3 no(nx[v], ny[v], nz[v]);
                      no.normalize();
                      norm->push_back(no);
                   }
@@ -354,7 +411,6 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
                      norm->push_back(normal);
                }
             }
-
             geom->setVertexArray(vertices.get());
             geom->addPrimitiveSet(primitives.get());
             geom->setNormalArray(norm.get());

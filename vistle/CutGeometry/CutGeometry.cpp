@@ -19,8 +19,9 @@ CutGeometry::~CutGeometry() {
 }
 
 vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
-                                          const Vec3 & point,
-                                          const Vec3 & normal) const {
+                                          const vistle::util::Vector & point,
+                                          const vistle::util::Vector & normal)
+   const {
 
    if (object)
       switch (object->getType()) {
@@ -41,39 +42,49 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
 
          case vistle::Object::POLYGONS: {
 
+            // mapping between vertex indices in the incoming object and
+            // vertex indices in the outgoing object
             std::map<int, int> vertexMap;
 
             const vistle::Polygons *in =
                static_cast<const vistle::Polygons *>(object);
             vistle::Polygons *out = vistle::Polygons::create();
 
+            const size_t *el = &((*in->el)[0]);
+            const size_t *cl = &((*in->cl)[0]);
+            const float *x = &((*in->x)[0]);
+            const float *y = &((*in->y)[0]);
+            const float *z = &((*in->z)[0]);
+
             size_t numElements = in->getNumElements();
             for (size_t element = 0; element < numElements; element ++) {
 
-               size_t start = (*in->el)[element];
+               size_t start = el[element];
                size_t end;
                if (element != in->getNumElements() - 1)
-                  end = (*in->el)[element + 1] - 1;
+                  end = el[element + 1] - 1;
                else
                   end = in->getNumCorners() - 1;
 
                size_t numIn = 0;
 
                for (size_t corner = start; corner <= end; corner ++) {
-                  Vec3 p((*in->x)[(*in->cl)[corner]],
-                         (*in->y)[(*in->cl)[corner]],
-                         (*in->z)[(*in->cl)[corner]]);
+                  vistle::util::Vector p(x[cl[corner]],
+                                         y[cl[corner]],
+                                         z[cl[corner]]);
                   if ((p - point) * normal < 0)
                      numIn ++;
                }
 
                if (numIn == (end - start + 1)) {
 
+                  // if all vertices in the element are on the right side
+                  // of the cutting plane, insert the element and all vertices
                   out->el->push_back(out->cl->size());
 
                   for (size_t corner = start; corner <= end; corner ++) {
 
-                     int vertexID = (*in->cl)[corner];
+                     int vertexID = cl[corner];
                      int outID;
 
                      std::map<int, int>::iterator i =
@@ -82,9 +93,9 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
                      if (i == vertexMap.end()) {
                         outID = out->x->size();
                         vertexMap[vertexID] = outID;
-                        out->x->push_back((*in->x)[vertexID]);
-                        out->y->push_back((*in->y)[vertexID]);
-                        out->z->push_back((*in->z)[vertexID]);
+                        out->x->push_back(x[vertexID]);
+                        out->y->push_back(y[vertexID]);
+                        out->z->push_back(z[vertexID]);
                      } else
                         outID = i->second;
 
@@ -92,30 +103,37 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
                   }
                } else if (numIn > 0) {
 
+                  // if not all of the vertices of an element are on the same
+                  // side of the cutting plane:
+                  //   - insert vertices that are on the right side of the plane
+                  //   - omit vertices that are on the wrong side of the plane
+                  //   - if the vertex before the processed vertex is on the
+                  //     other side of the plane: insert the intersection point
+                  //     between the line formed by the two vertices and the
+                  //     plane
                   out->el->push_back(out->cl->size());
 
                   for (size_t corner = start; corner <= end; corner ++) {
 
-                     int vertexID = (*in->cl)[corner];
+                     int vertexID = cl[corner];
 
-                     Vec3 p((*in->x)[(*in->cl)[corner]],
-                            (*in->y)[(*in->cl)[corner]],
-                            (*in->z)[(*in->cl)[corner]]);
+                     vistle::util::Vector p(x[cl[corner]],
+                                            y[cl[corner]],
+                                            z[cl[corner]]);
 
-                     size_t last = (corner == start) ? end : corner - 1;
-                     Vec3 pl((*in->x)[(*in->cl)[last]],
-                             (*in->y)[(*in->cl)[last]],
-                             (*in->z)[(*in->cl)[last]]);
+                     size_t former = (corner == start) ? end : corner - 1;
+                     vistle::util::Vector pl(x[cl[former]],
+                                             y[cl[former]],
+                                             z[cl[former]]);
 
                      if (((p - point) * normal < 0 &&
                           (pl - point) * normal >= 0) ||
                          ((p - point) * normal >= 0 &&
                           (pl - point) * normal < 0)) {
 
-                        // insert intersection point
                         float s = (normal * (point - p)) /
                            (normal * (pl - p));
-                        Vec3 pp = p + (pl - p) * s;
+                        vistle::util::Vector pp = p + (pl - p) * s;
 
                         size_t outID = out->x->size();
                         out->x->push_back(pp.x);
@@ -135,9 +153,9 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
                         if (i == vertexMap.end()) {
                            outID = out->x->size();
                            vertexMap[vertexID] = outID;
-                           out->x->push_back((*in->x)[vertexID]);
-                           out->y->push_back((*in->y)[vertexID]);
-                           out->z->push_back((*in->z)[vertexID]);
+                           out->x->push_back(x[vertexID]);
+                           out->y->push_back(y[vertexID]);
+                           out->z->push_back(z[vertexID]);
                         } else
                            outID = i->second;
 
@@ -160,10 +178,9 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
 bool CutGeometry::compute() {
 
    std::list<vistle::Object *> objects = getObjects("grid_in");
-   std::cout << "CutGeometry: " << objects.size() << " objects" << std::endl;
 
-   Vec3 point(0.1, 0.0, 0.0);
-   Vec3 normal(1.0, 0.0, 0.0);
+   vistle::util::Vector point(0.0, 0.0, 0.0);
+   vistle::util::Vector normal(1.0, 0.0, 0.0);
 
    std::list<vistle::Object *>::iterator oit;
    for (oit = objects.begin(); oit != objects.end(); oit ++) {

@@ -138,7 +138,8 @@ int main(int argc, char ** argv) {
    vistle::message::Compute compute(0, rank, 1);
    comm->handleMessage(&compute);
    */
-   /*
+
+#if 0
    vistle::message::Spawn gendat(0, rank, 1, "Gendat");
    comm->handleMessage(&gendat);
    vistle::message::Spawn add(0, rank, 2, "Add");
@@ -149,29 +150,75 @@ int main(int argc, char ** argv) {
 
    vistle::message::Compute compute(0, rank, 1);
    comm->handleMessage(&compute);
-   */
+#endif
 
-   vistle::message::Spawn readCovise(0, rank, 1, "ReadCovise");
-   comm->handleMessage(&readCovise);
+#if 1
+   vistle::message::Spawn readGeo2D(0, rank, 1, "ReadCovise");
+   comm->handleMessage(&readGeo2D);
 
-   vistle::message::Spawn cutGeometry(0, rank, 2, "CutGeometry");
+   vistle::message::Spawn readGeo3D(0, rank, 2, "ReadCovise");
+   comm->handleMessage(&readGeo3D);
+
+   vistle::message::Spawn readDataP(0, rank, 3, "ReadCovise");
+   comm->handleMessage(&readDataP);
+
+   vistle::message::Spawn cutGeometry(0, rank, 4, "CutGeometry");
    comm->handleMessage(&cutGeometry);
 
-   vistle::message::SetFileParameter param(0, rank, 1, "filename",
-                                           "/tmp/single.covise");
-   comm->handleMessage(&param);
+   vistle::message::Spawn cuttingSurface(0, rank, 5, "CuttingSurface");
+   comm->handleMessage(&cuttingSurface);
 
-   vistle::message::Spawn renderer(0, rank, 3, "OSGRenderer");
+   vistle::message::Spawn isoSurface(0, rank, 6, "IsoSurface");
+   comm->handleMessage(&isoSurface);
+
+   vistle::message::SetFileParameter param1(0, rank, 1, "filename",
+                "/data/OpenFOAM/PumpTurbine/covise/test/single_geo2d.covise");
+   comm->handleMessage(&param1);
+
+   vistle::message::SetFileParameter param2(0, rank, 2, "filename",
+                "/data/OpenFOAM/PumpTurbine/covise/test/single_geo3d.covise");
+   comm->handleMessage(&param2);
+
+   vistle::message::SetFileParameter param3(0, rank, 3, "filename",
+                "/data/OpenFOAM/PumpTurbine/covise/test/single_p.covise");
+   comm->handleMessage(&param3);
+
+   vistle::message::Spawn renderer(0, rank, 7, "OSGRenderer");
    comm->handleMessage(&renderer);
 
-   vistle::message::Connect connect12(0, rank, 1, "grid_out", 2, "grid_in");
-   comm->handleMessage(&connect12);
+   vistle::message::Connect connect14(0, rank, 1, "grid_out", 4, "grid_in");
+   comm->handleMessage(&connect14);
 
-   vistle::message::Connect connect23(0, rank, 2, "grid_out", 3, "data_in");
-   comm->handleMessage(&connect23);
+   vistle::message::Connect connect25(0, rank, 2, "grid_out", 5, "grid_in");
+   comm->handleMessage(&connect25);
 
-   vistle::message::Compute compute(0, rank, 1);
-   comm->handleMessage(&compute);
+   vistle::message::Connect connect35(0, rank, 3, "grid_out", 5, "data_in");
+   comm->handleMessage(&connect35);
+
+   vistle::message::Connect connect26(0, rank, 2, "grid_out", 6, "grid_in");
+   comm->handleMessage(&connect26);
+
+   vistle::message::Connect connect36(0, rank, 3, "grid_out", 6, "data_in");
+   comm->handleMessage(&connect36);
+
+   vistle::message::Connect connect47(0, rank, 4, "grid_out", 7, "data_in");
+   comm->handleMessage(&connect47);
+
+   vistle::message::Connect connect57(0, rank, 5, "grid_out", 7, "data_in");
+   comm->handleMessage(&connect57);
+
+   vistle::message::Connect connect67(0, rank, 6, "grid_out", 7, "data_in");
+   comm->handleMessage(&connect67);
+
+   vistle::message::Compute compute1(0, rank, 1);
+   comm->handleMessage(&compute1);
+
+   vistle::message::Compute compute2(0, rank, 2);
+   comm->handleMessage(&compute2);
+
+   vistle::message::Compute compute3(0, rank, 3);
+   comm->handleMessage(&compute3);
+#endif
 
    while (!done) {
       done = comm->dispatch();
@@ -516,7 +563,8 @@ bool Communicator::handleMessage(const message::Message * message) {
 
          const message::AddObject *m =
             static_cast<const message::AddObject *>(message);
-         std::cout << "AddObject " << m->getHandle()
+         std::cout << "Module " << m->getModuleID() << ": "
+                   << "AddObject " << m->getHandle()
                    << " to port " << m->getPortName() << std::endl;
 
          Port *port = portManager.getPort(m->getModuleID(),

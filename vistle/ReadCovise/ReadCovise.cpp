@@ -8,6 +8,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+//#include <google/profiler.h>
+
 #include "object.h"
 
 #include "ReadCovise.h"
@@ -157,51 +159,34 @@ vistle::Object *  ReadCovise::readUNSGRD(const int fd,
 
    usg = vistle::UnstructuredGrid::create(numElements, numCorners, numVertices);
 
-   unsigned int *el = new unsigned int[numElements];
-   unsigned int *tl = new unsigned int[numElements];
-   unsigned int *cl = new unsigned int[numCorners];
+   unsigned int *_el = new unsigned int[numElements];
+   unsigned int *_tl = new unsigned int[numElements];
+   unsigned int *_cl = new unsigned int[numCorners];
 
-   read_int(fd, el, numElements, byteswap);
-   read_int(fd, tl, numElements, byteswap);
-   read_int(fd, cl, numCorners, byteswap);
+   size_t *el = &((*usg->el)[0]);
+   size_t *tl = &((*usg->tl)[0]);
+   size_t *cl = &((*usg->cl)[0]);
 
-   for (unsigned int index = 0; index < numElements; index ++) {
-      (*usg->el)[index] = el[index];
-      (*usg->tl)[index] = (vistle::UnstructuredGrid::Type) tl[index];
-   }
-
-   for (unsigned int index = 0; index < numCorners; index ++) {
-      (*usg->cl)[index] = cl[index];
-   }
+   read_int(fd, _el, numElements, byteswap);
+   read_int(fd, _tl, numElements, byteswap);
+   read_int(fd, _cl, numCorners, byteswap);
 
    read_float(fd, &((*usg->x)[0]), numVertices, byteswap);
    read_float(fd, &((*usg->y)[0]), numVertices, byteswap);
    read_float(fd, &((*usg->z)[0]), numVertices, byteswap);
 
-   readAttributes(fd, byteswap);
+   for (unsigned int index = 0; index < numElements; index ++) {
+      el[index] = _el[index];
+      tl[index] = (vistle::UnstructuredGrid::Type) _tl[index];
+   }
 
-   delete[] el;
-   delete[] tl;
-   delete[] cl;
+   for (unsigned int index = 0; index < numCorners; index ++)
+      cl[index] = _cl[index];
 
-   /*
-      unsigned int numElements;
-      unsigned int numCorners;
-      unsigned int numVertices;
+   delete[] _el;
+   delete[] _tl;
+   delete[] _cl;
 
-      read_int(fd, &numElements, 1, byteswap);
-      read_int(fd, &numCorners, 1, byteswap);
-      read_int(fd, &numVertices, 1, byteswap);
-
-      lseek(fd, numElements * sizeof(int), SEEK_CUR);
-      lseek(fd, numElements * sizeof(int), SEEK_CUR);
-      lseek(fd, numCorners * sizeof(int), SEEK_CUR);
-
-      lseek(fd, numVertices * sizeof(float), SEEK_CUR);
-      lseek(fd, numVertices * sizeof(float), SEEK_CUR);
-      lseek(fd, numVertices * sizeof(float), SEEK_CUR);
-
-   */
    readAttributes(fd, byteswap);
 
    return usg;
@@ -216,8 +201,6 @@ vistle::Object * ReadCovise::readUSTSDT(const int fd, const bool byteswap) {
 
    array = vistle::Vec<float>::create(numElements);
    read_float(fd, &((*array->x)[0]), numElements, byteswap);
-
-   // lseek(fd, numElements * sizeof(float), SEEK_CUR);
 
    readAttributes(fd, byteswap);
    return array;
@@ -234,8 +217,6 @@ vistle::Object * ReadCovise::readUSTVDT(const int fd, const bool byteswap) {
    read_float(fd, &((*array->x)[0]), numElements, byteswap);
    read_float(fd, &((*array->y)[0]), numElements, byteswap);
    read_float(fd, &((*array->z)[0]), numElements, byteswap);
-
-   // lseek(fd, numElements * sizeof(float) * 3, SEEK_CUR);
 
    readAttributes(fd, byteswap);
    return array;
@@ -268,14 +249,6 @@ vistle::Object * ReadCovise::readPOLYGN(const int fd, const bool byteswap) {
    read_float(fd, &((*polygons->y)[0]), numVertices, byteswap);
    read_float(fd, &((*polygons->z)[0]), numVertices, byteswap);
 
-   /*
-      lseek(fd, numElements * sizeof(int), SEEK_CUR);
-      lseek(fd, numCorners * sizeof(int), SEEK_CUR);
-
-      lseek(fd, numVertices * sizeof(float), SEEK_CUR);
-      lseek(fd, numVertices * sizeof(float), SEEK_CUR);
-      lseek(fd, numVertices * sizeof(float), SEEK_CUR);
-   */
    readAttributes(fd, byteswap);
 
    return polygons;
@@ -385,7 +358,9 @@ bool ReadCovise::compute() {
    struct timeval t0, t1;
    if (name) {
       gettimeofday(&t0, NULL);
+      //ProfilerStart("/tmp/ReadCovise.prof");
       vistle::Object *object = load(*name);
+      //ProfilerStop();
       gettimeofday(&t1, NULL);
 
       long long usec = t1.tv_sec - t0.tv_sec;
@@ -396,11 +371,6 @@ bool ReadCovise::compute() {
 
       if (object)
          addObject("grid_out", object);
-      /*
-      std::vector<vistle::Object *>::iterator i;
-      for (i = objects.begin(); i != objects.end(); i++)
-         addObject("grid_out", *i);
-      */
    }
    return true;
 }

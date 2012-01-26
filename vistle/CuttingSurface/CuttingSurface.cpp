@@ -1,16 +1,18 @@
 #include <sstream>
 #include <iomanip>
 
+#include <google/profiler.h>
+
 #include "object.h"
 #include "tables.h"
 
-#include "IsoSurface.h"
+#include "CuttingSurface.h"
 
-MODULE_MAIN(IsoSurface)
+MODULE_MAIN(CuttingSurface)
 
 
-IsoSurface::IsoSurface(int rank, int size, int moduleID)
-   : Module("IsoSurface", rank, size, moduleID) {
+CuttingSurface::CuttingSurface(int rank, int size, int moduleID)
+   : Module("CuttingSurface", rank, size, moduleID) {
 
    createInputPort("grid_in");
    createInputPort("data_in");
@@ -18,7 +20,7 @@ IsoSurface::IsoSurface(int rank, int size, int moduleID)
    createOutputPort("grid_out");
 }
 
-IsoSurface::~IsoSurface() {
+CuttingSurface::~CuttingSurface() {
 
 }
 
@@ -39,28 +41,30 @@ inline float3 lerp3(const float3 &a, const float3 &b, const float t) {
    return res;
 }
 
-inline float3 interp(float iso, const float3 &p0, const float3 &p1, const float &f0, const float &f1) {
+inline float3 interp(float value, const float3 &p0, const float3 &p1,
+                     const float &f0, const float &f1) {
 
    float diff = (f1 - f0);
 
    if (fabs(diff) < EPSILON)
       return p0;
 
-   if (fabs(iso - f0) < EPSILON)
+   if (fabs(value - f0) < EPSILON)
       return p0;
 
-   if (fabs(iso - f1) < EPSILON)
+   if (fabs(value - f1) < EPSILON)
       return p1;
 
-   float t = (iso - f0) / diff;
+   float t = (value - f0) / diff;
 
    return lerp3(p0, p1, t);
 }
 
 vistle::Object *
-IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
-                               const vistle::Object * data_object,
-                               const float isoValue) {
+CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
+                                       const vistle::Object * data_object,
+                                       const vistle::util::Vector & normal,
+                                       const float distance) {
 
    const vistle::UnstructuredGrid *grid = NULL;
    const vistle::Vec<float> *data = NULL;
@@ -80,8 +84,8 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
       vistle::Set *set = vistle::Set::create(gset->getNumElements());
       for (size_t index = 0; index < gset->getNumElements(); index ++)
          (*set->elements)[index] =
-            generateIsoSurface(gset->getElement(index),
-                               dset->getElement(index), isoValue);
+            generateCuttingSurface(gset->getElement(index),
+                                   dset->getElement(index), normal, distance);
       return set;
    }
 
@@ -97,8 +101,6 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
    const float *x = &((*grid->x)[0]);
    const float *y = &((*grid->y)[0]);
    const float *z = &((*grid->z)[0]);
-
-   const float *d = &((*data->x)[0]);
 
    size_t numElem = grid->getNumElements();
    vistle::Triangles *t = vistle::Triangles::create();
@@ -131,29 +133,29 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
                v[idx].x = x[index[idx]];
                v[idx].y = y[index[idx]];
                v[idx].z = z[index[idx]];
-               field[idx] = d[index[idx]];
+               field[idx] = (normal * vistle::util::Vector(v[idx].x, v[idx].y, v[idx].z) - distance);
             }
 
             for (int idx = 0; idx < 8; idx ++)
-               tableIndex += (((int) (field[idx] < isoValue)) << idx);
+               tableIndex += (((int) (field[idx] < 0.0)) << idx);
 
             int numVerts = hexaNumVertsTable[tableIndex];
             if (numVerts) {
                numVertices += numVerts;
-               vertlist[0] = interp(isoValue, v[0], v[1], field[0], field[1]);
-               vertlist[1] = interp(isoValue, v[1], v[2], field[1], field[2]);
-               vertlist[2] = interp(isoValue, v[2], v[3], field[2], field[3]);
-               vertlist[3] = interp(isoValue, v[3], v[0], field[3], field[0]);
+               vertlist[0] = interp(0.0, v[0], v[1], field[0], field[1]);
+               vertlist[1] = interp(0.0, v[1], v[2], field[1], field[2]);
+               vertlist[2] = interp(0.0, v[2], v[3], field[2], field[3]);
+               vertlist[3] = interp(0.0, v[3], v[0], field[3], field[0]);
 
-               vertlist[4] = interp(isoValue, v[4], v[5], field[4], field[5]);
-               vertlist[5] = interp(isoValue, v[5], v[6], field[5], field[6]);
-               vertlist[6] = interp(isoValue, v[6], v[7], field[6], field[7]);
-               vertlist[7] = interp(isoValue, v[7], v[4], field[7], field[4]);
+               vertlist[4] = interp(0.0, v[4], v[5], field[4], field[5]);
+               vertlist[5] = interp(0.0, v[5], v[6], field[5], field[6]);
+               vertlist[6] = interp(0.0, v[6], v[7], field[6], field[7]);
+               vertlist[7] = interp(0.0, v[7], v[4], field[7], field[4]);
 
-               vertlist[8] = interp(isoValue, v[0], v[4], field[0], field[4]);
-               vertlist[9] = interp(isoValue, v[1], v[5], field[1], field[5]);
-               vertlist[10] = interp(isoValue, v[2], v[6], field[2], field[6]);
-               vertlist[11] = interp(isoValue, v[3], v[7], field[3], field[7]);
+               vertlist[8] = interp(0.0, v[0], v[4], field[0], field[4]);
+               vertlist[9] = interp(0.0, v[1], v[5], field[1], field[5]);
+               vertlist[10] = interp(0.0, v[2], v[6], field[2], field[6]);
+               vertlist[11] = interp(0.0, v[3], v[7], field[3], field[7]);
 
                for (int idx = 0; idx < numVerts; idx += 3) {
 
@@ -195,20 +197,36 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
 }
 
 
-bool IsoSurface::compute() {
+bool CuttingSurface::compute() {
 
    std::list<vistle::Object *> gridObjects = getObjects("grid_in");
-   std::cout << "IsoSurface: " << gridObjects.size() << " grid objects"
+   std::cout << "CuttingSurface: " << gridObjects.size() << " grid objects"
              << std::endl;
 
    std::list<vistle::Object *> dataObjects = getObjects("data_in");
-   std::cout << "IsoSurface: " << dataObjects.size() << " data objects"
+   std::cout << "CuttingSurface: " << dataObjects.size() << " data objects"
              << std::endl;
+
+   const vistle::util::Vector normal(1.0, 0.0, 0.0);
+   const float distance = 0.0;
 
    while (gridObjects.size() > 0 && dataObjects.size() > 0) {
 
+      struct timeval t0, t1;
+      gettimeofday(&t0, NULL);
+
+      ProfilerStart("/tmp/cut.prof");
       vistle::Object *object =
-         generateIsoSurface(gridObjects.front(), dataObjects.front(), 0.0);
+         generateCuttingSurface(gridObjects.front(), dataObjects.front(),
+                                normal, distance);
+      ProfilerStop();
+
+      gettimeofday(&t1, NULL);
+      long long usec = t1.tv_sec - t0.tv_sec;
+      usec *= 1000000;
+      usec += (t1.tv_usec - t0.tv_usec);
+
+      std::cout << "CuttingSurface: " << usec << " usec" << std::endl;
 
       if (object)
          addObject("grid_out", object);

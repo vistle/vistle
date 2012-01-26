@@ -5,11 +5,9 @@
 #include <map>
 #include <vector>
 #include <set>
-#include <boost/interprocess/managed_shared_memory.hpp>
+#include "object.h"
 
 namespace vistle {
-
-typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 
 class Port {
 

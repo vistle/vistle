@@ -7,11 +7,10 @@
 
 #include <list>
 #include <map>
-#include <boost/interprocess/managed_shared_memory.hpp>
+
+#include "object.h"
 
 namespace vistle {
-
-typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 
 class Parameter;
 
@@ -41,7 +40,7 @@ class Module {
    const std::string * getFileParameter(const std::string & name);
 
    bool addObject(const std::string &portName, const shm_handle_t & handle);
-   bool addObject(const std::string & portName, const void *p);
+   bool addObject(const std::string & portName, const void *object);
    message::MessageQueue *sendMessageQueue;
 
    std::list<vistle::Object *> getObjects(const std::string &portName);
