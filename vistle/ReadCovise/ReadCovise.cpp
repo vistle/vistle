@@ -68,43 +68,42 @@ size_t read_int(const int fd, unsigned int * data, const size_t & num,
                 const bool byte_swap) {
 
    size_t r = 0;
-   while (r != num) {
-      size_t n = read(fd, data + r, sizeof(unsigned int) * (num - r));
+
+   while (r < num * sizeof(int)) {
+      size_t n = read(fd, ((char *) data) + r, num * sizeof(int) - r);
       if (n <= 0)
          break;
       r += n;
    }
 
-   if (r != num) {
+   if (r < num * sizeof(int))
       std::cout << "ERROR ReadCovise::read_int read " << r
-                << " elements instead of " << num << std::endl;
-   }
+                << " bytes instead of " << num * sizeof(int) << std::endl;
 
    if (byte_swap)
-      swap_int(data, r);
+      swap_int(data, r / sizeof(int));
 
    return r;
 }
-
 
 size_t read_float(const int fd, float * data,
                   const size_t & num, const bool byte_swap) {
 
    size_t r = 0;
-   while (r != num) {
-      size_t n = read(fd, data + r, sizeof(float) * (num - r));
+
+   while (r < num * sizeof(float)) {
+      size_t n = read(fd, ((char *) data) + r, num * sizeof(float) - r);
       if (n <= 0)
          break;
       r += n;
    }
 
-   if (r != num) {
+   if (r < num * sizeof(float))
       std::cout << "ERROR ReadCovise::read_float read " << r
-                << " elements instead of " << num << std::endl;
-   }
+                << " bytes instead of " << num * sizeof(float) << std::endl;
 
    if (byte_swap)
-      swap_float(data, r);
+      swap_float(data, r / sizeof(float));
 
    return r;
 }
