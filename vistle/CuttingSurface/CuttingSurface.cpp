@@ -32,7 +32,7 @@ typedef struct {
 
 const float EPSILON = 1.0e-10f;
 
-inline float3 lerp3(const float3 &a, const float3 &b, const float t) {
+inline float3 lerp3(const float3 & a, const float3 & b, const float t) {
 
    float3 res;
    res.x = lerp(a.x, b.x, t);
@@ -41,8 +41,8 @@ inline float3 lerp3(const float3 &a, const float3 &b, const float t) {
    return res;
 }
 
-inline float3 interp(float value, const float3 &p0, const float3 &p1,
-                     const float &f0, const float &f1) {
+inline float3 interp(float value, const float3 & p0, const float3 & p1,
+                     const float & f0, const float & f1) {
 
    float diff = (f1 - f0);
 
@@ -60,7 +60,7 @@ inline float3 interp(float value, const float3 &p0, const float3 &p1,
    return lerp3(p0, p1, t);
 }
 
-vistle::Object *
+std::pair<vistle::Object *, vistle::Object *>
 CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
                                        const vistle::Object * data_object,
                                        const vistle::util::Vector & normal,
@@ -70,7 +70,7 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
    const vistle::Vec<float> *data = NULL;
 
    if (!grid_object || !data_object)
-      return NULL;
+      return std::make_pair((vistle::Object *) NULL, (vistle::Object *) NULL);
 
    if (grid_object->getType() == vistle::Object::SET &&
        data_object->getType() == vistle::Object::SET) {
@@ -79,14 +79,20 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
       const vistle::Set *dset = static_cast<const vistle::Set *>(data_object);
 
       if (gset->getNumElements() != dset->getNumElements())
-         return NULL;
+         return std::make_pair((vistle::Object *) NULL,
+                               (vistle::Object *) NULL);
 
-      vistle::Set *set = vistle::Set::create(gset->getNumElements());
-      for (size_t index = 0; index < gset->getNumElements(); index ++)
-         (*set->elements)[index] =
+      vistle::Set *outGSet = vistle::Set::create(gset->getNumElements());
+      vistle::Set *outDSet = vistle::Set::create(dset->getNumElements());
+      for (size_t index = 0; index < gset->getNumElements(); index ++) {
+         std::pair<vistle::Object *, vistle::Object *> result =
             generateCuttingSurface(gset->getElement(index),
                                    dset->getElement(index), normal, distance);
-      return set;
+         (*outGSet->elements)[index] = result.first;
+         (*outDSet->elements)[index] = result.second;
+      }
+
+      return std::make_pair(outGSet, outDSet);
    }
 
    if (grid_object->getType() == vistle::Object::UNSTRUCTUREDGRID &&
@@ -103,7 +109,8 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
    const float *z = &((*grid->z)[0]);
 
    size_t numElem = grid->getNumElements();
-   vistle::Triangles *t = vistle::Triangles::create();
+   vistle::Triangles *triangles = vistle::Triangles::create();
+   vistle::Vec<float> *outData = vistle::Vec<float>::create();
 
    size_t numVertices = 0;
 
@@ -168,21 +175,21 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
                   edge[2] = hexaTriTable[tableIndex][idx + 2];
                   v[2] = &vertlist[edge[2]];
 
-                  t->cl->push_back(t->x->size());
-                  t->cl->push_back(t->x->size() + 1);
-                  t->cl->push_back(t->x->size() + 2);
+                  triangles->cl->push_back(triangles->x->size());
+                  triangles->cl->push_back(triangles->x->size() + 1);
+                  triangles->cl->push_back(triangles->x->size() + 2);
 
-                  t->x->push_back(v[0]->x);
-                  t->x->push_back(v[1]->x);
-                  t->x->push_back(v[2]->x);
+                  triangles->x->push_back(v[0]->x);
+                  triangles->x->push_back(v[1]->x);
+                  triangles->x->push_back(v[2]->x);
 
-                  t->y->push_back(v[0]->y);
-                  t->y->push_back(v[1]->y);
-                  t->y->push_back(v[2]->y);
+                  triangles->y->push_back(v[0]->y);
+                  triangles->y->push_back(v[1]->y);
+                  triangles->y->push_back(v[2]->y);
 
-                  t->z->push_back(v[0]->z);
-                  t->z->push_back(v[1]->z);
-                  t->z->push_back(v[2]->z);
+                  triangles->z->push_back(v[0]->z);
+                  triangles->z->push_back(v[1]->z);
+                  triangles->z->push_back(v[2]->z);
                }
             }
             break;
@@ -193,7 +200,7 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
       }
    }
 
-   return t;
+   return std::make_pair(triangles, outData);
 }
 
 
@@ -216,7 +223,7 @@ bool CuttingSurface::compute() {
       gettimeofday(&t0, NULL);
 
       ProfilerStart("/tmp/cut.prof");
-      vistle::Object *object =
+      std::pair<vistle::Object *, vistle::Object *> object =
          generateCuttingSurface(gridObjects.front(), dataObjects.front(),
                                 normal, distance);
       ProfilerStop();
@@ -228,8 +235,11 @@ bool CuttingSurface::compute() {
 
       std::cout << "CuttingSurface: " << usec << " usec" << std::endl;
 
-      if (object)
-         addObject("grid_out", object);
+      if (object.first)
+         addObject("grid_out", object.first);
+
+      if (object.second)
+         addObject("data_out", object.second);
 
       removeObject("grid_in", gridObjects.front());
       removeObject("data_in", dataObjects.front());

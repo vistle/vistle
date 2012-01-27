@@ -32,7 +32,7 @@ class Shm {
    Object * getObjectFromHandle(const shm_handle_t & handle);
 
  private:
-   Shm(const int moduleID, const int rank, const size_t &size,
+   Shm(const int moduleID, const int rank, const size_t size,
        message::MessageQueue *messageQueue);
 
    const int moduleID;
@@ -60,6 +60,7 @@ class Object {
       UNSTRUCTUREDGRID  =  9,
       SET               = 10,
       GEOMETRY          = 11,
+      TEXTURE1D         = 12,
    };
 
    Object(const Type id, const std::string & name);
@@ -79,7 +80,7 @@ template <class T>
 class Vec: public Object {
 
  public:
-   static Vec<T> * create(const size_t & size = 0) {
+   static Vec<T> * create(const size_t size = 0) {
 
       const std::string name = Shm::instance().createObjectID();
       Vec<T> *t = static_cast<Vec<T> *>
@@ -92,7 +93,7 @@ class Vec: public Object {
       return t;
    }
 
- Vec(const size_t & size, const std::string & name)
+ Vec(const size_t size, const std::string & name)
       : Object(type, name) {
 
       const boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager>
@@ -105,7 +106,7 @@ class Vec: public Object {
       return x->size();
    }
 
-   void setSize(const size_t & size) {
+   void setSize(const size_t size) {
       x->resize(size);
    }
 
@@ -121,7 +122,7 @@ template <class T>
 class Vec3: public Object {
 
  public:
-   static Vec3<T> * create(const size_t & size = 0) {
+   static Vec3<T> * create(const size_t size = 0) {
 
       const std::string name = Shm::instance().createObjectID();
       Vec3<T> *t = static_cast<Vec3<T> *>
@@ -134,7 +135,7 @@ class Vec3: public Object {
       return t;
    }
 
-   Vec3(const size_t & size, const std::string & name)
+   Vec3(const size_t size, const std::string & name)
       : Object(type, name) {
 
       const boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager>
@@ -149,7 +150,7 @@ class Vec3: public Object {
       return x->size();
    }
 
-   void setSize(const size_t & size) {
+   void setSize(const size_t size) {
       x->resize(size);
       y->resize(size);
       z->resize(size);
@@ -165,10 +166,10 @@ class Vec3: public Object {
 class Triangles: public Object {
 
  public:
-   static Triangles * create(const size_t & numCorners = 0,
-                             const size_t & numVertices = 0);
+   static Triangles * create(const size_t numCorners = 0,
+                             const size_t numVertices = 0);
 
-   Triangles(const size_t & numCorners, const size_t & numVertices,
+   Triangles(const size_t numCorners, const size_t numVertices,
              const std::string & name);
 
    size_t getNumCorners() const;
@@ -185,11 +186,11 @@ class Triangles: public Object {
 class Lines: public Object {
 
  public:
-   static Lines * create(const size_t & numElements = 0,
-                         const size_t & numCorners = 0,
-                         const size_t & numVertices = 0);
-   Lines(const size_t & numElements, const size_t & numCorners,
-         const size_t & numVertices, const std::string & name);
+   static Lines * create(const size_t numElements = 0,
+                         const size_t numCorners = 0,
+                         const size_t numVertices = 0);
+   Lines(const size_t numElements, const size_t numCorners,
+         const size_t numVertices, const std::string & name);
 
    size_t getNumElements() const;
    size_t getNumCorners() const;
@@ -206,11 +207,11 @@ class Lines: public Object {
 class Polygons: public Object {
 
  public:
-   static Polygons * create(const size_t & numElements = 0,
-                         const size_t & numCorners = 0,
-                         const size_t & numVertices = 0);
-   Polygons(const size_t & numElements, const size_t & numCorners,
-            const size_t & numVertices, const std::string & name);
+   static Polygons * create(const size_t numElements = 0,
+                         const size_t numCorners = 0,
+                         const size_t numVertices = 0);
+   Polygons(const size_t numElements, const size_t numCorners,
+            const size_t numVertices, const std::string & name);
 
    size_t getNumElements() const;
    size_t getNumCorners() const;
@@ -241,12 +242,12 @@ class UnstructuredGrid: public Object {
       POLYHEDRON  = 11
    };
 
-   static UnstructuredGrid * create(const size_t & numElements = 0,
-                                    const size_t & numCorners = 0,
-                                    const size_t & numVertices = 0);
+   static UnstructuredGrid * create(const size_t numElements = 0,
+                                    const size_t numCorners = 0,
+                                    const size_t numVertices = 0);
 
-   UnstructuredGrid(const size_t & numElements, const size_t & numCorners,
-                    const size_t & numVertices, const std::string & name);
+   UnstructuredGrid(const size_t numElements, const size_t numCorners,
+                    const size_t numVertices, const std::string & name);
 
    size_t getNumElements() const;
    size_t getNumCorners() const;
@@ -265,12 +266,12 @@ class UnstructuredGrid: public Object {
 class Set: public Object {
 
  public:
-   static Set * create(const size_t & numElements = 0);
+   static Set * create(const size_t numElements = 0);
 
-   Set(const size_t & numElements, const std::string & name);
+   Set(const size_t numElements, const std::string & name);
 
    size_t getNumElements() const;
-   Object * getElement(const size_t & index) const;
+   Object * getElement(const size_t index) const;
 
    boost::interprocess::offset_ptr<std::vector<boost::interprocess::offset_ptr<Object>, boost::interprocess::allocator<boost::interprocess::offset_ptr<Object>, boost::interprocess::managed_shared_memory::segment_manager> > >
       elements;
@@ -290,6 +291,21 @@ class Geometry: public Object {
 
  private:
 
+};
+
+class Texture1D: public Object {
+
+ public:
+   static Texture1D * create(const size_t width = 0,
+                             const float min = 0, const float max = 0);
+
+   Texture1D(const std::string & name, const size_t size,
+             const float min, const float max);
+
+   boost::interprocess::offset_ptr<std::vector<unsigned char, boost::interprocess::allocator<unsigned char, boost::interprocess::managed_shared_memory::segment_manager> > > pixels;
+
+   float min;
+   float max;
 };
 
 } // namespace vistle

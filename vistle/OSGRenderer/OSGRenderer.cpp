@@ -362,7 +362,8 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
 
             osg::ref_ptr<osg::Geode> geode = new osg::Geode();
             osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
-            osg::ref_ptr<osg::DrawArrayLengths> primitives = new osg::DrawArrayLengths(osg::PrimitiveSet::POLYGON);
+            osg::ref_ptr<osg::DrawArrayLengths> primitives =
+               new osg::DrawArrayLengths(osg::PrimitiveSet::POLYGON);
 
             osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
             osg::ref_ptr<osg::Vec3Array> norm = new osg::Vec3Array();
@@ -375,6 +376,9 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
 
             geom->setStateSet(state.get());
+
+            std::map<int, int> vertexMap;
+            std::vector<osg::Vec3> vertexNormals[numVertices];
 
             int num = 0;
             for (size_t index = 0; index < numElements; index ++) {
@@ -391,28 +395,42 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
                for (int n = 0; n < num; n ++) {
                   int v = cl[el[index] + n];
 
+                  vertexMap[vertices->size()] = v;
                   osg::Vec3 vi(x[v], y[v], z[v]);
                   vertices->push_back(vi);
+
 
                   if (numNormals) {
                      osg::Vec3 no(nx[v], ny[v], nz[v]);
                      no.normalize();
                      norm->push_back(no);
-                  }
-                  else if (n < 3)
+                  } else if (n < 3)
                      vert[n] = vi;
                }
 
                if (!numNormals) {
-                  osg::Vec3 normal =
+                  osg::Vec3 no =
                      (vert[2] - vert[0]) ^ (vert[1] - vert[0]) * -1;
-                  normal.normalize();
+                  no.normalize();
                   for (int n = 0; n < num; n ++)
-                     norm->push_back(normal);
+                     vertexNormals[cl[el[index] + n]].push_back(no);
                }
             }
+
+            // convert per face normals to per vertex normals
+            for (size_t vertex = 0; vertex < vertices->size(); vertex ++) {
+               osg::Vec3 n;
+               std::vector<osg::Vec3>::iterator i;
+               for (i = vertexNormals[vertexMap[vertex]].begin();
+                    i != vertexNormals[vertexMap[vertex]].end(); i++)
+                  n += *i;
+               n.normalize();
+               norm->push_back(n);
+            }
+
             geom->setVertexArray(vertices.get());
             geom->addPrimitiveSet(primitives.get());
+
             geom->setNormalArray(norm.get());
             geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
 

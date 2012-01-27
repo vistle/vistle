@@ -15,11 +15,13 @@ add_subdirectory(core)
 
 add_subdirectory(vistle)
 
-add_subdirectory(Gendat)
 add_subdirectory(Add)
-add_subdirectory(ShowUSG)
-add_subdirectory(ReadCovise)
-add_subdirectory(IsoSurface)
-add_subdirectory(CuttingSurface)
+add_subdirectory(Color)
 add_subdirectory(CutGeometry)
+add_subdirectory(CuttingSurface)
+add_subdirectory(Gendat)
+add_subdirectory(IsoSurface)
 add_subdirectory(OSGRenderer)
+add_subdirectory(ReadCovise)
+add_subdirectory(ShowUSG)
+

@@ -64,7 +64,7 @@ size_t read_type(const int fd, char * data) {
 }
 
 
-size_t read_int(const int fd, unsigned int * data, const size_t & num,
+size_t read_int(const int fd, unsigned int * data, const size_t num,
                 const bool byte_swap) {
 
    size_t r = 0;
@@ -87,7 +87,7 @@ size_t read_int(const int fd, unsigned int * data, const size_t & num,
 }
 
 size_t read_float(const int fd, float * data,
-                  const size_t & num, const bool byte_swap) {
+                  const size_t num, const bool byte_swap) {
 
    size_t r = 0;
 

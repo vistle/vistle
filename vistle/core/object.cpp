@@ -15,7 +15,7 @@ namespace vistle {
 
 Shm* Shm::singleton = NULL;
 
-Shm::Shm(const int m, const int r, const size_t & size,
+Shm::Shm(const int m, const int r, const size_t size,
          message::MessageQueue * mq)
    : moduleID(m), rank(r), objectID(0), messageQueue(mq) {
 
@@ -100,7 +100,7 @@ std::string Object::getName() const {
    return name;
 }
 
-Triangles::Triangles(const size_t & numCorners, const size_t & numVertices,
+Triangles::Triangles(const size_t numCorners, const size_t numVertices,
                      const std::string & name)
    : Object(Object::TRIANGLES, name) {
 
@@ -118,8 +118,8 @@ Triangles::Triangles(const size_t & numCorners, const size_t & numVertices,
 }
 
 
-Triangles * Triangles::create(const size_t & numCorners,
-                              const size_t & numVertices) {
+Triangles * Triangles::create(const size_t numCorners,
+                              const size_t numVertices) {
 
    const std::string name = Shm::instance().createObjectID();
    Triangles *t = static_cast<Triangles *>
@@ -143,8 +143,8 @@ size_t Triangles::getNumVertices() const {
    return x->size();
 }
 
-Lines::Lines(const size_t & numElements, const size_t & numCorners,
-             const size_t & numVertices, const std::string & name)
+Lines::Lines(const size_t numElements, const size_t numCorners,
+             const size_t numVertices, const std::string & name)
    : Object(Object::LINES, name) {
 
    const allocator<float, managed_shared_memory::segment_manager>
@@ -165,8 +165,8 @@ Lines::Lines(const size_t & numElements, const size_t & numCorners,
 }
 
 
-Lines * Lines::create(const size_t & numElements, const size_t & numCorners,
-                      const size_t & numVertices) {
+Lines * Lines::create(const size_t numElements, const size_t numCorners,
+                      const size_t numVertices) {
 
    const std::string name = Shm::instance().createObjectID();
    Lines *l = static_cast<Lines *>
@@ -195,8 +195,8 @@ size_t Lines::getNumVertices() const {
    return x->size();
 }
 
-Polygons::Polygons(const size_t & numElements, const size_t & numCorners,
-                   const size_t & numVertices, const std::string & name)
+Polygons::Polygons(const size_t numElements, const size_t numCorners,
+                   const size_t numVertices, const std::string & name)
    : Object(Object::POLYGONS, name) {
 
    const allocator<float, managed_shared_memory::segment_manager>
@@ -217,9 +217,9 @@ Polygons::Polygons(const size_t & numElements, const size_t & numCorners,
 }
 
 
-Polygons * Polygons::create(const size_t & numElements,
-                            const size_t & numCorners,
-                            const size_t & numVertices) {
+Polygons * Polygons::create(const size_t numElements,
+                            const size_t numCorners,
+                            const size_t numVertices) {
 
    const std::string name = Shm::instance().createObjectID();
    Polygons *p = static_cast<Polygons *>
@@ -248,9 +248,9 @@ size_t Polygons::getNumVertices() const {
    return x->size();
 }
 
-UnstructuredGrid::UnstructuredGrid(const size_t & numElements,
-                                   const size_t & numCorners,
-                                   const size_t & numVertices,
+UnstructuredGrid::UnstructuredGrid(const size_t numElements,
+                                   const size_t numCorners,
+                                   const size_t numVertices,
                                    const std::string & name)
    : Object(Object::UNSTRUCTUREDGRID, name) {
 
@@ -273,9 +273,9 @@ UnstructuredGrid::UnstructuredGrid(const size_t & numElements,
    cl = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
 }
 
-UnstructuredGrid * UnstructuredGrid::create(const size_t & numElements,
-                                            const size_t & numCorners,
-                                            const size_t & numVertices) {
+UnstructuredGrid * UnstructuredGrid::create(const size_t numElements,
+                                            const size_t numCorners,
+                                            const size_t numVertices) {
 
    const std::string name = Shm::instance().createObjectID();
    UnstructuredGrid *u = static_cast<UnstructuredGrid *>
@@ -305,7 +305,7 @@ size_t UnstructuredGrid::getNumVertices() const {
 }
 
 
-Set::Set(const size_t & numElements, const std::string & name)
+Set::Set(const size_t numElements, const std::string & name)
    : Object(Object::SET, name) {
 
    const allocator<offset_ptr<Object>, managed_shared_memory::segment_manager>
@@ -315,7 +315,7 @@ Set::Set(const size_t & numElements, const std::string & name)
 }
 
 
-Set * Set::create(const size_t & numElements) {
+Set * Set::create(const size_t numElements) {
 
    const std::string name = Shm::instance().createObjectID();
    Set *p = static_cast<Set *>
@@ -334,7 +334,7 @@ size_t Set::getNumElements() const {
    return elements->size();
 }
 
-Object * Set::getElement(const size_t & index) const {
+Object * Set::getElement(const size_t index) const {
 
    if (index >= elements->size())
       return NULL;
@@ -362,6 +362,32 @@ Geometry * Geometry::create() {
    */
    return g;
 }
+
+Texture1D::Texture1D(const std::string & name, const size_t width,
+                     const float mi, const float ma)
+   : Object(Object::TEXTURE1D, name), min(mi), max(ma) {
+
+   const allocator<unsigned char, managed_shared_memory::segment_manager>
+      alloc_inst(Shm::instance().getShm().get_segment_manager());
+
+   pixels = Shm::instance().getShm().construct<std::vector<unsigned char, allocator<unsigned char, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(width, char(), alloc_inst);
+}
+
+Texture1D * Texture1D::create(const size_t width,
+                              const float min, const float max) {
+
+   const std::string name = Shm::instance().createObjectID();
+   Texture1D *tex = static_cast<Texture1D *>(Shm::instance().getShm().construct<Texture1D>(name.c_str())[1](name, width, min, max));
+
+
+   /*
+   shm_handle_t handle =
+      Shm::instance().getShm().get_handle_from_address(tex);
+   Shm::instance().publish(handle);
+   */
+   return tex;
+}
+
 
 template<> const Object::Type Vec<float>::type  = Object::VECFLOAT;
 template<> const Object::Type Vec<int>::type    = Object::VECINT;
