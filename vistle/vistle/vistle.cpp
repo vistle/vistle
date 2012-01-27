@@ -154,7 +154,7 @@ int main(int argc, char ** argv) {
    comm->handleMessage(&compute);
 #endif
 
-#if 0
+#if 1
    vistle::message::Spawn readGeo2D(0, rank, 1, "ReadCovise");
    comm->handleMessage(&readGeo2D);
 
@@ -222,6 +222,7 @@ int main(int argc, char ** argv) {
    comm->handleMessage(&compute3);
 #endif
 
+#if 0
    vistle::message::Spawn readCovise(0, rank, 1, "ReadCovise");
    comm->handleMessage(&readCovise);
 
@@ -237,6 +238,7 @@ int main(int argc, char ** argv) {
 
    vistle::message::Compute compute(0, rank, 1);
    comm->handleMessage(&compute);
+#endif
 
    while (!done) {
       done = comm->dispatch();

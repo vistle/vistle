@@ -42,20 +42,28 @@ inline float3 lerp3(const float3 & a, const float3 & b, const float t) {
 }
 
 inline float3 interp(float value, const float3 & p0, const float3 & p1,
-                     const float & f0, const float & f1) {
+                     const float f0, const float f1,
+                     const float v0, const float v1, float & v) {
 
    float diff = (f1 - f0);
 
-   if (fabs(diff) < EPSILON)
+   if (fabs(diff) < EPSILON) {
+      v = v0;
       return p0;
+   }
 
-   if (fabs(value - f0) < EPSILON)
+   if (fabs(value - f0) < EPSILON) {
+      v = v1;
       return p0;
+   }
 
-   if (fabs(value - f1) < EPSILON)
+   if (fabs(value - f1) < EPSILON) {
+      v = v0;
       return p1;
+   }
 
    float t = (value - f0) / diff;
+   v = v0 + t * (v1 - v0);
 
    return lerp3(p0, p1, t);
 }
@@ -108,6 +116,8 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
    const float *y = &((*grid->y)[0]);
    const float *z = &((*grid->z)[0]);
 
+   const float *d = &((*data->x)[0]);
+
    size_t numElem = grid->getNumElements();
    vistle::Triangles *triangles = vistle::Triangles::create();
    vistle::Vec<float> *outData = vistle::Vec<float>::create();
@@ -121,9 +131,11 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
          case vistle::UnstructuredGrid::HEXAHEDRON: {
 
             float3 vertlist[12];
+            float maplist[12];
             float3 v[8];
             size_t index[8];
             float field[8];
+            float mapping[8];
             size_t p = el[elem];
 
             index[0] = cl[p + 5];
@@ -134,6 +146,9 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
             index[5] = cl[p + 7];
             index[6] = cl[p + 3];
             index[7] = cl[p];
+
+            for (int idx = 0; idx < 8; idx ++)
+               mapping[idx] = d[index[idx]];
 
             uint tableIndex = 0;
             for (int idx = 0; idx < 8; idx ++) {
@@ -149,20 +164,32 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
             int numVerts = hexaNumVertsTable[tableIndex];
             if (numVerts) {
                numVertices += numVerts;
-               vertlist[0] = interp(0.0, v[0], v[1], field[0], field[1]);
-               vertlist[1] = interp(0.0, v[1], v[2], field[1], field[2]);
-               vertlist[2] = interp(0.0, v[2], v[3], field[2], field[3]);
-               vertlist[3] = interp(0.0, v[3], v[0], field[3], field[0]);
+               vertlist[0] = interp(0.0, v[0], v[1], field[0], field[1],
+                                    mapping[0], mapping[1], maplist[0]);
+               vertlist[1] = interp(0.0, v[1], v[2], field[1], field[2],
+                                    mapping[1], mapping[2], maplist[1]);
+               vertlist[2] = interp(0.0, v[2], v[3], field[2], field[3],
+                                    mapping[2], mapping[3], maplist[2]);
+               vertlist[3] = interp(0.0, v[3], v[0], field[3], field[0],
+                                    mapping[3], mapping[0], maplist[3]);
 
-               vertlist[4] = interp(0.0, v[4], v[5], field[4], field[5]);
-               vertlist[5] = interp(0.0, v[5], v[6], field[5], field[6]);
-               vertlist[6] = interp(0.0, v[6], v[7], field[6], field[7]);
-               vertlist[7] = interp(0.0, v[7], v[4], field[7], field[4]);
+               vertlist[4] = interp(0.0, v[4], v[5], field[4], field[5],
+                                    mapping[4], mapping[5], maplist[4]);
+               vertlist[5] = interp(0.0, v[5], v[6], field[5], field[6],
+                                    mapping[5], mapping[6], maplist[5]);
+               vertlist[6] = interp(0.0, v[6], v[7], field[6], field[7],
+                                    mapping[6], mapping[7], maplist[6]);
+               vertlist[7] = interp(0.0, v[7], v[4], field[7], field[4],
+                                    mapping[7], mapping[4], maplist[7]);
 
-               vertlist[8] = interp(0.0, v[0], v[4], field[0], field[4]);
-               vertlist[9] = interp(0.0, v[1], v[5], field[1], field[5]);
-               vertlist[10] = interp(0.0, v[2], v[6], field[2], field[6]);
-               vertlist[11] = interp(0.0, v[3], v[7], field[3], field[7]);
+               vertlist[8] = interp(0.0, v[0], v[4], field[0], field[4],
+                                    mapping[0], mapping[4], maplist[8]);
+               vertlist[9] = interp(0.0, v[1], v[5], field[1], field[5],
+                                    mapping[1], mapping[5], maplist[9]);
+               vertlist[10] = interp(0.0, v[2], v[6], field[2], field[6],
+                                     mapping[2], mapping[6], maplist[10]);
+               vertlist[11] = interp(0.0, v[3], v[7], field[3], field[7],
+                                     mapping[3], mapping[7], maplist[11]);
 
                for (int idx = 0; idx < numVerts; idx += 3) {
 
@@ -190,6 +217,10 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
                   triangles->z->push_back(v[0]->z);
                   triangles->z->push_back(v[1]->z);
                   triangles->z->push_back(v[2]->z);
+
+                  outData->x->push_back(maplist[edge[0]]);
+                  outData->x->push_back(maplist[edge[1]]);
+                  outData->x->push_back(maplist[edge[2]]);
                }
             }
             break;
