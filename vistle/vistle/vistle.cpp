@@ -335,60 +335,63 @@ bool Communicator::dispatch() {
          int r = read(clientSocket, socketBuffer, 1);
 #endif
 
-         if (socketBuffer[0] == 'q')
-            message = new message::Quit(0, rank);
+         if (r == 1) {
 
-         else if (socketBuffer[0] == 'g') {
-            moduleID++;
-            message = new message::Spawn(0, rank, moduleID, "gendat");
-            GENDAT = moduleID;
-         }
+            if (socketBuffer[0] == 'q')
+               message = new message::Quit(0, rank);
 
-         else if (socketBuffer[0] == 'a') {
-            moduleID++;
-            message = new message::Spawn(0, rank, moduleID, "add");
-            ADD = moduleID;
-         }
+            else if (socketBuffer[0] == 'g') {
+               moduleID++;
+               message = new message::Spawn(0, rank, moduleID, "gendat");
+               GENDAT = moduleID;
+            }
 
-         else if (socketBuffer[0] == 'o') {
-            moduleID++;
-            message = new message::Spawn(0, rank, moduleID, "osgrenderer");
-            OSGRENDERER = moduleID;
-         }
+            else if (socketBuffer[0] == 'a') {
+               moduleID++;
+               message = new message::Spawn(0, rank, moduleID, "add");
+               ADD = moduleID;
+            }
 
-         else if (socketBuffer[0] == 'c') {
-            message = new message::Connect(0, rank, GENDAT, "data_out",
-                                           ADD, "data_in");
-         }
+            else if (socketBuffer[0] == 'o') {
+               moduleID++;
+               message = new message::Spawn(0, rank, moduleID, "osgrenderer");
+               OSGRENDERER = moduleID;
+            }
 
-         else if (socketBuffer[0] == 'r') {
-            message = new message::Connect(0, rank, ADD, "data_out",
-                                           OSGRENDERER, "data_in");
-         }
+            else if (socketBuffer[0] == 'c') {
+               message = new message::Connect(0, rank, GENDAT, "data_out",
+                                              ADD, "data_in");
+            }
 
-         else if (socketBuffer[0] == 'e') {
-            message = new message::Compute(0, rank, GENDAT);
-         }
+            else if (socketBuffer[0] == 'r') {
+               message = new message::Connect(0, rank, ADD, "data_out",
+                                              OSGRENDERER, "data_in");
+            }
 
-         else if (socketBuffer[0] != '\r' && socketBuffer[0] != '\n')
-            message = new message::Debug(0, rank, socketBuffer[0]);
+            else if (socketBuffer[0] == 'e') {
+               message = new message::Compute(0, rank, GENDAT);
+            }
 
-         // Broadcast message to other MPI partitions
-         //   - handle message, delete message
-         if (message) {
+            else if (socketBuffer[0] != '\r' && socketBuffer[0] != '\n')
+               message = new message::Debug(0, rank, socketBuffer[0]);
 
-            MPI_Request s;
-            for (int index = 0; index < size; index ++)
-               if (index != rank)
-                  MPI_Isend(&(message->size), 1, MPI_INT, index, 0,
-                            MPI_COMM_WORLD, &s);
+            // Broadcast message to other MPI partitions
+            //   - handle message, delete message
+            if (message) {
 
-            MPI_Bcast(message, message->size, MPI_BYTE, 0, MPI_COMM_WORLD);
+               MPI_Request s;
+               for (int index = 0; index < size; index ++)
+                  if (index != rank)
+                     MPI_Isend(&(message->size), 1, MPI_INT, index, 0,
+                               MPI_COMM_WORLD, &s);
 
-            if (!handleMessage(message))
-               done = true;
+               MPI_Bcast(message, message->size, MPI_BYTE, 0, MPI_COMM_WORLD);
 
-            delete message;
+               if (!handleMessage(message))
+                  done = true;
+
+               delete message;
+            }
          }
       }
    }
@@ -537,12 +540,12 @@ bool Communicator::handleMessage(const message::Message * message) {
 
       case message::Message::NEWOBJECT: {
 
+         /*
          const message::NewObject *newObject =
             static_cast<const message::NewObject *>(message);
-
          vistle::Object *object = (vistle::Object *)
             vistle::Shm::instance().getShm().get_address_from_handle(newObject->getHandle());
-         /*
+
          std::cout << "comm [" << rank << "/" << size << "] NewObject ["
                    << newObject->getHandle() << "] type ["
                    << object->getType() << "] from module ["
