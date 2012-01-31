@@ -227,5 +227,52 @@ const char * SetFileParameter::getValue() const {
    return value;
 }
 
+AddFloatParameter::AddFloatParameter(const int moduleID, const int rank,
+                                     const std::string & n,
+                                     const float v)
+   : Message(moduleID, rank, Message::ADDFLOATPARAMETER,
+             sizeof(ADDFLOATPARAMETER)), value(v) {
+
+   size_t size = MIN(n.size(), 31);
+   n.copy(name, size);
+   name[size] = 0;
+}
+
+const char * AddFloatParameter::getName() const {
+
+   return name;
+}
+
+float AddFloatParameter::getValue() const {
+
+   return value;
+}
+
+SetFloatParameter::SetFloatParameter(const int moduleID, const int rank,
+                                     const int m, const std::string & n,
+                                     const float v)
+   : Message(moduleID, rank, Message::SETFLOATPARAMETER,
+             sizeof(SETFLOATPARAMETER)), module(m), value(v) {
+
+   size_t size = MIN(n.size(), 31);
+   n.copy(name, size);
+   name[size] = 0;
+}
+
+int SetFloatParameter::getModule() const {
+
+   return module;
+}
+
+const char * SetFloatParameter::getName() const {
+
+   return name;
+}
+
+float SetFloatParameter::getValue() const {
+
+   return value;
+}
+
 } // namespace message
 } // namespace vistle

@@ -201,6 +201,9 @@ int main(int argc, char ** argv) {
                 "/data/OpenFOAM/PumpTurbine/covise/test/single_p.covise");
    comm->handleMessage(&param3);
 
+   vistle::message::SetFloatParameter param4(0, rank, ISOSURF, "isovalue", -2);
+   comm->handleMessage(&param4);
+
    vistle::message::Spawn renderer(0, rank, RENDERER, "OSGRenderer");
    comm->handleMessage(&renderer);
 
@@ -637,6 +640,23 @@ bool Communicator::handleMessage(const message::Message * message) {
 
          const message::SetFileParameter *m =
             static_cast<const message::SetFileParameter *>(message);
+
+         if (m->getModuleID() != m->getModule()) {
+            // message to module
+            std::map<int, message::MessageQueue *>::iterator i
+               = sendMessageQueue.find(m->getModule());
+            if (i != sendMessageQueue.end())
+               i->second->getMessageQueue().send(m, sizeof(*m), 0);
+         } else {
+            // message from module
+         }
+         break;
+      }
+
+      case message::Message::SETFLOATPARAMETER: {
+
+         const message::SetFloatParameter *m =
+            static_cast<const message::SetFloatParameter *>(message);
 
          if (m->getModuleID() != m->getModule()) {
             // message to module

@@ -19,6 +19,7 @@ IsoSurface::IsoSurface(int rank, int size, int moduleID)
 
    createOutputPort("grid_out");
 
+   addFloatParameter("isovalue", 0.0);
    omp_set_num_threads(4);
 }
 
@@ -205,6 +206,9 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
 
 bool IsoSurface::compute() {
 
+   const float isoValue = getFloatParameter("isovalue");
+   printf("--------------------- %f\n", isoValue);
+
    std::list<vistle::Object *> gridObjects = getObjects("grid_in");
    std::cout << "IsoSurface: " << gridObjects.size() << " grid objects"
              << std::endl;
@@ -216,7 +220,7 @@ bool IsoSurface::compute() {
    while (gridObjects.size() > 0 && dataObjects.size() > 0) {
 
       vistle::Object *object =
-         generateIsoSurface(gridObjects.front(), dataObjects.front(), 0.0);
+         generateIsoSurface(gridObjects.front(), dataObjects.front(), isoValue);
 
       if (object)
          addObject("grid_out", object);

@@ -31,4 +31,21 @@ void FileParameter::setValue(const std::string & v) {
 
    value = v;
 }
+
+FloatParameter::FloatParameter(const std::string & name,
+                               const float v)
+   : Parameter(name), value(v) {
+
 }
+
+float FloatParameter::getValue() const {
+
+   return value;
+}
+
+void FloatParameter::setValue(const float v) {
+
+   value = v;
+}
+
+} // namespace vistle

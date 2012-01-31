@@ -37,7 +37,11 @@ class Module {
 
    bool addFileParameter(const std::string & name, const std::string & value);
    void setFileParameter(const std::string & name, const std::string & value);
-   const std::string * getFileParameter(const std::string & name);
+   std::string getFileParameter(const std::string & name) const;
+
+   bool addFloatParameter(const std::string & name, const float value);
+   void setFloatParameter(const std::string & name, const float value);
+   float getFloatParameter(const std::string & name) const;
 
    bool addObject(const std::string &portName, const shm_handle_t & handle);
    bool addObject(const std::string & portName, const void *object);

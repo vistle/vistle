@@ -18,18 +18,20 @@ class Message {
    static const size_t MESSAGE_SIZE = 512;
 
    enum Type {
-      DEBUG            =   0,
-      SPAWN            =   1,
-      QUIT             =   2,
-      NEWOBJECT        =   3,
-      MODULEEXIT       =   4,
-      COMPUTE          =   5,
-      CREATEINPUTPORT  =   6,
-      CREATEOUTPUTPORT =   7,
-      ADDOBJECT        =   8,
-      CONNECT          =   9,
-      ADDFILEPARAMETER =  10,
-      SETFILEPARAMETER =  11,
+      DEBUG             =   0,
+      SPAWN             =   1,
+      QUIT              =   2,
+      NEWOBJECT         =   3,
+      MODULEEXIT        =   4,
+      COMPUTE           =   5,
+      CREATEINPUTPORT   =   6,
+      CREATEOUTPUTPORT  =   7,
+      ADDOBJECT         =   8,
+      CONNECT           =   9,
+      ADDFILEPARAMETER  =  10,
+      SETFILEPARAMETER  =  11,
+      ADDFLOATPARAMETER =  12,
+      SETFLOATPARAMETER =  13,
    };
 
    Message(const int moduleID, const int rank,
@@ -187,8 +189,7 @@ class AddFileParameter: public Message {
 class SetFileParameter: public Message {
 
  public:
-   SetFileParameter(const int moduleID, const int rank,
-                    const int module,
+   SetFileParameter(const int moduleID, const int rank, const int module,
                     const std::string & name,
                     const std::string & value);
 
@@ -200,6 +201,36 @@ class SetFileParameter: public Message {
    const int module;
    char name[32];
    char value[256];
+};
+
+class AddFloatParameter: public Message {
+
+ public:
+   AddFloatParameter(const int moduleID, const int rank,
+                     const std::string & name, const float value);
+
+   const char * getName() const;
+   float getValue() const;
+
+ private:
+   char name[32];
+   float value;
+};
+
+class SetFloatParameter: public Message {
+
+ public:
+   SetFloatParameter(const int moduleID, const int rank, const int module,
+                     const std::string & name, const float value);
+
+   int getModule() const;
+   const char * getName() const;
+   float getValue() const;
+
+ private:
+   const int module;
+   char name[32];
+   float value;
 };
 
 } // namespace message

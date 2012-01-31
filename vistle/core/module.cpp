@@ -102,7 +102,6 @@ bool Module::createOutputPort(const std::string &name) {
 bool Module::addFileParameter(const std::string & name,
                               const std::string & value) {
 
-
    std::map<std::string, Parameter *>::iterator i =
       parameters.find(name);
 
@@ -137,19 +136,71 @@ void Module::setFileParameter(const std::string & name,
    sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
 }
 
-const std::string * Module::getFileParameter(const std::string & name) {
+std::string Module::getFileParameter(const std::string & name) const {
 
-  std::map<std::string, Parameter *>::iterator i =
+  std::map<std::string, Parameter *>::const_iterator i =
       parameters.find(name);
 
   if (i == parameters.end())
-     return NULL;
+     return "";
    else {
       FileParameter *param = dynamic_cast<FileParameter *>(i->second);
       if (param)
-         return & param->getValue();
+         return param->getValue();
    }
-  return NULL;
+  return "";
+}
+
+bool Module::addFloatParameter(const std::string & name,
+                               const float value) {
+
+   std::map<std::string, Parameter *>::iterator i =
+      parameters.find(name);
+
+   if (i == parameters.end()) {
+
+      parameters[name] = new FloatParameter(name, value);
+      message::AddFloatParameter message(moduleID, rank, name, value);
+      sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
+
+      return true;
+   }
+   return false;
+}
+
+void Module::setFloatParameter(const std::string & name,
+                               const float value) {
+
+   std::map<std::string, Parameter *>::iterator i =
+      parameters.find(name);
+
+   if (i == parameters.end())
+      parameters[name] = new FloatParameter(name, value);
+   else {
+      FloatParameter *param = dynamic_cast<FloatParameter *>(i->second);
+      if (param)
+         param->setValue(value);
+      else
+         return;
+   }
+
+   message::SetFloatParameter message(moduleID, rank, moduleID, name, value);
+   sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
+}
+
+float Module::getFloatParameter(const std::string & name) const {
+
+  std::map<std::string, Parameter *>::const_iterator i =
+      parameters.find(name);
+
+  if (i == parameters.end())
+     return 0.0;
+   else {
+      FloatParameter *param = dynamic_cast<FloatParameter *>(i->second);
+      if (param)
+         return param->getValue();
+   }
+  return 0.0;
 }
 
 bool Module::addObject(const std::string & portName,
@@ -309,6 +360,15 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             static_cast<const message::SetFileParameter *>(message);
 
          setFileParameter(param->getName(), param->getValue());
+         break;
+      }
+
+      case message::Message::SETFLOATPARAMETER: {
+
+         const message::SetFloatParameter *param =
+            static_cast<const message::SetFloatParameter *>(message);
+
+         setFloatParameter(param->getName(), param->getValue());
          break;
       }
 

@@ -325,8 +325,8 @@ vistle::Object * ReadCovise::load(const std::string & name) {
 
    int fd = open(name.c_str(), O_RDONLY);
    if (fd == -1) {
-      std::cout << "ERROR ReadCovise::load could not open file " << name
-                << std::endl;
+      std::cout << "ERROR ReadCovise::load could not open file [" << name
+                << "]" << std::endl;
       return NULL;
    }
 
@@ -352,24 +352,10 @@ vistle::Object * ReadCovise::load(const std::string & name) {
 
 bool ReadCovise::compute() {
 
-   const std::string * name = getFileParameter("filename");
+   vistle::Object *object = load(getFileParameter("filename"));
 
-   struct timeval t0, t1;
-   if (name) {
-      gettimeofday(&t0, NULL);
-      //ProfilerStart("/tmp/ReadCovise.prof");
-      vistle::Object *object = load(*name);
-      //ProfilerStop();
-      gettimeofday(&t1, NULL);
+   if (object)
+      addObject("grid_out", object);
 
-      long long usec = t1.tv_sec - t0.tv_sec;
-      usec *= 1000000;
-      usec += (t1.tv_usec - t0.tv_usec);
-
-      std::cout << "ReadCovise: " << usec << " usec" << std::endl;
-
-      if (object)
-         addObject("grid_out", object);
-   }
    return true;
 }

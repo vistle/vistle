@@ -29,5 +29,17 @@ class FileParameter: public Parameter {
    std::string value;
 };
 
+class FloatParameter: public Parameter {
+
+ public:
+   FloatParameter(const std::string & name, const float value);
+
+   float getValue() const;
+   void setValue(const float value);
+
+ private:
+   float value;
+};
+
 } // namespace vistle
 #endif
