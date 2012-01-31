@@ -398,6 +398,11 @@ size_t Texture1D::getNumElements() const {
    return coords->size();
 }
 
+size_t Texture1D::getWidth() const {
+
+   return pixels->size() / 4;
+}
+
 template<> const Object::Type Vec<float>::type  = Object::VECFLOAT;
 template<> const Object::Type Vec<int>::type    = Object::VECINT;
 template<> const Object::Type Vec<char>::type   = Object::VECCHAR;

@@ -7,7 +7,7 @@ namespace util {
 
 class Vector {
 public:
-   Vector(const float _x, const float _y, const float _z);
+   Vector(const float x, const float y, const float z);
 
    // negate
    Vector operator - () const;
@@ -24,6 +24,7 @@ public:
    // scalar product
    float operator * (Vector const & rhs) const;
 
+   static Vector lerp(const Vector & a, const Vector & b);
 
    float x, y, z;
 };

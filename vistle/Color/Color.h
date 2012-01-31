@@ -4,6 +4,16 @@
 #include "module.h"
 #include "vector.h"
 
+class ColorMap {
+
+public:
+   ColorMap(std::map<float, vistle::util::Vector> & pins, const size_t width);
+   ~ColorMap();
+
+   unsigned char *data;
+   const size_t width;
+};
+
 class Color: public vistle::Module {
 
  public:
@@ -12,7 +22,8 @@ class Color: public vistle::Module {
 
  private:
    vistle::Object * addTexture(vistle::Object * object,
-                               const float min, const float max);
+                               const float min, const float max,
+                               const ColorMap & cmap);
 
    void getMinMax(const vistle::Object * object, float & min, float & max);
 

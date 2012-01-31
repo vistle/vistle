@@ -214,15 +214,11 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
                                  const vistle::Object * normals,
                                  const vistle::Object * texture) {
 
-   printf("GEOMETRY: %p %p %p %p\n", geometry, colors,
-          normals, texture);
-
    if (geometry) {
       switch (geometry->getType()) {
 
          case vistle::Object::TRIANGLES: {
 
-            printf("triangles\n");
             const vistle::Triangles *triangles =
                static_cast<const vistle::Triangles *>(geometry);
             const size_t numCorners = triangles->getNumCorners();
@@ -293,7 +289,7 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
                */
                osg::ref_ptr<osg::Image> image = new osg::Image();
 
-               image->setImage(256, 1, 1, GL_RGBA, GL_RGBA,
+               image->setImage(tex->getWidth(), 1, 1, GL_RGBA, GL_RGBA,
                                GL_UNSIGNED_BYTE, &(*tex->pixels)[0],
                                osg::Image::NO_DELETE);
                osgTex->setImage(image);
@@ -305,6 +301,10 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
                geom->setTexCoordArray(0, coords);
                state->setTextureAttributeAndModes(0, osgTex,
                                                   osg::StateAttribute::ON);
+               osgTex->setFilter(osg::Texture1D::MIN_FILTER,
+                                 osg::Texture1D::NEAREST);
+               osgTex->setFilter(osg::Texture1D::MAG_FILTER,
+                                 osg::Texture1D::NEAREST);
             }
 
             geom->addPrimitiveSet(corners.get());
@@ -323,7 +323,6 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
 
          case vistle::Object::LINES: {
 
-            printf("lines\n");
             const vistle::Lines *lines =
                static_cast<const vistle::Lines *>(geometry);
             const size_t numElements = lines->getNumElements();
@@ -370,7 +369,6 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
 
          case vistle::Object::POLYGONS: {
 
-            printf("poly\n");
             const vistle::Polygons *polygons =
                static_cast<const vistle::Polygons *>(geometry);
 
@@ -480,7 +478,6 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
 
          case vistle::Object::SET: {
 
-            printf("set\n");
             const vistle::Set *gset =
                static_cast<const vistle::Set *>(geometry);
             const vistle::Set *cset = static_cast<const vistle::Set *>(colors);

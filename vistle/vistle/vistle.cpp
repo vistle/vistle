@@ -214,6 +214,10 @@ int main(int argc, char ** argv) {
    connect(comm, rank, COLOR, "data_out", COLLECT, "texture_in");
    connect(comm, rank, COLLECT, "grid_out", RENDERER, "data_in");
 
+   connect(comm, rank, RGRID, "grid_out", ISOSURF, "grid_in");
+   connect(comm, rank, RPRES, "grid_out", ISOSURF, "data_in");
+   connect(comm, rank, ISOSURF, "grid_out", RENDERER, "data_in");
+
    vistle::message::Compute compute1(0, rank, RGEO);
    comm->handleMessage(&compute1);
    vistle::message::Compute compute2(0, rank, RGRID);

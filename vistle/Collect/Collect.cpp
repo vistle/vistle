@@ -31,7 +31,6 @@ bool Collect::compute() {
 
    while (gridObjects.size() > 0 && textureObjects.size()) {
 
-      printf("------generate geometry\n");
       vistle::Geometry *geom = vistle::Geometry::create();
       geom->geometry = gridObjects.front();
       geom->texture = textureObjects.front();
