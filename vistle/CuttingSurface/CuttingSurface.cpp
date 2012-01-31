@@ -2,7 +2,6 @@
 #include <iomanip>
 
 #include <omp.h>
-#include <google/profiler.h>
 
 #include "object.h"
 #include "tables.h"
@@ -10,7 +9,6 @@
 #include "CuttingSurface.h"
 
 MODULE_MAIN(CuttingSurface)
-
 
 CuttingSurface::CuttingSurface(int rank, int size, int moduleID)
    : Module("CuttingSurface", rank, size, moduleID) {
@@ -259,21 +257,9 @@ bool CuttingSurface::compute() {
 
    while (gridObjects.size() > 0 && dataObjects.size() > 0) {
 
-      struct timeval t0, t1;
-      gettimeofday(&t0, NULL);
-
-      ProfilerStart("/tmp/cut.prof");
       std::pair<vistle::Object *, vistle::Object *> object =
          generateCuttingSurface(gridObjects.front(), dataObjects.front(),
                                 normal, distance);
-      ProfilerStop();
-
-      gettimeofday(&t1, NULL);
-      long long usec = t1.tv_sec - t0.tv_sec;
-      usec *= 1000000;
-      usec += (t1.tv_usec - t0.tv_usec);
-
-      std::cout << "CuttingSurface: " << usec << " usec" << std::endl;
 
       if (object.first)
          addObject("grid_out", object.first);

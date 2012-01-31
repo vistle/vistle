@@ -16,5 +16,4 @@ target_link_libraries(CuttingSurface
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
         vistle_core
-        profiler
 )

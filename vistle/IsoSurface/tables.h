@@ -524,7 +524,7 @@ static uint hexaNumVertsTable[256] = {
     0,
 };
 
-
+#if 0
 static uint tetraNumVertsTable[16] = {
    0, //0
    3, //1
@@ -534,13 +534,13 @@ static uint tetraNumVertsTable[16] = {
    6, //5
    6, //6
    3, //7
-   3, 
+   3,
    6,
    6,
    3,
    6,
-   3, 
-   3, 
+   3,
+   3,
    0
 };
 
@@ -644,6 +644,6 @@ static uint pyrTriTable[32][12] = {
    { 1, 4, 0, X, X, X, X, X, X, X, X, X },
    { X, X, X, X, X, X, X, X, X, X, X, X }
 };
-
+#endif
 
 #undef X

@@ -3,12 +3,11 @@
 
 #define MPICH_IGNORE_CXX_SEEK
 #include <mpi.h>
-#include <iostream>
 
+#include <iostream>
 #include <list>
 #include <map>
 
-#include "object.h"
 #include "vector.h"
 
 namespace vistle {
@@ -53,11 +52,11 @@ class Module {
    Vector getVectorParameter(const std::string & name) const;
 
    bool addObject(const std::string &portName, const shm_handle_t & handle);
-   bool addObject(const std::string & portName, const void *object);
+   bool addObject(const std::string & portName, const void * object);
    message::MessageQueue *sendMessageQueue;
 
    std::list<vistle::Object *> getObjects(const std::string &portName);
-   void removeObject(const std::string &portName, vistle::Object *object);
+   void removeObject(const std::string &portName, vistle::Object * object);
 
    const std::string name;
    const int rank;
