@@ -131,14 +131,6 @@ vistle::Object * Color::addTexture(vistle::Object * object,
             vistle::Texture1D *tex = vistle::Texture1D::create(cmap.width,
                                                                min, max);
             unsigned char *pix = &(*tex->pixels)[0];
-            /*
-            for (int index = 0; index < 256; index ++) {
-               pix[index * 4] = index;
-               pix[index * 4 + 1] = 0;
-               pix[index * 4 + 2] = 0;
-               pix[index * 4 + 3] = 255;
-            }
-            */
             for (size_t index = 0; index < cmap.width * 4; index ++)
                pix[index] = cmap.data[index];
 
@@ -163,7 +155,7 @@ bool Color::compute() {
    pins.insert(std::make_pair(0.5, vistle::util::Vector(1.0, 0.0, 0.0)));
    pins.insert(std::make_pair(1.0, vistle::util::Vector(1.0, 1.0, 0.0)));
 
-   ColorMap cmap(pins, 12);
+   ColorMap cmap(pins, 32);
    std::list<vistle::Object *> objects = getObjects("data_in");
 
    while (objects.size() > 0) {

@@ -1,6 +1,7 @@
 #include <sstream>
 #include <iomanip>
 
+#include <omp.h>
 #include <google/profiler.h>
 
 #include "object.h"
@@ -19,6 +20,8 @@ CuttingSurface::CuttingSurface(int rank, int size, int moduleID)
 
    createOutputPort("grid_out");
    createOutputPort("data_out");
+
+   omp_set_num_threads(4);
 }
 
 CuttingSurface::~CuttingSurface() {
@@ -125,6 +128,7 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
 
    size_t numVertices = 0;
 
+#pragma omp parallel for
    for (size_t elem = 0; elem < numElem; elem ++) {
 
       switch (tl[elem]) {
@@ -202,26 +206,28 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
                   v[1] = &vertlist[edge[1]];
                   edge[2] = hexaTriTable[tableIndex][idx + 2];
                   v[2] = &vertlist[edge[2]];
+#pragma omp critical
+                  {
+                     triangles->cl->push_back(triangles->x->size());
+                     triangles->cl->push_back(triangles->x->size() + 1);
+                     triangles->cl->push_back(triangles->x->size() + 2);
 
-                  triangles->cl->push_back(triangles->x->size());
-                  triangles->cl->push_back(triangles->x->size() + 1);
-                  triangles->cl->push_back(triangles->x->size() + 2);
+                     triangles->x->push_back(v[0]->x);
+                     triangles->x->push_back(v[1]->x);
+                     triangles->x->push_back(v[2]->x);
 
-                  triangles->x->push_back(v[0]->x);
-                  triangles->x->push_back(v[1]->x);
-                  triangles->x->push_back(v[2]->x);
+                     triangles->y->push_back(v[0]->y);
+                     triangles->y->push_back(v[1]->y);
+                     triangles->y->push_back(v[2]->y);
 
-                  triangles->y->push_back(v[0]->y);
-                  triangles->y->push_back(v[1]->y);
-                  triangles->y->push_back(v[2]->y);
+                     triangles->z->push_back(v[0]->z);
+                     triangles->z->push_back(v[1]->z);
+                     triangles->z->push_back(v[2]->z);
 
-                  triangles->z->push_back(v[0]->z);
-                  triangles->z->push_back(v[1]->z);
-                  triangles->z->push_back(v[2]->z);
-
-                  outData->x->push_back(maplist[edge[0]]);
-                  outData->x->push_back(maplist[edge[1]]);
-                  outData->x->push_back(maplist[edge[2]]);
+                     outData->x->push_back(maplist[edge[0]]);
+                     outData->x->push_back(maplist[edge[1]]);
+                     outData->x->push_back(maplist[edge[2]]);
+                  }
                }
             }
             break;

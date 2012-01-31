@@ -62,6 +62,12 @@ private:
 OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    : Renderer("OSGRenderer", rank, size, moduleID), osgViewer::Viewer() {
 
+#ifndef _WIN32
+   cpu_set_t cpuset;
+   CPU_SET(0, &cpuset);
+   pthread_setaffinity_np(pthread_self(), 1, &cpuset);
+#endif
+
    setUpViewInWindow(0, 0, 512, 512);
    setLightingMode(osgViewer::Viewer::HEADLIGHT);
 
@@ -282,11 +288,7 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
 
                osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
                osgTex->setDataVariance(osg::Object::DYNAMIC);
-               /*
-               osg::ref_ptr<osg::Image> image =
-                  osgDB::readImageFile("colormap.png");
-               osgTex->setImage(image);
-               */
+
                osg::ref_ptr<osg::Image> image = new osg::Image();
 
                image->setImage(tex->getWidth(), 1, 1, GL_RGBA, GL_RGBA,

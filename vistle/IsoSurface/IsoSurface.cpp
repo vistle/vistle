@@ -1,6 +1,8 @@
 #include <sstream>
 #include <iomanip>
 
+#include <omp.h>
+
 #include "object.h"
 #include "tables.h"
 
@@ -16,6 +18,8 @@ IsoSurface::IsoSurface(int rank, int size, int moduleID)
    createInputPort("data_in");
 
    createOutputPort("grid_out");
+
+   omp_set_num_threads(4);
 }
 
 IsoSurface::~IsoSurface() {
@@ -105,6 +109,7 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
 
    size_t numVertices = 0;
 
+#pragma omp parallel for
    for (size_t elem = 0; elem < numElem; elem ++) {
 
       switch (tl[elem]) {
@@ -166,21 +171,24 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
                   edge[2] = hexaTriTable[tableIndex][idx + 2];
                   v[2] = &vertlist[edge[2]];
 
-                  t->cl->push_back(t->x->size());
-                  t->cl->push_back(t->x->size() + 1);
-                  t->cl->push_back(t->x->size() + 2);
+#pragma omp critical
+                  {
+                     t->cl->push_back(t->x->size());
+                     t->cl->push_back(t->x->size() + 1);
+                     t->cl->push_back(t->x->size() + 2);
 
-                  t->x->push_back(v[0]->x);
-                  t->x->push_back(v[1]->x);
-                  t->x->push_back(v[2]->x);
+                     t->x->push_back(v[0]->x);
+                     t->x->push_back(v[1]->x);
+                     t->x->push_back(v[2]->x);
 
-                  t->y->push_back(v[0]->y);
-                  t->y->push_back(v[1]->y);
-                  t->y->push_back(v[2]->y);
+                     t->y->push_back(v[0]->y);
+                     t->y->push_back(v[1]->y);
+                     t->y->push_back(v[2]->y);
 
-                  t->z->push_back(v[0]->z);
-                  t->z->push_back(v[1]->z);
-                  t->z->push_back(v[2]->z);
+                     t->z->push_back(v[0]->z);
+                     t->z->push_back(v[1]->z);
+                     t->z->push_back(v[2]->z);
+                  }
                }
             }
             break;
