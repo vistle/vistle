@@ -201,8 +201,15 @@ int main(int argc, char ** argv) {
                 "/data/OpenFOAM/PumpTurbine/covise/test/single_p.covise");
    comm->handleMessage(&param3);
 
-   vistle::message::SetFloatParameter param4(0, rank, ISOSURF, "isovalue", -2);
+   vistle::message::SetFloatParameter param4(0, rank, ISOSURF, "isovalue", -1);
    comm->handleMessage(&param4);
+
+   vistle::message::SetFloatParameter param5(0, rank, CUTSURF, "distance", 0.0);
+   comm->handleMessage(&param5);
+
+   vistle::message::SetVectorParameter param6(0, rank, CUTSURF, "normal",
+                                              vistle::Vector(1.0, 0.0, 0.0));
+   comm->handleMessage(&param6);
 
    vistle::message::Spawn renderer(0, rank, RENDERER, "OSGRenderer");
    comm->handleMessage(&renderer);
@@ -625,17 +632,6 @@ bool Communicator::handleMessage(const message::Message * message) {
          break;
       }
 
-      case message::Message::ADDFILEPARAMETER: {
-
-         const message::AddFileParameter *m =
-            static_cast<const message::AddFileParameter *>(message);
-
-         std::cout << "AddFileParameter " << m->getName()
-                   << " default " << m->getValue() << std::endl;
-
-         break;
-      }
-
       case message::Message::SETFILEPARAMETER: {
 
          const message::SetFileParameter *m =
@@ -646,9 +642,7 @@ bool Communicator::handleMessage(const message::Message * message) {
             std::map<int, message::MessageQueue *>::iterator i
                = sendMessageQueue.find(m->getModule());
             if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(m, sizeof(*m), 0);
-         } else {
-            // message from module
+               i->second->getMessageQueue().send(m, m->getSize(), 0);
          }
          break;
       }
@@ -663,9 +657,38 @@ bool Communicator::handleMessage(const message::Message * message) {
             std::map<int, message::MessageQueue *>::iterator i
                = sendMessageQueue.find(m->getModule());
             if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(m, sizeof(*m), 0);
-         } else {
-            // message from module
+               i->second->getMessageQueue().send(m, m->getSize(), 0);
+         }
+         break;
+      }
+
+      case message::Message::SETINTPARAMETER: {
+
+         const message::SetIntParameter *m =
+            static_cast<const message::SetIntParameter *>(message);
+
+         if (m->getModuleID() != m->getModule()) {
+            // message to module
+            std::map<int, message::MessageQueue *>::iterator i
+               = sendMessageQueue.find(m->getModule());
+            if (i != sendMessageQueue.end())
+               i->second->getMessageQueue().send(m, m->getSize(), 0);
+         }
+         break;
+
+      }
+
+      case message::Message::SETVECTORPARAMETER: {
+
+         const message::SetVectorParameter *m =
+            static_cast<const message::SetVectorParameter *>(message);
+
+         if (m->getModuleID() != m->getModule()) {
+            // message to module
+            std::map<int, message::MessageQueue *>::iterator i
+               = sendMessageQueue.find(m->getModule());
+            if (i != sendMessageQueue.end())
+               i->second->getMessageQueue().send(m, m->getSize(), 0);
          }
          break;
       }

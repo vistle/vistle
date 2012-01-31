@@ -207,7 +207,6 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
 bool IsoSurface::compute() {
 
    const float isoValue = getFloatParameter("isovalue");
-   printf("--------------------- %f\n", isoValue);
 
    std::list<vistle::Object *> gridObjects = getObjects("grid_in");
    std::cout << "IsoSurface: " << gridObjects.size() << " grid objects"

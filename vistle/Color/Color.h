@@ -7,7 +7,7 @@
 class ColorMap {
 
 public:
-   ColorMap(std::map<float, vistle::util::Vector> & pins, const size_t width);
+   ColorMap(std::map<float, vistle::Vector> & pins, const size_t width);
    ~ColorMap();
 
    unsigned char *data;

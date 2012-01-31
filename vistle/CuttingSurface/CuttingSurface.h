@@ -14,7 +14,7 @@ class CuttingSurface: public vistle::Module {
    std::pair<vistle::Object *, vistle::Object *>
       generateCuttingSurface(const vistle::Object * grid,
                              const vistle::Object * data,
-                             const vistle::util::Vector & normal,
+                             const vistle::Vector & normal,
                              const float distance);
 
    virtual bool compute();

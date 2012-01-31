@@ -10,13 +10,13 @@
 
 MODULE_MAIN(Color)
 
-ColorMap::ColorMap(std::map<float, vistle::util::Vector> & pins,
+ColorMap::ColorMap(std::map<float, vistle::Vector> & pins,
                    const size_t w): width(w) {
 
    data = new unsigned char[width * 4];
 
-   std::map<float, vistle::util::Vector>::iterator current = pins.begin();
-   std::map<float, vistle::util::Vector>::iterator next = ++pins.begin();
+   std::map<float, vistle::Vector>::iterator current = pins.begin();
+   std::map<float, vistle::Vector>::iterator next = ++pins.begin();
 
    for (size_t index = 0; index < width; index ++) {
 
@@ -150,10 +150,10 @@ vistle::Object * Color::addTexture(vistle::Object * object,
 
 bool Color::compute() {
 
-   std::map<float, vistle::util::Vector> pins;
-   pins.insert(std::make_pair(0.0, vistle::util::Vector(0.0, 0.0, 1.0)));
-   pins.insert(std::make_pair(0.5, vistle::util::Vector(1.0, 0.0, 0.0)));
-   pins.insert(std::make_pair(1.0, vistle::util::Vector(1.0, 1.0, 0.0)));
+   std::map<float, vistle::Vector> pins;
+   pins.insert(std::make_pair(0.0, vistle::Vector(0.0, 0.0, 1.0)));
+   pins.insert(std::make_pair(0.5, vistle::Vector(1.0, 0.0, 0.0)));
+   pins.insert(std::make_pair(1.0, vistle::Vector(1.0, 1.0, 0.0)));
 
    ColorMap cmap(pins, 32);
    std::list<vistle::Object *> objects = getObjects("data_in");

@@ -9,6 +9,7 @@
 #include <map>
 
 #include "object.h"
+#include "vector.h"
 
 namespace vistle {
 
@@ -42,6 +43,14 @@ class Module {
    bool addFloatParameter(const std::string & name, const float value);
    void setFloatParameter(const std::string & name, const float value);
    float getFloatParameter(const std::string & name) const;
+
+   bool addIntParameter(const std::string & name, const int value);
+   void setIntParameter(const std::string & name, const int value);
+   int getIntParameter(const std::string & name) const;
+
+   bool addVectorParameter(const std::string & name, const Vector & value);
+   void setVectorParameter(const std::string & name, const Vector & value);
+   Vector getVectorParameter(const std::string & name) const;
 
    bool addObject(const std::string &portName, const shm_handle_t & handle);
    bool addObject(const std::string & portName, const void *object);

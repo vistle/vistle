@@ -3,8 +3,6 @@
 
 namespace vistle {
 
-namespace util {
-
 class Vector {
 public:
    Vector(const float x, const float y, const float z);
@@ -24,12 +22,9 @@ public:
    // scalar product
    float operator * (Vector const & rhs) const;
 
-   static Vector lerp(const Vector & a, const Vector & b);
-
    float x, y, z;
 };
 
-} // namespace util
 } // namespace vistle
 
 #endif

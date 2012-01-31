@@ -11,8 +11,8 @@ class CutGeometry: public vistle::Module {
    ~CutGeometry();
 
    vistle::Object * cutGeometry(const vistle::Object * object,
-                                const vistle::util::Vector & point,
-                                const vistle::util::Vector & normal) const;
+                                const vistle::Vector & point,
+                                const vistle::Vector & normal) const;
 
  private:
    virtual bool compute();

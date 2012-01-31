@@ -21,6 +21,8 @@ CuttingSurface::CuttingSurface(int rank, int size, int moduleID)
    createOutputPort("grid_out");
    createOutputPort("data_out");
 
+   addFloatParameter("distance", 0.0);
+   addVectorParameter("normal", vistle::Vector(0.0, 0.0, 1.0));
    omp_set_num_threads(4);
 }
 
@@ -75,7 +77,7 @@ inline float3 interp(float value, const float3 & p0, const float3 & p1,
 std::pair<vistle::Object *, vistle::Object *>
 CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
                                        const vistle::Object * data_object,
-                                       const vistle::util::Vector & normal,
+                                       const vistle::Vector & normal,
                                        const float distance) {
 
    const vistle::UnstructuredGrid *grid = NULL;
@@ -160,7 +162,7 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
                v[idx].x = x[index[idx]];
                v[idx].y = y[index[idx]];
                v[idx].z = z[index[idx]];
-               field[idx] = (normal * vistle::util::Vector(v[idx].x, v[idx].y, v[idx].z) - distance);
+               field[idx] = (normal * vistle::Vector(v[idx].x, v[idx].y, v[idx].z) - distance);
             }
 
             for (int idx = 0; idx < 8; idx ++)
@@ -252,8 +254,8 @@ bool CuttingSurface::compute() {
    std::cout << "CuttingSurface: " << dataObjects.size() << " data objects"
              << std::endl;
 
-   const vistle::util::Vector normal(1.0, 0.0, 0.0);
-   const float distance = 0.0;
+   const float distance = getFloatParameter("distance");
+   const vistle::Vector normal = getVectorParameter("normal");
 
    while (gridObjects.size() > 0 && dataObjects.size() > 0) {
 

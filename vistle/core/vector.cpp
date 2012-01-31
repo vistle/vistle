@@ -2,8 +2,6 @@
 
 namespace vistle {
 
-namespace util {
-
 Vector::Vector(const float _x, const float _y, const float _z)
    : x(_x), y(_y), z(_z) {
 
@@ -35,5 +33,4 @@ float Vector::operator * (Vector const & rhs) const {
       return x * rhs.x + y * rhs.y + z * rhs.z;
 }
 
-} // namespace util
 } // namespace vistle

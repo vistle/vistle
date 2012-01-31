@@ -26,6 +26,11 @@ Message::Type Message::getType() const {
    return type;
 }
 
+size_t Message::getSize() const {
+
+   return size;
+}
+
 Debug::Debug(const int moduleID, const int rank, const char c)
    : Message(moduleID, rank, Message::DEBUG, sizeof(Debug)), character(c) {
 
@@ -176,7 +181,7 @@ AddFileParameter::AddFileParameter(const int moduleID, const int rank,
                                    const std::string & n,
                                    const std::string & v)
    : Message(moduleID, rank, Message::ADDFILEPARAMETER,
-             sizeof(ADDFILEPARAMETER)) {
+             sizeof(AddFileParameter)) {
 
    size_t size = MIN(n.size(), 31);
    n.copy(name, size);
@@ -201,7 +206,7 @@ SetFileParameter::SetFileParameter(const int moduleID, const int rank,
                                    const int m, const std::string & n,
                                    const std::string & v)
    : Message(moduleID, rank, Message::SETFILEPARAMETER,
-             sizeof(SETFILEPARAMETER)), module(m) {
+             sizeof(SetFileParameter)), module(m) {
 
    size_t size = MIN(n.size(), 31);
    n.copy(name, size);
@@ -231,7 +236,7 @@ AddFloatParameter::AddFloatParameter(const int moduleID, const int rank,
                                      const std::string & n,
                                      const float v)
    : Message(moduleID, rank, Message::ADDFLOATPARAMETER,
-             sizeof(ADDFLOATPARAMETER)), value(v) {
+             sizeof(AddFloatParameter)), value(v) {
 
    size_t size = MIN(n.size(), 31);
    n.copy(name, size);
@@ -252,7 +257,7 @@ SetFloatParameter::SetFloatParameter(const int moduleID, const int rank,
                                      const int m, const std::string & n,
                                      const float v)
    : Message(moduleID, rank, Message::SETFLOATPARAMETER,
-             sizeof(SETFLOATPARAMETER)), module(m), value(v) {
+             sizeof(SetFloatParameter)), module(m), value(v) {
 
    size_t size = MIN(n.size(), 31);
    n.copy(name, size);
@@ -273,6 +278,101 @@ float SetFloatParameter::getValue() const {
 
    return value;
 }
+
+AddIntParameter::AddIntParameter(const int moduleID, const int rank,
+                                 const std::string & n,
+                                 const int v)
+   : Message(moduleID, rank, Message::ADDINTPARAMETER,
+             sizeof(AddIntParameter)), value(v) {
+
+   size_t size = MIN(n.size(), 31);
+   n.copy(name, size);
+   name[size] = 0;
+}
+
+const char * AddIntParameter::getName() const {
+
+   return name;
+}
+
+int AddIntParameter::getValue() const {
+
+   return value;
+}
+
+SetIntParameter::SetIntParameter(const int moduleID, const int rank,
+                                 const int m, const std::string & n,
+                                 const int v)
+   : Message(moduleID, rank, Message::SETINTPARAMETER,
+             sizeof(SetIntParameter)), module(m), value(v) {
+
+   size_t size = MIN(n.size(), 31);
+   n.copy(name, size);
+   name[size] = 0;
+}
+
+int SetIntParameter::getModule() const {
+
+   return module;
+}
+
+const char * SetIntParameter::getName() const {
+
+   return name;
+}
+
+int SetIntParameter::getValue() const {
+
+   return value;
+}
+
+AddVectorParameter::AddVectorParameter(const int moduleID, const int rank,
+                                       const std::string & n,
+                                       const Vector & v)
+   : Message(moduleID, rank, Message::ADDVECTORPARAMETER,
+             sizeof(AddVectorParameter)), value(v) {
+
+   size_t size = MIN(n.size(), 31);
+   n.copy(name, size);
+   name[size] = 0;
+}
+
+const char * AddVectorParameter::getName() const {
+
+   return name;
+}
+
+Vector AddVectorParameter::getValue() const {
+
+   return value;
+}
+
+SetVectorParameter::SetVectorParameter(const int moduleID, const int rank,
+                                       const int m, const std::string & n,
+                                       const Vector & v)
+   : Message(moduleID, rank, Message::SETVECTORPARAMETER,
+             sizeof(SetVectorParameter)), module(m), value(v) {
+
+   size_t size = MIN(n.size(), 31);
+   n.copy(name, size);
+   name[size] = 0;
+}
+
+int SetVectorParameter::getModule() const {
+
+   return module;
+}
+
+const char * SetVectorParameter::getName() const {
+
+   return name;
+}
+
+Vector SetVectorParameter::getValue() const {
+
+   return value;
+}
+
 
 } // namespace message
 } // namespace vistle

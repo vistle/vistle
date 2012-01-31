@@ -2,7 +2,9 @@
 #define MESSAGE_H
 
 #include <string>
+
 #include "object.h"
+#include "vector.h"
 
 namespace vistle {
 
@@ -18,20 +20,24 @@ class Message {
    static const size_t MESSAGE_SIZE = 512;
 
    enum Type {
-      DEBUG             =   0,
-      SPAWN             =   1,
-      QUIT              =   2,
-      NEWOBJECT         =   3,
-      MODULEEXIT        =   4,
-      COMPUTE           =   5,
-      CREATEINPUTPORT   =   6,
-      CREATEOUTPUTPORT  =   7,
-      ADDOBJECT         =   8,
-      CONNECT           =   9,
-      ADDFILEPARAMETER  =  10,
-      SETFILEPARAMETER  =  11,
-      ADDFLOATPARAMETER =  12,
-      SETFLOATPARAMETER =  13,
+      DEBUG              =   0,
+      SPAWN              =   1,
+      QUIT               =   2,
+      NEWOBJECT          =   3,
+      MODULEEXIT         =   4,
+      COMPUTE            =   5,
+      CREATEINPUTPORT    =   6,
+      CREATEOUTPUTPORT   =   7,
+      ADDOBJECT          =   8,
+      CONNECT            =   9,
+      ADDFILEPARAMETER   =  10,
+      SETFILEPARAMETER   =  11,
+      ADDFLOATPARAMETER  =  12,
+      SETFLOATPARAMETER  =  13,
+      ADDINTPARAMETER    =  14,
+      SETINTPARAMETER    =  15,
+      ADDVECTORPARAMETER =  16,
+      SETVECTORPARAMETER =  17,
    };
 
    Message(const int moduleID, const int rank,
@@ -40,6 +46,7 @@ class Message {
    Type getType() const;
    int getModuleID() const;
    int getRank() const;
+   size_t getSize() const;
 
  private:
    const int moduleID;
@@ -231,6 +238,66 @@ class SetFloatParameter: public Message {
    const int module;
    char name[32];
    float value;
+};
+
+class AddIntParameter: public Message {
+
+ public:
+   AddIntParameter(const int moduleID, const int rank,
+                   const std::string & name, const int value);
+
+   const char * getName() const;
+   int getValue() const;
+
+ private:
+   char name[32];
+   int value;
+};
+
+class SetIntParameter: public Message {
+
+ public:
+   SetIntParameter(const int moduleID, const int rank, const int module,
+                   const std::string & name, const int value);
+
+   int getModule() const;
+   const char * getName() const;
+   int getValue() const;
+
+ private:
+   const int module;
+   char name[32];
+   int value;
+};
+
+class AddVectorParameter: public Message {
+
+ public:
+   AddVectorParameter(const int moduleID, const int rank,
+                      const std::string & name, const Vector & value);
+
+   const char * getName() const;
+   Vector getValue() const;
+
+ private:
+   char name[32];
+   Vector value;
+};
+
+class SetVectorParameter: public Message {
+
+ public:
+   SetVectorParameter(const int moduleID, const int rank, const int module,
+                      const std::string & name, const Vector & value);
+
+   int getModule() const;
+   const char * getName() const;
+   Vector getValue() const;
+
+ private:
+   const int module;
+   char name[32];
+   Vector value;
 };
 
 } // namespace message

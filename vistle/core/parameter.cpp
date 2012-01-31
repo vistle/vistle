@@ -48,4 +48,36 @@ void FloatParameter::setValue(const float v) {
    value = v;
 }
 
+IntParameter::IntParameter(const std::string & name,
+                           const int v)
+   : Parameter(name), value(v) {
+
+}
+
+int IntParameter::getValue() const {
+
+   return value;
+}
+
+void IntParameter::setValue(const int v) {
+
+   value = v;
+}
+
+VectorParameter::VectorParameter(const std::string & name,
+                                 const Vector & v)
+   : Parameter(name), value(v) {
+
+}
+
+Vector VectorParameter::getValue() const {
+
+   return value;
+}
+
+void VectorParameter::setValue(const Vector & v) {
+
+   value = v;
+}
+
 } // namespace vistle

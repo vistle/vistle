@@ -19,8 +19,8 @@ CutGeometry::~CutGeometry() {
 }
 
 vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
-                                          const vistle::util::Vector & point,
-                                          const vistle::util::Vector & normal)
+                                          const vistle::Vector & point,
+                                          const vistle::Vector & normal)
    const {
 
    if (object)
@@ -69,7 +69,7 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
                size_t numIn = 0;
 
                for (size_t corner = start; corner <= end; corner ++) {
-                  vistle::util::Vector p(x[cl[corner]],
+                  vistle::Vector p(x[cl[corner]],
                                          y[cl[corner]],
                                          z[cl[corner]]);
                   if ((p - point) * normal < 0)
@@ -117,12 +117,12 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
 
                      int vertexID = cl[corner];
 
-                     vistle::util::Vector p(x[cl[corner]],
+                     vistle::Vector p(x[cl[corner]],
                                             y[cl[corner]],
                                             z[cl[corner]]);
 
                      size_t former = (corner == start) ? end : corner - 1;
-                     vistle::util::Vector pl(x[cl[former]],
+                     vistle::Vector pl(x[cl[former]],
                                              y[cl[former]],
                                              z[cl[former]]);
 
@@ -133,7 +133,7 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
 
                         float s = (normal * (point - p)) /
                            (normal * (pl - p));
-                        vistle::util::Vector pp = p + (pl - p) * s;
+                        vistle::Vector pp = p + (pl - p) * s;
 
                         size_t outID = out->x->size();
                         out->x->push_back(pp.x);
@@ -179,8 +179,8 @@ bool CutGeometry::compute() {
 
    std::list<vistle::Object *> objects = getObjects("grid_in");
 
-   vistle::util::Vector point(0.0, 0.0, 0.0);
-   vistle::util::Vector normal(1.0, 0.0, 0.0);
+   vistle::Vector point(0.0, 0.0, 0.0);
+   vistle::Vector normal(1.0, 0.0, 0.0);
 
    std::list<vistle::Object *>::iterator oit;
    for (oit = objects.begin(); oit != objects.end(); oit ++) {
