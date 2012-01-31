@@ -33,9 +33,34 @@ typedef int socklen_t;
 
 using namespace boost::interprocess;
 
-int GENDAT = -1;
-int ADD = -1;
-int OSGRENDERER = -1;
+
+void spawn(vistle::Communicator * comm, const int rank,
+           const int moduleID, const char * name) {
+
+   vistle::message::Spawn module(0, rank, moduleID, name);
+   comm->handleMessage(&module);
+}
+
+void setParam(vistle::Communicator * comm, const int rank,
+             const int moduleID, const char * name, const float value) {
+
+   vistle::message::SetFloatParameter param(0, rank, moduleID, name, value);
+   comm->handleMessage(&param);
+}
+
+void setParam(vistle::Communicator * comm, const int rank,
+             const int moduleID, const char * name, const std::string & value) {
+
+   vistle::message::SetFileParameter param(0, rank, moduleID, name, value);
+   comm->handleMessage(&param);
+}
+
+void setParam(vistle::Communicator * comm, const int rank,
+             const int moduleID, const char * name, const vistle::Vector & value) {
+
+   vistle::message::SetVectorParameter param(0, rank, moduleID, name, value);
+   comm->handleMessage(&param);
+}
 
 void connect(vistle::Communicator * comm, const int rank,
              const int moduleA, const char * aPort,
@@ -43,6 +68,12 @@ void connect(vistle::Communicator * comm, const int rank,
 
    vistle::message::Connect connect(0, rank, moduleA, aPort, moduleB, bPort);
    comm->handleMessage(&connect);
+}
+
+void compute(vistle::Communicator * comm, const int rank,  const int moduleID) {
+
+   vistle::message::Compute comp(0, rank, moduleID);
+   comm->handleMessage(&comp);
 }
 
 int main(int argc, char ** argv) {
@@ -165,54 +196,32 @@ int main(int argc, char ** argv) {
 #if 1
    enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER };
 
-   vistle::message::Spawn readGeo2D(0, rank, RGEO, "ReadCovise");
-   comm->handleMessage(&readGeo2D);
+   spawn(comm, rank, RGRID, "ReadCovise");
+   spawn(comm, rank, RGEO,  "ReadCovise");
+   spawn(comm, rank, RPRES, "ReadCovise");
 
-   vistle::message::Spawn readGeo3D(0, rank, RGRID, "ReadCovise");
-   comm->handleMessage(&readGeo3D);
+   spawn(comm, rank, CUTGEO, "CutGeometry");
+   spawn(comm, rank, CUTSURF, "CuttingSurface");
+   spawn(comm, rank, ISOSURF, "IsoSurface");
 
-   vistle::message::Spawn readDataP(0, rank, RPRES, "ReadCovise");
-   comm->handleMessage(&readDataP);
+   spawn(comm, rank, COLOR, "Color");
+   spawn(comm, rank, COLLECT, "Collect");
 
-   vistle::message::Spawn cutGeometry(0, rank, CUTGEO, "CutGeometry");
-   comm->handleMessage(&cutGeometry);
+   spawn(comm, rank, RENDERER, "OSGRenderer");
 
-   vistle::message::Spawn cuttingSurface(0, rank, CUTSURF, "CuttingSurface");
-   comm->handleMessage(&cuttingSurface);
+   setParam(comm, rank, RGEO, "filename",
+            "/data/OpenFOAM/PumpTurbine/covise/test/single_geo2d.covise");
 
-   vistle::message::Spawn isoSurface(0, rank, ISOSURF, "IsoSurface");
-   comm->handleMessage(&isoSurface);
+   setParam(comm, rank, RGRID, "filename",
+            "/data/OpenFOAM/PumpTurbine/covise/test/single_geo3d.covise");
 
-   vistle::message::Spawn color(0, rank, COLOR, "Color");
-   comm->handleMessage(&color);
+   setParam(comm, rank, RPRES, "filename",
+            "/data/OpenFOAM/PumpTurbine/covise/test/single_p.covise");
 
-   vistle::message::Spawn collect(0, rank, COLLECT, "Collect");
-   comm->handleMessage(&collect);
+   setParam(comm, rank, ISOSURF, "isovalue", -1.0);
 
-   vistle::message::SetFileParameter param1(0, rank, RGEO, "filename",
-                "/data/OpenFOAM/PumpTurbine/covise/test/single_geo2d.covise");
-   comm->handleMessage(&param1);
-
-   vistle::message::SetFileParameter param2(0, rank, RGRID, "filename",
-                "/data/OpenFOAM/PumpTurbine/covise/test/single_geo3d.covise");
-   comm->handleMessage(&param2);
-
-   vistle::message::SetFileParameter param3(0, rank, RPRES, "filename",
-                "/data/OpenFOAM/PumpTurbine/covise/test/single_p.covise");
-   comm->handleMessage(&param3);
-
-   vistle::message::SetFloatParameter param4(0, rank, ISOSURF, "isovalue", -1);
-   comm->handleMessage(&param4);
-
-   vistle::message::SetFloatParameter param5(0, rank, CUTSURF, "distance", 0.0);
-   comm->handleMessage(&param5);
-
-   vistle::message::SetVectorParameter param6(0, rank, CUTSURF, "normal",
-                                              vistle::Vector(1.0, 0.0, 0.0));
-   comm->handleMessage(&param6);
-
-   vistle::message::Spawn renderer(0, rank, RENDERER, "OSGRenderer");
-   comm->handleMessage(&renderer);
+   setParam(comm, rank, CUTSURF, "distance", 0.0);
+   setParam(comm, rank, CUTSURF, "normal", vistle::Vector(1.0, 0.0, 0.0));
 
    connect(comm, rank, RGEO, "grid_out", CUTGEO, "grid_in");
    connect(comm, rank, CUTGEO, "grid_out", RENDERER, "data_in");
@@ -228,12 +237,9 @@ int main(int argc, char ** argv) {
    connect(comm, rank, RPRES, "grid_out", ISOSURF, "data_in");
    connect(comm, rank, ISOSURF, "grid_out", RENDERER, "data_in");
 
-   vistle::message::Compute compute1(0, rank, RGEO);
-   comm->handleMessage(&compute1);
-   vistle::message::Compute compute2(0, rank, RGRID);
-   comm->handleMessage(&compute2);
-   vistle::message::Compute compute3(0, rank, RPRES);
-   comm->handleMessage(&compute3);
+   compute(comm, rank, RGEO);
+   compute(comm, rank, RGRID);
+   compute(comm, rank, RPRES);
 #endif
 
 #if 0
@@ -339,38 +345,6 @@ bool Communicator::dispatch() {
 
             if (socketBuffer[0] == 'q')
                message = new message::Quit(0, rank);
-
-            else if (socketBuffer[0] == 'g') {
-               moduleID++;
-               message = new message::Spawn(0, rank, moduleID, "gendat");
-               GENDAT = moduleID;
-            }
-
-            else if (socketBuffer[0] == 'a') {
-               moduleID++;
-               message = new message::Spawn(0, rank, moduleID, "add");
-               ADD = moduleID;
-            }
-
-            else if (socketBuffer[0] == 'o') {
-               moduleID++;
-               message = new message::Spawn(0, rank, moduleID, "osgrenderer");
-               OSGRENDERER = moduleID;
-            }
-
-            else if (socketBuffer[0] == 'c') {
-               message = new message::Connect(0, rank, GENDAT, "data_out",
-                                              ADD, "data_in");
-            }
-
-            else if (socketBuffer[0] == 'r') {
-               message = new message::Connect(0, rank, ADD, "data_out",
-                                              OSGRENDERER, "data_in");
-            }
-
-            else if (socketBuffer[0] == 'e') {
-               message = new message::Compute(0, rank, GENDAT);
-            }
 
             else if (socketBuffer[0] != '\r' && socketBuffer[0] != '\n')
                message = new message::Debug(0, rank, socketBuffer[0]);
