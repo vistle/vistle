@@ -11,6 +11,9 @@ class Color: public vistle::Module {
    ~Color();
 
  private:
+   vistle::Object * addTexture(vistle::Object * object,
+                               const float min, const float max);
+
    void getMinMax(const vistle::Object * object, float & min, float & max);
 
    virtual bool compute();

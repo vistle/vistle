@@ -16,6 +16,7 @@ add_subdirectory(core)
 add_subdirectory(vistle)
 
 add_subdirectory(Add)
+add_subdirectory(Collect)
 add_subdirectory(Color)
 add_subdirectory(CutGeometry)
 add_subdirectory(CuttingSurface)

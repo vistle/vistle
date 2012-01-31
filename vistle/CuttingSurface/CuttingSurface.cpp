@@ -18,6 +18,7 @@ CuttingSurface::CuttingSurface(int rank, int size, int moduleID)
    createInputPort("data_in");
 
    createOutputPort("grid_out");
+   createOutputPort("data_out");
 }
 
 CuttingSurface::~CuttingSurface() {

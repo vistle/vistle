@@ -1,7 +1,7 @@
 find_package(MPI REQUIRED)
 find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
 
-add_executable(Color Color.cpp)
+add_executable(Collect Collect.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
@@ -9,7 +9,7 @@ include_directories(
         ../core
 )
 
-target_link_libraries(Color
+target_link_libraries(Collect
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
         vistle_core

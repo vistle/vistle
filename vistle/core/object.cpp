@@ -370,7 +370,13 @@ Texture1D::Texture1D(const std::string & name, const size_t width,
    const allocator<unsigned char, managed_shared_memory::segment_manager>
       alloc_inst(Shm::instance().getShm().get_segment_manager());
 
-   pixels = Shm::instance().getShm().construct<std::vector<unsigned char, allocator<unsigned char, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(width, char(), alloc_inst);
+   pixels = Shm::instance().getShm().construct<std::vector<unsigned char, allocator<unsigned char, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(width * 4, char(), alloc_inst);
+
+   const allocator<float, managed_shared_memory::segment_manager>
+      alloc_inst_float(Shm::instance().getShm().get_segment_manager());
+
+   coords = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(alloc_inst_float);
+
 }
 
 Texture1D * Texture1D::create(const size_t width,
@@ -378,7 +384,6 @@ Texture1D * Texture1D::create(const size_t width,
 
    const std::string name = Shm::instance().createObjectID();
    Texture1D *tex = static_cast<Texture1D *>(Shm::instance().getShm().construct<Texture1D>(name.c_str())[1](name, width, min, max));
-
 
    /*
    shm_handle_t handle =
@@ -388,6 +393,10 @@ Texture1D * Texture1D::create(const size_t width,
    return tex;
 }
 
+size_t Texture1D::getNumElements() const {
+
+   return coords->size();
+}
 
 template<> const Object::Type Vec<float>::type  = Object::VECFLOAT;
 template<> const Object::Type Vec<int>::type    = Object::VECINT;

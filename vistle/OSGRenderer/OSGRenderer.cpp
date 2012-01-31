@@ -15,6 +15,7 @@
 #include <osg/Node>
 #include <osg/Projection>
 #include <osg/GraphicsContext>
+#include <osg/Texture1D>
 #include <osg/Texture2D>
 
 #include <osgDB/ReadFile>
@@ -213,10 +214,15 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
                                  const vistle::Object * normals,
                                  const vistle::Object * texture) {
 
+   printf("GEOMETRY: %p %p %p %p\n", geometry, colors,
+          normals, texture);
+
    if (geometry) {
       switch (geometry->getType()) {
 
          case vistle::Object::TRIANGLES: {
+
+            printf("triangles\n");
             const vistle::Triangles *triangles =
                static_cast<const vistle::Triangles *>(geometry);
             const size_t numCorners = triangles->getNumCorners();
@@ -266,18 +272,47 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             }
             delete[] vertexNormals;
 
-            geom->addPrimitiveSet(corners.get());
-            geom->setNormalArray(norm.get());
-            geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
-
-            geode->addDrawable(geom.get());
-
             osg::ref_ptr<osg::StateSet> state = new osg::StateSet();
             state->setAttributeAndModes(material.get(),
                                         osg::StateAttribute::ON);
             state->setAttributeAndModes(lightModel.get(),
                                         osg::StateAttribute::ON);
             state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
+
+            if (texture && texture->getType() == vistle::Object::TEXTURE1D) {
+
+               const vistle::Texture1D *tex =
+                  static_cast<const vistle::Texture1D *>(texture);
+
+               osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
+               osgTex->setDataVariance(osg::Object::DYNAMIC);
+               /*
+               osg::ref_ptr<osg::Image> image =
+                  osgDB::readImageFile("colormap.png");
+               osgTex->setImage(image);
+               */
+               osg::ref_ptr<osg::Image> image = new osg::Image();
+
+               image->setImage(256, 1, 1, GL_RGBA, GL_RGBA,
+                               GL_UNSIGNED_BYTE, &(*tex->pixels)[0],
+                               osg::Image::NO_DELETE);
+               osgTex->setImage(image);
+
+               osg::ref_ptr<osg::FloatArray> coords = new osg::FloatArray();
+               std::copy(tex->coords->begin(), tex->coords->end(),
+                         std::back_inserter(*coords));
+
+               geom->setTexCoordArray(0, coords);
+               state->setTextureAttributeAndModes(0, osgTex,
+                                                  osg::StateAttribute::ON);
+            }
+
+            geom->addPrimitiveSet(corners.get());
+            geom->setNormalArray(norm.get());
+            geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
+
+            geode->addDrawable(geom.get());
+
             geom->setStateSet(state.get());
 
             scene->addChild(geode);
@@ -288,6 +323,7 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
 
          case vistle::Object::LINES: {
 
+            printf("lines\n");
             const vistle::Lines *lines =
                static_cast<const vistle::Lines *>(geometry);
             const size_t numElements = lines->getNumElements();
@@ -334,6 +370,7 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
 
          case vistle::Object::POLYGONS: {
 
+            printf("poly\n");
             const vistle::Polygons *polygons =
                static_cast<const vistle::Polygons *>(geometry);
 
@@ -443,6 +480,7 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
 
          case vistle::Object::SET: {
 
+            printf("set\n");
             const vistle::Set *gset =
                static_cast<const vistle::Set *>(geometry);
             const vistle::Set *cset = static_cast<const vistle::Set *>(colors);
@@ -468,7 +506,7 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
 bool OSGRenderer::addInputObject(const std::string & portName,
                                  const vistle::Object * object) {
 
-   std::cout << "OSGRenderer addInputObject " << object->getType()
+   std::cout << "++++++OSGRenderer addInputObject " << object->getType()
              << std::endl;
 
    switch (object->getType()) {
@@ -497,6 +535,7 @@ bool OSGRenderer::addInputObject(const std::string & portName,
 
          addInputObject(&*geom->geometry, &*geom->colors, &*geom->normals,
                         &*geom->texture);
+
          break;
       }
 

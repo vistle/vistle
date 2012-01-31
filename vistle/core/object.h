@@ -304,6 +304,10 @@ class Texture1D: public Object {
 
    boost::interprocess::offset_ptr<std::vector<unsigned char, boost::interprocess::allocator<unsigned char, boost::interprocess::managed_shared_memory::segment_manager> > > pixels;
 
+   boost::interprocess::offset_ptr<std::vector<float, boost::interprocess::allocator<float, boost::interprocess::managed_shared_memory::segment_manager> > > coords;
+
+   size_t getNumElements() const;
+
    float min;
    float max;
 };
