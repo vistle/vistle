@@ -59,7 +59,8 @@ private:
 };
 
 OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
-   : Renderer("OSGRenderer", rank, size, moduleID), osgViewer::Viewer() {
+   : Renderer("OSGRenderer", rank, size, moduleID), osgViewer::Viewer(),
+     timesteps(NULL) {
 
 #ifndef _WIN32
    cpu_set_t cpuset;
@@ -142,6 +143,9 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    view->addChild(geode.get());
    proj->addChild(view.get());
    addEventHandler(new ResizeHandler(proj, view));
+
+   timesteps = new TimestepHandler();
+   addEventHandler(timesteps);
 
    scene->addChild(proj.get());
 
@@ -500,23 +504,8 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             break;
       }
 
-      if (geode) {
-
-         int step = geometry->getTimestep();
-         std::vector<osg::Geode *> *vector = NULL;
-         std::map<int, std::vector<osg::Geode *> *>::iterator i =
-            timesteps.find(step);
-         if (i != timesteps.end())
-            vector = i->second;
-         else {
-            vector = new std::vector<osg::Geode *>;
-            timesteps[step] = vector;
-         }
-
-         vector->push_back(geode);
-         if (step != 0 && step != -1)
-            geode->setNodeMask(0);
-      }
+      if (geode && timesteps)
+         timesteps->addObject(geode, geometry->getTimestep());
    }
 }
 
