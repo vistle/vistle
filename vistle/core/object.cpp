@@ -31,7 +31,7 @@ Shm & Shm::instance(const int moduleID, const int rank,
                     message::MessageQueue * mq) {
 
    if (!singleton)
-      singleton = new Shm(moduleID, rank, INT_MAX, mq);
+      singleton = new Shm(moduleID, rank, 34359738368, mq);
 
    return *singleton;
 }
@@ -39,7 +39,7 @@ Shm & Shm::instance(const int moduleID, const int rank,
 Shm & Shm::instance() {
 
    if (!singleton)
-      singleton = new Shm(-1, -1, INT_MAX, NULL);//34359738368); // 32GB
+      singleton = new Shm(-1, -1, 34359738368, NULL);//34359738368); // 32GB
 
    return *singleton;
 }
@@ -79,7 +79,8 @@ Object * Shm::getObjectFromHandle(const shm_handle_t & handle) {
    return NULL;
 }
 
-Object::Object(const Type type, const std::string & n): id(type) {
+Object::Object(const Type type, const std::string & n,
+               const int b, const int t): id(type), block(b), timestep(t) {
 
    size_t size = MIN(n.size(), 31);
    n.copy(name, size);
@@ -100,9 +101,30 @@ std::string Object::getName() const {
    return name;
 }
 
+int Object::getTimestep() const {
+
+   return timestep;
+}
+
+int Object::getBlock() const {
+
+   return block;
+}
+
+void Object::setTimestep(const int time) {
+
+   timestep = time;
+}
+
+void Object::setBlock(const int blk) {
+
+   block = blk;
+}
+
 Triangles::Triangles(const size_t numCorners, const size_t numVertices,
-                     const std::string & name)
-   : Object(Object::TRIANGLES, name) {
+                     const std::string & name,
+                     const int block, const int timestep)
+   : Object(Object::TRIANGLES, name, block, timestep) {
 
    const allocator<float, managed_shared_memory::segment_manager>
       alloc_inst_float(Shm::instance().getShm().get_segment_manager());
@@ -119,11 +141,12 @@ Triangles::Triangles(const size_t numCorners, const size_t numVertices,
 
 
 Triangles * Triangles::create(const size_t numCorners,
-                              const size_t numVertices) {
+                              const size_t numVertices,
+                              const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
    Triangles *t = static_cast<Triangles *>
-      (Shm::instance().getShm().construct<Triangles>(name.c_str())[1](numCorners, numVertices, name));
+      (Shm::instance().getShm().construct<Triangles>(name.c_str())[1](numCorners, numVertices, name, block, timestep));
 
    /*
    shm_handle_t handle =
@@ -144,8 +167,9 @@ size_t Triangles::getNumVertices() const {
 }
 
 Lines::Lines(const size_t numElements, const size_t numCorners,
-             const size_t numVertices, const std::string & name)
-   : Object(Object::LINES, name) {
+             const size_t numVertices, const std::string & name,
+             const int block, const int timestep)
+   : Object(Object::LINES, name, block, timestep) {
 
    const allocator<float, managed_shared_memory::segment_manager>
       alloc_inst_float(Shm::instance().getShm().get_segment_manager());
@@ -166,11 +190,12 @@ Lines::Lines(const size_t numElements, const size_t numCorners,
 
 
 Lines * Lines::create(const size_t numElements, const size_t numCorners,
-                      const size_t numVertices) {
+                      const size_t numVertices,
+                      const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
    Lines *l = static_cast<Lines *>
-      (Shm::instance().getShm().construct<Lines>(name.c_str())[1](numElements, numCorners, numVertices, name));
+      (Shm::instance().getShm().construct<Lines>(name.c_str())[1](numElements, numCorners, numVertices, name, block, timestep));
 
    /*
    shm_handle_t handle =
@@ -196,8 +221,9 @@ size_t Lines::getNumVertices() const {
 }
 
 Polygons::Polygons(const size_t numElements, const size_t numCorners,
-                   const size_t numVertices, const std::string & name)
-   : Object(Object::POLYGONS, name) {
+                   const size_t numVertices, const std::string & name,
+                   const int block, const int timestep)
+   : Object(Object::POLYGONS, name, block, timestep) {
 
    const allocator<float, managed_shared_memory::segment_manager>
       alloc_inst_float(Shm::instance().getShm().get_segment_manager());
@@ -219,11 +245,12 @@ Polygons::Polygons(const size_t numElements, const size_t numCorners,
 
 Polygons * Polygons::create(const size_t numElements,
                             const size_t numCorners,
-                            const size_t numVertices) {
+                            const size_t numVertices,
+                            const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
    Polygons *p = static_cast<Polygons *>
-      (Shm::instance().getShm().construct<Polygons>(name.c_str())[1](numElements, numCorners, numVertices, name));
+      (Shm::instance().getShm().construct<Polygons>(name.c_str())[1](numElements, numCorners, numVertices, name, block, timestep));
 
    /*
    shm_handle_t handle =
@@ -251,8 +278,9 @@ size_t Polygons::getNumVertices() const {
 UnstructuredGrid::UnstructuredGrid(const size_t numElements,
                                    const size_t numCorners,
                                    const size_t numVertices,
-                                   const std::string & name)
-   : Object(Object::UNSTRUCTUREDGRID, name) {
+                                   const std::string & name,
+                                   const int block, const int timestep)
+   : Object(Object::UNSTRUCTUREDGRID, name, block, timestep) {
 
    const allocator<float, managed_shared_memory::segment_manager>
       alloc_inst_float(Shm::instance().getShm().get_segment_manager());
@@ -275,11 +303,12 @@ UnstructuredGrid::UnstructuredGrid(const size_t numElements,
 
 UnstructuredGrid * UnstructuredGrid::create(const size_t numElements,
                                             const size_t numCorners,
-                                            const size_t numVertices) {
+                                            const size_t numVertices,
+                                            const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
    UnstructuredGrid *u = static_cast<UnstructuredGrid *>
-      (Shm::instance().getShm().construct<UnstructuredGrid>(name.c_str())[1](numElements, numCorners, numVertices, name));
+      (Shm::instance().getShm().construct<UnstructuredGrid>(name.c_str())[1](numElements, numCorners, numVertices, name, block, timestep));
 
    /*
    shm_handle_t handle =
@@ -305,8 +334,9 @@ size_t UnstructuredGrid::getNumVertices() const {
 }
 
 
-Set::Set(const size_t numElements, const std::string & name)
-   : Object(Object::SET, name) {
+Set::Set(const size_t numElements, const std::string & name,
+         const int block, const int timestep)
+   : Object(Object::SET, name, block, timestep) {
 
    const allocator<offset_ptr<Object>, managed_shared_memory::segment_manager>
       alloc_inst(Shm::instance().getShm().get_segment_manager());
@@ -315,11 +345,12 @@ Set::Set(const size_t numElements, const std::string & name)
 }
 
 
-Set * Set::create(const size_t numElements) {
+Set * Set::create(const size_t numElements,
+                  const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
    Set *p = static_cast<Set *>
-      (Shm::instance().getShm().construct<Set>(name.c_str())[1](numElements, name));
+      (Shm::instance().getShm().construct<Set>(name.c_str())[1](numElements, name, block, timestep));
 
    /*
    shm_handle_t handle =
@@ -342,18 +373,19 @@ Object * Set::getElement(const size_t index) const {
    return (*elements)[index].get();
 }
 
-Geometry::Geometry(const std::string & name)
-   : Object(Object::GEOMETRY, name), geometry(NULL), colors(NULL),
-     normals(NULL), texture(NULL) {
+Geometry::Geometry(const std::string & name,
+                   const int block, const int timestep)
+   : Object(Object::GEOMETRY, name, block, timestep), geometry(NULL),
+     colors(NULL), normals(NULL), texture(NULL) {
 
 }
 
 
-Geometry * Geometry::create() {
+Geometry * Geometry::create(const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
    Geometry *g = static_cast<Geometry *>
-      (Shm::instance().getShm().construct<Geometry>(name.c_str())[1](name));
+      (Shm::instance().getShm().construct<Geometry>(name.c_str())[1](name, block, timestep));
 
    /*
    shm_handle_t handle =
@@ -364,8 +396,9 @@ Geometry * Geometry::create() {
 }
 
 Texture1D::Texture1D(const std::string & name, const size_t width,
-                     const float mi, const float ma)
-   : Object(Object::TEXTURE1D, name), min(mi), max(ma) {
+                     const float mi, const float ma,
+                     const int block, const int timestep)
+   : Object(Object::TEXTURE1D, name, block, timestep), min(mi), max(ma) {
 
    const allocator<unsigned char, managed_shared_memory::segment_manager>
       alloc_inst(Shm::instance().getShm().get_segment_manager());
@@ -380,10 +413,11 @@ Texture1D::Texture1D(const std::string & name, const size_t width,
 }
 
 Texture1D * Texture1D::create(const size_t width,
-                              const float min, const float max) {
+                              const float min, const float max,
+                              const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   Texture1D *tex = static_cast<Texture1D *>(Shm::instance().getShm().construct<Texture1D>(name.c_str())[1](name, width, min, max));
+   Texture1D *tex = static_cast<Texture1D *>(Shm::instance().getShm().construct<Texture1D>(name.c_str())[1](name, width, min, max, block, timestep));
 
    /*
    shm_handle_t handle =

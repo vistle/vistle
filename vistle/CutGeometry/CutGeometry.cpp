@@ -29,6 +29,9 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
          case vistle::Object::SET: {
             const vistle::Set *in = static_cast<const vistle::Set *>(object);
             vistle::Set *out = vistle::Set::create();
+            out->setBlock(in->getBlock());
+            out->setTimestep(in->getTimestep());
+
             for (size_t index = 0; index < in->getNumElements(); index ++) {
 
                vistle::Object *o = cutGeometry(in->getElement(index),
@@ -49,6 +52,8 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
             const vistle::Polygons *in =
                static_cast<const vistle::Polygons *>(object);
             vistle::Polygons *out = vistle::Polygons::create();
+            out->setBlock(in->getBlock());
+            out->setTimestep(in->getTimestep());
 
             const size_t *el = &((*in->el)[0]);
             const size_t *cl = &((*in->cl)[0]);

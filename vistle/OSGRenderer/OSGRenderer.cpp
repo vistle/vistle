@@ -1,5 +1,4 @@
 #include <osgGA/TrackballManipulator>
-#include <osgGA/GUIEventHandler>
 
 #include <osg/AlphaFunc>
 #include <osg/BlendFunc>
@@ -220,6 +219,8 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
                                  const vistle::Object * normals,
                                  const vistle::Object * texture) {
 
+   osg::Geode *geode = NULL;
+
    if (geometry) {
       switch (geometry->getType()) {
 
@@ -235,7 +236,7 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             float *y = &((*triangles->y)[0]);
             float *z = &((*triangles->z)[0]);
 
-            osg::ref_ptr<osg::Geode> geode = new osg::Geode();
+            geode = new osg::Geode();
             osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
 
             osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
@@ -336,7 +337,7 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             float *y = &((*lines->y)[0]);
             float *z = &((*lines->z)[0]);
 
-            osg::ref_ptr<osg::Geode> geode = new osg::Geode();
+            geode = new osg::Geode();
             osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
             osg::ref_ptr<osg::DrawArrayLengths> primitives =
                new osg::DrawArrayLengths(osg::PrimitiveSet::LINE_STRIP);
@@ -397,7 +398,7 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
                nz = &((*vec->z)[0]);
             }
 
-            osg::ref_ptr<osg::Geode> geode = new osg::Geode();
+            geode = new osg::Geode();
             osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
             osg::ref_ptr<osg::DrawArrayLengths> primitives =
                new osg::DrawArrayLengths(osg::PrimitiveSet::POLYGON);
@@ -498,6 +499,24 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
          default:
             break;
       }
+
+      if (geode) {
+
+         int step = geometry->getTimestep();
+         std::vector<osg::Geode *> *vector = NULL;
+         std::map<int, std::vector<osg::Geode *> *>::iterator i =
+            timesteps.find(step);
+         if (i != timesteps.end())
+            vector = i->second;
+         else {
+            vector = new std::vector<osg::Geode *>;
+            timesteps[step] = vector;
+         }
+
+         vector->push_back(geode);
+         if (step != 0 && step != -1)
+            geode->setNodeMask(0);
+      }
    }
 }
 
@@ -506,7 +525,7 @@ bool OSGRenderer::addInputObject(const std::string & portName,
                                  const vistle::Object * object) {
 
    std::cout << "++++++OSGRenderer addInputObject " << object->getType()
-             << std::endl;
+             << " " << object->getTimestep() << std::endl;
 
    switch (object->getType()) {
 

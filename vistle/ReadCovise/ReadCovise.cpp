@@ -86,6 +86,24 @@ size_t read_int(const int fd, unsigned int * data, const size_t num,
    return r;
 }
 
+size_t read_char(const int fd, char * data, const size_t num) {
+
+   size_t r = 0;
+
+   while (r < num) {
+      size_t n = read(fd, ((char *) data) + r, num - r);
+      if (n <= 0)
+         break;
+      r += n;
+   }
+
+   if (r < num)
+      std::cout << "ERROR ReadCovise::read_int read " << r
+                << " bytes instead of " << num << std::endl;
+
+   return r;
+}
+
 size_t read_float(const int fd, float * data,
                   const size_t num, const bool byte_swap) {
 
@@ -112,7 +130,18 @@ ReadCovise::~ReadCovise() {
 
 }
 
-void ReadCovise::readAttributes(const int fd, const bool byteswap) {
+void ReadCovise::setTimesteps(vistle::Object * object, const int timestep) {
+
+   if (object->getType() == vistle::Object::SET) {
+
+      vistle::Set *set = static_cast<vistle::Set *>(object);
+      for (size_t index = 0; index < set->getNumElements(); index ++)
+         setTimesteps(set->getElement(index), timestep);
+   }
+   object->setTimestep(timestep);
+}
+
+bool ReadCovise::readAttributes(const int fd, const bool byteswap) {
 
    unsigned int size, num;
    read_int(fd, &size, 1, byteswap);
@@ -122,7 +151,27 @@ void ReadCovise::readAttributes(const int fd, const bool byteswap) {
    std::cout << "ReadCovise::readAttributes: " << num << " attributes\n"
              << std::endl;
    */
-   lseek(fd, size, SEEK_CUR);
+   char *attrib = new char[size + 1];
+   attrib[size] = 0;
+   read_char(fd, attrib, size);
+   // lseek(fd, size, SEEK_CUR);
+
+   std::map<std::string, std::string> attributeMap;
+   char *loc = attrib;
+   for (size_t index = 0; index < num; index ++) {
+
+      char *value = strchr(loc, 0);
+      if (value && value < attrib + size) {
+         attributeMap[std::string(loc)] = std::string(value + 1);
+         loc = strchr(value + 1, 0) + 1;
+      }
+   }
+
+   delete[] attrib;
+
+   if (attributeMap.find("TIMESTEP") != attributeMap.end())
+      return true;
+   return false;
 }
 
 vistle::Object * ReadCovise::readSETELE(const int fd, const bool byteswap) {
@@ -138,13 +187,20 @@ vistle::Object * ReadCovise::readSETELE(const int fd, const bool byteswap) {
       if (object)
          set->elements->push_back(object);
    }
-   readAttributes(fd, byteswap);
+
+   bool timesteps = readAttributes(fd, byteswap);
+
+   for (unsigned int index = 0; index < num; index ++) {
+      if (timesteps)
+         setTimesteps(set->getElement(index), index);
+      else
+         set->getElement(index)->setBlock(index);
+   }
 
    return set;
 }
 
-vistle::Object *  ReadCovise::readUNSGRD(const int fd,
-                                         const bool byteswap) {
+vistle::Object *  ReadCovise::readUNSGRD(const int fd, const bool byteswap) {
 
    vistle::UnstructuredGrid *usg = NULL;
 

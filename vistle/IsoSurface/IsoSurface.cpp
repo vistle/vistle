@@ -78,11 +78,13 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
 
       const vistle::Set *gset = static_cast<const vistle::Set *>(grid_object);
       const vistle::Set *dset = static_cast<const vistle::Set *>(data_object);
-
       if (gset->getNumElements() != dset->getNumElements())
          return NULL;
 
       vistle::Set *set = vistle::Set::create(gset->getNumElements());
+      set->setBlock(gset->getBlock());
+      set->setTimestep(gset->getTimestep());
+
       for (size_t index = 0; index < gset->getNumElements(); index ++)
          (*set->elements)[index] =
             generateIsoSurface(gset->getElement(index),
@@ -107,6 +109,8 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
 
    size_t numElem = grid->getNumElements();
    vistle::Triangles *t = vistle::Triangles::create();
+   t->setBlock(grid_object->getBlock());
+   t->setTimestep(grid_object->getTimestep());
 
    size_t numVertices = 0;
 

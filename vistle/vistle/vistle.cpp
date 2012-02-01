@@ -210,13 +210,13 @@ int main(int argc, char ** argv) {
    spawn(comm, rank, RENDERER, "OSGRenderer");
 
    setParam(comm, rank, RGEO, "filename",
-            "/data/OpenFOAM/PumpTurbine/covise/test/single_geo2d.covise");
+            "/data/OpenFOAM/PumpTurbine/covise/test/multi_geo2d.covise");
 
    setParam(comm, rank, RGRID, "filename",
-            "/data/OpenFOAM/PumpTurbine/covise/test/single_geo3d.covise");
+            "/data/OpenFOAM/PumpTurbine/covise/test/multi_geo3d.covise");
 
    setParam(comm, rank, RPRES, "filename",
-            "/data/OpenFOAM/PumpTurbine/covise/test/single_p.covise");
+            "/data/OpenFOAM/PumpTurbine/covise/test/multi_p.covise");
 
    setParam(comm, rank, ISOSURF, "isovalue", -1.0);
 

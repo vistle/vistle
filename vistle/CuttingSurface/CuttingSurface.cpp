@@ -95,7 +95,13 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
                                (vistle::Object *) NULL);
 
       vistle::Set *outGSet = vistle::Set::create(gset->getNumElements());
+      outGSet->setBlock(gset->getBlock());
+      outGSet->setTimestep(gset->getTimestep());
+
       vistle::Set *outDSet = vistle::Set::create(dset->getNumElements());
+      outDSet->setBlock(dset->getBlock());
+      outDSet->setTimestep(dset->getTimestep());
+
       for (size_t index = 0; index < gset->getNumElements(); index ++) {
          std::pair<vistle::Object *, vistle::Object *> result =
             generateCuttingSurface(gset->getElement(index),
@@ -124,7 +130,12 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
 
    size_t numElem = grid->getNumElements();
    vistle::Triangles *triangles = vistle::Triangles::create();
+   triangles->setBlock(grid_object->getBlock());
+   triangles->setTimestep(grid_object->getTimestep());
+
    vistle::Vec<float> *outData = vistle::Vec<float>::create();
+   outData->setBlock(data_object->getBlock());
+   outData->setTimestep(data_object->getTimestep());
 
    size_t numVertices = 0;
 

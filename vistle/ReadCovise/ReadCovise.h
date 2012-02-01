@@ -11,7 +11,9 @@ class ReadCovise: public vistle::Module {
    ~ReadCovise();
 
  private:
-   void readAttributes(const int fd, const bool byteswap);
+   bool readAttributes(const int fd, const bool byteswap);
+
+   void setTimesteps(vistle::Object * object, const int timestep);
 
    vistle::Object * readSETELE(const int fd, const bool byteswap);
    vistle::Object * readUNSGRD(const int fd, const bool byteswap);

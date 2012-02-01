@@ -60,16 +60,26 @@ class Object {
       TEXTURE1D         = 12,
    };
 
-   Object(const Type id, const std::string & name);
+   Object(const Type id, const std::string & name,
+          const int block, const int timestep);
    virtual ~Object();
 
    Type getType() const;
    std::string getName() const;
 
+   int getBlock() const;
+   int getTimestep() const;
+
+   void setBlock(const int block);
+   void setTimestep(const int timestep);
+
  protected:
    const Type id;
  private:
    char name[32];
+
+   int block;
+   int timestep;
 };
 
 
@@ -77,11 +87,12 @@ template <class T>
 class Vec: public Object {
 
  public:
-   static Vec<T> * create(const size_t size = 0) {
+   static Vec<T> * create(const size_t size = 0,
+                          const int block = -1, const int timestep = -1) {
 
       const std::string name = Shm::instance().createObjectID();
       Vec<T> *t = static_cast<Vec<T> *>
-         (Shm::instance().getShm().construct<Vec<T> >(name.c_str())[1](size, name));
+         (Shm::instance().getShm().construct<Vec<T> >(name.c_str())[1](size, name, block, timestep));
       /*
       shm_handle_t handle =
          Shm::instance().getShm().get_handle_from_address(t);
@@ -90,8 +101,9 @@ class Vec: public Object {
       return t;
    }
 
- Vec(const size_t size, const std::string & name)
-      : Object(type, name) {
+ Vec(const size_t size, const std::string & name,
+     const int block, const int timestep)
+    : Object(type, name, block, timestep) {
 
       const boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager>
          alloc_inst(Shm::instance().getShm().get_segment_manager());
@@ -119,11 +131,12 @@ template <class T>
 class Vec3: public Object {
 
  public:
-   static Vec3<T> * create(const size_t size = 0) {
+   static Vec3<T> * create(const size_t size = 0,
+                           const int block = -1, const int timestep = -1) {
 
       const std::string name = Shm::instance().createObjectID();
       Vec3<T> *t = static_cast<Vec3<T> *>
-         (Shm::instance().getShm().construct<Vec3<T> >(name.c_str())[1](size, name));
+         (Shm::instance().getShm().construct<Vec3<T> >(name.c_str())[1](size, name, block, timestep));
       /*
       shm_handle_t handle =
          Shm::instance().getShm().get_handle_from_address(t);
@@ -132,8 +145,9 @@ class Vec3: public Object {
       return t;
    }
 
-   Vec3(const size_t size, const std::string & name)
-      : Object(type, name) {
+   Vec3(const size_t size, const std::string & name,
+        const int block, const int timestep)
+      : Object(type, name, block, timestep) {
 
       const boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager>
          alloc_inst(Shm::instance().getShm().get_segment_manager());
@@ -164,10 +178,12 @@ class Triangles: public Object {
 
  public:
    static Triangles * create(const size_t numCorners = 0,
-                             const size_t numVertices = 0);
+                             const size_t numVertices = 0,
+                             const int block = -1, const int timestep = -1);
 
    Triangles(const size_t numCorners, const size_t numVertices,
-             const std::string & name);
+             const std::string & name,
+             const int block, const int timestep);
 
    size_t getNumCorners() const;
    size_t getNumVertices() const;
@@ -185,9 +201,12 @@ class Lines: public Object {
  public:
    static Lines * create(const size_t numElements = 0,
                          const size_t numCorners = 0,
-                         const size_t numVertices = 0);
+                         const size_t numVertices = 0,
+                         const int block = -1, const int timestep = -1);
+
    Lines(const size_t numElements, const size_t numCorners,
-         const size_t numVertices, const std::string & name);
+         const size_t numVertices, const std::string & name,
+         const int block, const int timestep);
 
    size_t getNumElements() const;
    size_t getNumCorners() const;
@@ -205,10 +224,12 @@ class Polygons: public Object {
 
  public:
    static Polygons * create(const size_t numElements = 0,
-                         const size_t numCorners = 0,
-                         const size_t numVertices = 0);
+                            const size_t numCorners = 0,
+                            const size_t numVertices = 0,
+                            const int block = -1, const int timestep = -1);
    Polygons(const size_t numElements, const size_t numCorners,
-            const size_t numVertices, const std::string & name);
+            const size_t numVertices, const std::string & name,
+            const int block, const int timestep);
 
    size_t getNumElements() const;
    size_t getNumCorners() const;
@@ -241,10 +262,13 @@ class UnstructuredGrid: public Object {
 
    static UnstructuredGrid * create(const size_t numElements = 0,
                                     const size_t numCorners = 0,
-                                    const size_t numVertices = 0);
+                                    const size_t numVertices = 0,
+                                    const int block = -1,
+                                    const int timestep = -1);
 
    UnstructuredGrid(const size_t numElements, const size_t numCorners,
-                    const size_t numVertices, const std::string & name);
+                    const size_t numVertices, const std::string & name,
+                    const int block, const int timestep);
 
    size_t getNumElements() const;
    size_t getNumCorners() const;
@@ -263,9 +287,11 @@ class UnstructuredGrid: public Object {
 class Set: public Object {
 
  public:
-   static Set * create(const size_t numElements = 0);
+   static Set * create(const size_t numElements = 0,
+                       const int block = -1, const int timestep = -1);
 
-   Set(const size_t numElements, const std::string & name);
+   Set(const size_t numElements, const std::string & name,
+       const int block, const int timestep);
 
    size_t getNumElements() const;
    Object * getElement(const size_t index) const;
@@ -277,9 +303,10 @@ class Set: public Object {
 class Geometry: public Object {
 
  public:
-   static Geometry * create();
+   static Geometry * create(const int block = -1, const int timestep = -1);
 
-   Geometry(const std::string & name);
+   Geometry(const std::string & name,
+            const int block, const int timestep);
 
    boost::interprocess::offset_ptr<Object> geometry;
    boost::interprocess::offset_ptr<Object> colors;
@@ -294,10 +321,12 @@ class Texture1D: public Object {
 
  public:
    static Texture1D * create(const size_t width = 0,
-                             const float min = 0, const float max = 0);
+                             const float min = 0, const float max = 0,
+                             const int block = -1, const int timestep = -1);
 
    Texture1D(const std::string & name, const size_t size,
-             const float min, const float max);
+             const float min, const float max,
+             const int block, const int timestep);
 
    boost::interprocess::offset_ptr<std::vector<unsigned char, boost::interprocess::allocator<unsigned char, boost::interprocess::managed_shared_memory::segment_manager> > > pixels;
 

@@ -3,6 +3,7 @@
 
 #include <map>
 
+#include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 
 #include "renderer.h"
@@ -41,6 +42,8 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
 
    osg::ref_ptr<osg::Material> material;
    osg::ref_ptr<osg::LightModel> lightModel;
+
+   std::map<int, std::vector<osg::Geode *> *> timesteps;
 };
 
 #endif

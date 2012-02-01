@@ -35,6 +35,9 @@ bool Collect::compute() {
       geom->geometry = gridObjects.front();
       geom->texture = textureObjects.front();
 
+      geom->setBlock(gridObjects.front()->getBlock());
+      geom->setTimestep(gridObjects.front()->getTimestep());
+
       removeObject("grid_in", gridObjects.front());
       removeObject("texture_in", textureObjects.front());
 

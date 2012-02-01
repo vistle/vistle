@@ -114,6 +114,8 @@ vistle::Object * Color::addTexture(vistle::Object * object,
 
             vistle::Set *set = static_cast<vistle::Set*>(object);
             vistle::Set *out = vistle::Set::create();
+            out->setBlock(object->getBlock());
+            out->setTimestep(object->getTimestep());
 
             for (size_t index = 0; index < set->getNumElements(); index ++)
                out->elements->push_back(addTexture(set->getElement(index),
@@ -130,6 +132,9 @@ vistle::Object * Color::addTexture(vistle::Object * object,
 
             vistle::Texture1D *tex = vistle::Texture1D::create(cmap.width,
                                                                min, max);
+            tex->setBlock(object->getBlock());
+            tex->setTimestep(object->getTimestep());
+
             unsigned char *pix = &(*tex->pixels)[0];
             for (size_t index = 0; index < cmap.width * 4; index ++)
                pix[index] = cmap.data[index];
