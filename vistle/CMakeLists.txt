@@ -25,4 +25,5 @@ add_subdirectory(IsoSurface)
 add_subdirectory(OSGRenderer)
 add_subdirectory(ReadCovise)
 add_subdirectory(ShowUSG)
+add_subdirectory(WriteVistle)
 

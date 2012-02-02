@@ -194,7 +194,7 @@ int main(int argc, char ** argv) {
 #endif
 
 #if 1
-   enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER };
+   enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER, WRITEVISTLE };
 
    spawn(comm, rank, RGRID, "ReadCovise");
    spawn(comm, rank, RGEO,  "ReadCovise");
@@ -209,8 +209,10 @@ int main(int argc, char ** argv) {
 
    spawn(comm, rank, RENDERER, "OSGRenderer");
 
+   spawn(comm, rank, WRITEVISTLE, "WriteVistle");
+
    setParam(comm, rank, RGEO, "filename",
-            "/data/OpenFOAM/PumpTurbine/covise/test/multi_geo2d.covise");
+            "/data/OpenFOAM/PumpTurbine/covise/test/three_geo2d.covise");
 
    setParam(comm, rank, RGRID, "filename",
             "/data/OpenFOAM/PumpTurbine/covise/test/multi_geo3d.covise");
@@ -223,7 +225,7 @@ int main(int argc, char ** argv) {
    setParam(comm, rank, CUTSURF, "distance", 0.0);
    setParam(comm, rank, CUTSURF, "normal", vistle::Vector(1.0, 0.0, 0.0));
 
-   connect(comm, rank, RGEO, "grid_out", CUTGEO, "grid_in");
+   //connect(comm, rank, RGEO, "grid_out", CUTGEO, "grid_in");
    connect(comm, rank, CUTGEO, "grid_out", RENDERER, "data_in");
 
    connect(comm, rank, RGRID, "grid_out", CUTSURF, "grid_in");
@@ -237,9 +239,11 @@ int main(int argc, char ** argv) {
    connect(comm, rank, RPRES, "grid_out", ISOSURF, "data_in");
    connect(comm, rank, ISOSURF, "grid_out", RENDERER, "data_in");
 
+   connect(comm, rank, RGEO, "grid_out", WRITEVISTLE, "grid_in");
+
    compute(comm, rank, RGEO);
-   compute(comm, rank, RGRID);
-   compute(comm, rank, RPRES);
+   //compute(comm, rank, RGRID);
+   //compute(comm, rank, RPRES);
 #endif
 
 #if 0
