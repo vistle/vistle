@@ -58,9 +58,109 @@ private:
    osg::ref_ptr<osg::MatrixTransform> modelView;
 };
 
+
+
+
+
+TimestepHandler::TimestepHandler()
+  : timestep(0), lastEvent(0) {
+
+}
+
+void TimestepHandler::addObject(osg::Geode * geode, const int step) {
+
+   std::vector<osg::Geode *> *vector = NULL;
+   std::map<int, std::vector<osg::Geode *> *>::iterator i =
+      timesteps.find(step);
+   if (i != timesteps.end())
+      vector = i->second;
+   else {
+      vector = new std::vector<osg::Geode *>;
+      timesteps[step] = vector;
+   }
+
+   if (step != -1 && step != timestep)
+      geode->setNodeMask(0);
+
+   vector->push_back(geode);
+}
+
+bool TimestepHandler::setTimestepState(const int timestep, const int state) {
+
+   std::map<int, std::vector<osg::Geode *> *>:: iterator ts =
+      timesteps.find(timestep);
+
+   if (ts != timesteps.end()) {
+      std::vector<osg::Geode *>::iterator i;
+      for (i = ts->second->begin(); i != ts->second->end(); i ++)
+         (*i)->setNodeMask(state);
+      return true;
+   } else
+      return false;
+}
+
+int TimestepHandler::firstTimestep() {
+
+   int index = timesteps.begin()->first;
+   if (index == -1)
+      return 0;
+   return index;
+}
+
+int TimestepHandler::lastTimestep() {
+
+   int index = (--timesteps.end())->first;
+   if (index == -1)
+      return 0;
+   return index;
+}
+
+bool TimestepHandler::handle(const osgGA::GUIEventAdapter & ea,
+                             osgGA::GUIActionAdapter & aa) {
+
+   if (ea.getTime() == lastEvent)
+      return true;
+
+   bool handled = false;
+
+   if (ea.getEventType() == osgGA::GUIEventAdapter::SCROLL) {
+
+      lastEvent = ea.getTime();
+
+      switch (ea.getScrollingMotion()) {
+
+      case osgGA::GUIEventAdapter::SCROLL_UP:
+
+         setTimestepState(timestep, 0);
+         timestep ++;
+         if (timestep > lastTimestep())
+            timestep = firstTimestep();
+         setTimestepState(timestep, -1);
+         handled = true;
+         break;
+
+      case osgGA::GUIEventAdapter::SCROLL_DOWN:
+
+         setTimestepState(timestep, 0);
+         timestep --;
+         if (timestep < firstTimestep() || timestep < 0)
+            timestep = lastTimestep();
+
+         setTimestepState(timestep, -1);
+         handled = true;
+         break;
+
+      default:
+         break;
+      }
+   }
+   if (handled)
+      aa.requestRedraw();
+   return handled;
+}
+
 OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
-   : Renderer("OSGRenderer", rank, size, moduleID), osgViewer::Viewer(),
-     timesteps(NULL) {
+   : Renderer("OSGRenderer", rank, size, moduleID), osgViewer::Viewer() {
 
 #ifndef _WIN32
    cpu_set_t cpuset;
@@ -144,8 +244,7 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    proj->addChild(view.get());
    addEventHandler(new ResizeHandler(proj, view));
 
-   timesteps = new TimestepHandler();
-   addEventHandler(timesteps);
+   addEventHandler(&timesteps);
 
    scene->addChild(proj.get());
 
@@ -504,8 +603,8 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             break;
       }
 
-      if (geode && timesteps)
-         timesteps->addObject(geode, geometry->getTimestep());
+      if (geode)
+         timesteps.addObject(geode, geometry->getTimestep());
    }
 }
 

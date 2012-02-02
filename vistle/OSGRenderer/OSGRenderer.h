@@ -21,83 +21,22 @@ namespace vistle {
 
 class TimestepHandler: public osgGA::GUIEventHandler {
 
- public:
-   TimestepHandler() {
-      timestep = timesteps.begin();
-   }
+public:
+   TimestepHandler();
 
-   void addObject(osg::Geode * geode, const int step) {
-
-      std::vector<osg::Geode *> *vector = NULL;
-      std::map<int, std::vector<osg::Geode *> *>::iterator i =
-         timesteps.find(step);
-      if (i != timesteps.end())
-         vector = i->second;
-      else {
-         vector = new std::vector<osg::Geode *>;
-         timesteps[step] = vector;
-         timestep = timesteps.begin();
-      }
-
-      vector->push_back(geode);
-   }
-
-   void hideTimestep() {
-      std::vector<osg::Geode *>::iterator i;
-      for (i = timestep->second->begin(); i != timestep->second->end(); i ++)
-         (*i)->setNodeMask(0);
-   }
-
-   void showTimestep() {
-      printf("time: %d\n", timestep->first);
-      std::vector<osg::Geode *>::iterator i;
-      for (i = timestep->second->begin(); i != timestep->second->end(); i ++)
-         (*i)->setNodeMask(-1);
-   }
-
+   void addObject(osg::Geode * geode, const int step);
    bool handle(const osgGA::GUIEventAdapter & ea,
-               osgGA::GUIActionAdapter & aa) {
-
-      switch (ea.getScrollingMotion()) {
-
-         case osgGA::GUIEventAdapter::SCROLL_UP:
-            printf("UP\n");
-            hideTimestep();
-            if (++timestep == timesteps.end())
-               timestep = timesteps.begin();
-            showTimestep();
-
-            ea.setHandled(true);
-            return true;
-            break;
-
-         case osgGA::GUIEventAdapter::SCROLL_DOWN:
-            printf("DOWN\n");
-            hideTimestep();
-            if (timestep-- == timesteps.begin())
-               timestep = --timesteps.end();
-            showTimestep();
-
-            ea.setHandled(true);
-            return true;
-            break;
-
-         default:
-            break;
-      }
-
-      /*
-      if (step != 0 && step != -1)
-         geode->setNodeMask(0);
-      */
-      return false;
-   }
-
-   int getNumTimesteps();
+               osgGA::GUIActionAdapter & aa);
 
  private:
+   bool setTimestepState(const int timestep, const int state);
+   int firstTimestep();
+   int lastTimestep();
+
    std::map<int, std::vector<osg::Geode *> *> timesteps;
-   std::map<int, std::vector<osg::Geode *> *>::iterator timestep;
+
+   int timestep;
+   double lastEvent;
 };
 
 class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
@@ -124,7 +63,7 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    osg::ref_ptr<osg::Material> material;
    osg::ref_ptr<osg::LightModel> lightModel;
 
-   TimestepHandler *timesteps;
+   TimestepHandler timesteps;
 };
 
 #endif
