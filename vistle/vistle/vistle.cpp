@@ -228,8 +228,10 @@ int main(int argc, char ** argv) {
    setParam(comm, rank, CUTSURF, "distance", 0.0);
    setParam(comm, rank, CUTSURF, "normal", vistle::Vector(1.0, 0.0, 0.0));
 
-   connect(comm, rank, RGEO, "grid_out", CUTGEO, "grid_in");
-   connect(comm, rank, CUTGEO, "grid_out", RENDERER, "data_in");
+   //connect(comm, rank, RGEO, "grid_out", CUTGEO, "grid_in");
+   //connect(comm, rank, CUTGEO, "grid_out", RENDERER, "data_in");
+
+   connect(comm, rank, RGEO, "grid_out", RENDERER, "data_in");
 
    connect(comm, rank, RGRID, "grid_out", CUTSURF, "grid_in");
    connect(comm, rank, RPRES, "grid_out", CUTSURF, "data_in");

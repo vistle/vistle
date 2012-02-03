@@ -28,7 +28,8 @@ using namespace boost::interprocess;
 
 namespace vistle {
 
-Module::Module(const std::string &n, const int r, const int s, const int m)
+Module::Module(const std::string &n, const unsigned int r,
+               const unsigned int s, const int m)
    : name(n), rank(r), size(s), moduleID(m) {
 
 #ifdef _WIN32

@@ -43,6 +43,30 @@ size_t read_uint64(const int fd, const uint64_t * data, const size_t num) {
    return r;
 }
 
+size_t read_uint64(const int fd, unsigned int * data, const size_t num) {
+
+   uint64_t *d64  = new uint64_t[num];
+
+   size_t r = 0;
+
+   while (r < num * sizeof(uint64_t)) {
+      size_t n = read(fd, ((char *) d64) + r, num * sizeof(uint64_t) - r);
+      if (n <= 0)
+         break;
+      r += n;
+   }
+
+   if (r < num * sizeof(uint64_t))
+      std::cout << "ERROR ReadCovise::read_uint64 wrote " << r
+                << " bytes instead of " << num * sizeof(uint64_t) << std::endl;
+
+   for (size_t index = 0; index < r; index ++)
+      data[index] = d64[index];
+
+   delete[] d64;
+   return r;
+}
+
 size_t read_char(const int fd, char * data, const size_t num) {
 
    size_t r = 0;
@@ -232,10 +256,6 @@ vistle::Object * ReadVistle::load(const std::string & name) {
 
 bool ReadVistle::compute() {
 
-   vistle::Object * object = load(getFileParameter("filename"));
-   /*
-   if (object)
-      addObject("grid_out", object);
-   */
+   load(getFileParameter("filename"));
    return true;
 }

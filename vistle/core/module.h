@@ -25,7 +25,7 @@ class Module {
 
  public:
    Module(const std::string &name,
-          const int rank, const int size, const int moduleID);
+          const unsigned int rank, const unsigned int size, const int moduleID);
    virtual ~Module();
 
    virtual bool dispatch();
@@ -59,8 +59,8 @@ class Module {
    void removeObject(const std::string &portName, vistle::Object * object);
 
    const std::string name;
-   const int rank;
-   const int size;
+   const unsigned int rank;
+   const unsigned int size;
    const int moduleID;
 
  protected:

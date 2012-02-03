@@ -25,47 +25,6 @@ WriteVistle::WriteVistle(int rank, int size, int moduleID)
    addFileParameter("filename", "");
 }
 
-void swap_int(unsigned int * data, const unsigned int num) {
-
-   for (unsigned int i = 0; i < num; i++) {
-      *data = (((*data) & 0xff000000) >> 24)
-         | (((*data) & 0x00ff0000) >>  8)
-         | (((*data) & 0x0000ff00) <<  8)
-         | (((*data) & 0x000000ff) << 24);
-      data++;
-   }
-}
-
-void swap_float(float * d, const unsigned int num) {
-
-   unsigned int *data = (unsigned int *) d;
-   for (unsigned int i = 0; i < num; i++) {
-      *data = (((*data) & 0xff000000) >> 24)
-         | (((*data) & 0x00ff0000) >>  8)
-         | (((*data) & 0x0000ff00) <<  8)
-         | (((*data) & 0x000000ff) << 24);
-      data++;
-   }
-}
-
-size_t read_type(const int fd, char * data) {
-
-   size_t r = 0, num = 6;
-   while (r != num) {
-      size_t n = read(fd, data + r, sizeof(char) * (num - r));
-      if (n <= 0)
-         break;
-      r += n;
-   }
-
-   if (r != num) {
-      std::cout << "ERROR ReadCovise::read_type read " << r
-                << " elements instead of " << num << std::endl;
-   }
-   return r;
-}
-
-
 size_t write_uint64(const int fd, const uint64_t * data, const size_t num) {
 
    size_t r = 0;
@@ -81,6 +40,29 @@ size_t write_uint64(const int fd, const uint64_t * data, const size_t num) {
       std::cout << "ERROR ReadCovise::write_uint64 wrote " << r
                 << " bytes instead of " << num * sizeof(uint64_t) << std::endl;
 
+   return r;
+}
+
+size_t write_uint64(const int fd, const unsigned int * data, const size_t num) {
+
+   uint64_t *d64  = new uint64_t[num];
+   for (size_t index = 0; index < num; index ++)
+      d64[index] = data[index];
+
+   size_t r = 0;
+
+   while (r < num * sizeof(uint64_t)) {
+      size_t n = write(fd, ((char *) d64) + r, num * sizeof(uint64_t) - r);
+      if (n <= 0)
+         break;
+      r += n;
+   }
+
+   if (r < num * sizeof(uint64_t))
+      std::cout << "ERROR ReadCovise::write_uint64 wrote " << r
+                << " bytes instead of " << num * sizeof(uint64_t) << std::endl;
+
+   delete[] d64;
    return r;
 }
 
@@ -274,12 +256,8 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
          const vistle::Polygons *polygons =
             static_cast<const vistle::Polygons *>(object);
 
-         if (sizeof(size_t) == sizeof(uint64_t)) {
-            write_uint64(fd, &((*polygons->el)[0]), polygons->getNumElements());
-            write_uint64(fd, &((*polygons->cl)[0]), polygons->getNumCorners());
-         } else
-            printf("WriteVistle:: writing on systems that are not "
-                   "64bit is unsupported\n");
+         write_uint64(fd, &((*polygons->el)[0]), polygons->getNumElements());
+         write_uint64(fd, &((*polygons->cl)[0]), polygons->getNumCorners());
 
          write_float(fd, &((*polygons->x)[0]), polygons->getNumVertices());
          write_float(fd, &((*polygons->y)[0]), polygons->getNumVertices());

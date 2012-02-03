@@ -31,7 +31,7 @@ Shm & Shm::instance(const int moduleID, const int rank,
                     message::MessageQueue * mq) {
 
    if (!singleton)
-      singleton = new Shm(moduleID, rank, 34359738368, mq);
+      singleton = new Shm(moduleID, rank, INT_MAX /*34359738368*/, mq);
 
    return *singleton;
 }
@@ -39,7 +39,7 @@ Shm & Shm::instance(const int moduleID, const int rank,
 Shm & Shm::instance() {
 
    if (!singleton)
-      singleton = new Shm(-1, -1, 34359738368, NULL);//34359738368); // 32GB
+      singleton = new Shm(-1, -1, INT_MAX /*34359738368*/, NULL);//34359738368); // 32GB
 
    return *singleton;
 }
