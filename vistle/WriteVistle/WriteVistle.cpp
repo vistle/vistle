@@ -66,64 +66,56 @@ size_t read_type(const int fd, char * data) {
 }
 
 
-size_t read_int(const int fd, unsigned int * data, const size_t num,
-                const bool byte_swap) {
+size_t write_uint64(const int fd, const uint64_t * data, const size_t num) {
 
    size_t r = 0;
 
-   while (r < num * sizeof(int)) {
-      size_t n = read(fd, ((char *) data) + r, num * sizeof(int) - r);
+   while (r < num * sizeof(uint64_t)) {
+      size_t n = write(fd, ((char *) data) + r, num * sizeof(uint64_t) - r);
       if (n <= 0)
          break;
       r += n;
    }
 
-   if (r < num * sizeof(int))
-      std::cout << "ERROR ReadCovise::read_int read " << r
-                << " bytes instead of " << num * sizeof(int) << std::endl;
-
-   if (byte_swap)
-      swap_int(data, r / sizeof(int));
+   if (r < num * sizeof(uint64_t))
+      std::cout << "ERROR ReadCovise::write_uint64 wrote " << r
+                << " bytes instead of " << num * sizeof(uint64_t) << std::endl;
 
    return r;
 }
 
-size_t read_char(const int fd, char * data, const size_t num) {
+size_t write_char(const int fd, char * data, const size_t num) {
 
    size_t r = 0;
 
    while (r < num) {
-      size_t n = read(fd, ((char *) data) + r, num - r);
+      size_t n = write(fd, ((char *) data) + r, num - r);
       if (n <= 0)
          break;
       r += n;
    }
 
    if (r < num)
-      std::cout << "ERROR ReadCovise::read_int read " << r
+      std::cout << "ERROR WriteVistle::write_char wrote " << r
                 << " bytes instead of " << num << std::endl;
 
    return r;
 }
 
-size_t read_float(const int fd, float * data,
-                  const size_t num, const bool byte_swap) {
+size_t write_float(const int fd, float * data, const size_t num) {
 
    size_t r = 0;
 
    while (r < num * sizeof(float)) {
-      size_t n = read(fd, ((char *) data) + r, num * sizeof(float) - r);
+      size_t n = write(fd, ((char *) data) + r, num * sizeof(float) - r);
       if (n <= 0)
          break;
       r += n;
    }
 
    if (r < num * sizeof(float))
-      std::cout << "ERROR ReadCovise::read_float read " << r
+      std::cout << "ERROR WriteVistle::write_float wrote " << r
                 << " bytes instead of " << num * sizeof(float) << std::endl;
-
-   if (byte_swap)
-      swap_float(data, r / sizeof(float));
 
    return r;
 }
@@ -132,7 +124,7 @@ WriteVistle::~WriteVistle() {
 
 }
 
-iteminfo * WriteVistle::createInfo(vistle::Object * object) {
+iteminfo * WriteVistle::createInfo(vistle::Object * object, size_t offset) {
 
    uint64_t infosize = 0;
    uint64_t itemsize = 0;
@@ -147,12 +139,14 @@ iteminfo * WriteVistle::createInfo(vistle::Object * object) {
          s->type = vistle::Object::SET;
          s->block = set->getBlock();
          s->timestep = set->getTimestep();
+         s->offset = offset;
 
          for (size_t index = 0; index < set->getNumElements(); index ++) {
-            iteminfo * info = createInfo(set->getElement(index));
+            iteminfo * info = createInfo(set->getElement(index), offset);
             if (info) {
                infosize += info->infosize;
                itemsize += info->itemsize;
+               offset += info->itemsize;
                s->items.push_back(info);
             }
          }
@@ -177,6 +171,7 @@ iteminfo * WriteVistle::createInfo(vistle::Object * object) {
          info->itemsize = info->numElements * sizeof(size_t) +
             info->numCorners * sizeof(size_t) +
             info->numVertices * sizeof(float) * 3;
+         info->offset = offset;
          return info;
       }
 
@@ -192,6 +187,7 @@ void WriteVistle::createCatalogue(const vistle::Object * object,
 
    uint64_t infosize = 0;
    uint64_t itemsize = 0;
+   size_t offset = 0;
 
    switch (object->getType()) {
 
@@ -200,21 +196,23 @@ void WriteVistle::createCatalogue(const vistle::Object * object,
          infosize += (sizeof(iteminfo) + sizeof(int32_t)); // numitems
          const vistle::Set *set = static_cast<const vistle::Set *>(object);
          setinfo *s = new setinfo;
+         s->offset = offset;
          s->type = vistle::Object::SET;
          s->block = set->getBlock();
          s->timestep = set->getTimestep();
 
          for (size_t index = 0; index < set->getNumElements(); index ++) {
-            iteminfo * info = createInfo(set->getElement(index));
+            iteminfo * info = createInfo(set->getElement(index), offset);
             if (info) {
                infosize += info->infosize;
                itemsize += info->itemsize;
                s->items.push_back(info);
+               offset += info->itemsize;
             }
          }
          s->infosize = infosize;
          s->itemsize = itemsize;
-         c.items.push_back(s);
+         c.item = s;
          break;
       }
 
@@ -255,14 +253,85 @@ void printCatalogue(const catalogue & c) {
 
    printf("catalogue info: %" PRIu64 ", item %" PRIu64 "\n",
           c.infosize, c.itemsize);
-   for (size_t index = 0; index < c.items.size(); index ++)
-      printItemInfo(c.items[index]);
+   if (c.item)
+      printItemInfo(c.item);
+}
+
+void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
+
+   switch(object->getType()) {
+
+      case vistle::Object::SET: {
+
+         const vistle::Set *set = static_cast<const vistle::Set *>(object);
+         for (size_t index = 0; index < set->getNumElements(); index ++)
+            saveObject(fd, set->getElement(index));
+         break;
+      }
+
+      case vistle::Object::POLYGONS: {
+
+         const vistle::Polygons *polygons =
+            static_cast<const vistle::Polygons *>(object);
+
+         if (sizeof(size_t) == sizeof(uint64_t)) {
+            write_uint64(fd, &((*polygons->el)[0]), polygons->getNumElements());
+            write_uint64(fd, &((*polygons->cl)[0]), polygons->getNumCorners());
+         } else
+            printf("WriteVistle:: writing on systems that are not "
+                   "64bit is unsupported\n");
+
+         write_float(fd, &((*polygons->x)[0]), polygons->getNumVertices());
+         write_float(fd, &((*polygons->y)[0]), polygons->getNumVertices());
+         write_float(fd, &((*polygons->z)[0]), polygons->getNumVertices());
+         break;
+      }
+
+      default:
+         printf("WriteVistle::saveObject unsupported object type %d\n",
+                object->getType());
+         break;
+   }
+}
+
+void WriteVistle::saveItemInfo(const int fd, const iteminfo * info) {
+
+   write_uint64(fd, &info->infosize, 1);
+   write_uint64(fd, &info->itemsize, 1);
+   write_uint64(fd, &info->offset, 1);
+   write_uint64(fd, &info->type, 1);
+   write_uint64(fd, &info->block, 1);
+   write_uint64(fd, &info->timestep, 1);
+
+   const setinfo * set = dynamic_cast<const setinfo *>(info);
+   const polygoninfo * polygons = dynamic_cast<const polygoninfo *>(info);
+
+   if (set) {
+      uint64_t numItems = set->items.size();
+      write_uint64(fd, &numItems, 1);
+      for (size_t index = 0; index < set->items.size(); index ++)
+         saveItemInfo(fd, set->items[index]);
+   }
+   else if (polygons) {
+      write_uint64(fd, &polygons->numElements, 1);
+      write_uint64(fd, &polygons->numCorners, 1);
+      write_uint64(fd, &polygons->numVertices, 1);
+   }
+}
+
+void WriteVistle::saveCatalogue(const int fd, const catalogue & c) {
+
+   uint64_t numItems = c.item?1:0;
+   write_uint64(fd, &c.infosize, 1);
+   write_uint64(fd, &c.itemsize, 1);
+   write_uint64(fd, &numItems, 1);
+
+   if (c.item)
+      saveItemInfo(fd, c.item);
 }
 
 void WriteVistle::save(const std::string & name, vistle::Object * object) {
 
-   //bool byteswap = true;
-   /*
    int fd = open(name.c_str(), O_WRONLY | O_CREAT | O_TRUNC,
                  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
    if (fd == -1) {
@@ -270,10 +339,19 @@ void WriteVistle::save(const std::string & name, vistle::Object * object) {
                 << "]" << std::endl;
       return;
    }
-   */
+
    catalogue c;
    createCatalogue(object, c);
    printCatalogue(c);
+
+   write_char(fd, (char *) "VISTLE", 6);
+   header h('l', 1, 0, 0);
+   write_char(fd, (char *) &h, sizeof(header));
+
+   saveCatalogue(fd, c);
+   saveObject(fd, object);
+
+   close(fd);
 }
 
 bool WriteVistle::compute() {

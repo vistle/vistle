@@ -1,53 +1,10 @@
 #ifndef WRITEVISTLE_H
 #define WRITEVISTLE_H
 
-#include <stdint.h>
-
 #include <string.h>
 #include "module.h"
 
-class header {
-
- public:
-   unsigned char endian;
-   unsigned char major;
-   unsigned char minor;
-   unsigned char patch;
-};
-
-class iteminfo {
-
- public:
-   virtual ~iteminfo() {}
-   uint64_t infosize;
-   uint64_t itemsize;
-   uint64_t type;
-   uint64_t block;
-   uint64_t timestep;
-};
-
-class setinfo: public iteminfo {
-
- public:
-   uint64_t settype;
-   std::vector<iteminfo *> items;
-};
-
-class polygoninfo: public iteminfo {
-
- public:
-   uint64_t numElements;
-   uint64_t numCorners;
-   uint64_t numVertices;
-};
-
-class catalogue {
-
- public:
-   uint64_t infosize;
-   uint64_t itemsize;
-   std::vector<iteminfo *> items;
-};
+#include "catalogue.h"
 
 class WriteVistle: public vistle::Module {
 
@@ -56,8 +13,13 @@ class WriteVistle: public vistle::Module {
    ~WriteVistle();
 
  private:
-   iteminfo * createInfo(vistle::Object * object);
+   iteminfo * createInfo(vistle::Object * object, size_t offset);
+
    void createCatalogue(const vistle::Object * object, catalogue & c);
+   void saveCatalogue(const int fd, const catalogue & c);
+   void saveItemInfo(const int fd, const iteminfo * info);
+   void saveObject(const int fd, const vistle::Object * object);
+
    void save(const std::string & name, vistle::Object * object);
    virtual bool compute();
 };
