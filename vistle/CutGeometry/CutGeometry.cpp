@@ -182,19 +182,22 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
 
 bool CutGeometry::compute() {
 
-   std::list<vistle::Object *> objects = getObjects("grid_in");
-
    vistle::Vector point(0.0, 0.0, 0.0);
    vistle::Vector normal(1.0, 0.0, 0.0);
 
-   std::list<vistle::Object *>::iterator oit;
-   for (oit = objects.begin(); oit != objects.end(); oit ++) {
+   std::list<vistle::Object *> objects = getObjects("grid_in");
+   while (objects.size()) {
 
-      vistle::Object *object = cutGeometry(*oit, point, normal);
-      if (object)
-         addObject("grid_out", object);
+      std::list<vistle::Object *>::iterator oit;
+      for (oit = objects.begin(); oit != objects.end(); oit ++) {
 
-      removeObject("grid_in", object);
+         vistle::Object *object = cutGeometry(*oit, point, normal);
+         if (object)
+            addObject("grid_out", object);
+
+         removeObject("grid_in", *oit);
+      }
+      objects = getObjects("grid_in");
    }
    return true;
 }

@@ -33,7 +33,7 @@ MessageQueue * MessageQueue::open(const std::string & n) {
 MessageQueue::MessageQueue(const std::string & n,
                            boost::interprocess::create_only_t)
    : name(n),
-     mq(create_only, name.c_str(), 64 /* num msg */,
+     mq(create_only, name.c_str(), 256 /* num msg */,
         message::Message::MESSAGE_SIZE),
      removeOnExit(true) {
 

@@ -369,6 +369,12 @@ void Module::removeObject(const std::string &portName, vistle::Object *object) {
          else
             shmit ++;
       }
+      std::cout << "Module::removeObject didn't find object ["
+                << object->getName() << "]" << std::endl;
+
+   } else {
+      std::cout << "Module::removeObject didn't find port ["
+                << portName << "]" << std::endl;
    }
 }
 
