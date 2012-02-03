@@ -313,33 +313,38 @@ OSGRenderer::~OSGRenderer() {
 
 }
 
-void OSGRenderer::render() {
-
-   advance();
+void OSGRenderer::distributeAndHandleEvents() {
 
    std::vector<GUIEvent> events;
 
-   if (rank == 0) {
-      Contexts ctx;
-      getContexts(ctx);
-      for (Contexts::iterator c = ctx.begin(); c != ctx.end(); c ++) {
+   Contexts ctx;
+   getContexts(ctx);
+   for (Contexts::iterator c = ctx.begin(); c != ctx.end(); c ++) {
 
-         osgViewer::GraphicsWindow * gw =
-            dynamic_cast<osgViewer::GraphicsWindow*>(*c);
-         if (gw) {
-            gw->checkEvents();
-            osgGA::EventQueue::Events ev;
-            gw->getEventQueue()->takeEvents(ev);
-            osgGA::EventQueue::Events::iterator itr;
-            for (itr = ev.begin(); itr != ev.end(); ++itr) {
-               osgGA::GUIEventAdapter *event = itr->get();
-               if (_cameraManipulator.valid())
-                  _cameraManipulator->handleWithCheckAgainstIgnoreHandledEventsMask(*event, *this);
+      osgViewer::GraphicsWindow * gw =
+         dynamic_cast<osgViewer::GraphicsWindow*>(*c);
+      if (gw) {
+         gw->checkEvents();
+         osgGA::EventQueue::Events ev;
+         gw->getEventQueue()->takeEvents(ev);
+         osgGA::EventQueue::Events::iterator itr;
+         for (itr = ev.begin(); itr != ev.end(); ++itr) {
+            osgGA::GUIEventAdapter *event = itr->get();
+            if (_cameraManipulator.valid())
+               _cameraManipulator->handleWithCheckAgainstIgnoreHandledEventsMask(*event, *this);
 
-               if (event->getEventType() == osgGA::GUIEventAdapter::SCROLL)
-                  events.push_back(GUIEvent(osgGA::GUIEventAdapter::SCROLL,
-                                            event->getScrollingMotion(),
-                                            event->getTime()));
+            if (!rank &&
+                event->getEventType() == osgGA::GUIEventAdapter::SCROLL)
+               events.push_back(GUIEvent(osgGA::GUIEventAdapter::SCROLL,
+                                         event->getScrollingMotion(),
+                                         event->getTime()));
+            else {
+               EventHandlers::iterator hitr;
+               for (hitr = _eventHandlers.begin();
+                    hitr != _eventHandlers.end(); hitr ++)
+                  (*hitr)->handleWithCheckAgainstIgnoreHandledEventsMask(*event,
+                                                                         *this,
+                                                                         0, 0);
             }
          }
       }
@@ -367,13 +372,17 @@ void OSGRenderer::render() {
       }
    }
 
-   for (std::vector<osgGA::GUIEventAdapter *>::iterator itr = osgEvents.begin();
-        itr != osgEvents.end(); itr++) {
+   std::vector<osgGA::GUIEventAdapter *>::iterator itr;
+   for (itr = osgEvents.begin(); itr != osgEvents.end(); itr++) {
 
-      for (EventHandlers::iterator hitr = _eventHandlers.begin();
-           hitr != _eventHandlers.end(); hitr ++)
-         (*hitr)->handleWithCheckAgainstIgnoreHandledEventsMask(*(*itr), *this, 0, 0);
+      EventHandlers::iterator hitr;
+      for (hitr = _eventHandlers.begin(); hitr != _eventHandlers.end(); hitr ++)
+         (*hitr)->handleWithCheckAgainstIgnoreHandledEventsMask(*(*itr),
+                                                                *this, 0, 0);
    }
+}
+
+void OSGRenderer::distributeModelviewMatrix() {
 
    float matrix[16];
 
@@ -399,6 +408,14 @@ void OSGRenderer::render() {
 
       getCameraManipulator()->setByMatrix(osg::Matrix(view));
    }
+}
+
+void OSGRenderer::render() {
+
+   advance();
+
+   distributeAndHandleEvents();
+   distributeModelviewMatrix();
 
    updateTraversal();
    renderingTraversals();

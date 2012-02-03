@@ -357,6 +357,7 @@ std::list<vistle::Object *> Module::getObjects(const std::string &portName) {
 
 void Module::removeObject(const std::string &portName, vistle::Object *object) {
 
+   bool erased = false;
    std::map<std::string, std::list<shm_handle_t> *>::iterator i =
       inputPorts.find(portName);
 
@@ -365,18 +366,18 @@ void Module::removeObject(const std::string &portName, vistle::Object *object) {
       std::list<shm_handle_t>::iterator shmit;
       for (shmit = i->second->begin(); shmit != i->second->end(); ) {
          Object *o = Shm::instance().getObjectFromHandle(*shmit);
-         if (object == o)
+         if (object == o) {
+            erased = true;
             shmit = i->second->erase(shmit);
-         else
+         } else
             shmit ++;
       }
-      std::cout << "Module::removeObject didn't find object ["
-                << object->getName() << "]" << std::endl;
-
-   } else {
-      std::cout << "Module::removeObject didn't find port ["
+      if (!erased)
+         std::cout << "Module " << moduleID << " removeObject didn't find"
+            " object [" << object->getName() << "]" << std::endl;
+   } else
+      std::cout << "Module " << moduleID << " removeObject didn't find port ["
                 << portName << "]" << std::endl;
-   }
 }
 
 bool Module::addInputObject(const std::string & portName,
@@ -450,9 +451,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const message::Compute *comp =
             static_cast<const message::Compute *>(message);
          (void) comp;
+         /*
          std::cout << "    module [" << name << "] [" << moduleID << "] ["
                    << rank << "/" << size << "] compute" << std::endl;
-
+         */
          compute();
          break;
       }

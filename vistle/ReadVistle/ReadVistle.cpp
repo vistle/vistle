@@ -60,8 +60,8 @@ size_t read_uint64(const int fd, unsigned int * data, const size_t num) {
       std::cout << "ERROR ReadCovise::read_uint64 wrote " << r
                 << " bytes instead of " << num * sizeof(uint64_t) << std::endl;
 
-   for (size_t index = 0; index < r; index ++)
-      data[index] = d64[index];
+   for (size_t index = 0; index < num; index ++)
+      data[index] = (unsigned int) d64[index];
 
    delete[] d64;
    return r;
@@ -129,8 +129,10 @@ vistle::Object * ReadVistle::readObject(const int fd, const iteminfo * info,
       if ((polyi->block % size) == rank) {
          lseek(fd, start + info->offset, SEEK_SET);
          vistle::Polygons *polygons =
-            vistle::Polygons::create(polyi->numElements, polyi->numCorners,
-                                     polyi->numVertices, polyi->block,
+            vistle::Polygons::create(polyi->numElements,
+                                     polyi->numCorners,
+                                     polyi->numVertices,
+                                     polyi->block,
                                      polyi->timestep);
 
          read_uint64(fd, &((*polygons->el)[0]), polyi->numElements);
