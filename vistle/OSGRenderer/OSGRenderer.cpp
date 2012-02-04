@@ -250,7 +250,6 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
    icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
-   //icetDisable(ICET_COMPOSITE_ONE_BUFFER);
 
    icetDrawCallback(cb);
 
@@ -262,6 +261,7 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
 
    realize();
    setThreadingModel(SingleThreaded);
+   getCamera()->setComputeNearFarMode(osgUtil::CullVisitor::DO_NOT_COMPUTE_NEAR_FAR);
 
    scene = new osg::Group();
 
