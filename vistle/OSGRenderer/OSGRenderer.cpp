@@ -1,5 +1,4 @@
 #include <IceT.h>
-#include <IceTGL.h>
 #include <IceTMPI.h>
 
 #include <osgGA/TrackballManipulator>
@@ -241,8 +240,6 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
    icetContext = icetCreateContext(icetComm);
    icetDestroyMPICommunicator(icetComm);
-
-   icetGLInitialize();
 
    icetResetTiles();
    icetAddTile(0, 0, 512, 512, 0);

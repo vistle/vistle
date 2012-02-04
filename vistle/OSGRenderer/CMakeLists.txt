@@ -3,6 +3,7 @@ set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "$ENV{EXTERNLIBS}/OpenSceneGraph")
 find_package(MPI REQUIRED)
 find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
 find_package(OpenSceneGraph 2.8.0 COMPONENTS osgViewer)
+find_package(IceT REQUIRED)
 
 add_executable(OSGRenderer OSGRenderer.cpp)
 
@@ -18,7 +19,6 @@ target_link_libraries(OSGRenderer
         ${MPI_LIBRARIES}
         ${OPENSCENEGRAPH_LIBRARIES}
         vistle_core
-        IceTCore
-        IceTMPI
-        IceTGL
+        ${ICET_CORE_LIBS}
+        ${ICET_MPI_LIBS}
 )
