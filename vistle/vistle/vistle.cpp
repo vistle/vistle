@@ -183,8 +183,8 @@ int main(int argc, char ** argv) {
 #if 0
    vistle::message::Spawn gendat(0, rank, 1, "Gendat");
    comm->handleMessage(&gendat);
-   vistle::message::Spawn add(0, rank, 2, "Add");
-   comm->handleMessage(&add);
+   vistle::message::Spawn renderer(0, rank, 2, "OSGRenderer");
+   comm->handleMessage(&renderer);
 
    vistle::message::Connect connect(0, rank, 1, "data_out", 2, "data_in");
    comm->handleMessage(&connect);
@@ -196,8 +196,9 @@ int main(int argc, char ** argv) {
 #if 1
    enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER, WRITEVISTLE };
 
-   spawn(comm, rank, RGRID, "ReadCovise");
    spawn(comm, rank, RGEO,  "ReadVistle");
+   /*
+   spawn(comm, rank, RGRID, "ReadCovise");
    spawn(comm, rank, RPRES, "ReadCovise");
 
    spawn(comm, rank, CUTGEO, "CutGeometry");
@@ -206,10 +207,9 @@ int main(int argc, char ** argv) {
 
    spawn(comm, rank, COLOR, "Color");
    spawn(comm, rank, COLLECT, "Collect");
-
-   spawn(comm, rank, RENDERER, "OSGRenderer");
-
    spawn(comm, rank, WRITEVISTLE, "WriteVistle");
+   */
+   spawn(comm, rank, RENDERER, "OSGRenderer");
 
    setParam(comm, rank, RGEO, "filename",
             "/data/OpenFOAM/PumpTurbine/covise/test/three_geo2d.vistle");
@@ -228,8 +228,8 @@ int main(int argc, char ** argv) {
    setParam(comm, rank, CUTSURF, "distance", 0.0);
    setParam(comm, rank, CUTSURF, "normal", vistle::Vector(1.0, 0.0, 0.0));
 
-   connect(comm, rank, RGEO, "grid_out", CUTGEO, "grid_in");
-   connect(comm, rank, CUTGEO, "grid_out", RENDERER, "data_in");
+   connect(comm, rank, RGEO, "grid_out", RENDERER, "data_in");
+   //connect(comm, rank, CUTGEO, "grid_out", RENDERER, "data_in");
 
    connect(comm, rank, RGRID, "grid_out", CUTSURF, "grid_in");
    connect(comm, rank, RPRES, "grid_out", CUTSURF, "data_in");

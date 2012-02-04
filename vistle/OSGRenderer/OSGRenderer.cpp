@@ -1,3 +1,7 @@
+#include <IceT.h>
+#include <IceTGL.h>
+#include <IceTMPI.h>
+
 #include <osgGA/TrackballManipulator>
 #include <osgGA/GUIEventAdapter>
 #include <osgGA/EventQueue>
@@ -30,15 +34,32 @@ MODULE_MAIN(OSGRenderer)
 class SyncOperation : public osg::Operation {
 
 public:
-   SyncOperation()
-      : osg::Operation("SyncOperation", true) { }
+   SyncOperation(const int r)
+      : osg::Operation("SyncOperation", true), rank(r) { }
 
    void operator () (osg::Object *object) {
 
       if (!dynamic_cast<osg::GraphicsContext*>(object))
          return;
+
+      IceTDouble proj[16];
+      IceTDouble mv[16];
+      IceTFloat bg[4] = { 51.0 / 255.0, 51.0 / 255.0, 102.0 / 255.0, 0.0 };
+
+      IceTImage image = icetDrawFrame(proj, mv, bg);
+      IceTSizeType width = icetImageGetWidth(image);
+      IceTSizeType height = icetImageGetHeight(image);
+
+      if (rank == 0 && !icetImageIsNull(image)) {
+
+         IceTUByte *color = icetImageGetColorub(image);
+         glDrawPixels(width, height, GL_RGBA, GL_UNSIGNED_BYTE, color);
+      }
+
       MPI_Barrier(MPI_COMM_WORLD);
    }
+
+   const int rank;
 };
 
 class GUIEvent {
@@ -187,6 +208,24 @@ bool TimestepHandler::handle(const osgGA::GUIEventAdapter & ea,
    return false;
 }
 
+void cb(const IceTDouble * proj, const IceTDouble * mv,
+        const IceTFloat * bg, const IceTInt * viewport,
+        IceTImage result) {
+
+   IceTSizeType width = icetImageGetWidth(result);
+   IceTSizeType height = icetImageGetHeight(result);
+
+   //IceTEnum cf = icetImageGetColorFormat(result);
+   //IceTEnum df = icetImageGetDepthFormat(result);
+
+   IceTUByte *color = icetImageGetColorub(result);
+   IceTFloat *depth = icetImageGetDepthf(result);
+
+   glReadBuffer(GL_BACK);
+   glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, color);
+   glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, depth);
+}
+
 OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    : Renderer("OSGRenderer", rank, size, moduleID), osgViewer::Viewer() {
 
@@ -195,6 +234,25 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    CPU_SET(0, &cpuset);
    pthread_setaffinity_np(pthread_self(), 1, &cpuset);
 #endif
+
+   IceTCommunicator icetComm;
+   IceTContext icetContext;
+
+   icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
+   icetContext = icetCreateContext(icetComm);
+   icetDestroyMPICommunicator(icetComm);
+
+   icetGLInitialize();
+
+   icetResetTiles();
+   icetAddTile(0, 0, 512, 512, 0);
+   icetStrategy(ICET_STRATEGY_REDUCE);
+   icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+   icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+   icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+   //icetDisable(ICET_COMPOSITE_ONE_BUFFER);
+
+   icetDrawCallback(cb);
 
    setUpViewInWindow(0, 0, 512, 512);
    setLightingMode(osgViewer::Viewer::HEADLIGHT);
@@ -305,8 +363,7 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    Contexts ctx;
    getContexts(ctx);
    for (Contexts::iterator c = ctx.begin(); c != ctx.end(); c ++)
-      (*c)->add(new SyncOperation);
-
+      (*c)->add(new SyncOperation(rank));
 }
 
 OSGRenderer::~OSGRenderer() {

@@ -18,4 +18,7 @@ target_link_libraries(OSGRenderer
         ${MPI_LIBRARIES}
         ${OPENSCENEGRAPH_LIBRARIES}
         vistle_core
+        IceTCore
+        IceTMPI
+        IceTGL
 )

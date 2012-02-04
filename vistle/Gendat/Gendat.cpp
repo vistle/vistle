@@ -20,6 +20,7 @@ Gendat::~Gendat() {
 
 bool Gendat::compute() {
 
+#if 0
    vistle::Vec<float> *a = vistle::Vec<float>::create();
    for (unsigned int index = 0; index < 1024 * 1024 * 4; index ++)
       a->x->push_back(index);
@@ -32,40 +33,39 @@ bool Gendat::compute() {
       b->z[index] = index;
    }
    */
-   /*
+#endif
    vistle::Triangles *t = vistle::Triangles::create(6, 4);
 
-   t->cl[0] = 0;
-   t->cl[1] = 1;
-   t->cl[2] = 2;
+   (*t->cl)[0] = 0;
+   (*t->cl)[1] = 1;
+   (*t->cl)[2] = 2;
 
-   t->cl[3] = 0;
-   t->cl[4] = 2;
-   t->cl[5] = 3;
+   (*t->cl)[3] = 0;
+   (*t->cl)[4] = 2;
+   (*t->cl)[5] = 3;
 
-   t->x[0] = 0.0 + rank;
-   t->y[0] = 0.0;
-   t->z[0] = 0.0;
+   (*t->x)[0] = 0.0 + rank;
+   (*t->y)[0] = 0.0;
+   (*t->z)[0] = 0.0;
 
-   t->x[1] = 1.0 + rank;
-   t->y[1] = 0.0;
-   t->z[1] = 0.0;
+   (*t->x)[1] = 1.0 + rank;
+   (*t->y)[1] = 0.0;
+   (*t->z)[1] = 0.0;
 
-   t->x[2] = 1.0 + rank;
-   t->y[2] = 1.0;
-   t->z[2] = 0.0;
+   (*t->x)[2] = 1.0 + rank;
+   (*t->y)[2] = 1.0;
+   (*t->z)[2] = 0.0;
 
-   t->x[3] = 0.0 + rank;
-   t->y[3] = 1.0;
-   t->z[3] = 0.0;
-   */
+   (*t->x)[3] = 0.0 + rank;
+   (*t->y)[3] = 1.0;
+   (*t->z)[3] = 0.0;
 
-   addObject("data_out", a);
+   addObject("data_out", t);
    /*
    addObject("data_out", b);
    addObject("data_out", t);
    */
-
+#if 0
    vistle::UnstructuredGrid *usg =
       vistle::UnstructuredGrid::create();
 
@@ -107,7 +107,7 @@ bool Gendat::compute() {
    usg->z->push_back(1.0);
 
    addObject("grid_out", usg);
-
+#endif
 #if 0
    int *local = new int[1024 * 1024];
    int *global = new int[1024 * 1024];
