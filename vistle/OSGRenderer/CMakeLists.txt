@@ -11,6 +11,7 @@ include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
         ${OPENSCENEGRAPH_INCLUDE_DIRS}
+        ${ICET_INCLUDE_DIRS}
         ../core
 )
 
