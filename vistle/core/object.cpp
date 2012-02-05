@@ -300,13 +300,16 @@ UnstructuredGrid::UnstructuredGrid(const size_t numElements,
    const allocator<size_t, managed_shared_memory::segment_manager>
       alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
 
+   const allocator<char, managed_shared_memory::segment_manager>
+      alloc_inst_char(Shm::instance().getShm().get_segment_manager());
+
    x = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
 
    y = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
 
    z = Shm::instance().getShm().construct<std::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
 
-   tl = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
+   tl = Shm::instance().getShm().construct<std::vector<char, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numElements, char(), alloc_inst_size_t);
 
    el = Shm::instance().getShm().construct<std::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
 

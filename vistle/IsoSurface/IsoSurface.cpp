@@ -98,8 +98,8 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
       data = static_cast<const vistle::Vec<float> *>(data_object);
    }
 
+   const char *tl = &((*grid->tl)[0]);
    const size_t *el = &((*grid->el)[0]);
-   const size_t *tl = &((*grid->tl)[0]);
    const size_t *cl = &((*grid->cl)[0]);
    const float *x = &((*grid->x)[0]);
    const float *y = &((*grid->y)[0]);

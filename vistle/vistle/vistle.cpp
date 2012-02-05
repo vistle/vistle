@@ -193,7 +193,7 @@ int main(int argc, char ** argv) {
    comm->handleMessage(&compute);
 #endif
 
-#if 1
+#if 0
    enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER, WRITEVISTLE };
 
    spawn(comm, rank, RGEO,  "ReadVistle");
@@ -245,8 +245,8 @@ int main(int argc, char ** argv) {
    //connect(comm, rank, RGEO, "grid_out", WRITEVISTLE, "grid_in");
 
    compute(comm, rank, RGEO);
-   //compute(comm, rank, RGRID);
-   //compute(comm, rank, RPRES);
+   compute(comm, rank, RGRID);
+   compute(comm, rank, RPRES);
 #endif
 
 #if 0
@@ -265,6 +265,22 @@ int main(int argc, char ** argv) {
 
    vistle::message::Compute compute(0, rank, 1);
    comm->handleMessage(&compute);
+#endif
+
+#if 1
+   enum { READ = 1, WRITE };
+   spawn(comm, rank, READ, "ReadCovise");
+   spawn(comm, rank, WRITE, "WriteVistle");
+
+   setParam(comm, rank, READ, "filename",
+            "/data/OpenFOAM/PumpTurbine/covise/geo3d.covise");
+
+   setParam(comm, rank, WRITE, "filename",
+            "/data/OpenFOAM/PumpTurbine/covise/geo3d.vistle");
+
+   connect(comm, rank, READ, "grid_out", WRITE, "grid_in");
+
+   compute(comm, rank, READ);
 #endif
 
    while (!done) {

@@ -274,8 +274,11 @@ class UnstructuredGrid: public Object {
    size_t getNumCorners() const;
    size_t getNumVertices() const;
 
+   boost::interprocess::offset_ptr<std::vector<char, boost::interprocess::allocator<size_t, boost::interprocess::managed_shared_memory::segment_manager> > >
+      tl;
+
    boost::interprocess::offset_ptr<std::vector<size_t, boost::interprocess::allocator<size_t, boost::interprocess::managed_shared_memory::segment_manager> > >
-      tl, cl, el;
+      cl, el;
 
    boost::interprocess::offset_ptr<std::vector<float, boost::interprocess::allocator<float, boost::interprocess::managed_shared_memory::segment_manager> > >
       x, y, z;

@@ -214,16 +214,16 @@ vistle::Object *  ReadCovise::readUNSGRD(const int fd, const bool byteswap) {
 
    usg = vistle::UnstructuredGrid::create(numElements, numCorners, numVertices);
 
-   unsigned int *_el = new unsigned int[numElements];
    unsigned int *_tl = new unsigned int[numElements];
+   unsigned int *_el = new unsigned int[numElements];
    unsigned int *_cl = new unsigned int[numCorners];
 
+   char *tl = &((*usg->tl)[0]);
    size_t *el = &((*usg->el)[0]);
-   size_t *tl = &((*usg->tl)[0]);
    size_t *cl = &((*usg->cl)[0]);
 
-   read_int(fd, _el, numElements, byteswap);
    read_int(fd, _tl, numElements, byteswap);
+   read_int(fd, _el, numElements, byteswap);
    read_int(fd, _cl, numCorners, byteswap);
 
    read_float(fd, &((*usg->x)[0]), numVertices, byteswap);

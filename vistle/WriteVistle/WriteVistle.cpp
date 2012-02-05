@@ -25,24 +25,6 @@ WriteVistle::WriteVistle(int rank, int size, int moduleID)
    addFileParameter("filename", "");
 }
 
-size_t write_uint64(const int fd, const uint64_t * data, const size_t num) {
-
-   size_t r = 0;
-
-   while (r < num * sizeof(uint64_t)) {
-      size_t n = write(fd, ((char *) data) + r, num * sizeof(uint64_t) - r);
-      if (n <= 0)
-         break;
-      r += n;
-   }
-
-   if (r < num * sizeof(uint64_t))
-      std::cout << "ERROR ReadCovise::write_uint64 wrote " << r
-                << " bytes instead of " << num * sizeof(uint64_t) << std::endl;
-
-   return r;
-}
-
 size_t write_uint64(const int fd, const unsigned int * data, const size_t num) {
 
    uint64_t *d64  = new uint64_t[num];
@@ -106,7 +88,7 @@ WriteVistle::~WriteVistle() {
 
 }
 
-iteminfo * WriteVistle::createInfo(vistle::Object * object, size_t offset) {
+iteminfo * WriteVistle::createInfo(vistle::Object * object, uint64_t offset) {
 
    uint64_t infosize = 0;
    uint64_t itemsize = 0;
@@ -150,9 +132,60 @@ iteminfo * WriteVistle::createInfo(vistle::Object * object, size_t offset) {
          info->block = polygons->getBlock();
          info->timestep = polygons->getTimestep();
          info->infosize = sizeof(polygoninfo);
-         info->itemsize = info->numElements * sizeof(size_t) +
-            info->numCorners * sizeof(size_t) +
+         info->itemsize = info->numElements * sizeof(uint64_t) +
+            info->numCorners * sizeof(uint64_t) +
             info->numVertices * sizeof(float) * 3;
+         info->offset = offset;
+         return info;
+      }
+
+      case vistle::Object::VECFLOAT: {
+
+         const vistle::Vec<float> *data =
+            static_cast<const vistle::Vec<float> *>(object);
+         datainfo *info = new datainfo;
+         info->type = object->getType();
+         info->numElements = data->getSize();
+         info->block = data->getBlock();
+         info->timestep = data->getTimestep();
+         info->infosize = sizeof(datainfo);
+         info->itemsize = info->numElements * sizeof(float);
+         info->offset = offset;
+         return info;
+      }
+
+      case vistle::Object::VEC3FLOAT: {
+
+         const vistle::Vec3<float> *data =
+            static_cast<const vistle::Vec3<float> *>(object);
+         datainfo *info = new datainfo;
+         info->type = object->getType();
+         info->numElements = data->getSize();
+         info->block = data->getBlock();
+         info->timestep = data->getTimestep();
+         info->infosize = sizeof(datainfo);
+         info->itemsize = info->numElements * sizeof(float) * 3;
+         info->offset = offset;
+         return info;
+      }
+
+      case vistle::Object::UNSTRUCTUREDGRID: {
+
+         const vistle::UnstructuredGrid *grid =
+            static_cast<const vistle::UnstructuredGrid *>(object);
+         usginfo *info = new usginfo;
+         info->type = object->getType();
+         info->numElements = grid->getNumElements();
+         info->numCorners = grid->getNumCorners();
+         info->numVertices = grid->getNumVertices();
+         info->block = grid->getBlock();
+         info->timestep = grid->getTimestep();
+         info->infosize = sizeof(usginfo);
+         info->itemsize =
+            info->numElements * sizeof(char) +     // tl
+            info->numElements * sizeof(uint64_t) + // el
+            info->numCorners * sizeof(uint64_t) +  // cl
+            info->numVertices * 3 * sizeof(float); // x, y, z
          info->offset = offset;
          return info;
       }
@@ -169,7 +202,7 @@ void WriteVistle::createCatalogue(const vistle::Object * object,
 
    uint64_t infosize = 0;
    uint64_t itemsize = 0;
-   size_t offset = 0;
+   uint64_t offset = 0;
 
    switch (object->getType()) {
 
@@ -265,6 +298,41 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
          break;
       }
 
+      case vistle::Object::UNSTRUCTUREDGRID: {
+
+         const vistle::UnstructuredGrid *usg =
+            static_cast<const vistle::UnstructuredGrid *>(object);
+
+         write_char(fd, &((*usg->tl)[0]), usg->getNumElements());
+         write_uint64(fd, &((*usg->el)[0]), usg->getNumElements());
+         write_uint64(fd, &((*usg->cl)[0]), usg->getNumCorners());
+
+         write_float(fd, &((*usg->x)[0]), usg->getNumVertices());
+         write_float(fd, &((*usg->y)[0]), usg->getNumVertices());
+         write_float(fd, &((*usg->z)[0]), usg->getNumVertices());
+         break;
+      }
+
+      case vistle::Object::VECFLOAT: {
+
+         const vistle::Vec<float> *data =
+            static_cast<const vistle::Vec<float> *>(object);
+
+         write_float(fd, &((*data->x)[0]), data->getSize());
+         break;
+      }
+
+      case vistle::Object::VEC3FLOAT: {
+
+         const vistle::Vec3<float> *data =
+            static_cast<const vistle::Vec3<float> *>(object);
+
+         write_float(fd, &((*data->x)[0]), data->getSize());
+         write_float(fd, &((*data->y)[0]), data->getSize());
+         write_float(fd, &((*data->z)[0]), data->getSize());
+         break;
+      }
+
       default:
          printf("WriteVistle::saveObject unsupported object type %d\n",
                 object->getType());
@@ -281,8 +349,10 @@ void WriteVistle::saveItemInfo(const int fd, const iteminfo * info) {
    write_uint64(fd, &info->block, 1);
    write_uint64(fd, &info->timestep, 1);
 
-   const setinfo * set = dynamic_cast<const setinfo *>(info);
-   const polygoninfo * polygons = dynamic_cast<const polygoninfo *>(info);
+   const setinfo *set = dynamic_cast<const setinfo *>(info);
+   const polygoninfo *polygons = dynamic_cast<const polygoninfo *>(info);
+   const usginfo *usg = dynamic_cast<const usginfo *>(info);
+   const datainfo *data = dynamic_cast<const datainfo *>(info);
 
    if (set) {
       uint64_t numItems = set->items.size();
@@ -294,6 +364,14 @@ void WriteVistle::saveItemInfo(const int fd, const iteminfo * info) {
       write_uint64(fd, &polygons->numElements, 1);
       write_uint64(fd, &polygons->numCorners, 1);
       write_uint64(fd, &polygons->numVertices, 1);
+   }
+   else if (usg) {
+      write_uint64(fd, &usg->numElements, 1);
+      write_uint64(fd, &usg->numCorners, 1);
+      write_uint64(fd, &usg->numVertices, 1);
+   }
+   else if (data) {
+      write_uint64(fd, &usg->numElements, 1);
    }
 }
 

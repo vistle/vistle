@@ -113,6 +113,8 @@ vistle::Object * ReadVistle::readObject(const int fd, const iteminfo * info,
 
    const setinfo *seti = dynamic_cast<const setinfo *>(info);
    const polygoninfo *polyi = dynamic_cast<const polygoninfo *>(info);
+   const usginfo *usgi = dynamic_cast<const usginfo *>(info);
+   const datainfo *datai = dynamic_cast<const datainfo *>(info);
 
    if (seti) {
 
@@ -145,8 +147,53 @@ vistle::Object * ReadVistle::readObject(const int fd, const iteminfo * info,
          addObject("grid_out", polygons);
          return polygons;
       }
-   }
+   } else if (usgi) {
 
+      if ((usgi->block % size) == rank) {
+         lseek(fd, start + info->offset, SEEK_SET);
+         vistle::UnstructuredGrid *usg =
+            vistle::UnstructuredGrid::create(usgi->numElements, usgi->numCorners,
+                                             usgi->numVertices, usgi->block,
+                                             usgi->timestep);
+
+         read_char(fd, &((*usg->tl)[0]), usgi->numElements);
+         read_uint64(fd, &((*usg->el)[0]), usgi->numElements);
+         read_uint64(fd, &((*usg->cl)[0]), usgi->numCorners);
+
+         read_float(fd, &((*usg->x)[0]), usgi->numVertices);
+         read_float(fd, &((*usg->y)[0]), usgi->numVertices);
+         read_float(fd, &((*usg->z)[0]), usgi->numVertices);
+
+         addObject("grid_out", usg);
+         return usg;
+      }
+   } else if (datai) {
+
+      if ((datai->block % size) == rank) {
+         lseek(fd, start + info->offset, SEEK_SET);
+         switch (datai->type) {
+
+            case vistle::Object::VECFLOAT: {
+               vistle::Vec<float> *data = vistle::Vec<float>::create(datai->numElements);
+
+               read_float(fd, &((*data->x)[0]), datai->numElements);
+               addObject("grid_out", data);
+               return data;
+            }
+
+            case vistle::Object::VEC3FLOAT: {
+               vistle::Vec3<float> *data =
+                  vistle::Vec3<float>::create(datai->numElements);
+
+               read_float(fd, &((*data->x)[0]), datai->numElements);
+               read_float(fd, &((*data->y)[0]), datai->numElements);
+               read_float(fd, &((*data->z)[0]), datai->numElements);
+               addObject("grid_out", data);
+               return data;
+            }
+         }
+      }
+   }
    return NULL;
 }
 
@@ -199,6 +246,52 @@ iteminfo * ReadVistle::readItemInfo(const int fd) {
          std::cout << "   polygons [" << info->numElements << ", "
                    << info->numCorners << ", " << info->numVertices << "] -> "
                    << info->offset << std::endl;
+         return info;
+      }
+
+      case vistle::Object::UNSTRUCTUREDGRID: {
+
+         usginfo *info = new usginfo;
+         info->infosize = infosize;
+         info->itemsize = itemsize;
+         info->offset = offset;
+         info->type = type;
+         info->block = block;
+         info->timestep = timestep;
+         read_uint64(fd, &info->numElements, 1);
+         read_uint64(fd, &info->numCorners, 1);
+         read_uint64(fd, &info->numVertices, 1);
+         std::cout << "   usg [" << info->numElements << ", "
+                   << info->numCorners << ", " << info->numVertices << "] -> "
+                   << info->offset << std::endl;
+         return info;
+      }
+
+      case vistle::Object::VECFLOAT: {
+
+         datainfo *info = new datainfo;
+         info->infosize = infosize;
+         info->itemsize = itemsize;
+         info->offset = offset;
+         info->type = type;
+         info->block = block;
+         info->timestep = timestep;
+         read_uint64(fd, &info->numElements, 1);
+         std::cout << "   float vec [" << info->numElements << ", " << std::endl;
+         return info;
+      }
+
+      case vistle::Object::VEC3FLOAT: {
+
+         datainfo *info = new datainfo;
+         info->infosize = infosize;
+         info->itemsize = itemsize;
+         info->offset = offset;
+         info->type = type;
+         info->block = block;
+         info->timestep = timestep;
+         read_uint64(fd, &info->numElements, 1);
+         std::cout << "   float 3 vec [" << info->numElements << ", " << std::endl;
          return info;
       }
 
@@ -258,6 +351,11 @@ vistle::Object * ReadVistle::load(const std::string & name) {
 
 bool ReadVistle::compute() {
 
-   load(getFileParameter("filename"));
+   vistle::Object * object = load(getFileParameter("filename"));
+   (void) object;
+   /*
+   if (object)
+      addObject("grid_out", object);
+   */
    return true;
 }

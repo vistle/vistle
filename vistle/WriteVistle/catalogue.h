@@ -46,6 +46,20 @@ class polygoninfo: public iteminfo {
    uint64_t numVertices;
 };
 
+class usginfo: public iteminfo {
+
+ public:
+   uint64_t numElements;
+   uint64_t numCorners;
+   uint64_t numVertices;
+};
+
+class datainfo: public iteminfo {
+
+ public:
+   uint64_t numElements;
+};
+
 class catalogue {
 
  public:
