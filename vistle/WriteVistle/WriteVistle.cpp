@@ -48,6 +48,24 @@ size_t write_uint64(const int fd, const unsigned int * data, const size_t num) {
    return r;
 }
 
+size_t write_uint64(const int fd, const uint64_t * data, const size_t num) {
+
+   size_t r = 0;
+
+   while (r < num * sizeof(uint64_t)) {
+      size_t n = write(fd, ((char *) data) + r, num * sizeof(uint64_t) - r);
+      if (n <= 0)
+         break;
+      r += n;
+   }
+
+   if (r < num * sizeof(uint64_t))
+      std::cout << "ERROR ReadCovise::write_uint64 wrote " << r
+                << " bytes instead of " << num * sizeof(uint64_t) << std::endl;
+
+   return r;
+}
+
 size_t write_char(const int fd, char * data, const size_t num) {
 
    size_t r = 0;
@@ -289,6 +307,11 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
          const vistle::Polygons *polygons =
             static_cast<const vistle::Polygons *>(object);
 
+         std::cout << " write polygons "
+                << polygons->getBlock() << " " << polygons->getTimestep() << " "
+                << polygons->getNumElements() << " " << polygons->getNumCorners() << " "
+                << polygons->getNumVertices() << std::endl;
+
          write_uint64(fd, &((*polygons->el)[0]), polygons->getNumElements());
          write_uint64(fd, &((*polygons->cl)[0]), polygons->getNumCorners());
 
@@ -302,6 +325,11 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
 
          const vistle::UnstructuredGrid *usg =
             static_cast<const vistle::UnstructuredGrid *>(object);
+
+         std::cout << " write usg "
+                   << usg->getBlock() << " " << usg->getTimestep() << " "
+                   << usg->getNumElements() << " " << usg->getNumCorners() << " "
+                   << usg->getNumVertices() << std::endl;
 
          write_char(fd, &((*usg->tl)[0]), usg->getNumElements());
          write_uint64(fd, &((*usg->el)[0]), usg->getNumElements());
@@ -318,6 +346,10 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
          const vistle::Vec<float> *data =
             static_cast<const vistle::Vec<float> *>(object);
 
+         std::cout << " write float vec "
+                   << data->getBlock() << " " << data->getTimestep() << " "
+                   << data->getSize() << std::endl;
+
          write_float(fd, &((*data->x)[0]), data->getSize());
          break;
       }
@@ -326,6 +358,10 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
 
          const vistle::Vec3<float> *data =
             static_cast<const vistle::Vec3<float> *>(object);
+
+         std::cout << " write float vec "
+                   << data->getBlock() << " " << data->getTimestep() << " "
+                   << data->getSize() << std::endl;
 
          write_float(fd, &((*data->x)[0]), data->getSize());
          write_float(fd, &((*data->y)[0]), data->getSize());
@@ -408,6 +444,7 @@ void WriteVistle::save(const std::string & name, vistle::Object * object) {
    saveObject(fd, object);
 
    close(fd);
+   std::cout << "saved [" << name << "]" << std::endl;
 }
 
 bool WriteVistle::compute() {
