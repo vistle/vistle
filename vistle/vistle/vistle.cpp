@@ -267,7 +267,7 @@ int main(int argc, char ** argv) {
    comm->handleMessage(&compute);
 #endif
 
-#if 1
+#if 0
    enum { READ = 1, WRITE };
    spawn(comm, rank, READ, "ReadCovise");
    spawn(comm, rank, WRITE, "WriteVistle");
@@ -279,6 +279,16 @@ int main(int argc, char ** argv) {
             "/data/OpenFOAM/PumpTurbine/covise/geo3d.vistle");
 
    connect(comm, rank, READ, "grid_out", WRITE, "grid_in");
+
+   compute(comm, rank, READ);
+#endif
+
+#if 1
+   enum { READ = 1 };
+   spawn(comm, rank, READ, "ReadFOAM");
+
+   setParam(comm, rank, READ, "filename",
+            "/data/OpenFOAM/PumpTurbine/transient");
 
    compute(comm, rank, READ);
 #endif

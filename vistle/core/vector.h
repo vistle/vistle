@@ -6,6 +6,7 @@ namespace vistle {
 class Vector {
 public:
    Vector(const float x, const float y, const float z);
+   Vector();
 
    // negate
    Vector operator - () const;
