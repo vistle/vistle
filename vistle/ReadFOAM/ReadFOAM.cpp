@@ -13,6 +13,7 @@
 #include <fcntl.h>
 
 #include <fstream>
+#include <sstream>
 #include <iostream>
 
 #include <boost/iostreams/filtering_stream.hpp>
@@ -143,20 +144,24 @@ struct IntParser: qi::grammar<Iterator, std::vector<int>(),
 
 vistle::Object * ReadFOAM::load(const std::string & casedir) {
 
-   std::string pointsName("/data/OpenFOAM/PumpTurbine/transient/processor0/constant/polyMesh/points.gz");
-   std::ifstream pointsFile(pointsName.c_str(),
+   std::stringstream pointsName;
+   pointsName << casedir << "/processor" << rank << "/constant/polyMesh/points.gz";
+   std::ifstream pointsFile(pointsName.str().c_str(),
                             std::ios_base::in | std::ios_base::binary);
 
-   std::string facesName("/data/OpenFOAM/PumpTurbine/transient/processor0/constant/polyMesh/faces.gz");
-   std::ifstream facesFile(facesName.c_str(),
+   std::stringstream facesName;
+   facesName << casedir << "/processor" << rank << "/constant/polyMesh/faces.gz";
+   std::ifstream facesFile(facesName.str().c_str(),
                            std::ios_base::in | std::ios_base::binary);
 
-   std::string ownersName("/data/OpenFOAM/PumpTurbine/transient/processor0/constant/polyMesh/owner.gz");
-   std::ifstream ownersFile(ownersName.c_str(),
+   std::stringstream ownersName;
+   ownersName << casedir << "/processor" << rank << "/constant/polyMesh/owner.gz";
+   std::ifstream ownersFile(ownersName.str().c_str(),
                             std::ios_base::in | std::ios_base::binary);
 
-   std::string neighborsName("/data/OpenFOAM/PumpTurbine/transient/processor0/constant/polyMesh/neighbour.gz");
-   std::ifstream neighborsFile(neighborsName.c_str(),
+   std::stringstream neighborsName;
+   neighborsName << casedir << "/processor" << rank << "/constant/polyMesh/neighbour.gz";
+   std::ifstream neighborsFile(neighborsName.str().c_str(),
                                std::ios_base::in | std::ios_base::binary);
 
    boost::iostreams::filtering_istream pointsIn;
@@ -191,12 +196,11 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
    struct IntParser<pos_iterator_type> neighborsParser;
 
    try {
-
       forward_iterator_type fwd_begin =
          boost::spirit::make_default_multi_pass(base_iterator_type(pointsIn));
       forward_iterator_type fwd_end;
 
-      pos_iterator_type pos_begin(fwd_begin, fwd_end, pointsName);
+      pos_iterator_type pos_begin(fwd_begin, fwd_end, pointsName.str());
       pos_iterator_type pos_end;
 
       bool r = qi::phrase_parse(pos_begin, pos_end,
@@ -206,7 +210,7 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
       fwd_begin =
          boost::spirit::make_default_multi_pass(base_iterator_type(facesIn));
 
-      pos_begin = pos_iterator_type(fwd_begin, fwd_end, facesName);
+      pos_begin = pos_iterator_type(fwd_begin, fwd_end, facesName.str());
       r = qi::phrase_parse(pos_begin, pos_end,
                                 faceParser, skipper, faces);
       std::cout << "r: " << r << " faces: " << faces.size() << std::endl;
@@ -214,7 +218,7 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
       fwd_begin =
          boost::spirit::make_default_multi_pass(base_iterator_type(ownersIn));
 
-      pos_begin = pos_iterator_type(fwd_begin, fwd_end, ownersName);
+      pos_begin = pos_iterator_type(fwd_begin, fwd_end, ownersName.str());
       r = qi::phrase_parse(pos_begin, pos_end,
                            ownersParser, skipper, owners);
       std::cout << "r: " << r << " owners: " << owners.size() << std::endl;
@@ -222,20 +226,30 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
       fwd_begin =
          boost::spirit::make_default_multi_pass(base_iterator_type(neighborsIn));
 
-      pos_begin = pos_iterator_type(fwd_begin, fwd_end, neighborsName);
+      pos_begin = pos_iterator_type(fwd_begin, fwd_end, neighborsName.str());
       r = qi::phrase_parse(pos_begin, pos_end,
                            neighborsParser, skipper, neighbors);
       std::cout << "r: " << r << " neighbors: " << neighbors.size() << std::endl;
 
-      /*
-      if (r) {
-         std::vector<vistle::Vector>::iterator i;
+      vistle::Polygons *polygons = vistle::Polygons::create();
+      polygons->setBlock(rank);
+      polygons->setTimestep(0);
+      for (size_t p = 0; p < points.size(); p ++) {
 
-         for (i = points.begin(); i != points.end(); i ++)
-            std::cout << "(" << i->x << ", " << i->y << ", " << i->z << ")"
-                      << std::endl;
+         polygons->x->push_back(points[p].x);
+         polygons->y->push_back(points[p].y);
+         polygons->z->push_back(points[p].z);
       }
-      */
+
+      for (size_t f = 0; f < faces.size(); f ++) {
+
+         polygons->el->push_back(polygons->cl->size());
+         std::vector<int>::iterator i;
+         for (i = faces[f].begin(); i != faces[f].end(); i ++)
+            polygons->cl->push_back(*i);
+      }
+
+      return polygons;
 
    } catch(const qi::expectation_failure<pos_iterator_type>& e) {
 
@@ -253,8 +267,8 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
 
 bool ReadFOAM::compute() {
 
-   vistle::Object * object = load(getFileParameter("filename"));
-   (void) object;
+   vistle::Object *object = load(getFileParameter("filename"));
+   addObject("grid_out", object);
 
    return true;
 }

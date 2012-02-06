@@ -284,11 +284,14 @@ int main(int argc, char ** argv) {
 #endif
 
 #if 1
-   enum { READ = 1 };
+   enum { READ = 1, RENDERER };
    spawn(comm, rank, READ, "ReadFOAM");
+   spawn(comm, rank, RENDERER, "OSGRenderer");
 
    setParam(comm, rank, READ, "filename",
             "/data/OpenFOAM/PumpTurbine/transient");
+
+   connect(comm, rank, READ, "grid_out", RENDERER, "data_in");
 
    compute(comm, rank, READ);
 #endif
