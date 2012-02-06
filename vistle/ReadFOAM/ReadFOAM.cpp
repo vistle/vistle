@@ -249,6 +249,27 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
             polygons->cl->push_back(*i);
       }
 
+      std::map<size_t, std::vector<size_t> > cells;
+      for (size_t face = 0; face < owners.size(); face ++) {
+
+         std::map<size_t, std::vector<size_t> >::iterator i = cells.find(owners[face]);
+         if (i == cells.end()) {
+            std::vector<size_t> a;
+            a.push_back(face);
+            cells[owners[face]] = a;
+         } else
+            i->second.push_back(face);
+      }
+
+      for (size_t neighbor = 0; neighbor < neighbors.size(); neighbor ++) {
+
+         cells[neighbors[neighbor]].push_back(neighbor);
+      }
+      /*
+      for (size_t index = 0; index < cells.size(); index ++)
+         printf(" %ld", cells[index].size());
+      printf("\n");
+      */
       return polygons;
 
    } catch(const qi::expectation_failure<pos_iterator_type>& e) {
