@@ -119,7 +119,7 @@ struct FaceParser: qi::grammar<Iterator, std::vector<std::vector<int> >(),
    }
 
    qi::rule<Iterator, std::vector<std::vector<int> >(), skipper<Iterator> > start;
-   qi::rule<Iterator, std::vector<int>, skipper<Iterator> > term;
+   qi::rule<Iterator, std::vector<int>(), skipper<Iterator> > term;
 };
 
 template <typename Iterator>
