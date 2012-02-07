@@ -103,7 +103,7 @@ struct PointParser: qi::grammar<Iterator, std::vector<vistle::Vector>(),
 };
 
 template <typename Iterator>
-struct FaceParser: qi::grammar<Iterator, std::vector<std::vector<int> >(),
+struct FaceParser: qi::grammar<Iterator, std::vector<std::vector<size_t> >(),
                                skipper<Iterator> > {
 
    FaceParser(): FaceParser::base_type(start) {
@@ -119,12 +119,12 @@ struct FaceParser: qi::grammar<Iterator, std::vector<std::vector<int> >(),
          ;
    }
 
-   qi::rule<Iterator, std::vector<std::vector<int> >(), skipper<Iterator> > start;
-   qi::rule<Iterator, std::vector<int>(), skipper<Iterator> > term;
+   qi::rule<Iterator, std::vector<std::vector<size_t> >(), skipper<Iterator> > start;
+   qi::rule<Iterator, std::vector<size_t>(), skipper<Iterator> > term;
 };
 
 template <typename Iterator>
-struct IntParser: qi::grammar<Iterator, std::vector<int>(),
+struct IntParser: qi::grammar<Iterator, std::vector<size_t>(),
                                skipper<Iterator> > {
 
    IntParser(): IntParser::base_type(start) {
@@ -138,9 +138,162 @@ struct IntParser: qi::grammar<Iterator, std::vector<int>(),
          ;
    }
 
-   qi::rule<Iterator, std::vector<int>(), skipper<Iterator> > start;
-   qi::rule<Iterator, int(), skipper<Iterator> > term;
+   qi::rule<Iterator, std::vector<size_t>(), skipper<Iterator> > start;
+   qi::rule<Iterator, size_t(), skipper<Iterator> > term;
 };
+
+/*
+void ReadFOAM::getCellVertices(const size_t cell,
+                          const std::map<size_t, std::vector<size_t> > & cells,
+                               const std::vector<std::vector<int> > & faces,
+                               std::vector<size_t> & vertices) {
+
+   std::set<size_t> vset;
+
+   std::map<size_t, std::vector<size_t> >::const_iterator ci =
+      cells.find(cell);
+   if (ci != cells.end()) {
+      std::vector<size_t>::const_iterator fi;
+      for (fi = ci->second.begin(); fi != ci->second.end(); fi ++) {
+
+         size_t face = *fi;
+         std::vector<int>::const_iterator ni;
+         for (ni = faces[face].begin(); ni != faces[face].end(); ni ++) {
+            if (vset.find(*ni) == vset.end()) {
+               //vset.insert(*ni);
+               vertices.push_back(*ni);
+            }
+         }
+      }
+   }
+}
+*/
+
+size_t getFirstFace(size_t cell,
+              const std::vector<std::vector<size_t> > & faces,
+              const std::map<size_t, std::vector<size_t> > & cellFaceMapping,
+              const std::map<size_t, std::vector<size_t> > & cellFaceNeighbors,
+              std::vector<size_t> & faceIndices) {
+
+   std::map<size_t, std::vector<size_t> >::const_iterator cellFaces =
+      cellFaceMapping.find(cell);
+
+   if (cellFaces != cellFaceMapping.end()) {
+
+      std::vector<size_t>::const_iterator i = cellFaces->second.begin();
+      if (i != cellFaces->second.end()) {
+
+         std::vector<size_t>::const_iterator face;
+         for (face = faces[*i].begin(); face != faces[*i].end(); face ++)
+            faceIndices.push_back(*face);
+
+         return *i;
+      }
+   }
+
+   return -1;
+}
+
+int compareFaces(const std::vector<size_t> & a,
+                 const std::vector<size_t> & b) {
+
+   int num = 0;
+   std::vector<size_t>::const_iterator ai, bi;
+
+   for (ai = a.begin(); ai != a.end(); ai ++)
+      for (bi = b.begin(); bi != b.end(); bi ++)
+         if (*ai == *bi)
+            num ++;
+
+   return num;
+}
+
+bool inFace(const size_t vertexA, const size_t vertexB,
+            const std::vector<size_t> & faceIndices) {
+
+   bool containsA = false;
+   bool containsB = false;
+
+   std::vector<size_t>::const_iterator i;
+   for (i = faceIndices.begin(); i != faceIndices.end(); i ++) {
+
+      if (*i == vertexA)
+         containsA = true;
+
+      if (*i == vertexB)
+         containsB = true;
+   }
+
+   return (containsA && containsB);
+}
+
+size_t getOppositeVertexInFace(const size_t vertex, const size_t cell,
+                     const std::vector<std::vector<size_t> > & faces,
+                     const std::vector<size_t> & faceIndices,
+                     const std::map<size_t, std::vector<size_t> > & cellFaceMapping,
+                     const std::map<size_t, std::vector<size_t> > & cellFaceNeighbors) {
+
+   std::set<size_t> shared;
+   std::vector<size_t> cellFaces;
+   std::map<size_t, std::vector<size_t> >::const_iterator ci =
+      cellFaceMapping.find(cell);
+   if (ci != cellFaceMapping.end())
+      std::copy(ci->second.begin(), ci->second.end(), std::back_inserter(cellFaces));
+   ci = cellFaceNeighbors.find(cell);
+   if (ci != cellFaceNeighbors.end())
+      std::copy(ci->second.begin(), ci->second.end(), std::back_inserter(cellFaces));
+
+   std::vector<size_t>::const_iterator i;
+   for (i = faceIndices.begin(); i != faceIndices.end(); i ++) {
+
+      std::vector<size_t>::const_iterator f;
+      for (f = cellFaces.begin(); f != cellFaces.end(); f ++) {
+
+         if (inFace(vertex, *i, faces[*f])) {
+            if (shared.find(*i) == shared.end())
+               shared.insert(*i);
+            else
+               return *i;
+         }
+      }
+   }
+
+   return -1;
+}
+
+size_t getOppositeFace(size_t cell, size_t face,
+              const std::vector<std::vector<size_t> > & faces,
+              const std::map<size_t, std::vector<size_t> > & cellFaceMapping,
+              const std::map<size_t, std::vector<size_t> > & cellFaceNeighbors,
+                     std::vector<size_t> & faceIndices,
+                     std::vector<size_t> & oppositeFaceIndices) {
+
+   std::vector<size_t> cellFaces;
+   std::map<size_t, std::vector<size_t> >::const_iterator ci =
+      cellFaceMapping.find(cell);
+   if (ci != cellFaceMapping.end())
+      std::copy(ci->second.begin(), ci->second.end(), std::back_inserter(cellFaces));
+   ci = cellFaceNeighbors.find(cell);
+   if (ci != cellFaceNeighbors.end())
+      std::copy(ci->second.begin(), ci->second.end(), std::back_inserter(cellFaces));
+
+   std::vector<size_t>::const_iterator i;
+   for (i = cellFaces.begin(); i != cellFaces.end(); i ++) {
+
+      int num = compareFaces(faceIndices, faces[*i]);
+      if (num == 0) {
+         for (size_t index = 0; index < faceIndices.size(); index ++) {
+            size_t v = getOppositeVertexInFace(faceIndices[index], cell, faces,
+                                               faces[*i], cellFaceMapping,
+                                               cellFaceNeighbors);
+            oppositeFaceIndices.push_back(v);
+         }
+         return *i;
+      }
+   }
+
+   return -1;
+}
 
 vistle::Object * ReadFOAM::load(const std::string & casedir) {
 
@@ -181,9 +334,9 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
    neighborsIn.push(neighborsFile);
 
    std::vector<vistle::Vector> points;
-   std::vector<std::vector<int> > faces;
-   std::vector<int> owners;
-   std::vector<int> neighbors;
+   std::vector<std::vector<size_t> > faces;
+   std::vector<size_t> owners;
+   std::vector<size_t> neighbors;
 
    typedef std::istreambuf_iterator<char> base_iterator_type;
    typedef boost::spirit::multi_pass<base_iterator_type> forward_iterator_type;
@@ -231,6 +384,7 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
                            neighborsParser, skipper, neighbors);
       std::cout << "r: " << r << " neighbors: " << neighbors.size() << std::endl;
 
+      /*
       vistle::Polygons *polygons = vistle::Polygons::create();
       polygons->setBlock(rank);
       polygons->setTimestep(0);
@@ -244,33 +398,73 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
       for (size_t f = 0; f < faces.size(); f ++) {
 
          polygons->el->push_back(polygons->cl->size());
-         std::vector<int>::iterator i;
+         std::vector<size_t>::iterator i;
          for (i = faces[f].begin(); i != faces[f].end(); i ++)
             polygons->cl->push_back(*i);
       }
+      */
 
-      std::map<size_t, std::vector<size_t> > cells;
+      std::map<size_t, std::vector<size_t> > cellFaceMapping;
       for (size_t face = 0; face < owners.size(); face ++) {
 
-         std::map<size_t, std::vector<size_t> >::iterator i = cells.find(owners[face]);
-         if (i == cells.end()) {
+         std::map<size_t, std::vector<size_t> >::iterator i =
+            cellFaceMapping.find(owners[face]);
+         if (i == cellFaceMapping.end()) {
             std::vector<size_t> a;
             a.push_back(face);
-            cells[owners[face]] = a;
+            cellFaceMapping[owners[face]] = a;
          } else
             i->second.push_back(face);
       }
 
-      for (size_t neighbor = 0; neighbor < neighbors.size(); neighbor ++) {
+      std::map<size_t, std::vector<size_t> > cellFaceNeighbors;
+      for (size_t face = 0; face < neighbors.size(); face ++) {
 
-         cells[neighbors[neighbor]].push_back(neighbor);
+         std::map<size_t, std::vector<size_t> >::iterator i =
+            cellFaceNeighbors.find(neighbors[face]);
+         if (i == cellFaceNeighbors.end()) {
+            std::vector<size_t> a;
+            a.push_back(face);
+            cellFaceNeighbors[neighbors[face]] = a;
+         } else
+            i->second.push_back(face);
       }
+
       /*
-      for (size_t index = 0; index < cells.size(); index ++)
-         printf(" %ld", cells[index].size());
-      printf("\n");
+      for (size_t neighbor = 0; neighbor < neighbors.size(); neighbor ++) {
+         cellFaceMapping[neighbors[neighbor]].push_back(neighbor);
+      }
       */
-      return polygons;
+      vistle::UnstructuredGrid *usg = vistle::UnstructuredGrid::create();
+      usg->setBlock(rank);
+      usg->setTimestep(0);
+      for (size_t p = 0; p < points.size(); p ++) {
+
+         usg->x->push_back(points[p].x);
+         usg->y->push_back(points[p].y);
+         usg->z->push_back(points[p].z);
+      }
+
+      for (size_t cell = 0; cell < cellFaceMapping.size(); cell ++) {
+
+         std::vector<size_t> faceIndices;
+         std::vector<size_t> oppositeFaceIndices;
+         size_t face = getFirstFace(cell, faces, cellFaceMapping,
+                                    cellFaceNeighbors, faceIndices);
+
+         getOppositeFace(cell, face, faces, cellFaceMapping,
+                         cellFaceNeighbors, faceIndices,
+                         oppositeFaceIndices);
+
+         usg->tl->push_back(vistle::UnstructuredGrid::HEXAHEDRON);
+         usg->el->push_back(usg->cl->size());
+         for (size_t index = 0; index < faceIndices.size(); index ++)
+            usg->cl->push_back(faceIndices[index]);
+         for (size_t index = 0; index < oppositeFaceIndices.size(); index ++)
+            usg->cl->push_back(oppositeFaceIndices[index]);
+      }
+
+      return usg;
 
    } catch(const qi::expectation_failure<pos_iterator_type>& e) {
 

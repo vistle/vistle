@@ -1,6 +1,8 @@
 #ifndef READFOAM_H
 #define READFOAM_H
 
+#include <vector>
+#include <set>
 #include <string.h>
 #include "module.h"
 
@@ -11,10 +13,6 @@ class ReadFOAM: public vistle::Module {
    ~ReadFOAM();
 
  private:
-   /*
-   vistle::Object * readObject(const int fd, const iteminfo * info,
-                               uint64_t start);
-   */
    vistle::Object * load(const std::string & casedir);
    virtual bool compute();
 };
