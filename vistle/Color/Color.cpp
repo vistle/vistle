@@ -60,6 +60,9 @@ Color::Color(int rank, int size, int moduleID)
 
    createInputPort("data_in");
    createOutputPort("data_out");
+
+   addFloatParameter("min", 0.0);
+   addFloatParameter("max", 0.0);
 }
 
 Color::~Color() {
@@ -168,7 +171,12 @@ bool Color::compute() {
       float min = FLT_MAX;
       float max = -FLT_MAX;
 
-      getMinMax(objects.front(), min, max);
+      if (getFloatParameter("min") == getFloatParameter("max"))
+         getMinMax(objects.front(), min, max);
+      else {
+         min = getFloatParameter("min");
+         max = getFloatParameter("max");
+      }
 
       vistle::Object *out = addTexture(objects.front(), min, max, cmap);
       if (out)

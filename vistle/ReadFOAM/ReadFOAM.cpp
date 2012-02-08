@@ -53,6 +53,7 @@ ReadFOAM::ReadFOAM(int rank, int size, int moduleID)
    : Module("ReadFOAM", rank, size, moduleID) {
 
    createOutputPort("grid_out");
+   createOutputPort("p_out");
    addFileParameter("filename", "");
 }
 
@@ -72,6 +73,8 @@ struct skipper: qi::grammar<Iterator> {
          | "/*" >> *(char_ - "*/") >> "*/"
          | "//" >> *(ascii::char_ - qi::eol) >> qi::eol
          | "FoamFile" >> *ascii::space >> '{' >> *(ascii::char_ - '}') >> '}'
+         | "dimensions" >> *(ascii::char_ - qi::eol) >> qi::eol
+         | "internalField" >> *(ascii::char_ - qi::eol) >> qi::eol
          ;
    }
 
@@ -142,32 +145,44 @@ struct IntParser: qi::grammar<Iterator, std::vector<size_t>(),
    qi::rule<Iterator, size_t(), skipper<Iterator> > term;
 };
 
-/*
-void ReadFOAM::getCellVertices(const size_t cell,
-                          const std::map<size_t, std::vector<size_t> > & cells,
-                               const std::vector<std::vector<int> > & faces,
-                               std::vector<size_t> & vertices) {
+template <typename Iterator>
+struct ScalarParser: qi::grammar<Iterator, std::vector<float>(),
+                                 skipper<Iterator> > {
 
-   std::set<size_t> vset;
+   ScalarParser(): ScalarParser::base_type(start) {
 
-   std::map<size_t, std::vector<size_t> >::const_iterator ci =
-      cells.find(cell);
-   if (ci != cells.end()) {
-      std::vector<size_t>::const_iterator fi;
-      for (fi = ci->second.begin(); fi != ci->second.end(); fi ++) {
+      start =
+         boost::spirit::omit[qi::int_] >> boost::spirit::omit[*ascii::space]
+                                       >> '(' >> *term >> ')'
+         ;
 
-         size_t face = *fi;
-         std::vector<int>::const_iterator ni;
-         for (ni = faces[face].begin(); ni != faces[face].end(); ni ++) {
-            if (vset.find(*ni) == vset.end()) {
-               //vset.insert(*ni);
-               vertices.push_back(*ni);
-            }
-         }
-      }
+      term = qi::float_
+         ;
    }
-}
-*/
+
+   qi::rule<Iterator, std::vector<float>(), skipper<Iterator> > start;
+   qi::rule<Iterator, float(), skipper<Iterator> > term;
+};
+
+template <typename Iterator>
+struct VectorParser: qi::grammar<Iterator, std::vector<std::vector<float> >(),
+                                 skipper<Iterator> > {
+
+   VectorParser(): VectorParser::base_type(start) {
+
+      start =
+         boost::spirit::omit[qi::int_] >> boost::spirit::omit[*ascii::space]
+                                       >> '(' >> *term >> ')'
+         ;
+
+      term =
+         '(' >> +qi::float_ >> ')'
+         ;
+   }
+
+   qi::rule<Iterator, std::vector<std::vector<float> >(), skipper<Iterator> > start;
+   qi::rule<Iterator, std::vector<float>(), skipper<Iterator> > term;
+};
 
 size_t getFirstFace(size_t cell,
               const std::vector<std::vector<size_t> > & faces,
@@ -295,27 +310,35 @@ size_t getOppositeFace(size_t cell, size_t face,
    return -1;
 }
 
-vistle::Object * ReadFOAM::load(const std::string & casedir) {
+std::vector<std::pair<std::string, vistle::Object *> >
+ReadFOAM::load(const std::string & casedir, const size_t partition) {
+
+   std::vector<std::pair<std::string, vistle::Object *> > objects;
 
    std::stringstream pointsName;
-   pointsName << casedir << "/processor" << rank << "/constant/polyMesh/points.gz";
+   pointsName << casedir << "/processor" << partition << "/constant/polyMesh/points.gz";
    std::ifstream pointsFile(pointsName.str().c_str(),
                             std::ios_base::in | std::ios_base::binary);
 
    std::stringstream facesName;
-   facesName << casedir << "/processor" << rank << "/constant/polyMesh/faces.gz";
+   facesName << casedir << "/processor" << partition << "/constant/polyMesh/faces.gz";
    std::ifstream facesFile(facesName.str().c_str(),
                            std::ios_base::in | std::ios_base::binary);
 
    std::stringstream ownersName;
-   ownersName << casedir << "/processor" << rank << "/constant/polyMesh/owner.gz";
+   ownersName << casedir << "/processor" << partition << "/constant/polyMesh/owner.gz";
    std::ifstream ownersFile(ownersName.str().c_str(),
                             std::ios_base::in | std::ios_base::binary);
 
    std::stringstream neighborsName;
-   neighborsName << casedir << "/processor" << rank << "/constant/polyMesh/neighbour.gz";
+   neighborsName << casedir << "/processor" << partition << "/constant/polyMesh/neighbour.gz";
    std::ifstream neighborsFile(neighborsName.str().c_str(),
                                std::ios_base::in | std::ios_base::binary);
+
+   std::stringstream pressureName;
+   pressureName << casedir << "/processor" << partition << "/0.3238435/p.gz";
+   std::ifstream pressureFile(pressureName.str().c_str(),
+                              std::ios_base::in | std::ios_base::binary);
 
    boost::iostreams::filtering_istream pointsIn;
    pointsIn.push(boost::iostreams::gzip_decompressor());
@@ -333,10 +356,16 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
    neighborsIn.push(boost::iostreams::gzip_decompressor());
    neighborsIn.push(neighborsFile);
 
+   boost::iostreams::filtering_istream pressureIn;
+   pressureIn.push(boost::iostreams::gzip_decompressor());
+   pressureIn.push(pressureFile);
+
    std::vector<vistle::Vector> points;
    std::vector<std::vector<size_t> > faces;
    std::vector<size_t> owners;
    std::vector<size_t> neighbors;
+
+   std::vector<float> pressure;
 
    typedef std::istreambuf_iterator<char> base_iterator_type;
    typedef boost::spirit::multi_pass<base_iterator_type> forward_iterator_type;
@@ -347,6 +376,8 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
    struct FaceParser<pos_iterator_type> faceParser;
    struct IntParser<pos_iterator_type> ownersParser;
    struct IntParser<pos_iterator_type> neighborsParser;
+
+   struct ScalarParser<pos_iterator_type> pressureParser;
 
    try {
       forward_iterator_type fwd_begin =
@@ -360,49 +391,37 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
                                 pointParser, skipper, points);
       std::cout << "r: " << r << " points: " << points.size() << std::endl;
 
+      // faces
       fwd_begin =
          boost::spirit::make_default_multi_pass(base_iterator_type(facesIn));
-
       pos_begin = pos_iterator_type(fwd_begin, fwd_end, facesName.str());
       r = qi::phrase_parse(pos_begin, pos_end,
                                 faceParser, skipper, faces);
       std::cout << "r: " << r << " faces: " << faces.size() << std::endl;
 
+      // owners
       fwd_begin =
          boost::spirit::make_default_multi_pass(base_iterator_type(ownersIn));
-
       pos_begin = pos_iterator_type(fwd_begin, fwd_end, ownersName.str());
       r = qi::phrase_parse(pos_begin, pos_end,
                            ownersParser, skipper, owners);
       std::cout << "r: " << r << " owners: " << owners.size() << std::endl;
 
+      // neighbors
       fwd_begin =
          boost::spirit::make_default_multi_pass(base_iterator_type(neighborsIn));
-
       pos_begin = pos_iterator_type(fwd_begin, fwd_end, neighborsName.str());
       r = qi::phrase_parse(pos_begin, pos_end,
                            neighborsParser, skipper, neighbors);
       std::cout << "r: " << r << " neighbors: " << neighbors.size() << std::endl;
 
-      /*
-      vistle::Polygons *polygons = vistle::Polygons::create();
-      polygons->setBlock(rank);
-      polygons->setTimestep(0);
-      for (size_t p = 0; p < points.size(); p ++) {
+      // pressure
+      fwd_begin =
+         boost::spirit::make_default_multi_pass(base_iterator_type(pressureIn));
+      pos_begin = pos_iterator_type(fwd_begin, fwd_end, pressureName.str());
+      r = qi::phrase_parse(pos_begin, pos_end, pressureParser, skipper, pressure);
+      std::cout << "r: " << r << " pressure: " << pressure.size() << std::endl;
 
-         polygons->x->push_back(points[p].x);
-         polygons->y->push_back(points[p].y);
-         polygons->z->push_back(points[p].z);
-      }
-
-      for (size_t f = 0; f < faces.size(); f ++) {
-
-         polygons->el->push_back(polygons->cl->size());
-         std::vector<size_t>::iterator i;
-         for (i = faces[f].begin(); i != faces[f].end(); i ++)
-            polygons->cl->push_back(*i);
-      }
-      */
 
       std::map<size_t, std::vector<size_t> > cellFaceMapping;
       for (size_t face = 0; face < owners.size(); face ++) {
@@ -430,20 +449,23 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
             i->second.push_back(face);
       }
 
-      /*
-      for (size_t neighbor = 0; neighbor < neighbors.size(); neighbor ++) {
-         cellFaceMapping[neighbors[neighbor]].push_back(neighbor);
-      }
-      */
       vistle::UnstructuredGrid *usg = vistle::UnstructuredGrid::create();
-      usg->setBlock(rank);
+      usg->setBlock(partition);
       usg->setTimestep(0);
+
+      vistle::Vec<float> *pres = vistle::Vec<float>::create(points.size());
+      pres->setBlock(partition);
+      pres->setTimestep(0);
+
       for (size_t p = 0; p < points.size(); p ++) {
 
          usg->x->push_back(points[p].x);
          usg->y->push_back(points[p].y);
          usg->z->push_back(points[p].z);
       }
+
+      float *vertexPressure = new float[points.size()]();
+      char *numVertexPressure = new char[points.size()]();
 
       for (size_t cell = 0; cell < cellFaceMapping.size(); cell ++) {
 
@@ -458,15 +480,28 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
 
          usg->tl->push_back(vistle::UnstructuredGrid::HEXAHEDRON);
          usg->el->push_back(usg->cl->size());
-         for (size_t index = 0; index < faceIndices.size(); index ++)
+         for (size_t index = 0; index < faceIndices.size(); index ++) {
             usg->cl->push_back(faceIndices[index]);
-         for (size_t index = 0; index < oppositeFaceIndices.size(); index ++)
+            vertexPressure[faceIndices[index]] += pressure[cell];
+            numVertexPressure[faceIndices[index]]++;
+         }
+         for (size_t index = 0; index < oppositeFaceIndices.size(); index ++) {
             usg->cl->push_back(oppositeFaceIndices[index]);
+            vertexPressure[oppositeFaceIndices[index]] += pressure[cell];
+            numVertexPressure[oppositeFaceIndices[index]]++;
+         }
       }
 
-      return usg;
+      float *pressureField = &((*pres->x)[0]);
+      for (size_t p = 0; p < points.size(); p ++)
+         if (numVertexPressure[p] > 0)
+            pressureField[p] = vertexPressure[p] / numVertexPressure[p];
 
-   } catch(const qi::expectation_failure<pos_iterator_type>& e) {
+      objects.push_back(std::make_pair("grid_out", usg));
+      objects.push_back(std::make_pair("p_out", pres));
+      return objects;
+
+   } catch (const qi::expectation_failure<pos_iterator_type>& e) {
 
       const classic::file_position_base<std::string>& pos =
          e.first.get_position();
@@ -477,13 +512,21 @@ vistle::Object * ReadFOAM::load(const std::string & casedir) {
          std::setw(pos.column) << " " << "^- here" << std::endl;
    }
 
-   return NULL;
+   return objects;
 }
 
 bool ReadFOAM::compute() {
 
-   vistle::Object *object = load(getFileParameter("filename"));
-   addObject("grid_out", object);
+   for (int partition = 0; partition < 32; partition ++) {
+      if (partition % size == rank) {
+         std::vector<std::pair<std::string, vistle::Object *> > objects =
+            load(getFileParameter("filename"), partition);
+
+         std::vector<std::pair<std::string, vistle::Object *> >::iterator i;
+         for (i = objects.begin(); i != objects.end(); i ++)
+            addObject(i->first, i->second);
+      }
+   }
 
    return true;
 }

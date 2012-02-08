@@ -58,6 +58,7 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    void render();
    void distributeAndHandleEvents();
    void distributeModelviewMatrix();
+   void distributeProjectionMatrix();
 
    osg::Group *scene;
    std::map<std::string, osg::ref_ptr<osg::Geode> > nodes;

@@ -284,16 +284,35 @@ int main(int argc, char ** argv) {
 #endif
 
 #if 1
-   enum { READ = 1, SHOWUSG, RENDERER };
+   enum { READ = 1, SHOWUSG, RENDERER, CUTSURF, COLOR, COLLECT };
    spawn(comm, rank, READ, "ReadFOAM");
    spawn(comm, rank, SHOWUSG, "ShowUSG");
    spawn(comm, rank, RENDERER, "OSGRenderer");
 
-   setParam(comm, rank, READ, "filename",
-            "/tmp/transient");
+   spawn(comm, rank, CUTSURF, "CuttingSurface");
+   spawn(comm, rank, COLOR, "Color");
+   spawn(comm, rank, COLLECT, "Collect");
 
-   connect(comm, rank, READ, "grid_out", SHOWUSG, "grid_in");
-   connect(comm, rank, SHOWUSG, "grid_out", RENDERER, "data_in");
+   setParam(comm, rank, READ, "filename",
+            "/data/OpenFOAM/PumpTurbine/transient");
+
+   setParam(comm, rank, CUTSURF, "distance", 0.02);
+   setParam(comm, rank, CUTSURF, "normal", vistle::Vector(1.0, 0.0, 0.0));
+
+   setParam(comm, rank, COLOR, "min", -15.0);
+   setParam(comm, rank, COLOR, "max", 0.0);
+
+   //connect(comm, rank, READ, "grid_out", SHOWUSG, "grid_in");
+   connect(comm, rank, READ, "grid_out", CUTSURF, "grid_in");
+   connect(comm, rank, READ, "p_out", CUTSURF, "data_in");
+
+   connect(comm, rank, CUTSURF, "data_out", COLOR, "data_in");
+   connect(comm, rank, CUTSURF, "grid_out", COLLECT, "grid_in");
+
+   connect(comm, rank, COLOR, "data_out", COLLECT, "texture_in");
+   connect(comm, rank, COLLECT, "grid_out", RENDERER, "data_in");
+
+   //connect(comm, rank, SHOWUSG, "grid_out", RENDERER, "data_in");
 
    compute(comm, rank, READ);
 #endif

@@ -13,7 +13,7 @@ class ReadFOAM: public vistle::Module {
    ~ReadFOAM();
 
  private:
-   vistle::Object * load(const std::string & casedir);
+   std::vector<std::pair<std::string, vistle::Object *> > load(const std::string & casedir, const size_t partition);
    virtual bool compute();
 };
 

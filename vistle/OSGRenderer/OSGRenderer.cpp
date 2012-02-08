@@ -234,21 +234,23 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    pthread_setaffinity_np(pthread_self(), 1, &cpuset);
 #endif
 
-   IceTCommunicator icetComm;
-   IceTContext icetContext;
+   if (size > 1) {
+      IceTCommunicator icetComm;
+      IceTContext icetContext;
 
-   icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
-   icetContext = icetCreateContext(icetComm);
-   icetDestroyMPICommunicator(icetComm);
+      icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
+      icetContext = icetCreateContext(icetComm);
+      icetDestroyMPICommunicator(icetComm);
 
-   icetResetTiles();
-   icetAddTile(0, 0, 512, 512, 0);
-   icetStrategy(ICET_STRATEGY_REDUCE);
-   icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
-   icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-   icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+      icetResetTiles();
+      icetAddTile(0, 0, 512, 512, 0);
+      icetStrategy(ICET_STRATEGY_REDUCE);
+      icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+      icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+      icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
-   icetDrawCallback(cb);
+      icetDrawCallback(cb);
+   }
 
    setUpViewInWindow(0, 0, 512, 512);
    setLightingMode(osgViewer::Viewer::HEADLIGHT);
@@ -258,8 +260,11 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
 
    realize();
    setThreadingModel(SingleThreaded);
+   /*
+   if (size != 1)
    getCamera()->setComputeNearFarMode(osgUtil::CullVisitor::DO_NOT_COMPUTE_NEAR_FAR);
-
+   */
+   //getCamera()->setProjectionMatrixAsFrustum(-1.0, 1.0, -1.0, 1.0, 0.1, 10.0);
    scene = new osg::Group();
 
    osg::ref_ptr<osg::Geode> geode = new osg::Geode();
@@ -357,10 +362,12 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    lightModel = new osg::LightModel;
    lightModel->setTwoSided(true);
 
-   Contexts ctx;
-   getContexts(ctx);
-   for (Contexts::iterator c = ctx.begin(); c != ctx.end(); c ++)
-      (*c)->add(new SyncOperation(rank));
+   if (size > 1) {
+      Contexts ctx;
+      getContexts(ctx);
+      for (Contexts::iterator c = ctx.begin(); c != ctx.end(); c ++)
+         (*c)->add(new SyncOperation(rank));
+   }
 }
 
 OSGRenderer::~OSGRenderer() {
@@ -436,7 +443,40 @@ void OSGRenderer::distributeAndHandleEvents() {
    }
 }
 
+void OSGRenderer::distributeProjectionMatrix() {
+
+   if (size == 1)
+      return;
+
+   double all[6 * size];
+   double proj[6 * size];
+   getCamera()->getProjectionMatrixAsFrustum(proj[0], proj[1], proj[2],
+                                             proj[3], proj[4], proj[5]);
+
+   MPI_Allgather(proj, 6, MPI_DOUBLE, all, 6, MPI_DOUBLE, MPI_COMM_WORLD);
+
+   // compute minimum of left, bottom, zNear
+   // compute maximum of right, top, zFar
+   for (size_t item = 0; item < 3; item ++) {
+      for (size_t index = 0; index < size; index ++) {
+         if (all[index * 6 + item * 2] < proj[item * 2])
+            proj[item * 2] = all[index * 6 + item * 2];
+         if (all[index * 6 + item * 2 + 1] > proj[item * 2 + 1])
+            proj[item * 2 + 1] = all[index * 6 + item * 2 + 1];
+      }
+   }
+   /*
+   printf("%d after  %f %f %f %f %f %f\n", rank,
+          proj[0], proj[1], proj[2], proj[3], proj[4], proj[5]);
+   */
+   getCamera()->setProjectionMatrixAsFrustum(proj[0], proj[1], proj[2], proj[3],
+                                             proj[4], proj[5]);
+}
+
 void OSGRenderer::distributeModelviewMatrix() {
+
+   if (size == 1)
+      return;
 
    float matrix[16];
 
@@ -449,8 +489,7 @@ void OSGRenderer::distributeModelviewMatrix() {
             matrix[x + y * 4] = view(x, y);
    }
 
-   if (size > 1)
-      MPI_Bcast(matrix, 16, MPI_FLOAT, 0, MPI_COMM_WORLD);
+   MPI_Bcast(matrix, 16, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
    if (rank != 0) {
 
@@ -470,8 +509,10 @@ void OSGRenderer::render() {
 
    distributeAndHandleEvents();
    distributeModelviewMatrix();
+   //distributeProjectionMatrix();
 
    updateTraversal();
+
    renderingTraversals();
 }
 
