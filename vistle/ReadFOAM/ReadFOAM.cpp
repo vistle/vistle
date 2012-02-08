@@ -316,7 +316,7 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
    std::vector<std::pair<std::string, vistle::Object *> > objects;
 
    std::stringstream pointsName;
-   pointsName << casedir << "/processor" << partition << "/constant/polyMesh/points.gz";
+   pointsName << casedir << "/processor" << partition << "/0.3238435/polyMesh/points.gz";
    std::ifstream pointsFile(pointsName.str().c_str(),
                             std::ios_base::in | std::ios_base::binary);
 
