@@ -21,6 +21,7 @@
 #include <boost/iostreams/filter/gzip.hpp>
 
 #include <boost/spirit/include/qi.hpp>
+#include <boost/spirit/include/qi_no_skip.hpp>
 #include <boost/spirit/include/support_multi_pass.hpp>
 #include <boost/spirit/include/classic_position_iterator.hpp>
 
@@ -34,6 +35,7 @@
 #include <boost/fusion/include/iterator.hpp>
 #include <boost/fusion/container/vector/vector_fwd.hpp>
 #include <boost/fusion/include/vector_fwd.hpp>
+#include <boost/fusion/include/std_pair.hpp>
 
 #include "object.h"
 
@@ -47,7 +49,48 @@ namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
 namespace classic = boost::spirit::classic;
 
+using boost::spirit::omit;
+
 MODULE_MAIN(ReadFOAM)
+
+class Boundary {
+public:
+   Boundary(const size_t f, const size_t t, const size_t n, const size_t s)
+      : from(f), to(t), numFaces(n), startFace(s) {
+
+   }
+
+   const size_t from;
+   const size_t to;
+   const size_t numFaces;
+   const size_t startFace;
+};
+
+
+class Boundaries {
+public:
+   Boundaries(const size_t f): from(f) { }
+
+   bool isBoundaryFace(const size_t face) {
+
+      std::vector<Boundary *>::iterator i;
+      for (i = boundaries.begin(); i != boundaries.end(); i ++) {
+
+         if (face >= (*i)->startFace && face < (*i)->startFace + (*i)->numFaces)
+            return true;
+      }
+      return false;
+   }
+
+   void addBoundary(Boundary *b) {
+
+      boundaries.push_back(b);
+   }
+
+private:
+   const size_t from;
+   std::vector<Boundary *> boundaries;
+};
 
 ReadFOAM::ReadFOAM(int rank, int size, int moduleID)
    : Module("ReadFOAM", rank, size, moduleID) {
@@ -65,12 +108,10 @@ template <typename Iterator>
 struct skipper: qi::grammar<Iterator> {
 
    skipper(): skipper::base_type(start) {
-      qi::char_type char_;
-      ascii::space_type space;
 
       start =
-         space
-         | "/*" >> *(char_ - "*/") >> "*/"
+         ascii::space
+         | "/*" >> *(ascii::char_ - "*/") >> "*/"
          | "//" >> *(ascii::char_ - qi::eol) >> qi::eol
          | "FoamFile" >> *ascii::space >> '{' >> *(ascii::char_ - '}') >> '}'
          | "dimensions" >> *(ascii::char_ - qi::eol) >> qi::eol
@@ -93,7 +134,7 @@ struct PointParser: qi::grammar<Iterator, std::vector<vistle::Vector>(),
    PointParser(): PointParser::base_type(start) {
 
       start =
-         boost::spirit::omit[qi::int_] >> '(' >> *term >> ')'
+         omit[qi::int_] >> '(' >> *term >> ')'
          ;
 
       term =
@@ -112,12 +153,12 @@ struct FaceParser: qi::grammar<Iterator, std::vector<std::vector<size_t> >(),
    FaceParser(): FaceParser::base_type(start) {
 
       start =
-         boost::spirit::omit[qi::int_]
+         omit[qi::int_]
          >> '(' >> *term >> ')'
          ;
 
       term =
-         boost::spirit::omit[qi::int_] >>
+         omit[qi::int_] >>
          '(' >> qi::int_ >> qi::int_ >> qi::int_ >> qi::int_ >> ')'
          ;
    }
@@ -133,7 +174,7 @@ struct IntParser: qi::grammar<Iterator, std::vector<size_t>(),
    IntParser(): IntParser::base_type(start) {
 
       start =
-         boost::spirit::omit[qi::int_] >> boost::spirit::omit[*ascii::space]
+         omit[qi::int_] >> omit[*ascii::space]
                                        >> '(' >> *term >> ')'
          ;
 
@@ -152,7 +193,7 @@ struct ScalarParser: qi::grammar<Iterator, std::vector<float>(),
    ScalarParser(): ScalarParser::base_type(start) {
 
       start =
-         boost::spirit::omit[qi::int_] >> boost::spirit::omit[*ascii::space]
+         omit[qi::int_] >> omit[*ascii::space]
                                        >> '(' >> *term >> ')'
          ;
 
@@ -171,7 +212,7 @@ struct VectorParser: qi::grammar<Iterator, std::vector<std::vector<float> >(),
    VectorParser(): VectorParser::base_type(start) {
 
       start =
-         boost::spirit::omit[qi::int_] >> boost::spirit::omit[*ascii::space]
+         omit[qi::int_] >> omit[*ascii::space]
                                        >> '(' >> *term >> ')'
          ;
 
@@ -183,6 +224,34 @@ struct VectorParser: qi::grammar<Iterator, std::vector<std::vector<float> >(),
    qi::rule<Iterator, std::vector<std::vector<float> >(), skipper<Iterator> > start;
    qi::rule<Iterator, std::vector<float>(), skipper<Iterator> > term;
 };
+
+template <typename Iterator>
+struct BoundaryParser
+   : qi::grammar<Iterator, std::map<std::string, std::map<std::string, std::string> >(),
+                 skipper<Iterator> >
+{
+   BoundaryParser()
+      : BoundaryParser::base_type(start)
+   {
+      start = omit[qi::int_] >> '(' >> +mapmap >> ')';
+      mapmap = +(qi::char_ - '{') >> '{' >> entrymap >> '}';
+      entrymap = +pair;
+      pair  = qi::lexeme[+qi::char_("a-zA-Z")] >> +(qi::char_ - ';') >> ';';
+   }
+
+   qi::rule<Iterator, std::map<std::string, std::map<std::string, std::string> >(),
+            skipper<Iterator> > start;
+
+   qi::rule<Iterator, std::pair<std::string, std::map<std::string, std::string> >(),
+            skipper<Iterator> > mapmap;
+
+   qi::rule<Iterator, std::map<std::string, std::string>(),
+            skipper<Iterator> > entrymap;
+
+   qi::rule<Iterator, std::pair<std::string, std::string>(),
+            skipper<Iterator> > pair;
+};
+
 
 size_t getFirstFace(size_t cell,
               const std::vector<std::vector<size_t> > & faces,
@@ -308,6 +377,46 @@ size_t getOppositeFace(size_t cell, size_t face,
    }
 
    return -1;
+}
+
+void ReadFOAM::parseBoundary(const std::string & casedir, const int partition) {
+
+   std::stringstream name;
+   //name << casedir << "/processor" << partition << "/constant/polyMesh/boundary";
+   name << "/tmp/boundary";
+   std::ifstream file(name.str().c_str(),
+                      std::ios_base::in | std::ios_base::binary);
+
+   boost::iostreams::filtering_istream in;
+   in.push(file);
+
+   typedef std::istreambuf_iterator<char> base_iterator_type;
+   typedef boost::spirit::multi_pass<base_iterator_type> forward_iterator_type;
+   typedef classic::position_iterator2<forward_iterator_type> pos_iterator_type;
+   forward_iterator_type fwd_begin =
+      boost::spirit::make_default_multi_pass(base_iterator_type(in));
+   forward_iterator_type fwd_end;
+   pos_iterator_type pos_begin(fwd_begin, fwd_end, name.str());
+   pos_iterator_type pos_end;
+
+   struct skipper<pos_iterator_type> skipper;
+
+   BoundaryParser<pos_iterator_type> p;
+   std::map<std::string, std::map<std::string, std::string> > boundaries;
+
+   bool r = qi::phrase_parse(pos_begin, pos_end,
+                             p, skipper, boundaries);
+
+   std::cout << "r: " << r << std::endl;
+
+   std::map<std::string, std::map<std::string, std::string> >::iterator top;
+   for (top = boundaries.begin(); top != boundaries.end(); top ++) {
+
+      std::cout << top->first << ":" << std::endl;
+      std::map<std::string, std::string>::iterator i;
+      for (i = top->second.begin(); i != top->second.end(); i ++)
+         std::cout << "    " << i->first << " => " << i->second << std::endl;
+   }
 }
 
 std::vector<std::pair<std::string, vistle::Object *> >
@@ -516,6 +625,8 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
 }
 
 bool ReadFOAM::compute() {
+
+   //parseBoundary(getFileParameter("filename"), 0);
 
    for (int partition = 0; partition < 32; partition ++) {
       if (partition % size == rank) {
