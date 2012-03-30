@@ -10,6 +10,8 @@
 
 #include "portmanager.h"
 
+namespace bi = boost::interprocess;
+
 namespace vistle {
 
 namespace message {
@@ -43,8 +45,7 @@ class Communicator {
    std::map<int, message::MessageQueue *> sendMessageQueue;
    std::map<int, message::MessageQueue *> receiveMessageQueue;
 
-   std::map<int, boost::interprocess::shared_memory_object *>
-      shmObjects;
+   std::map<int, bi::shared_memory_object *> shmObjects;
 
    PortManager portManager;
 };

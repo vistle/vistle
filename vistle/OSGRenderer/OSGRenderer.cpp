@@ -43,7 +43,8 @@ public:
 
       IceTDouble proj[16];
       IceTDouble mv[16];
-      IceTFloat bg[4] = { 51.0 / 255.0, 51.0 / 255.0, 102.0 / 255.0, 0.0 };
+      //IceTFloat bg[4] = { 51.0 / 255.0, 51.0 / 255.0, 102.0 / 255.0, 0.0 };
+      IceTFloat bg[4] = { 1.0, 1.0, 1.0, 1.0 };
 
       IceTImage image = icetDrawFrame(proj, mv, bg);
       IceTSizeType width = icetImageGetWidth(image);
@@ -252,18 +253,21 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
       icetDrawCallback(cb);
    }
 
-   setUpViewInWindow(0, 0, 512, 512);
+   setUpViewInWindow(0, 0, 1024, 1024);
    setLightingMode(osgViewer::Viewer::HEADLIGHT);
-
+   /*
    if (!getCameraManipulator() && getCamera()->getAllowEventFocus())
       setCameraManipulator(new osgGA::TrackballManipulator());
-
+   */
    realize();
    setThreadingModel(SingleThreaded);
-   /*
    if (size != 1)
-   getCamera()->setComputeNearFarMode(osgUtil::CullVisitor::DO_NOT_COMPUTE_NEAR_FAR);
-   */
+      getCamera()->setComputeNearFarMode(osgUtil::CullVisitor::DO_NOT_COMPUTE_NEAR_FAR);
+
+   getCamera()->setClearColor(osg::Vec4(1.0, 1.0, 1.0, 1.0));
+   getCamera()->setViewMatrixAsLookAt(osg::Vec3d(2.0, -1.0, 1.0),
+                                      osg::Vec3d(0.0, 0.0, -0.25),
+                                      osg::Vec3d(0.0, 0.0, 1.0));
    //getCamera()->setProjectionMatrixAsFrustum(-1.0, 1.0, -1.0, 1.0, 0.1, 10.0);
    scene = new osg::Group();
 
@@ -328,7 +332,7 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    view->setMatrix(osg::Matrix::identity());
    view->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
 
-   view->addChild(geode.get());
+   //view->addChild(geode.get());
    proj->addChild(view.get());
    addEventHandler(new ResizeHandler(proj, view));
 
@@ -482,11 +486,13 @@ void OSGRenderer::distributeModelviewMatrix() {
 
    if (rank == 0 && size > 1) {
 
-      const osg::Matrixd view = getCameraManipulator()->getMatrix();
+      if (getCameraManipulator()) {
+         const osg::Matrixd view = getCameraManipulator()->getMatrix();
 
-      for (int y = 0; y < 4; y ++)
-         for (int x = 0; x < 4; x ++)
-            matrix[x + y * 4] = view(x, y);
+         for (int y = 0; y < 4; y ++)
+            for (int x = 0; x < 4; x ++)
+               matrix[x + y * 4] = view(x, y);
+      }
    }
 
    MPI_Bcast(matrix, 16, MPI_FLOAT, 0, MPI_COMM_WORLD);
@@ -499,7 +505,8 @@ void OSGRenderer::distributeModelviewMatrix() {
          for (int x = 0; x < 4; x ++)
             view(x, y) = matrix[x + y * 4];
 
-      getCameraManipulator()->setByMatrix(osg::Matrix(view));
+      if (getCameraManipulator())
+         getCameraManipulator()->setByMatrix(osg::Matrix(view));
    }
 }
 

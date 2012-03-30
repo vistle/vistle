@@ -41,6 +41,9 @@
 
 #include "ReadFOAM.h"
 
+namespace bi = boost::iostreams;
+namespace bs = boost::spirit;
+
 template<typename Alloc = std::allocator<char> >
 struct basic_gzip_decompressor;
 typedef basic_gzip_decompressor<> gzip_decompressor;
@@ -382,19 +385,20 @@ size_t getOppositeFace(size_t cell, size_t face,
 void ReadFOAM::parseBoundary(const std::string & casedir, const int partition) {
 
    std::stringstream name;
-   //name << casedir << "/processor" << partition << "/constant/polyMesh/boundary";
-   name << "/tmp/boundary";
+   name << casedir << "/processor" << partition
+        << "/constant/polyMesh/boundary";
+
    std::ifstream file(name.str().c_str(),
                       std::ios_base::in | std::ios_base::binary);
 
-   boost::iostreams::filtering_istream in;
+   bi::filtering_istream in;
    in.push(file);
 
    typedef std::istreambuf_iterator<char> base_iterator_type;
-   typedef boost::spirit::multi_pass<base_iterator_type> forward_iterator_type;
+   typedef bs::multi_pass<base_iterator_type> forward_iterator_type;
    typedef classic::position_iterator2<forward_iterator_type> pos_iterator_type;
    forward_iterator_type fwd_begin =
-      boost::spirit::make_default_multi_pass(base_iterator_type(in));
+      bs::make_default_multi_pass(base_iterator_type(in));
    forward_iterator_type fwd_end;
    pos_iterator_type pos_begin(fwd_begin, fwd_end, name.str());
    pos_iterator_type pos_end;
@@ -449,24 +453,24 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
    std::ifstream pressureFile(pressureName.str().c_str(),
                               std::ios_base::in | std::ios_base::binary);
 
-   boost::iostreams::filtering_istream pointsIn;
-   pointsIn.push(boost::iostreams::gzip_decompressor());
+   bi::filtering_istream pointsIn;
+   pointsIn.push(bi::gzip_decompressor());
    pointsIn.push(pointsFile);
 
-   boost::iostreams::filtering_istream facesIn;
-   facesIn.push(boost::iostreams::gzip_decompressor());
+   bi::filtering_istream facesIn;
+   facesIn.push(bi::gzip_decompressor());
    facesIn.push(facesFile);
 
-   boost::iostreams::filtering_istream ownersIn;
-   ownersIn.push(boost::iostreams::gzip_decompressor());
+   bi::filtering_istream ownersIn;
+   ownersIn.push(bi::gzip_decompressor());
    ownersIn.push(ownersFile);
 
-   boost::iostreams::filtering_istream neighborsIn;
-   neighborsIn.push(boost::iostreams::gzip_decompressor());
+   bi::filtering_istream neighborsIn;
+   neighborsIn.push(bi::gzip_decompressor());
    neighborsIn.push(neighborsFile);
 
-   boost::iostreams::filtering_istream pressureIn;
-   pressureIn.push(boost::iostreams::gzip_decompressor());
+   bi::filtering_istream pressureIn;
+   pressureIn.push(bi::gzip_decompressor());
    pressureIn.push(pressureFile);
 
    std::vector<vistle::Vector> points;
@@ -477,7 +481,7 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
    std::vector<float> pressure;
 
    typedef std::istreambuf_iterator<char> base_iterator_type;
-   typedef boost::spirit::multi_pass<base_iterator_type> forward_iterator_type;
+   typedef bs::multi_pass<base_iterator_type> forward_iterator_type;
    typedef classic::position_iterator2<forward_iterator_type> pos_iterator_type;
 
    struct skipper<pos_iterator_type> skipper;
@@ -490,7 +494,7 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
 
    try {
       forward_iterator_type fwd_begin =
-         boost::spirit::make_default_multi_pass(base_iterator_type(pointsIn));
+         bs::make_default_multi_pass(base_iterator_type(pointsIn));
       forward_iterator_type fwd_end;
 
       pos_iterator_type pos_begin(fwd_begin, fwd_end, pointsName.str());
@@ -502,7 +506,7 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
 
       // faces
       fwd_begin =
-         boost::spirit::make_default_multi_pass(base_iterator_type(facesIn));
+         bs::make_default_multi_pass(base_iterator_type(facesIn));
       pos_begin = pos_iterator_type(fwd_begin, fwd_end, facesName.str());
       r = qi::phrase_parse(pos_begin, pos_end,
                                 faceParser, skipper, faces);
@@ -510,7 +514,7 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
 
       // owners
       fwd_begin =
-         boost::spirit::make_default_multi_pass(base_iterator_type(ownersIn));
+         bs::make_default_multi_pass(base_iterator_type(ownersIn));
       pos_begin = pos_iterator_type(fwd_begin, fwd_end, ownersName.str());
       r = qi::phrase_parse(pos_begin, pos_end,
                            ownersParser, skipper, owners);
@@ -518,7 +522,7 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
 
       // neighbors
       fwd_begin =
-         boost::spirit::make_default_multi_pass(base_iterator_type(neighborsIn));
+         bs::make_default_multi_pass(base_iterator_type(neighborsIn));
       pos_begin = pos_iterator_type(fwd_begin, fwd_end, neighborsName.str());
       r = qi::phrase_parse(pos_begin, pos_end,
                            neighborsParser, skipper, neighbors);
@@ -526,7 +530,7 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
 
       // pressure
       fwd_begin =
-         boost::spirit::make_default_multi_pass(base_iterator_type(pressureIn));
+         bs::make_default_multi_pass(base_iterator_type(pressureIn));
       pos_begin = pos_iterator_type(fwd_begin, fwd_end, pressureName.str());
       r = qi::phrase_parse(pos_begin, pos_end, pressureParser, skipper, pressure);
       std::cout << "r: " << r << " pressure: " << pressure.size() << std::endl;
@@ -626,10 +630,13 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
 
 bool ReadFOAM::compute() {
 
-   //parseBoundary(getFileParameter("filename"), 0);
+   for (int partition = 0; partition < 32; partition ++) {
+      parseBoundary(getFileParameter("filename"), partition);
+   }
 
    for (int partition = 0; partition < 32; partition ++) {
       if (partition % size == rank) {
+
          std::vector<std::pair<std::string, vistle::Object *> > objects =
             load(getFileParameter("filename"), partition);
 

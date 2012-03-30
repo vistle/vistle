@@ -33,7 +33,6 @@ typedef int socklen_t;
 
 using namespace boost::interprocess;
 
-
 void spawn(vistle::Communicator * comm, const int rank,
            const int moduleID, const char * name) {
 
@@ -193,15 +192,16 @@ int main(int argc, char ** argv) {
    comm->handleMessage(&compute);
 #endif
 
-#if 0
+#if 1
    enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER, WRITEVISTLE };
 
    spawn(comm, rank, RGEO,  "ReadVistle");
    /*
    spawn(comm, rank, RGRID, "ReadCovise");
    spawn(comm, rank, RPRES, "ReadCovise");
-
+   */
    spawn(comm, rank, CUTGEO, "CutGeometry");
+   /*
    spawn(comm, rank, CUTSURF, "CuttingSurface");
    spawn(comm, rank, ISOSURF, "IsoSurface");
 
@@ -228,8 +228,8 @@ int main(int argc, char ** argv) {
    setParam(comm, rank, CUTSURF, "distance", 0.0);
    setParam(comm, rank, CUTSURF, "normal", vistle::Vector(1.0, 0.0, 0.0));
 
-   connect(comm, rank, RGEO, "grid_out", RENDERER, "data_in");
-   //connect(comm, rank, CUTGEO, "grid_out", RENDERER, "data_in");
+   connect(comm, rank, RGEO, "grid_out", CUTGEO, "grid_in");
+   connect(comm, rank, CUTGEO, "grid_out", RENDERER, "data_in");
 
    connect(comm, rank, RGRID, "grid_out", CUTSURF, "grid_in");
    connect(comm, rank, RPRES, "grid_out", CUTSURF, "data_in");
@@ -283,7 +283,7 @@ int main(int argc, char ** argv) {
    compute(comm, rank, READ);
 #endif
 
-#if 1
+#if 0
    enum { READ = 1, SHOWUSG, RENDERER, CUTSURF, COLOR, COLLECT };
    spawn(comm, rank, READ, "ReadFOAM");
    spawn(comm, rank, SHOWUSG, "ShowUSG");
@@ -485,7 +485,7 @@ bool Communicator::dispatch() {
                receiveMessageQueue.erase(i++);
             }
          }
-      } catch (boost::interprocess::interprocess_exception &ex) {
+      } catch (interprocess_exception &ex) {
          std::cerr << "comm [" << rank << "/" << size << "] receive mq "
                    << ex.what() << std::endl;
          exit(-1);
@@ -542,7 +542,7 @@ bool Communicator::handleMessage(const message::Message * message) {
                message::MessageQueue::create(smqName);
             receiveMessageQueue[moduleID] =
                message::MessageQueue::create(rmqName);
-         } catch (boost::interprocess::interprocess_exception &ex) {
+         } catch (interprocess_exception &ex) {
 
             std::cerr << "comm [" << rank << "/" << size << "] spawn mq "
                       << ex.what() << std::endl;

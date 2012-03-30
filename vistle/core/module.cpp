@@ -331,7 +331,7 @@ bool Module::addObject(const std::string & portName, const void *object) {
    if (!object)
       return false;
 
-   boost::interprocess::managed_shared_memory::handle_t handle =
+   managed_shared_memory::handle_t handle =
       vistle::Shm::instance().getShm().get_handle_from_address(object);
 
    return addObject(portName, handle);
