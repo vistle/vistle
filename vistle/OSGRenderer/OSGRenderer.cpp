@@ -253,12 +253,12 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
       icetDrawCallback(cb);
    }
 
-   setUpViewInWindow(0, 0, 1024, 1024);
+   setUpViewInWindow(0, 0, 512, 512);
    setLightingMode(osgViewer::Viewer::HEADLIGHT);
-   /*
+
    if (!getCameraManipulator() && getCamera()->getAllowEventFocus())
       setCameraManipulator(new osgGA::TrackballManipulator());
-   */
+
    realize();
    setThreadingModel(SingleThreaded);
    if (size != 1)
