@@ -1,0 +1,3 @@
+[submodule "3rdparty/IceT"]
+	path = 3rdparty/IceT
+	url = git://public.kitware.com/IceT.git
