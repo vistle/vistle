@@ -9,6 +9,10 @@ set(ICET_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/3rdparty/IceT/src/include;${CMAKE_BINA
 set(ICET_CORE_LIBS "IceTCore")
 set(ICET_MPI_LIBS "IceTMPI")
 
+if(NOT OPENSCENEGRAPH_FOUND)
+    return()
+endif()
+
 add_executable(OSGRenderer OSGRenderer.cpp)
 
 include_directories(
