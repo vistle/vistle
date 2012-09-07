@@ -25,7 +25,7 @@ ReadVistle::ReadVistle(int rank, int size, int moduleID)
    addFileParameter("filename", "");
 }
 
-size_t read_uint64(const int fd, const uint64_t * data, const size_t num) {
+size_t read_uint64_int(const int fd, const uint64_t * data, const size_t num) {
 
    size_t r = 0;
 
@@ -43,25 +43,32 @@ size_t read_uint64(const int fd, const uint64_t * data, const size_t num) {
    return r;
 }
 
+size_t read_uint64(const int fd, const uint64_t * data, const size_t num) {
+    
+    return read_uint64_int(fd, data, num);
+}
+
 size_t read_uint64(const int fd, unsigned int * data, const size_t num) {
 
    uint64_t *d64  = new uint64_t[num];
 
-   size_t r = 0;
-
-   while (r < num * sizeof(uint64_t)) {
-      size_t n = read(fd, ((char *) d64) + r, num * sizeof(uint64_t) - r);
-      if (n <= 0)
-         break;
-      r += n;
-   }
-
-   if (r < num * sizeof(uint64_t))
-      std::cout << "ERROR ReadCovise::read_uint64 wrote " << r
-                << " bytes instead of " << num * sizeof(uint64_t) << std::endl;
+   size_t r = read_uint64_int(fd, d64, num);
 
    for (size_t index = 0; index < num; index ++)
       data[index] = (unsigned int) d64[index];
+
+   delete[] d64;
+   return r;
+}
+
+size_t read_uint64(const int fd, unsigned long * data, const size_t num) {
+
+   uint64_t *d64  = new uint64_t[num];
+
+   size_t r = read_uint64_int(fd, d64, num);
+
+   for (size_t index = 0; index < num; index ++)
+      data[index] = (unsigned long) d64[index];
 
    delete[] d64;
    return r;

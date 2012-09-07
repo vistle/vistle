@@ -25,30 +25,7 @@ WriteVistle::WriteVistle(int rank, int size, int moduleID)
    addFileParameter("filename", "");
 }
 
-size_t write_uint64(const int fd, const unsigned int * data, const size_t num) {
-
-   uint64_t *d64  = new uint64_t[num];
-   for (size_t index = 0; index < num; index ++)
-      d64[index] = data[index];
-
-   size_t r = 0;
-
-   while (r < num * sizeof(uint64_t)) {
-      size_t n = write(fd, ((char *) d64) + r, num * sizeof(uint64_t) - r);
-      if (n <= 0)
-         break;
-      r += n;
-   }
-
-   if (r < num * sizeof(uint64_t))
-      std::cout << "ERROR ReadCovise::write_uint64 wrote " << r
-                << " bytes instead of " << num * sizeof(uint64_t) << std::endl;
-
-   delete[] d64;
-   return r;
-}
-
-size_t write_uint64(const int fd, const uint64_t * data, const size_t num) {
+size_t write_uint64_int(const int fd, const uint64_t * data, const size_t num) {
 
    size_t r = 0;
 
@@ -65,6 +42,37 @@ size_t write_uint64(const int fd, const uint64_t * data, const size_t num) {
 
    return r;
 }
+
+size_t write_uint64(const int fd, const uint64_t * data, const size_t num) {
+
+    return write_uint64_int(fd, data, num);
+}
+
+size_t write_uint64(const int fd, const unsigned int * data, const size_t num) {
+
+   uint64_t *d64  = new uint64_t[num];
+   for (size_t index = 0; index < num; index ++)
+      d64[index] = data[index];
+
+   size_t r = write_uint64_int(fd, d64, num);
+
+   delete[] d64;
+   return r;
+}
+
+#ifdef __APPLE__
+size_t write_uint64(const int fd, const unsigned long * data, const size_t num) {
+
+   uint64_t *d64  = new uint64_t[num];
+   for (size_t index = 0; index < num; index ++)
+      d64[index] = data[index];
+
+   size_t r = write_uint64_int(fd, d64, num);
+
+   delete[] d64;
+   return r;
+}
+#endif
 
 size_t write_char(const int fd, char * data, const size_t num) {
 
@@ -106,7 +114,7 @@ WriteVistle::~WriteVistle() {
 
 }
 
-iteminfo * WriteVistle::createInfo(vistle::Object * object, uint64_t offset) {
+iteminfo * WriteVistle::createInfo(vistle::Object * object, size_t offset) {
 
    uint64_t infosize = 0;
    uint64_t itemsize = 0;
