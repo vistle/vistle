@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 2.6)
 project(vistle)
 
+macro(USE_OPENMP)
+    if(NOT APPLE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lgomp")
+    endif()
+endmacro(USE_OPENMP)
+
+
 #find_package(MPI REQUIRED)
 #find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
 

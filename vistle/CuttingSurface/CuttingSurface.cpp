@@ -1,7 +1,9 @@
 #include <sstream>
 #include <iomanip>
 
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 #include "object.h"
 #include "tables.h"
@@ -21,7 +23,9 @@ CuttingSurface::CuttingSurface(int rank, int size, int moduleID)
 
    addFloatParameter("distance", 0.0);
    addVectorParameter("normal", vistle::Vector(0.0, 0.0, 1.0));
+#ifdef _OPENMP
    omp_set_num_threads(4);
+#endif
 }
 
 CuttingSurface::~CuttingSurface() {

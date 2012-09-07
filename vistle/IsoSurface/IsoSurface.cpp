@@ -1,7 +1,9 @@
 #include <sstream>
 #include <iomanip>
 
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 #include "object.h"
 #include "tables.h"
@@ -20,7 +22,9 @@ IsoSurface::IsoSurface(int rank, int size, int moduleID)
    createOutputPort("grid_out");
 
    addFloatParameter("isovalue", 0.0);
+#ifdef _OPENMP
    omp_set_num_threads(4);
+#endif
 }
 
 IsoSurface::~IsoSurface() {
