@@ -730,7 +730,8 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             geom->setStateSet(state.get());
 
             std::map<int, int> vertexMap;
-            std::vector<osg::Vec3> vertexNormals[numVertices];
+            std::vector<std::vector<osg::Vec3> > vertexNormals;
+            vertexNormals.resize(numVertices);
 
             int num = 0;
             for (size_t index = 0; index < numElements; index ++) {
