@@ -1,6 +1,5 @@
 #include <sstream>
 #include <iomanip>
-#include <values.h>
 
 #include "object.h"
 

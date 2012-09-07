@@ -1,6 +1,6 @@
 #include <sstream>
 #include <iomanip>
-#include <values.h>
+#include <cfloat>
 #include "vector.h"
 #include "object.h"
 
