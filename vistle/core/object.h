@@ -32,12 +32,12 @@ class Shm {
    Shm(const int moduleID, const int rank, const size_t size,
        message::MessageQueue *messageQueue);
 
-   const int moduleID;
-   const int rank;
-   int objectID;
-   static Shm *singleton;
-   boost::interprocess::managed_shared_memory * shm;
-   message::MessageQueue *messageQueue;
+   const int m_moduleID;
+   const int m_rank;
+   int m_objectID;
+   static Shm *s_singleton;
+   boost::interprocess::managed_shared_memory *m_shm;
+   message::MessageQueue *m_messageQueue;
 };
 
 class Object {
@@ -74,12 +74,12 @@ class Object {
    void setTimestep(const int timestep);
 
  protected:
-   const Type id;
+   const Type m_id;
  private:
-   char name[32];
+   char m_name[32];
 
-   int block;
-   int timestep;
+   int m_block;
+   int m_timestep;
 };
 
 
@@ -103,7 +103,7 @@ class Vec: public Object {
 
  Vec(const size_t size, const std::string & name,
      const int block, const int timestep)
-    : Object(type, name, block, timestep) {
+    : Object(s_type, name, block, timestep) {
 
       const boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager>
          alloc_inst(Shm::instance().getShm().get_segment_manager());
@@ -123,7 +123,7 @@ class Vec: public Object {
       x;
 
  private:
-   static const Object::Type type;
+   static const Object::Type s_type;
 };
 
 
@@ -147,31 +147,38 @@ class Vec3: public Object {
 
    Vec3(const size_t size, const std::string & name,
         const int block, const int timestep)
-      : Object(type, name, block, timestep) {
+      : Object(s_type, name, block, timestep) {
 
       const boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager>
          alloc_inst(Shm::instance().getShm().get_segment_manager());
 
-      x = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
-      y = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
-      z = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
+      m_x = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
+      m_y = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
+      m_z = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
    }
 
    size_t getSize() const {
-      return x->size();
+      return m_x->size();
    }
 
    void setSize(const size_t size) {
-      x->resize(size);
-      y->resize(size);
-      z->resize(size);
+      m_x->resize(size);
+      m_y->resize(size);
+      m_z->resize(size);
    }
 
-   boost::interprocess::offset_ptr<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > >
-      x, y, z;
+   const T &x(const size_t i) const { return (*m_x)[i]; }
+   T &x(const size_t i) { return (*m_x)[i]; }
+   const T &y(const size_t i) const { return (*m_y)[i]; }
+   T &y(const size_t i) { return (*m_y)[i]; }
+   const T &z(const size_t i) const { return (*m_z)[i]; }
+   T &z(const size_t i) { return (*m_z)[i]; }
 
  private:
-   static const Object::Type type;
+   boost::interprocess::offset_ptr<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > >
+      m_x, m_y, m_z;
+
+   static const Object::Type s_type;
 };
 
 class Triangles: public Object {
@@ -189,10 +196,10 @@ class Triangles: public Object {
    size_t getNumVertices() const;
 
    boost::interprocess::offset_ptr<boost::interprocess::vector<size_t, boost::interprocess::allocator<size_t, boost::interprocess::managed_shared_memory::segment_manager> > >
-      cl;
+      m_cl;
 
    boost::interprocess::offset_ptr<boost::interprocess::vector<float, boost::interprocess::allocator<float, boost::interprocess::managed_shared_memory::segment_manager> > >
-      x, y, z;
+      m_x, m_y, m_z;
  private:
 };
 
@@ -213,9 +220,9 @@ class Lines: public Object {
    size_t getNumVertices() const;
 
    boost::interprocess::offset_ptr<boost::interprocess::vector<size_t, boost::interprocess::allocator<size_t, boost::interprocess::managed_shared_memory::segment_manager> > >
-      el, cl;
+      m_el, m_cl;
    boost::interprocess::offset_ptr<boost::interprocess::vector<float, boost::interprocess::allocator<float, boost::interprocess::managed_shared_memory::segment_manager> > >
-      x, y, z;
+      m_x, m_y, m_z;
 
  private:
 };

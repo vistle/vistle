@@ -25,56 +25,56 @@ template<> size_t memorySize<8>() {
    return 68719476736;
 }
 
-Shm* Shm::singleton = NULL;
+Shm* Shm::s_singleton = NULL;
 
 Shm::Shm(const int m, const int r, const size_t size,
          message::MessageQueue * mq)
-   : moduleID(m), rank(r), objectID(0), messageQueue(mq) {
+   : m_moduleID(m), m_rank(r), m_objectID(0), m_messageQueue(mq) {
 
-   shm = new managed_shared_memory(open_or_create, "vistle", size);
+   m_shm = new managed_shared_memory(open_or_create, "vistle", size);
 }
 
 Shm::~Shm() {
 
-   delete shm;
+   delete m_shm;
 }
 
 Shm & Shm::instance(const int moduleID, const int rank,
                     message::MessageQueue * mq) {
 
-   if (!singleton)
-      singleton = new Shm(moduleID, rank, memorySize<sizeof(void *)>(), mq);
+   if (!s_singleton)
+      s_singleton = new Shm(moduleID, rank, memorySize<sizeof(void *)>(), mq);
 
-   return *singleton;
+   return *s_singleton;
 }
 
 Shm & Shm::instance() {
 
-   if (!singleton)
-      singleton = new Shm(-1, -1, memorySize<sizeof(void *)>(), NULL);
+   if (!s_singleton)
+      s_singleton = new Shm(-1, -1, memorySize<sizeof(void *)>(), NULL);
 
-   return *singleton;
+   return *s_singleton;
 }
 
 managed_shared_memory & Shm::getShm() {
 
-   return *shm;
+   return *m_shm;
 }
 
 void Shm::publish(const shm_handle_t & handle) {
 
-   if (messageQueue) {
-      vistle::message::NewObject n(moduleID, rank, handle);
-      messageQueue->getMessageQueue().send(&n, sizeof(n), 0);
+   if (m_messageQueue) {
+      vistle::message::NewObject n(m_moduleID, m_rank, handle);
+      m_messageQueue->getMessageQueue().send(&n, sizeof(n), 0);
    }
 }
 
 std::string Shm::createObjectID() {
 
    std::stringstream name;
-   name << "Object_" << std::setw(8) << std::setfill('0') << moduleID
-        << "_" << std::setw(8) << std::setfill('0') << rank
-        << "_" << std::setw(8) << std::setfill('0') << objectID ++;
+   name << "Object_" << std::setw(8) << std::setfill('0') << m_moduleID
+        << "_" << std::setw(8) << std::setfill('0') << m_rank
+        << "_" << std::setw(8) << std::setfill('0') << m_objectID++;
 
    return name.str();
 }
@@ -83,7 +83,7 @@ Object * Shm::getObjectFromHandle(const shm_handle_t & handle) {
 
    try {
       Object *object = static_cast<Object *>
-         (shm->get_address_from_handle(handle));
+         (m_shm->get_address_from_handle(handle));
       return object;
 
    } catch (interprocess_exception &ex) { }
@@ -92,11 +92,11 @@ Object * Shm::getObjectFromHandle(const shm_handle_t & handle) {
 }
 
 Object::Object(const Type type, const std::string & n,
-               const int b, const int t): id(type), block(b), timestep(t) {
+               const int b, const int t): m_id(type), m_block(b), m_timestep(t) {
 
    size_t size = MIN(n.size(), 31);
-   n.copy(name, size);
-   name[size] = 0;
+   n.copy(m_name, size);
+   m_name[size] = 0;
 }
 
 Object::~Object() {
@@ -105,32 +105,32 @@ Object::~Object() {
 
 Object::Type Object::getType() const {
 
-   return id;
+   return m_id;
 }
 
 std::string Object::getName() const {
 
-   return name;
+   return m_name;
 }
 
 int Object::getTimestep() const {
 
-   return timestep;
+   return m_timestep;
 }
 
 int Object::getBlock() const {
 
-   return block;
+   return m_block;
 }
 
 void Object::setTimestep(const int time) {
 
-   timestep = time;
+   m_timestep = time;
 }
 
 void Object::setBlock(const int blk) {
 
-   block = blk;
+   m_block = blk;
 }
 
 Triangles::Triangles(const size_t numCorners, const size_t numVertices,
@@ -144,11 +144,11 @@ Triangles::Triangles(const size_t numCorners, const size_t numVertices,
    const allocator<size_t, managed_shared_memory::segment_manager>
       alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
 
-   x = Shm::instance().getShm().construct<boost::interprocess::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
-   y = Shm::instance().getShm().construct<boost::interprocess::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
-   z = Shm::instance().getShm().construct<boost::interprocess::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   m_x = Shm::instance().getShm().construct<boost::interprocess::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   m_y = Shm::instance().getShm().construct<boost::interprocess::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   m_z = Shm::instance().getShm().construct<boost::interprocess::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
 
-   cl = Shm::instance().getShm().construct<boost::interprocess::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
+   m_cl = Shm::instance().getShm().construct<boost::interprocess::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
 }
 
 
@@ -170,12 +170,12 @@ Triangles * Triangles::create(const size_t numCorners,
 
 size_t Triangles::getNumCorners() const {
 
-   return cl->size();
+   return m_cl->size();
 }
 
 size_t Triangles::getNumVertices() const {
 
-   return x->size();
+   return m_x->size();
 }
 
 Lines::Lines(const size_t numElements, const size_t numCorners,
@@ -189,15 +189,15 @@ Lines::Lines(const size_t numElements, const size_t numCorners,
    const allocator<size_t, managed_shared_memory::segment_manager>
       alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
 
-   x = Shm::instance().getShm().construct<boost::interprocess::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   m_x = Shm::instance().getShm().construct<boost::interprocess::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
 
-   y = Shm::instance().getShm().construct<boost::interprocess::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   m_y = Shm::instance().getShm().construct<boost::interprocess::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
 
-   z = Shm::instance().getShm().construct<boost::interprocess::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   m_z = Shm::instance().getShm().construct<boost::interprocess::vector<float, allocator<float, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
 
-   el = Shm::instance().getShm().construct<boost::interprocess::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
+   m_el = Shm::instance().getShm().construct<boost::interprocess::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
 
-   cl = Shm::instance().getShm().construct<boost::interprocess::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
+   m_cl = Shm::instance().getShm().construct<boost::interprocess::vector<size_t, allocator<size_t, managed_shared_memory::segment_manager> > >(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
 }
 
 
@@ -219,17 +219,17 @@ Lines * Lines::create(const size_t numElements, const size_t numCorners,
 
 size_t Lines::getNumElements() const {
 
-   return el->size();
+   return m_el->size();
 }
 
 size_t Lines::getNumCorners() const {
 
-   return cl->size();
+   return m_cl->size();
 }
 
 size_t Lines::getNumVertices() const {
 
-   return x->size();
+   return m_x->size();
 }
 
 Polygons::Polygons(const size_t numElements, const size_t numCorners,
@@ -452,11 +452,11 @@ size_t Texture1D::getWidth() const {
    return pixels->size() / 4;
 }
 
-template<> const Object::Type Vec<float>::type  = Object::VECFLOAT;
-template<> const Object::Type Vec<int>::type    = Object::VECINT;
-template<> const Object::Type Vec<char>::type   = Object::VECCHAR;
-template<> const Object::Type Vec3<float>::type = Object::VEC3FLOAT;
-template<> const Object::Type Vec3<int>::type   = Object::VEC3INT;
-template<> const Object::Type Vec3<char>::type  = Object::VEC3CHAR;
+template<> const Object::Type Vec<float>::s_type  = Object::VECFLOAT;
+template<> const Object::Type Vec<int>::s_type    = Object::VECINT;
+template<> const Object::Type Vec<char>::s_type   = Object::VECCHAR;
+template<> const Object::Type Vec3<float>::s_type = Object::VEC3FLOAT;
+template<> const Object::Type Vec3<int>::s_type   = Object::VEC3INT;
+template<> const Object::Type Vec3<char>::s_type  = Object::VEC3CHAR;
 
 } // namespace vistle
