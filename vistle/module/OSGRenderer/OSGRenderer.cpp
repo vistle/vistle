@@ -229,7 +229,7 @@ void cb(const IceTDouble * proj, const IceTDouble * mv,
 OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    : Renderer("OSGRenderer", rank, size, moduleID), osgViewer::Viewer() {
 
-#ifndef _WIN32
+#ifdef __linux__
    cpu_set_t cpuset;
    CPU_SET(0, &cpuset);
    pthread_setaffinity_np(pthread_self(), 1, &cpuset);
