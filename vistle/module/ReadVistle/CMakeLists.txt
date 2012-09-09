@@ -6,7 +6,7 @@ add_executable(ReadVistle ReadVistle.cpp)
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
-        ../core
+        ${PROJECT_SOURCE_DIR}/core
 )
 
 target_link_libraries(ReadVistle

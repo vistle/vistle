@@ -1,15 +1,15 @@
 find_package(MPI REQUIRED)
 find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
 
-add_executable(ReadCovise ReadCovise.cpp)
+add_executable(ShowUSG ShowUSG.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
-        ../core
+        ${PROJECT_SOURCE_DIR}/core
 )
 
-target_link_libraries(ReadCovise
+target_link_libraries(ShowUSG
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
         vistle_core

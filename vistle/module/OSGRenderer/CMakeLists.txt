@@ -20,7 +20,7 @@ include_directories(
         ${MPI_INCLUDE_PATH}
         ${OPENSCENEGRAPH_INCLUDE_DIRS}
         ${ICET_INCLUDE_DIRS}
-        ../core
+        ${PROJECT_SOURCE_DIR}/core
 )
 
 target_link_libraries(OSGRenderer

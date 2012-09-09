@@ -8,12 +8,12 @@ add_definitions(-DBOOST_IOSTREAMS_NO_LIB)
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
-        ../core
+        ${PROJECT_SOURCE_DIR}/core
 )
 
 target_link_libraries(ReadFOAM
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
-	${ZLIB_LIBRARY}
+        ${ZLIB_LIBRARY}
         vistle_core
 )

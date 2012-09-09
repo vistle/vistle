@@ -6,7 +6,7 @@ add_executable(Add Add.cpp)
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
-        ../core
+        ${PROJECT_SOURCE_DIR}/core
 )
 
 target_link_libraries(Add
