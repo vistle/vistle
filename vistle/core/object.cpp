@@ -42,16 +42,17 @@ Shm::~Shm() {
 Shm & Shm::instance(const int moduleID, const int rank,
                     message::MessageQueue * mq) {
 
-   if (!s_singleton)
-      s_singleton = new Shm(moduleID, rank, memorySize<sizeof(void *)>(), mq);
+   if (!s_singleton) {
+      size_t memsize = memorySize<sizeof(void *)>();
 
-   return *s_singleton;
-}
-
-Shm & Shm::instance() {
-
-   if (!s_singleton)
-      s_singleton = new Shm(-1, -1, memorySize<sizeof(void *)>(), NULL);
+      do {
+         try {
+            s_singleton = new Shm(moduleID, rank, memsize, mq);
+         } catch (boost::interprocess::interprocess_exception ex) {
+            memsize <<= 2;
+         }
+      } while (!s_singleton && memsize >= 4096);
+   }
 
    return *s_singleton;
 }

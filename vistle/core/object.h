@@ -17,9 +17,8 @@ class Object;
 class Shm {
 
  public:
-   static Shm & instance(const int moduleID, const int rank,
-                         message::MessageQueue * messageQueue);
-   static Shm & instance();
+   static Shm & instance(const int moduleID = -1, const int rank = -1,
+                         message::MessageQueue * messageQueue = NULL);
    ~Shm();
 
    boost::interprocess::managed_shared_memory & getShm();
