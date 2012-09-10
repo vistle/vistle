@@ -69,13 +69,6 @@ class GUIEvent {
 
 public:
    GUIEvent() {}
-   GUIEvent(osgGA::GUIEventAdapter::EventType t,
-            osgGA::GUIEventAdapter::ScrollingMotion m,
-            double ti)
-      : type(t)
-      , time(ti)
-      , scrollingMotion(m)
-   {}
    GUIEvent(const osgGA::GUIEventAdapter &ga)
       : type(ga.getEventType())
       , time(ga.getTime())
@@ -352,11 +345,9 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
 #endif
 
    if (size > 1) {
-      IceTCommunicator icetComm;
-      IceTContext icetContext;
-
-      icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
-      icetContext = icetCreateContext(icetComm);
+      IceTCommunicator icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
+      IceTContext icetContext = icetCreateContext(icetComm);
+      (void)icetContext;
       icetDestroyMPICommunicator(icetComm);
 
       icetResetTiles();
