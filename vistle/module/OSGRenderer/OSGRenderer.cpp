@@ -4,6 +4,7 @@
 #include <osgGA/TrackballManipulator>
 #include <osgGA/GUIEventAdapter>
 #include <osgGA/EventQueue>
+#include <osgGA/StateSetManipulator>
 
 #include <osg/AlphaFunc>
 #include <osg/BlendFunc>
@@ -23,6 +24,8 @@
 #include <osg/Texture2D>
 
 #include <osgDB/ReadFile>
+
+#include <osgViewer/ViewerEventHandlers>
 
 #include "object.h"
 
@@ -346,6 +349,12 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    //view->addChild(geode.get());
    proj->addChild(view.get());
    addEventHandler(new ResizeHandler(proj, view));
+
+   addEventHandler(new osgGA::StateSetManipulator(getCamera()->getOrCreateStateSet()));
+   addEventHandler(new osgViewer::ThreadingHandler);
+   addEventHandler(new osgViewer::WindowSizeHandler);
+   addEventHandler(new osgViewer::StatsHandler);
+   addEventHandler(new osgViewer::HelpHandler);
 
    addEventHandler(&timesteps);
 
