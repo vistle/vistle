@@ -86,8 +86,14 @@ public:
         projection(p), modelView(m) {
    }
 
-   bool handle(const osgGA::GUIEventAdapter & ea,
-               osgGA::GUIActionAdapter & aa) {
+   bool handle(const osgGA::GUIEventAdapter &ea,
+               osgGA::GUIActionAdapter &aa,
+               osg::Object *obj,
+               osg::NodeVisitor *nv) {
+      (void)obj;
+      (void)nv;
+
+      bool handled = false;
 
       switch (ea.getEventType()) {
 
@@ -96,13 +102,14 @@ public:
             int width = ea.getWindowWidth();
             int height = ea.getWindowHeight();
             projection->setMatrix(osg::Matrix::ortho2D(0, width, 0, height));
+            handled = true;
             break;
          }
 
          default:
             break;
       }
-      return false;
+      return handled;
    }
 
 private:
@@ -165,7 +172,11 @@ int TimestepHandler::lastTimestep() {
 }
 
 bool TimestepHandler::handle(const osgGA::GUIEventAdapter & ea,
-                             osgGA::GUIActionAdapter & aa) {
+                             osgGA::GUIActionAdapter & aa,
+                             osg::Object *obj,
+                             osg::NodeVisitor *nv) {
+   (void)obj;
+   (void)nv;
 
    if (ea.getTime() == lastEvent)
       return true;
@@ -205,7 +216,7 @@ bool TimestepHandler::handle(const osgGA::GUIEventAdapter & ea,
    }
    if (handled)
       aa.requestRedraw();
-   return false;
+   return handled;
 }
 
 void cb(const IceTDouble * proj, const IceTDouble * mv,

@@ -26,7 +26,9 @@ public:
 
    void addObject(osg::Geode * geode, const int step);
    bool handle(const osgGA::GUIEventAdapter & ea,
-               osgGA::GUIActionAdapter & aa);
+               osgGA::GUIActionAdapter & aa,
+               osg::Object *obj,
+               osg::NodeVisitor *nv);
 
  private:
    bool setTimestepState(const int timestep, const int state);
