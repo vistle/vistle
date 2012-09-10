@@ -185,6 +185,65 @@ private:
    osg::ref_ptr<osg::MatrixTransform> modelView;
 };
 
+class HelpHandler: public osgGA::GUIEventHandler {
+
+public:
+   HelpHandler(int rank): _applicationUsage(NULL), _rank(rank) {}
+
+   bool handle(const osgGA::GUIEventAdapter &ea,
+               osgGA::GUIActionAdapter &aa,
+               osg::Object *obj,
+               osg::NodeVisitor *nv) {
+      (void)obj;
+      (void)nv;
+
+      osgViewer::View* view = dynamic_cast<osgViewer::View*>(&aa);
+      if (!view) return false;
+
+      osgViewer::ViewerBase* viewer = view->getViewerBase();
+      if (!viewer) return false;
+
+      bool handled = false;
+
+      switch (ea.getEventType()) {
+          case osgGA::GUIEventAdapter::KEYDOWN:
+              if (ea.getKey() == osgGA::GUIEventAdapter::KEY_H) {
+                  handled = true;
+
+                  if (!_applicationUsage) _applicationUsage = new osg::ApplicationUsage();
+                  viewer->getUsage(*_applicationUsage);
+
+                  if (!_rank) {
+                      std::cerr << std::endl;
+                      const osg::ApplicationUsage::UsageMap& keyboardBinding = _applicationUsage->getKeyboardMouseBindings();
+                      for(osg::ApplicationUsage::UsageMap::const_iterator itr = keyboardBinding.begin();
+                              itr != keyboardBinding.end();
+                              ++itr) {
+
+                          std::cerr << itr->first << "\t" << itr->second << std::endl;
+                      }
+                  }
+              }
+              break;
+
+            default:
+              break;
+      }
+
+      return handled;
+   }
+
+   void getUsage(osg::ApplicationUsage &usage) const {
+
+       usage.addKeyboardMouseBinding("h", "show this help");
+   }
+
+private:
+   osg::ApplicationUsage *_applicationUsage;
+   int _rank;
+};
+
+
 
 TimestepHandler::TimestepHandler()
   : timestep(0) {
@@ -240,8 +299,6 @@ int TimestepHandler::lastTimestep() {
 }
 
 void TimestepHandler::getUsage(osg::ApplicationUsage &usage) const {
-
-   std::cerr << "adding usage information" << std::endl;
 
    usage.addKeyboardMouseBinding(",", "step animation back");
    usage.addKeyboardMouseBinding(".", "step animation forward");
@@ -448,8 +505,9 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    addEventHandler(new osgGA::StateSetManipulator(getCamera()->getOrCreateStateSet()));
    addEventHandler(new osgViewer::ThreadingHandler);
    addEventHandler(new osgViewer::WindowSizeHandler);
-   addEventHandler(new osgViewer::StatsHandler);
-   addEventHandler(new osgViewer::HelpHandler);
+   //addEventHandler(new osgViewer::StatsHandler);
+   //addEventHandler(new osgViewer::HelpHandler);
+   addEventHandler(new HelpHandler(rank));
 
    scene->addChild(proj.get());
 
