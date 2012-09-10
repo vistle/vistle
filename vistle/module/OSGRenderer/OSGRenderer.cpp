@@ -71,13 +71,85 @@ public:
    GUIEvent() {}
    GUIEvent(osgGA::GUIEventAdapter::EventType t,
             osgGA::GUIEventAdapter::ScrollingMotion m,
-            double ti):
-      type(t), motion(m), time(ti) {
+            double ti)
+      : type(t)
+      , time(ti)
+      , scrollingMotion(m)
+   {}
+   GUIEvent(const osgGA::GUIEventAdapter &ga)
+      : type(ga.getEventType())
+      , time(ga.getTime())
+      , windowX(ga.getWindowX())
+      , windowY(ga.getWindowY())
+      , windowWidth(ga.getWindowWidth())
+      , windowHeight(ga.getWindowHeight())
+      , key(ga.getKey())
+      , button(ga.getButton())
+      , Xmin(ga.getXmin())
+      , Xmax(ga.getXmax())
+      , Ymin(ga.getYmin())
+      , Ymax(ga.getYmax())
+      , mx(ga.getX())
+      , my(ga.getY())
+      , pressure(ga.getPenPressure())
+      , tiltX(ga.getPenTiltX())
+      , tiltY(ga.getPenTiltY())
+      , rotation(ga.getPenRotation())
+      , buttonMask(ga.getButtonMask())
+      , modKeyMask(ga.getModKeyMask())
+      , scrollingMotion(ga.getScrollingMotion())
+      , scrollingDeltaX(ga.getScrollingDeltaX())
+      , scrollingDeltaY(ga.getScrollingDeltaY())
+      , mouseYOrientation(ga.getMouseYOrientation())
+      , tabletPointerType(ga.getTabletPointerType())
+   {}
+
+void copyToGUIEventAdapter(osgGA::GUIEventAdapter *ga) {
+      ga->setEventType(type);
+      ga->setTime(time);
+      ga->setWindowRectangle(windowX, windowY, windowWidth, windowHeight);
+      ga->setKey(key);
+      ga->setButton(button);
+      ga->setInputRange(Xmin, Ymin, Xmax, Ymax);
+      ga->setX(mx);
+      ga->setY(my);
+      ga->setPenPressure(pressure);
+      ga->setPenTiltX(tiltX);
+      ga->setPenTiltY(tiltY);
+      ga->setPenRotation(rotation);
+      ga->setButtonMask(buttonMask);
+      ga->setModKeyMask(modKeyMask);
+      ga->setScrollingMotion(scrollingMotion);
+      ga->setScrollingMotionDelta(scrollingDeltaX, scrollingDeltaY);
+      ga->setMouseYOrientation(mouseYOrientation);
+      ga->setTabletPointerType(tabletPointerType);
    }
 
    osgGA::GUIEventAdapter::EventType type;
-   osgGA::GUIEventAdapter::ScrollingMotion motion;
    double time;
+   int windowX;
+   int windowY;
+   int windowWidth;
+   int windowHeight;
+   int key;
+   int button;
+   float Xmin;
+   float Xmax;
+   float Ymin;
+   float Ymax;
+   float mx;
+   float my;
+   float pressure;
+   float tiltX;
+   float tiltY;
+   float rotation;
+   unsigned int buttonMask;
+   unsigned int modKeyMask;
+   osgGA::GUIEventAdapter::ScrollingMotion scrollingMotion;
+   float scrollingDeltaX;
+   float scrollingDeltaY;
+   osgGA::GUIEventAdapter::MouseYOrientation mouseYOrientation;
+   osgGA::GUIEventAdapter::TabletPointerType tabletPointerType;
 };
 
 class ResizeHandler: public osgGA::GUIEventHandler {
@@ -122,7 +194,7 @@ private:
 
 
 TimestepHandler::TimestepHandler()
-  : timestep(0), lastEvent(0) {
+  : timestep(0) {
 
 }
 
@@ -174,6 +246,14 @@ int TimestepHandler::lastTimestep() {
    return index;
 }
 
+void TimestepHandler::getUsage(osg::ApplicationUsage &usage) const {
+
+   std::cerr << "adding usage information" << std::endl;
+
+   usage.addKeyboardMouseBinding(",", "step animation back");
+   usage.addKeyboardMouseBinding(".", "step animation forward");
+}
+
 bool TimestepHandler::handle(const osgGA::GUIEventAdapter & ea,
                              osgGA::GUIActionAdapter & aa,
                              osg::Object *obj,
@@ -181,14 +261,9 @@ bool TimestepHandler::handle(const osgGA::GUIEventAdapter & ea,
    (void)obj;
    (void)nv;
 
-   if (ea.getTime() == lastEvent)
-      return true;
-
    bool handled = false;
 
    if (ea.getEventType() == osgGA::GUIEventAdapter::SCROLL) {
-
-      lastEvent = ea.getTime();
 
       switch (ea.getScrollingMotion()) {
 
@@ -442,21 +517,21 @@ void OSGRenderer::distributeAndHandleEvents() {
          osgGA::EventQueue::Events::iterator itr;
          for (itr = ev.begin(); itr != ev.end(); ++itr) {
             osgGA::GUIEventAdapter *event = itr->get();
-            if (_cameraManipulator.valid())
-               _cameraManipulator->handleWithCheckAgainstIgnoreHandledEventsMask(*event, *this);
 
-            if (!rank &&
-                event->getEventType() == osgGA::GUIEventAdapter::SCROLL)
-               events.push_back(GUIEvent(osgGA::GUIEventAdapter::SCROLL,
-                                         event->getScrollingMotion(),
-                                         event->getTime()));
-            else {
-               EventHandlers::iterator hitr;
-               for (hitr = _eventHandlers.begin();
-                    hitr != _eventHandlers.end(); hitr ++)
+            if (!rank && size > 0) {
+               events.push_back(GUIEvent(*event));
+            }
+
+            if (!rank) {
+               for (EventHandlers::iterator hitr = _eventHandlers.begin();
+                     hitr != _eventHandlers.end();
+                     ++hitr)
                   (*hitr)->handleWithCheckAgainstIgnoreHandledEventsMask(*event,
-                                                                         *this,
-                                                                         0, 0);
+                        *this,
+                        0, 0);
+
+               if (_cameraManipulator.valid())
+                  _cameraManipulator->handleWithCheckAgainstIgnoreHandledEventsMask(*event, *this);
             }
          }
       }
@@ -471,26 +546,24 @@ void OSGRenderer::distributeAndHandleEvents() {
                 MPI_COMM_WORLD);
    }
 
-   std::vector<osgGA::GUIEventAdapter *> osgEvents;
-   std::vector<GUIEvent>::iterator i;
-   for (i = events.begin(); i != events.end(); i++) {
+   if (rank) {
+      std::vector<osgGA::GUIEventAdapter *> osgEvents;
+      std::vector<GUIEvent>::iterator i;
+      for (i = events.begin(); i != events.end(); i++) {
 
-      if (i->type == osgGA::GUIEventAdapter::SCROLL) {
          osgGA::GUIEventAdapter *event = new osgGA::GUIEventAdapter();
-         event->setEventType(osgGA::GUIEventAdapter::SCROLL);
-         event->setScrollingMotion(i->motion);
-         event->setTime(i->time);
+         i->copyToGUIEventAdapter(event);
          osgEvents.push_back(event);
       }
-   }
 
-   std::vector<osgGA::GUIEventAdapter *>::iterator itr;
-   for (itr = osgEvents.begin(); itr != osgEvents.end(); itr++) {
+      std::vector<osgGA::GUIEventAdapter *>::iterator itr;
+      for (itr = osgEvents.begin(); itr != osgEvents.end(); itr++) {
 
-      EventHandlers::iterator hitr;
-      for (hitr = _eventHandlers.begin(); hitr != _eventHandlers.end(); hitr ++)
-         (*hitr)->handleWithCheckAgainstIgnoreHandledEventsMask(*(*itr),
-                                                                *this, 0, 0);
+         EventHandlers::iterator hitr;
+         for (hitr = _eventHandlers.begin(); hitr != _eventHandlers.end(); hitr ++)
+            (*hitr)->handleWithCheckAgainstIgnoreHandledEventsMask(*(*itr),
+                  *this, 0, 0);
+      }
    }
 }
 

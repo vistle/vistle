@@ -29,6 +29,7 @@ public:
                osgGA::GUIActionAdapter & aa,
                osg::Object *obj,
                osg::NodeVisitor *nv);
+   void getUsage(osg::ApplicationUsage &usage) const;
 
  private:
    bool setTimestepState(const int timestep, const int state);
