@@ -216,7 +216,34 @@ bool TimestepHandler::handle(const osgGA::GUIEventAdapter & ea,
       default:
          break;
       }
+   } else if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN) {
+
+      switch (ea.getKey()) {
+
+      case osgGA::GUIEventAdapter::KEY_Comma:
+         setTimestepState(timestep, 0);
+         timestep --;
+         if (timestep < firstTimestep() || timestep < 0)
+            timestep = lastTimestep();
+
+         setTimestepState(timestep, -1);
+         handled = true;
+         break;
+
+      case osgGA::GUIEventAdapter::KEY_Period:
+         setTimestepState(timestep, 0);
+         timestep ++;
+         if (timestep > lastTimestep())
+            timestep = firstTimestep();
+         setTimestepState(timestep, -1);
+         handled = true;
+         break;
+
+      default:
+         break;
+      }
    }
+
    if (handled)
       aa.requestRedraw();
    return handled;
@@ -348,6 +375,8 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
 
    //view->addChild(geode.get());
    proj->addChild(view.get());
+   addEventHandler(&timesteps);
+
    addEventHandler(new ResizeHandler(proj, view));
 
    addEventHandler(new osgGA::StateSetManipulator(getCamera()->getOrCreateStateSet()));
@@ -355,8 +384,6 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    addEventHandler(new osgViewer::WindowSizeHandler);
    addEventHandler(new osgViewer::StatsHandler);
    addEventHandler(new osgViewer::HelpHandler);
-
-   addEventHandler(&timesteps);
 
    scene->addChild(proj.get());
 
