@@ -494,14 +494,16 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
       icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
       icetDrawCallback(callbackIceT);
+#else
+      if (!rank) {
+         osg::DisplaySettings *ds = getDisplaySettings();
+         if (!ds)
+            ds = new osg::DisplaySettings();
+         ds->setMinimumNumStencilBits(1);
+         setDisplaySettings(ds);
+      }
 #endif
    }
-
-   osg::DisplaySettings *ds = getDisplaySettings();
-   if (!ds)
-      ds = new osg::DisplaySettings();
-   ds->setMinimumNumStencilBits(1);
-   setDisplaySettings(ds);
 
    setUpViewInWindow(0, 0, 512, 512);
    setLightingMode(osgViewer::Viewer::HEADLIGHT);
