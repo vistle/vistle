@@ -1,9 +1,11 @@
-#define USE_ICET
+//#define USE_ICET
 
 #ifdef USE_ICET
 #include <IceT.h>
 #include <IceTMPI.h>
 #endif
+
+#include <vector>
 
 #include <osgGA/TrackballManipulator>
 #include <osgGA/GUIEventAdapter>
@@ -68,6 +70,74 @@ public:
    }
 
    const int rank;
+};
+#else
+class SyncGLOperation : public osg::Operation {
+
+public:
+   SyncGLOperation(const int r, const int s)
+      : osg::Operation("SyncGLOperation", true), rank(r), size(s) { }
+
+   void operator () (osg::Object *object) {
+
+      osg::GraphicsContext *ctx = dynamic_cast<osg::GraphicsContext*>(object);
+      if (!ctx)
+         return;
+      if (!ctx->getTraits())
+         return;
+
+      const int width = ctx->getTraits()->width;
+      const int height = ctx->getTraits()->height;
+      int metadata[3] = { 0, 0, 0 }; // width, height, sender
+      std::vector<unsigned char> color;
+      std::vector<float> depth;
+
+      if (rank) {
+         color.resize(width*height*4);
+         depth.resize(width*height);
+         glReadBuffer(GL_BACK);
+         glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &color[0]);
+         glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, &depth[0]);
+
+         metadata[0] = width;
+         metadata[1] = height;
+         metadata[2] = rank;
+         MPI_Send(metadata, 3, MPI_INT, 0, 1, MPI_COMM_WORLD);
+         MPI_Send(&color[0], width*height*4, MPI_CHAR, 0, 2, MPI_COMM_WORLD);
+         MPI_Send(&depth[0], width*height, MPI_FLOAT, 0, 3, MPI_COMM_WORLD);
+      } else {
+         glEnable(GL_STENCIL_TEST);
+         for (int i=1; i<size; ++i) {
+            MPI_Status status;
+            MPI_Recv(metadata, 3, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
+            int w = metadata[0];
+            int h = metadata[1];
+            int sender = metadata[2];
+            color.resize(w*h*4);
+            depth.resize(w*h);
+            MPI_Recv(&color[0], w*h*4, MPI_CHAR, sender, 2, MPI_COMM_WORLD, &status);
+            MPI_Recv(&depth[0], w*h, MPI_FLOAT, sender, 3, MPI_COMM_WORLD, &status);
+
+            glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+            glStencilOp(GL_KEEP, GL_ZERO, GL_REPLACE);
+            glStencilFunc(GL_ALWAYS, 1, ~0);
+            glEnable(GL_DEPTH_TEST);
+            glDepthFunc(GL_LEQUAL);
+            glDrawPixels(w, h, GL_DEPTH_COMPONENT, GL_FLOAT, &depth[0]);
+
+            glDisable(GL_DEPTH_TEST);
+            glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO);
+            glStencilFunc(GL_EQUAL, 1, ~0);
+            glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+            glDrawPixels(w, h, GL_RGBA, GL_UNSIGNED_BYTE, &color[0]);
+         }
+         glDisable(GL_STENCIL_TEST);
+      }
+      MPI_Barrier(MPI_COMM_WORLD);
+   }
+
+   const int rank;
+   const int size;
 };
 #endif
 
@@ -427,6 +497,12 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
 #endif
    }
 
+   osg::DisplaySettings *ds = getDisplaySettings();
+   if (!ds)
+      ds = new osg::DisplaySettings();
+   ds->setMinimumNumStencilBits(1);
+   setDisplaySettings(ds);
+
    setUpViewInWindow(0, 0, 512, 512);
    setLightingMode(osgViewer::Viewer::HEADLIGHT);
 
@@ -553,6 +629,8 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
       for (Contexts::iterator c = ctx.begin(); c != ctx.end(); c ++) {
 #ifdef USE_ICET
          (*c)->add(new SyncIceTOperation(rank));
+#else
+         (*c)->add(new SyncGLOperation(rank, size));
 #endif
       }
    }
