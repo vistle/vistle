@@ -28,6 +28,7 @@
 #include <boost/spirit/include/phoenix_core.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
 #include <boost/spirit/include/phoenix_object.hpp>
+
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/fusion/include/io.hpp>
 #include <boost/fusion/include/vector.hpp>
@@ -51,8 +52,6 @@ typedef basic_gzip_decompressor<> gzip_decompressor;
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
 namespace classic = boost::spirit::classic;
-
-using boost::spirit::omit;
 
 MODULE_MAIN(ReadFOAM)
 
@@ -137,7 +136,7 @@ struct PointParser: qi::grammar<Iterator, std::vector<vistle::Vector>(),
    PointParser(): PointParser::base_type(start) {
 
       start =
-         omit[qi::int_] >> '(' >> *term >> ')'
+         qi::omit[qi::int_] >> '(' >> *term >> ')'
          ;
 
       term =
@@ -156,12 +155,12 @@ struct FaceParser: qi::grammar<Iterator, std::vector<std::vector<size_t> >(),
    FaceParser(): FaceParser::base_type(start) {
 
       start =
-         omit[qi::int_]
+         qi::omit[qi::int_]
          >> '(' >> *term >> ')'
          ;
 
       term =
-         omit[qi::int_] >>
+         qi::omit[qi::int_] >>
          '(' >> qi::int_ >> qi::int_ >> qi::int_ >> qi::int_ >> ')'
          ;
    }
@@ -177,7 +176,7 @@ struct IntParser: qi::grammar<Iterator, std::vector<size_t>(),
    IntParser(): IntParser::base_type(start) {
 
       start =
-         omit[qi::int_] >> omit[*ascii::space]
+         qi::omit[qi::int_] >> qi::omit[*ascii::space]
                                        >> '(' >> *term >> ')'
          ;
 
@@ -196,7 +195,7 @@ struct ScalarParser: qi::grammar<Iterator, std::vector<float>(),
    ScalarParser(): ScalarParser::base_type(start) {
 
       start =
-         omit[qi::int_] >> omit[*ascii::space]
+         qi::omit[qi::int_] >> qi::omit[*ascii::space]
                                        >> '(' >> *term >> ')'
          ;
 
@@ -215,7 +214,7 @@ struct VectorParser: qi::grammar<Iterator, std::vector<std::vector<float> >(),
    VectorParser(): VectorParser::base_type(start) {
 
       start =
-         omit[qi::int_] >> omit[*ascii::space]
+         qi::omit[qi::int_] >> qi::omit[*ascii::space]
                                        >> '(' >> *term >> ')'
          ;
 
@@ -236,7 +235,7 @@ struct BoundaryParser
    BoundaryParser()
       : BoundaryParser::base_type(start)
    {
-      start = omit[qi::int_] >> '(' >> +mapmap >> ')';
+      start = qi::omit[qi::int_] >> '(' >> +mapmap >> ')';
       mapmap = +(qi::char_ - '{') >> '{' >> entrymap >> '}';
       entrymap = +pair;
       pair  = qi::lexeme[+qi::char_("a-zA-Z")] >> +(qi::char_ - ';') >> ';';
