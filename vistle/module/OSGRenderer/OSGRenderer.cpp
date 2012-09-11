@@ -33,11 +33,11 @@
 
 MODULE_MAIN(OSGRenderer)
 
-class SyncOperation : public osg::Operation {
+class SyncIceTOperation : public osg::Operation {
 
 public:
-   SyncOperation(const int r)
-      : osg::Operation("SyncOperation", true), rank(r) { }
+   SyncIceTOperation(const int r)
+      : osg::Operation("SyncIceTOperation", true), rank(r) { }
 
    void operator () (osg::Object *object) {
 
@@ -374,7 +374,7 @@ bool TimestepHandler::handle(const osgGA::GUIEventAdapter & ea,
    return handled;
 }
 
-void cb(const IceTDouble * proj, const IceTDouble * mv,
+void callbackIceT(const IceTDouble * proj, const IceTDouble * mv,
         const IceTFloat * bg, const IceTInt * viewport,
         IceTImage result) {
 
@@ -414,7 +414,7 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
       icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
       icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
-      icetDrawCallback(cb);
+      icetDrawCallback(callbackIceT);
    }
 
    setUpViewInWindow(0, 0, 512, 512);
@@ -541,7 +541,7 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
       Contexts ctx;
       getContexts(ctx);
       for (Contexts::iterator c = ctx.begin(); c != ctx.end(); c ++)
-         (*c)->add(new SyncOperation(rank));
+         (*c)->add(new SyncIceTOperation(rank));
    }
 }
 
