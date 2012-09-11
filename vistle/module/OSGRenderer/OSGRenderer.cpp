@@ -1,5 +1,9 @@
+#define USE_ICET
+
+#ifdef USE_ICET
 #include <IceT.h>
 #include <IceTMPI.h>
+#endif
 
 #include <osgGA/TrackballManipulator>
 #include <osgGA/GUIEventAdapter>
@@ -33,6 +37,7 @@
 
 MODULE_MAIN(OSGRenderer)
 
+#ifdef USE_ICET
 class SyncIceTOperation : public osg::Operation {
 
 public:
@@ -64,6 +69,7 @@ public:
 
    const int rank;
 };
+#endif
 
 class GUIEvent {
 
@@ -374,7 +380,8 @@ bool TimestepHandler::handle(const osgGA::GUIEventAdapter & ea,
    return handled;
 }
 
-void callbackIceT(const IceTDouble * proj, const IceTDouble * mv,
+#ifdef USE_ICET
+static void callbackIceT(const IceTDouble * proj, const IceTDouble * mv,
         const IceTFloat * bg, const IceTInt * viewport,
         IceTImage result) {
 
@@ -391,6 +398,7 @@ void callbackIceT(const IceTDouble * proj, const IceTDouble * mv,
    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, color);
    glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, depth);
 }
+#endif
 
 OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    : Renderer("OSGRenderer", rank, size, moduleID), osgViewer::Viewer() {
@@ -402,6 +410,7 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
 #endif
 
    if (size > 1) {
+#ifdef USE_ICET
       IceTCommunicator icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
       IceTContext icetContext = icetCreateContext(icetComm);
       (void)icetContext;
@@ -415,6 +424,7 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
       icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
       icetDrawCallback(callbackIceT);
+#endif
    }
 
    setUpViewInWindow(0, 0, 512, 512);
@@ -540,8 +550,11 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    if (size > 1) {
       Contexts ctx;
       getContexts(ctx);
-      for (Contexts::iterator c = ctx.begin(); c != ctx.end(); c ++)
+      for (Contexts::iterator c = ctx.begin(); c != ctx.end(); c ++) {
+#ifdef USE_ICET
          (*c)->add(new SyncIceTOperation(rank));
+#endif
+      }
    }
 }
 
