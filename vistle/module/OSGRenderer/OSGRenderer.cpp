@@ -694,6 +694,17 @@ void OSGRenderer::distributeModelviewMatrix() {
 
 void OSGRenderer::render() {
 
+   static int framecounter = 0;
+   static double laststattime = 0.;
+   ++framecounter;
+   double time = getFrameStamp()->getReferenceTime();
+   if (time - laststattime > 3.) {
+      if (!rank)
+         std::cerr << "FPS: " << framecounter/(time-laststattime) << std::endl;
+      framecounter = 0;
+      laststattime = time;
+   }
+
    advance();
 
    distributeAndHandleEvents();
