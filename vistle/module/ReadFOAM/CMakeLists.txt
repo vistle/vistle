@@ -2,6 +2,14 @@ find_package(MPI REQUIRED)
 find_package(Boost 1.42 REQUIRED COMPONENTS date_time iostreams)
 find_package(ZLIB REQUIRED)
 
+if (CMAKE_COMPILER_IS_GNUCC)
+   execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
+   if (GCC_VERSION VERSION_LESS 4.2)
+      message(STATUS "GCC version older than 4.2, not building ReadFOAM")
+      return()
+   endif()
+endif()
+
 add_executable(ReadFOAM ReadFOAM.cpp gzip.cpp zlib.cpp)
 add_definitions(-DBOOST_IOSTREAMS_NO_LIB)
 
