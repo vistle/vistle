@@ -47,6 +47,7 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
  public:
    OSGRenderer(int rank, int size, int moduleID);
    ~OSGRenderer();
+   void scheduleResize(int x, int y, int w, int h);
 
  private:
    bool compute();
@@ -62,6 +63,7 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    void distributeAndHandleEvents();
    void distributeModelviewMatrix();
    void distributeProjectionMatrix();
+   void resize(int x, int y, int w, int h);
 
    osg::Group *scene;
    std::map<std::string, osg::ref_ptr<osg::Geode> > nodes;
@@ -70,6 +72,12 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    osg::ref_ptr<osg::LightModel> lightModel;
 
    TimestepHandler timesteps;
+
+   bool m_resize;
+   int m_x;
+   int m_y;
+   int m_width;
+   int m_height;
 };
 
 #endif

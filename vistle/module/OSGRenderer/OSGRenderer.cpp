@@ -245,6 +245,11 @@ public:
 
             int width = ea.getWindowWidth();
             int height = ea.getWindowHeight();
+
+            OSGRenderer* rend = dynamic_cast<OSGRenderer *>(&aa);
+            if (!rend)
+               return false;
+            rend->scheduleResize(ea.getWindowX(), ea.getWindowY(), width, height);
             projection->setMatrix(osg::Matrix::ortho2D(0, width, 0, height));
             handled = true;
             break;
@@ -479,39 +484,13 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    pthread_setaffinity_np(pthread_self(), 1, &cpuset);
 #endif
 
-   if (size > 1) {
-#ifdef USE_ICET
-      IceTCommunicator icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
-      IceTContext icetContext = icetCreateContext(icetComm);
-      (void)icetContext;
-      icetDestroyMPICommunicator(icetComm);
+   resize(0, 0, 512, 512);
 
-      icetResetTiles();
-      icetAddTile(0, 0, 512, 512, 0);
-      icetStrategy(ICET_STRATEGY_REDUCE);
-      icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
-      icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-      icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
-
-      icetDrawCallback(callbackIceT);
-#else
-      if (!rank) {
-         osg::DisplaySettings *ds = getDisplaySettings();
-         if (!ds)
-            ds = new osg::DisplaySettings();
-         ds->setMinimumNumStencilBits(1);
-         setDisplaySettings(ds);
-      }
-#endif
-   }
-
-   setUpViewInWindow(0, 0, 512, 512);
    setLightingMode(osgViewer::Viewer::HEADLIGHT);
 
    if (!getCameraManipulator() && getCamera()->getAllowEventFocus())
       setCameraManipulator(new osgGA::TrackballManipulator());
 
-   realize();
    setThreadingModel(SingleThreaded);
    if (size != 1)
       getCamera()->setComputeNearFarMode(osgUtil::CullVisitor::DO_NOT_COMPUTE_NEAR_FAR);
@@ -592,7 +571,7 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
 
    addEventHandler(new osgGA::StateSetManipulator(getCamera()->getOrCreateStateSet()));
    addEventHandler(new osgViewer::ThreadingHandler);
-   addEventHandler(new osgViewer::WindowSizeHandler);
+   //addEventHandler(new osgViewer::WindowSizeHandler);
    //addEventHandler(new osgViewer::StatsHandler);
    //addEventHandler(new osgViewer::HelpHandler);
    addEventHandler(new HelpHandler(rank));
@@ -600,15 +579,6 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    scene->addChild(proj.get());
 
    setSceneData(scene);
-
-   char title[64];
-   snprintf(title, 64, "vistle renderer %d/%d", rank, size);
-
-   std::vector<osgViewer::GraphicsWindow *> windows;
-   getWindows(windows);
-   std::vector<osgViewer::GraphicsWindow *>::iterator i;
-   for (i = windows.begin(); i != windows.end(); i ++)
-      (*i)->setWindowName(title);
 
    material = new osg::Material();
    material->setColorMode(osg::Material::AMBIENT_AND_DIFFUSE);
@@ -624,6 +594,57 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
 
    lightModel = new osg::LightModel;
    lightModel->setTwoSided(true);
+}
+
+OSGRenderer::~OSGRenderer() {
+
+}
+
+void OSGRenderer::resize(int x, int y, int w, int h) {
+
+   m_resize = false;
+   m_x = x;
+   m_y = y;
+   m_width = w;
+   m_height = h;
+
+   if (size > 1) {
+#ifdef USE_ICET
+      IceTCommunicator icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
+      IceTContext icetContext = icetCreateContext(icetComm);
+      (void)icetContext;
+      icetDestroyMPICommunicator(icetComm);
+
+      icetResetTiles();
+      icetAddTile(0, 0, w, h, 0);
+      icetStrategy(ICET_STRATEGY_REDUCE);
+      icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+      icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+      icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+
+      icetDrawCallback(callbackIceT);
+#else
+      if (!rank) {
+         osg::DisplaySettings *ds = getDisplaySettings();
+         if (!ds)
+            ds = new osg::DisplaySettings();
+         ds->setMinimumNumStencilBits(1);
+         setDisplaySettings(ds);
+      }
+#endif
+   }
+
+   setUpViewInWindow(x, y, w, h);
+   realize();
+
+   char title[64];
+   snprintf(title, 64, "vistle renderer %d/%d", rank, size);
+
+   std::vector<osgViewer::GraphicsWindow *> windows;
+   getWindows(windows);
+   std::vector<osgViewer::GraphicsWindow *>::iterator i;
+   for (i = windows.begin(); i != windows.end(); i ++)
+      (*i)->setWindowName(title);
 
    if (size > 1) {
       Contexts ctx;
@@ -638,8 +659,15 @@ OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
    }
 }
 
-OSGRenderer::~OSGRenderer() {
+void OSGRenderer::scheduleResize(int x, int y, int w, int h) {
 
+   if (w != m_width || h != m_height) {
+      m_resize = true;
+      m_x = x;
+      m_y = y;
+      m_width = w;
+      m_height = h;
+   }
 }
 
 void OSGRenderer::distributeAndHandleEvents() {
@@ -783,6 +811,10 @@ void OSGRenderer::render() {
          std::cerr << "FPS: " << framecounter/(time-laststattime) << std::endl;
       framecounter = 0;
       laststattime = time;
+   }
+
+   if (m_resize) {
+      resize(m_x, m_y, m_width, m_height);
    }
 
    advance();
