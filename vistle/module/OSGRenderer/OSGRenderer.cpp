@@ -1,4 +1,4 @@
-//#define USE_ICET
+#define USE_ICET
 
 #ifdef USE_ICET
 #include <IceT.h>
