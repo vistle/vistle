@@ -107,7 +107,7 @@ class Vec: public Object {
       const boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager>
          alloc_inst(Shm::instance().getShm().get_segment_manager());
 
-      x = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
+      x = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, T(), alloc_inst);
    }
 
    size_t getSize() const {
@@ -151,9 +151,9 @@ class Vec3: public Object {
       const boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager>
          alloc_inst(Shm::instance().getShm().get_segment_manager());
 
-      x = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
-      y = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
-      z = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, float(), alloc_inst);
+      x = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, T(), alloc_inst);
+      y = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, T(), alloc_inst);
+      z = Shm::instance().getShm().construct<boost::interprocess::vector<T, boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> > > (Shm::instance().createObjectID().c_str())(size, T(), alloc_inst);
    }
 
    size_t getSize() const {
