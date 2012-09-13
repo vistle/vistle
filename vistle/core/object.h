@@ -1,6 +1,7 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
+#include <vector>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 
@@ -66,6 +67,16 @@ class Object {
       TEXTURE1D         = 12,
    };
 
+   struct Info {
+      uint64_t infosize;
+      uint64_t itemsize;
+      uint64_t offset;
+      uint64_t type;
+      uint64_t block;
+      uint64_t timestep;
+      virtual ~Info() {}; // for RTTI
+   };
+
    Object(const Type id, const std::string & name,
           const int block, const int timestep);
    virtual ~Object();
@@ -93,6 +104,10 @@ template <class T>
 class Vec: public Object {
 
  public:
+   struct Info: public Object::Info {
+      uint64_t numElements;
+   };
+
    static Vec<T> * create(const size_t size = 0,
                           const int block = -1, const int timestep = -1) {
 
@@ -136,6 +151,10 @@ template <class T>
 class Vec3: public Object {
 
  public:
+   struct Info: public Object::Info {
+      uint64_t numElements;
+   };
+
    static Vec3<T> * create(const size_t size = 0,
                            const int block = -1, const int timestep = -1) {
 
@@ -181,6 +200,11 @@ class Vec3: public Object {
 class Triangles: public Object {
 
  public:
+   struct Info: public Object::Info {
+      uint64_t numCorners;
+      uint64_t numVertices;
+   };
+
    static Triangles * create(const size_t numCorners = 0,
                              const size_t numVertices = 0,
                              const int block = -1, const int timestep = -1);
@@ -200,6 +224,12 @@ class Triangles: public Object {
 class Lines: public Object {
 
  public:
+   struct Info: public Object::Info {
+      uint64_t numElements;
+      uint64_t numCorners;
+      uint64_t numVertices;
+   };
+
    static Lines * create(const size_t numElements = 0,
                          const size_t numCorners = 0,
                          const size_t numVertices = 0,
@@ -222,6 +252,12 @@ class Lines: public Object {
 class Polygons: public Object {
 
  public:
+   struct Info: public Object::Info {
+      uint64_t numElements;
+      uint64_t numCorners;
+      uint64_t numVertices;
+   };
+
    static Polygons * create(const size_t numElements = 0,
                             const size_t numCorners = 0,
                             const size_t numVertices = 0,
@@ -257,6 +293,12 @@ class UnstructuredGrid: public Object {
       POLYHEDRON  = 11
    };
 
+   struct Info: public Object::Info {
+      uint64_t numElements;
+      uint64_t numCorners;
+      uint64_t numVertices;
+   };
+
    static UnstructuredGrid * create(const size_t numElements = 0,
                                     const size_t numCorners = 0,
                                     const size_t numVertices = 0,
@@ -282,6 +324,10 @@ class UnstructuredGrid: public Object {
 class Set: public Object {
 
  public:
+   struct Info: public Object::Info {
+      std::vector<Object::Info *> items;
+   };
+
    static Set * create(const size_t numElements = 0,
                        const int block = -1, const int timestep = -1);
 

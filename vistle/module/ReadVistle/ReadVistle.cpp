@@ -15,6 +15,8 @@
 
 #include "ReadVistle.h"
 
+using namespace vistle;
+
 MODULE_MAIN(ReadVistle)
 
 ReadVistle::ReadVistle(int rank, int size, int moduleID)
@@ -87,13 +89,13 @@ ReadVistle::~ReadVistle() {
 }
 
 
-vistle::Object * ReadVistle::readObject(const int fd, const iteminfo * info,
+vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info * info,
                                         uint64_t start) {
 
-   const setinfo *seti = dynamic_cast<const setinfo *>(info);
-   const polygoninfo *polyi = dynamic_cast<const polygoninfo *>(info);
-   const usginfo *usgi = dynamic_cast<const usginfo *>(info);
-   const datainfo *datai = dynamic_cast<const datainfo *>(info);
+   const Set::Info *seti = dynamic_cast<const Set::Info *>(info);
+   const Polygons::Info *polyi = dynamic_cast<const Polygons::Info *>(info);
+   const UnstructuredGrid::Info *usgi = dynamic_cast<const UnstructuredGrid::Info *>(info);
+   const Vec<float>::Info *datai = dynamic_cast<const Vec<float>::Info *>(info);
 
    if (seti) {
 
@@ -176,7 +178,7 @@ vistle::Object * ReadVistle::readObject(const int fd, const iteminfo * info,
    return NULL;
 }
 
-iteminfo * ReadVistle::readItemInfo(const int fd) {
+vistle::Object::Info * ReadVistle::readItemInfo(const int fd) {
 
    uint64_t infosize, itemsize, offset, type, block, timestep;
    read_uint64(fd, &infosize, 1);
@@ -190,7 +192,7 @@ iteminfo * ReadVistle::readItemInfo(const int fd) {
 
       case vistle::Object::SET: {
 
-         setinfo *info = new setinfo;
+         Set::Info *info = new Set::Info;
          info->infosize = infosize;
          info->itemsize = itemsize;
          info->offset = offset;
@@ -203,7 +205,7 @@ iteminfo * ReadVistle::readItemInfo(const int fd) {
          std::cout << "   set [" << numItems << "] items -> "
                    << info->offset << std::endl;
          for (size_t index = 0; index < numItems; index ++) {
-            iteminfo * element = readItemInfo(fd);
+            vistle::Object::Info * element = readItemInfo(fd);
             if (element)
                info->items.push_back(element);
          }
@@ -212,7 +214,7 @@ iteminfo * ReadVistle::readItemInfo(const int fd) {
 
       case vistle::Object::POLYGONS: {
 
-         polygoninfo *info = new polygoninfo;
+         Polygons::Info *info = new Polygons::Info;
          info->infosize = infosize;
          info->itemsize = itemsize;
          info->offset = offset;
@@ -230,7 +232,7 @@ iteminfo * ReadVistle::readItemInfo(const int fd) {
 
       case vistle::Object::UNSTRUCTUREDGRID: {
 
-         usginfo *info = new usginfo;
+         UnstructuredGrid::Info *info = new UnstructuredGrid::Info;
          info->infosize = infosize;
          info->itemsize = itemsize;
          info->offset = offset;
@@ -248,7 +250,7 @@ iteminfo * ReadVistle::readItemInfo(const int fd) {
 
       case vistle::Object::VECFLOAT: {
 
-         datainfo *info = new datainfo;
+         Vec<float>::Info *info = new Vec<float>::Info;
          info->infosize = infosize;
          info->itemsize = itemsize;
          info->offset = offset;
@@ -262,7 +264,7 @@ iteminfo * ReadVistle::readItemInfo(const int fd) {
 
       case vistle::Object::VEC3FLOAT: {
 
-         datainfo *info = new datainfo;
+         Vec3<float>::Info *info = new Vec3<float>::Info;
          info->infosize = infosize;
          info->itemsize = itemsize;
          info->offset = offset;
@@ -276,7 +278,7 @@ iteminfo * ReadVistle::readItemInfo(const int fd) {
 
       default: {
          // unknown entry
-         lseek(fd, infosize - sizeof(iteminfo), SEEK_CUR);
+         lseek(fd, infosize - sizeof(vistle::Object::Info), SEEK_CUR);
          break;
       }
    }
@@ -293,7 +295,7 @@ catalogue * ReadVistle::readCatalogue(const int fd) {
    read_uint64(fd, &numItems, 1);
 
    if (numItems == 1) {
-      iteminfo *info = readItemInfo(fd);
+      vistle::Object::Info *info = readItemInfo(fd);
       cat->item = info;
    }
    return cat;

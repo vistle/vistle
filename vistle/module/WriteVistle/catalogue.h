@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <vector>
 
+#include <object.h>
+
 class header {
 
  public:
@@ -18,6 +20,7 @@ class header {
    unsigned char v_patch;
 };
 
+#if 0
 class iteminfo {
 
  public:
@@ -57,13 +60,14 @@ class datainfo: public iteminfo {
  public:
    uint64_t numElements;
 };
+#endif
 
 class catalogue {
 
  public:
    uint64_t infosize;
    uint64_t itemsize;
-   iteminfo * item;
+   vistle::Object::Info * item;
 };
 
 #endif

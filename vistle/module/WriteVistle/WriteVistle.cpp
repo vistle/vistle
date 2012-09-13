@@ -15,6 +15,8 @@
 
 #include "WriteVistle.h"
 
+using namespace vistle;
+
 MODULE_MAIN(WriteVistle)
 
 WriteVistle::WriteVistle(int rank, int size, int moduleID)
@@ -82,7 +84,7 @@ WriteVistle::~WriteVistle() {
 
 }
 
-iteminfo * WriteVistle::createInfo(vistle::Object * object, size_t offset) {
+Object::Info * WriteVistle::createInfo(vistle::Object * object, size_t offset) {
 
    uint64_t infosize = 0;
    uint64_t itemsize = 0;
@@ -91,16 +93,16 @@ iteminfo * WriteVistle::createInfo(vistle::Object * object, size_t offset) {
 
       case vistle::Object::SET: {
 
-         infosize += (sizeof(iteminfo) + sizeof(int32_t)); // numitems
+         infosize += (sizeof(Object::Info) + sizeof(int32_t)); // numitems
          const vistle::Set *set = static_cast<const vistle::Set *>(object);
-         setinfo *s = new setinfo;
+         Set::Info *s = new Set::Info;
          s->type = vistle::Object::SET;
          s->block = set->getBlock();
          s->timestep = set->getTimestep();
          s->offset = offset;
 
          for (size_t index = 0; index < set->getNumElements(); index ++) {
-            iteminfo * info = createInfo(set->getElement(index), offset);
+            Object::Info * info = createInfo(set->getElement(index), offset);
             if (info) {
                infosize += info->infosize;
                itemsize += info->itemsize;
@@ -118,14 +120,14 @@ iteminfo * WriteVistle::createInfo(vistle::Object * object, size_t offset) {
 
          const vistle::Polygons *polygons =
             static_cast<const vistle::Polygons *>(object);
-         polygoninfo *info = new polygoninfo;
+         vistle::Polygons::Info *info = new vistle::Polygons::Info;
          info->type = vistle::Object::POLYGONS;
          info->numElements = polygons->getNumElements();
          info->numCorners = polygons->getNumCorners();
          info->numVertices = polygons->getNumVertices();
          info->block = polygons->getBlock();
          info->timestep = polygons->getTimestep();
-         info->infosize = sizeof(polygoninfo);
+         info->infosize = sizeof(Polygons::Info);
          info->itemsize = info->numElements * sizeof(uint64_t) +
             info->numCorners * sizeof(uint64_t) +
             info->numVertices * sizeof(float) * 3;
@@ -137,12 +139,12 @@ iteminfo * WriteVistle::createInfo(vistle::Object * object, size_t offset) {
 
          const vistle::Vec<float> *data =
             static_cast<const vistle::Vec<float> *>(object);
-         datainfo *info = new datainfo;
+         Vec<float>::Info *info = new Vec<float>::Info;
          info->type = object->getType();
          info->numElements = data->getSize();
          info->block = data->getBlock();
          info->timestep = data->getTimestep();
-         info->infosize = sizeof(datainfo);
+         info->infosize = sizeof(Vec<float>::Info);
          info->itemsize = info->numElements * sizeof(float);
          info->offset = offset;
          return info;
@@ -152,12 +154,12 @@ iteminfo * WriteVistle::createInfo(vistle::Object * object, size_t offset) {
 
          const vistle::Vec3<float> *data =
             static_cast<const vistle::Vec3<float> *>(object);
-         datainfo *info = new datainfo;
+         Vec3<float>::Info *info = new Vec3<float>::Info;
          info->type = object->getType();
          info->numElements = data->getSize();
          info->block = data->getBlock();
          info->timestep = data->getTimestep();
-         info->infosize = sizeof(datainfo);
+         info->infosize = sizeof(Vec3<float>::Info);
          info->itemsize = info->numElements * sizeof(float) * 3;
          info->offset = offset;
          return info;
@@ -167,14 +169,14 @@ iteminfo * WriteVistle::createInfo(vistle::Object * object, size_t offset) {
 
          const vistle::UnstructuredGrid *grid =
             static_cast<const vistle::UnstructuredGrid *>(object);
-         usginfo *info = new usginfo;
+         UnstructuredGrid::Info *info = new UnstructuredGrid::Info;
          info->type = object->getType();
          info->numElements = grid->getNumElements();
          info->numCorners = grid->getNumCorners();
          info->numVertices = grid->getNumVertices();
          info->block = grid->getBlock();
          info->timestep = grid->getTimestep();
-         info->infosize = sizeof(usginfo);
+         info->infosize = sizeof(UnstructuredGrid::Info);
          info->itemsize =
             info->numElements * sizeof(char) +     // tl
             info->numElements * sizeof(uint64_t) + // el
@@ -202,16 +204,16 @@ void WriteVistle::createCatalogue(const vistle::Object * object,
 
       case vistle::Object::SET: {
 
-         infosize += (sizeof(iteminfo) + sizeof(int32_t)); // numitems
+         infosize += (sizeof(Object::Info) + sizeof(int32_t)); // numitems
          const vistle::Set *set = static_cast<const vistle::Set *>(object);
-         setinfo *s = new setinfo;
+         Set::Info *s = new Set::Info;
          s->offset = offset;
          s->type = vistle::Object::SET;
          s->block = set->getBlock();
          s->timestep = set->getTimestep();
 
          for (size_t index = 0; index < set->getNumElements(); index ++) {
-            iteminfo * info = createInfo(set->getElement(index), offset);
+            Object::Info * info = createInfo(set->getElement(index), offset);
             if (info) {
                infosize += info->infosize;
                itemsize += info->itemsize;
@@ -232,10 +234,10 @@ void WriteVistle::createCatalogue(const vistle::Object * object,
    c.itemsize = itemsize;
 }
 
-void printItemInfo(const iteminfo * info, const int depth = 0) {
+void printItemInfo(const Object::Info * info, const int depth = 0) {
 
-   const setinfo * set = dynamic_cast<const setinfo *>(info);
-   const polygoninfo * poly = dynamic_cast<const polygoninfo *>(info);
+   const Set::Info * set = dynamic_cast<const Set::Info *>(info);
+   const Polygons::Info * poly = dynamic_cast<const Polygons::Info *>(info);
 
    if (set) {
 
@@ -352,7 +354,7 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
    }
 }
 
-void WriteVistle::saveItemInfo(const int fd, const iteminfo * info) {
+void WriteVistle::saveItemInfo(const int fd, const Object::Info * info) {
 
    write_uint64(fd, &info->infosize, 1);
    write_uint64(fd, &info->itemsize, 1);
@@ -361,10 +363,10 @@ void WriteVistle::saveItemInfo(const int fd, const iteminfo * info) {
    write_uint64(fd, &info->block, 1);
    write_uint64(fd, &info->timestep, 1);
 
-   const setinfo *set = dynamic_cast<const setinfo *>(info);
-   const polygoninfo *polygons = dynamic_cast<const polygoninfo *>(info);
-   const usginfo *usg = dynamic_cast<const usginfo *>(info);
-   const datainfo *data = dynamic_cast<const datainfo *>(info);
+   const Set::Info *set = dynamic_cast<const Set::Info *>(info);
+   const Polygons::Info *polygons = dynamic_cast<const Polygons::Info *>(info);
+   const UnstructuredGrid::Info *usg = dynamic_cast<const UnstructuredGrid::Info *>(info);
+   const Vec<float>::Info *data = dynamic_cast<const Vec<float>::Info *>(info);
 
    if (set) {
       uint64_t numItems = set->items.size();
