@@ -1,18 +1,17 @@
+#include <cstdio>
+#include <cstdlib>
 #define __STDC_FORMAT_MACROS
-#include <stdio.h>
 #include <inttypes.h>
 
 #include <sstream>
 #include <iomanip>
 #include <string>
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include "object.h"
+#include <object.h>
 
 #include "ReadVistle.h"
 
@@ -25,89 +24,62 @@ ReadVistle::ReadVistle(int rank, int size, int moduleID)
    addFileParameter("filename", "");
 }
 
-size_t read_uint64_int(const int fd, const uint64_t * data, const size_t num) {
+template<typename T>
+size_t tread(const int fd, const T* data, const size_t num) {
 
    size_t r = 0;
 
-   while (r < num * sizeof(uint64_t)) {
-      size_t n = read(fd, ((char *) data) + r, num * sizeof(uint64_t) - r);
+   while (r < num * sizeof(T)) {
+      size_t n = ::read(fd, ((char *) data) + r, num * sizeof(T) - r);
       if (n <= 0)
          break;
       r += n;
    }
 
-   if (r < num * sizeof(uint64_t))
-      std::cout << "ERROR ReadCovise::read_uint64 wrote " << r
-                << " bytes instead of " << num * sizeof(uint64_t) << std::endl;
+   if (r < num * sizeof(T))
+      std::cout << "ERROR ReadCovise::tread<T> wrote " << r
+                << " bytes instead of " << num * sizeof(T) << std::endl;
 
    return r;
 }
 
 size_t read_uint64(const int fd, const uint64_t * data, const size_t num) {
     
-    return read_uint64_int(fd, data, num);
+    return tread<uint64_t>(fd, data, num);
 }
 
 size_t read_uint64(const int fd, unsigned int * data, const size_t num) {
 
-   uint64_t *d64  = new uint64_t[num];
+   std::vector<uint64_t> d64(num);
 
-   size_t r = read_uint64_int(fd, d64, num);
+   size_t r = tread<uint64_t>(fd, &d64[0], num);
 
    for (size_t index = 0; index < num; index ++)
       data[index] = (unsigned int) d64[index];
 
-   delete[] d64;
    return r;
 }
 
 size_t read_uint64(const int fd, unsigned long * data, const size_t num) {
 
-   uint64_t *d64  = new uint64_t[num];
+   std::vector<uint64_t> d64(num);
 
-   size_t r = read_uint64_int(fd, d64, num);
+   size_t r = tread<uint64_t>(fd, &d64[0], num);
 
    for (size_t index = 0; index < num; index ++)
       data[index] = (unsigned long) d64[index];
 
-   delete[] d64;
    return r;
 }
 
 size_t read_char(const int fd, char * data, const size_t num) {
 
-   size_t r = 0;
-
-   while (r < num) {
-      size_t n = read(fd, ((char *) data) + r, num - r);
-      if (n <= 0)
-         break;
-      r += n;
-   }
-
-   if (r < num)
-      std::cout << "ERROR ReadVistle::read_char wrote " << r
-                << " bytes instead of " << num << std::endl;
-
-   return r;
+   return tread<char>(fd, data, num);
 }
 
 size_t read_float(const int fd, float * data, const size_t num) {
 
-   size_t r = 0;
-
-   while (r < num * sizeof(float)) {
-      size_t n = read(fd, ((char *) data) + r, num * sizeof(float) - r);
-      if (n <= 0)
-         break;
-      r += n;
-   }
-
-   if (r < num * sizeof(float))
-      std::cout << "ERROR ReadVistle::read_float wrote " << r
-                << " bytes instead of " << num * sizeof(float) << std::endl;
-
-   return r;
+   return tread<float>(fd, data, num);
 }
 
 ReadVistle::~ReadVistle() {

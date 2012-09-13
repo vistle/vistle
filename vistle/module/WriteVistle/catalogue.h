@@ -1,8 +1,6 @@
 #ifndef CATALOGUE_H
 #define CATALOGUE_H
 
-#define __STDC_FORMAT_MACROS
-
 #include <stdint.h>
 #include <vector>
 
