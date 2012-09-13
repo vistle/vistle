@@ -80,7 +80,7 @@ class Object {
    void setTimestep(const int timestep);
 
  protected:
-   const Type m_id;
+   const Type m_type;
  private:
    char m_name[32];
 

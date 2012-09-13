@@ -93,7 +93,7 @@ Object * Shm::getObjectFromHandle(const shm_handle_t & handle) {
 }
 
 Object::Object(const Type type, const std::string & n,
-               const int b, const int t): m_id(type), m_block(b), m_timestep(t) {
+               const int b, const int t): m_type(type), m_block(b), m_timestep(t) {
 
    size_t size = MIN(n.size(), 31);
    n.copy(m_name, size);
@@ -106,7 +106,7 @@ Object::~Object() {
 
 Object::Type Object::getType() const {
 
-   return m_id;
+   return m_type;
 }
 
 std::string Object::getName() const {
