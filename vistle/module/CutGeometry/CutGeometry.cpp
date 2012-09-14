@@ -57,9 +57,9 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
 
             const size_t *el = &((*in->el)[0]);
             const size_t *cl = &((*in->cl)[0]);
-            const float *x = &((*in->x)[0]);
-            const float *y = &((*in->y)[0]);
-            const float *z = &((*in->z)[0]);
+            const vistle::Scalar *x = &((*in->x)[0]);
+            const vistle::Scalar *y = &((*in->y)[0]);
+            const vistle::Scalar *z = &((*in->z)[0]);
 
             size_t numElements = in->getNumElements();
             for (size_t element = 0; element < numElements; element ++) {
@@ -136,7 +136,7 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
                          ((p - point) * normal >= 0 &&
                           (pl - point) * normal < 0)) {
 
-                        float s = (normal * (point - p)) /
+                        vistle::Scalar s = (normal * (point - p)) /
                            (normal * (pl - p));
                         vistle::Vector pp = p + (pl - p) * s;
 

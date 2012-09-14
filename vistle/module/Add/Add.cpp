@@ -29,10 +29,10 @@ bool Add::compute() {
       switch (object->getType()) {
 
          case vistle::Object::VECFLOAT: {
-            vistle::Vec<float> *in = static_cast<vistle::Vec<float> *>(object);
+            vistle::Vec<vistle::Scalar> *in = static_cast<vistle::Vec<vistle::Scalar> *>(object);
             size_t size = in->getSize();
 
-            vistle::Vec<float> *out = vistle::Vec<float>::create(size);
+            vistle::Vec<vistle::Scalar> *out = vistle::Vec<vistle::Scalar>::create(size);
             out->setSize(size);
 
             for (unsigned int index = 0; index < size; index ++)

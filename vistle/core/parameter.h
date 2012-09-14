@@ -18,53 +18,27 @@ class Parameter {
    std::string name;
 };
 
-class FileParameter: public Parameter {
+template<typename T>
+class ParameterBase: public Parameter {
 
  public:
-   FileParameter(const std::string & name, const std::string & value);
+   ParameterBase(const std::string & name, T value) : Parameter(name), value(value) {}
+   virtual ~ParameterBase() {}
 
-   const std::string & getValue() const;
-   void setValue(const std::string & value);
+   const std::string & getName() { return name; }
 
- private:
-   std::string value;
-};
-
-class FloatParameter: public Parameter {
-
- public:
-   FloatParameter(const std::string & name, const float value);
-
-   float getValue() const;
-   void setValue(const float value);
+   const T getValue() const { return value; }
+   void setValue(T value) { this->value = value; }
 
  private:
-   float value;
+   std::string name;
+   T value;
 };
 
-class IntParameter: public Parameter {
-
- public:
-   IntParameter(const std::string & name, const int value);
-
-   int getValue() const;
-   void setValue(const int value);
-
- private:
-   float value;
-};
-
-class VectorParameter: public Parameter {
-
- public:
-   VectorParameter(const std::string & name, const Vector & value);
-
-   Vector getValue() const;
-   void setValue(const Vector & value);
-
- private:
-   Vector value;
-};
+typedef ParameterBase<Scalar> FloatParameter;
+typedef ParameterBase<int> IntParameter;
+typedef ParameterBase<Vector> VectorParameter;
+typedef ParameterBase<std::string> FileParameter;
 
 } // namespace vistle
 #endif

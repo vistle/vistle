@@ -126,6 +126,18 @@ size_t read_float(const int fd, float * data,
    return r;
 }
 
+size_t read_float(const int fd, double *data,
+      const size_t num, const bool byte_swap) {
+
+   std::vector<float> fdata(num);
+
+   size_t r = read_float(fd, &fdata[0], num, byte_swap);
+   for (size_t i=0; i<num; ++i)
+      data[i] = fdata[i];
+
+   return r;
+}
+
 ReadCovise::~ReadCovise() {
 
 }
@@ -249,12 +261,12 @@ vistle::Object *  ReadCovise::readUNSGRD(const int fd, const bool byteswap) {
 
 vistle::Object * ReadCovise::readUSTSDT(const int fd, const bool byteswap) {
 
-   vistle::Vec<float> *array = NULL;
+   vistle::Vec<vistle::Scalar> *array = NULL;
    unsigned int numElements;
 
    read_int(fd, &numElements, 1, byteswap);
 
-   array = vistle::Vec<float>::create(numElements);
+   array = vistle::Vec<vistle::Scalar>::create(numElements);
    read_float(fd, &((*array->x)[0]), numElements, byteswap);
 
    readAttributes(fd, byteswap);
@@ -263,12 +275,12 @@ vistle::Object * ReadCovise::readUSTSDT(const int fd, const bool byteswap) {
 
 vistle::Object * ReadCovise::readUSTVDT(const int fd, const bool byteswap) {
 
-   vistle::Vec3<float> *array = NULL;
+   vistle::Vec3<vistle::Scalar> *array = NULL;
    unsigned int numElements;
 
    read_int(fd, &numElements, 1, byteswap);
 
-   array = vistle::Vec3<float>::create(numElements);
+   array = vistle::Vec3<vistle::Scalar>::create(numElements);
    read_float(fd, &((*array->x)[0]), numElements, byteswap);
    read_float(fd, &((*array->y)[0]), numElements, byteswap);
    read_float(fd, &((*array->z)[0]), numElements, byteswap);

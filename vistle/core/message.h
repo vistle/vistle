@@ -214,30 +214,30 @@ class AddFloatParameter: public Message {
 
  public:
    AddFloatParameter(const int moduleID, const int rank,
-                     const std::string & name, const float value);
+                     const std::string & name, const vistle::Scalar value);
 
    const char * getName() const;
-   float getValue() const;
+   vistle::Scalar getValue() const;
 
  private:
    char name[32];
-   float value;
+   vistle::Scalar value;
 };
 
 class SetFloatParameter: public Message {
 
  public:
    SetFloatParameter(const int moduleID, const int rank, const int module,
-                     const std::string & name, const float value);
+                     const std::string & name, const vistle::Scalar value);
 
    int getModule() const;
    const char * getName() const;
-   float getValue() const;
+   vistle::Scalar getValue() const;
 
  private:
    const int module;
    char name[32];
-   float value;
+   vistle::Scalar value;
 };
 
 class AddIntParameter: public Message {

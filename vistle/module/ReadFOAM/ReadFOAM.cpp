@@ -125,9 +125,9 @@ struct skipper: qi::grammar<Iterator> {
 };
 
 BOOST_FUSION_ADAPT_STRUCT(vistle::Vector,
-                          (float, x)
-                          (float, y)
-                          (float, z))
+                          (vistle::Scalar, x)
+                          (vistle::Scalar, y)
+                          (vistle::Scalar, z))
 
 template <typename Iterator>
 struct PointParser: qi::grammar<Iterator, std::vector<vistle::Vector>(),
@@ -565,7 +565,7 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
       usg->setBlock(partition);
       usg->setTimestep(0);
 
-      vistle::Vec<float> *pres = vistle::Vec<float>::create(points.size());
+      vistle::Vec<vistle::Scalar> *pres = vistle::Vec<vistle::Scalar>::create(points.size());
       pres->setBlock(partition);
       pres->setTimestep(0);
 
@@ -604,7 +604,7 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
          }
       }
 
-      float *pressureField = &((*pres->x)[0]);
+      vistle::Scalar *pressureField = &((*pres->x)[0]);
       for (size_t p = 0; p < points.size(); p ++)
          if (numVertexPressure[p] > 0)
             pressureField[p] = vertexPressure[p] / numVertexPressure[p];

@@ -80,6 +80,15 @@ size_t write_float(const int fd, float * data, const size_t num) {
    return twrite<float>(fd, data, num);
 }
 
+size_t write_float(const int fd, const double * data, const size_t num) {
+
+   std::vector<float> fdata(num);
+   for (size_t index = 0; index < num; index ++)
+      fdata[index] = data[index];
+
+   return twrite<float>(fd, &fdata[0], num);
+}
+
 WriteVistle::~WriteVistle() {
 
 }
@@ -137,14 +146,14 @@ Object::Info * WriteVistle::createInfo(const vistle::Object * object, size_t off
 
       case vistle::Object::VECFLOAT: {
 
-         const vistle::Vec<float> *data =
-            static_cast<const vistle::Vec<float> *>(object);
-         Vec<float>::Info *info = new Vec<float>::Info;
+         const vistle::Vec<vistle::Scalar> *data =
+            static_cast<const vistle::Vec<vistle::Scalar> *>(object);
+         Vec<vistle::Scalar>::Info *info = new Vec<vistle::Scalar>::Info;
          info->type = object->getType();
          info->numElements = data->getSize();
          info->block = data->getBlock();
          info->timestep = data->getTimestep();
-         info->infosize = sizeof(Vec<float>::Info);
+         info->infosize = sizeof(Vec<vistle::Scalar>::Info);
          info->itemsize = info->numElements * sizeof(float);
          info->offset = offset;
          return info;
@@ -152,14 +161,14 @@ Object::Info * WriteVistle::createInfo(const vistle::Object * object, size_t off
 
       case vistle::Object::VEC3FLOAT: {
 
-         const vistle::Vec3<float> *data =
-            static_cast<const vistle::Vec3<float> *>(object);
-         Vec3<float>::Info *info = new Vec3<float>::Info;
+         const vistle::Vec3<vistle::Scalar> *data =
+            static_cast<const vistle::Vec3<vistle::Scalar> *>(object);
+         Vec3<vistle::Scalar>::Info *info = new Vec3<vistle::Scalar>::Info;
          info->type = object->getType();
          info->numElements = data->getSize();
          info->block = data->getBlock();
          info->timestep = data->getTimestep();
-         info->infosize = sizeof(Vec3<float>::Info);
+         info->infosize = sizeof(Vec3<vistle::Scalar>::Info);
          info->itemsize = info->numElements * sizeof(float) * 3;
          info->offset = offset;
          return info;

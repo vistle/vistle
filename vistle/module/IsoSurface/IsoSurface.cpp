@@ -34,23 +34,23 @@ IsoSurface::~IsoSurface() {
 #define lerp(a, b, t) ( a + t * (b - a) )
 
 typedef struct {
-   float x, y, z;
-} float3;
+   vistle::Scalar x, y, z;
+} Scalar3;
 
-const float EPSILON = 1.0e-10f;
+const vistle::Scalar EPSILON = 1.0e-10f;
 
-inline float3 lerp3(const float3 &a, const float3 &b, const float t) {
+inline Scalar3 lerp3(const Scalar3 &a, const Scalar3 &b, const vistle::Scalar t) {
 
-   float3 res;
+   Scalar3 res;
    res.x = lerp(a.x, b.x, t);
    res.y = lerp(a.y, b.y, t);
    res.z = lerp(a.z, b.z, t);
    return res;
 }
 
-inline float3 interp(float iso, const float3 &p0, const float3 &p1, const float &f0, const float &f1) {
+inline Scalar3 interp(vistle::Scalar iso, const Scalar3 &p0, const Scalar3 &p1, const vistle::Scalar &f0, const vistle::Scalar &f1) {
 
-   float diff = (f1 - f0);
+   vistle::Scalar diff = (f1 - f0);
 
    if (fabs(diff) < EPSILON)
       return p0;
@@ -61,7 +61,7 @@ inline float3 interp(float iso, const float3 &p0, const float3 &p1, const float 
    if (fabs(iso - f1) < EPSILON)
       return p1;
 
-   float t = (iso - f0) / diff;
+   vistle::Scalar t = (iso - f0) / diff;
 
    return lerp3(p0, p1, t);
 }
@@ -69,10 +69,10 @@ inline float3 interp(float iso, const float3 &p0, const float3 &p1, const float 
 vistle::Object *
 IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
                                const vistle::Object * data_object,
-                               const float isoValue) {
+                               const vistle::Scalar isoValue) {
 
    const vistle::UnstructuredGrid *grid = NULL;
-   const vistle::Vec<float> *data = NULL;
+   const vistle::Vec<vistle::Scalar> *data = NULL;
 
    if (!grid_object || !data_object)
       return NULL;
@@ -99,17 +99,17 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
    if (grid_object->getType() == vistle::Object::UNSTRUCTUREDGRID &&
        data_object->getType() == vistle::Object::VECFLOAT) {
       grid = static_cast<const vistle::UnstructuredGrid *>(grid_object);
-      data = static_cast<const vistle::Vec<float> *>(data_object);
+      data = static_cast<const vistle::Vec<vistle::Scalar> *>(data_object);
    }
 
    const char *tl = &((*grid->tl)[0]);
    const size_t *el = &((*grid->el)[0]);
    const size_t *cl = &((*grid->cl)[0]);
-   const float *x = &((*grid->x)[0]);
-   const float *y = &((*grid->y)[0]);
-   const float *z = &((*grid->z)[0]);
+   const vistle::Scalar *x = &((*grid->x)[0]);
+   const vistle::Scalar *y = &((*grid->y)[0]);
+   const vistle::Scalar *z = &((*grid->z)[0]);
 
-   const float *d = &((*data->x)[0]);
+   const vistle::Scalar *d = &((*data->x)[0]);
 
    size_t numElem = grid->getNumElements();
    vistle::Triangles *t = vistle::Triangles::create();
@@ -125,10 +125,10 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
 
          case vistle::UnstructuredGrid::HEXAHEDRON: {
 
-            float3 vertlist[12];
-            float3 v[8];
+            Scalar3 vertlist[12];
+            Scalar3 v[8];
             size_t index[8];
-            float field[8];
+            vistle::Scalar field[8];
             size_t p = el[elem];
 
             index[0] = cl[p + 5];
@@ -172,7 +172,7 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
                for (int idx = 0; idx < numVerts; idx += 3) {
 
                   int edge[3];
-                  float3 *v[3];
+                  Scalar3 *v[3];
                   edge[0] = hexaTriTable[tableIndex][idx];
                   v[0] = &vertlist[edge[0]];
                   edge[1] = hexaTriTable[tableIndex][idx + 1];
@@ -214,7 +214,7 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
 
 bool IsoSurface::compute() {
 
-   const float isoValue = getFloatParameter("isovalue");
+   const vistle::Scalar isoValue = getFloatParameter("isovalue");
 
    std::list<vistle::Object *> gridObjects = getObjects("grid_in");
    std::cout << "IsoSurface: " << gridObjects.size() << " grid objects"

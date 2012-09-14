@@ -5,6 +5,9 @@
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 
+
+#include "scalar.h"
+
 namespace vistle {
 
 typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
@@ -49,7 +52,7 @@ struct shm {
 
 class Object {
 
- public:
+public:
    enum Type {
       UNKNOWN           = -1,
       VECFLOAT          =  0,
@@ -90,9 +93,8 @@ class Object {
    void setBlock(const int block);
    void setTimestep(const int timestep);
 
- protected:
-   const Type m_type;
  private:
+   const Type m_type;
    char m_name[32];
 
    int m_block;
@@ -104,6 +106,8 @@ template <class T>
 class Vec: public Object {
 
  public:
+   typedef Object Parent;
+
    struct Info: public Object::Info {
       uint64_t numElements;
    };
@@ -151,6 +155,8 @@ template <class T>
 class Vec3: public Object {
 
  public:
+   typedef Object Parent;
+
    struct Info: public Object::Info {
       uint64_t numElements;
    };
@@ -200,6 +206,8 @@ class Vec3: public Object {
 class Triangles: public Object {
 
  public:
+   typedef Object Parent;
+
    struct Info: public Object::Info {
       uint64_t numCorners;
       uint64_t numVertices;
@@ -217,13 +225,15 @@ class Triangles: public Object {
    size_t getNumVertices() const;
 
    shm<size_t>::ptr cl;
-   shm<float>::ptr x, y, z;
+   shm<Scalar>::ptr x, y, z;
  private:
 };
 
 class Lines: public Object {
 
  public:
+   typedef Object Parent;
+
    struct Info: public Object::Info {
       uint64_t numElements;
       uint64_t numCorners;
@@ -244,7 +254,7 @@ class Lines: public Object {
    size_t getNumVertices() const;
 
    shm<size_t>::ptr el, cl;
-   shm<float>::ptr x, y, z;
+   shm<Scalar>::ptr x, y, z;
 
  private:
 };
@@ -252,6 +262,8 @@ class Lines: public Object {
 class Polygons: public Object {
 
  public:
+   typedef Object Parent;
+
    struct Info: public Object::Info {
       uint64_t numElements;
       uint64_t numCorners;
@@ -271,7 +283,7 @@ class Polygons: public Object {
    size_t getNumVertices() const;
 
    shm<size_t>::ptr el, cl;
-   shm<float>::ptr x, y, z;
+   shm<Scalar>::ptr x, y, z;
 
  private:
 };
@@ -280,6 +292,8 @@ class Polygons: public Object {
 class UnstructuredGrid: public Object {
 
  public:
+   typedef Object Parent;
+
    enum Type {
       NONE        =  0,
       BAR         =  1,
@@ -315,7 +329,7 @@ class UnstructuredGrid: public Object {
 
    shm<char>::ptr tl;
    shm<size_t>::ptr el, cl;
-   shm<float>::ptr x, y, z;
+   shm<Scalar>::ptr x, y, z;
 
  private:
 
@@ -324,6 +338,8 @@ class UnstructuredGrid: public Object {
 class Set: public Object {
 
  public:
+   typedef Object Parent;
+
    struct Info: public Object::Info {
       std::vector<Object::Info *> items;
    };
@@ -343,6 +359,8 @@ class Set: public Object {
 class Geometry: public Object {
 
  public:
+   typedef Object Parent;
+
    static Geometry * create(const int block = -1, const int timestep = -1);
 
    Geometry(const std::string & name,
@@ -360,22 +378,26 @@ class Geometry: public Object {
 class Texture1D: public Object {
 
  public:
+   typedef Object Parent;
+
    static Texture1D * create(const size_t width = 0,
-                             const float min = 0, const float max = 0,
+                             const Scalar min = 0, const Scalar max = 0,
                              const int block = -1, const int timestep = -1);
 
    Texture1D(const std::string & name, const size_t size,
-             const float min, const float max,
+             const Scalar min, const Scalar max,
              const int block, const int timestep);
-
-   shm<unsigned char>::ptr pixels;
-   shm<float>::ptr coords;
 
    size_t getNumElements() const;
    size_t getWidth() const;
 
-   float min;
-   float max;
+   shm<unsigned char>::ptr pixels;
+   shm<Scalar>::ptr coords;
+
+   Scalar min;
+   Scalar max;
+
+ private:
 };
 
 } // namespace vistle

@@ -21,7 +21,7 @@ Gendat::~Gendat() {
 bool Gendat::compute() {
 
 #if 0
-   vistle::Vec<float> *a = vistle::Vec<float>::create();
+   vistle::Vec<vistle::Scalar> *a = vistle::Vec<vistle::Scalar>::create();
    for (unsigned int index = 0; index < 1024 * 1024 * 4; index ++)
       a->x->push_back(index);
 

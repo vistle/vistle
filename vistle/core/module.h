@@ -39,9 +39,9 @@ class Module {
    void setFileParameter(const std::string & name, const std::string & value);
    std::string getFileParameter(const std::string & name) const;
 
-   bool addFloatParameter(const std::string & name, const float value);
-   void setFloatParameter(const std::string & name, const float value);
-   float getFloatParameter(const std::string & name) const;
+   bool addFloatParameter(const std::string & name, const vistle::Scalar value);
+   void setFloatParameter(const std::string & name, const vistle::Scalar value);
+   vistle::Scalar getFloatParameter(const std::string & name) const;
 
    bool addIntParameter(const std::string & name, const int value);
    void setIntParameter(const std::string & name, const int value);

@@ -1,18 +1,20 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
+#include "scalar.h"
+
 namespace vistle {
 
 class Vector {
 public:
-   Vector(const float x, const float y, const float z);
+   Vector(const Scalar x, const Scalar y, const Scalar z);
    Vector();
 
    // negate
    Vector operator - () const;
 
    // scalar multiplication
-   Vector operator * (float const & rhs) const;
+   Vector operator * (Scalar const & rhs) const;
 
    // vector addition
    Vector operator + (Vector const & rhs) const;
@@ -21,9 +23,9 @@ public:
    Vector operator - (Vector const & rhs) const;
 
    // scalar product
-   float operator * (Vector const & rhs) const;
+   Scalar operator * (Vector const & rhs) const;
 
-   float x, y, z;
+   Scalar x, y, z;
 };
 
 } // namespace vistle

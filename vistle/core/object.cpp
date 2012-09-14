@@ -139,15 +139,15 @@ Triangles::Triangles(const size_t numCorners, const size_t numVertices,
                      const int block, const int timestep)
    : Object(Object::TRIANGLES, name, block, timestep) {
 
-   const shm<float>::allocator
-      alloc_inst_float(Shm::instance().getShm().get_segment_manager());
+   const shm<Scalar>::allocator
+      alloc_inst_Scalar(Shm::instance().getShm().get_segment_manager());
 
    const shm<size_t>::allocator
       alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
 
-   x = Shm::instance().getShm().construct<shm<float>::vector>(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
-   y = Shm::instance().getShm().construct<shm<float>::vector>(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
-   z = Shm::instance().getShm().construct<shm<float>::vector>(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   x = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
+   y = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
+   z = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
 
    cl = Shm::instance().getShm().construct<shm<size_t>::vector>(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
 }
@@ -184,17 +184,17 @@ Lines::Lines(const size_t numElements, const size_t numCorners,
              const int block, const int timestep)
    : Object(Object::LINES, name, block, timestep) {
 
-   const shm<float>::allocator
-      alloc_inst_float(Shm::instance().getShm().get_segment_manager());
+   const shm<Scalar>::allocator
+      alloc_inst_Scalar(Shm::instance().getShm().get_segment_manager());
 
    const shm<size_t>::allocator
       alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
 
-   x = Shm::instance().getShm().construct<shm<float>::vector>(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   x = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
 
-   y = Shm::instance().getShm().construct<shm<float>::vector>(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   y = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
 
-   z = Shm::instance().getShm().construct<shm<float>::vector>(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   z = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
 
    el = Shm::instance().getShm().construct<shm<size_t>::vector>(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
 
@@ -238,17 +238,17 @@ Polygons::Polygons(const size_t numElements, const size_t numCorners,
                    const int block, const int timestep)
    : Object(Object::POLYGONS, name, block, timestep) {
 
-   const shm<float>::allocator
-      alloc_inst_float(Shm::instance().getShm().get_segment_manager());
+   const shm<Scalar>::allocator
+      alloc_inst_Scalar(Shm::instance().getShm().get_segment_manager());
 
    const shm<size_t>::allocator
       alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
 
-   x = Shm::instance().getShm().construct<shm<float>::vector>(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   x = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
 
-   y = Shm::instance().getShm().construct<shm<float>::vector>(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   y = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
 
-   z = Shm::instance().getShm().construct<shm<float>::vector>(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   z = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
 
    el = Shm::instance().getShm().construct<shm<size_t>::vector>(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
 
@@ -295,8 +295,8 @@ UnstructuredGrid::UnstructuredGrid(const size_t numElements,
                                    const int block, const int timestep)
    : Object(Object::UNSTRUCTUREDGRID, name, block, timestep) {
 
-   const shm<float>::allocator
-      alloc_inst_float(Shm::instance().getShm().get_segment_manager());
+   const shm<Scalar>::allocator
+      alloc_inst_Scalar(Shm::instance().getShm().get_segment_manager());
 
    const shm<size_t>::allocator
       alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
@@ -304,11 +304,11 @@ UnstructuredGrid::UnstructuredGrid(const size_t numElements,
    const shm<char>::allocator
       alloc_inst_char(Shm::instance().getShm().get_segment_manager());
 
-   x = Shm::instance().getShm().construct<shm<float>::vector>(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   x = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
 
-   y = Shm::instance().getShm().construct<shm<float>::vector>(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   y = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
 
-   z = Shm::instance().getShm().construct<shm<float>::vector>(Shm::instance().createObjectID().c_str())(numVertices, float(), alloc_inst_float);
+   z = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
 
    tl = Shm::instance().getShm().construct<shm<char>::vector>(Shm::instance().createObjectID().c_str())(numElements, char(), alloc_inst_char);
 
@@ -412,7 +412,7 @@ Geometry * Geometry::create(const int block, const int timestep) {
 }
 
 Texture1D::Texture1D(const std::string & name, const size_t width,
-                     const float mi, const float ma,
+                     const Scalar mi, const Scalar ma,
                      const int block, const int timestep)
    : Object(Object::TEXTURE1D, name, block, timestep), min(mi), max(ma) {
 
@@ -421,15 +421,15 @@ Texture1D::Texture1D(const std::string & name, const size_t width,
 
    pixels = Shm::instance().getShm().construct<shm<unsigned char>::vector>(Shm::instance().createObjectID().c_str())(width * 4, char(), alloc_inst);
 
-   const allocator<float, managed_shared_memory::segment_manager>
-      alloc_inst_float(Shm::instance().getShm().get_segment_manager());
+   const allocator<Scalar, managed_shared_memory::segment_manager>
+      alloc_inst_Scalar(Shm::instance().getShm().get_segment_manager());
 
-   coords = Shm::instance().getShm().construct<shm<float>::vector>(Shm::instance().createObjectID().c_str())(alloc_inst_float);
+   coords = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(alloc_inst_Scalar);
 
 }
 
 Texture1D * Texture1D::create(const size_t width,
-                              const float min, const float max,
+                              const Scalar min, const Scalar max,
                               const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
@@ -453,10 +453,10 @@ size_t Texture1D::getWidth() const {
    return pixels->size() / 4;
 }
 
-template<> const Object::Type Vec<float>::s_type  = Object::VECFLOAT;
+template<> const Object::Type Vec<Scalar>::s_type  = Object::VECFLOAT;
 template<> const Object::Type Vec<int>::s_type    = Object::VECINT;
 template<> const Object::Type Vec<char>::s_type   = Object::VECCHAR;
-template<> const Object::Type Vec3<float>::s_type = Object::VEC3FLOAT;
+template<> const Object::Type Vec3<Scalar>::s_type = Object::VEC3FLOAT;
 template<> const Object::Type Vec3<int>::s_type   = Object::VEC3INT;
 template<> const Object::Type Vec3<char>::s_type  = Object::VEC3CHAR;
 

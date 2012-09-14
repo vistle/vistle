@@ -7,7 +7,7 @@
 class ColorMap {
 
 public:
-   ColorMap(std::map<float, vistle::Vector> & pins, const size_t width);
+   ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins, const size_t width);
    ~ColorMap();
 
    unsigned char *data;
@@ -22,10 +22,10 @@ class Color: public vistle::Module {
 
  private:
    vistle::Object * addTexture(vistle::Object * object,
-                               const float min, const float max,
+                               const vistle::Scalar min, const vistle::Scalar max,
                                const ColorMap & cmap);
 
-   void getMinMax(const vistle::Object * object, float & min, float & max);
+   void getMinMax(const vistle::Object * object, vistle::Scalar & min, vistle::Scalar & max);
 
    virtual bool compute();
 };

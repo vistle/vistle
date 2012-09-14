@@ -10,17 +10,17 @@
 
 MODULE_MAIN(Color)
 
-ColorMap::ColorMap(std::map<float, vistle::Vector> & pins,
+ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
                    const size_t w): width(w) {
 
    data = new unsigned char[width * 4];
 
-   std::map<float, vistle::Vector>::iterator current = pins.begin();
-   std::map<float, vistle::Vector>::iterator next = ++pins.begin();
+   std::map<vistle::Scalar, vistle::Vector>::iterator current = pins.begin();
+   std::map<vistle::Scalar, vistle::Vector>::iterator next = ++pins.begin();
 
    for (size_t index = 0; index < width; index ++) {
 
-      if (((float) index) / width > next->first) {
+      if (((vistle::Scalar) index) / width > next->first) {
          if (next != pins.end()) {
             current ++;
             next ++;
@@ -34,10 +34,10 @@ ColorMap::ColorMap(std::map<float, vistle::Vector> & pins,
          data[index * 4 + 3] = 1.0;
       } else {
 
-         float a = current->first;
-         float b = next->first;
+         vistle::Scalar a = current->first;
+         vistle::Scalar b = next->first;
 
-         float t = ((index / (float) width) - a) / (b - a);
+         vistle::Scalar t = ((index / (vistle::Scalar) width) - a) / (b - a);
 
          data[index * 4] =
             (lerp(current->second.x, next->second.x, t) * 255.0);
@@ -70,7 +70,7 @@ Color::~Color() {
 }
 
 void Color::getMinMax(const vistle::Object * object,
-                      float & min, float & max) {
+                      vistle::Scalar & min, vistle::Scalar & max) {
 
    if (object) {
       switch (object->getType()) {
@@ -86,10 +86,10 @@ void Color::getMinMax(const vistle::Object * object,
 
          case vistle::Object::VECFLOAT: {
 
-            const vistle::Vec<float> *data =
-               static_cast<const vistle::Vec<float> *>(object);
+            const vistle::Vec<vistle::Scalar> *data =
+               static_cast<const vistle::Vec<vistle::Scalar> *>(object);
 
-            const float *x = &((*data->x)[0]);
+            const vistle::Scalar *x = &((*data->x)[0]);
             int numElements = data->getSize();
             for (int index = 0; index < numElements; index ++) {
                if (x[index] < min)
@@ -107,7 +107,7 @@ void Color::getMinMax(const vistle::Object * object,
 }
 
 vistle::Object * Color::addTexture(vistle::Object * object,
-                                   const float min, const float max,
+                                   const vistle::Scalar min, const vistle::Scalar max,
                                    const ColorMap & cmap) {
 
    if (object) {
@@ -129,9 +129,9 @@ vistle::Object * Color::addTexture(vistle::Object * object,
 
          case vistle::Object::VECFLOAT: {
 
-            vistle::Vec<float> * f = static_cast<vistle::Vec<float> *>(object);
+            vistle::Vec<vistle::Scalar> * f = static_cast<vistle::Vec<vistle::Scalar> *>(object);
             const size_t numElem = f->getSize();
-            float *x = &((*f->x)[0]);
+            vistle::Scalar *x = &((*f->x)[0]);
 
             vistle::Texture1D *tex = vistle::Texture1D::create(cmap.width,
                                                                min, max);
@@ -158,7 +158,7 @@ vistle::Object * Color::addTexture(vistle::Object * object,
 
 bool Color::compute() {
 
-   std::map<float, vistle::Vector> pins;
+   std::map<vistle::Scalar, vistle::Vector> pins;
    pins.insert(std::make_pair(0.0, vistle::Vector(0.0, 0.0, 1.0)));
    pins.insert(std::make_pair(0.5, vistle::Vector(1.0, 0.0, 0.0)));
    pins.insert(std::make_pair(1.0, vistle::Vector(1.0, 1.0, 0.0)));
@@ -168,8 +168,8 @@ bool Color::compute() {
 
    while (objects.size() > 0) {
 
-      float min = FLT_MAX;
-      float max = -FLT_MAX;
+      vistle::Scalar min = FLT_MAX;
+      vistle::Scalar max = -FLT_MAX;
 
       if (getFloatParameter("min") == getFloatParameter("max"))
          getMinMax(objects.front(), min, max);

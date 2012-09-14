@@ -41,7 +41,7 @@ void spawn(vistle::Communicator * comm, const int rank,
 }
 
 void setParam(vistle::Communicator * comm, const int rank,
-             const int moduleID, const char * name, const float value) {
+             const int moduleID, const char * name, const vistle::Scalar value) {
 
    vistle::message::SetFloatParameter param(0, rank, moduleID, name, value);
    comm->handleMessage(&param);

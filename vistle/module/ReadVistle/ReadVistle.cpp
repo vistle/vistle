@@ -84,6 +84,18 @@ size_t read_float(const int fd, float * data, const size_t num) {
    return tread<float>(fd, data, num);
 }
 
+size_t read_float(const int fd, double *data, const size_t num) {
+
+   std::vector<float> fdata(num);
+
+   size_t r = read_float(fd, &fdata[0], num);
+
+   for (size_t index = 0; index < num; index ++)
+      data[index] = fdata[index];
+
+   return r;
+}
+
 ReadVistle::~ReadVistle() {
 
 }
@@ -95,7 +107,7 @@ vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info
    const Set::Info *seti = dynamic_cast<const Set::Info *>(info);
    const Polygons::Info *polyi = dynamic_cast<const Polygons::Info *>(info);
    const UnstructuredGrid::Info *usgi = dynamic_cast<const UnstructuredGrid::Info *>(info);
-   const Vec<float>::Info *datai = dynamic_cast<const Vec<float>::Info *>(info);
+   const Vec<vistle::Scalar>::Info *datai = dynamic_cast<const Vec<vistle::Scalar>::Info *>(info);
 
    if (seti) {
 
@@ -155,7 +167,7 @@ vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info
          switch (datai->type) {
 
             case vistle::Object::VECFLOAT: {
-               vistle::Vec<float> *data = vistle::Vec<float>::create(datai->numElements);
+               vistle::Vec<vistle::Scalar> *data = vistle::Vec<vistle::Scalar>::create(datai->numElements);
 
                read_float(fd, &((*data->x)[0]), datai->numElements);
                addObject("grid_out", data);
@@ -163,8 +175,8 @@ vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info
             }
 
             case vistle::Object::VEC3FLOAT: {
-               vistle::Vec3<float> *data =
-                  vistle::Vec3<float>::create(datai->numElements);
+               vistle::Vec3<vistle::Scalar> *data =
+                  vistle::Vec3<vistle::Scalar>::create(datai->numElements);
 
                read_float(fd, &((*data->x)[0]), datai->numElements);
                read_float(fd, &((*data->y)[0]), datai->numElements);
@@ -250,7 +262,7 @@ vistle::Object::Info * ReadVistle::readItemInfo(const int fd) {
 
       case vistle::Object::VECFLOAT: {
 
-         Vec<float>::Info *info = new Vec<float>::Info;
+         Vec<vistle::Scalar>::Info *info = new Vec<vistle::Scalar>::Info;
          info->infosize = infosize;
          info->itemsize = itemsize;
          info->offset = offset;
@@ -264,7 +276,7 @@ vistle::Object::Info * ReadVistle::readItemInfo(const int fd) {
 
       case vistle::Object::VEC3FLOAT: {
 
-         Vec3<float>::Info *info = new Vec3<float>::Info;
+         Vec3<vistle::Scalar>::Info *info = new Vec3<vistle::Scalar>::Info;
          info->infosize = infosize;
          info->itemsize = itemsize;
          info->offset = offset;

@@ -12,7 +12,7 @@ class IsoSurface: public vistle::Module {
  private:
    vistle::Object * generateIsoSurface(const vistle::Object * grid,
                                        const vistle::Object * data,
-                                       const float isoValue);
+                                       const vistle::Scalar isoValue);
 
    virtual bool compute();
 };

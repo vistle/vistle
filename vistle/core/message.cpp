@@ -234,7 +234,7 @@ const char * SetFileParameter::getValue() const {
 
 AddFloatParameter::AddFloatParameter(const int moduleID, const int rank,
                                      const std::string & n,
-                                     const float v)
+                                     const vistle::Scalar v)
    : Message(moduleID, rank, Message::ADDFLOATPARAMETER,
              sizeof(AddFloatParameter)), value(v) {
 
@@ -248,14 +248,14 @@ const char * AddFloatParameter::getName() const {
    return name;
 }
 
-float AddFloatParameter::getValue() const {
+vistle::Scalar AddFloatParameter::getValue() const {
 
    return value;
 }
 
 SetFloatParameter::SetFloatParameter(const int moduleID, const int rank,
                                      const int m, const std::string & n,
-                                     const float v)
+                                     const vistle::Scalar v)
    : Message(moduleID, rank, Message::SETFLOATPARAMETER,
              sizeof(SetFloatParameter)), module(m), value(v) {
 
@@ -274,7 +274,7 @@ const char * SetFloatParameter::getName() const {
    return name;
 }
 
-float SetFloatParameter::getValue() const {
+vistle::Scalar SetFloatParameter::getValue() const {
 
    return value;
 }

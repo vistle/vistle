@@ -2,7 +2,7 @@
 
 namespace vistle {
 
-Vector::Vector(const float _x, const float _y, const float _z)
+Vector::Vector(const Scalar _x, const Scalar _y, const Scalar _z)
    : x(_x), y(_y), z(_z) {
 
 }
@@ -16,7 +16,7 @@ Vector Vector::operator - () const {
    return Vector(-x, -y, -z);
 }
 
-Vector Vector::operator * (float const & rhs) const {
+Vector Vector::operator * (Scalar const & rhs) const {
 
    return Vector(rhs * x, rhs * y, rhs * z);
 }
@@ -32,7 +32,7 @@ Vector Vector::operator - (Vector const & rhs) const {
    return Vector(x - rhs.x, y - rhs.y, z - rhs.z);
 }
 
-float Vector::operator * (Vector const & rhs) const {
+Scalar Vector::operator * (Vector const & rhs) const {
 
       return x * rhs.x + y * rhs.y + z * rhs.z;
 }

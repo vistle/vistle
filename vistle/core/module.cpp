@@ -153,7 +153,7 @@ std::string Module::getFileParameter(const std::string & name) const {
 }
 
 bool Module::addFloatParameter(const std::string & name,
-                               const float value) {
+                               const vistle::Scalar value) {
 
    std::map<std::string, Parameter *>::iterator i =
       parameters.find(name);
@@ -170,7 +170,7 @@ bool Module::addFloatParameter(const std::string & name,
 }
 
 void Module::setFloatParameter(const std::string & name,
-                               const float value) {
+                               const vistle::Scalar value) {
 
    std::map<std::string, Parameter *>::iterator i =
       parameters.find(name);
@@ -189,7 +189,7 @@ void Module::setFloatParameter(const std::string & name,
    sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
 }
 
-float Module::getFloatParameter(const std::string & name) const {
+vistle::Scalar Module::getFloatParameter(const std::string & name) const {
 
   std::map<std::string, Parameter *>::const_iterator i =
       parameters.find(name);

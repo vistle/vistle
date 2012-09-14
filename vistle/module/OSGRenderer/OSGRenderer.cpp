@@ -851,9 +851,9 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             const size_t numVertices = triangles->getNumVertices();
 
             size_t *cl = &((*triangles->cl)[0]);
-            float *x = &((*triangles->x)[0]);
-            float *y = &((*triangles->y)[0]);
-            float *z = &((*triangles->z)[0]);
+            vistle::Scalar *x = &((*triangles->x)[0]);
+            vistle::Scalar *y = &((*triangles->y)[0]);
+            vistle::Scalar *z = &((*triangles->z)[0]);
 
             geode = new osg::Geode();
             osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
@@ -952,9 +952,9 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
 
             size_t *el = &((*lines->el)[0]);
             size_t *cl = &((*lines->cl)[0]);
-            float *x = &((*lines->x)[0]);
-            float *y = &((*lines->y)[0]);
-            float *z = &((*lines->z)[0]);
+            vistle::Scalar *x = &((*lines->x)[0]);
+            vistle::Scalar *y = &((*lines->y)[0]);
+            vistle::Scalar *z = &((*lines->z)[0]);
 
             geode = new osg::Geode();
             osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
@@ -994,9 +994,9 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             const vistle::Polygons *polygons =
                static_cast<const vistle::Polygons *>(geometry);
 
-            const vistle::Vec3<float> *vec = NULL;
+            const vistle::Vec3<vistle::Scalar> *vec = NULL;
             if (normals && normals->getType() == vistle::Object::VEC3FLOAT)
-               vec = static_cast<const vistle::Vec3<float> *>(normals);
+               vec = static_cast<const vistle::Vec3<vistle::Scalar> *>(normals);
 
             const size_t numElements = polygons->getNumElements();
             const size_t numCorners = polygons->getNumCorners();
@@ -1005,12 +1005,12 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
 
             size_t *el = &((*polygons->el)[0]);
             size_t *cl = &((*polygons->cl)[0]);
-            float *x = &((*polygons->x)[0]);
-            float *y = &((*polygons->y)[0]);
-            float *z = &((*polygons->z)[0]);
-            float *nx = NULL;
-            float *ny = NULL;
-            float *nz = NULL;
+            vistle::Scalar *x = &((*polygons->x)[0]);
+            vistle::Scalar *y = &((*polygons->y)[0]);
+            vistle::Scalar *z = &((*polygons->z)[0]);
+            vistle::Scalar *nx = NULL;
+            vistle::Scalar *ny = NULL;
+            vistle::Scalar *nz = NULL;
             if (numNormals) {
                nx = &((*vec->x)[0]);
                ny = &((*vec->y)[0]);
