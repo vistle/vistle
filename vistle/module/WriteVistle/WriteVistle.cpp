@@ -84,7 +84,7 @@ WriteVistle::~WriteVistle() {
 
 }
 
-Object::Info * WriteVistle::createInfo(vistle::Object * object, size_t offset) {
+Object::Info * WriteVistle::createInfo(const vistle::Object * object, size_t offset) {
 
    uint64_t infosize = 0;
    uint64_t itemsize = 0;
@@ -200,6 +200,7 @@ void WriteVistle::createCatalogue(const vistle::Object * object,
    uint64_t itemsize = 0;
    uint64_t offset = 0;
 
+#if 0
    switch (object->getType()) {
 
       case vistle::Object::SET: {
@@ -230,6 +231,9 @@ void WriteVistle::createCatalogue(const vistle::Object * object,
       default:
          break;
    }
+#else
+   c.item = createInfo(object, offset);
+#endif
    c.infosize = infosize + 2 * sizeof(int64_t); // info + item size;
    c.itemsize = itemsize;
 }

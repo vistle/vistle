@@ -15,7 +15,7 @@ class WriteVistle: public vistle::Module {
    ~WriteVistle();
 
  private:
-   vistle::Object::Info * createInfo(vistle::Object * object, size_t offset);
+   vistle::Object::Info * createInfo(const vistle::Object * object, size_t offset);
 
    void createCatalogue(const vistle::Object * object, catalogue & c);
    void saveCatalogue(const int fd, const catalogue & c);
