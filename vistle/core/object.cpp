@@ -104,6 +104,21 @@ Object::~Object() {
 
 }
 
+Object::Info *Object::getInfo(Object::Info *info) const {
+
+   if (!info)
+      info = new Info;
+
+   info->infosize = sizeof(Info);
+   info->itemsize = 0;
+   info->offset = 0;
+   info->type = getType();
+   info->block = getBlock();
+   info->timestep = getTimestep();
+
+   return info;
+}
+
 Object::Type Object::getType() const {
 
    return m_type;
@@ -169,6 +184,22 @@ Triangles * Triangles::create(const size_t numCorners,
    return t;
 }
 
+Triangles::Info *Triangles::getInfo(Triangles::Info *info) const {
+
+   if (!info)
+      info = new Info;
+
+   Parent::getInfo(info);
+
+   info->infosize = sizeof(Info);
+   info->itemsize = 0;
+   info->offset = 0;
+   info->numCorners = getNumCorners();
+   info->numVertices = getNumVertices();
+
+   return info;
+}
+
 size_t Triangles::getNumCorners() const {
 
    return cl->size();
@@ -216,6 +247,25 @@ Lines * Lines::create(const size_t numElements, const size_t numCorners,
    Shm::instance().publish(handle);
    */
    return l;
+}
+
+Lines::Info *Lines::getInfo(Lines::Info *info) const {
+
+   if (!info)
+      info = new Info;
+
+   Parent::getInfo(info);
+
+   info->infosize = sizeof(Info);
+   info->itemsize += info->numElements * sizeof(uint64_t)
+      + info->numCorners * sizeof(uint64_t)
+      + 3 * info->numVertices * sizeof(Scalar);
+   info->offset = 0;
+   info->numElements = getNumElements();
+   info->numCorners = getNumCorners();
+   info->numVertices = getNumVertices();
+
+   return info;
 }
 
 size_t Lines::getNumElements() const {

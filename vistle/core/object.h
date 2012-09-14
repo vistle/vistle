@@ -2,9 +2,19 @@
 #define OBJECT_H
 
 #include <vector>
+
+#include <boost/scoped_ptr.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 
+// include headers that implement an archive in simple text format
+//#include <boost/archive/text_oarchive.hpp>
+//#include <boost/archive/text_iarchive.hpp>
+
+#include <boost/serialization/base_object.hpp>
+#include <boost/serialization/utility.hpp>
+#include <boost/serialization/list.hpp>
+#include <boost/serialization/assume_abstract.hpp>
 
 #include "scalar.h"
 
@@ -78,11 +88,25 @@ public:
       uint64_t block;
       uint64_t timestep;
       virtual ~Info() {}; // for RTTI
+
+      private:
+      friend class boost::serialization::access;
+      template<class Archive>
+         void serialize(Archive &ar, const unsigned int version) {
+            ar & infosize;
+            ar & itemsize;
+            ar & offset;
+            ar & type;
+            ar & block;
+            ar & timestep;
+         }
    };
 
    Object(const Type id, const std::string & name,
           const int block, const int timestep);
    virtual ~Object();
+
+   Info *getInfo(Info *info = NULL) const;
 
    Type getType() const;
    std::string getName() const;
@@ -99,6 +123,14 @@ public:
 
    int m_block;
    int m_timestep;
+
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         boost::scoped_ptr<Info> info(getInfo());
+         ar & *info;
+      }
+
 };
 
 
@@ -110,6 +142,14 @@ class Vec: public Object {
 
    struct Info: public Object::Info {
       uint64_t numElements;
+
+      private:
+      friend class boost::serialization::access;
+      template<class Archive>
+         void serialize(Archive &ar, const unsigned int version) {
+            ar & boost::serialization::base_object<Parent::Info>(*this);
+            ar & numElements;
+         }
    };
 
    static Vec<T> * create(const size_t size = 0,
@@ -136,6 +176,8 @@ class Vec: public Object {
       x = Shm::instance().getShm().construct<typename shm<T>::vector> (Shm::instance().createObjectID().c_str())(size, T(), alloc_inst);
    }
 
+   Info *getInfo(Info *info = NULL) const;
+
    size_t getSize() const {
       return x->size();
    }
@@ -148,6 +190,13 @@ class Vec: public Object {
 
  private:
    static const Object::Type s_type;
+
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         ar & boost::serialization::base_object<Object>(*this);
+         ar & x;
+      }
 };
 
 
@@ -187,6 +236,8 @@ class Vec3: public Object {
       z = Shm::instance().getShm().construct<typename shm<T>::vector> (Shm::instance().createObjectID().c_str())(size, T(), alloc_inst);
    }
 
+   Info *getInfo(Info *info = NULL) const;
+
    size_t getSize() const {
       return x->size();
    }
@@ -201,6 +252,15 @@ class Vec3: public Object {
 
  private:
    static const Object::Type s_type;
+
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         ar & boost::serialization::base_object<Object>(*this);
+         ar & x;
+         ar & y;
+         ar & z;
+      }
 };
 
 class Triangles: public Object {
@@ -221,12 +281,22 @@ class Triangles: public Object {
              const std::string & name,
              const int block, const int timestep);
 
+   Info *getInfo(Info *info = NULL) const;
    size_t getNumCorners() const;
    size_t getNumVertices() const;
 
    shm<size_t>::ptr cl;
    shm<Scalar>::ptr x, y, z;
  private:
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         ar & boost::serialization::base_object<Object>(*this);
+         ar & cl;
+         ar & x;
+         ar & y;
+         ar & z;
+      }
 };
 
 class Lines: public Object {
@@ -249,6 +319,7 @@ class Lines: public Object {
          const size_t numVertices, const std::string & name,
          const int block, const int timestep);
 
+   Info *getInfo(Info *info = NULL) const;
    size_t getNumElements() const;
    size_t getNumCorners() const;
    size_t getNumVertices() const;
@@ -257,6 +328,16 @@ class Lines: public Object {
    shm<Scalar>::ptr x, y, z;
 
  private:
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         ar & boost::serialization::base_object<Object>(*this);
+         ar & el;
+         ar & cl;
+         ar & x;
+         ar & y;
+         ar & z;
+      }
 };
 
 class Polygons: public Object {
@@ -278,6 +359,7 @@ class Polygons: public Object {
             const size_t numVertices, const std::string & name,
             const int block, const int timestep);
 
+   Info *getInfo(Info *info = NULL) const;
    size_t getNumElements() const;
    size_t getNumCorners() const;
    size_t getNumVertices() const;
@@ -286,6 +368,16 @@ class Polygons: public Object {
    shm<Scalar>::ptr x, y, z;
 
  private:
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         ar & boost::serialization::base_object<Object>(*this);
+         ar & el;
+         ar & cl;
+         ar & x;
+         ar & y;
+         ar & z;
+      }
 };
 
 
@@ -323,6 +415,7 @@ class UnstructuredGrid: public Object {
                     const size_t numVertices, const std::string & name,
                     const int block, const int timestep);
 
+   Info *getInfo(Info *info = NULL) const;
    size_t getNumElements() const;
    size_t getNumCorners() const;
    size_t getNumVertices() const;
@@ -332,7 +425,17 @@ class UnstructuredGrid: public Object {
    shm<Scalar>::ptr x, y, z;
 
  private:
-
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         ar & boost::serialization::base_object<Object>(*this);
+         ar & tl;
+         ar & el;
+         ar & cl;
+         ar & x;
+         ar & y;
+         ar & z;
+      }
 };
 
 class Set: public Object {
@@ -350,10 +453,19 @@ class Set: public Object {
    Set(const size_t numElements, const std::string & name,
        const int block, const int timestep);
 
+   Info *getInfo(Info *info = NULL) const;
    size_t getNumElements() const;
    Object * getElement(const size_t index) const;
 
    shm<boost::interprocess::offset_ptr<Object> >::ptr elements;
+
+ private:
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         ar & boost::serialization::base_object<Object>(*this);
+         ar & elements;
+      }
 };
 
 class Geometry: public Object {
@@ -366,13 +478,23 @@ class Geometry: public Object {
    Geometry(const std::string & name,
             const int block, const int timestep);
 
+   Info *getInfo(Info *info = NULL) const;
+
    boost::interprocess::offset_ptr<Object> geometry;
    boost::interprocess::offset_ptr<Object> colors;
    boost::interprocess::offset_ptr<Object> normals;
    boost::interprocess::offset_ptr<Object> texture;
 
  private:
-
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         ar & boost::serialization::base_object<Object>(*this);
+         ar & geometry;
+         ar & colors;
+         ar & normals;
+         ar & texture;
+      }
 };
 
 class Texture1D: public Object {
@@ -388,16 +510,26 @@ class Texture1D: public Object {
              const Scalar min, const Scalar max,
              const int block, const int timestep);
 
+   Info *getInfo(Info *info = NULL) const;
    size_t getNumElements() const;
    size_t getWidth() const;
-
-   shm<unsigned char>::ptr pixels;
-   shm<Scalar>::ptr coords;
 
    Scalar min;
    Scalar max;
 
+   shm<unsigned char>::ptr pixels;
+   shm<Scalar>::ptr coords;
+
  private:
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         ar & boost::serialization::base_object<Object>(*this);
+         ar & pixels;
+         ar & coords;
+         ar & min;
+         ar & max;
+      }
 };
 
 } // namespace vistle
