@@ -49,7 +49,7 @@ Shm & Shm::instance(const int moduleID, const int rank,
          try {
             s_singleton = new Shm(moduleID, rank, memsize, mq);
          } catch (boost::interprocess::interprocess_exception ex) {
-            memsize <<= 2;
+            memsize /= 2;
          }
       } while (!s_singleton && memsize >= 4096);
    }
