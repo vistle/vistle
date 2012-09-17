@@ -143,7 +143,7 @@ class Vec: public Object {
  public:
    typedef Object Parent;
 
-   struct Info: public Object::Info {
+   struct Info: public Parent::Info {
       uint64_t numElements;
 
       private:
@@ -206,7 +206,7 @@ class Vec3: public Object {
  public:
    typedef Object Parent;
 
-   struct Info: public Object::Info {
+   struct Info: public Parent::Info {
       uint64_t numElements;
    };
 
@@ -264,7 +264,7 @@ class Triangles: public Object {
  public:
    typedef Object Parent;
 
-   struct Info: public Object::Info {
+   struct Info: public Parent::Info {
       uint64_t numCorners;
       uint64_t numVertices;
    };
@@ -300,7 +300,7 @@ class Lines: public Object {
  public:
    typedef Object Parent;
 
-   struct Info: public Object::Info {
+   struct Info: public Parent::Info {
       uint64_t numElements;
       uint64_t numCorners;
       uint64_t numVertices;
@@ -341,7 +341,7 @@ class Polygons: public Object {
  public:
    typedef Object Parent;
 
-   struct Info: public Object::Info {
+   struct Info: public Parent::Info {
       uint64_t numElements;
       uint64_t numCorners;
       uint64_t numVertices;
@@ -395,7 +395,7 @@ class UnstructuredGrid: public Object {
       POLYHEDRON  = 11
    };
 
-   struct Info: public Object::Info {
+   struct Info: public Parent::Info {
       uint64_t numElements;
       uint64_t numCorners;
       uint64_t numVertices;
@@ -439,7 +439,7 @@ class Set: public Object {
  public:
    typedef Object Parent;
 
-   struct Info: public Object::Info {
+   struct Info: public Parent::Info {
       std::vector<Object::Info *> items;
    };
 
