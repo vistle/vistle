@@ -154,17 +154,10 @@ Triangles::Triangles(const size_t numCorners, const size_t numVertices,
                      const int block, const int timestep)
    : Object(Object::TRIANGLES, name, block, timestep) {
 
-   const shm<Scalar>::allocator
-      alloc_inst_Scalar(Shm::instance().getShm().get_segment_manager());
-
-   const shm<size_t>::allocator
-      alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
-
-   x = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
-   y = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
-   z = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
-
-   cl = Shm::instance().getShm().construct<shm<size_t>::vector>(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
+      x = shm<Scalar>::construct_vector(numVertices);
+      y = shm<Scalar>::construct_vector(numVertices);
+      z = shm<Scalar>::construct_vector(numVertices);
+      cl = shm<size_t>::construct_vector(numCorners);
 }
 
 
@@ -173,8 +166,7 @@ Triangles * Triangles::create(const size_t numCorners,
                               const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   Triangles *t = static_cast<Triangles *>
-      (Shm::instance().getShm().construct<Triangles>(name.c_str())[1](numCorners, numVertices, name, block, timestep));
+   Triangles *t = shm<Triangles>::construct(name)(numCorners, numVertices, name, block, timestep);
 
    /*
    shm_handle_t handle =
@@ -215,21 +207,11 @@ Lines::Lines(const size_t numElements, const size_t numCorners,
              const int block, const int timestep)
    : Object(Object::LINES, name, block, timestep) {
 
-   const shm<Scalar>::allocator
-      alloc_inst_Scalar(Shm::instance().getShm().get_segment_manager());
-
-   const shm<size_t>::allocator
-      alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
-
-   x = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
-
-   y = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
-
-   z = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
-
-   el = Shm::instance().getShm().construct<shm<size_t>::vector>(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
-
-   cl = Shm::instance().getShm().construct<shm<size_t>::vector>(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
+      x = shm<Scalar>::construct_vector(numVertices);
+      y = shm<Scalar>::construct_vector(numVertices);
+      z = shm<Scalar>::construct_vector(numVertices);
+      el = shm<size_t>::construct_vector(numElements);
+      cl = shm<size_t>::construct_vector(numCorners);
 }
 
 
@@ -238,8 +220,7 @@ Lines * Lines::create(const size_t numElements, const size_t numCorners,
                       const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   Lines *l = static_cast<Lines *>
-      (Shm::instance().getShm().construct<Lines>(name.c_str())[1](numElements, numCorners, numVertices, name, block, timestep));
+   Lines *l = shm<Lines>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
 
    /*
    shm_handle_t handle =
@@ -288,21 +269,11 @@ Polygons::Polygons(const size_t numElements, const size_t numCorners,
                    const int block, const int timestep)
    : Object(Object::POLYGONS, name, block, timestep) {
 
-   const shm<Scalar>::allocator
-      alloc_inst_Scalar(Shm::instance().getShm().get_segment_manager());
-
-   const shm<size_t>::allocator
-      alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
-
-   x = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
-
-   y = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
-
-   z = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
-
-   el = Shm::instance().getShm().construct<shm<size_t>::vector>(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
-
-   cl = Shm::instance().getShm().construct<shm<size_t>::vector>(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
+      x = shm<Scalar>::construct_vector(numVertices);
+      y = shm<Scalar>::construct_vector(numVertices);
+      z = shm<Scalar>::construct_vector(numVertices);
+      el = shm<size_t>::construct_vector(numElements);
+      cl = shm<size_t>::construct_vector(numCorners);
 }
 
 
@@ -312,8 +283,7 @@ Polygons * Polygons::create(const size_t numElements,
                             const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   Polygons *p = static_cast<Polygons *>
-      (Shm::instance().getShm().construct<Polygons>(name.c_str())[1](numElements, numCorners, numVertices, name, block, timestep));
+   Polygons *p = shm<Polygons>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
 
    /*
    shm_handle_t handle =
@@ -345,26 +315,12 @@ UnstructuredGrid::UnstructuredGrid(const size_t numElements,
                                    const int block, const int timestep)
    : Object(Object::UNSTRUCTUREDGRID, name, block, timestep) {
 
-   const shm<Scalar>::allocator
-      alloc_inst_Scalar(Shm::instance().getShm().get_segment_manager());
-
-   const shm<size_t>::allocator
-      alloc_inst_size_t(Shm::instance().getShm().get_segment_manager());
-
-   const shm<char>::allocator
-      alloc_inst_char(Shm::instance().getShm().get_segment_manager());
-
-   x = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
-
-   y = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
-
-   z = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(numVertices, Scalar(), alloc_inst_Scalar);
-
-   tl = Shm::instance().getShm().construct<shm<char>::vector>(Shm::instance().createObjectID().c_str())(numElements, char(), alloc_inst_char);
-
-   el = Shm::instance().getShm().construct<shm<size_t>::vector>(Shm::instance().createObjectID().c_str())(numElements, size_t(), alloc_inst_size_t);
-
-   cl = Shm::instance().getShm().construct<shm<size_t>::vector>(Shm::instance().createObjectID().c_str())(numCorners, size_t(), alloc_inst_size_t);
+      x = shm<Scalar>::construct_vector(numVertices);
+      y = shm<Scalar>::construct_vector(numVertices);
+      z = shm<Scalar>::construct_vector(numVertices);
+      tl = shm<char>::construct_vector(numElements);
+      el = shm<size_t>::construct_vector(numElements);
+      cl = shm<size_t>::construct_vector(numCorners);
 }
 
 UnstructuredGrid * UnstructuredGrid::create(const size_t numElements,
@@ -373,8 +329,7 @@ UnstructuredGrid * UnstructuredGrid::create(const size_t numElements,
                                             const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   UnstructuredGrid *u = static_cast<UnstructuredGrid *>
-      (Shm::instance().getShm().construct<UnstructuredGrid>(name.c_str())[1](numElements, numCorners, numVertices, name, block, timestep));
+   UnstructuredGrid *u = shm<UnstructuredGrid>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
 
    /*
    shm_handle_t handle =
@@ -404,10 +359,7 @@ Set::Set(const size_t numElements, const std::string & name,
          const int block, const int timestep)
    : Object(Object::SET, name, block, timestep) {
 
-   const shm<offset_ptr<Object> >::allocator
-      alloc_inst(Shm::instance().getShm().get_segment_manager());
-
-   elements = Shm::instance().getShm().construct<shm<offset_ptr<Object> >::vector>(Shm::instance().createObjectID().c_str())(numElements, offset_ptr<Object>(), alloc_inst);
+      elements = shm<offset_ptr<Object> >::construct_vector(numElements);
 }
 
 
@@ -415,8 +367,7 @@ Set * Set::create(const size_t numElements,
                   const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   Set *p = static_cast<Set *>
-      (Shm::instance().getShm().construct<Set>(name.c_str())[1](numElements, name, block, timestep));
+   Set *p = shm<Set>::construct(name)(numElements, name, block, timestep);
 
    /*
    shm_handle_t handle =
@@ -450,8 +401,7 @@ Geometry::Geometry(const std::string & name,
 Geometry * Geometry::create(const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   Geometry *g = static_cast<Geometry *>
-      (Shm::instance().getShm().construct<Geometry>(name.c_str())[1](name, block, timestep));
+   Geometry *g = shm<Geometry>::construct(name)(name, block, timestep);
 
    /*
    shm_handle_t handle =
@@ -466,15 +416,14 @@ Texture1D::Texture1D(const std::string & name, const size_t width,
                      const int block, const int timestep)
    : Object(Object::TEXTURE1D, name, block, timestep), min(mi), max(ma) {
 
-   const shm<unsigned char>::allocator
-      alloc_inst(Shm::instance().getShm().get_segment_manager());
-
-   pixels = Shm::instance().getShm().construct<shm<unsigned char>::vector>(Shm::instance().createObjectID().c_str())(width * 4, char(), alloc_inst);
-
+      pixels = shm<unsigned char>::construct_vector(width * 4);
+      coords = shm<Scalar>::construct_vector(1);
+#if  0
    const allocator<Scalar, managed_shared_memory::segment_manager>
       alloc_inst_Scalar(Shm::instance().getShm().get_segment_manager());
 
    coords = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(alloc_inst_Scalar);
+#endif
 
 }
 
@@ -483,7 +432,7 @@ Texture1D * Texture1D::create(const size_t width,
                               const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   Texture1D *tex = static_cast<Texture1D *>(Shm::instance().getShm().construct<Texture1D>(name.c_str())[1](name, width, min, max, block, timestep));
+   Texture1D *tex = shm<Texture1D>::construct(name)(name, width, min, max, block, timestep);
 
    /*
    shm_handle_t handle =

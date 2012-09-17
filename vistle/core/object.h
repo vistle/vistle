@@ -58,6 +58,9 @@ struct shm {
    typedef boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> allocator;
    typedef boost::interprocess::vector<T, allocator> vector;
    typedef boost::interprocess::offset_ptr<vector> ptr;
+   static allocator alloc_inst() { return allocator(Shm::instance().getShm().get_segment_manager()); }
+   static ptr construct_vector(size_t s) { return Shm::instance().getShm().construct<vector>(Shm::instance().createObjectID().c_str())(s, T(), alloc_inst()); }
+   static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name) { return Shm::instance().getShm().construct<T>(name.c_str()); }
 };
 
 class Object {
@@ -156,8 +159,8 @@ class Vec: public Object {
                           const int block = -1, const int timestep = -1) {
 
       const std::string name = Shm::instance().createObjectID();
-      Vec<T> *t = static_cast<Vec<T> *>
-         (Shm::instance().getShm().construct<Vec<T> >(name.c_str())[1](size, name, block, timestep));
+      Vec<T> *t = shm<Vec<T> >::construct(name)(size, name, block, timestep);
+
       /*
       shm_handle_t handle =
          Shm::instance().getShm().get_handle_from_address(t);
@@ -170,10 +173,7 @@ class Vec: public Object {
      const int block, const int timestep)
     : Object(s_type, name, block, timestep) {
 
-      const typename shm<T>::allocator
-         alloc_inst(Shm::instance().getShm().get_segment_manager());
-
-      x = Shm::instance().getShm().construct<typename shm<T>::vector> (Shm::instance().createObjectID().c_str())(size, T(), alloc_inst);
+       x = shm<T>::construct_vector(size);
    }
 
    Info *getInfo(Info *info = NULL) const;
@@ -214,8 +214,7 @@ class Vec3: public Object {
                            const int block = -1, const int timestep = -1) {
 
       const std::string name = Shm::instance().createObjectID();
-      Vec3<T> *t = static_cast<Vec3<T> *>
-         (Shm::instance().getShm().construct<Vec3<T> >(name.c_str())[1](size, name, block, timestep));
+      Vec3<T> *t = shm<Vec3<T> >::construct(name)(size, name, block, timestep);
       /*
       shm_handle_t handle =
          Shm::instance().getShm().get_handle_from_address(t);
@@ -228,12 +227,9 @@ class Vec3: public Object {
         const int block, const int timestep)
       : Object(s_type, name, block, timestep) {
 
-      const typename shm<T>::allocator
-         alloc_inst(Shm::instance().getShm().get_segment_manager());
-
-      x = Shm::instance().getShm().construct<typename shm<T>::vector> (Shm::instance().createObjectID().c_str())(size, T(), alloc_inst);
-      y = Shm::instance().getShm().construct<typename shm<T>::vector> (Shm::instance().createObjectID().c_str())(size, T(), alloc_inst);
-      z = Shm::instance().getShm().construct<typename shm<T>::vector> (Shm::instance().createObjectID().c_str())(size, T(), alloc_inst);
+      x = shm<T>::construct_vector(size);
+      y = shm<T>::construct_vector(size);
+      z = shm<T>::construct_vector(size);
    }
 
    Info *getInfo(Info *info = NULL) const;
