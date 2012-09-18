@@ -326,13 +326,13 @@ bool Module::addObject(const std::string & portName,
    return false;
 }
 
-bool Module::addObject(const std::string & portName, const void *object) {
+bool Module::addObject(const std::string & portName, const vistle::Object *object) {
 
    if (!object)
       return false;
 
    managed_shared_memory::handle_t handle =
-      vistle::Shm::instance().getShm().get_handle_from_address(object);
+      vistle::Shm::instance().getHandleFromObject(object);
 
    return addObject(portName, handle);
 }
@@ -358,6 +358,7 @@ std::list<vistle::Object *> Module::getObjects(const std::string &portName) {
 void Module::removeObject(const std::string &portName, vistle::Object *object) {
 
    bool erased = false;
+   shm_handle_t handle = Shm::instance().getHandleFromObject(object);
    std::map<std::string, std::list<shm_handle_t> *>::iterator i =
       inputPorts.find(portName);
 
@@ -365,8 +366,7 @@ void Module::removeObject(const std::string &portName, vistle::Object *object) {
 
       std::list<shm_handle_t>::iterator shmit;
       for (shmit = i->second->begin(); shmit != i->second->end(); ) {
-         Object *o = Shm::instance().getObjectFromHandle(*shmit);
-         if (object == o) {
+         if (handle == *shmit) {
             erased = true;
             shmit = i->second->erase(shmit);
          } else

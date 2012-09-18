@@ -31,38 +31,38 @@ bool ShowUSG::compute() {
 
          case vistle::Object::UNSTRUCTUREDGRID: {
 
-            vistle::Lines *out = vistle::Lines::create();
+            vistle::Lines *out = new vistle::Lines;
 
             vistle::UnstructuredGrid *in =
                static_cast<vistle::UnstructuredGrid *>(object);
 
             for (size_t index = 0; index < in->getNumElements(); index ++)
-               switch ((*in->tl)[index]) {
+               switch (in->tl()[index]) {
                   case vistle::UnstructuredGrid::HEXAHEDRON:
 
-                     out->el->push_back(out->cl->size());
-                     out->cl->push_back((*in->cl)[(*in->el)[index]]);
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 1]);
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 2]);
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 3]);
-                     out->cl->push_back((*in->cl)[(*in->el)[index]]);
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 4]);
+                     out->el().push_back(out->cl().size());
+                     out->cl().push_back(in->cl()[in->el()[index]]);
+                     out->cl().push_back(in->cl()[in->el()[index] + 1]);
+                     out->cl().push_back(in->cl()[in->el()[index] + 2]);
+                     out->cl().push_back(in->cl()[in->el()[index] + 3]);
+                     out->cl().push_back(in->cl()[in->el()[index]]);
+                     out->cl().push_back(in->cl()[in->el()[index] + 4]);
 
-                     out->el->push_back(out->cl->size());
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 5]);
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 6]);
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 7]);
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 4]);
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 5]);
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 1]);
+                     out->el().push_back(out->cl().size());
+                     out->cl().push_back(in->cl()[in->el()[index] + 5]);
+                     out->cl().push_back(in->cl()[in->el()[index] + 6]);
+                     out->cl().push_back(in->cl()[in->el()[index] + 7]);
+                     out->cl().push_back(in->cl()[in->el()[index] + 4]);
+                     out->cl().push_back(in->cl()[in->el()[index] + 5]);
+                     out->cl().push_back(in->cl()[in->el()[index] + 1]);
 
-                     out->el->push_back(out->cl->size());
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 2]);
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 6]);
+                     out->el().push_back(out->cl().size());
+                     out->cl().push_back(in->cl()[in->el()[index] + 2]);
+                     out->cl().push_back(in->cl()[in->el()[index] + 6]);
 
-                     out->el->push_back(out->cl->size());
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 3]);
-                     out->cl->push_back((*in->cl)[(*in->el)[index] + 7]);
+                     out->el().push_back(out->cl().size());
+                     out->cl().push_back(in->cl()[in->el()[index] + 3]);
+                     out->cl().push_back(in->cl()[in->el()[index] + 7]);
 
                      /*
                      (*out->el)[lineIdx++] = cornerIdx;
@@ -98,9 +98,9 @@ bool ShowUSG::compute() {
 
             int numVertices = in->getNumVertices();
             for (int index = 0; index < numVertices; index ++) {
-               out->x->push_back((*in->x)[index]);
-               out->y->push_back((*in->y)[index]);
-               out->z->push_back((*in->z)[index]);
+               out->x().push_back(in->x()[index]);
+               out->y().push_back(in->y()[index]);
+               out->z().push_back(in->z()[index]);
                /*
                (*out->x)[index] = in->x[index];
                (*out->y)[index] = in->y[index];

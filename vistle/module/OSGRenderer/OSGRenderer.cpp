@@ -850,10 +850,10 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             const size_t numCorners = triangles->getNumCorners();
             const size_t numVertices = triangles->getNumVertices();
 
-            size_t *cl = &((*triangles->cl)[0]);
-            vistle::Scalar *x = &((*triangles->x)[0]);
-            vistle::Scalar *y = &((*triangles->y)[0]);
-            vistle::Scalar *z = &((*triangles->z)[0]);
+            size_t *cl = &triangles->cl()[0];
+            vistle::Scalar *x = &triangles->x()[0];
+            vistle::Scalar *y = &triangles->y()[0];
+            vistle::Scalar *z = &triangles->z()[0];
 
             geode = new osg::Geode();
             osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
@@ -912,12 +912,12 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
                osg::ref_ptr<osg::Image> image = new osg::Image();
 
                image->setImage(tex->getWidth(), 1, 1, GL_RGBA, GL_RGBA,
-                               GL_UNSIGNED_BYTE, &(*tex->pixels)[0],
+                               GL_UNSIGNED_BYTE, &tex->pixels()[0],
                                osg::Image::NO_DELETE);
                osgTex->setImage(image);
 
                osg::ref_ptr<osg::FloatArray> coords = new osg::FloatArray();
-               std::copy(tex->coords->begin(), tex->coords->end(),
+               std::copy(tex->coords().begin(), tex->coords().end(),
                          std::back_inserter(*coords));
 
                geom->setTexCoordArray(0, coords);
@@ -950,11 +950,11 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             const size_t numElements = lines->getNumElements();
             const size_t numCorners = lines->getNumCorners();
 
-            size_t *el = &((*lines->el)[0]);
-            size_t *cl = &((*lines->cl)[0]);
-            vistle::Scalar *x = &((*lines->x)[0]);
-            vistle::Scalar *y = &((*lines->y)[0]);
-            vistle::Scalar *z = &((*lines->z)[0]);
+            size_t *el = &lines->el()[0];
+            size_t *cl = &lines->cl()[0];
+            vistle::Scalar *x = &lines->x()[0];
+            vistle::Scalar *y = &lines->y()[0];
+            vistle::Scalar *z = &lines->z()[0];
 
             geode = new osg::Geode();
             osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
@@ -1003,18 +1003,18 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             const size_t numVertices = polygons->getNumVertices();
             const size_t numNormals = vec ? vec->getSize() : 0;
 
-            size_t *el = &((*polygons->el)[0]);
-            size_t *cl = &((*polygons->cl)[0]);
-            vistle::Scalar *x = &((*polygons->x)[0]);
-            vistle::Scalar *y = &((*polygons->y)[0]);
-            vistle::Scalar *z = &((*polygons->z)[0]);
+            size_t *el = &polygons->el()[0];
+            size_t *cl = &polygons->cl()[0];
+            vistle::Scalar *x = &polygons->x()[0];
+            vistle::Scalar *y = &polygons->y()[0];
+            vistle::Scalar *z = &polygons->z()[0];
             vistle::Scalar *nx = NULL;
             vistle::Scalar *ny = NULL;
             vistle::Scalar *nz = NULL;
             if (numNormals) {
-               nx = &((*vec->x)[0]);
-               ny = &((*vec->y)[0]);
-               nz = &((*vec->z)[0]);
+               nx = &vec->x()[0];
+               ny = &vec->y()[0];
+               nz = &vec->z()[0];
             }
 
             geode = new osg::Geode();
@@ -1107,7 +1107,7 @@ void OSGRenderer::addInputObject(const vistle::Object * geometry,
             const vistle::Set *nset = static_cast<const vistle::Set *>(normals);
             const vistle::Set *tset = static_cast<const vistle::Set *>(texture);
 
-            for (size_t index = 0; index < gset->elements->size(); index ++) {
+            for (size_t index = 0; index < gset->elements().size(); index ++) {
                addInputObject(gset->getElement(index),
                               cset ? cset->getElement(index) : NULL,
                               nset ? nset->getElement(index) : NULL,
@@ -1146,7 +1146,7 @@ bool OSGRenderer::addInputObject(const std::string & portName,
       case vistle::Object::SET: {
 
          const vistle::Set *set = static_cast<const vistle::Set *>(object);
-         for (size_t index = 0; index < set->elements->size(); index ++) {
+         for (size_t index = 0; index < set->elements().size(); index ++) {
             addInputObject(portName, set->getElement(index));
          }
          break;
@@ -1157,8 +1157,8 @@ bool OSGRenderer::addInputObject(const std::string & portName,
          const vistle::Geometry *geom =
             static_cast<const vistle::Geometry *>(object);
 
-         addInputObject(&*geom->geometry, &*geom->colors, &*geom->normals,
-                        &*geom->texture);
+         addInputObject(&*geom->geometry(), &*geom->colors(), &*geom->normals(),
+                        &*geom->texture());
 
          break;
       }

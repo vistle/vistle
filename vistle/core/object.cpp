@@ -85,28 +85,71 @@ std::string Shm::createObjectID() {
    return name.str();
 }
 
+shm_handle_t Shm::getHandleFromObject(const Object *object) {
+
+   try {
+      return m_shm->get_handle_from_address(object->d());
+
+   } catch (interprocess_exception &ex) { }
+
+   return 0;
+}
+
 Object * Shm::getObjectFromHandle(const shm_handle_t & handle) {
 
    try {
-      Object *object = static_cast<Object *>
+      Object::Data *od = static_cast<Object::Data *>
          (m_shm->get_address_from_handle(handle));
-      return object;
 
+      return Object::create(od);
    } catch (interprocess_exception &ex) { }
 
    return NULL;
 }
 
-Object::Object(const Type type, const std::string & n,
-               const int b, const int t): m_type(type), m_block(b), m_timestep(t) {
+Object *Object::create(Object::Data *data) {
+
+#define CR(id, T) case id: return new T(static_cast<T::Data *>(data))
+
+   switch(data->type) {
+      case Object::UNKNOWN: assert(0 == "Cannot create Object of UNKNOWN type");
+      CR(Object::VECCHAR, Vec<char>);
+      CR(Object::VECINT, Vec<int>);
+      CR(Object::VECFLOAT, Vec<Scalar>);
+      CR(Object::VEC3CHAR, Vec3<char>);
+      CR(Object::VEC3INT, Vec3<int>);
+      CR(Object::VEC3FLOAT, Vec3<Scalar>);
+      CR(Object::LINES, Lines);
+      CR(Object::TRIANGLES, Triangles);
+      CR(Object::POLYGONS, Polygons);
+      CR(Object::UNSTRUCTUREDGRID, UnstructuredGrid);
+      CR(Object::TEXTURE1D, Texture1D);
+      CR(Object::GEOMETRY, Geometry);
+      CR(Object::SET, Set);
+   }
+
+#undef CR
+
+   assert(0 == "Cannot create Object of invalid type");
+   return NULL;
+}
+
+Object::Data::Data(const Type type, const std::string & n,
+               const int b, const int t): type(type), block(b), timestep(t) {
 
    size_t size = MIN(n.size(), 31);
-   n.copy(m_name, size);
-   m_name[size] = 0;
+   n.copy(name, size);
+   name[size] = 0;
+}
+
+Object::Object(Object::Data *data)
+: m_data(data)
+{
 }
 
 Object::~Object() {
 
+   assert(m_data == NULL && "should have been deleted by a derived class");
 }
 
 Object::Info *Object::getInfo(Object::Info *info) const {
@@ -126,52 +169,58 @@ Object::Info *Object::getInfo(Object::Info *info) const {
 
 Object::Type Object::getType() const {
 
-   return m_type;
+   return d()->type;
 }
 
 std::string Object::getName() const {
 
-   return m_name;
+   return d()->name;
 }
 
 int Object::getTimestep() const {
 
-   return m_timestep;
+   return d()->timestep;
 }
 
 int Object::getBlock() const {
 
-   return m_block;
+   return d()->block;
 }
 
 void Object::setTimestep(const int time) {
 
-   m_timestep = time;
+   d()->timestep = time;
 }
 
 void Object::setBlock(const int blk) {
 
-   m_block = blk;
+   d()->block = blk;
 }
 
 Triangles::Triangles(const size_t numCorners, const size_t numVertices,
+                     const int block, const int timestep)
+   : Triangles::Parent(Triangles::Data::create(numCorners, numVertices,
+            block, timestep)) {
+}
+
+Triangles::Data::Data(const size_t numCorners, const size_t numVertices,
                      const std::string & name,
                      const int block, const int timestep)
-   : Object(Object::TRIANGLES, name, block, timestep) {
-
-      x = shm<Scalar>::construct_vector(numVertices);
-      y = shm<Scalar>::construct_vector(numVertices);
-      z = shm<Scalar>::construct_vector(numVertices);
-      cl = shm<size_t>::construct_vector(numCorners);
+   : Parent::Data(Object::TRIANGLES, name, block, timestep)
+   , cl(shm<size_t>::construct_vector(numCorners))
+   , x(shm<Scalar>::construct_vector(numVertices))
+   , y(shm<Scalar>::construct_vector(numVertices))
+   , z(shm<Scalar>::construct_vector(numVertices))
+{
 }
 
 
-Triangles * Triangles::create(const size_t numCorners,
+Triangles::Data * Triangles::Data::create(const size_t numCorners,
                               const size_t numVertices,
                               const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   Triangles *t = shm<Triangles>::construct(name)(numCorners, numVertices, name, block, timestep);
+   Data *t = shm<Data>::construct(name)(numCorners, numVertices, name, block, timestep);
 
    /*
    shm_handle_t handle =
@@ -199,33 +248,41 @@ Triangles::Info *Triangles::getInfo(Triangles::Info *info) const {
 
 size_t Triangles::getNumCorners() const {
 
-   return cl->size();
+   return d()->cl->size();
 }
 
 size_t Triangles::getNumVertices() const {
 
-   return x->size();
+   return d()->x->size();
 }
 
 Lines::Lines(const size_t numElements, const size_t numCorners,
+                      const size_t numVertices,
+                      const int block, const int timestep)
+   : Lines::Parent(Lines::Data::create(numElements, numCorners,
+            numVertices, block, timestep))
+{
+}
+
+Lines::Data::Data(const size_t numElements, const size_t numCorners,
              const size_t numVertices, const std::string & name,
              const int block, const int timestep)
-   : Object(Object::LINES, name, block, timestep) {
-
-      x = shm<Scalar>::construct_vector(numVertices);
-      y = shm<Scalar>::construct_vector(numVertices);
-      z = shm<Scalar>::construct_vector(numVertices);
-      el = shm<size_t>::construct_vector(numElements);
-      cl = shm<size_t>::construct_vector(numCorners);
+   : Lines::Parent::Data(Object::LINES, name, block, timestep)
+     , el(shm<size_t>::construct_vector(numElements))
+     , cl(shm<size_t>::construct_vector(numCorners))
+     , x(shm<Scalar>::construct_vector(numVertices))
+     , y(shm<Scalar>::construct_vector(numVertices))
+     , z(shm<Scalar>::construct_vector(numVertices))
+{
 }
 
 
-Lines * Lines::create(const size_t numElements, const size_t numCorners,
+Lines::Data * Lines::Data::create(const size_t numElements, const size_t numCorners,
                       const size_t numVertices,
                       const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   Lines *l = shm<Lines>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
+   Data *l = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
 
    /*
    shm_handle_t handle =
@@ -256,39 +313,47 @@ Lines::Info *Lines::getInfo(Lines::Info *info) const {
 
 size_t Lines::getNumElements() const {
 
-   return el->size();
+   return d()->el->size();
 }
 
 size_t Lines::getNumCorners() const {
 
-   return cl->size();
+   return d()->cl->size();
 }
 
 size_t Lines::getNumVertices() const {
 
-   return x->size();
+   return d()->x->size();
 }
 
-Polygons::Polygons(const size_t numElements, const size_t numCorners,
+Polygons::Polygons(const size_t numElements,
+      const size_t numCorners,
+      const size_t numVertices,
+      const int block, const int timestep)
+: Polygons::Parent(Polygons::Data::create(numElements, numCorners, numVertices, block, timestep))
+{
+}
+
+Polygons::Data::Data(const size_t numElements, const size_t numCorners,
                    const size_t numVertices, const std::string & name,
                    const int block, const int timestep)
-   : Object(Object::POLYGONS, name, block, timestep) {
-
-      x = shm<Scalar>::construct_vector(numVertices);
-      y = shm<Scalar>::construct_vector(numVertices);
-      z = shm<Scalar>::construct_vector(numVertices);
-      el = shm<size_t>::construct_vector(numElements);
-      cl = shm<size_t>::construct_vector(numCorners);
+   : Polygons::Parent::Data(Object::POLYGONS, name, block, timestep)
+      , el(shm<size_t>::construct_vector(numElements))
+      , cl(shm<size_t>::construct_vector(numCorners))
+      , x(shm<Scalar>::construct_vector(numVertices))
+      , y(shm<Scalar>::construct_vector(numVertices))
+      , z(shm<Scalar>::construct_vector(numVertices))
+{
 }
 
 
-Polygons * Polygons::create(const size_t numElements,
+Polygons::Data * Polygons::Data::create(const size_t numElements,
                             const size_t numCorners,
                             const size_t numVertices,
                             const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   Polygons *p = shm<Polygons>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
+   Data *p = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
 
    /*
    shm_handle_t handle =
@@ -300,41 +365,49 @@ Polygons * Polygons::create(const size_t numElements,
 
 size_t Polygons::getNumElements() const {
 
-   return el->size();
+   return d()->el->size();
 }
 
 size_t Polygons::getNumCorners() const {
 
-   return cl->size();
+   return d()->cl->size();
 }
 
 size_t Polygons::getNumVertices() const {
 
-   return x->size();
+   return d()->x->size();
 }
 
 UnstructuredGrid::UnstructuredGrid(const size_t numElements,
+      const size_t numCorners,
+      const size_t numVertices,
+      const int block, const int timestep)
+   : UnstructuredGrid::Parent(UnstructuredGrid::Data::create(numElements, numCorners, numVertices, block, timestep))
+{
+}
+
+UnstructuredGrid::Data::Data(const size_t numElements,
                                    const size_t numCorners,
                                    const size_t numVertices,
                                    const std::string & name,
                                    const int block, const int timestep)
-   : Object(Object::UNSTRUCTUREDGRID, name, block, timestep) {
-
-      x = shm<Scalar>::construct_vector(numVertices);
-      y = shm<Scalar>::construct_vector(numVertices);
-      z = shm<Scalar>::construct_vector(numVertices);
-      tl = shm<char>::construct_vector(numElements);
-      el = shm<size_t>::construct_vector(numElements);
-      cl = shm<size_t>::construct_vector(numCorners);
+   : Parent::Data(Object::UNSTRUCTUREDGRID, name, block, timestep)
+   , tl(shm<char>::construct_vector(numElements))
+   , el(shm<size_t>::construct_vector(numElements))
+   , cl(shm<size_t>::construct_vector(numCorners))
+   , x(shm<Scalar>::construct_vector(numVertices))
+   , y(shm<Scalar>::construct_vector(numVertices))
+   , z(shm<Scalar>::construct_vector(numVertices))
+{
 }
 
-UnstructuredGrid * UnstructuredGrid::create(const size_t numElements,
+UnstructuredGrid::Data * UnstructuredGrid::Data::create(const size_t numElements,
                                             const size_t numCorners,
                                             const size_t numVertices,
                                             const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   UnstructuredGrid *u = shm<UnstructuredGrid>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
+   Data *u = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
 
    /*
    shm_handle_t handle =
@@ -346,33 +419,39 @@ UnstructuredGrid * UnstructuredGrid::create(const size_t numElements,
 
 size_t UnstructuredGrid::getNumElements() const {
 
-   return el->size();
+   return d()->el->size();
 }
 
 size_t UnstructuredGrid::getNumCorners() const {
 
-   return cl->size();
+   return d()->cl->size();
 }
 
 size_t UnstructuredGrid::getNumVertices() const {
 
-   return x->size();
+   return d()->x->size();
 }
 
 
-Set::Set(const size_t numElements, const std::string & name,
+Set::Set(const size_t numElements,
+                  const int block, const int timestep)
+: Set::Parent(Set::Data::create(numElements, block, timestep))
+{
+}
+
+Set::Data::Data(const size_t numElements, const std::string & name,
          const int block, const int timestep)
-   : Object(Object::SET, name, block, timestep) {
-
-      elements = shm<offset_ptr<Object> >::construct_vector(numElements);
+   : Set::Parent::Data(Object::SET, name, block, timestep)
+     , elements(shm<offset_ptr<Object> >::construct_vector(numElements))
+{
 }
 
 
-Set * Set::create(const size_t numElements,
+Set::Data * Set::Data::Data::create(const size_t numElements,
                   const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   Set *p = shm<Set>::construct(name)(numElements, name, block, timestep);
+   Data *p = shm<Data>::construct(name)(numElements, name, block, timestep);
 
    /*
    shm_handle_t handle =
@@ -384,29 +463,37 @@ Set * Set::create(const size_t numElements,
 
 size_t Set::getNumElements() const {
 
-   return elements->size();
+   return d()->elements->size();
 }
 
 Object * Set::getElement(const size_t index) const {
 
-   if (index >= elements->size())
+   if (index >= d()->elements->size())
       return NULL;
 
-   return (*elements)[index].get();
+   return (*d()->elements)[index].get();
 }
 
-Geometry::Geometry(const std::string & name,
-                   const int block, const int timestep)
-   : Object(Object::GEOMETRY, name, block, timestep), geometry(NULL),
-     colors(NULL), normals(NULL), texture(NULL) {
+Geometry::Geometry(const int block, const int timestep)
+   : Geometry::Parent(Geometry::Data::create(block, timestep))
+{
+}
 
+Geometry::Data::Data(const std::string & name,
+      const int block, const int timestep)
+   : Geometry::Parent::Data(Object::GEOMETRY, name, block, timestep)
+   , geometry(NULL)
+   , colors(NULL)
+   , normals(NULL)
+   , texture(NULL)
+{
 }
 
 
-Geometry * Geometry::create(const int block, const int timestep) {
+Geometry::Data * Geometry::Data::create(const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   Geometry *g = shm<Geometry>::construct(name)(name, block, timestep);
+   Data *g = shm<Data>::construct(name)(name, block, timestep);
 
    /*
    shm_handle_t handle =
@@ -416,28 +503,37 @@ Geometry * Geometry::create(const int block, const int timestep) {
    return g;
 }
 
-Texture1D::Texture1D(const std::string & name, const size_t width,
+Texture1D::Texture1D(const size_t width,
+      const Scalar min, const Scalar max,
+      const int block, const int timestep)
+: Texture1D::Parent(Texture1D::Data::create(width, min, max, block, timestep))
+{
+}
+
+Texture1D::Data::Data(const std::string &name, const size_t width,
                      const Scalar mi, const Scalar ma,
                      const int block, const int timestep)
-   : Object(Object::TEXTURE1D, name, block, timestep), min(mi), max(ma) {
+   : Texture1D::Parent::Data(Object::TEXTURE1D, name, block, timestep)
+   , min(mi)
+   , max(ma)
+   , pixels(shm<unsigned char>::construct_vector(width * 4))
+   , coords(shm<Scalar>::construct_vector(1))
+{
 
-      pixels = shm<unsigned char>::construct_vector(width * 4);
-      coords = shm<Scalar>::construct_vector(1);
 #if  0
    const allocator<Scalar, managed_shared_memory::segment_manager>
       alloc_inst_Scalar(Shm::instance().getShm().get_segment_manager());
 
    coords = Shm::instance().getShm().construct<shm<Scalar>::vector>(Shm::instance().createObjectID().c_str())(alloc_inst_Scalar);
 #endif
-
 }
 
-Texture1D * Texture1D::create(const size_t width,
+Texture1D::Data *Texture1D::Data::create(const size_t width,
                               const Scalar min, const Scalar max,
                               const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
-   Texture1D *tex = shm<Texture1D>::construct(name)(name, width, min, max, block, timestep);
+   Data *tex= shm<Data>::construct(name)(name, width, min, max, block, timestep);
 
    /*
    shm_handle_t handle =
@@ -449,12 +545,12 @@ Texture1D * Texture1D::create(const size_t width,
 
 size_t Texture1D::getNumElements() const {
 
-   return coords->size();
+   return d()->coords->size();
 }
 
 size_t Texture1D::getWidth() const {
 
-   return pixels->size() / 4;
+   return d()->pixels->size() / 4;
 }
 
 template<> const Object::Type Vec<Scalar>::s_type  = Object::VECFLOAT;

@@ -28,7 +28,7 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
 
          case vistle::Object::SET: {
             const vistle::Set *in = static_cast<const vistle::Set *>(object);
-            vistle::Set *out = vistle::Set::create();
+            vistle::Set *out = new vistle::Set;
             out->setBlock(in->getBlock());
             out->setTimestep(in->getTimestep());
 
@@ -37,7 +37,7 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
                vistle::Object *o = cutGeometry(in->getElement(index),
                                                point, normal);
                if (o)
-                  out->elements->push_back(o);
+                  out->elements().push_back(o);
             }
             return out;
             break;
@@ -51,15 +51,15 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
 
             const vistle::Polygons *in =
                static_cast<const vistle::Polygons *>(object);
-            vistle::Polygons *out = vistle::Polygons::create();
+            vistle::Polygons *out = new vistle::Polygons;
             out->setBlock(in->getBlock());
             out->setTimestep(in->getTimestep());
 
-            const size_t *el = &((*in->el)[0]);
-            const size_t *cl = &((*in->cl)[0]);
-            const vistle::Scalar *x = &((*in->x)[0]);
-            const vistle::Scalar *y = &((*in->y)[0]);
-            const vistle::Scalar *z = &((*in->z)[0]);
+            const size_t *el = &in->el()[0];
+            const size_t *cl = &in->cl()[0];
+            const vistle::Scalar *x = &in->x()[0];
+            const vistle::Scalar *y = &in->y()[0];
+            const vistle::Scalar *z = &in->z()[0];
 
             size_t numElements = in->getNumElements();
             for (size_t element = 0; element < numElements; element ++) {
@@ -85,7 +85,7 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
 
                   // if all vertices in the element are on the right side
                   // of the cutting plane, insert the element and all vertices
-                  out->el->push_back(out->cl->size());
+                  out->el().push_back(out->cl().size());
 
                   for (size_t corner = start; corner <= end; corner ++) {
 
@@ -96,15 +96,15 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
                         vertexMap.find(vertexID);
 
                      if (i == vertexMap.end()) {
-                        outID = out->x->size();
+                        outID = out->x().size();
                         vertexMap[vertexID] = outID;
-                        out->x->push_back(x[vertexID]);
-                        out->y->push_back(y[vertexID]);
-                        out->z->push_back(z[vertexID]);
+                        out->x().push_back(x[vertexID]);
+                        out->y().push_back(y[vertexID]);
+                        out->z().push_back(z[vertexID]);
                      } else
                         outID = i->second;
 
-                     out->cl->push_back(outID);
+                     out->cl().push_back(outID);
                   }
                } else if (numIn > 0) {
 
@@ -116,7 +116,7 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
                   //     other side of the plane: insert the intersection point
                   //     between the line formed by the two vertices and the
                   //     plane
-                  out->el->push_back(out->cl->size());
+                  out->el().push_back(out->cl().size());
 
                   for (size_t corner = start; corner <= end; corner ++) {
 
@@ -140,12 +140,12 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
                            (normal * (pl - p));
                         vistle::Vector pp = p + (pl - p) * s;
 
-                        size_t outID = out->x->size();
-                        out->x->push_back(pp.x);
-                        out->y->push_back(pp.y);
-                        out->z->push_back(pp.z);
+                        size_t outID = out->x().size();
+                        out->x().push_back(pp.x);
+                        out->y().push_back(pp.y);
+                        out->z().push_back(pp.z);
 
-                        out->cl->push_back(outID);
+                        out->cl().push_back(outID);
                      }
 
                      if ((p - point) * normal < 0) {
@@ -156,15 +156,15 @@ vistle::Object * CutGeometry::cutGeometry(const vistle::Object * object,
                            vertexMap.find(vertexID);
 
                         if (i == vertexMap.end()) {
-                           outID = out->x->size();
+                           outID = out->x().size();
                            vertexMap[vertexID] = outID;
-                           out->x->push_back(x[vertexID]);
-                           out->y->push_back(y[vertexID]);
-                           out->z->push_back(z[vertexID]);
+                           out->x().push_back(x[vertexID]);
+                           out->y().push_back(y[vertexID]);
+                           out->z().push_back(z[vertexID]);
                         } else
                            outID = i->second;
 
-                        out->cl->push_back(outID);
+                        out->cl().push_back(outID);
                      }
                   }
                }

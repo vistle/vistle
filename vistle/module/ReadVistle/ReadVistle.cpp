@@ -111,11 +111,11 @@ vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info
 
    if (seti) {
 
-      vistle::Set *set = vistle::Set::create();
+      vistle::Set *set = new vistle::Set;
       for (size_t index = 0; index < seti->items.size(); index ++) {
 
          vistle::Object *object = readObject(fd, seti->items[index], start);
-         set->elements->push_back(object);
+         set->elements().push_back(object);
       }
       return set;
 
@@ -124,18 +124,18 @@ vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info
       if ((polyi->block % size) == rank) {
          lseek(fd, start + info->offset, SEEK_SET);
          vistle::Polygons *polygons =
-            vistle::Polygons::create(polyi->numElements,
+            new vistle::Polygons(polyi->numElements,
                                      polyi->numCorners,
                                      polyi->numVertices,
                                      polyi->block,
                                      polyi->timestep);
 
-         read_uint64(fd, &((*polygons->el)[0]), polyi->numElements);
-         read_uint64(fd, &((*polygons->cl)[0]), polyi->numCorners);
+         read_uint64(fd, &polygons->el()[0], polyi->numElements);
+         read_uint64(fd, &polygons->cl()[0], polyi->numCorners);
 
-         read_float(fd, &((*polygons->x)[0]), polyi->numVertices);
-         read_float(fd, &((*polygons->y)[0]), polyi->numVertices);
-         read_float(fd, &((*polygons->z)[0]), polyi->numVertices);
+         read_float(fd, &polygons->x()[0], polyi->numVertices);
+         read_float(fd, &polygons->y()[0], polyi->numVertices);
+         read_float(fd, &polygons->z()[0], polyi->numVertices);
 
          addObject("grid_out", polygons);
          return polygons;
@@ -145,17 +145,17 @@ vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info
       if ((usgi->block % size) == rank) {
          lseek(fd, start + info->offset, SEEK_SET);
          vistle::UnstructuredGrid *usg =
-            vistle::UnstructuredGrid::create(usgi->numElements, usgi->numCorners,
+            new vistle::UnstructuredGrid(usgi->numElements, usgi->numCorners,
                                              usgi->numVertices, usgi->block,
                                              usgi->timestep);
 
-         read_char(fd, &((*usg->tl)[0]), usgi->numElements);
-         read_uint64(fd, &((*usg->el)[0]), usgi->numElements);
-         read_uint64(fd, &((*usg->cl)[0]), usgi->numCorners);
+         read_char(fd, &usg->tl()[0], usgi->numElements);
+         read_uint64(fd, &usg->el()[0], usgi->numElements);
+         read_uint64(fd, &usg->cl()[0], usgi->numCorners);
 
-         read_float(fd, &((*usg->x)[0]), usgi->numVertices);
-         read_float(fd, &((*usg->y)[0]), usgi->numVertices);
-         read_float(fd, &((*usg->z)[0]), usgi->numVertices);
+         read_float(fd, &usg->x()[0], usgi->numVertices);
+         read_float(fd, &usg->y()[0], usgi->numVertices);
+         read_float(fd, &usg->z()[0], usgi->numVertices);
 
          addObject("grid_out", usg);
          return usg;
@@ -167,20 +167,20 @@ vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info
          switch (datai->type) {
 
             case vistle::Object::VECFLOAT: {
-               vistle::Vec<vistle::Scalar> *data = vistle::Vec<vistle::Scalar>::create(datai->numElements);
+               vistle::Vec<vistle::Scalar> *data = new vistle::Vec<vistle::Scalar>(datai->numElements);
 
-               read_float(fd, &((*data->x)[0]), datai->numElements);
+               read_float(fd, &data->x()[0], datai->numElements);
                addObject("grid_out", data);
                return data;
             }
 
             case vistle::Object::VEC3FLOAT: {
                vistle::Vec3<vistle::Scalar> *data =
-                  vistle::Vec3<vistle::Scalar>::create(datai->numElements);
+                  new vistle::Vec3<vistle::Scalar>(datai->numElements);
 
-               read_float(fd, &((*data->x)[0]), datai->numElements);
-               read_float(fd, &((*data->y)[0]), datai->numElements);
-               read_float(fd, &((*data->z)[0]), datai->numElements);
+               read_float(fd, &data->x()[0], datai->numElements);
+               read_float(fd, &data->y()[0], datai->numElements);
+               read_float(fd, &data->z()[0], datai->numElements);
                addObject("grid_out", data);
                return data;
             }

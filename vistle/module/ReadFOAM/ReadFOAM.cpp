@@ -561,19 +561,19 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
             i->second.push_back(face);
       }
 
-      vistle::UnstructuredGrid *usg = vistle::UnstructuredGrid::create();
+      vistle::UnstructuredGrid *usg = new vistle::UnstructuredGrid;
       usg->setBlock(partition);
       usg->setTimestep(0);
 
-      vistle::Vec<vistle::Scalar> *pres = vistle::Vec<vistle::Scalar>::create(points.size());
+      vistle::Vec<vistle::Scalar> *pres = new vistle::Vec<vistle::Scalar>(points.size());
       pres->setBlock(partition);
       pres->setTimestep(0);
 
       for (size_t p = 0; p < points.size(); p ++) {
 
-         usg->x->push_back(points[p].x);
-         usg->y->push_back(points[p].y);
-         usg->z->push_back(points[p].z);
+         usg->x().push_back(points[p].x);
+         usg->y().push_back(points[p].y);
+         usg->z().push_back(points[p].z);
       }
 
       float *vertexPressure = new float[points.size()]();
@@ -590,21 +590,21 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
                          cellFaceNeighbors, faceIndices,
                          oppositeFaceIndices);
 
-         usg->tl->push_back(vistle::UnstructuredGrid::HEXAHEDRON);
-         usg->el->push_back(usg->cl->size());
+         usg->tl().push_back(vistle::UnstructuredGrid::HEXAHEDRON);
+         usg->el().push_back(usg->cl().size());
          for (size_t index = 0; index < faceIndices.size(); index ++) {
-            usg->cl->push_back(faceIndices[index]);
+            usg->cl().push_back(faceIndices[index]);
             vertexPressure[faceIndices[index]] += pressure[cell];
             numVertexPressure[faceIndices[index]]++;
          }
          for (size_t index = 0; index < oppositeFaceIndices.size(); index ++) {
-            usg->cl->push_back(oppositeFaceIndices[index]);
+            usg->cl().push_back(oppositeFaceIndices[index]);
             vertexPressure[oppositeFaceIndices[index]] += pressure[cell];
             numVertexPressure[oppositeFaceIndices[index]]++;
          }
       }
 
-      vistle::Scalar *pressureField = &((*pres->x)[0]);
+      vistle::Scalar *pressureField = &pres->x()[0];
       for (size_t p = 0; p < points.size(); p ++)
          if (numVertexPressure[p] > 0)
             pressureField[p] = vertexPressure[p] / numVertexPressure[p];

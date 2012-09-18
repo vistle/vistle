@@ -51,8 +51,8 @@ class Module {
    void setVectorParameter(const std::string & name, const Vector & value);
    Vector getVectorParameter(const std::string & name) const;
 
-   bool addObject(const std::string &portName, const shm_handle_t & handle);
-   bool addObject(const std::string & portName, const void * object);
+   bool addObject(const std::string &portName, const shm_handle_t &handle);
+   bool addObject(const std::string & portName, const vistle::Object *object);
    message::MessageQueue *sendMessageQueue;
 
    std::list<vistle::Object *> getObjects(const std::string &portName);

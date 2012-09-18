@@ -98,11 +98,11 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
          return std::make_pair((vistle::Object *) NULL,
                                (vistle::Object *) NULL);
 
-      vistle::Set *outGSet = vistle::Set::create(gset->getNumElements());
+      vistle::Set *outGSet = new vistle::Set(gset->getNumElements());
       outGSet->setBlock(gset->getBlock());
       outGSet->setTimestep(gset->getTimestep());
 
-      vistle::Set *outDSet = vistle::Set::create(dset->getNumElements());
+      vistle::Set *outDSet = new vistle::Set(dset->getNumElements());
       outDSet->setBlock(dset->getBlock());
       outDSet->setTimestep(dset->getTimestep());
 
@@ -110,8 +110,8 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
          std::pair<vistle::Object *, vistle::Object *> result =
             generateCuttingSurface(gset->getElement(index),
                                    dset->getElement(index), normal, distance);
-         (*outGSet->elements)[index] = result.first;
-         (*outDSet->elements)[index] = result.second;
+         outGSet->elements()[index] = result.first;
+         outDSet->elements()[index] = result.second;
       }
 
       return std::make_pair(outGSet, outDSet);
@@ -123,21 +123,21 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
       data = static_cast<const vistle::Vec<vistle::Scalar> *>(data_object);
    }
 
-   const char *tl = &((*grid->tl)[0]);
-   const size_t *el = &((*grid->el)[0]);
-   const size_t *cl = &((*grid->cl)[0]);
-   const vistle::Scalar *x = &((*grid->x)[0]);
-   const vistle::Scalar *y = &((*grid->y)[0]);
-   const vistle::Scalar *z = &((*grid->z)[0]);
+   const char *tl = &grid->tl()[0];
+   const size_t *el = &grid->el()[0];
+   const size_t *cl = &grid->cl()[0];
+   const vistle::Scalar *x = &grid->x()[0];
+   const vistle::Scalar *y = &grid->y()[0];
+   const vistle::Scalar *z = &grid->z()[0];
 
-   const vistle::Scalar *d = &((*data->x)[0]);
+   const vistle::Scalar *d = &data->x()[0];
 
    size_t numElem = grid->getNumElements();
-   vistle::Triangles *triangles = vistle::Triangles::create();
+   vistle::Triangles *triangles = new vistle::Triangles;
    triangles->setBlock(grid_object->getBlock());
    triangles->setTimestep(grid_object->getTimestep());
 
-   vistle::Vec<vistle::Scalar> *outData = vistle::Vec<vistle::Scalar>::create();
+   vistle::Vec<vistle::Scalar> *outData = new vistle::Vec<vistle::Scalar>;
    outData->setBlock(data_object->getBlock());
    outData->setTimestep(data_object->getTimestep());
 
@@ -223,25 +223,25 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
                   v[2] = &vertlist[edge[2]];
 #pragma omp critical
                   {
-                     triangles->cl->push_back(triangles->x->size());
-                     triangles->cl->push_back(triangles->x->size() + 1);
-                     triangles->cl->push_back(triangles->x->size() + 2);
+                     triangles->cl().push_back(triangles->x().size());
+                     triangles->cl().push_back(triangles->x().size() + 1);
+                     triangles->cl().push_back(triangles->x().size() + 2);
 
-                     triangles->x->push_back(v[0]->x);
-                     triangles->x->push_back(v[1]->x);
-                     triangles->x->push_back(v[2]->x);
+                     triangles->x().push_back(v[0]->x);
+                     triangles->x().push_back(v[1]->x);
+                     triangles->x().push_back(v[2]->x);
 
-                     triangles->y->push_back(v[0]->y);
-                     triangles->y->push_back(v[1]->y);
-                     triangles->y->push_back(v[2]->y);
+                     triangles->y().push_back(v[0]->y);
+                     triangles->y().push_back(v[1]->y);
+                     triangles->y().push_back(v[2]->y);
 
-                     triangles->z->push_back(v[0]->z);
-                     triangles->z->push_back(v[1]->z);
-                     triangles->z->push_back(v[2]->z);
+                     triangles->z().push_back(v[0]->z);
+                     triangles->z().push_back(v[1]->z);
+                     triangles->z().push_back(v[2]->z);
 
-                     outData->x->push_back(maplist[edge[0]]);
-                     outData->x->push_back(maplist[edge[1]]);
-                     outData->x->push_back(maplist[edge[2]]);
+                     outData->x().push_back(maplist[edge[0]]);
+                     outData->x().push_back(maplist[edge[1]]);
+                     outData->x().push_back(maplist[edge[2]]);
                   }
                }
             }

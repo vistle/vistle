@@ -34,31 +34,31 @@ bool Gendat::compute() {
    }
    */
 #endif
-   vistle::Triangles *t = vistle::Triangles::create(6, 4);
+   vistle::Triangles *t = new vistle::Triangles(6, 4);
 
-   (*t->cl)[0] = 0;
-   (*t->cl)[1] = 1;
-   (*t->cl)[2] = 2;
+   t->cl()[0] = 0;
+   t->cl()[1] = 1;
+   t->cl()[2] = 2;
 
-   (*t->cl)[3] = 0;
-   (*t->cl)[4] = 2;
-   (*t->cl)[5] = 3;
+   t->cl()[3] = 0;
+   t->cl()[4] = 2;
+   t->cl()[5] = 3;
 
-   (*t->x)[0] = 0.0 + rank;
-   (*t->y)[0] = 0.0;
-   (*t->z)[0] = 0.0;
+   t->cl()[0] = 0.0 + rank;
+   t->cl()[0] = 0.0;
+   t->cl()[0] = 0.0;
 
-   (*t->x)[1] = 1.0 + rank;
-   (*t->y)[1] = 0.0;
-   (*t->z)[1] = 0.0;
+   t->cl()[1] = 1.0 + rank;
+   t->cl()[1] = 0.0;
+   t->cl()[1] = 0.0;
 
-   (*t->x)[2] = 1.0 + rank;
-   (*t->y)[2] = 1.0;
-   (*t->z)[2] = 0.0;
+   t->cl()[2] = 1.0 + rank;
+   t->cl()[2] = 1.0;
+   t->cl()[2] = 0.0;
 
-   (*t->x)[3] = 0.0 + rank;
-   (*t->y)[3] = 1.0;
-   (*t->z)[3] = 0.0;
+   t->cl()[3] = 0.0 + rank;
+   t->cl()[3] = 1.0;
+   t->cl()[3] = 0.0;
 
    addObject("data_out", t);
    /*

@@ -188,7 +188,7 @@ bool ReadCovise::readAttributes(const int fd, const bool byteswap) {
 
 vistle::Object * ReadCovise::readSETELE(const int fd, const bool byteswap) {
 
-   vistle::Set *set = vistle::Set::create();
+   vistle::Set *set = new vistle::Set;
 
    unsigned int num;
    read_int(fd, &num, 1, byteswap);
@@ -197,7 +197,7 @@ vistle::Object * ReadCovise::readSETELE(const int fd, const bool byteswap) {
 
       vistle::Object *object = readObject(fd, byteswap);
       if (object)
-         set->elements->push_back(object);
+         set->elements().push_back(object);
    }
 
    bool timesteps = readAttributes(fd, byteswap);
@@ -224,23 +224,23 @@ vistle::Object *  ReadCovise::readUNSGRD(const int fd, const bool byteswap) {
    read_int(fd, &numCorners, 1, byteswap);
    read_int(fd, &numVertices, 1, byteswap);
 
-   usg = vistle::UnstructuredGrid::create(numElements, numCorners, numVertices);
+   usg = new vistle::UnstructuredGrid(numElements, numCorners, numVertices);
 
    unsigned int *_tl = new unsigned int[numElements];
    unsigned int *_el = new unsigned int[numElements];
    unsigned int *_cl = new unsigned int[numCorners];
 
-   char *tl = &((*usg->tl)[0]);
-   size_t *el = &((*usg->el)[0]);
-   size_t *cl = &((*usg->cl)[0]);
+   char *tl = &usg->tl()[0];
+   size_t *el = &usg->el()[0];
+   size_t *cl = &usg->cl()[0];
 
    read_int(fd, _tl, numElements, byteswap);
    read_int(fd, _el, numElements, byteswap);
    read_int(fd, _cl, numCorners, byteswap);
 
-   read_float(fd, &((*usg->x)[0]), numVertices, byteswap);
-   read_float(fd, &((*usg->y)[0]), numVertices, byteswap);
-   read_float(fd, &((*usg->z)[0]), numVertices, byteswap);
+   read_float(fd, &usg->x()[0], numVertices, byteswap);
+   read_float(fd, &usg->y()[0], numVertices, byteswap);
+   read_float(fd, &usg->z()[0], numVertices, byteswap);
 
    for (unsigned int index = 0; index < numElements; index ++) {
       el[index] = _el[index];
@@ -266,8 +266,8 @@ vistle::Object * ReadCovise::readUSTSDT(const int fd, const bool byteswap) {
 
    read_int(fd, &numElements, 1, byteswap);
 
-   array = vistle::Vec<vistle::Scalar>::create(numElements);
-   read_float(fd, &((*array->x)[0]), numElements, byteswap);
+   array = new vistle::Vec<vistle::Scalar>(numElements);
+   read_float(fd, &array->x()[0], numElements, byteswap);
 
    readAttributes(fd, byteswap);
    return array;
@@ -280,10 +280,10 @@ vistle::Object * ReadCovise::readUSTVDT(const int fd, const bool byteswap) {
 
    read_int(fd, &numElements, 1, byteswap);
 
-   array = vistle::Vec3<vistle::Scalar>::create(numElements);
-   read_float(fd, &((*array->x)[0]), numElements, byteswap);
-   read_float(fd, &((*array->y)[0]), numElements, byteswap);
-   read_float(fd, &((*array->z)[0]), numElements, byteswap);
+   array = new vistle::Vec3<vistle::Scalar>(numElements);
+   read_float(fd, &array->x()[0], numElements, byteswap);
+   read_float(fd, &array->y()[0], numElements, byteswap);
+   read_float(fd, &array->z()[0], numElements, byteswap);
 
    readAttributes(fd, byteswap);
    return array;
@@ -298,7 +298,7 @@ vistle::Object * ReadCovise::readPOLYGN(const int fd, const bool byteswap) {
    read_int(fd, &numCorners, 1, byteswap);
    read_int(fd, &numVertices, 1, byteswap);
 
-   polygons = vistle::Polygons::create(numElements, numCorners, numVertices);
+   polygons = new vistle::Polygons(numElements, numCorners, numVertices);
 
    unsigned int *el = new unsigned int[numElements];
    unsigned int *cl = new unsigned int[numCorners];
@@ -307,14 +307,14 @@ vistle::Object * ReadCovise::readPOLYGN(const int fd, const bool byteswap) {
    read_int(fd, cl, numCorners, byteswap);
 
    for (unsigned int index = 0; index < numElements; index ++)
-      (*polygons->el)[index] = el[index];
+      polygons->el()[index] = el[index];
 
    for (unsigned int index = 0; index < numCorners; index ++)
-      (*polygons->cl)[index] = cl[index];
+      polygons->cl()[index] = cl[index];
 
-   read_float(fd, &((*polygons->x)[0]), numVertices, byteswap);
-   read_float(fd, &((*polygons->y)[0]), numVertices, byteswap);
-   read_float(fd, &((*polygons->z)[0]), numVertices, byteswap);
+   read_float(fd, &polygons->x()[0], numVertices, byteswap);
+   read_float(fd, &polygons->y()[0], numVertices, byteswap);
+   read_float(fd, &polygons->z()[0], numVertices, byteswap);
 
    readAttributes(fd, byteswap);
 
@@ -323,7 +323,7 @@ vistle::Object * ReadCovise::readPOLYGN(const int fd, const bool byteswap) {
 
 vistle::Object * ReadCovise::readGEOTEX(const int fd, const bool byteswap) {
 
-   vistle::Geometry *container = vistle::Geometry::create();
+   vistle::Geometry *container = new vistle::Geometry;
    unsigned int contains[4] = { 0, 0, 0, 0 };
    unsigned int ignore[4];
 
@@ -331,16 +331,16 @@ vistle::Object * ReadCovise::readGEOTEX(const int fd, const bool byteswap) {
    read_int(fd, ignore, 4, byteswap);
 
    if (contains[0])
-      container->geometry = readObject(fd, byteswap);
+      container->geometry() = readObject(fd, byteswap);
 
    if (contains[1])
-      container->colors = readObject(fd, byteswap);
+      container->colors() = readObject(fd, byteswap);
 
    if (contains[2])
-      container->normals = readObject(fd, byteswap);
+      container->normals() = readObject(fd, byteswap);
 
    if (contains[3])
-      container->texture = readObject(fd, byteswap);
+      container->texture() = readObject(fd, byteswap);
 
    readAttributes(fd, byteswap);
 

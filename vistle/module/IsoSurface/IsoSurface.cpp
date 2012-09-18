@@ -85,12 +85,12 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
       if (gset->getNumElements() != dset->getNumElements())
          return NULL;
 
-      vistle::Set *set = vistle::Set::create(gset->getNumElements());
+      vistle::Set *set = new vistle::Set(gset->getNumElements());
       set->setBlock(gset->getBlock());
       set->setTimestep(gset->getTimestep());
 
       for (size_t index = 0; index < gset->getNumElements(); index ++)
-         (*set->elements)[index] =
+         set->elements()[index] =
             generateIsoSurface(gset->getElement(index),
                                dset->getElement(index), isoValue);
       return set;
@@ -102,17 +102,17 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
       data = static_cast<const vistle::Vec<vistle::Scalar> *>(data_object);
    }
 
-   const char *tl = &((*grid->tl)[0]);
-   const size_t *el = &((*grid->el)[0]);
-   const size_t *cl = &((*grid->cl)[0]);
-   const vistle::Scalar *x = &((*grid->x)[0]);
-   const vistle::Scalar *y = &((*grid->y)[0]);
-   const vistle::Scalar *z = &((*grid->z)[0]);
+   const char *tl = &grid->tl()[0];
+   const size_t *el = &grid->el()[0];
+   const size_t *cl = &grid->cl()[0];
+   const vistle::Scalar *x = &grid->x()[0];
+   const vistle::Scalar *y = &grid->y()[0];
+   const vistle::Scalar *z = &grid->z()[0];
 
-   const vistle::Scalar *d = &((*data->x)[0]);
+   const vistle::Scalar *d = &data->x()[0];
 
    size_t numElem = grid->getNumElements();
-   vistle::Triangles *t = vistle::Triangles::create();
+   vistle::Triangles *t = new vistle::Triangles;
    t->setBlock(grid_object->getBlock());
    t->setTimestep(grid_object->getTimestep());
 
@@ -182,21 +182,21 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
 
 #pragma omp critical
                   {
-                     t->cl->push_back(t->x->size());
-                     t->cl->push_back(t->x->size() + 1);
-                     t->cl->push_back(t->x->size() + 2);
+                     t->cl().push_back(t->x().size());
+                     t->cl().push_back(t->x().size() + 1);
+                     t->cl().push_back(t->x().size() + 2);
 
-                     t->x->push_back(v[0]->x);
-                     t->x->push_back(v[1]->x);
-                     t->x->push_back(v[2]->x);
+                     t->x().push_back(v[0]->x);
+                     t->x().push_back(v[1]->x);
+                     t->x().push_back(v[2]->x);
 
-                     t->y->push_back(v[0]->y);
-                     t->y->push_back(v[1]->y);
-                     t->y->push_back(v[2]->y);
+                     t->y().push_back(v[0]->y);
+                     t->y().push_back(v[1]->y);
+                     t->y().push_back(v[2]->y);
 
-                     t->z->push_back(v[0]->z);
-                     t->z->push_back(v[1]->z);
-                     t->z->push_back(v[2]->z);
+                     t->z().push_back(v[0]->z);
+                     t->z().push_back(v[1]->z);
+                     t->z().push_back(v[2]->z);
                   }
                }
             }

@@ -89,7 +89,7 @@ void Color::getMinMax(const vistle::Object * object,
             const vistle::Vec<vistle::Scalar> *data =
                static_cast<const vistle::Vec<vistle::Scalar> *>(object);
 
-            const vistle::Scalar *x = &((*data->x)[0]);
+            const vistle::Scalar *x = &data->x()[0];
             int numElements = data->getSize();
             for (int index = 0; index < numElements; index ++) {
                if (x[index] < min)
@@ -116,12 +116,12 @@ vistle::Object * Color::addTexture(vistle::Object * object,
          case vistle::Object::SET: {
 
             vistle::Set *set = static_cast<vistle::Set*>(object);
-            vistle::Set *out = vistle::Set::create();
+            vistle::Set *out = new vistle::Set;
             out->setBlock(object->getBlock());
             out->setTimestep(object->getTimestep());
 
             for (size_t index = 0; index < set->getNumElements(); index ++)
-               out->elements->push_back(addTexture(set->getElement(index),
+               out->elements().push_back(addTexture(set->getElement(index),
                                                    min, max, cmap));
             return out;
             break;
@@ -131,19 +131,18 @@ vistle::Object * Color::addTexture(vistle::Object * object,
 
             vistle::Vec<vistle::Scalar> * f = static_cast<vistle::Vec<vistle::Scalar> *>(object);
             const size_t numElem = f->getSize();
-            vistle::Scalar *x = &((*f->x)[0]);
+            vistle::Scalar *x = &f->x()[0];
 
-            vistle::Texture1D *tex = vistle::Texture1D::create(cmap.width,
-                                                               min, max);
+            vistle::Texture1D *tex = new vistle::Texture1D(cmap.width, min, max);
             tex->setBlock(object->getBlock());
             tex->setTimestep(object->getTimestep());
 
-            unsigned char *pix = &(*tex->pixels)[0];
+            unsigned char *pix = &tex->pixels()[0];
             for (size_t index = 0; index < cmap.width * 4; index ++)
                pix[index] = cmap.data[index];
 
             for (size_t index = 0; index < numElem; index ++)
-               tex->coords->push_back((x[index] - min) / (max - min));
+               tex->coords().push_back((x[index] - min) / (max - min));
 
             return tex;
             break;

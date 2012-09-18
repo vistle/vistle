@@ -303,12 +303,12 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
                 << polygons->getNumElements() << " " << polygons->getNumCorners() << " "
                 << polygons->getNumVertices() << std::endl;
 
-         write_uint64(fd, &((*polygons->el)[0]), polygons->getNumElements());
-         write_uint64(fd, &((*polygons->cl)[0]), polygons->getNumCorners());
+         write_uint64(fd, &polygons->el()[0], polygons->getNumElements());
+         write_uint64(fd, &polygons->cl()[0], polygons->getNumCorners());
 
-         write_float(fd, &((*polygons->x)[0]), polygons->getNumVertices());
-         write_float(fd, &((*polygons->y)[0]), polygons->getNumVertices());
-         write_float(fd, &((*polygons->z)[0]), polygons->getNumVertices());
+         write_float(fd, &polygons->x()[0], polygons->getNumVertices());
+         write_float(fd, &polygons->y()[0], polygons->getNumVertices());
+         write_float(fd, &polygons->z()[0], polygons->getNumVertices());
          break;
       }
 
@@ -322,13 +322,13 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
                    << usg->getNumElements() << " " << usg->getNumCorners() << " "
                    << usg->getNumVertices() << std::endl;
 
-         write_char(fd, &((*usg->tl)[0]), usg->getNumElements());
-         write_uint64(fd, &((*usg->el)[0]), usg->getNumElements());
-         write_uint64(fd, &((*usg->cl)[0]), usg->getNumCorners());
+         write_char(fd, &usg->tl()[0], usg->getNumElements());
+         write_uint64(fd, &usg->el()[0], usg->getNumElements());
+         write_uint64(fd, &usg->cl()[0], usg->getNumCorners());
 
-         write_float(fd, &((*usg->x)[0]), usg->getNumVertices());
-         write_float(fd, &((*usg->y)[0]), usg->getNumVertices());
-         write_float(fd, &((*usg->z)[0]), usg->getNumVertices());
+         write_float(fd, &usg->x()[0], usg->getNumVertices());
+         write_float(fd, &usg->y()[0], usg->getNumVertices());
+         write_float(fd, &usg->z()[0], usg->getNumVertices());
          break;
       }
 
@@ -341,7 +341,7 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
                    << data->getBlock() << " " << data->getTimestep() << " "
                    << data->getSize() << std::endl;
 
-         write_float(fd, &((*data->x)[0]), data->getSize());
+         write_float(fd, &data->x()[0], data->getSize());
          break;
       }
 
@@ -354,9 +354,9 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
                    << data->getBlock() << " " << data->getTimestep() << " "
                    << data->getSize() << std::endl;
 
-         write_float(fd, &((*data->x)[0]), data->getSize());
-         write_float(fd, &((*data->y)[0]), data->getSize());
-         write_float(fd, &((*data->z)[0]), data->getSize());
+         write_float(fd, &data->x()[0], data->getSize());
+         write_float(fd, &data->y()[0], data->getSize());
+         write_float(fd, &data->z()[0], data->getSize());
          break;
       }
 

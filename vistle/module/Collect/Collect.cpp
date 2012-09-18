@@ -30,9 +30,9 @@ bool Collect::compute() {
 
    while (gridObjects.size() > 0 && textureObjects.size()) {
 
-      vistle::Geometry *geom = vistle::Geometry::create();
-      geom->geometry = gridObjects.front();
-      geom->texture = textureObjects.front();
+      vistle::Geometry *geom = new vistle::Geometry;
+      geom->geometry() = gridObjects.front();
+      geom->texture() = textureObjects.front();
 
       geom->setBlock(gridObjects.front()->getBlock());
       geom->setTimestep(gridObjects.front()->getTimestep());
