@@ -87,7 +87,7 @@ class Module {
 #define MODULE_MAIN(X) int main(int argc, char **argv) {        \
       int rank, size, moduleID;                                 \
       if (argc != 2) {                                          \
-         std::cerr << "module missing parameters" << std::endl; \
+         std::cerr << "module requires exactly 2 parameters" << std::endl; \
          exit(1);                                               \
       }                                                         \
       MPI_Init(&argc, &argv);                                   \

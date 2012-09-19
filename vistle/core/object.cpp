@@ -52,6 +52,11 @@ Shm & Shm::instance(const int moduleID, const int rank,
             memsize /= 2;
          }
       } while (!s_singleton && memsize >= 4096);
+
+      if (!s_singleton) {
+         std::cerr << "failed to allocate shared memory: module id: " << moduleID << ", rank: " << rank << ", message queue: " << (mq ? mq->getName() : "n/a") << std::endl;
+         assert(s_singleton && "failed to allocate shared memory");
+      }
    }
 
    return *s_singleton;
