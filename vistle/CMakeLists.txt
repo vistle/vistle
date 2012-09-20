@@ -21,5 +21,6 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 add_subdirectory(core)
+add_subdirectory(control)
 add_subdirectory(vistle)
 add_subdirectory(module)

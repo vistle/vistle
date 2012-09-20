@@ -28,6 +28,9 @@ class Communicator {
    bool dispatch();
    bool handleMessage(const message::Message &message);
 
+   int getRank() const;
+   int getSize() const;
+
  private:
 
    const int rank;
