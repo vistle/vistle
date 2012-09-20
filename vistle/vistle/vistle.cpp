@@ -25,86 +25,63 @@ int main(int argc, char ** argv) {
    
    return 0;
 }
+
+//#define ISOSURFACE
+//#define READCOVISE
+//#define GENDATA
+#define TURBINEVISTLE
+//#define TURBINECOVISE
+//#define CONVERT
+//#define CUTTINGSURFACE
    
 void Vistle::config() {
-#if 0
-   vistle::message::Spawn readCovise1(0, rank, 1, "ReadCovise");
-   comm->handleMessage(readCovise1);
+#ifdef ISOSURFACE
+   enum { RGEO = 1, RPRESSURE, ISOSURF, SHOWUSG, REND };
 
-   vistle::message::Spawn readCovise2(0, rank, 2, "ReadCovise");
-   comm->handleMessage(readCovise2);
+   spawn(RGEO, "ReadCovise");
+   spawn(RPRESSURE, "ReadCovise");
+   spawn(ISOSURF, "IsoSurface");
+   spawn(SHOWUSG, "ShowUSG");
+   spawn(REND, "OSGRenderer");
 
-   vistle::message::Spawn isoSurface(0, rank, 3, "IsoSurface");
-   comm->handleMessage(isoSurface);
+   connect(RGEO, "grid_out", ISOSURF, "grid_in");
+   connect(RPRESSURE, "grid_out", ISOSURF, "data_in");
+   connect(RGEO, "grid_out", SHOWUSG, "grid_in");
+   connect(SHOWUSG, "grid_out", REND, "data_in");
+   connect(ISOSURF, "grid_out", REND, "data_in");
 
-   vistle::message::Spawn showUSG(0, rank, 4, "ShowUSG");
-   comm->handleMessage(showUSG);
+   setParam(RGEO, "filename", "/tmp/g.covise");
+   setParam(RPRESSURE, "filename", "/tmp/p.covise");
 
-   vistle::message::Spawn renderer(0, rank, 5, "OSGRenderer");
-   comm->handleMessage(renderer);
-
-   vistle::message::Connect connect13g(0, rank, 1, "grid_out", 3, "grid_in");
-   comm->handleMessage(connect13g);
-
-   vistle::message::Connect connect13d(0, rank, 2, "grid_out", 3, "data_in");
-   comm->handleMessage(connect13d);
-
-   vistle::message::Connect connect14(0, rank, 1, "grid_out", 4, "grid_in");
-   comm->handleMessage(connect14);
-
-   vistle::message::Connect connect45(0, rank, 4, "grid_out", 5, "data_in");
-   comm->handleMessage(connect45);
-
-   vistle::message::Connect connect35(0, rank, 3, "grid_out", 5, "data_in");
-   comm->handleMessage(connect35);
-
-   vistle::message::SetFileParameter param1(0, rank, 1, "filename",
-                                           "/tmp/g.covise");
-   comm->handleMessage(param1);
-
-   vistle::message::SetFileParameter param2(0, rank, 2, "filename",
-                                           "/tmp/p.covise");
-   comm->handleMessage(param2);
-
-   vistle::message::Compute compute1(0, rank, 1);
-   comm->handleMessage(compute1);
-
-   vistle::message::Compute compute2(0, rank, 2);
-   comm->handleMessage(compute2);
+   compute(RGEO);
+   compute(RPRESSURE);
 #endif
 
-#if 0
-   vistle::message::Spawn readCovise(0, rank, 1, "ReadCovise");
-   comm->handleMessage(readCovise);
+#ifdef READCOVISE
+   enum { RGEO = 1, REND };
 
-   vistle::message::SetFileParameter param(0, rank, 1, "filename",
-                                           "/tmp/single_geom2d.covise");
-   comm->handleMessage(param);
+   spawn(RGEO, "ReadCovise");
+   spawn(REND, "OSGRenderer");
 
-   vistle::message::Spawn renderer(0, rank, 2, "OSGRenderer");
-   comm->handleMessage(renderer);
+   setParam(RGEO, "filename", "/tmp/single_geom2d.covise");
 
-   vistle::message::Connect connect12(0, rank, 1, "grid_out", 2, "data_in");
-   comm->handleMessage(connect12);
+   connect(RGEO, "grid_out", REND, "data_in");
 
-   vistle::message::Compute compute(0, rank, 1);
-   comm->handleMessage(compute);
+   compute(RGEO);
 #endif
 
-#if 0
-   vistle::message::Spawn gendat(0, rank, 1, "Gendat");
-   comm->handleMessage(gendat);
-   vistle::message::Spawn renderer(0, rank, 2, "OSGRenderer");
-   comm->handleMessage(renderer);
+#ifdef GENDATA
+   enum { GENDAT = 1, REND };
 
-   vistle::message::Connect connect(0, rank, 1, "data_out", 2, "data_in");
-   comm->handleMessage(connect);
+   spawn(GENDAT, "Gendat");
+   spawn(REND, "OSGRenderer");
 
-   vistle::message::Compute compute(0, rank, 1);
-   comm->handleMessage(compute);
+   connect(GENDAT, "data_out", REND, "data_in");
+
+   compute(GENDAT);
 #endif
 
-#if 1
+#ifdef TURBINEVISTLE
    enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER, WRITEVISTLE };
 
    spawn(RGEO,  "ReadVistle");
@@ -132,7 +109,7 @@ void Vistle::config() {
    setParam(RPRES, "filename",
             "/data/OpenFOAM/PumpTurbine/covise/test/multi_p.covise");
    /*
-   setParam(comm, rank, WRITEVISTLE, "filename",
+   setParam(WRITEVISTLE, "filename",
             "/data/OpenFOAM/PumpTurbine/covise/test/three_geo2d.vistle");
    */
    setParam(ISOSURF, "isovalue", -1.0);
@@ -161,42 +138,36 @@ void Vistle::config() {
    compute(RPRES);
 #endif
 
-#if 0
-   vistle::message::Spawn readCovise(0, rank, 1, "ReadCovise");
-   comm->handleMessage(readCovise);
+#ifdef TURBINECOVISE
+   enum { RPRESSURE = 1, COLOR };
 
-   vistle::message::SetFileParameter param(0, rank, 1, "filename",
-                     "/data/OpenFOAM/PumpTurbine/covise/p.covise");
-   comm->handleMessage(param);
+   spawn(RPRESSURE, "ReadCovise");
+   spawn(COLOR, "Color");
 
-   vistle::message::Spawn color(0, rank, 2, "Color");
-   comm->handleMessage(color);
+   setParam(RPRESSURE, "filename", "/data/OpenFOAM/PumpTurbine/covise/p.covise");
 
-   vistle::message::Connect connect12(0, rank, 1, "grid_out", 2, "data_in");
-   comm->handleMessage(connect12);
+   connect(RPRESSURE, "grid_out", COLOR, "data_in");
 
-   vistle::message::Compute compute(0, rank, 1);
-   comm->handleMessage(compute);
+   compute(RPRESSURE);
 #endif
 
-#if 0
+#ifdef CONVERT
    enum { READ = 1, WRITE };
+
    spawn(READ, "ReadCovise");
    spawn(WRITE, "WriteVistle");
 
-   setParam(READ, "filename",
-            "/data/OpenFOAM/PumpTurbine/covise/geo3d.covise");
-
-   setParam(WRITE, "filename",
-            "/data/OpenFOAM/PumpTurbine/covise/geo3d.vistle");
+   setParam(READ, "filename", "/data/OpenFOAM/PumpTurbine/covise/geo3d.covise");
+   setParam(WRITE, "filename", "/data/OpenFOAM/PumpTurbine/covise/geo3d.vistle");
 
    connect(READ, "grid_out", WRITE, "grid_in");
 
    compute(READ);
 #endif
 
-#if 0
+#ifdef CUTTINGSURFACE
    enum { READ = 1, SHOWUSG, RENDERER, CUTSURF, COLOR, COLLECT };
+
    spawn(READ, "ReadFOAM");
    spawn(SHOWUSG, "ShowUSG");
    spawn(RENDERER, "OSGRenderer");
