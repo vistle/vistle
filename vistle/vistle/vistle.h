@@ -26,7 +26,7 @@ class Communicator {
    ~Communicator();
 
    bool dispatch();
-   bool handleMessage(const message::Message * message);
+   bool handleMessage(const message::Message &message);
 
  private:
 

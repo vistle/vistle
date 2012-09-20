@@ -37,28 +37,28 @@ void spawn(vistle::Communicator * comm, const int rank,
            const int moduleID, const char * name) {
 
    vistle::message::Spawn module(0, rank, moduleID, name);
-   comm->handleMessage(&module);
+   comm->handleMessage(module);
 }
 
 void setParam(vistle::Communicator * comm, const int rank,
              const int moduleID, const char * name, const vistle::Scalar value) {
 
    vistle::message::SetFloatParameter param(0, rank, moduleID, name, value);
-   comm->handleMessage(&param);
+   comm->handleMessage(param);
 }
 
 void setParam(vistle::Communicator * comm, const int rank,
              const int moduleID, const char * name, const std::string & value) {
 
    vistle::message::SetFileParameter param(0, rank, moduleID, name, value);
-   comm->handleMessage(&param);
+   comm->handleMessage(param);
 }
 
 void setParam(vistle::Communicator * comm, const int rank,
              const int moduleID, const char * name, const vistle::Vector & value) {
 
    vistle::message::SetVectorParameter param(0, rank, moduleID, name, value);
-   comm->handleMessage(&param);
+   comm->handleMessage(param);
 }
 
 void connect(vistle::Communicator * comm, const int rank,
@@ -66,13 +66,13 @@ void connect(vistle::Communicator * comm, const int rank,
              const int moduleB, const char * bPort) {
 
    vistle::message::Connect connect(0, rank, moduleA, aPort, moduleB, bPort);
-   comm->handleMessage(&connect);
+   comm->handleMessage(connect);
 }
 
 void compute(vistle::Communicator * comm, const int rank,  const int moduleID) {
 
    vistle::message::Compute comp(0, rank, moduleID);
-   comm->handleMessage(&comp);
+   comm->handleMessage(comp);
 }
 
 int main(int argc, char ** argv) {
@@ -117,79 +117,79 @@ int main(int argc, char ** argv) {
 
 #if 0
    vistle::message::Spawn readCovise1(0, rank, 1, "ReadCovise");
-   comm->handleMessage(&readCovise1);
+   comm->handleMessage(readCovise1);
 
    vistle::message::Spawn readCovise2(0, rank, 2, "ReadCovise");
-   comm->handleMessage(&readCovise2);
+   comm->handleMessage(readCovise2);
 
    vistle::message::Spawn isoSurface(0, rank, 3, "IsoSurface");
-   comm->handleMessage(&isoSurface);
+   comm->handleMessage(isoSurface);
 
    vistle::message::Spawn showUSG(0, rank, 4, "ShowUSG");
-   comm->handleMessage(&showUSG);
+   comm->handleMessage(showUSG);
 
    vistle::message::Spawn renderer(0, rank, 5, "OSGRenderer");
-   comm->handleMessage(&renderer);
+   comm->handleMessage(renderer);
 
    vistle::message::Connect connect13g(0, rank, 1, "grid_out", 3, "grid_in");
-   comm->handleMessage(&connect13g);
+   comm->handleMessage(connect13g);
 
    vistle::message::Connect connect13d(0, rank, 2, "grid_out", 3, "data_in");
-   comm->handleMessage(&connect13d);
+   comm->handleMessage(connect13d);
 
    vistle::message::Connect connect14(0, rank, 1, "grid_out", 4, "grid_in");
-   comm->handleMessage(&connect14);
+   comm->handleMessage(connect14);
 
    vistle::message::Connect connect45(0, rank, 4, "grid_out", 5, "data_in");
-   comm->handleMessage(&connect45);
+   comm->handleMessage(connect45);
 
    vistle::message::Connect connect35(0, rank, 3, "grid_out", 5, "data_in");
-   comm->handleMessage(&connect35);
+   comm->handleMessage(connect35);
 
    vistle::message::SetFileParameter param1(0, rank, 1, "filename",
                                            "/tmp/g.covise");
-   comm->handleMessage(&param1);
+   comm->handleMessage(param1);
 
    vistle::message::SetFileParameter param2(0, rank, 2, "filename",
                                            "/tmp/p.covise");
-   comm->handleMessage(&param2);
+   comm->handleMessage(param2);
 
    vistle::message::Compute compute1(0, rank, 1);
-   comm->handleMessage(&compute1);
+   comm->handleMessage(compute1);
 
    vistle::message::Compute compute2(0, rank, 2);
-   comm->handleMessage(&compute2);
+   comm->handleMessage(compute2);
 #endif
 
 #if 0
    vistle::message::Spawn readCovise(0, rank, 1, "ReadCovise");
-   comm->handleMessage(&readCovise);
+   comm->handleMessage(readCovise);
 
    vistle::message::SetFileParameter param(0, rank, 1, "filename",
                                            "/tmp/single_geom2d.covise");
-   comm->handleMessage(&param);
+   comm->handleMessage(param);
 
    vistle::message::Spawn renderer(0, rank, 2, "OSGRenderer");
-   comm->handleMessage(&renderer);
+   comm->handleMessage(renderer);
 
    vistle::message::Connect connect12(0, rank, 1, "grid_out", 2, "data_in");
-   comm->handleMessage(&connect12);
+   comm->handleMessage(connect12);
 
    vistle::message::Compute compute(0, rank, 1);
-   comm->handleMessage(&compute);
+   comm->handleMessage(compute);
 #endif
 
 #if 0
    vistle::message::Spawn gendat(0, rank, 1, "Gendat");
-   comm->handleMessage(&gendat);
+   comm->handleMessage(gendat);
    vistle::message::Spawn renderer(0, rank, 2, "OSGRenderer");
-   comm->handleMessage(&renderer);
+   comm->handleMessage(renderer);
 
    vistle::message::Connect connect(0, rank, 1, "data_out", 2, "data_in");
-   comm->handleMessage(&connect);
+   comm->handleMessage(connect);
 
    vistle::message::Compute compute(0, rank, 1);
-   comm->handleMessage(&compute);
+   comm->handleMessage(compute);
 #endif
 
 #if 1
@@ -251,20 +251,20 @@ int main(int argc, char ** argv) {
 
 #if 0
    vistle::message::Spawn readCovise(0, rank, 1, "ReadCovise");
-   comm->handleMessage(&readCovise);
+   comm->handleMessage(readCovise);
 
    vistle::message::SetFileParameter param(0, rank, 1, "filename",
                      "/data/OpenFOAM/PumpTurbine/covise/p.covise");
-   comm->handleMessage(&param);
+   comm->handleMessage(param);
 
    vistle::message::Spawn color(0, rank, 2, "Color");
-   comm->handleMessage(&color);
+   comm->handleMessage(color);
 
    vistle::message::Connect connect12(0, rank, 1, "grid_out", 2, "data_in");
-   comm->handleMessage(&connect12);
+   comm->handleMessage(connect12);
 
    vistle::message::Compute compute(0, rank, 1);
-   comm->handleMessage(&compute);
+   comm->handleMessage(compute);
 #endif
 
 #if 0
@@ -418,7 +418,7 @@ bool Communicator::dispatch() {
 
                MPI_Bcast(message, message->size, MPI_BYTE, 0, MPI_COMM_WORLD);
 
-               if (!handleMessage(message))
+               if (!handleMessage(*message))
                   done = true;
 
                delete message;
@@ -447,7 +447,7 @@ bool Communicator::dispatch() {
          printf("[%02d] message from [%02d] message type %d size %d\n",
                 rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
 #endif
-         if (!handleMessage(message))
+         if (!handleMessage(*message))
             done = true;
 
          MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, 0,
@@ -472,7 +472,7 @@ bool Communicator::dispatch() {
                                         msgSize, priority);
 
          if (received) {
-            moduleExit = !handleMessage((message::Message *) msgRecvBuf);
+            moduleExit = !handleMessage(*(message::Message *) msgRecvBuf);
 
             if (moduleExit) {
 
@@ -498,23 +498,23 @@ bool Communicator::dispatch() {
 }
 
 
-bool Communicator::handleMessage(const message::Message * message) {
+bool Communicator::handleMessage(const message::Message &message) {
 
-   switch (message->getType()) {
+   switch (message.getType()) {
 
       case message::Message::DEBUG: {
 
-         const message::Debug *debug =
-            static_cast<const message::Debug *>(message);
+         const message::Debug &debug =
+            static_cast<const message::Debug &>(message);
          std::cout << "comm [" << rank << "/" << size << "] Debug ["
-                   << debug->getCharacter() << "]" << std::endl;
+                   << debug.getCharacter() << "]" << std::endl;
          break;
       }
 
       case message::Message::QUIT: {
 
-         const message::Quit *quit =
-            static_cast<const message::Quit *>(message);
+         const message::Quit &quit =
+            static_cast<const message::Quit &>(message);
          (void) quit;
          return false;
          break;
@@ -522,12 +522,12 @@ bool Communicator::handleMessage(const message::Message * message) {
 
       case message::Message::SPAWN: {
 
-         const message::Spawn *spawn =
-            static_cast<const message::Spawn *>(message);
-         int moduleID = spawn->getSpawnID();
+         const message::Spawn &spawn =
+            static_cast<const message::Spawn &>(message);
+         int moduleID = spawn.getSpawnID();
 
          std::stringstream name;
-         name << "bin/" << spawn->getName();
+         name << "bin/" << spawn.getName();
 
          std::stringstream modID;
          modID << moduleID;
@@ -560,12 +560,12 @@ bool Communicator::handleMessage(const message::Message * message) {
 
       case message::Message::CONNECT: {
 
-         const message::Connect *connect =
-            static_cast<const message::Connect *>(message);
-         portManager.addConnection(connect->getModuleA(),
-                                   connect->getPortAName(),
-                                   connect->getModuleB(),
-                                   connect->getPortBName());
+         const message::Connect &connect =
+            static_cast<const message::Connect &>(message);
+         portManager.addConnection(connect.getModuleA(),
+                                   connect.getPortAName(),
+                                   connect.getModuleB(),
+                                   connect.getPortBName());
          break;
       }
 
@@ -575,21 +575,21 @@ bool Communicator::handleMessage(const message::Message * message) {
          const message::NewObject *newObject =
             static_cast<const message::NewObject *>(message);
          vistle::Object *object = (vistle::Object *)
-            vistle::Shm::instance().getShm().get_address_from_handle(newObject->getHandle());
+            vistle::Shm::instance().getShm().get_address_from_handle(newObject.getHandle());
 
          std::cout << "comm [" << rank << "/" << size << "] NewObject ["
-                   << newObject->getHandle() << "] type ["
-                   << object->getType() << "] from module ["
-                   << newObject->getModuleID() << "]" << std::endl;
+                   << newObject.getHandle() << "] type ["
+                   << object.getType() << "] from module ["
+                   << newObject.getModuleID() << "]" << std::endl;
          */
          break;
       }
 
       case message::Message::MODULEEXIT: {
 
-         const message::ModuleExit *moduleExit =
-            static_cast<const message::ModuleExit *>(message);
-         int mod = moduleExit->getModuleID();
+         const message::ModuleExit &moduleExit =
+            static_cast<const message::ModuleExit &>(message);
+         int mod = moduleExit.getModuleID();
 
          std::cout << "comm [" << rank << "/" << size << "] Module ["
                    << mod << "] quit" << std::endl;
@@ -600,45 +600,45 @@ bool Communicator::handleMessage(const message::Message * message) {
 
       case message::Message::COMPUTE: {
 
-         const message::Compute *comp =
-            static_cast<const message::Compute *>(message);
+         const message::Compute &comp =
+            static_cast<const message::Compute &>(message);
          std::map<int, message::MessageQueue *>::iterator i
-            = sendMessageQueue.find(comp->getModule());
+            = sendMessageQueue.find(comp.getModule());
          if (i != sendMessageQueue.end())
-            i->second->getMessageQueue().send(comp, sizeof(*comp), 0);
+            i->second->getMessageQueue().send(&comp, sizeof(comp), 0);
          break;
       }
 
       case message::Message::CREATEINPUTPORT: {
 
-         const message::CreateInputPort *m =
-            static_cast<const message::CreateInputPort *>(message);
-         portManager.addPort(m->getModuleID(), m->getName(),
+         const message::CreateInputPort &m =
+            static_cast<const message::CreateInputPort &>(message);
+         portManager.addPort(m.getModuleID(), m.getName(),
                              Port::INPUT);
          break;
       }
 
       case message::Message::CREATEOUTPUTPORT: {
 
-         const message::CreateOutputPort *m =
-            static_cast<const message::CreateOutputPort *>(message);
-         portManager.addPort(m->getModuleID(), m->getName(),
+         const message::CreateOutputPort &m =
+            static_cast<const message::CreateOutputPort &>(message);
+         portManager.addPort(m.getModuleID(), m.getName(),
                              Port::OUTPUT);
          break;
       }
 
       case message::Message::ADDOBJECT: {
 
-         const message::AddObject *m =
-            static_cast<const message::AddObject *>(message);
-         std::cout << "Module " << m->getModuleID() << ": "
-                   << "AddObject " << m->getHandle()
-                   << " to port " << m->getPortName() << std::endl;
+         const message::AddObject &m =
+            static_cast<const message::AddObject &>(message);
+         std::cout << "Module " << m.getModuleID() << ": "
+                   << "AddObject " << m.getHandle()
+                   << " to port " << m.getPortName() << std::endl;
 
-         Port *port = portManager.getPort(m->getModuleID(),
-                                          m->getPortName());
+         Port *port = portManager.getPort(m.getModuleID(),
+                                          m.getPortName());
          if (port) {
-            port->addObject(m->getHandle());
+            port->addObject(m.getHandle());
             const std::vector<const Port *> *list =
                portManager.getConnectionList(port);
 
@@ -648,8 +648,8 @@ bool Communicator::handleMessage(const message::Message * message) {
                std::map<int, message::MessageQueue *>::iterator mi =
                   sendMessageQueue.find((*pi)->getModuleID());
                if (mi != sendMessageQueue.end()) {
-                  const message::AddObject a(m->getModuleID(), m->getRank(),
-                                             (*pi)->getName(), m->getHandle());
+                  const message::AddObject a(m.getModuleID(), m.getRank(),
+                                             (*pi)->getName(), m.getHandle());
                   const message::Compute c(moduleID, rank,
                                            (*pi)->getModuleID());
 
@@ -660,53 +660,53 @@ bool Communicator::handleMessage(const message::Message * message) {
          }
          else
             std::cout << "comm [" << rank << "/" << size << "] Addbject ["
-                      << m->getHandle() << "] to port ["
-                      << m->getPortName() << "]: port not found" << std::endl;
+                      << m.getHandle() << "] to port ["
+                      << m.getPortName() << "]: port not found" << std::endl;
 
          break;
       }
 
       case message::Message::SETFILEPARAMETER: {
 
-         const message::SetFileParameter *m =
-            static_cast<const message::SetFileParameter *>(message);
+         const message::SetFileParameter &m =
+            static_cast<const message::SetFileParameter &>(message);
 
-         if (m->getModuleID() != m->getModule()) {
+         if (m.getModuleID() != m.getModule()) {
             // message to module
             std::map<int, message::MessageQueue *>::iterator i
-               = sendMessageQueue.find(m->getModule());
+               = sendMessageQueue.find(m.getModule());
             if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(m, m->getSize(), 0);
+               i->second->getMessageQueue().send(&m, m.getSize(), 0);
          }
          break;
       }
 
       case message::Message::SETFLOATPARAMETER: {
 
-         const message::SetFloatParameter *m =
-            static_cast<const message::SetFloatParameter *>(message);
+         const message::SetFloatParameter &m =
+            static_cast<const message::SetFloatParameter &>(message);
 
-         if (m->getModuleID() != m->getModule()) {
+         if (m.getModuleID() != m.getModule()) {
             // message to module
             std::map<int, message::MessageQueue *>::iterator i
-               = sendMessageQueue.find(m->getModule());
+               = sendMessageQueue.find(m.getModule());
             if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(m, m->getSize(), 0);
+               i->second->getMessageQueue().send(&m, m.getSize(), 0);
          }
          break;
       }
 
       case message::Message::SETINTPARAMETER: {
 
-         const message::SetIntParameter *m =
-            static_cast<const message::SetIntParameter *>(message);
+         const message::SetIntParameter &m =
+            static_cast<const message::SetIntParameter &>(message);
 
-         if (m->getModuleID() != m->getModule()) {
+         if (m.getModuleID() != m.getModule()) {
             // message to module
             std::map<int, message::MessageQueue *>::iterator i
-               = sendMessageQueue.find(m->getModule());
+               = sendMessageQueue.find(m.getModule());
             if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(m, m->getSize(), 0);
+               i->second->getMessageQueue().send(&m, m.getSize(), 0);
          }
          break;
 
@@ -714,15 +714,15 @@ bool Communicator::handleMessage(const message::Message * message) {
 
       case message::Message::SETVECTORPARAMETER: {
 
-         const message::SetVectorParameter *m =
-            static_cast<const message::SetVectorParameter *>(message);
+         const message::SetVectorParameter &m =
+            static_cast<const message::SetVectorParameter &>(message);
 
-         if (m->getModuleID() != m->getModule()) {
+         if (m.getModuleID() != m.getModule()) {
             // message to module
             std::map<int, message::MessageQueue *>::iterator i
-               = sendMessageQueue.find(m->getModule());
+               = sendMessageQueue.find(m.getModule());
             if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(m, m->getSize(), 0);
+               i->second->getMessageQueue().send(&m, m.getSize(), 0);
          }
          break;
       }
