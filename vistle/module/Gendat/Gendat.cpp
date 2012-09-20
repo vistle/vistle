@@ -62,6 +62,13 @@ bool Gendat::compute() {
 
    addObject("grid_out", t);
 
+   vistle::Vec<vistle::Scalar>::ptr v(new vistle::Vec<vistle::Scalar>(4));
+   v->x()[0] = 1.;
+   v->x()[1] = 2.;
+   v->x()[2] = 3.;
+   v->x()[3] = 4.;
+   addObject("data_out", v);
+   
    /*
    addObject("data_out", b);
    addObject("data_out", t);
