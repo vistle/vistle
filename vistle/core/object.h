@@ -234,6 +234,7 @@ class Vec: public Object {
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
 
+         ar & boost::serialization::base_object<Parent::Data>(*this);
          ar & x;
       }
    };
@@ -321,6 +322,7 @@ class Vec3: public Object {
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
 
+         ar & boost::serialization::base_object<Parent::Data>(*this);
          ar & x;
          ar & y;
          ar & z;
@@ -605,12 +607,12 @@ class Set: public Object {
    Info *getInfo(Info *info = NULL) const;
    size_t getNumElements() const;
    Object * getElement(const size_t index) const;
-   shm<boost::interprocess::offset_ptr<Object> >::vector &elements() const { return *d()->elements; }
+   shm<boost::interprocess::offset_ptr<Object::Data> >::vector &elements() const { return *d()->elements; }
 
  protected:
    struct Data: public Parent::Data {
 
-      shm<boost::interprocess::offset_ptr<Object> >::ptr elements;
+      shm<boost::interprocess::offset_ptr<Object::Data> >::ptr elements;
 
       Data(const size_t numElements, const std::string & name,
             const int block, const int timestep);
@@ -621,7 +623,7 @@ class Set: public Object {
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Object>(*this);
+         ar & boost::serialization::base_object<Parent::Data>(*this);
          ar & elements;
       }
    };
@@ -644,18 +646,18 @@ class Geometry: public Object {
 
    Info *getInfo(Info *info = NULL) const;
 
-   boost::interprocess::offset_ptr<Object> &geometry() const { return d()->geometry; }
-   boost::interprocess::offset_ptr<Object> &colors() const { return d()->colors; }
-   boost::interprocess::offset_ptr<Object> &normals() const { return d()->normals; }
-   boost::interprocess::offset_ptr<Object> &texture() const { return d()->texture; }
+   boost::interprocess::offset_ptr<Object::Data> &geometry() const { return d()->geometry; }
+   boost::interprocess::offset_ptr<Object::Data> &colors() const { return d()->colors; }
+   boost::interprocess::offset_ptr<Object::Data> &normals() const { return d()->normals; }
+   boost::interprocess::offset_ptr<Object::Data> &texture() const { return d()->texture; }
 
  protected:
    struct Data: public Parent::Data {
 
-      boost::interprocess::offset_ptr<Object> geometry;
-      boost::interprocess::offset_ptr<Object> colors;
-      boost::interprocess::offset_ptr<Object> normals;
-      boost::interprocess::offset_ptr<Object> texture;
+      boost::interprocess::offset_ptr<Object::Data> geometry;
+      boost::interprocess::offset_ptr<Object::Data> colors;
+      boost::interprocess::offset_ptr<Object::Data> normals;
+      boost::interprocess::offset_ptr<Object::Data> texture;
 
       Data(const std::string & name,
             const int block, const int timestep);
@@ -665,7 +667,7 @@ class Geometry: public Object {
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Object>(*this);
+         ar & boost::serialization::base_object<Parent::Data>(*this);
          ar & geometry;
          ar & colors;
          ar & normals;
@@ -716,7 +718,7 @@ class Texture1D: public Object {
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Object>(*this);
+         ar & boost::serialization::base_object<Parent::Data>(*this);
          ar & pixels;
          ar & coords;
          ar & min;

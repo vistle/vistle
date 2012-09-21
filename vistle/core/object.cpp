@@ -442,7 +442,7 @@ Set::Set(const size_t numElements,
 Set::Data::Data(const size_t numElements, const std::string & name,
          const int block, const int timestep)
    : Set::Parent::Data(Object::SET, name, block, timestep)
-     , elements(shm<offset_ptr<Object> >::construct_vector(numElements))
+     , elements(shm<offset_ptr<Object::Data> >::construct_vector(numElements))
 {
 }
 
@@ -471,7 +471,7 @@ Object * Set::getElement(const size_t index) const {
    if (index >= d()->elements->size())
       return NULL;
 
-   return (*d()->elements)[index].get();
+   return Object::create((*d()->elements)[index].get());
 }
 
 Geometry::Geometry(const int block, const int timestep)
