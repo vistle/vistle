@@ -10,7 +10,7 @@ class CutGeometry: public vistle::Module {
    CutGeometry(int rank, int size, int moduleID);
    ~CutGeometry();
 
-   vistle::Object * cutGeometry(const vistle::Object * object,
+   vistle::Object::ptr cutGeometry(vistle::Object::const_ptr object,
                                 const vistle::Vector & point,
                                 const vistle::Vector & normal) const;
 

@@ -21,11 +21,11 @@ class Color: public vistle::Module {
    ~Color();
 
  private:
-   vistle::Object * addTexture(vistle::Object * object,
+   vistle::Object::ptr addTexture(vistle::Object::const_ptr object,
                                const vistle::Scalar min, const vistle::Scalar max,
                                const ColorMap & cmap);
 
-   void getMinMax(const vistle::Object * object, vistle::Scalar & min, vistle::Scalar & max);
+   void getMinMax(vistle::Object::const_ptr object, vistle::Scalar & min, vistle::Scalar & max);
 
    virtual bool compute();
 };

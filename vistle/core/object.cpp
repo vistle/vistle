@@ -87,7 +87,7 @@ std::string Shm::createObjectID() {
    return name.str();
 }
 
-shm_handle_t Shm::getHandleFromObject(const Object *object) {
+shm_handle_t Shm::getHandleFromObject(Object::const_ptr object) {
 
    try {
       return m_shm->get_handle_from_address(object->d());
@@ -97,7 +97,7 @@ shm_handle_t Shm::getHandleFromObject(const Object *object) {
    return 0;
 }
 
-Object * Shm::getObjectFromHandle(const shm_handle_t & handle) {
+Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) {
 
    try {
       Object::Data *od = static_cast<Object::Data *>
@@ -106,15 +106,15 @@ Object * Shm::getObjectFromHandle(const shm_handle_t & handle) {
       return Object::create(od);
    } catch (interprocess_exception &ex) { }
 
-   return NULL;
+   return Object::const_ptr();
 }
 
-Object *Object::create(Object::Data *data) {
+Object::ptr Object::create(Object::Data *data) {
 
    if (!data)
-      return NULL;
+      return Object::ptr();
 
-#define CR(id, T) case id: return new T(static_cast<T::Data *>(data))
+#define CR(id, T) case id: return Object::ptr(new T(static_cast<T::Data *>(data)))
 
    switch(data->type) {
       case Object::UNKNOWN: assert(0 == "Cannot create Object of UNKNOWN type");
@@ -136,7 +136,7 @@ Object *Object::create(Object::Data *data) {
 #undef CR
 
    assert(0 == "Cannot create Object of invalid type");
-   return NULL;
+   return Object::ptr();
 }
 
 Object::Data::Data(const Type type, const std::string & n,
@@ -471,12 +471,32 @@ size_t Set::getNumElements() const {
    return d()->elements->size();
 }
 
-Object * Set::getElement(const size_t index) const {
+Object::const_ptr Set::getElement(const size_t index) const {
 
    if (index >= d()->elements->size())
-      return NULL;
+      return Object::ptr();
 
    return Object::create((*d()->elements)[index].get());
+}
+
+void Set::setElement(const size_t index, Object::const_ptr object) {
+
+   if (index >= d()->elements->size()) {
+
+      std::cerr << "WARNING: automatically resisizing set" << std::endl;
+      d()->elements->resize(index+1);
+   }
+
+   if (object)
+      (*d()->elements)[index] = object->d();
+   else
+      (*d()->elements)[index] = NULL;
+}
+
+void Set::addElement(Object::const_ptr object) {
+
+   if (object)
+      d()->elements->push_back(object->d());
 }
 
 Geometry::Geometry(const int block, const int timestep)
@@ -506,6 +526,46 @@ Geometry::Data * Geometry::Data::create(const int block, const int timestep) {
    Shm::instance().publish(handle);
    */
    return g;
+}
+
+void Geometry::setGeometry(Object::const_ptr g) {
+
+   d()->geometry = g->d();
+}
+
+void Geometry::setColors(Object::const_ptr c) {
+
+   d()->colors = c->d();
+}
+
+void Geometry::setTexture(Object::const_ptr t) {
+
+   d()->texture = t->d();
+}
+
+void Geometry::setNormals(Object::const_ptr n) {
+
+   d()->normals = n->d();
+}
+
+Object::const_ptr Geometry::geometry() const {
+
+   return Object::create(&*d()->geometry);
+}
+
+Object::const_ptr Geometry::colors() const {
+
+   return Object::create(&*d()->colors);
+}
+
+Object::const_ptr Geometry::normals() const {
+
+   return Object::create(&*d()->normals);
+}
+
+Object::const_ptr Geometry::texture() const {
+
+   return Object::create(&*d()->texture);
 }
 
 Texture1D::Texture1D(const size_t width,

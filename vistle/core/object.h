@@ -7,6 +7,8 @@
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 
+#include <boost/shared_ptr.hpp>
+
 // include headers that implement an archive in simple text format
 //#include <boost/archive/text_oarchive.hpp>
 //#include <boost/archive/text_iarchive.hpp>
@@ -39,8 +41,8 @@ class Shm {
    std::string createObjectID();
 
    void publish(const shm_handle_t & handle);
-   Object * getObjectFromHandle(const shm_handle_t & handle);
-   shm_handle_t getHandleFromObject(const Object *object);
+   boost::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle);
+   shm_handle_t getHandleFromObject(boost::shared_ptr<const Object> object);
 
  private:
    Shm(const int moduleID, const int rank, const size_t size,
@@ -66,21 +68,28 @@ struct shm {
 
 #define V_OBJECT(Type) \
    public: \
+   typedef boost::shared_ptr<Type> ptr; \
+   typedef boost::shared_ptr<const Type> const_ptr; \
    virtual ~Type() { delete d(); m_data = NULL; } \
+   static boost::shared_ptr<const Type> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Type>(ptr); } \
+   static boost::shared_ptr<Type> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Type>(ptr); } \
    protected: \
    struct Data; \
    Data *d() const { return static_cast<Data *>(m_data); } \
    Type(Data *data) : Parent(data) {} \
    private: \
-   friend Object *Shm::getObjectFromHandle(const shm_handle_t &); \
-   friend shm_handle_t Shm::getHandleFromObject(const Object *); \
-   friend Object *Object::create(Object::Data *)
+   friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &); \
+   friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>); \
+   friend boost::shared_ptr<Object> Object::create(Object::Data *)
 
 class Object {
-   friend Object *Shm::getObjectFromHandle(const shm_handle_t &);
-   friend shm_handle_t Shm::getHandleFromObject(const Object *);
+   friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &);
+   friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>);
 
 public:
+   typedef boost::shared_ptr<Object> ptr;
+   typedef boost::shared_ptr<const Object> const_ptr;
+
    enum Type {
       UNKNOWN           = -1,
       VECFLOAT          =  0,
@@ -155,11 +164,13 @@ public:
    };
 
    Data *m_data;
+ public:
    Data *d() const { return m_data; }
+ protected:
 
    Object(Data *data);
 
-   static Object *create(Data *);
+   static Object::ptr create(Data *);
  private:
    friend class boost::serialization::access;
    template<class Archive>
@@ -606,7 +617,9 @@ class Set: public Object {
 
    Info *getInfo(Info *info = NULL) const;
    size_t getNumElements() const;
-   Object * getElement(const size_t index) const;
+   Object::const_ptr getElement(const size_t index) const;
+   void setElement(const size_t index, Object::const_ptr obj);
+   void addElement(Object::const_ptr obj);
    shm<boost::interprocess::offset_ptr<Object::Data> >::vector &elements() const { return *d()->elements; }
 
  protected:
@@ -646,10 +659,14 @@ class Geometry: public Object {
 
    Info *getInfo(Info *info = NULL) const;
 
-   boost::interprocess::offset_ptr<Object::Data> &geometry() const { return d()->geometry; }
-   boost::interprocess::offset_ptr<Object::Data> &colors() const { return d()->colors; }
-   boost::interprocess::offset_ptr<Object::Data> &normals() const { return d()->normals; }
-   boost::interprocess::offset_ptr<Object::Data> &texture() const { return d()->texture; }
+   void setGeometry(Object::const_ptr g);
+   void setColors(Object::const_ptr c);
+   void setTexture(Object::const_ptr t);
+   void setNormals(Object::const_ptr n);
+   Object::const_ptr geometry() const;
+   Object::const_ptr colors() const;
+   Object::const_ptr normals() const;
+   Object::const_ptr texture() const;
 
  protected:
    struct Data: public Parent::Data {

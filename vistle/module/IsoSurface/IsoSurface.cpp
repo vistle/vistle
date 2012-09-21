@@ -66,41 +66,34 @@ inline Scalar3 interp(vistle::Scalar iso, const Scalar3 &p0, const Scalar3 &p1, 
    return lerp3(p0, p1, t);
 }
 
-vistle::Object *
-IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
-                               const vistle::Object * data_object,
+vistle::Object::ptr
+IsoSurface::generateIsoSurface(vistle::Object::const_ptr grid_object,
+                               vistle::Object::const_ptr data_object,
                                const vistle::Scalar isoValue) {
 
-   const vistle::UnstructuredGrid *grid = NULL;
-   const vistle::Vec<vistle::Scalar> *data = NULL;
-
    if (!grid_object || !data_object)
-      return NULL;
+      return vistle::Object::ptr();
 
-   if (grid_object->getType() == vistle::Object::SET &&
-       data_object->getType() == vistle::Object::SET) {
-
-      const vistle::Set *gset = static_cast<const vistle::Set *>(grid_object);
-      const vistle::Set *dset = static_cast<const vistle::Set *>(data_object);
+   vistle::Set::const_ptr gset = vistle::Set::as(grid_object);
+   vistle::Set::const_ptr dset = vistle::Set::as(data_object);
+   if (gset && dset) {
       if (gset->getNumElements() != dset->getNumElements())
-         return NULL;
+         return vistle::Object::ptr();
 
-      vistle::Set *set = new vistle::Set(gset->getNumElements());
+      vistle::Set::ptr set(new vistle::Set(gset->getNumElements()));
       set->setBlock(gset->getBlock());
       set->setTimestep(gset->getTimestep());
 
       for (size_t index = 0; index < gset->getNumElements(); index ++)
-         set->elements()[index] =
-            generateIsoSurface(gset->getElement(index),
-                               dset->getElement(index), isoValue);
+         set->setElement(index,
+               generateIsoSurface(gset->getElement(index),
+                  dset->getElement(index), isoValue));
       return set;
    }
 
-   if (grid_object->getType() == vistle::Object::UNSTRUCTUREDGRID &&
-       data_object->getType() == vistle::Object::VECFLOAT) {
-      grid = static_cast<const vistle::UnstructuredGrid *>(grid_object);
-      data = static_cast<const vistle::Vec<vistle::Scalar> *>(data_object);
-   }
+   vistle::UnstructuredGrid::const_ptr grid = vistle::UnstructuredGrid::as(grid_object);
+   vistle::Vec<vistle::Scalar>::const_ptr data = vistle::Vec<vistle::Scalar>::as(data_object);
+
 
    const char *tl = &grid->tl()[0];
    const size_t *el = &grid->el()[0];
@@ -112,7 +105,7 @@ IsoSurface::generateIsoSurface(const vistle::Object * grid_object,
    const vistle::Scalar *d = &data->x()[0];
 
    size_t numElem = grid->getNumElements();
-   vistle::Triangles *t = new vistle::Triangles;
+   vistle::Triangles::ptr t(new vistle::Triangles);
    t->setBlock(grid_object->getBlock());
    t->setTimestep(grid_object->getTimestep());
 
@@ -216,17 +209,17 @@ bool IsoSurface::compute() {
 
    const vistle::Scalar isoValue = getFloatParameter("isovalue");
 
-   std::list<vistle::Object *> gridObjects = getObjects("grid_in");
+   ObjectList gridObjects = getObjects("grid_in");
    std::cout << "IsoSurface: " << gridObjects.size() << " grid objects"
              << std::endl;
 
-   std::list<vistle::Object *> dataObjects = getObjects("data_in");
+   ObjectList dataObjects = getObjects("data_in");
    std::cout << "IsoSurface: " << dataObjects.size() << " data objects"
              << std::endl;
 
    while (gridObjects.size() > 0 && dataObjects.size() > 0) {
 
-      vistle::Object *object =
+      vistle::Object::ptr object =
          generateIsoSurface(gridObjects.front(), dataObjects.front(), isoValue);
 
       if (object)

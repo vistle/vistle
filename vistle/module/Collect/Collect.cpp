@@ -25,14 +25,14 @@ Collect::~Collect() {
 
 bool Collect::compute() {
 
-   std::list<vistle::Object *> gridObjects = getObjects("grid_in");
-   std::list<vistle::Object *> textureObjects = getObjects("texture_in");
+   ObjectList gridObjects = getObjects("grid_in");
+   ObjectList textureObjects = getObjects("texture_in");
 
    while (gridObjects.size() > 0 && textureObjects.size()) {
 
-      vistle::Geometry *geom = new vistle::Geometry;
-      geom->geometry() = gridObjects.front();
-      geom->texture() = textureObjects.front();
+      vistle::Geometry::ptr geom(new vistle::Geometry);
+      geom->setGeometry(gridObjects.front());
+      geom->setTexture(textureObjects.front());
 
       geom->setBlock(gridObjects.front()->getBlock());
       geom->setTimestep(gridObjects.front()->getTimestep());

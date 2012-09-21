@@ -76,14 +76,14 @@ inline Scalar3 interp(vistle::Scalar value, const Scalar3 & p0, const Scalar3 & 
    return lerp3(p0, p1, t);
 }
 
-std::pair<vistle::Object *, vistle::Object *>
-CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
-                                       const vistle::Object * data_object,
-                                       const vistle::Vector & normal,
+std::pair<vistle::Object::ptr, vistle::Object::ptr>
+CuttingSurface::generateCuttingSurface(vistle::Object::const_ptr grid_object,
+                                       vistle::Object::const_ptr data_object,
+                                       const vistle::Vector &normal,
                                        const vistle::Scalar distance) {
 
-   const vistle::UnstructuredGrid *grid = NULL;
-   const vistle::Vec<vistle::Scalar> *data = NULL;
+   vistle::UnstructuredGrid::const_ptr grid;
+   vistle::Vec<vistle::Scalar>::const_ptr data;
 
    if (!grid_object || !data_object)
       return std::make_pair((vistle::Object *) NULL, (vistle::Object *) NULL);
@@ -91,27 +91,27 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
    if (grid_object->getType() == vistle::Object::SET &&
        data_object->getType() == vistle::Object::SET) {
 
-      const vistle::Set *gset = static_cast<const vistle::Set *>(grid_object);
-      const vistle::Set *dset = static_cast<const vistle::Set *>(data_object);
+      vistle::Set::const_ptr gset = boost::static_pointer_cast<const vistle::Set>(grid_object);
+      vistle::Set::const_ptr dset = boost::static_pointer_cast<const vistle::Set>(data_object);
 
       if (gset->getNumElements() != dset->getNumElements())
          return std::make_pair((vistle::Object *) NULL,
                                (vistle::Object *) NULL);
 
-      vistle::Set *outGSet = new vistle::Set(gset->getNumElements());
+      vistle::Set::ptr outGSet(new vistle::Set(gset->getNumElements()));
       outGSet->setBlock(gset->getBlock());
       outGSet->setTimestep(gset->getTimestep());
 
-      vistle::Set *outDSet = new vistle::Set(dset->getNumElements());
+      vistle::Set::ptr outDSet(new vistle::Set(dset->getNumElements()));
       outDSet->setBlock(dset->getBlock());
       outDSet->setTimestep(dset->getTimestep());
 
       for (size_t index = 0; index < gset->getNumElements(); index ++) {
-         std::pair<vistle::Object *, vistle::Object *> result =
+         std::pair<vistle::Object::ptr, vistle::Object::ptr> result =
             generateCuttingSurface(gset->getElement(index),
                                    dset->getElement(index), normal, distance);
-         outGSet->elements()[index] = result.first;
-         outDSet->elements()[index] = result.second;
+         outGSet->setElement(index, result.first);
+         outDSet->setElement(index, result.second);
       }
 
       return std::make_pair(outGSet, outDSet);
@@ -119,8 +119,8 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
 
    if (grid_object->getType() == vistle::Object::UNSTRUCTUREDGRID &&
        data_object->getType() == vistle::Object::VECFLOAT) {
-      grid = static_cast<const vistle::UnstructuredGrid *>(grid_object);
-      data = static_cast<const vistle::Vec<vistle::Scalar> *>(data_object);
+      grid = boost::static_pointer_cast<const vistle::UnstructuredGrid>(grid_object);
+      data = boost::static_pointer_cast<const vistle::Vec<vistle::Scalar> >(data_object);
    }
 
    const char *tl = &grid->tl()[0];
@@ -259,11 +259,11 @@ CuttingSurface::generateCuttingSurface(const vistle::Object * grid_object,
 
 bool CuttingSurface::compute() {
 
-   std::list<vistle::Object *> gridObjects = getObjects("grid_in");
+   ObjectList gridObjects = getObjects("grid_in");
    std::cout << "CuttingSurface: " << gridObjects.size() << " grid objects"
              << std::endl;
 
-   std::list<vistle::Object *> dataObjects = getObjects("data_in");
+   ObjectList dataObjects = getObjects("data_in");
    std::cout << "CuttingSurface: " << dataObjects.size() << " data objects"
              << std::endl;
 
@@ -272,7 +272,7 @@ bool CuttingSurface::compute() {
 
    while (gridObjects.size() > 0 && dataObjects.size() > 0) {
 
-      std::pair<vistle::Object *, vistle::Object *> object =
+      std::pair<vistle::Object::ptr, vistle::Object::ptr> object =
          generateCuttingSurface(gridObjects.front(), dataObjects.front(),
                                 normal, distance);
 

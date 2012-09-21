@@ -20,19 +20,19 @@ Add::~Add() {
 
 bool Add::compute() {
 
-   std::list<vistle::Object *> objects = getObjects("data_in");
+   ObjectList objects = getObjects("data_in");
    std::cout << "Add: " << objects.size() << " objects" << std::endl;
 
-   std::list<vistle::Object *>::iterator oit;
+   ObjectList::iterator oit;
    for (oit = objects.begin(); oit != objects.end(); oit ++) {
-      vistle::Object *object = *oit;
+      vistle::Object::const_ptr object(*oit);
       switch (object->getType()) {
 
          case vistle::Object::VECFLOAT: {
-            vistle::Vec<vistle::Scalar> *in = static_cast<vistle::Vec<vistle::Scalar> *>(object);
+            vistle::Vec<vistle::Scalar>::const_ptr in = boost::static_pointer_cast<const vistle::Vec<vistle::Scalar> >(object);
             size_t size = in->getSize();
 
-            vistle::Vec<vistle::Scalar> *out = new vistle::Vec<vistle::Scalar>(size);
+            vistle::Vec<vistle::Scalar>::ptr out(new vistle::Vec<vistle::Scalar>(size));
 
             for (unsigned int index = 0; index < size; index ++)
                out->x()[index] = in->x()[index] + rank + 1;
@@ -43,10 +43,10 @@ bool Add::compute() {
 
          case vistle::Object::VEC3INT: {
 
-            vistle::Vec3<int> *in = static_cast<vistle::Vec3<int> *>(object);
+            vistle::Vec3<int>::const_ptr in = boost::static_pointer_cast<const vistle::Vec3<int> >(object);
             size_t size = in->getSize();
 
-            vistle::Vec3<int> *out = new vistle::Vec3<int>(size);
+            vistle::Vec3<int>::ptr out(new vistle::Vec3<int>(size));
 
             for (unsigned int index = 0; index < size; index ++) {
                out->x()[index] = in->x()[index] + rank + 1;

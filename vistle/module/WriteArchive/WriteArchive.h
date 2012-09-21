@@ -12,7 +12,7 @@ class WriteArchive: public vistle::Module {
    WriteArchive(int rank, int size, int moduleID);
 
  private:
-   void save(const std::string & name, vistle::Object * object);
+   void save(const std::string &name, vistle::Object::const_ptr object);
    virtual bool compute();
 };
 

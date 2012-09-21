@@ -20,21 +20,19 @@ ShowUSG::~ShowUSG() {
 
 bool ShowUSG::compute() {
 
-   std::list<vistle::Object *> objects = getObjects("grid_in");
+   ObjectList objects = getObjects("grid_in");
    std::cout << "ShowUSG: " << objects.size() << " objects" << std::endl;
 
-   std::list<vistle::Object *>::iterator oit;
+   ObjectList::iterator oit;
    for (oit = objects.begin(); oit != objects.end(); oit ++) {
-      vistle::Object *object = *oit;
+      vistle::Object::const_ptr object = *oit;
 
       switch (object->getType()) {
 
          case vistle::Object::UNSTRUCTUREDGRID: {
 
-            vistle::Lines *out = new vistle::Lines;
-
-            vistle::UnstructuredGrid *in =
-               static_cast<vistle::UnstructuredGrid *>(object);
+            vistle::Lines::ptr out(new vistle::Lines);
+            vistle::UnstructuredGrid::const_ptr in = vistle::UnstructuredGrid::as(object);
 
             for (size_t index = 0; index < in->getNumElements(); index ++)
                switch (in->tl()[index]) {

@@ -11,9 +11,9 @@ class CuttingSurface: public vistle::Module {
    ~CuttingSurface();
 
  private:
-   std::pair<vistle::Object *, vistle::Object *>
-      generateCuttingSurface(const vistle::Object * grid,
-                             const vistle::Object * data,
+   std::pair<vistle::Object::ptr, vistle::Object::ptr>
+      generateCuttingSurface(vistle::Object::const_ptr grid,
+                             vistle::Object::const_ptr data,
                              const vistle::Vector & normal,
                              const vistle::Scalar distance);
 

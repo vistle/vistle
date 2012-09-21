@@ -34,7 +34,7 @@ bool Gendat::compute() {
    }
    */
 #endif
-   vistle::Triangles *t = new vistle::Triangles(6, 4);
+   vistle::Triangles::ptr t(new vistle::Triangles(6, 4));
 
    t->cl()[0] = 0;
    t->cl()[1] = 1;
@@ -60,8 +60,8 @@ bool Gendat::compute() {
    t->y()[3] = 1.0;
    t->z()[3] = 0.0;
 
-   addObject("data_out", t);
-   
+   addObject("grid_out", t);
+
    /*
    addObject("data_out", b);
    addObject("data_out", t);

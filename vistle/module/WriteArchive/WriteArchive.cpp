@@ -28,7 +28,7 @@ WriteArchive::WriteArchive(int rank, int size, int moduleID)
    addFileParameter("filename", "");
 }
 
-void WriteArchive::save(const std::string & name, vistle::Object * object) {
+void WriteArchive::save(const std::string & name, vistle::Object::const_ptr object) {
 
    std::ofstream ofs(name.c_str());
    ba::text_oarchive oa(ofs);
@@ -55,14 +55,14 @@ void WriteArchive::save(const std::string & name, vistle::Object * object) {
    saveCatalogue(fd, c);
 #endif
    //saveItemInfo(oa, object);
-   oa << object;
+   oa << *object;
 
    std::cout << "saved [" << name << "]" << std::endl;
 }
 
 bool WriteArchive::compute() {
 
-   std::list<vistle::Object *> objects = getObjects("grid_in");
+   ObjectList objects = getObjects("grid_in");
 
    if (objects.size() == 1) {
       save(getFileParameter("filename"), objects.front());

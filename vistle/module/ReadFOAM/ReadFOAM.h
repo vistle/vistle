@@ -14,7 +14,7 @@ class ReadFOAM: public vistle::Module {
 
  private:
    void parseBoundary(const std::string & casedir, const int partition);
-   std::vector<std::pair<std::string, vistle::Object *> > load(const std::string & casedir, const size_t partition);
+   std::vector<std::pair<std::string, vistle::Object::ptr> > load(const std::string & casedir, const size_t partition);
    virtual bool compute();
 };
 

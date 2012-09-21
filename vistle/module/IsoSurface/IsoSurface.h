@@ -10,8 +10,8 @@ class IsoSurface: public vistle::Module {
    ~IsoSurface();
 
  private:
-   vistle::Object * generateIsoSurface(const vistle::Object * grid,
-                                       const vistle::Object * data,
+   vistle::Object::ptr generateIsoSurface(vistle::Object::const_ptr grid,
+                                       vistle::Object::const_ptr data,
                                        const vistle::Scalar isoValue);
 
    virtual bool compute();

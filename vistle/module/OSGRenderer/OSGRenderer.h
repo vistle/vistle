@@ -51,13 +51,13 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
 
  private:
    bool compute();
-   void addInputObject(const vistle::Object * geometry,
-                       const vistle::Object * colors,
-                       const vistle::Object * normals,
-                       const vistle::Object * texture);
+   void addInputObject(vistle::Object::const_ptr geometry,
+                       vistle::Object::const_ptr colors,
+                       vistle::Object::const_ptr normals,
+                       vistle::Object::const_ptr texture);
 
    bool addInputObject(const std::string & portName,
-                       const vistle::Object * object);
+                       vistle::Object::const_ptr object);
 
    void render();
    void distributeAndHandleEvents();

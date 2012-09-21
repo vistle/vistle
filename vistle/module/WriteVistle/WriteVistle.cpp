@@ -93,7 +93,7 @@ WriteVistle::~WriteVistle() {
 
 }
 
-Object::Info * WriteVistle::createInfo(const vistle::Object * object, size_t offset) {
+Object::Info * WriteVistle::createInfo(vistle::Object::const_ptr object, size_t offset) {
 
    uint64_t infosize = 0;
    uint64_t itemsize = 0;
@@ -103,7 +103,7 @@ Object::Info * WriteVistle::createInfo(const vistle::Object * object, size_t off
       case vistle::Object::SET: {
 
          infosize += (sizeof(Object::Info) + sizeof(int32_t)); // numitems
-         const vistle::Set *set = static_cast<const vistle::Set *>(object);
+         const vistle::Set::const_ptr set = vistle::Set::as(object);
          Set::Info *s = new Set::Info;
          s->type = vistle::Object::SET;
          s->block = set->getBlock();
@@ -127,8 +127,7 @@ Object::Info * WriteVistle::createInfo(const vistle::Object * object, size_t off
 
       case vistle::Object::POLYGONS: {
 
-         const vistle::Polygons *polygons =
-            static_cast<const vistle::Polygons *>(object);
+         vistle::Polygons::const_ptr polygons = vistle::Polygons::as(object);
          vistle::Polygons::Info *info = new vistle::Polygons::Info;
          info->type = vistle::Object::POLYGONS;
          info->numElements = polygons->getNumElements();
@@ -146,8 +145,7 @@ Object::Info * WriteVistle::createInfo(const vistle::Object * object, size_t off
 
       case vistle::Object::VECFLOAT: {
 
-         const vistle::Vec<vistle::Scalar> *data =
-            static_cast<const vistle::Vec<vistle::Scalar> *>(object);
+         vistle::Vec<vistle::Scalar>::const_ptr data = vistle::Vec<vistle::Scalar>::as(object);
          Vec<vistle::Scalar>::Info *info = new Vec<vistle::Scalar>::Info;
          info->type = object->getType();
          info->numElements = data->getSize();
@@ -161,8 +159,7 @@ Object::Info * WriteVistle::createInfo(const vistle::Object * object, size_t off
 
       case vistle::Object::VEC3FLOAT: {
 
-         const vistle::Vec3<vistle::Scalar> *data =
-            static_cast<const vistle::Vec3<vistle::Scalar> *>(object);
+         vistle::Vec3<vistle::Scalar>::const_ptr data = vistle::Vec3<vistle::Scalar>::as(object);
          Vec3<vistle::Scalar>::Info *info = new Vec3<vistle::Scalar>::Info;
          info->type = object->getType();
          info->numElements = data->getSize();
@@ -176,8 +173,7 @@ Object::Info * WriteVistle::createInfo(const vistle::Object * object, size_t off
 
       case vistle::Object::UNSTRUCTUREDGRID: {
 
-         const vistle::UnstructuredGrid *grid =
-            static_cast<const vistle::UnstructuredGrid *>(object);
+         vistle::UnstructuredGrid::const_ptr grid = vistle::UnstructuredGrid::as(object);
          UnstructuredGrid::Info *info = new UnstructuredGrid::Info;
          info->type = object->getType();
          info->numElements = grid->getNumElements();
@@ -202,7 +198,7 @@ Object::Info * WriteVistle::createInfo(const vistle::Object * object, size_t off
    return NULL;
 }
 
-void WriteVistle::createCatalogue(const vistle::Object * object,
+void WriteVistle::createCatalogue(vistle::Object::const_ptr object,
                                   catalogue & c) {
 
    uint64_t infosize = 0;
@@ -281,13 +277,13 @@ void printCatalogue(const catalogue & c) {
       printItemInfo(c.item);
 }
 
-void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
+void WriteVistle::saveObject(const int fd, vistle::Object::const_ptr object) {
 
    switch(object->getType()) {
 
       case vistle::Object::SET: {
 
-         const vistle::Set *set = static_cast<const vistle::Set *>(object);
+         vistle::Set::const_ptr set = vistle::Set::as(object);
          for (size_t index = 0; index < set->getNumElements(); index ++)
             saveObject(fd, set->getElement(index));
          break;
@@ -295,8 +291,7 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
 
       case vistle::Object::POLYGONS: {
 
-         const vistle::Polygons *polygons =
-            static_cast<const vistle::Polygons *>(object);
+         vistle::Polygons::const_ptr polygons = vistle::Polygons::as(object);
 
          std::cout << " write polygons "
                 << polygons->getBlock() << " " << polygons->getTimestep() << " "
@@ -314,8 +309,7 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
 
       case vistle::Object::UNSTRUCTUREDGRID: {
 
-         const vistle::UnstructuredGrid *usg =
-            static_cast<const vistle::UnstructuredGrid *>(object);
+         vistle::UnstructuredGrid::const_ptr usg = vistle::UnstructuredGrid::as(object);
 
          std::cout << " write usg "
                    << usg->getBlock() << " " << usg->getTimestep() << " "
@@ -334,8 +328,7 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
 
       case vistle::Object::VECFLOAT: {
 
-         const vistle::Vec<float> *data =
-            static_cast<const vistle::Vec<float> *>(object);
+         vistle::Vec<vistle::Scalar>::const_ptr data = vistle::Vec<vistle::Scalar>::as(object);
 
          std::cout << " write float vec "
                    << data->getBlock() << " " << data->getTimestep() << " "
@@ -347,8 +340,7 @@ void WriteVistle::saveObject(const int fd, const vistle::Object * object) {
 
       case vistle::Object::VEC3FLOAT: {
 
-         const vistle::Vec3<float> *data =
-            static_cast<const vistle::Vec3<float> *>(object);
+         vistle::Vec3<vistle::Scalar>::const_ptr data = vistle::Vec3<vistle::Scalar>::as(object);
 
          std::cout << " write float vec "
                    << data->getBlock() << " " << data->getTimestep() << " "
@@ -413,7 +405,7 @@ void WriteVistle::saveCatalogue(const int fd, const catalogue & c) {
       saveItemInfo(fd, c.item);
 }
 
-void WriteVistle::save(const std::string & name, vistle::Object * object) {
+void WriteVistle::save(const std::string & name, vistle::Object::const_ptr object) {
 
    int fd = open(name.c_str(), O_WRONLY | O_CREAT | O_TRUNC,
                  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
@@ -440,7 +432,7 @@ void WriteVistle::save(const std::string & name, vistle::Object * object) {
 
 bool WriteVistle::compute() {
 
-   std::list<vistle::Object *> objects = getObjects("grid_in");
+   ObjectList objects = getObjects("grid_in");
 
    if (objects.size() == 1) {
       save(getFileParameter("filename"), objects.front());

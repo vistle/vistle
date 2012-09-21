@@ -69,7 +69,7 @@ Color::~Color() {
 
 }
 
-void Color::getMinMax(const vistle::Object * object,
+void Color::getMinMax(vistle::Object::const_ptr object,
                       vistle::Scalar & min, vistle::Scalar & max) {
 
    if (object) {
@@ -77,7 +77,7 @@ void Color::getMinMax(const vistle::Object * object,
 
          case vistle::Object::SET: {
 
-            const vistle::Set *set = static_cast<const vistle::Set*>(object);
+            vistle::Set::const_ptr set = boost::static_pointer_cast<const vistle::Set>(object);
             for (size_t index = 0; index < set->getNumElements(); index ++)
                getMinMax(set->getElement(index), min, max);
 
@@ -86,8 +86,8 @@ void Color::getMinMax(const vistle::Object * object,
 
          case vistle::Object::VECFLOAT: {
 
-            const vistle::Vec<vistle::Scalar> *data =
-               static_cast<const vistle::Vec<vistle::Scalar> *>(object);
+               vistle::Vec<vistle::Scalar>::const_ptr data =
+                  boost::static_pointer_cast<const vistle::Vec<vistle::Scalar> >(object);
 
             const vistle::Scalar *x = &data->x()[0];
             int numElements = data->getSize();
@@ -106,22 +106,22 @@ void Color::getMinMax(const vistle::Object * object,
    }
 }
 
-vistle::Object * Color::addTexture(vistle::Object * object,
-                                   const vistle::Scalar min, const vistle::Scalar max,
-                                   const ColorMap & cmap) {
+vistle::Object::ptr Color::addTexture(vistle::Object::const_ptr object,
+      const vistle::Scalar min, const vistle::Scalar max,
+      const ColorMap & cmap) {
 
    if (object) {
       switch (object->getType()) {
 
          case vistle::Object::SET: {
 
-            vistle::Set *set = static_cast<vistle::Set*>(object);
-            vistle::Set *out = new vistle::Set;
+            vistle::Set::const_ptr set = boost::static_pointer_cast<const vistle::Set>(object);
+            vistle::Set::ptr out(new vistle::Set);
             out->setBlock(object->getBlock());
             out->setTimestep(object->getTimestep());
 
             for (size_t index = 0; index < set->getNumElements(); index ++)
-               out->elements().push_back(addTexture(set->getElement(index),
+               out->addElement(addTexture(set->getElement(index),
                                                    min, max, cmap));
             return out;
             break;
@@ -129,11 +129,11 @@ vistle::Object * Color::addTexture(vistle::Object * object,
 
          case vistle::Object::VECFLOAT: {
 
-            vistle::Vec<vistle::Scalar> * f = static_cast<vistle::Vec<vistle::Scalar> *>(object);
+            vistle::Vec<vistle::Scalar>::const_ptr f = boost::static_pointer_cast<const vistle::Vec<vistle::Scalar> >(object);
             const size_t numElem = f->getSize();
-            vistle::Scalar *x = &f->x()[0];
+            const vistle::Scalar *x = &f->x()[0];
 
-            vistle::Texture1D *tex = new vistle::Texture1D(cmap.width, min, max);
+            vistle::Texture1D::ptr tex(new vistle::Texture1D(cmap.width, min, max));
             tex->setBlock(object->getBlock());
             tex->setTimestep(object->getTimestep());
 
@@ -152,7 +152,7 @@ vistle::Object * Color::addTexture(vistle::Object * object,
             break;
       }
    }
-   return NULL;
+   return vistle::Object::ptr();
 }
 
 bool Color::compute() {
@@ -163,7 +163,7 @@ bool Color::compute() {
    pins.insert(std::make_pair(1.0, vistle::Vector(1.0, 1.0, 0.0)));
 
    ColorMap cmap(pins, 32);
-   std::list<vistle::Object *> objects = getObjects("data_in");
+   ObjectList objects = getObjects("data_in");
 
    while (objects.size() > 0) {
 
@@ -177,8 +177,8 @@ bool Color::compute() {
          max = getFloatParameter("max");
       }
 
-      vistle::Object *out = addTexture(objects.front(), min, max, cmap);
-      if (out)
+      vistle::Object::ptr out(addTexture(objects.front(), min, max, cmap));
+      if (out.get())
          addObject("data_out", out);
 
       removeObject("data_in", objects.front());

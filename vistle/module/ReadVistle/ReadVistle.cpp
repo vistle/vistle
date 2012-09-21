@@ -101,7 +101,7 @@ ReadVistle::~ReadVistle() {
 }
 
 
-vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info * info,
+vistle::Object::ptr ReadVistle::readObject(const int fd, const vistle::Object::Info * info,
                                         uint64_t start) {
 
    const Set::Info *seti = dynamic_cast<const Set::Info *>(info);
@@ -111,11 +111,11 @@ vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info
 
    if (seti) {
 
-      vistle::Set *set = new vistle::Set;
+      vistle::Set::ptr set(new vistle::Set);
       for (size_t index = 0; index < seti->items.size(); index ++) {
 
-         vistle::Object *object = readObject(fd, seti->items[index], start);
-         set->elements().push_back(object);
+         vistle::Object::ptr object = readObject(fd, seti->items[index], start);
+         set->addElement(object);
       }
       return set;
 
@@ -123,12 +123,11 @@ vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info
 
       if ((polyi->block % size) == rank) {
          lseek(fd, start + info->offset, SEEK_SET);
-         vistle::Polygons *polygons =
-            new vistle::Polygons(polyi->numElements,
+         vistle::Polygons::ptr polygons(new vistle::Polygons(polyi->numElements,
                                      polyi->numCorners,
                                      polyi->numVertices,
                                      polyi->block,
-                                     polyi->timestep);
+                                     polyi->timestep));
 
          read_uint64(fd, &polygons->el()[0], polyi->numElements);
          read_uint64(fd, &polygons->cl()[0], polyi->numCorners);
@@ -144,10 +143,9 @@ vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info
 
       if ((usgi->block % size) == rank) {
          lseek(fd, start + info->offset, SEEK_SET);
-         vistle::UnstructuredGrid *usg =
-            new vistle::UnstructuredGrid(usgi->numElements, usgi->numCorners,
+         vistle::UnstructuredGrid::ptr usg(new vistle::UnstructuredGrid(usgi->numElements, usgi->numCorners,
                                              usgi->numVertices, usgi->block,
-                                             usgi->timestep);
+                                             usgi->timestep));
 
          read_char(fd, &usg->tl()[0], usgi->numElements);
          read_uint64(fd, &usg->el()[0], usgi->numElements);
@@ -167,7 +165,7 @@ vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info
          switch (datai->type) {
 
             case vistle::Object::VECFLOAT: {
-               vistle::Vec<vistle::Scalar> *data = new vistle::Vec<vistle::Scalar>(datai->numElements);
+               vistle::Vec<vistle::Scalar>::ptr data(new vistle::Vec<vistle::Scalar>(datai->numElements));
 
                read_float(fd, &data->x()[0], datai->numElements);
                addObject("grid_out", data);
@@ -175,8 +173,7 @@ vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info
             }
 
             case vistle::Object::VEC3FLOAT: {
-               vistle::Vec3<vistle::Scalar> *data =
-                  new vistle::Vec3<vistle::Scalar>(datai->numElements);
+               vistle::Vec3<vistle::Scalar>::ptr data(new vistle::Vec3<vistle::Scalar>(datai->numElements));
 
                read_float(fd, &data->x()[0], datai->numElements);
                read_float(fd, &data->y()[0], datai->numElements);
@@ -187,7 +184,7 @@ vistle::Object * ReadVistle::readObject(const int fd, const vistle::Object::Info
          }
       }
    }
-   return NULL;
+   return vistle::Object::ptr();
 }
 
 vistle::Object::Info * ReadVistle::readItemInfo(const int fd) {
@@ -313,13 +310,13 @@ catalogue * ReadVistle::readCatalogue(const int fd) {
    return cat;
 }
 
-vistle::Object * ReadVistle::load(const std::string & name) {
+vistle::Object::ptr ReadVistle::load(const std::string & name) {
 
    int fd = open(name.c_str(), O_RDONLY);
    if (fd == -1) {
       std::cout << "ERROR ReadVistle::load could not open file [" << name
                 << "]" << std::endl;
-      return NULL;
+      return vistle::Object::ptr();
    }
 
    header h;
@@ -332,19 +329,18 @@ vistle::Object * ReadVistle::load(const std::string & name) {
              << (int) h.v_major << "." << (int) h.v_minor << "."
              << (int) h.v_patch << std::endl;
 
-   catalogue *cat = readCatalogue(fd);
+   boost::scoped_ptr<catalogue> cat(readCatalogue(fd));
 
    uint64_t start = lseek(fd, 0, SEEK_CUR);
 
-   vistle::Object *object = readObject(fd, cat->item, start);
-   delete cat;
+   vistle::Object::ptr object = readObject(fd, cat->item, start);
 
    return object;
 }
 
 bool ReadVistle::compute() {
 
-   vistle::Object * object = load(getFileParameter("filename"));
+   vistle::Object::ptr object = load(getFileParameter("filename"));
    (void) object;
    /*
    if (object)

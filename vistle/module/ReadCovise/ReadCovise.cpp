@@ -142,13 +142,12 @@ ReadCovise::~ReadCovise() {
 
 }
 
-void ReadCovise::setTimesteps(vistle::Object * object, const int timestep) {
+void ReadCovise::setTimesteps(vistle::Object::ptr object, const int timestep) {
 
-   if (object->getType() == vistle::Object::SET) {
+   if (vistle::Set::ptr set = vistle::Set::as(object)) {
 
-      vistle::Set *set = static_cast<vistle::Set *>(object);
       for (size_t index = 0; index < set->getNumElements(); index ++)
-         setTimesteps(set->getElement(index), timestep);
+         setTimesteps(boost::const_pointer_cast<vistle::Object>(set->getElement(index)), timestep);
    }
    object->setTimestep(timestep);
 }
@@ -186,35 +185,33 @@ bool ReadCovise::readAttributes(const int fd, const bool byteswap) {
    return false;
 }
 
-vistle::Object * ReadCovise::readSETELE(const int fd, const bool byteswap) {
+vistle::Object::ptr ReadCovise::readSETELE(const int fd, const bool byteswap) {
 
-   vistle::Set *set = new vistle::Set;
+   vistle::Set::ptr set(new vistle::Set);
 
    unsigned int num;
    read_int(fd, &num, 1, byteswap);
 
    for (unsigned int index = 0; index < num; index ++) {
 
-      vistle::Object *object = readObject(fd, byteswap);
+      vistle::Object::ptr object = readObject(fd, byteswap);
       if (object)
-         set->elements().push_back(object);
+         set->addElement(object);
    }
 
    bool timesteps = readAttributes(fd, byteswap);
 
    for (unsigned int index = 0; index < num; index ++) {
       if (timesteps)
-         setTimesteps(set->getElement(index), index);
+         setTimesteps(boost::const_pointer_cast<vistle::Object>(set->getElement(index)), index);
       else
-         set->getElement(index)->setBlock(index);
+         boost::const_pointer_cast<vistle::Object>(set->getElement(index))->setBlock(index);
    }
 
    return set;
 }
 
-vistle::Object *  ReadCovise::readUNSGRD(const int fd, const bool byteswap) {
-
-   vistle::UnstructuredGrid *usg = NULL;
+vistle::Object::ptr ReadCovise::readUNSGRD(const int fd, const bool byteswap) {
 
    unsigned int numElements;
    unsigned int numCorners;
@@ -224,7 +221,7 @@ vistle::Object *  ReadCovise::readUNSGRD(const int fd, const bool byteswap) {
    read_int(fd, &numCorners, 1, byteswap);
    read_int(fd, &numVertices, 1, byteswap);
 
-   usg = new vistle::UnstructuredGrid(numElements, numCorners, numVertices);
+   vistle::UnstructuredGrid::ptr usg(new vistle::UnstructuredGrid(numElements, numCorners, numVertices));
 
    unsigned int *_tl = new unsigned int[numElements];
    unsigned int *_el = new unsigned int[numElements];
@@ -259,28 +256,24 @@ vistle::Object *  ReadCovise::readUNSGRD(const int fd, const bool byteswap) {
    return usg;
 }
 
-vistle::Object * ReadCovise::readUSTSDT(const int fd, const bool byteswap) {
+vistle::Object::ptr ReadCovise::readUSTSDT(const int fd, const bool byteswap) {
 
-   vistle::Vec<vistle::Scalar> *array = NULL;
    unsigned int numElements;
-
    read_int(fd, &numElements, 1, byteswap);
 
-   array = new vistle::Vec<vistle::Scalar>(numElements);
+   vistle::Vec<vistle::Scalar>::ptr array(new vistle::Vec<vistle::Scalar>(numElements));
    read_float(fd, &array->x()[0], numElements, byteswap);
 
    readAttributes(fd, byteswap);
    return array;
 }
 
-vistle::Object * ReadCovise::readUSTVDT(const int fd, const bool byteswap) {
+vistle::Object::ptr ReadCovise::readUSTVDT(const int fd, const bool byteswap) {
 
-   vistle::Vec3<vistle::Scalar> *array = NULL;
    unsigned int numElements;
-
    read_int(fd, &numElements, 1, byteswap);
 
-   array = new vistle::Vec3<vistle::Scalar>(numElements);
+   vistle::Vec3<vistle::Scalar>::ptr array(new vistle::Vec3<vistle::Scalar>(numElements));
    read_float(fd, &array->x()[0], numElements, byteswap);
    read_float(fd, &array->y()[0], numElements, byteswap);
    read_float(fd, &array->z()[0], numElements, byteswap);
@@ -289,16 +282,14 @@ vistle::Object * ReadCovise::readUSTVDT(const int fd, const bool byteswap) {
    return array;
 }
 
-vistle::Object * ReadCovise::readPOLYGN(const int fd, const bool byteswap) {
+vistle::Object::ptr ReadCovise::readPOLYGN(const int fd, const bool byteswap) {
 
-   vistle::Polygons * polygons = NULL;
    unsigned int numElements, numCorners, numVertices;
-
    read_int(fd, &numElements, 1, byteswap);
    read_int(fd, &numCorners, 1, byteswap);
    read_int(fd, &numVertices, 1, byteswap);
 
-   polygons = new vistle::Polygons(numElements, numCorners, numVertices);
+   vistle::Polygons::ptr polygons(new vistle::Polygons(numElements, numCorners, numVertices));
 
    unsigned int *el = new unsigned int[numElements];
    unsigned int *cl = new unsigned int[numCorners];
@@ -321,9 +312,9 @@ vistle::Object * ReadCovise::readPOLYGN(const int fd, const bool byteswap) {
    return polygons;
 }
 
-vistle::Object * ReadCovise::readGEOTEX(const int fd, const bool byteswap) {
+vistle::Object::ptr ReadCovise::readGEOTEX(const int fd, const bool byteswap) {
 
-   vistle::Geometry *container = new vistle::Geometry;
+   vistle::Geometry::ptr container(new vistle::Geometry);
    unsigned int contains[4] = { 0, 0, 0, 0 };
    unsigned int ignore[4];
 
@@ -331,28 +322,28 @@ vistle::Object * ReadCovise::readGEOTEX(const int fd, const bool byteswap) {
    read_int(fd, ignore, 4, byteswap);
 
    if (contains[0])
-      container->geometry() = readObject(fd, byteswap);
+      container->setGeometry(readObject(fd, byteswap));
 
    if (contains[1])
-      container->colors() = readObject(fd, byteswap);
+      container->setColors(readObject(fd, byteswap));
 
    if (contains[2])
-      container->normals() = readObject(fd, byteswap);
+      container->setNormals(readObject(fd, byteswap));
 
    if (contains[3])
-      container->texture() = readObject(fd, byteswap);
+      container->setTexture(readObject(fd, byteswap));
 
    readAttributes(fd, byteswap);
 
    return container;
 }
 
-vistle::Object * ReadCovise::readObject(const int fd, const bool byteswap) {
+vistle::Object::ptr ReadCovise::readObject(const int fd, const bool byteswap) {
 
    char buf[7];
    buf[6] = 0;
 
-   vistle::Object *object = NULL;
+   vistle::Object::ptr object;
 
    if (read_type(fd, buf) == 6) {
 
@@ -385,9 +376,7 @@ vistle::Object * ReadCovise::readObject(const int fd, const bool byteswap) {
    return object;
 }
 
-vistle::Object * ReadCovise::load(const std::string & name) {
-
-   vistle::Object *object = NULL;
+vistle::Object::const_ptr ReadCovise::load(const std::string & name) {
 
    bool byteswap = true;
 
@@ -395,7 +384,7 @@ vistle::Object * ReadCovise::load(const std::string & name) {
    if (fd == -1) {
       std::cout << "ERROR ReadCovise::load could not open file [" << name
                 << "]" << std::endl;
-      return NULL;
+      return vistle::Object::const_ptr();
    }
 
    char buf[7];
@@ -403,7 +392,7 @@ vistle::Object * ReadCovise::load(const std::string & name) {
 
    int r = read_type(fd, buf);
    if (r != 6)
-      return NULL;
+      return vistle::Object::const_ptr();
 
    if (!strncmp(buf, "COV_BE", 6))
       byteswap = false;
@@ -412,7 +401,7 @@ vistle::Object * ReadCovise::load(const std::string & name) {
    else
       lseek(fd, 0, SEEK_SET);
 
-   object = readObject(fd, byteswap);
+   vistle::Object::const_ptr object = readObject(fd, byteswap);
    close(fd);
 
    return object;
@@ -420,7 +409,7 @@ vistle::Object * ReadCovise::load(const std::string & name) {
 
 bool ReadCovise::compute() {
 
-   vistle::Object *object = load(getFileParameter("filename"));
+   vistle::Object::const_ptr object = load(getFileParameter("filename"));
 
    if (object)
       addObject("grid_out", object);

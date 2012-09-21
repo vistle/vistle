@@ -326,7 +326,7 @@ bool Module::addObject(const std::string & portName,
    return false;
 }
 
-bool Module::addObject(const std::string & portName, const vistle::Object *object) {
+bool Module::addObject(const std::string & portName, vistle::Object::const_ptr object) {
 
    if (!object)
       return false;
@@ -337,9 +337,9 @@ bool Module::addObject(const std::string & portName, const vistle::Object *objec
    return addObject(portName, handle);
 }
 
-std::list<vistle::Object *> Module::getObjects(const std::string &portName) {
+Module::ObjectList Module::getObjects(const std::string &portName) {
 
-   std::list<vistle::Object *> objects;
+   ObjectList objects;
    std::map<std::string, std::list<shm_handle_t> *>::iterator i =
       inputPorts.find(portName);
 
@@ -347,15 +347,15 @@ std::list<vistle::Object *> Module::getObjects(const std::string &portName) {
 
       std::list<shm_handle_t>::iterator shmit;
       for (shmit = i->second->begin(); shmit != i->second->end(); shmit++) {
-         Object *object = Shm::instance().getObjectFromHandle(*shmit);
-         if (object)
+         Object::const_ptr object(Shm::instance().getObjectFromHandle(*shmit));
+         if (object.get())
             objects.push_back(object);
       }
    }
    return objects;
 }
 
-void Module::removeObject(const std::string &portName, vistle::Object *object) {
+void Module::removeObject(const std::string &portName, vistle::Object::const_ptr object) {
 
    bool erased = false;
    shm_handle_t handle = Shm::instance().getHandleFromObject(object);
@@ -380,6 +380,34 @@ void Module::removeObject(const std::string &portName, vistle::Object *object) {
                 << portName << "]" << std::endl;
 }
 
+bool Module::hasObject(const std::string &portName) const {
+
+   std::map<std::string, std::list<shm_handle_t> *>::const_iterator i =
+      inputPorts.find(portName);
+
+   if (i != inputPorts.end()) {
+
+      return !i->second->empty();
+   }
+
+   return false;
+}
+
+vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
+
+   std::map<std::string, std::list<shm_handle_t> *>::const_iterator i =
+      inputPorts.find(portName);
+
+   if (i != inputPorts.end() && !i->second->empty()) {
+
+      shm_handle_t handle = i->second->front();
+      i->second->pop_front();
+      return Shm::instance().getObjectFromHandle(handle);
+   }
+
+   return vistle::Object::ptr();
+}
+
 bool Module::addInputObject(const std::string & portName,
                             const shm_handle_t & handle) {
 
@@ -395,7 +423,7 @@ bool Module::addInputObject(const std::string & portName,
 }
 
 bool Module::addInputObject(const std::string & portName,
-                            const Object * object) {
+                            Object::const_ptr object) {
 
    return true;
 }

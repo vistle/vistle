@@ -9,6 +9,7 @@
 #include <map>
 
 #include "vector.h"
+#include "object.h"
 
 namespace vistle {
 
@@ -18,8 +19,6 @@ namespace message {
 class Message;
 class MessageQueue;
 }
-
-class Object;
 
 class Module {
 
@@ -52,11 +51,14 @@ class Module {
    Vector getVectorParameter(const std::string & name) const;
 
    bool addObject(const std::string &portName, const shm_handle_t &handle);
-   bool addObject(const std::string & portName, const vistle::Object *object);
+   bool addObject(const std::string & portName, vistle::Object::const_ptr object);
    message::MessageQueue *sendMessageQueue;
 
-   std::list<vistle::Object *> getObjects(const std::string &portName);
-   void removeObject(const std::string &portName, vistle::Object * object);
+   typedef std::list<vistle::Object::const_ptr> ObjectList;
+   ObjectList getObjects(const std::string &portName);
+   void removeObject(const std::string &portName, vistle::Object::const_ptr object);
+   bool hasObject(const std::string &portName) const;
+   vistle::Object::const_ptr takeFirstObject(const std::string &portName);
 
    const std::string name;
    const unsigned int rank;
@@ -72,7 +74,7 @@ class Module {
                        const shm_handle_t & handle);
 
    virtual bool addInputObject(const std::string & portName,
-                               const Object * object);
+                               Object::const_ptr object);
 
    virtual bool compute() = 0;
 

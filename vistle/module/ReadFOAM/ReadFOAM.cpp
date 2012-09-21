@@ -422,10 +422,10 @@ void ReadFOAM::parseBoundary(const std::string & casedir, const int partition) {
    }
 }
 
-std::vector<std::pair<std::string, vistle::Object *> >
+std::vector<std::pair<std::string, vistle::Object::ptr> >
 ReadFOAM::load(const std::string & casedir, const size_t partition) {
 
-   std::vector<std::pair<std::string, vistle::Object *> > objects;
+   std::vector<std::pair<std::string, vistle::Object::ptr> > objects;
 
    std::stringstream pointsName;
    pointsName << casedir << "/processor" << partition << "/0.3238435/polyMesh/points.gz";
@@ -636,10 +636,10 @@ bool ReadFOAM::compute() {
    for (int partition = 0; partition < 32; partition ++) {
       if (partition % size == rank) {
 
-         std::vector<std::pair<std::string, vistle::Object *> > objects =
+         std::vector<std::pair<std::string, vistle::Object::ptr> > objects =
             load(getFileParameter("filename"), partition);
 
-         std::vector<std::pair<std::string, vistle::Object *> >::iterator i;
+         std::vector<std::pair<std::string, vistle::Object::ptr> >::iterator i;
          for (i = objects.begin(); i != objects.end(); i ++)
             addObject(i->first, i->second);
       }
