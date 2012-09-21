@@ -109,6 +109,9 @@ Object * Shm::getObjectFromHandle(const shm_handle_t & handle) {
 
 Object *Object::create(Object::Data *data) {
 
+   if (!data)
+      return NULL;
+
 #define CR(id, T) case id: return new T(static_cast<T::Data *>(data))
 
    switch(data->type) {
