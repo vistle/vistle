@@ -55,7 +55,8 @@ Shm & Shm::instance(const int moduleID, const int rank,
       } while (!s_singleton && memsize >= 4096);
 
       if (!s_singleton) {
-         std::cerr << "failed to allocate shared memory: module id: " << moduleID << ", rank: " << rank << ", message queue: " << (mq ? mq->getName() : "n/a") << std::endl;
+         std::cerr << "failed to allocate shared memory: module id: " << moduleID
+            << ", rank: " << rank << ", message queue: " << (mq ? mq->getName() : "n/a") << std::endl;
       }
    }
 
@@ -135,12 +136,14 @@ Object::ptr Object::create(Object::Data *data) {
 
 #undef CR
 
+   std::cerr << "Attempt to create object of invalid type " << data->type << std::endl;
+
    assert(0 == "Cannot create Object of invalid type");
    return Object::ptr();
 }
 
 Object::Data::Data(const Type type, const std::string & n,
-               const int b, const int t): type(type), block(b), timestep(t) {
+               const int b, const int t): type(type), refcount(0), block(b), timestep(t) {
 
    size_t size = MIN(n.size(), 31);
    n.copy(name, size);
@@ -150,6 +153,7 @@ Object::Data::Data(const Type type, const std::string & n,
 Object::Object(Object::Data *data)
 : m_data(data)
 {
+   m_data->ref();
 }
 
 Object::~Object() {

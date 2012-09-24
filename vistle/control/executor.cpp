@@ -52,12 +52,21 @@ Executor::Executor(const std::string &name)
    MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
    MPI_Comm_size(MPI_COMM_WORLD, &m_size);
 
+   std::string instanceName;
+
    // process with the smallest rank on each host allocates shm
    const int HOSTNAMESIZE = 64;
 
    char hostname[HOSTNAMESIZE];
    std::vector<char> hostnames(HOSTNAMESIZE * m_size);
    gethostname(hostname, HOSTNAMESIZE - 1);
+
+#if 0
+   if (!m_rank) {
+      int pid = static_cast<int>(getpid());
+      instanceName << hostname << "_" << pid;
+   }
+#endif
 
    MPI_Allgather(hostname, HOSTNAMESIZE, MPI_CHAR,
                  &hostnames[0], HOSTNAMESIZE, MPI_CHAR, MPI_COMM_WORLD);

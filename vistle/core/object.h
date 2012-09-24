@@ -64,15 +64,16 @@ struct shm {
    static allocator alloc_inst() { return allocator(Shm::instance().getShm().get_segment_manager()); }
    static ptr construct_vector(size_t s) { return Shm::instance().getShm().construct<vector>(Shm::instance().createObjectID().c_str())(s, T(), alloc_inst()); }
    static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name) { return Shm::instance().getShm().construct<T>(name.c_str()); }
+   static void destroy(const std::string &name) { Shm::instance().getShm().destroy<T>(name.c_str()); }
 };
 
 #define V_OBJECT(Type) \
    public: \
    typedef boost::shared_ptr<Type> ptr; \
    typedef boost::shared_ptr<const Type> const_ptr; \
-   virtual ~Type() { delete d(); m_data = NULL; } \
    static boost::shared_ptr<const Type> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Type>(ptr); } \
    static boost::shared_ptr<Type> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Type>(ptr); } \
+   virtual ~Type() { d()->unref(); m_data = NULL; } \
    protected: \
    struct Data; \
    Data *d() const { return static_cast<Data *>(m_data); } \
@@ -146,11 +147,24 @@ public:
    struct Data {
       const Type type;
       char name[32];
+      int refcount;
+      boost::interprocess::interprocess_mutex mutex;
 
       int block;
       int timestep;
 
       Data(Type id, const std::string &name, int b, int t);
+      void ref() {
+         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+         ++refcount;
+      }
+      void unref() {
+         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+         --refcount;
+         if (refcount == 0) {
+            shm<Data>::destroy(name);
+         }
+      }
       static Data *create(Type id, int b, int t) {
          std::string name = Shm::instance().createObjectID();
          return shm<Data>::construct(name)(id, name, b, t);
