@@ -22,7 +22,8 @@ template<> size_t memorySize<4>() {
 
 template<> size_t memorySize<8>() {
 
-   return 68719476736;
+   //return 68719476736;
+   return 1 << 28;
 }
 
 Shm* Shm::s_singleton = NULL;
