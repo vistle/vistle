@@ -208,14 +208,14 @@ void Object::setBlock(const int blk) {
 
 Triangles::Triangles(const size_t numCorners, const size_t numVertices,
                      const int block, const int timestep)
-   : Triangles::Parent(Triangles::Data::create(numCorners, numVertices,
+   : Triangles::Base(Triangles::Data::create(numCorners, numVertices,
             block, timestep)) {
 }
 
 Triangles::Data::Data(const size_t numCorners, const size_t numVertices,
                      const std::string & name,
                      const int block, const int timestep)
-   : Parent::Data(Object::TRIANGLES, name, block, timestep)
+   : Base::Data(Object::TRIANGLES, name, block, timestep)
    , cl(shm<size_t>::construct_vector(numCorners))
    , x(shm<Scalar>::construct_vector(numVertices))
    , y(shm<Scalar>::construct_vector(numVertices))
@@ -244,7 +244,7 @@ Triangles::Info *Triangles::getInfo(Triangles::Info *info) const {
    if (!info)
       info = new Info;
 
-   Parent::getInfo(info);
+   Base::getInfo(info);
 
    info->infosize = sizeof(Info);
    info->itemsize = 0;
@@ -268,7 +268,7 @@ size_t Triangles::getNumVertices() const {
 Lines::Lines(const size_t numElements, const size_t numCorners,
                       const size_t numVertices,
                       const int block, const int timestep)
-   : Lines::Parent(Lines::Data::create(numElements, numCorners,
+   : Lines::Base(Lines::Data::create(numElements, numCorners,
             numVertices, block, timestep))
 {
 }
@@ -276,7 +276,7 @@ Lines::Lines(const size_t numElements, const size_t numCorners,
 Lines::Data::Data(const size_t numElements, const size_t numCorners,
              const size_t numVertices, const std::string & name,
              const int block, const int timestep)
-   : Lines::Parent::Data(Object::LINES, name, block, timestep)
+   : Lines::Base::Data(Object::LINES, name, block, timestep)
      , el(shm<size_t>::construct_vector(numElements))
      , cl(shm<size_t>::construct_vector(numCorners))
      , x(shm<Scalar>::construct_vector(numVertices))
@@ -306,7 +306,7 @@ Lines::Info *Lines::getInfo(Lines::Info *info) const {
    if (!info)
       info = new Info;
 
-   Parent::getInfo(info);
+   Base::getInfo(info);
 
    info->infosize = sizeof(Info);
    info->itemsize += info->numElements * sizeof(uint64_t)
@@ -339,14 +339,14 @@ Polygons::Polygons(const size_t numElements,
       const size_t numCorners,
       const size_t numVertices,
       const int block, const int timestep)
-: Polygons::Parent(Polygons::Data::create(numElements, numCorners, numVertices, block, timestep))
+: Polygons::Base(Polygons::Data::create(numElements, numCorners, numVertices, block, timestep))
 {
 }
 
 Polygons::Data::Data(const size_t numElements, const size_t numCorners,
                    const size_t numVertices, const std::string & name,
                    const int block, const int timestep)
-   : Polygons::Parent::Data(Object::POLYGONS, name, block, timestep)
+   : Polygons::Base::Data(Object::POLYGONS, name, block, timestep)
       , el(shm<size_t>::construct_vector(numElements))
       , cl(shm<size_t>::construct_vector(numCorners))
       , x(shm<Scalar>::construct_vector(numVertices))
@@ -391,7 +391,7 @@ UnstructuredGrid::UnstructuredGrid(const size_t numElements,
       const size_t numCorners,
       const size_t numVertices,
       const int block, const int timestep)
-   : UnstructuredGrid::Parent(UnstructuredGrid::Data::create(numElements, numCorners, numVertices, block, timestep))
+   : UnstructuredGrid::Base(UnstructuredGrid::Data::create(numElements, numCorners, numVertices, block, timestep))
 {
 }
 
@@ -400,7 +400,7 @@ UnstructuredGrid::Data::Data(const size_t numElements,
                                    const size_t numVertices,
                                    const std::string & name,
                                    const int block, const int timestep)
-   : Parent::Data(Object::UNSTRUCTUREDGRID, name, block, timestep)
+   : Base::Data(Object::UNSTRUCTUREDGRID, name, block, timestep)
    , tl(shm<char>::construct_vector(numElements))
    , el(shm<size_t>::construct_vector(numElements))
    , cl(shm<size_t>::construct_vector(numCorners))
@@ -444,13 +444,13 @@ size_t UnstructuredGrid::getNumVertices() const {
 
 Set::Set(const size_t numElements,
                   const int block, const int timestep)
-: Set::Parent(Set::Data::create(numElements, block, timestep))
+: Set::Base(Set::Data::create(numElements, block, timestep))
 {
 }
 
 Set::Data::Data(const size_t numElements, const std::string & name,
          const int block, const int timestep)
-   : Set::Parent::Data(Object::SET, name, block, timestep)
+   : Set::Base::Data(Object::SET, name, block, timestep)
      , elements(shm<offset_ptr<Object::Data> >::construct_vector(numElements))
 {
 }
@@ -504,13 +504,13 @@ void Set::addElement(Object::const_ptr object) {
 }
 
 Geometry::Geometry(const int block, const int timestep)
-   : Geometry::Parent(Geometry::Data::create(block, timestep))
+   : Geometry::Base(Geometry::Data::create(block, timestep))
 {
 }
 
 Geometry::Data::Data(const std::string & name,
       const int block, const int timestep)
-   : Geometry::Parent::Data(Object::GEOMETRY, name, block, timestep)
+   : Geometry::Base::Data(Object::GEOMETRY, name, block, timestep)
    , geometry(NULL)
    , colors(NULL)
    , normals(NULL)
@@ -575,14 +575,14 @@ Object::const_ptr Geometry::texture() const {
 Texture1D::Texture1D(const size_t width,
       const Scalar min, const Scalar max,
       const int block, const int timestep)
-: Texture1D::Parent(Texture1D::Data::create(width, min, max, block, timestep))
+: Texture1D::Base(Texture1D::Data::create(width, min, max, block, timestep))
 {
 }
 
 Texture1D::Data::Data(const std::string &name, const size_t width,
                      const Scalar mi, const Scalar ma,
                      const int block, const int timestep)
-   : Texture1D::Parent::Data(Object::TEXTURE1D, name, block, timestep)
+   : Texture1D::Base::Data(Object::TEXTURE1D, name, block, timestep)
    , min(mi)
    , max(ma)
    , pixels(shm<unsigned char>::construct_vector(width * 4))

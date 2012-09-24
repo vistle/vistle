@@ -77,7 +77,7 @@ struct shm {
    protected: \
    struct Data; \
    Data *d() const { return static_cast<Data *>(m_data); } \
-   Type(Data *data) : Parent(data) {} \
+   Type(Data *data) : Base(data) {} \
    private: \
    friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &); \
    friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>); \
@@ -200,16 +200,16 @@ class Vec: public Object {
    V_OBJECT(Vec);
 
  public:
-   typedef Object Parent;
+   typedef Object Base;
 
-   struct Info: public Parent::Info {
+   struct Info: public Base::Info {
       uint64_t numElements;
 
       private:
       friend class boost::serialization::access;
       template<class Archive>
          void serialize(Archive &ar, const unsigned int version) {
-            ar & boost::serialization::base_object<Parent::Info>(*this);
+            ar & boost::serialization::base_object<Base::Info>(*this);
             ar & numElements;
          }
    };
@@ -234,13 +234,13 @@ class Vec: public Object {
    typename shm<T>::vector &x(int c) const { assert(c == 0 && "Vec only has one component"); return *d()->x; }
 
  protected:
-   struct Data: public Parent::Data {
+   struct Data: public Base::Data {
 
       typename shm<T>::ptr x;
 
       Data(size_t size, const std::string &name,
             const int block, const int timestep)
-         : Parent::Data(s_type, name, block, timestep)
+         : Base::Data(s_type, name, block, timestep)
            , x(shm<T>::construct_vector(size)) {
            }
       static Data *create(size_t size, const int block, const int timestep) {
@@ -259,7 +259,7 @@ class Vec: public Object {
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
 
-         ar & boost::serialization::base_object<Parent::Data>(*this);
+         ar & boost::serialization::base_object<Base::Data>(*this);
          ar & x;
       }
    };
@@ -281,9 +281,9 @@ class Vec3: public Object {
    V_OBJECT(Vec3);
 
  public:
-   typedef Object Parent;
+   typedef Object Base;
 
-   struct Info: public Parent::Info {
+   struct Info: public Base::Info {
       uint64_t numElements;
    };
 
@@ -321,12 +321,12 @@ class Vec3: public Object {
    }
 
  protected:
-   struct Data: public Parent::Data {
+   struct Data: public Base::Data {
 
       typename shm<T>::ptr x, y, z;
       Data(const size_t size, const std::string &name,
             const int block, const int timestep)
-         : Parent::Data(s_type, name, block, timestep)
+         : Base::Data(s_type, name, block, timestep)
             , x(shm<T>::construct_vector(size))
             , y(shm<T>::construct_vector(size))
             , z(shm<T>::construct_vector(size)) {
@@ -347,14 +347,12 @@ class Vec3: public Object {
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
 
-         ar & boost::serialization::base_object<Parent::Data>(*this);
+         ar & boost::serialization::base_object<Base::Data>(*this);
          ar & x;
          ar & y;
          ar & z;
       }
    };
-
-   //Data *d() const { return static_cast<Data *>(m_data); }
 
  private:
    static const Object::Type s_type;
@@ -373,9 +371,9 @@ class Triangles: public Object {
    V_OBJECT(Triangles);
 
  public:
-   typedef Object Parent;
+   typedef Object Base;
 
-   struct Info: public Parent::Info {
+   struct Info: public Base::Info {
       uint64_t numCorners;
       uint64_t numVertices;
    };
@@ -393,7 +391,7 @@ class Triangles: public Object {
    shm<Scalar>::vector &z() const { return *d()->z; }
 
  protected:
-   struct Data: public Parent::Data {
+   struct Data: public Base::Data {
 
       shm<size_t>::ptr cl;
       shm<Scalar>::ptr x, y, z;
@@ -421,9 +419,9 @@ class Lines: public Object {
    V_OBJECT(Lines);
 
  public:
-   typedef Object Parent;
+   typedef Object Base;
 
-   struct Info: public Parent::Info {
+   struct Info: public Base::Info {
       uint64_t numElements;
       uint64_t numCorners;
       uint64_t numVertices;
@@ -445,7 +443,7 @@ class Lines: public Object {
    shm<Scalar>::vector &z() const { return *d()->z; }
 
  protected:
-   struct Data: public Parent::Data {
+   struct Data: public Base::Data {
 
       shm<size_t>::ptr el, cl;
       shm<Scalar>::ptr x, y, z;
@@ -461,7 +459,7 @@ class Lines: public Object {
       friend class boost::serialization::access;
       template<class Archive>
          void serialize(Archive &ar, const unsigned int version) {
-            ar & boost::serialization::base_object<Parent::Data>(*this);
+            ar & boost::serialization::base_object<Base::Data>(*this);
             ar & el;
             ar & cl;
             ar & x;
@@ -475,9 +473,9 @@ class Polygons: public Object {
    V_OBJECT(Polygons);
 
  public:
-   typedef Object Parent;
+   typedef Object Base;
 
-   struct Info: public Parent::Info {
+   struct Info: public Base::Info {
       uint64_t numElements;
       uint64_t numCorners;
       uint64_t numVertices;
@@ -500,7 +498,7 @@ class Polygons: public Object {
    shm<Scalar>::vector &z() const { return *d()->z; }
 
  protected:
-   struct Data: public Parent::Data {
+   struct Data: public Base::Data {
 
       shm<size_t>::ptr el, cl;
       shm<Scalar>::ptr x, y, z;
@@ -539,7 +537,7 @@ class UnstructuredGrid: public Object {
    V_OBJECT(UnstructuredGrid);
 
  public:
-   typedef Object Parent;
+   typedef Object Base;
 
    enum Type {
       NONE        =  0,
@@ -554,7 +552,7 @@ class UnstructuredGrid: public Object {
       POLYHEDRON  = 11
    };
 
-   struct Info: public Parent::Info {
+   struct Info: public Base::Info {
       uint64_t numElements;
       uint64_t numCorners;
       uint64_t numVertices;
@@ -579,7 +577,7 @@ class UnstructuredGrid: public Object {
    shm<Scalar>::vector &z() const { return *d()->z; }
 
  protected:
-   struct Data: public Parent::Data {
+   struct Data: public Base::Data {
 
       shm<char>::ptr tl;
       shm<size_t>::ptr el, cl;
@@ -620,9 +618,9 @@ class Set: public Object {
    V_OBJECT(Set);
 
  public:
-   typedef Object Parent;
+   typedef Object Base;
 
-   struct Info: public Parent::Info {
+   struct Info: public Base::Info {
       std::vector<Object::Info *> items;
    };
 
@@ -637,7 +635,7 @@ class Set: public Object {
    shm<boost::interprocess::offset_ptr<Object::Data> >::vector &elements() const { return *d()->elements; }
 
  protected:
-   struct Data: public Parent::Data {
+   struct Data: public Base::Data {
 
       shm<boost::interprocess::offset_ptr<Object::Data> >::ptr elements;
 
@@ -650,7 +648,7 @@ class Set: public Object {
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Parent::Data>(*this);
+         ar & boost::serialization::base_object<Base::Data>(*this);
          ar & elements;
       }
    };
@@ -667,7 +665,7 @@ class Geometry: public Object {
    V_OBJECT(Geometry);
 
  public:
-   typedef Object Parent;
+   typedef Object Base;
 
    Geometry(const int block = -1, const int timestep = -1);
 
@@ -683,7 +681,7 @@ class Geometry: public Object {
    Object::const_ptr texture() const;
 
  protected:
-   struct Data: public Parent::Data {
+   struct Data: public Base::Data {
 
       boost::interprocess::offset_ptr<Object::Data> geometry;
       boost::interprocess::offset_ptr<Object::Data> colors;
@@ -698,7 +696,7 @@ class Geometry: public Object {
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Parent::Data>(*this);
+         ar & boost::serialization::base_object<Base::Data>(*this);
          ar & geometry;
          ar & colors;
          ar & normals;
@@ -718,7 +716,7 @@ class Texture1D: public Object {
    V_OBJECT(Texture1D);
 
  public:
-   typedef Object Parent;
+   typedef Object Base;
 
    Texture1D(const size_t width = 0,
          const Scalar min = 0, const Scalar max = 0,
@@ -731,7 +729,7 @@ class Texture1D: public Object {
    shm<Scalar>::vector &coords() const { return *d()->coords; }
 
  protected:
-   struct Data: public Parent::Data {
+   struct Data: public Base::Data {
       Scalar min;
       Scalar max;
 
@@ -749,7 +747,7 @@ class Texture1D: public Object {
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Parent::Data>(*this);
+         ar & boost::serialization::base_object<Base::Data>(*this);
          ar & pixels;
          ar & coords;
          ar & min;
