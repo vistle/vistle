@@ -270,7 +270,7 @@ class Vec: public Object {
    friend class boost::serialization::access;
    template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Object>(*this);
+         ar & boost::serialization::base_object<Base>(*this);
          ar & d().x;
       }
 };
@@ -360,7 +360,7 @@ class Vec3: public Object {
    friend class boost::serialization::access;
    template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Object>(*this);
+         ar & boost::serialization::base_object<Base>(*this);
          ar & d()->x;
          ar & d()->y;
          ar & d()->z;
@@ -407,7 +407,7 @@ class Triangles: public Object {
    friend class boost::serialization::access;
    template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Object>(*this);
+         ar & boost::serialization::base_object<Base>(*this);
          ar & d()->cl;
          ar & d()->x;
          ar & d()->y;
@@ -515,7 +515,7 @@ class Polygons: public Object {
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Object>(*this);
+         ar & boost::serialization::base_object<Base>(*this);
          ar & el;
          ar & cl;
          ar & x;
@@ -528,7 +528,7 @@ class Polygons: public Object {
    friend class boost::serialization::access;
    template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Object>(*this);
+         ar & boost::serialization::base_object<Base>(*this);
       }
 };
 
@@ -596,7 +596,7 @@ class UnstructuredGrid: public Object {
       friend class boost::serialization::access;
       template<class Archive>
          void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Object>(*this);
+         ar & boost::serialization::base_object<Base::Data>(*this);
          ar & tl;
          ar & el;
          ar & cl;
@@ -610,7 +610,7 @@ class UnstructuredGrid: public Object {
    friend class boost::serialization::access;
    template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Object>(*this);
+         ar & boost::serialization::base_object<Base>(*this);
       }
 };
 
@@ -657,7 +657,7 @@ class Set: public Object {
    friend class boost::serialization::access;
    template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Object>(*this);
+         ar & boost::serialization::base_object<Base>(*this);
       }
 };
 
@@ -708,7 +708,7 @@ class Geometry: public Object {
    friend class boost::serialization::access;
    template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Object>(*this);
+         ar & boost::serialization::base_object<Base>(*this);
       }
 };
 
@@ -759,7 +759,7 @@ class Texture1D: public Object {
    friend class boost::serialization::access;
    template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Object>(*this);
+         ar & boost::serialization::base_object<Base>(*this);
       }
 };
 
