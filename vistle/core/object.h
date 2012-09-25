@@ -293,7 +293,20 @@ class Vec3: public Object {
 
    }
 
-   Info *getInfo(Info *info = NULL) const;
+   Info *getInfo(Info *info = NULL) const {
+
+      if (!info) {
+         info = new Info;
+      }
+      Base::getInfo(info);
+
+      info->infosize = sizeof(Info);
+      info->itemsize = 0;
+      info->offset = 0;
+      info->numElements = getSize();
+
+      return info;
+   }
 
    size_t getSize() const {
       return d()->x->size();
@@ -327,6 +340,13 @@ class Vec3: public Object {
       Data(const size_t size, const std::string &name,
             const int block, const int timestep)
          : Base::Data(s_type, name, block, timestep)
+            , x(shm<T>::construct_vector(size))
+            , y(shm<T>::construct_vector(size))
+            , z(shm<T>::construct_vector(size)) {
+      }
+      Data(const size_t size, Type id, const std::string &name,
+            const int block, const int timestep)
+         : Base::Data(id, name, block, timestep)
             , x(shm<T>::construct_vector(size))
             , y(shm<T>::construct_vector(size))
             , z(shm<T>::construct_vector(size)) {
@@ -367,11 +387,87 @@ class Vec3: public Object {
       }
 };
 
-class Triangles: public Object {
+
+class Coords: public Vec3<Scalar> {
+   V_OBJECT(Coords);
+
+ public:
+   typedef Vec3<Scalar> Base;
+
+   struct Info: public Base::Info {
+      uint64_t numVertices;
+   };
+
+   Coords(const size_t numVertices = 0,
+             const int block = -1, const int timestep = -1);
+
+   Info *getInfo(Info *info = NULL) const;
+   size_t getNumCoords() const;
+   size_t getNumVertices() const;
+
+ protected:
+   struct Data: public Base::Data {
+
+      Data(const size_t numVertices,
+            Type id, const std::string & name,
+            const int block, const int timestep);
+      static Data *create(Type id, const size_t numVertices,
+            const int block, const int timestep);
+
+      private:
+      friend class boost::serialization::access;
+      template<class Archive>
+         void serialize(Archive &ar, const unsigned int version) {
+            ar & boost::serialization::base_object<Base::Data>(*this);
+         }
+   };
+
+ private:
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         ar & boost::serialization::base_object<Base>(*this);
+      }
+};
+
+class Points: public Coords {
+   V_OBJECT(Points);
+
+   public:
+   typedef Coords Base;
+
+   size_t getNumPoints() const;
+
+   protected:
+   struct Data: public Base::Data {
+
+      Data(const size_t numPoints,
+            const std::string & name,
+            const int block, const int timestep);
+      static Data *create(const size_t numPoints,
+            const int block, const int timestep);
+
+      private:
+      friend class boost::serialization::access;
+      template<class Archive>
+         void serialize(Archive &ar, const unsigned int version) {
+            ar & boost::serialization::base_object<Base::Data>(*this);
+         }
+   };
+
+ private:
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         ar & boost::serialization::base_object<Base>(*this);
+      }
+};
+
+class Triangles: public Coords {
    V_OBJECT(Triangles);
 
  public:
-   typedef Object Base;
+   typedef Coords Base;
 
    struct Info: public Base::Info {
       uint64_t numCorners;
@@ -386,15 +482,11 @@ class Triangles: public Object {
    size_t getNumVertices() const;
 
    shm<size_t>::vector &cl() const { return *d()->cl; }
-   shm<Scalar>::vector &x() const { return *d()->x; }
-   shm<Scalar>::vector &y() const { return *d()->y; }
-   shm<Scalar>::vector &z() const { return *d()->z; }
 
  protected:
    struct Data: public Base::Data {
 
       shm<size_t>::ptr cl;
-      shm<Scalar>::ptr x, y, z;
 
       Data(const size_t numCorners, const size_t numVertices,
             const std::string & name,
@@ -409,27 +501,20 @@ class Triangles: public Object {
       void serialize(Archive &ar, const unsigned int version) {
          ar & boost::serialization::base_object<Base>(*this);
          ar & d()->cl;
-         ar & d()->x;
-         ar & d()->y;
-         ar & d()->z;
       }
 };
 
-class Lines: public Object {
-   V_OBJECT(Lines);
+class Indexed: public Coords {
+   V_OBJECT(Indexed);
 
  public:
-   typedef Object Base;
+   typedef Coords Base;
 
    struct Info: public Base::Info {
       uint64_t numElements;
       uint64_t numCorners;
       uint64_t numVertices;
    };
-
-   Lines(const size_t numElements = 0, const size_t numCorners = 0,
-         const size_t numVertices = 0,
-         const int block = -1, const int timestep = -1);
 
    Info *getInfo(Info *info = NULL) const;
    size_t getNumElements() const;
@@ -438,15 +523,52 @@ class Lines: public Object {
 
    shm<size_t>::vector &el() const { return *d()->el; }
    shm<size_t>::vector &cl() const { return *d()->cl; }
-   shm<Scalar>::vector &x() const { return *d()->x; }
-   shm<Scalar>::vector &y() const { return *d()->y; }
-   shm<Scalar>::vector &z() const { return *d()->z; }
+
+ protected:
+
+   struct Data: public Base::Data {
+      shm<size_t>::ptr el, cl;
+
+      Data(const size_t numElements, const size_t numCorners,
+           const size_t numVertices,
+            Type id, const std::string &name,
+            int b = -1, int t = -1);
+      void ref() {
+         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+         ++refcount;
+      }
+      void unref() {
+         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+         --refcount;
+         if (refcount == 0) {
+            shm<Data>::destroy(name);
+         }
+      }
+      static Data *create(size_t numElements, size_t numCorners, size_t numVertices, Type id, int b, int t) {
+         std::string name = Shm::instance().createObjectID();
+         return shm<Data>::construct(name)(numElements, numCorners, numVertices, id, name, b, t);
+      }
+
+   };
+};
+
+class Lines: public Indexed {
+   V_OBJECT(Lines);
+
+ public:
+   typedef Indexed Base;
+
+   struct Info: public Base::Info {
+   };
+
+   Info *getInfo(Info *info = NULL) const;
+
+   Lines(const size_t numElements = 0, const size_t numCorners = 0,
+         const size_t numVertices = 0,
+         const int block = -1, const int timestep = -1);
 
  protected:
    struct Data: public Base::Data {
-
-      shm<size_t>::ptr el, cl;
-      shm<Scalar>::ptr x, y, z;
 
       Data(const size_t numElements, const size_t numCorners,
          const size_t numVertices, const std::string & name,
@@ -460,25 +582,17 @@ class Lines: public Object {
       template<class Archive>
          void serialize(Archive &ar, const unsigned int version) {
             ar & boost::serialization::base_object<Base::Data>(*this);
-            ar & el;
-            ar & cl;
-            ar & x;
-            ar & y;
-            ar & z;
          }
    };
 };
 
-class Polygons: public Object {
+class Polygons: public Indexed {
    V_OBJECT(Polygons);
 
  public:
-   typedef Object Base;
+   typedef Indexed Base;
 
    struct Info: public Base::Info {
-      uint64_t numElements;
-      uint64_t numCorners;
-      uint64_t numVertices;
    };
 
    Polygons(const size_t numElements= 0,
@@ -487,21 +601,9 @@ class Polygons: public Object {
             const int block = -1, const int timestep = -1);
 
    Info *getInfo(Info *info = NULL) const;
-   size_t getNumElements() const;
-   size_t getNumCorners() const;
-   size_t getNumVertices() const;
-
-   shm<size_t>::vector &el() const { return *d()->el; }
-   shm<size_t>::vector &cl() const { return *d()->cl; }
-   shm<Scalar>::vector &x() const { return *d()->x; }
-   shm<Scalar>::vector &y() const { return *d()->y; }
-   shm<Scalar>::vector &z() const { return *d()->z; }
 
  protected:
    struct Data: public Base::Data {
-
-      shm<size_t>::ptr el, cl;
-      shm<Scalar>::ptr x, y, z;
 
       Data(const size_t numElements, const size_t numCorners,
             const size_t numVertices, const std::string & name,
@@ -516,11 +618,6 @@ class Polygons: public Object {
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
          ar & boost::serialization::base_object<Base>(*this);
-         ar & el;
-         ar & cl;
-         ar & x;
-         ar & y;
-         ar & z;
       }
    };
 

@@ -206,6 +206,35 @@ void Object::setBlock(const int blk) {
    d()->block = blk;
 }
 
+Coords::Data::Data(const size_t numVertices,
+      Type id, const std::string &name,
+      const int block, const int timestep)
+   : Coords::Base::Data(numVertices,
+         id, name,
+         block, timestep)
+{
+}
+
+Coords::Info *Coords::getInfo(Coords::Info *info) const {
+
+   if (!info)
+      info = new Info;
+
+   Base::getInfo(info);
+
+   info->infosize = sizeof(Info);
+   info->itemsize = 0;
+   info->offset = 0;
+   info->numVertices = getNumVertices();
+
+   return info;
+}
+
+size_t Coords::getNumVertices() const {
+
+   return getSize();
+}
+
 Triangles::Triangles(const size_t numCorners, const size_t numVertices,
                      const int block, const int timestep)
    : Triangles::Base(Triangles::Data::create(numCorners, numVertices,
@@ -215,11 +244,10 @@ Triangles::Triangles(const size_t numCorners, const size_t numVertices,
 Triangles::Data::Data(const size_t numCorners, const size_t numVertices,
                      const std::string & name,
                      const int block, const int timestep)
-   : Base::Data(Object::TRIANGLES, name, block, timestep)
+   : Base::Data(numCorners,
+         Object::TRIANGLES, name,
+         block, timestep)
    , cl(shm<size_t>::construct_vector(numCorners))
-   , x(shm<Scalar>::construct_vector(numVertices))
-   , y(shm<Scalar>::construct_vector(numVertices))
-   , z(shm<Scalar>::construct_vector(numVertices))
 {
 }
 
@@ -265,6 +293,34 @@ size_t Triangles::getNumVertices() const {
    return d()->x->size();
 }
 
+Indexed::Info *Indexed::getInfo(Indexed::Info *info) const {
+
+   if (!info)
+      info = new Info;
+
+   Base::getInfo(info);
+
+   info->infosize = sizeof(Info);
+   info->itemsize = 0;
+   info->offset = 0;
+   info->numVertices = getNumVertices();
+   info->numElements = getNumElements();
+   info->numCorners = getNumCorners();
+
+   return info;
+}
+
+Indexed::Data::Data(const size_t numElements, const size_t numCorners,
+             const size_t numVertices,
+             Type id, const std::string & name,
+             const int block, const int timestep)
+   : Indexed::Base::Data(numVertices, id, name,
+         block, timestep)
+   , el(shm<size_t>::construct_vector(numElements))
+   , cl(shm<size_t>::construct_vector(numCorners))
+{
+}
+
 Lines::Lines(const size_t numElements, const size_t numCorners,
                       const size_t numVertices,
                       const int block, const int timestep)
@@ -276,12 +332,8 @@ Lines::Lines(const size_t numElements, const size_t numCorners,
 Lines::Data::Data(const size_t numElements, const size_t numCorners,
              const size_t numVertices, const std::string & name,
              const int block, const int timestep)
-   : Lines::Base::Data(Object::LINES, name, block, timestep)
-     , el(shm<size_t>::construct_vector(numElements))
-     , cl(shm<size_t>::construct_vector(numCorners))
-     , x(shm<Scalar>::construct_vector(numVertices))
-     , y(shm<Scalar>::construct_vector(numVertices))
-     , z(shm<Scalar>::construct_vector(numVertices))
+   : Lines::Base::Data(numElements, numCorners, numVertices,
+         Object::LINES, name, block, timestep)
 {
 }
 
@@ -320,17 +372,17 @@ Lines::Info *Lines::getInfo(Lines::Info *info) const {
    return info;
 }
 
-size_t Lines::getNumElements() const {
+size_t Indexed::getNumElements() const {
 
    return d()->el->size();
 }
 
-size_t Lines::getNumCorners() const {
+size_t Indexed::getNumCorners() const {
 
    return d()->cl->size();
 }
 
-size_t Lines::getNumVertices() const {
+size_t Indexed::getNumVertices() const {
 
    return d()->x->size();
 }
@@ -346,12 +398,8 @@ Polygons::Polygons(const size_t numElements,
 Polygons::Data::Data(const size_t numElements, const size_t numCorners,
                    const size_t numVertices, const std::string & name,
                    const int block, const int timestep)
-   : Polygons::Base::Data(Object::POLYGONS, name, block, timestep)
-      , el(shm<size_t>::construct_vector(numElements))
-      , cl(shm<size_t>::construct_vector(numCorners))
-      , x(shm<Scalar>::construct_vector(numVertices))
-      , y(shm<Scalar>::construct_vector(numVertices))
-      , z(shm<Scalar>::construct_vector(numVertices))
+   : Polygons::Base::Data(numElements, numCorners, numVertices,
+         Object::POLYGONS, name, block, timestep)
 {
 }
 
@@ -370,21 +418,6 @@ Polygons::Data * Polygons::Data::create(const size_t numElements,
    Shm::instance().publish(handle);
    */
    return p;
-}
-
-size_t Polygons::getNumElements() const {
-
-   return d()->el->size();
-}
-
-size_t Polygons::getNumCorners() const {
-
-   return d()->cl->size();
-}
-
-size_t Polygons::getNumVertices() const {
-
-   return d()->x->size();
 }
 
 UnstructuredGrid::UnstructuredGrid(const size_t numElements,
