@@ -12,6 +12,11 @@ class Communicator;
 
 namespace message {
 
+   typedef char module_name_t[32];
+   typedef char port_name_t[32];
+   typedef char param_name_t[32];
+   typedef char param_value_t[256];
+
 class Message {
 
    friend class vistle::Communicator;
@@ -77,7 +82,7 @@ class Spawn: public Message {
 
  private:
    const int spawnID;
-   char name[32];
+   module_name_t name;
 };
 
 class Quit: public Message {
@@ -128,7 +133,7 @@ class CreateInputPort: public Message {
    const char * getName() const;
 
  private:
-   char name[32];
+   port_name_t name;
 };
 
 class CreateOutputPort: public Message {
@@ -140,7 +145,7 @@ class CreateOutputPort: public Message {
    const char * getName() const;
 
  private:
-   char name[32];
+   port_name_t name;
 };
 
 class AddObject: public Message {
@@ -153,7 +158,7 @@ class AddObject: public Message {
    const shm_handle_t & getHandle() const;
 
  private:
-   char portName[32];
+   port_name_t portName;
    const shm_handle_t handle;
 };
 
@@ -171,8 +176,8 @@ class Connect: public Message {
    int getModuleB() const;
 
  private:
-   char portAName[32];
-   char portBName[32];
+   port_name_t portAName;
+   port_name_t portBName;
 
    const int moduleA;
    const int moduleB;
@@ -189,8 +194,8 @@ class AddFileParameter: public Message {
    const char * getValue() const;
 
  private:
-   char name[32];
-   char value[256];
+   param_name_t name;
+   param_value_t value;
 };
 
 class SetFileParameter: public Message {
@@ -206,7 +211,7 @@ class SetFileParameter: public Message {
 
  private:
    const int module;
-   char name[32];
+   param_name_t name;
    char value[256];
 };
 
@@ -220,7 +225,7 @@ class AddFloatParameter: public Message {
    vistle::Scalar getValue() const;
 
  private:
-   char name[32];
+   param_name_t name;
    vistle::Scalar value;
 };
 
@@ -236,7 +241,7 @@ class SetFloatParameter: public Message {
 
  private:
    const int module;
-   char name[32];
+   param_name_t name;
    vistle::Scalar value;
 };
 
@@ -250,7 +255,7 @@ class AddIntParameter: public Message {
    int getValue() const;
 
  private:
-   char name[32];
+   param_name_t name;
    int value;
 };
 
@@ -266,7 +271,7 @@ class SetIntParameter: public Message {
 
  private:
    const int module;
-   char name[32];
+   param_name_t name;
    int value;
 };
 
@@ -280,7 +285,7 @@ class AddVectorParameter: public Message {
    Vector getValue() const;
 
  private:
-   char name[32];
+   param_name_t name;
    Vector value;
 };
 
@@ -296,7 +301,7 @@ class SetVectorParameter: public Message {
 
  private:
    const int module;
-   char name[32];
+   param_name_t name;
    Vector value;
 };
 

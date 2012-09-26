@@ -23,6 +23,7 @@
 namespace vistle {
 
 typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
+typedef char shm_name_t[32];
 
 namespace message {
    class MessageQueue;
@@ -146,7 +147,7 @@ public:
  protected:
    struct Data {
       const Type type;
-      char name[32];
+      shm_name_t name;
       int refcount;
       boost::interprocess::interprocess_mutex mutex;
 

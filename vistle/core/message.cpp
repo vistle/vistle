@@ -3,7 +3,16 @@
 namespace vistle {
 namespace message {
 
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+template<typename T>
+static T min(T a, T b) { return a<b ? a : b; }
+
+#define COPY_STRING(dst, src) \
+   { \
+      size_t size = min(src.size(), sizeof(dst)-1); \
+      src.copy(dst, size); \
+      dst[size] = '\0'; \
+      assert(src.size() <= sizeof(dst)-1); \
+   }
 
 Message::Message(const int m, const int r,
                  const Type t, const unsigned int s)
@@ -45,9 +54,7 @@ Spawn::Spawn(const int moduleID, const int rank, const int s,
              const std::string & n)
    : Message(moduleID, rank, Message::SPAWN, sizeof(Spawn)), spawnID(s) {
 
-   size_t size = MIN(n.size(), 31);
-   n.copy(name, size);
-   name[size] = 0;
+      COPY_STRING(name, n);
 }
 
 int Spawn::getSpawnID() const {
@@ -95,9 +102,7 @@ CreateOutputPort::CreateOutputPort(const int moduleID, const int rank,
    : Message(moduleID, rank,
              Message::CREATEOUTPUTPORT, sizeof(CreateOutputPort)) {
 
-   size_t size = MIN(n.size(), 31);
-   n.copy(name, size);
-   name[size] = 0;
+      COPY_STRING(name, n);
 }
 
 const char * CreateOutputPort::getName() const {
@@ -110,11 +115,7 @@ CreateInputPort::CreateInputPort(const int moduleID, const int rank,
    : Message(moduleID, rank, Message::CREATEINPUTPORT,
              sizeof(CreateInputPort)) {
 
-   size_t size = n.size();
-   if (size > 31)
-      size = 31;
-   n.copy(name, size);
-   name[size] = 0;
+      COPY_STRING(name, n);
 }
 
 const char * CreateInputPort::getName() const {
@@ -127,9 +128,7 @@ AddObject::AddObject(const int moduleID, const int rank, const std::string & p,
    : Message(moduleID, rank, Message::ADDOBJECT, sizeof(AddObject)),
      handle(h) {
 
-   size_t size = MIN(p.size(), 31);
-   p.copy(portName, size);
-   portName[size] = 0;
+      COPY_STRING(portName, p);
 }
 
 const char * AddObject::getPortName() const {
@@ -148,13 +147,8 @@ Connect::Connect(const int moduleID, const int rank,
    : Message(moduleID, rank, Message::CONNECT, sizeof(Connect)),
      moduleA(moduleIDA), moduleB(moduleIDB) {
 
-   size_t size = MIN(portA.size(), 31);
-   portA.copy(portAName, size);
-   portAName[size] = 0;
-
-   size = MIN(portB.size(), 31);
-   portB.copy(portBName, size);
-   portBName[size] = 0;
+        COPY_STRING(portAName, portA);
+        COPY_STRING(portBName, portB);
 }
 
 const char * Connect::getPortAName() const {
@@ -183,13 +177,8 @@ AddFileParameter::AddFileParameter(const int moduleID, const int rank,
    : Message(moduleID, rank, Message::ADDFILEPARAMETER,
              sizeof(AddFileParameter)) {
 
-   size_t size = MIN(n.size(), 31);
-   n.copy(name, size);
-   name[size] = 0;
-
-   size = MIN(v.size(), 255);
-   v.copy(value, size);
-   value[size] = 0;
+      COPY_STRING(name, n);
+      COPY_STRING(value, v);
 }
 
 const char * AddFileParameter::getName() const {
@@ -208,13 +197,8 @@ SetFileParameter::SetFileParameter(const int moduleID, const int rank,
    : Message(moduleID, rank, Message::SETFILEPARAMETER,
              sizeof(SetFileParameter)), module(m) {
 
-   size_t size = MIN(n.size(), 31);
-   n.copy(name, size);
-   name[size] = 0;
-
-   size = MIN(v.size(), 255);
-   v.copy(value, size);
-   value[size] = 0;
+      COPY_STRING(name, n);
+      COPY_STRING(value, v);
 }
 
 int SetFileParameter::getModule() const {
@@ -238,9 +222,7 @@ AddFloatParameter::AddFloatParameter(const int moduleID, const int rank,
    : Message(moduleID, rank, Message::ADDFLOATPARAMETER,
              sizeof(AddFloatParameter)), value(v) {
 
-   size_t size = MIN(n.size(), 31);
-   n.copy(name, size);
-   name[size] = 0;
+      COPY_STRING(name, n);
 }
 
 const char * AddFloatParameter::getName() const {
@@ -259,9 +241,7 @@ SetFloatParameter::SetFloatParameter(const int moduleID, const int rank,
    : Message(moduleID, rank, Message::SETFLOATPARAMETER,
              sizeof(SetFloatParameter)), module(m), value(v) {
 
-   size_t size = MIN(n.size(), 31);
-   n.copy(name, size);
-   name[size] = 0;
+      COPY_STRING(name, n);
 }
 
 int SetFloatParameter::getModule() const {
@@ -285,9 +265,7 @@ AddIntParameter::AddIntParameter(const int moduleID, const int rank,
    : Message(moduleID, rank, Message::ADDINTPARAMETER,
              sizeof(AddIntParameter)), value(v) {
 
-   size_t size = MIN(n.size(), 31);
-   n.copy(name, size);
-   name[size] = 0;
+      COPY_STRING(name, n);
 }
 
 const char * AddIntParameter::getName() const {
@@ -306,9 +284,7 @@ SetIntParameter::SetIntParameter(const int moduleID, const int rank,
    : Message(moduleID, rank, Message::SETINTPARAMETER,
              sizeof(SetIntParameter)), module(m), value(v) {
 
-   size_t size = MIN(n.size(), 31);
-   n.copy(name, size);
-   name[size] = 0;
+      COPY_STRING(name, n);
 }
 
 int SetIntParameter::getModule() const {
@@ -332,9 +308,7 @@ AddVectorParameter::AddVectorParameter(const int moduleID, const int rank,
    : Message(moduleID, rank, Message::ADDVECTORPARAMETER,
              sizeof(AddVectorParameter)), value(v) {
 
-   size_t size = MIN(n.size(), 31);
-   n.copy(name, size);
-   name[size] = 0;
+      COPY_STRING(name, n);
 }
 
 const char * AddVectorParameter::getName() const {
@@ -353,9 +327,7 @@ SetVectorParameter::SetVectorParameter(const int moduleID, const int rank,
    : Message(moduleID, rank, Message::SETVECTORPARAMETER,
              sizeof(SetVectorParameter)), module(m), value(v) {
 
-   size_t size = MIN(n.size(), 31);
-   n.copy(name, size);
-   name[size] = 0;
+      COPY_STRING(name, n);
 }
 
 int SetVectorParameter::getModule() const {

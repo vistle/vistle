@@ -7,7 +7,8 @@
 #include "messagequeue.h"
 #include "object.h"
 
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+template<typename T>
+static T min(T a, T b) { return a<b ? a : b; }
 
 using namespace boost::interprocess;
 
@@ -145,7 +146,7 @@ Object::ptr Object::create(Object::Data *data) {
 Object::Data::Data(const Type type, const std::string & n,
                const int b, const int t): type(type), refcount(0), block(b), timestep(t) {
 
-   size_t size = MIN(n.size(), 31);
+   size_t size = min(n.size(), sizeof(name)-1);
    n.copy(name, size);
    name[size] = 0;
 }
