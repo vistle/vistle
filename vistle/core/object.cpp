@@ -82,9 +82,12 @@ void Shm::publish(const shm_handle_t & handle) {
 std::string Shm::createObjectID() {
 
    std::stringstream name;
-   name << "Object_" << std::setw(8) << std::setfill('0') << m_moduleID
-        << "_" << std::setw(8) << std::setfill('0') << m_rank
-        << "_" << std::setw(8) << std::setfill('0') << m_objectID++;
+   name << "m" << std::setw(8) << std::setfill('0') << m_moduleID
+        << "r" << std::setw(8) << std::setfill('0') << m_rank
+        << "id" << std::setw(8) << std::setfill('0') << m_objectID++
+        << "object";
+
+   std::cout << "name: " << name.str() << ", len: " << name.str().length() << ", size: " << name.str().size() << std::endl;
 
    return name.str();
 }
