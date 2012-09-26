@@ -68,6 +68,59 @@ struct shm {
    static void destroy(const std::string &name) { Shm::instance().getShm().destroy<T>(name.c_str()); }
 };
 
+template<typename T>
+class ShmVector {
+   public:
+      ShmVector(size_t size)
+         : refcount(0)
+      {
+         std::string n(Shm::instance().createObjectID());
+         size_t nsize = n.size();
+         if (nsize >= sizeof(name)) {
+            nsize = sizeof(name)-1;
+         }
+         n.copy(name, nsize);
+         assert(n.size() < sizeof(name));
+         x = Shm::instance().getShm().construct<typename shm<T>::vector>(name)(size, T(), shm<T>::alloc_inst());
+         ref();
+      }
+      ~ShmVector() {
+         unref();
+      }
+      void ref() {
+         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+         ++refcount;
+      }
+      void unref() {
+         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+         --refcount;
+         if (refcount == 0) {
+            shm<T>::destroy(name);
+         }
+      }
+      void* operator new(size_t size) {
+         return Shm::instance().getShm().allocate(size);
+      }
+      void operator delete(void *p) {
+         return Shm::instance().getShm().deallocate(p);
+      }
+
+      T &operator[](size_t i) { return x[i]; }
+      const T &operator[](size_t i) const { return x[i]; }
+
+      size_t size() const { return x->size(); }
+      void resize(size_t s) { x->resize(s); }
+
+      typename shm<T>::ptr &operator()() { return x; }
+      typename shm<const T>::ptr &operator()() const { return x; }
+
+   private:
+      boost::interprocess::interprocess_mutex mutex;
+      int refcount;
+      shm_name_t name;
+      typename shm<T>::ptr x;
+};
+
 #define V_OBJECT(Type) \
    public: \
    typedef boost::shared_ptr<Type> ptr; \
@@ -226,25 +279,25 @@ class Vec: public Object {
    Info *getInfo(Info *info = NULL) const;
 
    size_t getSize() const {
-      return d()->x->size();
+      return d()->x.size();
    }
 
    void setSize(const size_t size) {
       d()->x->resize(size);
    }
 
-   typename shm<T>::vector &x() const { return *d()->x; }
+   typename shm<T>::vector &x() const { return *d()->x(); }
    typename shm<T>::vector &x(int c) const { assert(c == 0 && "Vec only has one component"); return *d()->x; }
 
  protected:
    struct Data: public Base::Data {
 
-      typename shm<T>::ptr x;
+      ShmVector<T> x;
 
       Data(size_t size, const std::string &name,
             const int block, const int timestep)
          : Base::Data(s_type, name, block, timestep)
-           , x(shm<T>::construct_vector(size)) {
+           , x(size) {
            }
       static Data *create(size_t size, const int block, const int timestep) {
          std::string name = Shm::instance().createObjectID();
@@ -312,7 +365,7 @@ class Vec3: public Object {
    }
 
    size_t getSize() const {
-      return d()->x->size();
+      return d()->x.size();
    }
 
    void setSize(const size_t size) {
@@ -321,9 +374,9 @@ class Vec3: public Object {
       d()->z->resize(size);
    }
 
-   typename shm<T>::vector &x() const { return *d()->x; }
-   typename shm<T>::vector &y() const { return *d()->y; }
-   typename shm<T>::vector &z() const { return *d()->z; }
+   typename shm<T>::vector &x() const { return *d()->x(); }
+   typename shm<T>::vector &y() const { return *d()->y(); }
+   typename shm<T>::vector &z() const { return *d()->z(); }
    typename shm<T>::vector &x(int c) const {
       assert(c >= 0 && c<=2 && "Vec3 only has three components");
       switch(c) {
@@ -339,20 +392,21 @@ class Vec3: public Object {
  protected:
    struct Data: public Base::Data {
 
-      typename shm<T>::ptr x, y, z;
+      ShmVector<T> x, y, z;
+      //typename shm<T>::ptr x, y, z;
       Data(const size_t size, const std::string &name,
             const int block, const int timestep)
          : Base::Data(s_type, name, block, timestep)
-            , x(shm<T>::construct_vector(size))
-            , y(shm<T>::construct_vector(size))
-            , z(shm<T>::construct_vector(size)) {
+            , x(size)
+            , y(size)
+            , z(size) {
       }
       Data(const size_t size, Type id, const std::string &name,
             const int block, const int timestep)
          : Base::Data(id, name, block, timestep)
-            , x(shm<T>::construct_vector(size))
-            , y(shm<T>::construct_vector(size))
-            , z(shm<T>::construct_vector(size)) {
+            , x(size)
+            , y(size)
+            , z(size) {
       }
       static Data *create(size_t size, const int block, const int timestep) {
          std::string name = Shm::instance().createObjectID();
