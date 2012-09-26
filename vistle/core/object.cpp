@@ -85,7 +85,7 @@ std::string Shm::createObjectID() {
    name << "m" << std::setw(8) << std::setfill('0') << m_moduleID
         << "r" << std::setw(8) << std::setfill('0') << m_rank
         << "id" << std::setw(8) << std::setfill('0') << m_objectID++
-        << "object";
+        << "OBJ";
 
    std::cout << "name: " << name.str() << ", len: " << name.str().length() << ", size: " << name.str().size() << std::endl;
 
