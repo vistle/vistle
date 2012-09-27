@@ -1,6 +1,9 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
+
+#include "tools.h"
+
 #include <vector>
 
 #include <boost/scoped_ptr.hpp>
@@ -71,6 +74,8 @@ struct shm {
 template<typename T>
 class ShmVector {
    public:
+      typedef boost::interprocess::offset_ptr<ShmVector> ptr;
+
       ShmVector(size_t size = 0)
          : refcount(0)
       {
@@ -99,20 +104,23 @@ class ShmVector {
          }
       }
       void* operator new(size_t size) {
+         std::cerr << "SHM NEW:" << std::endl << vistle::backtrace() << std::endl;
          return Shm::instance().getShm().allocate(size);
       }
       void operator delete(void *p) {
          return Shm::instance().getShm().deallocate(p);
       }
 
-      T &operator[](size_t i) { return x[i]; }
-      const T &operator[](size_t i) const { return x[i]; }
+      T &operator[](size_t i) { return (*x)[i]; }
+      const T &operator[](size_t i) const { return (*x)[i]; }
 
       size_t size() const { return x->size(); }
       void resize(size_t s) { x->resize(s); }
 
+#if 1
       typename shm<T>::ptr &operator()() { return x; }
       typename shm<const T>::ptr &operator()() const { return x; }
+#endif
 
    private:
       boost::interprocess::interprocess_mutex mutex;
@@ -221,10 +229,12 @@ public:
 
       Data(Type id, const std::string &name, int b, int t);
       void ref() {
+         std::cerr << "REF:" << std::endl << vistle::backtrace() << std::endl;
          boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
          ++refcount;
       }
       void unref() {
+         std::cerr << "UNREF:" << std::endl << vistle::backtrace() << std::endl;
          boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
          --refcount;
 #if 0
@@ -291,25 +301,26 @@ class Vec: public Object {
    Info *getInfo(Info *info = NULL) const;
 
    size_t getSize() const {
-      return d()->x.size();
+      return d()->x->size();
    }
 
    void setSize(const size_t size) {
       d()->x->resize(size);
    }
 
-   typename shm<T>::vector &x() const { return *d()->x(); }
-   typename shm<T>::vector &x(int c) const { assert(c == 0 && "Vec only has one component"); return *d()->x; }
+   typename shm<T>::vector &x() const { return *(*d()->x)(); }
+   typename shm<T>::vector &x(int c) const { assert(c == 0 && "Vec only has one component"); return x(); }
 
  protected:
    struct Data: public Base::Data {
 
-      ShmVector<T> x;
+      //typename shm<T>::ptr x;
+      typename ShmVector<T>::ptr x;
 
       Data(size_t size, const std::string &name,
             const int block, const int timestep)
          : Base::Data(s_type, name, block, timestep)
-           , x(size) {
+           , x( new ShmVector<T>(size)) {
            }
       static Data *create(size_t size, const int block, const int timestep) {
          std::string name = Shm::instance().createObjectID();
@@ -377,7 +388,7 @@ class Vec3: public Object {
    }
 
    size_t getSize() const {
-      return d()->x.size();
+      return d()->x->size();
    }
 
    void setSize(const size_t size) {
@@ -386,39 +397,39 @@ class Vec3: public Object {
       d()->z->resize(size);
    }
 
-   typename shm<T>::vector &x() const { return *d()->x(); }
-   typename shm<T>::vector &y() const { return *d()->y(); }
-   typename shm<T>::vector &z() const { return *d()->z(); }
+   typename shm<T>::vector &x() const { return *(*d()->x)(); }
+   typename shm<T>::vector &y() const { return *(*d()->y)(); }
+   typename shm<T>::vector &z() const { return *(*d()->z)(); }
    typename shm<T>::vector &x(int c) const {
       assert(c >= 0 && c<=2 && "Vec3 only has three components");
       switch(c) {
          case 0:
-         return *d()->x;
+         return x();
          case 1:
-         return *d()->y;
+         return y();
          case 2:
-         return *d()->z;
+         return z();
       }
    }
 
  protected:
    struct Data: public Base::Data {
 
-      ShmVector<T> x, y, z;
+      typename ShmVector<T>::ptr x, y, z;
       //typename shm<T>::ptr x, y, z;
       Data(const size_t size, const std::string &name,
             const int block, const int timestep)
          : Base::Data(s_type, name, block, timestep)
-            , x(size)
-            , y(size)
-            , z(size) {
+            , x(new ShmVector<T>(size))
+            , y(new ShmVector<T>(size))
+            , z(new ShmVector<T>(size)) {
       }
       Data(const size_t size, Type id, const std::string &name,
             const int block, const int timestep)
          : Base::Data(id, name, block, timestep)
-            , x(size)
-            , y(size)
-            , z(size) {
+            , x(new ShmVector<T>(size))
+            , y(new ShmVector<T>(size))
+            , z(new ShmVector<T>(size)) {
       }
       static Data *create(size_t size, const int block, const int timestep) {
          std::string name = Shm::instance().createObjectID();

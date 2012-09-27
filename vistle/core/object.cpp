@@ -294,7 +294,7 @@ size_t Triangles::getNumCorners() const {
 
 size_t Triangles::getNumVertices() const {
 
-   return d()->x.size();
+   return d()->x->size();
 }
 
 Indexed::Info *Indexed::getInfo(Indexed::Info *info) const {
@@ -388,7 +388,7 @@ size_t Indexed::getNumCorners() const {
 
 size_t Indexed::getNumVertices() const {
 
-   return d()->x.size();
+   return d()->x->size();
 }
 
 Polygons::Polygons(const size_t numElements,
