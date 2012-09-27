@@ -191,7 +191,7 @@ class Vec: public Object {
 
    Vec(const size_t size = 0,
          const int block = -1, const int timestep = -1)
-      : Object(Data::create(s_type, block, timestep)) {
+      : Object(Data::create(size, block, timestep)) {
 
    }
 
@@ -263,7 +263,7 @@ class Vec3: public Object {
 
    Vec3(const size_t size = 0,
         const int block = -1, const int timestep = -1)
-      : Object(Data::create(s_type, block, timestep)) {
+      : Object(Data::create(size, block, timestep)) {
 
    }
 
