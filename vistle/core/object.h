@@ -71,7 +71,7 @@ struct shm {
 template<typename T>
 class ShmVector {
    public:
-      ShmVector(size_t size)
+      ShmVector(size_t size = 0)
          : refcount(0)
       {
          std::string n(Shm::instance().createObjectID());
