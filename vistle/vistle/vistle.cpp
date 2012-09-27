@@ -85,17 +85,17 @@ void Vistle::config() {
    enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER, WRITEVISTLE };
 
    spawn(RGEO,  "ReadVistle");
-   /*
    spawn(RGRID, "ReadCovise");
    spawn(RPRES, "ReadCovise");
-   */
    spawn(CUTGEO, "CutGeometry");
-   /*
    spawn(CUTSURF, "CuttingSurface");
+   /*
    spawn(ISOSURF, "IsoSurface");
+   */
 
    spawn(COLOR, "Color");
    spawn(COLLECT, "Collect");
+   /*
    spawn(WRITEVISTLE, "WriteVistle");
    */
    spawn(RENDERER, "OSGRenderer");
