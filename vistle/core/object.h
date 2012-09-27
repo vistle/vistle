@@ -127,7 +127,7 @@ class ShmVector {
    typedef boost::shared_ptr<const Type> const_ptr; \
    static boost::shared_ptr<const Type> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Type>(ptr); } \
    static boost::shared_ptr<Type> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Type>(ptr); } \
-   virtual ~Type() { if (m_data) { d()->unref(); if (d()->refcount == 0) { shm<Type::Data>::destroy(getName()); } m_data = NULL; } } \
+   virtual ~Type() { if (m_data) { d()->unref(); if (d()->refcount == 0) { std::cerr << "DESTROY: " << getName() << std::endl; shm<Type::Data>::destroy(getName()); } m_data = NULL; } } \
    protected: \
    struct Data; \
    Data *d() const { return static_cast<Data *>(m_data); } \
@@ -196,6 +196,18 @@ public:
 
    void setBlock(const int block);
    void setTimestep(const int timestep);
+
+   void ref() const {
+      d()->ref();
+   }
+
+   void unref() const {
+      d()->unref();
+   }
+
+   int refcount() const {
+      return d()->refcount;
+   }
 
  protected:
    struct Data {

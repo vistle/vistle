@@ -319,6 +319,7 @@ bool Module::addObject(const std::string & portName,
 
    if (i != outputPorts.end()) {
       i->second->push_back(handle);
+      vistle::Shm::instance().getObjectFromHandle(handle)->ref();
       message::AddObject message(moduleID, rank, portName, handle);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return true;
@@ -368,6 +369,7 @@ void Module::removeObject(const std::string &portName, vistle::Object::const_ptr
       for (shmit = i->second->begin(); shmit != i->second->end(); ) {
          if (handle == *shmit) {
             erased = true;
+            object->unref();
             shmit = i->second->erase(shmit);
          } else
             shmit ++;
@@ -402,7 +404,9 @@ vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
 
       shm_handle_t handle = i->second->front();
       i->second->pop_front();
-      return Shm::instance().getObjectFromHandle(handle);
+      Object::const_ptr obj = Shm::instance().getObjectFromHandle(handle);
+      obj->unref();
+      return obj;
    }
 
    return vistle::Object::ptr();
@@ -446,6 +450,8 @@ bool Module::dispatch() {
       vistle::message::ModuleExit m(moduleID, rank);
       sendMessageQueue->getMessageQueue().send(&m, sizeof(m), 0);
    }
+
+   //sleep(1);
 
    return done;
 }

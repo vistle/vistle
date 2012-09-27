@@ -87,8 +87,6 @@ std::string Shm::createObjectID() {
         << "id" << std::setw(8) << std::setfill('0') << m_objectID++
         << "OBJ";
 
-   std::cout << "name: " << name.str() << ", len: " << name.str().length() << ", size: " << name.str().size() << std::endl;
-
    return name.str();
 }
 
@@ -152,6 +150,8 @@ Object::Data::Data(const Type type, const std::string & n,
    size_t size = min(n.size(), sizeof(name)-1);
    n.copy(name, size);
    name[size] = 0;
+
+   std::cerr << "NEW: " << name << std::endl;
 }
 
 Object::Object(Object::Data *data)

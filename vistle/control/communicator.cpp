@@ -328,7 +328,8 @@ bool Communicator::handleMessage(const message::Message &message) {
          const message::AddObject &m =
             static_cast<const message::AddObject &>(message);
          std::cout << "Module " << m.getModuleID() << ": "
-                   << "AddObject " << m.getHandle()
+                   << "AddObject " << m.getHandle() << " (" << Shm::instance().getObjectFromHandle(m.getHandle())->getName() << ")"
+                   << " ref " << Shm::instance().getObjectFromHandle(m.getHandle())->refcount()
                    << " to port " << m.getPortName() << std::endl;
 
          Port *port = portManager.getPort(m.getModuleID(),
@@ -344,6 +345,7 @@ bool Communicator::handleMessage(const message::Message &message) {
                std::map<int, message::MessageQueue *>::iterator mi =
                   sendMessageQueue.find((*pi)->getModuleID());
                if (mi != sendMessageQueue.end()) {
+                  Shm::instance().getObjectFromHandle(m.getHandle())->ref();
                   const message::AddObject a(m.getModuleID(), m.getRank(),
                                              (*pi)->getName(), m.getHandle());
                   const message::Compute c(moduleID, rank,
@@ -359,6 +361,7 @@ bool Communicator::handleMessage(const message::Message &message) {
                       << m.getHandle() << "] to port ["
                       << m.getPortName() << "]: port not found" << std::endl;
 
+         Shm::instance().getObjectFromHandle(m.getHandle())->unref();
          break;
       }
 
