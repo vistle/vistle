@@ -23,8 +23,11 @@ template<> size_t memorySize<4>() {
 
 template<> size_t memorySize<8>() {
 
-   //return 68719476736;
-   return 1 << 28;
+#ifdef __APPLE__
+   return (size_t)1 << 30;
+#else
+   return (size_t)1 << 36;
+#endif
 }
 
 Shm* Shm::s_singleton = NULL;
