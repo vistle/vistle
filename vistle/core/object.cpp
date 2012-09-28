@@ -437,13 +437,9 @@ UnstructuredGrid::Data::Data(const size_t numElements,
                                    const size_t numVertices,
                                    const std::string & name,
                                    const int block, const int timestep)
-   : Base::Data(Object::UNSTRUCTUREDGRID, name, block, timestep)
+   : UnstructuredGrid::Base::Data(numElements, numCorners, numVertices,
+         Object::UNSTRUCTUREDGRID, name, block, timestep)
    , tl(shm<char>::construct_vector(numElements))
-   , el(shm<size_t>::construct_vector(numElements))
-   , cl(shm<size_t>::construct_vector(numCorners))
-   , x(shm<Scalar>::construct_vector(numVertices))
-   , y(shm<Scalar>::construct_vector(numVertices))
-   , z(shm<Scalar>::construct_vector(numVertices))
 {
 }
 
@@ -462,22 +458,6 @@ UnstructuredGrid::Data * UnstructuredGrid::Data::create(const size_t numElements
    */
    return u;
 }
-
-size_t UnstructuredGrid::getNumElements() const {
-
-   return d()->el->size();
-}
-
-size_t UnstructuredGrid::getNumCorners() const {
-
-   return d()->cl->size();
-}
-
-size_t UnstructuredGrid::getNumVertices() const {
-
-   return d()->x->size();
-}
-
 
 Set::Set(const size_t numElements,
                   const int block, const int timestep)

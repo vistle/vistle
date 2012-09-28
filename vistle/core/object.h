@@ -694,11 +694,11 @@ class Polygons: public Indexed {
 };
 
 
-class UnstructuredGrid: public Object {
+class UnstructuredGrid: public Indexed {
    V_OBJECT(UnstructuredGrid);
 
  public:
-   typedef Object Base;
+   typedef Indexed Base;
 
    enum Type {
       NONE        =  0,
@@ -714,9 +714,6 @@ class UnstructuredGrid: public Object {
    };
 
    struct Info: public Base::Info {
-      uint64_t numElements;
-      uint64_t numCorners;
-      uint64_t numVertices;
    };
 
    UnstructuredGrid(const size_t numElements = 0,
@@ -726,23 +723,13 @@ class UnstructuredGrid: public Object {
          const int timestep = -1);
 
    Info *getInfo(Info *info = NULL) const;
-   size_t getNumElements() const;
-   size_t getNumCorners() const;
-   size_t getNumVertices() const;
 
    shm<char>::vector &tl() const { return *d()->tl; }
-   shm<size_t>::vector &el() const { return *d()->el; }
-   shm<size_t>::vector &cl() const { return *d()->cl; }
-   shm<Scalar>::vector &x() const { return *d()->x; }
-   shm<Scalar>::vector &y() const { return *d()->y; }
-   shm<Scalar>::vector &z() const { return *d()->z; }
 
  protected:
    struct Data: public Base::Data {
 
       shm<char>::ptr tl;
-      shm<size_t>::ptr el, cl;
-      shm<Scalar>::ptr x, y, z;
 
       Data(const size_t numElements, const size_t numCorners,
                     const size_t numVertices, const std::string & name,
@@ -759,11 +746,6 @@ class UnstructuredGrid: public Object {
          void serialize(Archive &ar, const unsigned int version) {
          ar & boost::serialization::base_object<Base::Data>(*this);
          ar & tl;
-         ar & el;
-         ar & cl;
-         ar & x;
-         ar & y;
-         ar & z;
       }
    };
 
