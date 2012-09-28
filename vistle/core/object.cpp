@@ -492,6 +492,16 @@ Set::Data::Data(const size_t numElements, const std::string & name,
 {
 }
 
+Set::Data::~Data() {
+
+   for (size_t i = 0; i < elements->size(); ++i) {
+
+      if ((*elements)[i]) {
+         (*elements)[i]->ref();
+      }
+   }
+}
+
 
 Set::Data * Set::Data::Data::create(const size_t numElements,
                   const int block, const int timestep) {
@@ -528,16 +538,24 @@ void Set::setElement(const size_t index, Object::const_ptr object) {
       d()->elements->resize(index+1);
    }
 
-   if (object)
+   if (Object::const_ptr old = getElement(index)) {
+      old->unref();
+   }
+
+   if (object) {
+      object->ref();
       (*d()->elements)[index] = object->d();
-   else
+   } else {
       (*d()->elements)[index] = NULL;
+   }
 }
 
 void Set::addElement(Object::const_ptr object) {
 
-   if (object)
+   if (object) {
+      object->ref();
       d()->elements->push_back(object->d());
+   }
 }
 
 Geometry::Geometry(const int block, const int timestep)

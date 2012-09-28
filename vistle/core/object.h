@@ -802,6 +802,7 @@ class Set: public Object {
 
       Data(const size_t numElements, const std::string & name,
             const int block, const int timestep);
+      ~Data();
       static Data *create(const size_t numElements = 0,
             const int block = -1, const int timestep = -1);
 
