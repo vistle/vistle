@@ -852,6 +852,7 @@ class Geometry: public Object {
 
       Data(const std::string & name,
             const int block, const int timestep);
+      ~Data();
       static Data *create(const int block = -1, const int timestep = -1);
 
       private:

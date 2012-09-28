@@ -571,8 +571,34 @@ Geometry::Data::Data(const std::string & name,
    , normals(NULL)
    , texture(NULL)
 {
+
+   if (geometry)
+      geometry->ref();
+
+   if (colors)
+      colors->ref();
+
+   if (normals)
+      normals->ref();
+
+   if (texture)
+      texture->ref();
 }
 
+Geometry::Data::~Data() {
+
+   if (geometry)
+      geometry->unref();
+
+   if (colors)
+      colors->unref();
+
+   if (normals)
+      normals->unref();
+
+   if (texture)
+      texture->unref();
+}
 
 Geometry::Data * Geometry::Data::create(const int block, const int timestep) {
 
@@ -589,22 +615,38 @@ Geometry::Data * Geometry::Data::create(const int block, const int timestep) {
 
 void Geometry::setGeometry(Object::const_ptr g) {
 
+   if (Object::const_ptr old = geometry())
+      old->unref();
    d()->geometry = g->d();
+   if (g)
+      g->ref();
 }
 
 void Geometry::setColors(Object::const_ptr c) {
 
+   if (Object::const_ptr old = colors())
+      old->unref();
    d()->colors = c->d();
+   if (c)
+      c->ref();
 }
 
 void Geometry::setTexture(Object::const_ptr t) {
 
+   if (Object::const_ptr old = texture())
+      old->unref();
    d()->texture = t->d();
+   if (t)
+      t->ref();
 }
 
 void Geometry::setNormals(Object::const_ptr n) {
 
+   if (Object::const_ptr old = normals())
+      old->unref();
    d()->normals = n->d();
+   if (n)
+      n->ref();
 }
 
 Object::const_ptr Geometry::geometry() const {
