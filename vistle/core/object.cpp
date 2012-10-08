@@ -153,8 +153,6 @@ Object::Data::Data(const Type type, const std::string & n,
    size_t size = min(n.size(), sizeof(name)-1);
    n.copy(name, size);
    name[size] = 0;
-
-   std::cerr << "NEW: " << name << std::endl;
 }
 
 Object::Object(Object::Data *data)
