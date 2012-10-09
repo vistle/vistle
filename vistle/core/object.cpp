@@ -52,6 +52,35 @@ Shm::~Shm() {
    delete m_shm;
 }
 
+std::string Shm::shmIdFilename() {
+
+   std::stringstream name;
+   name << "/tmp/vistle_shmids_" << getuid() << ".txt";
+   return name.str();
+}
+
+bool Shm::cleanAll() {
+
+   std::fstream shmlist;
+   shmlist.open(shmIdFilename().c_str(), std::ios::in);
+   while (!shmlist.eof() && !shmlist.fail()) {
+      std::string shmid;
+      shmlist >> shmid;
+      if (!shmid.empty()) {
+         std::cerr << "removing shm id " << shmid << std::endl;
+         shared_memory_object::remove(shmid.c_str());
+      }
+   }
+   shmlist.close();
+
+   shmlist.open(shmIdFilename().c_str(), std::ios::out|std::ios::trunc);
+   shmlist.close();
+
+   remove(shmIdFilename().c_str());
+
+   return true;
+}
+
 const std::string &Shm::getName() const {
 
    return m_name;
@@ -68,6 +97,13 @@ Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
                     message::MessageQueue * mq) {
 
    if (!s_singleton) {
+      {
+         // store name of shared memory segment for possible clean up
+         std::ofstream shmlist;
+         shmlist.open(shmIdFilename().c_str(), std::ios::out | std::ios::app);
+         shmlist << name << std::endl;
+      }
+
       size_t memsize = memorySize<sizeof(void *)>();
 
       do {

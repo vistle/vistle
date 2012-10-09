@@ -19,13 +19,6 @@ int main(int argc, char ** argv) {
 
    MPI_Init(&argc, &argv);
 
-#if 0
-   std::string name = "vistle_";
-   name += gethostname();
-   name += "_";
-   name += 
-#endif
-
    Vistle(argc, argv).run();
 
    MPI_Finalize();

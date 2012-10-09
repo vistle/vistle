@@ -106,7 +106,6 @@ static std::string getbindir(int argc, char *argv[])
 
       bool found = false;
       if (!strchr(argv[0], '/')) {
-         size_t len = strlen(argv[0]);
 
          if(const char *path = getenv("PATH")) {
             std::vector<std::string> components;

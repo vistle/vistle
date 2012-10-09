@@ -53,6 +53,9 @@ class Shm {
    boost::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle);
    shm_handle_t getHandleFromObject(boost::shared_ptr<const Object> object);
 
+   static std::string shmIdFilename();
+   static bool cleanAll();
+
  private:
    Shm(const std::string &name, const int moduleID, const int rank, const size_t size,
        message::MessageQueue *messageQueue, bool create);
