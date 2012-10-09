@@ -42,9 +42,139 @@ namespace vistle {
 static int acceptClient();
 #endif
 
-Communicator::Communicator(int r, int s)
+static void splitpath(const std::string &value, std::vector<std::string> *components)
+{
+#ifdef _WIN32
+   const char *sep = ";";
+#else
+   const char *sep = ":";
+#endif
+
+   std::string::size_type begin = 0;
+   do
+   {
+      std::string::size_type end = value.find(sep, begin);
+
+      std::string c;
+      if (end != std::string::npos)
+      {
+         c = value.substr(begin, end-begin);
+         ++end;
+      }
+      else
+      {
+         c = value.substr(begin);
+      }
+      begin = end;
+
+      if (!c.empty())
+         components->push_back(c);
+   }
+   while(begin != std::string::npos);
+}
+
+static std::string getbindir(int argc, char *argv[])
+{
+   char *wd = getcwd(NULL, 0);
+   if (!wd) {
+
+      std::cerr << "failed to determine working directory: " << strerror(errno) << std::endl;
+      exit(1);
+   }
+   std::string cwd(wd);
+   free(wd);
+
+   // determine complete path to executable
+   std::string executable;
+#ifdef _WIN32
+   char buf[2000];
+   DWORD sz = GetModuleFileName(NULL, buf, sizeof(buf));
+   if (sz != 0) {
+
+      executable = buf;
+   } else {
+
+      std::cerr << "getbindir(): GetModuleFileName failed - error: " << GetLastError() << std::endl;
+   }
+#else
+   char buf[PATH_MAX];
+   ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf));
+   if(len != -1) {
+
+      executable = std::string(buf, len);
+   } else if (argc >= 1) {
+
+      bool found = false;
+      if (!strchr(argv[0], '/')) {
+         size_t len = strlen(argv[0]);
+
+         if(const char *path = getenv("PATH")) {
+            std::vector<std::string> components;
+            splitpath(path, &components);
+            for(size_t i=0; i<components.size(); ++i) {
+
+               std::string component = components[i];
+               if (component[0] != '/')
+                  component = cwd + "/" + component;
+
+               DIR *dir = opendir(component.c_str());
+               if (!dir) {
+                  std::cerr << "failed to open directory " << component << ": " << strerror(errno) << std::endl;
+                  continue;
+               }
+
+               while (struct dirent *ent = readdir(dir)) {
+                  if (!strcmp(ent->d_name, argv[0])) {
+                     found = true;
+                     break;
+                  }
+               }
+
+               if (found) {
+                  executable = component + "/" + argv[0];
+                  break;
+               }
+            }
+         }
+      } else if (argv[0][0] != '/') {
+         executable = cwd + "/" + argv[0];
+      } else {
+         executable = argv[0];
+      }
+   }
+#endif
+
+   // guess vistle bin directory
+   if (!executable.empty()) {
+
+      std::string dir = executable;
+#ifdef _WIN32
+      std::string::size_type idx = dir.find_last_of("\\/");
+#else
+      std::string::size_type idx = dir.rfind('/');
+#endif
+      if (idx == std::string::npos) {
+
+         dir = cwd;
+      } else {
+
+         dir = executable.substr(0, idx);
+      }
+
+#ifdef DEBUG
+      std::cerr << "vistle bin directory determined to be " << dir << std::endl;
+#endif
+      return dir;
+   }
+
+   return std::string();
+}
+
+Communicator::Communicator(int argc, char *argv[], int r, int s)
    : rank(r), size(s), socketBuffer(NULL), clientSocket(-1), moduleID(0),
      mpiReceiveBuffer(NULL), mpiMessageSize(0) {
+
+   m_bindir = getbindir(argc, argv);
 
    socketBuffer = new unsigned char[64];
    mpiReceiveBuffer = new char[message::Message::MESSAGE_SIZE];
@@ -222,8 +352,7 @@ bool Communicator::handleMessage(const message::Message &message) {
             static_cast<const message::Spawn &>(message);
          int moduleID = spawn.getSpawnID();
 
-         std::stringstream name;
-         name << "bin/" << spawn.getName();
+         std::string name = m_bindir + "/" + spawn.getName();
 
          std::stringstream modID;
          modID << moduleID;
@@ -248,7 +377,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          MPI_Comm interComm;
          char *argv[2] = { strdup(modID.str().c_str()), NULL };
 
-         MPI_Comm_spawn(strdup(name.str().c_str()), argv, size, MPI_INFO_NULL,
+         MPI_Comm_spawn(strdup(name.c_str()), argv, size, MPI_INFO_NULL,
                         0, MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
 
          break;

@@ -38,8 +38,8 @@ namespace vistle {
 
 using namespace message;
 
-Executor::Executor(const std::string &name)
-   : m_name(name)
+Executor::Executor(int argc, char *argv[])
+   : m_name("vistle")
      , m_rank(-1)
      , m_size(-1)
      , m_comm(NULL)
@@ -86,7 +86,7 @@ Executor::Executor(const std::string &name)
       vistle::Shm::instance(0, m_rank, NULL);
    MPI_Barrier(MPI_COMM_WORLD);
 
-   m_comm = new vistle::Communicator(m_rank, m_size);
+   m_comm = new vistle::Communicator(argc, argv, m_rank, m_size);
 }
 
 Executor::~Executor()

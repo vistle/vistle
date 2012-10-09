@@ -22,7 +22,7 @@ namespace message {
 class Communicator {
 
  public:
-   Communicator(int rank, int size);
+   Communicator(int argc, char *argv[], int rank, int size);
    ~Communicator();
 
    bool dispatch();
@@ -32,6 +32,8 @@ class Communicator {
    int getSize() const;
 
  private:
+
+   std::string m_bindir;
 
    const int rank;
    const int size;

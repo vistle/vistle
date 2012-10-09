@@ -11,7 +11,7 @@
 class Vistle: public vistle::Executor {
 
    public:
-   Vistle() : Executor("vistle") {}
+   Vistle(int argc, char *argv[]) : Executor(argc, argv) {}
    void config();
 };
 
@@ -19,7 +19,14 @@ int main(int argc, char ** argv) {
 
    MPI_Init(&argc, &argv);
 
-   Vistle().run();
+#if 0
+   std::string name = "vistle_";
+   name += gethostname();
+   name += "_";
+   name += 
+#endif
+
+   Vistle(argc, argv).run();
 
    MPI_Finalize();
    

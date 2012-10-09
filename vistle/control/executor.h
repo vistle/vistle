@@ -18,7 +18,7 @@ class Executor {
 
    public:
 
-      Executor(const std::string &name);
+      Executor(int argc, char *argv[]);
       ~Executor();
 
       virtual void config() = 0;
