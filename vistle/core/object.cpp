@@ -334,7 +334,7 @@ Triangles::Data::Data(const size_t numCorners, const size_t numVertices,
    : Base::Data(numCorners,
          Object::TRIANGLES, name,
          block, timestep)
-   , cl(shm<size_t>::construct_vector(numCorners))
+   , cl(new ShmVector<size_t>(numCorners))
 {
 }
 
@@ -403,8 +403,8 @@ Indexed::Data::Data(const size_t numElements, const size_t numCorners,
              const int block, const int timestep)
    : Indexed::Base::Data(numVertices, id, name,
          block, timestep)
-   , el(shm<size_t>::construct_vector(numElements))
-   , cl(shm<size_t>::construct_vector(numCorners))
+   , el(new ShmVector<size_t>(numElements))
+   , cl(new ShmVector<size_t>(numCorners))
 {
 }
 
@@ -522,7 +522,7 @@ UnstructuredGrid::Data::Data(const size_t numElements,
                                    const int block, const int timestep)
    : UnstructuredGrid::Base::Data(numElements, numCorners, numVertices,
          Object::UNSTRUCTUREDGRID, name, block, timestep)
-   , tl(shm<char>::construct_vector(numElements))
+   , tl(new ShmVector<char>(numElements))
 {
 }
 
@@ -551,7 +551,7 @@ Set::Set(const size_t numElements,
 Set::Data::Data(const size_t numElements, const std::string & name,
          const int block, const int timestep)
    : Set::Base::Data(Object::SET, name, block, timestep)
-     , elements(shm<offset_ptr<Object::Data> >::construct_vector(numElements))
+     , elements(new ShmVector<offset_ptr<Object::Data> >(numElements))
 {
 }
 
@@ -745,8 +745,8 @@ Texture1D::Data::Data(const std::string &name, const size_t width,
    : Texture1D::Base::Data(Object::TEXTURE1D, name, block, timestep)
    , min(mi)
    , max(ma)
-   , pixels(shm<unsigned char>::construct_vector(width * 4))
-   , coords(shm<Scalar>::construct_vector(1))
+   , pixels(new ShmVector<unsigned char>(width * 4))
+   , coords(new ShmVector<Scalar>(1))
 {
 
 #if  0

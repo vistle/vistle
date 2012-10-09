@@ -129,6 +129,8 @@ class ShmVector {
       typename shm<T>::ptr &operator()() { return x; }
       typename shm<const T>::ptr &operator()() const { return x; }
 
+      void push_back(const T &d) { x->push_back(d); }
+
    private:
       boost::interprocess::interprocess_mutex mutex;
       int refcount;
@@ -324,7 +326,7 @@ class Vec: public Object {
       Data(size_t size, const std::string &name,
             const int block, const int timestep)
          : Base::Data(s_type, name, block, timestep)
-           , x( new ShmVector<T>(size)) {
+           , x(new ShmVector<T>(size)) {
            }
       static Data *create(size_t size, const int block, const int timestep) {
          std::string name = Shm::instance().createObjectID();
@@ -564,12 +566,12 @@ class Triangles: public Coords {
    size_t getNumCorners() const;
    size_t getNumVertices() const;
 
-   shm<size_t>::vector &cl() const { return *d()->cl; }
+   shm<size_t>::vector &cl() const { return *(*d()->cl)(); }
 
  protected:
    struct Data: public Base::Data {
 
-      shm<size_t>::ptr cl;
+      ShmVector<size_t>::ptr cl;
 
       Data(const size_t numCorners, const size_t numVertices,
             const std::string & name,
@@ -604,13 +606,13 @@ class Indexed: public Coords {
    size_t getNumCorners() const;
    size_t getNumVertices() const;
 
-   shm<size_t>::vector &el() const { return *d()->el; }
-   shm<size_t>::vector &cl() const { return *d()->cl; }
+   shm<size_t>::vector &cl() const { return *(*d()->cl)(); }
+   shm<size_t>::vector &el() const { return *(*d()->el)(); }
 
  protected:
 
    struct Data: public Base::Data {
-      shm<size_t>::ptr el, cl;
+      ShmVector<size_t>::ptr el, cl;
 
       Data(const size_t numElements, const size_t numCorners,
            const size_t numVertices,
@@ -727,12 +729,12 @@ class UnstructuredGrid: public Indexed {
 
    Info *getInfo(Info *info = NULL) const;
 
-   shm<char>::vector &tl() const { return *d()->tl; }
+   shm<char>::vector &tl() const { return *(*d()->tl)(); }
 
  protected:
    struct Data: public Base::Data {
 
-      shm<char>::ptr tl;
+      ShmVector<char>::ptr tl;
 
       Data(const size_t numElements, const size_t numCorners,
                     const size_t numVertices, const std::string & name,
@@ -778,12 +780,12 @@ class Set: public Object {
    Object::const_ptr getElement(const size_t index) const;
    void setElement(const size_t index, Object::const_ptr obj);
    void addElement(Object::const_ptr obj);
-   shm<boost::interprocess::offset_ptr<Object::Data> >::vector &elements() const { return *d()->elements; }
+   shm<boost::interprocess::offset_ptr<Object::Data> >::vector &elements() const { return *(*d()->elements)(); }
 
  protected:
    struct Data: public Base::Data {
 
-      shm<boost::interprocess::offset_ptr<Object::Data> >::ptr elements;
+      ShmVector<boost::interprocess::offset_ptr<Object::Data> >::ptr elements;
 
       Data(const size_t numElements, const std::string & name,
             const int block, const int timestep);
@@ -873,16 +875,16 @@ class Texture1D: public Object {
    Info *getInfo(Info *info = NULL) const;
    size_t getNumElements() const;
    size_t getWidth() const;
-   shm<unsigned char>::vector &pixels() const { return *d()->pixels; }
-   shm<Scalar>::vector &coords() const { return *d()->coords; }
+   shm<unsigned char>::vector &pixels() const { return *(*d()->pixels)(); }
+   shm<Scalar>::vector &coords() const { return *(*d()->coords)(); }
 
  protected:
    struct Data: public Base::Data {
       Scalar min;
       Scalar max;
 
-      shm<unsigned char>::ptr pixels;
-      shm<Scalar>::ptr coords;
+      ShmVector<unsigned char>::ptr pixels;
+      ShmVector<Scalar>::ptr coords;
 
       static Data *create(const size_t width = 0,
             const Scalar min = 0, const Scalar max = 0,
