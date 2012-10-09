@@ -13,7 +13,7 @@ std::string MessageQueue::createName(const char * prefix,
                                      const int moduleID, const int rank) {
 
    std::stringstream mqID;
-   mqID << "vistle" << prefix << std::setw(8) << std::setfill('0') << moduleID
+   mqID << "mq_" << Shm::instance().getName() << "_" << prefix << "_" << std::setw(8) << std::setfill('0') << moduleID
         << "_" << std::setw(8) << std::setfill('0') << rank;
 
    return mqID.str();
@@ -26,6 +26,12 @@ MessageQueue * MessageQueue::create(const std::string & n) {
 }
 
 MessageQueue * MessageQueue::open(const std::string & n) {
+
+   {
+      std::ofstream f;
+      f.open(Shm::shmIdFilename().c_str(), std::ios::app);
+      f << n << std::endl;
+   }
 
    return new MessageQueue(n, open_only);
 }

@@ -68,7 +68,10 @@ bool Shm::cleanAll() {
       shmlist >> shmid;
       if (!shmid.empty()) {
          std::cerr << "removing shm id " << shmid << std::endl;
-         shared_memory_object::remove(shmid.c_str());
+         if (shmid.find("mq_") == 0)
+            message_queue::remove(shmid.c_str());
+         else
+            shared_memory_object::remove(shmid.c_str());
       }
    }
    shmlist.close();

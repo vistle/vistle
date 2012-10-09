@@ -50,16 +50,16 @@ Module::Module(const std::string &n, const std::string &shmname,
              << std::endl;
 #endif
 
-   std::string smqName =
-      message::MessageQueue::createName("rmq", moduleID, rank);
-   std::string rmqName =
-      message::MessageQueue::createName("smq", moduleID, rank);
-
    try {
+      Shm::attach(shmname, moduleID, rank, sendMessageQueue);
+
+      std::string smqName =
+         message::MessageQueue::createName("rmq", moduleID, rank);
+      std::string rmqName =
+         message::MessageQueue::createName("smq", moduleID, rank);
+
       sendMessageQueue = message::MessageQueue::open(smqName);
       receiveMessageQueue = message::MessageQueue::open(rmqName);
-
-      Shm::attach(shmname, moduleID, rank, sendMessageQueue);
 
    } catch (interprocess_exception &ex) {
       std::cout << "module " << moduleID << " [" << rank << "/" << size << "] "
