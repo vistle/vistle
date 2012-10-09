@@ -32,19 +32,39 @@ template<> size_t memorySize<8>() {
 
 Shm* Shm::s_singleton = NULL;
 
-Shm::Shm(const int m, const int r, const size_t size,
-         message::MessageQueue * mq)
-   : m_moduleID(m), m_rank(r), m_objectID(0), m_messageQueue(mq) {
+Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
+         message::MessageQueue * mq, bool create)
+   : m_name(name), m_created(create), m_moduleID(m), m_rank(r), m_objectID(0), m_messageQueue(mq) {
 
-   m_shm = new managed_shared_memory(open_or_create, "vistle", size);
+      if (create)
+         m_shm = new managed_shared_memory(open_or_create, m_name.c_str(), size);
+      else
+         m_shm = new managed_shared_memory(open_only, m_name.c_str());
 }
 
 Shm::~Shm() {
 
+   if (m_created) {
+      shared_memory_object::remove(m_name.c_str());
+      std::cerr << "removed shm " << m_name << std::endl;
+   }
+
    delete m_shm;
 }
 
-Shm & Shm::instance(const int moduleID, const int rank,
+const std::string &Shm::getName() const {
+
+   return m_name;
+}
+
+Shm &Shm::instance() {
+   assert(s_singleton && "make sure to create or attach to a shm segment first");
+   if (!s_singleton)
+      exit(1);
+   return *s_singleton;
+}
+
+Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
                     message::MessageQueue * mq) {
 
    if (!s_singleton) {
@@ -52,7 +72,32 @@ Shm & Shm::instance(const int moduleID, const int rank,
 
       do {
          try {
-            s_singleton = new Shm(moduleID, rank, memsize, mq);
+            s_singleton = new Shm(name, moduleID, rank, memsize, mq, true);
+         } catch (boost::interprocess::interprocess_exception ex) {
+            memsize /= 2;
+         }
+      } while (!s_singleton && memsize >= 4096);
+
+      if (!s_singleton) {
+         std::cerr << "failed to allocate shared memory: module id: " << moduleID
+            << ", rank: " << rank << ", message queue: " << (mq ? mq->getName() : "n/a") << std::endl;
+      }
+   }
+
+   assert(s_singleton && "failed to allocate shared memory");
+
+   return *s_singleton;
+}
+
+Shm & Shm::attach(const std::string &name, const int moduleID, const int rank,
+                    message::MessageQueue * mq) {
+
+   if (!s_singleton) {
+      size_t memsize = memorySize<sizeof(void *)>();
+
+      do {
+         try {
+            s_singleton = new Shm(name, moduleID, rank, memsize, mq, false);
          } catch (boost::interprocess::interprocess_exception ex) {
             memsize /= 2;
          }

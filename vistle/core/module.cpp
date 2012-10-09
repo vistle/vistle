@@ -28,8 +28,9 @@ using namespace boost::interprocess;
 
 namespace vistle {
 
-Module::Module(const std::string &n, const unsigned int r,
-               const unsigned int s, const int m)
+Module::Module(const std::string &n, const std::string &shmname,
+      const unsigned int r,
+      const unsigned int s, const int m)
    : name(n), rank(r), size(s), moduleID(m) {
 
 #ifdef _WIN32
@@ -58,7 +59,7 @@ Module::Module(const std::string &n, const unsigned int r,
       sendMessageQueue = message::MessageQueue::open(smqName);
       receiveMessageQueue = message::MessageQueue::open(rmqName);
 
-      Shm::instance(moduleID, rank, sendMessageQueue);
+      Shm::attach(shmname, moduleID, rank, sendMessageQueue);
 
    } catch (interprocess_exception &ex) {
       std::cout << "module " << moduleID << " [" << rank << "/" << size << "] "

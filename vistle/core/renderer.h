@@ -7,7 +7,7 @@ namespace vistle {
 class Renderer: public Module {
 
  public:
-   Renderer(const std::string &name,
+   Renderer(const std::string &name, const std::string &shmname,
             const int rank, const int size, const int moduleID);
    virtual ~Renderer();
 

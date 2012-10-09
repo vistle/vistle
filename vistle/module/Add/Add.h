@@ -6,7 +6,7 @@
 class Add: public vistle::Module {
 
  public:
-   Add(int rank, int size, int moduleID);
+   Add(const std::string &shmname, int rank, int size, int moduleID);
    ~Add();
 
  private:

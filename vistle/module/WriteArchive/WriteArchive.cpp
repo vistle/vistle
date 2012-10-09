@@ -21,8 +21,8 @@ using namespace vistle;
 
 MODULE_MAIN(WriteArchive)
 
-WriteArchive::WriteArchive(int rank, int size, int moduleID)
-   : Module("WriteArchive", rank, size, moduleID) {
+WriteArchive::WriteArchive(const std::string &shmname, int rank, int size, int moduleID)
+   : Module("WriteArchive", shmname, rank, size, moduleID) {
 
    createInputPort("grid_in");
    addFileParameter("filename", "");

@@ -7,8 +7,8 @@
 
 MODULE_MAIN(CutGeometry)
 
-CutGeometry::CutGeometry(int rank, int size, int moduleID)
-   : Module("CutGeometry", rank, size, moduleID) {
+CutGeometry::CutGeometry(const std::string &shmname, int rank, int size, int moduleID)
+   : Module("CutGeometry", shmname, rank, size, moduleID) {
 
    createInputPort("grid_in");
    createOutputPort("grid_out");

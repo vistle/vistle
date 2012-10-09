@@ -23,7 +23,7 @@ class MessageQueue;
 class Module {
 
  public:
-   Module(const std::string &name,
+   Module(const std::string &name, const std::string &shmname,
           const unsigned int rank, const unsigned int size, const int moduleID);
    virtual ~Module();
 
@@ -88,15 +88,16 @@ class Module {
 
 #define MODULE_MAIN(X) int main(int argc, char **argv) {        \
       int rank, size, moduleID;                                 \
-      if (argc != 2) {                                          \
+      if (argc != 3) {                                          \
          std::cerr << "module requires exactly 2 parameters" << std::endl; \
          exit(1);                                               \
       }                                                         \
       MPI_Init(&argc, &argv);                                   \
       MPI_Comm_rank(MPI_COMM_WORLD, &rank);                     \
       MPI_Comm_size(MPI_COMM_WORLD, &size);                     \
-      moduleID = atoi(argv[1]);                                 \
-      X module(rank, size, moduleID);                           \
+      const std::string &shmname = argv[1];                     \
+      moduleID = atoi(argv[2]);                                 \
+      X module(shmname, rank, size, moduleID);                  \
       while (!module.dispatch());                               \
       MPI_Barrier(MPI_COMM_WORLD);                              \
       return 0;                                                 \

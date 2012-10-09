@@ -13,8 +13,8 @@
 MODULE_MAIN(IsoSurface)
 
 
-IsoSurface::IsoSurface(int rank, int size, int moduleID)
-   : Module("IsoSurface", rank, size, moduleID) {
+IsoSurface::IsoSurface(const std::string &shmname, int rank, int size, int moduleID)
+   : Module("IsoSurface", shmname, rank, size, moduleID) {
 
    createInputPort("grid_in");
    createInputPort("data_in");

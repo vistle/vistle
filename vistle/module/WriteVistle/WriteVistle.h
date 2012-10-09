@@ -11,7 +11,7 @@
 class WriteVistle: public vistle::Module {
 
  public:
-   WriteVistle(int rank, int size, int moduleID);
+   WriteVistle(const std::string &shmname, int rank, int size, int moduleID);
    ~WriteVistle();
 
  private:

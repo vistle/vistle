@@ -6,7 +6,7 @@
 class IsoSurface: public vistle::Module {
 
  public:
-   IsoSurface(int rank, int size, int moduleID);
+   IsoSurface(const std::string &shmname, int rank, int size, int moduleID);
    ~IsoSurface();
 
  private:

@@ -7,7 +7,7 @@
 class ReadCovise: public vistle::Module {
 
  public:
-   ReadCovise(int rank, int size, int moduleID);
+   ReadCovise(const std::string &shmname, int rank, int size, int moduleID);
    ~ReadCovise();
 
  private:

@@ -37,9 +37,14 @@ class Object;
 class Shm {
 
  public:
-   static Shm & instance(const int moduleID = -1, const int rank = -1,
-                         message::MessageQueue * messageQueue = NULL);
+   static Shm & instance();
+   static Shm & create(const std::string &shmname, const int moduleID, const int rank,
+                         message::MessageQueue *messageQueue = NULL);
+   static Shm & attach(const std::string &shmname, const int moduleID, const int rank,
+                         message::MessageQueue *messageQueue = NULL);
    ~Shm();
+
+   const std::string &getName() const;
 
    boost::interprocess::managed_shared_memory & getShm();
    std::string createObjectID();
@@ -49,9 +54,11 @@ class Shm {
    shm_handle_t getHandleFromObject(boost::shared_ptr<const Object> object);
 
  private:
-   Shm(const int moduleID, const int rank, const size_t size,
-       message::MessageQueue *messageQueue);
+   Shm(const std::string &name, const int moduleID, const int rank, const size_t size,
+       message::MessageQueue *messageQueue, bool create);
 
+   std::string m_name;
+   bool m_created;
    const int m_moduleID;
    const int m_rank;
    int m_objectID;

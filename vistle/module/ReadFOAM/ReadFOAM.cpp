@@ -94,8 +94,8 @@ private:
    std::vector<Boundary *> boundaries;
 };
 
-ReadFOAM::ReadFOAM(int rank, int size, int moduleID)
-   : Module("ReadFOAM", rank, size, moduleID) {
+ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleID)
+   : Module("ReadFOAM", shmname, rank, size, moduleID) {
 
    createOutputPort("grid_out");
    createOutputPort("p_out");

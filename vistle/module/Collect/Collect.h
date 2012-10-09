@@ -7,7 +7,7 @@
 class Collect: public vistle::Module {
 
  public:
-   Collect(int rank, int size, int moduleID);
+   Collect(const std::string &shmname, int rank, int size, int moduleID);
    ~Collect();
 
  private:

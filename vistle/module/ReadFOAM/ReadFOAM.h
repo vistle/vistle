@@ -9,7 +9,7 @@
 class ReadFOAM: public vistle::Module {
 
  public:
-   ReadFOAM(int rank, int size, int moduleID);
+   ReadFOAM(const std::string &shmname, int rank, int size, int moduleID);
    ~ReadFOAM();
 
  private:

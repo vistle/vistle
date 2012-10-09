@@ -475,8 +475,8 @@ static void callbackIceT(const IceTDouble * proj, const IceTDouble * mv,
 }
 #endif
 
-OSGRenderer::OSGRenderer(int rank, int size, int moduleID)
-   : Renderer("OSGRenderer", rank, size, moduleID), osgViewer::Viewer() {
+OSGRenderer::OSGRenderer(const std::string &shmname, int rank, int size, int moduleID)
+   : Renderer("OSGRenderer", shmname, rank, size, moduleID), osgViewer::Viewer() {
 
 #ifdef __linux__
    cpu_set_t cpuset;

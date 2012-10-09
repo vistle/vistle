@@ -7,8 +7,8 @@
 
 MODULE_MAIN(ShowUSG)
 
-ShowUSG::ShowUSG(int rank, int size, int moduleID)
-   : Module("ShowUSG", rank, size, moduleID) {
+ShowUSG::ShowUSG(const std::string &shmname, int rank, int size, int moduleID)
+   : Module("ShowUSG", shmname, rank, size, moduleID) {
 
    createInputPort("grid_in");
    createOutputPort("grid_out");

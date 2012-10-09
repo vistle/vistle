@@ -5,9 +5,9 @@
 
 namespace vistle {
 
-Renderer::Renderer(const std::string & name,
+Renderer::Renderer(const std::string & name, const std::string &shmname,
                    const int rank, const int size, const int moduleID)
-   : Module(name, rank, size, moduleID) {
+   : Module(name, shmname, rank, size, moduleID) {
 
    createInputPort("data_in");
 }

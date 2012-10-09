@@ -7,8 +7,8 @@
 
 MODULE_MAIN(Add)
 
-Add::Add(int rank, int size, int moduleID)
-   : Module("Add", rank, size, moduleID) {
+Add::Add(const std::string &shmname, int rank, int size, int moduleID)
+   : Module("Add", shmname, rank, size, moduleID) {
 
    createInputPort("data_in");
    createOutputPort("data_out");

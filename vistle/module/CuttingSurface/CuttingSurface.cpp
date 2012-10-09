@@ -12,8 +12,8 @@
 
 MODULE_MAIN(CuttingSurface)
 
-CuttingSurface::CuttingSurface(int rank, int size, int moduleID)
-   : Module("CuttingSurface", rank, size, moduleID) {
+CuttingSurface::CuttingSurface(const std::string &shmname, int rank, int size, int moduleID)
+   : Module("CuttingSurface", shmname, rank, size, moduleID) {
 
    createInputPort("grid_in");
    createInputPort("data_in");

@@ -16,8 +16,8 @@
 
 MODULE_MAIN(ReadCovise)
 
-ReadCovise::ReadCovise(int rank, int size, int moduleID)
-   : Module("ReadCovise", rank, size, moduleID) {
+ReadCovise::ReadCovise(const std::string &shmname, int rank, int size, int moduleID)
+   : Module("ReadCovise", shmname, rank, size, moduleID) {
 
    createOutputPort("grid_out");
    addFileParameter("filename", "");

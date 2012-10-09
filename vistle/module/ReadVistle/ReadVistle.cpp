@@ -19,8 +19,8 @@ using namespace vistle;
 
 MODULE_MAIN(ReadVistle)
 
-ReadVistle::ReadVistle(int rank, int size, int moduleID)
-   : Module("ReadVistle", rank, size, moduleID) {
+ReadVistle::ReadVistle(const std::string &shmname, int rank, int size, int moduleID)
+   : Module("ReadVistle", shmname, rank, size, moduleID) {
 
    createOutputPort("grid_out");
    addFileParameter("filename", "");

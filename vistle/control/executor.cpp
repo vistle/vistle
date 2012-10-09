@@ -52,8 +52,6 @@ Executor::Executor(int argc, char *argv[])
    MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
    MPI_Comm_size(MPI_COMM_WORLD, &m_size);
 
-   std::string instanceName;
-
    // process with the smallest rank on each host allocates shm
    const int HOSTNAMESIZE = 64;
 
@@ -61,12 +59,12 @@ Executor::Executor(int argc, char *argv[])
    std::vector<char> hostnames(HOSTNAMESIZE * m_size);
    gethostname(hostname, HOSTNAMESIZE - 1);
 
-#if 0
+   std::stringstream instanceName;
    if (!m_rank) {
       int pid = static_cast<int>(getpid());
-      instanceName << hostname << "_" << pid;
+      instanceName << "vistle_" << hostname << "_" << pid;
    }
-#endif
+   m_name = instanceName.str();
 
    MPI_Allgather(hostname, HOSTNAMESIZE, MPI_CHAR,
                  &hostnames[0], HOSTNAMESIZE, MPI_CHAR, MPI_COMM_WORLD);
@@ -78,12 +76,20 @@ Executor::Executor(int argc, char *argv[])
 
    if (first) {
       shared_memory_object::remove(m_name.c_str());
-      vistle::Shm::instance(0, m_rank, NULL);
+      vistle::Shm::create(m_name, 0, m_rank, NULL);
    }
    MPI_Barrier(MPI_COMM_WORLD);
 
+   char name[HOSTNAMESIZE+30];
+   if (!m_rank)
+      strncpy(name, m_name.c_str(), m_name.length());
+   MPI_Bcast(name, sizeof(name), MPI_CHAR, 0, MPI_COMM_WORLD);
+   if (m_rank) {
+      m_name = name;
+   }
+
    if (!first)
-      vistle::Shm::instance(0, m_rank, NULL);
+      vistle::Shm::attach(m_name, 0, m_rank, NULL);
    MPI_Barrier(MPI_COMM_WORLD);
 
    m_comm = new vistle::Communicator(argc, argv, m_rank, m_size);

@@ -17,7 +17,7 @@ public:
 class Color: public vistle::Module {
 
  public:
-   Color(int rank, int size, int moduleID);
+   Color(const std::string &shmname, int rank, int size, int moduleID);
    ~Color();
 
  private:

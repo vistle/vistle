@@ -8,8 +8,8 @@
 MODULE_MAIN(Collect)
 
 
-Collect::Collect(int rank, int size, int moduleID)
-   : Module("Collect", rank, size, moduleID) {
+Collect::Collect(const std::string &shmname, int rank, int size, int moduleID)
+   : Module("Collect", shmname, rank, size, moduleID) {
 
    createInputPort("grid_in");
    createInputPort("texture_in");
