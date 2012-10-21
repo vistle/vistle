@@ -1,6 +1,3 @@
-find_package(MPI REQUIRED)
-find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
-
 add_library(vistle_control SHARED portmanager.cpp communicator.cpp executor.cpp)
 
 include_directories(

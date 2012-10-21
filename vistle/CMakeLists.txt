@@ -11,8 +11,8 @@ macro(USE_OPENMP)
 endmacro(USE_OPENMP)
 
 
-#find_package(MPI REQUIRED)
-#find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
+find_package(MPI REQUIRED)
+find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
 
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS} "-Wall -Wno-unknown-pragmas")
 set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})

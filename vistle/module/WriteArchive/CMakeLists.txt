@@ -1,5 +1,4 @@
-find_package(MPI REQUIRED)
-find_package(Boost 1.40 REQUIRED COMPONENTS date_time serialization)
+find_package(Boost 1.40 REQUIRED COMPONENTS serialization)
 
 add_executable(WriteArchive WriteArchive.cpp)
 

@@ -1,5 +1,4 @@
-find_package(MPI REQUIRED)
-find_package(Boost 1.42 REQUIRED COMPONENTS date_time iostreams)
+find_package(Boost 1.42 REQUIRED COMPONENTS iostreams)
 find_package(ZLIB REQUIRED)
 
 if (CMAKE_COMPILER_IS_GNUCC)
