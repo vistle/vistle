@@ -1,6 +1,3 @@
-find_package(MPI REQUIRED)
-find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
-
 enable_testing()
 
 include_directories(
@@ -17,6 +14,7 @@ target_link_libraries(Gendat
         vistle_core
 )
 
+#set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
 add_executable(GendatChecker GendatChecker.cpp)
 target_link_libraries(GendatChecker
         ${Boost_LIBRARIES}
@@ -25,7 +23,7 @@ target_link_libraries(GendatChecker
 )
 
 add_executable(GendatTest GendatTest.cpp)
-add_test(GendatTest ${CMAKE_CURRENT_BINARY_DIR}/GendatTest)
+add_test(GendatTest GendatTest)
 target_link_libraries(GendatTest
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
