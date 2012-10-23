@@ -27,15 +27,48 @@ template<> size_t memorySize<8>() {
 }
 
 Shm* Shm::s_singleton = NULL;
+#ifndef NDEBUG
+shm<ShmDebugInfo>::vector *Shm::s_shmdebug = NULL;
+#endif
 
 Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
          message::MessageQueue * mq, bool create)
    : m_name(name), m_created(create), m_moduleID(m), m_rank(r), m_objectID(0), m_messageQueue(mq) {
 
-      if (create)
+#if 0
+      static allocator alloc_inst() { return allocator(Shm::instance().getShm().get_segment_manager()); }
+      //static ptr construct_vector(size_t s) { return Shm::instance().getShm().construct<vector>(Shm::instance().createObjectID().c_str())(s, T(), alloc_inst()); }
+      static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name) { return Shm::instance().getShm().construct<T>(name.c_str()); }
+#endif
+
+      if (create) {
          m_shm = new managed_shared_memory(open_or_create, m_name.c_str(), size);
-      else
+
+#if 0
+#ifndef DEBUG
+         m_shm->get_segment_manager()
+         s_shmdebug = new ShmVector<ShmDebugInfo>(0, "shmdebug");
+#endif
+#endif
+      } else {
          m_shm = new managed_shared_memory(open_only, m_name.c_str());
+
+#if 0
+#ifndef DEBUG
+         s_shmdebug = new ShmVector<ShmDebugInfo>("shmdebug");
+#endif
+#endif
+      }
+
+      const shm<ShmDebugInfo>::allocator alloc_inst(m_shm->get_segment_manager());
+      s_shmdebug = m_shm->find_or_construct<shm<ShmDebugInfo>::vector>("shmdebug")(0, ShmDebugInfo(), alloc_inst);
+#if 0
+      static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type
+         construct(const std::string &name) { return m_shm->construct<T>(name.c_str()); }
+      static ptr construct_vector(size_t s) {
+         return Shm::instance().getShm().construct<vector>(Shm::instance().createObjectID().c_str())(s, T(), alloc_inst());
+      }
+#endif
 }
 
 Shm::~Shm() {
@@ -172,8 +205,21 @@ std::string Shm::createObjectID() {
         << "id" << std::setw(8) << std::setfill('0') << m_objectID++
         << "OBJ";
 
+#ifndef NDEBUG
+   s_shmdebug->push_back(ShmDebugInfo(name.str()));
+#endif
+
    return name.str();
 }
+
+#ifndef NDEBUG
+void Shm::markAsRemoved(const std::string &name) {
+   for (size_t i=0; i<s_shmdebug->size(); ++i) {
+      if (!strncmp(name.c_str(), (*s_shmdebug)[i].name, sizeof(shm_name_t)))
+         ++(*s_shmdebug)[i].deleted;
+   }
+}
+#endif
 
 shm_handle_t Shm::getHandleFromObject(Object::const_ptr object) {
 

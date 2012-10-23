@@ -100,14 +100,18 @@ void Vistle::config() {
    */
    spawn(RENDERER, "OSGRenderer");
 
+#if 0
    setParam(RGEO, "filename",
             "/data/OpenFOAM/PumpTurbine/covise/test/three_geo2d.vistle");
+#endif
 
+#if 1
    setParam(RGRID, "filename",
             "/data/OpenFOAM/PumpTurbine/covise/test/multi_geo3d.covise");
 
    setParam(RPRES, "filename",
             "/data/OpenFOAM/PumpTurbine/covise/test/multi_p.covise");
+#endif
    /*
    setParam(WRITEVISTLE, "filename",
             "/data/OpenFOAM/PumpTurbine/covise/test/three_geo2d.vistle");

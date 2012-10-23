@@ -34,6 +34,34 @@ namespace message {
 
 class Object;
 
+#ifndef NDEBUG
+struct ShmDebugInfo {
+   shm_name_t name;
+   char deleted;
+
+   ShmDebugInfo(const std::string &name = "")
+      : deleted(0)
+   {
+      memset(this->name, '\0', sizeof(name));
+      strncpy(this->name, name.c_str(), sizeof(this->name));
+   }
+};
+
+template<typename T>
+class ShmVector;
+#endif
+
+template<typename T>
+struct shm {
+   typedef boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> allocator;
+   typedef boost::interprocess::vector<T, allocator> vector;
+   typedef boost::interprocess::offset_ptr<vector> ptr;
+   static allocator alloc_inst();
+   //static ptr construct_vector(size_t s) { return Shm::instance().getShm().construct<vector>(Shm::instance().createObjectID().c_str())(s, T(), alloc_inst()); }
+   static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name);
+   static void destroy(const std::string &name);
+};
+
 class Shm {
 
  public:
@@ -56,6 +84,11 @@ class Shm {
    static std::string shmIdFilename();
    static bool cleanAll();
 
+#ifndef NDEBUG
+   static shm<ShmDebugInfo>::vector *s_shmdebug;
+   void markAsRemoved(const std::string &name);
+#endif
+
  private:
    Shm(const std::string &name, const int moduleID, const int rank, const size_t size,
        message::MessageQueue *messageQueue, bool create);
@@ -71,18 +104,31 @@ class Shm {
 };
 
 template<typename T>
-struct shm {
-   typedef boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> allocator;
-   typedef boost::interprocess::vector<T, allocator> vector;
-   typedef boost::interprocess::offset_ptr<vector> ptr;
-   static allocator alloc_inst() { return allocator(Shm::instance().getShm().get_segment_manager()); }
-   static ptr construct_vector(size_t s) { return Shm::instance().getShm().construct<vector>(Shm::instance().createObjectID().c_str())(s, T(), alloc_inst()); }
-   static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name) { return Shm::instance().getShm().construct<T>(name.c_str()); }
-   static void destroy(const std::string &name) { Shm::instance().getShm().destroy<T>(name.c_str()); }
-};
+typename shm<T>::allocator shm<T>::alloc_inst() {
+   return allocator(Shm::instance().getShm().get_segment_manager());
+}
+
+//static ptr construct_vector(size_t s) { return Shm::instance().getShm().construct<vector>(Shm::instance().createObjectID().c_str())(s, T(), alloc_inst()); }
+
+template<typename T>
+typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type shm<T>::construct(const std::string &name) {
+   return Shm::instance().getShm().construct<T>(name.c_str());
+}
+
+template<typename T>
+void shm<T>::destroy(const std::string &name) {
+      Shm::instance().getShm().destroy<T>(name.c_str());
+#ifndef NDEBUG
+      Shm::instance().markAsRemoved(name);
+#endif
+}
 
 template<typename T>
 class ShmVector {
+#ifndef NDEBUG
+   friend void Shm::markAsRemoved(const std::string &name);
+#endif
+
    public:
       typedef boost::interprocess::offset_ptr<ShmVector> ptr;
 
@@ -157,6 +203,9 @@ class ShmVector {
 class Object {
    friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &);
    friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>);
+#ifndef NDEBUG
+   friend void Shm::markAsRemoved(const std::string &name);
+#endif
 
 public:
    typedef boost::shared_ptr<Object> ptr;
