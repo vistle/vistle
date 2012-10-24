@@ -48,8 +48,8 @@ struct ShmDebugInfo {
       , deleted(0)
       , type(type)
    {
-      memset(this->name, '\0', sizeof(name));
-      strncpy(this->name, name.c_str(), sizeof(this->name));
+      memset(this->name, '\0', sizeof(this->name));
+      strncpy(this->name, name.c_str(), sizeof(this->name)-1);
    }
 };
 
