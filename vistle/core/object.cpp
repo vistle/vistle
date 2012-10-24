@@ -35,40 +35,15 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
          message::MessageQueue * mq, bool create)
    : m_name(name), m_created(create), m_moduleID(m), m_rank(r), m_objectID(0), m_messageQueue(mq) {
 
-#if 0
-      static allocator alloc_inst() { return allocator(Shm::instance().getShm().get_segment_manager()); }
-      //static ptr construct_vector(size_t s) { return Shm::instance().getShm().construct<vector>(Shm::instance().createObjectID().c_str())(s, T(), alloc_inst()); }
-      static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name) { return Shm::instance().getShm().construct<T>(name.c_str()); }
-#endif
-
       if (create) {
          m_shm = new managed_shared_memory(open_or_create, m_name.c_str(), size);
-
-#if 0
-#ifndef DEBUG
-         m_shm->get_segment_manager()
-         s_shmdebug = new ShmVector<ShmDebugInfo>(0, "shmdebug");
-#endif
-#endif
       } else {
          m_shm = new managed_shared_memory(open_only, m_name.c_str());
-
-#if 0
-#ifndef DEBUG
-         s_shmdebug = new ShmVector<ShmDebugInfo>("shmdebug");
-#endif
-#endif
       }
 
+#ifdef SHMDEBUG
       const shm<ShmDebugInfo>::allocator alloc_inst(m_shm->get_segment_manager());
       s_shmdebug = m_shm->find_or_construct<shm<ShmDebugInfo>::vector>("shmdebug")(0, ShmDebugInfo(), alloc_inst);
-      std::cerr << "NO. SHM OBJ: " << s_shmdebug->size() << std::endl;
-#if 0
-      static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type
-         construct(const std::string &name) { return m_shm->construct<T>(name.c_str()); }
-      static ptr construct_vector(size_t s) {
-         return Shm::instance().getShm().construct<vector>(Shm::instance().createObjectID().c_str())(s, T(), alloc_inst());
-      }
 #endif
 }
 
