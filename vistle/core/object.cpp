@@ -150,12 +150,12 @@ Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
       } while (!s_singleton && memsize >= 4096);
 
       if (!s_singleton) {
-         std::cerr << "failed to allocate shared memory: module id: " << moduleID
+         std::cerr << "failed to create shared memory: module id: " << moduleID
             << ", rank: " << rank << ", message queue: " << (mq ? mq->getName() : "n/a") << std::endl;
       }
    }
 
-   assert(s_singleton && "failed to allocate shared memory");
+   assert(s_singleton && "failed to create shared memory");
 
    return *s_singleton;
 }
@@ -175,12 +175,12 @@ Shm & Shm::attach(const std::string &name, const int moduleID, const int rank,
       } while (!s_singleton && memsize >= 4096);
 
       if (!s_singleton) {
-         std::cerr << "failed to allocate shared memory: module id: " << moduleID
+         std::cerr << "failed to attach to shared memory: module id: " << moduleID
             << ", rank: " << rank << ", message queue: " << (mq ? mq->getName() : "n/a") << std::endl;
       }
    }
 
-   assert(s_singleton && "failed to allocate shared memory");
+   assert(s_singleton && "failed to attach to shared memory");
 
    return *s_singleton;
 }
