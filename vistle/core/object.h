@@ -150,7 +150,7 @@ class ShmVector {
          assert(n.size() < sizeof(m_name));
          m_x = Shm::instance().getShm().construct<typename shm<T>::vector>(m_name)(size, T(), shm<T>::alloc_inst());
 #ifdef SHMDEBUG
-         shm_handle_t handle = Shm::instance().getShm().get_handle_from_address(&*m_x);
+         shm_handle_t handle = Shm::instance().getShm().get_handle_from_address(this);
          Shm::instance().s_shmdebug->push_back(ShmDebugInfo('V', m_name, handle));
 #endif
          ref();
