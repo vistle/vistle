@@ -277,7 +277,7 @@ void Object::publish(const Object::Data *d) {
    shm_handle_t handle = Shm::instance().getShm().get_handle_from_address(d);
 
 #ifndef NDEBUG
-   Shm::instance().s_shmdebug->push_back(ShmDebugInfo(d->name, handle));
+   Shm::instance().s_shmdebug->push_back(ShmDebugInfo('O', d->name, handle));
 #endif
 
 #if 0

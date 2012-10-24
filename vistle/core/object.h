@@ -39,10 +39,12 @@ struct ShmDebugInfo {
    shm_name_t name;
    shm_handle_t handle;
    char deleted;
+   char type;
 
-   ShmDebugInfo(const std::string &name = "", shm_handle_t handle = 0)
+   ShmDebugInfo(char type='\0', const std::string &name = "", shm_handle_t handle = 0)
       : handle(handle)
       , deleted(0)
+      , type(type)
    {
       memset(this->name, '\0', sizeof(name));
       strncpy(this->name, name.c_str(), sizeof(this->name));
@@ -145,6 +147,10 @@ class ShmVector {
          n.copy(name, nsize);
          assert(n.size() < sizeof(name));
          x = Shm::instance().getShm().construct<typename shm<T>::vector>(name)(size, T(), shm<T>::alloc_inst());
+#ifndef NDEBUG
+         shm_handle_t handle = Shm::instance().getShm().get_handle_from_address(&*x);
+         Shm::instance().s_shmdebug->push_back(ShmDebugInfo('V', name, handle));
+#endif
          ref();
       }
       ~ShmVector() {
