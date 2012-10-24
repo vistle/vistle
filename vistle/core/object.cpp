@@ -62,6 +62,7 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
 
       const shm<ShmDebugInfo>::allocator alloc_inst(m_shm->get_segment_manager());
       s_shmdebug = m_shm->find_or_construct<shm<ShmDebugInfo>::vector>("shmdebug")(0, ShmDebugInfo(), alloc_inst);
+      std::cerr << "NO. SHM OBJ: " << s_shmdebug->size() << std::endl;
 #if 0
       static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type
          construct(const std::string &name) { return m_shm->construct<T>(name.c_str()); }

@@ -37,10 +37,12 @@ class Object;
 #ifndef NDEBUG
 struct ShmDebugInfo {
    shm_name_t name;
+   shm_handle_t handle;
    char deleted;
 
-   ShmDebugInfo(const std::string &name = "")
-      : deleted(0)
+   ShmDebugInfo(const std::string &name = "", shm_handle_t handle = 0)
+      : handle(handle)
+      , deleted(0)
    {
       memset(this->name, '\0', sizeof(name));
       strncpy(this->name, name.c_str(), sizeof(this->name));
