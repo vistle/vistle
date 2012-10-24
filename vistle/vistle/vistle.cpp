@@ -85,8 +85,8 @@ void Vistle::config() {
    enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER, WRITEVISTLE };
 
    spawn(RGEO,  "ReadVistle");
-   spawn(RGRID, "ReadCovise");
-   spawn(RPRES, "ReadCovise");
+   //spawn(RGRID, "ReadCovise");
+   //spawn(RPRES, "ReadCovise");
    spawn(CUTGEO, "CutGeometry");
    spawn(CUTSURF, "CuttingSurface");
    /*
@@ -100,12 +100,12 @@ void Vistle::config() {
    */
    spawn(RENDERER, "OSGRenderer");
 
-#if 0
+#if 1
    setParam(RGEO, "filename",
             "/data/OpenFOAM/PumpTurbine/covise/test/three_geo2d.vistle");
 #endif
 
-#if 1
+#if 0
    setParam(RGRID, "filename",
             "/data/OpenFOAM/PumpTurbine/covise/test/multi_geo3d.covise");
 
