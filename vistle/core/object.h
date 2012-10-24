@@ -320,6 +320,7 @@ public:
 
    Object(Data *data);
 
+   static void publish(const Data *d);
    static Object::ptr create(Data *);
  private:
    friend class boost::serialization::access;

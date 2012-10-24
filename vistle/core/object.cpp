@@ -206,10 +206,6 @@ std::string Shm::createObjectID() {
         << "id" << std::setw(8) << std::setfill('0') << m_objectID++
         << "OBJ";
 
-#ifndef NDEBUG
-   s_shmdebug->push_back(ShmDebugInfo(name.str()));
-#endif
-
    return name.str();
 }
 
@@ -274,6 +270,19 @@ Object::ptr Object::create(Object::Data *data) {
 
    assert(0 == "Cannot create Object of invalid type");
    return Object::ptr();
+}
+
+void Object::publish(const Object::Data *d) {
+
+   shm_handle_t handle = Shm::instance().getShm().get_handle_from_address(d);
+
+#ifndef NDEBUG
+   Shm::instance().s_shmdebug->push_back(ShmDebugInfo(d->name, handle));
+#endif
+
+#if 0
+   Shm::instance().publish(handle);
+#endif
 }
 
 Object::Data::Data(const Type type, const std::string & n,
@@ -392,12 +401,8 @@ Triangles::Data * Triangles::Data::create(const size_t numCorners,
 
    const std::string name = Shm::instance().createObjectID();
    Data *t = shm<Data>::construct(name)(numCorners, numVertices, name, block, timestep);
+   publish(t);
 
-   /*
-   shm_handle_t handle =
-      Shm::instance().getShm().get_handle_from_address(t);
-   Shm::instance().publish(handle);
-   */
    return t;
 }
 
@@ -478,12 +483,8 @@ Lines::Data * Lines::Data::create(const size_t numElements, const size_t numCorn
 
    const std::string name = Shm::instance().createObjectID();
    Data *l = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
+   publish(l);
 
-   /*
-   shm_handle_t handle =
-      Shm::instance().getShm().get_handle_from_address(l);
-   Shm::instance().publish(handle);
-   */
    return l;
 }
 
@@ -545,12 +546,8 @@ Polygons::Data * Polygons::Data::create(const size_t numElements,
 
    const std::string name = Shm::instance().createObjectID();
    Data *p = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
+   publish(p);
 
-   /*
-   shm_handle_t handle =
-      Shm::instance().getShm().get_handle_from_address(p);
-   Shm::instance().publish(handle);
-   */
    return p;
 }
 
@@ -580,12 +577,8 @@ UnstructuredGrid::Data * UnstructuredGrid::Data::create(const size_t numElements
 
    const std::string name = Shm::instance().createObjectID();
    Data *u = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
+   publish(u);
 
-   /*
-   shm_handle_t handle =
-      Shm::instance().getShm().get_handle_from_address(u);
-   Shm::instance().publish(handle);
-   */
    return u;
 }
 
@@ -618,12 +611,8 @@ Set::Data * Set::Data::Data::create(const size_t numElements,
 
    const std::string name = Shm::instance().createObjectID();
    Data *p = shm<Data>::construct(name)(numElements, name, block, timestep);
+   publish(p);
 
-   /*
-   shm_handle_t handle =
-      Shm::instance().getShm().get_handle_from_address(p);
-   Shm::instance().publish(handle);
-   */
    return p;
 }
 
@@ -714,12 +703,8 @@ Geometry::Data * Geometry::Data::create(const int block, const int timestep) {
 
    const std::string name = Shm::instance().createObjectID();
    Data *g = shm<Data>::construct(name)(name, block, timestep);
+   publish(g);
 
-   /*
-   shm_handle_t handle =
-      Shm::instance().getShm().get_handle_from_address(g);
-   Shm::instance().publish(handle);
-   */
    return g;
 }
 
@@ -810,12 +795,8 @@ Texture1D::Data *Texture1D::Data::create(const size_t width,
 
    const std::string name = Shm::instance().createObjectID();
    Data *tex= shm<Data>::construct(name)(name, width, min, max, block, timestep);
+   publish(tex);
 
-   /*
-   shm_handle_t handle =
-      Shm::instance().getShm().get_handle_from_address(tex);
-   Shm::instance().publish(handle);
-   */
    return tex;
 }
 
