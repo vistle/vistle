@@ -169,6 +169,9 @@ class ShmVector {
             shm<T>::destroy(m_name);
          }
       }
+      int refcount() const {
+         return m_refcount;
+      }
       void* operator new(size_t size) {
          return Shm::instance().getShm().allocate(size);
       }
