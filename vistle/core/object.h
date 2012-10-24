@@ -23,6 +23,8 @@
 
 #include "scalar.h"
 
+#define SHMDEBUG
+
 namespace vistle {
 
 typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
@@ -34,7 +36,7 @@ namespace message {
 
 class Object;
 
-#ifndef NDEBUG
+#ifdef SHMDEBUG
 struct ShmDebugInfo {
    shm_name_t name;
    shm_handle_t handle;
@@ -88,7 +90,7 @@ class Shm {
    static std::string shmIdFilename();
    static bool cleanAll();
 
-#ifndef NDEBUG
+#ifdef SHMDEBUG
    static shm<ShmDebugInfo>::vector *s_shmdebug;
    void markAsRemoved(const std::string &name);
 #endif
@@ -122,14 +124,14 @@ typename boost::interprocess::managed_shared_memory::segment_manager::template c
 template<typename T>
 void shm<T>::destroy(const std::string &name) {
       Shm::instance().getShm().destroy<T>(name.c_str());
-#ifndef NDEBUG
+#ifdef SHMDEBUG
       Shm::instance().markAsRemoved(name);
 #endif
 }
 
 template<typename T>
 class ShmVector {
-#ifndef NDEBUG
+#ifdef SHMDEBUG
    friend void Shm::markAsRemoved(const std::string &name);
 #endif
 
@@ -137,19 +139,19 @@ class ShmVector {
       typedef boost::interprocess::offset_ptr<ShmVector> ptr;
 
       ShmVector(size_t size = 0)
-         : refcount(0)
+         : m_refcount(0)
       {
          std::string n(Shm::instance().createObjectID());
          size_t nsize = n.size();
-         if (nsize >= sizeof(name)) {
-            nsize = sizeof(name)-1;
+         if (nsize >= sizeof(m_name)) {
+            nsize = sizeof(m_name)-1;
          }
-         n.copy(name, nsize);
-         assert(n.size() < sizeof(name));
-         x = Shm::instance().getShm().construct<typename shm<T>::vector>(name)(size, T(), shm<T>::alloc_inst());
-#ifndef NDEBUG
-         shm_handle_t handle = Shm::instance().getShm().get_handle_from_address(&*x);
-         Shm::instance().s_shmdebug->push_back(ShmDebugInfo('V', name, handle));
+         n.copy(m_name, nsize);
+         assert(n.size() < sizeof(m_name));
+         m_x = Shm::instance().getShm().construct<typename shm<T>::vector>(m_name)(size, T(), shm<T>::alloc_inst());
+#ifdef SHMDEBUG
+         shm_handle_t handle = Shm::instance().getShm().get_handle_from_address(&*m_x);
+         Shm::instance().s_shmdebug->push_back(ShmDebugInfo('V', m_name, handle));
 #endif
          ref();
       }
@@ -157,14 +159,14 @@ class ShmVector {
          unref();
       }
       void ref() {
-         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
-         ++refcount;
+         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(m_mutex);
+         ++m_refcount;
       }
       void unref() {
-         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
-         --refcount;
-         if (refcount == 0) {
-            shm<T>::destroy(name);
+         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(m_mutex);
+         --m_refcount;
+         if (m_refcount == 0) {
+            shm<T>::destroy(m_name);
          }
       }
       void* operator new(size_t size) {
@@ -174,22 +176,22 @@ class ShmVector {
          return Shm::instance().getShm().deallocate(p);
       }
 
-      T &operator[](size_t i) { return (*x)[i]; }
-      const T &operator[](size_t i) const { return (*x)[i]; }
+      T &operator[](size_t i) { return (*m_x)[i]; }
+      const T &operator[](size_t i) const { return (*m_x)[i]; }
 
-      size_t size() const { return x->size(); }
-      void resize(size_t s) { x->resize(s); }
+      size_t size() const { return m_x->size(); }
+      void resize(size_t s) { m_x->resize(s); }
 
-      typename shm<T>::ptr &operator()() { return x; }
-      typename shm<const T>::ptr &operator()() const { return x; }
+      typename shm<T>::ptr &operator()() { return m_x; }
+      typename shm<const T>::ptr &operator()() const { return m_x; }
 
-      void push_back(const T &d) { x->push_back(d); }
+      void push_back(const T &d) { m_x->push_back(d); }
 
    private:
-      boost::interprocess::interprocess_mutex mutex;
-      int refcount;
-      shm_name_t name;
-      typename shm<T>::ptr x;
+      boost::interprocess::interprocess_mutex m_mutex;
+      int m_refcount;
+      shm_name_t m_name;
+      typename shm<T>::ptr m_x;
 };
 
 #define V_OBJECT(Type) \
@@ -211,7 +213,7 @@ class ShmVector {
 class Object {
    friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &);
    friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>);
-#ifndef NDEBUG
+#ifdef SHMDEBUG
    friend void Shm::markAsRemoved(const std::string &name);
 #endif
 

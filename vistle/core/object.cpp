@@ -27,7 +27,7 @@ template<> size_t memorySize<8>() {
 }
 
 Shm* Shm::s_singleton = NULL;
-#ifndef NDEBUG
+#ifdef SHMDEBUG
 shm<ShmDebugInfo>::vector *Shm::s_shmdebug = NULL;
 #endif
 
@@ -209,7 +209,7 @@ std::string Shm::createObjectID() {
    return name.str();
 }
 
-#ifndef NDEBUG
+#ifdef SHMDEBUG
 void Shm::markAsRemoved(const std::string &name) {
    for (size_t i=0; i<s_shmdebug->size(); ++i) {
       if (!strncmp(name.c_str(), (*s_shmdebug)[i].name, sizeof(shm_name_t)))
@@ -276,7 +276,7 @@ void Object::publish(const Object::Data *d) {
 
    shm_handle_t handle = Shm::instance().getShm().get_handle_from_address(d);
 
-#ifndef NDEBUG
+#ifdef SHMDEBUG
    Shm::instance().s_shmdebug->push_back(ShmDebugInfo('O', d->name, handle));
 #endif
 
