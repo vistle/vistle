@@ -394,11 +394,8 @@ class Vec: public Object {
       static Data *create(size_t size, const int block, const int timestep) {
          std::string name = Shm::instance().createObjectID();
          Data *t = shm<Data>::construct(name)(size, name, block, timestep);
-         /*
-            shm_handle_t handle =
-            Shm::instance().getShm().get_handle_from_address(t);
-            Shm::instance().publish(handle);
-            */
+         publish(t);
+
          return t;
       }
 
@@ -502,11 +499,8 @@ class Vec3: public Object {
       static Data *create(size_t size, const int block, const int timestep) {
          std::string name = Shm::instance().createObjectID();
          Data *t = shm<Data>::construct(name)(size, name, block, timestep);
-         /*
-            shm_handle_t handle =
-            Shm::instance().getShm().get_handle_from_address(t);
-            Shm::instance().publish(handle);
-            */
+         publish(t);
+
          return t;
       }
 
