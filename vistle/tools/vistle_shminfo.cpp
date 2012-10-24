@@ -27,7 +27,9 @@ int main(int argc, char ** argv) {
    for (size_t i=0; i<Shm::s_shmdebug->size(); ++i) {
       const ShmDebugInfo &info = (*Shm::s_shmdebug)[i];
       std::cerr << (info.type ? info.type : '0') << " " << (info.deleted ? "D" : "A") << " " << info.name;
-      if (!info.deleted) {
+      if (info.deleted) {
+         std::cerr << std::endl;
+      } else {
          switch(info.type) {
             case 'O':
                if (info.handle) {
