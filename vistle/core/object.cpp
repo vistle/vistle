@@ -575,7 +575,7 @@ Set::Data::~Data() {
    for (size_t i = 0; i < elements->size(); ++i) {
 
       if ((*elements)[i]) {
-         (*elements)[i]->ref();
+         (*elements)[i]->unref();
       }
    }
 }
