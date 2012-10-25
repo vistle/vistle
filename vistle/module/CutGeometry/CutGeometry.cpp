@@ -47,7 +47,7 @@ vistle::Object::ptr CutGeometry::cutGeometry(vistle::Object::const_ptr object,
 
             // mapping between vertex indices in the incoming object and
             // vertex indices in the outgoing object
-            std::map<int, int> vertexMap;
+            std::vector<int> vertexMap;
 
             vistle::Polygons::const_ptr in =
                boost::static_pointer_cast<const vistle::Polygons>(object);
@@ -92,17 +92,17 @@ vistle::Object::ptr CutGeometry::cutGeometry(vistle::Object::const_ptr object,
                      int vertexID = cl[corner];
                      int outID;
 
-                     std::map<int, int>::iterator i =
-                        vertexMap.find(vertexID);
-
-                     if (i == vertexMap.end()) {
+                     if (vertexMap.size() < vertexID+1)
+                        vertexMap.resize(vertexID+1);
+                     if (vertexMap[vertexID] <= 0) {
                         outID = out->x().size();
-                        vertexMap[vertexID] = outID;
+                        vertexMap[vertexID] = outID+1;
                         out->x().push_back(x[vertexID]);
                         out->y().push_back(y[vertexID]);
                         out->z().push_back(z[vertexID]);
-                     } else
-                        outID = i->second;
+                     } else {
+                        outID = vertexMap[vertexID]-1;
+                     }
 
                      out->cl().push_back(outID);
                   }
@@ -152,17 +152,17 @@ vistle::Object::ptr CutGeometry::cutGeometry(vistle::Object::const_ptr object,
 
                         size_t outID;
 
-                        std::map<int, int>::iterator i =
-                           vertexMap.find(vertexID);
-
-                        if (i == vertexMap.end()) {
+                        if (vertexMap.size() < vertexID+1)
+                           vertexMap.resize(vertexID+1);
+                        if (vertexMap[vertexID] <= 0) {
                            outID = out->x().size();
-                           vertexMap[vertexID] = outID;
+                           vertexMap[vertexID] = outID+1;
                            out->x().push_back(x[vertexID]);
                            out->y().push_back(y[vertexID]);
                            out->z().push_back(z[vertexID]);
-                        } else
-                           outID = i->second;
+                        } else {
+                           outID = vertexMap[vertexID]-1;
+                        }
 
                         out->cl().push_back(outID);
                      }
