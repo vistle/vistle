@@ -35,6 +35,7 @@ int main(int argc, char ** argv) {
                if (info.handle) {
                   boost::shared_ptr<const Object> obj = shm.getObjectFromHandle(info.handle);
                   if (obj) {
+                     std::cerr << " type " << obj->getType();
                      std::cerr << " " << obj->refcount() << std::endl;
                   } else {
                      std::cerr << "ERR" << std::endl;
