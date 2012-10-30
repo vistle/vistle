@@ -71,7 +71,7 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    osg::ref_ptr<osg::Material> material;
    osg::ref_ptr<osg::LightModel> lightModel;
 
-   TimestepHandler timesteps;
+   osg::ref_ptr<TimestepHandler> timesteps;
 
    bool m_resize;
    int m_x;

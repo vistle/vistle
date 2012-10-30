@@ -565,7 +565,8 @@ OSGRenderer::OSGRenderer(const std::string &shmname, int rank, int size, int mod
 
    //view->addChild(geode.get());
    proj->addChild(view.get());
-   addEventHandler(&timesteps);
+   timesteps = new TimestepHandler;
+   addEventHandler(timesteps);
 
    addEventHandler(new ResizeHandler(proj, view));
 
@@ -1116,7 +1117,7 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
       }
 
       if (geode)
-         timesteps.addObject(geode, geometry->getTimestep());
+         timesteps->addObject(geode, geometry->getTimestep());
    }
 }
 
