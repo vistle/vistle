@@ -141,6 +141,9 @@ class ShmVector {
             ptr(ShmVector *p) : m_p(p) {
                m_p->ref();
             }
+            ptr(const ptr &ptr) : m_p(ptr.m_p) {
+               m_p->ref();
+            }
             ~ptr() {
                m_p->unref();
             }
@@ -188,6 +191,7 @@ class ShmVector {
          if (m_refcount == 0) {
             delete this;
          }
+         assert(m_refcount >= 0);
       }
       int refcount() const {
          return m_refcount;
