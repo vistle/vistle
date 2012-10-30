@@ -179,21 +179,6 @@ class ShmVector {
          Shm::instance().s_shmdebug->push_back(ShmDebugInfo('V', m_name, handle));
 #endif
       }
-      ~ShmVector() {
-         shm<T>::destroy(m_name);
-      }
-      void ref() {
-         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(m_mutex);
-         ++m_refcount;
-      }
-      void unref() {
-         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(m_mutex);
-         --m_refcount;
-         assert(m_refcount >= 0);
-         if (m_refcount == 0) {
-            delete this;
-         }
-      }
       int refcount() const {
          return m_refcount;
       }
@@ -216,6 +201,22 @@ class ShmVector {
       void push_back(const T &d) { m_x->push_back(d); }
 
    private:
+      ~ShmVector() {
+         shm<T>::destroy(m_name);
+      }
+      void ref() {
+         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(m_mutex);
+         ++m_refcount;
+      }
+      void unref() {
+         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(m_mutex);
+         --m_refcount;
+         assert(m_refcount >= 0);
+         if (m_refcount == 0) {
+            delete this;
+         }
+      }
+
       boost::interprocess::interprocess_mutex m_mutex;
       int m_refcount;
       shm_name_t m_name;
