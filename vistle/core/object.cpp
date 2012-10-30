@@ -68,6 +68,8 @@ bool Shm::cleanAll() {
 
    std::fstream shmlist;
    shmlist.open(shmIdFilename().c_str(), std::ios::in);
+   remove(shmIdFilename().c_str());
+
    while (!shmlist.eof() && !shmlist.fail()) {
       std::string shmid;
       shmlist >> shmid;
@@ -82,11 +84,6 @@ bool Shm::cleanAll() {
       }
    }
    shmlist.close();
-
-   shmlist.open(shmIdFilename().c_str(), std::ios::out|std::ios::trunc);
-   shmlist.close();
-
-   remove(shmIdFilename().c_str());
 
    return true;
 }
