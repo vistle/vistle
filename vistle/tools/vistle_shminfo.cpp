@@ -16,12 +16,31 @@ int main(int argc, char ** argv) {
 
    MPI_Init(&argc, &argv);
 
+   std::string shmid;
+
    if (argc < 2) {
-      std::cerr << "vistle session id is required" << std::endl;
-      exit(1);
+      std::fstream shmlist;
+      shmlist.open(Shm::shmIdFilename().c_str(), std::ios::in);
+
+      while (!shmlist.eof() && !shmlist.fail()) {
+         std::string id;
+         shmlist >> id;
+         if (id.find("vistle_") == 0) {
+            shmid = id;
+         }
+      }
+
+      if (shmid.empty()) {
+         std::cerr << "vistle session id is required" << std::endl;
+         exit(1);
+      } else {
+         std::cerr << "defaulting to vistle session id " << shmid << std::endl;
+      }
+   } else {
+      shmid = argv[1];
    }
 
-   Shm &shm = Shm::attach(argv[1], -1, -1);
+   Shm &shm = Shm::attach(shmid, -1, -1);
 
 
    for (size_t i=0; i<Shm::s_shmdebug->size(); ++i) {
