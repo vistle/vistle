@@ -490,7 +490,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          std::cout << "    module [" << name << "] [" << moduleID << "] ["
                    << rank << "/" << size << "] compute" << std::endl;
          */
-         compute();
+         return !compute();
          break;
       }
 
