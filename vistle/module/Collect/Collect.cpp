@@ -28,22 +28,18 @@ bool Collect::compute() {
    ObjectList gridObjects = getObjects("grid_in");
    ObjectList textureObjects = getObjects("texture_in");
 
-   while (gridObjects.size() > 0 && textureObjects.size()) {
+   while (hasObject("grid_in") && hasObject("texture_in")) {
 
       vistle::Geometry::ptr geom(new vistle::Geometry);
-      geom->setGeometry(gridObjects.front());
-      geom->setTexture(textureObjects.front());
+      vistle::Object::const_ptr grid = takeFirstObject("grid_in");
+      vistle::Object::const_ptr tex = takeFirstObject("texture_in");
+      geom->setGeometry(grid);
+      geom->setTexture(tex);
 
-      geom->setBlock(gridObjects.front()->getBlock());
-      geom->setTimestep(gridObjects.front()->getTimestep());
-
-      removeObject("grid_in", gridObjects.front());
-      removeObject("texture_in", textureObjects.front());
+      geom->setBlock(grid->getBlock());
+      geom->setTimestep(grid->getTimestep());
 
       addObject("grid_out", geom);
-
-      gridObjects = getObjects("grid_in");
-      textureObjects = getObjects("texture_in");
    }
 
    return true;
