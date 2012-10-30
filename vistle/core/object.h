@@ -154,6 +154,7 @@ class ShmVector {
                return &*m_p;
             }
             ptr &operator=(ptr &other) {
+               m_p->unref();
                m_p = other.m_p;
                m_p->ref();
             }
@@ -188,10 +189,10 @@ class ShmVector {
       void unref() {
          boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(m_mutex);
          --m_refcount;
+         assert(m_refcount >= 0);
          if (m_refcount == 0) {
             delete this;
          }
-         assert(m_refcount >= 0);
       }
       int refcount() const {
          return m_refcount;
@@ -506,6 +507,7 @@ class Vec3: public Object {
    struct Data: public Base::Data {
 
       typename ShmVector<T>::ptr x, y, z;
+      // when used as Vec3
       Data(const size_t size, const std::string &name,
             const int block, const int timestep)
          : Base::Data(s_type, name, block, timestep)
@@ -513,6 +515,7 @@ class Vec3: public Object {
             , y(new ShmVector<T>(size))
             , z(new ShmVector<T>(size)) {
       }
+      // when used as base of another data structure
       Data(const size_t size, Type id, const std::string &name,
             const int block, const int timestep)
          : Base::Data(id, name, block, timestep)
