@@ -291,6 +291,8 @@ public:
 
    virtual ~Object();
 
+   shm_handle_t getHandle() const { return Shm::instance().getHandleFromObject(const_ptr(this)); }
+
    Info *getInfo(Info *info = NULL) const;
 
    Type getType() const;

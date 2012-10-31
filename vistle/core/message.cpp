@@ -126,7 +126,7 @@ const char * CreateInputPort::getName() const {
 AddObject::AddObject(const int moduleID, const int rank, const std::string & p,
                      vistle::Object::const_ptr obj)
    : Message(moduleID, rank, Message::ADDOBJECT, sizeof(AddObject)),
-     handle(Shm::instance().getHandleFromObject(obj)) {
+     handle(obj->getHandle()) {
         // we keep the handle as a reference to obj
         obj->ref();
 

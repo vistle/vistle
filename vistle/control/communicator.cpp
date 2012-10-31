@@ -464,7 +464,6 @@ bool Communicator::handleMessage(const message::Message &message) {
                                           m.getPortName());
          if (port) {
             Object::const_ptr obj = Shm::instance().getObjectFromHandle(m.getHandle());
-            port->addObject(obj);
             const std::vector<const Port *> *list =
                portManager.getConnectionList(port);
 

@@ -342,14 +342,14 @@ Module::ObjectList Module::getObjects(const std::string &portName) {
 void Module::removeObject(const std::string &portName, vistle::Object::const_ptr object) {
 
    bool erased = false;
-   shm_handle_t handle = Shm::instance().getHandleFromObject(object);
+   shm_handle_t handle = object->getHandle();
    std::map<std::string, ObjectList>::iterator i = inputPorts.find(portName);
 
    if (i != inputPorts.end()) {
       ObjectList &olist = i->second;
 
       for (ObjectList::iterator it = olist.begin(); it != olist.end(); ) {
-         if (handle == Shm::instance().getHandleFromObject(*it)) {
+         if (handle == (*it)->getHandle()) {
             erased = true;
             object->unref(); // XXX: doesn't erasing the it handle that already?
             it = olist.erase(it);

@@ -22,10 +22,6 @@ Port::Type Port::getType() const {
    return type;
 }
 
-void Port::addObject(Object::const_ptr obj) {
-   objects.push_back(obj);
-}
-
 PortManager::PortManager() {
 
 }
