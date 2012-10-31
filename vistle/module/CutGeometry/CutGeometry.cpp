@@ -89,7 +89,7 @@ vistle::Object::ptr CutGeometry::cutGeometry(vistle::Object::const_ptr object,
 
                   for (size_t corner = start; corner <= end; corner ++) {
 
-                     int vertexID = cl[corner];
+                     size_t vertexID = cl[corner];
                      int outID;
 
                      if (vertexMap.size() < vertexID+1)
@@ -120,7 +120,7 @@ vistle::Object::ptr CutGeometry::cutGeometry(vistle::Object::const_ptr object,
 
                   for (size_t corner = start; corner <= end; corner ++) {
 
-                     int vertexID = cl[corner];
+                     size_t vertexID = cl[corner];
 
                      vistle::Vector p(x[cl[corner]],
                                             y[cl[corner]],
