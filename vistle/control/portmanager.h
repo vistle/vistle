@@ -19,14 +19,14 @@ class Port {
    const std::string & getName() const;
    Type getType() const;
 
-   void addObject(const shm_handle_t & handle);
+   void addObject(Object::const_ptr handle);
 
  private:
    const int moduleID;
    const std::string name;
    const Type type;
 
-   std::vector<shm_handle_t> objects;
+   std::vector<Object::const_ptr> objects;
 };
 
 

@@ -22,9 +22,8 @@ Port::Type Port::getType() const {
    return type;
 }
 
-void Port::addObject(const shm_handle_t & handle) {
-
-   objects.push_back(handle);
+void Port::addObject(Object::const_ptr obj) {
+   objects.push_back(obj);
 }
 
 PortManager::PortManager() {

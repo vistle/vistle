@@ -50,7 +50,6 @@ class Module {
    void setVectorParameter(const std::string & name, const Vector & value);
    Vector getVectorParameter(const std::string & name) const;
 
-   bool addObject(const std::string &portName, const shm_handle_t &handle);
    bool addObject(const std::string & portName, vistle::Object::const_ptr object);
    message::MessageQueue *sendMessageQueue;
 
@@ -70,16 +69,14 @@ class Module {
    bool handleMessage(const message::Message *message);
 
  private:
-   bool addInputObject(const std::string & portName,
-                       const shm_handle_t & handle);
 
    virtual bool addInputObject(const std::string & portName,
                                Object::const_ptr object);
 
    virtual bool compute() = 0;
 
-   std::map<std::string, std::list<shm_handle_t> *> outputPorts;
-   std::map<std::string, std::list<shm_handle_t> *> inputPorts;
+   std::map<std::string, ObjectList> outputPorts;
+   std::map<std::string, ObjectList> inputPorts;
 
    std::map<std::string, Parameter *> parameters;
 };

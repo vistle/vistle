@@ -152,7 +152,8 @@ class AddObject: public Message {
 
  public:
    AddObject(const int moduleID, const int rank, const std::string & portName,
-             const shm_handle_t & handle);
+             vistle::Object::const_ptr obj);
+   ~AddObject();
 
    const char * getPortName() const;
    const shm_handle_t & getHandle() const;

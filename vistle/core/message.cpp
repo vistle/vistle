@@ -124,11 +124,19 @@ const char * CreateInputPort::getName() const {
 }
 
 AddObject::AddObject(const int moduleID, const int rank, const std::string & p,
-                     const shm_handle_t & h)
+                     vistle::Object::const_ptr obj)
    : Message(moduleID, rank, Message::ADDOBJECT, sizeof(AddObject)),
-     handle(h) {
+     handle(Shm::instance().getHandleFromObject(obj)) {
+        // we keep the handle as a reference to obj
+        obj->ref();
 
       COPY_STRING(portName, p);
+}
+
+AddObject::~AddObject() {
+   vistle::Object::const_ptr obj = Shm::instance().getObjectFromHandle(handle);
+   // the reference through handle goes away
+   obj->unref();
 }
 
 const char * AddObject::getPortName() const {

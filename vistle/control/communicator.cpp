@@ -463,7 +463,8 @@ bool Communicator::handleMessage(const message::Message &message) {
          Port *port = portManager.getPort(m.getModuleID(),
                                           m.getPortName());
          if (port) {
-            port->addObject(m.getHandle());
+            Object::const_ptr obj = Shm::instance().getObjectFromHandle(m.getHandle());
+            port->addObject(obj);
             const std::vector<const Port *> *list =
                portManager.getConnectionList(port);
 
@@ -473,9 +474,8 @@ bool Communicator::handleMessage(const message::Message &message) {
                std::map<int, message::MessageQueue *>::iterator mi =
                   sendMessageQueue.find((*pi)->getModuleID());
                if (mi != sendMessageQueue.end()) {
-                  Shm::instance().getObjectFromHandle(m.getHandle())->ref();
                   const message::AddObject a(m.getModuleID(), m.getRank(),
-                                             (*pi)->getName(), m.getHandle());
+                                             (*pi)->getName(), obj);
                   const message::Compute c(moduleID, rank,
                                            (*pi)->getModuleID());
 
@@ -489,7 +489,6 @@ bool Communicator::handleMessage(const message::Message &message) {
                       << m.getHandle() << "] to port ["
                       << m.getPortName() << "]: port not found" << std::endl;
 
-         Shm::instance().getObjectFromHandle(m.getHandle())->unref();
          break;
       }
 
