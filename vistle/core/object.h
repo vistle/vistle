@@ -210,12 +210,15 @@ class ShmVector {
          ++m_refcount;
       }
       void unref() {
-         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(m_mutex);
+         m_mutex.lock();
          --m_refcount;
          assert(m_refcount >= 0);
          if (m_refcount == 0) {
+            m_mutex.unlock();
             delete this;
+            return;
          }
+         m_mutex.unlock();
       }
 
       boost::interprocess::interprocess_mutex m_mutex;
