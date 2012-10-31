@@ -86,6 +86,7 @@ class Shm {
    void publish(const shm_handle_t & handle);
    boost::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle);
    shm_handle_t getHandleFromObject(boost::shared_ptr<const Object> object);
+   shm_handle_t getHandleFromObject(const Object *object);
 
    static std::string shmIdFilename();
    static bool cleanAll();
@@ -291,7 +292,7 @@ public:
 
    virtual ~Object();
 
-   shm_handle_t getHandle() const { return Shm::instance().getHandleFromObject(const_ptr(this)); }
+   shm_handle_t getHandle() const { return Shm::instance().getHandleFromObject(this); }
 
    Info *getInfo(Info *info = NULL) const;
 

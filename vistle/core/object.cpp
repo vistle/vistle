@@ -200,6 +200,16 @@ shm_handle_t Shm::getHandleFromObject(Object::const_ptr object) {
    return 0;
 }
 
+shm_handle_t Shm::getHandleFromObject(const Object *object) {
+
+   try {
+      return m_shm->get_handle_from_address(object->d());
+
+   } catch (interprocess_exception &ex) { }
+
+   return 0;
+}
+
 Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) {
 
    try {
