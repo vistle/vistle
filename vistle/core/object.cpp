@@ -227,31 +227,7 @@ Object::ptr Object::create(Object::Data *data) {
    if (!data)
       return Object::ptr();
 
-#define CR(id, T) case id: return Object::ptr(new T(static_cast<T::Data *>(data)))
-
-   switch(data->type) {
-      case Object::UNKNOWN: assert(0 == "Cannot create Object of UNKNOWN type");
-      CR(Object::VECCHAR, Vec<char>);
-      CR(Object::VECINT, Vec<int>);
-      CR(Object::VECFLOAT, Vec<Scalar>);
-      CR(Object::VEC3CHAR, Vec3<char>);
-      CR(Object::VEC3INT, Vec3<int>);
-      CR(Object::VEC3FLOAT, Vec3<Scalar>);
-      CR(Object::LINES, Lines);
-      CR(Object::TRIANGLES, Triangles);
-      CR(Object::POLYGONS, Polygons);
-      CR(Object::UNSTRUCTUREDGRID, UnstructuredGrid);
-      CR(Object::TEXTURE1D, Texture1D);
-      CR(Object::GEOMETRY, Geometry);
-      CR(Object::SET, Set);
-   }
-
-#undef CR
-
-   std::cerr << "Attempt to create object of invalid type " << data->type << std::endl;
-
-   assert(0 == "Cannot create Object of invalid type");
-   return Object::ptr();
+   return ObjectTypeRegistry::getCreator(data->type)(data);
 }
 
 void Object::publish(const Object::Data *d) {
@@ -284,6 +260,23 @@ Object::Object(Object::Data *data)
 Object::~Object() {
 
    assert(m_data == NULL && "should have been deleted by a derived class");
+}
+
+void Object::Data::ref() {
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+   ++refcount;
+}
+
+void Object::Data::unref() {
+   mutex.lock();
+   --refcount;
+   if (refcount == 0) {
+      mutex.unlock();
+      //shm<Data>::destroy(name);
+      ObjectTypeRegistry::getDestroyer(type)(name);
+      return;
+   }
+   mutex.unlock();
 }
 
 Object::Info *Object::getInfo(Object::Info *info) const {
@@ -792,11 +785,56 @@ size_t Texture1D::getWidth() const {
    return d()->pixels->size() / 4;
 }
 
+
 template<> const Object::Type Vec<Scalar>::s_type  = Object::VECFLOAT;
 template<> const Object::Type Vec<int>::s_type    = Object::VECINT;
 template<> const Object::Type Vec<char>::s_type   = Object::VECCHAR;
 template<> const Object::Type Vec3<Scalar>::s_type = Object::VEC3FLOAT;
 template<> const Object::Type Vec3<int>::s_type   = Object::VEC3INT;
 template<> const Object::Type Vec3<char>::s_type  = Object::VEC3CHAR;
+
+const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int id) {
+   TypeMap::const_iterator it = s_typeMap.find(id);
+   assert(it != s_typeMap.end());
+   if (it == s_typeMap.end()) {
+      std::cerr << "ObjectTypeRegistry: no creator for type id " << id << std::endl;
+      exit(1);
+   }
+   return (*it).second;
+}
+
+
+ObjectTypeRegistry::CreateFunc ObjectTypeRegistry::getCreator(int id) {
+   return getType(id).create;
+}
+
+ObjectTypeRegistry::DestroyFunc ObjectTypeRegistry::getDestroyer(int id) {
+   return getType(id).destroy;
+}
+
+ObjectTypeRegistry::TypeMap ObjectTypeRegistry::s_typeMap;
+
+namespace {
+class RegisterTypes {
+   public:
+   RegisterTypes() {
+      ObjectTypeRegistry::registerType<Vec<char> >(Object::VECCHAR);
+      ObjectTypeRegistry::registerType<Vec<int> >(Object::VECINT);
+      ObjectTypeRegistry::registerType<Vec<Scalar> >(Object::VECFLOAT);
+      ObjectTypeRegistry::registerType<Vec3<char> >(Object::VEC3CHAR);
+      ObjectTypeRegistry::registerType<Vec3<int> >(Object::VEC3INT);
+      ObjectTypeRegistry::registerType<Vec3<Scalar> >(Object::VEC3FLOAT);
+      ObjectTypeRegistry::registerType<Lines>(Object::LINES);
+      ObjectTypeRegistry::registerType<Triangles>(Object::TRIANGLES);
+      ObjectTypeRegistry::registerType<Polygons>(Object::POLYGONS);
+      ObjectTypeRegistry::registerType<UnstructuredGrid>(Object::UNSTRUCTUREDGRID);
+      ObjectTypeRegistry::registerType<Texture1D>(Object::TEXTURE1D);
+      ObjectTypeRegistry::registerType<Geometry>(Object::GEOMETRY);
+      ObjectTypeRegistry::registerType<Set>(Object::SET);
+   }
+};
+
+static RegisterTypes registerTypes;
+}
 
 } // namespace vistle

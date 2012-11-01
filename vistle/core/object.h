@@ -233,6 +233,7 @@ class ShmVector {
    typedef boost::shared_ptr<const Type> const_ptr; \
    static boost::shared_ptr<const Type> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Type>(ptr); } \
    static boost::shared_ptr<Type> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Type>(ptr); } \
+   static Object::ptr create(Object::Data *data) { return Object::ptr(new Type(static_cast<Type::Data *>(data))); } \
    virtual ~Type() { if (m_data) { d()->unref(); m_data = NULL; } } \
    protected: \
    struct Data; \
@@ -241,11 +242,13 @@ class ShmVector {
    private: \
    friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &); \
    friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>); \
-   friend boost::shared_ptr<Object> Object::create(Object::Data *)
+   friend boost::shared_ptr<Object> Object::create(Object::Data *); \
+   friend class ObjectTypeRegistry
 
 class Object {
    friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &);
    friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>);
+   friend class ObjectTypeRegistry;
 #ifdef SHMDEBUG
    friend void Shm::markAsRemoved(const std::string &name);
 #endif
@@ -331,20 +334,8 @@ public:
       int timestep;
 
       Data(Type id, const std::string &name, int b, int t);
-      void ref() {
-         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
-         ++refcount;
-      }
-      void unref() {
-         mutex.lock();
-         --refcount;
-         if (refcount == 0) {
-            mutex.unlock();
-            shm<Data>::destroy(name);
-            return;
-         }
-         mutex.unlock();
-      }
+      void ref();
+      void unref();
       static Data *create(Type id, int b, int t) {
          std::string name = Shm::instance().createObjectID();
          return shm<Data>::construct(name)(id, name, b, t);
@@ -373,7 +364,36 @@ public:
          boost::scoped_ptr<Info> info(getInfo());
          ar & *info;
       }
+};
 
+class ObjectTypeRegistry {
+   friend struct Object::Data;
+   friend Object::ptr Object::create(Object::Data *);
+   public:
+   typedef Object::ptr (*CreateFunc)(Object::Data *d);
+   typedef void (*DestroyFunc)(const std::string &name);
+
+   template<class O>
+   static void registerType(int id) {
+      assert(s_typeMap.find(id) == s_typeMap.end());
+      struct FunctionTable t = {
+         O::create,
+         shm<typename O::Data>::destroy
+      };
+      s_typeMap[id] = t;
+   }
+
+   private:
+   static CreateFunc getCreator(int id);
+   static DestroyFunc getDestroyer(int id);
+
+   struct FunctionTable {
+      CreateFunc create;
+      DestroyFunc destroy;
+   };
+   static const struct FunctionTable &getType(int id);
+   typedef std::map<int, FunctionTable> TypeMap;
+   static TypeMap s_typeMap;
 };
 
 template <class T>
