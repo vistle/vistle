@@ -259,21 +259,16 @@ CuttingSurface::generateCuttingSurface(vistle::Object::const_ptr grid_object,
 
 bool CuttingSurface::compute() {
 
-   ObjectList gridObjects = getObjects("grid_in");
-   std::cout << "CuttingSurface: " << gridObjects.size() << " grid objects"
-             << std::endl;
-
-   ObjectList dataObjects = getObjects("data_in");
-   std::cout << "CuttingSurface: " << dataObjects.size() << " data objects"
-             << std::endl;
-
    const vistle::Scalar distance = getFloatParameter("distance");
    const vistle::Vector normal = getVectorParameter("normal");
 
-   while (gridObjects.size() > 0 && dataObjects.size() > 0) {
+   while (hasObject("grid_in") && hasObject("data_in")) {
+
+      vistle::Object::const_ptr grid = takeFirstObject("grid_in");
+      vistle::Object::const_ptr data = takeFirstObject("data_in");
 
       std::pair<vistle::Object::ptr, vistle::Object::ptr> object =
-         generateCuttingSurface(gridObjects.front(), dataObjects.front(),
+         generateCuttingSurface(grid, data,
                                 normal, distance);
 
       if (object.first)
@@ -281,12 +276,6 @@ bool CuttingSurface::compute() {
 
       if (object.second)
          addObject("data_out", object.second);
-
-      removeObject("grid_in", gridObjects.front());
-      removeObject("data_in", dataObjects.front());
-
-      gridObjects = getObjects("grid_in");
-      dataObjects = getObjects("data_in");
    }
 
    return true;
