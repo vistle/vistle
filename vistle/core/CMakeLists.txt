@@ -1,4 +1,4 @@
-add_library(vistle_core SHARED object.cpp shm.cpp message.cpp messagequeue.cpp module.cpp renderer.cpp parameter.cpp vector.cpp tools.cpp)
+add_library(vistle_core SHARED object.cpp objects.cpp shm.cpp message.cpp messagequeue.cpp module.cpp renderer.cpp parameter.cpp vector.cpp tools.cpp)
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_core
