@@ -468,7 +468,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          const message::AddObject *add =
             static_cast<const message::AddObject *>(message);
-         addInputObject(add->getPortName(), Shm::instance().getObjectFromHandle(add->getHandle()));
+         addInputObject(add->getPortName(), add->takeObject());
          break;
       }
 

@@ -445,15 +445,15 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::AddObject &m =
             static_cast<const message::AddObject &>(message);
+         Object::const_ptr obj = m.takeObject();
          std::cout << "Module " << m.getModuleID() << ": "
-                   << "AddObject " << m.getHandle() << " (" << Shm::instance().getObjectFromHandle(m.getHandle())->getName() << ")"
-                   << " ref " << Shm::instance().getObjectFromHandle(m.getHandle())->refcount()
+                   << "AddObject " << m.getHandle() << " (" << obj->getName() << ")"
+                   << " ref " << obj->refcount()
                    << " to port " << m.getPortName() << std::endl;
 
          Port *port = portManager.getPort(m.getModuleID(),
                                           m.getPortName());
          if (port) {
-            Object::const_ptr obj = Shm::instance().getObjectFromHandle(m.getHandle());
             const std::vector<const Port *> *list =
                portManager.getConnectionList(port);
 

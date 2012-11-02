@@ -133,11 +133,13 @@ AddObject::AddObject(const int moduleID, const int rank, const std::string & p,
       COPY_STRING(portName, p);
 }
 
+#if 0
 AddObject::~AddObject() {
    vistle::Object::const_ptr obj = Shm::instance().getObjectFromHandle(handle);
    // the reference through handle goes away
    obj->unref();
 }
+#endif
 
 const char * AddObject::getPortName() const {
 
@@ -147,6 +149,13 @@ const char * AddObject::getPortName() const {
 const shm_handle_t & AddObject::getHandle() const {
 
    return handle;
+}
+
+Object::const_ptr AddObject::takeObject() const {
+
+   vistle::Object::const_ptr obj = Shm::instance().getObjectFromHandle(handle);
+   obj->unref();
+   return obj;
 }
 
 Connect::Connect(const int moduleID, const int rank,

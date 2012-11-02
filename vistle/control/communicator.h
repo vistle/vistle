@@ -15,7 +15,7 @@ namespace bi = boost::interprocess;
 namespace vistle {
 
 namespace message {
-   class Message;
+   struct Message;
    class MessageQueue;
 }
 

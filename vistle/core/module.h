@@ -16,7 +16,7 @@ namespace vistle {
 class Parameter;
 
 namespace message {
-class Message;
+struct Message;
 class MessageQueue;
 }
 

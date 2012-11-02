@@ -11,7 +11,7 @@ namespace vistle {
 class Communicator;
 
 namespace message {
-class Message;
+struct Message;
 };
 
 class Executor {
@@ -19,7 +19,7 @@ class Executor {
    public:
 
       Executor(int argc, char *argv[]);
-      ~Executor();
+      virtual ~Executor();
 
       virtual void config() = 0;
 

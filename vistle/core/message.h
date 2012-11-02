@@ -17,7 +17,8 @@ namespace message {
    typedef char param_name_t[32];
    typedef char param_value_t[256];
 
-class Message {
+struct Message {
+   // this is POD
 
    friend class vistle::Communicator;
 
@@ -47,6 +48,7 @@ class Message {
 
    Message(const int moduleID, const int rank,
            const Type type, const unsigned int size);
+   // Message (or it's subclasses may not require desctructors
 
    Type getType() const;
    int getModuleID() const;
@@ -153,10 +155,10 @@ class AddObject: public Message {
  public:
    AddObject(const int moduleID, const int rank, const std::string & portName,
              vistle::Object::const_ptr obj);
-   ~AddObject();
 
    const char * getPortName() const;
    const shm_handle_t & getHandle() const;
+   Object::const_ptr takeObject() const;
 
  private:
    port_name_t portName;
