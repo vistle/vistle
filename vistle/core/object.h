@@ -233,7 +233,7 @@ class ShmVector {
    typedef boost::shared_ptr<const Type> const_ptr; \
    static boost::shared_ptr<const Type> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Type>(ptr); } \
    static boost::shared_ptr<Type> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Type>(ptr); } \
-   static Object::ptr create(Object::Data *data) { return Object::ptr(new Type(static_cast<Type::Data *>(data))); } \
+   static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new Type(static_cast<Type::Data *>(data))); } \
    protected: \
    struct Data; \
    Data *d() const { return static_cast<Data *>(m_data); } \
@@ -376,7 +376,7 @@ class ObjectTypeRegistry {
    static void registerType(int id) {
       assert(s_typeMap.find(id) == s_typeMap.end());
       struct FunctionTable t = {
-         O::create,
+         O::createFromData,
          shm<typename O::Data>::destroy
       };
       s_typeMap[id] = t;
