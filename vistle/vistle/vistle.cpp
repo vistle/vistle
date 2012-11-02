@@ -98,7 +98,7 @@ void Vistle::config() {
    /*
    spawn(WRITEVISTLE, "WriteVistle");
    */
-   spawn(RENDERER, "OSGRenderer");
+   spawn(RENDERER, "WriteArchive");
 
 #if 1
    setParam(RGEO, "filename",

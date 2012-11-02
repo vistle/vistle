@@ -25,7 +25,7 @@ WriteArchive::WriteArchive(const std::string &shmname, int rank, int size, int m
    : Module("WriteArchive", shmname, rank, size, moduleID) {
 
    createInputPort("grid_in");
-   addFileParameter("filename", "");
+   addFileParameter("filename", "vistle.archive");
 }
 
 void WriteArchive::save(const std::string & name, vistle::Object::const_ptr object) {
