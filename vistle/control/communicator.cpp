@@ -51,30 +51,25 @@ static void splitpath(const std::string &value, std::vector<std::string> *compon
 #endif
 
    std::string::size_type begin = 0;
-   do
-   {
+   do {
       std::string::size_type end = value.find(sep, begin);
 
       std::string c;
-      if (end != std::string::npos)
-      {
+      if (end != std::string::npos) {
          c = value.substr(begin, end-begin);
          ++end;
-      }
-      else
-      {
+      } else {
          c = value.substr(begin);
       }
       begin = end;
 
       if (!c.empty())
          components->push_back(c);
-   }
-   while(begin != std::string::npos);
+   } while(begin != std::string::npos);
 }
 
-static std::string getbindir(int argc, char *argv[])
-{
+static std::string getbindir(int argc, char *argv[]) {
+
    char *wd = getcwd(NULL, 0);
    if (!wd) {
 
