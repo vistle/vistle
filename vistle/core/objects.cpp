@@ -485,27 +485,19 @@ template<> const Object::Type Vec3<Scalar>::s_type = Object::VEC3FLOAT;
 template<> const Object::Type Vec3<int>::s_type   = Object::VEC3INT;
 template<> const Object::Type Vec3<char>::s_type  = Object::VEC3CHAR;
 
-namespace {
-class RegisterTypes {
-   public:
-   RegisterTypes() {
-      ObjectTypeRegistry::registerType<Vec<char> >(Object::VECCHAR);
-      ObjectTypeRegistry::registerType<Vec<int> >(Object::VECINT);
-      ObjectTypeRegistry::registerType<Vec<Scalar> >(Object::VECFLOAT);
-      ObjectTypeRegistry::registerType<Vec3<char> >(Object::VEC3CHAR);
-      ObjectTypeRegistry::registerType<Vec3<int> >(Object::VEC3INT);
-      ObjectTypeRegistry::registerType<Vec3<Scalar> >(Object::VEC3FLOAT);
-      ObjectTypeRegistry::registerType<Lines>(Object::LINES);
-      ObjectTypeRegistry::registerType<Triangles>(Object::TRIANGLES);
-      ObjectTypeRegistry::registerType<Polygons>(Object::POLYGONS);
-      ObjectTypeRegistry::registerType<UnstructuredGrid>(Object::UNSTRUCTUREDGRID);
-      ObjectTypeRegistry::registerType<Texture1D>(Object::TEXTURE1D);
-      ObjectTypeRegistry::registerType<Geometry>(Object::GEOMETRY);
-      ObjectTypeRegistry::registerType<Set>(Object::SET);
-   }
-};
+V_OBJECT_TYPE3(Vec<char>, Vec_char, Object::VECCHAR);
+V_OBJECT_TYPE3(Vec<int>, Vec_int, Object::VECINT);
+V_OBJECT_TYPE3(Vec<Scalar>, Vec_Scalar, Object::VECFLOAT);
+V_OBJECT_TYPE3(Vec3<char>, Vec3_char, Object::VEC3CHAR);
+V_OBJECT_TYPE3(Vec3<int>, Vec3_int, Object::VEC3INT);
+V_OBJECT_TYPE3(Vec3<Scalar>, Vec3_Scalar, Object::VEC3FLOAT);
 
-static RegisterTypes registerTypes;
-}
+V_OBJECT_TYPE(Lines, Object::LINES);
+V_OBJECT_TYPE(Triangles, Object::TRIANGLES);
+V_OBJECT_TYPE(Polygons, Object::POLYGONS);
+V_OBJECT_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID);
+V_OBJECT_TYPE(Texture1D, Object::TEXTURE1D);
+V_OBJECT_TYPE(Geometry, Object::GEOMETRY);
+V_OBJECT_TYPE(Set, Object::SET);
 
 } // namespace vistle

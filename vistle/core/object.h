@@ -196,6 +196,21 @@ class ObjectTypeRegistry {
    static TypeMap s_typeMap;
 };
 
+#define V_OBJECT_TYPE3(Type, suffix, id) \
+   namespace { \
+      class RegisterObjectType_##suffix { \
+         public: \
+                 RegisterObjectType_##suffix() { \
+                    ObjectTypeRegistry::registerType<Type >(id); \
+                 } \
+      }; \
+\
+      static RegisterObjectType_##suffix registerObjectType_##suffix; \
+   }
+
+#define V_OBJECT_TYPE(Type, id) \
+   V_OBJECT_TYPE3(Type, Type, id)
+
 } // namespace vistle
 
 #include "objects.h"
