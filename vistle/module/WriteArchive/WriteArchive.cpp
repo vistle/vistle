@@ -30,9 +30,6 @@ WriteArchive::WriteArchive(const std::string &shmname, int rank, int size, int m
 
 void WriteArchive::save(const std::string & name, vistle::Object::const_ptr object) {
 
-   std::ofstream ofs(name.c_str());
-   ba::text_oarchive oa(ofs);
-
 #if 0
    int fd = open(name.c_str(), O_WRONLY | O_CREAT | O_TRUNC,
                  S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
@@ -55,18 +52,32 @@ void WriteArchive::save(const std::string & name, vistle::Object::const_ptr obje
    saveCatalogue(fd, c);
 #endif
    //saveItemInfo(oa, object);
-   oa << *object;
-
-   std::cout << "saved [" << name << "]" << std::endl;
 }
 
 bool WriteArchive::compute() {
 
+#if 0
    ObjectList objects = getObjects("grid_in");
 
    if (objects.size() == 1) {
+      std::cerr << "saving to " << getFileParameter("filename") << std::endl;
       save(getFileParameter("filename"), objects.front());
+   } else {
+      std::cerr << "NOT saving to " << getFileParameter("filename") << " (" << objects.size() << " objects)" << std::endl;
    }
+#else
+   std::cerr << "saving to " << getFileParameter("filename") << std::endl;
+   std::ofstream ofs(getFileParameter("filename").c_str(), std::ios::out | std::ios::app);
+   ba::text_oarchive oa(ofs);
+   size_t objcount = 0;
+   while (Object::const_ptr obj = takeFirstObject("grid_in")) {
+      oa << *obj;
+      ++objcount;
+      //save(getFileParameter("filename"), obj);
+   }
+   std::cout << "saved #" << objcount << " [" << name << "]" << std::endl;
+
+#endif
 
    return true;
 }
