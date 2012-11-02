@@ -270,6 +270,7 @@ void Object::Data::ref() {
 void Object::Data::unref() {
    mutex.lock();
    --refcount;
+   assert(refcount >= 0);
    if (refcount == 0) {
       mutex.unlock();
       //shm<Data>::destroy(name);
