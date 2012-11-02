@@ -314,7 +314,8 @@ bool Module::addObject(const std::string & portName, vistle::Object::const_ptr o
 
    std::map<std::string, ObjectList>::iterator i = outputPorts.find(portName);
    if (i != outputPorts.end()) {
-      i->second.push_back(object);
+      // XXX: this was the culprit keeping the final object reference around
+      //i->second.push_back(object);
       message::AddObject message(moduleID, rank, portName, object);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return true;
