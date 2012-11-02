@@ -446,10 +446,12 @@ bool Communicator::handleMessage(const message::Message &message) {
          const message::AddObject &m =
             static_cast<const message::AddObject &>(message);
          Object::const_ptr obj = m.takeObject();
+#if 0
          std::cout << "Module " << m.getModuleID() << ": "
                    << "AddObject " << m.getHandle() << " (" << obj->getName() << ")"
                    << " ref " << obj->refcount()
                    << " to port " << m.getPortName() << std::endl;
+#endif
 
          Port *port = portManager.getPort(m.getModuleID(),
                                           m.getPortName());
