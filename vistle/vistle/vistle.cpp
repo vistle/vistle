@@ -82,7 +82,7 @@ void Vistle::config() {
 #endif
 
 #ifdef TURBINEVISTLE
-   enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER, WRITEVISTLE };
+   enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER, WRITEVISTLE, WRITEARCHIVE };
 
    spawn(RGEO,  "ReadVistle");
    //spawn(RGRID, "ReadCovise");
@@ -98,7 +98,8 @@ void Vistle::config() {
    /*
    spawn(WRITEVISTLE, "WriteVistle");
    */
-   spawn(RENDERER, "WriteArchive");
+   //spawn(RENDERER, "OSGRenderer");
+   spawn(WRITEARCHIVE, "WriteArchive");
 
 #if 1
    setParam(RGEO, "filename",
@@ -121,8 +122,12 @@ void Vistle::config() {
    setParam(CUTSURF, "distance", 0.0);
    setParam(CUTSURF, "normal", vistle::Vector(1.0, 0.0, 0.0));
 
+   setParam(WRITEARCHIVE, "filename",
+         "turbinevistle.archive");
+
    connect(RGEO, "grid_out", CUTGEO, "grid_in");
    connect(CUTGEO, "grid_out", RENDERER, "data_in");
+   connect(CUTGEO, "grid_out", WRITEARCHIVE, "grid_in");
 
    connect(RGRID, "grid_out", CUTSURF, "grid_in");
    connect(RPRES, "grid_out", CUTSURF, "data_in");
@@ -130,10 +135,13 @@ void Vistle::config() {
    connect(CUTSURF, "data_out", COLOR, "data_in");
    connect(COLOR, "data_out", COLLECT, "texture_in");
    connect(COLLECT, "grid_out", RENDERER, "data_in");
+   connect(COLLECT, "grid_out", WRITEARCHIVE, "grid_in");
+
 
    connect(RGRID, "grid_out", ISOSURF, "grid_in");
    connect(RPRES, "grid_out", ISOSURF, "data_in");
    connect(ISOSURF, "grid_out", RENDERER, "data_in");
+   connect(ISOSURF, "grid_out", WRITEARCHIVE, "grid_in");
 
    //connect(RGEO, "grid_out", WRITEVISTLE, "grid_in");
 
