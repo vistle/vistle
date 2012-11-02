@@ -234,7 +234,6 @@ class ShmVector {
    static boost::shared_ptr<const Type> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Type>(ptr); } \
    static boost::shared_ptr<Type> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Type>(ptr); } \
    static Object::ptr create(Object::Data *data) { return Object::ptr(new Type(static_cast<Type::Data *>(data))); } \
-   virtual ~Type() { if (m_data) { d()->unref(); m_data = NULL; } } \
    protected: \
    struct Data; \
    Data *d() const { return static_cast<Data *>(m_data); } \

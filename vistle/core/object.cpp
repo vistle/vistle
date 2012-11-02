@@ -259,7 +259,7 @@ Object::Object(Object::Data *data)
 
 Object::~Object() {
 
-   assert(m_data == NULL && "should have been deleted by a derived class");
+   m_data->unref();
 }
 
 void Object::Data::ref() {
