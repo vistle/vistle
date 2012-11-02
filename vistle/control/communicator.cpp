@@ -217,12 +217,7 @@ bool Communicator::dispatch() {
 
          message::Message *message = NULL;
 
-#ifdef _WIN32
-         recv(clientSocket, (char *) socketBuffer, 1,0);
-#else
-         int r = read(clientSocket, socketBuffer, 1);
-#endif
-
+         int r = recv(clientSocket, (char *) socketBuffer, 1,0);
          if (r == 1) {
 
             if (socketBuffer[0] == 'q')
