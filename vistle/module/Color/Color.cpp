@@ -3,6 +3,10 @@
 #include <cfloat>
 #include "vector.h"
 #include "object.h"
+#include "set.h"
+#include "vec.h"
+#include "vec3.h"
+#include "texture1d.h"
 
 #include "Color.h"
 

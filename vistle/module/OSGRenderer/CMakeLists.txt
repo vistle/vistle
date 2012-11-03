@@ -14,6 +14,8 @@ endif()
 
 add_executable(OSGRenderer OSGRenderer.cpp)
 
+set_source_files_properties(OSGRenderer.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
+
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}

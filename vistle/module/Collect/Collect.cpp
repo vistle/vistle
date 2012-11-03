@@ -2,6 +2,7 @@
 #include <iomanip>
 
 #include "object.h"
+#include "geometry.h"
 
 #include "Collect.h"
 

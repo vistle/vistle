@@ -6,6 +6,10 @@
 #endif
 
 #include "object.h"
+#include "unstr.h"
+#include "vec.h"
+#include "set.h"
+#include "triangles.h"
 #include "tables.h"
 
 #include "IsoSurface.h"

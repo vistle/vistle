@@ -1,4 +1,5 @@
 #include "message.h"
+#include "shm.h"
 
 namespace vistle {
 namespace message {

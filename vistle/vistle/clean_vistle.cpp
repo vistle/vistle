@@ -7,7 +7,7 @@
 
 #include <mpi.h>
 
-#include <core/object.h>
+#include <core/shm.h>
 
 int main(int argc, char ** argv) {
 

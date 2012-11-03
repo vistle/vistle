@@ -39,6 +39,8 @@
 #include <boost/fusion/include/std_pair.hpp>
 
 #include "object.h"
+#include "vec.h"
+#include "unstr.h"
 
 #include "ReadFOAM.h"
 

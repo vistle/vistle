@@ -2,6 +2,8 @@
 #include <iomanip>
 
 #include "object.h"
+#include "unstr.h"
+#include "lines.h"
 
 #include "ShowUSG.h"
 

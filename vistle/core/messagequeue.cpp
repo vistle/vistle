@@ -3,6 +3,7 @@
 
 #include "message.h"
 #include "messagequeue.h"
+#include "shm.h"
 
 using namespace boost::interprocess;
 

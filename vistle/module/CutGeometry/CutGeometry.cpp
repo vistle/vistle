@@ -2,6 +2,8 @@
 #include <iomanip>
 
 #include "object.h"
+#include "set.h"
+#include "polygons.h"
 
 #include "CutGeometry.h"
 

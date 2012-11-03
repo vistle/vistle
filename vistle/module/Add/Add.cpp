@@ -1,7 +1,8 @@
 #include <sstream>
 #include <iomanip>
 
-#include "object.h"
+#include <vec.h>
+#include <vec3.h>
 
 #include "Add.h"
 

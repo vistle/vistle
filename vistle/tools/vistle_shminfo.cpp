@@ -8,6 +8,7 @@
 
 #include <mpi.h>
 
+#include <core/shm.h>
 #include <core/object.h>
 
 using namespace vistle;

@@ -1,4 +1,26 @@
-add_library(vistle_core SHARED object.cpp objects.cpp shm.cpp message.cpp messagequeue.cpp module.cpp renderer.cpp parameter.cpp vector.cpp tools.cpp)
+add_library(vistle_core SHARED
+   shm.cpp
+   object.cpp
+   allobjects.cpp # just one file including all the others for faster compilation
+   #vec.cpp
+   #vec3.cpp
+   #coords.cpp
+   #points.cpp
+   #indexed.cpp
+   #lines.cpp
+   #triangles.cpp
+   #polygons.cpp
+   #unstr.cpp
+   #set.cpp
+   #geometry.cpp
+   #texture1d.cpp
+   message.cpp
+   messagequeue.cpp
+   module.cpp
+   renderer.cpp
+   parameter.cpp
+   vector.cpp
+   tools.cpp)
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_core

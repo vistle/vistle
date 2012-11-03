@@ -34,6 +34,12 @@
 #include <osgViewer/ViewerEventHandlers>
 
 #include "object.h"
+#include "lines.h"
+#include "triangles.h"
+#include "polygons.h"
+#include "texture1d.h"
+#include "set.h"
+#include "geometry.h"
 
 #include "OSGRenderer.h"
 

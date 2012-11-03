@@ -23,6 +23,7 @@
 #include "messagequeue.h"
 #include "parameter.h"
 #include "module.h"
+#include "shm.h"
 
 using namespace boost::interprocess;
 

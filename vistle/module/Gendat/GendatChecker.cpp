@@ -2,6 +2,8 @@
 #include <iomanip>
 
 #include "object.h"
+#include "vec.h"
+#include "triangles.h"
 
 #include "GendatChecker.h"
 

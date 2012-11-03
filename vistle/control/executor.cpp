@@ -28,6 +28,7 @@ typedef int socklen_t;
 #include "message.h"
 #include "messagequeue.h"
 #include "object.h"
+#include "shm.h"
 
 #include "communicator.h"
 #include "executor.h"

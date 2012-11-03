@@ -2,15 +2,10 @@
 #define OBJECT_H
 
 
-#include "tools.h"
-
-#include <vector>
-
 #include <boost/scoped_ptr.hpp>
-#include <boost/interprocess/containers/vector.hpp>
-#include <boost/interprocess/managed_shared_memory.hpp>
-
 #include <boost/shared_ptr.hpp>
+
+#include <boost/interprocess/managed_shared_memory.hpp>
 
 // include headers that implement an archive in simple text format
 //#include <boost/archive/text_oarchive.hpp>
@@ -21,33 +16,15 @@
 #include <boost/serialization/list.hpp>
 #include <boost/serialization/assume_abstract.hpp>
 
-#include "scalar.h"
-#include "shm.h"
-
 namespace vistle {
 
-class Object;
+typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
+typedef char shm_name_t[32];
 
-#define V_OBJECT(Type) \
-   public: \
-   typedef boost::shared_ptr<Type> ptr; \
-   typedef boost::shared_ptr<const Type> const_ptr; \
-   static boost::shared_ptr<const Type> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Type>(ptr); } \
-   static boost::shared_ptr<Type> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Type>(ptr); } \
-   static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new Type(static_cast<Type::Data *>(data))); } \
-   protected: \
-   struct Data; \
-   Data *d() const { return static_cast<Data *>(m_data); } \
-   Type(Data *data) : Base(data) {} \
-   private: \
-   friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &); \
-   friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>); \
-   friend boost::shared_ptr<Object> Object::create(Object::Data *); \
-   friend class ObjectTypeRegistry
+class Shm;
 
 class Object {
-   friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &);
-   friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>);
+   friend class Shm;
    friend class ObjectTypeRegistry;
 #ifdef SHMDEBUG
    friend void Shm::markAsRemoved(const std::string &name);
@@ -98,7 +75,7 @@ public:
 
    virtual ~Object();
 
-   shm_handle_t getHandle() const { return Shm::instance().getHandleFromObject(this); }
+   shm_handle_t getHandle() const;
 
    Info *getInfo(Info *info = NULL) const;
 
@@ -136,10 +113,7 @@ public:
       Data(Type id, const std::string &name, int b, int t);
       void ref();
       void unref();
-      static Data *create(Type id, int b, int t) {
-         std::string name = Shm::instance().createObjectID();
-         return shm<Data>::construct(name)(id, name, b, t);
-      }
+      static Data *create(Type id, int b, int t);
 
       private:
       friend class boost::serialization::access;
@@ -178,7 +152,7 @@ class ObjectTypeRegistry {
       assert(s_typeMap.find(id) == s_typeMap.end());
       struct FunctionTable t = {
          O::createFromData,
-         shm<typename O::Data>::destroy
+         O::destroy,
       };
       s_typeMap[id] = t;
    }
@@ -196,6 +170,27 @@ class ObjectTypeRegistry {
    static TypeMap s_typeMap;
 };
 
+//! declare a new Object type
+#define V_OBJECT(Type) \
+   public: \
+   typedef boost::shared_ptr<Type> ptr; \
+   typedef boost::shared_ptr<const Type> const_ptr; \
+   static boost::shared_ptr<const Type> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Type>(ptr); } \
+   static boost::shared_ptr<Type> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Type>(ptr); } \
+   static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new Type(static_cast<Type::Data *>(data))); } \
+   static void destroy(const std::string &name) { shm<Type::Data>::destroy(name); } \
+   protected: \
+   struct Data; \
+   Data *d() const { return static_cast<Data *>(m_data); } \
+   Type(Data *data) : Base(data) {} \
+   private: \
+   friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &); \
+   friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>); \
+   friend boost::shared_ptr<Object> Object::create(Object::Data *); \
+   friend class ObjectTypeRegistry
+
+
+//! register a new Object type (complex form, specify suffix for symbol names)
 #define V_OBJECT_TYPE3(Type, suffix, id) \
    namespace { \
       class RegisterObjectType_##suffix { \
@@ -208,11 +203,10 @@ class ObjectTypeRegistry {
       static RegisterObjectType_##suffix registerObjectType_##suffix; \
    }
 
+//! register a new Object type (simple form for non-templates, symbol suffix determined automatically)
 #define V_OBJECT_TYPE(Type, id) \
    V_OBJECT_TYPE3(Type, Type, id)
 
 } // namespace vistle
-
-#include "objects.h"
 
 #endif

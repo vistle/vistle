@@ -44,6 +44,12 @@ Object::Data::Data(const Type type, const std::string & n,
    name[size] = 0;
 }
 
+Object::Data *Object::Data::create(Type id, int b, int t) {
+
+   std::string name = Shm::instance().createObjectID();
+   return shm<Data>::construct(name)(id, name, b, t);
+}
+
 Object::Object(Object::Data *data)
 : m_data(data)
 {
@@ -71,6 +77,11 @@ void Object::Data::unref() {
       return;
    }
    mutex.unlock();
+}
+
+shm_handle_t Object::getHandle() const {
+
+   return Shm::instance().getHandleFromObject(this);
 }
 
 Object::Info *Object::getInfo(Object::Info *info) const {

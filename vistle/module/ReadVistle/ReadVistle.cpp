@@ -12,6 +12,11 @@
 #include <fcntl.h>
 
 #include <object.h>
+#include <set.h>
+#include <polygons.h>
+#include <unstr.h>
+#include <vec.h>
+#include <vec3.h>
 
 #include "ReadVistle.h"
 
