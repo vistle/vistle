@@ -12,9 +12,10 @@ if(NOT OPENSCENEGRAPH_FOUND OR NOT OPENGL_FOUND)
     return()
 endif()
 
-add_executable(OSGRenderer OSGRenderer.cpp)
+add_executable(OSGRenderer OSGRenderer.cpp OSGRenderer_vistle.cpp)
 
 set_source_files_properties(OSGRenderer.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
+set_source_files_properties(OSGRenderer_vistle.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
