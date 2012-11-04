@@ -88,17 +88,9 @@ public:
    void setBlock(const int block);
    void setTimestep(const int timestep);
 
-   void ref() const {
-      d()->ref();
-   }
-
-   void unref() const {
-      d()->unref();
-   }
-
-   int refcount() const {
-      return d()->refcount;
-   }
+   void ref() const;
+   void unref() const;
+   int refcount() const;
 
  protected:
    struct Data {

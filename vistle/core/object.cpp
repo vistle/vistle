@@ -61,6 +61,18 @@ Object::~Object() {
    m_data->unref();
 }
 
+void Object::ref() const {
+   d()->ref();
+}
+
+void Object::unref() const {
+   d()->unref();
+}
+
+int Object::refcount() const {
+   return d()->refcount;
+}
+
 void Object::Data::ref() {
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
    ++refcount;
