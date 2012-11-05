@@ -43,11 +43,17 @@ Object::Data::Data(const Type type, const std::string & n, const int b, const in
    , refcount(0)
    , block(b)
    , timestep(t)
+   , attributes(shm<AttributeMap>::construct(std::string("attr_")+n)(std::less<ShmString>(), Shm::instance().allocator()))
 {
 
    size_t size = min(n.size(), sizeof(name)-1);
    n.copy(name, size);
    name[size] = 0;
+}
+
+Object::Data::~Data() {
+
+   shm<AttributeMap>::destroy(std::string("attr_")+name);
 }
 
 Object::Data *Object::Data::create(Type id, int b, int t) {
@@ -155,6 +161,116 @@ const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int 
       exit(1);
    }
    return (*it).second;
+}
+
+void Object::addAttribute(const std::string &key, const std::string &value) {
+   d()->addAttribute(key, value);
+}
+
+void Object::setAttributeList(const std::string &key, const std::vector<std::string> &values) {
+   d()->setAttributeList(key, values);
+}
+
+void Object::copyAttributes(Object::const_ptr src, bool replace) {
+   d()->copyAttributes(src->d(), replace);
+}
+
+bool Object::hasAttribute(const std::string &key) const {
+   return d()->hasAttribute(key);
+}
+
+std::string Object::getAttribute(const std::string &key) const {
+   return d()->getAttribute(key);
+}
+
+std::vector<std::string> Object::getAttributes(const std::string &key) const {
+   return d()->getAttributes(key);
+}
+
+void Object::Data::addAttribute(const std::string &key, const std::string &value) {
+
+   const ShmString skey(key.c_str(), Shm::instance().allocator());
+   std::pair<AttributeMap::iterator, bool> res = attributes->insert(AttributeMapValueType(skey, AttributeList(Shm::instance().allocator())));
+   AttributeList &a = res.first->second;
+   a.push_back(ShmString(value.c_str(), Shm::instance().allocator()));
+}
+
+void Object::Data::setAttributeList(const std::string &key, const std::vector<std::string> &values) {
+
+   const ShmString skey(key.c_str(), Shm::instance().allocator());
+   std::pair<AttributeMap::iterator, bool> res = attributes->insert(AttributeMapValueType(skey, AttributeList(Shm::instance().allocator())));
+   AttributeList &a = res.first->second;
+   a.clear();
+   for (size_t i=0; i<values.size(); ++i) {
+      a.push_back(ShmString(values[i].c_str(), Shm::instance().allocator()));
+   }
+}
+
+void Object::Data::copyAttributes(const Object::Data *src, bool replace) {
+
+   if (replace) {
+
+      *attributes = *src->attributes;
+   } else {
+
+      const AttributeMap &a = *src->attributes;
+
+      for (AttributeMap::const_iterator it = a.begin(); it != a.end(); ++it) {
+         const ShmString &key = it->first;
+         const AttributeList &values = it->second;
+         std::pair<AttributeMap::iterator, bool> res = attributes->insert(AttributeMapValueType(key, values));
+         if (!res.second) {
+            AttributeList &dest = res.first->second;
+            if (replace)
+               dest.clear();
+            for (AttributeList::const_iterator ait = values.begin(); ait != values.end(); ++ait) {
+               dest.push_back(*ait);
+            }
+         }
+      }
+   }
+
+#if 0
+   addAttribute("test");
+
+   std::cerr << "COPY ATTR " << std::endl;
+   std::cerr << "    #src " << src->attributes->size() << std::endl;
+   std::cerr << "    #dst " << attributes->size() << std::endl;
+
+   std::cerr << "COPY ATTR DONE" << std::endl;
+#endif
+}
+
+bool Object::Data::hasAttribute(const std::string &key) const {
+
+   const ShmString skey(key.c_str(), Shm::instance().allocator());
+   AttributeMap::iterator it = attributes->find(skey);
+   return it != attributes->end();
+}
+
+std::string Object::Data::getAttribute(const std::string &key) const {
+
+   const ShmString skey(key.c_str(), Shm::instance().allocator());
+   AttributeMap::iterator it = attributes->find(skey);
+   if (it == attributes->end())
+      return std::string();
+   AttributeList &a = it->second;
+   return a.back().c_str();
+}
+
+std::vector<std::string> Object::Data::getAttributes(const std::string &key) const {
+
+   const ShmString skey(key.c_str(), Shm::instance().allocator());
+   AttributeMap::iterator it = attributes->find(skey);
+   if (it == attributes->end())
+      return std::vector<std::string>();
+   AttributeList &a = it->second;
+
+   std::vector<std::string> attrs;
+   for (AttributeList::iterator i = a.begin(); i != a.end(); ++i) {
+      attrs.push_back(i->c_str());
+   }
+   return attrs;
 }
 
 

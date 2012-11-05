@@ -6,6 +6,9 @@
 #include <boost/shared_ptr.hpp>
 
 #include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/interprocess/containers/vector.hpp>
+#include <boost/interprocess/containers/map.hpp>
+#include <boost/interprocess/containers/string.hpp>
 
 // include headers that implement an archive in simple text format
 //#include <boost/archive/text_oarchive.hpp>
@@ -16,9 +19,13 @@
 #include <boost/serialization/list.hpp>
 #include <boost/serialization/assume_abstract.hpp>
 
+#include "shm.h"
+
 namespace vistle {
 
-typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
+namespace bi = boost::interprocess;
+
+typedef bi::managed_shared_memory::handle_t shm_handle_t;
 typedef char shm_name_t[32];
 
 class Shm;
@@ -88,6 +95,13 @@ public:
    void setBlock(const int block);
    void setTimestep(const int timestep);
 
+   void addAttribute(const std::string &key, const std::string &value = "");
+   void setAttributeList(const std::string &key, const std::vector<std::string> &values);
+   void copyAttributes(Object::const_ptr src, bool replace = true);
+   bool hasAttribute(const std::string &key) const;
+   std::string getAttribute(const std::string &key) const;
+   std::vector<std::string> getAttributes(const std::string &key) const;
+
    void ref() const;
    void unref() const;
    int refcount() const;
@@ -102,7 +116,23 @@ public:
       int block;
       int timestep;
 
+      typedef bi::basic_string<char, std::char_traits<char>, shm<char>::allocator> ShmString;
+      typedef ShmString Attribute;
+      typedef bi::vector<Attribute, shm<Attribute>::allocator> AttributeList;
+      //typedef shm<Attribute>::vector AttributeList;
+      typedef std::pair<const ShmString, AttributeList> AttributeMapValueType;
+      typedef shm<AttributeMapValueType>::allocator AttributeMapAllocator;
+      typedef bi::map<ShmString, AttributeList, std::less<ShmString>, AttributeMapAllocator> AttributeMap;
+      bi::offset_ptr<AttributeMap> attributes;
+      void addAttribute(const std::string &key, const std::string &value = "");
+      void setAttributeList(const std::string &key, const std::vector<std::string> &values);
+      void copyAttributes(const Data *src, bool replace);
+      bool hasAttribute(const std::string &key) const;
+      std::string getAttribute(const std::string &key) const;
+      std::vector<std::string> getAttributes(const std::string &key) const;
+
       Data(Type id, const std::string &name, int b, int t);
+      ~Data();
       void ref();
       void unref();
       static Data *create(Type id, int b, int t);

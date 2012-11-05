@@ -43,7 +43,6 @@ struct shm {
    typedef boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> allocator;
    typedef boost::interprocess::vector<T, allocator> vector;
    typedef boost::interprocess::offset_ptr<vector> ptr;
-   static allocator alloc_inst();
    //static ptr construct_vector(size_t s) { return Shm::instance().getShm().construct<vector>(Shm::instance().createObjectID().c_str())(s, T(), alloc_inst()); }
    static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name);
    static void destroy(const std::string &name);
@@ -61,7 +60,11 @@ class Shm {
 
    const std::string &getName() const;
 
-   boost::interprocess::managed_shared_memory & getShm();
+   typedef boost::interprocess::allocator<void, boost::interprocess::managed_shared_memory::segment_manager> void_allocator;
+   const void_allocator &allocator() const;
+
+   boost::interprocess::managed_shared_memory &getShm();
+   const boost::interprocess::managed_shared_memory &getShm() const;
    std::string createObjectID();
 
    void publish(const shm_handle_t & handle);
@@ -81,6 +84,7 @@ class Shm {
    Shm(const std::string &name, const int moduleID, const int rank, const size_t size,
        message::MessageQueue *messageQueue, bool create);
 
+   void_allocator *m_allocator;
    std::string m_name;
    bool m_created;
    const int m_moduleID;
@@ -90,13 +94,6 @@ class Shm {
    boost::interprocess::managed_shared_memory *m_shm;
    message::MessageQueue *m_messageQueue;
 };
-
-template<typename T>
-typename shm<T>::allocator shm<T>::alloc_inst() {
-   return allocator(Shm::instance().getShm().get_segment_manager());
-}
-
-//static ptr construct_vector(size_t s) { return Shm::instance().getShm().construct<vector>(Shm::instance().createObjectID().c_str())(s, T(), alloc_inst()); }
 
 template<typename T>
 typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type shm<T>::construct(const std::string &name) {
@@ -155,7 +152,7 @@ class ShmVector {
          }
          n.copy(m_name, nsize);
          assert(n.size() < sizeof(m_name));
-         m_x = Shm::instance().getShm().construct<typename shm<T>::vector>(m_name)(size, T(), shm<T>::alloc_inst());
+         m_x = Shm::instance().getShm().construct<typename shm<T>::vector>(m_name)(size, T(), Shm::instance().allocator());
 #ifdef SHMDEBUG
          shm_handle_t handle = Shm::instance().getShm().get_handle_from_address(this);
          Shm::instance().s_shmdebug->push_back(ShmDebugInfo('V', m_name, handle));
