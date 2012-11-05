@@ -36,9 +36,6 @@ struct ShmDebugInfo {
       strncpy(this->name, name.c_str(), sizeof(this->name)-1);
    }
 };
-
-template<typename T>
-class ShmVector;
 #endif
 
 template<typename T>
