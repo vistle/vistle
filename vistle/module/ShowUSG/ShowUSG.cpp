@@ -108,6 +108,7 @@ bool ShowUSG::compute() {
                */
             }
 
+            out->copyAttributes(object);
             addObject("grid_out", out);
             break;
          }

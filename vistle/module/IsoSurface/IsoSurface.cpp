@@ -226,8 +226,11 @@ bool IsoSurface::compute() {
       vistle::Object::ptr object =
          generateIsoSurface(gridObjects.front(), dataObjects.front(), isoValue);
 
-      if (object)
+      if (object) {
+         object->copyAttributes(dataObjects.front());
+         object->copyAttributes(gridObjects.front(), false);
          addObject("grid_out", object);
+      }
 
       removeObject("grid_in", gridObjects.front());
       removeObject("data_in", dataObjects.front());

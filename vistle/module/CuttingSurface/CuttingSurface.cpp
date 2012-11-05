@@ -275,11 +275,15 @@ bool CuttingSurface::compute() {
          generateCuttingSurface(grid, data,
                                 normal, distance);
 
-      if (object.first)
+      if (object.first) {
+         object.first->copyAttributes(grid);
          addObject("grid_out", object.first);
+      }
 
-      if (object.second)
+      if (object.second) {
+         object.second->copyAttributes(data);
          addObject("data_out", object.second);
+      }
    }
 
    return true;

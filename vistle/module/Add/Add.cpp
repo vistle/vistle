@@ -38,6 +38,7 @@ bool Add::compute() {
             for (unsigned int index = 0; index < size; index ++)
                out->x()[index] = in->x()[index] + rank + 1;
 
+            out->copyAttributes(object);
             addObject("data_out", out);
             break;
          }
@@ -54,6 +55,7 @@ bool Add::compute() {
                out->y()[index] = in->y()[index] + rank + 1;
                out->z()[index] = in->z()[index] + rank + 1;
             }
+            out->copyAttributes(in);
             addObject("data_out", out);
          }
          default:
