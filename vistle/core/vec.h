@@ -76,13 +76,6 @@ class Vec: public Object {
 
  private:
    static const Object::Type s_type;
-
-   friend class boost::serialization::access;
-   template<class Archive>
-      void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Base>(*this);
-         ar & d().x;
-      }
 };
 
 } // namespace vistle

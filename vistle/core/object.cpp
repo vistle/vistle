@@ -8,6 +8,8 @@
 #include "shm.h"
 #include "object.h"
 
+#include "tools.h"
+
 template<typename T>
 static T min(T a, T b) { return a<b ? a : b; }
 
@@ -36,8 +38,12 @@ void Object::publish(const Object::Data *d) {
 #endif
 }
 
-Object::Data::Data(const Type type, const std::string & n,
-               const int b, const int t): type(type), refcount(0), block(b), timestep(t) {
+Object::Data::Data(const Type type, const std::string & n, const int b, const int t)
+   : type(type)
+   , refcount(0)
+   , block(b)
+   , timestep(t)
+{
 
    size_t size = min(n.size(), sizeof(name)-1);
    n.copy(name, size);

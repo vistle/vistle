@@ -107,11 +107,15 @@ public:
       void unref();
       static Data *create(Type id, int b, int t);
 
-      private:
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
       }
+
+      // not implemented
+      Data &operator=(const Data &);
+      Data();
+      Data(const Data &);
    };
 
    Data *m_data;
@@ -127,8 +131,11 @@ public:
    friend class boost::serialization::access;
    template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
+         d()->serialize<Archive>(ar, version);
+#if 0
          boost::scoped_ptr<Info> info(getInfo());
          ar & *info;
+#endif
       }
 };
 
@@ -176,6 +183,11 @@ class ObjectTypeRegistry {
    Data *d() const { return static_cast<Data *>(m_data); } \
    Type(Data *data) : Base(data) {} \
    private: \
+   friend class boost::serialization::access; \
+   template<class Archive> \
+      void serialize(Archive &ar, const unsigned int version) { \
+         d()->template serialize<Archive>(ar, version); \
+      } \
    friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &); \
    friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>); \
    friend boost::shared_ptr<Object> Object::create(Object::Data *); \
