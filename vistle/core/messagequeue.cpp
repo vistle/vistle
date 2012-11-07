@@ -14,7 +14,7 @@ std::string MessageQueue::createName(const char * prefix,
                                      const int moduleID, const int rank) {
 
    std::stringstream mqID;
-   mqID << "mq_" << Shm::the().getName() << "_" << prefix << "_" << std::setw(8) << std::setfill('0') << moduleID
+   mqID << "mq_" << Shm::the().name() << "_" << prefix << "_" << std::setw(8) << std::setfill('0') << moduleID
         << "_" << std::setw(8) << std::setfill('0') << rank;
 
    return mqID.str();

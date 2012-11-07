@@ -41,10 +41,10 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
          m_shm = new managed_shared_memory(open_only, m_name.c_str());
       }
 
-      m_allocator = new void_allocator(getShm().get_segment_manager());
+      m_allocator = new void_allocator(shm().get_segment_manager());
 
 #ifdef SHMDEBUG
-      s_shmdebug = m_shm->find_or_construct<shm<ShmDebugInfo>::vector>("shmdebug")(0, ShmDebugInfo(), allocator());
+      s_shmdebug = m_shm->find_or_construct<vistle::shm<ShmDebugInfo>::vector>("shmdebug")(0, ShmDebugInfo(), allocator());
 #endif
 }
 
@@ -91,7 +91,7 @@ bool Shm::cleanAll() {
    return true;
 }
 
-const std::string &Shm::getName() const {
+const std::string &Shm::name() const {
 
    return m_name;
 }
@@ -165,12 +165,12 @@ Shm & Shm::attach(const std::string &name, const int moduleID, const int rank,
    return *s_singleton;
 }
 
-managed_shared_memory & Shm::getShm() {
+managed_shared_memory & Shm::shm() {
 
    return *m_shm;
 }
 
-const managed_shared_memory & Shm::getShm() const {
+const managed_shared_memory & Shm::shm() const {
 
    return *m_shm;
 }

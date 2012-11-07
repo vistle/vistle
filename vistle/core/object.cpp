@@ -27,7 +27,7 @@ Object::ptr Object::create(Object::Data *data) {
 
 void Object::publish(const Object::Data *d) {
 
-   shm_handle_t handle = Shm::the().getShm().get_handle_from_address(d);
+   shm_handle_t handle = Shm::the().shm().get_handle_from_address(d);
 
 #ifdef SHMDEBUG
    Shm::the().s_shmdebug->push_back(ShmDebugInfo('O', d->name, handle));

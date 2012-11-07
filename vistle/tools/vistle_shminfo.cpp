@@ -66,7 +66,7 @@ int main(int argc, char ** argv) {
                break;
             case 'V':
                if (info.handle) {
-                  const void *p = Shm::the().getShm().get_address_from_handle(info.handle);
+                  const void *p = Shm::the().shm().get_address_from_handle(info.handle);
                   const ShmVector<int> *v = static_cast<const ShmVector<int> *>(p);
                   std::cout << " " << v->refcount() << std::endl;
                } else {
