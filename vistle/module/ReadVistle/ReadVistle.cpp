@@ -107,7 +107,7 @@ ReadVistle::~ReadVistle() {
 
 
 vistle::Object::ptr ReadVistle::readObject(const int fd, const vistle::Object::Info * info,
-                                        uint64_t start) {
+                                        uint64_t start, const std::vector<std::string> &setHierarchy, int count) {
 
    const Set::Info *seti = dynamic_cast<const Set::Info *>(info);
    const Polygons::Info *polyi = dynamic_cast<const Polygons::Info *>(info);
@@ -115,14 +115,20 @@ vistle::Object::ptr ReadVistle::readObject(const int fd, const vistle::Object::I
    const Vec<vistle::Scalar>::Info *datai = dynamic_cast<const Vec<vistle::Scalar>::Info *>(info);
 
    if (seti) {
+      std::vector<std::string> sets(setHierarchy);
+      std::stringstream setname;
+      if (!sets.empty())
+         setname << sets.back() << "_";
+      setname << count;
+      sets.push_back(setname.str());
 
-      vistle::Set::ptr set(new vistle::Set);
+      vistle::Object::ptr object;
       for (size_t index = 0; index < seti->items.size(); index ++) {
 
-         vistle::Object::ptr object = readObject(fd, seti->items[index], start);
-         set->addElement(object);
+         object = readObject(fd, seti->items[index], start, sets, index);
+         object->setAttributeList("set", sets);
       }
-      return set;
+      return object;
 
    } else if (polyi) {
 
@@ -140,6 +146,11 @@ vistle::Object::ptr ReadVistle::readObject(const int fd, const vistle::Object::I
          read_float(fd, &polygons->x()[0], polyi->numVertices);
          read_float(fd, &polygons->y()[0], polyi->numVertices);
          read_float(fd, &polygons->z()[0], polyi->numVertices);
+
+         if (first_object) {
+            first_object = false;
+            polygons->addAttribute("mark_begin");
+         }
 
          addObject("grid_out", polygons);
          return polygons;
@@ -160,6 +171,11 @@ vistle::Object::ptr ReadVistle::readObject(const int fd, const vistle::Object::I
          read_float(fd, &usg->y()[0], usgi->numVertices);
          read_float(fd, &usg->z()[0], usgi->numVertices);
 
+         if (first_object) {
+            first_object = false;
+            usg->addAttribute("mark_begin");
+         }
+
          addObject("grid_out", usg);
          return usg;
       }
@@ -173,6 +189,10 @@ vistle::Object::ptr ReadVistle::readObject(const int fd, const vistle::Object::I
                vistle::Vec<vistle::Scalar>::ptr data(new vistle::Vec<vistle::Scalar>(datai->numElements));
 
                read_float(fd, &data->x()[0], datai->numElements);
+               if (first_object) {
+                  first_object = false;
+                  data->addAttribute("mark_begin");
+               }
                addObject("grid_out", data);
                return data;
             }
@@ -183,6 +203,10 @@ vistle::Object::ptr ReadVistle::readObject(const int fd, const vistle::Object::I
                read_float(fd, &data->x()[0], datai->numElements);
                read_float(fd, &data->y()[0], datai->numElements);
                read_float(fd, &data->z()[0], datai->numElements);
+               if (first_object) {
+                  first_object = false;
+                  data->addAttribute("mark_begin");
+               }
                addObject("grid_out", data);
                return data;
             }
@@ -338,7 +362,9 @@ vistle::Object::ptr ReadVistle::load(const std::string & name) {
 
    uint64_t start = lseek(fd, 0, SEEK_CUR);
 
-   vistle::Object::ptr object = readObject(fd, cat->item, start);
+   first_object = true;
+   vistle::Object::ptr object = readObject(fd, cat->item, start, std::vector<std::string>(), 0);
+   object->addAttribute("mark_end");
 
    return object;
 }

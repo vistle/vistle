@@ -66,16 +66,14 @@ bool WriteArchive::compute() {
       std::cerr << "NOT saving to " << getFileParameter("filename") << " (" << objects.size() << " objects)" << std::endl;
    }
 #else
-   std::cerr << "saving to " << getFileParameter("filename") << std::endl;
-   std::ofstream ofs(getFileParameter("filename").c_str(), std::ios::out | std::ios::app);
-   ba::text_oarchive oa(ofs);
-   size_t objcount = 0;
    while (Object::const_ptr obj = takeFirstObject("grid_in")) {
+      std::ios_base::openmode flags = std::ios::out;
+      flags |= obj->hasAttribute("mark_begin") ? std::ios::trunc : std::ios::app;
+      std::ofstream ofs(getFileParameter("filename").c_str(), flags);
+      ba::text_oarchive oa(ofs);
       oa << *obj;
-      ++objcount;
-      //save(getFileParameter("filename"), obj);
    }
-   std::cout << "saved #" << objcount << " [" << name << "]" << std::endl;
+   std::cout << "saved [" << name << "]" << std::endl;
 
 #endif
 
