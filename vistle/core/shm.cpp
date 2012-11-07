@@ -101,7 +101,7 @@ const Shm::void_allocator &Shm::allocator() const {
    return *m_allocator;
 }
 
-Shm &Shm::instance() {
+Shm &Shm::the() {
    assert(s_singleton && "make sure to create or attach to a shm segment first");
    if (!s_singleton)
       exit(1);

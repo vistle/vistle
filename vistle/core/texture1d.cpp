@@ -24,7 +24,7 @@ Texture1D::Data *Texture1D::Data::create(const size_t width,
                               const Scalar min, const Scalar max,
                               const int block, const int timestep) {
 
-   const std::string name = Shm::instance().createObjectID();
+   const std::string name = Shm::the().createObjectID();
    Data *tex= shm<Data>::construct(name)(name, width, min, max, block, timestep);
    publish(tex);
 

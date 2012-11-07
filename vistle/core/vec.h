@@ -57,7 +57,7 @@ class Vec: public Object {
            , x(new ShmVector<T>(size)) {
            }
       static Data *create(size_t size, const int block, const int timestep) {
-         std::string name = Shm::instance().createObjectID();
+         std::string name = Shm::the().createObjectID();
          Data *t = shm<Data>::construct(name)(size, name, block, timestep);
          publish(t);
 

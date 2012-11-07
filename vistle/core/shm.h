@@ -43,7 +43,7 @@ struct shm {
    typedef boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> allocator;
    typedef boost::interprocess::vector<T, allocator> vector;
    typedef boost::interprocess::offset_ptr<vector> ptr;
-   //static ptr construct_vector(size_t s) { return Shm::instance().getShm().construct<vector>(Shm::instance().createObjectID().c_str())(s, T(), alloc_inst()); }
+   //static ptr construct_vector(size_t s) { return Shm::the().getShm().construct<vector>(Shm::the().createObjectID().c_str())(s, T(), alloc_inst()); }
    static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name);
    static void destroy(const std::string &name);
 };
@@ -51,7 +51,7 @@ struct shm {
 class Shm {
 
  public:
-   static Shm & instance();
+   static Shm & the();
    static Shm & create(const std::string &shmname, const int moduleID, const int rank,
                          message::MessageQueue *messageQueue = NULL);
    static Shm & attach(const std::string &shmname, const int moduleID, const int rank,
@@ -97,14 +97,14 @@ class Shm {
 
 template<typename T>
 typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type shm<T>::construct(const std::string &name) {
-   return Shm::instance().getShm().construct<T>(name.c_str());
+   return Shm::the().getShm().construct<T>(name.c_str());
 }
 
 template<typename T>
 void shm<T>::destroy(const std::string &name) {
-      Shm::instance().getShm().destroy<T>(name.c_str());
+      Shm::the().getShm().destroy<T>(name.c_str());
 #ifdef SHMDEBUG
-      Shm::instance().markAsRemoved(name);
+      Shm::the().markAsRemoved(name);
 #endif
 }
 
@@ -145,27 +145,27 @@ class ShmVector {
       ShmVector(size_t size = 0)
          : m_refcount(0)
       {
-         std::string n(Shm::instance().createObjectID());
+         std::string n(Shm::the().createObjectID());
          size_t nsize = n.size();
          if (nsize >= sizeof(m_name)) {
             nsize = sizeof(m_name)-1;
          }
          n.copy(m_name, nsize);
          assert(n.size() < sizeof(m_name));
-         m_x = Shm::instance().getShm().construct<typename shm<T>::vector>(m_name)(size, T(), Shm::instance().allocator());
+         m_x = Shm::the().getShm().construct<typename shm<T>::vector>(m_name)(size, T(), Shm::the().allocator());
 #ifdef SHMDEBUG
-         shm_handle_t handle = Shm::instance().getShm().get_handle_from_address(this);
-         Shm::instance().s_shmdebug->push_back(ShmDebugInfo('V', m_name, handle));
+         shm_handle_t handle = Shm::the().getShm().get_handle_from_address(this);
+         Shm::the().s_shmdebug->push_back(ShmDebugInfo('V', m_name, handle));
 #endif
       }
       int refcount() const {
          return m_refcount;
       }
       void* operator new(size_t size) {
-         return Shm::instance().getShm().allocate(size);
+         return Shm::the().getShm().allocate(size);
       }
       void operator delete(void *p) {
-         return Shm::instance().getShm().deallocate(p);
+         return Shm::the().getShm().deallocate(p);
       }
 
       T &operator[](size_t i) { return (*m_x)[i]; }

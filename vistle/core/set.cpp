@@ -32,7 +32,7 @@ Set::Data::~Data() {
 Set::Data * Set::Data::Data::create(const size_t numElements,
                   const int block, const int timestep) {
 
-   const std::string name = Shm::instance().createObjectID();
+   const std::string name = Shm::the().createObjectID();
    Data *p = shm<Data>::construct(name)(numElements, name, block, timestep);
    publish(p);
 

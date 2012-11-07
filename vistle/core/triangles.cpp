@@ -23,7 +23,7 @@ Triangles::Data * Triangles::Data::create(const size_t numCorners,
                               const size_t numVertices,
                               const int block, const int timestep) {
 
-   const std::string name = Shm::instance().createObjectID();
+   const std::string name = Shm::the().createObjectID();
    Data *t = shm<Data>::construct(name)(numCorners, numVertices, name, block, timestep);
    publish(t);
 

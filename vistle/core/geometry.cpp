@@ -46,7 +46,7 @@ Geometry::Data::~Data() {
 
 Geometry::Data * Geometry::Data::create(const int block, const int timestep) {
 
-   const std::string name = Shm::instance().createObjectID();
+   const std::string name = Shm::the().createObjectID();
    Data *g = shm<Data>::construct(name)(name, block, timestep);
    publish(g);
 

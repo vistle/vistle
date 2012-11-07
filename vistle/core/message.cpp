@@ -136,7 +136,7 @@ AddObject::AddObject(const int moduleID, const int rank, const std::string & p,
 
 #if 0
 AddObject::~AddObject() {
-   vistle::Object::const_ptr obj = Shm::instance().getObjectFromHandle(handle);
+   vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
    // the reference through handle goes away
    obj->unref();
 }
@@ -154,7 +154,7 @@ const shm_handle_t & AddObject::getHandle() const {
 
 Object::const_ptr AddObject::takeObject() const {
 
-   vistle::Object::const_ptr obj = Shm::instance().getObjectFromHandle(handle);
+   vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
    obj->unref();
    return obj;
 }

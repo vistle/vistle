@@ -365,7 +365,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          }
 
          MPI_Comm interComm;
-         char *argv[3] = { strdup(Shm::instance().getName().c_str()), strdup(modID.str().c_str()), NULL };
+         char *argv[3] = { strdup(Shm::the().getName().c_str()), strdup(modID.str().c_str()), NULL };
 
          MPI_Comm_spawn(strdup(name.c_str()), argv, size, MPI_INFO_NULL,
                         0, MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
@@ -390,7 +390,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          const message::NewObject *newObject =
             static_cast<const message::NewObject *>(message);
          vistle::Object *object = (vistle::Object *)
-            vistle::Shm::instance().getShm().get_address_from_handle(newObject.getHandle());
+            vistle::Shm::the().getShm().get_address_from_handle(newObject.getHandle());
 
          std::cout << "comm [" << rank << "/" << size << "] NewObject ["
                    << newObject.getHandle() << "] type ["

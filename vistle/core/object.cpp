@@ -27,14 +27,14 @@ Object::ptr Object::create(Object::Data *data) {
 
 void Object::publish(const Object::Data *d) {
 
-   shm_handle_t handle = Shm::instance().getShm().get_handle_from_address(d);
+   shm_handle_t handle = Shm::the().getShm().get_handle_from_address(d);
 
 #ifdef SHMDEBUG
-   Shm::instance().s_shmdebug->push_back(ShmDebugInfo('O', d->name, handle));
+   Shm::the().s_shmdebug->push_back(ShmDebugInfo('O', d->name, handle));
 #endif
 
 #if 0
-   Shm::instance().publish(handle);
+   Shm::the().publish(handle);
 #endif
 }
 
@@ -43,7 +43,7 @@ Object::Data::Data(const Type type, const std::string & n, const int b, const in
    , refcount(0)
    , block(b)
    , timestep(t)
-   , attributes(shm<AttributeMap>::construct(std::string("attr_")+n)(std::less<ShmString>(), Shm::instance().allocator()))
+   , attributes(shm<AttributeMap>::construct(std::string("attr_")+n)(std::less<ShmString>(), Shm::the().allocator()))
 {
 
    size_t size = min(n.size(), sizeof(name)-1);
@@ -58,7 +58,7 @@ Object::Data::~Data() {
 
 Object::Data *Object::Data::create(Type id, int b, int t) {
 
-   std::string name = Shm::instance().createObjectID();
+   std::string name = Shm::the().createObjectID();
    return shm<Data>::construct(name)(id, name, b, t);
 }
 
@@ -105,7 +105,7 @@ void Object::Data::unref() {
 
 shm_handle_t Object::getHandle() const {
 
-   return Shm::instance().getHandleFromObject(this);
+   return Shm::the().getHandleFromObject(this);
 }
 
 Object::Info *Object::getInfo(Object::Info *info) const {
@@ -189,20 +189,20 @@ std::vector<std::string> Object::getAttributes(const std::string &key) const {
 
 void Object::Data::addAttribute(const std::string &key, const std::string &value) {
 
-   const ShmString skey(key.c_str(), Shm::instance().allocator());
-   std::pair<AttributeMap::iterator, bool> res = attributes->insert(AttributeMapValueType(skey, AttributeList(Shm::instance().allocator())));
+   const ShmString skey(key.c_str(), Shm::the().allocator());
+   std::pair<AttributeMap::iterator, bool> res = attributes->insert(AttributeMapValueType(skey, AttributeList(Shm::the().allocator())));
    AttributeList &a = res.first->second;
-   a.push_back(ShmString(value.c_str(), Shm::instance().allocator()));
+   a.push_back(ShmString(value.c_str(), Shm::the().allocator()));
 }
 
 void Object::Data::setAttributeList(const std::string &key, const std::vector<std::string> &values) {
 
-   const ShmString skey(key.c_str(), Shm::instance().allocator());
-   std::pair<AttributeMap::iterator, bool> res = attributes->insert(AttributeMapValueType(skey, AttributeList(Shm::instance().allocator())));
+   const ShmString skey(key.c_str(), Shm::the().allocator());
+   std::pair<AttributeMap::iterator, bool> res = attributes->insert(AttributeMapValueType(skey, AttributeList(Shm::the().allocator())));
    AttributeList &a = res.first->second;
    a.clear();
    for (size_t i=0; i<values.size(); ++i) {
-      a.push_back(ShmString(values[i].c_str(), Shm::instance().allocator()));
+      a.push_back(ShmString(values[i].c_str(), Shm::the().allocator()));
    }
 }
 
@@ -243,14 +243,14 @@ void Object::Data::copyAttributes(const Object::Data *src, bool replace) {
 
 bool Object::Data::hasAttribute(const std::string &key) const {
 
-   const ShmString skey(key.c_str(), Shm::instance().allocator());
+   const ShmString skey(key.c_str(), Shm::the().allocator());
    AttributeMap::iterator it = attributes->find(skey);
    return it != attributes->end();
 }
 
 std::string Object::Data::getAttribute(const std::string &key) const {
 
-   const ShmString skey(key.c_str(), Shm::instance().allocator());
+   const ShmString skey(key.c_str(), Shm::the().allocator());
    AttributeMap::iterator it = attributes->find(skey);
    if (it == attributes->end())
       return std::string();
@@ -260,7 +260,7 @@ std::string Object::Data::getAttribute(const std::string &key) const {
 
 std::vector<std::string> Object::Data::getAttributes(const std::string &key) const {
 
-   const ShmString skey(key.c_str(), Shm::instance().allocator());
+   const ShmString skey(key.c_str(), Shm::the().allocator());
    AttributeMap::iterator it = attributes->find(skey);
    if (it == attributes->end())
       return std::vector<std::string>();

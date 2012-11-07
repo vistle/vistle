@@ -23,7 +23,7 @@ Lines::Data * Lines::Data::create(const size_t numElements, const size_t numCorn
                       const size_t numVertices,
                       const int block, const int timestep) {
 
-   const std::string name = Shm::instance().createObjectID();
+   const std::string name = Shm::the().createObjectID();
    Data *l = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
    publish(l);
 
