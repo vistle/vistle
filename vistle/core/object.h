@@ -19,6 +19,8 @@
 #include <boost/serialization/list.hpp>
 #include <boost/serialization/assume_abstract.hpp>
 
+#include <vector>
+
 #include "shm.h"
 
 namespace vistle {
