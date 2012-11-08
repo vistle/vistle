@@ -3,6 +3,7 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/interprocess/containers/vector.hpp>
+#include <boost/interprocess/containers/string.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 
 #include <boost/shared_ptr.hpp>
@@ -47,6 +48,7 @@ struct ShmDebugInfo {
 template<typename T>
 struct shm {
    typedef boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> allocator;
+   typedef boost::interprocess::basic_string<T, std::char_traits<T>, allocator> string;
    typedef boost::interprocess::vector<T, allocator> vector;
    typedef boost::interprocess::offset_ptr<vector> ptr;
    //static ptr construct_vector(size_t s) { return Shm::the().shm().construct<vector>(Shm::the().createObjectID().c_str())(s, T(), alloc_inst()); }

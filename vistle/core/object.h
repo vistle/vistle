@@ -118,13 +118,12 @@ public:
       int block;
       int timestep;
 
-      typedef bi::basic_string<char, std::char_traits<char>, shm<char>::allocator> ShmString;
-      typedef ShmString Attribute;
-      typedef bi::vector<Attribute, shm<Attribute>::allocator> AttributeList;
-      //typedef shm<Attribute>::vector AttributeList;
-      typedef std::pair<const ShmString, AttributeList> AttributeMapValueType;
+      typedef shm<char>::string Attribute;
+      typedef shm<char>::string Key;
+      typedef shm<Attribute>::vector AttributeList;
+      typedef std::pair<const Key, AttributeList> AttributeMapValueType;
       typedef shm<AttributeMapValueType>::allocator AttributeMapAllocator;
-      typedef bi::map<ShmString, AttributeList, std::less<ShmString>, AttributeMapAllocator> AttributeMap;
+      typedef bi::map<Key, AttributeList, std::less<Key>, AttributeMapAllocator> AttributeMap;
       bi::offset_ptr<AttributeMap> attributes;
       void addAttribute(const std::string &key, const std::string &value = "");
       void setAttributeList(const std::string &key, const std::vector<std::string> &values);
