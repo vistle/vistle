@@ -54,11 +54,12 @@ class UnstructuredGrid: public Indexed {
                                     const int timestep = -1);
 
       private:
+      friend class UnstructuredGrid;
       friend class boost::serialization::access;
       template<class Archive>
          void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Base::Data>(*this);
-         ar & tl;
+         ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
+         ar & V_NAME("type_list", *tl);
       }
    };
 };

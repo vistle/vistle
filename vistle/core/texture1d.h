@@ -40,14 +40,15 @@ class Texture1D: public Object {
             const int block, const int timestep);
 
       private:
+      friend class Texture1D;
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Base::Data>(*this);
-         ar & pixels;
-         ar & coords;
-         ar & min;
-         ar & max;
+         ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
+         ar & V_NAME("pixels", *pixels);
+         ar & V_NAME("coords", *coords);
+         ar & V_NAME("min", min);
+         ar & V_NAME("max", max);
       }
    };
 };

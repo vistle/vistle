@@ -124,6 +124,7 @@ void Vistle::config() {
 
    setParam(WRITEARCHIVE, "filename",
          "turbinevistle.archive");
+   setParam(WRITEARCHIVE, "format", 0); // 0=binary, 1=text, 2=XML
 
    connect(RGEO, "grid_out", CUTGEO, "grid_in");
    connect(CUTGEO, "grid_out", RENDERER, "data_in");

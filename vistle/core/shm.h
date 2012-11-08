@@ -7,6 +7,12 @@
 
 #include <boost/shared_ptr.hpp>
 
+#include <boost/serialization/base_object.hpp>
+#include <boost/serialization/utility.hpp>
+#include <boost/serialization/list.hpp>
+#include <boost/serialization/assume_abstract.hpp>
+#include <boost/serialization/array.hpp>
+
 #define SHMDEBUG
 
 namespace vistle {
@@ -198,6 +204,12 @@ class ShmVector {
          }
          m_mutex.unlock();
       }
+
+      friend class boost::serialization::access;
+      template<class Archive>
+         void serialize(Archive &ar, const unsigned int version) {
+            ar & boost::serialization::make_array(&(*m_x)[0], m_x->size());
+         }
 
       boost::interprocess::interprocess_mutex m_mutex;
       int m_refcount;

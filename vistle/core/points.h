@@ -24,10 +24,11 @@ class Points: public Coords {
             const int block, const int timestep);
 
       private:
+      friend class Points;
       friend class boost::serialization::access;
       template<class Archive>
          void serialize(Archive &ar, const unsigned int version) {
-            ar & boost::serialization::base_object<Base::Data>(*this);
+            ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
          }
    };
 };

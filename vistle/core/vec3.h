@@ -93,14 +93,15 @@ class Vec3: public Object {
       }
 
       private:
+      friend class Vec3;
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
 
-         ar & boost::serialization::base_object<Base::Data>(*this);
-         ar & x;
-         ar & y;
-         ar & z;
+         ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
+         ar & V_NAME("x", *x);
+         ar & V_NAME("y", *y);
+         ar & V_NAME("z", *z);
       }
    };
 

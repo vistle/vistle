@@ -36,6 +36,14 @@ class Triangles: public Coords {
             const int block, const int timestep);
       static Data *create(const size_t numCorners, const size_t numVertices,
             const int block, const int timestep);
+
+      private:
+      friend class Triangles;
+      friend class boost::serialization::access;
+      template<class Archive>
+         void serialize(Archive &ar, const unsigned int version) {
+            ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
+         }
    };
 };
 

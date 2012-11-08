@@ -124,6 +124,11 @@ void Executor::spawn(const int moduleID, const char * name) {
    handle(Spawn(0, m_rank, moduleID, name));
 }
 
+void Executor::setParam(const int moduleID, const char * name, const int value) {
+
+   handle(SetIntParameter(0, m_rank, moduleID, name, value));
+}
+
 void Executor::setParam(const int moduleID, const char * name, const vistle::Scalar value) {
 
    handle(SetFloatParameter(0, m_rank, moduleID, name, value));

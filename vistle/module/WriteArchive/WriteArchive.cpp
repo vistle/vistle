@@ -9,8 +9,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/xml_oarchive.hpp>
 
 #include <object.h>
 
@@ -25,57 +26,66 @@ WriteArchive::WriteArchive(const std::string &shmname, int rank, int size, int m
    : Module("WriteArchive", shmname, rank, size, moduleID) {
 
    createInputPort("grid_in");
+   addIntParameter("format", 0);
    addFileParameter("filename", "vistle.archive");
-}
-
-void WriteArchive::save(const std::string & name, vistle::Object::const_ptr object) {
-
-#if 0
-   int fd = open(name.c_str(), O_WRONLY | O_CREAT | O_TRUNC,
-                 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-   if (fd == -1) {
-      std::cout << "ERROR WriteArchive::save could not open file [" << name
-                << "]" << std::endl;
-      return;
-   }
-#endif
-
-#if 0
-   catalogue c;
-   createCatalogue(object, c);
-   printCatalogue(c);
-
-   write_char(fd, (char *) "VISTLE", 6);
-   header h('l', 1, 0, 0);
-   write_char(fd, (char *) &h, sizeof(header));
-
-   saveCatalogue(fd, c);
-#endif
-   //saveItemInfo(oa, object);
 }
 
 bool WriteArchive::compute() {
 
-#if 0
-   ObjectList objects = getObjects("grid_in");
-
-   if (objects.size() == 1) {
-      std::cerr << "saving to " << getFileParameter("filename") << std::endl;
-      save(getFileParameter("filename"), objects.front());
-   } else {
-      std::cerr << "NOT saving to " << getFileParameter("filename") << " (" << objects.size() << " objects)" << std::endl;
-   }
-#else
+   int count = 0;
+   bool trunc = false;
+   std::string format;
    while (Object::const_ptr obj = takeFirstObject("grid_in")) {
       std::ios_base::openmode flags = std::ios::out;
-      flags |= obj->hasAttribute("mark_begin") ? std::ios::trunc : std::ios::app;
+      if (obj->hasAttribute("mark_begin")) {
+         trunc = true;
+         flags |= std::ios::trunc;
+      } else {
+         flags |= std::ios::app;
+      }
+      switch(getIntParameter("format")) {
+         default:
+         case 0:
+            flags |= std::ios::binary;
+            format = "binary";
+            break;
+         case 1:
+            format = "text";
+            break;
+         case 2:
+            format = "xml";
+            break;
+      }
       std::ofstream ofs(getFileParameter("filename").c_str(), flags);
-      ba::text_oarchive oa(ofs);
-      oa << *obj;
+      switch(getIntParameter("format")) {
+         default:
+         case 0:
+         {
+            ba::binary_oarchive oa(ofs);
+            obj->serialize(oa);
+            break;
+         }
+         case 1:
+         {
+            ba::text_oarchive oa(ofs);
+            obj->serialize(oa);
+            break;
+         }
+         case 2:
+         {
+            ba::xml_oarchive oa(ofs);
+            obj->serialize(oa);
+            break;
+         }
+      }
+      ++count;
    }
-   std::cout << "saved [" << name << "]" << std::endl;
-
-#endif
+   if (trunc) {
+      std::cerr << "saved";
+   } else {
+      std::cerr << "appended";
+   }
+   std::cerr << " [" << count << "] to " << getFileParameter("filename") << " (" << format << ")" << std::endl;
 
    return true;
 }

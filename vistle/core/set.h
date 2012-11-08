@@ -39,11 +39,12 @@ class Set: public Object {
             const int block = -1, const int timestep = -1);
 
       private:
+      friend class Set;
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Base::Data>(*this);
-         ar & elements;
+         ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
+         //ar & V_NAME("elements", *elements);
       }
    };
 };

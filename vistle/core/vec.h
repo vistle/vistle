@@ -17,14 +17,6 @@ class Vec: public Object {
 
    struct Info: public Base::Info {
       uint64_t numElements;
-
-      private:
-      friend class boost::serialization::access;
-      template<class Archive>
-         void serialize(Archive &ar, const unsigned int version) {
-            ar & boost::serialization::base_object<Base::Info>(*this);
-            ar & numElements;
-         }
    };
 
    Vec(const size_t size = 0,
@@ -65,12 +57,13 @@ class Vec: public Object {
       }
 
       private:
+      friend class Vec;
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
 
-         ar & boost::serialization::base_object<Base::Data>(*this);
-         ar & x;
+         ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
+         ar & V_NAME("x", *x);
       }
    };
 

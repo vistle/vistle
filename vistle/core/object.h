@@ -11,8 +11,12 @@
 #include <boost/interprocess/containers/string.hpp>
 
 // include headers that implement an archive in simple text format
-//#include <boost/archive/text_oarchive.hpp>
-//#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/xml_oarchive.hpp>
+#include <boost/archive/xml_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
 
 #include <boost/serialization/base_object.hpp>
 #include <boost/serialization/utility.hpp>
@@ -29,6 +33,9 @@ typedef bi::managed_shared_memory::handle_t shm_handle_t;
 typedef char shm_name_t[32];
 
 class Shm;
+
+#define V_NAME(name, obj) \
+   boost::serialization::make_nvp(name, (obj))
 
 class Object {
    friend class Shm;
@@ -66,18 +73,6 @@ public:
       uint64_t block;
       uint64_t timestep;
       virtual ~Info() {}; // for RTTI
-
-      private:
-      friend class boost::serialization::access;
-      template<class Archive>
-         void serialize(Archive &ar, const unsigned int version) {
-            ar & infosize;
-            ar & itemsize;
-            ar & offset;
-            ar & type;
-            ar & block;
-            ar & timestep;
-         }
    };
 
    virtual ~Object();
@@ -106,9 +101,16 @@ public:
    void unref() const;
    int refcount() const;
 
+   virtual void serialize(boost::archive::text_iarchive &ar) = 0;
+   virtual void serialize(boost::archive::text_oarchive &ar) const = 0;
+   virtual void serialize(boost::archive::binary_iarchive &ar) = 0;
+   virtual void serialize(boost::archive::binary_oarchive &ar) const = 0;
+   virtual void serialize(boost::archive::xml_iarchive &ar) = 0;
+   virtual void serialize(boost::archive::xml_oarchive &ar) const = 0;
+
  protected:
    struct Data {
-      const Type type;
+      Type type;
       shm_name_t name;
       int refcount;
       boost::interprocess::interprocess_mutex mutex;
@@ -140,6 +142,10 @@ public:
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
+         ar & V_NAME("type", type);
+         ar & V_NAME("block", block);
+         ar & V_NAME("timestep", timestep);
+         //ar & V_NAME("attributes", *attributes);
       }
 
       // not implemented
@@ -204,10 +210,29 @@ class ObjectTypeRegistry {
    public: \
    typedef boost::shared_ptr<Type> ptr; \
    typedef boost::shared_ptr<const Type> const_ptr; \
+   typedef Type Class; \
    static boost::shared_ptr<const Type> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Type>(ptr); } \
    static boost::shared_ptr<Type> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Type>(ptr); } \
    static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new Type(static_cast<Type::Data *>(data))); } \
    static void destroy(const std::string &name) { shm<Type::Data>::destroy(name); } \
+   virtual void serialize(boost::archive::text_iarchive &tar) { \
+      tar & *this; \
+   } \
+   virtual void serialize(boost::archive::text_oarchive &tar) const { \
+      tar & *this; \
+   } \
+   virtual void serialize(boost::archive::binary_iarchive &bar) { \
+      bar & *this; \
+   } \
+   virtual void serialize(boost::archive::binary_oarchive &bar) const { \
+      bar & *this; \
+   } \
+   virtual void serialize(boost::archive::xml_iarchive &xar) { \
+      xar & V_NAME("object", *this); \
+   } \
+   virtual void serialize(boost::archive::xml_oarchive &xar) const { \
+      xar & V_NAME("object", *this); \
+   } \
    protected: \
    struct Data; \
    Data *d() const { return static_cast<Data *>(m_data); } \

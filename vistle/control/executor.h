@@ -26,6 +26,7 @@ class Executor {
       void run();
 
       void spawn(const int moduleID, const char * name);
+      void setParam(const int moduleID, const char * name, const int value);
       void setParam(const int moduleID, const char * name, const vistle::Scalar value);
       void setParam(const int moduleID, const char * name, const std::string & value);
       void setParam(const int moduleID, const char * name, const vistle::Vector & value);

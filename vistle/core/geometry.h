@@ -39,14 +39,15 @@ class Geometry: public Object {
       static Data *create(const int block = -1, const int timestep = -1);
 
       private:
+      friend class Geometry;
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & boost::serialization::base_object<Base::Data>(*this);
-         ar & geometry;
-         ar & colors;
-         ar & normals;
-         ar & texture;
+         ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
+         ar & V_NAME("geometry", *geometry);
+         ar & V_NAME("colors", *colors);
+         ar & V_NAME("normals", *normals);
+         ar & V_NAME("texture", *texture);
       }
    };
 };

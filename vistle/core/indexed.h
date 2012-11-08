@@ -37,6 +37,16 @@ class Indexed: public Coords {
            const size_t numVertices,
             Type id, const std::string &name,
             int b = -1, int t = -1);
+
+      private:
+      friend class Indexed;
+      friend class boost::serialization::access;
+      template<class Archive>
+         void serialize(Archive &ar, const unsigned int version) {
+            ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
+            ar & V_NAME("element_list", *el);
+            ar & V_NAME("connection_list", *cl);
+         }
    };
 };
 

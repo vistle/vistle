@@ -1,3 +1,5 @@
+find_package(Boost 1.40 REQUIRED COMPONENTS serialization)
+
 add_library(vistle_core SHARED
    shm.cpp
    object.cpp
@@ -29,6 +31,7 @@ if(UNIX AND NOT APPLE)
 endif()
 
 target_link_libraries(vistle_core
+        ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
 )
 
