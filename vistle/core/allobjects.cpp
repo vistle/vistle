@@ -1,5 +1,7 @@
 // fewer files compile faster
 
+#define VISTLE_IMPL
+
 #include "vec.cpp"
 #include "vec3.cpp"
 #include "coords.cpp"
