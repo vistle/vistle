@@ -5,6 +5,8 @@
 
 #include "message.h"
 #include "messagequeue.h"
+
+#define VISTLE_SHM_IMPL
 #include "shm.h"
 
 template<typename T>
@@ -234,5 +236,41 @@ Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) {
 
    return Object::const_ptr();
 }
+
+#include <iostream>
+
+#define SHM_INST2(T, name) \
+   void inst_shm_##name() { \
+      typedef ShmVector<T > V; \
+      V::ptr p(new V()); \
+      boost::archive::xml_iarchive xiar(std::cin); xiar & V_NAME("shm_ptr", *p); \
+      boost::archive::xml_oarchive xoar(std::cout); xoar & V_NAME("shm_ptr", *p); \
+      boost::archive::text_iarchive tiar(std::cin); tiar & V_NAME("shm_ptr", *p); \
+      boost::archive::text_oarchive toar(std::cout); toar & V_NAME("shm_ptr", *p); \
+      boost::archive::binary_iarchive biar(std::cin); biar & V_NAME("shm_ptr", *p); \
+      boost::archive::binary_oarchive boar(std::cout); boar & V_NAME("shm_ptr", *p); \
+\
+   }
+
+#define SHM_INST(T) \
+   SHM_INST2(T, T)
+
+SHM_INST(char);
+SHM_INST2(unsigned char, unsigned_char);
+SHM_INST(int);
+SHM_INST2(unsigned long, unsigned_long);
+SHM_INST(float);
+SHM_INST(double);
+
+#if 0
+typedef boost::interprocess::offset_ptr<vistle::Object::Data> data_ptr;
+
+class inst_object: public Object {
+   SHM_INST(data_ptr);
+};
+
+//SHM_INST2(boost::interprocess::offset_ptr<Object::Data>, Data_ptr);
+#endif
+   
 
 } // namespace vistle

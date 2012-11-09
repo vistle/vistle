@@ -123,62 +123,32 @@ class ShmVector {
    public:
       class ptr {
          public:
-            ptr(ShmVector *p) : m_p(p) {
-               m_p->ref();
-            }
-            ptr(const ptr &ptr) : m_p(ptr.m_p) {
-               m_p->ref();
-            }
-            ~ptr() {
-               m_p->unref();
-            }
+            ptr(ShmVector *p);
+            ptr(const ptr &ptr);
+            ~ptr();
+            ptr &operator=(ptr &other);
+
             ShmVector &operator*() {
                return *m_p;
             }
             ShmVector *operator->() {
                return &*m_p;
             }
-            ptr &operator=(ptr &other) {
-               m_p->unref();
-               m_p = other.m_p;
-               m_p->ref();
-            }
 
          private:
             boost::interprocess::offset_ptr<ShmVector> m_p;
       };
 
-      ShmVector(size_t size = 0)
-         : m_refcount(0)
-      {
-         std::string n(Shm::the().createObjectID());
-         size_t nsize = n.size();
-         if (nsize >= sizeof(m_name)) {
-            nsize = sizeof(m_name)-1;
-         }
-         n.copy(m_name, nsize);
-         assert(n.size() < sizeof(m_name));
-         m_x = Shm::the().shm().construct<typename shm<T>::vector>(m_name)(size, T(), Shm::the().allocator());
-#ifdef SHMDEBUG
-         shm_handle_t handle = Shm::the().shm().get_handle_from_address(this);
-         Shm::the().s_shmdebug->push_back(ShmDebugInfo('V', m_name, handle));
-#endif
-      }
-      int refcount() const {
-         return m_refcount;
-      }
-      void* operator new(size_t size) {
-         return Shm::the().shm().allocate(size);
-      }
-      void operator delete(void *p) {
-         return Shm::the().shm().deallocate(p);
-      }
+      ShmVector(size_t size = 0);
+      int refcount() const;
+      void* operator new(size_t size);
+      void operator delete(void *p);
 
       T &operator[](size_t i) { return (*m_x)[i]; }
       const T &operator[](size_t i) const { return (*m_x)[i]; }
 
       size_t size() const { return m_x->size(); }
-      void resize(size_t s) { m_x->resize(s); }
+      void resize(size_t s);
 
       typename shm<T>::ptr &operator()() { return m_x; }
       typename shm<const T>::ptr &operator()() const { return m_x; }
@@ -186,30 +156,13 @@ class ShmVector {
       void push_back(const T &d) { m_x->push_back(d); }
 
    private:
-      ~ShmVector() {
-         shm<T>::destroy(m_name);
-      }
-      void ref() {
-         boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(m_mutex);
-         ++m_refcount;
-      }
-      void unref() {
-         m_mutex.lock();
-         --m_refcount;
-         assert(m_refcount >= 0);
-         if (m_refcount == 0) {
-            m_mutex.unlock();
-            delete this;
-            return;
-         }
-         m_mutex.unlock();
-      }
+      ~ShmVector();
+      void ref();
+      void unref();
 
       friend class boost::serialization::access;
       template<class Archive>
-         void serialize(Archive &ar, const unsigned int version) {
-            ar & boost::serialization::make_array(&(*m_x)[0], m_x->size());
-         }
+         void serialize(Archive &ar, const unsigned int version);
 
       boost::interprocess::interprocess_mutex m_mutex;
       int m_refcount;
@@ -218,4 +171,9 @@ class ShmVector {
 };
 
 } // namespace vistle
+
+#endif
+
+#ifdef VISTLE_SHM_IMPL
+#include "shm_impl.h"
 #endif
