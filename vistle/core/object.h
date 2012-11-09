@@ -25,6 +25,8 @@
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/access.hpp>
 
+#include <vector>
+
 #include "shm.h"
 
 namespace vistle {
