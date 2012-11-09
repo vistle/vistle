@@ -41,8 +41,8 @@ int main(int argc, char ** argv) {
       shmid = argv[1];
    }
 
+#ifdef SHMDEBUG
    Shm &shm = Shm::attach(shmid, -1, -1);
-
 
    for (size_t i=0; i<Shm::s_shmdebug->size(); ++i) {
       const ShmDebugInfo &info = (*Shm::s_shmdebug)[i];
@@ -82,6 +82,9 @@ int main(int argc, char ** argv) {
          }
       }
    }
+#else
+   std::cerr << "recompile with -DSHMDEBUG" << std::endl;
+#endif
 
    MPI_Finalize();
 

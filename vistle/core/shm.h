@@ -11,7 +11,8 @@
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/array.hpp>
 
-#define SHMDEBUG
+//#define SHMDEBUG
+//#define SHMPUBLISH
 
 namespace vistle {
 

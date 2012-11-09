@@ -79,13 +79,17 @@ Object::ptr Object::create(Object::Data *data) {
 
 void Object::publish(const Object::Data *d) {
 
+#if defined(SHMDEBUG) || defined(SHMPUBLISH)
    shm_handle_t handle = Shm::the().shm().get_handle_from_address(d);
+#else
+   (void)d;
+#endif
 
 #ifdef SHMDEBUG
    Shm::the().s_shmdebug->push_back(ShmDebugInfo('O', d->name, handle));
 #endif
 
-#if 0
+#ifdef SHMPUBLISH
    Shm::the().publish(handle);
 #endif
 }
