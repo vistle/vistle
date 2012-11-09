@@ -2,6 +2,8 @@
 
 namespace vistle {
 
+V_SERIALIZERS2(Vec3<T>, template<class T>);
+
 template<> const Object::Type Vec3<Scalar>::s_type = Object::VEC3FLOAT;
 template<> const Object::Type Vec3<int>::s_type   = Object::VEC3INT;
 template<> const Object::Type Vec3<char>::s_type  = Object::VEC3CHAR;

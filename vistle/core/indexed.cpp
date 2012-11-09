@@ -45,4 +45,6 @@ size_t Indexed::getNumVertices() const {
    return d()->x->size();
 }
 
+V_SERIALIZERS(Indexed);
+
 } // namespace vistle

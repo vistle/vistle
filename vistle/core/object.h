@@ -207,24 +207,12 @@ class ObjectTypeRegistry {
    static boost::shared_ptr<Type> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Type>(ptr); } \
    static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new Type(static_cast<Type::Data *>(data))); } \
    static void destroy(const std::string &name) { shm<Type::Data>::destroy(name); } \
-   virtual void serialize(boost::archive::text_iarchive &tar) { \
-      tar & *this; \
-   } \
-   virtual void serialize(boost::archive::text_oarchive &tar) const { \
-      tar & *this; \
-   } \
-   virtual void serialize(boost::archive::binary_iarchive &bar) { \
-      bar & *this; \
-   } \
-   virtual void serialize(boost::archive::binary_oarchive &bar) const { \
-      bar & *this; \
-   } \
-   virtual void serialize(boost::archive::xml_iarchive &xar) { \
-      xar & V_NAME("object", *this); \
-   } \
-   virtual void serialize(boost::archive::xml_oarchive &xar) const { \
-      xar & V_NAME("object", *this); \
-   } \
+   virtual void serialize(boost::archive::text_iarchive &tar); \
+   virtual void serialize(boost::archive::text_oarchive &tar) const; \
+   virtual void serialize(boost::archive::binary_iarchive &bar); \
+   virtual void serialize(boost::archive::binary_oarchive &bar) const; \
+   virtual void serialize(boost::archive::xml_iarchive &xar); \
+   virtual void serialize(boost::archive::xml_oarchive &xar) const; \
    protected: \
    struct Data; \
    Data *d() const { return static_cast<Data *>(m_data); } \
@@ -241,6 +229,35 @@ class ObjectTypeRegistry {
    friend class ObjectTypeRegistry
 
 
+#define V_SERIALIZERS2(Type, prefix) \
+   prefix \
+   void Type::serialize(boost::archive::text_iarchive &ar) { \
+      ar & V_NAME("object", *this); \
+   } \
+   prefix \
+   void Type::serialize(boost::archive::xml_iarchive &ar) { \
+      ar & V_NAME("object", *this); \
+   } \
+   prefix \
+   void Type::serialize(boost::archive::binary_iarchive &ar) { \
+      ar & V_NAME("object", *this); \
+   } \
+   prefix \
+   void Type::serialize(boost::archive::text_oarchive &ar) const { \
+      ar & V_NAME("object", *this); \
+   } \
+   prefix \
+   void Type::serialize(boost::archive::xml_oarchive &ar) const { \
+      ar & V_NAME("object", *this); \
+   } \
+   prefix \
+   void Type::serialize(boost::archive::binary_oarchive &ar) const { \
+      ar & V_NAME("object", *this); \
+   }
+
+#define V_SERIALIZERS(Type) \
+   V_SERIALIZERS2(Type,)
+
 //! register a new Object type (complex form, specify suffix for symbol names)
 #define V_OBJECT_TYPE3(Type, suffix, id) \
    namespace { \
@@ -256,6 +273,7 @@ class ObjectTypeRegistry {
 
 //! register a new Object type (simple form for non-templates, symbol suffix determined automatically)
 #define V_OBJECT_TYPE(Type, id) \
+   V_SERIALIZERS(Type) \
    V_OBJECT_TYPE3(Type, Type, id)
 
 } // namespace vistle
