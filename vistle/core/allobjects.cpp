@@ -11,6 +11,5 @@
 #include "triangles.cpp"
 #include "polygons.cpp"
 #include "unstr.cpp"
-#include "set.cpp"
 #include "geometry.cpp"
 #include "texture1d.cpp"

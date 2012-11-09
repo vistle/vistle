@@ -12,7 +12,6 @@
 #include "triangles.h"
 #include "polygons.h"
 #include "texture1d.h"
-#include "set.h"
 #include "geometry.h"
 
 #include "OSGRenderer.h"
@@ -285,22 +284,6 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
             break;
          }
 
-         case vistle::Object::SET: {
-
-            vistle::Set::const_ptr gset = vistle::Set::as(geometry);
-            vistle::Set::const_ptr cset = vistle::Set::as(colors);
-            vistle::Set::const_ptr nset = vistle::Set::as(normals);
-            vistle::Set::const_ptr tset = vistle::Set::as(texture);
-
-            for (size_t index = 0; index < gset->elements().size(); index ++) {
-               addInputObject(gset->getElement(index),
-                              cset ? cset->getElement(index) : vistle::Object::ptr(),
-                              nset ? nset->getElement(index) : vistle::Object::ptr(),
-                              tset ? tset->getElement(index) : vistle::Object::ptr());
-            }
-            break;
-         }
-
          default:
             break;
       }
@@ -325,15 +308,6 @@ bool OSGRenderer::addInputObject(const std::string & portName,
       case vistle::Object::LINES: {
 
          addInputObject(object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
-         break;
-      }
-
-      case vistle::Object::SET: {
-
-         vistle::Set::const_ptr set = vistle::Set::as(object);
-         for (size_t index = 0; index < set->elements().size(); index ++) {
-            addInputObject(portName, set->getElement(index));
-         }
          break;
       }
 

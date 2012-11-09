@@ -3,7 +3,6 @@
 #include <cfloat>
 #include "vector.h"
 #include "object.h"
-#include "set.h"
 #include "vec.h"
 #include "vec3.h"
 #include "texture1d.h"
@@ -79,15 +78,6 @@ void Color::getMinMax(vistle::Object::const_ptr object,
    if (object) {
       switch (object->getType()) {
 
-         case vistle::Object::SET: {
-
-            vistle::Set::const_ptr set = boost::static_pointer_cast<const vistle::Set>(object);
-            for (size_t index = 0; index < set->getNumElements(); index ++)
-               getMinMax(set->getElement(index), min, max);
-
-            break;
-         }
-
          case vistle::Object::VECFLOAT: {
 
                vistle::Vec<vistle::Scalar>::const_ptr data =
@@ -116,20 +106,6 @@ vistle::Object::ptr Color::addTexture(vistle::Object::const_ptr object,
 
    if (object) {
       switch (object->getType()) {
-
-         case vistle::Object::SET: {
-
-            vistle::Set::const_ptr set = boost::static_pointer_cast<const vistle::Set>(object);
-            vistle::Set::ptr out(new vistle::Set);
-            out->setBlock(object->getBlock());
-            out->setTimestep(object->getTimestep());
-
-            for (size_t index = 0; index < set->getNumElements(); index ++)
-               out->addElement(addTexture(set->getElement(index),
-                                                   min, max, cmap));
-            return out;
-            break;
-         }
 
          case vistle::Object::VECFLOAT: {
 

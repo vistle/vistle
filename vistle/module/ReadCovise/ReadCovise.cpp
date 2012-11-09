@@ -11,7 +11,6 @@
 //#include <google/profiler.h>
 
 #include "object.h"
-#include "set.h"
 #include "geometry.h"
 #include "vec.h"
 #include "polygons.h"

@@ -12,7 +12,6 @@
 #include <fcntl.h>
 
 #include <object.h>
-#include <set.h>
 #include <polygons.h>
 #include <unstr.h>
 #include <vec.h>
@@ -100,35 +99,7 @@ WriteVistle::~WriteVistle() {
 
 Object::Info * WriteVistle::createInfo(vistle::Object::const_ptr object, size_t offset) {
 
-   uint64_t infosize = 0;
-   uint64_t itemsize = 0;
-
    switch (object->getType()) {
-
-      case vistle::Object::SET: {
-
-         infosize += (sizeof(Object::Info) + sizeof(int32_t)); // numitems
-         const vistle::Set::const_ptr set = vistle::Set::as(object);
-         Set::Info *s = new Set::Info;
-         s->type = vistle::Object::SET;
-         s->block = set->getBlock();
-         s->timestep = set->getTimestep();
-         s->offset = offset;
-
-         for (size_t index = 0; index < set->getNumElements(); index ++) {
-            Object::Info * info = createInfo(set->getElement(index), offset);
-            if (info) {
-               infosize += info->infosize;
-               itemsize += info->itemsize;
-               offset += info->itemsize;
-               s->items.push_back(info);
-            }
-         }
-         s->infosize = infosize;
-         s->itemsize = itemsize;
-         return s;
-         break;
-      }
 
       case vistle::Object::POLYGONS: {
 
@@ -210,61 +181,16 @@ void WriteVistle::createCatalogue(vistle::Object::const_ptr object,
    uint64_t itemsize = 0;
    uint64_t offset = 0;
 
-#if 0
-   switch (object->getType()) {
-
-      case vistle::Object::SET: {
-
-         infosize += (sizeof(Object::Info) + sizeof(int32_t)); // numitems
-         const vistle::Set *set = static_cast<const vistle::Set *>(object);
-         Set::Info *s = new Set::Info;
-         s->offset = offset;
-         s->type = vistle::Object::SET;
-         s->block = set->getBlock();
-         s->timestep = set->getTimestep();
-
-         for (size_t index = 0; index < set->getNumElements(); index ++) {
-            Object::Info * info = createInfo(set->getElement(index), offset);
-            if (info) {
-               infosize += info->infosize;
-               itemsize += info->itemsize;
-               s->items.push_back(info);
-               offset += info->itemsize;
-            }
-         }
-         s->infosize = infosize;
-         s->itemsize = itemsize;
-         c.item = s;
-         break;
-      }
-
-      default:
-         break;
-   }
-#else
    c.item = createInfo(object, offset);
-#endif
    c.infosize = infosize + 2 * sizeof(int64_t); // info + item size;
    c.itemsize = itemsize;
 }
 
 void printItemInfo(const Object::Info * info, const int depth = 0) {
 
-   const Set::Info * set = dynamic_cast<const Set::Info *>(info);
    const Polygons::Info * poly = dynamic_cast<const Polygons::Info *>(info);
 
-   if (set) {
-
-      for (int s = 0; s < depth * 4; s ++)
-         printf(" ");
-      printf("set: info %" PRIu64 ", item %" PRIu64 "\n",
-             set->infosize, set->itemsize);
-
-      for (size_t index = 0; index < set->items.size(); index ++) {
-         printItemInfo(set->items[index], depth + 1);
-      }
-   }
-   else if (poly) {
+   if (poly) {
 
       for (int s = 0; s < depth * 4; s ++)
          printf(" ");
@@ -285,14 +211,6 @@ void printCatalogue(const catalogue & c) {
 void WriteVistle::saveObject(const int fd, vistle::Object::const_ptr object) {
 
    switch(object->getType()) {
-
-      case vistle::Object::SET: {
-
-         vistle::Set::const_ptr set = vistle::Set::as(object);
-         for (size_t index = 0; index < set->getNumElements(); index ++)
-            saveObject(fd, set->getElement(index));
-         break;
-      }
 
       case vistle::Object::POLYGONS: {
 
@@ -373,18 +291,11 @@ void WriteVistle::saveItemInfo(const int fd, const Object::Info * info) {
    write_uint64(fd, &info->block, 1);
    write_uint64(fd, &info->timestep, 1);
 
-   const Set::Info *set = dynamic_cast<const Set::Info *>(info);
    const Polygons::Info *polygons = dynamic_cast<const Polygons::Info *>(info);
    const UnstructuredGrid::Info *usg = dynamic_cast<const UnstructuredGrid::Info *>(info);
    const Vec<float>::Info *data = dynamic_cast<const Vec<float>::Info *>(info);
 
-   if (set) {
-      uint64_t numItems = set->items.size();
-      write_uint64(fd, &numItems, 1);
-      for (size_t index = 0; index < set->items.size(); index ++)
-         saveItemInfo(fd, set->items[index]);
-   }
-   else if (polygons) {
+   if (polygons) {
       write_uint64(fd, &polygons->numElements, 1);
       write_uint64(fd, &polygons->numCorners, 1);
       write_uint64(fd, &polygons->numVertices, 1);

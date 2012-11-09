@@ -9,7 +9,6 @@
 #include "triangles.h"
 #include "unstr.h"
 #include "vec.h"
-#include "set.h"
 #include "tables.h"
 
 #include "CuttingSurface.h"
@@ -91,35 +90,6 @@ CuttingSurface::generateCuttingSurface(vistle::Object::const_ptr grid_object,
 
    if (!grid_object || !data_object)
       return std::make_pair((vistle::Object *) NULL, (vistle::Object *) NULL);
-
-   if (grid_object->getType() == vistle::Object::SET &&
-       data_object->getType() == vistle::Object::SET) {
-
-      vistle::Set::const_ptr gset = boost::static_pointer_cast<const vistle::Set>(grid_object);
-      vistle::Set::const_ptr dset = boost::static_pointer_cast<const vistle::Set>(data_object);
-
-      if (gset->getNumElements() != dset->getNumElements())
-         return std::make_pair((vistle::Object *) NULL,
-                               (vistle::Object *) NULL);
-
-      vistle::Set::ptr outGSet(new vistle::Set(gset->getNumElements()));
-      outGSet->setBlock(gset->getBlock());
-      outGSet->setTimestep(gset->getTimestep());
-
-      vistle::Set::ptr outDSet(new vistle::Set(dset->getNumElements()));
-      outDSet->setBlock(dset->getBlock());
-      outDSet->setTimestep(dset->getTimestep());
-
-      for (size_t index = 0; index < gset->getNumElements(); index ++) {
-         std::pair<vistle::Object::ptr, vistle::Object::ptr> result =
-            generateCuttingSurface(gset->getElement(index),
-                                   dset->getElement(index), normal, distance);
-         outGSet->setElement(index, result.first);
-         outDSet->setElement(index, result.second);
-      }
-
-      return std::make_pair(outGSet, outDSet);
-   }
 
    if (grid_object->getType() == vistle::Object::UNSTRUCTUREDGRID &&
        data_object->getType() == vistle::Object::VECFLOAT) {

@@ -12,7 +12,6 @@
 #include <fcntl.h>
 
 #include <object.h>
-#include <set.h>
 #include <polygons.h>
 #include <unstr.h>
 #include <vec.h>
@@ -105,11 +104,15 @@ ReadVistle::~ReadVistle() {
 
 }
 
+struct SetInfo: public Object::Info {
+   std::vector<Object::Info *> items;
+};
+
 
 vistle::Object::ptr ReadVistle::readObject(const int fd, const vistle::Object::Info * info,
                                         uint64_t start, const std::vector<std::string> &setHierarchy, int count) {
 
-   const Set::Info *seti = dynamic_cast<const Set::Info *>(info);
+   const SetInfo *seti = dynamic_cast<const SetInfo *>(info);
    const Polygons::Info *polyi = dynamic_cast<const Polygons::Info *>(info);
    const UnstructuredGrid::Info *usgi = dynamic_cast<const UnstructuredGrid::Info *>(info);
    const Vec<vistle::Scalar>::Info *datai = dynamic_cast<const Vec<vistle::Scalar>::Info *>(info);
@@ -230,7 +233,7 @@ vistle::Object::Info * ReadVistle::readItemInfo(const int fd) {
 
       case vistle::Object::SET: {
 
-         Set::Info *info = new Set::Info;
+         SetInfo *info = new SetInfo;
          info->infosize = infosize;
          info->itemsize = itemsize;
          info->offset = offset;

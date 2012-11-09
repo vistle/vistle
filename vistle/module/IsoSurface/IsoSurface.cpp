@@ -8,7 +8,6 @@
 #include "object.h"
 #include "unstr.h"
 #include "vec.h"
-#include "set.h"
 #include "triangles.h"
 #include "tables.h"
 
@@ -77,23 +76,6 @@ IsoSurface::generateIsoSurface(vistle::Object::const_ptr grid_object,
 
    if (!grid_object || !data_object)
       return vistle::Object::ptr();
-
-   vistle::Set::const_ptr gset = vistle::Set::as(grid_object);
-   vistle::Set::const_ptr dset = vistle::Set::as(data_object);
-   if (gset && dset) {
-      if (gset->getNumElements() != dset->getNumElements())
-         return vistle::Object::ptr();
-
-      vistle::Set::ptr set(new vistle::Set(gset->getNumElements()));
-      set->setBlock(gset->getBlock());
-      set->setTimestep(gset->getTimestep());
-
-      for (size_t index = 0; index < gset->getNumElements(); index ++)
-         set->setElement(index,
-               generateIsoSurface(gset->getElement(index),
-                  dset->getElement(index), isoValue));
-      return set;
-   }
 
    vistle::UnstructuredGrid::const_ptr grid = vistle::UnstructuredGrid::as(grid_object);
    vistle::Vec<vistle::Scalar>::const_ptr data = vistle::Vec<vistle::Scalar>::as(data_object);
