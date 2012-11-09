@@ -1,26 +1,6 @@
 #ifndef COORDS_H
 #define COORDS_H
 
-
-#include "tools.h"
-
-#include <vector>
-
-#include <boost/scoped_ptr.hpp>
-#include <boost/interprocess/containers/vector.hpp>
-#include <boost/interprocess/managed_shared_memory.hpp>
-
-#include <boost/shared_ptr.hpp>
-
-// include headers that implement an archive in simple text format
-//#include <boost/archive/text_oarchive.hpp>
-//#include <boost/archive/text_iarchive.hpp>
-
-#include <boost/serialization/base_object.hpp>
-#include <boost/serialization/utility.hpp>
-#include <boost/serialization/list.hpp>
-#include <boost/serialization/assume_abstract.hpp>
-
 #include "scalar.h"
 #include "shm.h"
 #include "object.h"

@@ -1,33 +1,32 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
+#include <vector>
 
-#include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 
-#include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/containers/string.hpp>
 
-// include headers that implement an archive in simple text format
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/xml_oarchive.hpp>
-#include <boost/archive/xml_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
-
-#include <boost/serialization/base_object.hpp>
-#include <boost/serialization/utility.hpp>
-#include <boost/serialization/list.hpp>
-#include <boost/serialization/assume_abstract.hpp>
-#include <boost/serialization/string.hpp>
 #include <boost/serialization/access.hpp>
 
-#include <vector>
-
 #include "shm.h"
+
+namespace boost {
+namespace archive {
+
+class text_iarchive;
+class text_oarchive;
+class xml_oarchive;
+class xml_iarchive;
+class binary_oarchive;
+class binary_iarchive;
+
+
+} // namespace archive
+} // namespace boost
+
 
 namespace vistle {
 

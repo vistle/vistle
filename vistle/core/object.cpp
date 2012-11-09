@@ -3,6 +3,8 @@
 
 #include <limits.h>
 
+#include <boost/scoped_ptr.hpp>
+
 #include "message.h"
 #include "messagequeue.h"
 #include "shm.h"

@@ -1,17 +1,14 @@
 #ifndef SHM_H
 #define SHM_H
 
+#include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
+
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 
-#include <boost/shared_ptr.hpp>
-
-#include <boost/serialization/base_object.hpp>
-#include <boost/serialization/utility.hpp>
-#include <boost/serialization/list.hpp>
-#include <boost/serialization/assume_abstract.hpp>
+#include <boost/serialization/access.hpp>
 #include <boost/serialization/array.hpp>
 
 #define SHMDEBUG
