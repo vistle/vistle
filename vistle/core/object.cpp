@@ -15,6 +15,56 @@ static T min(T a, T b) { return a<b ? a : b; }
 
 using namespace boost::interprocess;
 
+namespace boost {
+namespace serialization {
+
+// XXX: check these
+
+template<>
+void access::destroy( const vistle::shm<char>::string * t) // const appropriate here?
+{
+   delete const_cast<vistle::shm<char>::string *>(t);
+}
+
+template<>
+void access::construct(vistle::shm<char>::string * t)
+{
+   // default is inplace invocation of default constructor
+   // Note the :: before the placement new. Required if the
+   // class doesn't have a class-specific placement new defined.
+   ::new(t) vistle::shm<char>::string(vistle::Shm::the().allocator());
+}
+
+template<>
+void access::destroy(const vistle::Object::Data::AttributeList *t)
+{
+   delete const_cast<vistle::Object::Data::AttributeList *>(t);
+}
+
+template<>
+void access::construct(vistle::Object::Data::AttributeList *t)
+{
+   ::new(t) vistle::Object::Data::AttributeList(vistle::Shm::the().allocator());
+}
+
+template<>
+void access::destroy(const vistle::Object::Data::AttributeMapValueType *t)
+{
+   delete const_cast<vistle::Object::Data::AttributeMapValueType *>(t);
+}
+
+template<>
+void access::construct(vistle::Object::Data::AttributeMapValueType *t)
+{
+   ::new(t) vistle::Object::Data::AttributeMapValueType(vistle::Object::Data::Key(vistle::Shm::the().allocator()),
+         vistle::Object::Data::AttributeList(vistle::Shm::the().allocator()));
+}
+
+} // namespace serialization
+} // namespace boost
+
+
+
 namespace vistle {
 
 Object::ptr Object::create(Object::Data *data) {

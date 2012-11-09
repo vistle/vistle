@@ -22,8 +22,27 @@
 #include <boost/serialization/utility.hpp>
 #include <boost/serialization/list.hpp>
 #include <boost/serialization/assume_abstract.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/access.hpp>
 
 #include "shm.h"
+
+#include "serialize.h"
+
+BOOST_CLASS_IMPLEMENTATION(vistle::shm<char>::string, boost::serialization::primitive_type)
+
+namespace boost {
+namespace serialization {
+
+template<>
+void access::destroy(const vistle::shm<char>::string *t);
+
+template<>
+void access::construct(vistle::shm<char>::string *t);
+
+} // namespace serialization
+} // namespace boost
+
 
 namespace vistle {
 
@@ -140,12 +159,7 @@ public:
 
       friend class boost::serialization::access;
       template<class Archive>
-      void serialize(Archive &ar, const unsigned int version) {
-         ar & V_NAME("type", type);
-         ar & V_NAME("block", block);
-         ar & V_NAME("timestep", timestep);
-         //ar & V_NAME("attributes", *attributes);
-      }
+      void serialize(Archive &ar, const unsigned int version);
 
       // not implemented
       Data &operator=(const Data &);
@@ -167,12 +181,40 @@ public:
    template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
          d()->serialize<Archive>(ar, version);
-#if 0
-         boost::scoped_ptr<Info> info(getInfo());
-         ar & *info;
-#endif
       }
 };
+
+} // namespace vistle
+
+namespace boost {
+namespace serialization {
+
+template<>
+void access::destroy(const vistle::Object::Data::AttributeList *t);
+
+template<>
+void access::construct(vistle::Object::Data::AttributeList *t);
+
+template<>
+void access::destroy(const vistle::Object::Data::AttributeMapValueType *t);
+
+template<>
+void access::construct(vistle::Object::Data::AttributeMapValueType *t);
+
+} // namespace serialization
+} // namespace boost
+
+
+namespace vistle {
+
+template<class Archive>
+void Object::Data::serialize(Archive &ar, const unsigned int version) {
+   ar & V_NAME("type", type);
+   ar & V_NAME("block", block);
+   ar & V_NAME("timestep", timestep);
+   ar & V_NAME("attributes", *attributes);
+}
+
 
 class ObjectTypeRegistry {
    friend struct Object::Data;
