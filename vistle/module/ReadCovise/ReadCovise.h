@@ -4,6 +4,43 @@
 #include <string.h>
 #include "module.h"
 
+typedef std::vector<std::pair<std::string, std::string> > AttributeList;
+struct Element {
+   Element()
+      : parent(NULL)
+      , index(-1)
+      , offset(0)
+   {
+   }
+
+   Element(const Element &other)
+      : parent(other.parent)
+      , index(other.index)
+      , offset(other.offset)
+      , subelems(other.subelems)
+      , attribs(other.attribs)
+   {
+   }
+
+   Element &operator=(const Element &rhs) {
+      if (&rhs != this) {
+         parent = rhs.parent;
+         index = rhs.index;
+         offset = rhs.offset;
+         subelems = rhs.subelems;
+         attribs = rhs.attribs;
+      }
+      return *this;
+   }
+
+   Element *parent;
+   int index;
+   off_t offset;
+   std::vector<Element *> subelems;
+   AttributeList attribs;
+
+};
+
 class ReadCovise: public vistle::Module {
 
  public:
@@ -11,20 +48,22 @@ class ReadCovise: public vistle::Module {
    ~ReadCovise();
 
  private:
-   bool readAttributes(const int fd, const bool byteswap);
+   bool readSkeleton(const int fd, const bool byteswap, Element *elem);
+   AttributeList readAttributes(const int fd, const bool byteswap);
+   void applyAttributes(vistle::Object::ptr obj, const Element &elem, int index=-1);
 
-   void setTimesteps(vistle::Object::ptr object, const int timestep);
+   bool readSETELE(const int fd, const bool byteswap, Element *parent);
+   vistle::Object::ptr readGEOTEX(const int fd, const bool byteswap, bool skeleton, Element *elem);
+   vistle::Object::ptr readUNSGRD(const int fd, const bool byteswap, bool skeleton);
+   vistle::Object::ptr readUSTSDT(const int fd, const bool byteswap, bool skeleton);
+   vistle::Object::ptr readPOLYGN(const int fd, const bool byteswap, bool skeleton);
+   vistle::Object::ptr readUSTVDT(const int fd, const bool byteswap, bool skeleton);
 
-   vistle::Object::ptr readSETELE(const int fd, const bool byteswap);
-   vistle::Object::ptr readUNSGRD(const int fd, const bool byteswap);
-   vistle::Object::ptr readUSTSDT(const int fd, const bool byteswap);
-   vistle::Object::ptr readPOLYGN(const int fd, const bool byteswap);
-   vistle::Object::ptr readGEOTEX(const int fd, const bool byteswap);
-   vistle::Object::ptr readUSTVDT(const int fd, const bool byteswap);
+   bool readRecursive(const int fd, bool byteswap, const Element &elem);
+   void deleteRecursive(Element &elem);
+   vistle::Object::ptr readObject(const int fd, bool byteswap, const Element &elem);
 
-   vistle::Object::ptr readObject(const int fd, bool byteswap);
-
-   vistle::Object::const_ptr load(const std::string & filename);
+   bool load(const std::string & filename);
 
    virtual bool compute();
 };
