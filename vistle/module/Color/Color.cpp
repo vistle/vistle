@@ -13,6 +13,8 @@
 
 MODULE_MAIN(Color)
 
+using namespace vistle;
+
 ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
                    const size_t w): width(w) {
 
@@ -104,34 +106,25 @@ vistle::Object::ptr Color::addTexture(vistle::Object::const_ptr object,
       const vistle::Scalar min, const vistle::Scalar max,
       const ColorMap & cmap) {
 
-   if (object) {
-      switch (object->getType()) {
+   if (Vec<Scalar>::const_ptr f = Vec<Scalar>::as(object)) {
 
-         case vistle::Object::VECFLOAT: {
+      const size_t numElem = f->getSize();
+      const vistle::Scalar *x = &f->x()[0];
 
-            vistle::Vec<vistle::Scalar>::const_ptr f = boost::static_pointer_cast<const vistle::Vec<vistle::Scalar> >(object);
-            const size_t numElem = f->getSize();
-            const vistle::Scalar *x = &f->x()[0];
+      vistle::Texture1D::ptr tex(new vistle::Texture1D(cmap.width, min, max));
+      tex->setBlock(object->getBlock());
+      tex->setTimestep(object->getTimestep());
 
-            vistle::Texture1D::ptr tex(new vistle::Texture1D(cmap.width, min, max));
-            tex->setBlock(object->getBlock());
-            tex->setTimestep(object->getTimestep());
+      unsigned char *pix = &tex->pixels()[0];
+      for (size_t index = 0; index < cmap.width * 4; index ++)
+         pix[index] = cmap.data[index];
 
-            unsigned char *pix = &tex->pixels()[0];
-            for (size_t index = 0; index < cmap.width * 4; index ++)
-               pix[index] = cmap.data[index];
+      for (size_t index = 0; index < numElem; index ++)
+         tex->coords().push_back((x[index] - min) / (max - min));
 
-            for (size_t index = 0; index < numElem; index ++)
-               tex->coords().push_back((x[index] - min) / (max - min));
-
-            return tex;
-            break;
-         }
-
-         default:
-            break;
-      }
+      return tex;
    }
+
    return vistle::Object::ptr();
 }
 
@@ -145,25 +138,21 @@ bool Color::compute() {
    ColorMap cmap(pins, 32);
    ObjectList objects = getObjects("data_in");
 
-   while (objects.size() > 0) {
+   while (Object::const_ptr obj = takeFirstObject("data_in")) {
 
       vistle::Scalar min = FLT_MAX;
       vistle::Scalar max = -FLT_MAX;
 
       if (getFloatParameter("min") == getFloatParameter("max"))
-         getMinMax(objects.front(), min, max);
+         getMinMax(obj, min, max);
       else {
          min = getFloatParameter("min");
          max = getFloatParameter("max");
       }
 
-      vistle::Object::ptr out(addTexture(objects.front(), min, max, cmap));
+      vistle::Object::ptr out(addTexture(obj, min, max, cmap));
       if (out.get())
          addObject("data_out", out);
-
-      removeObject("data_in", objects.front());
-
-      objects = getObjects("data_in");
    }
 
    return true;

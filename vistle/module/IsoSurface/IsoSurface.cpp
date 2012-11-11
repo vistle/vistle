@@ -195,30 +195,18 @@ bool IsoSurface::compute() {
 
    const vistle::Scalar isoValue = getFloatParameter("isovalue");
 
-   ObjectList gridObjects = getObjects("grid_in");
-   std::cout << "IsoSurface: " << gridObjects.size() << " grid objects"
-             << std::endl;
+   while (hasObject("grid_in") && hasObject("data_in")) {
 
-   ObjectList dataObjects = getObjects("data_in");
-   std::cout << "IsoSurface: " << dataObjects.size() << " data objects"
-             << std::endl;
-
-   while (gridObjects.size() > 0 && dataObjects.size() > 0) {
-
+      vistle::Object::const_ptr grid = takeFirstObject("grid_in");
+      vistle::Object::const_ptr data = takeFirstObject("data_in");
       vistle::Object::ptr object =
-         generateIsoSurface(gridObjects.front(), dataObjects.front(), isoValue);
+         generateIsoSurface(grid, data, isoValue);
 
       if (object) {
-         object->copyAttributes(dataObjects.front());
-         object->copyAttributes(gridObjects.front(), false);
+         object->copyAttributes(data);
+         object->copyAttributes(grid, false);
          addObject("grid_out", object);
       }
-
-      removeObject("grid_in", gridObjects.front());
-      removeObject("data_in", dataObjects.front());
-
-      gridObjects = getObjects("grid_in");
-      dataObjects = getObjects("data_in");
    }
 
    return true;
