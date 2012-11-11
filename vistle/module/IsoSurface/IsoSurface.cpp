@@ -15,6 +15,8 @@
 
 MODULE_MAIN(IsoSurface)
 
+using namespace vistle;
+
 
 IsoSurface::IsoSurface(const std::string &shmname, int rank, int size, int moduleID)
    : Module("IsoSurface", shmname, rank, size, moduleID) {
@@ -37,12 +39,12 @@ IsoSurface::~IsoSurface() {
 #define lerp(a, b, t) ( a + t * (b - a) )
 
 typedef struct {
-   vistle::Scalar x, y, z;
+   Scalar x, y, z;
 } Scalar3;
 
-const vistle::Scalar EPSILON = 1.0e-10f;
+const Scalar EPSILON = 1.0e-10f;
 
-inline Scalar3 lerp3(const Scalar3 &a, const Scalar3 &b, const vistle::Scalar t) {
+inline Scalar3 lerp3(const Scalar3 &a, const Scalar3 &b, const Scalar t) {
 
    Scalar3 res;
    res.x = lerp(a.x, b.x, t);
@@ -51,9 +53,9 @@ inline Scalar3 lerp3(const Scalar3 &a, const Scalar3 &b, const vistle::Scalar t)
    return res;
 }
 
-inline Scalar3 interp(vistle::Scalar iso, const Scalar3 &p0, const Scalar3 &p1, const vistle::Scalar &f0, const vistle::Scalar &f1) {
+inline Scalar3 interp(Scalar iso, const Scalar3 &p0, const Scalar3 &p1, const Scalar &f0, const Scalar &f1) {
 
-   vistle::Scalar diff = (f1 - f0);
+   Scalar diff = (f1 - f0);
 
    if (fabs(diff) < EPSILON)
       return p0;
@@ -64,34 +66,34 @@ inline Scalar3 interp(vistle::Scalar iso, const Scalar3 &p0, const Scalar3 &p1, 
    if (fabs(iso - f1) < EPSILON)
       return p1;
 
-   vistle::Scalar t = (iso - f0) / diff;
+   Scalar t = (iso - f0) / diff;
 
    return lerp3(p0, p1, t);
 }
 
-vistle::Object::ptr
-IsoSurface::generateIsoSurface(vistle::Object::const_ptr grid_object,
-                               vistle::Object::const_ptr data_object,
-                               const vistle::Scalar isoValue) {
+Object::ptr
+IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
+                               Object::const_ptr data_object,
+                               const Scalar isoValue) {
 
    if (!grid_object || !data_object)
-      return vistle::Object::ptr();
+      return Object::ptr();
 
-   vistle::UnstructuredGrid::const_ptr grid = vistle::UnstructuredGrid::as(grid_object);
-   vistle::Vec<vistle::Scalar>::const_ptr data = vistle::Vec<vistle::Scalar>::as(data_object);
+   UnstructuredGrid::const_ptr grid = UnstructuredGrid::as(grid_object);
+   Vec<Scalar>::const_ptr data = Vec<Scalar>::as(data_object);
 
 
    const char *tl = &grid->tl()[0];
    const size_t *el = &grid->el()[0];
    const size_t *cl = &grid->cl()[0];
-   const vistle::Scalar *x = &grid->x()[0];
-   const vistle::Scalar *y = &grid->y()[0];
-   const vistle::Scalar *z = &grid->z()[0];
+   const Scalar *x = &grid->x()[0];
+   const Scalar *y = &grid->y()[0];
+   const Scalar *z = &grid->z()[0];
 
-   const vistle::Scalar *d = &data->x()[0];
+   const Scalar *d = &data->x()[0];
 
    size_t numElem = grid->getNumElements();
-   vistle::Triangles::ptr t(new vistle::Triangles);
+   Triangles::ptr t(new Triangles);
    t->setBlock(grid_object->getBlock());
    t->setTimestep(grid_object->getTimestep());
 
@@ -102,12 +104,12 @@ IsoSurface::generateIsoSurface(vistle::Object::const_ptr grid_object,
 
       switch (tl[elem]) {
 
-         case vistle::UnstructuredGrid::HEXAHEDRON: {
+         case UnstructuredGrid::HEXAHEDRON: {
 
             Scalar3 vertlist[12];
             Scalar3 v[8];
             size_t index[8];
-            vistle::Scalar field[8];
+            Scalar field[8];
             size_t p = el[elem];
 
             index[0] = cl[p + 5];
@@ -193,13 +195,13 @@ IsoSurface::generateIsoSurface(vistle::Object::const_ptr grid_object,
 
 bool IsoSurface::compute() {
 
-   const vistle::Scalar isoValue = getFloatParameter("isovalue");
+   const Scalar isoValue = getFloatParameter("isovalue");
 
    while (hasObject("grid_in") && hasObject("data_in")) {
 
-      vistle::Object::const_ptr grid = takeFirstObject("grid_in");
-      vistle::Object::const_ptr data = takeFirstObject("data_in");
-      vistle::Object::ptr object =
+      Object::const_ptr grid = takeFirstObject("grid_in");
+      Object::const_ptr data = takeFirstObject("data_in");
+      Object::ptr object =
          generateIsoSurface(grid, data, isoValue);
 
       if (object) {

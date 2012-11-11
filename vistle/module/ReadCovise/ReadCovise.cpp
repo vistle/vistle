@@ -46,7 +46,7 @@ off_t seek(const int fd, off_t off) {
    return lseek(abs(fd), off, SEEK_SET);
 }
 
-void ReadCovise::applyAttributes(vistle::Object::ptr obj, const Element &elem, int index) {
+void ReadCovise::applyAttributes(Object::ptr obj, const Element &elem, int index) {
 
    if (elem.parent) {
       applyAttributes(obj, *elem.parent, elem.index);
@@ -115,7 +115,7 @@ bool ReadCovise::readSETELE(const int fd, Element *parent) {
    return true;
 }
 
-vistle::Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
 
    int numElements=-1;
    int numCorners=-1;
@@ -131,7 +131,7 @@ vistle::Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
       covSkipUNSGRD(fd, numElements, numCorners, numVertices);
    } else {
 
-      vistle::UnstructuredGrid::ptr usg(new vistle::UnstructuredGrid(numElements, numCorners, numVertices));
+      UnstructuredGrid::ptr usg(new UnstructuredGrid(numElements, numCorners, numVertices));
 
       int *_tl = new int[numElements];
       int *_el = new int[numElements];
@@ -149,7 +149,7 @@ vistle::Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
 
       for (int index = 0; index < numElements; index ++) {
          el[index] = _el[index];
-         tl[index] = (vistle::UnstructuredGrid::Type) _tl[index];
+         tl[index] = (UnstructuredGrid::Type) _tl[index];
       }
 
       for (int index = 0; index < numCorners; index ++)
@@ -171,7 +171,7 @@ vistle::Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-vistle::Object::ptr ReadCovise::readUSTSDT(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readUSTSDT(const int fd, const bool skeleton) {
 
    int numElements=-1;
    covReadSizeUSTSDT(fd, &numElements);
@@ -182,7 +182,7 @@ vistle::Object::ptr ReadCovise::readUSTSDT(const int fd, const bool skeleton) {
       covSkipUSTSDT(fd, numElements);
    } else {
 
-      vistle::Vec<vistle::Scalar>::ptr array(new vistle::Vec<vistle::Scalar>(numElements));
+      Vec<Scalar>::ptr array(new Vec<Scalar>(numElements));
       std::vector<float> _x(numElements);
       covReadUSTSDT(fd, numElements, &_x[0]);
       for (int i=0; i<numElements; ++i)
@@ -194,7 +194,7 @@ vistle::Object::ptr ReadCovise::readUSTSDT(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-vistle::Object::ptr ReadCovise::readUSTVDT(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readUSTVDT(const int fd, const bool skeleton) {
 
    int numElements=-1;
    covReadSizeUSTVDT(fd, &numElements);
@@ -205,7 +205,7 @@ vistle::Object::ptr ReadCovise::readUSTVDT(const int fd, const bool skeleton) {
       covSkipUSTVDT(fd, numElements);
    } else {
 
-      vistle::Vec3<vistle::Scalar>::ptr array(new vistle::Vec3<vistle::Scalar>(numElements));
+      Vec3<Scalar>::ptr array(new Vec3<Scalar>(numElements));
       std::vector<float> _x(numElements), _y(numElements), _z(numElements);
       covReadUSTVDT(fd, numElements, &_x[0], &_y[0], &_z[0]);
       for (int i=0; i<numElements; ++i) {
@@ -220,7 +220,7 @@ vistle::Object::ptr ReadCovise::readUSTVDT(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-vistle::Object::ptr ReadCovise::readLINES(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readLINES(const int fd, const bool skeleton) {
 
    int numElements=-1, numCorners=-1, numVertices=-1;
    covReadSizeLINES(fd, &numElements, &numCorners, &numVertices);
@@ -233,7 +233,7 @@ vistle::Object::ptr ReadCovise::readLINES(const int fd, const bool skeleton) {
       covSkipLINES(fd, numElements, numCorners, numVertices);
    } else {
 
-      vistle::Lines::ptr lines(new vistle::Lines(numElements, numCorners, numVertices));
+      Lines::ptr lines(new Lines(numElements, numCorners, numVertices));
 
       std::vector<int> el(numElements);
       std::vector<int> cl(numCorners);
@@ -259,7 +259,7 @@ vistle::Object::ptr ReadCovise::readLINES(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-vistle::Object::ptr ReadCovise::readPOLYGN(const int fd, const bool skeleton) {
+Object::ptr ReadCovise::readPOLYGN(const int fd, const bool skeleton) {
 
    int numElements=-1, numCorners=-1, numVertices=-1;
    covReadSizePOLYGN(fd, &numElements, &numCorners, &numVertices);
@@ -272,7 +272,7 @@ vistle::Object::ptr ReadCovise::readPOLYGN(const int fd, const bool skeleton) {
       covSkipPOLYGN(fd, numElements, numCorners, numVertices);
    } else {
 
-      vistle::Polygons::ptr polygons(new vistle::Polygons(numElements, numCorners, numVertices));
+      Polygons::ptr polygons(new Polygons(numElements, numCorners, numVertices));
 
       std::vector<int> el(numElements);
       std::vector<int> cl(numCorners);
@@ -298,7 +298,7 @@ vistle::Object::ptr ReadCovise::readPOLYGN(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-vistle::Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *elem) {
+Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *elem) {
 
    assert(elem);
 
@@ -318,7 +318,7 @@ vistle::Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, El
    } else {
       assert(elem->subelems.size() == ncomp);
 
-      vistle::Geometry::ptr container(new vistle::Geometry);
+      Geometry::ptr container(new Geometry);
 
       if (contains[0]) {
          container->setGeometry(readObject(fd, *elem->subelems[0]));
@@ -342,9 +342,9 @@ vistle::Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, El
    return Object::ptr();
 }
 
-vistle::Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Element *elem) {
+Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Element *elem) {
 
-   vistle::Object::ptr object;
+   Object::ptr object;
 
    if (skeleton) {
       elem->offset = tell(fd);
@@ -400,7 +400,7 @@ vistle::Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skelet
    return object;
 }
 
-vistle::Object::ptr ReadCovise::readObject(const int fd, const Element &elem) {
+Object::ptr ReadCovise::readObject(const int fd, const Element &elem) {
 
    return readObjectIntern(fd, false, const_cast<Element *>(&elem));
 }

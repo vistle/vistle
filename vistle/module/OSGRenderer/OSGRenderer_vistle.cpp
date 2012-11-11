@@ -38,6 +38,8 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
             const size_t numCorners = triangles->getNumCorners();
             const size_t numVertices = triangles->getNumVertices();
 
+            std::cerr << "   Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]" << std::endl;
+
             size_t *cl = &triangles->cl()[0];
             vistle::Scalar *x = &triangles->x()[0];
             vistle::Scalar *y = &triangles->y()[0];
@@ -136,6 +138,8 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
             const size_t numElements = lines->getNumElements();
             const size_t numCorners = lines->getNumCorners();
 
+            std::cerr << "   Lines: [ #c " << numCorners << ", #e " << numElements << " ]" << std::endl;
+
             size_t *el = &lines->el()[0];
             size_t *cl = &lines->cl()[0];
             vistle::Scalar *x = &lines->x()[0];
@@ -187,6 +191,8 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
             const size_t numCorners = polygons->getNumCorners();
             const size_t numVertices = polygons->getNumVertices();
             const size_t numNormals = vec ? vec->getSize() : 0;
+
+            std::cerr << "   Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]" << std::endl;
 
             size_t *el = &polygons->el()[0];
             size_t *cl = &polygons->cl()[0];
