@@ -84,7 +84,7 @@ void Vistle::config() {
 #ifdef TURBINEVISTLE
    enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER, WRITEVISTLE, WRITEARCHIVE };
 
-   spawn(RGEO,  "ReadVistle");
+   spawn(RGEO,  "ReadCovise");
    //spawn(RGRID, "ReadCovise");
    //spawn(RPRES, "ReadCovise");
    spawn(CUTGEO, "CutGeometry");
@@ -98,12 +98,12 @@ void Vistle::config() {
    /*
    spawn(WRITEVISTLE, "WriteVistle");
    */
-   //spawn(RENDERER, "OSGRenderer");
-   spawn(WRITEARCHIVE, "WriteArchive");
+   spawn(RENDERER, "OSGRenderer");
+   //spawn(WRITEARCHIVE, "WriteArchive");
 
 #if 1
    setParam(RGEO, "filename",
-            "/data/OpenFOAM/PumpTurbine/covise/test/three_geo2d.vistle");
+            "/data/OpenFOAM/PumpTurbine/covise/test/three_geo2d.covise");
 #endif
 
 #if 0
