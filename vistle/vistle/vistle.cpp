@@ -84,14 +84,12 @@ void Vistle::config() {
 #ifdef TURBINEVISTLE
    enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER, WRITEVISTLE, WRITEARCHIVE };
 
-   spawn(RGEO,  "ReadCovise");
-   //spawn(RGRID, "ReadCovise");
-   //spawn(RPRES, "ReadCovise");
+   //spawn(RGEO,  "ReadCovise");
+   spawn(RGRID, "ReadCovise");
+   spawn(RPRES, "ReadCovise");
    spawn(CUTGEO, "CutGeometry");
-   spawn(CUTSURF, "CuttingSurface");
-   /*
+   //spawn(CUTSURF, "CuttingSurface");
    spawn(ISOSURF, "IsoSurface");
-   */
 
    spawn(COLOR, "Color");
    spawn(COLLECT, "Collect");
@@ -106,18 +104,16 @@ void Vistle::config() {
             "/data/OpenFOAM/PumpTurbine/covise/test/three_geo2d.covise");
 #endif
 
-#if 0
    setParam(RGRID, "filename",
             "/data/OpenFOAM/PumpTurbine/covise/test/multi_geo3d.covise");
 
    setParam(RPRES, "filename",
             "/data/OpenFOAM/PumpTurbine/covise/test/multi_p.covise");
-#endif
    /*
    setParam(WRITEVISTLE, "filename",
             "/data/OpenFOAM/PumpTurbine/covise/test/three_geo2d.vistle");
    */
-   setParam(ISOSURF, "isovalue", -1.0);
+   setParam(ISOSURF, "isovalue", -5.0);
 
    setParam(CUTSURF, "distance", 0.0);
    setParam(CUTSURF, "normal", vistle::Vector(1.0, 0.0, 0.0));
@@ -132,6 +128,8 @@ void Vistle::config() {
 
    connect(RGRID, "grid_out", CUTSURF, "grid_in");
    connect(RPRES, "grid_out", CUTSURF, "data_in");
+   connect(RGRID, "grid_out", ISOSURF, "grid_in");
+   connect(RPRES, "grid_out", ISOSURF, "data_in");
    connect(CUTSURF, "grid_out", COLLECT, "grid_in");
    connect(CUTSURF, "data_out", COLOR, "data_in");
    connect(COLOR, "data_out", COLLECT, "texture_in");
