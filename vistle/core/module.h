@@ -100,4 +100,14 @@ class Module {
       return 0;                                                 \
    }
 
+#ifdef NDEBUG
+#define MODULE_DEBUG(X)
+#else
+#define MODULE_DEBUG(X) \
+   std::cerr << #X << ": PID " << getpid() << std::endl; \
+   std::cerr << "   attach debugger within 10 s" << std::endl; \
+   sleep(10); \
+   std::cerr << "   continuing..." << std::endl;
+#endif
+
 #endif
