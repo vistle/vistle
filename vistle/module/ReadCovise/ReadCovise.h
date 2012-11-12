@@ -48,20 +48,21 @@ class ReadCovise: public vistle::Module {
    ~ReadCovise();
 
  private:
-   bool readSkeleton(const int fd, const bool byteswap, Element *elem);
-   AttributeList readAttributes(const int fd, const bool byteswap);
+   bool readSkeleton(const int fd, Element *elem);
+   AttributeList readAttributes(const int fd);
    void applyAttributes(vistle::Object::ptr obj, const Element &elem, int index=-1);
 
-   bool readSETELE(const int fd, const bool byteswap, Element *parent);
-   vistle::Object::ptr readGEOTEX(const int fd, const bool byteswap, bool skeleton, Element *elem);
-   vistle::Object::ptr readUNSGRD(const int fd, const bool byteswap, bool skeleton);
-   vistle::Object::ptr readUSTSDT(const int fd, const bool byteswap, bool skeleton);
-   vistle::Object::ptr readPOLYGN(const int fd, const bool byteswap, bool skeleton);
-   vistle::Object::ptr readUSTVDT(const int fd, const bool byteswap, bool skeleton);
+   bool readSETELE(const int fd, Element *parent);
+   vistle::Object::ptr readGEOTEX(const int fd, bool skeleton, Element *elem);
+   vistle::Object::ptr readUNSGRD(const int fd, bool skeleton);
+   vistle::Object::ptr readUSTSDT(const int fd, bool skeleton);
+   vistle::Object::ptr readPOLYGN(const int fd, bool skeleton);
+   vistle::Object::ptr readUSTVDT(const int fd, bool skeleton);
 
-   bool readRecursive(const int fd, bool byteswap, const Element &elem);
+   bool readRecursive(const int fd, const Element &elem);
    void deleteRecursive(Element &elem);
-   vistle::Object::ptr readObject(const int fd, bool byteswap, const Element &elem);
+   vistle::Object::ptr readObject(const int fd, const Element &elem);
+   vistle::Object::ptr readObjectIntern(const int fd, bool skeleton, Element *elem);
 
    bool load(const std::string & filename);
 
