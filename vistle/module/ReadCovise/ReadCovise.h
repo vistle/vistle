@@ -57,6 +57,7 @@ class ReadCovise: public vistle::Module {
    vistle::Object::ptr readUNSGRD(const int fd, bool skeleton);
    vistle::Object::ptr readUSTSDT(const int fd, bool skeleton);
    vistle::Object::ptr readPOLYGN(const int fd, bool skeleton);
+   vistle::Object::ptr readLINES(const int fd, bool skeleton);
    vistle::Object::ptr readUSTVDT(const int fd, bool skeleton);
 
    bool readRecursive(const int fd, const Element &elem);

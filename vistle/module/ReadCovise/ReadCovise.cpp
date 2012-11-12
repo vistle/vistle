@@ -14,6 +14,7 @@
 #include "geometry.h"
 #include "vec.h"
 #include "polygons.h"
+#include "lines.h"
 #include "unstr.h"
 
 #include <covReadFiles.h>
@@ -219,6 +220,45 @@ vistle::Object::ptr ReadCovise::readUSTVDT(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
+vistle::Object::ptr ReadCovise::readLINES(const int fd, const bool skeleton) {
+
+   int numElements=-1, numCorners=-1, numVertices=-1;
+   covReadSizeLINES(fd, &numElements, &numCorners, &numVertices);
+   assert(numElements>=0);
+   assert(numCorners>=0);
+   assert(numVertices>=0);
+
+   if (skeleton) {
+
+      covSkipLINES(fd, numElements, numCorners, numVertices);
+   } else {
+
+      vistle::Lines::ptr lines(new vistle::Lines(numElements, numCorners, numVertices));
+
+      std::vector<int> el(numElements);
+      std::vector<int> cl(numCorners);
+      std::vector<float> _x(numVertices), _y(numVertices), _z(numVertices);
+
+      covReadLINES(fd, numElements, &el[0], numCorners, &cl[0], numVertices, &_x[0], &_y[0], &_z[0]);
+
+      for (int index = 0; index < numElements; index ++)
+         lines->el()[index] = el[index];
+
+      for (int index = 0; index < numCorners; index ++)
+         lines->cl()[index] = cl[index];
+
+      for (int index = 0; index < numVertices; index ++) {
+         lines->x()[index] = _x[index];
+         lines->y()[index] = _y[index];
+         lines->z()[index] = _z[index];
+      }
+
+      return lines;
+   }
+
+   return Object::ptr();
+}
+
 vistle::Object::ptr ReadCovise::readPOLYGN(const int fd, const bool skeleton) {
 
    int numElements=-1, numCorners=-1, numVertices=-1;
@@ -331,6 +371,7 @@ vistle::Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skelet
    HANDLE(USTSDT);
    HANDLE(USTVDT);
    HANDLE(POLYGN);
+   HANDLE(LINES);
 #undef HANDLE
 
    if (!handled) {
