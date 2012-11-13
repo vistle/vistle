@@ -36,12 +36,12 @@ ReadCovise::~ReadCovise() {
 
 }
 
-off_t tell(const int fd) {
+static off_t tell(const int fd) {
 
    return lseek(abs(fd), 0, SEEK_CUR);
 }
 
-off_t seek(const int fd, off_t off) {
+static off_t seek(const int fd, off_t off) {
 
    return lseek(abs(fd), off, SEEK_SET);
 }
@@ -69,6 +69,16 @@ void ReadCovise::applyAttributes(Object::ptr obj, const Element &elem, int index
          obj->setTimestep(index);
       } else if (obj->getBlock() == -1) {
          obj->setBlock(index);
+      }
+
+      if (!isTimestep) {
+         std::string set = obj->getAttribute("_part_of");
+         if (!set.empty())
+            set = set + "_";
+         std::stringstream idx;
+         idx << index;
+         set = set + idx.str();
+         obj->addAttribute("_part_of", set);
       }
    }
 }
