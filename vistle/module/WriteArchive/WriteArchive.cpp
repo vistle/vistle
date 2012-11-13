@@ -37,7 +37,7 @@ bool WriteArchive::compute() {
    std::string format;
    while (Object::const_ptr obj = takeFirstObject("grid_in")) {
       std::ios_base::openmode flags = std::ios::out;
-      if (obj->hasAttribute("mark_begin")) {
+      if (obj->hasAttribute("_mark_begin")) {
          trunc = true;
          flags |= std::ios::trunc;
       } else {

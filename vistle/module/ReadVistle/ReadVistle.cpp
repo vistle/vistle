@@ -152,7 +152,7 @@ vistle::Object::ptr ReadVistle::readObject(const int fd, const vistle::Object::I
 
          if (first_object) {
             first_object = false;
-            polygons->addAttribute("mark_begin");
+            polygons->addAttribute("_mark_begin");
          }
 
          addObject("grid_out", polygons);
@@ -176,7 +176,7 @@ vistle::Object::ptr ReadVistle::readObject(const int fd, const vistle::Object::I
 
          if (first_object) {
             first_object = false;
-            usg->addAttribute("mark_begin");
+            usg->addAttribute("_mark_begin");
          }
 
          addObject("grid_out", usg);
@@ -194,7 +194,7 @@ vistle::Object::ptr ReadVistle::readObject(const int fd, const vistle::Object::I
                read_float(fd, &data->x()[0], datai->numElements);
                if (first_object) {
                   first_object = false;
-                  data->addAttribute("mark_begin");
+                  data->addAttribute("_mark_begin");
                }
                addObject("grid_out", data);
                return data;
@@ -208,7 +208,7 @@ vistle::Object::ptr ReadVistle::readObject(const int fd, const vistle::Object::I
                read_float(fd, &data->z()[0], datai->numElements);
                if (first_object) {
                   first_object = false;
-                  data->addAttribute("mark_begin");
+                  data->addAttribute("_mark_begin");
                }
                addObject("grid_out", data);
                return data;
@@ -367,7 +367,7 @@ vistle::Object::ptr ReadVistle::load(const std::string & name) {
 
    first_object = true;
    vistle::Object::ptr object = readObject(fd, cat->item, start, std::vector<std::string>(), 0);
-   object->addAttribute("mark_end");
+   object->addAttribute("_mark_end");
 
    return object;
 }
