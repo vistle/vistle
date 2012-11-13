@@ -57,7 +57,7 @@ static void checkFirstLast(const Element &elem, bool *first, bool *last) {
 
       if (elem.index != 0)
          *first = false;
-      if (elem.index != elem.parent->subelems.size()-1)
+      if (elem.index != (int)(elem.parent->subelems.size()-1))
          *last = false;
    }
 }
