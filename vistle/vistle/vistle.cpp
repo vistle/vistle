@@ -137,8 +137,6 @@ void Vistle::config() {
    connect(COLLECT, "grid_out", WRITEARCHIVE, "grid_in");
 
 
-   connect(RGRID, "grid_out", ISOSURF, "grid_in");
-   connect(RPRES, "grid_out", ISOSURF, "data_in");
    connect(ISOSURF, "grid_out", RENDERER, "data_in");
    connect(ISOSURF, "grid_out", WRITEARCHIVE, "grid_in");
 
