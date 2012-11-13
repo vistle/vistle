@@ -8,6 +8,8 @@ typedef std::vector<std::pair<std::string, std::string> > AttributeList;
 struct Element {
    Element()
       : parent(NULL)
+      , in_geometry(false)
+      , objnum(-1)
       , index(-1)
       , offset(0)
    {
@@ -15,6 +17,8 @@ struct Element {
 
    Element(const Element &other)
       : parent(other.parent)
+      , in_geometry(other.in_geometry)
+      , objnum(other.objnum)
       , index(other.index)
       , offset(other.offset)
       , subelems(other.subelems)
@@ -25,6 +29,8 @@ struct Element {
    Element &operator=(const Element &rhs) {
       if (&rhs != this) {
          parent = rhs.parent;
+         in_geometry = rhs.in_geometry;
+         objnum = rhs.objnum;
          index = rhs.index;
          offset = rhs.offset;
          subelems = rhs.subelems;
@@ -34,6 +40,8 @@ struct Element {
    }
 
    Element *parent;
+   bool in_geometry;
+   ssize_t objnum;
    int index;
    off_t offset;
    std::vector<Element *> subelems;
@@ -69,6 +77,8 @@ class ReadCovise: public vistle::Module {
    bool load(const std::string & filename);
 
    virtual bool compute();
+
+   ssize_t object_counter;
 };
 
 #endif

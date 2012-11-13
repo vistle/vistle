@@ -27,7 +27,9 @@ MODULE_MAIN(ReadCovise)
 using namespace vistle;
 
 ReadCovise::ReadCovise(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("ReadCovise", shmname, rank, size, moduleID) {
+   : Module("ReadCovise", shmname, rank, size, moduleID)
+   , object_counter(0)
+{
 
    createOutputPort("grid_out");
    addFileParameter("filename", "");
@@ -365,6 +367,7 @@ Object::ptr ReadCovise::readPOLYGN(const int fd, const bool skeleton) {
 Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *elem) {
 
    assert(elem);
+   // XXX: handle sets in GEOTEX
 
    const size_t ncomp = 4;
    int contains[ncomp] = { 0, 0, 0, 0 };
@@ -374,6 +377,7 @@ Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *e
 
       for (size_t i=0; i<ncomp; ++i) {
          Element *e = new Element();
+         e->in_geometry = true;
          e->offset = tell(fd);
          if (contains[i])
             readSkeleton(fd, e);
@@ -410,6 +414,14 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
 
    Object::ptr object;
 
+   if (!skeleton) {
+      if (elem->objnum < 0)
+         return object;
+
+      if (elem->objnum % size != rank)
+         return object;
+   }
+
    if (skeleton) {
       elem->offset = tell(fd);
    } else {
@@ -439,9 +451,11 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
    HANDLE(POINTS);
 #undef HANDLE
 
+   bool leaf_object = handled;
    if (!handled) {
       if (type == "GEOTEX") {
          object = readGEOTEX(fd, skeleton, elem);
+         leaf_object = true;
       } else {
          if (type == "SETELE") {
             if (skeleton) {
@@ -455,11 +469,20 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
       }
    }
 
+   if (skeleton && leaf_object) {
+      elem->objnum = object_counter;
+      ++object_counter;
+   } else {
+      elem->objnum = -1;
+   }
+
    if (skeleton) {
       elem->attribs = readAttributes(fd);
    } else {
-      if (object)
+      if (object) {
          applyAttributes(object, *elem);
+         std::cerr << "ReadCovise: " << type << " [ b# " << object->getBlock() << ", t# " << object->getTimestep() << " ]" << std::endl;
+      }
    }
 
    return object;
@@ -520,5 +543,6 @@ bool ReadCovise::load(const std::string & name) {
 
 bool ReadCovise::compute() {
 
+   object_counter = 0;
    return load(getFileParameter("filename"));
 }
