@@ -66,6 +66,7 @@ public:
       SET               = 10,
       GEOMETRY          = 11,
       TEXTURE1D         = 12,
+      POINTS            = 13,
    };
 
    struct Info {

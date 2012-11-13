@@ -15,6 +15,7 @@
 #include "vec.h"
 #include "polygons.h"
 #include "lines.h"
+#include "points.h"
 #include "unstr.h"
 
 #include <covReadFiles.h>
@@ -254,6 +255,35 @@ Object::ptr ReadCovise::readUSTVDT(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
+Object::ptr ReadCovise::readPOINTS(const int fd, const bool skeleton) {
+
+   int numCoords=-1;
+   covReadSizePOINTS(fd, &numCoords);
+   assert(numCoords>=0);
+
+   if (skeleton) {
+
+      covSkipPOINTS(fd, numCoords);
+   } else {
+
+      Points::ptr points(new Points(numCoords));
+
+      std::vector<float> _x(numCoords), _y(numCoords), _z(numCoords);
+
+      covReadPOINTS(fd, numCoords, &_x[0], &_y[0], &_z[0]);
+
+      for (int index = 0; index < numCoords; index ++) {
+         points->x()[index] = _x[index];
+         points->y()[index] = _y[index];
+         points->z()[index] = _z[index];
+      }
+
+      return points;
+   }
+
+   return Object::ptr();
+}
+
 Object::ptr ReadCovise::readLINES(const int fd, const bool skeleton) {
 
    int numElements=-1, numCorners=-1, numVertices=-1;
@@ -406,6 +436,7 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
    HANDLE(USTVDT);
    HANDLE(POLYGN);
    HANDLE(LINES);
+   HANDLE(POINTS);
 #undef HANDLE
 
    if (!handled) {

@@ -12,6 +12,9 @@ class Points: public Coords {
    public:
    typedef Coords Base;
 
+   Points(const size_t numPoints = 0,
+         const int block = -1, const int timestep = -1);
+
    size_t getNumPoints() const;
 
    protected:

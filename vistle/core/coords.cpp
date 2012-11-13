@@ -31,6 +31,11 @@ size_t Coords::getNumVertices() const {
    return getSize();
 }
 
+size_t Coords::getNumCoords() const {
+
+   return getSize();
+}
+
 V_SERIALIZERS(Coords);
 
 } // namespace vistle
