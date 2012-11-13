@@ -46,10 +46,34 @@ static off_t seek(const int fd, off_t off) {
    return lseek(abs(fd), off, SEEK_SET);
 }
 
+static void checkFirstLast(const Element &elem, bool *first, bool *last) {
+
+   if (*first == false && *last == false)
+      return;
+
+   if (elem.parent) {
+      checkFirstLast(*elem.parent, first, last);
+
+      if (elem.index != 0)
+         *first = false;
+      if (elem.index != elem.parent->subelems.size()-1)
+         *last = false;
+   }
+}
+
 void ReadCovise::applyAttributes(Object::ptr obj, const Element &elem, int index) {
 
    if (elem.parent) {
       applyAttributes(obj, *elem.parent, elem.index);
+   }
+
+   if (index == -1) {
+      bool first = true, last = true;
+      checkFirstLast(elem, &first, &last);
+      if (first)
+         obj->addAttribute("_mark_begin");
+      if (last)
+         obj->addAttribute("_mark_end");
    }
 
    bool isTimestep = false;
