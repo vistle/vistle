@@ -353,7 +353,7 @@ void Module::removeObject(const std::string &portName, vistle::Object::const_ptr
       for (ObjectList::iterator it = olist.begin(); it != olist.end(); ) {
          if (handle == (*it)->getHandle()) {
             erased = true;
-            object->unref(); // XXX: doesn't erasing the it handle that already?
+            //object->unref(); // XXX: doesn't erasing the it handle that already?
             it = olist.erase(it);
          } else
             ++it;
