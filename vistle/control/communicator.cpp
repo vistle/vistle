@@ -32,16 +32,9 @@ typedef int socklen_t;
 
 #include "communicator.h"
 
-//#define CLIENTSOCKET
-
 using namespace boost::interprocess;
 
 namespace vistle {
-
-
-#ifdef CLIENTSOCKET
-static int acceptClient();
-#endif
 
 static void splitpath(const std::string &value, std::vector<std::string> *components)
 {
@@ -166,12 +159,11 @@ static std::string getbindir(int argc, char *argv[]) {
 }
 
 Communicator::Communicator(int argc, char *argv[], int r, int s)
-   : rank(r), size(s), socketBuffer(NULL), clientSocket(-1), moduleID(0),
+   : rank(r), size(s), moduleID(0),
      mpiReceiveBuffer(NULL), mpiMessageSize(0) {
 
    m_bindir = getbindir(argc, argv);
 
-   socketBuffer = new unsigned char[64];
    mpiReceiveBuffer = new char[message::Message::MESSAGE_SIZE];
 
    // post requests for length of next MPI message
@@ -179,10 +171,9 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
              MPI_COMM_WORLD, &request);
    MPI_Barrier(MPI_COMM_WORLD);
 
-#ifdef CLIENTSOCKET
-   if (rank == 0)
-      clientSocket = acceptClient();
-#endif
+   if (rank == 0) {
+      checkClients();
+   }
 }
 
 int Communicator::getRank() const {
@@ -195,32 +186,95 @@ int Communicator::getSize() const {
    return size;
 }
 
+template<class T>
+typename T::iterator find_linefeed(T &container) {
+   const char lineend[] = "\r\n";
+
+   return ::std::find_first_of(container.begin(), container.end(), &lineend[0], &lineend[sizeof(lineend)]);
+}
+
+std::string strip(const std::string& str) {
+
+   const char *chtmp = str.c_str();
+
+   const char *start=&chtmp[0];
+   const char *end=&chtmp[str.size()];
+
+   while (*start && isspace(*start))
+      ++start;
+
+   while (end > start && (!*end || isspace(*end)))
+      --end;
+
+   return std::string(start, end+1);
+}
+
+
+
 bool Communicator::dispatch() {
 
    bool done = false;
 
-   if (rank == 0 && clientSocket != -1) {
-      // poll socket
-      fd_set set;
-      FD_ZERO(&set);
-      FD_SET(clientSocket, &set);
+   if (rank == 0) {
+      int socknum = checkClients();
 
-      struct timeval t = { 0, 0 };
+      if (socknum >= 0) {
 
-      select(clientSocket + 1, &set, NULL, NULL, &t);
+         if (readbuf.size() <= socknum)
+            readbuf.resize(socknum+1);
+         std::deque<char> &sb = readbuf[socknum];
+         ssize_t r = 1;
+         while (r > 0) {
+            std::vector<char> buf(2048);
+            r = recv(sockfd[socknum], &buf[0], buf.size(), 0);
+            if (r > 0) {
+               sb.insert(sb.end(), buf.begin(), buf.begin()+r);
+#if 0
+               fprintf(stderr, "recv: ");
+               for (int i=0; i<r; ++i) {
+                  fprintf(stderr, "%02x", (int)(unsigned char)buf[i]);
+               }
+               fprintf(stderr, "\n");
+#endif
+            }
+         }
 
-      if (FD_ISSET(clientSocket, &set)) {
+         std::deque<char>::iterator lf = find_linefeed(sb);
+         while (lf != sb.end()) {
+            std::deque<char>::iterator start = sb.begin();
+            std::string line(start, lf);
+            if (*lf == '\r' && lf+1 < sb.end() && *(lf+1) == '\n')
+               ++lf;
+            sb.erase(sb.begin(), lf+1);
+            lf = find_linefeed(sb);
 
-         message::Message *message = NULL;
+            line = strip(line);
+            std::cerr << "Command: " << line << std::endl;
 
-         int r = recv(clientSocket, (char *) socketBuffer, 1,0);
-         if (r == 1) {
+            if (line.empty())
+               continue;
 
-            if (socketBuffer[0] == 'q')
+            message::Message *message = NULL;
+
+            if (line == "?" || line == "help") {
+
+               writeClient(socknum, "Commands: debug, quit, help\n");
+            }
+            else if (line == "quit") {
+
                message = new message::Quit(0, rank);
+            }
+            else if (line.substr(0, 5) == "debug") {
 
-            else if (socketBuffer[0] != '\r' && socketBuffer[0] != '\n')
-               message = new message::Debug(0, rank, socketBuffer[0]);
+               const char c = line.length() >= 7 ? line[6] : 'd';
+               message = new message::Debug(0, rank, c);
+            } else {
+
+
+               writeClient(socknum, "Unknown command: ");
+               writeClient(socknum, line);
+               writeClient(socknum, "\n");
+            }
 
             // Broadcast message to other MPI partitions
             //   - handle message, delete message
@@ -230,7 +284,7 @@ bool Communicator::dispatch() {
                for (int index = 0; index < size; index ++)
                   if (index != rank)
                      MPI_Isend(&(message->size), 1, MPI_INT, index, 0,
-                               MPI_COMM_WORLD, &s);
+                           MPI_COMM_WORLD, &s);
 
                MPI_Bcast(message, message->size, MPI_BYTE, 0, MPI_COMM_WORLD);
 
@@ -239,6 +293,7 @@ bool Communicator::dispatch() {
 
                delete message;
             }
+
          }
       }
    }
@@ -569,8 +624,7 @@ Communicator::~Communicator() {
       usleep(1000);
    }
 
-   if (clientSocket != -1)
-      close(clientSocket);
+   disconnectClients();
 
    if (size > 1) {
       int dummy;
@@ -582,35 +636,125 @@ Communicator::~Communicator() {
    MPI_Barrier(MPI_COMM_WORLD);
 
    delete[] mpiReceiveBuffer;
-   delete[] socketBuffer;
 }
 
-#ifdef CLIENTSOCKET
-int acceptClient() {
+void Communicator::disconnectClients() {
 
-   int server = socket(AF_INET, SOCK_STREAM, 0);
-   int reuse = 1;
+   for (size_t i=0; i<sockfd.size(); ++i)
+      close(sockfd[i]);
+}
 
-   setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (char *) &reuse,
-              sizeof(reuse));
+void Communicator::flushClient(int num) {
+   if (writebuf.size() <= num)
+      writebuf.resize(num + 1);
 
-   struct sockaddr_in serv, addr;
-   serv.sin_family = AF_INET;
-   serv.sin_addr.s_addr = INADDR_ANY;
-   serv.sin_port = htons(8192);
+   std::deque<char> &wb = writebuf[num];
 
-   if (bind(server, (struct sockaddr *) &serv, sizeof(serv)) < 0) {
-      perror("bind error");
-      exit(1);
+   if (wb.size() > 0) {
+      ssize_t n = write(sockfd[num], &wb[0], wb.size());
+      if (n > 0) {
+         wb.erase(wb.begin(), wb.begin()+n);
+      }
    }
-   listen(server, 0);
-
-   socklen_t len = sizeof(addr);
-   int client = accept(server, (struct sockaddr *) &addr, &len);
-   close(server);
-
-   return client;
 }
-#endif
+
+void Communicator::writeClient(int num, const std::string &s) {
+
+   writeClient(num, s.c_str(), s.size());
+}
+
+void Communicator::writeClient(int num, const void *buf, size_t n) {
+
+   if (writebuf.size() <= num)
+      writebuf.resize(num + 1);
+
+   std::deque<char> &wb = writebuf[num];
+   wb.insert(wb.end(), (char *)buf, (char *)buf+n);
+
+   flushClient(num);
+}
+
+int Communicator::checkClients() {
+
+   // sockfd[0] is server socket
+
+   if (sockfd.empty())
+      sockfd.push_back(-1);
+
+   if (sockfd[0] == -1) {
+
+      sockfd[0] = socket(AF_INET, SOCK_STREAM, 0);
+      if (sockfd[0] == -1)
+         return -1;
+
+      int reuse = 1;
+      setsockopt(sockfd[0], SOL_SOCKET, SO_REUSEADDR, (char *) &reuse,
+            sizeof(reuse));
+
+      struct sockaddr_in serv;
+      serv.sin_family = AF_INET;
+      serv.sin_addr.s_addr = INADDR_ANY;
+      serv.sin_port = htons(8192);
+
+      if (bind(sockfd[0], (struct sockaddr *) &serv, sizeof(serv)) < 0) {
+         perror("bind error");
+         exit(1);
+      }
+      listen(sockfd[0], 0);
+
+      errno = 0;
+      int flags = fcntl(sockfd[0], F_GETFL);
+      flags |= O_NONBLOCK;
+      fcntl(sockfd[0], F_SETFL, flags);
+   }
+
+   if (sockfd[0] == -1)
+      return -1;
+
+   // poll sockets
+   fd_set rset, wset, eset;
+   FD_ZERO(&rset);
+   FD_ZERO(&wset);
+   FD_ZERO(&eset);
+   int maxsock = 0;
+   for (size_t i=0; i<sockfd.size(); ++i) {
+      if (sockfd[i] > maxsock)
+         maxsock = sockfd[i];
+      FD_SET(sockfd[i], &rset);
+      if (writebuf.size() > i && !writebuf[i].empty())
+         FD_SET(sockfd[i], &wset);
+      FD_SET(sockfd[i], &eset);
+   }
+
+   struct timeval t = { 0, 0 };
+   select(maxsock + 1, &rset, NULL, &eset, &t);
+
+   if (FD_ISSET(sockfd[0], &rset)) {
+      struct sockaddr_in addr;
+      socklen_t len = sizeof(addr);
+      int client = accept(sockfd[0], (struct sockaddr *) &addr, &len);
+      if (client >= 0) {
+         sockfd.push_back(client);
+      }
+   }
+
+   for (size_t i=0; i<sockfd.size(); ++i) {
+      if (FD_ISSET(sockfd[i], &eset)) {
+         std::cerr << "Exception on socket " << i << std::endl;
+      }
+   }
+
+   for (size_t i=1; i<sockfd.size(); ++i) {
+      if (FD_ISSET(sockfd[i], &wset))
+         flushClient(i);
+   }
+
+   for (size_t i=1; i<sockfd.size(); ++i) {
+      if (FD_ISSET(sockfd[i], &rset))
+         return i;
+   }
+
+   return -1;
+}
 
 } // namespace vistle

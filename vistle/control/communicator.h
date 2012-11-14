@@ -1,8 +1,8 @@
 #ifndef COMMUNICATOR_COLLECTIVE_H
 #define COMMUNICATOR_COLLECTIVE_H
 
-#include <list>
 #include <vector>
+#include <deque>
 #include <map>
 
 #include <boost/interprocess/shared_memory_object.hpp>
@@ -38,8 +38,8 @@ class Communicator {
    const int rank;
    const int size;
 
-   unsigned char * socketBuffer;
-   int clientSocket;
+   std::vector<std::deque<char> > readbuf, writebuf;
+   std::vector<int> sockfd;
    int moduleID;
 
    char * mpiReceiveBuffer;
@@ -53,6 +53,12 @@ class Communicator {
    std::map<int, bi::shared_memory_object *> shmObjects;
 
    PortManager portManager;
+
+   int checkClients();
+   void flushClient(int num);
+   void writeClient(int num, const void *buf, size_t n);
+   void writeClient(int num, const std::string &s);
+   void disconnectClients();
 };
 
 } // namespace vistle
