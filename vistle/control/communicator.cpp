@@ -580,6 +580,9 @@ Communicator::~Communicator() {
       MPI_Wait(&s, MPI_STATUS_IGNORE);
    }
    MPI_Barrier(MPI_COMM_WORLD);
+
+   delete[] mpiReceiveBuffer;
+   delete[] socketBuffer;
 }
 
 #ifdef CLIENTSOCKET
