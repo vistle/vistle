@@ -5,7 +5,6 @@
 #include <map>
 #include <vector>
 #include <set>
-#include "object.h"
 
 namespace vistle {
 

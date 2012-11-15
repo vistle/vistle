@@ -28,22 +28,23 @@ struct Message {
    enum Type {
       DEBUG              =   0,
       SPAWN              =   1,
-      QUIT               =   2,
-      NEWOBJECT          =   3,
-      MODULEEXIT         =   4,
-      COMPUTE            =   5,
-      CREATEINPUTPORT    =   6,
-      CREATEOUTPUTPORT   =   7,
-      ADDOBJECT          =   8,
-      CONNECT            =   9,
-      ADDFILEPARAMETER   =  10,
-      SETFILEPARAMETER   =  11,
-      ADDFLOATPARAMETER  =  12,
-      SETFLOATPARAMETER  =  13,
-      ADDINTPARAMETER    =  14,
-      SETINTPARAMETER    =  15,
-      ADDVECTORPARAMETER =  16,
-      SETVECTORPARAMETER =  17,
+      KILL               =   2,
+      QUIT               =   3,
+      NEWOBJECT          =   4,
+      MODULEEXIT         =   5,
+      COMPUTE            =   6,
+      CREATEINPUTPORT    =   7,
+      CREATEOUTPUTPORT   =   8,
+      ADDOBJECT          =   9,
+      CONNECT            =  10,
+      ADDFILEPARAMETER   =  11,
+      SETFILEPARAMETER   =  12,
+      ADDFLOATPARAMETER  =  13,
+      SETFLOATPARAMETER  =  14,
+      ADDINTPARAMETER    =  15,
+      SETINTPARAMETER    =  16,
+      ADDVECTORPARAMETER =  17,
+      SETVECTORPARAMETER =  18,
    };
 
    Message(const int moduleID, const int rank,
@@ -85,6 +86,17 @@ class Spawn: public Message {
  private:
    const int spawnID;
    module_name_t name;
+};
+
+class Kill: public Message {
+
+ public:
+   Kill(const int moduleID, const int rank, const int module);
+
+   int getModule() const;
+
+ private:
+   const int module;
 };
 
 class Quit: public Message {

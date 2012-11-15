@@ -1,6 +1,9 @@
+find_package(PythonLibs)
+
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
+        ${PYTHON_INCLUDE_PATH}
         ../core
         ..
 )

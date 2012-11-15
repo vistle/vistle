@@ -7,6 +7,9 @@
 #include <iostream>
 
 #include <control/executor.h>
+#include <control/pythonembed.h>
+
+using namespace vistle;
 
 class Vistle: public vistle::Executor {
 
@@ -19,7 +22,20 @@ int main(int argc, char ** argv) {
 
    MPI_Init(&argc, &argv);
 
-   Vistle(argc, argv).run();
+   PythonEmbed *pi = NULL;
+
+   {
+      Vistle vistle(argc, argv);
+
+      if (!vistle.getRank()) {
+         pi = new PythonEmbed(argc, argv);
+         vistle.registerInterpreter(pi);
+      }
+
+      vistle.run();
+   }
+
+   delete pi;
 
    MPI_Finalize();
    
@@ -82,22 +98,26 @@ void Vistle::config() {
 #endif
 
 #ifdef TURBINEVISTLE
-   enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER, WRITEVISTLE, WRITEARCHIVE };
+   //enum { RGEO = 1, RGRID, RPRES, CUTGEO, CUTSURF, ISOSURF, COLOR, COLLECT, RENDERER, WRITEVISTLE, WRITEARCHIVE };
 
-   //spawn(RGEO,  "ReadCovise");
-   spawn(RGRID, "ReadCovise");
-   spawn(RPRES, "ReadCovise");
-   spawn(CUTGEO, "CutGeometry");
-   //spawn(CUTSURF, "CuttingSurface");
-   spawn(ISOSURF, "IsoSurface");
+   //int RGEO = spawn("ReadCovise");
+   int RGRID = spawn("ReadCovise");
+   int RPRES = spawn("ReadCovise");
+   int CUTGEO = spawn("CutGeometry");
+   //int CUTSURF = spawn("CuttingSurface");
+   int ISOSURF = spawn("IsoSurface");
 
-   spawn(COLOR, "Color");
-   spawn(COLLECT, "Collect");
+   int COLOR = spawn("Color");
+   int COLLECT = spawn("Collect");
    /*
-   spawn(WRITEVISTLE, "WriteVistle");
+   int WRITEVISTLE = spawn(WRITEVISTLE, "WriteVistle");
    */
-   //spawn(RENDERER, "OSGRenderer");
-   spawn(WRITEARCHIVE, "WriteArchive");
+   //int RENDERER = spawn("OSGRenderer");
+   int WRITEARCHIVE = spawn("WriteArchive");
+
+   int RGEO = WRITEARCHIVE + 3;
+   int CUTSURF = WRITEARCHIVE + 3;
+   int RENDERER = WRITEARCHIVE + 3;
 
 #if 1
    setParam(RGEO, "filename",

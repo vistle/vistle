@@ -68,6 +68,15 @@ const char * Spawn::getName() const {
    return name;
 }
 
+Kill::Kill(const int moduleID, const int rank, const int m)
+   : Message(moduleID, rank, Message::KILL, sizeof(Kill)), module(m) {
+}
+
+int Kill::getModule() const {
+
+   return module;
+}
+
 Quit::Quit(const int moduleID, const int rank)
    : Message(moduleID, rank, Message::QUIT, sizeof(Quit)) {
 }

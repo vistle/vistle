@@ -25,10 +25,10 @@ typedef int socklen_t;
 #include <iostream>
 #include <iomanip>
 
-#include "message.h"
-#include "messagequeue.h"
-#include "object.h"
-#include "shm.h"
+#include <core/message.h>
+#include <core/messagequeue.h>
+#include <core/object.h>
+#include <core/shm.h>
 
 #include "communicator.h"
 #include "executor.h"
@@ -103,56 +103,18 @@ Executor::~Executor()
    shared_memory_object::remove(m_name.c_str());
 }
 
+void Executor::registerInterpreter(PythonEmbed *pi) {
+
+   m_comm->registerInterpreter(pi);
+}
+
 void Executor::run()
 {
    config();
 
-   bool done = false;
-   while (!done) {
-      done = m_comm->dispatch();
+   while (!m_comm->dispatch()) {
       usleep(100);
    }
-}
-
-bool Executor::handle(const message::Message &m) {
-
-   return m_comm->handleMessage(m);
-}
-
-void Executor::spawn(const int moduleID, const char * name) {
-
-   handle(Spawn(0, m_rank, moduleID, name));
-}
-
-void Executor::setParam(const int moduleID, const char * name, const int value) {
-
-   handle(SetIntParameter(0, m_rank, moduleID, name, value));
-}
-
-void Executor::setParam(const int moduleID, const char * name, const vistle::Scalar value) {
-
-   handle(SetFloatParameter(0, m_rank, moduleID, name, value));
-}
-
-void Executor::setParam(const int moduleID, const char * name, const std::string & value) {
-
-   handle(SetFileParameter(0, m_rank, moduleID, name, value));
-}
-
-void Executor::setParam(const int moduleID, const char * name, const vistle::Vector & value) {
-
-   handle(SetVectorParameter(0, m_rank, moduleID, name, value));
-}
-
-void Executor::connect(const int moduleA, const char * aPort,
-             const int moduleB, const char * bPort) {
-
-   handle(Connect(0, m_rank, moduleA, aPort, moduleB, bPort));
-}
-
-void Executor::compute(const int moduleID) {
-
-   handle(Compute(0, m_rank, moduleID));
 }
 
 } // namespace vistle

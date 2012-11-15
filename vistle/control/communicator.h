@@ -8,6 +8,8 @@
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 
+#include <mpi.h>
+
 #include "portmanager.h"
 
 namespace bi = boost::interprocess;
@@ -19,7 +21,10 @@ namespace message {
    class MessageQueue;
 }
 
+class PythonEmbed;
+
 class Communicator {
+   friend class PythonEmbed;
 
  public:
    Communicator(int argc, char *argv[], int rank, int size);
@@ -27,12 +32,17 @@ class Communicator {
    static Communicator &the();
    int currentClient() const;
 
+   void registerInterpreter(PythonEmbed *pi);
+
    bool dispatch();
    bool handleMessage(const message::Message &message);
    bool broadcastAndHandleMessage(const message::Message &message);
+   void setQuitFlag();
 
    int getRank() const;
    int getSize() const;
+
+   int newModuleID();
 
  private:
 
@@ -41,11 +51,14 @@ class Communicator {
    const int rank;
    const int size;
 
+   bool m_quitFlag;
+
    std::vector<std::deque<char> > readbuf, writebuf;
    std::vector<int> sockfd;
    int moduleID;
+   PythonEmbed *interpreter;
 
-   char * mpiReceiveBuffer;
+   char *mpiReceiveBuffer;
    int mpiMessageSize;
 
    MPI_Request request;
@@ -56,6 +69,7 @@ class Communicator {
    std::map<int, bi::shared_memory_object *> shmObjects;
 
    PortManager portManager;
+   int m_moduleCounter;
 
    int m_currentClient;
    int checkClients();

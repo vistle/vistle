@@ -3,12 +3,13 @@
 
 #include <string>
 
-#include <scalar.h>
-#include <vector.h>
+#include <core/scalar.h>
+#include <core/vector.h>
 
 namespace vistle {
 
 class Communicator;
+class PythonEmbed;
 
 namespace message {
 struct Message;
@@ -25,17 +26,10 @@ class Executor {
 
       void run();
 
-      void spawn(const int moduleID, const char * name);
-      void setParam(const int moduleID, const char * name, const int value);
-      void setParam(const int moduleID, const char * name, const vistle::Scalar value);
-      void setParam(const int moduleID, const char * name, const std::string & value);
-      void setParam(const int moduleID, const char * name, const vistle::Vector & value);
-      void connect(const int moduleA, const char * aPort,
-             const int moduleB, const char * bPort);
-      void compute(const int moduleID);
+      void registerInterpreter(PythonEmbed *pi);
 
-   protected:
-      bool handle(const message::Message &);
+      int getRank() const { return m_rank; }
+      int getSize() const { return m_size; }
 
    private:
       std::string m_name;

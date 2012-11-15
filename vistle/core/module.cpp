@@ -453,6 +453,19 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
+      case message::Message::KILL: {
+
+         const message::Kill *kill =
+            static_cast<const message::Kill *>(message);
+         if (kill->getModule() == moduleID) {
+            return false;
+         } else {
+            std::cerr << "module [" << name << "] [" << moduleID << "] ["
+               << rank << "/" << size << "]" << ": received invalid Kill message" << std::endl;
+         }
+         break;
+      }
+
       case message::Message::COMPUTE: {
 
          const message::Compute *comp =

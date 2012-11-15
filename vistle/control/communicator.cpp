@@ -26,11 +26,12 @@ typedef int socklen_t;
 #include <iostream>
 #include <iomanip>
 
-#include "message.h"
-#include "messagequeue.h"
-#include "object.h"
-#include "shm.h"
+#include <core/message.h>
+#include <core/messagequeue.h>
+#include <core/object.h>
+#include <core/shm.h>
 
+#include "pythonembed.h"
 #include "communicator.h"
 
 using namespace boost::interprocess;
@@ -162,10 +163,16 @@ static std::string getbindir(int argc, char *argv[]) {
 }
 
 Communicator::Communicator(int argc, char *argv[], int r, int s)
-   : rank(r), size(s), moduleID(0),
+   : rank(r), size(s),
+   m_quitFlag(false),
+   moduleID(0),
+     interpreter(NULL),
      mpiReceiveBuffer(NULL), mpiMessageSize(0),
+     m_moduleCounter(0),
      m_currentClient(-1)
 {
+   assert(s_singleton == NULL);
+   s_singleton = this;
 
    m_bindir = getbindir(argc, argv);
 
@@ -199,6 +206,12 @@ int Communicator::getSize() const {
    return size;
 }
 
+int Communicator::newModuleID() {
+   ++m_moduleCounter;
+
+   return m_moduleCounter;
+}
+
 template<class T>
 typename T::iterator find_linefeed(T &container) {
    const char lineend[] = "\r\n";
@@ -222,7 +235,15 @@ std::string strip(const std::string& str) {
    return std::string(start, end+1);
 }
 
+void Communicator::registerInterpreter(PythonEmbed *pi) {
 
+   interpreter = pi;
+}
+
+void Communicator::setQuitFlag() {
+
+   m_quitFlag = true;
+}
 
 bool Communicator::dispatch() {
 
@@ -238,41 +259,20 @@ bool Communicator::dispatch() {
                !line.empty();
                line = readClientLine(socknum)) {
 
-            line = strip(line);
-            std::cerr << "Command: " << line << std::endl;
+            if (strip(line) == "?" || strip(line) == "help") {
 
-            message::Message *message = NULL;
+               writeClient(socknum, "Type \"help()\" for help\n");
+            } else if (!interpreter) {
 
-            if (line == "?" || line == "help") {
+               writeClient(socknum, "No command interpreter registered\n");
+            } else if (!interpreter->exec(line)) {
 
-               writeClient(socknum, "Commands: debug, quit, help\n");
-            }
-            else if (line == "quit") {
-
-               message = new message::Quit(0, rank);
-            }
-            else if (line.substr(0, 5) == "debug") {
-
-               const char c = line.length() >= 7 ? line[6] : 'd';
-               message = new message::Debug(0, rank, c);
-            } else {
-
-
-               writeClient(socknum, "Unknown command: ");
-               writeClient(socknum, line);
-               writeClient(socknum, "\n");
+               writeClient(socknum, "Interpreter error\n");
             }
 
-            // Broadcast message to other MPI partitions
-            //   - handle message, delete message
-            if (message) {
-
-               if (!broadcastAndHandleMessage(*message))
-                  done = true;
-
-               delete message;
-            }
-
+            done = m_quitFlag;
+            if (done)
+               break;
          }
       }
 
@@ -295,7 +295,7 @@ bool Communicator::dispatch() {
                    status.MPI_SOURCE, MPI_COMM_WORLD);
 
          message::Message *message = (message::Message *) mpiReceiveBuffer;
-#if 0
+#if 1
          printf("[%02d] message from [%02d] message type %d size %d\n",
                 rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
 #endif
@@ -419,6 +419,17 @@ bool Communicator::handleMessage(const message::Message &message) {
          MPI_Comm_spawn(strdup(name.c_str()), argv, size, MPI_INFO_NULL,
                         0, MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
 
+         break;
+      }
+
+      case message::Message::KILL: {
+
+         const message::Kill &kill =
+            static_cast<const message::Kill &>(message);
+         std::map<int, message::MessageQueue *>::iterator i
+            = sendMessageQueue.find(kill.getModule());
+         if (i != sendMessageQueue.end())
+            i->second->getMessageQueue().send(&kill, sizeof(kill), 0);
          break;
       }
 

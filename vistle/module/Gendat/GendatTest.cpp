@@ -24,12 +24,10 @@ int main(int argc, char ** argv) {
 
 void Vistle::config() {
 
-   enum { GENDAT = 1, CHECKER };
-
-   spawn(GENDAT, "Gendat");
-   spawn(CHECKER, "GendatChecker");
-
-   connect(GENDAT, "data_out", CHECKER, "data_in");
-
-   compute(GENDAT);
+   setInput(
+         "gendat = spawn('Gendat');"
+         "checker = spawn('GendatChecker');"
+         "connect(gendat, 'data_out', checker, 'data_in');"
+         "compute(gendat);"
+      );
 }
