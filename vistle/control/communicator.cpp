@@ -36,6 +36,8 @@ using namespace boost::interprocess;
 
 namespace vistle {
 
+Communicator *Communicator::s_singleton = NULL;
+
 static void splitpath(const std::string &value, std::vector<std::string> *components)
 {
 #ifdef _WIN32
@@ -174,6 +176,14 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
    if (rank == 0) {
       checkClients();
    }
+}
+
+Communicator &Communicator::the() {
+
+   assert(s_singleton && "make sure to use the vistle Python module only from within vistle");
+   if (!s_singleton)
+      exit(1);
+   return *s_singleton;
 }
 
 int Communicator::getRank() const {

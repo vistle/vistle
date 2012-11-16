@@ -24,6 +24,7 @@ class Communicator {
  public:
    Communicator(int argc, char *argv[], int rank, int size);
    ~Communicator();
+   static Communicator &the();
 
    bool dispatch();
    bool handleMessage(const message::Message &message);
@@ -59,6 +60,8 @@ class Communicator {
    void writeClient(int num, const void *buf, size_t n);
    void writeClient(int num, const std::string &s);
    void disconnectClients();
+
+   static Communicator *s_singleton;
 };
 
 } // namespace vistle
