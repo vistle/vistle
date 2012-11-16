@@ -21,6 +21,7 @@ typedef int socklen_t;
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <cstdlib>
 #include <sstream>
 #include <iostream>
 #include <iomanip>
@@ -162,7 +163,9 @@ static std::string getbindir(int argc, char *argv[]) {
 
 Communicator::Communicator(int argc, char *argv[], int r, int s)
    : rank(r), size(s), moduleID(0),
-     mpiReceiveBuffer(NULL), mpiMessageSize(0) {
+     mpiReceiveBuffer(NULL), mpiMessageSize(0),
+     m_currentClient(-1)
+{
 
    m_bindir = getbindir(argc, argv);
 
@@ -227,42 +230,16 @@ bool Communicator::dispatch() {
 
    if (rank == 0) {
       int socknum = checkClients();
+      m_currentClient = socknum;
 
       if (socknum >= 0) {
 
-         if (readbuf.size() <= socknum)
-            readbuf.resize(socknum+1);
-         std::deque<char> &sb = readbuf[socknum];
-         ssize_t r = 1;
-         while (r > 0) {
-            std::vector<char> buf(2048);
-            r = recv(sockfd[socknum], &buf[0], buf.size(), 0);
-            if (r > 0) {
-               sb.insert(sb.end(), buf.begin(), buf.begin()+r);
-#if 0
-               fprintf(stderr, "recv: ");
-               for (int i=0; i<r; ++i) {
-                  fprintf(stderr, "%02x", (int)(unsigned char)buf[i]);
-               }
-               fprintf(stderr, "\n");
-#endif
-            }
-         }
-
-         std::deque<char>::iterator lf = find_linefeed(sb);
-         while (lf != sb.end()) {
-            std::deque<char>::iterator start = sb.begin();
-            std::string line(start, lf);
-            if (*lf == '\r' && lf+1 < sb.end() && *(lf+1) == '\n')
-               ++lf;
-            sb.erase(sb.begin(), lf+1);
-            lf = find_linefeed(sb);
+         for (std::string line = readClientLine(socknum);
+               !line.empty();
+               line = readClientLine(socknum)) {
 
             line = strip(line);
             std::cerr << "Command: " << line << std::endl;
-
-            if (line.empty())
-               continue;
 
             message::Message *message = NULL;
 
@@ -290,15 +267,7 @@ bool Communicator::dispatch() {
             //   - handle message, delete message
             if (message) {
 
-               MPI_Request s;
-               for (int index = 0; index < size; index ++)
-                  if (index != rank)
-                     MPI_Isend(&(message->size), 1, MPI_INT, index, 0,
-                           MPI_COMM_WORLD, &s);
-
-               MPI_Bcast(message, message->size, MPI_BYTE, 0, MPI_COMM_WORLD);
-
-               if (!handleMessage(*message))
+               if (!broadcastAndHandleMessage(*message))
                   done = true;
 
                delete message;
@@ -306,6 +275,8 @@ bool Communicator::dispatch() {
 
          }
       }
+
+      m_currentClient = -1;
    }
 
    int flag;
@@ -376,6 +347,19 @@ bool Communicator::dispatch() {
    }
 
    return done;
+}
+
+bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
+
+   MPI_Request s;
+   for (int index = 0; index < size; index ++)
+      if (index != rank)
+         MPI_Isend(const_cast<unsigned int *>(&message.size), 1, MPI_INT, index, 0,
+               MPI_COMM_WORLD, &s);
+
+   MPI_Bcast(const_cast<message::Message *>(&message), message.size, MPI_BYTE, 0, MPI_COMM_WORLD);
+
+   return handleMessage(message);
 }
 
 
@@ -650,8 +634,10 @@ Communicator::~Communicator() {
 
 void Communicator::disconnectClients() {
 
-   for (size_t i=0; i<sockfd.size(); ++i)
+   for (size_t i=0; i<sockfd.size(); ++i) {
       close(sockfd[i]);
+      sockfd[i] = -1;
+   }
 }
 
 void Communicator::flushClient(int num) {
@@ -660,12 +646,89 @@ void Communicator::flushClient(int num) {
 
    std::deque<char> &wb = writebuf[num];
 
+   if (sockfd[num] == -1) {
+      wb.clear();
+      return;
+   }
+
    if (wb.size() > 0) {
       ssize_t n = write(sockfd[num], &wb[0], wb.size());
       if (n > 0) {
          wb.erase(wb.begin(), wb.begin()+n);
       }
    }
+}
+
+ssize_t Communicator::fillClientBuffer(int num) {
+
+   if (sockfd[num] == -1)
+      return -1;
+
+   if (readbuf.size() <= num)
+      readbuf.resize(num+1);
+   std::deque<char> &sb = readbuf[num];
+
+   std::vector<char> buf(2048);
+   ssize_t r = recv(sockfd[num], &buf[0], buf.size(), 0);
+   if (r == 0) {
+      close(sockfd[num]);
+      sockfd[num] = -1;
+   } else if (r > 0) {
+      sb.insert(sb.end(), buf.begin(), buf.begin()+r);
+#if 0
+      fprintf(stderr, "recv: ");
+      for (int i=0; i<r; ++i) {
+         fprintf(stderr, "%02x", (int)(unsigned char)buf[i]);
+      }
+      fprintf(stderr, "\n");
+#endif
+   }
+
+   return r;
+}
+
+ssize_t Communicator::readClient(int num, void *buffer, size_t n) {
+
+   if (readbuf.size() <= num)
+      readbuf.resize(num+1);
+   std::deque<char> &sb = readbuf[num];
+
+   while (fillClientBuffer(num) > 0) {
+
+      if (sb.size() >= n)
+         break;
+   }
+
+   if (sb.size() > 0) {
+      n = sb.size() < n ? sb.size() : n;
+      memcpy(buffer, &sb[0], n);
+      sb.erase(sb.begin(), sb.begin()+n);
+      return n;
+   }
+
+   return 0;
+}
+
+std::string Communicator::readClientLine(int num) {
+
+   if (readbuf.size() <= num)
+      readbuf.resize(num+1);
+   std::deque<char> &sb = readbuf[num];
+
+   while (fillClientBuffer(num) > 0) {
+
+      std::deque<char>::iterator lf = find_linefeed(sb);
+      if (lf != sb.end()) {
+
+         if (*lf == '\r' && lf+1 < sb.end() && *(lf+1) == '\n')
+            ++lf;
+         std::string ret(sb.begin(), lf+1);
+         sb.erase(sb.begin(), lf+1);
+         return ret;
+      }
+   }
+
+   return std::string();
 }
 
 void Communicator::writeClient(int num, const std::string &s) {
@@ -682,6 +745,11 @@ void Communicator::writeClient(int num, const void *buf, size_t n) {
    wb.insert(wb.end(), (char *)buf, (char *)buf+n);
 
    flushClient(num);
+}
+
+int Communicator::currentClient() const {
+
+   return m_currentClient;
 }
 
 int Communicator::checkClients() {
@@ -730,10 +798,12 @@ int Communicator::checkClients() {
    for (size_t i=0; i<sockfd.size(); ++i) {
       if (sockfd[i] > maxsock)
          maxsock = sockfd[i];
-      FD_SET(sockfd[i], &rset);
-      if (writebuf.size() > i && !writebuf[i].empty())
-         FD_SET(sockfd[i], &wset);
-      FD_SET(sockfd[i], &eset);
+      if (sockfd[i] != -1) {
+         FD_SET(sockfd[i], &rset);
+         if (writebuf.size() > i && !writebuf[i].empty())
+            FD_SET(sockfd[i], &wset);
+         FD_SET(sockfd[i], &eset);
+      }
    }
 
    struct timeval t = { 0, 0 };
@@ -744,23 +814,34 @@ int Communicator::checkClients() {
       socklen_t len = sizeof(addr);
       int client = accept(sockfd[0], (struct sockaddr *) &addr, &len);
       if (client >= 0) {
-         sockfd.push_back(client);
+         bool reused = false;
+         for (int i=1; i<sockfd.size(); ++i) {
+            if (sockfd[i] == -1
+                  && (readbuf.size()<=i || readbuf[i].empty())
+                  && (writebuf.size()<=i || writebuf[i].empty())) {
+               reused = true;
+               sockfd[i] = client;
+            }
+         }
+         if (!reused) {
+            sockfd.push_back(client);
+         }
       }
    }
 
    for (size_t i=0; i<sockfd.size(); ++i) {
-      if (FD_ISSET(sockfd[i], &eset)) {
+      if (sockfd[i] >= 0 && FD_ISSET(sockfd[i], &eset)) {
          std::cerr << "Exception on socket " << i << std::endl;
       }
    }
 
    for (size_t i=1; i<sockfd.size(); ++i) {
-      if (FD_ISSET(sockfd[i], &wset))
+      if (sockfd[i] >= 0 && FD_ISSET(sockfd[i], &wset))
          flushClient(i);
    }
 
    for (size_t i=1; i<sockfd.size(); ++i) {
-      if (FD_ISSET(sockfd[i], &rset))
+      if (sockfd[i] >= 0 && FD_ISSET(sockfd[i], &rset))
          return i;
    }
 

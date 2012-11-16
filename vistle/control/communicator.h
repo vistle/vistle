@@ -25,9 +25,11 @@ class Communicator {
    Communicator(int argc, char *argv[], int rank, int size);
    ~Communicator();
    static Communicator &the();
+   int currentClient() const;
 
    bool dispatch();
    bool handleMessage(const message::Message &message);
+   bool broadcastAndHandleMessage(const message::Message &message);
 
    int getRank() const;
    int getSize() const;
@@ -55,10 +57,14 @@ class Communicator {
 
    PortManager portManager;
 
+   int m_currentClient;
    int checkClients();
    void flushClient(int num);
    void writeClient(int num, const void *buf, size_t n);
    void writeClient(int num, const std::string &s);
+   ssize_t readClient(int num, void *buf, size_t n);
+   std::string readClientLine(int num);
+   ssize_t fillClientBuffer(int num);
    void disconnectClients();
 
    static Communicator *s_singleton;
