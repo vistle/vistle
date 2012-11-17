@@ -95,7 +95,8 @@ class Module {
       const std::string &shmname = argv[1];                     \
       moduleID = atoi(argv[2]);                                 \
       X module(shmname, rank, size, moduleID);                  \
-      while (!module.dispatch());                               \
+      while (module.dispatch())                                 \
+         ;                                                      \
       MPI_Barrier(MPI_COMM_WORLD);                              \
       return 0;                                                 \
    }

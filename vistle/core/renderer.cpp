@@ -22,7 +22,7 @@ bool Renderer::dispatch() {
    unsigned int priority;
    char msgRecvBuf[message::Message::MESSAGE_SIZE];
 
-   bool done = false;
+   bool again = true;
    bool msg =
       receiveMessageQueue->getMessageQueue().try_receive(
                                                (void *) msgRecvBuf,
@@ -32,18 +32,18 @@ bool Renderer::dispatch() {
    if (msg) {
       vistle::message::Message *message =
          (vistle::message::Message *) msgRecvBuf;
-      done = handleMessage(message);
+      again = handleMessage(message);
 
-      if (done) {
+      if (!again) {
          vistle::message::ModuleExit m(moduleID, rank);
          sendMessageQueue->getMessageQueue().send(&m, sizeof(m), 0);
       }
    }
 
-   if (!done)
+   if (again)
       render();
 
-   return done;
+   return again;
 }
 
 } // namespace vistle

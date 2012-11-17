@@ -346,7 +346,7 @@ bool Communicator::dispatch() {
          i++;
    }
 
-   return done;
+   return !done;
 }
 
 bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
@@ -469,7 +469,6 @@ bool Communicator::handleMessage(const message::Message &message) {
          std::cout << "comm [" << rank << "/" << size << "] Module ["
                    << mod << "] quit" << std::endl;
 
-         return false;
          break;
       }
 
@@ -623,6 +622,7 @@ Communicator::~Communicator() {
 
    // receive all ModuleExit messages from modules
    // retry for some time, modules that don't answer might have crashed
+   std::cerr << "comm []: waiting for " << sendMessageQueue.size() << " modules to quit" << std::endl;
    int retries = 10000;
    while (sendMessageQueue.size() > 0 && --retries >= 0) {
       dispatch();

@@ -112,7 +112,7 @@ void Executor::run()
 {
    config();
 
-   while (!m_comm->dispatch()) {
+   while (m_comm->dispatch()) {
       usleep(100);
    }
 }

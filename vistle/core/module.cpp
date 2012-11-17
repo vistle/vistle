@@ -43,7 +43,7 @@ Module::Module(const std::string &n, const std::string &shmname,
    char hostname[HOSTNAMESIZE];
    gethostname(hostname, HOSTNAMESIZE - 1);
 
-   std::cout << "  module [" << name << "] [" << moduleID << "] [" << rank
+   std::cerr << "  module [" << name << "] [" << moduleID << "] [" << rank
              << "/" << size << "] started as " << hostname << ":"
 #ifndef _WIN32
              << getpid() << std::endl;
@@ -63,7 +63,7 @@ Module::Module(const std::string &n, const std::string &shmname,
       receiveMessageQueue = message::MessageQueue::open(rmqName);
 
    } catch (interprocess_exception &ex) {
-      std::cout << "module " << moduleID << " [" << rank << "/" << size << "] "
+      std::cerr << "module " << moduleID << " [" << rank << "/" << size << "] "
                 << ex.what() << std::endl;
       exit(2);
    }
@@ -359,10 +359,10 @@ void Module::removeObject(const std::string &portName, vistle::Object::const_ptr
             ++it;
       }
       if (!erased)
-         std::cout << "Module " << moduleID << " removeObject didn't find"
+         std::cerr << "Module " << moduleID << " removeObject didn't find"
             " object [" << object->getName() << "]" << std::endl;
    } else
-      std::cout << "Module " << moduleID << " removeObject didn't find port ["
+      std::cerr << "Module " << moduleID << " removeObject didn't find port ["
                 << portName << "]" << std::endl;
 }
 
@@ -418,15 +418,15 @@ bool Module::dispatch() {
 
    vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
 
-   bool done = handleMessage(message);
-   if (done) {
+   bool again = handleMessage(message);
+   if (!again) {
       vistle::message::ModuleExit m(moduleID, rank);
       sendMessageQueue->getMessageQueue().send(&m, sizeof(m), 0);
    }
 
    //sleep(1);
 
-   return done;
+   return again;
 }
 
 bool Module::handleMessage(const vistle::message::Message *message) {
@@ -438,7 +438,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const vistle::message::Debug *debug =
             static_cast<const vistle::message::Debug *>(message);
 
-         std::cout << "    module [" << name << "] [" << moduleID << "] ["
+         std::cerr << "    module [" << name << "] [" << moduleID << "] ["
                    << rank << "/" << size << "] debug ["
                    << debug->getCharacter() << "]" << std::endl;
          break;
@@ -449,7 +449,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const message::Quit *quit =
             static_cast<const message::Quit *>(message);
          (void) quit;
-         return true;
+         return false;
          break;
       }
 
@@ -472,10 +472,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             static_cast<const message::Compute *>(message);
          (void) comp;
          /*
-         std::cout << "    module [" << name << "] [" << moduleID << "] ["
+         std::cerr << "    module [" << name << "] [" << moduleID << "] ["
                    << rank << "/" << size << "] compute" << std::endl;
          */
-         return !compute();
+         return compute();
          break;
       }
 
@@ -524,19 +524,19 @@ bool Module::handleMessage(const vistle::message::Message *message) {
       }
 
       default:
-         std::cout << "    module [" << name << "] [" << moduleID << "] ["
+         std::cerr << "    module [" << name << "] [" << moduleID << "] ["
                    << rank << "/" << size << "] unknown message type ["
                    << message->getType() << "]" << std::endl;
 
          break;
    }
 
-   return false;
+   return true;
 }
 
 Module::~Module() {
 
-   std::cout << "  module [" << name << "] [" << moduleID << "] [" << rank
+   std::cerr << "  module [" << name << "] [" << moduleID << "] [" << rank
              << "/" << size << "] quit" << std::endl;
 
    MPI_Barrier(MPI_COMM_WORLD);
