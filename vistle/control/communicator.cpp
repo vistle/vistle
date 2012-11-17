@@ -469,6 +469,12 @@ bool Communicator::handleMessage(const message::Message &message) {
          std::cout << "comm [" << rank << "/" << size << "] Module ["
                    << mod << "] quit" << std::endl;
 
+         std::map<int, message::MessageQueue *>::iterator i = sendMessageQueue.find(mod);
+         if (i != sendMessageQueue.end())
+            sendMessageQueue.erase(i);
+         i = receiveMessageQueue.find(mod);
+         if (i != receiveMessageQueue.end())
+            receiveMessageQueue.erase(i);
          break;
       }
 
