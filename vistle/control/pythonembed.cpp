@@ -62,23 +62,23 @@ bool PythonEmbed::exec(const std::string &python) {
    return ok;
 }
 
-void PythonEmbed::print_output(const char *str) {
+void PythonEmbed::print_output(const std::string &str) {
 
-   std::cout << "OUT: " << str << std::endl;
+   //std::cout << "OUT: " << str << std::endl;
    Communicator &comm = Communicator::the();
    int client = comm.currentClient();
    if (client >= 0) {
-      comm.writeClient(client, str, strlen(str));
+      comm.writeClient(client, str.c_str(), str.length());
    }
 }
 
-void PythonEmbed::print_error(const char *str) {
+void PythonEmbed::print_error(const std::string &str) {
 
    std::cerr << "ERR: " << str << std::endl;
    Communicator &comm = Communicator::the();
    int client = comm.currentClient();
    if (client >= 0) {
-      comm.writeClient(client, str, strlen(str));
+      comm.writeClient(client, str.c_str(), str.length());
    }
 }
 

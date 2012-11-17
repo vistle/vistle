@@ -71,7 +71,7 @@ static std::string getbindir(int argc, char *argv[]) {
    char *wd = getcwd(NULL, 0);
    if (!wd) {
 
-      std::cerr << "failed to determine working directory: " << strerror(errno) << std::endl;
+      std::cerr << "Communicator: failed to determine working directory: " << strerror(errno) << std::endl;
       exit(1);
    }
    std::string cwd(wd);
@@ -87,7 +87,7 @@ static std::string getbindir(int argc, char *argv[]) {
       executable = buf;
    } else {
 
-      std::cerr << "getbindir(): GetModuleFileName failed - error: " << GetLastError() << std::endl;
+      std::cerr << "Communicator: getbindir(): GetModuleFileName failed - error: " << GetLastError() << std::endl;
    }
 #else
    char buf[PATH_MAX];
@@ -111,7 +111,7 @@ static std::string getbindir(int argc, char *argv[]) {
 
                DIR *dir = opendir(component.c_str());
                if (!dir) {
-                  std::cerr << "failed to open directory " << component << ": " << strerror(errno) << std::endl;
+                  std::cerr << "Communicator: failed to open directory " << component << ": " << strerror(errno) << std::endl;
                   continue;
                }
 
@@ -154,7 +154,7 @@ static std::string getbindir(int argc, char *argv[]) {
       }
 
 #ifdef DEBUG
-      std::cerr << "vistle bin directory determined to be " << dir << std::endl;
+      std::cerr << "Communicator: vistle bin directory determined to be " << dir << std::endl;
 #endif
       return dir;
    }
@@ -258,8 +258,6 @@ bool Communicator::dispatch() {
 
       if (!m_initialInput.empty()) {
 
-         std::cerr << "INPUT: " << m_initialInput << std::endl;
-
          interpreter->exec(m_initialInput);
          m_initialInput.clear();
       }
@@ -273,9 +271,9 @@ bool Communicator::dispatch() {
                !line.empty();
                line = readClientLine(socknum)) {
 
-            if (strip(line) == "?" || strip(line) == "help") {
+            if (strip(line) == "?" || strip(line) == "h" || strip(line) == "help") {
 
-               writeClient(socknum, "Type \"help()\" for help\n");
+               writeClient(socknum, "Type \"help(vistle)\" for help, help() for general help\n");
             } else if (!interpreter) {
 
                writeClient(socknum, "No command interpreter registered\n");
@@ -675,7 +673,7 @@ void Communicator::flushClient(int num) {
    if (writebuf.size() <= num)
       writebuf.resize(num + 1);
 
-   std::deque<char> &wb = writebuf[num];
+   std::vector<char> &wb = writebuf[num];
 
    if (sockfd[num] == -1) {
       wb.clear();
@@ -683,7 +681,8 @@ void Communicator::flushClient(int num) {
    }
 
    if (wb.size() > 0) {
-      ssize_t n = write(sockfd[num], &wb[0], wb.size());
+      const int fd = num==StdInOut ? 1 : sockfd[num];
+      ssize_t n = write(fd, &wb[0], wb.size());
       if (n > 0) {
          wb.erase(wb.begin(), wb.begin()+n);
       }
@@ -697,10 +696,14 @@ ssize_t Communicator::fillClientBuffer(int num) {
 
    if (readbuf.size() <= num)
       readbuf.resize(num+1);
-   std::deque<char> &sb = readbuf[num];
+   std::vector<char> &sb = readbuf[num];
 
    std::vector<char> buf(2048);
+#ifndef _WIN32
+   ssize_t r = read(sockfd[num], &buf[0], buf.size());
+#else
    ssize_t r = recv(sockfd[num], &buf[0], buf.size(), 0);
+#endif
    if (r == 0) {
       close(sockfd[num]);
       sockfd[num] = -1;
@@ -722,7 +725,7 @@ ssize_t Communicator::readClient(int num, void *buffer, size_t n) {
 
    if (readbuf.size() <= num)
       readbuf.resize(num+1);
-   std::deque<char> &sb = readbuf[num];
+   std::vector<char> &sb = readbuf[num];
 
    while (fillClientBuffer(num) > 0) {
 
@@ -744,11 +747,11 @@ std::string Communicator::readClientLine(int num) {
 
    if (readbuf.size() <= num)
       readbuf.resize(num+1);
-   std::deque<char> &sb = readbuf[num];
+   std::vector<char> &sb = readbuf[num];
 
    while (fillClientBuffer(num) > 0) {
 
-      std::deque<char>::iterator lf = find_linefeed(sb);
+      std::vector<char>::iterator lf = find_linefeed(sb);
       if (lf != sb.end()) {
 
          if (*lf == '\r' && lf+1 < sb.end() && *(lf+1) == '\n')
@@ -772,7 +775,7 @@ void Communicator::writeClient(int num, const void *buf, size_t n) {
    if (writebuf.size() <= num)
       writebuf.resize(num + 1);
 
-   std::deque<char> &wb = writebuf[num];
+   std::vector<char> &wb = writebuf[num];
    wb.insert(wb.end(), (char *)buf, (char *)buf+n);
 
    flushClient(num);
@@ -785,19 +788,23 @@ int Communicator::currentClient() const {
 
 int Communicator::checkClients() {
 
-   // sockfd[0] is server socket
+   // sockfd[Server] is server socket
+   // sockfd[StdOutIn] is stdout/stdin
 
-   if (sockfd.empty())
-      sockfd.push_back(-1);
+   if (sockfd.empty()) {
+      sockfd.resize(SocketStart);
+      sockfd[StdInOut] = 0;
+      sockfd[Server] = -1;
+   }
 
-   if (sockfd[0] == -1) {
+   if (sockfd[Server] == -1) {
 
-      sockfd[0] = socket(AF_INET, SOCK_STREAM, 0);
-      if (sockfd[0] == -1)
+      sockfd[Server] = socket(AF_INET, SOCK_STREAM, 0);
+      if (sockfd[Server] == -1)
          return -1;
 
       int reuse = 1;
-      setsockopt(sockfd[0], SOL_SOCKET, SO_REUSEADDR, (char *) &reuse,
+      setsockopt(sockfd[Server], SOL_SOCKET, SO_REUSEADDR, (char *) &reuse,
             sizeof(reuse));
 
       struct sockaddr_in serv;
@@ -805,22 +812,22 @@ int Communicator::checkClients() {
       serv.sin_addr.s_addr = INADDR_ANY;
       serv.sin_port = htons(8192);
 
-      if (bind(sockfd[0], (struct sockaddr *) &serv, sizeof(serv)) < 0) {
+      if (bind(sockfd[Server], (struct sockaddr *) &serv, sizeof(serv)) < 0) {
          perror("bind error");
          exit(1);
       }
-      listen(sockfd[0], 0);
+      listen(sockfd[Server], 0);
 
       errno = 0;
-      int flags = fcntl(sockfd[0], F_GETFL);
+      int flags = fcntl(sockfd[Server], F_GETFL);
       flags |= O_NONBLOCK;
-      fcntl(sockfd[0], F_SETFL, flags);
+      fcntl(sockfd[Server], F_SETFL, flags);
    }
 
-   if (sockfd[0] == -1)
+   if (sockfd[Server] == -1)
       return -1;
 
-   // poll sockets
+   // poll sockets and stdin/stdout
    fd_set rset, wset, eset;
    FD_ZERO(&rset);
    FD_ZERO(&wset);
@@ -829,24 +836,51 @@ int Communicator::checkClients() {
    for (size_t i=0; i<sockfd.size(); ++i) {
       if (sockfd[i] > maxsock)
          maxsock = sockfd[i];
+
       if (sockfd[i] != -1) {
-         FD_SET(sockfd[i], &rset);
-         if (writebuf.size() > i && !writebuf[i].empty())
-            FD_SET(sockfd[i], &wset);
-         FD_SET(sockfd[i], &eset);
+
+         if (i == StdInOut) {
+
+            FD_SET(sockfd[i], &rset);
+            if (writebuf.size() > i && !writebuf[i].empty())
+               FD_SET(FdOut, &wset);
+            FD_SET(sockfd[i], &eset);
+            FD_SET(FdOut, &eset);
+         } else if (i == Server) {
+
+            FD_SET(sockfd[i], &rset);
+            FD_SET(sockfd[i], &eset);
+         } else if (i >= SocketStart) {
+
+            FD_SET(sockfd[i], &rset);
+            if (writebuf.size() > i && !writebuf[i].empty())
+               FD_SET(sockfd[i], &wset);
+            FD_SET(sockfd[i], &eset);
+         }
       }
    }
 
    struct timeval t = { 0, 0 };
-   select(maxsock + 1, &rset, NULL, &eset, &t);
+   int nready = select(maxsock + 1, &rset, &wset, &eset, &t);
+   if (nready < 0) {
+      std::cerr << "Communicator: select error: " << strerror(errno) << std::endl;
+      return -1;
+   } else if (nready == 0) {
+      return -1;
+   }
 
-   if (FD_ISSET(sockfd[0], &rset)) {
+   if (FD_ISSET(sockfd[Server], &rset)) {
       struct sockaddr_in addr;
       socklen_t len = sizeof(addr);
-      int client = accept(sockfd[0], (struct sockaddr *) &addr, &len);
+      int client = accept(sockfd[Server], (struct sockaddr *) &addr, &len);
       if (client >= 0) {
+         errno = 0;
+         int flags = fcntl(sockfd[Server], F_GETFL);
+         flags |= O_NONBLOCK;
+         fcntl(sockfd[Server], F_SETFL, flags);
+
          bool reused = false;
-         for (int i=1; i<sockfd.size(); ++i) {
+         for (int i=SocketStart; i<sockfd.size(); ++i) {
             if (sockfd[i] == -1
                   && (readbuf.size()<=i || readbuf[i].empty())
                   && (writebuf.size()<=i || writebuf[i].empty())) {
@@ -860,18 +894,26 @@ int Communicator::checkClients() {
       }
    }
 
+   if (FD_ISSET(FdOut, &eset)) {
+      std::cerr << "Communicator: Exception on output fd" << std::endl;
+   }
    for (size_t i=0; i<sockfd.size(); ++i) {
       if (sockfd[i] >= 0 && FD_ISSET(sockfd[i], &eset)) {
-         std::cerr << "Exception on socket " << i << std::endl;
+         std::cerr << "Communicator: Exception on socket " << i << std::endl;
       }
    }
 
-   for (size_t i=1; i<sockfd.size(); ++i) {
+   if (sockfd[StdInOut] >= 0 && FD_ISSET(FdOut, &wset))
+      flushClient(StdInOut);
+   for (size_t i=SocketStart; i<sockfd.size(); ++i) {
       if (sockfd[i] >= 0 && FD_ISSET(sockfd[i], &wset))
          flushClient(i);
    }
 
-   for (size_t i=1; i<sockfd.size(); ++i) {
+   if (sockfd[StdInOut] >= 0 && FD_ISSET(sockfd[StdInOut], &rset)) {
+      return StdInOut;
+   }
+   for (size_t i=SocketStart; i<sockfd.size(); ++i) {
       if (sockfd[i] >= 0 && FD_ISSET(sockfd[i], &rset))
          return i;
    }

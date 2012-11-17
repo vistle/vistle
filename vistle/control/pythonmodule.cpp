@@ -11,12 +11,12 @@ namespace bp = boost::python;
 
 namespace vistle {
 
-static void print_output(const char *str) {
+static void print_output(const std::string &str) {
 
    PythonEmbed::print_output(str);
 }
 
-static void print_error(const char *str) {
+static void print_error(const std::string &str) {
 
    PythonEmbed::print_error(str);
 }

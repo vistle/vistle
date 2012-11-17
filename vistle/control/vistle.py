@@ -19,9 +19,9 @@ sys.stdout = _stdout()
 sys.stderr = _stderr()
 #sys.stdin = _stdin()
 
-# redefine help
-python_help = help
-def help():
-   current_module = sys.modules[__name__]
-   python_help(current_module)
+## redefine help
+#python_help = help
+#def help():
+#   current_module = sys.modules[__name__]
+#   python_help(current_module)
 

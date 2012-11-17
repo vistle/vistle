@@ -55,7 +55,7 @@ class Communicator {
 
    bool m_quitFlag;
 
-   std::vector<std::deque<char> > readbuf, writebuf;
+   std::vector<std::vector<char> > readbuf, writebuf;
    std::vector<int> sockfd;
    int moduleID;
    PythonEmbed *interpreter;
@@ -84,6 +84,9 @@ class Communicator {
    void disconnectClients();
 
    static Communicator *s_singleton;
+
+   static const int FdOut = 1;
+   enum { StdInOut = 0, Server = 1, SocketStart = 2 };
 };
 
 } // namespace vistle

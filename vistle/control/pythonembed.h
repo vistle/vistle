@@ -13,8 +13,8 @@ class PythonEmbed {
       ~PythonEmbed();
       static PythonEmbed &the();
 
-      static void print_output(const char *str);
-      static void print_error(const char *str);
+      static void print_output(const std::string &str);
+      static void print_error(const std::string &str);
 
       bool exec(const std::string &python);
    private:
