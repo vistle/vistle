@@ -108,6 +108,11 @@ void Executor::registerInterpreter(PythonEmbed *pi) {
    m_comm->registerInterpreter(pi);
 }
 
+void Executor::setInput(const std::string &input) {
+
+   m_comm->setInput(input);
+}
+
 void Executor::run()
 {
    config();

@@ -27,6 +27,7 @@ class Executor {
       void run();
 
       void registerInterpreter(PythonEmbed *pi);
+      void setInput(const std::string &input);
 
       int getRank() const { return m_rank; }
       int getSize() const { return m_size; }

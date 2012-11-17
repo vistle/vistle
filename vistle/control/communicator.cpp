@@ -240,6 +240,11 @@ void Communicator::registerInterpreter(PythonEmbed *pi) {
    interpreter = pi;
 }
 
+void Communicator::setInput(const std::string &input) {
+
+   m_initialInput = input;
+}
+
 void Communicator::setQuitFlag() {
 
    m_quitFlag = true;
@@ -250,6 +255,15 @@ bool Communicator::dispatch() {
    bool done = false;
 
    if (rank == 0) {
+
+      if (!m_initialInput.empty()) {
+
+         std::cerr << "INPUT: " << m_initialInput << std::endl;
+
+         interpreter->exec(m_initialInput);
+         m_initialInput.clear();
+      }
+
       int socknum = checkClients();
       m_currentClient = socknum;
 
@@ -628,7 +642,7 @@ Communicator::~Communicator() {
 
    // receive all ModuleExit messages from modules
    // retry for some time, modules that don't answer might have crashed
-   std::cerr << "comm []: waiting for " << sendMessageQueue.size() << " modules to quit" << std::endl;
+   std::cerr << "comm [" << rank << "/" << size << "]: waiting for " << sendMessageQueue.size() << " modules to quit" << std::endl;
    int retries = 10000;
    while (sendMessageQueue.size() > 0 && --retries >= 0) {
       dispatch();

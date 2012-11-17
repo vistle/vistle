@@ -11,8 +11,13 @@ class _stderr:
    def write(self, stuff):
       _vistle._print_error(stuff)
 
+class _stdin:
+   def read(self, stuff):
+      _vistle._read_input()
+
 sys.stdout = _stdout()
 sys.stderr = _stderr()
+#sys.stdin = _stdin()
 
 # redefine help
 python_help = help

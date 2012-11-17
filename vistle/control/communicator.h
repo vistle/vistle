@@ -33,6 +33,7 @@ class Communicator {
    int currentClient() const;
 
    void registerInterpreter(PythonEmbed *pi);
+   void setInput(const std::string &input);
 
    bool dispatch();
    bool handleMessage(const message::Message &message);
@@ -47,6 +48,7 @@ class Communicator {
  private:
 
    std::string m_bindir;
+   std::string m_initialInput;
 
    const int rank;
    const int size;
