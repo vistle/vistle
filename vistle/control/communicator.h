@@ -75,10 +75,14 @@ class Communicator {
 
    int m_currentClient;
    int checkClients();
+   bool setClientBlocking(int num, bool block);
    void flushClient(int num);
    void writeClient(int num, const void *buf, size_t n);
    void writeClient(int num, const std::string &s);
+   void printGreeting(int num);
+   void printPrompt(int num);
    ssize_t readClient(int num, void *buf, size_t n);
+   bool hasClientLine(int num);
    std::string readClientLine(int num);
    ssize_t fillClientBuffer(int num);
    void disconnectClients();

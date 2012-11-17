@@ -11,13 +11,19 @@ class _stderr:
    def write(self, stuff):
       _vistle._print_error(stuff)
 
+# input from network clients
 class _stdin:
-   def read(self, stuff):
-      _vistle._read_input()
+   def readline(self):
+      return _vistle._readline()
 
 sys.stdout = _stdout()
 sys.stderr = _stderr()
 #sys.stdin = _stdin()
+
+#def _raw_input(prompt):
+#   return _vistle._raw_input(prompt)
+
+#__builtins__.raw_input = _vistle._raw_input
 
 ## redefine help
 #python_help = help

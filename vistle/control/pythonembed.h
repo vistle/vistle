@@ -15,8 +15,11 @@ class PythonEmbed {
 
       static void print_output(const std::string &str);
       static void print_error(const std::string &str);
+      static std::string raw_input(const std::string &prompt);
+      static std::string readline();
 
       bool exec(const std::string &python);
+      bool exec_file(const std::string &filename);
    private:
       boost::python::object m_namespace;
       static PythonEmbed *s_singleton;

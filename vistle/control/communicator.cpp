@@ -3,6 +3,7 @@
  */
 #ifndef _WIN32
 #include <sys/socket.h>
+#include <netdb.h>
 #include <sys/select.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -162,6 +163,22 @@ static std::string getbindir(int argc, char *argv[]) {
    return std::string();
 }
 
+static bool set_blocking(int fd, bool block) {
+
+   errno = 0;
+   int flags = fcntl(fd, F_GETFL);
+   if (errno)
+      return false;
+
+   if (block) {
+      flags &= ~O_NONBLOCK;
+   } else {
+      flags |= O_NONBLOCK;
+   }
+
+   return fcntl(fd, F_SETFL, flags) != -1;
+}
+
 Communicator::Communicator(int argc, char *argv[], int r, int s)
    : rank(r), size(s),
    m_quitFlag(false),
@@ -271,22 +288,35 @@ bool Communicator::dispatch() {
                !line.empty();
                line = readClientLine(socknum)) {
 
-            if (strip(line) == "?" || strip(line) == "h" || strip(line) == "help") {
+            if (strip(line) == "quit") {
 
-               writeClient(socknum, "Type \"help(vistle)\" for help, help() for general help\n");
+               done = true;
+               break;
+            } else if (strip(line) == "?" || strip(line) == "h" || strip(line) == "help") {
+
+               writeClient(socknum, "Type \"help(vistle)\" for help, \"help()\" for general help\n\n");
             } else if (!interpreter) {
 
                writeClient(socknum, "No command interpreter registered\n");
-            } else if (!interpreter->exec(line)) {
+            } else {
+               // in order for raw_input to work correctly
+               setClientBlocking(socknum, true);
+               if (!interpreter->exec(line)) {
 
-               writeClient(socknum, "Interpreter error\n");
+                  //writeClient(socknum, "Interpreter error\n");
+               }
+               setClientBlocking(socknum, false);
             }
+            printPrompt(socknum);
 
             done = m_quitFlag;
             if (done)
                break;
          }
       }
+
+      if (!done)
+         done = m_quitFlag;
 
       m_currentClient = -1;
    }
@@ -698,27 +728,45 @@ ssize_t Communicator::fillClientBuffer(int num) {
       readbuf.resize(num+1);
    std::vector<char> &sb = readbuf[num];
 
+   ssize_t total = 0;
    std::vector<char> buf(2048);
+   ssize_t r = 0;
+   do {
+      errno = 0;
 #ifndef _WIN32
-   ssize_t r = read(sockfd[num], &buf[0], buf.size());
+      r = read(sockfd[num], &buf[0], buf.size());
 #else
-   ssize_t r = recv(sockfd[num], &buf[0], buf.size(), 0);
+      r = recv(sockfd[num], &buf[0], buf.size(), 0);
 #endif
-   if (r == 0) {
-      close(sockfd[num]);
-      sockfd[num] = -1;
-   } else if (r > 0) {
-      sb.insert(sb.end(), buf.begin(), buf.begin()+r);
-#if 0
-      fprintf(stderr, "recv: ");
-      for (int i=0; i<r; ++i) {
-         fprintf(stderr, "%02x", (int)(unsigned char)buf[i]);
-      }
-      fprintf(stderr, "\n");
-#endif
-   }
+      if (r == 0) {
+         close(sockfd[num]);
+         sockfd[num] = -1;
 
-   return r;
+         if (num == StdInOut) {
+            //std::cerr << "EOF - quitting..." << std::endl;
+            setQuitFlag();
+            return 0;
+         }
+
+         std::stringstream str;
+         str << std::endl;
+         str << "Client " << num << " disconnected";
+         str << std::endl;
+         writeClient(StdInOut, str.str());
+         printPrompt(StdInOut);
+      } else if (r > 0) {
+         sb.insert(sb.end(), buf.begin(), buf.begin()+r);
+
+         total += r;
+      } else {
+         if (total == 0)
+            return -1;
+         else
+            return total;
+      }
+   } while (r == buf.size());
+
+   return total;
 }
 
 ssize_t Communicator::readClient(int num, void *buffer, size_t n) {
@@ -743,14 +791,29 @@ ssize_t Communicator::readClient(int num, void *buffer, size_t n) {
    return 0;
 }
 
+bool Communicator::hasClientLine(int num) {
+
+   if (readbuf.size() <= num)
+      readbuf.resize(num+1);
+   std::vector<char> &sb = readbuf[num];
+
+   do {
+      std::vector<char>::iterator lf = find_linefeed(sb);
+      if (lf != sb.end())
+         return true;
+
+   } while (fillClientBuffer(num) > 0);
+
+   return false;
+}
+
 std::string Communicator::readClientLine(int num) {
 
    if (readbuf.size() <= num)
       readbuf.resize(num+1);
    std::vector<char> &sb = readbuf[num];
 
-   while (fillClientBuffer(num) > 0) {
-
+   do {
       std::vector<char>::iterator lf = find_linefeed(sb);
       if (lf != sb.end()) {
 
@@ -760,7 +823,7 @@ std::string Communicator::readClientLine(int num) {
          sb.erase(sb.begin(), lf+1);
          return ret;
       }
-   }
+   } while (fillClientBuffer(num) > 0);
 
    return std::string();
 }
@@ -781,9 +844,25 @@ void Communicator::writeClient(int num, const void *buf, size_t n) {
    flushClient(num);
 }
 
+void Communicator::printPrompt(int num) {
+
+   writeClient(num, "vistle> ");
+}
+
+void Communicator::printGreeting(int num) {
+
+   writeClient(num, "Type \"help\" for help, \"quit\" to exit\n");
+   printPrompt(num);
+}
+
 int Communicator::currentClient() const {
 
    return m_currentClient;
+}
+
+bool Communicator::setClientBlocking(int num, bool block) {
+
+   return set_blocking(sockfd[num], block);
 }
 
 int Communicator::checkClients() {
@@ -795,6 +874,9 @@ int Communicator::checkClients() {
       sockfd.resize(SocketStart);
       sockfd[StdInOut] = 0;
       sockfd[Server] = -1;
+
+      setClientBlocking(StdInOut, false);
+      printGreeting(StdInOut);
    }
 
    if (sockfd[Server] == -1) {
@@ -818,10 +900,7 @@ int Communicator::checkClients() {
       }
       listen(sockfd[Server], 0);
 
-      errno = 0;
-      int flags = fcntl(sockfd[Server], F_GETFL);
-      flags |= O_NONBLOCK;
-      fcntl(sockfd[Server], F_SETFL, flags);
+      setClientBlocking(Server, false);
    }
 
    if (sockfd[Server] == -1)
@@ -874,23 +953,40 @@ int Communicator::checkClients() {
       socklen_t len = sizeof(addr);
       int client = accept(sockfd[Server], (struct sockaddr *) &addr, &len);
       if (client >= 0) {
-         errno = 0;
-         int flags = fcntl(sockfd[Server], F_GETFL);
-         flags |= O_NONBLOCK;
-         fcntl(sockfd[Server], F_SETFL, flags);
 
          bool reused = false;
+         int num = -1;
          for (int i=SocketStart; i<sockfd.size(); ++i) {
             if (sockfd[i] == -1
                   && (readbuf.size()<=i || readbuf[i].empty())
                   && (writebuf.size()<=i || writebuf[i].empty())) {
                reused = true;
                sockfd[i] = client;
+               num = i;
             }
          }
          if (!reused) {
+            num = sockfd.size();
             sockfd.push_back(client);
          }
+
+         std::stringstream str;
+         str << std::endl;
+         str << "Client " << num << " connected";
+
+         char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
+         if (!getnameinfo((struct sockaddr *)&addr, len,
+                  hbuf, sizeof(hbuf),
+                  sbuf, sizeof(sbuf), NI_NUMERICHOST | NI_NUMERICSERV)) {
+
+            str << " from " << hbuf;
+         }
+         str << std::endl;
+         writeClient(StdInOut, str.str());
+         printPrompt(StdInOut);
+
+         setClientBlocking(num, false);
+         printGreeting(num);
       }
    }
 
@@ -911,11 +1007,14 @@ int Communicator::checkClients() {
    }
 
    if (sockfd[StdInOut] >= 0 && FD_ISSET(sockfd[StdInOut], &rset)) {
-      return StdInOut;
+      if (hasClientLine(StdInOut))
+         return StdInOut;
    }
    for (size_t i=SocketStart; i<sockfd.size(); ++i) {
-      if (sockfd[i] >= 0 && FD_ISSET(sockfd[i], &rset))
-         return i;
+      if (sockfd[i] >= 0 && FD_ISSET(sockfd[i], &rset)) {
+         if (hasClientLine(i))
+            return i;
+      }
    }
 
    return -1;

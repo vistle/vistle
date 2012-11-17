@@ -21,6 +21,21 @@ static void print_error(const std::string &str) {
    PythonEmbed::print_error(str);
 }
 
+static std::string raw_input(const std::string &prompt) {
+
+   return PythonEmbed::raw_input(prompt);
+}
+
+static std::string readline() {
+
+   return PythonEmbed::readline();
+}
+
+static void source(const std::string &filename) {
+
+   PythonEmbed::the().exec_file(filename);
+}
+
 static void quit() {
 
    std::cerr << "Python: quit" << std::endl;
@@ -104,13 +119,16 @@ static void compute(int id) {
 BOOST_PYTHON_MODULE(_vistle)
 {
     using namespace boost::python;
+    def("_readline", readline);
+    def("_raw_input", raw_input);
     def("_print_error", print_error);
     def("_print_output", print_output);
 
+    def("source", source, "execute commands from file `arg1`");
     def("spawn", spawn, "spawn new module `arg1`\n" "return its ID");
     def("kill", kill, "kill module with ID `arg1`");
     def("connect", connect, "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
-    def("compute", compute, "trigger execution of module with IT `arg1`");
+    def("compute", compute, "trigger execution of module with ID `arg1`");
     def("quit", quit, "quit vistle session");
     def("debug", debug, "send first character of `arg1` to every vistle process");
 
