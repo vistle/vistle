@@ -34,6 +34,7 @@ class Communicator {
 
    void registerInterpreter(PythonEmbed *pi);
    void setInput(const std::string &input);
+   void setFile(const std::string &filename);
 
    bool dispatch();
    bool handleMessage(const message::Message &message);
@@ -48,6 +49,8 @@ class Communicator {
  private:
 
    std::string m_bindir;
+
+   std::string m_initialFile;
    std::string m_initialInput;
 
    const int rank;

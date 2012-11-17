@@ -31,6 +31,7 @@ typedef int socklen_t;
 #include <core/shm.h>
 
 #include "communicator.h"
+#include "pythonembed.h"
 #include "executor.h"
 
 using namespace boost::interprocess;
@@ -44,6 +45,9 @@ Executor::Executor(int argc, char *argv[])
      , m_rank(-1)
      , m_size(-1)
      , m_comm(NULL)
+     , m_interpreter(NULL)
+     , m_argc(argc)
+     , m_argv(argv)
 {
 #ifdef _WIN32
     WSADATA wsaData;
@@ -94,18 +98,24 @@ Executor::Executor(int argc, char *argv[])
    MPI_Barrier(MPI_COMM_WORLD);
 
    m_comm = new vistle::Communicator(argc, argv, m_rank, m_size);
+
+   if (!m_rank) {
+      m_interpreter = new PythonEmbed(argc, argv);
+      m_comm->registerInterpreter(m_interpreter);
+   }
 }
 
 Executor::~Executor()
 {
    delete m_comm;
+   delete m_interpreter;
 
    shared_memory_object::remove(m_name.c_str());
 }
 
-void Executor::registerInterpreter(PythonEmbed *pi) {
+void Executor::setFile(const std::string &filename) {
 
-   m_comm->registerInterpreter(pi);
+   m_comm->setFile(filename);
 }
 
 void Executor::setInput(const std::string &input) {
@@ -113,9 +123,15 @@ void Executor::setInput(const std::string &input) {
    m_comm->setInput(input);
 }
 
+bool Executor::config(int argc, char *argv[]) {
+
+   return true;
+}
+
 void Executor::run()
 {
-   config();
+   if (!config(m_argc, m_argv))
+      return;
 
    while (m_comm->dispatch()) {
       usleep(100);

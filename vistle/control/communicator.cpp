@@ -257,6 +257,11 @@ void Communicator::registerInterpreter(PythonEmbed *pi) {
    interpreter = pi;
 }
 
+void Communicator::setFile(const std::string &filename) {
+
+   m_initialFile = filename;
+}
+
 void Communicator::setInput(const std::string &input) {
 
    m_initialInput = input;
@@ -272,6 +277,12 @@ bool Communicator::dispatch() {
    bool done = false;
 
    if (rank == 0) {
+
+      if (!m_initialFile.empty()) {
+
+         interpreter->exec_file(m_initialFile);
+         m_initialFile.clear();
+      }
 
       if (!m_initialInput.empty()) {
 
@@ -337,7 +348,7 @@ bool Communicator::dispatch() {
                    status.MPI_SOURCE, MPI_COMM_WORLD);
 
          message::Message *message = (message::Message *) mpiReceiveBuffer;
-#if 1
+#if 0
          printf("[%02d] message from [%02d] message type %d size %d\n",
                 rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
 #endif

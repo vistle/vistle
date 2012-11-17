@@ -8,7 +8,7 @@ class Vistle: public vistle::Executor {
 
    public:
    Vistle(int argc, char *argv[]) : Executor(argc, argv) {}
-   void config();
+   bool config(int argc, char *argv[]);
 };
 
 int main(int argc, char ** argv) {
@@ -22,7 +22,7 @@ int main(int argc, char ** argv) {
    return 0;
 }
 
-void Vistle::config() {
+bool Vistle::config(int, char *[]) {
 
    setInput(
          "gendat = spawn('Gendat');"
@@ -30,4 +30,6 @@ void Vistle::config() {
          "connect(gendat, 'data_out', checker, 'data_in');"
          "compute(gendat);"
       );
+
+   return true;
 }

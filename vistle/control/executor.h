@@ -22,12 +22,12 @@ class Executor {
       Executor(int argc, char *argv[]);
       virtual ~Executor();
 
-      virtual void config() = 0;
+      virtual bool config(int argc, char *argv[]);
 
       void run();
 
-      void registerInterpreter(PythonEmbed *pi);
       void setInput(const std::string &input);
+      void setFile(const std::string &filename);
 
       int getRank() const { return m_rank; }
       int getSize() const { return m_size; }
@@ -35,7 +35,12 @@ class Executor {
    private:
       std::string m_name;
       int m_rank, m_size;
+
       Communicator *m_comm;
+      PythonEmbed *m_interpreter;
+
+      int m_argc;
+      char **m_argv;
 };
 
 } // namespace vistle
