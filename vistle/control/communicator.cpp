@@ -699,9 +699,16 @@ void Communicator::disconnectClients() {
    }
 }
 
-void Communicator::flushClient(int num) {
-   if (writebuf.size() <= num)
+void Communicator::allocateBuffers(int num) {
+
+   if (ssize_t(writebuf.size()) <= num)
       writebuf.resize(num + 1);
+
+   if (ssize_t(readbuf.size()) <= num)
+      readbuf.resize(num + 1);
+}
+
+void Communicator::flushClient(int num) {
 
    std::vector<char> &wb = writebuf[num];
 
@@ -724,8 +731,6 @@ ssize_t Communicator::fillClientBuffer(int num) {
    if (sockfd[num] == -1)
       return -1;
 
-   if (readbuf.size() <= num)
-      readbuf.resize(num+1);
    std::vector<char> &sb = readbuf[num];
 
    ssize_t total = 0;
@@ -764,15 +769,13 @@ ssize_t Communicator::fillClientBuffer(int num) {
          else
             return total;
       }
-   } while (r == buf.size());
+   } while (r == ssize_t(buf.size()));
 
    return total;
 }
 
 ssize_t Communicator::readClient(int num, void *buffer, size_t n) {
 
-   if (readbuf.size() <= num)
-      readbuf.resize(num+1);
    std::vector<char> &sb = readbuf[num];
 
    while (fillClientBuffer(num) > 0) {
@@ -793,8 +796,6 @@ ssize_t Communicator::readClient(int num, void *buffer, size_t n) {
 
 bool Communicator::hasClientLine(int num) {
 
-   if (readbuf.size() <= num)
-      readbuf.resize(num+1);
    std::vector<char> &sb = readbuf[num];
 
    do {
@@ -809,8 +810,6 @@ bool Communicator::hasClientLine(int num) {
 
 std::string Communicator::readClientLine(int num) {
 
-   if (readbuf.size() <= num)
-      readbuf.resize(num+1);
    std::vector<char> &sb = readbuf[num];
 
    do {
@@ -834,9 +833,6 @@ void Communicator::writeClient(int num, const std::string &s) {
 }
 
 void Communicator::writeClient(int num, const void *buf, size_t n) {
-
-   if (writebuf.size() <= num)
-      writebuf.resize(num + 1);
 
    std::vector<char> &wb = writebuf[num];
    wb.insert(wb.end(), (char *)buf, (char *)buf+n);
@@ -872,11 +868,14 @@ int Communicator::checkClients() {
 
    if (sockfd.empty()) {
       sockfd.resize(SocketStart);
-      sockfd[StdInOut] = 0;
-      sockfd[Server] = -1;
 
+      sockfd[StdInOut] = 0;
+      allocateBuffers(StdInOut);
       setClientBlocking(StdInOut, false);
       printGreeting(StdInOut);
+
+      sockfd[Server] = -1;
+      allocateBuffers(Server);
    }
 
    if (sockfd[Server] == -1) {
@@ -956,7 +955,7 @@ int Communicator::checkClients() {
 
          bool reused = false;
          int num = -1;
-         for (int i=SocketStart; i<sockfd.size(); ++i) {
+         for (size_t i=SocketStart; i<sockfd.size(); ++i) {
             if (sockfd[i] == -1
                   && (readbuf.size()<=i || readbuf[i].empty())
                   && (writebuf.size()<=i || writebuf[i].empty())) {
@@ -969,6 +968,8 @@ int Communicator::checkClients() {
             num = sockfd.size();
             sockfd.push_back(client);
          }
+
+         allocateBuffers(num);
 
          std::stringstream str;
          str << std::endl;

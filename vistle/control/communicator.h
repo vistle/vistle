@@ -76,6 +76,7 @@ class Communicator {
    int m_currentClient;
    int checkClients();
    bool setClientBlocking(int num, bool block);
+   void allocateBuffers(int num);
    void flushClient(int num);
    void writeClient(int num, const void *buf, size_t n);
    void writeClient(int num, const std::string &s);
