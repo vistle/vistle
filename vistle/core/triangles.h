@@ -17,7 +17,7 @@ class Triangles: public Coords {
       uint64_t numVertices;
    };
 
-   Triangles(const size_t numCorners = 0, const size_t numVertices = 0,
+   Triangles(const size_t numCorners, const size_t numVertices,
              const int block = -1, const int timestep = -1);
 
    Info *getInfo(Info *info = NULL) const;
@@ -31,19 +31,17 @@ class Triangles: public Coords {
 
       ShmVector<size_t>::ptr cl;
 
-      Data(const size_t numCorners, const size_t numVertices,
-            const std::string & name,
-            const int block, const int timestep);
-      static Data *create(const size_t numCorners, const size_t numVertices,
-            const int block, const int timestep);
+      Data(const size_t numCorners = 0, const size_t numVertices = 0,
+            const std::string & name = "",
+            const int block = -1, const int timestep = -1);
+      static Data *create(const size_t numCorners = 0, const size_t numVertices = 0,
+            const int block = -1, const int timestep = -1);
 
       private:
       friend class Triangles;
       friend class boost::serialization::access;
       template<class Archive>
-         void serialize(Archive &ar, const unsigned int version) {
-            ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
-         }
+         void serialize(Archive &ar, const unsigned int version);
    };
 };
 

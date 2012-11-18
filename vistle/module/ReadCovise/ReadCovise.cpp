@@ -386,7 +386,7 @@ Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *e
    } else {
       assert(elem->subelems.size() == ncomp);
 
-      Geometry::ptr container(new Geometry);
+      Geometry::ptr container(new Geometry(Object::Initialized));
 
       if (contains[0]) {
          container->setGeometry(readObject(fd, *elem->subelems[0]));

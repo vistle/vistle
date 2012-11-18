@@ -563,7 +563,7 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
             i->second.push_back(face);
       }
 
-      vistle::UnstructuredGrid *usg = new vistle::UnstructuredGrid;
+      vistle::UnstructuredGrid *usg = new vistle::UnstructuredGrid(vistle::Object::Initialized);
       usg->setBlock(partition);
       usg->setTimestep(0);
 

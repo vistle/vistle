@@ -4,11 +4,15 @@
 #include <limits.h>
 
 #include <boost/scoped_ptr.hpp>
+#include <boost/tuple/tuple.hpp>
+#include <boost/foreach.hpp>
 
 #include "message.h"
 #include "messagequeue.h"
 #include "shm.h"
+
 #include "object.h"
+#include "object_impl.h"
 
 #include "tools.h"
 
@@ -21,6 +25,20 @@ namespace boost {
 namespace serialization {
 
 // XXX: check these
+
+#if 0
+template<>
+void access::destroy(const vistle::Object *t)
+{
+   delete const_cast<vistle::Object *>(t);
+}
+
+template<>
+void access::construct(vistle::Object *t)
+{
+   ::new(t) vistle::Object(vistle::Shm::the().allocator());
+}
+#endif
 
 template<>
 void access::destroy( const vistle::shm<char>::string * t) // const appropriate here?
@@ -138,6 +156,11 @@ Object::Object(Object::Data *data)
    m_data->ref();
 }
 
+Object::Object()
+: m_data(NULL)
+{
+}
+
 Object::~Object() {
 
    m_data->unref();
@@ -153,6 +176,51 @@ void Object::unref() const {
 
 int Object::refcount() const {
    return d()->refcount;
+}
+
+void Object::save(boost::archive::text_oarchive &ar) const {
+
+   ObjectTypeRegistry::registerArchiveType(ar);
+   const Object *p = this;
+   ar & V_NAME("object", p);
+}
+
+void Object::save(boost::archive::xml_oarchive &ar) const {
+
+   ObjectTypeRegistry::registerArchiveType(ar);
+   const Object *p = this;
+   ar & V_NAME("object", p);
+}
+
+void Object::save(boost::archive::binary_oarchive &ar) const {
+
+   ObjectTypeRegistry::registerArchiveType(ar);
+   const Object *p = this;
+   ar & V_NAME("object", p);
+}
+
+Object::const_ptr Object::load(boost::archive::binary_iarchive &ar) {
+
+   ObjectTypeRegistry::registerArchiveType(ar);
+   Object *p = NULL;
+   ar & V_NAME("object", p);
+   return Object::const_ptr(p);
+}
+
+Object::const_ptr Object::load(boost::archive::text_iarchive &ar) {
+
+   ObjectTypeRegistry::registerArchiveType(ar);
+   Object *p = NULL;
+   ar & V_NAME("object", p);
+   return Object::const_ptr(p);
+}
+
+Object::const_ptr Object::load(boost::archive::xml_iarchive &ar) {
+
+   ObjectTypeRegistry::registerArchiveType(ar);
+   Object *p = NULL;
+   ar & V_NAME("object", p);
+   return Object::const_ptr(p);
 }
 
 void Object::Data::ref() {
@@ -232,6 +300,22 @@ const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int 
    }
    return (*it).second;
 }
+
+#define REG_WITH_ARCHIVE(type, func_name) \
+   template<> \
+   void ObjectTypeRegistry::registerArchiveType(type &ar) { \
+      TypeMap::key_type key; \
+      TypeMap::mapped_type funcs; \
+      BOOST_FOREACH(boost::tie(key, funcs), typeMap()) { \
+         funcs.func_name(ar); \
+      } \
+   }
+REG_WITH_ARCHIVE(boost::archive::text_iarchive, registerTextIArchive)
+REG_WITH_ARCHIVE(boost::archive::text_oarchive, registerTextOArchive)
+REG_WITH_ARCHIVE(boost::archive::binary_iarchive, registerBinaryIArchive)
+REG_WITH_ARCHIVE(boost::archive::binary_oarchive, registerBinaryOArchive)
+REG_WITH_ARCHIVE(boost::archive::xml_iarchive, registerXmlIArchive)
+REG_WITH_ARCHIVE(boost::archive::xml_oarchive, registerXmlOArchive)
 
 void Object::addAttribute(const std::string &key, const std::string &value) {
    d()->addAttribute(key, value);

@@ -55,9 +55,7 @@ vistle::Object::ptr CutGeometry::cutGeometry(vistle::Object::const_ptr object,
 
          vistle::Polygons::const_ptr in =
             boost::static_pointer_cast<const vistle::Polygons>(object);
-         vistle::Polygons::ptr out(new vistle::Polygons);
-         out->setBlock(in->getBlock());
-         out->setTimestep(in->getTimestep());
+         vistle::Polygons::ptr out(new vistle::Polygons(vistle::Object::Initialized));
 
          const size_t *el = &in->el()[0];
          const size_t *cl = &in->cl()[0];

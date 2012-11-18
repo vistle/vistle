@@ -50,6 +50,10 @@ class Object {
 public:
    typedef boost::shared_ptr<Object> ptr;
    typedef boost::shared_ptr<const Object> const_ptr;
+   
+   enum InitializedFlags {
+      Initialized
+   };
 
    enum Type {
       UNKNOWN           = -1,
@@ -105,12 +109,12 @@ public:
    void unref() const;
    int refcount() const;
 
-   virtual void serialize(boost::archive::text_iarchive &ar) = 0;
-   virtual void serialize(boost::archive::text_oarchive &ar) const = 0;
-   virtual void serialize(boost::archive::binary_iarchive &ar) = 0;
-   virtual void serialize(boost::archive::binary_oarchive &ar) const = 0;
-   virtual void serialize(boost::archive::xml_iarchive &ar) = 0;
-   virtual void serialize(boost::archive::xml_oarchive &ar) const = 0;
+   static Object::const_ptr load(boost::archive::text_iarchive &ar);
+   void save(boost::archive::text_oarchive &ar) const;
+   static Object::const_ptr load(boost::archive::binary_iarchive &ar);
+   void save(boost::archive::binary_oarchive &ar) const;
+   static Object::const_ptr load(boost::archive::xml_iarchive &ar);
+   void save(boost::archive::xml_oarchive &ar) const;
 
  protected:
    struct Data {
@@ -136,7 +140,7 @@ public:
       std::string getAttribute(const std::string &key) const;
       std::vector<std::string> getAttributes(const std::string &key) const;
 
-      Data(Type id, const std::string &name, int b, int t);
+      Data(Type id = UNKNOWN, const std::string &name = "", int b = -1, int t = -1);
       ~Data();
       void *operator new(size_t size);
       void *operator new (std::size_t size, void* ptr);
@@ -151,7 +155,7 @@ public:
 
       // not implemented
       Data &operator=(const Data &);
-      Data();
+      //Data();
       Data(const Data &);
    };
 
@@ -161,6 +165,7 @@ public:
  protected:
 
    Object(Data *data);
+   Object();
 
    static void publish(const Data *d);
    static Object::ptr create(Data *);
@@ -171,7 +176,6 @@ public:
          d()->serialize<Archive>(ar, version);
       }
    // not implemented
-   Object();
    Object(const Object &);
    Object &operator=(const Object &);
 };
@@ -182,6 +186,12 @@ class ObjectTypeRegistry {
    public:
    typedef Object::ptr (*CreateFunc)(Object::Data *d);
    typedef void (*DestroyFunc)(const std::string &name);
+   typedef void (*RegisterTextIArchiveFunc)(boost::archive::text_iarchive &ar);
+   typedef void (*RegisterTextOArchiveFunc)(boost::archive::text_oarchive &ar);
+   typedef void (*RegisterXmlIArchiveFunc)(boost::archive::xml_iarchive &ar);
+   typedef void (*RegisterXmlOArchiveFunc)(boost::archive::xml_oarchive &ar);
+   typedef void (*RegisterBinaryIArchiveFunc)(boost::archive::binary_iarchive &ar);
+   typedef void (*RegisterBinaryOArchiveFunc)(boost::archive::binary_oarchive &ar);
 
    template<class O>
    static void registerType(int id) {
@@ -189,14 +199,29 @@ class ObjectTypeRegistry {
       struct FunctionTable t = {
          O::createFromData,
          O::destroy,
+         O::registerBinaryIArchive,
+         O::registerBinaryOArchive,
+         O::registerTextIArchive,
+         O::registerTextOArchive,
+         O::registerXmlIArchive,
+         O::registerXmlOArchive,
       };
       typeMap()[id] = t;
    }
+
+   template<class Archive>
+   static void registerArchiveType(Archive &ar);
 
    private:
    struct FunctionTable {
       CreateFunc create;
       DestroyFunc destroy;
+      RegisterBinaryIArchiveFunc registerBinaryIArchive;
+      RegisterBinaryOArchiveFunc registerBinaryOArchive;
+      RegisterTextIArchiveFunc registerTextIArchive;
+      RegisterTextOArchiveFunc registerTextOArchive;
+      RegisterXmlIArchiveFunc registerXmlIArchive;
+      RegisterXmlOArchiveFunc registerXmlOArchive;
    };
    static const struct FunctionTable &getType(int id);
    typedef std::map<int, FunctionTable> TypeMap;
@@ -217,20 +242,37 @@ class ObjectTypeRegistry {
    static boost::shared_ptr<Type> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Type>(ptr); } \
    static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new Type(static_cast<Type::Data *>(data))); } \
    static void destroy(const std::string &name) { shm<Type::Data>::destroy(name); } \
-   virtual void serialize(boost::archive::text_iarchive &tar); \
-   virtual void serialize(boost::archive::text_oarchive &tar) const; \
-   virtual void serialize(boost::archive::binary_iarchive &bar); \
-   virtual void serialize(boost::archive::binary_oarchive &bar) const; \
-   virtual void serialize(boost::archive::xml_iarchive &xar); \
-   virtual void serialize(boost::archive::xml_oarchive &xar) const; \
+   static void registerTextIArchive(boost::archive::text_iarchive &ar); \
+   static void registerTextOArchive(boost::archive::text_oarchive &ar); \
+   static void registerXmlIArchive(boost::archive::xml_iarchive &ar); \
+   static void registerXmlOArchive(boost::archive::xml_oarchive &ar); \
+   static void registerBinaryIArchive(boost::archive::binary_iarchive &ar); \
+   static void registerBinaryOArchive(boost::archive::binary_oarchive &ar); \
+   Type(Object::InitializedFlags) : Base(Type::Data::create()) {} \
    protected: \
    struct Data; \
    Data *d() const { return static_cast<Data *>(m_data); } \
    Type(Data *data) : Base(data) {} \
+   Type() : Base() {} \
    private: \
    friend class boost::serialization::access; \
    template<class Archive> \
       void serialize(Archive &ar, const unsigned int version) { \
+         boost::serialization::split_member(ar, *this, version); \
+      } \
+   template<class Archive> \
+      void load(Archive &ar, const unsigned int version) { \
+         int type = UNKNOWN; \
+         ar & V_NAME("type", type); \
+         m_data = Data::create(); \
+         ref(); \
+         d()->template serialize<Archive>(ar, version); \
+         assert(type == getType()); \
+      } \
+   template<class Archive> \
+      void save(Archive &ar, const unsigned int version) const { \
+         int type = getType(); \
+         ar & V_NAME("type", type); \
          d()->template serialize<Archive>(ar, version); \
       } \
    friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &); \
@@ -241,29 +283,29 @@ class ObjectTypeRegistry {
 
 #define V_SERIALIZERS2(Type, prefix) \
    prefix \
-   void Type::serialize(boost::archive::text_iarchive &ar) { \
-      ar & V_NAME("object", *this); \
+   void Type::registerTextIArchive(boost::archive::text_iarchive &ar) { \
+      ar.register_type<Type >(); \
    } \
    prefix \
-   void Type::serialize(boost::archive::xml_iarchive &ar) { \
-      ar & V_NAME("object", *this); \
+   void Type::registerTextOArchive(boost::archive::text_oarchive &ar) { \
+      ar.register_type<Type >(); \
    } \
    prefix \
-   void Type::serialize(boost::archive::binary_iarchive &ar) { \
-      ar & V_NAME("object", *this); \
+   void Type::registerXmlIArchive(boost::archive::xml_iarchive &ar) { \
+      ar.register_type<Type >(); \
    } \
    prefix \
-   void Type::serialize(boost::archive::text_oarchive &ar) const { \
-      ar & V_NAME("object", *this); \
+   void Type::registerXmlOArchive(boost::archive::xml_oarchive &ar) { \
+      ar.register_type<Type >(); \
    } \
    prefix \
-   void Type::serialize(boost::archive::xml_oarchive &ar) const { \
-      ar & V_NAME("object", *this); \
+   void Type::registerBinaryIArchive(boost::archive::binary_iarchive &ar) { \
+      ar.register_type<Type >(); \
    } \
    prefix \
-   void Type::serialize(boost::archive::binary_oarchive &ar) const { \
-      ar & V_NAME("object", *this); \
-   }
+   void Type::registerBinaryOArchive(boost::archive::binary_oarchive &ar) { \
+      ar.register_type<Type >(); \
+   } \
 
 #define V_SERIALIZERS(Type) \
    V_SERIALIZERS2(Type,)
@@ -275,9 +317,11 @@ class ObjectTypeRegistry {
          public: \
                  RegisterObjectType_##suffix() { \
                     ObjectTypeRegistry::registerType<Type >(id); \
+                    boost::serialization::void_cast_register<Type, Type::Base>( \
+                          static_cast<Type *>(NULL), static_cast<Type::Base *>(NULL) \
+                          ); \
                  } \
       }; \
-\
       static RegisterObjectType_##suffix registerObjectType_##suffix; \
    }
 

@@ -18,11 +18,8 @@ class Vec3: public Object {
       uint64_t numElements;
    };
 
-   Vec3(const size_t size = 0,
-        const int block = -1, const int timestep = -1)
-      : Object(Data::create(size, block, timestep)) {
-
-   }
+   Vec3(const size_t size,
+        const int block = -1, const int timestep = -1);
 
    Info *getInfo(Info *info = NULL) const {
 
@@ -43,11 +40,7 @@ class Vec3: public Object {
       return d()->x->size();
    }
 
-   void setSize(const size_t size) {
-      d()->x->resize(size);
-      d()->y->resize(size);
-      d()->z->resize(size);
-   }
+   void setSize(const size_t size);
 
    typename shm<T>::vector &x() const { return *(*d()->x)(); }
    typename shm<T>::vector &y() const { return *(*d()->y)(); }
@@ -69,8 +62,8 @@ class Vec3: public Object {
 
       typename ShmVector<T>::ptr x, y, z;
       // when used as Vec3
-      Data(const size_t size, const std::string &name,
-            const int block, const int timestep)
+      Data(const size_t size = 0, const std::string &name = "",
+            const int block = -1, const int timestep = -1)
          : Base::Data(s_type, name, block, timestep)
             , x(new ShmVector<T>(size))
             , y(new ShmVector<T>(size))
@@ -84,7 +77,7 @@ class Vec3: public Object {
             , y(new ShmVector<T>(size))
             , z(new ShmVector<T>(size)) {
       }
-      static Data *create(size_t size, const int block, const int timestep) {
+      static Data *create(size_t size = 0, const int block = -1, const int timestep = -1) {
          std::string name = Shm::the().createObjectID();
          Data *t = shm<Data>::construct(name)(size, name, block, timestep);
          publish(t);
@@ -96,13 +89,7 @@ class Vec3: public Object {
       friend class Vec3;
       friend class boost::serialization::access;
       template<class Archive>
-      void serialize(Archive &ar, const unsigned int version) {
-
-         ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
-         ar & V_NAME("x", *x);
-         ar & V_NAME("y", *y);
-         ar & V_NAME("z", *z);
-      }
+      void serialize(Archive &ar, const unsigned int version);
    };
 
  private:
@@ -110,4 +97,8 @@ class Vec3: public Object {
 };
 
 } // namespace vistle
+
+#ifdef VISTLE_IMPL
+#include "vec3_impl.h"
+#endif
 #endif

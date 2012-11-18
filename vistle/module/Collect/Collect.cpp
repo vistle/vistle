@@ -31,10 +31,9 @@ bool Collect::compute() {
 
    while (hasObject("grid_in") && hasObject("texture_in")) {
 
-      vistle::Geometry::ptr geom(new vistle::Geometry);
       vistle::Object::const_ptr grid = takeFirstObject("grid_in");
       vistle::Object::const_ptr tex = takeFirstObject("texture_in");
-      geom->setGeometry(grid);
+      vistle::Geometry::ptr geom(new vistle::Geometry(grid));
       geom->setTexture(tex);
 
       geom->setBlock(grid->getBlock());

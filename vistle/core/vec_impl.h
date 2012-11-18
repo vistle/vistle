@@ -10,20 +10,17 @@ Vec<T>::Vec(const size_t size,
 }
 
 template <class T>
-size_t Vec<T>::getSize() const {
-   return d()->x->size();
-}
-
-template <class T>
 void Vec<T>::setSize(const size_t size) {
    d()->x->resize(size);
 }
 
 template <class T>
-typename shm<T>::vector &Vec<T>::x() const { return *(*d()->x)(); }
+template <class Archive>
+void Vec<T>::Data::serialize(Archive &ar, const unsigned int version) {
 
-template <class T>
-typename shm<T>::vector &Vec<T>::x(int c) const { assert(c == 0 && "Vec only has one component"); return x(); }
+   ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
+   ar & V_NAME("x", *x);
+}
 
 } // namespace vistle
 

@@ -13,6 +13,8 @@
 
 #include "CuttingSurface.h"
 
+using namespace vistle;
+
 MODULE_MAIN(CuttingSurface)
 
 CuttingSurface::CuttingSurface(const std::string &shmname, int rank, int size, int moduleID)
@@ -107,11 +109,11 @@ CuttingSurface::generateCuttingSurface(vistle::Object::const_ptr grid_object,
    const vistle::Scalar *d = &data->x()[0];
 
    size_t numElem = grid->getNumElements();
-   vistle::Triangles *triangles = new vistle::Triangles;
+   vistle::Triangles *triangles = new vistle::Triangles(Object::Initialized);
    triangles->setBlock(grid_object->getBlock());
    triangles->setTimestep(grid_object->getTimestep());
 
-   vistle::Vec<vistle::Scalar> *outData = new vistle::Vec<vistle::Scalar>;
+   vistle::Vec<vistle::Scalar> *outData = new vistle::Vec<vistle::Scalar>(Object::Initialized);
    outData->setBlock(data_object->getBlock());
    outData->setTimestep(data_object->getTimestep());
 

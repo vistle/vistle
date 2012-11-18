@@ -594,6 +594,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          const message::AddObject &m =
             static_cast<const message::AddObject &>(message);
          Object::const_ptr obj = m.takeObject();
+         assert(obj->refcount() >= 1);
 #if 0
          std::cout << "Module " << m.getModuleID() << ": "
                    << "AddObject " << m.getHandle() << " (" << obj->getName() << ")"

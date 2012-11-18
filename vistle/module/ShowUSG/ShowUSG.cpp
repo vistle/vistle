@@ -9,6 +9,8 @@
 
 MODULE_MAIN(ShowUSG)
 
+using namespace vistle;
+
 ShowUSG::ShowUSG(const std::string &shmname, int rank, int size, int moduleID)
    : Module("ShowUSG", shmname, rank, size, moduleID) {
 
@@ -33,7 +35,7 @@ bool ShowUSG::compute() {
 
          case vistle::Object::UNSTRUCTUREDGRID: {
 
-            vistle::Lines::ptr out(new vistle::Lines);
+            vistle::Lines::ptr out(new vistle::Lines(Object::Initialized));
             vistle::UnstructuredGrid::const_ptr in = vistle::UnstructuredGrid::as(object);
 
             for (size_t index = 0; index < in->getNumElements(); index ++)

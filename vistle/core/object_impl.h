@@ -9,6 +9,7 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
+
 #include "serialize.h"
 
 BOOST_CLASS_IMPLEMENTATION(vistle::shm<char>::string, boost::serialization::primitive_type)
@@ -45,8 +46,21 @@ void Object::Data::serialize(Archive &ar, const unsigned int version) {
    ar & V_NAME("type", type);
    ar & V_NAME("block", block);
    ar & V_NAME("timestep", timestep);
-   ar & V_NAME("attributes", *attributes);
+   //ar & V_NAME("attributes", *attributes);
 }
+
+template<>
+void ObjectTypeRegistry::registerArchiveType(boost::archive::text_iarchive &ar);
+template<>
+void ObjectTypeRegistry::registerArchiveType(boost::archive::text_oarchive &ar);
+template<>
+void ObjectTypeRegistry::registerArchiveType(boost::archive::binary_iarchive &ar);
+template<>
+void ObjectTypeRegistry::registerArchiveType(boost::archive::binary_oarchive &ar);
+template<>
+void ObjectTypeRegistry::registerArchiveType(boost::archive::xml_iarchive &ar);
+template<>
+void ObjectTypeRegistry::registerArchiveType(boost::archive::xml_oarchive &ar);
 
 } // namespace vistle
 

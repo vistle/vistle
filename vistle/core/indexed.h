@@ -14,6 +14,10 @@ class Indexed: public Coords {
  public:
    typedef Coords Base;
 
+   Indexed(const size_t numElements, const size_t numCorners,
+         const size_t numVertices,
+         const int block = -1, const int timestep = -1);
+
    struct Info: public Base::Info {
       uint64_t numElements;
       uint64_t numCorners;
@@ -33,9 +37,13 @@ class Indexed: public Coords {
    struct Data: public Base::Data {
       ShmVector<size_t>::ptr el, cl;
 
-      Data(const size_t numElements, const size_t numCorners,
-           const size_t numVertices,
-            Type id, const std::string &name,
+      Data(const size_t numElements = 0, const size_t numCorners = 0,
+           const size_t numVertices = 0,
+            Type id = UNKNOWN, const std::string &name = "",
+            int b = -1, int t = -1);
+      static Data *create(Type id = UNKNOWN,
+            const size_t numElements = 0, const size_t numCorners = 0,
+            const size_t numVertices = 0,
             int b = -1, int t = -1);
 
       private:

@@ -12,7 +12,7 @@ class Geometry: public Object {
  public:
    typedef Object Base;
 
-   Geometry(const int block = -1, const int timestep = -1);
+   Geometry(Object::const_ptr grid, const int block = -1, const int timestep = -1);
 
    Info *getInfo(Info *info = NULL) const;
 
@@ -33,8 +33,8 @@ class Geometry: public Object {
       boost::interprocess::offset_ptr<Object::Data> normals;
       boost::interprocess::offset_ptr<Object::Data> texture;
 
-      Data(const std::string & name,
-            const int block, const int timestep);
+      Data(const std::string & name = "",
+            const int block = -1, const int timestep = -1);
       ~Data();
       static Data *create(const int block = -1, const int timestep = -1);
 
@@ -43,6 +43,10 @@ class Geometry: public Object {
       friend class boost::serialization::access;
       template<class Archive>
          void serialize(Archive &ar, const unsigned int version);
+      template<class Archive>
+         void load(Archive &ar, const unsigned int version);
+      template<class Archive>
+         void save(Archive &ar, const unsigned int version) const;
    };
 };
 

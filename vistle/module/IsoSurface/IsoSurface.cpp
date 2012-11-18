@@ -93,7 +93,7 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
    const Scalar *d = &data->x()[0];
 
    size_t numElem = grid->getNumElements();
-   Triangles::ptr t(new Triangles);
+   Triangles::ptr t(new Triangles(Object::Initialized));
    t->setBlock(grid_object->getBlock());
    t->setTimestep(grid_object->getTimestep());
 

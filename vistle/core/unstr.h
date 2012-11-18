@@ -29,9 +29,9 @@ class UnstructuredGrid: public Indexed {
    struct Info: public Base::Info {
    };
 
-   UnstructuredGrid(const size_t numElements = 0,
-         const size_t numCorners = 0,
-         const size_t numVertices = 0,
+   UnstructuredGrid(const size_t numElements,
+         const size_t numCorners,
+         const size_t numVertices,
          const int block = -1,
          const int timestep = -1);
 
@@ -44,9 +44,9 @@ class UnstructuredGrid: public Indexed {
 
       ShmVector<char>::ptr tl;
 
-      Data(const size_t numElements, const size_t numCorners,
-                    const size_t numVertices, const std::string & name,
-                    const int block, const int timestep);
+      Data(const size_t numElements = 0, const size_t numCorners = 0,
+                    const size_t numVertices = 0, const std::string & name = "",
+                    const int block = -1, const int timestep = -1);
       static Data *create(const size_t numElements = 0,
                                     const size_t numCorners = 0,
                                     const size_t numVertices = 0,

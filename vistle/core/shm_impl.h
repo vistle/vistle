@@ -102,7 +102,27 @@ void ShmVector<T>::unref() {
 template<typename T>
 template<class Archive>
 void ShmVector<T>::serialize(Archive &ar, const unsigned int version) {
-   ar & boost::serialization::make_array(&(*m_x)[0], m_x->size());
+
+   boost::serialization::split_member(ar, *this, version);
+}
+
+template<typename T>
+template<class Archive>
+void ShmVector<T>::load(Archive &ar, const unsigned int version) {
+
+   size_t s = 0;
+   ar & boost::serialization::make_nvp("size", s);
+   m_x->resize(s);
+   ar & boost::serialization::make_nvp("elements", boost::serialization::make_array(&(*m_x)[0], m_x->size()));
+}
+
+template<typename T>
+template<class Archive>
+void ShmVector<T>::save(Archive &ar, const unsigned int version) const {
+
+   size_t s = m_x->size();
+   ar & boost::serialization::make_nvp("size", s);
+   ar & boost::serialization::make_nvp("elements", boost::serialization::make_array(&(*m_x)[0], m_x->size()));
 }
 
 } // namespace vistle

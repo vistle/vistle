@@ -10,11 +10,6 @@ Vec3<T>::Vec3(const size_t size,
    }
 
 template <class T>
-size_t Vec3<T>::getSize() const {
-   return d()->x->size();
-}
-
-template <class T>
 void Vec3<T>::setSize(const size_t size) {
       d()->x->resize(size);
       d()->y->resize(size);
@@ -22,32 +17,13 @@ void Vec3<T>::setSize(const size_t size) {
    }
 
 template <class T>
-typename shm<T>::vector &Vec3<T>::x() const {
-   return *(*d()->x)();
-}
+template <class Archive>
+void Vec3<T>::Data::serialize(Archive &ar, const unsigned int version) {
 
-template <class T>
-typename shm<T>::vector &Vec3<T>::y() const {
-   return *(*d()->y)();
-}
-
-template <class T>
-typename shm<T>::vector &Vec3<T>::z() const {
-   return *(*d()->z)();
-}
-
-template <class T>
-typename shm<T>::vector &Vec3<T>::x(int c) const {
-   assert(c >= 0 && c<=2 && "Vec3 only has three components");
-   switch(c) {
-      case 0:
-         return x();
-      case 1:
-         return y();
-      case 2:
-         return z();
-   }
-   return x();
+   ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
+   ar & V_NAME("x", *x);
+   ar & V_NAME("y", *y);
+   ar & V_NAME("z", *z);
 }
 
 } // namespace vistle

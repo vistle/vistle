@@ -14,8 +14,8 @@ class Texture1D: public Object {
  public:
    typedef Object Base;
 
-   Texture1D(const size_t width = 0,
-         const Scalar min = 0, const Scalar max = 0,
+   Texture1D(const size_t width,
+         const Scalar min, const Scalar max,
          const int block = -1, const int timestep = -1);
 
    Info *getInfo(Info *info = NULL) const;
@@ -35,21 +35,15 @@ class Texture1D: public Object {
       static Data *create(const size_t width = 0,
             const Scalar min = 0, const Scalar max = 0,
             const int block = -1, const int timestep = -1);
-      Data(const std::string &name, const size_t size,
-            const Scalar min, const Scalar max,
-            const int block, const int timestep);
+      Data(const std::string &name = "", const size_t size = 0,
+            const Scalar min = 0, const Scalar max = 0,
+            const int block = -1, const int timestep = -1);
 
       private:
       friend class Texture1D;
       friend class boost::serialization::access;
       template<class Archive>
-      void serialize(Archive &ar, const unsigned int version) {
-         ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
-         ar & V_NAME("pixels", *pixels);
-         ar & V_NAME("coords", *coords);
-         ar & V_NAME("min", min);
-         ar & V_NAME("max", max);
-      }
+      void serialize(Archive &ar, const unsigned int version);
    };
 };
 

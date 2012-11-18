@@ -2,9 +2,10 @@
 
 namespace vistle {
 
-Geometry::Geometry(const int block, const int timestep)
+Geometry::Geometry(Object::const_ptr grid, const int block, const int timestep)
    : Geometry::Base(Geometry::Data::create(block, timestep))
 {
+   setGeometry(grid);
 }
 
 Geometry::Data::Data(const std::string & name,

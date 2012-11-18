@@ -12,4 +12,15 @@ V_OBJECT_TYPE3(Vec3<char>, Vec3_char, Object::VEC3CHAR);
 V_OBJECT_TYPE3(Vec3<int>, Vec3_int, Object::VEC3INT);
 V_OBJECT_TYPE3(Vec3<Scalar>, Vec3_Scalar, Object::VEC3FLOAT);
 
+template<class V>
+static void inst_vec3() {
+   new V(0, -1, -1);
+};
+
+void inst_vec3s() {
+   inst_vec<Vec3<char> >();
+   inst_vec<Vec3<int> >();
+   inst_vec<Vec3<Scalar> >();
+}
+
 } // namespace vistle

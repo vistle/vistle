@@ -2,6 +2,13 @@
 
 namespace vistle {
 
+Indexed::Indexed(const size_t numElements, const size_t numCorners,
+                      const size_t numVertices,
+                      const int block, const int timestep)
+   : Indexed::Base(static_cast<Data *>(NULL))
+{
+}
+
 Indexed::Info *Indexed::getInfo(Indexed::Info *info) const {
 
    if (!info)
@@ -29,6 +36,17 @@ Indexed::Data::Data(const size_t numElements, const size_t numCorners,
    , cl(new ShmVector<size_t>(numCorners))
 {
 }
+
+Indexed::Data *Indexed::Data::create(Type id,
+            const size_t numElements, const size_t numCorners,
+            const size_t numVertices,
+            int b, int t) {
+
+   assert("should never be called" == NULL);
+
+   return NULL;
+}
+
 
 size_t Indexed::getNumElements() const {
 

@@ -18,7 +18,7 @@ class Coords: public Vec3<Scalar> {
       uint64_t numVertices;
    };
 
-   Coords(const size_t numVertices = 0,
+   Coords(const size_t numVertices,
              const int block = -1, const int timestep = -1);
 
    Info *getInfo(Info *info = NULL) const;
@@ -28,11 +28,11 @@ class Coords: public Vec3<Scalar> {
  protected:
    struct Data: public Base::Data {
 
-      Data(const size_t numVertices,
-            Type id, const std::string & name,
-            const int block, const int timestep);
-      static Data *create(Type id, const size_t numVertices,
-            const int block, const int timestep);
+      Data(const size_t numVertices = 0,
+            Type id = UNKNOWN, const std::string & name = "",
+            const int block = -1, const int timestep = -1);
+      static Data *create(Type id = UNKNOWN, const size_t numVertices = 0,
+            const int block = -1, const int timestep = -1);
 
       private:
       friend class Coords;

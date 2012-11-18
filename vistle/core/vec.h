@@ -19,11 +19,8 @@ class Vec: public Object {
       uint64_t numElements;
    };
 
-   Vec(const size_t size = 0,
-         const int block = -1, const int timestep = -1)
-      : Object(Data::create(size, block, timestep)) {
-
-   }
+   Vec(const size_t size,
+         const int block = -1, const int timestep = -1);
 
    Info *getInfo(Info *info = NULL) const;
 
@@ -31,9 +28,7 @@ class Vec: public Object {
       return d()->x->size();
    }
 
-   void setSize(const size_t size) {
-      d()->x->resize(size);
-   }
+   void setSize(const size_t size);
 
    typename shm<T>::vector &x() const { return *(*d()->x)(); }
    typename shm<T>::vector &x(int c) const { assert(c == 0 && "Vec only has one component"); return x(); }
@@ -43,12 +38,12 @@ class Vec: public Object {
 
       typename ShmVector<T>::ptr x;
 
-      Data(size_t size, const std::string &name,
-            const int block, const int timestep)
+      Data(size_t size = 0, const std::string &name = "",
+            const int block = -1, const int timestep = -1)
          : Base::Data(s_type, name, block, timestep)
            , x(new ShmVector<T>(size)) {
            }
-      static Data *create(size_t size, const int block, const int timestep) {
+      static Data *create(size_t size = 0, const int block = -1, const int timestep = -1) {
          std::string name = Shm::the().createObjectID();
          Data *t = shm<Data>::construct(name)(size, name, block, timestep);
          publish(t);
@@ -60,11 +55,7 @@ class Vec: public Object {
       friend class Vec;
       friend class boost::serialization::access;
       template<class Archive>
-      void serialize(Archive &ar, const unsigned int version) {
-
-         ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
-         ar & V_NAME("x", *x);
-      }
+      void serialize(Archive &ar, const unsigned int version);
    };
 
  private:
@@ -72,4 +63,8 @@ class Vec: public Object {
 };
 
 } // namespace vistle
+
+#ifdef VISTLE_IMPL
+#include "vec_impl.h"
+#endif
 #endif
