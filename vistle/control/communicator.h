@@ -90,6 +90,7 @@ class Communicator {
    std::string readClientLine(int num);
    ssize_t fillClientBuffer(int num);
    void disconnectClients();
+   unsigned short m_port;
 
    static Communicator *s_singleton;
 

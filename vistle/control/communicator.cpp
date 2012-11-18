@@ -186,7 +186,8 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
      interpreter(NULL),
      mpiReceiveBuffer(NULL), mpiMessageSize(0),
      m_moduleCounter(0),
-     m_currentClient(-1)
+     m_currentClient(-1),
+     m_port(8192)
 {
    assert(s_singleton == NULL);
    s_singleton = this;
@@ -899,18 +900,31 @@ int Communicator::checkClients() {
       setsockopt(sockfd[Server], SOL_SOCKET, SO_REUSEADDR, (char *) &reuse,
             sizeof(reuse));
 
-      struct sockaddr_in serv;
-      serv.sin_family = AF_INET;
-      serv.sin_addr.s_addr = INADDR_ANY;
-      serv.sin_port = htons(8192);
+      for (;;) {
+         struct sockaddr_in serv;
+         serv.sin_family = AF_INET;
+         serv.sin_addr.s_addr = INADDR_ANY;
+         serv.sin_port = htons(m_port);
 
-      if (bind(sockfd[Server], (struct sockaddr *) &serv, sizeof(serv)) < 0) {
-         perror("bind error");
-         exit(1);
+         errno = 0;
+         if (bind(sockfd[Server], (struct sockaddr *) &serv, sizeof(serv)) == 0) {
+            break;
+         }
+
+         if (errno == EADDRINUSE)
+            ++m_port;
+         else
+            return -1;
       }
       listen(sockfd[Server], 0);
 
       setClientBlocking(Server, false);
+
+      std::stringstream str;
+      str << std::endl;
+      str << "Listening for your commands on port " << m_port << std::endl;
+      writeClient(StdInOut, str.str());
+      printPrompt(StdInOut);
    }
 
    if (sockfd[Server] == -1)
