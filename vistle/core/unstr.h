@@ -57,12 +57,13 @@ class UnstructuredGrid: public Indexed {
       friend class UnstructuredGrid;
       friend class boost::serialization::access;
       template<class Archive>
-         void serialize(Archive &ar, const unsigned int version) {
-         ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
-         ar & V_NAME("type_list", *tl);
-      }
+         void serialize(Archive &ar, const unsigned int version);
    };
 };
 
 } // namespace vistle
+
+#ifdef VISTLE_IMPL
+#include "unstr_impl.h"
+#endif
 #endif

@@ -48,4 +48,8 @@ class Triangles: public Coords {
 };
 
 } // namespace vistle
+
+#ifdef VISTLE_IMPL
+#include "triangles_impl.h"
+#endif
 #endif

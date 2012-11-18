@@ -54,4 +54,8 @@ class Texture1D: public Object {
 };
 
 } // namespace vistle
+
+#ifdef VISTLE_IMPL
+#include "texture1d_impl.h"
+#endif
 #endif

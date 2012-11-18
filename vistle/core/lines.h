@@ -36,11 +36,13 @@ class Lines: public Indexed {
       friend class Lines;
       friend class boost::serialization::access;
       template<class Archive>
-         void serialize(Archive &ar, const unsigned int version) {
-            ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
-         }
+         void serialize(Archive &ar, const unsigned int version);
    };
 };
 
 } // namespace vistle
+
+#ifdef VISTLE_IMPL
+#include "lines_impl.h"
+#endif
 #endif
