@@ -7,6 +7,8 @@
 #include "pythonmodule.h"
 #include "pythonembed.h"
 
+//#define DEBUG
+
 namespace bp = boost::python;
 
 namespace vistle {
@@ -38,7 +40,9 @@ static void source(const std::string &filename) {
 
 static void quit() {
 
+#ifdef DEBUG
    std::cerr << "Python: quit" << std::endl;
+#endif
    message::Quit m(0, Communicator::the().getRank());
    Communicator::the().broadcastAndHandleMessage(m);
    Communicator::the().setQuitFlag();
@@ -46,28 +50,39 @@ static void quit() {
 
 static void ping(char c) {
 
+#ifdef DEBUG
    std::cerr << "Python: ping: " << c << std::endl;
+#endif
    message::Ping m(0, Communicator::the().getRank(), c);
    Communicator::the().broadcastAndHandleMessage(m);
 }
 
-static int spawn(const char *module) {
+static int spawn(const char *module, int debugflag=0, int debugrank=0) {
+
+#ifdef DEBUG
    std::cerr << "Python: spawn "<< module << std::endl;
+#endif
    int id = Communicator::the().newModuleID();
-   message::Spawn m(0, Communicator::the().getRank(), id, module);
+   message::Spawn m(0, Communicator::the().getRank(), id, module, debugflag, debugrank);
    Communicator::the().broadcastAndHandleMessage(m);
    return id;
 }
+BOOST_PYTHON_FUNCTION_OVERLOADS(spawn_overloads, spawn, 1 , 3)
 
 static void kill(int id) {
+
+#ifdef DEBUG
    std::cerr << "Python: kill "<< id << std::endl;
+#endif
    message::Kill m(0, Communicator::the().getRank(), id);
    Communicator::the().broadcastAndHandleMessage(m);
 }
 
 static void connect(int sid, const char *sport, int did, const char *dport) {
 
+#ifdef DEBUG
    std::cerr << "Python: connect "<< sid << ":" << sport << " -> " << did << ":" << dport << std::endl;
+#endif
    message::Connect m(0, Communicator::the().getRank(),
          sid, sport, did, dport);
    Communicator::the().broadcastAndHandleMessage(m);
@@ -75,7 +90,9 @@ static void connect(int sid, const char *sport, int did, const char *dport) {
 
 static void setIntParam(int id, const char *name, int value) {
 
+#ifdef DEBUG
    std::cerr << "Python: setIntParam " << id << ":" << name << " = " << value << std::endl;
+#endif
    message::SetIntParameter m(0, Communicator::the().getRank(),
          id, name, value);
    Communicator::the().broadcastAndHandleMessage(m);
@@ -83,7 +100,9 @@ static void setIntParam(int id, const char *name, int value) {
 
 static void setFloatParam(int id, const char *name, double value) {
 
+#ifdef DEBUG
    std::cerr << "Python: setFloatParam " << id << ":" << name << " = " << value << std::endl;
+#endif
    message::SetFloatParameter m(0, Communicator::the().getRank(),
          id, name, value);
    Communicator::the().broadcastAndHandleMessage(m);
@@ -91,7 +110,9 @@ static void setFloatParam(int id, const char *name, double value) {
 
 static void setVectorParam(int id, const char *name, double v1, double v2, double v3) {
 
+#ifdef DEBUG
    std::cerr << "Python: setVectorParam " << id << ":" << name << " = " << v1 << " " << v2 << " " << v3 << std::endl;
+#endif
    message::SetVectorParameter m(0, Communicator::the().getRank(),
          id, name, Vector(v1, v2, v3));
    Communicator::the().broadcastAndHandleMessage(m);
@@ -99,7 +120,9 @@ static void setVectorParam(int id, const char *name, double v1, double v2, doubl
 
 static void setFileParam(int id, const char *name, const std::string &value) {
 
+#ifdef DEBUG
    std::cerr << "Python: setFileParam " << id << ":" << name << " = " << value << std::endl;
+#endif
    message::SetFileParameter m(0, Communicator::the().getRank(),
          id, name, value);
    Communicator::the().broadcastAndHandleMessage(m);
@@ -107,7 +130,9 @@ static void setFileParam(int id, const char *name, const std::string &value) {
 
 static void compute(int id) {
 
+#ifdef DEBUG
    std::cerr << "Python: compute " << id << std::endl;
+#endif
    message::Compute m(0, Communicator::the().getRank(), id);
    Communicator::the().broadcastAndHandleMessage(m);
 }
@@ -125,7 +150,7 @@ BOOST_PYTHON_MODULE(_vistle)
     def("_print_output", print_output);
 
     def("source", source, "execute commands from file `arg1`");
-    def("spawn", spawn, "spawn new module `arg1`\n" "return its ID");
+    def("spawn", spawn, spawn_overloads(args("modulename", "debug", "debugrank"), "spawn new module `arg1`\n" "return its ID"));
     def("kill", kill, "kill module with ID `arg1`");
     def("connect", connect, "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
     def("compute", compute, "trigger execution of module with ID `arg1`");

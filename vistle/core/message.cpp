@@ -67,8 +67,12 @@ int Pong::getDestination() const {
 }
 
 Spawn::Spawn(const int moduleID, const int rank, const int s,
-             const std::string & n)
-   : Message(moduleID, rank, Message::SPAWN, sizeof(Spawn)), spawnID(s) {
+             const std::string & n, int debugFlag, int debugRank)
+   : Message(moduleID, rank, Message::SPAWN, sizeof(Spawn))
+   , spawnID(s)
+   , debugFlag(debugFlag)
+   , debugRank(debugRank)
+{
 
       COPY_STRING(name, n);
 }
@@ -81,6 +85,16 @@ int Spawn::getSpawnID() const {
 const char * Spawn::getName() const {
 
    return name;
+}
+
+int Spawn::getDebugFlag() const {
+
+   return debugFlag;
+}
+
+int Spawn::getDebugRank() const {
+
+   return debugRank;
 }
 
 Kill::Kill(const int moduleID, const int rank, const int m)

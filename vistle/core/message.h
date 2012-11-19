@@ -93,31 +93,21 @@ class Pong: public Message {
    int module;
 };
 
-class Debug: public Message {
-
- public:
-   Debug(const int moduleID, const int rank, const int spawnID,
-         const std::string &name);
-
-   int getDebugID() const;
-   const char *getName() const;
-
- private:
-   const int spawnID;
-   module_name_t name;
-};
-
 class Spawn: public Message {
 
  public:
    Spawn(const int moduleID, const int rank, const int spawnID,
-         const std::string &name);
+         const std::string &name, int debugFlag = 0, int debugRank = 0);
 
    int getSpawnID() const;
    const char *getName() const;
+   int getDebugFlag() const;
+   int getDebugRank() const;
 
  private:
    const int spawnID;
+   const int debugFlag;
+   const int debugRank;
    module_name_t name;
 };
 

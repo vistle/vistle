@@ -35,6 +35,9 @@ typedef int socklen_t;
 #include "pythonembed.h"
 #include "communicator.h"
 
+#define CERR \
+   std::cerr << "comm [" << rank << "/" << size << "] "
+
 using namespace boost::interprocess;
 
 namespace vistle {
@@ -395,8 +398,7 @@ bool Communicator::dispatch() {
             }
          }
       } catch (interprocess_exception &ex) {
-         std::cerr << "comm [" << rank << "/" << size << "] receive mq "
-                   << ex.what() << std::endl;
+         CERR << "receive mq " << ex.what() << std::endl;
          exit(-1);
       }
    }
@@ -464,6 +466,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          std::stringstream modID;
          modID << moduleID;
+         std::string id = modID.str();
 
          std::string smqName =
             message::MessageQueue::createName("smq", moduleID, rank);
@@ -477,15 +480,24 @@ bool Communicator::handleMessage(const message::Message &message) {
                message::MessageQueue::create(rmqName);
          } catch (interprocess_exception &ex) {
 
-            std::cerr << "comm [" << rank << "/" << size << "] spawn mq "
-                      << ex.what() << std::endl;
+            CERR << "spawn mq " << ex.what() << std::endl;
             exit(-1);
          }
 
-         MPI_Comm interComm;
-         char *argv[3] = { strdup(Shm::the().name().c_str()), strdup(modID.str().c_str()), NULL };
+         std::string executable = name;
+         std::vector<const char *> argv;
+         if (spawn.getDebugFlag()) {
+            CERR << "spawn with debug on rank " << spawn.getDebugRank() << std::endl;
+            executable = "debug_vistle.sh";
+            argv.push_back(name.c_str());
+         }
 
-         MPI_Comm_spawn(strdup(name.c_str()), argv, size, MPI_INFO_NULL,
+         MPI_Comm interComm;
+         argv.push_back(Shm::the().name().c_str());
+         argv.push_back(id.c_str());
+         argv.push_back(NULL);
+
+         MPI_Comm_spawn(const_cast<char *>(executable.c_str()), const_cast<char **>(&argv[0]), size, MPI_INFO_NULL,
                         0, MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
 
          break;
@@ -697,7 +709,7 @@ Communicator::~Communicator() {
 
    // receive all ModuleExit messages from modules
    // retry for some time, modules that don't answer might have crashed
-   std::cerr << "comm [" << rank << "/" << size << "]: waiting for " << sendMessageQueue.size() << " modules to quit" << std::endl;
+   CERR << "waiting for " << sendMessageQueue.size() << " modules to quit" << std::endl;
    int retries = 10000;
    while (sendMessageQueue.size() > 0 && --retries >= 0) {
       dispatch();
@@ -775,7 +787,7 @@ ssize_t Communicator::fillClientBuffer(int num) {
          sockfd[num] = -1;
 
          if (num == StdInOut) {
-            //std::cerr << "EOF - quitting..." << std::endl;
+            //std::cerr << "Communicator: EOF - quitting..." << std::endl;
             setQuitFlag();
             return 0;
          }
