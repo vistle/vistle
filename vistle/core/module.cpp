@@ -433,14 +433,26 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
    switch (message->getType()) {
 
-      case vistle::message::Message::DEBUG: {
+      case vistle::message::Message::PING: {
 
-         const vistle::message::Debug *debug =
-            static_cast<const vistle::message::Debug *>(message);
+         const vistle::message::Ping *ping =
+            static_cast<const vistle::message::Ping *>(message);
 
          std::cerr << "    module [" << name << "] [" << moduleID << "] ["
-                   << rank << "/" << size << "] debug ["
-                   << debug->getCharacter() << "]" << std::endl;
+                   << rank << "/" << size << "] ping ["
+                   << ping->getCharacter() << "]" << std::endl;
+         vistle::message::Pong(moduleID, rank, ping->getCharacter(), ping->getModuleID());
+         break;
+      }
+
+      case vistle::message::Message::PONG: {
+
+         const vistle::message::Pong *pong =
+            static_cast<const vistle::message::Pong *>(message);
+
+         std::cerr << "    module [" << name << "] [" << moduleID << "] ["
+                   << rank << "/" << size << "] pong ["
+                   << pong->getCharacter() << "]" << std::endl;
          break;
       }
 

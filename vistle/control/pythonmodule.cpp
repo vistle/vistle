@@ -44,10 +44,10 @@ static void quit() {
    Communicator::the().setQuitFlag();
 }
 
-static void debug(char c) {
+static void ping(char c) {
 
-   std::cerr << "Python: debug: " << c << std::endl;
-   message::Debug m(0, Communicator::the().getRank(), c);
+   std::cerr << "Python: ping: " << c << std::endl;
+   message::Ping m(0, Communicator::the().getRank(), c);
    Communicator::the().broadcastAndHandleMessage(m);
 }
 
@@ -130,7 +130,7 @@ BOOST_PYTHON_MODULE(_vistle)
     def("connect", connect, "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
     def("compute", compute, "trigger execution of module with ID `arg1`");
     def("quit", quit, "quit vistle session");
-    def("debug", debug, "send first character of `arg1` to every vistle process");
+    def("ping", ping, "send first character of `arg1` to every vistle process");
 
     param(Int, setIntParam);
     param(Float, setFloatParam);

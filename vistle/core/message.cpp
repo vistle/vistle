@@ -17,7 +17,7 @@ static T min(T a, T b) { return a<b ? a : b; }
 
 Message::Message(const int m, const int r,
                  const Type t, const unsigned int s)
-   : moduleID(m), rank(r), size(s), type(t) {
+   : size(s), type(t), moduleID(m), rank(r) {
 
 }
 
@@ -41,14 +41,29 @@ size_t Message::getSize() const {
    return size;
 }
 
-Debug::Debug(const int moduleID, const int rank, const char c)
-   : Message(moduleID, rank, Message::DEBUG, sizeof(Debug)), character(c) {
+Ping::Ping(const int moduleID, const int rank, const char c)
+   : Message(moduleID, rank, Message::PING, sizeof(Ping)), character(c) {
 
 }
 
-char Debug::getCharacter() const {
+char Ping::getCharacter() const {
 
    return character;
+}
+
+Pong::Pong(const int moduleID, const int rank, const char c, const int module)
+   : Message(moduleID, rank, Message::PONG, sizeof(Pong)), character(c) {
+
+}
+
+char Pong::getCharacter() const {
+
+   return character;
+}
+
+int Pong::getDestination() const {
+
+   return module;
 }
 
 Spawn::Spawn(const int moduleID, const int rank, const int s,

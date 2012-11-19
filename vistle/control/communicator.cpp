@@ -423,12 +423,12 @@ bool Communicator::handleMessage(const message::Message &message) {
 
    switch (message.getType()) {
 
-      case message::Message::DEBUG: {
+      case message::Message::PING: {
 
-         const message::Debug &debug =
-            static_cast<const message::Debug &>(message);
-         std::cout << "comm [" << rank << "/" << size << "] Debug ["
-                   << debug.getCharacter() << "]" << std::endl;
+         const message::Ping &ping =
+            static_cast<const message::Ping &>(message);
+         std::cout << "comm [" << rank << "/" << size << "] Ping ["
+                   << ping.getCharacter() << "]" << std::endl;
          break;
       }
 

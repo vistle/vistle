@@ -45,6 +45,8 @@ struct Message {
       SETINTPARAMETER    =  16,
       ADDVECTORPARAMETER =  17,
       SETVECTORPARAMETER =  18,
+      PING               =  19,
+      PONG               =  20,
    };
 
    Message(const int moduleID, const int rank,
@@ -57,21 +59,52 @@ struct Message {
    size_t getSize() const;
 
  private:
-   const int moduleID;
-   const int rank;
+   //! message size
    unsigned int size;
+   //! message type
    const Type type;
+   //! sender ID
+   const int moduleID;
+   //! sender rank
+   const int rank;
 };
 
-class Debug: public Message {
+class Ping: public Message {
 
  public:
-   Debug(const int moduleID, const int rank, const char c);
+   Ping(const int moduleID, const int rank, const char c);
 
    char getCharacter() const;
 
  private:
    const char character;
+};
+
+class Pong: public Message {
+
+ public:
+   Pong(const int moduleID, const int rank, const char c, const int module);
+
+   char getCharacter() const;
+   int getDestination() const;
+
+ private:
+   const char character;
+   int module;
+};
+
+class Debug: public Message {
+
+ public:
+   Debug(const int moduleID, const int rank, const int spawnID,
+         const std::string &name);
+
+   int getDebugID() const;
+   const char *getName() const;
+
+ private:
+   const int spawnID;
+   module_name_t name;
 };
 
 class Spawn: public Message {
