@@ -68,8 +68,9 @@ class Communicator {
 
    MPI_Request request;
 
-   std::map<int, message::MessageQueue *> sendMessageQueue;
-   std::map<int, message::MessageQueue *> receiveMessageQueue;
+   typedef std::map<int, message::MessageQueue *> MessageQueueMap;
+   MessageQueueMap sendMessageQueue;
+   MessageQueueMap receiveMessageQueue;
 
    std::map<int, bi::shared_memory_object *> shmObjects;
 

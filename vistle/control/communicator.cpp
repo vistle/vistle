@@ -368,8 +368,9 @@ bool Communicator::dispatch() {
    unsigned int priority;
    char msgRecvBuf[vistle::message::Message::MESSAGE_SIZE];
 
-   std::map<int, message::MessageQueue *>::iterator i;
-   for (i = receiveMessageQueue.begin(); i != receiveMessageQueue.end(); ){
+   for (std::map<int, message::MessageQueue *>::iterator i = receiveMessageQueue.begin();
+         i != receiveMessageQueue.end();
+         ++i) {
 
       bool moduleExit = false;
       try {
@@ -384,13 +385,13 @@ bool Communicator::dispatch() {
 
             if (moduleExit) {
 
-               std::map<int, message::MessageQueue *>::iterator si =
-                  sendMessageQueue.find(i->first);
+               MessageQueueMap::iterator si = sendMessageQueue.find(i->first);
                if (si != sendMessageQueue.end()) {
                   delete si->second;
                   sendMessageQueue.erase(si);
                }
-               receiveMessageQueue.erase(i++);
+               delete i->second;
+               receiveMessageQueue.erase(i);
             }
          }
       } catch (interprocess_exception &ex) {
@@ -398,8 +399,6 @@ bool Communicator::dispatch() {
                    << ex.what() << std::endl;
          exit(-1);
       }
-      if (!moduleExit)
-         i++;
    }
 
    return !done;
@@ -429,6 +428,15 @@ bool Communicator::handleMessage(const message::Message &message) {
             static_cast<const message::Ping &>(message);
          std::cout << "comm [" << rank << "/" << size << "] Ping ["
                    << ping.getCharacter() << "]" << std::endl;
+         break;
+      }
+
+      case message::Message::PONG: {
+
+         const message::Pong &pong =
+            static_cast<const message::Pong &>(message);
+         std::cout << "comm [" << rank << "/" << size << "] Pong ["
+                   << pong.getModuleID() << " " << pong.getCharacter() << "]" << std::endl;
          break;
       }
 
@@ -480,12 +488,10 @@ bool Communicator::handleMessage(const message::Message &message) {
 
       case message::Message::KILL: {
 
-         const message::Kill &kill =
-            static_cast<const message::Kill &>(message);
-         std::map<int, message::MessageQueue *>::iterator i
-            = sendMessageQueue.find(kill.getModule());
-         if (i != sendMessageQueue.end())
-            i->second->getMessageQueue().send(&kill, sizeof(kill), 0);
+         const message::Kill &kill = static_cast<const message::Kill &>(message);
+         MessageQueueMap::iterator it = sendMessageQueue.find(kill.getModule());
+         if (it != sendMessageQueue.end())
+            it->second->getMessageQueue().send(&kill, sizeof(kill), 0);
          break;
       }
 
@@ -525,12 +531,16 @@ bool Communicator::handleMessage(const message::Message &message) {
          std::cout << "comm [" << rank << "/" << size << "] Module ["
                    << mod << "] quit" << std::endl;
 
-         std::map<int, message::MessageQueue *>::iterator i = sendMessageQueue.find(mod);
-         if (i != sendMessageQueue.end())
+         MessageQueueMap::iterator i = sendMessageQueue.find(mod);
+         if (i != sendMessageQueue.end()) {
+            delete i->second;
             sendMessageQueue.erase(i);
+         }
          i = receiveMessageQueue.find(mod);
-         if (i != receiveMessageQueue.end())
+         if (i != receiveMessageQueue.end()) {
+            delete i->second;
             receiveMessageQueue.erase(i);
+         }
          break;
       }
 
@@ -538,8 +548,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Compute &comp =
             static_cast<const message::Compute &>(message);
-         std::map<int, message::MessageQueue *>::iterator i
-            = sendMessageQueue.find(comp.getModule());
+         MessageQueueMap::iterator i = sendMessageQueue.find(comp.getModule());
          if (i != sendMessageQueue.end())
             i->second->getMessageQueue().send(&comp, sizeof(comp), 0);
          break;
@@ -584,7 +593,7 @@ bool Communicator::handleMessage(const message::Message &message) {
             std::vector<const Port *>::const_iterator pi;
             for (pi = list->begin(); pi != list->end(); pi ++) {
 
-               std::map<int, message::MessageQueue *>::iterator mi =
+               MessageQueueMap::iterator mi =
                   sendMessageQueue.find((*pi)->getModuleID());
                if (mi != sendMessageQueue.end()) {
                   const message::AddObject a(m.getModuleID(), m.getRank(),
@@ -612,7 +621,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          if (m.getModuleID() != m.getModule()) {
             // message to module
-            std::map<int, message::MessageQueue *>::iterator i
+            MessageQueueMap::iterator i
                = sendMessageQueue.find(m.getModule());
             if (i != sendMessageQueue.end())
                i->second->getMessageQueue().send(&m, m.getSize(), 0);
@@ -627,7 +636,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          if (m.getModuleID() != m.getModule()) {
             // message to module
-            std::map<int, message::MessageQueue *>::iterator i
+            MessageQueueMap::iterator i
                = sendMessageQueue.find(m.getModule());
             if (i != sendMessageQueue.end())
                i->second->getMessageQueue().send(&m, m.getSize(), 0);
@@ -642,7 +651,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          if (m.getModuleID() != m.getModule()) {
             // message to module
-            std::map<int, message::MessageQueue *>::iterator i
+            MessageQueueMap::iterator i
                = sendMessageQueue.find(m.getModule());
             if (i != sendMessageQueue.end())
                i->second->getMessageQueue().send(&m, m.getSize(), 0);
@@ -658,7 +667,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          if (m.getModuleID() != m.getModule()) {
             // message to module
-            std::map<int, message::MessageQueue *>::iterator i
+            MessageQueueMap::iterator i
                = sendMessageQueue.find(m.getModule());
             if (i != sendMessageQueue.end())
                i->second->getMessageQueue().send(&m, m.getSize(), 0);
@@ -677,9 +686,8 @@ bool Communicator::handleMessage(const message::Message &message) {
 Communicator::~Communicator() {
 
    message::Quit quit(0, rank);
-   std::map<int, message::MessageQueue *>::iterator i;
 
-   for (i = sendMessageQueue.begin(); i != sendMessageQueue.end(); i ++)
+   for (MessageQueueMap::iterator i = sendMessageQueue.begin(); i != sendMessageQueue.end(); ++i)
       i->second->getMessageQueue().send(&quit, sizeof(quit), 1);
 
    // receive all ModuleExit messages from modules
