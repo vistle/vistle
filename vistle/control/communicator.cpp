@@ -428,6 +428,11 @@ bool Communicator::handleMessage(const message::Message &message) {
             static_cast<const message::Ping &>(message);
          std::cout << "comm [" << rank << "/" << size << "] Ping ["
                    << ping.getCharacter() << "]" << std::endl;
+         for (MessageQueueMap::iterator i = sendMessageQueue.begin();
+               i != sendMessageQueue.end();
+               ++i) {
+            i->second->getMessageQueue().send(&ping, sizeof(ping), 0);
+         }
          break;
       }
 

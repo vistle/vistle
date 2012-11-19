@@ -51,7 +51,6 @@ class Module {
    Vector getVectorParameter(const std::string & name) const;
 
    bool addObject(const std::string & portName, vistle::Object::const_ptr object);
-   message::MessageQueue *sendMessageQueue;
 
    typedef std::list<vistle::Object::const_ptr> ObjectList;
    ObjectList getObjects(const std::string &portName);
@@ -64,9 +63,10 @@ class Module {
    const unsigned int size;
    const int moduleID;
 
- protected:
+   message::MessageQueue *sendMessageQueue;
    message::MessageQueue *receiveMessageQueue;
    bool handleMessage(const message::Message *message);
+   void sendMessage(const message::Message *message);
 
  private:
 

@@ -421,13 +421,20 @@ bool Module::dispatch() {
    bool again = handleMessage(message);
    if (!again) {
       vistle::message::ModuleExit m(moduleID, rank);
-      sendMessageQueue->getMessageQueue().send(&m, sizeof(m), 0);
+      sendMessage(&m);
    }
 
    //sleep(1);
 
    return again;
 }
+
+
+void Module::sendMessage(const message::Message *message) {
+
+   sendMessageQueue->getMessageQueue().send(message, message->getSize(), 0);
+}
+
 
 bool Module::handleMessage(const vistle::message::Message *message) {
 
@@ -441,7 +448,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          std::cerr << "    module [" << name << "] [" << moduleID << "] ["
                    << rank << "/" << size << "] ping ["
                    << ping->getCharacter() << "]" << std::endl;
-         vistle::message::Pong(moduleID, rank, ping->getCharacter(), ping->getModuleID());
+         vistle::message::Pong m(moduleID, rank, ping->getCharacter(), ping->getModuleID());
+         sendMessage(&m);
          break;
       }
 
