@@ -279,6 +279,9 @@ bool Communicator::dispatch() {
 
    if (rank == 0) {
 
+      int socknum = checkClients();
+
+      m_currentClient = StdInOut;
       if (!m_initialFile.empty()) {
 
          interpreter->exec_file(m_initialFile);
@@ -291,7 +294,6 @@ bool Communicator::dispatch() {
          m_initialInput.clear();
       }
 
-      int socknum = checkClients();
       m_currentClient = socknum;
 
       if (socknum >= 0) {
