@@ -138,6 +138,9 @@ public:
 
       Data(Type id, const std::string &name, int b, int t);
       ~Data();
+      void *operator new(size_t size);
+      void *operator new (std::size_t size, void* ptr);
+      void operator delete(void *ptr);
       void ref();
       void unref();
       static Data *create(Type id, int b, int t);
@@ -167,6 +170,10 @@ public:
       void serialize(Archive &ar, const unsigned int version) {
          d()->serialize<Archive>(ar, version);
       }
+   // not implemented
+   Object();
+   Object(const Object &);
+   Object &operator=(const Object &);
 };
 
 class ObjectTypeRegistry {

@@ -112,6 +112,20 @@ Object::Data::~Data() {
    shm<AttributeMap>::destroy(std::string("attr_")+name);
 }
 
+void *Object::Data::operator new(size_t size) {
+   return Shm::the().shm().allocate(size);
+}
+
+void* Object::Data::operator new (std::size_t size, void* ptr) {
+   return ptr;
+}
+
+void Object::Data::operator delete(void *p) {
+   return Shm::the().shm().deallocate(p);
+}
+
+
+
 Object::Data *Object::Data::create(Type id, int b, int t) {
 
    std::string name = Shm::the().createObjectID();
