@@ -179,7 +179,8 @@ const shm_handle_t & AddObject::getHandle() const {
 Object::const_ptr AddObject::takeObject() const {
 
    vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
-   obj->unref();
+   if (obj)
+      obj->unref();
    return obj;
 }
 
