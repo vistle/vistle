@@ -305,17 +305,17 @@ bool Communicator::dispatch() {
                !line.empty();
                line = readClientLine(socknum)) {
 
-            if (strip(line) == "quit") {
-
-               done = true;
-               break;
-            } else if (strip(line) == "?" || strip(line) == "h" || strip(line) == "help") {
+            if (strip(line) == "?" || strip(line) == "h" || strip(line) == "help") {
 
                writeClient(socknum, "Type \"help(vistle)\" for help, \"help()\" for general help\n\n");
             } else if (!interpreter) {
 
                writeClient(socknum, "No command interpreter registered\n");
             } else {
+
+               if (strip(line) == "quit")
+                  line = "quit()";
+
                // in order for raw_input to work correctly
                setClientBlocking(socknum, true);
                if (!interpreter->exec(line)) {
