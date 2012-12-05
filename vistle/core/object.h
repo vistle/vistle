@@ -185,25 +185,26 @@ class ObjectTypeRegistry {
 
    template<class O>
    static void registerType(int id) {
-      assert(s_typeMap.find(id) == s_typeMap.end());
+      assert(typeMap().find(id) == typeMap().end());
       struct FunctionTable t = {
          O::createFromData,
          O::destroy,
       };
-      s_typeMap[id] = t;
+      typeMap()[id] = t;
    }
 
    private:
-   static CreateFunc getCreator(int id);
-   static DestroyFunc getDestroyer(int id);
-
    struct FunctionTable {
       CreateFunc create;
       DestroyFunc destroy;
    };
    static const struct FunctionTable &getType(int id);
    typedef std::map<int, FunctionTable> TypeMap;
-   static TypeMap s_typeMap;
+   //static TypeMap s_typeMap;
+
+   static TypeMap &typeMap();
+   static CreateFunc getCreator(int id);
+   static DestroyFunc getDestroyer(int id);
 };
 
 //! declare a new Object type

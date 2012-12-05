@@ -224,9 +224,9 @@ void Object::setBlock(const int blk) {
 }
 
 const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int id) {
-   TypeMap::const_iterator it = s_typeMap.find(id);
-   assert(it != s_typeMap.end());
-   if (it == s_typeMap.end()) {
+   TypeMap::const_iterator it = typeMap().find(id);
+   assert(it != typeMap().end());
+   if (it == typeMap().end()) {
       std::cerr << "ObjectTypeRegistry: no creator for type id " << id << std::endl;
       exit(1);
    }
@@ -352,6 +352,9 @@ ObjectTypeRegistry::DestroyFunc ObjectTypeRegistry::getDestroyer(int id) {
    return getType(id).destroy;
 }
 
-ObjectTypeRegistry::TypeMap ObjectTypeRegistry::s_typeMap;
+ObjectTypeRegistry::TypeMap &ObjectTypeRegistry::typeMap() {
+   static TypeMap m;
+   return m;
+}
 
 } // namespace vistle
