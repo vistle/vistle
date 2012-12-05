@@ -87,7 +87,7 @@ Executor::Executor(int argc, char *argv[])
 
    char name[HOSTNAMESIZE+30];
    if (!m_rank)
-      strncpy(name, m_name.c_str(), m_name.length());
+      strncpy(name, m_name.c_str(), m_name.length()+1);
    MPI_Bcast(name, sizeof(name), MPI_CHAR, 0, MPI_COMM_WORLD);
    if (m_rank) {
       m_name = name;
