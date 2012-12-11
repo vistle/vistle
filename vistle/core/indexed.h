@@ -18,13 +18,6 @@ class Indexed: public Coords {
          const size_t numVertices,
          const int block = -1, const int timestep = -1);
 
-   struct Info: public Base::Info {
-      uint64_t numElements;
-      uint64_t numCorners;
-      uint64_t numVertices;
-   };
-
-   Info *getInfo(Info *info = NULL) const;
    size_t getNumElements() const;
    size_t getNumCorners() const;
    size_t getNumVertices() const;

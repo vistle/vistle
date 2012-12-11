@@ -18,7 +18,6 @@ class Texture1D: public Object {
          const Scalar min, const Scalar max,
          const int block = -1, const int timestep = -1);
 
-   Info *getInfo(Info *info = NULL) const;
    size_t getNumElements() const;
    size_t getWidth() const;
    shm<unsigned char>::vector &pixels() const { return *(*d()->pixels)(); }

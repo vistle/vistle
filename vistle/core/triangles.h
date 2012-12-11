@@ -12,15 +12,9 @@ class Triangles: public Coords {
  public:
    typedef Coords Base;
 
-   struct Info: public Base::Info {
-      uint64_t numCorners;
-      uint64_t numVertices;
-   };
-
    Triangles(const size_t numCorners, const size_t numVertices,
              const int block = -1, const int timestep = -1);
 
-   Info *getInfo(Info *info = NULL) const;
    size_t getNumCorners() const;
    size_t getNumVertices() const;
 

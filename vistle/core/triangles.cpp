@@ -30,22 +30,6 @@ Triangles::Data * Triangles::Data::create(const size_t numCorners,
    return t;
 }
 
-Triangles::Info *Triangles::getInfo(Triangles::Info *info) const {
-
-   if (!info)
-      info = new Info;
-
-   Base::getInfo(info);
-
-   info->infosize = sizeof(Info);
-   info->itemsize = 0;
-   info->offset = 0;
-   info->numCorners = getNumCorners();
-   info->numVertices = getNumVertices();
-
-   return info;
-}
-
 size_t Triangles::getNumCorners() const {
 
    return d()->cl->size();

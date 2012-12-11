@@ -14,8 +14,6 @@ class Geometry: public Object {
 
    Geometry(Object::const_ptr grid, const int block = -1, const int timestep = -1);
 
-   Info *getInfo(Info *info = NULL) const;
-
    void setGeometry(Object::const_ptr g);
    void setColors(Object::const_ptr c);
    void setTexture(Object::const_ptr t);

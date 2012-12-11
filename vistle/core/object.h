@@ -67,27 +67,15 @@ public:
       LINES             =  7,
       POLYGONS          =  8,
       UNSTRUCTUREDGRID  =  9,
-      SET               = 10,
+      //SET               = 10,
       GEOMETRY          = 11,
       TEXTURE1D         = 12,
       POINTS            = 13,
    };
 
-   struct Info {
-      uint64_t infosize;
-      uint64_t itemsize;
-      uint64_t offset;
-      uint64_t type;
-      uint64_t block;
-      uint64_t timestep;
-      virtual ~Info() {}; // for RTTI
-   };
-
    virtual ~Object();
 
    shm_handle_t getHandle() const;
-
-   Info *getInfo(Info *info = NULL) const;
 
    Type getType() const;
    std::string getName() const;

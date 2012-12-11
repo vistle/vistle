@@ -26,16 +26,11 @@ class UnstructuredGrid: public Indexed {
       POLYHEDRON  = 11
    };
 
-   struct Info: public Base::Info {
-   };
-
    UnstructuredGrid(const size_t numElements,
          const size_t numCorners,
          const size_t numVertices,
          const int block = -1,
          const int timestep = -1);
-
-   Info *getInfo(Info *info = NULL) const;
 
    shm<char>::vector &tl() const { return *(*d()->tl)(); }
 

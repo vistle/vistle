@@ -14,14 +14,9 @@ class Coords: public Vec3<Scalar> {
  public:
    typedef Vec3<Scalar> Base;
 
-   struct Info: public Base::Info {
-      uint64_t numVertices;
-   };
-
    Coords(const size_t numVertices,
              const int block = -1, const int timestep = -1);
 
-   Info *getInfo(Info *info = NULL) const;
    size_t getNumCoords() const;
    size_t getNumVertices() const;
 

@@ -6,8 +6,6 @@
 #include <module.h>
 #include <object.h>
 
-#include "catalogue.h"
-
 class WriteVistle: public vistle::Module {
 
  public:
@@ -15,15 +13,16 @@ class WriteVistle: public vistle::Module {
    ~WriteVistle();
 
  private:
-   vistle::Object::Info * createInfo(const vistle::Object::const_ptr object, size_t offset);
-
-   void createCatalogue(const vistle::Object::const_ptr object, catalogue & c);
-   void saveCatalogue(const int fd, const catalogue & c);
-   void saveItemInfo(const int fd, const vistle::Object::Info * info);
-   void saveObject(const int fd, const vistle::Object::const_ptr object);
-
-   void save(const std::string & name, vistle::Object::const_ptr object);
    virtual bool compute();
+
+   void close();
+
+   std::ofstream *m_ofs;
+   boost::archive::binary_oarchive *m_binAr;
+   boost::archive::text_oarchive *m_textAr;
+   boost::archive::xml_oarchive *m_xmlAr;
+
+
 };
 
 #endif

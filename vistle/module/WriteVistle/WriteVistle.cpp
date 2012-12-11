@@ -1,7 +1,5 @@
 #include <cstdio>
 #include <cstdlib>
-#define __STDC_FORMAT_MACROS
-#include <inttypes.h>
 
 #include <sstream>
 #include <iomanip>
@@ -11,348 +9,131 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/xml_oarchive.hpp>
+
 #include <object.h>
-#include <polygons.h>
-#include <unstr.h>
-#include <vec.h>
-#include <vec3.h>
 
 #include "WriteVistle.h"
 
+namespace ba = boost::archive;
 using namespace vistle;
 
 MODULE_MAIN(WriteVistle)
 
 WriteVistle::WriteVistle(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("WriteVistle", shmname, rank, size, moduleID) {
+   : Module("WriteVistle", shmname, rank, size, moduleID)
+   , m_ofs(NULL)
+   , m_binAr(NULL)
+   , m_textAr(NULL)
+   , m_xmlAr(NULL)
+{
 
    createInputPort("grid_in");
-   addFileParameter("filename", "");
-}
-
-template<typename T>
-size_t twrite(const int fd, const T* data, const size_t num) {
-
-   size_t r = 0;
-
-   while (r < num * sizeof(T)) {
-      size_t n = ::write(fd, ((char *) data) + r, num * sizeof(T) - r);
-      if (n <= 0)
-         break;
-      r += n;
-   }
-
-   if (r < num * sizeof(T))
-      std::cout << "ERROR ReadCovise::twrite<T> wrote " << r
-                << " bytes instead of " << num * sizeof(T) << std::endl;
-
-   return r;
-}
-
-size_t write_uint64(const int fd, const uint64_t * data, const size_t num) {
-
-    return twrite<uint64_t>(fd, data, num);
-}
-
-size_t write_uint64(const int fd, const unsigned int * data, const size_t num) {
-
-   std::vector<uint64_t> d64(num);
-   for (size_t index = 0; index < num; index ++)
-      d64[index] = data[index];
-
-   return twrite<uint64_t>(fd, &d64[0], num);
-}
-
-#ifdef __APPLE__
-size_t write_uint64(const int fd, const unsigned long * data, const size_t num) {
-
-   std::vector<uint64_t> d64(num);
-   for (size_t index = 0; index < num; index ++)
-      d64[index] = data[index];
-
-   return twrite<uint64_t>(fd, &d64[0], num);
-}
-#endif
-
-size_t write_char(const int fd, char * data, const size_t num) {
-   
-   return twrite<char>(fd, data, num);
-}
-
-size_t write_float(const int fd, float * data, const size_t num) {
-
-   return twrite<float>(fd, data, num);
-}
-
-size_t write_float(const int fd, const double * data, const size_t num) {
-
-   std::vector<float> fdata(num);
-   for (size_t index = 0; index < num; index ++)
-      fdata[index] = data[index];
-
-   return twrite<float>(fd, &fdata[0], num);
+   addIntParameter("format", 0);
+   addFileParameter("filename", "vistle.archive");
 }
 
 WriteVistle::~WriteVistle() {
 
+   close();
 }
 
-Object::Info * WriteVistle::createInfo(vistle::Object::const_ptr object, size_t offset) {
+void WriteVistle::close() {
 
-   switch (object->getType()) {
+   delete m_binAr;
+   m_binAr = NULL;
+   delete m_textAr;
+   m_textAr = NULL;
+   delete m_xmlAr;
+   m_xmlAr = NULL;
 
-      case vistle::Object::POLYGONS: {
-
-         vistle::Polygons::const_ptr polygons = vistle::Polygons::as(object);
-         vistle::Polygons::Info *info = new vistle::Polygons::Info;
-         info->type = vistle::Object::POLYGONS;
-         info->numElements = polygons->getNumElements();
-         info->numCorners = polygons->getNumCorners();
-         info->numVertices = polygons->getNumVertices();
-         info->block = polygons->getBlock();
-         info->timestep = polygons->getTimestep();
-         info->infosize = sizeof(Polygons::Info);
-         info->itemsize = info->numElements * sizeof(uint64_t) +
-            info->numCorners * sizeof(uint64_t) +
-            info->numVertices * sizeof(float) * 3;
-         info->offset = offset;
-         return info;
-      }
-
-      case vistle::Object::VECFLOAT: {
-
-         vistle::Vec<vistle::Scalar>::const_ptr data = vistle::Vec<vistle::Scalar>::as(object);
-         Vec<vistle::Scalar>::Info *info = new Vec<vistle::Scalar>::Info;
-         info->type = object->getType();
-         info->numElements = data->getSize();
-         info->block = data->getBlock();
-         info->timestep = data->getTimestep();
-         info->infosize = sizeof(Vec<vistle::Scalar>::Info);
-         info->itemsize = info->numElements * sizeof(float);
-         info->offset = offset;
-         return info;
-      }
-
-      case vistle::Object::VEC3FLOAT: {
-
-         vistle::Vec3<vistle::Scalar>::const_ptr data = vistle::Vec3<vistle::Scalar>::as(object);
-         Vec3<vistle::Scalar>::Info *info = new Vec3<vistle::Scalar>::Info;
-         info->type = object->getType();
-         info->numElements = data->getSize();
-         info->block = data->getBlock();
-         info->timestep = data->getTimestep();
-         info->infosize = sizeof(Vec3<vistle::Scalar>::Info);
-         info->itemsize = info->numElements * sizeof(float) * 3;
-         info->offset = offset;
-         return info;
-      }
-
-      case vistle::Object::UNSTRUCTUREDGRID: {
-
-         vistle::UnstructuredGrid::const_ptr grid = vistle::UnstructuredGrid::as(object);
-         UnstructuredGrid::Info *info = new UnstructuredGrid::Info;
-         info->type = object->getType();
-         info->numElements = grid->getNumElements();
-         info->numCorners = grid->getNumCorners();
-         info->numVertices = grid->getNumVertices();
-         info->block = grid->getBlock();
-         info->timestep = grid->getTimestep();
-         info->infosize = sizeof(UnstructuredGrid::Info);
-         info->itemsize =
-            info->numElements * sizeof(char) +     // tl
-            info->numElements * sizeof(uint64_t) + // el
-            info->numCorners * sizeof(uint64_t) +  // cl
-            info->numVertices * 3 * sizeof(float); // x, y, z
-         info->offset = offset;
-         return info;
-      }
-
-      default:
-         break;
+   if (m_ofs) {
+      *m_ofs << std::endl;
+      *m_ofs << "vistle separator" << std::endl;
    }
-
-   return NULL;
-}
-
-void WriteVistle::createCatalogue(vistle::Object::const_ptr object,
-                                  catalogue & c) {
-
-   uint64_t infosize = 0;
-   uint64_t itemsize = 0;
-   uint64_t offset = 0;
-
-   c.item = createInfo(object, offset);
-   c.infosize = infosize + 2 * sizeof(int64_t); // info + item size;
-   c.itemsize = itemsize;
-}
-
-void printItemInfo(const Object::Info * info, const int depth = 0) {
-
-   const Polygons::Info * poly = dynamic_cast<const Polygons::Info *>(info);
-
-   if (poly) {
-
-      for (int s = 0; s < depth * 4; s ++)
-         printf(" ");
-      printf("poly %" PRIu64 " %" PRIu64 " %" PRIu64 ": info %" PRIu64 ", item %" PRIu64 "\n",
-             poly->numElements, poly->numCorners, poly->numVertices,
-             poly->infosize, poly->itemsize);
-   }
-}
-
-void printCatalogue(const catalogue & c) {
-
-   printf("catalogue info: %" PRIu64 ", item %" PRIu64 "\n",
-          c.infosize, c.itemsize);
-   if (c.item)
-      printItemInfo(c.item);
-}
-
-void WriteVistle::saveObject(const int fd, vistle::Object::const_ptr object) {
-
-   switch(object->getType()) {
-
-      case vistle::Object::POLYGONS: {
-
-         vistle::Polygons::const_ptr polygons = vistle::Polygons::as(object);
-
-         std::cout << " write polygons "
-                << polygons->getBlock() << " " << polygons->getTimestep() << " "
-                << polygons->getNumElements() << " " << polygons->getNumCorners() << " "
-                << polygons->getNumVertices() << std::endl;
-
-         write_uint64(fd, &polygons->el()[0], polygons->getNumElements());
-         write_uint64(fd, &polygons->cl()[0], polygons->getNumCorners());
-
-         write_float(fd, &polygons->x()[0], polygons->getNumVertices());
-         write_float(fd, &polygons->y()[0], polygons->getNumVertices());
-         write_float(fd, &polygons->z()[0], polygons->getNumVertices());
-         break;
-      }
-
-      case vistle::Object::UNSTRUCTUREDGRID: {
-
-         vistle::UnstructuredGrid::const_ptr usg = vistle::UnstructuredGrid::as(object);
-
-         std::cout << " write usg "
-                   << usg->getBlock() << " " << usg->getTimestep() << " "
-                   << usg->getNumElements() << " " << usg->getNumCorners() << " "
-                   << usg->getNumVertices() << std::endl;
-
-         write_char(fd, &usg->tl()[0], usg->getNumElements());
-         write_uint64(fd, &usg->el()[0], usg->getNumElements());
-         write_uint64(fd, &usg->cl()[0], usg->getNumCorners());
-
-         write_float(fd, &usg->x()[0], usg->getNumVertices());
-         write_float(fd, &usg->y()[0], usg->getNumVertices());
-         write_float(fd, &usg->z()[0], usg->getNumVertices());
-         break;
-      }
-
-      case vistle::Object::VECFLOAT: {
-
-         vistle::Vec<vistle::Scalar>::const_ptr data = vistle::Vec<vistle::Scalar>::as(object);
-
-         std::cout << " write float vec "
-                   << data->getBlock() << " " << data->getTimestep() << " "
-                   << data->getSize() << std::endl;
-
-         write_float(fd, &data->x()[0], data->getSize());
-         break;
-      }
-
-      case vistle::Object::VEC3FLOAT: {
-
-         vistle::Vec3<vistle::Scalar>::const_ptr data = vistle::Vec3<vistle::Scalar>::as(object);
-
-         std::cout << " write float vec "
-                   << data->getBlock() << " " << data->getTimestep() << " "
-                   << data->getSize() << std::endl;
-
-         write_float(fd, &data->x()[0], data->getSize());
-         write_float(fd, &data->y()[0], data->getSize());
-         write_float(fd, &data->z()[0], data->getSize());
-         break;
-      }
-
-      default:
-         printf("WriteVistle::saveObject unsupported object type %d\n",
-                object->getType());
-         break;
-   }
-}
-
-void WriteVistle::saveItemInfo(const int fd, const Object::Info * info) {
-
-   write_uint64(fd, &info->infosize, 1);
-   write_uint64(fd, &info->itemsize, 1);
-   write_uint64(fd, &info->offset, 1);
-   write_uint64(fd, &info->type, 1);
-   write_uint64(fd, &info->block, 1);
-   write_uint64(fd, &info->timestep, 1);
-
-   const Polygons::Info *polygons = dynamic_cast<const Polygons::Info *>(info);
-   const UnstructuredGrid::Info *usg = dynamic_cast<const UnstructuredGrid::Info *>(info);
-   const Vec<float>::Info *data = dynamic_cast<const Vec<float>::Info *>(info);
-
-   if (polygons) {
-      write_uint64(fd, &polygons->numElements, 1);
-      write_uint64(fd, &polygons->numCorners, 1);
-      write_uint64(fd, &polygons->numVertices, 1);
-   }
-   else if (usg) {
-      write_uint64(fd, &usg->numElements, 1);
-      write_uint64(fd, &usg->numCorners, 1);
-      write_uint64(fd, &usg->numVertices, 1);
-   }
-   else if (data) {
-      write_uint64(fd, &usg->numElements, 1);
-   }
-}
-
-void WriteVistle::saveCatalogue(const int fd, const catalogue & c) {
-
-   uint64_t numItems = c.item?1:0;
-   write_uint64(fd, &c.infosize, 1);
-   write_uint64(fd, &c.itemsize, 1);
-   write_uint64(fd, &numItems, 1);
-
-   if (c.item)
-      saveItemInfo(fd, c.item);
-}
-
-void WriteVistle::save(const std::string & name, vistle::Object::const_ptr object) {
-
-   int fd = open(name.c_str(), O_WRONLY | O_CREAT | O_TRUNC,
-                 S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-   if (fd == -1) {
-      std::cout << "ERROR WriteVistle::save could not open file [" << name
-                << "]" << std::endl;
-      return;
-   }
-
-   catalogue c;
-   createCatalogue(object, c);
-   printCatalogue(c);
-
-   write_char(fd, (char *) "VISTLE", 6);
-   header h('l', 1, 0, 0);
-   write_char(fd, (char *) &h, sizeof(header));
-
-   saveCatalogue(fd, c);
-   saveObject(fd, object);
-
-   close(fd);
-   std::cout << "saved [" << name << "]" << std::endl;
+   delete m_ofs;
+   m_ofs = NULL;
 }
 
 bool WriteVistle::compute() {
 
-   ObjectList objects = getObjects("grid_in");
+   int count = 0;
+   bool trunc = false;
+   bool end = false;
+   std::string format;
+   while (Object::const_ptr obj = takeFirstObject("grid_in")) {
+      std::ios_base::openmode flags = std::ios::out;
+      if (obj->hasAttribute("_mark_begin")) {
+         close();
+         trunc = true;
+         flags |= std::ios::trunc;
+      } else {
+         flags |= std::ios::app;
+      }
+      if (obj->hasAttribute("_mark_end")) {
+         end = true;
+      }
+      switch(getIntParameter("format")) {
+         default:
+         case 0:
+            flags |= std::ios::binary;
+            format = "binary";
+            break;
+         case 1:
+            format = "text";
+            break;
+         case 2:
+            format = "xml";
+            break;
+      }
+      if (!m_ofs) {
+         m_ofs = new std::ofstream(getFileParameter("filename").c_str(), flags);
+      }
+      if (trunc)
+         *m_ofs << "vistle " << format << " 1 start" << std::endl;
 
-   if (objects.size() == 1) {
-      save(getFileParameter("filename"), objects.front());
+      switch(getIntParameter("format")) {
+         default:
+         case 0:
+         {
+            if (!m_binAr)
+               m_binAr = new ba::binary_oarchive(*m_ofs);
+            obj->save(*m_binAr);
+            break;
+         }
+         case 1:
+         {
+            if (!m_textAr)
+               m_textAr = new ba::text_oarchive(*m_ofs);
+            obj->save(*m_textAr);
+            break;
+         }
+         case 2:
+         {
+            if (!m_xmlAr)
+               m_xmlAr = new ba::xml_oarchive(*m_ofs);
+            obj->save(*m_xmlAr);
+            break;
+         }
+      }
+      ++count;
+
+      close();
+
+      //*m_ofs << std::endl << "vistle separator" << std::endl;
    }
+   if (trunc) {
+      std::cerr << "saved";
+   } else {
+      std::cerr << "appended";
+   }
+   if (end) {
+      std::cerr << " final";
+      close();
+   }
+   std::cerr << " [" << count << "] to " << getFileParameter("filename") << " (" << format << ")" << std::endl;
 
    return true;
 }

@@ -246,21 +246,6 @@ shm_handle_t Object::getHandle() const {
    return Shm::the().getHandleFromObject(this);
 }
 
-Object::Info *Object::getInfo(Object::Info *info) const {
-
-   if (!info)
-      info = new Info;
-
-   info->infosize = sizeof(Info);
-   info->itemsize = 0;
-   info->offset = 0;
-   info->type = getType();
-   info->block = getBlock();
-   info->timestep = getTimestep();
-
-   return info;
-}
-
 Object::Type Object::getType() const {
 
    return d()->type;

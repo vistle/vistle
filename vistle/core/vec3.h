@@ -14,27 +14,8 @@ class Vec3: public Object {
  public:
    typedef Object Base;
 
-   struct Info: public Base::Info {
-      uint64_t numElements;
-   };
-
    Vec3(const size_t size,
         const int block = -1, const int timestep = -1);
-
-   Info *getInfo(Info *info = NULL) const {
-
-      if (!info) {
-         info = new Info;
-      }
-      Base::getInfo(info);
-
-      info->infosize = sizeof(Info);
-      info->itemsize = 0;
-      info->offset = 0;
-      info->numElements = getSize();
-
-      return info;
-   }
 
    size_t getSize() const {
       return d()->x->size();

@@ -13,15 +13,10 @@ class Polygons: public Indexed {
  public:
    typedef Indexed Base;
 
-   struct Info: public Base::Info {
-   };
-
    Polygons(const size_t numElements,
             const size_t numCorners,
             const size_t numVertices,
             const int block = -1, const int timestep = -1);
-
-   Info *getInfo(Info *info = NULL) const;
 
  protected:
    struct Data: public Base::Data {

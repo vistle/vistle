@@ -9,23 +9,6 @@ Indexed::Indexed(const size_t numElements, const size_t numCorners,
 {
 }
 
-Indexed::Info *Indexed::getInfo(Indexed::Info *info) const {
-
-   if (!info)
-      info = new Info;
-
-   Base::getInfo(info);
-
-   info->infosize = sizeof(Info);
-   info->itemsize = 0;
-   info->offset = 0;
-   info->numVertices = getNumVertices();
-   info->numElements = getNumElements();
-   info->numCorners = getNumCorners();
-
-   return info;
-}
-
 Indexed::Data::Data(const size_t numElements, const size_t numCorners,
              const size_t numVertices,
              Type id, const std::string & name,

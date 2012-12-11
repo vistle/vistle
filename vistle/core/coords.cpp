@@ -45,21 +45,6 @@ Coords::Data *Coords::Data::create(Type id, const size_t numVertices,
    return NULL;
 }
 
-Coords::Info *Coords::getInfo(Coords::Info *info) const {
-
-   if (!info)
-      info = new Info;
-
-   Base::getInfo(info);
-
-   info->infosize = sizeof(Info);
-   info->itemsize = 0;
-   info->offset = 0;
-   info->numVertices = getNumVertices();
-
-   return info;
-}
-
 size_t Coords::getNumVertices() const {
 
    return getSize();

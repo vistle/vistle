@@ -4,8 +4,6 @@
 #include <string.h>
 #include "module.h"
 
-#include "../WriteVistle/catalogue.h"
-
 class ReadVistle: public vistle::Module {
 
  public:
@@ -13,13 +11,7 @@ class ReadVistle: public vistle::Module {
    ~ReadVistle();
 
  private:
-   catalogue * readCatalogue(const int fd);
-   vistle::Object::Info * readItemInfo(const int fd);
-   vistle::Object::ptr readObject(const int fd, const vistle::Object::Info * info,
-                               uint64_t start,
-                               const std::vector<std::string> &setHierarchy = std::vector<std::string>(), int index = 0);
-
-   vistle::Object::ptr load(const std::string & name);
+   bool load(const std::string & name);
    virtual bool compute();
    bool first_object;
 };

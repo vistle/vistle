@@ -1,3 +1,5 @@
+find_package(Boost 1.40 REQUIRED COMPONENTS serialization)
+
 add_executable(WriteVistle WriteVistle.cpp)
 
 include_directories(

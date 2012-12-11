@@ -30,25 +30,6 @@ Lines::Data * Lines::Data::create(const size_t numElements, const size_t numCorn
    return l;
 }
 
-Lines::Info *Lines::getInfo(Lines::Info *info) const {
-
-   if (!info)
-      info = new Info;
-
-   Base::getInfo(info);
-
-   info->infosize = sizeof(Info);
-   info->itemsize += info->numElements * sizeof(uint64_t)
-      + info->numCorners * sizeof(uint64_t)
-      + 3 * info->numVertices * sizeof(Scalar);
-   info->offset = 0;
-   info->numElements = getNumElements();
-   info->numCorners = getNumCorners();
-   info->numVertices = getNumVertices();
-
-   return info;
-}
-
 V_OBJECT_TYPE(Lines, Object::LINES);
 
 } // namespace vistle
