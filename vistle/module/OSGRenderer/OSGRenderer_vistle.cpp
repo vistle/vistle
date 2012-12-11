@@ -321,6 +321,12 @@ bool OSGRenderer::addInputObject(const std::string & portName,
 
          vistle::Geometry::const_ptr geom = vistle::Geometry::as(object);
 
+         std::cerr << "   Geometry: [ "
+            << (geom->geometry()?"G":".")
+            << (geom->colors()?"C":".")
+            << (geom->normals()?"N":".")
+            << (geom->texture()?"T":".")
+            << " ]" << std::endl;
          addInputObject(geom->geometry(), geom->colors(), geom->normals(),
                         geom->texture());
 
