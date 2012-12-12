@@ -19,6 +19,7 @@ Message::Message(const int m, const int r,
                  const Type t, const unsigned int s)
    : size(s), type(t), moduleID(m), rank(r) {
 
+      assert(size < MESSAGE_SIZE);
 }
 
 int Message::getModuleID() const {

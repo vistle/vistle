@@ -12,10 +12,10 @@ class Communicator;
 
 namespace message {
 
-   typedef char module_name_t[32];
-   typedef char port_name_t[32];
-   typedef char param_name_t[32];
-   typedef char param_value_t[256];
+typedef char module_name_t[32];
+typedef char port_name_t[32];
+typedef char param_name_t[32];
+typedef char param_value_t[256];
 
 struct Message {
    // this is POD
@@ -53,9 +53,13 @@ struct Message {
            const Type type, const unsigned int size);
    // Message (or it's subclasses may not require desctructors
 
+   //! message type
    Type getType() const;
+   //! sender ID
    int getModuleID() const;
+   //! sender rank
    int getRank() const;
+   //! messge size
    size_t getSize() const;
 
  private:
@@ -79,6 +83,7 @@ class Ping: public Message {
  private:
    const char character;
 };
+BOOST_STATIC_ASSERT(sizeof(Ping) < Message::MESSAGE_SIZE);
 
 class Pong: public Message {
 
@@ -92,6 +97,7 @@ class Pong: public Message {
    const char character;
    int module;
 };
+BOOST_STATIC_ASSERT(sizeof(Pong) < Message::MESSAGE_SIZE);
 
 class Spawn: public Message {
 
@@ -105,11 +111,16 @@ class Spawn: public Message {
    int getDebugRank() const;
 
  private:
+   //! ID of module to spawn
    const int spawnID;
+   //! start with debugger/memory tracer
    const int debugFlag;
+   //! on which rank to attach debugger
    const int debugRank;
+   //! name of module to be started
    module_name_t name;
 };
+BOOST_STATIC_ASSERT(sizeof(Spawn) < Message::MESSAGE_SIZE);
 
 class Kill: public Message {
 
@@ -119,8 +130,10 @@ class Kill: public Message {
    int getModule() const;
 
  private:
+   //! ID of module to stop
    const int module;
 };
+BOOST_STATIC_ASSERT(sizeof(Kill) < Message::MESSAGE_SIZE);
 
 class Quit: public Message {
 
@@ -129,6 +142,7 @@ class Quit: public Message {
 
  private:
 };
+BOOST_STATIC_ASSERT(sizeof(Quit) < Message::MESSAGE_SIZE);
 
 class NewObject: public Message {
 
@@ -141,6 +155,7 @@ class NewObject: public Message {
  private:
    shm_handle_t handle;
 };
+BOOST_STATIC_ASSERT(sizeof(NewObject) < Message::MESSAGE_SIZE);
 
 class ModuleExit: public Message {
 
@@ -149,6 +164,7 @@ class ModuleExit: public Message {
 
  private:
 };
+BOOST_STATIC_ASSERT(sizeof(ModuleExit) < Message::MESSAGE_SIZE);
 
 class Compute: public Message {
 
@@ -160,6 +176,7 @@ class Compute: public Message {
  private:
    const int module;
 };
+BOOST_STATIC_ASSERT(sizeof(Compute) < Message::MESSAGE_SIZE);
 
 class CreateInputPort: public Message {
 
@@ -172,6 +189,7 @@ class CreateInputPort: public Message {
  private:
    port_name_t name;
 };
+BOOST_STATIC_ASSERT(sizeof(CreateInputPort) < Message::MESSAGE_SIZE);
 
 class CreateOutputPort: public Message {
 
@@ -184,6 +202,7 @@ class CreateOutputPort: public Message {
  private:
    port_name_t name;
 };
+BOOST_STATIC_ASSERT(sizeof(CreateOutputPort) < Message::MESSAGE_SIZE);
 
 class AddObject: public Message {
 
@@ -199,6 +218,7 @@ class AddObject: public Message {
    port_name_t portName;
    const shm_handle_t handle;
 };
+BOOST_STATIC_ASSERT(sizeof(AddObject) < Message::MESSAGE_SIZE);
 
 class Connect: public Message {
 
@@ -220,6 +240,7 @@ class Connect: public Message {
    const int moduleA;
    const int moduleB;
 };
+BOOST_STATIC_ASSERT(sizeof(Connect) < Message::MESSAGE_SIZE);
 
 class AddFileParameter: public Message {
 
@@ -235,6 +256,7 @@ class AddFileParameter: public Message {
    param_name_t name;
    param_value_t value;
 };
+BOOST_STATIC_ASSERT(sizeof(AddFileParameter) < Message::MESSAGE_SIZE);
 
 class SetFileParameter: public Message {
 
@@ -252,6 +274,7 @@ class SetFileParameter: public Message {
    param_name_t name;
    char value[256];
 };
+BOOST_STATIC_ASSERT(sizeof(SetFileParameter) < Message::MESSAGE_SIZE);
 
 class AddFloatParameter: public Message {
 
@@ -266,6 +289,7 @@ class AddFloatParameter: public Message {
    param_name_t name;
    vistle::Scalar value;
 };
+BOOST_STATIC_ASSERT(sizeof(AddFloatParameter) < Message::MESSAGE_SIZE);
 
 class SetFloatParameter: public Message {
 
@@ -282,6 +306,7 @@ class SetFloatParameter: public Message {
    param_name_t name;
    vistle::Scalar value;
 };
+BOOST_STATIC_ASSERT(sizeof(SetFloatParameter) < Message::MESSAGE_SIZE);
 
 class AddIntParameter: public Message {
 
@@ -296,6 +321,7 @@ class AddIntParameter: public Message {
    param_name_t name;
    int value;
 };
+BOOST_STATIC_ASSERT(sizeof(AddIntParameter) < Message::MESSAGE_SIZE);
 
 class SetIntParameter: public Message {
 
@@ -312,6 +338,7 @@ class SetIntParameter: public Message {
    param_name_t name;
    int value;
 };
+BOOST_STATIC_ASSERT(sizeof(SetIntParameter) < Message::MESSAGE_SIZE);
 
 class AddVectorParameter: public Message {
 
@@ -326,6 +353,7 @@ class AddVectorParameter: public Message {
    param_name_t name;
    Vector value;
 };
+BOOST_STATIC_ASSERT(sizeof(AddVectorParameter) < Message::MESSAGE_SIZE);
 
 class SetVectorParameter: public Message {
 
@@ -342,6 +370,7 @@ class SetVectorParameter: public Message {
    param_name_t name;
    Vector value;
 };
+BOOST_STATIC_ASSERT(sizeof(SetVectorParameter) < Message::MESSAGE_SIZE);
 
 } // namespace message
 } // namespace vistle
