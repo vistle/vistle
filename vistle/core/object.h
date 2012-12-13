@@ -57,20 +57,35 @@ public:
 
    enum Type {
       UNKNOWN           = -1,
-      VECFLOAT          =  0,
-      VECINT            =  1,
-      VECCHAR           =  2,
-      VEC3FLOAT         =  3,
-      VEC3INT           =  4,
-      VEC3CHAR          =  5,
-      TRIANGLES         =  6,
-      LINES             =  7,
-      POLYGONS          =  8,
-      UNSTRUCTUREDGRID  =  9,
-      //SET               = 10,
-      GEOMETRY          = 11,
-      TEXTURE1D         = 12,
-      POINTS            = 13,
+
+      VECFLOAT          =  1,
+      VECDOUBLE         =  2,
+      VECINT            =  3,
+      VECCHAR           =  4,
+
+      VEC2FLOAT         =  5,
+      VEC2DOUBLE        =  6,
+      VEC2INT           =  7,
+      VEC2CHAR          =  8,
+
+      VEC3FLOAT         =  9,
+      VEC3DOUBLE        = 10,
+      VEC3INT           = 11,
+      VEC3CHAR          = 12,
+
+      VEC4FLOAT         = 13,
+      VEC4DOUBLE        = 14,
+      VEC4INT           = 15,
+      VEC4CHAR          = 16,
+
+      TEXTURE1D         = 17,
+      GEOMETRY          = 18,
+
+      POINTS            = 19,
+      LINES             = 20,
+      TRIANGLES         = 21,
+      POLYGONS          = 22,
+      UNSTRUCTUREDGRID  = 23,
    };
 
    virtual ~Object();
@@ -143,7 +158,6 @@ public:
 
       // not implemented
       Data &operator=(const Data &);
-      //Data();
       Data(const Data &);
    };
 
@@ -213,7 +227,6 @@ class ObjectTypeRegistry {
    };
    static const struct FunctionTable &getType(int id);
    typedef std::map<int, FunctionTable> TypeMap;
-   //static TypeMap s_typeMap;
 
    static TypeMap &typeMap();
    static CreateFunc getCreator(int id);
@@ -295,53 +308,27 @@ class ObjectTypeRegistry {
       ar.register_type<Type1, Type2 >(); \
    }
 
-#define V_SERIALIZERS2(Type, prefix) \
-   prefix \
+#define V_SERIALIZERS(Type) \
    void Type::registerTextIArchive(boost::archive::text_iarchive &ar) { \
       ar.register_type<Type >(); \
    } \
-   prefix \
    void Type::registerTextOArchive(boost::archive::text_oarchive &ar) { \
       ar.register_type<Type >(); \
    } \
-   prefix \
    void Type::registerXmlIArchive(boost::archive::xml_iarchive &ar) { \
       ar.register_type<Type >(); \
    } \
-   prefix \
    void Type::registerXmlOArchive(boost::archive::xml_oarchive &ar) { \
       ar.register_type<Type >(); \
    } \
-   prefix \
    void Type::registerBinaryIArchive(boost::archive::binary_iarchive &ar) { \
       ar.register_type<Type >(); \
    } \
-   prefix \
    void Type::registerBinaryOArchive(boost::archive::binary_oarchive &ar) { \
       ar.register_type<Type >(); \
-   } \
-
-#define V_SERIALIZERS(Type) \
-   V_SERIALIZERS2(Type,)
-
-//! register a new Object type (complex form, specify suffix for symbol names)
-#define V_OBJECT_TYPE4(Type1, Type2, suffix, id) \
-   namespace { \
-      class RegisterObjectType_##suffix { \
-         public: \
-                 RegisterObjectType_##suffix() { \
-                    ObjectTypeRegistry::registerType<Type1, Type2 >(id); \
-                    boost::serialization::void_cast_register<Type1, Type2, Type1, Type2::Base>( \
-                          static_cast<Type1, Type2 *>(NULL), static_cast<Type1, Type2::Base *>(NULL) \
-                          ); \
-                 } \
-      }; \
-      static RegisterObjectType_##suffix registerObjectType_##suffix; \
    }
 
-//! register a new Object type (complex form, specify suffix for symbol names)
-#define V_OBJECT_TYPE3(Type, suffix, id) \
-   namespace { \
+#define V_OBJECT_TYPE3INT(Type, suffix, id) \
       class RegisterObjectType_##suffix { \
          public: \
                  RegisterObjectType_##suffix() { \
@@ -352,6 +339,20 @@ class ObjectTypeRegistry {
                  } \
       }; \
       static RegisterObjectType_##suffix registerObjectType_##suffix; \
+
+//! register a new Object type (complex form, specify suffix for symbol names)
+#define V_OBJECT_TYPE3(Type, suffix, id) \
+   namespace { \
+      V_OBJECT_TYPE3INT(Type, suffix, id) \
+   }
+
+//! register a new Object type (complex form, specify suffix for symbol names)
+#define V_OBJECT_TYPE4(Type1, Type2, suffix, id) \
+   namespace { \
+      namespace suffix { \
+      typedef Type1,Type2 Type; \
+      V_OBJECT_TYPE3INT(Type, suffix, id) \
+   } \
    }
 
 //! register a new Object type (simple form for non-templates, symbol suffix determined automatically)

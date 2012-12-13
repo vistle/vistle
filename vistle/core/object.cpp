@@ -26,20 +26,6 @@ namespace serialization {
 
 // XXX: check these
 
-#if 0
-template<>
-void access::destroy(const vistle::Object *t)
-{
-   delete const_cast<vistle::Object *>(t);
-}
-
-template<>
-void access::construct(vistle::Object *t)
-{
-   ::new(t) vistle::Object(vistle::Shm::the().allocator());
-}
-#endif
-
 template<>
 void access::destroy( const vistle::shm<char>::string * t) // const appropriate here?
 {
@@ -234,7 +220,6 @@ void Object::Data::unref() {
    assert(refcount >= 0);
    if (refcount == 0) {
       mutex.unlock();
-      //shm<Data>::destroy(name);
       ObjectTypeRegistry::getDestroyer(type)(name);
       return;
    }
@@ -368,16 +353,6 @@ void Object::Data::copyAttributes(const Object::Data *src, bool replace) {
          }
       }
    }
-
-#if 0
-   addAttribute("test");
-
-   std::cerr << "COPY ATTR " << std::endl;
-   std::cerr << "    #src " << src->attributes->size() << std::endl;
-   std::cerr << "    #dst " << attributes->size() << std::endl;
-
-   std::cerr << "COPY ATTR DONE" << std::endl;
-#endif
 }
 
 bool Object::Data::hasAttribute(const std::string &key) const {

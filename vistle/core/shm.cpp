@@ -263,15 +263,4 @@ SHM_INST2(unsigned long, unsigned_long);
 SHM_INST(float);
 SHM_INST(double);
 
-#if 0
-typedef boost::interprocess::offset_ptr<vistle::Object::Data> data_ptr;
-
-class inst_object: public Object {
-   SHM_INST(data_ptr);
-};
-
-//SHM_INST2(boost::interprocess::offset_ptr<Object::Data>, Data_ptr);
-#endif
-   
-
 } // namespace vistle

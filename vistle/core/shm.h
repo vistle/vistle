@@ -49,7 +49,6 @@ struct shm {
    typedef boost::interprocess::basic_string<T, std::char_traits<T>, allocator> string;
    typedef boost::interprocess::vector<T, allocator> vector;
    typedef boost::interprocess::offset_ptr<vector> ptr;
-   //static ptr construct_vector(size_t s) { return Shm::the().shm().construct<vector>(Shm::the().createObjectID().c_str())(s, T(), alloc_inst()); }
    static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name);
    static void destroy(const std::string &name);
 };

@@ -173,14 +173,6 @@ AddObject::AddObject(const int moduleID, const int rank, const std::string & p,
       COPY_STRING(portName, p);
 }
 
-#if 0
-AddObject::~AddObject() {
-   vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
-   // the reference through handle goes away
-   obj->unref();
-}
-#endif
-
 const char * AddObject::getPortName() const {
 
    return portName;

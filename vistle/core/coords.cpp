@@ -1,26 +1,5 @@
 #include "coords.h"
 
-namespace boost {
-namespace serialization {
-
-#if 0
-template<>
-void access::destroy(const vistle::Coords *t)
-{
-   delete const_cast<vistle::Coords *>(t);
-}
-
-template<>
-void access::construct(vistle::Coords *t)
-{
-   ::new(t) vistle::Coords(vistle::Shm::the().allocator());
-
-}
-#endif
-
-} // namespace serialization
-} // namespace boost
-
 namespace vistle {
 
 Coords::Coords(const size_t numVertices,
