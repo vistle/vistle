@@ -5,7 +5,6 @@ add_library(vistle_core SHARED
    object.cpp
    allobjects.cpp # just one file including all the others for faster compilation
    #vec.cpp
-   #vec3.cpp
    #coords.cpp
    #points.cpp
    #indexed.cpp

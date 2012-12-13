@@ -183,9 +183,9 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
 
             vistle::Polygons::const_ptr polygons = vistle::Polygons::as(geometry);
 
-            vistle::Vec3<vistle::Scalar>::const_ptr vec;
+            vistle::Vec<vistle::Scalar,3>::const_ptr vec;
             if (normals)
-               vec = vistle::Vec3<vistle::Scalar>::as(normals);
+               vec = vistle::Vec<vistle::Scalar,3>::as(normals);
 
             const size_t numElements = polygons->getNumElements();
             const size_t numCorners = polygons->getNumCorners();

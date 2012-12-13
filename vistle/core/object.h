@@ -239,7 +239,7 @@ class ObjectTypeRegistry {
    Type(Object::InitializedFlags) : Base(Type::Data::create()) {} \
    protected: \
    struct Data; \
-   Data *d() const { return static_cast<Data *>(m_data); } \
+   Data *d() const { return static_cast<Data *>(Object::m_data); } \
    Type(Data *data) : Base(data) {} \
    Type() : Base() {} \
    private: \
@@ -250,16 +250,16 @@ class ObjectTypeRegistry {
       } \
    template<class Archive> \
       void load(Archive &ar, const unsigned int version) { \
-         int type = UNKNOWN; \
+         int type = Object::UNKNOWN; \
          ar & V_NAME("type", type); \
-         m_data = Data::create(); \
-         ref(); \
+         Object::m_data = Data::create(); \
+         Object::ref(); \
          d()->template serialize<Archive>(ar, version); \
-         assert(type == getType()); \
+         assert(type == Object::getType()); \
       } \
    template<class Archive> \
       void save(Archive &ar, const unsigned int version) const { \
-         int type = getType(); \
+         int type = Object::getType(); \
          ar & V_NAME("type", type); \
          d()->template serialize<Archive>(ar, version); \
       } \
@@ -268,6 +268,32 @@ class ObjectTypeRegistry {
    friend boost::shared_ptr<Object> Object::create(Object::Data *); \
    friend class ObjectTypeRegistry
 
+
+#define V_SERIALIZERS4(Type1, Type2, prefix1, prefix2) \
+   prefix1, prefix2 \
+   void Type1, Type2::registerTextIArchive(boost::archive::text_iarchive &ar) { \
+      ar.register_type<Type1, Type2 >(); \
+   } \
+   prefix1, prefix2 \
+   void Type1, Type2::registerTextOArchive(boost::archive::text_oarchive &ar) { \
+      ar.register_type<Type1, Type2 >(); \
+   } \
+   prefix1, prefix2 \
+   void Type1, Type2::registerXmlIArchive(boost::archive::xml_iarchive &ar) { \
+      ar.register_type<Type1, Type2 >(); \
+   } \
+   prefix1, prefix2 \
+   void Type1, Type2::registerXmlOArchive(boost::archive::xml_oarchive &ar) { \
+      ar.register_type<Type1, Type2 >(); \
+   } \
+   prefix1, prefix2 \
+   void Type1, Type2::registerBinaryIArchive(boost::archive::binary_iarchive &ar) { \
+      ar.register_type<Type1, Type2 >(); \
+   } \
+   prefix1, prefix2 \
+   void Type1, Type2::registerBinaryOArchive(boost::archive::binary_oarchive &ar) { \
+      ar.register_type<Type1, Type2 >(); \
+   }
 
 #define V_SERIALIZERS2(Type, prefix) \
    prefix \
@@ -297,6 +323,21 @@ class ObjectTypeRegistry {
 
 #define V_SERIALIZERS(Type) \
    V_SERIALIZERS2(Type,)
+
+//! register a new Object type (complex form, specify suffix for symbol names)
+#define V_OBJECT_TYPE4(Type1, Type2, suffix, id) \
+   namespace { \
+      class RegisterObjectType_##suffix { \
+         public: \
+                 RegisterObjectType_##suffix() { \
+                    ObjectTypeRegistry::registerType<Type1, Type2 >(id); \
+                    boost::serialization::void_cast_register<Type1, Type2, Type1, Type2::Base>( \
+                          static_cast<Type1, Type2 *>(NULL), static_cast<Type1, Type2::Base *>(NULL) \
+                          ); \
+                 } \
+      }; \
+      static RegisterObjectType_##suffix registerObjectType_##suffix; \
+   }
 
 //! register a new Object type (complex form, specify suffix for symbol names)
 #define V_OBJECT_TYPE3(Type, suffix, id) \

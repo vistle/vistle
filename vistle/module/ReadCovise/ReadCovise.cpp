@@ -242,7 +242,7 @@ Object::ptr ReadCovise::readUSTVDT(const int fd, const bool skeleton) {
       covSkipUSTVDT(fd, numElements);
    } else {
 
-      Vec3<Scalar>::ptr array(new Vec3<Scalar>(numElements));
+      Vec<Scalar,3>::ptr array(new Vec<Scalar,3>(numElements));
       std::vector<float> _x(numElements), _y(numElements), _z(numElements);
       covReadUSTVDT(fd, numElements, &_x[0], &_y[0], &_z[0]);
       for (int i=0; i<numElements; ++i) {

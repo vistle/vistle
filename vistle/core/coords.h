@@ -4,15 +4,15 @@
 #include "scalar.h"
 #include "shm.h"
 #include "object.h"
-#include "vec3.h"
+#include "vec.h"
 
 namespace vistle {
 
-class Coords: public Vec3<Scalar> {
+class Coords: public Vec<Scalar,3> {
    V_OBJECT(Coords);
 
  public:
-   typedef Vec3<Scalar> Base;
+   typedef Vec<Scalar,3> Base;
 
    Coords(const size_t numVertices,
              const int block = -1, const int timestep = -1);

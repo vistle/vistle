@@ -123,10 +123,11 @@ class ShmVector {
    public:
       class ptr {
          public:
-            ptr(ShmVector *p);
+            ptr(ShmVector *p = NULL);
             ptr(const ptr &ptr);
             ~ptr();
             ptr &operator=(ptr &other);
+            ptr &operator=(ShmVector *p);
 
             ShmVector &operator*() {
                return *m_p;

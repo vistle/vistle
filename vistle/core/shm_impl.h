@@ -15,24 +15,40 @@ template<typename T>
 ShmVector<T>::ptr::ptr(ShmVector *p)
 : m_p(p)
 {
-   m_p->ref();
+   if (m_p)
+      m_p->ref();
 }
 
 template<typename T>
 ShmVector<T>::ptr::ptr(const ptr &ptr) : m_p(ptr.m_p) {
-   m_p->ref();
+   if (m_p)
+      m_p->ref();
 }
 
 template<typename T>
 ShmVector<T>::ptr::~ptr() {
-   m_p->unref();
+   if (m_p)
+      m_p->unref();
 }
 
 template<typename T>
 typename ShmVector<T>::ptr &ShmVector<T>::ptr::operator=(ptr &other) {
-   m_p->unref();
+   if (m_p)
+      m_p->unref();
    m_p = other.m_p;
-   m_p->ref();
+   if (m_p)
+      m_p->ref();
+   return *this;
+}
+
+template<typename T>
+typename ShmVector<T>::ptr &ShmVector<T>::ptr::operator=(ShmVector<T> *init) {
+   if (m_p)
+      m_p->unref();
+   m_p = init;
+   if (m_p)
+      m_p->ref();
+   return *this;
 }
 
 template<typename T>

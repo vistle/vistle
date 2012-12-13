@@ -3,7 +3,6 @@
 #define VISTLE_IMPL
 
 #include "vec.cpp"
-#include "vec3.cpp"
 #include "coords.cpp"
 #include "points.cpp"
 #include "indexed.cpp"

@@ -243,6 +243,7 @@ Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) {
    void inst_shm_##name() { \
       typedef ShmVector<T > V; \
       V::ptr p(new V()); \
+      V::ptr q; q = new V(); \
       boost::archive::xml_iarchive xiar(std::cin); xiar & V_NAME("shm_ptr", *p); \
       boost::archive::xml_oarchive xoar(std::cout); xoar & V_NAME("shm_ptr", *p); \
       boost::archive::text_iarchive tiar(std::cin); tiar & V_NAME("shm_ptr", *p); \

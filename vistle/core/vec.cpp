@@ -2,15 +2,19 @@
 
 namespace vistle {
 
-V_SERIALIZERS2(Vec<T>, template<class T>);
+V_SERIALIZERS4(Vec<T,Dim>, template<class T,int Dim>);
 
-template<> const Object::Type Vec<Scalar>::s_type  = Object::VECFLOAT;
-template<> const Object::Type Vec<int>::s_type    = Object::VECINT;
-template<> const Object::Type Vec<char>::s_type   = Object::VECCHAR;
+#define VEC(T,D,ID) \
+   template<> const Object::Type Vec<T,D>::s_type = Object::ID; \
+   V_OBJECT_TYPE4(Vec<T,D>, ID, Object::ID);
 
-V_OBJECT_TYPE3(Vec<char>, Vec_char, Object::VECCHAR);
-V_OBJECT_TYPE3(Vec<int>, Vec_int, Object::VECINT);
-V_OBJECT_TYPE3(Vec<Scalar>, Vec_Scalar, Object::VECFLOAT);
+VEC(Scalar, 1, VECFLOAT)
+VEC(char, 1, VECCHAR)
+VEC(int, 1, VECINT)
+
+VEC(Scalar, 3, VEC3FLOAT)
+VEC(char, 3, VEC3CHAR)
+VEC(int, 3, VEC3INT)
 
 template<class V>
 static void inst_vec() {
@@ -18,9 +22,19 @@ static void inst_vec() {
 };
 
 void inst_vecs() {
-   inst_vec<Vec<char> >();
-   inst_vec<Vec<int> >();
-   inst_vec<Vec<Scalar> >();
+   inst_vec<Vec<char,1> >();
+   inst_vec<Vec<int,1> >();
+   inst_vec<Vec<Scalar,1> >();
+
+#if 0
+   inst_vec<Vec<char,2> >();
+   inst_vec<Vec<int,2> >();
+   inst_vec<Vec<Scalar,2> >();
+#endif
+
+   inst_vec<Vec<char,3> >();
+   inst_vec<Vec<int,3> >();
+   inst_vec<Vec<Scalar,3> >();
 }
 
 } // namespace vistle

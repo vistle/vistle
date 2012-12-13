@@ -33,17 +33,17 @@ Indexed::Data *Indexed::Data::create(Type id,
 
 size_t Indexed::getNumElements() const {
 
-   return d()->el->size();
+   return el().size();
 }
 
 size_t Indexed::getNumCorners() const {
 
-   return d()->cl->size();
+   return cl().size();
 }
 
 size_t Indexed::getNumVertices() const {
 
-   return d()->x->size();
+   return x(0).size();
 }
 
 V_SERIALIZERS(Indexed);

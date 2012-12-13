@@ -32,12 +32,12 @@ Triangles::Data * Triangles::Data::create(const size_t numCorners,
 
 size_t Triangles::getNumCorners() const {
 
-   return d()->cl->size();
+   return cl().size();
 }
 
 size_t Triangles::getNumVertices() const {
 
-   return d()->x->size();
+   return x(0).size();
 }
 
 V_OBJECT_TYPE(Triangles, Object::TRIANGLES);
