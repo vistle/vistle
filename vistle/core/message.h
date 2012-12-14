@@ -73,6 +73,7 @@ struct Message {
    const int rank;
 };
 
+//! debug: request a reply containing character 'c'
 class Ping: public Message {
 
  public:
@@ -85,6 +86,7 @@ class Ping: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Ping) < Message::MESSAGE_SIZE);
 
+//! debug: reply to pong
 class Pong: public Message {
 
  public:
@@ -99,6 +101,7 @@ class Pong: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Pong) < Message::MESSAGE_SIZE);
 
+//! spawn a module
 class Spawn: public Message {
 
  public:
@@ -122,6 +125,7 @@ class Spawn: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Spawn) < Message::MESSAGE_SIZE);
 
+//! request a module to quit
 class Kill: public Message {
 
  public:
@@ -135,6 +139,7 @@ class Kill: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Kill) < Message::MESSAGE_SIZE);
 
+//! request all modules to quit for terminating the session
 class Quit: public Message {
 
  public:
@@ -166,6 +171,7 @@ class ModuleExit: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(ModuleExit) < Message::MESSAGE_SIZE);
 
+//! trigger computation for a module
 class Compute: public Message {
 
  public:
@@ -204,6 +210,7 @@ class CreateOutputPort: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(CreateOutputPort) < Message::MESSAGE_SIZE);
 
+//! add an object to the input queue of an input port
 class AddObject: public Message {
 
  public:
@@ -220,6 +227,7 @@ class AddObject: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(AddObject) < Message::MESSAGE_SIZE);
 
+//! connect an output port to an input port of another module
 class Connect: public Message {
 
  public:
