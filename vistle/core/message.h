@@ -47,11 +47,13 @@ struct Message {
       SETVECTORPARAMETER =  18,
       PING               =  19,
       PONG               =  20,
+      BUSY               =  21,
+      IDLE               =  22,
    };
 
    Message(const int moduleID, const int rank,
            const Type type, const unsigned int size);
-   // Message (or it's subclasses may not require desctructors
+   // Message (or it's subclasses) may not require desctructors
 
    //! message type
    Type getType() const;
@@ -183,6 +185,26 @@ class Compute: public Message {
    const int module;
 };
 BOOST_STATIC_ASSERT(sizeof(Compute) < Message::MESSAGE_SIZE);
+
+//! indicate that a module has started computing
+class Busy: public Message {
+
+ public:
+   Busy(const int moduleID, const int rank);
+
+ private:
+};
+BOOST_STATIC_ASSERT(sizeof(Busy) < Message::MESSAGE_SIZE);
+
+//! indicate that a module has finished computing
+class Idle: public Message {
+
+ public:
+   Idle(const int moduleID, const int rank);
+
+ private:
+};
+BOOST_STATIC_ASSERT(sizeof(Idle) < Message::MESSAGE_SIZE);
 
 class CreateInputPort: public Message {
 

@@ -31,3 +31,19 @@ sys.stderr = _stderr()
 #   current_module = sys.modules[__name__]
 #   python_help(current_module)
 
+def getNumRunning():
+   return len(getRunning())
+
+def showRunning():
+   running = getRunning()
+   print "id\tname"
+   for id in running:
+      name = getModuleName(id)
+      print id, "\t", name
+
+def showBusy():
+   busy = getBusy()
+   print "id\tname"
+   for id in busy:
+      name = getModuleName(id)
+      print id, "\t", name

@@ -137,6 +137,14 @@ int Compute::getModule() const {
    return module;
 }
 
+Busy::Busy(const int moduleID, const int rank)
+   : Message(moduleID, rank, Message::BUSY, sizeof(Busy)) {
+}
+
+Idle::Idle(const int moduleID, const int rank)
+   : Message(moduleID, rank, Message::IDLE, sizeof(Idle)) {
+}
+
 CreateOutputPort::CreateOutputPort(const int moduleID, const int rank,
                                    const std::string & n)
    : Message(moduleID, rank,

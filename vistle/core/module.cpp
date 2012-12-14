@@ -495,7 +495,12 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          std::cerr << "    module [" << name << "] [" << moduleID << "] ["
                    << rank << "/" << size << "] compute" << std::endl;
          */
-         return compute();
+         message::Busy busy(moduleID, rank);
+         sendMessage(&busy);
+         bool ret = compute();
+         message::Idle idle(moduleID, rank);
+         sendMessage(&idle);
+         return ret;
          break;
       }
 

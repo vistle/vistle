@@ -1,6 +1,6 @@
 #include <Python.h>
 #include <boost/python.hpp>
-
+#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
 #include <core/message.h>
 #include "communicator.h"
@@ -10,6 +10,11 @@
 //#define DEBUG
 
 namespace bp = boost::python;
+
+BOOST_PYTHON_MODULE(vector_indexing_suite_ext){
+   bp::class_<std::vector<int> >("PyVec")
+      .def(bp::vector_indexing_suite<std::vector<int> >());
+}
 
 namespace vistle {
 
@@ -76,6 +81,30 @@ static void kill(int id) {
 #endif
    message::Kill m(0, Communicator::the().getRank(), id);
    Communicator::the().broadcastAndHandleMessage(m);
+}
+
+static std::vector<int> getRunning() {
+
+#ifdef DEBUG
+   std::cerr << "Python: getRunning " << std::endl;
+#endif
+   return Communicator::the().getRunningList();
+}
+
+static std::vector<int> getBusy() {
+
+#ifdef DEBUG
+   std::cerr << "Python: getBusy " << std::endl;
+#endif
+   return Communicator::the().getBusyList();
+}
+
+static std::string getModuleName(int id) {
+
+#ifdef DEBUG
+   std::cerr << "Python: getModuleName(" id << ")" << std::endl;
+#endif
+   return Communicator::the().getModuleName(id);
 }
 
 static void connect(int sid, const char *sport, int did, const char *dport) {
@@ -152,6 +181,9 @@ BOOST_PYTHON_MODULE(_vistle)
     def("source", source, "execute commands from file `arg1`");
     def("spawn", spawn, spawn_overloads(args("modulename", "debug", "debugrank"), "spawn new module `arg1`\n" "return its ID"));
     def("kill", kill, "kill module with ID `arg1`");
+    def("getRunning", getRunning, "get list of IDs of running modules");
+    def("getBusy", getBusy, "get list of IDs of busy modules");
+    def("getModuleName", getModuleName, "get name of module with ID `arg1`");
     def("connect", connect, "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
     def("compute", compute, "trigger execution of module with ID `arg1`");
     def("quit", quit, "quit vistle session");

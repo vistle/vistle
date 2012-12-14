@@ -1,5 +1,6 @@
 #include <Python.h>
 #include <boost/python.hpp>
+#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
 
 #include <core/message.h>
@@ -20,6 +21,9 @@ PythonEmbed::PythonEmbed(int argc, char *argv[])
 
    Py_SetProgramName(argv[0]);
    Py_Initialize();
+
+   bp::class_<std::vector<int> >("PyVec")
+      .def(bp::vector_indexing_suite<std::vector<int> >());
 
    bp::object main = bp::import("__main__");
    m_namespace = main.attr("__dict__");

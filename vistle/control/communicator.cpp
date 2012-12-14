@@ -233,6 +233,38 @@ int Communicator::newModuleID() {
    return m_moduleCounter;
 }
 
+std::vector<int> Communicator::getRunningList() const {
+
+   std::vector<int> result;
+   for (RunningMap::const_iterator it = runningMap.begin();
+         it != runningMap.end();
+         ++it) {
+      result.push_back(it->first);
+   }
+   return result;
+}
+
+std::vector<int> Communicator::getBusyList() const {
+
+   std::vector<int> result;
+   for (ModuleSet::const_iterator it = busySet.begin();
+         it != busySet.end();
+         ++it) {
+      result.push_back(*it);
+   }
+   return result;
+}
+
+std::string Communicator::getModuleName(int id) const {
+
+   RunningMap::const_iterator it = runningMap.find(id);
+   if (it == runningMap.end())
+      return std::string();
+
+   return it->second;
+}
+
+
 template<class T>
 typename T::iterator find_linefeed(T &container) {
    const char lineend[] = "\r\n";
@@ -367,41 +399,34 @@ bool Communicator::dispatch() {
    }
 
    // test for messages from modules
-   size_t msgSize;
-   unsigned int priority;
-   char msgRecvBuf[vistle::message::Message::MESSAGE_SIZE];
+   bool received = false;
+   do {
+      received = false;
+      for (std::map<int, message::MessageQueue *>::iterator i = receiveMessageQueue.begin();
+            i != receiveMessageQueue.end();
+            ++i) {
 
-   for (std::map<int, message::MessageQueue *>::iterator i = receiveMessageQueue.begin();
-         i != receiveMessageQueue.end();
-         ++i) {
+         try {
+            size_t msgSize;
+            unsigned int priority;
+            char msgRecvBuf[vistle::message::Message::MESSAGE_SIZE];
 
-      bool moduleExit = false;
-      try {
-         bool received =
-            i->second->getMessageQueue().try_receive(
-                                        (void *) msgRecvBuf,
-                                        vistle::message::Message::MESSAGE_SIZE,
-                                        msgSize, priority);
+            received = i->second->getMessageQueue().try_receive(
+                  (void *) msgRecvBuf,
+                  vistle::message::Message::MESSAGE_SIZE,
+                  msgSize, priority);
 
-         if (received) {
-            moduleExit = !handleMessage(*(message::Message *) msgRecvBuf);
-
-            if (moduleExit) {
-
-               MessageQueueMap::iterator si = sendMessageQueue.find(i->first);
-               if (si != sendMessageQueue.end()) {
-                  delete si->second;
-                  sendMessageQueue.erase(si);
-               }
-               delete i->second;
-               receiveMessageQueue.erase(i);
+            if (received) {
+               if (!handleMessage(*(message::Message *)msgRecvBuf))
+                  done = true;
+               break;
             }
+         } catch (interprocess_exception &ex) {
+            CERR << "receive mq " << ex.what() << std::endl;
+            exit(-1);
          }
-      } catch (interprocess_exception &ex) {
-         CERR << "receive mq " << ex.what() << std::endl;
-         exit(-1);
       }
-   }
+   } while (received);
 
    return !done;
 }
@@ -500,6 +525,8 @@ bool Communicator::handleMessage(const message::Message &message) {
          MPI_Comm_spawn(const_cast<char *>(executable.c_str()), const_cast<char **>(&argv[0]), size, MPI_INFO_NULL,
                         0, MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
 
+         runningMap[moduleID] = spawn.getName();
+
          break;
       }
 
@@ -545,8 +572,7 @@ bool Communicator::handleMessage(const message::Message &message) {
             static_cast<const message::ModuleExit &>(message);
          int mod = moduleExit.getModuleID();
 
-         std::cout << "comm [" << rank << "/" << size << "] Module ["
-                   << mod << "] quit" << std::endl;
+         CERR << " Module [" << mod << "] quit" << std::endl;
 
          MessageQueueMap::iterator i = sendMessageQueue.find(mod);
          if (i != sendMessageQueue.end()) {
@@ -558,6 +584,12 @@ bool Communicator::handleMessage(const message::Message &message) {
             delete i->second;
             receiveMessageQueue.erase(i);
          }
+         RunningMap::iterator it = runningMap.find(mod);
+         if (it != runningMap.end()) {
+            runningMap.erase(it);
+         } else {
+            CERR << " Module [" << mod << "] not found in map" << std::endl;
+         }
          break;
       }
 
@@ -568,6 +600,35 @@ bool Communicator::handleMessage(const message::Message &message) {
          MessageQueueMap::iterator i = sendMessageQueue.find(comp.getModule());
          if (i != sendMessageQueue.end())
             i->second->getMessageQueue().send(&comp, sizeof(comp), 0);
+         break;
+      }
+
+      case message::Message::BUSY: {
+
+         const message::Busy &busy =
+            static_cast<const message::Busy &>(message);
+
+         const int id = busy.getModuleID();
+         if (busySet.find(id) != busySet.end()) {
+            CERR << "module " << id << " sent Busy twice" << std::endl;
+         } else {
+            busySet.insert(id);
+         }
+         break;
+      }
+
+      case message::Message::IDLE: {
+
+         const message::Idle &idle =
+            static_cast<const message::Idle &>(message);
+
+         const int id = idle.getModuleID();
+         ModuleSet::iterator it = busySet.find(id);
+         if (it != busySet.end()) {
+            busySet.erase(it);
+         } else {
+            CERR << "module " << id << " sent Idle, but was not busy" << std::endl;
+         }
          break;
       }
 
@@ -693,7 +754,19 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
+      case message::Message::ADDFILEPARAMETER:
+      case message::Message::ADDFLOATPARAMETER:
+      case message::Message::ADDINTPARAMETER:
+      case message::Message::ADDVECTORPARAMETER:
+          break;
+
       default:
+
+         CERR << "unhandled message from (id "
+            << message.getModuleID() << " rank " << message.getRank() << ") "
+            << "type " << message.getType()
+            << std::endl;
+
          break;
 
    }

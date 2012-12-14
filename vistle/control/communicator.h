@@ -45,6 +45,9 @@ class Communicator {
    int getSize() const;
 
    int newModuleID();
+   std::vector<int> getRunningList() const;
+   std::vector<int> getBusyList() const;
+   std::string getModuleName(int id) const;
 
  private:
 
@@ -73,6 +76,11 @@ class Communicator {
    MessageQueueMap receiveMessageQueue;
 
    std::map<int, bi::shared_memory_object *> shmObjects;
+
+   typedef std::map<int, std::string> RunningMap;
+   RunningMap runningMap;
+   typedef std::set<int> ModuleSet;
+   ModuleSet busySet;
 
    PortManager portManager;
    int m_moduleCounter;
