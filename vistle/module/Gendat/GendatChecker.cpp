@@ -55,7 +55,7 @@ bool GendatChecker::compute() {
       assert(t->y().size() == 4);
       assert(t->z().size() == 4);
       for(size_t i=0; i<t->x().size(); ++i) {
-         assert(t->x()[i] == 1. + rank);
+         assert(t->x()[i] == 1. + rank());
          assert(t->y()[i] == 0.);
          assert(t->z()[i] == 0.);
       }

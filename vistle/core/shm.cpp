@@ -1,10 +1,14 @@
 #include <iostream>
 #include <iomanip>
+#include <boost/mpl/vector.hpp>
+#include <boost/mpl/for_each.hpp>
+#include <boost/mpl/transform.hpp>
 
 #include <limits.h>
 
 #include "message.h"
 #include "messagequeue.h"
+#include "scalars.h"
 
 #define VISTLE_SHM_IMPL
 #include "shm.h"
@@ -237,30 +241,39 @@ Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) {
    return Object::const_ptr();
 }
 
-#include <iostream>
+namespace {
 
-#define SHM_INST2(T, name) \
-   void inst_shm_##name() { \
-      typedef ShmVector<T > V; \
-      V::ptr p(new V()); \
-      V::ptr q; q = new V(); \
-      boost::archive::xml_iarchive xiar(std::cin); xiar & V_NAME("shm_ptr", *p); \
-      boost::archive::xml_oarchive xoar(std::cout); xoar & V_NAME("shm_ptr", *p); \
-      boost::archive::text_iarchive tiar(std::cin); tiar & V_NAME("shm_ptr", *p); \
-      boost::archive::text_oarchive toar(std::cout); toar & V_NAME("shm_ptr", *p); \
-      boost::archive::binary_iarchive biar(std::cin); biar & V_NAME("shm_ptr", *p); \
-      boost::archive::binary_oarchive boar(std::cout); boar & V_NAME("shm_ptr", *p); \
-\
+using namespace boost;
+
+template <class T>
+struct wrap {};
+
+template<typename S, class Stream>
+struct archive_instantiator {
+   template<class T> void operator()(wrap<T>) {
+      typedef ShmVector<S> V;
+      typename V::ptr p(new V);
+      typename V::ptr q;
+      q = new V();
+      typedef T Archive;
+      Stream stream;
+      Archive ar(stream);
+      ar & V_NAME("shm_ptr", *p);
    }
+};
 
-#define SHM_INST(T) \
-   SHM_INST2(T, T)
+struct instantiator {
+   template<typename S> void operator()(S) {
+      mpl::for_each<InputArchives, wrap<mpl::_1> >(archive_instantiator<S, std::ifstream>());
+      mpl::for_each<OutputArchives, wrap<mpl::_1> >(archive_instantiator<S, std::ofstream>());
+   }
+};
 
-SHM_INST(char);
-SHM_INST2(unsigned char, unsigned_char);
-SHM_INST(int);
-SHM_INST2(unsigned long, unsigned_long);
-SHM_INST(float);
-SHM_INST(double);
+} // namespace
+
+void instantiate_shmvector() {
+
+   mpl::for_each<Scalars>(instantiator());
+}
 
 } // namespace vistle

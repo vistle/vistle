@@ -7,9 +7,12 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/foreach.hpp>
 
+#include <boost/mpl/for_each.hpp>
+
 #include "message.h"
 #include "messagequeue.h"
 #include "shm.h"
+#include "archives.h"
 
 #include "object.h"
 #include "object_impl.h"
@@ -20,6 +23,8 @@ template<typename T>
 static T min(T a, T b) { return a<b ? a : b; }
 
 using namespace boost::interprocess;
+
+namespace mpl = boost::mpl;
 
 namespace boost {
 namespace serialization {
@@ -164,28 +169,16 @@ int Object::refcount() const {
    return d()->refcount;
 }
 
-void Object::save(boost::archive::text_oarchive &ar) const {
+template<class Archive>
+void Object::save(Archive &ar) const {
 
    ObjectTypeRegistry::registerArchiveType(ar);
    const Object *p = this;
    ar & V_NAME("object", p);
 }
 
-void Object::save(boost::archive::xml_oarchive &ar) const {
-
-   ObjectTypeRegistry::registerArchiveType(ar);
-   const Object *p = this;
-   ar & V_NAME("object", p);
-}
-
-void Object::save(boost::archive::binary_oarchive &ar) const {
-
-   ObjectTypeRegistry::registerArchiveType(ar);
-   const Object *p = this;
-   ar & V_NAME("object", p);
-}
-
-Object::const_ptr Object::load(boost::archive::binary_iarchive &ar) {
+template<class Archive>
+Object::const_ptr Object::load(Archive &ar) {
 
    ObjectTypeRegistry::registerArchiveType(ar);
    Object *p = NULL;
@@ -193,20 +186,33 @@ Object::const_ptr Object::load(boost::archive::binary_iarchive &ar) {
    return Object::const_ptr(p);
 }
 
-Object::const_ptr Object::load(boost::archive::text_iarchive &ar) {
+namespace { 
 
-   ObjectTypeRegistry::registerArchiveType(ar);
-   Object *p = NULL;
-   ar & V_NAME("object", p);
-   return Object::const_ptr(p);
+template<class T>
+struct wrap {};
+
+struct instantiate_load {
+   template<class Archive>
+   void operator()(wrap<Archive>) {
+      Archive ar(std::cin);
+      Object::load(ar);
+   }
+};
+
+struct instantiate_save {
+   template<class Archive>
+   void operator()(wrap<Archive>) {
+      Archive ar(std::cout);
+      Object::const_ptr obj;
+      obj->save(ar);
+   }
+};
+
 }
 
-Object::const_ptr Object::load(boost::archive::xml_iarchive &ar) {
-
-   ObjectTypeRegistry::registerArchiveType(ar);
-   Object *p = NULL;
-   ar & V_NAME("object", p);
-   return Object::const_ptr(p);
+void instantiate_all_io() {
+      mpl::for_each<InputArchives, wrap<mpl::_1> >(instantiate_load());
+      mpl::for_each<OutputArchives, wrap<mpl::_1> >(instantiate_save());
 }
 
 void Object::Data::ref() {

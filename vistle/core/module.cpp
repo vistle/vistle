@@ -32,7 +32,7 @@ namespace vistle {
 Module::Module(const std::string &n, const std::string &shmname,
       const unsigned int r,
       const unsigned int s, const int m)
-   : name(n), rank(r), size(s), moduleID(m) {
+   : m_name(n), m_rank(r), m_size(s), m_id(m) {
 
 #ifdef _WIN32
     WSADATA wsaData;
@@ -43,8 +43,8 @@ Module::Module(const std::string &n, const std::string &shmname,
    char hostname[HOSTNAMESIZE];
    gethostname(hostname, HOSTNAMESIZE - 1);
 
-   std::cerr << "  module [" << name << "] [" << moduleID << "] [" << rank
-             << "/" << size << "] started as " << hostname << ":"
+   std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
+             << "/" << size() << "] started as " << hostname << ":"
 #ifndef _WIN32
              << getpid() << std::endl;
 #else
@@ -52,21 +52,41 @@ Module::Module(const std::string &n, const std::string &shmname,
 #endif
 
    try {
-      Shm::attach(shmname, moduleID, rank, sendMessageQueue);
+      Shm::attach(shmname, id(), rank(), sendMessageQueue);
 
       std::string smqName =
-         message::MessageQueue::createName("rmq", moduleID, rank);
+         message::MessageQueue::createName("rmq", id(), rank());
       std::string rmqName =
-         message::MessageQueue::createName("smq", moduleID, rank);
+         message::MessageQueue::createName("smq", id(), rank());
 
       sendMessageQueue = message::MessageQueue::open(smqName);
       receiveMessageQueue = message::MessageQueue::open(rmqName);
 
    } catch (interprocess_exception &ex) {
-      std::cerr << "module " << moduleID << " [" << rank << "/" << size << "] "
+      std::cerr << "module " << id() << " [" << rank() << "/" << size() << "] "
                 << ex.what() << std::endl;
       exit(2);
    }
+}
+
+const std::string &Module::name() const {
+
+   return m_name;
+}
+
+int Module::id() const {
+
+   return m_id;
+}
+
+unsigned int Module::rank() const {
+
+   return m_rank;
+}
+
+unsigned int Module::size() const {
+
+   return m_size;
 }
 
 bool Module::createInputPort(const std::string &name) {
@@ -77,7 +97,7 @@ bool Module::createInputPort(const std::string &name) {
 
       inputPorts[name] = ObjectList();
 
-      message::CreateInputPort message(moduleID, rank, name);
+      message::CreateInputPort message(id(), rank(), name);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return true;
    }
@@ -93,7 +113,7 @@ bool Module::createOutputPort(const std::string &name) {
 
       outputPorts[name] = ObjectList();
 
-      message::CreateOutputPort message(moduleID, rank, name);
+      message::CreateOutputPort message(id(), rank(), name);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return true;
    }
@@ -109,7 +129,7 @@ bool Module::addFileParameter(const std::string & name,
    if (i == parameters.end()) {
 
       parameters[name] = new FileParameter(name, value);
-      message::AddFileParameter message(moduleID, rank, name, value);
+      message::AddFileParameter message(id(), rank(), name, value);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
 
       return true;
@@ -133,7 +153,7 @@ void Module::setFileParameter(const std::string & name,
          return;
    }
 
-   message::SetFileParameter message(moduleID, rank, moduleID, name, value);
+   message::SetFileParameter message(id(), rank(), id(), name, value);
    sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
 }
 
@@ -161,7 +181,7 @@ bool Module::addFloatParameter(const std::string & name,
    if (i == parameters.end()) {
 
       parameters[name] = new FloatParameter(name, value);
-      message::AddFloatParameter message(moduleID, rank, name, value);
+      message::AddFloatParameter message(id(), rank(), name, value);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
 
       return true;
@@ -185,7 +205,7 @@ void Module::setFloatParameter(const std::string & name,
          return;
    }
 
-   message::SetFloatParameter message(moduleID, rank, moduleID, name, value);
+   message::SetFloatParameter message(id(), rank(), id(), name, value);
    sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
 }
 
@@ -213,7 +233,7 @@ bool Module::addIntParameter(const std::string & name,
    if (i == parameters.end()) {
 
       parameters[name] = new IntParameter(name, value);
-      message::AddIntParameter message(moduleID, rank, name, value);
+      message::AddIntParameter message(id(), rank(), name, value);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
 
       return true;
@@ -237,7 +257,7 @@ void Module::setIntParameter(const std::string & name,
          return;
    }
 
-   message::SetIntParameter message(moduleID, rank, moduleID, name, value);
+   message::SetIntParameter message(id(), rank(), id(), name, value);
    sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
 }
 
@@ -265,7 +285,7 @@ bool Module::addVectorParameter(const std::string & name,
    if (i == parameters.end()) {
 
       parameters[name] = new VectorParameter(name, value);
-      message::AddVectorParameter message(moduleID, rank, name, value);
+      message::AddVectorParameter message(id(), rank(), name, value);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
 
       return true;
@@ -289,7 +309,7 @@ void Module::setVectorParameter(const std::string & name,
          return;
    }
 
-   message::SetVectorParameter message(moduleID, rank, moduleID, name, value);
+   message::SetVectorParameter message(id(), rank(), id(), name, value);
    sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
 }
 
@@ -317,7 +337,7 @@ bool Module::addObject(const std::string & portName, vistle::Object::const_ptr o
    if (i != outputPorts.end()) {
       // XXX: this was the culprit keeping the final object reference around
       //i->second.push_back(object);
-      message::AddObject message(moduleID, rank, portName, object);
+      message::AddObject message(id(), rank(), portName, object);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return true;
    }
@@ -359,10 +379,10 @@ void Module::removeObject(const std::string &portName, vistle::Object::const_ptr
             ++it;
       }
       if (!erased)
-         std::cerr << "Module " << moduleID << " removeObject didn't find"
+         std::cerr << "Module " << id() << " removeObject didn't find"
             " object [" << object->getName() << "]" << std::endl;
    } else
-      std::cerr << "Module " << moduleID << " removeObject didn't find port ["
+      std::cerr << "Module " << id() << " removeObject didn't find port ["
                 << portName << "]" << std::endl;
 }
 
@@ -420,7 +440,7 @@ bool Module::dispatch() {
 
    bool again = handleMessage(message);
    if (!again) {
-      vistle::message::ModuleExit m(moduleID, rank);
+      vistle::message::ModuleExit m(id(), rank());
       sendMessage(&m);
    }
 
@@ -445,10 +465,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const vistle::message::Ping *ping =
             static_cast<const vistle::message::Ping *>(message);
 
-         std::cerr << "    module [" << name << "] [" << moduleID << "] ["
-                   << rank << "/" << size << "] ping ["
+         std::cerr << "    module [" << name() << "] [" << id() << "] ["
+                   << rank() << "/" << size() << "] ping ["
                    << ping->getCharacter() << "]" << std::endl;
-         vistle::message::Pong m(moduleID, rank, ping->getCharacter(), ping->getModuleID());
+         vistle::message::Pong m(id(), rank(), ping->getCharacter(), ping->getModuleID());
          sendMessage(&m);
          break;
       }
@@ -458,8 +478,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const vistle::message::Pong *pong =
             static_cast<const vistle::message::Pong *>(message);
 
-         std::cerr << "    module [" << name << "] [" << moduleID << "] ["
-                   << rank << "/" << size << "] pong ["
+         std::cerr << "    module [" << name() << "] [" << id() << "] ["
+                   << rank() << "/" << size() << "] pong ["
                    << pong->getCharacter() << "]" << std::endl;
          break;
       }
@@ -477,11 +497,11 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          const message::Kill *kill =
             static_cast<const message::Kill *>(message);
-         if (kill->getModule() == moduleID) {
+         if (kill->getModule() == id()) {
             return false;
          } else {
-            std::cerr << "module [" << name << "] [" << moduleID << "] ["
-               << rank << "/" << size << "]" << ": received invalid Kill message" << std::endl;
+            std::cerr << "module [" << name() << "] [" << id() << "] ["
+               << rank() << "/" << size() << "]" << ": received invalid Kill message" << std::endl;
          }
          break;
       }
@@ -492,13 +512,13 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             static_cast<const message::Compute *>(message);
          (void) comp;
          /*
-         std::cerr << "    module [" << name << "] [" << moduleID << "] ["
-                   << rank << "/" << size << "] compute" << std::endl;
+         std::cerr << "    module [" << name() << "] [" << id() << "] ["
+                   << rank() << "/" << size << "] compute" << std::endl;
          */
-         message::Busy busy(moduleID, rank);
+         message::Busy busy(id(), rank());
          sendMessage(&busy);
          bool ret = compute();
-         message::Idle idle(moduleID, rank);
+         message::Idle idle(id(), rank());
          sendMessage(&idle);
          return ret;
          break;
@@ -549,8 +569,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
       }
 
       default:
-         std::cerr << "    module [" << name << "] [" << moduleID << "] ["
-                   << rank << "/" << size << "] unknown message type ["
+         std::cerr << "    module [" << name() << "] [" << id() << "] ["
+                   << rank() << "/" << size() << "] unknown message type ["
                    << message->getType() << "]" << std::endl;
 
          break;
@@ -561,8 +581,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
 Module::~Module() {
 
-   std::cerr << "  module [" << name << "] [" << moduleID << "] [" << rank
-             << "/" << size << "] quit" << std::endl;
+   std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
+             << "/" << size() << "] quit" << std::endl;
 
    MPI_Barrier(MPI_COMM_WORLD);
    MPI_Finalize();

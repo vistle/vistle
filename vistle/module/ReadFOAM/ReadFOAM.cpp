@@ -636,7 +636,7 @@ bool ReadFOAM::compute() {
    }
 
    for (int partition = 0; partition < 32; partition ++) {
-      if (partition % size == rank) {
+      if (partition % size() == rank()) {
 
          std::vector<std::pair<std::string, vistle::Object::ptr> > objects =
             load(getFileParameter("filename"), partition);

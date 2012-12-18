@@ -1,11 +1,17 @@
 #ifndef VEC_H
 #define VEC_H
 
+#include <boost/mpl/vector.hpp>
+#include <boost/mpl/vector_c.hpp>
+#include <boost/mpl/find.hpp>
+
 #include "scalar.h"
 #include "shm.h"
 #include "object.h"
 
 namespace vistle {
+
+typedef boost::mpl::vector_c<int, 1, 2, 3, 4> Dimensions;
 
 template <typename T, int Dim=1>
 class Vec: public Object {
@@ -25,6 +31,8 @@ class Vec: public Object {
 
    void setSize(const size_t size);
 
+   static Type type();
+
    typename shm<T>::vector &x(int c=0) const { return *(*d()->x[c])(); }
    typename shm<T>::vector &y() const { return *(*d()->x[1])(); }
    typename shm<T>::vector &z() const { return *(*d()->x[2])(); }
@@ -36,27 +44,11 @@ class Vec: public Object {
       typename ShmVector<T>::ptr x[Dim];
       // when used as Vec
       Data(const size_t size = 0, const std::string &name = "",
-            const int block = -1, const int timestep = -1)
-         : Base::Data(s_type, name, block, timestep)
-      {
-         for (int c=0; c<Dim; ++c)
-            x[c] = new ShmVector<T>(size);
-      }
+            const int block = -1, const int timestep = -1);
       // when used as base of another data structure
       Data(const size_t size, Type id, const std::string &name,
-            const int block, const int timestep)
-         : Base::Data(id, name, block, timestep)
-      {
-         for (int c=0; c<Dim; ++c)
-            x[c] = new ShmVector<T>(size);
-      }
-      static Data *create(size_t size = 0, const int block = -1, const int timestep = -1) {
-         std::string name = Shm::the().createObjectID();
-         Data *t = shm<Data>::construct(name)(size, name, block, timestep);
-         publish(t);
-
-         return t;
-      }
+            const int block, const int timestep);
+      static Data *create(size_t size = 0, const int block = -1, const int timestep = -1);
 
       private:
       friend class Vec;

@@ -94,12 +94,12 @@ CuttingSurface::generateCuttingSurface(vistle::Object::const_ptr grid_object,
       return std::make_pair((vistle::Object *) NULL, (vistle::Object *) NULL);
 
    if (grid_object->getType() == vistle::Object::UNSTRUCTUREDGRID &&
-       data_object->getType() == vistle::Object::VECFLOAT) {
+       data_object->getType() == vistle::Vec<Scalar>::type()) {
       grid = boost::static_pointer_cast<const vistle::UnstructuredGrid>(grid_object);
       data = boost::static_pointer_cast<const vistle::Vec<vistle::Scalar> >(data_object);
    }
 
-   const char *tl = &grid->tl()[0];
+   const unsigned char *tl = &grid->tl()[0];
    const size_t *el = &grid->el()[0];
    const size_t *cl = &grid->cl()[0];
    const vistle::Scalar *x = &grid->x()[0];

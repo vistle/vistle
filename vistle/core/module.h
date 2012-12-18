@@ -29,7 +29,10 @@ class Module {
 
    virtual bool dispatch();
 
- protected:
+   const std::string &name() const;
+   unsigned int rank() const;
+   unsigned int size() const;
+   int id() const;
 
    bool createInputPort(const std::string & name);
    bool createOutputPort(const std::string & name);
@@ -58,10 +61,12 @@ class Module {
    bool hasObject(const std::string &portName) const;
    vistle::Object::const_ptr takeFirstObject(const std::string &portName);
 
-   const std::string name;
-   const unsigned int rank;
-   const unsigned int size;
-   const int moduleID;
+ protected:
+
+   const std::string m_name;
+   const unsigned int m_rank;
+   const unsigned int m_size;
+   const int m_id;
 
    message::MessageQueue *sendMessageQueue;
    message::MessageQueue *receiveMessageQueue;

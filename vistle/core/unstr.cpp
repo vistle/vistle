@@ -17,7 +17,7 @@ UnstructuredGrid::Data::Data(const size_t numElements,
                                    const int block, const int timestep)
    : UnstructuredGrid::Base::Data(numElements, numCorners, numVertices,
          Object::UNSTRUCTUREDGRID, name, block, timestep)
-   , tl(new ShmVector<char>(numElements))
+   , tl(new ShmVector<unsigned char>(numElements))
 {
 }
 

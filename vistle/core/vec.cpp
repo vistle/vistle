@@ -1,54 +1,54 @@
 #include "vec.h"
+#include "scalars.h"
+
+#include <boost/mpl/vector.hpp>
+#include <boost/mpl/vector_c.hpp>
+#include <boost/mpl/for_each.hpp>
+#include <boost/mpl/find.hpp>
 
 namespace vistle {
 
 V_SERIALIZERS4(Vec<T,Dim>, template<class T,int Dim>);
 
-#define VEC(T,D,ID) \
-   template<> const Object::Type Vec<T,D>::s_type = Object::ID; \
-   V_OBJECT_TYPE4(Vec<T,D>, ID, Object::ID);
+namespace mpl = boost::mpl;
 
-VEC(float, 1, VECFLOAT)
-VEC(double, 1, VECDOUBLE)
-VEC(char, 1, VECCHAR)
-VEC(int, 1, VECINT)
+namespace {
 
-#if 0
-VEC(float, 2, VEC2FLOAT)
-VEC(double, 2, VEC2DOUBLE)
-VEC(char, 2, VEC2CHAR)
-VEC(int, 2, VEC2INT)
-#endif
-
-VEC(float, 3, VEC3FLOAT)
-VEC(double, 3, VEC3DOUBLE)
-VEC(char, 3, VEC3CHAR)
-VEC(int, 3, VEC3INT)
-
-#if 0
-VEC(float, 4, VEC4FLOAT)
-VEC(double, 4, VEC4DOUBLE)
-VEC(char, 4, VEC4CHAR)
-VEC(int, 4, VEC4INT)
-#endif
-
-template<class V>
-static void inst_vec() {
-   new V(0, -1, -1);
+template<int Dim>
+struct instantiator {
+   template <typename V> void operator()(V) {
+      new Vec<V, Dim>(0, -1, -1);
+   }
 };
 
-#define INST_VECS(d) \
-   inst_vec<Vec<char,d> >(); \
-   inst_vec<Vec<int,d> >(); \
-   inst_vec<Vec<float,d> >(); \
-   inst_vec<Vec<double,d> >();
+template<int Dim>
+struct registrator {
+   template <typename S> void operator()(S) {
+      typedef Vec<S,Dim> V;
+      typedef typename mpl::find<Scalars, S>::type iter;
+      ObjectTypeRegistry::registerType<V>(V::type());
+      boost::serialization::void_cast_register<V, typename V::Base>(
+            static_cast<V *>(NULL), static_cast<typename V::Base *>(NULL)
+            );
 
+   }
+};
+
+struct DoIt {
+   DoIt() {
+      mpl::for_each<Scalars>(registrator<1>());
+      mpl::for_each<Scalars>(registrator<3>());
+   }
+};
+
+static DoIt doit;
+
+}
 
 void inst_vecs() {
-   INST_VECS(1)
-   //INST_VECS(2)
-   INST_VECS(3)
-   //INST_VECS(4)
+
+   mpl::for_each<Scalars>(instantiator<1>());
+   mpl::for_each<Scalars>(instantiator<3>());
 }
 
 } // namespace vistle

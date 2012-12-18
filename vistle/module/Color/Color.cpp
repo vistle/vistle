@@ -76,28 +76,18 @@ Color::~Color() {
 void Color::getMinMax(vistle::Object::const_ptr object,
                       vistle::Scalar & min, vistle::Scalar & max) {
 
-   if (object) {
-      switch (object->getType()) {
+   
+   Vec<Scalar>::const_ptr data(Vec<Scalar>::as(object));
+   if (!data)
+      return;
 
-         case vistle::Object::VECFLOAT: {
-
-               vistle::Vec<vistle::Scalar>::const_ptr data =
-                  boost::static_pointer_cast<const vistle::Vec<vistle::Scalar> >(object);
-
-            const vistle::Scalar *x = &data->x()[0];
-            int numElements = data->getSize();
-            for (int index = 0; index < numElements; index ++) {
-               if (x[index] < min)
-                  min = x[index];
-               if (x[index] > max)
-                  max = x[index];
-            }
-            break;
-         }
-
-         default:
-            break;
-      }
+   const vistle::Scalar *x = &data->x()[0];
+   int numElements = data->getSize();
+   for (int index = 0; index < numElements; index ++) {
+      if (x[index] < min)
+         min = x[index];
+      if (x[index] > max)
+         max = x[index];
    }
 }
 

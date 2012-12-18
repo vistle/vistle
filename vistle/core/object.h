@@ -58,26 +58,6 @@ public:
    enum Type {
       UNKNOWN           = -1,
 
-      VECFLOAT          =  1,
-      VECDOUBLE         =  2,
-      VECINT            =  3,
-      VECCHAR           =  4,
-
-      VEC2FLOAT         =  5,
-      VEC2DOUBLE        =  6,
-      VEC2INT           =  7,
-      VEC2CHAR          =  8,
-
-      VEC3FLOAT         =  9,
-      VEC3DOUBLE        = 10,
-      VEC3INT           = 11,
-      VEC3CHAR          = 12,
-
-      VEC4FLOAT         = 13,
-      VEC4DOUBLE        = 14,
-      VEC4INT           = 15,
-      VEC4CHAR          = 16,
-
       TEXTURE1D         = 17,
       GEOMETRY          = 18,
 
@@ -86,6 +66,8 @@ public:
       TRIANGLES         = 21,
       POLYGONS          = 22,
       UNSTRUCTUREDGRID  = 23,
+
+      VEC               = 100, // base type id for all Vec types
    };
 
    virtual ~Object();
@@ -112,12 +94,11 @@ public:
    void unref() const;
    int refcount() const;
 
-   static Object::const_ptr load(boost::archive::text_iarchive &ar);
-   void save(boost::archive::text_oarchive &ar) const;
-   static Object::const_ptr load(boost::archive::binary_iarchive &ar);
-   void save(boost::archive::binary_oarchive &ar) const;
-   static Object::const_ptr load(boost::archive::xml_iarchive &ar);
-   void save(boost::archive::xml_oarchive &ar) const;
+   template<class Archive>
+   static Object::const_ptr load(Archive &ar);
+
+   template<class Archive>
+   void save(Archive &ar) const;
 
  protected:
    struct Data {

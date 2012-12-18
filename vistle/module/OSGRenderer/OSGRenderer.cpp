@@ -605,7 +605,7 @@ void OSGRenderer::resize(int x, int y, int w, int h) {
    m_width = w;
    m_height = h;
 
-   if (size > 1) {
+   if (size() > 1) {
 #ifdef USE_ICET
       IceTCommunicator icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
       IceTContext icetContext = icetCreateContext(icetComm);
@@ -635,7 +635,7 @@ void OSGRenderer::resize(int x, int y, int w, int h) {
    realize();
 
    char title[64];
-   snprintf(title, 64, "vistle renderer %d/%d", rank, size);
+   snprintf(title, 64, "vistle renderer %d/%d", rank(), size());
 
    std::vector<osgViewer::GraphicsWindow *> windows;
    getWindows(windows);
@@ -643,12 +643,12 @@ void OSGRenderer::resize(int x, int y, int w, int h) {
    for (i = windows.begin(); i != windows.end(); i ++)
       (*i)->setWindowName(title);
 
-   if (size > 1) {
+   if (size() > 1) {
       Contexts ctx;
       getContexts(ctx);
       for (Contexts::iterator c = ctx.begin(); c != ctx.end(); c ++) {
 #ifdef USE_ICET
-         (*c)->add(new SyncIceTOperation(rank));
+         (*c)->add(new SyncIceTOperation(rank()));
 #else
          (*c)->add(new SyncGLOperation(rank, size));
 #endif
@@ -685,11 +685,11 @@ void OSGRenderer::distributeAndHandleEvents() {
          for (itr = ev.begin(); itr != ev.end(); ++itr) {
             osgGA::GUIEventAdapter *event = itr->get();
 
-            if (!rank && size > 0) {
+            if (!rank() && size() > 0) {
                events.push_back(GUIEvent(*event));
             }
 
-            if (!rank) {
+            if (!rank()) {
                for (EventHandlers::iterator hitr = _eventHandlers.begin();
                      hitr != _eventHandlers.end();
                      ++hitr)
@@ -707,13 +707,13 @@ void OSGRenderer::distributeAndHandleEvents() {
    unsigned int numEvents = events.size();
    MPI_Bcast(&numEvents, 1, MPI_INT, 0, MPI_COMM_WORLD);
    if (numEvents) {
-      if (rank)
+      if (rank())
          events.resize(numEvents);
       MPI_Bcast(&(events[0]), numEvents * sizeof(GUIEvent), MPI_CHAR, 0,
                 MPI_COMM_WORLD);
    }
 
-   if (rank) {
+   if (rank()) {
       std::vector<osgGA::GUIEventAdapter *> osgEvents;
       std::vector<GUIEvent>::iterator i;
       for (i = events.begin(); i != events.end(); i++) {
@@ -736,11 +736,11 @@ void OSGRenderer::distributeAndHandleEvents() {
 
 void OSGRenderer::distributeProjectionMatrix() {
 
-   if (size == 1)
+   if (size() == 1)
       return;
 
-   double all[6 * size];
-   double proj[6 * size];
+   double all[6 * size()];
+   double proj[6 * size()];
    getCamera()->getProjectionMatrixAsFrustum(proj[0], proj[1], proj[2],
                                              proj[3], proj[4], proj[5]);
 
@@ -749,7 +749,7 @@ void OSGRenderer::distributeProjectionMatrix() {
    // compute minimum of left, bottom, zNear
    // compute maximum of right, top, zFar
    for (size_t item = 0; item < 3; item ++) {
-      for (size_t index = 0; index < size; index ++) {
+      for (size_t index = 0; index < size(); index ++) {
          if (all[index * 6 + item * 2] < proj[item * 2])
             proj[item * 2] = all[index * 6 + item * 2];
          if (all[index * 6 + item * 2 + 1] > proj[item * 2 + 1])
@@ -766,12 +766,12 @@ void OSGRenderer::distributeProjectionMatrix() {
 
 void OSGRenderer::distributeModelviewMatrix() {
 
-   if (size == 1)
+   if (size() == 1)
       return;
 
    float matrix[16];
 
-   if (rank == 0 && size > 1) {
+   if (rank() == 0 && size() > 1) {
 
       if (getCameraManipulator()) {
          const osg::Matrixd view = getCameraManipulator()->getMatrix();
@@ -784,7 +784,7 @@ void OSGRenderer::distributeModelviewMatrix() {
 
    MPI_Bcast(matrix, 16, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-   if (rank != 0) {
+   if (rank() != 0) {
 
       osg::Matrix view;
 
@@ -804,7 +804,7 @@ void OSGRenderer::render() {
    ++framecounter;
    double time = getFrameStamp()->getReferenceTime();
    if (time - laststattime > 3.) {
-      if (!rank)
+      if (!rank())
          std::cerr << "FPS: " << framecounter/(time-laststattime) << std::endl;
       framecounter = 0;
       laststattime = time;

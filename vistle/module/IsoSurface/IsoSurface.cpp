@@ -83,7 +83,7 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
    Vec<Scalar>::const_ptr data = Vec<Scalar>::as(data_object);
 
 
-   const char *tl = &grid->tl()[0];
+   const unsigned char *tl = &grid->tl()[0];
    const size_t *el = &grid->el()[0];
    const size_t *cl = &grid->cl()[0];
    const Scalar *x = &grid->x()[0];

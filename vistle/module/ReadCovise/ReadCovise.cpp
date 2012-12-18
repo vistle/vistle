@@ -174,7 +174,7 @@ Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
       int *_el = new int[numElements];
       int *_cl = new int[numCorners];
 
-      char *tl = &usg->tl()[0];
+      unsigned char *tl = &usg->tl()[0];
       size_t *el = &usg->el()[0];
       size_t *cl = &usg->cl()[0];
 
@@ -418,7 +418,7 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
       if (elem->objnum < 0)
          return object;
 
-      if (elem->objnum % size != rank)
+      if (elem->objnum % size() != rank())
          return object;
    }
 

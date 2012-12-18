@@ -32,12 +32,12 @@ class UnstructuredGrid: public Indexed {
          const int block = -1,
          const int timestep = -1);
 
-   shm<char>::vector &tl() const { return *(*d()->tl)(); }
+   shm<unsigned char>::vector &tl() const { return *(*d()->tl)(); }
 
  protected:
    struct Data: public Base::Data {
 
-      ShmVector<char>::ptr tl;
+      ShmVector<unsigned char>::ptr tl;
 
       Data(const size_t numElements = 0, const size_t numCorners = 0,
                     const size_t numVertices = 0, const std::string & name = "",
