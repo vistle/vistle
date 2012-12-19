@@ -20,7 +20,7 @@ COLOR = spawn("Color");
 COLLECT = spawn("Collect");
 
 RENDERER = spawn("OSGRenderer");
-WRITEARCHIVE = spawn("WriteArchive");
+WRITEARCHIVE = spawn("WriteVistle");
 setParam(WRITEARCHIVE, "filename", "turbinevistle.archive");
 setParam(WRITEARCHIVE, "format", 0); # 0=binary, 1=text, 2=XML
 
