@@ -11,6 +11,8 @@
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/array.hpp>
 
+#include "exception.h"
+
 //#define SHMDEBUG
 //#define SHMPUBLISH
 
@@ -22,6 +24,11 @@ typedef char shm_name_t[32];
 namespace message {
    class MessageQueue;
 }
+
+class shm_exception: public exception {
+   public:
+   shm_exception(const std::string &what = "shared memory error") : exception(what) {}
+};
 
 class Object;
 

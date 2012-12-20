@@ -4,6 +4,7 @@
 
 
 #include <iostream>
+#include <exception>
 
 #include <mpi.h>
 
@@ -11,11 +12,19 @@
 
 int main(int argc, char ** argv) {
 
-   MPI_Init(&argc, &argv);
+   int ret = 0;
+   try {
 
-   int ret = vistle::Shm::cleanAll() ? 0 : 1;
+      MPI_Init(&argc, &argv);
 
-   MPI_Finalize();
+      ret = vistle::Shm::cleanAll() ? 0 : 1;
+
+      MPI_Finalize();
+   } catch(std::exception &e) {
+
+      std::cerr << "fatal exception: " << e.what() << std::endl;
+      exit(1);
+   }
 
    return ret;
 }

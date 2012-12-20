@@ -136,6 +136,8 @@ Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
       } while (!s_singleton && memsize >= 4096);
 
       if (!s_singleton) {
+         throw(shm_exception("failed to create shared memory segment"));
+
          std::cerr << "failed to create shared memory: module id: " << moduleID
             << ", rank: " << rank << ", message queue: " << (mq ? mq->getName() : "n/a") << std::endl;
       }
@@ -164,6 +166,11 @@ Shm & Shm::attach(const std::string &name, const int moduleID, const int rank,
          std::cerr << "failed to attach to shared memory: module id: " << moduleID
             << ", rank: " << rank << ", message queue: " << (mq ? mq->getName() : "n/a") << std::endl;
       }
+   }
+
+   if (!s_singleton) {
+
+      throw(shm_exception("failed to attach to shared memory segment"));
    }
 
    assert(s_singleton && "failed to attach to shared memory");

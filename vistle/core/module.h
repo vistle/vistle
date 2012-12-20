@@ -7,6 +7,7 @@
 #include <iostream>
 #include <list>
 #include <map>
+#include <exception>
 
 #include "vector.h"
 #include "object.h"
@@ -88,22 +89,28 @@ class Module {
 
 } // namespace vistle
 
-#define MODULE_MAIN(X) int main(int argc, char **argv) {        \
-      int rank, size, moduleID;                                 \
-      if (argc != 3) {                                          \
-         std::cerr << "module requires exactly 2 parameters" << std::endl; \
-         exit(1);                                               \
-      }                                                         \
-      MPI_Init(&argc, &argv);                                   \
-      MPI_Comm_rank(MPI_COMM_WORLD, &rank);                     \
-      MPI_Comm_size(MPI_COMM_WORLD, &size);                     \
-      const std::string &shmname = argv[1];                     \
-      moduleID = atoi(argv[2]);                                 \
-      X module(shmname, rank, size, moduleID);                  \
-      while (module.dispatch())                                 \
-         ;                                                      \
-      MPI_Barrier(MPI_COMM_WORLD);                              \
-      return 0;                                                 \
+#define MODULE_MAIN(X) \
+   int main(int argc, char **argv) { \
+      int rank, size, moduleID; \
+      try { \
+         if (argc != 3) { \
+            std::cerr << "module requires exactly 2 parameters" << std::endl; \
+            exit(1); \
+         } \
+         MPI_Init(&argc, &argv); \
+         MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
+         MPI_Comm_size(MPI_COMM_WORLD, &size); \
+         const std::string &shmname = argv[1]; \
+         moduleID = atoi(argv[2]); \
+         X module(shmname, rank, size, moduleID); \
+         while (module.dispatch()) \
+            ; \
+         MPI_Barrier(MPI_COMM_WORLD); \
+      } catch(std::exception &e) { \
+         std::cerr << "fatal exception: " << e.what() << std::endl; \
+         exit(1); \
+      } \
+      return 0; \
    }
 
 #ifdef NDEBUG

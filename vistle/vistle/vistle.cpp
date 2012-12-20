@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <exception>
 
 #include <control/executor.h>
 
@@ -25,11 +26,16 @@ class Vistle: public Executor {
 
 int main(int argc, char ** argv) {
 
-   MPI_Init(&argc, &argv);
+   try {
 
-   Vistle(argc, argv).run();
+      MPI_Init(&argc, &argv);
+      Vistle(argc, argv).run();
+      MPI_Finalize();
+   } catch(std::exception &e) {
 
-   MPI_Finalize();
+      std::cerr << "fatal exception: " << e.what() << std::endl;
+      exit(1);
+   }
    
    return 0;
 }
