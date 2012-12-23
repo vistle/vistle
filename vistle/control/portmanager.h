@@ -36,8 +36,10 @@ class PortManager {
    void addConnection(const int a, const std::string & na,
                       const int b, const std::string & nb);
 
-   const std::vector<const Port *> * getConnectionList(const Port * port) const;
-   const std::vector<const Port *> * getConnectionList(const int moduleID,
+   typedef std::vector<const Port *> ConnectionList;
+
+   const ConnectionList *getConnectionList(const Port * port) const;
+   const ConnectionList *getConnectionList(const int moduleID,
                                                        const std::string & name)
       const;
 

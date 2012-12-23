@@ -453,8 +453,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Ping &ping =
             static_cast<const message::Ping &>(message);
-         std::cout << "comm [" << rank << "/" << size << "] Ping ["
-                   << ping.getCharacter() << "]" << std::endl;
+         CERR << "Ping [" << ping.getCharacter() << "]" << std::endl;
          for (MessageQueueMap::iterator i = sendMessageQueue.begin();
                i != sendMessageQueue.end();
                ++i) {
@@ -467,8 +466,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Pong &pong =
             static_cast<const message::Pong &>(message);
-         std::cout << "comm [" << rank << "/" << size << "] Pong ["
-                   << pong.getModuleID() << " " << pong.getCharacter() << "]" << std::endl;
+         CERR << "Pong [" << pong.getModuleID() << " " << pong.getCharacter() << "]" << std::endl;
          break;
       }
 
@@ -558,7 +556,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          vistle::Object *object = (vistle::Object *)
             vistle::Shm::the().shm().get_address_from_handle(newObject.getHandle());
 
-         std::cout << "comm [" << rank << "/" << size << "] NewObject ["
+         CERR << "NewObject ["
                    << newObject.getHandle() << "] type ["
                    << object.getType() << "] from module ["
                    << newObject.getModuleID() << "]" << std::endl;
@@ -657,7 +655,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          Object::const_ptr obj = m.takeObject();
          assert(obj->refcount() >= 1);
 #if 0
-         std::cout << "Module " << m.getModuleID() << ": "
+         std::cerr << "Module " << m.getModuleID() << ": "
                    << "AddObject " << m.getHandle() << " (" << obj->getName() << ")"
                    << " ref " << obj->refcount()
                    << " to port " << m.getPortName() << std::endl;
@@ -669,7 +667,7 @@ bool Communicator::handleMessage(const message::Message &message) {
             const std::vector<const Port *> *list =
                portManager.getConnectionList(port);
 
-            std::vector<const Port *>::const_iterator pi;
+            PortManager::ConnectionList::const_iterator pi;
             for (pi = list->begin(); pi != list->end(); pi ++) {
 
                MessageQueueMap::iterator mi =
@@ -686,7 +684,7 @@ bool Communicator::handleMessage(const message::Message &message) {
             }
          }
          else
-            std::cout << "comm [" << rank << "/" << size << "] Addbject ["
+            std::cerr << "comm [" << rank << "/" << size << "] Addbject ["
                       << m.getHandle() << "] to port ["
                       << m.getPortName() << "]: port not found" << std::endl;
 
