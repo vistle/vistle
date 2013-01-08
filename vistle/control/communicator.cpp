@@ -541,7 +541,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Connect &connect =
             static_cast<const message::Connect &>(message);
-         portManager.addConnection(connect.getModuleA(),
+         m_portManager.addConnection(connect.getModuleA(),
                                    connect.getPortAName(),
                                    connect.getModuleB(),
                                    connect.getPortBName());
@@ -634,7 +634,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::CreateInputPort &m =
             static_cast<const message::CreateInputPort &>(message);
-         portManager.addPort(m.getModuleID(), m.getName(),
+         m_portManager.addPort(m.getModuleID(), m.getName(),
                              Port::INPUT);
          break;
       }
@@ -643,7 +643,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::CreateOutputPort &m =
             static_cast<const message::CreateOutputPort &>(message);
-         portManager.addPort(m.getModuleID(), m.getName(),
+         m_portManager.addPort(m.getModuleID(), m.getName(),
                              Port::OUTPUT);
          break;
       }
@@ -661,11 +661,11 @@ bool Communicator::handleMessage(const message::Message &message) {
                    << " to port " << m.getPortName() << std::endl;
 #endif
 
-         Port *port = portManager.getPort(m.getModuleID(),
+         Port *port = m_portManager.getPort(m.getModuleID(),
                                           m.getPortName());
          if (port) {
             const std::vector<const Port *> *list =
-               portManager.getConnectionList(port);
+               m_portManager.getConnectionList(port);
 
             PortManager::ConnectionList::const_iterator pi;
             for (pi = list->begin(); pi != list->end(); pi ++) {
@@ -1143,6 +1143,11 @@ int Communicator::checkClients() {
    }
 
    return -1;
+}
+
+const PortManager &Communicator::portManager() const {
+
+   return m_portManager;
 }
 
 } // namespace vistle

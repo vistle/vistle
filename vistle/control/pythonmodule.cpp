@@ -99,6 +99,37 @@ static std::vector<int> getBusy() {
    return Communicator::the().getBusyList();
 }
 
+static std::vector<std::string> getInputPorts(int id) {
+
+   return Communicator::the().portManager().getInputPortNames(id);
+}
+
+static std::vector<std::string> getOutputPorts(int id) {
+
+   return Communicator::the().portManager().getOutputPortNames(id);
+}
+
+static std::vector<std::pair<int, std::string> > getConnections(int id, const std::string &port) {
+
+   std::vector<std::pair<int, std::string> > result;
+
+   const PortManager::ConnectionList *c = Communicator::the().portManager().getConnectionList(id, port);
+   for (size_t i=0; i<c->size(); ++i) {
+      const Port *p = c->at(i);
+      result.push_back(std::pair<int, std::string>(p->getModuleID(), p->getName()));
+   }
+
+   return result;
+}
+
+static std::vector<std::string> getParameters(int id) {
+
+   return std::vector<std::string>();
+}
+
+static std::string getParameterValue(int id, const std::string &param) {
+}
+
 static std::string getModuleName(int id) {
 
 #ifdef DEBUG
@@ -184,6 +215,9 @@ BOOST_PYTHON_MODULE(_vistle)
     def("getRunning", getRunning, "get list of IDs of running modules");
     def("getBusy", getBusy, "get list of IDs of busy modules");
     def("getModuleName", getModuleName, "get name of module with ID `arg1`");
+    def("getInputPorts", getInputPorts, "get name of input ports of module with ID `arg1`");
+    def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
+    def("getConnections", getConnections, "get connections to/from port `arg2` of module with ID `arg1`");
     def("connect", connect, "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
     def("compute", compute, "trigger execution of module with ID `arg1`");
     def("quit", quit, "quit vistle session");

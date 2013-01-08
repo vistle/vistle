@@ -49,6 +49,8 @@ class Communicator {
    std::vector<int> getBusyList() const;
    std::string getModuleName(int id) const;
 
+   const PortManager &portManager() const;
+
  private:
 
    std::string m_bindir;
@@ -82,7 +84,7 @@ class Communicator {
    typedef std::set<int> ModuleSet;
    ModuleSet busySet;
 
-   PortManager portManager;
+   PortManager m_portManager;
    int m_moduleCounter;
 
    int m_currentClient;

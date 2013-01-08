@@ -47,3 +47,19 @@ def showBusy():
    for id in busy:
       name = getModuleName(id)
       print id, "\t", name
+
+def showInputPorts(id):
+   ports = getInputPorts(id)
+   for p in ports:
+      print p
+
+def showOutputPorts(id):
+   ports = getOutputPorts(id)
+   for p in ports:
+      print p
+
+def showConnections(id, port):
+   conns = getConnections(id, port)
+   print "id\tportname"
+   for c in conns:
+      print c.first, "\t", c.second
