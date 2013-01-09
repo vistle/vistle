@@ -100,6 +100,71 @@ void PortManager::addConnection(const int a, const std::string & na,
       addConnection(portA, portB);
 }
 
+void PortManager::removeConnection(const Port *from, const Port *to) {
+
+   if (from->getType() == Port::OUTPUT && to->getType() == Port::INPUT) {
+
+      std::map<const Port *, std::vector<const Port *> *>::iterator outi =
+         connections.find(from);
+      if (outi != connections.end()) {
+         ConnectionList &cl = *outi->second;
+         ConnectionList::iterator it = std::find(cl.begin(), cl.end(), to);
+         if (it != cl.end())
+            cl.erase(it);
+      }
+
+      std::map<const Port *, std::vector<const Port *> *>::iterator ini =
+         connections.find(to);
+      if (ini != connections.end()) {
+         ConnectionList &cl = *ini->second;
+         ConnectionList::iterator it = std::find(cl.begin(), cl.end(), from);
+         if (it != cl.end())
+            cl.erase(it);
+      }
+   }
+}
+
+void PortManager::removeConnection(const int a, const std::string & na,
+      const int b, const std::string & nb) {
+
+   Port *from = getPort(a, na);
+   Port *to = getPort(b, nb);
+
+   if (!from || !to)
+      return;
+
+   removeConnection(from, to);
+}
+
+void PortManager::removeConnections(const int moduleID) {
+
+   typedef std::map<std::string, Port *> PortMap;
+   typedef std::map<int, PortMap *> ModulePortMap;
+
+   ModulePortMap::const_iterator mports = ports.find(moduleID);
+   if (mports == ports.end())
+      return;
+
+   const PortMap &portmap = *mports->second;
+   for(PortMap::const_iterator it = portmap.begin();
+         it != portmap.end();
+         ++it) {
+
+      Port *port = it->second;
+      std::map<const Port *, std::vector<const Port *> *>::iterator connlist = connections.find(port);
+      if (connlist != connections.end()) {
+         ConnectionList &cl = *connlist->second;
+         for (ConnectionList::iterator cit = cl.begin();
+               cit != cl.end();
+               ++cit) {
+            const Port *other = *cit;
+            removeConnection(port, other);
+            removeConnection(other, port);
+         }
+      }
+   }
+}
+
 const std::vector<const Port *> *
 PortManager::getConnectionList(const Port * port) const {
 

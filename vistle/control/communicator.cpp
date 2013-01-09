@@ -15,6 +15,9 @@
 typedef int socklen_t;
 #endif
 
+#include <boost/foreach.hpp>
+#include <boost/thread.hpp>
+
 #include <mpi.h>
 
 #include <sys/types.h>
@@ -233,6 +236,11 @@ int Communicator::newModuleID() {
    ++m_moduleCounter;
 
    return m_moduleCounter;
+}
+
+void Communicator::resetModuleCounter() {
+
+   m_moduleCounter = 0;
 }
 
 std::vector<int> Communicator::getRunningList() const {
@@ -580,24 +588,41 @@ bool Communicator::handleMessage(const message::Message &message) {
             static_cast<const message::ModuleExit &>(message);
          int mod = moduleExit.getModuleID();
 
+         CERR << "Module EXIT" << std::endl;
          CERR << " Module [" << mod << "] quit" << std::endl;
 
-         MessageQueueMap::iterator i = sendMessageQueue.find(mod);
-         if (i != sendMessageQueue.end()) {
-            delete i->second;
-            sendMessageQueue.erase(i);
+         {
+            ParameterMap::iterator it = parameterMap.find(mod);
+            if (it != parameterMap.end()) {
+               parameterMap.erase(it);
+               CERR << "removed from param map" << std::endl;
+            }
+            CERR << "param map size: " << parameterMap.size() << std::endl;
          }
-         i = receiveMessageQueue.find(mod);
-         if (i != receiveMessageQueue.end()) {
-            delete i->second;
-            receiveMessageQueue.erase(i);
+         { 
+            RunningMap::iterator it = runningMap.find(mod);
+            if (it != runningMap.end()) {
+               runningMap.erase(it);
+            } else {
+               CERR << " Module [" << mod << "] not found in map" << std::endl;
+            }
          }
-         RunningMap::iterator it = runningMap.find(mod);
-         if (it != runningMap.end()) {
-            runningMap.erase(it);
-         } else {
-            CERR << " Module [" << mod << "] not found in map" << std::endl;
+         {
+            MessageQueueMap::iterator i = sendMessageQueue.find(mod);
+            if (i != sendMessageQueue.end()) {
+               delete i->second;
+               sendMessageQueue.erase(i);
+            }
          }
+         {
+            MessageQueueMap::iterator i = receiveMessageQueue.find(mod);
+            i = receiveMessageQueue.find(mod);
+            if (i != receiveMessageQueue.end()) {
+               delete i->second;
+               receiveMessageQueue.erase(i);
+            }
+         }
+         m_portManager.removeConnections(mod);
          break;
       }
 
@@ -1140,6 +1165,35 @@ int Communicator::checkClients() {
 const PortManager &Communicator::portManager() const {
 
    return m_portManager;
+}
+
+std::vector<std::string> Communicator::getParameters(int id) const {
+
+   std::vector<std::string> result;
+
+   ParameterMap::const_iterator pit = parameterMap.find(id);
+   if (pit == parameterMap.end())
+      return result;
+
+   const ModuleParameterMap &pmap = pit->second;
+   BOOST_FOREACH (ModuleParameterMap::value_type val, pmap) {
+      result.push_back(val.first);
+   }
+
+   return result;
+}
+
+const Parameter *Communicator::getParameter(int id, const std::string &name) const {
+
+   ParameterMap::const_iterator pit = parameterMap.find(id);
+   if (pit == parameterMap.end())
+      return NULL;
+
+   ModuleParameterMap::const_iterator mpit = pit->second.find(name);
+   if (mpit == pit->second.end())
+      return NULL;
+
+   return mpit->second;
 }
 
 } // namespace vistle

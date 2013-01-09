@@ -3,6 +3,8 @@
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
 #include <core/message.h>
+#include <core/parameter.h>
+
 #include "communicator.h"
 #include "pythonmodule.h"
 #include "pythonembed.h"
@@ -36,6 +38,11 @@ static std::string raw_input(const std::string &prompt) {
 static std::string readline() {
 
    return PythonEmbed::readline();
+}
+
+static void resetModuleCounter() {
+
+   Communicator::the().resetModuleCounter();
 }
 
 static void source(const std::string &filename) {
@@ -124,10 +131,45 @@ static std::vector<std::pair<int, std::string> > getConnections(int id, const st
 
 static std::vector<std::string> getParameters(int id) {
 
-   return std::vector<std::string>();
+   return Communicator::the().getParameters(id);
 }
 
-static std::string getParameterValue(int id, const std::string &param) {
+static std::string getParameterType(int id, const std::string &name) {
+
+   const Parameter *param = Communicator::the().getParameter(id, name);
+   if (!param) {
+      std::cerr << "Python: getParameterType: no such parameter" << std::endl;
+      return "None";
+   }
+
+   switch (param->type()) {
+      case Parameter::Integer: return "Int";
+      case Parameter::Scalar: return "Float";
+      case Parameter::Vector: return "Vector";
+      case Parameter::String: return "String";
+      case Parameter::Invalid: return "None";
+      case Parameter::Unknown: return "None";
+   }
+
+   return "None";
+}
+
+template<typename T>
+static T getParameterValue(int id, const std::string &name) {
+
+   const Parameter *param = Communicator::the().getParameter(id, name);
+   if (!param) {
+      std::cerr << "Python: getParameterValue: no such parameter" << std::endl;
+      return T();
+   }
+
+   const ParameterBase<T> *tparam = dynamic_cast<const ParameterBase<T> *>(param);
+   if (!tparam) {
+      std::cerr << "Python: getParameterValue: type mismatch" << std::endl;
+      return T();
+   }
+
+   return tparam->getValue();
 }
 
 static std::string getModuleName(int id) {
@@ -209,15 +251,11 @@ BOOST_PYTHON_MODULE(_vistle)
     def("_print_error", print_error);
     def("_print_output", print_output);
 
+    def("_resetModuleCounter", resetModuleCounter);
+
     def("source", source, "execute commands from file `arg1`");
     def("spawn", spawn, spawn_overloads(args("modulename", "debug", "debugrank"), "spawn new module `arg1`\n" "return its ID"));
     def("kill", kill, "kill module with ID `arg1`");
-    def("getRunning", getRunning, "get list of IDs of running modules");
-    def("getBusy", getBusy, "get list of IDs of busy modules");
-    def("getModuleName", getModuleName, "get name of module with ID `arg1`");
-    def("getInputPorts", getInputPorts, "get name of input ports of module with ID `arg1`");
-    def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
-    def("getConnections", getConnections, "get connections to/from port `arg2` of module with ID `arg1`");
     def("connect", connect, "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
     def("compute", compute, "trigger execution of module with ID `arg1`");
     def("quit", quit, "quit vistle session");
@@ -227,6 +265,19 @@ BOOST_PYTHON_MODULE(_vistle)
     param(Float, setFloatParam);
     param(String, setStringParam);
     param(Vector, setVectorParam);
+
+    def("getRunning", getRunning, "get list of IDs of running modules");
+    def("getBusy", getBusy, "get list of IDs of busy modules");
+    def("getModuleName", getModuleName, "get name of module with ID `arg1`");
+    def("getInputPorts", getInputPorts, "get name of input ports of module with ID `arg1`");
+    def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
+    def("getConnections", getConnections, "get connections to/from port `arg2` of module with ID `arg1`");
+    def("getParameters", getParameters, "get list of parameters for module with ID `arg1`");
+    def("getParameterType", getParameterType, "get type of parameter named `arg2` of module with ID `arg1`");
+    def("getIntParam", getParameterValue<int>, "get value of parameter named `arg2` of module with ID `arg1`");
+    def("getFloatParam", getParameterValue<Scalar>, "get value of parameter named `arg2` of module with ID `arg1`");
+    def("getVectorParam", getParameterValue<Vector>, "get value of parameter named `arg2` of module with ID `arg1`");
+    def("getStringParam", getParameterValue<std::string>, "get value of parameter named `arg2` of module with ID `arg1`");
 }
 
 bool PythonModule::import(boost::python::object *ns) {

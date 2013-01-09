@@ -36,6 +36,12 @@ class PortManager {
    void addConnection(const int a, const std::string & na,
                       const int b, const std::string & nb);
 
+   void removeConnection(const Port *from, const Port *to);
+   void removeConnection(const int a, const std::string & na,
+                         const int b, const std::string & nb);
+
+   void removeConnections(const int moduleID);
+
    typedef std::vector<const Port *> ConnectionList;
 
    const ConnectionList *getConnectionList(const Port * port) const;

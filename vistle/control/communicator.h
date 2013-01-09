@@ -46,10 +46,14 @@ class Communicator {
    int getRank() const;
    int getSize() const;
 
+   void resetModuleCounter();
    int newModuleID();
    std::vector<int> getRunningList() const;
    std::vector<int> getBusyList() const;
    std::string getModuleName(int id) const;
+
+   std::vector<std::string> getParameters(int id) const;
+   const Parameter *getParameter(int id, const std::string &name) const;
 
    const PortManager &portManager() const;
 
