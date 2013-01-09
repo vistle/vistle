@@ -7,6 +7,7 @@
 #include <iostream>
 #include <list>
 #include <map>
+#include <exception>
 
 #include "vector.h"
 #include "object.h"
@@ -37,20 +38,30 @@ class Module {
    bool createInputPort(const std::string & name);
    bool createOutputPort(const std::string & name);
 
-   bool addFileParameter(const std::string & name, const std::string & value);
-   void setFileParameter(const std::string & name, const std::string & value);
-   std::string getFileParameter(const std::string & name) const;
+   bool addParameterGeneric(const std::string &name, Parameter *parameter);
+   bool updateParameter(const std::string &name, const Parameter *parameter);
+
+   template<class T>
+   bool addParameter(const std::string &name, const T &value);
+   template<class T>
+   bool setParameter(const std::string &name, const T &value);
+   template<class T>
+   bool getParameter(const std::string &name, T &value) const;
+
+   bool addStringParameter(const std::string & name, const std::string & value);
+   bool setStringParameter(const std::string & name, const std::string & value);
+   std::string getStringParameter(const std::string & name) const;
 
    bool addFloatParameter(const std::string & name, const vistle::Scalar value);
-   void setFloatParameter(const std::string & name, const vistle::Scalar value);
+   bool setFloatParameter(const std::string & name, const vistle::Scalar value);
    vistle::Scalar getFloatParameter(const std::string & name) const;
 
    bool addIntParameter(const std::string & name, const int value);
-   void setIntParameter(const std::string & name, const int value);
+   bool setIntParameter(const std::string & name, const int value);
    int getIntParameter(const std::string & name) const;
 
    bool addVectorParameter(const std::string & name, const Vector & value);
-   void setVectorParameter(const std::string & name, const Vector & value);
+   bool setVectorParameter(const std::string & name, const Vector & value);
    Vector getVectorParameter(const std::string & name) const;
 
    bool addObject(const std::string & portName, vistle::Object::const_ptr object);
@@ -88,22 +99,28 @@ class Module {
 
 } // namespace vistle
 
-#define MODULE_MAIN(X) int main(int argc, char **argv) {        \
-      int rank, size, moduleID;                                 \
-      if (argc != 3) {                                          \
-         std::cerr << "module requires exactly 2 parameters" << std::endl; \
-         exit(1);                                               \
-      }                                                         \
-      MPI_Init(&argc, &argv);                                   \
-      MPI_Comm_rank(MPI_COMM_WORLD, &rank);                     \
-      MPI_Comm_size(MPI_COMM_WORLD, &size);                     \
-      const std::string &shmname = argv[1];                     \
-      moduleID = atoi(argv[2]);                                 \
-      X module(shmname, rank, size, moduleID);                  \
-      while (module.dispatch())                                 \
-         ;                                                      \
-      MPI_Barrier(MPI_COMM_WORLD);                              \
-      return 0;                                                 \
+#define MODULE_MAIN(X) \
+   int main(int argc, char **argv) { \
+      int rank, size, moduleID; \
+      try { \
+         if (argc != 3) { \
+            std::cerr << "module requires exactly 2 parameters" << std::endl; \
+            exit(1); \
+         } \
+         MPI_Init(&argc, &argv); \
+         MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
+         MPI_Comm_size(MPI_COMM_WORLD, &size); \
+         const std::string &shmname = argv[1]; \
+         moduleID = atoi(argv[2]); \
+         X module(shmname, rank, size, moduleID); \
+         while (module.dispatch()) \
+            ; \
+         MPI_Barrier(MPI_COMM_WORLD); \
+      } catch(std::exception &e) { \
+         std::cerr << "fatal exception: " << e.what() << std::endl; \
+         exit(1); \
+      } \
+      return 0; \
    }
 
 #ifdef NDEBUG

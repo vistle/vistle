@@ -21,6 +21,8 @@ namespace message {
    class MessageQueue;
 }
 
+class Parameter;
+
 class PythonEmbed;
 
 class Communicator {
@@ -48,6 +50,8 @@ class Communicator {
    std::vector<int> getRunningList() const;
    std::vector<int> getBusyList() const;
    std::string getModuleName(int id) const;
+
+   const PortManager &portManager() const;
 
  private:
 
@@ -82,7 +86,11 @@ class Communicator {
    typedef std::set<int> ModuleSet;
    ModuleSet busySet;
 
-   PortManager portManager;
+   typedef std::map<std::string, Parameter *> ModuleParameterMap;
+   typedef std::map<int, ModuleParameterMap> ParameterMap;
+   ParameterMap parameterMap;
+
+   PortManager m_portManager;
    int m_moduleCounter;
 
    int m_currentClient;

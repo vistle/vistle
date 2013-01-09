@@ -1,6 +1,7 @@
 find_package(Boost 1.40 REQUIRED COMPONENTS serialization)
 
 add_library(vistle_core SHARED
+   exception.cpp
    shm.cpp
    object.cpp
    allobjects.cpp # just one file including all the others for faster compilation

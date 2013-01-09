@@ -120,212 +120,168 @@ bool Module::createOutputPort(const std::string &name) {
    return false;
 }
 
-bool Module::addFileParameter(const std::string & name,
-                              const std::string & value) {
+bool Module::addParameterGeneric(const std::string &name, Parameter *param) {
+
+   std::map<std::string, Parameter *>::iterator i =
+      parameters.find(name);
+
+   if (i != parameters.end())
+      return false;
+
+   parameters[name] = param;
+
+   message::AddParameter add(id(), rank(), name, param->type());
+   sendMessage(&add);
+   message::SetParameter set(id(), rank(), id(), name, param);
+   sendMessage(&set);
+
+   return true;
+}
+
+bool Module::updateParameter(const std::string &name, const Parameter *param) {
 
    std::map<std::string, Parameter *>::iterator i =
       parameters.find(name);
 
    if (i == parameters.end()) {
-
-      parameters[name] = new FileParameter(name, value);
-      message::AddFileParameter message(id(), rank(), name, value);
-      sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
-
-      return true;
+      std::cerr << "setParameter: " << name << " not found" << std::endl;
+      return false;
    }
-   return false;
+
+   if (i->second->type() != param->type()) {
+      std::cerr << "setParameter: type mismatch for " << name << " " << i->second->type() << " != " << param->type() << std::endl;
+      return false;
+   }
+
+   if (&*i->second != param) {
+      std::cerr << "setParameter: pointer mismatch for " << name << std::endl;
+      return false;
+   }
+
+   message::SetParameter set(id(), rank(), id(), name, param);
+   sendMessage(&set);
+
+   return true;
 }
 
-void Module::setFileParameter(const std::string & name,
-                              const std::string & value) {
+template<class T>
+bool Module::addParameter(const std::string &name, const T &value) {
+
+   Parameter *p = new ParameterBase<T>(name, value);
+   if (!addParameterGeneric(name, p)) {
+      delete p;
+      return false;
+   }
+   return true;
+}
+
+template<class T>
+bool Module::setParameter(const std::string &name, const T &value) {
 
    std::map<std::string, Parameter *>::iterator i =
       parameters.find(name);
 
-   if (i == parameters.end())
-      parameters[name] = new FileParameter(name, value);
-   else {
-      FileParameter *param = dynamic_cast<FileParameter *>(i->second);
-      if (param)
-         param->setValue(value);
-      else
-         return;
-   }
+   ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(&*i->second);
+   if (!p)
+      return false;
 
-   message::SetFileParameter message(id(), rank(), id(), name, value);
-   sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
+   p->setValue(value);
+   return updateParameter(name, p);
 }
 
-std::string Module::getFileParameter(const std::string & name) const {
+template<class T>
+bool Module::getParameter(const std::string &name, T &value) const {
 
-  std::map<std::string, Parameter *>::const_iterator i =
+   std::map<std::string, Parameter *>::const_iterator i =
       parameters.find(name);
 
-  if (i == parameters.end())
-     return "";
-   else {
-      FileParameter *param = dynamic_cast<FileParameter *>(i->second);
-      if (param)
-         return param->getValue();
+   if (i == parameters.end())
+      return false;
+
+   if (i->second->type() != ParameterType<T>::type)
+      return false;
+
+   if (ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(&*i->second)) {
+      value = p->getValue();
    }
-  return "";
+
+   return true;
+}
+
+bool Module::addStringParameter(const std::string & name,
+                              const std::string & value) {
+
+   return addParameter(name, value);
+}
+
+bool Module::setStringParameter(const std::string & name,
+                              const std::string & value) {
+
+   return setParameter(name, value);
+}
+
+std::string Module::getStringParameter(const std::string & name) const {
+
+   std::string value = "";
+   getParameter(name, value);
+   return value;
 }
 
 bool Module::addFloatParameter(const std::string & name,
                                const vistle::Scalar value) {
 
-   std::map<std::string, Parameter *>::iterator i =
-      parameters.find(name);
-
-   if (i == parameters.end()) {
-
-      parameters[name] = new FloatParameter(name, value);
-      message::AddFloatParameter message(id(), rank(), name, value);
-      sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
-
-      return true;
-   }
-   return false;
+   return addParameter(name, value);
 }
 
-void Module::setFloatParameter(const std::string & name,
+bool Module::setFloatParameter(const std::string & name,
                                const vistle::Scalar value) {
 
-   std::map<std::string, Parameter *>::iterator i =
-      parameters.find(name);
-
-   if (i == parameters.end())
-      parameters[name] = new FloatParameter(name, value);
-   else {
-      FloatParameter *param = dynamic_cast<FloatParameter *>(i->second);
-      if (param)
-         param->setValue(value);
-      else
-         return;
-   }
-
-   message::SetFloatParameter message(id(), rank(), id(), name, value);
-   sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
+   return setParameter(name, value);
 }
 
 vistle::Scalar Module::getFloatParameter(const std::string & name) const {
 
-  std::map<std::string, Parameter *>::const_iterator i =
-      parameters.find(name);
-
-  if (i == parameters.end())
-     return 0.0;
-   else {
-      FloatParameter *param = dynamic_cast<FloatParameter *>(i->second);
-      if (param)
-         return param->getValue();
-   }
-  return 0.0;
+   Scalar value = 0.;
+   getParameter(name, value);
+   return value;
 }
 
 bool Module::addIntParameter(const std::string & name,
                              const int value) {
 
-   std::map<std::string, Parameter *>::iterator i =
-      parameters.find(name);
-
-   if (i == parameters.end()) {
-
-      parameters[name] = new IntParameter(name, value);
-      message::AddIntParameter message(id(), rank(), name, value);
-      sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
-
-      return true;
-   }
-   return false;
+   return addParameter(name, value);
 }
 
-void Module::setIntParameter(const std::string & name,
+bool Module::setIntParameter(const std::string & name,
                              const int value) {
 
-   std::map<std::string, Parameter *>::iterator i =
-      parameters.find(name);
-
-   if (i == parameters.end())
-      parameters[name] = new IntParameter(name, value);
-   else {
-      IntParameter *param = dynamic_cast<IntParameter *>(i->second);
-      if (param)
-         param->setValue(value);
-      else
-         return;
-   }
-
-   message::SetIntParameter message(id(), rank(), id(), name, value);
-   sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
+   return setParameter(name, value);
 }
 
 int Module::getIntParameter(const std::string & name) const {
 
-  std::map<std::string, Parameter *>::const_iterator i =
-      parameters.find(name);
-
-  if (i == parameters.end())
-     return 0;
-   else {
-      IntParameter *param = dynamic_cast<IntParameter *>(i->second);
-      if (param)
-         return param->getValue();
-   }
-  return 0;
+   int value = 0;
+   getParameter(name, value);
+   return value;
 }
 
 bool Module::addVectorParameter(const std::string & name,
                                 const Vector & value) {
 
-   std::map<std::string, Parameter *>::iterator i =
-      parameters.find(name);
-
-   if (i == parameters.end()) {
-
-      parameters[name] = new VectorParameter(name, value);
-      message::AddVectorParameter message(id(), rank(), name, value);
-      sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
-
-      return true;
-   }
-   return false;
+   return addParameter(name, value);
 }
 
-void Module::setVectorParameter(const std::string & name,
+bool Module::setVectorParameter(const std::string & name,
                                 const Vector & value) {
 
-   std::map<std::string, Parameter *>::iterator i =
-      parameters.find(name);
-
-   if (i == parameters.end())
-      parameters[name] = new VectorParameter(name, value);
-   else {
-      VectorParameter *param = dynamic_cast<VectorParameter *>(i->second);
-      if (param)
-         param->setValue(value);
-      else
-         return;
-   }
-
-   message::SetVectorParameter message(id(), rank(), id(), name, value);
-   sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
+   return setParameter(name, value);
 }
 
 Vector Module::getVectorParameter(const std::string & name) const {
 
-  std::map<std::string, Parameter *>::const_iterator i =
-      parameters.find(name);
-
-  if (i == parameters.end())
-     return Vector(0.0, 0.0, 0.0);
-   else {
-      VectorParameter *param = dynamic_cast<VectorParameter *>(i->second);
-      if (param)
-         return param->getValue();
-   }
-  return Vector(0.0, 0.0, 0.0);
+   Vector value;
+   getParameter(name, value);
+   return value;
 }
 
 bool Module::addObject(const std::string & portName, vistle::Object::const_ptr object) {
@@ -532,39 +488,25 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::SETFILEPARAMETER: {
+      case message::Message::SETPARAMETER: {
 
-         const message::SetFileParameter *param =
-            static_cast<const message::SetFileParameter *>(message);
+         const message::SetParameter *param =
+            static_cast<const message::SetParameter *>(message);
 
-         setFileParameter(param->getName(), param->getValue());
-         break;
-      }
-
-      case message::Message::SETFLOATPARAMETER: {
-
-         const message::SetFloatParameter *param =
-            static_cast<const message::SetFloatParameter *>(message);
-
-         setFloatParameter(param->getName(), param->getValue());
-         break;
-      }
-
-      case message::Message::SETINTPARAMETER: {
-
-         const message::SetIntParameter *param =
-            static_cast<const message::SetIntParameter *>(message);
-
-         setIntParameter(param->getName(), param->getValue());
-         break;
-      }
-
-      case message::Message::SETVECTORPARAMETER: {
-
-         const message::SetVectorParameter *param =
-            static_cast<const message::SetVectorParameter *>(message);
-
-         setVectorParameter(param->getName(), param->getValue());
+         switch (param->getParameterType()) {
+            case Parameter::Integer:
+               setIntParameter(param->getName(), param->getInteger());
+               break;
+            case Parameter::Scalar:
+               setFloatParameter(param->getName(), param->getScalar());
+               break;
+            case Parameter::Vector:
+               setVectorParameter(param->getName(), param->getVector());
+               break;
+            case Parameter::String:
+               setStringParameter(param->getName(), param->getString());
+               break;
+         }
          break;
       }
 

@@ -32,7 +32,7 @@ WriteVistle::WriteVistle(const std::string &shmname, int rank, int size, int mod
 
    createInputPort("grid_in");
    addIntParameter("format", 0);
-   addFileParameter("filename", "vistle.archive");
+   addStringParameter("filename", "vistle.archive");
 }
 
 WriteVistle::~WriteVistle() {
@@ -89,7 +89,7 @@ bool WriteVistle::compute() {
             break;
       }
       if (!m_ofs) {
-         m_ofs = new std::ofstream(getFileParameter("filename").c_str(), flags);
+         m_ofs = new std::ofstream(getStringParameter("filename").c_str(), flags);
       }
       if (trunc)
          *m_ofs << "vistle " << format << " 1 start" << std::endl;
@@ -133,7 +133,7 @@ bool WriteVistle::compute() {
       std::cerr << " final";
       close();
    }
-   std::cerr << " [" << count << "] to " << getFileParameter("filename") << " (" << format << ")" << std::endl;
+   std::cerr << " [" << count << "] to " << getStringParameter("filename") << " (" << format << ")" << std::endl;
 
    return true;
 }

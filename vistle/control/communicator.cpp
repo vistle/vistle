@@ -35,6 +35,8 @@ typedef int socklen_t;
 #include "pythonembed.h"
 #include "communicator.h"
 
+//#define DEBUG
+
 #define CERR \
    std::cerr << "comm [" << rank << "/" << size << "] "
 
@@ -447,14 +449,21 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
 bool Communicator::handleMessage(const message::Message &message) {
 
+#ifdef DEBUG
+   CERR << "Message: "
+      << "type=" << message.getType() << ", "
+      << "size=" << message.getSize() << ", "
+      << "from=" << message.getModuleID() << ", "
+      << "rank=" << message.getRank() << std::endl;
+#endif
+
    switch (message.getType()) {
 
       case message::Message::PING: {
 
          const message::Ping &ping =
             static_cast<const message::Ping &>(message);
-         std::cout << "comm [" << rank << "/" << size << "] Ping ["
-                   << ping.getCharacter() << "]" << std::endl;
+         CERR << "Ping [" << ping.getCharacter() << "]" << std::endl;
          for (MessageQueueMap::iterator i = sendMessageQueue.begin();
                i != sendMessageQueue.end();
                ++i) {
@@ -467,8 +476,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Pong &pong =
             static_cast<const message::Pong &>(message);
-         std::cout << "comm [" << rank << "/" << size << "] Pong ["
-                   << pong.getModuleID() << " " << pong.getCharacter() << "]" << std::endl;
+         CERR << "Pong [" << pong.getModuleID() << " " << pong.getCharacter() << "]" << std::endl;
          break;
       }
 
@@ -543,7 +551,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Connect &connect =
             static_cast<const message::Connect &>(message);
-         portManager.addConnection(connect.getModuleA(),
+         m_portManager.addConnection(connect.getModuleA(),
                                    connect.getPortAName(),
                                    connect.getModuleB(),
                                    connect.getPortBName());
@@ -558,7 +566,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          vistle::Object *object = (vistle::Object *)
             vistle::Shm::the().shm().get_address_from_handle(newObject.getHandle());
 
-         std::cout << "comm [" << rank << "/" << size << "] NewObject ["
+         CERR << "NewObject ["
                    << newObject.getHandle() << "] type ["
                    << object.getType() << "] from module ["
                    << newObject.getModuleID() << "]" << std::endl;
@@ -636,7 +644,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::CreateInputPort &m =
             static_cast<const message::CreateInputPort &>(message);
-         portManager.addPort(m.getModuleID(), m.getName(),
+         m_portManager.addPort(m.getModuleID(), m.getName(),
                              Port::INPUT);
          break;
       }
@@ -645,7 +653,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::CreateOutputPort &m =
             static_cast<const message::CreateOutputPort &>(message);
-         portManager.addPort(m.getModuleID(), m.getName(),
+         m_portManager.addPort(m.getModuleID(), m.getName(),
                              Port::OUTPUT);
          break;
       }
@@ -657,19 +665,19 @@ bool Communicator::handleMessage(const message::Message &message) {
          Object::const_ptr obj = m.takeObject();
          assert(obj->refcount() >= 1);
 #if 0
-         std::cout << "Module " << m.getModuleID() << ": "
+         std::cerr << "Module " << m.getModuleID() << ": "
                    << "AddObject " << m.getHandle() << " (" << obj->getName() << ")"
                    << " ref " << obj->refcount()
                    << " to port " << m.getPortName() << std::endl;
 #endif
 
-         Port *port = portManager.getPort(m.getModuleID(),
+         Port *port = m_portManager.getPort(m.getModuleID(),
                                           m.getPortName());
          if (port) {
             const std::vector<const Port *> *list =
-               portManager.getConnectionList(port);
+               m_portManager.getConnectionList(port);
 
-            std::vector<const Port *>::const_iterator pi;
+            PortManager::ConnectionList::const_iterator pi;
             for (pi = list->begin(); pi != list->end(); pi ++) {
 
                MessageQueueMap::iterator mi =
@@ -686,17 +694,32 @@ bool Communicator::handleMessage(const message::Message &message) {
             }
          }
          else
-            std::cout << "comm [" << rank << "/" << size << "] Addbject ["
+            std::cerr << "comm [" << rank << "/" << size << "] Addbject ["
                       << m.getHandle() << "] to port ["
                       << m.getPortName() << "]: port not found" << std::endl;
 
          break;
       }
 
-      case message::Message::SETFILEPARAMETER: {
+      case message::Message::SETPARAMETER: {
 
-         const message::SetFileParameter &m =
-            static_cast<const message::SetFileParameter &>(message);
+         const message::SetParameter &m =
+            static_cast<const message::SetParameter &>(message);
+
+#ifdef DEBUG
+         CERR << "SetParameter: sender=" << m.getModuleID() << ", module=" << m.getModule() << ", name=" << m.getName() << std::endl;
+#endif
+
+         if (m.getModuleID() != 0) {
+            ModuleParameterMap &pm = parameterMap[m.getModule()];
+            ModuleParameterMap::iterator it = pm.find(m.getName());
+            if (it == pm.end()) {
+               CERR << "no such parameter: module id=" << m.getModule() << ", name=" << m.getName() << std::endl;
+            } else {
+               Parameter *p = it->second;
+               m.apply(p);
+            }
+         }
 
          if (m.getModuleID() != m.getModule()) {
             // message to module
@@ -708,57 +731,24 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
-      case message::Message::SETFLOATPARAMETER: {
+      case message::Message::ADDPARAMETER: {
+         
+         const message::AddParameter &m =
+            static_cast<const message::AddParameter &>(message);
 
-         const message::SetFloatParameter &m =
-            static_cast<const message::SetFloatParameter &>(message);
+#ifdef DEBUG
+         CERR << "AddParameter: module=" << m.getModuleID() << ", name=" << m.getName() << std::endl;
+#endif
 
-         if (m.getModuleID() != m.getModule()) {
-            // message to module
-            MessageQueueMap::iterator i
-               = sendMessageQueue.find(m.getModule());
-            if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(&m, m.getSize(), 0);
+         ModuleParameterMap &pm = parameterMap[m.getModuleID()];
+         ModuleParameterMap::iterator it = pm.find(m.getName());
+         if (it != pm.end()) {
+            CERR << "double parameter" << std::endl;
+         } else {
+            pm[m.getName()] = m.getParameter();
          }
          break;
       }
-
-      case message::Message::SETINTPARAMETER: {
-
-         const message::SetIntParameter &m =
-            static_cast<const message::SetIntParameter &>(message);
-
-         if (m.getModuleID() != m.getModule()) {
-            // message to module
-            MessageQueueMap::iterator i
-               = sendMessageQueue.find(m.getModule());
-            if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(&m, m.getSize(), 0);
-         }
-         break;
-
-      }
-
-      case message::Message::SETVECTORPARAMETER: {
-
-         const message::SetVectorParameter &m =
-            static_cast<const message::SetVectorParameter &>(message);
-
-         if (m.getModuleID() != m.getModule()) {
-            // message to module
-            MessageQueueMap::iterator i
-               = sendMessageQueue.find(m.getModule());
-            if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(&m, m.getSize(), 0);
-         }
-         break;
-      }
-
-      case message::Message::ADDFILEPARAMETER:
-      case message::Message::ADDFLOATPARAMETER:
-      case message::Message::ADDINTPARAMETER:
-      case message::Message::ADDVECTORPARAMETER:
-          break;
 
       default:
 
@@ -1145,6 +1135,11 @@ int Communicator::checkClients() {
    }
 
    return -1;
+}
+
+const PortManager &Communicator::portManager() const {
+
+   return m_portManager;
 }
 
 } // namespace vistle

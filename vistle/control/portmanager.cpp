@@ -119,5 +119,38 @@ PortManager::getConnectionList(const int moduleID,
    return getConnectionList(port);
 }
 
+std::vector<std::string> PortManager::getPortNames(const int moduleID, Port::Type type) const {
+
+   std::vector<std::string> result;
+
+   typedef std::map<std::string, Port *> PortMap;
+   typedef std::map<int, PortMap *> ModulePortMap;
+
+   ModulePortMap::const_iterator mports = ports.find(moduleID);
+   if (mports == ports.end())
+      return result;
+
+   const PortMap &portmap = *mports->second;
+   for(PortMap::const_iterator it = portmap.begin();
+         it != portmap.end();
+         ++it) {
+
+      if (type == Port::ANY || it->second->getType() == type)
+         result.push_back(it->first);
+   }
+
+   return result;
+}
+
+std::vector<std::string> PortManager::getInputPortNames(const int moduleID) const {
+
+   return getPortNames(moduleID, Port::INPUT);
+}
+
+std::vector<std::string> PortManager::getOutputPortNames(const int moduleID) const {
+
+   return getPortNames(moduleID, Port::OUTPUT);
+}
+
 
 } // namespace vistle
