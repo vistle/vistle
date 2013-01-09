@@ -35,6 +35,8 @@ typedef int socklen_t;
 #include "pythonembed.h"
 #include "communicator.h"
 
+//#define DEBUG
+
 #define CERR \
    std::cerr << "comm [" << rank << "/" << size << "] "
 
@@ -447,6 +449,14 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
 bool Communicator::handleMessage(const message::Message &message) {
 
+#ifdef DEBUG
+   CERR << "Message: "
+      << "type=" << message.getType() << ", "
+      << "size=" << message.getSize() << ", "
+      << "from=" << message.getModuleID() << ", "
+      << "rank=" << message.getRank() << std::endl;
+#endif
+
    switch (message.getType()) {
 
       case message::Message::PING: {
@@ -691,10 +701,25 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
-      case message::Message::SETFILEPARAMETER: {
+      case message::Message::SETPARAMETER: {
 
-         const message::SetFileParameter &m =
-            static_cast<const message::SetFileParameter &>(message);
+         const message::SetParameter &m =
+            static_cast<const message::SetParameter &>(message);
+
+#ifdef DEBUG
+         CERR << "SetParameter: sender=" << m.getModuleID() << ", module=" << m.getModule() << ", name=" << m.getName() << std::endl;
+#endif
+
+         if (m.getModuleID() != 0) {
+            ModuleParameterMap &pm = parameterMap[m.getModule()];
+            ModuleParameterMap::iterator it = pm.find(m.getName());
+            if (it == pm.end()) {
+               CERR << "no such parameter: module id=" << m.getModule() << ", name=" << m.getName() << std::endl;
+            } else {
+               Parameter *p = it->second;
+               m.apply(p);
+            }
+         }
 
          if (m.getModuleID() != m.getModule()) {
             // message to module
@@ -706,57 +731,24 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
-      case message::Message::SETFLOATPARAMETER: {
+      case message::Message::ADDPARAMETER: {
+         
+         const message::AddParameter &m =
+            static_cast<const message::AddParameter &>(message);
 
-         const message::SetFloatParameter &m =
-            static_cast<const message::SetFloatParameter &>(message);
+#ifdef DEBUG
+         CERR << "AddParameter: module=" << m.getModuleID() << ", name=" << m.getName() << std::endl;
+#endif
 
-         if (m.getModuleID() != m.getModule()) {
-            // message to module
-            MessageQueueMap::iterator i
-               = sendMessageQueue.find(m.getModule());
-            if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(&m, m.getSize(), 0);
+         ModuleParameterMap &pm = parameterMap[m.getModuleID()];
+         ModuleParameterMap::iterator it = pm.find(m.getName());
+         if (it != pm.end()) {
+            CERR << "double parameter" << std::endl;
+         } else {
+            pm[m.getName()] = m.getParameter();
          }
          break;
       }
-
-      case message::Message::SETINTPARAMETER: {
-
-         const message::SetIntParameter &m =
-            static_cast<const message::SetIntParameter &>(message);
-
-         if (m.getModuleID() != m.getModule()) {
-            // message to module
-            MessageQueueMap::iterator i
-               = sendMessageQueue.find(m.getModule());
-            if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(&m, m.getSize(), 0);
-         }
-         break;
-
-      }
-
-      case message::Message::SETVECTORPARAMETER: {
-
-         const message::SetVectorParameter &m =
-            static_cast<const message::SetVectorParameter &>(message);
-
-         if (m.getModuleID() != m.getModule()) {
-            // message to module
-            MessageQueueMap::iterator i
-               = sendMessageQueue.find(m.getModule());
-            if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(&m, m.getSize(), 0);
-         }
-         break;
-      }
-
-      case message::Message::ADDFILEPARAMETER:
-      case message::Message::ADDFLOATPARAMETER:
-      case message::Message::ADDINTPARAMETER:
-      case message::Message::ADDVECTORPARAMETER:
-          break;
 
       default:
 

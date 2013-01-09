@@ -153,7 +153,7 @@ static void setIntParam(int id, const char *name, int value) {
 #ifdef DEBUG
    std::cerr << "Python: setIntParam " << id << ":" << name << " = " << value << std::endl;
 #endif
-   message::SetIntParameter m(0, Communicator::the().getRank(),
+   message::SetParameter m(0, Communicator::the().getRank(),
          id, name, value);
    Communicator::the().broadcastAndHandleMessage(m);
 }
@@ -163,7 +163,7 @@ static void setFloatParam(int id, const char *name, double value) {
 #ifdef DEBUG
    std::cerr << "Python: setFloatParam " << id << ":" << name << " = " << value << std::endl;
 #endif
-   message::SetFloatParameter m(0, Communicator::the().getRank(),
+   message::SetParameter m(0, Communicator::the().getRank(),
          id, name, value);
    Communicator::the().broadcastAndHandleMessage(m);
 }
@@ -173,17 +173,17 @@ static void setVectorParam(int id, const char *name, double v1, double v2, doubl
 #ifdef DEBUG
    std::cerr << "Python: setVectorParam " << id << ":" << name << " = " << v1 << " " << v2 << " " << v3 << std::endl;
 #endif
-   message::SetVectorParameter m(0, Communicator::the().getRank(),
+   message::SetParameter m(0, Communicator::the().getRank(),
          id, name, Vector(v1, v2, v3));
    Communicator::the().broadcastAndHandleMessage(m);
 }
 
-static void setFileParam(int id, const char *name, const std::string &value) {
+static void setStringParam(int id, const char *name, const std::string &value) {
 
 #ifdef DEBUG
-   std::cerr << "Python: setFileParam " << id << ":" << name << " = " << value << std::endl;
+   std::cerr << "Python: setStringParam " << id << ":" << name << " = " << value << std::endl;
 #endif
-   message::SetFileParameter m(0, Communicator::the().getRank(),
+   message::SetParameter m(0, Communicator::the().getRank(),
          id, name, value);
    Communicator::the().broadcastAndHandleMessage(m);
 }
@@ -225,7 +225,7 @@ BOOST_PYTHON_MODULE(_vistle)
 
     param(Int, setIntParam);
     param(Float, setFloatParam);
-    param(File, setFileParam);
+    param(String, setStringParam);
     param(Vector, setVectorParam);
 }
 

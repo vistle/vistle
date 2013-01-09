@@ -32,7 +32,7 @@ ReadCovise::ReadCovise(const std::string &shmname, int rank, int size, int modul
 {
 
    createOutputPort("grid_out");
-   addFileParameter("filename", "");
+   addStringParameter("filename", "");
 }
 
 ReadCovise::~ReadCovise() {
@@ -544,5 +544,5 @@ bool ReadCovise::load(const std::string & name) {
 bool ReadCovise::compute() {
 
    object_counter = 0;
-   return load(getFileParameter("filename"));
+   return load(getStringParameter("filename"));
 }

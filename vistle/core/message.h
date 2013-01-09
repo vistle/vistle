@@ -9,6 +9,7 @@
 namespace vistle {
 
 class Communicator;
+class Parameter;
 
 namespace message {
 
@@ -26,29 +27,23 @@ struct Message {
    static const size_t MESSAGE_SIZE = 512;
 
    enum Type {
-      DEBUG              =   0,
-      SPAWN              =   1,
-      KILL               =   2,
-      QUIT               =   3,
-      NEWOBJECT          =   4,
-      MODULEEXIT         =   5,
-      COMPUTE            =   6,
-      CREATEINPUTPORT    =   7,
-      CREATEOUTPUTPORT   =   8,
-      ADDOBJECT          =   9,
-      CONNECT            =  10,
-      ADDFILEPARAMETER   =  11,
-      SETFILEPARAMETER   =  12,
-      ADDFLOATPARAMETER  =  13,
-      SETFLOATPARAMETER  =  14,
-      ADDINTPARAMETER    =  15,
-      SETINTPARAMETER    =  16,
-      ADDVECTORPARAMETER =  17,
-      SETVECTORPARAMETER =  18,
-      PING               =  19,
-      PONG               =  20,
-      BUSY               =  21,
-      IDLE               =  22,
+      DEBUG,
+      SPAWN,
+      KILL,
+      QUIT,
+      NEWOBJECT,
+      MODULEEXIT,
+      COMPUTE,
+      CREATEINPUTPORT,
+      CREATEOUTPUTPORT,
+      ADDOBJECT,
+      CONNECT,
+      ADDPARAMETER,
+      SETPARAMETER,
+      PING,
+      PONG,
+      BUSY,
+      IDLE,
    };
 
    Message(const int moduleID, const int rank,
@@ -272,135 +267,57 @@ class Connect: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Connect) < Message::MESSAGE_SIZE);
 
-class AddFileParameter: public Message {
+class AddParameter: public Message {
+   public:
+      AddParameter(const int moduleID, const int rank,
+            const std::string & name, int type);
 
- public:
-   AddFileParameter(const int moduleID, const int rank,
-                    const std::string & name,
-                    const std::string & value);
+      const char * getName() const;
+      int getParameterType() const;
+      Parameter *getParameter() const; // allocates a new Parameter object, caller is responsible for deletion
 
-   const char * getName() const;
-   const char * getValue() const;
-
- private:
-   param_name_t name;
-   param_value_t value;
+   private:
+      param_name_t name;
+      int paramtype;
 };
-BOOST_STATIC_ASSERT(sizeof(AddFileParameter) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(AddParameter) < Message::MESSAGE_SIZE);
 
-class SetFileParameter: public Message {
+class SetParameter: public Message {
+   public:
+      SetParameter(const int moduleID, const int rank, const int module,
+            const std::string & name, const Parameter *param);
+      SetParameter(const int moduleID, const int rank, const int module,
+            const std::string & name, const int value);
+      SetParameter(const int moduleID, const int rank, const int module,
+            const std::string & name, const Scalar value);
+      SetParameter(const int moduleID, const int rank, const int module,
+            const std::string & name, const Vector value);
+      SetParameter(const int moduleID, const int rank, const int module,
+            const std::string & name, const std::string &value);
 
- public:
-   SetFileParameter(const int moduleID, const int rank, const int module,
-                    const std::string & name,
-                    const std::string & value);
+      int getModule() const;
+      const char * getName() const;
+      int getParameterType() const;
 
-   int getModule() const;
-   const char * getName() const;
-   const char * getValue() const;
+      int getInteger() const;
+      std::string getString() const;
+      Scalar getScalar() const;
+      Vector getVector() const;
 
- private:
-   const int module;
-   param_name_t name;
-   char value[256];
+      bool apply(Parameter *param) const;
+
+   private:
+      const int module;
+      param_name_t name;
+      int paramtype;
+      union {
+         int v_int;
+         Scalar v_scalar;
+         Scalar v_vector[4];
+         param_value_t v_string;
+      };
 };
-BOOST_STATIC_ASSERT(sizeof(SetFileParameter) < Message::MESSAGE_SIZE);
-
-class AddFloatParameter: public Message {
-
- public:
-   AddFloatParameter(const int moduleID, const int rank,
-                     const std::string & name, const vistle::Scalar value);
-
-   const char * getName() const;
-   vistle::Scalar getValue() const;
-
- private:
-   param_name_t name;
-   vistle::Scalar value;
-};
-BOOST_STATIC_ASSERT(sizeof(AddFloatParameter) < Message::MESSAGE_SIZE);
-
-class SetFloatParameter: public Message {
-
- public:
-   SetFloatParameter(const int moduleID, const int rank, const int module,
-                     const std::string & name, const vistle::Scalar value);
-
-   int getModule() const;
-   const char * getName() const;
-   vistle::Scalar getValue() const;
-
- private:
-   const int module;
-   param_name_t name;
-   vistle::Scalar value;
-};
-BOOST_STATIC_ASSERT(sizeof(SetFloatParameter) < Message::MESSAGE_SIZE);
-
-class AddIntParameter: public Message {
-
- public:
-   AddIntParameter(const int moduleID, const int rank,
-                   const std::string & name, const int value);
-
-   const char * getName() const;
-   int getValue() const;
-
- private:
-   param_name_t name;
-   int value;
-};
-BOOST_STATIC_ASSERT(sizeof(AddIntParameter) < Message::MESSAGE_SIZE);
-
-class SetIntParameter: public Message {
-
- public:
-   SetIntParameter(const int moduleID, const int rank, const int module,
-                   const std::string & name, const int value);
-
-   int getModule() const;
-   const char * getName() const;
-   int getValue() const;
-
- private:
-   const int module;
-   param_name_t name;
-   int value;
-};
-BOOST_STATIC_ASSERT(sizeof(SetIntParameter) < Message::MESSAGE_SIZE);
-
-class AddVectorParameter: public Message {
-
- public:
-   AddVectorParameter(const int moduleID, const int rank,
-                      const std::string & name, const Vector & value);
-
-   const char * getName() const;
-   Vector getValue() const;
-
- private:
-   param_name_t name;
-   Vector value;
-};
-BOOST_STATIC_ASSERT(sizeof(AddVectorParameter) < Message::MESSAGE_SIZE);
-
-class SetVectorParameter: public Message {
-
- public:
-   SetVectorParameter(const int moduleID, const int rank, const int module,
-                      const std::string & name, const Vector & value);
-
-   int getModule() const;
-   const char * getName() const;
-   Vector getValue() const;
-
- private:
-   const int module;
-   param_name_t name;
-   Vector value;
-};
-BOOST_STATIC_ASSERT(sizeof(SetVectorParameter) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(SetParameter) < Message::MESSAGE_SIZE);
 
 } // namespace message
 } // namespace vistle
