@@ -7,6 +7,9 @@
 
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread.hpp>
+#include <boost/interprocess/ipc/message_queue.hpp>
 
 #include <mpi.h>
 
@@ -25,14 +28,36 @@ class Parameter;
 
 class PythonEmbed;
 
+class InteractiveClient {
+   friend class PythonEmbed;
+
+   public:
+      InteractiveClient(int readfd, int writefd = -1);
+      InteractiveClient(const InteractiveClient &o);
+      ~InteractiveClient();
+      void operator()();
+      void setQuitOnEOF();
+
+   private:
+      mutable bool m_close;
+      bool readline(std::string &line);
+      bool write(const std::string &s);
+      bool printPrompt();
+      bool printGreeting();
+      int readfd, writefd;
+      std::vector<char> readbuf;
+      bool m_quitOnEOF;
+};
+
 class Communicator {
    friend class PythonEmbed;
+   friend class InteractiveClient;
 
  public:
    Communicator(int argc, char *argv[], int rank, int size);
    ~Communicator();
    static Communicator &the();
-   int currentClient() const;
+   InteractiveClient *activeClient() const;
 
    void registerInterpreter(PythonEmbed *pi);
    void setInput(const std::string &input);
@@ -57,6 +82,12 @@ class Communicator {
 
    const PortManager &portManager() const;
 
+   void acquireInterpreter(InteractiveClient *client);
+   void releaseInterpreter();
+   bool execute(const std::string &line);
+   void enterCritical();
+   void leaveCritical();
+
  private:
 
    std::string m_bindir;
@@ -69,10 +100,11 @@ class Communicator {
 
    bool m_quitFlag;
 
-   std::vector<std::vector<char> > readbuf, writebuf;
-   std::vector<int> sockfd;
+   boost::mutex m_mutex;
+   int serverSocket;
    int moduleID;
    PythonEmbed *interpreter;
+   boost::mutex interpreter_mutex;
 
    char *mpiReceiveBuffer;
    int mpiMessageSize;
@@ -82,6 +114,8 @@ class Communicator {
    typedef std::map<int, message::MessageQueue *> MessageQueueMap;
    MessageQueueMap sendMessageQueue;
    MessageQueueMap receiveMessageQueue;
+   boost::interprocess::message_queue messageQueue;
+   bool tryReceiveAndHandleMessage(boost::interprocess::message_queue &mq, bool &received, bool broadcast=false);
 
    std::map<int, bi::shared_memory_object *> shmObjects;
 
@@ -97,8 +131,10 @@ class Communicator {
    PortManager m_portManager;
    int m_moduleCounter;
 
-   int m_currentClient;
-   int checkClients();
+   InteractiveClient m_console;
+   InteractiveClient *m_activeClient;
+   boost::thread m_consoleThread;
+   int acceptClients();
    bool setClientBlocking(int num, bool block);
    void allocateBuffers(int num);
    void flushClient(int num);

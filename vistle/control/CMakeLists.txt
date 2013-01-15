@@ -1,5 +1,5 @@
 find_package(PythonLibs)
-find_package(Boost 1.40 REQUIRED COMPONENTS python)
+find_package(Boost 1.40 REQUIRED COMPONENTS python thread system)
 
 add_library(vistle_control SHARED 
    portmanager.cpp

@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+#include <boost/interprocess/ipc/message_queue.hpp>
 
 
 #include <core/message.h>
@@ -175,10 +176,12 @@ bool PythonEmbed::exec_file(const std::string &filename) {
 std::string PythonEmbed::raw_input(const std::string &prompt) {
 
    Communicator &comm = Communicator::the();
-   int client = comm.currentClient();
-   if (client >= 0) {
-      comm.writeClient(client, prompt);
-      std::string line = comm.readClientLine(client);
+   InteractiveClient *c = comm.activeClient();
+   std::string line;
+   if (c) {
+      c->write(prompt);
+      std::string line;
+      c->readline(line);
       char *end = &line[line.size()-1];
       if (end > &line[0] && *end == '\n') {
          --end;
@@ -195,32 +198,35 @@ std::string PythonEmbed::raw_input(const std::string &prompt) {
 std::string PythonEmbed::readline() {
 
    Communicator &comm = Communicator::the();
-   int client = comm.currentClient();
-   if (client >= 0) {
-      return comm.readClientLine(client);
-   }
+   InteractiveClient *c = comm.activeClient();
+   std::string line;
+   if (c)
+      c->readline(line);
 
-   return std::string();
+   return line;
 }
 
 void PythonEmbed::print_output(const std::string &str) {
 
    //std::cout << "OUT: " << str << std::endl;
    Communicator &comm = Communicator::the();
-   int client = comm.currentClient();
-   if (client >= 0) {
-      comm.writeClient(client, str.c_str(), str.length());
-   }
+   InteractiveClient *c = comm.activeClient();
+   if (c)
+      c->write(str);
 }
 
 void PythonEmbed::print_error(const std::string &str) {
 
    //std::cerr << "ERR: " << str << std::endl;
    Communicator &comm = Communicator::the();
-   int client = comm.currentClient();
-   if (client >= 0) {
-      comm.writeClient(client, str.c_str(), str.length());
-   }
+   InteractiveClient *c = comm.activeClient();
+   if (c)
+      c->write(str);
+}
+
+void PythonEmbed::handleMessage(const message::Message &message) {
+
+   Communicator::the().messageQueue.send(&message, message.getSize(), 0);
 }
 
 } // namespace vistle

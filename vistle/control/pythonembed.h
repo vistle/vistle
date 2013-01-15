@@ -6,6 +6,10 @@
 
 namespace vistle {
 
+namespace message {
+struct Message;
+}
+
 class PythonEmbed {
    public:
 
@@ -17,6 +21,7 @@ class PythonEmbed {
       static void print_error(const std::string &str);
       static std::string raw_input(const std::string &prompt);
       static std::string readline();
+      static void handleMessage(const message::Message &message);
 
       bool exec(const std::string &python);
       bool exec_file(const std::string &filename);
