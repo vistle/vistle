@@ -82,7 +82,7 @@ class Module {
    message::MessageQueue *sendMessageQueue;
    message::MessageQueue *receiveMessageQueue;
    bool handleMessage(const message::Message *message);
-   void sendMessage(const message::Message *message);
+   void sendMessage(const message::Message &message);
 
  private:
 

@@ -76,7 +76,7 @@ Spawn::Spawn(const int moduleID, const int rank, const int s,
    , debugRank(debugRank)
 {
 
-      COPY_STRING(name, n);
+   COPY_STRING(name, n);
 }
 
 int Spawn::getSpawnID() const {
@@ -85,6 +85,18 @@ int Spawn::getSpawnID() const {
 }
 
 const char * Spawn::getName() const {
+
+   return name;
+}
+
+Started::Started(const int moduleID, const int rank, const std::string &n)
+: Message(moduleID, rank, Message::STARTED, sizeof(Started))
+{
+
+   COPY_STRING(name, n);
+}
+
+const char * Started::getName() const {
 
    return name;
 }

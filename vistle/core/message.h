@@ -29,6 +29,7 @@ struct Message {
    enum Type {
       DEBUG,
       SPAWN,
+      STARTED,
       KILL,
       QUIT,
       NEWOBJECT,
@@ -121,6 +122,20 @@ class Spawn: public Message {
    module_name_t name;
 };
 BOOST_STATIC_ASSERT(sizeof(Spawn) < Message::MESSAGE_SIZE);
+
+//! acknowledge that a module has been spawned
+class Started: public Message {
+
+ public:
+   Started(const int moduleID, const int rank, const std::string &name);
+
+   const char *getName() const;
+
+ private:
+   //! name of module to be started
+   module_name_t name;
+};
+BOOST_STATIC_ASSERT(sizeof(Started) < Message::MESSAGE_SIZE);
 
 //! request a module to quit
 class Kill: public Message {

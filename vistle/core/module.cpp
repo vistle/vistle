@@ -67,6 +67,8 @@ Module::Module(const std::string &n, const std::string &shmname,
                 << ex.what() << std::endl;
       exit(2);
    }
+
+   sendMessage(message::Started(id(), rank(), name()));
 }
 
 const std::string &Module::name() const {
@@ -131,9 +133,9 @@ bool Module::addParameterGeneric(const std::string &name, Parameter *param) {
    parameters[name] = param;
 
    message::AddParameter add(id(), rank(), name, param->type());
-   sendMessage(&add);
+   sendMessage(add);
    message::SetParameter set(id(), rank(), id(), name, param);
-   sendMessage(&set);
+   sendMessage(set);
 
    return true;
 }
@@ -159,7 +161,7 @@ bool Module::updateParameter(const std::string &name, const Parameter *param) {
    }
 
    message::SetParameter set(id(), rank(), id(), name, param);
-   sendMessage(&set);
+   sendMessage(set);
 
    return true;
 }
@@ -397,7 +399,7 @@ bool Module::dispatch() {
    bool again = handleMessage(message);
    if (!again) {
       vistle::message::ModuleExit m(id(), rank());
-      sendMessage(&m);
+      sendMessage(m);
    }
 
    //sleep(1);
@@ -406,9 +408,9 @@ bool Module::dispatch() {
 }
 
 
-void Module::sendMessage(const message::Message *message) {
+void Module::sendMessage(const message::Message &message) {
 
-   sendMessageQueue->getMessageQueue().send(message, message->getSize(), 0);
+   sendMessageQueue->getMessageQueue().send(&message, message.getSize(), 0);
 }
 
 
@@ -425,7 +427,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                    << rank() << "/" << size() << "] ping ["
                    << ping->getCharacter() << "]" << std::endl;
          vistle::message::Pong m(id(), rank(), ping->getCharacter(), ping->getModuleID());
-         sendMessage(&m);
+         sendMessage(m);
          break;
       }
 
@@ -472,10 +474,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                    << rank() << "/" << size << "] compute" << std::endl;
          */
          message::Busy busy(id(), rank());
-         sendMessage(&busy);
+         sendMessage(busy);
          bool ret = compute();
          message::Idle idle(id(), rank());
-         sendMessage(&idle);
+         sendMessage(idle);
          return ret;
          break;
       }
