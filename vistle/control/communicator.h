@@ -32,11 +32,14 @@ class InteractiveClient {
    friend class PythonEmbed;
 
    public:
-      InteractiveClient(int readfd, int writefd = -1);
+      InteractiveClient(int readfd, int writefd=-1 /* same as readfd */, bool keepInterpreterLock=false);
       InteractiveClient(const InteractiveClient &o);
       ~InteractiveClient();
+
       void operator()();
+
       void setQuitOnEOF();
+      void setInput(const std::string &input);
 
    private:
       mutable bool m_close;
@@ -47,6 +50,7 @@ class InteractiveClient {
       int readfd, writefd;
       std::vector<char> readbuf;
       bool m_quitOnEOF;
+      bool m_keepInterpreter;
 };
 
 class Communicator {
@@ -131,9 +135,10 @@ class Communicator {
    PortManager m_portManager;
    int m_moduleCounter;
 
-   InteractiveClient m_console;
    InteractiveClient *m_activeClient;
+   InteractiveClient m_console;
    boost::thread m_consoleThread;
+   bool m_consoleThreadCreated;
    int acceptClients();
    bool setClientBlocking(int num, bool block);
    void allocateBuffers(int num);

@@ -88,19 +88,26 @@ static bool set_blocking(int fd, bool block) {
    return fcntl(fd, F_SETFL, flags) != -1;
 }
 
-InteractiveClient::InteractiveClient(int readfd, int writefd)
-: m_close(true), readfd(readfd), writefd(writefd >= 0 ? writefd : readfd)
+InteractiveClient::InteractiveClient(int readfd, int writefd, bool keepInterpreterLock)
+: m_close(true)
+, readfd(readfd)
+, writefd(writefd >= 0 ? writefd : readfd)
 , m_quitOnEOF(false)
+, m_keepInterpreter(keepInterpreterLock)
 {
    std::cerr << "Client FDs: " << readfd << ", " << writefd << std::endl;
-   set_blocking(readfd, true);
-   set_blocking(writefd, true);
-   printGreeting();
+   if (readfd != -1)
+      set_blocking(readfd, true);
+   if (writefd != -1)
+      set_blocking(writefd, true);
 }
 
 InteractiveClient::InteractiveClient(const InteractiveClient &o)
-: m_close(o.m_close), readfd(o.readfd), writefd(o.writefd >= 0 ? o.writefd : o.readfd)
+: m_close(o.m_close)
+, readfd(o.readfd)
+, writefd(o.writefd >= 0 ? o.writefd : o.readfd)
 , m_quitOnEOF(o.m_quitOnEOF)
+, m_keepInterpreter(o.m_keepInterpreter)
 {
    o.m_close = false;
 }
@@ -109,18 +116,30 @@ InteractiveClient::~InteractiveClient() {
 
    if (m_close) {
       std::cerr << "Closing: " << readfd << ", " << writefd << std::endl;
-      close(readfd);
-      if (readfd != writefd)
+      if (readfd > 2)
+         close(readfd);
+      if (readfd != writefd && writefd > 2)
          close(writefd);
    }
+}
+
+void InteractiveClient::setInput(const std::string &input) {
+
+   std::copy (input.begin(), input.end(), std::back_inserter(readbuf));
 }
 
 bool InteractiveClient::readline(std::string &line) {
 
    const size_t rsize = 1024;
+   bool result = true;
 
    std::vector<char>::iterator lf = find_linefeed(readbuf);
    while (lf == readbuf.end()) {
+
+      if (readfd == -1) {
+         result = false;
+         break;
+      }
 
       ssize_t nvalid = readbuf.size();
       readbuf.resize(nvalid + rsize);
@@ -130,49 +149,75 @@ bool InteractiveClient::readline(std::string &line) {
             std::cerr << "socket error: " << strerror(errno) << std::endl;
             return false;
          }
-      } else if (n == 0) {
-         std::cerr << "socket closed" << std::endl;
-         return false;
-      } else {
+      }
+
+      if (n >= 0) {
          readbuf.resize(nvalid+n);
+      }
+
+      if (n == 0) {
+         std::cerr << "socket closed" << std::endl;
+         result = false;
+         break;
       }
 
       lf = find_linefeed(readbuf);
    }
 
-   if (*lf == '\r' && lf+1 < readbuf.end() && *(lf+1) == '\n')
-      ++lf;
-   line = std::string(readbuf.begin(), lf+1);
-   readbuf.erase(readbuf.begin(), lf+1);
-   return true;
+   lf = find_linefeed(readbuf);
+   if (lf == readbuf.end()) {
+      line = std::string(readbuf.begin(), readbuf.end());
+      readbuf.clear();
+   } else {
+      if (*lf == '\r' && lf+1 < readbuf.end() && *(lf+1) == '\n')
+         ++lf;
+      line = std::string(readbuf.begin(), lf+1);
+      readbuf.erase(readbuf.begin(), lf+1);
+   }
+
+   return result;
 }
 
 void InteractiveClient::operator()() {
 
+   Communicator::the().acquireInterpreter(this);
+   if (!m_keepInterpreter) {
+      printGreeting();
+      Communicator::the().releaseInterpreter();
+   }
+
    for (;;) {
       std::string line;
       bool again = readline(line);
+
+      line = strip(line);
+      if (line == "?" || line == "h" || line == "help") {
+         write("Type \"help(vistle)\" for help, \"help()\" for general help\n\n");
+      } else if (!line.empty()) {
+         if (line == "quit")
+            line = "quit()";
+
+         if (!m_keepInterpreter)
+            Communicator::the().acquireInterpreter(this);
+         Communicator::the().execute(line);
+         if (!m_keepInterpreter)
+            Communicator::the().releaseInterpreter();
+      }
+
       if (!again) {
          if (m_quitOnEOF) {
             std::cerr << "Quitting..." << std::endl;
             Communicator::the().setQuitFlag();
          }
-         return;
+         break;
       }
-      line = strip(line);
 
-      if (line == "?" || line == "h" || line == "help") {
-         write("Type \"help(vistle)\" for help, \"help()\" for general help\n\n");
-      } else {
-         if (line == "quit")
-            line = "quit()";
-
-         Communicator::the().acquireInterpreter(this);
-         Communicator::the().execute(line);
-         Communicator::the().releaseInterpreter();
-      }
-      printPrompt();
+      if (!m_keepInterpreter)
+         printPrompt();
    }
+
+   if (m_keepInterpreter)
+      Communicator::the().releaseInterpreter();
 }
 
 void InteractiveClient::setQuitOnEOF() {
@@ -330,7 +375,7 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
      m_moduleCounter(0),
      m_activeClient(NULL),
      m_console(InteractiveClient(0, 1)),
-     m_consoleThread(),
+     m_consoleThreadCreated(false),
      m_port(8192),
      serverSocket(-1),
      messageQueue(create_only,
@@ -348,13 +393,6 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
    MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, 0,
              MPI_COMM_WORLD, &request);
    MPI_Barrier(MPI_COMM_WORLD);
-
-   if (rank == 0) {
-      std::cerr << "Creating console thread" << std::endl;
-      m_console.setQuitOnEOF();
-      m_consoleThread = boost::thread(m_console);
-      std::cerr << "Created console thread" << std::endl;
-   }
 }
 
 Communicator &Communicator::the() {
@@ -433,14 +471,14 @@ void Communicator::registerInterpreter(PythonEmbed *pi) {
    interpreter = pi;
 }
 
-void Communicator::setFile(const std::string &filename) {
-
-   m_initialFile = filename;
-}
-
 void Communicator::setInput(const std::string &input) {
 
    m_initialInput = input;
+}
+
+void Communicator::setFile(const std::string &filename) {
+
+   m_initialFile = filename;
 }
 
 void Communicator::setQuitFlag() {
@@ -477,33 +515,36 @@ bool Communicator::dispatch() {
 
       if (!m_initialFile.empty()) {
 
-         acquireInterpreter(&m_console);
-         interpreter->exec_file(m_initialFile);
-         releaseInterpreter();
+         int fd = open(m_initialFile.c_str(), O_RDONLY);
+         if (fd == -1) {
+            std::cerr << "failed to open " << m_initialFile << std::endl;
+         } else {
+            boost::thread(InteractiveClient(fd, 1, true));
+         }
          m_initialFile.clear();
-      }
-
-      if (!m_initialInput.empty()) {
-
-         acquireInterpreter(&m_console);
-         interpreter->exec(m_initialInput);
-         releaseInterpreter();
-         m_initialInput.clear();
+      } else if (!m_consoleThreadCreated) {
+            std::cerr << "Creating console thread" << std::endl;
+            m_console.setQuitOnEOF();
+            m_console.setInput(m_initialInput);
+            m_initialInput.clear();
+            m_consoleThread = boost::thread(m_console);
+            m_consoleThreadCreated = true;
+            std::cerr << "Created console thread" << std::endl;
       }
 
       if (!done)
          done = m_quitFlag;
+
+      if (m_consoleThreadCreated)
+         acceptClients();
    }
-
-   acceptClients();
-
-   int flag;
-   MPI_Status status;
 
    // test for message size from another MPI node
    //    - receive actual message from broadcast
    //    - handle message
    //    - post another MPI receive for size of next message
+   int flag;
+   MPI_Status status;
    MPI_Test(&request, &flag, &status);
 
    if (flag) {
@@ -685,8 +726,15 @@ bool Communicator::handleMessage(const message::Message &message) {
          MPI_Comm_spawn(const_cast<char *>(executable.c_str()), const_cast<char **>(&argv[0]), size, MPI_INFO_NULL,
                         0, MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
 
-         runningMap[moduleID] = spawn.getName();
+         break;
+      }
 
+      case message::Message::STARTED: {
+
+         const message::Started &started =
+            static_cast<const message::Started &>(message);
+         int moduleID = started.getModuleID();
+         runningMap[moduleID] = started.getName();
          break;
       }
 
