@@ -1,4 +1,5 @@
 #include "portmanager.h"
+#include <iostream>
 
 namespace vistle {
 
@@ -136,6 +137,7 @@ void PortManager::removeConnection(const int a, const std::string & na,
    removeConnection(from, to);
 }
 
+//! remove all connections to and from ports to a module
 void PortManager::removeConnections(const int moduleID) {
 
    typedef std::map<std::string, Port *> PortMap;
@@ -151,15 +153,22 @@ void PortManager::removeConnections(const int moduleID) {
          ++it) {
 
       Port *port = it->second;
-      std::map<const Port *, std::vector<const Port *> *>::iterator connlist = connections.find(port);
-      if (connlist != connections.end()) {
+         std::map<const Port *, std::vector<const Port *> *>::iterator connlist = connections.find(port);
+         if (connlist != connections.end()) {
          ConnectionList &cl = *connlist->second;
-         for (ConnectionList::iterator cit = cl.begin();
-               cit != cl.end();
-               ++cit) {
-            const Port *other = *cit;
+         
+         while (!cl.empty()) {
+            size_t oldsize = cl.size();
+            const Port *other = cl.back();
             removeConnection(port, other);
             removeConnection(other, port);
+            if (cl.size() == oldsize) {
+               std::cerr << "failed to remove all connections for module " << moduleID << ", still left: " << cl.size() << std::endl;
+               for (int i=0; i<cl.size(); ++i) {
+                  std::cerr << "   " << port->getModuleID() << ":" << port->getName() << " <--> " << other->getModuleID() << ":" << other->getName() << std::endl;
+               }
+               break;
+            }
          }
       }
    }
