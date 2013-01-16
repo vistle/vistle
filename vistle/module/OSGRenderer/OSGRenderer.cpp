@@ -474,6 +474,8 @@ static void callbackIceT(const IceTDouble * proj, const IceTDouble * mv,
 OSGRenderer::OSGRenderer(const std::string &shmname, int rank, int size, int moduleID)
    : Renderer("OSGRenderer", shmname, rank, size, moduleID), osgViewer::Viewer() {
 
+   addIntParameter("debug", 1);
+
 #ifdef __linux__
    cpu_set_t cpuset;
    CPU_SET(0, &cpuset);
@@ -804,7 +806,7 @@ void OSGRenderer::render() {
    ++framecounter;
    double time = getFrameStamp()->getReferenceTime();
    if (time - laststattime > 3.) {
-      if (!rank())
+      if (!rank() && getIntParameter("debug") >= 2)
          std::cerr << "FPS: " << framecounter/(time-laststattime) << std::endl;
       framecounter = 0;
       laststattime = time;
