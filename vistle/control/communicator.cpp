@@ -1119,6 +1119,19 @@ int Communicator::acceptClients() {
    socklen_t len = sizeof(addr);
    int client = accept(serverSocket, (struct sockaddr *)&addr, &len);
    if (client >= 0) {
+      std::stringstream str;
+      str << "Client connected";
+
+      char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
+      if (!getnameinfo((struct sockaddr *)&addr, len,
+               hbuf, sizeof(hbuf),
+               sbuf, sizeof(sbuf), NI_NUMERICHOST | NI_NUMERICSERV)) {
+
+         str << " from " << hbuf;
+      }
+      str << std::endl;
+      
+      m_console.write(str.str());
       boost::thread(InteractiveClient(client));
    }
 
