@@ -23,9 +23,7 @@ class Geometry: public Object {
    Object::const_ptr normals() const;
    Object::const_ptr texture() const;
 
- protected:
-   struct Data: public Base::Data {
-
+   V_DATA_BEGIN(Geometry);
       boost::interprocess::offset_ptr<Object::Data> geometry;
       boost::interprocess::offset_ptr<Object::Data> colors;
       boost::interprocess::offset_ptr<Object::Data> normals;
@@ -37,15 +35,11 @@ class Geometry: public Object {
       static Data *create(const int block = -1, const int timestep = -1);
 
       private:
-      friend class Geometry;
-      friend class boost::serialization::access;
-      template<class Archive>
-         void serialize(Archive &ar, const unsigned int version);
       template<class Archive>
          void load(Archive &ar, const unsigned int version);
       template<class Archive>
          void save(Archive &ar, const unsigned int version) const;
-   };
+   V_DATA_END(Geometry);
 };
 
 } // namespace vistle

@@ -8,6 +8,15 @@ Geometry::Geometry(Object::const_ptr grid, const int block, const int timestep)
    setGeometry(grid);
 }
 
+Geometry::Data::Data(const Geometry::Data &o, const std::string &n)
+: Geometry::Base::Data(o, n)
+, geometry(o.geometry)
+, colors(o.colors)
+, normals(o.normals)
+, texture(o.texture)
+{
+}
+
 Geometry::Data::Data(const std::string & name,
       const int block, const int timestep)
    : Geometry::Base::Data(Object::GEOMETRY, name, block, timestep)

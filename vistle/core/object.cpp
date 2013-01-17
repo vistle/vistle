@@ -105,18 +105,27 @@ void Object::publish(const Object::Data *d) {
 
 Object::Data::Data(const Type type, const std::string & n, const int b, const int t)
    : type(type)
+   , name(n)
    , refcount(0)
    , block(b)
    , timestep(t)
    , attributes(shm<AttributeMap>::construct(std::string("attr_")+n)(std::less<Key>(), Shm::the().allocator()))
 {
+}
 
-   size_t size = min(n.size(), sizeof(name)-1);
-   n.copy(name, size);
-   name[size] = 0;
+Object::Data::Data(const Object::Data::Data &o, const std::string &name)
+: type(o.type)
+, name(name)
+, refcount(0)
+, block(o.block)
+, timestep(o.timestep)
+, attributes(shm<AttributeMap>::construct(std::string("attr_")+name)(std::less<Key>(), Shm::the().allocator()))
+{
+   copyAttributes(&o, true);
 }
 
 Object::Data::~Data() {
+
 
    shm<AttributeMap>::destroy(std::string("attr_")+name);
 }

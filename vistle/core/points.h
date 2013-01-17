@@ -17,8 +17,7 @@ class Points: public Coords {
 
    size_t getNumPoints() const;
 
-   protected:
-   struct Data: public Base::Data {
+   V_DATA_BEGIN(Points);
 
       Data(const size_t numPoints = 0,
             const std::string & name = "",
@@ -26,12 +25,7 @@ class Points: public Coords {
       static Data *create(const size_t numPoints = 0,
             const int block = -1, const int timestep = -1);
 
-      private:
-      friend class Points;
-      friend class boost::serialization::access;
-      template<class Archive>
-         void serialize(Archive &ar, const unsigned int version);
-   };
+   V_DATA_END(Points);
 };
 
 } // namespace vistle

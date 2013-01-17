@@ -23,8 +23,7 @@ class Texture1D: public Object {
    shm<unsigned char>::vector &pixels() const { return *(*d()->pixels)(); }
    shm<Scalar>::vector &coords() const { return *(*d()->coords)(); }
 
- protected:
-   struct Data: public Base::Data {
+   V_DATA_BEGIN(Texture1D);
       Scalar min;
       Scalar max;
 
@@ -38,12 +37,7 @@ class Texture1D: public Object {
             const Scalar min = 0, const Scalar max = 0,
             const int block = -1, const int timestep = -1);
 
-      private:
-      friend class Texture1D;
-      friend class boost::serialization::access;
-      template<class Archive>
-      void serialize(Archive &ar, const unsigned int version);
-   };
+   V_DATA_END(Texture1D);
 };
 
 } // namespace vistle

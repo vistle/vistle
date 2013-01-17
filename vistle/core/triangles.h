@@ -20,9 +20,7 @@ class Triangles: public Coords {
 
    shm<size_t>::vector &cl() const { return *(*d()->cl)(); }
 
- protected:
-   struct Data: public Base::Data {
-
+   V_DATA_BEGIN(Triangles);
       ShmVector<size_t>::ptr cl;
 
       Data(const size_t numCorners = 0, const size_t numVertices = 0,
@@ -30,13 +28,7 @@ class Triangles: public Coords {
             const int block = -1, const int timestep = -1);
       static Data *create(const size_t numCorners = 0, const size_t numVertices = 0,
             const int block = -1, const int timestep = -1);
-
-      private:
-      friend class Triangles;
-      friend class boost::serialization::access;
-      template<class Archive>
-         void serialize(Archive &ar, const unsigned int version);
-   };
+   V_DATA_END(Triangles);
 };
 
 } // namespace vistle

@@ -42,6 +42,14 @@ Vec<T,Dim>::Data::Data(const size_t size, Type id, const std::string &name,
 }
 
 template <class T, int Dim>
+Vec<T,Dim>::Data::Data(const Data &o, const std::string &n)
+: Vec<T,Dim>::Base::Data(o, n)
+{
+   for (int c=0; c<Dim; ++c)
+      x[c] = o.x[c];
+}
+
+template <class T, int Dim>
 typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::create(size_t size, const int block, const int timestep) {
    std::string name = Shm::the().createObjectID();
    Data *t = shm<Data>::construct(name)(size, name, block, timestep);

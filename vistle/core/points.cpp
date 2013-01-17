@@ -21,6 +21,10 @@ Points::Data::Data(const size_t numPoints,
 {
 }
 
+Points::Data::Data(const Points::Data &o, const std::string &n)
+: Points::Base::Data(o, n)
+{
+}
 
 Points::Data *Points::Data::create(const size_t numPoints,
                       const int block, const int timestep) {

@@ -9,6 +9,15 @@ Texture1D::Texture1D(const size_t width,
 {
 }
 
+Texture1D::Data::Data(const Texture1D::Data &o, const std::string &n)
+: Texture1D::Base::Data(o, n)
+, min(o.min)
+, max(o.max)
+, pixels(o.pixels)
+, coords(o.coords)
+{
+}
+
 Texture1D::Data::Data(const std::string &name, const size_t width,
                      const Scalar mi, const Scalar ma,
                      const int block, const int timestep)

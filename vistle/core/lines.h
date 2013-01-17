@@ -17,22 +17,14 @@ class Lines: public Indexed {
          const size_t numVertices,
          const int block = -1, const int timestep = -1);
 
- protected:
-   struct Data: public Base::Data {
-
+   V_DATA_BEGIN(Lines);
       Data(const size_t numElements = 0, const size_t numCorners = 0,
          const size_t numVertices = 0, const std::string & name = "",
          const int block = -1, const int timestep = -1);
       static Data *create(const size_t numElements = 0, const size_t numCorners = 0,
          const size_t numVertices = 0,
          const int block = -1, const int timestep = -1);
-
-      private:
-      friend class Lines;
-      friend class boost::serialization::access;
-      template<class Archive>
-         void serialize(Archive &ar, const unsigned int version);
-   };
+   V_DATA_END(Lines);
 };
 
 } // namespace vistle

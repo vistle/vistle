@@ -48,6 +48,7 @@ class Vec: public Object {
       // when used as base of another data structure
       Data(const size_t size, Type id, const std::string &name,
             const int block, const int timestep);
+      Data(const Data &other, const std::string &name);
       static Data *create(size_t size = 0, const int block = -1, const int timestep = -1);
 
       private:

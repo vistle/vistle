@@ -34,9 +34,7 @@ class UnstructuredGrid: public Indexed {
 
    shm<unsigned char>::vector &tl() const { return *(*d()->tl)(); }
 
- protected:
-   struct Data: public Base::Data {
-
+   V_DATA_BEGIN(UnstructuredGrid);
       ShmVector<unsigned char>::ptr tl;
 
       Data(const size_t numElements = 0, const size_t numCorners = 0,
@@ -48,12 +46,7 @@ class UnstructuredGrid: public Indexed {
                                     const int block = -1,
                                     const int timestep = -1);
 
-      private:
-      friend class UnstructuredGrid;
-      friend class boost::serialization::access;
-      template<class Archive>
-         void serialize(Archive &ar, const unsigned int version);
-   };
+   V_DATA_END(UnstructuredGrid);
 };
 
 } // namespace vistle

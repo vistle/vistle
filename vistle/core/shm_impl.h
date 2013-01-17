@@ -5,6 +5,32 @@
 
 namespace vistle {
 
+shm_name_t::shm_name_t(const std::string &s) {
+
+   size_t len = s.size();
+   assert(len < sizeof(name));
+   if (len >= sizeof(name))
+      len = sizeof(name)-1;
+   strncpy(name, &s[0], len);
+   name[len] = '\0';
+}
+
+shm_name_t::operator const char *() const {
+   return name;
+}
+
+shm_name_t::operator char *() {
+   return name;
+}
+
+shm_name_t::operator std::string () const {
+   return name;
+}
+
+std::string operator+(const std::string &s, const shm_name_t &n) {
+   return s + n.name;
+}
+
 template<typename T>
 ShmVector<T>::ptr::ptr(ShmVector *p)
 : m_p(p)
@@ -26,7 +52,7 @@ ShmVector<T>::ptr::~ptr() {
 }
 
 template<typename T>
-typename ShmVector<T>::ptr &ShmVector<T>::ptr::operator=(ptr &other) {
+typename ShmVector<T>::ptr &ShmVector<T>::ptr::operator=(const ptr &other) {
    if (m_p)
       m_p->unref();
    m_p = other.m_p;
@@ -56,7 +82,7 @@ ShmVector<T>::ShmVector(size_t size)
    }
    n.copy(m_name, nsize);
    assert(n.size() < sizeof(m_name));
-   m_x = Shm::the().shm().construct<typename shm<T>::vector>(m_name)(size, T(), Shm::the().allocator());
+   m_x = Shm::the().shm().construct<typename shm<T>::vector>((const char *)m_name)(size, T(), Shm::the().allocator());
 #ifdef SHMDEBUG
    shm_handle_t handle = Shm::the().shm().get_handle_from_address(this);
    Shm::the().s_shmdebug->push_back(ShmDebugInfo('V', m_name, handle));

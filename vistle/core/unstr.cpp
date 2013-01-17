@@ -10,6 +10,12 @@ UnstructuredGrid::UnstructuredGrid(const size_t numElements,
 {
 }
 
+UnstructuredGrid::Data::Data(const UnstructuredGrid::Data &o, const std::string &n)
+: UnstructuredGrid::Base::Data(o, n)
+, tl(o.tl)
+{
+}
+
 UnstructuredGrid::Data::Data(const size_t numElements,
                                    const size_t numCorners,
                                    const size_t numVertices,
