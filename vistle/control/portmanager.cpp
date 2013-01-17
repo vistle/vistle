@@ -1,5 +1,6 @@
 #include "portmanager.h"
 #include <iostream>
+#include <algorithm>
 
 namespace vistle {
 
