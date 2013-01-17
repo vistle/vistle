@@ -95,7 +95,9 @@ InteractiveClient::InteractiveClient(int readfd, int writefd, bool keepInterpret
 , m_quitOnEOF(false)
 , m_keepInterpreter(keepInterpreterLock)
 {
+#ifdef DEBUG
    std::cerr << "Client FDs: " << readfd << ", " << writefd << std::endl;
+#endif
    if (readfd != -1)
       set_blocking(readfd, true);
    if (writefd != -1)
@@ -115,7 +117,9 @@ InteractiveClient::InteractiveClient(const InteractiveClient &o)
 InteractiveClient::~InteractiveClient() {
 
    if (m_close) {
+#ifdef DEBUG
       std::cerr << "Closing: " << readfd << ", " << writefd << std::endl;
+#endif
       if (readfd > 2)
          close(readfd);
       if (readfd != writefd && writefd > 2)
@@ -156,7 +160,9 @@ bool InteractiveClient::readline(std::string &line) {
       }
 
       if (n == 0) {
+#ifdef DEBUG
          std::cerr << "socket closed" << std::endl;
+#endif
          result = false;
          break;
       }
@@ -543,13 +549,17 @@ bool Communicator::dispatch() {
          }
          m_initialFile.clear();
       } else if (!m_consoleThreadCreated) {
+#ifdef DEBUG
             std::cerr << "Creating console thread" << std::endl;
+#endif
             m_console.setQuitOnEOF();
             m_console.setInput(m_initialInput);
             m_initialInput.clear();
             m_consoleThread = boost::thread(m_console);
             m_consoleThreadCreated = true;
+#ifdef DEBUG
             std::cerr << "Created console thread" << std::endl;
+#endif
       }
 
       if (!done)
@@ -1018,7 +1028,9 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::BARRIERREACHED: {
          const message::BarrierReached &m =
             static_cast<const message::BarrierReached &>(message);
+#ifdef DEBUG
          CERR << "BarrierReached [barrier " << m.getBarrierId() << ", module " << m.getModuleID() << "]" << std::endl;
+#endif
          if (m_activeBarrier == -1) {
             m_activeBarrier = m.getBarrierId();
          }
