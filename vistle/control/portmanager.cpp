@@ -69,21 +69,20 @@ Port * PortManager::getPort(const int moduleID,
    return NULL;
 }
 
-void PortManager::addConnection(const Port * out, const Port * in) {
+void PortManager::addConnection(const Port *from, const Port *to) {
 
-   if (out->getType() == Port::OUTPUT && in->getType() == Port::INPUT) {
+   if (from->getType() == Port::OUTPUT && to->getType() == Port::INPUT) {
 
-      std::map<const Port *, std::vector<const Port *> *>::iterator outi =
-         connections.find(out);
-
-      std::map<const Port *, std::vector<const Port *> *>::iterator ini =
-         connections.find(in);
-
+      std::map<const Port *, ConnectionList *>::iterator outi =
+         connections.find(from);
       if (outi != connections.end())
-         outi->second->push_back(in);
+         outi->second->push_back(to);
 
+      std::map<const Port *, ConnectionList *>::iterator ini =
+         connections.find(to);
       if (ini != connections.end())
-         ini->second->push_back(in);
+         ini->second->push_back(from);
+
    }
 }
 
