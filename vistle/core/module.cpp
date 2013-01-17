@@ -475,7 +475,12 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          */
          message::Busy busy(id(), rank());
          sendMessage(busy);
-         bool ret = compute();
+         bool ret = false;
+         try {
+            ret = compute();
+         } catch (vistle::exception &e) {
+            std::cerr << name() << ": exception - " << e.what() << std::endl;
+         }
          message::Idle idle(id(), rank());
          sendMessage(idle);
          return ret;
