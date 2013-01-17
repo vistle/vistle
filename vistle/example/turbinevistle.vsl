@@ -15,6 +15,8 @@ setVectorParam(CUTSURF, "normal", 1.0, 0.0, 0.0);
 ISOSURF = spawn("IsoSurface");
 setFloatParam(ISOSURF, "isovalue", -5.0);
 
+EXT = spawn("Extrema");
+
 
 COLOR = spawn("Color");
 COLLECT = spawn("Collect");
@@ -24,14 +26,16 @@ RENDERER = spawn("OSGRenderer");
 #setParam(WRITEARCHIVE, "filename", "turbinevistle.archive");
 #setParam(WRITEARCHIVE, "format", 0); # 0=binary, 1=text, 2=XML
 
+connect(RPRES, "grid_out", EXT, "data_in");
+
 connect(RGEO, "grid_out", CUTGEO, "grid_in");
 connect(CUTGEO, "grid_out", RENDERER, "data_in");
 #connect(CUTGEO, "grid_out", WRITEARCHIVE, "grid_in");
 
 connect(RGRID, "grid_out", CUTSURF, "grid_in");
-connect(RPRES, "grid_out", CUTSURF, "data_in");
+connect(EXT, "data_out", CUTSURF, "data_in");
 connect(RGRID, "grid_out", ISOSURF, "grid_in");
-connect(RPRES, "grid_out", ISOSURF, "data_in");
+connect(EXT, "data_out", ISOSURF, "data_in");
 connect(CUTSURF, "grid_out", COLLECT, "grid_in");
 connect(CUTSURF, "data_out", COLOR, "data_in");
 connect(COLOR, "data_out", COLLECT, "texture_in");
