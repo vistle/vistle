@@ -2,11 +2,12 @@
 #define MESSAGEQUEUE_H
 
 #include <boost/interprocess/ipc/message_queue.hpp>
+#include "vistle.h"
 
 namespace vistle {
 namespace message {
 
-class MessageQueue {
+class VCEXPORT MessageQueue {
 
  public:
    static MessageQueue * create(const std::string & name);

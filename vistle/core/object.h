@@ -2,6 +2,7 @@
 #define OBJECT_H
 
 #include <vector>
+#include "vistle.h"
 
 #include <boost/shared_ptr.hpp>
 
@@ -40,7 +41,7 @@ class Shm;
 #define V_NAME(name, obj) \
    boost::serialization::make_nvp(name, (obj))
 
-class Object {
+class VCEXPORT Object {
    friend class Shm;
    friend class ObjectTypeRegistry;
 #ifdef SHMDEBUG
@@ -163,7 +164,7 @@ public:
    Object &operator=(const Object &);
 };
 
-class ObjectTypeRegistry {
+class VCEXPORT ObjectTypeRegistry {
    friend struct Object::Data;
    friend Object::ptr Object::create(Object::Data *);
    public:

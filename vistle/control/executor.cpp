@@ -7,11 +7,9 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #else
+#include <process.h>
 #include<Winsock2.h>
 #pragma comment(lib, "Ws2_32.lib")
-#define usleep Sleep
-#define close closesocket
-typedef int socklen_t;
 #endif
 
 #include <mpi.h>
@@ -34,6 +32,11 @@ typedef int socklen_t;
 #include "pythonembed.h"
 #include "executor.h"
 
+#ifdef WIN32
+#define usleep Sleep
+#define close closesocket
+typedef int socklen_t;
+#endif
 using namespace boost::interprocess;
 
 namespace vistle {

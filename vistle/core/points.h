@@ -6,7 +6,7 @@
 
 namespace vistle {
 
-class Points: public Coords {
+class  VCEXPORT Points: public Coords {
    V_OBJECT(Points);
 
    public:

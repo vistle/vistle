@@ -1,6 +1,8 @@
 #define __STDC_FORMAT_MACROS
 #include <stdio.h>
+#ifndef _WIN32
 #include <inttypes.h>
+#endif
 
 #include <sstream>
 #include <iomanip>

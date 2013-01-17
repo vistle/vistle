@@ -14,8 +14,11 @@ endif()
 
 add_executable(OSGRenderer OSGRenderer.cpp OSGRenderer_vistle.cpp)
 
+if(WIN32)
+else(WIN32)
 set_source_files_properties(OSGRenderer.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
 set_source_files_properties(OSGRenderer_vistle.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
+endif(WIN32)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

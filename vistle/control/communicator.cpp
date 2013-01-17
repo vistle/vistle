@@ -9,10 +9,8 @@
 #include <unistd.h>
 #else
 #include<Winsock2.h>
+#include <direct.h>
 #pragma comment(lib, "Ws2_32.lib")
-#define usleep Sleep
-#define close closesocket
-typedef int socklen_t;
 #endif
 
 #include <mpi.h>
@@ -34,6 +32,12 @@ typedef int socklen_t;
 
 #include "pythonembed.h"
 #include "communicator.h"
+
+#ifdef _WIN32
+#define usleep Sleep
+#define close closesocket
+typedef int socklen_t;
+#endif
 
 #define CERR \
    std::cerr << "comm [" << rank << "/" << size << "] "
@@ -72,7 +76,11 @@ static void splitpath(const std::string &value, std::vector<std::string> *compon
 
 static std::string getbindir(int argc, char *argv[]) {
 
+#ifdef _WIN32
+   char *wd = _getcwd(NULL, 0);
+#else
    char *wd = getcwd(NULL, 0);
+#endif
    if (!wd) {
 
       std::cerr << "Communicator: failed to determine working directory: " << strerror(errno) << std::endl;
@@ -169,10 +177,18 @@ static std::string getbindir(int argc, char *argv[]) {
 static bool set_blocking(int fd, bool block) {
 
    errno = 0;
+#ifndef _WIN32
    int flags = fcntl(fd, F_GETFL);
    if (errno)
       return false;
-
+#endif
+   
+#ifdef _WIN32
+      unsigned long tru = 0;
+	  if(block == false)
+          tru = 1;
+      return ioctlsocket(fd, FIONBIO, &tru) != -1;
+#else
    if (block) {
       flags &= ~O_NONBLOCK;
    } else {
@@ -180,6 +196,7 @@ static bool set_blocking(int fd, bool block) {
    }
 
    return fcntl(fd, F_SETFL, flags) != -1;
+#endif
 }
 
 Communicator::Communicator(int argc, char *argv[], int r, int s)
@@ -1100,7 +1117,7 @@ int Communicator::checkClients() {
          std::stringstream str;
          str << std::endl;
          str << "Client " << num << " connected";
-
+#ifndef WIN32
          char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
          if (!getnameinfo((struct sockaddr *)&addr, len,
                   hbuf, sizeof(hbuf),
@@ -1108,6 +1125,7 @@ int Communicator::checkClients() {
 
             str << " from " << hbuf;
          }
+#endif
          str << std::endl;
          writeClient(StdInOut, str.str());
          printPrompt(StdInOut);

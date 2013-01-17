@@ -3,10 +3,11 @@
 
 #include <exception>
 #include <string>
+#include "vistle.h"
 
 namespace vistle {
 
-class exception: public std::exception {
+class VCEXPORT exception: public std::exception {
 
    public:
    exception(const std::string &what = "vistle error");

@@ -2,10 +2,11 @@
 #define VECTOR_H
 
 #include "scalar.h"
+#include "vistle.h"
 
 namespace vistle {
 
-class Vector {
+class VCEXPORT Vector {
 public:
    Vector(const Scalar x, const Scalar y, const Scalar z);
    Vector();

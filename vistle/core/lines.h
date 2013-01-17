@@ -7,7 +7,7 @@
 
 namespace vistle {
 
-class Lines: public Indexed {
+class VCEXPORT Lines: public Indexed {
    V_OBJECT(Lines);
 
  public:

@@ -4,6 +4,13 @@
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpl/transform.hpp>
 
+#ifdef _WIN32
+#include <windows.h>
+#ifdef min
+#undef min
+#endif
+#endif
+
 #include <limits.h>
 
 #include "message.h"
@@ -69,7 +76,37 @@ Shm::~Shm() {
 std::string Shm::shmIdFilename() {
 
    std::stringstream name;
+#ifdef _WIN32
+   
+#include <windows.h>
+   
+    DWORD dwRetVal = 0;
+    UINT uRetVal   = 0;
+    TCHAR szTempFileName[MAX_PATH];  
+    TCHAR lpTempPathBuffer[MAX_PATH];
+
+    //  Gets the temp path env string (no guarantee it's a valid path).
+    dwRetVal = GetTempPath(MAX_PATH,          // length of the buffer
+                           lpTempPathBuffer); // buffer for path 
+    if (dwRetVal > MAX_PATH || (dwRetVal == 0))
+    {
+        name << "/tmp/vistle_shmids_";
+    }
+
+    //  Generates a temporary file name. 
+    uRetVal = GetTempFileName(lpTempPathBuffer, // directory for tmp files
+                              TEXT("DEMO"),     // temp file name prefix 
+                              0,                // create unique name 
+                              szTempFileName);  // buffer for name 
+    if (uRetVal == 0)
+    {
+        
+        name << "/tmp/vistle_shmids_";
+    }
+	name << szTempFileName;
+#else
    name << "/tmp/vistle_shmids_" << getuid() << ".txt";
+#endif
    return name.str();
 }
 

@@ -12,6 +12,7 @@
 #include <boost/serialization/array.hpp>
 
 #include "exception.h"
+#include "vistle.h"
 
 //#define SHMDEBUG
 //#define SHMPUBLISH
@@ -25,7 +26,7 @@ namespace message {
    class MessageQueue;
 }
 
-class shm_exception: public exception {
+class VCEXPORT shm_exception: public exception {
    public:
    shm_exception(const std::string &what = "shared memory error") : exception(what) {}
 };
@@ -60,7 +61,7 @@ struct shm {
    static void destroy(const std::string &name);
 };
 
-class Shm {
+class VCEXPORT Shm {
 
  public:
    static Shm & the();
@@ -121,7 +122,7 @@ void shm<T>::destroy(const std::string &name) {
 }
 
 template<typename T>
-class ShmVector {
+class VCEXPORT ShmVector {
 #ifdef SHMDEBUG
    friend void Shm::markAsRemoved(const std::string &name);
 #endif

@@ -8,6 +8,7 @@
 #include <list>
 #include <map>
 #include <exception>
+#include "vistle.h"
 
 #include "vector.h"
 #include "object.h"
@@ -21,7 +22,7 @@ struct Message;
 class MessageQueue;
 }
 
-class Module {
+class VCEXPORT Module {
 
  public:
    Module(const std::string &name, const std::string &shmname,

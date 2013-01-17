@@ -5,6 +5,7 @@
 
 #include "object.h"
 #include "vector.h"
+#include "vistle.h"
 
 namespace vistle {
 
@@ -76,7 +77,7 @@ struct Message {
 };
 
 //! debug: request a reply containing character 'c'
-class Ping: public Message {
+class VCEXPORT Ping: public Message {
 
  public:
    Ping(const int moduleID, const int rank, const char c);
@@ -89,7 +90,7 @@ class Ping: public Message {
 BOOST_STATIC_ASSERT(sizeof(Ping) < Message::MESSAGE_SIZE);
 
 //! debug: reply to pong
-class Pong: public Message {
+class VCEXPORT Pong: public Message {
 
  public:
    Pong(const int moduleID, const int rank, const char c, const int module);
@@ -104,7 +105,7 @@ class Pong: public Message {
 BOOST_STATIC_ASSERT(sizeof(Pong) < Message::MESSAGE_SIZE);
 
 //! spawn a module
-class Spawn: public Message {
+class VCEXPORT Spawn: public Message {
 
  public:
    Spawn(const int moduleID, const int rank, const int spawnID,
@@ -128,7 +129,7 @@ class Spawn: public Message {
 BOOST_STATIC_ASSERT(sizeof(Spawn) < Message::MESSAGE_SIZE);
 
 //! request a module to quit
-class Kill: public Message {
+class VCEXPORT Kill: public Message {
 
  public:
    Kill(const int moduleID, const int rank, const int module);
@@ -142,7 +143,7 @@ class Kill: public Message {
 BOOST_STATIC_ASSERT(sizeof(Kill) < Message::MESSAGE_SIZE);
 
 //! request all modules to quit for terminating the session
-class Quit: public Message {
+class VCEXPORT Quit: public Message {
 
  public:
    Quit(const int moduleID, const int rank);
@@ -151,7 +152,7 @@ class Quit: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Quit) < Message::MESSAGE_SIZE);
 
-class NewObject: public Message {
+class VCEXPORT NewObject: public Message {
 
  public:
    NewObject(const int moduleID, const int rank,
@@ -164,7 +165,7 @@ class NewObject: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(NewObject) < Message::MESSAGE_SIZE);
 
-class ModuleExit: public Message {
+class VCEXPORT ModuleExit: public Message {
 
  public:
    ModuleExit(const int moduleID, const int rank);
@@ -174,7 +175,7 @@ class ModuleExit: public Message {
 BOOST_STATIC_ASSERT(sizeof(ModuleExit) < Message::MESSAGE_SIZE);
 
 //! trigger computation for a module
-class Compute: public Message {
+class VCEXPORT Compute: public Message {
 
  public:
    Compute(const int moduleID, const int rank, const int module);
@@ -187,7 +188,7 @@ class Compute: public Message {
 BOOST_STATIC_ASSERT(sizeof(Compute) < Message::MESSAGE_SIZE);
 
 //! indicate that a module has started computing
-class Busy: public Message {
+class VCEXPORT Busy: public Message {
 
  public:
    Busy(const int moduleID, const int rank);
@@ -197,7 +198,7 @@ class Busy: public Message {
 BOOST_STATIC_ASSERT(sizeof(Busy) < Message::MESSAGE_SIZE);
 
 //! indicate that a module has finished computing
-class Idle: public Message {
+class VCEXPORT Idle: public Message {
 
  public:
    Idle(const int moduleID, const int rank);
@@ -206,7 +207,7 @@ class Idle: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Idle) < Message::MESSAGE_SIZE);
 
-class CreateInputPort: public Message {
+class VCEXPORT CreateInputPort: public Message {
 
  public:
    CreateInputPort(const int moduleID, const int rank,
@@ -219,7 +220,7 @@ class CreateInputPort: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(CreateInputPort) < Message::MESSAGE_SIZE);
 
-class CreateOutputPort: public Message {
+class VCEXPORT CreateOutputPort: public Message {
 
  public:
    CreateOutputPort(const int moduleID, const int rank,
@@ -233,7 +234,7 @@ class CreateOutputPort: public Message {
 BOOST_STATIC_ASSERT(sizeof(CreateOutputPort) < Message::MESSAGE_SIZE);
 
 //! add an object to the input queue of an input port
-class AddObject: public Message {
+class VCEXPORT AddObject: public Message {
 
  public:
    AddObject(const int moduleID, const int rank, const std::string & portName,
@@ -250,7 +251,7 @@ class AddObject: public Message {
 BOOST_STATIC_ASSERT(sizeof(AddObject) < Message::MESSAGE_SIZE);
 
 //! connect an output port to an input port of another module
-class Connect: public Message {
+class VCEXPORT Connect: public Message {
 
  public:
    Connect(const int moduleID, const int rank,
@@ -272,7 +273,7 @@ class Connect: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Connect) < Message::MESSAGE_SIZE);
 
-class AddFileParameter: public Message {
+class VCEXPORT AddFileParameter: public Message {
 
  public:
    AddFileParameter(const int moduleID, const int rank,
@@ -288,7 +289,7 @@ class AddFileParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(AddFileParameter) < Message::MESSAGE_SIZE);
 
-class SetFileParameter: public Message {
+class VCEXPORT SetFileParameter: public Message {
 
  public:
    SetFileParameter(const int moduleID, const int rank, const int module,
@@ -306,7 +307,7 @@ class SetFileParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(SetFileParameter) < Message::MESSAGE_SIZE);
 
-class AddFloatParameter: public Message {
+class VCEXPORT AddFloatParameter: public Message {
 
  public:
    AddFloatParameter(const int moduleID, const int rank,
@@ -321,7 +322,7 @@ class AddFloatParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(AddFloatParameter) < Message::MESSAGE_SIZE);
 
-class SetFloatParameter: public Message {
+class VCEXPORT SetFloatParameter: public Message {
 
  public:
    SetFloatParameter(const int moduleID, const int rank, const int module,
@@ -338,7 +339,7 @@ class SetFloatParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(SetFloatParameter) < Message::MESSAGE_SIZE);
 
-class AddIntParameter: public Message {
+class VCEXPORT AddIntParameter: public Message {
 
  public:
    AddIntParameter(const int moduleID, const int rank,
@@ -353,7 +354,7 @@ class AddIntParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(AddIntParameter) < Message::MESSAGE_SIZE);
 
-class SetIntParameter: public Message {
+class VCEXPORT SetIntParameter: public Message {
 
  public:
    SetIntParameter(const int moduleID, const int rank, const int module,
@@ -370,7 +371,7 @@ class SetIntParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(SetIntParameter) < Message::MESSAGE_SIZE);
 
-class AddVectorParameter: public Message {
+class VCEXPORT AddVectorParameter: public Message {
 
  public:
    AddVectorParameter(const int moduleID, const int rank,
@@ -385,7 +386,7 @@ class AddVectorParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(AddVectorParameter) < Message::MESSAGE_SIZE);
 
-class SetVectorParameter: public Message {
+class VCEXPORT SetVectorParameter: public Message {
 
  public:
    SetVectorParameter(const int moduleID, const int rank, const int module,

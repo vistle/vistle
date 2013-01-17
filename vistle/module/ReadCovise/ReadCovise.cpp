@@ -18,6 +18,10 @@
 #include "points.h"
 #include "unstr.h"
 
+#ifdef _WIN32
+#include <io.h>
+#endif
+
 #include <covReadFiles.h>
 
 #include "ReadCovise.h"
@@ -39,7 +43,7 @@ ReadCovise::~ReadCovise() {
 
 }
 
-static off_t tell(const int fd) {
+static off_t mytell(const int fd) {
 
    return lseek(abs(fd), 0, SEEK_CUR);
 }
@@ -378,7 +382,7 @@ Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *e
       for (size_t i=0; i<ncomp; ++i) {
          Element *e = new Element();
          e->in_geometry = true;
-         e->offset = tell(fd);
+         e->offset = mytell(fd);
          if (contains[i])
             readSkeleton(fd, e);
          elem->subelems.push_back(e);
@@ -423,7 +427,7 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
    }
 
    if (skeleton) {
-      elem->offset = tell(fd);
+      elem->offset = mytell(fd);
    } else {
       seek(fd, elem->offset);
    }

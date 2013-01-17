@@ -8,7 +8,7 @@
 
 namespace vistle {
 
-class Coords: public Vec<Scalar,3> {
+class VCEXPORT Coords: public Vec<Scalar,3> {
    V_OBJECT(Coords);
 
  public:

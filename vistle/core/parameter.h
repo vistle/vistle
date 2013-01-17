@@ -3,10 +3,11 @@
 
 #include <string>
 #include "vector.h"
+#include "vistle.h"
 
 namespace vistle {
 
-class Parameter {
+class VCEXPORT Parameter {
 
  public:
    Parameter(const std::string & name);
@@ -19,7 +20,7 @@ class Parameter {
 };
 
 template<typename T>
-class ParameterBase: public Parameter {
+class VCEXPORT ParameterBase: public Parameter {
 
  public:
    ParameterBase(const std::string & name, T value) : Parameter(name), value(value) {}

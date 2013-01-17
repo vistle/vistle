@@ -8,7 +8,7 @@
 
 namespace vistle {
 
-class Texture1D: public Object {
+class VCEXPORT Texture1D: public Object {
    V_OBJECT(Texture1D);
 
  public:
