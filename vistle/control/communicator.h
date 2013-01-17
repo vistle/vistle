@@ -8,6 +8,7 @@
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/thread/condition_variable.hpp>
 #include <boost/thread.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 
@@ -41,10 +42,11 @@ class InteractiveClient {
       void setQuitOnEOF();
       void setInput(const std::string &input);
 
+      bool write(const std::string &s);
+
    private:
       mutable bool m_close;
       bool readline(std::string &line);
-      bool write(const std::string &s);
       bool printPrompt();
       bool printGreeting();
       int readfd, writefd;
@@ -77,6 +79,9 @@ class Communicator {
 
    void resetModuleCounter();
    int newModuleID();
+   int getBarrierCounter();
+   boost::mutex &barrierMutex();
+   boost::condition_variable &barrierCondition();
    std::vector<int> getRunningList() const;
    std::vector<int> getBusyList() const;
    std::string getModuleName(int id) const;
@@ -89,8 +94,6 @@ class Communicator {
    void acquireInterpreter(InteractiveClient *client);
    void releaseInterpreter();
    bool execute(const std::string &line);
-   void enterCritical();
-   void leaveCritical();
 
  private:
 
@@ -104,11 +107,13 @@ class Communicator {
 
    bool m_quitFlag;
 
-   boost::mutex m_mutex;
+   boost::mutex m_barrierMutex;
+   boost::condition_variable m_barrierCondition;
    int serverSocket;
    int moduleID;
    PythonEmbed *interpreter;
    boost::mutex interpreter_mutex;
+   void barrierReached(int id);
 
    char *mpiReceiveBuffer;
    int mpiMessageSize;
@@ -134,6 +139,10 @@ class Communicator {
 
    PortManager m_portManager;
    int m_moduleCounter;
+   int m_barrierCounter;
+   int m_activeBarrier;
+   int m_reachedBarriers;
+   ModuleSet reachedSet;
 
    InteractiveClient *m_activeClient;
    InteractiveClient m_console;

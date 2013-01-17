@@ -413,6 +413,27 @@ bool SetParameter::apply(Parameter *param) const {
    return true;
 }
 
+Barrier::Barrier(const int moduleID, const int rank, const int id)
+: Message(moduleID, rank, Message::BARRIER, sizeof(Barrier))
+, barrierid(id)
+{
+}
+
+int Barrier::getBarrierId() const {
+
+   return barrierid;
+}
+
+BarrierReached::BarrierReached(const int moduleID, const int rank, const int id)
+: Message(moduleID, rank, Message::BARRIERREACHED, sizeof(BarrierReached))
+, barrierid(id)
+{
+}
+
+int BarrierReached::getBarrierId() const {
+
+   return barrierid;
+}
 
 } // namespace message
 } // namespace vistle

@@ -45,6 +45,8 @@ struct Message {
       PONG,
       BUSY,
       IDLE,
+      BARRIER,
+      BARRIERREACHED,
    };
 
    Message(const int moduleID, const int rank,
@@ -334,6 +336,29 @@ class SetParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(SetParameter) < Message::MESSAGE_SIZE);
 
+class Barrier: public Message {
+
+ public:
+   Barrier(const int moduleID, const int rank, const int id);
+
+   int getBarrierId() const;
+
+ private:
+   const int barrierid;
+};
+BOOST_STATIC_ASSERT(sizeof(Barrier) < Message::MESSAGE_SIZE);
+
+class BarrierReached: public Message {
+
+ public:
+   BarrierReached(const int moduleID, const int rank, const int id);
+
+   int getBarrierId() const;
+
+ private:
+   const int barrierid;
+};
+BOOST_STATIC_ASSERT(sizeof(BarrierReached) < Message::MESSAGE_SIZE);
 } // namespace message
 } // namespace vistle
 

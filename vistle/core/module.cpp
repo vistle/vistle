@@ -512,6 +512,14 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
+      case message::Message::BARRIER: {
+
+         const message::Barrier *barrier =
+            static_cast<const message::Barrier *>(message);
+         sendMessage(message::BarrierReached(id(), rank(), barrier->getBarrierId()));
+         break;
+      }
+
       default:
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
                    << rank() << "/" << size() << "] unknown message type ["

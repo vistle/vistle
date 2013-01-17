@@ -69,6 +69,16 @@ static void ping(char c) {
    PythonEmbed::handleMessage(m);
 }
 
+static int barrier() {
+
+   boost::unique_lock<boost::mutex> lock(Communicator::the().barrierMutex());
+   const int id = Communicator::the().getBarrierCounter();
+   message::Barrier m(0, Communicator::the().getRank(), id);
+   PythonEmbed::handleMessage(m);
+   Communicator::the().barrierCondition().wait(lock);
+   return id;
+}
+
 static int spawn(const char *module, int debugflag=0, int debugrank=0) {
 
 #ifdef DEBUG
@@ -260,6 +270,7 @@ BOOST_PYTHON_MODULE(_vistle)
     def("compute", compute, "trigger execution of module with ID `arg1`");
     def("quit", quit, "quit vistle session");
     def("ping", ping, "send first character of `arg1` to every vistle process");
+    def("barrier", barrier, "wait until all modules reply");
 
     param(Int, setIntParam);
     param(Float, setFloatParam);

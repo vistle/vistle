@@ -137,8 +137,7 @@ def reset():
    mods = getRunning()
    for m in mods:
       kill(m)
-   while getNumRunning() > 0:
-      sleep(0.01)
+   barrier()
    _vistle._resetModuleCounter()
    _loaded_file = None
 

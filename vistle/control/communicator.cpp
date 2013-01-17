@@ -373,6 +373,9 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
      interpreter(NULL),
      mpiReceiveBuffer(NULL), mpiMessageSize(0),
      m_moduleCounter(0),
+     m_barrierCounter(0),
+     m_activeBarrier(-1),
+     m_reachedBarriers(-1),
      m_activeClient(NULL),
      m_console(InteractiveClient(0, 1)),
      m_consoleThreadCreated(false),
@@ -403,16 +406,6 @@ Communicator &Communicator::the() {
    return *s_singleton;
 }
 
-void Communicator::enterCritical() {
-
-   m_mutex.lock();
-}
-
-void Communicator::leaveCritical() {
-
-   m_mutex.unlock();
-}
-
 int Communicator::getRank() const {
 
    return rank;
@@ -432,6 +425,33 @@ int Communicator::newModuleID() {
 void Communicator::resetModuleCounter() {
 
    m_moduleCounter = 0;
+}
+
+int Communicator::getBarrierCounter() {
+
+   ++m_barrierCounter;
+   return m_barrierCounter;
+}
+
+boost::mutex &Communicator::barrierMutex() {
+
+   return m_barrierMutex;
+}
+
+boost::condition_variable &Communicator::barrierCondition() {
+
+   return m_barrierCondition;
+}
+
+void Communicator::barrierReached(int id) {
+
+   assert(id >= 0);
+   MPI_Barrier(MPI_COMM_WORLD);
+   m_reachedBarriers = id;
+   m_activeBarrier = -1;
+   reachedSet.clear();
+   CERR << "Barrier [" << id << "] reached" << std::endl;
+   m_barrierCondition.notify_all();
 }
 
 std::vector<int> Communicator::getRunningList() const {
@@ -558,10 +578,8 @@ bool Communicator::dispatch() {
          printf("[%02d] message from [%02d] message type %d size %d\n",
                 rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
 #endif
-         enterCritical();
          if (!handleMessage(*message))
             done = true;
-         leaveCritical();
 
          MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, 0,
                    MPI_COMM_WORLD, &request);
@@ -578,6 +596,9 @@ bool Communicator::dispatch() {
       for (std::map<int, message::MessageQueue *>::iterator i = receiveMessageQueue.begin();
             i != receiveMessageQueue.end();
             ++i) {
+
+         if (reachedSet.find(i->first) != reachedSet.end())
+            continue;
 
          boost::interprocess::message_queue &mq = i->second->getMessageQueue();
 
@@ -608,10 +629,8 @@ bool Communicator::tryReceiveAndHandleMessage(boost::interprocess::message_queue
             if (!broadcastAndHandleMessage(*(message::Message *)msgRecvBuf))
                done = true;
          } else {
-            enterCritical();
             if (!handleMessage(*(message::Message *)msgRecvBuf))
                done = true;
-            leaveCritical();
          }
          return !done;
       }
@@ -633,10 +652,7 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
    MPI_Bcast(const_cast<message::Message *>(&message), message.size, MPI_BYTE, 0, MPI_COMM_WORLD);
 
-   enterCritical();
-   bool ret = handleMessage(message);
-   leaveCritical();
-   return ret;
+   return handleMessage(message);
 }
 
 
@@ -814,7 +830,19 @@ bool Communicator::handleMessage(const message::Message &message) {
                receiveMessageQueue.erase(i);
             }
          }
+         {
+            ModuleSet::iterator it = busySet.find(mod);
+            if (it != busySet.end())
+               busySet.erase(it);
+         }
+         {
+            ModuleSet::iterator it = reachedSet.find(mod);
+            if (it != reachedSet.end())
+               reachedSet.erase(it);
+         }
          m_portManager.removeConnections(mod);
+         if (m_activeBarrier >= 0 && reachedSet.size() == sendMessageQueue.size())
+            barrierReached(m_activeBarrier);
          break;
       }
 
@@ -967,6 +995,42 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
+      case message::Message::BARRIER: {
+
+         const message::Barrier &m =
+            static_cast<const message::Barrier &>(message);
+
+         CERR << "Barrier [" << m.getBarrierId() << "]" << std::endl;
+         assert(m_activeBarrier == -1);
+         m_activeBarrier = m.getBarrierId();
+         if (sendMessageQueue.empty()) {
+            barrierReached(m_activeBarrier);
+         } else {
+            for (MessageQueueMap::iterator i = sendMessageQueue.begin();
+                  i != sendMessageQueue.end();
+                  ++i) {
+               i->second->getMessageQueue().send(&m, sizeof(m), 0);
+            }
+         }
+         break;
+      }
+
+      case message::Message::BARRIERREACHED: {
+         const message::BarrierReached &m =
+            static_cast<const message::BarrierReached &>(message);
+         CERR << "BarrierReached [barrier " << m.getBarrierId() << ", module " << m.getModuleID() << "]" << std::endl;
+         if (m_activeBarrier == -1) {
+            m_activeBarrier = m.getBarrierId();
+         }
+         assert(m_activeBarrier == m.getBarrierId());
+         reachedSet.insert(m.getModuleID());
+
+         if (reachedSet.size() == receiveMessageQueue.size()) {
+            barrierReached(m_activeBarrier);
+         }
+         break;
+      }
+
       default:
 
          CERR << "unhandled message from (id "
@@ -1053,7 +1117,7 @@ int Communicator::acceptClients() {
 
    struct sockaddr_in addr;
    socklen_t len = sizeof(addr);
-   int client = accept(serverSocket, (struct sockaddr *) &addr, &len);
+   int client = accept(serverSocket, (struct sockaddr *)&addr, &len);
    if (client >= 0) {
       boost::thread(InteractiveClient(client));
    }
