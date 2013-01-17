@@ -806,16 +806,13 @@ bool Communicator::handleMessage(const message::Message &message) {
             static_cast<const message::ModuleExit &>(message);
          int mod = moduleExit.getModuleID();
 
-         CERR << "Module EXIT" << std::endl;
          CERR << " Module [" << mod << "] quit" << std::endl;
 
          {
             ParameterMap::iterator it = parameterMap.find(mod);
             if (it != parameterMap.end()) {
                parameterMap.erase(it);
-               CERR << "removed from param map" << std::endl;
             }
-            CERR << "param map size: " << parameterMap.size() << std::endl;
          }
          { 
             RunningMap::iterator it = runningMap.find(mod);
