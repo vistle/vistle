@@ -2,6 +2,7 @@
 #define PARAMETER_H
 
 #include <string>
+#include <sstream>
 #include "vector.h"
 
 namespace vistle {
@@ -20,6 +21,7 @@ class Parameter {
    Parameter(const std::string & name, Type = Invalid);
    virtual ~Parameter();
 
+   virtual operator std::string() const = 0;
    const std::string & getName() const;
    Type type() const;
 
@@ -44,6 +46,7 @@ class ParameterBase: public Parameter {
    const T getValue() const { return value; }
    void setValue(T value) { this->value = value; }
 
+   operator std::string() const { std::stringstream str; str << value; return str.str(); }
  private:
    T value;
 };
@@ -54,7 +57,7 @@ struct ParameterType<int> {
 };
 
 template<>
-struct ParameterType<Scalar> {
+struct ParameterType<double> {
    static const Parameter::Type type = Parameter::Scalar;
 };
 
@@ -68,7 +71,7 @@ struct ParameterType<std::string> {
    static const Parameter::Type type = Parameter::String;
 };
 
-typedef ParameterBase<Scalar> FloatParameter;
+typedef ParameterBase<double> FloatParameter;
 typedef ParameterBase<int> IntParameter;
 typedef ParameterBase<Vector> VectorParameter;
 typedef ParameterBase<std::string> StringParameter;

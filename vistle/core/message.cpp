@@ -298,9 +298,9 @@ SetParameter::SetParameter(const int moduleID, const int rank, const int module,
       v_scalar = pfloat->getValue();
    } else if (const VectorParameter *pvec = dynamic_cast<const VectorParameter *>(param)) {
       Vector v = pvec->getValue();
-      v_vector[0] = v.x;
-      v_vector[1] = v.y;
-      v_vector[2] = v.z;
+      dim = v.dim;
+      for (int i=0; i<MaxDimension; ++i)
+         v_vector[i] = v[i];
    } else if (const StringParameter *pstring = dynamic_cast<const StringParameter *>(param)) {
       COPY_STRING(v_string, pstring->getValue());
    } else {
@@ -336,9 +336,9 @@ SetParameter::SetParameter(const int moduleID, const int rank, const int module,
 , paramtype(Parameter::Vector) {
 
    COPY_STRING(name, n);
-   v_vector[0] = v.x;
-   v_vector[1] = v.y;
-   v_vector[2] = v.z;
+   dim = v.dim;
+   for (int i=0; i<MaxDimension; ++i)
+      v_vector[i] = v[i];
 }
 
 SetParameter::SetParameter(const int moduleID, const int rank, const int module,
@@ -381,7 +381,7 @@ Scalar SetParameter::getScalar() const {
 Vector SetParameter::getVector() const {
 
    assert(paramtype == Parameter::Vector);
-   return Vector(v_vector[0], v_vector[1], v_vector[2]);
+   return Vector(dim, &v_vector[0]);
 }
 
 std::string SetParameter::getString() const {
@@ -402,7 +402,7 @@ bool SetParameter::apply(Parameter *param) const {
    } else if (FloatParameter *pfloat = dynamic_cast<FloatParameter *>(param)) {
       pfloat->setValue(v_scalar);
    } else if (VectorParameter *pvec = dynamic_cast<VectorParameter *>(param)) {
-      pvec->setValue(Vector(v_vector[0], v_vector[1], v_vector[2]));
+      pvec->setValue(Vector(dim, &v_vector[0]));
    } else if (StringParameter *pstring = dynamic_cast<StringParameter *>(param)) {
       pstring->setValue(v_string);
    } else {

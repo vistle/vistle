@@ -1,33 +1,65 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
+#include <ostream>
 #include "scalar.h"
+#include "dimensions.h"
 
 namespace vistle {
 
-class Vector {
+template<typename S>
+class GenericVector {
 public:
-   Vector(const Scalar x, const Scalar y, const Scalar z);
-   Vector();
+   typedef S Scalar;
+
+   GenericVector(const int dim, const S values[]);
+   GenericVector(const S x, const S y, const S z, const S w);
+   GenericVector(const S x, const S y, const S z);
+   GenericVector(const S x, const S y);
+   GenericVector(const S x);
+   GenericVector();
+   GenericVector(const GenericVector &other);
+
+   GenericVector &operator=(const GenericVector &rhs);
+
+   int dim;
+   S &x, &y, &z, &w;
+   S v[MaxDimension];
 
    // negate
-   Vector operator - () const;
+   GenericVector operator-() const;
 
    // scalar multiplication
-   Vector operator * (Scalar const & rhs) const;
+   GenericVector operator*(S const & rhs) const;
 
    // vector addition
-   Vector operator + (Vector const & rhs) const;
+   GenericVector operator+(GenericVector const & rhs) const;
 
    // vector supstraction
-   Vector operator - (Vector const & rhs) const;
+   GenericVector operator-(GenericVector const & rhs) const;
 
    // scalar product
-   Scalar operator * (Vector const & rhs) const;
+   S operator*(GenericVector const & rhs) const;
 
-   Scalar x, y, z;
+   S &operator[](int i) { return v[i]; }
+   const S &operator[](int i) const { return v[i]; }
+
+   operator S *() { return v; }
+   operator const S *() const { return v; }
+
+   std::string str() const;
 };
+
+typedef GenericVector<Scalar> ScalarVector;
+typedef ScalarVector Vector;
 
 } // namespace vistle
 
+template<typename S>
+std::ostream &operator<<(std::ostream &out, const vistle::GenericVector<S> &v);
+#endif // VECTOR_H
+
+
+#ifdef VISTLE_VECTOR_IMPL
+#include "vector_impl.h"
 #endif

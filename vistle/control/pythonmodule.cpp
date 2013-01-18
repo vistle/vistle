@@ -89,7 +89,7 @@ static int spawn(const char *module, int debugflag=0, int debugrank=0) {
    PythonEmbed::handleMessage(m);
    return id;
 }
-BOOST_PYTHON_FUNCTION_OVERLOADS(spawn_overloads, spawn, 1 , 3)
+BOOST_PYTHON_FUNCTION_OVERLOADS(spawn_overloads, spawn, 1, 3)
 
 static void kill(int id) {
 
@@ -220,13 +220,31 @@ static void setFloatParam(int id, const char *name, double value) {
    PythonEmbed::handleMessage(m);
 }
 
-static void setVectorParam(int id, const char *name, double v1, double v2, double v3) {
+static void setVectorParam4(int id, const char *name, double v1, double v2, double v3, double v4) {
 
-#ifdef DEBUG
-   std::cerr << "Python: setVectorParam " << id << ":" << name << " = " << v1 << " " << v2 << " " << v3 << std::endl;
-#endif
+   message::SetParameter m(0, Communicator::the().getRank(),
+         id, name, Vector(v1, v2, v3, v4));
+   PythonEmbed::handleMessage(m);
+}
+
+static void setVectorParam3(int id, const char *name, double v1, double v2, double v3) {
+
    message::SetParameter m(0, Communicator::the().getRank(),
          id, name, Vector(v1, v2, v3));
+   PythonEmbed::handleMessage(m);
+}
+
+static void setVectorParam2(int id, const char *name, double v1, double v2) {
+
+   message::SetParameter m(0, Communicator::the().getRank(),
+         id, name, Vector(v1, v2));
+   PythonEmbed::handleMessage(m);
+}
+
+static void setVectorParam1(int id, const char *name, double v1) {
+
+   message::SetParameter m(0, Communicator::the().getRank(),
+         id, name, Vector(v1));
    PythonEmbed::handleMessage(m);
 }
 
@@ -275,7 +293,10 @@ BOOST_PYTHON_MODULE(_vistle)
     param(Int, setIntParam);
     param(Float, setFloatParam);
     param(String, setStringParam);
-    param(Vector, setVectorParam);
+    param(Vector, setVectorParam1);
+    param(Vector, setVectorParam2);
+    param(Vector, setVectorParam3);
+    param(Vector, setVectorParam4);
 
     def("getRunning", getRunning, "get list of IDs of running modules");
     def("getBusy", getBusy, "get list of IDs of busy modules");

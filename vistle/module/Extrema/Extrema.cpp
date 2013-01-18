@@ -24,8 +24,7 @@ class Extrema: public vistle::Module {
 
    int dim;
    bool handled;
-   double min[MaxDim], max[MaxDim];
-   double gmin[MaxDim], gmax[MaxDim];
+   Vector min, max, gmin, gmax;
 
    virtual bool compute();
 
@@ -49,7 +48,8 @@ class Extrema: public vistle::Module {
             return;
 
          module->handled = true;
-         module->dim = Dim;
+         module->min.dim = Dim;
+         module->max.dim = Dim;
 
          size_t size = in->getSize();
          for (unsigned int index = 0; index < size; index ++) {
@@ -93,6 +93,7 @@ Extrema::~Extrema() {
 
 bool Extrema::compute() {
 
+   dim = -1;
    for (int c=0; c<MaxDim; ++c) {
       gmin[c] =  std::numeric_limits<double>::max();
       gmax[c] = -std::numeric_limits<double>::max();
@@ -100,7 +101,6 @@ bool Extrema::compute() {
 
    while(Object::const_ptr obj = takeFirstObject("data_in")) {
       handled = false;
-      dim = -1;
 
       for (int c=0; c<MaxDim; ++c) {
          min[c] =  std::numeric_limits<double>::max();
@@ -117,22 +117,20 @@ bool Extrema::compute() {
          throw(vistle::exception(error));
       }
 
+      if (dim == -1) {
+         dim = min.dim;
+         gmin.dim = dim;
+         gmax.dim = dim;
+      } else if (dim != min.dim) {
+         std::string error("input dimensions not equal");
+         std::cerr << "Extrema: " << error << std::endl;
+         throw(vistle::exception(error));
+      }
+
       Object::ptr out = obj->clone();
-      std::stringstream smin;
-      for (int c=0; c<dim; ++c) {
-         if (c > 0)
-            smin << " ";
-         smin << min[c];
-      }
-      out->addAttribute("min", smin.str());
-      std::stringstream smax;
-      for (int c=0; c<dim; ++c) {
-         if (c > 0)
-            smax << " ";
-         smax << max[c];
-      }
-      out->addAttribute("max", smax.str());
-      std::cerr << "Extrema: min " << smin.str() << ", max " << smax.str() << std::endl;
+      out->addAttribute("min", min.str());
+      out->addAttribute("max", max.str());
+      std::cerr << "Extrema: min " << min << ", max " << max << std::endl;
 
       addObject("data_out", out);
 
@@ -148,8 +146,8 @@ bool Extrema::compute() {
       }
    }
 
-   setVectorParameter("min", Vector(gmin[0], gmin[1], gmin[2]));
-   setVectorParameter("max", Vector(gmax[0], gmax[1], gmax[2]));
+   setVectorParameter("min", gmin);
+   setVectorParameter("max", gmax);
 
    return true;
 }

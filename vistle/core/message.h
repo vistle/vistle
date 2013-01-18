@@ -327,10 +327,11 @@ class SetParameter: public Message {
       const int module;
       param_name_t name;
       int paramtype;
+      int dim;
       union {
          int v_int;
          Scalar v_scalar;
-         Scalar v_vector[4];
+         Scalar v_vector[MaxDimension];
          param_value_t v_string;
       };
 };

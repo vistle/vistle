@@ -1,17 +1,12 @@
 #ifndef VEC_H
 #define VEC_H
 
-#include <boost/mpl/vector.hpp>
-#include <boost/mpl/vector_c.hpp>
-#include <boost/mpl/find.hpp>
-
 #include "scalar.h"
+#include "dimensions.h"
 #include "shm.h"
 #include "object.h"
 
 namespace vistle {
-
-typedef boost::mpl::vector_c<int, 1, 2, 3, 4> Dimensions;
 
 template <typename T, int Dim=1>
 class Vec: public Object {
