@@ -8,6 +8,8 @@
 
 MODULE_MAIN(CutGeometry)
 
+using namespace vistle;
+
 CutGeometry::CutGeometry(const std::string &shmname, int rank, int size, int moduleID)
    : Module("CutGeometry", shmname, rank, size, moduleID) {
 
@@ -19,49 +21,30 @@ CutGeometry::~CutGeometry() {
 
 }
 
-vistle::Object::ptr CutGeometry::cutGeometry(vistle::Object::const_ptr object,
-                                          const vistle::Vector & point,
-                                          const vistle::Vector & normal) const {
+Object::ptr CutGeometry::cutGeometry(Object::const_ptr object,
+                                          const Vector & point,
+                                          const Vector & normal) const {
 
    if (!object)
-      return vistle::Object::ptr();
+      return Object::ptr();
 
    switch (object->getType()) {
 
-#if 0
-      case vistle::Object::SET: {
-         vistle::Set::const_ptr in = boost::static_pointer_cast<const vistle::Set>(object);
-         vistle::Set::ptr out(new vistle::Set);
-         out->setBlock(in->getBlock());
-         out->setTimestep(in->getTimestep());
-
-         for (size_t index = 0; index < in->getNumElements(); index ++) {
-
-            vistle::Object::ptr o = cutGeometry(in->getElement(index),
-                  point, normal);
-            if (o)
-               out->addElement(o);
-         }
-         return out;
-         break;
-      }
-#endif
-
-      case vistle::Object::POLYGONS: {
+      case Object::POLYGONS: {
 
          // mapping between vertex indices in the incoming object and
          // vertex indices in the outgoing object
          std::vector<int> vertexMap;
 
-         vistle::Polygons::const_ptr in =
-            boost::static_pointer_cast<const vistle::Polygons>(object);
-         vistle::Polygons::ptr out(new vistle::Polygons(vistle::Object::Initialized));
+         Polygons::const_ptr in =
+            boost::static_pointer_cast<const Polygons>(object);
+         Polygons::ptr out(new Polygons(Object::Initialized));
 
          const size_t *el = &in->el()[0];
          const size_t *cl = &in->cl()[0];
-         const vistle::Scalar *x = &in->x()[0];
-         const vistle::Scalar *y = &in->y()[0];
-         const vistle::Scalar *z = &in->z()[0];
+         const Scalar *x = &in->x()[0];
+         const Scalar *y = &in->y()[0];
+         const Scalar *z = &in->z()[0];
 
          size_t numElements = in->getNumElements();
          for (size_t element = 0; element < numElements; element ++) {
@@ -76,7 +59,7 @@ vistle::Object::ptr CutGeometry::cutGeometry(vistle::Object::const_ptr object,
             size_t numIn = 0;
 
             for (size_t corner = start; corner <= end; corner ++) {
-               vistle::Vector p(x[cl[corner]],
+               Vector p(x[cl[corner]],
                      y[cl[corner]],
                      z[cl[corner]]);
                if ((p - point) * normal < 0)
@@ -124,12 +107,12 @@ vistle::Object::ptr CutGeometry::cutGeometry(vistle::Object::const_ptr object,
 
                   size_t vertexID = cl[corner];
 
-                  vistle::Vector p(x[cl[corner]],
+                  Vector p(x[cl[corner]],
                         y[cl[corner]],
                         z[cl[corner]]);
 
                   size_t former = (corner == start) ? end : corner - 1;
-                  vistle::Vector pl(x[cl[former]],
+                  Vector pl(x[cl[former]],
                         y[cl[former]],
                         z[cl[former]]);
 
@@ -138,9 +121,9 @@ vistle::Object::ptr CutGeometry::cutGeometry(vistle::Object::const_ptr object,
                         ((p - point) * normal >= 0 &&
                          (pl - point) * normal < 0)) {
 
-                     vistle::Scalar s = (normal * (point - p)) /
+                     Scalar s = (normal * (point - p)) /
                         (normal * (pl - p));
-                     vistle::Vector pp = p + (pl - p) * s;
+                     Vector pp = p + (pl - p) * s;
 
                      size_t outID = out->x().size();
                      out->x().push_back(pp.x);
@@ -178,17 +161,17 @@ vistle::Object::ptr CutGeometry::cutGeometry(vistle::Object::const_ptr object,
       default:
          break;
    }
-   return vistle::Object::ptr();
+   return Object::ptr();
 }
 
 bool CutGeometry::compute() {
 
-   vistle::Vector point(0.0, 0.0, 0.0);
-   vistle::Vector normal(1.0, 0.0, 0.0);
+   Vector point(0.0, 0.0, 0.0);
+   Vector normal(1.0, 0.0, 0.0);
 
-   while(vistle::Object::const_ptr oin = takeFirstObject("grid_in")) {
+   while(Object::const_ptr oin = takeFirstObject("grid_in")) {
 
-      vistle::Object::ptr object = cutGeometry(oin, point, normal);
+      Object::ptr object = cutGeometry(oin, point, normal);
       if (object) {
          object->copyAttributes(oin);
          addObject("grid_out", object);
