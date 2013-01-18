@@ -109,6 +109,15 @@ def showParameters(id):
    for p in params:
       print p, "\t", getParameterType(id, p), "\t", getParameter(id, p)
 
+def showAllParameters():
+   mods = getRunning()
+   print "id\tmodule\tname\ttype\tvalue"
+   for m in mods:
+      name = getModuleName(m)
+      params = getParameters(m)
+      for p in params:
+          print m, "\t", name, "\t", p, "\t", getParameterType(m, p), "\t", getParameter(m, p)
+
 def save(filename = None):
    global _loaded_file
    if filename == None:
