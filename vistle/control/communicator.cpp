@@ -1194,7 +1194,9 @@ int Communicator::acceptClients() {
       }
       listen(serverSocket, 0);
       set_blocking(serverSocket, false);
-
+      std::stringstream str;
+      str << "Listening for your commands on port " << m_port << std::endl;
+      m_console.write(str.str());
    }
 
    if (serverSocket == -1)
@@ -1204,19 +1206,17 @@ int Communicator::acceptClients() {
    socklen_t len = sizeof(addr);
    int client = accept(serverSocket, (struct sockaddr *)&addr, &len);
    if (client >= 0) {
-      std::stringstream str;
-      str << "Client connected";
+      std::cerr << "Client connected";
 
       char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
       if (!getnameinfo((struct sockaddr *)&addr, len,
                hbuf, sizeof(hbuf),
                sbuf, sizeof(sbuf), NI_NUMERICHOST | NI_NUMERICSERV)) {
 
-         str << " from " << hbuf;
+         std::cerr << " from " << hbuf;
       }
-      str << std::endl;
-      
-      m_console.write(str.str());
+      std::cerr << std::endl;
+
       boost::thread(InteractiveClient(client));
    }
 
