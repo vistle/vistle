@@ -35,6 +35,12 @@ typedef int socklen_t;
 #include <core/object.h>
 #include <core/shm.h>
 
+#ifdef HAVE_READLINE
+#include <cstdio>
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
+
 #include "pythonembed.h"
 #include "communicator.h"
 
@@ -88,12 +94,39 @@ static bool set_blocking(int fd, bool block) {
    return fcntl(fd, F_SETFL, flags) != -1;
 }
 
+static std::string history_file() {
+   std::string history;
+   if (getenv("HOME")) {
+      history = getenv("HOME");
+      history += "/";
+   }
+   history += ".vistle_history";
+   return history;
+}
+
+InteractiveClient::InteractiveClient()
+: m_close(false)
+, readfd(0)
+, writefd(1)
+, m_quitOnEOF(true)
+, m_useReadline(true)
+{
+#ifdef DEBUG
+   std::cerr << "Using readline" << std::endl;
+#endif
+#ifdef HAVE_READLINE
+   using_history();
+   read_history(history_file().c_str());
+#endif
+}
+
 InteractiveClient::InteractiveClient(int readfd, int writefd, bool keepInterpreterLock)
 : m_close(true)
 , readfd(readfd)
 , writefd(writefd >= 0 ? writefd : readfd)
 , m_quitOnEOF(false)
 , m_keepInterpreter(keepInterpreterLock)
+, m_useReadline(false)
 {
 #ifdef DEBUG
    std::cerr << "Client FDs: " << readfd << ", " << writefd << std::endl;
@@ -110,12 +143,19 @@ InteractiveClient::InteractiveClient(const InteractiveClient &o)
 , writefd(o.writefd >= 0 ? o.writefd : o.readfd)
 , m_quitOnEOF(o.m_quitOnEOF)
 , m_keepInterpreter(o.m_keepInterpreter)
+, m_useReadline(o.m_useReadline)
 {
    o.m_close = false;
 }
 
 InteractiveClient::~InteractiveClient() {
 
+   if (m_useReadline) {
+#ifdef HAVE_READLINE
+      write_history(history_file().c_str());
+      //append_history(::history_length, history_file().c_str());
+#endif
+   }
    if (m_close) {
 #ifdef DEBUG
       std::cerr << "Closing: " << readfd << ", " << writefd << std::endl;
@@ -137,48 +177,63 @@ bool InteractiveClient::readline(std::string &line) {
    const size_t rsize = 1024;
    bool result = true;
 
-   std::vector<char>::iterator lf = find_linefeed(readbuf);
-   while (lf == readbuf.end()) {
-
-      if (readfd == -1) {
+   if (m_useReadline) {
+#ifdef HAVE_READLINE
+      char *l= ::readline("vistle> ");
+      if (l) {
+         line = l;
+         if (!line.empty())
+            add_history(l);
+         free(l);
+      } else {
+         line.clear();
          result = false;
-         break;
       }
-
-      ssize_t nvalid = readbuf.size();
-      readbuf.resize(nvalid + rsize);
-      ssize_t n = read(readfd, &readbuf[nvalid], rsize);
-      if (n == -1) {
-         if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
-            std::cerr << "socket error: " << strerror(errno) << std::endl;
-            return false;
-         }
-      }
-
-      if (n >= 0) {
-         readbuf.resize(nvalid+n);
-      }
-
-      if (n == 0) {
-#ifdef DEBUG
-         std::cerr << "socket closed" << std::endl;
 #endif
-         result = false;
-         break;
+   } else {
+      std::vector<char>::iterator lf = find_linefeed(readbuf);
+      while (lf == readbuf.end()) {
+
+         if (readfd == -1) {
+            result = false;
+            break;
+         }
+
+         ssize_t nvalid = readbuf.size();
+         readbuf.resize(nvalid + rsize);
+         ssize_t n = read(readfd, &readbuf[nvalid], rsize);
+         if (n == -1) {
+            if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
+               std::cerr << "socket error: " << strerror(errno) << std::endl;
+               return false;
+            }
+         }
+
+         if (n >= 0) {
+            readbuf.resize(nvalid+n);
+         }
+
+         if (n == 0) {
+#ifdef DEBUG
+            std::cerr << "socket closed" << std::endl;
+#endif
+            result = false;
+            break;
+         }
+
+         lf = find_linefeed(readbuf);
       }
 
       lf = find_linefeed(readbuf);
-   }
-
-   lf = find_linefeed(readbuf);
-   if (lf == readbuf.end()) {
-      line = std::string(readbuf.begin(), readbuf.end());
-      readbuf.clear();
-   } else {
-      if (*lf == '\r' && lf+1 < readbuf.end() && *(lf+1) == '\n')
-         ++lf;
-      line = std::string(readbuf.begin(), lf+1);
-      readbuf.erase(readbuf.begin(), lf+1);
+      if (lf == readbuf.end()) {
+         line = std::string(readbuf.begin(), readbuf.end());
+         readbuf.clear();
+      } else {
+         if (*lf == '\r' && lf+1 < readbuf.end() && *(lf+1) == '\n')
+            ++lf;
+         line = std::string(readbuf.begin(), lf+1);
+         readbuf.erase(readbuf.begin(), lf+1);
+      }
    }
 
    return result;
@@ -238,6 +293,9 @@ bool InteractiveClient::write(const std::string &str) {
 }
 
 bool InteractiveClient::printPrompt() {
+
+   if (m_useReadline)
+      return true;
 
    return write("vistle> ");
 }
@@ -383,7 +441,11 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
      m_activeBarrier(-1),
      m_reachedBarriers(-1),
      m_activeClient(NULL),
+#ifdef HAVE_READLINE
+     m_console(InteractiveClient()),
+#else
      m_console(InteractiveClient(0, 1)),
+#endif
      m_consoleThreadCreated(false),
      m_port(8192),
      serverSocket(-1),

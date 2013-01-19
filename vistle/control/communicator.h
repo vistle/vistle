@@ -33,6 +33,7 @@ class InteractiveClient {
    friend class PythonEmbed;
 
    public:
+      InteractiveClient();
       InteractiveClient(int readfd, int writefd=-1 /* same as readfd */, bool keepInterpreterLock=false);
       InteractiveClient(const InteractiveClient &o);
       ~InteractiveClient();
@@ -53,6 +54,7 @@ class InteractiveClient {
       std::vector<char> readbuf;
       bool m_quitOnEOF;
       bool m_keepInterpreter;
+      bool m_useReadline;
 };
 
 class Communicator {
