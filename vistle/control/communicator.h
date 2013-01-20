@@ -47,7 +47,7 @@ class InteractiveClient {
 
    private:
       mutable bool m_close;
-      bool readline(std::string &line);
+      bool readline(std::string &line, bool vistle=true);
       bool printPrompt();
       bool printGreeting();
       int readfd, writefd;

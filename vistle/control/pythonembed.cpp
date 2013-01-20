@@ -201,7 +201,7 @@ std::string PythonEmbed::readline() {
    InteractiveClient *c = comm.activeClient();
    std::string line;
    if (c)
-      c->readline(line);
+      c->readline(line, false);
 
    return line;
 }
@@ -220,8 +220,10 @@ void PythonEmbed::print_error(const std::string &str) {
    //std::cerr << "ERR: " << str << std::endl;
    Communicator &comm = Communicator::the();
    InteractiveClient *c = comm.activeClient();
-   if (c)
+   if (c && c->writefd != 1)
       c->write(str);
+   else
+      std::cerr << str;
 }
 
 void PythonEmbed::handleMessage(const message::Message &message) {

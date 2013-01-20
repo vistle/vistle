@@ -186,17 +186,17 @@ void InteractiveClient::setInput(const std::string &input) {
    std::copy (input.begin(), input.end(), std::back_inserter(readbuf));
 }
 
-bool InteractiveClient::readline(std::string &line) {
+bool InteractiveClient::readline(std::string &line, bool vistle) {
 
    const size_t rsize = 1024;
    bool result = true;
 
    if (m_useReadline) {
 #ifdef HAVE_READLINE
-      char *l= ::readline("vistle> ");
+      char *l= ::readline(vistle ? "vistle> " : "");
       if (l) {
          line = l;
-         if (!line.empty())
+         if (vistle && !line.empty())
             add_history(l);
          free(l);
       } else {
@@ -263,7 +263,7 @@ void InteractiveClient::operator()() {
 
    for (;;) {
       std::string line;
-      bool again = readline(line);
+      bool again = readline(line, !m_keepInterpreter);
 
       line = strip(line);
       if (line == "?" || line == "h" || line == "help") {
@@ -286,7 +286,6 @@ void InteractiveClient::operator()() {
          }
          break;
       }
-
       if (!m_keepInterpreter)
          printPrompt();
    }
