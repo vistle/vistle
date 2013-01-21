@@ -478,7 +478,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          bool ret = false;
          try {
             ret = compute();
-         } catch (vistle::exception &e) {
+         } catch (std::exception &e) {
             std::cerr << name() << ": exception - " << e.what() << std::endl;
          }
          message::Idle idle(id(), rank());
