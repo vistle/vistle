@@ -196,8 +196,10 @@ bool InteractiveClient::readline(std::string &line, bool vistle) {
       char *l= ::readline(vistle ? "vistle> " : "");
       if (l) {
          line = l;
-         if (vistle && !line.empty())
+         if (vistle && !line.empty() && lastline != line) {
+            lastline = line;
             add_history(l);
+         }
          free(l);
       } else {
          line.clear();

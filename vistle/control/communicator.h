@@ -55,6 +55,7 @@ class InteractiveClient {
       bool m_quitOnEOF;
       bool m_keepInterpreter;
       bool m_useReadline;
+      std::string lastline;
 };
 
 class Communicator {
