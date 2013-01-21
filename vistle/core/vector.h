@@ -6,6 +6,7 @@
 #include "scalar.h"
 #include "vistle.h"
 #include "dimensions.h"
+#include "exception.h"
 
 namespace vistle {
 
@@ -59,15 +60,21 @@ public:
    typedef ssize_t difference_type;
    size_t size() { return dim; }
    typedef typename std::vector<S>::iterator iterator;
-   void erase(iterator s) { v.erase(s); }
-   void erase(iterator s, iterator e) { v.erase(s, e); }
+   void erase(iterator s) { throw except::not_implemented(); v.erase(s); }
+   void erase(iterator s, iterator e) { throw except::not_implemented(); v.erase(s, e); }
    iterator begin() { return v.begin(); }
-   iterator end() { return v.end(); }
-   void insert(iterator pos, const S &value) { v.insert(pos, value); }
+   iterator end() { return v.begin()+dim; }
+   void insert(iterator pos, const S &value) { throw except::not_implemented(); v.insert(pos, value); }
    template<class InputIt>
-   void insert(iterator pos, InputIt first, InputIt last) { v.insert(pos, first, last); }
+   void insert(iterator pos, InputIt first, InputIt last) { throw except::not_implemented(); v.insert(pos, first, last); }
    ParameterVector(iterator begin, iterator end);
-   void push_back(const S &value) { v.push_back(value); }
+   void push_back(const S &value) {
+      if (dim >= MaxDimension) {
+         throw vistle::exception("out of range");
+      }
+      v[dim] = value;
+      ++dim;
+   }
 };
 
 typedef ParameterVector<Scalar> ScalarVector;

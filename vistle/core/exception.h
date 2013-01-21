@@ -7,6 +7,8 @@
 
 namespace vistle {
 
+namespace except {
+
 class VCEXPORT exception: public std::exception {
 
    public:
@@ -18,6 +20,16 @@ class VCEXPORT exception: public std::exception {
    private:
    std::string m_what;
 };
+
+class VCEXPORT not_implemented: public exception {
+
+   public:
+   not_implemented(const std::string &what = "not implemented");
+};
+
+} // namespace exception
+
+using except::exception;
 
 } // namespace vistle
 #endif
