@@ -298,6 +298,8 @@ struct archive_instantiator {
       typedef ShmVector<S> V;
       typename V::ptr p(new V);
       typename V::ptr q;
+      const typename V::ptr c = p;
+      q = c;
       q = new V();
       typedef T Archive;
       Stream stream;

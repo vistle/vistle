@@ -11,7 +11,7 @@ namespace vistle {
 class Port {
 
  public:
-   enum Type { INPUT = 1, OUTPUT = 2 };
+   enum Type { ANY = 0, INPUT = 1, OUTPUT = 2 };
 
    Port(int moduleID, const std::string &name, const Port::Type type);
    int getModuleID() const;
@@ -36,12 +36,24 @@ class PortManager {
    void addConnection(const int a, const std::string & na,
                       const int b, const std::string & nb);
 
-   const std::vector<const Port *> * getConnectionList(const Port * port) const;
-   const std::vector<const Port *> * getConnectionList(const int moduleID,
+   void removeConnection(const Port *from, const Port *to);
+   void removeConnection(const int a, const std::string & na,
+                         const int b, const std::string & nb);
+
+   void removeConnections(const int moduleID);
+
+   typedef std::vector<const Port *> ConnectionList;
+
+   const ConnectionList *getConnectionList(const Port * port) const;
+   const ConnectionList *getConnectionList(const int moduleID,
                                                        const std::string & name)
       const;
 
    Port * getPort(const int moduleID, const std::string & name) const;
+
+   std::vector<std::string> getPortNames(const int moduleID, Port::Type type) const;
+   std::vector<std::string> getInputPortNames(const int moduleID) const;
+   std::vector<std::string> getOutputPortNames(const int moduleID) const;
 
  private:
 

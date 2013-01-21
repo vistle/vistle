@@ -1,5 +1,6 @@
 #include "message.h"
 #include "shm.h"
+#include "parameter.h"
 
 namespace vistle {
 namespace message {
@@ -75,7 +76,7 @@ Spawn::Spawn(const int moduleID, const int rank, const int s,
    , debugRank(debugRank)
 {
 
-      COPY_STRING(name, n);
+   COPY_STRING(name, n);
 }
 
 int Spawn::getSpawnID() const {
@@ -84,6 +85,18 @@ int Spawn::getSpawnID() const {
 }
 
 const char * Spawn::getName() const {
+
+   return name;
+}
+
+Started::Started(const int moduleID, const int rank, const std::string &n)
+: Message(moduleID, rank, Message::STARTED, sizeof(Started))
+{
+
+   COPY_STRING(name, n);
+}
+
+const char * Started::getName() const {
 
    return name;
 }
@@ -229,180 +242,198 @@ int Connect::getModuleB() const {
    return moduleB;
 }
 
-AddFileParameter::AddFileParameter(const int moduleID, const int rank,
-                                   const std::string & n,
-                                   const std::string & v)
-   : Message(moduleID, rank, Message::ADDFILEPARAMETER,
-             sizeof(AddFileParameter)) {
+AddParameter::AddParameter(const int moduleID, const int rank,
+      const std::string &n, int t)
+: Message(moduleID, rank, Message::ADDPARAMETER, sizeof(AddParameter))
+, paramtype(t) {
 
-      COPY_STRING(name, n);
-      COPY_STRING(value, v);
+   assert(paramtype > Parameter::Unknown);
+   assert(paramtype < Parameter::Invalid);
+
+   COPY_STRING(name, n);
 }
 
-const char * AddFileParameter::getName() const {
+const char *AddParameter::getName() const {
 
    return name;
 }
 
-const char * AddFileParameter::getValue() const {
+int AddParameter::getParameterType() const {
 
-   return value;
+   return paramtype;
 }
 
-SetFileParameter::SetFileParameter(const int moduleID, const int rank,
-                                   const int m, const std::string & n,
-                                   const std::string & v)
-   : Message(moduleID, rank, Message::SETFILEPARAMETER,
-             sizeof(SetFileParameter)), module(m) {
+Parameter *AddParameter::getParameter() const {
 
-      COPY_STRING(name, n);
-      COPY_STRING(value, v);
+   switch (getParameterType()) {
+      case Parameter::Integer:
+         return new IntParameter(getName());
+      case Parameter::Scalar:
+         return new FloatParameter(getName());
+      case Parameter::Vector:
+         return new VectorParameter(getName());
+      case Parameter::String:
+         return new StringParameter(getName());
+      case Parameter::Invalid:
+      case Parameter::Unknown:
+         break;
+   }
+
+   std::cerr << "AddParameter::getParameter: type " << getType() << " not handled" << std::endl;
+   assert("parameter type not supported" == 0);
+
+   return NULL;
 }
 
-int SetFileParameter::getModule() const {
+SetParameter::SetParameter(const int moduleID, const int rank, const int module,
+      const std::string &n, const Parameter *param)
+: Message(moduleID, rank, Message::SETPARAMETER, sizeof(SetParameter))
+, module(module)
+, paramtype(param->type()) {
+
+   COPY_STRING(name, n);
+   if (const IntParameter *pint = dynamic_cast<const IntParameter *>(param)) {
+      v_int = pint->getValue();
+   } else if (const FloatParameter *pfloat = dynamic_cast<const FloatParameter *>(param)) {
+      v_scalar = pfloat->getValue();
+   } else if (const VectorParameter *pvec = dynamic_cast<const VectorParameter *>(param)) {
+      Vector v = pvec->getValue();
+      dim = v.dim;
+      for (int i=0; i<MaxDimension; ++i)
+         v_vector[i] = v[i];
+   } else if (const StringParameter *pstring = dynamic_cast<const StringParameter *>(param)) {
+      COPY_STRING(v_string, pstring->getValue());
+   } else {
+      std::cerr << "SetParameter: type " << param->type() << " not handled" << std::endl;
+      assert("invalid parameter type" == 0);
+   }
+}
+
+SetParameter::SetParameter(const int moduleID, const int rank, const int module,
+      const std::string &n, const int v)
+: Message(moduleID, rank, Message::SETPARAMETER, sizeof(SetParameter))
+, module(module)
+, paramtype(Parameter::Integer) {
+
+   COPY_STRING(name, n);
+   v_int = v;
+}
+
+SetParameter::SetParameter(const int moduleID, const int rank, const int module,
+      const std::string &n, const Scalar v)
+: Message(moduleID, rank, Message::SETPARAMETER, sizeof(SetParameter))
+, module(module)
+, paramtype(Parameter::Scalar) {
+
+   COPY_STRING(name, n);
+   v_scalar = v;
+}
+
+SetParameter::SetParameter(const int moduleID, const int rank, const int module,
+      const std::string &n, const Vector v)
+: Message(moduleID, rank, Message::SETPARAMETER, sizeof(SetParameter))
+, module(module)
+, paramtype(Parameter::Vector) {
+
+   COPY_STRING(name, n);
+   dim = v.dim;
+   for (int i=0; i<MaxDimension; ++i)
+      v_vector[i] = v[i];
+}
+
+SetParameter::SetParameter(const int moduleID, const int rank, const int module,
+      const std::string &n, const std::string &v)
+: Message(moduleID, rank, Message::SETPARAMETER, sizeof(SetParameter))
+, module(module)
+, paramtype(Parameter::String) {
+
+   COPY_STRING(name, n);
+   COPY_STRING(v_string, v);
+}
+
+const char *SetParameter::getName() const {
+
+   return name;
+}
+
+int SetParameter::getModule() const {
 
    return module;
 }
 
-const char * SetFileParameter::getName() const {
+int SetParameter::getParameterType() const {
 
-   return name;
+   return paramtype;
 }
 
-const char * SetFileParameter::getValue() const {
+int SetParameter::getInteger() const {
 
-   return value;
+   assert(paramtype == Parameter::Integer);
+   return v_int;
 }
 
-AddFloatParameter::AddFloatParameter(const int moduleID, const int rank,
-                                     const std::string & n,
-                                     const vistle::Scalar v)
-   : Message(moduleID, rank, Message::ADDFLOATPARAMETER,
-             sizeof(AddFloatParameter)), value(v) {
+Scalar SetParameter::getScalar() const {
 
-      COPY_STRING(name, n);
+   assert(paramtype == Parameter::Scalar);
+   return v_scalar;
 }
 
-const char * AddFloatParameter::getName() const {
+Vector SetParameter::getVector() const {
 
-   return name;
+   assert(paramtype == Parameter::Vector);
+   return Vector(dim, &v_vector[0]);
 }
 
-vistle::Scalar AddFloatParameter::getValue() const {
+std::string SetParameter::getString() const {
 
-   return value;
+   assert(paramtype == Parameter::String);
+   return v_string;
 }
 
-SetFloatParameter::SetFloatParameter(const int moduleID, const int rank,
-                                     const int m, const std::string & n,
-                                     const vistle::Scalar v)
-   : Message(moduleID, rank, Message::SETFLOATPARAMETER,
-             sizeof(SetFloatParameter)), module(m), value(v) {
+bool SetParameter::apply(Parameter *param) const {
 
-      COPY_STRING(name, n);
+   if (paramtype != param->type()) {
+      std::cerr << "SetParameter::apply(): type mismatch" << std::endl;
+      return false;
+   }
+
+   if (IntParameter *pint = dynamic_cast<IntParameter *>(param)) {
+      pint->setValue(v_int);
+   } else if (FloatParameter *pfloat = dynamic_cast<FloatParameter *>(param)) {
+      pfloat->setValue(v_scalar);
+   } else if (VectorParameter *pvec = dynamic_cast<VectorParameter *>(param)) {
+      pvec->setValue(Vector(dim, &v_vector[0]));
+   } else if (StringParameter *pstring = dynamic_cast<StringParameter *>(param)) {
+      pstring->setValue(v_string);
+   } else {
+      std::cerr << "SetParameter::apply(): type " << param->type() << " not handled" << std::endl;
+      assert("invalid parameter type" == 0);
+   }
+   
+   return true;
 }
 
-int SetFloatParameter::getModule() const {
-
-   return module;
+Barrier::Barrier(const int moduleID, const int rank, const int id)
+: Message(moduleID, rank, Message::BARRIER, sizeof(Barrier))
+, barrierid(id)
+{
 }
 
-const char * SetFloatParameter::getName() const {
+int Barrier::getBarrierId() const {
 
-   return name;
+   return barrierid;
 }
 
-vistle::Scalar SetFloatParameter::getValue() const {
-
-   return value;
+BarrierReached::BarrierReached(const int moduleID, const int rank, const int id)
+: Message(moduleID, rank, Message::BARRIERREACHED, sizeof(BarrierReached))
+, barrierid(id)
+{
 }
 
-AddIntParameter::AddIntParameter(const int moduleID, const int rank,
-                                 const std::string & n,
-                                 const int v)
-   : Message(moduleID, rank, Message::ADDINTPARAMETER,
-             sizeof(AddIntParameter)), value(v) {
+int BarrierReached::getBarrierId() const {
 
-      COPY_STRING(name, n);
+   return barrierid;
 }
-
-const char * AddIntParameter::getName() const {
-
-   return name;
-}
-
-int AddIntParameter::getValue() const {
-
-   return value;
-}
-
-SetIntParameter::SetIntParameter(const int moduleID, const int rank,
-                                 const int m, const std::string & n,
-                                 const int v)
-   : Message(moduleID, rank, Message::SETINTPARAMETER,
-             sizeof(SetIntParameter)), module(m), value(v) {
-
-      COPY_STRING(name, n);
-}
-
-int SetIntParameter::getModule() const {
-
-   return module;
-}
-
-const char * SetIntParameter::getName() const {
-
-   return name;
-}
-
-int SetIntParameter::getValue() const {
-
-   return value;
-}
-
-AddVectorParameter::AddVectorParameter(const int moduleID, const int rank,
-                                       const std::string & n,
-                                       const Vector & v)
-   : Message(moduleID, rank, Message::ADDVECTORPARAMETER,
-             sizeof(AddVectorParameter)), value(v) {
-
-      COPY_STRING(name, n);
-}
-
-const char * AddVectorParameter::getName() const {
-
-   return name;
-}
-
-Vector AddVectorParameter::getValue() const {
-
-   return value;
-}
-
-SetVectorParameter::SetVectorParameter(const int moduleID, const int rank,
-                                       const int m, const std::string & n,
-                                       const Vector & v)
-   : Message(moduleID, rank, Message::SETVECTORPARAMETER,
-             sizeof(SetVectorParameter)), module(m), value(v) {
-
-      COPY_STRING(name, n);
-}
-
-int SetVectorParameter::getModule() const {
-
-   return module;
-}
-
-const char * SetVectorParameter::getName() const {
-
-   return name;
-}
-
-Vector SetVectorParameter::getValue() const {
-
-   return value;
-}
-
 
 } // namespace message
 } // namespace vistle

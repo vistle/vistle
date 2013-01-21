@@ -103,7 +103,7 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleID)
 
    createOutputPort("grid_out");
    createOutputPort("p_out");
-   addFileParameter("filename", "");
+   addStringParameter("filename", "");
 }
 
 ReadFOAM::~ReadFOAM() {
@@ -634,14 +634,14 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
 bool ReadFOAM::compute() {
 
    for (int partition = 0; partition < 32; partition ++) {
-      parseBoundary(getFileParameter("filename"), partition);
+      parseBoundary(getStringParameter("filename"), partition);
    }
 
    for (int partition = 0; partition < 32; partition ++) {
       if (partition % size() == rank()) {
 
          std::vector<std::pair<std::string, vistle::Object::ptr> > objects =
-            load(getFileParameter("filename"), partition);
+            load(getStringParameter("filename"), partition);
 
          std::vector<std::pair<std::string, vistle::Object::ptr> >::iterator i;
          for (i = objects.begin(); i != objects.end(); i ++)

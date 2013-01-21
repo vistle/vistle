@@ -1,18 +1,13 @@
 #ifndef VEC_H
 #define VEC_H
 
-#include <boost/mpl/vector.hpp>
-#include <boost/mpl/vector_c.hpp>
-#include <boost/mpl/find.hpp>
-
 #include "scalar.h"
+#include "dimensions.h"
 #include "shm.h"
 #include "object.h"
 
 
 namespace vistle {
-
-typedef boost::mpl::vector_c<int, 1, 2, 3, 4> Dimensions;
 
 template <typename T, int Dim=1>
 class VCEXPORT Vec: public Object {
@@ -49,6 +44,7 @@ class VCEXPORT Vec: public Object {
       // when used as base of another data structure
       Data(const size_t size, Type id, const std::string &name,
             const int block, const int timestep);
+      Data(const Data &other, const std::string &name);
       static Data *create(size_t size = 0, const int block = -1, const int timestep = -1);
 
       private:

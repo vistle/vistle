@@ -9,9 +9,14 @@
 #include <unistd.h>
 #else
 #include<Winsock2.h>
-#include <direct.h>
 #pragma comment(lib, "Ws2_32.lib")
+#define usleep Sleep
+#define close closesocket
+typedef int socklen_t;
 #endif
+
+#include <boost/foreach.hpp>
+#include <boost/thread.hpp>
 
 #include <mpi.h>
 
@@ -30,15 +35,21 @@
 #include <core/object.h>
 #include <core/shm.h>
 
+#ifdef HAVE_READLINE
+#include <cstdio>
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
+
 #include "pythonembed.h"
 #include "communicator.h"
+
 
 #ifdef _WIN32
 #define usleep Sleep
 #define close closesocket
 typedef int socklen_t;
 #endif
-
 #define CERR \
    std::cerr << "comm [" << rank << "/" << size << "] "
 
@@ -47,6 +58,269 @@ using namespace boost::interprocess;
 namespace vistle {
 
 Communicator *Communicator::s_singleton = NULL;
+
+template<class T>
+typename T::iterator find_linefeed(T &container) {
+   const char lineend[] = "\r\n";
+
+   return ::std::find_first_of(container.begin(), container.end(), &lineend[0], &lineend[sizeof(lineend)]);
+}
+
+std::string strip(const std::string& str) {
+
+   const char *chtmp = str.c_str();
+
+   const char *start=&chtmp[0];
+   const char *end=&chtmp[str.size()];
+
+   while (*start && isspace(*start))
+      ++start;
+
+   while (end > start && (!*end || isspace(*end)))
+      --end;
+
+   return std::string(start, end+1);
+}
+
+static bool set_blocking(int fd, bool block) {
+
+   errno = 0;
+#ifndef _WIN32
+   int flags = fcntl(fd, F_GETFL);
+   if (errno)
+      return false;
+#endif
+   
+#ifdef _WIN32
+      unsigned long tru = 0;
+	  if(block == false)
+          tru = 1;
+      return ioctlsocket(fd, FIONBIO, &tru) != -1;
+#else
+   if (block) {
+      flags &= ~O_NONBLOCK;
+   } else {
+      flags |= O_NONBLOCK;
+   }
+
+   return fcntl(fd, F_SETFL, flags) != -1;
+#endif
+}
+
+
+static std::string history_file() {
+   std::string history;
+   if (getenv("HOME")) {
+      history = getenv("HOME");
+      history += "/";
+   }
+   history += ".vistle_history";
+   return history;
+}
+
+InteractiveClient::InteractiveClient()
+: m_close(false)
+, readfd(0)
+, writefd(1)
+, m_quitOnEOF(true)
+, m_useReadline(true)
+{
+#ifdef DEBUG
+   std::cerr << "Using readline" << std::endl;
+#endif
+#ifdef HAVE_READLINE
+   using_history();
+   read_history(history_file().c_str());
+#endif
+}
+
+InteractiveClient::InteractiveClient(int readfd, int writefd, bool keepInterpreterLock)
+: m_close(true)
+, readfd(readfd)
+, writefd(writefd >= 0 ? writefd : readfd)
+, m_quitOnEOF(false)
+, m_keepInterpreter(keepInterpreterLock)
+, m_useReadline(false)
+{
+#ifdef DEBUG
+   std::cerr << "Client FDs: " << readfd << ", " << writefd << std::endl;
+#endif
+   if (readfd != -1)
+      set_blocking(readfd, true);
+   if (writefd != -1)
+      set_blocking(writefd, true);
+}
+
+InteractiveClient::InteractiveClient(const InteractiveClient &o)
+: m_close(o.m_close)
+, readfd(o.readfd)
+, writefd(o.writefd >= 0 ? o.writefd : o.readfd)
+, m_quitOnEOF(o.m_quitOnEOF)
+, m_keepInterpreter(o.m_keepInterpreter)
+, m_useReadline(o.m_useReadline)
+{
+   o.m_close = false;
+}
+
+InteractiveClient::~InteractiveClient() {
+
+   if (m_useReadline) {
+#ifdef HAVE_READLINE
+      write_history(history_file().c_str());
+      //append_history(::history_length, history_file().c_str());
+#endif
+   }
+   if (m_close) {
+#ifdef DEBUG
+      std::cerr << "Closing: " << readfd << ", " << writefd << std::endl;
+#endif
+      if (readfd > 2)
+         close(readfd);
+      if (readfd != writefd && writefd > 2)
+         close(writefd);
+   }
+}
+
+void InteractiveClient::setInput(const std::string &input) {
+
+   std::copy (input.begin(), input.end(), std::back_inserter(readbuf));
+}
+
+bool InteractiveClient::readline(std::string &line) {
+
+   const size_t rsize = 1024;
+   bool result = true;
+
+   if (m_useReadline) {
+#ifdef HAVE_READLINE
+      char *l= ::readline("vistle> ");
+      if (l) {
+         line = l;
+         if (!line.empty())
+            add_history(l);
+         free(l);
+      } else {
+         line.clear();
+         result = false;
+      }
+#endif
+   } else {
+      std::vector<char>::iterator lf = find_linefeed(readbuf);
+      while (lf == readbuf.end()) {
+
+         if (readfd == -1) {
+            result = false;
+            break;
+         }
+
+         ssize_t nvalid = readbuf.size();
+         readbuf.resize(nvalid + rsize);
+         ssize_t n = read(readfd, &readbuf[nvalid], rsize);
+         if (n == -1) {
+            if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
+               std::cerr << "socket error: " << strerror(errno) << std::endl;
+               return false;
+            }
+         }
+
+         if (n >= 0) {
+            readbuf.resize(nvalid+n);
+         }
+
+         if (n == 0) {
+#ifdef DEBUG
+            std::cerr << "socket closed" << std::endl;
+#endif
+            result = false;
+            break;
+         }
+
+         lf = find_linefeed(readbuf);
+      }
+
+      lf = find_linefeed(readbuf);
+      if (lf == readbuf.end()) {
+         line = std::string(readbuf.begin(), readbuf.end());
+         readbuf.clear();
+      } else {
+         if (*lf == '\r' && lf+1 < readbuf.end() && *(lf+1) == '\n')
+            ++lf;
+         line = std::string(readbuf.begin(), lf+1);
+         readbuf.erase(readbuf.begin(), lf+1);
+      }
+   }
+
+   return result;
+}
+
+void InteractiveClient::operator()() {
+
+   Communicator::the().acquireInterpreter(this);
+   if (!m_keepInterpreter) {
+      printGreeting();
+      Communicator::the().releaseInterpreter();
+   }
+
+   for (;;) {
+      std::string line;
+      bool again = readline(line);
+
+      line = strip(line);
+      if (line == "?" || line == "h" || line == "help") {
+         write("Type \"help(vistle)\" for help, \"help()\" for general help\n\n");
+      } else if (!line.empty()) {
+         if (line == "quit")
+            line = "quit()";
+
+         if (!m_keepInterpreter)
+            Communicator::the().acquireInterpreter(this);
+         Communicator::the().execute(line);
+         if (!m_keepInterpreter)
+            Communicator::the().releaseInterpreter();
+      }
+
+      if (!again) {
+         if (m_quitOnEOF) {
+            std::cerr << "Quitting..." << std::endl;
+            Communicator::the().setQuitFlag();
+         }
+         break;
+      }
+
+      if (!m_keepInterpreter)
+         printPrompt();
+   }
+
+   if (m_keepInterpreter)
+      Communicator::the().releaseInterpreter();
+}
+
+void InteractiveClient::setQuitOnEOF() {
+   
+   m_quitOnEOF = true;
+}
+
+bool InteractiveClient::write(const std::string &str) {
+
+   size_t n = str.size();
+   return ::write(writefd, &str[0], n) == n;
+}
+
+bool InteractiveClient::printPrompt() {
+
+   if (m_useReadline)
+      return true;
+
+   return write("vistle> ");
+}
+
+bool InteractiveClient::printGreeting() {
+
+   bool ok = write("Type \"help\" for help, \"quit\" to exit\n");
+   if (!ok)
+      return ok;
+   return printPrompt();
+}
 
 static void splitpath(const std::string &value, std::vector<std::string> *components)
 {
@@ -76,11 +350,7 @@ static void splitpath(const std::string &value, std::vector<std::string> *compon
 
 static std::string getbindir(int argc, char *argv[]) {
 
-#ifdef _WIN32
-   char *wd = _getcwd(NULL, 0);
-#else
    char *wd = getcwd(NULL, 0);
-#endif
    if (!wd) {
 
       std::cerr << "Communicator: failed to determine working directory: " << strerror(errno) << std::endl;
@@ -174,31 +444,6 @@ static std::string getbindir(int argc, char *argv[]) {
    return std::string();
 }
 
-static bool set_blocking(int fd, bool block) {
-
-   errno = 0;
-#ifndef _WIN32
-   int flags = fcntl(fd, F_GETFL);
-   if (errno)
-      return false;
-#endif
-   
-#ifdef _WIN32
-      unsigned long tru = 0;
-	  if(block == false)
-          tru = 1;
-      return ioctlsocket(fd, FIONBIO, &tru) != -1;
-#else
-   if (block) {
-      flags &= ~O_NONBLOCK;
-   } else {
-      flags |= O_NONBLOCK;
-   }
-
-   return fcntl(fd, F_SETFL, flags) != -1;
-#endif
-}
-
 Communicator::Communicator(int argc, char *argv[], int r, int s)
    : rank(r), size(s),
    m_quitFlag(false),
@@ -206,8 +451,21 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
      interpreter(NULL),
      mpiReceiveBuffer(NULL), mpiMessageSize(0),
      m_moduleCounter(0),
-     m_currentClient(-1),
-     m_port(8192)
+     m_barrierCounter(0),
+     m_activeBarrier(-1),
+     m_reachedBarriers(-1),
+     m_activeClient(NULL),
+#ifdef HAVE_READLINE
+     m_console(InteractiveClient()),
+#else
+     m_console(InteractiveClient(0, 1)),
+#endif
+     m_consoleThreadCreated(false),
+     m_port(8192),
+     serverSocket(-1),
+     messageQueue(create_only,
+           message::MessageQueue::createName("command_queue", 0, r).c_str(),
+           256 /* num msg */, message::Message::MESSAGE_SIZE)
 {
    assert(s_singleton == NULL);
    s_singleton = this;
@@ -220,10 +478,6 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
    MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, 0,
              MPI_COMM_WORLD, &request);
    MPI_Barrier(MPI_COMM_WORLD);
-
-   if (rank == 0) {
-      checkClients();
-   }
 }
 
 Communicator &Communicator::the() {
@@ -248,6 +502,38 @@ int Communicator::newModuleID() {
    ++m_moduleCounter;
 
    return m_moduleCounter;
+}
+
+void Communicator::resetModuleCounter() {
+
+   m_moduleCounter = 0;
+}
+
+int Communicator::getBarrierCounter() {
+
+   ++m_barrierCounter;
+   return m_barrierCounter;
+}
+
+boost::mutex &Communicator::barrierMutex() {
+
+   return m_barrierMutex;
+}
+
+boost::condition_variable &Communicator::barrierCondition() {
+
+   return m_barrierCondition;
+}
+
+void Communicator::barrierReached(int id) {
+
+   assert(id >= 0);
+   MPI_Barrier(MPI_COMM_WORLD);
+   m_reachedBarriers = id;
+   m_activeBarrier = -1;
+   reachedSet.clear();
+   CERR << "Barrier [" << id << "] reached" << std::endl;
+   m_barrierCondition.notify_all();
 }
 
 std::vector<int> Communicator::getRunningList() const {
@@ -282,37 +568,9 @@ std::string Communicator::getModuleName(int id) const {
 }
 
 
-template<class T>
-typename T::iterator find_linefeed(T &container) {
-   const char lineend[] = "\r\n";
-
-   return ::std::find_first_of(container.begin(), container.end(), &lineend[0], &lineend[sizeof(lineend)]);
-}
-
-std::string strip(const std::string& str) {
-
-   const char *chtmp = str.c_str();
-
-   const char *start=&chtmp[0];
-   const char *end=&chtmp[str.size()];
-
-   while (*start && isspace(*start))
-      ++start;
-
-   while (end > start && (!*end || isspace(*end)))
-      --end;
-
-   return std::string(start, end+1);
-}
-
 void Communicator::registerInterpreter(PythonEmbed *pi) {
 
    interpreter = pi;
-}
-
-void Communicator::setFile(const std::string &filename) {
-
-   m_initialFile = filename;
 }
 
 void Communicator::setInput(const std::string &input) {
@@ -320,9 +578,35 @@ void Communicator::setInput(const std::string &input) {
    m_initialInput = input;
 }
 
+void Communicator::setFile(const std::string &filename) {
+
+   m_initialFile = filename;
+}
+
 void Communicator::setQuitFlag() {
 
    m_quitFlag = true;
+}
+
+void Communicator::acquireInterpreter(InteractiveClient *client) {
+
+   interpreter_mutex.lock();
+   m_activeClient = client;
+}
+
+void Communicator::releaseInterpreter() {
+
+   m_activeClient = NULL;
+   interpreter_mutex.unlock();
+}
+
+InteractiveClient *Communicator::activeClient() const {
+
+   return m_activeClient;
+}
+
+bool Communicator::execute(const std::string &line) {
+   return interpreter->exec(line);
 }
 
 bool Communicator::dispatch() {
@@ -331,69 +615,42 @@ bool Communicator::dispatch() {
 
    if (rank == 0) {
 
-      int socknum = checkClients();
-
-      m_currentClient = StdInOut;
       if (!m_initialFile.empty()) {
 
-         interpreter->exec_file(m_initialFile);
-         m_initialFile.clear();
-      }
-
-      if (!m_initialInput.empty()) {
-
-         interpreter->exec(m_initialInput);
-         m_initialInput.clear();
-      }
-
-      m_currentClient = socknum;
-
-      if (socknum >= 0) {
-
-         for (std::string line = readClientLine(socknum);
-               !line.empty();
-               line = readClientLine(socknum)) {
-
-            if (strip(line) == "?" || strip(line) == "h" || strip(line) == "help") {
-
-               writeClient(socknum, "Type \"help(vistle)\" for help, \"help()\" for general help\n\n");
-            } else if (!interpreter) {
-
-               writeClient(socknum, "No command interpreter registered\n");
-            } else {
-
-               if (strip(line) == "quit")
-                  line = "quit()";
-
-               // in order for raw_input to work correctly
-               setClientBlocking(socknum, true);
-               if (!interpreter->exec(line)) {
-
-                  //writeClient(socknum, "Interpreter error\n");
-               }
-               setClientBlocking(socknum, false);
-            }
-            printPrompt(socknum);
-
-            done = m_quitFlag;
-            if (done)
-               break;
+         int fd = open(m_initialFile.c_str(), O_RDONLY);
+         if (fd == -1) {
+            std::cerr << "failed to open " << m_initialFile << std::endl;
+         } else {
+            boost::thread(InteractiveClient(fd, 1, true));
          }
+         m_initialFile.clear();
+      } else if (!m_consoleThreadCreated) {
+#ifdef DEBUG
+            std::cerr << "Creating console thread" << std::endl;
+#endif
+            m_console.setQuitOnEOF();
+            m_console.setInput(m_initialInput);
+            m_initialInput.clear();
+            m_consoleThread = boost::thread(m_console);
+            m_consoleThreadCreated = true;
+#ifdef DEBUG
+            std::cerr << "Created console thread" << std::endl;
+#endif
       }
 
       if (!done)
          done = m_quitFlag;
 
-      m_currentClient = -1;
+      if (m_consoleThreadCreated)
+         acceptClients();
    }
-
-   int flag;
-   MPI_Status status;
 
    // test for message size from another MPI node
    //    - receive actual message from broadcast
    //    - handle message
    //    - post another MPI receive for size of next message
+   int flag;
+   MPI_Status status;
    MPI_Test(&request, &flag, &status);
 
    if (flag) {
@@ -419,31 +676,54 @@ bool Communicator::dispatch() {
    bool received = false;
    do {
       received = false;
+      if (!tryReceiveAndHandleMessage(messageQueue, received, true))
+         done = true;
+
       for (std::map<int, message::MessageQueue *>::iterator i = receiveMessageQueue.begin();
             i != receiveMessageQueue.end();
             ++i) {
 
-         try {
-            size_t msgSize;
-            unsigned int priority;
-            char msgRecvBuf[vistle::message::Message::MESSAGE_SIZE];
+         if (reachedSet.find(i->first) != reachedSet.end())
+            continue;
 
-            received = i->second->getMessageQueue().try_receive(
-                  (void *) msgRecvBuf,
-                  vistle::message::Message::MESSAGE_SIZE,
-                  msgSize, priority);
+         boost::interprocess::message_queue &mq = i->second->getMessageQueue();
 
-            if (received) {
-               if (!handleMessage(*(message::Message *)msgRecvBuf))
-                  done = true;
-               break;
-            }
-         } catch (interprocess_exception &ex) {
-            CERR << "receive mq " << ex.what() << std::endl;
-            exit(-1);
-         }
+         if (!tryReceiveAndHandleMessage(mq, received))
+            done = true;
+
       }
    } while (received);
+
+   return !done;
+}
+
+bool Communicator::tryReceiveAndHandleMessage(boost::interprocess::message_queue &mq, bool &received, bool broadcast) {
+
+   bool done = false;
+   try {
+      size_t msgSize;
+      unsigned int priority;
+      char msgRecvBuf[vistle::message::Message::MESSAGE_SIZE];
+
+      received = mq.try_receive(
+            (void *) msgRecvBuf,
+            vistle::message::Message::MESSAGE_SIZE,
+            msgSize, priority);
+
+      if (received) {
+         if (broadcast) {
+            if (!broadcastAndHandleMessage(*(message::Message *)msgRecvBuf))
+               done = true;
+         } else {
+            if (!handleMessage(*(message::Message *)msgRecvBuf))
+               done = true;
+         }
+         return !done;
+      }
+   } catch (interprocess_exception &ex) {
+      CERR << "receive mq " << ex.what() << std::endl;
+      exit(-1);
+   }
 
    return !done;
 }
@@ -464,14 +744,21 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
 bool Communicator::handleMessage(const message::Message &message) {
 
+#ifdef DEBUG
+   CERR << "Message: "
+      << "type=" << message.getType() << ", "
+      << "size=" << message.getSize() << ", "
+      << "from=" << message.getModuleID() << ", "
+      << "rank=" << message.getRank() << std::endl;
+#endif
+
    switch (message.getType()) {
 
       case message::Message::PING: {
 
          const message::Ping &ping =
             static_cast<const message::Ping &>(message);
-         std::cout << "comm [" << rank << "/" << size << "] Ping ["
-                   << ping.getCharacter() << "]" << std::endl;
+         CERR << "Ping [" << ping.getCharacter() << "]" << std::endl;
          for (MessageQueueMap::iterator i = sendMessageQueue.begin();
                i != sendMessageQueue.end();
                ++i) {
@@ -484,8 +771,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Pong &pong =
             static_cast<const message::Pong &>(message);
-         std::cout << "comm [" << rank << "/" << size << "] Pong ["
-                   << pong.getModuleID() << " " << pong.getCharacter() << "]" << std::endl;
+         CERR << "Pong [" << pong.getModuleID() << " " << pong.getCharacter() << "]" << std::endl;
          break;
       }
 
@@ -542,8 +828,15 @@ bool Communicator::handleMessage(const message::Message &message) {
          MPI_Comm_spawn(const_cast<char *>(executable.c_str()), const_cast<char **>(&argv[0]), size, MPI_INFO_NULL,
                         0, MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
 
-         runningMap[moduleID] = spawn.getName();
+         break;
+      }
 
+      case message::Message::STARTED: {
+
+         const message::Started &started =
+            static_cast<const message::Started &>(message);
+         int moduleID = started.getModuleID();
+         runningMap[moduleID] = started.getName();
          break;
       }
 
@@ -560,7 +853,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Connect &connect =
             static_cast<const message::Connect &>(message);
-         portManager.addConnection(connect.getModuleA(),
+         m_portManager.addConnection(connect.getModuleA(),
                                    connect.getPortAName(),
                                    connect.getModuleB(),
                                    connect.getPortBName());
@@ -575,7 +868,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          vistle::Object *object = (vistle::Object *)
             vistle::Shm::the().shm().get_address_from_handle(newObject.getHandle());
 
-         std::cout << "comm [" << rank << "/" << size << "] NewObject ["
+         CERR << "NewObject ["
                    << newObject.getHandle() << "] type ["
                    << object.getType() << "] from module ["
                    << newObject.getModuleID() << "]" << std::endl;
@@ -591,22 +884,48 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          CERR << " Module [" << mod << "] quit" << std::endl;
 
-         MessageQueueMap::iterator i = sendMessageQueue.find(mod);
-         if (i != sendMessageQueue.end()) {
-            delete i->second;
-            sendMessageQueue.erase(i);
+         {
+            ParameterMap::iterator it = parameterMap.find(mod);
+            if (it != parameterMap.end()) {
+               parameterMap.erase(it);
+            }
          }
-         i = receiveMessageQueue.find(mod);
-         if (i != receiveMessageQueue.end()) {
-            delete i->second;
-            receiveMessageQueue.erase(i);
+         { 
+            RunningMap::iterator it = runningMap.find(mod);
+            if (it != runningMap.end()) {
+               runningMap.erase(it);
+            } else {
+               CERR << " Module [" << mod << "] not found in map" << std::endl;
+            }
          }
-         RunningMap::iterator it = runningMap.find(mod);
-         if (it != runningMap.end()) {
-            runningMap.erase(it);
-         } else {
-            CERR << " Module [" << mod << "] not found in map" << std::endl;
+         {
+            MessageQueueMap::iterator i = sendMessageQueue.find(mod);
+            if (i != sendMessageQueue.end()) {
+               delete i->second;
+               sendMessageQueue.erase(i);
+            }
          }
+         {
+            MessageQueueMap::iterator i = receiveMessageQueue.find(mod);
+            i = receiveMessageQueue.find(mod);
+            if (i != receiveMessageQueue.end()) {
+               delete i->second;
+               receiveMessageQueue.erase(i);
+            }
+         }
+         {
+            ModuleSet::iterator it = busySet.find(mod);
+            if (it != busySet.end())
+               busySet.erase(it);
+         }
+         {
+            ModuleSet::iterator it = reachedSet.find(mod);
+            if (it != reachedSet.end())
+               reachedSet.erase(it);
+         }
+         m_portManager.removeConnections(mod);
+         if (m_activeBarrier >= 0 && reachedSet.size() == sendMessageQueue.size())
+            barrierReached(m_activeBarrier);
          break;
       }
 
@@ -653,7 +972,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::CreateInputPort &m =
             static_cast<const message::CreateInputPort &>(message);
-         portManager.addPort(m.getModuleID(), m.getName(),
+         m_portManager.addPort(m.getModuleID(), m.getName(),
                              Port::INPUT);
          break;
       }
@@ -662,7 +981,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::CreateOutputPort &m =
             static_cast<const message::CreateOutputPort &>(message);
-         portManager.addPort(m.getModuleID(), m.getName(),
+         m_portManager.addPort(m.getModuleID(), m.getName(),
                              Port::OUTPUT);
          break;
       }
@@ -674,19 +993,19 @@ bool Communicator::handleMessage(const message::Message &message) {
          Object::const_ptr obj = m.takeObject();
          assert(obj->refcount() >= 1);
 #if 0
-         std::cout << "Module " << m.getModuleID() << ": "
+         std::cerr << "Module " << m.getModuleID() << ": "
                    << "AddObject " << m.getHandle() << " (" << obj->getName() << ")"
                    << " ref " << obj->refcount()
                    << " to port " << m.getPortName() << std::endl;
 #endif
 
-         Port *port = portManager.getPort(m.getModuleID(),
+         Port *port = m_portManager.getPort(m.getModuleID(),
                                           m.getPortName());
          if (port) {
             const std::vector<const Port *> *list =
-               portManager.getConnectionList(port);
+               m_portManager.getConnectionList(port);
 
-            std::vector<const Port *>::const_iterator pi;
+            PortManager::ConnectionList::const_iterator pi;
             for (pi = list->begin(); pi != list->end(); pi ++) {
 
                MessageQueueMap::iterator mi =
@@ -703,17 +1022,32 @@ bool Communicator::handleMessage(const message::Message &message) {
             }
          }
          else
-            std::cout << "comm [" << rank << "/" << size << "] Addbject ["
+            std::cerr << "comm [" << rank << "/" << size << "] Addbject ["
                       << m.getHandle() << "] to port ["
                       << m.getPortName() << "]: port not found" << std::endl;
 
          break;
       }
 
-      case message::Message::SETFILEPARAMETER: {
+      case message::Message::SETPARAMETER: {
 
-         const message::SetFileParameter &m =
-            static_cast<const message::SetFileParameter &>(message);
+         const message::SetParameter &m =
+            static_cast<const message::SetParameter &>(message);
+
+#ifdef DEBUG
+         CERR << "SetParameter: sender=" << m.getModuleID() << ", module=" << m.getModule() << ", name=" << m.getName() << std::endl;
+#endif
+
+         if (m.getModuleID() != 0) {
+            ModuleParameterMap &pm = parameterMap[m.getModule()];
+            ModuleParameterMap::iterator it = pm.find(m.getName());
+            if (it == pm.end()) {
+               CERR << "no such parameter: module id=" << m.getModule() << ", name=" << m.getName() << std::endl;
+            } else {
+               Parameter *p = it->second;
+               m.apply(p);
+            }
+         }
 
          if (m.getModuleID() != m.getModule()) {
             // message to module
@@ -725,57 +1059,62 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
-      case message::Message::SETFLOATPARAMETER: {
+      case message::Message::ADDPARAMETER: {
+         
+         const message::AddParameter &m =
+            static_cast<const message::AddParameter &>(message);
 
-         const message::SetFloatParameter &m =
-            static_cast<const message::SetFloatParameter &>(message);
+#ifdef DEBUG
+         CERR << "AddParameter: module=" << m.getModuleID() << ", name=" << m.getName() << std::endl;
+#endif
 
-         if (m.getModuleID() != m.getModule()) {
-            // message to module
-            MessageQueueMap::iterator i
-               = sendMessageQueue.find(m.getModule());
-            if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(&m, m.getSize(), 0);
+         ModuleParameterMap &pm = parameterMap[m.getModuleID()];
+         ModuleParameterMap::iterator it = pm.find(m.getName());
+         if (it != pm.end()) {
+            CERR << "double parameter" << std::endl;
+         } else {
+            pm[m.getName()] = m.getParameter();
          }
          break;
       }
 
-      case message::Message::SETINTPARAMETER: {
+      case message::Message::BARRIER: {
 
-         const message::SetIntParameter &m =
-            static_cast<const message::SetIntParameter &>(message);
+         const message::Barrier &m =
+            static_cast<const message::Barrier &>(message);
 
-         if (m.getModuleID() != m.getModule()) {
-            // message to module
-            MessageQueueMap::iterator i
-               = sendMessageQueue.find(m.getModule());
-            if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(&m, m.getSize(), 0);
-         }
-         break;
-
-      }
-
-      case message::Message::SETVECTORPARAMETER: {
-
-         const message::SetVectorParameter &m =
-            static_cast<const message::SetVectorParameter &>(message);
-
-         if (m.getModuleID() != m.getModule()) {
-            // message to module
-            MessageQueueMap::iterator i
-               = sendMessageQueue.find(m.getModule());
-            if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(&m, m.getSize(), 0);
+         CERR << "Barrier [" << m.getBarrierId() << "]" << std::endl;
+         assert(m_activeBarrier == -1);
+         m_activeBarrier = m.getBarrierId();
+         if (sendMessageQueue.empty()) {
+            barrierReached(m_activeBarrier);
+         } else {
+            for (MessageQueueMap::iterator i = sendMessageQueue.begin();
+                  i != sendMessageQueue.end();
+                  ++i) {
+               i->second->getMessageQueue().send(&m, sizeof(m), 0);
+            }
          }
          break;
       }
 
-      case message::Message::ADDFILEPARAMETER:
-      case message::Message::ADDFLOATPARAMETER:
-      case message::Message::ADDINTPARAMETER:
-      case message::Message::ADDVECTORPARAMETER:
-          break;
+      case message::Message::BARRIERREACHED: {
+         const message::BarrierReached &m =
+            static_cast<const message::BarrierReached &>(message);
+#ifdef DEBUG
+         CERR << "BarrierReached [barrier " << m.getBarrierId() << ", module " << m.getModuleID() << "]" << std::endl;
+#endif
+         if (m_activeBarrier == -1) {
+            m_activeBarrier = m.getBarrierId();
+         }
+         assert(m_activeBarrier == m.getBarrierId());
+         reachedSet.insert(m.getModuleID());
+
+         if (reachedSet.size() == receiveMessageQueue.size()) {
+            barrierReached(m_activeBarrier);
+         }
+         break;
+      }
 
       default:
 
@@ -823,199 +1162,18 @@ Communicator::~Communicator() {
 
 void Communicator::disconnectClients() {
 
-   for (size_t i=0; i<sockfd.size(); ++i) {
-      close(sockfd[i]);
-      sockfd[i] = -1;
-   }
 }
 
-void Communicator::allocateBuffers(int num) {
+int Communicator::acceptClients() {
 
-   if (ssize_t(writebuf.size()) <= num)
-      writebuf.resize(num + 1);
+   if (serverSocket == -1) {
 
-   if (ssize_t(readbuf.size()) <= num)
-      readbuf.resize(num + 1);
-}
-
-void Communicator::flushClient(int num) {
-
-   std::vector<char> &wb = writebuf[num];
-
-   if (sockfd[num] == -1) {
-      wb.clear();
-      return;
-   }
-
-   if (wb.size() > 0) {
-      const int fd = num==StdInOut ? 1 : sockfd[num];
-      ssize_t n = write(fd, &wb[0], wb.size());
-      if (n > 0) {
-         wb.erase(wb.begin(), wb.begin()+n);
-      }
-   }
-}
-
-ssize_t Communicator::fillClientBuffer(int num) {
-
-   if (sockfd[num] == -1)
-      return -1;
-
-   std::vector<char> &sb = readbuf[num];
-
-   ssize_t total = 0;
-   std::vector<char> buf(2048);
-   ssize_t r = 0;
-   do {
-      errno = 0;
-#ifndef _WIN32
-      r = read(sockfd[num], &buf[0], buf.size());
-#else
-      r = recv(sockfd[num], &buf[0], buf.size(), 0);
-#endif
-      if (r == 0) {
-         close(sockfd[num]);
-         sockfd[num] = -1;
-
-         if (num == StdInOut) {
-            //std::cerr << "Communicator: EOF - quitting..." << std::endl;
-            setQuitFlag();
-            return 0;
-         }
-
-         std::stringstream str;
-         str << std::endl;
-         str << "Client " << num << " disconnected";
-         str << std::endl;
-         writeClient(StdInOut, str.str());
-         printPrompt(StdInOut);
-      } else if (r > 0) {
-         sb.insert(sb.end(), buf.begin(), buf.begin()+r);
-
-         total += r;
-      } else {
-         if (total == 0)
-            return -1;
-         else
-            return total;
-      }
-   } while (r == ssize_t(buf.size()));
-
-   return total;
-}
-
-ssize_t Communicator::readClient(int num, void *buffer, size_t n) {
-
-   std::vector<char> &sb = readbuf[num];
-
-   while (fillClientBuffer(num) > 0) {
-
-      if (sb.size() >= n)
-         break;
-   }
-
-   if (sb.size() > 0) {
-      n = sb.size() < n ? sb.size() : n;
-      memcpy(buffer, &sb[0], n);
-      sb.erase(sb.begin(), sb.begin()+n);
-      return n;
-   }
-
-   return 0;
-}
-
-bool Communicator::hasClientLine(int num) {
-
-   std::vector<char> &sb = readbuf[num];
-
-   do {
-      std::vector<char>::iterator lf = find_linefeed(sb);
-      if (lf != sb.end())
-         return true;
-
-   } while (fillClientBuffer(num) > 0);
-
-   return false;
-}
-
-std::string Communicator::readClientLine(int num) {
-
-   std::vector<char> &sb = readbuf[num];
-
-   do {
-      std::vector<char>::iterator lf = find_linefeed(sb);
-      if (lf != sb.end()) {
-
-         if (*lf == '\r' && lf+1 < sb.end() && *(lf+1) == '\n')
-            ++lf;
-         std::string ret(sb.begin(), lf+1);
-         sb.erase(sb.begin(), lf+1);
-         return ret;
-      }
-   } while (fillClientBuffer(num) > 0);
-
-   return std::string();
-}
-
-void Communicator::writeClient(int num, const std::string &s) {
-
-   writeClient(num, s.c_str(), s.size());
-}
-
-void Communicator::writeClient(int num, const void *buf, size_t n) {
-
-   std::vector<char> &wb = writebuf[num];
-   wb.insert(wb.end(), (char *)buf, (char *)buf+n);
-
-   flushClient(num);
-}
-
-void Communicator::printPrompt(int num) {
-
-   writeClient(num, "vistle> ");
-}
-
-void Communicator::printGreeting(int num) {
-
-   writeClient(num, "Type \"help\" for help, \"quit\" to exit\n");
-   printPrompt(num);
-}
-
-int Communicator::currentClient() const {
-
-   return m_currentClient;
-}
-
-bool Communicator::setClientBlocking(int num, bool block) {
-
-   return set_blocking(sockfd[num], block);
-}
-
-int Communicator::checkClients() {
-
-   // sockfd[Server] is server socket
-   // sockfd[StdOutIn] is stdout/stdin
-
-   if (sockfd.empty()) {
-      sockfd.resize(SocketStart);
-
-      sockfd[StdInOut] = 0;
-      allocateBuffers(StdInOut);
-      setClientBlocking(StdInOut, false);
-      printGreeting(StdInOut);
-
-      sockfd[Server] = -1;
-      allocateBuffers(Server);
-   }
-
-   if (sockfd[Server] == -1) {
-
-      sockfd[Server] = socket(AF_INET, SOCK_STREAM, 0);
-      if (sockfd[Server] == -1)
+      serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+      if (serverSocket == -1)
          return -1;
 
       int reuse = 1;
-      setsockopt(sockfd[Server], SOL_SOCKET, SO_REUSEADDR, (char *) &reuse,
+      setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, (char *) &reuse,
             sizeof(reuse));
 
       for (;;) {
@@ -1025,7 +1183,7 @@ int Communicator::checkClients() {
          serv.sin_port = htons(m_port);
 
          errno = 0;
-         if (bind(sockfd[Server], (struct sockaddr *) &serv, sizeof(serv)) == 0) {
+         if (bind(serverSocket, (struct sockaddr *) &serv, sizeof(serv)) == 0) {
             break;
          }
 
@@ -1034,135 +1192,69 @@ int Communicator::checkClients() {
          else
             return -1;
       }
-      listen(sockfd[Server], 0);
+      listen(serverSocket, 0);
+      set_blocking(serverSocket, false);
 
-      setClientBlocking(Server, false);
+   }
 
+   if (serverSocket == -1)
+      return -1;
+
+   struct sockaddr_in addr;
+   socklen_t len = sizeof(addr);
+   int client = accept(serverSocket, (struct sockaddr *)&addr, &len);
+   if (client >= 0) {
       std::stringstream str;
+      str << "Client connected";
+
+      char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
+      if (!getnameinfo((struct sockaddr *)&addr, len,
+               hbuf, sizeof(hbuf),
+               sbuf, sizeof(sbuf), NI_NUMERICHOST | NI_NUMERICSERV)) {
+
+         str << " from " << hbuf;
+      }
       str << std::endl;
-      str << "Listening for your commands on port " << m_port << std::endl;
-      writeClient(StdInOut, str.str());
-      printPrompt(StdInOut);
-   }
-
-   if (sockfd[Server] == -1)
-      return -1;
-
-   // poll sockets and stdin/stdout
-   fd_set rset, wset, eset;
-   FD_ZERO(&rset);
-   FD_ZERO(&wset);
-   FD_ZERO(&eset);
-   int maxsock = 0;
-   for (size_t i=0; i<sockfd.size(); ++i) {
-      if (sockfd[i] > maxsock)
-         maxsock = sockfd[i];
-
-      if (sockfd[i] != -1) {
-
-         if (i == StdInOut) {
-
-            FD_SET(sockfd[i], &rset);
-            if (writebuf.size() > i && !writebuf[i].empty())
-               FD_SET(FdOut, &wset);
-            FD_SET(sockfd[i], &eset);
-            FD_SET(FdOut, &eset);
-         } else if (i == Server) {
-
-            FD_SET(sockfd[i], &rset);
-            FD_SET(sockfd[i], &eset);
-         } else if (i >= SocketStart) {
-
-            FD_SET(sockfd[i], &rset);
-            if (writebuf.size() > i && !writebuf[i].empty())
-               FD_SET(sockfd[i], &wset);
-            FD_SET(sockfd[i], &eset);
-         }
-      }
-   }
-
-   struct timeval t = { 0, 0 };
-   int nready = select(maxsock + 1, &rset, &wset, &eset, &t);
-   if (nready < 0) {
-      std::cerr << "Communicator: select error: " << strerror(errno) << std::endl;
-      return -1;
-   } else if (nready == 0) {
-      return -1;
-   }
-
-   if (FD_ISSET(sockfd[Server], &rset)) {
-      struct sockaddr_in addr;
-      socklen_t len = sizeof(addr);
-      int client = accept(sockfd[Server], (struct sockaddr *) &addr, &len);
-      if (client >= 0) {
-
-         bool reused = false;
-         int num = -1;
-         for (size_t i=SocketStart; i<sockfd.size(); ++i) {
-            if (sockfd[i] == -1
-                  && (readbuf.size()<=i || readbuf[i].empty())
-                  && (writebuf.size()<=i || writebuf[i].empty())) {
-               reused = true;
-               sockfd[i] = client;
-               num = i;
-            }
-         }
-         if (!reused) {
-            num = sockfd.size();
-            sockfd.push_back(client);
-         }
-
-         allocateBuffers(num);
-
-         std::stringstream str;
-         str << std::endl;
-         str << "Client " << num << " connected";
-#ifndef WIN32
-         char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
-         if (!getnameinfo((struct sockaddr *)&addr, len,
-                  hbuf, sizeof(hbuf),
-                  sbuf, sizeof(sbuf), NI_NUMERICHOST | NI_NUMERICSERV)) {
-
-            str << " from " << hbuf;
-         }
-#endif
-         str << std::endl;
-         writeClient(StdInOut, str.str());
-         printPrompt(StdInOut);
-
-         setClientBlocking(num, false);
-         printGreeting(num);
-      }
-   }
-
-   if (FD_ISSET(FdOut, &eset)) {
-      std::cerr << "Communicator: Exception on output fd" << std::endl;
-   }
-   for (size_t i=0; i<sockfd.size(); ++i) {
-      if (sockfd[i] >= 0 && FD_ISSET(sockfd[i], &eset)) {
-         std::cerr << "Communicator: Exception on socket " << i << std::endl;
-      }
-   }
-
-   if (sockfd[StdInOut] >= 0 && FD_ISSET(FdOut, &wset))
-      flushClient(StdInOut);
-   for (size_t i=SocketStart; i<sockfd.size(); ++i) {
-      if (sockfd[i] >= 0 && FD_ISSET(sockfd[i], &wset))
-         flushClient(i);
-   }
-
-   if (sockfd[StdInOut] >= 0 && FD_ISSET(sockfd[StdInOut], &rset)) {
-      if (hasClientLine(StdInOut))
-         return StdInOut;
-   }
-   for (size_t i=SocketStart; i<sockfd.size(); ++i) {
-      if (sockfd[i] >= 0 && FD_ISSET(sockfd[i], &rset)) {
-         if (hasClientLine(i))
-            return i;
-      }
+      
+      m_console.write(str.str());
+      boost::thread(InteractiveClient(client));
    }
 
    return -1;
+}
+
+const PortManager &Communicator::portManager() const {
+
+   return m_portManager;
+}
+
+std::vector<std::string> Communicator::getParameters(int id) const {
+
+   std::vector<std::string> result;
+
+   ParameterMap::const_iterator pit = parameterMap.find(id);
+   if (pit == parameterMap.end())
+      return result;
+
+   const ModuleParameterMap &pmap = pit->second;
+   BOOST_FOREACH (ModuleParameterMap::value_type val, pmap) {
+      result.push_back(val.first);
+   }
+
+   return result;
+}
+
+const Parameter *Communicator::getParameter(int id, const std::string &name) const {
+
+   ParameterMap::const_iterator pit = parameterMap.find(id);
+   if (pit == parameterMap.end())
+      return NULL;
+
+   ModuleParameterMap::const_iterator mpit = pit->second.find(name);
+   if (mpit == pit->second.end())
+      return NULL;
+
+   return mpit->second;
 }
 
 } // namespace vistle

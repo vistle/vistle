@@ -34,7 +34,6 @@ namespace vistle {
 namespace bi = boost::interprocess;
 
 typedef bi::managed_shared_memory::handle_t shm_handle_t;
-typedef char shm_name_t[32];
 
 class Shm;
 
@@ -72,6 +71,8 @@ public:
    };
 
    virtual ~Object();
+
+   virtual Object::ptr clone() const = 0;
 
    shm_handle_t getHandle() const;
 
@@ -126,6 +127,7 @@ public:
       std::vector<std::string> getAttributes(const std::string &key) const;
 
       Data(Type id = UNKNOWN, const std::string &name = "", int b = -1, int t = -1);
+      Data(const Data &other, const std::string &name); //! shallow copy, except for attributes
       ~Data();
       void *operator new(size_t size);
       void *operator new (std::size_t size, void* ptr);
@@ -139,8 +141,8 @@ public:
       void serialize(Archive &ar, const unsigned int version);
 
       // not implemented
-      Data &operator=(const Data &);
       Data(const Data &);
+      Data &operator=(const Data &);
    };
 
    Data *m_data;
@@ -224,6 +226,12 @@ class VCEXPORT ObjectTypeRegistry {
    static boost::shared_ptr<const Type> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Type>(ptr); } \
    static boost::shared_ptr<Type> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Type>(ptr); } \
    static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new Type(static_cast<Type::Data *>(data))); } \
+   Object::ptr clone() const { \
+      const std::string n(Shm::the().createObjectID()); \
+            Data *data = shm<Data>::construct(n)(*d(), n); \
+            publish(data); \
+            return createFromData(data); \
+   } \
    static void destroy(const std::string &name) { shm<Type::Data>::destroy(name); } \
    static void registerTextIArchive(boost::archive::text_iarchive &ar); \
    static void registerTextOArchive(boost::archive::text_oarchive &ar); \
@@ -263,6 +271,18 @@ class VCEXPORT ObjectTypeRegistry {
    friend boost::shared_ptr<Object> Object::create(Object::Data *); \
    friend class ObjectTypeRegistry
 
+#define V_DATA_BEGIN(Type) \
+   protected: \
+   struct Data: public Base::Data { \
+      Data(const Data &other, const std::string &name)
+
+#define V_DATA_END(Type) \
+      private: \
+      friend class Type; \
+      friend class boost::serialization::access; \
+      template<class Archive> \
+      void serialize(Archive &ar, const unsigned int version); \
+   }
 
 #define V_SERIALIZERS4(Type1, Type2, prefix1, prefix2) \
    prefix1, prefix2 \

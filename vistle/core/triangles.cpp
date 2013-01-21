@@ -8,6 +8,12 @@ Triangles::Triangles(const size_t numCorners, const size_t numVertices,
             block, timestep)) {
 }
 
+Triangles::Data::Data(const Triangles::Data &o, const std::string &n)
+: Triangles::Base::Data(o, n)
+, cl(o.cl)
+{
+}
+
 Triangles::Data::Data(const size_t numCorners, const size_t numVertices,
                      const std::string & name,
                      const int block, const int timestep)

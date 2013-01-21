@@ -16,6 +16,11 @@ Coords::Data::Data(const size_t numVertices,
 {
 }
 
+Coords::Data::Data(const Coords::Data::Data &o, const std::string &n)
+: Coords::Base::Data(o, n)
+{
+}
+
 Coords::Data *Coords::Data::create(Type id, const size_t numVertices,
             const int block, const int timestep) {
 

@@ -20,7 +20,16 @@
 namespace vistle {
 
 typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
-typedef char shm_name_t[32];
+
+struct shm_name_t {
+   char name[32];
+   shm_name_t(const std::string &s = "INVALID");
+
+   operator const char *() const;
+   operator char *();
+   operator std::string () const;
+};
+std::string operator+(const std::string &s, const shm_name_t &n);
 
 namespace message {
    class MessageQueue;
@@ -133,7 +142,7 @@ class VCEXPORT ShmVector {
             ptr(ShmVector *p = NULL);
             ptr(const ptr &ptr);
             ~ptr();
-            ptr &operator=(ptr &other);
+            ptr &operator=(const ptr &other);
             ptr &operator=(ShmVector *p);
 
             ShmVector &operator*() {

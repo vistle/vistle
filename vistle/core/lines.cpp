@@ -10,6 +10,11 @@ Lines::Lines(const size_t numElements, const size_t numCorners,
 {
 }
 
+Lines::Data::Data(const Data &other, const std::string &name)
+: Lines::Base::Data(other, name)
+{
+}
+
 Lines::Data::Data(const size_t numElements, const size_t numCorners,
              const size_t numVertices, const std::string & name,
              const int block, const int timestep)

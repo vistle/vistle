@@ -3,6 +3,8 @@
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
 #include <core/message.h>
+#include <core/parameter.h>
+
 #include "communicator.h"
 #include "pythonmodule.h"
 #include "pythonembed.h"
@@ -38,6 +40,11 @@ static std::string readline() {
    return PythonEmbed::readline();
 }
 
+static void resetModuleCounter() {
+
+   Communicator::the().resetModuleCounter();
+}
+
 static void source(const std::string &filename) {
 
    PythonEmbed::the().exec_file(filename);
@@ -49,7 +56,7 @@ static void quit() {
    std::cerr << "Python: quit" << std::endl;
 #endif
    message::Quit m(0, Communicator::the().getRank());
-   Communicator::the().broadcastAndHandleMessage(m);
+   PythonEmbed::handleMessage(m);
    Communicator::the().setQuitFlag();
 }
 
@@ -59,7 +66,17 @@ static void ping(char c) {
    std::cerr << "Python: ping: " << c << std::endl;
 #endif
    message::Ping m(0, Communicator::the().getRank(), c);
-   Communicator::the().broadcastAndHandleMessage(m);
+   PythonEmbed::handleMessage(m);
+}
+
+static int barrier() {
+
+   boost::unique_lock<boost::mutex> lock(Communicator::the().barrierMutex());
+   const int id = Communicator::the().getBarrierCounter();
+   message::Barrier m(0, Communicator::the().getRank(), id);
+   PythonEmbed::handleMessage(m);
+   Communicator::the().barrierCondition().wait(lock);
+   return id;
 }
 
 static int spawn(const char *module, int debugflag=0, int debugrank=0) {
@@ -69,10 +86,10 @@ static int spawn(const char *module, int debugflag=0, int debugrank=0) {
 #endif
    int id = Communicator::the().newModuleID();
    message::Spawn m(0, Communicator::the().getRank(), id, module, debugflag, debugrank);
-   Communicator::the().broadcastAndHandleMessage(m);
+   PythonEmbed::handleMessage(m);
    return id;
 }
-BOOST_PYTHON_FUNCTION_OVERLOADS(spawn_overloads, spawn, 1 , 3)
+BOOST_PYTHON_FUNCTION_OVERLOADS(spawn_overloads, spawn, 1, 3)
 
 static void kill(int id) {
 
@@ -80,7 +97,7 @@ static void kill(int id) {
    std::cerr << "Python: kill "<< id << std::endl;
 #endif
    message::Kill m(0, Communicator::the().getRank(), id);
-   Communicator::the().broadcastAndHandleMessage(m);
+   PythonEmbed::handleMessage(m);
 }
 
 static std::vector<int> getRunning() {
@@ -99,6 +116,72 @@ static std::vector<int> getBusy() {
    return Communicator::the().getBusyList();
 }
 
+static std::vector<std::string> getInputPorts(int id) {
+
+   return Communicator::the().portManager().getInputPortNames(id);
+}
+
+static std::vector<std::string> getOutputPorts(int id) {
+
+   return Communicator::the().portManager().getOutputPortNames(id);
+}
+
+static std::vector<std::pair<int, std::string> > getConnections(int id, const std::string &port) {
+
+   std::vector<std::pair<int, std::string> > result;
+
+   const PortManager::ConnectionList *c = Communicator::the().portManager().getConnectionList(id, port);
+   for (size_t i=0; i<c->size(); ++i) {
+      const Port *p = c->at(i);
+      result.push_back(std::pair<int, std::string>(p->getModuleID(), p->getName()));
+   }
+
+   return result;
+}
+
+static std::vector<std::string> getParameters(int id) {
+
+   return Communicator::the().getParameters(id);
+}
+
+static std::string getParameterType(int id, const std::string &name) {
+
+   const Parameter *param = Communicator::the().getParameter(id, name);
+   if (!param) {
+      std::cerr << "Python: getParameterType: no such parameter" << std::endl;
+      return "None";
+   }
+
+   switch (param->type()) {
+      case Parameter::Integer: return "Int";
+      case Parameter::Scalar: return "Float";
+      case Parameter::Vector: return "Vector";
+      case Parameter::String: return "String";
+      case Parameter::Invalid: return "None";
+      case Parameter::Unknown: return "None";
+   }
+
+   return "None";
+}
+
+template<typename T>
+static T getParameterValue(int id, const std::string &name) {
+
+   const Parameter *param = Communicator::the().getParameter(id, name);
+   if (!param) {
+      std::cerr << "Python: getParameterValue: no such parameter" << std::endl;
+      return T();
+   }
+
+   const ParameterBase<T> *tparam = dynamic_cast<const ParameterBase<T> *>(param);
+   if (!tparam) {
+      std::cerr << "Python: getParameterValue: type mismatch" << std::endl;
+      return T();
+   }
+
+   return tparam->getValue();
+}
+
 static std::string getModuleName(int id) {
 
 #ifdef DEBUG
@@ -114,7 +197,7 @@ static void connect(int sid, const char *sport, int did, const char *dport) {
 #endif
    message::Connect m(0, Communicator::the().getRank(),
          sid, sport, did, dport);
-   Communicator::the().broadcastAndHandleMessage(m);
+   PythonEmbed::handleMessage(m);
 }
 
 static void setIntParam(int id, const char *name, int value) {
@@ -122,9 +205,9 @@ static void setIntParam(int id, const char *name, int value) {
 #ifdef DEBUG
    std::cerr << "Python: setIntParam " << id << ":" << name << " = " << value << std::endl;
 #endif
-   message::SetIntParameter m(0, Communicator::the().getRank(),
+   message::SetParameter m(0, Communicator::the().getRank(),
          id, name, value);
-   Communicator::the().broadcastAndHandleMessage(m);
+   PythonEmbed::handleMessage(m);
 }
 
 static void setFloatParam(int id, const char *name, double value) {
@@ -132,29 +215,47 @@ static void setFloatParam(int id, const char *name, double value) {
 #ifdef DEBUG
    std::cerr << "Python: setFloatParam " << id << ":" << name << " = " << value << std::endl;
 #endif
-   message::SetFloatParameter m(0, Communicator::the().getRank(),
+   message::SetParameter m(0, Communicator::the().getRank(),
          id, name, value);
-   Communicator::the().broadcastAndHandleMessage(m);
+   PythonEmbed::handleMessage(m);
 }
 
-static void setVectorParam(int id, const char *name, double v1, double v2, double v3) {
+static void setVectorParam4(int id, const char *name, double v1, double v2, double v3, double v4) {
 
-#ifdef DEBUG
-   std::cerr << "Python: setVectorParam " << id << ":" << name << " = " << v1 << " " << v2 << " " << v3 << std::endl;
-#endif
-   message::SetVectorParameter m(0, Communicator::the().getRank(),
+   message::SetParameter m(0, Communicator::the().getRank(),
+         id, name, Vector(v1, v2, v3, v4));
+   PythonEmbed::handleMessage(m);
+}
+
+static void setVectorParam3(int id, const char *name, double v1, double v2, double v3) {
+
+   message::SetParameter m(0, Communicator::the().getRank(),
          id, name, Vector(v1, v2, v3));
-   Communicator::the().broadcastAndHandleMessage(m);
+   PythonEmbed::handleMessage(m);
 }
 
-static void setFileParam(int id, const char *name, const std::string &value) {
+static void setVectorParam2(int id, const char *name, double v1, double v2) {
+
+   message::SetParameter m(0, Communicator::the().getRank(),
+         id, name, Vector(v1, v2));
+   PythonEmbed::handleMessage(m);
+}
+
+static void setVectorParam1(int id, const char *name, double v1) {
+
+   message::SetParameter m(0, Communicator::the().getRank(),
+         id, name, Vector(v1));
+   PythonEmbed::handleMessage(m);
+}
+
+static void setStringParam(int id, const char *name, const std::string &value) {
 
 #ifdef DEBUG
-   std::cerr << "Python: setFileParam " << id << ":" << name << " = " << value << std::endl;
+   std::cerr << "Python: setStringParam " << id << ":" << name << " = " << value << std::endl;
 #endif
-   message::SetFileParameter m(0, Communicator::the().getRank(),
+   message::SetParameter m(0, Communicator::the().getRank(),
          id, name, value);
-   Communicator::the().broadcastAndHandleMessage(m);
+   PythonEmbed::handleMessage(m);
 }
 
 static void compute(int id) {
@@ -163,7 +264,7 @@ static void compute(int id) {
    std::cerr << "Python: compute " << id << std::endl;
 #endif
    message::Compute m(0, Communicator::the().getRank(), id);
-   Communicator::the().broadcastAndHandleMessage(m);
+   PythonEmbed::handleMessage(m);
 }
 
 #define param(T, f) \
@@ -178,21 +279,37 @@ BOOST_PYTHON_MODULE(_vistle)
     def("_print_error", print_error);
     def("_print_output", print_output);
 
+    def("_resetModuleCounter", resetModuleCounter);
+
     def("source", source, "execute commands from file `arg1`");
     def("spawn", spawn, spawn_overloads(args("modulename", "debug", "debugrank"), "spawn new module `arg1`\n" "return its ID"));
     def("kill", kill, "kill module with ID `arg1`");
-    def("getRunning", getRunning, "get list of IDs of running modules");
-    def("getBusy", getBusy, "get list of IDs of busy modules");
-    def("getModuleName", getModuleName, "get name of module with ID `arg1`");
     def("connect", connect, "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
     def("compute", compute, "trigger execution of module with ID `arg1`");
     def("quit", quit, "quit vistle session");
     def("ping", ping, "send first character of `arg1` to every vistle process");
+    def("barrier", barrier, "wait until all modules reply");
 
     param(Int, setIntParam);
     param(Float, setFloatParam);
-    param(File, setFileParam);
-    param(Vector, setVectorParam);
+    param(String, setStringParam);
+    param(Vector, setVectorParam1);
+    param(Vector, setVectorParam2);
+    param(Vector, setVectorParam3);
+    param(Vector, setVectorParam4);
+
+    def("getRunning", getRunning, "get list of IDs of running modules");
+    def("getBusy", getBusy, "get list of IDs of busy modules");
+    def("getModuleName", getModuleName, "get name of module with ID `arg1`");
+    def("getInputPorts", getInputPorts, "get name of input ports of module with ID `arg1`");
+    def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
+    def("getConnections", getConnections, "get connections to/from port `arg2` of module with ID `arg1`");
+    def("getParameters", getParameters, "get list of parameters for module with ID `arg1`");
+    def("getParameterType", getParameterType, "get type of parameter named `arg2` of module with ID `arg1`");
+    def("getIntParam", getParameterValue<int>, "get value of parameter named `arg2` of module with ID `arg1`");
+    def("getFloatParam", getParameterValue<Scalar>, "get value of parameter named `arg2` of module with ID `arg1`");
+    def("getVectorParam", getParameterValue<Vector>, "get value of parameter named `arg2` of module with ID `arg1`");
+    def("getStringParam", getParameterValue<std::string>, "get value of parameter named `arg2` of module with ID `arg1`");
 }
 
 bool PythonModule::import(boost::python::object *ns) {

@@ -2,6 +2,7 @@
 #define PARAMETER_H
 
 #include <string>
+#include <sstream>
 #include "vector.h"
 #include "vistle.h"
 
@@ -10,36 +11,71 @@ namespace vistle {
 class VCEXPORT Parameter {
 
  public:
-   Parameter(const std::string & name);
+   enum Type {
+      Unknown, // keep first
+      Scalar,
+      Integer,
+      Vector,
+      String,
+      Invalid // keep last
+   };
+   Parameter(const std::string & name, Type = Invalid);
    virtual ~Parameter();
 
-   const std::string & getName();
+   virtual operator std::string() const = 0;
+   const std::string & getName() const;
+   Type type() const;
 
  private:
-   std::string name;
+   std::string m_name;
+   enum Type m_type;
+};
+
+template<typename T>
+struct ParameterType {
 };
 
 template<typename T>
 class VCEXPORT ParameterBase: public Parameter {
 
  public:
-   ParameterBase(const std::string & name, T value) : Parameter(name), value(value) {}
-   virtual ~ParameterBase() {}
+   typedef T ValueType;
 
-   const std::string & getName() { return name; }
+   ParameterBase(const std::string & name, T value = T()) : Parameter(name, ParameterType<T>::type), value(value) {}
+   virtual ~ParameterBase() {}
 
    const T getValue() const { return value; }
    void setValue(T value) { this->value = value; }
 
+   operator std::string() const { std::stringstream str; str << value; return str.str(); }
  private:
-   std::string name;
    T value;
 };
 
-typedef ParameterBase<Scalar> FloatParameter;
+template<>
+struct ParameterType<int> {
+   static const Parameter::Type type = Parameter::Integer;
+};
+
+template<>
+struct ParameterType<double> {
+   static const Parameter::Type type = Parameter::Scalar;
+};
+
+template<>
+struct ParameterType<Vector> {
+   static const Parameter::Type type = Parameter::Vector;
+};
+
+template<>
+struct ParameterType<std::string> {
+   static const Parameter::Type type = Parameter::String;
+};
+
+typedef ParameterBase<double> FloatParameter;
 typedef ParameterBase<int> IntParameter;
 typedef ParameterBase<Vector> VectorParameter;
-typedef ParameterBase<std::string> FileParameter;
+typedef ParameterBase<std::string> StringParameter;
 
 } // namespace vistle
 #endif

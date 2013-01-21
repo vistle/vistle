@@ -10,6 +10,11 @@ Polygons::Polygons(const size_t numElements,
 {
 }
 
+Polygons::Data::Data(const Polygons::Data &o, const std::string &n)
+: Polygons::Base::Data(o, n)
+{
+}
+
 Polygons::Data::Data(const size_t numElements, const size_t numCorners,
                    const size_t numVertices, const std::string & name,
                    const int block, const int timestep)

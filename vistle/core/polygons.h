@@ -18,9 +18,7 @@ class VCEXPORT Polygons: public Indexed {
             const size_t numVertices,
             const int block = -1, const int timestep = -1);
 
- protected:
-   struct Data: public Base::Data {
-
+   V_DATA_BEGIN(Polygons);
       Data(const size_t numElements, const size_t numCorners,
             const size_t numVertices, const std::string & name,
             const int block, const int timestep);
@@ -28,13 +26,7 @@ class VCEXPORT Polygons: public Indexed {
             const size_t numCorners = 0,
             const size_t numVertices = 0,
             const int block = -1, const int timestep = -1);
-
-      private:
-      friend class Polygons;
-      friend class boost::serialization::access;
-      template<class Archive>
-      void serialize(Archive &ar, const unsigned int version);
-   };
+   V_DATA_END(Polygons);
 };
 
 } // namespace vistle

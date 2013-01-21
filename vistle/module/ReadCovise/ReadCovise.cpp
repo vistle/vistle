@@ -36,7 +36,7 @@ ReadCovise::ReadCovise(const std::string &shmname, int rank, int size, int modul
 {
 
    createOutputPort("grid_out");
-   addFileParameter("filename", "");
+   addStringParameter("filename", "");
 }
 
 ReadCovise::~ReadCovise() {
@@ -466,9 +466,10 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
                readSETELE(fd, elem);
             }
          } else {
-            std::cerr << "ReadCovise: object type [" << buf << "] unsupported"
-               << std::endl;
-            exit(1);
+            std::stringstream str;
+            str << "Object type not supported: " << buf;
+            std::cerr << "ReadCovise: " << str.str() << std::endl;
+            throw vistle::exception(str.str());
          }
       }
    }
@@ -535,12 +536,16 @@ bool ReadCovise::load(const std::string & name) {
    }
 
    Element elem;
-   readSkeleton(fd, &elem);
+   try {
+      readSkeleton(fd, &elem);
 
-   readRecursive(fd, elem);
-   deleteRecursive(elem);
+      readRecursive(fd, elem);
+   } catch(vistle::exception &e) {
+      deleteRecursive(elem);
+      covCloseInFile(fd);
 
-   covCloseInFile(fd);
+      throw(e);
+   }
 
    return true;
 }
@@ -548,5 +553,5 @@ bool ReadCovise::load(const std::string & name) {
 bool ReadCovise::compute() {
 
    object_counter = 0;
-   return load(getFileParameter("filename"));
+   return load(getStringParameter("filename"));
 }

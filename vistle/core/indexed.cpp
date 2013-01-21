@@ -20,6 +20,13 @@ Indexed::Data::Data(const size_t numElements, const size_t numCorners,
 {
 }
 
+Indexed::Data::Data(const Indexed::Data::Data &o, const std::string &name)
+: Indexed::Base::Data(o, name)
+, el(o.el)
+, cl(o.cl)
+{
+}
+
 Indexed::Data *Indexed::Data::create(Type id,
             const size_t numElements, const size_t numCorners,
             const size_t numVertices,

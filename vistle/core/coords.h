@@ -20,21 +20,14 @@ class VCEXPORT Coords: public Vec<Scalar,3> {
    size_t getNumCoords() const;
    size_t getNumVertices() const;
 
- protected:
-   struct Data: public Base::Data {
-
+   V_DATA_BEGIN(Coords);
       Data(const size_t numVertices = 0,
             Type id = UNKNOWN, const std::string & name = "",
             const int block = -1, const int timestep = -1);
       static Data *create(Type id = UNKNOWN, const size_t numVertices = 0,
             const int block = -1, const int timestep = -1);
 
-      private:
-      friend class Coords;
-      friend class boost::serialization::access;
-      template<class Archive>
-         void serialize(Archive &ar, const unsigned int version);
-   };
+   V_DATA_END(Coords);
 };
 
 } // namespace vistle

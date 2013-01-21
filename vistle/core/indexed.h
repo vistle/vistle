@@ -25,9 +25,7 @@ class  VCEXPORT Indexed: public Coords {
    shm<size_t>::vector &cl() const { return *(*d()->cl)(); }
    shm<size_t>::vector &el() const { return *(*d()->el)(); }
 
- protected:
-
-   struct Data: public Base::Data {
+   V_DATA_BEGIN(Indexed);
       ShmVector<size_t>::ptr el, cl;
 
       Data(const size_t numElements = 0, const size_t numCorners = 0,
@@ -39,12 +37,7 @@ class  VCEXPORT Indexed: public Coords {
             const size_t numVertices = 0,
             int b = -1, int t = -1);
 
-      private:
-      friend class Indexed;
-      friend class boost::serialization::access;
-      template<class Archive>
-         void serialize(Archive &ar, const unsigned int version);
-   };
+   V_DATA_END(Indexed);
 };
 
 } // namespace vistle

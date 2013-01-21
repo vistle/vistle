@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <exception>
+#include <cstdlib>
 
 #include <control/executor.h>
 
