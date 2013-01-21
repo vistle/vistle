@@ -6,7 +6,7 @@
 #define VIMPORT __declspec(dllimport)
 #define VEXPORT __declspec(dllexport)
 
-#elif defined(__GNUC__) && __GNUC__ >= 4 && !defined (CO_ia64icc)
+#elif defined(__GNUC__) && __GNUC__ >= 4
 #define VEXPORT __attribute__ ((visibility("default")))
 #define VIMPORT VEXPORT
 #else

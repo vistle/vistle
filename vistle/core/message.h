@@ -127,7 +127,7 @@ class VCEXPORT Spawn: public Message {
 BOOST_STATIC_ASSERT(sizeof(Spawn) < Message::MESSAGE_SIZE);
 
 //! acknowledge that a module has been spawned
-class Started: public Message {
+class VCEXPORT Started: public Message {
 
  public:
    Started(const int moduleID, const int rank, const std::string &name);
@@ -338,7 +338,7 @@ class VCEXPORT SetParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(SetParameter) < Message::MESSAGE_SIZE);
 
-class Barrier: public Message {
+class VCEXPORT Barrier: public Message {
 
  public:
    Barrier(const int moduleID, const int rank, const int id);
@@ -350,7 +350,7 @@ class Barrier: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Barrier) < Message::MESSAGE_SIZE);
 
-class BarrierReached: public Message {
+class VCEXPORT BarrierReached: public Message {
 
  public:
    BarrierReached(const int moduleID, const int rank, const int id);
