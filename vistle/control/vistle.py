@@ -128,6 +128,9 @@ def showAllParameters():
       for p in params:
           print m, "\t", name, "\t", p, "\t", getParameterType(m, p), "\t", getSavableParam(m, p)
 
+def modvar(id):
+   return "m" + getModuleName(id) + str(id)
+
 def save(filename = None):
    global _loaded_file
    if filename == None:
@@ -136,10 +139,10 @@ def save(filename = None):
    f = open(filename, 'w')
    mods = getRunning()
    for m in mods:
-      f.write("id"+str(m)+" = spawn('"+getModuleName(m)+"')\n")
+      f.write(modvar(m)+" = spawn('"+getModuleName(m)+"')\n")
       params = getParameters(m)
       for p in params:
-         f.write("set"+getParameterType(m,p)+"Param(id"+str(m)+", '"+p+"', "+str(getSavableParam(m,p))+")\n")
+         f.write("set"+getParameterType(m,p)+"Param("+modvar(m)+", '"+p+"', "+str(getSavableParam(m,p))+")\n")
       f.write("\n")
 
    for m in mods:
@@ -147,7 +150,7 @@ def save(filename = None):
       for p in ports:
          conns = getConnections(m, p)
          for c in conns:
-            f.write("connect("+str(m)+",'"+str(p)+"', "+str(c.first)+",'"+str(c.second)+"')\n")
+            f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c.first)+",'"+str(c.second)+"')\n")
    f.close()
    print("Data flow network saved to "+filename)
 
