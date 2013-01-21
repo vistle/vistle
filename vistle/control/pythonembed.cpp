@@ -96,18 +96,21 @@ PythonEmbed::PythonEmbed(int argc, char *argv[])
    Py_SetProgramName(argv[0]);
    Py_Initialize();
 
-   bp::class_<std::vector<int> >("PyVec")
+   bp::class_<std::vector<int> >("vector<int>")
       .def(bp::vector_indexing_suite<std::vector<int> >());
 
-   bp::class_<std::vector<std::string> >("PyVec")
+   bp::class_<std::vector<std::string> >("vector<string>")
       .def(bp::vector_indexing_suite<std::vector<std::string> >());
 
-   bp::class_<std::vector<std::pair<int, std::string> > >("PyVec")
+   bp::class_<std::vector<std::pair<int, std::string> > >("vector<pair<int,string>>")
       .def(bp::vector_indexing_suite<std::vector<std::pair<int, std::string> > >());
 
-   bp::class_<std::pair<int, std::string> >("PyPair")
+   bp::class_<std::pair<int, std::string> >("pair<int,string>")
       .def_readwrite( "first", &std::pair< int, std::string >::first, "first value" ) 
       .def_readwrite( "second", &std::pair< int, std::string >::second, "second value" ); 
+
+   bp::class_<ParameterVector<double> >("ParameterVector<double>")
+      .def(bp::vector_indexing_suite<ParameterVector<double> >());
 
    bp::object main = bp::import("__main__");
    m_namespace = main.attr("__dict__");

@@ -2,6 +2,7 @@
 #define VECTOR_H
 
 #include <ostream>
+#include <vector>
 #include "scalar.h"
 #include "vistle.h"
 #include "dimensions.h"
@@ -9,38 +10,38 @@
 namespace vistle {
 
 template<typename S>
-class VCEXPORT GenericVector {
+class VCEXPORT ParameterVector {
 public:
    typedef S Scalar;
 
-   GenericVector(const int dim, const S values[]);
-   GenericVector(const S x, const S y, const S z, const S w);
-   GenericVector(const S x, const S y, const S z);
-   GenericVector(const S x, const S y);
-   GenericVector(const S x);
-   GenericVector();
-   GenericVector(const GenericVector &other);
+   ParameterVector(const int dim, const S values[]);
+   ParameterVector(const S x, const S y, const S z, const S w);
+   ParameterVector(const S x, const S y, const S z);
+   ParameterVector(const S x, const S y);
+   ParameterVector(const S x);
+   ParameterVector();
+   ParameterVector(const ParameterVector &other);
 
-   GenericVector &operator=(const GenericVector &rhs);
+   ParameterVector &operator=(const ParameterVector &rhs);
 
    int dim;
+   std::vector<S> v;
    S &x, &y, &z, &w;
-   S v[MaxDimension];
 
    // negate
-   GenericVector operator-() const;
+   ParameterVector operator-() const;
 
    // scalar multiplication
-   GenericVector operator*(S const & rhs) const;
+   ParameterVector operator*(S const & rhs) const;
 
    // vector addition
-   GenericVector operator+(GenericVector const & rhs) const;
+   ParameterVector operator+(ParameterVector const & rhs) const;
 
    // vector supstraction
-   GenericVector operator-(GenericVector const & rhs) const;
+   ParameterVector operator-(ParameterVector const & rhs) const;
 
    // scalar product
-   S operator*(GenericVector const & rhs) const;
+   S operator*(ParameterVector const & rhs) const;
 
    S &operator[](int i) { return v[i]; }
    const S &operator[](int i) const { return v[i]; }
@@ -49,15 +50,33 @@ public:
    operator const S *() const { return v; }
 
    std::string str() const;
+
+public:
+   // for vector_indexing_suite
+   typedef Scalar value_type;
+   typedef size_t size_type;
+   typedef size_t index_type;
+   typedef ssize_t difference_type;
+   size_t size() { return dim; }
+   typedef typename std::vector<S>::iterator iterator;
+   void erase(iterator s) { v.erase(s); }
+   void erase(iterator s, iterator e) { v.erase(s, e); }
+   iterator begin() { return v.begin(); }
+   iterator end() { return v.end(); }
+   void insert(iterator pos, const S &value) { v.insert(pos, value); }
+   template<class InputIt>
+   void insert(iterator pos, InputIt first, InputIt last) { v.insert(pos, first, last); }
+   ParameterVector(iterator begin, iterator end);
+   void push_back(const S &value) { v.push_back(value); }
 };
 
-typedef GenericVector<Scalar> ScalarVector;
+typedef ParameterVector<Scalar> ScalarVector;
 typedef ScalarVector Vector;
 
 } // namespace vistle
 
 template<typename S>
-std::ostream &operator<<(std::ostream &out, const vistle::GenericVector<S> &v);
+std::ostream &operator<<(std::ostream &out, const vistle::ParameterVector<S> &v);
 #endif // VECTOR_H
 
 

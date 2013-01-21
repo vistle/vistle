@@ -16,7 +16,7 @@ using namespace boost;
 
 struct instantiator {
    template<typename S> S operator()(S) {
-      typedef GenericVector<S> V;
+      typedef ParameterVector<S> V;
       S s = S();
       V *p0 = new V();
       V *p1 = new V(S());
@@ -26,8 +26,9 @@ struct instantiator {
       V v(*p0);
       V v2 = *p0 + *p1 - *p2 + *p3 + *p4 + v;
       V v3(v2.dim, &v2[0]);
+      V v4(v3.begin(), v3.end());
 
-      std::cout << v << v3;
+      std::cout << v << v3 << v4;
       v = v2;
       std::cout << v.str();
       v = v*s;

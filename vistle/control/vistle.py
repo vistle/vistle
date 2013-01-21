@@ -97,6 +97,16 @@ def getSavableParam(id, name):
    t = getParameterType(id, name)
    if t == "String":
       return "'"+getStringParam(id, name)+"'"
+   elif t == "Vector":
+      v = getVectorParam(id, name)
+      s = ''
+      first=True
+      for c in v:
+         if not first:
+            s += ', '
+         first = False
+         s += str(c)
+      return s
    else:
       return getParameter(id, name)
 
@@ -116,7 +126,7 @@ def showAllParameters():
       name = getModuleName(m)
       params = getParameters(m)
       for p in params:
-          print m, "\t", name, "\t", p, "\t", getParameterType(m, p), "\t", getParameter(m, p)
+          print m, "\t", name, "\t", p, "\t", getParameterType(m, p), "\t", getSavableParam(m, p)
 
 def save(filename = None):
    global _loaded_file

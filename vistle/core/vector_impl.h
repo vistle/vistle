@@ -8,13 +8,18 @@
 namespace vistle {
 
 BOOST_STATIC_ASSERT(MaxDimension >= 4);
-template<typename S>
-GenericVector<S>::GenericVector(const int dim, const S values[])
-: dim(dim)
-, x(v[0])
-, y(v[1])
-, z(v[2])
+
+#define VINIT(d) \
+  dim(d) \
+, v(MaxDimension) \
+, x(v[0]) \
+, y(v[1]) \
+, z(v[2]) \
 , w(v[3])
+
+template<typename S>
+ParameterVector<S>::ParameterVector(const int dim, const S values[])
+: VINIT(dim)
 {
    assert(dim <= MaxDimension);
    for (int i=0; i<dim; ++i)
@@ -24,12 +29,8 @@ GenericVector<S>::GenericVector(const int dim, const S values[])
 }
 
 template<typename S>
-GenericVector<S>::GenericVector(const S _x, const S _y, const S _z, const S _w)
-: dim(4)
-, x(v[0])
-, y(v[1])
-, z(v[2])
-, w(v[3])
+ParameterVector<S>::ParameterVector(const S _x, const S _y, const S _z, const S _w)
+: VINIT(4)
 {
    v[0] = _x;
    v[1] = _y;
@@ -40,12 +41,8 @@ GenericVector<S>::GenericVector(const S _x, const S _y, const S _z, const S _w)
 }
 
 template<typename S>
-GenericVector<S>::GenericVector(const S _x, const S _y, const S _z)
-: dim(3)
-, x(v[0])
-, y(v[1])
-, z(v[2])
-, w(v[3])
+ParameterVector<S>::ParameterVector(const S _x, const S _y, const S _z)
+: VINIT(3)
 {
    v[0] = _x;
    v[1] = _y;
@@ -55,12 +52,8 @@ GenericVector<S>::GenericVector(const S _x, const S _y, const S _z)
 }
 
 template<typename S>
-GenericVector<S>::GenericVector(const S _x, const S _y)
-: dim(2)
-, x(v[0])
-, y(v[1])
-, z(v[2])
-, w(v[3])
+ParameterVector<S>::ParameterVector(const S _x, const S _y)
+: VINIT(2)
 {
    v[0] = _x;
    v[1] = _y;
@@ -69,12 +62,8 @@ GenericVector<S>::GenericVector(const S _x, const S _y)
 }
 
 template<typename S>
-GenericVector<S>::GenericVector(const S _x)
-: dim(1)
-, x(v[0])
-, y(v[1])
-, z(v[2])
-, w(v[3])
+ParameterVector<S>::ParameterVector(const S _x)
+: VINIT(1)
 {
    v[0] = _x;
    for (int i=1; i<MaxDimension; ++i)
@@ -82,77 +71,81 @@ GenericVector<S>::GenericVector(const S _x)
 }
 
 template<typename S>
-GenericVector<S>::GenericVector()
-: dim(0)
-, x(v[0])
-, y(v[1])
-, z(v[2])
-, w(v[3])
+ParameterVector<S>::ParameterVector()
+: VINIT(0)
 {
    for (int i=0; i<MaxDimension; ++i)
       v[i] = S();
 }
 
 template<typename S>
-GenericVector<S>::GenericVector(const GenericVector<S> &o)
-: dim(o.dim)
-, x(v[0])
-, y(v[1])
-, z(v[2])
-, w(v[3])
+ParameterVector<S>::ParameterVector(const ParameterVector<S> &o)
+: VINIT(o.dim)
 {
-   memcpy(v, o.v, sizeof(v));
+   memcpy(&v[0], &o.v[0], sizeof(v[0])*MaxDimension);
 }
 
 template<typename S>
-GenericVector<S> &GenericVector<S>::operator=(const GenericVector<S> &rhs) {
+ParameterVector<S> &ParameterVector<S>::operator=(const ParameterVector<S> &rhs) {
 
    if (this != &rhs) {
       dim = rhs.dim;
-      memcpy(v, rhs.v, sizeof(v));
+      memcpy(&v[0], &rhs.v[0], sizeof(v[0])*MaxDimension);
    }
 
    return *this;
 }
 
 template<typename S>
-GenericVector<S> GenericVector<S>::operator-() const {
+ParameterVector<S>::ParameterVector(ParameterVector<S>::iterator from, ParameterVector<S>::iterator to)
+: VINIT(MaxDimension)
+{
+   dim = 0;
+   for (iterator it=from; it!=to; ++it) {
+      v[dim] = *it;
+      ++dim;
+   }
+}
+#undef VINIT
 
-   GenericVector result(*this);
+template<typename S>
+ParameterVector<S> ParameterVector<S>::operator-() const {
+
+   ParameterVector result(*this);
    for (int i=0; i<dim; ++i)
       result[i] = -result[i];
    return result;
 }
 
 template<typename S>
-GenericVector<S> GenericVector<S>::operator*(S const &rhs) const {
+ParameterVector<S> ParameterVector<S>::operator*(S const &rhs) const {
 
-   GenericVector result(*this);
+   ParameterVector result(*this);
    for (int i=0; i<dim; ++i)
       result[i] *= rhs;
    return result;
 }
 
 template<typename S>
-GenericVector<S> GenericVector<S>::operator+(GenericVector<S> const &rhs) const {
+ParameterVector<S> ParameterVector<S>::operator+(ParameterVector<S> const &rhs) const {
 
-   GenericVector result(*this);
+   ParameterVector result(*this);
    for (int i=0; i<dim; ++i)
       result[i] += rhs[i];
    return result;
 }
 
 template<typename S>
-GenericVector<S> GenericVector<S>::operator-(GenericVector const &rhs) const {
+ParameterVector<S> ParameterVector<S>::operator-(ParameterVector const &rhs) const {
 
-   GenericVector result(*this);
+   ParameterVector result(*this);
    for (int i=0; i<dim; ++i)
       result[i] -= rhs[i];
    return result;
 }
 
 template<typename S>
-S GenericVector<S>::operator *(GenericVector const & rhs) const {
+S ParameterVector<S>::operator *(ParameterVector const & rhs) const {
 
    S result = S();
    for (int i=0; i<dim; ++i)
@@ -161,7 +154,7 @@ S GenericVector<S>::operator *(GenericVector const & rhs) const {
 }
 
 template<typename S>
-std::string GenericVector<S>::str() const {
+std::string ParameterVector<S>::str() const {
 
    std::stringstream str;
    str << *this;
@@ -171,7 +164,7 @@ std::string GenericVector<S>::str() const {
 } // namespace vistle
 
 template<typename S>
-std::ostream &operator<<(std::ostream &out, const vistle::GenericVector<S> &v) {
+std::ostream &operator<<(std::ostream &out, const vistle::ParameterVector<S> &v) {
 
    out << "(";
    for (int i=0; i<v.dim; ++i) {
