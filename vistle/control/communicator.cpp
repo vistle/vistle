@@ -191,6 +191,13 @@ void InteractiveClient::operator()() {
          if (line == "quit")
             line = "quit()";
 
+         if (line == "exit" || line == "exit()") {
+            if (!isConsole()) {
+               line.clear();
+               break;
+            }
+         }
+
          if (!m_keepInterpreter)
             Communicator::the().acquireInterpreter(this);
          Communicator::the().execute(line);
