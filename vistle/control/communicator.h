@@ -16,6 +16,7 @@
 #include <mpi.h>
 
 #include "portmanager.h"
+#include "client.h"
 
 namespace bi = boost::interprocess;
 
@@ -29,39 +30,6 @@ namespace message {
 class Parameter;
 
 class PythonEmbed;
-
-class InteractiveClient {
-   friend class PythonEmbed;
-
-   public:
-      InteractiveClient();
-      InteractiveClient(int readfd, int writefd=-1 /* same as readfd */, bool keepInterpreterLock=false);
-      InteractiveClient(const InteractiveClient &o);
-      ~InteractiveClient();
-
-      void operator()();
-
-      bool isConsole() const;
-
-      void setQuitOnEOF();
-      void setInput(const std::string &input);
-
-      bool write(const std::string &s);
-
-      boost::asio::ip::tcp::socket &socket();
-
-   private:
-      mutable bool m_close;
-      bool readline(std::string &line, bool vistle=true);
-      bool printPrompt();
-      bool printGreeting();
-      bool m_quitOnEOF;
-      bool m_keepInterpreter;
-      bool m_useReadline;
-      std::string lastline;
-      boost::asio::io_service *m_ioService;
-      boost::asio::ip::tcp::socket *m_socket;
-};
 
 class Communicator {
    friend class PythonEmbed;
