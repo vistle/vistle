@@ -7,26 +7,11 @@
 #include "client.h"
 #include "communicator.h"
 
+#include <boost/algorithm/string/trim.hpp>
+
 namespace asio = boost::asio;
 
 namespace vistle {
-
-static std::string strip(const std::string& str) {
-
-   const char *chtmp = str.c_str();
-
-   const char *start=&chtmp[0];
-   const char *end=&chtmp[str.size()];
-
-   while (*start && isspace(*start))
-      ++start;
-
-   while (end > start && (!*end || isspace(*end)))
-      --end;
-
-   return std::string(start, end+1);
-}
-
 
 static std::string history_file() {
    std::string history;
@@ -151,7 +136,7 @@ void InteractiveClient::operator()() {
       std::string line;
       bool again = readline(line, !m_keepInterpreter);
 
-      line = strip(line);
+      boost::trim(line);
       if (line == "?" || line == "h" || line == "help") {
          write("Type \"help(vistle)\" for help, \"help()\" for general help\n\n");
       } else if (!line.empty()) {
