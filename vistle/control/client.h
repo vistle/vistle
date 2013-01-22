@@ -8,32 +8,59 @@ namespace vistle {
 class InteractiveClient {
    public:
       InteractiveClient();
-      InteractiveClient(int readfd, int writefd=-1 /* same as readfd */, bool keepInterpreterLock=false);
       InteractiveClient(const InteractiveClient &o);
-      ~InteractiveClient();
+      virtual ~InteractiveClient();
 
       void operator()();
 
-      bool isConsole() const;
+      virtual bool isConsole() const;
 
       void setQuitOnEOF();
+      void setKeepInterpreterLock();
       void setInput(const std::string &input);
 
-      bool write(const std::string &s);
-      bool readline(std::string &line, bool vistle=true);
+      virtual bool write(const std::string &s) = 0;
+      virtual bool readline(std::string &line, bool vistle=true) = 0;
 
-      boost::asio::ip::tcp::socket &socket();
+   protected:
+      virtual bool printPrompt();
 
-   private:
+      std::string m_prompt;
       mutable bool m_close;
-      bool printPrompt();
       bool printGreeting();
       bool m_quitOnEOF;
       bool m_keepInterpreter;
-      bool m_useReadline;
-      std::string lastline;
+};
+
+class AsioClient: public InteractiveClient {
+   public:
+      AsioClient();
+      AsioClient(const AsioClient &o);
+      ~AsioClient();
+
+      bool readline(std::string &line, bool vistle=true);
+      bool write(const std::string &s);
+
+      boost::asio::ip::tcp::socket &socket();
+   protected:
+      bool printPrompt();
+
       boost::asio::io_service *m_ioService;
       boost::asio::ip::tcp::socket *m_socket;
+};
+
+class ReadlineClient: public InteractiveClient {
+   public:
+      ReadlineClient();
+      ReadlineClient(const ReadlineClient &o);
+      ~ReadlineClient();
+
+      bool readline(std::string &line, bool vistle=true);
+      bool write(const std::string &s);
+      bool isConsole() const;
+
+   private:
+      std::string lastline;
 };
 
 } // namespace vistle

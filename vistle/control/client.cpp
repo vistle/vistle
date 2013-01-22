@@ -23,63 +23,32 @@ static std::string history_file() {
    return history;
 }
 
-InteractiveClient::InteractiveClient()
-: m_close(false)
-, m_quitOnEOF(true)
-, m_useReadline(true)
-, m_ioService(NULL)
-, m_socket(NULL)
-{
-#ifdef DEBUG
-   std::cerr << "Using readline" << std::endl;
-#endif
-#ifdef HAVE_READLINE
-   using_history();
-   read_history(history_file().c_str());
-#endif
-}
 
-InteractiveClient::InteractiveClient(int readfd, int writefd, bool keepInterpreterLock)
+
+InteractiveClient::InteractiveClient()
 : m_close(true)
 , m_quitOnEOF(false)
-, m_keepInterpreter(keepInterpreterLock)
-, m_useReadline(false)
-, m_ioService(NULL)
-, m_socket(NULL)
+, m_keepInterpreter(false)
+, m_prompt("vistle> ")
 {
-   m_ioService = new boost::asio::io_service();
-   m_socket = new boost::asio::ip::tcp::socket(*m_ioService);
 }
 
 InteractiveClient::InteractiveClient(const InteractiveClient &o)
 : m_close(o.m_close)
 , m_quitOnEOF(o.m_quitOnEOF)
 , m_keepInterpreter(o.m_keepInterpreter)
-, m_useReadline(o.m_useReadline)
-, m_ioService(o.m_ioService)
-, m_socket(o.m_socket)
+, m_prompt(o.m_prompt)
 {
    o.m_close = false;
 }
 
 InteractiveClient::~InteractiveClient() {
-
-   if (m_useReadline) {
-#ifdef HAVE_READLINE
-      write_history(history_file().c_str());
-      //append_history(::history_length, history_file().c_str());
-#endif
-   }
-   if (m_close) {
-      delete m_socket;
-      delete m_ioService;
-   }
 }
 
 
 bool InteractiveClient::isConsole() const {
 
-   return m_useReadline;
+   return false;
 }
 
 void InteractiveClient::setInput(const std::string &input) {
@@ -87,41 +56,9 @@ void InteractiveClient::setInput(const std::string &input) {
    //std::copy (input.begin(), input.end(), std::back_inserter(readbuf));
 }
 
-bool InteractiveClient::readline(std::string &line, bool vistle) {
+void InteractiveClient::setKeepInterpreterLock() {
 
-   const size_t rsize = 1024;
-   bool result = true;
-
-   if (m_useReadline) {
-#ifdef HAVE_READLINE
-      char *l= ::readline(vistle ? "vistle> " : "");
-      if (l) {
-         line = l;
-         if (vistle && !line.empty() && lastline != line) {
-            lastline = line;
-            add_history(l);
-         }
-         free(l);
-      } else {
-         line.clear();
-         result = false;
-      }
-#endif
-   } else {
-
-      boost::system::error_code error;
-      asio::streambuf buf;
-      asio::read_until(socket(), buf, '\n', error);
-      if (error) {
-         result = false;
-      }
-
-      std::istream buf_stream(&buf);
-
-      std::getline(buf_stream, line);
-   }
-
-   return result;
+   m_keepInterpreter = true;
 }
 
 void InteractiveClient::operator()() {
@@ -164,8 +101,6 @@ void InteractiveClient::operator()() {
          }
          break;
       }
-      if (!m_keepInterpreter)
-         printPrompt();
    }
 
    if (m_keepInterpreter)
@@ -177,33 +112,131 @@ void InteractiveClient::setQuitOnEOF() {
    m_quitOnEOF = true;
 }
 
-bool InteractiveClient::write(const std::string &str) {
+bool InteractiveClient::printGreeting() {
 
-   if (isConsole()) {
-      size_t n = str.size();
-      return ::write(1, &str[0], n) == n;
+   return write("Type \"help\" for help, \"quit\" to exit\n");
+}
+
+ReadlineClient::ReadlineClient()
+: InteractiveClient()
+{
+#ifdef DEBUG
+   std::cerr << "Using readline" << std::endl;
+#endif
+#ifdef HAVE_READLINE
+   using_history();
+   read_history(history_file().c_str());
+#endif
+}
+
+ReadlineClient::ReadlineClient(const ReadlineClient &o)
+: InteractiveClient(o)
+{
+   o.m_close = false;
+}
+
+ReadlineClient::~ReadlineClient() {
+
+   if (m_close) {
+#ifdef HAVE_READLINE
+      write_history(history_file().c_str());
+      //append_history(::history_length, history_file().c_str());
+#endif
    }
+}
+
+bool ReadlineClient::isConsole() const {
+
+   return true;
+}
+
+bool ReadlineClient::readline(std::string &line, bool vistle) {
+
+   bool result = true;
+
+#ifdef HAVE_READLINE
+   char *l= ::readline(vistle ? m_prompt.c_str() : "");
+   if (l) {
+      line = l;
+      if (vistle && !line.empty() && lastline != line) {
+         lastline = line;
+         add_history(l);
+      }
+      free(l);
+   } else {
+      line.clear();
+      result = false;
+   }
+#endif
+
+   return result;
+}
+
+bool ReadlineClient::write(const std::string &str) {
+
+   std::cout << str;
+   return true;
+}
+
+AsioClient::AsioClient()
+: m_ioService(NULL)
+, m_socket(NULL)
+{
+   m_ioService = new boost::asio::io_service();
+   m_socket = new boost::asio::ip::tcp::socket(*m_ioService);
+}
+
+AsioClient::AsioClient(const AsioClient &o)
+: InteractiveClient(o)
+, m_ioService(o.m_ioService)
+, m_socket(o.m_socket)
+{
+   o.m_close = false;
+}
+AsioClient::~AsioClient() {
+
+   if (m_close) {
+      delete m_socket;
+      delete m_ioService;
+   }
+}
+
+bool AsioClient::readline(std::string &line, bool vistle) {
+
+   bool result = true;
+
+   if (vistle)
+      printPrompt();
+
+   boost::system::error_code error;
+   asio::streambuf buf;
+   asio::read_until(socket(), buf, '\n', error);
+   if (error) {
+      result = false;
+   }
+
+   std::istream buf_stream(&buf);
+   std::getline(buf_stream, line);
+
+   return result;
+}
+
+bool AsioClient::write(const std::string &str) {
 
    return asio::write(socket(), asio::buffer(str));
 }
 
 bool InteractiveClient::printPrompt() {
 
-   if (m_useReadline)
-      return true;
-
-   return write("vistle> ");
+   return true;
 }
 
-bool InteractiveClient::printGreeting() {
+bool AsioClient::printPrompt() {
 
-   bool ok = write("Type \"help\" for help, \"quit\" to exit\n");
-   if (!ok)
-      return ok;
-   return printPrompt();
+   return write(m_prompt);
 }
 
-asio::ip::tcp::socket &InteractiveClient::socket() {
+asio::ip::tcp::socket &AsioClient::socket() {
 
    return *m_socket;
 }

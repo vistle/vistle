@@ -171,11 +171,7 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
      m_activeBarrier(-1),
      m_reachedBarriers(-1),
      m_activeClient(NULL),
-#ifdef HAVE_READLINE
-     m_console(InteractiveClient()),
-#else
-     m_console(InteractiveClient(0, 1)),
-#endif
+     m_console(ReadlineClient()),
      m_consoleThreadCreated(false),
      m_port(8192),
      messageQueue(create_only,
@@ -333,12 +329,15 @@ bool Communicator::dispatch() {
 
       if (!m_initialFile.empty()) {
 
+#if 0
          int fd = open(m_initialFile.c_str(), O_RDONLY);
          if (fd == -1) {
             std::cerr << "failed to open " << m_initialFile << std::endl;
          } else {
             boost::thread(InteractiveClient(fd, 1, true));
+            keepInterpreterLock();
          }
+#endif
          m_initialFile.clear();
       } else if (!m_consoleThreadCreated) {
 #ifdef DEBUG
@@ -882,11 +881,11 @@ void Communicator::disconnectClients() {
 
 void Communicator::startAccept() {
 
-      InteractiveClient client(3000);
+      AsioClient client;
       m_acceptor.async_accept(client.socket(), boost::bind<void>(&Communicator::handleAccept, this, client, asio::placeholders::error));
 }
 
-void Communicator::handleAccept(InteractiveClient &client, const boost::system::error_code &error) {
+void Communicator::handleAccept(AsioClient &client, const boost::system::error_code &error) {
 
    if (!error) {
       std::cerr << "new client" << std::endl;

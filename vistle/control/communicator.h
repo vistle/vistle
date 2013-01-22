@@ -123,13 +123,13 @@ class Communicator {
    ModuleSet reachedSet;
 
    InteractiveClient *m_activeClient;
-   InteractiveClient m_console;
+   ReadlineClient m_console;
    boost::thread m_consoleThread;
    bool m_consoleThreadCreated;
    int acceptClients();
    void disconnectClients();
    void startAccept();
-   void handleAccept(InteractiveClient &client, const boost::system::error_code &error);
+   void handleAccept(AsioClient &client, const boost::system::error_code &error);
    unsigned short m_port;
 
    static Communicator *s_singleton;
