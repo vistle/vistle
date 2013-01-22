@@ -11,6 +11,7 @@
 #include <boost/thread/condition_variable.hpp>
 #include <boost/thread.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
+#include <boost/asio.hpp>
 
 #include <mpi.h>
 
@@ -40,22 +41,26 @@ class InteractiveClient {
 
       void operator()();
 
+      bool isConsole() const;
+
       void setQuitOnEOF();
       void setInput(const std::string &input);
 
       bool write(const std::string &s);
+
+      boost::asio::ip::tcp::socket &socket();
 
    private:
       mutable bool m_close;
       bool readline(std::string &line, bool vistle=true);
       bool printPrompt();
       bool printGreeting();
-      int readfd, writefd;
-      std::vector<char> readbuf;
       bool m_quitOnEOF;
       bool m_keepInterpreter;
       bool m_useReadline;
       std::string lastline;
+      boost::asio::io_service *m_ioService;
+      boost::asio::ip::tcp::socket *m_socket;
 };
 
 class Communicator {
@@ -110,9 +115,11 @@ class Communicator {
 
    bool m_quitFlag;
 
+   boost::asio::io_service m_ioService;
+   boost::asio::ip::tcp::acceptor m_acceptor;
+
    boost::mutex m_barrierMutex;
    boost::condition_variable m_barrierCondition;
-   int serverSocket;
    int moduleID;
    PythonEmbed *interpreter;
    boost::mutex interpreter_mutex;
@@ -152,24 +159,12 @@ class Communicator {
    boost::thread m_consoleThread;
    bool m_consoleThreadCreated;
    int acceptClients();
-   bool setClientBlocking(int num, bool block);
-   void allocateBuffers(int num);
-   void flushClient(int num);
-   void writeClient(int num, const void *buf, size_t n);
-   void writeClient(int num, const std::string &s);
-   void printGreeting(int num);
-   void printPrompt(int num);
-   ssize_t readClient(int num, void *buf, size_t n);
-   bool hasClientLine(int num);
-   std::string readClientLine(int num);
-   ssize_t fillClientBuffer(int num);
    void disconnectClients();
+   void startAccept();
+   void handleAccept(InteractiveClient &client, const boost::system::error_code &error);
    unsigned short m_port;
 
    static Communicator *s_singleton;
-
-   static const int FdOut = 1;
-   enum { StdInOut = 0, Server = 1, SocketStart = 2 };
 };
 
 } // namespace vistle

@@ -223,7 +223,7 @@ void PythonEmbed::print_error(const std::string &str) {
    //std::cerr << "ERR: " << str << std::endl;
    Communicator &comm = Communicator::the();
    InteractiveClient *c = comm.activeClient();
-   if (c && c->writefd != 1)
+   if (c && !c->isConsole())
       c->write(str);
    else
       std::cerr << str;

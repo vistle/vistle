@@ -1,22 +1,11 @@
 /*
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
-#ifndef _WIN32
-#include <sys/socket.h>
-#include <netdb.h>
-#include <sys/select.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#else
-#include<Winsock2.h>
-#pragma comment(lib, "Ws2_32.lib")
-#define usleep Sleep
-#define close closesocket
-typedef int socklen_t;
-#endif
-
 #include <boost/foreach.hpp>
 #include <boost/thread.hpp>
+#include <boost/bind.hpp>
+
+#include <boost/asio.hpp>
 
 #include <mpi.h>
 
@@ -44,27 +33,16 @@ typedef int socklen_t;
 #include "pythonembed.h"
 #include "communicator.h"
 
-
-#ifdef _WIN32
-#define usleep Sleep
-#define close closesocket
-typedef int socklen_t;
-#endif
 #define CERR \
    std::cerr << "comm [" << rank << "/" << size << "] "
 
 using namespace boost::interprocess;
 
+namespace asio = boost::asio;
+
 namespace vistle {
 
 Communicator *Communicator::s_singleton = NULL;
-
-template<class T>
-typename T::iterator find_linefeed(T &container) {
-   const char lineend[] = "\r\n";
-
-   return ::std::find_first_of(container.begin(), container.end(), &lineend[0], &lineend[sizeof(lineend)]);
-}
 
 std::string strip(const std::string& str) {
 
@@ -82,31 +60,6 @@ std::string strip(const std::string& str) {
    return std::string(start, end+1);
 }
 
-static bool set_blocking(int fd, bool block) {
-
-   errno = 0;
-#ifndef _WIN32
-   int flags = fcntl(fd, F_GETFL);
-   if (errno)
-      return false;
-#endif
-   
-#ifdef _WIN32
-      unsigned long tru = 0;
-	  if(block == false)
-          tru = 1;
-      return ioctlsocket(fd, FIONBIO, &tru) != -1;
-#else
-   if (block) {
-      flags &= ~O_NONBLOCK;
-   } else {
-      flags |= O_NONBLOCK;
-   }
-
-   return fcntl(fd, F_SETFL, flags) != -1;
-#endif
-}
-
 
 static std::string history_file() {
    std::string history;
@@ -120,10 +73,10 @@ static std::string history_file() {
 
 InteractiveClient::InteractiveClient()
 : m_close(false)
-, readfd(0)
-, writefd(1)
 , m_quitOnEOF(true)
 , m_useReadline(true)
+, m_ioService(NULL)
+, m_socket(NULL)
 {
 #ifdef DEBUG
    std::cerr << "Using readline" << std::endl;
@@ -136,28 +89,23 @@ InteractiveClient::InteractiveClient()
 
 InteractiveClient::InteractiveClient(int readfd, int writefd, bool keepInterpreterLock)
 : m_close(true)
-, readfd(readfd)
-, writefd(writefd >= 0 ? writefd : readfd)
 , m_quitOnEOF(false)
 , m_keepInterpreter(keepInterpreterLock)
 , m_useReadline(false)
+, m_ioService(NULL)
+, m_socket(NULL)
 {
-#ifdef DEBUG
-   std::cerr << "Client FDs: " << readfd << ", " << writefd << std::endl;
-#endif
-   if (readfd != -1)
-      set_blocking(readfd, true);
-   if (writefd != -1)
-      set_blocking(writefd, true);
+   m_ioService = new boost::asio::io_service();
+   m_socket = new boost::asio::ip::tcp::socket(*m_ioService);
 }
 
 InteractiveClient::InteractiveClient(const InteractiveClient &o)
 : m_close(o.m_close)
-, readfd(o.readfd)
-, writefd(o.writefd >= 0 ? o.writefd : o.readfd)
 , m_quitOnEOF(o.m_quitOnEOF)
 , m_keepInterpreter(o.m_keepInterpreter)
 , m_useReadline(o.m_useReadline)
+, m_ioService(o.m_ioService)
+, m_socket(o.m_socket)
 {
    o.m_close = false;
 }
@@ -171,19 +119,20 @@ InteractiveClient::~InteractiveClient() {
 #endif
    }
    if (m_close) {
-#ifdef DEBUG
-      std::cerr << "Closing: " << readfd << ", " << writefd << std::endl;
-#endif
-      if (readfd > 2)
-         close(readfd);
-      if (readfd != writefd && writefd > 2)
-         close(writefd);
+      delete m_socket;
+      delete m_ioService;
    }
+}
+
+
+bool InteractiveClient::isConsole() const {
+
+   return m_useReadline;
 }
 
 void InteractiveClient::setInput(const std::string &input) {
 
-   std::copy (input.begin(), input.end(), std::back_inserter(readbuf));
+   //std::copy (input.begin(), input.end(), std::back_inserter(readbuf));
 }
 
 bool InteractiveClient::readline(std::string &line, bool vistle) {
@@ -207,49 +156,17 @@ bool InteractiveClient::readline(std::string &line, bool vistle) {
       }
 #endif
    } else {
-      std::vector<char>::iterator lf = find_linefeed(readbuf);
-      while (lf == readbuf.end()) {
 
-         if (readfd == -1) {
-            result = false;
-            break;
-         }
-
-         ssize_t nvalid = readbuf.size();
-         readbuf.resize(nvalid + rsize);
-         ssize_t n = read(readfd, &readbuf[nvalid], rsize);
-         if (n == -1) {
-            if (errno != EINTR && errno != EAGAIN && errno != EWOULDBLOCK) {
-               std::cerr << "socket error: " << strerror(errno) << std::endl;
-               return false;
-            }
-         }
-
-         if (n >= 0) {
-            readbuf.resize(nvalid+n);
-         }
-
-         if (n == 0) {
-#ifdef DEBUG
-            std::cerr << "socket closed" << std::endl;
-#endif
-            result = false;
-            break;
-         }
-
-         lf = find_linefeed(readbuf);
+      boost::system::error_code error;
+      asio::streambuf buf;
+      asio::read_until(socket(), buf, '\n', error);
+      if (error) {
+         result = false;
       }
 
-      lf = find_linefeed(readbuf);
-      if (lf == readbuf.end()) {
-         line = std::string(readbuf.begin(), readbuf.end());
-         readbuf.clear();
-      } else {
-         if (*lf == '\r' && lf+1 < readbuf.end() && *(lf+1) == '\n')
-            ++lf;
-         line = std::string(readbuf.begin(), lf+1);
-         readbuf.erase(readbuf.begin(), lf+1);
-      }
+      std::istream buf_stream(&buf);
+
+      std::getline(buf_stream, line);
    }
 
    return result;
@@ -303,8 +220,12 @@ void InteractiveClient::setQuitOnEOF() {
 
 bool InteractiveClient::write(const std::string &str) {
 
-   size_t n = str.size();
-   return ::write(writefd, &str[0], n) == n;
+   if (isConsole()) {
+      size_t n = str.size();
+      return ::write(1, &str[0], n) == n;
+   }
+
+   return asio::write(socket(), asio::buffer(str));
 }
 
 bool InteractiveClient::printPrompt() {
@@ -321,6 +242,11 @@ bool InteractiveClient::printGreeting() {
    if (!ok)
       return ok;
    return printPrompt();
+}
+
+asio::ip::tcp::socket &InteractiveClient::socket() {
+
+   return *m_socket;
 }
 
 static void splitpath(const std::string &value, std::vector<std::string> *components)
@@ -463,10 +389,10 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
 #endif
      m_consoleThreadCreated(false),
      m_port(8192),
-     serverSocket(-1),
      messageQueue(create_only,
            message::MessageQueue::createName("command_queue", 0, r).c_str(),
-           256 /* num msg */, message::Message::MESSAGE_SIZE)
+           256 /* num msg */, message::Message::MESSAGE_SIZE),
+     m_acceptor(m_ioService)
 {
    assert(s_singleton == NULL);
    s_singleton = this;
@@ -1165,61 +1091,49 @@ void Communicator::disconnectClients() {
 
 }
 
+void Communicator::startAccept() {
+
+      InteractiveClient client(3000);
+      m_acceptor.async_accept(client.socket(), boost::bind<void>(&Communicator::handleAccept, this, client, asio::placeholders::error));
+}
+
+void Communicator::handleAccept(InteractiveClient &client, const boost::system::error_code &error) {
+
+   if (!error) {
+      std::cerr << "new client" << std::endl;
+      new boost::thread(client);
+   }
+
+   startAccept();
+}
+
 int Communicator::acceptClients() {
 
-   if (serverSocket == -1) {
-
-      serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-      if (serverSocket == -1)
-         return -1;
-
-      int reuse = 1;
-      setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, (char *) &reuse,
-            sizeof(reuse));
-
-      for (;;) {
-         struct sockaddr_in serv;
-         serv.sin_family = AF_INET;
-         serv.sin_addr.s_addr = INADDR_ANY;
-         serv.sin_port = htons(m_port);
-
-         errno = 0;
-         if (bind(serverSocket, (struct sockaddr *) &serv, sizeof(serv)) == 0) {
-            break;
-         }
-
-         if (errno == EADDRINUSE)
-            ++m_port;
-         else
-            return -1;
+   if (!m_acceptor.is_open()) {
+ 
+      asio::ip::tcp::endpoint endpoint;
+      try {
+         endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_port);
+      } catch(const std::exception &e) {
+         std::cerr << "except endpoint: " << e.what();
       }
-      listen(serverSocket, 0);
-      set_blocking(serverSocket, false);
-      std::stringstream str;
-      str << "Listening for your commands on port " << m_port << std::endl;
-      m_console.write(str.str());
-   }
-
-   if (serverSocket == -1)
-      return -1;
-
-   struct sockaddr_in addr;
-   socklen_t len = sizeof(addr);
-   int client = accept(serverSocket, (struct sockaddr *)&addr, &len);
-   if (client >= 0) {
-      std::cerr << "Client connected";
-
-      char hbuf[NI_MAXHOST], sbuf[NI_MAXSERV];
-      if (!getnameinfo((struct sockaddr *)&addr, len,
-               hbuf, sizeof(hbuf),
-               sbuf, sizeof(sbuf), NI_NUMERICHOST | NI_NUMERICSERV)) {
-
-         std::cerr << " from " << hbuf;
+      try {
+         m_acceptor.open(endpoint.protocol());
+      } catch(const std::exception &e) {
+         std::cerr << "except open: " << e.what();
       }
-      std::cerr << std::endl;
+      m_acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
+      try {
+         m_acceptor.bind(endpoint);
+      } catch(std::exception &e) {
+         std::cerr << "except bind: " << e.what();
+      }
 
-      boost::thread(InteractiveClient(client));
+      m_acceptor.listen();
+
+      startAccept();
    }
+   m_ioService.poll();
 
    return -1;
 }
