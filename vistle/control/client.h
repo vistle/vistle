@@ -2,22 +2,65 @@
 #define CLIENT_H
 
 #include <boost/asio.hpp>
+#include <boost/thread.hpp>
+#include <string>
 
 namespace vistle {
 
-class InteractiveClient {
+class Client {
+   public:
+      Client();
+      virtual ~Client();
+
+      virtual void operator()() = 0;
+      virtual void cancel() = 0;
+      bool done() const;
+
+   protected:
+      bool m_done;
+   private:
+      Client(const Client &o);
+};
+
+class LockedClient: public Client {
+   public:
+      LockedClient();
+      ~LockedClient();
+
+   private:
+      boost::lock_guard<boost::mutex> m_locker;
+};
+
+class FileClient: public LockedClient {
+   public:
+      FileClient(const std::string &filename);
+
+      virtual void operator()();
+      void cancel();
+
+   private:
+      std::string m_filename;
+};
+
+class BufferClient: public LockedClient {
+   public:
+      BufferClient(const std::string &buffer);
+
+      virtual void operator()();
+      void cancel();
+
+   private:
+      std::string m_buffer;
+};
+
+class InteractiveClient: public Client {
    public:
       InteractiveClient();
-      InteractiveClient(const InteractiveClient &o);
       virtual ~InteractiveClient();
 
       void operator()();
 
       virtual bool isConsole() const;
-
-      void setQuitOnEOF();
-      void setKeepInterpreterLock();
-      void setInput(const std::string &input);
 
       virtual bool write(const std::string &s) = 0;
       virtual bool readline(std::string &line, bool vistle=true) = 0;
@@ -29,15 +72,14 @@ class InteractiveClient {
       mutable bool m_close;
       bool printGreeting();
       bool m_quitOnEOF;
-      bool m_keepInterpreter;
 };
 
 class AsioClient: public InteractiveClient {
    public:
       AsioClient();
-      AsioClient(const AsioClient &o);
       ~AsioClient();
 
+      void cancel();
       bool readline(std::string &line, bool vistle=true);
       bool write(const std::string &s);
 
@@ -45,16 +87,16 @@ class AsioClient: public InteractiveClient {
    protected:
       bool printPrompt();
 
-      boost::asio::io_service *m_ioService;
+      boost::asio::io_service m_ioService;
       boost::asio::ip::tcp::socket *m_socket;
 };
 
 class ReadlineClient: public InteractiveClient {
    public:
       ReadlineClient();
-      ReadlineClient(const ReadlineClient &o);
       ~ReadlineClient();
 
+      void cancel();
       bool readline(std::string &line, bool vistle=true);
       bool write(const std::string &s);
       bool isConsole() const;

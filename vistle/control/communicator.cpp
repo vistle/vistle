@@ -171,8 +171,7 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
      m_activeBarrier(-1),
      m_reachedBarriers(-1),
      m_activeClient(NULL),
-     m_console(ReadlineClient()),
-     m_consoleThreadCreated(false),
+     m_console(NULL),
      m_port(8192),
      messageQueue(create_only,
            message::MessageQueue::createName("command_queue", 0, r).c_str(),
@@ -300,25 +299,30 @@ void Communicator::setQuitFlag() {
    m_quitFlag = true;
 }
 
-void Communicator::acquireInterpreter(InteractiveClient *client) {
-
-   interpreter_mutex.lock();
-   m_activeClient = client;
-}
-
-void Communicator::releaseInterpreter() {
-
-   m_activeClient = NULL;
-   interpreter_mutex.unlock();
-}
-
-InteractiveClient *Communicator::activeClient() const {
+Client *Communicator::activeClient() const {
 
    return m_activeClient;
 }
 
-bool Communicator::execute(const std::string &line) {
-   return interpreter->exec(line);
+boost::mutex &Communicator::interpreterMutex() {
+
+   return interpreter_mutex;
+}
+
+bool Communicator::execute(const std::string &line, Client *client) {
+
+   m_activeClient = client;
+   bool ret = interpreter->exec(line);
+   m_activeClient = NULL;
+   return ret;
+}
+
+bool Communicator::executeFile(const std::string &filename, Client *client) {
+
+   m_activeClient = client;
+   bool ret = interpreter->exec_file(filename);
+   m_activeClient = NULL;
+   return ret;
 }
 
 bool Communicator::dispatch() {
@@ -328,36 +332,26 @@ bool Communicator::dispatch() {
    if (rank == 0) {
 
       if (!m_initialFile.empty()) {
-
-#if 0
-         int fd = open(m_initialFile.c_str(), O_RDONLY);
-         if (fd == -1) {
-            std::cerr << "failed to open " << m_initialFile << std::endl;
-         } else {
-            boost::thread(InteractiveClient(fd, 1, true));
-            keepInterpreterLock();
-         }
-#endif
+         addClient(new FileClient(m_initialFile));
          m_initialFile.clear();
-      } else if (!m_consoleThreadCreated) {
-#ifdef DEBUG
-            std::cerr << "Creating console thread" << std::endl;
-#endif
-            m_console.setQuitOnEOF();
-            m_console.setInput(m_initialInput);
-            m_initialInput.clear();
-            m_consoleThread = boost::thread(m_console);
-            m_consoleThreadCreated = true;
-#ifdef DEBUG
-            std::cerr << "Created console thread" << std::endl;
-#endif
+         m_initialInput.clear(); // additionally processing initial input would dead-lock
+
+     }
+
+      if (!m_initialInput.empty()) {
+         addClient(new BufferClient(m_initialInput));
+         m_initialInput.clear();
+      }
+
+      checkClients();
+
+      if (!m_console) {
+         m_console = new ReadlineClient();
+         addClient(m_console);
       }
 
       if (!done)
          done = m_quitFlag;
-
-      if (m_consoleThreadCreated)
-         acceptClients();
    }
 
    // test for message size from another MPI node
@@ -875,27 +869,66 @@ Communicator::~Communicator() {
    delete[] mpiReceiveBuffer;
 }
 
+void Communicator::removeThread(boost::thread *thread) {
+
+   m_threads.erase(thread);
+}
+
 void Communicator::disconnectClients() {
+
+   BOOST_FOREACH(ThreadMap::value_type v, m_threads) {
+      Client *c = v.second;
+      c->cancel();
+   }
+
+   joinClients();
+   if (!m_threads.empty()) {
+      std::cerr << "waiting for " << m_threads.size() << " threads to quit" << std::endl;
+      sleep(1);
+      joinClients();
+   }
 
 }
 
 void Communicator::startAccept() {
 
-      AsioClient client;
-      m_acceptor.async_accept(client.socket(), boost::bind<void>(&Communicator::handleAccept, this, client, asio::placeholders::error));
+      AsioClient *client = new AsioClient;
+      m_acceptor.async_accept(client->socket(), boost::bind<void>(&Communicator::handleAccept, this, client, asio::placeholders::error));
 }
 
-void Communicator::handleAccept(AsioClient &client, const boost::system::error_code &error) {
+void Communicator::handleAccept(AsioClient *client, const boost::system::error_code &error) {
 
    if (!error) {
-      std::cerr << "new client" << std::endl;
-      new boost::thread(client);
+      m_threads[new boost::thread(ThreadWrapper<Client>(client))] = client;
    }
 
    startAccept();
 }
 
-int Communicator::acceptClients() {
+void Communicator::addClient(Client *c) {
+
+   boost::thread *t = new boost::thread(ThreadWrapper<Client>(c));
+   m_threads[t] = c;
+}
+
+void Communicator::joinClients() {
+
+   for (ThreadMap::iterator it = m_threads.begin();
+         it != m_threads.end();
+       ) {
+      boost::thread *t = it->first;
+      Client *c = it->second;
+      ThreadMap::iterator next = it;
+      ++next;
+      if (c->done()) {
+         t->join();
+         m_threads.erase(it);
+      }
+      it = next;
+   }
+}
+
+void Communicator::checkClients() {
 
    while (!m_acceptor.is_open()) {
  
@@ -919,7 +952,7 @@ int Communicator::acceptClients() {
    }
    m_ioService.poll();
 
-   return -1;
+   joinClients();
 }
 
 const PortManager &Communicator::portManager() const {

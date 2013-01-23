@@ -33,17 +33,17 @@ class PythonEmbed;
 
 class Communicator {
    friend class PythonEmbed;
-   friend class InteractiveClient;
 
  public:
    Communicator(int argc, char *argv[], int rank, int size);
    ~Communicator();
    static Communicator &the();
-   InteractiveClient *activeClient() const;
+   Client *activeClient() const;
 
    void registerInterpreter(PythonEmbed *pi);
    void setInput(const std::string &input);
    void setFile(const std::string &filename);
+   boost::mutex &interpreterMutex();
 
    bool dispatch();
    bool handleMessage(const message::Message &message);
@@ -67,9 +67,8 @@ class Communicator {
 
    const PortManager &portManager() const;
 
-   void acquireInterpreter(InteractiveClient *client);
-   void releaseInterpreter();
-   bool execute(const std::string &line);
+   bool execute(const std::string &line, Client *client=NULL);
+   bool executeFile(const std::string &filename, Client *client=NULL);
 
  private:
 
@@ -122,14 +121,27 @@ class Communicator {
    int m_reachedBarriers;
    ModuleSet reachedSet;
 
-   InteractiveClient *m_activeClient;
-   ReadlineClient m_console;
-   boost::thread m_consoleThread;
-   bool m_consoleThreadCreated;
-   int acceptClients();
+   Client *m_activeClient;
+   ReadlineClient *m_console;
+   template<class F>
+   struct ThreadWrapper {
+      ThreadWrapper(F *f) : release(true), thread(NULL), callable(f) {}
+      ThreadWrapper(const ThreadWrapper &o) : release(true), thread(o.thread), callable(o.callable) { o.release = false; }
+      mutable bool release;
+      boost::thread *thread;
+      F *callable;
+      void operator()() { (*callable)(); }
+      ~ThreadWrapper() { if (release) { Communicator::the().removeThread(thread); delete callable; } }
+   };
+   void removeThread(boost::thread *thread);
+   typedef std::map<boost::thread *, Client *> ThreadMap;
+   ThreadMap m_threads;
+   void addClient(Client *c);
+   void checkClients();
+   void joinClients();
    void disconnectClients();
    void startAccept();
-   void handleAccept(AsioClient &client, const boost::system::error_code &error);
+   void handleAccept(AsioClient *client, const boost::system::error_code &error);
    unsigned short m_port;
 
    static Communicator *s_singleton;

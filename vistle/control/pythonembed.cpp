@@ -179,12 +179,12 @@ bool PythonEmbed::exec_file(const std::string &filename) {
 std::string PythonEmbed::raw_input(const std::string &prompt) {
 
    Communicator &comm = Communicator::the();
-   InteractiveClient *c = comm.activeClient();
+   Client *c = comm.activeClient();
    std::string line;
-   if (c) {
-      c->write(prompt);
+   if (InteractiveClient *ic = dynamic_cast<InteractiveClient *>(c)) {
+      ic->write(prompt);
       std::string line;
-      c->readline(line);
+      ic->readline(line);
       char *end = &line[line.size()-1];
       if (end > &line[0] && *end == '\n') {
          --end;
@@ -201,10 +201,11 @@ std::string PythonEmbed::raw_input(const std::string &prompt) {
 std::string PythonEmbed::readline() {
 
    Communicator &comm = Communicator::the();
-   InteractiveClient *c = comm.activeClient();
+   Client *c = comm.activeClient();
    std::string line;
-   if (c)
-      c->readline(line, false);
+   if (InteractiveClient *ic = dynamic_cast<InteractiveClient *>(c)) {
+      ic->readline(line, false);
+   }
 
    return line;
 }
@@ -213,18 +214,22 @@ void PythonEmbed::print_output(const std::string &str) {
 
    //std::cout << "OUT: " << str << std::endl;
    Communicator &comm = Communicator::the();
-   InteractiveClient *c = comm.activeClient();
-   if (c)
-      c->write(str);
+   Client *c = comm.activeClient();
+   if (InteractiveClient *ic = dynamic_cast<InteractiveClient *>(c)) {
+      ic->write(str);
+   } else {
+      std::cout << str;
+   }
 }
 
 void PythonEmbed::print_error(const std::string &str) {
 
    //std::cerr << "ERR: " << str << std::endl;
    Communicator &comm = Communicator::the();
-   InteractiveClient *c = comm.activeClient();
-   if (c && !c->isConsole())
-      c->write(str);
+   Client *c = comm.activeClient();
+   InteractiveClient *ic = dynamic_cast<InteractiveClient *>(c);
+   if (ic && !ic->isConsole())
+      ic->write(str);
    else
       std::cerr << str;
 }
