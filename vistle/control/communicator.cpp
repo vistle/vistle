@@ -914,6 +914,7 @@ int Communicator::acceptClients() {
          throw(err);
       }
       m_acceptor.listen();
+      std::cerr << "Listening for your commands on port " << m_port << std::endl;
       startAccept();
    }
    m_ioService.poll();
