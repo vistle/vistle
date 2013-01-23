@@ -897,28 +897,23 @@ void Communicator::handleAccept(AsioClient &client, const boost::system::error_c
 
 int Communicator::acceptClients() {
 
-   if (!m_acceptor.is_open()) {
+   while (!m_acceptor.is_open()) {
  
       asio::ip::tcp::endpoint endpoint;
-      try {
-         endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_port);
-      } catch(const std::exception &e) {
-         std::cerr << "except endpoint: " << e.what();
-      }
-      try {
-         m_acceptor.open(endpoint.protocol());
-      } catch(const std::exception &e) {
-         std::cerr << "except open: " << e.what();
-      }
+      endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_port);
+      m_acceptor.open(endpoint.protocol());
       m_acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
       try {
          m_acceptor.bind(endpoint);
-      } catch(std::exception &e) {
-         std::cerr << "except bind: " << e.what();
+      } catch(const boost::system::system_error &err) {
+         if (err.code() == boost::system::errc::address_in_use) {
+            m_acceptor.close();
+            ++m_port;
+            continue;
+         }
+         throw(err);
       }
-
       m_acceptor.listen();
-
       startAccept();
    }
    m_ioService.poll();
