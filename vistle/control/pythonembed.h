@@ -6,6 +6,8 @@
 
 namespace vistle {
 
+class ClientManager;
+
 namespace message {
 struct Message;
 }
@@ -13,9 +15,10 @@ struct Message;
 class PythonEmbed {
    public:
 
-      PythonEmbed(int argc, char *argv[]);
+      PythonEmbed(ClientManager &manager, const std::string &name);
       ~PythonEmbed();
       static PythonEmbed &the();
+      ClientManager &manager() const;
 
       static void print_output(const std::string &str);
       static void print_error(const std::string &str);
@@ -26,6 +29,7 @@ class PythonEmbed {
       bool exec(const std::string &python);
       bool exec_file(const std::string &filename);
    private:
+      ClientManager &m_manager;
       boost::python::object m_namespace;
       static PythonEmbed *s_singleton;
 

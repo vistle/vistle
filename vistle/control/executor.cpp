@@ -101,11 +101,6 @@ Executor::Executor(int argc, char *argv[])
    MPI_Barrier(MPI_COMM_WORLD);
 
    m_comm = new vistle::Communicator(argc, argv, m_rank, m_size);
-
-   if (!m_rank) {
-      m_interpreter = new PythonEmbed(argc, argv);
-      m_comm->registerInterpreter(m_interpreter);
-   }
 }
 
 Executor::~Executor()

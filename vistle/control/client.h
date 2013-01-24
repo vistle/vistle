@@ -7,24 +7,28 @@
 
 namespace vistle {
 
+class ClientManager;
+
 class Client {
    public:
-      Client();
+      Client(ClientManager &manager);
       virtual ~Client();
 
       virtual void operator()() = 0;
       virtual void cancel() = 0;
       bool done() const;
+      ClientManager &manager() const;
 
    protected:
       bool m_done;
+      ClientManager &m_manager;
    private:
       Client(const Client &o);
 };
 
 class LockedClient: public Client {
    public:
-      LockedClient();
+      LockedClient(ClientManager &manager);
       ~LockedClient();
 
    private:
@@ -33,7 +37,7 @@ class LockedClient: public Client {
 
 class FileClient: public LockedClient {
    public:
-      FileClient(const std::string &filename);
+      FileClient(ClientManager &manager, const std::string &filename);
 
       virtual void operator()();
       void cancel();
@@ -44,7 +48,7 @@ class FileClient: public LockedClient {
 
 class BufferClient: public LockedClient {
    public:
-      BufferClient(const std::string &buffer);
+      BufferClient(ClientManager &manager, const std::string &buffer);
 
       virtual void operator()();
       void cancel();
@@ -55,7 +59,7 @@ class BufferClient: public LockedClient {
 
 class InteractiveClient: public Client {
    public:
-      InteractiveClient();
+      InteractiveClient(ClientManager &manager);
       virtual ~InteractiveClient();
 
       void operator()();
@@ -76,7 +80,7 @@ class InteractiveClient: public Client {
 
 class AsioClient: public InteractiveClient {
    public:
-      AsioClient();
+      AsioClient(ClientManager &manager);
       ~AsioClient();
 
       void cancel();
@@ -93,7 +97,7 @@ class AsioClient: public InteractiveClient {
 
 class ReadlineClient: public InteractiveClient {
    public:
-      ReadlineClient();
+      ReadlineClient(ClientManager &manager);
       ~ReadlineClient();
 
       void cancel();

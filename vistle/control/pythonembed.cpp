@@ -5,9 +5,11 @@
 
 
 #include <core/message.h>
-#include "communicator.h"
+#include "clientmanager.h"
 #include "pythonembed.h"
 #include "pythonmodule.h"
+#include "client.h"
+#include "communicator.h"
 
 namespace bp = boost::python;
 
@@ -88,12 +90,16 @@ struct to_and_from_tuple
 
 PythonEmbed *PythonEmbed::s_singleton = NULL;
 
-PythonEmbed::PythonEmbed(int argc, char *argv[])
+PythonEmbed::PythonEmbed(ClientManager &manager, const std::string &name)
+: m_manager(manager)
 {
    assert(s_singleton == NULL);
    s_singleton = this;
 
-   Py_SetProgramName(argv[0]);
+   static char namebuf[1024];
+   strncpy(namebuf, name.c_str(), sizeof(namebuf));
+   namebuf[sizeof(namebuf)-1] = '\0';
+   Py_SetProgramName(namebuf);
    Py_Initialize();
 
    bp::class_<std::vector<int> >("vector<int>")
@@ -128,6 +134,11 @@ PythonEmbed &PythonEmbed::the() {
 
    assert(s_singleton);
    return *s_singleton;
+}
+
+ClientManager &PythonEmbed::manager() const {
+
+   return m_manager;
 }
 
 bool PythonEmbed::exec(const std::string &python) {
@@ -178,8 +189,7 @@ bool PythonEmbed::exec_file(const std::string &filename) {
 
 std::string PythonEmbed::raw_input(const std::string &prompt) {
 
-   Communicator &comm = Communicator::the();
-   Client *c = comm.activeClient();
+   Client *c = the().manager().activeClient();
    std::string line;
    if (InteractiveClient *ic = dynamic_cast<InteractiveClient *>(c)) {
       ic->write(prompt);
@@ -200,8 +210,7 @@ std::string PythonEmbed::raw_input(const std::string &prompt) {
 
 std::string PythonEmbed::readline() {
 
-   Communicator &comm = Communicator::the();
-   Client *c = comm.activeClient();
+   Client *c = the().manager().activeClient();
    std::string line;
    if (InteractiveClient *ic = dynamic_cast<InteractiveClient *>(c)) {
       ic->readline(line, false);
@@ -213,8 +222,7 @@ std::string PythonEmbed::readline() {
 void PythonEmbed::print_output(const std::string &str) {
 
    //std::cout << "OUT: " << str << std::endl;
-   Communicator &comm = Communicator::the();
-   Client *c = comm.activeClient();
+   Client *c = the().manager().activeClient();
    if (InteractiveClient *ic = dynamic_cast<InteractiveClient *>(c)) {
       ic->write(str);
    } else {
@@ -225,8 +233,7 @@ void PythonEmbed::print_output(const std::string &str) {
 void PythonEmbed::print_error(const std::string &str) {
 
    //std::cerr << "ERR: " << str << std::endl;
-   Communicator &comm = Communicator::the();
-   Client *c = comm.activeClient();
+   Client *c = the().manager().activeClient();
    InteractiveClient *ic = dynamic_cast<InteractiveClient *>(c);
    if (ic && !ic->isConsole())
       ic->write(str);

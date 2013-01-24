@@ -2,21 +2,18 @@
 #define COMMUNICATOR_COLLECTIVE_H
 
 #include <vector>
-#include <deque>
 #include <map>
 
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
+#include <boost/interprocess/ipc/message_queue.hpp>
+
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/condition_variable.hpp>
-#include <boost/thread.hpp>
-#include <boost/interprocess/ipc/message_queue.hpp>
-#include <boost/asio.hpp>
 
 #include <mpi.h>
 
 #include "portmanager.h"
-#include "client.h"
 
 namespace bi = boost::interprocess;
 
@@ -28,8 +25,8 @@ namespace message {
 }
 
 class Parameter;
-
 class PythonEmbed;
+class ClientManager;
 
 class Communicator {
    friend class PythonEmbed;
@@ -38,12 +35,9 @@ class Communicator {
    Communicator(int argc, char *argv[], int rank, int size);
    ~Communicator();
    static Communicator &the();
-   Client *activeClient() const;
 
-   void registerInterpreter(PythonEmbed *pi);
    void setInput(const std::string &input);
    void setFile(const std::string &filename);
-   boost::mutex &interpreterMutex();
 
    bool dispatch();
    bool handleMessage(const message::Message &message);
@@ -67,10 +61,8 @@ class Communicator {
 
    const PortManager &portManager() const;
 
-   bool execute(const std::string &line, Client *client=NULL);
-   bool executeFile(const std::string &filename, Client *client=NULL);
-
  private:
+   ClientManager *m_clientManager;
 
    std::string m_bindir;
 
@@ -82,14 +74,9 @@ class Communicator {
 
    bool m_quitFlag;
 
-   boost::asio::io_service m_ioService;
-   boost::asio::ip::tcp::acceptor m_acceptor;
-
    boost::mutex m_barrierMutex;
    boost::condition_variable m_barrierCondition;
    int moduleID;
-   PythonEmbed *interpreter;
-   boost::mutex interpreter_mutex;
    void barrierReached(int id);
 
    char *mpiReceiveBuffer;
@@ -120,29 +107,6 @@ class Communicator {
    int m_activeBarrier;
    int m_reachedBarriers;
    ModuleSet reachedSet;
-
-   Client *m_activeClient;
-   ReadlineClient *m_console;
-   template<class F>
-   struct ThreadWrapper {
-      ThreadWrapper(F *f) : release(true), thread(NULL), callable(f) {}
-      ThreadWrapper(const ThreadWrapper &o) : release(true), thread(o.thread), callable(o.callable) { o.release = false; }
-      mutable bool release;
-      boost::thread *thread;
-      F *callable;
-      void operator()() { (*callable)(); }
-      ~ThreadWrapper() { if (release) { Communicator::the().removeThread(thread); delete callable; } }
-   };
-   void removeThread(boost::thread *thread);
-   typedef std::map<boost::thread *, Client *> ThreadMap;
-   ThreadMap m_threads;
-   void addClient(Client *c);
-   void checkClients();
-   void joinClients();
-   void disconnectClients();
-   void startAccept();
-   void handleAccept(AsioClient *client, const boost::system::error_code &error);
-   unsigned short m_port;
 
    static Communicator *s_singleton;
 };

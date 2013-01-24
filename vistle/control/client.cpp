@@ -5,7 +5,7 @@
 #endif
 
 #include "client.h"
-#include "communicator.h"
+#include "clientmanager.h"
 
 #include <boost/algorithm/string/trim.hpp>
 
@@ -13,12 +13,18 @@ namespace asio = boost::asio;
 
 namespace vistle {
 
-Client::Client()
+Client::Client(ClientManager &manager)
 : m_done(false)
+, m_manager(manager)
 {
 }
 
 Client::~Client() {
+}
+
+ClientManager &Client::manager() const {
+
+   return m_manager;
 }
 
 bool Client::done() const {
@@ -26,8 +32,9 @@ bool Client::done() const {
    return m_done;
 }
 
-LockedClient::LockedClient()
-: m_locker(Communicator::the().interpreterMutex())
+LockedClient::LockedClient(ClientManager &m)
+: Client(m)
+, m_locker(manager().interpreterMutex())
 {
    std::cerr << "new LockedClient: " << this << std::endl;
 }
@@ -37,8 +44,9 @@ LockedClient::~LockedClient()
    std::cerr << "delete LockedClient: " << this << std::endl;
 }
 
-FileClient::FileClient(const std::string &filename)
-: m_filename(filename)
+FileClient::FileClient(ClientManager &manager, const std::string &filename)
+: LockedClient(manager)
+, m_filename(filename)
 {
 }
 
@@ -47,13 +55,14 @@ void FileClient::cancel() {
 
 void FileClient::operator()() {
 
-   Communicator::the().executeFile(m_filename);
+   manager().executeFile(m_filename);
 
    m_done = true;
 }
 
-BufferClient::BufferClient(const std::string &buf)
-: m_buffer(buf)
+BufferClient::BufferClient(ClientManager &manager, const std::string &buf)
+: LockedClient(manager)
+, m_buffer(buf)
 {
 }
 
@@ -62,14 +71,15 @@ void BufferClient::cancel() {
 
 void BufferClient::operator()() {
 
-   Communicator::the().execute(m_buffer);
+   manager().execute(m_buffer);
 
    m_done = true;
 }
 
 
-InteractiveClient::InteractiveClient()
-: m_close(true)
+InteractiveClient::InteractiveClient(ClientManager &manager)
+: Client(manager)
+, m_close(true)
 , m_quitOnEOF(false)
 , m_prompt("vistle> ")
 {
@@ -108,15 +118,15 @@ void InteractiveClient::operator()() {
          }
 
          {
-            boost::lock_guard<boost::mutex>(Communicator::the().interpreterMutex());
-            Communicator::the().execute(line, this);
+            boost::lock_guard<boost::mutex>(manager().interpreterMutex());
+            manager().execute(line, this);
          }
       }
 
       if (!again) {
          if (m_quitOnEOF) {
             std::cerr << "Quitting..." << std::endl;
-            Communicator::the().setQuitFlag();
+            manager().requestQuit();
          }
          break;
       }
@@ -141,8 +151,8 @@ static std::string history_file() {
 }
 
 
-ReadlineClient::ReadlineClient()
-: InteractiveClient()
+ReadlineClient::ReadlineClient(ClientManager &manager)
+: InteractiveClient(manager)
 {
    m_quitOnEOF = true;
 #ifdef DEBUG
@@ -202,8 +212,9 @@ bool ReadlineClient::write(const std::string &str) {
    return true;
 }
 
-AsioClient::AsioClient()
-: m_socket(new asio::ip::tcp::socket(m_ioService))
+AsioClient::AsioClient(ClientManager &manager)
+: InteractiveClient(manager)
+, m_socket(new asio::ip::tcp::socket(m_ioService))
 {
 }
 

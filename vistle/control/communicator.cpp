@@ -2,17 +2,10 @@
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
 #include <boost/foreach.hpp>
-#include <boost/thread.hpp>
-#include <boost/bind.hpp>
-
-#include <boost/asio.hpp>
 
 #include <mpi.h>
 
 #include <sys/types.h>
-
-#include <stdlib.h>
-#include <stdio.h>
 
 #include <cstdlib>
 #include <sstream>
@@ -24,15 +17,13 @@
 #include <core/object.h>
 #include <core/shm.h>
 
-#include "pythonembed.h"
+#include "clientmanager.h"
 #include "communicator.h"
 
 #define CERR \
    std::cerr << "comm [" << rank << "/" << size << "] "
 
 using namespace boost::interprocess;
-
-namespace asio = boost::asio;
 
 namespace vistle {
 
@@ -161,22 +152,19 @@ static std::string getbindir(int argc, char *argv[]) {
 }
 
 Communicator::Communicator(int argc, char *argv[], int r, int s)
-   : rank(r), size(s),
+   :
+      m_clientManager(NULL),
+      rank(r), size(s),
    m_quitFlag(false),
    moduleID(0),
-     interpreter(NULL),
      mpiReceiveBuffer(NULL), mpiMessageSize(0),
      m_moduleCounter(0),
      m_barrierCounter(0),
      m_activeBarrier(-1),
      m_reachedBarriers(-1),
-     m_activeClient(NULL),
-     m_console(NULL),
-     m_port(8192),
      messageQueue(create_only,
            message::MessageQueue::createName("command_queue", 0, r).c_str(),
-           256 /* num msg */, message::Message::MESSAGE_SIZE),
-     m_acceptor(m_ioService)
+           256 /* num msg */, message::Message::MESSAGE_SIZE)
 {
    assert(s_singleton == NULL);
    s_singleton = this;
@@ -279,11 +267,6 @@ std::string Communicator::getModuleName(int id) const {
 }
 
 
-void Communicator::registerInterpreter(PythonEmbed *pi) {
-
-   interpreter = pi;
-}
-
 void Communicator::setInput(const std::string &input) {
 
    m_initialInput = input;
@@ -299,56 +282,19 @@ void Communicator::setQuitFlag() {
    m_quitFlag = true;
 }
 
-Client *Communicator::activeClient() const {
-
-   return m_activeClient;
-}
-
-boost::mutex &Communicator::interpreterMutex() {
-
-   return interpreter_mutex;
-}
-
-bool Communicator::execute(const std::string &line, Client *client) {
-
-   m_activeClient = client;
-   bool ret = interpreter->exec(line);
-   m_activeClient = NULL;
-   return ret;
-}
-
-bool Communicator::executeFile(const std::string &filename, Client *client) {
-
-   m_activeClient = client;
-   bool ret = interpreter->exec_file(filename);
-   m_activeClient = NULL;
-   return ret;
-}
-
 bool Communicator::dispatch() {
 
    bool done = false;
 
    if (rank == 0) {
 
-      if (!m_initialFile.empty()) {
-         addClient(new FileClient(m_initialFile));
-         m_initialFile.clear();
-         m_initialInput.clear(); // additionally processing initial input would dead-lock
-
-     }
-
-      if (!m_initialInput.empty()) {
-         addClient(new BufferClient(m_initialInput));
-         m_initialInput.clear();
+      if (!m_clientManager) {
+         bool file = !m_initialFile.empty();
+         m_clientManager = new ClientManager(file ? m_initialFile : m_initialInput,
+               file ? ClientManager::File : ClientManager::String);
       }
 
-      checkClients();
-
-      if (!m_console) {
-         m_console = new ReadlineClient();
-         addClient(m_console);
-      }
+      done = !m_clientManager->check();
 
       if (!done)
          done = m_quitFlag;
@@ -855,7 +801,7 @@ Communicator::~Communicator() {
       usleep(1000);
    }
 
-   disconnectClients();
+   delete m_clientManager;
 
    if (size > 1) {
       int dummy;
@@ -867,92 +813,6 @@ Communicator::~Communicator() {
    MPI_Barrier(MPI_COMM_WORLD);
 
    delete[] mpiReceiveBuffer;
-}
-
-void Communicator::removeThread(boost::thread *thread) {
-
-   m_threads.erase(thread);
-}
-
-void Communicator::disconnectClients() {
-
-   BOOST_FOREACH(ThreadMap::value_type v, m_threads) {
-      Client *c = v.second;
-      c->cancel();
-   }
-
-   joinClients();
-   if (!m_threads.empty()) {
-      std::cerr << "waiting for " << m_threads.size() << " threads to quit" << std::endl;
-      sleep(1);
-      joinClients();
-   }
-
-}
-
-void Communicator::startAccept() {
-
-      AsioClient *client = new AsioClient;
-      m_acceptor.async_accept(client->socket(), boost::bind<void>(&Communicator::handleAccept, this, client, asio::placeholders::error));
-}
-
-void Communicator::handleAccept(AsioClient *client, const boost::system::error_code &error) {
-
-   if (!error) {
-      m_threads[new boost::thread(ThreadWrapper<Client>(client))] = client;
-   }
-
-   startAccept();
-}
-
-void Communicator::addClient(Client *c) {
-
-   boost::thread *t = new boost::thread(ThreadWrapper<Client>(c));
-   m_threads[t] = c;
-}
-
-void Communicator::joinClients() {
-
-   for (ThreadMap::iterator it = m_threads.begin();
-         it != m_threads.end();
-       ) {
-      boost::thread *t = it->first;
-      Client *c = it->second;
-      ThreadMap::iterator next = it;
-      ++next;
-      if (c->done()) {
-         t->join();
-         m_threads.erase(it);
-      }
-      it = next;
-   }
-}
-
-void Communicator::checkClients() {
-
-   while (!m_acceptor.is_open()) {
- 
-      asio::ip::tcp::endpoint endpoint;
-      endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_port);
-      m_acceptor.open(endpoint.protocol());
-      m_acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
-      try {
-         m_acceptor.bind(endpoint);
-      } catch(const boost::system::system_error &err) {
-         if (err.code() == boost::system::errc::address_in_use) {
-            m_acceptor.close();
-            ++m_port;
-            continue;
-         }
-         throw(err);
-      }
-      m_acceptor.listen();
-      std::cerr << "Listening for your commands on port " << m_port << std::endl;
-      startAccept();
-   }
-   m_ioService.poll();
-
-   joinClients();
 }
 
 const PortManager &Communicator::portManager() const {

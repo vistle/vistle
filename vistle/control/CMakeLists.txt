@@ -9,6 +9,7 @@ endif()
 add_library(vistle_control SHARED 
    portmanager.cpp
    client.cpp
+   clientmanager.cpp
    communicator.cpp
    executor.cpp
    pythonembed.cpp
