@@ -10,13 +10,13 @@
 
 //#include <google/profiler.h>
 
-#include "object.h"
-#include "geometry.h"
-#include "vec.h"
-#include "polygons.h"
-#include "lines.h"
-#include "points.h"
-#include "unstr.h"
+#include <core/object.h>
+#include <core/geometry.h>
+#include <core/vec.h>
+#include <core/polygons.h>
+#include <core/lines.h>
+#include <core/points.h>
+#include <core/unstr.h>
 
 #ifdef _WIN32
 #include <io.h>

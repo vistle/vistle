@@ -7,12 +7,12 @@
 #include <osg/Node>
 #include <osg/Texture1D>
 
-#include "object.h"
-#include "lines.h"
-#include "triangles.h"
-#include "polygons.h"
-#include "texture1d.h"
-#include "geometry.h"
+#include <core/object.h>
+#include <core/lines.h>
+#include <core/triangles.h>
+#include <core/polygons.h>
+#include <core/texture1d.h>
+#include <core/geometry.h>
 
 #include "OSGRenderer.h"
 

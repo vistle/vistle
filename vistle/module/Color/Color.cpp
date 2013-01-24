@@ -1,10 +1,10 @@
 #include <sstream>
 #include <iomanip>
 #include <cfloat>
-#include "vector.h"
-#include "object.h"
-#include "vec.h"
-#include "texture1d.h"
+#include <core/vector.h>
+#include <core/object.h>
+#include <core/vec.h>
+#include <core/texture1d.h>
 
 #include "Color.h"
 

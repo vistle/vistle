@@ -6,7 +6,7 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/xml_iarchive.hpp>
 
-#include <object.h>
+#include <core/object.h>
 
 #include "ReadVistle.h"
 

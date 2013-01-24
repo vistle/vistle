@@ -1,8 +1,8 @@
 #ifndef CUTGEOMETRY_H
 #define CUTGEOMETRY_H
 
-#include "module.h"
-#include "vector.h"
+#include <core/module.h>
+#include <core/vector.h>
 
 class CutGeometry: public vistle::Module {
 

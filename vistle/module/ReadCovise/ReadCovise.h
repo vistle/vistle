@@ -1,8 +1,11 @@
 #ifndef READCOVISE_H
 #define READCOVISE_H
 
-#include <string.h>
-#include "module.h"
+#include <string>
+#include <vector>
+#include <utility> // std::pair
+
+#include <core/module.h>
 
 typedef std::vector<std::pair<std::string, std::string> > AttributeList;
 struct Element {

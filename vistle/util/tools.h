@@ -3,9 +3,11 @@
 
 #include <string>
 
+#include "export.h"
+
 namespace vistle {
 
-   std::string backtrace();
+   UTILEXPORT std::string backtrace();
 
 } // namespace vistle
 

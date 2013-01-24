@@ -26,7 +26,7 @@ include_directories(
         ${OPENSCENEGRAPH_INCLUDE_DIRS}
         ${OPENGL_INCLUDE_DIRS}
         ${ICET_INCLUDE_DIRS}
-        ${PROJECT_SOURCE_DIR}/core
+        ${PROJECT_SOURCE_DIR}
 )
 
 target_link_libraries(OSGRenderer

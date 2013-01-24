@@ -1,9 +1,9 @@
 #include <sstream>
 #include <iomanip>
 
-#include "object.h"
-#include "unstr.h"
-#include "lines.h"
+#include <core/object.h>
+#include <core/unstr.h>
+#include <core/lines.h>
 
 #include "ShowUSG.h"
 

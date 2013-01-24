@@ -1,8 +1,8 @@
 #include <sstream>
 #include <iomanip>
 
-#include "object.h"
-#include "geometry.h"
+#include <core/object.h>
+#include <core/geometry.h>
 
 #include "Collect.h"
 

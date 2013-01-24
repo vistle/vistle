@@ -5,6 +5,7 @@
 #include "scalar.h"
 #include "shm.h"
 #include "coords.h"
+#include "export.h"
 
 namespace vistle {
 

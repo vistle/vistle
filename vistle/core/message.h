@@ -5,7 +5,7 @@
 
 #include "object.h"
 #include "vector.h"
-#include "vistle.h"
+#include "export.h"
 
 namespace vistle {
 
@@ -19,7 +19,7 @@ typedef char port_name_t[32];
 typedef char param_name_t[32];
 typedef char param_value_t[256];
 
-struct Message {
+struct VCEXPORT Message {
    // this is POD
 
    friend class vistle::Communicator;

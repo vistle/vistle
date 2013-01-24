@@ -3,7 +3,7 @@ add_executable(ReadCovise ReadCovise.cpp)
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
-        ${PROJECT_SOURCE_DIR}/core
+        ${PROJECT_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/3rdparty/covise_file
 )
 

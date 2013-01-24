@@ -2,8 +2,6 @@
 #define OBJECT_H
 
 #include <vector>
-#include "vistle.h"
-
 #include <boost/shared_ptr.hpp>
 
 #include <boost/interprocess/containers/vector.hpp>
@@ -13,6 +11,7 @@
 #include <boost/serialization/access.hpp>
 
 #include "shm.h"
+#include "export.h"
 
 namespace boost {
 namespace archive {

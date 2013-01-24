@@ -5,10 +5,10 @@
 #include <omp.h>
 #endif
 
-#include "object.h"
-#include "triangles.h"
-#include "unstr.h"
-#include "vec.h"
+#include <core/object.h>
+#include <core/triangles.h>
+#include <core/unstr.h>
+#include <core/vec.h>
 #include "tables.h"
 
 #include "CuttingSurface.h"

@@ -12,7 +12,7 @@
 #include <boost/serialization/array.hpp>
 
 #include "exception.h"
-#include "vistle.h"
+#include "export.h"
 
 //#define SHMDEBUG
 //#define SHMPUBLISH

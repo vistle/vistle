@@ -40,9 +40,9 @@
 #include <boost/fusion/include/vector_fwd.hpp>
 #include <boost/fusion/include/std_pair.hpp>
 
-#include "object.h"
-#include "vec.h"
-#include "unstr.h"
+#include <core/object.h>
+#include <core/vec.h>
+#include <core/unstr.h>
 
 #include "ReadFOAM.h"
 

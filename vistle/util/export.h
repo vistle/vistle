@@ -1,6 +1,5 @@
-#ifndef VISTLE_H
-#define VISTLE_H
-
+#ifndef UTIL_EXPORT_H
+#define UTIL_EXPORT_H
 
 #if defined (_WIN32) && !defined (NODLL)
 #define VIMPORT __declspec(dllimport)
@@ -14,16 +13,10 @@
 #define VEXPORT
 #endif
 
-#if defined (vistle_core_EXPORTS)
-#define VCEXPORT VEXPORT
+#if defined (vistle_util_EXPORTS)
+#define UTILEXPORT VEXPORT
 #else
-#define VCEXPORT VIMPORT
-#endif
-
-
-#ifdef _WIN32
-typedef __int64 ssize_t;
-typedef unsigned int uint;
+#define UTILEXPORT VIMPORT
 #endif
 
 #endif

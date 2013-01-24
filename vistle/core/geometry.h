@@ -3,6 +3,7 @@
 
 #include "shm.h"
 #include "object.h"
+#include "export.h"
 
 namespace vistle {
 

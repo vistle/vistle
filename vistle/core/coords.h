@@ -5,6 +5,7 @@
 #include "shm.h"
 #include "object.h"
 #include "vec.h"
+#include "export.h"
 
 namespace vistle {
 

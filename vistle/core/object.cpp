@@ -9,6 +9,8 @@
 
 #include <boost/mpl/for_each.hpp>
 
+#include <util/tools.h>
+
 #include "message.h"
 #include "messagequeue.h"
 #include "shm.h"
@@ -16,8 +18,6 @@
 
 #include "object.h"
 #include "object_impl.h"
-
-#include "tools.h"
 
 template<typename T>
 static T min(T a, T b) { return a<b ? a : b; }

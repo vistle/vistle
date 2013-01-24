@@ -1,8 +1,8 @@
 #ifndef COLOR_H
 #define COLOR_H
 
-#include "module.h"
-#include "vector.h"
+#include <core/module.h>
+#include <core/vector.h>
 
 class ColorMap {
 

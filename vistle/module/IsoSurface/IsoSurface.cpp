@@ -5,12 +5,12 @@
 #include <omp.h>
 #endif
 
-#include "object.h"
-#include "unstr.h"
-#include "vec.h"
-#include "triangles.h"
-#include "tables.h"
+#include <core/object.h>
+#include <core/unstr.h>
+#include <core/vec.h>
+#include <core/triangles.h>
 
+#include "tables.h"
 #include "IsoSurface.h"
 
 MODULE_MAIN(IsoSurface)

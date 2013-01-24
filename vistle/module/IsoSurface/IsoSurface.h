@@ -1,7 +1,7 @@
 #ifndef ISOSURFACE_H
 #define ISOSURFACE_H
 
-#include "module.h"
+#include <core/module.h>
 
 class IsoSurface: public vistle::Module {
 

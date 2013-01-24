@@ -8,10 +8,10 @@
 #include <list>
 #include <map>
 #include <exception>
-#include "vistle.h"
 
 #include "vector.h"
 #include "object.h"
+#include "export.h"
 
 namespace vistle {
 

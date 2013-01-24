@@ -4,9 +4,9 @@
 #include <ostream>
 #include <vector>
 #include "scalar.h"
-#include "vistle.h"
 #include "dimensions.h"
 #include "exception.h"
+#include "export.h"
 
 namespace vistle {
 
@@ -83,7 +83,7 @@ typedef ScalarVector Vector;
 } // namespace vistle
 
 template<typename S>
-std::ostream &operator<<(std::ostream &out, const vistle::ParameterVector<S> &v);
+VCEXPORT std::ostream &operator<<(std::ostream &out, const vistle::ParameterVector<S> &v);
 #endif // VECTOR_H
 
 

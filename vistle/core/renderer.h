@@ -2,9 +2,10 @@
 #define RENDERER_H
 
 #include "module.h"
-#include "vistle.h"
+#include "export.h"
 
 namespace vistle {
+
 class VCEXPORT Renderer: public Module {
 
  public:

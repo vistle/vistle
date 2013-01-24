@@ -1,10 +1,10 @@
 #ifndef WRITEVISTLE_H
 #define WRITEVISTLE_H
 
-#include <string.h>
+#include <string>
 
-#include <module.h>
-#include <object.h>
+#include <core/module.h>
+#include <core/object.h>
 
 class WriteVistle: public vistle::Module {
 

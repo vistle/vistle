@@ -1,8 +1,8 @@
 #include <sstream>
 #include <iomanip>
 
-#include "object.h"
-#include "polygons.h"
+#include <core/object.h>
+#include <core/polygons.h>
 
 #include "CutGeometry.h"
 

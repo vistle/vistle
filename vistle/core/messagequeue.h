@@ -2,7 +2,8 @@
 #define MESSAGEQUEUE_H
 
 #include <boost/interprocess/ipc/message_queue.hpp>
-#include "vistle.h"
+
+#include "export.h"
 
 namespace vistle {
 namespace message {

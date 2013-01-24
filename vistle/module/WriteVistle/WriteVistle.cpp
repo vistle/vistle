@@ -13,7 +13,7 @@
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/xml_oarchive.hpp>
 
-#include <object.h>
+#include <core/object.h>
 
 #include "WriteVistle.h"
 

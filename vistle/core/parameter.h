@@ -4,7 +4,7 @@
 #include <string>
 #include <sstream>
 #include "vector.h"
-#include "vistle.h"
+#include "export.h"
 
 namespace vistle {
 

@@ -6,6 +6,8 @@
 #include <core/scalar.h>
 #include <core/vector.h>
 
+#include "export.h"
+
 namespace vistle {
 
 class Communicator;
@@ -15,7 +17,7 @@ namespace message {
 struct Message;
 };
 
-class Executor {
+class CONTROLEXPORT Executor {
 
    public:
 

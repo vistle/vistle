@@ -21,8 +21,7 @@ add_library(vistle_core SHARED
    module.cpp
    renderer.cpp
    parameter.cpp
-   vector.cpp
-   tools.cpp)
+   vector.cpp)
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_core
@@ -38,4 +37,5 @@ target_link_libraries(vistle_core
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
+        ..
 )

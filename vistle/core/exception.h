@@ -3,7 +3,8 @@
 
 #include <exception>
 #include <string>
-#include "vistle.h"
+
+#include "export.h"
 
 namespace vistle {
 

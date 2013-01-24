@@ -1,15 +1,13 @@
 #include <sstream>
-#include <iomanip>
 #include <limits>
 #include <algorithm>
-
-#include <vec.h>
-#include <module.h>
-#include <scalars.h>
 
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpi/collectives.hpp>
 
+#include <core/vec.h>
+#include <core/module.h>
+#include <core/scalars.h>
 
 using namespace vistle;
 

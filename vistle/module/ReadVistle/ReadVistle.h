@@ -1,8 +1,8 @@
 #ifndef READVISTLE_H
 #define READVISTLE_H
 
-#include <string.h>
-#include "module.h"
+#include <string>
+#include <core/module.h>
 
 class ReadVistle: public vistle::Module {
 

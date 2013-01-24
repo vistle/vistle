@@ -2,9 +2,10 @@
 #define READFOAM_H
 
 #include <vector>
-#include <set>
-#include <string.h>
-#include "module.h"
+#include <string>
+#include <utility> // std::pair
+
+#include <core/module.h>
 
 class ReadFOAM: public vistle::Module {
 
