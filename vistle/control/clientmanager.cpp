@@ -183,8 +183,7 @@ void ClientManager::startServer() {
 
    while (!m_acceptor.is_open()) {
  
-      asio::ip::tcp::endpoint endpoint;
-      endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_port);
+      asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), m_port);
       m_acceptor.open(endpoint.protocol());
       m_acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
       try {
