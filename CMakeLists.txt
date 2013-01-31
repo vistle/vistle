@@ -4,4 +4,5 @@ project(vistle_all)
 enable_testing()
 
 add_subdirectory(3rdparty)
+add_subdirectory(covise)
 add_subdirectory(vistle)

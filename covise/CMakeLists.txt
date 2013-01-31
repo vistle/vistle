@@ -1,0 +1,51 @@
+project(vistle_covise)
+
+set(VISTLE_BUILD ON)
+
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${PROJECT_SOURCE_DIR}/cmake/Modules/")
+
+set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/../vistle/lib)
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/../vistle/bin)
+
+add_definitions(-DHLRS)
+
+INCLUDE(cmake/CoviseHelperMacros.cmake)
+CREATE_USING()
+
+find_package(MPI)
+find_package(OpenSSL REQUIRED)
+find_package(ZLIB REQUIRED)
+
+find_package(OpenSceneGraph 2.8.0 COMPONENTS osgViewer osgGA osgDB osgFX osgUtil osgText)
+find_package(OpenGL)
+find_package(GLEW)
+
+if(APPLE)
+  FIND_LIBRARY(APP_SERVICES_LIBRARY ApplicationServices)
+  MARK_AS_ADVANCED(APP_SERVICES_LIBRARY)
+endif(APPLE)
+
+include (TestBigEndian)
+test_big_endian(BIGENDIAN)
+if(NOT BIGENDIAN)
+   add_definitions(-DBYTESWAP)
+endif()
+find_package(XercesC REQUIRED)
+find_package(Qt4 COMPONENTS QtCore QtXml QtNetwork REQUIRED)
+
+include_directories(.)
+
+add_subdirectory(file)
+add_subdirectory(virvo)
+add_subdirectory(grmsg)
+add_subdirectory(util)
+add_subdirectory(config)
+add_subdirectory(net)
+add_subdirectory(vrbclient)
+add_subdirectory(gpu)
+add_subdirectory(OpenVRUI)
+#add_subdirectory(vrml)
+
+include_directories(OpenVRUI)
+
+add_subdirectory(OpenCOVER)
