@@ -36,8 +36,7 @@ bool Collect::compute() {
       vistle::Geometry::ptr geom(new vistle::Geometry(grid));
       geom->setTexture(tex);
 
-      geom->setBlock(grid->getBlock());
-      geom->setTimestep(grid->getTimestep());
+      geom->setMeta(grid->meta());
 
       addObject("grid_out", geom);
    }

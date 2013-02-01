@@ -28,5 +28,3 @@ namespace {
    };
    static RegisterObjectTypeRelations registerObjectTypeRelations;
 }
-
-

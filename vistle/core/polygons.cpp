@@ -5,8 +5,8 @@ namespace vistle {
 Polygons::Polygons(const size_t numElements,
       const size_t numCorners,
       const size_t numVertices,
-      const int block, const int timestep)
-: Polygons::Base(Polygons::Data::create(numElements, numCorners, numVertices, block, timestep))
+      const Meta &meta)
+: Polygons::Base(Polygons::Data::create(numElements, numCorners, numVertices, meta))
 {
 }
 
@@ -17,9 +17,9 @@ Polygons::Data::Data(const Polygons::Data &o, const std::string &n)
 
 Polygons::Data::Data(const size_t numElements, const size_t numCorners,
                    const size_t numVertices, const std::string & name,
-                   const int block, const int timestep)
+                   const Meta &meta)
    : Polygons::Base::Data(numElements, numCorners, numVertices,
-         Object::POLYGONS, name, block, timestep)
+         Object::POLYGONS, name, meta)
 {
 }
 
@@ -27,10 +27,10 @@ Polygons::Data::Data(const size_t numElements, const size_t numCorners,
 Polygons::Data * Polygons::Data::create(const size_t numElements,
                             const size_t numCorners,
                             const size_t numVertices,
-                            const int block, const int timestep) {
+                            const Meta &meta) {
 
    const std::string name = Shm::the().createObjectID();
-   Data *p = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
+   Data *p = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, meta);
    publish(p);
 
    return p;

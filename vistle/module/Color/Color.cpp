@@ -101,8 +101,7 @@ vistle::Object::ptr Color::addTexture(vistle::Object::const_ptr object,
       const vistle::Scalar *x = &f->x()[0];
 
       vistle::Texture1D::ptr tex(new vistle::Texture1D(cmap.width, min, max));
-      tex->setBlock(object->getBlock());
-      tex->setTimestep(object->getTimestep());
+      tex->setMeta(object->meta());
 
       unsigned char *pix = &tex->pixels()[0];
       for (size_t index = 0; index < cmap.width * 4; index ++)

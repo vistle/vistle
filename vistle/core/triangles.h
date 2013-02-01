@@ -13,7 +13,7 @@ class V_COREEXPORT Triangles: public Coords {
    typedef Coords Base;
 
    Triangles(const size_t numCorners, const size_t numVertices,
-             const int block = -1, const int timestep = -1);
+             const Meta &meta=Meta());
 
    size_t getNumCorners() const;
    size_t getNumVertices() const;
@@ -25,9 +25,9 @@ class V_COREEXPORT Triangles: public Coords {
 
       Data(const size_t numCorners = 0, const size_t numVertices = 0,
             const std::string & name = "",
-            const int block = -1, const int timestep = -1);
+            const Meta &meta=Meta());
       static Data *create(const size_t numCorners = 0, const size_t numVertices = 0,
-            const int block = -1, const int timestep = -1);
+            const Meta &meta=Meta());
    V_DATA_END(Triangles);
 };
 

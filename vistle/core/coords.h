@@ -16,7 +16,7 @@ class V_COREEXPORT Coords: public Vec<Scalar,3> {
    typedef Vec<Scalar,3> Base;
 
    Coords(const size_t numVertices,
-             const int block = -1, const int timestep = -1);
+             const Meta &meta=Meta());
 
    size_t getNumCoords() const;
    size_t getNumVertices() const;
@@ -24,9 +24,9 @@ class V_COREEXPORT Coords: public Vec<Scalar,3> {
    V_DATA_BEGIN(Coords);
       Data(const size_t numVertices = 0,
             Type id = UNKNOWN, const std::string & name = "",
-            const int block = -1, const int timestep = -1);
+            const Meta &meta=Meta());
       static Data *create(Type id = UNKNOWN, const size_t numVertices = 0,
-            const int block = -1, const int timestep = -1);
+            const Meta &meta=Meta());
 
    V_DATA_END(Coords);
 };

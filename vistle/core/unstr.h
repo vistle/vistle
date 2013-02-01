@@ -29,8 +29,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
    UnstructuredGrid(const size_t numElements,
          const size_t numCorners,
          const size_t numVertices,
-         const int block = -1,
-         const int timestep = -1);
+         const Meta &meta=Meta());
 
    shm<unsigned char>::vector &tl() const { return *(*d()->tl)(); }
 
@@ -39,12 +38,11 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
 
       Data(const size_t numElements = 0, const size_t numCorners = 0,
                     const size_t numVertices = 0, const std::string & name = "",
-                    const int block = -1, const int timestep = -1);
+                    const Meta &meta=Meta());
       static Data *create(const size_t numElements = 0,
                                     const size_t numCorners = 0,
                                     const size_t numVertices = 0,
-                                    const int block = -1,
-                                    const int timestep = -1);
+                                    const Meta &meta=Meta());
 
    V_DATA_END(UnstructuredGrid);
 };

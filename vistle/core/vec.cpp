@@ -17,7 +17,7 @@ namespace {
 template<int Dim>
 struct instantiator {
    template <typename V> void operator()(V) {
-      new Vec<V, Dim>(0, -1, -1);
+      new Vec<V, Dim>(0, Meta());
    }
 };
 

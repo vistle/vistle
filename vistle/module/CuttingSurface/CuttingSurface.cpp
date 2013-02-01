@@ -110,12 +110,10 @@ CuttingSurface::generateCuttingSurface(vistle::Object::const_ptr grid_object,
 
    size_t numElem = grid->getNumElements();
    vistle::Triangles *triangles = new vistle::Triangles(Object::Initialized);
-   triangles->setBlock(grid_object->getBlock());
-   triangles->setTimestep(grid_object->getTimestep());
+   triangles->setMeta(grid_object->meta());
 
    vistle::Vec<vistle::Scalar> *outData = new vistle::Vec<vistle::Scalar>(Object::Initialized);
-   outData->setBlock(data_object->getBlock());
-   outData->setTimestep(data_object->getTimestep());
+   outData->setMeta(data_object->meta());
 
    size_t numVertices = 0;
 

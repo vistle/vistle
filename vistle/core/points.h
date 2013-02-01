@@ -13,7 +13,7 @@ class  V_COREEXPORT Points: public Coords {
    typedef Coords Base;
 
    Points(const size_t numPoints,
-         const int block = -1, const int timestep = -1);
+         const Meta &meta=Meta());
 
    size_t getNumPoints() const;
 
@@ -21,9 +21,9 @@ class  V_COREEXPORT Points: public Coords {
 
       Data(const size_t numPoints = 0,
             const std::string & name = "",
-            const int block = -1, const int timestep = -1);
+            const Meta &meta=Meta());
       static Data *create(const size_t numPoints = 0,
-            const int block = -1, const int timestep = -1);
+            const Meta &meta=Meta());
 
    V_DATA_END(Points);
 };

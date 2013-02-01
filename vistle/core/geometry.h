@@ -13,7 +13,7 @@ class V_COREEXPORT Geometry: public Object {
  public:
    typedef Object Base;
 
-   Geometry(Object::const_ptr grid, const int block = -1, const int timestep = -1);
+   Geometry(Object::const_ptr grid, const Meta &m=Meta());
 
    void setGeometry(Object::const_ptr g);
    void setColors(Object::const_ptr c);
@@ -31,9 +31,9 @@ class V_COREEXPORT Geometry: public Object {
       boost::interprocess::offset_ptr<Object::Data> texture;
 
       Data(const std::string & name = "",
-            const int block = -1, const int timestep = -1);
+            const Meta &m=Meta());
       ~Data();
-      static Data *create(const int block = -1, const int timestep = -1);
+      static Data *create(const Meta &m=Meta());
 
       private:
       template<class Archive>

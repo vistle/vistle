@@ -94,8 +94,7 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
 
    size_t numElem = grid->getNumElements();
    Triangles::ptr t(new Triangles(Object::Initialized));
-   t->setBlock(grid_object->getBlock());
-   t->setTimestep(grid_object->getTimestep());
+   t->setMeta(grid_object->meta());
 
    size_t numVertices = 0;
 

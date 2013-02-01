@@ -3,8 +3,8 @@
 namespace vistle {
 
 Points::Points(const size_t numPoints,
-         const int block, const int timestep)
-   : Points::Base(Points::Data::create(numPoints, block, timestep))
+         const Meta &meta)
+   : Points::Base(Points::Data::create(numPoints, meta))
 {
 }
 
@@ -15,9 +15,9 @@ size_t Points::getNumPoints() const {
 
 Points::Data::Data(const size_t numPoints,
              const std::string & name,
-             const int block, const int timestep)
+             const Meta &meta)
    : Points::Base::Data(numPoints,
-         Object::POINTS, name, block, timestep)
+         Object::POINTS, name, meta)
 {
 }
 
@@ -27,10 +27,10 @@ Points::Data::Data(const Points::Data &o, const std::string &n)
 }
 
 Points::Data *Points::Data::create(const size_t numPoints,
-                      const int block, const int timestep) {
+                      const Meta &meta) {
 
    const std::string name = Shm::the().createObjectID();
-   Data *p = shm<Data>::construct(name)(numPoints, name, block, timestep);
+   Data *p = shm<Data>::construct(name)(numPoints, name, meta);
    publish(p);
 
    return p;

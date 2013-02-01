@@ -7,8 +7,8 @@ namespace vistle {
 
 template <class T, int Dim>
 Vec<T,Dim>::Vec(const size_t size,
-        const int block, const int timestep)
-      : Object(Data::create(size, block, timestep)) {
+        const Meta &meta)
+      : Object(Data::create(size, meta)) {
    }
 
 template <class T, int Dim>
@@ -19,8 +19,8 @@ void Vec<T,Dim>::setSize(const size_t size) {
 
 template <class T, int Dim>
 Vec<T,Dim>::Data::Data(const size_t size, const std::string &name,
-      const int block, const int timestep)
-: Vec<T,Dim>::Base::Data(Vec<T,Dim>::type(), name, block, timestep)
+      const Meta &m)
+: Vec<T,Dim>::Base::Data(Vec<T,Dim>::type(), name, m)
 {
    for (int c=0; c<Dim; ++c)
       x[c] = new ShmVector<T>(size);
@@ -34,8 +34,8 @@ Object::Type Vec<T,Dim>::type() {
 
 template <class T, int Dim>
 Vec<T,Dim>::Data::Data(const size_t size, Type id, const std::string &name,
-      const int block, const int timestep)
-: Vec<T,Dim>::Base::Data(id, name, block, timestep)
+      const Meta &m)
+: Vec<T,Dim>::Base::Data(id, name, m)
 {
    for (int c=0; c<Dim; ++c)
       x[c] = new ShmVector<T>(size);
@@ -50,9 +50,9 @@ Vec<T,Dim>::Data::Data(const Data &o, const std::string &n)
 }
 
 template <class T, int Dim>
-typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::create(size_t size, const int block, const int timestep) {
+typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::create(size_t size, const Meta &meta) {
    std::string name = Shm::the().createObjectID();
-   Data *t = shm<Data>::construct(name)(size, name, block, timestep);
+   Data *t = shm<Data>::construct(name)(size, name, meta);
    publish(t);
 
    return t;

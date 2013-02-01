@@ -78,6 +78,14 @@ void access::construct(vistle::Object::Data::AttributeMapValueType *t)
 
 namespace vistle {
 
+Meta::Meta(int block, int timestep, int animstep, int iteration)
+: m_block(block)
+, m_timestep(timestep)
+, m_animationstep(animstep)
+, m_iteration(iteration)
+{
+}
+
 Object::ptr Object::create(Object::Data *data) {
 
    if (!data)
@@ -103,12 +111,11 @@ void Object::publish(const Object::Data *d) {
 #endif
 }
 
-Object::Data::Data(const Type type, const std::string & n, const int b, const int t)
+Object::Data::Data(const Type type, const std::string & n, const Meta &m)
    : type(type)
    , name(n)
    , refcount(0)
-   , block(b)
-   , timestep(t)
+   , meta(m)
    , attributes(shm<AttributeMap>::construct(std::string("attr_")+n)(std::less<Key>(), Shm::the().allocator()))
 {
 }
@@ -117,8 +124,7 @@ Object::Data::Data(const Object::Data &o, const std::string &name)
 : type(o.type)
 , name(name)
 , refcount(0)
-, block(o.block)
-, timestep(o.timestep)
+, meta(o.meta)
 , attributes(shm<AttributeMap>::construct(std::string("attr_")+name)(std::less<Key>(), Shm::the().allocator()))
 {
    copyAttributes(&o, true);
@@ -144,10 +150,10 @@ void Object::Data::operator delete(void *p) {
 
 
 
-Object::Data *Object::Data::create(Type id, int b, int t) {
+Object::Data *Object::Data::create(Type id, const Meta &m) {
 
    std::string name = Shm::the().createObjectID();
-   return shm<Data>::construct(name)(id, name, b, t);
+   return shm<Data>::construct(name)(id, name, m);
 }
 
 Object::Object(Object::Data *data)
@@ -256,24 +262,34 @@ std::string Object::getName() const {
    return d()->name;
 }
 
+const Meta &Object::meta() const {
+
+   return d()->meta;
+}
+
+void Object::setMeta(const Meta &meta) {
+
+   d()->meta = meta;
+}
+
 int Object::getTimestep() const {
 
-   return d()->timestep;
+   return d()->meta.timeStep();
 }
 
 int Object::getBlock() const {
 
-   return d()->block;
+   return d()->meta.block();
 }
 
 void Object::setTimestep(const int time) {
 
-   d()->timestep = time;
+   d()->meta.setTimeStep(time);
 }
 
 void Object::setBlock(const int blk) {
 
-   d()->block = blk;
+   d()->meta.setBlock(blk);
 }
 
 const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int id) {

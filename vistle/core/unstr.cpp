@@ -5,8 +5,8 @@ namespace vistle {
 UnstructuredGrid::UnstructuredGrid(const size_t numElements,
       const size_t numCorners,
       const size_t numVertices,
-      const int block, const int timestep)
-   : UnstructuredGrid::Base(UnstructuredGrid::Data::create(numElements, numCorners, numVertices, block, timestep))
+      const Meta &meta)
+   : UnstructuredGrid::Base(UnstructuredGrid::Data::create(numElements, numCorners, numVertices, meta))
 {
 }
 
@@ -20,9 +20,9 @@ UnstructuredGrid::Data::Data(const size_t numElements,
                                    const size_t numCorners,
                                    const size_t numVertices,
                                    const std::string & name,
-                                   const int block, const int timestep)
+                                   const Meta &meta)
    : UnstructuredGrid::Base::Data(numElements, numCorners, numVertices,
-         Object::UNSTRUCTUREDGRID, name, block, timestep)
+         Object::UNSTRUCTUREDGRID, name, meta)
    , tl(new ShmVector<unsigned char>(numElements))
 {
 }
@@ -30,10 +30,10 @@ UnstructuredGrid::Data::Data(const size_t numElements,
 UnstructuredGrid::Data * UnstructuredGrid::Data::create(const size_t numElements,
                                             const size_t numCorners,
                                             const size_t numVertices,
-                                            const int block, const int timestep) {
+                                            const Meta &meta) {
 
    const std::string name = Shm::the().createObjectID();
-   Data *u = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, block, timestep);
+   Data *u = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, meta);
    publish(u);
 
    return u;

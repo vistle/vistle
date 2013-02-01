@@ -36,6 +36,25 @@ typedef bi::managed_shared_memory::handle_t shm_handle_t;
 
 class Shm;
 
+class V_COREEXPORT Meta {
+   public:
+      Meta(int timestep=-1, int block=-1, int animationstep=-1, int iteration=-1);
+      int block() const { return m_block; }
+      void setBlock(int block) { m_block = block; }
+      int timeStep() const { return m_timestep; }
+      void setTimeStep(int timestep) { m_timestep = timestep; }
+      int animationStep() const { return m_animationstep; }
+      void setAnimationStep(int step) { m_animationstep = step; }
+      int iteration() const { return m_iteration; }
+      void setIteration(int iteration) { m_iteration = iteration; }
+   private:
+      int m_block, m_timestep, m_animationstep, m_iteration;
+
+      friend class boost::serialization::access;
+      template<class Archive>
+      void serialize(Archive &ar, const unsigned int version);
+};
+
 #define V_NAME(name, obj) \
    boost::serialization::make_nvp(name, (obj))
 
@@ -83,6 +102,8 @@ public:
 
    void setBlock(const int block);
    void setTimestep(const int timestep);
+   const Meta &meta() const;
+   void setMeta(const Meta &meta);
 
    void addAttribute(const std::string &key, const std::string &value = "");
    void setAttributeList(const std::string &key, const std::vector<std::string> &values);
@@ -108,8 +129,7 @@ public:
       int refcount;
       boost::interprocess::interprocess_mutex mutex;
 
-      int block;
-      int timestep;
+      Meta meta;
 
       typedef shm<char>::string Attribute;
       typedef shm<char>::string Key;
@@ -125,7 +145,7 @@ public:
       std::string getAttribute(const std::string &key) const;
       std::vector<std::string> getAttributes(const std::string &key) const;
 
-      Data(Type id = UNKNOWN, const std::string &name = "", int b = -1, int t = -1);
+      Data(Type id = UNKNOWN, const std::string &name = "", const Meta &m=Meta());
       Data(const Data &other, const std::string &name); //! shallow copy, except for attributes
       ~Data();
       void *operator new(size_t size);
@@ -133,7 +153,7 @@ public:
       void operator delete(void *ptr);
       void ref();
       void unref();
-      static Data *create(Type id, int b, int t);
+      static Data *create(Type id, const Meta &m);
 
       friend class boost::serialization::access;
       template<class Archive>

@@ -16,7 +16,7 @@ class V_COREEXPORT Texture1D: public Object {
 
    Texture1D(const size_t width,
          const Scalar min, const Scalar max,
-         const int block = -1, const int timestep = -1);
+         const Meta &meta=Meta());
 
    size_t getNumElements() const;
    size_t getWidth() const;
@@ -32,10 +32,10 @@ class V_COREEXPORT Texture1D: public Object {
 
       static Data *create(const size_t width = 0,
             const Scalar min = 0, const Scalar max = 0,
-            const int block = -1, const int timestep = -1);
+            const Meta &m=Meta());
       Data(const std::string &name = "", const size_t size = 0,
             const Scalar min = 0, const Scalar max = 0,
-            const int block = -1, const int timestep = -1);
+            const Meta &m=Meta());
 
    V_DATA_END(Texture1D);
 };

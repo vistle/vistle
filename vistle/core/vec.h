@@ -19,7 +19,7 @@ class V_COREEXPORT Vec: public Object {
    typedef Object Base;
 
    Vec(const size_t size,
-        const int block = -1, const int timestep = -1);
+        const Meta &meta=Meta());
 
    size_t getSize() const {
       return d()->x[0]->size();
@@ -40,12 +40,12 @@ class V_COREEXPORT Vec: public Object {
       typename ShmVector<T>::ptr x[Dim];
       // when used as Vec
       Data(const size_t size = 0, const std::string &name = "",
-            const int block = -1, const int timestep = -1);
+            const Meta &meta=Meta());
       // when used as base of another data structure
       Data(const size_t size, Type id, const std::string &name,
-            const int block, const int timestep);
+            const Meta &meta=Meta());
       Data(const Data &other, const std::string &name);
-      static Data *create(size_t size = 0, const int block = -1, const int timestep = -1);
+      static Data *create(size_t size = 0, const Meta &meta=Meta());
 
       private:
       friend class Vec;

@@ -2,8 +2,8 @@
 
 namespace vistle {
 
-Geometry::Geometry(Object::const_ptr grid, const int block, const int timestep)
-   : Geometry::Base(Geometry::Data::create(block, timestep))
+Geometry::Geometry(Object::const_ptr grid, const Meta &meta)
+   : Geometry::Base(Geometry::Data::create(meta))
 {
    setGeometry(grid);
 }
@@ -18,8 +18,8 @@ Geometry::Data::Data(const Geometry::Data &o, const std::string &n)
 }
 
 Geometry::Data::Data(const std::string & name,
-      const int block, const int timestep)
-   : Geometry::Base::Data(Object::GEOMETRY, name, block, timestep)
+      const Meta &m)
+   : Geometry::Base::Data(Object::GEOMETRY, name, meta)
    , geometry(NULL)
    , colors(NULL)
    , normals(NULL)
@@ -54,10 +54,10 @@ Geometry::Data::~Data() {
       texture->unref();
 }
 
-Geometry::Data * Geometry::Data::create(const int block, const int timestep) {
+Geometry::Data * Geometry::Data::create(const Meta &meta) {
 
    const std::string name = Shm::the().createObjectID();
-   Data *g = shm<Data>::construct(name)(name, block, timestep);
+   Data *g = shm<Data>::construct(name)(name, meta);
    publish(g);
 
    return g;

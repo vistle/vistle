@@ -4,7 +4,7 @@ namespace vistle {
 
 Indexed::Indexed(const size_t numElements, const size_t numCorners,
                       const size_t numVertices,
-                      const int block, const int timestep)
+                      const Meta &meta)
    : Indexed::Base(static_cast<Data *>(NULL))
 {
 }
@@ -12,9 +12,9 @@ Indexed::Indexed(const size_t numElements, const size_t numCorners,
 Indexed::Data::Data(const size_t numElements, const size_t numCorners,
              const size_t numVertices,
              Type id, const std::string & name,
-             const int block, const int timestep)
+             const Meta &meta)
    : Indexed::Base::Data(numVertices, id, name,
-         block, timestep)
+         meta)
    , el(new ShmVector<size_t>(numElements))
    , cl(new ShmVector<size_t>(numCorners))
 {
@@ -30,7 +30,7 @@ Indexed::Data::Data(const Indexed::Data &o, const std::string &name)
 Indexed::Data *Indexed::Data::create(Type id,
             const size_t numElements, const size_t numCorners,
             const size_t numVertices,
-            int b, int t) {
+            const Meta &meta) {
 
    assert("should never be called" == NULL);
 

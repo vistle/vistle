@@ -3,9 +3,9 @@
 namespace vistle {
 
 Triangles::Triangles(const size_t numCorners, const size_t numVertices,
-                     const int block, const int timestep)
+                     const Meta &meta)
    : Triangles::Base(Triangles::Data::create(numCorners, numVertices,
-            block, timestep)) {
+            meta)) {
 }
 
 Triangles::Data::Data(const Triangles::Data &o, const std::string &n)
@@ -16,10 +16,10 @@ Triangles::Data::Data(const Triangles::Data &o, const std::string &n)
 
 Triangles::Data::Data(const size_t numCorners, const size_t numVertices,
                      const std::string & name,
-                     const int block, const int timestep)
+                     const Meta &meta)
    : Base::Data(numCorners,
          Object::TRIANGLES, name,
-         block, timestep)
+         meta)
    , cl(new ShmVector<size_t>(numCorners))
 {
 }
@@ -27,10 +27,10 @@ Triangles::Data::Data(const size_t numCorners, const size_t numVertices,
 
 Triangles::Data * Triangles::Data::create(const size_t numCorners,
                               const size_t numVertices,
-                              const int block, const int timestep) {
+                              const Meta &meta) {
 
    const std::string name = Shm::the().createObjectID();
-   Data *t = shm<Data>::construct(name)(numCorners, numVertices, name, block, timestep);
+   Data *t = shm<Data>::construct(name)(numCorners, numVertices, name, meta);
    publish(t);
 
    return t;
