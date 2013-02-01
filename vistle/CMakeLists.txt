@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8)
 project(vistle)
 
 enable_testing()
@@ -15,26 +15,27 @@ if(WIN32)
     set(BOOST_ROOT "$ENV{EXTERNLIBS}/boost")
     set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
     set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
-	ADD_DEFINITIONS("-DOMPI_IMPORTS")
+    add_definitions("-DOMPI_IMPORTS")
 endif(WIN32)
 
-find_package(MPI REQUIRED)
 find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
-
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
 
+find_package(MPI REQUIRED)
+include_directories(${MPI_INCLUDE_DIR})
+set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})
+set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
+
 if(WIN32)
-set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS} "-Wall")
-INCLUDE_DIRECTORIES(${MPI_INCLUDE_DIR})
+   set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} "-Wall")
 else(WIN32)
-set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS} "-Wall -Wno-unknown-pragmas")
+   set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} "-Wall -Wno-unknown-pragmas")
 endif(WIN32)
 
 if (CMAKE_COMPILER_IS_GNUCC)
-set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-fvisibility=hidden")
+   set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-fvisibility=hidden")
 endif()
 
-set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${PROJECT_SOURCE_DIR}/cmake/Modules/")
 
