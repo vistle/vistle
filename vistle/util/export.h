@@ -2,21 +2,21 @@
 #define UTIL_EXPORT_H
 
 #if defined (_WIN32) && !defined (NODLL)
-#define VIMPORT __declspec(dllimport)
-#define VEXPORT __declspec(dllexport)
+#define V_IMPORT __declspec(dllimport)
+#define V_EXPORT __declspec(dllexport)
 
 #elif defined(__GNUC__) && __GNUC__ >= 4
-#define VEXPORT __attribute__ ((visibility("default")))
-#define VIMPORT VEXPORT
+#define V_EXPORT __attribute__ ((visibility("default")))
+#define V_IMPORT V_EXPORT
 #else
-#define VIMPORT
-#define VEXPORT
+#define V_IMPORT
+#define V_EXPORT
 #endif
 
 #if defined (vistle_util_EXPORTS)
-#define UTILEXPORT VEXPORT
+#define V_UTILEXPORT V_EXPORT
 #else
-#define UTILEXPORT VIMPORT
+#define V_UTILEXPORT V_IMPORT
 #endif
 
 #endif

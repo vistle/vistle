@@ -35,7 +35,7 @@ namespace message {
    class MessageQueue;
 }
 
-class VCEXPORT shm_exception: public exception {
+class V_COREEXPORT shm_exception: public exception {
    public:
    shm_exception(const std::string &what = "shared memory error") : exception(what) {}
 };
@@ -70,7 +70,7 @@ struct shm {
    static void destroy(const std::string &name);
 };
 
-class VCEXPORT Shm {
+class V_COREEXPORT Shm {
 
  public:
    static Shm & the();
@@ -131,7 +131,7 @@ void shm<T>::destroy(const std::string &name) {
 }
 
 template<typename T>
-class VCEXPORT ShmVector {
+class V_COREEXPORT ShmVector {
 #ifdef SHMDEBUG
    friend void Shm::markAsRemoved(const std::string &name);
 #endif

@@ -10,7 +10,7 @@
 namespace vistle {
 
 template <typename T, int Dim=1>
-class VCEXPORT Vec: public Object {
+class V_COREEXPORT Vec: public Object {
    V_OBJECT(Vec);
 
    BOOST_STATIC_ASSERT(Dim > 0);

@@ -10,7 +10,7 @@ namespace vistle {
 
 namespace except {
 
-class VCEXPORT exception: public std::exception {
+class V_COREEXPORT exception: public std::exception {
 
    public:
    exception(const std::string &what = "vistle error");
@@ -22,7 +22,7 @@ class VCEXPORT exception: public std::exception {
    std::string m_what;
 };
 
-class VCEXPORT not_implemented: public exception {
+class V_COREEXPORT not_implemented: public exception {
 
    public:
    not_implemented(const std::string &what = "not implemented");

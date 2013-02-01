@@ -11,7 +11,7 @@
 namespace vistle {
 
 template<typename S>
-class VCEXPORT ParameterVector {
+class V_COREEXPORT ParameterVector {
 public:
    typedef S Scalar;
 
@@ -83,7 +83,7 @@ typedef ScalarVector Vector;
 } // namespace vistle
 
 template<typename S>
-VCEXPORT std::ostream &operator<<(std::ostream &out, const vistle::ParameterVector<S> &v);
+V_COREEXPORT std::ostream &operator<<(std::ostream &out, const vistle::ParameterVector<S> &v);
 #endif // VECTOR_H
 
 

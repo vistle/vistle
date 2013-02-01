@@ -7,7 +7,7 @@
 
 namespace vistle {
 
-class VCEXPORT Polygons: public Indexed {
+class V_COREEXPORT Polygons: public Indexed {
    V_OBJECT(Polygons);
 
  public:

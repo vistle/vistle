@@ -7,7 +7,7 @@
 
 namespace vistle {
 
-class VCEXPORT Geometry: public Object {
+class V_COREEXPORT Geometry: public Object {
    V_OBJECT(Geometry);
 
  public:

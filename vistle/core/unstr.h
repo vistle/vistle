@@ -7,7 +7,7 @@
 
 namespace vistle {
 
-class VCEXPORT UnstructuredGrid: public Indexed {
+class V_COREEXPORT UnstructuredGrid: public Indexed {
    V_OBJECT(UnstructuredGrid);
 
  public:

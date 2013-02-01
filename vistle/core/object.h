@@ -39,7 +39,7 @@ class Shm;
 #define V_NAME(name, obj) \
    boost::serialization::make_nvp(name, (obj))
 
-class VCEXPORT Object {
+class V_COREEXPORT Object {
    friend class Shm;
    friend class ObjectTypeRegistry;
 #ifdef SHMDEBUG
@@ -165,7 +165,7 @@ public:
    Object &operator=(const Object &);
 };
 
-class VCEXPORT ObjectTypeRegistry {
+class V_COREEXPORT ObjectTypeRegistry {
    friend struct Object::Data;
    friend Object::ptr Object::create(Object::Data *);
    public:

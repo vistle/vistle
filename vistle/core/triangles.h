@@ -6,7 +6,7 @@
 
 namespace vistle {
 
-class VCEXPORT Triangles: public Coords {
+class V_COREEXPORT Triangles: public Coords {
    V_OBJECT(Triangles);
 
  public:

@@ -19,7 +19,7 @@ typedef char port_name_t[32];
 typedef char param_name_t[32];
 typedef char param_value_t[256];
 
-struct VCEXPORT Message {
+struct V_COREEXPORT Message {
    // this is POD
 
    friend class vistle::Communicator;
@@ -75,7 +75,7 @@ struct VCEXPORT Message {
 };
 
 //! debug: request a reply containing character 'c'
-class VCEXPORT Ping: public Message {
+class V_COREEXPORT Ping: public Message {
 
  public:
    Ping(const int moduleID, const int rank, const char c);
@@ -88,7 +88,7 @@ class VCEXPORT Ping: public Message {
 BOOST_STATIC_ASSERT(sizeof(Ping) < Message::MESSAGE_SIZE);
 
 //! debug: reply to pong
-class VCEXPORT Pong: public Message {
+class V_COREEXPORT Pong: public Message {
 
  public:
    Pong(const int moduleID, const int rank, const char c, const int module);
@@ -103,7 +103,7 @@ class VCEXPORT Pong: public Message {
 BOOST_STATIC_ASSERT(sizeof(Pong) < Message::MESSAGE_SIZE);
 
 //! spawn a module
-class VCEXPORT Spawn: public Message {
+class V_COREEXPORT Spawn: public Message {
 
  public:
    Spawn(const int moduleID, const int rank, const int spawnID,
@@ -127,7 +127,7 @@ class VCEXPORT Spawn: public Message {
 BOOST_STATIC_ASSERT(sizeof(Spawn) < Message::MESSAGE_SIZE);
 
 //! acknowledge that a module has been spawned
-class VCEXPORT Started: public Message {
+class V_COREEXPORT Started: public Message {
 
  public:
    Started(const int moduleID, const int rank, const std::string &name);
@@ -141,7 +141,7 @@ class VCEXPORT Started: public Message {
 BOOST_STATIC_ASSERT(sizeof(Started) < Message::MESSAGE_SIZE);
 
 //! request a module to quit
-class VCEXPORT Kill: public Message {
+class V_COREEXPORT Kill: public Message {
 
  public:
    Kill(const int moduleID, const int rank, const int module);
@@ -155,7 +155,7 @@ class VCEXPORT Kill: public Message {
 BOOST_STATIC_ASSERT(sizeof(Kill) < Message::MESSAGE_SIZE);
 
 //! request all modules to quit for terminating the session
-class VCEXPORT Quit: public Message {
+class V_COREEXPORT Quit: public Message {
 
  public:
    Quit(const int moduleID, const int rank);
@@ -164,7 +164,7 @@ class VCEXPORT Quit: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Quit) < Message::MESSAGE_SIZE);
 
-class VCEXPORT NewObject: public Message {
+class V_COREEXPORT NewObject: public Message {
 
  public:
    NewObject(const int moduleID, const int rank,
@@ -177,7 +177,7 @@ class VCEXPORT NewObject: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(NewObject) < Message::MESSAGE_SIZE);
 
-class VCEXPORT ModuleExit: public Message {
+class V_COREEXPORT ModuleExit: public Message {
 
  public:
    ModuleExit(const int moduleID, const int rank);
@@ -187,7 +187,7 @@ class VCEXPORT ModuleExit: public Message {
 BOOST_STATIC_ASSERT(sizeof(ModuleExit) < Message::MESSAGE_SIZE);
 
 //! trigger computation for a module
-class VCEXPORT Compute: public Message {
+class V_COREEXPORT Compute: public Message {
 
  public:
    Compute(const int moduleID, const int rank, const int module);
@@ -200,7 +200,7 @@ class VCEXPORT Compute: public Message {
 BOOST_STATIC_ASSERT(sizeof(Compute) < Message::MESSAGE_SIZE);
 
 //! indicate that a module has started computing
-class VCEXPORT Busy: public Message {
+class V_COREEXPORT Busy: public Message {
 
  public:
    Busy(const int moduleID, const int rank);
@@ -210,7 +210,7 @@ class VCEXPORT Busy: public Message {
 BOOST_STATIC_ASSERT(sizeof(Busy) < Message::MESSAGE_SIZE);
 
 //! indicate that a module has finished computing
-class VCEXPORT Idle: public Message {
+class V_COREEXPORT Idle: public Message {
 
  public:
    Idle(const int moduleID, const int rank);
@@ -219,7 +219,7 @@ class VCEXPORT Idle: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Idle) < Message::MESSAGE_SIZE);
 
-class VCEXPORT CreateInputPort: public Message {
+class V_COREEXPORT CreateInputPort: public Message {
 
  public:
    CreateInputPort(const int moduleID, const int rank,
@@ -232,7 +232,7 @@ class VCEXPORT CreateInputPort: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(CreateInputPort) < Message::MESSAGE_SIZE);
 
-class VCEXPORT CreateOutputPort: public Message {
+class V_COREEXPORT CreateOutputPort: public Message {
 
  public:
    CreateOutputPort(const int moduleID, const int rank,
@@ -246,7 +246,7 @@ class VCEXPORT CreateOutputPort: public Message {
 BOOST_STATIC_ASSERT(sizeof(CreateOutputPort) < Message::MESSAGE_SIZE);
 
 //! add an object to the input queue of an input port
-class VCEXPORT AddObject: public Message {
+class V_COREEXPORT AddObject: public Message {
 
  public:
    AddObject(const int moduleID, const int rank, const std::string & portName,
@@ -263,7 +263,7 @@ class VCEXPORT AddObject: public Message {
 BOOST_STATIC_ASSERT(sizeof(AddObject) < Message::MESSAGE_SIZE);
 
 //! connect an output port to an input port of another module
-class VCEXPORT Connect: public Message {
+class V_COREEXPORT Connect: public Message {
 
  public:
    Connect(const int moduleID, const int rank,
@@ -285,7 +285,7 @@ class VCEXPORT Connect: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Connect) < Message::MESSAGE_SIZE);
 
-class VCEXPORT AddParameter: public Message {
+class V_COREEXPORT AddParameter: public Message {
    public:
       AddParameter(const int moduleID, const int rank,
             const std::string & name, int type);
@@ -300,7 +300,7 @@ class VCEXPORT AddParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(AddParameter) < Message::MESSAGE_SIZE);
 
-class VCEXPORT SetParameter: public Message {
+class V_COREEXPORT SetParameter: public Message {
    public:
       SetParameter(const int moduleID, const int rank, const int module,
             const std::string & name, const Parameter *param);
@@ -338,7 +338,7 @@ class VCEXPORT SetParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(SetParameter) < Message::MESSAGE_SIZE);
 
-class VCEXPORT Barrier: public Message {
+class V_COREEXPORT Barrier: public Message {
 
  public:
    Barrier(const int moduleID, const int rank, const int id);
@@ -350,7 +350,7 @@ class VCEXPORT Barrier: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Barrier) < Message::MESSAGE_SIZE);
 
-class VCEXPORT BarrierReached: public Message {
+class V_COREEXPORT BarrierReached: public Message {
 
  public:
    BarrierReached(const int moduleID, const int rank, const int id);

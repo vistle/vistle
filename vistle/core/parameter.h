@@ -8,7 +8,7 @@
 
 namespace vistle {
 
-class VCEXPORT Parameter {
+class V_COREEXPORT Parameter {
 
  public:
    enum Type {
@@ -36,7 +36,7 @@ struct ParameterType {
 };
 
 template<typename T>
-class VCEXPORT ParameterBase: public Parameter {
+class V_COREEXPORT ParameterBase: public Parameter {
 
  public:
    typedef T ValueType;

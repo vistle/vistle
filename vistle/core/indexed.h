@@ -9,7 +9,7 @@
 
 namespace vistle {
 
-class  VCEXPORT Indexed: public Coords {
+class  V_COREEXPORT Indexed: public Coords {
    V_OBJECT(Indexed);
 
  public:

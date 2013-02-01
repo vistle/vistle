@@ -4,9 +4,9 @@
 #include <util/export.h>
 
 #if defined (vistle_control_EXPORTS)
-#define CONTROLEXPORT VEXPORT
+#define V_CONTROLEXPORT V_EXPORT
 #else
-#define CONTROLEXPORT VIMPORT
+#define V_CONTROLEXPORT V_IMPORT
 #endif
 
 #endif

@@ -17,7 +17,7 @@ namespace message {
 struct Message;
 };
 
-class CONTROLEXPORT Executor {
+class V_CONTROLEXPORT Executor {
 
    public:
 

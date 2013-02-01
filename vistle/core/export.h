@@ -4,9 +4,9 @@
 #include <util/export.h>
 
 #if defined (vistle_core_EXPORTS)
-#define VCEXPORT VEXPORT
+#define V_COREEXPORT V_EXPORT
 #else
-#define VCEXPORT VIMPORT
+#define V_COREEXPORT V_IMPORT
 #endif
 
 #endif

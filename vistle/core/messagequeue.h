@@ -8,7 +8,7 @@
 namespace vistle {
 namespace message {
 
-class VCEXPORT MessageQueue {
+class V_COREEXPORT MessageQueue {
 
  public:
    static MessageQueue * create(const std::string & name);

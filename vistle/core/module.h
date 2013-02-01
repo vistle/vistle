@@ -22,7 +22,7 @@ struct Message;
 class MessageQueue;
 }
 
-class VCEXPORT Module {
+class V_COREEXPORT Module {
 
  public:
    Module(const std::string &name, const std::string &shmname,

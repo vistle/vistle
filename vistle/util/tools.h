@@ -7,7 +7,7 @@
 
 namespace vistle {
 
-   UTILEXPORT std::string backtrace();
+   V_UTILEXPORT std::string backtrace();
 
 } // namespace vistle
 
