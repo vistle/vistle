@@ -16,7 +16,7 @@ Coords::Data::Data(const size_t numVertices,
 {
 }
 
-Coords::Data::Data(const Coords::Data::Data &o, const std::string &n)
+Coords::Data::Data(const Coords::Data &o, const std::string &n)
 : Coords::Base::Data(o, n)
 {
 }

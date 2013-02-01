@@ -113,7 +113,7 @@ Object::Data::Data(const Type type, const std::string & n, const int b, const in
 {
 }
 
-Object::Data::Data(const Object::Data::Data &o, const std::string &name)
+Object::Data::Data(const Object::Data &o, const std::string &name)
 : type(o.type)
 , name(name)
 , refcount(0)
