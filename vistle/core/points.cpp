@@ -8,6 +8,11 @@ Points::Points(const size_t numPoints,
 {
 }
 
+bool Points::checkImpl() const {
+
+   return true;
+}
+
 size_t Points::getNumPoints() const {
 
    return getNumCoords();

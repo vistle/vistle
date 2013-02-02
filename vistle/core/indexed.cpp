@@ -9,6 +9,21 @@ Indexed::Indexed(const size_t numElements, const size_t numCorners,
 {
 }
 
+bool Indexed::checkImpl() const {
+
+   if (getNumElements() > 0) {
+      V_CHECK (el()[0] < getNumCorners());
+      V_CHECK (el()[getNumElements()-1] < getNumCorners());
+   }
+
+   if (getNumCorners() > 0) {
+      V_CHECK (cl()[0] < getNumVertices());
+      V_CHECK (cl()[getNumCorners()-1] < getNumVertices());
+   }
+
+   return true;
+}
+
 Indexed::Data::Data(const size_t numElements, const size_t numCorners,
              const size_t numVertices,
              Type id, const std::string & name,

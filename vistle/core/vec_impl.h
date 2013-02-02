@@ -18,6 +18,15 @@ void Vec<T,Dim>::setSize(const size_t size) {
 }
 
 template <class T, int Dim>
+bool Vec<T,Dim>::checkImpl() const {
+
+   for (int c=1; c<Dim; ++c)
+      V_CHECK (d()->x[c]->size() == d()->x[0]->size());
+
+   return true;
+}
+
+template <class T, int Dim>
 Vec<T,Dim>::Data::Data(const size_t size, const std::string &name,
       const Meta &m)
 : Vec<T,Dim>::Base::Data(Vec<T,Dim>::type(), name, m)

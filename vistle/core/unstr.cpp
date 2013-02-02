@@ -10,6 +10,12 @@ UnstructuredGrid::UnstructuredGrid(const size_t numElements,
 {
 }
 
+bool UnstructuredGrid::checkImpl() const {
+
+   V_CHECK(tl().size() == getNumElements());
+   return true;
+}
+
 UnstructuredGrid::Data::Data(const UnstructuredGrid::Data &o, const std::string &n)
 : UnstructuredGrid::Base::Data(o, n)
 , tl(o.tl)

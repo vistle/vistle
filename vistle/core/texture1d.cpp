@@ -9,6 +9,12 @@ Texture1D::Texture1D(const size_t width,
 {
 }
 
+bool Texture1D::checkImpl() const {
+
+   V_CHECK (d()->min <= d()->max);
+   return true;
+}
+
 Texture1D::Data::Data(const Texture1D::Data &o, const std::string &n)
 : Texture1D::Base::Data(o, n)
 , min(o.min)

@@ -291,6 +291,8 @@ bool Module::addObject(const std::string & portName, vistle::Object::const_ptr o
    if (!object)
       return false;
 
+   assert(object->check());
+
    std::map<std::string, ObjectList>::iterator i = outputPorts.find(portName);
    if (i != outputPorts.end()) {
       // XXX: this was the culprit keeping the final object reference around
@@ -313,6 +315,7 @@ Module::ObjectList Module::getObjects(const std::string &portName) {
       for (ObjectList::const_iterator it = i->second.begin(); it != i->second.end(); it++) {
          Object::const_ptr object = *it;
          if (object.get())
+            assert(object->check());
             objects.push_back(object);
       }
    }
@@ -363,6 +366,7 @@ vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
    if (i != inputPorts.end() && !i->second.empty()) {
 
       Object::const_ptr obj = i->second.front();
+      assert(obj->check());
       i->second.pop_front();
       return obj;
    }
@@ -372,6 +376,12 @@ vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
 
 bool Module::addInputObject(const std::string & portName,
                             Object::const_ptr object) {
+
+   if (!object)
+      return false;
+
+   if (object)
+      assert(object->check());
 
    std::map<std::string, ObjectList>::iterator i = inputPorts.find(portName);
 

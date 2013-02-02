@@ -10,6 +10,11 @@ Polygons::Polygons(const size_t numElements,
 {
 }
 
+bool Polygons::checkImpl() const {
+
+   return true;
+}
+
 Polygons::Data::Data(const Polygons::Data &o, const std::string &n)
 : Polygons::Base::Data(o, n)
 {

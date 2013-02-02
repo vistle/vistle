@@ -7,6 +7,11 @@ Coords::Coords(const size_t numVertices,
    : Coords::Base(numVertices, meta)
 {}
 
+bool Coords::checkImpl() const {
+
+   return true;
+}
+
 Coords::Data::Data(const size_t numVertices,
       Type id, const std::string &name,
       const Meta &meta)

@@ -8,6 +8,12 @@ Geometry::Geometry(Object::const_ptr grid, const Meta &meta)
    setGeometry(grid);
 }
 
+bool Geometry::checkImpl() const {
+
+   V_CHECK (geometry());
+   return true;
+}
+
 Geometry::Data::Data(const Geometry::Data &o, const std::string &n)
 : Geometry::Base::Data(o, n)
 , geometry(o.geometry)

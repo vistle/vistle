@@ -92,6 +92,8 @@ public:
 
    virtual Object::ptr clone() const = 0;
 
+   virtual bool check() const;
+
    shm_handle_t getHandle() const;
 
    Type getType() const;
@@ -236,6 +238,17 @@ class V_COREEXPORT ObjectTypeRegistry {
    static DestroyFunc getDestroyer(int id);
 };
 
+//! use in checkImpl
+#define V_CHECK(true_expr) \
+   if (!(true_expr)) { \
+      std::cerr << __FILE__ << ":" << __LINE__ << ": " \
+      << "CONSISTENCY CHECK FAILURE: " \
+          << #true_expr << std::endl; \
+      std::cerr << "   PID: " << getpid() << std::endl; \
+      sleep(30); \
+      return false; \
+   }
+
 //! declare a new Object type
 #define V_OBJECT(Type) \
    public: \
@@ -259,7 +272,9 @@ class V_COREEXPORT ObjectTypeRegistry {
    static void registerBinaryIArchive(boost::archive::binary_iarchive &ar); \
    static void registerBinaryOArchive(boost::archive::binary_oarchive &ar); \
    Type(Object::InitializedFlags) : Base(Type::Data::create()) {} \
+   bool check() const { if (!Base::check()) return false; return checkImpl(); } \
    protected: \
+   bool checkImpl() const; \
    struct Data; \
    Data *d() const { return static_cast<Data *>(Object::m_data); } \
    Type(Data *data) : Base(data) {} \

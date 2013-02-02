@@ -8,6 +8,13 @@ Triangles::Triangles(const size_t numCorners, const size_t numVertices,
             meta)) {
 }
 
+bool Triangles::checkImpl() const {
+
+   V_CHECK (cl()[0] < getNumVertices());
+   V_CHECK (cl()[getNumCorners()-1] < getNumVertices());
+   return true;
+}
+
 Triangles::Data::Data(const Triangles::Data &o, const std::string &n)
 : Triangles::Base::Data(o, n)
 , cl(o.cl)

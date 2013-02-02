@@ -10,6 +10,11 @@ Lines::Lines(const size_t numElements, const size_t numCorners,
 {
 }
 
+bool Lines::checkImpl() const {
+
+   return true;
+}
+
 Lines::Data::Data(const Data &other, const std::string &name)
 : Lines::Base::Data(other, name)
 {

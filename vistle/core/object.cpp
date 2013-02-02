@@ -172,6 +172,27 @@ Object::~Object() {
    m_data->unref();
 }
 
+bool Object::check() const {
+
+   V_CHECK (d()->refcount >= 0);
+
+   bool terminated = false;
+   for (size_t i=0; i<sizeof(shm_name_t); ++i) {
+      if (d()->name[i] == '\0') {
+         terminated = true;
+         break;
+      }
+   }
+   V_CHECK (terminated);
+
+   V_CHECK (d()->meta.timeStep() >= -1);
+   V_CHECK (d()->meta.animationStep() >= -1);
+   V_CHECK (d()->meta.iteration() >= -1);
+   V_CHECK (d()->meta.block() >= -1);
+
+   return true;
+}
+
 void Object::ref() const {
    d()->ref();
 }
