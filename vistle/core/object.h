@@ -94,6 +94,11 @@ public:
 
    virtual bool check() const;
 
+   template<class ObjectType>
+   static boost::shared_ptr<const Object> as(boost::shared_ptr<const ObjectType> ptr) { return boost::static_pointer_cast<const Object>(ptr); }
+   template<class ObjectType>
+   static boost::shared_ptr<Object> as(boost::shared_ptr<ObjectType> ptr) { return boost::static_pointer_cast<Object>(ptr); }
+
    shm_handle_t getHandle() const;
 
    Type getType() const;
