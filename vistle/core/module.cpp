@@ -407,13 +407,6 @@ bool Module::dispatch() {
    vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
 
    bool again = handleMessage(message);
-   if (!again) {
-      vistle::message::ModuleExit m(id(), rank());
-      sendMessage(m);
-   }
-
-   //sleep(1);
-
    return again;
 }
 
@@ -547,6 +540,9 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 }
 
 Module::~Module() {
+
+   vistle::message::ModuleExit m(id(), rank());
+   sendMessage(m);
 
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
              << "/" << size() << "] quit" << std::endl;
