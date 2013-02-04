@@ -11,7 +11,7 @@ Texture1D::Texture1D(const size_t width,
 
 bool Texture1D::checkImpl() const {
 
-   V_CHECK (d()->min <= d()->max);
+   //V_CHECK (d()->min <= d()->max);
    return true;
 }
 

@@ -10,8 +10,10 @@ Triangles::Triangles(const size_t numCorners, const size_t numVertices,
 
 bool Triangles::checkImpl() const {
 
-   V_CHECK (cl()[0] < getNumVertices());
-   V_CHECK (cl()[getNumCorners()-1] < getNumVertices());
+   if (getNumCorners() > 0) {
+      V_CHECK (cl()[0] < getNumVertices());
+      V_CHECK (cl()[getNumCorners()-1] < getNumVertices());
+   }
    return true;
 }
 
