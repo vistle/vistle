@@ -9,7 +9,7 @@ if(NOT OPENSCENEGRAPH_FOUND OR NOT OPENGL_FOUND)
     return()
 endif()
 
-add_library(Vistle SHARED
+add_library(VistlePlugin SHARED
    VistlePlugin.cpp
    VistleRenderObject.cpp
    VistleGeometryGenerator.cpp
@@ -30,7 +30,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/../covise
 )
 
-target_link_libraries(Vistle
+target_link_libraries(VistlePlugin
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
         ${OPENSCENEGRAPH_LIBRARIES}
