@@ -47,9 +47,11 @@ class VistleRenderObject: public opencover::RenderObject {
          float &zmin, float &zmax) const { xmin=xmax=ymin=ymax=zmin=zmax=0.; }
 
    bool isVectors() const { return false; }
-   const unsigned char *getByte(int idx=0) const { return NULL; }
-   const int *getInt(int idx=0) const { return NULL; }
-   const float *getFloat(int idx=0) const { return NULL; }
+   const unsigned char *getByte(opencover::Field::Id idx) const { return NULL; }
+   const int *getInt(opencover::Field::Id idx) const { return NULL; }
+   const float *getFloat(opencover::Field::Id idx) const { return NULL; }
+
+   bool isUnstructuredGrid() const { return false; }
 
    protected:
 
