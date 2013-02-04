@@ -183,6 +183,9 @@ bool Module::setParameter(const std::string &name, const T &value) {
    std::map<std::string, Parameter *>::iterator i =
       parameters.find(name);
 
+   if (i == parameters.end())
+      return false;
+
    ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(&*i->second);
    if (!p)
       return false;
