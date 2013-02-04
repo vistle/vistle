@@ -3,14 +3,6 @@
 using namespace opencover;
 using namespace vistle;
 
-VistleRenderObject::VistleRenderObject()
-: m_roGeo(NULL)
-, m_roCol(NULL)
-, m_roNorm(NULL)
-, m_roTex(NULL)
-{
-}
-
 VistleRenderObject::VistleRenderObject(const vistle::Object::const_ptr &geo)
 : m_obj(geo)
 , m_roGeo(NULL)
@@ -55,7 +47,7 @@ osg::Node *VistleRenderObject::node() const {
 
 bool VistleRenderObject::isGeometry() const {
 
-   return !m_obj && m_geo;
+   return m_obj && m_geo;
 }
 
 void VistleRenderObject::setGeometry(Object::const_ptr obj) {

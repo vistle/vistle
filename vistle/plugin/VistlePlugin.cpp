@@ -1,6 +1,5 @@
 // cover
 #include <kernel/coVRPluginSupport.h>
-#include <kernel/coVRPluginSupport.h>
 #include <kernel/VRSceneGraph.h>
 #include <kernel/coVRAnimationManager.h>
 #include <kernel/coCommandLine.h>
@@ -40,7 +39,8 @@ class OsgRenderer: public vistle::Renderer {
    bool compute();
    void render();
 
-   void addInputObject(vistle::Object::const_ptr geometry,
+   void addInputObject(vistle::Object::const_ptr container,
+                                 vistle::Object::const_ptr geometry,
                                  vistle::Object::const_ptr colors,
                                  vistle::Object::const_ptr normals,
                                  vistle::Object::const_ptr texture);
@@ -50,8 +50,10 @@ class OsgRenderer: public vistle::Renderer {
    osg::ref_ptr<osg::Group> staticGeo;
    osg::ref_ptr<osg::Sequence> animation;
 
-   std::map<std::string, VistleRenderObject *> objects;
+   typedef std::map<std::string, VistleRenderObject *> ObjectMap;
+   ObjectMap objects;
    bool removeObject(VistleRenderObject *ro);
+   void removeAllCreatedBy(int creator);
 };
 
 OsgRenderer::OsgRenderer(const std::string &shmname,
@@ -72,7 +74,6 @@ OsgRenderer::OsgRenderer(const std::string &shmname,
 
 OsgRenderer::~OsgRenderer() {
 
-   std::map<std::string, VistleRenderObject *>::iterator next;
    for (std::map<std::string, VistleRenderObject *>::iterator it = objects.begin(), next=it;
          it != objects.end();
          it = next) {
@@ -88,12 +89,14 @@ OsgRenderer::~OsgRenderer() {
 }
 
 bool OsgRenderer::removeObject(VistleRenderObject *ro) {
+   if (!ro)
+      return false;
    if (!ro->isGeometry()) {
       std::cerr << "Node is not geometry: " << ro->getName() << std::endl;
       return false;
    }
 
-   std::string name = ro->getGeometry()->getName();
+   std::string name = ro->getName();
    std::map<std::string, VistleRenderObject *>::iterator it = objects.find(name);
    if (it == objects.end()) {
       std::cerr << "Did not find node for " << name << std::endl;
@@ -102,7 +105,7 @@ bool OsgRenderer::removeObject(VistleRenderObject *ro) {
 
    osg::Node *node = ro->node();
    if (node) {
-      VRSceneGraph::instance()->deleteNode(node->getName().c_str(), false);
+      VRSceneGraph::instance()->deleteNode(ro->getName(), false);
       if (node->getNumParents() > 0) {
          osg::Group *parent = node->getParent(0);
          parent->removeChild(node);
@@ -119,13 +122,38 @@ bool OsgRenderer::compute() {
    return true;
 }
 
-void OsgRenderer::addInputObject(vistle::Object::const_ptr geometry,
+void OsgRenderer::removeAllCreatedBy(int creator) {
+
+   for (ObjectMap::iterator next, it = objects.begin();
+         it != objects.end();
+         it = next) {
+
+      next = it;
+      ++next;
+      if (it->second->object()->getCreator() == creator) {
+         removeObject(it->second);
+      }
+   }
+}
+
+typedef std::map<int, int> AgeMap;
+AgeMap ageMap;
+
+void OsgRenderer::addInputObject(vistle::Object::const_ptr container,
+                                 vistle::Object::const_ptr geometry,
                                  vistle::Object::const_ptr colors,
                                  vistle::Object::const_ptr normals,
                                  vistle::Object::const_ptr texture) {
 
-   if (objects.find(geometry->getName()) != objects.end()) {
-      std::cerr << "Object added twice: " << geometry->getName() << std::endl;
+   AgeMap::iterator it = ageMap.find(container->getCreator());
+   if (it != ageMap.end() && it->second != container->getExecutionCounter()) {
+      std::cerr << "removing all created by " << container->getCreator() << ", age " << container->getExecutionCounter() << " was " << it->second << std::endl;
+      removeAllCreatedBy(container->getCreator());
+   }
+   ageMap[container->getCreator()] = container->getExecutionCounter();
+
+   if (objects.find(container->getName()) != objects.end()) {
+      std::cerr << "Object added twice: " << container->getName() << std::endl;
       return;
    }
 
@@ -135,14 +163,14 @@ void OsgRenderer::addInputObject(vistle::Object::const_ptr geometry,
    if (!node)
       return;
 
-   VistleRenderObject *container = new VistleRenderObject();
-   objects[geometry->getName()] = container;
-   node->setName(geometry->getName());
-   container->setNode(node);
-   container->setGeometry(geometry);
-   container->setColors(colors);
-   container->setNormals(normals);
-   container->setTexture(texture);
+   VistleRenderObject *ro = new VistleRenderObject(container);
+   objects[container->getName()] = ro;
+   node->setName(container->getName());
+   ro->setNode(node);
+   ro->setGeometry(geometry);
+   ro->setColors(colors);
+   ro->setNormals(normals);
+   ro->setTexture(texture);
 
    osg::Group *parent = staticGeo;
    int t = geometry->getTimestep();
@@ -154,7 +182,7 @@ void OsgRenderer::addInputObject(vistle::Object::const_ptr geometry,
       assert(parent);
       coVRAnimationManager::instance()->addSequence(animation);
    }
-   VRSceneGraph::instance()->addNode(container->node(), parent, container);
+   VRSceneGraph::instance()->addNode(ro->node(), parent, ro);
 }
 
 
@@ -163,6 +191,8 @@ bool OsgRenderer::addInputObject(const std::string & portName,
                                  vistle::Object::const_ptr object) {
 
    std::cout << "++++++OSGRenderer addInputObject " << object->getType()
+             << " creator " << object->getCreator()
+             << " exec " << object->getExecutionCounter()
              << " block " << object->getBlock()
              << " timestep " << object->getTimestep() << std::endl;
 
@@ -172,7 +202,7 @@ bool OsgRenderer::addInputObject(const std::string & portName,
       case vistle::Object::POLYGONS:
       case vistle::Object::LINES: {
 
-         addInputObject(object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
+         addInputObject(object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
          break;
       }
 
@@ -186,7 +216,7 @@ bool OsgRenderer::addInputObject(const std::string & portName,
             << (geom->normals()?"N":".")
             << (geom->texture()?"T":".")
             << " ]" << std::endl;
-         addInputObject(geom->geometry(), geom->colors(), geom->normals(),
+         addInputObject(geom, geom->geometry(), geom->colors(), geom->normals(),
                         geom->texture());
 
          break;

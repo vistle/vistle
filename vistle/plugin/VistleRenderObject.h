@@ -13,13 +13,13 @@
 class VistleRenderObject: public opencover::RenderObject {
 
    public:
-   VistleRenderObject(); // container object
    VistleRenderObject(const vistle::Object::const_ptr &geo);
    ~VistleRenderObject();
 
    const char *getName() const;
    void setNode(osg::Node *node);
    osg::Node *node() const;
+   vistle::Object::const_ptr object() const { return m_obj; }
 
    bool isGeometry() const;
    RenderObject *getGeometry() const;
