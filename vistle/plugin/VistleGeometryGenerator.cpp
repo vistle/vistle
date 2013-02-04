@@ -91,9 +91,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          osg::ref_ptr<osg::StateSet> state = VRSceneGraph::instance()->loadDefaultGeostate();
          state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
 
-         if (m_tex && m_tex->getType() == vistle::Object::TEXTURE1D) {
-
-            vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex);
+         if(vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex)) {
 
             osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
             osgTex->setDataVariance(osg::Object::DYNAMIC);
