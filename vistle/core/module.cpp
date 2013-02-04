@@ -32,7 +32,7 @@ namespace vistle {
 Module::Module(const std::string &n, const std::string &shmname,
       const unsigned int r,
       const unsigned int s, const int m)
-   : m_name(n), m_rank(r), m_size(s), m_id(m) {
+   : m_name(n), m_rank(r), m_size(s), m_id(m), m_executionCount(0) {
 
 #ifdef _WIN32
     WSADATA wsaData;
@@ -289,7 +289,20 @@ ParamVector Module::getVectorParameter(const std::string & name) const {
    return value;
 }
 
-bool Module::addObject(const std::string & portName, vistle::Object::const_ptr object) {
+void Module::updateMeta(vistle::Object::ptr obj) const {
+
+   obj->setCreator(id());
+   obj->setExecutionCounter(m_executionCount);
+}
+
+bool Module::addObject(const std::string &portName, vistle::Object::ptr object) {
+
+   updateMeta(object);
+   vistle::Object::const_ptr cobj = object;
+   return passThroughObject(portName, cobj);
+}
+
+bool Module::passThroughObject(const std::string & portName, vistle::Object::const_ptr object) {
 
    if (!object)
       return false;
@@ -386,6 +399,9 @@ bool Module::addInputObject(const std::string & portName,
    if (object)
       assert(object->check());
 
+   if (m_executionCount < object->getExecutionCounter())
+      m_executionCount = object->getExecutionCounter();
+
    std::map<std::string, ObjectList>::iterator i = inputPorts.find(portName);
 
    if (i != inputPorts.end()) {
@@ -474,7 +490,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          const message::Compute *comp =
             static_cast<const message::Compute *>(message);
-         (void) comp;
+         if (m_executionCount < comp->getExecutionCount())
+            m_executionCount = comp->getExecutionCount();
          /*
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
                    << rank() << "/" << size << "] compute" << std::endl;

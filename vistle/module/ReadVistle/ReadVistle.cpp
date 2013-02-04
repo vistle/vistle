@@ -78,7 +78,7 @@ bool ReadVistle::load(const std::string & name) {
       }
 
       try {
-         Object::const_ptr obj;
+         Object::ptr obj;
          if (ba::binary_iarchive *bia = dynamic_cast<ba::binary_iarchive *>(ia)) {
             obj = Object::load(*bia);
             delete bia;

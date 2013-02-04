@@ -78,11 +78,13 @@ void access::construct(vistle::Object::Data::AttributeMapValueType *t)
 
 namespace vistle {
 
-Meta::Meta(int block, int timestep, int animstep, int iteration)
+Meta::Meta(int block, int timestep, int animstep, int iteration, int execcount, int creator)
 : m_block(block)
 , m_timestep(timestep)
 , m_animationstep(animstep)
 , m_iteration(iteration)
+, m_executionCount(execcount)
+, m_creator(creator)
 {
 }
 
@@ -189,6 +191,7 @@ bool Object::check() const {
    V_CHECK (d()->meta.animationStep() >= -1);
    V_CHECK (d()->meta.iteration() >= -1);
    V_CHECK (d()->meta.block() >= -1);
+   V_CHECK (d()->meta.executionCounter() >= -1);
 
    return true;
 }
@@ -214,12 +217,12 @@ void Object::save(Archive &ar) const {
 }
 
 template<class Archive>
-Object::const_ptr Object::load(Archive &ar) {
+Object::ptr Object::load(Archive &ar) {
 
    ObjectTypeRegistry::registerArchiveType(ar);
    Object *p = NULL;
    ar & V_NAME("object", p);
-   return Object::const_ptr(p);
+   return Object::ptr(p);
 }
 
 namespace { 
@@ -303,6 +306,16 @@ int Object::getBlock() const {
    return d()->meta.block();
 }
 
+int Object::getExecutionCounter() const {
+
+   return d()->meta.executionCounter();
+}
+
+int Object::getCreator() const {
+
+   return d()->meta.creator();
+}
+
 void Object::setTimestep(const int time) {
 
    d()->meta.setTimeStep(time);
@@ -311,6 +324,16 @@ void Object::setTimestep(const int time) {
 void Object::setBlock(const int blk) {
 
    d()->meta.setBlock(blk);
+}
+
+void Object::setExecutionCounter(const int count) {
+
+   d()->meta.setExecutionCounter(count);
+}
+
+void Object::setCreator(const int id) {
+
+   d()->meta.setCreator(id);
 }
 
 const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int id) {

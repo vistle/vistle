@@ -38,7 +38,7 @@ class Shm;
 
 class V_COREEXPORT Meta {
    public:
-      Meta(int timestep=-1, int block=-1, int animationstep=-1, int iteration=-1);
+      Meta(int timestep=-1, int block=-1, int animationstep=-1, int iteration=-1, int execcount=-1, int creator=-1);
       int block() const { return m_block; }
       void setBlock(int block) { m_block = block; }
       int timeStep() const { return m_timestep; }
@@ -47,8 +47,12 @@ class V_COREEXPORT Meta {
       void setAnimationStep(int step) { m_animationstep = step; }
       int iteration() const { return m_iteration; }
       void setIteration(int iteration) { m_iteration = iteration; }
+      int executionCounter() const { return m_executionCount; }
+      void setExecutionCounter(int count) { m_executionCount = count; }
+      int creator() const { return m_creator; }
+      void setCreator(int id) { m_creator = id; }
    private:
-      int m_block, m_timestep, m_animationstep, m_iteration;
+      int m_block, m_timestep, m_animationstep, m_iteration, m_executionCount, m_creator;
 
       friend class boost::serialization::access;
       template<class Archive>
@@ -106,9 +110,14 @@ public:
 
    int getBlock() const;
    int getTimestep() const;
+   int getExecutionCounter() const;
+   int getCreator() const;
 
    void setBlock(const int block);
    void setTimestep(const int timestep);
+   void setExecutionCounter(const int count);
+   void setCreator(const int id);
+
    const Meta &meta() const;
    void setMeta(const Meta &meta);
 
@@ -124,7 +133,7 @@ public:
    int refcount() const;
 
    template<class Archive>
-   static Object::const_ptr load(Archive &ar);
+   static Object::ptr load(Archive &ar);
 
    template<class Archive>
    void save(Archive &ar) const;

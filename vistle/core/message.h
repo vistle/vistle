@@ -190,12 +190,14 @@ BOOST_STATIC_ASSERT(sizeof(ModuleExit) < Message::MESSAGE_SIZE);
 class V_COREEXPORT Compute: public Message {
 
  public:
-   Compute(const int moduleID, const int rank, const int module);
+   Compute(const int moduleID, const int rank, const int module, const int count);
 
    int getModule() const;
+   int getExecutionCount() const;
 
  private:
    const int module;
+   const int executionCount;
 };
 BOOST_STATIC_ASSERT(sizeof(Compute) < Message::MESSAGE_SIZE);
 

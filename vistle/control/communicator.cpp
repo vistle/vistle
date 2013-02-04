@@ -159,6 +159,7 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
    moduleID(0),
      mpiReceiveBuffer(NULL), mpiMessageSize(0),
      m_moduleCounter(0),
+     m_executionCounter(0),
      m_barrierCounter(0),
      m_activeBarrier(-1),
      m_reachedBarriers(-1),
@@ -201,6 +202,12 @@ int Communicator::newModuleID() {
    ++m_moduleCounter;
 
    return m_moduleCounter;
+}
+
+int Communicator::newExecutionCount() {
+   ++m_executionCounter;
+
+   return m_executionCounter;
 }
 
 void Communicator::resetModuleCounter() {
@@ -669,7 +676,7 @@ bool Communicator::handleMessage(const message::Message &message) {
                   const message::AddObject a(m.getModuleID(), m.getRank(),
                                              (*pi)->getName(), obj);
                   const message::Compute c(moduleID, rank,
-                                           (*pi)->getModuleID());
+                                           (*pi)->getModuleID(), -1);
 
                   mi->second->getMessageQueue().send(&a, sizeof(a), 0);
                   mi->second->getMessageQueue().send(&c, sizeof(c), 0);

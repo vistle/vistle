@@ -65,7 +65,8 @@ class V_COREEXPORT Module {
    bool setVectorParameter(const std::string & name, const ParamVector & value);
    ParamVector getVectorParameter(const std::string & name) const;
 
-   bool addObject(const std::string & portName, vistle::Object::const_ptr object);
+   bool addObject(const std::string & portName, vistle::Object::ptr object);
+   bool passThroughObject(const std::string & portName, vistle::Object::const_ptr object);
 
    typedef std::list<vistle::Object::const_ptr> ObjectList;
    ObjectList getObjects(const std::string &portName);
@@ -79,6 +80,10 @@ class V_COREEXPORT Module {
    const unsigned int m_rank;
    const unsigned int m_size;
    const int m_id;
+
+   int m_executionCount;
+
+   void updateMeta(vistle::Object::ptr object) const;
 
    message::MessageQueue *sendMessageQueue;
    message::MessageQueue *receiveMessageQueue;

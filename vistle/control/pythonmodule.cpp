@@ -263,7 +263,8 @@ static void compute(int id) {
 #ifdef DEBUG
    std::cerr << "Python: compute " << id << std::endl;
 #endif
-   message::Compute m(0, Communicator::the().getRank(), id);
+   int count = Communicator::the().newExecutionCount();
+   message::Compute m(0, Communicator::the().getRank(), id, count);
    PythonEmbed::handleMessage(m);
 }
 

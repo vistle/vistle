@@ -49,6 +49,7 @@ class Communicator {
 
    void resetModuleCounter();
    int newModuleID();
+   int newExecutionCount();
    int getBarrierCounter();
    boost::mutex &barrierMutex();
    boost::condition_variable &barrierCondition();
@@ -103,6 +104,7 @@ class Communicator {
 
    PortManager m_portManager;
    int m_moduleCounter;
+   int m_executionCounter;
    int m_barrierCounter;
    int m_activeBarrier;
    int m_reachedBarriers;

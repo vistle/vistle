@@ -141,13 +141,21 @@ ModuleExit::ModuleExit(const int moduleID, const int rank)
 
 }
 
-Compute::Compute(const int moduleID, const int rank, const int m)
-   : Message(moduleID, rank, Message::COMPUTE, sizeof(Compute)), module(m) {
+Compute::Compute(const int moduleID, const int rank, const int m, const int c)
+   : Message(moduleID, rank, Message::COMPUTE, sizeof(Compute))
+   , module(m)
+   , executionCount(c)
+{
 }
 
 int Compute::getModule() const {
 
    return module;
+}
+
+int Compute::getExecutionCount() const {
+
+   return executionCount;
 }
 
 Busy::Busy(const int moduleID, const int rank)
