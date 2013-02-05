@@ -31,7 +31,6 @@ ENDFUNCTION(COVISE_WNOERROR)
 
 
 MACRO(ADD_COVER_PLUGIN targetname)
-  message(Adding cover plugin: ${targetname})
   ADD_COVER_PLUGIN_TARGET(${targetname})
   IF(${ARGC} GREATER 1 OR DEFINED EXTRA_LIBS)
     TARGET_LINK_LIBRARIES(${targetname} ${ARGN} ${EXTRA_LIBS})
