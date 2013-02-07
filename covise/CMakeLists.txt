@@ -13,12 +13,12 @@ INCLUDE(cmake/CoviseHelperMacros.cmake)
 CREATE_USING()
 
 find_package(MPI)
-find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
+covise_find_package(OpenSSL REQUIRED)
 
 find_package(OpenSceneGraph 2.8.0 COMPONENTS osgViewer osgGA osgDB osgFX osgUtil osgText)
 find_package(OpenGL)
-find_package(GLEW)
+covise_find_package(GLEW)
 
 if(APPLE)
   FIND_LIBRARY(APP_SERVICES_LIBRARY ApplicationServices)
@@ -30,8 +30,8 @@ test_big_endian(BIGENDIAN)
 if(NOT BIGENDIAN)
    add_definitions(-DBYTESWAP)
 endif()
-find_package(XercesC REQUIRED)
-find_package(Qt4 COMPONENTS QtCore QtXml QtNetwork REQUIRED)
+covise_find_package(XercesC REQUIRED)
+covise_find_package(Qt4 COMPONENTS QtCore QtXml QtNetwork REQUIRED)
 
 include_directories(.)
 
