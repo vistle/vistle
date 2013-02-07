@@ -44,9 +44,12 @@ MACRO(ADD_COVER_PLUGIN_TARGET targetname)
     RETURN()
   ENDIF()
   
-  ADD_DEFINITIONS(-DIMPORT_PLUGIN)
+  add_definitions(-DIMPORT_PLUGIN)
 
-  INCLUDE_DIRECTORIES(
+  set(QT_DONT_USE_QTGUI 1)
+  include(${QT_USE_FILE})
+
+  include_directories(
     ${ZLIB_INCLUDE_DIR}
     ${JPEG_INCLUDE_DIR}
     ${PNG_INCLUDE_DIR}
