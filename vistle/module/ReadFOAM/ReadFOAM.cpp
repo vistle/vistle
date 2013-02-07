@@ -42,6 +42,7 @@
 #include <core/object.h>
 #include <core/vec.h>
 #include <core/unstr.h>
+#include <core/vector.h>
 
 #include "ReadFOAM.h"
 

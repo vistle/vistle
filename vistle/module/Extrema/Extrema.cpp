@@ -8,6 +8,7 @@
 #include <core/vec.h>
 #include <core/module.h>
 #include <core/scalars.h>
+#include <core/paramvector.h>
 
 using namespace vistle;
 
@@ -22,7 +23,7 @@ class Extrema: public vistle::Module {
 
    int dim;
    bool handled;
-   Vector min, max, gmin, gmax;
+   ParamVector min, max, gmin, gmax;
 
    virtual bool compute();
 
@@ -72,13 +73,13 @@ Extrema::Extrema(const std::string &shmname, int rank, int size, int moduleID)
    createOutputPort("data_out");
 
    addVectorParameter("min",
-         Vector(
+         ParamVector(
             std::numeric_limits<double>::max(),
             std::numeric_limits<double>::max(),
             std::numeric_limits<double>::max()
             ));
    addVectorParameter("max",
-         Vector(
+         ParamVector(
             -std::numeric_limits<double>::max(),
             -std::numeric_limits<double>::max(),
             -std::numeric_limits<double>::max()

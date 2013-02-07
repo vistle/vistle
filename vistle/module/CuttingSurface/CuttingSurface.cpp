@@ -27,7 +27,7 @@ CuttingSurface::CuttingSurface(const std::string &shmname, int rank, int size, i
    createOutputPort("data_out");
 
    addFloatParameter("distance", 0.0);
-   addVectorParameter("normal", vistle::Vector(0.0, 0.0, 1.0));
+   addVectorParameter("normal", vistle::ParamVector(0.0, 0.0, 1.0));
 #ifdef _OPENMP
    omp_set_num_threads(4);
 #endif
@@ -234,7 +234,8 @@ CuttingSurface::generateCuttingSurface(vistle::Object::const_ptr grid_object,
 bool CuttingSurface::compute() {
 
    const vistle::Scalar distance = getFloatParameter("distance");
-   const vistle::Vector normal = getVectorParameter("normal");
+   const vistle::ParamVector pnormal = getVectorParameter("normal");
+   const vistle::Vector normal(pnormal[0], pnormal[1], pnormal[2]);
 
    while (hasObject("grid_in") && hasObject("data_in")) {
 

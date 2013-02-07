@@ -4,7 +4,7 @@
 #include <string>
 
 #include <core/scalar.h>
-#include <core/vector.h>
+#include <core/paramvector.h>
 
 #include "export.h"
 

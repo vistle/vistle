@@ -4,7 +4,7 @@
 #include <string>
 
 #include "object.h"
-#include "vector.h"
+#include "paramvector.h"
 #include "export.h"
 
 namespace vistle {
@@ -309,7 +309,7 @@ class V_COREEXPORT SetParameter: public Message {
       SetParameter(const int moduleID, const int rank, const int module,
             const std::string & name, const Scalar value);
       SetParameter(const int moduleID, const int rank, const int module,
-            const std::string & name, const Vector value);
+            const std::string & name, const ParamVector value);
       SetParameter(const int moduleID, const int rank, const int module,
             const std::string & name, const std::string &value);
 
@@ -320,7 +320,7 @@ class V_COREEXPORT SetParameter: public Message {
       int getInteger() const;
       std::string getString() const;
       Scalar getScalar() const;
-      Vector getVector() const;
+      ParamVector getVector() const;
 
       bool apply(Parameter *param) const;
 

@@ -9,7 +9,7 @@
 #include <map>
 #include <exception>
 
-#include "vector.h"
+#include "paramvector.h"
 #include "object.h"
 #include "export.h"
 
@@ -61,9 +61,9 @@ class V_COREEXPORT Module {
    bool setIntParameter(const std::string & name, const int value);
    int getIntParameter(const std::string & name) const;
 
-   bool addVectorParameter(const std::string & name, const Vector & value);
-   bool setVectorParameter(const std::string & name, const Vector & value);
-   Vector getVectorParameter(const std::string & name) const;
+   bool addVectorParameter(const std::string & name, const ParamVector & value);
+   bool setVectorParameter(const std::string & name, const ParamVector & value);
+   ParamVector getVectorParameter(const std::string & name) const;
 
    bool addObject(const std::string & portName, vistle::Object::const_ptr object);
 

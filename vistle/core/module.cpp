@@ -271,20 +271,20 @@ int Module::getIntParameter(const std::string & name) const {
 }
 
 bool Module::addVectorParameter(const std::string & name,
-                                const Vector & value) {
+                                const ParamVector & value) {
 
    return addParameter(name, value);
 }
 
 bool Module::setVectorParameter(const std::string & name,
-                                const Vector & value) {
+                                const ParamVector & value) {
 
    return setParameter(name, value);
 }
 
-Vector Module::getVectorParameter(const std::string & name) const {
+ParamVector Module::getVectorParameter(const std::string & name) const {
 
-   Vector value;
+   ParamVector value;
    getParameter(name, value);
    return value;
 }

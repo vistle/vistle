@@ -21,6 +21,7 @@ add_library(vistle_core SHARED
    module.cpp
    renderer.cpp
    parameter.cpp
+   paramvector.cpp
    vector.cpp)
 
 if(UNIX AND NOT APPLE)

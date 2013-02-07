@@ -1,47 +1,40 @@
-#include <boost/mpl/vector.hpp>
-#include <boost/mpl/for_each.hpp>
-#include <boost/mpl/transform.hpp>
-#include <iostream>
-
-#include "scalars.h"
-
-#define VISTLE_VECTOR_IMPL
 #include "vector.h"
 
 namespace vistle {
 
-namespace {
+Vector::Vector(const Scalar _x, const Scalar _y, const Scalar _z)
+   : x(_x), y(_y), z(_z) {
 
-using namespace boost;
+}
 
-struct instantiator {
-   template<typename S> S operator()(S) {
-      typedef ParameterVector<S> V;
-      S s = S();
-      V *p0 = new V();
-      V *p1 = new V(S());
-      V *p2 = new V(S(), S());
-      V *p3 = new V(S(), S(), S());
-      V *p4 = new V(S(), S(), S(), S());
-      V v(*p0);
-      V v2 = *p0 + *p1 - *p2 + *p3 + *p4 + v;
-      V v3(v2.dim, &v2[0]);
-      V v4(v3.begin(), v3.end());
+Vector::Vector(): x(0), y(0), z(0) {
 
-      std::cout << v << v3 << v4;
-      v = v2;
-      std::cout << v.str();
-      v = v*s;
+}
 
-      return v*v2;
-   }
-};
+Vector Vector::operator - () const {
 
-} // namespace
+   return Vector(-x, -y, -z);
+}
 
-void instantiate_vector() {
+Vector Vector::operator * (Scalar const & rhs) const {
 
-   mpl::for_each<Scalars>(instantiator());
+   return Vector(rhs * x, rhs * y, rhs * z);
+}
+
+
+Vector Vector::operator + (Vector const & rhs) const {
+
+   return Vector(x + rhs.x, y + rhs.y, z + rhs.z);
+}
+
+Vector Vector::operator - (Vector const & rhs) const {
+
+   return Vector(x - rhs.x, y - rhs.y, z - rhs.z);
+}
+
+Scalar Vector::operator * (Vector const & rhs) const {
+
+      return x * rhs.x + y * rhs.y + z * rhs.z;
 }
 
 } // namespace vistle

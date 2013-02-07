@@ -223,28 +223,28 @@ static void setFloatParam(int id, const char *name, double value) {
 static void setVectorParam4(int id, const char *name, double v1, double v2, double v3, double v4) {
 
    message::SetParameter m(0, Communicator::the().getRank(),
-         id, name, Vector(v1, v2, v3, v4));
+         id, name, ParamVector(v1, v2, v3, v4));
    PythonEmbed::handleMessage(m);
 }
 
 static void setVectorParam3(int id, const char *name, double v1, double v2, double v3) {
 
    message::SetParameter m(0, Communicator::the().getRank(),
-         id, name, Vector(v1, v2, v3));
+         id, name, ParamVector(v1, v2, v3));
    PythonEmbed::handleMessage(m);
 }
 
 static void setVectorParam2(int id, const char *name, double v1, double v2) {
 
    message::SetParameter m(0, Communicator::the().getRank(),
-         id, name, Vector(v1, v2));
+         id, name, ParamVector(v1, v2));
    PythonEmbed::handleMessage(m);
 }
 
 static void setVectorParam1(int id, const char *name, double v1) {
 
    message::SetParameter m(0, Communicator::the().getRank(),
-         id, name, Vector(v1));
+         id, name, ParamVector(v1));
    PythonEmbed::handleMessage(m);
 }
 
@@ -308,7 +308,7 @@ BOOST_PYTHON_MODULE(_vistle)
     def("getParameterType", getParameterType, "get type of parameter named `arg2` of module with ID `arg1`");
     def("getIntParam", getParameterValue<int>, "get value of parameter named `arg2` of module with ID `arg1`");
     def("getFloatParam", getParameterValue<Scalar>, "get value of parameter named `arg2` of module with ID `arg1`");
-    def("getVectorParam", getParameterValue<Vector>, "get value of parameter named `arg2` of module with ID `arg1`");
+    def("getVectorParam", getParameterValue<ParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");
     def("getStringParam", getParameterValue<std::string>, "get value of parameter named `arg2` of module with ID `arg1`");
 }
 

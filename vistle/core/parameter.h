@@ -3,7 +3,7 @@
 
 #include <string>
 #include <sstream>
-#include "vector.h"
+#include "paramvector.h"
 #include "export.h"
 
 namespace vistle {
@@ -63,7 +63,7 @@ struct ParameterType<double> {
 };
 
 template<>
-struct ParameterType<Vector> {
+struct ParameterType<ParamVector> {
    static const Parameter::Type type = Parameter::Vector;
 };
 
@@ -74,7 +74,7 @@ struct ParameterType<std::string> {
 
 typedef ParameterBase<double> FloatParameter;
 typedef ParameterBase<int> IntParameter;
-typedef ParameterBase<Vector> VectorParameter;
+typedef ParameterBase<ParamVector> VectorParameter;
 typedef ParameterBase<std::string> StringParameter;
 
 } // namespace vistle

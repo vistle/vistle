@@ -108,6 +108,7 @@ ParameterVector<S>::ParameterVector(ParameterVector<S>::iterator from, Parameter
 }
 #undef VINIT
 
+#if 0
 template<typename S>
 ParameterVector<S> ParameterVector<S>::operator-() const {
 
@@ -152,6 +153,7 @@ S ParameterVector<S>::operator *(ParameterVector const & rhs) const {
       result += v[i] * rhs[i];
    return result;
 }
+#endif
 
 template<typename S>
 std::string ParameterVector<S>::str() const {

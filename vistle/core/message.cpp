@@ -297,7 +297,7 @@ SetParameter::SetParameter(const int moduleID, const int rank, const int module,
    } else if (const FloatParameter *pfloat = dynamic_cast<const FloatParameter *>(param)) {
       v_scalar = pfloat->getValue();
    } else if (const VectorParameter *pvec = dynamic_cast<const VectorParameter *>(param)) {
-      Vector v = pvec->getValue();
+      ParamVector v = pvec->getValue();
       dim = v.dim;
       for (int i=0; i<MaxDimension; ++i)
          v_vector[i] = v[i];
@@ -330,7 +330,7 @@ SetParameter::SetParameter(const int moduleID, const int rank, const int module,
 }
 
 SetParameter::SetParameter(const int moduleID, const int rank, const int module,
-      const std::string &n, const Vector v)
+      const std::string &n, const ParamVector v)
 : Message(moduleID, rank, Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
 , paramtype(Parameter::Vector) {
@@ -378,10 +378,10 @@ Scalar SetParameter::getScalar() const {
    return v_scalar;
 }
 
-Vector SetParameter::getVector() const {
+ParamVector SetParameter::getVector() const {
 
    assert(paramtype == Parameter::Vector);
-   return Vector(dim, &v_vector[0]);
+   return ParamVector(dim, &v_vector[0]);
 }
 
 std::string SetParameter::getString() const {
@@ -402,7 +402,7 @@ bool SetParameter::apply(Parameter *param) const {
    } else if (FloatParameter *pfloat = dynamic_cast<FloatParameter *>(param)) {
       pfloat->setValue(v_scalar);
    } else if (VectorParameter *pvec = dynamic_cast<VectorParameter *>(param)) {
-      pvec->setValue(Vector(dim, &v_vector[0]));
+      pvec->setValue(ParamVector(dim, &v_vector[0]));
    } else if (StringParameter *pstring = dynamic_cast<StringParameter *>(param)) {
       pstring->setValue(v_string);
    } else {
