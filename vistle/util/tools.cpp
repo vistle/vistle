@@ -1,4 +1,5 @@
 #include <sstream>
+#include <iostream>
 #include <cstdlib>
 
 #ifndef _WIN32
@@ -33,6 +34,42 @@ std::string backtrace()
 #endif
 
    return str.str();
+}
+
+bool attach_debugger() {
+
+#ifdef _WIN32
+   DebugBreak();
+   return true;
+#else
+   pid_t pid = fork();
+   if (pid == -1) {
+      std::cerr << "failed to fork for attaching debugger" << std::endl;
+      return false;
+   } else if (pid == 0) {
+      std::stringstream cmd;
+      cmd << "attach_debugger_vistle.sh";
+      cmd << " ";
+      cmd << getppid();
+      const int ret = system(cmd.str().c_str());
+      if (ret < 0) {
+         std::cerr << "failed to execute debugger" << std::endl;
+         exit(1);
+      } else {
+         exit(ret);
+      }
+      return false;
+   } else {
+      const int wait = 30;
+      unsigned int remain = sleep(wait);
+      if (remain == 0) {
+         std::cerr << "debugger failed to attach during " << wait << " seconds" << std::endl;
+         return false;
+      }
+      sleep(3);
+      return true;
+   }
+#endif
 }
 
 } // namespace vistle
