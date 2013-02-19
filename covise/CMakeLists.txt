@@ -34,6 +34,7 @@ covise_find_package(XercesC REQUIRED)
 covise_find_package(Qt4 COMPONENTS QtCore QtXml QtNetwork REQUIRED)
 
 include_directories(.)
+include_directories(../vistle)
 
 add_subdirectory(file)
 add_subdirectory(virvo)
