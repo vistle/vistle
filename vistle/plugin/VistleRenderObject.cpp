@@ -111,10 +111,26 @@ RenderObject *VistleRenderObject::getVertexAttribute() const {
    return NULL;
 }
 
+size_t VistleRenderObject::getNumAttributes() const {
+
+   return 0;
+}
+
+const char *VistleRenderObject::getAttributeName(size_t idx) const {
+
+   return NULL;
+}
+
+const char *VistleRenderObject::getAttributeValue(size_t idx) const {
+
+   return NULL;
+}
 
 const char *VistleRenderObject::getAttribute(const char *attr) const {
 
-   return m_geo->getAttribute(attr).c_str();
+   static std::string val;
+   val = m_geo->getAttribute(attr).c_str();
+   return val.c_str();
 }
 
 

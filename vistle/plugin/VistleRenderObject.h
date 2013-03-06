@@ -34,6 +34,9 @@ class VistleRenderObject: public opencover::RenderObject {
    void setTexture(vistle::Object::const_ptr obj);
 
    const char *getAttribute(const char *) const;
+   size_t getNumAttributes() const;
+   const char *getAttributeName(size_t idx) const;
+   const char *getAttributeValue(size_t idx) const;
 
    //XXX: hacks for Volume plugin and Tracer
    bool isSet() const { return false; }
