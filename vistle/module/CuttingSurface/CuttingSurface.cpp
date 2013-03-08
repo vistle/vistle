@@ -20,6 +20,8 @@ MODULE_MAIN(CuttingSurface)
 CuttingSurface::CuttingSurface(const std::string &shmname, int rank, int size, int moduleID)
    : Module("CuttingSurface", shmname, rank, size, moduleID) {
 
+   setDefaultCacheMode(ObjectCache::CacheAll);
+
    createInputPort("grid_in");
    createInputPort("data_in");
 
