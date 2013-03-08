@@ -58,6 +58,7 @@ OsgRenderer::OsgRenderer(const std::string &shmname,
       int rank, int size, int moduleId)
 : vistle::Renderer("COVER", shmname, rank, size, moduleId)
 {
+   m_mpiFinalize = false; // cover will call that for us
 
    createInputPort("data_in");
 

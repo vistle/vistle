@@ -83,6 +83,7 @@ class V_COREEXPORT Module {
    const unsigned int m_rank;
    const unsigned int m_size;
    const int m_id;
+   bool m_mpiFinalize;
 
    int m_executionCount;
 
