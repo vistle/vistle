@@ -8,6 +8,8 @@
 
 MODULE_MAIN(Collect)
 
+using namespace vistle;
+
 
 Collect::Collect(const std::string &shmname, int rank, int size, int moduleID)
    : Module("Collect", shmname, rank, size, moduleID) {

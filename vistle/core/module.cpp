@@ -24,6 +24,7 @@
 #include "parameter.h"
 #include "module.h"
 #include "shm.h"
+#include "objectcache.h"
 
 using namespace boost::interprocess;
 
@@ -32,7 +33,13 @@ namespace vistle {
 Module::Module(const std::string &n, const std::string &shmname,
       const unsigned int r,
       const unsigned int s, const int m)
-   : m_name(n), m_rank(r), m_size(s), m_id(m), m_executionCount(0) {
+: m_name(n)
+, m_rank(r)
+, m_size(s)
+, m_id(m)
+, m_executionCount(0)
+, m_defaultCacheMode(ObjectCache::CacheNone)
+{
 
 #ifdef _WIN32
     WSADATA wsaData;
@@ -89,6 +96,27 @@ unsigned int Module::rank() const {
 unsigned int Module::size() const {
 
    return m_size;
+}
+
+void Module::setCacheMode(ObjectCache::CacheMode mode) {
+
+   if (mode == ObjectCache::CacheDefault)
+      m_cache.setCacheMode(m_defaultCacheMode);
+   else
+      m_cache.setCacheMode(mode);
+}
+
+void Module::setDefaultCacheMode(ObjectCache::CacheMode mode) {
+
+   assert(mode != ObjectCache::CacheDefault);
+   m_defaultCacheMode = mode;
+   setCacheMode(m_defaultCacheMode);
+}
+
+
+ObjectCache::CacheMode Module::cacheMode(ObjectCache::CacheMode mode) const {
+
+   return m_cache.cacheMode();
 }
 
 bool Module::createInputPort(const std::string &name) {
@@ -320,7 +348,7 @@ bool Module::passThroughObject(const std::string & portName, vistle::Object::con
    return false;
 }
 
-Module::ObjectList Module::getObjects(const std::string &portName) {
+ObjectList Module::getObjects(const std::string &portName) {
 
    ObjectList objects;
    std::map<std::string, ObjectList>::iterator i = inputPorts.find(portName);
@@ -405,6 +433,7 @@ bool Module::addInputObject(const std::string & portName,
    std::map<std::string, ObjectList>::iterator i = inputPorts.find(portName);
 
    if (i != inputPorts.end()) {
+      m_cache.addObject(portName, object);
       i->second.push_back(object);
       return true;
    }
@@ -492,6 +521,14 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             static_cast<const message::Compute *>(message);
          if (m_executionCount < comp->getExecutionCount())
             m_executionCount = comp->getExecutionCount();
+
+         if (comp->getExecutionCount() > 0) {
+            for (std::map<std::string, ObjectList>::iterator pit = inputPorts.begin();
+                  pit != inputPorts.end();
+                  ++pit) {
+               pit->second = m_cache.getObjects(pit->first);
+            }
+         }
          /*
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
                    << rank() << "/" << size << "] compute" << std::endl;

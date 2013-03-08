@@ -12,6 +12,7 @@
 #include "paramvector.h"
 #include "object.h"
 #include "export.h"
+#include "objectcache.h"
 
 namespace vistle {
 
@@ -35,6 +36,9 @@ class V_COREEXPORT Module {
    unsigned int rank() const;
    unsigned int size() const;
    int id() const;
+
+   void setCacheMode(ObjectCache::CacheMode mode);
+   ObjectCache::CacheMode cacheMode(ObjectCache::CacheMode mode) const;
 
    bool createInputPort(const std::string & name);
    bool createOutputPort(const std::string & name);
@@ -68,7 +72,6 @@ class V_COREEXPORT Module {
    bool addObject(const std::string & portName, vistle::Object::ptr object);
    bool passThroughObject(const std::string & portName, vistle::Object::const_ptr object);
 
-   typedef std::list<vistle::Object::const_ptr> ObjectList;
    ObjectList getObjects(const std::string &portName);
    void removeObject(const std::string &portName, vistle::Object::const_ptr object);
    bool hasObject(const std::string &portName) const;
@@ -83,6 +86,7 @@ class V_COREEXPORT Module {
 
    int m_executionCount;
 
+   void setDefaultCacheMode(ObjectCache::CacheMode mode);
    void updateMeta(vistle::Object::ptr object) const;
 
    message::MessageQueue *sendMessageQueue;
@@ -101,6 +105,8 @@ class V_COREEXPORT Module {
    std::map<std::string, ObjectList> inputPorts;
 
    std::map<std::string, Parameter *> parameters;
+   ObjectCache m_cache;
+   ObjectCache::CacheMode m_defaultCacheMode;
 };
 
 } // namespace vistle
