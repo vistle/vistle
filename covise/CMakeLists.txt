@@ -44,9 +44,5 @@ add_subdirectory(config)
 add_subdirectory(net)
 add_subdirectory(vrbclient)
 add_subdirectory(gpu)
-add_subdirectory(OpenVRUI)
-#add_subdirectory(vrml)
-
-include_directories(OpenVRUI)
 
 add_subdirectory(OpenCOVER)
