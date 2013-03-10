@@ -16,6 +16,7 @@
 #include <core/messagequeue.h>
 #include <core/object.h>
 #include <core/shm.h>
+#include <core/parameter.h>
 
 #include "clientmanager.h"
 #include "communicator.h"
@@ -489,6 +490,21 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          MPI_Comm_spawn(const_cast<char *>(executable.c_str()), const_cast<char **>(&argv[0]), size, MPI_INFO_NULL,
                         0, MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
+
+
+         for (ParameterMap::iterator mit = parameterMap.begin();
+               mit != parameterMap.end();
+               ++mit) {
+            ModuleParameterMap &pm = mit->second;
+            for (ModuleParameterMap::iterator pit = pm.begin();
+                  pit != pm.end();
+                  ++pit) {
+               message::AddParameter add(mit->first, rank, pit->first, pit->second->type());
+               sendMessageQueue[moduleID]->getMessageQueue().send(&add, sizeof(add), 0);
+               message::SetParameter set(0, rank, mit->first, pit->first, pit->second);
+               sendMessageQueue[moduleID]->getMessageQueue().send(&set, sizeof(set), 0);
+            }
+         }
 
          break;
       }
