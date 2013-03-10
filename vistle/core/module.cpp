@@ -478,13 +478,13 @@ bool Module::dispatch() {
 
 void Module::sendMessage(const message::Message &message) {
 
-   sendMessageQueue->getMessageQueue().send(&message, message.getSize(), 0);
+   sendMessageQueue->getMessageQueue().send(&message, message.size(), 0);
 }
 
 
 bool Module::handleMessage(const vistle::message::Message *message) {
 
-   switch (message->getType()) {
+   switch (message->type()) {
 
       case vistle::message::Message::PING: {
 
@@ -621,7 +621,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
       default:
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
                    << rank() << "/" << size() << "] unknown message type ["
-                   << message->getType() << "]" << std::endl;
+                   << message->type() << "]" << std::endl;
 
          break;
    }

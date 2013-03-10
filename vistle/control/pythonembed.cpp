@@ -243,7 +243,7 @@ void PythonEmbed::print_error(const std::string &str) {
 
 void PythonEmbed::handleMessage(const message::Message &message) {
 
-   Communicator::the().messageQueue.send(&message, message.getSize(), 0);
+   Communicator::the().messageQueue.send(&message, message.size(), 0);
 }
 
 } // namespace vistle

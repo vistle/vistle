@@ -28,17 +28,17 @@ int Message::senderId() const {
    return m_senderId;
 }
 
-int Message::getRank() const {
+int Message::rank() const {
 
    return m_rank;
 }
 
-Message::Type Message::getType() const {
+Message::Type Message::type() const {
 
    return m_type;
 }
 
-size_t Message::getSize() const {
+size_t Message::size() const {
 
    return m_size;
 }
@@ -287,7 +287,7 @@ Parameter *AddParameter::getParameter() const {
          break;
    }
 
-   std::cerr << "AddParameter::getParameter: type " << getType() << " not handled" << std::endl;
+   std::cerr << "AddParameter::getParameter: type " << type() << " not handled" << std::endl;
    assert("parameter type not supported" == 0);
 
    return NULL;

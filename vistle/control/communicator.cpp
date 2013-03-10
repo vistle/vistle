@@ -409,13 +409,13 @@ bool Communicator::handleMessage(const message::Message &message) {
 
 #ifdef DEBUG
    CERR << "Message: "
-      << "type=" << message.getType() << ", "
-      << "size=" << message.getSize() << ", "
+      << "type=" << message.type() << ", "
+      << "size=" << message.size() << ", "
       << "from=" << message.senderId() << ", "
       << "rank=" << message.getRank() << std::endl;
 #endif
 
-   switch (message.getType()) {
+   switch (message.type()) {
 
       case message::Message::PING: {
 
@@ -689,7 +689,7 @@ bool Communicator::handleMessage(const message::Message &message) {
                MessageQueueMap::iterator mi =
                   sendMessageQueue.find((*pi)->getModuleID());
                if (mi != sendMessageQueue.end()) {
-                  const message::AddObject a(m.senderId(), m.getRank(),
+                  const message::AddObject a(m.senderId(), m.rank(),
                                              (*pi)->getName(), obj);
                   const message::Compute c(moduleID, rank,
                                            (*pi)->getModuleID(), -1);
@@ -740,7 +740,7 @@ bool Communicator::handleMessage(const message::Message &message) {
             MessageQueueMap::iterator i
                = sendMessageQueue.find(m.getModule());
             if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(&m, m.getSize(), 0);
+               i->second->getMessageQueue().send(&m, m.size(), 0);
          }
          break;
       }
@@ -812,8 +812,8 @@ bool Communicator::handleMessage(const message::Message &message) {
       default:
 
          CERR << "unhandled message from (id "
-            << message.senderId() << " rank " << message.getRank() << ") "
-            << "type " << message.getType()
+            << message.senderId() << " rank " << message.rank() << ") "
+            << "type " << message.type()
             << std::endl;
 
          break;

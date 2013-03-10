@@ -55,13 +55,13 @@ struct V_COREEXPORT Message {
    // Message (or it's subclasses) may not require desctructors
 
    //! message type
-   Type getType() const;
+   Type type() const;
    //! sender ID
    int senderId() const;
    //! sender rank
-   int getRank() const;
+   int rank() const;
    //! messge size
-   size_t getSize() const;
+   size_t size() const;
 
  private:
    //! message size
