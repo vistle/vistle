@@ -494,7 +494,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
                    << rank() << "/" << size() << "] ping ["
                    << ping->getCharacter() << "]" << std::endl;
-         vistle::message::Pong m(id(), rank(), ping->getCharacter(), ping->getModuleID());
+         vistle::message::Pong m(id(), rank(), ping->getCharacter(), ping->senderId());
          sendMessage(m);
          break;
       }
@@ -596,7 +596,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             }
          } else {
 
-            parameterChanged(param->getModuleID(), param->getName(), *param);
+            parameterChanged(param->senderId(), param->getName(), *param);
          }
          break;
       }
@@ -606,7 +606,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const message::AddParameter *param =
             static_cast<const message::AddParameter *>(message);
 
-         parameterAdded(param->getModuleID(), param->getName(), *param);
+         parameterAdded(param->senderId(), param->getName(), *param);
          break;
       }
 

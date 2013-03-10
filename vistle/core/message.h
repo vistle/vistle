@@ -50,14 +50,14 @@ struct V_COREEXPORT Message {
       BARRIERREACHED,
    };
 
-   Message(const int moduleID, const int rank,
+   Message(const int senderId, const int senderRank,
            const Type type, const unsigned int size);
    // Message (or it's subclasses) may not require desctructors
 
    //! message type
    Type getType() const;
    //! sender ID
-   int getModuleID() const;
+   int senderId() const;
    //! sender rank
    int getRank() const;
    //! messge size
@@ -65,20 +65,20 @@ struct V_COREEXPORT Message {
 
  private:
    //! message size
-   unsigned int size;
+   unsigned int m_size;
    //! message type
-   const Type type;
+   const Type m_type;
    //! sender ID
-   const int moduleID;
+   const int m_senderId;
    //! sender rank
-   const int rank;
+   const int m_rank;
 };
 
 //! debug: request a reply containing character 'c'
 class V_COREEXPORT Ping: public Message {
 
  public:
-   Ping(const int moduleID, const int rank, const char c);
+   Ping(const int senderId, const int rank, const char c);
 
    char getCharacter() const;
 
@@ -91,7 +91,7 @@ BOOST_STATIC_ASSERT(sizeof(Ping) < Message::MESSAGE_SIZE);
 class V_COREEXPORT Pong: public Message {
 
  public:
-   Pong(const int moduleID, const int rank, const char c, const int module);
+   Pong(const int senderId, const int rank, const char c, const int module);
 
    char getCharacter() const;
    int getDestination() const;
@@ -106,7 +106,7 @@ BOOST_STATIC_ASSERT(sizeof(Pong) < Message::MESSAGE_SIZE);
 class V_COREEXPORT Spawn: public Message {
 
  public:
-   Spawn(const int moduleID, const int rank, const int spawnID,
+   Spawn(const int senderId, const int rank, const int spawnID,
          const std::string &name, int debugFlag = 0, int debugRank = 0);
 
    int getSpawnID() const;
@@ -130,7 +130,7 @@ BOOST_STATIC_ASSERT(sizeof(Spawn) < Message::MESSAGE_SIZE);
 class V_COREEXPORT Started: public Message {
 
  public:
-   Started(const int moduleID, const int rank, const std::string &name);
+   Started(const int senderId, const int rank, const std::string &name);
 
    const char *getName() const;
 
@@ -144,7 +144,7 @@ BOOST_STATIC_ASSERT(sizeof(Started) < Message::MESSAGE_SIZE);
 class V_COREEXPORT Kill: public Message {
 
  public:
-   Kill(const int moduleID, const int rank, const int module);
+   Kill(const int senderId, const int rank, const int module);
 
    int getModule() const;
 
@@ -158,7 +158,7 @@ BOOST_STATIC_ASSERT(sizeof(Kill) < Message::MESSAGE_SIZE);
 class V_COREEXPORT Quit: public Message {
 
  public:
-   Quit(const int moduleID, const int rank);
+   Quit(const int senderId, const int rank);
 
  private:
 };
@@ -167,7 +167,7 @@ BOOST_STATIC_ASSERT(sizeof(Quit) < Message::MESSAGE_SIZE);
 class V_COREEXPORT NewObject: public Message {
 
  public:
-   NewObject(const int moduleID, const int rank,
+   NewObject(const int senderId, const int rank,
              const shm_handle_t & handle);
 
    const shm_handle_t & getHandle() const;
@@ -180,7 +180,7 @@ BOOST_STATIC_ASSERT(sizeof(NewObject) < Message::MESSAGE_SIZE);
 class V_COREEXPORT ModuleExit: public Message {
 
  public:
-   ModuleExit(const int moduleID, const int rank);
+   ModuleExit(const int senderId, const int rank);
 
  private:
 };
@@ -190,7 +190,7 @@ BOOST_STATIC_ASSERT(sizeof(ModuleExit) < Message::MESSAGE_SIZE);
 class V_COREEXPORT Compute: public Message {
 
  public:
-   Compute(const int moduleID, const int rank, const int module, const int count);
+   Compute(const int senderId, const int rank, const int module, const int count);
 
    int getModule() const;
    int getExecutionCount() const;
@@ -205,7 +205,7 @@ BOOST_STATIC_ASSERT(sizeof(Compute) < Message::MESSAGE_SIZE);
 class V_COREEXPORT Busy: public Message {
 
  public:
-   Busy(const int moduleID, const int rank);
+   Busy(const int senderId, const int rank);
 
  private:
 };
@@ -215,7 +215,7 @@ BOOST_STATIC_ASSERT(sizeof(Busy) < Message::MESSAGE_SIZE);
 class V_COREEXPORT Idle: public Message {
 
  public:
-   Idle(const int moduleID, const int rank);
+   Idle(const int senderId, const int rank);
 
  private:
 };
@@ -224,7 +224,7 @@ BOOST_STATIC_ASSERT(sizeof(Idle) < Message::MESSAGE_SIZE);
 class V_COREEXPORT CreateInputPort: public Message {
 
  public:
-   CreateInputPort(const int moduleID, const int rank,
+   CreateInputPort(const int senderId, const int rank,
                    const std::string & name);
 
    const char * getName() const;
@@ -237,7 +237,7 @@ BOOST_STATIC_ASSERT(sizeof(CreateInputPort) < Message::MESSAGE_SIZE);
 class V_COREEXPORT CreateOutputPort: public Message {
 
  public:
-   CreateOutputPort(const int moduleID, const int rank,
+   CreateOutputPort(const int senderId, const int rank,
                     const std::string & name);
 
    const char * getName() const;
@@ -251,7 +251,7 @@ BOOST_STATIC_ASSERT(sizeof(CreateOutputPort) < Message::MESSAGE_SIZE);
 class V_COREEXPORT AddObject: public Message {
 
  public:
-   AddObject(const int moduleID, const int rank, const std::string & portName,
+   AddObject(const int senderId, const int rank, const std::string & portName,
              vistle::Object::const_ptr obj);
 
    const char * getPortName() const;
@@ -268,7 +268,7 @@ BOOST_STATIC_ASSERT(sizeof(AddObject) < Message::MESSAGE_SIZE);
 class V_COREEXPORT Connect: public Message {
 
  public:
-   Connect(const int moduleID, const int rank,
+   Connect(const int senderId, const int rank,
            const int moduleIDA, const std::string & portA,
            const int moduleIDB, const std::string & portB);
 
@@ -289,7 +289,7 @@ BOOST_STATIC_ASSERT(sizeof(Connect) < Message::MESSAGE_SIZE);
 
 class V_COREEXPORT AddParameter: public Message {
    public:
-      AddParameter(const int moduleID, const int rank,
+      AddParameter(const int senderId, const int rank,
             const std::string & name, int type);
 
       const char * getName() const;
@@ -304,15 +304,15 @@ BOOST_STATIC_ASSERT(sizeof(AddParameter) < Message::MESSAGE_SIZE);
 
 class V_COREEXPORT SetParameter: public Message {
    public:
-      SetParameter(const int moduleID, const int rank, const int module,
+      SetParameter(const int senderId, const int rank, const int module,
             const std::string & name, const Parameter *param);
-      SetParameter(const int moduleID, const int rank, const int module,
+      SetParameter(const int senderId, const int rank, const int module,
             const std::string & name, const int value);
-      SetParameter(const int moduleID, const int rank, const int module,
+      SetParameter(const int senderId, const int rank, const int module,
             const std::string & name, const Scalar value);
-      SetParameter(const int moduleID, const int rank, const int module,
+      SetParameter(const int senderId, const int rank, const int module,
             const std::string & name, const ParamVector value);
-      SetParameter(const int moduleID, const int rank, const int module,
+      SetParameter(const int senderId, const int rank, const int module,
             const std::string & name, const std::string &value);
 
       int getModule() const;
@@ -343,7 +343,7 @@ BOOST_STATIC_ASSERT(sizeof(SetParameter) < Message::MESSAGE_SIZE);
 class V_COREEXPORT Barrier: public Message {
 
  public:
-   Barrier(const int moduleID, const int rank, const int id);
+   Barrier(const int senderId, const int rank, const int id);
 
    int getBarrierId() const;
 
@@ -355,7 +355,7 @@ BOOST_STATIC_ASSERT(sizeof(Barrier) < Message::MESSAGE_SIZE);
 class V_COREEXPORT BarrierReached: public Message {
 
  public:
-   BarrierReached(const int moduleID, const int rank, const int id);
+   BarrierReached(const int senderId, const int rank, const int id);
 
    int getBarrierId() const;
 

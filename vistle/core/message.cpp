@@ -18,29 +18,29 @@ static T min(T a, T b) { return a<b ? a : b; }
 
 Message::Message(const int m, const int r,
                  const Type t, const unsigned int s)
-   : size(s), type(t), moduleID(m), rank(r) {
+   : m_size(s), m_type(t), m_senderId(m), m_rank(r) {
 
-      assert(size < MESSAGE_SIZE);
+      assert(m_size < MESSAGE_SIZE);
 }
 
-int Message::getModuleID() const {
+int Message::senderId() const {
 
-   return moduleID;
+   return m_senderId;
 }
 
 int Message::getRank() const {
 
-   return rank;
+   return m_rank;
 }
 
 Message::Type Message::getType() const {
 
-   return type;
+   return m_type;
 }
 
 size_t Message::getSize() const {
 
-   return size;
+   return m_size;
 }
 
 Ping::Ping(const int moduleID, const int rank, const char c)

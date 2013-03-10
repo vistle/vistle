@@ -396,10 +396,10 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
    MPI_Request s;
    for (int index = 0; index < size; index ++)
       if (index != rank)
-         MPI_Isend(const_cast<unsigned int *>(&message.size), 1, MPI_INT, index, 0,
+         MPI_Isend(const_cast<unsigned int *>(&message.m_size), 1, MPI_INT, index, 0,
                MPI_COMM_WORLD, &s);
 
-   MPI_Bcast(const_cast<message::Message *>(&message), message.size, MPI_BYTE, 0, MPI_COMM_WORLD);
+   MPI_Bcast(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, MPI_COMM_WORLD);
 
    return handleMessage(message);
 }
@@ -411,7 +411,7 @@ bool Communicator::handleMessage(const message::Message &message) {
    CERR << "Message: "
       << "type=" << message.getType() << ", "
       << "size=" << message.getSize() << ", "
-      << "from=" << message.getModuleID() << ", "
+      << "from=" << message.senderId() << ", "
       << "rank=" << message.getRank() << std::endl;
 #endif
 
@@ -434,7 +434,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Pong &pong =
             static_cast<const message::Pong &>(message);
-         CERR << "Pong [" << pong.getModuleID() << " " << pong.getCharacter() << "]" << std::endl;
+         CERR << "Pong [" << pong.senderId() << " " << pong.getCharacter() << "]" << std::endl;
          break;
       }
 
@@ -513,7 +513,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Started &started =
             static_cast<const message::Started &>(message);
-         int moduleID = started.getModuleID();
+         int moduleID = started.senderId();
          runningMap[moduleID] = started.getName();
          break;
       }
@@ -549,7 +549,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          CERR << "NewObject ["
                    << newObject.getHandle() << "] type ["
                    << object.getType() << "] from module ["
-                   << newObject.getModuleID() << "]" << std::endl;
+                   << newObject.senderId() << "]" << std::endl;
          */
          break;
       }
@@ -558,7 +558,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::ModuleExit &moduleExit =
             static_cast<const message::ModuleExit &>(message);
-         int mod = moduleExit.getModuleID();
+         int mod = moduleExit.senderId();
 
          CERR << " Module [" << mod << "] quit" << std::endl;
 
@@ -622,7 +622,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          const message::Busy &busy =
             static_cast<const message::Busy &>(message);
 
-         const int id = busy.getModuleID();
+         const int id = busy.senderId();
          if (busySet.find(id) != busySet.end()) {
             CERR << "module " << id << " sent Busy twice" << std::endl;
          } else {
@@ -636,7 +636,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          const message::Idle &idle =
             static_cast<const message::Idle &>(message);
 
-         const int id = idle.getModuleID();
+         const int id = idle.senderId();
          ModuleSet::iterator it = busySet.find(id);
          if (it != busySet.end()) {
             busySet.erase(it);
@@ -650,7 +650,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::CreateInputPort &m =
             static_cast<const message::CreateInputPort &>(message);
-         m_portManager.addPort(m.getModuleID(), m.getName(),
+         m_portManager.addPort(m.senderId(), m.getName(),
                              Port::INPUT);
          break;
       }
@@ -659,7 +659,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::CreateOutputPort &m =
             static_cast<const message::CreateOutputPort &>(message);
-         m_portManager.addPort(m.getModuleID(), m.getName(),
+         m_portManager.addPort(m.senderId(), m.getName(),
                              Port::OUTPUT);
          break;
       }
@@ -671,13 +671,13 @@ bool Communicator::handleMessage(const message::Message &message) {
          Object::const_ptr obj = m.takeObject();
          assert(obj->refcount() >= 1);
 #if 0
-         std::cerr << "Module " << m.getModuleID() << ": "
+         std::cerr << "Module " << m.senderId() << ": "
                    << "AddObject " << m.getHandle() << " (" << obj->getName() << ")"
                    << " ref " << obj->refcount()
                    << " to port " << m.getPortName() << std::endl;
 #endif
 
-         Port *port = m_portManager.getPort(m.getModuleID(),
+         Port *port = m_portManager.getPort(m.senderId(),
                                           m.getPortName());
          if (port) {
             const std::vector<const Port *> *list =
@@ -689,7 +689,7 @@ bool Communicator::handleMessage(const message::Message &message) {
                MessageQueueMap::iterator mi =
                   sendMessageQueue.find((*pi)->getModuleID());
                if (mi != sendMessageQueue.end()) {
-                  const message::AddObject a(m.getModuleID(), m.getRank(),
+                  const message::AddObject a(m.senderId(), m.getRank(),
                                              (*pi)->getName(), obj);
                   const message::Compute c(moduleID, rank,
                                            (*pi)->getModuleID(), -1);
@@ -713,10 +713,10 @@ bool Communicator::handleMessage(const message::Message &message) {
             static_cast<const message::SetParameter &>(message);
 
 #ifdef DEBUG
-         CERR << "SetParameter: sender=" << m.getModuleID() << ", module=" << m.getModule() << ", name=" << m.getName() << std::endl;
+         CERR << "SetParameter: sender=" << m.senderId() << ", module=" << m.getModule() << ", name=" << m.getName() << std::endl;
 #endif
 
-         if (m.getModuleID() != 0) {
+         if (m.senderId() != 0) {
             ModuleParameterMap &pm = parameterMap[m.getModule()];
             ModuleParameterMap::iterator it = pm.find(m.getName());
             if (it == pm.end()) {
@@ -731,11 +731,11 @@ bool Communicator::handleMessage(const message::Message &message) {
          for (MessageQueueMap::iterator i = sendMessageQueue.begin();
                i != sendMessageQueue.end();
                ++i) {
-            if (i->first != m.getModuleID())
+            if (i->first != m.senderId())
                i->second->getMessageQueue().send(&m, sizeof(m), 0);
          }
 
-         if (m.getModuleID() != m.getModule()) {
+         if (m.senderId() != m.getModule()) {
             // message to module
             MessageQueueMap::iterator i
                = sendMessageQueue.find(m.getModule());
@@ -751,10 +751,10 @@ bool Communicator::handleMessage(const message::Message &message) {
             static_cast<const message::AddParameter &>(message);
 
 #ifdef DEBUG
-         CERR << "AddParameter: module=" << m.getModuleID() << ", name=" << m.getName() << std::endl;
+         CERR << "AddParameter: module=" << m.senderId() << ", name=" << m.getName() << std::endl;
 #endif
 
-         ModuleParameterMap &pm = parameterMap[m.getModuleID()];
+         ModuleParameterMap &pm = parameterMap[m.senderId()];
          ModuleParameterMap::iterator it = pm.find(m.getName());
          if (it != pm.end()) {
             CERR << "double parameter" << std::endl;
@@ -795,13 +795,13 @@ bool Communicator::handleMessage(const message::Message &message) {
          const message::BarrierReached &m =
             static_cast<const message::BarrierReached &>(message);
 #ifdef DEBUG
-         CERR << "BarrierReached [barrier " << m.getBarrierId() << ", module " << m.getModuleID() << "]" << std::endl;
+         CERR << "BarrierReached [barrier " << m.getBarrierId() << ", module " << m.senderId() << "]" << std::endl;
 #endif
          if (m_activeBarrier == -1) {
             m_activeBarrier = m.getBarrierId();
          }
          assert(m_activeBarrier == m.getBarrierId());
-         reachedSet.insert(m.getModuleID());
+         reachedSet.insert(m.senderId());
 
          if (reachedSet.size() == receiveMessageQueue.size()) {
             barrierReached(m_activeBarrier);
@@ -812,7 +812,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       default:
 
          CERR << "unhandled message from (id "
-            << message.getModuleID() << " rank " << message.getRank() << ") "
+            << message.senderId() << " rank " << message.getRank() << ") "
             << "type " << message.getType()
             << std::endl;
 
