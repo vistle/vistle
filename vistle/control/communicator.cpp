@@ -711,6 +711,14 @@ bool Communicator::handleMessage(const message::Message &message) {
             }
          }
 
+         // let all modules know that a parameter was changed
+         for (MessageQueueMap::iterator i = sendMessageQueue.begin();
+               i != sendMessageQueue.end();
+               ++i) {
+            if (i->first != m.getModuleID())
+               i->second->getMessageQueue().send(&m, sizeof(m), 0);
+         }
+
          if (m.getModuleID() != m.getModule()) {
             // message to module
             MessageQueueMap::iterator i
@@ -736,6 +744,13 @@ bool Communicator::handleMessage(const message::Message &message) {
             CERR << "double parameter" << std::endl;
          } else {
             pm[m.getName()] = m.getParameter();
+         }
+
+         // let all modules know that a parameter was added
+         for (MessageQueueMap::iterator i = sendMessageQueue.begin();
+               i != sendMessageQueue.end();
+               ++i) {
+            i->second->getMessageQueue().send(&m, sizeof(m), 0);
          }
          break;
       }

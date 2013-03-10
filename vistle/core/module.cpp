@@ -441,6 +441,22 @@ bool Module::addInputObject(const std::string & portName,
    return false;
 }
 
+bool Module::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg) {
+
+   (void)senderId;
+   (void)name;
+   (void)msg;
+   return false;
+}
+
+bool Module::parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg) {
+
+   (void)senderId;
+   (void)name;
+   (void)msg;
+   return false;
+}
+
 
 bool Module::dispatch() {
 
@@ -561,20 +577,36 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const message::SetParameter *param =
             static_cast<const message::SetParameter *>(message);
 
-         switch (param->getParameterType()) {
-            case Parameter::Integer:
-               setIntParameter(param->getName(), param->getInteger());
-               break;
-            case Parameter::Scalar:
-               setFloatParameter(param->getName(), param->getScalar());
-               break;
-            case Parameter::Vector:
-               setVectorParameter(param->getName(), param->getVector());
-               break;
-            case Parameter::String:
-               setStringParameter(param->getName(), param->getString());
-               break;
+         if (param->getModule() == id()) {
+
+            // sent by controller
+            switch (param->getParameterType()) {
+               case Parameter::Integer:
+                  setIntParameter(param->getName(), param->getInteger());
+                  break;
+               case Parameter::Scalar:
+                  setFloatParameter(param->getName(), param->getScalar());
+                  break;
+               case Parameter::Vector:
+                  setVectorParameter(param->getName(), param->getVector());
+                  break;
+               case Parameter::String:
+                  setStringParameter(param->getName(), param->getString());
+                  break;
+            }
+         } else {
+
+            parameterChanged(param->getModuleID(), param->getName(), *param);
          }
+         break;
+      }
+
+      case message::Message::ADDPARAMETER: {
+
+         const message::AddParameter *param =
+            static_cast<const message::AddParameter *>(message);
+
+         parameterAdded(param->getModuleID(), param->getName(), *param);
          break;
       }
 
