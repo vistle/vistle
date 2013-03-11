@@ -84,6 +84,10 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
    UnstructuredGrid::const_ptr grid = UnstructuredGrid::as(grid_object);
    Vec<Scalar>::const_ptr data = Vec<Scalar>::as(data_object);
 
+   if (!grid || !data) {
+      std::cerr << "IsoSurface: incompatible input" << std::endl;
+      return Object::ptr();
+   }
 
    const unsigned char *tl = &grid->tl()[0];
    const size_t *el = &grid->el()[0];

@@ -89,16 +89,15 @@ CuttingSurface::generateCuttingSurface(vistle::Object::const_ptr grid_object,
                                        const vistle::Vector &normal,
                                        const vistle::Scalar distance) {
 
-   vistle::UnstructuredGrid::const_ptr grid;
-   vistle::Vec<vistle::Scalar>::const_ptr data;
-
    if (!grid_object || !data_object)
       return std::make_pair((vistle::Object *) NULL, (vistle::Object *) NULL);
 
-   if (grid_object->getType() == vistle::Object::UNSTRUCTUREDGRID &&
-       data_object->getType() == vistle::Vec<Scalar>::type()) {
-      grid = boost::static_pointer_cast<const vistle::UnstructuredGrid>(grid_object);
-      data = boost::static_pointer_cast<const vistle::Vec<vistle::Scalar> >(data_object);
+   vistle::UnstructuredGrid::const_ptr grid = UnstructuredGrid::as(grid_object);
+   vistle::Vec<vistle::Scalar>::const_ptr data = Vec<Scalar>::as(data_object);
+
+   if (!grid || !data) {
+      std::cerr << "CuttingSurface: incompatible input" << std::endl;
+      return std::make_pair((vistle::Object *) NULL, (vistle::Object *) NULL);
    }
 
    const unsigned char *tl = &grid->tl()[0];

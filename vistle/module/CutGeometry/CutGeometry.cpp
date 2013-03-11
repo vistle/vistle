@@ -36,8 +36,7 @@ Object::ptr CutGeometry::cutGeometry(Object::const_ptr object,
          // vertex indices in the outgoing object
          std::vector<int> vertexMap;
 
-         Polygons::const_ptr in =
-            boost::static_pointer_cast<const Polygons>(object);
+         Polygons::const_ptr in = Polygons::as(object);
          Polygons::ptr out(new Polygons(Object::Initialized));
 
          const size_t *el = &in->el()[0];
