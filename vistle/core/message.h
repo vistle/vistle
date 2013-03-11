@@ -14,7 +14,7 @@ class Parameter;
 
 namespace message {
 
-class DefaultSender {
+class V_COREEXPORT DefaultSender {
 
    public:
       DefaultSender();
