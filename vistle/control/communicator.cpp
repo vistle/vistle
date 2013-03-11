@@ -171,6 +171,8 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
    assert(s_singleton == NULL);
    s_singleton = this;
 
+   message::DefaultSender::init(0, rank);
+
    m_bindir = getbindir(argc, argv);
 
    mpiReceiveBuffer = new char[message::Message::MESSAGE_SIZE];
@@ -499,9 +501,13 @@ bool Communicator::handleMessage(const message::Message &message) {
             for (ModuleParameterMap::iterator pit = pm.begin();
                   pit != pm.end();
                   ++pit) {
-               message::AddParameter add(mit->first, rank, pit->first, pit->second->type());
+               message::AddParameter add(pit->first, pit->second->type());
+               add.setSenderId(mit->first);
+               add.setRank(rank);
                sendMessageQueue[moduleID]->getMessageQueue().send(&add, sizeof(add), 0);
-               message::SetParameter set(0, rank, mit->first, pit->first, pit->second);
+               message::SetParameter set(mit->first, pit->first, pit->second);
+               set.setSenderId(mit->first);
+               set.setRank(rank);
                sendMessageQueue[moduleID]->getMessageQueue().send(&set, sizeof(set), 0);
             }
          }
@@ -689,12 +695,12 @@ bool Communicator::handleMessage(const message::Message &message) {
                MessageQueueMap::iterator mi =
                   sendMessageQueue.find((*pi)->getModuleID());
                if (mi != sendMessageQueue.end()) {
-                  const message::AddObject a(m.senderId(), m.rank(),
-                                             (*pi)->getName(), obj);
-                  const message::Compute c(moduleID, rank,
-                                           (*pi)->getModuleID(), -1);
-
+                  message::AddObject a((*pi)->getName(), obj);
+                  a.setSenderId(m.senderId());
+                  a.setRank(m.rank());
                   mi->second->getMessageQueue().send(&a, sizeof(a), 0);
+
+                  const message::Compute c((*pi)->getModuleID(), -1);
                   mi->second->getMessageQueue().send(&c, sizeof(c), 0);
                }
             }
@@ -825,7 +831,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
 Communicator::~Communicator() {
 
-   message::Quit quit(0, rank);
+   message::Quit quit;
 
    for (MessageQueueMap::iterator i = sendMessageQueue.begin(); i != sendMessageQueue.end(); ++i)
       i->second->getMessageQueue().send(&quit, sizeof(quit), 1);

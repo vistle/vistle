@@ -42,6 +42,8 @@ Module::Module(const std::string &n, const std::string &shmname,
 , m_mpiFinalize(true)
 {
 
+   message::DefaultSender::init(m_id, m_rank);
+
 #ifdef _WIN32
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -76,7 +78,7 @@ Module::Module(const std::string &n, const std::string &shmname,
       exit(2);
    }
 
-   sendMessage(message::Started(id(), rank(), name()));
+   sendMessage(message::Started(name()));
 }
 
 const std::string &Module::name() const {
@@ -128,7 +130,7 @@ bool Module::createInputPort(const std::string &name) {
 
       inputPorts[name] = ObjectList();
 
-      message::CreateInputPort message(id(), rank(), name);
+      message::CreateInputPort message(name);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return true;
    }
@@ -144,7 +146,7 @@ bool Module::createOutputPort(const std::string &name) {
 
       outputPorts[name] = ObjectList();
 
-      message::CreateOutputPort message(id(), rank(), name);
+      message::CreateOutputPort message(name);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return true;
    }
@@ -161,9 +163,9 @@ bool Module::addParameterGeneric(const std::string &name, Parameter *param) {
 
    parameters[name] = param;
 
-   message::AddParameter add(id(), rank(), name, param->type());
+   message::AddParameter add(name, param->type());
    sendMessage(add);
-   message::SetParameter set(id(), rank(), id(), name, param);
+   message::SetParameter set(id(), name, param);
    sendMessage(set);
 
    return true;
@@ -189,7 +191,7 @@ bool Module::updateParameter(const std::string &name, const Parameter *param) {
       return false;
    }
 
-   message::SetParameter set(id(), rank(), id(), name, param);
+   message::SetParameter set(id(), name, param);
    sendMessage(set);
 
    return true;
@@ -342,7 +344,7 @@ bool Module::passThroughObject(const std::string & portName, vistle::Object::con
    if (i != outputPorts.end()) {
       // XXX: this was the culprit keeping the final object reference around
       //i->second.push_back(object);
-      message::AddObject message(id(), rank(), portName, object);
+      message::AddObject message(portName, object);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return true;
    }
@@ -494,7 +496,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
                    << rank() << "/" << size() << "] ping ["
                    << ping->getCharacter() << "]" << std::endl;
-         vistle::message::Pong m(id(), rank(), ping->getCharacter(), ping->senderId());
+         vistle::message::Pong m(ping->getCharacter(), ping->senderId());
          sendMessage(m);
          break;
       }
@@ -550,7 +552,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
                    << rank() << "/" << size << "] compute" << std::endl;
          */
-         message::Busy busy(id(), rank());
+         message::Busy busy;
          sendMessage(busy);
          bool ret = false;
          try {
@@ -558,7 +560,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          } catch (std::exception &e) {
             std::cerr << name() << ": exception - " << e.what() << std::endl;
          }
-         message::Idle idle(id(), rank());
+         message::Idle idle;
          sendMessage(idle);
          return ret;
          break;
@@ -614,7 +616,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          const message::Barrier *barrier =
             static_cast<const message::Barrier *>(message);
-         sendMessage(message::BarrierReached(id(), rank(), barrier->getBarrierId()));
+         sendMessage(message::BarrierReached(barrier->getBarrierId()));
          break;
       }
 
@@ -631,7 +633,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
 Module::~Module() {
 
-   vistle::message::ModuleExit m(id(), rank());
+   vistle::message::ModuleExit m;
    sendMessage(m);
 
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()

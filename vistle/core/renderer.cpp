@@ -35,7 +35,7 @@ bool Renderer::dispatch() {
       again = handleMessage(message);
 
       if (!again) {
-         vistle::message::ModuleExit m(id(), rank());
+         vistle::message::ModuleExit m;
          sendMessageQueue->getMessageQueue().send(&m, sizeof(m), 0);
       }
    }

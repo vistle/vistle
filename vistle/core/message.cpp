@@ -16,11 +16,42 @@ static T min(T a, T b) { return a<b ? a : b; }
       assert(src.size() <= sizeof(dst)-1); \
    }
 
-Message::Message(const int m, const int r,
-                 const Type t, const unsigned int s)
-   : m_size(s), m_type(t), m_senderId(m), m_rank(r) {
+DefaultSender DefaultSender::s_instance;
+
+DefaultSender::DefaultSender()
+: m_id(-1)
+, m_rank(-1)
+{
+}
+
+int DefaultSender::id() {
+
+   return s_instance.m_id;
+}
+
+int DefaultSender::rank() {
+
+   return s_instance.m_rank;
+}
+
+void DefaultSender::init(int id, int rank) {
+
+   s_instance.m_id = id;
+   s_instance.m_rank = rank;
+}
+
+const DefaultSender &DefaultSender::instance() {
+
+   return s_instance;
+}
+
+Message::Message(const Type t, const unsigned int s)
+   : m_size(s), m_type(t), m_senderId(DefaultSender::id()), m_rank(DefaultSender::rank()) {
 
       assert(m_size < MESSAGE_SIZE);
+
+      assert(m_senderId >= 0);
+      assert(m_rank >= 0);
 }
 
 int Message::senderId() const {
@@ -28,9 +59,19 @@ int Message::senderId() const {
    return m_senderId;
 }
 
+void Message::setSenderId(int id) {
+
+   m_senderId = id;
+}
+
 int Message::rank() const {
 
    return m_rank;
+}
+
+void Message::setRank(int rank) {
+   
+   m_rank = rank;
 }
 
 Message::Type Message::type() const {
@@ -43,8 +84,8 @@ size_t Message::size() const {
    return m_size;
 }
 
-Ping::Ping(const int moduleID, const int rank, const char c)
-   : Message(moduleID, rank, Message::PING, sizeof(Ping)), character(c) {
+Ping::Ping(const char c)
+   : Message(Message::PING, sizeof(Ping)), character(c) {
 
 }
 
@@ -53,8 +94,8 @@ char Ping::getCharacter() const {
    return character;
 }
 
-Pong::Pong(const int moduleID, const int rank, const char c, const int module)
-   : Message(moduleID, rank, Message::PONG, sizeof(Pong)), character(c) {
+Pong::Pong(const char c, const int module)
+   : Message(Message::PONG, sizeof(Pong)), character(c) {
 
 }
 
@@ -68,9 +109,9 @@ int Pong::getDestination() const {
    return module;
 }
 
-Spawn::Spawn(const int moduleID, const int rank, const int s,
+Spawn::Spawn(const int s,
              const std::string & n, int debugFlag, int debugRank)
-   : Message(moduleID, rank, Message::SPAWN, sizeof(Spawn))
+   : Message(Message::SPAWN, sizeof(Spawn))
    , spawnID(s)
    , debugFlag(debugFlag)
    , debugRank(debugRank)
@@ -89,8 +130,8 @@ const char * Spawn::getName() const {
    return name;
 }
 
-Started::Started(const int moduleID, const int rank, const std::string &n)
-: Message(moduleID, rank, Message::STARTED, sizeof(Started))
+Started::Started(const std::string &n)
+: Message(Message::STARTED, sizeof(Started))
 {
 
    COPY_STRING(name, n);
@@ -111,8 +152,8 @@ int Spawn::getDebugRank() const {
    return debugRank;
 }
 
-Kill::Kill(const int moduleID, const int rank, const int m)
-   : Message(moduleID, rank, Message::KILL, sizeof(Kill)), module(m) {
+Kill::Kill(const int m)
+   : Message(Message::KILL, sizeof(Kill)), module(m) {
 }
 
 int Kill::getModule() const {
@@ -120,13 +161,12 @@ int Kill::getModule() const {
    return module;
 }
 
-Quit::Quit(const int moduleID, const int rank)
-   : Message(moduleID, rank, Message::QUIT, sizeof(Quit)) {
+Quit::Quit()
+   : Message(Message::QUIT, sizeof(Quit)) {
 }
 
-NewObject::NewObject(const int moduleID, const int rank,
-                     const shm_handle_t & h)
-   : Message(moduleID, rank, Message::NEWOBJECT, sizeof(NewObject)),
+NewObject::NewObject(const shm_handle_t & h)
+   : Message(Message::NEWOBJECT, sizeof(NewObject)),
      handle(h) {
 
 }
@@ -136,13 +176,13 @@ const shm_handle_t & NewObject::getHandle() const {
    return handle;
 }
 
-ModuleExit::ModuleExit(const int moduleID, const int rank)
-   : Message(moduleID, rank, Message::MODULEEXIT, sizeof(ModuleExit)) {
+ModuleExit::ModuleExit()
+   : Message(Message::MODULEEXIT, sizeof(ModuleExit)) {
 
 }
 
-Compute::Compute(const int moduleID, const int rank, const int m, const int c)
-   : Message(moduleID, rank, Message::COMPUTE, sizeof(Compute))
+Compute::Compute(const int m, const int c)
+   : Message(Message::COMPUTE, sizeof(Compute))
    , module(m)
    , executionCount(c)
 {
@@ -158,18 +198,16 @@ int Compute::getExecutionCount() const {
    return executionCount;
 }
 
-Busy::Busy(const int moduleID, const int rank)
-   : Message(moduleID, rank, Message::BUSY, sizeof(Busy)) {
+Busy::Busy()
+   : Message(Message::BUSY, sizeof(Busy)) {
 }
 
-Idle::Idle(const int moduleID, const int rank)
-   : Message(moduleID, rank, Message::IDLE, sizeof(Idle)) {
+Idle::Idle()
+   : Message(Message::IDLE, sizeof(Idle)) {
 }
 
-CreateOutputPort::CreateOutputPort(const int moduleID, const int rank,
-                                   const std::string & n)
-   : Message(moduleID, rank,
-             Message::CREATEOUTPUTPORT, sizeof(CreateOutputPort)) {
+CreateOutputPort::CreateOutputPort(const std::string & n)
+   : Message(Message::CREATEOUTPUTPORT, sizeof(CreateOutputPort)) {
 
       COPY_STRING(name, n);
 }
@@ -179,9 +217,8 @@ const char * CreateOutputPort::getName() const {
    return name;
 }
 
-CreateInputPort::CreateInputPort(const int moduleID, const int rank,
-                                 const std::string & n)
-   : Message(moduleID, rank, Message::CREATEINPUTPORT,
+CreateInputPort::CreateInputPort(const std::string & n)
+   : Message(Message::CREATEINPUTPORT,
              sizeof(CreateInputPort)) {
 
       COPY_STRING(name, n);
@@ -192,9 +229,9 @@ const char * CreateInputPort::getName() const {
    return name;
 }
 
-AddObject::AddObject(const int moduleID, const int rank, const std::string & p,
+AddObject::AddObject(const std::string & p,
                      vistle::Object::const_ptr obj)
-   : Message(moduleID, rank, Message::ADDOBJECT, sizeof(AddObject)),
+   : Message(Message::ADDOBJECT, sizeof(AddObject)),
      handle(obj->getHandle()) {
         // we keep the handle as a reference to obj
         obj->ref();
@@ -220,10 +257,9 @@ Object::const_ptr AddObject::takeObject() const {
    return obj;
 }
 
-Connect::Connect(const int moduleID, const int rank,
-                 const int moduleIDA, const std::string & portA,
+Connect::Connect(const int moduleIDA, const std::string & portA,
                  const int moduleIDB, const std::string & portB)
-   : Message(moduleID, rank, Message::CONNECT, sizeof(Connect)),
+   : Message(Message::CONNECT, sizeof(Connect)),
      moduleA(moduleIDA), moduleB(moduleIDB) {
 
         COPY_STRING(portAName, portA);
@@ -250,9 +286,8 @@ int Connect::getModuleB() const {
    return moduleB;
 }
 
-AddParameter::AddParameter(const int moduleID, const int rank,
-      const std::string &n, int t)
-: Message(moduleID, rank, Message::ADDPARAMETER, sizeof(AddParameter))
+AddParameter::AddParameter(const std::string &n, int t)
+: Message(Message::ADDPARAMETER, sizeof(AddParameter))
 , paramtype(t) {
 
    assert(paramtype > Parameter::Unknown);
@@ -293,9 +328,9 @@ Parameter *AddParameter::getParameter() const {
    return NULL;
 }
 
-SetParameter::SetParameter(const int moduleID, const int rank, const int module,
+SetParameter::SetParameter(const int module,
       const std::string &n, const Parameter *param)
-: Message(moduleID, rank, Message::SETPARAMETER, sizeof(SetParameter))
+: Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
 , paramtype(param->type()) {
 
@@ -317,9 +352,9 @@ SetParameter::SetParameter(const int moduleID, const int rank, const int module,
    }
 }
 
-SetParameter::SetParameter(const int moduleID, const int rank, const int module,
+SetParameter::SetParameter(const int module,
       const std::string &n, const int v)
-: Message(moduleID, rank, Message::SETPARAMETER, sizeof(SetParameter))
+: Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
 , paramtype(Parameter::Integer) {
 
@@ -327,9 +362,9 @@ SetParameter::SetParameter(const int moduleID, const int rank, const int module,
    v_int = v;
 }
 
-SetParameter::SetParameter(const int moduleID, const int rank, const int module,
+SetParameter::SetParameter(const int module,
       const std::string &n, const Scalar v)
-: Message(moduleID, rank, Message::SETPARAMETER, sizeof(SetParameter))
+: Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
 , paramtype(Parameter::Scalar) {
 
@@ -337,9 +372,9 @@ SetParameter::SetParameter(const int moduleID, const int rank, const int module,
    v_scalar = v;
 }
 
-SetParameter::SetParameter(const int moduleID, const int rank, const int module,
+SetParameter::SetParameter(const int module,
       const std::string &n, const ParamVector v)
-: Message(moduleID, rank, Message::SETPARAMETER, sizeof(SetParameter))
+: Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
 , paramtype(Parameter::Vector) {
 
@@ -349,9 +384,9 @@ SetParameter::SetParameter(const int moduleID, const int rank, const int module,
       v_vector[i] = v[i];
 }
 
-SetParameter::SetParameter(const int moduleID, const int rank, const int module,
+SetParameter::SetParameter(const int module,
       const std::string &n, const std::string &v)
-: Message(moduleID, rank, Message::SETPARAMETER, sizeof(SetParameter))
+: Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
 , paramtype(Parameter::String) {
 
@@ -421,8 +456,8 @@ bool SetParameter::apply(Parameter *param) const {
    return true;
 }
 
-Barrier::Barrier(const int moduleID, const int rank, const int id)
-: Message(moduleID, rank, Message::BARRIER, sizeof(Barrier))
+Barrier::Barrier(const int id)
+: Message(Message::BARRIER, sizeof(Barrier))
 , barrierid(id)
 {
 }
@@ -432,8 +467,8 @@ int Barrier::getBarrierId() const {
    return barrierid;
 }
 
-BarrierReached::BarrierReached(const int moduleID, const int rank, const int id)
-: Message(moduleID, rank, Message::BARRIERREACHED, sizeof(BarrierReached))
+BarrierReached::BarrierReached(const int id)
+: Message(Message::BARRIERREACHED, sizeof(BarrierReached))
 , barrierid(id)
 {
 }

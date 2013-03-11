@@ -228,7 +228,7 @@ const managed_shared_memory & Shm::shm() const {
 void Shm::publish(const shm_handle_t & handle) {
 
    if (m_messageQueue) {
-      vistle::message::NewObject n(m_moduleID, m_rank, handle);
+      vistle::message::NewObject n(handle);
       m_messageQueue->getMessageQueue().send(&n, sizeof(n), 0);
    }
 }

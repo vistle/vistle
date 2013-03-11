@@ -55,7 +55,7 @@ static void quit() {
 #ifdef DEBUG
    std::cerr << "Python: quit" << std::endl;
 #endif
-   message::Quit m(0, Communicator::the().getRank());
+   message::Quit m;
    PythonEmbed::handleMessage(m);
    Communicator::the().setQuitFlag();
 }
@@ -65,7 +65,7 @@ static void ping(char c) {
 #ifdef DEBUG
    std::cerr << "Python: ping: " << c << std::endl;
 #endif
-   message::Ping m(0, Communicator::the().getRank(), c);
+   message::Ping m(c);
    PythonEmbed::handleMessage(m);
 }
 
@@ -73,7 +73,7 @@ static int barrier() {
 
    boost::unique_lock<boost::mutex> lock(Communicator::the().barrierMutex());
    const int id = Communicator::the().getBarrierCounter();
-   message::Barrier m(0, Communicator::the().getRank(), id);
+   message::Barrier m(id);
    PythonEmbed::handleMessage(m);
    Communicator::the().barrierCondition().wait(lock);
    return id;
@@ -85,7 +85,7 @@ static int spawn(const char *module, int debugflag=0, int debugrank=0) {
    std::cerr << "Python: spawn "<< module << std::endl;
 #endif
    int id = Communicator::the().newModuleID();
-   message::Spawn m(0, Communicator::the().getRank(), id, module, debugflag, debugrank);
+   message::Spawn m(id, module, debugflag, debugrank);
    PythonEmbed::handleMessage(m);
    return id;
 }
@@ -96,7 +96,7 @@ static void kill(int id) {
 #ifdef DEBUG
    std::cerr << "Python: kill "<< id << std::endl;
 #endif
-   message::Kill m(0, Communicator::the().getRank(), id);
+   message::Kill m(id);
    PythonEmbed::handleMessage(m);
 }
 
@@ -195,8 +195,7 @@ static void connect(int sid, const char *sport, int did, const char *dport) {
 #ifdef DEBUG
    std::cerr << "Python: connect "<< sid << ":" << sport << " -> " << did << ":" << dport << std::endl;
 #endif
-   message::Connect m(0, Communicator::the().getRank(),
-         sid, sport, did, dport);
+   message::Connect m(sid, sport, did, dport);
    PythonEmbed::handleMessage(m);
 }
 
@@ -205,8 +204,7 @@ static void setIntParam(int id, const char *name, int value) {
 #ifdef DEBUG
    std::cerr << "Python: setIntParam " << id << ":" << name << " = " << value << std::endl;
 #endif
-   message::SetParameter m(0, Communicator::the().getRank(),
-         id, name, value);
+   message::SetParameter m(id, name, value);
    PythonEmbed::handleMessage(m);
 }
 
@@ -215,36 +213,31 @@ static void setFloatParam(int id, const char *name, double value) {
 #ifdef DEBUG
    std::cerr << "Python: setFloatParam " << id << ":" << name << " = " << value << std::endl;
 #endif
-   message::SetParameter m(0, Communicator::the().getRank(),
-         id, name, value);
+   message::SetParameter m(id, name, value);
    PythonEmbed::handleMessage(m);
 }
 
 static void setVectorParam4(int id, const char *name, double v1, double v2, double v3, double v4) {
 
-   message::SetParameter m(0, Communicator::the().getRank(),
-         id, name, ParamVector(v1, v2, v3, v4));
+   message::SetParameter m(id, name, ParamVector(v1, v2, v3, v4));
    PythonEmbed::handleMessage(m);
 }
 
 static void setVectorParam3(int id, const char *name, double v1, double v2, double v3) {
 
-   message::SetParameter m(0, Communicator::the().getRank(),
-         id, name, ParamVector(v1, v2, v3));
+   message::SetParameter m(id, name, ParamVector(v1, v2, v3));
    PythonEmbed::handleMessage(m);
 }
 
 static void setVectorParam2(int id, const char *name, double v1, double v2) {
 
-   message::SetParameter m(0, Communicator::the().getRank(),
-         id, name, ParamVector(v1, v2));
+   message::SetParameter m(id, name, ParamVector(v1, v2));
    PythonEmbed::handleMessage(m);
 }
 
 static void setVectorParam1(int id, const char *name, double v1) {
 
-   message::SetParameter m(0, Communicator::the().getRank(),
-         id, name, ParamVector(v1));
+   message::SetParameter m(id, name, ParamVector(v1));
    PythonEmbed::handleMessage(m);
 }
 
@@ -253,8 +246,7 @@ static void setStringParam(int id, const char *name, const std::string &value) {
 #ifdef DEBUG
    std::cerr << "Python: setStringParam " << id << ":" << name << " = " << value << std::endl;
 #endif
-   message::SetParameter m(0, Communicator::the().getRank(),
-         id, name, value);
+   message::SetParameter m(id, name, value);
    PythonEmbed::handleMessage(m);
 }
 
@@ -264,7 +256,7 @@ static void compute(int id) {
    std::cerr << "Python: compute " << id << std::endl;
 #endif
    int count = Communicator::the().newExecutionCount();
-   message::Compute m(0, Communicator::the().getRank(), id, count);
+   message::Compute m(id, count);
    PythonEmbed::handleMessage(m);
 }
 
