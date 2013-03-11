@@ -157,7 +157,6 @@ Communicator::Communicator(int argc, char *argv[], int r, int s)
       m_clientManager(NULL),
       rank(r), size(s),
    m_quitFlag(false),
-   moduleID(0),
      mpiReceiveBuffer(NULL), mpiMessageSize(0),
      m_moduleCounter(0),
      m_executionCounter(0),

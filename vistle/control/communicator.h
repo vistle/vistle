@@ -77,7 +77,6 @@ class Communicator {
 
    boost::mutex m_barrierMutex;
    boost::condition_variable m_barrierCondition;
-   int moduleID;
    void barrierReached(int id);
 
    char *mpiReceiveBuffer;
