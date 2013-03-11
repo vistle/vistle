@@ -13,7 +13,9 @@ template <typename T, int Dim=1>
 class V_COREEXPORT Vec: public Object {
    V_OBJECT(Vec);
 
+   static const int MaxDim = 4;
    BOOST_STATIC_ASSERT(Dim > 0);
+   BOOST_STATIC_ASSERT(Dim < MaxDim);
 
  public:
    typedef Object Base;
@@ -53,9 +55,6 @@ class V_COREEXPORT Vec: public Object {
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version);
    };
-
- private:
-   static const Object::Type s_type;
 };
 
 } // namespace vistle

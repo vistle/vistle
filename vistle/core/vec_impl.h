@@ -38,7 +38,7 @@ Vec<T,Dim>::Data::Data(const size_t size, const std::string &name,
 template <class T, int Dim>
 Object::Type Vec<T,Dim>::type() {
 
-   return (Object::Type)(Object::VEC + 5*boost::mpl::find<Scalars, T>::type::pos::value + Dim);
+   return (Object::Type)(Object::VEC + (MaxDim+1)*boost::mpl::find<Scalars, T>::type::pos::value + Dim);
 }
 
 template <class T, int Dim>
