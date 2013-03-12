@@ -286,7 +286,7 @@ int Connect::getModuleB() const {
    return moduleB;
 }
 
-AddParameter::AddParameter(const std::string &n, int t)
+AddParameter::AddParameter(const std::string &n, int t, const std::string &mod)
 : Message(Message::ADDPARAMETER, sizeof(AddParameter))
 , paramtype(t) {
 
@@ -294,11 +294,17 @@ AddParameter::AddParameter(const std::string &n, int t)
    assert(paramtype < Parameter::Invalid);
 
    COPY_STRING(name, n);
+   COPY_STRING(module, mod);
 }
 
 const char *AddParameter::getName() const {
 
    return name;
+}
+
+const char *AddParameter::moduleName() const {
+
+   return module;
 }
 
 int AddParameter::getParameterType() const {

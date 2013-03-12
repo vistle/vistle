@@ -103,7 +103,7 @@ class V_COREEXPORT Module {
 
    virtual bool addInputObject(const std::string & portName,
                                Object::const_ptr object);
-   virtual bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg);
+   virtual bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName);
    virtual bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg);
 
    virtual bool compute() = 0;

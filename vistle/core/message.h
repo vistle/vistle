@@ -303,14 +303,16 @@ BOOST_STATIC_ASSERT(sizeof(Connect) < Message::MESSAGE_SIZE);
 
 class V_COREEXPORT AddParameter: public Message {
    public:
-      AddParameter(const std::string & name, int type);
+      AddParameter(const std::string &name, int type, const std::string &moduleName);
 
-      const char * getName() const;
+      const char *getName() const;
+      const char *moduleName() const;
       int getParameterType() const;
-      Parameter *getParameter() const; // allocates a new Parameter object, caller is responsible for deletion
+      Parameter *getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
 
    private:
       param_name_t name;
+      module_name_t module;
       int paramtype;
 };
 BOOST_STATIC_ASSERT(sizeof(AddParameter) < Message::MESSAGE_SIZE);

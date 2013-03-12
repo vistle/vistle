@@ -163,7 +163,7 @@ bool Module::addParameterGeneric(const std::string &name, Parameter *param) {
 
    parameters[name] = param;
 
-   message::AddParameter add(name, param->type());
+   message::AddParameter add(name, param->type(), m_name);
    sendMessage(add);
    message::SetParameter set(id(), name, param);
    sendMessage(set);
@@ -443,11 +443,12 @@ bool Module::addInputObject(const std::string & portName,
    return false;
 }
 
-bool Module::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg) {
+bool Module::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
 
    (void)senderId;
    (void)name;
    (void)msg;
+   (void)moduleName;
    return false;
 }
 
@@ -608,7 +609,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const message::AddParameter *param =
             static_cast<const message::AddParameter *>(message);
 
-         parameterAdded(param->senderId(), param->getName(), *param);
+         parameterAdded(param->senderId(), param->getName(), *param, param->moduleName());
          break;
       }
 
