@@ -8,6 +8,7 @@
 // vistle
 #include <core/renderer.h>
 #include <core/exception.h>
+#include <core/message.h>
 
 #include <osg/Group>
 #include <osg/Node>
@@ -54,6 +55,9 @@ class OsgRenderer: public vistle::Renderer {
    ObjectMap objects;
    bool removeObject(VistleRenderObject *ro);
    void removeAllCreatedBy(int creator);
+
+   bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName);
+   bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg);
 };
 
 OsgRenderer::OsgRenderer(const std::string &shmname,
@@ -86,6 +90,50 @@ OsgRenderer::~OsgRenderer() {
 
    VRSceneGraph::instance()->deleteNode("vistle_static_geometry", true);
    VRSceneGraph::instance()->deleteNode("vistle_animated_geometry", true);
+}
+
+struct ParameterMapKey {
+
+   ParameterMapKey(int id, const std::string &name)
+   : id(id)
+   , name(name)
+   {}
+
+   int id;
+   std::string name;
+};
+
+bool operator<(const ParameterMapKey &k1, const ParameterMapKey &k2) {
+
+   if (k1.id == k2.id)
+      return k1.name < k2.name;
+
+   return k1.id < k2.id;
+}
+
+typedef std::map<ParameterMapKey, Parameter *> ParameterMap;
+ParameterMap parameterMap;
+
+bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
+
+   if (moduleName == "CuttingSurface"
+         || moduleName == "IsoSurface") {
+      std::cerr << "NEW PARAM: " << moduleName << " " << senderId << ":" << name << std::endl;
+      ParameterMapKey key(senderId, name);
+      parameterMap[key] = msg.getParameter();
+   }
+   return true;
+}
+
+bool OsgRenderer::parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg) {
+
+   ParameterMapKey key(senderId, name);
+   ParameterMap::iterator it = parameterMap.find(key);
+   if (it != parameterMap.end()) {
+      std::cerr << "CH PARAM: " << senderId << ":" << name << std::endl;
+      msg.apply(it->second);
+   }
+   return true;
 }
 
 bool OsgRenderer::removeObject(VistleRenderObject *ro) {
