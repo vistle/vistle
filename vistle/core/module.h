@@ -1,7 +1,9 @@
 #ifndef MODULE_H
 #define MODULE_H
 
+#ifndef MPICH_IGNORE_CXX_SEEK
 #define MPICH_IGNORE_CXX_SEEK
+#endif
 #include <mpi.h>
 
 #include <iostream>
