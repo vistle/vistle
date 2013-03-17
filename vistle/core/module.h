@@ -81,6 +81,7 @@ class V_COREEXPORT Module {
    bool hasObject(const std::string &portName) const;
    vistle::Object::const_ptr takeFirstObject(const std::string &portName);
 
+   void sendMessage(const message::Message &message) const;
  protected:
 
    const std::string m_name;
@@ -97,7 +98,6 @@ class V_COREEXPORT Module {
    message::MessageQueue *sendMessageQueue;
    message::MessageQueue *receiveMessageQueue;
    bool handleMessage(const message::Message *message);
-   void sendMessage(const message::Message &message);
 
  private:
 

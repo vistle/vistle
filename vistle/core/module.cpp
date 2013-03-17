@@ -479,7 +479,7 @@ bool Module::dispatch() {
 }
 
 
-void Module::sendMessage(const message::Message &message) {
+void Module::sendMessage(const message::Message &message) const {
 
    sendMessageQueue->getMessageQueue().send(&message, message.size(), 0);
 }
