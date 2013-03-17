@@ -4,6 +4,7 @@
 #include <kernel/coVRAnimationManager.h>
 #include <kernel/coCommandLine.h>
 #include <kernel/OpenCOVER.h>
+#include <kernel/coVRPluginList.h>
 
 // vistle
 #include <core/renderer.h>
@@ -26,13 +27,15 @@
 
 #include "VistleRenderObject.h"
 #include "VistleGeometryGenerator.h"
+#include "VistleInteractor.h"
 
 using namespace opencover;
 
 using namespace vistle;
 
 class OsgRenderer: public vistle::Renderer {
-   public:
+
+ public:
    OsgRenderer(const std::string &shmname,
          int rank, int size, int moduleId);
    ~OsgRenderer();
@@ -41,12 +44,12 @@ class OsgRenderer: public vistle::Renderer {
    void render();
 
    void addInputObject(vistle::Object::const_ptr container,
-                                 vistle::Object::const_ptr geometry,
-                                 vistle::Object::const_ptr colors,
-                                 vistle::Object::const_ptr normals,
-                                 vistle::Object::const_ptr texture);
+         vistle::Object::const_ptr geometry,
+         vistle::Object::const_ptr colors,
+         vistle::Object::const_ptr normals,
+         vistle::Object::const_ptr texture);
    bool addInputObject(const std::string & portName,
-                                 vistle::Object::const_ptr object);
+         vistle::Object::const_ptr object);
 
    osg::ref_ptr<osg::Group> staticGeo;
    osg::ref_ptr<osg::Sequence> animation;
@@ -58,6 +61,9 @@ class OsgRenderer: public vistle::Renderer {
 
    bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName);
    bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg);
+
+   typedef std::map<int, VistleInteractor *> InteractorMap;
+   InteractorMap m_interactorMap;
 };
 
 OsgRenderer::OsgRenderer(const std::string &shmname,
@@ -92,47 +98,35 @@ OsgRenderer::~OsgRenderer() {
    VRSceneGraph::instance()->deleteNode("vistle_animated_geometry", true);
 }
 
-struct ParameterMapKey {
-
-   ParameterMapKey(int id, const std::string &name)
-   : id(id)
-   , name(name)
-   {}
-
-   int id;
-   std::string name;
-};
-
-bool operator<(const ParameterMapKey &k1, const ParameterMapKey &k2) {
-
-   if (k1.id == k2.id)
-      return k1.name < k2.name;
-
-   return k1.id < k2.id;
-}
-
-typedef std::map<ParameterMapKey, Parameter *> ParameterMap;
-ParameterMap parameterMap;
-
 bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
 
    if (moduleName == "CuttingSurface"
          || moduleName == "IsoSurface") {
-      std::cerr << "NEW PARAM: " << moduleName << " " << senderId << ":" << name << std::endl;
-      ParameterMapKey key(senderId, name);
-      parameterMap[key] = msg.getParameter();
+
+      cover->addPlugin(moduleName.c_str());
+
+      InteractorMap::iterator it = m_interactorMap.find(senderId);
+      if (it == m_interactorMap.end()) {
+         m_interactorMap[senderId] = new VistleInteractor(this, moduleName, senderId);
+         it = m_interactorMap.find(senderId);
+      }
+      VistleInteractor *inter = it->second;
+      inter->addParam(name, msg);
    }
    return true;
 }
 
 bool OsgRenderer::parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg) {
 
-   ParameterMapKey key(senderId, name);
-   ParameterMap::iterator it = parameterMap.find(key);
-   if (it != parameterMap.end()) {
-      std::cerr << "CH PARAM: " << senderId << ":" << name << std::endl;
-      msg.apply(it->second);
+   InteractorMap::iterator it = m_interactorMap.find(senderId);
+   if (it == m_interactorMap.end()) {
+      return false;
    }
+
+   VistleInteractor *inter = it->second;
+   inter->applyParam(name, msg);
+   coVRPluginList::instance()->newInteractor(inter->getObject(), inter);
+
    return true;
 }
 
@@ -282,12 +276,14 @@ void OsgRenderer::render() {
 }
 
 class VistlePlugin: public opencover::coVRPlugin {
-   public:
+
+ public:
    VistlePlugin();
    ~VistlePlugin();
    bool init();
    void preFrame();
-   private:
+
+ private:
    OsgRenderer *mod;
 };
 

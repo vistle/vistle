@@ -617,8 +617,15 @@ bool Communicator::handleMessage(const message::Message &message) {
          const message::Compute &comp =
             static_cast<const message::Compute &>(message);
          MessageQueueMap::iterator i = sendMessageQueue.find(comp.getModule());
-         if (i != sendMessageQueue.end())
-            i->second->getMessageQueue().send(&comp, sizeof(comp), 0);
+         if (i != sendMessageQueue.end()) {
+            if (comp.senderId() == 0) {
+               i->second->getMessageQueue().send(&comp, sizeof(comp), 0);
+            } else {
+               message::Compute msg(comp.getModule(), newExecutionCount());
+               msg.setSenderId(comp.senderId());
+               i->second->getMessageQueue().send(&msg, sizeof(msg), 0);
+            }
+         }
          break;
       }
 

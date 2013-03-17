@@ -7,6 +7,7 @@ set(SOURCES
    VistlePlugin.cpp
    VistleRenderObject.cpp
    VistleGeometryGenerator.cpp
+   VistleInteractor.cpp
    )
 
 if(WIN32)

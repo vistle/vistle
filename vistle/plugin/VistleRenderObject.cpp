@@ -3,6 +3,12 @@
 using namespace opencover;
 using namespace vistle;
 
+BaseRenderObject::BaseRenderObject() {
+}
+
+BaseRenderObject::~BaseRenderObject() {
+}
+
 VistleRenderObject::VistleRenderObject(const vistle::Object::const_ptr &geo)
 : m_obj(geo)
 , m_roGeo(NULL)
@@ -126,5 +132,79 @@ const char *VistleRenderObject::getAttribute(const char *attr) const {
 }
 
 
+ModuleRenderObject::ModuleRenderObject(const std::string &moduleName, int moduleId)
+: m_moduleName(moduleName)
+, m_moduleId(moduleId)
+{
+   std::stringstream str;
+   str << m_moduleName << "_" << m_moduleId;
+   m_name = str.str();
+}
 
+ModuleRenderObject::~ModuleRenderObject()
+{
+}
 
+const char *ModuleRenderObject::getName() const
+{
+   return m_name.c_str();
+}
+
+bool ModuleRenderObject::isGeometry() const
+{
+   return false;
+}
+
+RenderObject *ModuleRenderObject::getGeometry() const
+{
+   return NULL;
+}
+
+RenderObject *ModuleRenderObject::getColors() const
+{
+   return NULL;
+}
+
+RenderObject *ModuleRenderObject::getNormals() const
+{
+   return NULL;
+}
+
+RenderObject *ModuleRenderObject::getTexture() const
+{
+   return NULL;
+}
+
+RenderObject *ModuleRenderObject::getVertexAttribute() const
+{
+   return NULL;
+}
+
+const char *ModuleRenderObject::getAttribute(const char *attrname) const
+{
+   if (!strcmp(attrname, "OBJECTNAME"))
+      return getName();
+
+   return NULL;
+}
+
+size_t ModuleRenderObject::getNumAttributes() const
+{
+   return 1;
+}
+
+const char *ModuleRenderObject::getAttributeName(size_t idx) const
+{
+   if (idx == 0)
+      return "OBJECTNAME";
+
+   return NULL;
+}
+
+const char *ModuleRenderObject::getAttributeValue(size_t idx) const
+{
+   if (idx == 0)
+      return getName();
+
+   return NULL;
+}
