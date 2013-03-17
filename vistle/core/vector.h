@@ -2,6 +2,7 @@
 #define VECTOR_H
 
 #include "scalar.h"
+#include <cmath>
 
 namespace vistle {
 
@@ -57,6 +58,16 @@ public:
    // scalar product
    Scalar operator*(Vector const & rhs) const {
       return x * rhs.x + y * rhs.y + z * rhs.z;
+   }
+
+   // square of length
+   Scalar length2() const {
+      return (*this) * (*this);
+   }
+
+   // length
+   Scalar length() const {
+      return sqrt(length2());
    }
 
    Scalar v[3];

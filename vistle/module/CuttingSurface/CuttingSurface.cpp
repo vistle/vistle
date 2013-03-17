@@ -28,8 +28,8 @@ CuttingSurface::CuttingSurface(const std::string &shmname, int rank, int size, i
    createOutputPort("grid_out");
    createOutputPort("data_out");
 
-   addFloatParameter("distance", 0.0);
-   addVectorParameter("normal", vistle::ParamVector(0.0, 0.0, 1.0));
+   addVectorParameter("point", vistle::ParamVector(0.0, 0.0, 0.0));
+   addVectorParameter("vertex", vistle::ParamVector(0.0, 0.0, 1.0));
 #ifdef _OPENMP
    omp_set_num_threads(4);
 #endif
@@ -234,9 +234,21 @@ CuttingSurface::generateCuttingSurface(vistle::Object::const_ptr grid_object,
 
 bool CuttingSurface::compute() {
 
-   const vistle::Scalar distance = getFloatParameter("distance");
-   const vistle::ParamVector pnormal = getVectorParameter("normal");
-   const vistle::Vector normal(pnormal[0], pnormal[1], pnormal[2]);
+   const vistle::ParamVector pnormal = getVectorParameter("vertex");
+   vistle::Vector normal(pnormal[0], pnormal[1], pnormal[2]);
+   normal = normal * (1./normal.length());
+   const vistle::ParamVector ppoint = getVectorParameter("point");
+   const vistle::Vector point = vistle::Vector(ppoint[0], ppoint[1], ppoint[2]);
+   const vistle::Vector proj = normal * (point*normal);
+   int max = 0;
+   if (std::abs(normal.y) > std::abs(normal.x)) {
+      max = 1;
+      if (std::abs(normal.z) > std::abs(normal.y))
+         max = 2;
+   } else if (std::abs(normal.z) > std::abs(normal.x)) {
+      max = 2;
+   }
+   const vistle::Scalar distance = proj[max]/normal[max];
 
    while (hasObject("grid_in") && hasObject("data_in")) {
 

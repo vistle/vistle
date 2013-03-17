@@ -253,10 +253,22 @@ void VistleInteractor::setSliderParam(const char *name, int min, int max, int va
 /// set float Vector Param
 void VistleInteractor::setVectorParam(const char *name, int numElem, float *field)
 {
+   Parameter *param = findParam(name);
+   VectorParameter *vparam = dynamic_cast<VectorParameter *>(param);
+   if (!vparam)
+      return;
+   assert(vparam->getValue().dim == numElem);
+   std::vector<ParamVector::value_type> v;
+   for (int i=0; i<numElem; ++i)
+      v.push_back(field[i]);
+   vparam->setValue(ParamVector(numElem, &v[0]));
+   sendParamMessage(vparam);
 }
 
 void VistleInteractor::setVectorParam(const char *name, float u, float v, float w)
 {
+   float vec[] = { u, v, w };
+   setVectorParam(name, sizeof(vec)/sizeof(vec[0]), vec);
 }
 
 /// set int vector parameter
