@@ -8,8 +8,31 @@ namespace vistle {
 class Vector {
 public:
    Vector(const Scalar x, const Scalar y, const Scalar z)
-   : x(x), y(y), z(z) {}
-   Vector() : x(Scalar()), y(Scalar()), z(Scalar()) {}
+   : x(v[0]), y(v[1]), z(v[2]) {
+      v[0] = x;
+      v[1] = y;
+      v[2] = z;
+   }
+   Vector()
+   : x(v[0]), y(v[1]), z(v[2]) {
+      v[0] = v[1] = v[2] = 0.;
+   }
+   Vector(const Vector &o)
+   : x(v[0]), y(v[0]), z(v[2]) {
+      v[0] = o.v[0];
+      v[1] = o.v[1];
+      v[2] = o.v[2];
+   }
+
+   Vector &operator=(const Vector &rhs) {
+      v[0] = rhs.v[0];
+      v[1] = rhs.v[1];
+      v[2] = rhs.v[2];
+      return *this;
+   }
+
+   Scalar &operator[](int idx) { return v[idx]; }
+   const Scalar &operator[](int idx) const { return v[idx]; }
 
    // negate
    Vector operator-() const {
@@ -36,7 +59,8 @@ public:
       return x * rhs.x + y * rhs.y + z * rhs.z;
    }
 
-   Scalar x, y, z;
+   Scalar v[3];
+   Scalar &x, &y, &z;
 };
 
 } // namespace vistle
