@@ -37,7 +37,6 @@ include_directories(.)
 include_directories(../vistle)
 
 add_subdirectory(file)
-add_subdirectory(virvo)
 add_subdirectory(grmsg)
 add_subdirectory(util)
 add_subdirectory(config)
