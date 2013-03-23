@@ -30,6 +30,8 @@ test_big_endian(BIGENDIAN)
 if(NOT BIGENDIAN)
    add_definitions(-DBYTESWAP)
 endif()
+set(COVISE_USE_CUDA TRUE)
+covise_find_package(CUDA)
 covise_find_package(XercesC REQUIRED)
 covise_find_package(Qt4 COMPONENTS QtCore QtXml QtNetwork REQUIRED)
 
