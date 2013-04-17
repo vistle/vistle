@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <list>
 #include "object.h"
 
 namespace vistle {
