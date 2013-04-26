@@ -246,9 +246,9 @@ bool Module::getParameter(const std::string &name, T &value) const {
 }
 
 bool Module::addStringParameter(const std::string & name, const std::string &description,
-                              const std::string & value) {
+                              const std::string & value, Parameter::Presentation p) {
 
-   return addParameter(name, description, value);
+   return addParameter(name, description, value, p);
 }
 
 bool Module::setStringParameter(const std::string & name,
@@ -284,9 +284,9 @@ vistle::Scalar Module::getFloatParameter(const std::string & name) const {
 }
 
 bool Module::addIntParameter(const std::string & name, const std::string &description,
-                             const int value) {
+                             const int value, Parameter::Presentation p) {
 
-   return addParameter(name, description, value);
+   return addParameter(name, description, value, p);
 }
 
 bool Module::setIntParameter(const std::string & name,

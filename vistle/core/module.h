@@ -56,7 +56,7 @@ class V_COREEXPORT Module {
    template<class T>
    bool getParameter(const std::string &name, T &value) const;
 
-   bool addStringParameter(const std::string & name, const std::string &description, const std::string & value);
+   bool addStringParameter(const std::string & name, const std::string &description, const std::string & value, Parameter::Presentation p=Parameter::Generic);
    bool setStringParameter(const std::string & name, const std::string & value);
    std::string getStringParameter(const std::string & name) const;
 
@@ -64,7 +64,7 @@ class V_COREEXPORT Module {
    bool setFloatParameter(const std::string & name, const vistle::Scalar value);
    vistle::Scalar getFloatParameter(const std::string & name) const;
 
-   bool addIntParameter(const std::string & name, const std::string &description, const int value);
+   bool addIntParameter(const std::string & name, const std::string &description, const int value, Parameter::Presentation p=Parameter::Generic);
    bool setIntParameter(const std::string & name, const int value);
    int getIntParameter(const std::string & name) const;
 
