@@ -33,6 +33,7 @@ typedef char module_name_t[32];
 typedef char port_name_t[32];
 typedef char param_name_t[32];
 typedef char param_value_t[256];
+typedef char param_desc_t[512];
 
 struct V_COREEXPORT Message {
    // this is POD
@@ -40,7 +41,7 @@ struct V_COREEXPORT Message {
    friend class vistle::Communicator;
 
  public:
-   static const size_t MESSAGE_SIZE = 512;
+   static const size_t MESSAGE_SIZE = 1024;
 
    enum Type {
       DEBUG,
@@ -303,10 +304,11 @@ BOOST_STATIC_ASSERT(sizeof(Connect) < Message::MESSAGE_SIZE);
 
 class V_COREEXPORT AddParameter: public Message {
    public:
-      AddParameter(const std::string &name, int type, int presentation, const std::string &moduleName);
+      AddParameter(const std::string &name, const std::string &description, int type, int presentation, const std::string &moduleName);
 
       const char *getName() const;
       const char *moduleName() const;
+      const char *description() const;
       int getParameterType() const;
       int getPresentation() const;
       Parameter *getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
@@ -314,6 +316,7 @@ class V_COREEXPORT AddParameter: public Message {
    private:
       param_name_t name;
       module_name_t module;
+      param_desc_t m_description;
       int paramtype;
       int presentation;
 };

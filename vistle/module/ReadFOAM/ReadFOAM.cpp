@@ -103,7 +103,7 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleID)
 
    createOutputPort("grid_out");
    createOutputPort("p_out");
-   addStringParameter("filename", "");
+   addStringParameter("filename", "OpenFOAM case directory", "");
 }
 
 ReadFOAM::~ReadFOAM() {

@@ -14,6 +14,11 @@ Parameter::~Parameter() {
 
 }
 
+void Parameter::setDescription(const std::string &d) {
+
+   m_description = d;
+}
+
 const std::string & Parameter::getName() const {
 
    return m_name;
@@ -27,6 +32,11 @@ Parameter::Type Parameter::type() const {
 Parameter::Presentation Parameter::presentation() const {
 
    return m_presentation;
+}
+
+const std::string &Parameter::description() const {
+
+   return m_description;
 }
 
 } // namespace vistle

@@ -65,8 +65,8 @@ Color::Color(const std::string &shmname, int rank, int size, int moduleID)
    createInputPort("data_in");
    createOutputPort("data_out");
 
-   addFloatParameter("min", 0.0);
-   addFloatParameter("max", 0.0);
+   addFloatParameter("min", "minimum value of range to map", 0.0);
+   addFloatParameter("max", "maximum value of range to map", 0.0);
 }
 
 Color::~Color() {

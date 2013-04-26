@@ -73,12 +73,14 @@ Extrema::Extrema(const std::string &shmname, int rank, int size, int moduleID)
    createOutputPort("data_out");
 
    addVectorParameter("min",
+         "output parameter: minimum",
          ParamVector(
             std::numeric_limits<double>::max(),
             std::numeric_limits<double>::max(),
             std::numeric_limits<double>::max()
             ));
    addVectorParameter("max",
+         "output parameter: maximum",
          ParamVector(
             -std::numeric_limits<double>::max(),
             -std::numeric_limits<double>::max(),

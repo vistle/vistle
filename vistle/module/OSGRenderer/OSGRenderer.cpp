@@ -474,7 +474,7 @@ static void callbackIceT(const IceTDouble * proj, const IceTDouble * mv,
 OSGRenderer::OSGRenderer(const std::string &shmname, int rank, int size, int moduleID)
    : Renderer("OSGRenderer", shmname, rank, size, moduleID), osgViewer::Viewer() {
 
-   addIntParameter("debug", 1);
+   addIntParameter("debug", "COVER debug level", 1);
 
 #ifdef __linux__
    cpu_set_t cpuset;

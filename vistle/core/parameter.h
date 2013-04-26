@@ -33,13 +33,17 @@ class V_COREEXPORT Parameter {
    Parameter(const std::string & name, Type = Invalid, Presentation = Generic);
    virtual ~Parameter();
 
+   void setDescription(const std::string &description);
+
    virtual operator std::string() const = 0;
    const std::string & getName() const;
    Type type() const;
    Presentation presentation() const;
+   const std::string &description() const;
 
  private:
    std::string m_name;
+   std::string m_description;
    enum Type m_type;
    enum Presentation m_presentation;
 };

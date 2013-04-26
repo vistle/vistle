@@ -50,25 +50,25 @@ class V_COREEXPORT Module {
    bool updateParameter(const std::string &name, const Parameter *parameter);
 
    template<class T>
-   bool addParameter(const std::string &name, const T &value, Parameter::Presentation presentation=Parameter::Generic);
+   bool addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation presentation=Parameter::Generic);
    template<class T>
    bool setParameter(const std::string &name, const T &value);
    template<class T>
    bool getParameter(const std::string &name, T &value) const;
 
-   bool addStringParameter(const std::string & name, const std::string & value);
+   bool addStringParameter(const std::string & name, const std::string &description, const std::string & value);
    bool setStringParameter(const std::string & name, const std::string & value);
    std::string getStringParameter(const std::string & name) const;
 
-   bool addFloatParameter(const std::string & name, const vistle::Scalar value);
+   bool addFloatParameter(const std::string & name, const std::string &description, const vistle::Scalar value);
    bool setFloatParameter(const std::string & name, const vistle::Scalar value);
    vistle::Scalar getFloatParameter(const std::string & name) const;
 
-   bool addIntParameter(const std::string & name, const int value);
+   bool addIntParameter(const std::string & name, const std::string &description, const int value);
    bool setIntParameter(const std::string & name, const int value);
    int getIntParameter(const std::string & name) const;
 
-   bool addVectorParameter(const std::string & name, const ParamVector & value);
+   bool addVectorParameter(const std::string & name, const std::string &description, const ParamVector & value);
    bool setVectorParameter(const std::string & name, const ParamVector & value);
    ParamVector getVectorParameter(const std::string & name) const;
 

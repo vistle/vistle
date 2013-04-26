@@ -28,8 +28,8 @@ CuttingSurface::CuttingSurface(const std::string &shmname, int rank, int size, i
    createOutputPort("grid_out");
    createOutputPort("data_out");
 
-   addVectorParameter("point", vistle::ParamVector(0.0, 0.0, 0.0));
-   addVectorParameter("vertex", vistle::ParamVector(0.0, 0.0, 1.0));
+   addVectorParameter("point", "point on plane", vistle::ParamVector(0.0, 0.0, 0.0));
+   addVectorParameter("vertex", "normal on plane", vistle::ParamVector(0.0, 0.0, 1.0));
 #ifdef _OPENMP
    omp_set_num_threads(4);
 #endif

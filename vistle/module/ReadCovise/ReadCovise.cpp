@@ -36,7 +36,7 @@ ReadCovise::ReadCovise(const std::string &shmname, int rank, int size, int modul
 {
 
    createOutputPort("grid_out");
-   addStringParameter("filename", "");
+   addStringParameter("filename", "name of COVISE file", "");
 }
 
 ReadCovise::~ReadCovise() {

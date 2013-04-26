@@ -286,7 +286,7 @@ int Connect::getModuleB() const {
    return moduleB;
 }
 
-AddParameter::AddParameter(const std::string &n, int t, int p, const std::string &mod)
+AddParameter::AddParameter(const std::string &n, const std::string &desc, int t, int p, const std::string &mod)
 : Message(Message::ADDPARAMETER, sizeof(AddParameter))
 , paramtype(t)
 , presentation(p) {

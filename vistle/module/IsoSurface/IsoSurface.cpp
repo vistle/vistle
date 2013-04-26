@@ -28,7 +28,7 @@ IsoSurface::IsoSurface(const std::string &shmname, int rank, int size, int modul
 
    createOutputPort("grid_out");
 
-   addFloatParameter("isovalue", 0.0);
+   addFloatParameter("isovalue", "isovalue", 0.0);
 #ifdef _OPENMP
    omp_set_num_threads(4);
 #endif

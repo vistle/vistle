@@ -19,7 +19,7 @@ ReadVistle::ReadVistle(const std::string &shmname, int rank, int size, int modul
    : Module("ReadVistle", shmname, rank, size, moduleID) {
 
    createOutputPort("grid_out");
-   addStringParameter("filename", "");
+   addStringParameter("filename", "Vistle file", "");
 }
 
 ReadVistle::~ReadVistle() {
