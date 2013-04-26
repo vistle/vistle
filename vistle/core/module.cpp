@@ -153,7 +153,7 @@ bool Module::createOutputPort(const std::string &name) {
    return false;
 }
 
-bool Module::addParameterGeneric(const std::string &name, Parameter *param) {
+bool Module::addParameterGeneric(const std::string &name, Parameter *param, Parameter::Presentation presentation) {
 
    std::map<std::string, Parameter *>::iterator i =
       parameters.find(name);
@@ -163,7 +163,7 @@ bool Module::addParameterGeneric(const std::string &name, Parameter *param) {
 
    parameters[name] = param;
 
-   message::AddParameter add(name, param->type(), m_name);
+   message::AddParameter add(name, param->type(), presentation, m_name);
    sendMessage(add);
    message::SetParameter set(id(), name, param);
    sendMessage(set);
@@ -198,10 +198,10 @@ bool Module::updateParameter(const std::string &name, const Parameter *param) {
 }
 
 template<class T>
-bool Module::addParameter(const std::string &name, const T &value) {
+bool Module::addParameter(const std::string &name, const T &value, Parameter::Presentation pres) {
 
    Parameter *p = new ParameterBase<T>(name, value);
-   if (!addParameterGeneric(name, p)) {
+   if (!addParameterGeneric(name, p, pres)) {
       delete p;
       return false;
    }

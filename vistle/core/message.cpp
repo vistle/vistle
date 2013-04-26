@@ -286,12 +286,16 @@ int Connect::getModuleB() const {
    return moduleB;
 }
 
-AddParameter::AddParameter(const std::string &n, int t, const std::string &mod)
+AddParameter::AddParameter(const std::string &n, int t, int p, const std::string &mod)
 : Message(Message::ADDPARAMETER, sizeof(AddParameter))
-, paramtype(t) {
+, paramtype(t)
+, presentation(p) {
 
    assert(paramtype > Parameter::Unknown);
    assert(paramtype < Parameter::Invalid);
+
+   assert(presentation >= Parameter::Generic);
+   assert(presentation <= Parameter::InvalidPresentation);
 
    COPY_STRING(name, n);
    COPY_STRING(module, mod);
@@ -310,6 +314,11 @@ const char *AddParameter::moduleName() const {
 int AddParameter::getParameterType() const {
 
    return paramtype;
+}
+
+int AddParameter::getPresentation() const {
+
+   return presentation;
 }
 
 Parameter *AddParameter::getParameter() const {

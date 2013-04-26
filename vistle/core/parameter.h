@@ -19,16 +19,29 @@ class V_COREEXPORT Parameter {
       String,
       Invalid // keep last
    };
-   Parameter(const std::string & name, Type = Invalid);
+
+   enum Presentation {
+      Generic, // default, keep first
+      Filename, // String
+      Directory, // String
+      Pathname, // String
+      Boolean, // Integer
+      Choice, // Integer
+      InvalidPresentation // keep last
+   };
+
+   Parameter(const std::string & name, Type = Invalid, Presentation = Generic);
    virtual ~Parameter();
 
    virtual operator std::string() const = 0;
    const std::string & getName() const;
    Type type() const;
+   Presentation presentation() const;
 
  private:
    std::string m_name;
    enum Type m_type;
+   enum Presentation m_presentation;
 };
 
 template<typename T>

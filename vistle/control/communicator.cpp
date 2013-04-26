@@ -500,7 +500,7 @@ bool Communicator::handleMessage(const message::Message &message) {
             for (ModuleParameterMap::iterator pit = pm.begin();
                   pit != pm.end();
                   ++pit) {
-               message::AddParameter add(pit->first, pit->second->type(), getModuleName(mit->first));
+               message::AddParameter add(pit->first, pit->second->type(), pit->second->presentation(), getModuleName(mit->first));
                add.setSenderId(mit->first);
                add.setRank(rank);
                sendMessageQueue[moduleID]->getMessageQueue().send(&add, sizeof(add), 0);

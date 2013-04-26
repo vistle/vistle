@@ -15,10 +15,9 @@
 #include "object.h"
 #include "export.h"
 #include "objectcache.h"
+#include "parameter.h"
 
 namespace vistle {
-
-class Parameter;
 
 namespace message {
 struct Message;
@@ -47,11 +46,11 @@ class V_COREEXPORT Module {
    bool createInputPort(const std::string & name);
    bool createOutputPort(const std::string & name);
 
-   bool addParameterGeneric(const std::string &name, Parameter *parameter);
+   bool addParameterGeneric(const std::string &name, Parameter *parameter, Parameter::Presentation presentation);
    bool updateParameter(const std::string &name, const Parameter *parameter);
 
    template<class T>
-   bool addParameter(const std::string &name, const T &value);
+   bool addParameter(const std::string &name, const T &value, Parameter::Presentation presentation=Parameter::Generic);
    template<class T>
    bool setParameter(const std::string &name, const T &value);
    template<class T>
