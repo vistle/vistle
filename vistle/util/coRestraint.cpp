@@ -66,11 +66,11 @@ void coRestraint::add(ssize_t val)
 //==========================================================================
 //
 //==========================================================================
-void coRestraint::add(const char *selection)
+void coRestraint::add(const std::string &selection)
 {
    stringChanged = false;
    changed = true;
-   const char *c=selection;
+   const char *c=selection.c_str();
    while(*c && (*c < '0' || *c >'9'))
       c++;
    while (*c)

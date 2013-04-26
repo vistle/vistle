@@ -39,7 +39,7 @@ class V_UTILEXPORT coRestraint
 
       void add(ssize_t mi, ssize_t ma);
       void add(ssize_t val);
-      void add(const char *selection);
+      void add(const std::string &selection);
       ssize_t get(ssize_t val, ssize_t &group) const;
       size_t getNumGroups() const {return min.size();};
       void clear();
