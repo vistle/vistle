@@ -1,5 +1,7 @@
 add_library(vistle_util SHARED
-   tools.cpp)
+   tools.cpp
+   coRestraint.cpp
+   )
 
 target_link_libraries(vistle_util
         ${Boost_LIBRARIES}
