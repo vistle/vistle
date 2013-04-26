@@ -9,7 +9,7 @@ Renderer::Renderer(const std::string & name, const std::string &shmname,
                    const int rank, const int size, const int moduleID)
    : Module(name, shmname, rank, size, moduleID) {
 
-   createInputPort("data_in");
+   createInputPort("data_in", "input data");
 }
 
 Renderer::~Renderer() {

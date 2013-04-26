@@ -122,7 +122,7 @@ ObjectCache::CacheMode Module::cacheMode(ObjectCache::CacheMode mode) const {
    return m_cache.cacheMode();
 }
 
-bool Module::createInputPort(const std::string &name) {
+bool Module::createInputPort(const std::string &name, const std::string &description) {
 
    std::map<std::string, ObjectList>::iterator i = inputPorts.find(name);
 
@@ -138,7 +138,7 @@ bool Module::createInputPort(const std::string &name) {
    return false;
 }
 
-bool Module::createOutputPort(const std::string &name) {
+bool Module::createOutputPort(const std::string &name, const std::string &description) {
 
    std::map<std::string, ObjectList>::iterator i = outputPorts.find(name);
 

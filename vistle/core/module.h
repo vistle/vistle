@@ -43,8 +43,8 @@ class V_COREEXPORT Module {
    void setCacheMode(ObjectCache::CacheMode mode);
    ObjectCache::CacheMode cacheMode(ObjectCache::CacheMode mode) const;
 
-   bool createInputPort(const std::string & name);
-   bool createOutputPort(const std::string & name);
+   bool createInputPort(const std::string &name, const std::string &description="");
+   bool createOutputPort(const std::string &name, const std::string &description="");
 
    bool addParameterGeneric(const std::string &name, Parameter *parameter, Parameter::Presentation presentation);
    bool updateParameter(const std::string &name, const Parameter *parameter);
