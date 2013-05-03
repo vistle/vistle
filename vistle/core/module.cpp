@@ -349,6 +349,8 @@ bool Module::passThroughObject(const std::string & portName, vistle::Object::con
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return true;
    }
+   std::cerr << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
+   assert(i != outputPorts.end());
    return false;
 }
 
@@ -366,7 +368,11 @@ ObjectList Module::getObjects(const std::string &portName) {
             assert(object->check());
             objects.push_back(object);
       }
+   } else {
+      std::cerr << "Module::getObjects: input port " << portName << " not found" << std::endl;
+      assert(i != inputPorts.end());
    }
+
    return objects;
 }
 
@@ -390,9 +396,12 @@ void Module::removeObject(const std::string &portName, vistle::Object::const_ptr
       if (!erased)
          std::cerr << "Module " << id() << " removeObject didn't find"
             " object [" << object->getName() << "]" << std::endl;
-   } else
+   } else {
       std::cerr << "Module " << id() << " removeObject didn't find port ["
                 << portName << "]" << std::endl;
+
+      assert(i != inputPorts.end());
+   }
 }
 
 bool Module::hasObject(const std::string &portName) const {
@@ -403,6 +412,9 @@ bool Module::hasObject(const std::string &portName) const {
 
       return !i->second.empty();
    }
+
+   std::cerr << "Module::hasObject: input port " << portName << " not found" << std::endl;
+   assert(i != inputPorts.end());
 
    return false;
 }
@@ -418,6 +430,9 @@ vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
       i->second.pop_front();
       return obj;
    }
+
+   std::cerr << "Module::takeFirstObject: input port " << portName << " not found" << std::endl;
+   assert(i != inputPorts.end());
 
    return vistle::Object::ptr();
 }
@@ -441,6 +456,10 @@ bool Module::addInputObject(const std::string & portName,
       i->second.push_back(object);
       return true;
    }
+
+   std::cerr << "Module::addInputObject: input port " << portName << " not found" << std::endl;
+   assert(i != inputPorts.end());
+
    return false;
 }
 
