@@ -235,15 +235,18 @@ bool Module::getParameter(const std::string &name, T &value) const {
    if (i == parameters.end())
       return false;
 
-   if (i->second->type() != ParameterType<T>::type)
-   {
-      std::cerr << "Module::getParameter(" << name << "): type miscmatch - expected: " << ParameterType<T>::type << ", actual: " << i->second->type() << std::endl;
+   if (i->second->type() != ParameterType<T>::type) {
+      std::cerr << "Module::getParameter(" << name << "): type mismatch - expected: " << ParameterType<T>::type << ", actual: " << i->second->type() << std::endl;
       assert(i->second->type() == ParameterType<T>::type);
       return false;
    }
 
    if (ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(&*i->second)) {
       value = p->getValue();
+   } else {
+      std::cerr << "Module::getParameter(" << name << "): type failure" << std::endl;
+      assert("dynamic_cast failed" == 0);
+      return false;
    }
 
    return true;
