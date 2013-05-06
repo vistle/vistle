@@ -58,15 +58,15 @@ class V_COREEXPORT ParameterBase: public Parameter {
  public:
    typedef T ValueType;
 
-   ParameterBase(const std::string & name, T value = T()) : Parameter(name, ParameterType<T>::type), value(value) {}
+   ParameterBase(const std::string & name, T value = T()) : Parameter(name, ParameterType<T>::type), m_value(value) {}
    virtual ~ParameterBase() {}
 
-   const T getValue() const { return value; }
-   void setValue(T value) { this->value = value; }
+   const T getValue() const { return m_value; }
+   void setValue(T value) { this->m_value = value; }
 
-   operator std::string() const { std::stringstream str; str << value; return str.str(); }
+   operator std::string() const { std::stringstream str; str << m_value; return str.str(); }
  private:
-   T value;
+   T m_value;
 };
 
 template<>
