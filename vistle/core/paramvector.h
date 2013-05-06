@@ -25,8 +25,16 @@ public:
 
    ParameterVector &operator=(const ParameterVector &rhs);
 
+   void setMinimum(const S x, const S y=S(), const S z=S(), const S w=S());
+   void setMinimum(const S values[]);
+   ParameterVector minimum() const;
+   void setMaximum(const S x, const S y=S(), const S z=S(), const S w=S());
+   void setMaximum(const S values[]);
+   ParameterVector maximum() const;
+
    int dim;
    std::vector<S> v;
+   std::vector<S> m_min, m_max;
    S &x, &y, &z, &w;
 
 #if 0
