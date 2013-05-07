@@ -409,6 +409,16 @@ SetParameter::SetParameter(const int module,
    COPY_STRING(v_string, v);
 }
 
+void SetParameter::setInit() {
+
+   initialize = true;
+}
+
+bool SetParameter::isInitialization() const {
+
+   return initialize;
+}
+
 const char *SetParameter::getName() const {
 
    return name;
@@ -456,13 +466,13 @@ bool SetParameter::apply(Parameter *param) const {
    }
 
    if (IntParameter *pint = dynamic_cast<IntParameter *>(param)) {
-      pint->setValue(v_int);
+      pint->setValue(v_int, initialize);
    } else if (FloatParameter *pfloat = dynamic_cast<FloatParameter *>(param)) {
-      pfloat->setValue(v_scalar);
+      pfloat->setValue(v_scalar, initialize);
    } else if (VectorParameter *pvec = dynamic_cast<VectorParameter *>(param)) {
-      pvec->setValue(ParamVector(dim, &v_vector[0]));
+      pvec->setValue(ParamVector(dim, &v_vector[0]), initialize);
    } else if (StringParameter *pstring = dynamic_cast<StringParameter *>(param)) {
-      pstring->setValue(v_string);
+      pstring->setValue(v_string, initialize);
    } else {
       std::cerr << "SetParameter::apply(): type " << param->type() << " not handled" << std::endl;
       assert("invalid parameter type" == 0);

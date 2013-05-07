@@ -166,6 +166,7 @@ bool Module::addParameterGeneric(const std::string &name, Parameter *param, Para
    message::AddParameter add(name, param->description(), param->type(), presentation, m_name);
    sendMessage(add);
    message::SetParameter set(id(), name, param);
+   set.setInit();
    sendMessage(set);
 
    return true;

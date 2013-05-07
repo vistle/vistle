@@ -61,15 +61,17 @@ class V_COREEXPORT ParameterBase: public Parameter {
  public:
    typedef T ValueType;
 
-   ParameterBase(const std::string & name, T value = T()) : Parameter(name, ParameterType<T>::type), m_value(value) {}
+   ParameterBase(const std::string & name, T value = T()) : Parameter(name, ParameterType<T>::type), m_value(value), m_defaultValue(value) {}
    virtual ~ParameterBase() {}
 
+   const bool isDefault() const { return m_value == m_defaultValue; }
    const T getValue() const { return m_value; }
-   virtual void setValue(T value) { this->m_value = value; }
+   virtual void setValue(T value, bool init=false) { this->m_value = value; if (init) m_defaultValue=value; }
 
    operator std::string() const { std::stringstream str; str << m_value; return str.str(); }
  private:
    T m_value;
+   T m_defaultValue;
 };
 
 template<>
@@ -97,27 +99,27 @@ typedef ParameterBase<double> FloatParameter;
 class IntParameter: public ParameterBase<int> {
  public:
    IntParameter(const std::string & name, int value = 0) : ParameterBase<int>(name, value) {}
-   void setValue(int value) {
-      if (presentation() == Choice) {
+   void setValue(int value, bool init=false) {
+      if (presentation() == Choice && !init) {
          if (value < 0 || value >= m_choices.size()) {
             std::cerr << "IntParameter: choice out of range" << std::endl;
             return;
          }
       }
-      ParameterBase<int>::setValue(value);
+      ParameterBase<int>::setValue(value, init);
    }
 };
 class StringParameter: public ParameterBase<std::string> {
  public:
    StringParameter(const std::string & name, std::string value = "") : ParameterBase<std::string>(name, value) {}
-   void setValue(std::string value) {
-      if (presentation() == Choice) {
+   void setValue(std::string value, bool init=false) {
+      if (presentation() == Choice && !init) {
          if (std::find(m_choices.begin(), m_choices.end(), value) == m_choices.end()) {
             std::cerr << "StringParameter: choice not valid" << std::endl;
             return;
          }
       }
-      ParameterBase<std::string>::setValue(value);
+      ParameterBase<std::string>::setValue(value, init);
    }
 };
 

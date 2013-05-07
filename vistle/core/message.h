@@ -337,6 +337,9 @@ class V_COREEXPORT SetParameter: public Message {
       SetParameter(const int module,
             const std::string & name, const std::string &value);
 
+      void setInit();
+      bool isInitialization() const;
+
       int getModule() const;
       const char * getName() const;
       int getParameterType() const;
@@ -353,6 +356,7 @@ class V_COREEXPORT SetParameter: public Message {
       param_name_t name;
       int paramtype;
       int dim;
+      int initialize;
       union {
          int v_int;
          Scalar v_scalar;
