@@ -4,10 +4,13 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <boost/mpl/vector.hpp>
 #include "paramvector.h"
 #include "export.h"
 
 namespace vistle {
+
+typedef boost::mpl::vector<int, double, ParamVector, std::string> Parameters;
 
 class V_COREEXPORT Parameter {
 
@@ -37,6 +40,7 @@ class V_COREEXPORT Parameter {
    void setDescription(const std::string &description);
 
    virtual operator std::string() const = 0;
+   virtual bool isDefault() const = 0;
    const std::string & getName() const;
    Type type() const;
    Presentation presentation() const;
@@ -56,6 +60,11 @@ struct ParameterType {
 };
 
 template<typename T>
+struct ParameterCheck {
+   static bool check(const std::vector<std::string> &, const T &) { return true; }
+};
+
+template<typename T>
 class V_COREEXPORT ParameterBase: public Parameter {
 
  public:
@@ -64,9 +73,20 @@ class V_COREEXPORT ParameterBase: public Parameter {
    ParameterBase(const std::string & name, T value = T()) : Parameter(name, ParameterType<T>::type), m_value(value), m_defaultValue(value) {}
    virtual ~ParameterBase() {}
 
-   const bool isDefault() const { return m_value == m_defaultValue; }
+   bool isDefault() const { return m_value == m_defaultValue; }
    const T getValue() const { return m_value; }
-   virtual void setValue(T value, bool init=false) { this->m_value = value; if (init) m_defaultValue=value; }
+   virtual bool setValue(T value, bool init=false) {
+      if (init)
+         m_defaultValue=value;
+      else if (!checkValue(value))
+         return false;
+      this->m_value = value;
+      return true;
+   }
+   virtual bool checkValue(const T &value) const {
+      if (presentation() != Choice) return true;
+      return ParameterCheck<T>::check(m_choices, value);
+   }
 
    operator std::string() const { std::stringstream str; str << m_value; return str.str(); }
  private:
@@ -94,34 +114,32 @@ struct ParameterType<std::string> {
    static const Parameter::Type type = Parameter::String;
 };
 
+template<>
+struct ParameterCheck<int> {
+   static bool check(const std::vector<std::string> &choices, const int &value) {
+      if (value < 0 || value >= choices.size()) {
+         std::cerr << "IntParameter: choice out of range" << std::endl;
+         return false;
+      }
+      return true;
+   }
+};
+
+template<>
+struct ParameterCheck<std::string> {
+   static bool check(const std::vector<std::string> &choices, const std::string &value) {
+      if (std::find(choices.begin(), choices.end(), value) == choices.end()) {
+         std::cerr << "StringParameter: choice not valid" << std::endl;
+         return false;
+      }
+      return true;
+   }
+};
+
 typedef ParameterBase<ParamVector> VectorParameter;
 typedef ParameterBase<double> FloatParameter;
-class IntParameter: public ParameterBase<int> {
- public:
-   IntParameter(const std::string & name, int value = 0) : ParameterBase<int>(name, value) {}
-   void setValue(int value, bool init=false) {
-      if (presentation() == Choice && !init) {
-         if (value < 0 || value >= m_choices.size()) {
-            std::cerr << "IntParameter: choice out of range" << std::endl;
-            return;
-         }
-      }
-      ParameterBase<int>::setValue(value, init);
-   }
-};
-class StringParameter: public ParameterBase<std::string> {
- public:
-   StringParameter(const std::string & name, std::string value = "") : ParameterBase<std::string>(name, value) {}
-   void setValue(std::string value, bool init=false) {
-      if (presentation() == Choice && !init) {
-         if (std::find(m_choices.begin(), m_choices.end(), value) == m_choices.end()) {
-            std::cerr << "StringParameter: choice not valid" << std::endl;
-            return;
-         }
-      }
-      ParameterBase<std::string>::setValue(value, init);
-   }
-};
+typedef ParameterBase<int> IntParameter;
+typedef ParameterBase<std::string> StringParameter;
 
 } // namespace vistle
 #endif

@@ -164,6 +164,17 @@ static std::string getParameterType(int id, const std::string &name) {
    return "None";
 }
 
+static bool isParameterDefault(int id, const std::string &name) {
+
+   const Parameter *param = Communicator::the().getParameter(id, name);
+   if (!param) {
+      std::cerr << "Python: getParameterType: no such parameter" << std::endl;
+      return false;
+   }
+
+   return param->isDefault();
+}
+
 template<typename T>
 static T getParameterValue(int id, const std::string &name) {
 
@@ -299,6 +310,7 @@ BOOST_PYTHON_MODULE(_vistle)
     def("getConnections", getConnections, "get connections to/from port `arg2` of module with ID `arg1`");
     def("getParameters", getParameters, "get list of parameters for module with ID `arg1`");
     def("getParameterType", getParameterType, "get type of parameter named `arg2` of module with ID `arg1`");
+    def("isParameterDefault", isParameterDefault, "check whether parameter `arg2` of module with ID `arg1` differs from its default value");
     def("getIntParam", getParameterValue<int>, "get value of parameter named `arg2` of module with ID `arg1`");
     def("getFloatParam", getParameterValue<Scalar>, "get value of parameter named `arg2` of module with ID `arg1`");
     def("getVectorParam", getParameterValue<ParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");

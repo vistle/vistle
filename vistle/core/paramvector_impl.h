@@ -231,6 +231,17 @@ std::string ParameterVector<S>::str() const {
    return str.str();
 }
 
+template<typename S>
+bool operator==(const ParameterVector<S> &v1, const ParameterVector<S> &v2) {
+   if (v1.dim != v2.dim)
+      return false;
+   for (int i=0; i<v1.dim; ++i)
+      if (v1[i] != v2[i])
+         return false;
+
+   return true;
+}
+
 } // namespace vistle
 
 template<typename S>

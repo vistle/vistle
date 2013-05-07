@@ -1,4 +1,7 @@
 #include "parameter.h"
+#include <boost/mpl/vector.hpp>
+#include <boost/mpl/for_each.hpp>
+#include <boost/mpl/transform.hpp>
 
 namespace vistle {
 
@@ -37,6 +40,22 @@ Parameter::Presentation Parameter::presentation() const {
 const std::string &Parameter::description() const {
 
    return m_description;
+}
+
+namespace {
+
+using namespace boost;
+
+struct instantiator {
+   template<typename P> P operator()(P) {
+      return P();
+   }
+};
+}
+
+void instantiate_parameters() {
+
+   mpl::for_each<Parameters>(instantiator());
 }
 
 } // namespace vistle

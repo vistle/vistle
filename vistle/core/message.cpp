@@ -347,7 +347,9 @@ SetParameter::SetParameter(const int module,
       const std::string &n, const Parameter *param)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
-, paramtype(param->type()) {
+, paramtype(param->type())
+, initialize(false)
+{
 
    COPY_STRING(name, n);
    if (const IntParameter *pint = dynamic_cast<const IntParameter *>(param)) {
@@ -371,7 +373,9 @@ SetParameter::SetParameter(const int module,
       const std::string &n, const int v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
-, paramtype(Parameter::Integer) {
+, paramtype(Parameter::Integer)
+, initialize(false)
+{
 
    COPY_STRING(name, n);
    v_int = v;
@@ -381,7 +385,9 @@ SetParameter::SetParameter(const int module,
       const std::string &n, const Scalar v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
-, paramtype(Parameter::Scalar) {
+, paramtype(Parameter::Scalar)
+, initialize(false)
+{
 
    COPY_STRING(name, n);
    v_scalar = v;
@@ -391,7 +397,9 @@ SetParameter::SetParameter(const int module,
       const std::string &n, const ParamVector v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
-, paramtype(Parameter::Vector) {
+, paramtype(Parameter::Vector)
+, initialize(false)
+{
 
    COPY_STRING(name, n);
    dim = v.dim;
@@ -403,7 +411,9 @@ SetParameter::SetParameter(const int module,
       const std::string &n, const std::string &v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
-, paramtype(Parameter::String) {
+, paramtype(Parameter::String)
+, initialize(false)
+{
 
    COPY_STRING(name, n);
    COPY_STRING(v_string, v);

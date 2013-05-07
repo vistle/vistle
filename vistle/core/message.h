@@ -356,7 +356,7 @@ class V_COREEXPORT SetParameter: public Message {
       param_name_t name;
       int paramtype;
       int dim;
-      int initialize;
+      bool initialize;
       union {
          int v_int;
          Scalar v_scalar;

@@ -87,6 +87,10 @@ public:
    }
 };
 
+
+template<typename S>
+V_COREEXPORT bool operator==(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
+
 //typedef ParameterVector<Scalar> ScalarVector;
 //typedef ScalarVector Vector;
 typedef ParameterVector<double> ParamVector;

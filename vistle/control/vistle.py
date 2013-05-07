@@ -79,7 +79,7 @@ def showAllConnections():
 
 def getParameter(id, name):
    t = getParameterType(id, name)
-   
+
    if t == "Int":
       return getIntParam(id, name)
    elif t == "Float":
@@ -142,7 +142,8 @@ def save(filename = None):
       f.write(modvar(m)+" = spawn('"+getModuleName(m)+"')\n")
       params = getParameters(m)
       for p in params:
-         f.write("set"+getParameterType(m,p)+"Param("+modvar(m)+", '"+p+"', "+str(getSavableParam(m,p))+")\n")
+         if not isParameterDefault(m, p):
+            f.write("set"+getParameterType(m,p)+"Param("+modvar(m)+", '"+p+"', "+str(getSavableParam(m,p))+")\n")
       f.write("\n")
 
    for m in mods:
