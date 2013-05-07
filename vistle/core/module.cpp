@@ -198,15 +198,15 @@ bool Module::updateParameter(const std::string &name, const Parameter *param) {
 }
 
 template<class T>
-bool Module::addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation pres) {
+Parameter *Module::addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation pres) {
 
    Parameter *p = new ParameterBase<T>(name, value);
    p->setDescription(description);
    if (!addParameterGeneric(name, p, pres)) {
       delete p;
-      return false;
+      return NULL;
    }
-   return true;
+   return p;
 }
 
 template<class T>
@@ -252,10 +252,10 @@ bool Module::getParameter(const std::string &name, T &value) const {
    return true;
 }
 
-bool Module::addStringParameter(const std::string & name, const std::string &description,
+StringParameter *Module::addStringParameter(const std::string & name, const std::string &description,
                               const std::string & value, Parameter::Presentation p) {
 
-   return addParameter(name, description, value, p);
+   return dynamic_cast<StringParameter *>(addParameter(name, description, value, p));
 }
 
 bool Module::setStringParameter(const std::string & name,
@@ -271,10 +271,10 @@ std::string Module::getStringParameter(const std::string & name) const {
    return value;
 }
 
-bool Module::addFloatParameter(const std::string & name, const std::string &description,
+FloatParameter *Module::addFloatParameter(const std::string & name, const std::string &description,
                                const vistle::Scalar value) {
 
-   return addParameter(name, description, value);
+   return dynamic_cast<FloatParameter *>(addParameter(name, description, value));
 }
 
 bool Module::setFloatParameter(const std::string & name,
@@ -290,10 +290,10 @@ vistle::Scalar Module::getFloatParameter(const std::string & name) const {
    return value;
 }
 
-bool Module::addIntParameter(const std::string & name, const std::string &description,
+IntParameter *Module::addIntParameter(const std::string & name, const std::string &description,
                              const int value, Parameter::Presentation p) {
 
-   return addParameter(name, description, value, p);
+   return dynamic_cast<IntParameter *>(addParameter(name, description, value, p));
 }
 
 bool Module::setIntParameter(const std::string & name,
@@ -309,10 +309,10 @@ int Module::getIntParameter(const std::string & name) const {
    return value;
 }
 
-bool Module::addVectorParameter(const std::string & name, const std::string &description,
+VectorParameter *Module::addVectorParameter(const std::string & name, const std::string &description,
                                 const ParamVector & value) {
 
-   return addParameter(name, description, value);
+   return dynamic_cast<VectorParameter *>(addParameter(name, description, value));
 }
 
 bool Module::setVectorParameter(const std::string & name,
