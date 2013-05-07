@@ -623,6 +623,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                case Parameter::String:
                   setStringParameter(param->getName(), param->getString());
                   break;
+               default:
+                  std::cerr << "Module::handleMessage: unknown parameter type " << param->getParameterType() << std::endl;
+                  assert("unknown parameter type" == 0);
+                  break;
             }
          } else {
 
