@@ -34,6 +34,8 @@ typedef char port_name_t[32];
 typedef char param_name_t[32];
 typedef char param_value_t[256];
 typedef char param_desc_t[512];
+typedef char param_choice_t[64];
+const int param_num_choices = 60;
 
 struct V_COREEXPORT Message {
    // this is POD
@@ -41,7 +43,7 @@ struct V_COREEXPORT Message {
    friend class vistle::Communicator;
 
  public:
-   static const size_t MESSAGE_SIZE = 1024;
+   static const size_t MESSAGE_SIZE = 4096; // fixed message size is imposed by boost::interprocess::message_queue
 
    enum Type {
       DEBUG,
@@ -67,7 +69,7 @@ struct V_COREEXPORT Message {
    };
 
    Message(const Type type, const unsigned int size);
-   // Message (or it's subclasses) may not require desctructors
+   // Message (or its subclasses) may not require destructors
 
    //! message type
    Type type() const;
@@ -359,6 +361,26 @@ class V_COREEXPORT SetParameter: public Message {
       };
 };
 BOOST_STATIC_ASSERT(sizeof(SetParameter) < Message::MESSAGE_SIZE);
+
+class V_COREEXPORT SetParameterChoices: public Message {
+   public:
+      SetParameterChoices(const int module,
+            const std::string &name, std::vector<std::string> &choices);
+
+      int getModule() const;
+      const char * getName() const;
+      int getNumChoices() const;
+      const char *getChoice(int idx) const;
+
+      bool apply(Parameter *param) const;
+
+   private:
+      const int module;
+      const int numChoices;
+      param_name_t name;
+      param_choice_t choices[param_num_choices];
+};
+BOOST_STATIC_ASSERT(sizeof(SetParameterChoices) < Message::MESSAGE_SIZE);
 
 class V_COREEXPORT Barrier: public Message {
 

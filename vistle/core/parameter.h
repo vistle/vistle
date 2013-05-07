@@ -3,6 +3,7 @@
 
 #include <string>
 #include <sstream>
+#include <iostream>
 #include "paramvector.h"
 #include "export.h"
 
@@ -26,7 +27,7 @@ class V_COREEXPORT Parameter {
       Directory, // String
       Pathname, // String
       Boolean, // Integer
-      Choice, // Integer
+      Choice, // Integer (fixed choice) and String (dynamic choice)
       InvalidPresentation // keep last
    };
 
@@ -41,6 +42,8 @@ class V_COREEXPORT Parameter {
    Presentation presentation() const;
    const std::string &description() const;
 
+ protected:
+   std::vector<std::string> m_choices;
  private:
    std::string m_name;
    std::string m_description;
@@ -62,7 +65,7 @@ class V_COREEXPORT ParameterBase: public Parameter {
    virtual ~ParameterBase() {}
 
    const T getValue() const { return m_value; }
-   void setValue(T value) { this->m_value = value; }
+   virtual void setValue(T value) { this->m_value = value; }
 
    operator std::string() const { std::stringstream str; str << m_value; return str.str(); }
  private:
@@ -89,10 +92,34 @@ struct ParameterType<std::string> {
    static const Parameter::Type type = Parameter::String;
 };
 
-typedef ParameterBase<double> FloatParameter;
-typedef ParameterBase<int> IntParameter;
 typedef ParameterBase<ParamVector> VectorParameter;
-typedef ParameterBase<std::string> StringParameter;
+typedef ParameterBase<double> FloatParameter;
+class IntParameter: public ParameterBase<int> {
+ public:
+   IntParameter(const std::string & name, int value = 0) : ParameterBase<int>(name, value) {}
+   void setValue(int value) {
+      if (presentation() == Choice) {
+         if (value < 0 || value >= m_choices.size()) {
+            std::cerr << "IntParameter: choice out of range" << std::endl;
+            return;
+         }
+      }
+      ParameterBase<int>::setValue(value);
+   }
+};
+class StringParameter: public ParameterBase<std::string> {
+ public:
+   StringParameter(const std::string & name, std::string value = "") : ParameterBase<std::string>(name, value) {}
+   void setValue(std::string value) {
+      if (presentation() == Choice) {
+         if (std::find(m_choices.begin(), m_choices.end(), value) == m_choices.end()) {
+            std::cerr << "StringParameter: choice not valid" << std::endl;
+            return;
+         }
+      }
+      ParameterBase<std::string>::setValue(value);
+   }
+};
 
 } // namespace vistle
 #endif
