@@ -99,6 +99,7 @@ class V_COREEXPORT Module {
    bool handleMessage(const message::Message *message);
 
  private:
+   Parameter *findParameter(const std::string &name) const;
 
    virtual bool addInputObject(const std::string & portName,
                                Object::const_ptr object);

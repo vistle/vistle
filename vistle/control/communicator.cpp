@@ -729,7 +729,14 @@ bool Communicator::handleMessage(const message::Message &message) {
          CERR << "SetParameter: sender=" << m.senderId() << ", module=" << m.getModule() << ", name=" << m.getName() << std::endl;
 #endif
 
-         if (m.senderId() != 0) {
+         if (m.senderId() != m.getModule()) {
+            // message to owning module
+            MessageQueueMap::iterator i
+               = sendMessageQueue.find(m.getModule());
+            if (i != sendMessageQueue.end())
+               i->second->getMessageQueue().send(&m, m.size(), 0);
+         } else {
+            // notification of owning module about a changed parameter
             ModuleParameterMap &pm = parameterMap[m.getModule()];
             ModuleParameterMap::iterator it = pm.find(m.getName());
             if (it == pm.end()) {
@@ -738,23 +745,16 @@ bool Communicator::handleMessage(const message::Message &message) {
                Parameter *p = it->second;
                m.apply(p);
             }
+
+            // let all modules know that a parameter was changed
+            for (MessageQueueMap::iterator i = sendMessageQueue.begin();
+                  i != sendMessageQueue.end();
+                  ++i) {
+               if (i->first != m.senderId())
+                  i->second->getMessageQueue().send(&m, sizeof(m), 0);
+            }
          }
 
-         // let all modules know that a parameter was changed
-         for (MessageQueueMap::iterator i = sendMessageQueue.begin();
-               i != sendMessageQueue.end();
-               ++i) {
-            if (i->first != m.senderId())
-               i->second->getMessageQueue().send(&m, sizeof(m), 0);
-         }
-
-         if (m.senderId() != m.getModule()) {
-            // message to module
-            MessageQueueMap::iterator i
-               = sendMessageQueue.find(m.getModule());
-            if (i != sendMessageQueue.end())
-               i->second->getMessageQueue().send(&m, m.size(), 0);
-         }
          break;
       }
 

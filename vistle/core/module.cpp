@@ -210,16 +210,20 @@ Parameter *Module::addParameter(const std::string &name, const std::string &desc
    return p;
 }
 
+Parameter *Module::findParameter(const std::string &name) const {
+
+   std::map<std::string, Parameter *>::const_iterator i = parameters.find(name);
+
+   if (i == parameters.end())
+      return NULL;
+
+   return i->second;
+}
+
 template<class T>
 bool Module::setParameter(const std::string &name, const T &value) {
 
-   std::map<std::string, Parameter *>::iterator i =
-      parameters.find(name);
-
-   if (i == parameters.end())
-      return false;
-
-   ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(&*i->second);
+   ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(findParameter(name));
    if (!p)
       return false;
 
@@ -230,19 +234,7 @@ bool Module::setParameter(const std::string &name, const T &value) {
 template<class T>
 bool Module::getParameter(const std::string &name, T &value) const {
 
-   std::map<std::string, Parameter *>::const_iterator i =
-      parameters.find(name);
-
-   if (i == parameters.end())
-      return false;
-
-   if (i->second->type() != ParameterType<T>::type) {
-      std::cerr << "Module::getParameter(" << name << "): type mismatch - expected: " << ParameterType<T>::type << ", actual: " << i->second->type() << std::endl;
-      assert(i->second->type() == ParameterType<T>::type);
-      return false;
-   }
-
-   if (ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(&*i->second)) {
+   if (ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(findParameter(name))) {
       value = p->getValue();
    } else {
       std::cerr << "Module::getParameter(" << name << "): type failure" << std::endl;
@@ -628,6 +620,11 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                   std::cerr << "Module::handleMessage: unknown parameter type " << param->getParameterType() << std::endl;
                   assert("unknown parameter type" == 0);
                   break;
+            }
+
+            // notify controller about current value
+            if (Parameter *p = findParameter(param->getName())) {
+               sendMessage(message::SetParameter(id(), param->getName(), p));
             }
          } else {
 
