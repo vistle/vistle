@@ -4,6 +4,7 @@
 #include <string>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 #include <boost/mpl/vector.hpp>
 #include "paramvector.h"
 #include "export.h"
