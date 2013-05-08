@@ -60,6 +60,7 @@ struct V_COREEXPORT Message {
       CONNECT,
       ADDPARAMETER,
       SETPARAMETER,
+      SETPARAMETERCHOICES,
       PING,
       PONG,
       BUSY,
@@ -369,7 +370,7 @@ BOOST_STATIC_ASSERT(sizeof(SetParameter) < Message::MESSAGE_SIZE);
 class V_COREEXPORT SetParameterChoices: public Message {
    public:
       SetParameterChoices(const int module,
-            const std::string &name, std::vector<std::string> &choices);
+            const std::string &name, const std::vector<std::string> &choices);
 
       int getModule() const;
       const char * getName() const;
@@ -380,7 +381,7 @@ class V_COREEXPORT SetParameterChoices: public Message {
 
    private:
       const int module;
-      const int numChoices;
+      int numChoices;
       param_name_t name;
       param_choice_t choices[param_num_choices];
 };

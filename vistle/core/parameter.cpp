@@ -22,6 +22,12 @@ void Parameter::setDescription(const std::string &d) {
    m_description = d;
 }
 
+void Parameter::setChoices(const std::vector<std::string> &c) {
+
+   if (checkChoice(c))
+      m_choices = c;
+}
+
 const std::string & Parameter::getName() const {
 
    return m_name;

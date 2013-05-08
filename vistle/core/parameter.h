@@ -39,9 +39,11 @@ class V_COREEXPORT Parameter {
    virtual ~Parameter();
 
    void setDescription(const std::string &description);
+   void setChoices(const std::vector<std::string> &choices);
 
    virtual operator std::string() const = 0;
    virtual bool isDefault() const = 0;
+   virtual bool checkChoice(const std::vector<std::string> &choices) const { return true; }
    const std::string & getName() const;
    Type type() const;
    Presentation presentation() const;
@@ -87,6 +89,10 @@ class V_COREEXPORT ParameterBase: public Parameter {
    virtual bool checkValue(const T &value) const {
       if (presentation() != Choice) return true;
       return ParameterCheck<T>::check(m_choices, value);
+   }
+   virtual bool checkChoice(const std::vector<std::string> &ch) const {
+      if (presentation() != Choice) return false;
+      return ParameterCheck<T>::check(ch, m_value);
    }
 
    operator std::string() const { std::stringstream str; str << m_value; return str.str(); }

@@ -491,6 +491,44 @@ bool SetParameter::apply(Parameter *param) const {
    return true;
 }
 
+SetParameterChoices::SetParameterChoices(const int id, const std::string &n,
+      const std::vector<std::string> &ch)
+: Message(Message::SETPARAMETERCHOICES, sizeof(SetParameterChoices))
+, module(id)
+, numChoices(ch.size())
+{
+   COPY_STRING(name, n);
+   if (numChoices > param_num_choices) {
+      std::cerr << "SetParameterChoices::ctor: maximum number of choices (" << param_num_choices << ") exceeded (" << numChoices << ") - truncating" << std::endl;
+      numChoices = param_num_choices;
+   }
+   for (int i=0; i<numChoices; ++i) {
+      COPY_STRING(choices[i], ch[i]);
+   }
+}
+
+bool SetParameterChoices::apply(Parameter *param) const {
+
+   if (param->type() != Parameter::Integer
+         && param->type() != Parameter::String) {
+      std::cerr << "SetParameterChoices::apply(): parameter type not compatible with choice" << std::endl;
+      return false;
+   }
+
+   if (param->presentation() != Parameter::Choice) {
+      std::cerr << "SetParameterChoices::apply(): parameter presentation is not 'Choice'" << std::endl;
+      return false;
+   }
+
+   std::vector<std::string> ch;
+   for (int i=0; i<numChoices && i<param_num_choices; ++i) {
+      size_t len = strnlen(choices[i], sizeof(choices[i]));
+      ch.push_back(std::string(choices[i], len));
+   }
+   param->setChoices(ch);
+   return true;
+}
+
 Barrier::Barrier(const int id)
 : Message(Message::BARRIER, sizeof(Barrier))
 , barrierid(id)
