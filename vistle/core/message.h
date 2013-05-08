@@ -327,6 +327,11 @@ BOOST_STATIC_ASSERT(sizeof(AddParameter) < Message::MESSAGE_SIZE);
 
 class V_COREEXPORT SetParameter: public Message {
    public:
+      enum RangeType {
+         Value,
+         Minimum,
+         Maximum
+      };
       SetParameter(const int module,
             const std::string & name, const Parameter *param);
       SetParameter(const int module,
@@ -340,6 +345,10 @@ class V_COREEXPORT SetParameter: public Message {
 
       void setInit();
       bool isInitialization() const;
+      bool setType(int type);
+
+      void setRangeType(int rt);
+      int rangeType() const;
 
       int getModule() const;
       const char * getName() const;
@@ -358,6 +367,7 @@ class V_COREEXPORT SetParameter: public Message {
       int paramtype;
       int dim;
       bool initialize;
+      int rangetype;
       union {
          int v_int;
          Scalar v_scalar;

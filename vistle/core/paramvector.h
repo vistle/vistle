@@ -25,12 +25,8 @@ public:
 
    ParameterVector &operator=(const ParameterVector &rhs);
 
-   void setMinimum(const S x, const S y=S(), const S z=S(), const S w=S());
-   void setMinimum(const S values[]);
-   ParameterVector minimum() const;
-   void setMaximum(const S x, const S y=S(), const S z=S(), const S w=S());
-   void setMaximum(const S values[]);
-   ParameterVector maximum() const;
+   static ParameterVector min(int dim=MaxDimension);
+   static ParameterVector max(int dim=MaxDimension);
 
    int dim;
    std::vector<S> v;
@@ -90,6 +86,11 @@ public:
 
 template<typename S>
 V_COREEXPORT bool operator==(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
+
+template<typename S>
+V_COREEXPORT bool operator<(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
+template<typename S>
+V_COREEXPORT bool operator>(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
 
 //typedef ParameterVector<Scalar> ScalarVector;
 //typedef ScalarVector Vector;

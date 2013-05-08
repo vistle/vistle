@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iostream>
 #include <algorithm>
+#include <limits>
 #include <boost/mpl/vector.hpp>
 #include "paramvector.h"
 #include "export.h"
@@ -32,6 +33,7 @@ class V_COREEXPORT Parameter {
       Pathname, // String
       Boolean, // Integer
       Choice, // Integer (fixed choice) and String (dynamic choice)
+      Slider, // Integer, Float
       InvalidPresentation // keep last
    };
 
@@ -73,7 +75,13 @@ class V_COREEXPORT ParameterBase: public Parameter {
  public:
    typedef T ValueType;
 
-   ParameterBase(const std::string & name, T value = T()) : Parameter(name, ParameterType<T>::type), m_value(value), m_defaultValue(value) {}
+   ParameterBase(const std::string & name, T value = T())
+      : Parameter(name, ParameterType<T>::type)
+      , m_value(value)
+      , m_defaultValue(value)
+      , m_minimum(ParameterType<T>::min())
+      , m_maximum(ParameterType<T>::max())
+      {}
    virtual ~ParameterBase() {}
 
    bool isDefault() const { return m_value == m_defaultValue; }
@@ -87,6 +95,12 @@ class V_COREEXPORT ParameterBase: public Parameter {
       return true;
    }
    virtual bool checkValue(const T &value) const {
+      if (ParameterType<T>::isNumber) {
+         if (value < m_minimum)
+            return false;
+         if (value > m_maximum)
+            return false;
+      }
       if (presentation() != Choice) return true;
       return ParameterCheck<T>::check(m_choices, value);
    }
@@ -94,31 +108,54 @@ class V_COREEXPORT ParameterBase: public Parameter {
       if (presentation() != Choice) return false;
       return ParameterCheck<T>::check(ch, m_value);
    }
+   virtual void setMinimum(const T &value) {
+      m_minimum = value;
+   }
+   virtual void setMaximum(const T &value) {
+      m_maximum = value;
+   }
 
    operator std::string() const { std::stringstream str; str << m_value; return str.str(); }
  private:
    T m_value;
    T m_defaultValue;
+   T m_minimum, m_maximum;
 };
 
 template<>
 struct ParameterType<int> {
+   typedef int T;
    static const Parameter::Type type = Parameter::Integer;
+   static const bool isNumber = true;
+   static const T min() { return std::numeric_limits<T>::min(); }
+   static const T max() { return std::numeric_limits<T>::max(); }
 };
 
 template<>
 struct ParameterType<double> {
+   typedef double T;
    static const Parameter::Type type = Parameter::Scalar;
+   static const bool isNumber = true;
+   static const T min() { return std::numeric_limits<T>::min(); }
+   static const T max() { return std::numeric_limits<T>::max(); }
 };
 
 template<>
 struct ParameterType<ParamVector> {
+   typedef ParamVector T;
    static const Parameter::Type type = Parameter::Vector;
+   static const bool isNumber = true;
+   static const T min() { return T::min(); }
+   static const T max() { return T::max(); }
 };
 
 template<>
 struct ParameterType<std::string> {
+   typedef std::string T;
    static const Parameter::Type type = Parameter::String;
+   static const bool isNumber = false;
+   static const T min() { return ""; }
+   static const T max() { return ""; }
 };
 
 template<>

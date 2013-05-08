@@ -33,12 +33,16 @@ struct instantiator {
       v = v2;
       std::cout << v.str();
       //v = v*s;
+      std::cout << (V::min() < V::max());
+      std::cout << (V::min() > V::max());
 
+#if 0
       v.setMinimum(v[0], v[1], v[2], v[3]);
       v.setMinimum(&v[0]);
       v.setMaximum(v[0], v[1], v[2], v[3]);
       v.setMaximum(&v[1]);
       std::cout << v.minimum() << v.maximum() << std::endl;
+#endif
 
       return v[0];
    }

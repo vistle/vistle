@@ -349,6 +349,7 @@ SetParameter::SetParameter(const int module,
 , module(module)
 , paramtype(param->type())
 , initialize(false)
+, rangetype(SetParameter::Value)
 {
 
    COPY_STRING(name, n);
@@ -375,6 +376,7 @@ SetParameter::SetParameter(const int module,
 , module(module)
 , paramtype(Parameter::Integer)
 , initialize(false)
+, rangetype(SetParameter::Value)
 {
 
    COPY_STRING(name, n);
@@ -387,6 +389,7 @@ SetParameter::SetParameter(const int module,
 , module(module)
 , paramtype(Parameter::Scalar)
 , initialize(false)
+, rangetype(SetParameter::Value)
 {
 
    COPY_STRING(name, n);
@@ -399,6 +402,7 @@ SetParameter::SetParameter(const int module,
 , module(module)
 , paramtype(Parameter::Vector)
 , initialize(false)
+, rangetype(SetParameter::Value)
 {
 
    COPY_STRING(name, n);
@@ -413,6 +417,7 @@ SetParameter::SetParameter(const int module,
 , module(module)
 , paramtype(Parameter::String)
 , initialize(false)
+, rangetype(SetParameter::Value)
 {
 
    COPY_STRING(name, n);
@@ -427,6 +432,16 @@ void SetParameter::setInit() {
 bool SetParameter::isInitialization() const {
 
    return initialize;
+}
+
+void SetParameter::setRangeType(int rt) {
+
+   rangetype = rt;
+}
+
+int SetParameter::rangeType() const {
+
+   return rangetype;
 }
 
 const char *SetParameter::getName() const {
@@ -475,14 +490,21 @@ bool SetParameter::apply(Parameter *param) const {
       return false;
    }
 
+   int rt = rangeType();
    if (IntParameter *pint = dynamic_cast<IntParameter *>(param)) {
-      pint->setValue(v_int, initialize);
+      if (rt == Value) pint->setValue(v_int, initialize);
+      if (rt == Minimum) pint->setMinimum(v_int);
+      if (rt == Maximum) pint->setMaximum(v_int);
    } else if (FloatParameter *pfloat = dynamic_cast<FloatParameter *>(param)) {
-      pfloat->setValue(v_scalar, initialize);
+      if (rt == Value) pfloat->setValue(v_scalar, initialize);
+      if (rt == Minimum) pfloat->setMinimum(v_scalar);
+      if (rt == Maximum) pfloat->setMaximum(v_scalar);
    } else if (VectorParameter *pvec = dynamic_cast<VectorParameter *>(param)) {
-      pvec->setValue(ParamVector(dim, &v_vector[0]), initialize);
+      if (rt == Value) pvec->setValue(ParamVector(dim, &v_vector[0]), initialize);
+      if (rt == Minimum) pvec->setMinimum(ParamVector(dim, &v_vector[0]));
+      if (rt == Maximum) pvec->setMaximum(ParamVector(dim, &v_vector[0]));
    } else if (StringParameter *pstring = dynamic_cast<StringParameter *>(param)) {
-      pstring->setValue(v_string, initialize);
+      if (rt == Value) pstring->setValue(v_string, initialize);
    } else {
       std::cerr << "SetParameter::apply(): type " << param->type() << " not handled" << std::endl;
       assert("invalid parameter type" == 0);
