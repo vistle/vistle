@@ -25,6 +25,7 @@
 #include "module.h"
 #include "shm.h"
 #include "objectcache.h"
+#include "port.h"
 
 using namespace boost::interprocess;
 
@@ -122,36 +123,59 @@ ObjectCache::CacheMode Module::cacheMode(ObjectCache::CacheMode mode) const {
    return m_cache.cacheMode();
 }
 
-bool Module::createInputPort(const std::string &name, const std::string &description) {
+Port *Module::createInputPort(const std::string &name, const std::string &description) {
 
-   std::map<std::string, ObjectList>::iterator i = inputPorts.find(name);
+   std::map<std::string, Port*>::iterator i = inputPorts.find(name);
 
    if (i == inputPorts.end()) {
 
-      inputPorts[name] = ObjectList();
+      Port *p = new Port(id(), name, Port::INPUT);
+      inputPorts[name] = p;
 
       message::CreateInputPort message(name);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
-      return true;
+      return p;
    }
 
-   return false;
+   return NULL;
 }
 
-bool Module::createOutputPort(const std::string &name, const std::string &description) {
+Port *Module::createOutputPort(const std::string &name, const std::string &description) {
 
-   std::map<std::string, ObjectList>::iterator i = outputPorts.find(name);
+   std::map<std::string, Port *>::iterator i = outputPorts.find(name);
 
    if (i == outputPorts.end()) {
 
-      outputPorts[name] = ObjectList();
+      Port *p = new Port(id(), name, Port::OUTPUT);
+      outputPorts[name] = p;
 
       message::CreateOutputPort message(name);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
-      return true;
+      return p;
    }
-   return false;
+   return NULL;
 }
+
+Port *Module::findInputPort(const std::string &name) const {
+
+   std::map<std::string, Port *>::const_iterator i = inputPorts.find(name);
+
+   if (i == inputPorts.end())
+      return NULL;
+
+   return i->second;
+}
+
+Port *Module::findOutputPort(const std::string &name) const {
+
+   std::map<std::string, Port *>::const_iterator i = outputPorts.find(name);
+
+   if (i == outputPorts.end())
+      return NULL;
+
+   return i->second;
+}
+
 
 bool Module::addParameterGeneric(const std::string &name, Parameter *param, Parameter::Presentation presentation) {
 
@@ -341,7 +365,7 @@ bool Module::passThroughObject(const std::string & portName, vistle::Object::con
 
    assert(object->check());
 
-   std::map<std::string, ObjectList>::iterator i = outputPorts.find(portName);
+   std::map<std::string, Port *>::iterator i = outputPorts.find(portName);
    if (i != outputPorts.end()) {
       // XXX: this was the culprit keeping the final object reference around
       //i->second.push_back(object);
@@ -357,12 +381,13 @@ bool Module::passThroughObject(const std::string & portName, vistle::Object::con
 ObjectList Module::getObjects(const std::string &portName) {
 
    ObjectList objects;
-   std::map<std::string, ObjectList>::iterator i = inputPorts.find(portName);
+   std::map<std::string, Port *>::iterator i = inputPorts.find(portName);
 
    if (i != inputPorts.end()) {
 
       std::list<shm_handle_t>::iterator shmit;
-      for (ObjectList::const_iterator it = i->second.begin(); it != i->second.end(); it++) {
+      ObjectList &olist = i->second->objects();
+      for (ObjectList::const_iterator it = olist.begin(); it != olist.end(); it++) {
          Object::const_ptr object = *it;
          if (object.get())
             assert(object->check());
@@ -380,10 +405,10 @@ void Module::removeObject(const std::string &portName, vistle::Object::const_ptr
 
    bool erased = false;
    shm_handle_t handle = object->getHandle();
-   std::map<std::string, ObjectList>::iterator i = inputPorts.find(portName);
+   std::map<std::string, Port *>::iterator i = inputPorts.find(portName);
 
    if (i != inputPorts.end()) {
-      ObjectList &olist = i->second;
+      ObjectList &olist = i->second->objects();
 
       for (ObjectList::iterator it = olist.begin(); it != olist.end(); ) {
          if (handle == (*it)->getHandle()) {
@@ -406,11 +431,11 @@ void Module::removeObject(const std::string &portName, vistle::Object::const_ptr
 
 bool Module::hasObject(const std::string &portName) const {
 
-   std::map<std::string, ObjectList>::const_iterator i = inputPorts.find(portName);
+   std::map<std::string, Port *>::const_iterator i = inputPorts.find(portName);
 
    if (i != inputPorts.end()) {
 
-      return !i->second.empty();
+      return !i->second->objects().empty();
    }
 
    std::cerr << "Module::hasObject: input port " << portName << " not found" << std::endl;
@@ -421,13 +446,13 @@ bool Module::hasObject(const std::string &portName) const {
 
 vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
 
-   std::map<std::string, ObjectList>::iterator i = inputPorts.find(portName);
+   std::map<std::string, Port *>::iterator i = inputPorts.find(portName);
 
-   if (i != inputPorts.end() && !i->second.empty()) {
+   if (i != inputPorts.end() && !i->second->objects().empty()) {
 
-      Object::const_ptr obj = i->second.front();
+      Object::const_ptr obj = i->second->objects().front();
       assert(obj->check());
-      i->second.pop_front();
+      i->second->objects().pop_front();
       return obj;
    }
 
@@ -449,11 +474,11 @@ bool Module::addInputObject(const std::string & portName,
    if (m_executionCount < object->getExecutionCounter())
       m_executionCount = object->getExecutionCounter();
 
-   std::map<std::string, ObjectList>::iterator i = inputPorts.find(portName);
+   std::map<std::string, Port *>::iterator i = inputPorts.find(portName);
 
    if (i != inputPorts.end()) {
       m_cache.addObject(portName, object);
-      i->second.push_back(object);
+      i->second->objects().push_back(object);
       return true;
    }
 
@@ -555,6 +580,60 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
+      case message::Message::CONNECT: {
+
+         const message::Connect *conn =
+            static_cast<const message::Connect *>(message);
+         Port *other = NULL;
+         Port::PortSet *ports = NULL;
+         if (conn->getModuleA() == id()) {
+            if (Port *p = findOutputPort(conn->getPortAName())) {
+               other = new Port(conn->getModuleB(), conn->getPortBName(), Port::INPUT);
+               ports = &p->connections();
+            }
+            
+         } else if (conn->getModuleB() == id()) {
+            if (Port *p = findInputPort(conn->getPortBName())) {
+               other = new Port(conn->getModuleA(), conn->getPortAName(), Port::OUTPUT);
+               ports = &p->connections();
+            }
+         }
+
+         if (ports && other) {
+            if (ports->find(other) == ports->end())
+               delete other;
+            else
+               ports->insert(other);
+         }
+      }
+
+      case message::Message::DISCONNECT: {
+
+         const message::Disconnect *disc =
+            static_cast<const message::Disconnect *>(message);
+         Port *other = NULL;
+         Port::PortSet *ports = NULL;
+         if (disc->getModuleA() == id()) {
+            if (Port *p = findOutputPort(disc->getPortAName())) {
+               other = new Port(disc->getModuleB(), disc->getPortBName(), Port::INPUT);
+               ports = &p->connections();
+            }
+            
+         } else if (disc->getModuleB() == id()) {
+            if (Port *p = findInputPort(disc->getPortBName())) {
+               other = new Port(disc->getModuleA(), disc->getPortAName(), Port::OUTPUT);
+               ports = &p->connections();
+            }
+         }
+
+         if (ports && other) {
+            Port::PortSet::iterator it = ports->find(other);
+            ports->erase(it);
+            delete *it;
+            delete other;
+         }
+      }
+
       case message::Message::COMPUTE: {
 
          const message::Compute *comp =
@@ -563,10 +642,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             m_executionCount = comp->getExecutionCount();
 
          if (comp->getExecutionCount() > 0) {
-            for (std::map<std::string, ObjectList>::iterator pit = inputPorts.begin();
+            for (std::map<std::string, Port *>::iterator pit = inputPorts.begin();
                   pit != inputPorts.end();
                   ++pit) {
-               pit->second = m_cache.getObjects(pit->first);
+               pit->second->objects() = m_cache.getObjects(pit->first);
             }
          }
          /*

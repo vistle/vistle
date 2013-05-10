@@ -541,6 +541,16 @@ bool Communicator::handleMessage(const message::Message &message) {
                                    connect.getPortAName(),
                                    connect.getModuleB(),
                                    connect.getPortBName());
+         {
+            MessageQueueMap::iterator it = sendMessageQueue.find(connect.getModuleA());
+            if (it != sendMessageQueue.end())
+               it->second->getMessageQueue().send(&connect, sizeof(connect), 0);
+         }
+         {
+            MessageQueueMap::iterator it = sendMessageQueue.find(connect.getModuleB());
+            if (it != sendMessageQueue.end())
+               it->second->getMessageQueue().send(&connect, sizeof(connect), 0);
+         }
          break;
       }
 
@@ -552,6 +562,16 @@ bool Communicator::handleMessage(const message::Message &message) {
                                    disc.getPortAName(),
                                    disc.getModuleB(),
                                    disc.getPortBName());
+         {
+            MessageQueueMap::iterator it = sendMessageQueue.find(disc.getModuleA());
+            if (it != sendMessageQueue.end())
+               it->second->getMessageQueue().send(&disc, sizeof(disc), 0);
+         }
+         {
+            MessageQueueMap::iterator it = sendMessageQueue.find(disc.getModuleB());
+            if (it != sendMessageQueue.end())
+               it->second->getMessageQueue().send(&disc, sizeof(disc), 0);
+         }
          break;
       }
 

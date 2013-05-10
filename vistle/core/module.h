@@ -26,6 +26,8 @@ struct SetParameter;
 class MessageQueue;
 }
 
+class Port;
+
 class V_COREEXPORT Module {
 
  public:
@@ -43,8 +45,8 @@ class V_COREEXPORT Module {
    void setCacheMode(ObjectCache::CacheMode mode);
    ObjectCache::CacheMode cacheMode(ObjectCache::CacheMode mode) const;
 
-   bool createInputPort(const std::string &name, const std::string &description="");
-   bool createOutputPort(const std::string &name, const std::string &description="");
+   Port *createInputPort(const std::string &name, const std::string &description="");
+   Port *createOutputPort(const std::string &name, const std::string &description="");
 
    bool addParameterGeneric(const std::string &name, Parameter *parameter, Parameter::Presentation presentation);
    bool updateParameter(const std::string &name, const Parameter *parameter);
@@ -100,6 +102,8 @@ class V_COREEXPORT Module {
 
  private:
    Parameter *findParameter(const std::string &name) const;
+   Port *findInputPort(const std::string &name) const;
+   Port *findOutputPort(const std::string &name) const;
 
    virtual bool addInputObject(const std::string & portName,
                                Object::const_ptr object);
@@ -108,8 +112,8 @@ class V_COREEXPORT Module {
 
    virtual bool compute() = 0;
 
-   std::map<std::string, ObjectList> outputPorts;
-   std::map<std::string, ObjectList> inputPorts;
+   std::map<std::string, Port*> outputPorts;
+   std::map<std::string, Port*> inputPorts;
 
    std::map<std::string, Parameter *> parameters;
    ObjectCache m_cache;

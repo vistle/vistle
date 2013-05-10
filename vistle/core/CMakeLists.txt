@@ -21,6 +21,7 @@ add_library(vistle_core SHARED
    messagequeue.cpp
    module.cpp
    renderer.cpp
+   port.cpp
    parameter.cpp
    paramvector.cpp
    vector.cpp)

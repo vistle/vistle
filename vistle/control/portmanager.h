@@ -6,24 +6,9 @@
 #include <vector>
 #include <set>
 
+#include <core/port.h>
+
 namespace vistle {
-
-class Port {
-
- public:
-   enum Type { ANY = 0, INPUT = 1, OUTPUT = 2 };
-
-   Port(int moduleID, const std::string &name, const Port::Type type);
-   int getModuleID() const;
-   const std::string & getName() const;
-   Type getType() const;
-
- private:
-   const int moduleID;
-   const std::string name;
-   const Type type;
-};
-
 
 class PortManager {
 
