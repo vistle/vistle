@@ -58,6 +58,7 @@ struct V_COREEXPORT Message {
       CREATEOUTPUTPORT,
       ADDOBJECT,
       CONNECT,
+      DISCONNECT,
       ADDPARAMETER,
       SETPARAMETER,
       SETPARAMETERCHOICES,
@@ -304,6 +305,28 @@ class V_COREEXPORT Connect: public Message {
    const int moduleB;
 };
 BOOST_STATIC_ASSERT(sizeof(Connect) < Message::MESSAGE_SIZE);
+
+//! disconnect an output port from an input port of another module
+class V_COREEXPORT Disconnect: public Message {
+
+ public:
+   Disconnect(const int moduleIDA, const std::string & portA,
+           const int moduleIDB, const std::string & portB);
+
+   const char * getPortAName() const;
+   const char * getPortBName() const;
+
+   int getModuleA() const;
+   int getModuleB() const;
+
+ private:
+   port_name_t portAName;
+   port_name_t portBName;
+
+   const int moduleA;
+   const int moduleB;
+};
+BOOST_STATIC_ASSERT(sizeof(Disconnect) < Message::MESSAGE_SIZE);
 
 class V_COREEXPORT AddParameter: public Message {
    public:

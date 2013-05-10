@@ -544,6 +544,17 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
+      case message::Message::DISCONNECT: {
+
+         const message::Disconnect &disc =
+            static_cast<const message::Disconnect &>(message);
+         m_portManager.removeConnection(disc.getModuleA(),
+                                   disc.getPortAName(),
+                                   disc.getModuleB(),
+                                   disc.getPortBName());
+         break;
+      }
+
       case message::Message::NEWOBJECT: {
 
          /*

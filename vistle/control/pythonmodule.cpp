@@ -210,6 +210,15 @@ static void connect(int sid, const char *sport, int did, const char *dport) {
    PythonEmbed::handleMessage(m);
 }
 
+static void disconnect(int sid, const char *sport, int did, const char *dport) {
+
+#ifdef DEBUG
+   std::cerr << "Python: disconnect "<< sid << ":" << sport << " -> " << did << ":" << dport << std::endl;
+#endif
+   message::Disconnect m(sid, sport, did, dport);
+   PythonEmbed::handleMessage(m);
+}
+
 static void setIntParam(int id, const char *name, int value) {
 
 #ifdef DEBUG

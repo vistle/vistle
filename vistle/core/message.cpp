@@ -286,6 +286,35 @@ int Connect::getModuleB() const {
    return moduleB;
 }
 
+Disconnect::Disconnect(const int moduleIDA, const std::string & portA,
+                 const int moduleIDB, const std::string & portB)
+   : Message(Message::DISCONNECT, sizeof(Disconnect)),
+     moduleA(moduleIDA), moduleB(moduleIDB) {
+
+        COPY_STRING(portAName, portA);
+        COPY_STRING(portBName, portB);
+}
+
+const char * Disconnect::getPortAName() const {
+
+   return portAName;
+}
+
+const char * Disconnect::getPortBName() const {
+
+   return portBName;
+}
+
+int Disconnect::getModuleA() const {
+
+   return moduleA;
+}
+
+int Disconnect::getModuleB() const {
+
+   return moduleB;
+}
+
 AddParameter::AddParameter(const std::string &n, const std::string &desc, int t, int p, const std::string &mod)
 : Message(Message::ADDPARAMETER, sizeof(AddParameter))
 , paramtype(t)
