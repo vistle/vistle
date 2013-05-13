@@ -628,9 +628,11 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          if (ports && other) {
             Port::PortSet::iterator it = ports->find(other);
-            ports->erase(it);
-            delete *it;
             delete other;
+            if (it != ports->end()) {
+               ports->erase(it);
+               delete *it;
+            }
          }
       }
 
