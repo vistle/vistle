@@ -642,6 +642,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             m_executionCount = comp->getExecutionCount();
 
          if (comp->getExecutionCount() > 0) {
+            // Compute not triggered by adding an object
             for (std::map<std::string, Port *>::iterator pit = inputPorts.begin();
                   pit != inputPorts.end();
                   ++pit) {
