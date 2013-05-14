@@ -1,6 +1,7 @@
 #include "message.h"
 #include "shm.h"
 #include "parameter.h"
+#include "port.h"
 
 namespace vistle {
 namespace message {
@@ -206,8 +207,23 @@ Idle::Idle()
    : Message(Message::IDLE, sizeof(Idle)) {
 }
 
-CreateOutputPort::CreateOutputPort(const std::string & n)
-   : Message(Message::CREATEOUTPUTPORT, sizeof(CreateOutputPort)) {
+CreatePort::CreatePort(const Port *port)
+: Message(Message::CREATEPORT, sizeof(CreatePort))
+, m_porttype(port->getType())
+, m_flags(port->flags())
+{
+   COPY_STRING(m_name, port->getName());
+}
+
+Port *CreatePort::getPort() const {
+
+   return new Port(senderId(), m_name, static_cast<Port::Type>(m_porttype), m_flags);
+}
+
+CreateOutputPort::CreateOutputPort(const std::string & n, const int flags)
+   : Message(Message::CREATEOUTPUTPORT, sizeof(CreateOutputPort))
+   , m_flags(flags)
+{
 
       COPY_STRING(name, n);
 }
@@ -217,9 +233,16 @@ const char * CreateOutputPort::getName() const {
    return name;
 }
 
-CreateInputPort::CreateInputPort(const std::string & n)
+int CreateOutputPort::flags() const {
+
+   return m_flags;
+}
+
+CreateInputPort::CreateInputPort(const std::string & n, const int flags)
    : Message(Message::CREATEINPUTPORT,
-             sizeof(CreateInputPort)) {
+             sizeof(CreateInputPort))
+   , m_flags(flags)
+{
 
       COPY_STRING(name, n);
 }
@@ -227,6 +250,11 @@ CreateInputPort::CreateInputPort(const std::string & n)
 const char * CreateInputPort::getName() const {
 
    return name;
+}
+
+int CreateInputPort::flags() const {
+
+   return m_flags;
 }
 
 AddObject::AddObject(const std::string & p,

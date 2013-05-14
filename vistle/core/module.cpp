@@ -123,16 +123,16 @@ ObjectCache::CacheMode Module::cacheMode(ObjectCache::CacheMode mode) const {
    return m_cache.cacheMode();
 }
 
-Port *Module::createInputPort(const std::string &name, const std::string &description) {
+Port *Module::createInputPort(const std::string &name, const std::string &description, const int flags) {
 
    std::map<std::string, Port*>::iterator i = inputPorts.find(name);
 
    if (i == inputPorts.end()) {
 
-      Port *p = new Port(id(), name, Port::INPUT);
+      Port *p = new Port(id(), name, Port::INPUT, flags);
       inputPorts[name] = p;
 
-      message::CreateInputPort message(name);
+      message::CreateInputPort message(name, flags);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return p;
    }
@@ -140,16 +140,16 @@ Port *Module::createInputPort(const std::string &name, const std::string &descri
    return NULL;
 }
 
-Port *Module::createOutputPort(const std::string &name, const std::string &description) {
+Port *Module::createOutputPort(const std::string &name, const std::string &description, const int flags) {
 
    std::map<std::string, Port *>::iterator i = outputPorts.find(name);
 
    if (i == outputPorts.end()) {
 
-      Port *p = new Port(id(), name, Port::OUTPUT);
+      Port *p = new Port(id(), name, Port::OUTPUT, flags);
       outputPorts[name] = p;
 
-      message::CreateOutputPort message(name);
+      message::CreateOutputPort message(name, flags);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return p;
    }
@@ -448,16 +448,19 @@ vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
 
    std::map<std::string, Port *>::iterator i = inputPorts.find(portName);
 
-   if (i != inputPorts.end() && !i->second->objects().empty()) {
+   if (i == inputPorts.end()) {
+      std::cerr << "Module::takeFirstObject: input port " << portName << " not found" << std::endl;
+      assert(i != inputPorts.end());
+      return vistle::Object::ptr();
+   }
+
+   if (!i->second->objects().empty()) {
 
       Object::const_ptr obj = i->second->objects().front();
       assert(obj->check());
       i->second->objects().pop_front();
       return obj;
    }
-
-   std::cerr << "Module::takeFirstObject: input port " << portName << " not found" << std::endl;
-   assert(i != inputPorts.end());
 
    return vistle::Object::ptr();
 }
@@ -580,6 +583,57 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
+      case message::Message::CREATEPORT: {
+
+         const message::CreatePort *cp =
+            static_cast<const message::CreatePort *>(message);
+         Port *port = cp->getPort();
+         std::string name = port->getName();
+         std::string::size_type p = name.find('[');
+         std::string basename = name;
+         size_t idx = 0;
+         if (p != std::string::npos) {
+            basename = name.substr(0, p-1);
+            std::stringstream idxstr(name.substr(p+1));
+            idxstr >> idx;
+         }
+         Port *existing = NULL;
+         Port *parent = NULL;
+         Port *newport = NULL;
+         switch (port->getType()) {
+            case Port::INPUT:
+               existing = findInputPort(name);
+               if (!existing)
+                  parent = findInputPort(basename);
+               if (parent) {
+                  newport = parent->child(idx, true);
+                  inputPorts[name] = newport;
+               }
+               break;
+            case Port::OUTPUT:
+               existing = findOutputPort(name);
+               if (!existing)
+                  parent = findInputPort(basename);
+               if (parent) {
+                  newport = parent->child(idx, true);
+                  outputPorts[name] = newport;
+               }
+               break;
+            case Port::ANY:
+               break;
+         }
+         if (newport) {
+            sendMessage(message::CreatePort(newport));
+            const Port::PortSet &links = newport->linkedPorts();
+            for (Port::PortSet::iterator it = links.begin();
+                  it != links.end();
+                  ++it) {
+               sendMessage(message::CreatePort(*it));
+            }
+         }
+         break;
+      }
+
       case message::Message::CONNECT: {
 
          const message::Connect *conn =
@@ -605,6 +659,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             else
                ports->insert(other);
          }
+         break;
       }
 
       case message::Message::DISCONNECT: {
@@ -634,6 +689,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                delete *it;
             }
          }
+         break;
       }
 
       case message::Message::COMPUTE: {

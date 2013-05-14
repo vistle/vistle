@@ -69,8 +69,9 @@ using namespace vistle;
 Extrema::Extrema(const std::string &shmname, int rank, int size, int moduleID)
    : Module("Extrema", shmname, rank, size, moduleID) {
 
-   createInputPort("data_in");
-   createOutputPort("data_out");
+   Port *din = createInputPort("data_in", "input data", Port::MULTI);
+   Port *dout = createOutputPort("data_out", "output data", Port::MULTI);
+   din->link(dout);
 
    addVectorParameter("min",
          "output parameter: minimum",

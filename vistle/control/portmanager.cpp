@@ -1,4 +1,6 @@
 #include "portmanager.h"
+#include "communicator.h"
+#include <core/message.h>
 #include <iostream>
 #include <algorithm>
 
@@ -10,7 +12,13 @@ PortManager::PortManager() {
 
 Port * PortManager::addPort(const int moduleID, const std::string & name,
                           const Port::Type type) {
+   Port *port = new Port(moduleID, name, type);
+   return addPort(port);
+}
 
+Port *PortManager::addPort(Port *port) {
+
+   const int moduleID = port->getModuleID();
    std::map<std::string, Port *> *portMap = NULL;
    std::map<int, std::map<std::string, Port *> *>::iterator i =
       ports.find(moduleID);
@@ -21,17 +29,18 @@ Port * PortManager::addPort(const int moduleID, const std::string & name,
    } else
       portMap = i->second;
 
-   std::map<std::string, Port *>::iterator pi = portMap->find(name);
+   std::map<std::string, Port *>::iterator pi = portMap->find(port->getName());
 
    if (pi == portMap->end()) {
-      Port *port = new Port(moduleID, name, type);
       portMap->insert(std::pair<std::string, Port *>
-                      (name, port));
+                      (port->getName(), port));
       connections[port] = new std::vector<const Port *>;
       
       return port;
-   } else
+   } else {
+      delete port;
       return pi->second;
+   }
 }
 
 Port * PortManager::getPort(const int moduleID,
@@ -46,10 +55,23 @@ Port * PortManager::getPort(const int moduleID,
          return pi->second;
    }
 
+   std::string::size_type p = name.find('[');
+   if (p != std::string::npos) {
+      Port *parent = getPort(moduleID, name.substr(0, p-1));
+      if (parent && (parent->flags() & Port::MULTI)) {
+         std::stringstream idxstr(name.substr(p+1));
+         size_t idx=0;
+         idxstr >> idx;
+         Port *port = parent->child(idx);
+         Communicator::the().sendMessage(moduleID, message::CreatePort(port));
+         return port;
+      }
+   }
+
    return NULL;
 }
 
-void PortManager::addConnection(const Port *from, const Port *to) {
+bool PortManager::addConnection(const Port *from, const Port *to) {
 
    if (from->getType() == Port::OUTPUT && to->getType() == Port::INPUT) {
 
@@ -63,22 +85,26 @@ void PortManager::addConnection(const Port *from, const Port *to) {
       if (ini != connections.end())
          ini->second->push_back(from);
 
+      return true;
    }
+
+   return false;
 }
 
-void PortManager::addConnection(const int a, const std::string & na,
+bool PortManager::addConnection(const int a, const std::string & na,
                                 const int b, const std::string & nb) {
 
+   // FIXME: we add ports, as they might not yet have been created by the module
    Port *portA = getPort(a, na);
-   Port *portB = getPort(b, nb);
-
-   if (!portA)
+   if (!portA) {
       portA = addPort(a, na, Port::OUTPUT);
-   if (!portB)
-      portB = addPort(b, nb, Port::INPUT);
+   }
+   Port *portB = getPort(b, nb);
+   if (!portB) {
+      portA = addPort(b, nb, Port::INPUT);
+   }
 
-   if (portA && portB) 
-      addConnection(portA, portB);
+   return addConnection(portA, portB);
 }
 
 void PortManager::removeConnection(const Port *from, const Port *to) {

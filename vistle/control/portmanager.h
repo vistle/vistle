@@ -14,11 +14,12 @@ class PortManager {
 
  public:
    PortManager();
-   Port * addPort(const int moduleID, const std::string & name,
+   Port *addPort(const int moduleID, const std::string & name,
                   const Port::Type type);
+   Port *addPort(Port *port);
 
-   void addConnection(const Port * out, const Port * in);
-   void addConnection(const int a, const std::string & na,
+   bool addConnection(const Port * out, const Port * in);
+   bool addConnection(const int a, const std::string & na,
                       const int b, const std::string & nb);
 
    void removeConnection(const Port *from, const Port *to);

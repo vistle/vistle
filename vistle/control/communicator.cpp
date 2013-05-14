@@ -392,6 +392,17 @@ bool Communicator::tryReceiveAndHandleMessage(boost::interprocess::message_queue
    return !done;
 }
 
+bool Communicator::sendMessage(const int moduleId, const message::Message &message) const {
+
+   MessageQueueMap::const_iterator it = sendMessageQueue.find(moduleId);
+   if (it == sendMessageQueue.end())
+      return false;
+
+   it->second->getMessageQueue().send(&message, sizeof(message), 0);
+
+   return true;
+}
+
 bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
    MPI_Request s;
@@ -687,6 +698,14 @@ bool Communicator::handleMessage(const message::Message &message) {
          } else {
             CERR << "module " << id << " sent Idle, but was not busy" << std::endl;
          }
+         break;
+      }
+
+      case message::Message::CREATEPORT: {
+         const message::CreatePort &m =
+            static_cast<const message::CreatePort &>(message);
+         m_portManager.addPort(m.getPort());
+
          break;
       }
 

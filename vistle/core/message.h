@@ -11,6 +11,7 @@ namespace vistle {
 
 class Communicator;
 class Parameter;
+class Port;
 
 namespace message {
 
@@ -54,6 +55,7 @@ struct V_COREEXPORT Message {
       NEWOBJECT,
       MODULEEXIT,
       COMPUTE,
+      CREATEPORT,
       CREATEINPUTPORT,
       CREATEOUTPUTPORT,
       ADDOBJECT,
@@ -243,27 +245,43 @@ class V_COREEXPORT Idle: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Idle) < Message::MESSAGE_SIZE);
 
+class V_COREEXPORT CreatePort: public Message {
+
+ public:
+   CreatePort(const Port *port);
+   Port *getPort() const;
+ private:
+   port_name_t m_name;
+   int m_porttype;
+   int m_flags;
+};
+BOOST_STATIC_ASSERT(sizeof(CreatePort) < Message::MESSAGE_SIZE);
+
 class V_COREEXPORT CreateInputPort: public Message {
 
  public:
-   CreateInputPort(const std::string & name);
+   CreateInputPort(const std::string & name, const int flags=0);
 
    const char * getName() const;
+   int flags() const;
 
  private:
    port_name_t name;
+   int m_flags;
 };
 BOOST_STATIC_ASSERT(sizeof(CreateInputPort) < Message::MESSAGE_SIZE);
 
 class V_COREEXPORT CreateOutputPort: public Message {
 
  public:
-   CreateOutputPort(const std::string & name);
+   CreateOutputPort(const std::string & name, const int flags=0);
 
    const char * getName() const;
+   int flags() const;
 
  private:
    port_name_t name;
+   int m_flags;
 };
 BOOST_STATIC_ASSERT(sizeof(CreateOutputPort) < Message::MESSAGE_SIZE);
 

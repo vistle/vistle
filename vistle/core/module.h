@@ -16,6 +16,7 @@
 #include "export.h"
 #include "objectcache.h"
 #include "parameter.h"
+#include "port.h"
 
 namespace vistle {
 
@@ -25,8 +26,6 @@ struct AddParameter;
 struct SetParameter;
 class MessageQueue;
 }
-
-class Port;
 
 class V_COREEXPORT Module {
 
@@ -45,8 +44,8 @@ class V_COREEXPORT Module {
    void setCacheMode(ObjectCache::CacheMode mode);
    ObjectCache::CacheMode cacheMode(ObjectCache::CacheMode mode) const;
 
-   Port *createInputPort(const std::string &name, const std::string &description="");
-   Port *createOutputPort(const std::string &name, const std::string &description="");
+   Port *createInputPort(const std::string &name, const std::string &description="", const int flags=0);
+   Port *createOutputPort(const std::string &name, const std::string &description="", const int flags=0);
 
    bool addParameterGeneric(const std::string &name, Parameter *parameter, Parameter::Presentation presentation);
    bool updateParameter(const std::string &name, const Parameter *parameter);
