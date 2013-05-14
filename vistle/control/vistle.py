@@ -1,8 +1,8 @@
-import sys;
-from time import sleep;
+import sys
+from time import sleep
 
-import _vistle;
-from _vistle import *;
+import _vistle
+from _vistle import *
 
 _loaded_file = None
 
@@ -152,6 +152,9 @@ def save(filename = None):
          conns = getConnections(m, p)
          for c in conns:
             f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c.first)+",'"+str(c.second)+"')\n")
+
+   f.write("checkMessageQueue()\n")
+
    f.close()
    print("Data flow network saved to "+filename)
 

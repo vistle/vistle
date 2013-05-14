@@ -270,6 +270,11 @@ static void setStringParam(int id, const char *name, const std::string &value) {
    PythonEmbed::handleMessage(m);
 }
 
+static bool checkMessageQueue() {
+
+   return Communicator::the().checkMessageQueue();
+}
+
 static void compute(int id) {
 
 #ifdef DEBUG
@@ -302,6 +307,7 @@ BOOST_PYTHON_MODULE(_vistle)
     def("quit", quit, "quit vistle session");
     def("ping", ping, "send first character of `arg1` to every vistle process");
     def("barrier", barrier, "wait until all modules reply");
+    def("checkMessageQueue", checkMessageQueue, "check whether all messages have been processed");
 
     param(Int, setIntParam);
     param(Float, setFloatParam);

@@ -548,19 +548,22 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Connect &connect =
             static_cast<const message::Connect &>(message);
-         m_portManager.addConnection(connect.getModuleA(),
-                                   connect.getPortAName(),
-                                   connect.getModuleB(),
-                                   connect.getPortBName());
-         {
-            MessageQueueMap::iterator it = sendMessageQueue.find(connect.getModuleA());
-            if (it != sendMessageQueue.end())
-               it->second->getMessageQueue().send(&connect, sizeof(connect), 0);
-         }
-         {
-            MessageQueueMap::iterator it = sendMessageQueue.find(connect.getModuleB());
-            if (it != sendMessageQueue.end())
-               it->second->getMessageQueue().send(&connect, sizeof(connect), 0);
+         if (m_portManager.addConnection(connect.getModuleA(),
+                  connect.getPortAName(),
+                  connect.getModuleB(),
+                  connect.getPortBName())) {
+            {
+               MessageQueueMap::iterator it = sendMessageQueue.find(connect.getModuleA());
+               if (it != sendMessageQueue.end())
+                  it->second->getMessageQueue().send(&connect, sizeof(connect), 0);
+            }
+            {
+               MessageQueueMap::iterator it = sendMessageQueue.find(connect.getModuleB());
+               if (it != sendMessageQueue.end())
+                  it->second->getMessageQueue().send(&connect, sizeof(connect), 0);
+            }
+         } else {
+            queueMessage(connect);
          }
          break;
       }
@@ -569,19 +572,22 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Disconnect &disc =
             static_cast<const message::Disconnect &>(message);
-         m_portManager.removeConnection(disc.getModuleA(),
-                                   disc.getPortAName(),
-                                   disc.getModuleB(),
-                                   disc.getPortBName());
-         {
-            MessageQueueMap::iterator it = sendMessageQueue.find(disc.getModuleA());
-            if (it != sendMessageQueue.end())
-               it->second->getMessageQueue().send(&disc, sizeof(disc), 0);
-         }
-         {
-            MessageQueueMap::iterator it = sendMessageQueue.find(disc.getModuleB());
-            if (it != sendMessageQueue.end())
-               it->second->getMessageQueue().send(&disc, sizeof(disc), 0);
+         if (m_portManager.removeConnection(disc.getModuleA(),
+                  disc.getPortAName(),
+                  disc.getModuleB(),
+                  disc.getPortBName())) {
+            {
+               MessageQueueMap::iterator it = sendMessageQueue.find(disc.getModuleA());
+               if (it != sendMessageQueue.end())
+                  it->second->getMessageQueue().send(&disc, sizeof(disc), 0);
+            }
+            {
+               MessageQueueMap::iterator it = sendMessageQueue.find(disc.getModuleB());
+               if (it != sendMessageQueue.end())
+                  it->second->getMessageQueue().send(&disc, sizeof(disc), 0);
+            }
+         } else {
+            queueMessage(disc);
          }
          break;
       }
@@ -706,6 +712,8 @@ bool Communicator::handleMessage(const message::Message &message) {
             static_cast<const message::CreatePort &>(message);
          m_portManager.addPort(m.getPort());
 
+         replayMessages();
+
          break;
       }
 
@@ -779,16 +787,18 @@ bool Communicator::handleMessage(const message::Message &message) {
          CERR << "SetParameter: sender=" << m.senderId() << ", module=" << m.getModule() << ", name=" << m.getName() << std::endl;
 #endif
 
+         ModuleParameterMap &pm = parameterMap[m.getModule()];
+         ModuleParameterMap::iterator it = pm.find(m.getName());
          if (m.senderId() != m.getModule()) {
             // message to owning module
             MessageQueueMap::iterator i
                = sendMessageQueue.find(m.getModule());
-            if (i != sendMessageQueue.end())
+            if (i != sendMessageQueue.end() && it != pm.end())
                i->second->getMessageQueue().send(&m, m.size(), 0);
+            else
+               queueMessage(m);
          } else {
             // notification of owning module about a changed parameter
-            ModuleParameterMap &pm = parameterMap[m.getModule()];
-            ModuleParameterMap::iterator it = pm.find(m.getName());
             if (it == pm.end()) {
                CERR << "no such parameter: module id=" << m.getModule() << ", name=" << m.getName() << std::endl;
             } else {
@@ -831,6 +841,8 @@ bool Communicator::handleMessage(const message::Message &message) {
                ++i) {
             i->second->getMessageQueue().send(&m, sizeof(m), 0);
          }
+
+         replayMessages();
          break;
       }
 
@@ -948,6 +960,34 @@ const Parameter *Communicator::getParameter(int id, const std::string &name) con
       return NULL;
 
    return mpit->second;
+}
+
+bool Communicator::checkMessageQueue() {
+
+   if (!m_messageQueue.empty()) {
+      CERR << m_messageQueue.size()/message::Message::MESSAGE_SIZE << " not ready for processing:" << std::endl;
+      for (size_t i=0; i<m_messageQueue.size(); i+=message::Message::MESSAGE_SIZE) {
+         const message::Message &m = *static_cast<const message::Message *>(static_cast<const void *>(&m_messageQueue[i]));
+         std::cerr << "   " << "from: " << m.senderId() << ", type: " << m.type() << std::endl;
+      }
+   }
+   return m_messageQueue.empty();
+}
+
+void Communicator::queueMessage(const message::Message &msg) {
+
+   const char *m = static_cast<const char *>(static_cast<const void *>(&msg));
+   std::copy(m, m+message::Message::MESSAGE_SIZE, std::back_inserter(m_messageQueue));
+}
+
+void Communicator::replayMessages() {
+
+   std::vector<char> queue;
+   std::swap(m_messageQueue, queue);
+   for (size_t i=0; i<queue.size(); i+=message::Message::MESSAGE_SIZE) {
+      const message::Message &m = *static_cast<const message::Message *>(static_cast<const void *>(&queue[i]));
+      handleMessage(m);
+   }
 }
 
 } // namespace vistle

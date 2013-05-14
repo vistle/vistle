@@ -22,8 +22,8 @@ class PortManager {
    bool addConnection(const int a, const std::string & na,
                       const int b, const std::string & nb);
 
-   void removeConnection(const Port *from, const Port *to);
-   void removeConnection(const int a, const std::string & na,
+   bool removeConnection(const Port *from, const Port *to);
+   bool removeConnection(const int a, const std::string & na,
                          const int b, const std::string & nb);
 
    void removeConnections(const int moduleID);

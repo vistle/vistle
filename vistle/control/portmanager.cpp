@@ -107,10 +107,12 @@ bool PortManager::addConnection(const int a, const std::string & na,
    return addConnection(portA, portB);
 }
 
-void PortManager::removeConnection(const Port *from, const Port *to) {
+bool PortManager::removeConnection(const Port *from, const Port *to) {
 
+   bool ok = false;
    if (from->getType() == Port::OUTPUT && to->getType() == Port::INPUT) {
 
+      ok = true;
       std::map<const Port *, std::vector<const Port *> *>::iterator outi =
          connections.find(from);
       if (outi != connections.end()) {
@@ -118,6 +120,10 @@ void PortManager::removeConnection(const Port *from, const Port *to) {
          ConnectionList::iterator it = std::find(cl.begin(), cl.end(), to);
          if (it != cl.end())
             cl.erase(it);
+         else
+            ok = false;
+      } else {
+         ok = false;
       }
 
       std::map<const Port *, std::vector<const Port *> *>::iterator ini =
@@ -127,20 +133,28 @@ void PortManager::removeConnection(const Port *from, const Port *to) {
          ConnectionList::iterator it = std::find(cl.begin(), cl.end(), from);
          if (it != cl.end())
             cl.erase(it);
+         else
+            ok = false;
+      } else {
+         ok = false;
       }
+   } else {
+      ok = false;
    }
+
+   return ok;
 }
 
-void PortManager::removeConnection(const int a, const std::string & na,
+bool PortManager::removeConnection(const int a, const std::string & na,
       const int b, const std::string & nb) {
 
    Port *from = getPort(a, na);
    Port *to = getPort(b, nb);
 
    if (!from || !to)
-      return;
+      return false;
 
-   removeConnection(from, to);
+   return removeConnection(from, to);
 }
 
 //! remove all connections to and from ports to a module

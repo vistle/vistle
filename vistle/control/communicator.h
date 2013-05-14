@@ -14,6 +14,7 @@
 #include <mpi.h>
 
 #include "portmanager.h"
+#include <core/message.h>
 
 namespace bi = boost::interprocess;
 
@@ -63,7 +64,12 @@ class Communicator {
 
    const PortManager &portManager() const;
 
+   bool checkMessageQueue();
+
  private:
+   void queueMessage(const message::Message &msg);
+   void replayMessages();
+   std::vector<char> m_messageQueue;
    ClientManager *m_clientManager;
 
    std::string m_bindir;
