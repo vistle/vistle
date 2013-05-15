@@ -719,24 +719,6 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
-      case message::Message::CREATEINPUTPORT: {
-
-         const message::CreateInputPort &m =
-            static_cast<const message::CreateInputPort &>(message);
-         m_portManager.addPort(m.senderId(), m.getName(),
-                             Port::INPUT);
-         break;
-      }
-
-      case message::Message::CREATEOUTPUTPORT: {
-
-         const message::CreateOutputPort &m =
-            static_cast<const message::CreateOutputPort &>(message);
-         m_portManager.addPort(m.senderId(), m.getName(),
-                             Port::OUTPUT);
-         break;
-      }
-
       case message::Message::ADDOBJECT: {
 
          const message::AddObject &m =

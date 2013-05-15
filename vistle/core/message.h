@@ -56,8 +56,6 @@ struct V_COREEXPORT Message {
       MODULEEXIT,
       COMPUTE,
       CREATEPORT,
-      CREATEINPUTPORT,
-      CREATEOUTPUTPORT,
       ADDOBJECT,
       CONNECT,
       DISCONNECT,
@@ -256,34 +254,6 @@ class V_COREEXPORT CreatePort: public Message {
    int m_flags;
 };
 BOOST_STATIC_ASSERT(sizeof(CreatePort) < Message::MESSAGE_SIZE);
-
-class V_COREEXPORT CreateInputPort: public Message {
-
- public:
-   CreateInputPort(const std::string & name, const int flags=0);
-
-   const char * getName() const;
-   int flags() const;
-
- private:
-   port_name_t name;
-   int m_flags;
-};
-BOOST_STATIC_ASSERT(sizeof(CreateInputPort) < Message::MESSAGE_SIZE);
-
-class V_COREEXPORT CreateOutputPort: public Message {
-
- public:
-   CreateOutputPort(const std::string & name, const int flags=0);
-
-   const char * getName() const;
-   int flags() const;
-
- private:
-   port_name_t name;
-   int m_flags;
-};
-BOOST_STATIC_ASSERT(sizeof(CreateOutputPort) < Message::MESSAGE_SIZE);
 
 //! add an object to the input queue of an input port
 class V_COREEXPORT AddObject: public Message {

@@ -220,43 +220,6 @@ Port *CreatePort::getPort() const {
    return new Port(senderId(), m_name, static_cast<Port::Type>(m_porttype), m_flags);
 }
 
-CreateOutputPort::CreateOutputPort(const std::string & n, const int flags)
-   : Message(Message::CREATEOUTPUTPORT, sizeof(CreateOutputPort))
-   , m_flags(flags)
-{
-
-      COPY_STRING(name, n);
-}
-
-const char * CreateOutputPort::getName() const {
-
-   return name;
-}
-
-int CreateOutputPort::flags() const {
-
-   return m_flags;
-}
-
-CreateInputPort::CreateInputPort(const std::string & n, const int flags)
-   : Message(Message::CREATEINPUTPORT,
-             sizeof(CreateInputPort))
-   , m_flags(flags)
-{
-
-      COPY_STRING(name, n);
-}
-
-const char * CreateInputPort::getName() const {
-
-   return name;
-}
-
-int CreateInputPort::flags() const {
-
-   return m_flags;
-}
-
 AddObject::AddObject(const std::string & p,
                      vistle::Object::const_ptr obj)
    : Message(Message::ADDOBJECT, sizeof(AddObject)),

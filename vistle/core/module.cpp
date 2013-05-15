@@ -132,7 +132,7 @@ Port *Module::createInputPort(const std::string &name, const std::string &descri
       Port *p = new Port(id(), name, Port::INPUT, flags);
       inputPorts[name] = p;
 
-      message::CreateInputPort message(name, flags);
+      message::CreatePort message(p);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return p;
    }
@@ -149,7 +149,7 @@ Port *Module::createOutputPort(const std::string &name, const std::string &descr
       Port *p = new Port(id(), name, Port::OUTPUT, flags);
       outputPorts[name] = p;
 
-      message::CreateOutputPort message(name, flags);
+      message::CreatePort message(p);
       sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
       return p;
    }
