@@ -613,8 +613,8 @@ ReadFOAM::load(const std::string & casedir, const size_t partition) {
          if (numVertexPressure[p] > 0)
             pressureField[p] = vertexPressure[p] / numVertexPressure[p];
 
-      objects.push_back(std::make_pair("grid_out", usg));
-      objects.push_back(std::make_pair("p_out", pres));
+      objects.push_back(std::make_pair("grid_out", vistle::Object::ptr(usg)));
+      objects.push_back(std::make_pair("p_out", vistle::Object::ptr(pres)));
       return objects;
 
    } catch (const qi::expectation_failure<pos_iterator_type>& e) {

@@ -4,6 +4,7 @@
 
 #ifndef _WIN32
 #include <execinfo.h>
+#include <unistd.h>
 #endif
 
 #include "tools.h"
