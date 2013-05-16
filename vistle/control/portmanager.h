@@ -43,11 +43,13 @@ class PortManager {
 
  private:
 
+   typedef std::map<std::string, Port *> PortMap;
+
    // module ID -> list of ports belonging to the module
-   std::map<int, std::map<std::string, Port *> *> ports;
+   std::map<int, PortMap *> ports;
 
    // port -> list of ports that the port is connected to
-   std::map<const Port *, std::vector<const Port *> *> connections;
+   std::map<const Port *, ConnectionList *> connections;
 };
 } // namespace vistle
 

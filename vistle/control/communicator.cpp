@@ -709,16 +709,6 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
-      case message::Message::CREATEPORT: {
-         const message::CreatePort &m =
-            static_cast<const message::CreatePort &>(message);
-         m_portManager.addPort(m.getPort());
-
-         replayMessages();
-
-         break;
-      }
-
       case message::Message::ADDOBJECT: {
 
          const message::AddObject &m =
@@ -799,6 +789,35 @@ bool Communicator::handleMessage(const message::Message &message) {
             }
          }
 
+         {
+            Port *port = m_portManager.getPort(m.senderId(), m.getName());
+            if (port) {
+
+               const PortManager::ConnectionList *list = m_portManager.getConnectionList(port);
+               for (PortManager::ConnectionList::const_iterator pi = list->begin();
+                     pi != list->end();
+                     ++pi++) {
+
+                  MessageQueueMap::iterator mi = sendMessageQueue.find((*pi)->getModuleID());
+                  if (mi != sendMessageQueue.end()) {
+#if 0
+                     message::
+                     message::AddObject a((*pi)->getName(), obj);
+                     a.setSenderId(m.senderId());
+                     a.setRank(m.rank());
+                     mi->second->getMessageQueue().send(&a, sizeof(a), 0);
+#endif
+                  }
+               }
+            }
+#if 0
+            else
+               std::cerr << "comm [" << rank << "/" << size << "] Addbject ["
+                  << m.getHandle() << "] to port ["
+                  << m.getPortName() << "]: port not found" << std::endl;
+#endif
+         }
+
          break;
       }
 
@@ -826,7 +845,19 @@ bool Communicator::handleMessage(const message::Message &message) {
             i->second->getMessageQueue().send(&m, sizeof(m), 0);
          }
 
+         m_portManager.addPort(new Port(m.senderId(), m.getName(), Port::PARAMETER));
+
          replayMessages();
+         break;
+      }
+
+      case message::Message::CREATEPORT: {
+         const message::CreatePort &m =
+            static_cast<const message::CreatePort &>(message);
+         m_portManager.addPort(m.getPort());
+
+         replayMessages();
+
          break;
       }
 

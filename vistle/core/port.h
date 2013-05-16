@@ -19,7 +19,7 @@ struct deref_compare: std::binary_function<T*, T*, bool> {
 class Port {
 
  public:
-   enum Type { ANY = 0, INPUT = 1, OUTPUT = 2 };
+   enum Type { ANY = 0, INPUT = 1, OUTPUT = 2, PARAMETER };
    enum Flags {
       NONE=0,
       MULTI=1, //< additional ports are created for each connected port
