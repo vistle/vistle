@@ -1,6 +1,7 @@
 project(vistle_covise)
 
 set(VISTLE_BUILD ON)
+set(COVISE_USE_QT4 OFF)
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${PROJECT_SOURCE_DIR}/cmake/Modules/")
 
@@ -33,7 +34,11 @@ endif()
 set(COVISE_USE_CUDA TRUE)
 covise_find_package(CUDA)
 covise_find_package(XercesC REQUIRED)
-covise_find_package(Qt4 COMPONENTS QtCore QtXml QtNetwork REQUIRED)
+set(CMAKE_PREFIX_PATH $ENV{EXTERNLIBS}/qt5 ${CMAKE_PREFIX_PATH})
+#covise_find_package(Qt4 COMPONENTS QtCore QtXml QtNetwork REQUIRED)
+covise_find_package(Qt5Core REQUIRED)
+covise_find_package(Qt5Xml REQUIRED)
+covise_find_package(Qt5Network REQUIRED)
 
 include_directories(.)
 include_directories(../vistle)

@@ -46,8 +46,8 @@ MACRO(ADD_COVER_PLUGIN_TARGET targetname)
   
   add_definitions(-DIMPORT_PLUGIN)
 
-  set(QT_DONT_USE_QTGUI 1)
-  include(${QT_USE_FILE})
+  #set(QT_DONT_USE_QTGUI 1)
+  #include(${QT_USE_FILE})
 
   include_directories(
     ${ZLIB_INCLUDE_DIR}
@@ -69,6 +69,8 @@ MACRO(ADD_COVER_PLUGIN_TARGET targetname)
     
   TARGET_LINK_LIBRARIES(${targetname} covise_pluginutil covise_cover covise_osgvrui covise_vrbclient covise_config covise_util ${OPENSCENEGRAPH_LIBRARIES}) # ${CMAKE_THREAD_LIBS_INIT})
   
+  qt5_use_modules(${targetname} Core)
+
   UNSET(SOURCES)
   UNSET(HEADERS)
 ENDMACRO(ADD_COVER_PLUGIN_TARGET)
@@ -172,3 +174,11 @@ MACRO(COVISE_FIND_PACKAGE package)
 
    SET(CMAKE_PREFIX_PATH ${SAVED_CMAKE_PREFIX_PATH})
 ENDMACRO(COVISE_FIND_PACKAGE PACKAGE)
+
+MACRO(QT_WRAP_CPP)
+   IF(COVISE_USE_QT4)
+      QT4_WRAP_CPP(${ARGV})
+   ELSE()
+      QT5_WRAP_CPP(${ARGV})
+   ENDIF()
+ENDMACRO(QT_WRAP_CPP)
