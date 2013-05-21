@@ -356,6 +356,8 @@ class V_COREEXPORT SetParameter: public Message {
 
       void setInit();
       bool isInitialization() const;
+      void setReply();
+      bool isReply() const;
       bool setType(int type);
 
       void setRangeType(int rt);
@@ -378,6 +380,7 @@ class V_COREEXPORT SetParameter: public Message {
       int paramtype;
       int dim;
       bool initialize;
+      bool reply;
       int rangetype;
       union {
          int v_int;

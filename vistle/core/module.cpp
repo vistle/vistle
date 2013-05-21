@@ -196,7 +196,7 @@ bool Module::addParameterGeneric(const std::string &name, Parameter *param, Para
    return true;
 }
 
-bool Module::updateParameter(const std::string &name, const Parameter *param) {
+bool Module::updateParameter(const std::string &name, const Parameter *param, bool reply) {
 
    std::map<std::string, Parameter *>::iterator i =
       parameters.find(name);
@@ -217,6 +217,8 @@ bool Module::updateParameter(const std::string &name, const Parameter *param) {
    }
 
    message::SetParameter set(id(), name, param);
+   if (reply)
+      set.setReply();
    sendMessage(set);
 
    return true;
@@ -225,7 +227,7 @@ bool Module::updateParameter(const std::string &name, const Parameter *param) {
 template<class T>
 Parameter *Module::addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation pres) {
 
-   Parameter *p = new ParameterBase<T>(name, value);
+   Parameter *p = new ParameterBase<T>(id(), name, value);
    p->setDescription(description);
    if (!addParameterGeneric(name, p, pres)) {
       delete p;
@@ -245,14 +247,14 @@ Parameter *Module::findParameter(const std::string &name) const {
 }
 
 template<class T>
-bool Module::setParameter(const std::string &name, const T &value) {
+bool Module::setParameter(const std::string &name, const T &value, bool reply) {
 
    ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(findParameter(name));
    if (!p)
       return false;
 
    p->setValue(value);
-   return updateParameter(name, p);
+   return updateParameter(name, p, reply);
 }
 
 template<class T>
@@ -276,9 +278,9 @@ StringParameter *Module::addStringParameter(const std::string & name, const std:
 }
 
 bool Module::setStringParameter(const std::string & name,
-                              const std::string & value) {
+                              const std::string & value, bool reply) {
 
-   return setParameter(name, value);
+   return setParameter(name, value, reply);
 }
 
 std::string Module::getStringParameter(const std::string & name) const {
@@ -295,9 +297,9 @@ FloatParameter *Module::addFloatParameter(const std::string & name, const std::s
 }
 
 bool Module::setFloatParameter(const std::string & name,
-                               const vistle::Scalar value) {
+                               const vistle::Scalar value, bool reply) {
 
-   return setParameter(name, value);
+   return setParameter(name, value, reply);
 }
 
 vistle::Scalar Module::getFloatParameter(const std::string & name) const {
@@ -314,9 +316,9 @@ IntParameter *Module::addIntParameter(const std::string & name, const std::strin
 }
 
 bool Module::setIntParameter(const std::string & name,
-                             const int value) {
+                             const int value, bool reply) {
 
-   return setParameter(name, value);
+   return setParameter(name, value, reply);
 }
 
 int Module::getIntParameter(const std::string & name) const {
@@ -333,9 +335,9 @@ VectorParameter *Module::addVectorParameter(const std::string & name, const std:
 }
 
 bool Module::setVectorParameter(const std::string & name,
-                                const ParamVector & value) {
+                                const ParamVector & value, bool reply) {
 
-   return setParameter(name, value);
+   return setParameter(name, value, reply);
 }
 
 ParamVector Module::getVectorParameter(const std::string & name) const {
@@ -619,6 +621,9 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                   outputPorts[name] = newport;
                }
                break;
+            case Port::PARAMETER:
+               // does not really happen - handled in AddParameter
+               break;
             case Port::ANY:
                break;
          }
@@ -743,16 +748,16 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             // sent by controller
             switch (param->getParameterType()) {
                case Parameter::Integer:
-                  setIntParameter(param->getName(), param->getInteger());
+                  setIntParameter(param->getName(), param->getInteger(), true);
                   break;
                case Parameter::Scalar:
-                  setFloatParameter(param->getName(), param->getScalar());
+                  setFloatParameter(param->getName(), param->getScalar(), true);
                   break;
                case Parameter::Vector:
-                  setVectorParameter(param->getName(), param->getVector());
+                  setVectorParameter(param->getName(), param->getVector(), true);
                   break;
                case Parameter::String:
-                  setStringParameter(param->getName(), param->getString());
+                  setStringParameter(param->getName(), param->getString(), true);
                   break;
                default:
                   std::cerr << "Module::handleMessage: unknown parameter type " << param->getParameterType() << std::endl;
@@ -761,9 +766,11 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             }
 
             // notify controller about current value
+#if 0
             if (Parameter *p = findParameter(param->getName())) {
                sendMessage(message::SetParameter(id(), param->getName(), p));
             }
+#endif
          } else {
 
             parameterChanged(param->senderId(), param->getName(), *param);

@@ -60,7 +60,7 @@ class Communicator {
    std::string getModuleName(int id) const;
 
    std::vector<std::string> getParameters(int id) const;
-   const Parameter *getParameter(int id, const std::string &name) const;
+   Parameter *getParameter(int id, const std::string &name) const;
 
    const PortManager &portManager() const;
 

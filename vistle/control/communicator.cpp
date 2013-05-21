@@ -761,23 +761,20 @@ bool Communicator::handleMessage(const message::Message &message) {
          CERR << "SetParameter: sender=" << m.senderId() << ", module=" << m.getModule() << ", name=" << m.getName() << std::endl;
 #endif
 
-         ModuleParameterMap &pm = parameterMap[m.getModule()];
-         ModuleParameterMap::iterator it = pm.find(m.getName());
+         Parameter *param = getParameter(m.getModule(), m.getName());
          if (m.senderId() != m.getModule()) {
             // message to owning module
-            MessageQueueMap::iterator i
-               = sendMessageQueue.find(m.getModule());
-            if (i != sendMessageQueue.end() && it != pm.end())
+            MessageQueueMap::iterator i = sendMessageQueue.find(m.getModule());
+            if (i != sendMessageQueue.end() && param)
                i->second->getMessageQueue().send(&m, m.size(), 0);
             else
                queueMessage(m);
          } else {
             // notification of owning module about a changed parameter
-            if (it == pm.end()) {
-               CERR << "no such parameter: module id=" << m.getModule() << ", name=" << m.getName() << std::endl;
+            if (param) {
+               m.apply(param);
             } else {
-               Parameter *p = it->second;
-               m.apply(p);
+               CERR << "no such parameter: module id=" << m.getModule() << ", name=" << m.getName() << std::endl;
             }
 
             // let all modules know that a parameter was changed
@@ -789,25 +786,37 @@ bool Communicator::handleMessage(const message::Message &message) {
             }
          }
 
-         {
-            Port *port = m_portManager.getPort(m.senderId(), m.getName());
-            if (port) {
+         if (!m.isReply()) {
 
-               const PortManager::ConnectionList *list = m_portManager.getConnectionList(port);
+            // update linked parameters
+            typedef std::set<Parameter *> ParameterSet;
+            ParameterSet connectedParameters;
+
+            std::function<ParameterSet (const Port *, ParameterSet)> findAllConnectedPorts;
+            findAllConnectedPorts = [this, &findAllConnectedPorts] (const Port *port, ParameterSet conn) -> ParameterSet {
+               const PortManager::ConnectionList *list = this->m_portManager.getConnectionList(port);
                for (PortManager::ConnectionList::const_iterator pi = list->begin();
                      pi != list->end();
                      ++pi++) {
-
-                  MessageQueueMap::iterator mi = sendMessageQueue.find((*pi)->getModuleID());
-                  if (mi != sendMessageQueue.end()) {
-#if 0
-                     message::
-                     message::AddObject a((*pi)->getName(), obj);
-                     a.setSenderId(m.senderId());
-                     a.setRank(m.rank());
-                     mi->second->getMessageQueue().send(&a, sizeof(a), 0);
-#endif
+                  Parameter *param = getParameter(port->getModuleID(), port->getName());
+                  if (param && conn.find(param) == conn.end()) {
+                     conn.insert(param);
+                     const Port *port = m_portManager.getPort(param->module(), param->getName());
+                     conn = findAllConnectedPorts(port, conn);
                   }
+               }
+               return conn;
+            };
+            Port *port = m_portManager.getPort(m.senderId(), m.getName());
+            if (port) {
+               ParameterSet conn = findAllConnectedPorts(port, ParameterSet());
+
+               for (ParameterSet::iterator it = conn.begin();
+                     it != conn.end();
+                     ++it) {
+                  const Parameter *p = *it;
+                  message::SetParameter set(m.getModule(), p->getName(), p);
+                  sendMessage(p->module(), set);
                }
             }
 #if 0
@@ -964,7 +973,7 @@ std::vector<std::string> Communicator::getParameters(int id) const {
    return result;
 }
 
-const Parameter *Communicator::getParameter(int id, const std::string &name) const {
+Parameter *Communicator::getParameter(int id, const std::string &name) const {
 
    ParameterMap::const_iterator pit = parameterMap.find(id);
    if (pit == parameterMap.end())

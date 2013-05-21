@@ -37,7 +37,7 @@ class V_COREEXPORT Parameter {
       InvalidPresentation // keep last
    };
 
-   Parameter(const std::string & name, Type = Invalid, Presentation = Generic);
+   Parameter(int moduleId, const std::string & name, Type = Invalid, Presentation = Generic);
    virtual ~Parameter();
 
    void setDescription(const std::string &description);
@@ -46,6 +46,7 @@ class V_COREEXPORT Parameter {
    virtual operator std::string() const = 0;
    virtual bool isDefault() const = 0;
    virtual bool checkChoice(const std::vector<std::string> &choices) const { return true; }
+   int module() const;
    const std::string & getName() const;
    Type type() const;
    Presentation presentation() const;
@@ -54,6 +55,7 @@ class V_COREEXPORT Parameter {
  protected:
    std::vector<std::string> m_choices;
  private:
+   int m_module;
    std::string m_name;
    std::string m_description;
    enum Type m_type;
@@ -75,8 +77,8 @@ class V_COREEXPORT ParameterBase: public Parameter {
  public:
    typedef T ValueType;
 
-   ParameterBase(const std::string & name, T value = T())
-      : Parameter(name, ParameterType<T>::type)
+   ParameterBase(int moduleId, const std::string & name, T value = T())
+      : Parameter(moduleId, name, ParameterType<T>::type)
       , m_value(value)
       , m_defaultValue(value)
       , m_minimum(ParameterType<T>::min())

@@ -5,8 +5,9 @@
 
 namespace vistle {
 
-Parameter::Parameter(const std::string & n, Parameter::Type type, Parameter::Presentation p)
-   : m_name(n)
+Parameter::Parameter(int moduleId, const std::string & n, Parameter::Type type, Parameter::Presentation p)
+   : m_module(moduleId)
+   , m_name(n)
    , m_type(type)
    , m_presentation(p)
 {
@@ -26,6 +27,11 @@ void Parameter::setChoices(const std::vector<std::string> &c) {
 
    if (checkChoice(c))
       m_choices = c;
+}
+
+int Parameter::module() const {
+
+   return m_module;
 }
 
 const std::string & Parameter::getName() const {

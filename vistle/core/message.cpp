@@ -345,13 +345,13 @@ Parameter *AddParameter::getParameter() const {
 
    switch (getParameterType()) {
       case Parameter::Integer:
-         return new IntParameter(getName());
+         return new IntParameter(senderId(), getName());
       case Parameter::Scalar:
-         return new FloatParameter(getName());
+         return new FloatParameter(senderId(), getName());
       case Parameter::Vector:
-         return new VectorParameter(getName());
+         return new VectorParameter(senderId(), getName());
       case Parameter::String:
-         return new StringParameter(getName());
+         return new StringParameter(senderId(), getName());
       case Parameter::Invalid:
       case Parameter::Unknown:
          break;
@@ -369,6 +369,7 @@ SetParameter::SetParameter(const int module,
 , module(module)
 , paramtype(param->type())
 , initialize(false)
+, reply(false)
 , rangetype(SetParameter::Value)
 {
 
@@ -396,6 +397,7 @@ SetParameter::SetParameter(const int module,
 , module(module)
 , paramtype(Parameter::Integer)
 , initialize(false)
+, reply(false)
 , rangetype(SetParameter::Value)
 {
 
@@ -409,6 +411,7 @@ SetParameter::SetParameter(const int module,
 , module(module)
 , paramtype(Parameter::Scalar)
 , initialize(false)
+, reply(false)
 , rangetype(SetParameter::Value)
 {
 
@@ -422,6 +425,7 @@ SetParameter::SetParameter(const int module,
 , module(module)
 , paramtype(Parameter::Vector)
 , initialize(false)
+, reply(false)
 , rangetype(SetParameter::Value)
 {
 
@@ -437,6 +441,7 @@ SetParameter::SetParameter(const int module,
 , module(module)
 , paramtype(Parameter::String)
 , initialize(false)
+, reply(false)
 , rangetype(SetParameter::Value)
 {
 
@@ -452,6 +457,16 @@ void SetParameter::setInit() {
 bool SetParameter::isInitialization() const {
 
    return initialize;
+}
+
+void SetParameter::setReply() {
+
+   reply = true;
+}
+
+bool SetParameter::isReply() const {
+
+   return reply;
 }
 
 void SetParameter::setRangeType(int rt) {
