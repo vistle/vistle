@@ -343,9 +343,11 @@ bool Communicator::dispatch() {
       if (!tryReceiveAndHandleMessage(messageQueue, received, true))
          done = true;
 
-      for (std::map<int, message::MessageQueue *>::iterator i = receiveMessageQueue.begin();
+      for (std::map<int, message::MessageQueue *>::iterator next, i = receiveMessageQueue.begin();
             i != receiveMessageQueue.end();
-            ++i) {
+            i = next) {
+         next = i;
+         ++next;
 
          if (reachedSet.find(i->first) != reachedSet.end())
             continue;
