@@ -6,6 +6,7 @@
 #include <set>
 
 #include "objectcache.h"
+#include "export.h"
 
 namespace vistle {
 
@@ -16,7 +17,7 @@ struct deref_compare: std::binary_function<T*, T*, bool> {
    }
 };
 
-class Port {
+class V_COREEXPORT Port {
 
  public:
    enum Type { ANY = 0, INPUT = 1, OUTPUT = 2, PARAMETER };
