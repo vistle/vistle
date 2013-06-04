@@ -17,6 +17,6 @@ set(COVISE_USE_QT4 OFF)
 include(cmake/Qt4-5.cmake)
 find_qt()
 
-add_subdirectory(3rdparty)
 add_subdirectory(covise)
+add_subdirectory(3rdparty)
 add_subdirectory(vistle)
