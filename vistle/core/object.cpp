@@ -80,6 +80,7 @@ namespace vistle {
 
 Meta::Meta(int block, int timestep, int animstep, int iteration, int execcount, int creator)
 : m_block(block)
+, m_numBlocks(-1)
 , m_timestep(timestep)
 , m_animationstep(animstep)
 , m_iteration(iteration)
@@ -321,9 +322,19 @@ void Object::setTimestep(const int time) {
    d()->meta.setTimeStep(time);
 }
 
+void Object::setNumTimesteps(const int num) {
+
+   d()->meta.setNumTimesteps(num);
+}
+
 void Object::setBlock(const int blk) {
 
    d()->meta.setBlock(blk);
+}
+
+void Object::setNumBlocks(const int num) {
+
+   d()->meta.setNumBlocks(num);
 }
 
 void Object::setExecutionCounter(const int count) {

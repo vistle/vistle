@@ -98,8 +98,12 @@ void ReadCovise::applyAttributes(Object::ptr obj, const Element &elem, int index
             std::cerr << "ReadCovise: multiple TIMESTEP attributes in object hierarchy" << std::endl;
          }
          obj->setTimestep(index);
+         if (elem.parent)
+            obj->setNumTimesteps(elem.parent->subelems.size());
       } else if (obj->getBlock() == -1) {
          obj->setBlock(index);
+         if (elem.parent)
+            obj->setNumBlocks(elem.parent->subelems.size());
       }
 
       if (!isTimestep) {
