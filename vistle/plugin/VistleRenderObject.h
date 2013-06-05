@@ -87,6 +87,7 @@ class VistleRenderObject: public BaseRenderObject {
       mutable opencover::RenderObject *m_roTex;
 };
 
+// pseudo RenderObject for handling module parameters
 class ModuleRenderObject: public BaseRenderObject {
 
  public:

@@ -57,6 +57,7 @@ struct V_COREEXPORT Message {
       COMPUTE,
       CREATEPORT,
       ADDOBJECT,
+      OBJECTRECEIVED,
       CONNECT,
       DISCONNECT,
       ADDPARAMETER,
@@ -271,6 +272,23 @@ class V_COREEXPORT AddObject: public Message {
    const shm_handle_t handle;
 };
 BOOST_STATIC_ASSERT(sizeof(AddObject) < Message::MESSAGE_SIZE);
+
+//! notify rank 0 controller that an object was received
+class V_COREEXPORT ObjectReceived: public Message {
+
+ public:
+   ObjectReceived(const std::string &portName,
+         vistle::Object::const_ptr obj);
+   const char *getPortName() const;
+   const char *objectName() const;
+   const Meta &meta() const;
+
+ private:
+   port_name_t portName;
+   shm_name_t m_name;
+   Meta m_meta;
+};
+BOOST_STATIC_ASSERT(sizeof(ObjectReceived) < Message::MESSAGE_SIZE);
 
 //! connect an output port to an input port of another module
 class V_COREEXPORT Connect: public Message {

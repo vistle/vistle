@@ -225,7 +225,7 @@ const managed_shared_memory & Shm::shm() const {
    return *m_shm;
 }
 
-void Shm::publish(const shm_handle_t & handle) {
+void Shm::publish(const shm_handle_t & handle) const {
 
    if (m_messageQueue) {
       vistle::message::NewObject n(handle);
@@ -253,7 +253,7 @@ void Shm::markAsRemoved(const std::string &name) {
 }
 #endif
 
-shm_handle_t Shm::getHandleFromObject(Object::const_ptr object) {
+shm_handle_t Shm::getHandleFromObject(Object::const_ptr object) const {
 
    try {
       return m_shm->get_handle_from_address(object->d());
@@ -263,7 +263,7 @@ shm_handle_t Shm::getHandleFromObject(Object::const_ptr object) {
    return 0;
 }
 
-shm_handle_t Shm::getHandleFromObject(const Object *object) {
+shm_handle_t Shm::getHandleFromObject(const Object *object) const {
 
    try {
       return m_shm->get_handle_from_address(object->d());
@@ -273,7 +273,7 @@ shm_handle_t Shm::getHandleFromObject(const Object *object) {
    return 0;
 }
 
-Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) {
+Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) const {
 
    try {
       Object::Data *od = static_cast<Object::Data *>
@@ -281,6 +281,17 @@ Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) {
 
       return Object::create(od);
    } catch (interprocess_exception &ex) { }
+
+   return Object::const_ptr();
+}
+
+Object::const_ptr Shm::getObjectFromName(const std::string &name) const {
+
+   // we have to use char here, otherwise boost-internal consistency checks fail
+   void *mem = vistle::shm<char>::find(name);
+   if (mem) {
+      return Object::create(static_cast<Object::Data *>(mem));
+   }
 
    return Object::const_ptr();
 }

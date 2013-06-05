@@ -248,6 +248,31 @@ Object::const_ptr AddObject::takeObject() const {
    return obj;
 }
 
+ObjectReceived::ObjectReceived(const std::string &p,
+      vistle::Object::const_ptr obj)
+: Message(Message::OBJECTRECEIVED, sizeof(ObjectReceived))
+, m_name(obj->getName())
+, m_meta(obj->meta())
+{
+
+   COPY_STRING(portName, p);
+}
+
+const Meta &ObjectReceived::meta() const {
+
+   return m_meta;
+}
+
+const char *ObjectReceived::getPortName() const {
+
+   return portName;
+}
+
+const char *ObjectReceived::objectName() const {
+
+   return m_name;
+}
+
 Connect::Connect(const int moduleIDA, const std::string & portA,
                  const int moduleIDB, const std::string & portB)
    : Message(Message::CONNECT, sizeof(Connect)),

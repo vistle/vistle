@@ -67,6 +67,7 @@ struct shm {
    typedef boost::interprocess::vector<T, allocator> vector;
    typedef boost::interprocess::offset_ptr<vector> ptr;
    static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name);
+   static T *find(const std::string &name);
    static void destroy(const std::string &name);
 };
 
@@ -89,10 +90,11 @@ class V_COREEXPORT Shm {
    const boost::interprocess::managed_shared_memory &shm() const;
    std::string createObjectID();
 
-   void publish(const shm_handle_t & handle);
-   boost::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle);
-   shm_handle_t getHandleFromObject(boost::shared_ptr<const Object> object);
-   shm_handle_t getHandleFromObject(const Object *object);
+   void publish(const shm_handle_t & handle) const;
+   boost::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle) const;
+   shm_handle_t getHandleFromObject(boost::shared_ptr<const Object> object) const;
+   shm_handle_t getHandleFromObject(const Object *object) const;
+   boost::shared_ptr<const Object> getObjectFromName(const std::string &name) const;
 
    static std::string shmIdFilename();
    static bool cleanAll();
@@ -120,6 +122,11 @@ class V_COREEXPORT Shm {
 template<typename T>
 typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type shm<T>::construct(const std::string &name) {
    return Shm::the().shm().construct<T>(name.c_str());
+}
+
+template<typename T>
+T *shm<T>::find(const std::string &name) {
+   return Shm::the().shm().find<T>(name.c_str()).first;
 }
 
 template<typename T>

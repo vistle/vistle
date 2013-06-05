@@ -795,6 +795,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
+      case message::Message::OBJECTRECEIVED:
+         // currently only relevant for renderers
+         break;
+
       default:
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
                    << rank() << "/" << size() << "] unknown message type ["

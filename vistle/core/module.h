@@ -99,13 +99,13 @@ class V_COREEXPORT Module {
    message::MessageQueue *receiveMessageQueue;
    bool handleMessage(const message::Message *message);
 
+   virtual bool addInputObject(const std::string & portName,
+                               Object::const_ptr object);
  private:
    Parameter *findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;
    Port *findOutputPort(const std::string &name) const;
 
-   virtual bool addInputObject(const std::string & portName,
-                               Object::const_ptr object);
    virtual bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName);
    virtual bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg);
 

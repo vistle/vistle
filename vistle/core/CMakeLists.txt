@@ -4,6 +4,7 @@ add_library(vistle_core SHARED
    exception.cpp
    shm.cpp
    objectcache.cpp
+   objectmeta.cpp
    object.cpp
    allobjects.cpp # just one file including all the others for faster compilation
    #vec.cpp

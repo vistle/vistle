@@ -89,7 +89,7 @@ class Communicator {
    char *mpiReceiveBuffer;
    int mpiMessageSize;
 
-   MPI_Request request;
+   MPI_Request m_reqAny, m_reqToRank0;
 
    typedef std::map<int, message::MessageQueue *> MessageQueueMap;
    MessageQueueMap sendMessageQueue;

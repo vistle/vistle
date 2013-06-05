@@ -11,6 +11,7 @@
 #include <boost/serialization/access.hpp>
 
 #include "shm.h"
+#include "objectmeta.h"
 #include "export.h"
 
 namespace boost {
@@ -35,36 +36,6 @@ namespace bi = boost::interprocess;
 typedef bi::managed_shared_memory::handle_t shm_handle_t;
 
 class Shm;
-
-class V_COREEXPORT Meta {
-   public:
-      Meta(int timestep=-1, int block=-1, int animationstep=-1, int iteration=-1, int execcount=-1, int creator=-1);
-      int block() const { return m_block; }
-      void setBlock(int block) { m_block = block; }
-      int numBlocks() const { return m_numBlocks; }
-      void setNumBlocks(int num) { m_numBlocks = num; }
-      int timeStep() const { return m_timestep; }
-      void setTimeStep(int timestep) { m_timestep = timestep; }
-      int numTimesteps() const { return m_numTimesteps; }
-      void setNumTimesteps(int num) { m_numTimesteps = num; }
-      int animationStep() const { return m_animationstep; }
-      void setAnimationStep(int step) { m_animationstep = step; }
-      int iteration() const { return m_iteration; }
-      void setIteration(int iteration) { m_iteration = iteration; }
-      int executionCounter() const { return m_executionCount; }
-      void setExecutionCounter(int count) { m_executionCount = count; }
-      int creator() const { return m_creator; }
-      void setCreator(int id) { m_creator = id; }
-   private:
-      int m_block, m_numBlocks, m_timestep, m_numTimesteps, m_animationstep, m_iteration, m_executionCount, m_creator;
-
-      friend class boost::serialization::access;
-      template<class Archive>
-      void serialize(Archive &ar, const unsigned int version);
-};
-
-#define V_NAME(name, obj) \
-   boost::serialization::make_nvp(name, (obj))
 
 class V_COREEXPORT Object {
    friend class Shm;
@@ -320,8 +291,8 @@ class V_COREEXPORT ObjectTypeRegistry {
          ar & V_NAME("type", type); \
          d()->template serialize<Archive>(ar, version); \
       } \
-   friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &); \
-   friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>); \
+   friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &) const; \
+   friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>) const; \
    friend boost::shared_ptr<Object> Object::create(Object::Data *); \
    friend class ObjectTypeRegistry
 

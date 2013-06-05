@@ -64,6 +64,11 @@ class OsgRenderer: public vistle::Renderer {
 
    typedef std::map<int, VistleInteractor *> InteractorMap;
    InteractorMap m_interactorMap;
+
+ protected:
+   vistle::Object::const_ptr distributeObject(const std::string &portName,
+         vistle::Object::const_ptr object);
+
 };
 
 OsgRenderer::OsgRenderer(const std::string &shmname,
@@ -228,9 +233,16 @@ void OsgRenderer::addInputObject(vistle::Object::const_ptr container,
 }
 
 
+vistle::Object::const_ptr OsgRenderer::distributeObject(const std::string &portName,
+      vistle::Object::const_ptr object) {
+
+   return object;
+}
 
 bool OsgRenderer::addInputObject(const std::string & portName,
                                  vistle::Object::const_ptr object) {
+
+   object = distributeObject(portName, object);
 
    std::cout << "++++++OSGRenderer addInputObject " << object->getType()
              << " creator " << object->getCreator()
@@ -317,6 +329,7 @@ bool VistlePlugin::init() {
 
 void VistlePlugin::preFrame() {
 
+   MPI_Barrier(MPI_COMM_WORLD);
    if (!mod->dispatch()) {
       std::cerr << "Vistle requested COVER to quit" << std::endl;
       OpenCOVER::instance()->quitCallback(NULL,NULL);

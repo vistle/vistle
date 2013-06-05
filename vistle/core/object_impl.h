@@ -42,14 +42,6 @@ void access::construct(vistle::Object::Data::AttributeMapValueType *t);
 namespace vistle {
 
 template<class Archive>
-void Meta::serialize(Archive &ar, const unsigned int version) {
-   ar & V_NAME("block", m_block);
-   ar & V_NAME("timestep", m_timestep);
-   ar & V_NAME("animationstep", m_animationstep);
-   ar & V_NAME("iteration", m_iteration);
-}
-
-template<class Archive>
 void Object::Data::serialize(Archive &ar, const unsigned int version) {
    ar & V_NAME("meta", meta);
    //ar & V_NAME("attributes", *attributes);
