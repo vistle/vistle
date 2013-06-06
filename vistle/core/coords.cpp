@@ -4,7 +4,7 @@ namespace vistle {
 
 Coords::Coords(const size_t numVertices,
              const Meta &meta)
-   : Coords::Base(numVertices, meta)
+   : Coords::Base(static_cast<Data *>(NULL))
 {}
 
 bool Coords::checkImpl() const {
