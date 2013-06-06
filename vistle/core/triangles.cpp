@@ -26,7 +26,7 @@ Triangles::Data::Data(const Triangles::Data &o, const std::string &n)
 Triangles::Data::Data(const size_t numCorners, const size_t numVertices,
                      const std::string & name,
                      const Meta &meta)
-   : Base::Data(numCorners,
+   : Base::Data(numVertices,
          Object::TRIANGLES, name,
          meta)
    , cl(new ShmVector<size_t>(numCorners))
