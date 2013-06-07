@@ -43,8 +43,24 @@ namespace vistle {
 
 template<class Archive>
 void Object::Data::serialize(Archive &ar, const unsigned int version) {
+#ifdef DEBUG_SERIALIZATION
+   int checktype1 = type;
+   ar & V_NAME("checktype1", checktype1);
+   if (type != checktype1) {
+      std::cerr << "typecheck 1: should be " << type << ", read " << checktype1 << std::endl;
+   }
+   assert(checktype1 == type);
+#endif
    ar & V_NAME("meta", meta);
    //ar & V_NAME("attributes", *attributes);
+#ifdef DEBUG_SERIALIZATION
+   int checktype2 = type;
+   ar & V_NAME("checktype2", checktype2);
+   if (type != checktype2) {
+      std::cerr << "typecheck 2: should be " << type << ", read " << checktype2 << std::endl;
+   }
+   assert(checktype2 == type);
+#endif
 }
 
 template<>

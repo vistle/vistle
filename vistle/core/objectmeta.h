@@ -13,8 +13,21 @@
 #include "shm.h"
 #include "export.h"
 
+//#define DEBUG_SERIALIZATION
+#ifdef DEBUG_SERIALIZATION
+template<class T>
+inline const
+boost::serialization::nvp<T> vistle_make_nvp(const char *name, T &t) {
+   std::cerr << "<" << name << ">" << std::endl;
+   return boost::serialization::make_nvp<T>(name, t);
+}
+
+#define V_NAME(name, obj) \
+   vistle_make_nvp(name, (obj)); std::cerr << "</" << name << ">" << std::endl;
+#else
 #define V_NAME(name, obj) \
    boost::serialization::make_nvp(name, (obj))
+#endif
 
 namespace boost {
 namespace archive {
@@ -53,7 +66,7 @@ class V_COREEXPORT Meta {
       int creator() const { return m_creator; }
       void setCreator(int id) { m_creator = id; }
    private:
-      int m_block, m_numBlocks, m_timestep, m_numTimesteps, m_animationstep, m_iteration, m_executionCount, m_creator;
+      int m_block, m_numBlocks, m_timestep, m_numTimesteps, m_animationstep, m_numAnimationsteps, m_iteration, m_executionCount, m_creator;
 
       friend class boost::serialization::access;
       template<class Archive>

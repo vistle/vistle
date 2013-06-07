@@ -9,6 +9,7 @@ Meta::Meta(int block, int timestep, int animstep, int iteration, int execcount, 
 , m_timestep(timestep)
 , m_numTimesteps(-1)
 , m_animationstep(animstep)
+, m_numAnimationsteps(-1)
 , m_iteration(iteration)
 , m_executionCount(execcount)
 , m_creator(creator)

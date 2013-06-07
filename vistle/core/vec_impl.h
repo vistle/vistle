@@ -71,12 +71,13 @@ template <class T, int Dim>
 template <class Archive>
 void Vec<T,Dim>::Data::serialize(Archive &ar, const unsigned int version) {
 
-   ar & V_NAME("base", boost::serialization::base_object<Base::Data>(*this));
+   ar & V_NAME("base:object", boost::serialization::base_object<Base::Data>(*this));
    int dim = Dim;
    ar & V_NAME("dim", dim);
    assert(dim == Dim);
-   for (int c=0; c<Dim; ++c)
+   for (int c=0; c<Dim; ++c) {
       ar & V_NAME("x", *x[c]);
+   }
 }
 
 } // namespace vistle
