@@ -12,6 +12,7 @@
 #include "unstr.cpp"
 #include "geometry.cpp"
 #include "texture1d.cpp"
+#include "placeholder.cpp"
 
 namespace {
    using namespace vistle;

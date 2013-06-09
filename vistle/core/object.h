@@ -54,6 +54,7 @@ public:
 
    enum Type {
       UNKNOWN           = -1,
+      PLACEHOLDER       = 11,
 
       TEXTURE1D         = 17,
       GEOMETRY          = 18,
