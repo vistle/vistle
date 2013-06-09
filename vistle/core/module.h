@@ -101,6 +101,8 @@ class V_COREEXPORT Module {
 
    virtual bool addInputObject(const std::string & portName,
                                Object::const_ptr object);
+   bool syncMessageProcessing() const;
+   void setSyncMessageProcessing(bool sync);
  private:
    Parameter *findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;
@@ -117,6 +119,7 @@ class V_COREEXPORT Module {
    std::map<std::string, Parameter *> parameters;
    ObjectCache m_cache;
    ObjectCache::CacheMode m_defaultCacheMode;
+   bool m_syncMessageProcessing;
 };
 
 } // namespace vistle

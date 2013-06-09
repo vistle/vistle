@@ -41,6 +41,7 @@ Module::Module(const std::string &n, const std::string &shmname,
 , m_executionCount(0)
 , m_defaultCacheMode(ObjectCache::CacheNone)
 , m_mpiFinalize(true)
+, m_syncMessageProcessing(false)
 {
 
    message::DefaultSender::init(m_id, m_rank);
@@ -100,6 +101,16 @@ unsigned int Module::rank() const {
 unsigned int Module::size() const {
 
    return m_size;
+}
+
+bool Module::syncMessageProcessing() const {
+
+   return m_syncMessageProcessing;
+}
+
+void Module::setSyncMessageProcessing(bool sync) {
+
+   m_syncMessageProcessing = sync;
 }
 
 void Module::setCacheMode(ObjectCache::CacheMode mode) {
@@ -517,14 +528,55 @@ bool Module::dispatch() {
    unsigned int priority;
    char msgRecvBuf[message::Message::MESSAGE_SIZE];
 
+   bool again = true;
    receiveMessageQueue->getMessageQueue().receive(
                                                (void *) msgRecvBuf,
                                                message::Message::MESSAGE_SIZE,
                                                msgSize, priority);
-
    vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
 
-   bool again = handleMessage(message);
+
+   if (syncMessageProcessing()) {
+      int sync = 0, allsync = 0;
+
+      switch (message->type()) {
+         case vistle::message::Message::OBJECTRECEIVED:
+         case vistle::message::Message::QUIT:
+            sync = 1;
+            break;
+         default:
+            break;
+      }
+
+      MPI_Allreduce(&sync, &allsync, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+
+      do {
+         vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
+
+         switch (message->type()) {
+            case vistle::message::Message::OBJECTRECEIVED:
+            case vistle::message::Message::QUIT:
+               sync = 1;
+               break;
+            default:
+               break;
+         }
+
+         again &= handleMessage(message);
+
+         if (allsync && !sync) {
+            receiveMessageQueue->getMessageQueue().receive(
+                  (void *) msgRecvBuf,
+                  message::Message::MESSAGE_SIZE,
+                  msgSize, priority);
+         }
+
+      } while(allsync && !sync);
+   } else {
+
+      again &= handleMessage(message);
+   }
+
    return again;
 }
 
