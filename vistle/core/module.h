@@ -130,6 +130,7 @@ class V_COREEXPORT Module {
             exit(1); \
          } \
          MPI_Init(&argc, &argv); \
+         MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI::ERRORS_THROW_EXCEPTIONS); \
          MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
          MPI_Comm_size(MPI_COMM_WORLD, &size); \
          const std::string &shmname = argv[1]; \
