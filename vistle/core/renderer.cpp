@@ -1,48 +1,17 @@
 #include "message.h"
 #include "messagequeue.h"
+#include "object.h"
 
 #include "renderer.h"
 
-#include <streambuf>
+#include <util/vecstreambuf.h>
 
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
-#include <core/object.h>
-
 namespace ba = boost::archive;
 
 namespace vistle {
-
-class vecstreambuf: public std::streambuf {
- public:
-   vecstreambuf(std::vector<char> &vec) 
-   : m_vector(vec) {
-      setg(vec.data(), vec.data(), vec.data()+vec.size());
-   }
-   vecstreambuf() {
-   }
-   int_type overflow(int_type ch) {
-      if (ch != EOF) {
-         m_vector.push_back(ch);
-         return 0;
-      } else {
-         return EOF;
-      }
-   }
-   std::streamsize xsputn (const char *s, std::streamsize num) {
-      size_t oldsize = m_vector.size();
-      m_vector.resize(oldsize+num);
-      memcpy(m_vector.data()+oldsize, s, num);
-      return num;
-    }
-   const std::vector<char> &get_vector() const {
-      return m_vector;
-   }
- private:
-   std::vector<char> m_vector;
-
-};
 
 Renderer::Renderer(const std::string & name, const std::string &shmname,
                    const int rank, const int size, const int moduleID)
@@ -94,12 +63,9 @@ bool Renderer::dispatch() {
          switch (message->type()) {
             case vistle::message::Message::OBJECTRECEIVED: {
                const message::ObjectReceived *recv = static_cast<const message::ObjectReceived *>(message);
-               std::cerr << "*****" << std::endl;
-               std::cerr << "***** ObjectReceived: rank " << rank() << " from " << recv->rank() << std::endl;
-#if 1
                if (recv->rank() == rank()) {
                   Object::const_ptr obj = Shm::the().getObjectFromName(recv->objectName());
-                  vecstreambuf memstr;
+                  vecstreambuf<char> memstr;
                   ba::binary_oarchive memar(memstr);
                   obj->save(memar);
                   const std::vector<char> &mem = memstr.get_vector();
@@ -131,7 +97,7 @@ bool Renderer::dispatch() {
                   char *data = mem.data();
                   MPI_Bcast(data, mem.size(), MPI_BYTE, recv->rank(), MPI_COMM_WORLD);
                   std::cerr << "Rank " << rank() << ": Received " << len << " bytes for " << recv->objectName() << std::endl;
-                  vecstreambuf membuf(mem);
+                  vecstreambuf<char> membuf(mem);
                   ba::binary_iarchive memar(membuf);
                   Object::ptr obj = Object::load(memar);
                   if (obj) {
@@ -140,7 +106,6 @@ bool Renderer::dispatch() {
                      addInputObject(recv->getPortName(), obj);
                   }
                }
-#endif
                break;
             }
             default:
