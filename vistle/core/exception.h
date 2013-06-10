@@ -17,9 +17,11 @@ class V_COREEXPORT exception: public std::exception {
    virtual ~exception() throw();
 
    virtual const char* what() const throw();
+   virtual const char* where() const throw();
 
    private:
    std::string m_what;
+   std::string m_where;
 };
 
 class V_COREEXPORT not_implemented: public exception {

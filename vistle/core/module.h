@@ -142,6 +142,9 @@ class V_COREEXPORT Module {
          while (module.dispatch()) \
             ; \
          MPI_Barrier(MPI_COMM_WORLD); \
+      } catch(vistle::exception &e) { \
+         std::cerr << "fatal exception: " << e.what() << std::endl << e.where() << std::endl; \
+         exit(1); \
       } catch(std::exception &e) { \
          std::cerr << "fatal exception: " << e.what() << std::endl; \
          exit(1); \

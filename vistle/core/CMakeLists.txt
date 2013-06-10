@@ -34,6 +34,7 @@ if(UNIX AND NOT APPLE)
 endif()
 
 target_link_libraries(vistle_core
+        vistle_util
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
 )

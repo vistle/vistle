@@ -32,6 +32,10 @@ int main(int argc, char ** argv) {
       MPI_Init(&argc, &argv);
       Vistle(argc, argv).run();
       MPI_Finalize();
+   } catch(vistle::exception &e) {
+
+      std::cerr << "fatal exception: " << e.what() << std::endl << e.where() << std::endl;
+      exit(1);
    } catch(std::exception &e) {
 
       std::cerr << "fatal exception: " << e.what() << std::endl;
