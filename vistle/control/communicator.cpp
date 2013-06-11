@@ -159,20 +159,21 @@ static std::string getbindir(int argc, char *argv[]) {
 }
 
 Communicator::Communicator(int argc, char *argv[], int r, const std::vector<std::string> &hosts)
-   :
-      m_clientManager(NULL),
-      rank(r), size(hosts.size()),
-      m_hosts(hosts),
-   m_quitFlag(false),
-     mpiReceiveBuffer(NULL), mpiMessageSize(0),
-     m_moduleCounter(0),
-     m_executionCounter(0),
-     m_barrierCounter(0),
-     m_activeBarrier(-1),
-     m_reachedBarriers(-1),
-     messageQueue(create_only,
-           message::MessageQueue::createName("command_queue", 0, r).c_str(),
-           256 /* num msg */, message::Message::MESSAGE_SIZE)
+: m_clientManager(NULL)
+, rank(r)
+, size(hosts.size())
+, m_hosts(hosts)
+, m_quitFlag(false)
+, mpiReceiveBuffer(NULL)
+, mpiMessageSize(0)
+, m_moduleCounter(0)
+, m_executionCounter(0)
+, m_barrierCounter(0)
+, m_activeBarrier(-1)
+, m_reachedBarriers(-1)
+, messageQueue(create_only,
+      message::MessageQueue::createName("command_queue", 0, r).c_str(),
+      256 /* num msg */, message::Message::MESSAGE_SIZE)
 {
    assert(s_singleton == NULL);
    s_singleton = this;
@@ -485,12 +486,14 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Ping &ping =
             static_cast<const message::Ping &>(message);
-         CERR << "Ping [" << ping.getCharacter() << "]" << std::endl;
+         int count = 0;
          for (MessageQueueMap::iterator i = sendMessageQueue.begin();
                i != sendMessageQueue.end();
                ++i) {
             i->second->getMessageQueue().send(&ping, sizeof(ping), 0);
+            ++count;
          }
+         CERR << "Ping [" << ping.getCharacter() << "] - " << count << " times" << std::endl;
          break;
       }
 
@@ -548,9 +551,18 @@ bool Communicator::handleMessage(const message::Message &message) {
          argv.push_back(id.c_str());
          argv.push_back(NULL);
 
-         MPI_Comm_spawn(const_cast<char *>(executable.c_str()), const_cast<char **>(&argv[0]), size, MPI_INFO_NULL,
-                        0, MPI_COMM_WORLD, &interComm, MPI_ERRCODES_IGNORE);
+         std::vector<char *> commands(size, const_cast<char *>(executable.c_str()));
+         std::vector<char **> argvs(size, const_cast<char **>(&argv[0]));
+         std::vector<int> maxprocs(size, 1);
+         std::vector<MPI_Info> infos(size);
+         for (int i=0; i<infos.size(); ++i) {
+            MPI_Info_create(&infos[i]);
+            MPI_Info_set(infos[i], "host", const_cast<char *>(m_hosts[i].c_str()));
+         }
+         std::vector<int> errors(size);
 
+         MPI_Comm_spawn_multiple(size, &commands[0], &argvs[0], &maxprocs[0], &infos[0],
+                        0, MPI_COMM_WORLD, &interComm, &errors[0]);
 
          // inform modules about current parameter values of other modules
          for (ParameterMap::iterator mit = parameterMap.begin();

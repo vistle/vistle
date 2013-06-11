@@ -43,17 +43,43 @@ Module::Module(const std::string &n, const std::string &shmname,
 , m_mpiFinalize(true)
 , m_syncMessageProcessing(false)
 {
-
-   message::DefaultSender::init(m_id, m_rank);
-
 #ifdef _WIN32
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
 #endif
 
+   message::DefaultSender::init(m_id, m_rank);
+
    const int HOSTNAMESIZE = 64;
    char hostname[HOSTNAMESIZE];
    gethostname(hostname, HOSTNAMESIZE - 1);
+
+   try {
+      Shm::attach(shmname, id(), rank(), sendMessageQueue);
+   } catch (interprocess_exception &ex) {
+      std::cerr << "module " << id() << " [" << rank() << "/" << size() << "] "
+                << ex.what() << std::endl;
+      exit(2);
+   }
+
+   // names are swapped relative to communicator
+   std::string smqName = message::MessageQueue::createName("rmq", id(), rank());
+   try {
+      sendMessageQueue = message::MessageQueue::open(smqName);
+   } catch (interprocess_exception &ex) {
+      std::cerr << "module " << id() << " [" << rank() << "/" << size() << "] "
+         << ex.what() << std::endl;
+      exit(2);
+   }
+
+   std::string rmqName = message::MessageQueue::createName("smq", id(), rank());
+   try {
+      receiveMessageQueue = message::MessageQueue::open(rmqName);
+   } catch (interprocess_exception &ex) {
+      std::cerr << "module " << id() << " [" << rank() << "/" << size() << "] "
+         << ex.what() << std::endl;
+      exit(2);
+   }
 
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
              << "/" << size() << "] started as " << hostname << ":"
@@ -62,23 +88,8 @@ Module::Module(const std::string &n, const std::string &shmname,
 #else
              << std::endl;
 #endif
-
-   try {
-      Shm::attach(shmname, id(), rank(), sendMessageQueue);
-
-      std::string smqName =
-         message::MessageQueue::createName("rmq", id(), rank());
-      std::string rmqName =
-         message::MessageQueue::createName("smq", id(), rank());
-
-      sendMessageQueue = message::MessageQueue::open(smqName);
-      receiveMessageQueue = message::MessageQueue::open(rmqName);
-
-   } catch (interprocess_exception &ex) {
-      std::cerr << "module " << id() << " [" << rank() << "/" << size() << "] "
-                << ex.what() << std::endl;
-      exit(2);
-   }
+   std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
+             << "/" << size() << "] " << rmqName << ", " << smqName << std::endl;
 
    sendMessage(message::Started(name()));
 }

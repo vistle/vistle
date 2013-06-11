@@ -61,7 +61,7 @@ Executor::Executor(int argc, char *argv[])
    MPI_Comm_size(MPI_COMM_WORLD, &m_size);
 
    // process with the smallest rank on each host allocates shm
-   const int HOSTNAMESIZE = 256;
+   const int HOSTNAMESIZE = 64;
 
    char hostname[HOSTNAMESIZE];
    std::vector<char> hostnames(HOSTNAMESIZE * m_size);
@@ -73,6 +73,18 @@ Executor::Executor(int argc, char *argv[])
       instanceName << "vistle_" << hostname << "_" << pid;
    }
    m_name = instanceName.str();
+
+   if (!m_rank) {
+      uint64_t len = m_name.length();
+      MPI_Bcast(&len, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+      MPI_Bcast(const_cast<char *>(m_name.data()), len, MPI_BYTE, 0, MPI_COMM_WORLD);
+   } else {
+      uint64_t len = 0;
+      MPI_Bcast(&len, 1, MPI_UINT64_T, 0, MPI_COMM_WORLD);
+      std::vector<char> buf(len);
+      MPI_Bcast(buf.data(), len, MPI_BYTE, 0, MPI_COMM_WORLD);
+      m_name = std::string(buf.data(), len);
+   }
 
    MPI_Allgather(hostname, HOSTNAMESIZE, MPI_CHAR,
                  &hostnames[0], HOSTNAMESIZE, MPI_CHAR, MPI_COMM_WORLD);
