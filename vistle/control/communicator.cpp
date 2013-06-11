@@ -158,10 +158,11 @@ static std::string getbindir(int argc, char *argv[]) {
    return std::string();
 }
 
-Communicator::Communicator(int argc, char *argv[], int r, int s)
+Communicator::Communicator(int argc, char *argv[], int r, const std::vector<std::string> &hosts)
    :
       m_clientManager(NULL),
-      rank(r), size(s),
+      rank(r), size(hosts.size()),
+      m_hosts(hosts),
    m_quitFlag(false),
      mpiReceiveBuffer(NULL), mpiMessageSize(0),
      m_moduleCounter(0),

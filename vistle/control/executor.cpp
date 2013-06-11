@@ -61,7 +61,7 @@ Executor::Executor(int argc, char *argv[])
    MPI_Comm_size(MPI_COMM_WORLD, &m_size);
 
    // process with the smallest rank on each host allocates shm
-   const int HOSTNAMESIZE = 64;
+   const int HOSTNAMESIZE = 256;
 
    char hostname[HOSTNAMESIZE];
    std::vector<char> hostnames(HOSTNAMESIZE * m_size);
@@ -82,6 +82,11 @@ Executor::Executor(int argc, char *argv[])
       if (!strncmp(hostname, &hostnames[index * HOSTNAMESIZE], HOSTNAMESIZE))
          first = false;
 
+   std::vector<std::string> hosts;
+   for (int index=0; index<m_size; ++index) {
+      hosts.push_back(&hostnames[HOSTNAMESIZE*index]);
+   }
+
    if (first) {
       shared_memory_object::remove(m_name.c_str());
       vistle::Shm::create(m_name, 0, m_rank, NULL);
@@ -100,7 +105,7 @@ Executor::Executor(int argc, char *argv[])
       vistle::Shm::attach(m_name, 0, m_rank, NULL);
    MPI_Barrier(MPI_COMM_WORLD);
 
-   m_comm = new vistle::Communicator(argc, argv, m_rank, m_size);
+   m_comm = new vistle::Communicator(argc, argv, m_rank, hosts);
 }
 
 Executor::~Executor()

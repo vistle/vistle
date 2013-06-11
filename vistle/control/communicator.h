@@ -33,7 +33,7 @@ class Communicator {
    friend class PythonEmbed;
 
  public:
-   Communicator(int argc, char *argv[], int rank, int size);
+   Communicator(int argc, char *argv[], int rank, const std::vector<std::string> &hosts);
    ~Communicator();
    static Communicator &the();
 
@@ -79,6 +79,7 @@ class Communicator {
 
    const int rank;
    const int size;
+   const std::vector<std::string> m_hosts;
 
    bool m_quitFlag;
 
