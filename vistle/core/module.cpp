@@ -40,7 +40,6 @@ Module::Module(const std::string &n, const std::string &shmname,
 , m_id(m)
 , m_executionCount(0)
 , m_defaultCacheMode(ObjectCache::CacheNone)
-, m_mpiFinalize(true)
 , m_syncMessageProcessing(false)
 {
 #ifdef _WIN32
@@ -882,9 +881,6 @@ Module::~Module() {
              << "/" << size() << "] quit" << std::endl;
 
    MPI_Barrier(MPI_COMM_WORLD);
-
-   if (m_mpiFinalize)
-      MPI_Finalize();
 }
 
 } // namespace vistle

@@ -88,7 +88,6 @@ class V_COREEXPORT Module {
    const unsigned int m_rank;
    const unsigned int m_size;
    const int m_id;
-   bool m_mpiFinalize;
 
    int m_executionCount;
 
@@ -127,12 +126,12 @@ class V_COREEXPORT Module {
 #define MODULE_MAIN(X) \
    int main(int argc, char **argv) { \
       int rank, size, moduleID; \
+      MPI_Init(&argc, &argv); \
       try { \
          if (argc != 3) { \
             std::cerr << "module requires exactly 2 parameters" << std::endl; \
             exit(1); \
          } \
-         MPI_Init(&argc, &argv); \
          MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI::ERRORS_THROW_EXCEPTIONS); \
          MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
          MPI_Comm_size(MPI_COMM_WORLD, &size); \
@@ -144,11 +143,14 @@ class V_COREEXPORT Module {
          MPI_Barrier(MPI_COMM_WORLD); \
       } catch(vistle::exception &e) { \
          std::cerr << "fatal exception: " << e.what() << std::endl << e.where() << std::endl; \
+         MPI_Finalize(); \
          exit(1); \
       } catch(std::exception &e) { \
          std::cerr << "fatal exception: " << e.what() << std::endl; \
+         MPI_Finalize(); \
          exit(1); \
       } \
+      MPI_Finalize(); \
       return 0; \
    }
 
