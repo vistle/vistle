@@ -564,6 +564,10 @@ bool Communicator::handleMessage(const message::Message &message) {
          MPI_Comm_spawn_multiple(size, &commands[0], &argvs[0], &maxprocs[0], &infos[0],
                         0, MPI_COMM_WORLD, &interComm, &errors[0]);
 
+         for (int i=0; i<infos.size(); ++i) {
+            MPI_Info_free(&infos[i]);
+         }
+
          // inform modules about current parameter values of other modules
          for (ParameterMap::iterator mit = parameterMap.begin();
                mit != parameterMap.end();
