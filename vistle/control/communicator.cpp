@@ -282,11 +282,12 @@ bool Communicator::tryReceiveAndHandleMessage(boost::interprocess::message_queue
             msgSize, priority);
 
       if (received) {
+         message::Message *msg = reinterpret_cast<message::Message *>(msgRecvBuf);
          if (broadcast) {
-            if (!broadcastAndHandleMessage(*(message::Message *)msgRecvBuf))
+            if (!broadcastAndHandleMessage(*msg))
                done = true;
          } else {
-            if (!handleMessage(*(message::Message *)msgRecvBuf))
+            if (!handleMessage(*msg))
                done = true;
          }
          return !done;
@@ -673,20 +674,18 @@ bool Communicator::handleMessage(const message::Message &message) {
             PortManager::ConnectionList::const_iterator pi;
             for (pi = list->begin(); pi != list->end(); pi ++) {
 
-               MessageQueueMap::iterator mi =
-                  sendMessageQueue.find((*pi)->getModuleID());
-               if (mi != sendMessageQueue.end()) {
-                  message::AddObject a((*pi)->getName(), obj);
-                  a.setSenderId(m.senderId());
-                  a.setRank(m.rank());
-                  mi->second->getMessageQueue().send(&a, sizeof(a), 0);
+               int destId = (*pi)->getModuleID();
 
-                  const message::Compute c((*pi)->getModuleID(), -1);
-                  mi->second->getMessageQueue().send(&c, sizeof(c), 0);
-               }
+               message::AddObject a((*pi)->getName(), obj);
+               a.setSenderId(m.senderId());
+               a.setRank(m.rank());
+               sendMessage(destId, a);
+
+               const message::Compute c(destId, -1);
+               sendMessage(destId, c);
 
                message::ObjectReceived recv(m.getPortName(), obj);
-               recv.setSenderId((*pi)->getModuleID());
+               recv.setSenderId(destId);
                if (!broadcastAndHandleMessage(recv))
                   return false;
             }
