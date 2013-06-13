@@ -69,7 +69,7 @@ MACRO(ADD_COVER_PLUGIN_TARGET targetname)
     
   TARGET_LINK_LIBRARIES(${targetname} covise_pluginutil covise_cover covise_osgvrui covise_vrbclient covise_config covise_util ${OPENSCENEGRAPH_LIBRARIES}) # ${CMAKE_THREAD_LIBS_INIT})
   
-  qt5_use_modules(${targetname} Core)
+  qt_use_modules(${targetname} Core)
 
   UNSET(SOURCES)
   UNSET(HEADERS)
