@@ -614,6 +614,8 @@ bool Communicator::handleMessage(const message::Message &message) {
          if (i != sendMessageQueue.end()) {
             if (comp.senderId() == 0) {
                i->second->getMessageQueue().send(&comp, sizeof(comp), 0);
+               assert(m_executionCounter <= comp.getExecutionCount());
+               m_executionCounter = comp.getExecutionCount();
             } else {
                message::Compute msg(comp.getModule(), newExecutionCount());
                msg.setSenderId(comp.senderId());
