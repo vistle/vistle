@@ -191,9 +191,14 @@ void OsgRenderer::addInputObject(vistle::Object::const_ptr container,
                                  vistle::Object::const_ptr texture) {
 
    AgeMap::iterator it = ageMap.find(container->getCreator());
-   if (it != ageMap.end() && it->second != container->getExecutionCounter()) {
-      std::cerr << "removing all created by " << container->getCreator() << ", age " << container->getExecutionCounter() << " was " << it->second << std::endl;
-      removeAllCreatedBy(container->getCreator());
+   if (it != ageMap.end()) {
+      if (it->second < container->getExecutionCounter()) {
+         std::cerr << "removing all created by " << container->getCreator() << ", age " << container->getExecutionCounter() << ", was " << it->second << std::endl;
+         removeAllCreatedBy(container->getCreator());
+      } else if (it->second > container->getExecutionCounter()) {
+         std::cerr << "received outdated object created by " << container->getCreator() << ", age " << container->getExecutionCounter() << ", was " << it->second << std::endl;
+         return;
+      }
    }
    ageMap[container->getCreator()] = container->getExecutionCounter();
 
