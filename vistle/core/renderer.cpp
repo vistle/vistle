@@ -66,31 +66,43 @@ bool Renderer::dispatch() {
                if (size() > 1) {
                   if (recv->rank() == rank()) {
                      Object::const_ptr obj = Shm::the().getObjectFromName(recv->objectName());
-                     vecstreambuf<char> memstr;
-                     ba::binary_oarchive memar(memstr);
-                     obj->save(memar);
-                     const std::vector<char> &mem = memstr.get_vector();
-                     uint64_t len = mem.size();
-                     std::cerr << "Rank " << rank() << ": Broadcasting " << len << " bytes, type=" << obj->getType() << " (" << obj->getName() << ")" << std::endl;
-                     const char *data = mem.data();
-                     MPI_Bcast(&len, 1, MPI_UINT64_T, rank(), MPI_COMM_WORLD);
-                     MPI_Bcast(const_cast<char *>(data), len, MPI_BYTE, rank(), MPI_COMM_WORLD);
+                     if (obj) {
+                        vecstreambuf<char> memstr;
+                        ba::binary_oarchive memar(memstr);
+                        obj->save(memar);
+                        const std::vector<char> &mem = memstr.get_vector();
+                        uint64_t len = mem.size();
+                        std::cerr << "Rank " << rank() << ": Broadcasting " << len << " bytes, type=" << obj->getType() << " (" << obj->getName() << ")" << std::endl;
+                        const char *data = mem.data();
+                        MPI_Bcast(&len, 1, MPI_UINT64_T, rank(), MPI_COMM_WORLD);
+                        MPI_Bcast(const_cast<char *>(data), len, MPI_BYTE, rank(), MPI_COMM_WORLD);
+                     } else {
+                        uint64_t len = 0;
+                        MPI_Bcast(&len, 1, MPI_UINT64_T, rank(), MPI_COMM_WORLD);
+                        std::cerr << "*************************************************************" << std::endl;
+                        std::cerr << "*************************************************************" << std::endl;
+                        std::cerr << "Rank " << rank() << ": OBJECT NOT FOUND: " << recv->objectName() << std::endl;
+                        std::cerr << "*************************************************************" << std::endl;
+                        std::cerr << "*************************************************************" << std::endl;
+                     }
                   } else {
                      uint64_t len = 0;
                      std::cerr << "Rank " << rank() << ": Waiting to receive" << std::endl;
                      MPI_Bcast(&len, 1, MPI_UINT64_T, recv->rank(), MPI_COMM_WORLD);
-                     std::cerr << "Rank " << rank() << ": Waiting to receive " << len << " bytes" << std::endl;
-                     std::vector<char> mem(len);
-                     char *data = mem.data();
-                     MPI_Bcast(data, mem.size(), MPI_BYTE, recv->rank(), MPI_COMM_WORLD);
-                     std::cerr << "Rank " << rank() << ": Received " << len << " bytes for " << recv->objectName() << std::endl;
-                     vecstreambuf<char> membuf(mem);
-                     ba::binary_iarchive memar(membuf);
-                     Object::ptr obj = Object::load(memar);
-                     if (obj) {
-                        std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;
-                        assert(obj->check());
-                        addInputObject(recv->getPortName(), obj);
+                     if (len > 0) {
+                        std::cerr << "Rank " << rank() << ": Waiting to receive " << len << " bytes" << std::endl;
+                        std::vector<char> mem(len);
+                        char *data = mem.data();
+                        MPI_Bcast(data, mem.size(), MPI_BYTE, recv->rank(), MPI_COMM_WORLD);
+                        std::cerr << "Rank " << rank() << ": Received " << len << " bytes for " << recv->objectName() << std::endl;
+                        vecstreambuf<char> membuf(mem);
+                        ba::binary_iarchive memar(membuf);
+                        Object::ptr obj = Object::load(memar);
+                        if (obj) {
+                           std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;
+                           assert(obj->check());
+                           addInputObject(recv->getPortName(), obj);
+                        }
                      }
                   }
                }
