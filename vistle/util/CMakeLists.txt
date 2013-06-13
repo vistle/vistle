@@ -1,4 +1,5 @@
 add_library(vistle_util SHARED
+   findself.cpp
    tools.cpp
    coRestraint.cpp
    )

@@ -32,4 +32,5 @@ target_link_libraries(vistle_control
         ${PYTHON_LIBRARIES}
         ${EXTRA_LIBRARIES}
         vistle_core
+        vistle_util
 )
