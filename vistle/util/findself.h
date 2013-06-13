@@ -2,10 +2,11 @@
 #define FINDSELF_H
 
 #include <string>
+#include "export.h"
 
 namespace vistle {
 
-std::string getbindir(int argc, char *argv[]);
+V_UTILEXPORT std::string getbindir(int argc, char *argv[]);
 
 } // namespace vistle
 #endif
