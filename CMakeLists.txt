@@ -19,6 +19,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif()
 
 set(COVISE_USE_QT4 OFF)
+set(DESKVOX_USE_QT4 ${COVISE_USE_QT4})
 include(cmake/Qt4-5.cmake)
 find_qt()
 
