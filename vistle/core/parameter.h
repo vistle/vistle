@@ -138,7 +138,7 @@ struct ParameterType<double> {
    typedef double T;
    static const Parameter::Type type = Parameter::Scalar;
    static const bool isNumber = true;
-   static const T min() { return std::numeric_limits<T>::min(); }
+   static const T min() { return -std::numeric_limits<T>::max(); }
    static const T max() { return std::numeric_limits<T>::max(); }
 };
 
