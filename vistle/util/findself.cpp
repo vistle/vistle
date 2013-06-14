@@ -5,6 +5,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <dirent.h>
+#include <errno.h>
 
 namespace vistle {
 
