@@ -73,6 +73,201 @@ inline Scalar3 interp(Scalar iso, const Scalar3 &p0, const Scalar3 &p1, const Sc
    return lerp3(p0, p1, t);
 }
 
+class Leveller {
+
+   UnstructuredGrid::const_ptr m_grid;
+   std::vector<Object::const_ptr> m_data;
+   Scalar m_isoValue;
+
+   unsigned char *tl = NULL;
+   size_t *el = NULL;
+   size_t *cl = NULL;
+   const Scalar *x = NULL;
+   const Scalar *y = NULL;
+   const Scalar *z = NULL;
+
+   const Scalar *d = NULL;
+
+   size_t *out_cl = NULL;
+   Scalar *out_x = NULL;
+   Scalar *out_y = NULL;
+   Scalar *out_z = NULL;
+   Scalar *out_d = NULL;
+
+   Triangles::ptr m_triangles;
+   Vec<Scalar>::ptr m_outData;
+
+   bool m_countOnly = true;
+
+ public:
+   Leveller(UnstructuredGrid::const_ptr grid, const Scalar isovalue)
+   : m_grid(grid)
+   , m_isoValue(isovalue)
+   {
+
+      tl = &grid->tl()[0];
+      el = &grid->el()[0];
+      cl = &grid->cl()[0];
+      x = &grid->x()[0];
+      y = &grid->y()[0];
+      z = &grid->z()[0];
+
+      m_triangles = Triangles::ptr(new Triangles(Object::Initialized));
+      m_triangles->setMeta(grid->meta());
+   }
+
+   void addData(Object::const_ptr obj) {
+
+      m_data.push_back(obj);
+      auto data = Vec<Scalar, 1>::as(obj);
+      if (data) {
+         d = &data->x()[0];
+
+         m_outData = Vec<Scalar>::ptr(new Vec<Scalar>(Object::Initialized));
+         m_outData->setMeta(data->meta());
+      }
+   }
+
+   bool process() {
+      const size_t numElem = m_grid->getNumElements();
+
+      size_t curidx = 0;
+      std::vector<size_t> outputIdx(numElem);
+#pragma omp parallel for
+      for (size_t elem=0; elem<numElem; ++elem) {
+
+         size_t n = 0;
+         switch (tl[elem]) {
+            case UnstructuredGrid::HEXAHEDRON: {
+               n = processHexahedron(elem, 0, true /* count only */);
+            }
+         }
+#pragma omp critical
+         {
+            outputIdx[elem] = curidx;
+            curidx += n;
+         }
+      }
+
+      //std::cerr << "CuttingSurface: " << curidx << " vertices" << std::endl;
+
+      m_triangles->cl().resize(curidx);
+      out_cl = m_triangles->cl().data();
+      m_triangles->x().resize(curidx);
+      out_x = m_triangles->x().data();
+      m_triangles->y().resize(curidx);
+      out_y = m_triangles->y().data();
+      m_triangles->z().resize(curidx);
+      out_z = m_triangles->z().data();
+
+      if (m_outData) {
+         m_outData->x().resize(curidx);
+         out_d = m_outData->x().data();
+      }
+
+#pragma omp parallel for
+      for (size_t elem = 0; elem<numElem; ++elem) {
+         size_t numvert = 1;
+         if (elem < numElem-1) {
+            numvert = outputIdx[elem+1]-outputIdx[elem];
+         }
+         if (numvert == 0)
+            continue;
+         switch (tl[elem]) {
+            case UnstructuredGrid::HEXAHEDRON: {
+               processHexahedron(elem, outputIdx[elem], false);
+            }
+         }
+      }
+
+      //std::cerr << "CuttingSurface: << " << m_outData->x().size() << " vert, " << m_outData->x().size() << " data elements" << std::endl;
+
+      return true;
+   }
+
+   Object::ptr result() {
+
+      return m_triangles;
+   }
+
+ private:
+   size_t processHexahedron(const size_t elem, const size_t outIdx, bool numVertsOnly) {
+
+      size_t p = el[elem];
+
+      size_t index[8];
+      index[0] = cl[p + 5];
+      index[1] = cl[p + 6];
+      index[2] = cl[p + 2];
+      index[3] = cl[p + 1];
+      index[4] = cl[p + 4];
+      index[5] = cl[p + 7];
+      index[6] = cl[p + 3];
+      index[7] = cl[p];
+
+      Scalar field[8];
+      Scalar3 v[8];
+      for (int idx = 0; idx < 8; idx ++) {
+         v[idx].x = x[index[idx]];
+         v[idx].y = y[index[idx]];
+         v[idx].z = z[index[idx]];
+         field[idx] = d[index[idx]];
+      }
+
+      uint tableIndex = 0;
+      for (int idx = 0; idx < 8; idx ++)
+         tableIndex += (((int) (field[idx] < m_isoValue)) << idx);
+
+      int numVerts = hexaNumVertsTable[tableIndex];
+
+      if (numVertsOnly) {
+         return numVerts;
+      }
+
+      if (numVerts) {
+
+         auto &t = m_triangles;
+
+         Scalar3 vertlist[12];
+         vertlist[0] = interp(m_isoValue, v[0], v[1], field[0], field[1]);
+         vertlist[1] = interp(m_isoValue, v[1], v[2], field[1], field[2]);
+         vertlist[2] = interp(m_isoValue, v[2], v[3], field[2], field[3]);
+         vertlist[3] = interp(m_isoValue, v[3], v[0], field[3], field[0]);
+
+         vertlist[4] = interp(m_isoValue, v[4], v[5], field[4], field[5]);
+         vertlist[5] = interp(m_isoValue, v[5], v[6], field[5], field[6]);
+         vertlist[6] = interp(m_isoValue, v[6], v[7], field[6], field[7]);
+         vertlist[7] = interp(m_isoValue, v[7], v[4], field[7], field[4]);
+
+         vertlist[8] = interp(m_isoValue, v[0], v[4], field[0], field[4]);
+         vertlist[9] = interp(m_isoValue, v[1], v[5], field[1], field[5]);
+         vertlist[10] = interp(m_isoValue, v[2], v[6], field[2], field[6]);
+         vertlist[11] = interp(m_isoValue, v[3], v[7], field[3], field[7]);
+
+         for (int idx = 0; idx < numVerts; idx += 3) {
+
+            int edge[3];
+            Scalar3 *v[3];
+
+            for (int i=0; i<3; ++i) {
+               edge[i] = hexaTriTable[tableIndex][idx+i];
+               v[i] = &vertlist[edge[i]];
+            }
+
+            for (int i=0; i<3; ++i) {
+               out_cl[outIdx+idx+i] = outIdx+idx+i;
+               out_x[outIdx+idx+i] = v[i]->x;
+               out_y[outIdx+idx+i] = v[i]->y;
+               out_z[outIdx+idx+i] = v[i]->z;
+            }
+         }
+      }
+
+      return numVerts;
+   }
+};
+
+
 Object::ptr
 IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
                                Object::const_ptr data_object,
@@ -89,113 +284,10 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
       return Object::ptr();
    }
 
-   const unsigned char *tl = &grid->tl()[0];
-   const size_t *el = &grid->el()[0];
-   const size_t *cl = &grid->cl()[0];
-   const Scalar *x = &grid->x()[0];
-   const Scalar *y = &grid->y()[0];
-   const Scalar *z = &grid->z()[0];
-
-   const Scalar *d = &data->x()[0];
-
-   size_t numElem = grid->getNumElements();
-   Triangles::ptr t(new Triangles(Object::Initialized));
-   t->setMeta(grid_object->meta());
-
-   size_t numVertices = 0;
-
-#pragma omp parallel for
-   for (size_t elem = 0; elem < numElem; elem ++) {
-
-      switch (tl[elem]) {
-
-         case UnstructuredGrid::HEXAHEDRON: {
-
-            size_t p = el[elem];
-
-            size_t index[8];
-            index[0] = cl[p + 5];
-            index[1] = cl[p + 6];
-            index[2] = cl[p + 2];
-            index[3] = cl[p + 1];
-            index[4] = cl[p + 4];
-            index[5] = cl[p + 7];
-            index[6] = cl[p + 3];
-            index[7] = cl[p];
-
-            Scalar field[8];
-            Scalar3 v[8];
-            for (int idx = 0; idx < 8; idx ++) {
-               v[idx].x = x[index[idx]];
-               v[idx].y = y[index[idx]];
-               v[idx].z = z[index[idx]];
-               field[idx] = d[index[idx]];
-            }
-
-            uint tableIndex = 0;
-            for (int idx = 0; idx < 8; idx ++)
-               tableIndex += (((int) (field[idx] < isoValue)) << idx);
-
-            int numVerts = hexaNumVertsTable[tableIndex];
-            if (numVerts) {
-               numVertices += numVerts;
-
-               Scalar3 vertlist[12];
-               vertlist[0] = interp(isoValue, v[0], v[1], field[0], field[1]);
-               vertlist[1] = interp(isoValue, v[1], v[2], field[1], field[2]);
-               vertlist[2] = interp(isoValue, v[2], v[3], field[2], field[3]);
-               vertlist[3] = interp(isoValue, v[3], v[0], field[3], field[0]);
-
-               vertlist[4] = interp(isoValue, v[4], v[5], field[4], field[5]);
-               vertlist[5] = interp(isoValue, v[5], v[6], field[5], field[6]);
-               vertlist[6] = interp(isoValue, v[6], v[7], field[6], field[7]);
-               vertlist[7] = interp(isoValue, v[7], v[4], field[7], field[4]);
-
-               vertlist[8] = interp(isoValue, v[0], v[4], field[0], field[4]);
-               vertlist[9] = interp(isoValue, v[1], v[5], field[1], field[5]);
-               vertlist[10] = interp(isoValue, v[2], v[6], field[2], field[6]);
-               vertlist[11] = interp(isoValue, v[3], v[7], field[3], field[7]);
-
-               for (int idx = 0; idx < numVerts; idx += 3) {
-
-                  int edge[3];
-                  Scalar3 *v[3];
-                  edge[0] = hexaTriTable[tableIndex][idx];
-                  v[0] = &vertlist[edge[0]];
-                  edge[1] = hexaTriTable[tableIndex][idx + 1];
-                  v[1] = &vertlist[edge[1]];
-                  edge[2] = hexaTriTable[tableIndex][idx + 2];
-                  v[2] = &vertlist[edge[2]];
-
-#pragma omp critical
-                  {
-                     t->cl().push_back(t->x().size());
-                     t->cl().push_back(t->x().size() + 1);
-                     t->cl().push_back(t->x().size() + 2);
-
-                     t->x().push_back(v[0]->x);
-                     t->x().push_back(v[1]->x);
-                     t->x().push_back(v[2]->x);
-
-                     t->y().push_back(v[0]->y);
-                     t->y().push_back(v[1]->y);
-                     t->y().push_back(v[2]->y);
-
-                     t->z().push_back(v[0]->z);
-                     t->z().push_back(v[1]->z);
-                     t->z().push_back(v[2]->z);
-                  }
-               }
-            }
-            break;
-         }
-
-         default:
-            break;
-      }
-   }
-
-   return t;
+   Leveller l(grid, isoValue);
+   l.addData(data);
+   l.process();
+   return l.result();
 }
 
 
