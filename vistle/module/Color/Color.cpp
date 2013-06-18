@@ -82,8 +82,8 @@ void Color::getMinMax(vistle::Object::const_ptr object,
       return;
 
    const vistle::Scalar *x = &data->x()[0];
-   int numElements = data->getSize();
-   for (int index = 0; index < numElements; index ++) {
+   size_t numElements = data->getSize();
+   for (size_t index = 0; index < numElements; index ++) {
       if (x[index] < min)
          min = x[index];
       if (x[index] > max)
@@ -94,6 +94,8 @@ void Color::getMinMax(vistle::Object::const_ptr object,
 vistle::Object::ptr Color::addTexture(vistle::Object::const_ptr object,
       const vistle::Scalar min, const vistle::Scalar max,
       const ColorMap & cmap) {
+
+   const Scalar range = max - min;
 
    if (Vec<Scalar>::const_ptr f = Vec<Scalar>::as(object)) {
 
@@ -107,11 +109,15 @@ vistle::Object::ptr Color::addTexture(vistle::Object::const_ptr object,
       for (size_t index = 0; index < cmap.width * 4; index ++)
          pix[index] = cmap.data[index];
 
+      tex->coords().resize(numElem);
+      auto tc = tex->coords().data();
       for (size_t index = 0; index < numElem; index ++)
-         tex->coords().push_back((x[index] - min) / (max - min));
+         tc[index] = (x[index] - min) / range;
 
       return tex;
    }
+
+   std::cerr << "Color: cannot handle input" << std::endl;
 
    return vistle::Object::ptr();
 }
@@ -124,7 +130,6 @@ bool Color::compute() {
    pins.insert(std::make_pair(1.0, vistle::Vector(1.0, 1.0, 0.0)));
 
    ColorMap cmap(pins, 32);
-   ObjectList objects = getObjects("data_in");
 
    while (Object::const_ptr obj = takeFirstObject("data_in")) {
 
@@ -138,9 +143,12 @@ bool Color::compute() {
          max = getFloatParameter("max");
       }
 
+      //std::cerr << "Color: [" << min << "--" << max << "]" << std::endl;
+
       vistle::Object::ptr out(addTexture(obj, min, max, cmap));
-      if (out.get())
+      if (out.get()) {
          addObject("data_out", out);
+      }
    }
 
    return true;
