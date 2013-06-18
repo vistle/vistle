@@ -111,12 +111,9 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
 
          case UnstructuredGrid::HEXAHEDRON: {
 
-            Scalar3 vertlist[12];
-            Scalar3 v[8];
-            size_t index[8];
-            Scalar field[8];
             size_t p = el[elem];
 
+            size_t index[8];
             index[0] = cl[p + 5];
             index[1] = cl[p + 6];
             index[2] = cl[p + 2];
@@ -126,7 +123,8 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
             index[6] = cl[p + 3];
             index[7] = cl[p];
 
-            uint tableIndex = 0;
+            Scalar field[8];
+            Scalar3 v[8];
             for (int idx = 0; idx < 8; idx ++) {
                v[idx].x = x[index[idx]];
                v[idx].y = y[index[idx]];
@@ -134,12 +132,15 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
                field[idx] = d[index[idx]];
             }
 
+            uint tableIndex = 0;
             for (int idx = 0; idx < 8; idx ++)
                tableIndex += (((int) (field[idx] < isoValue)) << idx);
 
             int numVerts = hexaNumVertsTable[tableIndex];
             if (numVerts) {
                numVertices += numVerts;
+
+               Scalar3 vertlist[12];
                vertlist[0] = interp(isoValue, v[0], v[1], field[0], field[1]);
                vertlist[1] = interp(isoValue, v[1], v[2], field[1], field[2]);
                vertlist[2] = interp(isoValue, v[2], v[3], field[2], field[3]);
