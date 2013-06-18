@@ -718,6 +718,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             static_cast<const message::Connect *>(message);
          Port *other = NULL;
          Port::PortSet *ports = NULL;
+         //std::cerr << name() << " receiving connection: " << conn->getModuleA() << ":" << conn->getPortAName() << " -> " << conn->getModuleB() << ":" << conn->getPortBName() << std::endl;
          if (conn->getModuleA() == id()) {
             if (Port *p = findOutputPort(conn->getPortAName())) {
                other = new Port(conn->getModuleB(), conn->getPortBName(), Port::INPUT);
@@ -733,9 +734,11 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          if (ports && other) {
             if (ports->find(other) == ports->end())
-               delete other;
-            else
                ports->insert(other);
+            else
+               delete other;
+         } else {
+            std::cerr << name() << " did not find port" << std::endl;
          }
          break;
       }
