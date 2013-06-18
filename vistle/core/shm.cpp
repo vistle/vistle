@@ -13,6 +13,7 @@
 
 #include <limits.h>
 
+#include <util/valgrind.h>
 #include "message.h"
 #include "messagequeue.h"
 #include "scalars.h"
@@ -36,7 +37,12 @@ template<> size_t memorySize<4>() {
 
 template<> size_t memorySize<8>() {
 
-   return (size_t)1 << 34;
+   if (RUNNING_ON_VALGRIND) {
+      std::cerr << "running under valgrind: reducing shmem size" << std::endl;
+      return (size_t)1 << 32;
+   } else {
+      return (size_t)1 << 34;
+   }
 }
 
 Shm* Shm::s_singleton = NULL;
