@@ -178,37 +178,36 @@ Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
 
       UnstructuredGrid::ptr usg(new UnstructuredGrid(numElements, numCorners, numVertices));
 
-      int *_tl = new int[numElements];
-      int *_el = new int[numElements];
-      int *_cl = new int[numCorners];
+      std::vector<int> v_tl(numElements);
+      std::vector<int> v_el(numElements);
+      std::vector<int> v_cl(numCorners);
+      auto _tl = v_tl.data();
+      auto _el = v_el.data();
+      auto _cl = v_cl.data();
 
-      unsigned char *tl = &usg->tl()[0];
-      size_t *el = &usg->el()[0];
-      size_t *cl = &usg->cl()[0];
-
-      std::vector<float> _x(numVertices), _y(numVertices), _z(numVertices);
-
+      std::vector<float> v_x(numVertices), v_y(numVertices), v_z(numVertices);
+      float *_x = v_x.data(), *_y = v_y.data(), *_z = v_z.data();
       covReadUNSGRD(fd, numElements, numCorners, numVertices,
             _el, _cl, _tl,
-            &_x[0], &_y[0], &_z[0]);
+            _x, _y, _z);
 
+      size_t *el = usg->el().data();
+      unsigned char *tl = &usg->tl()[0];
       for (int index = 0; index < numElements; index ++) {
          el[index] = _el[index];
          tl[index] = (UnstructuredGrid::Type) _tl[index];
       }
 
+      size_t *cl = usg->cl().data();
       for (int index = 0; index < numCorners; index ++)
          cl[index] = _cl[index];
 
+      auto x=usg->x().data(), y=usg->y().data(), z=usg->z().data();
       for (int index = 0; index < numVertices; ++index) {
-         usg->x()[index] = _x[index];
-         usg->y()[index] = _y[index];
-         usg->z()[index] = _z[index];
+         x[index] = _x[index];
+         y[index] = _y[index];
+         z[index] = _z[index];
       }
-
-      delete[] _el;
-      delete[] _tl;
-      delete[] _cl;
 
       return usg;
    }
@@ -230,8 +229,9 @@ Object::ptr ReadCovise::readUSTSDT(const int fd, const bool skeleton) {
       Vec<Scalar>::ptr array(new Vec<Scalar>(numElements));
       std::vector<float> _x(numElements);
       covReadUSTSDT(fd, numElements, &_x[0]);
+      auto x = array->x().data();
       for (int i=0; i<numElements; ++i)
-         array->x()[i] = _x[i];
+         x[i] = _x[i];
 
       return array;
    }
@@ -253,10 +253,13 @@ Object::ptr ReadCovise::readUSTVDT(const int fd, const bool skeleton) {
       Vec<Scalar,3>::ptr array(new Vec<Scalar,3>(numElements));
       std::vector<float> _x(numElements), _y(numElements), _z(numElements);
       covReadUSTVDT(fd, numElements, &_x[0], &_y[0], &_z[0]);
+      Scalar *x = array->x().data();
+      Scalar *y = array->y().data();
+      Scalar *z = array->z().data();
       for (int i=0; i<numElements; ++i) {
-         array->x()[i] = _x[i];
-         array->y()[i] = _y[i];
-         array->z()[i] = _z[i];
+         x[i] = _x[i];
+         y[i] = _y[i];
+         z[i] = _z[i];
       }
 
       return array;
@@ -282,10 +285,13 @@ Object::ptr ReadCovise::readPOINTS(const int fd, const bool skeleton) {
 
       covReadPOINTS(fd, numCoords, &_x[0], &_y[0], &_z[0]);
 
+      auto *x = points->x().data();
+      auto *y = points->y().data();
+      auto *z = points->z().data();
       for (int index = 0; index < numCoords; index ++) {
-         points->x()[index] = _x[index];
-         points->y()[index] = _y[index];
-         points->z()[index] = _z[index];
+         x[index] = _x[index];
+         y[index] = _y[index];
+         z[index] = _z[index];
       }
 
       return points;
@@ -309,22 +315,25 @@ Object::ptr ReadCovise::readLINES(const int fd, const bool skeleton) {
 
       Lines::ptr lines(new Lines(numElements, numCorners, numVertices));
 
-      std::vector<int> el(numElements);
-      std::vector<int> cl(numCorners);
+      std::vector<int> _el(numElements);
+      std::vector<int> _cl(numCorners);
       std::vector<float> _x(numVertices), _y(numVertices), _z(numVertices);
 
-      covReadLINES(fd, numElements, &el[0], numCorners, &cl[0], numVertices, &_x[0], &_y[0], &_z[0]);
+      covReadLINES(fd, numElements, &_el[0], numCorners, &_cl[0], numVertices, &_x[0], &_y[0], &_z[0]);
 
+      auto el = lines->el().data();
       for (int index = 0; index < numElements; index ++)
-         lines->el()[index] = el[index];
+         el[index] = _el[index];
 
+      auto cl = lines->cl().data();
       for (int index = 0; index < numCorners; index ++)
-         lines->cl()[index] = cl[index];
+         cl[index] = _cl[index];
 
+      auto x = lines->x().data(), y = lines->y().data(), z = lines->z().data();
       for (int index = 0; index < numVertices; index ++) {
-         lines->x()[index] = _x[index];
-         lines->y()[index] = _y[index];
-         lines->z()[index] = _z[index];
+         x[index] = _x[index];
+         y[index] = _y[index];
+         z[index] = _z[index];
       }
 
       return lines;
@@ -348,22 +357,25 @@ Object::ptr ReadCovise::readPOLYGN(const int fd, const bool skeleton) {
 
       Polygons::ptr polygons(new Polygons(numElements, numCorners, numVertices));
 
-      std::vector<int> el(numElements);
-      std::vector<int> cl(numCorners);
+      std::vector<int> _el(numElements);
+      std::vector<int> _cl(numCorners);
       std::vector<float> _x(numVertices), _y(numVertices), _z(numVertices);
 
-      covReadPOLYGN(fd, numElements, &el[0], numCorners, &cl[0], numVertices, &_x[0], &_y[0], &_z[0]);
+      covReadPOLYGN(fd, numElements, &_el[0], numCorners, &_cl[0], numVertices, &_x[0], &_y[0], &_z[0]);
 
+      auto el = polygons->el().data();
       for (int index = 0; index < numElements; index ++)
-         polygons->el()[index] = el[index];
+         el[index] = _el[index];
 
+      auto cl = polygons->cl().data();
       for (int index = 0; index < numCorners; index ++)
-         polygons->cl()[index] = cl[index];
+         cl[index] = _cl[index];
 
+      auto x = polygons->x().data(), y = polygons->y().data(), z = polygons->z().data();
       for (int index = 0; index < numVertices; index ++) {
-         polygons->x()[index] = _x[index];
-         polygons->y()[index] = _y[index];
-         polygons->z()[index] = _z[index];
+         x[index] = _x[index];
+         y[index] = _y[index];
+         z[index] = _z[index];
       }
 
       return polygons;
