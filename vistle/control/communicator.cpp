@@ -669,10 +669,11 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          Port *port = m_portManager.getPort(m.senderId(),
                                           m.getPortName());
+         const std::vector<const Port *> *list = NULL;
          if (port) {
-            const std::vector<const Port *> *list =
-               m_portManager.getConnectionList(port);
-
+            list = m_portManager.getConnectionList(port);
+         }
+         if (list) {
             PortManager::ConnectionList::const_iterator pi;
             for (pi = list->begin(); pi != list->end(); pi ++) {
 
