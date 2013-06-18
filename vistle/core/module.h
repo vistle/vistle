@@ -102,6 +102,8 @@ class V_COREEXPORT Module {
                                Object::const_ptr object);
    bool syncMessageProcessing() const;
    void setSyncMessageProcessing(bool sync);
+
+   bool isConnected(const std::string &portname) const;
  private:
    Parameter *findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;

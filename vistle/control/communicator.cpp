@@ -497,16 +497,9 @@ bool Communicator::handleMessage(const message::Message &message) {
                   connect.getPortAName(),
                   connect.getModuleB(),
                   connect.getPortBName())) {
-            {
-               MessageQueueMap::iterator it = sendMessageQueue.find(connect.getModuleA());
-               if (it != sendMessageQueue.end())
-                  it->second->getMessageQueue().send(&connect, sizeof(connect), 0);
-            }
-            {
-               MessageQueueMap::iterator it = sendMessageQueue.find(connect.getModuleB());
-               if (it != sendMessageQueue.end())
-                  it->second->getMessageQueue().send(&connect, sizeof(connect), 0);
-            }
+            // inform modules about connections
+            sendMessage(connect.getModuleA(), connect);
+            sendMessage(connect.getModuleB(), connect);
          } else {
             queueMessage(connect);
          }
@@ -696,7 +689,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          else
             std::cerr << "comm [" << rank << "/" << size << "] Addbject ["
                       << m.getHandle() << "] to port ["
-                      << m.getPortName() << "]: port not found" << std::endl;
+                      << m.getPortName() << "] of [" << m.senderId() << "]: port not found" << std::endl;
 
          break;
       }

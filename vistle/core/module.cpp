@@ -514,6 +514,17 @@ bool Module::addInputObject(const std::string & portName,
    return false;
 }
 
+bool Module::isConnected(const std::string &portname) const {
+
+   Port *p = findInputPort(portname);
+   if (!p)
+      p = findOutputPort(portname);
+   if (!p)
+      return false;
+
+   return !p->connections().empty();
+}
+
 bool Module::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
 
    (void)senderId;

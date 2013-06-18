@@ -28,17 +28,24 @@ Collect::~Collect() {
 
 bool Collect::compute() {
 
-   ObjectList gridObjects = getObjects("grid_in");
-   ObjectList textureObjects = getObjects("texture_in");
+   while (hasObject("grid_in")) {
 
-   while (hasObject("grid_in") && hasObject("texture_in")) {
-
+      if (isConnected("normal_in") && !hasObject("normal_in"))
+         break;
+      if (isConnected("texture_in") && !hasObject("texture_in"))
+         break;
+      
       vistle::Object::const_ptr grid = takeFirstObject("grid_in");
-      vistle::Object::const_ptr tex = takeFirstObject("texture_in");
       vistle::Geometry::ptr geom(new vistle::Geometry(grid));
-      geom->setTexture(tex);
-
       geom->setMeta(grid->meta());
+
+      vistle::Object::const_ptr norm = takeFirstObject("normal_in");
+      if (norm)
+         geom->setNormals(norm);
+
+      vistle::Object::const_ptr tex = takeFirstObject("texture_in");
+      if (tex)
+         geom->setTexture(tex);
 
       addObject("grid_out", geom);
    }
