@@ -19,7 +19,7 @@ public:
       v[0] = v[1] = v[2] = 0.;
    }
    Vector(const Vector &o)
-   : x(v[0]), y(v[0]), z(v[2]) {
+   : x(v[0]), y(v[1]), z(v[2]) {
       v[0] = o.v[0];
       v[1] = o.v[1];
       v[2] = o.v[2];
