@@ -133,6 +133,7 @@ class V_COREEXPORT Module {
       try { \
          if (argc != 3) { \
             std::cerr << "module requires exactly 2 parameters" << std::endl; \
+            MPI_Finalize(); \
             exit(1); \
          } \
          MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI::ERRORS_THROW_EXCEPTIONS); \
