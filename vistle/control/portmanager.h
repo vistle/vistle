@@ -46,10 +46,10 @@ class PortManager {
    typedef std::map<std::string, Port *> PortMap;
 
    // module ID -> list of ports belonging to the module
-   std::map<int, PortMap *> ports;
+   std::map<int, PortMap *> m_ports;
 
    // port -> list of ports that the port is connected to
-   std::map<const Port *, ConnectionList *> connections;
+   std::map<const Port *, ConnectionList *> m_connections;
 };
 } // namespace vistle
 

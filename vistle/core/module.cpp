@@ -171,7 +171,7 @@ Port *Module::createOutputPort(const std::string &name, const std::string &descr
       outputPorts[name] = p;
 
       message::CreatePort message(p);
-      sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
+      sendMessage(message);
       return p;
    }
    return NULL;
@@ -716,25 +716,28 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          const message::Connect *conn =
             static_cast<const message::Connect *>(message);
+         Port *port = NULL;
          Port *other = NULL;
-         Port::PortSet *ports = NULL;
+         const Port::PortSet *ports = NULL;
          //std::cerr << name() << " receiving connection: " << conn->getModuleA() << ":" << conn->getPortAName() << " -> " << conn->getModuleB() << ":" << conn->getPortBName() << std::endl;
          if (conn->getModuleA() == id()) {
-            if (Port *p = findOutputPort(conn->getPortAName())) {
+            port = findOutputPort(conn->getPortAName());
+            if (port) {
                other = new Port(conn->getModuleB(), conn->getPortBName(), Port::INPUT);
-               ports = &p->connections();
+               ports = &port->connections();
             }
             
          } else if (conn->getModuleB() == id()) {
-            if (Port *p = findInputPort(conn->getPortBName())) {
+            port = findInputPort(conn->getPortBName());
+            if (port) {
                other = new Port(conn->getModuleA(), conn->getPortAName(), Port::OUTPUT);
-               ports = &p->connections();
+               ports = &port->connections();
             }
          }
 
-         if (ports && other) {
+         if (ports && port && other) {
             if (ports->find(other) == ports->end())
-               ports->insert(other);
+               port->addConnection(other);
             else
                delete other;
          } else {
@@ -747,28 +750,27 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          const message::Disconnect *disc =
             static_cast<const message::Disconnect *>(message);
+         Port *port = NULL;
          Port *other = NULL;
-         Port::PortSet *ports = NULL;
+         const Port::PortSet *ports = NULL;
          if (disc->getModuleA() == id()) {
-            if (Port *p = findOutputPort(disc->getPortAName())) {
+            port = findOutputPort(disc->getPortAName());
+            if (port) {
                other = new Port(disc->getModuleB(), disc->getPortBName(), Port::INPUT);
-               ports = &p->connections();
+               ports = &port->connections();
             }
             
          } else if (disc->getModuleB() == id()) {
-            if (Port *p = findInputPort(disc->getPortBName())) {
+            port = findInputPort(disc->getPortBName());
+            if (port) {
                other = new Port(disc->getModuleA(), disc->getPortAName(), Port::OUTPUT);
-               ports = &p->connections();
+               ports = &port->connections();
             }
          }
 
-         if (ports && other) {
-            Port::PortSet::iterator it = ports->find(other);
+         if (ports && port && other) {
+            port->removeConnection(other);
             delete other;
-            if (it != ports->end()) {
-               ports->erase(it);
-               delete *it;
-            }
          }
          break;
       }

@@ -32,9 +32,30 @@ ObjectList &Port::objects() {
    return m_objects;
 }
 
-Port::PortSet &Port::connections() {
+const Port::PortSet &Port::connections() const {
 
    return m_connections;
+}
+
+void Port::setConnections(const PortSet &conn) {
+
+   m_connections = conn;
+}
+
+void Port::addConnection(Port *other) {
+
+   m_connections.insert(other);
+}
+
+void Port::removeConnection(Port *other) {
+
+   auto it = m_connections.find(other);
+   if (it == m_connections.end())
+      return;
+
+   Port *p = *it;
+   m_connections.erase(it);
+   delete p;
 }
 
 bool Port::isConnected() const {

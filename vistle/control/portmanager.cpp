@@ -20,26 +20,31 @@ Port *PortManager::addPort(Port *port) {
 
    const int moduleID = port->getModuleID();
    PortMap *portMap = NULL;
-   std::map<int, PortMap *>::iterator i = ports.find(moduleID);
+   std::map<int, PortMap *>::iterator i = m_ports.find(moduleID);
 
-   if (i == ports.end()) {
+   if (i == m_ports.end()) {
       portMap = new std::map<std::string, Port *>;
-      ports[moduleID] = portMap;
+      m_ports[moduleID] = portMap;
+      std::cerr << "NEW PORT (first): " << port->getModuleID() << ":" << port->getName() << "(" << port->getType() << ")" << std::endl;
    } else {
       portMap = i->second;
+      std::cerr << "NEW PORT: " << port->getModuleID() << ":" << port->getName() << "(" << port->getType() << ")" << std::endl;
    }
 
    assert(portMap);
 
-   std::map<std::string, Port *>::iterator pi = portMap->find(port->getName());
+   PortMap::iterator pi = portMap->find(port->getName());
 
    if (pi == portMap->end()) {
       portMap->insert(std::make_pair(port->getName(), port));
-      connections[port] = new std::vector<const Port *>;
+      m_connections[port] = new std::vector<const Port *>;
+      std::cerr << "PORT (create connn): " << port->getModuleID() << ":" << port->getName() << "(" << port->getType() << ")" << std::endl;
       
       return port;
    } else {
+      //assert(m_connections.find(port) != m_connections.end());
       if (pi->second->getType() == Port::ANY) {
+         port->setConnections(pi->second->connections());
          delete pi->second;
          pi->second = port;
          return port;
@@ -54,9 +59,9 @@ Port * PortManager::getPort(const int moduleID,
                             const std::string & name) const {
 
    std::map<int, std::map<std::string, Port *> *>::const_iterator i =
-      ports.find(moduleID);
+      m_ports.find(moduleID);
 
-   if (i != ports.end()) {
+   if (i != m_ports.end()) {
       std::map<std::string, Port *>::iterator pi = i->second->find(name);
       if (pi != i->second->end())
          return pi->second;
@@ -82,12 +87,12 @@ bool PortManager::addConnection(const Port *from, const Port *to) {
 
    if (from->getType() == Port::OUTPUT && to->getType() == Port::INPUT) {
 
-      std::map<const Port *, ConnectionList *>::iterator outi = connections.find(from);
-      if (outi != connections.end())
+      std::map<const Port *, ConnectionList *>::iterator outi = m_connections.find(from);
+      if (outi != m_connections.end())
          outi->second->push_back(to);
 
-      std::map<const Port *, ConnectionList *>::iterator ini = connections.find(to);
-      if (ini != connections.end())
+      std::map<const Port *, ConnectionList *>::iterator ini = m_connections.find(to);
+      if (ini != m_connections.end())
          ini->second->push_back(from);
 
       return true;
@@ -95,12 +100,12 @@ bool PortManager::addConnection(const Port *from, const Port *to) {
 
    if (from->getType() == Port::PARAMETER && to->getType() == Port::PARAMETER) {
 
-      std::map<const Port *, ConnectionList *>::iterator outi = connections.find(from);
-      if (outi != connections.end())
+      std::map<const Port *, ConnectionList *>::iterator outi = m_connections.find(from);
+      if (outi != m_connections.end())
          outi->second->push_back(to);
 
-      std::map<const Port *, ConnectionList *>::iterator ini = connections.find(to);
-      if (ini != connections.end())
+      std::map<const Port *, ConnectionList *>::iterator ini = m_connections.find(to);
+      if (ini != m_connections.end())
          ini->second->push_back(from);
 
       return true;
@@ -133,8 +138,8 @@ bool PortManager::removeConnection(const Port *from, const Port *to) {
 
       ok = true;
       std::map<const Port *, std::vector<const Port *> *>::iterator outi =
-         connections.find(from);
-      if (outi != connections.end()) {
+         m_connections.find(from);
+      if (outi != m_connections.end()) {
          ConnectionList &cl = *outi->second;
          ConnectionList::iterator it = std::find(cl.begin(), cl.end(), to);
          if (it != cl.end())
@@ -146,8 +151,8 @@ bool PortManager::removeConnection(const Port *from, const Port *to) {
       }
 
       std::map<const Port *, std::vector<const Port *> *>::iterator ini =
-         connections.find(to);
-      if (ini != connections.end()) {
+         m_connections.find(to);
+      if (ini != m_connections.end()) {
          ConnectionList &cl = *ini->second;
          ConnectionList::iterator it = std::find(cl.begin(), cl.end(), from);
          if (it != cl.end())
@@ -182,8 +187,8 @@ void PortManager::removeConnections(const int moduleID) {
    typedef std::map<std::string, Port *> PortMap;
    typedef std::map<int, PortMap *> ModulePortMap;
 
-   ModulePortMap::const_iterator mports = ports.find(moduleID);
-   if (mports == ports.end())
+   ModulePortMap::const_iterator mports = m_ports.find(moduleID);
+   if (mports == m_ports.end())
       return;
 
    const PortMap &portmap = *mports->second;
@@ -192,8 +197,8 @@ void PortManager::removeConnections(const int moduleID) {
          ++it) {
 
       Port *port = it->second;
-         std::map<const Port *, std::vector<const Port *> *>::iterator connlist = connections.find(port);
-         if (connlist != connections.end()) {
+         std::map<const Port *, std::vector<const Port *> *>::iterator connlist = m_connections.find(port);
+         if (connlist != m_connections.end()) {
          ConnectionList &cl = *connlist->second;
          
          while (!cl.empty()) {
@@ -217,8 +222,8 @@ const std::vector<const Port *> *
 PortManager::getConnectionList(const Port * port) const {
 
    std::map<const Port *, std::vector<const Port *> *>::const_iterator i =
-      connections.find(port);
-   if (i != connections.end())
+      m_connections.find(port);
+   if (i != m_connections.end())
       return i->second;
    else
       return NULL;
@@ -239,8 +244,8 @@ std::vector<std::string> PortManager::getPortNames(const int moduleID, Port::Typ
    typedef std::map<std::string, Port *> PortMap;
    typedef std::map<int, PortMap *> ModulePortMap;
 
-   ModulePortMap::const_iterator mports = ports.find(moduleID);
-   if (mports == ports.end())
+   ModulePortMap::const_iterator mports = m_ports.find(moduleID);
+   if (mports == m_ports.end())
       return result;
 
    const PortMap &portmap = *mports->second;

@@ -36,7 +36,10 @@ class V_COREEXPORT Port {
    ObjectList &objects();
 
    typedef std::set<Port *, deref_compare<Port> > PortSet;
-   PortSet &connections();
+   const PortSet &connections() const;
+   void setConnections(const PortSet &conn);
+   void addConnection(Port *other);
+   void removeConnection(Port *other);
    bool isConnected() const;
 
    const PortSet &linkedPorts() const;
