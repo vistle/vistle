@@ -1,10 +1,6 @@
 #include <sstream>
 #include <iomanip>
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 #include <core/object.h>
 #include <core/unstr.h>
 #include <core/vec.h>
@@ -29,9 +25,6 @@ IsoSurface::IsoSurface(const std::string &shmname, int rank, int size, int modul
    createOutputPort("grid_out");
 
    addFloatParameter("isovalue", "isovalue", 0.0);
-#ifdef _OPENMP
-   omp_set_num_threads(4);
-#endif
 }
 
 IsoSurface::~IsoSurface() {
@@ -133,7 +126,7 @@ class Leveller {
 
       size_t curidx = 0;
       std::vector<size_t> outputIdx(numElem);
-#pragma omp parallel for
+#pragma omp parallel for schedule (dynamic)
       for (size_t elem=0; elem<numElem; ++elem) {
 
          size_t n = 0;
@@ -165,7 +158,7 @@ class Leveller {
          out_d = m_outData->x().data();
       }
 
-#pragma omp parallel for
+#pragma omp parallel for schedule (dynamic)
       for (size_t elem = 0; elem<numElem; ++elem) {
          size_t numvert = 1;
          if (elem < numElem-1) {

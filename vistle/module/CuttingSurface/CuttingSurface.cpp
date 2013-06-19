@@ -1,10 +1,6 @@
 #include <sstream>
 #include <iomanip>
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 #include <core/object.h>
 #include <core/triangles.h>
 #include <core/unstr.h>
@@ -30,9 +26,6 @@ CuttingSurface::CuttingSurface(const std::string &shmname, int rank, int size, i
 
    addVectorParameter("point", "point on plane", ParamVector(0.0, 0.0, 0.0));
    addVectorParameter("vertex", "normal on plane", ParamVector(0.0, 0.0, 1.0));
-#ifdef _OPENMP
-   omp_set_num_threads(4);
-#endif
 }
 
 CuttingSurface::~CuttingSurface() {
@@ -145,7 +138,7 @@ class PlaneCut {
 
       size_t curidx = 0;
       std::vector<size_t> outputIdx(numElem);
-#pragma omp parallel for
+#pragma omp parallel for schedule (dynamic)
       for (size_t elem=0; elem<numElem; ++elem) {
 
          size_t n = 0;
@@ -177,7 +170,7 @@ class PlaneCut {
          out_d = m_outData->x().data();
       }
 
-#pragma omp parallel for
+#pragma omp parallel for schedule (dynamic)
       for (size_t elem = 0; elem<numElem; ++elem) {
          size_t numvert = 1;
          if (elem < numElem-1) {
