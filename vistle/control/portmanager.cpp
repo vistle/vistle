@@ -23,7 +23,7 @@ Port *PortManager::addPort(Port *port) {
    std::map<int, PortMap *>::iterator i = m_ports.find(moduleID);
 
    if (i == m_ports.end()) {
-      portMap = new std::map<std::string, Port *>;
+      portMap = new PortMap;
       m_ports[moduleID] = portMap;
    } else {
       portMap = i->second;
@@ -35,7 +35,7 @@ Port *PortManager::addPort(Port *port) {
 
    if (pi == portMap->end()) {
       portMap->insert(std::make_pair(port->getName(), port));
-      m_connections[port] = new std::vector<const Port *>;
+      m_connections[port] = new ConnectionList;
       
       return port;
    } else {
@@ -54,11 +54,11 @@ Port *PortManager::addPort(Port *port) {
 Port * PortManager::getPort(const int moduleID,
                             const std::string & name) const {
 
-   std::map<int, std::map<std::string, Port *> *>::const_iterator i =
+   std::map<int, PortMap *>::const_iterator i =
       m_ports.find(moduleID);
 
    if (i != m_ports.end()) {
-      std::map<std::string, Port *>::iterator pi = i->second->find(name);
+      PortMap::iterator pi = i->second->find(name);
       if (pi != i->second->end())
          return pi->second;
    }
