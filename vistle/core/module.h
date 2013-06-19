@@ -33,6 +33,7 @@ class V_COREEXPORT Module {
    Module(const std::string &name, const std::string &shmname,
           const unsigned int rank, const unsigned int size, const int moduleID);
    virtual ~Module();
+   void initDone() const; // to be called from MODULE_MAIN after module ctor has run
 
    virtual bool dispatch();
 
@@ -140,6 +141,7 @@ class V_COREEXPORT Module {
          const std::string &shmname = argv[1]; \
          moduleID = atoi(argv[2]); \
          X module(shmname, rank, size, moduleID); \
+         module.initDone(); \
          while (module.dispatch()) \
             ; \
          MPI_Barrier(MPI_COMM_WORLD); \

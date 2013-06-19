@@ -87,6 +87,9 @@ Module::Module(const std::string &n, const std::string &shmname,
 #else
              << std::endl;
 #endif
+}
+
+void Module::initDone() const {
 
    sendMessage(message::Started(name()));
 }
