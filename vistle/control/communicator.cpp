@@ -477,6 +477,8 @@ bool Communicator::handleMessage(const message::Message &message) {
             static_cast<const message::Started &>(message);
          int moduleID = started.senderId();
          runningMap[moduleID] = started.getName();
+
+         replayMessages();
          break;
       }
 
@@ -814,7 +816,6 @@ bool Communicator::handleMessage(const message::Message &message) {
          m_portManager.addPort(m.getPort());
 
          replayMessages();
-
          break;
       }
 
