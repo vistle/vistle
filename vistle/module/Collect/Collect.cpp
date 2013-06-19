@@ -15,8 +15,8 @@ Collect::Collect(const std::string &shmname, int rank, int size, int moduleID)
    : Module("Collect", shmname, rank, size, moduleID) {
 
    createInputPort("grid_in");
-   createInputPort("texture_in");
    createInputPort("normal_in");
+   createInputPort("texture_in");
 
    createOutputPort("grid_out");
 }
