@@ -130,9 +130,8 @@ static std::vector<std::pair<int, std::string> > getConnections(int id, const st
 
    std::vector<std::pair<int, std::string> > result;
 
-   if (const PortManager::ConnectionList *c = Communicator::the().portManager().getConnectionList(id, port)) {
-      for (size_t i=0; i<c->size(); ++i) {
-         const Port *p = c->at(i);
+   if (const Port::PortSet *c = Communicator::the().portManager().getConnectionList(id, port)) {
+      for (const Port *p: *c) {
          result.push_back(std::pair<int, std::string>(p->getModuleID(), p->getName()));
       }
    }

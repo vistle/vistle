@@ -39,7 +39,7 @@ class V_COREEXPORT Port {
    const PortSet &connections() const;
    void setConnections(const PortSet &conn);
    void addConnection(Port *other);
-   void removeConnection(Port *other);
+   Port *removeConnection(const Port *other);
    bool isConnected() const;
 
    const PortSet &linkedPorts() const;

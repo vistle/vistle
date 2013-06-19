@@ -47,15 +47,15 @@ void Port::addConnection(Port *other) {
    m_connections.insert(other);
 }
 
-void Port::removeConnection(Port *other) {
+Port *Port::removeConnection(const Port *other) {
 
-   auto it = m_connections.find(other);
+   auto it = m_connections.find(const_cast<Port *>(other));
    if (it == m_connections.end())
-      return;
+      return NULL;
 
    Port *p = *it;
    m_connections.erase(it);
-   delete p;
+   return p;
 }
 
 bool Port::isConnected() const {

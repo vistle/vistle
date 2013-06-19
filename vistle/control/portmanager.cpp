@@ -35,7 +35,6 @@ Port *PortManager::addPort(Port *port) {
 
    if (pi == portMap->end()) {
       portMap->insert(std::make_pair(port->getName(), port));
-      m_connections[port] = new ConnectionList;
       
       return port;
    } else {
@@ -79,30 +78,31 @@ Port * PortManager::getPort(const int moduleID,
    return NULL;
 }
 
+Port *PortManager::getPort(const Port *p) const {
+
+   return getPort(p->getModuleID(), p->getName());
+}
+
 bool PortManager::addConnection(const Port *from, const Port *to) {
+
+   Port *f = getPort(from);
+   Port *t = getPort(to);
+
+   assert(f);
+   assert(t);
 
    if (from->getType() == Port::OUTPUT && to->getType() == Port::INPUT) {
 
-      std::map<const Port *, ConnectionList *>::iterator outi = m_connections.find(from);
-      if (outi != m_connections.end())
-         outi->second->push_back(to);
-
-      std::map<const Port *, ConnectionList *>::iterator ini = m_connections.find(to);
-      if (ini != m_connections.end())
-         ini->second->push_back(from);
+      f->addConnection(t);
+      t->addConnection(f);
 
       return true;
    }
 
    if (from->getType() == Port::PARAMETER && to->getType() == Port::PARAMETER) {
 
-      std::map<const Port *, ConnectionList *>::iterator outi = m_connections.find(from);
-      if (outi != m_connections.end())
-         outi->second->push_back(to);
-
-      std::map<const Port *, ConnectionList *>::iterator ini = m_connections.find(to);
-      if (ini != m_connections.end())
-         ini->second->push_back(from);
+      f->addConnection(t);
+      t->addConnection(f);
 
       return true;
    }
@@ -129,40 +129,25 @@ bool PortManager::addConnection(const int a, const std::string & na,
 bool PortManager::removeConnection(const Port *from, const Port *to) {
 
    bool ok = false;
+
+   Port *f = getPort(from);
+   if (!f)
+      return false;
+
+   Port *t = getPort(to);
+   if (!t)
+      return false;
+
    if ((from->getType() == Port::OUTPUT && to->getType() == Port::INPUT)
       || (from->getType() == Port::PARAMETER && to->getType() == Port::PARAMETER)) {
 
-      ok = true;
-      std::map<const Port *, std::vector<const Port *> *>::iterator outi =
-         m_connections.find(from);
-      if (outi != m_connections.end()) {
-         ConnectionList &cl = *outi->second;
-         ConnectionList::iterator it = std::find(cl.begin(), cl.end(), to);
-         if (it != cl.end())
-            cl.erase(it);
-         else
-            ok = false;
-      } else {
-         ok = false;
-      }
+      f->removeConnection(to);
+      t->removeConnection(from);
 
-      std::map<const Port *, std::vector<const Port *> *>::iterator ini =
-         m_connections.find(to);
-      if (ini != m_connections.end()) {
-         ConnectionList &cl = *ini->second;
-         ConnectionList::iterator it = std::find(cl.begin(), cl.end(), from);
-         if (it != cl.end())
-            cl.erase(it);
-         else
-            ok = false;
-      } else {
-         ok = false;
-      }
-   } else {
-      ok = false;
+      return true;
    }
 
-   return ok;
+   return false;
 }
 
 bool PortManager::removeConnection(const int a, const std::string & na,
@@ -193,44 +178,37 @@ void PortManager::removeConnections(const int moduleID) {
          ++it) {
 
       Port *port = it->second;
-         std::map<const Port *, std::vector<const Port *> *>::iterator connlist = m_connections.find(port);
-         if (connlist != m_connections.end()) {
-         ConnectionList &cl = *connlist->second;
-         
-         while (!cl.empty()) {
-            size_t oldsize = cl.size();
-            const Port *other = cl.back();
-            removeConnection(port, other);
-            removeConnection(other, port);
-            if (cl.size() == oldsize) {
-               std::cerr << "failed to remove all connections for module " << moduleID << ", still left: " << cl.size() << std::endl;
-               for (int i=0; i<cl.size(); ++i) {
-                  std::cerr << "   " << port->getModuleID() << ":" << port->getName() << " <--> " << other->getModuleID() << ":" << other->getName() << std::endl;
-               }
-               break;
+      const Port::PortSet &cl = port->connections();
+      while (!cl.empty()) {
+         size_t oldsize = cl.size();
+         const Port *other = *cl.begin();
+         removeConnection(port, other);
+         removeConnection(other, port);
+         if (cl.size() == oldsize) {
+            std::cerr << "failed to remove all connections for module " << moduleID << ", still left: " << cl.size() << std::endl;
+            for (int i=0; i<cl.size(); ++i) {
+               std::cerr << "   " << port->getModuleID() << ":" << port->getName() << " <--> " << other->getModuleID() << ":" << other->getName() << std::endl;
             }
+            break;
          }
       }
    }
 }
 
-const std::vector<const Port *> *
+const Port::PortSet *
 PortManager::getConnectionList(const Port * port) const {
 
-   std::map<const Port *, std::vector<const Port *> *>::const_iterator i =
-      m_connections.find(port);
-   if (i != m_connections.end())
-      return i->second;
-   else
-      return NULL;
+   return getConnectionList(port->getModuleID(), port->getName());
 }
 
-const std::vector<const Port *> *
+const Port::PortSet *
 PortManager::getConnectionList(const int moduleID,
                                const std::string & name) const {
 
    const Port *port = getPort(moduleID, name);
-   return getConnectionList(port);
+   if (!port)
+      return NULL;
+   return &port->connections();
 }
 
 std::vector<std::string> PortManager::getPortNames(const int moduleID, Port::Type type) const {

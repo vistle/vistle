@@ -437,7 +437,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          std::vector<MPI_Info> infos(size);
          for (int i=0; i<infos.size(); ++i) {
             MPI_Info_create(&infos[i]);
-            MPI_Info_set(infos[i], "host", const_cast<char *>(m_hosts[i].c_str()));
+            MPI_Info_set(infos[i], const_cast<char *>("host"), const_cast<char *>(m_hosts[i].c_str()));
          }
          std::vector<int> errors(size);
 
@@ -664,12 +664,12 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          Port *port = m_portManager.getPort(m.senderId(),
                                           m.getPortName());
-         const std::vector<const Port *> *list = NULL;
+         const Port::PortSet *list = NULL;
          if (port) {
             list = m_portManager.getConnectionList(port);
          }
          if (list) {
-            PortManager::ConnectionList::const_iterator pi;
+            Port::PortSet::const_iterator pi;
             for (pi = list->begin(); pi != list->end(); pi ++) {
 
                int destId = (*pi)->getModuleID();
@@ -744,8 +744,8 @@ bool Communicator::handleMessage(const message::Message &message) {
 
             std::function<ParameterSet (const Port *, ParameterSet)> findAllConnectedPorts;
             findAllConnectedPorts = [this, &findAllConnectedPorts] (const Port *port, ParameterSet conn) -> ParameterSet {
-               const PortManager::ConnectionList *list = this->m_portManager.getConnectionList(port);
-               for (PortManager::ConnectionList::const_iterator pi = list->begin();
+               const Port::PortSet *list = this->m_portManager.getConnectionList(port);
+               for (Port::PortSet::const_iterator pi = list->begin();
                      pi != list->end();
                      ++pi++) {
                   Parameter *param = getParameter(port->getModuleID(), port->getName());

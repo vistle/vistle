@@ -770,8 +770,9 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          }
 
          if (ports && port && other) {
-            port->removeConnection(other);
+            Port *p = port->removeConnection(other);
             delete other;
+            delete p;
          }
          break;
       }

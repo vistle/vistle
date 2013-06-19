@@ -30,8 +30,8 @@ class PortManager {
 
    typedef std::vector<const Port *> ConnectionList;
 
-   const ConnectionList *getConnectionList(const Port * port) const;
-   const ConnectionList *getConnectionList(const int moduleID,
+   const Port::PortSet *getConnectionList(const Port * port) const;
+   const Port::PortSet *getConnectionList(const int moduleID,
                                                        const std::string & name)
       const;
 
@@ -43,13 +43,12 @@ class PortManager {
 
  private:
 
+   Port *getPort(const Port *p) const;
+
    typedef std::map<std::string, Port *> PortMap;
 
    // module ID -> list of ports belonging to the module
    std::map<int, PortMap *> m_ports;
-
-   // port -> list of ports that the port is connected to
-   std::map<const Port *, ConnectionList *> m_connections;
 };
 } // namespace vistle
 
