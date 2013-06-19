@@ -172,12 +172,6 @@ class PlaneCut {
 
 #pragma omp parallel for schedule (dynamic)
       for (size_t elem = 0; elem<numElem; ++elem) {
-         size_t numvert = 1;
-         if (elem < numElem-1) {
-            numvert = outputIdx[elem+1]-outputIdx[elem];
-         }
-         if (numvert == 0)
-            continue;
          switch (tl[elem]) {
             case UnstructuredGrid::HEXAHEDRON: {
                processHexahedron(elem, outputIdx[elem], false);
