@@ -104,9 +104,14 @@ OsgRenderer::~OsgRenderer() {
 bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
 
    if (moduleName == "CuttingSurface"
+         || moduleName == "CutGeometry"
          || moduleName == "IsoSurface") {
 
-      cover->addPlugin(moduleName.c_str());
+      if (moduleName == "CutGeometry") {
+         cover->addPlugin("CuttingSurface");
+      } else {
+         cover->addPlugin(moduleName.c_str());
+      }
 
       InteractorMap::iterator it = m_interactorMap.find(senderId);
       if (it == m_interactorMap.end()) {
