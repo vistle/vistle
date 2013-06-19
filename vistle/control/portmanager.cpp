@@ -25,10 +25,8 @@ Port *PortManager::addPort(Port *port) {
    if (i == m_ports.end()) {
       portMap = new std::map<std::string, Port *>;
       m_ports[moduleID] = portMap;
-      std::cerr << "NEW PORT (first): " << port->getModuleID() << ":" << port->getName() << "(" << port->getType() << ")" << std::endl;
    } else {
       portMap = i->second;
-      std::cerr << "NEW PORT: " << port->getModuleID() << ":" << port->getName() << "(" << port->getType() << ")" << std::endl;
    }
 
    assert(portMap);
@@ -38,11 +36,9 @@ Port *PortManager::addPort(Port *port) {
    if (pi == portMap->end()) {
       portMap->insert(std::make_pair(port->getName(), port));
       m_connections[port] = new std::vector<const Port *>;
-      std::cerr << "PORT (create connn): " << port->getModuleID() << ":" << port->getName() << "(" << port->getType() << ")" << std::endl;
       
       return port;
    } else {
-      //assert(m_connections.find(port) != m_connections.end());
       if (pi->second->getType() == Port::ANY) {
          port->setConnections(pi->second->connections());
          delete pi->second;

@@ -87,8 +87,6 @@ Module::Module(const std::string &n, const std::string &shmname,
 #else
              << std::endl;
 #endif
-   std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
-             << "/" << size() << "] " << rmqName << ", " << smqName << std::endl;
 
    sendMessage(message::Started(name()));
 }
