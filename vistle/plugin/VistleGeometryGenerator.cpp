@@ -54,20 +54,18 @@ osg::Node *VistleGeometryGenerator::operator()() {
          osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
 
          osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
-         for (unsigned int v = 0; v < numVertices; v ++)
+         for (Index v = 0; v < numVertices; v ++)
             vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
 
          geom->setVertexArray(vertices.get());
 
          osg::ref_ptr<osg::Vec3Array> norm = new osg::Vec3Array();
 
-         osg::ref_ptr<osg::DrawElementsUInt> corners =
-            new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
-         for (unsigned int corner = 0; corner < numCorners; corner ++)
+         osg::ref_ptr<osg::DrawElementsUInt> corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
+         for (Index corner = 0; corner < numCorners; corner ++)
             corners->push_back(cl[corner]);
 
-         std::vector<osg::Vec3> * vertexNormals =
-            new std::vector<osg::Vec3>[numVertices];
+         std::vector<osg::Vec3> * vertexNormals = new std::vector<osg::Vec3>[numVertices];
 
          for (Index c = 0; c < numCorners; c += 3) {
             osg::Vec3 u(x[cl[c + 0]], y[cl[c + 0]], z[cl[c + 0]]);
@@ -149,7 +147,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
          osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
 
-         int num = 0;
+         Index num = 0;
          for (Index index = 0; index < numElements; index ++) {
 
             if (index == numElements - 1)
@@ -159,8 +157,8 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
             primitives->push_back(num);
 
-            for (int n = 0; n < num; n ++) {
-               int v = cl[el[index] + n];
+            for (Index n = 0; n < num; n ++) {
+               Index v = cl[el[index] + n];
                vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
             }
          }
@@ -215,11 +213,11 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
          geom->setStateSet(state.get());
 
-         std::map<int, int> vertexMap;
+         std::map<Index, Index> vertexMap;
          std::vector<std::vector<osg::Vec3> > vertexNormals;
          vertexNormals.resize(numVertices);
 
-         int num = 0;
+         Index num = 0;
          for (Index index = 0; index < numElements; index ++) {
 
             osg::Vec3 vert[3];
@@ -231,8 +229,8 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
             primitives->push_back(num);
 
-            for (int n = 0; n < num; n ++) {
-               int v = cl[el[index] + n];
+            for (Index n = 0; n < num; n ++) {
+               Index v = cl[el[index] + n];
 
                vertexMap[vertices->size()] = v;
                osg::Vec3 vi(x[v], y[v], z[v]);
@@ -251,7 +249,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
                osg::Vec3 no =
                   (vert[2] - vert[0]) ^ (vert[1] - vert[0]) * -1;
                no.normalize();
-               for (int n = 0; n < num; n ++)
+               for (Index n = 0; n < num; n ++)
                   vertexNormals[cl[el[index] + n]].push_back(no);
             }
          }
