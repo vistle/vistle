@@ -712,6 +712,11 @@ bool Communicator::handleMessage(const message::Message &message) {
 #endif
 
          Parameter *param = getParameter(m.getModule(), m.getName());
+         Parameter *applied = NULL;
+         if (param) {
+            applied = param->clone();
+            m.apply(applied);
+         }
          if (m.senderId() != m.getModule()) {
             // message to owning module
             MessageQueueMap::iterator i = sendMessageQueue.find(m.getModule());
@@ -740,43 +745,44 @@ bool Communicator::handleMessage(const message::Message &message) {
 
             // update linked parameters
             typedef std::set<Parameter *> ParameterSet;
-            ParameterSet connectedParameters;
 
             std::function<ParameterSet (const Port *, ParameterSet)> findAllConnectedPorts;
             findAllConnectedPorts = [this, &findAllConnectedPorts] (const Port *port, ParameterSet conn) -> ParameterSet {
-               const Port::PortSet *list = this->m_portManager.getConnectionList(port);
-               for (Port::PortSet::const_iterator pi = list->begin();
-                     pi != list->end();
-                     ++pi++) {
-                  Parameter *param = getParameter(port->getModuleID(), port->getName());
-                  if (param && conn.find(param) == conn.end()) {
-                     conn.insert(param);
-                     const Port *port = m_portManager.getPort(param->module(), param->getName());
-                     conn = findAllConnectedPorts(port, conn);
+               if (const Port::PortSet *list = this->m_portManager.getConnectionList(port)) {
+                  for (auto port: *list) {
+                     Parameter *param = getParameter(port->getModuleID(), port->getName());
+                     if (param && conn.find(param) == conn.end()) {
+                        conn.insert(param);
+                        const Port *port = m_portManager.getPort(param->module(), param->getName());
+                        conn = findAllConnectedPorts(port, conn);
+                     }
                   }
                }
                return conn;
             };
-            Port *port = m_portManager.getPort(m.senderId(), m.getName());
-            if (port) {
+
+            Port *port = m_portManager.getPort(m.getModule(), m.getName());
+            if (port && applied) {
                ParameterSet conn = findAllConnectedPorts(port, ParameterSet());
 
                for (ParameterSet::iterator it = conn.begin();
                      it != conn.end();
                      ++it) {
                   const Parameter *p = *it;
-                  message::SetParameter set(m.getModule(), p->getName(), p);
+                  if (p->module()==m.getModule() && p->getName()==m.getName()) {
+                     // don't update parameter which was set originally again
+                     continue;
+                  }
+                  message::SetParameter set(p->module(), p->getName(), applied);
                   sendMessage(p->module(), set);
                }
+            } else {
+               CERR << " SetParameter ["
+                  << m.getModule() << ":" << m.getName()
+                  << "]: port not found" << std::endl;
             }
-#if 0
-            else
-               std::cerr << "comm [" << rank << "/" << size << "] Addbject ["
-                  << m.getHandle() << "] to port ["
-                  << m.getPortName() << "]: port not found" << std::endl;
-#endif
          }
-
+         delete applied;
          break;
       }
 

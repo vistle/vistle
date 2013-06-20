@@ -72,6 +72,7 @@ def showAllConnections():
    mods = getRunning()
    for m in mods:
       ports = getOutputPorts(m)
+      ports.extend(getParameters(m))
       for p in ports:
          conns = getConnections(m, p)
          for c in conns:

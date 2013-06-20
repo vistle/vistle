@@ -14,6 +14,17 @@ Parameter::Parameter(int moduleId, const std::string & n, Parameter::Type type, 
 
 }
 
+Parameter::Parameter(const Parameter &other)
+: m_choices(other.m_choices)
+, m_module(other.m_module)
+, m_name(other.m_name)
+, m_description(other.m_description)
+, m_type(other.m_type)
+, m_presentation(other.m_presentation)
+{
+
+}
+
 Parameter::~Parameter() {
 
 }

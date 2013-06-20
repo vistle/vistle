@@ -38,7 +38,10 @@ class V_COREEXPORT Parameter {
    };
 
    Parameter(int moduleId, const std::string & name, Type = Invalid, Presentation = Generic);
+   Parameter(const Parameter &other);
    virtual ~Parameter();
+
+   virtual Parameter *clone() const = 0;
 
    void setDescription(const std::string &description);
    void setChoices(const std::vector<std::string> &choices);
@@ -84,7 +87,18 @@ class V_COREEXPORT ParameterBase: public Parameter {
       , m_minimum(ParameterType<T>::min())
       , m_maximum(ParameterType<T>::max())
       {}
+   ParameterBase(const ParameterBase<T> &other)
+   : Parameter(other)
+   , m_value(other.m_value)
+   , m_defaultValue(other.m_defaultValue)
+   , m_minimum(other.m_minimum)
+   , m_maximum(other.m_maximum)
+   {}
    virtual ~ParameterBase() {}
+
+   ParameterBase<T> *clone() const {
+      return new ParameterBase<T>(*this);
+   }
 
    bool isDefault() const { return m_value == m_defaultValue; }
    const T getValue() const { return m_value; }
