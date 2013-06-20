@@ -26,7 +26,7 @@ CutGeometry::~CutGeometry() {
 
 }
 
-class PlaneCut {
+class PlaneClip {
 
    Polygons::const_ptr m_grid;
    std::vector<Object::const_ptr> m_data;
@@ -57,7 +57,7 @@ class PlaneCut {
    bool m_countOnly = true;
 
  public:
-   PlaneCut(Polygons::const_ptr grid, const Vector &point, const Vector &normal)
+   PlaneClip(Polygons::const_ptr grid, const Vector &point, const Vector &normal)
       : m_grid(grid)
       , m_point(point)
       , m_normal(normal) {
