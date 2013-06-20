@@ -318,6 +318,7 @@ struct archive_instantiator {
       const typename V::ptr c = p;
       q = c;
       q = new V();
+      q->resize(1);
       typedef T Archive;
       Stream stream;
       Archive ar(stream);
