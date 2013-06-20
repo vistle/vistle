@@ -449,22 +449,19 @@ bool Communicator::handleMessage(const message::Message &message) {
          }
 
          // inform modules about current parameter values of other modules
-         for (ParameterMap::iterator mit = parameterMap.begin();
-               mit != parameterMap.end();
-               ++mit) {
-            ModuleParameterMap &pm = mit->second;
-            for (ModuleParameterMap::iterator pit = pm.begin();
-                  pit != pm.end();
-                  ++pit) {
-               message::AddParameter add(pit->first, pit->second->description(),
-                     pit->second->type(), pit->second->presentation(), getModuleName(mit->first));
-               add.setSenderId(mit->first);
+         for (auto mit: parameterMap) {
+            ModuleParameterMap &pm = mit.second;
+            for (auto pit: pm) {
+               message::AddParameter add(pit.first, pit.second->description(),
+                     pit.second->type(), pit.second->presentation(), getModuleName(mit.first));
+               add.setSenderId(mit.first);
                add.setRank(rank);
-               sendMessageQueue[moduleID]->getMessageQueue().send(&add, sizeof(add), 0);
-               message::SetParameter set(mit->first, pit->first, pit->second);
-               set.setSenderId(mit->first);
+               sendMessage(moduleID, add);
+
+               message::SetParameter set(mit.first, pit.first, pit.second);
+               set.setSenderId(mit.first);
                set.setRank(rank);
-               sendMessageQueue[moduleID]->getMessageQueue().send(&set, sizeof(set), 0);
+               sendMessage(moduleID, set);
             }
          }
 
