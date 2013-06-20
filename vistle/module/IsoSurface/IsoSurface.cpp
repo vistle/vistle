@@ -73,15 +73,15 @@ class Leveller {
    Scalar m_isoValue;
 
    unsigned char *tl = NULL;
-   size_t *el = NULL;
-   size_t *cl = NULL;
+   Index *el = NULL;
+   Index *cl = NULL;
    const Scalar *x = NULL;
    const Scalar *y = NULL;
    const Scalar *z = NULL;
 
    const Scalar *d = NULL;
 
-   size_t *out_cl = NULL;
+   Index *out_cl = NULL;
    Scalar *out_x = NULL;
    Scalar *out_y = NULL;
    Scalar *out_z = NULL;
@@ -122,14 +122,14 @@ class Leveller {
    }
 
    bool process() {
-      const size_t numElem = m_grid->getNumElements();
+      const Index numElem = m_grid->getNumElements();
 
-      size_t curidx = 0;
-      std::vector<size_t> outputIdx(numElem);
+      Index curidx = 0;
+      std::vector<Index> outputIdx(numElem);
 #pragma omp parallel for schedule (dynamic)
-      for (size_t elem=0; elem<numElem; ++elem) {
+      for (Index elem=0; elem<numElem; ++elem) {
 
-         size_t n = 0;
+         Index n = 0;
          switch (tl[elem]) {
             case UnstructuredGrid::HEXAHEDRON: {
                n = processHexahedron(elem, 0, true /* count only */);
@@ -159,7 +159,7 @@ class Leveller {
       }
 
 #pragma omp parallel for schedule (dynamic)
-      for (size_t elem = 0; elem<numElem; ++elem) {
+      for (Index elem = 0; elem<numElem; ++elem) {
          switch (tl[elem]) {
             case UnstructuredGrid::HEXAHEDRON: {
                processHexahedron(elem, outputIdx[elem], false);
@@ -178,11 +178,11 @@ class Leveller {
    }
 
  private:
-   size_t processHexahedron(const size_t elem, const size_t outIdx, bool numVertsOnly) {
+   Index processHexahedron(const Index elem, const Index outIdx, bool numVertsOnly) {
 
-      size_t p = el[elem];
+      Index p = el[elem];
 
-      size_t index[8];
+      Index index[8];
       index[0] = cl[p + 5];
       index[1] = cl[p + 6];
       index[2] = cl[p + 2];

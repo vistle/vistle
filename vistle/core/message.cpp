@@ -431,7 +431,7 @@ SetParameter::SetParameter(const int module,
 }
 
 SetParameter::SetParameter(const int module,
-      const std::string &n, const Scalar v)
+      const std::string &n, const double v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
 , paramtype(Parameter::Scalar)

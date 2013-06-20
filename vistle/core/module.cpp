@@ -313,20 +313,20 @@ std::string Module::getStringParameter(const std::string & name) const {
 }
 
 FloatParameter *Module::addFloatParameter(const std::string & name, const std::string &description,
-                               const vistle::Scalar value) {
+                               const double value) {
 
    return dynamic_cast<FloatParameter *>(addParameter(name, description, value));
 }
 
 bool Module::setFloatParameter(const std::string & name,
-                               const vistle::Scalar value, bool reply) {
+                               const double value, bool reply) {
 
    return setParameter(name, value, reply);
 }
 
-vistle::Scalar Module::getFloatParameter(const std::string & name) const {
+double Module::getFloatParameter(const std::string & name) const {
 
-   Scalar value = 0.;
+   double value = 0.;
    getParameter(name, value);
    return value;
 }

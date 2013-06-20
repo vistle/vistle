@@ -26,9 +26,9 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
       POLYHEDRON  = 11
    };
 
-   UnstructuredGrid(const size_t numElements,
-         const size_t numCorners,
-         const size_t numVertices,
+   UnstructuredGrid(const Index numElements,
+         const Index numCorners,
+         const Index numVertices,
          const Meta &meta=Meta());
 
    shm<unsigned char>::vector &tl() const { return *(*d()->tl)(); }
@@ -36,12 +36,12 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
    V_DATA_BEGIN(UnstructuredGrid);
       ShmVector<unsigned char>::ptr tl;
 
-      Data(const size_t numElements = 0, const size_t numCorners = 0,
-                    const size_t numVertices = 0, const std::string & name = "",
+      Data(const Index numElements = 0, const Index numCorners = 0,
+                    const Index numVertices = 0, const std::string & name = "",
                     const Meta &meta=Meta());
-      static Data *create(const size_t numElements = 0,
-                                    const size_t numCorners = 0,
-                                    const size_t numVertices = 0,
+      static Data *create(const Index numElements = 0,
+                                    const Index numCorners = 0,
+                                    const Index numVertices = 0,
                                     const Meta &meta=Meta());
 
    V_DATA_END(UnstructuredGrid);

@@ -2,9 +2,9 @@
 
 namespace vistle {
 
-UnstructuredGrid::UnstructuredGrid(const size_t numElements,
-      const size_t numCorners,
-      const size_t numVertices,
+UnstructuredGrid::UnstructuredGrid(const Index numElements,
+      const Index numCorners,
+      const Index numVertices,
       const Meta &meta)
    : UnstructuredGrid::Base(UnstructuredGrid::Data::create(numElements, numCorners, numVertices, meta))
 {
@@ -22,9 +22,9 @@ UnstructuredGrid::Data::Data(const UnstructuredGrid::Data &o, const std::string 
 {
 }
 
-UnstructuredGrid::Data::Data(const size_t numElements,
-                                   const size_t numCorners,
-                                   const size_t numVertices,
+UnstructuredGrid::Data::Data(const Index numElements,
+                                   const Index numCorners,
+                                   const Index numVertices,
                                    const std::string & name,
                                    const Meta &meta)
    : UnstructuredGrid::Base::Data(numElements, numCorners, numVertices,
@@ -33,9 +33,9 @@ UnstructuredGrid::Data::Data(const size_t numElements,
 {
 }
 
-UnstructuredGrid::Data * UnstructuredGrid::Data::create(const size_t numElements,
-                                            const size_t numCorners,
-                                            const size_t numVertices,
+UnstructuredGrid::Data * UnstructuredGrid::Data::create(const Index numElements,
+                                            const Index numCorners,
+                                            const Index numVertices,
                                             const Meta &meta) {
 
    const std::string name = Shm::the().createObjectID();

@@ -191,14 +191,14 @@ Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
             _el, _cl, _tl,
             _x, _y, _z);
 
-      size_t *el = usg->el().data();
+      Index *el = usg->el().data();
       unsigned char *tl = &usg->tl()[0];
       for (int index = 0; index < numElements; index ++) {
          el[index] = _el[index];
          tl[index] = (UnstructuredGrid::Type) _tl[index];
       }
 
-      size_t *cl = usg->cl().data();
+      Index *cl = usg->cl().data();
       for (int index = 0; index < numCorners; index ++)
          cl[index] = _cl[index];
 

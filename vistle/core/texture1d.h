@@ -14,12 +14,12 @@ class V_COREEXPORT Texture1D: public Object {
  public:
    typedef Object Base;
 
-   Texture1D(const size_t width,
+   Texture1D(const Index width,
          const Scalar min, const Scalar max,
          const Meta &meta=Meta());
 
-   size_t getNumElements() const;
-   size_t getWidth() const;
+   Index getNumElements() const;
+   Index getWidth() const;
    shm<unsigned char>::vector &pixels() const { return *(*d()->pixels)(); }
    shm<Scalar>::vector &coords() const { return *(*d()->coords)(); }
 
@@ -30,10 +30,10 @@ class V_COREEXPORT Texture1D: public Object {
       ShmVector<unsigned char>::ptr pixels;
       ShmVector<Scalar>::ptr coords;
 
-      static Data *create(const size_t width = 0,
+      static Data *create(const Index width = 0,
             const Scalar min = 0, const Scalar max = 0,
             const Meta &m=Meta());
-      Data(const std::string &name = "", const size_t size = 0,
+      Data(const std::string &name = "", const Index size = 0,
             const Scalar min = 0, const Scalar max = 0,
             const Meta &m=Meta());
 

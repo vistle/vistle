@@ -2,7 +2,7 @@
 
 namespace vistle {
 
-Texture1D::Texture1D(const size_t width,
+Texture1D::Texture1D(const Index width,
       const Scalar min, const Scalar max,
       const Meta &meta)
 : Texture1D::Base(Texture1D::Data::create(width, min, max, meta))
@@ -24,7 +24,7 @@ Texture1D::Data::Data(const Texture1D::Data &o, const std::string &n)
 {
 }
 
-Texture1D::Data::Data(const std::string &name, const size_t width,
+Texture1D::Data::Data(const std::string &name, const Index width,
                      const Scalar mi, const Scalar ma,
                      const Meta &meta)
    : Texture1D::Base::Data(Object::TEXTURE1D, name, meta)
@@ -35,7 +35,7 @@ Texture1D::Data::Data(const std::string &name, const size_t width,
 {
 }
 
-Texture1D::Data *Texture1D::Data::create(const size_t width,
+Texture1D::Data *Texture1D::Data::create(const Index width,
                               const Scalar min, const Scalar max,
                               const Meta &meta) {
 
@@ -46,12 +46,12 @@ Texture1D::Data *Texture1D::Data::create(const size_t width,
    return tex;
 }
 
-size_t Texture1D::getNumElements() const {
+Index Texture1D::getNumElements() const {
 
    return d()->coords->size();
 }
 
-size_t Texture1D::getWidth() const {
+Index Texture1D::getWidth() const {
 
    return d()->pixels->size() / 4;
 }

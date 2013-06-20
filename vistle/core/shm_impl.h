@@ -72,7 +72,7 @@ typename ShmVector<T>::ptr &ShmVector<T>::ptr::operator=(ShmVector<T> *init) {
 }
 
 template<typename T>
-ShmVector<T>::ShmVector(size_t size)
+ShmVector<T>::ShmVector(Index size)
 : m_refcount(0)
 {
    std::string n(Shm::the().createObjectID());
@@ -106,7 +106,7 @@ void ShmVector<T>::operator delete(void *p) {
 }
 
 template<typename T>
-void ShmVector<T>::resize(size_t s) {
+void ShmVector<T>::resize(Index s) {
    m_x->resize(s);
 }
 
@@ -146,7 +146,7 @@ template<typename T>
 template<class Archive>
 void ShmVector<T>::load(Archive &ar, const unsigned int version) {
 
-   size_t s = 0;
+   Index s = 0;
    ar & boost::serialization::make_nvp("size", s);
    m_x->resize(s);
    ar & boost::serialization::make_nvp("elements", boost::serialization::make_array(&(*m_x)[0], m_x->size()));
@@ -156,7 +156,7 @@ template<typename T>
 template<class Archive>
 void ShmVector<T>::save(Archive &ar, const unsigned int version) const {
 
-   size_t s = m_x->size();
+   Index s = m_x->size();
    ar & boost::serialization::make_nvp("size", s);
    ar & boost::serialization::make_nvp("elements", boost::serialization::make_array(&(*m_x)[0], m_x->size()));
 }

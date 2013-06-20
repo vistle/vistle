@@ -2,9 +2,9 @@
 
 namespace vistle {
 
-Polygons::Polygons(const size_t numElements,
-      const size_t numCorners,
-      const size_t numVertices,
+Polygons::Polygons(const Index numElements,
+      const Index numCorners,
+      const Index numVertices,
       const Meta &meta)
 : Polygons::Base(Polygons::Data::create(numElements, numCorners, numVertices, meta))
 {
@@ -20,8 +20,8 @@ Polygons::Data::Data(const Polygons::Data &o, const std::string &n)
 {
 }
 
-Polygons::Data::Data(const size_t numElements, const size_t numCorners,
-                   const size_t numVertices, const std::string & name,
+Polygons::Data::Data(const Index numElements, const Index numCorners,
+                   const Index numVertices, const std::string & name,
                    const Meta &meta)
    : Polygons::Base::Data(numElements, numCorners, numVertices,
          Object::POLYGONS, name, meta)
@@ -29,9 +29,9 @@ Polygons::Data::Data(const size_t numElements, const size_t numCorners,
 }
 
 
-Polygons::Data * Polygons::Data::create(const size_t numElements,
-                            const size_t numCorners,
-                            const size_t numVertices,
+Polygons::Data * Polygons::Data::create(const Index numElements,
+                            const Index numCorners,
+                            const Index numVertices,
                             const Meta &meta) {
 
    const std::string name = Shm::the().createObjectID();

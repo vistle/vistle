@@ -2,8 +2,8 @@
 
 namespace vistle {
 
-Indexed::Indexed(const size_t numElements, const size_t numCorners,
-                      const size_t numVertices,
+Indexed::Indexed(const Index numElements, const Index numCorners,
+                      const Index numVertices,
                       const Meta &meta)
    : Indexed::Base(static_cast<Data *>(NULL))
 {
@@ -24,14 +24,14 @@ bool Indexed::checkImpl() const {
    return true;
 }
 
-Indexed::Data::Data(const size_t numElements, const size_t numCorners,
-             const size_t numVertices,
+Indexed::Data::Data(const Index numElements, const Index numCorners,
+             const Index numVertices,
              Type id, const std::string & name,
              const Meta &meta)
    : Indexed::Base::Data(numVertices, id, name,
          meta)
-   , el(new ShmVector<size_t>(numElements))
-   , cl(new ShmVector<size_t>(numCorners))
+   , el(new ShmVector<Index>(numElements))
+   , cl(new ShmVector<Index>(numCorners))
 {
 }
 
@@ -43,8 +43,8 @@ Indexed::Data::Data(const Indexed::Data &o, const std::string &name)
 }
 
 Indexed::Data *Indexed::Data::create(Type id,
-            const size_t numElements, const size_t numCorners,
-            const size_t numVertices,
+            const Index numElements, const Index numCorners,
+            const Index numVertices,
             const Meta &meta) {
 
    assert("should never be called" == NULL);
@@ -53,17 +53,17 @@ Indexed::Data *Indexed::Data::create(Type id,
 }
 
 
-size_t Indexed::getNumElements() const {
+Index Indexed::getNumElements() const {
 
    return el().size();
 }
 
-size_t Indexed::getNumCorners() const {
+Index Indexed::getNumCorners() const {
 
    return cl().size();
 }
 
-size_t Indexed::getNumVertices() const {
+Index Indexed::getNumVertices() const {
 
    return x(0).size();
 }

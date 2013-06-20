@@ -2,7 +2,7 @@
 
 namespace vistle {
 
-Triangles::Triangles(const size_t numCorners, const size_t numVertices,
+Triangles::Triangles(const Index numCorners, const Index numVertices,
                      const Meta &meta)
    : Triangles::Base(Triangles::Data::create(numCorners, numVertices,
             meta)) {
@@ -23,19 +23,19 @@ Triangles::Data::Data(const Triangles::Data &o, const std::string &n)
 {
 }
 
-Triangles::Data::Data(const size_t numCorners, const size_t numVertices,
+Triangles::Data::Data(const Index numCorners, const Index numVertices,
                      const std::string & name,
                      const Meta &meta)
    : Base::Data(numVertices,
          Object::TRIANGLES, name,
          meta)
-   , cl(new ShmVector<size_t>(numCorners))
+   , cl(new ShmVector<Index>(numCorners))
 {
 }
 
 
-Triangles::Data * Triangles::Data::create(const size_t numCorners,
-                              const size_t numVertices,
+Triangles::Data * Triangles::Data::create(const Index numCorners,
+                              const Index numVertices,
                               const Meta &meta) {
 
    const std::string name = Shm::the().createObjectID();
@@ -45,12 +45,12 @@ Triangles::Data * Triangles::Data::create(const size_t numCorners,
    return t;
 }
 
-size_t Triangles::getNumCorners() const {
+Index Triangles::getNumCorners() const {
 
    return cl().size();
 }
 
-size_t Triangles::getNumVertices() const {
+Index Triangles::getNumVertices() const {
 
    return x(0).size();
 }

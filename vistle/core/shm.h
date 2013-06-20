@@ -12,6 +12,7 @@
 #include <boost/serialization/array.hpp>
 
 #include "exception.h"
+#include "index.h"
 #include "export.h"
 
 //#define SHMDEBUG
@@ -163,16 +164,16 @@ class V_COREEXPORT ShmVector {
             boost::interprocess::offset_ptr<ShmVector> m_p;
       };
 
-      ShmVector(size_t size = 0);
+      ShmVector(Index size = 0);
       int refcount() const;
       void* operator new(size_t size);
       void operator delete(void *p);
 
-      T &operator[](size_t i) { return (*m_x)[i]; }
-      const T &operator[](size_t i) const { return (*m_x)[i]; }
+      T &operator[](Index i) { return (*m_x)[i]; }
+      const T &operator[](Index i) const { return (*m_x)[i]; }
 
-      size_t size() const { return m_x->size(); }
-      void resize(size_t s);
+      Index size() const { return m_x->size(); }
+      void resize(Index s);
 
       typename shm<T>::ptr &operator()() { return m_x; }
       typename shm<const T>::ptr &operator()() const { return m_x; }

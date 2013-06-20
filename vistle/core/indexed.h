@@ -15,27 +15,27 @@ class  V_COREEXPORT Indexed: public Coords {
  public:
    typedef Coords Base;
 
-   Indexed(const size_t numElements, const size_t numCorners,
-         const size_t numVertices,
+   Indexed(const Index numElements, const Index numCorners,
+         const Index numVertices,
          const Meta &meta=Meta());
 
-   size_t getNumElements() const;
-   size_t getNumCorners() const;
-   size_t getNumVertices() const;
+   Index getNumElements() const;
+   Index getNumCorners() const;
+   Index getNumVertices() const;
 
-   shm<size_t>::vector &cl() const { return *(*d()->cl)(); }
-   shm<size_t>::vector &el() const { return *(*d()->el)(); }
+   shm<Index>::vector &cl() const { return *(*d()->cl)(); }
+   shm<Index>::vector &el() const { return *(*d()->el)(); }
 
    V_DATA_BEGIN(Indexed);
-      ShmVector<size_t>::ptr el, cl;
+      ShmVector<Index>::ptr el, cl;
 
-      Data(const size_t numElements = 0, const size_t numCorners = 0,
-           const size_t numVertices = 0,
+      Data(const Index numElements = 0, const Index numCorners = 0,
+           const Index numVertices = 0,
             Type id = UNKNOWN, const std::string &name = "",
             const Meta &meta=Meta());
       static Data *create(Type id = UNKNOWN,
-            const size_t numElements = 0, const size_t numCorners = 0,
-            const size_t numVertices = 0,
+            const Index numElements = 0, const Index numCorners = 0,
+            const Index numVertices = 0,
             const Meta &meta=Meta());
 
    V_DATA_END(Indexed);

@@ -62,9 +62,9 @@ class V_COREEXPORT Module {
    bool setStringParameter(const std::string & name, const std::string & value, bool reply=false);
    std::string getStringParameter(const std::string & name) const;
 
-   FloatParameter *addFloatParameter(const std::string & name, const std::string &description, const vistle::Scalar value);
-   bool setFloatParameter(const std::string & name, const vistle::Scalar value, bool reply=false);
-   vistle::Scalar getFloatParameter(const std::string & name) const;
+   FloatParameter *addFloatParameter(const std::string & name, const std::string &description, const double value);
+   bool setFloatParameter(const std::string & name, const double value, bool reply=false);
+   double getFloatParameter(const std::string & name) const;
 
    IntParameter *addIntParameter(const std::string & name, const std::string &description, const int value, Parameter::Presentation p=Parameter::Generic);
    bool setIntParameter(const std::string & name, const int value, bool reply=false);

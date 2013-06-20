@@ -17,13 +17,15 @@
 #include <core/shm.h>
 #include <core/vec.h>
 
+using namespace vistle;
+
 //#define TWICE
 
 template<class container>
-void time_pb(container &v, const std::string &tag, size_t size) {
+void time_pb(container &v, const std::string &tag, Index size) {
 
    clock_t start = clock();
-   for (size_t i=0; i<size; ++i) {
+   for (Index i=0; i<size; ++i) {
       v.push_back(i);
    }
    clock_t elapsed = clock()-start;
@@ -31,10 +33,10 @@ void time_pb(container &v, const std::string &tag, size_t size) {
 }
 
 template<class container>
-void time_arr(container &v, const std::string &tag, size_t size) {
+void time_arr(container &v, const std::string &tag, Index size) {
 
    clock_t start = clock();
-   for (size_t i=0; i<size; ++i) {
+   for (Index i=0; i<size; ++i) {
       v[i] = i;
    }
    clock_t elapsed = clock()-start;
@@ -42,10 +44,10 @@ void time_arr(container &v, const std::string &tag, size_t size) {
 }
 
 template<class T>
-void time_ptr(T *v, const std::string &tag, size_t size) {
+void time_ptr(T *v, const std::string &tag, Index size) {
 
    clock_t start = clock();
-   for (size_t i=0; i<size; ++i) {
+   for (Index i=0; i<size; ++i) {
       v[i] = i;
    }
    clock_t elapsed = clock()-start;
@@ -67,14 +69,14 @@ int main(int argc, char *argv[]) {
    if (argc > 1) {
       shift = atoi(argv[1]);
    }
-   const size_t size = 1L << shift;
+   const Index size = 1L << shift;
 
    { 
-      std::vector<size_t> v;
+      std::vector<Index> v;
       time_pb(v, "STL vector push_back", size);
    }
    {
-      std::vector<size_t> v;
+      std::vector<Index> v;
       v.reserve(size);
       time_pb(v, "STL vector reserve+push_back", size);
       time_arr(v, "STL vector arr", size);
@@ -86,11 +88,11 @@ int main(int argc, char *argv[]) {
    }
 
    { 
-      bi::vector<size_t> v;
+      bi::vector<Index> v;
       time_pb(v, "B:I vector push_back", size);
    }
    {
-      bi::vector<size_t> v;
+      bi::vector<Index> v;
       v.reserve(size);
       time_pb(v, "B:I vector reserve+push_back", size);
       time_arr(v, "B:I vector arr", size);
@@ -104,14 +106,14 @@ int main(int argc, char *argv[]) {
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
-      vistle::Vec<size_t, 1> v(size_t(0));
+      vistle::Vec<Index, 1> v(Index(0));
       time_pb(v.x(), "vistle push_back only", size);
       bi::shared_memory_object::remove(shmname.c_str());
    }
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
-      vistle::Vec<size_t, 1> v(size_t(0));
+      vistle::Vec<Index, 1> v(Index(0));
       v.x().reserve(size);
       time_pb(v.x(), "vistle push_back+reserve", size);
       time_arr(v.x(), "vistle vector arr", size);
@@ -126,8 +128,8 @@ int main(int argc, char *argv[]) {
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
-      vistle::Vec<size_t, 1> v(size_t(0));
-      shm<size_t>::vector &vv = v.x();
+      vistle::Vec<Index, 1> v(Index(0));
+      shm<Index>::vector &vv = v.x();
       vv.reserve(size);
       time_pb(vv, "vistle push_back+reserve", size);
       bi::shared_memory_object::remove(shmname.c_str());
@@ -136,8 +138,8 @@ int main(int argc, char *argv[]) {
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
-      vistle::shm<size_t>::ptr v7p = Shm::the().shm().construct<vistle::shm<size_t>::vector>("testvector")(size, 0, Shm::the().allocator());
-      vistle::shm<size_t>::vector &v = *v7p;
+      vistle::shm<Index>::ptr v7p = Shm::the().shm().construct<vistle::shm<Index>::vector>("testvector")(size, 0, Shm::the().allocator());
+      vistle::shm<Index>::vector &v = *v7p;
       v.reserve(size);
       time_pb(v, "vistle explicit reserved+push_back", size);
       time_arr(v, "vistle explicit arr", size);
@@ -153,9 +155,9 @@ int main(int argc, char *argv[]) {
    bi::shared_memory_object::remove(shmname.c_str());
    vistle::Shm::create(shmname, 0, 0, NULL);
    start = clock();
-   vistle::Vec<size_t, 1> v7(size_t(0));
+   vistle::Vec<Index, 1> v7(Index(0));
    auto v7p = &(v7.x()());
-   for (size_t i=0; i<size; ++i) {
+   for (Index i=0; i<size; ++i) {
       v7p->push_back(i);
    }
    clock_t vi_dir = clock()-start;

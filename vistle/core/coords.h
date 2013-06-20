@@ -15,17 +15,17 @@ class V_COREEXPORT Coords: public Vec<Scalar,3> {
  public:
    typedef Vec<Scalar,3> Base;
 
-   Coords(const size_t numVertices,
+   Coords(const Index numVertices,
              const Meta &meta=Meta());
 
-   size_t getNumCoords() const;
-   size_t getNumVertices() const;
+   Index getNumCoords() const;
+   Index getNumVertices() const;
 
    V_DATA_BEGIN(Coords);
-      Data(const size_t numVertices = 0,
+      Data(const Index numVertices = 0,
             Type id = UNKNOWN, const std::string & name = "",
             const Meta &meta=Meta());
-      static Data *create(Type id = UNKNOWN, const size_t numVertices = 0,
+      static Data *create(Type id = UNKNOWN, const Index numVertices = 0,
             const Meta &meta=Meta());
 
    V_DATA_END(Coords);

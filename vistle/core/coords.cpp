@@ -2,7 +2,7 @@
 
 namespace vistle {
 
-Coords::Coords(const size_t numVertices,
+Coords::Coords(const Index numVertices,
              const Meta &meta)
    : Coords::Base(static_cast<Data *>(NULL))
 {}
@@ -12,7 +12,7 @@ bool Coords::checkImpl() const {
    return true;
 }
 
-Coords::Data::Data(const size_t numVertices,
+Coords::Data::Data(const Index numVertices,
       Type id, const std::string &name,
       const Meta &meta)
    : Coords::Base::Data(numVertices,
@@ -26,7 +26,7 @@ Coords::Data::Data(const Coords::Data &o, const std::string &n)
 {
 }
 
-Coords::Data *Coords::Data::create(Type id, const size_t numVertices,
+Coords::Data *Coords::Data::create(Type id, const Index numVertices,
             const Meta &meta) {
 
    assert("should never be called" == NULL);
@@ -34,12 +34,12 @@ Coords::Data *Coords::Data::create(Type id, const size_t numVertices,
    return NULL;
 }
 
-size_t Coords::getNumVertices() const {
+Index Coords::getNumVertices() const {
 
    return getSize();
 }
 
-size_t Coords::getNumCoords() const {
+Index Coords::getNumCoords() const {
 
    return getSize();
 }

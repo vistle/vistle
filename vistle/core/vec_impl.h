@@ -6,13 +6,13 @@
 namespace vistle {
 
 template <class T, int Dim>
-Vec<T,Dim>::Vec(const size_t size,
+Vec<T,Dim>::Vec(const Index size,
         const Meta &meta)
       : Object(Data::create(size, meta)) {
    }
 
 template <class T, int Dim>
-void Vec<T,Dim>::setSize(const size_t size) {
+void Vec<T,Dim>::setSize(const Index size) {
    for (int c=0; c<Dim; ++c)
       d()->x[c]->resize(size);
 }
@@ -27,7 +27,7 @@ bool Vec<T,Dim>::checkImpl() const {
 }
 
 template <class T, int Dim>
-Vec<T,Dim>::Data::Data(const size_t size, const std::string &name,
+Vec<T,Dim>::Data::Data(const Index size, const std::string &name,
       const Meta &m)
 : Vec<T,Dim>::Base::Data(Vec<T,Dim>::type(), name, m)
 {
@@ -42,7 +42,7 @@ Object::Type Vec<T,Dim>::type() {
 }
 
 template <class T, int Dim>
-Vec<T,Dim>::Data::Data(const size_t size, Type id, const std::string &name,
+Vec<T,Dim>::Data::Data(const Index size, Type id, const std::string &name,
       const Meta &m)
 : Vec<T,Dim>::Base::Data(id, name, m)
 {
@@ -59,7 +59,7 @@ Vec<T,Dim>::Data::Data(const Data &o, const std::string &n)
 }
 
 template <class T, int Dim>
-typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::create(size_t size, const Meta &meta) {
+typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::create(Index size, const Meta &meta) {
    std::string name = Shm::the().createObjectID();
    Data *t = shm<Data>::construct(name)(size, name, meta);
    publish(t);

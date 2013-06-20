@@ -16,6 +16,7 @@
 
 #include "OSGRenderer.h"
 
+using namespace vistle;
 
 bool OSGRenderer::compute() {
 
@@ -35,12 +36,12 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
          case vistle::Object::TRIANGLES: {
 
             vistle::Triangles::const_ptr triangles = vistle::Triangles::as(geometry);
-            const size_t numCorners = triangles->getNumCorners();
-            const size_t numVertices = triangles->getNumVertices();
+            const Index numCorners = triangles->getNumCorners();
+            const Index numVertices = triangles->getNumVertices();
 
             std::cerr << "   Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]" << std::endl;
 
-            size_t *cl = &triangles->cl()[0];
+            Index *cl = &triangles->cl()[0];
             vistle::Scalar *x = &triangles->x()[0];
             vistle::Scalar *y = &triangles->y()[0];
             vistle::Scalar *z = &triangles->z()[0];
@@ -64,7 +65,7 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
             std::vector<osg::Vec3> * vertexNormals =
                new std::vector<osg::Vec3>[numVertices];
 
-            for (size_t c = 0; c < numCorners; c += 3) {
+            for (Index c = 0; c < numCorners; c += 3) {
                osg::Vec3 u(x[cl[c + 0]], y[cl[c + 0]], z[cl[c + 0]]);
                osg::Vec3 v(x[cl[c + 1]], y[cl[c + 1]], z[cl[c + 1]]);
                osg::Vec3 w(x[cl[c + 2]], y[cl[c + 2]], z[cl[c + 2]]);
@@ -75,7 +76,7 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
                vertexNormals[cl[c + 2]].push_back(normal);
             }
 
-            for (size_t vertex = 0; vertex < numVertices; vertex ++) {
+            for (Index vertex = 0; vertex < numVertices; vertex ++) {
                osg::Vec3 n;
                std::vector<osg::Vec3>::iterator i;
                for (i = vertexNormals[vertex].begin(); i != vertexNormals[vertex].end(); i ++)
@@ -135,13 +136,13 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
          case vistle::Object::LINES: {
 
             vistle::Lines::const_ptr lines = vistle::Lines::as(geometry);
-            const size_t numElements = lines->getNumElements();
-            const size_t numCorners = lines->getNumCorners();
+            const Index numElements = lines->getNumElements();
+            const Index numCorners = lines->getNumCorners();
 
             std::cerr << "   Lines: [ #c " << numCorners << ", #e " << numElements << " ]" << std::endl;
 
-            size_t *el = &lines->el()[0];
-            size_t *cl = &lines->cl()[0];
+            Index *el = &lines->el()[0];
+            Index *cl = &lines->cl()[0];
             vistle::Scalar *x = &lines->x()[0];
             vistle::Scalar *y = &lines->y()[0];
             vistle::Scalar *z = &lines->z()[0];
@@ -154,7 +155,7 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
             osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
 
             int num = 0;
-            for (size_t index = 0; index < numElements; index ++) {
+            for (Index index = 0; index < numElements; index ++) {
 
                if (index == numElements - 1)
                   num = numCorners - el[index];
@@ -187,15 +188,15 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
             if (normals)
                vec = vistle::Vec<vistle::Scalar,3>::as(normals);
 
-            const size_t numElements = polygons->getNumElements();
-            const size_t numCorners = polygons->getNumCorners();
-            const size_t numVertices = polygons->getNumVertices();
-            const size_t numNormals = vec ? vec->getSize() : 0;
+            const Index numElements = polygons->getNumElements();
+            const Index numCorners = polygons->getNumCorners();
+            const Index numVertices = polygons->getNumVertices();
+            const Index numNormals = vec ? vec->getSize() : 0;
 
             std::cerr << "   Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]" << std::endl;
 
-            size_t *el = &polygons->el()[0];
-            size_t *cl = &polygons->cl()[0];
+            Index *el = &polygons->el()[0];
+            Index *cl = &polygons->cl()[0];
             vistle::Scalar *x = &polygons->x()[0];
             vistle::Scalar *y = &polygons->y()[0];
             vistle::Scalar *z = &polygons->z()[0];
@@ -230,7 +231,7 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
             vertexNormals.resize(numVertices);
 
             int num = 0;
-            for (size_t index = 0; index < numElements; index ++) {
+            for (Index index = 0; index < numElements; index ++) {
 
                osg::Vec3 vert[3];
 
@@ -267,7 +268,7 @@ void OSGRenderer::addInputObject(vistle::Object::const_ptr geometry,
             }
 
             // convert per face normals to per vertex normals
-            for (size_t vertex = 0; vertex < vertices->size(); vertex ++) {
+            for (Index vertex = 0; vertex < vertices->size(); vertex ++) {
                osg::Vec3 n;
                std::vector<osg::Vec3>::iterator i;
                for (i = vertexNormals[vertexMap[vertex]].begin();

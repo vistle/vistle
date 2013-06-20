@@ -4,6 +4,7 @@
 #include <string>
 
 #include "object.h"
+#include "scalar.h"
 #include "paramvector.h"
 #include "export.h"
 
@@ -366,7 +367,7 @@ class V_COREEXPORT SetParameter: public Message {
       SetParameter(const int module,
             const std::string & name, const int value);
       SetParameter(const int module,
-            const std::string & name, const Scalar value);
+            const std::string & name, const double value);
       SetParameter(const int module,
             const std::string & name, const ParamVector value);
       SetParameter(const int module,
@@ -402,8 +403,8 @@ class V_COREEXPORT SetParameter: public Message {
       int rangetype;
       union {
          int v_int;
-         Scalar v_scalar;
-         Scalar v_vector[MaxDimension];
+         double v_scalar;
+         double v_vector[MaxDimension];
          param_value_t v_string;
       };
 };

@@ -2,7 +2,7 @@
 
 namespace vistle {
 
-Points::Points(const size_t numPoints,
+Points::Points(const Index numPoints,
          const Meta &meta)
    : Points::Base(Points::Data::create(numPoints, meta))
 {
@@ -13,12 +13,12 @@ bool Points::checkImpl() const {
    return true;
 }
 
-size_t Points::getNumPoints() const {
+Index Points::getNumPoints() const {
 
    return getNumCoords();
 }
 
-Points::Data::Data(const size_t numPoints,
+Points::Data::Data(const Index numPoints,
              const std::string & name,
              const Meta &meta)
    : Points::Base::Data(numPoints,
@@ -31,7 +31,7 @@ Points::Data::Data(const Points::Data &o, const std::string &n)
 {
 }
 
-Points::Data *Points::Data::create(const size_t numPoints,
+Points::Data *Points::Data::create(const Index numPoints,
                       const Meta &meta) {
 
    const std::string name = Shm::the().createObjectID();

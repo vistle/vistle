@@ -33,15 +33,15 @@ class PlaneClip {
    Vector m_point;
    Vector m_normal;
 
-   size_t *el = NULL;
-   size_t *cl = NULL;
+   Index *el = NULL;
+   Index *cl = NULL;
    const Scalar *x = NULL;
    const Scalar *y = NULL;
    const Scalar *z = NULL;
 
    const Scalar *d = NULL;
 
-   size_t *out_cl = NULL;
+   Index *out_cl = NULL;
    Scalar *out_x = NULL;
    Scalar *out_y = NULL;
    Scalar *out_z = NULL;
@@ -49,7 +49,7 @@ class PlaneClip {
 
    // mapping between vertex indices in the incoming object and
    // vertex indices in the outgoing object
-   std::vector<size_t> vertexMap;
+   std::vector<Index> vertexMap;
 
    Polygons::ptr m_outGrid;
    Vec<Scalar>::ptr m_outData;
@@ -87,40 +87,46 @@ class PlaneClip {
    }
 
    bool process() {
-      const size_t numElem = m_grid->getNumElements();
+      const Index numElem = m_grid->getNumElements();
 
-      size_t curidx = 0;
-      std::vector<size_t> outputIdx(numElem);
+      Index curPoly=0, curCorner=0, curCoord=0;
+      std::vector<Index> outIdxPoly(numElem), outIdxCorner(numElem), outIdxCoord(numElem);
 #pragma omp parallel for schedule (dynamic)
-      for (size_t elem=0; elem<numElem; ++elem) {
+      for (Index elem=0; elem<numElem; ++elem) {
 
-         size_t n = processPolygon(elem, 0, true /* count only */);
+         Index numPoly=0, numCorner=0, numCoord=0;
+         processPolygon(elem, numPoly, numCorner, numCoord, true);
+
 #pragma omp critical
          {
-            outputIdx[elem] = curidx;
-            curidx += n;
+            outIdxPoly[elem] = curPoly;
+            outIdxCorner[elem] = curCorner;
+            outIdxCoord[elem] = curCoord;
+            curPoly += numPoly;
+            curCorner += numCorner;
+            curCoord += numCoord;
          }
       }
 
       //std::cerr << "CuttingSurface: " << curidx << " vertices" << std::endl;
 
-      m_outGrid->cl().resize(curidx);
+      m_outGrid->cl().resize(curCorner);
       out_cl = m_outGrid->cl().data();
-      m_outGrid->x().resize(curidx);
+      m_outGrid->x().resize(curCoord);
       out_x = m_outGrid->x().data();
-      m_outGrid->y().resize(curidx);
+      m_outGrid->y().resize(curCoord);
       out_y = m_outGrid->y().data();
-      m_outGrid->z().resize(curidx);
+      m_outGrid->z().resize(curCoord);
       out_z = m_outGrid->z().data();
 
       if (m_outData) {
-         m_outData->x().resize(curidx);
+         m_outData->x().resize(curCoord);
          out_d = m_outData->x().data();
       }
 
 #pragma omp parallel for schedule (dynamic)
-      for (size_t elem = 0; elem<numElem; ++elem) {
-         processPolygon(elem, outputIdx[elem], false);
+      for (Index elem = 0; elem<numElem; ++elem) {
+         processPolygon(elem, outIdxPoly[elem], outIdxCorner[elem], outIdxCoord[elem], false);
       }
 
       //std::cerr << "CuttingSurface: << " << m_outData->x().size() << " vert, " << m_outData->x().size() << " data elements" << std::endl;
@@ -134,23 +140,23 @@ class PlaneClip {
    }
 
  private:
-   size_t processPolygon(const size_t element, const size_t outIdx, bool numVertsOnly) {
+   void processPolygon(const Index element, Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord, bool numVertsOnly) {
 
       Polygons::const_ptr &in = m_grid;
       Polygons::ptr &out = m_outGrid;
 
 
-      size_t start = el[element];
-      size_t end;
+      Index start = el[element];
+      Index end;
       if (element != in->getNumElements() - 1)
          end = el[element + 1] - 1;
       else
          end = in->getNumCorners() - 1;
 
-      size_t numIn = 0;
-      size_t numIsect = 0;
+      Index numIn = 0;
+      Index numIsect = 0;
 
-      for (size_t corner = start; corner <= end; corner ++) {
+      for (Index corner = start; corner <= end; corner ++) {
          Vector p(x[cl[corner]],
                y[cl[corner]],
                z[cl[corner]]);
@@ -159,7 +165,7 @@ class PlaneClip {
       }
 
       if (numVertsOnly) {
-         return numIn;
+         return;
       }
 
       if (numIn == (end - start + 1)) {
@@ -168,10 +174,10 @@ class PlaneClip {
          // of the cutting plane, insert the element and all vertices
          out->el().push_back(out->cl().size());
 
-         for (size_t corner = start; corner <= end; corner ++) {
+         for (Index corner = start; corner <= end; corner ++) {
 
-            size_t vertexID = cl[corner];
-            size_t outID;
+            Index vertexID = cl[corner];
+            Index outID;
 
             if (vertexMap[vertexID] <= 0) {
                outID = out->x().size();
@@ -197,15 +203,15 @@ class PlaneClip {
          //     plane
          out->el().push_back(out->cl().size());
 
-         for (size_t corner = start; corner <= end; corner ++) {
+         for (Index corner = start; corner <= end; corner ++) {
 
-            size_t vertexID = cl[corner];
+            Index vertexID = cl[corner];
 
             Vector p(x[cl[corner]],
                   y[cl[corner]],
                   z[cl[corner]]);
 
-            size_t former = (corner == start) ? end : corner - 1;
+            Index former = (corner == start) ? end : corner - 1;
             Vector pl(x[cl[former]],
                   y[cl[former]],
                   z[cl[former]]);
@@ -219,7 +225,7 @@ class PlaneClip {
                   (m_normal * (pl - p));
                Vector pp = p + (pl - p) * s;
 
-               size_t outID = out->x().size();
+               Index outID = out->x().size();
                out->x().push_back(pp.x);
                out->y().push_back(pp.y);
                out->z().push_back(pp.z);
@@ -229,7 +235,7 @@ class PlaneClip {
 
             if ((p - m_point) * m_normal < 0) {
 
-               size_t outID;
+               Index outID;
 
                if (vertexMap[vertexID] <= 0) {
                   outID = out->x().size();
@@ -245,8 +251,6 @@ class PlaneClip {
             }
          }
       }
-
-      return numIn;
    }
 };
 
@@ -271,25 +275,25 @@ Object::ptr CutGeometry::cutGeometry(Object::const_ptr object,
          Polygons::const_ptr in = Polygons::as(object);
          Polygons::ptr out(new Polygons(Object::Initialized));
 
-         const size_t *el = &in->el()[0];
-         const size_t *cl = &in->cl()[0];
+         const Index *el = &in->el()[0];
+         const Index *cl = &in->cl()[0];
          const Scalar *x = &in->x()[0];
          const Scalar *y = &in->y()[0];
          const Scalar *z = &in->z()[0];
 
-         size_t numElements = in->getNumElements();
-         for (size_t element = 0; element < numElements; element ++) {
+         Index numElements = in->getNumElements();
+         for (Index element = 0; element < numElements; element ++) {
 
-            size_t start = el[element];
-            size_t end;
+            Index start = el[element];
+            Index end;
             if (element != in->getNumElements() - 1)
                end = el[element + 1] - 1;
             else
                end = in->getNumCorners() - 1;
 
-            size_t numIn = 0;
+            Index numIn = 0;
 
-            for (size_t corner = start; corner <= end; corner ++) {
+            for (Index corner = start; corner <= end; corner ++) {
                Vector p(x[cl[corner]],
                      y[cl[corner]],
                      z[cl[corner]]);
@@ -303,9 +307,9 @@ Object::ptr CutGeometry::cutGeometry(Object::const_ptr object,
                // of the cutting plane, insert the element and all vertices
                out->el().push_back(out->cl().size());
 
-               for (size_t corner = start; corner <= end; corner ++) {
+               for (Index corner = start; corner <= end; corner ++) {
 
-                  size_t vertexID = cl[corner];
+                  Index vertexID = cl[corner];
                   int outID;
 
                   if (vertexMap.size() < vertexID+1)
@@ -334,15 +338,15 @@ Object::ptr CutGeometry::cutGeometry(Object::const_ptr object,
                //     plane
                out->el().push_back(out->cl().size());
 
-               for (size_t corner = start; corner <= end; corner ++) {
+               for (Index corner = start; corner <= end; corner ++) {
 
-                  size_t vertexID = cl[corner];
+                  Index vertexID = cl[corner];
 
                   Vector p(x[cl[corner]],
                         y[cl[corner]],
                         z[cl[corner]]);
 
-                  size_t former = (corner == start) ? end : corner - 1;
+                  Index former = (corner == start) ? end : corner - 1;
                   Vector pl(x[cl[former]],
                         y[cl[former]],
                         z[cl[former]]);
@@ -356,7 +360,7 @@ Object::ptr CutGeometry::cutGeometry(Object::const_ptr object,
                         (normal * (pl - p));
                      Vector pp = p + (pl - p) * s;
 
-                     size_t outID = out->x().size();
+                     Index outID = out->x().size();
                      out->x().push_back(pp.x);
                      out->y().push_back(pp.y);
                      out->z().push_back(pp.z);
@@ -366,7 +370,7 @@ Object::ptr CutGeometry::cutGeometry(Object::const_ptr object,
 
                   if ((p - point) * normal < 0) {
 
-                     size_t outID;
+                     Index outID;
 
                      if (vertexMap.size() < vertexID+1)
                         vertexMap.resize(vertexID+1);
