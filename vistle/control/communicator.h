@@ -100,7 +100,11 @@ class Communicator {
 
    std::map<int, bi::shared_memory_object *> shmObjects;
 
-   typedef std::map<int, std::string> RunningMap;
+   struct Module {
+      bool initialized = false;
+      std::string name;
+   };
+   typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;
    typedef std::set<int> ModuleSet;
    ModuleSet busySet;

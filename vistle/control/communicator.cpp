@@ -159,7 +159,7 @@ std::string Communicator::getModuleName(int id) const {
    if (it == runningMap.end())
       return std::string();
 
-   return it->second;
+   return it->second.name;
 }
 
 
@@ -448,12 +448,15 @@ bool Communicator::handleMessage(const message::Message &message) {
             MPI_Info_free(&infos[i]);
          }
 
+         runningMap[moduleID].name = spawn.getName();
+
          // inform modules about current parameter values of other modules
          for (auto mit: parameterMap) {
             ModuleParameterMap &pm = mit.second;
+            const std::string moduleName = getModuleName(mit.first);
             for (auto pit: pm) {
                message::AddParameter add(pit.first, pit.second->description(),
-                     pit.second->type(), pit.second->presentation(), getModuleName(mit.first));
+                     pit.second->type(), pit.second->presentation(), moduleName);
                add.setSenderId(mit.first);
                add.setRank(rank);
                sendMessage(moduleID, add);
@@ -473,7 +476,8 @@ bool Communicator::handleMessage(const message::Message &message) {
          const message::Started &started =
             static_cast<const message::Started &>(message);
          int moduleID = started.senderId();
-         runningMap[moduleID] = started.getName();
+         runningMap[moduleID].initialized = true;
+         assert(runningMap[moduleID].name == started.getName());
 
          replayMessages();
          break;
@@ -654,9 +658,9 @@ bool Communicator::handleMessage(const message::Message &message) {
          assert(obj->refcount() >= 1);
 #if 0
          std::cerr << "Module " << m.senderId() << ": "
-                   << "AddObject " << m.getHandle() << " (" << obj->getName() << ")"
-                   << " ref " << obj->refcount()
-                   << " to port " << m.getPortName() << std::endl;
+            << "AddObject " << m.getHandle() << " (" << obj->getName() << ")"
+            << " ref " << obj->refcount()
+            << " to port " << m.getPortName() << std::endl;
 #endif
 
          Port *port = m_portManager.getPort(m.senderId(),
@@ -789,7 +793,7 @@ bool Communicator::handleMessage(const message::Message &message) {
             static_cast<const message::AddParameter &>(message);
 
 #ifdef DEBUG
-         CERR << "AddParameter: module=" << m.senderId() << ", name=" << m.getName() << std::endl;
+         CERR << "AddParameter: module=" << m.moduleName() << "(" << m.senderId() << "), name=" << m.getName() << std::endl;
 #endif
 
          ModuleParameterMap &pm = parameterMap[m.senderId()];
