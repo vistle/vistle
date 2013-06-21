@@ -80,7 +80,7 @@ class V_COREEXPORT Shm {
                          message::MessageQueue *messageQueue = NULL);
    static Shm & attach(const std::string &shmname, const int moduleID, const int rank,
                          message::MessageQueue *messageQueue = NULL);
-   ~Shm();
+   void detach();
 
    const std::string &name() const;
 
@@ -108,6 +108,7 @@ class V_COREEXPORT Shm {
  private:
    Shm(const std::string &name, const int moduleID, const int rank, const size_t size,
        message::MessageQueue *messageQueue, bool create);
+   ~Shm();
 
    void_allocator *m_allocator;
    std::string m_name;

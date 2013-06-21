@@ -79,6 +79,12 @@ Shm::~Shm() {
    delete m_shm;
 }
 
+void Shm::detach() {
+
+   delete s_singleton;
+   s_singleton = NULL;
+}
+
 std::string Shm::shmIdFilename() {
 
    std::stringstream name;

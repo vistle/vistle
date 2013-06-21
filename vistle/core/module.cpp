@@ -896,8 +896,12 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
 Module::~Module() {
 
+   m_cache.clear();
+
    vistle::message::ModuleExit m;
    sendMessage(m);
+
+   Shm::the().detach();
 
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
              << "/" << size() << "] quit" << std::endl;

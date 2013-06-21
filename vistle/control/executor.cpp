@@ -125,7 +125,7 @@ Executor::~Executor()
    delete m_comm;
    delete m_interpreter;
 
-   shared_memory_object::remove(m_name.c_str());
+   Shm::the().detach();
 }
 
 void Executor::setFile(const std::string &filename) {
