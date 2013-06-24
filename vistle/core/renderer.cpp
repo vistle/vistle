@@ -61,9 +61,16 @@ bool Renderer::dispatch() {
          vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
 
          switch (message->type()) {
+            case vistle::message::Message::ADDOBJECT: {
+               if (size() == 1) {
+                  const message::AddObject *add = static_cast<const message::AddObject *>(message);
+                  addInputObject(add->getPortName(), add->takeObject());
+               }
+               break;
+            }
             case vistle::message::Message::OBJECTRECEIVED: {
-               const message::ObjectReceived *recv = static_cast<const message::ObjectReceived *>(message);
                if (size() > 1) {
+                  const message::ObjectReceived *recv = static_cast<const message::ObjectReceived *>(message);
                   if (recv->rank() == rank()) {
                      Object::const_ptr obj = Shm::the().getObjectFromName(recv->objectName());
                      if (obj) {
@@ -81,6 +88,9 @@ bool Renderer::dispatch() {
                         MPI_Bcast(&len, 1, MPI_UINT64_T, rank(), MPI_COMM_WORLD);
                         std::cerr << "Rank " << rank() << ": OBJECT NOT FOUND: " << recv->objectName() << std::endl;
                      }
+                     assert(obj->check());
+                     addInputObject(recv->getPortName(), obj);
+                     obj->unref(); // normally done in AddObject::takeObject();
                   } else {
                      uint64_t len = 0;
                      //std::cerr << "Rank " << rank() << ": Waiting to receive" << std::endl;

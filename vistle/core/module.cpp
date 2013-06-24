@@ -501,16 +501,16 @@ bool Module::addInputObject(const std::string & portName,
    if (m_executionCount < object->getExecutionCounter())
       m_executionCount = object->getExecutionCounter();
 
-   std::map<std::string, Port *>::iterator i = inputPorts.find(portName);
+   Port *p = findInputPort(portName);
 
-   if (i != inputPorts.end()) {
+   if (p) {
       m_cache.addObject(portName, object);
-      i->second->objects().push_back(object);
+      p->objects().push_back(object);
       return true;
    }
 
    std::cerr << "Module::addInputObject: input port " << portName << " not found" << std::endl;
-   assert(i != inputPorts.end());
+   assert(p);
 
    return false;
 }
