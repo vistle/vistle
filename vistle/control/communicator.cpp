@@ -900,8 +900,13 @@ Communicator::~Communicator() {
       int dummy = 0;
       MPI_Request s;
       MPI_Isend(&dummy, 1, MPI_INT, (rank + 1) % size, TagToAny, MPI_COMM_WORLD, &s);
-      MPI_Wait(&m_reqAny, MPI_STATUS_IGNORE);
+      if (rank == 1) {
+         MPI_Request s2;
+         MPI_Isend(&dummy, 1, MPI_INT, 0, TagToRank0, MPI_COMM_WORLD, &s2);
+         //MPI_Wait(&s2, MPI_STATUS_IGNORE);
+      }
       //MPI_Wait(&s, MPI_STATUS_IGNORE);
+      //MPI_Wait(&m_reqAny, MPI_STATUS_IGNORE);
    }
    MPI_Barrier(MPI_COMM_WORLD);
 
