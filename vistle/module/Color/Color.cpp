@@ -1,6 +1,7 @@
 #include <sstream>
 #include <iomanip>
 #include <cfloat>
+#include <limits>
 #include <core/vector.h>
 #include <core/object.h>
 #include <core/vec.h>
@@ -83,11 +84,22 @@ void Color::getMinMax(vistle::Object::const_ptr object,
 
    const vistle::Scalar *x = &data->x()[0];
    size_t numElements = data->getSize();
-   for (size_t index = 0; index < numElements; index ++) {
-      if (x[index] < min)
-         min = x[index];
-      if (x[index] > max)
-         max = x[index];
+#pragma omp parallel
+   {
+      Scalar tmin = std::numeric_limits<Scalar>::max();
+      Scalar tmax = -std::numeric_limits<Scalar>::max();
+#pragma omp for
+      for (size_t index = 0; index < numElements; index ++) {
+         if (x[index] < tmin)
+            tmin = x[index];
+         if (x[index] > tmax)
+            tmax = x[index];
+      }
+#pragma omp critical
+      if (tmin < min)
+         min = tmin;
+      if (tmax > max)
+         max = tmax;
    }
 }
 
@@ -106,11 +118,13 @@ vistle::Object::ptr Color::addTexture(vistle::Object::const_ptr object,
       tex->setMeta(object->meta());
 
       unsigned char *pix = &tex->pixels()[0];
+#pragma omp parallel for
       for (size_t index = 0; index < cmap.width * 4; index ++)
          pix[index] = cmap.data[index];
 
       tex->coords().resize(numElem);
       auto tc = tex->coords().data();
+#pragma omp parallel for
       for (size_t index = 0; index < numElem; index ++)
          tc[index] = (x[index] - min) / range;
 
@@ -133,8 +147,8 @@ bool Color::compute() {
 
    while (Object::const_ptr obj = takeFirstObject("data_in")) {
 
-      vistle::Scalar min = FLT_MAX;
-      vistle::Scalar max = -FLT_MAX;
+      Scalar min = std::numeric_limits<Scalar>::max();
+      Scalar max = -std::numeric_limits<Scalar>::max();
 
       if (getFloatParameter("min") == getFloatParameter("max"))
          getMinMax(obj, min, max);
