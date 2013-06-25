@@ -42,7 +42,13 @@ int main(int argc, char ** argv) {
    }
 
 #ifdef SHMDEBUG
-   Shm &shm = Shm::attach(shmid, -1, -1);
+   try {
+      Shm &shm = Shm::attach(shmid, -1, -1);
+   } catch (std::exception &ex) {
+      std::cerr << "failed to attach to " << shmid << ": " << ex.what() << std::endl;
+      MPI_Finalize();
+      exit(1);
+   }
 
    for (size_t i=0; i<Shm::s_shmdebug->size(); ++i) {
       const ShmDebugInfo &info = (*Shm::s_shmdebug)[i];
@@ -53,10 +59,10 @@ int main(int argc, char ** argv) {
          switch(info.type) {
             case 'O':
                if (info.handle) {
-                  boost::shared_ptr<const Object> obj = shm.getObjectFromHandle(info.handle);
+                  boost::shared_ptr<const Object> obj = Shm::the().getObjectFromHandle(info.handle);
                   if (obj) {
                      std::cout << " type " << obj->getType();
-                     std::cout << " " << obj->refcount() << std::endl;
+                     std::cout << " ref " << obj->refcount() << std::endl;
                   } else {
                      std::cout << "ERR" << std::endl;
                   }
@@ -68,7 +74,7 @@ int main(int argc, char ** argv) {
                if (info.handle) {
                   const void *p = Shm::the().shm().get_address_from_handle(info.handle);
                   const ShmVector<int> *v = static_cast<const ShmVector<int> *>(p);
-                  std::cout << " " << v->refcount() << std::endl;
+                  std::cout << " ref " << v->refcount() << std::endl;
                } else {
                   std::cout << " no handle" << std::endl;
                }

@@ -325,6 +325,7 @@ struct archive_instantiator {
       q = c;
       q = new V();
       q->resize(1);
+      std::cerr << q->refcount() << std::endl;
       typedef T Archive;
       Stream stream;
       Archive ar(stream);
