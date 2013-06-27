@@ -20,8 +20,8 @@ class V_COREEXPORT Texture1D: public Object {
 
    Index getNumElements() const;
    Index getWidth() const;
-   shm<unsigned char>::vector &pixels() const { return *(*d()->pixels)(); }
-   shm<Scalar>::vector &coords() const { return *(*d()->coords)(); }
+   array<unsigned char> &pixels() const { return *(*d()->pixels)(); }
+   array<Scalar> &coords() const { return *(*d()->coords)(); }
 
    V_DATA_BEGIN(Texture1D);
       Scalar min;

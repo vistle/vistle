@@ -23,8 +23,8 @@ class  V_COREEXPORT Indexed: public Coords {
    Index getNumCorners() const;
    Index getNumVertices() const;
 
-   shm<Index>::vector &cl() const { return *(*d()->cl)(); }
-   shm<Index>::vector &el() const { return *(*d()->el)(); }
+   array<Index> &cl() const { return *(*d()->cl)(); }
+   array<Index> &el() const { return *(*d()->el)(); }
 
    V_DATA_BEGIN(Indexed);
       ShmVector<Index>::ptr el, cl;

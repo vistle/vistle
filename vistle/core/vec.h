@@ -21,8 +21,6 @@ class V_COREEXPORT Vec: public Object {
  public:
    typedef Object Base;
 
-   typedef typename shm<T>::vector vector;
-
    Vec(const Index size,
         const Meta &meta=Meta());
 
@@ -34,10 +32,10 @@ class V_COREEXPORT Vec: public Object {
 
    static Type type();
 
-   vector &x(int c=0) const { return *(*d()->x[c])(); }
-   vector &y() const { return *(*d()->x[1])(); }
-   vector &z() const { return *(*d()->x[2])(); }
-   vector &w() const { return *(*d()->x[3])(); }
+   array<T> &x(int c=0) const { return *(*d()->x[c])(); }
+   array<T> &y() const { return *(*d()->x[1])(); }
+   array<T> &z() const { return *(*d()->x[2])(); }
+   array<T> &w() const { return *(*d()->x[3])(); }
 
  protected:
    struct Data: public Base::Data {

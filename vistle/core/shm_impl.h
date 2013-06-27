@@ -82,7 +82,7 @@ ShmVector<T>::ShmVector(Index size)
    }
    n.copy(m_name, nsize);
    assert(n.size() < sizeof(m_name));
-   m_x = Shm::the().shm().construct<typename shm<T>::vector>((const char *)m_name)(size, T(), Shm::the().allocator());
+   m_x = Shm::the().shm().construct<typename shm<T>::array>((const char *)m_name)(size, T(), Shm::the().allocator());
 #ifdef SHMDEBUG
    shm_handle_t handle = Shm::the().shm().get_handle_from_address(this);
    Shm::the().s_shmdebug->push_back(ShmDebugInfo('V', m_name, handle));

@@ -61,12 +61,61 @@ struct ShmDebugInfo {
 };
 #endif
 
+template<typename T, class allocator>
+class shm_array {
+
+ public: 
+   shm_array(const allocator &alloc = allocator()) : m_allocator(alloc) {}
+   shm_array(const size_t size, const allocator &alloc = allocator()) : m_allocator(alloc) { resize(size); }
+   shm_array(const size_t size, const T &value, const allocator &alloc = allocator()) : m_allocator(alloc) { resize(size, value); }
+   template< class InputIt >
+      shm_array( InputIt first, InputIt last, 
+            const allocator &alloc = allocator() );
+   shm_array(const shm_array &other);
+   shm_array &operator=(const shm_array &rhs);
+   ~shm_array() { m_allocator.deallocate(m_data, m_capacity); }
+
+   typedef typename allocator::pointer pointer;
+   typedef T *iterator;
+   typedef const T *const_iterator;
+
+   iterator begin() const { return &*m_data; }
+   iterator end() const { return (&*m_data) + m_size; }
+   T *data() const { return &*m_data; }
+
+   T &operator[](const size_t idx) { return m_data[idx]; }
+   T &operator[](const size_t idx) const { return m_data[idx]; }
+   void push_back(const T &v) { if (m_size >= m_capacity) reserve(m_capacity==0 ? 1 : m_capacity*2); assert(m_size < m_capacity); m_data[m_size] = v; ++m_size; }
+   T &back() { return m_data[m_size-1]; }
+   T &front() { return m_data[0]; }
+
+   bool empty() const { return m_size == 0; }
+   void clear() { resize(0); }
+   size_t size() const { return m_size; }
+   void resize(const size_t size) { reserve(size); m_size = size; }
+   void resize(const size_t size, const T &value) { reserve(size); for (size_t i=m_size; i<size; ++i) m_data[i] = value; m_size = size; }
+   size_t capacity() const { return m_capacity; }
+   void reserve(const size_t size) { pointer new_data = m_allocator.allocate(size); if (m_data) ::memcpy(&*new_data, &*m_data, m_size*sizeof(T)); m_allocator.deallocate(m_data, m_capacity); m_data = new_data; m_capacity = size; }
+
+ private:
+   size_t m_size = 0;
+   size_t m_capacity = 0;
+   pointer m_data = NULL;
+   allocator m_allocator;
+
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version);
+};
+
 template<typename T>
 struct shm {
    typedef boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> allocator;
    typedef boost::interprocess::basic_string<T, std::char_traits<T>, allocator> string;
    typedef boost::interprocess::vector<T, allocator> vector;
    typedef boost::interprocess::offset_ptr<vector> ptr;
+   typedef vistle::shm_array<T, allocator> array;
+   typedef boost::interprocess::offset_ptr<array> array_ptr;
    static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name);
    static T *find(const std::string &name);
    static void destroy(const std::string &name);
@@ -176,8 +225,8 @@ class V_COREEXPORT ShmVector {
       Index size() const { return m_x->size(); }
       void resize(Index s);
 
-      typename shm<T>::ptr &operator()() { return m_x; }
-      typename shm<const T>::ptr &operator()() const { return m_x; }
+      typename shm<T>::array_ptr &operator()() { return m_x; }
+      typename shm<const T>::array_ptr &operator()() const { return m_x; }
 
       void push_back(const T &d) { m_x->push_back(d); }
 
@@ -197,7 +246,7 @@ class V_COREEXPORT ShmVector {
       boost::interprocess::interprocess_mutex m_mutex;
       int m_refcount;
       shm_name_t m_name;
-      typename shm<T>::ptr m_x;
+      typename shm<T>::array_ptr m_x;
 };
 
 } // namespace vistle

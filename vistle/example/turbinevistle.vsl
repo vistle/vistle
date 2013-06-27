@@ -8,6 +8,9 @@ RPRES = spawn("ReadCovise");
 setStringParam(RPRES, "filename", "/data/OpenFOAM/PumpTurbine/covise/test/multi_p.covise");
 
 CUTGEO = spawn("CutGeometry");
+setFloatParam(CUTGEO, "distance", 0.0);
+setVectorParam(CUTGEO, "normal", 1.0, 0.0, 0.0);
+
 CUTSURF = spawn("CuttingSurface");
 setFloatParam(CUTSURF, "distance", 0.0);
 setVectorParam(CUTSURF, "normal", 1.0, 0.0, 0.0);

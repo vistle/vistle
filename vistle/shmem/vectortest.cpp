@@ -103,6 +103,29 @@ int main(int argc, char *argv[]) {
 #endif
    }
 
+   {
+      vistle::shm_array<Index, std::allocator<Index>> v;
+      time_pb(v, "uninit array push_back only", size);
+      time_arr(v, "uninit array arr", size);
+      time_ptr(&v[0], "uninit array arr ptr", size);
+#ifdef TWICE
+      time_arr(v, "uninit array arr", size);
+      time_ptr(&v[0], "uninit array arr ptr", size);
+#endif
+   }
+
+   {
+      vistle::shm_array<Index, std::allocator<Index>> v;
+      v.reserve(size);
+      time_pb(v, "uninit array reserve+push_back", size);
+      time_arr(v, "uninit array arr", size);
+      time_ptr(&v[0], "uninit array arr ptr", size);
+#ifdef TWICE
+      time_arr(v, "uninit array arr", size);
+      time_ptr(&v[0], "uninit array arr ptr", size);
+#endif
+   }
+
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
@@ -129,7 +152,7 @@ int main(int argc, char *argv[]) {
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
       vistle::Vec<Index, 1> v(Index(0));
-      shm<Index>::vector &vv = v.x();
+      shm<Index>::array &vv = v.x();
       vv.reserve(size);
       time_pb(vv, "vistle push_back+reserve", size);
       bi::shared_memory_object::remove(shmname.c_str());
