@@ -57,7 +57,6 @@ static void quit() {
 #endif
    message::Quit m;
    PythonEmbed::handleMessage(m);
-   Communicator::the().setQuitFlag();
 }
 
 static void ping(char c) {

@@ -20,6 +20,7 @@
 #include <util/findself.h>
 
 #include "clientmanager.h"
+#include "uimanager.h"
 #include "communicator.h"
 
 #define CERR \
@@ -39,6 +40,7 @@ Communicator *Communicator::s_singleton = NULL;
 
 Communicator::Communicator(int argc, char *argv[], int r, const std::vector<std::string> &hosts)
 : m_clientManager(NULL)
+, m_uiManager(NULL)
 , rank(r)
 , size(hosts.size())
 , m_hosts(hosts)
@@ -50,9 +52,7 @@ Communicator::Communicator(int argc, char *argv[], int r, const std::vector<std:
 , m_barrierCounter(0)
 , m_activeBarrier(-1)
 , m_reachedBarriers(-1)
-, messageQueue(create_only,
-      message::MessageQueue::createName("command_queue", 0, r).c_str(),
-      256 /* num msg */, message::Message::MESSAGE_SIZE)
+, m_commandQueue(message::MessageQueue::create(message::MessageQueue::createName("command_queue", 0, r)))
 {
    assert(s_singleton == NULL);
    s_singleton = this;
@@ -194,6 +194,13 @@ bool Communicator::dispatch() {
 
       if (!done)
          done = m_quitFlag;
+
+      if (!m_uiManager) {
+         m_uiManager = new UiManager(m_commandQueue);
+      }
+
+      if (!done) 
+         done = !m_uiManager->check();
    }
 
    // broadcast messages received from slaves (rank > 0)
@@ -244,8 +251,14 @@ bool Communicator::dispatch() {
    do {
       received = false;
       // handle messages from Python front-end
-      if (!tryReceiveAndHandleMessage(messageQueue, received, true))
+      if (!tryReceiveAndHandleMessage(m_commandQueue->getMessageQueue(), received, true))
          done = true;
+
+      // handle messages from UIs
+      for (auto mq: uiInputQueue) {
+         if (!tryReceiveAndHandleMessage(mq.second->getMessageQueue(), received, true))
+            done = true;
+      }
 
       // handle messages from modules
       for (std::map<int, message::MessageQueue *>::iterator next, i = receiveMessageQueue.begin();
@@ -254,6 +267,7 @@ bool Communicator::dispatch() {
          next = i;
          ++next;
 
+         // keep messages from modules that have already reached a barrier on hold
          if (reachedSet.find(i->first) != reachedSet.end())
             continue;
 
@@ -389,7 +403,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Quit &quit =
             static_cast<const message::Quit &>(message);
-         (void) quit;
+         m_uiManager->sendMessage(quit);
          return false;
          break;
       }
@@ -398,6 +412,8 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Spawn &spawn =
             static_cast<const message::Spawn &>(message);
+         m_uiManager->sendMessage(spawn);
+
          int moduleID = spawn.getSpawnID();
 
          std::string name = m_bindir + "/" + spawn.getName();
@@ -475,6 +491,8 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Started &started =
             static_cast<const message::Started &>(message);
+         m_uiManager->sendMessage(started);
+
          int moduleID = started.senderId();
          runningMap[moduleID].initialized = true;
          assert(runningMap[moduleID].name == started.getName());
@@ -486,6 +504,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::KILL: {
 
          const message::Kill &kill = static_cast<const message::Kill &>(message);
+         m_uiManager->sendMessage(kill);
          MessageQueueMap::iterator it = sendMessageQueue.find(kill.getModule());
          if (it != sendMessageQueue.end())
             it->second->getMessageQueue().send(&kill, sizeof(kill), 0);
@@ -496,6 +515,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Connect &connect =
             static_cast<const message::Connect &>(message);
+         m_uiManager->sendMessage(connect);
          if (m_portManager.addConnection(connect.getModuleA(),
                   connect.getPortAName(),
                   connect.getModuleB(),
@@ -513,6 +533,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Disconnect &disc =
             static_cast<const message::Disconnect &>(message);
+         m_uiManager->sendMessage(disc);
          if (m_portManager.removeConnection(disc.getModuleA(),
                   disc.getPortAName(),
                   disc.getModuleB(),
@@ -553,6 +574,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::ModuleExit &moduleExit =
             static_cast<const message::ModuleExit &>(message);
+         m_uiManager->sendMessage(moduleExit);
          int mod = moduleExit.senderId();
 
          CERR << " Module [" << mod << "] quit" << std::endl;
@@ -625,6 +647,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Busy &busy =
             static_cast<const message::Busy &>(message);
+         m_uiManager->sendMessage(busy);
 
          const int id = busy.senderId();
          if (busySet.find(id) != busySet.end()) {
@@ -639,6 +662,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Idle &idle =
             static_cast<const message::Idle &>(message);
+         m_uiManager->sendMessage(idle);
 
          const int id = idle.senderId();
          ModuleSet::iterator it = busySet.find(id);
@@ -707,6 +731,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::SetParameter &m =
             static_cast<const message::SetParameter &>(message);
+         m_uiManager->sendMessage(m);
 
 #ifdef DEBUG
          CERR << "SetParameter: sender=" << m.senderId() << ", module=" << m.getModule() << ", name=" << m.getName() << std::endl;
@@ -791,6 +816,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          
          const message::AddParameter &m =
             static_cast<const message::AddParameter &>(message);
+         m_uiManager->sendMessage(m);
 
 #ifdef DEBUG
          CERR << "AddParameter: module=" << m.moduleName() << "(" << m.senderId() << "), name=" << m.getName() << std::endl;
@@ -820,6 +846,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::CREATEPORT: {
          const message::CreatePort &m =
             static_cast<const message::CreatePort &>(message);
+         m_uiManager->sendMessage(m);
          m_portManager.addPort(m.getPort());
 
          replayMessages();
@@ -895,6 +922,7 @@ Communicator::~Communicator() {
    }
 
    delete m_clientManager;
+   delete m_uiManager;
 
    if (size > 1) {
       int dummy = 0;

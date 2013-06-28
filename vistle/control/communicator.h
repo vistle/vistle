@@ -28,6 +28,7 @@ namespace message {
 class Parameter;
 class PythonEmbed;
 class ClientManager;
+class UiManager;
 
 class Communicator {
    friend class PythonEmbed;
@@ -71,6 +72,7 @@ class Communicator {
    void replayMessages();
    std::vector<char> m_messageQueue;
    ClientManager *m_clientManager;
+   UiManager *m_uiManager;
 
    std::string m_bindir;
 
@@ -95,7 +97,8 @@ class Communicator {
    typedef std::map<int, message::MessageQueue *> MessageQueueMap;
    MessageQueueMap sendMessageQueue;
    MessageQueueMap receiveMessageQueue;
-   boost::interprocess::message_queue messageQueue;
+   MessageQueueMap uiInputQueue, uiOutputQueue;
+   boost::shared_ptr<message::MessageQueue> m_commandQueue;
    bool tryReceiveAndHandleMessage(boost::interprocess::message_queue &mq, bool &received, bool broadcast=false);
 
    std::map<int, bi::shared_memory_object *> shmObjects;

@@ -5,6 +5,7 @@
 
 
 #include <core/message.h>
+#include <core/messagequeue.h>
 #include "clientmanager.h"
 #include "pythonembed.h"
 #include "pythonmodule.h"
@@ -243,7 +244,7 @@ void PythonEmbed::print_error(const std::string &str) {
 
 void PythonEmbed::handleMessage(const message::Message &message) {
 
-   Communicator::the().messageQueue.send(&message, message.size(), 0);
+   Communicator::the().m_commandQueue->getMessageQueue().send(&message, message.size(), 0);
 }
 
 } // namespace vistle

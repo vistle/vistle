@@ -15,17 +15,17 @@ namespace asio = boost::asio;
 
 namespace vistle {
 
-class ThreadWrapper {
+class ClientThreadWrapper {
 
    public:
-   ThreadWrapper(Client *c, ClientManager *m)
+   ClientThreadWrapper(Client *c, ClientManager *m)
    : release(true)
    , manager(m)
    , thread(NULL)
    , client(c)
    {}
 
-   ThreadWrapper(const ThreadWrapper &o)
+   ClientThreadWrapper(const ClientThreadWrapper &o)
    : release(o.release)
    , manager(o.manager)
    , thread(o.thread)
@@ -34,7 +34,7 @@ class ThreadWrapper {
       o.release = false;
    }
 
-   ~ThreadWrapper() {
+   ~ClientThreadWrapper() {
       if (release) {
          manager->removeThread(thread);
          delete client;
@@ -158,7 +158,7 @@ void ClientManager::handleAccept(AsioClient *client, const boost::system::error_
 
 void ClientManager::addClient(Client *c) {
 
-   boost::thread *t = new boost::thread(ThreadWrapper(c, this));
+   boost::thread *t = new boost::thread(ClientThreadWrapper(c, this));
    m_threads[t] = c;
 }
 

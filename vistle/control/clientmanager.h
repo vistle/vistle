@@ -15,7 +15,7 @@ class AsioClient;
 class PythonEmbed;
 
 class ClientManager {
-   friend class ThreadWrapper;
+   friend class ClientThreadWrapper;
    friend class Communicator;
 
  public:
