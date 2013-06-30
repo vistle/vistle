@@ -108,7 +108,7 @@ void ShmVector<T>::operator delete(void *p) {
 template<typename T>
 void ShmVector<T>::resize(Index s) {
    //TODO: remove value when boost is fixed
-   m_x->resize(s, T());
+   m_x->resize(s);
 }
 
 template<typename T>
