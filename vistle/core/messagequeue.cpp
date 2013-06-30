@@ -22,17 +22,17 @@ std::string MessageQueue::createName(const char * prefix,
 
 MessageQueue * MessageQueue::create(const std::string & n) {
 
-   message_queue::remove(n.c_str());
-   return new MessageQueue(n, create_only);
-}
-
-MessageQueue * MessageQueue::open(const std::string & n) {
-
    {
       std::ofstream f;
       f.open(Shm::shmIdFilename().c_str(), std::ios::app);
       f << n << std::endl;
    }
+
+   message_queue::remove(n.c_str());
+   return new MessageQueue(n, create_only);
+}
+
+MessageQueue * MessageQueue::open(const std::string & n) {
 
    return new MessageQueue(n, open_only);
 }
