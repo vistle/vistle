@@ -47,6 +47,8 @@ connect(COLLECT, "grid_out", RENDERER, "data_in");
 connect(ISOSURF, "grid_out", RENDERER, "data_in");
 #connect(ISOSURF, "grid_out", WRITEARCHIVE, "grid_in");
 
+barrier();
+
 compute(RGEO);
 compute(RGRID);
 compute(RPRES);
