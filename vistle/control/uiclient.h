@@ -4,6 +4,7 @@
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <core/message.h>
 #include <core/messagequeue.h>
 
@@ -30,7 +31,7 @@ class UiClient {
 
    private:
       boost::asio::io_service m_ioService;
-      boost::asio::ip::tcp::socket *m_socket;
+      boost::scoped_ptr<boost::asio::ip::tcp::socket> m_socket;
       UiManager &m_manager;
       bool m_done;
       UiClient(const UiClient &o);

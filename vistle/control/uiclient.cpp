@@ -15,7 +15,6 @@ UiClient::UiClient(UiManager &manager, boost::shared_ptr<message::MessageQueue> 
 
 UiClient::~UiClient() {
 
-   delete m_socket;
 }
 
 UiManager &UiClient::manager() const {
