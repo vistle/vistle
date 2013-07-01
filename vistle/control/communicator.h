@@ -101,8 +101,6 @@ class Communicator {
    boost::shared_ptr<message::MessageQueue> m_commandQueue;
    bool tryReceiveAndHandleMessage(boost::interprocess::message_queue &mq, bool &received, bool broadcast=false);
 
-   std::map<int, bi::shared_memory_object *> shmObjects;
-
    struct Module {
       bool initialized = false;
       std::string name;
