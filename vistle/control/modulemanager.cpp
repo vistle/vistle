@@ -219,8 +219,8 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    }
    message::Spawn toUi = spawn;
    toUi.setSpawnId(moduleID);
-   m_stateTracker.handle(toUi);
    sendUi(toUi);
+   m_stateTracker.handle(toUi);
 
    std::string name = m_bindir + "/" + spawn.getName();
 
@@ -250,7 +250,6 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
       argv.push_back(name.c_str());
    }
 
-   MPI_Comm interComm;
    argv.push_back(Shm::the().name().c_str());
    argv.push_back(id.c_str());
    argv.push_back(NULL);
@@ -265,6 +264,7 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    }
    std::vector<int> errors(m_size);
 
+   MPI_Comm interComm;
    MPI_Comm_spawn_multiple(m_size, &commands[0], &argvs[0], &maxprocs[0], &infos[0],
          0, MPI_COMM_WORLD, &interComm, &errors[0]);
 
