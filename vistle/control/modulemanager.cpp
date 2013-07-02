@@ -23,17 +23,17 @@
 #include "communicator.h"
 
 #define CERR \
-   std::cerr << "mod mgr [" << rank << "/" << size << "] "
+   std::cerr << "mod mgr [" << m_rank << "/" << m_size << "] "
 
-#define DEBUG
+//#define DEBUG
 
 using namespace boost::interprocess;
 
 namespace vistle {
 
 ModuleManager::ModuleManager(int argc, char *argv[], int r, const std::vector<std::string> &hosts)
-: rank(r)
-, size(hosts.size())
+: m_rank(r)
+, m_size(hosts.size())
 , m_hosts(hosts)
 , m_portManager(this)
 , m_moduleCounter(0)
@@ -42,19 +42,20 @@ ModuleManager::ModuleManager(int argc, char *argv[], int r, const std::vector<st
 , m_activeBarrier(-1)
 , m_reachedBarriers(-1)
 {
-   message::DefaultSender::init(0, rank);
+
+   message::DefaultSender::init(0, m_rank);
 
    m_bindir = getbindir(argc, argv);
 }
 
 int ModuleManager::getRank() const {
 
-   return rank;
+   return m_rank;
 }
 
 int ModuleManager::getSize() const {
 
-   return size;
+   return m_size;
 }
 
 int ModuleManager::newModuleID() {
@@ -138,31 +139,55 @@ bool ModuleManager::dispatch(bool &received) {
    bool done = false;
 
    // handle messages from modules
-   for (std::map<int, message::MessageQueue *>::iterator next, i = receiveMessageQueue.begin();
-         i != receiveMessageQueue.end();
-         i = next) {
-      next = i;
+   for(RunningMap::iterator next, it = runningMap.begin();
+         it != runningMap.end();
+         it = next) {
+      next = it;
       ++next;
 
+      const int modId = it->first;
+      const Module &mod = it->second;
+
       // keep messages from modules that have already reached a barrier on hold
-      if (reachedSet.find(i->first) != reachedSet.end())
+      if (reachedSet.find(modId) != reachedSet.end())
          continue;
 
-      boost::interprocess::message_queue &mq = i->second->getMessageQueue();
+      boost::interprocess::message_queue &mq = mod.recvQueue->getMessageQueue();
 
-      if (!Communicator::the().tryReceiveAndHandleMessage(mq, received))
-         done = true;
+      bool recv = false;
+      if (!Communicator::the().tryReceiveAndHandleMessage(mq, recv)) {
+         if (recv)
+            done = true;
+      }
+
+      if (recv)
+         received = true;
    }
 
-   return true;
+   return !done;
 }
 
 bool ModuleManager::sendAll(const message::Message &message) const {
 
-   for (MessageQueueMap::const_iterator i = sendMessageQueue.begin();
-         i != sendMessageQueue.end();
-         ++i) {
-      i->second->getMessageQueue().send(&message, message.size(), 0);
+   // -1 is an invalid module id
+   return sendAllOthers(-1, message);
+}
+
+bool ModuleManager::sendAllOthers(int excluded, const message::Message &message) const {
+
+   // handle messages to modules
+   for(RunningMap::const_iterator next, it = runningMap.begin();
+         it != runningMap.end();
+         it = next) {
+      next = it;
+      ++next;
+
+      const int modId = it->first;
+      if (modId == excluded)
+         continue;
+      const Module &mod = it->second;
+
+      mod.sendQueue->getMessageQueue().send(&message, message.size(), 0);
    }
 
    return true;
@@ -170,13 +195,13 @@ bool ModuleManager::sendAll(const message::Message &message) const {
 
 bool ModuleManager::sendMessage(const int moduleId, const message::Message &message) const {
 
-   MessageQueueMap::const_iterator it = sendMessageQueue.find(moduleId);
-   if (it == sendMessageQueue.end()) {
+   RunningMap::const_iterator it = runningMap.find(moduleId);
+   if (it == runningMap.end()) {
       CERR << "sendMessage: module " << moduleId << " not found" << std::endl;
       return false;
    }
 
-   it->second->getMessageQueue().send(&message, message.size(), 0);
+   it->second.sendQueue->getMessageQueue().send(&message, message.size(), 0);
 
    return true;
 }
@@ -203,12 +228,15 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    modID << moduleID;
    std::string id = modID.str();
 
-   std::string smqName = message::MessageQueue::createName("smq", moduleID, rank);
-   std::string rmqName = message::MessageQueue::createName("rmq", moduleID, rank);
+   Module &mod = runningMap[moduleID];
+   mod.name = spawn.getName();
+
+   std::string smqName = message::MessageQueue::createName("smq", moduleID, m_rank);
+   std::string rmqName = message::MessageQueue::createName("rmq", moduleID, m_rank);
 
    try {
-      sendMessageQueue[moduleID] = message::MessageQueue::create(smqName);
-      receiveMessageQueue[moduleID] = message::MessageQueue::create(rmqName);
+      mod.sendQueue = message::MessageQueue::create(smqName);
+      mod.recvQueue = message::MessageQueue::create(rmqName);
    } catch (interprocess_exception &ex) {
 
       CERR << "spawn mq " << ex.what() << std::endl;
@@ -228,24 +256,22 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    argv.push_back(id.c_str());
    argv.push_back(NULL);
 
-   std::vector<char *> commands(size, const_cast<char *>(executable.c_str()));
-   std::vector<char **> argvs(size, const_cast<char **>(&argv[0]));
-   std::vector<int> maxprocs(size, 1);
-   std::vector<MPI_Info> infos(size);
+   std::vector<char *> commands(m_size, const_cast<char *>(executable.c_str()));
+   std::vector<char **> argvs(m_size, const_cast<char **>(&argv[0]));
+   std::vector<int> maxprocs(m_size, 1);
+   std::vector<MPI_Info> infos(m_size);
    for (int i=0; i<infos.size(); ++i) {
       MPI_Info_create(&infos[i]);
       MPI_Info_set(infos[i], const_cast<char *>("host"), const_cast<char *>(m_hosts[i].c_str()));
    }
-   std::vector<int> errors(size);
+   std::vector<int> errors(m_size);
 
-   MPI_Comm_spawn_multiple(size, &commands[0], &argvs[0], &maxprocs[0], &infos[0],
+   MPI_Comm_spawn_multiple(m_size, &commands[0], &argvs[0], &maxprocs[0], &infos[0],
          0, MPI_COMM_WORLD, &interComm, &errors[0]);
 
    for (int i=0; i<infos.size(); ++i) {
       MPI_Info_free(&infos[i]);
    }
-
-   runningMap[moduleID].name = spawn.getName();
 
    // inform modules about current parameter values of other modules
    for (auto mit: parameterMap) {
@@ -255,12 +281,12 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
          message::AddParameter add(pit.first, pit.second->description(),
                pit.second->type(), pit.second->presentation(), moduleName);
          add.setSenderId(mit.first);
-         add.setRank(rank);
+         add.setRank(m_rank);
          sendMessage(moduleID, add);
 
          message::SetParameter set(mit.first, pit.first, pit.second);
          set.setSenderId(mit.first);
-         set.setRank(rank);
+         set.setRank(m_rank);
          sendMessage(moduleID, set);
       }
    }
@@ -299,17 +325,11 @@ bool ModuleManager::handle(const message::Disconnect &disconnect) {
             disconnect.getPortAName(),
             disconnect.getModuleB(),
             disconnect.getPortBName())) {
-      {
-         MessageQueueMap::iterator it = sendMessageQueue.find(disconnect.getModuleA());
-         if (it != sendMessageQueue.end())
-            it->second->getMessageQueue().send(&disconnect, sizeof(disconnect), 0);
-      }
-      {
-         MessageQueueMap::iterator it = sendMessageQueue.find(disconnect.getModuleB());
-         if (it != sendMessageQueue.end())
-            it->second->getMessageQueue().send(&disconnect, sizeof(disconnect), 0);
-      }
+
+      sendMessage(disconnect.getModuleA(), disconnect);
+      sendMessage(disconnect.getModuleB(), disconnect);
    } else {
+
       if (!m_messageQueue.empty()) {
          // only if messages are already queued, there is a chance that this
          // connection might still be established
@@ -341,21 +361,6 @@ bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
       }
    }
    {
-      MessageQueueMap::iterator i = sendMessageQueue.find(mod);
-      if (i != sendMessageQueue.end()) {
-         delete i->second;
-         sendMessageQueue.erase(i);
-      }
-   }
-   {
-      MessageQueueMap::iterator i = receiveMessageQueue.find(mod);
-      i = receiveMessageQueue.find(mod);
-      if (i != receiveMessageQueue.end()) {
-         delete i->second;
-         receiveMessageQueue.erase(i);
-      }
-   }
-   {
       ModuleSet::iterator it = busySet.find(mod);
       if (it != busySet.end())
          busySet.erase(it);
@@ -366,7 +371,7 @@ bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
          reachedSet.erase(it);
    }
    m_portManager.removeConnections(mod);
-   if (m_activeBarrier >= 0 && reachedSet.size() == sendMessageQueue.size())
+   if (m_activeBarrier >= 0 && reachedSet.size() == runningMap.size())
       barrierReached(m_activeBarrier);
 
    return true;
@@ -374,16 +379,16 @@ bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
 
 bool ModuleManager::handle(const message::Compute &compute) {
 
-   MessageQueueMap::iterator i = sendMessageQueue.find(compute.getModule());
-   if (i != sendMessageQueue.end()) {
+   RunningMap::iterator i = runningMap.find(compute.getModule());
+   if (i != runningMap.end()) {
       if (compute.senderId() == 0) {
-         i->second->getMessageQueue().send(&compute, sizeof(compute), 0);
+         i->second.sendQueue->getMessageQueue().send(&compute, sizeof(compute), 0);
          if (compute.getExecutionCount() > m_executionCounter)
             m_executionCounter = compute.getExecutionCount();
       } else {
          message::Compute msg(compute.getModule(), newExecutionCount());
          msg.setSenderId(compute.senderId());
-         i->second->getMessageQueue().send(&msg, sizeof(msg), 0);
+         i->second.sendQueue->getMessageQueue().send(&msg, sizeof(msg), 0);
       }
    }
 
@@ -429,11 +434,7 @@ bool ModuleManager::handle(const message::AddParameter &addParam) {
    }
 
    // let all modules know that a parameter was added
-   for (MessageQueueMap::iterator i = sendMessageQueue.begin();
-         i != sendMessageQueue.end();
-         ++i) {
-      i->second->getMessageQueue().send(&addParam, sizeof(addParam), 0);
-   }
+   sendAll(addParam);
 
    m_portManager.addPort(new Port(addParam.senderId(), addParam.getName(), Port::PARAMETER));
 
@@ -455,9 +456,9 @@ bool ModuleManager::handle(const message::SetParameter &setParam) {
    }
    if (setParam.senderId() != setParam.getModule()) {
       // message to owning module
-      MessageQueueMap::iterator i = sendMessageQueue.find(setParam.getModule());
-      if (i != sendMessageQueue.end() && param)
-         i->second->getMessageQueue().send(&setParam, setParam.size(), 0);
+      RunningMap::iterator i = runningMap.find(setParam.getModule());
+      if (i != runningMap.end() && param)
+         i->second.sendQueue->getMessageQueue().send(&setParam, setParam.size(), 0);
       else
          queueMessage(setParam);
    } else {
@@ -469,12 +470,7 @@ bool ModuleManager::handle(const message::SetParameter &setParam) {
       }
 
       // let all modules know that a parameter was changed
-      for (MessageQueueMap::iterator i = sendMessageQueue.begin();
-            i != sendMessageQueue.end();
-            ++i) {
-         if (i->first != setParam.senderId())
-            i->second->getMessageQueue().send(&setParam, sizeof(setParam), 0);
-      }
+      sendAllOthers(setParam.senderId(), setParam);
    }
 
    if (!setParam.isReply()) {
@@ -525,10 +521,7 @@ bool ModuleManager::handle(const message::SetParameter &setParam) {
 
 bool ModuleManager::handle(const message::Kill &kill) {
 
-   MessageQueueMap::iterator it = sendMessageQueue.find(kill.getModule());
-   if (it != sendMessageQueue.end())
-      it->second->getMessageQueue().send(&kill, sizeof(kill), 0);
-
+   sendMessage(kill.getModule(), kill);
    return true;
 }
 
@@ -571,7 +564,7 @@ bool ModuleManager::handle(const message::AddObject &addObj) {
       }
    }
    else
-      std::cerr << "comm [" << rank << "/" << size << "] Addbject ["
+      std::cerr << "comm [" << m_rank << "/" << m_size << "] Addbject ["
          << addObj.getHandle() << "] to port ["
          << addObj.getPortName() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
 
@@ -589,14 +582,10 @@ bool ModuleManager::handle(const message::Barrier &barrier) {
    CERR << "Barrier [" << barrier.getBarrierId() << "]" << std::endl;
    assert(m_activeBarrier == -1);
    m_activeBarrier = barrier.getBarrierId();
-   if (sendMessageQueue.empty()) {
+   if (runningMap.empty()) {
       barrierReached(m_activeBarrier);
    } else {
-      for (MessageQueueMap::iterator i = sendMessageQueue.begin();
-            i != sendMessageQueue.end();
-            ++i) {
-         i->second->getMessageQueue().send(&barrier, sizeof(barrier), 0);
-      }
+      sendAll(barrier);
    }
    return true;
 }
@@ -612,8 +601,12 @@ bool ModuleManager::handle(const message::BarrierReached &barrReached) {
    assert(m_activeBarrier == barrReached.getBarrierId());
    reachedSet.insert(barrReached.senderId());
 
-   if (reachedSet.size() == receiveMessageQueue.size()) {
+   if (reachedSet.size() == runningMap.size()) {
       barrierReached(m_activeBarrier);
+#ifdef DEBUG
+   } else {
+      CERR << "BARRIER: reached by " << reachedSet.size() << "/" << runningMap.size() << std::endl;
+#endif
    }
 
    return true;
@@ -632,17 +625,17 @@ ModuleManager::~ModuleManager() {
 
    // receive all ModuleExit messages from modules
    // retry for some time, modules that don't answer might have crashed
-   CERR << "waiting for " << sendMessageQueue.size() << " modules to quit" << std::endl;
+   CERR << "waiting for " << runningMap.size() << " modules to quit" << std::endl;
    int retries = 10000;
-   while (sendMessageQueue.size() > 0 && --retries >= 0) {
+   while (runningMap.size() > 0 && --retries >= 0) {
       Communicator::the().dispatch();
       usleep(1000);
    }
 
-   if (sendMessageQueue.size() > 0)
-      CERR << sendMessageQueue.size() << " modules failed to quit" << std::endl;
+   if (runningMap.size() > 0)
+      CERR << runningMap.size() << " modules failed to quit" << std::endl;
 
-   if (size > 0)
+   if (m_size > 0)
       MPI_Barrier(MPI_COMM_WORLD);
 }
 

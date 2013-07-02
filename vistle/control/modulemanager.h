@@ -13,6 +13,7 @@
 
 #include "portmanager.h"
 #include <core/message.h>
+#include <core/messagequeue.h>
 
 namespace bi = boost::interprocess;
 
@@ -43,7 +44,7 @@ class ModuleManager {
 
    bool sendMessage(int receiver, const message::Message &message) const;
    bool sendAll(const message::Message &message) const;
-   void setQuitFlag();
+   bool sendAllOthers(int excluded, const message::Message &message) const;
 
    int getRank() const;
    int getSize() const;
@@ -92,21 +93,30 @@ class ModuleManager {
 
    std::string m_bindir;
 
-   const int rank;
-   const int size;
+   const int m_rank;
+   const int m_size;
    const std::vector<std::string> m_hosts;
 
    boost::mutex m_barrierMutex;
    boost::condition_variable m_barrierCondition;
    void barrierReached(int id);
 
+#if 0
    typedef std::map<int, message::MessageQueue *> MessageQueueMap;
    MessageQueueMap sendMessageQueue;
    MessageQueueMap receiveMessageQueue;
+#endif
 
    struct Module {
       bool initialized = false;
       std::string name;
+      message::MessageQueue *sendQueue = NULL;
+      message::MessageQueue *recvQueue = NULL;
+
+      ~Module() {
+         delete sendQueue;
+         delete recvQueue;
+      }
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;
