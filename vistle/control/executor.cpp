@@ -143,8 +143,8 @@ bool Executor::config(int argc, char *argv[]) {
    return true;
 }
 
-void Executor::run()
-{
+void Executor::run() {
+
    if (!config(m_argc, m_argv))
       return;
 
