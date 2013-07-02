@@ -6,10 +6,13 @@
 #include <core/parameter.h>
 
 #include "communicator.h"
+#include "modulemanager.h"
 #include "pythonmodule.h"
 #include "pythonembed.h"
 
 //#define DEBUG
+
+#define moduleManager Communicator::the().moduleManager()
 
 namespace bp = boost::python;
 
@@ -42,7 +45,7 @@ static std::string readline() {
 
 static void resetModuleCounter() {
 
-   Communicator::the().resetModuleCounter();
+   moduleManager.resetModuleCounter();
 }
 
 static void source(const std::string &filename) {
@@ -70,11 +73,11 @@ static void ping(char c) {
 
 static int barrier() {
 
-   boost::unique_lock<boost::mutex> lock(Communicator::the().barrierMutex());
-   const int id = Communicator::the().getBarrierCounter();
+   boost::unique_lock<boost::mutex> lock(moduleManager.barrierMutex());
+   const int id = moduleManager.getBarrierCounter();
    message::Barrier m(id);
    PythonEmbed::handleMessage(m);
-   Communicator::the().barrierCondition().wait(lock);
+   moduleManager.barrierCondition().wait(lock);
    return id;
 }
 
@@ -83,7 +86,7 @@ static int spawn(const char *module, int debugflag=0, int debugrank=0) {
 #ifdef DEBUG
    std::cerr << "Python: spawn "<< module << std::endl;
 #endif
-   int id = Communicator::the().newModuleID();
+   int id = moduleManager.newModuleID();
    message::Spawn m(id, module, debugflag, debugrank);
    PythonEmbed::handleMessage(m);
    return id;
@@ -104,7 +107,7 @@ static std::vector<int> getRunning() {
 #ifdef DEBUG
    std::cerr << "Python: getRunning " << std::endl;
 #endif
-   return Communicator::the().getRunningList();
+   return moduleManager.getRunningList();
 }
 
 static std::vector<int> getBusy() {
@@ -112,24 +115,24 @@ static std::vector<int> getBusy() {
 #ifdef DEBUG
    std::cerr << "Python: getBusy " << std::endl;
 #endif
-   return Communicator::the().getBusyList();
+   return moduleManager.getBusyList();
 }
 
 static std::vector<std::string> getInputPorts(int id) {
 
-   return Communicator::the().portManager().getInputPortNames(id);
+   return moduleManager.portManager().getInputPortNames(id);
 }
 
 static std::vector<std::string> getOutputPorts(int id) {
 
-   return Communicator::the().portManager().getOutputPortNames(id);
+   return moduleManager.portManager().getOutputPortNames(id);
 }
 
 static std::vector<std::pair<int, std::string> > getConnections(int id, const std::string &port) {
 
    std::vector<std::pair<int, std::string> > result;
 
-   if (const Port::PortSet *c = Communicator::the().portManager().getConnectionList(id, port)) {
+   if (const Port::PortSet *c = moduleManager.portManager().getConnectionList(id, port)) {
       for (const Port *p: *c) {
          result.push_back(std::pair<int, std::string>(p->getModuleID(), p->getName()));
       }
@@ -140,12 +143,12 @@ static std::vector<std::pair<int, std::string> > getConnections(int id, const st
 
 static std::vector<std::string> getParameters(int id) {
 
-   return Communicator::the().getParameters(id);
+   return moduleManager.getParameters(id);
 }
 
 static std::string getParameterType(int id, const std::string &name) {
 
-   const Parameter *param = Communicator::the().getParameter(id, name);
+   const Parameter *param = moduleManager.getParameter(id, name);
    if (!param) {
       std::cerr << "Python: getParameterType: no such parameter" << std::endl;
       return "None";
@@ -165,7 +168,7 @@ static std::string getParameterType(int id, const std::string &name) {
 
 static bool isParameterDefault(int id, const std::string &name) {
 
-   const Parameter *param = Communicator::the().getParameter(id, name);
+   const Parameter *param = moduleManager.getParameter(id, name);
    if (!param) {
       std::cerr << "Python: getParameterType: no such parameter" << std::endl;
       return false;
@@ -177,7 +180,7 @@ static bool isParameterDefault(int id, const std::string &name) {
 template<typename T>
 static T getParameterValue(int id, const std::string &name) {
 
-   const Parameter *param = Communicator::the().getParameter(id, name);
+   const Parameter *param = moduleManager.getParameter(id, name);
    if (!param) {
       std::cerr << "Python: getParameterValue: no such parameter" << std::endl;
       return T();
@@ -197,7 +200,7 @@ static std::string getModuleName(int id) {
 #ifdef DEBUG
    std::cerr << "Python: getModuleName(" id << ")" << std::endl;
 #endif
-   return Communicator::the().getModuleName(id);
+   return moduleManager.getModuleName(id);
 }
 
 static void connect(int sid, const char *sport, int did, const char *dport) {
@@ -271,7 +274,7 @@ static void setStringParam(int id, const char *name, const std::string &value) {
 
 static bool checkMessageQueue() {
 
-   return Communicator::the().checkMessageQueue();
+   return moduleManager.checkMessageQueue();
 }
 
 static void compute(int id) {
@@ -279,7 +282,7 @@ static void compute(int id) {
 #ifdef DEBUG
    std::cerr << "Python: compute " << id << std::endl;
 #endif
-   int count = Communicator::the().newExecutionCount();
+   int count = moduleManager.newExecutionCount();
    message::Compute m(id, count);
    PythonEmbed::handleMessage(m);
 }

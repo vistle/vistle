@@ -10,10 +10,13 @@
 
 namespace vistle {
 
+class ModuleManager;
+
 class PortManager {
 
  public:
-   PortManager();
+   PortManager(ModuleManager *moduleManager);
+
    Port *addPort(const int moduleID, const std::string & name,
                   const Port::Type type);
    Port *addPort(Port *port);
@@ -42,6 +45,8 @@ class PortManager {
    std::vector<std::string> getOutputPortNames(const int moduleID) const;
 
  private:
+
+   ModuleManager *m_moduleManager;
 
    Port *getPort(const Port *p) const;
 

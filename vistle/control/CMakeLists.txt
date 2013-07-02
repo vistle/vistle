@@ -15,6 +15,7 @@ add_library(vistle_control SHARED
    uimanager.cpp
    client.cpp
    clientmanager.cpp
+   modulemanager.cpp
    communicator.cpp
    executor.cpp
    pythonembed.cpp

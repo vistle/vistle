@@ -19,6 +19,8 @@ class ClientManager {
    friend class Communicator;
 
  public:
+   ~ClientManager();
+
    Client *activeClient() const;
    void requestQuit();
    boost::mutex &interpreterMutex();
@@ -34,7 +36,6 @@ class ClientManager {
    ClientManager(const std::string &initialData=std::string(),
          InitialType initialType=File,
          unsigned short port=8192);
-   ~ClientManager();
 
    bool check();
    unsigned short port() const;

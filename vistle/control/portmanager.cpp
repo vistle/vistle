@@ -1,13 +1,14 @@
 #include "portmanager.h"
-#include "communicator.h"
+#include "modulemanager.h"
 #include <core/message.h>
 #include <iostream>
 #include <algorithm>
 
 namespace vistle {
 
-PortManager::PortManager() {
-
+PortManager::PortManager(ModuleManager *moduleManager)
+: m_moduleManager(moduleManager)
+{
 }
 
 Port * PortManager::addPort(const int moduleID, const std::string & name,
@@ -70,7 +71,7 @@ Port * PortManager::getPort(const int moduleID,
          size_t idx=0;
          idxstr >> idx;
          Port *port = parent->child(idx);
-         Communicator::the().sendMessage(moduleID, message::CreatePort(port));
+         m_moduleManager->sendMessage(moduleID, message::CreatePort(port));
          return port;
       }
    }

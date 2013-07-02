@@ -24,13 +24,14 @@ class UiManager {
    friend class Communicator;
 
  public:
+   ~UiManager();
+
    void requestQuit();
    boost::mutex &interpreterMutex();
    void sendMessage(const message::Message &msg) const;
 
  private:
    UiManager(boost::shared_ptr<message::MessageQueue> commandQueue, unsigned short port=8193);
-   ~UiManager();
 
    bool check();
    unsigned short port() const;
