@@ -141,10 +141,12 @@ class V_COREEXPORT Module {
          MPI_Comm_size(MPI_COMM_WORLD, &size); \
          const std::string &shmname = argv[1]; \
          moduleID = atoi(argv[2]); \
-         X module(shmname, rank, size, moduleID); \
-         module.initDone(); \
-         while (module.dispatch()) \
-            ; \
+         {  \
+            X module(shmname, rank, size, moduleID); \
+               module.initDone(); \
+               while (module.dispatch()) \
+                  ; \
+         } \
          MPI_Barrier(MPI_COMM_WORLD); \
       } catch(vistle::exception &e) { \
          std::cerr << "fatal exception: " << e.what() << std::endl << e.where() << std::endl; \
