@@ -213,15 +213,15 @@ bool Module::addParameterGeneric(const std::string &name, Parameter *param, Para
    sendMessage(add);
    message::SetParameter set(id(), name, param);
    set.setInit();
+   set.setUuid(add.uuid());
    sendMessage(set);
 
    return true;
 }
 
-bool Module::updateParameter(const std::string &name, const Parameter *param, bool reply) {
+bool Module::updateParameter(const std::string &name, const Parameter *param, const message::SetParameter *inResponseTo) {
 
-   std::map<std::string, Parameter *>::iterator i =
-      parameters.find(name);
+   std::map<std::string, Parameter *>::iterator i = parameters.find(name);
 
    if (i == parameters.end()) {
       std::cerr << "setParameter: " << name << " not found" << std::endl;
@@ -239,8 +239,10 @@ bool Module::updateParameter(const std::string &name, const Parameter *param, bo
    }
 
    message::SetParameter set(id(), name, param);
-   if (reply)
+   if (inResponseTo) {
       set.setReply();
+      set.setUuid(inResponseTo->uuid());
+   }
    sendMessage(set);
 
    return true;
@@ -269,14 +271,14 @@ Parameter *Module::findParameter(const std::string &name) const {
 }
 
 template<class T>
-bool Module::setParameter(const std::string &name, const T &value, bool reply) {
+bool Module::setParameter(const std::string &name, const T &value, const message::SetParameter *inResponseTo) {
 
    ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(findParameter(name));
    if (!p)
       return false;
 
    p->setValue(value);
-   return updateParameter(name, p, reply);
+   return updateParameter(name, p, inResponseTo);
 }
 
 template<class T>
@@ -300,9 +302,9 @@ StringParameter *Module::addStringParameter(const std::string & name, const std:
 }
 
 bool Module::setStringParameter(const std::string & name,
-                              const std::string & value, bool reply) {
+                              const std::string & value, const message::SetParameter *inResponseTo) {
 
-   return setParameter(name, value, reply);
+   return setParameter(name, value, inResponseTo);
 }
 
 std::string Module::getStringParameter(const std::string & name) const {
@@ -319,9 +321,9 @@ FloatParameter *Module::addFloatParameter(const std::string & name, const std::s
 }
 
 bool Module::setFloatParameter(const std::string & name,
-                               const double value, bool reply) {
+                               const double value, const message::SetParameter *inResponseTo) {
 
-   return setParameter(name, value, reply);
+   return setParameter(name, value, inResponseTo);
 }
 
 double Module::getFloatParameter(const std::string & name) const {
@@ -338,9 +340,9 @@ IntParameter *Module::addIntParameter(const std::string & name, const std::strin
 }
 
 bool Module::setIntParameter(const std::string & name,
-                             const int value, bool reply) {
+                             const int value, const message::SetParameter *inResponseTo) {
 
-   return setParameter(name, value, reply);
+   return setParameter(name, value, inResponseTo);
 }
 
 int Module::getIntParameter(const std::string & name) const {
@@ -357,9 +359,9 @@ VectorParameter *Module::addVectorParameter(const std::string & name, const std:
 }
 
 bool Module::setVectorParameter(const std::string & name,
-                                const ParamVector & value, bool reply) {
+                                const ParamVector & value, const message::SetParameter *inResponseTo) {
 
-   return setParameter(name, value, reply);
+   return setParameter(name, value, inResponseTo);
 }
 
 ParamVector Module::getVectorParameter(const std::string & name) const {
@@ -622,6 +624,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                    << rank() << "/" << size() << "] ping ["
                    << ping->getCharacter() << "]" << std::endl;
          vistle::message::Pong m(ping->getCharacter(), ping->senderId());
+         m.setUuid(ping->uuid());
          sendMessage(m);
          break;
       }
@@ -641,6 +644,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          const message::Quit *quit =
             static_cast<const message::Quit *>(message);
+         //TODO: uuid should be included in coresponding ModuleExit message
          (void) quit;
          return false;
          break;
@@ -650,6 +654,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          const message::Kill *kill =
             static_cast<const message::Kill *>(message);
+         //TODO: uuid should be included in coresponding ModuleExit message
          if (kill->getModule() == id()) {
             return false;
          } else {
@@ -702,12 +707,16 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                break;
          }
          if (newport) {
-            sendMessage(message::CreatePort(newport));
+            message::CreatePort np(newport);
+            np.setUuid(cp->uuid());
+            sendMessage(np);
             const Port::PortSet &links = newport->linkedPorts();
             for (Port::PortSet::iterator it = links.begin();
                   it != links.end();
                   ++it) {
-               sendMessage(message::CreatePort(*it));
+               message::CreatePort linked(*it);
+               linked.setUuid(cp->uuid());
+               sendMessage(linked);
             }
          }
          break;
@@ -801,6 +810,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                    << rank() << "/" << size << "] compute" << std::endl;
          */
          message::Busy busy;
+         busy.setUuid(comp->uuid());
          sendMessage(busy);
          bool ret = false;
          try {
@@ -809,6 +819,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             std::cerr << name() << ": exception - " << e.what() << std::endl;
          }
          message::Idle idle;
+         idle.setUuid(comp->uuid());
          sendMessage(idle);
          return ret;
          break;
@@ -832,16 +843,16 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             // sent by controller
             switch (param->getParameterType()) {
                case Parameter::Integer:
-                  setIntParameter(param->getName(), param->getInteger(), true);
+                  setIntParameter(param->getName(), param->getInteger(), param);
                   break;
                case Parameter::Scalar:
-                  setFloatParameter(param->getName(), param->getScalar(), true);
+                  setFloatParameter(param->getName(), param->getScalar(), param);
                   break;
                case Parameter::Vector:
-                  setVectorParameter(param->getName(), param->getVector(), true);
+                  setVectorParameter(param->getName(), param->getVector(), param);
                   break;
                case Parameter::String:
-                  setStringParameter(param->getName(), param->getString(), true);
+                  setStringParameter(param->getName(), param->getString(), param);
                   break;
                default:
                   std::cerr << "Module::handleMessage: unknown parameter type " << param->getParameterType() << std::endl;
@@ -873,9 +884,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
       case message::Message::BARRIER: {
 
-         const message::Barrier *barrier =
-            static_cast<const message::Barrier *>(message);
-         sendMessage(message::BarrierReached(barrier->getBarrierId()));
+         const message::Barrier *barrier = static_cast<const message::Barrier *>(message);
+         message::BarrierReached reached(barrier->getBarrierId());
+         reached.setUuid(barrier->uuid());
+         sendMessage(reached);
          break;
       }
 

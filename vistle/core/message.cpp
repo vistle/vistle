@@ -3,6 +3,8 @@
 #include "parameter.h"
 #include "port.h"
 
+#include <boost/uuid/random_generator.hpp>
+
 namespace vistle {
 namespace message {
 
@@ -47,12 +49,27 @@ const DefaultSender &DefaultSender::instance() {
 }
 
 Message::Message(const Type t, const unsigned int s)
-   : m_size(s), m_type(t), m_senderId(DefaultSender::id()), m_rank(DefaultSender::rank()) {
+: m_uuid(boost::uuids::random_generator()())
+, m_size(s)
+, m_type(t)
+, m_senderId(DefaultSender::id())
+, m_rank(DefaultSender::rank())
+{
 
-      assert(m_size < MESSAGE_SIZE);
+   assert(m_size < MESSAGE_SIZE);
 
-      assert(m_senderId >= 0);
-      assert(m_rank >= 0);
+   assert(m_senderId >= 0);
+   assert(m_rank >= 0);
+}
+
+Message::uuid_t Message::uuid() const {
+
+   return m_uuid;
+}
+
+void Message::setUuid(const Message::uuid_t &uuid) {
+
+   m_uuid = uuid;
 }
 
 int Message::senderId() const {

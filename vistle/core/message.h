@@ -2,6 +2,8 @@
 #define MESSAGE_H
 
 #include <string>
+#include <boost/uuid/uuid.hpp>
+
 
 #include "object.h"
 #include "scalar.h"
@@ -46,6 +48,7 @@ class V_COREEXPORT Message {
 
  public:
    static const size_t MESSAGE_SIZE = 4096; // fixed message size is imposed by boost::interprocess::message_queue
+   typedef boost::uuids::uuid uuid_t;
 
    enum Type {
       DEBUG,
@@ -75,6 +78,10 @@ class V_COREEXPORT Message {
    Message(const Type type, const unsigned int size);
    // Message (or its subclasses) may not require destructors
 
+   //! message uuid - copied to related messages (i.e. responses or errors)
+   uuid_t uuid() const;
+   //! set message uuid
+   void setUuid(const uuid_t &uuid);
    //! message type
    Type type() const;
    //! sender ID
@@ -89,6 +96,8 @@ class V_COREEXPORT Message {
    size_t size() const;
 
  private:
+   //! message uuid
+   uuid_t m_uuid;
    //! message size
    unsigned int m_size;
    //! message type

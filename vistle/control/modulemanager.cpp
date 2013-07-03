@@ -273,7 +273,7 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
       MPI_Info_free(&infos[i]);
    }
 
-   // inform modules about current parameter values of other modules
+   // inform newly started module about current parameter values of other modules
    for (auto &mit: runningMap) {
       ParameterMap &pm = mit.second.parameters;
       const std::string moduleName = getModuleName(mit.first);
@@ -382,6 +382,7 @@ bool ModuleManager::handle(const message::Compute &compute) {
       } else {
          message::Compute msg(compute.getModule(), newExecutionCount());
          msg.setSenderId(compute.senderId());
+         msg.setUuid(compute.uuid());
          i->second.sendQueue->getMessageQueue().send(&msg, sizeof(msg), 0);
       }
    }
@@ -500,6 +501,7 @@ bool ModuleManager::handle(const message::SetParameter &setParam) {
                continue;
             }
             message::SetParameter set(p->module(), p->getName(), applied);
+            set.setUuid(setParam.uuid());
             sendMessage(p->module(), set);
          }
       } else {
@@ -532,8 +534,7 @@ bool ModuleManager::handle(const message::AddObject &addObj) {
       << " to port " << addObj.getPortName() << std::endl;
 #endif
 
-   Port *port = m_portManager.getPort(addObj.senderId(),
-         addObj.getPortName());
+   Port *port = m_portManager.getPort(addObj.senderId(), addObj.getPortName());
    const Port::PortSet *list = NULL;
    if (port) {
       list = m_portManager.getConnectionList(port);
@@ -546,13 +547,16 @@ bool ModuleManager::handle(const message::AddObject &addObj) {
 
          message::AddObject a((*pi)->getName(), obj);
          a.setSenderId(addObj.senderId());
+         a.setUuid(addObj.uuid());
          a.setRank(addObj.rank());
          sendMessage(destId, a);
 
-         const message::Compute c(destId, -1);
+         message::Compute c(destId, -1);
+         c.setUuid(addObj.uuid());
          sendMessage(destId, c);
 
          message::ObjectReceived recv(addObj.getPortName(), obj);
+         recv.setUuid(addObj.uuid());
          recv.setSenderId(destId);
 
          if (!Communicator::the().broadcastAndHandleMessage(recv))

@@ -49,29 +49,29 @@ class V_COREEXPORT Module {
    Port *createOutputPort(const std::string &name, const std::string &description="", const int flags=0);
 
    bool addParameterGeneric(const std::string &name, Parameter *parameter, Parameter::Presentation presentation);
-   bool updateParameter(const std::string &name, const Parameter *parameter, bool reply);
+   bool updateParameter(const std::string &name, const Parameter *parameter, const message::SetParameter *inResponseTo);
 
    template<class T>
    Parameter *addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation presentation=Parameter::Generic);
    template<class T>
-   bool setParameter(const std::string &name, const T &value, bool reply);
+   bool setParameter(const std::string &name, const T &value, const message::SetParameter *inResponseTo);
    template<class T>
    bool getParameter(const std::string &name, T &value) const;
 
    StringParameter *addStringParameter(const std::string & name, const std::string &description, const std::string & value, Parameter::Presentation p=Parameter::Generic);
-   bool setStringParameter(const std::string & name, const std::string & value, bool reply=false);
+   bool setStringParameter(const std::string & name, const std::string & value, const message::SetParameter *inResponseTo=NULL);
    std::string getStringParameter(const std::string & name) const;
 
    FloatParameter *addFloatParameter(const std::string & name, const std::string &description, const double value);
-   bool setFloatParameter(const std::string & name, const double value, bool reply=false);
+   bool setFloatParameter(const std::string & name, const double value, const message::SetParameter *inResponseTo=NULL);
    double getFloatParameter(const std::string & name) const;
 
    IntParameter *addIntParameter(const std::string & name, const std::string &description, const int value, Parameter::Presentation p=Parameter::Generic);
-   bool setIntParameter(const std::string & name, const int value, bool reply=false);
+   bool setIntParameter(const std::string & name, const int value, const message::SetParameter *inResponseTo=NULL);
    int getIntParameter(const std::string & name) const;
 
    VectorParameter *addVectorParameter(const std::string & name, const std::string &description, const ParamVector & value);
-   bool setVectorParameter(const std::string & name, const ParamVector & value, bool reply=false);
+   bool setVectorParameter(const std::string & name, const ParamVector & value, const message::SetParameter *inResponseTo=NULL);
    ParamVector getVectorParameter(const std::string & name) const;
 
    bool addObject(const std::string & portName, vistle::Object::ptr object);
