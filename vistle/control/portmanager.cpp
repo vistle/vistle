@@ -108,9 +108,11 @@ bool PortManager::addConnection(const Port *from, const Port *to) {
       return true;
    }
 
+#ifdef DEBUG
    std::cerr << "PortManager::addConnection: incompatible types: "
       << from->getModuleID() << ":" << from->getName() << " (" << from->getType() << ") "
       << to->getModuleID() << ":" << to->getName() << " (" << to->getType() << ")" << std::endl;
+#endif
 
    return false;
 }

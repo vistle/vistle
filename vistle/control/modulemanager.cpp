@@ -509,9 +509,11 @@ bool ModuleManager::handle(const message::SetParameter &setParam) {
             sendMessage(p->module(), set);
          }
       } else {
+#ifdef DEBUG
          CERR << " SetParameter ["
             << setParam.getModule() << ":" << setParam.getName()
             << "]: port not found" << std::endl;
+#endif
       }
    }
    delete applied;
@@ -689,14 +691,14 @@ void ModuleManager::queueMessage(const message::Message &msg) {
 
    const char *m = static_cast<const char *>(static_cast<const void *>(&msg));
    std::copy(m, m+message::Message::MESSAGE_SIZE, std::back_inserter(m_messageQueue));
-   CERR << "queueing " << msg.type() << ", now " << m_messageQueue.size()/message::Message::MESSAGE_SIZE << " in queue" << std::endl;
+   //CERR << "queueing " << msg.type() << ", now " << m_messageQueue.size()/message::Message::MESSAGE_SIZE << " in queue" << std::endl;
 }
 
 void ModuleManager::replayMessages() {
 
    std::vector<char> queue;
    std::swap(m_messageQueue, queue);
-   CERR << "replaying " << queue.size()/message::Message::MESSAGE_SIZE << " messages" << std::endl;
+   //CERR << "replaying " << queue.size()/message::Message::MESSAGE_SIZE << " messages" << std::endl;
    for (size_t i=0; i<queue.size(); i+=message::Message::MESSAGE_SIZE) {
       const message::Message &m = *static_cast<const message::Message *>(static_cast<const void *>(&queue[i]));
       Communicator::the().handleMessage(m);
