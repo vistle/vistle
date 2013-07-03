@@ -35,6 +35,7 @@ class ModuleManager {
    bool sendMessage(int receiver, const message::Message &message) const;
    bool sendAll(const message::Message &message) const;
    bool sendAllOthers(int excluded, const message::Message &message) const;
+   bool sendUi(const message::Message &message) const;
 
    int getRank() const;
    int getSize() const;

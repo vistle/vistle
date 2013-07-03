@@ -138,9 +138,14 @@ Spawn::Spawn(const int s,
    COPY_STRING(name, n);
 }
 
-int Spawn::getSpawnID() const {
+int Spawn::spawnId() const {
 
    return spawnID;
+}
+
+void Spawn::setSpawnId(int id) {
+
+   spawnID = id;
 }
 
 const char * Spawn::getName() const {

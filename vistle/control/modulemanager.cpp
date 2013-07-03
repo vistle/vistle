@@ -193,6 +193,12 @@ bool ModuleManager::sendAllOthers(int excluded, const message::Message &message)
    return true;
 }
 
+bool ModuleManager::sendUi(const message::Message &message) const {
+
+   Communicator::the().sendUi(message);
+   return true;
+}
+
 bool ModuleManager::sendMessage(const int moduleId, const message::Message &message) const {
 
    RunningMap::const_iterator it = runningMap.find(moduleId);
@@ -220,7 +226,13 @@ bool ModuleManager::handle(const message::Pong &pong) {
 
 bool ModuleManager::handle(const message::Spawn &spawn) {
 
-   int moduleID = spawn.getSpawnID();
+   int moduleID = spawn.spawnId();
+   if (moduleID == 0) {
+      moduleID = newModuleID();
+   }
+   message::Spawn toUi = spawn;
+   toUi.setSpawnId(moduleID);
+   sendUi(toUi);
 
    std::string name = m_bindir + "/" + spawn.getName();
 

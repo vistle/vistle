@@ -143,14 +143,15 @@ class V_COREEXPORT Spawn: public Message {
    Spawn(const int spawnID,
          const std::string &name, int debugFlag = 0, int debugRank = 0);
 
-   int getSpawnID() const;
+   int spawnId() const;
+   void setSpawnId(int id);
    const char *getName() const;
    int getDebugFlag() const;
    int getDebugRank() const;
 
  private:
    //! ID of module to spawn
-   const int spawnID;
+   int spawnID;
    //! start with debugger/memory tracer
    const int debugFlag;
    //! on which rank to attach debugger
