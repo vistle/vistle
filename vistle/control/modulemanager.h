@@ -4,8 +4,6 @@
 #include <vector>
 #include <map>
 
-#include <boost/interprocess/shared_memory_object.hpp>
-#include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 
 #include <boost/thread/mutex.hpp>
@@ -15,8 +13,6 @@
 #include <core/message.h>
 #include <core/messagequeue.h>
 
-namespace bi = boost::interprocess;
-
 namespace vistle {
 
 namespace message {
@@ -25,10 +21,8 @@ namespace message {
 }
 
 class Parameter;
-class PythonEmbed;
 
 class ModuleManager {
-   friend class PythonEmbed;
    friend class Communicator;
 
  public:
@@ -36,11 +30,7 @@ class ModuleManager {
    ~ModuleManager();
    static ModuleManager &the();
 
-   void setInput(const std::string &input);
-   void setFile(const std::string &filename);
-
    bool dispatch(bool &received);
-
 
    bool sendMessage(int receiver, const message::Message &message) const;
    bool sendAll(const message::Message &message) const;
@@ -67,6 +57,12 @@ class ModuleManager {
    bool checkMessageQueue() const;
 
  private:
+   void queueMessage(const message::Message &msg);
+   void replayMessages();
+   std::vector<char> m_messageQueue;
+
+   PortManager m_portManager;
+
    // only used by Communicator
    bool handle(const message::Ping &ping);
    bool handle(const message::Pong &pong);
@@ -87,31 +83,19 @@ class ModuleManager {
    bool handle(const message::Barrier &barrier);
    bool handle(const message::BarrierReached &barrierReached);
 
-   void queueMessage(const message::Message &msg);
-   void replayMessages();
-   std::vector<char> m_messageQueue;
-
    std::string m_bindir;
 
    const int m_rank;
    const int m_size;
    const std::vector<std::string> m_hosts;
 
-   boost::mutex m_barrierMutex;
-   boost::condition_variable m_barrierCondition;
-   void barrierReached(int id);
-
-#if 0
-   typedef std::map<int, message::MessageQueue *> MessageQueueMap;
-   MessageQueueMap sendMessageQueue;
-   MessageQueueMap receiveMessageQueue;
-#endif
-
+   typedef std::map<std::string, Parameter *> ParameterMap;
    struct Module {
       bool initialized = false;
       std::string name;
       message::MessageQueue *sendQueue = NULL;
       message::MessageQueue *recvQueue = NULL;
+      ParameterMap parameters;
 
       ~Module() {
          delete sendQueue;
@@ -123,13 +107,13 @@ class ModuleManager {
    typedef std::set<int> ModuleSet;
    ModuleSet busySet;
 
-   typedef std::map<std::string, Parameter *> ModuleParameterMap;
-   typedef std::map<int, ModuleParameterMap> ParameterMap;
-   ParameterMap parameterMap;
+   int m_moduleCounter; //< used for module ids
+   int m_executionCounter; //< incremented each time the pipeline is executed
 
-   PortManager m_portManager;
-   int m_moduleCounter;
-   int m_executionCounter;
+   // barrier related stuff
+   boost::mutex m_barrierMutex;
+   boost::condition_variable m_barrierCondition;
+   void barrierReached(int id);
    int m_barrierCounter;
    int m_activeBarrier;
    int m_reachedBarriers;

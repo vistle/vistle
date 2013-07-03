@@ -27,7 +27,7 @@
 
 //#define DEBUG
 
-using namespace boost::interprocess;
+namespace bi = boost::interprocess;
 
 namespace vistle {
 
@@ -152,7 +152,7 @@ bool ModuleManager::dispatch(bool &received) {
       if (reachedSet.find(modId) != reachedSet.end())
          continue;
 
-      boost::interprocess::message_queue &mq = mod.recvQueue->getMessageQueue();
+      bi::message_queue &mq = mod.recvQueue->getMessageQueue();
 
       bool recv = false;
       if (!Communicator::the().tryReceiveAndHandleMessage(mq, recv)) {
@@ -237,7 +237,7 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    try {
       mod.sendQueue = message::MessageQueue::create(smqName);
       mod.recvQueue = message::MessageQueue::create(rmqName);
-   } catch (interprocess_exception &ex) {
+   } catch (bi::interprocess_exception &ex) {
 
       CERR << "spawn mq " << ex.what() << std::endl;
       exit(-1);
@@ -274,8 +274,8 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    }
 
    // inform modules about current parameter values of other modules
-   for (auto mit: parameterMap) {
-      ModuleParameterMap &pm = mit.second;
+   for (auto &mit: runningMap) {
+      ParameterMap &pm = mit.second.parameters;
       const std::string moduleName = getModuleName(mit.first);
       for (auto pit: pm) {
          message::AddParameter add(pit.first, pit.second->description(),
@@ -346,12 +346,6 @@ bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
 
    CERR << " Module [" << mod << "] quit" << std::endl;
 
-   {
-      ParameterMap::iterator it = parameterMap.find(mod);
-      if (it != parameterMap.end()) {
-         parameterMap.erase(it);
-      }
-   }
    { 
       RunningMap::iterator it = runningMap.find(mod);
       if (it != runningMap.end()) {
@@ -425,8 +419,8 @@ bool ModuleManager::handle(const message::AddParameter &addParam) {
    CERR << "AddParameter: module=" << addParam.moduleName() << "(" << addParam.senderId() << "), name=" << addParam.getName() << std::endl;
 #endif
 
-   ModuleParameterMap &pm = parameterMap[addParam.senderId()];
-   ModuleParameterMap::iterator it = pm.find(addParam.getName());
+   ParameterMap &pm = runningMap[addParam.senderId()].parameters;
+   ParameterMap::iterator it = pm.find(addParam.getName());
    if (it != pm.end()) {
       CERR << "double parameter" << std::endl;
    } else {
@@ -650,12 +644,12 @@ std::vector<std::string> ModuleManager::getParameters(int id) const {
 
    std::vector<std::string> result;
 
-   ParameterMap::const_iterator pit = parameterMap.find(id);
-   if (pit == parameterMap.end())
+   RunningMap::const_iterator rit = runningMap.find(id);
+   if (rit == runningMap.end())
       return result;
 
-   const ModuleParameterMap &pmap = pit->second;
-   BOOST_FOREACH (ModuleParameterMap::value_type val, pmap) {
+   const ParameterMap &pmap = rit->second.parameters;
+   BOOST_FOREACH (ParameterMap::value_type val, pmap) {
       result.push_back(val.first);
    }
 
@@ -664,15 +658,15 @@ std::vector<std::string> ModuleManager::getParameters(int id) const {
 
 Parameter *ModuleManager::getParameter(int id, const std::string &name) const {
 
-   ParameterMap::const_iterator pit = parameterMap.find(id);
-   if (pit == parameterMap.end())
+   RunningMap::const_iterator rit = runningMap.find(id);
+   if (rit == runningMap.end())
       return NULL;
 
-   ModuleParameterMap::const_iterator mpit = pit->second.find(name);
-   if (mpit == pit->second.end())
+   ParameterMap::const_iterator pit = rit->second.parameters.find(name);
+   if (pit == rit->second.parameters.end())
       return NULL;
 
-   return mpit->second;
+   return pit->second;
 }
 
 bool ModuleManager::checkMessageQueue() const {
