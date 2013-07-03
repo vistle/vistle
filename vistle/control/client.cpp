@@ -79,9 +79,9 @@ void BufferClient::operator()() {
 
 InteractiveClient::InteractiveClient(ClientManager &manager)
 : Client(manager)
+, m_prompt("vistle> ")
 , m_close(true)
 , m_quitOnEOF(false)
-, m_prompt("vistle> ")
 {
 }
 

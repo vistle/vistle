@@ -19,13 +19,17 @@ struct instantiator {
       typedef ParameterVector<S> V;
       S s = S();
       V *p0 = new V();
-      V *p1 = new V(S());
+      V *p1 = new V(s);
       V *p2 = new V(S(), S());
       V *p3 = new V(S(), S(), S());
       V *p4 = new V(S(), S(), S(), S());
       V v(*p0);
-      //V v2 = *p0 + *p1 - *p2 + *p3 + *p4 + v;
       V v2;
+      v2 = *p0;
+      v2 = *p1;
+      v2 = *p2;
+      v2 = *p3;
+      v2 = *p4;
       V v3(v2.dim, &v2[0]);
       V v4(v3.begin(), v3.end());
 

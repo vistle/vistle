@@ -59,6 +59,8 @@ class V_COREEXPORT Meta {
       void setNumTimesteps(int num) { m_numTimesteps = num; }
       int animationStep() const { return m_animationstep; }
       void setAnimationStep(int step) { m_animationstep = step; }
+      void setNumAnimationSteps(int step) { m_numAnimationsteps = step; }
+      int numAnimationSteps() const { return m_numAnimationsteps; }
       int iteration() const { return m_iteration; }
       void setIteration(int iteration) { m_iteration = iteration; }
       int executionCounter() const { return m_executionCount; }
@@ -66,7 +68,7 @@ class V_COREEXPORT Meta {
       int creator() const { return m_creator; }
       void setCreator(int id) { m_creator = id; }
    private:
-      int m_block, m_numBlocks, m_timestep, m_numTimesteps, m_animationstep, m_numAnimationsteps, m_iteration, m_executionCount, m_creator;
+      int m_block=-1, m_numBlocks=-1, m_timestep=-1, m_numTimesteps=-1, m_animationstep=-1, m_numAnimationsteps=-1, m_iteration=-1, m_executionCount=-1, m_creator=-1;
 
       friend class boost::serialization::access;
       template<class Archive>

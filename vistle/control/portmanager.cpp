@@ -135,8 +135,6 @@ bool PortManager::addConnection(const int a, const std::string & na,
 
 bool PortManager::removeConnection(const Port *from, const Port *to) {
 
-   bool ok = false;
-
    Port *f = getPort(from);
    if (!f)
       return false;

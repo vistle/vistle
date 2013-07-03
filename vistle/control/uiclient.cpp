@@ -6,8 +6,8 @@ namespace vistle {
 
 UiClient::UiClient(UiManager &manager, boost::shared_ptr<message::MessageQueue> sendQueue, boost::shared_ptr<message::MessageQueue> recvQueue)
 : m_done(false)
-, m_manager(manager)
 , m_socket(new asio::ip::tcp::socket(m_ioService))
+, m_manager(manager)
 , m_sendQueue(sendQueue)
 , m_recvQueue(recvQueue)
 {
@@ -101,7 +101,7 @@ bool UiClient::send(const message::Message &msg) {
    try {
       const uint32_t sz = htonl(msg.size());
       auto szbuf = asio::buffer(&sz, sizeof(sz));
-      bool r = asio::write(socket(), szbuf);
+      asio::write(socket(), szbuf);
       auto msgbuf = asio::buffer(&msg, msg.size());
       return asio::write(socket(), msgbuf);
    } catch (std::exception &ex) {

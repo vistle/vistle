@@ -14,7 +14,7 @@ class Communicator;
 class PythonEmbed;
 
 namespace message {
-struct Message;
+class Message;
 };
 
 class V_CONTROLEXPORT Executor {

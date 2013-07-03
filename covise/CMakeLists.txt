@@ -36,6 +36,8 @@ covise_find_package(XercesC REQUIRED)
 set(COVISE_USE_CUDA TRUE)
 covise_find_package(CUDA)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
+
 
 include_directories(.)
 include_directories(../vistle)

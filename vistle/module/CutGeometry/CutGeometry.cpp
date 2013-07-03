@@ -55,8 +55,6 @@ class PlaneClip {
    Polygons::ptr m_outGrid;
    Vec<Scalar>::ptr m_outData;
 
-   bool m_countOnly = true;
-
  public:
    PlaneClip(Polygons::const_ptr grid, const Vector &point, const Vector &normal)
       : m_grid(grid)
@@ -192,7 +190,6 @@ class PlaneClip {
    void processPolygon(const Index element, Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord, bool numVertsOnly) {
 
       Polygons::const_ptr &in = m_grid;
-      Polygons::ptr &out = m_outGrid;
 
       const Index start = el[element];
       Index end;

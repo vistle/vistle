@@ -32,10 +32,10 @@ namespace bi = boost::interprocess;
 namespace vistle {
 
 ModuleManager::ModuleManager(int argc, char *argv[], int r, const std::vector<std::string> &hosts)
-: m_rank(r)
+: m_portManager(this)
+, m_rank(r)
 , m_size(hosts.size())
 , m_hosts(hosts)
-, m_portManager(this)
 , m_moduleCounter(0)
 , m_executionCounter(0)
 , m_barrierCounter(0)

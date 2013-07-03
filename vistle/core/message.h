@@ -39,7 +39,7 @@ typedef char param_desc_t[512];
 typedef char param_choice_t[64];
 const int param_num_choices = 60;
 
-struct V_COREEXPORT Message {
+class V_COREEXPORT Message {
    // this is POD
 
    friend class vistle::Communicator;

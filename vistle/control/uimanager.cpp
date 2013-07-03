@@ -60,8 +60,8 @@ class UiThreadWrapper {
 UiManager::UiManager(boost::shared_ptr<message::MessageQueue> commandQueue, unsigned short port)
 : m_commandQueue(commandQueue)
 , m_port(port)
-, m_acceptor(m_ioService)
 , m_requestQuit(false)
+, m_acceptor(m_ioService)
 {
 
    startServer();

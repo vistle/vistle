@@ -7,8 +7,13 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
    if(APPLE)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
    endif()
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
+
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
    if (GCC_VERSION VERSION_GREATER 4.7 OR GCC_VERSION VERSION_EQUAL 4.7)

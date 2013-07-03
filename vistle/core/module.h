@@ -21,9 +21,9 @@
 namespace vistle {
 
 namespace message {
-struct Message;
-struct AddParameter;
-struct SetParameter;
+class Message;
+class AddParameter;
+class SetParameter;
 class MessageQueue;
 }
 

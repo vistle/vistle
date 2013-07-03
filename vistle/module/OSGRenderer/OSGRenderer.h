@@ -39,7 +39,6 @@ public:
    std::map<int, std::vector<osg::Geode *> *> timesteps;
 
    int timestep;
-   double lastEvent;
 };
 
 class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {

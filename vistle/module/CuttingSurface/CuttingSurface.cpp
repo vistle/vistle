@@ -102,8 +102,6 @@ class PlaneCut {
    Triangles::ptr m_triangles;
    Vec<Scalar>::ptr m_outData;
 
-   bool m_countOnly = true;
-
  public:
    PlaneCut(UnstructuredGrid::const_ptr grid, const Vector &normal, const Scalar distance)
    : m_grid(grid)

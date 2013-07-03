@@ -71,10 +71,10 @@ class InteractiveClient: public Client {
 
    protected:
       virtual bool printPrompt();
+      bool printGreeting();
 
       std::string m_prompt;
       mutable bool m_close;
-      bool printGreeting();
       bool m_quitOnEOF;
 };
 

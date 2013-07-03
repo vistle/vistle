@@ -57,8 +57,8 @@ class ClientThreadWrapper {
 ClientManager::ClientManager(const std::string &initial, InitialType initialType, unsigned short port)
 : interpreter(new PythonEmbed(*this, "vistle"))
 , m_port(port)
-, m_acceptor(m_ioService)
 , m_requestQuit(false)
+, m_acceptor(m_ioService)
 , m_activeClient(NULL)
 , m_console(NULL)
 {

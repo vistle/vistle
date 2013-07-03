@@ -1,5 +1,7 @@
 add_executable(Color Color.cpp)
 
+use_openmp()
+
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}

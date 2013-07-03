@@ -30,11 +30,12 @@ class UiClient {
       boost::asio::ip::tcp::socket &socket();
 
    private:
+      UiClient(const UiClient &o);
+
+      bool m_done;
       boost::asio::io_service m_ioService;
       boost::scoped_ptr<boost::asio::ip::tcp::socket> m_socket;
       UiManager &m_manager;
-      bool m_done;
-      UiClient(const UiClient &o);
       boost::shared_ptr<message::MessageQueue> m_sendQueue, m_recvQueue;
 };
 

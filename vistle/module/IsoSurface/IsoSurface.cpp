@@ -90,8 +90,6 @@ class Leveller {
    Triangles::ptr m_triangles;
    Vec<Scalar>::ptr m_outData;
 
-   bool m_countOnly = true;
-
  public:
    Leveller(UnstructuredGrid::const_ptr grid, const Scalar isovalue)
    : m_grid(grid)
@@ -212,8 +210,6 @@ class Leveller {
       }
 
       if (numVerts) {
-
-         auto &t = m_triangles;
 
          Scalar3 vertlist[12];
          vertlist[0] = interp(m_isoValue, v[0], v[1], field[0], field[1]);

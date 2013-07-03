@@ -9,7 +9,7 @@ namespace vistle {
 class ClientManager;
 
 namespace message {
-struct Message;
+class Message;
 }
 
 class PythonEmbed {
