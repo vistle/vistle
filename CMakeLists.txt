@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(vistle_all)
 
+set(BUILD_SHARED_LIBS ON)
+
 enable_testing()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
