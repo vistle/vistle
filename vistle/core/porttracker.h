@@ -6,11 +6,12 @@
 #include <vector>
 #include <set>
 
-#include <core/port.h>
+#include "export.h"
+#include "port.h"
 
 namespace vistle {
 
-class PortTracker {
+class V_COREEXPORT PortTracker {
 
  public:
    PortTracker();

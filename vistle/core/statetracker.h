@@ -7,14 +7,15 @@
 
 #include <boost/scoped_ptr.hpp>
 
-#include <core/message.h>
+#include "export.h"
+#include "message.h"
 
 namespace vistle {
 
 class Parameter;
 class PortTracker;
 
-class StateTracker {
+class V_COREEXPORT StateTracker {
 
  public:
    StateTracker(PortTracker *portTracker);

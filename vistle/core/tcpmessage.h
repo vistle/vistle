@@ -13,8 +13,8 @@ class Message;
 
 typedef boost::asio::ip::tcp::socket socket_t;
 
-bool send(socket_t &sock, const message::Message &msg);
-bool recv(socket_t &sock, message::Message &msg, bool &received);
+bool V_COREEXPORT send(socket_t &sock, const message::Message &msg);
+bool V_COREEXPORT recv(socket_t &sock, message::Message &msg, bool &received);
 
 } // namespace message
 } // namespace vistle
