@@ -125,7 +125,7 @@ void UiManager::startAccept() {
    ++m_uiCount;
    boost::shared_ptr<message::MessageQueue> smq = m_commandQueue;
    boost::shared_ptr<message::MessageQueue> rmq(message::MessageQueue::create(message::MessageQueue::createName("rui", m_uiCount, 0)));
-   UiClient *client = new UiClient(*this, smq, rmq);
+   UiClient *client = new UiClient(*this, -m_uiCount, smq, rmq);
    m_acceptor.async_accept(client->socket(), boost::bind<void>(&UiManager::handleAccept, this, client, asio::placeholders::error));
 }
 
@@ -142,6 +142,8 @@ void UiManager::addClient(UiClient *c) {
 
    boost::thread *t = new boost::thread(UiThreadWrapper(c, this));
    m_threads[t] = c;
+
+   sendMessage(c, message::SetId(c->id()));
 
    std::vector<char> state = Communicator::the().moduleManager().getState();
 

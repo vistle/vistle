@@ -58,7 +58,6 @@ Message::Message(const Type t, const unsigned int s)
 
    assert(m_size < MESSAGE_SIZE);
 
-   assert(m_senderId >= 0);
    assert(m_rank >= 0);
 }
 
@@ -663,6 +662,17 @@ BarrierReached::BarrierReached(const int id)
 int BarrierReached::getBarrierId() const {
 
    return barrierid;
+}
+
+SetId::SetId(const int id)
+: Message(Message::SETID, sizeof(SetId))
+, m_id(id)
+{
+}
+
+int SetId::getId() const {
+
+   return m_id;
 }
 
 } // namespace message

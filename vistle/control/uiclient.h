@@ -14,9 +14,10 @@ class UiManager;
 
 class UiClient {
    public:
-      UiClient(UiManager &manager, boost::shared_ptr<message::MessageQueue> sendQueue, boost::shared_ptr<message::MessageQueue> recvQueue);
+      UiClient(UiManager &manager, int id, boost::shared_ptr<message::MessageQueue> sendQueue, boost::shared_ptr<message::MessageQueue> recvQueue);
       ~UiClient();
 
+      int id() const;
       void operator()();
       void cancel();
       bool done() const;
@@ -30,6 +31,7 @@ class UiClient {
    private:
       UiClient(const UiClient &o);
 
+      int m_id;
       bool m_done;
       boost::asio::io_service m_ioService;
       boost::scoped_ptr<boost::asio::ip::tcp::socket> m_socket;

@@ -212,9 +212,13 @@ bool StateTracker::handleMessage(const message::Message &msg) {
          break;
       }
       case Message::PING: {
+         const Ping &ping = static_cast<const Ping &>(msg);
+         return handle(ping);
          break;
       }
       case Message::PONG: {
+         const Pong &pong = static_cast<const Pong &>(msg);
+         return handle(pong);
          break;
       }
       case Message::BUSY: {
@@ -235,6 +239,12 @@ bool StateTracker::handleMessage(const message::Message &msg) {
       case Message::BARRIERREACHED: {
          const BarrierReached &reached = static_cast<const BarrierReached &>(msg);
          return handle(reached);
+         break;
+      }
+      case Message::SETID: {
+         const SetId &setid = static_cast<const SetId &>(msg);
+         (void)setid;
+         return true;
          break;
       }
       default:

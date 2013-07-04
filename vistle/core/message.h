@@ -73,6 +73,7 @@ class V_COREEXPORT Message {
       IDLE,
       BARRIER,
       BARRIERREACHED,
+      SETID,
    };
 
    Message(const Type type, const unsigned int size);
@@ -464,6 +465,19 @@ class V_COREEXPORT BarrierReached: public Message {
    const int barrierid;
 };
 BOOST_STATIC_ASSERT(sizeof(BarrierReached) < Message::MESSAGE_SIZE);
+
+class V_COREEXPORT SetId: public Message {
+
+ public:
+   SetId(const int id);
+
+   int getId() const;
+
+ private:
+   const int m_id;
+};
+BOOST_STATIC_ASSERT(sizeof(SetId) < Message::MESSAGE_SIZE);
+
 } // namespace message
 } // namespace vistle
 

@@ -5,8 +5,9 @@ namespace asio = boost::asio;
 
 namespace vistle {
 
-UiClient::UiClient(UiManager &manager, boost::shared_ptr<message::MessageQueue> sendQueue, boost::shared_ptr<message::MessageQueue> recvQueue)
-: m_done(false)
+UiClient::UiClient(UiManager &manager, int id, boost::shared_ptr<message::MessageQueue> sendQueue, boost::shared_ptr<message::MessageQueue> recvQueue)
+: m_id(id)
+, m_done(false)
 , m_socket(new asio::ip::tcp::socket(m_ioService))
 , m_manager(manager)
 , m_sendQueue(sendQueue)
@@ -16,6 +17,11 @@ UiClient::UiClient(UiManager &manager, boost::shared_ptr<message::MessageQueue> 
 
 UiClient::~UiClient() {
 
+}
+
+int UiClient::id() const {
+
+   return m_id;
 }
 
 UiManager &UiClient::manager() const {

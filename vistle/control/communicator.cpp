@@ -277,6 +277,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::PING: {
 
          const message::Ping &ping = static_cast<const message::Ping &>(message);
+         sendUi(ping);
          result = m_moduleManager->handle(ping);
          break;
       }
@@ -284,6 +285,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::PONG: {
 
          const message::Pong &pong = static_cast<const message::Pong &>(message);
+         sendUi(pong);
          result = m_moduleManager->handle(pong);
          break;
       }
