@@ -1,4 +1,4 @@
-find_package(Boost 1.40 REQUIRED COMPONENTS serialization)
+find_package(Boost 1.40 REQUIRED COMPONENTS serialization system)
 
 add_library(vistle_core SHARED
    exception.cpp
@@ -20,6 +20,7 @@ add_library(vistle_core SHARED
    #texture1d.cpp
    message.cpp
    messagequeue.cpp
+   tcpmessage.cpp
    module.cpp
    renderer.cpp
    port.cpp

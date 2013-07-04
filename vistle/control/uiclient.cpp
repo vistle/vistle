@@ -1,4 +1,5 @@
 #include "uiclient.h"
+#include <core/tcpmessage.h>
 
 namespace asio = boost::asio;
 
@@ -36,7 +37,7 @@ void UiClient::operator()() {
 
       message::Message *msg = (message::Message *)recvbuf.data();
       bool received = false;
-      if (!recv(*msg, received))
+      if (!message::recv(socket(), *msg, received))
          break;
 
       if (received) {
@@ -49,7 +50,7 @@ void UiClient::operator()() {
       received = recvQueue().try_receive(sendbuf.data(), message::Message::MESSAGE_SIZE, msgSize, priority);
       if (received) {
          message::Message *msg = (message::Message *)sendbuf.data();
-         if (!send(*msg))
+         if (!message::send(socket(), *msg))
             break;
       }
 
@@ -62,52 +63,6 @@ void UiClient::operator()() {
 void UiClient::cancel() {
 
    m_ioService.stop();
-}
-
-bool UiClient::recv(message::Message &msg, bool &received) {
-
-   uint32_t sz = 0;
-
-   boost::asio::socket_base::bytes_readable command(true);
-   socket().io_control(command);
-   std::size_t bytes_readable = command.get();
-   if (bytes_readable < sizeof(sz)) {
-      received = false;
-      return true;
-   }
-
-   received = true;
-
-   bool result = true;
-
-   try {
-      auto szbuf = boost::asio::buffer(&sz, sizeof(sz));
-      boost::system::error_code error;
-      asio::read(socket(), szbuf);
-      sz = ntohl(sz);
-      auto msgbuf = asio::buffer(&msg, sz);
-      asio::read(socket(), msgbuf);
-   } catch (std::exception &ex) {
-      std::cerr << "UiClient:recv: exception: " << ex.what() << std::endl;
-      received = false;
-      result = false;
-   }
-
-   return result;
-}
-
-bool UiClient::send(const message::Message &msg) {
-
-   try {
-      const uint32_t sz = htonl(msg.size());
-      auto szbuf = asio::buffer(&sz, sizeof(sz));
-      asio::write(socket(), szbuf);
-      auto msgbuf = asio::buffer(&msg, msg.size());
-      return asio::write(socket(), msgbuf);
-   } catch (std::exception &ex) {
-      std::cerr << "UiClient:send: exception: " << ex.what() << std::endl;
-      return false;
-   }
 }
 
 asio::ip::tcp::socket &UiClient::socket() {

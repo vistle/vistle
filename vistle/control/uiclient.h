@@ -21,8 +21,6 @@ class UiClient {
       void cancel();
       bool done() const;
       UiManager &manager() const;
-      bool recv(message::Message &msg, bool &received);
-      bool send(const message::Message &msg);
 
       boost::interprocess::message_queue &sendQueue() const;
       boost::interprocess::message_queue &recvQueue() const;
