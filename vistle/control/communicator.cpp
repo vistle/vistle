@@ -299,7 +299,6 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::SPAWN: {
 
          const message::Spawn &spawn = static_cast<const message::Spawn &>(message);
-         sendUi(spawn);
          result = m_moduleManager->handle(spawn);
          break;
       }
