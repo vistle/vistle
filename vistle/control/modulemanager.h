@@ -10,6 +10,7 @@
 #include <boost/thread/condition_variable.hpp>
 
 #include "portmanager.h"
+#include <core/statetracker.h>
 #include <core/message.h>
 #include <core/messagequeue.h>
 
@@ -46,10 +47,10 @@ class ModuleManager {
    int getBarrierCounter();
    boost::mutex &barrierMutex();
    boost::condition_variable &barrierCondition();
+
    std::vector<int> getRunningList() const;
    std::vector<int> getBusyList() const;
    std::string getModuleName(int id) const;
-
    std::vector<std::string> getParameters(int id) const;
    Parameter *getParameter(int id, const std::string &name) const;
 
@@ -63,6 +64,7 @@ class ModuleManager {
    std::vector<char> m_messageQueue;
 
    PortManager m_portManager;
+   StateTracker m_stateTracker;
 
    // only used by Communicator
    bool handle(const message::Ping &ping);
@@ -90,13 +92,9 @@ class ModuleManager {
    const int m_size;
    const std::vector<std::string> m_hosts;
 
-   typedef std::map<std::string, Parameter *> ParameterMap;
    struct Module {
-      bool initialized = false;
-      std::string name;
       message::MessageQueue *sendQueue = NULL;
       message::MessageQueue *recvQueue = NULL;
-      ParameterMap parameters;
 
       ~Module() {
          delete sendQueue;
@@ -105,8 +103,6 @@ class ModuleManager {
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;
-   typedef std::set<int> ModuleSet;
-   ModuleSet busySet;
 
    int m_moduleCounter; //< used for module ids
    int m_executionCounter; //< incremented each time the pipeline is executed
@@ -118,6 +114,7 @@ class ModuleManager {
    int m_barrierCounter;
    int m_activeBarrier;
    int m_reachedBarriers;
+   typedef std::set<int> ModuleSet;
    ModuleSet reachedSet;
 };
 

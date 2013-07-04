@@ -26,7 +26,10 @@ add_library(vistle_core SHARED
    port.cpp
    parameter.cpp
    paramvector.cpp
-   vector.cpp)
+   vector.cpp
+   porttracker.cpp
+   statetracker.cpp
+   )
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_core

@@ -33,6 +33,7 @@ namespace vistle {
 
 ModuleManager::ModuleManager(int argc, char *argv[], int r, const std::vector<std::string> &hosts)
 : m_portManager(this)
+, m_stateTracker(&m_portManager)
 , m_rank(r)
 , m_size(hosts.size())
 , m_hosts(hosts)
@@ -104,33 +105,17 @@ void ModuleManager::barrierReached(int id) {
 
 std::vector<int> ModuleManager::getRunningList() const {
 
-   std::vector<int> result;
-   for (RunningMap::const_iterator it = runningMap.begin();
-         it != runningMap.end();
-         ++it) {
-      result.push_back(it->first);
-   }
-   return result;
+   return m_stateTracker.getRunningList();
 }
 
 std::vector<int> ModuleManager::getBusyList() const {
 
-   std::vector<int> result;
-   for (ModuleSet::const_iterator it = busySet.begin();
-         it != busySet.end();
-         ++it) {
-      result.push_back(*it);
-   }
-   return result;
+   return m_stateTracker.getBusyList();
 }
 
 std::string ModuleManager::getModuleName(int id) const {
 
-   RunningMap::const_iterator it = runningMap.find(id);
-   if (it == runningMap.end())
-      return std::string();
-
-   return it->second.name;
+   return m_stateTracker.getModuleName(id);
 }
 
 
@@ -214,13 +199,15 @@ bool ModuleManager::sendMessage(const int moduleId, const message::Message &mess
 
 bool ModuleManager::handle(const message::Ping &ping) {
 
+   m_stateTracker.handle(ping);
    sendAll(ping);
    return true;
 }
 
 bool ModuleManager::handle(const message::Pong &pong) {
 
-   CERR << "Pong [" << pong.senderId() << " " << pong.getCharacter() << "]" << std::endl;
+   m_stateTracker.handle(pong);
+   //CERR << "Pong [" << pong.senderId() << " " << pong.getCharacter() << "]" << std::endl;
    return true;
 }
 
@@ -232,6 +219,7 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    }
    message::Spawn toUi = spawn;
    toUi.setSpawnId(moduleID);
+   m_stateTracker.handle(toUi);
    sendUi(toUi);
 
    std::string name = m_bindir + "/" + spawn.getName();
@@ -241,7 +229,6 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    std::string id = modID.str();
 
    Module &mod = runningMap[moduleID];
-   mod.name = spawn.getName();
 
    std::string smqName = message::MessageQueue::createName("smq", moduleID, m_rank);
    std::string rmqName = message::MessageQueue::createName("rmq", moduleID, m_rank);
@@ -287,17 +274,20 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
 
    // inform newly started module about current parameter values of other modules
    for (auto &mit: runningMap) {
-      ParameterMap &pm = mit.second.parameters;
+      const int id = mit.first;
       const std::string moduleName = getModuleName(mit.first);
-      for (auto pit: pm) {
-         message::AddParameter add(pit.first, pit.second->description(),
-               pit.second->type(), pit.second->presentation(), moduleName);
-         add.setSenderId(mit.first);
+
+      for (std::string paramname: m_stateTracker.getParameters(id)) {
+         const Parameter *param = m_stateTracker.getParameter(id, paramname);
+
+         message::AddParameter add(paramname, param->description(),
+               param->type(), param->presentation(), moduleName);
+         add.setSenderId(id);
          add.setRank(m_rank);
          sendMessage(moduleID, add);
 
-         message::SetParameter set(mit.first, pit.first, pit.second);
-         set.setSenderId(mit.first);
+         message::SetParameter set(id, paramname, param);
+         set.setSenderId(id);
          set.setRank(m_rank);
          sendMessage(moduleID, set);
       }
@@ -308,9 +298,9 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
 
 bool ModuleManager::handle(const message::Started &started) {
 
+   m_stateTracker.handle(started);
    int moduleID = started.senderId();
-   runningMap[moduleID].initialized = true;
-   assert(runningMap[moduleID].name == started.getName());
+   assert(m_stateTracker.getModuleName(moduleID) == started.getName());
 
    replayMessages();
    return true;
@@ -318,6 +308,7 @@ bool ModuleManager::handle(const message::Started &started) {
 
 bool ModuleManager::handle(const message::Connect &connect) {
 
+   m_stateTracker.handle(connect);
    if (m_portManager.addConnection(connect.getModuleA(),
             connect.getPortAName(),
             connect.getModuleB(),
@@ -333,6 +324,7 @@ bool ModuleManager::handle(const message::Connect &connect) {
 
 bool ModuleManager::handle(const message::Disconnect &disconnect) {
 
+   m_stateTracker.handle(disconnect);
    if (m_portManager.removeConnection(disconnect.getModuleA(),
             disconnect.getPortAName(),
             disconnect.getModuleB(),
@@ -354,6 +346,7 @@ bool ModuleManager::handle(const message::Disconnect &disconnect) {
 
 bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
 
+   m_stateTracker.handle(moduleExit);
    int mod = moduleExit.senderId();
 
    CERR << " Module [" << mod << "] quit" << std::endl;
@@ -365,11 +358,6 @@ bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
       } else {
          CERR << " Module [" << mod << "] not found in map" << std::endl;
       }
-   }
-   {
-      ModuleSet::iterator it = busySet.find(mod);
-      if (it != busySet.end())
-         busySet.erase(it);
    }
    {
       ModuleSet::iterator it = reachedSet.find(mod);
@@ -385,6 +373,7 @@ bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
 
 bool ModuleManager::handle(const message::Compute &compute) {
 
+   m_stateTracker.handle(compute);
    RunningMap::iterator i = runningMap.find(compute.getModule());
    if (i != runningMap.end()) {
       if (compute.senderId() == 0) {
@@ -404,46 +393,23 @@ bool ModuleManager::handle(const message::Compute &compute) {
 
 bool ModuleManager::handle(const message::Busy &busy) {
 
-   const int id = busy.senderId();
-   if (busySet.find(id) != busySet.end()) {
-      CERR << "module " << id << " sent Busy twice" << std::endl;
-   } else {
-      busySet.insert(id);
-   }
-
-   return true;
+   return m_stateTracker.handle(busy);
 }
 
 bool ModuleManager::handle(const message::Idle &idle) {
 
-   const int id = idle.senderId();
-   ModuleSet::iterator it = busySet.find(id);
-   if (it != busySet.end()) {
-      busySet.erase(it);
-   } else {
-      CERR << "module " << id << " sent Idle, but was not busy" << std::endl;
-   }
-   return true;
+   return m_stateTracker.handle(idle);
 }
 
 bool ModuleManager::handle(const message::AddParameter &addParam) {
 
+   m_stateTracker.handle(addParam);
 #ifdef DEBUG
    CERR << "AddParameter: module=" << addParam.moduleName() << "(" << addParam.senderId() << "), name=" << addParam.getName() << std::endl;
 #endif
 
-   ParameterMap &pm = runningMap[addParam.senderId()].parameters;
-   ParameterMap::iterator it = pm.find(addParam.getName());
-   if (it != pm.end()) {
-      CERR << "double parameter" << std::endl;
-   } else {
-      pm[addParam.getName()] = addParam.getParameter();
-   }
-
    // let all modules know that a parameter was added
    sendAll(addParam);
-
-   m_portManager.addPort(new Port(addParam.senderId(), addParam.getName(), Port::PARAMETER));
 
    replayMessages();
    return true;
@@ -451,6 +417,7 @@ bool ModuleManager::handle(const message::AddParameter &addParam) {
 
 bool ModuleManager::handle(const message::SetParameter &setParam) {
 
+   m_stateTracker.handle(setParam);
 #ifdef DEBUG
    CERR << "SetParameter: sender=" << setParam.senderId() << ", module=" << setParam.getModule() << ", name=" << setParam.getName() << std::endl;
 #endif
@@ -531,12 +498,14 @@ bool ModuleManager::handle(const message::SetParameter &setParam) {
 
 bool ModuleManager::handle(const message::Kill &kill) {
 
+   m_stateTracker.handle(kill);
    sendMessage(kill.getModule(), kill);
    return true;
 }
 
 bool ModuleManager::handle(const message::AddObject &addObj) {
 
+   m_stateTracker.handle(addObj);
    Object::const_ptr obj = addObj.takeObject();
    assert(obj->refcount() >= 1);
 #if 0
@@ -585,12 +554,14 @@ bool ModuleManager::handle(const message::AddObject &addObj) {
 
 bool ModuleManager::handle(const message::ObjectReceived &objRecv) {
 
+   m_stateTracker.handle(objRecv);
    sendMessage(objRecv.senderId(), objRecv);
    return true;
 }
 
 bool ModuleManager::handle(const message::Barrier &barrier) {
 
+   m_stateTracker.handle(barrier);
    CERR << "Barrier [" << barrier.getBarrierId() << "]" << std::endl;
    assert(m_activeBarrier == -1);
    m_activeBarrier = barrier.getBarrierId();
@@ -604,6 +575,7 @@ bool ModuleManager::handle(const message::Barrier &barrier) {
 
 bool ModuleManager::handle(const message::BarrierReached &barrReached) {
 
+   m_stateTracker.handle(barrReached);
 #ifdef DEBUG
    CERR << "BarrierReached [barrier " << barrReached.getBarrierId() << ", module " << barrReached.senderId() << "]" << std::endl;
 #endif
@@ -626,7 +598,7 @@ bool ModuleManager::handle(const message::BarrierReached &barrReached) {
 
 bool ModuleManager::handle(const message::CreatePort &createPort) {
 
-   m_portManager.addPort(createPort.getPort());
+   m_stateTracker.handle(createPort);
    replayMessages();
    return true;
 }
@@ -658,31 +630,12 @@ const PortManager &ModuleManager::portManager() const {
 
 std::vector<std::string> ModuleManager::getParameters(int id) const {
 
-   std::vector<std::string> result;
-
-   RunningMap::const_iterator rit = runningMap.find(id);
-   if (rit == runningMap.end())
-      return result;
-
-   const ParameterMap &pmap = rit->second.parameters;
-   BOOST_FOREACH (ParameterMap::value_type val, pmap) {
-      result.push_back(val.first);
-   }
-
-   return result;
+   return m_stateTracker.getParameters(id);
 }
 
 Parameter *ModuleManager::getParameter(int id, const std::string &name) const {
 
-   RunningMap::const_iterator rit = runningMap.find(id);
-   if (rit == runningMap.end())
-      return NULL;
-
-   ParameterMap::const_iterator pit = rit->second.parameters.find(name);
-   if (pit == rit->second.parameters.end())
-      return NULL;
-
-   return pit->second;
+   return m_stateTracker.getParameter(id, name);
 }
 
 bool ModuleManager::checkMessageQueue() const {
