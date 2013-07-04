@@ -429,6 +429,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::BARRIERREACHED: {
 
          const message::BarrierReached &m = static_cast<const message::BarrierReached &>(message);
+         sendUi(m);
          result = m_moduleManager->handle(m);
          break;
       }
