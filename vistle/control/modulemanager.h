@@ -54,6 +54,8 @@ class ModuleManager {
    std::vector<std::string> getParameters(int id) const;
    Parameter *getParameter(int id, const std::string &name) const;
 
+   std::vector<char> getState() const;
+
    const PortManager &portManager() const;
 
    bool checkMessageQueue() const;

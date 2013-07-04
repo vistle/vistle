@@ -11,6 +11,8 @@
 #include "pythonembed.h"
 #include "uimanager.h"
 #include "uiclient.h"
+#include "communicator.h"
+#include "modulemanager.h"
 
 #include <core/messagequeue.h>
 
@@ -20,7 +22,7 @@ namespace vistle {
 
 class UiThreadWrapper {
 
-   public:
+ public:
    UiThreadWrapper(UiClient *c, UiManager *m)
    : release(true)
    , manager(m)
@@ -77,10 +79,14 @@ unsigned short UiManager::port() const {
 void UiManager::sendMessage(const message::Message &msg) const {
 
    for(auto ent: m_threads) {
-
-      boost::interprocess::message_queue &mq = ent.second->recvQueue();
-      mq.send(&msg, msg.size(), 0);
+      sendMessage(ent.second, msg);
    }
+}
+
+void UiManager::sendMessage(UiClient *c, const message::Message &msg) const {
+
+   boost::interprocess::message_queue &mq = c->recvQueue();
+   mq.send(&msg, msg.size(), 0);
 }
 
 void UiManager::requestQuit() {
@@ -136,6 +142,13 @@ void UiManager::addClient(UiClient *c) {
 
    boost::thread *t = new boost::thread(UiThreadWrapper(c, this));
    m_threads[t] = c;
+
+   std::vector<char> state = Communicator::the().moduleManager().getState();
+
+   for (size_t i=0; i<state.size(); i+=message::Message::MESSAGE_SIZE) {
+      const message::Message *msg = (const message::Message *)&state[i];
+      sendMessage(c, *msg);
+   }
 }
 
 void UiManager::join() {

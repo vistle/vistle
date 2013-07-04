@@ -348,6 +348,7 @@ BOOST_STATIC_ASSERT(sizeof(Disconnect) < Message::MESSAGE_SIZE);
 class V_COREEXPORT AddParameter: public Message {
    public:
       AddParameter(const std::string &name, const std::string &description, int type, int presentation, const std::string &moduleName);
+      AddParameter(const Parameter *param, const std::string &moduleName);
 
       const char *getName() const;
       const char *moduleName() const;

@@ -53,6 +53,91 @@ std::string StateTracker::getModuleName(int id) const {
    return it->second.name;
 }
 
+static void appendMessage(std::vector<char> &v, const message::Message &msg) {
+
+   assert(v.size() % message::Message::MESSAGE_SIZE == 0);
+
+   size_t sz = msg.size();
+   size_t fill = message::Message::MESSAGE_SIZE - sz;
+   std::copy((char *)&msg, ((char *)&msg)+sz, std::back_inserter(v));
+   v.resize(v.size()+fill);
+
+   assert(v.size() % message::Message::MESSAGE_SIZE == 0);
+}
+
+std::vector<char> StateTracker::getState() const {
+
+   using namespace vistle::message;
+   std::vector<char> state;
+
+   // modules with parameters and ports
+   for (auto &it: runningMap) {
+      const int id = it.first;
+      const Module &m = it.second;
+
+      Spawn spawn(id, m.name);
+      appendMessage(state, spawn);
+
+      if (m.initialized) {
+         Started s(m.name);
+         s.setSenderId(id);
+         s.setUuid(spawn.uuid());
+         appendMessage(state, s);
+      }
+
+      if (m.busy) {
+         Busy b;
+         b.setSenderId(id);
+         appendMessage(state, b);
+      }
+
+      if (m.killed) {
+         Kill k(id);
+         appendMessage(state, k);
+      }
+
+      for (auto &it2: m.parameters) {
+         const std::string &name = it2.first;
+         const Parameter *param = it2.second;
+
+         AddParameter add(param, getModuleName(id));
+         add.setSenderId(id);
+         appendMessage(state, add);
+
+         SetParameter set(id, name, param);
+         set.setSenderId(id);
+         appendMessage(state, set);
+      }
+
+      for (auto &portname: portTracker()->getInputPortNames(id)) {
+         CreatePort cp(portTracker()->getPort(id, portname));
+         cp.setSenderId(id);
+         appendMessage(state, cp);
+      }
+
+      for (auto &portname: portTracker()->getOutputPortNames(id)) {
+         CreatePort cp(portTracker()->getPort(id, portname));
+         cp.setSenderId(id);
+         appendMessage(state, cp);
+      }
+   }
+
+   // connections
+   for (auto &it: runningMap) {
+      const int id = it.first;
+
+      for (auto &portname: portTracker()->getOutputPortNames(id)) {
+         const Port::PortSet *connected = portTracker()->getConnectionList(id, portname);
+         for (auto &dest: *connected) {
+            Connect c(id, portname, dest->getModuleID(), dest->getName());
+            appendMessage(state, c);
+         }
+      }
+   }
+
+   return state;
+}
+
 bool StateTracker::handleMessage(const message::Message &msg) {
 
    using namespace vistle::message;

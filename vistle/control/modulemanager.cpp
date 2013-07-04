@@ -280,8 +280,7 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
       for (std::string paramname: m_stateTracker.getParameters(id)) {
          const Parameter *param = m_stateTracker.getParameter(id, paramname);
 
-         message::AddParameter add(paramname, param->description(),
-               param->type(), param->presentation(), moduleName);
+         message::AddParameter add(param, moduleName);
          add.setSenderId(id);
          add.setRank(m_rank);
          sendMessage(moduleID, add);
@@ -621,6 +620,11 @@ ModuleManager::~ModuleManager() {
 
    if (m_size > 0)
       MPI_Barrier(MPI_COMM_WORLD);
+}
+
+std::vector<char> ModuleManager::getState() const {
+
+   return m_stateTracker.getState();
 }
 
 const PortManager &ModuleManager::portManager() const {

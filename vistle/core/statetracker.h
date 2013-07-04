@@ -54,6 +54,8 @@ class V_COREEXPORT StateTracker {
 
    PortTracker *portTracker() const;
 
+   std::vector<char> getState() const;
+
  protected:
    typedef std::map<std::string, Parameter *> ParameterMap;
    struct Module {

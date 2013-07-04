@@ -38,6 +38,7 @@ class UiManager {
 
    void addClient(UiClient *c);
    void removeThread(boost::thread *thread);
+   void sendMessage(UiClient *c, const message::Message &msg) const;
 
    void startServer();
    void join();
