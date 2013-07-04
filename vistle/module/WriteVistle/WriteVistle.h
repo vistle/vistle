@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include <core/module.h>
+#include <module/module.h>
 #include <core/object.h>
 
 class WriteVistle: public vistle::Module {

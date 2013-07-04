@@ -1,7 +1,7 @@
 #ifndef COLLECT_H
 #define COLLECT_H
 
-#include <core/module.h>
+#include <module/module.h>
 
 class Collect: public vistle::Module {
 

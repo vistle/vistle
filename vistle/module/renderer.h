@@ -6,7 +6,7 @@
 
 namespace vistle {
 
-class V_COREEXPORT Renderer: public Module {
+class V_MODULEEXPORT Renderer: public Module {
 
  public:
    Renderer(const std::string &name, const std::string &shmname,

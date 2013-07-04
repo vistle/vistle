@@ -5,7 +5,7 @@
 #include <string>
 #include <utility> // std::pair
 
-#include <core/module.h>
+#include <module/module.h>
 
 class ReadFOAM: public vistle::Module {
 

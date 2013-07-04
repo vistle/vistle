@@ -1,7 +1,7 @@
 #ifndef GENDATCHECKER_H
 #define GENDATCHECKER_H
 
-#include "module.h"
+#include <module/module.h>
 
 class GendatChecker: public vistle::Module {
 

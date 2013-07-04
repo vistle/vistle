@@ -11,5 +11,5 @@ target_link_libraries(ReadCovise
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
         covise_file
-        vistle_core
+        vistle_module
 )

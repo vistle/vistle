@@ -22,4 +22,4 @@ include_directories(
         ${PROJECT_SOURCE_DIR}/../covise
 )
 
-add_cover_plugin(VistlePlugin vistle_core)
+add_cover_plugin(VistlePlugin vistle_module)

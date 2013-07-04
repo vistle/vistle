@@ -18,14 +18,15 @@
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 
-#include "object.h"
-#include "message.h"
-#include "messagequeue.h"
-#include "parameter.h"
+#include <core/object.h>
+#include <core/message.h>
+#include <core/messagequeue.h>
+#include <core/parameter.h>
+#include <core/shm.h>
+#include <core/objectcache.h>
+#include <core/port.h>
+
 #include "module.h"
-#include "shm.h"
-#include "objectcache.h"
-#include "port.h"
 
 using namespace boost::interprocess;
 

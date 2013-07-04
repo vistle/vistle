@@ -6,7 +6,7 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 
-#include <core/renderer.h>
+#include <module/renderer.h>
 
 namespace osg {
    class Group;

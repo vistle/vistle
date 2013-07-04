@@ -1,7 +1,7 @@
 #ifndef CUTTINGSURFACE_H
 #define CUTTINGSURFACE_H
 
-#include <core/module.h>
+#include <module/module.h>
 #include <core/vector.h>
 
 class CuttingSurface: public vistle::Module {

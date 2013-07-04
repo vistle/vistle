@@ -11,12 +11,12 @@
 #include <map>
 #include <exception>
 
-#include "paramvector.h"
-#include "object.h"
-#include "export.h"
-#include "objectcache.h"
-#include "parameter.h"
-#include "port.h"
+#include <core/paramvector.h>
+#include <core/object.h>
+#include <core/export.h>
+#include <core/objectcache.h>
+#include <core/parameter.h>
+#include <core/port.h>
 
 namespace vistle {
 

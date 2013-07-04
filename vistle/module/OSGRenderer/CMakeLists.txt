@@ -34,7 +34,7 @@ target_link_libraries(OSGRenderer
         ${MPI_LIBRARIES}
         ${OPENSCENEGRAPH_LIBRARIES}
         ${OPENGL_LIBRARIES}
-        vistle_core
+        vistle_module
         ${ICET_CORE_LIBS}
         ${ICET_MPI_LIBS}
 )

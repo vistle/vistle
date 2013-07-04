@@ -1,6 +1,6 @@
-#include "message.h"
-#include "messagequeue.h"
-#include "object.h"
+#include <core/message.h>
+#include <core/messagequeue.h>
+#include <core/object.h>
 
 #include "renderer.h"
 

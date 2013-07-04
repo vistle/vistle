@@ -21,8 +21,6 @@ add_library(vistle_core SHARED
    message.cpp
    messagequeue.cpp
    tcpmessage.cpp
-   module.cpp
-   renderer.cpp
    port.cpp
    parameter.cpp
    paramvector.cpp
@@ -40,11 +38,9 @@ endif()
 target_link_libraries(vistle_core
         vistle_util
         ${Boost_LIBRARIES}
-        ${MPI_LIBRARIES}
 )
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
-        ${MPI_INCLUDE_PATH}
         ..
 )

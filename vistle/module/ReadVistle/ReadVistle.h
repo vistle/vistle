@@ -2,7 +2,7 @@
 #define READVISTLE_H
 
 #include <string>
-#include <core/module.h>
+#include <module/module.h>
 
 class ReadVistle: public vistle::Module {
 

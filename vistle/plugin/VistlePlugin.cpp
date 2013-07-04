@@ -7,7 +7,7 @@
 #include <kernel/coVRPluginList.h>
 
 // vistle
-#include <core/renderer.h>
+#include <module/renderer.h>
 #include <core/exception.h>
 #include <core/message.h>
 

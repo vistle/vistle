@@ -5,7 +5,7 @@
 #include <vector>
 #include <utility> // std::pair
 
-#include <core/module.h>
+#include <module/module.h>
 
 typedef std::vector<std::pair<std::string, std::string> > AttributeList;
 struct Element {

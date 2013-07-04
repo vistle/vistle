@@ -1,7 +1,7 @@
 #include "VistleInteractor.h"
 #include "VistleRenderObject.h"
 #include <core/parameter.h>
-#include <core/module.h>
+#include <module/module.h>
 
 using namespace vistle;
 

@@ -6,7 +6,7 @@
 #include <boost/mpi/collectives.hpp>
 
 #include <core/vec.h>
-#include <core/module.h>
+#include <module/module.h>
 #include <core/scalars.h>
 #include <core/paramvector.h>
 

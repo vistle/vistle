@@ -9,5 +9,5 @@ include_directories(
 target_link_libraries(Add
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
-        vistle_core
+        vistle_module
 )

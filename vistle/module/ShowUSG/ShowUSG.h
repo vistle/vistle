@@ -1,7 +1,7 @@
 #ifndef SHOWUSG_H
 #define SHOWUSG_H
 
-#include <core/module.h>
+#include <module/module.h>
 
 class ShowUSG: public vistle::Module {
 

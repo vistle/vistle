@@ -4,7 +4,7 @@
 #include <boost/mpl/for_each.hpp>
 
 #include <core/vec.h>
-#include <core/module.h>
+#include <module/module.h>
 #include <core/scalars.h>
 
 

@@ -1,9 +1,9 @@
 #include <sstream>
 #include <iomanip>
 
-#include "object.h"
-#include "vec.h"
-#include "triangles.h"
+#include <core/object.h>
+#include <core/vec.h>
+#include <core/triangles.h>
 
 #include "Gendat.h"
 

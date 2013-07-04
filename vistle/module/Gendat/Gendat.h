@@ -1,7 +1,7 @@
 #ifndef GENDAT_H
 #define GENDAT_H
 
-#include "module.h"
+#include <module/module.h>
 
 class Gendat: public vistle::Module {
 

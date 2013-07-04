@@ -1,7 +1,7 @@
 #ifndef COLOR_H
 #define COLOR_H
 
-#include <core/module.h>
+#include <module/module.h>
 #include <core/vector.h>
 
 class ColorMap {

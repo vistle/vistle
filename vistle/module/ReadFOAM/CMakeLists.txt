@@ -22,5 +22,5 @@ target_link_libraries(ReadFOAM
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
         ${ZLIB_LIBRARY}
-        vistle_core
+        vistle_module
 )
