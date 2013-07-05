@@ -53,14 +53,15 @@ void UiClient::operator()() {
 
       size_t msgSize;
       unsigned int priority;
-      received = recvQueue().try_receive(sendbuf.data(), message::Message::MESSAGE_SIZE, msgSize, priority);
-      if (received) {
+      bool sent = recvQueue().try_receive(sendbuf.data(), message::Message::MESSAGE_SIZE, msgSize, priority);
+      if (sent) {
          message::Message *msg = (message::Message *)sendbuf.data();
          if (!message::send(socket(), *msg))
             break;
       }
 
-      usleep(10000);
+      if (!received && !sent)
+         usleep(10000);
    }
 
    m_done = true;
