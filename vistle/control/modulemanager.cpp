@@ -299,7 +299,8 @@ bool ModuleManager::handle(const message::Started &started) {
 
    m_stateTracker.handle(started);
    int moduleID = started.senderId();
-   assert(m_stateTracker.getModuleName(moduleID) == started.getName());
+   // FIXME: not valid for cover
+   //assert(m_stateTracker.getModuleName(moduleID) == started.getName());
 
    replayMessages();
    return true;

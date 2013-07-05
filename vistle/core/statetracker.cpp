@@ -298,7 +298,6 @@ bool StateTracker::handle(const message::Started &started) {
 
    int moduleId = started.senderId();
    runningMap[moduleId].initialized = true;
-   assert(runningMap[moduleId].name == started.getName());
 
    for (StateObserver *o: m_observers) {
       o->moduleStateChanged(moduleId, runningMap[moduleId].state());

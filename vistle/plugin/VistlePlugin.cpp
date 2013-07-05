@@ -83,6 +83,8 @@ OsgRenderer::OsgRenderer(const std::string &shmname,
    animation->setName("vistle_animated_geometry");
    VRSceneGraph::instance()->addNode(staticGeo, (osg::Group*)NULL, NULL);
    VRSceneGraph::instance()->addNode(animation, (osg::Group*)NULL, NULL);
+
+   initDone();
 }
 
 OsgRenderer::~OsgRenderer() {
