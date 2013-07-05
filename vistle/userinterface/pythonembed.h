@@ -8,6 +8,8 @@
 #include <core/porttracker.h>
 #include <core/statetracker.h>
 
+#include "export.h"
+
 namespace vistle {
 
 class UserInterface;
@@ -17,7 +19,7 @@ namespace message {
 class Message;
 }
 
-class PythonEmbed {
+class V_UIEXPORT PythonEmbed {
    public:
 
       PythonEmbed(UserInterface &ui, const std::string &name);

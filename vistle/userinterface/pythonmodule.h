@@ -4,9 +4,11 @@
 #include <string>
 #include <boost/python/object.hpp>
 
+#include "export.h"
+
 namespace vistle {
 
-class PythonModule {
+class V_UIEXPORT PythonModule {
    public:
 
       PythonModule(int argc, char *argv[]);
