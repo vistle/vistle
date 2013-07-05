@@ -30,7 +30,10 @@ class PythonEmbed {
       static void print_error(const std::string &str);
       static std::string raw_input(const std::string &prompt);
       static std::string readline();
+
       static bool handleMessage(const message::Message &message);
+      static bool requestReplyAsync(const message::Message &send);
+      static bool waitForReplyAsync(const message::Message::uuid_t &uuid, message::Message &reply);
       static bool waitForReply(const message::Message &send, message::Message &reply);
 
       bool exec(const std::string &python);

@@ -1,0 +1,61 @@
+uRGEO = spawnAsync("ReadCovise");
+uRGRID = spawnAsync("ReadCovise");
+uRPRES = spawnAsync("ReadCovise");
+uCUTGEO = spawnAsync("CutGeometry");
+uCUTSURF = spawnAsync("CuttingSurface");
+uISOSURF = spawnAsync("IsoSurface");
+#EXT = spawnAsync("Extrema");
+uCOLOR = spawnAsync("Color");
+uCOLLECT = spawnAsync("Collect");
+uRENDERER = spawnAsync("cover");
+
+RGEO = waitForSpawn(uRGEO);
+RGRID = waitForSpawn(uRGRID);
+RPRES = waitForSpawn(uRPRES);
+CUTGEO = waitForSpawn(uCUTGEO);
+CUTSURF = waitForSpawn(uCUTSURF);
+ISOSURF = waitForSpawn(uISOSURF);
+#EXT = waitForSpawn(uEXT);
+COLOR = waitForSpawn(uCOLOR);
+COLLECT = waitForSpawn(uCOLLECT);
+RENDERER = waitForSpawn(uRENDERER);
+
+print "Renderer: "+RENDERER
+
+setStringParam(RGEO, "filename", "/data/OpenFOAM/PumpTurbine/covise/test/three_geo2d.covise");
+setStringParam(RGRID, "filename", "/data/OpenFOAM/PumpTurbine/covise/test/multi_geo3d.covise");
+setStringParam(RPRES, "filename", "/data/OpenFOAM/PumpTurbine/covise/test/multi_p.covise");
+setVectorParam(CUTGEO, "point", 0.0, 0.0, 0.0);
+setVectorParam(CUTGEO, "vertex", 1.0, 0.0, 0.0);
+setVectorParam(CUTSURF, "point", 0.0, 0.0, 0.0);
+setVectorParam(CUTSURF, "vertex", 1.0, 0.0, 0.0);
+setFloatParam(ISOSURF, "isovalue", -5.0);
+
+#WRITEARCHIVE = spawn("WriteVistle");
+#setParam(WRITEARCHIVE, "filename", "turbinevistle.archive");
+#setParam(WRITEARCHIVE, "format", 0); # 0=binary, 1=text, 2=XML
+
+#connect(RPRES, "grid_out", EXT, "data_in");
+
+connect(RGEO, "grid_out", CUTGEO, "grid_in");
+connect(CUTGEO, "grid_out", RENDERER, "data_in");
+#connect(CUTGEO, "grid_out", WRITEARCHIVE, "grid_in");
+
+connect(RGRID, "grid_out", CUTSURF, "grid_in");
+connect(RPRES, "grid_out", CUTSURF, "data_in");
+connect(RGRID, "grid_out", ISOSURF, "grid_in");
+connect(RPRES, "grid_out", ISOSURF, "data_in");
+connect(CUTSURF, "grid_out", COLLECT, "grid_in");
+connect(CUTSURF, "data_out", COLOR, "data_in");
+connect(COLOR, "data_out", COLLECT, "texture_in");
+connect(COLLECT, "grid_out", RENDERER, "data_in");
+#connect(COLLECT, "grid_out", WRITEARCHIVE, "grid_in");
+
+connect(ISOSURF, "grid_out", RENDERER, "data_in");
+#connect(ISOSURF, "grid_out", WRITEARCHIVE, "grid_in");
+
+barrier();
+
+compute(RGEO);
+compute(RGRID);
+compute(RPRES);

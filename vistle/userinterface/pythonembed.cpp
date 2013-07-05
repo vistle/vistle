@@ -2,7 +2,6 @@
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
-
 #include <core/message.h>
 #include "pythonembed.h"
 #include "pythonmodule.h"
@@ -269,13 +268,26 @@ bool PythonEmbed::handleMessage(const message::Message &message) {
    return PythonEmbed::the().ui().sendMessage(message);
 }
 
-bool PythonEmbed::waitForReply(const message::Message &send, message::Message &reply) {
+bool PythonEmbed::requestReplyAsync(const message::Message &send) {
 
    UserInterface &ui = PythonEmbed::the().ui();
-   boost::unique_lock<boost::mutex> lock(ui.mutexForMessage(send.uuid()));
-   handleMessage(send);
-   ui.conditionForMessage(send.uuid()).wait(lock);
-   return ui.getMessage(send.uuid(), reply);
+   boost::mutex &mutex = ui.mutexForMessage(send.uuid());
+   mutex.lock();
+   return handleMessage(send);
+}
+
+bool PythonEmbed::waitForReplyAsync(const message::Message::uuid_t &uuid, message::Message &reply) {
+
+   UserInterface &ui = PythonEmbed::the().ui();
+   return ui.getMessage(uuid, reply);
+}
+
+bool PythonEmbed::waitForReply(const message::Message &send, message::Message &reply) {
+
+   if (!requestReplyAsync(send)) {
+      return false;
+   }
+   return waitForReplyAsync(send.uuid(), reply);
 }
 
 } // namespace vistle

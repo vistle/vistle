@@ -104,12 +104,15 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
 
    bool ret = m_stateTracker.handleMessage(*message);
 
-   MessageMap::iterator it = m_messageMap.find(message->uuid());
-   if (it != m_messageMap.end()) {
-      it->second.buf.resize(message->size());
-      memcpy(it->second.buf.data(), message, message->size());
-      it->second.received = true;
-      it->second.cond.notify_all();
+   {
+      boost::mutex::scoped_lock lock(m_messageMutex);
+      MessageMap::iterator it = m_messageMap.find(message->uuid());
+      if (it != m_messageMap.end()) {
+         it->second.buf.resize(message->size());
+         memcpy(it->second.buf.data(), message, message->size());
+         it->second.received = true;
+         it->second.cond.notify_all();
+      }
    }
 
    switch (message->type()) {
@@ -138,26 +141,36 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
 
 boost::mutex &UserInterface::mutexForMessage(const message::Message::uuid_t &uuid) {
 
+   boost::mutex::scoped_lock lock(m_messageMutex);
    return m_messageMap[uuid].mutex;
-}
-
-boost::condition_variable &UserInterface::conditionForMessage(const message::Message::uuid_t &uuid) {
-
-   return m_messageMap[uuid].cond;
 }
 
 bool UserInterface::getMessage(const message::Message::uuid_t &uuid, message::Message &msg) {
 
+   m_messageMutex.lock();
    MessageMap::iterator it = m_messageMap.find(uuid);
    if (it == m_messageMap.end()) {
       return false;
    }
+
    if (!it->second.received) {
+      boost::mutex &mutex = it->second.mutex;
+      boost::condition_variable &cond = it->second.cond;
+      boost::unique_lock<boost::mutex> lock(mutex, boost::adopt_lock_t());
+
+      m_messageMutex.unlock();
+      cond.wait(lock);
+      m_messageMutex.lock();
+   }
+
+   if (!it->second.received) {
+      m_messageMutex.unlock();
       return false;
    }
 
    memcpy(&msg, &*it->second.buf.data(), it->second.buf.size());
    m_messageMap.erase(it);
+   m_messageMutex.unlock();
    return true;
 }
 

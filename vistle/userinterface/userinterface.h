@@ -36,7 +36,6 @@ class V_UIEXPORT UserInterface {
    StateTracker &state();
 
    boost::mutex &mutexForMessage(const message::Message::uuid_t &uuid);
-   boost::condition_variable &conditionForMessage(const message::Message::uuid_t &uuid);
    bool getMessage(const message::Message::uuid_t &uuid, message::Message &msg);
 
    void registerObserver(StateObserver *observer);
@@ -63,7 +62,7 @@ class V_UIEXPORT UserInterface {
 
    typedef std::map<message::Message::uuid_t, RequestedMessage> MessageMap;
    MessageMap m_messageMap;
-
+   boost::mutex m_messageMutex; //< protect access to m_messageMap
 };
 
 } // namespace vistle
