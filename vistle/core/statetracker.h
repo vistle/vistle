@@ -15,7 +15,34 @@ namespace vistle {
 class Parameter;
 class PortTracker;
 
+class V_COREEXPORT StateObserver {
+
+ public:
+
+   virtual void newModule(int moduleId, const std::string &moduleName) = 0;
+   virtual void deleteModule(int moduleId) = 0;
+
+   enum ModuleStateBits {
+      Initialized = 1,
+      Killed = 2,
+      Busy = 4,
+   };
+   virtual void moduleStateChanged(int moduleId, int stateBits) = 0;
+
+   virtual void newParameter(int moduleId, const std::string &parameterName) = 0;
+   virtual void parameterValueChanged(int moduleId, const std::string &parameterName) = 0;
+
+   virtual void newPort(int moduleId, const std::string &portName) = 0;
+
+   virtual void newConnection(int fromId, const std::string &fromName,
+         int toId, const std::string &toName) = 0;
+
+   virtual void deleteConnection(int fromId, const std::string &fromName,
+         int toId, const std::string &toName) = 0;
+};
+
 class V_COREEXPORT StateTracker {
+   friend class PortTracker;
 
  public:
    StateTracker(PortTracker *portTracker);
@@ -56,6 +83,8 @@ class V_COREEXPORT StateTracker {
 
    std::vector<char> getState() const;
 
+   void registerObserver(StateObserver *observer);
+
  protected:
    typedef std::map<std::string, Parameter *> ParameterMap;
    struct Module {
@@ -65,6 +94,7 @@ class V_COREEXPORT StateTracker {
       std::string name;
       ParameterMap parameters;
 
+      int state() const;
       ~Module() {
       }
    };
@@ -72,6 +102,8 @@ class V_COREEXPORT StateTracker {
    RunningMap runningMap;
    typedef std::set<int> ModuleSet;
    ModuleSet busySet;
+
+   std::set<StateObserver *> m_observers;
 
  private:
    PortTracker *m_portTracker;

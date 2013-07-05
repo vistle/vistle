@@ -16,6 +16,18 @@ namespace bi = boost::interprocess;
 
 namespace vistle {
 
+int StateTracker::Module::state() const {
+
+   int s = 0;
+   if (initialized)
+      s |= StateObserver::Initialized;
+   if (busy)
+      s |= StateObserver::Busy;
+   if (killed)
+      s |= StateObserver::Killed;
+   return s;
+}
+
 StateTracker::StateTracker(PortTracker *portTracker)
 : m_portTracker(portTracker)
 {
@@ -269,20 +281,28 @@ bool StateTracker::handle(const message::Pong &pong) {
 
 bool StateTracker::handle(const message::Spawn &spawn) {
 
-   int moduleID = spawn.spawnId();
-   assert(moduleID > 0);
+   int moduleId = spawn.spawnId();
+   assert(moduleId > 0);
 
-   Module &mod = runningMap[moduleID];
+   Module &mod = runningMap[moduleId];
    mod.name = spawn.getName();
+
+   for (StateObserver *o: m_observers) {
+      o->newModule(moduleId, mod.name);
+   }
 
    return true;
 }
 
 bool StateTracker::handle(const message::Started &started) {
 
-   int moduleID = started.senderId();
-   runningMap[moduleID].initialized = true;
-   assert(runningMap[moduleID].name == started.getName());
+   int moduleId = started.senderId();
+   runningMap[moduleId].initialized = true;
+   assert(runningMap[moduleId].name == started.getName());
+
+   for (StateObserver *o: m_observers) {
+      o->moduleStateChanged(moduleId, runningMap[moduleId].state());
+   }
 
    return true;
 }
@@ -294,6 +314,11 @@ bool StateTracker::handle(const message::Connect &connect) {
          connect.getModuleB(),
          connect.getPortBName());
 
+   for (StateObserver *o: m_observers) {
+      o->newConnection(connect.getModuleA(), connect.getPortAName(),
+            connect.getModuleB(), connect.getPortBName());
+   }
+
    return true;
 }
 
@@ -303,6 +328,11 @@ bool StateTracker::handle(const message::Disconnect &disconnect) {
          disconnect.getPortAName(),
          disconnect.getModuleB(),
          disconnect.getPortBName());
+
+   for (StateObserver *o: m_observers) {
+      o->deleteConnection(disconnect.getModuleA(), disconnect.getPortAName(),
+            disconnect.getModuleB(), disconnect.getPortBName());
+   }
 
    return true;
 }
@@ -328,6 +358,10 @@ bool StateTracker::handle(const message::ModuleExit &moduleExit) {
    }
    portTracker()->removeConnections(mod);
 
+   for (StateObserver *o: m_observers) {
+      o->deleteModule(mod);
+   }
+
    return true;
 }
 
@@ -346,6 +380,10 @@ bool StateTracker::handle(const message::Busy &busy) {
    }
    runningMap[id].busy = true;
 
+   for (StateObserver *o: m_observers) {
+      o->moduleStateChanged(id, runningMap[id].state());
+   }
+
    return true;
 }
 
@@ -359,6 +397,10 @@ bool StateTracker::handle(const message::Idle &idle) {
       CERR << "module " << id << " sent Idle, but was not busy" << std::endl;
    }
    runningMap[id].busy = false;
+
+   for (StateObserver *o: m_observers) {
+      o->moduleStateChanged(id, runningMap[id].state());
+   }
 
    return true;
 }
@@ -377,7 +419,15 @@ bool StateTracker::handle(const message::AddParameter &addParam) {
       pm[addParam.getName()] = addParam.getParameter();
    }
 
-   portTracker()->addPort(new Port(addParam.senderId(), addParam.getName(), Port::PARAMETER));
+   for (StateObserver *o: m_observers) {
+      o->newParameter(addParam.senderId(), addParam.getName());
+   }
+
+   Port *p = portTracker()->addPort(new Port(addParam.senderId(), addParam.getName(), Port::PARAMETER));
+
+   for (StateObserver *o: m_observers) {
+      o->newPort(p->getModuleID(), p->getName());
+   }
 
    return true;
 }
@@ -392,6 +442,10 @@ bool StateTracker::handle(const message::SetParameter &setParam) {
    if (param)
       setParam.apply(param);
 
+   for (StateObserver *o: m_observers) {
+      o->parameterValueChanged(setParam.senderId(), setParam.getName());
+   }
+
    return true;
 }
 
@@ -402,7 +456,13 @@ bool StateTracker::handle(const message::SetParameterChoices &choices) {
 
 bool StateTracker::handle(const message::Kill &kill) {
 
-   runningMap[kill.getModule()].killed = true;
+   const int id = kill.getModule();
+   runningMap[id].killed = true;
+
+   for (StateObserver *o: m_observers) {
+      o->moduleStateChanged(id, runningMap[id].state());
+   }
+
    return true;
 }
 
@@ -428,7 +488,11 @@ bool StateTracker::handle(const message::BarrierReached &barrReached) {
 
 bool StateTracker::handle(const message::CreatePort &createPort) {
 
-   portTracker()->addPort(createPort.getPort());
+   Port * p = portTracker()->addPort(createPort.getPort());
+
+   for (StateObserver *o: m_observers) {
+      o->newPort(p->getModuleID(), p->getName());
+   }
 
    return true;
 }
@@ -469,6 +533,11 @@ Parameter *StateTracker::getParameter(int id, const std::string &name) const {
       return NULL;
 
    return pit->second;
+}
+
+void StateTracker::registerObserver(StateObserver *observer) {
+
+   m_observers.insert(observer);
 }
 
 } // namespace vistle
