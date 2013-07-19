@@ -22,7 +22,7 @@
 #include <io.h>
 #endif
 
-#include <covReadFiles.h>
+#include <file/covReadFiles.h>
 
 #include "ReadCovise.h"
 

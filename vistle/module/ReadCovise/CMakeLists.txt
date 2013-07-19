@@ -4,7 +4,7 @@ include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/covise/file
+        ${CMAKE_SOURCE_DIR}/covise
 )
 
 target_link_libraries(ReadCovise
