@@ -31,9 +31,9 @@ class binary_iarchive;
 
 namespace vistle {
 
-namespace bi = boost::interprocess;
+namespace interprocess = boost::interprocess;
 
-typedef bi::managed_shared_memory::handle_t shm_handle_t;
+typedef interprocess::managed_shared_memory::handle_t shm_handle_t;
 
 class Shm;
 
@@ -131,8 +131,8 @@ public:
       typedef shm<Attribute>::vector AttributeList;
       typedef std::pair<const Key, AttributeList> AttributeMapValueType;
       typedef shm<AttributeMapValueType>::allocator AttributeMapAllocator;
-      typedef bi::map<Key, AttributeList, std::less<Key>, AttributeMapAllocator> AttributeMap;
-      bi::offset_ptr<AttributeMap> attributes;
+      typedef interprocess::map<Key, AttributeList, std::less<Key>, AttributeMapAllocator> AttributeMap;
+      interprocess::offset_ptr<AttributeMap> attributes;
       void addAttribute(const std::string &key, const std::string &value = "");
       void setAttributeList(const std::string &key, const std::vector<std::string> &values);
       void copyAttributes(const Data *src, bool replace);
