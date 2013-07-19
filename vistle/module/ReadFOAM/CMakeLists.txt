@@ -1,5 +1,5 @@
-find_package(Boost 1.42 REQUIRED COMPONENTS iostreams)
-find_package(ZLIB REQUIRED)
+find_package(Boost 1.42 REQUIRED COMPONENTS iostreams filesystem)
+#find_package(ZLIB REQUIRED)
 
 if (CMAKE_COMPILER_IS_GNUCC)
    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
@@ -9,8 +9,9 @@ if (CMAKE_COMPILER_IS_GNUCC)
    endif()
 endif()
 
-add_executable(ReadFOAM ReadFOAM.cpp gzip.cpp zlib.cpp)
-add_definitions(-DBOOST_IOSTREAMS_NO_LIB)
+add_executable(ReadFOAM ReadFOAM.cpp)
+#add_executable(ReadFOAM ReadFOAM.cpp gzip.cpp zlib.cpp)
+#add_definitions(-DBOOST_IOSTREAMS_NO_LIB)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
