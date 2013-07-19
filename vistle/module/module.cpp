@@ -380,29 +380,32 @@ void Module::updateMeta(vistle::Object::ptr obj) const {
 
 bool Module::addObject(const std::string &portName, vistle::Object::ptr object) {
 
-   updateMeta(object);
-   vistle::Object::const_ptr cobj = object;
-   return passThroughObject(portName, cobj);
+   std::map<std::string, Port *>::iterator i = outputPorts.find(portName);
+   if (i != outputPorts.end()) {
+      return addObject(i->second, object);
+   }
+   std::cerr << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
+   assert(i != outputPorts.end());
+   return false;
 }
 
-bool Module::passThroughObject(const std::string & portName, vistle::Object::const_ptr object) {
+bool Module::addObject(Port *port, vistle::Object::ptr object) {
+
+   updateMeta(object);
+   vistle::Object::const_ptr cobj = object;
+   return passThroughObject(port, cobj);
+}
+
+bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object) {
 
    if (!object)
       return false;
 
    assert(object->check());
 
-   std::map<std::string, Port *>::iterator i = outputPorts.find(portName);
-   if (i != outputPorts.end()) {
-      // XXX: this was the culprit keeping the final object reference around
-      //i->second.push_back(object);
-      message::AddObject message(portName, object);
-      sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
-      return true;
-   }
-   std::cerr << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
-   assert(i != outputPorts.end());
-   return false;
+   message::AddObject message(port->getName(), object);
+   sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
+   return true;
 }
 
 ObjectList Module::getObjects(const std::string &portName) {
