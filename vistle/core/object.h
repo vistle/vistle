@@ -86,12 +86,14 @@ public:
    std::string getName() const;
 
    int getBlock() const;
+   double getRealTime() const;
    int getTimestep() const;
    int getExecutionCounter() const;
    int getCreator() const;
 
    void setBlock(const int block);
    void setNumBlocks(const int num);
+   void setRealTime(double time);
    void setTimestep(const int timestep);
    void setNumTimesteps(const int num);
    void setExecutionCounter(const int count);

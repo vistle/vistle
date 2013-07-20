@@ -53,6 +53,8 @@ class V_COREEXPORT Meta {
       void setBlock(int block) { m_block = block; }
       int numBlocks() const { return m_numBlocks; }
       void setNumBlocks(int num) { m_numBlocks = num; }
+      double realTime() const { return m_realtime; }
+      void setRealTime(double time) { m_realtime = time; }
       int timeStep() const { return m_timestep; }
       void setTimeStep(int timestep) { m_timestep = timestep; }
       int numTimesteps() const { return m_numTimesteps; }
@@ -69,6 +71,7 @@ class V_COREEXPORT Meta {
       void setCreator(int id) { m_creator = id; }
    private:
       int m_block=-1, m_numBlocks=-1, m_timestep=-1, m_numTimesteps=-1, m_animationstep=-1, m_numAnimationsteps=-1, m_iteration=-1, m_executionCount=-1, m_creator=-1;
+      double m_realtime = 0.;
 
       friend class boost::serialization::access;
       template<class Archive>

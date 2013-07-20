@@ -286,6 +286,11 @@ void Object::setMeta(const Meta &meta) {
    d()->meta = meta;
 }
 
+double Object::getRealTime() const {
+
+   return d()->meta.realTime();
+}
+
 int Object::getTimestep() const {
 
    return d()->meta.timeStep();
@@ -304,6 +309,11 @@ int Object::getExecutionCounter() const {
 int Object::getCreator() const {
 
    return d()->meta.creator();
+}
+
+void Object::setRealTime(const double time) {
+
+   d()->meta.setRealTime(time);
 }
 
 void Object::setTimestep(const int time) {
