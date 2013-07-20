@@ -65,6 +65,7 @@ template<typename T, class allocator>
 class shm_array {
 
  public: 
+   typedef T value_type;
    shm_array(const allocator &alloc = allocator()) : m_allocator(alloc) {}
    shm_array(const size_t size, const allocator &alloc = allocator()) : m_allocator(alloc) { resize(size); }
    shm_array(const size_t size, const T &value, const allocator &alloc = allocator()) : m_allocator(alloc) { resize(size, value); }
