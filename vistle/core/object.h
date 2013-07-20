@@ -117,7 +117,7 @@ public:
    template<class Archive>
    void save(Archive &ar) const;
 
- protected:
+ public:
    struct Data {
       Type type;
       shm_name_t name;
@@ -159,6 +159,7 @@ public:
       Data &operator=(const Data &);
    };
 
+ protected:
    Data *m_data;
  public:
    Data *d() const { return m_data; }
@@ -266,10 +267,10 @@ class V_COREEXPORT ObjectTypeRegistry {
    static void registerBinaryOArchive(boost::archive::binary_oarchive &ar); \
    Type(Object::InitializedFlags) : Base(Type::Data::create()) {} \
    bool check() const { if (!Base::check()) return false; return checkImpl(); } \
-   protected: \
-   bool checkImpl() const; \
    struct Data; \
    Data *d() const { return static_cast<Data *>(Object::m_data); } \
+   protected: \
+   bool checkImpl() const; \
    Type(Data *data) : Base(data) {} \
    Type() : Base() {} \
    private: \
@@ -299,9 +300,9 @@ class V_COREEXPORT ObjectTypeRegistry {
    friend class ObjectTypeRegistry
 
 #define V_DATA_BEGIN(Type) \
-   protected: \
+   public: \
    struct Data: public Base::Data { \
-      Data(const Data &other, const std::string &name)
+      Data(const Data &other, const std::string &name) \
 
 #define V_DATA_END(Type) \
       private: \

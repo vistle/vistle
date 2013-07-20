@@ -37,7 +37,6 @@ class V_COREEXPORT Vec: public Object {
    array<T> &z() const { return *(*d()->x[2])(); }
    array<T> &w() const { return *(*d()->x[3])(); }
 
- protected:
    struct Data: public Base::Data {
 
       typename ShmVector<T>::ptr x[Dim];
