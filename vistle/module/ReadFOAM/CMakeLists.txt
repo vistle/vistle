@@ -1,5 +1,7 @@
 find_package(Boost 1.42 REQUIRED COMPONENTS iostreams filesystem)
 
+use_openmp()
+
 if (CMAKE_COMPILER_IS_GNUCC)
    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
    if (GCC_VERSION VERSION_LESS 4.2)
