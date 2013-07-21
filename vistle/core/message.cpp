@@ -292,6 +292,7 @@ ObjectReceived::ObjectReceived(const std::string &p,
 : Message(Message::OBJECTRECEIVED, sizeof(ObjectReceived))
 , m_name(obj->getName())
 , m_meta(obj->meta())
+, m_objectType(obj->getType())
 {
 
    COPY_STRING(portName, p);
@@ -310,6 +311,11 @@ const char *ObjectReceived::getPortName() const {
 const char *ObjectReceived::objectName() const {
 
    return m_name;
+}
+
+Object::Type ObjectReceived::objectType() const {
+
+   return static_cast<Object::Type>(m_objectType);
 }
 
 Connect::Connect(const int moduleIDA, const std::string & portA,

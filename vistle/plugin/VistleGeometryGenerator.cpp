@@ -12,6 +12,7 @@
 #include <core/lines.h>
 #include <core/triangles.h>
 #include <core/texture1d.h>
+#include <core/placeholder.h>
 
 using namespace opencover;
 using namespace vistle;
@@ -35,6 +36,23 @@ osg::Node *VistleGeometryGenerator::operator()() {
    osg::Geode *geode = NULL;
 
    switch (m_geo->getType()) {
+
+      case vistle::Object::PLACEHOLDER: {
+         vistle::PlaceHolder::const_ptr ph = vistle::PlaceHolder::as(m_geo);
+         switch (ph->originalType()) {
+            case vistle::Object::TRIANGLES:
+            case vistle::Object::LINES:
+            case vistle::Object::POLYGONS: {
+               osg::Node *node = new osg::Node();
+               node->setName(ph->originalName());
+               return node;
+               break;
+            }
+         default:
+            break;
+         }
+         break;
+      }
 
       case vistle::Object::TRIANGLES: {
 
@@ -278,6 +296,9 @@ osg::Node *VistleGeometryGenerator::operator()() {
       default:
          break;
    }
+
+   if (geode)
+      geode->setName(m_geo->getName());
 
    return geode;
 }

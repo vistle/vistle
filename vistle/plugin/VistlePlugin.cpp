@@ -271,6 +271,7 @@ bool OsgRenderer::addInputObject(const std::string & portName,
 
    switch (object->getType()) {
 
+      case vistle::Object::PLACEHOLDER:
       case vistle::Object::TRIANGLES:
       case vistle::Object::POLYGONS:
       case vistle::Object::LINES: {

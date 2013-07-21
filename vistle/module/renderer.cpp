@@ -1,6 +1,7 @@
 #include <core/message.h>
 #include <core/messagequeue.h>
 #include <core/object.h>
+#include <core/placeholder.h>
 
 #include "renderer.h"
 
@@ -11,6 +12,8 @@
 
 namespace ba = boost::archive;
 
+const bool masterOnly = true;
+
 namespace vistle {
 
 Renderer::Renderer(const std::string & name, const std::string &shmname,
@@ -18,6 +21,8 @@ Renderer::Renderer(const std::string & name, const std::string &shmname,
    : Module(name, shmname, rank, size, moduleID) {
 
    createInputPort("data_in", "input data");
+
+   m_masterOnly = addIntParameter("master_only", "render only on master (rank 0)", 0);
 
    //std::cerr << "Renderer starting: rank=" << rank << std::endl;
 }
@@ -71,6 +76,8 @@ bool Renderer::dispatch() {
             case vistle::message::Message::OBJECTRECEIVED: {
                if (size() > 1) {
                   const message::ObjectReceived *recv = static_cast<const message::ObjectReceived *>(message);
+                  PlaceHolder::ptr ph(new PlaceHolder(recv->objectName(), recv->meta(), recv->objectType()));
+                  const bool localAdd = !m_masterOnly->getValue() || rank()==0 || recv->objectType() == Object::GEOMETRY;
                   if (recv->rank() == rank()) {
                      Object::const_ptr obj = Shm::the().getObjectFromName(recv->objectName());
                      if (obj) {
@@ -89,7 +96,9 @@ bool Renderer::dispatch() {
                         std::cerr << "Rank " << rank() << ": OBJECT NOT FOUND: " << recv->objectName() << std::endl;
                      }
                      assert(obj->check());
-                     addInputObject(recv->getPortName(), obj);
+                     if (localAdd) {
+                        addInputObject(recv->getPortName(), obj);
+                     }
                      obj->unref(); // normally done in AddObject::takeObject();
                   } else {
                      uint64_t len = 0;
@@ -107,10 +116,14 @@ bool Renderer::dispatch() {
                         if (obj) {
                            //std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;
                            assert(obj->check());
-                           addInputObject(recv->getPortName(), obj);
+                           if (localAdd) {
+                              addInputObject(recv->getPortName(), obj);
+                           }
                         }
                      }
                   }
+                  if (!localAdd)
+                     addInputObject(recv->getPortName(), ph);
                }
                break;
             }

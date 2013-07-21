@@ -300,11 +300,13 @@ class V_COREEXPORT ObjectReceived: public Message {
    const char *getPortName() const;
    const char *objectName() const;
    const Meta &meta() const;
+   Object::Type objectType() const;
 
  private:
    port_name_t portName;
    shm_name_t m_name;
    Meta m_meta;
+   int m_objectType;
 };
 BOOST_STATIC_ASSERT(sizeof(ObjectReceived) < Message::MESSAGE_SIZE);
 

@@ -178,9 +178,12 @@ bool Object::check() const {
    V_CHECK (terminated);
 
    V_CHECK (d()->meta.timeStep() >= -1);
+   V_CHECK (d()->meta.timeStep() < d()->meta.numTimesteps() || d()->meta.numTimesteps()==-1);
    V_CHECK (d()->meta.animationStep() >= -1);
+   V_CHECK (d()->meta.animationStep() < d()->meta.numAnimationSteps() || d()->meta.numAnimationSteps()==-1);
    V_CHECK (d()->meta.iteration() >= -1);
    V_CHECK (d()->meta.block() >= -1);
+   V_CHECK (d()->meta.block() < d()->meta.numBlocks() || d()->meta.numBlocks()==-1);
    V_CHECK (d()->meta.executionCounter() >= -1);
 
    return true;
