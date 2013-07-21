@@ -15,11 +15,13 @@
  *\**************************************************************************/
 
 #include <vector>
-#include <set>
-#include <boost/iostreams/filtering_stream.hpp>
+#include <map>
+
 #include <module/module.h>
 #include <core/unstr.h>
 #include <core/polygons.h>
+
+#include "foamtoolbox.h"
 
 typedef size_t index_t;
 
@@ -39,17 +41,7 @@ class ReadFOAM: public vistle::Module
       vistle::IntParameter *m_timeskip;
       std::vector<vistle::StringParameter *> m_fieldOut;
 
-      std::map<double, std::string> m_timedirs; //Map of all the Time Directories
-      std::map<std::string, int> m_fieldnames;
-      std::map<std::string, int> m_varyingFields, m_constantFields;
-      std::vector<std::string> fieldfiles;
-      std::vector<std::string> m_meshfiles; // vector(points,faces,owners,neighbors)
-      int m_numprocessors = 0;
-      bool m_varyingGrid = false, m_varyingCoords = false;
-
-      bool checkMeshDirectory(const std::string &meshdir, bool time);
-      bool checkSubDirectory(const std::string &casedir, bool time);
-      bool checkCaseDirectory(const std::string &casedir, bool compareOnly=false);
+      CaseInfo m_case;
 
       bool readDirectory(const std::string &dir, int processor, int timestep);
       bool readConstant(const std::string &dir);

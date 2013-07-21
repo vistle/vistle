@@ -57,6 +57,8 @@
 
 #include <boost/filesystem.hpp>
 
+#include "foamtoolbox.h"
+
 const size_t MaxHeaderLines = 1000;
 
 namespace bi = boost::iostreams;
@@ -73,32 +75,6 @@ namespace ascii = boost::spirit::ascii;
 
 
 using namespace vistle;
-
-struct HeaderInfo
-{
-    std::string version;
-    std::string format;
-    std::string fieldclass;
-    std::string location;
-    std::string object;
-    std::string dimensions;
-    std::string internalField;
-    index_t lines = 0;
-    bool valid;
-
-};
-
-BOOST_FUSION_ADAPT_STRUCT(
-    HeaderInfo,
-    (std::string, version)
-    (std::string, format)
-    (std::string, fieldclass)
-    (std::string, location)
-    (std::string, object)
-    (std::string, dimensions)
-    (std::string, internalField)
-    (index_t, lines)
-)
 
 ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
 : Module("ReadFoam", shmname, rank, size, moduleId)
@@ -134,737 +110,16 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
 ReadFOAM::~ReadFOAM()       //Destructor
 {
 }
-//Boost Spirit parser definitions
-
-
-class FilteringStreamDeleter {
- public:
-   FilteringStreamDeleter(bi::filtering_istream *f, std::ifstream *s)
-      : filtered(f)
-      , stream(s)
-      {}
-
-   void operator()(std::istream *f) {
-      assert(static_cast<bi::filtering_istream *>(f) == filtered);
-      delete filtered;
-      delete stream;
-   }
-
-   bi::filtering_istream *filtered;
-   std::ifstream *stream;
-};
-
-boost::shared_ptr<std::istream> getStreamForFile(const std::string &filename) {
-
-   std::ifstream *s = new std::ifstream(filename, std::ios_base::in | std::ios_base::binary);
-   if (!s->is_open()) {
-      std::cerr << "failed to open " << filename << std::endl;
-      return boost::shared_ptr<std::istream>();
-   }
-
-   bi::filtering_istream *fi = new bi::filtering_istream;
-   bf::path p(filename);
-   if (p.extension().string() == ".gz") {
-      fi->push(bi::gzip_decompressor());
-   }
-   fi->push(*s);
-   return boost::shared_ptr<std::istream>(fi, FilteringStreamDeleter(fi, s));
-}
-
-boost::shared_ptr<std::istream> getStreamForFile(const std::string &dir, const std::string &basename) {
-
-   bf::path zipped(dir + "/" + basename + ".gz");
-   if (bf::exists(zipped) && !bf::is_directory(zipped))
-      return getStreamForFile(zipped.string());
-   else
-      return getStreamForFile(dir + "/" + basename);
-}
-
-bool isTimeDir(const std::string &dir) {
-
-   //std::cerr << "checking timedir: " << dir << std::endl;
-
-   if (dir == ".")
-      return false;
-#if 1
-   if (dir == "0")
-      return false;
-#endif
-
-   int numdots = 0;
-   for (size_t i=0; i<dir.length(); ++i) {
-      if (dir[i] == '.') {
-         ++numdots;
-         if (numdots > 1)
-            return false;
-      } else if (!isdigit(dir[i]))
-         return false;
-   }
-
-   return true;
-}
-
-bool isProcessorDir(const std::string &dir) {
-
-   if (dir.find("processor") != 0) {
-
-      return false;
-   }
-
-   for (size_t i=strlen("processor"); i<dir.length(); ++i) {
-
-      if (!isdigit(dir[i]))
-         return false;
-   }
-
-   return true;
-}
-
-bool ReadFOAM::checkMeshDirectory(const std::string &meshdir, bool time) {
-
-   //std::cerr << "checking meshdir " << meshdir << std::endl;
-   bf::path p(meshdir);
-   if (!bf::is_directory(p)) {
-      std::cerr << meshdir << " is not a directory" << std::endl;
-      return false;
-   }
-
-   bool havePoints = false;
-   std::map<std::string, std::string> meshfiles;
-   for (auto it = bf::directory_iterator(p);
-         it != bf::directory_iterator();
-         ++it) {
-      bf::path ent(*it);
-      std::string stem = ent.stem().string();
-      std::string ext = ent.extension().string();
-      if (stem == "points" || stem == "faces" || stem == "owner" || stem == "neighbour") {
-         if (bf::is_directory(*it) || (!ext.empty() && ext != ".gz")) {
-            std::cerr << "ignoring " << *it << std::endl;
-         } else {
-            meshfiles[stem] = bf::path(*it).string();
-            if (stem == "points")
-               havePoints = true;
-         }
-      }
-   }
-
-   if (meshfiles.size() == 4) {
-      if (time) {
-         m_varyingGrid = true;
-      }
-      return true;
-   }
-   if (meshfiles.size() == 1 && time && havePoints) {
-      m_varyingCoords = true;
-      return true;
-   }
-
-   std::cerr << "did not find all of points, faces, owner and neighbour files" << std::endl;
-   return false;
-}
-
-bool ReadFOAM::checkSubDirectory(const std::string &timedir, bool time) {
-
-   bf::path dir(timedir);
-   if (!bf::exists(dir)) {
-      std::cerr << "timestep directory " << timedir << " does not exist" << std::endl;
-      return false;
-   }
-   if (!bf::is_directory(timedir)) {
-      std::cerr << "timestep directory " << timedir << " is not a directory" << std::endl;
-      return false;
-   }
-
-   for (auto it = bf::directory_iterator(dir);
-         it != bf::directory_iterator();
-         ++it) {
-      bf::path p(*it);
-      if (bf::is_directory(*it)) {
-         std::string name = p.filename().string();
-         if (name == "polyMesh") {
-            if (!checkMeshDirectory(p.string(), time))
-               return false;
-         }
-      } else {
-         std::string stem = p.stem().string();
-         ++m_fieldnames[stem];
-         if (time)
-            ++m_varyingFields[stem];
-         else
-            ++m_constantFields[stem];
-      }
-   }
-
-
-   return true;
-}
-
-bool ReadFOAM::checkCaseDirectory(const std::string &casedir, bool compare) {
-
-   if (!compare) {
-      m_timedirs.clear();
-      m_varyingFields.clear();
-      m_constantFields.clear();
-      m_fieldnames.clear();
-      m_meshfiles.clear();
-      m_varyingGrid = false;
-      m_varyingCoords = false;
-   }
-
-   std::cerr << "reading casedir: " << casedir << std::endl;
-
-   bf::path dir(casedir);
-   if (!bf::exists(dir)) {
-      std::cerr << "case directory " << casedir << " does not exist" << std::endl;
-      return false;
-   }
-   if (!bf::is_directory(casedir)) {
-      std::cerr << "case directory " << casedir << " is not a directory" << std::endl;
-      return false;
-   }
-
-   int num_processors = 0;
-   for (auto it = bf::directory_iterator(dir);
-         it != bf::directory_iterator();
-         ++it) {
-      if (bf::is_directory(*it)) {
-         if (isProcessorDir(bf::basename(it->path())))
-            ++num_processors;
-      }
-   }
-
-   if (!compare && num_processors>0) {
-      m_numprocessors = num_processors;
-   }
-
-   if (compare && num_processors > 0) {
-      std::cerr << "found processor subdirectory in processor directory" << std::endl;
-      return false;
-   }
-   
-   if (num_processors > 0) {
-      bool result = checkCaseDirectory(casedir+"/processor0");
-      if (!result) {
-         std::cerr << "failed to read case directory for processor 0" << std::endl;
-         return false;
-      }
-
-      for (int i=1; i<num_processors; ++i) {
-         std::stringstream s;
-         s << casedir << "/processor" << i;
-         bool result = checkCaseDirectory(s.str(), true);
-         if (!result)
-            return false;
-      }
-
-      return true;
-   }
-
-   int num_timesteps = 0;
-   for (auto it = bf::directory_iterator(dir);
-         it != bf::directory_iterator();
-         ++it) {
-      if (bf::is_directory(*it)) {
-         std::string bn = it->path().filename().string();
-         if (isTimeDir(bn)) {
-            double t = atof(bn.c_str());
-            if (t >= m_starttime->getValue() && t <= m_stoptime->getValue()) {
-               ++num_timesteps;
-               if (compare) {
-                  if (m_timedirs.find(t) == m_timedirs.end()) {
-                     std::cerr << "timestep " << bn << " not available on all processors" << std::endl;
-                     return false;
-                  }
-               } else {
-                  m_timedirs[t]=bn;
-               }
-            }
-         }
-      }
-   }
-
-   bool first = true;
-   for (auto it = bf::directory_iterator(dir);
-         it != bf::directory_iterator();
-         ++it) {
-      if (bf::is_directory(*it)) {
-         std::string bn = it->path().filename().string();
-         if (isTimeDir(bn)) {
-            bool result = checkSubDirectory(it->path().string(), true);
-            if (!result)
-               return false;
-            first = false;
-         } else if (bn == "constant") {
-            bool result = checkSubDirectory(it->path().string(), false);
-            if (!result)
-               return false;
-         }
-      }
-   }
-
-   if (compare && num_timesteps != m_timedirs.size()) {
-      std::cerr << "not all timesteps available on all processors" << std::endl;
-      return false;
-   }
-
-   if (!compare) {
-      std::cerr << " " << "casedir: " << casedir << " " << std::endl
-         << "Number of processors: " << num_processors << std::endl
-         << "Number of time directories found: " << m_timedirs.size()  << std::endl
-         << "Number of fields: " << m_fieldnames.size() << std::endl;
-         //<< "Meshfiles found: " << meshfiles.size()<< std::endl;
-
-      int np = num_processors > 0 ? num_processors : 1;
-      for (auto field: m_fieldnames) {
-         std::cerr << "   " << field.first << ": " << field.second;
-         if (np * m_timedirs.size() != field.second) {
-            m_fieldnames.erase(field.first);
-         }
-      }
-      std::cerr << std::endl;
-   }
-
-   return true;
-}
-
-std::string getFoamHeader(std::istream &stream)
-{
-   std::string header;
-   for (size_t i=0; i<MaxHeaderLines; ++i) {
-      std::string line;
-      std::getline(stream, line);
-      if (line == "(")
-         break;
-      header.append(line);
-      header.append("\n");
-   }
-   return header;
-}
-
-//Skipper for skipping FOAM Headers and unimportant data
-template <typename Iterator>
-struct skipper: qi::grammar<Iterator> {
-
-   skipper(): skipper::base_type(start) {
-
-      start =
-         ascii::space
-         | "/*" >> *(ascii::char_ - "*/") >> "*/"
-         | "//" >> *(ascii::char_ - qi::eol) >> qi::eol
-         | "FoamFile" >> *ascii::space >> '{' >> *(ascii::char_ - '}') >> '}'
-         | "dimensions" >> *(ascii::char_ - qi::eol) >> qi::eol
-         | "internalField" >> *(ascii::char_ - qi::eol) >> qi::eol
-         ;
-   }
-
-   qi::rule<Iterator> start;
-};
-
-//Skipper for skipping FOAM Headers and unimportant data
-template <typename Iterator>
-struct headerSkipper: qi::grammar<Iterator> {
-
-    headerSkipper(): headerSkipper::base_type(start) {
-
-        start =
-            ascii::space
-            | "/*" >> *(ascii::char_ - "*/") >> "*/"
-            | "//" >> *(ascii::char_ - qi::eol) >> qi::eol
-            | "FoamFile" >> *ascii::space >> '{' >> *(ascii::char_ - qi::eol) >> qi::eol
-            | "note" >> *(ascii::char_ - qi::eol) >> qi::eol
-            | '}'
-            ;
-    }
-
-qi::rule<Iterator> start;
-};
-
-template <typename Iterator>
-struct headerParser: qi::grammar<Iterator, HeaderInfo(), headerSkipper<Iterator> > {
-
-    headerParser(): headerParser::base_type(start) {
-
-        start =
-            version
-            >> format
-            >> fieldclass
-            >> location
-            >> object
-            >> -dimensions
-            >> -internalField
-            >> lines
-        ;
-
-        version = "version" >> +(ascii::char_ - ';') >> ';'
-        ;
-        format = "format" >> +(ascii::char_ - ';') >> ';'
-        ;
-        fieldclass = "class" >> +(ascii::char_ - ';') >> ';'
-        ;
-        location = "location" >> qi::lit('"') >> +(ascii::char_ - '"') >> '"' >> ';'
-        ;
-        object = "object" >> +(ascii::char_ - ';') >> ';'
-        ;
-        dimensions = "dimensions" >> qi::lexeme['[' >> +(ascii::char_ - ']') >>']' >> ';']
-        ;
-        internalField ="internalField" >> qi::lexeme[+(ascii::char_ - qi::eol) >> qi::eol]
-        ;
-        lines = qi::int_
-        ;
-    }
-
-    qi::rule<Iterator, HeaderInfo(), headerSkipper<Iterator> > start;
-    qi::rule<Iterator, std::string(), headerSkipper<Iterator> > version;
-    qi::rule<Iterator, std::string(), headerSkipper<Iterator> > format;
-    qi::rule<Iterator, std::string(), headerSkipper<Iterator> > fieldclass;
-    qi::rule<Iterator, std::string(), headerSkipper<Iterator> > location;
-    qi::rule<Iterator, std::string(), headerSkipper<Iterator> > object;
-    qi::rule<Iterator, std::string(), headerSkipper<Iterator> > dimensions;
-    qi::rule<Iterator, std::string(), headerSkipper<Iterator> > internalField;
-    qi::rule<Iterator, int(), headerSkipper<Iterator> > lines;
-};
-
-HeaderInfo readFoamHeader(std::istream &stream)
-{
-    struct headerParser<std::string::iterator> headerParser;
-    struct headerSkipper<std::string::iterator> headerSkipper;
-
-    std::string header = getFoamHeader(stream);
-    HeaderInfo info;
-
-    info.valid = qi::phrase_parse(header.begin(),header.end(),
-                             headerParser, headerSkipper, info);
-
-    if (!info.valid) {
-       std::cerr << "parsing FOAM header failed" << std::endl;
-
-       std::cerr << "================================================" << std::endl;
-       std::cerr << header << std::endl;
-       std::cerr << "================================================" << std::endl;
-    }
-
-    return info;
-}
-
-
-//Skipper for skipping everything but the dimensions in the owners file Header
-template <typename Iterator>
-struct dimSkipper: qi::grammar<Iterator> {
-
-   dimSkipper(): dimSkipper::base_type(start) {
-
-      start =
-         ascii::space
-         | "/*" >> *(ascii::char_ - "*/") >> "*/"
-         | "//" >> *(ascii::char_ - qi::eol) >> qi::eol
-         | "version" >> *(ascii::char_ - qi::eol) >> qi::eol
-         | "location" >> *(ascii::char_)
-         | ~ascii::char_("0-9")
-         ;
-   }
-
-   qi::rule<Iterator> start;
-};
-
-//Parser that Reads the size of the domain (nCells, nPoints, nFaces, nInternalFaces) from the owners header (use together with dimSkipper)
-template <typename Iterator>
-struct dimParser: qi::grammar<Iterator, std::vector<index_t>(),
-                               dimSkipper<Iterator> > {
-
-   dimParser(): dimParser::base_type(start) {
-
-       start = term >> term >> term >> term
-         ;
-
-      term = qi::int_
-         ;
-   }
-
-   qi::rule<Iterator, std::vector<index_t>(), dimSkipper<Iterator> > start;
-   qi::rule<Iterator, index_t(),dimSkipper<Iterator> > term;
-};
-
-class Boundary {
- public:
-   Boundary(const std::string &name, const Index s, const Index num, const std::string &t)
-      : name(name)
-      , startFace(s)
-      , numFaces(num)
-      , type(t)
-      {
-      }
-
-   const std::string name;
-   const Index startFace;
-   const Index numFaces;
-   const std::string type;
-};
-
-
-class Boundaries {
- public:
-   Boundaries() {}
-
-   bool isBoundaryFace(const Index face) {
-
-      for (auto i = boundaries.begin(); i != boundaries.end(); i ++) {
-         if (i->type == "processor")
-            continue;
-         if (face >= i->startFace && face < i->startFace + i->numFaces)
-            return true;
-      }
-      return false;
-   }
-
-   bool isProcessorBoundaryFace(const Index face) {
-
-      for (auto i = boundaries.begin(); i != boundaries.end(); i ++) {
-         if (i->type != "processor")
-            continue;
-         if (face >= i->startFace && face < i->startFace + i->numFaces)
-            return true;
-      }
-      return false;
-   }
-
-   void addBoundary(const Boundary &b) {
-
-      boundaries.push_back(b);
-   }
-
- private:
-   std::vector<Boundary> boundaries;
-};
-
-template <typename Iterator>
-struct BoundaryParser
-: qi::grammar<Iterator, std::map<std::string, std::map<std::string, std::string> >(),
-   skipper<Iterator> >
-{
-   BoundaryParser()
-      : BoundaryParser::base_type(start)
-      {
-         start = qi::omit[qi::int_] >> '(' >> +mapmap >> ')';
-         mapmap = +(qi::char_ - '{') >> '{' >> entrymap >> '}';
-         entrymap = +pair;
-         pair  = qi::lexeme[+qi::char_("a-zA-Z")] >> +(qi::char_ - ';') >> ';';
-      }
-
-   qi::rule<Iterator, std::map<std::string, std::map<std::string, std::string> >(),
-      skipper<Iterator> > start;
-
-   qi::rule<Iterator, std::pair<std::string, std::map<std::string, std::string> >(),
-      skipper<Iterator> > mapmap;
-
-   qi::rule<Iterator, std::map<std::string, std::string>(),
-      skipper<Iterator> > entrymap;
-
-   qi::rule<Iterator, std::pair<std::string, std::string>(),
-      skipper<Iterator> > pair;
-};
-
-
-
-Boundaries loadBoundary(const std::string &meshdir) {
-
-   auto stream = getStreamForFile(meshdir, "boundary");
-
-   typedef std::istreambuf_iterator<char> base_iterator_type;
-   typedef bs::multi_pass<base_iterator_type> forward_iterator_type;
-   typedef classic::position_iterator2<forward_iterator_type> pos_iterator_type;
-   forward_iterator_type fwd_begin =
-      bs::make_default_multi_pass(base_iterator_type(*stream));
-   forward_iterator_type fwd_end;
-   pos_iterator_type pos_begin(fwd_begin, fwd_end, meshdir + "/boundary");
-   pos_iterator_type pos_end;
-
-   struct skipper<pos_iterator_type> skipper;
-
-   BoundaryParser<pos_iterator_type> p;
-   std::map<std::string, std::map<std::string, std::string> > boundaries;
-
-   bool r = qi::phrase_parse(pos_begin, pos_end,
-         p, skipper, boundaries);
-
-   //std::cout << "r: " << r << std::endl;
-
-   Boundaries bounds;
-
-   std::map<std::string, std::map<std::string, std::string> >::iterator top;
-   for (top = boundaries.begin(); top != boundaries.end(); top ++) {
-
-      std::string name = top->first;
-#if 0
-      std::cout << name << ":" << std::endl;
-      std::map<std::string, std::string>::iterator i;
-      for (i = top->second.begin(); i != top->second.end(); i ++) {
-         std::cout << "    " << i->first << " => " << i->second << std::endl;
-      }
-#endif
-      const auto &cur = top->second;
-      auto nFaces = cur.find("nFaces");
-      auto startFace = cur.find("startFace");
-      auto type = cur.find("type");
-      if (nFaces != cur.end() && startFace != cur.end() && type != cur.end()) {
-         std::string t = type->second;
-         Index n = atol(nFaces->second.c_str());
-         Index s = atol(startFace->second.c_str());
-         bounds.addBoundary(Boundary(name, s, n, t));
-      }
-   }
-
-   return bounds;
-}
-
-template<typename T>
-std::istream &operator>>(std::istream &stream, std::vector<T> &vec) {
-
-   size_t n;
-   stream >> n;
-   stream.ignore(std::numeric_limits<std::streamsize>::max(),'(');
-   vec.reserve(n);
-   for (size_t i=0; i<n; ++i) {
-      T val;
-      stream >> val;
-      vec.push_back(val);
-   }
-   stream.ignore(std::numeric_limits<std::streamsize>::max(),')');
-   return stream;
-}
-
-template<typename T>
-bool readVectorArray(std::istream &stream, T *x, T *y, T *z, const size_t lines) {
-
-   for (size_t i=0; i<lines; ++i) {
-      stream.ignore(std::numeric_limits<std::streamsize>::max(), '(');
-      stream >> x[i] >> y[i] >> z[i];
-      stream.ignore(std::numeric_limits<std::streamsize>::max(), ')');
-   }
-
-   return true;
-}
-
-template<typename T>
-bool readArray(std::istream &stream, T *p, const size_t lines) {
-
-   for (size_t i=0; i<lines; ++i) {
-      stream >> p[i];
-   }
-
-   return true;
-}
-
-bool readIndexArray(std::istream &stream, Index *p, const size_t lines) {
-   return readArray<Index>(stream, p, lines);
-}
-
-bool readIndexListArray(std::istream &stream, std::vector<Index> *p, const size_t lines) {
-   return readArray<std::vector<Index>>(stream, p, lines);
-}
-
-struct DimensionInfo {
-   Index points = 0;
-   Index cells = 0;
-   Index faces = 0;
-   Index internalFaces = 0;
-};
-
-DimensionInfo readDimensions(const std::string &meshdir) {
-
-   struct dimParser<std::string::iterator> dimParser;
-   struct dimSkipper<std::string::iterator> dimSkipper;
-   boost::shared_ptr<std::istream> fileIn = getStreamForFile(meshdir, "owner");
-   if (!fileIn) {
-      std::cerr << "failed to open " << meshdir + "/polyMesh/owner for reading dimensions" << std::endl;
-   }
-   std::string header = getFoamHeader(*fileIn);
-
-   std::vector<Index> dims;
-   bool r = qi::phrase_parse(header.begin(), header.end(), dimParser, dimSkipper, dims);
-   std::cerr << " " << "Dimension parsing successful: " << r << "  ## dimensions loaded: " << dims.size()<< " of 4" << std::endl;
-   DimensionInfo info;
-   info.points = dims[0];
-   info.cells = dims[1];
-   info.faces = dims[2];
-   info.internalFaces = dims[3];
-   return info;
-}
-
-Index findVertexAlongEdge(const index_t & point,
-      const index_t & homeface,
-      const std::vector<index_t> & cellfaces,
-      const std::vector<std::vector<index_t> > & faces) {
-
-   std::vector<index_t> pointfaces;
-   for (index_t i=0;i<cellfaces.size();i++) {
-      if(cellfaces[i]!=homeface) {
-         const std::vector<index_t> &face=faces[cellfaces[i]];
-         for (index_t j=0;j<face.size(); j++) {
-            if (face[j]==point) {
-               pointfaces.push_back(cellfaces[i]);
-               break;
-            }
-         }
-      }
-   }
-   const std::vector<index_t> &a=faces[pointfaces[0]];
-   const std::vector<index_t> &b=faces[pointfaces[1]];
-   for (index_t i=0;i<a.size();i++) {
-      for (index_t j=0;j<b.size();j++) {
-         if(a[i]==b[j] && a[i]!=point) {
-            return a[i];
-         }
-      }
-   }
-
-   return -1;
-}
-
-bool isPointingInwards(index_t &face,
-      index_t &cell,
-      index_t &ninternalFaces,
-      std::vector<index_t> &owners,
-      std::vector<index_t> &neighbors) {
-
-   //check if the normal vector of the cell is pointing inwards
-   //(in openFOAM it always points into the cell with the higher index)
-   if (face>=ninternalFaces) {//if ia is bigger than the number of internal faces
-      return true;                    //then a is a boundary face and normal vector goes inwards by default
-   } else {
-      index_t j,o,n;
-      o=owners[face];
-      n=neighbors[face];
-      if (o==cell) {j=n;}
-      else {j=o;} //now i is the index of current cell and j is index of other cell sharing the same face
-      if (cell>j) {return true;} //if index of active cell is higher than index of "next door" cell
-      else {return false;}    //then normal vector points inwards else outwards
-   }
-}
-
-std::vector<index_t> getVerticesForCell(const std::vector<index_t> &cellfaces,
-      const std::vector<std::vector<index_t>> &faces) {
-
-   std::vector<index_t> cellvertices;
-   for(Index i=0;i<cellfaces.size();i++) {
-      for(Index j=0;j<faces[cellfaces[i]].size();j++) {
-         cellvertices.push_back(faces[cellfaces[i]][j]);
-      }
-   }
-   std::sort(cellvertices.begin(),cellvertices.end());
-   cellvertices.erase(std::unique(cellvertices.begin(), cellvertices.end()), cellvertices.end());
-   return cellvertices;
-}
 
 bool loadCoords(const std::string &meshdir, UnstructuredGrid::ptr grid) {
 
    boost::shared_ptr<std::istream> pointsIn = getStreamForFile(meshdir, "points");
    HeaderInfo pointsH = readFoamHeader(*pointsIn);
    grid->setSize(pointsH.lines);
-   readVectorArray(*pointsIn, grid->x().data(), grid->y().data(), grid->z().data(), pointsH.lines);
+   readFloatVectorArray(*pointsIn, grid->x().data(), grid->y().data(), grid->z().data(), pointsH.lines);
 
    return true;
 }
-
 
 std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::string &meshdir) {
 
@@ -1083,7 +338,7 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
    poly->d()->x[1] = grid->d()->x[1];
    poly->d()->x[2] = grid->d()->x[2];
 
-   std::cerr << " done!" << std::endl;
+   //std::cerr << " done!" << std::endl;
 
    return std::make_pair(grid, poly);
 }
@@ -1094,11 +349,11 @@ Object::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &f
    HeaderInfo header = readFoamHeader(*stream);
    if (header.fieldclass == "volScalarField") {
       Vec<Scalar>::ptr s(new Vec<Scalar>(header.lines));
-      readArray<Scalar>(*stream, s->x().data(), s->x().size());
+      readFloatArray(*stream, s->x().data(), s->x().size());
       return s;
    } else if (header.fieldclass == "volVectorField") {
       Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(header.lines));
-      readVectorArray(*stream, v->x().data(), v->y().data(), v->z().data(), v->x().size());
+      readFloatVectorArray(*stream, v->x().data(), v->y().data(), v->z().data(), v->x().size());
       return v;
    }
    
@@ -1109,13 +364,13 @@ Object::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &f
 void ReadFOAM::setMeta(Object::ptr obj, int processor, int timestep) const {
 
    obj->setTimestep(timestep);
-   obj->setNumTimesteps(m_timedirs.size());
+   obj->setNumTimesteps(m_case.timedirs.size());
    obj->setBlock(processor);
-   obj->setNumBlocks(m_numprocessors == 0 ? 1 : m_numprocessors);
+   obj->setNumBlocks(m_case.numblocks == 0 ? 1 : m_case.numblocks);
 
    if (timestep >= 0) {
       int i = 0;
-      for (auto &ts: m_timedirs) {
+      for (auto &ts: m_case.timedirs) {
          if (i == timestep) {
             obj->setRealTime(ts.first);
             break;
@@ -1155,14 +410,14 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
 
    if (timestep < 0) {
       dir += "/constant";
-      if (!m_varyingGrid) {
+      if (!m_case.varyingGrid) {
          auto ret = loadGrid(dir + "/polyMesh");
          UnstructuredGrid::ptr grid = ret.first;
          setMeta(grid, processor, timestep);
          Polygons::ptr poly = ret.second;
          setMeta(poly, processor, timestep);
 
-         if (m_varyingCoords) {
+         if (m_case.varyingCoords) {
             m_basegrid[processor] = grid;
             m_basebound[processor] = poly;
          } else {
@@ -1170,25 +425,25 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
             addObject(m_boundOut, poly);
          }
       }
-      loadFields(dir, m_constantFields, processor, timestep);
+      loadFields(dir, m_case.constantFields, processor, timestep);
    } else {
       int i = 0;
       int skipfactor = m_timeskip->getValue()+1;
-      for (auto &ts: m_timedirs) {
+      for (auto &ts: m_case.timedirs) {
          if (i == timestep*skipfactor) {
             dir += "/" + ts.second;
             break;
          }
          ++i;
       }
-      if (i == m_timedirs.size()) {
+      if (i == m_case.timedirs.size()) {
          std::cerr << "no directory for timestep " << timestep << " found" << std::endl;
          return false;
       }
-      if (m_varyingGrid || m_varyingCoords) {
+      if (m_case.varyingGrid || m_case.varyingCoords) {
          UnstructuredGrid::ptr grid;
          Polygons::ptr poly;
-         if (m_varyingCoords) {
+         if (m_case.varyingCoords) {
             {
                grid.reset(new UnstructuredGrid(0, 0, 0));
                UnstructuredGrid::Data *od = m_basegrid[processor]->d();
@@ -1217,7 +472,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
          setMeta(poly, processor, timestep);
          addObject(m_boundOut, poly);
       }
-      loadFields(dir, m_varyingFields, processor, timestep);
+      loadFields(dir, m_case.varyingFields, processor, timestep);
    }
 
    return true;
@@ -1226,8 +481,8 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
 bool ReadFOAM::readConstant(const std::string &casedir)
 {
    std::cerr << "reading constant data..." << std::endl;
-   if (m_numprocessors > 0) {
-      for (int i=0; i<m_numprocessors; ++i) {
+   if (m_case.numblocks > 0) {
+      for (int i=0; i<m_case.numblocks; ++i) {
          if (i % size() == rank()) {
             if (!readDirectory(casedir, i, -1))
                return false;
@@ -1246,8 +501,8 @@ bool ReadFOAM::readConstant(const std::string &casedir)
 bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
    std::cerr << "reading time step " << timestep << "..." << std::endl;
-   if (m_numprocessors > 0) {
-      for (int i=0; i<m_numprocessors; ++i) {
+   if (m_case.numblocks > 0) {
+      for (int i=0; i<m_case.numblocks; ++i) {
          if (i % size() == rank()) {
             if (!readDirectory(casedir, i, timestep))
                return false;
@@ -1266,19 +521,20 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 bool ReadFOAM::compute()     //Compute is called when Module is executed
 {
    const std::string casedir = m_casedir->getValue();
-   if (!checkCaseDirectory(casedir)) {
+   m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
+   if (!m_case.valid) {
       std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
       return false;
    }
 
-   std::cerr << "# processors: " << m_numprocessors << std::endl;
-   std::cerr << "# time steps: " << m_timedirs.size() << std::endl;
-   std::cerr << "grid topology: " << (m_varyingGrid?"varying":"constant") << std::endl;
-   std::cerr << "grid coordinates: " << (m_varyingCoords?"varying":"constant") << std::endl;
+   std::cerr << "# processors: " << m_case.numblocks << std::endl;
+   std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
+   std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
+   std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
 
    readConstant(casedir);
    int skipfactor = m_timeskip->getValue()+1;
-   for (int timestep=0; timestep<m_timedirs.size()/skipfactor; ++timestep) {
+   for (int timestep=0; timestep<m_case.timedirs.size()/skipfactor; ++timestep) {
       readTime(casedir, timestep);
    }
 
