@@ -28,8 +28,11 @@ PlaceHolder::Data::Data(const std::string & name,
       const std::string &originalName,
       const Meta &m,
       Object::Type originalType)
-   : PlaceHolder::Base::Data(Object::PLACEHOLDER, name, meta)
-   , real(NULL)
+: PlaceHolder::Base::Data(Object::PLACEHOLDER, name, m)
+, real(NULL)
+, originalName(originalName)
+, originalMeta(m)
+, originalType(originalType)
 {
 }
 
