@@ -23,6 +23,7 @@ include_directories(
 )
 
 add_subdirectory(Add)
+add_subdirectory(CellToVert)
 add_subdirectory(Collect)
 add_subdirectory(Color)
 add_subdirectory(CutGeometry)
