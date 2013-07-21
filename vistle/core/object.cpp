@@ -296,9 +296,19 @@ int Object::getTimestep() const {
    return d()->meta.timeStep();
 }
 
+int Object::getNumTimesteps() const {
+   
+   return d()->meta.numTimesteps();
+}
+
 int Object::getBlock() const {
 
    return d()->meta.block();
+}
+
+int Object::getNumBlocks() const {
+   
+   return d()->meta.numBlocks();
 }
 
 int Object::getExecutionCounter() const {

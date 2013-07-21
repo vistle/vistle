@@ -86,8 +86,10 @@ public:
    std::string getName() const;
 
    int getBlock() const;
+   int getNumBlocks() const;
    double getRealTime() const;
    int getTimestep() const;
+   int getNumTimesteps() const;
    int getExecutionCounter() const;
    int getCreator() const;
 
