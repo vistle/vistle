@@ -142,21 +142,24 @@ class V_COREEXPORT Spawn: public Message {
 
  public:
    Spawn(const int spawnID,
-         const std::string &name, int debugFlag = 0, int debugRank = 0);
+         const std::string &name, int size=-1, int baserank=-1, int rankskip=-1);
 
    int spawnId() const;
    void setSpawnId(int id);
    const char *getName() const;
-   int getDebugFlag() const;
-   int getDebugRank() const;
+   int getMpiSize() const;
+   int getBaseRank() const;
+   int getRankSkip() const;
 
  private:
    //! ID of module to spawn
    int spawnID;
-   //! start with debugger/memory tracer
-   const int debugFlag;
-   //! on which rank to attach debugger
-   const int debugRank;
+   //! number of ranks in communicator
+   int mpiSize;
+   //! first rank on which to spawn process
+   int baseRank;
+   //! number of ranks to skip when spawning process
+   int rankSkip;
    //! name of module to be started
    module_name_t name;
 };
@@ -216,8 +219,11 @@ class V_COREEXPORT ModuleExit: public Message {
 
  public:
    ModuleExit();
+   void setForwarded();
+   bool isForwarded() const;
 
  private:
+   bool forwarded = false;
 };
 BOOST_STATIC_ASSERT(sizeof(ModuleExit) < Message::MESSAGE_SIZE);
 

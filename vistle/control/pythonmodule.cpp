@@ -81,17 +81,17 @@ static int barrier() {
    return id;
 }
 
-static int spawn(const char *module, int debugflag=0, int debugrank=0) {
+static int spawn(const char *module, int numSpwan=-1, int baseRank=-1, int rankSkip=-1) {
 
 #ifdef DEBUG
    std::cerr << "Python: spawn "<< module << std::endl;
 #endif
    int id = moduleManager.newModuleID();
-   message::Spawn m(id, module, debugflag, debugrank);
+   message::Spawn m(id, module, numSpwan, baseRank, rankSkip);
    PythonEmbed::handleMessage(m);
    return id;
 }
-BOOST_PYTHON_FUNCTION_OVERLOADS(spawn_overloads, spawn, 1, 3)
+BOOST_PYTHON_FUNCTION_OVERLOADS(spawn_overloads, spawn, 1, 4)
 
 static void kill(int id) {
 
@@ -302,7 +302,7 @@ BOOST_PYTHON_MODULE(_vistle)
     def("_resetModuleCounter", resetModuleCounter);
 
     def("source", source, "execute commands from file `arg1`");
-    def("spawn", spawn, spawn_overloads(args("modulename", "debug", "debugrank"), "spawn new module `arg1`\n" "return its ID"));
+    def("spawn", spawn, spawn_overloads(args("modulename", "numspawn", "baserank", "rankskip"), "spawn new module `arg1`\n" "return its ID"));
     def("kill", kill, "kill module with ID `arg1`");
     def("connect", connect, "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
     def("disconnect", disconnect, "disconnect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");

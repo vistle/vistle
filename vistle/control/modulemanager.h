@@ -102,6 +102,8 @@ class ModuleManager {
          delete sendQueue;
          delete recvQueue;
       }
+      bool local = false;
+      int baseRank = 0;
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;
@@ -112,6 +114,7 @@ class ModuleManager {
    // barrier related stuff
    boost::mutex m_barrierMutex;
    boost::condition_variable m_barrierCondition;
+   bool checkBarrier(int id) const;
    void barrierReached(int id);
    int m_barrierCounter;
    int m_activeBarrier;

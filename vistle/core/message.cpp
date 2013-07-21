@@ -127,11 +127,12 @@ int Pong::getDestination() const {
 }
 
 Spawn::Spawn(const int s,
-             const std::string & n, int debugFlag, int debugRank)
+             const std::string & n, int mpiSize, int baseRank, int rankSkip)
    : Message(Message::SPAWN, sizeof(Spawn))
    , spawnID(s)
-   , debugFlag(debugFlag)
-   , debugRank(debugRank)
+   , mpiSize(mpiSize)
+   , baseRank(baseRank)
+   , rankSkip(rankSkip)
 {
 
    COPY_STRING(name, n);
@@ -152,6 +153,21 @@ const char * Spawn::getName() const {
    return name;
 }
 
+int Spawn::getMpiSize() const {
+
+   return mpiSize;
+}
+
+int Spawn::getBaseRank() const {
+
+   return baseRank;
+}
+
+int Spawn::getRankSkip() const {
+
+   return rankSkip;
+}
+
 Started::Started(const std::string &n)
 : Message(Message::STARTED, sizeof(Started))
 {
@@ -162,16 +178,6 @@ Started::Started(const std::string &n)
 const char * Started::getName() const {
 
    return name;
-}
-
-int Spawn::getDebugFlag() const {
-
-   return debugFlag;
-}
-
-int Spawn::getDebugRank() const {
-
-   return debugRank;
 }
 
 Kill::Kill(const int m)
@@ -199,8 +205,20 @@ const shm_handle_t & NewObject::getHandle() const {
 }
 
 ModuleExit::ModuleExit()
-   : Message(Message::MODULEEXIT, sizeof(ModuleExit)) {
+: Message(Message::MODULEEXIT, sizeof(ModuleExit))
+, forwarded(false)
+{
 
+}
+
+void ModuleExit::setForwarded() {
+
+   forwarded = true;
+}
+
+bool ModuleExit::isForwarded() const {
+
+   return forwarded;
 }
 
 Compute::Compute(const int m, const int c)
