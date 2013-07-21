@@ -384,7 +384,7 @@ bool Module::addObject(const std::string &portName, vistle::Object::ptr object) 
    if (i != outputPorts.end()) {
       return addObject(i->second, object);
    }
-   std::cerr << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
+   std::cerr << "Module::addObject: output port " << portName << " not found" << std::endl;
    assert(i != outputPorts.end());
    return false;
 }
@@ -394,6 +394,16 @@ bool Module::addObject(Port *port, vistle::Object::ptr object) {
    updateMeta(object);
    vistle::Object::const_ptr cobj = object;
    return passThroughObject(port, cobj);
+}
+
+bool Module::passThroughObject(const std::string &portName, vistle::Object::const_ptr object) {
+   std::map<std::string, Port *>::iterator i = outputPorts.find(portName);
+   if (i != outputPorts.end()) {
+      return passThroughObject(i->second, object);
+   }
+   std::cerr << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
+   assert(i != outputPorts.end());
+   return false;
 }
 
 bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object) {

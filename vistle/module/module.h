@@ -75,8 +75,9 @@ class V_COREEXPORT Module {
    ParamVector getVectorParameter(const std::string & name) const;
 
    bool addObject(Port *port, vistle::Object::ptr object);
-   bool addObject(const std::string & portName, vistle::Object::ptr object);
+   bool addObject(const std::string &portName, vistle::Object::ptr object);
    bool passThroughObject(Port *port, vistle::Object::const_ptr object);
+   bool passThroughObject(const std::string &portName, vistle::Object::const_ptr object);
 
    ObjectList getObjects(const std::string &portName);
    void removeObject(const std::string &portName, vistle::Object::const_ptr object);
