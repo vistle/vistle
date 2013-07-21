@@ -231,6 +231,15 @@ void OsgRenderer::addInputObject(vistle::Object::const_ptr container,
 
    osg::Group *parent = staticGeo;
    int t = geometry->getTimestep();
+   if (t < 0 && colors) {
+      t = colors->getTimestep();
+   }
+   if (t < 0 && normals) {
+      t = normals->getTimestep();
+   }
+   if (t < 0 && texture) {
+      t = texture->getTimestep();
+   }
    if (t >= 0) {
       while (t >= animation->getNumChildren()) {
          animation->addChild(new osg::Group);
