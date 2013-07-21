@@ -23,8 +23,6 @@
 
 #include "foamtoolbox.h"
 
-typedef size_t index_t;
-
 class ReadFOAM: public vistle::Module
 {
    const int NumPorts = 3;
