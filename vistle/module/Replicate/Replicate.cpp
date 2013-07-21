@@ -31,14 +31,19 @@ bool Replicate::compute() {
    if (hasObject("grid_in")) {
       Object::const_ptr obj = takeFirstObject("grid_in");
       m_objs[obj->getBlock()] = obj;
-      std::cerr << "Replicate: grid " << obj->getName() << std::endl;
+      //std::cerr << "Replicate: grid " << obj->getName() << std::endl;
    }
 
    if (!m_objs.empty()) {
       while (hasObject("data_in")) {
 
          Object::const_ptr data = takeFirstObject("data_in");
-         std::cerr << "Replicate: data " << data->getName() << std::endl;
+#if 0
+         std::cerr << "Replicate: data " << data->getName()
+            << ", time: " << data->getTimestep() << "/" << data->getNumTimesteps()
+            << ", block: " << data->getBlock() << "/" << data->getNumBlocks()
+            << std::endl;
+#endif
          auto it = m_objs.find(data->getBlock());
          if (it == m_objs.end()) {
             std::cerr << "did not find grid for block " << data->getBlock() << std::endl;
