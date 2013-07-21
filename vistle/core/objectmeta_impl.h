@@ -26,7 +26,7 @@ void Meta::serialize(Archive &ar, const unsigned int version) {
    ar & V_NAME("timestep", m_timestep);
    ar & V_NAME("numtimesteps", m_numTimesteps);
    ar & V_NAME("animationstep", m_animationstep);
-   ar & V_NAME("numanimationsteps", m_animationstep);
+   ar & V_NAME("numanimationsteps", m_numAnimationsteps);
    ar & V_NAME("iteration", m_iteration);
    ar & V_NAME("creator", m_creator);
    ar & V_NAME("executioncount", m_executionCount);
