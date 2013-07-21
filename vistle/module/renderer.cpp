@@ -12,8 +12,6 @@
 
 namespace ba = boost::archive;
 
-const bool masterOnly = true;
-
 namespace vistle {
 
 Renderer::Renderer(const std::string & name, const std::string &shmname,
