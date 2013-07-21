@@ -325,10 +325,13 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
       if (bf::is_directory(*it)) {
          std::string bn = it->path().filename().string();
          if (isTimeDir(bn)) {
-            bool result = checkSubDirectory(info, it->path().string(), true);
-            if (!result)
-               return false;
-            first = false;
+            double t = atof(bn.c_str());
+            if (info.timedirs.find(t) != info.timedirs.end()) {
+               bool result = checkSubDirectory(info, it->path().string(), true);
+               if (!result)
+                  return false;
+               first = false;
+            }
          } else if (bn == "constant") {
             bool result = checkSubDirectory(info, it->path().string(), false);
             if (!result)
