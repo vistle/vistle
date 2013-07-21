@@ -601,7 +601,7 @@ std::string SetParameter::getString() const {
 bool SetParameter::apply(Parameter *param) const {
 
    if (paramtype != param->type()) {
-      std::cerr << "SetParameter::apply(): type mismatch" << std::endl;
+      std::cerr << "SetParameter::apply(): type mismatch for " << param->module() << ":" << param->getName() << std::endl;
       return false;
    }
 
