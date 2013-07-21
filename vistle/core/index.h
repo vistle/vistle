@@ -5,7 +5,7 @@
 
 namespace vistle {
 
-typedef size_t Index;
+typedef int Index;
 
 } // namespace vistle
 
