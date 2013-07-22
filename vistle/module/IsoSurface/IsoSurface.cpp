@@ -285,7 +285,7 @@ bool IsoSurface::compute() {
       Object::ptr object =
          generateIsoSurface(grid, data, isoValue);
 
-      if (object) {
+      if (object && !object->isEmpty()) {
          object->copyAttributes(data);
          object->copyAttributes(grid, false);
          object->addAttribute("shader", "Gouraud");

@@ -8,6 +8,11 @@ PlaceHolder::PlaceHolder(const std::string &originalName, const Meta &originalMe
 {
 }
 
+bool PlaceHolder::isEmpty() const {
+
+   return true;
+}
+
 bool PlaceHolder::checkImpl() const {
 
    return true;

@@ -8,6 +8,14 @@ Geometry::Geometry(Object::const_ptr grid, const Meta &meta)
    setGeometry(grid);
 }
 
+bool Geometry::isEmpty() const {
+
+   if (!geometry())
+      return true;
+
+   return geometry()->isEmpty();
+}
+
 bool Geometry::checkImpl() const {
 
    V_CHECK (geometry());

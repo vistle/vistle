@@ -18,6 +18,12 @@ void Vec<T,Dim>::setSize(const Index size) {
 }
 
 template <class T, int Dim>
+bool Vec<T,Dim>::isEmpty() const {
+
+   return getSize() == 0;
+}
+
+template <class T, int Dim>
 bool Vec<T,Dim>::checkImpl() const {
 
    for (int c=1; c<Dim; ++c)

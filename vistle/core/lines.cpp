@@ -10,6 +10,11 @@ Lines::Lines(const Index numElements, const Index numCorners,
 {
 }
 
+bool Lines::isEmpty() const {
+
+   return Base::isEmpty();
+}
+
 bool Lines::checkImpl() const {
 
    return true;

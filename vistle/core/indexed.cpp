@@ -9,6 +9,11 @@ Indexed::Indexed(const Index numElements, const Index numCorners,
 {
 }
 
+bool Indexed::isEmpty() const {
+
+   return getNumElements()==0 || getNumCorners()==0;
+}
+
 bool Indexed::checkImpl() const {
 
    if (getNumElements() > 0) {

@@ -7,6 +7,11 @@ Coords::Coords(const Index numVertices,
    : Coords::Base(static_cast<Data *>(NULL))
 {}
 
+bool Coords::isEmpty() const {
+
+   return Base::isEmpty();
+}
+
 bool Coords::checkImpl() const {
 
    return true;

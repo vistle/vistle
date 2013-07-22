@@ -201,6 +201,10 @@ int Object::refcount() const {
    return d()->refcount;
 }
 
+bool Object::isEmpty() const {
+   return true;
+}
+
 template<class Archive>
 void Object::save(Archive &ar) const {
 

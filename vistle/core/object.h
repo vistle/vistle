@@ -75,6 +75,8 @@ public:
 
    virtual bool check() const;
 
+   virtual bool isEmpty() const;
+
    template<class ObjectType>
    static boost::shared_ptr<const Object> as(boost::shared_ptr<const ObjectType> ptr) { return boost::static_pointer_cast<const Object>(ptr); }
    template<class ObjectType>
@@ -270,7 +272,8 @@ class V_COREEXPORT ObjectTypeRegistry {
    static void registerBinaryIArchive(boost::archive::binary_iarchive &ar); \
    static void registerBinaryOArchive(boost::archive::binary_oarchive &ar); \
    Type(Object::InitializedFlags) : Base(Type::Data::create()) {} \
-   bool check() const { if (!Base::check()) return false; return checkImpl(); } \
+   virtual bool isEmpty() const; \
+   bool check() const { if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
    struct Data; \
    Data *d() const { return static_cast<Data *>(Object::m_data); } \
    protected: \

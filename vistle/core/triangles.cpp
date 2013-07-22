@@ -8,6 +8,11 @@ Triangles::Triangles(const Index numCorners, const Index numVertices,
             meta)) {
 }
 
+bool Triangles::isEmpty() const {
+
+   return getNumCorners()==0;
+}
+
 bool Triangles::checkImpl() const {
 
    if (getNumCorners() > 0) {
