@@ -263,11 +263,13 @@ bool OsgRenderer::addInputObject(const std::string & portName,
 
    object = distributeObject(portName, object);
 
+#if 0
    std::cout << "++++++OSGRenderer addInputObject " << object->getType()
              << " creator " << object->getCreator()
              << " exec " << object->getExecutionCounter()
              << " block " << object->getBlock()
              << " timestep " << object->getTimestep() << std::endl;
+#endif
 
    switch (object->getType()) {
 
@@ -284,12 +286,14 @@ bool OsgRenderer::addInputObject(const std::string & portName,
 
          vistle::Geometry::const_ptr geom = vistle::Geometry::as(object);
 
+#if 0
          std::cerr << "   Geometry: [ "
             << (geom->geometry()?"G":".")
             << (geom->colors()?"C":".")
             << (geom->normals()?"N":".")
             << (geom->texture()?"T":".")
             << " ]" << std::endl;
+#endif
          addInputObject(geom, geom->geometry(), geom->colors(), geom->normals(),
                         geom->texture());
 

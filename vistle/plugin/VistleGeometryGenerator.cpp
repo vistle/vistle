@@ -33,6 +33,30 @@ osg::Node *VistleGeometryGenerator::operator()() {
    if (!m_geo)
       return NULL;
 
+   std::stringstream deb;
+   deb << m_geo ? "G" : ".";
+   deb << m_color ? "C" : ".";
+   deb << m_normal ? "N" : ".";
+   deb << m_tex ? "T" : ".";
+
+   int t=m_geo->getTimestep();
+   if (t<0 && m_color)
+      t = m_color->getTimestep();
+   if (t<0 && m_normal)
+      t = m_normal->getTimestep();
+   if (t<0 && m_tex)
+      t = m_tex->getTimestep();
+
+   int b=m_geo->getBlock();
+   if (b<0 && m_color)
+      b = m_color->getBlock();
+   if (b<0 && m_normal)
+      b = m_normal->getBlock();
+   if (b<0 && m_tex)
+      b = m_tex->getBlock();
+
+   deb << " b" << b << ", t" << t << " ";
+
    osg::Geode *geode = NULL;
 
    switch (m_geo->getType()) {
@@ -61,7 +85,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numCorners = triangles->getNumCorners();
          const Index numVertices = triangles->getNumVertices();
 
-         std::cerr << "   Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]" << std::endl;
+         std::cerr << deb.str() << "Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]" << std::endl;
 
          Index *cl = &triangles->cl()[0];
          vistle::Scalar *x = &triangles->x()[0];
@@ -150,7 +174,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numElements = lines->getNumElements();
          const Index numCorners = lines->getNumCorners();
 
-         std::cerr << "   Lines: [ #c " << numCorners << ", #e " << numElements << " ]" << std::endl;
+         std::cerr << deb.str() << "Lines: [ #c " << numCorners << ", #e " << numElements << " ]" << std::endl;
 
          Index *el = &lines->el()[0];
          Index *cl = &lines->cl()[0];
@@ -202,7 +226,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numVertices = polygons->getNumVertices();
          const Index numNormals = vec ? vec->getSize() : 0;
 
-         std::cerr << "   Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]" << std::endl;
+         std::cerr << deb.str() << "Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]" << std::endl;
 
          Index *el = &polygons->el()[0];
          Index *cl = &polygons->cl()[0];
