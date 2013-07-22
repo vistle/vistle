@@ -1,5 +1,6 @@
 #include "VistleGeometryGenerator.h"
 #include <kernel/VRSceneGraph.h>
+#include <kernel/coVRShader.h>
 
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -323,8 +324,16 @@ osg::Node *VistleGeometryGenerator::operator()() {
          break;
    }
 
-   if (geode)
+   if (geode) {
       geode->setName(m_geo->getName());
+
+      std::string name = m_geo->getAttribute("shader");
+      std::string params = m_geo->getAttribute("shaderparams");
+      if (!name.empty()) {
+         coVRShader *shader = coVRShaderList::instance()->get(name);
+         shader->apply(geode);
+      }
+   }
 
    return geode;
 }
