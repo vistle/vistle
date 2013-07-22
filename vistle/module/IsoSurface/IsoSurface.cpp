@@ -288,6 +288,7 @@ bool IsoSurface::compute() {
       if (object) {
          object->copyAttributes(data);
          object->copyAttributes(grid, false);
+         object->addAttribute("shader", "Gouraud");
          addObject("grid_out", object);
       }
    }
