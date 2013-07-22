@@ -5,6 +5,7 @@
 #include <istream>
 #include <vector>
 #include <string>
+#include <map>
 
 #include <boost/shared_ptr.hpp>
 
@@ -66,7 +67,7 @@ class Boundary {
 
 class Boundaries {
  public:
-   Boundaries() {}
+   Boundaries(): valid(false) {}
 
    bool isBoundaryFace(const index_t face) {
 
@@ -86,6 +87,8 @@ class Boundaries {
          boundaries.push_back(b);
       }
    }
+
+   bool valid;
 
  private:
    bool isBoundaryFace(const std::vector<Boundary> &bound, const index_t face) {

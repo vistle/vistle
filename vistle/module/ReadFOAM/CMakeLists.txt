@@ -1,4 +1,4 @@
-find_package(Boost 1.42 REQUIRED COMPONENTS iostreams filesystem)
+find_package(Boost 1.42 REQUIRED COMPONENTS iostreams filesystem system)
 
 use_openmp()
 
@@ -10,17 +10,18 @@ if (CMAKE_COMPILER_IS_GNUCC)
    endif()
 endif()
 
-add_executable(ReadFOAM ReadFOAM.cpp foamtoolbox.cpp)
-
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
 )
 
+add_executable(ReadFOAM ReadFOAM.cpp foamtoolbox.cpp)
 target_link_libraries(ReadFOAM
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
-        ${ZLIB_LIBRARY}
         vistle_module
 )
+
+add_executable(foambounds bounds.cpp foamtoolbox.cpp)
+target_link_libraries(foambounds ${Boost_LIBRARIES})

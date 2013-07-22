@@ -578,7 +578,10 @@ struct BoundaryParser
 
 Boundaries loadBoundary(const std::string &meshdir) {
 
+   Boundaries bounds;
    auto stream = getStreamForFile(meshdir, "boundary");
+   if (!stream)
+      return bounds;
 
    typedef std::istreambuf_iterator<char> base_iterator_type;
    typedef bs::multi_pass<base_iterator_type> forward_iterator_type;
@@ -594,18 +597,14 @@ Boundaries loadBoundary(const std::string &meshdir) {
    BoundaryParser<pos_iterator_type> p;
    std::map<std::string, std::map<std::string, std::string> > boundaries;
 
-   bool r = qi::phrase_parse(pos_begin, pos_end,
+   bounds.valid = qi::phrase_parse(pos_begin, pos_end,
          p, skipper, boundaries);
-
-   //std::cout << "r: " << r << std::endl;
-
-   Boundaries bounds;
 
    std::map<std::string, std::map<std::string, std::string> >::iterator top;
    for (top = boundaries.begin(); top != boundaries.end(); top ++) {
 
       std::string name = top->first;
-#if 0
+#if 1
       std::cout << name << ":" << std::endl;
       std::map<std::string, std::string>::iterator i;
       for (i = top->second.begin(); i != top->second.end(); i ++) {
