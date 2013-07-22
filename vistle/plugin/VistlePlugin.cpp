@@ -14,7 +14,6 @@
 #include <osg/Group>
 #include <osg/Node>
 #include <osg/Sequence>
-#include <osg/MatrixTransform>
 
 #include <core/object.h>
 #include <core/lines.h>
@@ -74,9 +73,8 @@ class OsgRenderer: public vistle::Renderer {
          s << basename << "_" << id;
          name = s.str();
 
-         root = new osg::MatrixTransform;
+         root = new osg::Group;
          root->setName(name);
-         parent->addChild(root);
 
          constant = new osg::Group;
          constant->setName(name + "_static");
@@ -85,12 +83,14 @@ class OsgRenderer: public vistle::Renderer {
          animated = new osg::Sequence;
          animated->setName(name + "_animated");
          root->addChild(animated);
+
+         VRSceneGraph::instance()->addNode(root, parent, NULL);
       }
       int id = 0;
       int age = 0;
       std::string name;
       VistleInteractor *interactor = nullptr;
-      osg::ref_ptr<osg::MatrixTransform> root;
+      osg::ref_ptr<osg::Group> root;
       osg::ref_ptr<osg::Group> constant;
       osg::ref_ptr<osg::Sequence> animated;
    };
@@ -139,10 +139,12 @@ bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, co
          cover->addPlugin(moduleName.c_str());
       }
 
+#if 0
       auto creator = creatorMap.find(senderId);
       if (creator == creatorMap.end()) {
-         creatorMap.insert(std::make_pair(senderId, Creator(senderId, getModuleName(senderId), vistleRoot)));
+         creatorMap.insert(std::make_pair(senderId, Creator(senderId, moduleName, vistleRoot)));
       }
+#endif
 
       InteractorMap::iterator it = m_interactorMap.find(senderId);
       if (it == m_interactorMap.end()) {
