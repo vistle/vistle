@@ -34,10 +34,12 @@ osg::Node *VistleGeometryGenerator::operator()() {
       return NULL;
 
    std::stringstream deb;
-   deb << m_geo ? "G" : ".";
-   deb << m_color ? "C" : ".";
-   deb << m_normal ? "N" : ".";
-   deb << m_tex ? "T" : ".";
+   deb << "[";
+   deb << (m_geo ? "G" : ".");
+   deb << (m_color ? "C" : ".");
+   deb << (m_normal ? "N" : ".");
+   deb << (m_tex ? "T" : ".");
+   deb << "] ";
 
    int t=m_geo->getTimestep();
    if (t<0 && m_color)
@@ -55,7 +57,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
    if (b<0 && m_tex)
       b = m_tex->getBlock();
 
-   deb << " b" << b << ", t" << t << " ";
+   deb << "b " << b << ", t " << t << "  ";
 
    osg::Geode *geode = NULL;
 
