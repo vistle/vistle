@@ -38,7 +38,7 @@
 #include <boost/spirit/include/qi_no_skip.hpp>
 #include <boost/spirit/include/support_istream_iterator.hpp>
 #include <boost/spirit/include/support_multi_pass.hpp>
-#include <boost/spirit/include/classic_position_iterator.hpp>
+#include <boost/spirit/include/support_istream_iterator.hpp>
 
 #include <boost/spirit/include/phoenix_core.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
@@ -62,7 +62,6 @@ const size_t MaxHeaderLines = 1000;
 namespace bi = boost::iostreams;
 namespace bs = boost::spirit;
 namespace bf = boost::filesystem;
-namespace classic = boost::spirit::classic;
 
 template<typename Alloc = std::allocator<char> >
 struct basic_gzip_decompressor;
@@ -585,26 +584,20 @@ Boundaries loadBoundary(const std::string &meshdir) {
 
    typedef std::istreambuf_iterator<char> base_iterator_type;
    typedef bs::multi_pass<base_iterator_type> forward_iterator_type;
-   typedef classic::position_iterator2<forward_iterator_type> pos_iterator_type;
-   forward_iterator_type fwd_begin =
-      bs::make_default_multi_pass(base_iterator_type(*stream));
+   forward_iterator_type fwd_begin = bs::make_default_multi_pass(base_iterator_type(*stream));
    forward_iterator_type fwd_end;
-   pos_iterator_type pos_begin(fwd_begin, fwd_end, meshdir + "/boundary");
-   pos_iterator_type pos_end;
 
-   struct skipper<pos_iterator_type> skipper;
+   struct skipper<forward_iterator_type> skipper;
+   BoundaryParser<forward_iterator_type> p;
 
-   BoundaryParser<pos_iterator_type> p;
    std::map<std::string, std::map<std::string, std::string> > boundaries;
-
-   bounds.valid = qi::phrase_parse(pos_begin, pos_end,
-         p, skipper, boundaries);
+   bounds.valid = qi::phrase_parse(fwd_begin, fwd_end, p, skipper, boundaries);
 
    std::map<std::string, std::map<std::string, std::string> >::iterator top;
    for (top = boundaries.begin(); top != boundaries.end(); top ++) {
 
       std::string name = top->first;
-#if 1
+#if 0
       std::cout << name << ":" << std::endl;
       std::map<std::string, std::string>::iterator i;
       for (i = top->second.begin(); i != top->second.end(); i ++) {
