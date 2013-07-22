@@ -75,6 +75,7 @@ bool Renderer::dispatch() {
                if (size() > 1) {
                   const message::ObjectReceived *recv = static_cast<const message::ObjectReceived *>(message);
                   PlaceHolder::ptr ph(new PlaceHolder(recv->objectName(), recv->meta(), recv->objectType()));
+                  const bool bcast = !m_masterOnly->getValue();
                   const bool localAdd = !m_masterOnly->getValue() || rank()==0 || recv->objectType() == Object::GEOMETRY;
                   if (recv->rank() == rank()) {
                      Object::const_ptr obj = Shm::the().getObjectFromName(recv->objectName());
@@ -86,11 +87,25 @@ bool Renderer::dispatch() {
                         uint64_t len = mem.size();
                         //std::cerr << "Rank " << rank() << ": Broadcasting " << len << " bytes, type=" << obj->getType() << " (" << obj->getName() << ")" << std::endl;
                         const char *data = mem.data();
-                        MPI_Bcast(&len, 1, MPI_UINT64_T, rank(), MPI_COMM_WORLD);
-                        MPI_Bcast(const_cast<char *>(data), len, MPI_BYTE, rank(), MPI_COMM_WORLD);
+                        if (bcast) {
+                           MPI_Bcast(&len, 1, MPI_UINT64_T, rank(), MPI_COMM_WORLD);
+                           MPI_Bcast(const_cast<char *>(data), len, MPI_BYTE, rank(), MPI_COMM_WORLD);
+                        } else if (rank() != 0) {
+                           MPI_Request r1, r2;
+                           MPI_Isend(&len, 1, MPI_UINT64_T, 0, 0, MPI_COMM_WORLD, &r1);
+                           MPI_Isend(const_cast<char *>(data), len, MPI_BYTE, 0, 0, MPI_COMM_WORLD, &r2);
+                           MPI_Wait(&r1, MPI_STATUS_IGNORE);
+                           MPI_Wait(&r2, MPI_STATUS_IGNORE);
+                        }
                      } else {
                         uint64_t len = 0;
-                        MPI_Bcast(&len, 1, MPI_UINT64_T, rank(), MPI_COMM_WORLD);
+                        if (bcast) {
+                           MPI_Bcast(&len, 1, MPI_UINT64_T, rank(), MPI_COMM_WORLD);
+                        } else if (rank() != 0) {
+                           MPI_Request r;
+                           MPI_Isend(&len, 1, MPI_UINT64_T, 0, 0, MPI_COMM_WORLD, &r);
+                           MPI_Wait(&r, MPI_STATUS_IGNORE);
+                        }
                         std::cerr << "Rank " << rank() << ": OBJECT NOT FOUND: " << recv->objectName() << std::endl;
                      }
                      assert(obj->check());
@@ -101,12 +116,24 @@ bool Renderer::dispatch() {
                   } else {
                      uint64_t len = 0;
                      //std::cerr << "Rank " << rank() << ": Waiting to receive" << std::endl;
-                     MPI_Bcast(&len, 1, MPI_UINT64_T, recv->rank(), MPI_COMM_WORLD);
+                     if (bcast) {
+                        MPI_Bcast(&len, 1, MPI_UINT64_T, recv->rank(), MPI_COMM_WORLD);
+                     } else if (rank() == 0) {
+                        MPI_Request r;
+                        MPI_Irecv(&len, 1, MPI_UINT64_T, recv->rank(), 0, MPI_COMM_WORLD, &r);
+                        MPI_Wait(&r, MPI_STATUS_IGNORE);
+                     }
                      if (len > 0) {
                         //std::cerr << "Rank " << rank() << ": Waiting to receive " << len << " bytes" << std::endl;
                         std::vector<char> mem(len);
                         char *data = mem.data();
-                        MPI_Bcast(data, mem.size(), MPI_BYTE, recv->rank(), MPI_COMM_WORLD);
+                        if (bcast) {
+                           MPI_Bcast(data, mem.size(), MPI_BYTE, recv->rank(), MPI_COMM_WORLD);
+                        } else if (rank() == 0) {
+                           MPI_Request r;
+                           MPI_Irecv(data, mem.size(), MPI_BYTE, recv->rank(), 0, MPI_COMM_WORLD, &r);
+                           MPI_Wait(&r, MPI_STATUS_IGNORE);
+                        }
                         //std::cerr << "Rank " << rank() << ": Received " << len << " bytes for " << recv->objectName() << std::endl;
                         vecstreambuf<char> membuf(mem);
                         ba::binary_iarchive memar(membuf);
