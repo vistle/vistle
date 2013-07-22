@@ -1,11 +1,11 @@
 RGEO = spawn("ReadCovise");
-setStringParam(RGEO, "filename", "/data/OpenFOAM/PumpTurbine/covise/test/three_geo2d.covise");
+setStringParam(RGEO, "filename", "/data/OpenFOAM/PumpTurbine-flo/covise/test/three_geo2d.covise");
 
 RGRID = spawn("ReadCovise");
-setStringParam(RGRID, "filename", "/data/OpenFOAM/PumpTurbine/covise/test/multi_geo3d.covise");
+setStringParam(RGRID, "filename", "/data/OpenFOAM/PumpTurbine-flo/covise/test/multi_geo3d.covise");
 
 RPRES = spawn("ReadCovise");
-setStringParam(RPRES, "filename", "/data/OpenFOAM/PumpTurbine/covise/test/multi_p.covise");
+setStringParam(RPRES, "filename", "/data/OpenFOAM/PumpTurbine-flo/covise/test/multi_p.covise");
 
 CUTGEO = spawn("CutGeometry");
 setVectorParam(CUTGEO, "point", 0.0, 0.0, 0.0);
