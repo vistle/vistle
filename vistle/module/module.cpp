@@ -909,6 +909,20 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
+      case message::Message::SPAWN: {
+         const message::Spawn *spawn =
+            static_cast<const message::Spawn *>(message);
+         m_otherModuleMap[spawn->spawnId()] = spawn->getName();
+         break;
+      }
+
+      case message::Message::MODULEEXIT: {
+         const message::ModuleExit *exit =
+            static_cast<const message::ModuleExit *>(message);
+         m_otherModuleMap.erase(exit->senderId());
+         break;
+      }
+
       case message::Message::BARRIER: {
 
          const message::Barrier *barrier = static_cast<const message::Barrier *>(message);
@@ -931,6 +945,15 @@ bool Module::handleMessage(const vistle::message::Message *message) {
    }
 
    return true;
+}
+
+std::string Module::getModuleName(int id) const {
+
+   auto it = m_otherModuleMap.find(id);
+   if (it == m_otherModuleMap.end())
+      return std::string();
+
+   return it->second;
 }
 
 Module::~Module() {

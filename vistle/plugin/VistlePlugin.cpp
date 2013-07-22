@@ -14,6 +14,7 @@
 #include <osg/Group>
 #include <osg/Node>
 #include <osg/Sequence>
+#include <osg/MatrixTransform>
 
 #include <core/object.h>
 #include <core/lines.h>
@@ -51,8 +52,7 @@ class OsgRenderer: public vistle::Renderer {
    bool addInputObject(const std::string & portName,
          vistle::Object::const_ptr object);
 
-   osg::ref_ptr<osg::Group> staticGeo;
-   osg::ref_ptr<osg::Sequence> animation;
+   osg::ref_ptr<osg::Group> vistleRoot;
 
    typedef std::map<std::string, VistleRenderObject *> ObjectMap;
    ObjectMap objects;
@@ -66,8 +66,36 @@ class OsgRenderer: public vistle::Renderer {
    InteractorMap m_interactorMap;
 
  protected:
-   vistle::Object::const_ptr distributeObject(const std::string &portName,
-         vistle::Object::const_ptr object);
+   struct Creator {
+      Creator(int id, const std::string &basename, osg::ref_ptr<osg::Group> parent)
+      : id(id)
+      {
+         std::stringstream s;
+         s << basename << "_" << id;
+         name = s.str();
+
+         root = new osg::MatrixTransform;
+         root->setName(name);
+         parent->addChild(root);
+
+         constant = new osg::Group;
+         constant->setName(name + "_static");
+         root->addChild(constant);
+
+         animated = new osg::Sequence;
+         animated->setName(name + "_animated");
+         root->addChild(animated);
+      }
+      int id = 0;
+      int age = 0;
+      std::string name;
+      VistleInteractor *interactor = nullptr;
+      osg::ref_ptr<osg::MatrixTransform> root;
+      osg::ref_ptr<osg::Group> constant;
+      osg::ref_ptr<osg::Sequence> animated;
+   };
+   typedef std::map<int, Creator> CreatorMap;
+   CreatorMap creatorMap;
 
 };
 
@@ -77,12 +105,9 @@ OsgRenderer::OsgRenderer(const std::string &shmname,
 {
    createInputPort("data_in");
 
-   staticGeo = new osg::Group;
-   staticGeo->setName("vistle_static_geometry");
-   animation = new osg::Sequence;
-   animation->setName("vistle_animated_geometry");
-   VRSceneGraph::instance()->addNode(staticGeo, (osg::Group*)NULL, NULL);
-   VRSceneGraph::instance()->addNode(animation, (osg::Group*)NULL, NULL);
+   vistleRoot = new osg::Group;
+   vistleRoot->setName("VistlePlugin");
+   VRSceneGraph::instance()->addNode(vistleRoot, (osg::Group*)NULL, NULL);
 
    initDone();
 }
@@ -99,8 +124,7 @@ OsgRenderer::~OsgRenderer() {
       removeObject(ro);
    }
 
-   VRSceneGraph::instance()->deleteNode("vistle_static_geometry", true);
-   VRSceneGraph::instance()->deleteNode("vistle_animated_geometry", true);
+   VRSceneGraph::instance()->deleteNode("VistlePlugin", true);
 }
 
 bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
@@ -113,6 +137,11 @@ bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, co
          cover->addPlugin("CuttingSurface");
       } else {
          cover->addPlugin(moduleName.c_str());
+      }
+
+      auto creator = creatorMap.find(senderId);
+      if (creator == creatorMap.end()) {
+         creatorMap.insert(std::make_pair(senderId, Creator(senderId, getModuleName(senderId), vistleRoot)));
       }
 
       InteractorMap::iterator it = m_interactorMap.find(senderId);
@@ -188,29 +217,31 @@ void OsgRenderer::removeAllCreatedBy(int creator) {
    }
 }
 
-typedef std::map<int, int> AgeMap;
-AgeMap ageMap;
-
 void OsgRenderer::addInputObject(vistle::Object::const_ptr container,
                                  vistle::Object::const_ptr geometry,
                                  vistle::Object::const_ptr colors,
                                  vistle::Object::const_ptr normals,
                                  vistle::Object::const_ptr texture) {
 
-   AgeMap::iterator it = ageMap.find(container->getCreator());
-   if (it != ageMap.end()) {
-      if (it->second < container->getExecutionCounter()) {
-         std::cerr << "removing all created by " << container->getCreator() << ", age " << container->getExecutionCounter() << ", was " << it->second << std::endl;
-         removeAllCreatedBy(container->getCreator());
-      } else if (it->second > container->getExecutionCounter()) {
-         std::cerr << "received outdated object created by " << container->getCreator() << ", age " << container->getExecutionCounter() << ", was " << it->second << std::endl;
+   int creatorId = geometry->getCreator();
+   CreatorMap::iterator it = creatorMap.find(creatorId);
+   if (it != creatorMap.end()) {
+      if (it->second.age < geometry->getExecutionCounter()) {
+         std::cerr << "removing all created by " << creatorId << ", age " << geometry->getExecutionCounter() << ", was " << it->second.age << std::endl;
+         removeAllCreatedBy(creatorId);
+      } else if (it->second.age > geometry->getExecutionCounter()) {
+         std::cerr << "received outdated object created by " << creatorId << ", age " << geometry->getExecutionCounter() << ", was " << it->second.age << std::endl;
          return;
       }
+   } else {
+      std::string name = getModuleName(geometry->getCreator());
+      it = creatorMap.insert(std::make_pair(creatorId, Creator(geometry->getCreator(), name, vistleRoot))).first;
    }
-   ageMap[container->getCreator()] = container->getExecutionCounter();
+   Creator &creator = it->second;
+   creator.age = geometry->getExecutionCounter();
 
-   if (objects.find(container->getName()) != objects.end()) {
-      std::cerr << "Object added twice: " << container->getName() << std::endl;
+   if (objects.find(geometry->getName()) != objects.end()) {
+      std::cerr << "Object added twice: " << geometry->getName() << std::endl;
       return;
    }
 
@@ -220,16 +251,16 @@ void OsgRenderer::addInputObject(vistle::Object::const_ptr container,
    if (!node)
       return;
 
-   VistleRenderObject *ro = new VistleRenderObject(container);
-   objects[container->getName()] = ro;
-   node->setName(container->getName());
+   VistleRenderObject *ro = new VistleRenderObject(geometry);
+   objects[geometry->getName()] = ro;
+   node->setName(geometry->getName());
    ro->setNode(node);
    ro->setGeometry(geometry);
    ro->setColors(colors);
    ro->setNormals(normals);
    ro->setTexture(texture);
 
-   osg::Group *parent = staticGeo;
+   osg::ref_ptr<osg::Group> parent = creator.constant;
    int t = geometry->getTimestep();
    if (t < 0 && colors) {
       t = colors->getTimestep();
@@ -241,27 +272,19 @@ void OsgRenderer::addInputObject(vistle::Object::const_ptr container,
       t = texture->getTimestep();
    }
    if (t >= 0) {
-      while (t >= animation->getNumChildren()) {
-         animation->addChild(new osg::Group);
+      while (t >= creator.animated->getNumChildren()) {
+         creator.animated->addChild(new osg::Group);
       }
-      parent = dynamic_cast<osg::Group *>(animation->getChild(t));
+      parent = dynamic_cast<osg::Group *>(creator.animated->getChild(t));
       assert(parent);
-      coVRAnimationManager::instance()->addSequence(animation);
+      coVRAnimationManager::instance()->addSequence(creator.animated);
    }
    VRSceneGraph::instance()->addNode(ro->node(), parent, ro);
 }
 
 
-vistle::Object::const_ptr OsgRenderer::distributeObject(const std::string &portName,
-      vistle::Object::const_ptr object) {
-
-   return object;
-}
-
 bool OsgRenderer::addInputObject(const std::string & portName,
                                  vistle::Object::const_ptr object) {
-
-   object = distributeObject(portName, object);
 
 #if 0
    std::cout << "++++++OSGRenderer addInputObject " << object->getType()

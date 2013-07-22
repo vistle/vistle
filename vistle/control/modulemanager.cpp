@@ -240,6 +240,7 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    toUi.setSpawnId(moduleID);
    sendUi(toUi);
    m_stateTracker.handle(toUi);
+   sendAll(toUi);
 
    int numSpwan = spawn.getMpiSize();
    if (numSpwan <= 0 || numSpwan > m_size)
@@ -326,6 +327,10 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
       const int id = mit.first;
       const std::string moduleName = getModuleName(mit.first);
 
+      message::Spawn spawn(id, moduleName);
+      spawn.setRank(m_rank);
+      sendMessage(moduleID, spawn);
+
       for (std::string paramname: m_stateTracker.getParameters(id)) {
          const Parameter *param = m_stateTracker.getParameter(id, paramname);
 
@@ -347,7 +352,6 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
 bool ModuleManager::handle(const message::Started &started) {
 
    m_stateTracker.handle(started);
-   int moduleID = started.senderId();
    // FIXME: not valid for cover
    //assert(m_stateTracker.getModuleName(moduleID) == started.getName());
 
@@ -394,6 +398,8 @@ bool ModuleManager::handle(const message::Disconnect &disconnect) {
 }
 
 bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
+
+   sendAll(moduleExit);
 
    int mod = moduleExit.senderId();
    if (!moduleExit.isForwarded()) {

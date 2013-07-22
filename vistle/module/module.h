@@ -107,6 +107,9 @@ class V_COREEXPORT Module {
    void setSyncMessageProcessing(bool sync);
 
    bool isConnected(const std::string &portname) const;
+
+   std::string getModuleName(int id) const;
+
  private:
    Parameter *findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;
@@ -124,6 +127,9 @@ class V_COREEXPORT Module {
    ObjectCache m_cache;
    ObjectCache::CacheMode m_defaultCacheMode;
    bool m_syncMessageProcessing;
+
+   typedef std::map<int, std::string> OtherModuleMap;
+   OtherModuleMap m_otherModuleMap;
 };
 
 } // namespace vistle
