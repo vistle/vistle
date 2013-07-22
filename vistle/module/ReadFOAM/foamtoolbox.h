@@ -70,33 +70,35 @@ class Boundaries {
 
    bool isBoundaryFace(const index_t face) {
 
-      for (auto i = boundaries.begin(); i != boundaries.end(); i ++) {
-         if (i->type == "processor")
-            continue;
-         if (face >= i->startFace && face < i->startFace + i->numFaces)
-            return true;
-      }
-      return false;
+      return isBoundaryFace(boundaries, face);
    }
 
    bool isProcessorBoundaryFace(const index_t face) {
 
-      for (auto i = boundaries.begin(); i != boundaries.end(); i ++) {
-         if (i->type != "processor")
-            continue;
-         if (face >= i->startFace && face < i->startFace + i->numFaces)
+      return isBoundaryFace(procboundaries, face);
+   }
+
+   void addBoundary(const Boundary &b) {
+
+      if (b.type == "processor") {
+         procboundaries.push_back(b);
+      } else {
+         boundaries.push_back(b);
+      }
+   }
+
+ private:
+   bool isBoundaryFace(const std::vector<Boundary> &bound, const index_t face) {
+
+      for (auto i = bound.begin(); i != bound.end(); ++i) {
+         if (face >= i->startFace && face < i->startFace+i->numFaces)
             return true;
       }
       return false;
    }
 
-   void addBoundary(const Boundary &b) {
-
-      boundaries.push_back(b);
-   }
-
- private:
    std::vector<Boundary> boundaries;
+   std::vector<Boundary> procboundaries;
 };
 
 CaseInfo getCaseInfo(const std::string &casedir, double mintime, double maxtime);
