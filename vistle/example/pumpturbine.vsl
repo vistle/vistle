@@ -1,0 +1,62 @@
+FOAM=spawn("ReadFOAM")
+setStringParam(FOAM, "fieldname0", "p")
+setStringParam(FOAM, "casedir", "/Users/hpcmaumu/data/OpenFOAM/daniel")
+setStringParam(FOAM, "casedir", "/Users/hpcmaumu/data/OpenFOAM/PumpTurbine")
+setStringParam(FOAM, "casedir", "/data/OpenFOAM/PumpTurbine-flo/transient")
+setStringParam(FOAM, "casedir", "/data/OpenFOAM/PumpTurbine")
+#setFloatParam(FOAM, "starttime", 1.75)
+setFloatParam(FOAM, "stoptime", 1.8462)
+setFloatParam(FOAM, "stoptime", 1.751)
+
+VERT=spawn("CellToVert")
+
+CUTGEO = spawn("CutGeometry");
+setIntParam(CUTGEO, "_cacheMode", 0);
+setVectorParam(CUTGEO, "point", 0.0, 0.0, 0.0);
+setVectorParam(CUTGEO, "vertex", 1.0, 0.0, 0.0);
+
+CUTSURF = spawn("CuttingSurface");
+setVectorParam(CUTSURF, "point", 0.0, 0.0, 0.0);
+setVectorParam(CUTSURF, "vertex", 1.0, 0.0, 0.0);
+
+ISOSURF = spawn("IsoSurface");
+setFloatParam(ISOSURF, "isovalue", -10.0);
+
+#EXT = spawn("Extrema");
+
+COLOR = spawn("Color");
+setFloatParam(COLOR, "min", -30.)
+setFloatParam(COLOR, "max", 330.)
+COLLECT = spawn("Collect");
+
+RENDERER = spawn("cover");
+setIntParam(RENDERER, "master_only", 1)
+#WRITEARCHIVE = spawn("WriteVistle");
+#setParam(WRITEARCHIVE, "filename", "turbinevistle.archive");
+#setParam(WRITEARCHIVE, "format", 0); # 0=binary, 1=text, 2=XML
+
+#connect(FOAM, "data_out0", EXT, "data_in");
+
+connect(FOAM, "grid_out1", CUTGEO, "grid_in");
+connect(CUTGEO, "grid_out", RENDERER, "data_in");
+#connect(CUTGEO, "grid_out", WRITEARCHIVE, "grid_in");
+
+connect(FOAM, "grid_out", CUTSURF, "grid_in");
+connect(FOAM, "grid_out", VERT, "grid_in");
+connect(FOAM, "data_out0", VERT, "data_in");
+connect(VERT, "data_out", CUTSURF, "data_in");
+connect(FOAM, "grid_out", ISOSURF, "grid_in");
+connect(VERT, "data_out", ISOSURF, "data_in");
+connect(CUTSURF, "grid_out", COLLECT, "grid_in");
+connect(CUTSURF, "data_out", COLOR, "data_in");
+connect(COLOR, "data_out", COLLECT, "texture_in");
+connect(COLLECT, "grid_out", RENDERER, "data_in");
+#connect(COLLECT, "grid_out", WRITEARCHIVE, "grid_in");
+
+connect(ISOSURF, "grid_out", RENDERER, "data_in");
+#connect(ISOSURF, "grid_out", WRITEARCHIVE, "grid_in");
+#connect(FOAM, "grid_out1", RENDERER, "data_in");
+
+barrier();
+
+compute(FOAM);
