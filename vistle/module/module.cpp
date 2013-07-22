@@ -88,6 +88,8 @@ Module::Module(const std::string &n, const std::string &shmname,
 #else
              << std::endl;
 #endif
+
+   addIntParameter("_cacheMode", "input object caching (-1: default, 0: none, 1: all)", m_cache.cacheMode());
 }
 
 void Module::initDone() const {
@@ -131,6 +133,8 @@ void Module::setCacheMode(ObjectCache::CacheMode mode) {
       m_cache.setCacheMode(m_defaultCacheMode);
    else
       m_cache.setCacheMode(mode);
+
+   setIntParameter("_cacheMode", m_cache.cacheMode());
 }
 
 void Module::setDefaultCacheMode(ObjectCache::CacheMode mode) {
@@ -342,6 +346,15 @@ IntParameter *Module::addIntParameter(const std::string & name, const std::strin
 
 bool Module::setIntParameter(const std::string & name,
                              const int value, const message::SetParameter *inResponseTo) {
+
+   if (name == "_cacheMode" && inResponseTo) {
+      if (value < 0) 
+         setCacheMode(ObjectCache::CacheDefault);
+      else if (value == 0)
+         setCacheMode(ObjectCache::CacheNone);
+      else
+         setCacheMode(ObjectCache::CacheAll);
+   }
 
    return setParameter(name, value, inResponseTo);
 }
