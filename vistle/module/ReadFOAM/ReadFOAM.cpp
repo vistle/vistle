@@ -410,7 +410,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
    }
 
    if (timestep < 0) {
-      dir += "/constant";
+      dir += "/" + m_case.constantdir;
       if (!m_case.varyingGrid) {
          auto ret = loadGrid(dir + "/polyMesh");
          UnstructuredGrid::ptr grid = ret.first;

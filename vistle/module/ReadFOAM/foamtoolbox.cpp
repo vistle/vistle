@@ -314,6 +314,12 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
                   info.timedirs[t]=bn;
                }
             }
+         } else {
+            if (bn == "constant") {
+               info.constantdir = bn;
+            } else if (bn == "0" && info.constantdir.empty()) {
+               info.constantdir = bn;
+            }
          }
       }
    }
@@ -332,7 +338,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
                   return false;
                first = false;
             }
-         } else if (bn == "constant") {
+         } else if (bn == info.constantdir) {
             bool result = checkSubDirectory(info, it->path().string(), false);
             if (!result)
                return false;

@@ -41,6 +41,7 @@ struct CaseInfo {
 
    std::map<double, std::string> timedirs; //Map of all the Time Directories
    std::map<std::string, int> varyingFields, constantFields;
+   std::string constantdir;
    int numblocks;
    bool varyingGrid, varyingCoords;
    bool valid;
