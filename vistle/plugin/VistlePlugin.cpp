@@ -71,7 +71,7 @@ class OsgRenderer: public vistle::Renderer {
          : ro(ro)
          , timestep(time)
          , generator(generator)
-         , node_future(std::async(generator))
+         , node_future(std::async(std::launch::async, generator))
       {}
       VistleRenderObject *ro;
       int timestep;
@@ -348,7 +348,7 @@ void OsgRenderer::render() {
    int numAdd = 0;
    MPI_Allreduce(&numReady, &numAdd, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
-   //std::cerr << "adding " << numAdd << " delayed objects" << std::endl;
+   //std::cerr << "adding " << numAdd << " delayed objects, " << m_delayedObjects.size() << " waiting" << std::endl;
    for (int i=0; i<numAdd; ++i) {
       auto &node_future = m_delayedObjects.front().node_future;
       auto &ro = m_delayedObjects.front().ro;
