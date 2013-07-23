@@ -327,10 +327,39 @@ osg::Node *VistleGeometryGenerator::operator()() {
    if (geode) {
       geode->setName(m_geo->getName());
 
+      std::map<std::string, std::string> parammap;
       std::string name = m_geo->getAttribute("shader");
       std::string params = m_geo->getAttribute("shaderparams");
+      // format has to be '"key=value" "key=value1 value2"'
+      bool escaped = false;
+      std::string::size_type keyvaluestart = std::string::npos;
+      for (std::string::size_type i=0; i<params.length(); ++i) {
+         if (!escaped) {
+            if (params[i] == '\\') {
+               escaped = true;
+               continue;
+            }
+            if (params[i] == '"') {
+               if (keyvaluestart == std::string::npos) {
+                  keyvaluestart = i+1;
+               } else {
+                  std::string keyvalue = params.substr(keyvaluestart, i-keyvaluestart-1);
+                  std::cerr << "found keyvalue: " << keyvalue << std::endl;
+                  std::string::size_type eq = keyvalue.find('=');
+                  if (eq == std::string::npos) {
+                     std::cerr << "ignoring " << keyvalue << ": no '=' sign" << std::endl;
+                  } else {
+                     std::string key = keyvalue.substr(0, eq-1);
+                     std::string value = keyvalue.substr(eq+1);
+                     parammap.insert(std::make_pair(key, value));
+                  }
+               }
+            }
+         }
+         escaped = false;
+      }
       if (!name.empty()) {
-         coVRShader *shader = coVRShaderList::instance()->get(name);
+         coVRShader *shader = coVRShaderList::instance()->get(name, &parammap);
          shader->apply(geode);
       }
    }
