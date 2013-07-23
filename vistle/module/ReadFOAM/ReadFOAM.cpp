@@ -389,7 +389,6 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
          continue;
       Object::ptr obj = loadField(meshdir, field);
       setMeta(obj, processor, timestep);
-#pragma omp critical
       addObject(m_dataOut[i], obj);
    }
 
@@ -468,13 +467,10 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
             grid = ret.first;
             poly = ret.second;
          }
-#pragma omp critical
-         {
-            setMeta(grid, processor, timestep);
-            addObject(m_gridOut, grid);
-            setMeta(poly, processor, timestep);
-            addObject(m_boundOut, poly);
-         }
+         setMeta(grid, processor, timestep);
+         addObject(m_gridOut, grid);
+         setMeta(poly, processor, timestep);
+         addObject(m_boundOut, poly);
       }
       loadFields(dir, m_case.varyingFields, processor, timestep);
    }
@@ -538,7 +534,6 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
 
    readConstant(casedir);
    int skipfactor = m_timeskip->getValue()+1;
-#pragma omp parallel for schedule(dynamic)
    for (int timestep=0; timestep<m_case.timedirs.size()/skipfactor; ++timestep) {
       readTime(casedir, timestep);
    }
