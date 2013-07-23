@@ -2,6 +2,7 @@
 #define VISTLEGEOMETRYGENERATOR_H
 
 #include <core/object.h>
+#include <mutex>
 
 namespace osg {
    class Node;
@@ -21,6 +22,8 @@ class VistleGeometryGenerator {
       vistle::Object::const_ptr m_color;
       vistle::Object::const_ptr m_normal;
       vistle::Object::const_ptr m_tex;
+
+      static std::mutex s_coverMutex;
 };
 
 #endif

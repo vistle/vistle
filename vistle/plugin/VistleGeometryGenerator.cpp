@@ -18,6 +18,8 @@
 using namespace opencover;
 using namespace vistle;
 
+std::mutex VistleGeometryGenerator::s_coverMutex;
+
 VistleGeometryGenerator::VistleGeometryGenerator(vistle::Object::const_ptr geo,
             vistle::Object::const_ptr color,
             vistle::Object::const_ptr normal,
@@ -359,8 +361,10 @@ osg::Node *VistleGeometryGenerator::operator()() {
          escaped = false;
       }
       if (!name.empty()) {
-         coVRShader *shader = coVRShaderList::instance()->get(name, &parammap);
+         s_coverMutex.lock();
+         coVRShader *shader = coVRShaderList::instance()->get(name);
          shader->apply(geode);
+         s_coverMutex.unlock();
       }
    }
 
