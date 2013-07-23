@@ -331,7 +331,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
       std::map<std::string, std::string> parammap;
       std::string name = m_geo->getAttribute("shader");
-      std::string params = m_geo->getAttribute("shaderparams");
+      std::string params = m_geo->getAttribute("shader_params");
       // format has to be '"key=value" "key=value1 value2"'
       bool escaped = false;
       std::string::size_type keyvaluestart = std::string::npos;
@@ -362,7 +362,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
       }
       if (!name.empty()) {
          s_coverMutex.lock();
-         coVRShader *shader = coVRShaderList::instance()->get(name);
+         coVRShader *shader = coVRShaderList::instance()->get(name, &parammap);
          shader->apply(geode);
          s_coverMutex.unlock();
       }
