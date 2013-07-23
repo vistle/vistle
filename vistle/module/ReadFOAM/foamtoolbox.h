@@ -14,23 +14,33 @@
 
 struct HeaderInfo
 {
-    std::string version;
-    std::string format;
-    std::string fieldclass;
-    std::string location;
-    std::string object;
-    std::string dimensions;
-    std::string internalField;
-    index_t lines = 0;
-    bool valid;
+   HeaderInfo()
+       : lines(0)
+       , valid(false)
+   {}
 
+   std::string version;
+   std::string format;
+   std::string fieldclass;
+   std::string location;
+   std::string object;
+   std::string dimensions;
+   std::string internalField;
+   index_t lines;
+   bool valid;
 };
 
 struct DimensionInfo {
-   index_t points = 0;
-   index_t cells = 0;
-   index_t faces = 0;
-   index_t internalFaces = 0;
+    DimensionInfo()
+        : points(0)
+        , cells(0)
+        , faces (0)
+        , internalFaces(0)
+   {}
+   index_t points;
+   index_t cells;
+   index_t faces;
+   index_t internalFaces;
 };
 
 
@@ -58,10 +68,10 @@ class Boundary {
       {
       }
 
-   const std::string name;
-   const index_t startFace;
-   const index_t numFaces;
-   const std::string type;
+   std::string name;
+   index_t startFace;
+   index_t numFaces;
+   std::string type;
 };
 
 
@@ -93,7 +103,7 @@ class Boundaries {
  private:
    bool isBoundaryFace(const std::vector<Boundary> &bound, const index_t face) {
 
-      for (auto i = bound.begin(); i != bound.end(); ++i) {
+      for (std::vector<Boundary>::const_iterator i = bound.begin(); i != bound.end(); ++i) {
          if (face >= i->startFace && face < i->startFace+i->numFaces)
             return true;
       }
@@ -128,6 +138,6 @@ bool isPointingInwards(index_t &face,
       std::vector<index_t> &owners,
       std::vector<index_t> &neighbors);
 std::vector<index_t> getVerticesForCell(const std::vector<index_t> &cellfaces,
-      const std::vector<std::vector<index_t>> &faces);
+      const std::vector<std::vector<index_t>  > &faces);
 
 #endif

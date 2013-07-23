@@ -102,7 +102,7 @@ class FilteringStreamDeleter {
 
 boost::shared_ptr<std::istream> getStreamForFile(const std::string &filename) {
 
-   std::ifstream *s = new std::ifstream(filename, std::ios_base::in | std::ios_base::binary);
+   std::ifstream *s = new std::ifstream(filename.c_str(), std::ios_base::in | std::ios_base::binary);
    if (!s->is_open()) {
       std::cerr << "failed to open " << filename << std::endl;
       return boost::shared_ptr<std::istream>();
@@ -177,7 +177,7 @@ bool checkMeshDirectory(CaseInfo &info, const std::string &meshdir, bool time) {
 
    bool havePoints = false;
    std::map<std::string, std::string> meshfiles;
-   for (auto it = bf::directory_iterator(p);
+   for (bf::directory_iterator it(p);
          it != bf::directory_iterator();
          ++it) {
       bf::path ent(*it);
@@ -221,7 +221,7 @@ bool checkSubDirectory(CaseInfo &info, const std::string &timedir, bool time) {
       return false;
    }
 
-   for (auto it = bf::directory_iterator(dir);
+   for (bf::directory_iterator it(dir);
          it != bf::directory_iterator();
          ++it) {
       bf::path p(*it);
@@ -258,7 +258,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
    }
 
    int num_processors = 0;
-   for (auto it = bf::directory_iterator(dir);
+   for (bf::directory_iterator it(dir);
          it != bf::directory_iterator();
          ++it) {
       if (bf::is_directory(*it)) {
@@ -295,7 +295,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
    }
 
    int num_timesteps = 0;
-   for (auto it = bf::directory_iterator(dir);
+   for (bf::directory_iterator it(dir);
          it != bf::directory_iterator();
          ++it) {
       if (bf::is_directory(*it)) {
@@ -324,7 +324,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
    }
 
    bool first = true;
-   for (auto it = bf::directory_iterator(dir);
+   for (bf::directory_iterator it(dir);
          it != bf::directory_iterator();
          ++it) {
       if (bf::is_directory(*it)) {
@@ -353,6 +353,25 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
    return true;
 }
 
+bool checkFields(std::map<std::string, int> &fields, int nRequired)
+{
+    bool ignored=false;
+    for (std::map<std::string, int>::iterator it=fields.begin(),next;
+         it!=fields.end();
+         it=next) {
+       next=it;
+       ++next;
+       std::cerr << "  " << it->first << ": " << it->second;
+       if (it->second != nRequired) {
+          ignored=true;
+          std::cerr << " (ignored)";
+          fields.erase(it->first);
+       }
+    }
+   std::cerr << std::endl;
+   return !ignored;
+}
+
 CaseInfo getCaseInfo(const std::string &casedir, double mintime, double maxtime) {
 
    CaseInfo info;
@@ -365,24 +384,10 @@ CaseInfo getCaseInfo(const std::string &casedir, double mintime, double maxtime)
 
    int np = info.numblocks > 0 ? info.numblocks : 1;
    std::cerr << "  constant:";
-   for (auto field: info.constantFields) {
-      std::cerr << "  " << field.first << ": " << field.second;
-      if (field.second != np) {
-         std::cerr << " (ignored)";
-         info.constantFields.erase(field.first);
-      }
-   }
-   std::cerr << std::endl;
+   checkFields(info.constantFields, np);
 
    std::cerr << "  varying: ";
-   for (auto field: info.varyingFields) {
-      std::cerr << "  " << field.first << ": " << field.second;
-      if (field.second != np*info.timedirs.size()) {
-         std::cerr << " (ignored)";
-         info.varyingFields.erase(field.first);
-      }
-   }
-   std::cerr << std::endl;
+   checkFields(info.varyingFields, np*info.timedirs.size());
 
    return info;
 }
@@ -578,7 +583,7 @@ struct BoundaryParser
 Boundaries loadBoundary(const std::string &meshdir) {
 
    Boundaries bounds;
-   auto stream = getStreamForFile(meshdir, "boundary");
+   boost::shared_ptr<std::istream> stream = getStreamForFile(meshdir, "boundary");
    if (!stream)
       return bounds;
 
@@ -604,10 +609,10 @@ Boundaries loadBoundary(const std::string &meshdir) {
          std::cout << "    " << i->first << " => " << i->second << std::endl;
       }
 #endif
-      const auto &cur = top->second;
-      auto nFaces = cur.find("nFaces");
-      auto startFace = cur.find("startFace");
-      auto type = cur.find("type");
+      const std::map<std::string, std::string> &cur = top->second;
+      std::map<std::string, std::string>::const_iterator nFaces = cur.find("nFaces");
+      std::map<std::string, std::string>::const_iterator startFace = cur.find("startFace");
+      std::map<std::string, std::string>::const_iterator type = cur.find("type");
       if (nFaces != cur.end() && startFace != cur.end() && type != cur.end()) {
          std::string t = type->second;
          index_t n = atol(nFaces->second.c_str());
@@ -662,7 +667,7 @@ bool readIndexArray(std::istream &stream, index_t *p, const size_t lines) {
 }
 
 bool readIndexListArray(std::istream &stream, std::vector<index_t> *p, const size_t lines) {
-   return readArray<std::vector<index_t>>(stream, p, lines);
+   return readArray<std::vector<index_t> >(stream, p, lines);
 }
 
 bool readFloatArray(std::istream &stream, scalar_t *p, const size_t lines) {
@@ -747,7 +752,7 @@ bool isPointingInwards(index_t &face,
 }
 
 std::vector<index_t> getVerticesForCell(const std::vector<index_t> &cellfaces,
-      const std::vector<std::vector<index_t>> &faces) {
+      const std::vector<std::vector<index_t> > &faces) {
 
    std::vector<index_t> cellvertices;
    for(index_t i=0;i<cellfaces.size();i++) {
