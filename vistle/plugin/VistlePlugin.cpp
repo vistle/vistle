@@ -1,3 +1,5 @@
+#include <future>
+
 // cover
 #include <kernel/coVRPluginSupport.h>
 #include <kernel/VRSceneGraph.h>
@@ -63,6 +65,20 @@ class OsgRenderer: public vistle::Renderer {
 
    typedef std::map<int, VistleInteractor *> InteractorMap;
    InteractorMap m_interactorMap;
+
+   struct DelayedObject {
+      DelayedObject(VistleRenderObject *ro, int time, VistleGeometryGenerator generator)
+         : ro(ro)
+         , timestep(time)
+         , generator(generator)
+         , node_future(std::async(generator))
+      {}
+      VistleRenderObject *ro;
+      int timestep;
+      VistleGeometryGenerator generator;
+      std::future<osg::Node *> node_future;
+   };
+   std::deque<DelayedObject> m_delayedObjects;
 
  protected:
    struct Creator {
@@ -247,22 +263,12 @@ void OsgRenderer::addInputObject(vistle::Object::const_ptr container,
       return;
    }
 
-   VistleGeometryGenerator generator(geometry, colors, normals, texture);
-   osg::Node *node = generator();
-
-   if (!node)
-      return;
-
    VistleRenderObject *ro = new VistleRenderObject(geometry);
-   objects[geometry->getName()] = ro;
-   node->setName(geometry->getName());
-   ro->setNode(node);
    ro->setGeometry(geometry);
    ro->setColors(colors);
    ro->setNormals(normals);
    ro->setTexture(texture);
 
-   osg::ref_ptr<osg::Group> parent = creator.constant;
    int t = geometry->getTimestep();
    if (t < 0 && colors) {
       t = colors->getTimestep();
@@ -273,15 +279,7 @@ void OsgRenderer::addInputObject(vistle::Object::const_ptr container,
    if (t < 0 && texture) {
       t = texture->getTimestep();
    }
-   if (t >= 0) {
-      while (t >= creator.animated->getNumChildren()) {
-         creator.animated->addChild(new osg::Group);
-      }
-      parent = dynamic_cast<osg::Group *>(creator.animated->getChild(t));
-      assert(parent);
-      coVRAnimationManager::instance()->addSequence(creator.animated);
-   }
-   VRSceneGraph::instance()->addNode(ro->node(), parent, ro);
+   m_delayedObjects.push_back(DelayedObject(ro, t, VistleGeometryGenerator(geometry, colors, normals, texture)));
 }
 
 
@@ -334,6 +332,53 @@ bool OsgRenderer::addInputObject(const std::string & portName,
 
 void OsgRenderer::render() {
 
+   if (m_delayedObjects.empty())
+      return;
+
+   int numReady = 0;
+   for (size_t i=0; i<m_delayedObjects.size(); ++i) {
+      auto &node_future = m_delayedObjects[i].node_future;
+      auto status = node_future.wait_for(std::chrono::seconds(0));
+      if (status != std::future_status::ready) {
+         break;
+      }
+      ++numReady;
+   }
+
+   int numAdd = 0;
+   MPI_Allreduce(&numReady, &numAdd, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+
+   //std::cerr << "adding " << numAdd << " delayed objects" << std::endl;
+   for (int i=0; i<numAdd; ++i) {
+      auto &node_future = m_delayedObjects.front().node_future;
+      auto &ro = m_delayedObjects.front().ro;
+      osg::Node *node = node_future.get();
+      if (node) {
+         int creatorId = ro->object()->getCreator();
+         CreatorMap::iterator it = creatorMap.find(creatorId);
+         assert(it != creatorMap.end());
+         Creator &creator = it->second;
+
+         ro->setNode(node);
+         objects[ro->object()->getName()] = ro;
+         node->setName(ro->object()->getName());
+         osg::ref_ptr<osg::Group> parent = creator.constant;
+         int t = m_delayedObjects.front().timestep;
+         if (t >= 0) {
+            while (t >= creator.animated->getNumChildren()) {
+               creator.animated->addChild(new osg::Group);
+            }
+            parent = dynamic_cast<osg::Group *>(creator.animated->getChild(t));
+            assert(parent);
+            coVRAnimationManager::instance()->addSequence(creator.animated);
+         }
+         VRSceneGraph::instance()->addNode(ro->node(), parent, ro);
+      } else {
+         std::cerr << "discarding delayed object " << ro->object()->getName() << ": no node created" << std::endl;
+         delete ro;
+      }
+      m_delayedObjects.pop_front();
+   }
 }
 
 class VistlePlugin: public opencover::coVRPlugin {
