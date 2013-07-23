@@ -88,7 +88,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numCorners = triangles->getNumCorners();
          const Index numVertices = triangles->getNumVertices();
 
-         std::cerr << deb.str() << "Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]" << std::endl;
+         //std::cerr << deb.str() << "Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]" << std::endl;
 
          Index *cl = &triangles->cl()[0];
          vistle::Scalar *x = &triangles->x()[0];
@@ -177,7 +177,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numElements = lines->getNumElements();
          const Index numCorners = lines->getNumCorners();
 
-         std::cerr << deb.str() << "Lines: [ #c " << numCorners << ", #e " << numElements << " ]" << std::endl;
+         //std::cerr << deb.str() << "Lines: [ #c " << numCorners << ", #e " << numElements << " ]" << std::endl;
 
          Index *el = &lines->el()[0];
          Index *cl = &lines->cl()[0];
@@ -229,7 +229,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numVertices = polygons->getNumVertices();
          const Index numNormals = vec ? vec->getSize() : 0;
 
-         std::cerr << deb.str() << "Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]" << std::endl;
+         //std::cerr << deb.str() << "Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]" << std::endl;
 
          Index *el = &polygons->el()[0];
          Index *cl = &polygons->cl()[0];
@@ -344,13 +344,13 @@ osg::Node *VistleGeometryGenerator::operator()() {
                   keyvaluestart = i+1;
                } else {
                   std::string keyvalue = params.substr(keyvaluestart, i-keyvaluestart-1);
-                  std::cerr << "found keyvalue: " << keyvalue << std::endl;
                   std::string::size_type eq = keyvalue.find('=');
                   if (eq == std::string::npos) {
                      std::cerr << "ignoring " << keyvalue << ": no '=' sign" << std::endl;
                   } else {
-                     std::string key = keyvalue.substr(0, eq-1);
+                     std::string key = keyvalue.substr(0, eq);
                      std::string value = keyvalue.substr(eq+1);
+                     //std::cerr << "found key: " << key << ", value: " << value << std::endl;
                      parammap.insert(std::make_pair(key, value));
                   }
                }
