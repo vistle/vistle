@@ -67,3 +67,5 @@ add_subdirectory(plugin)
 
 add_subdirectory(tools)
 add_subdirectory(shmem)
+
+add_subdirectory(gui)
