@@ -391,7 +391,7 @@ BOOST_PYTHON_MODULE(_vistle)
     def("getParameterType", getParameterType, "get type of parameter named `arg2` of module with ID `arg1`");
     def("isParameterDefault", isParameterDefault, "check whether parameter `arg2` of module with ID `arg1` differs from its default value");
     def("getIntParam", getParameterValue<int>, "get value of parameter named `arg2` of module with ID `arg1`");
-    def("getFloatParam", getParameterValue<Scalar>, "get value of parameter named `arg2` of module with ID `arg1`");
+    def("getFloatParam", getParameterValue<double>, "get value of parameter named `arg2` of module with ID `arg1`");
     def("getVectorParam", getParameterValue<ParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");
     def("getStringParam", getParameterValue<std::string>, "get value of parameter named `arg2` of module with ID `arg1`");
 }

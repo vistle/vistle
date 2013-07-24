@@ -18,6 +18,8 @@
 using namespace opencover;
 using namespace vistle;
 
+std::mutex VistleGeometryGenerator::s_coverMutex;
+
 VistleGeometryGenerator::VistleGeometryGenerator(vistle::Object::const_ptr geo,
             vistle::Object::const_ptr color,
             vistle::Object::const_ptr normal,
@@ -88,7 +90,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numCorners = triangles->getNumCorners();
          const Index numVertices = triangles->getNumVertices();
 
-         std::cerr << deb.str() << "Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]" << std::endl;
+         //std::cerr << deb.str() << "Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]" << std::endl;
 
          Index *cl = &triangles->cl()[0];
          vistle::Scalar *x = &triangles->x()[0];
@@ -177,7 +179,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numElements = lines->getNumElements();
          const Index numCorners = lines->getNumCorners();
 
-         std::cerr << deb.str() << "Lines: [ #c " << numCorners << ", #e " << numElements << " ]" << std::endl;
+         //std::cerr << deb.str() << "Lines: [ #c " << numCorners << ", #e " << numElements << " ]" << std::endl;
 
          Index *el = &lines->el()[0];
          Index *cl = &lines->cl()[0];
@@ -229,7 +231,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numVertices = polygons->getNumVertices();
          const Index numNormals = vec ? vec->getSize() : 0;
 
-         std::cerr << deb.str() << "Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]" << std::endl;
+         //std::cerr << deb.str() << "Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]" << std::endl;
 
          Index *el = &polygons->el()[0];
          Index *cl = &polygons->cl()[0];
@@ -327,11 +329,42 @@ osg::Node *VistleGeometryGenerator::operator()() {
    if (geode) {
       geode->setName(m_geo->getName());
 
+      std::map<std::string, std::string> parammap;
       std::string name = m_geo->getAttribute("shader");
-      std::string params = m_geo->getAttribute("shaderparams");
+      std::string params = m_geo->getAttribute("shader_params");
+      // format has to be '"key=value" "key=value1 value2"'
+      bool escaped = false;
+      std::string::size_type keyvaluestart = std::string::npos;
+      for (std::string::size_type i=0; i<params.length(); ++i) {
+         if (!escaped) {
+            if (params[i] == '\\') {
+               escaped = true;
+               continue;
+            }
+            if (params[i] == '"') {
+               if (keyvaluestart == std::string::npos) {
+                  keyvaluestart = i+1;
+               } else {
+                  std::string keyvalue = params.substr(keyvaluestart, i-keyvaluestart-1);
+                  std::string::size_type eq = keyvalue.find('=');
+                  if (eq == std::string::npos) {
+                     std::cerr << "ignoring " << keyvalue << ": no '=' sign" << std::endl;
+                  } else {
+                     std::string key = keyvalue.substr(0, eq);
+                     std::string value = keyvalue.substr(eq+1);
+                     //std::cerr << "found key: " << key << ", value: " << value << std::endl;
+                     parammap.insert(std::make_pair(key, value));
+                  }
+               }
+            }
+         }
+         escaped = false;
+      }
       if (!name.empty()) {
-         coVRShader *shader = coVRShaderList::instance()->get(name);
+         s_coverMutex.lock();
+         coVRShader *shader = coVRShaderList::instance()->get(name, &parammap);
          shader->apply(geode);
+         s_coverMutex.unlock();
       }
    }
 
