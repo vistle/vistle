@@ -73,7 +73,7 @@ void MainWindow::debug_msg(QString debugMsg)
 
 void MainWindow::newModule_msg(int moduleId, QString moduleName)
 {
-    QString text = "Module started: " + moduleName + " with ID: " + moduleId + "\n";
+    QString text = "Module started: " + moduleName + " with ID: " + QString::number(moduleId) + "\n";
     ui->vistleOutput->append(text);
 }
 
