@@ -225,9 +225,7 @@ void Scene::invertModules()
  */
 void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
-    // ignore all buttons but the left button
     ///\todo add other button support
-    //if (event->button() != Qt::LeftButton) { return; }
     if (event->button() == Qt::RightButton) {
         ///\todo open a context menu?
     }
@@ -236,7 +234,6 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
     vLastPoint = event->scenePos();
     // set the click flag
     vMouseClick = true;
-    int portType;
 
     // If the user clicks on a module, test for what is being clicked on.
     //  If okay, begin the process of drawing a line.
@@ -245,6 +242,7 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
     ///\todo add other objects and dynamic cast checks here
     ///\todo dynamic cast is not a perfect solution, is there a better one?
     if (item) {
+        std::cerr << item->type() << std::endl;
         if (item->type() == TypePortItem) {
             startPort = dynamic_cast<Port *>(item);
             // Test for port type
@@ -278,7 +276,6 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
  */
 void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
-    bool connectionDrawFlag = false;
     QGraphicsItem *item;
     // if there was a click
     if ((vMouseClick) && (event->scenePos() == vLastPoint)) {
@@ -397,11 +394,11 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
  */
 void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
-    GraphicsType port = startPort->port();
     if (!startPort) {
        QGraphicsScene::mouseMoveEvent(event);
        return;
     }
+    GraphicsType port = startPort->port();
     ///\todo should additional tests be present here?
     // if correct mode, m_line has been created, and there is a correctly initialized port:
     if (mode == InsertLine
