@@ -398,7 +398,7 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     GraphicsType port = startPort->port();
-    if (!startSlot) {
+    if (!startPort) {
        QGraphicsScene::mouseMoveEvent(event);
        return;
     }
