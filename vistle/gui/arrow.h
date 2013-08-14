@@ -1,30 +1,33 @@
 #ifndef VARROW_H
 #define VARROW_H
 
-#include <QGraphicsLineItem>
 #include <QPainterPath>
-#include <QPen>
+#include <QColor>
+#include <QRect>
+#include <QPainter>
+
 #include "math.h"
-#include "vconsts.h"
-#include "vslot.h"
+#include "consts.h"
+#include "port.h"
 
-// Resolves circular dependency
-class VModule;
+namespace gui {
 
-class VArrow : public QGraphicsLineItem
+class Module;
+
+class Arrow : public QGraphicsLineItem
 {
 public:
-    VArrow(VModule *startItem, VModule *endItem, VSlot *startSlot, VSlot *endSlot, bool needsArrow, int connType);
+    Arrow(Module *startItem, Module *endItem, Port *startSlot, Port *endSlot, bool needsArrow, int connType);
     QRectF boundingRect() const;                    // re-implemented
     QPainterPath shape() const;                     // re-implemented
     void setColor(const QColor &color)
         { myColor = color; }
-    VModule *startItem() const
+    Module *startItem() const
         { return myStartItem; }
-    VModule *endItem() const
+    Module *endItem() const
         { return myEndItem; }
     void updatePosition();                          // re-implemented
-    int type() const { return TypeVArrowItem; }
+    int type() const { return TypeArrowItem; }
     int connectionType() { return arrowType; }
 
 protected:
@@ -32,14 +35,16 @@ protected:
                QWidget *widget);                    // re-implemented
 
 private:
-    VModule *myStartItem;                           // starting point of the arrow
-    VModule *myEndItem;                             // ending point of the arrow
+    Module *myStartItem;                            // starting point of the arrow
+    Module *myEndItem;                              // ending point of the arrow
     QColor myColor;                                 // color of the arrow
     QPolygonF arrowHead;                            // arrow head that is drawn on collision with the module
-    VSlot *myStartSlot;
-    VSlot *myEndSlot;
-    bool needsArrowHead;
+    Port *myStartSlot;
+    Port *myEndSlot;
+    bool needsArrowHead;                            // not all arrows need the arrowhead.
     int arrowType;
 };
 
 #endif // VARROW_H
+
+} //namespace gui

@@ -1,15 +1,24 @@
-#include "vmodule.h"
-#include "varrow.h"
+#include "module.h"
+#include "arrow.h"
+
+#include <QDebug>
+#include <QMenu>
+#include <QGraphicsItem>
+#include <QGraphicsScene>
+#include <QGraphicsSceneContextMenuEvent>
+
+namespace gui {
 
 /*!
- * \brief VModule::VModule
+ * \brief Module::Module
  * \param parent
  * \param name
  *
- * \todo move the generation of the slots and the main shape out of the constructor
+ * \todo move the generation of the ports and the main shape out of the constructor
  */
-VModule::VModule(QGraphicsItem *parent, QString name) : QGraphicsPolygonItem(parent)
+Module::Module(QGraphicsItem *parent, QString name) : QGraphicsPolygonItem(parent)
 {
+    QString toolTip;
     modName = name;
     modIsVisited = false;
 
@@ -31,13 +40,22 @@ VModule::VModule(QGraphicsItem *parent, QString name) : QGraphicsPolygonItem(par
     baseShape = QPolygonF(points);
     setPolygon(baseShape);
 
-    // create a status object, currently a circle
-    //statusShape = new QGraphicsPolygonItem(QPolygonF(QRectF(QPointF(xAddr / 2 - 15, yAddr * 1.5 - 15),
-    //                                                        QPointF(xAddr / 2, yAddr * 1.5))), this);
     statusShape = new QGraphicsPolygonItem(QPolygonF(QRectF(QPointF(xAddr / 2 - 15, yAddr * 1.5 - 15),
                                                   QPointF(xAddr / 2, yAddr * 1.5))), this);
-    //statusShape.setPolygon(QRectF(QPointF(xAddr / 2 - 15, yAddr * 1.5 - 15), QPointF(xAddr / 2, yAddr * 1.5)));
-    statusShape->setToolTip(QString::number(myStatus));
+
+    switch (myStatus)
+    {
+        case INITIALIZED:
+            toolTip = "Initialized";
+            break;
+        case KILLED:
+            toolTip = "Killed";
+            break;
+        case BUSY:
+            toolTip = "Busy";
+            break;
+    }
+    statusShape->setToolTip(toolTip);
 
     setFlag(QGraphicsItem::ItemIsMovable);
     setFlag(QGraphicsItem::ItemIsSelectable);
@@ -51,9 +69,9 @@ VModule::VModule(QGraphicsItem *parent, QString name) : QGraphicsPolygonItem(par
     createMenus();
 }
 
-VModule::~VModule()
+Module::~Module()
 {
-    slotList.clear();
+    portList.clear();
     clearArrows();
     parentModules.clear();
     childModules.clear();
@@ -66,63 +84,63 @@ VModule::~VModule()
 }
 
 /*!
- * \brief VModule::copy
+ * \brief Module::copy
  *
  * \todo add copy functionality. Need some sort of buffer to hold any modules that are copied.
  * \todo should the copy action be done in the module? Or passed up to the scene?
  */
-void VModule::copy()
+void Module::copy()
 {
 
 }
 
 /*!
- * \brief VModule::deleteModule
+ * \brief Module::deleteModule
  */
-void VModule::deleteModule()
+void Module::deleteModule()
 {
     qDebug()<<"It works!";
 }
 
 /*!
- * \brief VModule::deleteConnections
+ * \brief Module::deleteConnections
  */
-void VModule::deleteConnections()
+void Module::deleteConnections()
 {
     clearArrows();
 }
 
 /*!
- * \brief VModule::createSlots create the connection slots for the module.
+ * \brief Module::createSlots create the connection ports for the module.
  */
-void VModule::createSlots()
+void Module::createSlots()
 {
     // Set the points of the input, output, and parameter shapes. Currently triangles
     QVector<QPointF> points = { QPointF(-xAddr, yAddr),
                QPointF(-xAddr / 2, yAddr * 1.5),
                QPointF(-xAddr / 2, yAddr / 2) };
-    slotList.append(new VSlot(QPolygonF(points), V_INPUT, this));
+    portList.append(new Port(QPolygonF(points), INPUT, this));
 
     points = { QPointF(xAddr, yAddr),
                QPointF(xAddr / 2, yAddr * 1.5),
                QPointF(xAddr / 2, yAddr / 2) };
-    slotList.append(new VSlot(QPolygonF(points), V_OUTPUT, this));
+    portList.append(new Port(QPolygonF(points), OUTPUT, this));
 
     points = { QPointF(0,0),
                QPointF(xAddr / 2, yAddr / 2),
                QPointF(-xAddr / 2, yAddr / 2) };
-    slotList.append(new VSlot(QPolygonF(points), V_PARAMETER, this));
+    portList.append(new Port(QPolygonF(points), PARAMETER, this));
 
     points =  { QPointF(0, yAddr * 2),
                 QPointF(-xAddr / 2, yAddr * 1.5),
                 QPointF(xAddr / 2, yAddr * 1.5) };
-    slotList.append(new VSlot(QPolygonF(points), V_PARAMETER, this));
+    portList.append(new Port(QPolygonF(points), PARAMETER, this));
 }
 
 /*!
- * \brief VModule::createActions
+ * \brief Module::createActions
  */
-void VModule::createActions()
+void Module::createActions()
 {
     copyAct = new QAction("Copy", this);
     copyAct->setShortcuts(QKeySequence::Copy);
@@ -140,9 +158,9 @@ void VModule::createActions()
 }
 
 /*!
- * \brief VModule::createMenus
+ * \brief Module::createMenus
  */
-void VModule::createMenus()
+void Module::createMenus()
 {
     moduleMenu = new QMenu;
     moduleMenu->addAction(copyAct);
@@ -153,10 +171,10 @@ void VModule::createMenus()
 }
 
 /*!
- * \brief VModule::boundingRect
+ * \brief Module::boundingRect
  * \return
  */
-QRectF VModule::boundingRect() const
+QRectF Module::boundingRect() const
 {
     // The bounding area right now is a rectangle simply corresponding to the basic dimensions...
     //  can this be improved to exactly correspond to the area?
@@ -165,14 +183,14 @@ QRectF VModule::boundingRect() const
 }
 
 /*!
- * \brief VModule::paint
+ * \brief Module::paint
  * \param painter
  * \param option
  * \param widget
  */
-void VModule::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-    //VSlot *selectedSlot;
+    //Port *selectedSlot;
 
     // Determine various drawing options here, including color. To be implemented later
     QBrush *brush = new QBrush(Qt::gray, Qt::SolidPattern);
@@ -184,47 +202,41 @@ void VModule::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, Q
     painter->drawPolygon(baseShape, Qt::OddEvenFill);
 
     switch (myStatus) {
-        case V_ACTIVE:
+        case INITIALIZED:
             brush->setColor(Qt::green);
             break;
-        case V_WAITING:
+        case KILLED:
+            brush->setColor(Qt::red);
+            break;
+        case BUSY:
             brush->setColor(Qt::yellow);
             break;
-        case V_PASSIVE:
+        case ERROR:
             brush->setColor(Qt::black);
-            break;
-        case V_ERROR:
-            brush->setColor(Qt::red);
             break;
     }
 
-    //painter->drawRect(QRectF(QPointF(xAddr / 2 - 15, yAddr * 1.5 - 15), QPointF(xAddr / 2, yAddr * 1.5)));
     painter->setBrush(*brush);
     painter->drawPolygon(statusShape->polygon());
-    // Draw the text.
-    //painter->drawText(10, 35, "Hello World!");
-    //painter->drawText(10, 55, "Hello Again, World!");
 
-    // Draw the slots.
-    foreach (VSlot *slot, slotList) {
-        switch (slot->slot()) {
-            case V_INPUT:
+    // Draw the ports.
+    foreach (Port *port, portList) {
+        switch (port->port()) {
+            case INPUT:
                 brush->setColor(Qt::red);
                 break;
-            case V_OUTPUT:
+            case OUTPUT:
                 brush->setColor(Qt::blue);
                 break;
-            case V_PARAMETER:
+            case PARAMETER:
                 brush->setColor(Qt::black);
                 break;
-            case V_DEFAULT:
-            case V_ERROR:
-                // something has gone horribly wrong.
+            case DEFAULT:
                 break;
         }
 
         painter->setBrush(*brush);
-        painter->drawPolygon(slot->polygon());
+        painter->drawPolygon(port->polygon());
     }
 
     painter->setPen(Qt::black);
@@ -232,81 +244,82 @@ void VModule::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, Q
 }
 
 /*!
- * \brief VModule::getSlot returns the slot that was clicked on.
+ * \brief Module::getPort returns the port that was clicked on.
  * \param pos
- * \param slotType
+ * \param portType
  * \return
  *
- * \todo improve the method header, are an int reference and the slot point both really needed?
+ * \todo improve the method header, are an int reference and the port point both really needed?
  */
-VSlot *VModule::getSlot(QPointF pos, int &slotType)
+Port *Module::getPort(QPointF pos, int &portType)
 {
-    //VSlot *selectedSlot;
-    slotType = V_DEFAULT;
+    //Port *selectedSlot;
+    portType = DEFAULT;
     QPointF mappedPos = mapFromScene(pos);
 
     // The click could be inside the bound but not the shape, test for that
     if (baseShape.containsPoint(mappedPos, Qt::OddEvenFill)) {
-        slotType = V_MAIN;
+        portType = MAIN;
     }
 
-    foreach (VSlot *slot, slotList) {
-        if (slot->polygon().containsPoint(mappedPos, Qt::OddEvenFill)) {
-            slotType = slot->slot();
-            return slot;
+    foreach (Port *port, portList) {
+        if (port->polygon().containsPoint(mappedPos, Qt::OddEvenFill)) {
+            portType = port->port();
+            return port;
         }
     }
 }
 
 /*!
- * \brief VModule::itemChange
+ * \brief Module::itemChange
  * \param change
  * \param value
  * \return QVariant
  */
-QVariant VModule::itemChange(GraphicsItemChange change, const QVariant &value)
+ /*
+QVariant Module::itemChange(GraphicsItemChange change, const QVariant &value)
 {
     if (change == QGraphicsItem::ItemPositionChange) {
-        foreach (VArrow *arrow, arrowList) {
+        foreach (Arrow *arrow, arrowList) {
             arrow->updatePosition();
         }
     }
 
     return value;
-}
+}*/
 
 ///\todo move the creation of actions and menus out of the event!
 ///      this should be done in createActions() and createMenus()
-void VModule::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
+void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
     moduleMenu->popup(event->screenPos());
 }
 
 /*!
- * \brief VModule::addArrow
+ * \brief Module::addArrow
  * \param arrow
  */
-void VModule::addArrow(VArrow *arrow)
+void Module::addArrow(Arrow *arrow)
 {
     arrowList.append(arrow);
 }
 
 /*!
- * \brief VModule::removeArrow
+ * \brief Module::removeArrow
  * \param arrow
  */
-void VModule::removeArrow(VArrow *arrow)
+void Module::removeArrow(Arrow *arrow)
 {
     int index = arrowList.indexOf(arrow);
     if (index != -1) { arrowList.removeAt(index); }
 }
 
 /*!
- * \brief VModule::clearArrows
+ * \brief Module::clearArrows
  */
-void VModule::clearArrows()
+void Module::clearArrows()
 {
-    foreach (VArrow *arrow, arrowList) {
+    foreach (Arrow *arrow, arrowList) {
         arrow->startItem()->removeArrow(arrow);
         arrow->endItem()->removeArrow(arrow);
         scene()->removeItem(arrow);
@@ -315,10 +328,10 @@ void VModule::clearArrows()
 
 }
 
-bool VModule::removeParent(VModule *parentMod)
+bool Module::removeParent(Module *parentMod)
 {
-    VModule *mod;
-    QList<VModule *>::iterator it;
+    Module *mod;
+    QList<Module *>::iterator it;
     for (it = parentModules.begin(); it != parentModules.end(); ++it) {
         mod = *it;
         if (mod == parentMod) {
@@ -329,10 +342,10 @@ bool VModule::removeParent(VModule *parentMod)
     return false;
 }
 
-bool VModule::removeChild(VModule *childMod)
+bool Module::removeChild(Module *childMod)
 {
-    VModule *mod;
-    QList<VModule *>::iterator it;
+    Module *mod;
+    QList<Module *>::iterator it;
     for (it = childModules.begin(); it != childModules.end(); ++it) {
         mod = *it;
         if (mod == childMod) {
@@ -344,10 +357,10 @@ bool VModule::removeChild(VModule *childMod)
 
 }
 
-bool VModule::removeParameter(VModule *paramMod)
+bool Module::removeParameter(Module *paramMod)
 {
-    VModule *mod;
-    QList<VModule *>::iterator it;
+    Module *mod;
+    QList<Module *>::iterator it;
     for (it = paramModules.begin(); it != paramModules.end(); ++it) {
         mod = *it;
         if (mod == paramMod) {
@@ -360,15 +373,17 @@ bool VModule::removeParameter(VModule *paramMod)
 }
 
 /*!
- * \brief VModule::slotPos
- * \param slot
+ * \brief Module::portPos
+ * \param port
  * \return
  */
-QPointF VModule::slotPos(VSlot *slot)
+QPointF Module::portPos(Port *port)
 {
-    foreach (VSlot *mySlot, slotList) {
-        if (mySlot == slot) {
+    foreach (Port *mySlot, portList) {
+        if (mySlot == port) {
             return mySlot->polygon().first();
         }
     }
 }
+
+} //namespace gui

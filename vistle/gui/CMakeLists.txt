@@ -3,8 +3,6 @@ SET(CMAKE_AUTOMOC ON)
 
 find_qt()
 
-
-
 INCLUDE_DIRECTORIES(
   ${Boost_INCLUDE_DIRS}
   ..
@@ -14,19 +12,21 @@ INCLUDE_DIRECTORIES(
 SET(gui_SOURCES
   main.cpp
   mainwindow.cpp
-  varrow.cpp
-  vmodule.cpp
-  vscene.cpp
-  vslot.cpp
+  arrow.cpp
+  module.cpp
+  scene.cpp
+  port.cpp
+  handler.cpp
 )
 
 SET(gui_HEADERS
   mainwindow.h
-  varrow.h
-  vconsts.h
-  vmodule.h
-  vscene.h
-  vslot.h
+  arrow.h
+  consts.h
+  module.h
+  scene.h
+  port.h
+  handler.h
 )
 
 SET(gui_FORMS

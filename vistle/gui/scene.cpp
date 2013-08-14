@@ -1,10 +1,20 @@
-#include "vscene.h"
+#include "scene.h"
+
+#include <userinterface/userinterface.h>
+#include <core/message.h>
+
+#include <QGraphicsView>
+#include <QStringList>
+#include <QGraphicsSceneMouseEvent>
+#include <QDebug>
+
+namespace gui {
 
 /*!
- * \brief VScene::VScene
+ * \brief Scene::Scene
  * \param parent
  */
-VScene::VScene(QObject *parent) : QGraphicsScene(parent)
+Scene::Scene(QObject *parent) : QGraphicsScene(parent)
 {
     // Initialize starting scene information.
     mode = InsertLine;
@@ -13,55 +23,69 @@ VScene::VScene(QObject *parent) : QGraphicsScene(parent)
 }
 
 /*!
- * \brief VScene::~VScene
+ * \brief Scene::~Scene
  */
-VScene::~VScene()
+Scene::~Scene()
 {
     moduleList.clear();
     sortMap.clear();
 }
 
+void Scene::setModules(QList<QString> moduleNameList)
+{
+    myModuleNameList = moduleNameList;
+}
+
+void Scene::setRunner(UiRunner *runner)
+{
+    myRunner = runner;
+}
+
 /*!
- * \brief VScene::addModule add a module to the draw area.
+ * \brief Scene::addModule add a module to the draw area.
  * \param modName
  * \param dropPos
  */
-void VScene::addModule(QString modName, QPointF dropPos)
+void Scene::addModule(QString modName, QPointF dropPos)
 {
-    VModule *module = new VModule(0, modName);
+    QString mod = modName;
+    Module *module = new Module(0, modName);
     ///\todo improve how the data such as the name is set in the module.
     addItem(module);
     module->setPos(dropPos);
-    module->setStatus(V_ACTIVE);
+    module->setStatus(INITIALIZED);
 
-    ///\todo add the objects to a data structure. This should be done in the scene,
-    // where various event handling happens. For now perhaps use a simple vector. Look
-    // at the Qt sample implementations for more inspiration, and a better implementation.
+    vistle::message::Spawn spawnMsg(0, mod.toUtf8().constData());
+    myRunner->m_ui.sendMessage(spawnMsg);
+
+    ///\todo add the objects only to the map, not to the list. This removes the need for the structure altogether
     moduleList.append(module);
 }
 
 /*!
- * \brief VScene::removeModule search for and remove a module from the data structures.
+ * \brief Scene::removeModule search for and remove a module from the data structures.
  * \param mod
+ *
+ * \todo add functionality
  */
-void VScene::removeModule(VModule *mod)
+void Scene::removeModule(Module *mod)
 {
 
 
 }
 
 /*!
- * \brief VScene::sortModules
+ * \brief Scene::sortModules
  */
-void VScene::sortModules()
+void Scene::sortModules()
 {
     QStringList dimList;
-    VModule *mod;
+    Module *mod;
     qreal minX;
     qreal minY;
 
-    // for now simply create a 2d vector of VModules (done in the header). Add one row to the vector to start
-    //QList<VModule *> row;
+    // for now simply create a 2d vector of Modules (done in the header). Add one row to the vector to start
+    //QList<Module *> row;
     // the number of origin modules
     int height = 0;
     // this is a cop-out, but keep for now: the number of rows in the vector is the same as the largest
@@ -75,7 +99,7 @@ void VScene::sortModules()
     //  recursively follow the module's outputs, assigning levels and flags to each module.
 
     sortMap.clear();
-    foreach (VModule *module, moduleList) {
+    foreach (Module *module, moduleList) {
         //look to see if a module is an origin module.
         if (module->getParentModules().isEmpty()) {
             recSortModules(module, 0, height);
@@ -108,12 +132,12 @@ void VScene::sortModules()
 }
 
 /*!
- * \brief VScene::recSortModules recursively follow a module's children, determining and setting positions
+ * \brief Scene::recSortModules recursively follow a module's children, determining and setting positions
  * \param parent
  * \param width
  * \param height
  */
-int VScene::recSortModules(VModule *parent, int width, int height)
+int Scene::recSortModules(Module *parent, int width, int height)
 {
     int h = 0;
     QStringList dimList;
@@ -126,7 +150,7 @@ int VScene::recSortModules(VModule *parent, int width, int height)
     if (sortMap.contains(str)) {
         // if the dimensions are already occupied, the parent needs to shift dimensions.
         // find the parent that occupies the x-1 key and shift it y+1
-        foreach (VModule *module, parent->getParentModules()) {
+        foreach (Module *module, parent->getParentModules()) {
             if (module->getKey().contains(QString::number(width - 1) + ",")) {
                 sortMap.remove(module->getKey());
                 dimList = module->getKey().split(",", QString::SkipEmptyParts, Qt::CaseInsensitive);
@@ -152,7 +176,7 @@ int VScene::recSortModules(VModule *parent, int width, int height)
                 parent->setKey(str);
 
                 // loop through the children, recursively setting the position for each
-                foreach (VModule *module, parent->getChildModules()) {
+                foreach (Module *module, parent->getChildModules()) {
                     recSortModules(module, width + 1, height + h);
                     h++;
                 }
@@ -164,7 +188,7 @@ int VScene::recSortModules(VModule *parent, int width, int height)
             parent->setVisited();
 
             // loop through the children, recursively setting the position for each
-            foreach (VModule *module, parent->getChildModules()) {
+            foreach (Module *module, parent->getChildModules()) {
                 recSortModules(module, width + 1, height + h);
                 h++;
             }
@@ -175,30 +199,30 @@ int VScene::recSortModules(VModule *parent, int width, int height)
 }
 
 /*!
- * \brief VScene::invertModules inverts the orientation of all the modules in the scene.
+ * \brief Scene::invertModules inverts the orientation of all the modules in the scene.
  *
  * This method inverts the orientation of the modules in the scene. This is most easily done by simply
- * changing the location of each slot, rather than actually swapping the x and y coordinates.
+ * changing the location of each port, rather than actually swapping the x and y coordinates.
  */
-void VScene::invertModules()
+void Scene::invertModules()
 {
 
 }
 
 ///
-///\todo an exception is thrown upon a simple click inside a module's slot.
+///\todo an exception is thrown upon a simple click inside a module's port.
 ///\todo left clicking inside a module's context menu still sends the left click event to the scene, but
 ///      the way it is programmed creates a segfault.
 ///
 
 /*!
- * \brief VScene::mousePressEvent
+ * \brief Scene::mousePressEvent
  * \param event
  *
  * \todo write proper documentation for this section
  * \todo test arrow drawing and unforseen events more thoroughly
  */
-void VScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
+void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     // ignore all buttons but the left button
     ///\todo add other button support
@@ -211,7 +235,7 @@ void VScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
     vLastPoint = event->scenePos();
     // set the click flag
     vMouseClick = true;
-    int slotType;
+    int portType;
 
     // If the user clicks on a module, test for what is being clicked on.
     //  If okay, begin the process of drawing a line.
@@ -220,26 +244,26 @@ void VScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
     ///\todo add other objects and dynamic cast checks here
     ///\todo dynamic cast is not a perfect solution, is there a better one?
     if (item) {
-        if (item->type() == TypeVSlotItem) {
-            startSlot = dynamic_cast<VSlot *>(item);
-            // Get the type of slot that was clicked on
-            //startSlot = module->getSlot(event->scenePos(), slotType);
-            // Test for slot type
-            switch (startSlot->slot()) {
-                case V_INPUT:
-                case V_OUTPUT:
-                case V_PARAMETER:
+        if (item->type() == TypePortItem) {
+            startSlot = dynamic_cast<Port *>(item);
+            // Get the type of port that was clicked on
+            //startSlot = module->getPort(event->scenePos(), portType);
+            // Test for port type
+            switch (startSlot->port()) {
+                case INPUT:
+                case OUTPUT:
+                case PARAMETER:
                     myLine = new QGraphicsLineItem(QLineF(event->scenePos(),
                                                           event->scenePos()));
                     myLine->setPen(QPen(myLineColor, 2));
                     addItem(myLine);
-                    startModule = dynamic_cast<VModule *>(startSlot->parentItem());
+                    startModule = dynamic_cast<Module *>(startSlot->parentItem());
                     break;
-                case V_MAIN:
-                    //The object inside the slots has been clicked on
+                case MAIN:
+                    //The object inside the ports has been clicked on
                     ///\todo add functionality
                     break;
-                case V_DEFAULT:
+                case DEFAULT:
                     // Another part of the object has been clicked, ignore
                     break;
             }
@@ -250,12 +274,12 @@ void VScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 }
 
 /*!
- * \brief VScene::mouseReleaseEvent watches for click events
+ * \brief Scene::mouseReleaseEvent watches for click events
  * \param event
  */
-void VScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
+void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
-    int slotType;
+    int portType;
     bool arrowDrawFlag = false;
     QGraphicsItem *item;
     // if there was a click
@@ -263,18 +287,18 @@ void VScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         ///\todo what functionality to add?
         item = itemAt(event->scenePos(), QTransform());
         if (item) {
-            if (item->type() == TypeVArrowItem) {
+            if (item->type() == TypeArrowItem) {
                 // delete arrow
-                VArrow *arrow = dynamic_cast<VArrow *>(item);
+                Arrow *arrow = dynamic_cast<Arrow *>(item);
                 // remove the modules from any lists. Need to find which list the modules belong to
                 //  and then remove the child and parent (or param) from both locations.
-                VModule *stMod = arrow->startItem();
-                VModule *endMod = arrow->endItem();
-                if (arrow->connectionType() == V_OUTPUT) {
+                Module *stMod = arrow->startItem();
+                Module *endMod = arrow->endItem();
+                if (arrow->connectionType() == OUTPUT) {
                     if (!(stMod->removeChild(endMod))) { qDebug()<<"Fail!"; }
                     if (!(endMod->removeParent(stMod))) { qDebug()<<"Fail!"; }
 
-                } else if (arrow->connectionType() == V_PARAMETER) {
+                } else if (arrow->connectionType() == PARAMETER) {
                     stMod->removeParameter(endMod);
                     endMod->removeParameter(stMod);
                 } else {
@@ -295,19 +319,19 @@ void VScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         // Begin testing for the finish of the line draw.
         item = itemAt(event->scenePos(), QTransform());
         if (item) {
-            if (item->type() == TypeVSlotItem) {
-                endSlot = dynamic_cast<VSlot *>(item);
-                // Get the type of slot that was clicked on
-                //endSlot = module->getSlot(event->scenePos(), slotType);
+            if (item->type() == TypePortItem) {
+                endSlot = dynamic_cast<Port *>(item);
+                // Get the type of port that was clicked on
+                //endSlot = module->getPort(event->scenePos(), portType);
                 // Test over the possibilities
                 // this functionality is very basic for the moment
                 ///\todo improve testing for connection compatibility
-                switch (endSlot->slot()) {
-                    case V_INPUT:
-                        if (startSlot->slot() == V_OUTPUT) {
-                            endModule = dynamic_cast<VModule *>(endSlot->parentItem());
+                switch (endSlot->port()) {
+                    case INPUT:
+                        if (startSlot->port() == OUTPUT) {
+                            endModule = dynamic_cast<Module *>(endSlot->parentItem());
                             if (startModule != endModule) {
-                                VArrow *arrow = new VArrow(startModule, endModule, startSlot, endSlot, true, V_OUTPUT);
+                                Arrow *arrow = new Arrow(startModule, endModule, startSlot, endSlot, true, OUTPUT);
                                 arrow->setColor(myLineColor);
                                 startModule->addArrow(arrow);
                                 endModule->addArrow(arrow);
@@ -319,11 +343,11 @@ void VScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                             }
                         }
                         break;
-                    case V_OUTPUT:
-                        if (startSlot->slot() == V_INPUT) {
-                            endModule = dynamic_cast<VModule *>(endSlot->parentItem());
+                    case OUTPUT:
+                        if (startSlot->port() == INPUT) {
+                            endModule = dynamic_cast<Module *>(endSlot->parentItem());
                             if (startModule != endModule) {
-                                VArrow *arrow = new VArrow(endModule, startModule, endSlot, startSlot, true, V_OUTPUT);
+                                Arrow *arrow = new Arrow(endModule, startModule, endSlot, startSlot, true, OUTPUT);
                                 arrow->setColor(myLineColor);
                                 startModule->addArrow(arrow);
                                 endModule->addArrow(arrow);
@@ -335,11 +359,11 @@ void VScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                             }
                         }
                         break;
-                    case V_PARAMETER:
-                        if (startSlot->slot() == V_PARAMETER) {
-                            endModule = dynamic_cast<VModule *>(endSlot->parentItem());
+                    case PARAMETER:
+                        if (startSlot->port() == PARAMETER) {
+                            endModule = dynamic_cast<Module *>(endSlot->parentItem());
                             if (startModule != endModule) {
-                                VArrow *arrow = new VArrow(startModule, endModule, startSlot, endSlot, false, V_PARAMETER);
+                                Arrow *arrow = new Arrow(startModule, endModule, startSlot, endSlot, false, PARAMETER);
                                 arrow->setColor(myLineColor);
                                 startModule->addArrow(arrow);
                                 endModule->addArrow(arrow);
@@ -351,13 +375,11 @@ void VScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                             }
                         }
                         break;
-                    case V_MAIN:
-                    case V_DEFAULT:
-                    case V_ERROR:
+                    case MAIN:
+                    case DEFAULT:
                         ///\todo what to do here?
                         break;
                     default:
-                        // something has gone horribly wrong
                         break;
                 }
 
@@ -380,18 +402,21 @@ void VScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 }
 
 /*!
- * \brief VScene::mouseMoveEvent
+ * \brief Scene::mouseMoveEvent
  * \param event
  */
-void VScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
+void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     ///\todo should additional tests be present here?
+    GraphicsType port = startSlot->port();
     if (mode == InsertLine
         && myLine != 0
-        && (startSlot->slot() >= V_INPUT)) {
+        && (port == INPUT || port == OUTPUT || port == PARAMETER)) {
         QLineF newLine(myLine->line().p1(), event->scenePos());
         myLine->setLine(newLine);
     } else {
         QGraphicsScene::mouseMoveEvent(event);
     }
 }
+
+} //namespace gui

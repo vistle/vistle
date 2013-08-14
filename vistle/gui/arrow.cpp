@@ -1,7 +1,13 @@
-#include "varrow.h"
-#include "vmodule.h"
+#include "arrow.h"
+#include "module.h"
 
-VArrow::VArrow(VModule *startItem, VModule *endItem, VSlot *startSlot, VSlot *endSlot, bool needsArrow, int connType)
+#include <QLine>
+#include <QPen>
+#include <QPoint>
+
+namespace gui {
+
+Arrow::Arrow(Module *startItem, Module *endItem, Port *startSlot, Port *endSlot, bool needsArrow, int connType)
 {
     // Do something
     myStartItem = startItem;
@@ -18,10 +24,10 @@ VArrow::VArrow(VModule *startItem, VModule *endItem, VSlot *startSlot, VSlot *en
 }
 
 /*!
- * \brief VArrow::boundingRect
+ * \brief Arrow::boundingRect
  * \return
  */
-QRectF VArrow::boundingRect() const
+QRectF Arrow::boundingRect() const
 {
     // extra selectable area
     qreal extra = (pen().width() + 20) / 2.0;
@@ -32,10 +38,10 @@ QRectF VArrow::boundingRect() const
 }
 
 /*!
- * \brief VArrow::shape
+ * \brief Arrow::shape
  * \return
  */
-QPainterPath VArrow::shape() const
+QPainterPath Arrow::shape() const
 {
     QPainterPath path = QGraphicsLineItem::shape();
     // only add the polygon for the arrow head if it is necessary
@@ -47,23 +53,23 @@ QPainterPath VArrow::shape() const
 }
 
 /*!
- * \brief VArrow::updatePosition
+ * \brief Arrow::updatePosition
  *
- * \todo change mapFromItem calls to reflect where they should actually be and connected to which slot.
+ * \todo change mapFromItem calls to reflect where they should actually be and connected to which port.
  */
-void VArrow::updatePosition()
+void Arrow::updatePosition()
 {
     QLineF line(mapFromItem(myStartItem, 0, 0), mapFromItem(myEndItem, 0, 0));
     setLine(line);
 }
 
 /*!
- * \brief VArrow::paint
+ * \brief Arrow::paint
  * \param painter
  * \param option
  * \param widget
  */
-void VArrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
+void Arrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
                    QWidget *widget)
 {
     if (myStartItem->collidesWithItem(myEndItem)) { return; }
@@ -78,26 +84,9 @@ void VArrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 
     // find the position for drawing the arrowhead
     ///\todo change position of the line here
-    QPointF startPoint = mapFromItem(myStartItem, myStartItem->slotPos(myStartSlot));
-    QPointF endPoint = mapFromItem(myEndItem, myEndItem->slotPos(myEndSlot));
+    QPointF startPoint = mapFromItem(myStartItem, myStartItem->portPos(myStartSlot));
+    QPointF endPoint = mapFromItem(myEndItem, myEndItem->portPos(myEndSlot));
     QLineF centerLine(endPoint, startPoint);
-
-    /*
-    QPolygonF endPolygon = myEndItem->polygon();
-    QPointF p1 = endPolygon.first() + myEndItem->pos();
-    QPointF p2;
-    QPointF intersectPoint;
-    QLineF polyLine;
-    for (int i = 1; i < endPolygon.count(); ++i) {
-        p2 = endPolygon.at(i) + myEndItem->pos();
-        polyLine = QLineF(p1, p2);
-        QLineF::IntersectType intersectType = polyLine.intersect(centerLine, &intersectPoint);
-        if (intersectType == QLineF::BoundedIntersection) {
-            //\TODO why was the break statement before the action in the if statement?
-            p1 = p2;
-            break;
-        }
-    }*/
 
     ///\todo re-implement collision calculations, incorporating proper positions
     setLine(centerLine);
@@ -121,12 +110,6 @@ void VArrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
         painter->drawPolygon(arrowHead);
     }
 
-
-
-    /*
-     * This functionality for adding dotted lines to indicate arrow selection is broken,
-     * and probably not needed.
-     */
     ///\todo fix selection mechanism in the scene, or don't use functionality.
     /*
     if (isSelected()) {
@@ -140,3 +123,5 @@ void VArrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
     painter->drawLine(myLine);*/
 
 }
+
+} //namespace gui
