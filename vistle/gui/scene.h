@@ -41,8 +41,8 @@ private:
     QColor m_LineColor;                                         //< color of the line
     QPointF vLastPoint;                                         //< intermediate previous point for connection drawing
     bool vMouseClick;                                           //< boolean for keeping track of if a click is made
-    Port *startPort;                                            //< starting port for module connection
-    Port *endPort;                                              //< starting port for module connection
+    Port *startPort = nullptr;                                  //< starting port for module connection
+    Port *endPort = nullptr;                                    //< starting port for module connection
     Module *startModule = nullptr;                              //< starting module for making connection
     Module *endModule = nullptr;                                //< ending module for making connection
 
