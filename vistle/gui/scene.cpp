@@ -397,8 +397,12 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
  */
 void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
-    ///\todo should additional tests be present here?
     GraphicsType port = startPort->port();
+    if (!startSlot) {
+       QGraphicsScene::mouseMoveEvent(event);
+       return;
+    }
+    ///\todo should additional tests be present here?
     // if correct mode, m_line has been created, and there is a correctly initialized port:
     if (mode == InsertLine
         && m_Line != 0
