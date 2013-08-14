@@ -21,4 +21,8 @@ enum ItemType { TypeModuleItem = QGraphicsItem::UserType + 1,
                 TypePortItem = QGraphicsItem::UserType + 3 };
 
 } //namespace gui
+
+Q_DECLARE_METATYPE(gui::GraphicsType)
+Q_DECLARE_METATYPE(gui::ModuleStatus)
+Q_DECLARE_METATYPE(gui::ItemType)
 #endif // VCONSTS_H

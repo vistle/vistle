@@ -9,6 +9,7 @@
 #include <QApplication>
 
 #include "handler.h"
+#include "consts.h"
 
 #include <userinterface/userinterface.h>
 #include <boost/ref.hpp>
@@ -19,6 +20,10 @@ using namespace gui;
 
 int main(int argc, char *argv[])
 {
+   qRegisterMetaType<ModuleStatus>("ModuleStatus");
+   qRegisterMetaType<ItemType>("ItemType");
+   qRegisterMetaType<GraphicsType>("GraphicsType");
+
     try {
         std::string host = "localhost";
         unsigned short port = 8193;
