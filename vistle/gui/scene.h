@@ -2,7 +2,7 @@
 #define VSCENE_H
 
 #include "module.h"
-#include "arrow.h"
+#include "connection.h"
 #include "port.h"
 #include "consts.h"
 #include "handler.h"
@@ -35,15 +35,14 @@ protected:
 
 private:
     QList<Module *> moduleList;                                 //< list of modules
-    QList<QString> myModuleNameList;
+    QList<QString> m_ModuleNameList;
     Mode mode;                                                  //< type of interaction with the scene. Refer to enum
-    QGraphicsLineItem *myLine = nullptr;                        //< the intermediate line drawn between modules
-    QColor myLineColor;                                         //< color of the line
-    QPointF vLastPoint;                                         //< intermediate previous point for arrow drawing
-    bool vMouseClick;                                           //< boolean for keeping track of clicking
-    ///\todo rename to Port
-    Port *startSlot;                                            //< starting port for module connection
-    Port *endSlot;                                              //< starting port for module connection
+    QGraphicsLineItem *m_Line = nullptr;                        //< the intermediate line drawn between modules
+    QColor m_LineColor;                                         //< color of the line
+    QPointF vLastPoint;                                         //< intermediate previous point for connection drawing
+    bool vMouseClick;                                           //< boolean for keeping track of if a click is made
+    Port *startPort;                                            //< starting port for module connection
+    Port *endPort;                                              //< starting port for module connection
     Module *startModule = nullptr;                              //< starting module for making connection
     Module *endModule = nullptr;                                //< ending module for making connection
 
@@ -53,7 +52,7 @@ private:
     int recSortModules(Module *parent, int width, int height);
 
     ///\todo push this functionality to vHandler
-    UiRunner *myRunner;
+    UiRunner *m_Runner;
 
 };
 

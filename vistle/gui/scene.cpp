@@ -1,3 +1,12 @@
+/*********************************************************************************/
+/** \file scene.cpp
+ *
+ * The brunt of the graphical processing and UI interaction happens here --
+ * - modules and connections are created and modified
+ * - the brunt of the event handling is done
+ * - any interactions between modules, such as sorting, is performed
+ */
+/**********************************************************************************/
 #include "scene.h"
 
 #include <userinterface/userinterface.h>
@@ -18,7 +27,7 @@ Scene::Scene(QObject *parent) : QGraphicsScene(parent)
 {
     // Initialize starting scene information.
     mode = InsertLine;
-    myLineColor = Qt::black;
+    m_LineColor = Qt::black;
     vMouseClick = false;
 }
 
@@ -33,12 +42,12 @@ Scene::~Scene()
 
 void Scene::setModules(QList<QString> moduleNameList)
 {
-    myModuleNameList = moduleNameList;
+    m_ModuleNameList = moduleNameList;
 }
 
 void Scene::setRunner(UiRunner *runner)
 {
-    myRunner = runner;
+    m_Runner = runner;
 }
 
 /*!
@@ -56,9 +65,10 @@ void Scene::addModule(QString modName, QPointF dropPos)
     module->setStatus(INITIALIZED);
 
     vistle::message::Spawn spawnMsg(0, mod.toUtf8().constData());
-    myRunner->m_ui.sendMessage(spawnMsg);
+    m_Runner->m_ui.sendMessage(spawnMsg);
 
-    ///\todo add the objects only to the map, not to the list. This removes the need for the structure altogether
+    ///\todo add the objects only to the map (sortMap) currently used for sorting, not to the list.
+    ///This will remove the need for moduleList altogether
     moduleList.append(module);
 }
 
@@ -75,7 +85,18 @@ void Scene::removeModule(Module *mod)
 }
 
 /*!
- * \brief Scene::sortModules
+ * \brief Scene::sortModules top level of sorting modules.
+ *
+ * The sort is performed on two levels -- the beginning of the sort, and the actual recursion.
+ * The modules first must be looped through. This is done by iterating over the moduleList (which is just a list of modules
+ * in order of their creation), looking for modules that are "origins" -- modules with no parents.
+ * For each origin module, call the recursive sort.
+ * After each module is sorted and assigned a key corresponding to its relative location in the map, pull the dimensions out of
+ * the key and set a real location in the scene for it.
+ *
+ * The algorithm has a number of bugs:
+ * \todo when there are large numbers of modules, a single module will "float" in strange directions upon each successive sort
+ * \todo when the sort button is pressed multiple times, the width of the pane increases.
  */
 void Scene::sortModules()
 {
@@ -84,19 +105,8 @@ void Scene::sortModules()
     qreal minX;
     qreal minY;
 
-    // for now simply create a 2d vector of Modules (done in the header). Add one row to the vector to start
-    //QList<Module *> row;
-    // the number of origin modules
+    // height, equal initially to the number of origin modules
     int height = 0;
-    // this is a cop-out, but keep for now: the number of rows in the vector is the same as the largest
-    //  possible dimensions, the number of modules in the scene.
-    /*for (int i = 0; i <= moduleList.count(); i++) {
-        sortVec.append(row);
-    }*/
-
-    // Here are the steps of the program:
-    // Find the origin modules, at the moment by looping through the list of modules created in addModule.
-    //  recursively follow the module's outputs, assigning levels and flags to each module.
 
     sortMap.clear();
     foreach (Module *module, moduleList) {
@@ -123,10 +133,9 @@ void Scene::sortModules()
         mod->unsetVisited();
         mod->setToolTip(i.key());
         mod->clearKey();
-
     }
 
-    ///\todo test this, perhaps find a better alternative, so that the view pane does not increase in width.
+    // test this and find a better alternative, so that the view pane does not increase in width.
     views().first()->centerOn(minX, minY);
     clearSelection();
 }
@@ -143,9 +152,6 @@ int Scene::recSortModules(Module *parent, int width, int height)
     QStringList dimList;
     QString str;
 
-    // The algorithm for recursive sort currently works, but it has a number of bugs,
-    //  including a module migrating upon each successive sort, and the width of the pane increasing
-    //  with each successive sort.
     str = QString::number(width) + "," + QString::number(height);
     if (sortMap.contains(str)) {
         // if the dimensions are already occupied, the parent needs to shift dimensions.
@@ -158,11 +164,8 @@ int Scene::recSortModules(Module *parent, int width, int height)
                 recSortModules(module, dimList[0].toInt(), dimList[1].toInt() + 1);
 
                 return 0;
-            }
-        }
-
-        //sortMap.remove(parent->parentModules)
-
+            } // end if
+        } // end foreach
     } else {
         // test to see if the module was visited, and if the new x is larger than the previous. If so, re-add
         //  it to the map with the new coordinates. Recursion continues as before, and children should also
@@ -191,9 +194,9 @@ int Scene::recSortModules(Module *parent, int width, int height)
             foreach (Module *module, parent->getChildModules()) {
                 recSortModules(module, width + 1, height + h);
                 h++;
-            }
-        }
-    }
+            } //end foreach
+        } // end else
+    } // end else
 
     return width;
 }
@@ -201,26 +204,24 @@ int Scene::recSortModules(Module *parent, int width, int height)
 /*!
  * \brief Scene::invertModules inverts the orientation of all the modules in the scene.
  *
- * This method inverts the orientation of the modules in the scene. This is most easily done by simply
+ * This method will invert the orientation of the modules in the scene. This is most easily done by simply
  * changing the location of each port, rather than actually swapping the x and y coordinates.
+ * \todo implement this
  */
 void Scene::invertModules()
 {
 
 }
 
-///
-///\todo an exception is thrown upon a simple click inside a module's port.
-///\todo left clicking inside a module's context menu still sends the left click event to the scene, but
-///      the way it is programmed creates a segfault.
-///
+///\todo an exception is very occasionally thrown upon a simple click inside a module's port.
+///\todo left clicking inside a module's context menu still sends the left click event to the scene, but creates
+///a segfault when the connection is completed
 
 /*!
  * \brief Scene::mousePressEvent
  * \param event
  *
- * \todo write proper documentation for this section
- * \todo test arrow drawing and unforseen events more thoroughly
+ * \todo test connection drawing and unforseen events more thoroughly
  */
 void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
@@ -245,19 +246,17 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
     ///\todo dynamic cast is not a perfect solution, is there a better one?
     if (item) {
         if (item->type() == TypePortItem) {
-            startSlot = dynamic_cast<Port *>(item);
-            // Get the type of port that was clicked on
-            //startSlot = module->getPort(event->scenePos(), portType);
+            startPort = dynamic_cast<Port *>(item);
             // Test for port type
-            switch (startSlot->port()) {
+            switch (startPort->port()) {
                 case INPUT:
                 case OUTPUT:
                 case PARAMETER:
-                    myLine = new QGraphicsLineItem(QLineF(event->scenePos(),
+                    m_Line = new QGraphicsLineItem(QLineF(event->scenePos(),
                                                           event->scenePos()));
-                    myLine->setPen(QPen(myLineColor, 2));
-                    addItem(myLine);
-                    startModule = dynamic_cast<Module *>(startSlot->parentItem());
+                    m_Line->setPen(QPen(m_LineColor, 2));
+                    addItem(m_Line);
+                    startModule = dynamic_cast<Module *>(startPort->parentItem());
                     break;
                 case MAIN:
                     //The object inside the ports has been clicked on
@@ -266,9 +265,9 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
                 case DEFAULT:
                     // Another part of the object has been clicked, ignore
                     break;
-            }
-        }
-    }
+            } //end switch
+        } //end if (item->type() == TypePortItem)
+    } //end if (item)
 
     QGraphicsScene::mousePressEvent(event);
 }
@@ -279,99 +278,96 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
  */
 void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
-    int portType;
-    bool arrowDrawFlag = false;
+    bool connectionDrawFlag = false;
     QGraphicsItem *item;
     // if there was a click
     if ((vMouseClick) && (event->scenePos() == vLastPoint)) {
-        ///\todo what functionality to add?
         item = itemAt(event->scenePos(), QTransform());
         if (item) {
-            if (item->type() == TypeArrowItem) {
-                // delete arrow
-                Arrow *arrow = dynamic_cast<Arrow *>(item);
+            if (item->type() == TypeConnectionItem) {
+                // delete connection
+                Connection *connection = dynamic_cast<Connection *>(item);
                 // remove the modules from any lists. Need to find which list the modules belong to
                 //  and then remove the child and parent (or param) from both locations.
-                Module *stMod = arrow->startItem();
-                Module *endMod = arrow->endItem();
-                if (arrow->connectionType() == OUTPUT) {
-                    if (!(stMod->removeChild(endMod))) { qDebug()<<"Fail!"; }
-                    if (!(endMod->removeParent(stMod))) { qDebug()<<"Fail!"; }
+                Module *stMod = connection->startItem();
+                Module *endMod = connection->endItem();
+                ///\todo add vistle message sending
+                if (connection->connectionType() == OUTPUT) {
+                    if (!(stMod->removeChild(endMod))) { std::cerr<<"failed to remove child"<<std::endl; }
+                    if (!(endMod->removeParent(stMod))) { std::cerr<<"failed to remove parent"<<std::endl; }
 
-                } else if (arrow->connectionType() == PARAMETER) {
-                    stMod->removeParameter(endMod);
-                    endMod->removeParameter(stMod);
+                } else if (connection->connectionType() == PARAMETER) {
+                    stMod->disconnectParameter(endMod);
+                    endMod->disconnectParameter(stMod);
                 } else {
-                    //something has gone horribly wrong
-                }
-                arrow->startItem()->removeArrow(arrow);
-                arrow->endItem()->removeArrow(arrow);
-                delete arrow;
-            }
-        }
-    } else if (vMouseClick && myLine) {
 
-        // clean up arrow
-        removeItem(myLine);
-        delete myLine;
-        myLine = nullptr;
+                }
+                connection->startItem()->removeConnection(connection);
+                connection->endItem()->removeConnection(connection);
+                delete connection;
+            } //end if (item->type() == TypeconnectionItem)
+        } //end if (item)
+    // if there was not a click, and if m_line already was drawn
+    } else if (vMouseClick && m_Line) {
+
+        // clean up connection
+        removeItem(m_Line);
+        delete m_Line;
+        m_Line = nullptr;
 
         // Begin testing for the finish of the line draw.
         item = itemAt(event->scenePos(), QTransform());
         if (item) {
             if (item->type() == TypePortItem) {
-                endSlot = dynamic_cast<Port *>(item);
-                // Get the type of port that was clicked on
-                //endSlot = module->getPort(event->scenePos(), portType);
-                // Test over the possibilities
-                // this functionality is very basic for the moment
-                ///\todo improve testing for connection compatibility
-                switch (endSlot->port()) {
+                endPort = dynamic_cast<Port *>(item);
+                // Test over the port types
+                ///\todo improve testing for viability of connection
+                switch (endPort->port()) {
                     case INPUT:
-                        if (startSlot->port() == OUTPUT) {
-                            endModule = dynamic_cast<Module *>(endSlot->parentItem());
+                        if (startPort->port() == OUTPUT) {
+                            endModule = dynamic_cast<Module *>(endPort->parentItem());
                             if (startModule != endModule) {
-                                Arrow *arrow = new Arrow(startModule, endModule, startSlot, endSlot, true, OUTPUT);
-                                arrow->setColor(myLineColor);
-                                startModule->addArrow(arrow);
-                                endModule->addArrow(arrow);
+                                Connection *connection = new Connection(startModule, endModule, startPort, endPort, true, OUTPUT);
+                                connection->setColor(m_LineColor);
+                                startModule->addConnection(connection);
+                                endModule->addConnection(connection);
                                 startModule->addChild(endModule);
                                 endModule->addParent(startModule);
-                                arrow->setZValue(-1000.0);
-                                addItem(arrow);
-                                arrow->updatePosition();
+                                connection->setZValue(-1000.0);
+                                addItem(connection);
+                                connection->updatePosition();
                             }
                         }
                         break;
                     case OUTPUT:
-                        if (startSlot->port() == INPUT) {
-                            endModule = dynamic_cast<Module *>(endSlot->parentItem());
+                        if (startPort->port() == INPUT) {
+                            endModule = dynamic_cast<Module *>(endPort->parentItem());
                             if (startModule != endModule) {
-                                Arrow *arrow = new Arrow(endModule, startModule, endSlot, startSlot, true, OUTPUT);
-                                arrow->setColor(myLineColor);
-                                startModule->addArrow(arrow);
-                                endModule->addArrow(arrow);
+                                Connection *connection = new Connection(endModule, startModule, endPort, startPort, true, OUTPUT);
+                                connection->setColor(m_LineColor);
+                                startModule->addConnection(connection);
+                                endModule->addConnection(connection);
                                 endModule->addChild(startModule);
                                 startModule->addParent(endModule);
-                                arrow->setZValue(-1000.0);
-                                addItem(arrow);
-                                arrow->updatePosition();
+                                connection->setZValue(-1000.0);
+                                addItem(connection);
+                                connection->updatePosition();
                             }
                         }
                         break;
                     case PARAMETER:
-                        if (startSlot->port() == PARAMETER) {
-                            endModule = dynamic_cast<Module *>(endSlot->parentItem());
+                        if (startPort->port() == PARAMETER) {
+                            endModule = dynamic_cast<Module *>(endPort->parentItem());
                             if (startModule != endModule) {
-                                Arrow *arrow = new Arrow(startModule, endModule, startSlot, endSlot, false, PARAMETER);
-                                arrow->setColor(myLineColor);
-                                startModule->addArrow(arrow);
-                                endModule->addArrow(arrow);
-                                startModule->addParameter(endModule);
-                                endModule->addParameter(startModule);
-                                arrow->setZValue(-1000.0);
-                                addItem(arrow);
-                                arrow->updatePosition();
+                                Connection *connection = new Connection(startModule, endModule, startPort, endPort, false, PARAMETER);
+                                connection->setColor(m_LineColor);
+                                startModule->addConnection(connection);
+                                endModule->addConnection(connection);
+                                startModule->connectParameter(endModule);
+                                endModule->connectParameter(startModule);
+                                connection->setZValue(-1000.0);
+                                addItem(connection);
+                                connection->updatePosition();
                             }
                         }
                         break;
@@ -381,22 +377,16 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                         break;
                     default:
                         break;
-                }
-
-                ///\todo moved this functionality to the switch, do I need to leave anything here?
-                if (arrowDrawFlag && startModule != endModule)
-                {
-                    ///\todo does anything need to be cleaned up?
-                }
-            }
-        }
-    }
+                } //end switch
+            } //end if (item->type() == TypePortItem)
+        } //end if (item)
+    } //end if (vMouseClick && m_Line)
 
     // Clear data
     startModule = nullptr;
     endModule = nullptr;
-    startSlot = nullptr;
-    endSlot = nullptr;
+    startPort = nullptr;
+    endPort = nullptr;
     vMouseClick = false;
     QGraphicsScene::mouseReleaseEvent(event);
 }
@@ -408,12 +398,15 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     ///\todo should additional tests be present here?
-    GraphicsType port = startSlot->port();
+    GraphicsType port = startPort->port();
+    // if correct mode, m_line has been created, and there is a correctly initialized port:
     if (mode == InsertLine
-        && myLine != 0
+        && m_Line != 0
         && (port == INPUT || port == OUTPUT || port == PARAMETER)) {
-        QLineF newLine(myLine->line().p1(), event->scenePos());
-        myLine->setLine(newLine);
+        // update the line drawing
+        QLineF newLine(m_Line->line().p1(), event->scenePos());
+        m_Line->setLine(newLine);
+    // otherwise call standard mouse move
     } else {
         QGraphicsScene::mouseMoveEvent(event);
     }

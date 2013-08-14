@@ -1,3 +1,14 @@
+/*********************************************************************************/
+/*! \file handler.cpp
+ *
+ * Contains three classes:
+ * 1. Handler -- currently empty, is intended to be used to handle any instructions
+ *    sent to the UiRunner.
+ * 2. UiRunner -- simple class, handling commands dispatched to vistle's userInterface.
+ * 3. StatePrinter -- observer class that watches for changes in vistle, and sends
+ *    signals to the MainWindow.
+ */
+/**********************************************************************************/
 #include "handler.h"
 
 #include <QString>
@@ -41,6 +52,7 @@ void UiRunner::operator()() {
 /*!
  * \brief StatePrinter::StatePrinter
  * \param parent
+ *
  */
 StatePrinter::StatePrinter(QObject *parent) : QObject(parent)
 {

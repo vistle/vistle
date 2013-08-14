@@ -1,3 +1,10 @@
+/*********************************************************************************/
+/*! \file main.cpp
+ *
+ * Sets host and port information, initializes main event thread and secondary UI
+ * thread.
+ */
+/**********************************************************************************/
 #include "mainwindow.h"
 #include <QApplication>
 

@@ -12,7 +12,7 @@ INCLUDE_DIRECTORIES(
 SET(gui_SOURCES
   main.cpp
   mainwindow.cpp
-  arrow.cpp
+  connection.cpp
   module.cpp
   scene.cpp
   port.cpp
@@ -21,7 +21,7 @@ SET(gui_SOURCES
 
 SET(gui_HEADERS
   mainwindow.h
-  arrow.h
+  connection.h
   consts.h
   module.h
   scene.h

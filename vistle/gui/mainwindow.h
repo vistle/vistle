@@ -59,7 +59,7 @@ private:
     void addModule(QString modName, QPointF dropPos);
     Scene *scene;
     ///\todo rename statePrinter
-    StatePrinter *myPrinter;
+    StatePrinter *m_Printer;
 
 };
 

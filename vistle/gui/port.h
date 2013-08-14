@@ -17,7 +17,7 @@ public:
     int type() const { return TypePortItem; }
 
 private:
-    GraphicsType portType;						// type of port
+    GraphicsType portType;						//< type of port
 };
 
 } //namespace gui

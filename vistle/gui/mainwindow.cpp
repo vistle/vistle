@@ -1,3 +1,13 @@
+/*********************************************************************************/
+/*! \file mainwindow.cpp
+ *
+ * - re-implementation of Qt's QMainWindow, which handles connections between the back
+ * end and the front end UI components.
+ * - Creates slots connected to the StatePrinter, which print debug messages to the UI.
+ * - Has a drag-drop event set, which handles drops from the UI into the GraphicsView.
+ *
+ */
+/**********************************************************************************/
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
@@ -39,6 +49,7 @@ MainWindow::MainWindow(QWidget *parent) :
     scene = new Scene(ui->drawArea);
 
     // load a text file containing all the modules in vistle.
+    ///\todo loadModuleFile() returns a list of modules, pipe this to the scene
     scene->setModules(loadModuleFile());
     ui->drawArea->setScene(scene);
     ui->drawArea->show();
@@ -49,7 +60,7 @@ MainWindow::~MainWindow()
     delete ui;
     delete scene;
     ///\todo Keep track of all things created with new:
-    /// Modules; scene; QDrag; mimeData;
+    /// scene; QDrag; mimeData;
 }
 
 /************************************************************************************/
@@ -119,27 +130,27 @@ void MainWindow::deleteConnection_msg(int fromId, QString fromName,
 
 void MainWindow::setPrinter(StatePrinter *printer)
 {
-    myPrinter = printer;
+    m_Printer = printer;
     
     // connect the printer signals to the appropriate ports
     ///\todo should these connections be pushed to another method?
-    connect(myPrinter, SIGNAL(debug_s(QString)), 
+    connect(m_Printer, SIGNAL(debug_s(QString)),
             this, SLOT(debug_msg(QString)));
-    connect(myPrinter, SIGNAL(newModule_s(int, QString)), 
+    connect(m_Printer, SIGNAL(newModule_s(int, QString)),
             this, SLOT(newModule_msg(int, QString)));
-    connect(myPrinter, SIGNAL(deleteModule_s(int)), 
+    connect(m_Printer, SIGNAL(deleteModule_s(int)),
             this, SLOT(deleteModule_msg(int)));
-    connect(myPrinter, SIGNAL(moduleStateChanged_s(int, int, ModuleStatus)), 
+    connect(m_Printer, SIGNAL(moduleStateChanged_s(int, int, ModuleStatus)),
             this, SLOT(moduleStateChanged_msg(int, int, ModuleStatus)));
-    connect(myPrinter, SIGNAL(newParameter_s(int, QString)), 
+    connect(m_Printer, SIGNAL(newParameter_s(int, QString)),
             this, SLOT(newParameter_msg(int, QString)));
-    connect(myPrinter, SIGNAL(parameterValueChanged_s(int, QString)), 
+    connect(m_Printer, SIGNAL(parameterValueChanged_s(int, QString)),
             this, SLOT(parameterValueChanged_msg(int, QString)));
-    connect(myPrinter, SIGNAL(newPort_s(int, QString)), 
+    connect(m_Printer, SIGNAL(newPort_s(int, QString)),
             this, SLOT(newPort_msg(int, QString)));
-    connect(myPrinter, SIGNAL(newConnection_s(int, QString, int, QString)), 
+    connect(m_Printer, SIGNAL(newConnection_s(int, QString, int, QString)),
             this, SLOT(newConnection_msg(int, QString, int, QString)));
-    connect(myPrinter, SIGNAL(deleteConnection_s(int, QString, int, QString)), 
+    connect(m_Printer, SIGNAL(deleteConnection_s(int, QString, int, QString)),
             this, SLOT(deleteConnection_msg(int, QString, int, QString)));
 }
 
@@ -198,8 +209,7 @@ void MainWindow::on_invertModulesButton_clicked()
 /*!
  * \brief MainWindow::loadModuleFile read the list of modules.
  *
- * The module list is read in and put inside the widget, and a list of modules given
- * to the scene.
+ * The module list is read in and put inside a list widget
  */
 QList<QString> MainWindow::loadModuleFile()
 {
@@ -264,7 +274,7 @@ void MainWindow::dropEvent(QDropEvent *event)
         newPos = ui->drawArea->mapToScene(refPos);
 
         ///\todo this solution for module name works only if an item is selected in the list,
-        /// and fails for any other drop event. Implement MIME handling on events, like mapEditor
+        /// and fails for any other drop event. Implement MIME handling on events, like in mapEditor
         moduleName = ui->moduleListWidget->currentItem()->text();
         scene->addModule(moduleName, newPos);
 

@@ -1,5 +1,11 @@
+/*********************************************************************************/
+/*! \file module.cpp
+ *
+ * representation, both graphical and of information, for vistle modules.
+ */
+/**********************************************************************************/
 #include "module.h"
-#include "arrow.h"
+#include "connection.h"
 
 #include <QDebug>
 #include <QMenu>
@@ -43,7 +49,7 @@ Module::Module(QGraphicsItem *parent, QString name) : QGraphicsPolygonItem(paren
     statusShape = new QGraphicsPolygonItem(QPolygonF(QRectF(QPointF(xAddr / 2 - 15, yAddr * 1.5 - 15),
                                                   QPointF(xAddr / 2, yAddr * 1.5))), this);
 
-    switch (myStatus)
+    switch (m_Status)
     {
         case INITIALIZED:
             toolTip = "Initialized";
@@ -72,7 +78,7 @@ Module::Module(QGraphicsItem *parent, QString name) : QGraphicsPolygonItem(paren
 Module::~Module()
 {
     portList.clear();
-    clearArrows();
+    clearConnections();
     parentModules.clear();
     childModules.clear();
     paramModules.clear();
@@ -99,7 +105,7 @@ void Module::copy()
  */
 void Module::deleteModule()
 {
-    qDebug()<<"It works!";
+
 }
 
 /*!
@@ -107,7 +113,7 @@ void Module::deleteModule()
  */
 void Module::deleteConnections()
 {
-    clearArrows();
+    clearConnections();
 }
 
 /*!
@@ -139,6 +145,8 @@ void Module::createSlots()
 
 /*!
  * \brief Module::createActions
+ *
+ * \todo this doesn't really work at the moment, find out what is wrong
  */
 void Module::createActions()
 {
@@ -172,12 +180,11 @@ void Module::createMenus()
 
 /*!
  * \brief Module::boundingRect
- * \return
+ * \return the bounding rectangle for the module
  */
 QRectF Module::boundingRect() const
 {
-    // The bounding area right now is a rectangle simply corresponding to the basic dimensions...
-    //  can this be improved to exactly correspond to the area?
+    ///\todo The bounding area right now is a rectangle simply corresponding to the basic dimensions... improve?
     return QRectF(-xAddr, 0.0, w, h);
 
 }
@@ -190,9 +197,8 @@ QRectF Module::boundingRect() const
  */
 void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-    //Port *selectedSlot;
-
-    // Determine various drawing options here, including color. To be implemented later
+    // Determine various drawing options here, including color.
+    ///\todo change colors depending on type of module, hostname, etc.
     QBrush *brush = new QBrush(Qt::gray, Qt::SolidPattern);
     QBrush *highlightBrush = new QBrush(Qt::yellow, Qt::SolidPattern);
     QPen *highlightPen = new QPen(*highlightBrush, 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
@@ -201,7 +207,7 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
     painter->setBrush(*brush);
     painter->drawPolygon(baseShape, Qt::OddEvenFill);
 
-    switch (myStatus) {
+    switch (m_Status) {
         case INITIALIZED:
             brush->setColor(Qt::green);
             break;
@@ -244,90 +250,52 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
 }
 
 /*!
- * \brief Module::getPort returns the port that was clicked on.
- * \param pos
- * \param portType
- * \return
- *
- * \todo improve the method header, are an int reference and the port point both really needed?
+ * \brief Module::contextMenuEvent
+ * \param event
  */
-Port *Module::getPort(QPointF pos, int &portType)
-{
-    //Port *selectedSlot;
-    portType = DEFAULT;
-    QPointF mappedPos = mapFromScene(pos);
-
-    // The click could be inside the bound but not the shape, test for that
-    if (baseShape.containsPoint(mappedPos, Qt::OddEvenFill)) {
-        portType = MAIN;
-    }
-
-    foreach (Port *port, portList) {
-        if (port->polygon().containsPoint(mappedPos, Qt::OddEvenFill)) {
-            portType = port->port();
-            return port;
-        }
-    }
-}
-
-/*!
- * \brief Module::itemChange
- * \param change
- * \param value
- * \return QVariant
- */
- /*
-QVariant Module::itemChange(GraphicsItemChange change, const QVariant &value)
-{
-    if (change == QGraphicsItem::ItemPositionChange) {
-        foreach (Arrow *arrow, arrowList) {
-            arrow->updatePosition();
-        }
-    }
-
-    return value;
-}*/
-
-///\todo move the creation of actions and menus out of the event!
-///      this should be done in createActions() and createMenus()
 void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
     moduleMenu->popup(event->screenPos());
 }
 
 /*!
- * \brief Module::addArrow
- * \param arrow
+ * \brief Module::addconnection
+ * \param connection
  */
-void Module::addArrow(Arrow *arrow)
+void Module::addConnection(Connection *connection)
 {
-    arrowList.append(arrow);
+    connectionList.append(connection);
 }
 
 /*!
- * \brief Module::removeArrow
- * \param arrow
+ * \brief Module::removeconnection
+ * \param connection
  */
-void Module::removeArrow(Arrow *arrow)
+void Module::removeConnection(Connection *connection)
 {
-    int index = arrowList.indexOf(arrow);
-    if (index != -1) { arrowList.removeAt(index); }
+    int index = connectionList.indexOf(connection);
+    if (index != -1) { connectionList.removeAt(index); }
 }
 
 /*!
- * \brief Module::clearArrows
+ * \brief Module::clearconnections
  */
-void Module::clearArrows()
+void Module::clearConnections()
 {
-    foreach (Arrow *arrow, arrowList) {
-        arrow->startItem()->removeArrow(arrow);
-        arrow->endItem()->removeArrow(arrow);
-        scene()->removeItem(arrow);
-        delete arrow;
+    foreach (Connection *connection, connectionList) {
+        connection->startItem()->removeConnection(connection);
+        connection->endItem()->removeConnection(connection);
+        scene()->removeItem(connection);
+        delete connection;
     }
 
 }
 
+/*!
+ * \brief Module::removeParent
+ * \param parentMod
+ * \return
+ */
 bool Module::removeParent(Module *parentMod)
 {
     Module *mod;
@@ -342,6 +310,11 @@ bool Module::removeParent(Module *parentMod)
     return false;
 }
 
+/*!
+ * \brief Module::removeChild
+ * \param childMod
+ * \return
+ */
 bool Module::removeChild(Module *childMod)
 {
     Module *mod;
@@ -357,7 +330,12 @@ bool Module::removeChild(Module *childMod)
 
 }
 
-bool Module::removeParameter(Module *paramMod)
+/*!
+ * \brief Module::disconnectParameter
+ * \param paramMod
+ * \return
+ */
+bool Module::disconnectParameter(Module *paramMod)
 {
     Module *mod;
     QList<Module *>::iterator it;
@@ -373,15 +351,17 @@ bool Module::removeParameter(Module *paramMod)
 }
 
 /*!
- * \brief Module::portPos
+ * \brief Module::portPos return the outward point for a port.
  * \param port
  * \return
+ *
+ * \todo is it necessary to loop through the ports to find this?
  */
 QPointF Module::portPos(Port *port)
 {
-    foreach (Port *mySlot, portList) {
-        if (mySlot == port) {
-            return mySlot->polygon().first();
+    foreach (Port *m_Slot, portList) {
+        if (m_Slot == port) {
+            return m_Slot->polygon().first();
         }
     }
 }
