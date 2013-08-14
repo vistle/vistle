@@ -239,33 +239,30 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
     //  If okay, begin the process of drawing a line.
     // See what has been selected from an object, if anything.
     QGraphicsItem *item = itemAt(event->scenePos(), QTransform());
+    startPort = dynamic_cast<gui::Port *>(item);
     ///\todo add other objects and dynamic cast checks here
     ///\todo dynamic cast is not a perfect solution, is there a better one?
-    if (item) {
-        std::cerr << item->type() << std::endl;
-        if (item->type() == TypePortItem) {
-            startPort = dynamic_cast<Port *>(item);
-            // Test for port type
-            switch (startPort->port()) {
-                case INPUT:
-                case OUTPUT:
-                case PARAMETER:
-                    m_Line = new QGraphicsLineItem(QLineF(event->scenePos(),
-                                                          event->scenePos()));
-                    m_Line->setPen(QPen(m_LineColor, 2));
-                    addItem(m_Line);
-                    startModule = dynamic_cast<Module *>(startPort->parentItem());
-                    break;
-                case MAIN:
-                    //The object inside the ports has been clicked on
-                    ///\todo add functionality
-                    break;
-                case DEFAULT:
-                    // Another part of the object has been clicked, ignore
-                    break;
-            } //end switch
-        } //end if (item->type() == TypePortItem)
-    } //end if (item)
+    if (startPort) {
+       // Test for port type
+       switch (startPort->port()) {
+          case INPUT:
+          case OUTPUT:
+          case PARAMETER:
+             m_Line = new QGraphicsLineItem(QLineF(event->scenePos(),
+                      event->scenePos()));
+             m_Line->setPen(QPen(m_LineColor, 2));
+             addItem(m_Line);
+             startModule = dynamic_cast<Module *>(startPort->parentItem());
+             break;
+          case MAIN:
+             //The object inside the ports has been clicked on
+             ///\todo add functionality
+             break;
+          case DEFAULT:
+             // Another part of the object has been clicked, ignore
+             break;
+       } //end switch
+    } //end if (startPort)
 
     QGraphicsScene::mousePressEvent(event);
 }
