@@ -22,12 +22,22 @@ Handler::Handler()
 {
 }
 
+UiRunner *UiRunner::s_instance = nullptr;
+
 /*************************************************************************/
 // begin class UiRunner
 /*************************************************************************/
 
 UiRunner::UiRunner(vistle::UserInterface &ui) : m_ui(ui)
 {
+   assert(s_instance == nullptr);
+   s_instance = this;
+}
+
+UiRunner &UiRunner::the() {
+
+   assert(s_instance);
+   return *s_instance;
 }
 
 void UiRunner::cancel() {
@@ -43,6 +53,25 @@ void UiRunner::operator()() {
 		}
 		usleep(10000);
 	}
+}
+
+vistle::UserInterface &UiRunner::ui() const {
+
+   return m_ui;
+}
+
+void UiRunner::sendMessage(const vistle::message::Message &msg) const
+{
+   ui().sendMessage(msg);
+}
+
+vistle::Parameter *UiRunner::getParameter(int id, QString name) const
+{
+  vistle::Parameter *p = ui().state().getParameter(id, name.toStdString());
+  if (!p) {
+     std::cerr << "no such parameter: " << id << ":" << name.toStdString() << std::endl;
+  }
+  return p;
 }
 
 /*************************************************************************/

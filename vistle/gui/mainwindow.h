@@ -25,10 +25,12 @@ public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
     void printDebug(QString msg);
-    Ui::MainWindow *ui;
     void setVistleobserver(VistleObserver *printer);
     void setUiRunner(UiRunner *runner);
-    
+
+    vistle::UserInterface &uiConnection() const;
+    vistle::StateTracker &state() const;
+
 private slots:
     void on_findButton_clicked();
     void on_dragButton_clicked();
@@ -54,12 +56,14 @@ protected:
     //void mousePressEvent(QMouseEvent *event);
 
 private:
+    Ui::MainWindow *ui = nullptr;
+    UiRunner *m_uiRunner = nullptr;
     //void loadTextFile();  ///\todo remove this
     QList<QString> loadModuleFile();
     void addModule(QString modName, QPointF dropPos);
-    Scene *scene;
+    Scene *scene = nullptr;
     ///\todo rename statePrinter
-    VistleObserver *m_observer;
+    VistleObserver *m_observer = nullptr;
 
 };
 

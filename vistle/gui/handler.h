@@ -18,16 +18,28 @@ public:
 class UiRunner
 {
 public:
-    UiRunner(vistle::UserInterface &ui);
+   UiRunner(vistle::UserInterface &ui);
+   static UiRunner &the();
 
-    void cancel();
-    void operator()();
-    vistle::UserInterface &m_ui;
+   void cancel();
+   void operator()();
+
+   vistle::UserInterface &ui() const;
+
+   void sendMessage(const vistle::message::Message &msg) const;
+   vistle::Parameter *getParameter(int id, QString name) const;
+   template<class T>
+   void setParameter(int id, QString name, const T &value) const;
 
 private:
-	bool m_done = false;
-    boost::mutex m_mutex;
+   vistle::UserInterface &m_ui;
+   bool m_done = false;
+   boost::mutex m_mutex;
+
+   static UiRunner *s_instance;
 };
+
+UiRunner *vistle();
 
 class VistleObserver: public QObject, public vistle::StateObserver
 {
@@ -39,7 +51,7 @@ signals:
 	void deleteModule_s(int moduleId);
 	void moduleStateChanged_s(int moduleId, int stateBits, ModuleStatus modChangeType);
 	void newParameter_s(int moduleId, QString parameterName);
-	void parameterValueChanged_s(int moduleId, QString &parameterName);
+        void parameterValueChanged_s(int moduleId, QString parameterName);
 	void newPort_s(int moduleId, QString portName);
 	void newConnection_s(int fromId, QString fromName,
                    		 int toId, QString toName);
@@ -59,6 +71,20 @@ public:
 	void deleteConnection(int fromId, const std::string &fromName,
                           int toId, const std::string &toName);
 };
+
+template<class T>
+void VistleConnection::setParameter(int id, QString name, const T &value) const
+{
+   vistle::ParameterBase<T> *p = dynamic_cast<vistle::ParameterBase<T> *>(getParameter(id, name));
+   if (!p) {
+      std::cerr << "parameter not of appropriate type: " << id << ":" << name.toStdString() << std::endl;
+      return;
+   }
+
+   p->setValue(value);
+   vistle::message::SetParameter set(id, name.toStdString(), p);
+   sendMessage(set);
+}
 
 } //namespace gui
 #endif // VHANDLER_H

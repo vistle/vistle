@@ -14,14 +14,16 @@
 
 #include "consts.h"
 #include "port.h"
+#include "handler.h"
 
 namespace gui {
 
 class Connection;
 
-class Module : public QObject, public QGraphicsPolygonItem
+class Module : public QObject, public QGraphicsItem
 {
-    Q_OBJECT
+   Q_OBJECT
+   Q_INTERFACES(QGraphicsItem)
 
 signals:
     void mouseClickEvent();
@@ -62,15 +64,22 @@ public:
     QString getKey() { return m_Key; }
     void clearKey() { m_Key = QString(""); }
 
+    // vistle methods
     QString name() const;
     void setName(QString name);
+
     int id() const;
     void setId(int id);
+
     boost::uuids::uuid spawnUuid() const;
     void setSpawnUuid(const boost::uuids::uuid &uuid);
 
+    template<class T>
+    void setParameter(QString name, const T &value) const;
+
 protected:
     void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value);
 
 public slots:
     void copy();
@@ -96,6 +105,7 @@ private:
     QList<Port *> portList;                             //< list of all the ports in the module
     QPointF vLastPoint;                                 //< point for keeping track of whether a click was made
     QPolygonF baseShape;                                //< base polygon of the module
+    QGraphicsPolygonItem *shape = nullptr;              //< graphics item for base polygon
     QGraphicsPolygonItem *statusShape = nullptr;        //< pointer to the shape indicating module status
     QList<Connection *> connectionList;                 //< list of connections connected to the module
 
@@ -115,6 +125,12 @@ private:
     ModuleStatus m_Status = SPAWNING;
 
 };
+
+template <class T>
+void Module::setParameter(QString name, const T &value) const
+{
+   VistleConnection::the().setParameter(id(), name, value);
+}
 
 } //namespace gui
 

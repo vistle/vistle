@@ -90,6 +90,8 @@ Module::Module(const std::string &n, const std::string &shmname,
 #endif
 
    addIntParameter("_cacheMode", "input object caching (-1: default, 0: none, 1: all)", m_cache.cacheMode());
+   addFloatParameter("_x", "x position in GUI", 0);
+   addFloatParameter("_y", "y position in GUI", 0);
 }
 
 void Module::initDone() const {

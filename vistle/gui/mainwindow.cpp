@@ -107,6 +107,18 @@ void MainWindow::parameterValueChanged_msg(int moduleId, QString parameterName)
 {
     QString text = "Parameter value changed on ID: " + QString::number(moduleId) + ":" + parameterName + "\n";
     ui->vistleOutput->append(text);
+    if (parameterName == "_x" || parameterName == "_y") {
+       if (Module *m = scene->findModule(moduleId)) {
+          vistle::Parameter *p = state().getParameter(moduleId, parameterName.toStdString());
+          if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
+             double val = fp->getValue();
+             if (parameterName == "_x")
+                m->setX(val);
+             else if (parameterName == "_y")
+                m->setY(val);
+          }
+       }
+    }
 }
 
 void MainWindow::newPort_msg(int moduleId, QString portName)
@@ -161,6 +173,17 @@ void MainWindow::setVistleobserver(VistleObserver *observer)
 void MainWindow::setUiRunner(UiRunner *runner)
 {
     scene->setRunner(runner);
+    m_uiRunner = runner;
+}
+
+vistle::UserInterface &MainWindow::uiConnection() const
+{
+   return m_uiRunner->ui();
+}
+
+vistle::StateTracker &MainWindow::state() const
+{
+   return uiConnection().state();
 }
 
 /*!

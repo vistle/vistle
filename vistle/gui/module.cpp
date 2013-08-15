@@ -6,6 +6,7 @@
 /**********************************************************************************/
 #include "module.h"
 #include "connection.h"
+#include "handler.h"
 
 #include <QDebug>
 #include <QMenu>
@@ -24,8 +25,12 @@ namespace gui {
  *
  * \todo move the generation of the ports and the main shape out of the constructor
  */
-Module::Module(QGraphicsItem *parent, QString name) : QGraphicsPolygonItem(parent)
+Module::Module(QGraphicsItem *parent, QString name) : QGraphicsItem(parent)
 {
+
+   shape = new QGraphicsPolygonItem(this);
+
+
     QString toolTip;
     createPorts();
     setName(name);
@@ -44,7 +49,11 @@ Module::Module(QGraphicsItem *parent, QString name) : QGraphicsPolygonItem(paren
     case BUSY:
        toolTip = "Busy";
        break;
+    case ERROR:
+       toolTip = "Error";
+       break;
     }
+
     statusShape->setToolTip(toolTip);
 
     setFlag(QGraphicsItem::ItemIsMovable);
@@ -65,6 +74,7 @@ Module::~Module()
     parentModules.clear();
     childModules.clear();
     paramModules.clear();
+    delete shape;
     delete statusShape;
     delete moduleMenu;
     delete copyAct;
@@ -192,9 +202,11 @@ void Module::createMenus()
  */
 QRectF Module::boundingRect() const
 {
+   return childrenBoundingRect();
+#if 0
     ///\todo The bounding area right now is a rectangle simply corresponding to the basic dimensions... improve?
     return QRectF(-xAddr, 0.0, w, h);
-
+#endif
 }
 
 /*!
@@ -266,7 +278,21 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
  */
 void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
-    moduleMenu->popup(event->screenPos());
+   moduleMenu->popup(event->screenPos());
+}
+
+QVariant Module::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant &value)
+{
+   if (change == ItemPositionChange && scene()) {
+      // value is the new position.
+      QPointF newPos = value.toPointF();
+      double x = newPos.x();
+      double y = newPos.y();
+      setParameter("_x", x);
+      setParameter("_y", y);
+   }
+
+   return QGraphicsItem::itemChange(change, value);
 }
 
 /*!
@@ -387,7 +413,7 @@ void Module::setName(QString name)
                                QPointF(0.0, yAddr * 2),
                                QPointF(-xAddr, yAddr) };
    baseShape = QPolygonF(points);
-   setPolygon(baseShape);
+   shape->setPolygon(baseShape);
 
    delete statusShape;
    statusShape = new QGraphicsPolygonItem(QPolygonF(QRectF(QPointF(xAddr / 2 - 15, yAddr * 1.5 - 15),
