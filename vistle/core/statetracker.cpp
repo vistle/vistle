@@ -288,7 +288,7 @@ bool StateTracker::handle(const message::Spawn &spawn) {
    mod.name = spawn.getName();
 
    for (StateObserver *o: m_observers) {
-      o->newModule(moduleId, mod.name);
+      o->newModule(moduleId, spawn.uuid(), mod.name);
    }
 
    return true;

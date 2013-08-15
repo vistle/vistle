@@ -57,19 +57,58 @@ void Scene::setRunner(UiRunner *runner)
  */
 void Scene::addModule(QString modName, QPointF dropPos)
 {
-    QString mod = modName;
     Module *module = new Module(0, modName);
     ///\todo improve how the data such as the name is set in the module.
     addItem(module);
     module->setPos(dropPos);
-    module->setStatus(INITIALIZED);
+    module->setStatus(SPAWNING);
 
-    vistle::message::Spawn spawnMsg(0, mod.toUtf8().constData());
+    vistle::message::Spawn spawnMsg(0, modName.toUtf8().constData());
+    module->setSpawnUuid(spawnMsg.uuid());
     m_Runner->m_ui.sendMessage(spawnMsg);
 
     ///\todo add the objects only to the map (sortMap) currently used for sorting, not to the list.
     ///This will remove the need for moduleList altogether
     moduleList.append(module);
+}
+
+void Scene::addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name)
+{
+   std::cerr << "addModule: name=" << name.toStdString() << ", id=" << moduleId << std::endl;
+   Module *mod = findModule(spawnUuid);
+   if (!mod)
+      mod = findModule(moduleId);
+   if (!mod) {
+      mod = new Module(nullptr, name);
+      addItem(mod);
+      mod->setStatus(SPAWNING);
+      moduleList.append(mod);
+   }
+
+   mod->setId(moduleId);
+   mod->setName(name+"_"+QString::number(moduleId));
+}
+
+Module *Scene::findModule(int id) const
+{
+   for (Module *mod: moduleList) {
+      if (mod->id() == id) {
+         return mod;
+      }
+   }
+
+   return nullptr;
+}
+
+Module *Scene::findModule(const boost::uuids::uuid &spawnUuid) const
+{
+   for (Module *mod: moduleList) {
+      if (mod->spawnUuid() == spawnUuid) {
+         return mod;
+      }
+   }
+
+   return nullptr;
 }
 
 /*!

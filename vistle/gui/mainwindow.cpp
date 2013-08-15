@@ -74,9 +74,10 @@ void MainWindow::debug_msg(QString debugMsg)
     ui->vistleOutput->append(debugMsg);
 }
 
-void MainWindow::newModule_msg(int moduleId, QString moduleName)
+void MainWindow::newModule_msg(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName)
 {
     QString text = "Module started: " + moduleName + " with ID: " + QString::number(moduleId) + "\n";
+    scene->addModule(moduleId, spawnUuid, moduleName);
     ui->vistleOutput->append(text);
 }
 
@@ -139,8 +140,8 @@ void MainWindow::setVistleobserver(VistleObserver *observer)
     ///\todo should these connections be pushed to another method?
     connect(m_observer, SIGNAL(debug_s(QString)),
             this, SLOT(debug_msg(QString)));
-    connect(m_observer, SIGNAL(newModule_s(int, QString)),
-            this, SLOT(newModule_msg(int, QString)));
+    connect(m_observer, SIGNAL(newModule_s(int, boost::uuids::uuid, QString)),
+            this, SLOT(newModule_msg(int, boost::uuids::uuid, QString)));
     connect(m_observer, SIGNAL(deleteModule_s(int)),
             this, SLOT(deleteModule_msg(int)));
     connect(m_observer, SIGNAL(moduleStateChanged_s(int, int, ModuleStatus)),

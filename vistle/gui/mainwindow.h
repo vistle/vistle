@@ -36,7 +36,7 @@ private slots:
     void on_invertModulesButton_clicked();
 
     void debug_msg(QString debugMsg);
-    void newModule_msg(int moduleId, QString moduleName);
+    void newModule_msg(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName);
     void deleteModule_msg(int moduleId);
     void moduleStateChanged_msg(int moduleId, int stateBits, ModuleStatus modChangeType);
     void newParameter_msg(int moduleId, QString parameterName);

@@ -41,7 +41,8 @@ class StatePrinter: public StateObserver {
       : m_out(out)
       {}
 
-   void newModule(int moduleId, const std::string &moduleName) {
+   void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) {
+      (void)spawnUuid;
       m_out << "   module " << moduleName << " started: " << moduleId << std::endl;
    }
 

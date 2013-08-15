@@ -25,6 +25,10 @@ public:
     void invertModules();
     void setModules(QList<QString> moduleNameList);
     void setRunner(UiRunner *runnner);
+    void addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name);
+
+    Module *findModule(int id) const;
+    Module *findModule(const boost::uuids::uuid &spawnUuid) const;
 
     enum Mode { InsertLine, InsertModule };
 

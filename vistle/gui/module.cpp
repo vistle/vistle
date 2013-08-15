@@ -13,6 +13,8 @@
 #include <QGraphicsScene>
 #include <QGraphicsSceneContextMenuEvent>
 
+#include <cassert>
+
 namespace gui {
 
 /*!
@@ -25,41 +27,23 @@ namespace gui {
 Module::Module(QGraphicsItem *parent, QString name) : QGraphicsPolygonItem(parent)
 {
     QString toolTip;
-    modName = name;
+    createPorts();
+    setName(name);
     modIsVisited = false;
 
-    // get the pixel width of the string
-    QFont font("times", 30);
-    QFontMetrics fm(font);
-    w = fm.boundingRect(modName).width() + 20;
-    h = fm.boundingRect(modName).height() + 20;
-
-    // Calculate the crucial dimensions based off the width and height
-    xAddr = w / 2;
-    yAddr = h / 2;
-
-    // Set the points of the polygon. Currently a diamond
-    QVector<QPointF> points = { QPointF(0.0, 0.0),
-                                QPointF(xAddr, yAddr),
-                                QPointF(0.0, yAddr * 2),
-                                QPointF(-xAddr, yAddr) };
-    baseShape = QPolygonF(points);
-    setPolygon(baseShape);
-
-    statusShape = new QGraphicsPolygonItem(QPolygonF(QRectF(QPointF(xAddr / 2 - 15, yAddr * 1.5 - 15),
-                                                  QPointF(xAddr / 2, yAddr * 1.5))), this);
-
-    switch (m_Status)
-    {
-        case INITIALIZED:
-            toolTip = "Initialized";
-            break;
-        case KILLED:
-            toolTip = "Killed";
-            break;
-        case BUSY:
-            toolTip = "Busy";
-            break;
+    switch (m_Status) {
+    case SPAWNING:
+       toolTip = "Spawning";
+       break;
+    case INITIALIZED:
+       toolTip = "Initialized";
+       break;
+    case KILLED:
+       toolTip = "Killed";
+       break;
+    case BUSY:
+       toolTip = "Busy";
+       break;
     }
     statusShape->setToolTip(toolTip);
 
@@ -67,10 +51,9 @@ Module::Module(QGraphicsItem *parent, QString name) : QGraphicsPolygonItem(paren
     setFlag(QGraphicsItem::ItemIsSelectable);
     setFlag(QGraphicsItem::ItemIsFocusable);
     setFlag(QGraphicsItem::ItemSendsGeometryChanges);
-    setToolTip(modName);
+    setToolTip(m_name);
     setCursor(Qt::OpenHandCursor);
 
-    createSlots();
     createActions();
     createMenus();
 }
@@ -117,9 +100,9 @@ void Module::deleteConnections()
 }
 
 /*!
- * \brief Module::createSlots create the connection ports for the module.
+ * \brief Module::createPorts create the connection ports for the module.
  */
-void Module::createSlots()
+void Module::createPorts()
 {
     // Set the points of the input, output, and parameter shapes. Currently triangles
     QVector<QPointF> points = { QPointF(-xAddr, yAddr),
@@ -141,6 +124,31 @@ void Module::createSlots()
                 QPointF(-xAddr / 2, yAddr * 1.5),
                 QPointF(xAddr / 2, yAddr * 1.5) };
     portList.append(new Port(QPolygonF(points), PARAMETER, this));
+}
+
+void Module::updatePorts()
+{
+   assert (portList.size() == 4);
+
+   QVector<QPointF> points = { QPointF(-xAddr, yAddr),
+                               QPointF(-xAddr / 2, yAddr * 1.5),
+                               QPointF(-xAddr / 2, yAddr / 2) };
+   portList[0]->setPolygon(QPolygonF(points));
+
+   points = { QPointF(xAddr, yAddr),
+              QPointF(xAddr / 2, yAddr * 1.5),
+              QPointF(xAddr / 2, yAddr / 2) };
+   portList[1]->setPolygon(QPolygonF(points));
+
+   points = { QPointF(0,0),
+              QPointF(xAddr / 2, yAddr / 2),
+              QPointF(-xAddr / 2, yAddr / 2) };
+   portList[2]->setPolygon(QPolygonF(points));
+
+   points =  { QPointF(0, yAddr * 2),
+               QPointF(-xAddr / 2, yAddr * 1.5),
+               QPointF(xAddr / 2, yAddr * 1.5) };
+   portList[3]->setPolygon(QPolygonF(points));
 }
 
 /*!
@@ -208,6 +216,9 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
     painter->drawPolygon(baseShape, Qt::OddEvenFill);
 
     switch (m_Status) {
+        case SPAWNING:
+            brush->setColor(Qt::gray);
+            break;
         case INITIALIZED:
             brush->setColor(Qt::green);
             break;
@@ -246,7 +257,7 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
     }
 
     painter->setPen(Qt::black);
-    painter->drawText(QPointF(-xAddr / 2.25, yAddr), modName);
+    painter->drawText(QPointF(-xAddr / 2.25, yAddr), m_name);
 }
 
 /*!
@@ -350,6 +361,61 @@ bool Module::disconnectParameter(Module *paramMod)
 
 }
 
+QString Module::name() const
+{
+   return m_name;
+}
+
+void Module::setName(QString name)
+{
+   m_name = name;
+   setToolTip(m_name);
+
+   // get the pixel width of the string
+   QFont font("times", 30);
+   QFontMetrics fm(font);
+   w = fm.boundingRect(m_name).width() + 20;
+   h = fm.boundingRect(m_name).height() + 20;
+
+   // Calculate the crucial dimensions based off the width and height
+   xAddr = w / 2;
+   yAddr = h / 2;
+
+   // Set the points of the polygon. Currently a diamond
+   QVector<QPointF> points = { QPointF(0.0, 0.0),
+                               QPointF(xAddr, yAddr),
+                               QPointF(0.0, yAddr * 2),
+                               QPointF(-xAddr, yAddr) };
+   baseShape = QPolygonF(points);
+   setPolygon(baseShape);
+
+   delete statusShape;
+   statusShape = new QGraphicsPolygonItem(QPolygonF(QRectF(QPointF(xAddr / 2 - 15, yAddr * 1.5 - 15),
+                                                           QPointF(xAddr / 2, yAddr * 1.5))), this);
+
+   updatePorts();
+}
+
+int Module::id() const
+{
+   return m_id;
+}
+
+void Module::setId(int id)
+{
+   m_id = id;
+}
+
+boost::uuids::uuid Module::spawnUuid() const
+{
+   return m_spawnUuid;
+}
+
+void Module::setSpawnUuid(const boost::uuids::uuid &uuid)
+{
+   m_spawnUuid = uuid;
+}
+
 /*!
  * \brief Module::portPos return the outward point for a port.
  * \param port
@@ -364,6 +430,8 @@ QPointF Module::portPos(Port *port)
             return m_Slot->polygon().first();
         }
     }
+
+    return QPointF();
 }
 
 } //namespace gui

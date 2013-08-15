@@ -10,6 +10,8 @@
 #include <QGraphicsItem>
 #include <QAction>
 
+#include <boost/uuid/uuid.hpp>
+
 #include "consts.h"
 #include "port.h"
 
@@ -60,6 +62,13 @@ public:
     QString getKey() { return m_Key; }
     void clearKey() { m_Key = QString(""); }
 
+    QString name() const;
+    void setName(QString name);
+    int id() const;
+    void setId(int id);
+    boost::uuids::uuid spawnUuid() const;
+    void setSpawnUuid(const boost::uuids::uuid &uuid);
+
 protected:
     void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
 
@@ -69,7 +78,8 @@ public slots:
     void deleteConnections();
 
 private:
-    void createSlots();
+    void createPorts();
+    void updatePorts();
     void createActions();
     void createMenus();
     QMenu *moduleMenu;
@@ -86,8 +96,8 @@ private:
     QList<Port *> portList;                             //< list of all the ports in the module
     QPointF vLastPoint;                                 //< point for keeping track of whether a click was made
     QPolygonF baseShape;                                //< base polygon of the module
-    QGraphicsPolygonItem *statusShape;                  //< pointer to the shape indicating module status
-    QList<Connection *> connectionList;                           //< list of connections connected to the module
+    QGraphicsPolygonItem *statusShape = nullptr;        //< pointer to the shape indicating module status
+    QList<Connection *> connectionList;                 //< list of connections connected to the module
 
     QList<Module *> parentModules;
     QList<Module *> childModules;
@@ -97,9 +107,12 @@ private:
     /// these can be implemented in the map itself, and leave the module out of it.
     QString m_Key;
 
+    int m_id = 0;
+    boost::uuids::uuid m_spawnUuid;
+
     ///\todo add data structure for the module information
-    QString modName;
-    ModuleStatus m_Status;
+    QString m_name;
+    ModuleStatus m_Status = SPAWNING;
 
 };
 

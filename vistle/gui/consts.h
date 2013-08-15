@@ -11,7 +11,8 @@ enum GraphicsType { DEFAULT,
 					OUTPUT,
 					PARAMETER };
 
-enum ModuleStatus { INITIALIZED,	// green
+enum ModuleStatus { SPAWNING, // grey
+   INITIALIZED,	// green
 				    KILLED,			// red
 					BUSY,			// yellow
 					ERROR };		// black

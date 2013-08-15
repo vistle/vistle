@@ -15,6 +15,9 @@
 #include <boost/ref.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/uuid/uuid.hpp>
+
+Q_DECLARE_METATYPE(boost::uuids::uuid);
 
 using namespace gui;
 
@@ -23,6 +26,7 @@ int main(int argc, char *argv[])
    qRegisterMetaType<ModuleStatus>("ModuleStatus");
    qRegisterMetaType<ItemType>("ItemType");
    qRegisterMetaType<GraphicsType>("GraphicsType");
+   qRegisterMetaType<boost::uuids::uuid>();
 
     try {
         std::string host = "localhost";

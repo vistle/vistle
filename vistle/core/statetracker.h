@@ -19,7 +19,7 @@ class V_COREEXPORT StateObserver {
 
  public:
 
-   virtual void newModule(int moduleId, const std::string &moduleName) = 0;
+   virtual void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) = 0;
    virtual void deleteModule(int moduleId) = 0;
 
    enum ModuleStateBits {
