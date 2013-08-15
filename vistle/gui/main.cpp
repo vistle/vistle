@@ -39,13 +39,13 @@ int main(int argc, char *argv[])
         MainWindow w;
 
         vistle::UserInterface ui(host, port);
-        StatePrinter *printer = new StatePrinter();
+        VistleObserver *printer = new VistleObserver();
         ui.registerObserver(printer);
         UiRunner *runner = new UiRunner(ui);
         boost::thread runnerThread(boost::ref(*runner));
 
-        w.setPrinter(printer);
-        w.setRunner(runner);
+        w.setVistleobserver(printer);
+        w.setUiRunner(runner);
         w.show();
         int val = a.exec();
 

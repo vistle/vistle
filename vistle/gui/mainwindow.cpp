@@ -128,33 +128,33 @@ void MainWindow::deleteConnection_msg(int fromId, QString fromName,
 // End ports
 /************************************************************************************/
 
-void MainWindow::setPrinter(StatePrinter *printer)
+void MainWindow::setVistleobserver(VistleObserver *observer)
 {
-    m_Printer = printer;
+    m_observer = observer;
     
     // connect the printer signals to the appropriate ports
     ///\todo should these connections be pushed to another method?
-    connect(m_Printer, SIGNAL(debug_s(QString)),
+    connect(m_observer, SIGNAL(debug_s(QString)),
             this, SLOT(debug_msg(QString)));
-    connect(m_Printer, SIGNAL(newModule_s(int, QString)),
+    connect(m_observer, SIGNAL(newModule_s(int, QString)),
             this, SLOT(newModule_msg(int, QString)));
-    connect(m_Printer, SIGNAL(deleteModule_s(int)),
+    connect(m_observer, SIGNAL(deleteModule_s(int)),
             this, SLOT(deleteModule_msg(int)));
-    connect(m_Printer, SIGNAL(moduleStateChanged_s(int, int, ModuleStatus)),
+    connect(m_observer, SIGNAL(moduleStateChanged_s(int, int, ModuleStatus)),
             this, SLOT(moduleStateChanged_msg(int, int, ModuleStatus)));
-    connect(m_Printer, SIGNAL(newParameter_s(int, QString)),
+    connect(m_observer, SIGNAL(newParameter_s(int, QString)),
             this, SLOT(newParameter_msg(int, QString)));
-    connect(m_Printer, SIGNAL(parameterValueChanged_s(int, QString)),
+    connect(m_observer, SIGNAL(parameterValueChanged_s(int, QString)),
             this, SLOT(parameterValueChanged_msg(int, QString)));
-    connect(m_Printer, SIGNAL(newPort_s(int, QString)),
+    connect(m_observer, SIGNAL(newPort_s(int, QString)),
             this, SLOT(newPort_msg(int, QString)));
-    connect(m_Printer, SIGNAL(newConnection_s(int, QString, int, QString)),
+    connect(m_observer, SIGNAL(newConnection_s(int, QString, int, QString)),
             this, SLOT(newConnection_msg(int, QString, int, QString)));
-    connect(m_Printer, SIGNAL(deleteConnection_s(int, QString, int, QString)),
+    connect(m_observer, SIGNAL(deleteConnection_s(int, QString, int, QString)),
             this, SLOT(deleteConnection_msg(int, QString, int, QString)));
 }
 
-void MainWindow::setRunner(UiRunner *runner)
+void MainWindow::setUiRunner(UiRunner *runner)
 {
     scene->setRunner(runner);
 }

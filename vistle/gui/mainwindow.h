@@ -26,8 +26,8 @@ public:
     ~MainWindow();
     void printDebug(QString msg);
     Ui::MainWindow *ui;
-    void setPrinter(StatePrinter *printer);
-    void setRunner(UiRunner *runner);
+    void setVistleobserver(VistleObserver *printer);
+    void setUiRunner(UiRunner *runner);
     
 private slots:
     void on_findButton_clicked();
@@ -59,7 +59,7 @@ private:
     void addModule(QString modName, QPointF dropPos);
     Scene *scene;
     ///\todo rename statePrinter
-    StatePrinter *m_Printer;
+    VistleObserver *m_observer;
 
 };
 

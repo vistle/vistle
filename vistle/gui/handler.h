@@ -29,13 +29,13 @@ private:
     boost::mutex m_mutex;
 };
 
-class StatePrinter : public QObject, public vistle::StateObserver
+class VistleObserver: public QObject, public vistle::StateObserver
 {
 	Q_OBJECT
 
 signals:
 	void debug_s(QString debugMsg);
-	void newModule_s(int moduleId, QString moduleName);
+        void newModule_s(int moduleId, QString moduleName);
 	void deleteModule_s(int moduleId);
 	void moduleStateChanged_s(int moduleId, int stateBits, ModuleStatus modChangeType);
 	void newParameter_s(int moduleId, QString parameterName);
@@ -47,7 +47,7 @@ signals:
                       		int toId, QString toName);
 
 public:
-    StatePrinter(QObject *parent=0);
+    VistleObserver(QObject *parent=0);
 	void newModule(int moduleId, const std::string &moduleName);
 	void deleteModule(int moduleId);
 	void moduleStateChanged(int moduleId, int stateBits);
