@@ -50,7 +50,10 @@ MainWindow::MainWindow(QWidget *parent) :
 
     // load a text file containing all the modules in vistle.
     ///\todo loadModuleFile() returns a list of modules, pipe this to the scene
-    scene->setModules(loadModuleFile());
+    auto modules = loadModuleFile();
+    scene->setModules(modules);
+    for (const QString &m: modules)
+       ui->moduleListWidget->addItem(m);
     ui->drawArea->setScene(scene);
     ui->drawArea->show();
 }
@@ -215,6 +218,25 @@ QList<QString> MainWindow::loadModuleFile()
 {
     QList<QString> moduleList;
 
+    moduleList << "Add";
+    moduleList << "Collect";
+    moduleList << "CuttingSurface";
+    moduleList << "Gendat";
+    moduleList << "ReadCovise";
+    moduleList << "Replicate";
+    moduleList << "Color";
+    moduleList << "Extrema";
+    moduleList << "IsoSurface";
+    moduleList << "ReadFOAM";
+    moduleList << "ShowUSG";
+    moduleList << "CellToVert";
+    moduleList << "CutGeometry";
+    moduleList << "Gather";
+    moduleList << "OSGRenderer";
+    moduleList << "ReadVistle";
+    moduleList << "WriteVistle";
+
+#if 0
     QFile inputFile("/mnt/raid/home/hpcskimb/vistle/vistle/gui/module_list.txt");
     if (inputFile.open(QIODevice::ReadOnly)) {
        QTextStream in(&inputFile);
@@ -227,8 +249,9 @@ QList<QString> MainWindow::loadModuleFile()
     } else {
         ///\todo some sort of error message/handling, perhaps just a msgbox?
     }
-
     inputFile.close();
+#endif
+
     return moduleList;
 }
 
