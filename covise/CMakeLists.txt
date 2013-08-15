@@ -7,6 +7,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${PROJECT_SOURCE_DIR}/cmake/Modules/
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/../vistle/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/../vistle/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/../vistle/libexec/module)
 
 add_definitions(-DHLRS)
 

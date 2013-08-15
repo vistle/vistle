@@ -1,3 +1,5 @@
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
+
 add_library(vistle_module SHARED
    module.cpp
    renderer.cpp

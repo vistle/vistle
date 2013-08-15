@@ -262,9 +262,8 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    if ((baseRank + m_rank) % (rankSkip+1) != 0)
       onThisRank = false;
 
-   //CERR << "spawning " << spawn.getName() << ": size=" << m_size << ", num=" << numSpwan << ", base=" << baseRank << ", skip=" << rankSkip << ", local: " << onThisRank << std::endl;
-
-   std::string name = m_bindir + "/" + spawn.getName();
+   std::string name = m_bindir + "/../libexec/module/" + spawn.getName();
+   //CERR << "spawning " << name << ": size=" << m_size << ", num=" << numSpwan << ", base=" << baseRank << ", skip=" << rankSkip << ", local: " << onThisRank << std::endl;
 
    std::stringstream modID;
    modID << moduleID;
