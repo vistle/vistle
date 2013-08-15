@@ -169,15 +169,9 @@ bool Communicator::dispatch() {
    bool received = false;
    do {
       received = false;
-      // handle messages from Python front-end
+      // handle messages from Python front-end and UIs
       if (!tryReceiveAndHandleMessage(m_commandQueue->getMessageQueue(), received, true))
          done = true;
-
-      // handle messages from UIs
-      for (auto mq: uiInputQueue) {
-         if (!tryReceiveAndHandleMessage(mq.second->getMessageQueue(), received, true))
-            done = true;
-      }
 
       if (!done)
          done = !m_moduleManager->dispatch(received);

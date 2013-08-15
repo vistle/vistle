@@ -73,7 +73,6 @@ class Communicator {
    MPI_Request m_reqAny, m_reqToRank0;
 
    typedef std::map<int, message::MessageQueue *> MessageQueueMap;
-   MessageQueueMap uiInputQueue, uiOutputQueue;
    boost::shared_ptr<message::MessageQueue> m_commandQueue;
    bool tryReceiveAndHandleMessage(boost::interprocess::message_queue &mq, bool &received, bool broadcast=false);
 
