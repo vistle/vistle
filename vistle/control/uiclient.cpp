@@ -47,7 +47,13 @@ void UiClient::operator()() {
          break;
 
       if (received) {
-         sendQueue().send(msg, msg->size(), 0);
+         if (msg->type() == message::Message::MODULEEXIT) {
+            std::cerr << "user interface " << id() << " quit" << std::endl;
+            assert(msg->senderId() == id());
+            m_done = true;
+         } else {
+            sendQueue().send(msg, msg->size(), 0);
+         }
       }
 
 
