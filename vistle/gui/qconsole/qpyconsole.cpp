@@ -357,7 +357,7 @@ QStringList QPyConsole::suggestCommand(const QString &cmd, QString& prefix)
     if (!cmd.isEmpty()) {
         do {
             snprintf(run,255,"print completer.complete(\"%s\",%d)\n",
-                     cmd.toAscii().data(),n);
+                     cmd.toUtf8().data(),n);
             PyRun_SimpleString(run);
             resultString=resultString.trimmed(); //strip trialing newline
             if (resultString!="None")

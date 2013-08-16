@@ -26,7 +26,7 @@
  * MA 02110-1301  USA
  */
 
-#include "../include/qconsole.h"
+#include "qconsole.h"
 #include <QFile>
 #include <QTextStream>
 #include <QDebug>
@@ -152,7 +152,7 @@ int PopupCompleter::exec(QTextEdit *parent)
 		}
 		this->move(globalPt);
 		this->setFocus();
-		return QDialog::exec();
+      return QDialog::exec();
 }
 
 /**

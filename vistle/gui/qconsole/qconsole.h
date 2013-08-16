@@ -90,7 +90,7 @@ public:
 
 public:
 		QString selected(void) { return selected_; }
-		int exec(QTextEdit*);
+      int exec(QTextEdit*);
 
 protected:
 		virtual void showEvent(QShowEvent*);

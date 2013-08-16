@@ -1,10 +1,11 @@
-project(gui)
-set(CMAKE_AUTOMOC ON)
-
 find_qt()
+find_package(PythonLibs)
+
+set(CMAKE_AUTOMOC ON)
 
 include_directories(
   ${Boost_INCLUDE_DIRS}
+  ${PYTHON_INCLUDE_PATH}
   ..
   ${CMAKE_CURRENT_BINARY_DIR}
 )
@@ -47,6 +48,7 @@ qt5_use_modules(gui Widgets)
 target_link_libraries(gui 
   ${QT_LIBRARIES}
   ${Boost_LIBRARIES}
+  ${PYTHON_LIBRARIES}
   vistle_core
   vistle_ui
 )
