@@ -24,6 +24,8 @@
 #include <QTextStream>
 #include <QDropEvent>
 
+#include "qconsole/qpyconsole.h"
+
 namespace gui {
 
 /*!
@@ -40,7 +42,9 @@ MainWindow::MainWindow(QWidget *parent) :
     // declare list of names of modules, pass to the scene
     ui->setupUi(this);
 
-    ui->consoleWidget->setWidget(ui->vistleConsole);
+    m_console = new QPyConsole(this, "Welcome to Vistle!");
+    ui->consoleWidget->setWidget(m_console);
+    setFocusProxy(m_console);
     ui->drawArea->setAttribute(Qt::WA_AlwaysShowToolTips);
     ui->drawArea->setDragMode(QGraphicsView::RubberBandDrag);
 
@@ -71,20 +75,20 @@ MainWindow::~MainWindow()
 /************************************************************************************/
 void MainWindow::debug_msg(QString debugMsg)
 {
-    ui->vistleConsole->append(debugMsg);
+    m_console->append(debugMsg);
 }
 
 void MainWindow::newModule_msg(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName)
 {
     QString text = "Module started: " + moduleName + " with ID: " + QString::number(moduleId) + "\n";
     scene->addModule(moduleId, spawnUuid, moduleName);
-    ui->vistleConsole->append(text);
+    m_console->append(text);
 }
 
 void MainWindow::deleteModule_msg(int moduleId)
 {
     QString text = "Module deleted: " + QString::number(moduleId) + "\n";
-    ui->vistleConsole->append(text);
+    m_console->append(text);
 }
 
 void MainWindow::moduleStateChanged_msg(int moduleId, int stateBits, ModuleStatus modChangeType)
@@ -97,19 +101,19 @@ void MainWindow::moduleStateChanged_msg(int moduleId, int stateBits, ModuleStatu
     if (modChangeType == KILLED) text = "Module state change on ID: " + QString::number(moduleId) + " killed\n";
     if (modChangeType == BUSY) text = "Module state change on ID: " + QString::number(moduleId) + " busy\n";
 
-    ui->vistleConsole->append(text);
+    m_console->append(text);
 }
 
 void MainWindow::newParameter_msg(int moduleId, QString parameterName)
 {
     QString text = "New parameter on ID: " + QString::number(moduleId) + ":" + parameterName + "\n";
-    ui->vistleConsole->append(text);
+    m_console->append(text);
 }
 
 void MainWindow::parameterValueChanged_msg(int moduleId, QString parameterName)
 {
     QString text = "Parameter value changed on ID: " + QString::number(moduleId) + ":" + parameterName + "\n";
-    ui->vistleConsole->append(text);
+    m_console->append(text);
     if (parameterName == "_x" || parameterName == "_y") {
        if (Module *m = scene->findModule(moduleId)) {
           vistle::Parameter *p = state().getParameter(moduleId, parameterName.toStdString());
@@ -127,21 +131,21 @@ void MainWindow::parameterValueChanged_msg(int moduleId, QString parameterName)
 void MainWindow::newPort_msg(int moduleId, QString portName)
 {
     QString text = "New port on ID: " + QString::number(moduleId) + ":" + portName + "\n";
-    ui->vistleConsole->append(text);
+    m_console->append(text);
 }
 
 void MainWindow::newConnection_msg(int fromId, QString fromName,
                                    int toId, QString toName)
 {
     QString text = "New Connection: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName + "\n";
-    ui->vistleConsole->append(text);
+    m_console->append(text);
 }
 
 void MainWindow::deleteConnection_msg(int fromId, QString fromName,
                                       int toId, QString toName)
 {
     QString text = "Connection removed: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName + "\n";
-    ui->vistleConsole->append(text);
+    m_console->append(text);
 }
 /************************************************************************************/
 // End ports
