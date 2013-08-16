@@ -31,105 +31,78 @@
 #   undef _DEBUG
 #endif
 #include <Python.h>
+#include <boost/python.hpp>
 #include "qpyconsole.h"
 
 #include <QDebug>
 
-PyObject* glb;
-PyObject* loc;
+static PyObject* glb;
+static PyObject* loc;
 
-QString resultString;
+static QString resultString;
 
-static PyObject* redirector_init(PyObject *, PyObject *)
-{
-    Py_INCREF(Py_None);
-    return Py_None;
-}
+class Redirector {
 
-static PyObject* redirector_write(PyObject *, PyObject *args)
-{
-    char* output;
-    PyObject *selfi;
-
-    if (!PyArg_ParseTuple(args,"Os",&selfi,&output))
-    {
-        return NULL;
-    }
-
-    QString outputString = QString::fromLocal8Bit(output);
-    resultString.append(outputString);
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-static PyMethodDef redirectorMethods[] =
-{
-    {"__init__", redirector_init, METH_VARARGS,
-     "initialize the stdout/err redirector"},
-    {"write", redirector_write, METH_VARARGS,
-     "implement the write method to redirect stdout/err"},
-    {NULL,NULL,0,NULL},
+public:
+   void write(const std::string &output)
+   {
+      QString outputString = QString::fromStdString(output);
+      resultString.append(outputString);
+   }
 };
 
-static PyObject* py_clear(PyObject *, PyObject *)
+BOOST_PYTHON_MODULE(_redirector)
+{
+   using namespace boost::python;
+   class_<Redirector>("_redirector")
+         .def("write", &Redirector::write, "implement the write method to redirect stdout/err");
+};
+
+static void clear()
 {
     VistleConsole::the()->clear();
-    return Py_None;
 }
 
-static PyObject* py_reset(PyObject *, PyObject *)
+static void pyreset()
 {
     VistleConsole::the()->reset();
-    return Py_None;
 }
 
-static PyObject* py_save(PyObject *, PyObject *args)
+static void save(const std::string &filename)
 {
-    char* filename;
-    if (!PyArg_ParseTuple(args,"s",&filename))
-    {
-        return NULL;
-    }
-    VistleConsole::the()->saveScript(filename);
-    return Py_None;
+    VistleConsole::the()->saveScript(QString::fromStdString(filename));
 }
 
-static PyObject* py_load(PyObject *, PyObject *args)
+static void load(const std::string &filename)
 {
-    char* filename;
-    if (!PyArg_ParseTuple(args,"s",&filename))
-    {
-        return NULL;
-    }
-    VistleConsole::the()->loadScript(filename);
-
-    return Py_None;
+    VistleConsole::the()->loadScript(QString::fromStdString(filename));
 }
 
-static PyObject* py_history(PyObject *, PyObject *)
+static void history()
 {
     VistleConsole::the()->printHistory();
-    return Py_None;
 }
 
-static PyObject* py_quit(PyObject *, PyObject *)
+static void quit()
 {
     resultString="Use reset() to restart the interpreter; otherwise exit your application\n";
-    return Py_None;
+}
+
+BOOST_PYTHON_MODULE(_console)
+{
+   using namespace boost::python;
+
+   def("clear", clear, "clear the console");
+   def("reset", pyreset, "reset the interpreter and clear the console");
+   def("save", save, "save commands up to now in given file");
+   def("load", load, "load commands from given file");
+   def("history", history, "shows the history");
+   def("quit", quit, "print information about quitting");
 }
 
 static PyMethodDef ModuleMethods[] = { {NULL,NULL,0,NULL} };
-static PyMethodDef console_methods[] =  {
-    {"clear",py_clear, METH_VARARGS,"clears the console"},
-    {"reset",py_reset, METH_VARARGS,"reset the interpreter and clear the console"},
-    {"save",py_save, METH_VARARGS,"save commands up to now in given file"},
-    {"load",py_load, METH_VARARGS,"load commands from given file"},
-    {"history",py_history, METH_VARARGS,"shows the history"},
-    {"quit",py_quit, METH_VARARGS,"print information about quitting"},
 
-    {NULL, NULL,0,NULL}
-};
-
+#if 0
 void initredirector()
 {
     PyMethodDef *def;
@@ -154,6 +127,7 @@ void initredirector()
         Py_DECREF(method);
     }
 }
+#endif
 
 void VistleConsole::printHistory()
 {
@@ -193,27 +167,28 @@ VistleConsole::VistleConsole(QWidget *parent, const QString& welcomeText) :
     PyObject *module = PyImport_ImportModule("__main__");
     loc = glb = PyModule_GetDict(module);
 
-    initredirector();
+    PyImport_AddModule("_redirector");
+    init_redirector();
 
-    PyImport_AddModule("console");
-    Py_InitModule("console", console_methods);
+    PyImport_AddModule("_console");
+    init_console();
 
     PyImport_ImportModule("rlcompleter");
     PyRun_SimpleString("import sys\n"
-                       "import redirector\n"
-                       "import console\n"
+                       "import _redirector\n"
+                       "import _console\n"
                        "import rlcompleter\n"
-                       "sys.path.insert(0, \".\")\n" // add current
-                                                     // path
-                       "sys.stdout = redirector.redirector()\n"
+                       "sys.path.insert(0, \".\")\n" // add current path
+                       "sys.stdout = _redirector._redirector()\n"
                        "sys.stderr = sys.stdout\n"
                        "import __builtin__\n"
-                       "__builtin__.clear=console.clear\n"
-                       "__builtin__.reset=console.reset\n"
-                       "__builtin__.save=console.save\n"
-                       "__builtin__.load=console.load\n"
-                       "__builtin__.history=console.history\n"
-                       "__builtin__.quit=console.quit\n"
+                       "__builtin__.clear=_console.clear\n"
+                       "__builtin__.reset=_console.reset\n"
+                       "__builtin__.save=_console.save\n"
+                       "__builtin__.load=_console.load\n"
+                       "__builtin__.history=_console.history\n"
+                       "__builtin__.quit=_console.quit\n"
+                       "__builtin__.exit=_console.quit\n"
                        "__builtin__.completer=rlcompleter.Completer()\n"
         );
 }
