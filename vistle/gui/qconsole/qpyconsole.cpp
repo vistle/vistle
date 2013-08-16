@@ -73,13 +73,13 @@ static PyMethodDef redirectorMethods[] =
 
 static PyObject* py_clear(PyObject *, PyObject *)
 {
-    QPyConsole::getInstance()->clear();
+    VistleConsole::the()->clear();
     return Py_None;
 }
 
 static PyObject* py_reset(PyObject *, PyObject *)
 {
-    QPyConsole::getInstance()->reset();
+    VistleConsole::the()->reset();
     return Py_None;
 }
 
@@ -90,7 +90,7 @@ static PyObject* py_save(PyObject *, PyObject *args)
     {
         return NULL;
     }
-    QPyConsole::getInstance()->saveScript(filename);
+    VistleConsole::the()->saveScript(filename);
     return Py_None;
 }
 
@@ -101,14 +101,14 @@ static PyObject* py_load(PyObject *, PyObject *args)
     {
         return NULL;
     }
-    QPyConsole::getInstance()->loadScript(filename);
+    VistleConsole::the()->loadScript(filename);
 
     return Py_None;
 }
 
 static PyObject* py_history(PyObject *, PyObject *)
 {
-    QPyConsole::getInstance()->printHistory();
+    VistleConsole::the()->printHistory();
     return Py_None;
 }
 
@@ -155,7 +155,7 @@ void initredirector()
     }
 }
 
-void QPyConsole::printHistory()
+void VistleConsole::printHistory()
 {
     uint index = 1;
     for ( QStringList::Iterator it = history.begin(); it != history.end(); ++it )
@@ -165,21 +165,21 @@ void QPyConsole::printHistory()
     }
 }
 
-QPyConsole *QPyConsole::theInstance = NULL;
+VistleConsole *VistleConsole::s_instance = NULL;
 
-QPyConsole *QPyConsole::getInstance(QWidget *parent, const QString& welcomeText)
+VistleConsole *VistleConsole::the()
 {
-    if (!theInstance)
-    {
-        theInstance = new QPyConsole(parent, welcomeText);
-    }
-    return theInstance;
+   assert(s_instance);
+   return s_instance;
 }
 
 //QTcl console constructor (init the QTextEdit & the attributes)
-QPyConsole::QPyConsole(QWidget *parent, const QString& welcomeText) :
+VistleConsole::VistleConsole(QWidget *parent, const QString& welcomeText) :
         QConsole(parent, welcomeText),lines(0)
 {
+   assert(!s_instance);
+   s_instance = this;
+
     //set the Python Prompt
     setNormalPrompt(true);
 
@@ -220,7 +220,7 @@ QPyConsole::QPyConsole(QWidget *parent, const QString& welcomeText) :
 char save_error_type[1024], save_error_info[1024];
 
 bool
-QPyConsole::py_check_for_unexpected_eof()
+VistleConsole::py_check_for_unexpected_eof()
 {
     PyObject *errobj, *errdata, *errtraceback, *pystring;
 
@@ -264,14 +264,14 @@ QPyConsole::py_check_for_unexpected_eof()
 }
 
 //Desctructor
-QPyConsole::~QPyConsole()
+VistleConsole::~VistleConsole()
 {
     Py_Finalize();
 }
 
 //Call the Python interpreter to execute the command
 //retrieve back results using the python internal stdout/err redirectory (see above)
-QString QPyConsole::interpretCommand(const QString &command, int *res)
+QString VistleConsole::interpretCommand(const QString &command, int *res)
 {
     PyObject* py_result;
     PyObject* dum;
@@ -347,7 +347,7 @@ QString QPyConsole::interpretCommand(const QString &command, int *res)
         return "";
 }
 
-QStringList QPyConsole::suggestCommand(const QString &cmd, QString& prefix)
+QStringList VistleConsole::suggestCommand(const QString &cmd, QString& prefix)
 {
     char run[255];
     int n =0;

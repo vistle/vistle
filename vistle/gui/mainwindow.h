@@ -60,7 +60,7 @@ protected:
 
 private:
     Ui::MainWindow *ui = nullptr;
-    QPyConsole *m_console = nullptr;
+    VistleConsole *m_console = nullptr;
     VistleConnection *m_vistleConnection = nullptr;
     //void loadTextFile();  ///\todo remove this
     QList<QString> loadModuleFile();

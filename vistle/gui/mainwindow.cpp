@@ -42,7 +42,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // declare list of names of modules, pass to the scene
     ui->setupUi(this);
 
-    m_console = new QPyConsole(this, "Welcome to Vistle!");
+    m_console = new VistleConsole(this, "Welcome to Vistle!");
     ui->consoleWidget->setWidget(m_console);
     setFocusProxy(m_console);
     ui->drawArea->setAttribute(Qt::WA_AlwaysShowToolTips);

@@ -34,19 +34,18 @@
  *@author Mondrian Nuessle
  */
 
-class QPyConsole : public QConsole
+class VistleConsole : public QConsole
 {
 public:
     //destructor
-    ~QPyConsole();
+    ~VistleConsole();
 
     //private constructor
-    QPyConsole(QWidget *parent = NULL,
+    VistleConsole(QWidget *parent = NULL,
                const QString& welcomeText = "");
 
     //get the QPyConsole instance
-    static QPyConsole *getInstance(QWidget *parent = NULL,
-                                   const QString& welcomeText = "");
+    static VistleConsole *the();
 
     void printHistory();
 
@@ -63,7 +62,7 @@ protected:
 private:
 
     //The instance
-    static QPyConsole *theInstance;
+    static VistleConsole *s_instance;
 
 private:
     // function to check if current command compiled and if not hinted for a multiline statement
