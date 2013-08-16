@@ -36,12 +36,13 @@ int main(int argc, char *argv[])
             host = argv[1];
         }
         if (argc > 2) {
-            host = atoi(argv[2]);
+            port = atoi(argv[2]);
         }
 
         QApplication a(argc, argv);
         MainWindow w;
 
+        std::cerr << "trying to connect UI to " << host << ":" << port << std::endl;
         vistle::UserInterface ui(host, port);
         VistleObserver *printer = new VistleObserver();
         ui.registerObserver(printer);

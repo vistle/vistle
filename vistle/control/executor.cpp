@@ -133,6 +133,11 @@ void Executor::setFile(const std::string &filename) {
    m_comm->setFile(filename);
 }
 
+unsigned short Executor::uiPort() const
+{
+   return m_comm->uiPort();
+}
+
 void Executor::setInput(const std::string &input) {
 
    m_comm->setInput(input);

@@ -52,6 +52,8 @@ class Communicator {
    int getRank() const;
    int getSize() const;
 
+   unsigned short uiPort() const;
+
    ModuleManager &moduleManager() const;
 
  private:

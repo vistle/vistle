@@ -34,6 +34,8 @@ class V_CONTROLEXPORT Executor {
       int getRank() const { return m_rank; }
       int getSize() const { return m_size; }
 
+      unsigned short uiPort() const;
+
    private:
       std::string m_name;
       int m_rank, m_size;

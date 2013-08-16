@@ -62,6 +62,11 @@ Communicator::Communicator(int argc, char *argv[], int r, const std::vector<std:
    MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
    if (m_rank == 0)
       MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
+
+   if (m_rank == 0) {
+
+      m_uiManager = new UiManager(m_commandQueue);
+   }
 }
 
 Communicator &Communicator::the() {
@@ -80,6 +85,14 @@ int Communicator::getRank() const {
 int Communicator::getSize() const {
 
    return m_size;
+}
+
+unsigned short Communicator::uiPort() const
+{
+   if (!m_uiManager)
+      return 0;
+
+   return m_uiManager->port();
 }
 
 void Communicator::setInput(const std::string &input) {
@@ -114,11 +127,7 @@ bool Communicator::dispatch() {
       if (!done)
          done = m_quitFlag;
 
-      if (!m_uiManager) {
-         m_uiManager = new UiManager(m_commandQueue);
-      }
-
-      if (!done) 
+      if (!done && m_uiManager)
          done = !m_uiManager->check();
    }
 
