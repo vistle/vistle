@@ -17,6 +17,9 @@ set(gui_SOURCES
   scene.cpp
   port.cpp
   vistleconnection.cpp
+
+  qconsole/qconsole.cpp
+  qconsole/qpyconsole.cpp
 )
 
 set(gui_HEADERS
