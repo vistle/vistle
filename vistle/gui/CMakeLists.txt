@@ -8,6 +8,7 @@ include_directories(
   ${PYTHON_INCLUDE_PATH}
   ..
   ${CMAKE_CURRENT_BINARY_DIR}
+  .
 )
 
 set(gui_SOURCES

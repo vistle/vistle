@@ -183,7 +183,7 @@
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
-  <widget class="QDockWidget" name="messageDockWidget">
+  <widget class="QDockWidget" name="consoleWidget">
    <property name="enabled">
     <bool>true</bool>
    </property>
@@ -200,7 +200,7 @@
     </size>
    </property>
    <property name="windowTitle">
-    <string>Message Output</string>
+    <string>Console</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>8</number>
@@ -208,7 +208,7 @@
    <widget class="QWidget" name="dockWidgetContents_2">
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QTextEdit" name="vistleOutput">
+      <widget class="QPyConsole" name="vistleConsole">
        <property name="readOnly">
         <bool>true</bool>
        </property>
@@ -290,6 +290,13 @@
   </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>QPyConsole</class>
+   <extends>QTextEdit</extends>
+   <header>qconsole/qpyconsole.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

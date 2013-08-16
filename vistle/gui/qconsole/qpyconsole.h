@@ -40,6 +40,10 @@ public:
     //destructor
     ~QPyConsole();
 
+    //private constructor
+    QPyConsole(QWidget *parent = NULL,
+               const QString& welcomeText = "");
+
     //get the QPyConsole instance
     static QPyConsole *getInstance(QWidget *parent = NULL,
                                    const QString& welcomeText = "");
@@ -49,10 +53,6 @@ public:
 protected:
     //give suggestions to complete a command (not working...)
     QStringList suggestCommand(const QString &cmd, QString& prefix);
-
-    //private constructor
-    QPyConsole(QWidget *parent = NULL,
-               const QString& welcomeText = "");
 
     //execute a validated command
     QString interpretCommand(const QString &command, int *res);
