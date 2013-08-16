@@ -65,7 +65,7 @@ void Scene::addModule(QString modName, QPointF dropPos)
 
     vistle::message::Spawn spawnMsg(0, modName.toUtf8().constData());
     module->setSpawnUuid(spawnMsg.uuid());
-    m_Runner->ui().sendMessage(spawnMsg);
+    m_Runner->sendMessage(spawnMsg);
 
     ///\todo add the objects only to the map (sortMap) currently used for sorting, not to the list.
     ///This will remove the need for moduleList altogether

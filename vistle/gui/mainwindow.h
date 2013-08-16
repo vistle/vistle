@@ -29,8 +29,10 @@ public:
     void setVistleobserver(VistleObserver *printer);
     void setVistleConnection(VistleConnection *runner);
 
+#if 0
     vistle::UserInterface &uiConnection() const;
     vistle::StateTracker &state() const;
+#endif
 
 private slots:
     void on_findButton_clicked();

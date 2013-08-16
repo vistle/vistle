@@ -4,6 +4,7 @@
 #include "consts.h"
 
 #include <userinterface/userinterface.h>
+#include <boost/thread/recursive_mutex.hpp>
 
 #include <QObject>
 
@@ -18,22 +19,23 @@ public:
    void cancel();
    void operator()();
 
-   vistle::UserInterface &ui() const;
-
-   void sendMessage(const vistle::message::Message &msg) const;
+  void sendMessage(const vistle::message::Message &msg) const;
    vistle::Parameter *getParameter(int id, QString name) const;
    template<class T>
    void setParameter(int id, QString name, const T &value) const;
 
 private:
+   vistle::UserInterface &ui() const;
+
    vistle::UserInterface &m_ui;
    bool m_done = false;
-   boost::mutex m_mutex;
+
+   typedef boost::recursive_mutex mutex;
+   typedef mutex::scoped_lock mutex_lock;
+   mutable mutex m_mutex;
 
    static VistleConnection *s_instance;
 };
-
-VistleConnection *vistle();
 
 class VistleObserver: public QObject, public vistle::StateObserver
 {
@@ -69,6 +71,7 @@ public:
 template<class T>
 void VistleConnection::setParameter(int id, QString name, const T &value) const
 {
+   mutex_lock lock(m_mutex);
    vistle::ParameterBase<T> *p = dynamic_cast<vistle::ParameterBase<T> *>(getParameter(id, name));
    if (!p) {
       std::cerr << "parameter not of appropriate type: " << id << ":" << name.toStdString() << std::endl;

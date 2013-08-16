@@ -116,7 +116,7 @@ void MainWindow::parameterValueChanged_msg(int moduleId, QString parameterName)
     m_console->append(text);
     if (parameterName == "_x" || parameterName == "_y") {
        if (Module *m = scene->findModule(moduleId)) {
-          vistle::Parameter *p = state().getParameter(moduleId, parameterName.toStdString());
+          vistle::Parameter *p = VistleConnection::the().getParameter(moduleId, parameterName);
           if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
              double val = fp->getValue();
              if (parameterName == "_x")
@@ -181,16 +181,6 @@ void MainWindow::setVistleConnection(VistleConnection *runner)
 {
     scene->setRunner(runner);
     m_vistleConnection = runner;
-}
-
-vistle::UserInterface &MainWindow::uiConnection() const
-{
-   return m_vistleConnection->ui();
-}
-
-vistle::StateTracker &MainWindow::state() const
-{
-   return uiConnection().state();
 }
 
 /*!

@@ -32,18 +32,18 @@ VistleConnection &VistleConnection::the() {
 }
 
 void VistleConnection::cancel() {
-    boost::unique_lock<boost::mutex> lock(m_mutex);
-	m_done = true;
+   mutex_lock lock(m_mutex);
+   m_done = true;
 }
 
 void VistleConnection::operator()() {
-	while(m_ui.dispatch()) {
-        boost::unique_lock<boost::mutex> lock(m_mutex);
-		if (m_done) {
-			break;
-		}
-		usleep(10000);
-	}
+   while(m_ui.dispatch()) {
+      mutex_lock lock(m_mutex);
+      if (m_done) {
+         break;
+      }
+      usleep(10000);
+   }
 }
 
 vistle::UserInterface &VistleConnection::ui() const {
@@ -53,16 +53,18 @@ vistle::UserInterface &VistleConnection::ui() const {
 
 void VistleConnection::sendMessage(const vistle::message::Message &msg) const
 {
+   mutex_lock lock(m_mutex);
    ui().sendMessage(msg);
 }
 
 vistle::Parameter *VistleConnection::getParameter(int id, QString name) const
 {
-  vistle::Parameter *p = ui().state().getParameter(id, name.toStdString());
-  if (!p) {
-     std::cerr << "no such parameter: " << id << ":" << name.toStdString() << std::endl;
-  }
-  return p;
+   mutex_lock lock(m_mutex);
+   vistle::Parameter *p = ui().state().getParameter(id, name.toStdString());
+   if (!p) {
+      std::cerr << "no such parameter: " << id << ":" << name.toStdString() << std::endl;
+   }
+   return p;
 }
 
 /*************************************************************************/
