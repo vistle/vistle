@@ -173,15 +173,15 @@ void MainWindow::setVistleobserver(VistleObserver *observer)
             this, SLOT(deleteConnection_msg(int, QString, int, QString)));
 }
 
-void MainWindow::setUiRunner(UiRunner *runner)
+void MainWindow::setVistleConnection(VistleConnection *runner)
 {
     scene->setRunner(runner);
-    m_uiRunner = runner;
+    m_vistleConnection = runner;
 }
 
 vistle::UserInterface &MainWindow::uiConnection() const
 {
-   return m_uiRunner->ui();
+   return m_vistleConnection->ui();
 }
 
 vistle::StateTracker &MainWindow::state() const

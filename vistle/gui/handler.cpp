@@ -2,10 +2,8 @@
 /*! \file handler.cpp
  *
  * Contains three classes:
- * 1. Handler -- currently empty, is intended to be used to handle any instructions
- *    sent to the UiRunner.
- * 2. UiRunner -- simple class, handling commands dispatched to vistle's userInterface.
- * 3. StatePrinter -- observer class that watches for changes in vistle, and sends
+ * 1. VistleConnection -- simple class, handling commands dispatched to vistle's userInterface.
+ * 2. VistleObserver -- observer class that watches for changes in vistle, and sends
  *    signals to the MainWindow.
  */
 /**********************************************************************************/
@@ -15,37 +13,30 @@
 
 namespace gui {
 
-/*************************************************************************/
-// begin class VHandler
-/*************************************************************************/
-Handler::Handler()
-{
-}
-
-UiRunner *UiRunner::s_instance = nullptr;
+VistleConnection *VistleConnection::s_instance = nullptr;
 
 /*************************************************************************/
-// begin class UiRunner
+// begin class VistleConnection
 /*************************************************************************/
 
-UiRunner::UiRunner(vistle::UserInterface &ui) : m_ui(ui)
+VistleConnection::VistleConnection(vistle::UserInterface &ui) : m_ui(ui)
 {
    assert(s_instance == nullptr);
    s_instance = this;
 }
 
-UiRunner &UiRunner::the() {
+VistleConnection &VistleConnection::the() {
 
    assert(s_instance);
    return *s_instance;
 }
 
-void UiRunner::cancel() {
+void VistleConnection::cancel() {
     boost::unique_lock<boost::mutex> lock(m_mutex);
 	m_done = true;
 }
 
-void UiRunner::operator()() {
+void VistleConnection::operator()() {
 	while(m_ui.dispatch()) {
         boost::unique_lock<boost::mutex> lock(m_mutex);
 		if (m_done) {
@@ -55,17 +46,17 @@ void UiRunner::operator()() {
 	}
 }
 
-vistle::UserInterface &UiRunner::ui() const {
+vistle::UserInterface &VistleConnection::ui() const {
 
    return m_ui;
 }
 
-void UiRunner::sendMessage(const vistle::message::Message &msg) const
+void VistleConnection::sendMessage(const vistle::message::Message &msg) const
 {
    ui().sendMessage(msg);
 }
 
-vistle::Parameter *UiRunner::getParameter(int id, QString name) const
+vistle::Parameter *VistleConnection::getParameter(int id, QString name) const
 {
   vistle::Parameter *p = ui().state().getParameter(id, name.toStdString());
   if (!p) {
@@ -75,11 +66,11 @@ vistle::Parameter *UiRunner::getParameter(int id, QString name) const
 }
 
 /*************************************************************************/
-// begin class StatePrinter
+// begin class VistleObserver
 /*************************************************************************/
 
 /*!
- * \brief StatePrinter::StatePrinter
+ * \brief VistleObserver::VistleObserver
  * \param parent
  *
  */

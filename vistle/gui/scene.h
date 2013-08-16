@@ -24,7 +24,7 @@ public:
     void sortModules();
     void invertModules();
     void setModules(QList<QString> moduleNameList);
-    void setRunner(UiRunner *runnner);
+    void setRunner(VistleConnection *runnner);
     void addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name);
 
     Module *findModule(int id) const;
@@ -56,7 +56,7 @@ private:
     int recSortModules(Module *parent, int width, int height);
 
     ///\todo push this functionality to vHandler
-    UiRunner *m_Runner;
+    VistleConnection *m_Runner;
 
 };
 

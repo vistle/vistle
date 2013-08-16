@@ -9,17 +9,11 @@
 
 namespace gui {
 
-class Handler : public QObject
+class VistleConnection
 {
 public:
-	Handler();
-};
-
-class UiRunner
-{
-public:
-   UiRunner(vistle::UserInterface &ui);
-   static UiRunner &the();
+   VistleConnection(vistle::UserInterface &ui);
+   static VistleConnection &the();
 
    void cancel();
    void operator()();
@@ -36,10 +30,10 @@ private:
    bool m_done = false;
    boost::mutex m_mutex;
 
-   static UiRunner *s_instance;
+   static VistleConnection *s_instance;
 };
 
-UiRunner *vistle();
+VistleConnection *vistle();
 
 class VistleObserver: public QObject, public vistle::StateObserver
 {

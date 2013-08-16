@@ -26,7 +26,7 @@ public:
     ~MainWindow();
     void printDebug(QString msg);
     void setVistleobserver(VistleObserver *printer);
-    void setUiRunner(UiRunner *runner);
+    void setVistleConnection(VistleConnection *runner);
 
     vistle::UserInterface &uiConnection() const;
     vistle::StateTracker &state() const;
@@ -57,7 +57,7 @@ protected:
 
 private:
     Ui::MainWindow *ui = nullptr;
-    UiRunner *m_uiRunner = nullptr;
+    VistleConnection *m_vistleConnection = nullptr;
     //void loadTextFile();  ///\todo remove this
     QList<QString> loadModuleFile();
     void addModule(QString modName, QPointF dropPos);

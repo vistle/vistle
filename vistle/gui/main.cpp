@@ -45,11 +45,11 @@ int main(int argc, char *argv[])
         vistle::UserInterface ui(host, port);
         VistleObserver *printer = new VistleObserver();
         ui.registerObserver(printer);
-        UiRunner *runner = new UiRunner(ui);
+        VistleConnection *runner = new VistleConnection(ui);
         boost::thread runnerThread(boost::ref(*runner));
 
         w.setVistleobserver(printer);
-        w.setUiRunner(runner);
+        w.setVistleConnection(runner);
         w.show();
         int val = a.exec();
 
