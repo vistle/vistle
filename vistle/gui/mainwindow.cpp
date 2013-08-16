@@ -89,6 +89,9 @@ void MainWindow::deleteModule_msg(int moduleId)
 
 void MainWindow::moduleStateChanged_msg(int moduleId, int stateBits, ModuleStatus modChangeType)
 {
+   if (Module *m = scene->findModule(moduleId)) {
+      m->setStatus(modChangeType);
+   }
     QString text;
     if (modChangeType == INITIALIZED) text = "Module state change on ID: " + QString::number(moduleId) + " initialized\n";
     if (modChangeType == KILLED) text = "Module state change on ID: " + QString::number(moduleId) + " killed\n";
