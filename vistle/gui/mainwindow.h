@@ -2,7 +2,7 @@
 #define MAINWINDOW_H
 
 #include "scene.h"
-#include "handler.h"
+#include "vistleconnection.h"
 
 #include <userinterface/userinterface.h>
 

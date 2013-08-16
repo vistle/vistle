@@ -6,7 +6,7 @@
 /**********************************************************************************/
 #include "module.h"
 #include "connection.h"
-#include "handler.h"
+#include "vistleconnection.h"
 
 #include <QDebug>
 #include <QMenu>

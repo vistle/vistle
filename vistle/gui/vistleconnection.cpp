@@ -7,7 +7,7 @@
  *    signals to the MainWindow.
  */
 /**********************************************************************************/
-#include "handler.h"
+#include "vistleconnection.h"
 
 #include <QString>
 

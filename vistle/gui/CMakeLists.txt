@@ -1,52 +1,47 @@
-PROJECT(gui)
-SET(CMAKE_AUTOMOC ON)
+project(gui)
+set(CMAKE_AUTOMOC ON)
 
 find_qt()
 
-INCLUDE_DIRECTORIES(
+include_directories(
   ${Boost_INCLUDE_DIRS}
   ..
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-SET(gui_SOURCES
+set(gui_SOURCES
   main.cpp
   mainwindow.cpp
   connection.cpp
   module.cpp
   scene.cpp
   port.cpp
-  handler.cpp
+  vistleconnection.cpp
 )
 
-SET(gui_HEADERS
+set(gui_HEADERS
   mainwindow.h
   connection.h
   consts.h
   module.h
   scene.h
   port.h
-  handler.h
+  vistleconnection.h
 )
 
-SET(gui_FORMS
+set(gui_FORMS
   mainwindow.ui
 )
 
-SET(gui_RESOURCES
-  input.txt
-  module_list.txt
-)
-
-QT_WRAP_UI(GUI_UI_SRCS ${gui_FORMS})
-ADD_DEFINITIONS(${QT_DEFINITIONS})
-ADD_EXECUTABLE(gui 
+qt_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
+add_definitions(${QT_DEFINITIONS})
+add_executable(gui 
   ${gui_SOURCES} 
   ${GUI_UI_SRCS})
 
 qt5_use_modules(gui Widgets)
 
-TARGET_LINK_LIBRARIES(gui 
+target_link_libraries(gui 
   ${QT_LIBRARIES}
   ${Boost_LIBRARIES}
   vistle_core

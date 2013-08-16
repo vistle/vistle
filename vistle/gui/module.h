@@ -14,7 +14,7 @@
 
 #include "consts.h"
 #include "port.h"
-#include "handler.h"
+#include "vistleconnection.h"
 
 namespace gui {
 

@@ -5,7 +5,7 @@
 #include "connection.h"
 #include "port.h"
 #include "consts.h"
-#include "handler.h"
+#include "vistleconnection.h"
 
 #include <QList>
 #include <QString>

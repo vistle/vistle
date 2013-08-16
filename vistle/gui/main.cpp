@@ -8,7 +8,7 @@
 #include "mainwindow.h"
 #include <QApplication>
 
-#include "handler.h"
+#include "vistleconnection.h"
 #include "consts.h"
 
 #include <userinterface/userinterface.h>
