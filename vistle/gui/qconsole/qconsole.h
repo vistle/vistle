@@ -35,6 +35,7 @@
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QMenu>
+#include <QEventLoop>
 
 #include <QDialog>
 #include <QListWidget>
@@ -155,6 +156,8 @@ public:
 
 		void correctPathName(QString& pathName);
 
+      QString getRawInput();
+
 private:
 		void dropEvent( QDropEvent * event);
 		void dragMoveEvent( QDragMoveEvent * event);
@@ -232,6 +235,8 @@ private:
 		void handleUpKeyPress();
 		void handleDownKeyPress();
 		void setHome(bool);
+
+      QEventLoop rawEventLoop;
 };
 
 #endif

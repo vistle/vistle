@@ -34,6 +34,7 @@
 #include <boost/python.hpp>
 #include "qpyconsole.h"
 
+#include <QApplication>
 #include <QDebug>
 
 static PyObject* glb;
@@ -42,19 +43,33 @@ static PyObject* loc;
 static QString resultString;
 
 class Redirector {
+   bool m_stderr = false;
 
 public:
+   Redirector(bool error = false)
+      : m_stderr(error)
+   {}
+
    void write(const std::string &output)
    {
       QString outputString = QString::fromStdString(output);
-      resultString.append(outputString);
+      if (m_stderr)
+         VistleConsole::the()->setTextColor(VistleConsole::the()->errColor());
+      else
+         VistleConsole::the()->setTextColor(VistleConsole::the()->outColor());
+      VistleConsole::the()->insertPlainText(outputString);
+      VistleConsole::the()->setTextColor(VistleConsole::the()->cmdColor());
+      VistleConsole::the()->ensureCursorVisible();
+      QApplication::processEvents();
    }
 };
 
 BOOST_PYTHON_MODULE(_redirector)
 {
    using namespace boost::python;
-   class_<Redirector>("_redirector")
+   class_<Redirector>("redirector")
+         .def(init<>())
+         .def(init<bool>())
          .def("write", &Redirector::write, "implement the write method to redirect stdout/err");
 };
 
@@ -88,6 +103,21 @@ static void quit()
     resultString="Use reset() to restart the interpreter; otherwise exit your application\n";
 }
 
+static std::string raw_input(const std::string &prompt)
+{
+   VistleConsole::the()->setTextColor(VistleConsole::the()->outColor());
+   VistleConsole::the()->append(resultString);
+   resultString = "";
+   VistleConsole::the()->setPrompt(QString::fromStdString(prompt));
+   QCoreApplication::processEvents();
+   QCoreApplication::flush();
+   QCoreApplication::sendPostedEvents();
+   std::string ret = VistleConsole::the()->getRawInput().toStdString();
+   VistleConsole::the()->setTextColor(VistleConsole::the()->cmdColor());
+   VistleConsole::the()->setNormalPrompt(false);
+   return ret;
+}
+
 BOOST_PYTHON_MODULE(_console)
 {
    using namespace boost::python;
@@ -98,36 +128,10 @@ BOOST_PYTHON_MODULE(_console)
    def("load", load, "load commands from given file");
    def("history", history, "shows the history");
    def("quit", quit, "print information about quitting");
+   def("raw_input", raw_input, "handle raw input");
 }
 
 static PyMethodDef ModuleMethods[] = { {NULL,NULL,0,NULL} };
-
-#if 0
-void initredirector()
-{
-    PyMethodDef *def;
-
-    /* create a new module and class */
-    PyObject *module = Py_InitModule("redirector", ModuleMethods);
-    PyObject *moduleDict = PyModule_GetDict(module);
-    PyObject *classDict = PyDict_New();
-    PyObject *className = PyString_FromString("redirector");
-    PyObject *fooClass = PyClass_New(NULL, classDict, className);
-    PyDict_SetItemString(moduleDict, "redirector", fooClass);
-    Py_DECREF(classDict);
-    Py_DECREF(className);
-    Py_DECREF(fooClass);
-
-    /* add methods to class */
-    for (def = redirectorMethods; def->ml_name != NULL; def++) {
-        PyObject *func = PyCFunction_New(def, NULL);
-        PyObject *method = PyMethod_New(func, NULL, fooClass);
-        PyDict_SetItemString(classDict, def->ml_name, method);
-        Py_DECREF(func);
-        Py_DECREF(method);
-    }
-}
-#endif
 
 void VistleConsole::printHistory()
 {
@@ -148,8 +152,9 @@ VistleConsole *VistleConsole::the()
 }
 
 //QTcl console constructor (init the QTextEdit & the attributes)
-VistleConsole::VistleConsole(QWidget *parent, const QString& welcomeText) :
-        QConsole(parent, welcomeText),lines(0)
+VistleConsole::VistleConsole(QWidget *parent, const QString& welcomeText)
+   : QConsole(parent, welcomeText)
+   , lines(0)
 {
    assert(!s_instance);
    s_instance = this;
@@ -174,13 +179,18 @@ VistleConsole::VistleConsole(QWidget *parent, const QString& welcomeText) :
     init_console();
 
     PyImport_ImportModule("rlcompleter");
+
     PyRun_SimpleString("import sys\n"
+
                        "import _redirector\n"
-                       "import _console\n"
-                       "import rlcompleter\n"
+                       "sys.stdout = _redirector.redirector()\n"
+                       "sys.stderr = _redirector.redirector(True)\n"
+
                        "sys.path.insert(0, \".\")\n" // add current path
-                       "sys.stdout = _redirector._redirector()\n"
-                       "sys.stderr = sys.stdout\n"
+
+                       "import rlcompleter\n"
+
+                       "import _console\n"
                        "import __builtin__\n"
                        "__builtin__.clear=_console.clear\n"
                        "__builtin__.reset=_console.reset\n"
@@ -190,6 +200,7 @@ VistleConsole::VistleConsole(QWidget *parent, const QString& welcomeText) :
                        "__builtin__.quit=_console.quit\n"
                        "__builtin__.exit=_console.quit\n"
                        "__builtin__.completer=rlcompleter.Completer()\n"
+                       "__builtin__.raw_input=_console.raw_input\n"
         );
 }
 char save_error_type[1024], save_error_info[1024];

@@ -336,16 +336,18 @@ void QConsole::handleTabKeyPress()
 // If return pressed, do the evaluation and append the result
 void QConsole::handleReturnKeyPress()
 {
-		//Get the command to validate
-	QString command = getCurrentCommand();
-	//execute the command and get back its text result and its return value
-	if (isCommandComplete(command))
-		execCommand(command, false);
-	else
-	{
-		append("");
-		moveCursor(QTextCursor::EndOfLine);
-	}
+
+   if (rawEventLoop.isRunning()) {
+      rawEventLoop.quit();
+   } else {
+      //Get the command to validate
+      QString command = getCurrentCommand();
+      moveCursor(QTextCursor::EndOfLine);
+      append("");
+      //execute the command and get back its text result and its return value
+      if (isCommandComplete(command))
+         execCommand(command, false);
+   }
 }
 
 bool QConsole::handleBackspaceKeyPress()
@@ -654,7 +656,8 @@ bool QConsole::execCommand(const QString &command, bool writeCommand,
 		}
 		if (!(strRes.isEmpty() || strRes.endsWith("\n")))
 			strRes.append("\n");
-		append(strRes);
+      if (!strRes.isEmpty())
+         append(strRes);
 		moveCursor(QTextCursor::End);
 		//Display the prompt again
 		if (showPrompt)
@@ -845,4 +848,10 @@ void QConsole::correctPathName(QString& pathName)
 		{
 				pathName.replace('\\', tr("/"));
 		}
+}
+
+QString QConsole::getRawInput()
+{
+   rawEventLoop.exec();
+   return getCurrentCommand();
 }
