@@ -131,8 +131,6 @@ BOOST_PYTHON_MODULE(_console)
    def("raw_input", raw_input, "handle raw input");
 }
 
-static PyMethodDef ModuleMethods[] = { {NULL,NULL,0,NULL} };
-
 void VistleConsole::printHistory()
 {
     uint index = 1;

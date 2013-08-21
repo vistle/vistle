@@ -35,7 +35,7 @@
 #include <QScrollBar>
 #include <QDesktopWidget>
 
-//#define USE_POPUP_COMPLETER
+#define USE_POPUP_COMPLETER
 #define WRITE_ONLY QIODevice::WriteOnly
 
 QSize PopupListWidget::sizeHint() const
@@ -86,73 +86,6 @@ QSize PopupListWidget::sizeHint() const
 				sizeHint.setWidth(sizeHint.width() + scrollWidth);
 		}
 		return sizeHint;
-}
-
-PopupCompleter::PopupCompleter(const QStringList& sl, QWidget *parent)
-		: QDialog(parent, Qt::Popup)
-{
-		setModal(true);
-
-		listWidget_ = new PopupListWidget();
-		listWidget_->setMaximumHeight(200);
-		qDebug() << "sizeHint(): " << listWidget_->sizeHint();
-		Q_FOREACH(QString str, sl) {
-				QListWidgetItem *item = new QListWidgetItem;
-				item->setText(str);
-				listWidget_->addItem(item);
-		}
-		qDebug() << "sizeHint(): " << listWidget_->sizeHint();
-		listWidget_->setFixedSize(listWidget_->sizeHint());
-
-
-		QLayout *layout = new QVBoxLayout();
-		layout->setSizeConstraint(QLayout::SetFixedSize);
-		layout->setContentsMargins(0, 0, 0, 0);
-		layout->addWidget(listWidget_);
-
-		setLayout(layout);
-
-		// connect signal
-		connect(listWidget_, SIGNAL(itemActivated(QListWidgetItem *)),
-						SLOT(onItemActivated(QListWidgetItem*)));
-}
-
-PopupCompleter::~PopupCompleter()
-{
-}
-
-void PopupCompleter::showEvent(QShowEvent */*event*/)
-{
-		listWidget_->setFocus();
-}
-
-void PopupCompleter::onItemActivated(QListWidgetItem *event)
-{
-		selected_ = event->text();
-		done(QDialog::Accepted);
-}
-
-/**
- * @brief execute PopupCompleter at appropriate position.
- *
- * @param parent Parent of this popup completer. usually QConsole.
- * @return see QDialog::exec
- * @see QDialog::exec
- */
-int PopupCompleter::exec(QTextEdit *parent)
-{
-		QSize popupSizeHint = this->sizeHint();
-		QRect cursorRect = parent->cursorRect();
-		QPoint globalPt = parent->mapToGlobal(cursorRect.bottomRight());
-		QDesktopWidget *dsk = QApplication::desktop();
-		QRect screenGeom = dsk->screenGeometry(dsk->screenNumber(this));
-		if (globalPt.y() + popupSizeHint.height() > screenGeom.height()) {
-				globalPt = parent->mapToGlobal(cursorRect.topRight());
-				globalPt.setY(globalPt.y() - popupSizeHint.height());
-		}
-		this->move(globalPt);
-		this->setFocus();
-      return QDialog::exec();
 }
 
 /**
@@ -316,19 +249,11 @@ void QConsole::handleTabKeyPress()
 				// common word completion
 				QString commonWord = getCommonWord(sl);
 				command = commonWord;
-#ifdef USE_POPUP_COMPLETER
-				PopupCompleter *popup = new PopupCompleter(sl);
-				if (popup->exec(this) == QDialog::Accepted)
-						replaceCurrentCommand(commandPrefix + popup->selected());
-				delete popup;
-#else
-
 				setTextColor(completionColor);
 				append(sl.join(", ") + "\n");
 				setTextColor(cmdColor());
 				displayPrompt();
 				textCursor().insertText(commandPrefix + command);
-#endif
 			}
 		}
 }
