@@ -333,29 +333,27 @@ QString VistleConsole::interpretCommand(const QString &command, int *res)
 
 QStringList VistleConsole::suggestCommand(const QString &cmd, QString& prefix)
 {
-    char run[255];
-    int n =0;
+   Q_UNUSED(prefix);
+
     QStringList list;
-    prefix = "";
     resultString="";
     if (!cmd.isEmpty()) {
-        do {
-            snprintf(run,255,"print completer.complete(\"%s\",%d)\n",
-                     cmd.toUtf8().data(),n);
-            PyRun_SimpleString(run);
-            resultString=resultString.trimmed(); //strip trialing newline
-            if (resultString!="None")
-            {
-                list.append(resultString);
-                resultString="";
-            }
-            else
-            {
-                resultString="";
-                break;
-            }
-            n++;
-        } while (true);
+       for (int n=0; ; ++n) {
+          std::stringstream str;
+          str << "print completer.complete(\"" << cmd.toStdString() << "\"," << n << ")" << std::endl;
+          PyRun_SimpleString(str.str().c_str());
+          resultString=resultString.trimmed(); //strip trialing newline
+          if (resultString!="None")
+          {
+             list.append(resultString);
+             resultString="";
+          }
+          else
+          {
+             resultString="";
+             break;
+          }
+       }
     }
     list.removeDuplicates();
     return list;
