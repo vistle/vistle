@@ -37,8 +37,9 @@
 #include <QApplication>
 #include <QDebug>
 
-static PyObject* glb;
-static PyObject* loc;
+namespace bp = boost::python;
+
+static bp::object glb, loc;
 
 static QString resultString;
 
@@ -167,8 +168,8 @@ VistleConsole::VistleConsole(QWidget *parent, const QString& welcomeText)
              unifying global and local name with __main__.__dict__, we
              can get more natural python console.
     */
-    PyObject *module = PyImport_ImportModule("__main__");
-    loc = glb = PyModule_GetDict(module);
+    bp::object main_module = bp::import("__main__");
+    loc = glb = main_module.attr("__dict__");
 
     PyImport_AddModule("_redirector");
     init_redirector();
@@ -176,7 +177,7 @@ VistleConsole::VistleConsole(QWidget *parent, const QString& welcomeText)
     PyImport_AddModule("_console");
     init_console();
 
-    PyImport_ImportModule("rlcompleter");
+    bp::import("rlcompleter");
 
     PyRun_SimpleString("import sys\n"
 
@@ -294,13 +295,14 @@ QString VistleConsole::interpretCommand(const QString &command, int *res)
                 return result;
             }
         }
+
         if ( (lines!=0 && command=="") || (this->command!="" && lines==0))
         {
             setNormalPrompt(false);
             this->command="";
             this->lines=0;
 
-            dum = PyEval_EvalCode ((PyCodeObject *)py_result, glb, loc);
+            dum = PyEval_EvalCode ((PyCodeObject *)py_result, glb.ptr(), loc.ptr());
             Py_XDECREF (dum);
             Py_XDECREF (py_result);
             if (PyErr_Occurred ())
@@ -335,26 +337,25 @@ QStringList VistleConsole::suggestCommand(const QString &cmd, QString& prefix)
 {
    Q_UNUSED(prefix);
 
-    QStringList list;
-    resultString="";
-    if (!cmd.isEmpty()) {
-       for (int n=0; ; ++n) {
-          std::stringstream str;
-          str << "print completer.complete(\"" << cmd.toStdString() << "\"," << n << ")" << std::endl;
-          PyRun_SimpleString(str.str().c_str());
-          resultString=resultString.trimmed(); //strip trialing newline
-          if (resultString!="None")
-          {
-             list.append(resultString);
-             resultString="";
-          }
-          else
-          {
-             resultString="";
-             break;
-          }
-       }
-    }
-    list.removeDuplicates();
-    return list;
+   QStringList completions;
+   if (!cmd.isEmpty()) {
+      for (int n=0; ; ++n) {
+         std::stringstream str;
+         str << "completer.complete(\"" << cmd.toStdString() << "\"," << n << ")" << std::endl;
+         try {
+            boost::python::object ret = boost::python::eval(str.str().c_str(), glb, loc);
+            if (ret == boost::python::object())
+               break;
+            std::string result = boost::python::extract<std::string>(ret);
+            QString completed = QString::fromStdString(result).trimmed();
+            if (!completed.isEmpty())
+               completions.append(completed);
+         } catch(boost::python::error_already_set const &) {
+            PyErr_Print();
+            break;
+         }
+      }
+   }
+   completions.removeDuplicates();
+   return completions;
 }
