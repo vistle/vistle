@@ -116,7 +116,7 @@ void MainWindow::parameterValueChanged_msg(int moduleId, QString parameterName)
     m_console->append(text);
     if (parameterName == "_x" || parameterName == "_y") {
        if (Module *m = scene->findModule(moduleId)) {
-          vistle::Parameter *p = VistleConnection::the().getParameter(moduleId, parameterName);
+          vistle::Parameter *p = vistle::VistleConnection::the().getParameter(moduleId, parameterName.toStdString());
           if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
              double val = fp->getValue();
              if (parameterName == "_x")
@@ -177,7 +177,7 @@ void MainWindow::setVistleobserver(VistleObserver *observer)
             this, SLOT(deleteConnection_msg(int, QString, int, QString)));
 }
 
-void MainWindow::setVistleConnection(VistleConnection *runner)
+void MainWindow::setVistleConnection(vistle::VistleConnection *runner)
 {
     scene->setRunner(runner);
     m_vistleConnection = runner;
@@ -189,16 +189,6 @@ void MainWindow::setVistleConnection(VistleConnection *runner)
 void MainWindow::on_findButton_clicked()
 {
     QString searchString = ui->lineEdit->text();
-    ui->textEdit->find(searchString, QTextDocument::FindWholeWords);
-    QMessageBox msgBox;
-    QProcess proc;
-    proc.setProcessChannelMode(QProcess::MergedChannels);
-    proc.start("find /mnt/raid/home/hpcmaumu/steve/Sandbox/ -name input.txt");
-    proc.waitForFinished();
-    QByteArray out = proc.readAllStandardOutput();
-
-    msgBox.setText(out);
-    msgBox.exec();
 }
 
 /*!

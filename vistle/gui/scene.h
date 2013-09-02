@@ -1,16 +1,17 @@
 #ifndef VSCENE_H
 #define VSCENE_H
 
-#include "module.h"
-#include "connection.h"
-#include "port.h"
-#include "consts.h"
-#include "vistleconnection.h"
-
 #include <QList>
 #include <QString>
 #include <QGraphicsItem>
 #include <QGraphicsScene>
+
+#include <userinterface/vistleconnection.h>
+
+#include "module.h"
+#include "connection.h"
+#include "port.h"
+#include "consts.h"
 
 namespace gui {
 
@@ -24,7 +25,7 @@ public:
     void sortModules();
     void invertModules();
     void setModules(QList<QString> moduleNameList);
-    void setRunner(VistleConnection *runnner);
+    void setRunner(vistle::VistleConnection *runnner);
     void addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name);
 
     Module *findModule(int id) const;
@@ -56,7 +57,7 @@ private:
     int recSortModules(Module *parent, int width, int height);
 
     ///\todo push this functionality to vHandler
-    VistleConnection *m_Runner;
+    vistle::VistleConnection *m_Runner;
 
 };
 

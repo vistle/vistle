@@ -4,9 +4,8 @@
  * representation, both graphical and of information, for vistle modules.
  */
 /**********************************************************************************/
-#include "module.h"
-#include "connection.h"
-#include "vistleconnection.h"
+
+#include <cassert>
 
 #include <QDebug>
 #include <QMenu>
@@ -14,7 +13,10 @@
 #include <QGraphicsScene>
 #include <QGraphicsSceneContextMenuEvent>
 
-#include <cassert>
+#include <userinterface/vistleconnection.h>
+
+#include "module.h"
+#include "connection.h"
 
 namespace gui {
 

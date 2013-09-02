@@ -7,65 +7,15 @@
  *    signals to the MainWindow.
  */
 /**********************************************************************************/
-#include "vistleconnection.h"
 
 #include <QString>
 
+#include <userinterface/vistleconnection.h>
+
+#include "vistleobserver.h"
+
 namespace gui {
 
-VistleConnection *VistleConnection::s_instance = nullptr;
-
-/*************************************************************************/
-// begin class VistleConnection
-/*************************************************************************/
-
-VistleConnection::VistleConnection(vistle::UserInterface &ui) : m_ui(ui)
-{
-   assert(s_instance == nullptr);
-   s_instance = this;
-}
-
-VistleConnection &VistleConnection::the() {
-
-   assert(s_instance);
-   return *s_instance;
-}
-
-void VistleConnection::cancel() {
-   mutex_lock lock(m_mutex);
-   m_done = true;
-}
-
-void VistleConnection::operator()() {
-   while(m_ui.dispatch()) {
-      mutex_lock lock(m_mutex);
-      if (m_done) {
-         break;
-      }
-      usleep(10000);
-   }
-}
-
-vistle::UserInterface &VistleConnection::ui() const {
-
-   return m_ui;
-}
-
-void VistleConnection::sendMessage(const vistle::message::Message &msg) const
-{
-   mutex_lock lock(m_mutex);
-   ui().sendMessage(msg);
-}
-
-vistle::Parameter *VistleConnection::getParameter(int id, QString name) const
-{
-   mutex_lock lock(m_mutex);
-   vistle::Parameter *p = ui().state().getParameter(id, name.toStdString());
-   if (!p) {
-      std::cerr << "no such parameter: " << id << ":" << name.toStdString() << std::endl;
-   }
-   return p;
-}
 
 /*************************************************************************/
 // begin class VistleObserver

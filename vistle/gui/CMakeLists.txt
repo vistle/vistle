@@ -18,7 +18,7 @@ set(gui_SOURCES
   module.cpp
   scene.cpp
   port.cpp
-  vistleconnection.cpp
+  vistleobserver.cpp
 
   qconsole/qconsole.cpp
   qconsole/qpyconsole.cpp
@@ -31,7 +31,7 @@ set(gui_HEADERS
   module.h
   scene.h
   port.h
-  vistleconnection.h
+  vistleobserver.h
 )
 
 set(gui_FORMS

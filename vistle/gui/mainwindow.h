@@ -1,15 +1,16 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "scene.h"
-#include "vistleconnection.h"
-
-#include <userinterface/userinterface.h>
-
 #include <QObject>
 #include <QList>
 #include <QMainWindow>
+
+#include <userinterface/userinterface.h>
+#include <userinterface/vistleconnection.h>
+
 #include "qconsole/qpyconsole.h"
+#include "scene.h"
+#include "vistleobserver.h"
 
 namespace gui {
 
@@ -27,12 +28,7 @@ public:
     ~MainWindow();
     void printDebug(QString msg);
     void setVistleobserver(VistleObserver *printer);
-    void setVistleConnection(VistleConnection *runner);
-
-#if 0
-    vistle::UserInterface &uiConnection() const;
-    vistle::StateTracker &state() const;
-#endif
+    void setVistleConnection(vistle::VistleConnection *runner);
 
 private slots:
     void on_findButton_clicked();
@@ -61,7 +57,7 @@ protected:
 private:
     Ui::MainWindow *ui = nullptr;
     VistleConsole *m_console = nullptr;
-    VistleConnection *m_vistleConnection = nullptr;
+    vistle::VistleConnection *m_vistleConnection = nullptr;
     //void loadTextFile();  ///\todo remove this
     QList<QString> loadModuleFile();
     void addModule(QString modName, QPointF dropPos);

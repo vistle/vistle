@@ -12,9 +12,10 @@
 
 #include <boost/uuid/uuid.hpp>
 
+#include <userinterface/vistleconnection.h>
+
 #include "consts.h"
 #include "port.h"
-#include "vistleconnection.h"
 
 namespace gui {
 
@@ -129,7 +130,7 @@ private:
 template <class T>
 void Module::setParameter(QString name, const T &value) const
 {
-   VistleConnection::the().setParameter(id(), name, value);
+   vistle::VistleConnection::the().setParameter(id(), name.toStdString(), value);
 }
 
 } //namespace gui

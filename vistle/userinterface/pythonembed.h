@@ -1,50 +1,35 @@
-#ifndef PYTHON_EMBED_H
-#define PYTHON_EMBED_H
+#ifndef PYTHON_INTERFACE_H
+#define PYTHON_INTERFACE_H
 
 #include <string>
 #include <iostream>
 #include <boost/python/object.hpp>
-
-#include <core/porttracker.h>
-#include <core/statetracker.h>
+#include <boost/python/exec.hpp>
 
 #include "export.h"
 
 namespace vistle {
 
-class UserInterface;
-class StateTracker;
-
-namespace message {
-class Message;
-}
-
-class V_UIEXPORT PythonEmbed {
+class V_UIEXPORT PythonInterface {
    public:
 
-      PythonEmbed(UserInterface &ui, const std::string &name);
-      ~PythonEmbed();
-      static PythonEmbed &the();
-      UserInterface &ui() const;
-      StateTracker &state();
-
-      static void print_output(const std::string &str);
-      static void print_error(const std::string &str);
-      static std::string raw_input(const std::string &prompt);
-      static std::string readline();
-
-      static bool handleMessage(const message::Message &message);
-      static bool requestReplyAsync(const message::Message &send);
-      static bool waitForReplyAsync(const message::Message::uuid_t &uuid, message::Message &reply);
-      static bool waitForReply(const message::Message &send, message::Message &reply);
+      PythonInterface(const std::string &name);
+      ~PythonInterface();
+      static PythonInterface &the();
+      boost::python::object &nameSpace();
 
       bool exec(const std::string &python);
       bool exec_file(const std::string &filename);
-   private:
-      UserInterface &m_ui;
-      boost::python::object m_namespace;
-      static PythonEmbed *s_singleton;
 
+   private:
+      boost::python::object m_namespace;
+      static PythonInterface *s_singleton;
+
+      typedef boost::python::object (*execfunc)(boost::python::str expression,
+            boost::python::object globals,
+            boost::python::object locals);
+
+      bool exec_wrapper(const std::string &param, execfunc func);
 };
 
 } // namespace vistle

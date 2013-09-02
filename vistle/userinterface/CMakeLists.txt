@@ -13,6 +13,7 @@ add_library(vistle_ui SHARED
    userinterface.cpp
    pythonembed.cpp
    pythonmodule.cpp
+   vistleconnection.cpp
 )
 
 include_directories(

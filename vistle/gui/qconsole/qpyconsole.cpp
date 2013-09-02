@@ -33,6 +33,7 @@
 #include <Python.h>
 #include <boost/python.hpp>
 #include "qpyconsole.h"
+#include <userinterface/pythonmodule.h>
 
 #include <QApplication>
 #include <QDebug>
@@ -171,10 +172,10 @@ VistleConsole::VistleConsole(QWidget *parent, const QString& welcomeText)
     bp::object main_module = bp::import("__main__");
     loc = glb = main_module.attr("__dict__");
 
-    PyImport_AddModule("_redirector");
+    //PyImport_AddModule("_redirector");
     init_redirector();
 
-    PyImport_AddModule("_console");
+    //PyImport_AddModule("_console");
     init_console();
 
     bp::import("rlcompleter");
@@ -187,19 +188,20 @@ VistleConsole::VistleConsole(QWidget *parent, const QString& welcomeText)
 
                        "sys.path.insert(0, \".\")\n" // add current path
 
-                       "import rlcompleter\n"
+                       "import __builtin__\n"
 
                        "import _console\n"
-                       "import __builtin__\n"
                        "__builtin__.clear=_console.clear\n"
                        "__builtin__.reset=_console.reset\n"
                        "__builtin__.save=_console.save\n"
                        "__builtin__.load=_console.load\n"
                        "__builtin__.history=_console.history\n"
-                       "__builtin__.quit=_console.quit\n"
-                       "__builtin__.exit=_console.quit\n"
-                       "__builtin__.completer=rlcompleter.Completer()\n"
+                       //"__builtin__.quit=_console.quit\n"
+                       //"__builtin__.exit=_console.quit\n"
                        "__builtin__.raw_input=_console.raw_input\n"
+
+                       "import rlcompleter\n"
+                       "__builtin__.completer=rlcompleter.Completer()\n"
         );
 }
 char save_error_type[1024], save_error_info[1024];

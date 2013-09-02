@@ -45,7 +45,7 @@ void Scene::setModules(QList<QString> moduleNameList)
     m_ModuleNameList = moduleNameList;
 }
 
-void Scene::setRunner(VistleConnection *runner)
+void Scene::setRunner(vistle::VistleConnection *runner)
 {
     m_Runner = runner;
 }

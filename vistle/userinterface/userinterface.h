@@ -22,7 +22,7 @@ namespace vistle {
 class V_UIEXPORT UserInterface {
 
  public:
-   UserInterface(const std::string &host, const unsigned short port);
+   UserInterface(const std::string &host, const unsigned short port, StateObserver *observer=nullptr);
    virtual ~UserInterface();
 
    virtual bool dispatch();

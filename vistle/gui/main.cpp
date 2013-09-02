@@ -8,10 +8,12 @@
 #include "mainwindow.h"
 #include <QApplication>
 
-#include "vistleconnection.h"
 #include "consts.h"
 
 #include <userinterface/userinterface.h>
+#include <userinterface/vistleconnection.h>
+#include <userinterface/pythonembed.h>
+#include <userinterface/pythonmodule.h>
 #include <boost/ref.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
@@ -39,22 +41,23 @@ int main(int argc, char *argv[])
             port = atoi(argv[2]);
         }
 
+        vistle::PythonInterface python("Vistle GUI");
+        std::cerr << "trying to connect UI to " << host << ":" << port << std::endl;
         QApplication a(argc, argv);
         MainWindow w;
+        VistleObserver observer;
+        w.setVistleobserver(&observer);
+        vistle::UserInterface ui(host, port, &observer);
+        ui.registerObserver(&observer);
+        vistle::VistleConnection conn(ui);
+        vistle::PythonModule pythonmodule(&conn);
+        boost::thread runnerThread(boost::ref(conn));
 
-        std::cerr << "trying to connect UI to " << host << ":" << port << std::endl;
-        vistle::UserInterface ui(host, port);
-        VistleObserver *printer = new VistleObserver();
-        ui.registerObserver(printer);
-        VistleConnection *runner = new VistleConnection(ui);
-        boost::thread runnerThread(boost::ref(*runner));
-
-        w.setVistleobserver(printer);
-        w.setVistleConnection(runner);
+        w.setVistleConnection(&conn);
         w.show();
         int val = a.exec();
 
-        runner->cancel();
+        conn.cancel();
         runnerThread.join();
 
         return val;

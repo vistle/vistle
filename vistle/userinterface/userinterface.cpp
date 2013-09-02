@@ -21,10 +21,13 @@ namespace asio = boost::asio;
 
 namespace vistle {
 
-UserInterface::UserInterface(const std::string &host, const unsigned short port)
+UserInterface::UserInterface(const std::string &host, const unsigned short port, StateObserver *observer)
 : m_stateTracker(&m_portTracker)
 {
    message::DefaultSender::init(0, 0);
+
+   if (observer)
+      m_stateTracker.registerObserver(observer);
 
    const int HOSTNAMESIZE = 64;
    char hostname[HOSTNAMESIZE];

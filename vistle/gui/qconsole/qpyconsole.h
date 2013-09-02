@@ -30,6 +30,10 @@
 
 #include "qconsole.h"
 
+namespace vistle {
+class PythonModule;
+}
+
 /**An emulated singleton console for Python within a Qt application (based on the QConsole class)
  *@author Mondrian Nuessle
  */

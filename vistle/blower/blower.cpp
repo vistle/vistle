@@ -1,5 +1,7 @@
 #include <userinterface/pythonembed.h>
+#include <userinterface/pythonmodule.h>
 #include <userinterface/userinterface.h>
+#include <userinterface/vistleconnection.h>
 
 #include <boost/ref.hpp>
 #include <boost/thread.hpp>
@@ -101,11 +103,13 @@ int main(int argc, char *argv[]) {
       if (argc > 2)
          port = atoi(argv[2]);
 
-      UserInterface ui(host, port);
-      ui.registerObserver(new StatePrinter(std::cout));
-      PythonEmbed python(ui, "blower");
-      UiRunner runner(ui);
-      boost::thread runnerThread(boost::ref(runner));
+      std::cerr << "trying to connect UI to " << host << ":" << port << std::endl;
+      StatePrinter printer(std::cout);
+      UserInterface ui(host, port, &printer);
+      PythonInterface python("blower");
+      VistleConnection conn(ui);
+      PythonModule pythonmodule(&conn);
+      boost::thread runnerThread(boost::ref(conn));
 
       while(!std::cin.eof()) {
          std::string line;
@@ -115,7 +119,7 @@ int main(int argc, char *argv[]) {
          python.exec(line);
       }
 
-      runner.cancel();
+      conn.cancel();
       runnerThread.join();
 
    } catch (std::exception &ex) {

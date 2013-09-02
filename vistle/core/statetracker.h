@@ -19,6 +19,8 @@ class V_COREEXPORT StateObserver {
 
  public:
 
+   virtual ~StateObserver() {}
+
    virtual void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) = 0;
    virtual void deleteModule(int moduleId) = 0;
 

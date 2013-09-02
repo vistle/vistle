@@ -342,7 +342,7 @@ void QConsole::keyPressEvent( QKeyEvent *e )
 	//the editing area we perform a copy
 	if(textCursor().hasSelection())
 	{
-		if(e->modifiers() == Qt::CTRL)
+      if(e->modifiers() == Qt::ControlModifier)
 		{
 			if( e->matches(QKeySequence::Cut) )
 			{

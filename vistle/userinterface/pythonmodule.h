@@ -8,13 +8,20 @@
 
 namespace vistle {
 
+class VistleConnection;
+
 class V_UIEXPORT PythonModule {
-   public:
 
-      PythonModule(int argc, char *argv[]);
-      ~PythonModule();
+public:
+   PythonModule(VistleConnection *vc);
+   static PythonModule &the();
 
-      static bool import(boost::python::object *m_namespace);
+   VistleConnection &vistleConnection() const;
+   bool import(boost::python::object *m_namespace);
+
+private:
+   VistleConnection *m_vistleConnection;
+   static PythonModule *s_instance;
 };
 
 } // namespace vistle

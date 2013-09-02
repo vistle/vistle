@@ -355,6 +355,26 @@ bool PythonModule::import(boost::python::object *ns) {
 
    if (!PythonEmbed::the().exec("import vistle"))
       return false;
+   if (!PythonEmbed::the().exec(
+            "class _stdout:\n"
+            "   def write(self, stuff):\n"
+            "      _vistle._print_output(stuff)\n"
+
+            "class _stderr:\n"
+            "   def write(self, stuff):\n"
+            "      _vistle._print_error(stuff)\n"
+
+            // input from network clients
+            "class _stdin:\n"
+            "   def readline(self):\n"
+            "      return _vistle._readline()\n"
+
+            "import sys\n"
+            "sys.stdout = _stdout()\n"
+            "sys.stderr = _stderr()\n"
+            "sys.stdin = _stdin()\n"
+            ))
+      return false;
    if (!PythonEmbed::the().exec("from vistle import *"))
       return false;
 

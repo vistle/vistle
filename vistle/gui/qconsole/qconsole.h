@@ -178,6 +178,7 @@ protected:
 		//the return value of the function is the string result
 		//res must hold back the return value of the command (0: passed; else: error)
 		virtual QString interpretCommand(const QString &command, int *res);
+
 		//give suggestions to autocomplete a command (should be reimplemented)
 		//the return value of the function is the string list of all suggestions
 		//the returned prefix is useful to complete "sub-commands"
