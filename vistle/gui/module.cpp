@@ -100,7 +100,9 @@ void Module::copy()
  */
 void Module::deleteModule()
 {
-
+   m_Status = KILLED;
+   vistle::message::Kill m(m_id);
+   vistle::VistleConnection::the().sendMessage(m);
 }
 
 /*!
