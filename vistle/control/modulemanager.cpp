@@ -115,6 +115,9 @@ void ModuleManager::barrierReached(int id) {
    reachedSet.clear();
    CERR << "Barrier [" << id << "] reached" << std::endl;
    m_barrierCondition.notify_all();
+   message::BarrierReached m(id);
+   m.setUuid(m_barrierUuid);
+   sendUi(m);
 }
 
 std::vector<int> ModuleManager::getRunningList() const {
@@ -639,6 +642,7 @@ bool ModuleManager::handle(const message::Barrier &barrier) {
    CERR << "Barrier [" << barrier.getBarrierId() << "]" << std::endl;
    assert(m_activeBarrier == -1);
    m_activeBarrier = barrier.getBarrierId();
+   m_barrierUuid = barrier.uuid();
    if (checkBarrier(m_activeBarrier)) {
       barrierReached(m_activeBarrier);
    } else {

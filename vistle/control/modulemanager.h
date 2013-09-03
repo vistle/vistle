@@ -118,6 +118,7 @@ class ModuleManager {
    void barrierReached(int id);
    int m_barrierCounter;
    int m_activeBarrier;
+   message::Message::uuid_t m_barrierUuid;
    int m_reachedBarriers;
    typedef std::set<int> ModuleSet;
    ModuleSet reachedSet;
