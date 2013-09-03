@@ -38,26 +38,6 @@ Module::Module(QGraphicsItem *parent, QString name) : QGraphicsItem(parent)
     setName(name);
     modIsVisited = false;
 
-    switch (m_Status) {
-    case SPAWNING:
-       toolTip = "Spawning";
-       break;
-    case INITIALIZED:
-       toolTip = "Initialized";
-       break;
-    case KILLED:
-       toolTip = "Killed";
-       break;
-    case BUSY:
-       toolTip = "Busy";
-       break;
-    case ERROR:
-       toolTip = "Error";
-       break;
-    }
-
-    statusShape->setToolTip(toolTip);
-
     setFlag(QGraphicsItem::ItemIsMovable);
     setFlag(QGraphicsItem::ItemIsSelectable);
     setFlag(QGraphicsItem::ItemIsFocusable);
@@ -67,6 +47,8 @@ Module::Module(QGraphicsItem *parent, QString name) : QGraphicsItem(parent)
 
     createActions();
     createMenus();
+
+    setStatus(m_Status);
 }
 
 Module::~Module()
@@ -100,7 +82,7 @@ void Module::copy()
  */
 void Module::deleteModule()
 {
-   m_Status = KILLED;
+   setStatus(KILLED);
    vistle::message::Kill m(m_id);
    vistle::VistleConnection::the().sendMessage(m);
 }
@@ -264,6 +246,7 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
             case PARAMETER:
                 brush->setColor(Qt::black);
                 break;
+            case MAIN:
             case DEFAULT:
                 break;
         }
@@ -462,6 +445,33 @@ QPointF Module::portPos(Port *port)
     }
 
     return QPointF();
+}
+
+void Module::setStatus(ModuleStatus status)
+{
+   m_Status = status;
+
+   QString toolTip = "Unknown";
+
+   switch (m_Status) {
+   case SPAWNING:
+      toolTip = "Spawning";
+      break;
+   case INITIALIZED:
+      toolTip = "Initialized";
+      break;
+   case KILLED:
+      toolTip = "Killed";
+      break;
+   case BUSY:
+      toolTip = "Busy";
+      break;
+   case ERROR:
+      toolTip = "Error";
+      break;
+   }
+
+   statusShape->setToolTip(toolTip);
 }
 
 } //namespace gui

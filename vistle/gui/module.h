@@ -44,7 +44,7 @@ public:
     int type() const { return TypeModuleItem; }
     ///\todo this functionality is unnecessary, push functionality to port
     QPointF portPos(Port *port);
-    void setStatus(ModuleStatus status) { m_Status = status; }
+    void setStatus(ModuleStatus status);
 
     void addParent(Module *parentMod) { parentModules.append(parentMod); }
     void addChild(Module *childMod) { childModules.append(childMod); }
