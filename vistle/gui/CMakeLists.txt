@@ -1,3 +1,5 @@
+add_subdirectory(propertybrowser)
+
 find_qt()
 find_package(PythonLibs)
 
