@@ -89,6 +89,15 @@ void Scene::addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString
    mod->setName(name+"_"+QString::number(moduleId));
 }
 
+void Scene::deleteModule(int moduleId)
+{
+   Module *m = findModule(moduleId);
+   if (m) {
+      removeItem(m);
+      moduleList.removeAll(m);
+   }
+}
+
 Module *Scene::findModule(int id) const
 {
    for (Module *mod: moduleList) {

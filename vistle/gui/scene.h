@@ -27,6 +27,7 @@ public:
     void setModules(QList<QString> moduleNameList);
     void setRunner(vistle::VistleConnection *runnner);
     void addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name);
+    void deleteModule(int moduleId);
 
     Module *findModule(int id) const;
     Module *findModule(const boost::uuids::uuid &spawnUuid) const;

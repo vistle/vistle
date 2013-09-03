@@ -80,15 +80,20 @@ void MainWindow::debug_msg(QString debugMsg)
 
 void MainWindow::newModule_msg(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName)
 {
-    QString text = "Module started: " + moduleName + " with ID: " + QString::number(moduleId) + "\n";
     scene->addModule(moduleId, spawnUuid, moduleName);
+#if 0
+    QString text = "Module started: " + moduleName + " with ID: " + QString::number(moduleId) + "\n";
     m_console->append(text);
+#endif
 }
 
 void MainWindow::deleteModule_msg(int moduleId)
 {
+    scene->deleteModule(moduleId);
+#if 0
     QString text = "Module deleted: " + QString::number(moduleId) + "\n";
     m_console->append(text);
+#endif
 }
 
 void MainWindow::moduleStateChanged_msg(int moduleId, int stateBits, ModuleStatus modChangeType)
@@ -96,12 +101,15 @@ void MainWindow::moduleStateChanged_msg(int moduleId, int stateBits, ModuleStatu
    if (Module *m = scene->findModule(moduleId)) {
       m->setStatus(modChangeType);
    }
+
+#if 0
     QString text;
     if (modChangeType == INITIALIZED) text = "Module state change on ID: " + QString::number(moduleId) + " initialized\n";
     if (modChangeType == KILLED) text = "Module state change on ID: " + QString::number(moduleId) + " killed\n";
     if (modChangeType == BUSY) text = "Module state change on ID: " + QString::number(moduleId) + " busy\n";
 
     m_console->append(text);
+#endif
 }
 
 void MainWindow::newParameter_msg(int moduleId, QString parameterName)
