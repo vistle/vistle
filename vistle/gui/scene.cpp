@@ -458,4 +458,14 @@ void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     }
 }
 
+void gui::Scene::setMainWindow(MainWindow *w)
+{
+   m_mainWindow = w;
+}
+
+MainWindow *Scene::mainWindow() const
+{
+   return m_mainWindow;
+}
+
 } //namespace gui

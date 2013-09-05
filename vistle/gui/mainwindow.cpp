@@ -10,6 +10,7 @@
 /**********************************************************************************/
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "parameters.h"
 
 #include <QString>
 #include <QMessageBox>
@@ -45,12 +46,17 @@ MainWindow::MainWindow(QWidget *parent) :
     m_console = new VistleConsole(this, "Type \"help(vistle)\" for help, \"help()\" for general help");
     ui->consoleWidget->setWidget(m_console);
     setFocusProxy(m_console);
+
+    m_parameters = new Parameters(this);
+    ui->parameterWidget->setWidget(m_parameters);
+
     ui->drawArea->setAttribute(Qt::WA_AlwaysShowToolTips);
     ui->drawArea->setDragMode(QGraphicsView::RubberBandDrag);
 
     ///\todo declare the scene pointer in the header, then de-allocate in the destructor.
     //QGraphicsScene *scene = new QGraphicsScene(this);
     scene = new Scene(ui->drawArea);
+    scene->setMainWindow(this);
 
     // load a text file containing all the modules in vistle.
     ///\todo loadModuleFile() returns a list of modules, pipe this to the scene
@@ -82,7 +88,7 @@ void MainWindow::newModule_msg(int moduleId, const boost::uuids::uuid &spawnUuid
 {
     scene->addModule(moduleId, spawnUuid, moduleName);
 #if 0
-    QString text = "Module started: " + moduleName + " with ID: " + QString::number(moduleId) + "\n";
+    QString text = "Module started: " + moduleName + " with ID: " + QString::number(moduleId);
     m_console->append(text);
 #endif
 }
@@ -91,7 +97,7 @@ void MainWindow::deleteModule_msg(int moduleId)
 {
     scene->deleteModule(moduleId);
 #if 0
-    QString text = "Module deleted: " + QString::number(moduleId) + "\n";
+    QString text = "Module deleted: " + QString::number(moduleId);
     m_console->append(text);
 #endif
 }
@@ -104,9 +110,9 @@ void MainWindow::moduleStateChanged_msg(int moduleId, int stateBits, ModuleStatu
 
 #if 0
     QString text;
-    if (modChangeType == INITIALIZED) text = "Module state change on ID: " + QString::number(moduleId) + " initialized\n";
-    if (modChangeType == KILLED) text = "Module state change on ID: " + QString::number(moduleId) + " killed\n";
-    if (modChangeType == BUSY) text = "Module state change on ID: " + QString::number(moduleId) + " busy\n";
+    if (modChangeType == INITIALIZED) text = "Module state change on ID: " + QString::number(moduleId) + " initialized";
+    if (modChangeType == KILLED) text = "Module state change on ID: " + QString::number(moduleId) + " killed";
+    if (modChangeType == BUSY) text = "Module state change on ID: " + QString::number(moduleId) + " busy";
 
     m_console->append(text);
 #endif
@@ -114,45 +120,52 @@ void MainWindow::moduleStateChanged_msg(int moduleId, int stateBits, ModuleStatu
 
 void MainWindow::newParameter_msg(int moduleId, QString parameterName)
 {
-    QString text = "New parameter on ID: " + QString::number(moduleId) + ":" + parameterName + "\n";
+#if 0
+    QString text = "New parameter on ID: " + QString::number(moduleId) + ":" + parameterName;
     m_console->append(text);
+#endif
 }
 
 void MainWindow::parameterValueChanged_msg(int moduleId, QString parameterName)
 {
-    QString text = "Parameter value changed on ID: " + QString::number(moduleId) + ":" + parameterName + "\n";
+#if 0
+    QString text = "Parameter value changed on ID: " + QString::number(moduleId) + ":" + parameterName;
     m_console->append(text);
+#endif
     if (parameterName == "_x" || parameterName == "_y") {
        if (Module *m = scene->findModule(moduleId)) {
-          vistle::Parameter *p = vistle::VistleConnection::the().getParameter(moduleId, parameterName.toStdString());
-          if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
-             double val = fp->getValue();
-             if (parameterName == "_x")
-                m->setX(val);
-             else if (parameterName == "_y")
-                m->setY(val);
+          vistle::Parameter *px = vistle::VistleConnection::the().getParameter(moduleId, "_x");
+          vistle::Parameter *py = vistle::VistleConnection::the().getParameter(moduleId, "_y");
+          vistle::FloatParameter *fpx = dynamic_cast<vistle::FloatParameter *>(px);
+          vistle::FloatParameter *fpy = dynamic_cast<vistle::FloatParameter *>(py);
+          if (fpx && fpy) {
+             m->setPos(fpx->getValue(), fpy->getValue());
           }
        }
     }
 }
 
+void MainWindow::parameterChoicesChanged_msg(int moduleId, QString parameterName)
+{
+}
+
 void MainWindow::newPort_msg(int moduleId, QString portName)
 {
-    QString text = "New port on ID: " + QString::number(moduleId) + ":" + portName + "\n";
+    QString text = "New port on ID: " + QString::number(moduleId) + ":" + portName;
     m_console->append(text);
 }
 
 void MainWindow::newConnection_msg(int fromId, QString fromName,
                                    int toId, QString toName)
 {
-    QString text = "New Connection: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName + "\n";
+    QString text = "New Connection: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
     m_console->append(text);
 }
 
 void MainWindow::deleteConnection_msg(int fromId, QString fromName,
                                       int toId, QString toName)
 {
-    QString text = "Connection removed: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName + "\n";
+    QString text = "Connection removed: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
     m_console->append(text);
 }
 /************************************************************************************/
@@ -183,12 +196,25 @@ void MainWindow::setVistleobserver(VistleObserver *observer)
             this, SLOT(newConnection_msg(int, QString, int, QString)));
     connect(m_observer, SIGNAL(deleteConnection_s(int, QString, int, QString)),
             this, SLOT(deleteConnection_msg(int, QString, int, QString)));
+
+    if (Parameters *p = parameters())
+       p->setVistleObserver(observer);
 }
 
 void MainWindow::setVistleConnection(vistle::VistleConnection *runner)
 {
     scene->setRunner(runner);
     m_vistleConnection = runner;
+
+    if (Parameters *p = parameters()) {
+       p->setVistleConnection(runner);
+       p->setModule(1);
+    }
+}
+
+Parameters *MainWindow::parameters() const
+{
+   return m_parameters;
 }
 
 /*!

@@ -53,7 +53,13 @@ void VistleObserver::newParameter(int moduleId, const std::string &parameterName
 
 void VistleObserver::parameterValueChanged(int moduleId, const std::string &parameterName) {
 	QString name = QString::fromStdString(parameterName);
-	emit parameterValueChanged_s(moduleId, name);
+   emit parameterValueChanged_s(moduleId, name);
+}
+
+void VistleObserver::parameterChoicesChanged(int moduleId, const std::string &parameterName)
+{
+   QString name = QString::fromStdString(parameterName);
+   emit parameterChoicesChanged_s(moduleId, name);
 }
 
 void VistleObserver::newPort(int moduleId, const std::string &portName) {

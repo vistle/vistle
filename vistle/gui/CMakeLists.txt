@@ -11,6 +11,7 @@ include_directories(
   ..
   ${CMAKE_CURRENT_BINARY_DIR}
   .
+  ../../3rdparty/qt-solutions/qtpropertybrowser/src
 )
 
 set(gui_SOURCES
@@ -21,6 +22,7 @@ set(gui_SOURCES
   scene.cpp
   port.cpp
   vistleobserver.cpp
+  parameters.cpp
 
   qconsole/qconsole.cpp
   qconsole/qpyconsole.cpp
@@ -34,6 +36,7 @@ set(gui_HEADERS
   scene.h
   port.h
   vistleobserver.h
+  parameters.h
 )
 
 set(gui_FORMS
@@ -54,4 +57,5 @@ target_link_libraries(gui
   ${PYTHON_LIBRARIES}
   vistle_core
   vistle_ui
+  vistle_propertybrowser
 )

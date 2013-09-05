@@ -45,6 +45,6 @@ private:
     int m_connectionType;
 };
 
+} //namespace gui
 #endif // VARROW_H
 
-} //namespace gui

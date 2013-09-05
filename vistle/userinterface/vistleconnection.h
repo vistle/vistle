@@ -18,12 +18,15 @@ public:
    void operator()();
 
    void sendMessage(const vistle::message::Message &msg) const;
-   vistle::Parameter *getParameter(int id, const std::string &name) const;
-   template<class T>
-   void setParameter(int id, const std::string &name, const T &value) const;
    bool requestReplyAsync(const vistle::message::Message &send);
    bool waitForReplyAsync(const vistle::message::Message::uuid_t &uuid, vistle::message::Message &reply);
    bool waitForReply(const vistle::message::Message &send, vistle::message::Message &reply);
+
+   std::vector<std::string> getParameters(int id) const;
+   vistle::Parameter *getParameter(int id, const std::string &name) const;
+   template<class T>
+   void setParameter(int id, const std::string &name, const T &value) const;
+   void sendParameter(const Parameter *p) const;
 
    vistle::UserInterface &ui() const;
 
@@ -51,8 +54,7 @@ void VistleConnection::setParameter(int id, const std::string &name, const T &va
    }
 
    p->setValue(value);
-   vistle::message::SetParameter set(id, name, p);
-   sendMessage(set);
+   sendParameter(p);
 }
 
 } //namespace vistle

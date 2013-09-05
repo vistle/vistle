@@ -8,6 +8,7 @@
  */
 /**********************************************************************************/
 #include "vistleconnection.h"
+#include <userinterface/userinterface.h>
 
 namespace vistle {
 
@@ -65,6 +66,13 @@ vistle::Parameter *VistleConnection::getParameter(int id, const std::string &nam
    return p;
 }
 
+void vistle::VistleConnection::VistleConnection::sendParameter(const Parameter *p) const
+{
+   mutex_lock lock(m_mutex);
+   vistle::message::SetParameter set(p->module(), p->getName(), p);
+   sendMessage(set);
+}
+
 bool VistleConnection::requestReplyAsync(const vistle::message::Message &send) {
 
    boost::mutex &mutex = ui().mutexForMessage(send.uuid());
@@ -84,6 +92,12 @@ bool VistleConnection::waitForReply(const vistle::message::Message &send, vistle
       return false;
    }
    return waitForReplyAsync(send.uuid(), reply);
+}
+
+std::vector<std::string> vistle::VistleConnection::getParameters(int id) const
+{
+   mutex_lock lock(m_mutex);
+   return ui().state().getParameters(id);
 }
 
 } //namespace vistle

@@ -14,6 +14,8 @@
 
 namespace gui {
 
+class Parameters;
+
 namespace Ui {
 class MainWindow;
 
@@ -30,6 +32,8 @@ public:
     void setVistleobserver(VistleObserver *printer);
     void setVistleConnection(vistle::VistleConnection *runner);
 
+    Parameters *parameters() const;
+
 private slots:
     void on_findButton_clicked();
     void on_dragButton_clicked();
@@ -42,6 +46,7 @@ private slots:
     void moduleStateChanged_msg(int moduleId, int stateBits, ModuleStatus modChangeType);
     void newParameter_msg(int moduleId, QString parameterName);
     void parameterValueChanged_msg(int moduleId, QString parameterName);
+    void parameterChoicesChanged_msg(int moduleId, QString parameterName);
     void newPort_msg(int moduleId, QString portName);
     void newConnection_msg(int fromId, QString fromName,
                          int toId, QString toName);
@@ -57,6 +62,8 @@ protected:
 private:
     Ui::MainWindow *ui = nullptr;
     VistleConsole *m_console = nullptr;
+    Parameters *m_parameters = nullptr;
+
     vistle::VistleConnection *m_vistleConnection = nullptr;
     //void loadTextFile();  ///\todo remove this
     QList<QString> loadModuleFile();

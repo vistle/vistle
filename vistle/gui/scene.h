@@ -15,6 +15,8 @@
 
 namespace gui {
 
+class MainWindow;
+
 class Scene : public QGraphicsScene
 {
 public:
@@ -28,6 +30,9 @@ public:
     void setRunner(vistle::VistleConnection *runnner);
     void addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name);
     void deleteModule(int moduleId);
+
+    void setMainWindow(MainWindow *w);
+    MainWindow *mainWindow() const;
 
     Module *findModule(int id) const;
     Module *findModule(const boost::uuids::uuid &spawnUuid) const;
@@ -58,8 +63,9 @@ private:
     int recSortModules(Module *parent, int width, int height);
 
     ///\todo push this functionality to vHandler
-    vistle::VistleConnection *m_Runner;
+    vistle::VistleConnection *m_Runner = nullptr;
 
+    MainWindow *m_mainWindow = nullptr;
 };
 
 } //namespace gui

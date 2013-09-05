@@ -17,6 +17,9 @@
 
 #include "module.h"
 #include "connection.h"
+#include "scene.h"
+#include "mainwindow.h"
+#include "parameters.h"
 
 namespace gui {
 
@@ -277,6 +280,15 @@ QVariant Module::itemChange(QGraphicsItem::GraphicsItemChange change, const QVar
       double y = newPos.y();
       setParameter("_x", x);
       setParameter("_y", y);
+   } else if (change == QGraphicsItem::ItemSelectedChange) {
+      if (value==true) {
+         // do stuff if selected
+         if (Scene *s = dynamic_cast<Scene *>(scene())) {
+            s->mainWindow()->parameters()->setModule(m_id);
+         }
+      } else {
+         // do stuff if not selected
+      }
    }
 
    return QGraphicsItem::itemChange(change, value);

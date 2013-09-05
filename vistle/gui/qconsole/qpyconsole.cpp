@@ -54,6 +54,7 @@ public:
 
    void write(const std::string &output)
    {
+      //std::cerr << (m_stderr?"ERR: ":"OUT: ") << output << std::flush;
       QString outputString = QString::fromStdString(output);
       if (m_stderr)
          VistleConsole::the()->setTextColor(VistleConsole::the()->errColor());

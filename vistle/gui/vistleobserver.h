@@ -23,7 +23,8 @@ signals:
 	void moduleStateChanged_s(int moduleId, int stateBits, ModuleStatus modChangeType);
 	void newParameter_s(int moduleId, QString parameterName);
         void parameterValueChanged_s(int moduleId, QString parameterName);
-	void newPort_s(int moduleId, QString portName);
+        void parameterChoicesChanged_s(int moduleId, QString parameterName);
+   void newPort_s(int moduleId, QString portName);
 	void newConnection_s(int fromId, QString fromName,
                    		 int toId, QString toName);
 	void deleteConnection_s(int fromId, QString fromName,
@@ -36,7 +37,8 @@ public:
 	void moduleStateChanged(int moduleId, int stateBits);
 	void newParameter(int moduleId, const std::string &parameterName);
 	void parameterValueChanged(int moduleId, const std::string &parameterName);
-	void newPort(int moduleId, const std::string &portName);
+   void parameterChoicesChanged(int moduleId, const std::string &parameterName);
+   void newPort(int moduleId, const std::string &portName);
 	void newConnection(int fromId, const std::string &fromName,
                            int toId, const std::string &toName);
 	void deleteConnection(int fromId, const std::string &fromName,
