@@ -436,7 +436,7 @@ class V_COREEXPORT SetParameterChoices: public Message {
             const std::string &name, const std::vector<std::string> &choices);
 
       int getModule() const;
-      const char * getName() const;
+      const char *getName() const;
       int getNumChoices() const;
       const char *getChoice(int idx) const;
 

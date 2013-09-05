@@ -89,9 +89,18 @@ Module::Module(const std::string &n, const std::string &shmname,
              << std::endl;
 #endif
 
-   addIntParameter("_cacheMode", "input object caching (-1: default, 0: none, 1: all)", m_cache.cacheMode());
-   addFloatParameter("_x", "x position in GUI", 0);
-   addFloatParameter("_y", "y position in GUI", 0);
+   Parameter *cm = addIntParameter("_cache_mode", "input object caching", m_cache.cacheMode(), Parameter::Choice);
+   std::vector<std::string> modes;
+   assert(ObjectCache::CacheDefault == 0);
+   modes.push_back("default");
+   assert(ObjectCache::CacheNone == 1);
+   modes.push_back("none");
+   assert(ObjectCache::CacheAll == 2);
+   modes.push_back("all");
+   setParameterChoices(cm, modes);
+
+   addFloatParameter("_x", "x position in GUI", 0.);
+   addFloatParameter("_y", "y position in GUI", 0.);
 }
 
 void Module::initDone() const {
@@ -129,14 +138,17 @@ void Module::setSyncMessageProcessing(bool sync) {
    m_syncMessageProcessing = sync;
 }
 
-void Module::setCacheMode(ObjectCache::CacheMode mode) {
+ObjectCache::CacheMode Module::setCacheMode(ObjectCache::CacheMode mode, bool updateParam) {
 
    if (mode == ObjectCache::CacheDefault)
       m_cache.setCacheMode(m_defaultCacheMode);
    else
       m_cache.setCacheMode(mode);
 
-   setIntParameter("_cacheMode", m_cache.cacheMode());
+   if (updateParam)
+      setIntParameter("_cache_mode", m_cache.cacheMode());
+
+   return m_cache.cacheMode();
 }
 
 void Module::setDefaultCacheMode(ObjectCache::CacheMode mode) {
@@ -255,6 +267,21 @@ bool Module::updateParameter(const std::string &name, const Parameter *param, co
    return true;
 }
 
+void Module::setParameterChoices(const std::string &name, const std::vector<std::string> &choices)
+{
+   Parameter *p = findParameter(name);
+   if (p)
+      setParameterChoices(p, choices);
+}
+
+void Module::setParameterChoices(Parameter *param, const std::vector<std::string> &choices)
+{
+   if (choices.size() <= message::param_num_choices) {
+      message::SetParameterChoices sc(id(), param->getName(), choices);
+      sendMessage(sc);
+   }
+}
+
 template<class T>
 Parameter *Module::addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation pres) {
 
@@ -347,15 +374,14 @@ IntParameter *Module::addIntParameter(const std::string & name, const std::strin
 }
 
 bool Module::setIntParameter(const std::string & name,
-                             const int value, const message::SetParameter *inResponseTo) {
+                             int value, const message::SetParameter *inResponseTo) {
 
-   if (name == "_cacheMode" && inResponseTo) {
-      if (value < 0) 
-         setCacheMode(ObjectCache::CacheDefault);
-      else if (value == 0)
-         setCacheMode(ObjectCache::CacheNone);
+   if (name == "_cache_mode") {
+      if (value == ObjectCache::CacheAll
+          || value == ObjectCache::CacheNone)
+         value = setCacheMode(ObjectCache::CacheMode(value), false);
       else
-         setCacheMode(ObjectCache::CacheAll);
+         value = setCacheMode(ObjectCache::CacheDefault, false);
    }
 
    return setParameter(name, value, inResponseTo);
@@ -898,6 +924,15 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          } else {
 
             parameterChanged(param->senderId(), param->getName(), *param);
+         }
+         break;
+      }
+
+      case message::Message::SETPARAMETERCHOICES: {
+         const message::SetParameterChoices *choices = static_cast<const message::SetParameterChoices *>(message);
+         if (choices->senderId() != id()) {
+            //FIXME: handle somehow
+            //parameterChanged(choices->senderId(), choices->getName());
          }
          break;
       }

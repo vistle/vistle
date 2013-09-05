@@ -82,6 +82,7 @@ class ModuleManager {
    bool handle(const message::CreatePort &createPort);
    bool handle(const message::AddParameter &addParam);
    bool handle(const message::SetParameter &setParam);
+   bool handle(const message::SetParameterChoices &setChoices);
    bool handle(const message::Kill &kill);
    bool handle(const message::AddObject &addObj);
    bool handle(const message::ObjectReceived &objRecv);

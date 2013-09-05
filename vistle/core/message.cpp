@@ -662,6 +662,16 @@ SetParameterChoices::SetParameterChoices(const int id, const std::string &n,
    }
 }
 
+int SetParameterChoices::getModule() const
+{
+   return module;
+}
+
+const char *SetParameterChoices::getName() const
+{
+   return name;
+}
+
 bool SetParameterChoices::apply(Parameter *param) const {
 
    if (param->type() != Parameter::Integer

@@ -42,7 +42,7 @@ class V_COREEXPORT Module {
    unsigned int size() const;
    int id() const;
 
-   void setCacheMode(ObjectCache::CacheMode mode);
+   ObjectCache::CacheMode setCacheMode(ObjectCache::CacheMode mode, bool update=true);
    ObjectCache::CacheMode cacheMode(ObjectCache::CacheMode mode) const;
 
    Port *createInputPort(const std::string &name, const std::string &description="", const int flags=0);
@@ -57,6 +57,8 @@ class V_COREEXPORT Module {
    bool setParameter(const std::string &name, const T &value, const message::SetParameter *inResponseTo);
    template<class T>
    bool getParameter(const std::string &name, T &value) const;
+   void setParameterChoices(const std::string &name, const std::vector<std::string> &choices);
+   void setParameterChoices(Parameter *param, const std::vector<std::string> &choices);
 
    StringParameter *addStringParameter(const std::string & name, const std::string &description, const std::string & value, Parameter::Presentation p=Parameter::Generic);
    bool setStringParameter(const std::string & name, const std::string & value, const message::SetParameter *inResponseTo=NULL);

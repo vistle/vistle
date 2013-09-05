@@ -573,6 +573,13 @@ bool ModuleManager::handle(const message::SetParameter &setParam) {
    return true;
 }
 
+bool ModuleManager::handle(const message::SetParameterChoices &setChoices) {
+
+   m_stateTracker.handle(setChoices);
+   sendAllOthers(setChoices.senderId(), setChoices);
+   return true;
+}
+
 bool ModuleManager::handle(const message::Kill &kill) {
 
    m_stateTracker.handle(kill);

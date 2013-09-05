@@ -55,6 +55,7 @@ class V_COREEXPORT Parameter {
    Type type() const;
    Presentation presentation() const;
    const std::string &description() const;
+   const std::vector<std::string> &choices() const;
 
  protected:
    std::vector<std::string> m_choices;

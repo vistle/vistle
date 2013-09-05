@@ -408,6 +408,14 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
+      case message::Message::SETPARAMETERCHOICES: {
+
+         const message::SetParameterChoices &m = static_cast<const message::SetParameterChoices &>(message);
+         sendUi(m);
+         result = m_moduleManager->handle(m);
+         break;
+      }
+
       case message::Message::ADDPARAMETER: {
          
          const message::AddParameter &m = static_cast<const message::AddParameter &>(message);

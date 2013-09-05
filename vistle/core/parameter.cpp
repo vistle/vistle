@@ -64,6 +64,12 @@ Parameter::Presentation Parameter::presentation() const {
    return m_presentation;
 }
 
+const std::vector<std::string> &Parameter::choices() const
+{
+
+   return m_choices;
+}
+
 const std::string &Parameter::description() const {
 
    return m_description;

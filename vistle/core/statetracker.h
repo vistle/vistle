@@ -33,6 +33,7 @@ class V_COREEXPORT StateObserver {
 
    virtual void newParameter(int moduleId, const std::string &parameterName) = 0;
    virtual void parameterValueChanged(int moduleId, const std::string &parameterName) = 0;
+   virtual void parameterChoicesChanged(int moduleId, const std::string &parameterName) = 0;
 
    virtual void newPort(int moduleId, const std::string &portName) = 0;
 

@@ -68,6 +68,10 @@ class StatePrinter: public StateObserver {
       m_out << "   parameter value changed: " << moduleId << ":" << parameterName << std::endl;
    }
 
+   void parameterChoicesChanged(int moduleId, const std::string &parameterName) {
+      m_out << "   parameter choices changed: " << moduleId << ":" << parameterName << std::endl;
+   }
+
    void newPort(int moduleId, const std::string &portName) {
       m_out << "   new port: " << moduleId << ":" << portName << std::endl;
    }

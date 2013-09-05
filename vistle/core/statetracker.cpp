@@ -116,6 +116,12 @@ std::vector<char> StateTracker::getState() const {
          add.setSenderId(id);
          appendMessage(state, add);
 
+         if (param->presentation() == Parameter::Choice) {
+            SetParameterChoices choices(id, name, param->choices());
+            choices.setSenderId(id);
+            appendMessage(state, choices);
+         }
+
          SetParameter set(id, name, param);
          set.setSenderId(id);
          appendMessage(state, set);
@@ -449,6 +455,16 @@ bool StateTracker::handle(const message::SetParameter &setParam) {
 }
 
 bool StateTracker::handle(const message::SetParameterChoices &choices) {
+
+   Parameter *p = getParameter(choices.getModule(), choices.getName());
+   if (!p)
+      return false;
+
+   choices.apply(p);
+
+   for (StateObserver *o: m_observers) {
+      o->parameterChoicesChanged(choices.getModule(), choices.getName());
+   }
 
    return true;
 }
