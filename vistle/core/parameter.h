@@ -43,6 +43,7 @@ class V_COREEXPORT Parameter {
 
    virtual Parameter *clone() const = 0;
 
+   void setPresentation(Presentation presentation);
    void setDescription(const std::string &description);
    void setChoices(const std::vector<std::string> &choices);
 

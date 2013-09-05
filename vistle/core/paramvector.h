@@ -56,6 +56,9 @@ public:
    operator S *() { return v; }
    operator const S *() const { return v; }
 
+   operator S &() { assert(dim==1); return v[0]; }
+   operator S() const { assert(dim==1); return dim>0 ? v[0] : S(); }
+
    std::string str() const;
 
 public:

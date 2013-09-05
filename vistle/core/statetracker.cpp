@@ -413,7 +413,7 @@ bool StateTracker::handle(const message::AddParameter &addParam) {
    ParameterMap &pm = runningMap[addParam.senderId()].parameters;
    ParameterMap::iterator it = pm.find(addParam.getName());
    if (it != pm.end()) {
-      CERR << "double parameter" << std::endl;
+      CERR << "duplicate parameter" << std::endl;
    } else {
       pm[addParam.getName()] = addParam.getParameter();
    }

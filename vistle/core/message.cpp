@@ -389,6 +389,7 @@ AddParameter::AddParameter(const std::string &n, const std::string &desc, int t,
 
    COPY_STRING(name, n);
    COPY_STRING(module, mod);
+   COPY_STRING(m_description, desc);
 }
 
 AddParameter::AddParameter(const Parameter *param, const std::string &modname)
@@ -399,6 +400,7 @@ AddParameter::AddParameter(const Parameter *param, const std::string &modname)
 
    COPY_STRING(name, param->getName());
    COPY_STRING(module, modname);
+   COPY_STRING(m_description, param->description());
 }
 
 const char *AddParameter::getName() const {
@@ -421,20 +423,36 @@ int AddParameter::getPresentation() const {
    return presentation;
 }
 
+const char *AddParameter::description() const {
+
+   return m_description;
+}
+
 Parameter *AddParameter::getParameter() const {
 
+   Parameter *p = nullptr;
    switch (getParameterType()) {
       case Parameter::Integer:
-         return new IntParameter(senderId(), getName());
+         p = new IntParameter(senderId(), getName());
+         break;
       case Parameter::Scalar:
-         return new FloatParameter(senderId(), getName());
+         p = new FloatParameter(senderId(), getName());
+         break;
       case Parameter::Vector:
-         return new VectorParameter(senderId(), getName());
+         p = new VectorParameter(senderId(), getName());
+         break;
       case Parameter::String:
-         return new StringParameter(senderId(), getName());
+         p = new StringParameter(senderId(), getName());
+         break;
       case Parameter::Invalid:
       case Parameter::Unknown:
          break;
+   }
+
+   if (p) {
+      p->setDescription(description());
+      p->setPresentation(Parameter::Presentation(getPresentation()));
+      return p;
    }
 
    std::cerr << "AddParameter::getParameter: type " << type() << " not handled" << std::endl;

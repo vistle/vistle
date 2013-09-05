@@ -55,6 +55,10 @@ Parameter::Type Parameter::type() const {
    return m_type;
 }
 
+void Parameter::setPresentation(Parameter::Presentation pres) {
+   m_presentation = pres;
+}
+
 Parameter::Presentation Parameter::presentation() const {
 
    return m_presentation;
