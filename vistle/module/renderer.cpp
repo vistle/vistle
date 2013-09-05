@@ -22,7 +22,7 @@ Renderer::Renderer(const std::string & name, const std::string &shmname,
 
    createInputPort("data_in", "input data");
 
-   m_masterOnly = addIntParameter("master_only", "render only on master (rank 0)", 0);
+   m_masterOnly = addIntParameter("master_only", "render only on master (rank 0)", 0, Parameter::Boolean);
 
    //std::cerr << "Renderer starting: rank=" << rank << std::endl;
 }
