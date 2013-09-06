@@ -14,6 +14,7 @@ class QtLongPropertyManager;
 class QtDoublePropertyManager;
 class QtStringPropertyManager;
 class QtEnumPropertyManager;
+class QtVectorPropertyManager;
 
 namespace vistle {
 class VistleConnection;
@@ -54,6 +55,7 @@ private:
    QtStringPropertyManager *m_stringManager = nullptr;
    QtEnumPropertyManager *m_stringChoiceManager = nullptr;
    QtEnumPropertyManager *m_intChoiceManager = nullptr;
+   QtVectorPropertyManager *m_vectorManager = nullptr;
 
    std::map<QString, QtProperty *> m_paramToProp;
    std::map<QtProperty *, QString> m_propToParam;

@@ -24,8 +24,11 @@
 
 #include "propertybrowser/qtlongpropertymanager.h"
 #include "propertybrowser/qtlongeditorfactory.h"
+#include "propertybrowser/qtvectorpropertymanager.h"
 
 namespace gui {
+
+const int NumDec = 10;
 
 template<class M>
 static M *addPropertyManager(Parameters *p) {
@@ -45,6 +48,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
    m_floatManager = addPropertyManager<QtDoublePropertyManager>(this);
    m_stringManager = addPropertyManager<QtStringPropertyManager>(this);
    m_stringChoiceManager = addPropertyManager<QtEnumPropertyManager>(this);
+   m_vectorManager = addPropertyManager<QtVectorPropertyManager>(this);
 
    QtCheckBoxFactory *checkBoxFactory = new QtCheckBoxFactory(this);
    setFactoryForManager(m_boolManager, checkBoxFactory);
@@ -54,6 +58,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
 
    QtDoubleSpinBoxFactory *doubleSpinBoxFactory = new QtDoubleSpinBoxFactory(this);
    setFactoryForManager(m_floatManager, doubleSpinBoxFactory);
+   setFactoryForManager(m_vectorManager->subDoublePropertyManager(), doubleSpinBoxFactory);
 
    QtLineEditFactory *lineEditFactory = new QtLineEditFactory(this);
    setFactoryForManager(m_stringManager, lineEditFactory);
@@ -160,6 +165,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
    } else if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
       if (!prop) {
          prop = m_floatManager->addProperty(parameterName);
+         m_floatManager->setDecimals(prop, NumDec);
       }
       m_floatManager->setValue(prop, fp->getValue());
    } else if (vistle::StringParameter *sp = dynamic_cast<vistle::StringParameter *>(p)) {
@@ -178,25 +184,11 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
    } else if (vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p)) {
       vistle::ParamVector value = vp->getValue();
       if (!prop) {
-         prop = m_groupManager->addProperty(parameterName);
-         for (int i=0; i<value.dim; ++i) {
-            QString n = QString::number(i);
-            if (value.dim < 4) {
-               switch(i) {
-               case 0: n="x"; break;
-               case 1: n="y"; break;
-               case 2: n="z"; break;
-               case 3: n="w"; break;
-               }
-            }
-            QtProperty *sub = m_floatManager->addProperty(n);
-            prop->addSubProperty(sub);
-         }
+         prop = m_vectorManager->addProperty(parameterName);
+         m_vectorManager->setDecimals(prop, NumDec);
+         m_vectorManager->setDimension(prop, value.dim);
       }
-      QList<QtProperty *> subs = prop->subProperties();
-      for (int i=0; i<value.dim; ++i) {
-         m_floatManager->setValue(subs[i], value[i]);
-      }
+      m_vectorManager->setValue(prop, value);
    } else {
    }
 
@@ -214,7 +206,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
 
 void Parameters::parameterChoicesChanged(int moduleId, QString parameterName)
 {
-   std::cerr << "choices changed" << std::endl;
+   //std::cerr << "choices changed" << std::endl;
    if (m_moduleId != moduleId)
       return;
 
@@ -269,7 +261,7 @@ void Parameters::propertyChanged(QtProperty *prop)
          }
       } else if (ip->presentation() == vistle::Parameter::Choice) {
          vistle::Integer value = m_intChoiceManager->value(prop);
-         std::cerr << "Choice: value=" << value << std::endl;
+         //std::cerr << "Choice: value=" << value << std::endl;
          if (ip->getValue() != value) {
             changed = true;
             ip->setValue(value);
@@ -297,6 +289,11 @@ void Parameters::propertyChanged(QtProperty *prop)
       if (sp->getValue() != value) {
          changed = true;
          sp->setValue(m_stringManager->value(prop).toStdString());
+      }
+   } else if (vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p)) {
+      if (vp->getValue() != m_vectorManager->value(prop)) {
+         changed = true;
+         vp->setValue(m_vectorManager->value(prop));
       }
    } else {
       std::cerr << "property type not handled for " << paramName << std::endl;

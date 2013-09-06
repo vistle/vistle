@@ -235,6 +235,11 @@ bool operator==(const ParameterVector<S> &v1, const ParameterVector<S> &v2) {
 }
 
 template<typename S>
+bool operator!=(const ParameterVector<S> &v1, const ParameterVector<S> &v2) {
+   return !(v1 == v2);
+}
+
+template<typename S>
 bool operator<(const ParameterVector<S> &v1, const ParameterVector<S> &v2) {
    for (int i=0; i<v1.dim && i<v2.dim; ++i)
       if (v1[i] >= v2[i])

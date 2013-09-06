@@ -3,7 +3,9 @@ find_qt()
 set(CMAKE_AUTOMOC ON)
 
 include_directories(
-   ../../../3rdparty/qt-solutions/qtpropertybrowser/src 
+   ${Boost_INCLUDE_DIRS}
+   ../../../3rdparty/qt-solutions/qtpropertybrowser/src
+   ../..
    ${CMAKE_CURRENT_BINARY_DIR}
 )
 
@@ -20,6 +22,7 @@ set(SOURCES
    qlongspinbox.cpp
    qtlongpropertymanager.cpp
    qtlongeditorfactory.cpp
+   qtvectorpropertymanager.cpp
 )
 
 set(HEADERS
@@ -35,6 +38,7 @@ set(HEADERS
    qlongspinbox.h
    qtlongpropertymanager.h
    qtlongeditorfactory.h
+   qtvectorpropertymanager.h
 )
 
 set(FORMS
@@ -51,4 +55,5 @@ qt5_use_modules(vistle_propertybrowser Widgets)
 
 target_link_libraries(vistle_propertybrowser
   ${QT_LIBRARIES}
+  vistle_core
 )

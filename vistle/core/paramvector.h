@@ -87,9 +87,10 @@ public:
    }
 };
 
-
 template<typename S>
 V_COREEXPORT bool operator==(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
+template<typename S>
+V_COREEXPORT bool operator!=(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
 
 template<typename S>
 V_COREEXPORT bool operator<(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
