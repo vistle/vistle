@@ -17,7 +17,9 @@ set(SOURCES
    ../../../3rdparty/qt-solutions/qtpropertybrowser/src/qttreepropertybrowser.cpp
    ../../../3rdparty/qt-solutions/qtpropertybrowser/src/qtvariantproperty.cpp
 
+   qlongspinbox.cpp
    qtlongpropertymanager.cpp
+   qtlongeditorfactory.cpp
 )
 
 set(HEADERS
@@ -30,7 +32,9 @@ set(HEADERS
    ../../../3rdparty/qt-solutions/qtpropertybrowser/src/qttreepropertybrowser.h
    ../../../3rdparty/qt-solutions/qtpropertybrowser/src/qtvariantproperty.h
 
+   qlongspinbox.h
    qtlongpropertymanager.h
+   qtlongeditorfactory.h
 )
 
 set(FORMS

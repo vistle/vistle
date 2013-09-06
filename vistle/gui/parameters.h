@@ -10,6 +10,7 @@ class QtProperty;
 class QtGroupPropertyManager;
 class QtBoolPropertyManager;
 class QtIntPropertyManager;
+class QtLongPropertyManager;
 class QtDoublePropertyManager;
 class QtStringPropertyManager;
 class QtEnumPropertyManager;
@@ -48,7 +49,7 @@ private:
 
    QtGroupPropertyManager *m_groupManager = nullptr;
    QtBoolPropertyManager *m_boolManager = nullptr;
-   QtIntPropertyManager *m_intManager = nullptr;
+   QtLongPropertyManager *m_intManager = nullptr;
    QtDoublePropertyManager *m_floatManager = nullptr;
    QtStringPropertyManager *m_stringManager = nullptr;
    QtEnumPropertyManager *m_stringChoiceManager = nullptr;

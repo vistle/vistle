@@ -5,6 +5,8 @@
  */
 /**********************************************************************************/
 
+#include <QTextEdit>
+
 #include <userinterface/vistleconnection.h>
 
 #include "parameters.h"
@@ -20,7 +22,8 @@
 #include <QtSpinBoxFactory>
 #include <QtDoubleSpinBoxFactory>
 
-#include <QTextEdit>
+#include "propertybrowser/qtlongpropertymanager.h"
+#include "propertybrowser/qtlongeditorfactory.h"
 
 namespace gui {
 
@@ -37,7 +40,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
    m_groupManager = new QtGroupPropertyManager(this); // no change notifications
 
    m_boolManager = addPropertyManager<QtBoolPropertyManager>(this);
-   m_intManager = addPropertyManager<QtIntPropertyManager>(this);
+   m_intManager = addPropertyManager<QtLongPropertyManager>(this);
    m_intChoiceManager = addPropertyManager<QtEnumPropertyManager>(this);
    m_floatManager = addPropertyManager<QtDoublePropertyManager>(this);
    m_stringManager = addPropertyManager<QtStringPropertyManager>(this);
@@ -46,7 +49,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
    QtCheckBoxFactory *checkBoxFactory = new QtCheckBoxFactory(this);
    setFactoryForManager(m_boolManager, checkBoxFactory);
 
-   QtSpinBoxFactory *spinBoxFactory = new QtSpinBoxFactory(this);
+   QtLongSpinBoxFactory *spinBoxFactory = new QtLongSpinBoxFactory(this);
    setFactoryForManager(m_intManager, spinBoxFactory);
 
    QtDoubleSpinBoxFactory *doubleSpinBoxFactory = new QtDoubleSpinBoxFactory(this);
