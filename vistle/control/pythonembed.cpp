@@ -116,8 +116,8 @@ PythonEmbed::PythonEmbed(ClientManager &manager, const std::string &name)
       .def_readwrite( "first", &std::pair< int, std::string >::first, "first value" ) 
       .def_readwrite( "second", &std::pair< int, std::string >::second, "second value" ); 
 
-   bp::class_<ParameterVector<double> >("ParameterVector<double>")
-      .def(bp::vector_indexing_suite<ParameterVector<double> >());
+   bp::class_<ParameterVector<Float> >("ParameterVector<Float>")
+      .def(bp::vector_indexing_suite<ParameterVector<Float> >());
 
    bp::object main = bp::import("__main__");
    m_namespace = main.attr("__dict__");

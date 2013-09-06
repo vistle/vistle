@@ -12,14 +12,16 @@
 
 namespace vistle {
 
-typedef boost::mpl::vector<int, double, ParamVector, std::string> Parameters;
+typedef long Integer;
+
+typedef boost::mpl::vector<Integer, Float, ParamVector, std::string> Parameters;
 
 class V_COREEXPORT Parameter {
 
  public:
    enum Type {
       Unknown, // keep first
-      Scalar,
+      Float,
       Integer,
       Vector,
       String,
@@ -141,8 +143,8 @@ class V_COREEXPORT ParameterBase: public Parameter {
 };
 
 template<>
-struct ParameterType<int> {
-   typedef int T;
+struct ParameterType<Integer> {
+   typedef Integer T;
    static const Parameter::Type type = Parameter::Integer;
    static const bool isNumber = true;
    static const T min() { return std::numeric_limits<T>::min(); }
@@ -150,9 +152,9 @@ struct ParameterType<int> {
 };
 
 template<>
-struct ParameterType<double> {
-   typedef double T;
-   static const Parameter::Type type = Parameter::Scalar;
+struct ParameterType<Float> {
+   typedef Float T;
+   static const Parameter::Type type = Parameter::Float;
    static const bool isNumber = true;
    static const T min() { return -std::numeric_limits<T>::max(); }
    static const T max() { return std::numeric_limits<T>::max(); }
@@ -177,8 +179,8 @@ struct ParameterType<std::string> {
 };
 
 template<>
-struct ParameterCheck<int> {
-   static bool check(const std::vector<std::string> &choices, const int &value) {
+struct ParameterCheck<Integer> {
+   static bool check(const std::vector<std::string> &choices, const Integer &value) {
       if (value < 0 || value >= choices.size()) {
          std::cerr << "IntParameter: choice out of range" << std::endl;
          return false;
@@ -199,8 +201,8 @@ struct ParameterCheck<std::string> {
 };
 
 typedef ParameterBase<ParamVector> VectorParameter;
-typedef ParameterBase<double> FloatParameter;
-typedef ParameterBase<int> IntParameter;
+typedef ParameterBase<Float> FloatParameter;
+typedef ParameterBase<Integer> IntParameter;
 typedef ParameterBase<std::string> StringParameter;
 
 } // namespace vistle

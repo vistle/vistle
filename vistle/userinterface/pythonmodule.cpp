@@ -211,7 +211,7 @@ static std::string getParameterType(int id, const std::string &name) {
 
    switch (param->type()) {
       case Parameter::Integer: return "Int";
-      case Parameter::Scalar: return "Float";
+      case Parameter::Float: return "Float";
       case Parameter::Vector: return "Vector";
       case Parameter::String: return "String";
       case Parameter::Invalid: return "None";
@@ -279,7 +279,7 @@ static void disconnect(int sid, const char *sport, int did, const char *dport) {
    sendMessage(m);
 }
 
-static void setIntParam(int id, const char *name, int value) {
+static void setIntParam(int id, const char *name, Integer value) {
 
 #ifdef DEBUG
    std::cerr << "Python: setIntParam " << id << ":" << name << " = " << value << std::endl;
@@ -288,7 +288,7 @@ static void setIntParam(int id, const char *name, int value) {
    sendMessage(m);
 }
 
-static void setFloatParam(int id, const char *name, double value) {
+static void setFloatParam(int id, const char *name, Float value) {
 
 #ifdef DEBUG
    std::cerr << "Python: setFloatParam " << id << ":" << name << " = " << value << std::endl;
@@ -297,25 +297,25 @@ static void setFloatParam(int id, const char *name, double value) {
    sendMessage(m);
 }
 
-static void setVectorParam4(int id, const char *name, double v1, double v2, double v3, double v4) {
+static void setVectorParam4(int id, const char *name, Float v1, Float v2, Float v3, Float v4) {
 
    message::SetParameter m(id, name, ParamVector(v1, v2, v3, v4));
    sendMessage(m);
 }
 
-static void setVectorParam3(int id, const char *name, double v1, double v2, double v3) {
+static void setVectorParam3(int id, const char *name, Float v1, Float v2, Float v3) {
 
    message::SetParameter m(id, name, ParamVector(v1, v2, v3));
    sendMessage(m);
 }
 
-static void setVectorParam2(int id, const char *name, double v1, double v2) {
+static void setVectorParam2(int id, const char *name, Float v1, Float v2) {
 
    message::SetParameter m(id, name, ParamVector(v1, v2));
    sendMessage(m);
 }
 
-static void setVectorParam1(int id, const char *name, double v1) {
+static void setVectorParam1(int id, const char *name, Float v1) {
 
    message::SetParameter m(id, name, ParamVector(v1));
    sendMessage(m);
@@ -379,8 +379,8 @@ BOOST_PYTHON_MODULE(_vistle)
     def("getParameters", getParameters, "get list of parameters for module with ID `arg1`");
     def("getParameterType", getParameterType, "get type of parameter named `arg2` of module with ID `arg1`");
     def("isParameterDefault", isParameterDefault, "check whether parameter `arg2` of module with ID `arg1` differs from its default value");
-    def("getIntParam", getParameterValue<int>, "get value of parameter named `arg2` of module with ID `arg1`");
-    def("getFloatParam", getParameterValue<double>, "get value of parameter named `arg2` of module with ID `arg1`");
+    def("getIntParam", getParameterValue<Integer>, "get value of parameter named `arg2` of module with ID `arg1`");
+    def("getFloatParam", getParameterValue<Float>, "get value of parameter named `arg2` of module with ID `arg1`");
     def("getVectorParam", getParameterValue<ParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");
     def("getStringParam", getParameterValue<std::string>, "get value of parameter named `arg2` of module with ID `arg1`");
 }
@@ -421,8 +421,8 @@ bool PythonModule::import(boost::python::object *ns) {
       .def_readwrite( "first", &std::pair< int, std::string >::first, "first value" )
       .def_readwrite( "second", &std::pair< int, std::string >::second, "second value" );
 
-   bp::class_<ParameterVector<double> >("ParameterVector<double>")
-      .def(bp::vector_indexing_suite<ParameterVector<double> >());
+   bp::class_<ParameterVector<Float> >("ParameterVector<Float>")
+      .def(bp::vector_indexing_suite<ParameterVector<Float> >());
 
    try {
       init_vistle();

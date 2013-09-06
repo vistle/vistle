@@ -4,6 +4,7 @@
 namespace vistle {
 
 typedef float Scalar;
+typedef double Float;
 
 } // namespace vistle
 

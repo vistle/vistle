@@ -8,6 +8,7 @@
 #include "object.h"
 #include "scalar.h"
 #include "paramvector.h"
+#include "parameter.h"
 #include "export.h"
 
 namespace vistle {
@@ -385,9 +386,9 @@ class V_COREEXPORT SetParameter: public Message {
       SetParameter(const int module,
             const std::string & name, const Parameter *param);
       SetParameter(const int module,
-            const std::string & name, const int value);
+            const std::string & name, const Integer value);
       SetParameter(const int module,
-            const std::string & name, const double value);
+            const std::string & name, const Float value);
       SetParameter(const int module,
             const std::string & name, const ParamVector value);
       SetParameter(const int module,
@@ -406,9 +407,9 @@ class V_COREEXPORT SetParameter: public Message {
       const char * getName() const;
       int getParameterType() const;
 
-      int getInteger() const;
+      Integer getInteger() const;
       std::string getString() const;
-      Scalar getScalar() const;
+      Float getFloat() const;
       ParamVector getVector() const;
 
       bool apply(Parameter *param) const;
@@ -422,9 +423,9 @@ class V_COREEXPORT SetParameter: public Message {
       bool reply;
       int rangetype;
       union {
-         int v_int;
-         double v_scalar;
-         double v_vector[MaxDimension];
+         Integer v_int;
+         Float v_scalar;
+         Float v_vector[MaxDimension];
          param_value_t v_string;
       };
 };

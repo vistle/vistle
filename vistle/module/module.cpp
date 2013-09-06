@@ -349,32 +349,32 @@ std::string Module::getStringParameter(const std::string & name) const {
 }
 
 FloatParameter *Module::addFloatParameter(const std::string & name, const std::string &description,
-                               const double value) {
+                               const Float value) {
 
    return dynamic_cast<FloatParameter *>(addParameter(name, description, value));
 }
 
 bool Module::setFloatParameter(const std::string & name,
-                               const double value, const message::SetParameter *inResponseTo) {
+                               const Float value, const message::SetParameter *inResponseTo) {
 
    return setParameter(name, value, inResponseTo);
 }
 
-double Module::getFloatParameter(const std::string & name) const {
+Float Module::getFloatParameter(const std::string & name) const {
 
-   double value = 0.;
+   Float value = 0.;
    getParameter(name, value);
    return value;
 }
 
 IntParameter *Module::addIntParameter(const std::string & name, const std::string &description,
-                             const int value, Parameter::Presentation p) {
+                             const Integer value, Parameter::Presentation p) {
 
    return dynamic_cast<IntParameter *>(addParameter(name, description, value, p));
 }
 
 bool Module::setIntParameter(const std::string & name,
-                             int value, const message::SetParameter *inResponseTo) {
+                             Integer value, const message::SetParameter *inResponseTo) {
 
    if (name == "_cache_mode") {
       if (value == ObjectCache::CacheAll
@@ -387,9 +387,9 @@ bool Module::setIntParameter(const std::string & name,
    return setParameter(name, value, inResponseTo);
 }
 
-int Module::getIntParameter(const std::string & name) const {
+Integer Module::getIntParameter(const std::string & name) const {
 
-   int value = 0;
+   Integer value = 0;
    getParameter(name, value);
    return value;
 }
@@ -900,8 +900,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                case Parameter::Integer:
                   setIntParameter(param->getName(), param->getInteger(), param);
                   break;
-               case Parameter::Scalar:
-                  setFloatParameter(param->getName(), param->getScalar(), param);
+               case Parameter::Float:
+                  setFloatParameter(param->getName(), param->getFloat(), param);
                   break;
                case Parameter::Vector:
                   setVectorParameter(param->getName(), param->getVector(), param);

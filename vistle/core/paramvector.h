@@ -97,7 +97,7 @@ V_COREEXPORT bool operator>(const ParameterVector<S> &v1, const ParameterVector<
 
 //typedef ParameterVector<Scalar> ScalarVector;
 //typedef ScalarVector Vector;
-typedef ParameterVector<double> ParamVector;
+typedef ParameterVector<Float> ParamVector;
 
 } // namespace vistle
 

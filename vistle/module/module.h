@@ -64,13 +64,13 @@ class V_COREEXPORT Module {
    bool setStringParameter(const std::string & name, const std::string & value, const message::SetParameter *inResponseTo=NULL);
    std::string getStringParameter(const std::string & name) const;
 
-   FloatParameter *addFloatParameter(const std::string & name, const std::string &description, const double value);
-   bool setFloatParameter(const std::string & name, const double value, const message::SetParameter *inResponseTo=NULL);
-   double getFloatParameter(const std::string & name) const;
+   FloatParameter *addFloatParameter(const std::string & name, const std::string &description, const Float value);
+   bool setFloatParameter(const std::string & name, const Float value, const message::SetParameter *inResponseTo=NULL);
+   Float getFloatParameter(const std::string & name) const;
 
-   IntParameter *addIntParameter(const std::string & name, const std::string &description, const int value, Parameter::Presentation p=Parameter::Generic);
-   bool setIntParameter(const std::string & name, const int value, const message::SetParameter *inResponseTo=NULL);
-   int getIntParameter(const std::string & name) const;
+   IntParameter *addIntParameter(const std::string & name, const std::string &description, const Integer value, Parameter::Presentation p=Parameter::Generic);
+   bool setIntParameter(const std::string & name, const Integer value, const message::SetParameter *inResponseTo=NULL);
+   Integer getIntParameter(const std::string & name) const;
 
    VectorParameter *addVectorParameter(const std::string & name, const std::string &description, const ParamVector & value);
    bool setVectorParameter(const std::string & name, const ParamVector & value, const message::SetParameter *inResponseTo=NULL);

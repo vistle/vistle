@@ -435,7 +435,7 @@ Parameter *AddParameter::getParameter() const {
       case Parameter::Integer:
          p = new IntParameter(senderId(), getName());
          break;
-      case Parameter::Scalar:
+      case Parameter::Float:
          p = new FloatParameter(senderId(), getName());
          break;
       case Parameter::Vector:
@@ -490,7 +490,7 @@ SetParameter::SetParameter(const int module,
 }
 
 SetParameter::SetParameter(const int module,
-      const std::string &n, const int v)
+      const std::string &n, const Integer v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
 , paramtype(Parameter::Integer)
@@ -504,10 +504,10 @@ SetParameter::SetParameter(const int module,
 }
 
 SetParameter::SetParameter(const int module,
-      const std::string &n, const double v)
+      const std::string &n, const Float v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
-, paramtype(Parameter::Scalar)
+, paramtype(Parameter::Float)
 , initialize(false)
 , reply(false)
 , rangetype(SetParameter::Value)
@@ -592,15 +592,15 @@ int SetParameter::getParameterType() const {
    return paramtype;
 }
 
-int SetParameter::getInteger() const {
+Integer SetParameter::getInteger() const {
 
    assert(paramtype == Parameter::Integer);
    return v_int;
 }
 
-Scalar SetParameter::getScalar() const {
+Float SetParameter::getFloat() const {
 
-   assert(paramtype == Parameter::Scalar);
+   assert(paramtype == Parameter::Float);
    return v_scalar;
 }
 
