@@ -18,8 +18,6 @@
 #include "module.h"
 #include "connection.h"
 #include "scene.h"
-#include "mainwindow.h"
-#include "parameters.h"
 
 namespace gui {
 
@@ -107,22 +105,22 @@ void Module::createPorts()
     QVector<QPointF> points = { QPointF(-xAddr, yAddr),
                QPointF(-xAddr / 2, yAddr * 1.5),
                QPointF(-xAddr / 2, yAddr / 2) };
-    portList.append(new Port(QPolygonF(points), INPUT, this));
+    portList.append(new Port(QPolygonF(points), Port::INPUT, this));
 
     points = { QPointF(xAddr, yAddr),
                QPointF(xAddr / 2, yAddr * 1.5),
                QPointF(xAddr / 2, yAddr / 2) };
-    portList.append(new Port(QPolygonF(points), OUTPUT, this));
+    portList.append(new Port(QPolygonF(points), Port::OUTPUT, this));
 
     points = { QPointF(0,0),
                QPointF(xAddr / 2, yAddr / 2),
                QPointF(-xAddr / 2, yAddr / 2) };
-    portList.append(new Port(QPolygonF(points), PARAMETER, this));
+    portList.append(new Port(QPolygonF(points), Port::PARAMETER, this));
 
     points =  { QPointF(0, yAddr * 2),
                 QPointF(-xAddr / 2, yAddr * 1.5),
                 QPointF(xAddr / 2, yAddr * 1.5) };
-    portList.append(new Port(QPolygonF(points), PARAMETER, this));
+    portList.append(new Port(QPolygonF(points), Port::PARAMETER, this));
 }
 
 void Module::updatePorts()
@@ -240,17 +238,17 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
     // Draw the ports.
     foreach (Port *port, portList) {
         switch (port->port()) {
-            case INPUT:
+            case Port::INPUT:
                 brush->setColor(Qt::red);
                 break;
-            case OUTPUT:
+            case Port::OUTPUT:
                 brush->setColor(Qt::blue);
                 break;
-            case PARAMETER:
+            case Port::PARAMETER:
                 brush->setColor(Qt::black);
                 break;
-            case MAIN:
-            case DEFAULT:
+            case Port::MAIN:
+            case Port::DEFAULT:
                 break;
         }
 
@@ -276,22 +274,18 @@ QVariant Module::itemChange(QGraphicsItem::GraphicsItemChange change, const QVar
    if (change == ItemPositionChange && scene()) {
       // value is the new position.
       QPointF newPos = value.toPointF();
-      double x = newPos.x();
-      double y = newPos.y();
-      setParameter("_x", x);
-      setParameter("_y", y);
-   } else if (change == QGraphicsItem::ItemSelectedChange) {
-      if (value==true) {
-         // do stuff if selected
-         if (Scene *s = dynamic_cast<Scene *>(scene())) {
-            s->mainWindow()->parameters()->setModule(m_id);
-         }
-      } else {
-         // do stuff if not selected
-      }
+      updatePosition(newPos);
    }
 
    return QGraphicsItem::itemChange(change, value);
+}
+
+void Module::updatePosition(QPointF newPos) const
+{
+   double x = newPos.x();
+   double y = newPos.y();
+   setParameter("_x", x);
+   setParameter("_y", y);
 }
 
 /*!
@@ -441,6 +435,11 @@ void Module::setSpawnUuid(const boost::uuids::uuid &uuid)
    m_spawnUuid = uuid;
 }
 
+void Module::sendPosition() const
+{
+   updatePosition(pos());
+}
+
 /*!
  * \brief Module::portPos return the outward point for a port.
  * \param port
@@ -459,7 +458,7 @@ QPointF Module::portPos(Port *port)
     return QPointF();
 }
 
-void Module::setStatus(ModuleStatus status)
+void Module::setStatus(Module::Status status)
 {
    m_Status = status;
 

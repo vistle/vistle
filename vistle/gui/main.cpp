@@ -8,8 +8,6 @@
 #include "mainwindow.h"
 #include <QApplication>
 
-#include "consts.h"
-
 #include <userinterface/userinterface.h>
 #include <userinterface/vistleconnection.h>
 #include <userinterface/pythonembed.h>
@@ -25,9 +23,8 @@ using namespace gui;
 
 int main(int argc, char *argv[])
 {
-   qRegisterMetaType<ModuleStatus>("ModuleStatus");
-   qRegisterMetaType<ItemType>("ItemType");
-   qRegisterMetaType<GraphicsType>("GraphicsType");
+   qRegisterMetaType<Module::Status>("Module::Status");
+   qRegisterMetaType<Port::Type>("Port::Type");
    qRegisterMetaType<boost::uuids::uuid>();
 
     try {

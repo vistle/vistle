@@ -40,11 +40,6 @@ Scene::~Scene()
     sortMap.clear();
 }
 
-void Scene::setModules(QList<QString> moduleNameList)
-{
-    m_ModuleNameList = moduleNameList;
-}
-
 void Scene::setRunner(vistle::VistleConnection *runner)
 {
     m_Runner = runner;
@@ -61,7 +56,7 @@ void Scene::addModule(QString modName, QPointF dropPos)
     ///\todo improve how the data such as the name is set in the module.
     addItem(module);
     module->setPos(dropPos);
-    module->setStatus(SPAWNING);
+    module->setStatus(Module::SPAWNING);
 
     vistle::message::Spawn spawnMsg(0, modName.toUtf8().constData());
     module->setSpawnUuid(spawnMsg.uuid());
@@ -74,19 +69,22 @@ void Scene::addModule(QString modName, QPointF dropPos)
 
 void Scene::addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name)
 {
-   std::cerr << "addModule: name=" << name.toStdString() << ", id=" << moduleId << std::endl;
+   //std::cerr << "addModule: name=" << name.toStdString() << ", id=" << moduleId << std::endl;
    Module *mod = findModule(spawnUuid);
-   if (!mod)
+   if (mod) {
+      mod->sendPosition();
+   } else {
       mod = findModule(moduleId);
+   }
    if (!mod) {
       mod = new Module(nullptr, name);
       addItem(mod);
-      mod->setStatus(SPAWNING);
+      mod->setStatus(Module::SPAWNING);
       moduleList.append(mod);
    }
 
    mod->setId(moduleId);
-   mod->setName(name+"_"+QString::number(moduleId));
+   mod->setName(QString("%1_%2").arg(name, QString::number(moduleId)));
 }
 
 void Scene::deleteModule(int moduleId)
@@ -293,20 +291,20 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
     if (startPort) {
        // Test for port type
        switch (startPort->port()) {
-          case INPUT:
-          case OUTPUT:
-          case PARAMETER:
+          case Port::INPUT:
+          case Port::OUTPUT:
+          case Port::PARAMETER:
              m_Line = new QGraphicsLineItem(QLineF(event->scenePos(),
                       event->scenePos()));
              m_Line->setPen(QPen(m_LineColor, 2));
              addItem(m_Line);
              startModule = dynamic_cast<Module *>(startPort->parentItem());
              break;
-          case MAIN:
+          case Port::MAIN:
              //The object inside the ports has been clicked on
              ///\todo add functionality
              break;
-          case DEFAULT:
+          case Port::DEFAULT:
              // Another part of the object has been clicked, ignore
              break;
        } //end switch
@@ -326,19 +324,18 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     if ((vMouseClick) && (event->scenePos() == vLastPoint)) {
         item = itemAt(event->scenePos(), QTransform());
         if (item) {
-            if (item->type() == TypeConnectionItem) {
+            if (Connection *connection = dynamic_cast<Connection *>(item)) {
                 // delete connection
-                Connection *connection = dynamic_cast<Connection *>(item);
                 // remove the modules from any lists. Need to find which list the modules belong to
                 //  and then remove the child and parent (or param) from both locations.
                 Module *stMod = connection->startItem();
                 Module *endMod = connection->endItem();
                 ///\todo add vistle message sending
-                if (connection->connectionType() == OUTPUT) {
+                if (connection->connectionType() == Port::OUTPUT) {
                     if (!(stMod->removeChild(endMod))) { std::cerr<<"failed to remove child"<<std::endl; }
                     if (!(endMod->removeParent(stMod))) { std::cerr<<"failed to remove parent"<<std::endl; }
 
-                } else if (connection->connectionType() == PARAMETER) {
+                } else if (connection->connectionType() == Port::PARAMETER) {
                     stMod->disconnectParameter(endMod);
                     endMod->disconnectParameter(stMod);
                 } else {
@@ -347,88 +344,84 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                 connection->startItem()->removeConnection(connection);
                 connection->endItem()->removeConnection(connection);
                 delete connection;
-            } //end if (item->type() == TypeconnectionItem)
+            }
         } //end if (item)
     // if there was not a click, and if m_line already was drawn
     } else if (vMouseClick && m_Line) {
 
-        // clean up connection
-        removeItem(m_Line);
-        delete m_Line;
-        m_Line = nullptr;
+       // clean up connection
+       removeItem(m_Line);
+       delete m_Line;
+       m_Line = nullptr;
 
-        // Begin testing for the finish of the line draw.
-        item = itemAt(event->scenePos(), QTransform());
-        if (item) {
-            if (item->type() == TypePortItem) {
-                endPort = dynamic_cast<Port *>(item);
-                // Test over the port types
-                ///\todo improve testing for viability of connection
-                switch (endPort->port()) {
-                    case INPUT:
-                        if (startPort->port() == OUTPUT) {
-                            endModule = dynamic_cast<Module *>(endPort->parentItem());
-                            if (startModule != endModule) {
-                                Connection *connection = new Connection(startModule, endModule, startPort, endPort, true, OUTPUT);
-                                connection->setColor(m_LineColor);
-                                startModule->addConnection(connection);
-                                endModule->addConnection(connection);
-                                startModule->addChild(endModule);
-                                endModule->addParent(startModule);
-                                connection->setZValue(-1000.0);
-                                addItem(connection);
-                                connection->updatePosition();
-                            }
-                        }
-                        break;
-                    case OUTPUT:
-                        if (startPort->port() == INPUT) {
-                            endModule = dynamic_cast<Module *>(endPort->parentItem());
-                            if (startModule != endModule) {
-                                Connection *connection = new Connection(endModule, startModule, endPort, startPort, true, OUTPUT);
-                                connection->setColor(m_LineColor);
-                                startModule->addConnection(connection);
-                                endModule->addConnection(connection);
-                                endModule->addChild(startModule);
-                                startModule->addParent(endModule);
-                                connection->setZValue(-1000.0);
-                                addItem(connection);
-                                connection->updatePosition();
-                            }
-                        }
-                        break;
-                    case PARAMETER:
-                        if (startPort->port() == PARAMETER) {
-                            endModule = dynamic_cast<Module *>(endPort->parentItem());
-                            if (startModule != endModule) {
-                                Connection *connection = new Connection(startModule, endModule, startPort, endPort, false, PARAMETER);
-                                connection->setColor(m_LineColor);
-                                startModule->addConnection(connection);
-                                endModule->addConnection(connection);
-                                startModule->connectParameter(endModule);
-                                endModule->connectParameter(startModule);
-                                connection->setZValue(-1000.0);
-                                addItem(connection);
-                                connection->updatePosition();
-                            }
-                        }
-                        break;
-                    case MAIN:
-                    case DEFAULT:
-                        ///\todo what to do here?
-                        break;
-                    default:
-                        break;
-                } //end switch
-            } //end if (item->type() == TypePortItem)
-        } //end if (item)
+       // Begin testing for the finish of the line draw.
+       item = itemAt(event->scenePos(), QTransform());
+       if (Port *endPort = dynamic_cast<Port *>(item)) {
+          // Test over the port types
+          ///\todo improve testing for viability of connection
+          switch (endPort->port()) {
+          case Port::INPUT:
+             if (startPort->port() == Port::OUTPUT) {
+                endModule = dynamic_cast<Module *>(endPort->parentItem());
+                if (startModule != endModule) {
+                   Connection *connection = new Connection(startModule, endModule, startPort, endPort, true, Port::OUTPUT);
+                   connection->setColor(m_LineColor);
+                   startModule->addConnection(connection);
+                   endModule->addConnection(connection);
+                   startModule->addChild(endModule);
+                   endModule->addParent(startModule);
+                   connection->setZValue(-1000.0);
+                   addItem(connection);
+                   connection->updatePosition();
+                }
+             }
+             break;
+          case Port::OUTPUT:
+             if (startPort->port() == Port::INPUT) {
+                endModule = dynamic_cast<Module *>(endPort->parentItem());
+                if (startModule != endModule) {
+                   Connection *connection = new Connection(endModule, startModule, endPort, startPort, true, Port::OUTPUT);
+                   connection->setColor(m_LineColor);
+                   startModule->addConnection(connection);
+                   endModule->addConnection(connection);
+                   endModule->addChild(startModule);
+                   startModule->addParent(endModule);
+                   connection->setZValue(-1000.0);
+                   addItem(connection);
+                   connection->updatePosition();
+                }
+             }
+             break;
+          case Port::PARAMETER:
+             if (startPort->port() == Port::PARAMETER) {
+                endModule = dynamic_cast<Module *>(endPort->parentItem());
+                if (startModule != endModule) {
+                   Connection *connection = new Connection(startModule, endModule, startPort, endPort, false, Port::PARAMETER);
+                   connection->setColor(m_LineColor);
+                   startModule->addConnection(connection);
+                   endModule->addConnection(connection);
+                   startModule->connectParameter(endModule);
+                   endModule->connectParameter(startModule);
+                   connection->setZValue(-1000.0);
+                   addItem(connection);
+                   connection->updatePosition();
+                }
+             }
+             break;
+          case Port::MAIN:
+          case Port::DEFAULT:
+             ///\todo what to do here?
+             break;
+          default:
+             break;
+          } //end switch
+       } //end if (item)
     } //end if (vMouseClick && m_Line)
 
     // Clear data
     startModule = nullptr;
     endModule = nullptr;
     startPort = nullptr;
-    endPort = nullptr;
     vMouseClick = false;
     QGraphicsScene::mouseReleaseEvent(event);
 }
@@ -443,12 +436,12 @@ void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
        QGraphicsScene::mouseMoveEvent(event);
        return;
     }
-    GraphicsType port = startPort->port();
+    Port::Type port = startPort->port();
     ///\todo should additional tests be present here?
     // if correct mode, m_line has been created, and there is a correctly initialized port:
     if (mode == InsertLine
         && m_Line != 0
-        && (port == INPUT || port == OUTPUT || port == PARAMETER)) {
+        && (port == Port::INPUT || port == Port::OUTPUT || port == Port::PARAMETER)) {
         // update the line drawing
         QLineF newLine(m_Line->line().p1(), event->scenePos());
         m_Line->setLine(newLine);

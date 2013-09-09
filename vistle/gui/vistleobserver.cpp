@@ -41,9 +41,9 @@ void VistleObserver::deleteModule(int moduleId) {
 }
 
 void VistleObserver::moduleStateChanged(int moduleId, int stateBits) {
-    if (stateBits & StateObserver::Initialized) emit moduleStateChanged_s(moduleId, stateBits, INITIALIZED);
-    if (stateBits & StateObserver::Killed) emit moduleStateChanged_s(moduleId, stateBits, KILLED);;
-    if (stateBits & StateObserver::Busy) emit moduleStateChanged_s(moduleId, stateBits, BUSY);;
+    if (stateBits & StateObserver::Initialized) emit moduleStateChanged_s(moduleId, stateBits, Module::INITIALIZED);
+    if (stateBits & StateObserver::Killed) emit moduleStateChanged_s(moduleId, stateBits, Module::KILLED);
+    if (stateBits & StateObserver::Busy) emit moduleStateChanged_s(moduleId, stateBits, Module::BUSY);
 }
 
 void VistleObserver::newParameter(int moduleId, const std::string &parameterName) {

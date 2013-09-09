@@ -11,7 +11,6 @@
 #include "module.h"
 #include "connection.h"
 #include "port.h"
-#include "consts.h"
 
 namespace gui {
 
@@ -26,7 +25,6 @@ public:
     void removeModule(Module *mod);
     void sortModules();
     void invertModules();
-    void setModules(QList<QString> moduleNameList);
     void setRunner(vistle::VistleConnection *runnner);
     void addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name);
     void deleteModule(int moduleId);
@@ -53,7 +51,6 @@ private:
     QPointF vLastPoint;                                         //< intermediate previous point for connection drawing
     bool vMouseClick;                                           //< boolean for keeping track of if a click is made
     Port *startPort = nullptr;                                  //< starting port for module connection
-    Port *endPort = nullptr;                                    //< starting port for module connection
     Module *startModule = nullptr;                              //< starting module for making connection
     Module *endModule = nullptr;                                //< ending module for making connection
 

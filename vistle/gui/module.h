@@ -14,7 +14,6 @@
 
 #include <userinterface/vistleconnection.h>
 
-#include "consts.h"
 #include "port.h"
 
 namespace gui {
@@ -30,6 +29,12 @@ signals:
     void mouseClickEvent();
 
 public:
+    enum Status { SPAWNING, // grey
+                  INITIALIZED,	// green
+                  KILLED,			// red
+                  BUSY,			// yellow
+                  ERROR };		// black
+
     Module(QGraphicsItem *parent = 0, QString name = 0);
     virtual ~Module();
     QRectF boundingRect() const;                        // re-implemented
@@ -41,10 +46,9 @@ public:
     void addConnection(Connection *connection);
     void removeConnection(Connection *connection);
     void clearConnections();
-    int type() const { return TypeModuleItem; }
     ///\todo this functionality is unnecessary, push functionality to port
     QPointF portPos(Port *port);
-    void setStatus(ModuleStatus status);
+    void setStatus(Module::Status status);
 
     void addParent(Module *parentMod) { parentModules.append(parentMod); }
     void addChild(Module *childMod) { childModules.append(childMod); }
@@ -77,10 +81,12 @@ public:
 
     template<class T>
     void setParameter(QString name, const T &value) const;
+    void sendPosition() const;
 
 protected:
     void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
     QVariant itemChange(GraphicsItemChange change, const QVariant &value);
+    void updatePosition(QPointF newPos) const;
 
 public slots:
     void copy();
@@ -123,7 +129,7 @@ private:
 
     ///\todo add data structure for the module information
     QString m_name;
-    ModuleStatus m_Status = SPAWNING;
+    Module::Status m_Status = SPAWNING;
 
 };
 

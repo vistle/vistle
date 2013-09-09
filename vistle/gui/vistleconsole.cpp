@@ -32,13 +32,15 @@
 #endif
 #include <Python.h>
 #include <boost/python.hpp>
-#include "qpyconsole.h"
+#include "vistleconsole.h"
 #include <userinterface/pythonmodule.h>
 
 #include <QApplication>
 #include <QDebug>
 
 namespace bp = boost::python;
+
+namespace gui {
 
 static bp::object glb, loc;
 
@@ -153,8 +155,8 @@ VistleConsole *VistleConsole::the()
 }
 
 //QTcl console constructor (init the QTextEdit & the attributes)
-VistleConsole::VistleConsole(QWidget *parent, const QString& welcomeText)
-   : QConsole(parent, welcomeText)
+VistleConsole::VistleConsole(QWidget *parent)
+   : QConsole(parent, "Type \"help(vistle)\" for help, \"help()\" for general help ")
    , lines(0)
 {
    assert(!s_instance);
@@ -362,3 +364,5 @@ QStringList VistleConsole::suggestCommand(const QString &cmd, QString& prefix)
    completions.removeDuplicates();
    return completions;
 }
+
+} // namespace gui

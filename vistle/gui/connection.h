@@ -7,7 +7,6 @@
 #include <QPainter>
 
 #include "math.h"
-#include "consts.h"
 #include "port.h"
 
 namespace gui {
@@ -27,7 +26,6 @@ public:
     Module *endItem() const
         { return m_EndItem; }
     void updatePosition();                          // re-implemented
-    int type() const { return TypeConnectionItem; }
     int connectionType() { return m_connectionType; }
 
 protected:

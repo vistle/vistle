@@ -1,7 +1,8 @@
  /*
-  QPyConsole.h
+  vistleconsole.h
 
-  QConsole specialization for Python
+  QConsole specialization for Vistle,
+  based on QPyConsole
 
   (C) 2006, Mondrian Nuessle, Computer Architecture Group, University of Mannheim, Germany
   
@@ -25,14 +26,16 @@
 
  */
 
-#ifndef QPYCONSOLE_H
-#define QPYCONSOLE_H
+#ifndef VISTLECONSOLE_H
+#define VISTLECONSOLE_H
 
-#include "qconsole.h"
+#include "qconsole/qconsole.h"
 
 namespace vistle {
 class PythonModule;
 }
+
+namespace gui {
 
 /**An emulated singleton console for Python within a Qt application (based on the QConsole class)
  *@author Mondrian Nuessle
@@ -45,8 +48,7 @@ public:
     ~VistleConsole();
 
     //private constructor
-    VistleConsole(QWidget *parent = NULL,
-               const QString& welcomeText = "");
+    VistleConsole(QWidget *parent = NULL);
 
     //get the QPyConsole instance
     static VistleConsole *the();
@@ -79,4 +81,5 @@ private:
     int lines;
 };
 
+} // namespace gui
 #endif

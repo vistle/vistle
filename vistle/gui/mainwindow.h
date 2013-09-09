@@ -8,13 +8,14 @@
 #include <userinterface/userinterface.h>
 #include <userinterface/vistleconnection.h>
 
-#include "qconsole/qpyconsole.h"
+#include "vistleconsole.h"
 #include "scene.h"
 #include "vistleobserver.h"
 
 namespace gui {
 
 class Parameters;
+class ModuleBrowser;
 
 namespace Ui {
 class MainWindow;
@@ -30,12 +31,11 @@ public:
     ~MainWindow();
     void printDebug(QString msg);
     void setVistleobserver(VistleObserver *printer);
-    void setVistleConnection(vistle::VistleConnection *runner);
+    void setVistleConnection(vistle::VistleConnection *conn);
 
     Parameters *parameters() const;
 
 private slots:
-    void on_findButton_clicked();
     void on_dragButton_clicked();
     void on_sortButton_clicked();
     void on_invertModulesButton_clicked();
@@ -43,7 +43,7 @@ private slots:
     void debug_msg(QString debugMsg);
     void newModule_msg(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName);
     void deleteModule_msg(int moduleId);
-    void moduleStateChanged_msg(int moduleId, int stateBits, ModuleStatus modChangeType);
+    void moduleStateChanged_msg(int moduleId, int stateBits, Module::Status modChangeType);
     void newParameter_msg(int moduleId, QString parameterName);
     void parameterValueChanged_msg(int moduleId, QString parameterName);
     void parameterChoicesChanged_msg(int moduleId, QString parameterName);
@@ -53,23 +53,18 @@ private slots:
     void deleteConnection_msg(int fromId, QString fromName,
                             int toId, QString toName);
 
-protected:
-    void dragEnterEvent(QDragEnterEvent *event);
-    void dragMoveEvent(QDragMoveEvent *event);
-    void dropEvent(QDropEvent *event);
-    //void mousePressEvent(QMouseEvent *event);
+    void moduleSelectionChanged();
 
 private:
     Ui::MainWindow *ui = nullptr;
     VistleConsole *m_console = nullptr;
     Parameters *m_parameters = nullptr;
+    ModuleBrowser *m_moduleBrowser = nullptr;
 
     vistle::VistleConnection *m_vistleConnection = nullptr;
-    //void loadTextFile();  ///\todo remove this
     QList<QString> loadModuleFile();
     void addModule(QString modName, QPointF dropPos);
-    Scene *scene = nullptr;
-    ///\todo rename statePrinter
+    Scene *m_scene = nullptr;
     VistleObserver *m_observer = nullptr;
 
 };

@@ -23,24 +23,31 @@ set(gui_SOURCES
   port.cpp
   vistleobserver.cpp
   parameters.cpp
+  modulebrowser.cpp
+  dataflowview.cpp
+  vistleconsole.cpp
 
   qconsole/qconsole.cpp
-  qconsole/qpyconsole.cpp
 )
 
 set(gui_HEADERS
   mainwindow.h
   connection.h
-  consts.h
   module.h
   scene.h
   port.h
   vistleobserver.h
   parameters.h
+  modulebrowser.h
+  dataflowview.h
+  vistleconsole.h
+
+  qconsole/qconsole.h
 )
 
 set(gui_FORMS
   mainwindow.ui
+  modulebrowser.ui
 )
 
 qt_wrap_ui(GUI_UI_SRCS ${gui_FORMS})

@@ -8,7 +8,7 @@
 
 namespace gui {
 
-Port::Port(QPolygonF item, GraphicsType port, QGraphicsItem *parent) : QGraphicsPolygonItem(item, parent)
+Port::Port(QPolygonF item, Port::Type port, QGraphicsItem *parent) : QGraphicsPolygonItem(item, parent)
 {
     // set the port type
     portType = port;

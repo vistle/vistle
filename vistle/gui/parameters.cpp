@@ -67,16 +67,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
    setFactoryForManager(m_stringChoiceManager, comboBoxFactory);
    setFactoryForManager(m_intChoiceManager, comboBoxFactory);
 
-#if 0
-   variantEditor->setFactoryForManager(variantManager, variantFactory);
-   variantEditor->addProperty(topItem);
-   variantEditor->setPropertiesWithoutValueMarked(true);
-   variantEditor->setRootIsDecorated(false);
-
-   variantEditor->show();
-#endif
-
-   show();
+   setModule(0);
 }
 
 void Parameters::setVistleObserver(VistleObserver *observer)
@@ -101,14 +92,17 @@ void Parameters::setModule(int id)
    m_propToParam.clear();
    m_internalGroup = nullptr;
 
-   m_internalGroup = m_groupManager->addProperty("System Parameters");
-   addProperty(m_internalGroup);
-
-   //std::cerr << "Parameters: showing for " << id << std::endl;
    m_moduleId = id;
-   auto params = m_vistle->getParameters(id);
-   for (auto &p: params)
-      newParameter(id, QString::fromStdString(p));
+
+   if (id > 0) {
+      m_internalGroup = m_groupManager->addProperty("System Parameters");
+      addProperty(m_internalGroup);
+
+      //std::cerr << "Parameters: showing for " << id << std::endl;
+      auto params = m_vistle->getParameters(id);
+      for (auto &p: params)
+         newParameter(id, QString::fromStdString(p));
+   }
 }
 
 void Parameters::newParameter(int moduleId, QString parameterName)

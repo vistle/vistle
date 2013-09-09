@@ -9,14 +9,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>920</width>
-    <height>584</height>
+    <width>800</width>
+    <height>600</height>
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="Preferred" vsizetype="Ignored">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
     <horstretch>0</horstretch>
-    <verstretch>100</verstretch>
+    <verstretch>0</verstretch>
    </sizepolicy>
   </property>
   <property name="acceptDrops">
@@ -28,66 +28,12 @@
   <widget class="QWidget" name="centralWidget">
    <layout class="QHBoxLayout" name="horizontalLayout_3">
     <item>
-     <widget class="QGroupBox" name="groupBox">
-      <property name="minimumSize">
-       <size>
-        <width>270</width>
-        <height>0</height>
-       </size>
+     <widget class="gui::DataFlowView" name="drawArea">
+      <property name="enabled">
+       <bool>true</bool>
       </property>
-      <layout class="QVBoxLayout" name="verticalLayout">
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <item>
-          <widget class="QPushButton" name="findButton">
-           <property name="text">
-            <string>Find!</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="lineEdit"/>
-         </item>
-        </layout>
-       </item>
-       <item>
-        <widget class="QPushButton" name="dragButton">
-         <property name="text">
-          <string>Start Drag Action</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="invertModulesButton">
-         <property name="text">
-          <string>Invert Modules</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="sortButton">
-         <property name="text">
-          <string>Sort Modules</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QListWidget" name="moduleListWidget">
-         <property name="dragEnabled">
-          <bool>true</bool>
-         </property>
-         <property name="dragDropMode">
-          <enum>QAbstractItemView::DragDrop</enum>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item>
-     <widget class="QGraphicsView" name="drawArea">
       <property name="sizePolicy">
-       <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
         <horstretch>10</horstretch>
         <verstretch>10</verstretch>
        </sizepolicy>
@@ -95,8 +41,11 @@
       <property name="cursor" stdset="0">
        <cursorShape>CrossCursor</cursorShape>
       </property>
+      <property name="focusPolicy">
+       <enum>Qt::WheelFocus</enum>
+      </property>
       <property name="acceptDrops">
-       <bool>false</bool>
+       <bool>true</bool>
       </property>
       <property name="layoutDirection">
        <enum>Qt::LeftToRight</enum>
@@ -116,7 +65,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>920</width>
+     <width>800</width>
      <height>22</height>
     </rect>
    </property>
@@ -131,7 +80,7 @@
     <addaction name="separator"/>
     <addaction name="actionSettings"/>
     <addaction name="separator"/>
-    <addaction name="actionExit"/>
+    <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
@@ -150,6 +99,8 @@
     <property name="title">
      <string>View</string>
     </property>
+    <addaction name="actionArrange"/>
+    <addaction name="actionTranspose"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -162,7 +113,7 @@
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
-  <widget class="QDockWidget" name="consoleWidget">
+  <widget class="QDockWidget" name="consoleDock">
    <property name="enabled">
     <bool>true</bool>
    </property>
@@ -183,6 +134,9 @@
      <width>524287</width>
      <height>524287</height>
     </size>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::BottomDockWidgetArea|Qt::TopDockWidgetArea</set>
    </property>
    <property name="windowTitle">
     <string>Vistle Console</string>
@@ -190,16 +144,16 @@
    <attribute name="dockWidgetArea">
     <number>8</number>
    </attribute>
-   <widget class="QWidget" name="dockWidgetContents_2">
+   <widget class="gui::VistleConsole" name="consoleWidget">
     <layout class="QHBoxLayout" name="horizontalLayout_2"/>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="parameterWidget">
+  <widget class="QDockWidget" name="parameterDock">
    <property name="enabled">
     <bool>true</bool>
    </property>
    <property name="sizePolicy">
-    <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+    <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
      <horstretch>0</horstretch>
      <verstretch>0</verstretch>
     </sizepolicy>
@@ -207,7 +161,7 @@
    <property name="minimumSize">
     <size>
      <width>78</width>
-     <height>50</height>
+     <height>78</height>
     </size>
    </property>
    <property name="maximumSize">
@@ -216,19 +170,29 @@
      <height>524287</height>
     </size>
    </property>
+   <property name="features">
+    <set>QDockWidget::AllDockWidgetFeatures</set>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
+   </property>
    <property name="windowTitle">
-    <string>Parameters</string>
+    <string>Module Parameters</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
    </attribute>
-   <widget class="QWidget" name="dockWidgetContents_4">
-    <layout class="QHBoxLayout" name="horizontalLayout_4"/>
-   </widget>
+   <widget class="Parameters" name="parameterEditor"/>
   </widget>
   <widget class="QToolBar" name="toolBar">
    <property name="windowTitle">
-    <string>toolBar</string>
+    <string>Toolbar</string>
+   </property>
+   <property name="movable">
+    <bool>false</bool>
+   </property>
+   <property name="floatable">
+    <bool>false</bool>
    </property>
    <attribute name="toolBarArea">
     <enum>TopToolBarArea</enum>
@@ -236,6 +200,27 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionFile"/>
+   <addaction name="actionOpen"/>
+   <addaction name="actionSave"/>
+   <addaction name="separator"/>
+   <addaction name="actionArrange"/>
+   <addaction name="actionTranspose"/>
+  </widget>
+  <widget class="QDockWidget" name="modulesDock">
+   <property name="features">
+    <set>QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetMovable</set>
+   </property>
+   <property name="allowedAreas">
+    <set>Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea</set>
+   </property>
+   <property name="windowTitle">
+    <string>Module Browser</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>2</number>
+   </attribute>
+   <widget class="gui::ModuleBrowser" name="moduleBrowser"/>
   </widget>
   <action name="actionFile">
    <property name="text">
@@ -244,7 +229,7 @@
   </action>
   <action name="actionOpen">
    <property name="text">
-    <string>Open</string>
+    <string>Open...</string>
    </property>
   </action>
   <action name="actionSave">
@@ -252,9 +237,12 @@
     <string>Save</string>
    </property>
   </action>
-  <action name="actionExit">
+  <action name="actionQuit">
    <property name="text">
-    <string>Exit</string>
+    <string>Quit</string>
+   </property>
+   <property name="toolTip">
+    <string>Quit</string>
    </property>
   </action>
   <action name="actionCut">
@@ -297,8 +285,49 @@
     <string>Settings</string>
    </property>
   </action>
+  <action name="actionArrange">
+   <property name="text">
+    <string>Arrange</string>
+   </property>
+   <property name="toolTip">
+    <string>Automatically arrange modules</string>
+   </property>
+  </action>
+  <action name="actionTranspose">
+   <property name="text">
+    <string>Transpose</string>
+   </property>
+   <property name="toolTip">
+    <string>Transpose modules</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>gui::DataFlowView</class>
+   <extends>QGraphicsView</extends>
+   <header>dataflowview.h</header>
+  </customwidget>
+  <customwidget>
+   <class>gui::ModuleBrowser</class>
+   <extends>QWidget</extends>
+   <header>modulebrowser.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>gui::VistleConsole</class>
+   <extends>QWidget</extends>
+   <header>vistleconsole.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>Parameters</class>
+   <extends>QWidget</extends>
+   <header>parameters.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

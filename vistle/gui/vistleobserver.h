@@ -8,7 +8,7 @@
 #include <userinterface/userinterface.h>
 #include <userinterface/vistleconnection.h>
 
-#include "consts.h"
+#include "module.h"
 
 namespace gui {
 
@@ -20,7 +20,7 @@ signals:
 	void debug_s(QString debugMsg);
         void newModule_s(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName);
 	void deleteModule_s(int moduleId);
-	void moduleStateChanged_s(int moduleId, int stateBits, ModuleStatus modChangeType);
+   void moduleStateChanged_s(int moduleId, int stateBits, Module::Status modChangeType);
 	void newParameter_s(int moduleId, QString parameterName);
         void parameterValueChanged_s(int moduleId, QString parameterName);
         void parameterChoicesChanged_s(int moduleId, QString parameterName);

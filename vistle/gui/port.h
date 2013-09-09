@@ -3,23 +3,27 @@
 
 #include <QPolygonF>
 #include <QGraphicsItem>
-#include "consts.h"
 
 namespace gui {
 
 class Port : public QGraphicsPolygonItem
 {
 public:
-    Port(QPolygonF item, GraphicsType port, QGraphicsItem *parent);
+   enum Type { DEFAULT,
+               MAIN,
+               INPUT,
+               OUTPUT,
+               PARAMETER };
+
+    Port(QPolygonF item, Type port, QGraphicsItem *parent);
     Port();
-    GraphicsType port()
-        { return portType; }
-    int type() const { return TypePortItem; }
+    Type port() { return portType; }
 
 private:
-    GraphicsType portType;						//< type of port
+    Type portType;						//< type of port
 };
 
 } //namespace gui
 
+Q_DECLARE_METATYPE(gui::Port::Type)
 #endif // VSLOT_H

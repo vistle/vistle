@@ -11,6 +11,9 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "parameters.h"
+#include "modulebrowser.h"
+#include "vistleconsole.h"
+
 
 #include <QString>
 #include <QMessageBox>
@@ -24,8 +27,6 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDropEvent>
-
-#include "qconsole/qpyconsole.h"
 
 namespace gui {
 
@@ -43,35 +44,32 @@ MainWindow::MainWindow(QWidget *parent) :
     // declare list of names of modules, pass to the scene
     ui->setupUi(this);
 
-    m_console = new VistleConsole(this, "Type \"help(vistle)\" for help, \"help()\" for general help");
-    ui->consoleWidget->setWidget(m_console);
+    m_console = ui->consoleWidget;
     setFocusProxy(m_console);
 
-    m_parameters = new Parameters(this);
-    ui->parameterWidget->setWidget(m_parameters);
+    m_parameters = ui->parameterEditor;
+
+    m_moduleBrowser = ui->moduleBrowser;
+    auto modules = loadModuleFile();
+    m_moduleBrowser->setModules(modules);
 
     ui->drawArea->setAttribute(Qt::WA_AlwaysShowToolTips);
     ui->drawArea->setDragMode(QGraphicsView::RubberBandDrag);
 
     ///\todo declare the scene pointer in the header, then de-allocate in the destructor.
-    //QGraphicsScene *scene = new QGraphicsScene(this);
-    scene = new Scene(ui->drawArea);
-    scene->setMainWindow(this);
+    m_scene = new Scene(ui->drawArea);
+    m_scene->setMainWindow(this);
 
-    // load a text file containing all the modules in vistle.
-    ///\todo loadModuleFile() returns a list of modules, pipe this to the scene
-    auto modules = loadModuleFile();
-    scene->setModules(modules);
-    for (const QString &m: modules)
-       ui->moduleListWidget->addItem(m);
-    ui->drawArea->setScene(scene);
+    ui->drawArea->setScene(m_scene);
+
+    connect(m_scene, SIGNAL(selectionChanged()), SLOT(moduleSelectionChanged()));
     ui->drawArea->show();
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
-    delete scene;
+    delete m_scene;
     ///\todo Keep track of all things created with new:
     /// scene; QDrag; mimeData;
 }
@@ -86,7 +84,7 @@ void MainWindow::debug_msg(QString debugMsg)
 
 void MainWindow::newModule_msg(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName)
 {
-    scene->addModule(moduleId, spawnUuid, moduleName);
+    m_scene->addModule(moduleId, spawnUuid, moduleName);
 #if 0
     QString text = "Module started: " + moduleName + " with ID: " + QString::number(moduleId);
     m_console->append(text);
@@ -95,16 +93,16 @@ void MainWindow::newModule_msg(int moduleId, const boost::uuids::uuid &spawnUuid
 
 void MainWindow::deleteModule_msg(int moduleId)
 {
-    scene->deleteModule(moduleId);
+    m_scene->deleteModule(moduleId);
 #if 0
     QString text = "Module deleted: " + QString::number(moduleId);
     m_console->append(text);
 #endif
 }
 
-void MainWindow::moduleStateChanged_msg(int moduleId, int stateBits, ModuleStatus modChangeType)
+void MainWindow::moduleStateChanged_msg(int moduleId, int stateBits, Module::Status modChangeType)
 {
-   if (Module *m = scene->findModule(moduleId)) {
+   if (Module *m = m_scene->findModule(moduleId)) {
       m->setStatus(modChangeType);
    }
 
@@ -124,6 +122,17 @@ void MainWindow::newParameter_msg(int moduleId, QString parameterName)
     QString text = "New parameter on ID: " + QString::number(moduleId) + ":" + parameterName;
     m_console->append(text);
 #endif
+    if (parameterName == "_x" || parameterName == "_y") {
+       if (Module *m = m_scene->findModule(moduleId)) {
+          vistle::Parameter *px = vistle::VistleConnection::the().getParameter(moduleId, "_x");
+          vistle::Parameter *py = vistle::VistleConnection::the().getParameter(moduleId, "_y");
+          vistle::FloatParameter *fpx = dynamic_cast<vistle::FloatParameter *>(px);
+          vistle::FloatParameter *fpy = dynamic_cast<vistle::FloatParameter *>(py);
+          if (fpx && fpy && fpx->isDefault() && fpy->isDefault()) {
+             m->sendPosition();
+          }
+       }
+    }
 }
 
 void MainWindow::parameterValueChanged_msg(int moduleId, QString parameterName)
@@ -133,12 +142,12 @@ void MainWindow::parameterValueChanged_msg(int moduleId, QString parameterName)
     m_console->append(text);
 #endif
     if (parameterName == "_x" || parameterName == "_y") {
-       if (Module *m = scene->findModule(moduleId)) {
+       if (Module *m = m_scene->findModule(moduleId)) {
           vistle::Parameter *px = vistle::VistleConnection::the().getParameter(moduleId, "_x");
           vistle::Parameter *py = vistle::VistleConnection::the().getParameter(moduleId, "_y");
           vistle::FloatParameter *fpx = dynamic_cast<vistle::FloatParameter *>(px);
           vistle::FloatParameter *fpy = dynamic_cast<vistle::FloatParameter *>(py);
-          if (fpx && fpy) {
+          if (fpx && fpy && !fpx->isDefault() && !fpy->isDefault()) {
              m->setPos(fpx->getValue(), fpy->getValue());
           }
        }
@@ -168,6 +177,28 @@ void MainWindow::deleteConnection_msg(int fromId, QString fromName,
     QString text = "Connection removed: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
     m_console->append(text);
 }
+
+void MainWindow::moduleSelectionChanged()
+{
+   auto selected = m_scene->selectedItems();
+   QList<Module *> selectedModules;
+   for (auto &item: selected) {
+      if (Module *m = dynamic_cast<Module *>(item)) {
+         selectedModules.push_back(m);
+      }
+   }
+
+   QString title = "Module Parameters";
+   if (selectedModules.size() == 1) {
+      const Module *m = selectedModules[0];
+      parameters()->setModule(m->id());
+      title = QString("Parameters: %1").arg(m->name());
+      parameters()->show();
+   } else {
+      parameters()->setModule(0);
+   }
+   ui->parameterDock->setWindowTitle(title);
+}
 /************************************************************************************/
 // End ports
 /************************************************************************************/
@@ -184,8 +215,8 @@ void MainWindow::setVistleobserver(VistleObserver *observer)
             this, SLOT(newModule_msg(int, boost::uuids::uuid, QString)));
     connect(m_observer, SIGNAL(deleteModule_s(int)),
             this, SLOT(deleteModule_msg(int)));
-    connect(m_observer, SIGNAL(moduleStateChanged_s(int, int, ModuleStatus)),
-            this, SLOT(moduleStateChanged_msg(int, int, ModuleStatus)));
+    connect(m_observer, SIGNAL(moduleStateChanged_s(int, int, Module::Status)),
+            this, SLOT(moduleStateChanged_msg(int, int, Module::Status)));
     connect(m_observer, SIGNAL(newParameter_s(int, QString)),
             this, SLOT(newParameter_msg(int, QString)));
     connect(m_observer, SIGNAL(parameterValueChanged_s(int, QString)),
@@ -201,28 +232,19 @@ void MainWindow::setVistleobserver(VistleObserver *observer)
        p->setVistleObserver(observer);
 }
 
-void MainWindow::setVistleConnection(vistle::VistleConnection *runner)
+void MainWindow::setVistleConnection(vistle::VistleConnection *conn)
 {
-    scene->setRunner(runner);
-    m_vistleConnection = runner;
+    m_scene->setRunner(conn);
+    m_vistleConnection = conn;
 
     if (Parameters *p = parameters()) {
-       p->setVistleConnection(runner);
-       p->setModule(1);
+       p->setVistleConnection(conn);
     }
 }
 
 Parameters *MainWindow::parameters() const
 {
    return m_parameters;
-}
-
-/*!
- * \brief MainWindow::on_findButton_clicked find button action for the text search
- */
-void MainWindow::on_findButton_clicked()
-{
-    QString searchString = ui->lineEdit->text();
 }
 
 /*!
@@ -243,7 +265,7 @@ void MainWindow::on_dragButton_clicked()
  */
 void MainWindow::on_sortButton_clicked()
 {
-    scene->sortModules();
+    m_scene->sortModules();
 }
 
 /*!
@@ -251,7 +273,7 @@ void MainWindow::on_sortButton_clicked()
  */
 void MainWindow::on_invertModulesButton_clicked()
 {
-    scene->invertModules();
+    m_scene->invertModules();
 }
 
 /*!
@@ -298,55 +320,6 @@ QList<QString> MainWindow::loadModuleFile()
 #endif
 
     return moduleList;
-}
-
-/*!
- * \brief MainWindow::dragEnterEvent
- * \param event
- *
- * \todo clean up the distribution of event handling.
- */
-void MainWindow::dragEnterEvent(QDragEnterEvent *event)
-{
-    event->acceptProposedAction();
-}
-
-void MainWindow::dragMoveEvent(QDragMoveEvent *event)
-{
-    event->accept();
-}
-
-/*!
- * \brief MainWindow::dropEvent takes action on a drop event anywhere in the window.
- *
- * This drop event method is currently the only drop event in the program. It looks for drops into the
- * QGraphicsView (drawArea), and calls the scene to add a module depending on the position.
- *
- * \param event
- * \todo clarify all the event handling, and program the creation and handling of events more elegantly.
- * \todo put information into the event, to remove the need to have drag events in the mainWindow
- */
-void MainWindow::dropEvent(QDropEvent *event)
-{
-    // test for dropping in the actual draw area.
-    QRect widgetRect = ui->drawArea->geometry();
-    QString moduleName;
-    if(widgetRect.contains(event->pos())) {
-        // This is probably the most obtuse way possible to map coordinates, but it mostly works.
-        // Maps the coordinates in the following way:
-        //  drop location -> drawArea -> scene -> graphicsObject
-        QPoint refPos = QPoint(event->pos().x(), event->pos().y());
-        QPointF newPos = ui->drawArea->mapFromParent(refPos);
-        refPos.setX(newPos.x());
-        refPos.setY(newPos.y());
-        newPos = ui->drawArea->mapToScene(refPos);
-
-        ///\todo this solution for module name works only if an item is selected in the list,
-        /// and fails for any other drop event. Implement MIME handling on events, like in mapEditor
-        moduleName = ui->moduleListWidget->currentItem()->text();
-        scene->addModule(moduleName, newPos);
-
-    }
 }
 
 } //namespace gui
