@@ -60,8 +60,11 @@ void VistleConnection::setParameter(int id, const std::string &name, const T &va
       return;
    }
 
-   p->setValue(value);
-   sendParameter(p);
+   const T oldval = p->getValue();
+   if (oldval != value || p->isDefault()) {
+      p->setValue(value);
+      sendParameter(p);
+   }
 }
 
 } //namespace vistle

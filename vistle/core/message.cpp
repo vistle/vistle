@@ -732,5 +732,10 @@ vistle::message::ResetModuleIds::ResetModuleIds()
 {
 }
 
+ReplayFinished::ReplayFinished()
+   : Message(Message::REPLAYFINISHED, sizeof(ReplayFinished))
+{
+}
+
 } // namespace message
 } // namespace vistle

@@ -76,6 +76,7 @@ class V_COREEXPORT Message {
       BARRIERREACHED,
       SETID,
       RESETMODULEIDS,
+      REPLAYFINISHED,
    };
 
    Message(const Type type, const unsigned int size);
@@ -494,6 +495,13 @@ class V_COREEXPORT ResetModuleIds: public Message {
    ResetModuleIds();
 };
 BOOST_STATIC_ASSERT(sizeof(ResetModuleIds) < Message::MESSAGE_SIZE);
+
+class V_COREEXPORT ReplayFinished: public Message {
+
+public:
+   ReplayFinished();
+};
+BOOST_STATIC_ASSERT(sizeof(ReplayFinished) < Message::MESSAGE_SIZE);
 
 } // namespace message
 } // namespace vistle

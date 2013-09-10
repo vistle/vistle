@@ -265,6 +265,16 @@ bool StateTracker::handleMessage(const message::Message &msg) {
          return true;
          break;
       }
+      case Message::RESETMODULEIDS: {
+         const ResetModuleIds &reset = static_cast<const ResetModuleIds &>(msg);
+         return handle(reset);
+         break;
+      }
+      case Message::REPLAYFINISHED: {
+         const ReplayFinished &fin = static_cast<const ReplayFinished &>(msg);
+         return handle(fin);
+         break;
+      }
       default:
          CERR << "message type not handled: type=" << msg.type() << std::endl;
          assert("message type not handled" == 0);
@@ -294,6 +304,7 @@ bool StateTracker::handle(const message::Spawn &spawn) {
    mod.name = spawn.getName();
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->newModule(moduleId, spawn.uuid(), mod.name);
    }
 
@@ -320,6 +331,7 @@ bool StateTracker::handle(const message::Connect &connect) {
          connect.getPortBName());
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->newConnection(connect.getModuleA(), connect.getPortAName(),
             connect.getModuleB(), connect.getPortBName());
    }
@@ -335,6 +347,7 @@ bool StateTracker::handle(const message::Disconnect &disconnect) {
          disconnect.getPortBName());
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->deleteConnection(disconnect.getModuleA(), disconnect.getPortAName(),
             disconnect.getModuleB(), disconnect.getPortBName());
    }
@@ -364,6 +377,7 @@ bool StateTracker::handle(const message::ModuleExit &moduleExit) {
    portTracker()->removeConnections(mod);
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->deleteModule(mod);
    }
 
@@ -425,6 +439,7 @@ bool StateTracker::handle(const message::AddParameter &addParam) {
    }
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->newParameter(addParam.senderId(), addParam.getName());
    }
 
@@ -448,6 +463,7 @@ bool StateTracker::handle(const message::SetParameter &setParam) {
       setParam.apply(param);
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->parameterValueChanged(setParam.senderId(), setParam.getName());
    }
 
@@ -463,6 +479,7 @@ bool StateTracker::handle(const message::SetParameterChoices &choices) {
    choices.apply(p);
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->parameterChoicesChanged(choices.getModule(), choices.getName());
    }
 
@@ -506,9 +523,23 @@ bool StateTracker::handle(const message::CreatePort &createPort) {
    Port * p = portTracker()->addPort(createPort.getPort());
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->newPort(p->getModuleID(), p->getName());
    }
 
+   return true;
+}
+
+bool StateTracker::handle(const vistle::message::ResetModuleIds &reset)
+{
+   return true;
+}
+
+bool StateTracker::handle(const message::ReplayFinished &reset)
+{
+   for (StateObserver *o: m_observers) {
+      o->resetModificationCount();
+   }
    return true;
 }
 
@@ -555,9 +586,19 @@ void StateTracker::registerObserver(StateObserver *observer) {
    m_observers.insert(observer);
 }
 
-bool vistle::StateTracker::handle(const vistle::message::ResetModuleIds &reset)
+void StateObserver::incModificationCount()
 {
-   return true;
+   ++m_modificationCount;
+}
+
+long StateObserver::modificationCount() const
+{
+   return m_modificationCount;
+}
+
+void StateObserver::resetModificationCount()
+{
+   m_modificationCount = 0;
 }
 
 } // namespace vistle

@@ -42,6 +42,13 @@ class V_COREEXPORT StateObserver {
 
    virtual void deleteConnection(int fromId, const std::string &fromName,
          int toId, const std::string &toName) = 0;
+
+   void incModificationCount();
+   long modificationCount() const;
+   void resetModificationCount();
+
+private:
+   long m_modificationCount;
 };
 
 class V_COREEXPORT StateTracker {
@@ -82,6 +89,7 @@ class V_COREEXPORT StateTracker {
    bool handle(const message::Barrier &barrier);
    bool handle(const message::BarrierReached &barrierReached);
    bool handle(const message::ResetModuleIds &reset);
+   bool handle(const message::ReplayFinished &reset);
 
    PortTracker *portTracker() const;
 
@@ -111,7 +119,6 @@ class V_COREEXPORT StateTracker {
 
  private:
    PortTracker *m_portTracker;
-
 };
 
 } // namespace vistle

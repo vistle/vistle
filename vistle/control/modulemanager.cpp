@@ -697,6 +697,7 @@ bool ModuleManager::handle(const vistle::message::ResetModuleIds &reset)
    }
 
    resetModuleCounter();
+   sendUi(message::ReplayFinished());
    return true;
 }
 
