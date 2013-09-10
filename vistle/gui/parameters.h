@@ -59,6 +59,8 @@ private:
 
    std::map<QString, QtProperty *> m_paramToProp;
    std::map<QtProperty *, QString> m_propToParam;
+
+   bool m_ignorePropertyChanges = false;
 };
 
 } //namespace gui

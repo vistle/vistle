@@ -50,7 +50,10 @@ template<class T>
 void VistleConnection::setParameter(int id, const std::string &name, const T &value) const
 {
    mutex_lock lock(m_mutex);
-   vistle::ParameterBase<T> *p = dynamic_cast<vistle::ParameterBase<T> *>(getParameter(id, name));
+   vistle::Parameter *generic = getParameter(id, name);
+   if (!generic)
+      return;
+   vistle::ParameterBase<T> *p = dynamic_cast<vistle::ParameterBase<T> *>(generic);
    if (!p) {
       std::cerr << "parameter not of appropriate type: " << id << ":" << name << std::endl;
       return;

@@ -92,6 +92,8 @@ void Parameters::setVistleConnection(vistle::VistleConnection *conn)
 
 void Parameters::setModule(int id)
 {
+   m_ignorePropertyChanges = true;
+
    clear();
    m_paramToProp.clear();
    m_propToParam.clear();
@@ -108,6 +110,8 @@ void Parameters::setModule(int id)
       for (auto &p: params)
          newParameter(id, QString::fromStdString(p));
    }
+
+   m_ignorePropertyChanges = false;
 }
 
 void Parameters::newParameter(int moduleId, QString parameterName)
@@ -239,6 +243,9 @@ void Parameters::parameterChoicesChanged(int moduleId, QString parameterName)
 
 void Parameters::propertyChanged(QtProperty *prop)
 {
+   if (m_ignorePropertyChanges)
+      return;
+
    auto it = m_propToParam.find(prop);
    if (it == m_propToParam.end()) {
       std::cerr << "parameter for property not found: " << prop->propertyName().toStdString() << std::endl;

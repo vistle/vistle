@@ -282,9 +282,12 @@ QVariant Module::itemChange(QGraphicsItem::GraphicsItemChange change, const QVar
 
 void Module::updatePosition(QPointF newPos) const
 {
-   const double x = newPos.x();
-   const double y = newPos.y();
-   setParameter("_position", vistle::ParamVector(x, y));
+   if (id() > 0) {
+      // don't update until we have our module id
+      const double x = newPos.x();
+      const double y = newPos.y();
+      setParameter("_position", vistle::ParamVector(x, y));
+   }
 }
 
 /*!
