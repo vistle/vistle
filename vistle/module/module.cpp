@@ -99,8 +99,7 @@ Module::Module(const std::string &n, const std::string &shmname,
    modes.push_back("all");
    setParameterChoices(cm, modes);
 
-   addFloatParameter("_x", "x position in GUI", 0.);
-   addFloatParameter("_y", "y position in GUI", 0.);
+   addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
 }
 
 void Module::initDone() const {

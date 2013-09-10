@@ -282,10 +282,9 @@ QVariant Module::itemChange(QGraphicsItem::GraphicsItemChange change, const QVar
 
 void Module::updatePosition(QPointF newPos) const
 {
-   double x = newPos.x();
-   double y = newPos.y();
-   setParameter("_x", x);
-   setParameter("_y", y);
+   const double x = newPos.x();
+   const double y = newPos.y();
+   setParameter("_position", vistle::ParamVector(x, y));
 }
 
 /*!

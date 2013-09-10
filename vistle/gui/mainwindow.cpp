@@ -122,13 +122,11 @@ void MainWindow::newParameter_msg(int moduleId, QString parameterName)
     QString text = "New parameter on ID: " + QString::number(moduleId) + ":" + parameterName;
     m_console->append(text);
 #endif
-    if (parameterName == "_x" || parameterName == "_y") {
+    if (parameterName == "_position") {
        if (Module *m = m_scene->findModule(moduleId)) {
-          vistle::Parameter *px = vistle::VistleConnection::the().getParameter(moduleId, "_x");
-          vistle::Parameter *py = vistle::VistleConnection::the().getParameter(moduleId, "_y");
-          vistle::FloatParameter *fpx = dynamic_cast<vistle::FloatParameter *>(px);
-          vistle::FloatParameter *fpy = dynamic_cast<vistle::FloatParameter *>(py);
-          if (fpx && fpy && fpx->isDefault() && fpy->isDefault()) {
+          vistle::Parameter *p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
+          vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p);
+          if (vp && vp->isDefault()) {
              m->sendPosition();
           }
        }
@@ -141,14 +139,13 @@ void MainWindow::parameterValueChanged_msg(int moduleId, QString parameterName)
     QString text = "Parameter value changed on ID: " + QString::number(moduleId) + ":" + parameterName;
     m_console->append(text);
 #endif
-    if (parameterName == "_x" || parameterName == "_y") {
+    if (parameterName == "_position") {
        if (Module *m = m_scene->findModule(moduleId)) {
-          vistle::Parameter *px = vistle::VistleConnection::the().getParameter(moduleId, "_x");
-          vistle::Parameter *py = vistle::VistleConnection::the().getParameter(moduleId, "_y");
-          vistle::FloatParameter *fpx = dynamic_cast<vistle::FloatParameter *>(px);
-          vistle::FloatParameter *fpy = dynamic_cast<vistle::FloatParameter *>(py);
-          if (fpx && fpy && !fpx->isDefault() && !fpy->isDefault()) {
-             m->setPos(fpx->getValue(), fpy->getValue());
+          vistle::Parameter *p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
+          vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p);
+          if (vp && !vp->isDefault()) {
+             vistle::ParamVector pos = vp->getValue();
+             m->setPos(pos[0], pos[1]);
           }
        }
     }
