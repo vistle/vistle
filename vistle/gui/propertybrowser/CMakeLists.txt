@@ -47,7 +47,7 @@ set(FORMS
 qt_wrap_ui(UI_SRCS ${FORMS})
 add_definitions(${QT_DEFINITIONS})
 add_definitions("-DQT_DISABLE_DEPRECATED_BEFORE=0x000000")
-add_library(vistle_propertybrowser
+add_library(vistle_propertybrowser STATIC
   ${SOURCES} 
   ${UI_SRCS})
 
