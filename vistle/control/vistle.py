@@ -154,7 +154,7 @@ def save(filename = None):
          for c in conns:
             f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c.first)+",'"+str(c.second)+"')\n")
 
-   f.write("checkMessageQueue()\n")
+   #f.write("checkMessageQueue()\n")
 
    f.close()
    print("Data flow network saved to "+filename)
