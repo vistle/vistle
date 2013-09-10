@@ -15,6 +15,7 @@
 namespace gui {
 
 class Parameters;
+class DataFlowView;
 class ModuleBrowser;
 
 namespace Ui {
@@ -34,6 +35,7 @@ public:
     void setVistleConnection(vistle::VistleConnection *conn);
 
     Parameters *parameters() const;
+    DataFlowView *dataFlowView() const;
 
 private slots:
     void on_dragButton_clicked();

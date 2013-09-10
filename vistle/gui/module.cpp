@@ -18,6 +18,8 @@
 #include "module.h"
 #include "connection.h"
 #include "scene.h"
+#include "mainwindow.h"
+#include "dataflowview.h"
 
 namespace gui {
 
@@ -61,10 +63,11 @@ Module::~Module()
     paramModules.clear();
     delete shape;
     delete statusShape;
-    delete moduleMenu;
-    delete copyAct;
-    delete deleteAct;
-    delete deleteConnectionAct;
+    delete m_moduleMenu;
+    delete m_copyAct;
+    delete m_execAct;
+    delete m_deleteAct;
+    delete m_deleteConnectionAct;
 }
 
 /*!
@@ -76,6 +79,12 @@ Module::~Module()
 void Module::copy()
 {
 
+}
+
+void Module::execModule()
+{
+   vistle::message::Compute m(m_id, -1);
+   vistle::VistleConnection::the().sendMessage(m);
 }
 
 /*!
@@ -155,19 +164,23 @@ void Module::updatePorts()
  */
 void Module::createActions()
 {
-    copyAct = new QAction("Copy", this);
-    copyAct->setShortcuts(QKeySequence::Copy);
-    copyAct->setStatusTip("Copy the module, and all of its properties");
-    connect(copyAct, SIGNAL(triggered()), this, SLOT(copy()));
+    m_copyAct = new QAction("Copy", this);
+    m_copyAct->setShortcuts(QKeySequence::Copy);
+    m_copyAct->setStatusTip("Copy the module, and all of its properties");
+    connect(m_copyAct, SIGNAL(triggered()), this, SLOT(copy()));
 
-    deleteAct = new QAction("Delete", this);
-    deleteAct->setShortcuts(QKeySequence::Delete);
-    deleteAct->setStatusTip("Delete the module and all of its connections");
-    connect(deleteAct, SIGNAL(triggered()), this, SLOT(deleteModule()));
+    m_deleteAct = new QAction("Delete", this);
+    m_deleteAct->setShortcuts(QKeySequence::Delete);
+    m_deleteAct->setStatusTip("Delete the module and all of its connections");
+    connect(m_deleteAct, SIGNAL(triggered()), this, SLOT(deleteModule()));
 
-    deleteConnectionAct = new QAction("Delete All Connections", this);
-    deleteConnectionAct->setStatusTip(tr("Delete the module's connections"));
-    connect(deleteConnectionAct, SIGNAL(triggered()), this, SLOT(deleteConnections()));
+    m_execAct = new QAction("Execute", this);
+    m_execAct->setStatusTip("Execute the module");
+    connect(m_execAct, SIGNAL(triggered()), this, SLOT(execModule()));
+
+    m_deleteConnectionAct = new QAction("Delete All Connections", this);
+    m_deleteConnectionAct->setStatusTip(tr("Delete the module's connections"));
+    connect(m_deleteConnectionAct, SIGNAL(triggered()), this, SLOT(deleteConnections()));
 }
 
 /*!
@@ -175,11 +188,17 @@ void Module::createActions()
  */
 void Module::createMenus()
 {
-    moduleMenu = new QMenu;
-    moduleMenu->addAction(copyAct);
-    moduleMenu->addAction(deleteAct);
-    moduleMenu->addSeparator();
-    moduleMenu->addAction(deleteConnectionAct);
+   Scene *sc = dynamic_cast<Scene *>(scene());
+   if (sc)
+      m_moduleMenu = new QMenu(sc->mainWindow()->dataFlowView());
+   else
+      m_moduleMenu = new QMenu();
+   m_moduleMenu->addAction(m_execAct);
+   m_moduleMenu->addSeparator();
+   m_moduleMenu->addAction(m_copyAct);
+   m_moduleMenu->addAction(m_deleteAct);
+   m_moduleMenu->addSeparator();
+   m_moduleMenu->addAction(m_deleteConnectionAct);
 
 }
 
@@ -266,7 +285,7 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
  */
 void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 {
-   moduleMenu->popup(event->screenPos());
+   m_moduleMenu->popup(event->screenPos());
 }
 
 QVariant Module::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant &value)

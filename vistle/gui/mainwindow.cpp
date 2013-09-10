@@ -253,6 +253,11 @@ Parameters *MainWindow::parameters() const
    return m_parameters;
 }
 
+DataFlowView *MainWindow::dataFlowView() const
+{
+   return ui->drawArea;
+}
+
 /*!
  * \brief MainWindow::on_dragButton_clicked button that mimics a dragging operation
  */

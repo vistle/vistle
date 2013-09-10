@@ -90,6 +90,7 @@ protected:
 
 public slots:
     void copy();
+    void execModule();
     void deleteModule();
     void deleteConnections();
 
@@ -98,10 +99,11 @@ private:
     void updatePorts();
     void createActions();
     void createMenus();
-    QMenu *moduleMenu;
-    QAction *copyAct;
-    QAction *deleteAct;
-    QAction *deleteConnectionAct;
+    QMenu *m_moduleMenu;
+    QAction *m_copyAct;
+    QAction *m_deleteAct;
+    QAction *m_execAct;
+    QAction *m_deleteConnectionAct;
 
     qreal w;                                            //< width of the module
     qreal h;                                            //< height of the module
