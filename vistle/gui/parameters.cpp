@@ -30,6 +30,11 @@ namespace gui {
 
 const int NumDec = 10;
 
+static QString displayName(QString parameterName) {
+
+   return parameterName.replace("_", " ").trimmed();
+}
+
 template<class M>
 static M *addPropertyManager(Parameters *p) {
    M *m = new M(p);
@@ -137,11 +142,11 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
    if (vistle::IntParameter *ip = dynamic_cast<vistle::IntParameter *>(p)) {
       if (ip->presentation() == vistle::Parameter::Boolean) {
          if (!prop)
-            prop = m_boolManager->addProperty(parameterName);
+            prop = m_boolManager->addProperty(displayName(parameterName));
          m_boolManager->setValue(prop, ip->getValue() != 0);
       } else if (ip->presentation() == vistle::Parameter::Choice) {
          if (!prop)
-            prop = m_intChoiceManager->addProperty(parameterName);
+            prop = m_intChoiceManager->addProperty(displayName(parameterName));
          m_intChoiceManager->setValue(prop, ip->getValue());
 #if 0
          QStringList choices;
@@ -152,33 +157,33 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
 #endif
       } else {
          if (!prop) {
-            prop = m_intManager->addProperty(parameterName);
+            prop = m_intManager->addProperty(displayName(parameterName));
          }
          m_intManager->setValue(prop, ip->getValue());
       }
    } else if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
       if (!prop) {
-         prop = m_floatManager->addProperty(parameterName);
+         prop = m_floatManager->addProperty(displayName(parameterName));
          m_floatManager->setDecimals(prop, NumDec);
       }
       m_floatManager->setValue(prop, fp->getValue());
    } else if (vistle::StringParameter *sp = dynamic_cast<vistle::StringParameter *>(p)) {
       if (sp->presentation() == vistle::Parameter::Choice) {
          if (!prop) {
-            prop = m_stringChoiceManager->addProperty(parameterName);
+            prop = m_stringChoiceManager->addProperty(displayName(parameterName));
          }
          int choice = 0;
          m_stringChoiceManager->setValue(prop, choice);
       } else {
          if (!prop) {
-            prop = m_stringManager->addProperty(parameterName);
+            prop = m_stringManager->addProperty(displayName(parameterName));
          }
          m_stringManager->setValue(prop, QString::fromStdString(sp->getValue()));
       }
    } else if (vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p)) {
       vistle::ParamVector value = vp->getValue();
       if (!prop) {
-         prop = m_vectorManager->addProperty(parameterName);
+         prop = m_vectorManager->addProperty(displayName(parameterName));
          m_vectorManager->setDecimals(prop, NumDec);
          m_vectorManager->setDimension(prop, value.dim);
       }
