@@ -151,6 +151,14 @@ std::vector<char> StateTracker::getState() const {
             appendMessage(state, c);
          }
       }
+
+      for (auto &paramname: getParameters(id)) {
+         const Port::PortSet *connected = portTracker()->getConnectionList(id, paramname);
+         for (auto &dest: *connected) {
+            Connect c(id, paramname, dest->getModuleID(), dest->getName());
+            appendMessage(state, c);
+         }
+      }
    }
 
    return state;
