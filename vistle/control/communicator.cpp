@@ -446,6 +446,12 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
+      case message::Message::RESETMODULEIDS: {
+         const message::ResetModuleIds &m = static_cast<const message::ResetModuleIds &>(message);
+         result = m_moduleManager->handle(m);
+         break;
+      }
+
       default:
 
          CERR << "unhandled message from (id "

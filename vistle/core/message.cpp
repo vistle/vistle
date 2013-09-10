@@ -727,5 +727,10 @@ int SetId::getId() const {
    return m_id;
 }
 
+vistle::message::ResetModuleIds::ResetModuleIds()
+   : Message(Message::RESETMODULEIDS, sizeof(ResetModuleIds))
+{
+}
+
 } // namespace message
 } // namespace vistle

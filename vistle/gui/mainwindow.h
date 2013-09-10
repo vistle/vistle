@@ -54,6 +54,7 @@ private slots:
                             int toId, QString toName);
 
     void moduleSelectionChanged();
+    void clearDataFlowNetwork();
 
 private:
     Ui::MainWindow *ui = nullptr;

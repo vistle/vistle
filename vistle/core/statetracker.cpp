@@ -555,4 +555,9 @@ void StateTracker::registerObserver(StateObserver *observer) {
    m_observers.insert(observer);
 }
 
+bool vistle::StateTracker::handle(const vistle::message::ResetModuleIds &reset)
+{
+   return true;
+}
+
 } // namespace vistle

@@ -64,6 +64,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(m_scene, SIGNAL(selectionChanged()), SLOT(moduleSelectionChanged()));
     ui->drawArea->show();
+
+
+    connect(ui->actionNew, SIGNAL(triggered(bool)), SLOT(clearDataFlowNetwork()));
 }
 
 MainWindow::~MainWindow()
@@ -196,6 +199,12 @@ void MainWindow::moduleSelectionChanged()
    }
    ui->parameterDock->setWindowTitle(title);
 }
+
+void MainWindow::clearDataFlowNetwork()
+{
+   m_vistleConnection->resetDataFlowNetwork();
+}
+
 /************************************************************************************/
 // End ports
 /************************************************************************************/

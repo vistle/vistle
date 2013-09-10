@@ -73,7 +73,7 @@
     <property name="title">
      <string>File</string>
     </property>
-    <addaction name="actionFile"/>
+    <addaction name="actionNew"/>
     <addaction name="actionOpen"/>
     <addaction name="actionSave"/>
     <addaction name="actionSave_As"/>
@@ -200,7 +200,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionFile"/>
+   <addaction name="actionNew"/>
    <addaction name="actionOpen"/>
    <addaction name="actionSave"/>
    <addaction name="separator"/>
@@ -222,7 +222,7 @@
    </attribute>
    <widget class="gui::ModuleBrowser" name="moduleBrowser"/>
   </widget>
-  <action name="actionFile">
+  <action name="actionNew">
    <property name="text">
     <string>New</string>
    </property>

@@ -688,6 +688,18 @@ bool ModuleManager::handle(const message::CreatePort &createPort) {
    return true;
 }
 
+bool ModuleManager::handle(const vistle::message::ResetModuleIds &reset)
+{
+   m_stateTracker.handle(reset);
+   if (!runningMap.empty()) {
+      CERR << "ResetModuleIds: " << runningMap.size() << " modules still running" << std::endl;
+      return true;
+   }
+
+   resetModuleCounter();
+   return true;
+}
+
 ModuleManager::~ModuleManager() {
 
    sendAll(message::Quit());

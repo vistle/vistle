@@ -88,6 +88,7 @@ class ModuleManager {
    bool handle(const message::ObjectReceived &objRecv);
    bool handle(const message::Barrier &barrier);
    bool handle(const message::BarrierReached &barrierReached);
+   bool handle(const message::ResetModuleIds &reset);
 
    std::string m_bindir;
 

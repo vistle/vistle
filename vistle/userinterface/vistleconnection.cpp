@@ -73,7 +73,7 @@ void vistle::VistleConnection::VistleConnection::sendParameter(const Parameter *
    sendMessage(set);
 }
 
-bool VistleConnection::requestReplyAsync(const vistle::message::Message &send) {
+bool VistleConnection::requestReplyAsync(const vistle::message::Message &send) const {
 
    boost::mutex &mutex = ui().mutexForMessage(send.uuid());
    mutex.lock();
@@ -81,12 +81,12 @@ bool VistleConnection::requestReplyAsync(const vistle::message::Message &send) {
    return true;
 }
 
-bool VistleConnection::waitForReplyAsync(const vistle::message::Message::uuid_t &uuid, vistle::message::Message &reply) {
+bool VistleConnection::waitForReplyAsync(const vistle::message::Message::uuid_t &uuid, vistle::message::Message &reply) const {
 
    return ui().getMessage(uuid, reply);
 }
 
-bool VistleConnection::waitForReply(const vistle::message::Message &send, vistle::message::Message &reply) {
+bool VistleConnection::waitForReply(const vistle::message::Message &send, vistle::message::Message &reply) const {
 
    if (!requestReplyAsync(send)) {
       return false;
@@ -98,6 +98,46 @@ std::vector<std::string> vistle::VistleConnection::getParameters(int id) const
 {
    mutex_lock lock(m_mutex);
    return ui().state().getParameters(id);
+}
+
+int vistle::VistleConnection::barrier() const {
+
+   std::vector<char> msgBuf(message::Message::MESSAGE_SIZE);
+   message::Message *msg = (message::Message *)msgBuf.data();
+
+   message::Barrier m(0);
+   if (!waitForReply(m, *msg)) {
+      return false;
+   }
+
+   switch(msg->type()) {
+      case message::Message::BARRIERREACHED: {
+         const message::BarrierReached *reached = static_cast<const message::BarrierReached *>(msg);
+         return reached->getBarrierId();
+         break;
+      }
+      default:
+         assert("expected BarrierReached message" == 0);
+         break;
+   }
+
+   return -1;
+}
+
+void vistle::VistleConnection::resetDataFlowNetwork() const
+{
+   {
+      mutex_lock lock(m_mutex);
+      for (int id: ui().state().getRunningList()) {
+         sendMessage(message::Kill(id));
+      }
+   }
+   int barrierId = barrier();
+   if (barrierId < 0) {
+      std::cerr << "VistleConnection::resetDataFlowNetwork: barrier failed" << std::endl;
+      return;
+   }
+   sendMessage(message::ResetModuleIds());
 }
 
 } //namespace vistle

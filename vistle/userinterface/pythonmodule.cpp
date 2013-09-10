@@ -40,8 +40,7 @@ static void sendMessage(const vistle::message::Message &m) {
 
 static void resetModuleCounter() {
 
-   //TODO: really support that?
-   //moduleManager.resetModuleCounter();
+   sendMessage(message::ResetModuleIds());
 }
 
 static void source(const std::string &filename) {
@@ -69,26 +68,7 @@ static void ping(char c) {
 
 static int barrier() {
 
-   std::vector<char> msgBuf(message::Message::MESSAGE_SIZE);
-   message::Message *msg = (message::Message *)msgBuf.data();
-
-   message::Barrier m(0);
-   if (!PythonModule::the().vistleConnection().waitForReply(m, *msg)) {
-      return -1;
-   }
-
-   switch(msg->type()) {
-      case message::Message::BARRIERREACHED: {
-         const message::BarrierReached *reached = static_cast<const message::BarrierReached *>(msg);
-         return reached->getBarrierId();
-         break;
-      }
-      default:
-         assert("expected BarrierReached message" == 0);
-         break;
-   }
-
-   return -1;
+   return PythonModule::the().vistleConnection().barrier();
 }
 
 static std::string spawnAsync(const char *module, int numSpwan=-1, int baseRank=-1, int rankSkip=-1) {

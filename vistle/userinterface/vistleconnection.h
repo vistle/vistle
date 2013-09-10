@@ -18,15 +18,18 @@ public:
    void operator()();
 
    void sendMessage(const vistle::message::Message &msg) const;
-   bool requestReplyAsync(const vistle::message::Message &send);
-   bool waitForReplyAsync(const vistle::message::Message::uuid_t &uuid, vistle::message::Message &reply);
-   bool waitForReply(const vistle::message::Message &send, vistle::message::Message &reply);
+   bool requestReplyAsync(const vistle::message::Message &send) const;
+   bool waitForReplyAsync(const vistle::message::Message::uuid_t &uuid, vistle::message::Message &reply) const;
+   bool waitForReply(const vistle::message::Message &send, vistle::message::Message &reply) const;
 
    std::vector<std::string> getParameters(int id) const;
    vistle::Parameter *getParameter(int id, const std::string &name) const;
    template<class T>
    void setParameter(int id, const std::string &name, const T &value) const;
    void sendParameter(const Parameter *p) const;
+
+   int barrier() const;
+   void resetDataFlowNetwork() const;
 
    vistle::UserInterface &ui() const;
 
