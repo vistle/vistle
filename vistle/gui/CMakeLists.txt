@@ -26,6 +26,7 @@ set(gui_SOURCES
   modulebrowser.cpp
   dataflowview.cpp
   vistleconsole.cpp
+  modifieddialog.cpp
 
   qconsole/qconsole.cpp
 )
@@ -41,6 +42,7 @@ set(gui_HEADERS
   modulebrowser.h
   dataflowview.h
   vistleconsole.h
+  modifieddialog.h
 
   qconsole/qconsole.h
 )
@@ -48,6 +50,7 @@ set(gui_HEADERS
 set(gui_FORMS
   mainwindow.ui
   modulebrowser.ui
+  modifieddialog.ui
 )
 
 qt_wrap_ui(GUI_UI_SRCS ${gui_FORMS})

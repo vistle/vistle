@@ -151,7 +151,7 @@ void UiManager::addClient(UiClient *c) {
       const message::Message *msg = (const message::Message *)&state[i];
       sendMessage(c, *msg);
    }
-   sendMessage((c, message::ReplayFinished()));
+   sendMessage(c, message::ReplayFinished());
 }
 
 void UiManager::join() {

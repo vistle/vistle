@@ -82,6 +82,8 @@ public:
     template<class T>
     void setParameter(QString name, const T &value) const;
     void sendPosition() const;
+    bool isPositionValid() const;
+    void setPositionValid();
 
 protected:
     void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
@@ -109,7 +111,6 @@ private:
     qreal h;                                            //< height of the module
     int xAddr;                                          //< important calculated value for the x magnitude
     int yAddr;                                          //< important calculated value for the y magnitude
-    bool vMouseClick;                                   //< boolean for keeping track of whether a click was made
     QSizeF size;                                        //< size of the module
     QList<Port *> portList;                             //< list of all the ports in the module
     QPointF vLastPoint;                                 //< point for keeping track of whether a click was made
@@ -132,7 +133,7 @@ private:
     ///\todo add data structure for the module information
     QString m_name;
     Module::Status m_Status = SPAWNING;
-
+    bool m_validPosition = false;
 };
 
 template <class T>

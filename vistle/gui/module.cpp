@@ -301,7 +301,7 @@ QVariant Module::itemChange(QGraphicsItem::GraphicsItemChange change, const QVar
 
 void Module::updatePosition(QPointF newPos) const
 {
-   if (id() > 0) {
+   if (id() > 0 && isPositionValid()) {
       // don't update until we have our module id
       const double x = newPos.x();
       const double y = newPos.y();
@@ -459,6 +459,16 @@ void Module::setSpawnUuid(const boost::uuids::uuid &uuid)
 void Module::sendPosition() const
 {
    updatePosition(pos());
+}
+
+bool Module::isPositionValid() const {
+
+   return m_validPosition;
+}
+
+void Module::setPositionValid() {
+
+   m_validPosition = true;
 }
 
 /*!

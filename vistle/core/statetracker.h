@@ -43,9 +43,9 @@ class V_COREEXPORT StateObserver {
    virtual void deleteConnection(int fromId, const std::string &fromName,
          int toId, const std::string &toName) = 0;
 
-   void incModificationCount();
+   virtual void resetModificationCount();
+   virtual void incModificationCount();
    long modificationCount() const;
-   void resetModificationCount();
 
 private:
    long m_modificationCount;

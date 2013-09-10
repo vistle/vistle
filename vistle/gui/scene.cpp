@@ -56,6 +56,7 @@ void Scene::addModule(QString modName, QPointF dropPos)
     ///\todo improve how the data such as the name is set in the module.
     addItem(module);
     module->setPos(dropPos);
+    module->setPositionValid();
     module->setStatus(Module::SPAWNING);
 
     vistle::message::Spawn spawnMsg(0, modName.toUtf8().constData());

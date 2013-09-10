@@ -81,4 +81,20 @@ void VistleObserver::deleteConnection(int fromId, const std::string &fromName,
     emit deleteConnection_s(fromId, name, toId, name2);
 }
 
+void VistleObserver::incModificationCount()
+{
+   bool modStart = modificationCount()==0;
+   StateObserver::incModificationCount();
+   if (modStart)
+      emit modified(true);
+}
+
+void VistleObserver::resetModificationCount()
+{
+   bool mod = modificationCount() > 0;
+   StateObserver::resetModificationCount();
+   if (mod)
+      emit modified(false);
+}
+
 } //namespace gui

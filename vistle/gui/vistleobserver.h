@@ -29,6 +29,7 @@ signals:
                    		 int toId, QString toName);
 	void deleteConnection_s(int fromId, QString fromName,
                       		int toId, QString toName);
+   void modified(bool state);
 
 public:
    VistleObserver(QObject *parent=0);
@@ -43,6 +44,9 @@ public:
                            int toId, const std::string &toName);
 	void deleteConnection(int fromId, const std::string &fromName,
                           int toId, const std::string &toName);
+
+   void incModificationCount();
+   void resetModificationCount();
 };
 
 } //namespace gui

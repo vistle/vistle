@@ -10,9 +10,12 @@
 /**********************************************************************************/
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "modifieddialog.h"
 #include "parameters.h"
 #include "modulebrowser.h"
 #include "vistleconsole.h"
+
+#include <userinterface/pythonembed.h>
 
 
 #include <QString>
@@ -27,6 +30,8 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDropEvent>
+#include <QFileDialog>
+#include <QDir>
 
 namespace gui {
 
@@ -67,6 +72,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
 
     connect(ui->actionNew, SIGNAL(triggered()), SLOT(clearDataFlowNetwork()));
+    connect(ui->actionOpen, SIGNAL(triggered()), SLOT(loadDataFlowNetwork()));
+    connect(ui->actionSave, SIGNAL(triggered()), SLOT(saveDataFlowNetwork()));
+    connect(ui->actionSave_As, SIGNAL(triggered()), SLOT(saveDataFlowNetworkAs()));
     connect(ui->actionExecute, SIGNAL(triggered()), SLOT(executeDataFlowNetwork()));
 }
 
@@ -126,33 +134,36 @@ void MainWindow::newParameter_msg(int moduleId, QString parameterName)
     QString text = "New parameter on ID: " + QString::number(moduleId) + ":" + parameterName;
     m_console->append(text);
 #endif
+#if 1
     if (parameterName == "_position") {
        if (Module *m = m_scene->findModule(moduleId)) {
           vistle::Parameter *p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
           vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p);
-          if (vp && vp->isDefault()) {
+          if (vp && vp->isDefault() && m->isPositionValid()) {
              m->sendPosition();
           }
        }
     }
+#endif
 }
 
 void MainWindow::parameterValueChanged_msg(int moduleId, QString parameterName)
 {
 #if 0
-    QString text = "Parameter value changed on ID: " + QString::number(moduleId) + ":" + parameterName;
-    m_console->append(text);
+   QString text = "Parameter value changed on ID: " + QString::number(moduleId) + ":" + parameterName;
+   m_console->append(text);
 #endif
-    if (parameterName == "_position") {
-       if (Module *m = m_scene->findModule(moduleId)) {
-          vistle::Parameter *p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
-          vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p);
-          if (vp && !vp->isDefault()) {
-             vistle::ParamVector pos = vp->getValue();
-             m->setPos(pos[0], pos[1]);
-          }
-       }
-    }
+   if (parameterName == "_position") {
+      if (Module *m = m_scene->findModule(moduleId)) {
+         vistle::Parameter *p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
+         vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p);
+         if (vp && !vp->isDefault()) {
+            vistle::ParamVector pos = vp->getValue();
+            m->setPos(pos[0], pos[1]);
+            m->setPositionValid();
+         }
+      }
+   }
 }
 
 void MainWindow::parameterChoicesChanged_msg(int moduleId, QString parameterName)
@@ -179,6 +190,11 @@ void MainWindow::deleteConnection_msg(int fromId, QString fromName,
     m_console->append(text);
 }
 
+void MainWindow::setModified(bool state)
+{
+   setWindowModified(state);
+}
+
 void MainWindow::moduleSelectionChanged()
 {
    auto selected = m_scene->selectedItems();
@@ -201,9 +217,94 @@ void MainWindow::moduleSelectionChanged()
    ui->parameterDock->setWindowTitle(title);
 }
 
+bool MainWindow::checkModified(const QString &reason)
+{
+   //std::cerr << "modification count: " << m_observer->modificationCount() << std::endl;
+   if (m_observer->modificationCount() == 0)
+      return true;
+
+   ModifiedDialog d(reason, this);
+
+   int res = d.exec();
+   std::cerr << "res: " << res << std::endl;
+   if (res == QMessageBox::Save) {
+      saveDataFlowNetwork();
+      return true;
+   }
+   return res == QMessageBox::Discard;
+}
+
+void MainWindow::setFilename(const QString &filename)
+{
+   m_currentFile = filename;
+   setWindowFilePath(filename);
+   if (m_currentFile.isEmpty()) {
+      setWindowTitle("Vistle");
+   } else {
+      setWindowTitle(QString("Vistle - %1").arg(m_currentFile));
+   }
+}
+
 void MainWindow::clearDataFlowNetwork()
 {
+   if (!checkModified("New"))
+      return;
+
    m_vistleConnection->resetDataFlowNetwork();
+   setFilename(QString());
+   m_observer->resetModificationCount();
+}
+
+void MainWindow::loadDataFlowNetwork()
+{
+   if (!checkModified("Open"))
+      return;
+
+   QString dir = m_currentFile.isEmpty() ? QDir::currentPath() : m_currentFile;
+   QString filename = QFileDialog::getOpenFileName(this,
+      tr("Open Data Flow Network"),
+      dir,
+      tr("Vistle files (*.vsl);;Python files (*.py);;All files (*)"));
+
+   if (filename.isEmpty())
+      return;
+
+   clearDataFlowNetwork();
+
+   setFilename(filename);
+
+   vistle::PythonInterface::the().exec_file(filename.toStdString());
+
+   m_observer->resetModificationCount();
+}
+
+void MainWindow::saveDataFlowNetwork(const QString &filename)
+{
+   if(filename.isEmpty()) {
+      if (!m_currentFile.isEmpty())
+         saveDataFlowNetwork(m_currentFile);
+      else
+         saveDataFlowNetworkAs();
+   } else {
+      std::cerr << "writing to " << filename.toStdString() << std::endl;
+      setFilename(filename);
+      std::string cmd = "save(\"";
+      cmd += filename.toStdString();
+      cmd += "\")";
+      vistle::PythonInterface::the().exec(cmd);
+      m_observer->resetModificationCount();
+   }
+}
+
+void MainWindow::saveDataFlowNetworkAs(const QString &filename)
+{
+   QString newFile = QFileDialog::getSaveFileName(this,
+      tr("Save Data Flow Network"),
+      filename.isEmpty() ? QDir::currentPath() : filename,
+      tr("Vistle files (*.vsl);;Python files (*.py);;All files (*)"));
+
+   if (!newFile.isEmpty())
+      saveDataFlowNetwork(newFile);
 }
 
 void MainWindow::executeDataFlowNetwork()
@@ -239,6 +340,8 @@ void MainWindow::setVistleobserver(VistleObserver *observer)
             this, SLOT(newConnection_msg(int, QString, int, QString)));
     connect(m_observer, SIGNAL(deleteConnection_s(int, QString, int, QString)),
             this, SLOT(deleteConnection_msg(int, QString, int, QString)));
+
+    connect(m_observer, SIGNAL(modified(bool)), this, SLOT(setModified(bool)));
 
     if (Parameters *p = parameters())
        p->setVistleObserver(observer);

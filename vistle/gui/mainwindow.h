@@ -55,8 +55,13 @@ private slots:
     void deleteConnection_msg(int fromId, QString fromName,
                             int toId, QString toName);
 
+    void setModified(bool state);
+
     void moduleSelectionChanged();
     void clearDataFlowNetwork();
+    void loadDataFlowNetwork();
+    void saveDataFlowNetwork(const QString &filename = QString());
+    void saveDataFlowNetworkAs(const QString &filename = QString());
     void executeDataFlowNetwork();
 
 private:
@@ -71,6 +76,10 @@ private:
     Scene *m_scene = nullptr;
     VistleObserver *m_observer = nullptr;
 
+    QString m_currentFile;
+
+    bool checkModified(const QString &reason);
+    void setFilename(const QString &filename);
 };
 
 } //namespace gui
