@@ -30,6 +30,7 @@ public:
 
    int barrier() const;
    void resetDataFlowNetwork() const;
+   void executeSources() const;
 
    vistle::UserInterface &ui() const;
 

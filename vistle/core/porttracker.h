@@ -43,6 +43,9 @@ class V_COREEXPORT PortTracker {
    std::vector<std::string> getPortNames(const int moduleID, Port::Type type) const;
    std::vector<std::string> getInputPortNames(const int moduleID) const;
    std::vector<std::string> getOutputPortNames(const int moduleID) const;
+   std::vector<Port *> getPorts(const int moduleID, Port::Type type) const;
+   std::vector<Port *> getInputPorts(const int moduleID) const;
+   std::vector<Port *> getOutputPorts(const int moduleID) const;
 
  private:
 

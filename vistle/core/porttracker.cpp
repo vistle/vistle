@@ -252,5 +252,37 @@ std::vector<std::string> PortTracker::getOutputPortNames(const int moduleID) con
    return getPortNames(moduleID, Port::OUTPUT);
 }
 
+std::vector<Port *> PortTracker::getPorts(const int moduleID, Port::Type type) const
+{
+   std::vector<Port *> result;
+
+   typedef std::map<std::string, Port *> PortMap;
+   typedef std::map<int, PortMap *> ModulePortMap;
+
+   ModulePortMap::const_iterator mports = m_ports.find(moduleID);
+   if (mports == m_ports.end())
+      return result;
+
+   const PortMap &portmap = *mports->second;
+   for(PortMap::const_iterator it = portmap.begin();
+         it != portmap.end();
+         ++it) {
+
+      if (type == Port::ANY || it->second->getType() == type)
+         result.push_back(it->second);
+   }
+
+   return result;
+}
+
+std::vector<Port *> vistle::PortTracker::getInputPorts(const int moduleID) const
+{
+   return getPorts(moduleID, Port::INPUT);
+}
+
+std::vector<Port *> vistle::PortTracker::getOutputPorts(const int moduleID) const
+{
+   return getPorts(moduleID, Port::OUTPUT);
+}
 
 } // namespace vistle

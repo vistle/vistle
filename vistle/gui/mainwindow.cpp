@@ -66,7 +66,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->drawArea->show();
 
 
-    connect(ui->actionNew, SIGNAL(triggered(bool)), SLOT(clearDataFlowNetwork()));
+    connect(ui->actionNew, SIGNAL(triggered()), SLOT(clearDataFlowNetwork()));
+    connect(ui->actionExecute, SIGNAL(triggered()), SLOT(executeDataFlowNetwork()));
 }
 
 MainWindow::~MainWindow()
@@ -203,6 +204,11 @@ void MainWindow::moduleSelectionChanged()
 void MainWindow::clearDataFlowNetwork()
 {
    m_vistleConnection->resetDataFlowNetwork();
+}
+
+void MainWindow::executeDataFlowNetwork()
+{
+   m_vistleConnection->executeSources();
 }
 
 /************************************************************************************/

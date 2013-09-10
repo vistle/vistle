@@ -140,4 +140,19 @@ void vistle::VistleConnection::resetDataFlowNetwork() const
    sendMessage(message::ResetModuleIds());
 }
 
+void VistleConnection::executeSources() const
+{
+   mutex_lock lock(m_mutex);
+   for (int id: ui().state().getRunningList()) {
+      auto inputs = ui().state().portTracker()->getInputPorts(id);
+      bool isSource = true;
+      for (auto input: inputs) {
+         if (!input->connections().empty())
+            isSource = false;
+      }
+      if (isSource)
+         sendMessage(message::Compute(id, -1));
+   }
+}
+
 } //namespace vistle

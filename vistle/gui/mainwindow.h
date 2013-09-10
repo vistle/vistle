@@ -57,6 +57,7 @@ private slots:
 
     void moduleSelectionChanged();
     void clearDataFlowNetwork();
+    void executeDataFlowNetwork();
 
 private:
     Ui::MainWindow *ui = nullptr;
