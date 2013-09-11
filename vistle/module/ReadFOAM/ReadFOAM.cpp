@@ -84,9 +84,12 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
    m_casedir->setValue("/data/OpenFOAM/PumpTurbine/transient/");
 
    m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
+   setParameterMinimum<Float>(m_starttime, 0.);
    m_stoptime = addFloatParameter("stoptime", "stop reading at the last step before this time",
          std::numeric_limits<double>::max());
+   setParameterMinimum<Float>(m_stoptime, 0.);
    m_timeskip = addIntParameter("timeskip", "number of timesteps to skip", 0);
+   setParameterMinimum<Integer>(m_timeskip, 0);
 
    // the output ports
    m_gridOut = createOutputPort("grid_out");
