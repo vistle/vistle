@@ -181,6 +181,10 @@ struct ParameterType<std::string> {
 template<>
 struct ParameterCheck<Integer> {
    static bool check(const std::vector<std::string> &choices, const Integer &value) {
+      if (choices.empty()) {
+         // choices not yet initialized
+         return true;
+      }
       if (value < 0 || value >= choices.size()) {
          std::cerr << "IntParameter: choice out of range" << std::endl;
          return false;
@@ -192,6 +196,10 @@ struct ParameterCheck<Integer> {
 template<>
 struct ParameterCheck<std::string> {
    static bool check(const std::vector<std::string> &choices, const std::string &value) {
+      if (choices.empty()) {
+         // choices not yet initialized
+         return true;
+      }
       if (std::find(choices.begin(), choices.end(), value) == choices.end()) {
          std::cerr << "StringParameter: choice not valid" << std::endl;
          return false;
