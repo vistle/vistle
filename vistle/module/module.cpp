@@ -89,7 +89,7 @@ Module::Module(const std::string &n, const std::string &shmname,
              << std::endl;
 #endif
 
-   Parameter *cm = addIntParameter("_cache_mode", "input object caching", m_cache.cacheMode(), Parameter::Choice);
+   Parameter *cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheDefault, Parameter::Choice);
    std::vector<std::string> modes;
    assert(ObjectCache::CacheDefault == 0);
    modes.push_back("default");
@@ -145,7 +145,7 @@ ObjectCache::CacheMode Module::setCacheMode(ObjectCache::CacheMode mode, bool up
       m_cache.setCacheMode(mode);
 
    if (updateParam)
-      setIntParameter("_cache_mode", m_cache.cacheMode());
+      setIntParameter("_cache_mode", mode);
 
    return m_cache.cacheMode();
 }
@@ -154,7 +154,7 @@ void Module::setDefaultCacheMode(ObjectCache::CacheMode mode) {
 
    assert(mode != ObjectCache::CacheDefault);
    m_defaultCacheMode = mode;
-   setCacheMode(m_defaultCacheMode);
+   setCacheMode(m_defaultCacheMode, false);
 }
 
 
@@ -376,11 +376,17 @@ bool Module::setIntParameter(const std::string & name,
                              Integer value, const message::SetParameter *inResponseTo) {
 
    if (name == "_cache_mode") {
-      if (value == ObjectCache::CacheAll
-          || value == ObjectCache::CacheNone)
-         value = setCacheMode(ObjectCache::CacheMode(value), false);
-      else
-         value = setCacheMode(ObjectCache::CacheDefault, false);
+      switch (value) {
+      case ObjectCache::CacheNone:
+      case ObjectCache::CacheAll:
+      case ObjectCache::CacheDefault:
+         break;
+      default:
+         value = ObjectCache::CacheDefault;
+         break;
+      }
+
+      setCacheMode(ObjectCache::CacheMode(value), false);
    }
 
    return setParameter(name, value, inResponseTo);
