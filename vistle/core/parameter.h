@@ -39,6 +39,12 @@ class V_COREEXPORT Parameter {
       InvalidPresentation // keep last
    };
 
+   enum RangeType {
+      Minimum, // keep in that order
+      Value,
+      Maximum
+   };
+
    Parameter(int moduleId, const std::string & name, Type = Invalid, Presentation = Generic);
    Parameter(const Parameter &other);
    virtual ~Parameter();
@@ -106,6 +112,13 @@ class V_COREEXPORT ParameterBase: public Parameter {
 
    bool isDefault() const { return m_value == m_defaultValue; }
    const T getValue() const { return m_value; }
+   const T getValue(RangeType rt) const {
+      switch(rt) {
+      case Minimum: return m_minimum;
+      case Maximum: return m_maximum;
+      case Value: ;
+      }
+      return m_value; }
    virtual bool setValue(T value, bool init=false) {
       if (init)
          m_defaultValue=value;
@@ -128,8 +141,14 @@ class V_COREEXPORT ParameterBase: public Parameter {
       if (presentation() != Choice) return false;
       return ParameterCheck<T>::check(ch, m_value);
    }
+   virtual T minimum() const {
+      return m_minimum;
+   }
    virtual void setMinimum(const T &value) {
       m_minimum = value;
+   }
+   virtual T maximum() const {
+      return m_maximum;
    }
    virtual void setMaximum(const T &value) {
       m_maximum = value;

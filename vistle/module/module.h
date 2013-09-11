@@ -49,12 +49,22 @@ class V_COREEXPORT Module {
    Port *createOutputPort(const std::string &name, const std::string &description="", const int flags=0);
 
    bool addParameterGeneric(const std::string &name, Parameter *parameter, Parameter::Presentation presentation);
-   bool updateParameter(const std::string &name, const Parameter *parameter, const message::SetParameter *inResponseTo);
+   bool updateParameter(const std::string &name, const Parameter *parameter, const message::SetParameter *inResponseTo, Parameter::RangeType rt=Parameter::Value);
 
    template<class T>
    Parameter *addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation presentation=Parameter::Generic);
    template<class T>
    bool setParameter(const std::string &name, const T &value, const message::SetParameter *inResponseTo);
+   template<class T>
+   bool setParameter(ParameterBase<T> *param, const T &value, const message::SetParameter *inResponseTo);
+   template<class T>
+   bool setParameterMinimum(ParameterBase<T> *param, const T &minimum);
+   template<class T>
+   bool setParameterMaximum(ParameterBase<T> *param, const T &maximum);
+   template<class T>
+   bool setParameterRange(const std::string &name, const T &minimum, const T &maximum);
+   template<class T>
+   bool setParameterRange(ParameterBase<T> *param, const T &minimum, const T &maximum);
    template<class T>
    bool getParameter(const std::string &name, T &value) const;
    void setParameterChoices(const std::string &name, const std::vector<std::string> &choices);

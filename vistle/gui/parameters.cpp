@@ -164,6 +164,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
             prop = m_intManager->addProperty(displayName(parameterName));
          }
          m_intManager->setValue(prop, ip->getValue());
+         m_intManager->setRange(prop, ip->minimum(), ip->maximum());
       }
    } else if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
       if (!prop) {
@@ -171,6 +172,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
          m_floatManager->setDecimals(prop, NumDec);
       }
       m_floatManager->setValue(prop, fp->getValue());
+      m_floatManager->setRange(prop, fp->minimum(), fp->maximum());
    } else if (vistle::StringParameter *sp = dynamic_cast<vistle::StringParameter *>(p)) {
       if (sp->presentation() == vistle::Parameter::Choice) {
          if (!prop) {
@@ -192,6 +194,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
          m_vectorManager->setDimension(prop, value.dim);
       }
       m_vectorManager->setValue(prop, value);
+      m_vectorManager->setRange(prop, vp->minimum(), vp->maximum());
    } else {
    }
 

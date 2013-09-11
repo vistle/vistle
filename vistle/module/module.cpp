@@ -17,6 +17,9 @@
 
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
+#include <boost/mpl/vector.hpp>
+#include <boost/mpl/for_each.hpp>
+#include <boost/mpl/transform.hpp>
 
 #include <core/object.h>
 #include <core/message.h>
@@ -237,7 +240,7 @@ bool Module::addParameterGeneric(const std::string &name, Parameter *param, Para
    return true;
 }
 
-bool Module::updateParameter(const std::string &name, const Parameter *param, const message::SetParameter *inResponseTo) {
+bool Module::updateParameter(const std::string &name, const Parameter *param, const message::SetParameter *inResponseTo, Parameter::RangeType rt) {
 
    std::map<std::string, Parameter *>::iterator i = parameters.find(name);
 
@@ -256,7 +259,7 @@ bool Module::updateParameter(const std::string &name, const Parameter *param, co
       return false;
    }
 
-   message::SetParameter set(id(), name, param);
+   message::SetParameter set(id(), name, param, rt);
    if (inResponseTo) {
       set.setReply();
       set.setUuid(inResponseTo->uuid());
@@ -310,8 +313,65 @@ bool Module::setParameter(const std::string &name, const T &value, const message
    if (!p)
       return false;
 
-   p->setValue(value);
-   return updateParameter(name, p, inResponseTo);
+   return setParameter(p, value, inResponseTo);
+}
+
+template<class T>
+bool Module::setParameter(ParameterBase<T> *param, const T &value, const message::SetParameter *inResponseTo) {
+
+   param->setValue(value);
+   return updateParameter(param->getName(), param, inResponseTo);
+}
+
+template<class T>
+bool Module::setParameterMinimum(ParameterBase<T> *param, const T &minimum) {
+
+   return Module::setParameterRange(param, minimum, param->maximum());
+}
+
+template<class T>
+bool Module::setParameterMaximum(ParameterBase<T> *param, const T &maximum) {
+
+   return Module::setParameterRange(param, param->minimum(), maximum);
+}
+
+template<class T>
+bool Module::setParameterRange(const std::string &name, const T &minimum, const T &maximum) {
+
+   ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(findParameter(name));
+   if (!p)
+      return false;
+
+   return setParameterRange(p, minimum, maximum);
+}
+
+template<class T>
+bool Module::setParameterRange(ParameterBase<T> *param, const T &minimum, const T &maximum) {
+
+   bool ok = true;
+
+   if (maximum > minimum) {
+      param->setMinimum(minimum);
+      param->setMaximum(maximum);
+   } else {
+      std::cerr << "range for parameter " << param->getName() << " swapped" << std::endl;
+      param->setMinimum(maximum);
+      param->setMaximum(minimum);
+   }
+   T value = param->getValue();
+   if (value < param->minimum()) {
+      std::cerr << "value for parameter " << param->getName() << " increased to minimum: " << param->minimum() << std::endl;
+      param->setValue(param->minimum());
+      ok &= updateParameter(param->getName(), param, nullptr);
+   }
+   if (value > param->maximum()) {
+      std::cerr << "value for parameter " << param->getName() << " decreased to maximum: " << param->maximum() << std::endl;
+      param->setValue(param->maximum());
+      ok &= updateParameter(param->getName(), param, nullptr);
+   }
+   ok &= updateParameter(param->getName(), param, nullptr, Parameter::Minimum);
+   ok &= updateParameter(param->getName(), param, nullptr, Parameter::Maximum);
+   return ok;
 }
 
 template<class T>
@@ -1011,6 +1071,34 @@ Module::~Module() {
              << "/" << size() << "] quit" << std::endl;
 
    MPI_Barrier(MPI_COMM_WORLD);
+}
+
+namespace {
+
+using namespace boost;
+
+class InstModule: public Module {
+public:
+   InstModule()
+   : Module("inst", "anything", 0, 1, 1)
+   {}
+   bool compute() { return true; }
+};
+
+struct instantiator {
+   template<typename P> P operator()(P) {
+      InstModule m;
+      ParameterBase<P> p(m.id(), "param");
+      m.setParameterMinimum(&p, P());
+      m.setParameterMaximum(&p, P());
+      return P();
+   }
+};
+}
+
+void instantiate_parameter_functions() {
+
+   mpl::for_each<Parameters>(instantiator());
 }
 
 } // namespace vistle

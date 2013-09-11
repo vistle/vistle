@@ -122,9 +122,11 @@ std::vector<char> StateTracker::getState() const {
             appendMessage(state, choices);
          }
 
-         SetParameter set(id, name, param);
-         set.setSenderId(id);
-         appendMessage(state, set);
+         for (Parameter::RangeType rt: {Parameter::Value, Parameter::Minimum, Parameter::Maximum}) {
+            SetParameter set(id, name, param, rt);
+            set.setSenderId(id);
+            appendMessage(state, set);
+         }
       }
 
       for (auto &portname: portTracker()->getInputPortNames(id)) {
