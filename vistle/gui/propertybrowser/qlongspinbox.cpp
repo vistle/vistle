@@ -60,6 +60,10 @@ void QLongSpinBox::setSingleStep(long step)
 void QLongSpinBox::stepBy(int steps)
 {
    m_value += steps*m_step;
+   if (m_value < m_min)
+      m_value = m_min;
+   if (m_value > m_max)
+      m_value = m_max;
    lineEdit()->setText(QString::number(m_value));
    emit valueChanged(m_value);
    emit valueChanged(text());
@@ -72,11 +76,19 @@ QAbstractSpinBox::StepEnabled QLongSpinBox::stepEnabled() const
 
 QValidator::State QLongSpinBox::validate(QString &input, int &pos) const
 {
+   long val = input.toLong();
+   if (val < m_min || val > m_max) {
+      return QValidator::Invalid;
+   }
    return QValidator::Acceptable;
 }
 
 void QLongSpinBox::fixup(QString &str) const
 {
    long val = str.toLong();
+   if (val < m_min)
+      val = m_min;
+   if (val > m_max)
+      val = m_max;
    str = QString::number(val);
 }
