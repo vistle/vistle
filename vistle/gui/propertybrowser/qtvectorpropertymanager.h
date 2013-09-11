@@ -31,8 +31,10 @@ public Q_SLOTS:
     void setValue(QtProperty *property, const ParamVector &val);
     void setDecimals(QtProperty *property, int prec);
     void setDimension(QtProperty *property, int dim);
+    void setRange(QtProperty *property, const ParamVector &min, const ParamVector &max);
 Q_SIGNALS:
-    void valueChanged(QtProperty *property, const ParamVector &val);
+    void valueChanged(QtProperty *property, ParamVector val);
+    void rangeChanged(QtProperty *property, ParamVector min, ParamVector max);
     void decimalsChanged(QtProperty *property, int prec);
     void dimensionChanged(QtProperty *property, int dim);
 protected:

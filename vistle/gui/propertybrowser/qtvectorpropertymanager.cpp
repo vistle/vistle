@@ -15,7 +15,11 @@ public:
     struct Data
     {
        Data() : decimals(2), dimension(0) {}
+       void setMinimumValue(const ParamVector &val) { minVal = val; }
+       void setMaximumValue(const ParamVector &val) { maxVal = val; }
         ParamVector val;
+        ParamVector minVal;
+        ParamVector maxVal;
         int decimals;
         int dimension;
     };
@@ -268,6 +272,17 @@ void QtVectorPropertyManager::setDimension(QtProperty *property, int dim)
     }
 
     emit dimensionChanged(property, data.dimension);
+}
+
+void QtVectorPropertyManager::setRange(QtProperty *property, const ParamVector &minVal, const ParamVector &maxVal)
+{
+   void (QtVectorPropertyManagerPrivate::*setSubPropertyRange)(QtProperty *, ParamVector, ParamVector, ParamVector) = 0;
+   setBorderValues<ParamVector, QtVectorPropertyManagerPrivate, QtVectorPropertyManager, ParamVector>(this, d_ptr,
+                &QtVectorPropertyManager::propertyChanged,
+                &QtVectorPropertyManager::valueChanged,
+                &QtVectorPropertyManager::rangeChanged,
+                property, minVal, maxVal, setSubPropertyRange);
+
 }
 
 /*!
