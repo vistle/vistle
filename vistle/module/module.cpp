@@ -105,7 +105,11 @@ Module::Module(const std::string &n, const std::string &shmname,
    addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
 }
 
-void Module::initDone() const {
+void Module::initDone() {
+
+   for (auto &pair: parameters) {
+      parameterChanged(pair.second);
+   }
 
    sendMessage(message::Started(name()));
 }
@@ -320,6 +324,7 @@ template<class T>
 bool Module::setParameter(ParameterBase<T> *param, const T &value, const message::SetParameter *inResponseTo) {
 
    param->setValue(value);
+   parameterChanged(param);
    return updateParameter(param->getName(), param, inResponseTo);
 }
 
@@ -646,6 +651,12 @@ bool Module::isConnected(const std::string &portname) const {
       return false;
 
    return !p->connections().empty();
+}
+
+bool Module::parameterChanged(Parameter *p) {
+
+   (void)p;
+   return true;
 }
 
 bool Module::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
@@ -978,6 +989,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                   std::cerr << "Module::handleMessage: unknown parameter type " << param->getParameterType() << std::endl;
                   assert("unknown parameter type" == 0);
                   break;
+            }
+
+            if (Parameter *p = findParameter(param->getName())) {
+               parameterChanged(p);
             }
 
             // notify controller about current value

@@ -33,7 +33,7 @@ class V_COREEXPORT Module {
    Module(const std::string &name, const std::string &shmname,
           const unsigned int rank, const unsigned int size, const int moduleID);
    virtual ~Module();
-   void initDone() const; // to be called from MODULE_MAIN after module ctor has run
+   void initDone(); // to be called from MODULE_MAIN after module ctor has run
 
    virtual bool dispatch();
 
@@ -121,6 +121,8 @@ class V_COREEXPORT Module {
    bool isConnected(const std::string &portname) const;
 
    std::string getModuleName(int id) const;
+
+   virtual bool parameterChanged(Parameter *p);
 
  private:
    Parameter *findParameter(const std::string &name) const;
