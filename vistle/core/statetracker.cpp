@@ -108,9 +108,13 @@ std::vector<char> StateTracker::getState() const {
          appendMessage(state, k);
       }
 
-      for (auto &it2: m.parameters) {
-         const std::string &name = it2.first;
-         const Parameter *param = it2.second;
+      const ParameterMap &pmap = m.parameters;
+      for (const auto &it2: m.paramOrder) {
+         //std::cerr << "module " << id << ": " << it2.first << " -> " << it2.second << std::endl;
+         const std::string &name = it2.second;
+         const auto &it3 = pmap.find(name);
+         assert(it3 != pmap.end());
+         const Parameter *param = it3->second;
 
          AddParameter add(param, getModuleName(id));
          add.setSenderId(id);
@@ -446,11 +450,17 @@ bool StateTracker::handle(const message::AddParameter &addParam) {
 #endif
 
    ParameterMap &pm = runningMap[addParam.senderId()].parameters;
+   ParameterOrder &po = runningMap[addParam.senderId()].paramOrder;
    ParameterMap::iterator it = pm.find(addParam.getName());
    if (it != pm.end()) {
       CERR << "duplicate parameter" << std::endl;
    } else {
       pm[addParam.getName()] = addParam.getParameter();
+      int maxIdx = 0;
+      const auto &rit = po.rbegin();
+      if (rit != po.rend())
+         maxIdx = rit->first;
+      po[maxIdx+1] = addParam.getName();
    }
 
    for (StateObserver *o: m_observers) {
@@ -585,9 +595,10 @@ std::vector<std::string> StateTracker::getParameters(int id) const {
    if (rit == runningMap.end())
       return result;
 
-   const ParameterMap &pmap = rit->second.parameters;
-   BOOST_FOREACH (ParameterMap::value_type val, pmap) {
-      result.push_back(val.first);
+   const ParameterOrder &po = rit->second.paramOrder;
+   BOOST_FOREACH (ParameterOrder::value_type val, po) {
+      const auto &name = val.second;
+      result.push_back(name);
    }
 
    return result;

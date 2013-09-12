@@ -21,22 +21,41 @@ Port * PortTracker::addPort(const int moduleID, const std::string & name,
 Port *PortTracker::addPort(Port *port) {
 
    const int moduleID = port->getModuleID();
-   PortMap *portMap = NULL;
-   std::map<int, PortMap *>::iterator i = m_ports.find(moduleID);
 
-   if (i == m_ports.end()) {
-      portMap = new PortMap;
-      m_ports[moduleID] = portMap;
-   } else {
-      portMap = i->second;
+   PortMap *portMap = NULL;
+   {
+      std::map<int, PortMap *>::iterator i = m_ports.find(moduleID);
+      if (i == m_ports.end()) {
+         portMap = new PortMap;
+         m_ports[moduleID] = portMap;
+      } else {
+         portMap = i->second;
+      }
+      assert(portMap);
    }
 
-   assert(portMap);
+   PortOrder *portOrder = NULL;
+   {
+      std::map<int, PortOrder *>::iterator i = m_portOrders.find(moduleID);
+      if (i == m_portOrders.end()) {
+         portOrder = new PortOrder;
+         m_portOrders[moduleID] = portOrder;
+      } else {
+         portOrder = i->second;
+      }
+      assert(portOrder);
+   }
 
    PortMap::iterator pi = portMap->find(port->getName());
 
    if (pi == portMap->end()) {
       portMap->insert(std::make_pair(port->getName(), port));
+
+      int paramNum = 0;
+      const auto &rit = portOrder->rbegin();
+      if (rit != portOrder->rend())
+         paramNum = rit->first+1;
+      (*portOrder)[paramNum] = port->getName();
       
       return port;
    } else {
@@ -229,14 +248,22 @@ std::vector<std::string> PortTracker::getPortNames(const int moduleID, Port::Typ
    ModulePortMap::const_iterator mports = m_ports.find(moduleID);
    if (mports == m_ports.end())
       return result;
+   const auto &portOrderIt = m_portOrders.find(moduleID);
+   if (portOrderIt == m_portOrders.end())
+      return result;
 
    const PortMap &portmap = *mports->second;
-   for(PortMap::const_iterator it = portmap.begin();
-         it != portmap.end();
+   const PortOrder &portorder = *portOrderIt->second;
+   for(PortOrder::const_iterator it = portorder.begin();
+         it != portorder.end();
          ++it) {
 
-      if (type == Port::ANY || it->second->getType() == type)
-         result.push_back(it->first);
+      const std::string &name = it->second;
+      const auto &it2 = portmap.find(name);
+      assert(it2 != portmap.end());
+
+      if (type == Port::ANY || it2->second->getType() == type)
+         result.push_back(name);
    }
 
    return result;
@@ -262,14 +289,22 @@ std::vector<Port *> PortTracker::getPorts(const int moduleID, Port::Type type) c
    ModulePortMap::const_iterator mports = m_ports.find(moduleID);
    if (mports == m_ports.end())
       return result;
+   const auto &portOrderIt = m_portOrders.find(moduleID);
+   if (portOrderIt == m_portOrders.end())
+      return result;
 
    const PortMap &portmap = *mports->second;
-   for(PortMap::const_iterator it = portmap.begin();
-         it != portmap.end();
+   const PortOrder &portorder = *portOrderIt->second;
+   for(PortOrder::const_iterator it = portorder.begin();
+         it != portorder.end();
          ++it) {
 
-      if (type == Port::ANY || it->second->getType() == type)
-         result.push_back(it->second);
+      const std::string &name = it->second;
+      const auto &it2 = portmap.find(name);
+      assert(it2 != portmap.end());
+
+      if (type == Port::ANY || it2->second->getType() == type)
+         result.push_back(it2->second);
    }
 
    return result;

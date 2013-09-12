@@ -102,12 +102,14 @@ class V_COREEXPORT StateTracker {
 
  protected:
    typedef std::map<std::string, Parameter *> ParameterMap;
+   typedef std::map<int, std::string> ParameterOrder;
    struct Module {
       bool initialized = false;
       bool killed = false;
       bool busy = false;
       std::string name;
       ParameterMap parameters;
+      ParameterOrder paramOrder;
 
       int state() const;
       ~Module() {

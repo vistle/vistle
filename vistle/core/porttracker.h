@@ -51,10 +51,12 @@ class V_COREEXPORT PortTracker {
 
    Port *getPort(const Port *p) const;
 
+   typedef std::map<int, std::string> PortOrder;
    typedef std::map<std::string, Port *> PortMap;
 
    // module ID -> list of ports belonging to the module
    std::map<int, PortMap *> m_ports;
+   std::map<int, PortOrder *> m_portOrders;
 };
 } // namespace vistle
 
