@@ -32,12 +32,16 @@ VistleObserver::VistleObserver(QObject *parent) : QObject(parent)
 }
 
 void VistleObserver::newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) {
-	QString name = QString::fromStdString(moduleName);
+
+   QString name = QString::fromStdString(moduleName);
+   m_moduleNames[moduleId] = name;
    emit newModule_s(moduleId, spawnUuid, name);
 }
 
 void VistleObserver::deleteModule(int moduleId) {
-	emit deleteModule_s(moduleId);
+
+   m_moduleNames.erase(moduleId);
+   emit deleteModule_s(moduleId);
 }
 
 void VistleObserver::moduleStateChanged(int moduleId, int stateBits) {
@@ -95,6 +99,15 @@ void VistleObserver::resetModificationCount()
    StateObserver::resetModificationCount();
    if (mod)
       emit modified(false);
+}
+
+void gui::VistleObserver::info(const std::string &text, int senderId, int senderRank, vistle::message::Message::Type refType, const vistle::message::Message::uuid_t &refUuid) {
+
+   QString t = QString::fromStdString(text);
+   while(t.endsWith('\n'))
+      t.chop(1);
+   QString msg = QString("%1_%2(%3): %4").arg(m_moduleNames[senderId], QString::number(senderId), QString::number(senderRank), t);
+   emit info_s(msg);
 }
 
 } //namespace gui

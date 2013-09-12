@@ -303,10 +303,10 @@ void Parameters::propertyChanged(QtProperty *prop)
       std::string value;
       if (sp->presentation() == vistle::Parameter::Choice) {
          int choice = m_stringChoiceManager->value(prop);
-         std::cerr << "choice index: " << choice << std::endl;
+         //std::cerr << "choice index: " << choice << std::endl;
          QStringList choices = m_stringChoiceManager->enumNames(prop);
          value = choices[choice].toStdString();
-         std::cerr << "choice value: " << value << std::endl;
+         //std::cerr << "choice value: " << value << std::endl;
       } else {
          value = m_stringManager->value(prop).toStdString();
       }

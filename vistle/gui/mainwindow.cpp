@@ -91,7 +91,7 @@ MainWindow::~MainWindow()
 /************************************************************************************/
 void MainWindow::debug_msg(QString debugMsg)
 {
-    m_console->append(debugMsg);
+    m_console->appendDebug(debugMsg);
 }
 
 void MainWindow::newModule_msg(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName)
@@ -99,7 +99,7 @@ void MainWindow::newModule_msg(int moduleId, const boost::uuids::uuid &spawnUuid
     m_scene->addModule(moduleId, spawnUuid, moduleName);
 #if 0
     QString text = "Module started: " + moduleName + " with ID: " + QString::number(moduleId);
-    m_console->append(text);
+    m_console->appendDebug(text);
 #endif
 }
 
@@ -108,7 +108,7 @@ void MainWindow::deleteModule_msg(int moduleId)
     m_scene->deleteModule(moduleId);
 #if 0
     QString text = "Module deleted: " + QString::number(moduleId);
-    m_console->append(text);
+    m_console->appendDebug(text);
 #endif
 }
 
@@ -132,7 +132,7 @@ void MainWindow::newParameter_msg(int moduleId, QString parameterName)
 {
 #if 0
     QString text = "New parameter on ID: " + QString::number(moduleId) + ":" + parameterName;
-    m_console->append(text);
+    m_console->appendDebug(text);
 #endif
 #if 1
     if (parameterName == "_position") {
@@ -151,7 +151,7 @@ void MainWindow::parameterValueChanged_msg(int moduleId, QString parameterName)
 {
 #if 0
    QString text = "Parameter value changed on ID: " + QString::number(moduleId) + ":" + parameterName;
-   m_console->append(text);
+   m_console->appendDebug(text);
 #endif
    if (parameterName == "_position") {
       if (Module *m = m_scene->findModule(moduleId)) {
@@ -172,27 +172,34 @@ void MainWindow::parameterChoicesChanged_msg(int moduleId, QString parameterName
 
 void MainWindow::newPort_msg(int moduleId, QString portName)
 {
+#if 0
     QString text = "New port on ID: " + QString::number(moduleId) + ":" + portName;
-    m_console->append(text);
+    m_console->appendDebug(text);
+#endif
 }
 
 void MainWindow::newConnection_msg(int fromId, QString fromName,
                                    int toId, QString toName)
 {
     QString text = "New Connection: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
-    m_console->append(text);
+    m_console->appendDebug(text);
 }
 
 void MainWindow::deleteConnection_msg(int fromId, QString fromName,
                                       int toId, QString toName)
 {
     QString text = "Connection removed: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
-    m_console->append(text);
+    m_console->appendDebug(text);
 }
 
 void MainWindow::setModified(bool state)
 {
    setWindowModified(state);
+}
+
+void MainWindow::moduleInfo(const QString &text)
+{
+   m_console->appendInfo(text);
 }
 
 void MainWindow::moduleSelectionChanged()
@@ -342,6 +349,7 @@ void MainWindow::setVistleobserver(VistleObserver *observer)
             this, SLOT(deleteConnection_msg(int, QString, int, QString)));
 
     connect(m_observer, SIGNAL(modified(bool)), this, SLOT(setModified(bool)));
+    connect(m_observer, SIGNAL(info_s(QString)), this, SLOT(moduleInfo(const QString&)));
 
     if (Parameters *p = parameters())
        p->setVistleObserver(observer);

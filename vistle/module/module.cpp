@@ -1,7 +1,7 @@
 #include <mpi.h>
 
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstdio>
 
 #include <sys/types.h>
 #ifndef _WIN32
@@ -14,6 +14,7 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
@@ -34,6 +35,45 @@
 using namespace boost::interprocess;
 
 namespace vistle {
+
+template<typename CharT, typename TraitsT = std::char_traits<CharT> >
+class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
+
+ public:
+   msgstreambuf(Module *mod)
+   : m_module(mod)
+   {}
+
+   int overflow(int ch) {
+      if (ch != EOF) {
+         m_buf.push_back(ch);
+         if (ch == '\n')
+            flush();
+         return 0;
+      } else {
+         return EOF;
+      }
+   }
+
+   std::streamsize xsputn (const CharT *s, std::streamsize num) {
+      size_t end = m_buf.size();
+      m_buf.resize(end+num);
+      memcpy(m_buf.data()+end, s, num);
+      flush();
+      return num;
+   }
+
+   void flush() {
+      m_module->sendInfo("%s", std::string(m_buf.data(), m_buf.size()).c_str());
+      m_buf.clear();
+   }
+
+ private:
+   Module *m_module = nullptr;
+   std::vector<char> m_buf;
+};
+
+
 
 Module::Module(const std::string &n, const std::string &shmname,
       const unsigned int r,
@@ -106,6 +146,9 @@ Module::Module(const std::string &n, const std::string &shmname,
 }
 
 void Module::initDone() {
+
+   m_streambuf = new msgstreambuf<char>(this);
+   m_origStreambuf = std::cerr.rdbuf(m_streambuf);
 
    for (auto &pair: parameters) {
       parameterChanged(pair.second);
@@ -1077,6 +1120,10 @@ Module::~Module() {
 
    m_cache.clear();
 
+   if (m_origStreambuf)
+      std::cerr.rdbuf(m_origStreambuf);
+   delete m_streambuf;
+
    vistle::message::ModuleExit m;
    sendMessage(m);
 
@@ -1114,6 +1161,38 @@ struct instantiator {
 void instantiate_parameter_functions() {
 
    mpl::for_each<Parameters>(instantiator());
+}
+
+void vistle::Module::sendInfo(const char *fmt, ...)
+{
+   if(!fmt) {
+      fmt = "(empty message)";
+   }
+   char *text = new char[strlen(fmt)+500];
+
+   va_list args;
+   va_start(args, fmt);
+   vsnprintf(text, strlen(fmt)+500, fmt, args);
+   va_end(args);
+
+   message::SendInfo info(text);
+   sendMessage(info);
+}
+
+void Module::sendInfo(const message::Message &msg, const char *fmt, ...)
+{
+   if(!fmt) {
+      fmt = "(empty message)";
+   }
+   char *text = new char[strlen(fmt)+500];
+
+   va_list args;
+   va_start(args, fmt);
+   vsnprintf(text, strlen(fmt)+500, fmt, args);
+   va_end(args);
+
+   message::SendInfo info(text, &msg);
+   sendMessage(info);
 }
 
 } // namespace vistle

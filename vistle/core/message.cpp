@@ -61,7 +61,7 @@ Message::Message(const Type t, const unsigned int s)
    assert(m_rank >= 0);
 }
 
-Message::uuid_t Message::uuid() const {
+const Message::uuid_t &Message::uuid() const {
 
    return m_uuid;
 }
@@ -730,14 +730,40 @@ int SetId::getId() const {
    return m_id;
 }
 
-vistle::message::ResetModuleIds::ResetModuleIds()
-   : Message(Message::RESETMODULEIDS, sizeof(ResetModuleIds))
+ResetModuleIds::ResetModuleIds()
+: Message(Message::RESETMODULEIDS, sizeof(ResetModuleIds))
 {
 }
 
 ReplayFinished::ReplayFinished()
    : Message(Message::REPLAYFINISHED, sizeof(ReplayFinished))
 {
+}
+
+SendInfo::SendInfo(const std::string &text, const Message *inResponseTo)
+: Message(Message::SENDINFO, sizeof(SendInfo))
+, m_referenceType(Message::INVALID)
+{
+   if (inResponseTo) {
+      m_referenceType = inResponseTo->type();
+      m_referenceUuid = inResponseTo->uuid();
+   }
+   COPY_STRING(m_text, text);
+}
+
+Message::Type SendInfo::referenceType() const
+{
+   return m_referenceType;
+}
+
+Message::uuid_t SendInfo::referenceUuid() const
+{
+   return m_referenceUuid;
+}
+
+const char *SendInfo::text() const
+{
+   return m_text;
 }
 
 } // namespace message

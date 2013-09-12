@@ -55,6 +55,9 @@ public:
 
     void printHistory();
 
+    void appendInfo(const QString &text);
+    void appendDebug(const QString &text);
+
     void setNormalPrompt(bool display) { setPrompt("> ", display); }
 protected:
     //give suggestions to complete a command (not working...)

@@ -285,6 +285,11 @@ bool StateTracker::handleMessage(const message::Message &msg) {
          return handle(fin);
          break;
       }
+      case Message::SENDINFO: {
+         const SendInfo &info = static_cast<const SendInfo &>(msg);
+         return handle(info);
+         break;
+      }
       default:
          CERR << "message type not handled: type=" << msg.type() << std::endl;
          assert("message type not handled" == 0);
@@ -551,6 +556,14 @@ bool StateTracker::handle(const message::ReplayFinished &reset)
 {
    for (StateObserver *o: m_observers) {
       o->resetModificationCount();
+   }
+   return true;
+}
+
+bool StateTracker::handle(const message::SendInfo &info)
+{
+   for (StateObserver *o: m_observers) {
+      o->info(info.text(), info.senderId(), 0, info.referenceType(), info.referenceUuid());
    }
    return true;
 }

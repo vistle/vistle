@@ -56,6 +56,7 @@ private slots:
                             int toId, QString toName);
 
     void setModified(bool state);
+    void moduleInfo(const QString &text);
 
     void moduleSelectionChanged();
     void clearDataFlowNetwork();

@@ -31,6 +31,8 @@ signals:
                       		int toId, QString toName);
    void modified(bool state);
 
+   void info_s(QString msg);
+
 public:
    VistleObserver(QObject *parent=0);
    void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName);
@@ -45,8 +47,12 @@ public:
 	void deleteConnection(int fromId, const std::string &fromName,
                           int toId, const std::string &toName);
 
+   void info(const std::string &text, int senderId, int senderRank, vistle::message::Message::Type refType, const vistle::message::Message::uuid_t &refUuid);
+
    void incModificationCount();
    void resetModificationCount();
+
+   std::map<int, QString> m_moduleNames;
 };
 
 } //namespace gui

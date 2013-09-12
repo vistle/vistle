@@ -146,6 +146,20 @@ void VistleConsole::printHistory()
     }
 }
 
+void VistleConsole::appendInfo(const QString &text)
+{
+   setTextColor(errColor());
+   append(text);
+   setTextColor(cmdColor());
+}
+
+void VistleConsole::appendDebug(const QString &text)
+{
+   setTextColor(outColor());
+   append(text);
+   setTextColor(cmdColor());
+}
+
 VistleConsole *VistleConsole::s_instance = NULL;
 
 VistleConsole *VistleConsole::the()

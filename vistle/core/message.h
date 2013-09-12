@@ -41,6 +41,7 @@ typedef char param_value_t[256];
 typedef char param_desc_t[512];
 typedef char param_choice_t[64];
 const int param_num_choices = 60;
+typedef char text_t[440];
 
 class V_COREEXPORT Message {
    // this is POD
@@ -52,6 +53,7 @@ class V_COREEXPORT Message {
    typedef boost::uuids::uuid uuid_t;
 
    enum Type {
+      INVALID = 0,
       DEBUG,
       SPAWN,
       STARTED,
@@ -77,13 +79,14 @@ class V_COREEXPORT Message {
       SETID,
       RESETMODULEIDS,
       REPLAYFINISHED,
+      SENDINFO,
    };
 
    Message(const Type type, const unsigned int size);
    // Message (or its subclasses) may not require destructors
 
    //! message uuid - copied to related messages (i.e. responses or errors)
-   uuid_t uuid() const;
+   const uuid_t &uuid() const;
    //! set message uuid
    void setUuid(const uuid_t &uuid);
    //! message type
@@ -497,6 +500,26 @@ public:
    ReplayFinished();
 };
 BOOST_STATIC_ASSERT(sizeof(ReplayFinished) < Message::MESSAGE_SIZE);
+
+class V_COREEXPORT SendInfo: public Message {
+
+public:
+   SendInfo(const std::string &text, const Message *inResponseTo=nullptr);
+
+   Type referenceType() const;
+   uuid_t referenceUuid() const;
+   const char *text() const;
+
+private:
+   //! uuid of Message this message is a response to
+   uuid_t m_referenceUuid;
+   //! Type of Message this message is a response to
+   Type m_referenceType;
+   //! message text
+   text_t m_text;
+
+
+};
 
 } // namespace message
 } // namespace vistle

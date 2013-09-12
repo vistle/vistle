@@ -97,6 +97,20 @@ class V_COREEXPORT Module {
    vistle::Object::const_ptr takeFirstObject(const std::string &portName);
 
    void sendMessage(const message::Message &message) const;
+
+   /// send message to UI - printf style
+   void sendInfo(const char *fmt, ...)
+#ifdef __GNUC__
+   __attribute__ ((format (printf, 2, 3)))
+#endif
+   ;
+   /// send response message to UI - printf style
+   void sendInfo(const message::Message &msg, const char *fmt, ...)
+#ifdef __GNUC__
+   __attribute__ ((format (printf, 3, 4)))
+#endif
+   ;
+
  protected:
 
    const std::string m_name;
@@ -144,6 +158,8 @@ class V_COREEXPORT Module {
 
    typedef std::map<int, std::string> OtherModuleMap;
    OtherModuleMap m_otherModuleMap;
+
+   std::streambuf *m_origStreambuf = nullptr, *m_streambuf = nullptr;
 };
 
 } // namespace vistle

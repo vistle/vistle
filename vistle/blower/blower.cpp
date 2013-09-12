@@ -90,6 +90,11 @@ class StatePrinter: public StateObserver {
          << toId << ":" << toName << std::endl;
    }
 
+   void info(const std::string &text, int senderId, int senderRank, message::Message::Type refType, const message::Message::uuid_t &refUuid) {
+
+      std::cerr << senderId << "(" << senderRank << "): " << text << std::endl;
+   }
+
  private:
    std::ostream &m_out;
 };
