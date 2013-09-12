@@ -1,9 +1,17 @@
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
 
-add_library(vistle_module SHARED
+set(module_SOURCES
    module.cpp
    renderer.cpp
-   )
+)
+
+set(module_HEADERS
+   export.h
+   module.h
+   renderer.h
+)
+
+add_library(vistle_module SHARED ${module_SOURCES} ${module_HEADERS})
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_module

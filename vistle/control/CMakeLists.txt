@@ -9,7 +9,7 @@ if(READLINE_FOUND)
    set(EXTRA_LIBRARIES ${READLINE_LIBRARY})
 endif()
 
-add_library(vistle_control SHARED 
+set(control_SOURCES
    portmanager.cpp
    uiclient.cpp
    uimanager.cpp
@@ -21,6 +21,22 @@ add_library(vistle_control SHARED
    pythonembed.cpp
    pythonmodule.cpp
 )
+
+set(control_HEADERS
+   client.h
+   clientmanager.h
+   communicator.h
+   executor.h
+   export.h
+   modulemanager.h
+   portmanager.h
+   pythonembed.h
+   pythonmodule.h
+   uiclient.h
+   uimanager.h
+)
+
+add_library(vistle_control SHARED ${control_SOURCES} ${control_HEADERS})
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

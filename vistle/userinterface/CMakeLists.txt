@@ -9,12 +9,22 @@ if(READLINE_FOUND)
    set(EXTRA_LIBRARIES ${READLINE_LIBRARY})
 endif()
 
-add_library(vistle_ui SHARED 
+set(userinterface_SOURCES
    userinterface.cpp
    pythonembed.cpp
    pythonmodule.cpp
    vistleconnection.cpp
 )
+
+set(userinterface_HEADERS
+   export.h
+   pythonembed.h
+   pythonmodule.h
+   userinterface.h
+   vistleconnection.h
+)
+
+add_library(vistle_ui SHARED ${userinterface_SOURCES} ${userinterface_HEADERS})
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

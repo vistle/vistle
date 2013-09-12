@@ -1,8 +1,21 @@
-add_library(vistle_util SHARED
+set(util_SOURCES
+   coRestraint.cpp
    findself.cpp
    tools.cpp
-   coRestraint.cpp
-   )
+)
+
+set(util_HEADERS
+   export.h
+   coRestraint.h
+   findself.h
+   sysdep.h
+   tools.h
+   triple.h
+   valgrind.h
+   vecstreambuf.h
+)
+
+add_library(vistle_util SHARED ${util_SOURCES} ${util_HEADERS})
 
 target_link_libraries(vistle_util
         ${Boost_LIBRARIES}
