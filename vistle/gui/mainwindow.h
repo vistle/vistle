@@ -31,7 +31,7 @@ public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
     void printDebug(QString msg);
-    void setVistleobserver(VistleObserver *printer);
+    void setVistleobserver(VistleObserver *observer);
     void setVistleConnection(vistle::VistleConnection *conn);
 
     Parameters *parameters() const;
@@ -72,10 +72,9 @@ private:
     ModuleBrowser *m_moduleBrowser = nullptr;
 
     vistle::VistleConnection *m_vistleConnection = nullptr;
-    QList<QString> loadModuleFile();
-    void addModule(QString modName, QPointF dropPos);
-    Scene *m_scene = nullptr;
     VistleObserver *m_observer = nullptr;
+    QList<QString> loadModuleFile();
+    Scene *m_scene = nullptr;
 
     QString m_currentFile;
 

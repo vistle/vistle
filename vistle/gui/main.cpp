@@ -6,6 +6,7 @@
  */
 /**********************************************************************************/
 #include "mainwindow.h"
+#include "uicontroller.h"
 #include <QApplication>
 
 #include <userinterface/userinterface.h>
@@ -49,6 +50,7 @@ int main(int argc, char *argv[])
         vistle::VistleConnection conn(ui);
         vistle::PythonModule pythonmodule(&conn);
         boost::thread runnerThread(boost::ref(conn));
+        UiController(&conn, &observer);
 
         w.setVistleConnection(&conn);
         w.show();

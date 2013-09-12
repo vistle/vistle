@@ -27,6 +27,7 @@ set(gui_SOURCES
   dataflowview.cpp
   vistleconsole.cpp
   modifieddialog.cpp
+  uicontroller.cpp
 
   qconsole/qconsole.cpp
 )
@@ -43,6 +44,7 @@ set(gui_HEADERS
   dataflowview.h
   vistleconsole.h
   modifieddialog.h
+  uicontroller.h
 
   qconsole/qconsole.h
 )
