@@ -80,8 +80,8 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
 : Module("ReadFoam", shmname, rank, size, moduleId)
 {
    // file browser parameter
-   m_casedir = addStringParameter("casedir", "OpenFOAM case directory", "");
-   m_casedir->setValue("/data/OpenFOAM/PumpTurbine/transient/");
+   m_casedir = addStringParameter("casedir", "OpenFOAM case directory",
+      "/data/OpenFOAM/PumpTurbine/", Parameter::Directory);
 
    m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
    setParameterMinimum<Float>(m_starttime, 0.);
@@ -104,7 +104,9 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
       {
          std::stringstream s;
          s << "fieldname" << i;
-         m_fieldOut.push_back(addStringParameter(s.str(), "name of field", "NONE"));
+         StringParameter *p =  addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
+         setParameterChoices(p, std::vector<std::string>({"(NONE)"}));
+         m_fieldOut.push_back(p);
       }
    }
 }
@@ -112,6 +114,47 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
 
 ReadFOAM::~ReadFOAM()       //Destructor
 {
+}
+
+std::vector<std::string> ReadFOAM::fieldChoices() const {
+
+   std::vector<std::string> choices({"(NONE)"});
+
+   if (m_case.valid) {
+      for (auto &field: m_case.constantFields)
+         choices.push_back(field.first);
+      for (auto &field: m_case.varyingFields)
+         choices.push_back(field.first);
+   }
+
+   return choices;
+}
+
+bool ReadFOAM::parameterChanged(Parameter *p)
+{
+
+   StringParameter *sp = dynamic_cast<StringParameter *>(p);
+   if (sp == m_casedir) {
+      std::string casedir = sp->getValue();
+
+      m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
+      if (!m_case.valid) {
+         std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
+         return false;
+      }
+
+      std::cerr << "# processors: " << m_case.numblocks << std::endl;
+      std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
+      std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
+      std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
+
+      std::vector<std::string> choices = fieldChoices();
+      for (StringParameter *out: m_fieldOut) {
+         setParameterChoices(out, choices);
+      }
+   }
+
+   return Module::parameterChanged(p);
 }
 
 bool loadCoords(const std::string &meshdir, UnstructuredGrid::ptr grid) {
