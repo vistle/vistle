@@ -60,11 +60,12 @@ struct CaseInfo {
 
 class Boundary {
  public:
-   Boundary(const std::string &name, const index_t s, const index_t num, const std::string &t)
+   Boundary(const std::string &name, const index_t s, const index_t num, const std::string &t, const index_t &ind)
       : name(name)
       , startFace(s)
       , numFaces(num)
       , type(t)
+      , index(ind)
       {
       }
 
@@ -72,6 +73,7 @@ class Boundary {
    index_t startFace;
    index_t numFaces;
    std::string type;
+   index_t index;
 };
 
 
@@ -98,7 +100,21 @@ class Boundaries {
       }
    }
 
+   int findBoundaryIndexByName(const std::string &b) {
+      int result=-1;
+      for (int i=0;i<boundaries.size();++i) {
+         if (!b.compare(boundaries[i].name)) {
+            result=i;
+            break;
+         }
+      }
+      return result;
+   }
+
    bool valid;
+
+   std::vector<Boundary> boundaries;
+   std::vector<Boundary> procboundaries;
 
  private:
    bool isBoundaryFace(const std::vector<Boundary> &bound, const index_t face) {
@@ -110,11 +126,9 @@ class Boundaries {
       return false;
    }
 
-   std::vector<Boundary> boundaries;
-   std::vector<Boundary> procboundaries;
 };
 
-CaseInfo getCaseInfo(const std::string &casedir, double mintime, double maxtime);
+CaseInfo getCaseInfo(const std::string &casedir, double mintime, double maxtime, int skipfactor=1);
 
 boost::shared_ptr<std::istream> getStreamForFile(const std::string &filename);
 boost::shared_ptr<std::istream> getStreamForFile(const std::string &dir, const std::string &basename);

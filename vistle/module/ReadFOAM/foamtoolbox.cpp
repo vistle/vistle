@@ -71,17 +71,24 @@ namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
 
 BOOST_FUSION_ADAPT_STRUCT(
-    HeaderInfo,
-    (std::string, version)
-    (std::string, format)
-    (std::string, fieldclass)
-    (std::string, location)
-    (std::string, object)
-    (std::string, dimensions)
-    (std::string, internalField)
-    (index_t, lines)
+   HeaderInfo,
+   (std::string, version)
+   (std::string, format)
+   (std::string, fieldclass)
+   (std::string, location)
+   (std::string, object)
+   (std::string, dimensions)
+   (std::string, internalField)
+   (index_t, lines)
 )
 
+BOOST_FUSION_ADAPT_STRUCT(
+   DimensionInfo,
+   (index_t, points)
+   (index_t, cells)
+   (index_t, faces)
+   (index_t, internalFaces)
+)
 
 class FilteringStreamDeleter {
  public:
@@ -243,9 +250,9 @@ bool checkSubDirectory(CaseInfo &info, const std::string &timedir, bool time) {
    return true;
 }
 
-bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare, double mintime, double maxtime) {
+bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare, double mintime, double maxtime, int skipfactor) {
 
-   std::cerr << "reading casedir: " << casedir << std::endl;
+   std::cerr << std::time(0) << " reading casedir: " << casedir << std::endl;
 
    bf::path dir(casedir);
    if (!bf::exists(dir)) {
@@ -277,7 +284,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
    }
    
    if (num_processors > 0) {
-      bool result = checkCaseDirectory(info, casedir+"/processor0", false, mintime, maxtime);
+      bool result = checkCaseDirectory(info, casedir+"/processor0", false, mintime, maxtime, skipfactor);
       if (!result) {
          std::cerr << "failed to read case directory for processor 0" << std::endl;
          return false;
@@ -286,7 +293,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
       for (int i=1; i<num_processors; ++i) {
          std::stringstream s;
          s << casedir << "/processor" << i;
-         bool result = checkCaseDirectory(info, s.str(), true, mintime, maxtime);
+         bool result = checkCaseDirectory(info, s.str(), true, mintime, maxtime, skipfactor);
          if (!result)
             return false;
       }
@@ -306,8 +313,9 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
                ++num_timesteps;
                if (compare) {
                   if (info.timedirs.find(t) == info.timedirs.end()) {
-                     std::cerr << "timestep " << bn << " not available on all processors" << std::endl;
-                     return false;
+                     --num_timesteps;
+//                     std::cerr << "timestep " << bn << " not available on all processors" << std::endl;
+//                     return false;
                   }
                } else {
                   info.timedirs[t]=bn;
@@ -320,6 +328,19 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
                info.constantdir = bn;
             }
          }
+      }
+   }
+
+   if (!compare) {
+      int counter=0;
+      for (std::map<double, std::string>::iterator it=info.timedirs.begin(),next; it!=info.timedirs.end();it=next) {
+         next=it;
+         ++next;
+         if(counter%skipfactor!=0) {
+            info.timedirs.erase(it);
+            --num_timesteps;
+         }
+         ++counter;
       }
    }
 
@@ -372,10 +393,10 @@ bool checkFields(std::map<std::string, int> &fields, int nRequired)
    return !ignored;
 }
 
-CaseInfo getCaseInfo(const std::string &casedir, double mintime, double maxtime) {
+CaseInfo getCaseInfo(const std::string &casedir, double mintime, double maxtime, int skipfactor) {
 
    CaseInfo info;
-   info.valid = checkCaseDirectory(info, casedir, false, mintime, maxtime);
+   info.valid = checkCaseDirectory(info, casedir, false, mintime, maxtime, skipfactor);
 
    std::cerr << " " << "casedir: " << casedir << " " << std::endl
       << "Number of processors: " << info.numblocks << std::endl
@@ -408,26 +429,7 @@ std::string getFoamHeader(std::istream &stream)
    return header;
 }
 
-//Skipper for skipping FOAM Headers and unimportant data
-template <typename Iterator>
-struct skipper: qi::grammar<Iterator> {
-
-   skipper(): skipper::base_type(start) {
-
-      start =
-         ascii::space
-         | "/*" >> *(ascii::char_ - "*/") >> "*/"
-         | "//" >> *(ascii::char_ - qi::eol) >> qi::eol
-         | "FoamFile" >> *ascii::space >> '{' >> *(ascii::char_ - '}') >> '}'
-         | "dimensions" >> *(ascii::char_ - qi::eol) >> qi::eol
-         | "internalField" >> *(ascii::char_ - qi::eol) >> qi::eol
-         ;
-   }
-
-   qi::rule<Iterator> start;
-};
-
-//Skipper for skipping FOAM Headers and unimportant data
+//Skipper - skipping unimportant data when parsing FOAM headers
 template <typename Iterator>
 struct headerSkipper: qi::grammar<Iterator> {
 
@@ -514,7 +516,7 @@ HeaderInfo readFoamHeader(std::istream &stream)
 }
 
 
-//Skipper for skipping everything but the dimensions in the owners file Header
+//Skipper - skipping everything but the dimensions in the owners file Header
 template <typename Iterator>
 struct dimSkipper: qi::grammar<Iterator> {
 
@@ -535,7 +537,7 @@ struct dimSkipper: qi::grammar<Iterator> {
 
 //Parser that Reads the size of the domain (nCells, nPoints, nFaces, nInternalFaces) from the owners header (use together with dimSkipper)
 template <typename Iterator>
-struct dimParser: qi::grammar<Iterator, std::vector<index_t>(),
+struct dimParser: qi::grammar<Iterator, DimensionInfo(),
                                dimSkipper<Iterator> > {
 
    dimParser(): dimParser::base_type(start) {
@@ -547,8 +549,27 @@ struct dimParser: qi::grammar<Iterator, std::vector<index_t>(),
          ;
    }
 
-   qi::rule<Iterator, std::vector<index_t>(), dimSkipper<Iterator> > start;
+   qi::rule<Iterator, DimensionInfo(), dimSkipper<Iterator> > start;
    qi::rule<Iterator, index_t(),dimSkipper<Iterator> > term;
+};
+
+//Skipper - skipping FOAM Headers and unimportant data when parsing Boundary files
+template <typename Iterator>
+struct skipper: qi::grammar<Iterator> {
+
+   skipper(): skipper::base_type(start) {
+
+      start =
+         ascii::space
+         | "/*" >> *(ascii::char_ - "*/") >> "*/"
+         | "//" >> *(ascii::char_ - qi::eol) >> qi::eol
+         | "FoamFile" >> *ascii::space >> '{' >> *(ascii::char_ - '}') >> '}'
+         | "dimensions" >> *(ascii::char_ - qi::eol) >> qi::eol
+         | "internalField" >> *(ascii::char_ - qi::eol) >> qi::eol
+         ;
+   }
+
+   qi::rule<Iterator> start;
 };
 
 template <typename Iterator>
@@ -599,6 +620,7 @@ Boundaries loadBoundary(const std::string &meshdir) {
    bounds.valid = qi::phrase_parse(fwd_begin, fwd_end, p, skipper, boundaries);
 
    std::map<std::string, std::map<std::string, std::string> >::iterator top;
+   index_t index=0;
    for (top = boundaries.begin(); top != boundaries.end(); top ++) {
 
       std::string name = top->first;
@@ -617,7 +639,8 @@ Boundaries loadBoundary(const std::string &meshdir) {
          std::string t = type->second;
          index_t n = atol(nFaces->second.c_str());
          index_t s = atol(startFace->second.c_str());
-         bounds.addBoundary(Boundary(name, s, n, t));
+         bounds.addBoundary(Boundary(name, s, n, t, index));
+         ++index;
       }
    }
 
@@ -689,14 +712,8 @@ DimensionInfo readDimensions(const std::string &meshdir) {
    }
    std::string header = getFoamHeader(*fileIn);
 
-   std::vector<index_t> dims;
-   bool r = qi::phrase_parse(header.begin(), header.end(), dimParser, dimSkipper, dims);
-   //std::cerr << " " << "Dimension parsing successful: " << r << "  ## dimensions loaded: " << dims.size()<< " of 4" << std::endl;
    DimensionInfo info;
-   info.points = dims[0];
-   info.cells = dims[1];
-   info.faces = dims[2];
-   info.internalFaces = dims[3];
+   bool r = qi::phrase_parse(header.begin(), header.end(), dimParser, dimSkipper, info);
    return info;
 }
 
@@ -761,6 +778,6 @@ std::vector<index_t> getVerticesForCell(const std::vector<index_t> &cellfaces,
       }
    }
    std::sort(cellvertices.begin(),cellvertices.end());
-   cellvertices.erase(std::unique(cellvertices.begin(), cellvertices.end()), cellvertices.end());
+   cellvertices.erase(std::unique(cellvertices.begin(), cellvertices.end()), cellvertices.end()); //Delete duplicate entries
    return cellvertices;
 }
