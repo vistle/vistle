@@ -488,6 +488,8 @@ bool StateTracker::handle(const message::SetParameterChoices &choices) {
 
    choices.apply(p);
 
+   //CERR << "choices changed for " << choices.getModule() << ":" << choices.getName() << ": #" << p->choices().size() << std::endl;
+
    for (StateObserver *o: m_observers) {
       o->incModificationCount();
       o->parameterChoicesChanged(choices.getModule(), choices.getName());

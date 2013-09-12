@@ -119,8 +119,52 @@ void Parameters::newParameter(int moduleId, QString parameterName)
    if (m_moduleId != moduleId)
       return;
 
-   parameterValueChanged(moduleId, parameterName);
+   vistle::Parameter *p = m_vistle->getParameter(moduleId, parameterName.toStdString());
+   if (!p)
+      return;
+
+   const auto &it = m_paramToProp.find(parameterName);
+   assert(it == m_paramToProp.end());
+
+   QtProperty *prop = nullptr;
+   if (vistle::IntParameter *ip = dynamic_cast<vistle::IntParameter *>(p)) {
+      if (ip->presentation() == vistle::Parameter::Boolean) {
+         prop = m_boolManager->addProperty(displayName(parameterName));
+      } else if (ip->presentation() == vistle::Parameter::Choice) {
+         prop = m_intChoiceManager->addProperty(displayName(parameterName));
+      } else {
+         prop = m_intManager->addProperty(displayName(parameterName));
+      }
+   } else if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
+      prop = m_floatManager->addProperty(displayName(parameterName));
+      m_floatManager->setDecimals(prop, NumDec);
+   } else if (vistle::StringParameter *sp = dynamic_cast<vistle::StringParameter *>(p)) {
+      if (sp->presentation() == vistle::Parameter::Choice) {
+         prop = m_stringChoiceManager->addProperty(displayName(parameterName));
+      } else {
+         prop = m_stringManager->addProperty(displayName(parameterName));
+      }
+   } else if (vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p)) {
+      vistle::ParamVector value = vp->getValue();
+      prop = m_vectorManager->addProperty(displayName(parameterName));
+      m_vectorManager->setDecimals(prop, NumDec);
+      m_vectorManager->setDimension(prop, value.dim);
+   } else {
+   }
+
+   if (prop) {
+      prop->setToolTip(QString::fromStdString(p->description()));
+      prop->setWhatsThis(QString::fromStdString(p->description()));
+      m_paramToProp[parameterName] = prop;
+      m_propToParam[prop] = parameterName;
+      if (parameterName.startsWith("_"))
+         m_internalGroup->addSubProperty(prop);
+      else
+         addProperty(prop);
+   }
+
    parameterChoicesChanged(moduleId, parameterName);
+   parameterValueChanged(moduleId, parameterName);
 }
 
 void Parameters::parameterValueChanged(int moduleId, QString parameterName)
@@ -145,45 +189,25 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
 
    if (vistle::IntParameter *ip = dynamic_cast<vistle::IntParameter *>(p)) {
       if (ip->presentation() == vistle::Parameter::Boolean) {
-         if (!prop)
-            prop = m_boolManager->addProperty(displayName(parameterName));
          m_boolManager->setValue(prop, ip->getValue() != 0);
       } else if (ip->presentation() == vistle::Parameter::Choice) {
-         if (!prop)
-            prop = m_intChoiceManager->addProperty(displayName(parameterName));
          m_intChoiceManager->setValue(prop, ip->getValue());
-#if 0
-         QStringList choices;
-         for (auto &choice: ip->choices()) {
-            choices << QString::fromStdString(choice);
-         }
-         m_intChoiceManager->setEnumNames(prop, choices);
-#endif
       } else {
-         if (!prop) {
-            prop = m_intManager->addProperty(displayName(parameterName));
-         }
          m_intManager->setValue(prop, ip->getValue());
          m_intManager->setRange(prop, ip->minimum(), ip->maximum());
       }
    } else if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
-      if (!prop) {
-         prop = m_floatManager->addProperty(displayName(parameterName));
-         m_floatManager->setDecimals(prop, NumDec);
-      }
       m_floatManager->setValue(prop, fp->getValue());
       m_floatManager->setRange(prop, fp->minimum(), fp->maximum());
    } else if (vistle::StringParameter *sp = dynamic_cast<vistle::StringParameter *>(p)) {
       if (sp->presentation() == vistle::Parameter::Choice) {
-         if (!prop) {
-            prop = m_stringChoiceManager->addProperty(displayName(parameterName));
-         }
-         int choice = 0;
+         QStringList choices = m_stringChoiceManager->enumNames(prop);
+         QString val = QString::fromStdString(sp->getValue());
+         int choice = choices.indexOf(val);
+         if (choice < 0)
+            choice = 0;
          m_stringChoiceManager->setValue(prop, choice);
       } else {
-         if (!prop) {
-            prop = m_stringManager->addProperty(displayName(parameterName));
-         }
          m_stringManager->setValue(prop, QString::fromStdString(sp->getValue()));
       }
    } else if (vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p)) {
@@ -197,22 +221,11 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
       m_vectorManager->setRange(prop, vp->minimum(), vp->maximum());
    } else {
    }
-
-   if (insert && prop) {
-      prop->setToolTip(QString::fromStdString(p->description()));
-      prop->setWhatsThis(QString::fromStdString(p->description()));
-      m_paramToProp[parameterName] = prop;
-      m_propToParam[prop] = parameterName;
-      if (parameterName.startsWith("_"))
-         m_internalGroup->addSubProperty(prop);
-      else
-         addProperty(prop);
-   }
 }
 
 void Parameters::parameterChoicesChanged(int moduleId, QString parameterName)
 {
-   //std::cerr << "choices changed" << std::endl;
+   //std::cerr << "choices changed for " << moduleId << ":" << parameterName.toStdString() << std::endl;
    if (m_moduleId != moduleId)
       return;
 
@@ -290,14 +303,16 @@ void Parameters::propertyChanged(QtProperty *prop)
       std::string value;
       if (sp->presentation() == vistle::Parameter::Choice) {
          int choice = m_stringChoiceManager->value(prop);
+         std::cerr << "choice index: " << choice << std::endl;
          QStringList choices = m_stringChoiceManager->enumNames(prop);
          value = choices[choice].toStdString();
+         std::cerr << "choice value: " << value << std::endl;
       } else {
          value = m_stringManager->value(prop).toStdString();
       }
       if (sp->getValue() != value) {
          changed = true;
-         sp->setValue(m_stringManager->value(prop).toStdString());
+         sp->setValue(value);
       }
    } else if (vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p)) {
       if (vp->getValue() != m_vectorManager->value(prop)) {

@@ -32,7 +32,8 @@ class V_COREEXPORT Parameter {
       Generic, // default, keep first
       Filename, // String
       Directory, // String
-      Pathname, // String
+      ExistingPathname, // String
+      NewPathname, // String
       Boolean, // Integer
       Choice, // Integer (fixed choice) and String (dynamic choice)
       Slider, // Integer, Float
@@ -220,7 +221,7 @@ struct ParameterCheck<std::string> {
          return true;
       }
       if (std::find(choices.begin(), choices.end(), value) == choices.end()) {
-         std::cerr << "StringParameter: choice not valid" << std::endl;
+         std::cerr << "StringParameter: choice \"" << value << "\" not valid" << std::endl;
          return false;
       }
       return true;

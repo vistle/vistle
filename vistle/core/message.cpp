@@ -692,6 +692,7 @@ bool SetParameterChoices::apply(Parameter *param) const {
       size_t len = strnlen(choices[i], sizeof(choices[i]));
       ch.push_back(std::string(choices[i], len));
    }
+
    param->setChoices(ch);
    return true;
 }

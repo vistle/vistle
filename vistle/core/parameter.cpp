@@ -36,8 +36,8 @@ void Parameter::setDescription(const std::string &d) {
 
 void Parameter::setChoices(const std::vector<std::string> &c) {
 
-   if (checkChoice(c))
-      m_choices = c;
+   checkChoice(c);
+   m_choices = c;
 }
 
 int Parameter::module() const {
