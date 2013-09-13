@@ -98,14 +98,16 @@ class V_COREEXPORT Module {
 
    void sendMessage(const message::Message &message) const;
 
+   void sendInfo(const std::string &msg) const;
+
    /// send message to UI - printf style
-   void sendInfo(const char *fmt, ...)
+   void sendInfo(const char *fmt, ...) const
 #ifdef __GNUC__
    __attribute__ ((format (printf, 2, 3)))
 #endif
    ;
    /// send response message to UI - printf style
-   void sendInfo(const message::Message &msg, const char *fmt, ...)
+   void sendInfo(const message::Message &msg, const char *fmt, ...) const
 #ifdef __GNUC__
    __attribute__ ((format (printf, 3, 4)))
 #endif

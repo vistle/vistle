@@ -44,6 +44,22 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
    : m_module(mod)
    {}
 
+   ~msgstreambuf()
+   {
+      flush();
+   }
+
+   void flush(ssize_t count=-1) {
+      size_t size = count==-1 ? m_buf.size() : count;
+      m_module->sendInfo(std::string(m_buf.data(), size));
+
+      if (count == -1) {
+         m_buf.clear();
+      } else {
+         m_buf.erase(m_buf.begin(), m_buf.begin()+count);
+      }
+   }
+
    int overflow(int ch) {
       if (ch != EOF) {
          m_buf.push_back(ch);
@@ -59,13 +75,11 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
       size_t end = m_buf.size();
       m_buf.resize(end+num);
       memcpy(m_buf.data()+end, s, num);
-      flush();
+      auto it = std::find(m_buf.rbegin(), m_buf.rend(), '\n');
+      if (it != m_buf.rend()) {
+         flush(it - m_buf.rend());
+      }
       return num;
-   }
-
-   void flush() {
-      m_module->sendInfo("%s", std::string(m_buf.data(), m_buf.size()).c_str());
-      m_buf.clear();
    }
 
  private:
@@ -784,7 +798,6 @@ void Module::sendMessage(const message::Message &message) const {
    sendMessageQueue->getMessageQueue().send(&message, message.size(), 0);
 }
 
-
 bool Module::handleMessage(const vistle::message::Message *message) {
 
    switch (message->type()) {
@@ -1163,8 +1176,14 @@ void instantiate_parameter_functions() {
    mpl::for_each<Parameters>(instantiator());
 }
 
-void vistle::Module::sendInfo(const char *fmt, ...)
-{
+void Module::sendInfo(const std::string &msg) const {
+
+   message::SendInfo info(msg);
+   sendMessage(info);
+}
+
+void vistle::Module::sendInfo(const char *fmt, ...) const {
+
    if(!fmt) {
       fmt = "(empty message)";
    }
@@ -1179,8 +1198,8 @@ void vistle::Module::sendInfo(const char *fmt, ...)
    sendMessage(info);
 }
 
-void Module::sendInfo(const message::Message &msg, const char *fmt, ...)
-{
+void Module::sendInfo(const message::Message &msg, const char *fmt, ...) const {
+
    if(!fmt) {
       fmt = "(empty message)";
    }
