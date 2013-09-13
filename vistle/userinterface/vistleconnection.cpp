@@ -155,4 +155,16 @@ void VistleConnection::executeSources() const
    }
 }
 
+void VistleConnection::connect(const Port *from, const Port *to) const {
+
+   message::Connect conn(from->getModuleID(), from->getName(), to->getModuleID(), to->getName());
+   sendMessage(conn);
+}
+
+void VistleConnection::disconnect(const Port *from, const Port *to) const {
+
+   message::Disconnect disc(from->getModuleID(), from->getName(), to->getModuleID(), to->getName());
+   sendMessage(disc);
+}
+
 } //namespace vistle

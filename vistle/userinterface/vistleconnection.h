@@ -28,6 +28,9 @@ public:
    void setParameter(int id, const std::string &name, const T &value) const;
    void sendParameter(const Parameter *p) const;
 
+   void connect(const Port *from, const Port *to) const;
+   void disconnect(const Port *from, const Port *to) const;
+
    int barrier() const;
    void resetDataFlowNetwork() const;
    void executeSources() const;
