@@ -37,9 +37,11 @@ void VistleConnection::cancel() {
 
 void VistleConnection::operator()() {
    while(m_ui.dispatch()) {
-      mutex_lock lock(m_mutex);
-      if (m_done) {
-         break;
+      {
+         mutex_lock lock(m_mutex);
+         if (m_done) {
+            break;
+         }
       }
       usleep(10000);
    }

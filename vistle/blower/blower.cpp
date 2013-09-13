@@ -23,9 +23,11 @@ class UiRunner {
    void operator()() {
 
       while(m_ui.dispatch()) {
-         boost::unique_lock<boost::mutex> lock(m_mutex);
-         if (m_done)
-            break;
+         {
+            boost::unique_lock<boost::mutex> lock(m_mutex);
+            if (m_done)
+               break;
+         }
          usleep(10000);
       }
    }
