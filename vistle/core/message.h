@@ -79,7 +79,7 @@ class V_COREEXPORT Message {
       SETID,
       RESETMODULEIDS,
       REPLAYFINISHED,
-      SENDINFO,
+      SENDTEXT,
    };
 
    Message(const Type type, const unsigned int size);
@@ -501,24 +501,36 @@ public:
 };
 BOOST_STATIC_ASSERT(sizeof(ReplayFinished) < Message::MESSAGE_SIZE);
 
-class V_COREEXPORT SendInfo: public Message {
+class V_COREEXPORT SendText: public Message {
 
 public:
-   SendInfo(const std::string &text, const Message *inResponseTo=nullptr);
+   enum TextType {
+      Cout,
+      Cerr,
+      Clog,
+      Info,
+      Warning,
+      Error,
+   };
 
+   //! Error message in response to a Message
+   SendText(const std::string &text, const Message &inResponseTo);
+   SendText(TextType type, const std::string &text);
+
+   TextType textType() const;
    Type referenceType() const;
    uuid_t referenceUuid() const;
    const char *text() const;
 
 private:
+   //! type of text
+   TextType m_textType;
    //! uuid of Message this message is a response to
    uuid_t m_referenceUuid;
    //! Type of Message this message is a response to
    Type m_referenceType;
    //! message text
    text_t m_text;
-
-
 };
 
 } // namespace message

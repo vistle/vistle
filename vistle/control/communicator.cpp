@@ -452,8 +452,8 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
-      case message::Message::SENDINFO: {
-         const message::SendInfo &m = static_cast<const message::SendInfo &>(message);
+      case message::Message::SENDTEXT: {
+         const message::SendText &m = static_cast<const message::SendText &>(message);
          sendUi(m);
          //result = m_moduleManager->handle(m);
          break;

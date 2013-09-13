@@ -44,14 +44,14 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
    : m_module(mod)
    {}
 
-   ~msgstreambuf()
-   {
+   ~msgstreambuf() {
+
       flush();
    }
 
    void flush(ssize_t count=-1) {
       size_t size = count==-1 ? m_buf.size() : count;
-      m_module->sendInfo(std::string(m_buf.data(), size));
+      m_module->sendText(message::SendText::Cerr, std::string(m_buf.data(), size));
 
       if (count == -1) {
          m_buf.clear();
@@ -1176,9 +1176,9 @@ void instantiate_parameter_functions() {
    mpl::for_each<Parameters>(instantiator());
 }
 
-void Module::sendInfo(const std::string &msg) const {
+void Module::sendText(int type, const std::string &msg) const {
 
-   message::SendInfo info(msg);
+   message::SendText info(message::SendText::TextType(type), msg);
    sendMessage(info);
 }
 
@@ -1194,11 +1194,11 @@ void vistle::Module::sendInfo(const char *fmt, ...) const {
    vsnprintf(text, strlen(fmt)+500, fmt, args);
    va_end(args);
 
-   message::SendInfo info(text);
+   message::SendText info(message::SendText::Info, text);
    sendMessage(info);
 }
 
-void Module::sendInfo(const message::Message &msg, const char *fmt, ...) const {
+void Module::sendWarning(const char *fmt, ...) const {
 
    if(!fmt) {
       fmt = "(empty message)";
@@ -1210,7 +1210,39 @@ void Module::sendInfo(const message::Message &msg, const char *fmt, ...) const {
    vsnprintf(text, strlen(fmt)+500, fmt, args);
    va_end(args);
 
-   message::SendInfo info(text, &msg);
+   message::SendText info(message::SendText::Warning, text);
+   sendMessage(info);
+}
+
+void Module::sendError(const char *fmt, ...) const {
+
+   if(!fmt) {
+      fmt = "(empty message)";
+   }
+   char *text = new char[strlen(fmt)+500];
+
+   va_list args;
+   va_start(args, fmt);
+   vsnprintf(text, strlen(fmt)+500, fmt, args);
+   va_end(args);
+
+   message::SendText info(message::SendText::Error, text);
+   sendMessage(info);
+}
+
+void Module::sendError(const message::Message &msg, const char *fmt, ...) const {
+
+   if(!fmt) {
+      fmt = "(empty message)";
+   }
+   char *text = new char[strlen(fmt)+500];
+
+   va_list args;
+   va_start(args, fmt);
+   vsnprintf(text, strlen(fmt)+500, fmt, args);
+   va_end(args);
+
+   message::SendText info(text, msg);
    sendMessage(info);
 }
 

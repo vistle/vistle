@@ -289,8 +289,8 @@ bool StateTracker::handleMessage(const message::Message &msg) {
          return handle(fin);
          break;
       }
-      case Message::SENDINFO: {
-         const SendInfo &info = static_cast<const SendInfo &>(msg);
+      case Message::SENDTEXT: {
+         const SendText &info = static_cast<const SendText &>(msg);
          return handle(info);
          break;
       }
@@ -569,7 +569,7 @@ bool StateTracker::handle(const message::ReplayFinished &reset)
    return true;
 }
 
-bool StateTracker::handle(const message::SendInfo &info)
+bool StateTracker::handle(const message::SendText &info)
 {
    for (StateObserver *o: m_observers) {
       o->info(info.text(), info.senderId(), 0, info.referenceType(), info.referenceUuid());

@@ -98,7 +98,8 @@ class V_COREEXPORT Module {
 
    void sendMessage(const message::Message &message) const;
 
-   void sendInfo(const std::string &msg) const;
+   //! type should be a message::SendText::TextType
+   void sendText(int type, const std::string &msg) const;
 
    /// send message to UI - printf style
    void sendInfo(const char *fmt, ...) const
@@ -106,8 +107,20 @@ class V_COREEXPORT Module {
    __attribute__ ((format (printf, 2, 3)))
 #endif
    ;
+   /// send message to UI - printf style
+   void sendWarning(const char *fmt, ...) const
+#ifdef __GNUC__
+   __attribute__ ((format (printf, 2, 3)))
+#endif
+   ;
+   /// send message to UI - printf style
+   void sendError(const char *fmt, ...) const
+#ifdef __GNUC__
+   __attribute__ ((format (printf, 2, 3)))
+#endif
+   ;
    /// send response message to UI - printf style
-   void sendInfo(const message::Message &msg, const char *fmt, ...) const
+   void sendError(const message::Message &msg, const char *fmt, ...) const
 #ifdef __GNUC__
    __attribute__ ((format (printf, 3, 4)))
 #endif
@@ -141,6 +154,7 @@ class V_COREEXPORT Module {
    virtual bool parameterChanged(Parameter *p);
 
  private:
+
    Parameter *findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;
    Port *findOutputPort(const std::string &name) const;

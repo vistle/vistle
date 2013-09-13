@@ -92,7 +92,7 @@ class V_COREEXPORT StateTracker {
    bool handle(const message::BarrierReached &barrierReached);
    bool handle(const message::ResetModuleIds &reset);
    bool handle(const message::ReplayFinished &reset);
-   bool handle(const message::SendInfo &info);
+   bool handle(const message::SendText &info);
 
    PortTracker *portTracker() const;
 

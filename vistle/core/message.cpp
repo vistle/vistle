@@ -740,29 +740,40 @@ ReplayFinished::ReplayFinished()
 {
 }
 
-SendInfo::SendInfo(const std::string &text, const Message *inResponseTo)
-: Message(Message::SENDINFO, sizeof(SendInfo))
-, m_referenceType(Message::INVALID)
+SendText::SendText(const std::string &text, const Message &inResponseTo)
+: Message(Message::SENDTEXT, sizeof(SendText))
+, m_textType(TextType::Error)
+, m_referenceUuid(inResponseTo.uuid())
+, m_referenceType(inResponseTo.type())
 {
-   if (inResponseTo) {
-      m_referenceType = inResponseTo->type();
-      m_referenceUuid = inResponseTo->uuid();
-   }
    COPY_STRING(m_text, text);
 }
 
-Message::Type SendInfo::referenceType() const
+SendText::SendText(SendText::TextType type, const std::string &text)
+: Message(Message::SENDTEXT, sizeof(SendText))
+, m_textType(type)
+, m_referenceType(Message::INVALID)
 {
+   COPY_STRING(m_text, text);
+}
+
+SendText::TextType SendText::textType() const {
+
+   return m_textType;
+}
+
+Message::Type SendText::referenceType() const {
+
    return m_referenceType;
 }
 
-Message::uuid_t SendInfo::referenceUuid() const
-{
+Message::uuid_t SendText::referenceUuid() const {
+
    return m_referenceUuid;
 }
 
-const char *SendInfo::text() const
-{
+const char *SendText::text() const {
+
    return m_text;
 }
 
