@@ -39,9 +39,10 @@ int main(int argc, char *argv[])
             port = atoi(argv[2]);
         }
 
+        QApplication a(argc, argv);
+
         vistle::PythonInterface python("Vistle GUI");
         std::cerr << "trying to connect UI to " << host << ":" << port << std::endl;
-        QApplication a(argc, argv);
         MainWindow w;
         VistleObserver observer;
         w.setVistleobserver(&observer);

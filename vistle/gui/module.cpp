@@ -30,55 +30,28 @@ namespace gui {
  *
  * \todo move the generation of the ports and the main shape out of the constructor
  */
-Module::Module(QGraphicsItem *parent, QString name) : QGraphicsItem(parent)
+Module::Module(QGraphicsItem *parent, QString name) : Base(parent)
 {
+   setName(name);
 
-   shape = new QGraphicsPolygonItem(this);
+   setFlag(QGraphicsItem::ItemIsMovable);
+   setFlag(QGraphicsItem::ItemIsSelectable);
+   setFlag(QGraphicsItem::ItemIsFocusable);
+   setFlag(QGraphicsItem::ItemSendsGeometryChanges);
+   setCursor(Qt::OpenHandCursor);
 
+   createActions();
+   createMenus();
+   createGeometry();
 
-    QString toolTip;
-    createPorts();
-    setName(name);
-    modIsVisited = false;
-
-    setFlag(QGraphicsItem::ItemIsMovable);
-    setFlag(QGraphicsItem::ItemIsSelectable);
-    setFlag(QGraphicsItem::ItemIsFocusable);
-    setFlag(QGraphicsItem::ItemSendsGeometryChanges);
-    setToolTip(m_name);
-    setCursor(Qt::OpenHandCursor);
-
-    createActions();
-    createMenus();
-
-    setStatus(m_Status);
+   setStatus(m_Status);
 }
 
 Module::~Module()
 {
-    portList.clear();
-    clearConnections();
-    parentModules.clear();
-    childModules.clear();
-    paramModules.clear();
-    delete shape;
-    delete statusShape;
     delete m_moduleMenu;
-    delete m_copyAct;
     delete m_execAct;
     delete m_deleteAct;
-    delete m_deleteConnectionAct;
-}
-
-/*!
- * \brief Module::copy
- *
- * \todo add copy functionality. Need some sort of buffer to hold any modules that are copied.
- * \todo should the copy action be done in the module? Or passed up to the scene?
- */
-void Module::copy()
-{
-
 }
 
 void Module::execModule()
@@ -97,64 +70,9 @@ void Module::deleteModule()
    vistle::VistleConnection::the().sendMessage(m);
 }
 
-/*!
- * \brief Module::deleteConnections
- */
-void Module::deleteConnections()
+void Module::createGeometry()
 {
-    clearConnections();
-}
-
-/*!
- * \brief Module::createPorts create the connection ports for the module.
- */
-void Module::createPorts()
-{
-    // Set the points of the input, output, and parameter shapes. Currently triangles
-    QVector<QPointF> points = { QPointF(-xAddr, yAddr),
-               QPointF(-xAddr / 2, yAddr * 1.5),
-               QPointF(-xAddr / 2, yAddr / 2) };
-    portList.append(new Port(QPolygonF(points), Port::INPUT, this));
-
-    points = { QPointF(xAddr, yAddr),
-               QPointF(xAddr / 2, yAddr * 1.5),
-               QPointF(xAddr / 2, yAddr / 2) };
-    portList.append(new Port(QPolygonF(points), Port::OUTPUT, this));
-
-    points = { QPointF(0,0),
-               QPointF(xAddr / 2, yAddr / 2),
-               QPointF(-xAddr / 2, yAddr / 2) };
-    portList.append(new Port(QPolygonF(points), Port::PARAMETER, this));
-
-    points =  { QPointF(0, yAddr * 2),
-                QPointF(-xAddr / 2, yAddr * 1.5),
-                QPointF(xAddr / 2, yAddr * 1.5) };
-    portList.append(new Port(QPolygonF(points), Port::PARAMETER, this));
-}
-
-void Module::updatePorts()
-{
-   assert (portList.size() == 4);
-
-   QVector<QPointF> points = { QPointF(-xAddr, yAddr),
-                               QPointF(-xAddr / 2, yAddr * 1.5),
-                               QPointF(-xAddr / 2, yAddr / 2) };
-   portList[0]->setPolygon(QPolygonF(points));
-
-   points = { QPointF(xAddr, yAddr),
-              QPointF(xAddr / 2, yAddr * 1.5),
-              QPointF(xAddr / 2, yAddr / 2) };
-   portList[1]->setPolygon(QPolygonF(points));
-
-   points = { QPointF(0,0),
-              QPointF(xAddr / 2, yAddr / 2),
-              QPointF(-xAddr / 2, yAddr / 2) };
-   portList[2]->setPolygon(QPolygonF(points));
-
-   points =  { QPointF(0, yAddr * 2),
-               QPointF(-xAddr / 2, yAddr * 1.5),
-               QPointF(xAddr / 2, yAddr * 1.5) };
-   portList[3]->setPolygon(QPolygonF(points));
+   m_color = QColor(100, 200, 200);
 }
 
 /*!
@@ -164,11 +82,6 @@ void Module::updatePorts()
  */
 void Module::createActions()
 {
-    m_copyAct = new QAction("Copy", this);
-    m_copyAct->setShortcuts(QKeySequence::Copy);
-    m_copyAct->setStatusTip("Copy the module, and all of its properties");
-    connect(m_copyAct, SIGNAL(triggered()), this, SLOT(copy()));
-
     m_deleteAct = new QAction("Delete", this);
     m_deleteAct->setShortcuts(QKeySequence::Delete);
     m_deleteAct->setStatusTip("Delete the module and all of its connections");
@@ -177,10 +90,6 @@ void Module::createActions()
     m_execAct = new QAction("Execute", this);
     m_execAct->setStatusTip("Execute the module");
     connect(m_execAct, SIGNAL(triggered()), this, SLOT(execModule()));
-
-    m_deleteConnectionAct = new QAction("Delete All Connections", this);
-    m_deleteConnectionAct->setStatusTip(tr("Delete the module's connections"));
-    connect(m_deleteConnectionAct, SIGNAL(triggered()), this, SLOT(deleteConnections()));
 }
 
 /*!
@@ -195,24 +104,63 @@ void Module::createMenus()
       m_moduleMenu = new QMenu();
    m_moduleMenu->addAction(m_execAct);
    m_moduleMenu->addSeparator();
-   m_moduleMenu->addAction(m_copyAct);
    m_moduleMenu->addAction(m_deleteAct);
-   m_moduleMenu->addSeparator();
-   m_moduleMenu->addAction(m_deleteConnectionAct);
+}
 
+void Module::doLayout() {
+
+   prepareGeometryChange();
+
+   // get the pixel width of the string
+   QFont font;
+   QFontMetrics fm(font);
+   QRect textRect = fm.boundingRect(m_name);
+   m_fontHeight = textRect.height() + 4*portDistance;
+
+   double w = textRect.width() + 2*portDistance;
+   double h = m_fontHeight + 2*portDistance;
+
+   {
+      int idx = 0;
+      for (Port *in: m_inPorts) {
+         in->setPos(portDistance + idx*(portDistance+Port::portSize), 0.);
+         ++idx;
+      }
+      w = qMax(w, 2*portDistance + idx*(portDistance+Port::portSize));
+
+   }
+
+   {
+      int idx = 0;
+      for (Port *out: m_outPorts) {
+         out->setPos(portDistance + idx*(portDistance+Port::portSize), h);
+         ++idx;
+      }
+      w = qMax(w, 2*portDistance + idx*(portDistance+Port::portSize));
+   }
+
+   {
+      int idx = 0;
+      for (Port *param: m_paramPorts) {
+         param->setPos(portDistance + idx*(portDistance+Port::portSize), 0);
+         param->setVisible(false);
+         ++idx;
+      }
+      //w = qMax(w, 2*portDistance + idx*(portDistance+Port::portSize));
+   }
+
+   h += Port::portSize;
+
+   setRect(0., 0., w, h);
 }
 
 /*!
  * \brief Module::boundingRect
  * \return the bounding rectangle for the module
  */
-QRectF Module::boundingRect() const
-{
-   return childrenBoundingRect();
-#if 0
-    ///\todo The bounding area right now is a rectangle simply corresponding to the basic dimensions... improve?
-    return QRectF(-xAddr, 0.0, w, h);
-#endif
+QRectF Module::boundingRect() const {
+
+   return rect().united(childrenBoundingRect());
 }
 
 /*!
@@ -223,60 +171,30 @@ QRectF Module::boundingRect() const
  */
 void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-    // Determine various drawing options here, including color.
-    ///\todo change colors depending on type of module, hostname, etc.
-    QBrush *brush = new QBrush(Qt::gray, Qt::SolidPattern);
-    QBrush *highlightBrush = new QBrush(Qt::yellow, Qt::SolidPattern);
-    QPen *highlightPen = new QPen(*highlightBrush, 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
-    if (isSelected()) { painter->setPen(*highlightPen); }
+   // Determine various drawing options here, including color.
+   ///\todo change colors depending on type of module, hostname, etc.
+   QBrush brush(m_color, Qt::SolidPattern);
+   painter->setBrush(brush);
 
-    painter->setBrush(*brush);
-    painter->drawPolygon(baseShape, Qt::OddEvenFill);
+   QPen highlightPen(m_borderColor, 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+   if (isSelected()) {
 
-    switch (m_Status) {
-        case SPAWNING:
-            brush->setColor(Qt::gray);
-            break;
-        case INITIALIZED:
-            brush->setColor(Qt::green);
-            break;
-        case KILLED:
-            brush->setColor(Qt::red);
-            break;
-        case BUSY:
-            brush->setColor(Qt::yellow);
-            break;
-        case ERROR:
-            brush->setColor(Qt::black);
-            break;
-    }
+      QPen pen(scene()->highlightColor(), 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+      painter->setPen(pen);
+   } else {
 
-    painter->setBrush(*brush);
-    painter->drawPolygon(statusShape->polygon());
+      if (m_Status == INITIALIZED) {
+         painter->setPen(Qt::NoPen);
+      } else {
+         painter->setPen(highlightPen);
+      }
+      painter->setBrush(brush);
+   }
 
-    // Draw the ports.
-    foreach (Port *port, portList) {
-        switch (port->port()) {
-            case Port::INPUT:
-                brush->setColor(Qt::red);
-                break;
-            case Port::OUTPUT:
-                brush->setColor(Qt::blue);
-                break;
-            case Port::PARAMETER:
-                brush->setColor(Qt::black);
-                break;
-            case Port::MAIN:
-            case Port::DEFAULT:
-                break;
-        }
+   painter->drawRoundedRect(rect(), portDistance, portDistance);
 
-        painter->setBrush(*brush);
-        painter->drawPolygon(port->polygon());
-    }
-
-    painter->setPen(Qt::black);
-    painter->drawText(QPointF(-xAddr / 2.25, yAddr), m_name);
+   painter->setPen(Qt::black);
+   painter->drawText(QPointF(portDistance, portDistance+Port::portSize+m_fontHeight/2.), m_name);
 }
 
 /*!
@@ -309,96 +227,28 @@ void Module::updatePosition(QPointF newPos) const
    }
 }
 
-/*!
- * \brief Module::addconnection
- * \param connection
- */
-void Module::addConnection(Connection *connection)
+void Module::addPort(vistle::Port *port)
 {
-    connectionList.append(connection);
-}
+   Port *guiPort = new Port(port, this);
+   m_vistleToGui[port] = guiPort;
+   m_guiToVistle[guiPort] = port;
 
-/*!
- * \brief Module::removeconnection
- * \param connection
- */
-void Module::removeConnection(Connection *connection)
-{
-    int index = connectionList.indexOf(connection);
-    if (index != -1) { connectionList.removeAt(index); }
-}
+   switch(port->getType()) {
+      case vistle::Port::ANY:
+         std::cerr << "cannot handle port type ANY" << std::endl;
+         break;
+      case vistle::Port::INPUT:
+         m_inPorts.push_back(guiPort);
+         break;
+      case vistle::Port::OUTPUT:
+         m_outPorts.push_back(guiPort);
+         break;
+      case vistle::Port::PARAMETER:
+         m_paramPorts.push_back(guiPort);
+         break;
+   }
 
-/*!
- * \brief Module::clearconnections
- */
-void Module::clearConnections()
-{
-    foreach (Connection *connection, connectionList) {
-        connection->startItem()->removeConnection(connection);
-        connection->endItem()->removeConnection(connection);
-        scene()->removeItem(connection);
-        delete connection;
-    }
-
-}
-
-/*!
- * \brief Module::removeParent
- * \param parentMod
- * \return
- */
-bool Module::removeParent(Module *parentMod)
-{
-    Module *mod;
-    QList<Module *>::iterator it;
-    for (it = parentModules.begin(); it != parentModules.end(); ++it) {
-        mod = *it;
-        if (mod == parentMod) {
-            parentModules.erase(it);
-            return true;
-        }
-    }
-    return false;
-}
-
-/*!
- * \brief Module::removeChild
- * \param childMod
- * \return
- */
-bool Module::removeChild(Module *childMod)
-{
-    Module *mod;
-    QList<Module *>::iterator it;
-    for (it = childModules.begin(); it != childModules.end(); ++it) {
-        mod = *it;
-        if (mod == childMod) {
-            childModules.erase(it);
-            return true;
-        }
-    }
-    return false;
-
-}
-
-/*!
- * \brief Module::disconnectParameter
- * \param paramMod
- * \return
- */
-bool Module::disconnectParameter(Module *paramMod)
-{
-    Module *mod;
-    QList<Module *>::iterator it;
-    for (it = paramModules.begin(); it != paramModules.end(); ++it) {
-        mod = *it;
-        if (mod == paramMod) {
-            paramModules.erase(it);
-            return true;
-        }
-    }
-    return false;
-
+   doLayout();
 }
 
 QString Module::name() const
@@ -409,31 +259,8 @@ QString Module::name() const
 void Module::setName(QString name)
 {
    m_name = name;
-   setToolTip(m_name);
 
-   // get the pixel width of the string
-   QFont font("times", 30);
-   QFontMetrics fm(font);
-   w = fm.boundingRect(m_name).width() + 20;
-   h = fm.boundingRect(m_name).height() + 20;
-
-   // Calculate the crucial dimensions based off the width and height
-   xAddr = w / 2;
-   yAddr = h / 2;
-
-   // Set the points of the polygon. Currently a diamond
-   QVector<QPointF> points = { QPointF(0.0, 0.0),
-                               QPointF(xAddr, yAddr),
-                               QPointF(0.0, yAddr * 2),
-                               QPointF(-xAddr, yAddr) };
-   baseShape = QPolygonF(points);
-   shape->setPolygon(baseShape);
-
-   delete statusShape;
-   statusShape = new QGraphicsPolygonItem(QPolygonF(QRectF(QPointF(xAddr / 2 - 15, yAddr * 1.5 - 15),
-                                                           QPointF(xAddr / 2, yAddr * 1.5))), this);
-
-   updatePorts();
+   doLayout();
 }
 
 int Module::id() const
@@ -471,6 +298,29 @@ void Module::setPositionValid() {
    m_validPosition = true;
 }
 
+Port *Module::getGuiPort(vistle::Port *port) const {
+
+   const auto &it = m_vistleToGui.find(port);
+   if (it == m_vistleToGui.end())
+      return nullptr;
+
+   return it->second;
+}
+
+vistle::Port *Module::getVistlePort(Port *port) const {
+
+   const auto &it = m_guiToVistle.find(port);
+   if (it == m_guiToVistle.end())
+      return nullptr;
+
+   return it->second;
+}
+
+Scene *Module::scene() const {
+
+   return static_cast<Scene *>(Base::scene());
+}
+
 /*!
  * \brief Module::portPos return the outward point for a port.
  * \param port
@@ -478,13 +328,22 @@ void Module::setPositionValid() {
  *
  * \todo is it necessary to loop through the ports to find this?
  */
-QPointF Module::portPos(Port *port)
+QPointF Module::portPos(const Port *port) const
 {
-    foreach (Port *m_Slot, portList) {
-        if (m_Slot == port) {
-            return m_Slot->polygon().first();
-        }
-    }
+   {
+      int idx = m_inPorts.indexOf(const_cast<Port *>(port));
+      if (idx >= 0) {
+         //return QPointF(portDistance + idx*(Port::portSize+portDistance) + 0.5*Port::portSize, 0.5*Port::portSize);
+         return QPointF(portDistance + idx*(Port::portSize+portDistance) + 0.5*Port::portSize, 0.0*Port::portSize);
+      }
+   }
+
+   {
+      int idx = m_outPorts.indexOf(const_cast<Port *>(port));
+      if (idx >= 0) {
+         return QPointF(portDistance + idx*(Port::portSize+portDistance) + 0.5*Port::portSize, rect().bottom()-0.0*Port::portSize);
+      }
+   }
 
     return QPointF();
 }
@@ -498,22 +357,27 @@ void Module::setStatus(Module::Status status)
    switch (m_Status) {
    case SPAWNING:
       toolTip = "Spawning";
+      m_borderColor = Qt::gray;
       break;
    case INITIALIZED:
       toolTip = "Initialized";
+      m_borderColor = scene()->highlightColor();
       break;
    case KILLED:
       toolTip = "Killed";
+      m_borderColor = Qt::black;
       break;
    case BUSY:
       toolTip = "Busy";
+      m_borderColor = QColor(200, 200, 30);
       break;
    case ERROR:
       toolTip = "Error";
+      m_borderColor = Qt::red;
       break;
    }
 
-   statusShape->setToolTip(toolTip);
+   update();
 }
 
 } //namespace gui

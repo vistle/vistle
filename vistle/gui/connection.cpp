@@ -11,6 +11,7 @@
 /**********************************************************************************/
 #include "connection.h"
 #include "module.h"
+#include "scene.h"
 
 #include <QLine>
 #include <QPen>
@@ -18,49 +19,79 @@
 
 namespace gui {
 
-Connection::Connection(Module *startItem, Module *endItem, Port *startPort, Port *endPort, bool needsConnection, int connType)
+Connection::Connection(Port *startPort, Port *endPort, State state, QGraphicsItem *parent)
+: Base(parent)
+, m_state(state)
 {
-    // Do something
-    m_StartItem = startItem;
-    m_EndItem = endItem;
-    m_StartSlot = startPort;
-    m_EndSlot = endPort;
-    m_Color = Qt::black;
-    needsConnectionHead = needsConnection;
-    m_connectionType = connType;
 
-    setPen(QPen(m_Color, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-    setFlag(QGraphicsItem::ItemIsSelectable, true);
-    setCursor(Qt::OpenHandCursor);
+   // Do something
+   m_source = startPort;
+   m_destination = endPort;
+   m_color = Qt::black;
+   if (startPort->portType()==Port::Parameter && endPort->portType()==Port::Parameter)
+      m_connectionType = Port::Parameter;
+   else
+      m_connectionType = Port::Output;
+
+   setPen(QPen(m_color, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+   setFlag(QGraphicsItem::ItemIsSelectable, true);
+   setCursor(Qt::OpenHandCursor);
+   setState(m_state);
+
+   setAcceptHoverEvents(true);
 }
 
-/*!
- * \brief Connection::boundingRect
- * \return
- */
-QRectF Connection::boundingRect() const
-{
-    // extra selectable area
-    qreal extra = (pen().width() + 20) / 2.0;
-    return QRectF(line().p1(), QSizeF(line().p2().x() - line().p1().x(),
-                                      line().p2().y() - line().p1().y()))
-            .normalized()
-            .adjusted(-extra, -extra, extra, extra);
+Port *Connection::source() const {
+
+   return m_source;
 }
 
-/*!
- * \brief Connection::shape
- * \return QPainterPath
- */
-QPainterPath Connection::shape() const
-{
-    QPainterPath path = QGraphicsLineItem::shape();
-    // only add the polygon for the connection head if it is necessary
-    if (needsConnectionHead) { path.addPolygon(connectionHead); }
+Port *Connection::destination() const {
 
-    QPainterPathStroker stroker;
-    stroker.setWidth(20);
-    return stroker.createStroke(path);
+   return m_destination;
+}
+
+Connection::State Connection::state() const {
+   return m_state;
+}
+
+void Connection::setState(Connection::State state) {
+
+   m_state = state;
+
+   if (!isHighlighted()) {
+      switch(m_state) {
+         case ToEstablish:
+            setColor(QColor(140, 140, 140));
+            break;
+         case Established:
+            setColor(QColor(0, 0, 0));
+            break;
+         case ToRemove:
+            setColor(QColor(200, 50, 50));
+            break;
+      }
+   }
+}
+
+bool Connection::isHighlighted() const {
+
+   return m_highlight;
+}
+
+void Connection::setHighlight(bool highlight) {
+
+   m_highlight = highlight;
+   if (isHighlighted())
+      setColor(scene()->highlightColor());
+   else
+      setState(m_state);
+}
+
+void Connection::setColor(const QColor &color) {
+
+   m_color = color;
+   update();
 }
 
 /*!
@@ -70,9 +101,25 @@ QPainterPath Connection::shape() const
  */
 void Connection::updatePosition()
 {
-    QLineF line(mapFromItem(m_StartItem, 0, 0), mapFromItem(m_EndItem, 0, 0));
-    setLine(line);
+   QLineF line(mapFromScene(m_source->scenePos()), mapFromScene(m_destination->scenePos()));
+   setLine(line);
 }
+
+Scene *Connection::scene() const {
+
+   return static_cast<Scene *>(Base::scene());
+}
+
+void Connection::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
+
+   setHighlight(true);
+}
+
+void Connection::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
+
+   setHighlight(false);
+}
+
 
 /*!
  * \brief Connection::paint re-implementation of the paint method
@@ -83,19 +130,15 @@ void Connection::updatePosition()
 void Connection::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
                    QWidget *widget)
 {
-    if (m_StartItem->collidesWithItem(m_EndItem)) { return; }
-
     // Set the pen and the brush
     QPen m_Pen = pen();
-    m_Pen.setColor(m_Color);
-    ///\todo perfect connection size
-    qreal connectionSize = 10;
+    m_Pen.setColor(m_color);
     painter->setPen(m_Pen);
-    painter->setBrush(m_Color);
+    painter->setBrush(m_color);
 
     // find the position for drawing the connectionhead
-    QPointF startPoint = mapFromItem(m_StartItem, m_StartItem->portPos(m_StartSlot));
-    QPointF endPoint = mapFromItem(m_EndItem, m_EndItem->portPos(m_EndSlot));
+    QPointF startPoint = mapFromScene(m_source->scenePos());
+    QPointF endPoint = mapFromScene(m_destination->scenePos());
     QLineF centerLine(endPoint, startPoint);
 
     ///\todo re-implement collision calculations, incorporating proper positions
@@ -108,17 +151,6 @@ void Connection::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
     } else                { angle = (M_PI * 2) + angle; }
 
     painter->drawLine(line());
-
-    // draw the connection head
-    if (needsConnectionHead) {
-        QPointF connectionP1 = line().p1() + QPointF(sin(angle + M_PI / 3) * connectionSize,
-                                                cos(angle + M_PI / 3) * connectionSize);
-        QPointF connectionP2 = line().p1() + QPointF(sin(angle + M_PI - M_PI / 3) *connectionSize,
-                                                cos(angle + M_PI - M_PI / 3) * connectionSize);
-        connectionHead.clear();
-        connectionHead << line().p1() << connectionP1 << connectionP2;
-        painter->drawPolygon(connectionHead);
-    }
 
     ///\todo fix selection mechanism in the scene, or don't use functionality.
     /*

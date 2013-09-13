@@ -172,6 +172,12 @@ void MainWindow::parameterChoicesChanged_msg(int moduleId, QString parameterName
 
 void MainWindow::newPort_msg(int moduleId, QString portName)
 {
+   if (Module *m = m_scene->findModule(moduleId)) {
+      vistle::Port *port = m_vistleConnection->ui().state().portTracker()->getPort(moduleId, portName.toStdString());
+      if (port) {
+         m->addPort(port);
+      }
+   }
 #if 0
     QString text = "New port on ID: " + QString::number(moduleId) + ":" + portName;
     m_console->appendDebug(text);
@@ -179,17 +185,41 @@ void MainWindow::newPort_msg(int moduleId, QString portName)
 }
 
 void MainWindow::newConnection_msg(int fromId, QString fromName,
-                                   int toId, QString toName)
-{
-    QString text = "New Connection: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
-    m_console->appendDebug(text);
+                                   int toId, QString toName) {
+
+#if 0
+   QString text = "New Connection: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
+   m_console->appendDebug(text);
+#endif
+
+   vistle::Port *portFrom = m_vistleConnection->ui().state().portTracker()->getPort(fromId, fromName.toStdString());
+   vistle::Port *portTo = m_vistleConnection->ui().state().portTracker()->getPort(toId, toName.toStdString());
+
+   Module *mFrom = m_scene->findModule(fromId);
+   Module *mTo = m_scene->findModule(toId);
+
+   if (mFrom && portFrom && mTo && portTo) {
+      m_scene->addConnection(mFrom->getGuiPort(portFrom), mTo->getGuiPort(portTo));
+   }
 }
 
 void MainWindow::deleteConnection_msg(int fromId, QString fromName,
                                       int toId, QString toName)
 {
-    QString text = "Connection removed: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
-    m_console->appendDebug(text);
+#if 0
+   QString text = "Connection removed: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
+   m_console->appendDebug(text);
+#endif
+
+   vistle::Port *portFrom = m_vistleConnection->ui().state().portTracker()->getPort(fromId, fromName.toStdString());
+   vistle::Port *portTo = m_vistleConnection->ui().state().portTracker()->getPort(toId, toName.toStdString());
+
+   Module *mFrom = m_scene->findModule(fromId);
+   Module *mTo = m_scene->findModule(toId);
+
+   if (mFrom && portFrom && mTo && portTo) {
+      m_scene->removeConnection(mFrom->getGuiPort(portFrom), mTo->getGuiPort(portTo));
+   }
 }
 
 void MainWindow::setModified(bool state)
@@ -357,7 +387,7 @@ void MainWindow::setVistleobserver(VistleObserver *observer)
 
 void MainWindow::setVistleConnection(vistle::VistleConnection *conn)
 {
-    m_scene->setRunner(conn);
+    m_scene->setVistleConnection(conn);
     m_vistleConnection = conn;
 
     if (Parameters *p = parameters()) {
@@ -373,35 +403,6 @@ Parameters *MainWindow::parameters() const
 DataFlowView *MainWindow::dataFlowView() const
 {
    return ui->drawArea;
-}
-
-/*!
- * \brief MainWindow::on_dragButton_clicked button that mimics a dragging operation
- */
-void MainWindow::on_dragButton_clicked()
-{
-    QDrag *drag = new QDrag(this);
-    QMimeData *mimeData = new QMimeData;
-
-    mimeData->setText("Test");
-    drag->setMimeData(mimeData);
-    drag->start();
-}
-
-/*!
- * \brief MainWindow::on_sortButton_clicked button that sorts the modules in the scene
- */
-void MainWindow::on_sortButton_clicked()
-{
-    m_scene->sortModules();
-}
-
-/*!
- * \brief MainWindow::on_invertModulesButton_clicked button that inverts the orientation of the modules in the scene
- */
-void MainWindow::on_invertModulesButton_clicked()
-{
-    m_scene->invertModules();
 }
 
 /*!
@@ -431,21 +432,6 @@ QList<QString> MainWindow::loadModuleFile()
     moduleList << "ReadVistle";
     moduleList << "WriteVistle";
 
-#if 0
-    QFile inputFile("/mnt/raid/home/hpcskimb/vistle/vistle/gui/module_list.txt");
-    if (inputFile.open(QIODevice::ReadOnly)) {
-       QTextStream in(&inputFile);
-       while (!in.atEnd())
-       {
-          QString line = in.readLine();
-          ui->moduleListWidget->addItem(line);
-          moduleList.append(line);
-       }
-    } else {
-        ///\todo some sort of error message/handling, perhaps just a msgbox?
-    }
-    inputFile.close();
-#endif
 
     return moduleList;
 }

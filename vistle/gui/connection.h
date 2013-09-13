@@ -12,34 +12,50 @@
 namespace gui {
 
 class Module;
+class Scene;
 
 class Connection : public QGraphicsLineItem
 {
+   Q_INTERFACES(QGraphicsItem)
+   typedef QGraphicsLineItem Base;
+
 public:
-    Connection(Module *startItem, Module *endItem, Port *startPort, Port *endPort, bool needsConnection, int connType);
-    QRectF boundingRect() const;                    // re-implemented
-    QPainterPath shape() const;                     // re-implemented
-    void setColor(const QColor &color)
-        { m_Color = color; }
-    Module *startItem() const
-        { return m_StartItem; }
-    Module *endItem() const
-        { return m_EndItem; }
+   enum State {
+      ToEstablish,
+      Established,
+      ToRemove,
+   };
+
+   Connection(Port *startPort, Port *endPort, State state, QGraphicsItem *parent=nullptr);
+
+    Port *source() const;
+    Port *destination() const;
+
+    State state() const;
+    void setState(State state);
+
+    bool isHighlighted() const;
+    void setHighlight(bool highlight);
+
+    void setColor(const QColor &color);
     void updatePosition();                          // re-implemented
     int connectionType() { return m_connectionType; }
 
+    Scene *scene() const;
+
 protected:
+    void hoverEnterEvent(QGraphicsSceneHoverEvent *event);
+    void hoverLeaveEvent(QGraphicsSceneHoverEvent *event);
+
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
                QWidget *widget);                    // re-implemented
 
 private:
-    Module *m_StartItem;                            // starting point of the connection
-    Module *m_EndItem;                              // ending point of the connection
-    QColor m_Color;                                 // color of the connection
-    QPolygonF connectionHead;                       // connection head that is drawn on collision with the module
-    Port *m_StartSlot;
-    Port *m_EndSlot;
-    bool needsConnectionHead;                        // not all connections need the arrowhead.
+    bool m_highlight;
+    State m_state;
+    QColor m_color;                                 // color of the connection
+    Port *m_source;
+    Port *m_destination;
     int m_connectionType;
 };
 

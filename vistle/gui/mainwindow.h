@@ -38,10 +38,6 @@ public:
     DataFlowView *dataFlowView() const;
 
 private slots:
-    void on_dragButton_clicked();
-    void on_sortButton_clicked();
-    void on_invertModulesButton_clicked();
-
     void debug_msg(QString debugMsg);
     void newModule_msg(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName);
     void deleteModule_msg(int moduleId);
