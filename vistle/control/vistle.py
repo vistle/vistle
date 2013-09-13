@@ -147,6 +147,10 @@ def save(filename = None):
             f.write("set"+getParameterType(m,p)+"Param("+modvar(m)+", '"+p+"', "+str(getSavableParam(m,p))+")\n")
       f.write("\n")
 
+   f.write("\n")
+   f.write("barrier()\n")
+   f.write("\n")
+
    for m in mods:
       ports = getOutputPorts(m)
       for p in ports:
