@@ -29,8 +29,6 @@ class V_COREEXPORT PortTracker {
    bool removeConnection(const int a, const std::string & na,
                          const int b, const std::string & nb);
 
-   void removeConnections(const int moduleID);
-
    typedef std::vector<const Port *> ConnectionList;
 
    const Port::PortSet *getConnectionList(const Port * port) const;
@@ -47,7 +45,7 @@ class V_COREEXPORT PortTracker {
    std::vector<Port *> getInputPorts(const int moduleID) const;
    std::vector<Port *> getOutputPorts(const int moduleID) const;
 
- private:
+ protected:
 
    Port *getPort(const Port *p) const;
 

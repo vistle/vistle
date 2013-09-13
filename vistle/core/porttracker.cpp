@@ -189,39 +189,6 @@ bool PortTracker::removeConnection(const int a, const std::string & na,
    return removeConnection(from, to);
 }
 
-//! remove all connections to and from ports to a module
-void PortTracker::removeConnections(const int moduleID) {
-
-   typedef std::map<std::string, Port *> PortMap;
-   typedef std::map<int, PortMap *> ModulePortMap;
-
-   ModulePortMap::const_iterator mports = m_ports.find(moduleID);
-   if (mports == m_ports.end())
-      return;
-
-   const PortMap &portmap = *mports->second;
-   for(PortMap::const_iterator it = portmap.begin();
-         it != portmap.end();
-         ++it) {
-
-      Port *port = it->second;
-      const Port::PortSet &cl = port->connections();
-      while (!cl.empty()) {
-         size_t oldsize = cl.size();
-         const Port *other = *cl.begin();
-         removeConnection(port, other);
-         removeConnection(other, port);
-         if (cl.size() == oldsize) {
-            std::cerr << "failed to remove all connections for module " << moduleID << ", still left: " << cl.size() << std::endl;
-            for (int i=0; i<cl.size(); ++i) {
-               std::cerr << "   " << port->getModuleID() << ":" << port->getName() << " <--> " << other->getModuleID() << ":" << other->getName() << std::endl;
-            }
-            break;
-         }
-      }
-   }
-}
-
 const Port::PortSet *
 PortTracker::getConnectionList(const Port * port) const {
 

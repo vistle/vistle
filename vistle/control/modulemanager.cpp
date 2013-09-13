@@ -404,6 +404,9 @@ bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
    sendAll(moduleExit);
 
    int mod = moduleExit.senderId();
+
+   m_portManager.removeConnections(mod);
+
    if (!moduleExit.isForwarded()) {
 
       RunningMap::iterator it = runningMap.find(mod);
@@ -441,7 +444,7 @@ bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
       if (it != reachedSet.end())
          reachedSet.erase(it);
    }
-   m_portManager.removeConnections(mod);
+
    if (m_activeBarrier >= 0 && checkBarrier(m_activeBarrier))
       barrierReached(m_activeBarrier);
 

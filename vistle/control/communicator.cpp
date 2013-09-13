@@ -359,8 +359,8 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::MODULEEXIT: {
 
          const message::ModuleExit &moduleExit = static_cast<const message::ModuleExit &>(message);
-         sendUi(moduleExit);
          result = m_moduleManager->handle(moduleExit);
+         sendUi(moduleExit);
          break;
       }
 

@@ -393,7 +393,6 @@ bool StateTracker::handle(const message::ModuleExit &moduleExit) {
       if (it != busySet.end())
          busySet.erase(it);
    }
-   portTracker()->removeConnections(mod);
 
    for (StateObserver *o: m_observers) {
       o->incModificationCount();

@@ -16,6 +16,7 @@ class PortManager: public PortTracker {
    virtual ~PortManager();
 
    virtual Port * getPort(const int moduleID, const std::string & name) const;
+   void removeConnections(const int moduleID);
 
  private:
 
