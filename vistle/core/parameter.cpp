@@ -75,6 +75,16 @@ const std::string &Parameter::description() const {
    return m_description;
 }
 
+void Parameter::setGroup(const std::string &group) {
+
+   m_group = group;
+}
+
+const std::string &Parameter::group() const {
+
+   return m_group;
+}
+
 namespace {
 
 using namespace boost;

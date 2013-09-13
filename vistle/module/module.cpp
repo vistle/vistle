@@ -260,6 +260,16 @@ Port *Module::createOutputPort(const std::string &name, const std::string &descr
    return NULL;
 }
 
+void Module::setCurrentParameterGroup(const std::string &group) {
+
+   m_currentParameterGroup = group;
+}
+
+const std::string &Module::currentParameterGroup() const {
+
+   return m_currentParameterGroup;
+}
+
 Port *Module::findInputPort(const std::string &name) const {
 
    std::map<std::string, Port *>::const_iterator i = inputPorts.find(name);
@@ -281,7 +291,7 @@ Port *Module::findOutputPort(const std::string &name) const {
 }
 
 
-bool Module::addParameterGeneric(const std::string &name, Parameter *param, Parameter::Presentation presentation) {
+bool Module::addParameterGeneric(const std::string &name, Parameter *param) {
 
    std::map<std::string, Parameter *>::iterator i =
       parameters.find(name);
@@ -291,7 +301,7 @@ bool Module::addParameterGeneric(const std::string &name, Parameter *param, Para
 
    parameters[name] = param;
 
-   message::AddParameter add(name, param->description(), param->type(), presentation, m_name);
+   message::AddParameter add(param, m_name);
    sendMessage(add);
    message::SetParameter set(id(), name, param);
    set.setInit();
@@ -350,7 +360,9 @@ Parameter *Module::addParameter(const std::string &name, const std::string &desc
 
    Parameter *p = new ParameterBase<T>(id(), name, value);
    p->setDescription(description);
-   if (!addParameterGeneric(name, p, pres)) {
+   p->setGroup(currentParameterGroup());
+   p->setPresentation(pres);
+   if (!addParameterGeneric(name, p)) {
       delete p;
       return NULL;
    }

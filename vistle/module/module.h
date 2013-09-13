@@ -48,7 +48,11 @@ class V_COREEXPORT Module {
    Port *createInputPort(const std::string &name, const std::string &description="", const int flags=0);
    Port *createOutputPort(const std::string &name, const std::string &description="", const int flags=0);
 
-   bool addParameterGeneric(const std::string &name, Parameter *parameter, Parameter::Presentation presentation);
+   //! set group for all subsequently added parameters, reset with empty group
+   void setCurrentParameterGroup(const std::string &group);
+   const std::string &currentParameterGroup() const;
+
+   bool addParameterGeneric(const std::string &name, Parameter *parameter);
    bool updateParameter(const std::string &name, const Parameter *parameter, const message::SetParameter *inResponseTo, Parameter::RangeType rt=Parameter::Value);
 
    template<class T>
@@ -167,6 +171,7 @@ class V_COREEXPORT Module {
    std::map<std::string, Port*> outputPorts;
    std::map<std::string, Port*> inputPorts;
 
+   std::string m_currentParameterGroup;
    std::map<std::string, Parameter *> parameters;
    ObjectCache m_cache;
    ObjectCache::CacheMode m_defaultCacheMode;

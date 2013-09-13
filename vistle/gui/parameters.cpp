@@ -97,6 +97,7 @@ void Parameters::setModule(int id)
    clear();
    m_paramToProp.clear();
    m_propToParam.clear();
+   m_groups.clear();
    m_internalGroup = nullptr;
 
    m_moduleId = id;
@@ -157,10 +158,23 @@ void Parameters::newParameter(int moduleId, QString parameterName)
       prop->setWhatsThis(QString::fromStdString(p->description()));
       m_paramToProp[parameterName] = prop;
       m_propToParam[prop] = parameterName;
-      if (parameterName.startsWith("_"))
+      QString group = QString::fromStdString(p->group());
+      if (parameterName.startsWith("_")) {
          m_internalGroup->addSubProperty(prop);
-      else
+      } else if (!group.isEmpty()) {
+         auto it = m_groups.find(group);
+         QtProperty *g = nullptr;
+         if (it == m_groups.end()) {
+            g = m_groupManager->addProperty(group);
+            addProperty(g);
+            m_groups[group] = g;
+         } else {
+            g = it->second;
+         }
+         g->addSubProperty(prop);
+      } else {
          addProperty(prop);
+      }
    }
 
    parameterChoicesChanged(moduleId, parameterName);

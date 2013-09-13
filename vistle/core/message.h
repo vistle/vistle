@@ -362,18 +362,19 @@ BOOST_STATIC_ASSERT(sizeof(Disconnect) < Message::MESSAGE_SIZE);
 
 class V_COREEXPORT AddParameter: public Message {
    public:
-      AddParameter(const std::string &name, const std::string &description, int type, int presentation, const std::string &moduleName);
       AddParameter(const Parameter *param, const std::string &moduleName);
 
       const char *getName() const;
       const char *moduleName() const;
       const char *description() const;
+      const char *group() const;
       int getParameterType() const;
       int getPresentation() const;
       Parameter *getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
 
    private:
       param_name_t name;
+      param_name_t m_group;
       module_name_t module;
       param_desc_t m_description;
       int paramtype;

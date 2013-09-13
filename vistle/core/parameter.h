@@ -37,6 +37,7 @@ class V_COREEXPORT Parameter {
       Boolean, // Integer
       Choice, // Integer (fixed choice) and String (dynamic choice)
       Slider, // Integer, Float
+      Color, // Vector
       InvalidPresentation // keep last
    };
 
@@ -56,6 +57,9 @@ class V_COREEXPORT Parameter {
    void setDescription(const std::string &description);
    void setChoices(const std::vector<std::string> &choices);
 
+   void setGroup(const std::string &group);
+   const std::string &group() const;
+
    virtual operator std::string() const = 0;
    virtual bool isDefault() const = 0;
    virtual bool checkChoice(const std::vector<std::string> &choices) const { return true; }
@@ -72,6 +76,7 @@ class V_COREEXPORT Parameter {
    int m_module;
    std::string m_name;
    std::string m_description;
+   std::string m_group;
    enum Type m_type;
    enum Presentation m_presentation;
 };

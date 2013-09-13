@@ -47,6 +47,7 @@ private:
    vistle::VistleConnection *m_vistle = nullptr;
 
    QtProperty *m_internalGroup = nullptr;
+   std::map<QString, QtProperty *> m_groups;
 
    QtGroupPropertyManager *m_groupManager = nullptr;
    QtBoolPropertyManager *m_boolManager = nullptr;

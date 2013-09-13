@@ -376,29 +376,19 @@ int Disconnect::getModuleB() const {
    return moduleB;
 }
 
-AddParameter::AddParameter(const std::string &n, const std::string &desc, int t, int p, const std::string &mod)
+AddParameter::AddParameter(const Parameter *param, const std::string &modname)
 : Message(Message::ADDPARAMETER, sizeof(AddParameter))
-, paramtype(t)
-, presentation(p) {
-
+, paramtype(param->type())
+, presentation(param->presentation())
+{
    assert(paramtype > Parameter::Unknown);
    assert(paramtype < Parameter::Invalid);
 
    assert(presentation >= Parameter::Generic);
    assert(presentation <= Parameter::InvalidPresentation);
 
-   COPY_STRING(name, n);
-   COPY_STRING(module, mod);
-   COPY_STRING(m_description, desc);
-}
-
-AddParameter::AddParameter(const Parameter *param, const std::string &modname)
-: Message(Message::ADDPARAMETER, sizeof(AddParameter))
-, paramtype(param->type())
-, presentation(param->presentation())
-{
-
    COPY_STRING(name, param->getName());
+   COPY_STRING(m_group, param->group());
    COPY_STRING(module, modname);
    COPY_STRING(m_description, param->description());
 }
@@ -428,6 +418,11 @@ const char *AddParameter::description() const {
    return m_description;
 }
 
+const char *AddParameter::group() const {
+
+   return m_group;
+}
+
 Parameter *AddParameter::getParameter() const {
 
    Parameter *p = nullptr;
@@ -451,6 +446,7 @@ Parameter *AddParameter::getParameter() const {
 
    if (p) {
       p->setDescription(description());
+      p->setGroup(group());
       p->setPresentation(Parameter::Presentation(getPresentation()));
       return p;
    }
