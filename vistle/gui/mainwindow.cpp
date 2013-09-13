@@ -48,6 +48,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     // declare list of names of modules, pass to the scene
     ui->setupUi(this);
+    tabifyDockWidget(ui->modulesDock, ui->parameterDock);
 
     m_console = ui->consoleWidget;
     setFocusProxy(m_console);
@@ -76,6 +77,9 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionSave, SIGNAL(triggered()), SLOT(saveDataFlowNetwork()));
     connect(ui->actionSave_As, SIGNAL(triggered()), SLOT(saveDataFlowNetworkAs()));
     connect(ui->actionExecute, SIGNAL(triggered()), SLOT(executeDataFlowNetwork()));
+
+    ui->modulesDock->show();
+    ui->modulesDock->raise();
 }
 
 MainWindow::~MainWindow()
@@ -248,8 +252,12 @@ void MainWindow::moduleSelectionChanged()
       parameters()->setModule(m->id());
       title = QString("Parameters: %1").arg(m->name());
       parameters()->show();
+      ui->parameterDock->show();
+      ui->parameterDock->raise();
    } else {
       parameters()->setModule(0);
+      ui->modulesDock->show();
+      ui->modulesDock->raise();
    }
    ui->parameterDock->setWindowTitle(title);
 }
