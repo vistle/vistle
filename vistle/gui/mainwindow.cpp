@@ -284,9 +284,9 @@ void MainWindow::setFilename(const QString &filename)
    m_currentFile = filename;
    setWindowFilePath(filename);
    if (m_currentFile.isEmpty()) {
-      setWindowTitle("Vistle");
+      setWindowTitle("Vistle [*]");
    } else {
-      setWindowTitle(QString("Vistle - %1").arg(m_currentFile));
+      setWindowTitle(QString("Vistle - %1 [*]").arg(m_currentFile));
    }
 }
 
