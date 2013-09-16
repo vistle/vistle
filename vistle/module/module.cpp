@@ -165,11 +165,11 @@ void Module::initDone() {
    m_streambuf = new msgstreambuf<char>(this);
    m_origStreambuf = std::cerr.rdbuf(m_streambuf);
 
+   sendMessage(message::Started(name()));
+
    for (auto &pair: parameters) {
       parameterChanged(pair.second);
    }
-
-   sendMessage(message::Started(name()));
 }
 
 const std::string &Module::name() const {
