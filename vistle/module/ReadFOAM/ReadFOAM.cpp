@@ -15,6 +15,7 @@
 #include "ReadFOAM.h"
 #include <core/unstr.h>
 #include <core/vec.h>
+#include <core/message.h>
 
 //Includes copied from vistle ReadFOAM.cpp
 #include <sstream>
@@ -135,6 +136,7 @@ bool ReadFOAM::parameterChanged(Parameter *p)
 
    StringParameter *sp = dynamic_cast<StringParameter *>(p);
    if (sp == m_casedir) {
+      sendMessage(message::Busy());
       std::string casedir = sp->getValue();
 
       m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
@@ -152,6 +154,7 @@ bool ReadFOAM::parameterChanged(Parameter *p)
       for (StringParameter *out: m_fieldOut) {
          setParameterChoices(out, choices);
       }
+      sendMessage(message::Idle());
    }
 
    return Module::parameterChanged(p);
