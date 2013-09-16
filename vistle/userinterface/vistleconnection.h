@@ -11,6 +11,12 @@ class VistleConnection
 {
    friend class PythonModule;
 public:
+   class Locker {
+
+   public:
+      virtual ~Locker() {}
+   };
+
    VistleConnection(vistle::UserInterface &ui);
    static VistleConnection &the();
 
@@ -37,11 +43,14 @@ public:
 
    vistle::UserInterface &ui() const;
 
+   void lock();
+   void unlock();
+   std::unique_ptr<Locker> locked();
+
 private:
    vistle::UserInterface &m_ui;
    bool m_done = false;
 
-public:
    typedef boost::recursive_mutex mutex;
    typedef mutex::scoped_lock mutex_lock;
    mutable mutex m_mutex;

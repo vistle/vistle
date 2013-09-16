@@ -20,7 +20,7 @@
 
 #define moduleManager ((PythonModule::the().vistleConnection().ui().state()))
 
-#define LOCKED() vistle::VistleConnection::mutex_lock(PythonModule::the().vistleConnection().m_mutex)
+#define LOCKED() std::unique_ptr<vistle::VistleConnection::Locker> lock = PythonModule::the().vistleConnection().locked()
 
 namespace bp = boost::python;
 

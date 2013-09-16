@@ -12,6 +12,24 @@
 
 namespace vistle {
 
+class VistleConnectionLocker: public VistleConnection::Locker {
+
+public:
+   VistleConnectionLocker(boost::recursive_mutex &mtx)
+   : m_mutex(mtx)
+   {
+      m_mutex.lock();
+   }
+
+   ~VistleConnectionLocker() {
+
+      m_mutex.unlock();
+   }
+
+   private:
+   boost::recursive_mutex &m_mutex;
+};
+
 VistleConnection *VistleConnection::s_instance = nullptr;
 
 /*************************************************************************/
@@ -50,6 +68,21 @@ void VistleConnection::operator()() {
 vistle::UserInterface &VistleConnection::ui() const {
 
    return m_ui;
+}
+
+void VistleConnection::lock() {
+
+   m_mutex.lock();
+}
+
+void VistleConnection::unlock() {
+
+   m_mutex.unlock();
+}
+
+std::unique_ptr<VistleConnection::Locker> VistleConnection::locked() {
+
+   return std::unique_ptr<Locker>(new VistleConnectionLocker(m_mutex));
 }
 
 void VistleConnection::sendMessage(const vistle::message::Message &msg) const
