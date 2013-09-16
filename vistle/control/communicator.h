@@ -16,6 +16,8 @@
 
 #include <core/message.h>
 
+#include "export.h"
+
 namespace bi = boost::interprocess;
 
 namespace vistle {
@@ -31,7 +33,7 @@ class ClientManager;
 class UiManager;
 class ModuleManager;
 
-class Communicator {
+class V_CONTROLEXPORT Communicator {
    friend class PythonEmbed;
    friend class ModuleManager;
 

@@ -7,6 +7,8 @@
 #include <boost/thread.hpp>
 #include <boost/asio.hpp>
 
+#include "export.h"
+
 namespace vistle {
 
 class Client;
@@ -14,7 +16,7 @@ class ReadlineClient;
 class AsioClient;
 class PythonEmbed;
 
-class ClientManager {
+class V_CONTROLEXPORT ClientManager {
    friend class ClientThreadWrapper;
    friend class Communicator;
 

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <boost/python/object.hpp>
+#include "export.h"
 
 namespace vistle {
 
@@ -12,7 +13,7 @@ namespace message {
 class Message;
 }
 
-class PythonEmbed {
+class V_CONTROLEXPORT PythonEmbed {
    public:
 
       PythonEmbed(ClientManager &manager, const std::string &name);

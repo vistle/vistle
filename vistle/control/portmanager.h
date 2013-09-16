@@ -5,11 +5,13 @@
 
 #include <core/porttracker.h>
 
+#include "export.h"
+
 namespace vistle {
 
 class ModuleManager;
 
-class PortManager: public PortTracker {
+class V_CONTROLEXPORT PortManager: public PortTracker {
 
  public:
    PortManager(ModuleManager *moduleManager);

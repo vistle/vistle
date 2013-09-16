@@ -9,10 +9,12 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/condition_variable.hpp>
 
-#include "portmanager.h"
 #include <core/statetracker.h>
 #include <core/message.h>
 #include <core/messagequeue.h>
+
+#include "portmanager.h"
+#include "export.h"
 
 namespace vistle {
 
@@ -23,7 +25,7 @@ namespace message {
 
 class Parameter;
 
-class ModuleManager {
+class V_CONTROLEXPORT ModuleManager {
    friend class Communicator;
 
  public:

@@ -11,6 +11,8 @@
 
 #include <core/messagequeue.h>
 
+#include "export.h"
+
 namespace vistle {
 
 namespace message {
@@ -19,7 +21,7 @@ class Message;
 
 class UiClient;
 
-class UiManager {
+class V_CONTROLEXPORT UiManager {
    friend class UiThreadWrapper;
    friend class Communicator;
 

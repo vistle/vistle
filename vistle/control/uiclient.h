@@ -7,12 +7,13 @@
 #include <boost/scoped_ptr.hpp>
 #include <core/message.h>
 #include <core/messagequeue.h>
+#include "export.h"
 
 namespace vistle {
 
 class UiManager;
 
-class UiClient {
+class V_CONTROLEXPORT UiClient {
    public:
       UiClient(UiManager &manager, int id, boost::shared_ptr<message::MessageQueue> sendQueue, boost::shared_ptr<message::MessageQueue> recvQueue);
       ~UiClient();
