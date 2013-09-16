@@ -1,7 +1,16 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8)
 project(vistle_all)
 
-set(BUILD_SHARED_LIBS ON)
+option(VISTLE_BUILD_SHARED "Build all libraries as static libraries instead of shared" ON)
+
+if (VISTLE_BUILD_SHARED)
+   set(VISTLE_LIB_TYPE SHARED)
+else()
+   set(VISTLE_LIB_TYPE STATIC)
+   add_definitions(-DVISTLE_STATIC)
+endif()
+
+set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED})
 
 enable_testing()
 
@@ -14,8 +23,11 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
 
-   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+   if (NOT ${BUILD_SHARED_LIBS})
+      # for linking the libraries into plugins
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -fPIC")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -fPIC")
+   endif()
 
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -mfxsr")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse -msse2 -mfxsr")

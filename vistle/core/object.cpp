@@ -365,9 +365,9 @@ void Object::setCreator(const int id) {
 
 const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int id) {
    TypeMap::const_iterator it = typeMap().find(id);
-   assert(it != typeMap().end());
    if (it == typeMap().end()) {
-      std::cerr << "ObjectTypeRegistry: no creator for type id " << id << std::endl;
+      std::cerr << "ObjectTypeRegistry: no creator for type id " << id << " (" << typeMap().size() << " total entries)" << std::endl;
+      assert(it != typeMap().end());
       exit(1);
    }
    return (*it).second;

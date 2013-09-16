@@ -36,7 +36,7 @@ set(control_HEADERS
    uimanager.h
 )
 
-add_library(vistle_control SHARED ${control_SOURCES} ${control_HEADERS})
+add_library(vistle_control ${VISTLE_LIB_TYPE} ${control_SOURCES} ${control_HEADERS})
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

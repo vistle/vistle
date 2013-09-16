@@ -29,3 +29,47 @@ namespace {
    };
    static RegisterObjectTypeRelations registerObjectTypeRelations;
 }
+
+namespace vistle {
+
+void registerTypes() {
+
+#ifdef VISTLE_STATIC
+   using namespace vistle;
+   REGISTER_TYPE(PlaceHolder, Object::PLACEHOLDER);
+   REGISTER_TYPE(Texture1D, Object::TEXTURE1D);
+   REGISTER_TYPE(Geometry, Object::GEOMETRY);
+   REGISTER_TYPE(Points, Object::POINTS);
+   REGISTER_TYPE(Lines, Object::LINES);
+   REGISTER_TYPE(Triangles, Object::TRIANGLES);
+   REGISTER_TYPE(Polygons, Object::POLYGONS);
+   REGISTER_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID);
+
+   typedef Vec<unsigned char,1> Vec_uchar_1;
+   REGISTER_TYPE(Vec_uchar_1, Vec_uchar_1::type());
+   typedef Vec<unsigned char,3> Vec_uchar_3;
+   REGISTER_TYPE(Vec_uchar_3, Vec_uchar_3::type());
+
+   typedef Vec<int,1> Vec_int_1;
+   REGISTER_TYPE(Vec_int_1, Vec_int_1::type());
+   typedef Vec<int,3> Vec_int_3;
+   REGISTER_TYPE(Vec_int_3, Vec_int_3::type());
+
+   typedef Vec<size_t,1> Vec_szt_1;
+   REGISTER_TYPE(Vec_szt_1, Vec_szt_1::type());
+   typedef Vec<size_t,3> Vec_szt_3;
+   REGISTER_TYPE(Vec_szt_3, Vec_szt_3::type());
+
+   typedef Vec<float,1> Vec_float_1;
+   REGISTER_TYPE(Vec_float_1, Vec_float_1::type());
+   typedef Vec<float,3> Vec_float_3;
+   REGISTER_TYPE(Vec_float_3, Vec_float_3::type());
+
+   typedef Vec<double,1> Vec_double_1;
+   REGISTER_TYPE(Vec_double_1, Vec_double_1::type());
+   typedef Vec<double,3> Vec_double_3;
+   REGISTER_TYPE(Vec_double_3, Vec_double_3::type());
+#endif
+}
+
+} // namespace vistle

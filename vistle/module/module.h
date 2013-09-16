@@ -189,6 +189,7 @@ class V_COREEXPORT Module {
    int main(int argc, char **argv) { \
       int rank, size, moduleID; \
       MPI_Init(&argc, &argv); \
+      vistle::registerTypes(); \
       try { \
          if (argc != 3) { \
             std::cerr << "module requires exactly 2 parameters" << std::endl; \

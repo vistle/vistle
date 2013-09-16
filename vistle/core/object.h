@@ -202,7 +202,9 @@ class V_COREEXPORT ObjectTypeRegistry {
 
    template<class O>
    static void registerType(int id) {
+#ifndef VISTLE_STATIC
       assert(typeMap().find(id) == typeMap().end());
+#endif
       struct FunctionTable t = {
          O::createFromData,
          O::destroy,
@@ -365,6 +367,20 @@ class V_COREEXPORT ObjectTypeRegistry {
       ar.register_type<Type >(); \
    }
 
+#ifdef VISTLE_STATIC
+#define REGISTER_TYPE(Type, id) \
+{ \
+   ObjectTypeRegistry::registerType<Type >(id); \
+   boost::serialization::void_cast_register<Type, Type::Base>( \
+         static_cast<Type *>(NULL), static_cast<Type::Base *>(NULL) \
+  ); \
+}
+
+#define V_INIT_STATIC
+#else
+#define V_INIT_STATIC static
+#endif
+
 #define V_OBJECT_TYPE3INT(Type, suffix, id) \
       class RegisterObjectType_##suffix { \
          public: \
@@ -375,27 +391,25 @@ class V_COREEXPORT ObjectTypeRegistry {
                           ); \
                  } \
       }; \
-      static RegisterObjectType_##suffix registerObjectType_##suffix; \
+      V_INIT_STATIC RegisterObjectType_##suffix registerObjectType_##suffix; \
 
 //! register a new Object type (complex form, specify suffix for symbol names)
 #define V_OBJECT_TYPE3(Type, suffix, id) \
-   namespace { \
-      V_OBJECT_TYPE3INT(Type, suffix, id) \
-   }
+      V_OBJECT_TYPE3INT(Type, suffix, id)
 
 //! register a new Object type (complex form, specify suffix for symbol names)
 #define V_OBJECT_TYPE4(Type1, Type2, suffix, id) \
-   namespace { \
       namespace suffix { \
       typedef Type1,Type2 Type; \
       V_OBJECT_TYPE3INT(Type, suffix, id) \
-   } \
    }
 
 //! register a new Object type (simple form for non-templates, symbol suffix determined automatically)
 #define V_OBJECT_TYPE(Type, id) \
    V_SERIALIZERS(Type) \
    V_OBJECT_TYPE3(Type, Type, id)
+
+void registerTypes();
 
 } // namespace vistle
 

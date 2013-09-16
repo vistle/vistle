@@ -24,7 +24,7 @@ set(userinterface_HEADERS
    vistleconnection.h
 )
 
-add_library(vistle_ui SHARED ${userinterface_SOURCES} ${userinterface_HEADERS})
+add_library(vistle_ui ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

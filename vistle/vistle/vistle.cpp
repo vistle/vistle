@@ -10,8 +10,9 @@
 #include <cstdlib>
 #include <sstream>
 
-#include <control/executor.h>
 #include <util/findself.h>
+#include <core/object.h>
+#include <control/executor.h>
 
 using namespace vistle;
 
@@ -79,6 +80,7 @@ int main(int argc, char ** argv) {
    try {
 
       MPI_Init(&argc, &argv);
+      vistle::registerTypes();
       Vistle(argc, argv).run();
       MPI_Finalize();
    } catch(vistle::exception &e) {

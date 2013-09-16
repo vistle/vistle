@@ -15,7 +15,7 @@ set(util_HEADERS
    vecstreambuf.h
 )
 
-add_library(vistle_util SHARED ${util_SOURCES} ${util_HEADERS})
+add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
 
 target_link_libraries(vistle_util
         ${Boost_LIBRARIES}
