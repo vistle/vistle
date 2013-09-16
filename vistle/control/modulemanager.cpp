@@ -371,6 +371,7 @@ bool ModuleManager::handle(const message::Connect &connect) {
       // inform modules about connections
       sendMessage(connect.getModuleA(), connect);
       sendMessage(connect.getModuleB(), connect);
+      sendUi(connect);
    } else {
       queueMessage(connect);
    }
@@ -387,6 +388,7 @@ bool ModuleManager::handle(const message::Disconnect &disconnect) {
 
       sendMessage(disconnect.getModuleA(), disconnect);
       sendMessage(disconnect.getModuleB(), disconnect);
+      sendUi(disconnect);
    } else {
 
       if (!m_messageQueue.empty()) {

@@ -327,7 +327,6 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::CONNECT: {
 
          const message::Connect &connect = static_cast<const message::Connect &>(message);
-         sendUi(connect);
          result = m_moduleManager->handle(connect);
          break;
       }
@@ -335,7 +334,6 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::DISCONNECT: {
 
          const message::Disconnect &disc = static_cast<const message::Disconnect &>(message);
-         sendUi(disc);
          result = m_moduleManager->handle(disc);
          break;
       }
