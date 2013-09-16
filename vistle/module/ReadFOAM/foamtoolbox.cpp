@@ -250,9 +250,9 @@ bool checkSubDirectory(CaseInfo &info, const std::string &timedir, bool time) {
    return true;
 }
 
-bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare, double mintime, double maxtime, int skipfactor) {
+bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare, double mintime, double maxtime, int skipfactor, bool exact) {
 
-   std::cerr << std::time(0) << " reading casedir: " << casedir << std::endl;
+   std::cerr << "reading casedir: " << casedir << std::endl;
 
    bf::path dir(casedir);
    if (!bf::exists(dir)) {
@@ -284,18 +284,20 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
    }
    
    if (num_processors > 0) {
-      bool result = checkCaseDirectory(info, casedir+"/processor0", false, mintime, maxtime, skipfactor);
+      bool result = checkCaseDirectory(info, casedir+"/processor0", false, mintime, maxtime, skipfactor, exact);
       if (!result) {
          std::cerr << "failed to read case directory for processor 0" << std::endl;
          return false;
       }
 
-      for (int i=1; i<num_processors; ++i) {
-         std::stringstream s;
-         s << casedir << "/processor" << i;
-         bool result = checkCaseDirectory(info, s.str(), true, mintime, maxtime, skipfactor);
-         if (!result)
-            return false;
+      if (exact) {
+         for (int i=1; i<num_processors; ++i) {
+            std::stringstream s;
+            s << casedir << "/processor" << i;
+            bool result = checkCaseDirectory(info, s.str(), true, mintime, maxtime, skipfactor, exact);
+            if (!result)
+               return false;
+         }
       }
 
       return true;
@@ -344,7 +346,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
       }
    }
 
-   bool first = true;
+   bool varyingChecked = false, constantChecked = false;
    for (bf::directory_iterator it(dir);
          it != bf::directory_iterator();
          ++it) {
@@ -356,13 +358,17 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
                bool result = checkSubDirectory(info, it->path().string(), true);
                if (!result)
                   return false;
-               first = false;
+               varyingChecked = true;
             }
          } else if (bn == info.constantdir) {
             bool result = checkSubDirectory(info, it->path().string(), false);
             if (!result)
                return false;
+            constantChecked = true;
          }
+
+         if (!exact && constantChecked && varyingChecked)
+            return true;
       }
    }
 
@@ -374,7 +380,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
    return true;
 }
 
-bool checkFields(std::map<std::string, int> &fields, int nRequired)
+bool checkFields(std::map<std::string, int> &fields, int nRequired, bool exact)
 {
     bool ignored=false;
     for (std::map<std::string, int>::iterator it=fields.begin(),next;
@@ -383,7 +389,7 @@ bool checkFields(std::map<std::string, int> &fields, int nRequired)
        next=it;
        ++next;
        std::cerr << "  " << it->first << ": " << it->second;
-       if (it->second != nRequired) {
+       if (exact && it->second != nRequired) {
           ignored=true;
           std::cerr << " (ignored)";
           fields.erase(it->first);
@@ -393,10 +399,10 @@ bool checkFields(std::map<std::string, int> &fields, int nRequired)
    return !ignored;
 }
 
-CaseInfo getCaseInfo(const std::string &casedir, double mintime, double maxtime, int skipfactor) {
+CaseInfo getCaseInfo(const std::string &casedir, double mintime, double maxtime, int skipfactor, bool exact) {
 
    CaseInfo info;
-   info.valid = checkCaseDirectory(info, casedir, false, mintime, maxtime, skipfactor);
+   info.valid = checkCaseDirectory(info, casedir, false, mintime, maxtime, skipfactor, exact);
 
    std::cerr << " " << "casedir: " << casedir << " " << std::endl
       << "Number of processors: " << info.numblocks << std::endl
@@ -405,10 +411,10 @@ CaseInfo getCaseInfo(const std::string &casedir, double mintime, double maxtime,
 
    int np = info.numblocks > 0 ? info.numblocks : 1;
    std::cerr << "  constant:";
-   checkFields(info.constantFields, np);
+   checkFields(info.constantFields, np, exact);
 
    std::cerr << "  varying: ";
-   checkFields(info.varyingFields, np*info.timedirs.size());
+   checkFields(info.varyingFields, np*info.timedirs.size(), exact);
 
    return info;
 }
