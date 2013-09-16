@@ -168,12 +168,14 @@ void vistle::VistleConnection::resetDataFlowNetwork() const
          sendMessage(message::Kill(id));
       }
    }
+#if 0
    int barrierId = barrier();
    if (barrierId < 0) {
       std::cerr << "VistleConnection::resetDataFlowNetwork: barrier failed" << std::endl;
       return;
    }
    sendMessage(message::ResetModuleIds());
+#endif
 }
 
 void VistleConnection::executeSources() const
