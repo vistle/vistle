@@ -35,7 +35,7 @@ class V_UIEXPORT UserInterface {
 
    StateTracker &state();
 
-   boost::mutex &mutexForMessage(const message::Message::uuid_t &uuid);
+   bool getLockForMessage(const message::Message::uuid_t &uuid);
    bool getMessage(const message::Message::uuid_t &uuid, message::Message &msg);
 
    void registerObserver(StateObserver *observer);

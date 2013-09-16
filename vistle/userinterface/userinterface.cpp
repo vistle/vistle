@@ -142,10 +142,11 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
    return ret;
 }
 
-boost::mutex &UserInterface::mutexForMessage(const message::Message::uuid_t &uuid) {
+bool UserInterface::getLockForMessage(const message::Message::uuid_t &uuid) {
 
    boost::mutex::scoped_lock lock(m_messageMutex);
-   return m_messageMap[uuid].mutex;
+   m_messageMap[uuid].mutex.lock();
+   return true;
 }
 
 bool UserInterface::getMessage(const message::Message::uuid_t &uuid, message::Message &msg) {

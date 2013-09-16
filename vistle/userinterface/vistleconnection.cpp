@@ -77,8 +77,9 @@ void vistle::VistleConnection::VistleConnection::sendParameter(const Parameter *
 
 bool VistleConnection::requestReplyAsync(const vistle::message::Message &send) const {
 
-   boost::mutex &mutex = ui().mutexForMessage(send.uuid());
-   mutex.lock();
+   if (!ui().getLockForMessage(send.uuid()))
+      return false;
+
    sendMessage(send);
    return true;
 }
