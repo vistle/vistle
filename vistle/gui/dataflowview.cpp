@@ -1,6 +1,6 @@
 #include "dataflowview.h"
 #include "modulebrowser.h"
-#include "scene.h"
+#include "dataflownetwork.h"
 
 #include <QMimeData>
 #include <QDragEnterEvent>
@@ -14,9 +14,9 @@ DataFlowView::DataFlowView(QWidget *parent)
 {
 }
 
-Scene *DataFlowView::scene() const
+DataFlowNetwork *DataFlowView::scene() const
 {
-   return dynamic_cast<Scene *>(QGraphicsView::scene());
+   return dynamic_cast<DataFlowNetwork *>(QGraphicsView::scene());
 }
 
 /*!

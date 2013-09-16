@@ -271,6 +271,9 @@
    <property name="toolTip">
     <string>Quit</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
   </action>
   <action name="actionCut">
    <property name="text">

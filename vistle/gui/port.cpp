@@ -6,7 +6,7 @@
 /**********************************************************************************/
 #include "port.h"
 #include "module.h"
-#include "scene.h"
+#include "dataflownetwork.h"
 #include <core/port.h>
 #include <cassert>
 
@@ -97,7 +97,7 @@ void Port::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
       return;
    }
 
-   Scene *sc = dynamic_cast<Scene *>(scene());
+   DataFlowNetwork *sc = dynamic_cast<DataFlowNetwork *>(scene());
    QGraphicsItem *item = scene()->itemAt(event->scenePos(), QTransform());
    if (Port *dest = dynamic_cast<Port *>(item)) {
       if (portType()==Output && dest->portType()==Input) {

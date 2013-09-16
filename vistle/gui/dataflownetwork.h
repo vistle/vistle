@@ -3,38 +3,45 @@
 
 #include <QList>
 #include <QString>
-#include <QGraphicsItem>
 #include <QGraphicsScene>
 
-#include <userinterface/vistleconnection.h>
-
-#include "module.h"
-#include "connection.h"
 #include "port.h"
+#include <boost/uuid/uuid.hpp>
+
+namespace vistle {
+class VistleConnection;
+}
 
 namespace gui {
 
-class MainWindow;
+class Module;
+class Connection;
 
-class Scene : public QGraphicsScene
+class DataFlowNetwork: public QGraphicsScene
 {
+   Q_OBJECT
+
 public:
-    Scene(QObject *parent = 0);
-    ~Scene();
+    DataFlowNetwork(vistle::VistleConnection *conn, QObject *parent = 0);
+    ~DataFlowNetwork();
+
     void addModule(QString modName, QPointF dropPos);
-    void setVistleConnection(vistle::VistleConnection *runnner);
-    void addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name);
-    void deleteModule(int moduleId);
+
     void addConnection(Port *portFrom, Port *portTo, bool sendToController=false);
     void removeConnection(Port *portFrom, Port *portTo, bool sendToController=false);
-
-    void setMainWindow(MainWindow *w);
-    MainWindow *mainWindow() const;
 
     Module *findModule(int id) const;
     Module *findModule(const boost::uuids::uuid &spawnUuid) const;
 
     QColor highlightColor() const;
+
+public slots:
+    void addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name);
+    void deleteModule(int moduleId);
+    void moduleStateChanged(int moduleId, int stateBits);
+    void newPort(int moduleId, QString portName);
+    void newConnection(int fromId, QString fromName, int toId, QString toName);
+    void deleteConnection(int fromId, QString fromName, int toId, QString toName);
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event);      //< re-implemented
@@ -53,8 +60,6 @@ private:
 
     ///\todo push this functionality to vHandler
     vistle::VistleConnection *m_vistleConnection = nullptr;
-
-    MainWindow *m_mainWindow = nullptr;
 
     struct ConnectionKey {
        ConnectionKey(Port *p1, Port *p2)

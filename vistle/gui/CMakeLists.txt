@@ -19,7 +19,7 @@ set(gui_SOURCES
   mainwindow.cpp
   connection.cpp
   module.cpp
-  scene.cpp
+  dataflownetwork.cpp
   port.cpp
   vistleobserver.cpp
   parameters.cpp
@@ -36,7 +36,7 @@ set(gui_HEADERS
   mainwindow.h
   connection.h
   module.h
-  scene.h
+  dataflownetwork.h
   port.h
   vistleobserver.h
   parameters.h

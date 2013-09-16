@@ -5,7 +5,7 @@
 
 namespace gui {
 
-class Scene;
+class DataFlowNetwork;
 
 class DataFlowView : public QGraphicsView
 {
@@ -14,7 +14,7 @@ class DataFlowView : public QGraphicsView
 public:
    explicit DataFlowView(QWidget *parent = 0);
 
-   Scene *scene() const;
+   DataFlowNetwork *scene() const;
 
 signals:
 

@@ -37,7 +37,7 @@ class Vistle: public Executor {
             std::string gui = bindir + "/gui";
             std::stringstream s;
             s << uiPort();
-            execlp(gui.c_str(), "gui", "localhost", s.str().c_str(), nullptr);
+            execlp(gui.c_str(), "gui", "-from-vistle", "localhost", s.str().c_str(), nullptr);
             std::cerr << "Error when executing " << gui << ": " << strerror(errno) << std::endl;
             exit(1);
          }

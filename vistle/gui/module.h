@@ -19,7 +19,7 @@
 namespace gui {
 
 class Connection;
-class Scene;
+class DataFlowNetwork;
 
 class Module : public QObject, public QGraphicsRectItem
 {
@@ -34,11 +34,11 @@ signals:
     void mouseClickEvent();
 
 public:
-    enum Status { SPAWNING, // grey
-                  INITIALIZED,	// green
-                  KILLED,			// red
-                  BUSY,			// yellow
-                  ERROR };		// black
+    enum Status { SPAWNING,
+                  INITIALIZED,
+                  KILLED,
+                  BUSY,
+                  ERROR };
 
     Module(QGraphicsItem *parent = 0, QString name = 0);
     virtual ~Module();
@@ -73,7 +73,7 @@ public:
     Port *getGuiPort(vistle::Port *port) const;
     vistle::Port *getVistlePort(Port *port) const;
 
-    Scene *scene() const;
+    DataFlowNetwork *scene() const;
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event);

@@ -5,18 +5,12 @@
 #include <QList>
 #include <QMainWindow>
 
-#include <userinterface/userinterface.h>
-#include <userinterface/vistleconnection.h>
-
-#include "vistleconsole.h"
-#include "scene.h"
-#include "vistleobserver.h"
-
 namespace gui {
 
 class Parameters;
 class DataFlowView;
 class ModuleBrowser;
+class VistleConsole;
 
 namespace Ui {
 class MainWindow;
@@ -30,36 +24,32 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
-    void printDebug(QString msg);
-    void setVistleobserver(VistleObserver *observer);
-    void setVistleConnection(vistle::VistleConnection *conn);
 
+    QDockWidget *consoleDock() const;
+    QDockWidget *parameterDock() const;
+    QDockWidget *modulesDock() const;
     Parameters *parameters() const;
     DataFlowView *dataFlowView() const;
+    VistleConsole *console() const;
+
+public slots:
+    void setFilename(const QString &filename);
+    void setModified(bool state);
+
+signals:
+    void quitRequested(bool &allowed);
+    void newDataFlow();
+    void loadDataFlow();
+    void saveDataFlow();
+    void saveDataFlowAs();
+    void executeDataFlow();
+
+protected:
+    void closeEvent(QCloseEvent *);
 
 private slots:
-    void debug_msg(QString debugMsg);
-    void newModule_msg(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName);
-    void deleteModule_msg(int moduleId);
-    void moduleStateChanged_msg(int moduleId, int stateBits, Module::Status modChangeType);
-    void newParameter_msg(int moduleId, QString parameterName);
-    void parameterValueChanged_msg(int moduleId, QString parameterName);
-    void parameterChoicesChanged_msg(int moduleId, QString parameterName);
-    void newPort_msg(int moduleId, QString portName);
-    void newConnection_msg(int fromId, QString fromName,
-                         int toId, QString toName);
-    void deleteConnection_msg(int fromId, QString fromName,
-                            int toId, QString toName);
-
-    void setModified(bool state);
     void moduleInfo(const QString &text);
 
-    void moduleSelectionChanged();
-    void clearDataFlowNetwork();
-    void loadDataFlowNetwork();
-    void saveDataFlowNetwork(const QString &filename = QString());
-    void saveDataFlowNetworkAs(const QString &filename = QString());
-    void executeDataFlowNetwork();
 
 private:
     Ui::MainWindow *ui = nullptr;
@@ -67,15 +57,7 @@ private:
     Parameters *m_parameters = nullptr;
     ModuleBrowser *m_moduleBrowser = nullptr;
 
-    vistle::VistleConnection *m_vistleConnection = nullptr;
-    VistleObserver *m_observer = nullptr;
     QList<QString> loadModuleFile();
-    Scene *m_scene = nullptr;
-
-    QString m_currentFile;
-
-    bool checkModified(const QString &reason);
-    void setFilename(const QString &filename);
 };
 
 } //namespace gui

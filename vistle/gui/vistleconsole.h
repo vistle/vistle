@@ -43,6 +43,8 @@ namespace gui {
 
 class VistleConsole : public QConsole
 {
+   Q_OBJECT
+
 public:
     //destructor
     ~VistleConsole();
@@ -55,6 +57,7 @@ public:
 
     void printHistory();
 
+public slots:
     void appendInfo(const QString &text);
     void appendDebug(const QString &text);
 

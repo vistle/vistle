@@ -17,7 +17,7 @@
 
 #include "module.h"
 #include "connection.h"
-#include "scene.h"
+#include "dataflownetwork.h"
 #include "mainwindow.h"
 #include "dataflowview.h"
 
@@ -97,11 +97,7 @@ void Module::createActions()
  */
 void Module::createMenus()
 {
-   Scene *sc = dynamic_cast<Scene *>(scene());
-   if (sc)
-      m_moduleMenu = new QMenu(sc->mainWindow()->dataFlowView());
-   else
-      m_moduleMenu = new QMenu();
+   m_moduleMenu = new QMenu();
    m_moduleMenu->addAction(m_execAct);
    m_moduleMenu->addSeparator();
    m_moduleMenu->addAction(m_deleteAct);
@@ -305,9 +301,9 @@ vistle::Port *Module::getVistlePort(Port *port) const {
    return it->second;
 }
 
-Scene *Module::scene() const {
+DataFlowNetwork *Module::scene() const {
 
-   return static_cast<Scene *>(Base::scene());
+   return static_cast<DataFlowNetwork *>(Base::scene());
 }
 
 void Module::mousePressEvent(QGraphicsSceneMouseEvent *event) {

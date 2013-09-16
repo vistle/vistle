@@ -7,15 +7,14 @@
  * - any interactions between modules, such as sorting, is performed
  */
 /**********************************************************************************/
-#include "scene.h"
+#include "dataflownetwork.h"
+#include "module.h"
+#include "connection.h"
 
-#include <userinterface/userinterface.h>
-#include <core/message.h>
+#include <core/statetracker.h>
 
 #include <QGraphicsView>
-#include <QStringList>
 #include <QGraphicsSceneMouseEvent>
-#include <QDebug>
 
 namespace gui {
 
@@ -23,7 +22,9 @@ namespace gui {
  * \brief Scene::Scene
  * \param parent
  */
-Scene::Scene(QObject *parent) : QGraphicsScene(parent)
+DataFlowNetwork::DataFlowNetwork(vistle::VistleConnection *conn, QObject *parent)
+: QGraphicsScene(parent)
+, m_vistleConnection(conn)
 {
     // Initialize starting scene information.
     m_LineColor = Qt::black;
@@ -35,14 +36,9 @@ Scene::Scene(QObject *parent) : QGraphicsScene(parent)
 /*!
  * \brief Scene::~Scene
  */
-Scene::~Scene()
+DataFlowNetwork::~DataFlowNetwork()
 {
     m_moduleList.clear();
-}
-
-void Scene::setVistleConnection(vistle::VistleConnection *runner)
-{
-    m_vistleConnection = runner;
 }
 
 /*!
@@ -50,7 +46,7 @@ void Scene::setVistleConnection(vistle::VistleConnection *runner)
  * \param modName
  * \param dropPos
  */
-void Scene::addModule(QString modName, QPointF dropPos)
+void DataFlowNetwork::addModule(QString modName, QPointF dropPos)
 {
     Module *module = new Module(0, modName);
     ///\todo improve how the data such as the name is set in the module.
@@ -68,7 +64,7 @@ void Scene::addModule(QString modName, QPointF dropPos)
     m_moduleList.append(module);
 }
 
-void Scene::addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name)
+void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString name)
 {
    //std::cerr << "addModule: name=" << name.toStdString() << ", id=" << moduleId << std::endl;
    Module *mod = findModule(spawnUuid);
@@ -88,7 +84,7 @@ void Scene::addModule(int moduleId, const boost::uuids::uuid &spawnUuid, QString
    mod->setName(QString("%1_%2").arg(name, QString::number(moduleId)));
 }
 
-void Scene::deleteModule(int moduleId)
+void DataFlowNetwork::deleteModule(int moduleId)
 {
    Module *m = findModule(moduleId);
    if (m) {
@@ -97,7 +93,71 @@ void Scene::deleteModule(int moduleId)
    }
 }
 
-void Scene::addConnection(Port *portFrom, Port *portTo, bool sendToController) {
+void DataFlowNetwork::moduleStateChanged(int moduleId, int stateBits)
+{
+   if (Module *m = findModule(moduleId)) {
+      if (stateBits & vistle::StateObserver::Killed)
+         m->setStatus(Module::KILLED);
+      else if (stateBits & vistle::StateObserver::Busy)
+         m->setStatus(Module::BUSY);
+      else if (stateBits & vistle::StateObserver::Initialized)
+         m->setStatus(Module::INITIALIZED);
+      else
+         m->setStatus(Module::SPAWNING);
+   }
+}
+
+void DataFlowNetwork::newPort(int moduleId, QString portName)
+{
+   if (Module *m = findModule(moduleId)) {
+      vistle::Port *port = m_vistleConnection->ui().state().portTracker()->getPort(moduleId, portName.toStdString());
+      if (port) {
+         m->addPort(port);
+      }
+   }
+}
+
+void DataFlowNetwork::newConnection(int fromId, QString fromName,
+                                   int toId, QString toName) {
+
+#if 0
+   QString text = "New Connection: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
+   m_console->appendDebug(text);
+#endif
+
+   vistle::Port *portFrom = m_vistleConnection->ui().state().portTracker()->getPort(fromId, fromName.toStdString());
+   vistle::Port *portTo = m_vistleConnection->ui().state().portTracker()->getPort(toId, toName.toStdString());
+
+   Module *mFrom = findModule(fromId);
+   Module *mTo = findModule(toId);
+
+   if (mFrom && portFrom && mTo && portTo) {
+      addConnection(mFrom->getGuiPort(portFrom), mTo->getGuiPort(portTo));
+   }
+}
+
+void DataFlowNetwork::deleteConnection(int fromId, QString fromName,
+                                      int toId, QString toName)
+{
+#if 0
+   QString text = "Connection removed: " + QString::number(fromId) + ":" + fromName + " -> " + QString::number(toId) + ":" + toName;
+   m_console->appendDebug(text);
+#endif
+
+   vistle::Port *portFrom = m_vistleConnection->ui().state().portTracker()->getPort(fromId, fromName.toStdString());
+   vistle::Port *portTo = m_vistleConnection->ui().state().portTracker()->getPort(toId, toName.toStdString());
+
+   Module *mFrom = findModule(fromId);
+   Module *mTo = findModule(toId);
+
+   if (mFrom && portFrom && mTo && portTo) {
+      removeConnection(mFrom->getGuiPort(portFrom), mTo->getGuiPort(portTo));
+   }
+}
+
+
+
+void DataFlowNetwork::addConnection(Port *portFrom, Port *portTo, bool sendToController) {
 
    assert(portFrom);
    assert(portTo);
@@ -123,7 +183,7 @@ void Scene::addConnection(Port *portFrom, Port *portTo, bool sendToController) {
    }
 }
 
-void Scene::removeConnection(Port *portFrom, Port *portTo, bool sendToController)
+void DataFlowNetwork::removeConnection(Port *portFrom, Port *portTo, bool sendToController)
 {
    ConnectionKey key(portFrom, portTo);
    auto it = m_connections.find(key);
@@ -144,7 +204,7 @@ void Scene::removeConnection(Port *portFrom, Port *portTo, bool sendToController
    }
 }
 
-Module *Scene::findModule(int id) const
+Module *DataFlowNetwork::findModule(int id) const
 {
    for (Module *mod: m_moduleList) {
       if (mod->id() == id) {
@@ -155,7 +215,7 @@ Module *Scene::findModule(int id) const
    return nullptr;
 }
 
-Module *Scene::findModule(const boost::uuids::uuid &spawnUuid) const
+Module *DataFlowNetwork::findModule(const boost::uuids::uuid &spawnUuid) const
 {
    for (Module *mod: m_moduleList) {
       if (mod->spawnUuid() == spawnUuid) {
@@ -166,7 +226,7 @@ Module *Scene::findModule(const boost::uuids::uuid &spawnUuid) const
    return nullptr;
 }
 
-QColor Scene::highlightColor() const {
+QColor DataFlowNetwork::highlightColor() const {
 
    return m_highlightColor;
 }
@@ -181,7 +241,7 @@ QColor Scene::highlightColor() const {
  *
  * \todo test connection drawing and unforseen events more thoroughly
  */
-void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
+void DataFlowNetwork::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     ///\todo add other button support
     if (event->button() == Qt::RightButton) {
@@ -222,7 +282,7 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
  * \brief Scene::mouseReleaseEvent watches for click events
  * \param event
  */
-void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
+void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
     QGraphicsItem *item;
     // if there was a click
@@ -287,7 +347,7 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
  * \brief Scene::mouseMoveEvent
  * \param event
  */
-void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
+void DataFlowNetwork::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     if (!startPort) {
        QGraphicsScene::mouseMoveEvent(event);
@@ -305,16 +365,6 @@ void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     } else {
         QGraphicsScene::mouseMoveEvent(event);
     }
-}
-
-void Scene::setMainWindow(MainWindow *w)
-{
-   m_mainWindow = w;
-}
-
-MainWindow *Scene::mainWindow() const
-{
-   return m_mainWindow;
 }
 
 } //namespace gui

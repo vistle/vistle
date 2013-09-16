@@ -18,10 +18,13 @@ public:
    };
 
    VistleConnection(vistle::UserInterface &ui);
+   virtual ~VistleConnection();
    static VistleConnection &the();
 
    void cancel();
    void operator()();
+
+   void setQuitOnExit(bool quit);
 
    void sendMessage(const vistle::message::Message &msg) const;
    bool requestReplyAsync(const vistle::message::Message &send) const;
@@ -50,6 +53,7 @@ public:
 private:
    vistle::UserInterface &m_ui;
    bool m_done = false;
+   bool m_quitOnExit = false;
 
    typedef boost::recursive_mutex mutex;
    typedef mutex::scoped_lock mutex_lock;

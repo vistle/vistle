@@ -12,7 +12,7 @@
 namespace gui {
 
 class Module;
-class Scene;
+class DataFlowNetwork;
 
 class Connection : public QGraphicsLineItem
 {
@@ -41,7 +41,7 @@ public:
     void updatePosition();                          // re-implemented
     int connectionType() { return m_connectionType; }
 
-    Scene *scene() const;
+    DataFlowNetwork *scene() const;
 
 protected:
     void hoverEnterEvent(QGraphicsSceneHoverEvent *event);

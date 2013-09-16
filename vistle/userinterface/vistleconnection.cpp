@@ -42,6 +42,15 @@ VistleConnection::VistleConnection(vistle::UserInterface &ui) : m_ui(ui)
    s_instance = this;
 }
 
+VistleConnection::~VistleConnection() {
+
+   if (m_quitOnExit) {
+      sendMessage(message::Quit());
+   }
+
+   s_instance = nullptr;
+}
+
 VistleConnection &VistleConnection::the() {
 
    assert(s_instance);
@@ -63,6 +72,11 @@ void VistleConnection::operator()() {
       }
       usleep(10000);
    }
+}
+
+void VistleConnection::setQuitOnExit(bool quit) {
+
+   m_quitOnExit = quit;
 }
 
 vistle::UserInterface &VistleConnection::ui() const {

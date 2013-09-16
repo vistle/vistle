@@ -11,7 +11,7 @@
 /**********************************************************************************/
 #include "connection.h"
 #include "module.h"
-#include "scene.h"
+#include "dataflownetwork.h"
 
 #include <QLine>
 #include <QPen>
@@ -105,9 +105,9 @@ void Connection::updatePosition()
    setLine(line);
 }
 
-Scene *Connection::scene() const {
+DataFlowNetwork *Connection::scene() const {
 
-   return static_cast<Scene *>(Base::scene());
+   return static_cast<DataFlowNetwork *>(Base::scene());
 }
 
 void Connection::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
