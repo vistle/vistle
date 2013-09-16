@@ -555,8 +555,10 @@ ParamVector Module::getVectorParameter(const std::string & name) const {
 
 void Module::updateMeta(vistle::Object::ptr obj) const {
 
-   obj->setCreator(id());
-   obj->setExecutionCounter(m_executionCount);
+   if (obj) {
+      obj->setCreator(id());
+      obj->setExecutionCounter(m_executionCount);
+   }
 }
 
 bool Module::addObject(const std::string &portName, vistle::Object::ptr object) {

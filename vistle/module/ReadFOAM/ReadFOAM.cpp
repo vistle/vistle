@@ -395,6 +395,10 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
 Object::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &field) {
 
    boost::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
+   if (!stream) {
+      std::cerr << "failed to open " << meshdir << "/" << field << std::endl;
+      return Object::ptr();
+   }
    HeaderInfo header = readFoamHeader(*stream);
    if (header.fieldclass == "volScalarField") {
       Vec<Scalar>::ptr s(new Vec<Scalar>(header.lines));
@@ -412,19 +416,21 @@ Object::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &f
 
 void ReadFOAM::setMeta(Object::ptr obj, int processor, int timestep) const {
 
-   obj->setTimestep(timestep);
-   obj->setNumTimesteps(m_case.timedirs.size());
-   obj->setBlock(processor);
-   obj->setNumBlocks(m_case.numblocks == 0 ? 1 : m_case.numblocks);
+   if (obj) {
+      obj->setTimestep(timestep);
+      obj->setNumTimesteps(m_case.timedirs.size());
+      obj->setBlock(processor);
+      obj->setNumBlocks(m_case.numblocks == 0 ? 1 : m_case.numblocks);
 
-   if (timestep >= 0) {
-      int i = 0;
-      for (auto &ts: m_case.timedirs) {
-         if (i == timestep) {
-            obj->setRealTime(ts.first);
-            break;
+      if (timestep >= 0) {
+         int i = 0;
+         for (auto &ts: m_case.timedirs) {
+            if (i == timestep) {
+               obj->setRealTime(ts.first);
+               break;
+            }
+            ++i;
          }
-         ++i;
       }
    }
 }
