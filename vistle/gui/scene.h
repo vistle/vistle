@@ -46,7 +46,7 @@ private:
     QGraphicsLineItem *m_Line = nullptr;                        //< the intermediate line drawn between modules
     QColor m_LineColor;                                         //< color of the line
     QPointF vLastPoint;                                         //< intermediate previous point for connection drawing
-    bool vMouseClick;                                           //< boolean for keeping track of if a click is made
+    bool m_mousePressed;                                           //< boolean for keeping track of if a click is made
     Port *startPort = nullptr;                                  //< starting port for module connection
     Module *startModule = nullptr;                              //< starting module for making connection
     Module *endModule = nullptr;                                //< ending module for making connection

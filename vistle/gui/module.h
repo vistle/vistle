@@ -64,6 +64,8 @@ public:
 
     template<class T>
     void setParameter(QString name, const T &value) const;
+    template<class T>
+    vistle::ParameterBase<T> *getParameter(QString name) const;
     void sendPosition() const;
     bool isPositionValid() const;
     void setPositionValid();
@@ -74,8 +76,9 @@ public:
     Scene *scene() const;
 
 protected:
+    void mousePressEvent(QGraphicsSceneMouseEvent *event);
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
     void contextMenuEvent(QGraphicsSceneContextMenuEvent *event);
-    QVariant itemChange(GraphicsItemChange change, const QVariant &value);
     void updatePosition(QPointF newPos) const;
 
 public slots:
@@ -110,9 +113,15 @@ private:
 };
 
 template <class T>
-void Module::setParameter(QString name, const T &value) const
-{
+void Module::setParameter(QString name, const T &value) const {
+
    vistle::VistleConnection::the().setParameter(id(), name.toStdString(), value);
+}
+
+template <class T>
+vistle::ParameterBase<T> *Module::getParameter(QString name) const {
+
+   return dynamic_cast<vistle::ParameterBase<T> *>(vistle::VistleConnection::the().getParameter(id(), name.toStdString()));
 }
 
 } //namespace gui

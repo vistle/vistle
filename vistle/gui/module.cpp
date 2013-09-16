@@ -206,17 +206,6 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
    m_moduleMenu->popup(event->screenPos());
 }
 
-QVariant Module::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant &value)
-{
-   if (change == ItemPositionChange && scene()) {
-      // value is the new position.
-      QPointF newPos = value.toPointF();
-      updatePosition(newPos);
-   }
-
-   return QGraphicsItem::itemChange(change, value);
-}
-
 void Module::updatePosition(QPointF newPos) const
 {
    if (id() > 0 && isPositionValid()) {
@@ -319,6 +308,22 @@ vistle::Port *Module::getVistlePort(Port *port) const {
 Scene *Module::scene() const {
 
    return static_cast<Scene *>(Base::scene());
+}
+
+void Module::mousePressEvent(QGraphicsSceneMouseEvent *event) {
+
+   Base::mousePressEvent(event);
+}
+
+void Module::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
+
+   vistle::VectorParameter *p = getParameter<vistle::ParamVector>("_position");
+   if (p) {
+      vistle::ParamVector v = p->getValue();
+      if (v[0] != pos().x() || v[1] != pos().y())
+         sendPosition();
+   }
+   Base::mouseReleaseEvent(event);
 }
 
 /*!

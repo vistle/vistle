@@ -27,7 +27,7 @@ Scene::Scene(QObject *parent) : QGraphicsScene(parent)
 {
     // Initialize starting scene information.
     m_LineColor = Qt::black;
-    vMouseClick = false;
+    m_mousePressed = false;
 
     m_highlightColor = QColor(200, 50, 200);
 }
@@ -191,7 +191,7 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent *event)
     // store the click location
     vLastPoint = event->scenePos();
     // set the click flag
-    vMouseClick = true;
+    m_mousePressed = true;
 
     // If the user clicks on a module, test for what is being clicked on.
     //  If okay, begin the process of drawing a line.
@@ -226,7 +226,7 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
     QGraphicsItem *item;
     // if there was a click
-    if ((vMouseClick) && (event->scenePos() == vLastPoint)) {
+    if ((m_mousePressed) && (event->scenePos() == vLastPoint)) {
         item = itemAt(event->scenePos(), QTransform());
         if (item) {
             if (Connection *connection = dynamic_cast<Connection *>(item)) {
@@ -234,7 +234,7 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
             }
         } //end if (item)
     // if there was not a click, and if m_line already was drawn
-    } else if (vMouseClick && m_Line) {
+    } else if (m_mousePressed && m_Line) {
 
        // clean up connection
        removeItem(m_Line);
@@ -271,15 +271,15 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                 }
              }
              break;
-          } //end switch
-       } //end if (item)
-    } //end if (vMouseClick && m_Line)
+          }
+       }
+    }
 
     // Clear data
     startModule = nullptr;
     endModule = nullptr;
     startPort = nullptr;
-    vMouseClick = false;
+    m_mousePressed = false;
     QGraphicsScene::mouseReleaseEvent(event);
 }
 
@@ -307,7 +307,7 @@ void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     }
 }
 
-void gui::Scene::setMainWindow(MainWindow *w)
+void Scene::setMainWindow(MainWindow *w)
 {
    m_mainWindow = w;
 }
