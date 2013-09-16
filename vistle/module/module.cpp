@@ -51,7 +51,8 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
    void flush(ssize_t count=-1) {
       size_t size = count==-1 ? m_buf.size() : count;
-      m_module->sendText(message::SendText::Cerr, std::string(m_buf.data(), size));
+      if (size > 0)
+         m_module->sendText(message::SendText::Cerr, std::string(m_buf.data(), size));
 
       if (count == -1) {
          m_buf.clear();
