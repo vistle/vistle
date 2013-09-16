@@ -326,6 +326,12 @@ void Module::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
    Base::mouseReleaseEvent(event);
 }
 
+void Module::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) {
+
+   execModule();
+   Base::mouseReleaseEvent(event);
+}
+
 /*!
  * \brief Module::portPos return the outward point for a port.
  * \param port
