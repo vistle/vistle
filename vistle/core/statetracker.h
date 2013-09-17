@@ -50,7 +50,7 @@ class V_COREEXPORT StateObserver {
    long modificationCount() const;
 
 private:
-   long m_modificationCount;
+   long m_modificationCount = 0;
 };
 
 class V_COREEXPORT StateTracker {
