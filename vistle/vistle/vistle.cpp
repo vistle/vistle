@@ -20,25 +20,52 @@ class Vistle: public Executor {
    Vistle(int argc, char *argv[]) : Executor(argc, argv) {}
    bool config(int argc, char *argv[]) {
 
+      std::string bindir = getbindir(argc, argv);
+
+      bool start_gui = true;
+      bool start_tui = false;
+      if (argc > 1) {
+         bool haveUiArg = true;
+         std::string arg = argv[1];
+         if (arg == "-no-ui" || arg == "-batch") {
+            start_gui = false;
+            start_tui = false;
+         } else if (arg == "-gui") {
+            start_gui = true;
+            start_tui = false;
+         } else if (arg == "-tui") {
+            start_gui = false;
+            start_tui = true;
+         } else {
+            haveUiArg = false;
+         }
+
+         if (haveUiArg) {
+            --argc;
+            ++argv;
+         }
+      }
+
       if (argc > 1)
          setFile(argv[1]);
-
-      std::string bindir = getbindir(argc, argv);
 
       int rank = 0;
       MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-      if (rank == 0) {
+      if (rank == 0 && (start_gui || start_tui)) {
          const pid_t pid = fork();
          if (pid < 0) {
-            std::cerr << "Error when forking for executing GUI: " << strerror(errno) << std::endl;
+            std::cerr << "Error when forking for executing UI: " << strerror(errno) << std::endl;
             exit(1);
          } else if (pid == 0) {
-            std::string gui = bindir + "/gui";
+            std::string cmd = "gui";
+            if (start_tui)
+               cmd = "blower";
+            std::string pathname = bindir + "/" + cmd;
             std::stringstream s;
             s << uiPort();
-            execlp(gui.c_str(), "gui", "-from-vistle", "localhost", s.str().c_str(), nullptr);
-            std::cerr << "Error when executing " << gui << ": " << strerror(errno) << std::endl;
+            execlp(pathname.c_str(), cmd.c_str(), "-from-vistle", "localhost", s.str().c_str(), nullptr);
+            std::cerr << "Error when executing " << pathname << ": " << strerror(errno) << std::endl;
             exit(1);
          }
       }

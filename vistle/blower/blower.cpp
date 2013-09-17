@@ -108,6 +108,16 @@ int main(int argc, char *argv[]) {
       std::string host = "localhost";
       unsigned short port = 8193;
 
+      bool quitOnExit = false;
+      if (argc > 1) {
+         std::string arg(argv[1]);
+         if (arg == "-from-vistle") {
+            quitOnExit = true;
+            --argc;
+            ++argv;
+         }
+      }
+
       if (argc > 1)
          host = argv[1];
 
@@ -119,6 +129,7 @@ int main(int argc, char *argv[]) {
       UserInterface ui(host, port, &printer);
       PythonInterface python("blower");
       VistleConnection conn(ui);
+      conn.setQuitOnExit(quitOnExit);
       PythonModule pythonmodule(&conn);
       boost::thread runnerThread(boost::ref(conn));
 
