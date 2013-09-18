@@ -1,6 +1,12 @@
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "$ENV{EXTERNLIBS}/OpenSceneGraph")
 find_package(OpenSceneGraph 2.8.0 COMPONENTS osgViewer osgGA osgDB)
 find_package(OpenGL)
+find_package(COVER)
+
+if(NOT COVER_FOUND)
+   message("COVER not found")
+   return()
+endif()
 
 set(SOURCES
    VistlePlugin.cpp
@@ -18,8 +24,8 @@ include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
-        ${PROJECT_SOURCE_DIR}/../covise/OpenCOVER
-        ${PROJECT_SOURCE_DIR}/../covise
+        ${COVISE_INCLUDE_DIRS}
+        ${COVER_INCLUDE_DIRS}
 )
 
 add_cover_plugin(VistlePlugin vistle_module)

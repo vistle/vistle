@@ -45,6 +45,5 @@ set(DESKVOX_USE_QT4 ${COVISE_USE_QT4})
 include(cmake/Qt4-5.cmake)
 find_qt()
 
-add_subdirectory(covise)
 add_subdirectory(3rdparty)
 add_subdirectory(vistle)
