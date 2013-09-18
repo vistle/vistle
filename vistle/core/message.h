@@ -39,9 +39,9 @@ typedef char port_name_t[32];
 typedef char param_name_t[32];
 typedef char param_value_t[256];
 typedef char param_desc_t[512];
-typedef char param_choice_t[64];
-const int param_num_choices = 60;
-typedef char text_t[440];
+typedef char param_choice_t[40];
+const int param_num_choices = 22;
+typedef char text_t[900];
 
 class V_COREEXPORT Message {
    // this is POD
@@ -49,7 +49,7 @@ class V_COREEXPORT Message {
    friend class vistle::Communicator;
 
  public:
-   static const size_t MESSAGE_SIZE = 4096; // fixed message size is imposed by boost::interprocess::message_queue
+   static const size_t MESSAGE_SIZE = 1024; // fixed message size is imposed by boost::interprocess::message_queue
    typedef boost::uuids::uuid uuid_t;
 
    enum Type {
