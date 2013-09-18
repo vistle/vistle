@@ -139,6 +139,7 @@ QList<QString> MainWindow::loadModuleFile()
     moduleList << "ReadCovise";
     moduleList << "Replicate";
     moduleList << "Color";
+    moduleList << "COVER";
     moduleList << "Extrema";
     moduleList << "IsoSurface";
     moduleList << "ReadFOAM";
