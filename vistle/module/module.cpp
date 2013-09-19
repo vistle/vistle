@@ -50,14 +50,16 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
    }
 
    void flush(ssize_t count=-1) {
-      size_t size = count==-1 ? m_buf.size() : count;
-      if (size > 0)
+      size_t size = count<0 ? m_buf.size() : count;
+      if (size > 0) {
          m_module->sendText(message::SendText::Cerr, std::string(m_buf.data(), size));
+         std::cout << std::string(m_buf.data(), size) << std::flush;
+      }
 
-      if (count == -1) {
+      if (size == m_buf.size()) {
          m_buf.clear();
       } else {
-         m_buf.erase(m_buf.begin(), m_buf.begin()+count);
+         m_buf.erase(m_buf.begin(), m_buf.begin()+size);
       }
    }
 

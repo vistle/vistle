@@ -572,7 +572,7 @@ bool StateTracker::handle(const message::ReplayFinished &reset)
 bool StateTracker::handle(const message::SendText &info)
 {
    for (StateObserver *o: m_observers) {
-      o->info(info.text(), info.senderId(), 0, info.referenceType(), info.referenceUuid());
+      o->info(info.text(), info.senderId(), info.rank(), info.referenceType(), info.referenceUuid());
    }
    return true;
 }

@@ -101,7 +101,12 @@ class V_COREEXPORT Message {
    void setRank(int rank);
    //! messge size
    size_t size() const;
+   //! broadacast to all ranks?
+   bool broadcast() const;
 
+  protected:
+   //! broadcast to all ranks?
+   bool m_broadcast;
  private:
    //! message uuid
    uuid_t m_uuid;

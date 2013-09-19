@@ -47,6 +47,7 @@ class V_CONTROLEXPORT Communicator {
 
    bool dispatch();
    bool handleMessage(const message::Message &message);
+   bool forwardToMaster(const message::Message &message);
    bool broadcastAndHandleMessage(const message::Message &message);
    bool sendMessage(int receiver, const message::Message &message) const;
    void setQuitFlag();

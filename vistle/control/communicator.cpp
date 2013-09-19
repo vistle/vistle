@@ -144,8 +144,13 @@ bool Communicator::dispatch() {
                MPI_COMM_WORLD, &r);
          MPI_Wait(&r, MPI_STATUS_IGNORE);
          message::Message *message = (message::Message *) mpiReceiveBuffer;
-         if (!broadcastAndHandleMessage(*message))
-            done = true;
+         if (message->broadcast()) {
+            if (!broadcastAndHandleMessage(*message))
+               done = true;
+         }  else {
+            if (!handleMessage(*message))
+               done = true;
+         }
          MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
       }
    }
@@ -225,6 +230,20 @@ bool Communicator::tryReceiveAndHandleMessage(boost::interprocess::message_queue
 bool Communicator::sendMessage(const int moduleId, const message::Message &message) const {
 
    return moduleManager().sendMessage(moduleId, message);
+}
+
+bool Communicator::forwardToMaster(const message::Message &message) {
+
+   if (m_rank != 0) {
+
+      MPI_Request s1, s2;
+      MPI_Isend(const_cast<unsigned int *>(&message.m_size), 1, MPI_INT, 0, TagToRank0, MPI_COMM_WORLD, &s1);
+      MPI_Isend(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD, &s2);
+      MPI_Wait(&s1, MPI_STATUS_IGNORE);
+      MPI_Wait(&s2, MPI_STATUS_IGNORE);
+   }
+
+   return true;
 }
 
 bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
@@ -452,7 +471,11 @@ bool Communicator::handleMessage(const message::Message &message) {
 
       case message::Message::SENDTEXT: {
          const message::SendText &m = static_cast<const message::SendText &>(message);
-         sendUi(m);
+         if (m_rank == 0) {
+            sendUi(m);
+         } else {
+            result = forwardToMaster(m);
+         }
          //result = m_moduleManager->handle(m);
          break;
       }

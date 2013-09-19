@@ -49,7 +49,8 @@ const DefaultSender &DefaultSender::instance() {
 }
 
 Message::Message(const Type t, const unsigned int s)
-: m_uuid(boost::uuids::random_generator()())
+: m_broadcast(false)
+, m_uuid(boost::uuids::random_generator()())
 , m_size(s)
 , m_type(t)
 , m_senderId(DefaultSender::id())
@@ -99,6 +100,11 @@ Message::Type Message::type() const {
 size_t Message::size() const {
 
    return m_size;
+}
+
+bool Message::broadcast() const {
+
+   return m_broadcast;
 }
 
 Ping::Ping(const char c)
@@ -294,6 +300,8 @@ ObjectReceived::ObjectReceived(const std::string &p,
 , m_meta(obj->meta())
 , m_objectType(obj->getType())
 {
+
+   m_broadcast = true;
 
    COPY_STRING(portName, p);
 }
