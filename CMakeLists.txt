@@ -47,3 +47,8 @@ find_qt()
 
 add_subdirectory(3rdparty)
 add_subdirectory(vistle)
+
+if(${CMAKE_VERSION} VERSION_GREATER "2.8.2")
+   include(FeatureSummary)
+   feature_summary(WHAT ALL)
+endif()                                                                                                                                                            
