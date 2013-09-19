@@ -35,7 +35,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
       port = atoi(argv[2]);
    }
 
-   vistle::PythonInterface python("Vistle GUI");
+   m_python = new vistle::PythonInterface("Vistle GUI");
    std::cerr << "trying to connect UI to " << host << ":" << port << std::endl;
 
    m_mainWindow.parameters()->setVistleObserver(&m_observer);
@@ -43,7 +43,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    m_ui->registerObserver(&m_observer);
    m_vistleConnection = new vistle::VistleConnection(*m_ui);
    m_vistleConnection->setQuitOnExit(quitOnExit);
-   vistle::PythonModule pythonmodule(m_vistleConnection);
+   m_pythonMod = new vistle::PythonModule(m_vistleConnection);
    m_thread = new boost::thread(boost::ref(*m_vistleConnection));
    m_mainWindow.parameters()->setVistleConnection(m_vistleConnection);
 
@@ -85,12 +85,19 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    m_mainWindow.show();
 }
 
+UiController::~UiController()
+{
+}
+
 void UiController::finish() {
 
    m_vistleConnection->cancel();
    m_thread->join();
    delete m_thread;
    m_thread = nullptr;
+
+   delete m_pythonMod;
+   m_pythonMod = nullptr;
 
    delete m_vistleConnection;
    m_vistleConnection = nullptr;
@@ -100,6 +107,9 @@ void UiController::finish() {
 
    delete m_scene;
    m_scene = nullptr;
+
+   delete m_python;
+   m_python = nullptr;
 }
 
 void UiController::quitRequested(bool &allowed) {

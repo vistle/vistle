@@ -11,6 +11,11 @@ namespace boost {
 class thread;
 }
 
+namespace vistle {
+class PythonInterface;
+class PythonModule;
+}
+
 namespace gui {
 
 class MainWindow;
@@ -21,6 +26,7 @@ class UiController : public QObject
 
 public:
    explicit UiController(int argc, char *argv[], QObject *parent=nullptr);
+   ~UiController();
    void finish();
 
 signals:
@@ -44,6 +50,8 @@ private slots:
 private:
     vistle::VistleConnection *m_vistleConnection = nullptr;
     vistle::UserInterface *m_ui = nullptr;
+    vistle::PythonInterface *m_python = nullptr;
+    vistle::PythonModule *m_pythonMod = nullptr;
     boost::thread *m_thread = nullptr;
     DataFlowNetwork *m_scene = nullptr;
 
