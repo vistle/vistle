@@ -389,9 +389,10 @@ class VistlePlugin: public opencover::coVRPlugin {
    ~VistlePlugin();
    bool init();
    void preFrame();
+   void requestQuit(bool killSession);
 
  private:
-   OsgRenderer *mod;
+   OsgRenderer *m_module = nullptr;
 };
 
 using opencover::coCommandLine;
@@ -408,27 +409,33 @@ VistlePlugin::VistlePlugin()
    const std::string &shmname = coCommandLine::argv(1);
    int moduleID = atoi(coCommandLine::argv(2));
 
-   mod = new OsgRenderer(shmname, rank, size, moduleID);
+   m_module = new OsgRenderer(shmname, rank, size, moduleID);
 }
 
 VistlePlugin::~VistlePlugin() {
 
    MPI_Barrier(MPI_COMM_WORLD);
-   delete mod;
+   delete m_module;
 }
 
 bool VistlePlugin::init() {
 
-   return mod;
+   return m_module;
 }
 
 void VistlePlugin::preFrame() {
 
    MPI_Barrier(MPI_COMM_WORLD);
-   if (!mod->dispatch()) {
+   if (m_module && !m_module->dispatch()) {
       std::cerr << "Vistle requested COVER to quit" << std::endl;
       OpenCOVER::instance()->quitCallback(NULL,NULL);
    }
+}
+
+void VistlePlugin::requestQuit(bool killSession)
+{
+   delete m_module;
+   m_module = nullptr;
 }
 
 COVERPLUGIN(VistlePlugin);

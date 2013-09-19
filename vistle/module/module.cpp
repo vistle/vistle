@@ -1158,7 +1158,7 @@ Module::~Module() {
    Shm::the().detach();
 
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
-             << "/" << size() << "] quit" << std::endl;
+             << "/" << size() << "]: I'm quitting" << std::endl;
 
    MPI_Barrier(MPI_COMM_WORLD);
 }

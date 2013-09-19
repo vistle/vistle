@@ -187,7 +187,6 @@ class V_COREEXPORT Module {
 
 #define MODULE_MAIN(X) \
    int main(int argc, char **argv) { \
-      int rank, size, moduleID; \
       MPI_Init(&argc, &argv); \
       vistle::registerTypes(); \
       try { \
@@ -197,10 +196,11 @@ class V_COREEXPORT Module {
             exit(1); \
          } \
          MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI::ERRORS_THROW_EXCEPTIONS); \
+         int rank=-1, size=-1; \
          MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
          MPI_Comm_size(MPI_COMM_WORLD, &size); \
          const std::string &shmname = argv[1]; \
-         moduleID = atoi(argv[2]); \
+         int moduleID = atoi(argv[2]); \
          {  \
             X module(shmname, rank, size, moduleID); \
                module.initDone(); \
