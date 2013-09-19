@@ -409,7 +409,7 @@ class V_COREEXPORT ObjectTypeRegistry {
    V_SERIALIZERS(Type) \
    V_OBJECT_TYPE3(Type, Type, id)
 
-void registerTypes();
+void V_COREEXPORT registerTypes();
 
 } // namespace vistle
 

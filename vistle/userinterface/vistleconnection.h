@@ -7,7 +7,7 @@
 
 namespace vistle {
 
-class VistleConnection
+class V_UIEXPORT VistleConnection
 {
    friend class PythonModule;
 public:
