@@ -7,6 +7,7 @@
 #include <vector>
 #include <cstdlib>
 #include <cstring>
+#include <algorithm>
 
 #include <util/findself.h>
 
