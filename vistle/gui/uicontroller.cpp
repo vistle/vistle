@@ -116,7 +116,7 @@ bool UiController::checkModified(const QString &reason)
    ModifiedDialog d(reason, &m_mainWindow);
 
    int res = d.exec();
-   std::cerr << "res: " << res << std::endl;
+   //std::cerr << "res: " << res << std::endl;
    if (res == QMessageBox::Save) {
       saveDataFlowNetwork();
       return true;
