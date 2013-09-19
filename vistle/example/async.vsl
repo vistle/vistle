@@ -7,7 +7,7 @@ uISOSURF = spawnAsync("IsoSurface");
 #EXT = spawnAsync("Extrema");
 uCOLOR = spawnAsync("Color");
 uCOLLECT = spawnAsync("Collect");
-uRENDERER = spawnAsync("cover");
+uRENDERER = spawnAsync("COVER");
 
 RGEO = waitForSpawn(uRGEO);
 RGRID = waitForSpawn(uRGRID);

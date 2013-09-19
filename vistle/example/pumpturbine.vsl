@@ -40,7 +40,7 @@ setStringParam(ISO_NUSGS, "shader_params", "\"color=0. 0. 1. 1.\"");
 #setFloatParam(COLOR, "max", 330.)
 #COLLECT = spawn("Collect");
 
-RENDERER = spawn("cover");
+RENDERER = spawn("COVER");
 setIntParam(RENDERER, "master_only", 1)
 #WRITEARCHIVE = spawn("WriteVistle");
 #setParam(WRITEARCHIVE, "filename", "turbinevistle.archive");

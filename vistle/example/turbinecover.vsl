@@ -23,7 +23,7 @@ setFloatParam(ISOSURF, "isovalue", -5.0);
 COLOR = spawn("Color");
 COLLECT = spawn("Collect");
 
-RENDERER = spawn("cover");
+RENDERER = spawn("COVER");
 #WRITEARCHIVE = spawn("WriteVistle");
 #setParam(WRITEARCHIVE, "filename", "turbinevistle.archive");
 #setParam(WRITEARCHIVE, "format", 0); # 0=binary, 1=text, 2=XML
