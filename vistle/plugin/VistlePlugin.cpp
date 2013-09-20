@@ -244,29 +244,29 @@ void OsgRenderer::addInputObject(vistle::Object::const_ptr container,
                                  vistle::Object::const_ptr normals,
                                  vistle::Object::const_ptr texture) {
 
-   int creatorId = geometry->getCreator();
+   int creatorId = container->getCreator();
    CreatorMap::iterator it = creatorMap.find(creatorId);
    if (it != creatorMap.end()) {
-      if (it->second.age < geometry->getExecutionCounter()) {
-         std::cerr << "removing all created by " << creatorId << ", age " << geometry->getExecutionCounter() << ", was " << it->second.age << std::endl;
+      if (it->second.age < container->getExecutionCounter()) {
+         std::cerr << "removing all created by " << creatorId << ", age " << container->getExecutionCounter() << ", was " << it->second.age << std::endl;
          removeAllCreatedBy(creatorId);
-      } else if (it->second.age > geometry->getExecutionCounter()) {
-         std::cerr << "received outdated object created by " << creatorId << ", age " << geometry->getExecutionCounter() << ", was " << it->second.age << std::endl;
+      } else if (it->second.age > container->getExecutionCounter()) {
+         std::cerr << "received outdated object created by " << creatorId << ", age " << container->getExecutionCounter() << ", was " << it->second.age << std::endl;
          return;
       }
    } else {
-      std::string name = getModuleName(geometry->getCreator());
-      it = creatorMap.insert(std::make_pair(creatorId, Creator(geometry->getCreator(), name, vistleRoot))).first;
+      std::string name = getModuleName(container->getCreator());
+      it = creatorMap.insert(std::make_pair(creatorId, Creator(container->getCreator(), name, vistleRoot))).first;
    }
    Creator &creator = it->second;
-   creator.age = geometry->getExecutionCounter();
+   creator.age = container->getExecutionCounter();
 
-   if (objects.find(geometry->getName()) != objects.end()) {
-      std::cerr << "Object added twice: " << geometry->getName() << std::endl;
+   if (objects.find(container->getName()) != objects.end()) {
+      std::cerr << "Object added twice: " << container->getName() << std::endl;
       return;
    }
 
-   VistleRenderObject *ro = new VistleRenderObject(geometry);
+   VistleRenderObject *ro = new VistleRenderObject(container);
    ro->setGeometry(geometry);
    ro->setColors(colors);
    ro->setNormals(normals);
@@ -320,7 +320,7 @@ bool OsgRenderer::addInputObject(const std::string & portName,
             << (geom->texture()?"T":".")
             << " ]" << std::endl;
 #endif
-         addInputObject(geom, geom->geometry(), geom->colors(), geom->normals(),
+         addInputObject(object, geom->geometry(), geom->colors(), geom->normals(),
                         geom->texture());
 
          break;
