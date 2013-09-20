@@ -84,7 +84,7 @@ bool Renderer::dispatch() {
                      const message::ObjectReceived *recv = static_cast<const message::ObjectReceived *>(message);
                      PlaceHolder::ptr ph(new PlaceHolder(recv->objectName(), recv->meta(), recv->objectType()));
                      const bool bcast = !m_masterOnly->getValue();
-                     const bool localAdd = !m_masterOnly->getValue() || m_rank==0;
+                     bool localAdd = !m_masterOnly->getValue() || m_rank==0;
                      if (recv->rank() == rank()) {
                         Object::const_ptr obj = Shm::the().getObjectFromName(recv->objectName());
                         if (obj) {
@@ -119,8 +119,6 @@ bool Renderer::dispatch() {
                         assert(obj->check());
                         if (localAdd) {
                            addInputObject(recv->getPortName(), obj);
-                        } else {
-                           addInputObject(recv->getPortName(), ph);
                         }
                         obj->unref(); // normally done in AddObject::takeObject();
                      } else {
@@ -154,7 +152,11 @@ bool Renderer::dispatch() {
                               if (localAdd) {
                                  addInputObject(recv->getPortName(), obj);
                               }
+                           } else {
+                              localAdd = false;
                            }
+                        } else {
+                           localAdd = false;
                         }
                      }
                      if (!localAdd)
