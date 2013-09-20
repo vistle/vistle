@@ -130,7 +130,10 @@ class V_COREEXPORT Module {
 #endif
    ;
 
- protected:
+protected:
+
+   void setObjectReceivePolicy(int pol);
+   int objectReceivePolicy() const;
 
    const std::string m_name;
    const unsigned int m_rank;
@@ -158,6 +161,7 @@ class V_COREEXPORT Module {
    virtual bool parameterChanged(Parameter *p);
 
  private:
+   int m_receivePolicy;
 
    Parameter *findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;

@@ -285,6 +285,8 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
 bool Communicator::handleMessage(const message::Message &message) {
 
+   using namespace vistle::message;
+
 #ifdef DEBUG
    CERR << "Message: "
       << "type=" << message.type() << ", "
@@ -477,6 +479,12 @@ bool Communicator::handleMessage(const message::Message &message) {
             result = forwardToMaster(m);
          }
          //result = m_moduleManager->handle(m);
+         break;
+      }
+
+      case Message::OBJECTRECEIVEPOLICY: {
+         const ObjectReceivePolicy &m = static_cast<const ObjectReceivePolicy &>(message);
+         result = m_moduleManager->handle(m);
          break;
       }
 

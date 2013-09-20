@@ -781,5 +781,16 @@ const char *SendText::text() const {
    return m_text;
 }
 
+ObjectReceivePolicy::ObjectReceivePolicy(ObjectReceivePolicy::Policy pol)
+: Message(Message::OBJECTRECEIVEPOLICY, sizeof(ObjectReceivePolicy))
+, m_policy(pol)
+{
+}
+
+ObjectReceivePolicy::Policy ObjectReceivePolicy::policy() const {
+
+   return m_policy;
+}
+
 } // namespace message
 } // namespace vistle

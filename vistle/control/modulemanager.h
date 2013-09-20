@@ -91,6 +91,7 @@ class V_CONTROLEXPORT ModuleManager {
    bool handle(const message::Barrier &barrier);
    bool handle(const message::BarrierReached &barrierReached);
    bool handle(const message::ResetModuleIds &reset);
+   bool handle(const message::ObjectReceivePolicy &receivePolicy);
 
    std::string m_bindir;
 
@@ -108,6 +109,7 @@ class V_CONTROLEXPORT ModuleManager {
       }
       bool local = false;
       int baseRank = 0;
+      message::ObjectReceivePolicy::Policy objectPolicy = message::ObjectReceivePolicy::Single;
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;

@@ -1263,4 +1263,15 @@ void Module::sendError(const message::Message &msg, const char *fmt, ...) const 
    sendMessage(info);
 }
 
+void Module::setObjectReceivePolicy(int pol) {
+
+   m_receivePolicy = pol;
+   sendMessage(message::ObjectReceivePolicy(message::ObjectReceivePolicy::Policy(pol)));
+}
+
+int Module::objectReceivePolicy() const {
+
+   return m_receivePolicy;
+}
+
 } // namespace vistle

@@ -4,7 +4,6 @@
 #include <string>
 #include <boost/uuid/uuid.hpp>
 
-
 #include "object.h"
 #include "scalar.h"
 #include "paramvector.h"
@@ -80,6 +79,7 @@ class V_COREEXPORT Message {
       RESETMODULEIDS,
       REPLAYFINISHED,
       SENDTEXT,
+      OBJECTRECEIVEPOLICY,
    };
 
    Message(const Type type, const unsigned int size);
@@ -537,6 +537,20 @@ private:
    Type m_referenceType;
    //! message text
    text_t m_text;
+};
+
+class V_COREEXPORT ObjectReceivePolicy: public Message {
+
+public:
+   enum Policy {
+      Single,
+      NotifyAll,
+      Distribute,
+   };
+   ObjectReceivePolicy(Policy pol);
+   Policy policy() const;
+private:
+   Policy m_policy;
 };
 
 } // namespace message

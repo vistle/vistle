@@ -625,12 +625,23 @@ bool ModuleManager::handle(const message::AddObject &addObj) {
          c.setUuid(addObj.uuid());
          sendMessage(destId, c);
 
-         message::ObjectReceived recv(addObj.getPortName(), obj);
-         recv.setUuid(addObj.uuid());
-         recv.setSenderId(destId);
+         auto it = runningMap.find(destId);
+         if (it == runningMap.end()) {
+            CERR << "port connection to module that is not running" << std::endl;
+            assert("port connection to module that is not running" == 0);
+            continue;
+         }
 
-         if (!Communicator::the().broadcastAndHandleMessage(recv))
-            return false;
+         Module &destMod = it->second;
+         if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
+            || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
+            message::ObjectReceived recv(addObj.getPortName(), obj);
+            recv.setUuid(addObj.uuid());
+            recv.setSenderId(destId);
+
+            if (!Communicator::the().broadcastAndHandleMessage(recv))
+               return false;
+         }
       }
    }
    else
@@ -703,6 +714,19 @@ bool ModuleManager::handle(const vistle::message::ResetModuleIds &reset)
 
    resetModuleCounter();
    sendUi(message::ReplayFinished());
+   return true;
+}
+
+bool ModuleManager::handle(const message::ObjectReceivePolicy &receivePolicy)
+{
+   const int id = receivePolicy.senderId();
+   RunningMap::iterator it = runningMap.find(id);
+   if (it == runningMap.end()) {
+         CERR << " Module [" << id << "] changed ObjectReceivePolicy, but not found in running map" << std::endl;
+         return false;
+   }
+   Module &mod = it->second;
+   mod.objectPolicy = receivePolicy.policy();
    return true;
 }
 
