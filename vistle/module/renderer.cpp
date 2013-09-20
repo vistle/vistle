@@ -31,6 +31,17 @@ Renderer::~Renderer() {
 
 }
 
+static bool needsSync(const message::Message &m) {
+
+   switch (m.type()) {
+      case vistle::message::Message::OBJECTRECEIVED:
+      case vistle::message::Message::QUIT:
+         return true;
+      default:
+         return false;
+   }
+}
+
 bool Renderer::dispatch() {
 
    size_t msgSize;
@@ -50,15 +61,8 @@ bool Renderer::dispatch() {
 
       if (haveMessage) {
          vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
-
-         switch (message->type()) {
-            case vistle::message::Message::OBJECTRECEIVED:
-            case vistle::message::Message::QUIT:
-               sync = 1;
-               break;
-            default:
-               break;
-         }
+         if (needsSync(*message))
+            sync = 1;
       }
 
       MPI_Allreduce(&sync, &allsync, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
@@ -161,15 +165,8 @@ bool Renderer::dispatch() {
                   break;
             }
 
-            switch (message->type()) {
-               case vistle::message::Message::OBJECTRECEIVED:
-               case vistle::message::Message::QUIT:
-                  sync = 1;
-                  break;
-               default:
-                  break;
-            }
-
+            if (needsSync(*message))
+               sync = 1;
          }
 
          if (allsync && !sync) {
