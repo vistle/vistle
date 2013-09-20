@@ -69,6 +69,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
       case vistle::Object::PLACEHOLDER: {
          vistle::PlaceHolder::const_ptr ph = vistle::PlaceHolder::as(m_geo);
          switch (ph->originalType()) {
+            case vistle::Object::GEOMETRY:
             case vistle::Object::TRIANGLES:
             case vistle::Object::LINES:
             case vistle::Object::POLYGONS: {
