@@ -125,8 +125,8 @@
    <addaction name="menuHello_World"/>
    <addaction name="menuEdit"/>
    <addaction name="menuView"/>
-   <addaction name="menuHelp"/>
    <addaction name="menuModules"/>
+   <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <widget class="QDockWidget" name="consoleDock">
