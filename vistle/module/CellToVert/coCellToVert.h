@@ -31,7 +31,7 @@ class coCellToVert
        //                    
        ////////////////////////////////////////////////////////////////////////////////////////////////////
        
-       bool weightedAlgo(Index num_elem,  Index num_poIndex,
+       bool weightedAlgo(Index num_elem, Index num_conn, Index num_point,
                              const Index *elem_list, const Index *conn_list, const unsigned char *type_list, 
 			     const Index *neighbour_cells, const Index *neighbour_idx,
 			     const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
@@ -40,13 +40,13 @@ class coCellToVert
 	
        ////////////////////////////////////////////////////////////////////////////////////////////////////
        //
-       //   Take the average value of all elements which the poIndex includes
+       //   Take the average value of all elements which the point includes
        //
        //   implemtented for POLYGN, LINES, UNSGRD
        //
        ////////////////////////////////////////////////////////////////////////////////////////////////////
        			     
-       bool simpleAlgo(Index num_elem, Index num_conn, Index num_poIndex,
+       bool simpleAlgo(Index num_elem, Index num_conn, Index num_point,
                            const Index *elem_list, const Index *conn_list,
                            Index numComp, const Scalar *in_data_0, const Scalar *in_data_1, const Scalar *in_data_2,
                            Scalar *out_data_0, Scalar *out_data_1, Scalar *out_data_2 );
@@ -60,7 +60,7 @@ class coCellToVert
 	//
 	//  returns NULL in case of an error
 	//
-        Object::ptr interpolate( bool unstructured, Index num_elem, Index num_conn, Index num_poIndex,
+        Object::ptr interpolate( bool unstructured, Index num_elem, Index num_conn, Index num_point,
                            const Index *elem_list, const Index *conn_list, const unsigned char *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
 			   const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
                            Index numComp, Index &dataSize, const Scalar *in_data_0, const Scalar *in_data_1, const Scalar *in_data_2, 
@@ -77,7 +77,7 @@ class coCellToVert
         //
 	//  returns false in case of an error
 	//
-        bool  interpolate( bool unstructured, Index num_elem, Index num_conn, Index num_poIndex,
+        bool  interpolate( bool unstructured, Index num_elem, Index num_conn, Index num_point,
                            const Index *elem_list, const Index *conn_list, const unsigned char *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
 			   const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
                            Index numComp, Index &dataSize, const Scalar *in_data_0, const Scalar *in_data_1, const Scalar *in_data_2, 

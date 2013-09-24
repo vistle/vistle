@@ -78,7 +78,7 @@ coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, In
                                 numComp, in_data_0, in_data_1, in_data_2,
                                 out_data_0, out_data_1, out_data_2);			    
 
-         case SQR_WEIGHT: return weightedAlgo( num_elem, num_point,
+         case SQR_WEIGHT: return weightedAlgo( num_elem, num_conn, num_point,
                                 elem_list, conn_list, type_list, neighbour_cells, neighbour_idx, 
                                 xcoord, ycoord, zcoord,
                                 numComp, in_data_0, in_data_1, in_data_2,
@@ -182,7 +182,7 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
 }
 
 bool
-coCellToVert::weightedAlgo( Index num_elem, /*Index num_conn,*/ Index num_point,
+coCellToVert::weightedAlgo( Index num_elem, Index num_conn, Index num_point,
       const Index *elem_list, const Index *conn_list, const unsigned char *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
       const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
       Index numComp, const Scalar *in_data_0, const Scalar *in_data_1, const Scalar *in_data_2,
@@ -206,12 +206,14 @@ coCellToVert::weightedAlgo( Index num_elem, /*Index num_conn,*/ Index num_point,
    Scalar *cell_center_1 = new Scalar[num_elem];
    Scalar *cell_center_2 = new Scalar[num_elem];
 
-   static const Index num_vertices_per_element[] = {0,2,3,4,4,5,6,8};
-
    for( elem=0; elem<num_elem; elem++ )
    {
       el_type = *tPtr++;                    // get this elements type (then go on to the next one)
-      num_vert_elem = num_vertices_per_element[el_type];
+      if (elem==num_elem-1) {
+         num_vert_elem = num_conn - elem_list[elem];
+      } else {
+         num_vert_elem = elem_list[elem+1] - elem_list[elem];
+      }
       // # of vertices in current element
       vertex_id = (Index *)conn_list + (*ePtr++);    // get ptr to the first vertex-id of current element
       // then go on to the next one
@@ -225,8 +227,29 @@ coCellToVert::weightedAlgo( Index num_elem, /*Index num_conn,*/ Index num_point,
       (*xc) = (*yc) = (*zc) = 0.0;
 
       // the center can be calculated now
-      for( vert=0; vert<num_vert_elem; vert++ )
-      {
+      if (el_type==UnstructuredGrid::POLYHEDRON) {
+         int num_averaged=0;
+         int facestart=conn_list[elem_list[elem]];
+         bool face_done=true;
+         for( vert=0; vert<num_vert_elem; vert++ )
+         {
+            int cur_vert=conn_list[elem_list[elem]+vert];
+            if (face_done) {
+               facestart=cur_vert;
+               face_done=false;
+            } else if (facestart==cur_vert) {
+               face_done=true;
+               continue;
+            }
+            (*xc) += xcoord[ cur_vert ];
+            (*yc) += ycoord[ cur_vert ];
+            (*zc) += zcoord[ cur_vert ];
+            ++num_averaged;
+         }
+         (*xc) /= num_averaged;
+         (*yc) /= num_averaged;
+         (*zc) /= num_averaged;
+      } else {
          (*xc) += xcoord[ *vertex_id ];
          (*yc) += ycoord[ *vertex_id ];
          (*zc) += zcoord[ *vertex_id ];
@@ -236,7 +259,6 @@ coCellToVert::weightedAlgo( Index num_elem, /*Index num_conn,*/ Index num_point,
       (*yc) /= num_vert_elem;
       (*zc) /= num_vert_elem;
    }
-
 
    Index actIndex = 0;
    Index ni, cp;
