@@ -403,7 +403,7 @@ bool ModuleManager::handle(const message::Disconnect &disconnect) {
 
 bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
 
-   sendAll(moduleExit);
+   sendAllOthers(moduleExit.senderId(), moduleExit);
 
    int mod = moduleExit.senderId();
 
@@ -491,7 +491,7 @@ bool ModuleManager::handle(const message::AddParameter &addParam) {
 #endif
 
    // let all modules know that a parameter was added
-   sendAll(addParam);
+   sendAllOthers(addParam.senderId(), addParam);
 
    replayMessages();
    return true;
