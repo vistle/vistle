@@ -1,5 +1,5 @@
 mReadCovise1 = spawn('ReadCovise')
-setVectorParam(mReadCovise1, '_position', -336.0, -212.0)
+setVectorParam(mReadCovise1, '_position', -281.0, -201.0)
 setStringParam(mReadCovise1, 'filename', '/data/OpenFOAM/PumpTurbine-flo/covise/test/three_geo2d.covise')
 
 mReadCovise2 = spawn('ReadCovise')
@@ -7,33 +7,37 @@ setVectorParam(mReadCovise2, '_position', -114.0, -211.0)
 setStringParam(mReadCovise2, 'filename', '/data/OpenFOAM/PumpTurbine-flo/covise/test/multi_geo3d.covise')
 
 mReadCovise3 = spawn('ReadCovise')
-setVectorParam(mReadCovise3, '_position', 111.0, -212.0)
+setVectorParam(mReadCovise3, '_position', 211.0, -195.0)
 setStringParam(mReadCovise3, 'filename', '/data/OpenFOAM/PumpTurbine-flo/covise/test/multi_p.covise')
 
 mCutGeometry4 = spawn('CutGeometry')
 setVectorParam(mCutGeometry4, '_position', -223.0, -43.0)
+setVectorParam(mCutGeometry4, 'point', 0.0, 0.0, 0.0)
 setVectorParam(mCutGeometry4, 'vertex', 1.0, 0.0, 0.0)
 
 mCuttingSurface5 = spawn('CuttingSurface')
-setVectorParam(mCuttingSurface5, '_position', 194.0, -44.0)
+setVectorParam(mCuttingSurface5, '_position', 136.0, -50.0)
+setVectorParam(mCuttingSurface5, 'point', 0.0, 0.0, 0.0)
 setVectorParam(mCuttingSurface5, 'vertex', 1.0, 0.0, 0.0)
 
 mIsoSurface6 = spawn('IsoSurface')
 setVectorParam(mIsoSurface6, '_position', 64.0, -44.0)
 setFloatParam(mIsoSurface6, 'isovalue', -5.0)
+setStringParam(mIsoSurface6, 'shader', 'Gouraud')
 
 mIsoSurface7 = spawn('IsoSurface')
 setVectorParam(mIsoSurface7, '_position', -52.0, -42.0)
 setFloatParam(mIsoSurface7, 'isovalue', -1.0)
+setStringParam(mIsoSurface7, 'shader', 'Gouraud')
 
 mColor8 = spawn('Color')
-setVectorParam(mColor8, '_position', 98.0, 36.0)
+setVectorParam(mColor8, '_position', 211.0, 54.0)
 
 mCollect9 = spawn('Collect')
-setVectorParam(mCollect9, '_position', 66.0, 122.0)
+setVectorParam(mCollect9, '_position', 177.0, 138.0)
 
 mCOVER10 = spawn('COVER')
-setVectorParam(mCOVER10, '_position', -99.0, 256.0)
+setVectorParam(mCOVER10, '_position', 16.0, 252.0)
 
 connect(mReadCovise1,'grid_out', mCutGeometry4,'grid_in')
 connect(mReadCovise2,'grid_out', mCuttingSurface5,'grid_in')
