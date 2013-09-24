@@ -114,75 +114,79 @@ bool Communicator::dispatch() {
 
    bool done = false;
 
-   if (m_rank == 0) {
-
-      if (!m_clientManager) {
-         bool file = !m_initialFile.empty();
-         m_clientManager = new ClientManager(file ? m_initialFile : m_initialInput,
-               file ? ClientManager::File : ClientManager::String);
-      }
-
-      done = !m_clientManager->check();
-
-      if (!done)
-         done = m_quitFlag;
-
-      if (!done && m_uiManager)
-         done = !m_uiManager->check();
-   }
-
-   // broadcast messages received from slaves (m_rank > 0)
-   if (m_rank == 0) {
-      int flag;
-      MPI_Status status;
-      MPI_Test(&m_reqToRank0, &flag, &status);
-      if (flag && status.MPI_TAG == TagToRank0) {
-
-         assert(m_rank == 0);
-         MPI_Request r;
-         MPI_Irecv(mpiReceiveBuffer, mpiMessageSize, MPI_BYTE, status.MPI_SOURCE, TagToRank0,
-               MPI_COMM_WORLD, &r);
-         MPI_Wait(&r, MPI_STATUS_IGNORE);
-         message::Message *message = (message::Message *) mpiReceiveBuffer;
-         if (message->broadcast()) {
-            if (!broadcastAndHandleMessage(*message))
-               done = true;
-         }  else {
-            if (!handleMessage(*message))
-               done = true;
-         }
-         MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
-      }
-   }
-
-   // test for message m_size from another MPI node
-   //    - receive actual message from broadcast (on any m_rank)
-   //    - receive actual message from slave m_rank (on m_rank 0) for broadcasting
-   //    - handle message
-   //    - post another MPI receive for m_size of next message
-   int flag;
-   MPI_Status status;
-   MPI_Test(&m_reqAny, &flag, &status);
-   if (flag && status.MPI_TAG == TagToAny) {
-
-      MPI_Bcast(mpiReceiveBuffer, mpiMessageSize, MPI_BYTE,
-            status.MPI_SOURCE, MPI_COMM_WORLD);
-
-      message::Message *message = (message::Message *) mpiReceiveBuffer;
-#if 0
-      printf("[%02d] message from [%02d] message type %d m_size %d\n",
-            m_rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
-#endif
-      if (!handleMessage(*message))
-         done = true;
-
-      MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
-   }
-
-   // test for messages from modules
    bool received = false;
    do {
       received = false;
+
+      // check for new UIs and other network clients
+      if (m_rank == 0) {
+
+         if (!m_clientManager) {
+            bool file = !m_initialFile.empty();
+            m_clientManager = new ClientManager(file ? m_initialFile : m_initialInput,
+                                                file ? ClientManager::File : ClientManager::String);
+         }
+
+         done = !m_clientManager->check();
+
+         if (!done)
+            done = m_quitFlag;
+
+         if (!done && m_uiManager)
+            done = !m_uiManager->check();
+      }
+
+      // handle or broadcast messages received from slaves (m_rank > 0)
+      if (m_rank == 0) {
+         int flag;
+         MPI_Status status;
+         MPI_Test(&m_reqToRank0, &flag, &status);
+         if (flag && status.MPI_TAG == TagToRank0) {
+
+            received = true;
+            assert(m_rank == 0);
+            MPI_Request r;
+            MPI_Irecv(mpiReceiveBuffer, mpiMessageSize, MPI_BYTE, status.MPI_SOURCE, TagToRank0,
+                      MPI_COMM_WORLD, &r);
+            MPI_Wait(&r, MPI_STATUS_IGNORE);
+            message::Message *message = (message::Message *) mpiReceiveBuffer;
+            if (message->broadcast()) {
+               if (!broadcastAndHandleMessage(*message))
+                  done = true;
+            }  else {
+               if (!handleMessage(*message))
+                  done = true;
+            }
+            MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
+         }
+      }
+
+      // test for message m_size from another MPI node
+      //    - receive actual message from broadcast (on any m_rank)
+      //    - receive actual message from slave m_rank (on m_rank 0) for broadcasting
+      //    - handle message
+      //    - post another MPI receive for m_size of next message
+      int flag;
+      MPI_Status status;
+      MPI_Test(&m_reqAny, &flag, &status);
+      if (flag && status.MPI_TAG == TagToAny) {
+
+         received = true;
+         MPI_Bcast(mpiReceiveBuffer, mpiMessageSize, MPI_BYTE,
+                   status.MPI_SOURCE, MPI_COMM_WORLD);
+
+         message::Message *message = (message::Message *) mpiReceiveBuffer;
+#if 0
+         printf("[%02d] message from [%02d] message type %d m_size %d\n",
+                m_rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
+#endif
+         if (!handleMessage(*message))
+            done = true;
+
+         MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
+      }
+
+      // test for messages from modules
       // handle messages from Python front-end and UIs
       if (!tryReceiveAndHandleMessage(m_commandQueue->getMessageQueue(), received, true))
          done = true;
@@ -190,7 +194,7 @@ bool Communicator::dispatch() {
       if (!done)
          done = !m_moduleManager->dispatch(received);
 
-   } while (received);
+   } while (!done && received);
 
    return !done;
 }

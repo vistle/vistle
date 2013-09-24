@@ -154,7 +154,7 @@ void Executor::run() {
       return;
 
    while (m_comm->dispatch()) {
-      usleep(100);
+      usleep(10000);
    }
 }
 
