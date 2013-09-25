@@ -84,7 +84,7 @@ bool MessageQueue::tryReceive(Message &msg) {
    return result;
 }
 
-size_t MessageQueue::getNumMessages() const {
+size_t MessageQueue::getNumMessages() {
 
    return m_mq.get_num_msg();
 }

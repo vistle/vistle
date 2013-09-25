@@ -28,7 +28,7 @@ class V_COREEXPORT MessageQueue {
    void send(const Message &msg);
    void receive(Message &msg);
    bool tryReceive(Message &msg);
-   size_t getNumMessages() const;
+   size_t getNumMessages();
 
  private:
    MessageQueue(const std::string & m_name, boost::interprocess::create_only_t);
