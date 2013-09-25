@@ -79,7 +79,7 @@ class V_CONTROLEXPORT Communicator {
 
    typedef std::map<int, message::MessageQueue *> MessageQueueMap;
    boost::shared_ptr<message::MessageQueue> m_commandQueue;
-   bool tryReceiveAndHandleMessage(boost::interprocess::message_queue &mq, bool &received, bool broadcast=false);
+   bool tryReceiveAndHandleMessage(message::MessageQueue &mq, bool &received, bool broadcast=false);
 
    static Communicator *s_singleton;
 };

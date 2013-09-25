@@ -240,7 +240,7 @@ Port *Module::createInputPort(const std::string &name, const std::string &descri
       inputPorts[name] = p;
 
       message::CreatePort message(p);
-      sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
+      sendMessageQueue->send(message);
       return p;
    }
 
@@ -599,7 +599,7 @@ bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object) {
    assert(object->check());
 
    message::AddObject message(port->getName(), object);
-   sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
+   sendMessageQueue->send(message);
    return true;
 }
 
@@ -753,17 +753,11 @@ bool Module::parameterChanged(const int senderId, const std::string &name, const
 
 bool Module::dispatch() {
 
-   size_t msgSize;
-   unsigned int priority;
    char msgRecvBuf[message::Message::MESSAGE_SIZE];
-
-   bool again = true;
-   receiveMessageQueue->getMessageQueue().receive(
-                                               (void *) msgRecvBuf,
-                                               message::Message::MESSAGE_SIZE,
-                                               msgSize, priority);
    vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
 
+   bool again = true;
+   receiveMessageQueue->receive(*message);
 
    if (syncMessageProcessing()) {
       int sync = 0, allsync = 0;
@@ -794,10 +788,7 @@ bool Module::dispatch() {
          again &= handleMessage(message);
 
          if (allsync && !sync) {
-            receiveMessageQueue->getMessageQueue().receive(
-                  (void *) msgRecvBuf,
-                  message::Message::MESSAGE_SIZE,
-                  msgSize, priority);
+            receiveMessageQueue->receive(*message);
          }
 
       } while(allsync && !sync);
@@ -812,7 +803,7 @@ bool Module::dispatch() {
 
 void Module::sendMessage(const message::Message &message) const {
 
-   sendMessageQueue->getMessageQueue().send(&message, message.size(), 0);
+   sendMessageQueue->send(message);
 }
 
 bool Module::handleMessage(const vistle::message::Message *message) {

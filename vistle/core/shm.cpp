@@ -134,7 +134,7 @@ bool Shm::cleanAll() {
       if (!shmid.empty()) {
          if (shmid.find("mq_") == 0) {
             std::cerr << "removing message queue: id " << shmid << std::endl;
-            message_queue::remove(shmid.c_str());
+            message::MessageQueue::message_queue::remove(shmid.c_str());
          } else {
             std::cerr << "removing shared memory: id " << shmid << std::endl;
             shared_memory_object::remove(shmid.c_str());
@@ -241,7 +241,7 @@ void Shm::publish(const shm_handle_t & handle) const {
 
    if (m_messageQueue) {
       vistle::message::NewObject n(handle);
-      m_messageQueue->getMessageQueue().send(&n, sizeof(n), 0);
+      m_messageQueue->send(n);
    }
 }
 

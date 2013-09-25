@@ -8,11 +8,15 @@
 namespace vistle {
 namespace message {
 
+class Message;
+
 class V_COREEXPORT MessageQueue {
 
  public:
-   static MessageQueue * create(const std::string & name);
-   static MessageQueue * open(const std::string & name);
+   typedef boost::interprocess::message_queue_t<boost::interprocess::offset_ptr<void> > message_queue;
+
+   static MessageQueue * create(const std::string & m_name);
+   static MessageQueue * open(const std::string & m_name);
 
    static std::string createName(const char * prefix,
                                  const int moduleID, const int rank);
@@ -20,15 +24,19 @@ class V_COREEXPORT MessageQueue {
    ~MessageQueue();
 
    const std::string & getName() const;
-   boost::interprocess::message_queue & getMessageQueue();
+
+   void send(const Message &msg);
+   void receive(Message &msg);
+   bool tryReceive(Message &msg);
+   size_t getNumMessages() const;
 
  private:
-   MessageQueue(const std::string & name, boost::interprocess::create_only_t);
-   MessageQueue(const std::string & name, boost::interprocess::open_only_t);
+   MessageQueue(const std::string & m_name, boost::interprocess::create_only_t);
+   MessageQueue(const std::string & m_name, boost::interprocess::open_only_t);
 
-   const std::string name;
-   boost::interprocess::message_queue mq;
-   bool removeOnExit;
+   const std::string m_name;
+   message_queue m_mq;
+   bool m_removeOnExit;
 };
 
 } // namespace message

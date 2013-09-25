@@ -24,8 +24,8 @@ class V_CONTROLEXPORT UiClient {
       bool done() const;
       UiManager &manager() const;
 
-      boost::interprocess::message_queue &sendQueue() const;
-      boost::interprocess::message_queue &recvQueue() const;
+      message::MessageQueue &sendQueue() const;
+      message::MessageQueue &recvQueue() const;
 
       boost::asio::ip::tcp::socket &socket();
 

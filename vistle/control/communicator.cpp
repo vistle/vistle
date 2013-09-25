@@ -188,7 +188,7 @@ bool Communicator::dispatch() {
 
       // test for messages from modules
       // handle messages from Python front-end and UIs
-      if (!tryReceiveAndHandleMessage(m_commandQueue->getMessageQueue(), received, true))
+      if (!tryReceiveAndHandleMessage(*m_commandQueue, received, true))
          done = true;
 
       if (!done)
@@ -199,21 +199,16 @@ bool Communicator::dispatch() {
    return !done;
 }
 
-bool Communicator::tryReceiveAndHandleMessage(boost::interprocess::message_queue &mq, bool &received, bool broadcast) {
+bool Communicator::tryReceiveAndHandleMessage(message::MessageQueue &mq, bool &received, bool broadcast) {
 
    bool done = false;
    try {
-      size_t msgSize;
-      unsigned int priority;
       char msgRecvBuf[vistle::message::Message::MESSAGE_SIZE];
+      message::Message *msg = reinterpret_cast<message::Message *>(msgRecvBuf);
 
-      received = mq.try_receive(
-            (void *) msgRecvBuf,
-            vistle::message::Message::MESSAGE_SIZE,
-            msgSize, priority);
+      received = mq.tryReceive(*msg);
 
       if (received) {
-         message::Message *msg = reinterpret_cast<message::Message *>(msgRecvBuf);
          if (broadcast) {
             if (!broadcastAndHandleMessage(*msg))
                done = true;

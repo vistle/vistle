@@ -85,8 +85,8 @@ void UiManager::sendMessage(const message::Message &msg) const {
 
 void UiManager::sendMessage(UiClient *c, const message::Message &msg) const {
 
-   boost::interprocess::message_queue &mq = c->recvQueue();
-   mq.send(&msg, msg.size(), 0);
+   message::MessageQueue &mq = c->recvQueue();
+   mq.send(msg);
 }
 
 void UiManager::requestQuit() {

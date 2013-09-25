@@ -38,31 +38,55 @@ MessageQueue * MessageQueue::open(const std::string & n) {
 }
 
 MessageQueue::MessageQueue(const std::string & n, create_only_t)
-   : name(n),  mq(create_only, name.c_str(), 256 /* num msg */,
+   : m_name(n),  m_mq(create_only, m_name.c_str(), 256 /* num msg */,
                   message::Message::MESSAGE_SIZE),
-     removeOnExit(true) {
+     m_removeOnExit(true) {
 
 }
 
 MessageQueue::MessageQueue(const std::string & n, open_only_t)
-   : name(n), mq(open_only, name.c_str()), removeOnExit(false) {
+   : m_name(n), m_mq(open_only, m_name.c_str()), m_removeOnExit(false) {
 
 }
 
 MessageQueue::~MessageQueue() {
 
-   if (removeOnExit)
-      message_queue::remove(name.c_str());
+   if (m_removeOnExit)
+      message_queue::remove(m_name.c_str());
 }
 
 const std::string & MessageQueue::getName() const {
 
-   return name;
+   return m_name;
 }
 
-message_queue &  MessageQueue::getMessageQueue() {
+void MessageQueue::send(const Message &msg) {
 
-   return mq;
+   m_mq.send(&msg, message::Message::MESSAGE_SIZE, 0);
+}
+
+void MessageQueue::receive(Message &msg) {
+
+   message_queue::size_type recvSize = 0;
+   unsigned priority = 0;
+   m_mq.receive(&msg, message::Message::MESSAGE_SIZE, recvSize, priority);
+   assert(recvSize == message::Message::MESSAGE_SIZE);
+}
+
+bool MessageQueue::tryReceive(Message &msg) {
+
+   message_queue::size_type recvSize = 0;
+   unsigned priority = 0;
+   bool result = m_mq.try_receive(&msg, message::Message::MESSAGE_SIZE, recvSize, priority);
+   if (result) {
+      assert(recvSize == message::Message::MESSAGE_SIZE);
+   }
+   return result;
+}
+
+size_t MessageQueue::getNumMessages() const {
+
+   return m_mq.get_num_msg();
 }
 
 } // namespace message

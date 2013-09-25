@@ -155,10 +155,10 @@ bool ModuleManager::dispatch(bool &received) {
          continue;
 
       if (mod.local) {
-         bi::message_queue &mq = mod.recvQueue->getMessageQueue();
+         message::MessageQueue *mq = mod.recvQueue;
 
          bool recv = false;
-         if (!Communicator::the().tryReceiveAndHandleMessage(mq, recv)) {
+         if (!Communicator::the().tryReceiveAndHandleMessage(*mq, recv)) {
             if (recv)
                done = true;
          }
@@ -192,7 +192,7 @@ bool ModuleManager::sendAllOthers(int excluded, const message::Message &message)
       const Module &mod = it->second;
 
       if (mod.local)
-         mod.sendQueue->getMessageQueue().send(&message, message.size(), 0);
+         mod.sendQueue->send(message);
    }
 
    return true;
@@ -214,7 +214,7 @@ bool ModuleManager::sendMessage(const int moduleId, const message::Message &mess
 
 
    if (it->second.local)
-      it->second.sendQueue->getMessageQueue().send(&message, message.size(), 0);
+      it->second.sendQueue->send(message);
 
    return true;
 }
@@ -459,14 +459,14 @@ bool ModuleManager::handle(const message::Compute &compute) {
    RunningMap::iterator i = runningMap.find(compute.getModule());
    if (i != runningMap.end()) {
       if (compute.senderId() == 0) {
-         i->second.sendQueue->getMessageQueue().send(&compute, sizeof(compute), 0);
+         i->second.sendQueue->send(compute);
          if (compute.getExecutionCount() > m_executionCounter)
             m_executionCounter = compute.getExecutionCount();
       } else {
          message::Compute msg(compute.getModule(), newExecutionCount());
          msg.setSenderId(compute.senderId());
          msg.setUuid(compute.uuid());
-         i->second.sendQueue->getMessageQueue().send(&msg, sizeof(msg), 0);
+         i->second.sendQueue->send(msg);
       }
    }
 
@@ -514,7 +514,7 @@ bool ModuleManager::handle(const message::SetParameter &setParam) {
       // message to owning module
       RunningMap::iterator i = runningMap.find(setParam.getModule());
       if (i != runningMap.end() && param)
-         i->second.sendQueue->getMessageQueue().send(&setParam, setParam.size(), 0);
+         i->second.sendQueue->send(setParam);
       else
          queueMessage(setParam);
    } else {

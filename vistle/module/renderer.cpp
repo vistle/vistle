@@ -44,23 +44,18 @@ static bool needsSync(const message::Message &m) {
 
 bool Renderer::dispatch() {
 
-   size_t msgSize;
-   unsigned int priority;
    char msgRecvBuf[message::Message::MESSAGE_SIZE];
+   vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
 
    bool quit = false;
    bool checkAgain = false;
    int numSync = 0;
    do {
-      bool haveMessage = receiveMessageQueue->getMessageQueue().try_receive(
-                                               (void *) msgRecvBuf,
-                                               message::Message::MESSAGE_SIZE,
-                                               msgSize, priority);
+      bool haveMessage = receiveMessageQueue->tryReceive(*message);
 
       int sync = 0, allsync = 0;
 
       if (haveMessage) {
-         vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
          if (needsSync(*message))
             sync = 1;
       }
@@ -69,7 +64,6 @@ bool Renderer::dispatch() {
 
       do {
          if (haveMessage) {
-            vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
 
             switch (message->type()) {
                case vistle::message::Message::ADDOBJECT: {
@@ -174,16 +168,13 @@ bool Renderer::dispatch() {
          }
 
          if (allsync && !sync) {
-            receiveMessageQueue->getMessageQueue().receive(
-                  (void *) msgRecvBuf,
-                  message::Message::MESSAGE_SIZE,
-                  msgSize, priority);
+            receiveMessageQueue->receive(*message);
             haveMessage = true;
          }
 
       } while(allsync && !sync);
 
-      int numMessages = receiveMessageQueue->getMessageQueue().get_num_msg();
+      int numMessages = receiveMessageQueue->getNumMessages();
       int maxNumMessages = 0;
       MPI_Allreduce(&numMessages, &maxNumMessages, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
       ++numSync;
@@ -193,7 +184,7 @@ bool Renderer::dispatch() {
 
    if (quit) {
       vistle::message::ModuleExit m;
-      sendMessageQueue->getMessageQueue().send(&m, sizeof(m), 0);
+      sendMessageQueue->send(m);
    } else {
       render();
    }
