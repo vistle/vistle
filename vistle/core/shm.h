@@ -141,7 +141,6 @@ class V_COREEXPORT Shm {
    const boost::interprocess::managed_shared_memory &shm() const;
    std::string createObjectID();
 
-   void publish(const shm_handle_t & handle) const;
    boost::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle) const;
    shm_handle_t getHandleFromObject(boost::shared_ptr<const Object> object) const;
    shm_handle_t getHandleFromObject(const Object *object) const;
@@ -168,7 +167,6 @@ class V_COREEXPORT Shm {
    int m_objectID;
    static Shm *s_singleton;
    boost::interprocess::managed_shared_memory *m_shm;
-   message::MessageQueue *m_messageQueue;
 };
 
 template<typename T>

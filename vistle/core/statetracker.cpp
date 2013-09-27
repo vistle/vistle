@@ -196,9 +196,6 @@ bool StateTracker::handleMessage(const message::Message &msg) {
       case Message::QUIT: {
          break;
       }
-      case Message::NEWOBJECT: {
-         break;
-      }
       case Message::MODULEEXIT: {
          const ModuleExit &modexit = static_cast<const ModuleExit &>(msg);
          return handle(modexit);

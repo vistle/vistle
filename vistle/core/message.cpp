@@ -199,17 +199,6 @@ Quit::Quit()
    : Message(Message::QUIT, sizeof(Quit)) {
 }
 
-NewObject::NewObject(const shm_handle_t & h)
-   : Message(Message::NEWOBJECT, sizeof(NewObject)),
-     handle(h) {
-
-}
-
-const shm_handle_t & NewObject::getHandle() const {
-
-   return handle;
-}
-
 ModuleExit::ModuleExit()
 : Message(Message::MODULEEXIT, sizeof(ModuleExit))
 , forwarded(false)
@@ -243,13 +232,23 @@ int Compute::getExecutionCount() const {
 
    return executionCount;
 }
+bool Compute::allRanks() const
+{
+   return m_allRanks;
+}
+
+void Compute::setAllRanks(bool allRanks)
+{
+   m_allRanks = allRanks;
+}
+
 
 Busy::Busy()
-   : Message(Message::BUSY, sizeof(Busy)) {
+: Message(Message::BUSY, sizeof(Busy)) {
 }
 
 Idle::Idle()
-   : Message(Message::IDLE, sizeof(Idle)) {
+: Message(Message::IDLE, sizeof(Idle)) {
 }
 
 CreatePort::CreatePort(const Port *port)

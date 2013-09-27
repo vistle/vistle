@@ -58,7 +58,6 @@ class V_COREEXPORT Message {
       STARTED,
       KILL,
       QUIT,
-      NEWOBJECT,
       MODULEEXIT,
       COMPUTE,
       CREATEPORT,
@@ -213,18 +212,6 @@ class V_COREEXPORT Quit: public Message {
  private:
 };
 BOOST_STATIC_ASSERT(sizeof(Quit) < Message::MESSAGE_SIZE);
-
-class V_COREEXPORT NewObject: public Message {
-
- public:
-   NewObject(const shm_handle_t &handle);
-
-   const shm_handle_t & getHandle() const;
-
- private:
-   shm_handle_t handle;
-};
-BOOST_STATIC_ASSERT(sizeof(NewObject) < Message::MESSAGE_SIZE);
 
 class V_COREEXPORT ModuleExit: public Message {
 

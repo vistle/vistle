@@ -186,11 +186,11 @@ bool Communicator::dispatch() {
          MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
       }
 
-      // test for messages from modules
       // handle messages from Python front-end and UIs
       if (!tryReceiveAndHandleMessage(*m_commandQueue, received, true))
          done = true;
 
+      // test for messages from modules
       if (!done)
          done = !m_moduleManager->dispatch(received);
 
@@ -355,22 +355,6 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::Disconnect &disc = static_cast<const message::Disconnect &>(message);
          result = m_moduleManager->handle(disc);
-         break;
-      }
-
-      case message::Message::NEWOBJECT: {
-
-         /*
-         const message::NewObject *newObject =
-            static_cast<const message::NewObject *>(message);
-         vistle::Object *object = (vistle::Object *)
-            vistle::Shm::the().shm().get_address_from_handle(newObject.getHandle());
-
-         CERR << "NewObject ["
-                   << newObject.getHandle() << "] type ["
-                   << object.getType() << "] from module ["
-                   << newObject.senderId() << "]" << std::endl;
-         */
          break;
       }
 
