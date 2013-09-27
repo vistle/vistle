@@ -79,6 +79,7 @@ class V_COREEXPORT Message {
       REPLAYFINISHED,
       SENDTEXT,
       OBJECTRECEIVEPOLICY,
+      SCHEDULINGPOLICY,
    };
 
    Message(const Type type, const unsigned int size);
@@ -234,7 +235,11 @@ class V_COREEXPORT Compute: public Message {
    int getModule() const;
    int getExecutionCount() const;
 
- private:
+   bool allRanks() const;
+   void setAllRanks(bool allRanks);
+
+private:
+   bool m_allRanks;
    const int module;
    const int executionCount;
 };
@@ -525,6 +530,7 @@ private:
    //! message text
    text_t m_text;
 };
+BOOST_STATIC_ASSERT(sizeof(SendText) < Message::MESSAGE_SIZE);
 
 class V_COREEXPORT ObjectReceivePolicy: public Message {
 
@@ -539,6 +545,22 @@ public:
 private:
    Policy m_policy;
 };
+BOOST_STATIC_ASSERT(sizeof(ObjectReceivePolicy) < Message::MESSAGE_SIZE);
+
+class V_COREEXPORT SchedulingPolicy: public Message {
+
+public:
+   enum Policy {
+      Single,
+      Gang,
+      LazyGang,
+   };
+   SchedulingPolicy(Policy pol);
+   Policy policy() const;
+private:
+   Policy m_policy;
+};
+BOOST_STATIC_ASSERT(sizeof(SchedulingPolicy) < Message::MESSAGE_SIZE);
 
 } // namespace message
 } // namespace vistle

@@ -621,10 +621,6 @@ bool ModuleManager::handle(const message::AddObject &addObj) {
          a.setRank(addObj.rank());
          sendMessage(destId, a);
 
-         message::Compute c(destId, -1);
-         c.setUuid(addObj.uuid());
-         sendMessage(destId, c);
-
          auto it = runningMap.find(destId);
          if (it == runningMap.end()) {
             CERR << "port connection to module that is not running" << std::endl;
@@ -633,6 +629,17 @@ bool ModuleManager::handle(const message::AddObject &addObj) {
          }
 
          Module &destMod = it->second;
+
+         message::Compute c(destId, -1);
+         c.setUuid(addObj.uuid());
+         if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
+            sendMessage(destId, c);
+         } else {
+            c.setAllRanks(true);
+            if (!Communicator::the().broadcastAndHandleMessage(c))
+               return false;
+         }
+
          if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
             || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
             message::ObjectReceived recv(addObj.getPortName(), obj);
@@ -722,11 +729,24 @@ bool ModuleManager::handle(const message::ObjectReceivePolicy &receivePolicy)
    const int id = receivePolicy.senderId();
    RunningMap::iterator it = runningMap.find(id);
    if (it == runningMap.end()) {
-         CERR << " Module [" << id << "] changed ObjectReceivePolicy, but not found in running map" << std::endl;
-         return false;
+      CERR << " Module [" << id << "] changed ObjectReceivePolicy, but not found in running map" << std::endl;
+      return false;
    }
    Module &mod = it->second;
    mod.objectPolicy = receivePolicy.policy();
+   return true;
+}
+
+bool ModuleManager::handle(const message::SchedulingPolicy &schedulingPolicy)
+{
+   const int id = schedulingPolicy.senderId();
+   RunningMap::iterator it = runningMap.find(id);
+   if (it == runningMap.end()) {
+      CERR << " Module [" << id << "] changed SchedulingPolicy, but not found in running map" << std::endl;
+      return false;
+   }
+   Module &mod = it->second;
+   mod.schedulingPolicy = schedulingPolicy.policy();
    return true;
 }
 

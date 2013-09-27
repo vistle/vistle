@@ -733,6 +733,17 @@ bool Module::parameterChanged(Parameter *p) {
    return true;
 }
 
+int Module::schedulingPolicy() const
+{
+   return m_schedulingPolicy;
+}
+
+void Module::setSchedulingPolicy(int schedulingPolicy)
+{
+   m_schedulingPolicy = schedulingPolicy;
+   sendMessage(message::SchedulingPolicy(message::SchedulingPolicy::Policy(schedulingPolicy)));
+}
+
 bool Module::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
 
    (void)senderId;
@@ -993,13 +1004,18 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             m_executionCount = comp->getExecutionCount();
 
          if (comp->getExecutionCount() > 0) {
-            // Compute not triggered by adding an object
+            // Compute not triggered by adding an object, get objects from cache
             for (std::map<std::string, Port *>::iterator pit = inputPorts.begin();
                   pit != inputPorts.end();
                   ++pit) {
                pit->second->objects() = m_cache.getObjects(pit->first);
             }
          }
+
+         if (comp->allRanks()) {
+            MPI_Allreduce(&m_executionCount, &m_executionCount, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+         }
+
          /*
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
                    << rank() << "/" << size << "] compute" << std::endl;

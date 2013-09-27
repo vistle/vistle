@@ -218,6 +218,7 @@ bool ModuleExit::isForwarded() const {
 
 Compute::Compute(const int m, const int c)
    : Message(Message::COMPUTE, sizeof(Compute))
+   , m_allRanks(false)
    , module(m)
    , executionCount(c)
 {
@@ -790,6 +791,18 @@ ObjectReceivePolicy::Policy ObjectReceivePolicy::policy() const {
 
    return m_policy;
 }
+
+SchedulingPolicy::SchedulingPolicy(SchedulingPolicy::Policy pol)
+: Message(Message::SCHEDULINGPOLICY, sizeof(SchedulingPolicy))
+, m_policy(pol)
+{
+}
+
+SchedulingPolicy::Policy SchedulingPolicy::policy() const {
+
+   return m_policy;
+}
+
 
 } // namespace message
 } // namespace vistle

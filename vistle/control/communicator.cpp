@@ -471,6 +471,12 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
+      case Message::SCHEDULINGPOLICY: {
+         const SchedulingPolicy &m = static_cast<const SchedulingPolicy &>(message);
+         result = m_moduleManager->handle(m);
+         break;
+      }
+
       default:
 
          CERR << "unhandled message from (id "

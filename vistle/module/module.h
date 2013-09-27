@@ -130,6 +130,9 @@ class V_COREEXPORT Module {
 #endif
    ;
 
+   int schedulingPolicy() const;
+   void setSchedulingPolicy(int schedulingPolicy);
+
 protected:
 
    void setObjectReceivePolicy(int pol);
@@ -162,6 +165,7 @@ protected:
 
  private:
    int m_receivePolicy;
+   int m_schedulingPolicy;
 
    Parameter *findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;
