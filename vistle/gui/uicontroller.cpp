@@ -4,7 +4,7 @@
 #include "dataflowview.h"
 #include "parameters.h"
 #include "vistleconsole.h"
-#include <userinterface/pythonembed.h>
+#include <userinterface/pythoninterface.h>
 #include <userinterface/pythonmodule.h>
 
 #include <boost/thread.hpp>

@@ -9,6 +9,8 @@ if(READLINE_FOUND)
    set(EXTRA_LIBRARIES ${READLINE_LIBRARY})
 endif()
 
+add_definitions(-DVISTLE_CONTROL)
+
 set(control_SOURCES
    portmanager.cpp
    uiclient.cpp
@@ -18,8 +20,8 @@ set(control_SOURCES
    modulemanager.cpp
    communicator.cpp
    executor.cpp
-   pythonembed.cpp
-   pythonmodule.cpp
+   ../userinterface/pythoninterface.cpp
+   ../userinterface/pythonmodule.cpp
 )
 
 set(control_HEADERS
@@ -30,8 +32,8 @@ set(control_HEADERS
    export.h
    modulemanager.h
    portmanager.h
-   pythonembed.h
-   pythonmodule.h
+   ../userinterface/pythoninterface.h
+   ../userinterface/pythonmodule.h
    uiclient.h
    uimanager.h
 )
@@ -43,6 +45,7 @@ include_directories(
         ${MPI_INCLUDE_PATH}
         ${PYTHON_INCLUDE_PATH}
         ..
+        ../userinterface
 )
 
 target_link_libraries(vistle_control

@@ -517,4 +517,9 @@ ModuleManager &Communicator::moduleManager() const {
    return *m_moduleManager;
 }
 
+message::MessageQueue &Communicator::commandQueue() {
+
+   return *m_commandQueue;
+}
+
 } // namespace vistle

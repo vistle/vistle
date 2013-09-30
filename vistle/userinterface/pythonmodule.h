@@ -13,6 +13,7 @@ class VistleConnection;
 class V_UIEXPORT PythonModule {
 
 public:
+   PythonModule();
    PythonModule(VistleConnection *vc);
    static PythonModule &the();
 

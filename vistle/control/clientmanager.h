@@ -14,7 +14,8 @@ namespace vistle {
 class Client;
 class ReadlineClient;
 class AsioClient;
-class PythonEmbed;
+class PythonInterface;
+class PythonModule;
 
 class V_CONTROLEXPORT ClientManager {
    friend class ClientThreadWrapper;
@@ -52,7 +53,8 @@ class V_CONTROLEXPORT ClientManager {
    void startAccept();
    void handleAccept(AsioClient *client, const boost::system::error_code &error);
 
-   PythonEmbed *interpreter;
+   PythonInterface *interpreter;
+   PythonModule *m_module;
    boost::mutex interpreter_mutex;
    unsigned short m_port;
 

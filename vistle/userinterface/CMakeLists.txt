@@ -11,14 +11,14 @@ endif()
 
 set(userinterface_SOURCES
    userinterface.cpp
-   pythonembed.cpp
+   pythoninterface.cpp
    pythonmodule.cpp
    vistleconnection.cpp
 )
 
 set(userinterface_HEADERS
    export.h
-   pythonembed.h
+   pythoninterface.h
    pythonmodule.h
    userinterface.h
    vistleconnection.h

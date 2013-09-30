@@ -34,7 +34,6 @@ class UiManager;
 class ModuleManager;
 
 class V_CONTROLEXPORT Communicator {
-   friend class PythonEmbed;
    friend class ModuleManager;
 
  public:
@@ -58,6 +57,7 @@ class V_CONTROLEXPORT Communicator {
    unsigned short uiPort() const;
 
    ModuleManager &moduleManager() const;
+   message::MessageQueue &commandQueue();
 
  private:
    void sendUi(const message::Message &message) const;

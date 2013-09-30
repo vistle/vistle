@@ -11,7 +11,6 @@
 namespace vistle {
 
 class Communicator;
-class PythonEmbed;
 
 namespace message {
 class Message;
@@ -41,7 +40,6 @@ class V_CONTROLEXPORT Executor {
       int m_rank, m_size;
 
       Communicator *m_comm;
-      PythonEmbed *m_interpreter;
 
       int m_argc;
       char **m_argv;

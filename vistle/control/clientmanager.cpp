@@ -7,7 +7,8 @@
 
 #include <boost/asio.hpp>
 
-#include "pythonembed.h"
+#include <userinterface/pythoninterface.h>
+#include <userinterface/pythonmodule.h>
 #include "clientmanager.h"
 #include "client.h"
 
@@ -55,7 +56,8 @@ class ClientThreadWrapper {
 };
 
 ClientManager::ClientManager(const std::string &initial, InitialType initialType, unsigned short port)
-: interpreter(new PythonEmbed(*this, "vistle"))
+: interpreter(new PythonInterface("vistle"))
+, m_module(new PythonModule())
 , m_port(port)
 , m_requestQuit(false)
 , m_acceptor(m_ioService)

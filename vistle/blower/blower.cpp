@@ -1,4 +1,4 @@
-#include <userinterface/pythonembed.h>
+#include <userinterface/pythoninterface.h>
 #include <userinterface/pythonmodule.h>
 #include <userinterface/userinterface.h>
 #include <userinterface/vistleconnection.h>
