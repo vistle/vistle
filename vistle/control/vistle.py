@@ -139,8 +139,13 @@ def save(filename = None):
 
    f = open(filename, 'w')
    mods = getRunning()
+   f.write("uuids = {}\n");
    for m in mods:
-      f.write(modvar(m)+" = spawn('"+getModuleName(m)+"')\n")
+      #f.write(modvar(m)+" = spawn('"+getModuleName(m)+"')\n")
+      f.write("u"+modvar(m)+" = spawnAsync('"+getModuleName(m)+"')\n")
+
+   for m in mods:
+      f.write(modvar(m)+" = waitForSpawn(u"+modvar(m)+")\n")
       params = getParameters(m)
       for p in params:
          if not isParameterDefault(m, p):
