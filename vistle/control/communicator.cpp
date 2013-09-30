@@ -47,8 +47,7 @@ Communicator::Communicator(int argc, char *argv[], int r, const std::vector<std:
 , m_rank(r)
 , m_size(hosts.size())
 , m_quitFlag(false)
-, mpiReceiveBuffer(NULL)
-, mpiMessageSize(0)
+, m_recvSize(0)
 , m_commandQueue(message::MessageQueue::create(message::MessageQueue::createName("command_queue", 0, r)))
 {
    assert(s_singleton == NULL);
@@ -56,12 +55,15 @@ Communicator::Communicator(int argc, char *argv[], int r, const std::vector<std:
 
    message::DefaultSender::init(0, m_rank);
 
-   mpiReceiveBuffer = new char[message::Message::MESSAGE_SIZE];
+   m_recvBufToAny.resize(message::Message::MESSAGE_SIZE);
 
    // post requests for length of next MPI message
-   MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
-   if (m_rank == 0)
-      MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
+   MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
+
+   if (m_rank == 0) {
+      m_recvBufTo0.resize(message::Message::MESSAGE_SIZE);
+      MPI_Irecv(m_recvBufTo0.data(), m_recvBufTo0.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
+   }
 
    if (m_rank == 0) {
 
@@ -143,13 +145,9 @@ bool Communicator::dispatch() {
          MPI_Test(&m_reqToRank0, &flag, &status);
          if (flag && status.MPI_TAG == TagToRank0) {
 
-            received = true;
             assert(m_rank == 0);
-            MPI_Request r;
-            MPI_Irecv(mpiReceiveBuffer, mpiMessageSize, MPI_BYTE, status.MPI_SOURCE, TagToRank0,
-                      MPI_COMM_WORLD, &r);
-            MPI_Wait(&r, MPI_STATUS_IGNORE);
-            message::Message *message = (message::Message *) mpiReceiveBuffer;
+            received = true;
+            message::Message *message = (message::Message *) m_recvBufTo0.data();
             if (message->broadcast()) {
                if (!broadcastAndHandleMessage(*message))
                   done = true;
@@ -157,7 +155,7 @@ bool Communicator::dispatch() {
                if (!handleMessage(*message))
                   done = true;
             }
-            MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
+            MPI_Irecv(m_recvBufTo0.data(), m_recvBufTo0.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
          }
       }
 
@@ -172,10 +170,10 @@ bool Communicator::dispatch() {
       if (flag && status.MPI_TAG == TagToAny) {
 
          received = true;
-         MPI_Bcast(mpiReceiveBuffer, mpiMessageSize, MPI_BYTE,
+         MPI_Bcast(m_recvBufToAny.data(), m_recvSize, MPI_BYTE,
                    status.MPI_SOURCE, MPI_COMM_WORLD);
 
-         message::Message *message = (message::Message *) mpiReceiveBuffer;
+         message::Message *message = (message::Message *) m_recvBufToAny.data();
 #if 0
          printf("[%02d] message from [%02d] message type %d m_size %d\n",
                 m_rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
@@ -183,7 +181,7 @@ bool Communicator::dispatch() {
          if (!handleMessage(*message))
             done = true;
 
-         MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
+         MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
       }
 
       // handle messages from Python front-end and UIs
@@ -233,13 +231,10 @@ bool Communicator::sendMessage(const int moduleId, const message::Message &messa
 
 bool Communicator::forwardToMaster(const message::Message &message) {
 
+   assert(m_rank != 0);
    if (m_rank != 0) {
 
-      MPI_Request s1, s2;
-      MPI_Isend(const_cast<unsigned int *>(&message.m_size), 1, MPI_INT, 0, TagToRank0, MPI_COMM_WORLD, &s1);
-      MPI_Isend(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD, &s2);
-      MPI_Wait(&s1, MPI_STATUS_IGNORE);
-      MPI_Wait(&s2, MPI_STATUS_IGNORE);
+      MPI_Send(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD);
    }
 
    return true;
@@ -270,11 +265,7 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
       return result;
    } else {
-      MPI_Request s1, s2;
-      MPI_Isend(const_cast<unsigned int *>(&message.m_size), 1, MPI_INT, 0, TagToRank0, MPI_COMM_WORLD, &s1);
-      MPI_Isend(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD, &s2);
-      MPI_Wait(&s1, MPI_STATUS_IGNORE);
-      MPI_Wait(&s2, MPI_STATUS_IGNORE);
+      MPI_Send(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD);
 
       // message will be handled when received again from m_rank 0
       return true;
@@ -512,15 +503,13 @@ Communicator::~Communicator() {
       MPI_Isend(&dummy, 1, MPI_INT, (m_rank + 1) % m_size, TagToAny, MPI_COMM_WORLD, &s);
       if (m_rank == 1) {
          MPI_Request s2;
-         MPI_Isend(&dummy, 1, MPI_INT, 0, TagToRank0, MPI_COMM_WORLD, &s2);
+         MPI_Isend(&dummy, 1, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD, &s2);
          //MPI_Wait(&s2, MPI_STATUS_IGNORE);
       }
       //MPI_Wait(&s, MPI_STATUS_IGNORE);
       //MPI_Wait(&m_reqAny, MPI_STATUS_IGNORE);
    }
    MPI_Barrier(MPI_COMM_WORLD);
-
-   delete[] mpiReceiveBuffer;
 }
 
 ModuleManager &Communicator::moduleManager() const {

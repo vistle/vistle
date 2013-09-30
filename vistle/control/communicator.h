@@ -73,8 +73,8 @@ class V_CONTROLEXPORT Communicator {
 
    bool m_quitFlag;
 
-   char *mpiReceiveBuffer;
-   int mpiMessageSize;
+   int m_recvSize;
+   std::vector<char> m_recvBufTo0, m_recvBufToAny;
    MPI_Request m_reqAny, m_reqToRank0;
 
    typedef std::map<int, message::MessageQueue *> MessageQueueMap;
