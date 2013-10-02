@@ -40,7 +40,7 @@ class V_UTILEXPORT coRestraint
       void add(ssize_t mi, ssize_t ma);
       void add(ssize_t val);
       void add(const std::string &selection);
-      ssize_t get(ssize_t val, ssize_t &group) const;
+      bool get(ssize_t val, ssize_t &group) const;
       size_t getNumGroups() const {return min.size();};
       void clear();
       const std::vector<ssize_t> &getValues() const;
@@ -50,7 +50,7 @@ class V_UTILEXPORT coRestraint
       const std::string getRestraintString(std::vector<ssize_t>) const;
 
       // operators
-      ssize_t operator ()(ssize_t val) const;
+      bool operator ()(ssize_t val) const;
 };
 
 }

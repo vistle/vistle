@@ -158,32 +158,32 @@ ssize_t coRestraint::upper() const
 //==========================================================================
 //
 //==========================================================================
-ssize_t coRestraint::operator ()(ssize_t val) const
+bool coRestraint::operator ()(ssize_t val) const
 {
    ssize_t i=0;
    while (i<min.size())
    {
       if ( (val>=min[i]) && (val<=max[i]) )
-         return 1;
+         return true;
       i++;
    }
-   return 0;
+   return false;
 }
 
 
 //==========================================================================
 //
 //==========================================================================
-ssize_t coRestraint::get(ssize_t val, ssize_t &group) const
+bool coRestraint::get(ssize_t val, ssize_t &group) const
 {
    group=0;
    while (group<min.size())
    {
       if ( (val>=min[group]) && (val<=max[group]) )
-         return 1;
+         return true;
       group++;
    }
-   return 0;
+   return false;
 }
 
 //==========================================================================
