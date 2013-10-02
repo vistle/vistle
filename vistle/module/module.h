@@ -211,9 +211,14 @@ protected:
          int moduleID = atoi(argv[2]); \
          {  \
             X module(shmname, rank, size, moduleID); \
+            try { \
                module.initDone(); \
                while (module.dispatch()) \
                   ; \
+            } catch(std::exception &e) { \
+               std::cerr << "fatal exception: " << e.what() << std::endl; \
+               throw(e); \
+            } \
          } \
          MPI_Barrier(MPI_COMM_WORLD); \
       } catch(vistle::exception &e) { \
