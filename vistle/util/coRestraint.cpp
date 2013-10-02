@@ -20,6 +20,7 @@
 
 #include <sstream>
 #include <cstdio>
+#include <cctype>
 
 using namespace vistle;
 
@@ -27,8 +28,9 @@ using namespace vistle;
 //
 //==========================================================================
 coRestraint::coRestraint()
-: changed(true)
-, stringChanged(false)
+: all(false)
+, changed(true)
+, stringCurrent(false)
 {
 }
 
@@ -44,8 +46,9 @@ coRestraint::~coRestraint()
 //==========================================================================
 void coRestraint::add(ssize_t mi, ssize_t ma)
 {
-   stringChanged = false;
+   stringCurrent = false;
    changed = true;
+   all = false;
    min.push_back(mi);
    max.push_back(ma);
 }
@@ -56,8 +59,9 @@ void coRestraint::add(ssize_t mi, ssize_t ma)
 //==========================================================================
 void coRestraint::add(ssize_t val)
 {
-   stringChanged = false;
+   stringCurrent = false;
    changed = true;
+   all = false;
    min.push_back(val);
    max.push_back(val);
 }
@@ -68,33 +72,41 @@ void coRestraint::add(ssize_t val)
 //==========================================================================
 void coRestraint::add(const std::string &selection)
 {
-   stringChanged = false;
+   stringCurrent = false;
    changed = true;
+
+   if (selection == "all") {
+      min.clear();
+      max.clear();
+      all = true;
+      return;
+   }
+
+   all = false;
+
    const char *c=selection.c_str();
-   while(*c && (*c < '0' || *c >'9'))
-      c++;
-   while (*c)
-   {
+   while(*c && !isdigit(*c))
+      ++c;
+
+   while (*c) {
       int inc=0;
       ssize_t dumMax, dumMin;
       ssize_t numNumbers = sscanf(c,"%zd-%zd%n",&dumMin,&dumMax,&inc);
-      if(numNumbers>0)
-      {
-         if(numNumbers==1)
-         {
+      if(numNumbers>0) {
+         if(numNumbers==1) {
             dumMax=dumMin;
-            if(inc == 0) // inc is 0 at least on windows if only one number is read
-            {
-               while(*c && (*c >= '0' && *c <='9'))
-                  c++;
+            if(inc == 0) {
+               // inc is 0 at least on windows if only one number is read
+               while(*c && isdigit(*c))
+                  ++c;
             }
          }
          min.push_back(dumMin);
          max.push_back(dumMax);
       }
       c += inc;
-      while(*c && (*c < '0' || *c > '9'))
-         c++;
+      while(*c && !isdigit(*c))
+         ++c;
    }
 }
 
@@ -104,8 +116,9 @@ void coRestraint::add(const std::string &selection)
 //==========================================================================
 void coRestraint::clear()
 {
-   stringChanged = false;
+   stringCurrent = false;
    changed = true;
+   all = false;
    min.clear();
    max.clear();
 }
@@ -160,6 +173,9 @@ ssize_t coRestraint::upper() const
 //==========================================================================
 bool coRestraint::operator ()(ssize_t val) const
 {
+   if (all)
+      return true;
+
    ssize_t i=0;
    while (i<min.size())
    {
@@ -176,6 +192,11 @@ bool coRestraint::operator ()(ssize_t val) const
 //==========================================================================
 bool coRestraint::get(ssize_t val, ssize_t &group) const
 {
+   if (all) {
+      group = -1;
+      return true;
+   }
+
    group=0;
    while (group<min.size())
    {
@@ -192,9 +213,9 @@ bool coRestraint::get(ssize_t val, ssize_t &group) const
 
 const std::string &coRestraint::getRestraintString() const
 {
-   if (!stringChanged)
+   if (!stringCurrent)
    {
-      stringChanged = true;
+      stringCurrent = true;
       restraintString = getRestraintString(getValues());
    }
    return restraintString;
@@ -202,11 +223,16 @@ const std::string &coRestraint::getRestraintString() const
 
 const std::string coRestraint::getRestraintString(std::vector<ssize_t> sortedValues) const
 {
-   std::ostringstream restraintStream;
-   ssize_t old=-1, size=sortedValues.size();
-   bool started=false, firsttime=true;
+   if (all)
+      return "all";
+
+   const ssize_t size=sortedValues.size();
    if (size == 0)
       return "";
+
+   std::ostringstream restraintStream;
+   ssize_t old=-1;
+   bool started=false, firsttime=true;
    for(ssize_t i=0; i<size; ++i)
    {
       ssize_t actual = sortedValues[i];

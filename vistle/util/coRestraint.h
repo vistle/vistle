@@ -29,8 +29,9 @@ namespace vistle
 class V_UTILEXPORT coRestraint
 {
    private:
+      bool all;
       mutable std::vector<ssize_t> values, min, max;
-      mutable bool changed, stringChanged;
+      mutable bool changed, stringCurrent;
       mutable std::string restraintString;
 
    public:
