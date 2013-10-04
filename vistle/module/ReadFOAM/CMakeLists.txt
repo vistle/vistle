@@ -1,4 +1,4 @@
-find_package(Boost 1.42 REQUIRED COMPONENTS iostreams filesystem system)
+find_package(Boost 1.40 REQUIRED COMPONENTS iostreams filesystem system)
 
 if (CMAKE_COMPILER_IS_GNUCC)
    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)

@@ -1,6 +1,11 @@
-add_subdirectory(propertybrowser)
+if (NOT ${VISTLE_GUI})
+   return()
+endif()
 
 find_qt()
+
+add_subdirectory(propertybrowser)
+
 find_package(PythonLibs)
 
 set(CMAKE_AUTOMOC ON)

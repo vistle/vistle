@@ -13,7 +13,7 @@ class Message;
 class V_COREEXPORT MessageQueue {
 
  public:
-   typedef boost::interprocess::message_queue_t<boost::interprocess::offset_ptr<void> > message_queue;
+   typedef boost::interprocess::message_queue message_queue;
 
    static MessageQueue * create(const std::string & m_name);
    static MessageQueue * open(const std::string & m_name);

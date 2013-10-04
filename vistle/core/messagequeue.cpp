@@ -67,7 +67,7 @@ void MessageQueue::send(const Message &msg) {
 
 void MessageQueue::receive(Message &msg) {
 
-   message_queue::size_type recvSize = 0;
+   size_t recvSize = 0;
    unsigned priority = 0;
    m_mq.receive(&msg, message::Message::MESSAGE_SIZE, recvSize, priority);
    assert(recvSize == message::Message::MESSAGE_SIZE);
@@ -75,7 +75,7 @@ void MessageQueue::receive(Message &msg) {
 
 bool MessageQueue::tryReceive(Message &msg) {
 
-   message_queue::size_type recvSize = 0;
+   size_t recvSize = 0;
    unsigned priority = 0;
    bool result = m_mq.try_receive(&msg, message::Message::MESSAGE_SIZE, recvSize, priority);
    if (result) {

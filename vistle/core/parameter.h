@@ -172,8 +172,8 @@ struct ParameterType<Integer> {
    typedef Integer T;
    static const Parameter::Type type = Parameter::Integer;
    static const bool isNumber = true;
-   static const T min() { return std::numeric_limits<T>::min(); }
-   static const T max() { return std::numeric_limits<T>::max(); }
+   static T min() { return std::numeric_limits<T>::min(); }
+   static T max() { return std::numeric_limits<T>::max(); }
 };
 
 template<>
@@ -181,8 +181,8 @@ struct ParameterType<Float> {
    typedef Float T;
    static const Parameter::Type type = Parameter::Float;
    static const bool isNumber = true;
-   static const T min() { return -std::numeric_limits<T>::max(); }
-   static const T max() { return std::numeric_limits<T>::max(); }
+   static T min() { return -std::numeric_limits<T>::max(); }
+   static T max() { return std::numeric_limits<T>::max(); }
 };
 
 template<>
@@ -190,8 +190,8 @@ struct ParameterType<ParamVector> {
    typedef ParamVector T;
    static const Parameter::Type type = Parameter::Vector;
    static const bool isNumber = true;
-   static const T min() { return T::min(); }
-   static const T max() { return T::max(); }
+   static T min() { return T::min(); }
+   static T max() { return T::max(); }
 };
 
 template<>
@@ -199,8 +199,8 @@ struct ParameterType<std::string> {
    typedef std::string T;
    static const Parameter::Type type = Parameter::String;
    static const bool isNumber = false;
-   static const T min() { return ""; }
-   static const T max() { return ""; }
+   static T min() { return ""; }
+   static T max() { return ""; }
 };
 
 template<>
