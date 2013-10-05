@@ -20,9 +20,9 @@ class _stdin:
    def readline(self):
       return _vistle._readline()
 
-sys.stdout = _stdout()
-sys.stderr = _stderr()
-sys.stdin = _stdin()
+#sys.stdout = _stdout()
+#sys.stderr = _stderr()
+#sys.stdin = _stdin()
 
 #def _raw_input(prompt):
 #   return _vistle._raw_input(prompt)
@@ -139,8 +139,13 @@ def save(filename = None):
 
    f = open(filename, 'w')
    mods = getRunning()
+   f.write("uuids = {}\n");
    for m in mods:
-      f.write(modvar(m)+" = spawn('"+getModuleName(m)+"')\n")
+      #f.write(modvar(m)+" = spawn('"+getModuleName(m)+"')\n")
+      f.write("u"+modvar(m)+" = spawnAsync('"+getModuleName(m)+"')\n")
+
+   for m in mods:
+      f.write(modvar(m)+" = waitForSpawn(u"+modvar(m)+")\n")
       params = getParameters(m)
       for p in params:
          if not isParameterDefault(m, p):
@@ -154,7 +159,7 @@ def save(filename = None):
          for c in conns:
             f.write("connect("+modvar(m)+",'"+str(p)+"', "+modvar(c.first)+",'"+str(c.second)+"')\n")
 
-   f.write("checkMessageQueue()\n")
+   #f.write("checkMessageQueue()\n")
 
    f.close()
    print("Data flow network saved to "+filename)

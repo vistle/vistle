@@ -22,7 +22,7 @@ namespace vistle {
 class V_UIEXPORT UserInterface {
 
  public:
-   UserInterface(const std::string &host, const unsigned short port);
+   UserInterface(const std::string &host, const unsigned short port, StateObserver *observer=nullptr);
    virtual ~UserInterface();
 
    virtual bool dispatch();
@@ -35,7 +35,7 @@ class V_UIEXPORT UserInterface {
 
    StateTracker &state();
 
-   boost::mutex &mutexForMessage(const message::Message::uuid_t &uuid);
+   bool getLockForMessage(const message::Message::uuid_t &uuid);
    bool getMessage(const message::Message::uuid_t &uuid, message::Message &msg);
 
    void registerObserver(StateObserver *observer);

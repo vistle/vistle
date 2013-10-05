@@ -4,15 +4,25 @@
 #include <string>
 #include <boost/python/object.hpp>
 
+#include "export.h"
+
 namespace vistle {
 
-class PythonModule {
-   public:
+class VistleConnection;
 
-      PythonModule(int argc, char *argv[]);
-      ~PythonModule();
+class V_UIEXPORT PythonModule {
 
-      static bool import(boost::python::object *m_namespace);
+public:
+   PythonModule();
+   PythonModule(VistleConnection *vc);
+   static PythonModule &the();
+
+   VistleConnection &vistleConnection() const;
+   bool import(boost::python::object *m_namespace);
+
+private:
+   VistleConnection *m_vistleConnection;
+   static PythonModule *s_instance;
 };
 
 } // namespace vistle

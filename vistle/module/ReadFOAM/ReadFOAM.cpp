@@ -1,16 +1,32 @@
-#define __STDC_FORMAT_MACROS
-#include <stdio.h>
-#ifndef _WIN32
-#include <inttypes.h>
-#endif
+/**************************************************************************\
+ **                                                           (C)2013 RUS  **
+ **                                                                        **
+ ** Description: Read FOAM data format                                     **
+ **                                                                        **
+ **                                                                        **
+ **                                                                        **
+ **                                                                        **
+ **                                                                        **
+ **                                                                        **
+ ** History:                                                               **
+ ** May   13	    C.Kopf  	    V1.0                                   **
+ *\**************************************************************************/
 
+#include "ReadFOAM.h"
+#include <core/unstr.h>
+#include <core/vec.h>
+#include <core/message.h>
+
+//Includes copied from vistle ReadFOAM.cpp
 #include <sstream>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
 #include <string>
 #include <set>
+#include <cctype>
 
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -23,6 +39,7 @@
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/qi_no_skip.hpp>
+#include <boost/spirit/include/support_istream_iterator.hpp>
 #include <boost/spirit/include/support_multi_pass.hpp>
 #include <boost/spirit/include/classic_position_iterator.hpp>
 
@@ -39,15 +56,16 @@
 #include <boost/fusion/include/vector_fwd.hpp>
 #include <boost/fusion/include/std_pair.hpp>
 
-#include <core/object.h>
-#include <core/vec.h>
-#include <core/unstr.h>
-#include <core/vector.h>
+#include <boost/filesystem.hpp>
 
-#include "ReadFOAM.h"
+#include "foamtoolbox.h"
+
+const size_t MaxHeaderLines = 1000;
 
 namespace bi = boost::iostreams;
 namespace bs = boost::spirit;
+namespace bf = boost::filesystem;
+namespace classic = boost::spirit::classic;
 
 template<typename Alloc = std::allocator<char> >
 struct basic_gzip_decompressor;
@@ -55,599 +73,530 @@ typedef basic_gzip_decompressor<> gzip_decompressor;
 
 namespace qi = boost::spirit::qi;
 namespace ascii = boost::spirit::ascii;
-namespace classic = boost::spirit::classic;
-
-MODULE_MAIN(ReadFOAM)
-
-class Boundary {
-public:
-   Boundary(const size_t f, const size_t t, const size_t n, const size_t s)
-      : from(f), to(t), numFaces(n), startFace(s) {
-
-   }
-
-   const size_t from;
-   const size_t to;
-   const size_t numFaces;
-   const size_t startFace;
-};
 
 
-class Boundaries {
-public:
-   Boundaries(const size_t f): from(f) { }
+using namespace vistle;
 
-   bool isBoundaryFace(const size_t face) {
-
-      std::vector<Boundary *>::iterator i;
-      for (i = boundaries.begin(); i != boundaries.end(); i ++) {
-
-         if (face >= (*i)->startFace && face < (*i)->startFace + (*i)->numFaces)
-            return true;
-      }
-      return false;
-   }
-
-   void addBoundary(Boundary *b) {
-
-      boundaries.push_back(b);
-   }
-
-private:
-   const size_t from;
-   std::vector<Boundary *> boundaries;
-};
-
-ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("ReadFOAM", shmname, rank, size, moduleID) {
-
-   createOutputPort("grid_out");
-   createOutputPort("p_out");
-   addStringParameter("filename", "OpenFOAM case directory", "");
-}
-
-ReadFOAM::~ReadFOAM() {
-
-}
-
-template <typename Iterator>
-struct skipper: qi::grammar<Iterator> {
-
-   skipper(): skipper::base_type(start) {
-
-      start =
-         ascii::space
-         | "/*" >> *(ascii::char_ - "*/") >> "*/"
-         | "//" >> *(ascii::char_ - qi::eol) >> qi::eol
-         | "FoamFile" >> *ascii::space >> '{' >> *(ascii::char_ - '}') >> '}'
-         | "dimensions" >> *(ascii::char_ - qi::eol) >> qi::eol
-         | "internalField" >> *(ascii::char_ - qi::eol) >> qi::eol
-         ;
-   }
-
-   qi::rule<Iterator> start;
-};
-
-BOOST_FUSION_ADAPT_STRUCT(vistle::Vector,
-                          (vistle::Scalar, x)
-                          (vistle::Scalar, y)
-                          (vistle::Scalar, z))
-
-template <typename Iterator>
-struct PointParser: qi::grammar<Iterator, std::vector<vistle::Vector>(),
-                                skipper<Iterator> > {
-
-   PointParser(): PointParser::base_type(start) {
-
-      start =
-         qi::omit[qi::int_] >> '(' >> *term >> ')'
-         ;
-
-      term =
-         '(' >> qi::float_ >> qi::float_ >> qi::float_ >> ')'
-         ;
-   }
-
-   qi::rule<Iterator, std::vector<vistle::Vector>(), skipper<Iterator> > start;
-   qi::rule<Iterator, vistle::Vector(), skipper<Iterator> > term;
-};
-
-template <typename Iterator>
-struct FaceParser: qi::grammar<Iterator, std::vector<std::vector<size_t> >(),
-                               skipper<Iterator> > {
-
-   FaceParser(): FaceParser::base_type(start) {
-
-      start =
-         qi::omit[qi::int_]
-         >> '(' >> *term >> ')'
-         ;
-
-      term =
-         qi::omit[qi::int_] >>
-         '(' >> qi::int_ >> qi::int_ >> qi::int_ >> qi::int_ >> ')'
-         ;
-   }
-
-   qi::rule<Iterator, std::vector<std::vector<size_t> >(), skipper<Iterator> > start;
-   qi::rule<Iterator, std::vector<size_t>(), skipper<Iterator> > term;
-};
-
-template <typename Iterator>
-struct IntParser: qi::grammar<Iterator, std::vector<size_t>(),
-                               skipper<Iterator> > {
-
-   IntParser(): IntParser::base_type(start) {
-
-      start =
-         qi::omit[qi::int_] >> qi::omit[*ascii::space]
-                                       >> '(' >> *term >> ')'
-         ;
-
-      term = qi::int_
-         ;
-   }
-
-   qi::rule<Iterator, std::vector<size_t>(), skipper<Iterator> > start;
-   qi::rule<Iterator, size_t(), skipper<Iterator> > term;
-};
-
-template <typename Iterator>
-struct ScalarParser: qi::grammar<Iterator, std::vector<float>(),
-                                 skipper<Iterator> > {
-
-   ScalarParser(): ScalarParser::base_type(start) {
-
-      start =
-         qi::omit[qi::int_] >> qi::omit[*ascii::space]
-                                       >> '(' >> *term >> ')'
-         ;
-
-      term = qi::float_
-         ;
-   }
-
-   qi::rule<Iterator, std::vector<float>(), skipper<Iterator> > start;
-   qi::rule<Iterator, float(), skipper<Iterator> > term;
-};
-
-template <typename Iterator>
-struct VectorParser: qi::grammar<Iterator, std::vector<std::vector<float> >(),
-                                 skipper<Iterator> > {
-
-   VectorParser(): VectorParser::base_type(start) {
-
-      start =
-         qi::omit[qi::int_] >> qi::omit[*ascii::space]
-                                       >> '(' >> *term >> ')'
-         ;
-
-      term =
-         '(' >> +qi::float_ >> ')'
-         ;
-   }
-
-   qi::rule<Iterator, std::vector<std::vector<float> >(), skipper<Iterator> > start;
-   qi::rule<Iterator, std::vector<float>(), skipper<Iterator> > term;
-};
-
-template <typename Iterator>
-struct BoundaryParser
-   : qi::grammar<Iterator, std::map<std::string, std::map<std::string, std::string> >(),
-                 skipper<Iterator> >
+ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
+: Module("ReadFoam", shmname, rank, size, moduleId)
 {
-   BoundaryParser()
-      : BoundaryParser::base_type(start)
+   // file browser parameter
+   m_casedir = addStringParameter("casedir", "OpenFOAM case directory",
+      "/data/OpenFOAM/PumpTurbine/", Parameter::Directory);
+
+   m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
+   setParameterMinimum<Float>(m_starttime, 0.);
+   m_stoptime = addFloatParameter("stoptime", "stop reading at the last step before this time",
+         std::numeric_limits<double>::max());
+   setParameterMinimum<Float>(m_stoptime, 0.);
+   m_timeskip = addIntParameter("timeskip", "number of timesteps to skip", 0);
+   setParameterMinimum<Integer>(m_timeskip, 0);
+
+   // the output ports
+   m_gridOut = createOutputPort("grid_out");
+   m_boundOut = createOutputPort("grid_out1");
+
+   for (int i=0; i<NumPorts; ++i) {
+      {
+         std::stringstream s;
+         s << "data_out" << i;
+         m_dataOut.push_back(createOutputPort(s.str()));
+      }
+      {
+         std::stringstream s;
+         s << "fieldname" << i;
+         StringParameter *p =  addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
+         setParameterChoices(p, std::vector<std::string>({"(NONE)"}));
+         m_fieldOut.push_back(p);
+      }
+   }
+}
+
+
+ReadFOAM::~ReadFOAM()       //Destructor
+{
+}
+
+std::vector<std::string> ReadFOAM::fieldChoices() const {
+
+   std::vector<std::string> choices({"(NONE)"});
+
+   if (m_case.valid) {
+      for (auto &field: m_case.constantFields)
+         choices.push_back(field.first);
+      for (auto &field: m_case.varyingFields)
+         choices.push_back(field.first);
+   }
+
+   return choices;
+}
+
+bool ReadFOAM::parameterChanged(Parameter *p)
+{
+
+   StringParameter *sp = dynamic_cast<StringParameter *>(p);
+   if (sp == m_casedir) {
+      sendMessage(message::Busy());
+      std::string casedir = sp->getValue();
+
+      m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
+      if (!m_case.valid) {
+         std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
+         return false;
+      }
+
+      std::cerr << "# processors: " << m_case.numblocks << std::endl;
+      std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
+      std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
+      std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
+
+      std::vector<std::string> choices = fieldChoices();
+      for (StringParameter *out: m_fieldOut) {
+         setParameterChoices(out, choices);
+      }
+      sendMessage(message::Idle());
+   }
+
+   return Module::parameterChanged(p);
+}
+
+bool loadCoords(const std::string &meshdir, UnstructuredGrid::ptr grid) {
+
+   boost::shared_ptr<std::istream> pointsIn = getStreamForFile(meshdir, "points");
+   HeaderInfo pointsH = readFoamHeader(*pointsIn);
+   grid->setSize(pointsH.lines);
+   readFloatVectorArray(*pointsIn, grid->x().data(), grid->y().data(), grid->z().data(), pointsH.lines);
+
+   return true;
+}
+
+std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::string &meshdir) {
+
+   Boundaries boundaries = loadBoundary(meshdir);
+
+   DimensionInfo dim = readDimensions(meshdir);
+   UnstructuredGrid::ptr grid(new UnstructuredGrid(dim.cells, 0, 0));
+
+   Polygons::ptr poly(new Polygons(0, 0, 0));
+
    {
-      start = qi::omit[qi::int_] >> '(' >> +mapmap >> ')';
-      mapmap = +(qi::char_ - '{') >> '{' >> entrymap >> '}';
-      entrymap = +pair;
-      pair  = qi::lexeme[+qi::char_("a-zA-Z")] >> +(qi::char_ - ';') >> ';';
-   }
+      boost::shared_ptr<std::istream> ownersIn = getStreamForFile(meshdir, "owner");
+      HeaderInfo ownerH = readFoamHeader(*ownersIn);
+      std::vector<Index> owners(ownerH.lines);
+      readIndexArray(*ownersIn, owners.data(), owners.size());
 
-   qi::rule<Iterator, std::map<std::string, std::map<std::string, std::string> >(),
-            skipper<Iterator> > start;
+      boost::shared_ptr<std::istream> facesIn = getStreamForFile(meshdir, "faces");
+      HeaderInfo facesH = readFoamHeader(*facesIn);
+      std::vector<std::vector<Index>> faces(facesH.lines);
+      readIndexListArray(*facesIn, faces.data(), faces.size());
 
-   qi::rule<Iterator, std::pair<std::string, std::map<std::string, std::string> >(),
-            skipper<Iterator> > mapmap;
-
-   qi::rule<Iterator, std::map<std::string, std::string>(),
-            skipper<Iterator> > entrymap;
-
-   qi::rule<Iterator, std::pair<std::string, std::string>(),
-            skipper<Iterator> > pair;
-};
-
-
-size_t getFirstFace(size_t cell,
-              const std::vector<std::vector<size_t> > & faces,
-              const std::map<size_t, std::vector<size_t> > & cellFaceMapping,
-              const std::map<size_t, std::vector<size_t> > & cellFaceNeighbors,
-              std::vector<size_t> & faceIndices) {
-
-   std::map<size_t, std::vector<size_t> >::const_iterator cellFaces =
-      cellFaceMapping.find(cell);
-
-   if (cellFaces != cellFaceMapping.end()) {
-
-      std::vector<size_t>::const_iterator i = cellFaces->second.begin();
-      if (i != cellFaces->second.end()) {
-
-         std::vector<size_t>::const_iterator face;
-         for (face = faces[*i].begin(); face != faces[*i].end(); face ++)
-            faceIndices.push_back(*face);
-
-         return *i;
+      boost::shared_ptr<std::istream> neighborsIn = getStreamForFile(meshdir, "neighbour");
+      HeaderInfo neighbourH = readFoamHeader(*neighborsIn);
+      if (neighbourH.lines != dim.internalFaces) {
+         std::cerr << "inconsistency: #internalFaces != #neighbours" << std::endl;
       }
-   }
+      std::vector<Index> neighbour(neighbourH.lines);
+      readIndexArray(*neighborsIn, neighbour.data(), neighbour.size());
 
-   return -1;
-}
 
-int compareFaces(const std::vector<size_t> & a,
-                 const std::vector<size_t> & b) {
 
-   int num = 0;
-   std::vector<size_t>::const_iterator ai, bi;
+      //Load mesh dimensions
+      std::cerr << "#points: " << dim.points << ", "
+         << "#cells: " << dim.cells << ", "
+         << "#faces: " << dim.faces << ", "
+         << "#internal faces: " << dim.internalFaces << std::endl;
 
-   for (ai = a.begin(); ai != a.end(); ai ++)
-      for (bi = b.begin(); bi != b.end(); bi ++)
-         if (*ai == *bi)
-            num ++;
+      auto &polys = poly->el();
+      auto &conn = poly->cl();
+      Index num_bound = dim.faces - dim.internalFaces;
+      polys.reserve(num_bound);
+      for (Index i=dim.internalFaces; i<dim.faces; ++i) {
+         if (!boundaries.isProcessorBoundaryFace(i)) {
+            polys.push_back(conn.size());
+            auto &face = faces[i];
+            for (int j=0; j<face.size(); ++j) {
+               conn.push_back(face[j]);
+            }
+         }
+      }
 
-   return num;
-}
+      //Create CellFaceMap
+      //std::cerr << " " << "Creating cell to face Map ... " << std::flush;
+      std::vector<std::vector<Index>> cellfacemap(dim.cells);
+      for (Index face = 0; face < owners.size(); ++face) {
+         cellfacemap[owners[face]].push_back(face);
+      }
+      for (Index face = 0; face < neighbour.size(); ++face) {
+         cellfacemap[neighbour[face]].push_back(face);
+      }
+      //std::cerr << "done! ## size: " << cellfacemap.size() << std::endl;
 
-bool inFace(const size_t vertexA, const size_t vertexB,
-            const std::vector<size_t> & faceIndices) {
+      //std::cerr << "Setting Typelist and adding connectivities ... " << std::flush;
 
-   bool containsA = false;
-   bool containsB = false;
+      auto types = grid->tl().data();
 
-   std::vector<size_t>::const_iterator i;
-   for (i = faceIndices.begin(); i != faceIndices.end(); i ++) {
+      Index num_conn = 0;
+      Index num_hex=0, num_tet=0, num_prism=0, num_pyr=0, num_poly=0;
+      for (index_t i=0; i<dim.cells; i++) {
+         const std::vector<Index> &cellfaces=cellfacemap[i];
+         const std::vector<index_t> cellvertices = getVerticesForCell(cellfaces, faces);
+         bool onlyViableFaces=true;
+         for (index_t j=0; j<cellfaces.size(); ++j) {
+            if (faces[cellfaces[j]].size()<3 || faces[cellfaces[j]].size()>4) {
+               onlyViableFaces=false;
+               break;
+            }
+         }
+         const Index num_faces = cellfaces.size();
+         Index num_verts = cellvertices.size();
+         if (num_faces==6 && num_verts==8 && onlyViableFaces) {
+            types[i]=UnstructuredGrid::HEXAHEDRON;
+            ++num_hex;
+         } else if (num_faces==5 && num_verts==6 && onlyViableFaces) {
+            types[i]=UnstructuredGrid::PRISM;
+            ++num_prism;
+         } else if (num_faces==5 && num_verts==5 && onlyViableFaces) {
+            types[i]=UnstructuredGrid::PYRAMID;
+            ++num_pyr;
+         } else if (num_faces==4 && num_verts==4 && onlyViableFaces) {
+            types[i]=UnstructuredGrid::TETRAHEDRON;
+            ++num_tet;
+         } else {
+            ++num_poly;
+            types[i]=UnstructuredGrid::POLYHEDRON;
+            num_verts=0;
+            for (Index j=0; j<cellfaces.size(); ++j) {
+               num_verts += faces[cellfaces[j]].size() + 1;
+            }
+         }
+         num_conn += num_verts;
+      }
+      //std::cerr << "done!" << std::endl;
 
-      if (*i == vertexA)
-         containsA = true;
+      std::cerr << "#hexa: " << num_hex << ", "
+         << "#prism: " << num_prism << ", "
+         << "#pyramid: " << num_pyr << ", "
+         << "#tetra: " << num_tet << ", "
+         << "#poly: " << num_poly << std::endl;
 
-      if (*i == vertexB)
-         containsB = true;
-   }
+      //std::cerr << " " << "Connectivities: "<<num_conn << std::endl;
 
-   return (containsA && containsB);
-}
+      // save data cell by cell to element, connectivity and type list
+      //std::cerr << " " << "Saving elements, connectivites and types to covise object ..."<<std::flush;
 
-size_t getOppositeVertexInFace(const size_t vertex, const size_t cell,
-                     const std::vector<std::vector<size_t> > & faces,
-                     const std::vector<size_t> & faceIndices,
-                     const std::map<size_t, std::vector<size_t> > & cellFaceMapping,
-                     const std::map<size_t, std::vector<size_t> > & cellFaceNeighbors) {
+      //go cell by cell (element by element)
+      auto el = grid->el().data();
+      auto &connectivities = grid->cl();
+      auto inserter = std::back_inserter(connectivities);
+      connectivities.reserve(num_conn);
+      for(index_t i=0;  i<dim.cells; i++) {
+         //std::cerr << i << std::endl;
+         //element list
+         el[i] = connectivities.size();
+         //connectivity list
+         const auto &cellfaces=cellfacemap[i];//get all faces of current cell
+         switch (types[i]) {
+            case UnstructuredGrid::HEXAHEDRON: {
+               index_t ia=cellfaces[0];//Pick the first index in the vector as index of the random starting face
+               std::vector<index_t> a=faces[ia];//find face that corresponds to index ia
 
-   std::set<size_t> shared;
-   std::vector<size_t> cellFaces;
-   std::map<size_t, std::vector<size_t> >::const_iterator ci =
-      cellFaceMapping.find(cell);
-   if (ci != cellFaceMapping.end())
-      std::copy(ci->second.begin(), ci->second.end(), std::back_inserter(cellFaces));
-   ci = cellFaceNeighbors.find(cell);
-   if (ci != cellFaceNeighbors.end())
-      std::copy(ci->second.begin(), ci->second.end(), std::back_inserter(cellFaces));
+               if (!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                  std::reverse(a.begin(), a.end());
+               }
 
-   std::vector<size_t>::const_iterator i;
-   for (i = faceIndices.begin(); i != faceIndices.end(); i ++) {
+               std::copy(a.begin(), a.end(), inserter);
+               connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
+               connectivities.push_back(findVertexAlongEdge(a[1],ia,cellfaces,faces));
+               connectivities.push_back(findVertexAlongEdge(a[2],ia,cellfaces,faces));
+               connectivities.push_back(findVertexAlongEdge(a[3],ia,cellfaces,faces));
+            }
+            break;
 
-      std::vector<size_t>::const_iterator f;
-      for (f = cellFaces.begin(); f != cellFaces.end(); f ++) {
+            case UnstructuredGrid::PRISM: {
+               index_t it=1;
+               index_t ia=cellfaces[0];
+               while (faces[ia].size()>3) {
+                  ia=cellfaces[it++];
+               }
 
-         if (inFace(vertex, *i, faces[*f])) {
-            if (shared.find(*i) == shared.end())
-               shared.insert(*i);
-            else
-               return *i;
+               std::vector<index_t> a=faces[ia];
+
+               if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                  std::reverse(a.begin(), a.end());
+               }
+
+               std::copy(a.begin(), a.end(), inserter);
+               connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
+               connectivities.push_back(findVertexAlongEdge(a[1],ia,cellfaces,faces));
+               connectivities.push_back(findVertexAlongEdge(a[2],ia,cellfaces,faces));
+            }
+            break;
+
+            case UnstructuredGrid::PYRAMID: {
+               index_t it=1;
+               index_t ia=cellfaces[0];
+               while (faces[ia].size()<4) {
+                  ia=cellfaces[it++];
+               }
+
+               std::vector<index_t> a=faces[ia];
+
+               if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                  std::reverse(a.begin(), a.end());
+               }
+
+               std::copy(a.begin(), a.end(), inserter);
+               connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
+            }
+            break;
+
+            case UnstructuredGrid::TETRAHEDRON: {
+               index_t ia=cellfaces[0];
+               std::vector<index_t> a=faces[ia];
+
+               if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                  std::reverse(a.begin(), a.end());
+               }
+
+               std::copy(a.begin(), a.end(), inserter);
+               connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
+            }
+            break;
+
+            case UnstructuredGrid::POLYHEDRON: {
+               for (index_t j=0;j<cellfaces.size();j++) {
+                  index_t ia=cellfaces[j];
+                  std::vector<index_t> a=faces[ia];
+
+                  if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                     std::reverse(a.begin(), a.end());
+                  }
+
+                  for (index_t k=0; k<=a.size(); ++k) {
+                     connectivities.push_back(a[k % a.size()]);
+                  }
+               }
+            }
+            break;
          }
       }
    }
 
-   return -1;
+   loadCoords(meshdir, grid);
+   poly->d()->x[0] = grid->d()->x[0];
+   poly->d()->x[1] = grid->d()->x[1];
+   poly->d()->x[2] = grid->d()->x[2];
+
+   //std::cerr << " done!" << std::endl;
+
+   return std::make_pair(grid, poly);
 }
 
-size_t getOppositeFace(size_t cell, size_t face,
-              const std::vector<std::vector<size_t> > & faces,
-              const std::map<size_t, std::vector<size_t> > & cellFaceMapping,
-              const std::map<size_t, std::vector<size_t> > & cellFaceNeighbors,
-                     std::vector<size_t> & faceIndices,
-                     std::vector<size_t> & oppositeFaceIndices) {
+Object::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &field) {
 
-   std::vector<size_t> cellFaces;
-   std::map<size_t, std::vector<size_t> >::const_iterator ci =
-      cellFaceMapping.find(cell);
-   if (ci != cellFaceMapping.end())
-      std::copy(ci->second.begin(), ci->second.end(), std::back_inserter(cellFaces));
-   ci = cellFaceNeighbors.find(cell);
-   if (ci != cellFaceNeighbors.end())
-      std::copy(ci->second.begin(), ci->second.end(), std::back_inserter(cellFaces));
-
-   std::vector<size_t>::const_iterator i;
-   for (i = cellFaces.begin(); i != cellFaces.end(); i ++) {
-
-      int num = compareFaces(faceIndices, faces[*i]);
-      if (num == 0) {
-         for (size_t index = 0; index < faceIndices.size(); index ++) {
-            size_t v = getOppositeVertexInFace(faceIndices[index], cell, faces,
-                                               faces[*i], cellFaceMapping,
-                                               cellFaceNeighbors);
-            oppositeFaceIndices.push_back(v);
-         }
-         return *i;
-      }
+   boost::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
+   if (!stream) {
+      std::cerr << "failed to open " << meshdir << "/" << field << std::endl;
+      return Object::ptr();
    }
-
-   return -1;
-}
-
-void ReadFOAM::parseBoundary(const std::string & casedir, const int partition) {
-
-   std::stringstream name;
-   name << casedir << "/processor" << partition
-        << "/constant/polyMesh/boundary";
-
-   std::ifstream file(name.str().c_str(),
-                      std::ios_base::in | std::ios_base::binary);
-
-   bi::filtering_istream in;
-   in.push(file);
-
-   typedef std::istreambuf_iterator<char> base_iterator_type;
-   typedef bs::multi_pass<base_iterator_type> forward_iterator_type;
-   typedef classic::position_iterator2<forward_iterator_type> pos_iterator_type;
-   forward_iterator_type fwd_begin =
-      bs::make_default_multi_pass(base_iterator_type(in));
-   forward_iterator_type fwd_end;
-   pos_iterator_type pos_begin(fwd_begin, fwd_end, name.str());
-   pos_iterator_type pos_end;
-
-   struct skipper<pos_iterator_type> skipper;
-
-   BoundaryParser<pos_iterator_type> p;
-   std::map<std::string, std::map<std::string, std::string> > boundaries;
-
-   bool r = qi::phrase_parse(pos_begin, pos_end,
-                             p, skipper, boundaries);
-
-   std::cout << "r: " << r << std::endl;
-
-   std::map<std::string, std::map<std::string, std::string> >::iterator top;
-   for (top = boundaries.begin(); top != boundaries.end(); top ++) {
-
-      std::cout << top->first << ":" << std::endl;
-      std::map<std::string, std::string>::iterator i;
-      for (i = top->second.begin(); i != top->second.end(); i ++)
-         std::cout << "    " << i->first << " => " << i->second << std::endl;
+   HeaderInfo header = readFoamHeader(*stream);
+   if (header.fieldclass == "volScalarField") {
+      Vec<Scalar>::ptr s(new Vec<Scalar>(header.lines));
+      readFloatArray(*stream, s->x().data(), s->x().size());
+      return s;
+   } else if (header.fieldclass == "volVectorField") {
+      Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(header.lines));
+      readFloatVectorArray(*stream, v->x().data(), v->y().data(), v->z().data(), v->x().size());
+      return v;
    }
+   
+   std::cerr << "cannot interpret " << meshdir << "/" << field << std::endl;
+   return Object::ptr();
 }
 
-std::vector<std::pair<std::string, vistle::Object::ptr> >
-ReadFOAM::load(const std::string & casedir, const size_t partition) {
+void ReadFOAM::setMeta(Object::ptr obj, int processor, int timestep) const {
 
-   std::vector<std::pair<std::string, vistle::Object::ptr> > objects;
+   if (obj) {
+      obj->setTimestep(timestep);
+      obj->setNumTimesteps(m_case.timedirs.size());
+      obj->setBlock(processor);
+      obj->setNumBlocks(m_case.numblocks == 0 ? 1 : m_case.numblocks);
 
-   std::stringstream pointsName;
-   pointsName << casedir << "/processor" << partition << "/0.3238435/polyMesh/points.gz";
-   std::ifstream pointsFile(pointsName.str().c_str(),
-                            std::ios_base::in | std::ios_base::binary);
-
-   std::stringstream facesName;
-   facesName << casedir << "/processor" << partition << "/constant/polyMesh/faces.gz";
-   std::ifstream facesFile(facesName.str().c_str(),
-                           std::ios_base::in | std::ios_base::binary);
-
-   std::stringstream ownersName;
-   ownersName << casedir << "/processor" << partition << "/constant/polyMesh/owner.gz";
-   std::ifstream ownersFile(ownersName.str().c_str(),
-                            std::ios_base::in | std::ios_base::binary);
-
-   std::stringstream neighborsName;
-   neighborsName << casedir << "/processor" << partition << "/constant/polyMesh/neighbour.gz";
-   std::ifstream neighborsFile(neighborsName.str().c_str(),
-                               std::ios_base::in | std::ios_base::binary);
-
-   std::stringstream pressureName;
-   pressureName << casedir << "/processor" << partition << "/0.3238435/p.gz";
-   std::ifstream pressureFile(pressureName.str().c_str(),
-                              std::ios_base::in | std::ios_base::binary);
-
-   bi::filtering_istream pointsIn;
-   pointsIn.push(bi::gzip_decompressor());
-   pointsIn.push(pointsFile);
-
-   bi::filtering_istream facesIn;
-   facesIn.push(bi::gzip_decompressor());
-   facesIn.push(facesFile);
-
-   bi::filtering_istream ownersIn;
-   ownersIn.push(bi::gzip_decompressor());
-   ownersIn.push(ownersFile);
-
-   bi::filtering_istream neighborsIn;
-   neighborsIn.push(bi::gzip_decompressor());
-   neighborsIn.push(neighborsFile);
-
-   bi::filtering_istream pressureIn;
-   pressureIn.push(bi::gzip_decompressor());
-   pressureIn.push(pressureFile);
-
-   std::vector<vistle::Vector> points;
-   std::vector<std::vector<size_t> > faces;
-   std::vector<size_t> owners;
-   std::vector<size_t> neighbors;
-
-   std::vector<float> pressure;
-
-   typedef std::istreambuf_iterator<char> base_iterator_type;
-   typedef bs::multi_pass<base_iterator_type> forward_iterator_type;
-   typedef classic::position_iterator2<forward_iterator_type> pos_iterator_type;
-
-   struct skipper<pos_iterator_type> skipper;
-   struct PointParser<pos_iterator_type> pointParser;
-   struct FaceParser<pos_iterator_type> faceParser;
-   struct IntParser<pos_iterator_type> ownersParser;
-   struct IntParser<pos_iterator_type> neighborsParser;
-
-   struct ScalarParser<pos_iterator_type> pressureParser;
-
-   try {
-      forward_iterator_type fwd_begin =
-         bs::make_default_multi_pass(base_iterator_type(pointsIn));
-      forward_iterator_type fwd_end;
-
-      pos_iterator_type pos_begin(fwd_begin, fwd_end, pointsName.str());
-      pos_iterator_type pos_end;
-
-      bool r = qi::phrase_parse(pos_begin, pos_end,
-                                pointParser, skipper, points);
-      std::cout << "r: " << r << " points: " << points.size() << std::endl;
-
-      // faces
-      fwd_begin =
-         bs::make_default_multi_pass(base_iterator_type(facesIn));
-      pos_begin = pos_iterator_type(fwd_begin, fwd_end, facesName.str());
-      r = qi::phrase_parse(pos_begin, pos_end,
-                                faceParser, skipper, faces);
-      std::cout << "r: " << r << " faces: " << faces.size() << std::endl;
-
-      // owners
-      fwd_begin =
-         bs::make_default_multi_pass(base_iterator_type(ownersIn));
-      pos_begin = pos_iterator_type(fwd_begin, fwd_end, ownersName.str());
-      r = qi::phrase_parse(pos_begin, pos_end,
-                           ownersParser, skipper, owners);
-      std::cout << "r: " << r << " owners: " << owners.size() << std::endl;
-
-      // neighbors
-      fwd_begin =
-         bs::make_default_multi_pass(base_iterator_type(neighborsIn));
-      pos_begin = pos_iterator_type(fwd_begin, fwd_end, neighborsName.str());
-      r = qi::phrase_parse(pos_begin, pos_end,
-                           neighborsParser, skipper, neighbors);
-      std::cout << "r: " << r << " neighbors: " << neighbors.size() << std::endl;
-
-      // pressure
-      fwd_begin =
-         bs::make_default_multi_pass(base_iterator_type(pressureIn));
-      pos_begin = pos_iterator_type(fwd_begin, fwd_end, pressureName.str());
-      r = qi::phrase_parse(pos_begin, pos_end, pressureParser, skipper, pressure);
-      std::cout << "r: " << r << " pressure: " << pressure.size() << std::endl;
-
-
-      std::map<size_t, std::vector<size_t> > cellFaceMapping;
-      for (size_t face = 0; face < owners.size(); face ++) {
-
-         std::map<size_t, std::vector<size_t> >::iterator i =
-            cellFaceMapping.find(owners[face]);
-         if (i == cellFaceMapping.end()) {
-            std::vector<size_t> a;
-            a.push_back(face);
-            cellFaceMapping[owners[face]] = a;
-         } else
-            i->second.push_back(face);
-      }
-
-      std::map<size_t, std::vector<size_t> > cellFaceNeighbors;
-      for (size_t face = 0; face < neighbors.size(); face ++) {
-
-         std::map<size_t, std::vector<size_t> >::iterator i =
-            cellFaceNeighbors.find(neighbors[face]);
-         if (i == cellFaceNeighbors.end()) {
-            std::vector<size_t> a;
-            a.push_back(face);
-            cellFaceNeighbors[neighbors[face]] = a;
-         } else
-            i->second.push_back(face);
-      }
-
-      vistle::UnstructuredGrid *usg = new vistle::UnstructuredGrid(vistle::Object::Initialized);
-      usg->setBlock(partition);
-      usg->setTimestep(0);
-
-      vistle::Vec<vistle::Scalar> *pres = new vistle::Vec<vistle::Scalar>(points.size());
-      pres->setBlock(partition);
-      pres->setTimestep(0);
-
-      for (size_t p = 0; p < points.size(); p ++) {
-
-         usg->x().push_back(points[p].x);
-         usg->y().push_back(points[p].y);
-         usg->z().push_back(points[p].z);
-      }
-
-      float *vertexPressure = new float[points.size()]();
-      char *numVertexPressure = new char[points.size()]();
-
-      for (size_t cell = 0; cell < cellFaceMapping.size(); cell ++) {
-
-         std::vector<size_t> faceIndices;
-         std::vector<size_t> oppositeFaceIndices;
-         size_t face = getFirstFace(cell, faces, cellFaceMapping,
-                                    cellFaceNeighbors, faceIndices);
-
-         getOppositeFace(cell, face, faces, cellFaceMapping,
-                         cellFaceNeighbors, faceIndices,
-                         oppositeFaceIndices);
-
-         usg->tl().push_back(vistle::UnstructuredGrid::HEXAHEDRON);
-         usg->el().push_back(usg->cl().size());
-         for (size_t index = 0; index < faceIndices.size(); index ++) {
-            usg->cl().push_back(faceIndices[index]);
-            vertexPressure[faceIndices[index]] += pressure[cell];
-            numVertexPressure[faceIndices[index]]++;
-         }
-         for (size_t index = 0; index < oppositeFaceIndices.size(); index ++) {
-            usg->cl().push_back(oppositeFaceIndices[index]);
-            vertexPressure[oppositeFaceIndices[index]] += pressure[cell];
-            numVertexPressure[oppositeFaceIndices[index]]++;
+      if (timestep >= 0) {
+         int i = 0;
+         for (auto &ts: m_case.timedirs) {
+            if (i == timestep) {
+               obj->setRealTime(ts.first);
+               break;
+            }
+            ++i;
          }
       }
-
-      vistle::Scalar *pressureField = &pres->x()[0];
-      for (size_t p = 0; p < points.size(); p ++)
-         if (numVertexPressure[p] > 0)
-            pressureField[p] = vertexPressure[p] / numVertexPressure[p];
-
-      objects.push_back(std::make_pair("grid_out", vistle::Object::ptr(usg)));
-      objects.push_back(std::make_pair("p_out", vistle::Object::ptr(pres)));
-      return objects;
-
-   } catch (const qi::expectation_failure<pos_iterator_type>& e) {
-
-      const classic::file_position_base<std::string>& pos =
-         e.first.get_position();
-      std::cout <<
-         "parse error at file " << pos.file <<
-         " line " << pos.line << " column " << pos.column << std::endl <<
-         "'" << e.first.get_currentline() << "'" << std::endl <<
-         std::setw(pos.column) << " " << "^- here" << std::endl;
    }
-
-   return objects;
 }
 
-bool ReadFOAM::compute() {
+bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string, int> &fields, int processor, int timestep) {
 
-   for (int partition = 0; partition < 32; partition ++) {
-      parseBoundary(getStringParameter("filename"), partition);
+   for (int i=0; i<NumPorts; ++i) {
+      std::string field = m_fieldOut[i]->getValue();
+      auto it = fields.find(field);
+      if (it == fields.end())
+         continue;
+      Object::ptr obj = loadField(meshdir, field);
+      setMeta(obj, processor, timestep);
+      addObject(m_dataOut[i], obj);
    }
 
-   for (int partition = 0; partition < 32; partition ++) {
-      if (partition % size() == rank()) {
+   return true;
+}
 
-         std::vector<std::pair<std::string, vistle::Object::ptr> > objects =
-            load(getStringParameter("filename"), partition);
 
-         std::vector<std::pair<std::string, vistle::Object::ptr> >::iterator i;
-         for (i = objects.begin(); i != objects.end(); i ++)
-            addObject(i->first, i->second);
+
+
+bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int timestep) {
+
+   std::string dir = casedir;
+
+   if (processor >= 0) {
+      std::stringstream s;
+      s << "/processor" << processor;
+      dir += s.str();
+   }
+
+   if (timestep < 0) {
+      dir += "/" + m_case.constantdir;
+      if (!m_case.varyingGrid) {
+         auto ret = loadGrid(dir + "/polyMesh");
+         UnstructuredGrid::ptr grid = ret.first;
+         setMeta(grid, processor, timestep);
+         Polygons::ptr poly = ret.second;
+         setMeta(poly, processor, timestep);
+
+         if (m_case.varyingCoords) {
+            m_basegrid[processor] = grid;
+            m_basebound[processor] = poly;
+         } else {
+            addObject(m_gridOut, grid);
+            addObject(m_boundOut, poly);
+         }
+      }
+      loadFields(dir, m_case.constantFields, processor, timestep);
+   } else {
+      int i = 0;
+      int skipfactor = m_timeskip->getValue()+1;
+      for (auto &ts: m_case.timedirs) {
+         if (i == timestep*skipfactor) {
+            dir += "/" + ts.second;
+            break;
+         }
+         ++i;
+      }
+      if (i == m_case.timedirs.size()) {
+         std::cerr << "no directory for timestep " << timestep << " found" << std::endl;
+         return false;
+      }
+      if (m_case.varyingGrid || m_case.varyingCoords) {
+         UnstructuredGrid::ptr grid;
+         Polygons::ptr poly;
+         if (m_case.varyingCoords) {
+            {
+               grid.reset(new UnstructuredGrid(0, 0, 0));
+               UnstructuredGrid::Data *od = m_basegrid[processor]->d();
+               UnstructuredGrid::Data *nd = grid->d();
+               nd->tl = od->tl;
+               nd->el = od->el;
+               nd->cl = od->cl;
+            }
+            loadCoords(dir + "/polyMesh", grid);
+            {
+               poly.reset(new Polygons(0, 0, 0));
+               Polygons::Data *od = m_basebound[processor]->d();
+               Polygons::Data *nd = poly->d();
+               nd->el = od->el;
+               nd->cl = od->cl;
+               for (int i=0; i<3; ++i)
+                  poly->d()->x[i] = grid->d()->x[i];
+            }
+         } else {
+            auto ret = loadGrid(dir + "/polyMesh");
+            grid = ret.first;
+            poly = ret.second;
+         }
+         setMeta(grid, processor, timestep);
+         addObject(m_gridOut, grid);
+         setMeta(poly, processor, timestep);
+         addObject(m_boundOut, poly);
+      }
+      loadFields(dir, m_case.varyingFields, processor, timestep);
+   }
+
+   return true;
+}
+
+bool ReadFOAM::readConstant(const std::string &casedir)
+{
+   std::cerr << "reading constant data..." << std::endl;
+   if (m_case.numblocks > 0) {
+      for (int i=0; i<m_case.numblocks; ++i) {
+         if (i % size() == rank()) {
+            if (!readDirectory(casedir, i, -1))
+               return false;
+         }
+      }
+   } else {
+      if (rank() == 0) {
+         if (!readDirectory(casedir, -1, -1))
+            return false;
       }
    }
 
    return true;
 }
+
+bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
+
+   std::cerr << "reading time step " << timestep << "..." << std::endl;
+   if (m_case.numblocks > 0) {
+      for (int i=0; i<m_case.numblocks; ++i) {
+         if (i % size() == rank()) {
+            if (!readDirectory(casedir, i, timestep))
+               return false;
+         }
+      }
+   } else {
+      if (rank() == 0) {
+         if (!readDirectory(casedir, -1, timestep))
+            return false;
+      }
+   }
+
+   return true;
+}
+
+bool ReadFOAM::compute()     //Compute is called when Module is executed
+{
+   const std::string casedir = m_casedir->getValue();
+   m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
+   if (!m_case.valid) {
+      std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
+      return false;
+   }
+
+   std::cerr << "# processors: " << m_case.numblocks << std::endl;
+   std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
+   std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
+   std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
+
+   readConstant(casedir);
+   int skipfactor = m_timeskip->getValue()+1;
+   for (int timestep=0; timestep<m_case.timedirs.size()/skipfactor; ++timestep) {
+      readTime(casedir, timestep);
+   }
+
+   m_basegrid.clear();
+   std::cerr << "ReadFoam: done" << std::endl;
+
+   return true;
+}
+
+MODULE_MAIN(ReadFOAM)

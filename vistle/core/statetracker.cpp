@@ -108,17 +108,29 @@ std::vector<char> StateTracker::getState() const {
          appendMessage(state, k);
       }
 
-      for (auto &it2: m.parameters) {
-         const std::string &name = it2.first;
-         const Parameter *param = it2.second;
+      const ParameterMap &pmap = m.parameters;
+      for (const auto &it2: m.paramOrder) {
+         //std::cerr << "module " << id << ": " << it2.first << " -> " << it2.second << std::endl;
+         const std::string &name = it2.second;
+         const auto &it3 = pmap.find(name);
+         assert(it3 != pmap.end());
+         const Parameter *param = it3->second;
 
          AddParameter add(param, getModuleName(id));
          add.setSenderId(id);
          appendMessage(state, add);
 
-         SetParameter set(id, name, param);
-         set.setSenderId(id);
-         appendMessage(state, set);
+         if (param->presentation() == Parameter::Choice) {
+            SetParameterChoices choices(id, name, param->choices());
+            choices.setSenderId(id);
+            appendMessage(state, choices);
+         }
+
+         for (Parameter::RangeType rt: {Parameter::Value, Parameter::Minimum, Parameter::Maximum}) {
+            SetParameter set(id, name, param, rt);
+            set.setSenderId(id);
+            appendMessage(state, set);
+         }
       }
 
       for (auto &portname: portTracker()->getInputPortNames(id)) {
@@ -142,6 +154,14 @@ std::vector<char> StateTracker::getState() const {
          const Port::PortSet *connected = portTracker()->getConnectionList(id, portname);
          for (auto &dest: *connected) {
             Connect c(id, portname, dest->getModuleID(), dest->getName());
+            appendMessage(state, c);
+         }
+      }
+
+      for (auto &paramname: getParameters(id)) {
+         const Port::PortSet *connected = portTracker()->getConnectionList(id, paramname);
+         for (auto &dest: *connected) {
+            Connect c(id, paramname, dest->getModuleID(), dest->getName());
             appendMessage(state, c);
          }
       }
@@ -174,9 +194,6 @@ bool StateTracker::handleMessage(const message::Message &msg) {
          break;
       }
       case Message::QUIT: {
-         break;
-      }
-      case Message::NEWOBJECT: {
          break;
       }
       case Message::MODULEEXIT: {
@@ -259,6 +276,21 @@ bool StateTracker::handleMessage(const message::Message &msg) {
          return true;
          break;
       }
+      case Message::RESETMODULEIDS: {
+         const ResetModuleIds &reset = static_cast<const ResetModuleIds &>(msg);
+         return handle(reset);
+         break;
+      }
+      case Message::REPLAYFINISHED: {
+         const ReplayFinished &fin = static_cast<const ReplayFinished &>(msg);
+         return handle(fin);
+         break;
+      }
+      case Message::SENDTEXT: {
+         const SendText &info = static_cast<const SendText &>(msg);
+         return handle(info);
+         break;
+      }
       default:
          CERR << "message type not handled: type=" << msg.type() << std::endl;
          assert("message type not handled" == 0);
@@ -288,7 +320,8 @@ bool StateTracker::handle(const message::Spawn &spawn) {
    mod.name = spawn.getName();
 
    for (StateObserver *o: m_observers) {
-      o->newModule(moduleId, mod.name);
+      o->incModificationCount();
+      o->newModule(moduleId, spawn.uuid(), mod.name);
    }
 
    return true;
@@ -314,6 +347,7 @@ bool StateTracker::handle(const message::Connect &connect) {
          connect.getPortBName());
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->newConnection(connect.getModuleA(), connect.getPortAName(),
             connect.getModuleB(), connect.getPortBName());
    }
@@ -329,6 +363,7 @@ bool StateTracker::handle(const message::Disconnect &disconnect) {
          disconnect.getPortBName());
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->deleteConnection(disconnect.getModuleA(), disconnect.getPortAName(),
             disconnect.getModuleB(), disconnect.getPortBName());
    }
@@ -355,9 +390,9 @@ bool StateTracker::handle(const message::ModuleExit &moduleExit) {
       if (it != busySet.end())
          busySet.erase(it);
    }
-   portTracker()->removeConnections(mod);
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->deleteModule(mod);
    }
 
@@ -411,14 +446,21 @@ bool StateTracker::handle(const message::AddParameter &addParam) {
 #endif
 
    ParameterMap &pm = runningMap[addParam.senderId()].parameters;
+   ParameterOrder &po = runningMap[addParam.senderId()].paramOrder;
    ParameterMap::iterator it = pm.find(addParam.getName());
    if (it != pm.end()) {
-      CERR << "double parameter" << std::endl;
+      CERR << "duplicate parameter" << std::endl;
    } else {
       pm[addParam.getName()] = addParam.getParameter();
+      int maxIdx = 0;
+      const auto &rit = po.rbegin();
+      if (rit != po.rend())
+         maxIdx = rit->first;
+      po[maxIdx+1] = addParam.getName();
    }
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->newParameter(addParam.senderId(), addParam.getName());
    }
 
@@ -442,6 +484,7 @@ bool StateTracker::handle(const message::SetParameter &setParam) {
       setParam.apply(param);
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->parameterValueChanged(setParam.senderId(), setParam.getName());
    }
 
@@ -449,6 +492,19 @@ bool StateTracker::handle(const message::SetParameter &setParam) {
 }
 
 bool StateTracker::handle(const message::SetParameterChoices &choices) {
+
+   Parameter *p = getParameter(choices.getModule(), choices.getName());
+   if (!p)
+      return false;
+
+   choices.apply(p);
+
+   //CERR << "choices changed for " << choices.getModule() << ":" << choices.getName() << ": #" << p->choices().size() << std::endl;
+
+   for (StateObserver *o: m_observers) {
+      o->incModificationCount();
+      o->parameterChoicesChanged(choices.getModule(), choices.getName());
+   }
 
    return true;
 }
@@ -490,9 +546,31 @@ bool StateTracker::handle(const message::CreatePort &createPort) {
    Port * p = portTracker()->addPort(createPort.getPort());
 
    for (StateObserver *o: m_observers) {
+      o->incModificationCount();
       o->newPort(p->getModuleID(), p->getName());
    }
 
+   return true;
+}
+
+bool StateTracker::handle(const vistle::message::ResetModuleIds &reset)
+{
+   return true;
+}
+
+bool StateTracker::handle(const message::ReplayFinished &reset)
+{
+   for (StateObserver *o: m_observers) {
+      o->resetModificationCount();
+   }
+   return true;
+}
+
+bool StateTracker::handle(const message::SendText &info)
+{
+   for (StateObserver *o: m_observers) {
+      o->info(info.text(), info.senderId(), info.rank(), info.referenceType(), info.referenceUuid());
+   }
    return true;
 }
 
@@ -513,9 +591,10 @@ std::vector<std::string> StateTracker::getParameters(int id) const {
    if (rit == runningMap.end())
       return result;
 
-   const ParameterMap &pmap = rit->second.parameters;
-   BOOST_FOREACH (ParameterMap::value_type val, pmap) {
-      result.push_back(val.first);
+   const ParameterOrder &po = rit->second.paramOrder;
+   BOOST_FOREACH (ParameterOrder::value_type val, po) {
+      const auto &name = val.second;
+      result.push_back(name);
    }
 
    return result;
@@ -537,6 +616,21 @@ Parameter *StateTracker::getParameter(int id, const std::string &name) const {
 void StateTracker::registerObserver(StateObserver *observer) {
 
    m_observers.insert(observer);
+}
+
+void StateObserver::incModificationCount()
+{
+   ++m_modificationCount;
+}
+
+long StateObserver::modificationCount() const
+{
+   return m_modificationCount;
+}
+
+void StateObserver::resetModificationCount()
+{
+   m_modificationCount = 0;
 }
 
 } // namespace vistle

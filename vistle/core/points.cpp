@@ -8,6 +8,11 @@ Points::Points(const Index numPoints,
 {
 }
 
+bool Points::isEmpty() const {
+
+   return Base::isEmpty();
+}
+
 bool Points::checkImpl() const {
 
    return true;

@@ -9,6 +9,10 @@ Texture1D::Texture1D(const Index width,
 {
 }
 
+bool Texture1D::isEmpty() const {
+   return getWidth() == 0;
+}
+
 bool Texture1D::checkImpl() const {
 
    //V_CHECK (d()->min <= d()->max);

@@ -10,6 +10,11 @@ UnstructuredGrid::UnstructuredGrid(const Index numElements,
 {
 }
 
+bool UnstructuredGrid::isEmpty() const {
+
+   return Base::isEmpty();
+}
+
 bool UnstructuredGrid::checkImpl() const {
 
    V_CHECK(tl().size() == getNumElements());

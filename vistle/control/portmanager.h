@@ -5,17 +5,20 @@
 
 #include <core/porttracker.h>
 
+#include "export.h"
+
 namespace vistle {
 
 class ModuleManager;
 
-class PortManager: public PortTracker {
+class V_CONTROLEXPORT PortManager: public PortTracker {
 
  public:
    PortManager(ModuleManager *moduleManager);
    virtual ~PortManager();
 
    virtual Port * getPort(const int moduleID, const std::string & name) const;
+   void removeConnections(const int moduleID);
 
  private:
 

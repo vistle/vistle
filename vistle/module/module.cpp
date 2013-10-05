@@ -1,7 +1,7 @@
 #include <mpi.h>
 
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstdio>
 
 #include <sys/types.h>
 #ifndef _WIN32
@@ -14,9 +14,13 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
+#include <boost/mpl/vector.hpp>
+#include <boost/mpl/for_each.hpp>
+#include <boost/mpl/transform.hpp>
 
 #include <core/object.h>
 #include <core/message.h>
@@ -31,6 +35,62 @@
 using namespace boost::interprocess;
 
 namespace vistle {
+
+template<typename CharT, typename TraitsT = std::char_traits<CharT> >
+class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
+
+ public:
+   msgstreambuf(Module *mod)
+   : m_module(mod)
+   {}
+
+   ~msgstreambuf() {
+
+      flush();
+   }
+
+   void flush(ssize_t count=-1) {
+      size_t size = count<0 ? m_buf.size() : count;
+      if (size > 0) {
+         m_module->sendText(message::SendText::Cerr, std::string(m_buf.data(), size));
+         std::cout << std::string(m_buf.data(), size) << std::flush;
+      }
+
+      if (size == m_buf.size()) {
+         m_buf.clear();
+      } else {
+         m_buf.erase(m_buf.begin(), m_buf.begin()+size);
+      }
+   }
+
+   int overflow(int ch) {
+      if (ch != EOF) {
+         m_buf.push_back(ch);
+         if (ch == '\n')
+            flush();
+         return 0;
+      } else {
+         return EOF;
+      }
+   }
+
+   std::streamsize xsputn (const CharT *s, std::streamsize num) {
+      size_t end = m_buf.size();
+      m_buf.resize(end+num);
+      memcpy(m_buf.data()+end, s, num);
+      auto it = std::find(m_buf.rbegin(), m_buf.rend(), '\n');
+      if (it != m_buf.rend()) {
+         flush(it - m_buf.rend());
+      }
+      return num;
+   }
+
+ private:
+   Module *m_module = nullptr;
+   std::vector<char> m_buf;
+};
+
+
 
 Module::Module(const std::string &n, const std::string &shmname,
       const unsigned int r,
@@ -88,11 +148,30 @@ Module::Module(const std::string &n, const std::string &shmname,
 #else
              << std::endl;
 #endif
+
+   Parameter *cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheDefault, Parameter::Choice);
+   std::vector<std::string> modes;
+   assert(ObjectCache::CacheDefault == 0);
+   modes.push_back("default");
+   assert(ObjectCache::CacheNone == 1);
+   modes.push_back("none");
+   assert(ObjectCache::CacheAll == 2);
+   modes.push_back("all");
+   setParameterChoices(cm, modes);
+
+   addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
 }
 
-void Module::initDone() const {
+void Module::initDone() {
+
+   m_streambuf = new msgstreambuf<char>(this);
+   m_origStreambuf = std::cerr.rdbuf(m_streambuf);
 
    sendMessage(message::Started(name()));
+
+   for (auto &pair: parameters) {
+      parameterChanged(pair.second);
+   }
 }
 
 const std::string &Module::name() const {
@@ -125,19 +204,24 @@ void Module::setSyncMessageProcessing(bool sync) {
    m_syncMessageProcessing = sync;
 }
 
-void Module::setCacheMode(ObjectCache::CacheMode mode) {
+ObjectCache::CacheMode Module::setCacheMode(ObjectCache::CacheMode mode, bool updateParam) {
 
    if (mode == ObjectCache::CacheDefault)
       m_cache.setCacheMode(m_defaultCacheMode);
    else
       m_cache.setCacheMode(mode);
+
+   if (updateParam)
+      setIntParameter("_cache_mode", mode);
+
+   return m_cache.cacheMode();
 }
 
 void Module::setDefaultCacheMode(ObjectCache::CacheMode mode) {
 
    assert(mode != ObjectCache::CacheDefault);
    m_defaultCacheMode = mode;
-   setCacheMode(m_defaultCacheMode);
+   setCacheMode(m_defaultCacheMode, false);
 }
 
 
@@ -156,7 +240,7 @@ Port *Module::createInputPort(const std::string &name, const std::string &descri
       inputPorts[name] = p;
 
       message::CreatePort message(p);
-      sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
+      sendMessageQueue->send(message);
       return p;
    }
 
@@ -177,6 +261,16 @@ Port *Module::createOutputPort(const std::string &name, const std::string &descr
       return p;
    }
    return NULL;
+}
+
+void Module::setCurrentParameterGroup(const std::string &group) {
+
+   m_currentParameterGroup = group;
+}
+
+const std::string &Module::currentParameterGroup() const {
+
+   return m_currentParameterGroup;
 }
 
 Port *Module::findInputPort(const std::string &name) const {
@@ -200,7 +294,7 @@ Port *Module::findOutputPort(const std::string &name) const {
 }
 
 
-bool Module::addParameterGeneric(const std::string &name, Parameter *param, Parameter::Presentation presentation) {
+bool Module::addParameterGeneric(const std::string &name, Parameter *param) {
 
    std::map<std::string, Parameter *>::iterator i =
       parameters.find(name);
@@ -210,7 +304,7 @@ bool Module::addParameterGeneric(const std::string &name, Parameter *param, Para
 
    parameters[name] = param;
 
-   message::AddParameter add(name, param->description(), param->type(), presentation, m_name);
+   message::AddParameter add(param, m_name);
    sendMessage(add);
    message::SetParameter set(id(), name, param);
    set.setInit();
@@ -220,7 +314,7 @@ bool Module::addParameterGeneric(const std::string &name, Parameter *param, Para
    return true;
 }
 
-bool Module::updateParameter(const std::string &name, const Parameter *param, const message::SetParameter *inResponseTo) {
+bool Module::updateParameter(const std::string &name, const Parameter *param, const message::SetParameter *inResponseTo, Parameter::RangeType rt) {
 
    std::map<std::string, Parameter *>::iterator i = parameters.find(name);
 
@@ -239,7 +333,7 @@ bool Module::updateParameter(const std::string &name, const Parameter *param, co
       return false;
    }
 
-   message::SetParameter set(id(), name, param);
+   message::SetParameter set(id(), name, param, rt);
    if (inResponseTo) {
       set.setReply();
       set.setUuid(inResponseTo->uuid());
@@ -249,12 +343,29 @@ bool Module::updateParameter(const std::string &name, const Parameter *param, co
    return true;
 }
 
+void Module::setParameterChoices(const std::string &name, const std::vector<std::string> &choices)
+{
+   Parameter *p = findParameter(name);
+   if (p)
+      setParameterChoices(p, choices);
+}
+
+void Module::setParameterChoices(Parameter *param, const std::vector<std::string> &choices)
+{
+   if (choices.size() <= message::param_num_choices) {
+      message::SetParameterChoices sc(id(), param->getName(), choices);
+      sendMessage(sc);
+   }
+}
+
 template<class T>
 Parameter *Module::addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation pres) {
 
    Parameter *p = new ParameterBase<T>(id(), name, value);
    p->setDescription(description);
-   if (!addParameterGeneric(name, p, pres)) {
+   p->setGroup(currentParameterGroup());
+   p->setPresentation(pres);
+   if (!addParameterGeneric(name, p)) {
       delete p;
       return NULL;
    }
@@ -278,8 +389,66 @@ bool Module::setParameter(const std::string &name, const T &value, const message
    if (!p)
       return false;
 
-   p->setValue(value);
-   return updateParameter(name, p, inResponseTo);
+   return setParameter(p, value, inResponseTo);
+}
+
+template<class T>
+bool Module::setParameter(ParameterBase<T> *param, const T &value, const message::SetParameter *inResponseTo) {
+
+   param->setValue(value);
+   parameterChanged(param);
+   return updateParameter(param->getName(), param, inResponseTo);
+}
+
+template<class T>
+bool Module::setParameterMinimum(ParameterBase<T> *param, const T &minimum) {
+
+   return Module::setParameterRange(param, minimum, param->maximum());
+}
+
+template<class T>
+bool Module::setParameterMaximum(ParameterBase<T> *param, const T &maximum) {
+
+   return Module::setParameterRange(param, param->minimum(), maximum);
+}
+
+template<class T>
+bool Module::setParameterRange(const std::string &name, const T &minimum, const T &maximum) {
+
+   ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(findParameter(name));
+   if (!p)
+      return false;
+
+   return setParameterRange(p, minimum, maximum);
+}
+
+template<class T>
+bool Module::setParameterRange(ParameterBase<T> *param, const T &minimum, const T &maximum) {
+
+   bool ok = true;
+
+   if (maximum > minimum) {
+      param->setMinimum(minimum);
+      param->setMaximum(maximum);
+   } else {
+      std::cerr << "range for parameter " << param->getName() << " swapped" << std::endl;
+      param->setMinimum(maximum);
+      param->setMaximum(minimum);
+   }
+   T value = param->getValue();
+   if (value < param->minimum()) {
+      std::cerr << "value for parameter " << param->getName() << " increased to minimum: " << param->minimum() << std::endl;
+      param->setValue(param->minimum());
+      ok &= updateParameter(param->getName(), param, nullptr);
+   }
+   if (value > param->maximum()) {
+      std::cerr << "value for parameter " << param->getName() << " decreased to maximum: " << param->maximum() << std::endl;
+      param->setValue(param->maximum());
+      ok &= updateParameter(param->getName(), param, nullptr);
+   }
+   ok &= updateParameter(param->getName(), param, nullptr, Parameter::Minimum);
+   ok &= updateParameter(param->getName(), param, nullptr, Parameter::Maximum);
+   return ok;
 }
 
 template<class T>
@@ -316,39 +485,53 @@ std::string Module::getStringParameter(const std::string & name) const {
 }
 
 FloatParameter *Module::addFloatParameter(const std::string & name, const std::string &description,
-                               const double value) {
+                               const Float value) {
 
    return dynamic_cast<FloatParameter *>(addParameter(name, description, value));
 }
 
 bool Module::setFloatParameter(const std::string & name,
-                               const double value, const message::SetParameter *inResponseTo) {
+                               const Float value, const message::SetParameter *inResponseTo) {
 
    return setParameter(name, value, inResponseTo);
 }
 
-double Module::getFloatParameter(const std::string & name) const {
+Float Module::getFloatParameter(const std::string & name) const {
 
-   double value = 0.;
+   Float value = 0.;
    getParameter(name, value);
    return value;
 }
 
 IntParameter *Module::addIntParameter(const std::string & name, const std::string &description,
-                             const int value, Parameter::Presentation p) {
+                             const Integer value, Parameter::Presentation p) {
 
    return dynamic_cast<IntParameter *>(addParameter(name, description, value, p));
 }
 
 bool Module::setIntParameter(const std::string & name,
-                             const int value, const message::SetParameter *inResponseTo) {
+                             Integer value, const message::SetParameter *inResponseTo) {
+
+   if (name == "_cache_mode") {
+      switch (value) {
+      case ObjectCache::CacheNone:
+      case ObjectCache::CacheAll:
+      case ObjectCache::CacheDefault:
+         break;
+      default:
+         value = ObjectCache::CacheDefault;
+         break;
+      }
+
+      setCacheMode(ObjectCache::CacheMode(value), false);
+   }
 
    return setParameter(name, value, inResponseTo);
 }
 
-int Module::getIntParameter(const std::string & name) const {
+Integer Module::getIntParameter(const std::string & name) const {
 
-   int value = 0;
+   Integer value = 0;
    getParameter(name, value);
    return value;
 }
@@ -374,35 +557,50 @@ ParamVector Module::getVectorParameter(const std::string & name) const {
 
 void Module::updateMeta(vistle::Object::ptr obj) const {
 
-   obj->setCreator(id());
-   obj->setExecutionCounter(m_executionCount);
+   if (obj) {
+      obj->setCreator(id());
+      obj->setExecutionCounter(m_executionCount);
+   }
 }
 
 bool Module::addObject(const std::string &portName, vistle::Object::ptr object) {
 
-   updateMeta(object);
-   vistle::Object::const_ptr cobj = object;
-   return passThroughObject(portName, cobj);
+   std::map<std::string, Port *>::iterator i = outputPorts.find(portName);
+   if (i != outputPorts.end()) {
+      return addObject(i->second, object);
+   }
+   std::cerr << "Module::addObject: output port " << portName << " not found" << std::endl;
+   assert(i != outputPorts.end());
+   return false;
 }
 
-bool Module::passThroughObject(const std::string & portName, vistle::Object::const_ptr object) {
+bool Module::addObject(Port *port, vistle::Object::ptr object) {
+
+   updateMeta(object);
+   vistle::Object::const_ptr cobj = object;
+   return passThroughObject(port, cobj);
+}
+
+bool Module::passThroughObject(const std::string &portName, vistle::Object::const_ptr object) {
+   std::map<std::string, Port *>::iterator i = outputPorts.find(portName);
+   if (i != outputPorts.end()) {
+      return passThroughObject(i->second, object);
+   }
+   std::cerr << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
+   assert(i != outputPorts.end());
+   return false;
+}
+
+bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object) {
 
    if (!object)
       return false;
 
    assert(object->check());
 
-   std::map<std::string, Port *>::iterator i = outputPorts.find(portName);
-   if (i != outputPorts.end()) {
-      // XXX: this was the culprit keeping the final object reference around
-      //i->second.push_back(object);
-      message::AddObject message(portName, object);
-      sendMessageQueue->getMessageQueue().send(&message, sizeof(message), 0);
-      return true;
-   }
-   std::cerr << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
-   assert(i != outputPorts.end());
-   return false;
+   message::AddObject message(port->getName(), object);
+   sendMessageQueue->send(message);
+   return true;
 }
 
 ObjectList Module::getObjects(const std::string &portName) {
@@ -529,6 +727,23 @@ bool Module::isConnected(const std::string &portname) const {
    return !p->connections().empty();
 }
 
+bool Module::parameterChanged(Parameter *p) {
+
+   (void)p;
+   return true;
+}
+
+int Module::schedulingPolicy() const
+{
+   return m_schedulingPolicy;
+}
+
+void Module::setSchedulingPolicy(int schedulingPolicy)
+{
+   m_schedulingPolicy = schedulingPolicy;
+   sendMessage(message::SchedulingPolicy(message::SchedulingPolicy::Policy(schedulingPolicy)));
+}
+
 bool Module::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
 
    (void)senderId;
@@ -549,17 +764,11 @@ bool Module::parameterChanged(const int senderId, const std::string &name, const
 
 bool Module::dispatch() {
 
-   size_t msgSize;
-   unsigned int priority;
    char msgRecvBuf[message::Message::MESSAGE_SIZE];
-
-   bool again = true;
-   receiveMessageQueue->getMessageQueue().receive(
-                                               (void *) msgRecvBuf,
-                                               message::Message::MESSAGE_SIZE,
-                                               msgSize, priority);
    vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
 
+   bool again = true;
+   receiveMessageQueue->receive(*message);
 
    if (syncMessageProcessing()) {
       int sync = 0, allsync = 0;
@@ -590,10 +799,7 @@ bool Module::dispatch() {
          again &= handleMessage(message);
 
          if (allsync && !sync) {
-            receiveMessageQueue->getMessageQueue().receive(
-                  (void *) msgRecvBuf,
-                  message::Message::MESSAGE_SIZE,
-                  msgSize, priority);
+            receiveMessageQueue->receive(*message);
          }
 
       } while(allsync && !sync);
@@ -608,9 +814,8 @@ bool Module::dispatch() {
 
 void Module::sendMessage(const message::Message &message) const {
 
-   sendMessageQueue->getMessageQueue().send(&message, message.size(), 0);
+   sendMessageQueue->send(message);
 }
-
 
 bool Module::handleMessage(const vistle::message::Message *message) {
 
@@ -799,13 +1004,18 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             m_executionCount = comp->getExecutionCount();
 
          if (comp->getExecutionCount() > 0) {
-            // Compute not triggered by adding an object
+            // Compute not triggered by adding an object, get objects from cache
             for (std::map<std::string, Port *>::iterator pit = inputPorts.begin();
                   pit != inputPorts.end();
                   ++pit) {
                pit->second->objects() = m_cache.getObjects(pit->first);
             }
          }
+
+         if (comp->allRanks()) {
+            MPI_Allreduce(&m_executionCount, &m_executionCount, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+         }
+
          /*
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
                    << rank() << "/" << size << "] compute" << std::endl;
@@ -846,8 +1056,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                case Parameter::Integer:
                   setIntParameter(param->getName(), param->getInteger(), param);
                   break;
-               case Parameter::Scalar:
-                  setFloatParameter(param->getName(), param->getScalar(), param);
+               case Parameter::Float:
+                  setFloatParameter(param->getName(), param->getFloat(), param);
                   break;
                case Parameter::Vector:
                   setVectorParameter(param->getName(), param->getVector(), param);
@@ -859,6 +1069,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                   std::cerr << "Module::handleMessage: unknown parameter type " << param->getParameterType() << std::endl;
                   assert("unknown parameter type" == 0);
                   break;
+            }
+
+            if (Parameter *p = findParameter(param->getName())) {
+               parameterChanged(p);
             }
 
             // notify controller about current value
@@ -874,12 +1088,35 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
+      case message::Message::SETPARAMETERCHOICES: {
+         const message::SetParameterChoices *choices = static_cast<const message::SetParameterChoices *>(message);
+         if (choices->senderId() != id()) {
+            //FIXME: handle somehow
+            //parameterChanged(choices->senderId(), choices->getName());
+         }
+         break;
+      }
+
       case message::Message::ADDPARAMETER: {
 
          const message::AddParameter *param =
             static_cast<const message::AddParameter *>(message);
 
          parameterAdded(param->senderId(), param->getName(), *param, param->moduleName());
+         break;
+      }
+
+      case message::Message::SPAWN: {
+         const message::Spawn *spawn =
+            static_cast<const message::Spawn *>(message);
+         m_otherModuleMap[spawn->spawnId()] = spawn->getName();
+         break;
+      }
+
+      case message::Message::MODULEEXIT: {
+         const message::ModuleExit *exit =
+            static_cast<const message::ModuleExit *>(message);
+         m_otherModuleMap.erase(exit->senderId());
          break;
       }
 
@@ -907,9 +1144,22 @@ bool Module::handleMessage(const vistle::message::Message *message) {
    return true;
 }
 
+std::string Module::getModuleName(int id) const {
+
+   auto it = m_otherModuleMap.find(id);
+   if (it == m_otherModuleMap.end())
+      return std::string();
+
+   return it->second;
+}
+
 Module::~Module() {
 
    m_cache.clear();
+
+   if (m_origStreambuf)
+      std::cerr.rdbuf(m_origStreambuf);
+   delete m_streambuf;
 
    vistle::message::ModuleExit m;
    sendMessage(m);
@@ -917,9 +1167,118 @@ Module::~Module() {
    Shm::the().detach();
 
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
-             << "/" << size() << "] quit" << std::endl;
+             << "/" << size() << "]: I'm quitting" << std::endl;
 
    MPI_Barrier(MPI_COMM_WORLD);
+}
+
+namespace {
+
+using namespace boost;
+
+class InstModule: public Module {
+public:
+   InstModule()
+   : Module("inst", "anything", 0, 1, 1)
+   {}
+   bool compute() { return true; }
+};
+
+struct instantiator {
+   template<typename P> P operator()(P) {
+      InstModule m;
+      ParameterBase<P> p(m.id(), "param");
+      m.setParameterMinimum(&p, P());
+      m.setParameterMaximum(&p, P());
+      return P();
+   }
+};
+}
+
+void instantiate_parameter_functions() {
+
+   mpl::for_each<Parameters>(instantiator());
+}
+
+void Module::sendText(int type, const std::string &msg) const {
+
+   message::SendText info(message::SendText::TextType(type), msg);
+   sendMessage(info);
+}
+
+void vistle::Module::sendInfo(const char *fmt, ...) const {
+
+   if(!fmt) {
+      fmt = "(empty message)";
+   }
+   char *text = new char[strlen(fmt)+500];
+
+   va_list args;
+   va_start(args, fmt);
+   vsnprintf(text, strlen(fmt)+500, fmt, args);
+   va_end(args);
+
+   message::SendText info(message::SendText::Info, text);
+   sendMessage(info);
+}
+
+void Module::sendWarning(const char *fmt, ...) const {
+
+   if(!fmt) {
+      fmt = "(empty message)";
+   }
+   char *text = new char[strlen(fmt)+500];
+
+   va_list args;
+   va_start(args, fmt);
+   vsnprintf(text, strlen(fmt)+500, fmt, args);
+   va_end(args);
+
+   message::SendText info(message::SendText::Warning, text);
+   sendMessage(info);
+}
+
+void Module::sendError(const char *fmt, ...) const {
+
+   if(!fmt) {
+      fmt = "(empty message)";
+   }
+   char *text = new char[strlen(fmt)+500];
+
+   va_list args;
+   va_start(args, fmt);
+   vsnprintf(text, strlen(fmt)+500, fmt, args);
+   va_end(args);
+
+   message::SendText info(message::SendText::Error, text);
+   sendMessage(info);
+}
+
+void Module::sendError(const message::Message &msg, const char *fmt, ...) const {
+
+   if(!fmt) {
+      fmt = "(empty message)";
+   }
+   char *text = new char[strlen(fmt)+500];
+
+   va_list args;
+   va_start(args, fmt);
+   vsnprintf(text, strlen(fmt)+500, fmt, args);
+   va_end(args);
+
+   message::SendText info(text, msg);
+   sendMessage(info);
+}
+
+void Module::setObjectReceivePolicy(int pol) {
+
+   m_receivePolicy = pol;
+   sendMessage(message::ObjectReceivePolicy(message::ObjectReceivePolicy::Policy(pol)));
+}
+
+int Module::objectReceivePolicy() const {
+
+   return m_receivePolicy;
 }
 
 } // namespace vistle

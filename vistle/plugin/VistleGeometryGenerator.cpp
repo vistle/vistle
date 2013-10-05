@@ -1,5 +1,6 @@
 #include "VistleGeometryGenerator.h"
 #include <kernel/VRSceneGraph.h>
+#include <kernel/coVRShader.h>
 
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -12,9 +13,12 @@
 #include <core/lines.h>
 #include <core/triangles.h>
 #include <core/texture1d.h>
+#include <core/placeholder.h>
 
 using namespace opencover;
 using namespace vistle;
+
+std::mutex VistleGeometryGenerator::s_coverMutex;
 
 VistleGeometryGenerator::VistleGeometryGenerator(vistle::Object::const_ptr geo,
             vistle::Object::const_ptr color,
@@ -32,9 +36,53 @@ osg::Node *VistleGeometryGenerator::operator()() {
    if (!m_geo)
       return NULL;
 
+   std::stringstream debug;
+   debug << "[";
+   debug << (m_geo ? "G" : ".");
+   debug << (m_color ? "C" : ".");
+   debug << (m_normal ? "N" : ".");
+   debug << (m_tex ? "T" : ".");
+   debug << "] ";
+
+   int t=m_geo->getTimestep();
+   if (t<0 && m_color)
+      t = m_color->getTimestep();
+   if (t<0 && m_normal)
+      t = m_normal->getTimestep();
+   if (t<0 && m_tex)
+      t = m_tex->getTimestep();
+
+   int b=m_geo->getBlock();
+   if (b<0 && m_color)
+      b = m_color->getBlock();
+   if (b<0 && m_normal)
+      b = m_normal->getBlock();
+   if (b<0 && m_tex)
+      b = m_tex->getBlock();
+
+   debug << "b " << b << ", t " << t << "  ";
+
    osg::Geode *geode = NULL;
 
    switch (m_geo->getType()) {
+
+      case vistle::Object::PLACEHOLDER: {
+         vistle::PlaceHolder::const_ptr ph = vistle::PlaceHolder::as(m_geo);
+         switch (ph->originalType()) {
+            case vistle::Object::GEOMETRY:
+            case vistle::Object::TRIANGLES:
+            case vistle::Object::LINES:
+            case vistle::Object::POLYGONS: {
+               osg::Node *node = new osg::Node();
+               node->setName(ph->originalName());
+               return node;
+               break;
+            }
+         default:
+            break;
+         }
+         break;
+      }
 
       case vistle::Object::TRIANGLES: {
 
@@ -43,7 +91,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numCorners = triangles->getNumCorners();
          const Index numVertices = triangles->getNumVertices();
 
-         std::cerr << "   Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]" << std::endl;
+         //std::cerr << debug.str() << "Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]" << std::endl;
 
          Index *cl = &triangles->cl()[0];
          vistle::Scalar *x = &triangles->x()[0];
@@ -132,7 +180,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numElements = lines->getNumElements();
          const Index numCorners = lines->getNumCorners();
 
-         std::cerr << "   Lines: [ #c " << numCorners << ", #e " << numElements << " ]" << std::endl;
+         //std::cerr << debug.str() << "Lines: [ #c " << numCorners << ", #e " << numElements << " ]" << std::endl;
 
          Index *el = &lines->el()[0];
          Index *cl = &lines->cl()[0];
@@ -184,7 +232,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numVertices = polygons->getNumVertices();
          const Index numNormals = vec ? vec->getSize() : 0;
 
-         std::cerr << "   Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]" << std::endl;
+         //std::cerr << debug.str() << "Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]" << std::endl;
 
          Index *el = &polygons->el()[0];
          Index *cl = &polygons->cl()[0];
@@ -277,6 +325,48 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
       default:
          break;
+   }
+
+   if (geode) {
+      geode->setName(m_geo->getName());
+
+      std::map<std::string, std::string> parammap;
+      std::string name = m_geo->getAttribute("shader");
+      std::string params = m_geo->getAttribute("shader_params");
+      // format has to be '"key=value" "key=value1 value2"'
+      bool escaped = false;
+      std::string::size_type keyvaluestart = std::string::npos;
+      for (std::string::size_type i=0; i<params.length(); ++i) {
+         if (!escaped) {
+            if (params[i] == '\\') {
+               escaped = true;
+               continue;
+            }
+            if (params[i] == '"') {
+               if (keyvaluestart == std::string::npos) {
+                  keyvaluestart = i+1;
+               } else {
+                  std::string keyvalue = params.substr(keyvaluestart, i-keyvaluestart-1);
+                  std::string::size_type eq = keyvalue.find('=');
+                  if (eq == std::string::npos) {
+                     std::cerr << "ignoring " << keyvalue << ": no '=' sign" << std::endl;
+                  } else {
+                     std::string key = keyvalue.substr(0, eq);
+                     std::string value = keyvalue.substr(eq+1);
+                     //std::cerr << "found key: " << key << ", value: " << value << std::endl;
+                     parammap.insert(std::make_pair(key, value));
+                  }
+               }
+            }
+         }
+         escaped = false;
+      }
+      if (!name.empty()) {
+         s_coverMutex.lock();
+         coVRShader *shader = coVRShaderList::instance()->get(name, &parammap);
+         shader->apply(geode);
+         s_coverMutex.unlock();
+      }
    }
 
    return geode;

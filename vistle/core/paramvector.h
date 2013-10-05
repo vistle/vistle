@@ -3,6 +3,7 @@
 
 #include <ostream>
 #include <vector>
+#include <cassert>
 #include "scalar.h"
 #include "dimensions.h"
 #include "exception.h"
@@ -56,6 +57,9 @@ public:
    operator S *() { return v; }
    operator const S *() const { return v; }
 
+   operator S &() { assert(dim==1); return v[0]; }
+   operator S() const { assert(dim==1); return dim>0 ? v[0] : S(); }
+
    std::string str() const;
 
 public:
@@ -83,9 +87,10 @@ public:
    }
 };
 
-
 template<typename S>
 V_COREEXPORT bool operator==(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
+template<typename S>
+V_COREEXPORT bool operator!=(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
 
 template<typename S>
 V_COREEXPORT bool operator<(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
@@ -94,7 +99,7 @@ V_COREEXPORT bool operator>(const ParameterVector<S> &v1, const ParameterVector<
 
 //typedef ParameterVector<Scalar> ScalarVector;
 //typedef ScalarVector Vector;
-typedef ParameterVector<double> ParamVector;
+typedef ParameterVector<Float> ParamVector;
 
 } // namespace vistle
 

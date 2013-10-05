@@ -33,7 +33,7 @@ struct instantiator {
       V v3(v2.dim, &v2[0]);
       V v4(v3.begin(), v3.end());
 
-      std::cout << v << v3 << v4 << (v2==v3);
+      std::cout << v << v3 << v4 << (v2==v3) << (v4 != v3);
       v = v2;
       std::cout << v.str();
       //v = v*s;

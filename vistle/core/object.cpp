@@ -178,9 +178,12 @@ bool Object::check() const {
    V_CHECK (terminated);
 
    V_CHECK (d()->meta.timeStep() >= -1);
+   V_CHECK (d()->meta.timeStep() < d()->meta.numTimesteps() || d()->meta.numTimesteps()==-1);
    V_CHECK (d()->meta.animationStep() >= -1);
+   V_CHECK (d()->meta.animationStep() < d()->meta.numAnimationSteps() || d()->meta.numAnimationSteps()==-1);
    V_CHECK (d()->meta.iteration() >= -1);
    V_CHECK (d()->meta.block() >= -1);
+   V_CHECK (d()->meta.block() < d()->meta.numBlocks() || d()->meta.numBlocks()==-1);
    V_CHECK (d()->meta.executionCounter() >= -1);
 
    return true;
@@ -196,6 +199,10 @@ void Object::unref() const {
 
 int Object::refcount() const {
    return d()->refcount;
+}
+
+bool Object::isEmpty() const {
+   return true;
 }
 
 template<class Archive>
@@ -286,14 +293,29 @@ void Object::setMeta(const Meta &meta) {
    d()->meta = meta;
 }
 
+double Object::getRealTime() const {
+
+   return d()->meta.realTime();
+}
+
 int Object::getTimestep() const {
 
    return d()->meta.timeStep();
 }
 
+int Object::getNumTimesteps() const {
+   
+   return d()->meta.numTimesteps();
+}
+
 int Object::getBlock() const {
 
    return d()->meta.block();
+}
+
+int Object::getNumBlocks() const {
+   
+   return d()->meta.numBlocks();
 }
 
 int Object::getExecutionCounter() const {
@@ -304,6 +326,11 @@ int Object::getExecutionCounter() const {
 int Object::getCreator() const {
 
    return d()->meta.creator();
+}
+
+void Object::setRealTime(const double time) {
+
+   d()->meta.setRealTime(time);
 }
 
 void Object::setTimestep(const int time) {
@@ -338,9 +365,9 @@ void Object::setCreator(const int id) {
 
 const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int id) {
    TypeMap::const_iterator it = typeMap().find(id);
-   assert(it != typeMap().end());
    if (it == typeMap().end()) {
-      std::cerr << "ObjectTypeRegistry: no creator for type id " << id << std::endl;
+      std::cerr << "ObjectTypeRegistry: no creator for type id " << id << " (" << typeMap().size() << " total entries)" << std::endl;
+      assert(it != typeMap().end());
       exit(1);
    }
    return (*it).second;
@@ -371,6 +398,20 @@ void Object::setAttributeList(const std::string &key, const std::vector<std::str
 }
 
 void Object::copyAttributes(Object::const_ptr src, bool replace) {
+
+   if (replace) {
+      auto &m = d()->meta;
+      auto &sm = src->meta();
+      m.setBlock(sm.block());
+      m.setNumBlocks(sm.numBlocks());
+      m.setTimeStep(sm.timeStep());
+      m.setNumTimesteps(sm.numTimesteps());
+      m.setRealTime(sm.realTime());
+      m.setAnimationStep(sm.animationStep());
+      m.setNumAnimationSteps(sm.numAnimationSteps());
+      m.setIteration(sm.iteration());
+   }
+
    d()->copyAttributes(src->d(), replace);
 }
 

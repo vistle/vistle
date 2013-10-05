@@ -3,6 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <cstring>
+#include <cstdlib>
 #include <unistd.h>
 #include <dirent.h>
 #include <errno.h>

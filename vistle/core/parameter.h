@@ -12,14 +12,16 @@
 
 namespace vistle {
 
-typedef boost::mpl::vector<int, double, ParamVector, std::string> Parameters;
+typedef long Integer;
+
+typedef boost::mpl::vector<Integer, Float, ParamVector, std::string> Parameters;
 
 class V_COREEXPORT Parameter {
 
  public:
    enum Type {
       Unknown, // keep first
-      Scalar,
+      Float,
       Integer,
       Vector,
       String,
@@ -30,11 +32,19 @@ class V_COREEXPORT Parameter {
       Generic, // default, keep first
       Filename, // String
       Directory, // String
-      Pathname, // String
+      ExistingPathname, // String
+      NewPathname, // String
       Boolean, // Integer
       Choice, // Integer (fixed choice) and String (dynamic choice)
       Slider, // Integer, Float
+      Color, // Vector
       InvalidPresentation // keep last
+   };
+
+   enum RangeType {
+      Minimum, // keep in that order
+      Value,
+      Maximum
    };
 
    Parameter(int moduleId, const std::string & name, Type = Invalid, Presentation = Generic);
@@ -43,8 +53,12 @@ class V_COREEXPORT Parameter {
 
    virtual Parameter *clone() const = 0;
 
+   void setPresentation(Presentation presentation);
    void setDescription(const std::string &description);
    void setChoices(const std::vector<std::string> &choices);
+
+   void setGroup(const std::string &group);
+   const std::string &group() const;
 
    virtual operator std::string() const = 0;
    virtual bool isDefault() const = 0;
@@ -54,6 +68,7 @@ class V_COREEXPORT Parameter {
    Type type() const;
    Presentation presentation() const;
    const std::string &description() const;
+   const std::vector<std::string> &choices() const;
 
  protected:
    std::vector<std::string> m_choices;
@@ -61,6 +76,7 @@ class V_COREEXPORT Parameter {
    int m_module;
    std::string m_name;
    std::string m_description;
+   std::string m_group;
    enum Type m_type;
    enum Presentation m_presentation;
 };
@@ -102,6 +118,13 @@ class V_COREEXPORT ParameterBase: public Parameter {
 
    bool isDefault() const { return m_value == m_defaultValue; }
    const T getValue() const { return m_value; }
+   const T getValue(RangeType rt) const {
+      switch(rt) {
+      case Minimum: return m_minimum;
+      case Maximum: return m_maximum;
+      case Value: ;
+      }
+      return m_value; }
    virtual bool setValue(T value, bool init=false) {
       if (init)
          m_defaultValue=value;
@@ -124,8 +147,14 @@ class V_COREEXPORT ParameterBase: public Parameter {
       if (presentation() != Choice) return false;
       return ParameterCheck<T>::check(ch, m_value);
    }
+   virtual T minimum() const {
+      return m_minimum;
+   }
    virtual void setMinimum(const T &value) {
       m_minimum = value;
+   }
+   virtual T maximum() const {
+      return m_maximum;
    }
    virtual void setMaximum(const T &value) {
       m_maximum = value;
@@ -139,21 +168,21 @@ class V_COREEXPORT ParameterBase: public Parameter {
 };
 
 template<>
-struct ParameterType<int> {
-   typedef int T;
+struct ParameterType<Integer> {
+   typedef Integer T;
    static const Parameter::Type type = Parameter::Integer;
    static const bool isNumber = true;
-   static const T min() { return std::numeric_limits<T>::min(); }
-   static const T max() { return std::numeric_limits<T>::max(); }
+   static T min() { return std::numeric_limits<T>::min(); }
+   static T max() { return std::numeric_limits<T>::max(); }
 };
 
 template<>
-struct ParameterType<double> {
-   typedef double T;
-   static const Parameter::Type type = Parameter::Scalar;
+struct ParameterType<Float> {
+   typedef Float T;
+   static const Parameter::Type type = Parameter::Float;
    static const bool isNumber = true;
-   static const T min() { return -std::numeric_limits<T>::max(); }
-   static const T max() { return std::numeric_limits<T>::max(); }
+   static T min() { return -std::numeric_limits<T>::max(); }
+   static T max() { return std::numeric_limits<T>::max(); }
 };
 
 template<>
@@ -161,8 +190,8 @@ struct ParameterType<ParamVector> {
    typedef ParamVector T;
    static const Parameter::Type type = Parameter::Vector;
    static const bool isNumber = true;
-   static const T min() { return T::min(); }
-   static const T max() { return T::max(); }
+   static T min() { return T::min(); }
+   static T max() { return T::max(); }
 };
 
 template<>
@@ -170,13 +199,17 @@ struct ParameterType<std::string> {
    typedef std::string T;
    static const Parameter::Type type = Parameter::String;
    static const bool isNumber = false;
-   static const T min() { return ""; }
-   static const T max() { return ""; }
+   static T min() { return ""; }
+   static T max() { return ""; }
 };
 
 template<>
-struct ParameterCheck<int> {
-   static bool check(const std::vector<std::string> &choices, const int &value) {
+struct ParameterCheck<Integer> {
+   static bool check(const std::vector<std::string> &choices, const Integer &value) {
+      if (choices.empty()) {
+         // choices not yet initialized
+         return true;
+      }
       if (value < 0 || value >= choices.size()) {
          std::cerr << "IntParameter: choice out of range" << std::endl;
          return false;
@@ -188,8 +221,12 @@ struct ParameterCheck<int> {
 template<>
 struct ParameterCheck<std::string> {
    static bool check(const std::vector<std::string> &choices, const std::string &value) {
+      if (choices.empty()) {
+         // choices not yet initialized
+         return true;
+      }
       if (std::find(choices.begin(), choices.end(), value) == choices.end()) {
-         std::cerr << "StringParameter: choice not valid" << std::endl;
+         std::cerr << "StringParameter: choice \"" << value << "\" not valid" << std::endl;
          return false;
       }
       return true;
@@ -197,8 +234,8 @@ struct ParameterCheck<std::string> {
 };
 
 typedef ParameterBase<ParamVector> VectorParameter;
-typedef ParameterBase<double> FloatParameter;
-typedef ParameterBase<int> IntParameter;
+typedef ParameterBase<Float> FloatParameter;
+typedef ParameterBase<Integer> IntParameter;
 typedef ParameterBase<std::string> StringParameter;
 
 } // namespace vistle

@@ -36,8 +36,8 @@ void Parameter::setDescription(const std::string &d) {
 
 void Parameter::setChoices(const std::vector<std::string> &c) {
 
-   if (checkChoice(c))
-      m_choices = c;
+   checkChoice(c);
+   m_choices = c;
 }
 
 int Parameter::module() const {
@@ -55,14 +55,34 @@ Parameter::Type Parameter::type() const {
    return m_type;
 }
 
+void Parameter::setPresentation(Parameter::Presentation pres) {
+   m_presentation = pres;
+}
+
 Parameter::Presentation Parameter::presentation() const {
 
    return m_presentation;
 }
 
+const std::vector<std::string> &Parameter::choices() const
+{
+
+   return m_choices;
+}
+
 const std::string &Parameter::description() const {
 
    return m_description;
+}
+
+void Parameter::setGroup(const std::string &group) {
+
+   m_group = group;
+}
+
+const std::string &Parameter::group() const {
+
+   return m_group;
 }
 
 namespace {

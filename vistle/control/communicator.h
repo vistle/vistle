@@ -16,6 +16,8 @@
 
 #include <core/message.h>
 
+#include "export.h"
+
 namespace bi = boost::interprocess;
 
 namespace vistle {
@@ -31,8 +33,7 @@ class ClientManager;
 class UiManager;
 class ModuleManager;
 
-class Communicator {
-   friend class PythonEmbed;
+class V_CONTROLEXPORT Communicator {
    friend class ModuleManager;
 
  public:
@@ -45,6 +46,7 @@ class Communicator {
 
    bool dispatch();
    bool handleMessage(const message::Message &message);
+   bool forwardToMaster(const message::Message &message);
    bool broadcastAndHandleMessage(const message::Message &message);
    bool sendMessage(int receiver, const message::Message &message) const;
    void setQuitFlag();
@@ -52,7 +54,10 @@ class Communicator {
    int getRank() const;
    int getSize() const;
 
+   unsigned short uiPort() const;
+
    ModuleManager &moduleManager() const;
+   message::MessageQueue &commandQueue();
 
  private:
    void sendUi(const message::Message &message) const;
@@ -68,14 +73,13 @@ class Communicator {
 
    bool m_quitFlag;
 
-   char *mpiReceiveBuffer;
-   int mpiMessageSize;
+   int m_recvSize;
+   std::vector<char> m_recvBufTo0, m_recvBufToAny;
    MPI_Request m_reqAny, m_reqToRank0;
 
    typedef std::map<int, message::MessageQueue *> MessageQueueMap;
-   MessageQueueMap uiInputQueue, uiOutputQueue;
    boost::shared_ptr<message::MessageQueue> m_commandQueue;
-   bool tryReceiveAndHandleMessage(boost::interprocess::message_queue &mq, bool &received, bool broadcast=false);
+   bool tryReceiveAndHandleMessage(message::MessageQueue &mq, bool &received, bool broadcast=false);
 
    static Communicator *s_singleton;
 };

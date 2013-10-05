@@ -5,11 +5,13 @@
 #include <boost/thread.hpp>
 #include <string>
 
+#include "export.h"
+
 namespace vistle {
 
 class ClientManager;
 
-class Client {
+class V_CONTROLEXPORT Client {
    public:
       Client(ClientManager &manager);
       virtual ~Client();

@@ -22,7 +22,7 @@
 #include <io.h>
 #endif
 
-#include <covReadFiles.h>
+#include <file/covReadFiles.h>
 
 #include "ReadCovise.h"
 
@@ -98,12 +98,16 @@ void ReadCovise::applyAttributes(Object::ptr obj, const Element &elem, int index
             std::cerr << "ReadCovise: multiple TIMESTEP attributes in object hierarchy" << std::endl;
          }
          obj->setTimestep(index);
+#if 0
          if (elem.parent)
             obj->setNumTimesteps(elem.parent->subelems.size());
+#endif
       } else if (obj->getBlock() == -1) {
          obj->setBlock(index);
+#if 0
          if (elem.parent)
             obj->setNumBlocks(elem.parent->subelems.size());
+#endif
       }
 
       if (!isTimestep) {

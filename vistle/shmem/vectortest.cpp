@@ -57,7 +57,7 @@ void time_ptr(T *v, const std::string &tag, Index size) {
 template<typename T>
 static T min(T a, T b) { return a<b ? a : b; }
 
-//namespace bi = boost::interprocess;
+namespace bi = boost::interprocess;
 
 using namespace vistle;
 
@@ -161,17 +161,33 @@ int main(int argc, char *argv[]) {
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
-      vistle::shm<Index>::ptr v7p = Shm::the().shm().construct<vistle::shm<Index>::vector>("testvector")(size, 0, Shm::the().allocator());
+      vistle::shm<Index>::array_ptr v7p = Shm::the().shm().construct<vistle::shm<Index>::array>("testvector")(0, Shm::the().allocator());
+      vistle::shm<Index>::array &v = *v7p;
+      v.reserve(size);
+      time_pb(v, "vistle explicit uninit reserved+push_back", size);
+      time_arr(v, "vistle explicit uninit arr", size);
+      time_ptr(&v[0], "vistle explicit uninit arr ptr", size);
+#ifdef TWICE
+      time_arr(v, "vistle explicit uninit arr", size);
+      time_ptr(&v[0], "vistle explicit arr ptr", size);
+#endif
+      bi::shared_memory_object::remove(shmname.c_str());
+   }
+
+   { 
+      bi::shared_memory_object::remove(shmname.c_str());
+      vistle::Shm::create(shmname, 0, 0, NULL);
+      vistle::shm<Index>::ptr v7p = Shm::the().shm().construct<vistle::shm<Index>::vector>("testvector")(0, 0, Shm::the().allocator());
       vistle::shm<Index>::vector &v = *v7p;
       v.reserve(size);
       time_pb(v, "vistle explicit reserved+push_back", size);
       time_arr(v, "vistle explicit arr", size);
       time_ptr(&v[0], "vistle explicit arr ptr", size);
-      time_arr(v, "vistle explicit arr", size);
 #ifdef TWICE
+      time_arr(v, "vistle explicit arr", size);
       time_ptr(&v[0], "vistle explicit arr ptr", size);
-      bi::shared_memory_object::remove(shmname.c_str());
 #endif
+      bi::shared_memory_object::remove(shmname.c_str());
    }
 
 #if 0

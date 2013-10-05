@@ -470,7 +470,7 @@ bool CutGeometry::compute() {
    while(Object::const_ptr oin = takeFirstObject("grid_in")) {
 
       Object::ptr object = cutGeometry(oin, point, normal);
-      if (object) {
+      if (object && !object->isEmpty()) {
          object->copyAttributes(oin);
          addObject("grid_out", object);
       }

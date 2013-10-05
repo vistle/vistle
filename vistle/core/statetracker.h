@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <map>
+#include <set>
 #include <string>
 
 #include <boost/scoped_ptr.hpp>
@@ -19,7 +20,9 @@ class V_COREEXPORT StateObserver {
 
  public:
 
-   virtual void newModule(int moduleId, const std::string &moduleName) = 0;
+   virtual ~StateObserver() {}
+
+   virtual void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) = 0;
    virtual void deleteModule(int moduleId) = 0;
 
    enum ModuleStateBits {
@@ -31,6 +34,7 @@ class V_COREEXPORT StateObserver {
 
    virtual void newParameter(int moduleId, const std::string &parameterName) = 0;
    virtual void parameterValueChanged(int moduleId, const std::string &parameterName) = 0;
+   virtual void parameterChoicesChanged(int moduleId, const std::string &parameterName) = 0;
 
    virtual void newPort(int moduleId, const std::string &portName) = 0;
 
@@ -39,6 +43,15 @@ class V_COREEXPORT StateObserver {
 
    virtual void deleteConnection(int fromId, const std::string &fromName,
          int toId, const std::string &toName) = 0;
+
+   virtual void info(const std::string &text, int senderId, int senderRank, message::Message::Type refType, const message::Message::uuid_t &refUuid) = 0;
+
+   virtual void resetModificationCount();
+   virtual void incModificationCount();
+   long modificationCount() const;
+
+private:
+   long m_modificationCount = 0;
 };
 
 class V_COREEXPORT StateTracker {
@@ -78,6 +91,9 @@ class V_COREEXPORT StateTracker {
    bool handle(const message::ObjectReceived &objRecv);
    bool handle(const message::Barrier &barrier);
    bool handle(const message::BarrierReached &barrierReached);
+   bool handle(const message::ResetModuleIds &reset);
+   bool handle(const message::ReplayFinished &reset);
+   bool handle(const message::SendText &info);
 
    PortTracker *portTracker() const;
 
@@ -87,12 +103,14 @@ class V_COREEXPORT StateTracker {
 
  protected:
    typedef std::map<std::string, Parameter *> ParameterMap;
+   typedef std::map<int, std::string> ParameterOrder;
    struct Module {
       bool initialized = false;
       bool killed = false;
       bool busy = false;
       std::string name;
       ParameterMap parameters;
+      ParameterOrder paramOrder;
 
       int state() const;
       ~Module() {
@@ -107,7 +125,6 @@ class V_COREEXPORT StateTracker {
 
  private:
    PortTracker *m_portTracker;
-
 };
 
 } // namespace vistle

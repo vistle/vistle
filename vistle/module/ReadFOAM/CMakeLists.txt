@@ -1,5 +1,4 @@
-find_package(Boost 1.42 REQUIRED COMPONENTS iostreams)
-find_package(ZLIB REQUIRED)
+find_package(Boost 1.40 REQUIRED COMPONENTS iostreams filesystem system)
 
 if (CMAKE_COMPILER_IS_GNUCC)
    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
@@ -9,18 +8,18 @@ if (CMAKE_COMPILER_IS_GNUCC)
    endif()
 endif()
 
-add_executable(ReadFOAM ReadFOAM.cpp gzip.cpp zlib.cpp)
-add_definitions(-DBOOST_IOSTREAMS_NO_LIB)
-
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
 )
 
+add_executable(ReadFOAM ReadFOAM.cpp foamtoolbox.cpp)
 target_link_libraries(ReadFOAM
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
-        ${ZLIB_LIBRARY}
         vistle_module
 )
+
+add_executable(foambounds bounds.cpp foamtoolbox.cpp)
+target_link_libraries(foambounds ${Boost_LIBRARIES})

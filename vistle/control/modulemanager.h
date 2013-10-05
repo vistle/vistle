@@ -9,10 +9,12 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/condition_variable.hpp>
 
-#include "portmanager.h"
 #include <core/statetracker.h>
 #include <core/message.h>
 #include <core/messagequeue.h>
+
+#include "portmanager.h"
+#include "export.h"
 
 namespace vistle {
 
@@ -23,7 +25,7 @@ namespace message {
 
 class Parameter;
 
-class ModuleManager {
+class V_CONTROLEXPORT ModuleManager {
    friend class Communicator;
 
  public:
@@ -82,11 +84,15 @@ class ModuleManager {
    bool handle(const message::CreatePort &createPort);
    bool handle(const message::AddParameter &addParam);
    bool handle(const message::SetParameter &setParam);
+   bool handle(const message::SetParameterChoices &setChoices);
    bool handle(const message::Kill &kill);
    bool handle(const message::AddObject &addObj);
    bool handle(const message::ObjectReceived &objRecv);
    bool handle(const message::Barrier &barrier);
    bool handle(const message::BarrierReached &barrierReached);
+   bool handle(const message::ResetModuleIds &reset);
+   bool handle(const message::ObjectReceivePolicy &receivePolicy);
+   bool handle(const message::SchedulingPolicy &schedulingPolicy);
 
    std::string m_bindir;
 
@@ -102,6 +108,10 @@ class ModuleManager {
          delete sendQueue;
          delete recvQueue;
       }
+      bool local = false;
+      int baseRank = 0;
+      message::ObjectReceivePolicy::Policy objectPolicy = message::ObjectReceivePolicy::Single;
+      message::SchedulingPolicy::Policy schedulingPolicy = message::SchedulingPolicy::Single;
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;
@@ -112,9 +122,11 @@ class ModuleManager {
    // barrier related stuff
    boost::mutex m_barrierMutex;
    boost::condition_variable m_barrierCondition;
+   bool checkBarrier(int id) const;
    void barrierReached(int id);
    int m_barrierCounter;
    int m_activeBarrier;
+   message::Message::uuid_t m_barrierUuid;
    int m_reachedBarriers;
    typedef std::set<int> ModuleSet;
    ModuleSet reachedSet;

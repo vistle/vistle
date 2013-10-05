@@ -31,7 +31,9 @@ WriteVistle::WriteVistle(const std::string &shmname, int rank, int size, int mod
 {
 
    createInputPort("grid_in");
-   addIntParameter("format", "0=binary, 1=ASCII, 2=XML", 0);
+   Parameter *fp = addIntParameter("format", "file format", 0, Parameter::Choice);
+   std::vector<std::string> choices{"binary", "ASCII", "XML"};
+   setParameterChoices(fp, choices);
    addStringParameter("filename", "filename of Vistle archive", "vistle.archive");
 }
 

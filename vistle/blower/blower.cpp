@@ -1,5 +1,7 @@
-#include <userinterface/pythonembed.h>
+#include <userinterface/pythoninterface.h>
+#include <userinterface/pythonmodule.h>
 #include <userinterface/userinterface.h>
+#include <userinterface/vistleconnection.h>
 
 #include <boost/ref.hpp>
 #include <boost/thread.hpp>
@@ -21,9 +23,11 @@ class UiRunner {
    void operator()() {
 
       while(m_ui.dispatch()) {
-         boost::unique_lock<boost::mutex> lock(m_mutex);
-         if (m_done)
-            break;
+         {
+            boost::unique_lock<boost::mutex> lock(m_mutex);
+            if (m_done)
+               break;
+         }
          usleep(10000);
       }
    }
@@ -41,7 +45,8 @@ class StatePrinter: public StateObserver {
       : m_out(out)
       {}
 
-   void newModule(int moduleId, const std::string &moduleName) {
+   void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) {
+      (void)spawnUuid;
       m_out << "   module " << moduleName << " started: " << moduleId << std::endl;
    }
 
@@ -65,6 +70,10 @@ class StatePrinter: public StateObserver {
       m_out << "   parameter value changed: " << moduleId << ":" << parameterName << std::endl;
    }
 
+   void parameterChoicesChanged(int moduleId, const std::string &parameterName) {
+      m_out << "   parameter choices changed: " << moduleId << ":" << parameterName << std::endl;
+   }
+
    void newPort(int moduleId, const std::string &portName) {
       m_out << "   new port: " << moduleId << ":" << portName << std::endl;
    }
@@ -83,6 +92,11 @@ class StatePrinter: public StateObserver {
          << toId << ":" << toName << std::endl;
    }
 
+   void info(const std::string &text, int senderId, int senderRank, message::Message::Type refType, const message::Message::uuid_t &refUuid) {
+
+      std::cerr << senderId << "(" << senderRank << "): " << text << std::endl;
+   }
+
  private:
    std::ostream &m_out;
 };
@@ -94,17 +108,30 @@ int main(int argc, char *argv[]) {
       std::string host = "localhost";
       unsigned short port = 8193;
 
+      bool quitOnExit = false;
+      if (argc > 1) {
+         std::string arg(argv[1]);
+         if (arg == "-from-vistle") {
+            quitOnExit = true;
+            --argc;
+            ++argv;
+         }
+      }
+
       if (argc > 1)
          host = argv[1];
 
       if (argc > 2)
          port = atoi(argv[2]);
 
-      UserInterface ui(host, port);
-      ui.registerObserver(new StatePrinter(std::cout));
-      PythonEmbed python(ui, "blower");
-      UiRunner runner(ui);
-      boost::thread runnerThread(boost::ref(runner));
+      std::cerr << "trying to connect UI to " << host << ":" << port << std::endl;
+      StatePrinter printer(std::cout);
+      UserInterface ui(host, port, &printer);
+      PythonInterface python("blower");
+      VistleConnection conn(ui);
+      conn.setQuitOnExit(quitOnExit);
+      PythonModule pythonmodule(&conn);
+      boost::thread runnerThread(boost::ref(conn));
 
       while(!std::cin.eof()) {
          std::string line;
@@ -114,7 +141,7 @@ int main(int argc, char *argv[]) {
          python.exec(line);
       }
 
-      runner.cancel();
+      conn.cancel();
       runnerThread.join();
 
    } catch (std::exception &ex) {

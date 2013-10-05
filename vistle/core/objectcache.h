@@ -14,7 +14,7 @@ class V_COREEXPORT ObjectCache {
 
    public:
       enum CacheMode {
-         CacheDefault = -1,
+         CacheDefault,
          CacheNone,
          CacheAll
       };

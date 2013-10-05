@@ -21,10 +21,13 @@ namespace asio = boost::asio;
 
 namespace vistle {
 
-UserInterface::UserInterface(const std::string &host, const unsigned short port)
+UserInterface::UserInterface(const std::string &host, const unsigned short port, StateObserver *observer)
 : m_stateTracker(&m_portTracker)
 {
    message::DefaultSender::init(0, 0);
+
+   if (observer)
+      m_stateTracker.registerObserver(observer);
 
    const int HOSTNAMESIZE = 64;
    char hostname[HOSTNAMESIZE];
@@ -120,8 +123,8 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
       case message::Message::SETID: {
          const message::SetId *id = static_cast<const message::SetId *>(message);
          m_id = id->getId();
-         message::DefaultSender::init(0, 0);
-         std::cerr << "received new UI id: " << m_id << std::endl;
+         message::DefaultSender::init(m_id, 0);
+         //std::cerr << "received new UI id: " << m_id << std::endl;
          break;
       }
 
@@ -139,10 +142,11 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
    return ret;
 }
 
-boost::mutex &UserInterface::mutexForMessage(const message::Message::uuid_t &uuid) {
+bool UserInterface::getLockForMessage(const message::Message::uuid_t &uuid) {
 
    boost::mutex::scoped_lock lock(m_messageMutex);
-   return m_messageMap[uuid].mutex;
+   m_messageMap[uuid].mutex.lock();
+   return true;
 }
 
 bool UserInterface::getMessage(const message::Message::uuid_t &uuid, message::Message &msg) {

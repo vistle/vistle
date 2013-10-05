@@ -47,8 +47,7 @@ Communicator::Communicator(int argc, char *argv[], int r, const std::vector<std:
 , m_rank(r)
 , m_size(hosts.size())
 , m_quitFlag(false)
-, mpiReceiveBuffer(NULL)
-, mpiMessageSize(0)
+, m_recvSize(0)
 , m_commandQueue(message::MessageQueue::create(message::MessageQueue::createName("command_queue", 0, r)))
 {
    assert(s_singleton == NULL);
@@ -56,12 +55,20 @@ Communicator::Communicator(int argc, char *argv[], int r, const std::vector<std:
 
    message::DefaultSender::init(0, m_rank);
 
-   mpiReceiveBuffer = new char[message::Message::MESSAGE_SIZE];
+   m_recvBufToAny.resize(message::Message::MESSAGE_SIZE);
 
    // post requests for length of next MPI message
-   MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
-   if (m_rank == 0)
-      MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
+   MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
+
+   if (m_rank == 0) {
+      m_recvBufTo0.resize(message::Message::MESSAGE_SIZE);
+      MPI_Irecv(m_recvBufTo0.data(), m_recvBufTo0.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
+   }
+
+   if (m_rank == 0) {
+
+      m_uiManager = new UiManager(m_commandQueue);
+   }
 }
 
 Communicator &Communicator::the() {
@@ -80,6 +87,14 @@ int Communicator::getRank() const {
 int Communicator::getSize() const {
 
    return m_size;
+}
+
+unsigned short Communicator::uiPort() const
+{
+   if (!m_uiManager)
+      return 0;
+
+   return m_uiManager->port();
 }
 
 void Communicator::setInput(const std::string &input) {
@@ -101,107 +116,97 @@ bool Communicator::dispatch() {
 
    bool done = false;
 
-   if (m_rank == 0) {
-
-      if (!m_clientManager) {
-         bool file = !m_initialFile.empty();
-         m_clientManager = new ClientManager(file ? m_initialFile : m_initialInput,
-               file ? ClientManager::File : ClientManager::String);
-      }
-
-      done = !m_clientManager->check();
-
-      if (!done)
-         done = m_quitFlag;
-
-      if (!m_uiManager) {
-         m_uiManager = new UiManager(m_commandQueue);
-      }
-
-      if (!done) 
-         done = !m_uiManager->check();
-   }
-
-   // broadcast messages received from slaves (m_rank > 0)
-   if (m_rank == 0) {
-      int flag;
-      MPI_Status status;
-      MPI_Test(&m_reqToRank0, &flag, &status);
-      if (flag && status.MPI_TAG == TagToRank0) {
-
-         assert(m_rank == 0);
-         MPI_Request r;
-         MPI_Irecv(mpiReceiveBuffer, mpiMessageSize, MPI_BYTE, status.MPI_SOURCE, TagToRank0,
-               MPI_COMM_WORLD, &r);
-         MPI_Wait(&r, MPI_STATUS_IGNORE);
-         message::Message *message = (message::Message *) mpiReceiveBuffer;
-         if (!broadcastAndHandleMessage(*message))
-            done = true;
-         MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
-      }
-   }
-
-   // test for message m_size from another MPI node
-   //    - receive actual message from broadcast (on any m_rank)
-   //    - receive actual message from slave m_rank (on m_rank 0) for broadcasting
-   //    - handle message
-   //    - post another MPI receive for m_size of next message
-   int flag;
-   MPI_Status status;
-   MPI_Test(&m_reqAny, &flag, &status);
-   if (flag && status.MPI_TAG == TagToAny) {
-
-      MPI_Bcast(mpiReceiveBuffer, mpiMessageSize, MPI_BYTE,
-            status.MPI_SOURCE, MPI_COMM_WORLD);
-
-      message::Message *message = (message::Message *) mpiReceiveBuffer;
-#if 0
-      printf("[%02d] message from [%02d] message type %d m_size %d\n",
-            m_rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
-#endif
-      if (!handleMessage(*message))
-         done = true;
-
-      MPI_Irecv(&mpiMessageSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
-   }
-
-   // test for messages from modules
    bool received = false;
    do {
       received = false;
-      // handle messages from Python front-end
-      if (!tryReceiveAndHandleMessage(m_commandQueue->getMessageQueue(), received, true))
-         done = true;
 
-      // handle messages from UIs
-      for (auto mq: uiInputQueue) {
-         if (!tryReceiveAndHandleMessage(mq.second->getMessageQueue(), received, true))
-            done = true;
+      // check for new UIs and other network clients
+      if (m_rank == 0) {
+
+         if (!m_clientManager) {
+            bool file = !m_initialFile.empty();
+            m_clientManager = new ClientManager(file ? m_initialFile : m_initialInput,
+                                                file ? ClientManager::File : ClientManager::String);
+         }
+
+         done = !m_clientManager->check();
+
+         if (!done)
+            done = m_quitFlag;
+
+         if (!done && m_uiManager)
+            done = !m_uiManager->check();
       }
 
+      // handle or broadcast messages received from slaves (m_rank > 0)
+      if (m_rank == 0) {
+         int flag;
+         MPI_Status status;
+         MPI_Test(&m_reqToRank0, &flag, &status);
+         if (flag && status.MPI_TAG == TagToRank0) {
+
+            assert(m_rank == 0);
+            received = true;
+            message::Message *message = (message::Message *) m_recvBufTo0.data();
+            if (message->broadcast()) {
+               if (!broadcastAndHandleMessage(*message))
+                  done = true;
+            }  else {
+               if (!handleMessage(*message))
+                  done = true;
+            }
+            MPI_Irecv(m_recvBufTo0.data(), m_recvBufTo0.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
+         }
+      }
+
+      // test for message m_size from another MPI node
+      //    - receive actual message from broadcast (on any m_rank)
+      //    - receive actual message from slave m_rank (on m_rank 0) for broadcasting
+      //    - handle message
+      //    - post another MPI receive for m_size of next message
+      int flag;
+      MPI_Status status;
+      MPI_Test(&m_reqAny, &flag, &status);
+      if (flag && status.MPI_TAG == TagToAny) {
+
+         received = true;
+         MPI_Bcast(m_recvBufToAny.data(), m_recvSize, MPI_BYTE,
+                   status.MPI_SOURCE, MPI_COMM_WORLD);
+
+         message::Message *message = (message::Message *) m_recvBufToAny.data();
+#if 0
+         printf("[%02d] message from [%02d] message type %d m_size %d\n",
+                m_rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
+#endif
+         if (!handleMessage(*message))
+            done = true;
+
+         MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
+      }
+
+      // handle messages from Python front-end and UIs
+      if (!tryReceiveAndHandleMessage(*m_commandQueue, received, true))
+         done = true;
+
+      // test for messages from modules
       if (!done)
          done = !m_moduleManager->dispatch(received);
 
-   } while (received);
+   } while (!done && received);
 
    return !done;
 }
 
-bool Communicator::tryReceiveAndHandleMessage(boost::interprocess::message_queue &mq, bool &received, bool broadcast) {
+bool Communicator::tryReceiveAndHandleMessage(message::MessageQueue &mq, bool &received, bool broadcast) {
 
    bool done = false;
    try {
-      size_t msgSize;
-      unsigned int priority;
       char msgRecvBuf[vistle::message::Message::MESSAGE_SIZE];
+      message::Message *msg = reinterpret_cast<message::Message *>(msgRecvBuf);
 
-      received = mq.try_receive(
-            (void *) msgRecvBuf,
-            vistle::message::Message::MESSAGE_SIZE,
-            msgSize, priority);
+      received = mq.tryReceive(*msg);
 
       if (received) {
-         message::Message *msg = reinterpret_cast<message::Message *>(msgRecvBuf);
          if (broadcast) {
             if (!broadcastAndHandleMessage(*msg))
                done = true;
@@ -222,6 +227,17 @@ bool Communicator::tryReceiveAndHandleMessage(boost::interprocess::message_queue
 bool Communicator::sendMessage(const int moduleId, const message::Message &message) const {
 
    return moduleManager().sendMessage(moduleId, message);
+}
+
+bool Communicator::forwardToMaster(const message::Message &message) {
+
+   assert(m_rank != 0);
+   if (m_rank != 0) {
+
+      MPI_Send(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD);
+   }
+
+   return true;
 }
 
 bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
@@ -249,11 +265,7 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
       return result;
    } else {
-      MPI_Request s1, s2;
-      MPI_Isend(const_cast<unsigned int *>(&message.m_size), 1, MPI_INT, 0, TagToRank0, MPI_COMM_WORLD, &s1);
-      MPI_Isend(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD, &s2);
-      MPI_Wait(&s1, MPI_STATUS_IGNORE);
-      MPI_Wait(&s2, MPI_STATUS_IGNORE);
+      MPI_Send(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD);
 
       // message will be handled when received again from m_rank 0
       return true;
@@ -262,6 +274,8 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
 
 bool Communicator::handleMessage(const message::Message &message) {
+
+   using namespace vistle::message;
 
 #ifdef DEBUG
    CERR << "Message: "
@@ -324,7 +338,6 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::CONNECT: {
 
          const message::Connect &connect = static_cast<const message::Connect &>(message);
-         sendUi(connect);
          result = m_moduleManager->handle(connect);
          break;
       }
@@ -332,32 +345,15 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::DISCONNECT: {
 
          const message::Disconnect &disc = static_cast<const message::Disconnect &>(message);
-         sendUi(disc);
          result = m_moduleManager->handle(disc);
-         break;
-      }
-
-      case message::Message::NEWOBJECT: {
-
-         /*
-         const message::NewObject *newObject =
-            static_cast<const message::NewObject *>(message);
-         vistle::Object *object = (vistle::Object *)
-            vistle::Shm::the().shm().get_address_from_handle(newObject.getHandle());
-
-         CERR << "NewObject ["
-                   << newObject.getHandle() << "] type ["
-                   << object.getType() << "] from module ["
-                   << newObject.senderId() << "]" << std::endl;
-         */
          break;
       }
 
       case message::Message::MODULEEXIT: {
 
          const message::ModuleExit &moduleExit = static_cast<const message::ModuleExit &>(message);
-         sendUi(moduleExit);
          result = m_moduleManager->handle(moduleExit);
+         sendUi(moduleExit);
          break;
       }
 
@@ -405,6 +401,14 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
+      case message::Message::SETPARAMETERCHOICES: {
+
+         const message::SetParameterChoices &m = static_cast<const message::SetParameterChoices &>(message);
+         sendUi(m);
+         result = m_moduleManager->handle(m);
+         break;
+      }
+
       case message::Message::ADDPARAMETER: {
          
          const message::AddParameter &m = static_cast<const message::AddParameter &>(message);
@@ -431,7 +435,35 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::BARRIERREACHED: {
 
          const message::BarrierReached &m = static_cast<const message::BarrierReached &>(message);
-         sendUi(m);
+         result = m_moduleManager->handle(m);
+         break;
+      }
+
+      case message::Message::RESETMODULEIDS: {
+         const message::ResetModuleIds &m = static_cast<const message::ResetModuleIds &>(message);
+         result = m_moduleManager->handle(m);
+         break;
+      }
+
+      case message::Message::SENDTEXT: {
+         const message::SendText &m = static_cast<const message::SendText &>(message);
+         if (m_rank == 0) {
+            sendUi(m);
+         } else {
+            result = forwardToMaster(m);
+         }
+         //result = m_moduleManager->handle(m);
+         break;
+      }
+
+      case Message::OBJECTRECEIVEPOLICY: {
+         const ObjectReceivePolicy &m = static_cast<const ObjectReceivePolicy &>(message);
+         result = m_moduleManager->handle(m);
+         break;
+      }
+
+      case Message::SCHEDULINGPOLICY: {
+         const SchedulingPolicy &m = static_cast<const SchedulingPolicy &>(message);
          result = m_moduleManager->handle(m);
          break;
       }
@@ -471,20 +503,23 @@ Communicator::~Communicator() {
       MPI_Isend(&dummy, 1, MPI_INT, (m_rank + 1) % m_size, TagToAny, MPI_COMM_WORLD, &s);
       if (m_rank == 1) {
          MPI_Request s2;
-         MPI_Isend(&dummy, 1, MPI_INT, 0, TagToRank0, MPI_COMM_WORLD, &s2);
+         MPI_Isend(&dummy, 1, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD, &s2);
          //MPI_Wait(&s2, MPI_STATUS_IGNORE);
       }
       //MPI_Wait(&s, MPI_STATUS_IGNORE);
       //MPI_Wait(&m_reqAny, MPI_STATUS_IGNORE);
    }
    MPI_Barrier(MPI_COMM_WORLD);
-
-   delete[] mpiReceiveBuffer;
 }
 
 ModuleManager &Communicator::moduleManager() const {
 
    return *m_moduleManager;
+}
+
+message::MessageQueue &Communicator::commandQueue() {
+
+   return *m_commandQueue;
 }
 
 } // namespace vistle

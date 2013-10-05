@@ -216,6 +216,10 @@ void VistleInteractor::sendParamMessage(const Parameter *param) const
 /// set Boolean Parameter
 void VistleInteractor::setBooleanParam(const char *name, int val)
 {
+   if (val)
+      setScalarParam(name, (int)1);
+   else
+      setScalarParam(name, (int)0);
 }
 
 /// set float scalar parameter
@@ -232,6 +236,12 @@ void VistleInteractor::setScalarParam(const char *name, float val)
 /// set int scalar parameter
 void VistleInteractor::setScalarParam(const char *name, int val)
 {
+   Parameter *param = findParam(name);
+   IntParameter *iparam = dynamic_cast<IntParameter *>(param);
+   if (!iparam)
+      return;
+   iparam->setValue(val);
+   sendParamMessage(iparam);
 }
 
 /// set float slider parameter

@@ -31,9 +31,9 @@ class binary_iarchive;
 
 namespace vistle {
 
-namespace bi = boost::interprocess;
+namespace interprocess = boost::interprocess;
 
-typedef bi::managed_shared_memory::handle_t shm_handle_t;
+typedef interprocess::managed_shared_memory::handle_t shm_handle_t;
 
 class Shm;
 
@@ -75,6 +75,8 @@ public:
 
    virtual bool check() const;
 
+   virtual bool isEmpty() const;
+
    template<class ObjectType>
    static boost::shared_ptr<const Object> as(boost::shared_ptr<const ObjectType> ptr) { return boost::static_pointer_cast<const Object>(ptr); }
    template<class ObjectType>
@@ -86,12 +88,16 @@ public:
    std::string getName() const;
 
    int getBlock() const;
+   int getNumBlocks() const;
+   double getRealTime() const;
    int getTimestep() const;
+   int getNumTimesteps() const;
    int getExecutionCounter() const;
    int getCreator() const;
 
    void setBlock(const int block);
    void setNumBlocks(const int num);
+   void setRealTime(double time);
    void setTimestep(const int timestep);
    void setNumTimesteps(const int num);
    void setExecutionCounter(const int count);
@@ -117,7 +123,7 @@ public:
    template<class Archive>
    void save(Archive &ar) const;
 
- protected:
+ public:
    struct Data {
       Type type;
       shm_name_t name;
@@ -131,8 +137,8 @@ public:
       typedef shm<Attribute>::vector AttributeList;
       typedef std::pair<const Key, AttributeList> AttributeMapValueType;
       typedef shm<AttributeMapValueType>::allocator AttributeMapAllocator;
-      typedef bi::map<Key, AttributeList, std::less<Key>, AttributeMapAllocator> AttributeMap;
-      bi::offset_ptr<AttributeMap> attributes;
+      typedef interprocess::map<Key, AttributeList, std::less<Key>, AttributeMapAllocator> AttributeMap;
+      interprocess::offset_ptr<AttributeMap> attributes;
       void addAttribute(const std::string &key, const std::string &value = "");
       void setAttributeList(const std::string &key, const std::vector<std::string> &values);
       void copyAttributes(const Data *src, bool replace);
@@ -159,6 +165,7 @@ public:
       Data &operator=(const Data &);
    };
 
+ protected:
    Data *m_data;
  public:
    Data *d() const { return m_data; }
@@ -195,7 +202,9 @@ class V_COREEXPORT ObjectTypeRegistry {
 
    template<class O>
    static void registerType(int id) {
+#ifndef VISTLE_STATIC
       assert(typeMap().find(id) == typeMap().end());
+#endif
       struct FunctionTable t = {
          O::createFromData,
          O::destroy,
@@ -265,11 +274,12 @@ class V_COREEXPORT ObjectTypeRegistry {
    static void registerBinaryIArchive(boost::archive::binary_iarchive &ar); \
    static void registerBinaryOArchive(boost::archive::binary_oarchive &ar); \
    Type(Object::InitializedFlags) : Base(Type::Data::create()) {} \
-   bool check() const { if (!Base::check()) return false; return checkImpl(); } \
-   protected: \
-   bool checkImpl() const; \
+   virtual bool isEmpty() const; \
+   bool check() const { if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
    struct Data; \
    Data *d() const { return static_cast<Data *>(Object::m_data); } \
+   protected: \
+   bool checkImpl() const; \
    Type(Data *data) : Base(data) {} \
    Type() : Base() {} \
    private: \
@@ -299,9 +309,9 @@ class V_COREEXPORT ObjectTypeRegistry {
    friend class ObjectTypeRegistry
 
 #define V_DATA_BEGIN(Type) \
-   protected: \
+   public: \
    struct Data: public Base::Data { \
-      Data(const Data &other, const std::string &name)
+      Data(const Data &other, const std::string &name) \
 
 #define V_DATA_END(Type) \
       private: \
@@ -357,6 +367,20 @@ class V_COREEXPORT ObjectTypeRegistry {
       ar.register_type<Type >(); \
    }
 
+#ifdef VISTLE_STATIC
+#define REGISTER_TYPE(Type, id) \
+{ \
+   ObjectTypeRegistry::registerType<Type >(id); \
+   boost::serialization::void_cast_register<Type, Type::Base>( \
+         static_cast<Type *>(NULL), static_cast<Type::Base *>(NULL) \
+  ); \
+}
+
+#define V_INIT_STATIC
+#else
+#define V_INIT_STATIC static
+#endif
+
 #define V_OBJECT_TYPE3INT(Type, suffix, id) \
       class RegisterObjectType_##suffix { \
          public: \
@@ -367,27 +391,25 @@ class V_COREEXPORT ObjectTypeRegistry {
                           ); \
                  } \
       }; \
-      static RegisterObjectType_##suffix registerObjectType_##suffix; \
+      V_INIT_STATIC RegisterObjectType_##suffix registerObjectType_##suffix; \
 
 //! register a new Object type (complex form, specify suffix for symbol names)
 #define V_OBJECT_TYPE3(Type, suffix, id) \
-   namespace { \
-      V_OBJECT_TYPE3INT(Type, suffix, id) \
-   }
+      V_OBJECT_TYPE3INT(Type, suffix, id)
 
 //! register a new Object type (complex form, specify suffix for symbol names)
 #define V_OBJECT_TYPE4(Type1, Type2, suffix, id) \
-   namespace { \
       namespace suffix { \
       typedef Type1,Type2 Type; \
       V_OBJECT_TYPE3INT(Type, suffix, id) \
-   } \
    }
 
 //! register a new Object type (simple form for non-templates, symbol suffix determined automatically)
 #define V_OBJECT_TYPE(Type, id) \
    V_SERIALIZERS(Type) \
    V_OBJECT_TYPE3(Type, Type, id)
+
+void V_COREEXPORT registerTypes();
 
 } // namespace vistle
 

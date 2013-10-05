@@ -1,0 +1,49 @@
+#! /bin/bash
+
+#echo "CUDA host compiler"
+
+CC="/usr/bin/gcc"
+
+if [ -x "/usr/local/bin/gcc-4.6" ]; then
+   CC="/usr/local/bin/gcc-4.6"
+elif [ -x "/usr/local/bin/gcc-4.5" ]; then
+   CC="/usr/local/bin/gcc-4.5"
+elif [ -x "/usr/local/bin/gcc-4.4" ]; then
+   CC="/usr/local/bin/gcc-4.4"
+fi
+
+#echo "$@" >> /tmp/host-compiler.log
+
+declare -a ARGS
+n=$((1))
+while [ ! -z "$1" ]; do
+   case "$1" in
+      #-dumpspecs)
+          #cat /tmp/gcc-specs.txt
+          #exit 0
+          #;;
+      -stdlib=libc++)
+        #ARGS[$n]="-nostdinc++"
+        #ARGS[$n]="-lc++abi"
+        #ARGS[$n]="-I/usr/lib//c++/v1"
+        #n=$((n+3))
+         ;;
+        -std=*)
+            #ARGS[$n]="-std=c++03"
+            #n=$((n+1))
+            ;;
+      -std=c++11)
+        ARGS[$n]="-std=c++0x"
+        n=$((n+1))
+          ;;
+      -mfxsr)
+          ;;
+      *)
+        ARGS[$n]="$1"
+        n=$((n+1))
+        ;;
+   esac
+   shift
+done
+
+"$CC" "${ARGS[@]}"

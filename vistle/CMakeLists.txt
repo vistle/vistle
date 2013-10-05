@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(vistle)
 
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${PROJECT_SOURCE_DIR}/cmake/Modules/")
+
 enable_testing()
 
 macro(USE_OPENMP)
@@ -31,6 +33,7 @@ set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=256")
    #if(APPLE)
    #   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
    #endif()
@@ -48,7 +51,6 @@ else(WIN32)
 endif(WIN32)
 
 set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${PROJECT_SOURCE_DIR}/cmake/Modules/")
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
@@ -62,7 +64,10 @@ add_subdirectory(vistle)
 add_subdirectory(blower)
 
 add_subdirectory(module)
+
 add_subdirectory(plugin)
 
 add_subdirectory(tools)
 add_subdirectory(shmem)
+
+add_subdirectory(gui)

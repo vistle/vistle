@@ -29,7 +29,6 @@
 #include <core/shm.h>
 
 #include "communicator.h"
-#include "pythonembed.h"
 #include "executor.h"
 
 #ifdef WIN32
@@ -48,7 +47,6 @@ Executor::Executor(int argc, char *argv[])
      , m_rank(-1)
      , m_size(-1)
      , m_comm(NULL)
-     , m_interpreter(NULL)
      , m_argc(argc)
      , m_argv(argv)
 {
@@ -123,7 +121,6 @@ Executor::Executor(int argc, char *argv[])
 Executor::~Executor()
 {
    delete m_comm;
-   delete m_interpreter;
 
    Shm::the().detach();
 }
@@ -131,6 +128,11 @@ Executor::~Executor()
 void Executor::setFile(const std::string &filename) {
 
    m_comm->setFile(filename);
+}
+
+unsigned short Executor::uiPort() const
+{
+   return m_comm->uiPort();
 }
 
 void Executor::setInput(const std::string &input) {
@@ -149,7 +151,7 @@ void Executor::run() {
       return;
 
    while (m_comm->dispatch()) {
-      usleep(100);
+      usleep(10000);
    }
 }
 

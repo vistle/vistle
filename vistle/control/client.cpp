@@ -8,6 +8,7 @@
 #include "clientmanager.h"
 
 #include <boost/algorithm/string/trim.hpp>
+#include <iostream>
 
 namespace asio = boost::asio;
 

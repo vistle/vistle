@@ -29,8 +29,6 @@ class V_COREEXPORT PortTracker {
    bool removeConnection(const int a, const std::string & na,
                          const int b, const std::string & nb);
 
-   void removeConnections(const int moduleID);
-
    typedef std::vector<const Port *> ConnectionList;
 
    const Port::PortSet *getConnectionList(const Port * port) const;
@@ -43,15 +41,20 @@ class V_COREEXPORT PortTracker {
    std::vector<std::string> getPortNames(const int moduleID, Port::Type type) const;
    std::vector<std::string> getInputPortNames(const int moduleID) const;
    std::vector<std::string> getOutputPortNames(const int moduleID) const;
+   std::vector<Port *> getPorts(const int moduleID, Port::Type type) const;
+   std::vector<Port *> getInputPorts(const int moduleID) const;
+   std::vector<Port *> getOutputPorts(const int moduleID) const;
 
- private:
+ protected:
 
    Port *getPort(const Port *p) const;
 
+   typedef std::map<int, std::string> PortOrder;
    typedef std::map<std::string, Port *> PortMap;
 
    // module ID -> list of ports belonging to the module
    std::map<int, PortMap *> m_ports;
+   std::map<int, PortOrder *> m_portOrders;
 };
 } // namespace vistle
 

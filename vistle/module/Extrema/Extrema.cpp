@@ -9,6 +9,7 @@
 #include <module/module.h>
 #include <core/scalars.h>
 #include <core/paramvector.h>
+#include <core/message.h>
 
 using namespace vistle;
 
@@ -24,6 +25,7 @@ class Extrema: public vistle::Module {
    int dim;
    bool handled;
    ParamVector min, max, gmin, gmax;
+   int m_lastExecutionCount = -1;
 
    virtual bool compute();
 
@@ -51,13 +53,18 @@ class Extrema: public vistle::Module {
          module->max.dim = Dim;
 
          size_t size = in->getSize();
-         for (unsigned int index = 0; index < size; index ++) {
-            for (int c=0; c<Dim; ++c) {
-               if (module->min[c] > in->x(c)[index])
-                  module->min[c] = in->x(c)[index];
-               if (module->max[c] < in->x(c)[index])
-                  module->max[c] = in->x(c)[index];
+         for (int c=0; c<Dim; ++c) {
+            S min = module->min[c];
+            S max = module->max[c];
+            S *x = in->x(c).data();
+            for (unsigned int index = 0; index < size; index ++) {
+               if (min > x[index])
+                  min = x[index];
+               if (max < x[index])
+                  max = x[index];
             }
+            module->min[c] = min;
+            module->max[c] = max;
          }
       }
    };
@@ -68,6 +75,8 @@ using namespace vistle;
 
 Extrema::Extrema(const std::string &shmname, int rank, int size, int moduleID)
    : Module("Extrema", shmname, rank, size, moduleID) {
+
+   setSchedulingPolicy(message::SchedulingPolicy::LazyGang);
 
    Port *din = createInputPort("data_in", "input data", Port::MULTI);
    Port *dout = createOutputPort("data_out", "output data", Port::MULTI);
@@ -95,11 +104,19 @@ Extrema::~Extrema() {
 
 bool Extrema::compute() {
 
+   std::cerr << "Extrema: compute: execcount=" << m_executionCount << std::endl;
+
    dim = -1;
-   for (int c=0; c<MaxDim; ++c) {
-      gmin[c] =  std::numeric_limits<double>::max();
-      gmax[c] = -std::numeric_limits<double>::max();
+   if (m_executionCount != m_lastExecutionCount) {
+      std::cerr << "resetting global min/max" << std::endl;
+      for (int c=0; c<MaxDim; ++c) {
+         gmin[c] =  std::numeric_limits<double>::max();
+         gmax[c] = -std::numeric_limits<double>::max();
+      }
+   } else {
+      std::cerr << "reusing global min/max" << std::endl;
    }
+   m_lastExecutionCount = m_executionCount;
 
    while(Object::const_ptr obj = takeFirstObject("data_in")) {
       handled = false;
@@ -136,10 +153,6 @@ bool Extrema::compute() {
 
       addObject("data_out", out);
 
-      boost::mpi::all_reduce(boost::mpi::communicator(),
-            min[0], min[0],
-            boost::mpi::minimum<double>());
-
       for (int c=0; c<MaxDim; ++c) {
          if (gmin[c] > min[c])
             gmin[c] = min[c];
@@ -147,6 +160,13 @@ bool Extrema::compute() {
             gmax[c] = max[c];
       }
    }
+
+   boost::mpi::all_reduce(boost::mpi::communicator(),
+            gmin[0], gmin[0],
+            boost::mpi::minimum<double>());
+   boost::mpi::all_reduce(boost::mpi::communicator(),
+            gmax[0], gmax[0],
+            boost::mpi::maximum<double>());
 
    setVectorParameter("min", gmin);
    setVectorParameter("max", gmax);

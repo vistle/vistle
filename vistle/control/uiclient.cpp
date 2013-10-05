@@ -41,23 +41,31 @@ void UiClient::operator()() {
    std::vector<char> sendbuf(message::Message::MESSAGE_SIZE);
    while (!m_done) {
 
-      message::Message *msg = (message::Message *)recvbuf.data();
-      bool received = false;
-      if (!message::recv(socket(), *msg, received))
-         break;
+      bool received = false, sent = false;
 
-      if (received) {
-         sendQueue().send(msg, msg->size(), 0);
+      {
+         message::Message *msg = (message::Message *)recvbuf.data();
+         if (!message::recv(socket(), *msg, received))
+            break;
+
+         if (received) {
+            if (msg->type() == message::Message::MODULEEXIT) {
+               std::cerr << "user interface " << id() << " quit" << std::endl;
+               assert(msg->senderId() == id());
+               m_done = true;
+            } else {
+               sendQueue().send(*msg);
+            }
+         }
       }
 
-
-      size_t msgSize;
-      unsigned int priority;
-      bool sent = recvQueue().try_receive(sendbuf.data(), message::Message::MESSAGE_SIZE, msgSize, priority);
-      if (sent) {
+      {
          message::Message *msg = (message::Message *)sendbuf.data();
-         if (!message::send(socket(), *msg))
-            break;
+         sent = recvQueue().tryReceive(*msg);
+         if (sent) {
+            if (!message::send(socket(), *msg))
+               break;
+         }
       }
 
       if (!received && !sent)
@@ -77,14 +85,14 @@ asio::ip::tcp::socket &UiClient::socket() {
    return *m_socket;
 }
 
-boost::interprocess::message_queue &UiClient::sendQueue() const {
+message::MessageQueue &UiClient::sendQueue() const {
 
-   return m_sendQueue->getMessageQueue();
+   return *m_sendQueue;
 }
 
-boost::interprocess::message_queue &UiClient::recvQueue() const {
+message::MessageQueue &UiClient::recvQueue() const {
 
-   return m_recvQueue->getMessageQueue();
+   return *m_recvQueue;
 }
 
 } // namespace vistle

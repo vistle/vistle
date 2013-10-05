@@ -49,7 +49,8 @@ const DefaultSender &DefaultSender::instance() {
 }
 
 Message::Message(const Type t, const unsigned int s)
-: m_uuid(boost::uuids::random_generator()())
+: m_broadcast(false)
+, m_uuid(boost::uuids::random_generator()())
 , m_size(s)
 , m_type(t)
 , m_senderId(DefaultSender::id())
@@ -61,7 +62,7 @@ Message::Message(const Type t, const unsigned int s)
    assert(m_rank >= 0);
 }
 
-Message::uuid_t Message::uuid() const {
+const Message::uuid_t &Message::uuid() const {
 
    return m_uuid;
 }
@@ -101,6 +102,11 @@ size_t Message::size() const {
    return m_size;
 }
 
+bool Message::broadcast() const {
+
+   return m_broadcast;
+}
+
 Ping::Ping(const char c)
    : Message(Message::PING, sizeof(Ping)), character(c) {
 
@@ -127,11 +133,12 @@ int Pong::getDestination() const {
 }
 
 Spawn::Spawn(const int s,
-             const std::string & n, int debugFlag, int debugRank)
+             const std::string & n, int mpiSize, int baseRank, int rankSkip)
    : Message(Message::SPAWN, sizeof(Spawn))
    , spawnID(s)
-   , debugFlag(debugFlag)
-   , debugRank(debugRank)
+   , mpiSize(mpiSize)
+   , baseRank(baseRank)
+   , rankSkip(rankSkip)
 {
 
    COPY_STRING(name, n);
@@ -152,6 +159,21 @@ const char * Spawn::getName() const {
    return name;
 }
 
+int Spawn::getMpiSize() const {
+
+   return mpiSize;
+}
+
+int Spawn::getBaseRank() const {
+
+   return baseRank;
+}
+
+int Spawn::getRankSkip() const {
+
+   return rankSkip;
+}
+
 Started::Started(const std::string &n)
 : Message(Message::STARTED, sizeof(Started))
 {
@@ -162,16 +184,6 @@ Started::Started(const std::string &n)
 const char * Started::getName() const {
 
    return name;
-}
-
-int Spawn::getDebugFlag() const {
-
-   return debugFlag;
-}
-
-int Spawn::getDebugRank() const {
-
-   return debugRank;
 }
 
 Kill::Kill(const int m)
@@ -187,24 +199,26 @@ Quit::Quit()
    : Message(Message::QUIT, sizeof(Quit)) {
 }
 
-NewObject::NewObject(const shm_handle_t & h)
-   : Message(Message::NEWOBJECT, sizeof(NewObject)),
-     handle(h) {
-
-}
-
-const shm_handle_t & NewObject::getHandle() const {
-
-   return handle;
-}
-
 ModuleExit::ModuleExit()
-   : Message(Message::MODULEEXIT, sizeof(ModuleExit)) {
+: Message(Message::MODULEEXIT, sizeof(ModuleExit))
+, forwarded(false)
+{
 
+}
+
+void ModuleExit::setForwarded() {
+
+   forwarded = true;
+}
+
+bool ModuleExit::isForwarded() const {
+
+   return forwarded;
 }
 
 Compute::Compute(const int m, const int c)
    : Message(Message::COMPUTE, sizeof(Compute))
+   , m_allRanks(false)
    , module(m)
    , executionCount(c)
 {
@@ -219,13 +233,23 @@ int Compute::getExecutionCount() const {
 
    return executionCount;
 }
+bool Compute::allRanks() const
+{
+   return m_allRanks;
+}
+
+void Compute::setAllRanks(bool allRanks)
+{
+   m_allRanks = allRanks;
+}
+
 
 Busy::Busy()
-   : Message(Message::BUSY, sizeof(Busy)) {
+: Message(Message::BUSY, sizeof(Busy)) {
 }
 
 Idle::Idle()
-   : Message(Message::IDLE, sizeof(Idle)) {
+: Message(Message::IDLE, sizeof(Idle)) {
 }
 
 CreatePort::CreatePort(const Port *port)
@@ -274,7 +298,10 @@ ObjectReceived::ObjectReceived(const std::string &p,
 : Message(Message::OBJECTRECEIVED, sizeof(ObjectReceived))
 , m_name(obj->getName())
 , m_meta(obj->meta())
+, m_objectType(obj->getType())
 {
+
+   m_broadcast = true;
 
    COPY_STRING(portName, p);
 }
@@ -292,6 +319,11 @@ const char *ObjectReceived::getPortName() const {
 const char *ObjectReceived::objectName() const {
 
    return m_name;
+}
+
+Object::Type ObjectReceived::objectType() const {
+
+   return static_cast<Object::Type>(m_objectType);
 }
 
 Connect::Connect(const int moduleIDA, const std::string & portA,
@@ -352,29 +384,21 @@ int Disconnect::getModuleB() const {
    return moduleB;
 }
 
-AddParameter::AddParameter(const std::string &n, const std::string &desc, int t, int p, const std::string &mod)
+AddParameter::AddParameter(const Parameter *param, const std::string &modname)
 : Message(Message::ADDPARAMETER, sizeof(AddParameter))
-, paramtype(t)
-, presentation(p) {
-
+, paramtype(param->type())
+, presentation(param->presentation())
+{
    assert(paramtype > Parameter::Unknown);
    assert(paramtype < Parameter::Invalid);
 
    assert(presentation >= Parameter::Generic);
    assert(presentation <= Parameter::InvalidPresentation);
 
-   COPY_STRING(name, n);
-   COPY_STRING(module, mod);
-}
-
-AddParameter::AddParameter(const Parameter *param, const std::string &modname)
-: Message(Message::ADDPARAMETER, sizeof(AddParameter))
-, paramtype(param->type())
-, presentation(param->presentation())
-{
-
    COPY_STRING(name, param->getName());
+   COPY_STRING(m_group, param->group());
    COPY_STRING(module, modname);
+   COPY_STRING(m_description, param->description());
 }
 
 const char *AddParameter::getName() const {
@@ -397,20 +421,42 @@ int AddParameter::getPresentation() const {
    return presentation;
 }
 
+const char *AddParameter::description() const {
+
+   return m_description;
+}
+
+const char *AddParameter::group() const {
+
+   return m_group;
+}
+
 Parameter *AddParameter::getParameter() const {
 
+   Parameter *p = nullptr;
    switch (getParameterType()) {
       case Parameter::Integer:
-         return new IntParameter(senderId(), getName());
-      case Parameter::Scalar:
-         return new FloatParameter(senderId(), getName());
+         p = new IntParameter(senderId(), getName());
+         break;
+      case Parameter::Float:
+         p = new FloatParameter(senderId(), getName());
+         break;
       case Parameter::Vector:
-         return new VectorParameter(senderId(), getName());
+         p = new VectorParameter(senderId(), getName());
+         break;
       case Parameter::String:
-         return new StringParameter(senderId(), getName());
+         p = new StringParameter(senderId(), getName());
+         break;
       case Parameter::Invalid:
       case Parameter::Unknown:
          break;
+   }
+
+   if (p) {
+      p->setDescription(description());
+      p->setGroup(group());
+      p->setPresentation(Parameter::Presentation(getPresentation()));
+      return p;
    }
 
    std::cerr << "AddParameter::getParameter: type " << type() << " not handled" << std::endl;
@@ -420,27 +466,27 @@ Parameter *AddParameter::getParameter() const {
 }
 
 SetParameter::SetParameter(const int module,
-      const std::string &n, const Parameter *param)
+      const std::string &n, const Parameter *param, Parameter::RangeType rt)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
 , paramtype(param->type())
 , initialize(false)
 , reply(false)
-, rangetype(SetParameter::Value)
+, rangetype(rt)
 {
 
    COPY_STRING(name, n);
    if (const IntParameter *pint = dynamic_cast<const IntParameter *>(param)) {
-      v_int = pint->getValue();
+      v_int = pint->getValue(rt);
    } else if (const FloatParameter *pfloat = dynamic_cast<const FloatParameter *>(param)) {
-      v_scalar = pfloat->getValue();
+      v_scalar = pfloat->getValue(rt);
    } else if (const VectorParameter *pvec = dynamic_cast<const VectorParameter *>(param)) {
-      ParamVector v = pvec->getValue();
+      ParamVector v = pvec->getValue(rt);
       dim = v.dim;
       for (int i=0; i<MaxDimension; ++i)
          v_vector[i] = v[i];
    } else if (const StringParameter *pstring = dynamic_cast<const StringParameter *>(param)) {
-      COPY_STRING(v_string, pstring->getValue());
+      COPY_STRING(v_string, pstring->getValue(rt));
    } else {
       std::cerr << "SetParameter: type " << param->type() << " not handled" << std::endl;
       assert("invalid parameter type" == 0);
@@ -448,13 +494,13 @@ SetParameter::SetParameter(const int module,
 }
 
 SetParameter::SetParameter(const int module,
-      const std::string &n, const int v)
+      const std::string &n, const Integer v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
 , paramtype(Parameter::Integer)
 , initialize(false)
 , reply(false)
-, rangetype(SetParameter::Value)
+, rangetype(Parameter::Value)
 {
 
    COPY_STRING(name, n);
@@ -462,13 +508,13 @@ SetParameter::SetParameter(const int module,
 }
 
 SetParameter::SetParameter(const int module,
-      const std::string &n, const double v)
+      const std::string &n, const Float v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
-, paramtype(Parameter::Scalar)
+, paramtype(Parameter::Float)
 , initialize(false)
 , reply(false)
-, rangetype(SetParameter::Value)
+, rangetype(Parameter::Value)
 {
 
    COPY_STRING(name, n);
@@ -482,7 +528,7 @@ SetParameter::SetParameter(const int module,
 , paramtype(Parameter::Vector)
 , initialize(false)
 , reply(false)
-, rangetype(SetParameter::Value)
+, rangetype(Parameter::Value)
 {
 
    COPY_STRING(name, n);
@@ -498,7 +544,7 @@ SetParameter::SetParameter(const int module,
 , paramtype(Parameter::String)
 , initialize(false)
 , reply(false)
-, rangetype(SetParameter::Value)
+, rangetype(Parameter::Value)
 {
 
    COPY_STRING(name, n);
@@ -527,6 +573,8 @@ bool SetParameter::isReply() const {
 
 void SetParameter::setRangeType(int rt) {
 
+   assert(rt >= Parameter::Minimum);
+   assert(rt <= Parameter::Maximum);
    rangetype = rt;
 }
 
@@ -550,15 +598,15 @@ int SetParameter::getParameterType() const {
    return paramtype;
 }
 
-int SetParameter::getInteger() const {
+Integer SetParameter::getInteger() const {
 
    assert(paramtype == Parameter::Integer);
    return v_int;
 }
 
-Scalar SetParameter::getScalar() const {
+Float SetParameter::getFloat() const {
 
-   assert(paramtype == Parameter::Scalar);
+   assert(paramtype == Parameter::Float);
    return v_scalar;
 }
 
@@ -577,25 +625,25 @@ std::string SetParameter::getString() const {
 bool SetParameter::apply(Parameter *param) const {
 
    if (paramtype != param->type()) {
-      std::cerr << "SetParameter::apply(): type mismatch" << std::endl;
+      std::cerr << "SetParameter::apply(): type mismatch for " << param->module() << ":" << param->getName() << std::endl;
       return false;
    }
 
-   int rt = rangeType();
+   const int rt = rangeType();
    if (IntParameter *pint = dynamic_cast<IntParameter *>(param)) {
-      if (rt == Value) pint->setValue(v_int, initialize);
-      if (rt == Minimum) pint->setMinimum(v_int);
-      if (rt == Maximum) pint->setMaximum(v_int);
+      if (rt == Parameter::Value) pint->setValue(v_int, initialize);
+      if (rt == Parameter::Minimum) pint->setMinimum(v_int);
+      if (rt == Parameter::Maximum) pint->setMaximum(v_int);
    } else if (FloatParameter *pfloat = dynamic_cast<FloatParameter *>(param)) {
-      if (rt == Value) pfloat->setValue(v_scalar, initialize);
-      if (rt == Minimum) pfloat->setMinimum(v_scalar);
-      if (rt == Maximum) pfloat->setMaximum(v_scalar);
+      if (rt == Parameter::Value) pfloat->setValue(v_scalar, initialize);
+      if (rt == Parameter::Minimum) pfloat->setMinimum(v_scalar);
+      if (rt == Parameter::Maximum) pfloat->setMaximum(v_scalar);
    } else if (VectorParameter *pvec = dynamic_cast<VectorParameter *>(param)) {
-      if (rt == Value) pvec->setValue(ParamVector(dim, &v_vector[0]), initialize);
-      if (rt == Minimum) pvec->setMinimum(ParamVector(dim, &v_vector[0]));
-      if (rt == Maximum) pvec->setMaximum(ParamVector(dim, &v_vector[0]));
+      if (rt == Parameter::Value) pvec->setValue(ParamVector(dim, &v_vector[0]), initialize);
+      if (rt == Parameter::Minimum) pvec->setMinimum(ParamVector(dim, &v_vector[0]));
+      if (rt == Parameter::Maximum) pvec->setMaximum(ParamVector(dim, &v_vector[0]));
    } else if (StringParameter *pstring = dynamic_cast<StringParameter *>(param)) {
-      if (rt == Value) pstring->setValue(v_string, initialize);
+      if (rt == Parameter::Value) pstring->setValue(v_string, initialize);
    } else {
       std::cerr << "SetParameter::apply(): type " << param->type() << " not handled" << std::endl;
       assert("invalid parameter type" == 0);
@@ -620,6 +668,16 @@ SetParameterChoices::SetParameterChoices(const int id, const std::string &n,
    }
 }
 
+int SetParameterChoices::getModule() const
+{
+   return module;
+}
+
+const char *SetParameterChoices::getName() const
+{
+   return name;
+}
+
 bool SetParameterChoices::apply(Parameter *param) const {
 
    if (param->type() != Parameter::Integer
@@ -638,6 +696,7 @@ bool SetParameterChoices::apply(Parameter *param) const {
       size_t len = strnlen(choices[i], sizeof(choices[i]));
       ch.push_back(std::string(choices[i], len));
    }
+
    param->setChoices(ch);
    return true;
 }
@@ -674,6 +733,76 @@ int SetId::getId() const {
 
    return m_id;
 }
+
+ResetModuleIds::ResetModuleIds()
+: Message(Message::RESETMODULEIDS, sizeof(ResetModuleIds))
+{
+}
+
+ReplayFinished::ReplayFinished()
+   : Message(Message::REPLAYFINISHED, sizeof(ReplayFinished))
+{
+}
+
+SendText::SendText(const std::string &text, const Message &inResponseTo)
+: Message(Message::SENDTEXT, sizeof(SendText))
+, m_textType(TextType::Error)
+, m_referenceUuid(inResponseTo.uuid())
+, m_referenceType(inResponseTo.type())
+{
+   COPY_STRING(m_text, text);
+}
+
+SendText::SendText(SendText::TextType type, const std::string &text)
+: Message(Message::SENDTEXT, sizeof(SendText))
+, m_textType(type)
+, m_referenceType(Message::INVALID)
+{
+   COPY_STRING(m_text, text);
+}
+
+SendText::TextType SendText::textType() const {
+
+   return m_textType;
+}
+
+Message::Type SendText::referenceType() const {
+
+   return m_referenceType;
+}
+
+Message::uuid_t SendText::referenceUuid() const {
+
+   return m_referenceUuid;
+}
+
+const char *SendText::text() const {
+
+   return m_text;
+}
+
+ObjectReceivePolicy::ObjectReceivePolicy(ObjectReceivePolicy::Policy pol)
+: Message(Message::OBJECTRECEIVEPOLICY, sizeof(ObjectReceivePolicy))
+, m_policy(pol)
+{
+}
+
+ObjectReceivePolicy::Policy ObjectReceivePolicy::policy() const {
+
+   return m_policy;
+}
+
+SchedulingPolicy::SchedulingPolicy(SchedulingPolicy::Policy pol)
+: Message(Message::SCHEDULINGPOLICY, sizeof(SchedulingPolicy))
+, m_policy(pol)
+{
+}
+
+SchedulingPolicy::Policy SchedulingPolicy::policy() const {
+
+   return m_policy;
+}
+
 
 } // namespace message
 } // namespace vistle

@@ -52,7 +52,7 @@ shm<ShmDebugInfo>::vector *Shm::s_shmdebug = NULL;
 
 Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
          message::MessageQueue * mq, bool create)
-   : m_name(name), m_created(create), m_moduleID(m), m_rank(r), m_objectID(0), m_messageQueue(mq) {
+   : m_name(name), m_created(create), m_moduleID(m), m_rank(r), m_objectID(0) {
 
       if (create) {
          m_shm = new managed_shared_memory(open_or_create, m_name.c_str(), size);
@@ -134,7 +134,7 @@ bool Shm::cleanAll() {
       if (!shmid.empty()) {
          if (shmid.find("mq_") == 0) {
             std::cerr << "removing message queue: id " << shmid << std::endl;
-            message_queue::remove(shmid.c_str());
+            message::MessageQueue::message_queue::remove(shmid.c_str());
          } else {
             std::cerr << "removing shared memory: id " << shmid << std::endl;
             shared_memory_object::remove(shmid.c_str());
@@ -235,14 +235,6 @@ managed_shared_memory & Shm::shm() {
 const managed_shared_memory & Shm::shm() const {
 
    return *m_shm;
-}
-
-void Shm::publish(const shm_handle_t & handle) const {
-
-   if (m_messageQueue) {
-      vistle::message::NewObject n(handle);
-      m_messageQueue->getMessageQueue().send(&n, sizeof(n), 0);
-   }
 }
 
 std::string Shm::createObjectID() {

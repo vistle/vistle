@@ -1,0 +1,78 @@
+FOAM=spawn("ReadFOAM")
+setStringParam(FOAM, "fieldname0", "p")
+setStringParam(FOAM, "fieldname1", "nuSgs")
+setStringParam(FOAM, "casedir", "/Users/hpcmaumu/data/OpenFOAM/daniel")
+setStringParam(FOAM, "casedir", "/Users/hpcmaumu/data/OpenFOAM/PumpTurbine")
+setStringParam(FOAM, "casedir", "/data/OpenFOAM/PumpTurbine-flo/transient")
+setStringParam(FOAM, "casedir", "/data/OpenFOAM/PumpTurbine")
+#setFloatParam(FOAM, "starttime", 1.75)
+#setFloatParam(FOAM, "starttime", 1.875)
+setFloatParam(FOAM, "stoptime", 1.8795)
+#setFloatParam(FOAM, "stoptime", 1.8462)
+#setFloatParam(FOAM, "stoptime", 1.751)
+
+VERT=spawn("CellToVert")
+VERT2=spawn("CellToVert")
+
+CUTGEO = spawn("CutGeometry");
+setIntParam(CUTGEO, "_cacheMode", 0);
+setVectorParam(CUTGEO, "point", 0.0, 0.0, 0.0);
+setVectorParam(CUTGEO, "vertex", 1.0, 0.0, 0.0);
+
+#CUTSURF = spawn("CuttingSurface");
+#setVectorParam(CUTSURF, "point", 0.0, 0.0, 0.0);
+#setVectorParam(CUTSURF, "vertex", 1.0, 0.0, 0.0);
+
+ISO_P = spawn("IsoSurface");
+setFloatParam(ISO_P, "isovalue", -10.0);
+setStringParam(ISO_P, "shader", "Gouraud");
+setStringParam(ISO_P, "shader_params", "\"color=1. 0. 0. 1.\"");
+
+ISO_NUSGS = spawn("IsoSurface");
+setFloatParam(ISO_NUSGS, "isovalue", 0.00025);
+setStringParam(ISO_NUSGS, "shader", "Gouraud2");
+setStringParam(ISO_NUSGS, "shader_params", "\"color=0. 0. 1. 1.\"");
+
+#EXT = spawn("Extrema");
+
+#COLOR = spawn("Color");
+#setFloatParam(COLOR, "min", -30.)
+#setFloatParam(COLOR, "max", 330.)
+#COLLECT = spawn("Collect");
+
+RENDERER = spawn("COVER");
+setIntParam(RENDERER, "master_only", 1)
+#WRITEARCHIVE = spawn("WriteVistle");
+#setParam(WRITEARCHIVE, "filename", "turbinevistle.archive");
+#setParam(WRITEARCHIVE, "format", 0); # 0=binary, 1=text, 2=XML
+
+#connect(FOAM, "data_out0", EXT, "data_in");
+
+connect(FOAM, "grid_out1", CUTGEO, "grid_in");
+connect(CUTGEO, "grid_out", RENDERER, "data_in");
+#connect(CUTGEO, "grid_out", WRITEARCHIVE, "grid_in");
+
+#connect(FOAM, "grid_out", CUTSURF, "grid_in");
+connect(FOAM, "grid_out", VERT, "grid_in");
+connect(FOAM, "data_out0", VERT, "data_in");
+connect(FOAM, "grid_out", VERT2, "grid_in");
+connect(FOAM, "data_out1", VERT2, "data_in");
+#connect(VERT, "data_out", CUTSURF, "data_in");
+connect(FOAM, "grid_out", ISO_P, "grid_in");
+connect(VERT, "data_out", ISO_P, "data_in");
+connect(FOAM, "grid_out", ISO_NUSGS, "grid_in");
+connect(VERT2, "data_out", ISO_NUSGS, "data_in");
+#connect(CUTSURF, "grid_out", COLLECT, "grid_in");
+#connect(CUTSURF, "data_out", COLOR, "data_in");
+#connect(COLOR, "data_out", COLLECT, "texture_in");
+#connect(COLLECT, "grid_out", RENDERER, "data_in");
+#connect(COLLECT, "grid_out", WRITEARCHIVE, "grid_in");
+
+connect(ISO_P, "grid_out", RENDERER, "data_in");
+connect(ISO_NUSGS, "grid_out", RENDERER, "data_in");
+#connect(ISO_P, "grid_out", WRITEARCHIVE, "grid_in");
+#connect(FOAM, "grid_out1", RENDERER, "data_in");
+
+barrier();
+
+compute(FOAM);

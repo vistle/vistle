@@ -4,10 +4,10 @@
 #include <string>
 #include <boost/uuid/uuid.hpp>
 
-
 #include "object.h"
 #include "scalar.h"
 #include "paramvector.h"
+#include "parameter.h"
 #include "export.h"
 
 namespace vistle {
@@ -38,8 +38,9 @@ typedef char port_name_t[32];
 typedef char param_name_t[32];
 typedef char param_value_t[256];
 typedef char param_desc_t[512];
-typedef char param_choice_t[64];
-const int param_num_choices = 60;
+typedef char param_choice_t[40];
+const int param_num_choices = 22;
+typedef char text_t[900];
 
 class V_COREEXPORT Message {
    // this is POD
@@ -47,16 +48,16 @@ class V_COREEXPORT Message {
    friend class vistle::Communicator;
 
  public:
-   static const size_t MESSAGE_SIZE = 4096; // fixed message size is imposed by boost::interprocess::message_queue
+   static const size_t MESSAGE_SIZE = 1024; // fixed message size is imposed by boost::interprocess::message_queue
    typedef boost::uuids::uuid uuid_t;
 
    enum Type {
+      INVALID = 0,
       DEBUG,
       SPAWN,
       STARTED,
       KILL,
       QUIT,
-      NEWOBJECT,
       MODULEEXIT,
       COMPUTE,
       CREATEPORT,
@@ -74,13 +75,18 @@ class V_COREEXPORT Message {
       BARRIER,
       BARRIERREACHED,
       SETID,
+      RESETMODULEIDS,
+      REPLAYFINISHED,
+      SENDTEXT,
+      OBJECTRECEIVEPOLICY,
+      SCHEDULINGPOLICY,
    };
 
    Message(const Type type, const unsigned int size);
    // Message (or its subclasses) may not require destructors
 
    //! message uuid - copied to related messages (i.e. responses or errors)
-   uuid_t uuid() const;
+   const uuid_t &uuid() const;
    //! set message uuid
    void setUuid(const uuid_t &uuid);
    //! message type
@@ -95,7 +101,12 @@ class V_COREEXPORT Message {
    void setRank(int rank);
    //! messge size
    size_t size() const;
+   //! broadacast to all ranks?
+   bool broadcast() const;
 
+  protected:
+   //! broadcast to all ranks?
+   bool m_broadcast;
  private:
    //! message uuid
    uuid_t m_uuid;
@@ -142,21 +153,24 @@ class V_COREEXPORT Spawn: public Message {
 
  public:
    Spawn(const int spawnID,
-         const std::string &name, int debugFlag = 0, int debugRank = 0);
+         const std::string &name, int size=-1, int baserank=-1, int rankskip=-1);
 
    int spawnId() const;
    void setSpawnId(int id);
    const char *getName() const;
-   int getDebugFlag() const;
-   int getDebugRank() const;
+   int getMpiSize() const;
+   int getBaseRank() const;
+   int getRankSkip() const;
 
  private:
    //! ID of module to spawn
    int spawnID;
-   //! start with debugger/memory tracer
-   const int debugFlag;
-   //! on which rank to attach debugger
-   const int debugRank;
+   //! number of ranks in communicator
+   int mpiSize;
+   //! first rank on which to spawn process
+   int baseRank;
+   //! number of ranks to skip when spawning process
+   int rankSkip;
    //! name of module to be started
    module_name_t name;
 };
@@ -200,24 +214,15 @@ class V_COREEXPORT Quit: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Quit) < Message::MESSAGE_SIZE);
 
-class V_COREEXPORT NewObject: public Message {
-
- public:
-   NewObject(const shm_handle_t &handle);
-
-   const shm_handle_t & getHandle() const;
-
- private:
-   shm_handle_t handle;
-};
-BOOST_STATIC_ASSERT(sizeof(NewObject) < Message::MESSAGE_SIZE);
-
 class V_COREEXPORT ModuleExit: public Message {
 
  public:
    ModuleExit();
+   void setForwarded();
+   bool isForwarded() const;
 
  private:
+   bool forwarded = false;
 };
 BOOST_STATIC_ASSERT(sizeof(ModuleExit) < Message::MESSAGE_SIZE);
 
@@ -230,7 +235,11 @@ class V_COREEXPORT Compute: public Message {
    int getModule() const;
    int getExecutionCount() const;
 
- private:
+   bool allRanks() const;
+   void setAllRanks(bool allRanks);
+
+private:
+   bool m_allRanks;
    const int module;
    const int executionCount;
 };
@@ -294,11 +303,13 @@ class V_COREEXPORT ObjectReceived: public Message {
    const char *getPortName() const;
    const char *objectName() const;
    const Meta &meta() const;
+   Object::Type objectType() const;
 
  private:
    port_name_t portName;
    shm_name_t m_name;
    Meta m_meta;
+   int m_objectType;
 };
 BOOST_STATIC_ASSERT(sizeof(ObjectReceived) < Message::MESSAGE_SIZE);
 
@@ -348,18 +359,19 @@ BOOST_STATIC_ASSERT(sizeof(Disconnect) < Message::MESSAGE_SIZE);
 
 class V_COREEXPORT AddParameter: public Message {
    public:
-      AddParameter(const std::string &name, const std::string &description, int type, int presentation, const std::string &moduleName);
       AddParameter(const Parameter *param, const std::string &moduleName);
 
       const char *getName() const;
       const char *moduleName() const;
       const char *description() const;
+      const char *group() const;
       int getParameterType() const;
       int getPresentation() const;
       Parameter *getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
 
    private:
       param_name_t name;
+      param_name_t m_group;
       module_name_t module;
       param_desc_t m_description;
       int paramtype;
@@ -369,17 +381,12 @@ BOOST_STATIC_ASSERT(sizeof(AddParameter) < Message::MESSAGE_SIZE);
 
 class V_COREEXPORT SetParameter: public Message {
    public:
-      enum RangeType {
-         Value,
-         Minimum,
-         Maximum
-      };
       SetParameter(const int module,
-            const std::string & name, const Parameter *param);
+            const std::string & name, const Parameter *param, Parameter::RangeType rt=Parameter::Value);
       SetParameter(const int module,
-            const std::string & name, const int value);
+            const std::string & name, const Integer value);
       SetParameter(const int module,
-            const std::string & name, const double value);
+            const std::string & name, const Float value);
       SetParameter(const int module,
             const std::string & name, const ParamVector value);
       SetParameter(const int module,
@@ -398,9 +405,9 @@ class V_COREEXPORT SetParameter: public Message {
       const char * getName() const;
       int getParameterType() const;
 
-      int getInteger() const;
+      Integer getInteger() const;
       std::string getString() const;
-      Scalar getScalar() const;
+      Float getFloat() const;
       ParamVector getVector() const;
 
       bool apply(Parameter *param) const;
@@ -414,9 +421,9 @@ class V_COREEXPORT SetParameter: public Message {
       bool reply;
       int rangetype;
       union {
-         int v_int;
-         double v_scalar;
-         double v_vector[MaxDimension];
+         Integer v_int;
+         Float v_scalar;
+         Float v_vector[MaxDimension];
          param_value_t v_string;
       };
 };
@@ -428,7 +435,7 @@ class V_COREEXPORT SetParameterChoices: public Message {
             const std::string &name, const std::vector<std::string> &choices);
 
       int getModule() const;
-      const char * getName() const;
+      const char *getName() const;
       int getNumChoices() const;
       const char *getChoice(int idx) const;
 
@@ -477,6 +484,83 @@ class V_COREEXPORT SetId: public Message {
    const int m_id;
 };
 BOOST_STATIC_ASSERT(sizeof(SetId) < Message::MESSAGE_SIZE);
+
+class V_COREEXPORT ResetModuleIds: public Message {
+
+ public:
+   ResetModuleIds();
+};
+BOOST_STATIC_ASSERT(sizeof(ResetModuleIds) < Message::MESSAGE_SIZE);
+
+class V_COREEXPORT ReplayFinished: public Message {
+
+public:
+   ReplayFinished();
+};
+BOOST_STATIC_ASSERT(sizeof(ReplayFinished) < Message::MESSAGE_SIZE);
+
+class V_COREEXPORT SendText: public Message {
+
+public:
+   enum TextType {
+      Cout,
+      Cerr,
+      Clog,
+      Info,
+      Warning,
+      Error,
+   };
+
+   //! Error message in response to a Message
+   SendText(const std::string &text, const Message &inResponseTo);
+   SendText(TextType type, const std::string &text);
+
+   TextType textType() const;
+   Type referenceType() const;
+   uuid_t referenceUuid() const;
+   const char *text() const;
+
+private:
+   //! type of text
+   TextType m_textType;
+   //! uuid of Message this message is a response to
+   uuid_t m_referenceUuid;
+   //! Type of Message this message is a response to
+   Type m_referenceType;
+   //! message text
+   text_t m_text;
+};
+BOOST_STATIC_ASSERT(sizeof(SendText) < Message::MESSAGE_SIZE);
+
+class V_COREEXPORT ObjectReceivePolicy: public Message {
+
+public:
+   enum Policy {
+      Single,
+      NotifyAll,
+      Distribute,
+   };
+   ObjectReceivePolicy(Policy pol);
+   Policy policy() const;
+private:
+   Policy m_policy;
+};
+BOOST_STATIC_ASSERT(sizeof(ObjectReceivePolicy) < Message::MESSAGE_SIZE);
+
+class V_COREEXPORT SchedulingPolicy: public Message {
+
+public:
+   enum Policy {
+      Single,
+      Gang,
+      LazyGang,
+   };
+   SchedulingPolicy(Policy pol);
+   Policy policy() const;
+private:
+   Policy m_policy;
+};
+BOOST_STATIC_ASSERT(sizeof(SchedulingPolicy) < Message::MESSAGE_SIZE);
 
 } // namespace message
 } // namespace vistle

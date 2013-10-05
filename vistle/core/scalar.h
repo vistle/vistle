@@ -3,7 +3,8 @@
 
 namespace vistle {
 
-typedef double Scalar;
+typedef float Scalar;
+typedef double Float;
 
 } // namespace vistle
 

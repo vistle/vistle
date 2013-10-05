@@ -1,54 +1,55 @@
-RGEO = spawn("ReadCovise");
-setStringParam(RGEO, "filename", "/data/OpenFOAM/PumpTurbine/covise/test/three_geo2d.covise");
+mReadCovise1 = spawn('ReadCovise')
+setVectorParam(mReadCovise1, '_position', -281.0, -201.0)
+setStringParam(mReadCovise1, 'filename', '/data/OpenFOAM/PumpTurbine-flo/covise/test/three_geo2d.covise')
 
-RGRID = spawn("ReadCovise");
-setStringParam(RGRID, "filename", "/data/OpenFOAM/PumpTurbine/covise/test/multi_geo3d.covise");
+mReadCovise2 = spawn('ReadCovise')
+setVectorParam(mReadCovise2, '_position', -114.0, -211.0)
+setStringParam(mReadCovise2, 'filename', '/data/OpenFOAM/PumpTurbine-flo/covise/test/multi_geo3d.covise')
 
-RPRES = spawn("ReadCovise");
-setStringParam(RPRES, "filename", "/data/OpenFOAM/PumpTurbine/covise/test/multi_p.covise");
+mReadCovise3 = spawn('ReadCovise')
+setVectorParam(mReadCovise3, '_position', 211.0, -195.0)
+setStringParam(mReadCovise3, 'filename', '/data/OpenFOAM/PumpTurbine-flo/covise/test/multi_p.covise')
 
-CUTGEO = spawn("CutGeometry");
-setVectorParam(CUTGEO, "point", 0.0, 0.0, 0.0);
-setVectorParam(CUTGEO, "vertex", 1.0, 0.0, 0.0);
+mCutGeometry4 = spawn('CutGeometry')
+setVectorParam(mCutGeometry4, '_position', -223.0, -43.0)
+setVectorParam(mCutGeometry4, 'point', 0.0, 0.0, 0.0)
+setVectorParam(mCutGeometry4, 'vertex', 1.0, 0.0, 0.0)
 
-CUTSURF = spawn("CuttingSurface");
-setVectorParam(CUTSURF, "point", 0.0, 0.0, 0.0);
-setVectorParam(CUTSURF, "vertex", 1.0, 0.0, 0.0);
+mCuttingSurface5 = spawn('CuttingSurface')
+setVectorParam(mCuttingSurface5, '_position', 136.0, -50.0)
+setVectorParam(mCuttingSurface5, 'point', 0.0, 0.0, 0.0)
+setVectorParam(mCuttingSurface5, 'vertex', 1.0, 0.0, 0.0)
 
-ISOSURF = spawn("IsoSurface");
-setFloatParam(ISOSURF, "isovalue", -5.0);
+mIsoSurface6 = spawn('IsoSurface')
+setVectorParam(mIsoSurface6, '_position', 64.0, -44.0)
+setFloatParam(mIsoSurface6, 'isovalue', -5.0)
+setStringParam(mIsoSurface6, 'shader', 'Gouraud')
 
-#EXT = spawn("Extrema");
+mIsoSurface7 = spawn('IsoSurface')
+setVectorParam(mIsoSurface7, '_position', -52.0, -42.0)
+setFloatParam(mIsoSurface7, 'isovalue', -1.0)
+setStringParam(mIsoSurface7, 'shader', 'Gouraud')
 
-COLOR = spawn("Color");
-COLLECT = spawn("Collect");
+mColor8 = spawn('Color')
+setVectorParam(mColor8, '_position', 211.0, 54.0)
 
-RENDERER = spawn("cover");
-#WRITEARCHIVE = spawn("WriteVistle");
-#setParam(WRITEARCHIVE, "filename", "turbinevistle.archive");
-#setParam(WRITEARCHIVE, "format", 0); # 0=binary, 1=text, 2=XML
+mCollect9 = spawn('Collect')
+setVectorParam(mCollect9, '_position', 177.0, 138.0)
 
-#connect(RPRES, "grid_out", EXT, "data_in");
+mCOVER10 = spawn('COVER')
+setVectorParam(mCOVER10, '_position', 16.0, 252.0)
 
-connect(RGEO, "grid_out", CUTGEO, "grid_in");
-connect(CUTGEO, "grid_out", RENDERER, "data_in");
-#connect(CUTGEO, "grid_out", WRITEARCHIVE, "grid_in");
-
-connect(RGRID, "grid_out", CUTSURF, "grid_in");
-connect(RPRES, "grid_out", CUTSURF, "data_in");
-connect(RGRID, "grid_out", ISOSURF, "grid_in");
-connect(RPRES, "grid_out", ISOSURF, "data_in");
-connect(CUTSURF, "grid_out", COLLECT, "grid_in");
-connect(CUTSURF, "data_out", COLOR, "data_in");
-connect(COLOR, "data_out", COLLECT, "texture_in");
-connect(COLLECT, "grid_out", RENDERER, "data_in");
-#connect(COLLECT, "grid_out", WRITEARCHIVE, "grid_in");
-
-connect(ISOSURF, "grid_out", RENDERER, "data_in");
-#connect(ISOSURF, "grid_out", WRITEARCHIVE, "grid_in");
-
-barrier();
-
-compute(RGEO);
-compute(RGRID);
-compute(RPRES);
+connect(mReadCovise1,'grid_out', mCutGeometry4,'grid_in')
+connect(mReadCovise2,'grid_out', mCuttingSurface5,'grid_in')
+connect(mReadCovise2,'grid_out', mIsoSurface6,'grid_in')
+connect(mReadCovise2,'grid_out', mIsoSurface7,'grid_in')
+connect(mReadCovise3,'grid_out', mCuttingSurface5,'data_in')
+connect(mReadCovise3,'grid_out', mIsoSurface6,'data_in')
+connect(mReadCovise3,'grid_out', mIsoSurface7,'data_in')
+connect(mCutGeometry4,'grid_out', mCOVER10,'data_in')
+connect(mCuttingSurface5,'grid_out', mCollect9,'grid_in')
+connect(mCuttingSurface5,'data_out', mColor8,'data_in')
+connect(mIsoSurface6,'grid_out', mCOVER10,'data_in')
+connect(mIsoSurface7,'grid_out', mCOVER10,'data_in')
+connect(mColor8,'data_out', mCollect9,'texture_in')
+connect(mCollect9,'grid_out', mCOVER10,'data_in')

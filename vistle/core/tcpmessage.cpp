@@ -30,6 +30,7 @@ bool recv(socket_t &sock, Message &msg, bool &received) {
       asio::read(sock, szbuf);
       sz = ntohl(sz);
       auto msgbuf = asio::buffer(&msg, sz);
+      assert(sz <= Message::MESSAGE_SIZE);
       asio::read(sock, msgbuf);
    } catch (std::exception &ex) {
       std::cerr << "message::recv: exception: " << ex.what() << std::endl;

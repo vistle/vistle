@@ -7,12 +7,13 @@
 #include <boost/scoped_ptr.hpp>
 #include <core/message.h>
 #include <core/messagequeue.h>
+#include "export.h"
 
 namespace vistle {
 
 class UiManager;
 
-class UiClient {
+class V_CONTROLEXPORT UiClient {
    public:
       UiClient(UiManager &manager, int id, boost::shared_ptr<message::MessageQueue> sendQueue, boost::shared_ptr<message::MessageQueue> recvQueue);
       ~UiClient();
@@ -23,8 +24,8 @@ class UiClient {
       bool done() const;
       UiManager &manager() const;
 
-      boost::interprocess::message_queue &sendQueue() const;
-      boost::interprocess::message_queue &recvQueue() const;
+      message::MessageQueue &sendQueue() const;
+      message::MessageQueue &recvQueue() const;
 
       boost::asio::ip::tcp::socket &socket();
 

@@ -9,7 +9,9 @@ if(READLINE_FOUND)
    set(EXTRA_LIBRARIES ${READLINE_LIBRARY})
 endif()
 
-add_library(vistle_control SHARED 
+add_definitions(-DVISTLE_CONTROL)
+
+set(control_SOURCES
    portmanager.cpp
    uiclient.cpp
    uimanager.cpp
@@ -18,15 +20,32 @@ add_library(vistle_control SHARED
    modulemanager.cpp
    communicator.cpp
    executor.cpp
-   pythonembed.cpp
-   pythonmodule.cpp
+   ../userinterface/pythoninterface.cpp
+   ../userinterface/pythonmodule.cpp
 )
+
+set(control_HEADERS
+   client.h
+   clientmanager.h
+   communicator.h
+   executor.h
+   export.h
+   modulemanager.h
+   portmanager.h
+   ../userinterface/pythoninterface.h
+   ../userinterface/pythonmodule.h
+   uiclient.h
+   uimanager.h
+)
+
+add_library(vistle_control ${VISTLE_LIB_TYPE} ${control_SOURCES} ${control_HEADERS})
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}
         ${PYTHON_INCLUDE_PATH}
         ..
+        ../userinterface
 )
 
 target_link_libraries(vistle_control
