@@ -18,7 +18,9 @@
 #include "messagequeue.h"
 #include "scalars.h"
 
-#define VISTLE_SHM_IMPL
+#ifndef TEMPLATES_IN_HEADERS
+#define VISTLE_IMPL
+#endif
 #include "shm.h"
 
 template<typename T>
@@ -49,6 +51,32 @@ Shm* Shm::s_singleton = NULL;
 #ifdef SHMDEBUG
 shm<ShmDebugInfo>::vector *Shm::s_shmdebug = NULL;
 #endif
+
+shm_name_t::shm_name_t(const std::string &s) {
+
+   size_t len = s.size();
+   assert(len < sizeof(name));
+   if (len >= sizeof(name))
+      len = sizeof(name)-1;
+   strncpy(name, &s[0], len);
+   name[len] = '\0';
+}
+
+shm_name_t::operator const char *() const {
+   return name;
+}
+
+shm_name_t::operator char *() {
+   return name;
+}
+
+shm_name_t::operator std::string () const {
+   return name;
+}
+
+std::string operator+(const std::string &s, const shm_name_t &n) {
+   return s + n.name;
+}
 
 Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
          message::MessageQueue * mq, bool create)

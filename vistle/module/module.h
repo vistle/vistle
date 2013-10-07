@@ -244,4 +244,7 @@ protected:
    std::cerr << "   continuing..." << std::endl;
 #endif
 
+#ifdef VISTLE_IMPL
+#include "module_impl.h"
+#endif
 #endif

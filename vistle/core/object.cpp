@@ -11,13 +11,18 @@
 
 #include <util/tools.h>
 
+#ifndef TEMPLATES_IN_HEADERS
+#define VISTLE_IMPL
+#endif
+#include "object.h"
+#ifndef TEMPLATES_IN_HEADERS
+#undef VISTLE_IMPL
+#endif
+
 #include "message.h"
 #include "messagequeue.h"
 #include "shm.h"
 #include "archives.h"
-
-#include "object.h"
-#include "object_impl.h"
 
 template<typename T>
 static T min(T a, T b) { return a<b ? a : b; }
@@ -203,23 +208,6 @@ int Object::refcount() const {
 
 bool Object::isEmpty() const {
    return true;
-}
-
-template<class Archive>
-void Object::save(Archive &ar) const {
-
-   ObjectTypeRegistry::registerArchiveType(ar);
-   const Object *p = this;
-   ar & V_NAME("object", p);
-}
-
-template<class Archive>
-Object::ptr Object::load(Archive &ar) {
-
-   ObjectTypeRegistry::registerArchiveType(ar);
-   Object *p = NULL;
-   ar & V_NAME("object", p);
-   return Object::ptr(p);
 }
 
 namespace { 

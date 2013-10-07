@@ -252,6 +252,6 @@ class V_COREEXPORT ShmVector {
 
 #endif
 
-#ifdef VISTLE_SHM_IMPL
+#ifdef VISTLE_IMPL
 #include "shm_impl.h"
 #endif
