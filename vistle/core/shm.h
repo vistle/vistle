@@ -22,7 +22,7 @@ namespace vistle {
 
 typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 
-struct shm_name_t {
+struct V_COREEXPORT shm_name_t {
    char name[32];
    shm_name_t(const std::string &s = "INVALID");
 
