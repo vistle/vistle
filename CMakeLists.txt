@@ -49,6 +49,23 @@ include(cmake/Qt4-5.cmake)
 find_qt()
 endif()
 
+if(WIN32)
+    set(Boost_USE_STATIC_LIBS true)
+    set(BOOST_ROOT "$ENV{EXTERNLIBS}/boost")
+    STRING(REGEX REPLACE "\\\\" "/" BOOST_ROOT ${BOOST_ROOT}) 
+    set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
+    set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
+    add_definitions("-DOMPI_IMPORTS")
+endif(WIN32)
+
+find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
+add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
+
+find_package(MPI REQUIRED)
+include_directories(${MPI_INCLUDE_DIR})
+set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})
+set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
+
 add_subdirectory(3rdparty)
 add_subdirectory(vistle)
 
