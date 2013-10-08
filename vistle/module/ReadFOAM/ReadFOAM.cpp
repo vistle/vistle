@@ -79,6 +79,8 @@ using namespace vistle;
 
 ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
 : Module("ReadFoam", shmname, rank, size, moduleId)
+, m_gridOut(nullptr)
+, m_boundOut(nullptr)
 {
    // file browser parameter
    m_casedir = addStringParameter("casedir", "OpenFOAM case directory",

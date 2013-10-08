@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
+#include <map>
 
 #include <util/findself.h>
 

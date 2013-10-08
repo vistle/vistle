@@ -58,7 +58,7 @@ class V_CONTROLEXPORT UiManager {
 
    typedef std::map<boost::thread *, UiClient *> ThreadMap;
    ThreadMap m_threads;
-   int m_uiCount = 0;
+   int m_uiCount;
 };
 
 } // namespace vistle

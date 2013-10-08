@@ -52,8 +52,8 @@ public:
 
 private:
    vistle::UserInterface &m_ui;
-   bool m_done = false;
-   bool m_quitOnExit = false;
+   bool m_done;
+   bool m_quitOnExit;
 
    typedef boost::recursive_mutex mutex;
    typedef mutex::scoped_lock mutex_lock;

@@ -70,8 +70,8 @@ class V_COREEXPORT Meta {
       int creator() const { return m_creator; }
       void setCreator(int id) { m_creator = id; }
    private:
-      int m_block=-1, m_numBlocks=-1, m_timestep=-1, m_numTimesteps=-1, m_animationstep=-1, m_numAnimationsteps=-1, m_iteration=-1, m_executionCount=-1, m_creator=-1;
-      double m_realtime = 0.;
+      int m_block, m_numBlocks, m_timestep, m_numTimesteps, m_animationstep, m_numAnimationsteps, m_iteration, m_executionCount, m_creator;
+      double m_realtime;
 
       friend class boost::serialization::access;
       template<class Archive>

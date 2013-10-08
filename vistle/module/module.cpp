@@ -89,7 +89,7 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
    }
 
  private:
-   Module *m_module = nullptr;
+   Module *m_module;
    std::vector<char> m_buf;
 };
 
@@ -105,6 +105,8 @@ Module::Module(const std::string &n, const std::string &shmname,
 , m_executionCount(0)
 , m_defaultCacheMode(ObjectCache::CacheNone)
 , m_syncMessageProcessing(false)
+, m_streambuf(nullptr)
+, m_origStreambuf(nullptr)
 {
 #ifdef _WIN32
     WSADATA wsaData;

@@ -64,6 +64,7 @@ UiManager::UiManager(boost::shared_ptr<message::MessageQueue> commandQueue, unsi
 , m_port(port)
 , m_requestQuit(false)
 , m_acceptor(m_ioService)
+, m_uiCount(0)
 {
 
    startServer();

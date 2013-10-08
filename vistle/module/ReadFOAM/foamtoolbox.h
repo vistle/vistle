@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <limits>
 
 #include <boost/shared_ptr.hpp>
 

@@ -36,7 +36,10 @@ VistleConnection *VistleConnection::s_instance = nullptr;
 // begin class VistleConnection
 /*************************************************************************/
 
-VistleConnection::VistleConnection(vistle::UserInterface &ui) : m_ui(ui)
+VistleConnection::VistleConnection(vistle::UserInterface &ui)
+: m_ui(ui)
+, m_done(false)
+, m_quitOnExit(false)
 {
    assert(s_instance == nullptr);
    s_instance = this;

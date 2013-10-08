@@ -25,7 +25,7 @@ class Extrema: public vistle::Module {
    int dim;
    bool handled;
    ParamVector min, max, gmin, gmax;
-   int m_lastExecutionCount = -1;
+   int m_lastExecutionCount;
 
    virtual bool compute();
 
@@ -74,7 +74,9 @@ class Extrema: public vistle::Module {
 using namespace vistle;
 
 Extrema::Extrema(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("Extrema", shmname, rank, size, moduleID) {
+   : Module("Extrema", shmname, rank, size, moduleID)
+   , m_lastExecutionCount(-1)
+{
 
    setSchedulingPolicy(message::SchedulingPolicy::LazyGang);
 

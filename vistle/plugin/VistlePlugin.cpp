@@ -84,6 +84,8 @@ class OsgRenderer: public vistle::Renderer {
    struct Creator {
       Creator(int id, const std::string &basename, osg::ref_ptr<osg::Group> parent)
       : id(id)
+      , age(0)
+      , interactor(nullptr)
       {
          std::stringstream s;
          s << basename << "_" << id;
@@ -102,10 +104,10 @@ class OsgRenderer: public vistle::Renderer {
 
          VRSceneGraph::instance()->addNode(root, parent, NULL);
       }
-      int id = 0;
-      int age = 0;
+      int id;
+      int age;
       std::string name;
-      VistleInteractor *interactor = nullptr;
+      VistleInteractor *interactor;
       osg::ref_ptr<osg::Group> root;
       osg::ref_ptr<osg::Group> constant;
       osg::ref_ptr<osg::Sequence> animated;
@@ -342,9 +344,13 @@ void OsgRenderer::render() {
    for (size_t i=0; i<m_delayedObjects.size(); ++i) {
       auto &node_future = m_delayedObjects[i].node_future;
       auto status = node_future.wait_for(std::chrono::seconds(0));
-      if (status != std::future_status::ready) {
+#if defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6)
+      if (!status)
          break;
-      }
+#else
+      if (status != std::future_status::ready)
+         break;
+#endif
       ++numReady;
    }
 
@@ -394,12 +400,13 @@ class VistlePlugin: public opencover::coVRPlugin {
    void requestQuit(bool killSession);
 
  private:
-   OsgRenderer *m_module = nullptr;
+   OsgRenderer *m_module;
 };
 
 using opencover::coCommandLine;
 
 VistlePlugin::VistlePlugin()
+: m_module(nullptr)
 {
    if (coCommandLine::argc() < 3) {
       throw(vistle::exception("at least 2 command line arguments required"));

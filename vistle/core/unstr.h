@@ -31,7 +31,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
          const Index numVertices,
          const Meta &meta=Meta());
 
-   array<unsigned char> &tl() const { return *(*d()->tl)(); }
+   typename shm<unsigned char>::array &tl() const { return *(*d()->tl)(); }
 
    V_DATA_BEGIN(UnstructuredGrid);
       ShmVector<unsigned char>::ptr tl;

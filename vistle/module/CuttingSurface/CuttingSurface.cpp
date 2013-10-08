@@ -84,20 +84,20 @@ class PlaneCut {
    Vector m_normal;
    Scalar m_distance;
 
-   unsigned char *tl = NULL;
-   Index *el = NULL;
-   Index *cl = NULL;
-   const Scalar *x = NULL;
-   const Scalar *y = NULL;
-   const Scalar *z = NULL;
+   unsigned char *tl;
+   Index *el;
+   Index *cl;
+   const Scalar *x;
+   const Scalar *y;
+   const Scalar *z;
 
-   const Scalar *d = NULL;
+   const Scalar *d;
 
-   Index *out_cl = NULL;
-   Scalar *out_x = NULL;
-   Scalar *out_y = NULL;
-   Scalar *out_z = NULL;
-   Scalar *out_d = NULL;
+   Index *out_cl;
+   Scalar *out_x;
+   Scalar *out_y;
+   Scalar *out_z;
+   Scalar *out_d;
 
    Triangles::ptr m_triangles;
    Vec<Scalar>::ptr m_outData;
@@ -106,7 +106,20 @@ class PlaneCut {
    PlaneCut(UnstructuredGrid::const_ptr grid, const Vector &normal, const Scalar distance)
    : m_grid(grid)
    , m_normal(normal)
-   , m_distance(distance) {
+   , m_distance(distance)
+   , tl(nullptr)
+   , el(nullptr)
+   , cl(nullptr)
+   , x(nullptr)
+   , y(nullptr)
+   , z(nullptr)
+   , d(nullptr)
+   , out_cl(nullptr)
+   , out_x(nullptr)
+   , out_y(nullptr)
+   , out_z(nullptr)
+   , out_d(nullptr)
+   {
 
       tl = &grid->tl()[0];
       el = &grid->el()[0];

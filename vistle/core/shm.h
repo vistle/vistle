@@ -66,12 +66,14 @@ class shm_array {
 
  public: 
    typedef T value_type;
-   shm_array(const allocator &alloc = allocator()) : m_allocator(alloc) {}
-   shm_array(const size_t size, const allocator &alloc = allocator()) : m_allocator(alloc) { resize(size); }
-   shm_array(const size_t size, const T &value, const allocator &alloc = allocator()) : m_allocator(alloc) { resize(size, value); }
+   shm_array(const allocator &alloc = allocator()) : m_size(0), m_capacity(0), m_data(nullptr), m_allocator(alloc) {}
+   shm_array(const size_t size, const allocator &alloc = allocator()) : m_size(0), m_capacity(0), m_data(nullptr), m_allocator(alloc) { resize(size); }
+   shm_array(const size_t size, const T &value, const allocator &alloc = allocator()) : m_size(0), m_capacity(0), m_data(nullptr), m_allocator(alloc) { resize(size, value); }
+#if 0
    template< class InputIt >
       shm_array( InputIt first, InputIt last, 
             const allocator &alloc = allocator() );
+#endif
    shm_array(const shm_array &other);
    shm_array &operator=(const shm_array &rhs);
    ~shm_array() { m_allocator.deallocate(m_data, m_capacity); }
@@ -99,9 +101,9 @@ class shm_array {
    void reserve(const size_t size) { pointer new_data = m_allocator.allocate(size); if (m_data) ::memcpy(&*new_data, &*m_data, m_size*sizeof(T)); m_allocator.deallocate(m_data, m_capacity); m_data = new_data; m_capacity = size; }
 
  private:
-   size_t m_size = 0;
-   size_t m_capacity = 0;
-   pointer m_data = NULL;
+   size_t m_size;
+   size_t m_capacity;
+   pointer m_data;
    allocator m_allocator;
 
    friend class boost::serialization::access;

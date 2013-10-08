@@ -25,16 +25,16 @@
 
 class ReadFOAM: public vistle::Module
 {
-   const int NumPorts = 3;
+   static const int NumPorts = 3;
  public:
       virtual bool compute();
       ReadFOAM(const std::string &shmname, int rank, int size, int moduleId);
       virtual ~ReadFOAM();
 
    private:
-      vistle::Port *m_gridOut = nullptr, *m_boundOut;
-      std::vector<vistle::Port *> m_dataOut;
-      vistle::StringParameter *m_casedir = nullptr;
+      vistle::Port *m_gridOut, *m_boundOut;
+      std::vector<vistle::Port *> m_dataOut, m_data2dOut;
+      vistle::StringParameter *m_casedir;
       vistle::FloatParameter *m_starttime, *m_stoptime;
       vistle::IntParameter *m_timeskip;
       std::vector<vistle::StringParameter *> m_fieldOut;

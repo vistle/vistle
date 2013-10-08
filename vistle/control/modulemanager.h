@@ -101,17 +101,18 @@ class V_CONTROLEXPORT ModuleManager {
    const std::vector<std::string> m_hosts;
 
    struct Module {
-      message::MessageQueue *sendQueue = NULL;
-      message::MessageQueue *recvQueue = NULL;
+      message::MessageQueue *sendQueue;
+      message::MessageQueue *recvQueue;
 
+      Module(): sendQueue(nullptr), recvQueue(nullptr), local(false), baseRank(0), objectPolicy(message::ObjectReceivePolicy::Single), schedulingPolicy(message::SchedulingPolicy::Single) {}
       ~Module() {
          delete sendQueue;
          delete recvQueue;
       }
-      bool local = false;
-      int baseRank = 0;
-      message::ObjectReceivePolicy::Policy objectPolicy = message::ObjectReceivePolicy::Single;
-      message::SchedulingPolicy::Policy schedulingPolicy = message::SchedulingPolicy::Single;
+      bool local;
+      int baseRank;
+      message::ObjectReceivePolicy::Policy objectPolicy;
+      message::SchedulingPolicy::Policy schedulingPolicy;
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;
