@@ -5,6 +5,8 @@
 #ifndef _WIN32
 #include <execinfo.h>
 #include <unistd.h>
+#else
+#include <Windows.h>
 #endif
 
 #include "tools.h"
