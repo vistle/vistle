@@ -20,7 +20,7 @@
 
 #include <vector>
 #include <string>
-#include <core/index.h>
+#include <core/Index.h>
 
 #include "export.h"
 
@@ -31,7 +31,7 @@ class V_UTILEXPORT coRestraint
 {
    private:
       bool all;
-      mutable std::vector<index> values, min, max;
+      mutable std::vector<Index> values, min, max;
       mutable bool changed, stringCurrent;
       mutable std::string restraintString;
 
@@ -39,20 +39,20 @@ class V_UTILEXPORT coRestraint
       coRestraint();
       ~coRestraint();
 
-      void add(index mi, index ma);
-      void add(index val);
+      void add(Index mi, Index ma);
+      void add(Index val);
       void add(const std::string &selection);
-      bool get(index val, index &group) const;
+      bool get(Index val, Index &group) const;
       size_t getNumGroups() const {return min.size();};
       void clear();
-      const std::vector<index> &getValues() const;
-      index lower() const;
-      index upper() const;
+      const std::vector<Index> &getValues() const;
+      Index lower() const;
+      Index upper() const;
       const std::string &getRestraintString() const;
-      const std::string getRestraintString(std::vector<index>) const;
+      const std::string getRestraintString(std::vector<Index>) const;
 
       // operators
-      bool operator ()(index val) const;
+      bool operator ()(Index val) const;
 };
 
 }
