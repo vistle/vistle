@@ -4,8 +4,13 @@
 #include <iostream>
 #include <cstring>
 #include <cstdlib>
+#ifndef _WIN32
 #include <unistd.h>
 #include <dirent.h>
+#else
+#include <direct.h>
+#include <windows.h>
+#endif
 #include <errno.h>
 
 namespace vistle {
