@@ -21,7 +21,7 @@ public slots:
    virtual int exec();
 
 private:
-   QPushButton *m_discardButton = nullptr;
+   QPushButton *m_discardButton;
 };
 
 } // namespace gui

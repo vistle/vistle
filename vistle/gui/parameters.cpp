@@ -43,7 +43,18 @@ static M *addPropertyManager(Parameters *p) {
 }
 
 Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
-   : Parameters::PropertyBrowser(parent)
+: Parameters::PropertyBrowser(parent)
+, m_moduleId(0)
+, m_vistle(nullptr)
+, m_internalGroup(nullptr)
+, m_groupManager(nullptr)
+, m_boolManager(nullptr)
+, m_intManager(nullptr)
+, m_floatManager(nullptr)
+, m_stringManager(nullptr)
+, m_stringChoiceManager(nullptr)
+, m_intChoiceManager(nullptr)
+, m_vectorManager(nullptr)
 {
    m_groupManager = new QtGroupPropertyManager(this); // no change notifications
 

@@ -47,7 +47,7 @@ static bp::object glb, loc;
 static QString resultString;
 
 class Redirector {
-   bool m_stderr = false;
+   bool m_stderr;
 
 public:
    Redirector(bool error = false)

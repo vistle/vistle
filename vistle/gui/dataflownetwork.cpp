@@ -24,6 +24,10 @@ namespace gui {
  */
 DataFlowNetwork::DataFlowNetwork(vistle::VistleConnection *conn, QObject *parent)
 : QGraphicsScene(parent)
+, m_Line(nullptr)
+, startPort(nullptr)
+, startModule(nullptr)
+, endModule(nullptr)
 , m_vistleConnection(conn)
 {
     // Initialize starting scene information.

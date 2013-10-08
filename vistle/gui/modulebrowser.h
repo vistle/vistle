@@ -37,7 +37,7 @@ public:
    void setModules(const QStringList &modules);
 
 private:
-   Ui::ModuleBrowser *ui = nullptr;
+   Ui::ModuleBrowser *ui;
 };
 
 } // namespace gui

@@ -48,12 +48,12 @@ private slots:
     void parameterValueChanged(int moduleId, QString parameterName);
 
 private:
-    vistle::VistleConnection *m_vistleConnection = nullptr;
-    vistle::UserInterface *m_ui = nullptr;
-    vistle::PythonInterface *m_python = nullptr;
-    vistle::PythonModule *m_pythonMod = nullptr;
-    boost::thread *m_thread = nullptr;
-    DataFlowNetwork *m_scene = nullptr;
+    vistle::VistleConnection *m_vistleConnection;
+    vistle::UserInterface *m_ui;
+    vistle::PythonInterface *m_python;
+    vistle::PythonModule *m_pythonMod;
+    boost::thread *m_thread;
+    DataFlowNetwork *m_scene;
 
     VistleObserver m_observer;
     MainWindow m_mainWindow;

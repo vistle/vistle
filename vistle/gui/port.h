@@ -18,7 +18,7 @@ class Port: public QObject, public QGraphicsRectItem
    typedef QGraphicsRectItem Base;
 
 public:
-   static const double constexpr portSize = 14.;
+   static const double portSize;
 
    enum Type {
       Parameter,
@@ -49,9 +49,9 @@ private:
     void createGeometry();
 
     Type m_portType;						//< type of port
-    vistle::Port *m_port = nullptr;
+    vistle::Port *m_port;
     QColor m_color;
-    Module *m_module = nullptr;
+    Module *m_module;
 };
 
 } //namespace gui
