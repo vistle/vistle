@@ -2,7 +2,9 @@
  * initialization of static OpenSceneGraph objects happens */
 
 #include <mpi.h>
+#ifndef _WIN32
 #include <dlfcn.h>
+#endif
 #include <iostream>
 #include <vector>
 #include <cstdlib>
