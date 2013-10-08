@@ -33,20 +33,20 @@ class PlaneClip {
    Vector m_point;
    Vector m_normal;
 
-   Index *el = NULL;
-   Index *cl = NULL;
-   const Scalar *x = NULL;
-   const Scalar *y = NULL;
-   const Scalar *z = NULL;
+   Index *el;
+   Index *cl;
+   const Scalar *x;
+   const Scalar *y;
+   const Scalar *z;
 
-   const Scalar *d = NULL;
+   const Scalar *d;
 
-   Index *out_cl = NULL;
-   Index *out_el = NULL;
-   Scalar *out_x = NULL;
-   Scalar *out_y = NULL;
-   Scalar *out_z = NULL;
-   Scalar *out_d = NULL;
+   Index *out_cl;
+   Index *out_el;
+   Scalar *out_x;
+   Scalar *out_y;
+   Scalar *out_z;
+   Scalar *out_d;
 
    // mapping from vertex indices in the incoming object to
    // vertex indices in the outgoing object
@@ -59,7 +59,20 @@ class PlaneClip {
    PlaneClip(Polygons::const_ptr grid, const Vector &point, const Vector &normal)
       : m_grid(grid)
       , m_point(point)
-      , m_normal(normal) {
+      , m_normal(normal)
+      , el(nullptr)
+      , cl(nullptr)
+      , x(nullptr)
+      , y(nullptr)
+      , z(nullptr)
+      , d(nullptr)
+      , out_cl(nullptr)
+      , out_el(nullptr)
+      , out_x(nullptr)
+      , out_y(nullptr)
+      , out_z(nullptr)
+      , out_d(nullptr)
+      {
 
          el = &grid->el()[0];
          cl = &grid->cl()[0];

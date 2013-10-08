@@ -20,6 +20,7 @@ class V_COREEXPORT Vec: public Object {
 
  public:
    typedef Object Base;
+   typedef typename shm<T>::array array;
 
    Vec(const Index size,
         const Meta &meta=Meta());
@@ -32,10 +33,10 @@ class V_COREEXPORT Vec: public Object {
 
    static Type type();
 
-   array<T> &x(int c=0) const { return *(*d()->x[c])(); }
-   array<T> &y() const { return *(*d()->x[1])(); }
-   array<T> &z() const { return *(*d()->x[2])(); }
-   array<T> &w() const { return *(*d()->x[3])(); }
+   array &x(int c=0) const { return *(*d()->x[c])(); }
+   array &y() const { return *(*d()->x[1])(); }
+   array &z() const { return *(*d()->x[2])(); }
+   array &w() const { return *(*d()->x[3])(); }
 
    struct Data: public Base::Data {
 

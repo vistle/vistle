@@ -18,7 +18,7 @@ class V_COREEXPORT Triangles: public Coords {
    Index getNumCorners() const;
    Index getNumVertices() const;
 
-   array<Index> &cl() const { return *(*d()->cl)(); }
+   typename shm<Index>::array &cl() const { return *(*d()->cl)(); }
 
    V_DATA_BEGIN(Triangles);
       ShmVector<Index>::ptr cl;

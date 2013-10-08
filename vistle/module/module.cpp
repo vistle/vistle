@@ -30,6 +30,9 @@
 #include <core/objectcache.h>
 #include <core/port.h>
 
+#ifndef TEMPLATES_IN_HEADERS
+#define VISTLE_IMPL
+#endif
 #include "module.h"
 
 using namespace boost::interprocess;
@@ -86,7 +89,7 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
    }
 
  private:
-   Module *m_module = nullptr;
+   Module *m_module;
    std::vector<char> m_buf;
 };
 
@@ -102,6 +105,8 @@ Module::Module(const std::string &n, const std::string &shmname,
 , m_executionCount(0)
 , m_defaultCacheMode(ObjectCache::CacheNone)
 , m_syncMessageProcessing(false)
+, m_streambuf(nullptr)
+, m_origStreambuf(nullptr)
 {
 #ifdef _WIN32
     WSADATA wsaData;
@@ -380,89 +385,6 @@ Parameter *Module::findParameter(const std::string &name) const {
       return NULL;
 
    return i->second;
-}
-
-template<class T>
-bool Module::setParameter(const std::string &name, const T &value, const message::SetParameter *inResponseTo) {
-
-   ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(findParameter(name));
-   if (!p)
-      return false;
-
-   return setParameter(p, value, inResponseTo);
-}
-
-template<class T>
-bool Module::setParameter(ParameterBase<T> *param, const T &value, const message::SetParameter *inResponseTo) {
-
-   param->setValue(value);
-   parameterChanged(param);
-   return updateParameter(param->getName(), param, inResponseTo);
-}
-
-template<class T>
-bool Module::setParameterMinimum(ParameterBase<T> *param, const T &minimum) {
-
-   return Module::setParameterRange(param, minimum, param->maximum());
-}
-
-template<class T>
-bool Module::setParameterMaximum(ParameterBase<T> *param, const T &maximum) {
-
-   return Module::setParameterRange(param, param->minimum(), maximum);
-}
-
-template<class T>
-bool Module::setParameterRange(const std::string &name, const T &minimum, const T &maximum) {
-
-   ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(findParameter(name));
-   if (!p)
-      return false;
-
-   return setParameterRange(p, minimum, maximum);
-}
-
-template<class T>
-bool Module::setParameterRange(ParameterBase<T> *param, const T &minimum, const T &maximum) {
-
-   bool ok = true;
-
-   if (maximum > minimum) {
-      param->setMinimum(minimum);
-      param->setMaximum(maximum);
-   } else {
-      std::cerr << "range for parameter " << param->getName() << " swapped" << std::endl;
-      param->setMinimum(maximum);
-      param->setMaximum(minimum);
-   }
-   T value = param->getValue();
-   if (value < param->minimum()) {
-      std::cerr << "value for parameter " << param->getName() << " increased to minimum: " << param->minimum() << std::endl;
-      param->setValue(param->minimum());
-      ok &= updateParameter(param->getName(), param, nullptr);
-   }
-   if (value > param->maximum()) {
-      std::cerr << "value for parameter " << param->getName() << " decreased to maximum: " << param->maximum() << std::endl;
-      param->setValue(param->maximum());
-      ok &= updateParameter(param->getName(), param, nullptr);
-   }
-   ok &= updateParameter(param->getName(), param, nullptr, Parameter::Minimum);
-   ok &= updateParameter(param->getName(), param, nullptr, Parameter::Maximum);
-   return ok;
-}
-
-template<class T>
-bool Module::getParameter(const std::string &name, T &value) const {
-
-   if (ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(findParameter(name))) {
-      value = p->getValue();
-   } else {
-      std::cerr << "Module::getParameter(" << name << "): type failure" << std::endl;
-      assert("dynamic_cast failed" == 0);
-      return false;
-   }
-
-   return true;
 }
 
 StringParameter *Module::addStringParameter(const std::string & name, const std::string &description,

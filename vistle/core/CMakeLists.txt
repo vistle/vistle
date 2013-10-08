@@ -6,18 +6,6 @@ set(core_SOURCES
    objectcache.cpp
    objectmeta.cpp
    object.cpp
-   allobjects.cpp # just one file including all the others for faster compilation
-   #vec.cpp
-   #coords.cpp
-   #points.cpp
-   #indexed.cpp
-   #lines.cpp
-   #triangles.cpp
-   #polygons.cpp
-   #unstr.cpp
-   #set.cpp
-   #geometry.cpp
-   #texture1d.cpp
    message.cpp
    messagequeue.cpp
    tcpmessage.cpp
@@ -27,7 +15,28 @@ set(core_SOURCES
    vector.cpp
    porttracker.cpp
    statetracker.cpp
+   allobjects.cpp
 )
+
+if(${TEMPLATES_IN_HEADERS})
+   # but just one file including all the others for faster compilation
+   set(core_SOURCES ${core_SOURCES}
+      vec.cpp
+      coords.cpp
+      points.cpp
+      indexed.cpp
+      lines.cpp
+      triangles.cpp
+      polygons.cpp
+      unstr.cpp
+      geometry.cpp
+      texture1d.cpp
+      placeholder.cpp
+   )
+else()
+   set(core_SOURCES ${core_SOURCES}
+   )
+endif()
 
 set(core_HEADERS
    archives.h

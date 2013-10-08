@@ -5,6 +5,12 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${PROJECT_SOURCE_DIR}/cmake/Modules/
 
 enable_testing()
 
+option(TEMPLATES_IN_HEADERS "define templates in headers" OFF)
+if(${TEMPLATES_IN_HEADERS})
+   add_definitions(-DTEMPLATES_IN_HEADERS)
+   add_definitions(-DVISTLE_IMPL)
+endif()
+
 macro(USE_OPENMP)
     if(NOT APPLE)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
@@ -14,23 +20,6 @@ macro(USE_OPENMP)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
     endif()
 endmacro(USE_OPENMP)
-
-if(WIN32)
-    set(Boost_USE_STATIC_LIBS true)
-    set(BOOST_ROOT "$ENV{EXTERNLIBS}/boost")
-    STRING(REGEX REPLACE "\\\\" "/" BOOST_ROOT ${BOOST_ROOT}) 
-    set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
-    set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
-    add_definitions("-DOMPI_IMPORTS")
-endif(WIN32)
-
-find_package(Boost 1.40 REQUIRED COMPONENTS date_time)
-add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
-
-find_package(MPI REQUIRED)
-include_directories(${MPI_INCLUDE_DIR})
-set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})
-set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -51,7 +40,7 @@ else(WIN32)
    set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} -Wall -Wno-unknown-pragmas")
 endif(WIN32)
 
-set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Debug)
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)

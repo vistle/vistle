@@ -5,7 +5,9 @@
 
 #include "scalars.h"
 
-#define VISTLE_VECTOR_IMPL
+#ifndef TEMPLATES_IN_HEADERS
+#define VISTLE_IMPL
+#endif
 #include "paramvector.h"
 
 namespace vistle {

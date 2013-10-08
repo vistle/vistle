@@ -10,17 +10,5 @@ void Coords::Data::serialize(Archive &ar, const unsigned int version) {
 
 } // namespace vistle
 
-namespace boost {
-namespace serialization {
-
-template<>
-void access::destroy(const vistle::Object *t);
-
-template<>
-void access::construct(vistle::Object *t);
-
-} // namespace serialization
-} // namespace boost
-
 #endif
 

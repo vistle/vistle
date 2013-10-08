@@ -188,7 +188,7 @@ protected:
    typedef std::map<int, std::string> OtherModuleMap;
    OtherModuleMap m_otherModuleMap;
 
-   std::streambuf *m_origStreambuf = nullptr, *m_streambuf = nullptr;
+   std::streambuf *m_origStreambuf, *m_streambuf;
 };
 
 } // namespace vistle
@@ -244,4 +244,7 @@ protected:
    std::cerr << "   continuing..." << std::endl;
 #endif
 
+#ifdef VISTLE_IMPL
+#include "module_impl.h"
+#endif
 #endif

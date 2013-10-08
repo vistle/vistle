@@ -43,7 +43,7 @@ class V_UIEXPORT UserInterface {
  protected:
 
    std::string m_hostname;
-   int m_id = -1;
+   int m_id;
 
    PortTracker m_portTracker;
    StateTracker m_stateTracker;
@@ -56,11 +56,13 @@ class V_UIEXPORT UserInterface {
    struct RequestedMessage {
       boost::mutex mutex;
       boost::condition_variable cond;
-      bool received = false;
+      bool received;
       std::vector<char> buf;
+
+      RequestedMessage(): received(false) {}
    };
 
-   typedef std::map<message::Message::uuid_t, RequestedMessage> MessageMap;
+   typedef std::map<message::Message::uuid_t, boost::shared_ptr<RequestedMessage>> MessageMap;
    MessageMap m_messageMap;
    boost::mutex m_messageMutex; //< protect access to m_messageMap
 };

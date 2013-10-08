@@ -1,7 +1,7 @@
 // fewer files compile faster
+#ifndef TEMPLATES_IN_HEADERS
 
 #define VISTLE_IMPL
-
 #include "vec.cpp"
 #include "coords.cpp"
 #include "points.cpp"
@@ -13,6 +13,22 @@
 #include "geometry.cpp"
 #include "texture1d.cpp"
 #include "placeholder.cpp"
+
+#else
+
+#include "vec.h"
+#include "coords.h"
+#include "points.h"
+#include "indexed.h"
+#include "lines.h"
+#include "triangles.h"
+#include "polygons.h"
+#include "unstr.h"
+#include "geometry.h"
+#include "texture1d.h"
+#include "placeholder.h"
+
+#endif
 
 namespace {
    using namespace vistle;

@@ -22,7 +22,8 @@ namespace asio = boost::asio;
 namespace vistle {
 
 UserInterface::UserInterface(const std::string &host, const unsigned short port, StateObserver *observer)
-: m_stateTracker(&m_portTracker)
+: m_id(-1)
+, m_stateTracker(&m_portTracker)
 {
    message::DefaultSender::init(0, 0);
 
@@ -109,12 +110,12 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
 
    {
       boost::mutex::scoped_lock lock(m_messageMutex);
-      MessageMap::iterator it = m_messageMap.find(message->uuid());
+      MessageMap::iterator it = m_messageMap.find(const_cast<message::Message::uuid_t &>(message->uuid()));
       if (it != m_messageMap.end()) {
-         it->second.buf.resize(message->size());
-         memcpy(it->second.buf.data(), message, message->size());
-         it->second.received = true;
-         it->second.cond.notify_all();
+         it->second->buf.resize(message->size());
+         memcpy(it->second->buf.data(), message, message->size());
+         it->second->received = true;
+         it->second->cond.notify_all();
       }
    }
 
@@ -145,7 +146,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
 bool UserInterface::getLockForMessage(const message::Message::uuid_t &uuid) {
 
    boost::mutex::scoped_lock lock(m_messageMutex);
-   m_messageMap[uuid].mutex.lock();
+   m_messageMap[const_cast<message::Message::uuid_t &>(uuid)]->mutex.lock();
    return true;
 }
 
@@ -157,9 +158,9 @@ bool UserInterface::getMessage(const message::Message::uuid_t &uuid, message::Me
       return false;
    }
 
-   if (!it->second.received) {
-      boost::mutex &mutex = it->second.mutex;
-      boost::condition_variable &cond = it->second.cond;
+   if (!it->second->received) {
+      boost::mutex &mutex = it->second->mutex;
+      boost::condition_variable &cond = it->second->cond;
       boost::unique_lock<boost::mutex> lock(mutex, boost::adopt_lock_t());
 
       m_messageMutex.unlock();
@@ -167,12 +168,12 @@ bool UserInterface::getMessage(const message::Message::uuid_t &uuid, message::Me
       m_messageMutex.lock();
    }
 
-   if (!it->second.received) {
+   if (!it->second->received) {
       m_messageMutex.unlock();
       return false;
    }
 
-   memcpy(&msg, &*it->second.buf.data(), it->second.buf.size());
+   memcpy(&msg, &*it->second->buf.data(), it->second->buf.size());
    m_messageMap.erase(it);
    m_messageMutex.unlock();
    return true;

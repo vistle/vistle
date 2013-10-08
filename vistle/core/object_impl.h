@@ -1,15 +1,7 @@
 #ifndef OBJECT_IMPL_H
 #define OBJECT_IMPL_H
 
-// include headers that implement an archive in simple text format
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/xml_oarchive.hpp>
-#include <boost/archive/xml_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
-
-
+#include "archives.h"
 #include "serialize.h"
 
 BOOST_CLASS_IMPLEMENTATION(vistle::shm<char>::string, boost::serialization::primitive_type)
@@ -34,6 +26,14 @@ void access::destroy(const vistle::Object::Data::AttributeMapValueType *t);
 
 template<>
 void access::construct(vistle::Object::Data::AttributeMapValueType *t);
+
+#if 0
+template<>
+void access::destroy(const vistle::Object *t);
+
+template<>
+void access::construct(vistle::Object *t);
+#endif
 
 } // namespace serialization
 } // namespace boost
@@ -61,6 +61,23 @@ void Object::Data::serialize(Archive &ar, const unsigned int version) {
    }
    assert(checktype2 == type);
 #endif
+}
+
+template<class Archive>
+void Object::save(Archive &ar) const {
+
+   ObjectTypeRegistry::registerArchiveType(ar);
+   const Object *p = this;
+   ar & V_NAME("object", p);
+}
+
+template<class Archive>
+Object::ptr Object::load(Archive &ar) {
+
+   ObjectTypeRegistry::registerArchiveType(ar);
+   Object *p = NULL;
+   ar & V_NAME("object", p);
+   return Object::ptr(p);
 }
 
 template<>

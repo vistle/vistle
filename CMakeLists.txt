@@ -29,13 +29,17 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -fPIC")
    endif()
 
-   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2 -mfxsr")
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse -msse2 -mfxsr")
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse -msse2")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse -msse2")
 
    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
    if (GCC_VERSION VERSION_GREATER 4.7 OR GCC_VERSION VERSION_EQUAL 4.7)
       set(CUDA_HOST_COMPILER ${CMAKE_SOURCE_DIR}/scripts/cuda-host-compiler CACHE STRING "CUDA nvcc host compiler" FORCE)
+
+      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfxsr")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mfxsr")
    endif()
+
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
    set(CMAKE_CXX_FLAGS "-std=c++11")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
@@ -48,6 +52,23 @@ set(DESKVOX_USE_QT4 ${COVISE_USE_QT4})
 include(cmake/Qt4-5.cmake)
 find_qt()
 endif()
+
+if(WIN32)
+    set(Boost_USE_STATIC_LIBS true)
+    set(BOOST_ROOT "$ENV{EXTERNLIBS}/boost")
+    STRING(REGEX REPLACE "\\\\" "/" BOOST_ROOT ${BOOST_ROOT}) 
+    set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
+    set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
+    add_definitions("-DOMPI_IMPORTS")
+endif(WIN32)
+
+find_package(Boost 1.40 REQUIRED thread)
+add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
+
+find_package(MPI REQUIRED)
+include_directories(${MPI_INCLUDE_DIR})
+set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})
+set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
 
 add_subdirectory(3rdparty)
 add_subdirectory(vistle)

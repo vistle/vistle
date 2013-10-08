@@ -13,6 +13,7 @@ Meta::Meta(int block, int timestep, int animstep, int iteration, int execcount, 
 , m_iteration(iteration)
 , m_executionCount(execcount)
 , m_creator(creator)
+, m_realtime(0.0)
 {
 }
 

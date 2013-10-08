@@ -14,6 +14,7 @@ class UiRunner {
  public:
    UiRunner(UserInterface &ui)
       : m_ui(ui)
+      , m_done(false)
       {
       }
    void cancel() {
@@ -34,7 +35,7 @@ class UiRunner {
 
  private:
    UserInterface &m_ui;
-   bool m_done = false;
+   bool m_done;
    boost::mutex m_mutex;
 };
 

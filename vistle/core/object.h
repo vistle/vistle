@@ -47,7 +47,6 @@ class V_COREEXPORT Object {
 public:
    typedef boost::shared_ptr<Object> ptr;
    typedef boost::shared_ptr<const Object> const_ptr;
-   template <typename T> using array = typename shm<T>::array;
    
    enum InitializedFlags {
       Initialized

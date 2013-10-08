@@ -108,6 +108,6 @@ V_COREEXPORT std::ostream &operator<<(std::ostream &out, const vistle::Parameter
 #endif // PARAMVECTOR_H
 
 
-#ifdef VISTLE_VECTOR_IMPL
+#ifdef VISTLE_IMPL
 #include "paramvector_impl.h"
 #endif

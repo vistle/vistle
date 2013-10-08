@@ -222,7 +222,7 @@ class V_COREEXPORT ModuleExit: public Message {
    bool isForwarded() const;
 
  private:
-   bool forwarded = false;
+   bool forwarded;
 };
 BOOST_STATIC_ASSERT(sizeof(ModuleExit) < Message::MESSAGE_SIZE);
 

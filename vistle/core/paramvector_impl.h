@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <cassert>
+#include <cstring>
 #include <limits>
 #include <boost/static_assert.hpp>
 
