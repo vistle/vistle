@@ -4,6 +4,7 @@
 #include <ostream>
 #include <vector>
 #include <cassert>
+#include <util/sysdep.h>
 #include "scalar.h"
 #include "dimensions.h"
 #include "exception.h"

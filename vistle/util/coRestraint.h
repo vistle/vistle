@@ -22,6 +22,7 @@
 #include <string>
 
 #include "export.h"
+#include "sysdep.h"
 
 namespace vistle
 {
