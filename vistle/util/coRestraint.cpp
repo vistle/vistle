@@ -44,7 +44,7 @@ coRestraint::~coRestraint()
 //==========================================================================
 //
 //==========================================================================
-void coRestraint::add(Index mi, Index ma)
+void coRestraint::add(ssize_t mi, ssize_t ma)
 {
    stringCurrent = false;
    changed = true;
@@ -57,7 +57,7 @@ void coRestraint::add(Index mi, Index ma)
 //==========================================================================
 //
 //==========================================================================
-void coRestraint::add(Index val)
+void coRestraint::add(ssize_t val)
 {
    stringCurrent = false;
    changed = true;
@@ -90,8 +90,8 @@ void coRestraint::add(const std::string &selection)
 
    while (*c) {
       int inc=0;
-      Index dumMax, dumMin;
-      Index numNumbers = sscanf(c,"%zd-%zd%n",&dumMin,&dumMax,&inc);
+      ssize_t dumMax, dumMin;
+      ssize_t numNumbers = sscanf(c,"%zd-%zd%n",&dumMin,&dumMax,&inc);
       if(numNumbers>0) {
          if(numNumbers==1) {
             dumMax=dumMin;
@@ -127,9 +127,9 @@ void coRestraint::clear()
 //==========================================================================
 //
 //==========================================================================
-Index coRestraint::lower() const
+ssize_t coRestraint::lower() const
 {
-   Index i=0, low;
+   ssize_t i=0, low;
    if (!min.empty())
       low = min[0];
    else
@@ -149,9 +149,9 @@ Index coRestraint::lower() const
 //==========================================================================
 //
 //==========================================================================
-Index coRestraint::upper() const
+ssize_t coRestraint::upper() const
 {
-   Index i=0, up;
+   ssize_t i=0, up;
    if (!max.empty())
       up = max[0];
    else
@@ -171,12 +171,12 @@ Index coRestraint::upper() const
 //==========================================================================
 //
 //==========================================================================
-bool coRestraint::operator ()(Index val) const
+bool coRestraint::operator ()(ssize_t val) const
 {
    if (all)
       return true;
 
-   Index i=0;
+   ssize_t i=0;
    while (i<min.size())
    {
       if ( (val>=min[i]) && (val<=max[i]) )
@@ -190,7 +190,7 @@ bool coRestraint::operator ()(Index val) const
 //==========================================================================
 //
 //==========================================================================
-bool coRestraint::get(Index val, Index &group) const
+bool coRestraint::get(ssize_t val, ssize_t &group) const
 {
    if (all) {
       group = -1;
@@ -221,21 +221,21 @@ const std::string &coRestraint::getRestraintString() const
    return restraintString;
 }
 
-const std::string coRestraint::getRestraintString(std::vector<Index> sortedValues) const
+const std::string coRestraint::getRestraintString(std::vector<ssize_t> sortedValues) const
 {
    if (all)
       return "all";
 
-   const Index size=sortedValues.size();
+   const ssize_t size=sortedValues.size();
    if (size == 0)
       return "";
 
    std::ostringstream restraintStream;
-   Index old=-1;
+   ssize_t old=-1;
    bool started=false, firsttime=true;
-   for(Index i=0; i<size; ++i)
+   for(ssize_t i=0; i<size; ++i)
    {
-      Index actual = sortedValues[i];
+      ssize_t actual = sortedValues[i];
       if (firsttime)
       {
          firsttime = false;
@@ -276,15 +276,15 @@ const std::string coRestraint::getRestraintString(std::vector<Index> sortedValue
 // returns an empty vector, if the evaluation of char array is 
 // not successful
 // 
-const std::vector<Index> &coRestraint::getValues() const
+const std::vector<ssize_t> &coRestraint::getValues() const
 {
    if (changed)
    {
       changed = false;
       values.clear();
       //getting the indices
-      Index counter = lower();
-      Index limit = upper();
+      ssize_t counter = lower();
+      ssize_t limit = upper();
       if (limit == -1 || counter == -1)
       {
          values.clear();
