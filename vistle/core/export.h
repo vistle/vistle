@@ -14,5 +14,3 @@
 #else
 #define V_CORETEMPLATE_EXPORT V_TEMPLATE_IMPORT
 #endif
-
-#endif
