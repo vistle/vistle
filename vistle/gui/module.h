@@ -28,7 +28,7 @@ class Module : public QObject, public QGraphicsRectItem
 
    typedef QGraphicsRectItem Base;
 
-   static const double constexpr portDistance = 3.;
+   static const double portDistance;
 
 signals:
     void mouseClickEvent();
@@ -96,17 +96,17 @@ private:
     QAction *m_deleteAct;
     QAction *m_execAct;
 
-    int m_id = 0;
+    int m_id;
     boost::uuids::uuid m_spawnUuid;
 
     ///\todo add data structure for the module information
     QString m_name;
-    Module::Status m_Status = SPAWNING;
-    bool m_validPosition = false;
+    Module::Status m_Status;
+    bool m_validPosition;
 
     QList<Port *> m_inPorts, m_outPorts, m_paramPorts;
     QColor m_color;
-    qreal m_fontHeight = 0.;
+    qreal m_fontHeight;
     std::map<vistle::Port *, Port *> m_vistleToGui;
     std::map<Port *, vistle::Port *> m_guiToVistle;
 

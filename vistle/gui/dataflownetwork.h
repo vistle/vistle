@@ -50,16 +50,16 @@ protected:
 
 private:
     QList<Module *> m_moduleList;                                 //< list of modules
-    QGraphicsLineItem *m_Line = nullptr;                        //< the intermediate line drawn between modules
+    QGraphicsLineItem *m_Line;                        //< the intermediate line drawn between modules
     QColor m_LineColor;                                         //< color of the line
     QPointF vLastPoint;                                         //< intermediate previous point for connection drawing
     bool m_mousePressed;                                           //< boolean for keeping track of if a click is made
-    Port *startPort = nullptr;                                  //< starting port for module connection
-    Module *startModule = nullptr;                              //< starting module for making connection
-    Module *endModule = nullptr;                                //< ending module for making connection
+    Port *startPort;                                  //< starting port for module connection
+    Module *startModule;                              //< starting module for making connection
+    Module *endModule;                                //< ending module for making connection
 
     ///\todo push this functionality to vHandler
-    vistle::VistleConnection *m_vistleConnection = nullptr;
+    vistle::VistleConnection *m_vistleConnection;
 
     struct ConnectionKey {
        ConnectionKey(Port *p1, Port *p2)
@@ -69,7 +69,7 @@ private:
              std::swap(port1, port2);
        }
 
-       Port *port1=nullptr, *port2=nullptr;
+       Port *port1, *port2;
 
        bool operator<(const ConnectionKey &c) const {
 

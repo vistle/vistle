@@ -5,6 +5,7 @@
 #include <vector>
 #include <utility> // std::pair
 
+#include <util/sysdep.h>
 #include <module/module.h>
 
 typedef std::vector<std::pair<std::string, std::string> > AttributeList;

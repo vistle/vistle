@@ -25,9 +25,12 @@ namespace gui {
  * \todo add more ports, that are connected from the handler. These will send feedback to the
  *       UI if an action has been completed. Current idea is a debug window
  */
-MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::MainWindow)
+MainWindow::MainWindow(QWidget *parent)
+   : QMainWindow(parent)
+   , ui(new Ui::MainWindow)
+   , m_console(nullptr)
+   , m_parameters(nullptr)
+   , m_moduleBrowser(nullptr)
 {
     // declare list of names of modules, pass to the scene
     ui->setupUi(this);

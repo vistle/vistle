@@ -9,6 +9,7 @@ namespace gui {
 
 ModifiedDialog::ModifiedDialog(const QString &reason, QWidget *parent)
 : QMessageBox(parent)
+, m_discardButton(nullptr)
 {
    setWindowModality(Qt::WindowModal);
 

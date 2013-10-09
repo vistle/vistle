@@ -17,6 +17,12 @@ namespace gui {
 
 UiController::UiController(int argc, char *argv[], QObject *parent)
 : QObject(parent)
+, m_vistleConnection(nullptr)
+, m_ui(nullptr)
+, m_python(nullptr)
+, m_pythonMod(nullptr)
+, m_thread(nullptr)
+, m_scene(nullptr)
 {
    std::string host = "localhost";
    unsigned short port = 8193;

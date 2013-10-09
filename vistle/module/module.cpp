@@ -23,6 +23,7 @@
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpl/transform.hpp>
 
+#include <util/sysdep.h>
 #include <core/object.h>
 #include <core/message.h>
 #include <core/messagequeue.h>

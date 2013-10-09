@@ -23,6 +23,7 @@
 #include <core/Index.h>
 
 #include "export.h"
+#include "sysdep.h"
 
 namespace vistle
 {

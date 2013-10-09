@@ -52,10 +52,10 @@ private slots:
 
 
 private:
-    Ui::MainWindow *ui = nullptr;
-    VistleConsole *m_console = nullptr;
-    Parameters *m_parameters = nullptr;
-    ModuleBrowser *m_moduleBrowser = nullptr;
+    Ui::MainWindow *ui;
+    VistleConsole *m_console;
+    Parameters *m_parameters;
+    ModuleBrowser *m_moduleBrowser;
 
     QList<QString> loadModuleFile();
 };

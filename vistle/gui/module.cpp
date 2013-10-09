@@ -23,6 +23,8 @@
 
 namespace gui {
 
+const double Module::portDistance = 3.;
+
 /*!
  * \brief Module::Module
  * \param parent
@@ -30,7 +32,12 @@ namespace gui {
  *
  * \todo move the generation of the ports and the main shape out of the constructor
  */
-Module::Module(QGraphicsItem *parent, QString name) : Base(parent)
+Module::Module(QGraphicsItem *parent, QString name)
+: Base(parent)
+, m_id(0)
+, m_validPosition(false)
+, m_Status(SPAWNING)
+, m_fontHeight(0.)
 {
    setName(name);
 

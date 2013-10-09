@@ -43,25 +43,25 @@ private slots:
    void propertyChanged(QtProperty *prop);
 
 private:
-   int m_moduleId = 0;
-   vistle::VistleConnection *m_vistle = nullptr;
+   int m_moduleId;
+   vistle::VistleConnection *m_vistle;
 
-   QtProperty *m_internalGroup = nullptr;
+   QtProperty *m_internalGroup;
    std::map<QString, QtProperty *> m_groups;
 
-   QtGroupPropertyManager *m_groupManager = nullptr;
-   QtBoolPropertyManager *m_boolManager = nullptr;
-   QtLongPropertyManager *m_intManager = nullptr;
-   QtDoublePropertyManager *m_floatManager = nullptr;
-   QtStringPropertyManager *m_stringManager = nullptr;
-   QtEnumPropertyManager *m_stringChoiceManager = nullptr;
-   QtEnumPropertyManager *m_intChoiceManager = nullptr;
-   QtVectorPropertyManager *m_vectorManager = nullptr;
+   QtGroupPropertyManager *m_groupManager;
+   QtBoolPropertyManager *m_boolManager;
+   QtLongPropertyManager *m_intManager;
+   QtDoublePropertyManager *m_floatManager;
+   QtStringPropertyManager *m_stringManager;
+   QtEnumPropertyManager *m_stringChoiceManager;
+   QtEnumPropertyManager *m_intChoiceManager;
+   QtVectorPropertyManager *m_vectorManager;
 
    std::map<QString, QtProperty *> m_paramToProp;
    std::map<QtProperty *, QString> m_propToParam;
 
-   bool m_ignorePropertyChanges = false;
+   bool m_ignorePropertyChanges;
 };
 
 } //namespace gui
