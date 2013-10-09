@@ -1,5 +1,5 @@
 
-#include <util/wincompat.h>
+#include <util/sysdep.h>
 
 #include <iostream>
 #include <iomanip>

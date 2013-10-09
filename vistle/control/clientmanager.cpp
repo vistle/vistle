@@ -7,7 +7,7 @@
 #include<Winsock2.h>
 #pragma comment(lib, "Ws2_32.lib")
 #endif
-#include <util/sysdep.h.h>
+#include <util/sysdep.h>
 #include <boost/foreach.hpp>
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>

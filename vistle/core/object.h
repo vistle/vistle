@@ -2,7 +2,7 @@
 #define OBJECT_H
 
 #include <vector>
-#include <util/sysdep.h.h>
+#include <util/sysdep.h>
 #include <boost/shared_ptr.hpp>
 
 #include <boost/interprocess/containers/vector.hpp>

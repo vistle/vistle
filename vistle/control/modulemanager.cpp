@@ -1,7 +1,7 @@
 /*
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
-#include <util/sysdep.h.h>
+#include <util/sysdep.h>
 #include <boost/foreach.hpp>
 
 #include <mpi.h>
