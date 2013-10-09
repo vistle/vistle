@@ -223,7 +223,7 @@ class PlaneCut {
          field[idx] = (m_normal * Vector(v[idx].x, v[idx].y, v[idx].z) - m_distance);
       }
 
-      uint tableIndex = 0;
+      unsigned int tableIndex = 0;
       for (int idx = 0; idx < 8; idx ++)
          tableIndex += (((int) (field[idx] < 0.0)) << idx);
 

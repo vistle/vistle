@@ -1,7 +1,7 @@
 #ifndef PARAMVECTOR_H
 #define PARAMVECTOR_H
 
-#include <util/wincompat.h>
+#include <util/sysdep.h>
 #include <ostream>
 #include <vector>
 #include <cassert>

@@ -11,7 +11,7 @@
 namespace vistle {
 
 template <typename T, int Dim=1>
-class V_COREEXPORT Vec: public Object {
+class Vec: public Object {
    V_OBJECT(Vec);
 
    static const int MaxDim = 4;

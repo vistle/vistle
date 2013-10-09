@@ -5,7 +5,7 @@
 // triangle table maps same cube vertex index to a list of up to 5 triangles
 // which are built from the interpolated edge vertices
 #define X 255
-static uint hexaTriTable[256][16] = {
+static unsigned int hexaTriTable[256][16] = {
    {X, X, X, X, X, X, X, X, X, X, X, X, X, X, X, X},
 	{0, 8, 3, X, X, X, X, X, X, X, X, X, X, X, X, X},
 	{0, 1, 9, X, X, X, X, X, X, X, X, X, X, X, X, X},
@@ -265,7 +265,7 @@ static uint hexaTriTable[256][16] = {
 };
 
 // number of vertices for each case above
-static uint hexaNumVertsTable[256] = {
+static unsigned int hexaNumVertsTable[256] = {
     0,
     3,
     3,
