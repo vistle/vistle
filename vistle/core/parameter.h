@@ -91,7 +91,7 @@ struct ParameterCheck {
 };
 
 template<typename T>
-class V_COREEXPORT ParameterBase: public Parameter {
+class ParameterBase: public Parameter {
 
  public:
    typedef T ValueType;

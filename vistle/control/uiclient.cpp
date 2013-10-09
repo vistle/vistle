@@ -1,5 +1,6 @@
 #include "uiclient.h"
 #include <core/tcpmessage.h>
+#include <util/sysdep.h.h>
 
 namespace asio = boost::asio;
 

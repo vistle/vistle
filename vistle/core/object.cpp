@@ -268,7 +268,7 @@ Object::Type Object::getType() const {
 
 std::string Object::getName() const {
 
-   return d()->name;
+   return (d()->name.operator std::string());
 }
 
 const Meta &Object::meta() const {

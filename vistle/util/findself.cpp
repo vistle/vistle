@@ -8,8 +8,8 @@
 #include <unistd.h>
 #include <dirent.h>
 #else
+#include <util/sysdep.h.h>
 #include <direct.h>
-#include <windows.h>
 #endif
 #include <errno.h>
 

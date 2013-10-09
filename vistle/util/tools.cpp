@@ -6,7 +6,7 @@
 #include <execinfo.h>
 #include <unistd.h>
 #else
-#include <Windows.h>
+#include <util/sysdep.h.h>
 #endif
 
 #include "tools.h"

@@ -1,6 +1,7 @@
 #ifndef PARAMVECTOR_H
 #define PARAMVECTOR_H
 
+#include <util/wincompat.h>
 #include <ostream>
 #include <vector>
 #include <cassert>
@@ -12,7 +13,7 @@
 namespace vistle {
 
 template<typename S>
-class V_COREEXPORT ParameterVector {
+class ParameterVector {
 public:
    typedef S Scalar;
 

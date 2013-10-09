@@ -7,6 +7,7 @@
 #ifndef _WIN32
 #include <unistd.h>
 #else
+#define NOMINMAX
 #include<Winsock2.h>
 #pragma comment(lib, "Ws2_32.lib")
 #endif

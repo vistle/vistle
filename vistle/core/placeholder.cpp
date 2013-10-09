@@ -81,7 +81,7 @@ Object::const_ptr PlaceHolder::real() const {
 
 std::string PlaceHolder::originalName() const {
 
-   return d()->originalName;
+   return d()->originalName.operator std::string();
 }
 
 Object::Type PlaceHolder::originalType() const {

@@ -99,7 +99,7 @@ ParameterVector<S> &ParameterVector<S>::operator=(const ParameterVector<S> &rhs)
 }
 
 template<typename S>
-ParameterVector<S>::ParameterVector(ParameterVector<S>::iterator from, ParameterVector<S>::iterator to)
+ParameterVector<S>::ParameterVector(typename ParameterVector<S>::iterator from, typename ParameterVector<S>::iterator to)
 : VINIT(MaxDimension)
 {
    dim = 0;

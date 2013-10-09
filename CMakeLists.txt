@@ -62,7 +62,7 @@ if(WIN32)
     add_definitions("-DOMPI_IMPORTS")
 endif(WIN32)
 
-find_package(Boost 1.40 REQUIRED thread)
+find_package(Boost 1.40 REQUIRED thread system)
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
 
 find_package(MPI REQUIRED)

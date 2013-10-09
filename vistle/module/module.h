@@ -27,7 +27,7 @@ class SetParameter;
 class MessageQueue;
 }
 
-class V_COREEXPORT Module {
+class V_MODULEEXPORT Module {
 
  public:
    Module(const std::string &name, const std::string &shmname,

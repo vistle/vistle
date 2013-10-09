@@ -2,6 +2,7 @@
 #define OBJECT_H
 
 #include <vector>
+#include <util/sysdep.h.h>
 #include <boost/shared_ptr.hpp>
 
 #include <boost/interprocess/containers/vector.hpp>
@@ -186,7 +187,7 @@ public:
    Object &operator=(const Object &);
 };
 
-class V_COREEXPORT ObjectTypeRegistry {
+class ObjectTypeRegistry {
    friend struct Object::Data;
    friend Object::ptr Object::create(Object::Data *);
    public:

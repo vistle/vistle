@@ -118,7 +118,7 @@ vistle::Parameter *VistleConnection::getParameter(int id, const std::string &nam
    return p;
 }
 
-void vistle::VistleConnection::VistleConnection::sendParameter(const Parameter *p) const
+void vistle::VistleConnection::sendParameter(const Parameter *p) const
 {
    mutex_lock lock(m_mutex);
    vistle::message::SetParameter set(p->module(), p->getName(), p);

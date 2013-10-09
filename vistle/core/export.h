@@ -9,4 +9,10 @@
 #define V_COREEXPORT V_IMPORT
 #endif
 
+#if defined (vistle_module_EXPORTS)
+#define V_MODULEEXPORT V_EXPORT
+#else
+#define V_MODULEEXPORT V_IMPORT
+#endif
+
 #endif

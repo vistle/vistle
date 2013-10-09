@@ -1,15 +1,11 @@
+
+#include <util/wincompat.h>
+
 #include <iostream>
 #include <iomanip>
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpl/transform.hpp>
-
-#ifdef _WIN32
-#include <windows.h>
-#ifdef min
-#undef min
-#endif
-#endif
 
 #include <limits.h>
 
@@ -21,6 +17,7 @@
 #ifndef TEMPLATES_IN_HEADERS
 #define VISTLE_IMPL
 #endif
+
 #include "shm.h"
 
 template<typename T>
@@ -118,7 +115,6 @@ std::string Shm::shmIdFilename() {
    std::stringstream name;
 #ifdef _WIN32
    
-#include <windows.h>
    
     DWORD dwRetVal = 0;
     UINT uRetVal   = 0;

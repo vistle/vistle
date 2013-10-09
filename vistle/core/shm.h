@@ -190,7 +190,7 @@ void shm<T>::destroy(const std::string &name) {
 }
 
 template<typename T>
-class V_COREEXPORT ShmVector {
+class ShmVector {
 #ifdef SHMDEBUG
    friend void Shm::markAsRemoved(const std::string &name);
 #endif
