@@ -24,7 +24,7 @@ set(userinterface_HEADERS
    vistleconnection.h
 )
 
-add_library(vistle_ui ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
+add_library(vistle_userinterface ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
@@ -32,7 +32,7 @@ include_directories(
         ..
 )
 
-target_link_libraries(vistle_ui
+target_link_libraries(vistle_userinterface
         ${Boost_LIBRARIES}
         ${PYTHON_LIBRARIES}
         ${EXTRA_LIBRARIES}

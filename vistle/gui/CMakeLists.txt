@@ -73,6 +73,6 @@ target_link_libraries(gui
   ${Boost_LIBRARIES}
   ${PYTHON_LIBRARIES}
   vistle_core
-  vistle_ui
+  vistle_userinterface
   vistle_propertybrowser
 )
