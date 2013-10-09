@@ -1,5 +1,5 @@
 find_package(PythonLibs)
-find_package(Boost 1.40 REQUIRED COMPONENTS python thread system)
+find_package(Boost 1.40 REQUIRED COMPONENTS python thread system chrono)
 find_package(Readline)
 
 set(EXTRA_LIBRARIES)

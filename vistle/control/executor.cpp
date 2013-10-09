@@ -12,6 +12,7 @@
 #include<Winsock2.h>
 #pragma comment(lib, "Ws2_32.lib")
 #endif
+#include <util/sysdep.h>
 
 #include <mpi.h>
 
@@ -32,11 +33,6 @@
 #include "communicator.h"
 #include "executor.h"
 
-#ifdef WIN32
-#define usleep Sleep
-#define close closesocket
-typedef int socklen_t;
-#endif
 using namespace boost::interprocess;
 
 namespace vistle {

@@ -54,12 +54,16 @@ find_qt()
 endif()
 
 if(WIN32)
-    set(Boost_USE_STATIC_LIBS true)
     set(BOOST_ROOT "$ENV{EXTERNLIBS}/boost")
     STRING(REGEX REPLACE "\\\\" "/" BOOST_ROOT ${BOOST_ROOT}) 
     set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
     set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
     add_definitions("-DOMPI_IMPORTS")
+    add_definitions("-DWIN32_LEAN_AND_MEAN")
+    add_definitions("-DNOMINMAX")
+    add_definitions("-DBOOST_ALL_NO_LIB")
+	
+	
 endif(WIN32)
 
 find_package(Boost 1.40 REQUIRED thread system)

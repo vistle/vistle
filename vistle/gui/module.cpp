@@ -385,7 +385,7 @@ void Module::setStatus(Module::Status status)
       toolTip = "Busy";
       m_borderColor = QColor(200, 200, 30);
       break;
-   case ERROR:
+   case ERROR_STATUS:
       toolTip = "Error";
       m_borderColor = Qt::red;
       break;

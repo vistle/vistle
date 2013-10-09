@@ -38,7 +38,7 @@ public:
                   INITIALIZED,
                   KILLED,
                   BUSY,
-                  ERROR };
+                  ERROR_STATUS };
 
     Module(QGraphicsItem *parent = 0, QString name = 0);
     virtual ~Module();

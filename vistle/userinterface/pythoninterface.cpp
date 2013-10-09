@@ -18,7 +18,12 @@ PythonInterface::PythonInterface(const std::string &name)
    static char namebuf[1024];
    strncpy(namebuf, name.c_str(), sizeof(namebuf));
    namebuf[sizeof(namebuf)-1] = '\0';
+#ifdef _WIN32
+   static std::wstring wideName = std::wstring(name.begin(), name.end());
+   Py_SetProgramName((wchar_t *)wideName.c_str());
+#else
    Py_SetProgramName(namebuf);
+#endif
    Py_Initialize();
 
    bp::object main = bp::import("__main__");

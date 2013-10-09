@@ -1,9 +1,4 @@
 
-#ifdef _WIN32
-#define NOMINMAX
-#include<Winsock2.h>
-#pragma comment(lib, "Ws2_32.lib")
-#endif
 #include <Python.h>
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
@@ -469,7 +464,11 @@ bool PythonModule::import(boost::python::object *ns) {
       .def(bp::vector_indexing_suite<ParameterVector<Float> >());
 
    try {
+#  if PY_VERSION_HEX >= 0x03000000
+      PyInit__vistle();
+#else
       init_vistle();
+#endif
    } catch (bp::error_already_set) {
       std::cerr << "vistle Python module initialisation failed" << std::endl;
       PyErr_Print();

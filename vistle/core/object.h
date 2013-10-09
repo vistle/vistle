@@ -124,7 +124,7 @@ public:
    void save(Archive &ar) const;
 
  public:
-   struct Data {
+    struct Data {
       Type type;
       shm_name_t name;
       int refcount;
@@ -146,12 +146,12 @@ public:
       std::string getAttribute(const std::string &key) const;
       std::vector<std::string> getAttributes(const std::string &key) const;
 
-      Data(Type id = UNKNOWN, const std::string &name = "", const Meta &m=Meta());
-      Data(const Data &other, const std::string &name); //! shallow copy, except for attributes
-      ~Data();
-      void *operator new(size_t size);
-      void *operator new (std::size_t size, void* ptr);
-      void operator delete(void *ptr);
+      V_COREEXPORT Data(Type id = UNKNOWN, const std::string &name = "", const Meta &m=Meta());
+      V_COREEXPORT Data(const Data &other, const std::string &name); //! shallow copy, except for attributes
+      V_COREEXPORT ~Data();
+      V_COREEXPORT void *operator new(size_t size);
+      V_COREEXPORT void *operator new (std::size_t size, void* ptr);
+      V_COREEXPORT void operator delete(void *ptr);
       void ref();
       void unref();
       static Data *create(Type id, const Meta &m);

@@ -18,6 +18,8 @@
 #include <core/parameter.h>
 #include <core/port.h>
 
+#include <module/export.h>
+
 namespace vistle {
 
 namespace message {

@@ -1,11 +1,6 @@
 #ifndef USERINTERFACE_H
 #define USERINTERFACE_H
 
-#ifdef _WIN32
-#define NOMINMAX
-#include<Winsock2.h>
-#pragma comment(lib, "Ws2_32.lib")
-#endif
 #include <iostream>
 #include <list>
 #include <map>

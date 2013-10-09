@@ -14,7 +14,7 @@
 namespace vistle {
 
 template<typename S>
-class ParameterVector {
+class V_CORETEMPLATE_EXPORT ParameterVector {
 public:
    typedef S Scalar;
 
@@ -90,14 +90,14 @@ public:
 };
 
 template<typename S>
-V_COREEXPORT bool operator==(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
+V_CORETEMPLATE_EXPORT bool operator==(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
 template<typename S>
-V_COREEXPORT bool operator!=(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
+V_CORETEMPLATE_EXPORT bool operator!=(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
 
 template<typename S>
-V_COREEXPORT bool operator<(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
+V_CORETEMPLATE_EXPORT bool operator<(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
 template<typename S>
-V_COREEXPORT bool operator>(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
+V_CORETEMPLATE_EXPORT bool operator>(const ParameterVector<S> &v1, const ParameterVector<S> &v2);
 
 //typedef ParameterVector<Scalar> ScalarVector;
 //typedef ScalarVector Vector;
@@ -106,7 +106,7 @@ typedef ParameterVector<Float> ParamVector;
 } // namespace vistle
 
 template<typename S>
-V_COREEXPORT std::ostream &operator<<(std::ostream &out, const vistle::ParameterVector<S> &v);
+V_CORETEMPLATE_EXPORT std::ostream &operator<<(std::ostream &out, const vistle::ParameterVector<S> &v);
 #endif // PARAMVECTOR_H
 
 

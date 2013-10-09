@@ -1,11 +1,6 @@
 /*
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
-#ifdef _WIN32
-#define NOMINMAX
-#include<Winsock2.h>
-#pragma comment(lib, "Ws2_32.lib")
-#endif
 #include <boost/foreach.hpp>
 
 #include <mpi.h>

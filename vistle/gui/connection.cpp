@@ -9,6 +9,7 @@
  * \todo add license?
  */
 /**********************************************************************************/
+#define _USE_MATH_DEFINES // for M_PI on windows
 #include "connection.h"
 #include "module.h"
 #include "dataflownetwork.h"
