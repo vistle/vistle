@@ -13,10 +13,11 @@
 
 #include <core/paramvector.h>
 #include <core/object.h>
-#include <core/export.h>
 #include <core/objectcache.h>
 #include <core/parameter.h>
 #include <core/port.h>
+
+#include "export.h"
 
 namespace vistle {
 
