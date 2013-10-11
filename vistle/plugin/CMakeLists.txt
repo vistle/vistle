@@ -1,6 +1,5 @@
-set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "$ENV{EXTERNLIBS}/OpenSceneGraph")
-find_package(OpenSceneGraph 2.8.0 COMPONENTS osgViewer osgGA osgDB)
-find_package(OpenGL)
+cmake_minimum_required(VERSION 2.8)
+set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/cmake" ${CMAKE_MODULE_PATH})
 find_package(COVER)
 
 if(NOT COVER_FOUND)
@@ -28,4 +27,5 @@ include_directories(
         ${COVER_INCLUDE_DIRS}
 )
 
-add_cover_plugin(VistlePlugin vistle_module)
+cover_add_plugin(VistlePlugin ${HEADERS} ${SOURCES})
+target_link_libraries(VistlePlugin vistle_module)
