@@ -38,7 +38,7 @@ class V_CONTROLEXPORT ClientManager {
 
    ClientManager(const std::string &initialData=std::string(),
          InitialType initialType=File,
-         unsigned short port=8192);
+         unsigned short port=31092);
 
    bool check();
    unsigned short port() const;

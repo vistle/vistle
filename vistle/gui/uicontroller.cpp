@@ -25,7 +25,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
 , m_scene(nullptr)
 {
    std::string host = "localhost";
-   unsigned short port = 8193;
+   unsigned short port = 31093;
 
    bool quitOnExit = false;
    if (argc > 1 && argv[1] == std::string("-from-vistle")) {

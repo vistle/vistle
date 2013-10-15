@@ -63,7 +63,7 @@ Options:
 
 You can connect a user interface to a running VISTLE session later on:
 
-      gui localhost 8193
+      gui localhost 31093
 
 
 

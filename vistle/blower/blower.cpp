@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
    try {
 
       std::string host = "localhost";
-      unsigned short port = 8193;
+      unsigned short port = 31093;
 
       bool quitOnExit = false;
       if (argc > 1) {

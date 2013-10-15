@@ -33,7 +33,7 @@ class V_CONTROLEXPORT UiManager {
    void sendMessage(const message::Message &msg) const;
 
  private:
-   UiManager(boost::shared_ptr<message::MessageQueue> commandQueue, unsigned short port=8193);
+   UiManager(boost::shared_ptr<message::MessageQueue> commandQueue, unsigned short port=31093);
 
    bool check();
    unsigned short port() const;
