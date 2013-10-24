@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
 
    std::string vistleplugin = bindir + "/../../../" + env["ARCHSUFFIX"] + "/lib/OpenCOVER/plugins/libVistlePlugin";
 #ifdef __APPLE__
-   vistleplugin += ".dylib";
+   vistleplugin += ".so";
 #else
    vistleplugin += ".so";
 #endif
