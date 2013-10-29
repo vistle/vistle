@@ -17,7 +17,7 @@ class V_MODULEEXPORT Renderer: public Module {
 
  private:
    virtual void render() = 0;
-   IntParameter *m_masterOnly;
+   IntParameter *m_renderMode;
 };
 
 } // namespace vistle
