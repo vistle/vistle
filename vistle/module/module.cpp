@@ -31,6 +31,7 @@
 #include <core/shm.h>
 #include <core/objectcache.h>
 #include <core/port.h>
+#include <core/exception.h>
 
 #ifndef TEMPLATES_IN_HEADERS
 #define VISTLE_IMPL
@@ -124,9 +125,8 @@ Module::Module(const std::string &n, const std::string &shmname,
    try {
       Shm::attach(shmname, id(), rank(), sendMessageQueue);
    } catch (interprocess_exception &ex) {
-      std::cerr << "module " << id() << " [" << rank() << "/" << size() << "] "
-                << ex.what() << std::endl;
-      exit(2);
+      std::stringstream str;
+      throw vistle::exception(std::string("attaching to shared memory: ") + ex.what());
    }
 
    // names are swapped relative to communicator
@@ -134,18 +134,14 @@ Module::Module(const std::string &n, const std::string &shmname,
    try {
       sendMessageQueue = message::MessageQueue::open(smqName);
    } catch (interprocess_exception &ex) {
-      std::cerr << "module " << id() << " [" << rank() << "/" << size() << "] "
-         << ex.what() << std::endl;
-      exit(2);
+      throw vistle::exception(std::string("opening send message queue: ") + ex.what());
    }
 
    std::string rmqName = message::MessageQueue::createName("smq", id(), rank());
    try {
       receiveMessageQueue = message::MessageQueue::open(rmqName);
    } catch (interprocess_exception &ex) {
-      std::cerr << "Exception while opening message queue: module " << id() << " [" << rank() << "/" << size() << "] "
-         << ex.what() << std::endl;
-      exit(2);
+      throw vistle::exception(std::string("opening receive message queue: ") + ex.what());
    }
 
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
