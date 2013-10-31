@@ -573,5 +573,8 @@ bool ReadCovise::load(const std::string & name) {
 bool ReadCovise::compute() {
 
    object_counter = 0;
-   return load(getStringParameter("filename"));
+   if (! load(getStringParameter("filename"))) {
+      std::cerr << "cannot open " << getStringParameter("filename") << std::endl;
+   }
+   return true;
 }
