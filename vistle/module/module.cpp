@@ -126,7 +126,7 @@ Module::Module(const std::string &n, const std::string &shmname,
       Shm::attach(shmname, id(), rank(), sendMessageQueue);
    } catch (interprocess_exception &ex) {
       std::stringstream str;
-      throw vistle::exception(std::string("attaching to shared memory: ") + ex.what());
+      throw vistle::exception(std::string("attaching to shared memory ") + shmname + ": " + ex.what());
    }
 
    // names are swapped relative to communicator
@@ -134,14 +134,14 @@ Module::Module(const std::string &n, const std::string &shmname,
    try {
       sendMessageQueue = message::MessageQueue::open(smqName);
    } catch (interprocess_exception &ex) {
-      throw vistle::exception(std::string("opening send message queue: ") + ex.what());
+      throw vistle::exception(std::string("opening send message queue ") + smqName + ": " + ex.what());
    }
 
    std::string rmqName = message::MessageQueue::createName("smq", id(), rank());
    try {
       receiveMessageQueue = message::MessageQueue::open(rmqName);
    } catch (interprocess_exception &ex) {
-      throw vistle::exception(std::string("opening receive message queue: ") + ex.what());
+      throw vistle::exception(std::string("opening receive message queue ") + rmqName + ": " + ex.what());
    }
 
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
