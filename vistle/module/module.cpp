@@ -143,7 +143,7 @@ Module::Module(const std::string &n, const std::string &shmname,
    try {
       receiveMessageQueue = message::MessageQueue::open(rmqName);
    } catch (interprocess_exception &ex) {
-      std::cerr << "module " << id() << " [" << rank() << "/" << size() << "] "
+      std::cerr << "Exception while opening message queue: module " << id() << " [" << rank() << "/" << size() << "] "
          << ex.what() << std::endl;
       exit(2);
    }
