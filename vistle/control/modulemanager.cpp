@@ -239,6 +239,9 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    int moduleID = spawn.spawnId();
    if (moduleID == 0) {
       moduleID = newModuleID();
+   } else {
+      if (m_moduleCounter < moduleID)
+         m_moduleCounter = moduleID;
    }
    message::Spawn toUi = spawn;
    toUi.setSpawnId(moduleID);
