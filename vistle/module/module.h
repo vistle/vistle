@@ -204,6 +204,7 @@ protected:
    int main(int argc, char **argv) { \
       MPI_Init(&argc, &argv); \
       vistle::registerTypes(); \
+      int rank=-1, size=-1; \
       try { \
          if (argc != 3) { \
             std::cerr << "module requires exactly 2 parameters" << std::endl; \
@@ -211,7 +212,6 @@ protected:
             exit(1); \
          } \
          MPICPPEXCEPTIONS \
-         int rank=-1, size=-1; \
          MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
          MPI_Comm_size(MPI_COMM_WORLD, &size); \
          const std::string &shmname = argv[1]; \
@@ -229,11 +229,11 @@ protected:
          } \
          MPI_Barrier(MPI_COMM_WORLD); \
       } catch(vistle::exception &e) { \
-         std::cerr << "fatal exception: " << e.what() << std::endl << e.where() << std::endl; \
+         std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl << "  info: " << e.info() << std::endl << e.where() << std::endl; \
          MPI_Finalize(); \
          exit(1); \
       } catch(std::exception &e) { \
-         std::cerr << "fatal exception: " << e.what() << std::endl; \
+         std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; \
          MPI_Finalize(); \
          exit(1); \
       } \
