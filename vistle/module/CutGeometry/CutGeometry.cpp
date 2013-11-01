@@ -3,6 +3,7 @@
 
 #include <core/object.h>
 #include <core/polygons.h>
+#include <core/triangles.h>
 
 #include "CutGeometry.h"
 
@@ -28,7 +29,9 @@ CutGeometry::~CutGeometry() {
 
 class PlaneClip {
 
-   Polygons::const_ptr m_grid;
+   Coords::const_ptr m_coord;
+   Triangles::const_ptr m_tri;
+   Polygons::const_ptr m_poly;
    std::vector<Object::const_ptr> m_data;
    Vector m_point;
    Vector m_normal;
@@ -50,14 +53,46 @@ class PlaneClip {
 
    // mapping from vertex indices in the incoming object to
    // vertex indices in the outgoing object
+   // - 1 is added to the entry, 0 marks entries that are to be erased
    std::vector<Index> m_vertexMap;
 
-   Polygons::ptr m_outGrid;
+   Coords::ptr m_outCoords;
+   Triangles::ptr m_outTri;
+   Polygons::ptr m_outPoly;
    Vec<Scalar>::ptr m_outData;
 
  public:
+   PlaneClip(Triangles::const_ptr grid, const Vector &point, const Vector &normal)
+      : m_coord(grid)
+      , m_tri(grid)
+      , m_point(point)
+      , m_normal(normal)
+      , cl(nullptr)
+      , x(nullptr)
+      , y(nullptr)
+      , z(nullptr)
+      , d(nullptr)
+      , out_cl(nullptr)
+      , out_el(nullptr)
+      , out_x(nullptr)
+      , out_y(nullptr)
+      , out_z(nullptr)
+      , out_d(nullptr)
+      {
+
+         cl = &grid->cl()[0];
+         x = &grid->x()[0];
+         y = &grid->y()[0];
+         z = &grid->z()[0];
+
+         m_outTri = Triangles::ptr(new Triangles(Object::Initialized));
+         m_outTri->setMeta(grid->meta());
+         m_outCoords = m_outTri;
+      }
+
    PlaneClip(Polygons::const_ptr grid, const Vector &point, const Vector &normal)
-      : m_grid(grid)
+      : m_coord(grid)
+      , m_poly(grid)
       , m_point(point)
       , m_normal(normal)
       , el(nullptr)
@@ -80,10 +115,9 @@ class PlaneClip {
          y = &grid->y()[0];
          z = &grid->z()[0];
 
-         m_outGrid = Polygons::ptr(new Polygons(Object::Initialized));
-         m_outGrid->setMeta(grid->meta());
-
-         m_vertexMap.resize(m_grid->getNumCoords());
+         m_outPoly = Polygons::ptr(new Polygons(Object::Initialized));
+         m_outPoly->setMeta(grid->meta());
+         m_outCoords = m_outPoly;
       }
 
    void addData(Object::const_ptr obj) {
@@ -101,63 +135,110 @@ class PlaneClip {
    bool process() {
 
       processCoordinates();
+      Index numCoordsIn = m_outCoords->getNumCoords();
 
-      const Index numElem = m_grid->getNumElements();
+      if (m_tri) {
+         const Index numElem = m_tri->getNumCorners()/3;
 
-      Index curPoly=0, curCorner=0, curCoord=0;
-      std::vector<Index> outIdxPoly(numElem), outIdxCorner(numElem), outIdxCoord(numElem);
+         Index curCorner=0, curCoord=numCoordsIn;
+         std::vector<Index> outIdxCorner(numElem), outIdxCoord(numElem);
 #pragma omp parallel for schedule (dynamic)
-      for (Index elem=0; elem<numElem; ++elem) {
+         for (Index elem=0; elem<numElem; ++elem) {
 
-         Index numPoly=0, numCorner=0, numCoord=0;
-         processPolygon(elem, numPoly, numCorner, numCoord, true);
+            Index numCorner=0, numCoord=0;
+            processTriangle(elem, numCorner, numCoord, true);
 
 #pragma omp critical
-         {
-            outIdxPoly[elem] = curPoly;
-            outIdxCorner[elem] = curCorner;
-            outIdxCoord[elem] = curCoord + m_outGrid->getNumCoords();
-            curPoly += numPoly;
-            curCorner += numCorner;
-            curCoord += numCoord;
+            {
+               outIdxCorner[elem] = curCorner;
+               outIdxCoord[elem] = curCoord;
+               curCorner += numCorner;
+               curCoord += numCoord;
+            }
          }
-      }
 
-      m_outGrid->el().resize(curPoly);
-      out_el = m_outGrid->el().data();
-      m_outGrid->cl().resize(curCorner);
-      out_cl = m_outGrid->cl().data();
+         m_outTri->cl().resize(curCorner);
+         out_cl = m_outTri->cl().data();
 
-      m_outGrid->setSize(m_outGrid->getNumCoords() + curCoord);
-      out_x = m_outGrid->x().data();
-      out_y = m_outGrid->y().data();
-      out_z = m_outGrid->z().data();
+         m_outTri->setSize(curCoord);
+         out_x = m_outTri->x().data();
+         out_y = m_outTri->y().data();
+         out_z = m_outTri->z().data();
 
-      if (m_outData) {
-         m_outData->x().resize(curCoord);
-         out_d = m_outData->x().data();
-      }
+         if (m_outData) {
+            m_outData->x().resize(curCoord);
+            out_d = m_outData->x().data();
+         }
 
 #pragma omp parallel for schedule (dynamic)
-      for (Index elem = 0; elem<numElem; ++elem) {
-         processPolygon(elem, outIdxPoly[elem], outIdxCorner[elem], outIdxCoord[elem], false);
-      }
+         for (Index elem = 0; elem<numElem; ++elem) {
+            processTriangle(elem, outIdxCorner[elem], outIdxCoord[elem], false);
+         }
+         //std::cerr << "CuttingSurface: << " << m_outData->x().size() << " vert, " << m_outData->x().size() << " data elements" << std::endl;
 
-      //std::cerr << "CuttingSurface: << " << m_outData->x().size() << " vert, " << m_outData->x().size() << " data elements" << std::endl;
+         return true;
+      } else if (m_poly) {
+         const Index numElem = m_poly->getNumElements();
+
+         Index curPoly=0, curCorner=0, curCoord=numCoordsIn;
+         std::vector<Index> outIdxPoly(numElem), outIdxCorner(numElem), outIdxCoord(numElem);
+#pragma omp parallel for schedule (dynamic)
+         for (Index elem=0; elem<numElem; ++elem) {
+
+            Index numPoly=0, numCorner=0, numCoord=0;
+            processPolygon(elem, numPoly, numCorner, numCoord, true);
+
+#pragma omp critical
+            {
+               outIdxPoly[elem] = curPoly;
+               outIdxCorner[elem] = curCorner;
+               outIdxCoord[elem] = curCoord;
+               curPoly += numPoly;
+               curCorner += numCorner;
+               curCoord += numCoord;
+            }
+         }
+
+         m_outPoly->el().resize(curPoly);
+         out_el = m_outPoly->el().data();
+         m_outPoly->cl().resize(curCorner);
+         out_cl = m_outPoly->cl().data();
+
+         m_outPoly->setSize(curCoord);
+         out_x = m_outPoly->x().data();
+         out_y = m_outPoly->y().data();
+         out_z = m_outPoly->z().data();
+
+         if (m_outData) {
+            m_outData->x().resize(curCoord);
+            out_d = m_outData->x().data();
+         }
+
+#pragma omp parallel for schedule (dynamic)
+         for (Index elem = 0; elem<numElem; ++elem) {
+            processPolygon(elem, outIdxPoly[elem], outIdxCorner[elem], outIdxCoord[elem], false);
+         }
+
+         //std::cerr << "CuttingSurface: << " << m_outData->x().size() << " vert, " << m_outData->x().size() << " data elements" << std::endl;
+
+         return true;
+      }
 
       return true;
    }
 
    Object::ptr result() {
 
-      return m_outGrid;
+      return m_outCoords;
    }
 
  private:
    void processCoordinates() {
 
-      const Index nCoord = m_grid->getNumCoords();
+      const Index nCoord = m_coord->getNumCoords();
       Index numIn = 0;
+      m_vertexMap.resize(nCoord);
+      auto vertexMap = m_vertexMap.data();
 #pragma omp parallel for
       for (Index i=0; i<nCoord; ++i) {
          const Vector p(x[i], y[i], z[i]);
@@ -165,20 +246,20 @@ class PlaneClip {
 #pragma omp critical
             {
                ++numIn;
-               m_vertexMap[i] = numIn;
+               vertexMap[i] = numIn;
             }
          } else {
-               m_vertexMap[i] = 0;
+               vertexMap[i] = 0;
          }
       }
 
-      m_outGrid->setSize(numIn);
-      out_x = m_outGrid->x().data();
-      out_y = m_outGrid->y().data();
-      out_z = m_outGrid->z().data();
+      m_outCoords->setSize(numIn);
+      out_x = m_outCoords->x().data();
+      out_y = m_outCoords->y().data();
+      out_z = m_outCoords->z().data();
 #pragma omp parallel for schedule(dynamic)
       for (Index i=0; i<nCoord; ++i) {
-         Index idx = m_vertexMap[i];
+         Index idx = vertexMap[i];
          assert(idx >= 0);
          if (idx > 0) {
             --idx;
@@ -200,24 +281,158 @@ class PlaneClip {
       return  p1 + dist * s;
    }
 
+   void processTriangle(const Index element, Index &outIdxCorner, Index &outIdxCoord, bool numVertsOnly) {
+
+      const Index start = element*3;
+      const Index end = start+3;
+      const Index nCorner = end - start;
+      const auto vertexMap = m_vertexMap.data();
+
+      Index numIn = 0;
+      Index cornerIn = 0, cornerOut = 0; // for the case where we have to split edges, new triangles might be created
+      // - make sure that all the vertices belonging to a triangle are emitted in order
+      for (Index i=0; i<nCorner; ++i) {
+         const Index corner = start+i;
+         const Index vind = cl[corner];
+         const bool in = vertexMap[vind] > 0;
+         if (in) {
+            cornerIn = i;
+            ++numIn;
+         } else {
+            cornerOut = i;
+         }
+      }
+
+      if (numIn == 0) {
+         if (numVertsOnly) {
+            outIdxCorner = 0;
+            outIdxCoord = 0;
+         }
+         return;
+      }
+
+      if (numIn == nCorner) {
+         // if all vertices in the element are on the right side
+         // of the cutting plane, insert the element and all vertices
+
+         if (numVertsOnly) {
+            outIdxCorner = numIn;
+            outIdxCoord = 0;
+            return;
+         }
+
+         for (Index i=0; i<nCorner; ++i) {
+
+            const Index corner = start+i;
+            const Index vid = cl[corner];
+            const Index outID = vertexMap[vid]-1;
+            out_cl[outIdxCorner+i] = outID;
+         }
+
+      } else if (numIn > 0) {
+
+         const Index totalCorner = numIn==1 ? 3 : 9;
+         const Index newCoord = numIn==1 ? 2 : 3;
+
+         if (numVertsOnly) {
+            outIdxCorner = totalCorner;
+            outIdxCoord = newCoord;
+            return;
+         }
+
+         if (numIn == 1) {
+            // in0 is the only pre-existing corner inside
+            const Index in0 = cl[start+cornerIn];
+            assert(vertexMap[in0] > 0);
+            const Index out0 = cl[start + (cornerIn+1)%nCorner];
+            assert(vertexMap[out0] == 0);
+            const Vector v0 = splitEdge(in0, out0);
+            out_x[outIdxCoord] = v0.x;
+            out_y[outIdxCoord] = v0.y;
+            out_z[outIdxCoord] = v0.z;
+
+            const Index out1 = cl[start+(cornerIn+2)%nCorner];
+            assert(vertexMap[out1] == 0);
+            const Vector v1 = splitEdge(in0, out1);
+            out_x[outIdxCoord+1] = v1.x;
+            out_y[outIdxCoord+1] = v1.y;
+            out_z[outIdxCoord+1] = v1.z;
+
+            Index n = 0;
+            out_cl[outIdxCorner+n] = vertexMap[in0]-1;
+            ++n;
+            out_cl[outIdxCorner+n] = outIdxCoord;
+            ++n;
+            out_cl[outIdxCorner+n] = outIdxCoord+1;
+            ++n;
+            assert(n == totalCorner);
+
+         } else if (numIn == 2) {
+            const Index out0 = cl[start + cornerOut];
+            const Index in0 = cl[start+(cornerOut+2)%nCorner];
+            assert(vertexMap[out0] == 0);
+            const Vector v0 = splitEdge(in0, out0);
+            out_x[outIdxCoord] = v0.x;
+            out_y[outIdxCoord] = v0.y;
+            out_z[outIdxCoord] = v0.z;
+
+            const Index in1 = cl[start+(cornerOut+1)%nCorner];
+            assert(vertexMap[in1] > 0);
+            const Vector v1 = splitEdge(in1, out0);
+            out_x[outIdxCoord+1] = v1.x;
+            out_y[outIdxCoord+1] = v1.y;
+            out_z[outIdxCoord+1] = v1.z;
+
+            const Vector vin0(x[in0], y[in0], z[in0]);
+            const Vector vin1(x[in1], y[in1], z[in1]);
+            const Vector v2 = (vin0+vin1)*0.5;
+            out_x[outIdxCoord+2] = v2.x;
+            out_y[outIdxCoord+2] = v2.y;
+            out_z[outIdxCoord+2] = v2.z;
+
+            Index n = 0;
+            out_cl[outIdxCorner+n] = vertexMap[in0]-1;
+            ++n;
+            out_cl[outIdxCorner+n] = outIdxCoord;
+            ++n;
+            out_cl[outIdxCorner+n] = outIdxCoord+2;
+            ++n;
+
+            out_cl[outIdxCorner+n] = outIdxCoord+2;
+            ++n;
+            out_cl[outIdxCorner+n] = outIdxCoord;
+            ++n;
+            out_cl[outIdxCorner+n] = outIdxCoord+1;
+            ++n;
+
+            out_cl[outIdxCorner+n] = outIdxCoord+2;
+            ++n;
+            out_cl[outIdxCorner+n] = outIdxCoord+1;
+            ++n;
+            out_cl[outIdxCorner+n] = vertexMap[in1]-1;
+            ++n;
+            assert(n == totalCorner);
+         }
+      }
+   }
+
    void processPolygon(const Index element, Index &outIdxPoly, Index &outIdxCorner, Index &outIdxCoord, bool numVertsOnly) {
 
-      Polygons::const_ptr &in = m_grid;
-
+      const auto vertexMap = m_vertexMap.data();
       const Index start = el[element];
       Index end;
-      if (element != in->getNumElements() - 1)
+      if (element != m_poly->getNumElements() - 1)
          end = el[element + 1];
       else
-         end = in->getNumCorners();
+         end = m_poly->getNumCorners();
       const Index nCorner = end - start;
 
       Index numIn = 0, numCreate = 0;
       if (nCorner > 0) {
-         bool prevIn = m_vertexMap[cl[end-1]] > 0;
+         bool prevIn = vertexMap[cl[end-1]] > 0;
          for (Index corner = start; corner < end; ++corner) {
             const Index vind = cl[corner];
-            const bool in = m_vertexMap[vind] > 0;
+            const bool in = vertexMap[vind] > 0;
             if (in) {
                if (!prevIn) {
                   ++numCreate;
@@ -258,7 +473,7 @@ class PlaneClip {
          for (Index corner = start; corner < end; ++corner) {
 
             const Index vid = cl[corner];
-            const Index outID = m_vertexMap[vid]-1;
+            const Index outID = vertexMap[vid]-1;
             out_cl[outIdxCorner+i] = outID;
             ++i;
          }
@@ -288,12 +503,12 @@ class PlaneClip {
          Index n = 0;
          Index prevIdx = cl[start + nCorner-1];
          Index numCreated = 0;
-         bool prevIn = m_vertexMap[prevIdx] > 0;
+         bool prevIn = vertexMap[prevIdx] > 0;
          for (Index i = 0; i < nCorner; ++i) {
 
             const Index corner = start + i;
             const Index idx = cl[corner];
-            Index outID = m_vertexMap[idx];
+            Index outID = vertexMap[idx];
             const bool in = outID > 0;
             --outID;
             if (in != prevIn) {
@@ -330,136 +545,18 @@ Object::ptr CutGeometry::cutGeometry(Object::const_ptr object,
       return Object::ptr();
 
    switch (object->getType()) {
+      case Object::TRIANGLES: {
+
+         PlaneClip cutter(Triangles::as(object), point, normal);
+         cutter.process();
+         return cutter.result();
+      }
 
       case Object::POLYGONS: {
 
          PlaneClip cutter(Polygons::as(object), point, normal);
          cutter.process();
          return cutter.result();
-
-         // mapping between vertex indices in the incoming object and
-         // vertex indices in the outgoing object
-         std::vector<int> vertexMap;
-
-         Polygons::const_ptr in = Polygons::as(object);
-         Polygons::ptr out(new Polygons(Object::Initialized));
-
-         const Index *el = &in->el()[0];
-         const Index *cl = &in->cl()[0];
-         const Scalar *x = &in->x()[0];
-         const Scalar *y = &in->y()[0];
-         const Scalar *z = &in->z()[0];
-
-         Index numElements = in->getNumElements();
-         for (Index element = 0; element < numElements; element ++) {
-
-            Index start = el[element];
-            Index end;
-            if (element != in->getNumElements() - 1)
-               end = el[element + 1] - 1;
-            else
-               end = in->getNumCorners() - 1;
-
-            Index numIn = 0;
-
-            for (Index corner = start; corner <= end; corner ++) {
-               Vector p(x[cl[corner]],
-                     y[cl[corner]],
-                     z[cl[corner]]);
-               if ((p - point) * normal < 0)
-                  numIn ++;
-            }
-
-            if (numIn == (end - start + 1)) {
-
-               // if all vertices in the element are on the right side
-               // of the cutting plane, insert the element and all vertices
-               out->el().push_back(out->cl().size());
-
-               for (Index corner = start; corner <= end; corner ++) {
-
-                  Index vertexID = cl[corner];
-                  int outID;
-
-                  if (vertexMap.size() < vertexID+1)
-                     vertexMap.resize(vertexID+1);
-                  if (vertexMap[vertexID] <= 0) {
-                     outID = out->x().size();
-                     vertexMap[vertexID] = outID+1;
-                     out->x().push_back(x[vertexID]);
-                     out->y().push_back(y[vertexID]);
-                     out->z().push_back(z[vertexID]);
-                  } else {
-                     outID = vertexMap[vertexID]-1;
-                  }
-
-                  out->cl().push_back(outID);
-               }
-            } else if (numIn > 0) {
-
-               // if not all of the vertices of an element are on the same
-               // side of the cutting plane:
-               //   - insert vertices that are on the right side of the plane
-               //   - omit vertices that are on the wrong side of the plane
-               //   - if the vertex before the processed vertex is on the
-               //     other side of the plane: insert the intersection point
-               //     between the line formed by the two vertices and the
-               //     plane
-               out->el().push_back(out->cl().size());
-
-               for (Index corner = start; corner <= end; corner ++) {
-
-                  Index vertexID = cl[corner];
-
-                  Vector p(x[cl[corner]],
-                        y[cl[corner]],
-                        z[cl[corner]]);
-
-                  Index former = (corner == start) ? end : corner - 1;
-                  Vector pl(x[cl[former]],
-                        y[cl[former]],
-                        z[cl[former]]);
-
-                  if (((p - point) * normal < 0 &&
-                           (pl - point) * normal >= 0) ||
-                        ((p - point) * normal >= 0 &&
-                         (pl - point) * normal < 0)) {
-
-                     Scalar s = (normal * (point - p)) /
-                        (normal * (pl - p));
-                     Vector pp = p + (pl - p) * s;
-
-                     Index outID = out->x().size();
-                     out->x().push_back(pp.x);
-                     out->y().push_back(pp.y);
-                     out->z().push_back(pp.z);
-
-                     out->cl().push_back(outID);
-                  }
-
-                  if ((p - point) * normal < 0) {
-
-                     Index outID;
-
-                     if (vertexMap.size() < vertexID+1)
-                        vertexMap.resize(vertexID+1);
-                     if (vertexMap[vertexID] <= 0) {
-                        outID = out->x().size();
-                        vertexMap[vertexID] = outID+1;
-                        out->x().push_back(x[vertexID]);
-                        out->y().push_back(y[vertexID]);
-                        out->z().push_back(z[vertexID]);
-                     } else {
-                        outID = vertexMap[vertexID]-1;
-                     }
-
-                     out->cl().push_back(outID);
-                  }
-               }
-            }
-         }
-         return out;
-         break;
       }
 
       default:
