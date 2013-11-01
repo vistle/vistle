@@ -1,4 +1,4 @@
-Visualization Testing Laboratory for Exascale Computing (VISTLE)
+Visualization Testing Laboratory for Exascale Computing (Vistle)
 ================================================================
 
 A modular data-parallel visualization system.
@@ -36,14 +36,14 @@ OpenSceneGraph
 : the version of OpenSceneGraph that was used for compiling COVER
 
 Python
-: for interpreting VISTLE scripts (.vsl)
+: for interpreting Vistle scripts (.vsl)
 
 Readline library
 : history and line editing for command line interface
 
 
 
-Building VISTLE
+Building Vistle
 ---------------
 
 create a subdirectory for building, change to it and invoke cmake:
@@ -52,7 +52,7 @@ create a subdirectory for building, change to it and invoke cmake:
 
 
 
-Invoking VISTLE
+Invoking Vistle
 ---------------
 
       vistle [-batch|-noui|-gui|-tui] [scriptfile]
@@ -68,7 +68,7 @@ Options:
 -tui
 : start a command line user interface on rank 0
 
-You can connect a user interface to a running VISTLE session later on:
+You can connect a user interface to a running Vistle session later on:
 
       gui localhost 31093
 
@@ -81,13 +81,13 @@ Source Code Organization
 : cmake modules
 
 srcipts
-: support scripts for building VISTLE
+: support scripts for building Vistle
 
 3rdparty
 : 3rd party source code
 
 vistle
-: VISTLE source code
+: Vistle source code
 
 vistle/util
 : support code
@@ -102,17 +102,17 @@ vistle/blower
 : command line user interface (Python)
 
 vistle/control
-: library for controlling a VISTLE session
+: library for controlling a Vistle session
 
 vistle/vistle
-: VISTLE session controller 
+: Vistle session controller
 
 vistle/core
-: VISTLE core data structures
+: Vistle core data structures
 
 vistle/module
 : visualization algorithm modules and base library
 
 vistle/plugin
-: COVER plugin for connecting to VISTLE
+: COVER plugin for connecting to Vistle
 
