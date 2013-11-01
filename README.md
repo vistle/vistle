@@ -4,6 +4,13 @@ Visualization Testing Laboratory for Exascale Computing (VISTLE)
 A modular data-parallel visualization system.
 
 
+License
+-------
+
+Vistle source code is licensed under the LGPL v2.1. See lgpl-2.1.txt for
+details. This does not apply to the subdirectory 3rdparty.
+
+
 Build Requirements
 ------------------
 
