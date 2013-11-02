@@ -7,39 +7,39 @@ A modular data-parallel visualization system.
 License
 -------
 
-Vistle source code is licensed under the LGPL v2.1. See lgpl-2.1.txt for
-details. This does not apply to the subdirectory 3rdparty.
+Vistle source code is licensed under the LGPL v2.1. See `lgpl-2.1.txt` for
+details. This does not apply to the subdirectory `3rdparty`.
 
 
 Build Requirements
 ------------------
 
-C++ compiler
-: support for C++11 (ISO/IEC 14882:2011) is required
+- **C++ compiler**:
+  support for C++11 (ISO/IEC 14882:2011) is required
 
-CMake
-: at least 2.8
+- **CMake**:
+  at least 2.8
 
-MPI
-:
+- **MPI**:
+  only tested with Open MPI (`MPI_Comm_spawn_multiple` behavior is particularly critical – Vistle relies on controling the host on which processes are started)
 
-Boost
-: Build boost with the following options:
+- **Boost**:
+  Build boost with the following options:
 
          b2 --with-filesystem --with-iostreams --with-python --with-serialization --with-system --with-thread
 
-COVISE
-: a compiled source code distribution or a developer installation is required for the COVER plugin,
+- **COVISE**:
+  a compiled source code distribution or a developer installation is required for the COVER plugin and the ReadCovise module,
    get it from [HLRS](http://www.hlrs.de/organization/av/vis/covise/support/download/)
 
-OpenSceneGraph
-: the version of OpenSceneGraph that was used for compiling COVER
+- **OpenSceneGraph**:
+  the version of OpenSceneGraph that was used for compiling COVER
 
-Python
-: for interpreting Vistle scripts (.vsl)
+- **Python**:
+  for interpreting Vistle scripts (.vsl), only tested with Python 2.6 and 2.7
 
-Readline library
-: history and line editing for command line interface
+- **Readline library**:
+  history and line editing for command line interface
 
 
 
@@ -59,14 +59,14 @@ Invoking Vistle
 
 Options:
 
--batch|-noui
-: do not start a user interface
+* `-batch`|`-noui`:
+  do not start a user interface
 
--gui (default)
-: start a graphical user interface on rank 0
+* `-gui` (default):
+  start a graphical user interface on rank 0
 
--tui
-: start a command line user interface on rank 0
+* `-tui`:
+  start a command line user interface on rank 0
 
 You can connect a user interface to a running Vistle session later on:
 
@@ -77,42 +77,42 @@ You can connect a user interface to a running Vistle session later on:
 Source Code Organization
 ------------------------
 
-.../cmake
-: cmake modules
+- `.../cmake`:
+  cmake modules
 
-srcipts
-: support scripts for building Vistle
+- `srcipts`:
+  support scripts for building Vistle
 
-3rdparty
-: 3rd party source code
+- `3rdparty`:
+  3rd party source code
 
-vistle
-: Vistle source code
+- `vistle`:
+  Vistle source code
 
-vistle/util
-: support code
+- `vistle/util`:
+  support code
 
-vistle/userinterface
-: common library for user interfaces
+- `vistle/userinterface`:
+  common library for user interfaces
 
-vistle/gui
-: graphical user interface
+- `vistle/gui`:
+  graphical user interface
 
-vistle/blower
-: command line user interface (Python)
+- `vistle/blower`:
+  command line user interface (Python)
 
-vistle/control
-: library for controlling a Vistle session
+- `vistle/control`:
+  library for controlling a Vistle session
 
-vistle/vistle
-: Vistle session controller
+- `vistle/vistle`:
+  Vistle session controller
 
-vistle/core
-: Vistle core data structures
+- `vistle/core`:
+  Vistle core data structures
 
-vistle/module
-: visualization algorithm modules and base library
+- `vistle/module`:
+  visualization algorithm modules and base library
 
-vistle/plugin
-: COVER plugin for connecting to Vistle
+- `vistle/plugin`:
+  COVER plugin for connecting to Vistle
 
