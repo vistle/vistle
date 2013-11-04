@@ -224,15 +224,26 @@ Compute::Compute(const int m, const int c)
 {
 }
 
+void Compute::setModule(int m) {
+
+   module = m;
+}
+
 int Compute::getModule() const {
 
    return module;
+}
+
+void Compute::setExecutionCount(int count) {
+
+   executionCount = count;
 }
 
 int Compute::getExecutionCount() const {
 
    return executionCount;
 }
+
 bool Compute::allRanks() const
 {
    return m_allRanks;

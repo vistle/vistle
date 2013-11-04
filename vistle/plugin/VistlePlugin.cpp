@@ -398,6 +398,7 @@ class VistlePlugin: public opencover::coVRPlugin {
    bool init();
    void preFrame();
    void requestQuit(bool killSession);
+   bool executeAll();
 
  private:
    OsgRenderer *m_module;
@@ -445,6 +446,13 @@ void VistlePlugin::requestQuit(bool killSession)
 {
    delete m_module;
    m_module = nullptr;
+}
+
+bool VistlePlugin::executeAll() {
+
+   message::Compute comp(-1, -1); // execute all sources in data flow graph
+   m_module->sendMessage(comp);
+   return true;
 }
 
 COVERPLUGIN(VistlePlugin);

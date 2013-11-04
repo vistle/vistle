@@ -233,16 +233,18 @@ class V_COREEXPORT Compute: public Message {
  public:
    Compute(const int module, const int count);
 
+   void setModule(int );
    int getModule() const;
+   void setExecutionCount(int count);
    int getExecutionCount() const;
 
    bool allRanks() const;
    void setAllRanks(bool allRanks);
 
 private:
-   bool m_allRanks;
-   const int module;
-   const int executionCount;
+   bool m_allRanks; //! whether compute should be broadcasted across all MPI ranks
+   int module; //! destination module, -1: all sources
+   int executionCount;
 };
 BOOST_STATIC_ASSERT(sizeof(Compute) < Message::MESSAGE_SIZE);
 

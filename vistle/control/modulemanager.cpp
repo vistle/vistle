@@ -460,17 +460,35 @@ bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
 bool ModuleManager::handle(const message::Compute &compute) {
 
    m_stateTracker.handle(compute);
-   RunningMap::iterator i = runningMap.find(compute.getModule());
-   if (i != runningMap.end()) {
-      if (compute.senderId() == 0) {
-         i->second.sendQueue->send(compute);
-         if (compute.getExecutionCount() > m_executionCounter)
-            m_executionCounter = compute.getExecutionCount();
-      } else {
-         message::Compute msg(compute.getModule(), newExecutionCount());
-         msg.setSenderId(compute.senderId());
-         msg.setUuid(compute.uuid());
-         i->second.sendQueue->send(msg);
+   message::Compute toSend = compute;
+   if (compute.senderId() == 0) {
+      if (compute.getExecutionCount() > m_executionCounter)
+         m_executionCounter = compute.getExecutionCount();
+   } else {
+      toSend.setModule(compute.getModule());
+      toSend.setSenderId(compute.senderId());
+      toSend.setUuid(compute.uuid());
+      toSend.setExecutionCount(newExecutionCount());
+   }
+
+   if (compute.getModule() != -1) {
+      RunningMap::iterator i = runningMap.find(compute.getModule());
+      if (i != runningMap.end()) {
+         i->second.sendQueue->send(toSend);
+      }
+   } else {
+      for (auto &mod: runningMap) {
+         int id = mod.first;
+         auto inputs = m_stateTracker.portTracker()->getInputPorts(id);
+         bool isSource = true;
+         for (auto &input: inputs) {
+            if (!input->connections().empty())
+               isSource = false;
+         }
+         if (isSource) {
+            toSend.setModule(id);
+            Communicator::the().broadcastAndHandleMessage(toSend);
+         }
       }
    }
 
