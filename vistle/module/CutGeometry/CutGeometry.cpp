@@ -213,18 +213,14 @@ class PlaneClip {
       const Index nCorner = end - start;
 
       Index numIn = 0, numCreate = 0;
-      Index splitIdx = 0; // for the case where we have to split edges, new polygons might be created
-      // - make sure that all the vertices belonging to a polygon ar emitted in order
       if (nCorner > 0) {
          bool prevIn = m_vertexMap[cl[end-1]] > 0;
-         Index i = 0;
          for (Index corner = start; corner < end; ++corner) {
-            Index vind = cl[corner];
-            if (m_vertexMap[vind] > 0) {
+            const Index vind = cl[corner];
+            const bool in = m_vertexMap[vind] > 0;
+            if (in) {
                if (!prevIn) {
                   ++numCreate;
-                  // we can start a new polygon here
-                  splitIdx = i;
                }
                ++numIn;
                prevIn = true;
@@ -234,7 +230,6 @@ class PlaneClip {
                prevIn = false;
             }
          }
-         ++i;
       }
 
       if (numIn == 0) {
@@ -279,6 +274,7 @@ class PlaneClip {
          //     plane
 
          assert(numCreate%2 == 0);
+         assert(numCreate == 2); // we only handle convex polygons
          if (numVertsOnly) {
             outIdxPoly = numCreate/2;
             outIdxPoly = 1;
@@ -290,12 +286,12 @@ class PlaneClip {
          out_el[outIdxPoly] = outIdxCorner;
 
          Index n = 0;
-         Index prevIdx = cl[start + (splitIdx+nCorner-1)%nCorner];
+         Index prevIdx = cl[start + nCorner-1];
          Index numCreated = 0;
          bool prevIn = m_vertexMap[prevIdx] > 0;
          for (Index i = 0; i < nCorner; ++i) {
 
-            const Index corner = start + (splitIdx+i)%nCorner;
+            const Index corner = start + i;
             const Index idx = cl[corner];
             Index outID = m_vertexMap[idx];
             const bool in = outID > 0;
