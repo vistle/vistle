@@ -343,8 +343,12 @@ void OsgRenderer::render() {
    int numReady = 0;
    for (size_t i=0; i<m_delayedObjects.size(); ++i) {
       auto &node_future = m_delayedObjects[i].node_future;
+      if (!node_future.valid()) {
+         std::cerr << "OsgRenderer::render(): future not valid" << std::endl;
+         break;
+      }
       auto status = node_future.wait_for(std::chrono::seconds(0));
-#if defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6)
+#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6)
       if (!status)
          break;
 #else
