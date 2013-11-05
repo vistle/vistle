@@ -10,6 +10,8 @@
 #include <core/scalars.h>
 #include <core/paramvector.h>
 #include <core/message.h>
+#include <core/coords.h>
+#include <core/lines.h>
 
 using namespace vistle;
 
@@ -24,13 +26,25 @@ class Extrema: public vistle::Module {
 
    int dim;
    bool handled;
+   bool haveGeometry;
    ParamVector min, max, gmin, gmax;
    int m_lastExecutionCount;
 
    virtual bool compute();
+   virtual bool reduce(int timestep);
 
    template<int Dim>
    friend struct Compute;
+
+   void reset() {
+      haveGeometry = false;
+
+      std::cerr << "resetting global min/max" << std::endl;
+      for (int c=0; c<MaxDim; ++c) {
+         gmin[c] =  std::numeric_limits<double>::max();
+         gmax[c] = -std::numeric_limits<double>::max();
+      }
+   }
 
    template<int Dim>
    struct Compute {
@@ -53,6 +67,7 @@ class Extrema: public vistle::Module {
          module->max.dim = Dim;
 
          size_t size = in->getSize();
+#pragma omp parallel
          for (int c=0; c<Dim; ++c) {
             S min = module->min[c];
             S max = module->max[c];
@@ -78,9 +93,10 @@ Extrema::Extrema(const std::string &shmname, int rank, int size, int moduleID)
    , m_lastExecutionCount(-1)
 {
 
-   setSchedulingPolicy(message::SchedulingPolicy::LazyGang);
+   setReducePolicy(message::ReducePolicy::OverAll);
 
    Port *din = createInputPort("data_in", "input data", Port::MULTI);
+   createOutputPort("grid_out", "bounding box", Port::MULTI);
    Port *dout = createOutputPort("data_out", "output data", Port::MULTI);
    din->link(dout);
 
@@ -106,17 +122,13 @@ Extrema::~Extrema() {
 
 bool Extrema::compute() {
 
-   std::cerr << "Extrema: compute: execcount=" << m_executionCount << std::endl;
+   //std::cerr << "Extrema: compute: execcount=" << m_executionCount << std::endl;
 
    dim = -1;
    if (m_executionCount != m_lastExecutionCount) {
-      std::cerr << "resetting global min/max" << std::endl;
-      for (int c=0; c<MaxDim; ++c) {
-         gmin[c] =  std::numeric_limits<double>::max();
-         gmax[c] = -std::numeric_limits<double>::max();
-      }
+      reset();
    } else {
-      std::cerr << "reusing global min/max" << std::endl;
+      //std::cerr << "reusing global min/max" << std::endl;
    }
    m_lastExecutionCount = m_executionCount;
 
@@ -151,7 +163,7 @@ bool Extrema::compute() {
       Object::ptr out = obj->clone();
       out->addAttribute("min", min.str());
       out->addAttribute("max", max.str());
-      std::cerr << "Extrema: min " << min << ", max " << max << std::endl;
+      //std::cerr << "Extrema: min " << min << ", max " << max << std::endl;
 
       addObject("data_out", out);
 
@@ -161,17 +173,76 @@ bool Extrema::compute() {
          if (gmax[c] < max[c])
             gmax[c] = max[c];
       }
+
+      if (Coords::as(obj)) {
+         haveGeometry = true;
+      }
    }
 
-   boost::mpi::all_reduce(boost::mpi::communicator(),
-            gmin[0], gmin[0],
+   return true;
+}
+
+bool Extrema::reduce(int timestep) {
+
+   //std::cerr << "reduction for timestep " << timestep << std::endl;
+
+   for (int i=0; i<MaxDim; ++i) {
+      boost::mpi::all_reduce(boost::mpi::communicator(),
+            gmin[i], gmin[i],
             boost::mpi::minimum<double>());
-   boost::mpi::all_reduce(boost::mpi::communicator(),
-            gmax[0], gmax[0],
+      boost::mpi::all_reduce(boost::mpi::communicator(),
+            gmax[i], gmax[i],
             boost::mpi::maximum<double>());
+   }
 
    setVectorParameter("min", gmin);
    setVectorParameter("max", gmax);
+
+   if (haveGeometry && rank() == 0) {
+
+      Lines::ptr box(new Lines(4, 16, 8));
+      Scalar *x[3];
+      for (int i=0; i<3; ++i) {
+         x[i] = box->x(i).data();
+      }
+      auto corners = box->cl().data();
+      auto elements = box->el().data();
+      for (int i=0; i<4; ++i) {
+         elements[i] = 4*i;
+      }
+      corners[0] = 0;
+      corners[1] = 1;
+      corners[2] = 3;
+      corners[3] = 2;
+
+      corners[4] = 1;
+      corners[5] = 5;
+      corners[6] = 7;
+      corners[7] = 3;
+
+      corners[8] = 5;
+      corners[9] = 4;
+      corners[10] = 6;
+      corners[11] = 7;
+
+      corners[12] = 4;
+      corners[13] = 0;
+      corners[14] = 2;
+      corners[15] = 6;
+
+      for (int c=0; c<3; ++c) {
+         int p = 1 << c;
+         for (int i=0; i<8; ++i) {
+            if (i & p)
+               x[c][i] = gmax[c];
+            else
+               x[c][i] = gmin[c];
+
+         }
+      }
+
+      addObject("grid_out", box);
+   }
 
    return true;
 }

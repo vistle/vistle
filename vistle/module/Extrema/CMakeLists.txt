@@ -2,6 +2,8 @@
 
 add_executable(Extrema Extrema.cpp)
 
+use_openmp()
+
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_INCLUDE_PATH}

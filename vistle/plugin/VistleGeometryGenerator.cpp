@@ -195,18 +195,16 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
          osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
 
-         Index num = 0;
          for (Index index = 0; index < numElements; index ++) {
 
-            if (index == numElements - 1)
-               num = numCorners - el[index];
-            else
-               num = el[index + 1] - el[index];
+            Index start = el[index];
+            Index end = index==numElements-1 ? numCorners : el[index+1];
+            Index num = end - start;
 
             primitives->push_back(num);
 
             for (Index n = 0; n < num; n ++) {
-               Index v = cl[el[index] + n];
+               Index v = cl[start + n];
                vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
             }
          }
