@@ -132,7 +132,10 @@ class V_MODULEEXPORT Module {
    ;
 
    int schedulingPolicy() const;
-   void setSchedulingPolicy(int schedulingPolicy);
+   void setSchedulingPolicy(int schedulingPolicy /*< really message::SchedulingPolicy::Schedule */); 
+
+   int reducePolicy() const;
+   void setReducePolicy(int reduceRequirement /*< really message::ReducePolicy::Reduce */);
 
 protected:
 
@@ -167,6 +170,8 @@ protected:
  private:
    int m_receivePolicy;
    int m_schedulingPolicy;
+   int m_reducePolicy;
+   int m_executionDepth; //< number of input ports that have sent ExecutionProgress::Start
 
    Parameter *findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;
@@ -176,6 +181,7 @@ protected:
    virtual bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg);
 
    virtual bool compute() = 0;
+   virtual bool reduce(int timestep);
 
    std::map<std::string, Port*> outputPorts;
    std::map<std::string, Port*> inputPorts;

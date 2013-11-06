@@ -81,6 +81,8 @@ class V_COREEXPORT StateTracker {
    bool handle(const message::Disconnect &disc);
    bool handle(const message::ModuleExit &moduleExit);
    bool handle(const message::Compute &compute);
+   bool handle(const message::Reduce &reduce);
+   bool handle(const message::ExecutionProgress &prog);
    bool handle(const message::Busy &busy);
    bool handle(const message::Idle &idle);
    bool handle(const message::CreatePort &createPort);

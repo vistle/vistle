@@ -364,6 +364,19 @@ bool Communicator::handleMessage(const message::Message &message) {
          break;
       }
 
+      case message::Message::REDUCE: {
+         const message::Reduce &red = static_cast<const message::Reduce &>(message);
+         result = m_moduleManager->handle(red);
+         break;
+      }
+
+      case message::Message::EXECUTIONPROGRESS: {
+
+         const message::ExecutionProgress &prog = static_cast<const message::ExecutionProgress &>(message);
+         result = m_moduleManager->handle(prog);
+         break;
+      }
+
       case message::Message::BUSY: {
 
          const message::Busy &busy = static_cast<const message::Busy &>(message);
@@ -464,6 +477,12 @@ bool Communicator::handleMessage(const message::Message &message) {
 
       case Message::SCHEDULINGPOLICY: {
          const SchedulingPolicy &m = static_cast<const SchedulingPolicy &>(message);
+         result = m_moduleManager->handle(m);
+         break;
+      }
+
+      case Message::REDUCEPOLICY: {
+         const ReducePolicy &m = static_cast<const ReducePolicy &>(message);
          result = m_moduleManager->handle(m);
          break;
       }

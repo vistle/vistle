@@ -61,6 +61,7 @@ class V_COREEXPORT Message {
       QUIT,
       MODULEEXIT,
       COMPUTE,
+      REDUCE,
       CREATEPORT,
       ADDOBJECT,
       OBJECTRECEIVED,
@@ -81,6 +82,8 @@ class V_COREEXPORT Message {
       SENDTEXT,
       OBJECTRECEIVEPOLICY,
       SCHEDULINGPOLICY,
+      REDUCEPOLICY,
+      EXECUTIONPROGRESS,
    };
 
    Message(const Type type, const unsigned int size);
@@ -241,12 +244,34 @@ class V_COREEXPORT Compute: public Message {
    bool allRanks() const;
    void setAllRanks(bool allRanks);
 
+   enum Reason {
+      Execute,
+      AddObject,
+   };
+   Reason reason() const;
+   void setReason(Reason r);
+
 private:
    bool m_allRanks; //! whether compute should be broadcasted across all MPI ranks
    int module; //! destination module, -1: all sources
    int executionCount;
+   Reason m_reason; //! reason why this message was generated
 };
 BOOST_STATIC_ASSERT(sizeof(Compute) < Message::MESSAGE_SIZE);
+
+//! trigger reduce() for a module
+class V_COREEXPORT Reduce: public Message {
+
+ public:
+   Reduce(int module, int timestep=-1);
+   int module() const;
+   int timestep() const;
+
+ private:
+   int m_module;
+   int m_timestep;
+};
+BOOST_STATIC_ASSERT(sizeof(Reduce) < Message::MESSAGE_SIZE);
 
 //! indicate that a module has started computing
 class V_COREEXPORT Busy: public Message {
@@ -553,17 +578,51 @@ BOOST_STATIC_ASSERT(sizeof(ObjectReceivePolicy) < Message::MESSAGE_SIZE);
 class V_COREEXPORT SchedulingPolicy: public Message {
 
 public:
-   enum Policy {
-      Single,
-      Gang,
-      LazyGang,
+   enum Schedule {
+      Single, //< compute called on each rank individually once per received object
+      Gang, //< compute called on all ranks together once per received object
+      LazyGang, //< compute called on all ranks together, but not necessarily for each received object
    };
-   SchedulingPolicy(Policy pol);
-   Policy policy() const;
+   SchedulingPolicy(Schedule pol);
+   Schedule policy() const;
 private:
-   Policy m_policy;
+   Schedule m_policy;
 };
 BOOST_STATIC_ASSERT(sizeof(SchedulingPolicy) < Message::MESSAGE_SIZE);
+
+class V_COREEXPORT ReducePolicy: public Message {
+
+ public:
+   enum Reduce {
+      Never, //< module's reduce() method will never be called
+      PerTimestep, //< module's reduce() method will be called on all ranks together once per timestep
+      OverAll, //< module's reduce() method will be called on all ranks together after all timesteps have been received
+   };
+   ReducePolicy(Reduce red);
+   Reduce policy() const;
+ private:
+   Reduce m_reduce;
+};
+BOOST_STATIC_ASSERT(sizeof(ReducePolicy) < Message::MESSAGE_SIZE);
+
+class V_COREEXPORT ExecutionProgress: public Message {
+
+ public:
+   enum Progress {
+      Start,
+      Iteration,
+      Timestep,
+      Finish,
+   };
+   ExecutionProgress(Progress stage, int step=-1);
+   Progress stage() const;
+   int step() const;
+
+ private:
+   Progress m_stage;
+   int m_step;
+};
+BOOST_STATIC_ASSERT(sizeof(ExecutionProgress) < Message::MESSAGE_SIZE);
 
 } // namespace message
 } // namespace vistle

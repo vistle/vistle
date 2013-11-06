@@ -495,6 +495,96 @@ bool ModuleManager::handle(const message::Compute &compute) {
    return true;
 }
 
+bool ModuleManager::handle(const message::Reduce &reduce) {
+
+   m_stateTracker.handle(reduce);
+   sendMessage(reduce.module(), reduce);
+   return true;
+}
+
+bool ModuleManager::handle(const message::ExecutionProgress &prog) {
+
+   m_stateTracker.handle(prog);
+   RunningMap::iterator i = runningMap.find(prog.senderId());
+   if (i == runningMap.end()) {
+      return false;
+   }
+
+   // initiate reduction if requested by module
+   auto &mod = i->second;
+   bool forward = true;
+   if (mod.reducePolicy == message::ReducePolicy::OverAll
+         && prog.stage() == message::ExecutionProgress::Finish) {
+      // will be sent after reduce()
+      forward = false;
+   }
+
+   //std::cerr << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << std::endl;
+   bool result = true;
+   if (m_rank == 0) {
+      switch (prog.stage()) {
+         case message::ExecutionProgress::Start: {
+            assert(mod.ranksFinished < m_size);
+            ++mod.ranksStarted;
+            break;
+         }
+
+         case message::ExecutionProgress::Finish: {
+            ++mod.ranksFinished;
+            if (mod.ranksFinished == m_size) {
+               assert(mod.ranksStarted == m_size);
+               mod.ranksFinished = 0;
+
+               if (!mod.reducing && mod.reducePolicy == message::ReducePolicy::OverAll) {
+                  mod.reducing = true;
+                  message::Reduce red(prog.senderId());
+                  Communicator::the().broadcastAndHandleMessage(red);
+               } else {
+                  mod.ranksStarted = 0;
+                  mod.reducing = false;
+               }
+            }
+            break;
+         }
+
+         case message::ExecutionProgress::Iteration: {
+            break;
+         }
+
+         case message::ExecutionProgress::Timestep: {
+            break;
+         }
+      }
+   } else {
+      result = Communicator::the().forwardToMaster(prog);
+   }
+
+   // forward message to all directly connected down-stream modules, but only once
+   if (forward) {
+      std::set<int> connectedIds;
+      auto out = m_portManager.getOutputPorts(prog.senderId());
+      for (Port *port: out) {
+         const Port::PortSet *list = NULL;
+         if (port) {
+            list = m_portManager.getConnectionList(port);
+         }
+         if (list) {
+            Port::PortSet::const_iterator pi;
+            for (pi = list->begin(); pi != list->end(); pi ++) {
+
+               int destId = (*pi)->getModuleID();
+               connectedIds.insert(destId);
+            }
+         }
+      }
+      for (int id: connectedIds) {
+         sendMessage(id, prog);
+      }
+   }
+
+   return result;
+}
+
 bool ModuleManager::handle(const message::Busy &busy) {
 
    return m_stateTracker.handle(busy);
@@ -654,6 +744,7 @@ bool ModuleManager::handle(const message::AddObject &addObj) {
 
          message::Compute c(destId, -1);
          c.setUuid(addObj.uuid());
+         c.setReason(message::Compute::AddObject);
          if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
             sendMessage(destId, c);
          } else {
@@ -670,6 +761,15 @@ bool ModuleManager::handle(const message::AddObject &addObj) {
 
             if (!Communicator::the().broadcastAndHandleMessage(recv))
                return false;
+         }
+
+         switch (destMod.reducePolicy) {
+            case message::ReducePolicy::Never:
+               break;
+            case message::ReducePolicy::PerTimestep:
+               break;
+            case message::ReducePolicy::OverAll:
+               break;
          }
       }
    }
@@ -769,6 +869,19 @@ bool ModuleManager::handle(const message::SchedulingPolicy &schedulingPolicy)
    }
    Module &mod = it->second;
    mod.schedulingPolicy = schedulingPolicy.policy();
+   return true;
+}
+
+bool ModuleManager::handle(const message::ReducePolicy &reducePolicy)
+{
+   const int id = reducePolicy.senderId();
+   RunningMap::iterator it = runningMap.find(id);
+   if (it == runningMap.end()) {
+      CERR << " Module [" << id << "] changed ReducePolicy, but not found in running map" << std::endl;
+      return false;
+   }
+   Module &mod = it->second;
+   mod.reducePolicy = reducePolicy.policy();
    return true;
 }
 

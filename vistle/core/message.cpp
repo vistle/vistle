@@ -221,6 +221,7 @@ Compute::Compute(const int m, const int c)
    , m_allRanks(false)
    , module(m)
    , executionCount(c)
+   , m_reason(Compute::Execute)
 {
 }
 
@@ -252,6 +253,34 @@ bool Compute::allRanks() const
 void Compute::setAllRanks(bool allRanks)
 {
    m_allRanks = allRanks;
+}
+
+Compute::Reason Compute::reason() const
+{
+   return m_reason;
+}
+
+void Compute::setReason(Compute::Reason r)
+{
+   m_reason = r;
+}
+
+
+Reduce::Reduce(int module, int timestep)
+: Message(Message::REDUCE, sizeof(Reduce))
+, m_module(module)
+, m_timestep(timestep)
+{
+}
+
+int Reduce::module() const {
+
+   return m_module;
+}
+
+int Reduce::timestep() const {
+
+   return m_timestep;
 }
 
 
@@ -803,17 +832,44 @@ ObjectReceivePolicy::Policy ObjectReceivePolicy::policy() const {
    return m_policy;
 }
 
-SchedulingPolicy::SchedulingPolicy(SchedulingPolicy::Policy pol)
+SchedulingPolicy::SchedulingPolicy(SchedulingPolicy::Schedule pol)
 : Message(Message::SCHEDULINGPOLICY, sizeof(SchedulingPolicy))
 , m_policy(pol)
 {
 }
 
-SchedulingPolicy::Policy SchedulingPolicy::policy() const {
+SchedulingPolicy::Schedule SchedulingPolicy::policy() const {
 
    return m_policy;
 }
 
+ReducePolicy::ReducePolicy(ReducePolicy::Reduce red)
+: Message(Message::REDUCEPOLICY, sizeof(ReducePolicy))
+, m_reduce(red)
+{
+}
+
+ReducePolicy::Reduce ReducePolicy::policy() const {
+
+   return m_reduce;
+}
+
+ExecutionProgress::ExecutionProgress(Progress stage, int step)
+: Message(Message::EXECUTIONPROGRESS, sizeof(ExecutionProgress))
+, m_stage(stage)
+, m_step(step)
+{
+}
+
+ExecutionProgress::Progress ExecutionProgress::stage() const {
+
+   return m_stage;
+}
+
+int ExecutionProgress::step() const {
+
+   return m_step;
+}
 
 } // namespace message
 } // namespace vistle

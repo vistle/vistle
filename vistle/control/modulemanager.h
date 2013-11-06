@@ -79,6 +79,8 @@ class V_CONTROLEXPORT ModuleManager {
    bool handle(const message::Disconnect &disc);
    bool handle(const message::ModuleExit &moduleExit);
    bool handle(const message::Compute &compute);
+   bool handle(const message::Reduce &reduce);
+   bool handle(const message::ExecutionProgress &prog);
    bool handle(const message::Busy &busy);
    bool handle(const message::Idle &idle);
    bool handle(const message::CreatePort &createPort);
@@ -93,6 +95,7 @@ class V_CONTROLEXPORT ModuleManager {
    bool handle(const message::ResetModuleIds &reset);
    bool handle(const message::ObjectReceivePolicy &receivePolicy);
    bool handle(const message::SchedulingPolicy &schedulingPolicy);
+   bool handle(const message::ReducePolicy &reducePolicy);
 
    std::string m_bindir;
 
@@ -104,15 +107,22 @@ class V_CONTROLEXPORT ModuleManager {
       message::MessageQueue *sendQueue;
       message::MessageQueue *recvQueue;
 
-      Module(): sendQueue(nullptr), recvQueue(nullptr), local(false), baseRank(0), objectPolicy(message::ObjectReceivePolicy::Single), schedulingPolicy(message::SchedulingPolicy::Single) {}
+      Module(): sendQueue(nullptr), recvQueue(nullptr),
+         local(false), baseRank(0),
+         ranksStarted(0), ranksFinished(0), reducing(false),
+         objectPolicy(message::ObjectReceivePolicy::Single), schedulingPolicy(message::SchedulingPolicy::Single), reducePolicy(message::ReducePolicy::Never)
+         {}
       ~Module() {
          delete sendQueue;
          delete recvQueue;
       }
       bool local;
       int baseRank;
+      int ranksStarted, ranksFinished;
+      bool reducing;
       message::ObjectReceivePolicy::Policy objectPolicy;
-      message::SchedulingPolicy::Policy schedulingPolicy;
+      message::SchedulingPolicy::Schedule schedulingPolicy;
+      message::ReducePolicy::Reduce reducePolicy;
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;

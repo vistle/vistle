@@ -111,10 +111,14 @@ Module::Module(const std::string &n, const std::string &shmname,
 , m_size(s)
 , m_id(m)
 , m_executionCount(0)
+, m_receivePolicy(message::ObjectReceivePolicy::Single)
+, m_schedulingPolicy(message::SchedulingPolicy::Single)
+, m_reducePolicy(message::ReducePolicy::Never)
+, m_executionDepth(0)
 , m_defaultCacheMode(ObjectCache::CacheNone)
 , m_syncMessageProcessing(false)
-, m_streambuf(nullptr)
 , m_origStreambuf(nullptr)
+, m_streambuf(nullptr)
 {
 #ifdef _WIN32
     WSADATA wsaData;
@@ -665,8 +669,25 @@ int Module::schedulingPolicy() const
 
 void Module::setSchedulingPolicy(int schedulingPolicy)
 {
+   assert(schedulingPolicy >= message::SchedulingPolicy::Single);
+   assert(schedulingPolicy <= message::SchedulingPolicy::LazyGang);
+
    m_schedulingPolicy = schedulingPolicy;
-   sendMessage(message::SchedulingPolicy(message::SchedulingPolicy::Policy(schedulingPolicy)));
+   sendMessage(message::SchedulingPolicy(message::SchedulingPolicy::Schedule(schedulingPolicy)));
+}
+
+int Module::reducePolicy() const
+{
+   return m_reducePolicy;
+}
+
+void Module::setReducePolicy(int reducePolicy)
+{
+   assert(reducePolicy >= message::ReducePolicy::Never);
+   assert(reducePolicy <= message::ReducePolicy::OverAll);
+
+   m_reducePolicy = reducePolicy;
+   sendMessage(message::ReducePolicy(message::ReducePolicy::Reduce(reducePolicy)));
 }
 
 bool Module::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
@@ -925,6 +946,15 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          const message::Compute *comp =
             static_cast<const message::Compute *>(message);
+
+         if (comp->reason() == message::Compute::Execute) {
+            assert(m_executionDepth == 0);
+            ++m_executionDepth;
+            message::ExecutionProgress start(message::ExecutionProgress::Start);
+            start.setUuid(comp->uuid());
+            sendMessage(start);
+         }
+
          if (m_executionCount < comp->getExecutionCount())
             m_executionCount = comp->getExecutionCount();
 
@@ -952,12 +982,75 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          try {
             ret = compute();
          } catch (std::exception &e) {
-            std::cerr << name() << ": exception - " << e.what() << std::endl;
+            std::cerr << name() << "::compute(): exception - " << e.what() << std::endl;
          }
          message::Idle idle;
          idle.setUuid(comp->uuid());
          sendMessage(idle);
+
+         if (comp->reason() == message::Compute::Execute) {
+            --m_executionDepth;
+            assert(m_executionDepth == 0);
+            message::ExecutionProgress fin(message::ExecutionProgress::Finish);
+            fin.setUuid(comp->uuid());
+            sendMessage(fin);
+         }
          return ret;
+         break;
+      }
+
+      case message::Message::REDUCE: {
+
+         const message::Reduce *red = static_cast<const message::Reduce *>(message);
+
+         message::Busy busy;
+         busy.setUuid(red->uuid());
+         sendMessage(busy);
+         bool ret = false;
+         try {
+            ret = reduce(red->timestep());
+         } catch (std::exception &e) {
+            std::cerr << name() << "::reduce(): exception - " << e.what() << std::endl;
+         }
+         message::Idle idle;
+         idle.setUuid(red->uuid());
+         sendMessage(idle);
+
+         assert(m_executionDepth == 0);
+         message::ExecutionProgress fin(red->timestep()<0
+               ? message::ExecutionProgress::Finish
+               : message::ExecutionProgress::Timestep);
+         fin.setUuid(red->uuid());
+         sendMessage(fin);
+
+         return ret;
+         break;
+      }
+
+      case message::Message::EXECUTIONPROGRESS: {
+         
+         const message::ExecutionProgress *prog =
+            static_cast<const message::ExecutionProgress *>(message);
+
+         message::ExecutionProgress forward(*prog);
+         forward.setSenderId(id());
+
+         switch (prog->stage()) {
+            case message::ExecutionProgress::Start:
+               if (m_executionDepth == 0)
+                  sendMessage(forward);
+               ++m_executionDepth;
+               break;
+            case message::ExecutionProgress::Finish:
+               --m_executionDepth;
+               if (m_executionDepth == 0)
+                  sendMessage(forward);
+               break;
+            case message::ExecutionProgress::Iteration:
+               break;
+            case message::ExecutionProgress::Timestep:
+               break;
+         }
          break;
       }
 
@@ -1204,6 +1297,11 @@ void Module::setObjectReceivePolicy(int pol) {
 int Module::objectReceivePolicy() const {
 
    return m_receivePolicy;
+}
+
+bool Module::reduce(int /* timestep */) {
+
+   return true;
 }
 
 } // namespace vistle

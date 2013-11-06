@@ -408,6 +408,16 @@ bool StateTracker::handle(const message::Compute &compute) {
    return true;
 }
 
+bool StateTracker::handle(const message::Reduce &reduce) {
+
+   return true;
+}
+
+bool StateTracker::handle(const message::ExecutionProgress &prog) {
+
+   return true;
+}
+
 bool StateTracker::handle(const message::Busy &busy) {
 
    const int id = busy.senderId();
