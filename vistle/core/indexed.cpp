@@ -52,6 +52,7 @@ Indexed::Data *Indexed::Data::create(Type id,
             const Index numVertices,
             const Meta &meta) {
 
+   // required for boost::serialization
    assert("should never be called" == NULL);
 
    return NULL;
