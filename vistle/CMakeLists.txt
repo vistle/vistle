@@ -5,7 +5,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${PROJECT_SOURCE_DIR}/cmake/Modules/
 
 enable_testing()
 
-option(TEMPLATES_IN_HEADERS "define templates in headers" OFF)
+option(TEMPLATES_IN_HEADERS "define templates in headers" ON)
 if(${TEMPLATES_IN_HEADERS})
    add_definitions(-DTEMPLATES_IN_HEADERS)
    add_definitions(-DVISTLE_IMPL)
