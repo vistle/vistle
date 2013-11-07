@@ -465,9 +465,6 @@ bool ModuleManager::handle(const message::Compute &compute) {
       if (compute.getExecutionCount() > m_executionCounter)
          m_executionCounter = compute.getExecutionCount();
    } else {
-      toSend.setModule(compute.getModule());
-      toSend.setSenderId(compute.senderId());
-      toSend.setUuid(compute.uuid());
       toSend.setExecutionCount(newExecutionCount());
    }
 
@@ -477,6 +474,7 @@ bool ModuleManager::handle(const message::Compute &compute) {
          i->second.sendQueue->send(toSend);
       }
    } else {
+      // execute all sources in dataflow graph
       for (auto &mod: runningMap) {
          int id = mod.first;
          auto inputs = m_stateTracker.portTracker()->getInputPorts(id);
@@ -487,7 +485,7 @@ bool ModuleManager::handle(const message::Compute &compute) {
          }
          if (isSource) {
             toSend.setModule(id);
-            Communicator::the().broadcastAndHandleMessage(toSend);
+            Communicator::the().handleMessage(toSend);
          }
       }
    }
