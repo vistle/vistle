@@ -146,7 +146,12 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
 bool UserInterface::getLockForMessage(const message::Message::uuid_t &uuid) {
 
    boost::mutex::scoped_lock lock(m_messageMutex);
-   m_messageMap[const_cast<message::Message::uuid_t &>(uuid)]->mutex.lock();
+   MessageMap::iterator it = m_messageMap.find(uuid);
+   if (it == m_messageMap.end()) {
+      it = m_messageMap.insert(std::make_pair(uuid, boost::shared_ptr<RequestedMessage>(new RequestedMessage()))).first;
+   }
+   it->second->mutex.lock();
+   //m_messageMap[const_cast<message::Message::uuid_t &>(uuid)]->mutex.lock();
    return true;
 }
 
