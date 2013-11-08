@@ -180,8 +180,9 @@ protected:
    virtual bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName);
    virtual bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg);
 
-   virtual bool compute() = 0;
-   virtual bool reduce(int timestep);
+   virtual bool prepare(); //< prepare execution - called on each rank individually
+   virtual bool compute() = 0; //< do processing - called on each rank individually
+   virtual bool reduce(int timestep); //< do reduction for timestep (-1: global) - called on all ranks
 
    std::map<std::string, Port*> outputPorts;
    std::map<std::string, Port*> inputPorts;

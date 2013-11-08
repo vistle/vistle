@@ -948,6 +948,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             static_cast<const message::Compute *>(message);
 
          if (comp->reason() == message::Compute::Execute) {
+            prepare();
             assert(m_executionDepth == 0);
             ++m_executionDepth;
             message::ExecutionProgress start(message::ExecutionProgress::Start);
@@ -1037,8 +1038,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          switch (prog->stage()) {
             case message::ExecutionProgress::Start:
-               if (m_executionDepth == 0)
+               if (m_executionDepth == 0) {
+                  prepare();
                   sendMessage(forward);
+               }
                ++m_executionDepth;
                break;
             case message::ExecutionProgress::Finish:
@@ -1297,6 +1300,11 @@ void Module::setObjectReceivePolicy(int pol) {
 int Module::objectReceivePolicy() const {
 
    return m_receivePolicy;
+}
+
+bool Module::prepare() {
+
+   return true;
 }
 
 bool Module::reduce(int /* timestep */) {

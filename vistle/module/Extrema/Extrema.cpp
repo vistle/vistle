@@ -28,7 +28,6 @@ class Extrema: public vistle::Module {
    bool handled;
    bool haveGeometry;
    ParamVector min, max, gmin, gmax;
-   int m_lastExecutionCount;
 
    virtual bool compute();
    virtual bool reduce(int timestep);
@@ -36,14 +35,15 @@ class Extrema: public vistle::Module {
    template<int Dim>
    friend struct Compute;
 
-   void reset() {
+   bool prepare() {
       haveGeometry = false;
 
-      std::cerr << "resetting global min/max" << std::endl;
       for (int c=0; c<MaxDim; ++c) {
          gmin[c] =  std::numeric_limits<double>::max();
          gmax[c] = -std::numeric_limits<double>::max();
       }
+
+      return true;
    }
 
    template<int Dim>
@@ -90,7 +90,6 @@ using namespace vistle;
 
 Extrema::Extrema(const std::string &shmname, int rank, int size, int moduleID)
    : Module("Extrema", shmname, rank, size, moduleID)
-   , m_lastExecutionCount(-1)
 {
 
    setReducePolicy(message::ReducePolicy::OverAll);
@@ -125,12 +124,6 @@ bool Extrema::compute() {
    //std::cerr << "Extrema: compute: execcount=" << m_executionCount << std::endl;
 
    dim = -1;
-   if (m_executionCount != m_lastExecutionCount) {
-      reset();
-   } else {
-      //std::cerr << "reusing global min/max" << std::endl;
-   }
-   m_lastExecutionCount = m_executionCount;
 
    while(Object::const_ptr obj = takeFirstObject("data_in")) {
       handled = false;
