@@ -1,10 +1,13 @@
 #include <sstream>
 #include <iomanip>
 
+#include <core/message.h>
 #include <core/object.h>
 #include <core/unstr.h>
 #include <core/vec.h>
 #include <core/triangles.h>
+
+#include <boost/mpi/collectives.hpp>
 
 #include "tables.h"
 #include "IsoSurface.h"
@@ -18,6 +21,7 @@ IsoSurface::IsoSurface(const std::string &shmname, int rank, int size, int modul
    : Module("IsoSurface", shmname, rank, size, moduleID) {
 
    setDefaultCacheMode(ObjectCache::CacheAll);
+   setReducePolicy(message::ReducePolicy::OverAll);
 
    createInputPort("grid_in");
    createInputPort("data_in");
@@ -31,6 +35,25 @@ IsoSurface::IsoSurface(const std::string &shmname, int rank, int size, int modul
 
 IsoSurface::~IsoSurface() {
 
+}
+
+bool IsoSurface::prepare() {
+
+   min = std::numeric_limits<Scalar>::max();
+   max = -std::numeric_limits<Scalar>::max();
+   return true;
+}
+
+bool IsoSurface::reduce(int /* timestep */) {
+
+   boost::mpi::all_reduce(boost::mpi::communicator(),
+         min, min, boost::mpi::minimum<Scalar>());
+   boost::mpi::all_reduce(boost::mpi::communicator(),
+         max, max, boost::mpi::maximum<Scalar>());
+
+   setParameterRange(m_isovalue, (double)min, (double)max);
+
+   return true;
 }
 
 #define lerp(a, b, t) ( a + t * (b - a) )
@@ -92,6 +115,8 @@ class Leveller {
    Triangles::ptr m_triangles;
    Vec<Scalar>::ptr m_outData;
 
+   Scalar gmin, gmax;
+
  public:
    Leveller(UnstructuredGrid::const_ptr grid, const Scalar isovalue)
    : m_grid(grid)
@@ -108,6 +133,8 @@ class Leveller {
    , out_y(nullptr)
    , out_z(nullptr)
    , out_d(nullptr)
+   , gmin(std::numeric_limits<Scalar>::max())
+   , gmax(-std::numeric_limits<Scalar>::max())
    {
 
       tl = &grid->tl()[0];
@@ -138,19 +165,31 @@ class Leveller {
 
       Index curidx = 0;
       std::vector<Index> outputIdx(numElem);
-#pragma omp parallel for schedule (dynamic)
-      for (Index elem=0; elem<numElem; ++elem) {
+#pragma omp parallel
+      {
+         Scalar tmin = std::numeric_limits<Scalar>::max();
+         Scalar tmax = -std::numeric_limits<Scalar>::max();
+#pragma omp for schedule (dynamic)
+         for (Index elem=0; elem<numElem; ++elem) {
 
-         Index n = 0;
-         switch (tl[elem]) {
-            case UnstructuredGrid::HEXAHEDRON: {
-               n = processHexahedron(elem, 0, true /* count only */);
+            Index n = 0;
+            switch (tl[elem]) {
+               case UnstructuredGrid::HEXAHEDRON: {
+                  n = processHexahedron(elem, 0, true /* count only */, tmin, tmax);
+               }
+            }
+#pragma omp critical
+            {
+               outputIdx[elem] = curidx;
+               curidx += n;
             }
          }
 #pragma omp critical
          {
-            outputIdx[elem] = curidx;
-            curidx += n;
+            if (tmin < gmin)
+               gmin = tmin;
+            if (tmax > gmax)
+               gmax = tmax;
          }
       }
 
@@ -174,7 +213,7 @@ class Leveller {
       for (Index elem = 0; elem<numElem; ++elem) {
          switch (tl[elem]) {
             case UnstructuredGrid::HEXAHEDRON: {
-               processHexahedron(elem, outputIdx[elem], false);
+               processHexahedron(elem, outputIdx[elem], false, gmin, gmax);
             }
          }
       }
@@ -189,10 +228,15 @@ class Leveller {
       return m_triangles;
    }
 
- private:
-   Index processHexahedron(const Index elem, const Index outIdx, bool numVertsOnly) {
+   std::pair<Scalar, Scalar> range() {
 
-      Index p = el[elem];
+      return std::make_pair(gmin, gmax);
+   }
+
+ private:
+   Index processHexahedron(const Index elem, const Index outIdx, bool numVertsOnly, Scalar &min, Scalar &max) {
+
+      const Index p = el[elem];
 
       Index index[8];
       index[0] = cl[p + 5];
@@ -205,11 +249,7 @@ class Leveller {
       index[7] = cl[p];
 
       Scalar field[8];
-      Scalar3 v[8];
       for (int idx = 0; idx < 8; idx ++) {
-         v[idx].x = x[index[idx]];
-         v[idx].y = y[index[idx]];
-         v[idx].z = z[index[idx]];
          field[idx] = d[index[idx]];
       }
 
@@ -217,13 +257,26 @@ class Leveller {
       for (int idx = 0; idx < 8; idx ++)
          tableIndex += (((int) (field[idx] < m_isoValue)) << idx);
 
-      int numVerts = hexaNumVertsTable[tableIndex];
+      const int numVerts = hexaNumVertsTable[tableIndex];
 
       if (numVertsOnly) {
+         for (int idx = 0; idx < 8; ++idx) {
+            if (field[idx] < min)
+               min = field[idx];
+            if (field[idx] > max)
+               max = field[idx];
+         }
          return numVerts;
       }
 
-      if (numVerts) {
+      if (numVerts > 0) {
+
+         Scalar3 v[8];
+         for (int idx = 0; idx < 8; idx ++) {
+            v[idx].x = x[index[idx]];
+            v[idx].y = y[index[idx]];
+            v[idx].z = z[index[idx]];
+         }
 
          Scalar3 vertlist[12];
          vertlist[0] = interp(m_isoValue, v[0], v[1], field[0], field[1]);
@@ -284,6 +337,13 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
    Leveller l(grid, isoValue);
    l.addData(data);
    l.process();
+
+   auto range = l.range();
+   if (range.first < min)
+      min = range.first;
+   if (range.second > max)
+      max = range.second;
+
    return l.result();
 }
 

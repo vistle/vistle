@@ -15,9 +15,13 @@ class IsoSurface: public vistle::Module {
                                        const vistle::Scalar isoValue);
 
    virtual bool compute();
+   virtual bool prepare();
+   virtual bool reduce(int timestep);
 
    vistle::FloatParameter *m_isovalue;
    vistle::StringParameter *m_shader, *m_shaderParams;
+
+   vistle::Scalar min, max;
 };
 
 #endif
