@@ -96,10 +96,12 @@ void Color::getMinMax(vistle::Object::const_ptr object,
             tmax = x[index];
       }
 #pragma omp critical
-      if (tmin < min)
-         min = tmin;
-      if (tmax > max)
-         max = tmax;
+      {
+         if (tmin < min)
+            min = tmin;
+         if (tmax > max)
+            max = tmax;
+      }
    }
 }
 
