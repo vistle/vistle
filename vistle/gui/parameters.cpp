@@ -220,10 +220,22 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
       } else {
          m_intManager->setValue(prop, ip->getValue());
          m_intManager->setRange(prop, ip->minimum(), ip->maximum());
+
+         QString tip = QString("%1 (%2 – %3)").arg(
+               QString::fromStdString(p->description()),
+               QString::number(ip->minimum()),
+               QString::number(ip->maximum()));
+            prop->setToolTip(tip);
       }
    } else if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
       m_floatManager->setValue(prop, fp->getValue());
       m_floatManager->setRange(prop, fp->minimum(), fp->maximum());
+
+      QString tip = QString("%1 (%2 – %3)").arg(
+               QString::fromStdString(p->description()),
+               QString::number(fp->minimum()),
+               QString::number(fp->maximum()));
+            prop->setToolTip(tip);
    } else if (vistle::StringParameter *sp = dynamic_cast<vistle::StringParameter *>(p)) {
       if (sp->presentation() == vistle::Parameter::Choice) {
          QStringList choices = m_stringChoiceManager->enumNames(prop);
