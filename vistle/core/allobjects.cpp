@@ -4,6 +4,7 @@
 #define VISTLE_IMPL
 #include "vec.cpp"
 #include "coords.cpp"
+#include "normals.cpp"
 #include "points.cpp"
 #include "indexed.cpp"
 #include "lines.cpp"
@@ -18,6 +19,7 @@
 
 #include "vec.h"
 #include "coords.h"
+#include "normals.h"
 #include "points.h"
 #include "indexed.h"
 #include "lines.h"
@@ -55,6 +57,7 @@ void registerTypes() {
    REGISTER_TYPE(PlaceHolder, Object::PLACEHOLDER);
    REGISTER_TYPE(Texture1D, Object::TEXTURE1D);
    REGISTER_TYPE(Geometry, Object::GEOMETRY);
+   REGISTER_TYPE(Normals, Object::NORMALS);
    REGISTER_TYPE(Points, Object::POINTS);
    REGISTER_TYPE(Lines, Object::LINES);
    REGISTER_TYPE(Triangles, Object::TRIANGLES);

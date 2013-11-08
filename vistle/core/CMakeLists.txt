@@ -23,6 +23,7 @@ if(${TEMPLATES_IN_HEADERS})
    set(core_SOURCES ${core_SOURCES}
       vec.cpp
       coords.cpp
+      normals.cpp
       points.cpp
       indexed.cpp
       lines.cpp
@@ -55,6 +56,7 @@ set(core_HEADERS
    message.h
    messagequeue.h
    normals.h
+   normals_impl.h
    object.h
    object_impl.h
    objectcache.h

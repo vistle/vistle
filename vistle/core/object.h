@@ -66,6 +66,8 @@ public:
       POLYGONS          = 22,
       UNSTRUCTUREDGRID  = 23,
 
+      NORMALS           = 99,
+
       VEC               = 100, // base type id for all Vec types
    };
 

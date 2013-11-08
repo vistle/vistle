@@ -16,6 +16,7 @@
 #include <core/triangles.h>
 #include <core/texture1d.h>
 #include <core/placeholder.h>
+#include <core/normals.h>
 
 using namespace opencover;
 using namespace vistle;
@@ -262,9 +263,9 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
          vistle::Polygons::const_ptr polygons = vistle::Polygons::as(m_geo);
 
-         vistle::Vec<vistle::Scalar,3>::const_ptr vec;
+         vistle::Normals::const_ptr vec;
          if (m_normal)
-            vec = vistle::Vec<vistle::Scalar,3>::as(m_normal);
+            vec = vistle::Normals::as(m_normal);
 
          const Index numElements = polygons->getNumElements();
          const Index numCorners = polygons->getNumCorners();
