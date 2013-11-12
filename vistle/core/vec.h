@@ -31,8 +31,6 @@ class Vec: public Object {
 
    void setSize(const Index size);
 
-   static Type type();
-
    array &x(int c=0) const { return *(*d()->x[c])(); }
    array &y() const { return *(*d()->x[1])(); }
    array &z() const { return *(*d()->x[2])(); }
@@ -47,7 +45,7 @@ class Vec: public Object {
       // when used as base of another data structure
       Data(const Index size, Type id, const std::string &name,
             const Meta &meta=Meta());
-      Data(const Data &other, const std::string &name);
+      Data(const Data &other, const std::string &name, Type id=UNKNOWN);
       static Data *create(Index size = 0, const Meta &meta=Meta());
 
       private:

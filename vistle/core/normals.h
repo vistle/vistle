@@ -22,6 +22,7 @@ class  V_COREEXPORT Normals: public Coords {
       Data(const Index numNormals = 0,
             const std::string & name = "",
             const Meta &meta=Meta());
+      Data(const Vec<Scalar, 3>::Data &o, const std::string &n);
       static Data *create(const Index numNormals = 0,
             const Meta &meta=Meta());
 

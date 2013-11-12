@@ -117,8 +117,8 @@ Object::Data::Data(const Type type, const std::string & n, const Meta &m)
 {
 }
 
-Object::Data::Data(const Object::Data &o, const std::string &name)
-: type(o.type)
+Object::Data::Data(const Object::Data &o, const std::string &name, Object::Type id)
+: type(id==Object::UNKNOWN ? o.type : id)
 , name(name)
 , refcount(0)
 , meta(o.meta)

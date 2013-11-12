@@ -149,7 +149,7 @@ public:
       std::vector<std::string> getAttributes(const std::string &key) const;
 
       V_COREEXPORT Data(Type id = UNKNOWN, const std::string &name = "", const Meta &m=Meta());
-      V_COREEXPORT Data(const Data &other, const std::string &name); //! shallow copy, except for attributes
+      V_COREEXPORT Data(const Data &other, const std::string &name, Type id=UNKNOWN); //! shallow copy, except for attributes
       V_COREEXPORT ~Data();
       V_COREEXPORT void *operator new(size_t size);
       V_COREEXPORT void *operator new (std::size_t size, void* ptr);
@@ -254,36 +254,51 @@ class ObjectTypeRegistry {
    }
 
 //! declare a new Object type
-#define V_OBJECT(Type) \
+#define V_OBJECT(ObjType) \
    public: \
-   typedef boost::shared_ptr<Type> ptr; \
-   typedef boost::shared_ptr<const Type> const_ptr; \
-   typedef Type Class; \
-   static boost::shared_ptr<const Type> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Type>(ptr); } \
-   static boost::shared_ptr<Type> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Type>(ptr); } \
-   static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new Type(static_cast<Type::Data *>(data))); } \
+   typedef boost::shared_ptr<ObjType> ptr; \
+   typedef boost::shared_ptr<const ObjType> const_ptr; \
+   typedef ObjType Class; \
+   static Object::Type type(); \
+   static boost::shared_ptr<const ObjType> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const ObjType>(ptr); } \
+   static boost::shared_ptr<ObjType> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<ObjType>(ptr); } \
+   static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new ObjType(static_cast<ObjType::Data *>(data))); } \
    Object::ptr clone() const { \
       const std::string n(Shm::the().createObjectID()); \
             Data *data = shm<Data>::construct(n)(*d(), n); \
             publish(data); \
             return createFromData(data); \
    } \
-   static void destroy(const std::string &name) { shm<Type::Data>::destroy(name); } \
+   template<class OtherType> \
+   static ObjType::ptr clone(typename OtherType::ptr other) { \
+      const std::string n(Shm::the().createObjectID()); \
+      typename ObjType::Data *data = shm<typename ObjType::Data>::construct(n)(*other->d(), n); \
+      assert(data->type == ObjType::type()); \
+      ObjType::ptr ret = ObjType::as(createFromData(data)); \
+      assert(ret); \
+      publish(data); \
+      return ret; \
+   } \
+   template<class OtherType> \
+   static ObjType::ptr clone(typename OtherType::const_ptr other) { \
+      return ObjType::clone<OtherType>(boost::const_pointer_cast<OtherType>(other)); \
+   } \
+   static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \
    static void registerTextIArchive(boost::archive::text_iarchive &ar); \
    static void registerTextOArchive(boost::archive::text_oarchive &ar); \
    static void registerXmlIArchive(boost::archive::xml_iarchive &ar); \
    static void registerXmlOArchive(boost::archive::xml_oarchive &ar); \
    static void registerBinaryIArchive(boost::archive::binary_iarchive &ar); \
    static void registerBinaryOArchive(boost::archive::binary_oarchive &ar); \
-   Type(Object::InitializedFlags) : Base(Type::Data::create()) {} \
+   ObjType(Object::InitializedFlags) : Base(ObjType::Data::create()) {} \
    virtual bool isEmpty() const; \
    bool check() const { if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
    struct Data; \
    Data *d() const { return static_cast<Data *>(Object::m_data); } \
    protected: \
    bool checkImpl() const; \
-   Type(Data *data) : Base(data) {} \
-   Type() : Base() {} \
+   ObjType(Data *data) : Base(data) {} \
+   ObjType() : Base() {} \
    private: \
    friend class boost::serialization::access; \
    template<class Archive> \
@@ -310,14 +325,14 @@ class ObjectTypeRegistry {
    friend boost::shared_ptr<Object> Object::create(Object::Data *); \
    friend class ObjectTypeRegistry
 
-#define V_DATA_BEGIN(Type) \
+#define V_DATA_BEGIN(ObjType) \
    public: \
    struct Data: public Base::Data { \
       Data(const Data &other, const std::string &name) \
 
-#define V_DATA_END(Type) \
+#define V_DATA_END(ObjType) \
       private: \
-      friend class Type; \
+      friend class ObjType; \
       friend class boost::serialization::access; \
       template<class Archive> \
       void serialize(Archive &ar, const unsigned int version); \
@@ -349,32 +364,32 @@ class ObjectTypeRegistry {
       ar.register_type<Type1, Type2 >(); \
    }
 
-#define V_SERIALIZERS(Type) \
-   void Type::registerTextIArchive(boost::archive::text_iarchive &ar) { \
-      ar.register_type<Type >(); \
+#define V_SERIALIZERS(ObjType) \
+   void ObjType::registerTextIArchive(boost::archive::text_iarchive &ar) { \
+      ar.register_type<ObjType >(); \
    } \
-   void Type::registerTextOArchive(boost::archive::text_oarchive &ar) { \
-      ar.register_type<Type >(); \
+   void ObjType::registerTextOArchive(boost::archive::text_oarchive &ar) { \
+      ar.register_type<ObjType >(); \
    } \
-   void Type::registerXmlIArchive(boost::archive::xml_iarchive &ar) { \
-      ar.register_type<Type >(); \
+   void ObjType::registerXmlIArchive(boost::archive::xml_iarchive &ar) { \
+      ar.register_type<ObjType >(); \
    } \
-   void Type::registerXmlOArchive(boost::archive::xml_oarchive &ar) { \
-      ar.register_type<Type >(); \
+   void ObjType::registerXmlOArchive(boost::archive::xml_oarchive &ar) { \
+      ar.register_type<ObjType >(); \
    } \
-   void Type::registerBinaryIArchive(boost::archive::binary_iarchive &ar) { \
-      ar.register_type<Type >(); \
+   void ObjType::registerBinaryIArchive(boost::archive::binary_iarchive &ar) { \
+      ar.register_type<ObjType >(); \
    } \
-   void Type::registerBinaryOArchive(boost::archive::binary_oarchive &ar) { \
-      ar.register_type<Type >(); \
+   void ObjType::registerBinaryOArchive(boost::archive::binary_oarchive &ar) { \
+      ar.register_type<ObjType >(); \
    }
 
 #ifdef VISTLE_STATIC
-#define REGISTER_TYPE(Type, id) \
+#define REGISTER_TYPE(ObjType, id) \
 { \
-   ObjectTypeRegistry::registerType<Type >(id); \
-   boost::serialization::void_cast_register<Type, Type::Base>( \
-         static_cast<Type *>(NULL), static_cast<Type::Base *>(NULL) \
+   ObjectTypeRegistry::registerType<ObjType >(id); \
+   boost::serialization::void_cast_register<ObjType, ObjType::Base>( \
+         static_cast<ObjType *>(NULL), static_cast<ObjType::Base *>(NULL) \
   ); \
 }
 
@@ -383,33 +398,36 @@ class ObjectTypeRegistry {
 #define V_INIT_STATIC static
 #endif
 
-#define V_OBJECT_TYPE3INT(Type, suffix, id) \
+#define V_OBJECT_TYPE3INT(ObjType, suffix, id) \
       class RegisterObjectType_##suffix { \
          public: \
                  RegisterObjectType_##suffix() { \
-                    ObjectTypeRegistry::registerType<Type >(id); \
-                    boost::serialization::void_cast_register<Type, Type::Base>( \
-                          static_cast<Type *>(NULL), static_cast<Type::Base *>(NULL) \
+                    ObjectTypeRegistry::registerType<ObjType >(id); \
+                    boost::serialization::void_cast_register<ObjType, ObjType::Base>( \
+                          static_cast<ObjType *>(NULL), static_cast<ObjType::Base *>(NULL) \
                           ); \
                  } \
       }; \
       V_INIT_STATIC RegisterObjectType_##suffix registerObjectType_##suffix; \
 
 //! register a new Object type (complex form, specify suffix for symbol names)
-#define V_OBJECT_TYPE3(Type, suffix, id) \
-      V_OBJECT_TYPE3INT(Type, suffix, id)
+#define V_OBJECT_TYPE3(ObjType, suffix, id) \
+      V_OBJECT_TYPE3INT(ObjType, suffix, id)
 
 //! register a new Object type (complex form, specify suffix for symbol names)
 #define V_OBJECT_TYPE4(Type1, Type2, suffix, id) \
       namespace suffix { \
-      typedef Type1,Type2 Type; \
-      V_OBJECT_TYPE3INT(Type, suffix, id) \
+      typedef Type1,Type2 ObjType; \
+      V_OBJECT_TYPE3INT(ObjType, suffix, id) \
    }
 
 //! register a new Object type (simple form for non-templates, symbol suffix determined automatically)
-#define V_OBJECT_TYPE(Type, id) \
-   V_SERIALIZERS(Type) \
-   V_OBJECT_TYPE3(Type, Type, id)
+#define V_OBJECT_TYPE(ObjType, id) \
+   V_SERIALIZERS(ObjType) \
+   V_OBJECT_TYPE3(ObjType, ObjType, id) \
+   Object::Type ObjType::type() { \
+      return id; \
+   }
 
 void V_COREEXPORT registerTypes();
 

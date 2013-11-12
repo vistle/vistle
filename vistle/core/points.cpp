@@ -36,6 +36,11 @@ Points::Data::Data(const Points::Data &o, const std::string &n)
 {
 }
 
+Points::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n)
+: Points::Base::Data(o, n, Object::POINTS)
+{
+}
+
 Points::Data *Points::Data::create(const Index numPoints,
                       const Meta &meta) {
 

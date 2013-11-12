@@ -57,8 +57,8 @@ Vec<T,Dim>::Data::Data(const Index size, Type id, const std::string &name,
 }
 
 template <class T, int Dim>
-Vec<T,Dim>::Data::Data(const Data &o, const std::string &n)
-: Vec<T,Dim>::Base::Data(o, n)
+Vec<T,Dim>::Data::Data(const Data &o, const std::string &n, Type id)
+: Vec<T,Dim>::Base::Data(o, n, id)
 {
    for (int c=0; c<Dim; ++c)
       x[c] = o.x[c];

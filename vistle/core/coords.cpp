@@ -31,6 +31,11 @@ Coords::Data::Data(const Coords::Data &o, const std::string &n)
 {
 }
 
+Coords::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n, Type id)
+: Coords::Base::Data(o, n, id)
+{
+}
+
 Coords::Data *Coords::Data::create(Type id, const Index numVertices,
             const Meta &meta) {
 

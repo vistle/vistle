@@ -27,7 +27,12 @@ Normals::Data::Data(const Index numNormals,
              const std::string & name,
              const Meta &meta)
    : Normals::Base::Data(numNormals,
-         Object::POINTS, name, meta)
+         Object::NORMALS, name, meta)
+{
+}
+
+Normals::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n)
+: Normals::Base::Data(o, n, Object::NORMALS)
 {
 }
 
