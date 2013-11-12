@@ -982,6 +982,11 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          bool ret = false;
          try {
             ret = compute();
+         } catch (boost::interprocess::interprocess_exception &e) {
+            std::cerr << name() << "::compute(): interprocess_exception: " << e.what()
+               << ", error code: " << e.get_error_code()
+               << ", native error: " << e.get_native_error()
+               << std::endl;
          } catch (std::exception &e) {
             std::cerr << name() << "::compute(): exception - " << e.what() << std::endl;
          }
