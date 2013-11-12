@@ -4,3 +4,6 @@
 [submodule "3rdparty/qt-solutions"]
 	path = 3rdparty/qt-solutions
 	url = git://gitorious.org/qt-solutions/qt-solutions.git
+[submodule "3rdparty/boost-mpi"]
+	path = 3rdparty/boost-mpi
+	url = https://github.com/vistle/boost-mpi.git
