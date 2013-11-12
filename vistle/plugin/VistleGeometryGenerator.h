@@ -17,6 +17,8 @@ class VistleGeometryGenerator {
 
       osg::Node *operator()();
 
+      static bool isSupported(vistle::Object::Type t);
+
    private:
       vistle::Object::const_ptr m_geo;
       vistle::Object::const_ptr m_color;

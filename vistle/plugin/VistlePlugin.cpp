@@ -300,16 +300,6 @@ bool OsgRenderer::addInputObject(const std::string & portName,
 #endif
 
    switch (object->getType()) {
-
-      case vistle::Object::PLACEHOLDER:
-      case vistle::Object::TRIANGLES:
-      case vistle::Object::POLYGONS:
-      case vistle::Object::LINES: {
-
-         addInputObject(object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
-         break;
-      }
-
       case vistle::Object::GEOMETRY: {
 
          vistle::Geometry::const_ptr geom = vistle::Geometry::as(object);
@@ -328,8 +318,14 @@ bool OsgRenderer::addInputObject(const std::string & portName,
          break;
       }
 
-      default:
+      case vistle::Object::PLACEHOLDER:
+      default: {
+         if (object->getType() == vistle::Object::PLACEHOLDER
+               || VistleGeometryGenerator::isSupported(object->getType()))
+            addInputObject(object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
+
          break;
+      }
    }
 
    return true;

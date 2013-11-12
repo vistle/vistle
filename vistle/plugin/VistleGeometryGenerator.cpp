@@ -8,8 +8,10 @@
 #include <osg/LightModel>
 #include <osg/Material>
 #include <osg/Texture1D>
+#include <osg/Point>
 
 #include <core/polygons.h>
+#include <core/points.h>
 #include <core/lines.h>
 #include <core/triangles.h>
 #include <core/texture1d.h>
@@ -29,6 +31,21 @@ VistleGeometryGenerator::VistleGeometryGenerator(vistle::Object::const_ptr geo,
 , m_normal(normal)
 , m_tex(tex)
 {
+}
+
+bool VistleGeometryGenerator::isSupported(vistle::Object::Type t) {
+
+   switch (t) {
+      case vistle::Object::GEOMETRY:
+      case vistle::Object::POINTS:
+      case vistle::Object::TRIANGLES:
+      case vistle::Object::LINES:
+      case vistle::Object::POLYGONS:
+         return true;
+
+      default:
+         return false;
+   }
 }
 
 osg::Node *VistleGeometryGenerator::operator()() {
@@ -67,20 +84,46 @@ osg::Node *VistleGeometryGenerator::operator()() {
    switch (m_geo->getType()) {
 
       case vistle::Object::PLACEHOLDER: {
+
          vistle::PlaceHolder::const_ptr ph = vistle::PlaceHolder::as(m_geo);
-         switch (ph->originalType()) {
-            case vistle::Object::GEOMETRY:
-            case vistle::Object::TRIANGLES:
-            case vistle::Object::LINES:
-            case vistle::Object::POLYGONS: {
-               osg::Node *node = new osg::Node();
-               node->setName(ph->originalName());
-               return node;
-               break;
-            }
-         default:
-            break;
+         if (isSupported(ph->originalType())) {
+            osg::Node *node = new osg::Node();
+            node->setName(ph->originalName());
+            return node;
          }
+         break;
+      }
+
+      case vistle::Object::POINTS: {
+
+         vistle::Points::const_ptr points = vistle::Points::as(m_geo);
+         const Index numVertices = points->getNumPoints();
+
+         //std::cerr << debug.str() << "Points: [ #v " << numVertices << " ]" << std::endl;
+
+         geode = new osg::Geode();
+         osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
+
+         const vistle::Scalar *x = &points->x()[0];
+         const vistle::Scalar *y = &points->y()[0];
+         const vistle::Scalar *z = &points->z()[0];
+         osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
+         for (Index v = 0; v < numVertices; v ++)
+            vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
+
+         geom->setVertexArray(vertices.get());
+         osg::ref_ptr<osg::DrawElementsUInt> idx = new osg::DrawElementsUInt(osg::PrimitiveSet::POINTS, 0);
+         for (Index p=0; p<numVertices; ++p)
+            idx->push_back(p);
+
+         geom->addPrimitiveSet(idx.get());
+
+         osg::ref_ptr<osg::StateSet> state = VRSceneGraph::instance()->loadDefaultGeostate();
+         state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
+         state->setAttribute(new osg::Point(2.0f), osg::StateAttribute::ON);
+         geom->setStateSet(state.get());
+
+         geode->addDrawable(geom.get());
          break;
       }
 
@@ -107,14 +150,11 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
          geom->setVertexArray(vertices.get());
 
-         osg::ref_ptr<osg::Vec3Array> norm = new osg::Vec3Array();
-
          osg::ref_ptr<osg::DrawElementsUInt> corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
          for (Index corner = 0; corner < numCorners; corner ++)
             corners->push_back(cl[corner]);
 
-         std::vector<osg::Vec3> * vertexNormals = new std::vector<osg::Vec3>[numVertices];
-
+         std::vector<osg::Vec3> *vertexNormals = new std::vector<osg::Vec3>[numVertices];
          for (Index c = 0; c < numCorners; c += 3) {
             osg::Vec3 u(x[cl[c + 0]], y[cl[c + 0]], z[cl[c + 0]]);
             osg::Vec3 v(x[cl[c + 1]], y[cl[c + 1]], z[cl[c + 1]]);
@@ -126,6 +166,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
             vertexNormals[cl[c + 2]].push_back(normal);
          }
 
+         osg::ref_ptr<osg::Vec3Array> norm = new osg::Vec3Array();
          for (Index vertex = 0; vertex < numVertices; vertex ++) {
             osg::Vec3 n;
             std::vector<osg::Vec3>::iterator i;
@@ -322,6 +363,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
       }
 
       default:
+         assert(isSupported(m_geo->getType()) == false);
          break;
    }
 
