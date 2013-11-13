@@ -789,16 +789,24 @@ SendText::SendText(const std::string &text, const Message &inResponseTo)
 , m_textType(TextType::Error)
 , m_referenceUuid(inResponseTo.uuid())
 , m_referenceType(inResponseTo.type())
+, m_truncated(false)
 {
-   COPY_STRING(m_text, text);
+   if (text.size() >= sizeof(m_text)) {
+      m_truncated = true;
+   }
+   COPY_STRING(m_text, text.substr(0, sizeof(m_text)-1));
 }
 
 SendText::SendText(SendText::TextType type, const std::string &text)
 : Message(Message::SENDTEXT, sizeof(SendText))
 , m_textType(type)
 , m_referenceType(Message::INVALID)
+, m_truncated(false)
 {
-   COPY_STRING(m_text, text);
+   if (text.size() >= sizeof(m_text)) {
+      m_truncated = true;
+   }
+   COPY_STRING(m_text, text.substr(0, sizeof(m_text)-1));
 }
 
 SendText::TextType SendText::textType() const {
@@ -819,6 +827,11 @@ Message::uuid_t SendText::referenceUuid() const {
 const char *SendText::text() const {
 
    return m_text;
+}
+
+bool SendText::truncated() const {
+
+   return m_truncated;
 }
 
 ObjectReceivePolicy::ObjectReceivePolicy(ObjectReceivePolicy::Policy pol)

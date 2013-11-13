@@ -547,6 +547,7 @@ public:
    Type referenceType() const;
    uuid_t referenceUuid() const;
    const char *text() const;
+   bool truncated() const;
 
 private:
    //! type of text
@@ -557,6 +558,8 @@ private:
    Type m_referenceType;
    //! message text
    text_t m_text;
+   //! whether m_text has been truncated
+   bool m_truncated;
 };
 BOOST_STATIC_ASSERT(sizeof(SendText) < Message::MESSAGE_SIZE);
 
