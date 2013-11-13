@@ -35,8 +35,8 @@ const double Module::portDistance = 3.;
 Module::Module(QGraphicsItem *parent, QString name)
 : Base(parent)
 , m_id(0)
-, m_validPosition(false)
 , m_Status(SPAWNING)
+, m_validPosition(false)
 , m_fontHeight(0.)
 {
    setName(name);
