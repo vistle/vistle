@@ -114,6 +114,7 @@ Object::Data::Data(const Type type, const std::string & n, const Meta &m)
    , refcount(0)
    , meta(m)
    , attributes(shm<AttributeMap>::construct(std::string("attr_")+n)(std::less<Key>(), Shm::the().allocator()))
+   , attachments(shm<AttachmentMap>::construct(std::string("attach_")+n)(std::less<Key>(), Shm::the().allocator()))
 {
 }
 
@@ -123,14 +124,24 @@ Object::Data::Data(const Object::Data &o, const std::string &name, Object::Type 
 , refcount(0)
 , meta(o.meta)
 , attributes(shm<AttributeMap>::construct(std::string("attr_")+name)(std::less<Key>(), Shm::the().allocator()))
+, attachments(shm<AttachmentMap>::construct(std::string("attach_")+name)(std::less<Key>(), Shm::the().allocator()))
 {
    copyAttributes(&o, true);
+   copyAttachments(&o, true);
 }
 
 Object::Data::~Data() {
 
 
    shm<AttributeMap>::destroy(std::string("attr_")+name);
+   { 
+      boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
+      for (auto &objd: *attachments) {
+         // referenced in addAttachment
+         objd.second->unref();
+      }
+      shm<AttachmentMap>::destroy(std::string("attach_")+name);
+   }
 }
 
 void *Object::Data::operator new(size_t size) {
@@ -494,6 +505,100 @@ std::vector<std::string> Object::Data::getAttributes(const std::string &key) con
    return attrs;
 }
 
+bool Object::addAttachment(const std::string &key, Object::const_ptr obj) {
+
+   return d()->addAttachment(key, obj);
+}
+
+void Object::copyAttachments(Object::const_ptr src, bool replace) {
+
+   d()->copyAttachments(src->d(), replace);
+}
+
+bool Object::hasAttachment(const std::string &key) const {
+
+   return d()->hasAttachment(key);
+}
+
+Object::const_ptr Object::getAttachment(const std::string &key) const {
+
+   return d()->getAttachment(key);
+}
+
+bool Object::removeAttachment(const std::string &key) const {
+
+   return d()->removeAttachment(key);
+}
+
+bool Object::Data::hasAttachment(const std::string &key) const {
+
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+   const Key skey(key.c_str(), Shm::the().allocator());
+   AttachmentMap::iterator it = attachments->find(skey);
+   return it != attachments->end();
+}
+
+Object::const_ptr Object::Data::getAttachment(const std::string &key) const {
+
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+   const Key skey(key.c_str(), Shm::the().allocator());
+   AttachmentMap::iterator it = attachments->find(skey);
+   if (it == attachments->end()) {
+      return Object::ptr();
+   }
+   return Object::create(it->second.get());
+}
+
+bool Object::Data::addAttachment(const std::string &key, Object::const_ptr obj) {
+
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+   const Key skey(key.c_str(), Shm::the().allocator());
+   AttachmentMap::iterator it = attachments->find(skey);
+   if (it != attachments->end()) {
+      return false;
+   }
+
+   obj->ref();
+   attachments->insert(AttachmentMapValueType(skey, obj->d()));
+
+   return true;
+}
+
+void Object::Data::copyAttachments(const Object::Data *src, bool replace) {
+
+   const AttachmentMap &a = *src->attachments;
+
+   for (AttachmentMap::const_iterator it = a.begin(); it != a.end(); ++it) {
+      const Key &key = it->first;
+      const Attachment &value = it->second;
+      auto res = attachments->insert(AttachmentMapValueType(key, value));
+      if (res.second) {
+         value->ref();
+      } else {
+         if (replace) {
+            const Attachment &oldVal = res.first->second;
+            oldVal->unref();
+            res.first->second = value;
+            value->ref();
+         }
+      }
+   }
+}
+
+bool Object::Data::removeAttachment(const std::string &key) {
+
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
+   const Key skey(key.c_str(), Shm::the().allocator());
+   AttachmentMap::iterator it = attachments->find(skey);
+   if (it == attachments->end()) {
+      return false;
+   }
+
+   it->second->unref();
+   attachments->erase(it);
+
+   return true;
+}
 
 ObjectTypeRegistry::CreateFunc ObjectTypeRegistry::getCreator(int id) {
    return getType(id).create;

@@ -39,6 +39,7 @@ endmacro(add_module)
 
 
 add_subdirectory(Add)
+add_subdirectory(AttachObject)
 add_subdirectory(CellToVert)
 add_subdirectory(Collect)
 add_subdirectory(Color)

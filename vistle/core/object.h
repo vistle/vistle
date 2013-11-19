@@ -165,6 +165,13 @@ public:
    std::string getAttribute(const std::string &key) const;
    std::vector<std::string> getAttributes(const std::string &key) const;
 
+   // attachments, e.g. Celltrees
+   bool addAttachment(const std::string &key, Object::const_ptr att);
+   bool hasAttachment(const std::string &key) const;
+   void copyAttachments(Object::const_ptr src, bool replace = true);
+   Object::const_ptr getAttachment(const std::string &key) const;
+   bool removeAttachment(const std::string &key) const;
+
    void ref() const;
    void unref() const;
    int refcount() const;
@@ -179,8 +186,8 @@ public:
     struct Data {
       Type type;
       shm_name_t name;
+      mutable boost::interprocess::interprocess_mutex mutex; //< protects refcount and attachments
       int refcount;
-      boost::interprocess::interprocess_mutex mutex;
 
       Meta meta;
 
@@ -197,6 +204,17 @@ public:
       bool hasAttribute(const std::string &key) const;
       std::string getAttribute(const std::string &key) const;
       std::vector<std::string> getAttributes(const std::string &key) const;
+
+      typedef interprocess::offset_ptr<Object::Data> Attachment;
+      typedef std::pair<const Key, Attachment> AttachmentMapValueType;
+      typedef shm<AttachmentMapValueType>::allocator AttachmentMapAllocator;
+      typedef interprocess::map<Key, Attachment, std::less<Key>, AttachmentMapAllocator> AttachmentMap;
+      interprocess::offset_ptr<AttachmentMap> attachments;
+      bool addAttachment(const std::string &key, Object::const_ptr att);
+      void copyAttachments(const Data *src, bool replace);
+      bool hasAttachment(const std::string &key) const;
+      Object::const_ptr getAttachment(const std::string &key) const;
+      bool removeAttachment(const std::string &key);
 
       V_COREEXPORT Data(Type id = UNKNOWN, const std::string &name = "", const Meta &m=Meta());
       V_COREEXPORT Data(const Data &other, const std::string &name, Type id=UNKNOWN); //! shallow copy, except for attributes
