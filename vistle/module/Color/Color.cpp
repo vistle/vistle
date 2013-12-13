@@ -33,9 +33,9 @@ ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
       }
 
       if (next == pins.end()) {
-         data[index * 4] = current->second.x;
-         data[index * 4 + 1] = current->second.y;
-         data[index * 4 + 2] = current->second.z;
+         data[index * 4] = current->second[0];
+         data[index * 4 + 1] = current->second[1];
+         data[index * 4 + 2] = current->second[2];
          data[index * 4 + 3] = 1.0;
       } else {
 
@@ -45,11 +45,11 @@ ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
          vistle::Scalar t = ((index / (vistle::Scalar) width) - a) / (b - a);
 
          data[index * 4] =
-            (lerp(current->second.x, next->second.x, t) * 255.0);
+            (lerp(current->second[0], next->second[0], t) * 255.0);
          data[index * 4 + 1] =
-            (lerp(current->second.y, next->second.y, t) * 255.0);
+            (lerp(current->second[1], next->second[1], t) * 255.0);
          data[index * 4 + 2] =
-            (lerp(current->second.z, next->second.z, t) * 255.0);
+            (lerp(current->second[2], next->second[2], t) * 255.0);
          data[index * 4 + 3] = 1.0;
       }
    }

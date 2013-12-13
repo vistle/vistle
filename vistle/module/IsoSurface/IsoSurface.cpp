@@ -6,6 +6,7 @@
 #include <core/unstr.h>
 #include <core/vec.h>
 #include <core/triangles.h>
+#include <core/vector.h>
 
 #include <boost/mpi/collectives.hpp>
 
@@ -58,22 +59,14 @@ bool IsoSurface::reduce(int /* timestep */) {
 
 #define lerp(a, b, t) ( a + t * (b - a) )
 
-typedef struct {
-   Scalar x, y, z;
-} Scalar3;
-
 const Scalar EPSILON = 1.0e-10f;
 
-inline Scalar3 lerp3(const Scalar3 &a, const Scalar3 &b, const Scalar t) {
+inline Vector lerp3(const Vector &a, const Vector &b, const Scalar t) {
 
-   Scalar3 res;
-   res.x = lerp(a.x, b.x, t);
-   res.y = lerp(a.y, b.y, t);
-   res.z = lerp(a.z, b.z, t);
-   return res;
+   return lerp(a, b, t);
 }
 
-inline Scalar3 interp(Scalar iso, const Scalar3 &p0, const Scalar3 &p1, const Scalar &f0, const Scalar &f1) {
+inline Vector interp(Scalar iso, const Vector &p0, const Vector &p1, const Scalar &f0, const Scalar &f1) {
 
    Scalar diff = (f1 - f0);
 
@@ -271,14 +264,14 @@ class Leveller {
 
       if (numVerts > 0) {
 
-         Scalar3 v[8];
+         Vector v[8];
          for (int idx = 0; idx < 8; idx ++) {
-            v[idx].x = x[index[idx]];
-            v[idx].y = y[index[idx]];
-            v[idx].z = z[index[idx]];
+            v[idx][0] = x[index[idx]];
+            v[idx][1] = y[index[idx]];
+            v[idx][2] = z[index[idx]];
          }
 
-         Scalar3 vertlist[12];
+         Vector vertlist[12];
          vertlist[0] = interp(m_isoValue, v[0], v[1], field[0], field[1]);
          vertlist[1] = interp(m_isoValue, v[1], v[2], field[1], field[2]);
          vertlist[2] = interp(m_isoValue, v[2], v[3], field[2], field[3]);
@@ -296,19 +289,15 @@ class Leveller {
 
          for (int idx = 0; idx < numVerts; idx += 3) {
 
-            int edge[3];
-            Scalar3 *v[3];
-
             for (int i=0; i<3; ++i) {
-               edge[i] = hexaTriTable[tableIndex][idx+i];
-               v[i] = &vertlist[edge[i]];
-            }
+               int edge = hexaTriTable[tableIndex][idx+i];
+               Vector &v = vertlist[edge];
 
-            for (int i=0; i<3; ++i) {
+               out_x[outIdx+idx+i] = v[0];
+               out_y[outIdx+idx+i] = v[1];
+               out_z[outIdx+idx+i] = v[2];
+
                out_cl[outIdx+idx+i] = outIdx+idx+i;
-               out_x[outIdx+idx+i] = v[i]->x;
-               out_y[outIdx+idx+i] = v[i]->y;
-               out_z[outIdx+idx+i] = v[i]->z;
             }
          }
       }

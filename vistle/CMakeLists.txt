@@ -42,6 +42,9 @@ endif(WIN32)
 
 #set(CMAKE_BUILD_TYPE Debug)
 
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_PATH})
+
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 

@@ -34,22 +34,14 @@ CuttingSurface::~CuttingSurface() {
 
 #define lerp(a, b, t) ( a + t * (b - a) )
 
-typedef struct {
-   Scalar x, y, z;
-} Scalar3;
-
 const Scalar EPSILON = 1.0e-10f;
 
-inline Scalar3 lerp3(const Scalar3 & a, const Scalar3 & b, const Scalar t) {
+inline Vector lerp3(const Vector & a, const Vector & b, const Scalar t) {
 
-   Scalar3 res;
-   res.x = lerp(a.x, b.x, t);
-   res.y = lerp(a.y, b.y, t);
-   res.z = lerp(a.z, b.z, t);
-   return res;
+   return a + t * (b - a);
 }
 
-inline Scalar3 interp(Scalar value, const Scalar3 & p0, const Scalar3 & p1,
+inline Vector interp(Scalar value, const Vector & p0, const Vector & p1,
                      const Scalar f0, const Scalar f1,
                      const Scalar v0, const Scalar v1, Scalar & v) {
 
@@ -71,7 +63,7 @@ inline Scalar3 interp(Scalar value, const Scalar3 & p0, const Scalar3 & p1,
    }
 
    Scalar t = (value - f0) / diff;
-   v = v0 + t * (v1 - v0);
+   v = lerp(v0, v1, t);
 
    return lerp3(p0, p1, t);
 }
@@ -214,13 +206,13 @@ class PlaneCut {
       index[6] = cl[p + 3];
       index[7] = cl[p];
 
-      Scalar3 v[8];
+      Vector v[8];
       Scalar field[8];
       for (int idx = 0; idx < 8; idx ++) {
-         v[idx].x = x[index[idx]];
-         v[idx].y = y[index[idx]];
-         v[idx].z = z[index[idx]];
-         field[idx] = (m_normal * Vector(v[idx].x, v[idx].y, v[idx].z) - m_distance);
+         v[idx][0] = x[index[idx]];
+         v[idx][1] = y[index[idx]];
+         v[idx][2] = z[index[idx]];
+         field[idx] = m_normal.dot(v[idx]) - m_distance;
       }
 
       unsigned int tableIndex = 0;
@@ -240,7 +232,7 @@ class PlaneCut {
                mapping[idx] = d[index[idx]];
          }
 
-         Scalar3 vertlist[12];
+         Vector vertlist[12];
          Scalar maplist[12];
 
          vertlist[0] = interp(0.0, v[0], v[1], field[0], field[1],
@@ -271,21 +263,16 @@ class PlaneCut {
                mapping[3], mapping[7], maplist[11]);
 
          for (int idx = 0; idx < numVerts; idx += 3) {
-
-            int edge[3];
-            Scalar3 *v[3];
             for (int i=0; i<3; ++i) {
-               edge[i] = hexaTriTable[tableIndex][idx+i];
-               v[i] = &vertlist[edge[i]];
-            }
+               int edge = hexaTriTable[tableIndex][idx+i];
+               Vector &v = vertlist[edge];
 
-            for (int i=0; i<3; ++i) {
                out_cl[outIdx+idx+i] = outIdx+idx+i;
-               out_x[outIdx+idx+i] = v[i]->x;
-               out_y[outIdx+idx+i] = v[i]->y;
-               out_z[outIdx+idx+i] = v[i]->z;
+               out_x[outIdx+idx+i] = v[0];
+               out_y[outIdx+idx+i] = v[1];
+               out_z[outIdx+idx+i] = v[2];
 
-               out_d[outIdx+idx+i] = maplist[edge[i]];
+               out_d[outIdx+idx+i] = maplist[edge];
             }
          }
       }
@@ -321,16 +308,16 @@ bool CuttingSurface::compute() {
 
    const ParamVector pnormal = getVectorParameter("vertex");
    Vector normal(pnormal[0], pnormal[1], pnormal[2]);
-   normal = normal * (1./normal.length());
+   normal.normalize();
    const ParamVector ppoint = getVectorParameter("point");
    const Vector point = Vector(ppoint[0], ppoint[1], ppoint[2]);
-   const Vector proj = normal * (point*normal);
+   const Vector proj = normal*point.dot(normal);
    int max = 0;
-   if (std::abs(normal.y) > std::abs(normal.x)) {
+   if (std::abs(normal[1]) > std::abs(normal[0])) {
       max = 1;
-      if (std::abs(normal.z) > std::abs(normal.y))
+      if (std::abs(normal[2]) > std::abs(normal[1]))
          max = 2;
-   } else if (std::abs(normal.z) > std::abs(normal.x)) {
+   } else if (std::abs(normal[2]) > std::abs(normal[0])) {
       max = 2;
    }
    const Scalar distance = proj[max]/normal[max];

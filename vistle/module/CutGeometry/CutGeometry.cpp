@@ -242,7 +242,7 @@ class PlaneClip {
 #pragma omp parallel for
       for (Index i=0; i<nCoord; ++i) {
          const Vector p(x[i], y[i], z[i]);
-         if ((p - m_point) * m_normal < 0) {
+         if ((p - m_point).dot(m_normal) < 0) {
 #pragma omp critical
             {
                ++numIn;
@@ -277,7 +277,7 @@ class PlaneClip {
       Vector p2(x[j], y[j], z[j]);
 
       Vector dist = p2 - p1;
-      Scalar s = (m_normal * (m_point - p1)) / (m_normal * dist);
+      Scalar s = m_normal.dot(m_point - p1) / m_normal.dot(dist);
       return  p1 + dist * s;
    }
 
@@ -347,16 +347,16 @@ class PlaneClip {
             const Index out0 = cl[start + (cornerIn+1)%nCorner];
             assert(vertexMap[out0] == 0);
             const Vector v0 = splitEdge(in0, out0);
-            out_x[outIdxCoord] = v0.x;
-            out_y[outIdxCoord] = v0.y;
-            out_z[outIdxCoord] = v0.z;
+            out_x[outIdxCoord] = v0[0];
+            out_y[outIdxCoord] = v0[1];
+            out_z[outIdxCoord] = v0[2];
 
             const Index out1 = cl[start+(cornerIn+2)%nCorner];
             assert(vertexMap[out1] == 0);
             const Vector v1 = splitEdge(in0, out1);
-            out_x[outIdxCoord+1] = v1.x;
-            out_y[outIdxCoord+1] = v1.y;
-            out_z[outIdxCoord+1] = v1.z;
+            out_x[outIdxCoord+1] = v1[0];
+            out_y[outIdxCoord+1] = v1[1];
+            out_z[outIdxCoord+1] = v1[2];
 
             Index n = 0;
             out_cl[outIdxCorner+n] = vertexMap[in0]-1;
@@ -372,23 +372,23 @@ class PlaneClip {
             const Index in0 = cl[start+(cornerOut+2)%nCorner];
             assert(vertexMap[out0] == 0);
             const Vector v0 = splitEdge(in0, out0);
-            out_x[outIdxCoord] = v0.x;
-            out_y[outIdxCoord] = v0.y;
-            out_z[outIdxCoord] = v0.z;
+            out_x[outIdxCoord] = v0[0];
+            out_y[outIdxCoord] = v0[1];
+            out_z[outIdxCoord] = v0[2];
 
             const Index in1 = cl[start+(cornerOut+1)%nCorner];
             assert(vertexMap[in1] > 0);
             const Vector v1 = splitEdge(in1, out0);
-            out_x[outIdxCoord+1] = v1.x;
-            out_y[outIdxCoord+1] = v1.y;
-            out_z[outIdxCoord+1] = v1.z;
+            out_x[outIdxCoord+1] = v1[0];
+            out_y[outIdxCoord+1] = v1[1];
+            out_z[outIdxCoord+1] = v1[2];
 
             const Vector vin0(x[in0], y[in0], z[in0]);
             const Vector vin1(x[in1], y[in1], z[in1]);
-            const Vector v2 = (vin0+vin1)*0.5;
-            out_x[outIdxCoord+2] = v2.x;
-            out_y[outIdxCoord+2] = v2.y;
-            out_z[outIdxCoord+2] = v2.z;
+            const Vector v2 = (vin0+vin1)*Scalar(0.5);
+            out_x[outIdxCoord+2] = v2[0];
+            out_y[outIdxCoord+2] = v2[1];
+            out_z[outIdxCoord+2] = v2[2];
 
             Index n = 0;
             out_cl[outIdxCorner+n] = vertexMap[in0]-1;
@@ -516,9 +516,9 @@ class PlaneClip {
                ++numCreated;
 
                const Vector v = splitEdge(idx, prevIdx);
-               out_x[newId] = v.x;
-               out_y[newId] = v.y;
-               out_z[newId] = v.z;
+               out_x[newId] = v[0];
+               out_y[newId] = v[1];
+               out_z[newId] = v[2];
             
                out_cl[outIdxCorner+n] = newId;
                ++n;
@@ -569,7 +569,7 @@ bool CutGeometry::compute() {
 
    const ParamVector pnormal = getVectorParameter("vertex");
    Vector normal(pnormal[0], pnormal[1], pnormal[2]);
-   normal = normal * (1./normal.length());
+   normal.normalize();
    const ParamVector ppoint = getVectorParameter("point");
    Vector point(ppoint[0], ppoint[1], ppoint[2]);
 
