@@ -221,6 +221,7 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
             }
          }
       }
+      polys.push_back(conn.size());
 
       //Create CellFaceMap
       //std::cerr << " " << "Creating cell to face Map ... " << std::flush;
@@ -382,6 +383,7 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
             break;
          }
       }
+      el[dim.cells] = connectivities.size();
    }
 
    loadCoords(meshdir, grid);

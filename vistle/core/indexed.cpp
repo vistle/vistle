@@ -16,9 +16,11 @@ bool Indexed::isEmpty() const {
 
 bool Indexed::checkImpl() const {
 
+   V_CHECK (el().size() > 0);
    if (getNumElements() > 0) {
       V_CHECK (el()[0] < getNumCorners());
       V_CHECK (el()[getNumElements()-1] < getNumCorners());
+      V_CHECK (el()[getNumElements()] == getNumCorners());
    }
 
    if (getNumCorners() > 0) {
@@ -35,7 +37,7 @@ Indexed::Data::Data(const Index numElements, const Index numCorners,
              const Meta &meta)
    : Indexed::Base::Data(numVertices, id, name,
          meta)
-   , el(new ShmVector<Index>(numElements))
+   , el(new ShmVector<Index>(numElements+1))
    , cl(new ShmVector<Index>(numCorners))
 {
 }
@@ -61,7 +63,7 @@ Indexed::Data *Indexed::Data::create(Type id,
 
 Index Indexed::getNumElements() const {
 
-   return el().size();
+   return el().size()-1;
 }
 
 Index Indexed::getNumCorners() const {

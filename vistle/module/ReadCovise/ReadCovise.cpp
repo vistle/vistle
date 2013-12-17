@@ -201,6 +201,7 @@ Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
          el[index] = _el[index];
          tl[index] = (UnstructuredGrid::Type) _tl[index];
       }
+      el[numElements] = numCorners;
 
       Index *cl = usg->cl().data();
       for (int index = 0; index < numCorners; index ++)
@@ -328,6 +329,7 @@ Object::ptr ReadCovise::readLINES(const int fd, const bool skeleton) {
       auto el = lines->el().data();
       for (int index = 0; index < numElements; index ++)
          el[index] = _el[index];
+      el[numElements] = numCorners;
 
       auto cl = lines->cl().data();
       for (int index = 0; index < numCorners; index ++)
@@ -370,6 +372,7 @@ Object::ptr ReadCovise::readPOLYGN(const int fd, const bool skeleton) {
       auto el = polygons->el().data();
       for (int index = 0; index < numElements; index ++)
          el[index] = _el[index];
+      el[numElements] = numCorners;
 
       auto cl = polygons->cl().data();
       for (int index = 0; index < numCorners; index ++)

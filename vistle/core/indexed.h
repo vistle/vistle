@@ -23,11 +23,12 @@ class  V_COREEXPORT Indexed: public Coords {
    Index getNumCorners() const;
    Index getNumVertices() const;
 
-   shm<Index>::array &cl() const { return *(*d()->cl)(); }
-   shm<Index>::array &el() const { return *(*d()->el)(); }
+   typename shm<Index>::array &el() const { return *(*d()->el)(); }
+   typename shm<Index>::array &cl() const { return *(*d()->cl)(); }
 
    V_DATA_BEGIN(Indexed);
-      ShmVector<Index>::ptr el, cl;
+      ShmVector<Index>::ptr el; //< element list: index into connectivity list - last element: sentinel
+      ShmVector<Index>::ptr cl; //< connectivity list: index into coordinates
 
       Data(const Index numElements = 0, const Index numCorners = 0,
            const Index numVertices = 0,

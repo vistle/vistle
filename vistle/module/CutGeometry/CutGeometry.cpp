@@ -199,8 +199,9 @@ class PlaneClip {
             }
          }
 
-         m_outPoly->el().resize(curPoly);
+         m_outPoly->el().resize(curPoly+1);
          out_el = m_outPoly->el().data();
+         out_el[curPoly] = curCorner;
          m_outPoly->cl().resize(curCorner);
          out_cl = m_outPoly->cl().data();
 

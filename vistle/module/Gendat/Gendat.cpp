@@ -83,6 +83,7 @@ bool Gendat::compute() {
    usg->el->push_back(0);
    for (int index = 0; index < 8; index ++)
       usg->cl->push_back(index);
+   usg->el->push_back(usg->cl->size());
 
    usg->x->push_back(0.0);
    usg->y->push_back(0.0);
