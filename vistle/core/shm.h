@@ -223,8 +223,10 @@ class ShmVector {
       T &operator[](Index i) { return (*m_x)[i]; }
       const T &operator[](Index i) const { return (*m_x)[i]; }
 
+      bool empty() const { return m_x->empty(); }
       Index size() const { return m_x->size(); }
       void resize(Index s);
+      void clear();
 
       typename shm<T>::array_ptr &operator()() { return m_x; }
       typename shm<const T>::array_ptr &operator()() const { return m_x; }

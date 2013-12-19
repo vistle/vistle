@@ -85,6 +85,11 @@ void ShmVector<T>::resize(Index s) {
 }
 
 template<typename T>
+void ShmVector<T>::clear() {
+   m_x->clear();
+}
+
+template<typename T>
 ShmVector<T>::~ShmVector() {
 
    shm<T>::destroy(m_name);
