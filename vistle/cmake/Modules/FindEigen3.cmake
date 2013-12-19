@@ -11,7 +11,7 @@ if (NOT EIGEN3_INCLUDE_DIR)
     eigen3/signature_of_eigen3_matrix_library
     PATHS
   )
-endif (EIGEN3_INCLUDE_DIR)
+endif (NOT EIGEN3_INCLUDE_DIR)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(EIGEN3 DEFAULT_MSG EIGEN3_INCLUDE_DIR)
