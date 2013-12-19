@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #include <boost/mpl/for_each.hpp>
-#include <boost/mpi/collectives.hpp>
+#include <boost/mpi/collectives/all_reduce.hpp>
 
 #include <core/vec.h>
 #include <module/module.h>
@@ -22,7 +22,7 @@ class Extrema: public vistle::Module {
    ~Extrema();
 
  private:
-   static const int MaxDim = 4;
+   static const int MaxDim = ParamVector::MaxDimension;
 
    int dim;
    bool handled;
@@ -39,8 +39,8 @@ class Extrema: public vistle::Module {
       haveGeometry = false;
 
       for (int c=0; c<MaxDim; ++c) {
-         gmin[c] =  std::numeric_limits<double>::max();
-         gmax[c] = -std::numeric_limits<double>::max();
+         gmin[c] =  std::numeric_limits<ParamVector::Scalar>::max();
+         gmax[c] = -std::numeric_limits<ParamVector::Scalar>::max();
       }
 
       return true;
@@ -102,16 +102,16 @@ Extrema::Extrema(const std::string &shmname, int rank, int size, int moduleID)
    addVectorParameter("min",
          "output parameter: minimum",
          ParamVector(
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::max()
+            std::numeric_limits<ParamVector::Scalar>::max(),
+            std::numeric_limits<ParamVector::Scalar>::max(),
+            std::numeric_limits<ParamVector::Scalar>::max()
             ));
    addVectorParameter("max",
          "output parameter: maximum",
          ParamVector(
-            -std::numeric_limits<double>::max(),
-            -std::numeric_limits<double>::max(),
-            -std::numeric_limits<double>::max()
+            -std::numeric_limits<ParamVector::Scalar>::max(),
+            -std::numeric_limits<ParamVector::Scalar>::max(),
+            -std::numeric_limits<ParamVector::Scalar>::max()
             ));
 }
 
@@ -129,8 +129,8 @@ bool Extrema::compute() {
       handled = false;
 
       for (int c=0; c<MaxDim; ++c) {
-         min[c] =  std::numeric_limits<double>::max();
-         max[c] = -std::numeric_limits<double>::max();
+         min[c] =  std::numeric_limits<ParamVector::Scalar>::max();
+         max[c] = -std::numeric_limits<ParamVector::Scalar>::max();
       }
 
       boost::mpl::for_each<Scalars>(Compute<1>(obj, this));
@@ -180,12 +180,12 @@ bool Extrema::reduce(int timestep) {
    //std::cerr << "reduction for timestep " << timestep << std::endl;
 
    for (int i=0; i<MaxDim; ++i) {
-      boost::mpi::all_reduce(boost::mpi::communicator(),
-            gmin[i], gmin[i],
-            boost::mpi::minimum<double>());
-      boost::mpi::all_reduce(boost::mpi::communicator(),
-            gmax[i], gmax[i],
-            boost::mpi::maximum<double>());
+      gmin[i] = boost::mpi::all_reduce(boost::mpi::communicator(),
+            gmin[i],
+            boost::mpi::minimum<ParamVector::Scalar>());
+      gmax[i] = boost::mpi::all_reduce(boost::mpi::communicator(),
+            gmax[i],
+            boost::mpi::maximum<ParamVector::Scalar>());
    }
 
    setVectorParameter("min", gmin);

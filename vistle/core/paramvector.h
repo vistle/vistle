@@ -17,6 +17,7 @@ template<typename S>
 class V_CORETEMPLATE_EXPORT ParameterVector {
 public:
    typedef S Scalar;
+   static const int MaxDimension = vistle::MaxDimension;
 
    ParameterVector(const int dim, const S values[]);
    ParameterVector(const S x, const S y, const S z, const S w);
@@ -53,11 +54,14 @@ public:
    S operator*(ParameterVector const & rhs) const;
 #endif
 
+   S *data() { return v.data(); }
+   const S *data() const { return v.data(); }
+
    S &operator[](int i) { return v[i]; }
    const S &operator[](int i) const { return v[i]; }
 
-   operator S *() { return v; }
-   operator const S *() const { return v; }
+   operator S *() { return v.data(); }
+   operator const S *() const { return v.data(); }
 
    operator S &() { assert(dim==1); return v[0]; }
    operator S() const { assert(dim==1); return dim>0 ? v[0] : S(); }
