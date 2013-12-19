@@ -12,7 +12,8 @@ class IsoSurface: public vistle::Module {
  private:
    vistle::Object::ptr generateIsoSurface(vistle::Object::const_ptr grid,
                                        vistle::Object::const_ptr data,
-                                       const vistle::Scalar isoValue);
+                                       const vistle::Scalar isoValue,
+                                          int processorType);
 
    virtual bool compute();
    virtual bool prepare();
@@ -20,6 +21,7 @@ class IsoSurface: public vistle::Module {
 
    vistle::FloatParameter *m_isovalue;
    vistle::StringParameter *m_shader, *m_shaderParams;
+   vistle::IntParameter *m_processortype;
 
    vistle::Scalar min, max;
 };
