@@ -3,6 +3,8 @@
 
 #include "scalars.h"
 
+#include <boost/mpl/size.hpp>
+
 namespace vistle {
 
 template <class T, int Dim>
@@ -44,7 +46,9 @@ Vec<T,Dim>::Data::Data(const Index size, const std::string &name,
 template <class T, int Dim>
 Object::Type Vec<T,Dim>::type() {
 
-   return (Object::Type)(Object::VEC + (MaxDim+1)*boost::mpl::find<Scalars, T>::type::pos::value + Dim);
+   static const size_t pos = boost::mpl::find<Scalars, T>::type::pos::value;
+   BOOST_STATIC_ASSERT(pos < boost::mpl::size<Scalars>::value);
+   return (Object::Type)(Object::VEC + (MaxDim+1)*pos + Dim);
 }
 
 template <class T, int Dim>
