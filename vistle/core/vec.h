@@ -16,7 +16,7 @@ class Vec: public Object {
 
    static const int MaxDim = 4;
    BOOST_STATIC_ASSERT(Dim > 0);
-   BOOST_STATIC_ASSERT(Dim < MaxDim);
+   BOOST_STATIC_ASSERT(Dim <= MaxDim);
 
  public:
    typedef Object Base;

@@ -5,7 +5,7 @@
 
 namespace vistle {
 
-typedef boost::mpl::vector<unsigned char, int, size_t, float, double> Scalars;
+typedef boost::mpl::vector<unsigned char, int, unsigned int, size_t, float, double> Scalars;
 
 }
 
