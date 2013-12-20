@@ -63,6 +63,8 @@ using namespace vistle;
 
 int main(int argc, char *argv[]) {
 
+   vistle::registerTypes();
+
    std::string shmname = "vistle_vectortest";
 
    int shift = 24;
