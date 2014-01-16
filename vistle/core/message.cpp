@@ -118,7 +118,7 @@ char Ping::getCharacter() const {
 }
 
 Pong::Pong(const char c, const int module)
-   : Message(Message::PONG, sizeof(Pong)), character(c) {
+   : Message(Message::PONG, sizeof(Pong)), character(c), module(module) {
 
 }
 
@@ -562,7 +562,7 @@ SetParameter::SetParameter(const int module,
 }
 
 SetParameter::SetParameter(const int module,
-      const std::string &n, const ParamVector v)
+      const std::string &n, const ParamVector &v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
 , paramtype(Parameter::Vector)

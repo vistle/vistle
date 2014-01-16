@@ -82,6 +82,8 @@ class V_CONTROLEXPORT Communicator {
    bool tryReceiveAndHandleMessage(message::MessageQueue &mq, bool &received, bool broadcast=false);
 
    static Communicator *s_singleton;
+
+   Communicator(const Communicator &other); // not implemented
 };
 
 } // namespace vistle

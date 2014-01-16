@@ -416,7 +416,7 @@ class V_COREEXPORT SetParameter: public Message {
       SetParameter(const int module,
             const std::string & name, const Float value);
       SetParameter(const int module,
-            const std::string & name, const ParamVector value);
+            const std::string & name, const ParamVector &value);
       SetParameter(const int module,
             const std::string & name, const std::string &value);
 

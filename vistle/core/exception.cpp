@@ -11,6 +11,7 @@ namespace except {
 
 exception::exception(const std::string &what)
 : m_what(what)
+, m_where(vistle::backtrace())
 {
 
 #ifndef _WIN32
@@ -19,7 +20,6 @@ exception::exception(const std::string &what)
    m_info = "hostname: ";
    m_info += hostname;
 #endif
-   m_where = vistle::backtrace();
 }
 
 exception::~exception() throw() {}

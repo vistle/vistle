@@ -66,7 +66,7 @@ bool Port::isConnected() const {
 Port *Port::child(size_t idx, bool link) {
 
    assert(m_flags & Port::MULTI);
-   if (!m_flags & Port::MULTI)
+   if (!(m_flags & Port::MULTI))
       return NULL;
 
    if (m_children.size() > idx)

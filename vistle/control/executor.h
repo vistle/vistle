@@ -43,6 +43,8 @@ class V_CONTROLEXPORT Executor {
 
       int m_argc;
       char **m_argv;
+
+      Executor(const Executor &other); // not implemented
 };
 
 } // namespace vistle

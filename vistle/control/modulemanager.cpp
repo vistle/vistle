@@ -569,7 +569,7 @@ bool ModuleManager::handle(const message::ExecutionProgress &prog) {
          }
          if (list) {
             Port::PortSet::const_iterator pi;
-            for (pi = list->begin(); pi != list->end(); pi ++) {
+            for (pi = list->begin(); pi != list->end(); ++pi) {
 
                int destId = (*pi)->getModuleID();
                connectedIds.insert(destId);
@@ -722,7 +722,7 @@ bool ModuleManager::handle(const message::AddObject &addObj) {
    }
    if (list) {
       Port::PortSet::const_iterator pi;
-      for (pi = list->begin(); pi != list->end(); pi ++) {
+      for (pi = list->begin(); pi != list->end(); ++pi) {
 
          int destId = (*pi)->getModuleID();
 
