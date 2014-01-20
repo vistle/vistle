@@ -5,6 +5,7 @@
 #include <boost/uuid/uuid.hpp>
 
 
+#include <util/enum.h>
 #include "object.h"
 #include "scalar.h"
 #include "paramvector.h"
@@ -52,39 +53,40 @@ class V_COREEXPORT Message {
    static const size_t MESSAGE_SIZE = 1024; // fixed message size is imposed by boost::interprocess::message_queue
    typedef boost::uuids::uuid uuid_t;
 
-   enum Type {
-      INVALID = 0,
-      DEBUG,
-      SPAWN,
-      STARTED,
-      KILL,
-      QUIT,
-      MODULEEXIT,
-      COMPUTE,
-      REDUCE,
-      CREATEPORT,
-      ADDOBJECT,
-      OBJECTRECEIVED,
-      CONNECT,
-      DISCONNECT,
-      ADDPARAMETER,
-      SETPARAMETER,
-      SETPARAMETERCHOICES,
-      PING,
-      PONG,
-      BUSY,
-      IDLE,
-      BARRIER,
-      BARRIERREACHED,
-      SETID,
-      RESETMODULEIDS,
-      REPLAYFINISHED,
-      SENDTEXT,
-      OBJECTRECEIVEPOLICY,
-      SCHEDULINGPOLICY,
-      REDUCEPOLICY,
-      EXECUTIONPROGRESS,
-   };
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
+      (INVALID)
+      (DEBUG)
+      (TRACE)
+      (SPAWN)
+      (STARTED)
+      (KILL)
+      (QUIT)
+      (MODULEEXIT)
+      (COMPUTE)
+      (REDUCE)
+      (CREATEPORT)
+      (ADDOBJECT)
+      (OBJECTRECEIVED)
+      (CONNECT)
+      (DISCONNECT)
+      (ADDPARAMETER)
+      (SETPARAMETER)
+      (SETPARAMETERCHOICES)
+      (PING)
+      (PONG)
+      (BUSY)
+      (IDLE)
+      (BARRIER)
+      (BARRIERREACHED)
+      (SETID)
+      (RESETMODULEIDS)
+      (REPLAYFINISHED)
+      (SENDTEXT)
+      (OBJECTRECEIVEPOLICY)
+      (SCHEDULINGPOLICY)
+      (REDUCEPOLICY)
+      (EXECUTIONPROGRESS)
+   )
 
    Message(const Type type, const unsigned int size);
    // Message (or its subclasses) may not require destructors
@@ -244,10 +246,10 @@ class V_COREEXPORT Compute: public Message {
    bool allRanks() const;
    void setAllRanks(bool allRanks);
 
-   enum Reason {
-      Execute,
-      AddObject,
-   };
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Reason,
+      (Execute)
+      (AddObject)
+   )
    Reason reason() const;
    void setReason(Reason r);
 
@@ -530,14 +532,14 @@ BOOST_STATIC_ASSERT(sizeof(ReplayFinished) < Message::MESSAGE_SIZE);
 class V_COREEXPORT SendText: public Message {
 
 public:
-   enum TextType {
-      Cout,
-      Cerr,
-      Clog,
-      Info,
-      Warning,
-      Error,
-   };
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(TextType,
+      (Cout)
+      (Cerr)
+      (Clog)
+      (Info)
+      (Warning)
+      (Error)
+   )
 
    //! Error message in response to a Message
    SendText(const std::string &text, const Message &inResponseTo);
@@ -566,11 +568,11 @@ BOOST_STATIC_ASSERT(sizeof(SendText) < Message::MESSAGE_SIZE);
 class V_COREEXPORT ObjectReceivePolicy: public Message {
 
 public:
-   enum Policy {
-      Single,
-      NotifyAll,
-      Distribute,
-   };
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Policy,
+      (Single)
+      (NotifyAll)
+      (Distribute)
+   )
    ObjectReceivePolicy(Policy pol);
    Policy policy() const;
 private:
@@ -581,11 +583,11 @@ BOOST_STATIC_ASSERT(sizeof(ObjectReceivePolicy) < Message::MESSAGE_SIZE);
 class V_COREEXPORT SchedulingPolicy: public Message {
 
 public:
-   enum Schedule {
-      Single, //< compute called on each rank individually once per received object
-      Gang, //< compute called on all ranks together once per received object
-      LazyGang, //< compute called on all ranks together, but not necessarily for each received object
-   };
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Schedule,
+      (Single) //< compute called on each rank individually once per received object
+      (Gang) //< compute called on all ranks together once per received object
+      (LazyGang) //< compute called on all ranks together, but not necessarily for each received object
+   )
    SchedulingPolicy(Schedule pol);
    Schedule policy() const;
 private:
@@ -596,11 +598,11 @@ BOOST_STATIC_ASSERT(sizeof(SchedulingPolicy) < Message::MESSAGE_SIZE);
 class V_COREEXPORT ReducePolicy: public Message {
 
  public:
-   enum Reduce {
-      Never, //< module's reduce() method will never be called
-      PerTimestep, //< module's reduce() method will be called on all ranks together once per timestep
-      OverAll, //< module's reduce() method will be called on all ranks together after all timesteps have been received
-   };
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Reduce,
+      (Never) //< module's reduce() method will never be called
+      (PerTimestep) //< module's reduce() method will be called on all ranks together once per timestep
+      (OverAll) //< module's reduce() method will be called on all ranks together after all timesteps have been received
+   )
    ReducePolicy(Reduce red);
    Reduce policy() const;
  private:
@@ -611,12 +613,12 @@ BOOST_STATIC_ASSERT(sizeof(ReducePolicy) < Message::MESSAGE_SIZE);
 class V_COREEXPORT ExecutionProgress: public Message {
 
  public:
-   enum Progress {
-      Start,
-      Iteration,
-      Timestep,
-      Finish,
-   };
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Progress,
+      (Start)
+      (Iteration)
+      (Timestep)
+      (Finish)
+   )
    ExecutionProgress(Progress stage, int step=-1);
    Progress stage() const;
    int step() const;
@@ -626,6 +628,24 @@ class V_COREEXPORT ExecutionProgress: public Message {
    int m_step;
 };
 BOOST_STATIC_ASSERT(sizeof(ExecutionProgress) < Message::MESSAGE_SIZE);
+
+//! enable/disable message tracing for a module
+class V_COREEXPORT Trace: public Message {
+
+ public:
+   Trace(int module, int type, bool onoff);
+   int module() const;
+   int messageType() const;
+   bool on() const;
+
+ private:
+   int m_module;
+   int m_messageType;
+   bool m_on;
+};
+BOOST_STATIC_ASSERT(sizeof(Trace) < Message::MESSAGE_SIZE);
+
+std::ostream &operator<<(std::ostream &s, const Message &msg);
 
 } // namespace message
 } // namespace vistle

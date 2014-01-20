@@ -4,6 +4,8 @@
 #include "port.h"
 
 #include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/lexical_cast.hpp>
 
 namespace vistle {
 namespace message {
@@ -882,6 +884,52 @@ ExecutionProgress::Progress ExecutionProgress::stage() const {
 int ExecutionProgress::step() const {
 
    return m_step;
+}
+
+Trace::Trace(int module, int messageType, bool onoff)
+: Message(Message::TRACE, sizeof(Trace))
+, m_module(module)
+, m_messageType(messageType)
+, m_on(onoff)
+{
+}
+
+int Trace::module() const {
+
+   return m_module;
+}
+
+int Trace::messageType() const {
+
+   return m_messageType;
+}
+
+bool Trace::on() const {
+
+   return m_on;
+}
+
+std::ostream &operator<<(std::ostream &s, const Message &m) {
+
+   using namespace vistle::message;
+
+   s  << "uuid: " << boost::lexical_cast<std::string>(m.uuid())
+      << ", type: " << m.type() << " (" << Message::toString(m.type()) << ")"
+      << ", size: " << m.size()
+      << ", sender: " << m.senderId()
+      << ", rank: " << m.rank();
+
+   switch (m.type()) {
+      case Message::EXECUTIONPROGRESS: {
+         auto mm = static_cast<const ExecutionProgress &>(m);
+         s << ", stage: " << ExecutionProgress::toString(mm.stage()) << ", step: " << mm.step();
+         break;
+      }
+      default:
+         break;
+   }
+
+   return s;
 }
 
 } // namespace message

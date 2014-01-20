@@ -254,6 +254,11 @@ bool StateTracker::handleMessage(const message::Message &msg) {
          return handle(pong);
          break;
       }
+      case Message::TRACE: {
+         const Trace &trace = static_cast<const Trace &>(msg);
+         return handle(trace);
+         break;
+      }
       case Message::BUSY: {
          const Busy &busy = static_cast<const Busy &>(msg);
          return handle(busy);
@@ -312,6 +317,11 @@ bool StateTracker::handle(const message::Ping &ping) {
 bool StateTracker::handle(const message::Pong &pong) {
 
    CERR << "Pong [" << pong.senderId() << " " << pong.getCharacter() << "]" << std::endl;
+   return true;
+}
+
+bool StateTracker::handle(const message::Trace &trace) {
+
    return true;
 }
 

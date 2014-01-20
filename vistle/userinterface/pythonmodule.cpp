@@ -88,6 +88,18 @@ static void ping(char c) {
    sendMessage(m);
 }
 
+static void trace(int id, int type, bool onoff = true) {
+
+#ifdef DEBUG
+   auto cerrflags = std::cerr.flags();
+   std::cerr << "Python: trace " << id << << ", type " << type << ": " << std::boolalpha << onoff << std::endl;
+   std::cerr.flags(cerrflags);
+#endif
+   message::Trace m(id, type, onoff);
+   sendMessage(m);
+}
+BOOST_PYTHON_FUNCTION_OVERLOADS(trace_overloads, trace, 2, 3)
+
 static int barrier() {
 #ifdef VISTLE_CONTROL
    boost::unique_lock<boost::mutex> lock(MODULEMANAGER.barrierMutex());
@@ -389,6 +401,7 @@ BOOST_PYTHON_MODULE(_vistle)
     def("compute", compute, "trigger execution of module with ID `arg1`");
     def("quit", quit, "quit vistle session");
     def("ping", ping, "send first character of `arg1` to every vistle process");
+    def("trace", trace, trace_overloads(args("id", "enable"), "enable/disable message tracing for module `arg1`"));
     def("barrier", barrier, "wait until all modules reply");
     //def("checkMessageQueue", checkMessageQueue, "check whether all messages have been processed");
 

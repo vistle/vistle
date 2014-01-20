@@ -234,6 +234,13 @@ bool ModuleManager::handle(const message::Pong &pong) {
    return true;
 }
 
+bool ModuleManager::handle(const message::Trace &trace) {
+
+   m_stateTracker.handle(trace);
+   sendMessage(trace.module(), trace);
+   return true;
+}
+
 bool ModuleManager::handle(const message::Spawn &spawn) {
 
    int moduleID = spawn.spawnId();

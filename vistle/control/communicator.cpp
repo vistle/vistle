@@ -26,8 +26,6 @@
 #define CERR \
    std::cerr << "comm [" << m_rank << "/" << m_size << "] "
 
-//#define DEBUG
-
 using namespace boost::interprocess;
 
 namespace vistle {
@@ -49,6 +47,7 @@ Communicator::Communicator(int argc, char *argv[], int r, const std::vector<std:
 , m_quitFlag(false)
 , m_recvSize(0)
 , m_commandQueue(message::MessageQueue::create(message::MessageQueue::createName("command_queue", 0, r)))
+, m_traceMessages(0)
 {
    assert(s_singleton == NULL);
    s_singleton = this;
@@ -277,13 +276,9 @@ bool Communicator::handleMessage(const message::Message &message) {
 
    using namespace vistle::message;
 
-#ifdef DEBUG
-   CERR << "Message: "
-      << "type=" << message.type() << ", "
-      << "size=" << message.size() << ", "
-      << "from=" << message.senderId() << ", "
-      << "m_rank=" << message.rank() << std::endl;
-#endif
+   if (m_traceMessages == -1 || message.type() == m_traceMessages) {
+      CERR << "Message: " << message << std::endl;
+   }
 
    bool result = true;
    switch (message.type()) {
@@ -301,6 +296,21 @@ bool Communicator::handleMessage(const message::Message &message) {
          const message::Pong &pong = static_cast<const message::Pong &>(message);
          sendUi(pong);
          result = m_moduleManager->handle(pong);
+         break;
+      }
+
+      case message::Message::TRACE: {
+         const Trace &trace = static_cast<const Trace &>(message);
+         sendUi(trace);
+         if (trace.module() == 0) {
+            if (trace.on())
+               m_traceMessages = trace.messageType();
+            else
+               m_traceMessages = 0;
+            result = true;
+         } else {
+            result = m_moduleManager->handle(trace);
+         }
          break;
       }
 

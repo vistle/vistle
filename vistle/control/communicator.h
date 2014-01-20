@@ -81,6 +81,8 @@ class V_CONTROLEXPORT Communicator {
    boost::shared_ptr<message::MessageQueue> m_commandQueue;
    bool tryReceiveAndHandleMessage(message::MessageQueue &mq, bool &received, bool broadcast=false);
 
+   int m_traceMessages;
+
    static Communicator *s_singleton;
 
    Communicator(const Communicator &other); // not implemented

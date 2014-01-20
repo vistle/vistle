@@ -119,6 +119,7 @@ Module::Module(const std::string &n, const std::string &shmname,
 , m_syncMessageProcessing(false)
 , m_origStreambuf(nullptr)
 , m_streambuf(nullptr)
+, m_traceMessages(0)
 {
 #ifdef _WIN32
     WSADATA wsaData;
@@ -760,10 +761,21 @@ bool Module::dispatch() {
 
 void Module::sendMessage(const message::Message &message) const {
 
+   // exclude SendText messages to avoid circular calls
+   if (message.type() != message::Message::SENDTEXT
+         && (m_traceMessages == -1 ||  m_traceMessages == message.type())) {
+      std::cerr << "SEND: " << message << std::endl;
+   }
    sendMessageQueue->send(message);
 }
 
 bool Module::handleMessage(const vistle::message::Message *message) {
+
+   using namespace vistle::message;
+
+   if (m_traceMessages == -1 || message->type() == m_traceMessages) {
+      std::cerr << "RECV: " << *message << std::endl;
+   }
 
    switch (message->type()) {
 
@@ -789,6 +801,21 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
                    << rank() << "/" << size() << "] pong ["
                    << pong->getCharacter() << "]" << std::endl;
+         break;
+      }
+
+      case vistle::message::Message::TRACE: {
+
+         const Trace *trace = static_cast<const Trace *>(message);
+         if (trace->on()) {
+            m_traceMessages = trace->messageType();
+         } else {
+            m_traceMessages = 0;
+         }
+
+         std::cerr << "    module [" << name() << "] [" << id() << "] ["
+                   << rank() << "/" << size() << "] trace ["
+                   << trace->on() << "]" << std::endl;
          break;
       }
 

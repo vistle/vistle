@@ -197,6 +197,8 @@ protected:
    OtherModuleMap m_otherModuleMap;
 
    std::streambuf *m_origStreambuf, *m_streambuf;
+
+   int m_traceMessages;
 };
 
 } // namespace vistle

@@ -73,6 +73,7 @@ class V_CONTROLEXPORT ModuleManager {
    // only used by Communicator
    bool handle(const message::Ping &ping);
    bool handle(const message::Pong &pong);
+   bool handle(const message::Trace &trace);
    bool handle(const message::Spawn &spawn);
    bool handle(const message::Started &started);
    bool handle(const message::Connect &connect);
