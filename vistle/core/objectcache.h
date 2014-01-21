@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <list>
+#include <util/enum.h>
 #include "object.h"
 
 namespace vistle {
@@ -13,11 +14,11 @@ typedef std::list<vistle::Object::const_ptr> ObjectList;
 class V_COREEXPORT ObjectCache {
 
    public:
-      enum CacheMode {
-         CacheDefault,
-         CacheNone,
-         CacheAll
-      };
+      DEFINE_ENUM_WITH_STRING_CONVERSIONS(CacheMode,
+         (CacheDefault)
+         (CacheNone)
+         (CacheAll)
+      )
 
       ObjectCache();
       ~ObjectCache();

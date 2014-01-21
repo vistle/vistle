@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <limits>
 #include <boost/mpl/vector.hpp>
+
+#include <util/enum.h>
 #include "paramvector.h"
 #include "export.h"
 
@@ -19,33 +21,34 @@ typedef boost::mpl::vector<Integer, Float, ParamVector, std::string> Parameters;
 class V_COREEXPORT Parameter {
 
  public:
-   enum Type {
-      Unknown, // keep first
-      Float,
-      Integer,
-      Vector,
-      String,
-      Invalid // keep last
-   };
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
+      (Unknown) // keep first
+      (Float)
+      (Integer)
+      (Vector)
+      (String)
+      (Invalid) // keep last
+   )
 
-   enum Presentation {
-      Generic, // default, keep first
-      Filename, // String
-      Directory, // String
-      ExistingPathname, // String
-      NewPathname, // String
-      Boolean, // Integer
-      Choice, // Integer (fixed choice) and String (dynamic choice)
-      Slider, // Integer, Float
-      Color, // Vector
-      InvalidPresentation // keep last
-   };
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Presentation,
+      (Generic) // default, keep first
+      (Filename) // String
+      (Directory) // String
+      (ExistingPathname) // String
+      (NewPathname) // String
+      (Boolean) // Integer
+      (Choice) // Integer (fixed choice) and String (dynamic choice)
+      (Slider) // Integer, Float
+      (Color) // Vector
+      (InvalidPresentation) // keep last
+   )
 
-   enum RangeType {
-      Minimum, // keep in that order
-      Value,
-      Maximum
-   };
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(RangeType,
+      // keep in that order
+      (Minimum)
+      (Value)
+      (Maximum)
+   )
 
    Parameter(int moduleId, const std::string & name, Type = Invalid, Presentation = Generic);
    Parameter(const Parameter &other);

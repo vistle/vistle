@@ -5,6 +5,7 @@
 #include <vector>
 #include <set>
 
+#include <util/enum.h>
 #include "objectcache.h"
 #include "export.h"
 
@@ -20,12 +21,12 @@ struct deref_compare: std::binary_function<T*, T*, bool> {
 class V_COREEXPORT Port {
 
  public:
-   enum Type { ANY = 0, INPUT = 1, OUTPUT = 2, PARAMETER };
-   enum Flags {
-      NONE=0,
-      MULTI=1, //< additional ports are created for each connected port
-      COMBINE=2, //< several connections to a single port are allowed and should be processed together
-   };
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type, (ANY) (INPUT) (OUTPUT) (PARAMETER))
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Flags,
+      (NONE)
+      (MULTI) //< additional ports are created for each connected port
+      (COMBINE) //< several connections to a single port are allowed and should be processed together
+   )
 
    Port(int moduleID, const std::string &name, Port::Type type, int flags=0);
    int getModuleID() const;
