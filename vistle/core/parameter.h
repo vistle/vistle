@@ -241,5 +241,9 @@ typedef ParameterBase<Float> FloatParameter;
 typedef ParameterBase<Integer> IntParameter;
 typedef ParameterBase<std::string> StringParameter;
 
+V_ENUM_OUTPUT_OP(Type, Parameter)
+V_ENUM_OUTPUT_OP(Presentation, Parameter)
+V_ENUM_OUTPUT_OP(RangeType, Parameter)
+
 } // namespace vistle
 #endif

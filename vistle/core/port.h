@@ -68,5 +68,8 @@ class V_COREEXPORT Port {
    PortSet m_linkedPorts;
 };
 
+V_ENUM_OUTPUT_OP(Type, Port)
+V_ENUM_OUTPUT_OP(Flags, Port)
+
 } // namespace vistle
 #endif

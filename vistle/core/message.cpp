@@ -914,7 +914,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
    using namespace vistle::message;
 
    s  << "uuid: " << boost::lexical_cast<std::string>(m.uuid())
-      << ", type: " << m.type() << " (" << Message::toString(m.type()) << ")"
+      << ", type: " << m.type()
       << ", size: " << m.size()
       << ", sender: " << m.senderId()
       << ", rank: " << m.rank();

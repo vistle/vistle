@@ -258,11 +258,8 @@ bool operator>(const ParameterVector<S> &v1, const ParameterVector<S> &v2) {
    return true;
 }
 
-
-} // namespace vistle
-
 template<typename S>
-std::ostream &operator<<(std::ostream &out, const vistle::ParameterVector<S> &v) {
+std::ostream &operator<<(std::ostream &out, const ParameterVector<S> &v) {
 
    out << "(";
    for (int i=0; i<v.dim; ++i) {
@@ -273,4 +270,7 @@ std::ostream &operator<<(std::ostream &out, const vistle::ParameterVector<S> &v)
    out << ")";
    return out;
 }
+
+} // namespace vistle
 #endif
+

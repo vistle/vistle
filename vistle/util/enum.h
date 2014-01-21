@@ -26,4 +26,10 @@ static inline const char *toString(name v) {                                 \
    }                                                                         \
 }
 
+#define V_ENUM_OUTPUT_OP(type, scope) \
+   inline std::ostream &operator<<(std::ostream &s, scope::type v) { \
+      s << scope::toString(v) << " (" << (int)v << ")"; \
+      return s; \
+   }
+
 #endif

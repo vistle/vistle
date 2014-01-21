@@ -107,10 +107,11 @@ V_CORETEMPLATE_EXPORT bool operator>(const ParameterVector<S> &v1, const Paramet
 //typedef ScalarVector Vector;
 typedef ParameterVector<Float> ParamVector;
 
+template<typename S>
+V_CORETEMPLATE_EXPORT std::ostream &operator<<(std::ostream &out, const ParameterVector<S> &v);
+
 } // namespace vistle
 
-template<typename S>
-V_CORETEMPLATE_EXPORT std::ostream &operator<<(std::ostream &out, const vistle::ParameterVector<S> &v);
 #endif // PARAMVECTOR_H
 
 

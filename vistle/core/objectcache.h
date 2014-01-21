@@ -36,7 +36,7 @@ class V_COREEXPORT ObjectCache {
       ObjectList m_emptyList;
 };
 
+V_ENUM_OUTPUT_OP(CacheMode, ObjectCache)
+
 } // namespace vistle
 #endif
-
-

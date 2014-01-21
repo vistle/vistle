@@ -11,8 +11,14 @@
 
 #include <boost/serialization/access.hpp>
 
+#include <boost/mpl/size.hpp>
+
+#include <util/enum.h>
+
 #include "shm.h"
 #include "objectmeta.h"
+#include "scalars.h"
+#include "dimensions.h"
 #include "export.h"
 
 namespace boost {
@@ -70,6 +76,48 @@ public:
 
       VEC               = 100, // base type id for all Vec types
    };
+
+   static inline const char *toString(Type v) {
+
+#define V_OBJECT_CASE(sym) case sym: return #sym;
+      switch(v) {
+         V_OBJECT_CASE(UNKNOWN)
+         V_OBJECT_CASE(PLACEHOLDER)
+         V_OBJECT_CASE(TEXTURE1D)
+         V_OBJECT_CASE(GEOMETRY)
+         V_OBJECT_CASE(POINTS)
+         V_OBJECT_CASE(LINES)
+         V_OBJECT_CASE(TRIANGLES)
+         V_OBJECT_CASE(POLYGONS)
+         V_OBJECT_CASE(UNSTRUCTUREDGRID)
+         V_OBJECT_CASE(CELLTREE)
+         V_OBJECT_CASE(NORMALS)
+         default:
+            break;
+      }
+#undef V_OBJECT_CASE
+
+      static char buf[80];
+      snprintf(buf, sizeof(buf), "invalid Object::Type (%d)", v);
+      if (v >= VEC) {
+         const int NumScalars = boost::mpl::size<Scalars>::value;
+         int dim = (v-Object::VEC) % (MaxDimension+1);
+         int scalidx = (v-Object::VEC) / (MaxDimension+1);
+         assert(scalidx < NumScalars);
+         const char *scalstr = "(invalid)";
+         switch (scalidx) {
+            case 0: scalstr = "unsigned char"; break;
+            case 1: scalstr = "int"; break;
+            case 2: scalstr = "unsigned int"; break;
+            case 3: scalstr = "size_t"; break;
+            case 4: scalstr = "float"; break;
+            case 5: scalstr = "double"; break;
+         }
+         snprintf(buf, sizeof(buf), "VEC<%s, %d>", scalstr, dim);
+      }
+
+      return buf;
+   }
 
    virtual ~Object();
 
@@ -430,6 +478,8 @@ class ObjectTypeRegistry {
    }
 
 void V_COREEXPORT registerTypes();
+
+V_ENUM_OUTPUT_OP(Type, Object)
 
 } // namespace vistle
 

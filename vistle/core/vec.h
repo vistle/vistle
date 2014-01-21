@@ -2,7 +2,6 @@
 #define VEC_H
 
 #include "index.h"
-#include "scalar.h"
 #include "dimensions.h"
 #include "shm.h"
 #include "object.h"
@@ -14,7 +13,7 @@ template <typename T, int Dim=1>
 class Vec: public Object {
    V_OBJECT(Vec);
 
-   static const int MaxDim = 4;
+   static const int MaxDim = MaxDimension;
    BOOST_STATIC_ASSERT(Dim > 0);
    BOOST_STATIC_ASSERT(Dim <= MaxDim);
 

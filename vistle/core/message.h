@@ -647,7 +647,14 @@ BOOST_STATIC_ASSERT(sizeof(Trace) < Message::MESSAGE_SIZE);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 
+V_ENUM_OUTPUT_OP(Type, Message)
+V_ENUM_OUTPUT_OP(Reason, Compute)
+V_ENUM_OUTPUT_OP(TextType, SendText)
+V_ENUM_OUTPUT_OP(Policy, ObjectReceivePolicy)
+V_ENUM_OUTPUT_OP(Schedule, SchedulingPolicy)
+V_ENUM_OUTPUT_OP(Reduce, ReducePolicy)
+V_ENUM_OUTPUT_OP(Progress, ExecutionProgress)
+
 } // namespace message
 } // namespace vistle
-
 #endif
