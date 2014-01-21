@@ -512,7 +512,8 @@ bool ModuleManager::handle(const message::ExecutionProgress &prog) {
    auto &mod = i->second;
    bool forward = true;
    if (mod.reducePolicy == message::ReducePolicy::OverAll
-         && prog.stage() == message::ExecutionProgress::Finish) {
+         && prog.stage() == message::ExecutionProgress::Finish
+         && !mod.reducing) {
       // will be sent after reduce()
       forward = false;
    }
