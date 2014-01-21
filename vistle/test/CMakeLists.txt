@@ -1,0 +1,5 @@
+add_subdirectory(shmtest)
+add_subdirectory(shmperf)
+add_subdirectory(shminfo)
+
+
