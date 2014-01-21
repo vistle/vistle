@@ -645,7 +645,7 @@ class V_COREEXPORT Trace: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Trace) < Message::MESSAGE_SIZE);
 
-std::ostream &operator<<(std::ostream &s, const Message &msg);
+V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 
 } // namespace message
 } // namespace vistle
