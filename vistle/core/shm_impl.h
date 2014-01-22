@@ -1,6 +1,7 @@
 #ifndef SHM_IMPL_H
 #define SHM_IMPL_H
 
+#include <boost/type_traits.hpp>
 #include "archives.h"
 
 namespace vistle {
@@ -56,7 +57,14 @@ ShmVector<T>::ShmVector(Index size)
    }
    n.copy(m_name, nsize);
    assert(n.size() < sizeof(m_name));
-   m_x = Shm::the().shm().construct<typename shm<T>::array>((const char *)m_name)(size, Shm::the().allocator());
+#ifndef USE_BOOST_VECTOR
+   if (boost::has_trivial_copy<T>::value) {
+      m_x = Shm::the().shm().construct<typename shm<T>::array>((const char *)m_name)(size, Shm::the().allocator());
+   } else
+#endif
+   {
+      m_x = Shm::the().shm().construct<typename shm<T>::array>((const char *)m_name)(size, T(), Shm::the().allocator());
+   }
 #ifdef SHMDEBUG
    shm_handle_t handle = Shm::the().shm().get_handle_from_address(this);
    Shm::the().s_shmdebug->push_back(ShmDebugInfo('V', m_name, handle));

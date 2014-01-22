@@ -77,6 +77,7 @@ set(core_HEADERS
    scalars.h
    serialize.h
    shm.h
+   shm_array.h
    shm_impl.h
    statetracker.h
    tcpmessage.h

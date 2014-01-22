@@ -14,10 +14,21 @@
 
 #include <mpi.h>
 
+#include <core/shm_array.h>
 #include <core/shm.h>
 #include <core/vec.h>
 
 using namespace vistle;
+
+typedef Index DataType;
+
+struct DataClass {
+   DataType v;
+
+   DataClass(DataType v)
+   : v(v)
+   {}
+};
 
 //#define TWICE
 
@@ -27,6 +38,17 @@ void time_pb(container &v, const std::string &tag, Index size) {
    clock_t start = clock();
    for (Index i=0; i<size; ++i) {
       v.push_back(i);
+   }
+   clock_t elapsed = clock()-start;
+   std::cerr << size << " " << tag << ": " << (double)elapsed/CLOCKS_PER_SEC << std::endl;
+}
+
+template<class container>
+void time_eb(container &v, const std::string &tag, Index size) {
+
+   clock_t start = clock();
+   for (Index i=0; i<size; ++i) {
+      v.emplace_back(i);
    }
    clock_t elapsed = clock()-start;
    std::cerr << size << " " << tag << ": " << (double)elapsed/CLOCKS_PER_SEC << std::endl;
@@ -73,12 +95,12 @@ int main(int argc, char *argv[]) {
    }
    const Index size = 1L << shift;
 
-   { 
-      std::vector<Index> v;
+   {
+      std::vector<DataType> v;
       time_pb(v, "STL vector push_back", size);
    }
    {
-      std::vector<Index> v;
+      std::vector<DataType> v;
       v.reserve(size);
       time_pb(v, "STL vector reserve+push_back", size);
       time_arr(v, "STL vector arr", size);
@@ -88,13 +110,18 @@ int main(int argc, char *argv[]) {
       time_ptr(&v[0], "STL vector arr ptr", size);
 #endif
    }
+   {
+      std::vector<DataType> v;
+      v.reserve(size);
+      time_eb(v, "STL vector emplace_back+reserve", size);
+   }
 
    { 
-      bi::vector<Index> v;
+      bi::vector<DataType> v;
       time_pb(v, "B:I vector push_back", size);
    }
    {
-      bi::vector<Index> v;
+      bi::vector<DataType> v;
       v.reserve(size);
       time_pb(v, "B:I vector reserve+push_back", size);
       time_arr(v, "B:I vector arr", size);
@@ -106,7 +133,7 @@ int main(int argc, char *argv[]) {
    }
 
    {
-      vistle::shm_array<Index, std::allocator<Index>> v;
+      vistle::shm_array<DataType, std::allocator<DataType>> v;
       time_pb(v, "uninit array push_back only", size);
       time_arr(v, "uninit array arr", size);
       time_ptr(&v[0], "uninit array arr ptr", size);
@@ -117,7 +144,7 @@ int main(int argc, char *argv[]) {
    }
 
    {
-      vistle::shm_array<Index, std::allocator<Index>> v;
+      vistle::shm_array<DataType, std::allocator<DataType>> v;
       v.reserve(size);
       time_pb(v, "uninit array reserve+push_back", size);
       time_arr(v, "uninit array arr", size);
@@ -128,17 +155,40 @@ int main(int argc, char *argv[]) {
 #endif
    }
 
+   {
+      vistle::shm_array<DataType, std::allocator<DataType>> v;
+      v.reserve(size);
+      time_eb(v, "uninit array reserve+emplace_back", size);
+   }
+
+   {
+      vistle::shm_array<DataClass, std::allocator<DataClass>> v;
+      v.reserve(size);
+      time_pb(v, "uninit array push_back+reserve class", size);
+      time_arr(v, "uninit array arr class", size);
+      time_ptr(&v[0], "uninit array arr ptr class", size);
+#ifdef TWICE
+      time_arr(v, "uninit array arr", size);
+      time_ptr(&v[0], "uninit array arr ptr", size);
+#endif
+   }
+   {
+      vistle::shm_array<DataClass, std::allocator<DataClass>> v;
+      v.reserve(size);
+      time_eb(v, "uninit array reserve+emplace_back class", size);
+   }
+
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
-      vistle::Vec<Index, 1> v(Index(0));
+      vistle::Vec<DataType, 1> v(DataType(0));
       time_pb(v.x(), "vistle push_back only", size);
       bi::shared_memory_object::remove(shmname.c_str());
    }
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
-      vistle::Vec<Index, 1> v(Index(0));
+      vistle::Vec<DataType, 1> v(DataType(0));
       v.x().reserve(size);
       time_pb(v.x(), "vistle push_back+reserve", size);
       time_arr(v.x(), "vistle vector arr", size);
@@ -153,18 +203,19 @@ int main(int argc, char *argv[]) {
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
-      vistle::Vec<Index, 1> v(Index(0));
-      shm<Index>::array &vv = v.x();
+      vistle::Vec<DataType, 1> v(DataType(0));
+      shm<DataType>::array &vv = v.x();
       vv.reserve(size);
       time_pb(vv, "vistle push_back+reserve", size);
       bi::shared_memory_object::remove(shmname.c_str());
    }
 
+#ifndef USE_BOOST_VECTOR
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
-      vistle::shm<Index>::array_ptr v7p = Shm::the().shm().construct<vistle::shm<Index>::array>("testvector")(0, Shm::the().allocator());
-      vistle::shm<Index>::array &v = *v7p;
+      vistle::shm<DataType>::array_ptr v7p = Shm::the().shm().construct<vistle::shm<DataType>::array>("testvector")(0, Shm::the().allocator());
+      vistle::shm<DataType>::array &v = *v7p;
       v.reserve(size);
       time_pb(v, "vistle explicit uninit reserved+push_back", size);
       time_arr(v, "vistle explicit uninit arr", size);
@@ -175,12 +226,13 @@ int main(int argc, char *argv[]) {
 #endif
       bi::shared_memory_object::remove(shmname.c_str());
    }
+#endif
 
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
-      vistle::shm<Index>::ptr v7p = Shm::the().shm().construct<vistle::shm<Index>::vector>("testvector")(0, 0, Shm::the().allocator());
-      vistle::shm<Index>::vector &v = *v7p;
+      vistle::shm<DataType>::ptr v7p = Shm::the().shm().construct<vistle::shm<DataType>::vector>("testvector")(0, 0, Shm::the().allocator());
+      vistle::shm<DataType>::vector &v = *v7p;
       v.reserve(size);
       time_pb(v, "vistle explicit reserved+push_back", size);
       time_arr(v, "vistle explicit arr", size);
@@ -196,9 +248,9 @@ int main(int argc, char *argv[]) {
    bi::shared_memory_object::remove(shmname.c_str());
    vistle::Shm::create(shmname, 0, 0, NULL);
    start = clock();
-   vistle::Vec<Index, 1> v7(Index(0));
+   vistle::Vec<DataType, 1> v7(DataType(0));
    auto v7p = &(v7.x()());
-   for (Index i=0; i<size; ++i) {
+   for (DataType i=0; i<size; ++i) {
       v7p->push_back(i);
    }
    clock_t vi_dir = clock()-start;

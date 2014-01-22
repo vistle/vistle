@@ -4,8 +4,8 @@ include_directories(
         ../..
 )
 
-add_executable(shmperf shmperf.cpp)
-target_link_libraries(shmperf
+add_executable(vectortest vectortest.cpp)
+target_link_libraries(vectortest
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}
         vistle_core
