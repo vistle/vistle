@@ -1,3 +1,4 @@
+#define ENUMS_FOR_PYTHON
 
 #include <Python.h>
 #include <boost/python.hpp>
@@ -388,6 +389,9 @@ static void compute(int id) {
 BOOST_PYTHON_MODULE(_vistle)
 {
     using namespace boost::python;
+
+    // make values of vistle::message::Message::Type enum known to Python as Message.xxx
+    vistle::message::Message::enumForPython_Type("Message");
 
     def("_resetModuleCounter", resetModuleCounter);
 
