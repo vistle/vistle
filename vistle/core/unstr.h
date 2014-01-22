@@ -13,6 +13,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
  public:
    typedef Indexed Base;
 
+   // make sure that these types match those from COVISE: src/kernel/do/coDoUnstructuredGrid.h
    enum Type {
       NONE        =  0,
       BAR         =  1,
@@ -26,7 +27,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
       POLYHEDRON  = 11
    };
 
-   static constexpr int numVertices[POLYHEDRON+1] = { 0, 2, 3, 4, 5, 6, 8, -1, -1, 1, -1 };
+   static constexpr int numVertices[POLYHEDRON+1] = { 0, 2, 3, 4, 4, 5, 6, 8, -1, -1, 1, -1 };
 
    UnstructuredGrid(const Index numElements,
          const Index numCorners,
