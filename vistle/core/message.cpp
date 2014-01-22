@@ -218,11 +218,11 @@ bool ModuleExit::isForwarded() const {
    return forwarded;
 }
 
-Compute::Compute(const int m, const int c)
+Compute::Compute(const int m, const int count)
    : Message(Message::COMPUTE, sizeof(Compute))
    , m_allRanks(false)
    , module(m)
-   , executionCount(c)
+   , executionCount(count)
    , m_reason(Compute::Execute)
 {
 }
@@ -920,6 +920,11 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       << ", rank: " << m.rank();
 
    switch (m.type()) {
+      case Message::COMPUTE: {
+         auto mm = static_cast<const Compute &>(m);
+         s << ", module: " << mm.getModule() << ", execcount: " << mm.getExecutionCount();
+         break;
+      }
       case Message::EXECUTIONPROGRESS: {
          auto mm = static_cast<const ExecutionProgress &>(m);
          s << ", stage: " << ExecutionProgress::toString(mm.stage()) << ", step: " << mm.step();

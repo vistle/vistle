@@ -377,7 +377,7 @@ static void compute(int id) {
 #ifdef DEBUG
    std::cerr << "Python: compute " << id << std::endl;
 #endif
-   message::Compute m(id, -1);
+   message::Compute m(id);
    sendMessage(m);
 }
 

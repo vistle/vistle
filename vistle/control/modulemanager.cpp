@@ -39,7 +39,7 @@ ModuleManager::ModuleManager(int argc, char *argv[], int r, const std::vector<st
 , m_size(hosts.size())
 , m_hosts(hosts)
 , m_moduleCounter(0)
-, m_executionCounter(0)
+, m_executionCounter(1)
 , m_barrierCounter(0)
 , m_activeBarrier(-1)
 , m_reachedBarriers(-1)
@@ -66,10 +66,14 @@ int ModuleManager::newModuleID() {
    return m_moduleCounter;
 }
 
-int ModuleManager::newExecutionCount() {
-   ++m_executionCounter;
+int ModuleManager::currentExecutionCount() {
 
    return m_executionCounter;
+}
+
+int ModuleManager::newExecutionCount() {
+
+   return m_executionCounter++;
 }
 
 void ModuleManager::resetModuleCounter() {
@@ -468,12 +472,10 @@ bool ModuleManager::handle(const message::Compute &compute) {
 
    m_stateTracker.handle(compute);
    message::Compute toSend = compute;
-   if (compute.senderId() == 0) {
-      if (compute.getExecutionCount() > m_executionCounter)
-         m_executionCounter = compute.getExecutionCount();
-   } else {
+   if (compute.getExecutionCount() > currentExecutionCount())
+      m_executionCounter = compute.getExecutionCount();
+   if (compute.getExecutionCount() < 0)
       toSend.setExecutionCount(newExecutionCount());
-   }
 
    if (compute.getModule() != -1) {
       RunningMap::iterator i = runningMap.find(compute.getModule());
@@ -748,7 +750,7 @@ bool ModuleManager::handle(const message::AddObject &addObj) {
 
          Module &destMod = it->second;
 
-         message::Compute c(destId, -1);
+         message::Compute c(destId);
          c.setUuid(addObj.uuid());
          c.setReason(message::Compute::AddObject);
          if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {

@@ -206,7 +206,7 @@ void VistleConnection::executeSources() const
             isSource = false;
       }
       if (isSource)
-         sendMessage(message::Compute(id, -1));
+         sendMessage(message::Compute(id));
    }
 }
 

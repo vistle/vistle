@@ -45,6 +45,7 @@ class V_CONTROLEXPORT ModuleManager {
 
    void resetModuleCounter();
    int newModuleID();
+   int currentExecutionCount();
    int newExecutionCount();
    int getBarrierCounter();
    boost::mutex &barrierMutex();

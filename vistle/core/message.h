@@ -236,7 +236,7 @@ BOOST_STATIC_ASSERT(sizeof(ModuleExit) < Message::MESSAGE_SIZE);
 class V_COREEXPORT Compute: public Message {
 
  public:
-   Compute(const int module, const int count);
+   Compute(const int module, const int count=-1);
 
    void setModule(int );
    int getModule() const;

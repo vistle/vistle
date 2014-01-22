@@ -450,7 +450,7 @@ void VistlePlugin::requestQuit(bool killSession)
 
 bool VistlePlugin::executeAll() {
 
-   message::Compute comp(-1, -1); // execute all sources in data flow graph
+   message::Compute comp(-1); // execute all sources in data flow graph
    m_module->sendMessage(comp);
    return true;
 }

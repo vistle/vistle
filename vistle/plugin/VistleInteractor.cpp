@@ -73,7 +73,7 @@ bool VistleInteractor::isSame(coInteractor* i) const
 /// execute the Module
 void VistleInteractor::executeModule()
 {
-   message::Compute m(m_moduleId, -1); // Communicator will update execution count
+   message::Compute m(m_moduleId); // Communicator will update execution count
    sendMessage(m);
 }
 
