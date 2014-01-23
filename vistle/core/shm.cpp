@@ -152,22 +152,31 @@ bool Shm::cleanAll() {
    shmlist.open(shmIdFilename().c_str(), std::ios::in);
    remove(shmIdFilename().c_str());
 
+   bool ret = true;
+
    while (!shmlist.eof() && !shmlist.fail()) {
       std::string shmid;
       shmlist >> shmid;
       if (!shmid.empty()) {
+         bool ok = true;
+         bool exist = true;
+
          if (shmid.find("mq_") == 0) {
-            std::cerr << "removing message queue: id " << shmid << std::endl;
-            message::MessageQueue::message_queue::remove(shmid.c_str());
+            std::cerr << "removing message queue: id " << shmid << std::flush;
+            ok = message::MessageQueue::message_queue::remove(shmid.c_str());
          } else {
-            std::cerr << "removing shared memory: id " << shmid << std::endl;
-            shared_memory_object::remove(shmid.c_str());
+            std::cerr << "removing shared memory: id " << shmid << std::flush;
+            ok = shared_memory_object::remove(shmid.c_str());
          }
+         std::cerr << ": " << (ok ? "ok" : "failure") << std::endl;
+
+         if (!ok)
+            ret = false;
       }
    }
    shmlist.close();
 
-   return true;
+   return false;
 }
 
 const std::string &Shm::name() const {
