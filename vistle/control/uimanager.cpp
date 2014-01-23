@@ -64,6 +64,7 @@ UiManager::UiManager(boost::shared_ptr<message::MessageQueue> commandQueue, unsi
 , m_port(port)
 , m_requestQuit(false)
 , m_acceptor(m_ioService)
+, m_listeningClient(nullptr)
 , m_uiCount(0)
 {
 
@@ -98,6 +99,8 @@ void UiManager::requestQuit() {
 UiManager::~UiManager() {
 
    disconnect();
+
+   delete m_listeningClient;
 }
 
 void UiManager::removeThread(boost::thread *thread) {
@@ -126,15 +129,20 @@ void UiManager::startAccept() {
    ++m_uiCount;
    boost::shared_ptr<message::MessageQueue> smq = m_commandQueue;
    boost::shared_ptr<message::MessageQueue> rmq(message::MessageQueue::create(message::MessageQueue::createName("rui", m_uiCount, 0)));
-   UiClient *client = new UiClient(*this, -m_uiCount, smq, rmq);
-   m_acceptor.async_accept(client->socket(), boost::bind<void>(&UiManager::handleAccept, this, client, asio::placeholders::error));
+   assert(m_listeningClient == nullptr);
+   m_listeningClient = new UiClient(*this, -m_uiCount, smq, rmq);
+   m_acceptor.async_accept(m_listeningClient->socket(), boost::bind<void>(&UiManager::handleAccept, this, m_listeningClient, asio::placeholders::error));
 }
 
 void UiManager::handleAccept(UiClient *client, const boost::system::error_code &error) {
 
-   if (!error) {
+   assert(m_listeningClient == client);
+   if (error) {
+      delete client;
+   } else {
       addClient(client);
    }
+   m_listeningClient = nullptr;
 
    startAccept();
 }

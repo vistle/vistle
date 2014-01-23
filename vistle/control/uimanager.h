@@ -55,6 +55,7 @@ class V_CONTROLEXPORT UiManager {
    bool m_requestQuit;
    boost::asio::io_service m_ioService;
    boost::asio::ip::tcp::acceptor m_acceptor;
+   UiClient *m_listeningClient;
 
    typedef std::map<boost::thread *, UiClient *> ThreadMap;
    ThreadMap m_threads;
