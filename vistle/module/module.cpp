@@ -834,7 +834,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const message::Kill *kill =
             static_cast<const message::Kill *>(message);
          //TODO: uuid should be included in coresponding ModuleExit message
-         if (kill->getModule() == id()) {
+         if (kill->getModule() == id() || kill->getModule() == -1) {
             return false;
          } else {
             std::cerr << "module [" << name() << "] [" << id() << "] ["

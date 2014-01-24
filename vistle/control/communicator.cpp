@@ -188,8 +188,23 @@ bool Communicator::dispatch() {
          done = true;
 
       // test for messages from modules
-      if (!done)
+      if (done) {
+         if (m_moduleManager) {
+            m_moduleManager->quit();
+            m_quitFlag = false;
+            done = false;
+         }
+      }
+      if (m_moduleManager->quitOk()) {
+         done = true;
+      }
+      if (!done && m_moduleManager) {
          done = !m_moduleManager->dispatch(received);
+      }
+      if (done) {
+         delete m_moduleManager;
+         m_moduleManager = nullptr;
+      }
 
    } while (!done && received);
 

@@ -67,6 +67,7 @@ class V_COREEXPORT StateTracker {
    std::vector<int> getRunningList() const;
    std::vector<int> getBusyList() const;
    std::string getModuleName(int id) const;
+   int getModuleState(int id) const;
 
    std::vector<std::string> getParameters(int id) const;
    Parameter *getParameter(int id, const std::string &name) const;

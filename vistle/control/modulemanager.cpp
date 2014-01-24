@@ -35,6 +35,7 @@ namespace vistle {
 ModuleManager::ModuleManager(int argc, char *argv[], int r, const std::vector<std::string> &hosts)
 : m_portManager(this)
 , m_stateTracker(&m_portManager)
+, m_quitFlag(false)
 , m_rank(r)
 , m_size(hosts.size())
 , m_hosts(hosts)
@@ -171,6 +172,13 @@ bool ModuleManager::dispatch(bool &received) {
          if (recv)
             received = true;
       }
+   }
+
+   if (m_quitFlag) {
+      if (numRunning() == 0)
+         return false;
+
+      CERR << numRunning() << " modules still running..." << std::endl;
    }
 
    return !done;
@@ -443,7 +451,7 @@ bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
 
    m_stateTracker.handle(moduleExit);
 
-   CERR << " Module [" << mod << "] quit" << std::endl;
+   //CERR << " Module [" << mod << "] quit" << std::endl;
 
    { 
       RunningMap::iterator it = runningMap.find(mod);
@@ -827,7 +835,7 @@ bool ModuleManager::handle(const message::BarrierReached &barrReached) {
       barrierReached(m_activeBarrier);
 #ifdef DEBUG
    } else {
-      CERR << "BARRIER: reached by " << reachedSet.size() << "/" << runningMap.size() << std::endl;
+      CERR << "BARRIER: reached by " << reachedSet.size() << "/" << numRunning() << std::endl;
 #endif
    }
 
@@ -845,7 +853,7 @@ bool ModuleManager::handle(const vistle::message::ResetModuleIds &reset)
 {
    m_stateTracker.handle(reset);
    if (!runningMap.empty()) {
-      CERR << "ResetModuleIds: " << runningMap.size() << " modules still running" << std::endl;
+      CERR << "ResetModuleIds: " << numRunning() << " modules still running" << std::endl;
       return true;
    }
 
@@ -893,24 +901,28 @@ bool ModuleManager::handle(const message::ReducePolicy &reducePolicy)
    return true;
 }
 
-ModuleManager::~ModuleManager() {
+bool ModuleManager::quit() {
 
-   sendAll(message::Quit());
+   m_quitFlag = true;
+   sendAll(message::Kill(-1));
 
    // receive all ModuleExit messages from modules
    // retry for some time, modules that don't answer might have crashed
-   CERR << "waiting for " << runningMap.size() << " modules to quit" << std::endl;
-   int retries = 10000;
-   while (runningMap.size() > 0 && --retries >= 0) {
-      Communicator::the().dispatch();
-      usleep(1000);
-   }
+   CERR << "waiting for " << numRunning() << " modules to quit" << std::endl;
 
-   if (runningMap.size() > 0)
-      CERR << runningMap.size() << " modules failed to quit" << std::endl;
-
-   if (m_size > 0)
+   if (m_size > 1)
       MPI_Barrier(MPI_COMM_WORLD);
+
+   return numRunning()==0;
+}
+
+bool ModuleManager::quitOk() const {
+
+   return m_quitFlag && numRunning()==0;
+}
+
+ModuleManager::~ModuleManager() {
+
 }
 
 std::vector<char> ModuleManager::getState() const {
@@ -961,6 +973,17 @@ void ModuleManager::replayMessages() {
       const message::Message &m = *static_cast<const message::Message *>(static_cast<const void *>(&queue[i]));
       Communicator::the().handleMessage(m);
    }
+}
+
+int ModuleManager::numRunning() const {
+
+   int n = 0;
+   for (auto &m: runningMap) {
+      int state = m_stateTracker.getModuleState(m.first);
+      if ((state & StateObserver::Initialized) && !(state & StateObserver::Killed))
+         ++n;
+   }
+   return n;
 }
 
 } // namespace vistle

@@ -40,6 +40,9 @@ class V_CONTROLEXPORT ModuleManager {
    bool sendAllOthers(int excluded, const message::Message &message) const;
    bool sendUi(const message::Message &message) const;
 
+   bool quit();
+   bool quitOk() const;
+
    int getRank() const;
    int getSize() const;
 
@@ -70,6 +73,7 @@ class V_CONTROLEXPORT ModuleManager {
 
    PortManager m_portManager;
    StateTracker m_stateTracker;
+   bool m_quitFlag;
 
    // only used by Communicator
    bool handle(const message::Ping &ping);
@@ -128,6 +132,7 @@ class V_CONTROLEXPORT ModuleManager {
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;
+   int numRunning() const;
 
    int m_moduleCounter; //< used for module ids
    int m_executionCounter; //< incremented each time the pipeline is executed

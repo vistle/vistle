@@ -65,6 +65,15 @@ std::string StateTracker::getModuleName(int id) const {
    return it->second.name;
 }
 
+int StateTracker::getModuleState(int id) const {
+
+   RunningMap::const_iterator it = runningMap.find(id);
+   if (it == runningMap.end())
+      return 0;
+
+   return it->second.state();
+}
+
 static void appendMessage(std::vector<char> &v, const message::Message &msg) {
 
    assert(v.size() % message::Message::MESSAGE_SIZE == 0);
@@ -389,7 +398,7 @@ bool StateTracker::handle(const message::ModuleExit &moduleExit) {
 
    int mod = moduleExit.senderId();
 
-   CERR << " Module [" << mod << "] quit" << std::endl;
+   //CERR << " Module [" << mod << "] quit" << std::endl;
 
    { 
       RunningMap::iterator it = runningMap.find(mod);
