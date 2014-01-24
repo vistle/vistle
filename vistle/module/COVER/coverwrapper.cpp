@@ -174,5 +174,5 @@ finish:
       dlclose(handle);
    MPI_Finalize();
 
-   return ret;
+   return 0;
 }

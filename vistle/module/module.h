@@ -237,11 +237,11 @@ protected:
          std::cerr << "  info: " << e.info() << std::endl; \
          std::cerr << e.where() << std::endl; \
          MPI_Finalize(); \
-         exit(1); \
+         exit(0); \
       } catch(std::exception &e) { \
          std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; \
          MPI_Finalize(); \
-         exit(1); \
+         exit(0); \
       } \
       MPI_Finalize(); \
       return 0; \

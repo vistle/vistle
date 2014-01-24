@@ -77,6 +77,8 @@ class Vistle: public Executor {
 
 int main(int argc, char ** argv) {
 
+   setenv("OMPI_MCA_orte_abort_on_non_zero_status", "0", 0);
+
    try {
 
       MPI_Init(&argc, &argv);
