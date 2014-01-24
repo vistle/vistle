@@ -12,6 +12,7 @@
 #include <QDir>
 #include <QFileDialog>
 #include <QDockWidget>
+#include <QGuiApplication>
 
 namespace gui {
 
@@ -66,6 +67,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
 
    connect(m_scene, SIGNAL(selectionChanged()), SLOT(moduleSelectionChanged()));
 
+   connect(&m_observer, SIGNAL(quit_s()), qApp, SLOT(quit()));
    connect(&m_observer, SIGNAL(info_s(QString)),
       m_mainWindow.console(), SLOT(appendInfo(QString)));
    connect(&m_observer, SIGNAL(modified(bool)),

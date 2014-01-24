@@ -47,6 +47,8 @@ class V_COREEXPORT StateObserver {
 
    virtual void info(const std::string &text, int senderId, int senderRank, message::Message::Type refType, const message::Message::uuid_t &refUuid) = 0;
 
+   virtual void quitRequested();
+
    virtual void resetModificationCount();
    virtual void incModificationCount();
    long modificationCount() const;
@@ -99,6 +101,7 @@ class V_COREEXPORT StateTracker {
    bool handle(const message::ResetModuleIds &reset);
    bool handle(const message::ReplayFinished &reset);
    bool handle(const message::SendText &info);
+   bool handle(const message::Quit &quit);
 
    PortTracker *portTracker() const;
 

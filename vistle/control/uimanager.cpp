@@ -20,45 +20,6 @@ namespace asio = boost::asio;
 
 namespace vistle {
 
-class UiThreadWrapper {
-
- public:
-   UiThreadWrapper(UiClient *c, UiManager *m)
-   : release(true)
-   , manager(m)
-   , thread(NULL)
-   , client(c)
-   {} 
-
-   UiThreadWrapper(const UiThreadWrapper &o)
-   : release(o.release)
-   , manager(o.manager)
-   , thread(o.thread)
-   , client(o.client)
-   {
-      o.release = false;
-   }
-
-   ~UiThreadWrapper() {
-      if (release) {
-         manager->removeThread(thread);
-         delete client;
-      }
-   }
-
-   void operator()() {
-      (*client)();
-
-      assert(client->done());
-   }
-
-   private:
-   mutable bool release;
-   UiManager *manager;
-   boost::thread *thread;
-   UiClient *client;
-};
-
 UiManager::UiManager(boost::shared_ptr<message::MessageQueue> commandQueue, unsigned short port)
 : m_commandQueue(commandQueue)
 , m_port(port)
@@ -85,7 +46,7 @@ void UiManager::sendMessage(const message::Message &msg) const {
    }
 }
 
-void UiManager::sendMessage(UiClient *c, const message::Message &msg) const {
+void UiManager::sendMessage(boost::shared_ptr<UiClient> c, const message::Message &msg) const {
 
    message::MessageQueue &mq = c->recvQueue();
    mq.send(msg);
@@ -99,8 +60,6 @@ void UiManager::requestQuit() {
 UiManager::~UiManager() {
 
    disconnect();
-
-   delete m_listeningClient;
 }
 
 void UiManager::removeThread(boost::thread *thread) {
@@ -110,8 +69,10 @@ void UiManager::removeThread(boost::thread *thread) {
 
 void UiManager::disconnect() {
 
+   sendMessage(message::Quit());
+
    BOOST_FOREACH(ThreadMap::value_type v, m_threads) {
-      UiClient *c = v.second;
+      auto c = v.second;
       c->cancel();
    }
 
@@ -130,16 +91,14 @@ void UiManager::startAccept() {
    boost::shared_ptr<message::MessageQueue> smq = m_commandQueue;
    boost::shared_ptr<message::MessageQueue> rmq(message::MessageQueue::create(message::MessageQueue::createName("rui", m_uiCount, 0)));
    assert(m_listeningClient == nullptr);
-   m_listeningClient = new UiClient(*this, -m_uiCount, smq, rmq);
+   m_listeningClient.reset(new UiClient(*this, -m_uiCount, smq, rmq));
    m_acceptor.async_accept(m_listeningClient->socket(), boost::bind<void>(&UiManager::handleAccept, this, m_listeningClient, asio::placeholders::error));
 }
 
-void UiManager::handleAccept(UiClient *client, const boost::system::error_code &error) {
+void UiManager::handleAccept(boost::shared_ptr<UiClient> client, const boost::system::error_code &error) {
 
    assert(m_listeningClient == client);
-   if (error) {
-      delete client;
-   } else {
+   if (!error) {
       addClient(client);
    }
    m_listeningClient = nullptr;
@@ -147,9 +106,9 @@ void UiManager::handleAccept(UiClient *client, const boost::system::error_code &
    startAccept();
 }
 
-void UiManager::addClient(UiClient *c) {
+void UiManager::addClient(boost::shared_ptr<UiClient> c) {
 
-   boost::thread *t = new boost::thread(UiThreadWrapper(c, this));
+   boost::thread *t = new boost::thread(boost::ref(*c));
    m_threads[t] = c;
 
    sendMessage(c, message::SetId(c->id()));
@@ -169,7 +128,7 @@ void UiManager::join() {
          it != m_threads.end();
        ) {
       boost::thread *t = it->first;
-      UiClient *c = it->second;
+      auto c = it->second;
       ThreadMap::iterator next = it;
       ++next;
       if (c->done()) {

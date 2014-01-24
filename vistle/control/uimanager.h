@@ -38,16 +38,16 @@ class V_CONTROLEXPORT UiManager {
    bool check();
    unsigned short port() const;
 
-   void addClient(UiClient *c);
+   void addClient(boost::shared_ptr<UiClient> c);
    void removeThread(boost::thread *thread);
-   void sendMessage(UiClient *c, const message::Message &msg) const;
+   void sendMessage(boost::shared_ptr<UiClient> c, const message::Message &msg) const;
 
    void startServer();
    void join();
    void disconnect();
 
    void startAccept();
-   void handleAccept(UiClient *client, const boost::system::error_code &error);
+   void handleAccept(boost::shared_ptr<UiClient> client, const boost::system::error_code &error);
 
    boost::shared_ptr<message::MessageQueue> m_commandQueue;
    unsigned short m_port;
@@ -55,9 +55,9 @@ class V_CONTROLEXPORT UiManager {
    bool m_requestQuit;
    boost::asio::io_service m_ioService;
    boost::asio::ip::tcp::acceptor m_acceptor;
-   UiClient *m_listeningClient;
+   boost::shared_ptr<UiClient> m_listeningClient;
 
-   typedef std::map<boost::thread *, UiClient *> ThreadMap;
+   typedef std::map<boost::thread *, boost::shared_ptr<UiClient>> ThreadMap;
    ThreadMap m_threads;
    int m_uiCount;
 };

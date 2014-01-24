@@ -32,6 +32,8 @@ signals:
 
    void info_s(QString msg);
 
+   void quit_s();
+
 public:
    VistleObserver(QObject *parent=0);
    void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName);
@@ -47,6 +49,8 @@ public:
                           int toId, const std::string &toName);
 
    void info(const std::string &text, int senderId, int senderRank, vistle::message::Message::Type refType, const vistle::message::Message::uuid_t &refUuid);
+
+   void quitRequested();
 
    void incModificationCount();
    void resetModificationCount();

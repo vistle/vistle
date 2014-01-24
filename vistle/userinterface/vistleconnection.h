@@ -21,6 +21,7 @@ public:
    virtual ~VistleConnection();
    static VistleConnection &the();
 
+   bool done() const;
    void cancel();
    void operator()();
 

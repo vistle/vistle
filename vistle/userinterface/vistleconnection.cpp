@@ -60,6 +60,12 @@ VistleConnection &VistleConnection::the() {
    return *s_instance;
 }
 
+bool VistleConnection::done() const {
+
+   mutex_lock lock(m_mutex);
+   return m_done;
+}
+
 void VistleConnection::cancel() {
    mutex_lock lock(m_mutex);
    m_done = true;
@@ -74,6 +80,10 @@ void VistleConnection::operator()() {
          }
       }
       usleep(10000);
+   }
+   {
+      mutex_lock lock(m_mutex);
+      m_done = true;
    }
 }
 

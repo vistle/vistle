@@ -135,6 +135,10 @@ bool Communicator::dispatch() {
 
          if (!done && m_uiManager)
             done = !m_uiManager->check();
+
+         if (done) {
+            sendUi(message::Quit());
+         }
       }
 
       // handle or broadcast messages received from slaves (m_rank > 0)

@@ -207,6 +207,8 @@ bool StateTracker::handleMessage(const message::Message &msg) {
          break;
       }
       case Message::QUIT: {
+         const Quit &quit = static_cast<const Quit &>(msg);
+         return handle(quit);
          break;
       }
       case Message::MODULEEXIT: {
@@ -542,6 +544,15 @@ bool StateTracker::handle(const message::SetParameterChoices &choices) {
    return true;
 }
 
+bool StateTracker::handle(const message::Quit &quit) {
+
+   for (StateObserver *o: m_observers) {
+      o->quitRequested();
+   }
+
+   return true;
+}
+
 bool StateTracker::handle(const message::Kill &kill) {
 
    const int id = kill.getModule();
@@ -649,6 +660,10 @@ Parameter *StateTracker::getParameter(int id, const std::string &name) const {
 void StateTracker::registerObserver(StateObserver *observer) {
 
    m_observers.insert(observer);
+}
+
+void StateObserver::quitRequested() {
+
 }
 
 void StateObserver::incModificationCount()

@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
       PythonModule pythonmodule(&conn);
       boost::thread runnerThread(boost::ref(conn));
 
-      while(!std::cin.eof()) {
+      while(!std::cin.eof() && !conn.done()) {
          std::string line;
          std::getline(std::cin, line);
          if (line == "exit")

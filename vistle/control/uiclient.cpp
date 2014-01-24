@@ -78,6 +78,7 @@ void UiClient::operator()() {
 
 void UiClient::cancel() {
 
+   m_done = true;
    m_ioService.stop();
 }
 

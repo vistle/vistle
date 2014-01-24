@@ -108,4 +108,9 @@ void gui::VistleObserver::info(const std::string &text, int senderId, int sender
    emit info_s(msg);
 }
 
+void VistleObserver::quitRequested() {
+
+   emit quit_s();
+}
+
 } //namespace gui
