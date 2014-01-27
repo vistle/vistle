@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(vistle)
 
-set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${PROJECT_SOURCE_DIR}/cmake/Modules/")
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/;${CMAKE_MODULE_PATH}")
 
 enable_testing()
 

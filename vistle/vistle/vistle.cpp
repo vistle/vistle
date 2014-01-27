@@ -59,7 +59,7 @@ class Vistle: public Executor {
             std::cerr << "Error when forking for executing UI: " << strerror(errno) << std::endl;
             exit(1);
          } else if (pid == 0) {
-            std::string cmd = "gui";
+            std::string cmd = "vistle_gui";
             if (start_tui)
                cmd = "blower";
             std::string pathname = bindir + "/" + cmd;
