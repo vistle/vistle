@@ -25,7 +25,6 @@ UiManager::UiManager(boost::shared_ptr<message::MessageQueue> commandQueue, unsi
 , m_port(port)
 , m_requestQuit(false)
 , m_acceptor(m_ioService)
-, m_listeningClient(nullptr)
 , m_uiCount(0)
 {
 
@@ -101,7 +100,7 @@ void UiManager::handleAccept(boost::shared_ptr<UiClient> client, const boost::sy
    if (!error) {
       addClient(client);
    }
-   m_listeningClient = nullptr;
+   m_listeningClient.reset();
 
    startAccept();
 }
