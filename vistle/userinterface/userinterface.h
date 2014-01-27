@@ -26,12 +26,19 @@ class V_UIEXPORT UserInterface {
    virtual ~UserInterface();
 
    virtual bool dispatch();
-   bool sendMessage(const message::Message &message) const;
+   bool sendMessage(const message::Message &message);
 
    int id() const;
-   std::string host() const;
+   const std::string &host() const;
 
-   boost::asio::ip::tcp::socket &socket() const;
+   const std::string &remoteHost() const;
+   unsigned short remotePort() const;
+
+   boost::asio::ip::tcp::socket &socket();
+   const boost::asio::ip::tcp::socket &socket() const;
+
+   bool tryConnect();
+   bool isConnected() const;
 
    StateTracker &state();
 
@@ -42,8 +49,11 @@ class V_UIEXPORT UserInterface {
 
  protected:
 
-   std::string m_hostname;
    int m_id;
+   std::string m_hostname;
+   std::string m_remoteHost;
+   unsigned short m_remotePort;
+   bool m_isConnected;
 
    PortTracker m_portTracker;
    StateTracker m_stateTracker;
@@ -51,7 +61,7 @@ class V_UIEXPORT UserInterface {
    bool handleMessage(const message::Message *message);
 
    boost::asio::io_service m_ioService;
-   boost::asio::ip::tcp::socket *m_socket;
+   boost::asio::ip::tcp::socket m_socket;
 
    struct RequestedMessage {
       boost::mutex mutex;

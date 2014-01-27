@@ -23,7 +23,11 @@ namespace vistle {
 
 UserInterface::UserInterface(const std::string &host, const unsigned short port, StateObserver *observer)
 : m_id(-1)
+, m_remoteHost(host)
+, m_remotePort(port)
+, m_isConnected(false)
 , m_stateTracker(&m_portTracker)
+, m_socket(m_ioService)
 {
    message::DefaultSender::init(0, 0);
 
@@ -43,14 +47,7 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
 
    m_hostname = hostname;
 
-   std::stringstream portstr;
-   portstr << port;
-
-   asio::ip::tcp::resolver resolver(m_ioService);
-   asio::ip::tcp::resolver::query query(host, portstr.str());
-   asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-   m_socket = new asio::ip::tcp::socket(m_ioService);
-   asio::connect(socket(), endpoint_iterator);
+   tryConnect();
 }
 
 int UserInterface::id() const {
@@ -58,14 +55,46 @@ int UserInterface::id() const {
    return m_id;
 }
 
-std::string UserInterface::host() const {
+const std::string &UserInterface::host() const {
 
    return m_hostname;
 }
 
-boost::asio::ip::tcp::socket &UserInterface::socket() const {
+boost::asio::ip::tcp::socket &UserInterface::socket() {
 
-   return *m_socket;
+   return m_socket;
+}
+
+const boost::asio::ip::tcp::socket &UserInterface::socket() const {
+
+   return m_socket;
+}
+
+bool UserInterface::tryConnect() {
+
+   assert(m_isConnected == false);
+
+   std::stringstream portstr;
+   portstr << m_remotePort;
+
+   asio::ip::tcp::resolver resolver(m_ioService);
+   asio::ip::tcp::resolver::query query(m_remoteHost, portstr.str());
+   asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+   boost::system::error_code ec;
+   asio::connect(socket(), endpoint_iterator, ec);
+   if (ec) {
+      std::cerr << "  userinterface [" << id() << "]: could not establish connection to "
+      << m_remoteHost << ":" << m_remotePort << std::endl;
+      m_isConnected = false;
+      return false;
+   }
+   m_isConnected = true;
+   return true;
+}
+
+bool UserInterface::isConnected() const {
+
+   return m_isConnected;
 }
 
 StateTracker &UserInterface::state() {
@@ -98,7 +127,7 @@ bool UserInterface::dispatch() {
 }
 
 
-bool UserInterface::sendMessage(const message::Message &message) const {
+bool UserInterface::sendMessage(const message::Message &message) {
 
    return message::send(socket(), message);
 }
