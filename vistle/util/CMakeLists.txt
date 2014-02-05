@@ -1,6 +1,7 @@
 set(util_SOURCES
    coRestraint.cpp
    findself.cpp
+   stopwatch.cpp
    tools.cpp
 )
 
@@ -11,6 +12,7 @@ set(util_HEADERS
    sysdep.h
    tools.h
    triple.h
+   stopwatch.h
    valgrind.h
    vecstreambuf.h
 )
