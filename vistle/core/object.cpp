@@ -145,6 +145,9 @@ void Object::Data::operator delete(void *p) {
    return Shm::the().shm().deallocate(p);
 }
 
+void Object::Data::operator delete(void *p, void *voidp2) {
+   return Shm::the().shm().deallocate(p);
+}
 
 
 Object::Data *Object::Data::create(Type id, const Meta &m) {

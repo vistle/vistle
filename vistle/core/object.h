@@ -204,6 +204,7 @@ public:
       V_COREEXPORT void *operator new(size_t size);
       V_COREEXPORT void *operator new (std::size_t size, void* ptr);
       V_COREEXPORT void operator delete(void *ptr);
+      V_COREEXPORT void operator delete(void *ptr, void* voidptr2);
       void ref();
       void unref();
       static Data *create(Type id, const Meta &m);
