@@ -90,7 +90,6 @@ public:
          V_OBJECT_CASE(TRIANGLES)
          V_OBJECT_CASE(POLYGONS)
          V_OBJECT_CASE(UNSTRUCTUREDGRID)
-         V_OBJECT_CASE(CELLTREE)
          V_OBJECT_CASE(NORMALS)
          default:
             break;
