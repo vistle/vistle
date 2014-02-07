@@ -27,7 +27,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
       POLYHEDRON  = 11
    };
 
-   static constexpr int numVertices[POLYHEDRON+1] = { 0, 2, 3, 4, 4, 5, 6, 8, -1, -1, 1, -1 };
+   static const int NumVertices[POLYHEDRON+1];
 
    UnstructuredGrid(const Index numElements,
          const Index numCorners,

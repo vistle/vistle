@@ -2,7 +2,9 @@
 
 namespace vistle {
 
-constexpr const int UnstructuredGrid::numVertices[UnstructuredGrid::POLYHEDRON+1];
+const int UnstructuredGrid::NumVertices[UnstructuredGrid::POLYHEDRON+1] = {
+   0, 2, 3, 4, 4, 5, 6, 8, -1, -1, 1, -1
+};
 
 UnstructuredGrid::UnstructuredGrid(const Index numElements,
       const Index numCorners,
