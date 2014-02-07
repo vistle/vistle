@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstring>
 #include <cstdlib>
+#include <climits>
 #ifndef _WIN32
 #include <unistd.h>
 #include <dirent.h>
