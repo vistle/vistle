@@ -42,6 +42,8 @@ endif(WIN32)
 
 #set(CMAKE_BUILD_TYPE Debug)
 
+find_package(TBB)
+
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_PATH})
 
