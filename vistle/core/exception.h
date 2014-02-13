@@ -32,6 +32,12 @@ class V_COREEXPORT not_implemented: public exception {
    not_implemented(const std::string &what = "not implemented");
 };
 
+class V_COREEXPORT consistency_error: public exception {
+
+ public:
+   consistency_error(const std::string &what = "consistency check failure");
+};
+
 } // namespace exception
 
 using except::exception;

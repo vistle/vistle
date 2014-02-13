@@ -296,6 +296,9 @@ class ObjectTypeRegistry {
       << "CONSISTENCY CHECK FAILURE: " \
           << #true_expr << std::endl; \
       std::cerr << "   PID: " << getpid() << std::endl; \
+      std::stringstream str; \
+      str << __FILE__ << ":" << __LINE__ << ": consistency check failure: " << #true_expr; \
+      throw(vistle::except::consistency_error(str.str())); \
       sleep(30); \
       return false; \
    }

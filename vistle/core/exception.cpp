@@ -46,6 +46,12 @@ not_implemented::not_implemented(const std::string &what)
 
 }
 
+consistency_error::consistency_error(const std::string &what)
+: exception(what)
+{
+
+}
+
 } //namespace exception
 
 } //namespace vistle
