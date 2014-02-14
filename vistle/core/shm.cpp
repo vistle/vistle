@@ -159,7 +159,6 @@ bool Shm::cleanAll() {
       shmlist >> shmid;
       if (!shmid.empty()) {
          bool ok = true;
-         bool exist = true;
 
          if (shmid.find("mq_") == 0) {
             std::cerr << "removing message queue: id " << shmid << std::flush;
