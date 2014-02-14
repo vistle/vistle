@@ -903,8 +903,8 @@ bool ModuleManager::handle(const message::ReducePolicy &reducePolicy)
 
 bool ModuleManager::quit() {
 
-   m_quitFlag = true;
-   sendAll(message::Kill(-1));
+   if (!m_quitFlag)
+      sendAll(message::Kill(-1));
 
    // receive all ModuleExit messages from modules
    // retry for some time, modules that don't answer might have crashed
@@ -912,6 +912,8 @@ bool ModuleManager::quit() {
 
    if (m_size > 1)
       MPI_Barrier(MPI_COMM_WORLD);
+
+   m_quitFlag = true;
 
    return numRunning()==0;
 }
