@@ -127,9 +127,9 @@ AttributeList ReadCovise::readAttributes(const int fd) {
    std::vector<std::pair<std::string, std::string> > attributes;
    int num, size;
    covReadNumAttributes(fd, &num, &size);
-   assert(num >= 0);
+   vassert(num >= 0);
    if (num > 0) {
-      assert(size >= 0);
+      vassert(size >= 0);
    }
 
    if (num > 0 && size > 0) {
@@ -150,7 +150,7 @@ bool ReadCovise::readSETELE(const int fd, Element *parent) {
 
    int num=-1;
    covReadSetBegin(fd, &num);
-   assert(num >= 0);
+   vassert(num >= 0);
 
    for (int index = 0; index < num; index ++) {
 
@@ -171,9 +171,9 @@ Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
    int numVertices=-1;
 
    covReadSizeUNSGRD(fd, &numElements, &numCorners, &numVertices);
-   assert(numElements>=0);
-   assert(numCorners>=0);
-   assert(numVertices>=0);
+   vassert(numElements>=0);
+   vassert(numCorners>=0);
+   vassert(numVertices>=0);
 
    if (skeleton) {
 
@@ -224,7 +224,7 @@ Object::ptr ReadCovise::readUSTSDT(const int fd, const bool skeleton) {
 
    int numElements=-1;
    covReadSizeUSTSDT(fd, &numElements);
-   assert(numElements>=0);
+   vassert(numElements>=0);
 
    if (skeleton) {
 
@@ -248,7 +248,7 @@ Object::ptr ReadCovise::readUSTVDT(const int fd, const bool skeleton) {
 
    int numElements=-1;
    covReadSizeUSTVDT(fd, &numElements);
-   assert(numElements>=0);
+   vassert(numElements>=0);
 
    if (skeleton) {
 
@@ -277,7 +277,7 @@ Object::ptr ReadCovise::readPOINTS(const int fd, const bool skeleton) {
 
    int numCoords=-1;
    covReadSizePOINTS(fd, &numCoords);
-   assert(numCoords>=0);
+   vassert(numCoords>=0);
 
    if (skeleton) {
 
@@ -309,9 +309,9 @@ Object::ptr ReadCovise::readLINES(const int fd, const bool skeleton) {
 
    int numElements=-1, numCorners=-1, numVertices=-1;
    covReadSizeLINES(fd, &numElements, &numCorners, &numVertices);
-   assert(numElements>=0);
-   assert(numCorners>=0);
-   assert(numVertices>=0);
+   vassert(numElements>=0);
+   vassert(numCorners>=0);
+   vassert(numVertices>=0);
 
    if (skeleton) {
 
@@ -352,9 +352,9 @@ Object::ptr ReadCovise::readPOLYGN(const int fd, const bool skeleton) {
 
    int numElements=-1, numCorners=-1, numVertices=-1;
    covReadSizePOLYGN(fd, &numElements, &numCorners, &numVertices);
-   assert(numElements>=0);
-   assert(numCorners>=0);
-   assert(numVertices>=0);
+   vassert(numElements>=0);
+   vassert(numCorners>=0);
+   vassert(numVertices>=0);
 
    if (skeleton) {
 
@@ -393,7 +393,7 @@ Object::ptr ReadCovise::readPOLYGN(const int fd, const bool skeleton) {
 
 Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *elem) {
 
-   assert(elem);
+   vassert(elem);
    // XXX: handle sets in GEOTEX
 
    const size_t ncomp = 4;
@@ -411,7 +411,7 @@ Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *e
          elem->subelems.push_back(e);
       }
    } else {
-      assert(elem->subelems.size() == ncomp);
+      vassert(elem->subelems.size() == ncomp);
 
       Geometry::ptr container(new Geometry(Object::Initialized));
 

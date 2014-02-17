@@ -2,7 +2,7 @@
 #define VECTOR_IMPL_H
 
 #include <sstream>
-#include <cassert>
+#include <core/assert.h>
 #include <cstring>
 #include <limits>
 #include <boost/static_assert.hpp>

@@ -52,6 +52,12 @@ consistency_error::consistency_error(const std::string &what)
 
 }
 
+assertion_failure::assertion_failure(const std::string &what)
+: exception(what)
+{
+
+}
+
 } //namespace exception
 
 } //namespace vistle

@@ -118,7 +118,7 @@ bool Renderer::dispatch() {
                               std::cerr << "Rank " << rank() << ": OBJECT NOT FOUND: " << recv->objectName() << std::endl;
                            }
                         }
-                        assert(obj->check());
+                        vassert(obj->check());
                         if (localAdd) {
                            addInputObject(recv->getPortName(), obj);
                         }
@@ -151,7 +151,7 @@ bool Renderer::dispatch() {
                               Object::ptr obj = Object::load(memar);
                               if (obj) {
                                  //std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;
-                                 assert(obj->check());
+                                 vassert(obj->check());
                                  if (localAdd) {
                                     addInputObject(recv->getPortName(), obj);
                                  }

@@ -41,6 +41,7 @@ else()
 endif()
 
 set(core_HEADERS
+   assert.h
    archives.h
    coords.h
    coords_impl.h

@@ -32,6 +32,12 @@ class V_COREEXPORT not_implemented: public exception {
    not_implemented(const std::string &what = "not implemented");
 };
 
+class V_COREEXPORT assertion_failure: public exception {
+
+ public:
+   assertion_failure(const std::string &what = "assertion failure");
+};
+
 class V_COREEXPORT consistency_error: public exception {
 
  public:

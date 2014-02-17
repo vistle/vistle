@@ -164,11 +164,11 @@ Module::Module(const std::string &n, const std::string &shmname,
 
    Parameter *cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheDefault, Parameter::Choice);
    std::vector<std::string> modes;
-   assert(ObjectCache::CacheDefault == 0);
+   vassert(ObjectCache::CacheDefault == 0);
    modes.push_back("default");
-   assert(ObjectCache::CacheNone == 1);
+   vassert(ObjectCache::CacheNone == 1);
    modes.push_back("none");
-   assert(ObjectCache::CacheAll == 2);
+   vassert(ObjectCache::CacheAll == 2);
    modes.push_back("all");
    setParameterChoices(cm, modes);
 
@@ -232,7 +232,7 @@ ObjectCache::CacheMode Module::setCacheMode(ObjectCache::CacheMode mode, bool up
 
 void Module::setDefaultCacheMode(ObjectCache::CacheMode mode) {
 
-   assert(mode != ObjectCache::CacheDefault);
+   vassert(mode != ObjectCache::CacheDefault);
    m_defaultCacheMode = mode;
    setCacheMode(m_defaultCacheMode, false);
 }
@@ -500,7 +500,7 @@ bool Module::addObject(const std::string &portName, vistle::Object::ptr object) 
       return addObject(i->second, object);
    }
    std::cerr << "Module::addObject: output port " << portName << " not found" << std::endl;
-   assert(i != outputPorts.end());
+   vassert(i != outputPorts.end());
    return false;
 }
 
@@ -517,7 +517,7 @@ bool Module::passThroughObject(const std::string &portName, vistle::Object::cons
       return passThroughObject(i->second, object);
    }
    std::cerr << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
-   assert(i != outputPorts.end());
+   vassert(i != outputPorts.end());
    return false;
 }
 
@@ -526,7 +526,7 @@ bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object) {
    if (!object)
       return false;
 
-   assert(object->check());
+   vassert(object->check());
 
    message::AddObject message(port->getName(), object);
    sendMessageQueue->send(message);
@@ -545,12 +545,12 @@ ObjectList Module::getObjects(const std::string &portName) {
       for (ObjectList::const_iterator it = olist.begin(); it != olist.end(); it++) {
          Object::const_ptr object = *it;
          if (object.get())
-            assert(object->check());
+            vassert(object->check());
             objects.push_back(object);
       }
    } else {
       std::cerr << "Module::getObjects: input port " << portName << " not found" << std::endl;
-      assert(i != inputPorts.end());
+      vassert(i != inputPorts.end());
    }
 
    return objects;
@@ -580,7 +580,7 @@ void Module::removeObject(const std::string &portName, vistle::Object::const_ptr
       std::cerr << "Module " << id() << " removeObject didn't find port ["
                 << portName << "]" << std::endl;
 
-      assert(i != inputPorts.end());
+      vassert(i != inputPorts.end());
    }
 }
 
@@ -594,7 +594,7 @@ bool Module::hasObject(const std::string &portName) const {
    }
 
    std::cerr << "Module::hasObject: input port " << portName << " not found" << std::endl;
-   assert(i != inputPorts.end());
+   vassert(i != inputPorts.end());
 
    return false;
 }
@@ -605,14 +605,14 @@ vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
 
    if (i == inputPorts.end()) {
       std::cerr << "Module::takeFirstObject: input port " << portName << " not found" << std::endl;
-      assert(i != inputPorts.end());
+      vassert(i != inputPorts.end());
       return vistle::Object::ptr();
    }
 
    if (!i->second->objects().empty()) {
 
       Object::const_ptr obj = i->second->objects().front();
-      assert(obj->check());
+      vassert(obj->check());
       i->second->objects().pop_front();
       return obj;
    }
@@ -627,7 +627,7 @@ bool Module::addInputObject(const std::string & portName,
       return false;
 
    if (object)
-      assert(object->check());
+      vassert(object->check());
 
    if (m_executionCount < object->getExecutionCounter())
       m_executionCount = object->getExecutionCounter();
@@ -641,7 +641,7 @@ bool Module::addInputObject(const std::string & portName,
    }
 
    std::cerr << "Module::addInputObject: input port " << portName << " not found" << std::endl;
-   assert(p);
+   vassert(p);
 
    return false;
 }
@@ -670,8 +670,8 @@ int Module::schedulingPolicy() const
 
 void Module::setSchedulingPolicy(int schedulingPolicy)
 {
-   assert(schedulingPolicy >= message::SchedulingPolicy::Single);
-   assert(schedulingPolicy <= message::SchedulingPolicy::LazyGang);
+   vassert(schedulingPolicy >= message::SchedulingPolicy::Single);
+   vassert(schedulingPolicy <= message::SchedulingPolicy::LazyGang);
 
    m_schedulingPolicy = schedulingPolicy;
    sendMessage(message::SchedulingPolicy(message::SchedulingPolicy::Schedule(schedulingPolicy)));
@@ -684,8 +684,8 @@ int Module::reducePolicy() const
 
 void Module::setReducePolicy(int reducePolicy)
 {
-   assert(reducePolicy >= message::ReducePolicy::Never);
-   assert(reducePolicy <= message::ReducePolicy::OverAll);
+   vassert(reducePolicy >= message::ReducePolicy::Never);
+   vassert(reducePolicy <= message::ReducePolicy::OverAll);
 
    m_reducePolicy = reducePolicy;
    sendMessage(message::ReducePolicy(message::ReducePolicy::Reduce(reducePolicy)));
@@ -976,7 +976,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          if (comp->reason() == message::Compute::Execute) {
             prepare();
-            assert(m_executionDepth == 0);
+            vassert(m_executionDepth == 0);
             ++m_executionDepth;
             message::ExecutionProgress start(message::ExecutionProgress::Start);
             start.setUuid(comp->uuid());
@@ -1023,7 +1023,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          if (comp->reason() == message::Compute::Execute) {
             --m_executionDepth;
-            assert(m_executionDepth == 0);
+            vassert(m_executionDepth == 0);
             message::ExecutionProgress fin(message::ExecutionProgress::Finish);
             fin.setUuid(comp->uuid());
             sendMessage(fin);
@@ -1049,7 +1049,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          idle.setUuid(red->uuid());
          sendMessage(idle);
 
-         assert(m_executionDepth == 0);
+         vassert(m_executionDepth == 0);
          message::ExecutionProgress fin(red->timestep()<0
                ? message::ExecutionProgress::Finish
                : message::ExecutionProgress::Timestep);
@@ -1120,7 +1120,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                   break;
                default:
                   std::cerr << "Module::handleMessage: unknown parameter type " << param->getParameterType() << std::endl;
-                  assert("unknown parameter type" == 0);
+                  vassert("unknown parameter type" == 0);
                   break;
             }
 

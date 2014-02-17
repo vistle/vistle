@@ -261,10 +261,10 @@ class PlaneClip {
 #pragma omp parallel for schedule(dynamic)
       for (Index i=0; i<nCoord; ++i) {
          Index idx = vertexMap[i];
-         assert(idx >= 0);
+         vassert(idx >= 0);
          if (idx > 0) {
             --idx;
-            assert(idx < numIn);
+            vassert(idx < numIn);
             out_x[idx] = x[i];
             out_y[idx] = y[i];
             out_z[idx] = z[i];
@@ -344,16 +344,16 @@ class PlaneClip {
          if (numIn == 1) {
             // in0 is the only pre-existing corner inside
             const Index in0 = cl[start+cornerIn];
-            assert(vertexMap[in0] > 0);
+            vassert(vertexMap[in0] > 0);
             const Index out0 = cl[start + (cornerIn+1)%nCorner];
-            assert(vertexMap[out0] == 0);
+            vassert(vertexMap[out0] == 0);
             const Vector v0 = splitEdge(in0, out0);
             out_x[outIdxCoord] = v0[0];
             out_y[outIdxCoord] = v0[1];
             out_z[outIdxCoord] = v0[2];
 
             const Index out1 = cl[start+(cornerIn+2)%nCorner];
-            assert(vertexMap[out1] == 0);
+            vassert(vertexMap[out1] == 0);
             const Vector v1 = splitEdge(in0, out1);
             out_x[outIdxCoord+1] = v1[0];
             out_y[outIdxCoord+1] = v1[1];
@@ -366,19 +366,19 @@ class PlaneClip {
             ++n;
             out_cl[outIdxCorner+n] = outIdxCoord+1;
             ++n;
-            assert(n == totalCorner);
+            vassert(n == totalCorner);
 
          } else if (numIn == 2) {
             const Index out0 = cl[start + cornerOut];
             const Index in0 = cl[start+(cornerOut+2)%nCorner];
-            assert(vertexMap[out0] == 0);
+            vassert(vertexMap[out0] == 0);
             const Vector v0 = splitEdge(in0, out0);
             out_x[outIdxCoord] = v0[0];
             out_y[outIdxCoord] = v0[1];
             out_z[outIdxCoord] = v0[2];
 
             const Index in1 = cl[start+(cornerOut+1)%nCorner];
-            assert(vertexMap[in1] > 0);
+            vassert(vertexMap[in1] > 0);
             const Vector v1 = splitEdge(in1, out0);
             out_x[outIdxCoord+1] = v1[0];
             out_y[outIdxCoord+1] = v1[1];
@@ -412,7 +412,7 @@ class PlaneClip {
             ++n;
             out_cl[outIdxCorner+n] = vertexMap[in1]-1;
             ++n;
-            assert(n == totalCorner);
+            vassert(n == totalCorner);
          }
       }
    }
@@ -489,8 +489,8 @@ class PlaneClip {
          //     between the line formed by the two vertices and the
          //     plane
 
-         assert(numCreate%2 == 0);
-         assert(numCreate == 2); // we only handle convex polygons
+         vassert(numCreate%2 == 0);
+         vassert(numCreate == 2); // we only handle convex polygons
          if (numVertsOnly) {
             outIdxPoly = numCreate/2;
             outIdxPoly = 1;
@@ -531,8 +531,8 @@ class PlaneClip {
             prevIdx = idx;
             prevIn = in;
          }
-         assert(numCreated == numCreate);
-         assert(n == numIn+numCreate);
+         vassert(numCreated == numCreate);
+         vassert(n == numIn+numCreate);
       }
    }
 };

@@ -79,7 +79,7 @@ bool Module::getParameter(const std::string &name, T &value) const {
       value = p->getValue();
    } else {
       std::cerr << "Module::getParameter(" << name << "): type failure" << std::endl;
-      assert("dynamic_cast failed" == 0);
+      vassert("dynamic_cast failed" == 0);
       return false;
    }
 
