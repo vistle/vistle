@@ -227,18 +227,15 @@ protected:
          int moduleID = atoi(argv[2]); \
          {  \
             X module(shmname, rank, size, moduleID); \
-            try { \
-               module.initDone(); \
-               while (module.dispatch()) \
-                  ; \
-            } catch(std::exception &e) { \
-               std::cerr << "fatal exception: " << e.what() << std::endl; \
-               throw(e); \
-            } \
+            module.initDone(); \
+            while (module.dispatch()) \
+               ; \
          } \
          MPI_Barrier(MPI_COMM_WORLD); \
       } catch(vistle::exception &e) { \
-         std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl << "  info: " << e.info() << std::endl << e.where() << std::endl; \
+         std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; \
+         std::cerr << "  info: " << e.info() << std::endl; \
+         std::cerr << e.where() << std::endl; \
          MPI_Finalize(); \
          exit(1); \
       } catch(std::exception &e) { \
