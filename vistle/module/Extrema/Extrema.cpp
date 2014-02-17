@@ -200,7 +200,7 @@ bool Extrema::reduce(int timestep) {
       }
       auto corners = box->cl().data();
       auto elements = box->el().data();
-      for (int i=0; i<4; ++i) {
+      for (int i=0; i<=4; ++i) { // include sentinel
          elements[i] = 4*i;
       }
       corners[0] = 0;
