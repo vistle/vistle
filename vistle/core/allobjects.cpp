@@ -6,6 +6,7 @@
 #include "coords.cpp"
 #include "normals.cpp"
 #include "points.cpp"
+#include "spheres.cpp"
 #include "indexed.cpp"
 #include "lines.cpp"
 #include "triangles.cpp"
@@ -21,6 +22,7 @@
 #include "coords.h"
 #include "normals.h"
 #include "points.h"
+#include "spheres.h"
 #include "indexed.h"
 #include "lines.h"
 #include "triangles.h"
@@ -59,6 +61,7 @@ void registerTypes() {
    REGISTER_TYPE(Geometry, Object::GEOMETRY);
    REGISTER_TYPE(Normals, Object::NORMALS);
    REGISTER_TYPE(Points, Object::POINTS);
+   REGISTER_TYPE(Spheres, Object::SPHERES);
    REGISTER_TYPE(Lines, Object::LINES);
    REGISTER_TYPE(Triangles, Object::TRIANGLES);
    REGISTER_TYPE(Polygons, Object::POLYGONS);

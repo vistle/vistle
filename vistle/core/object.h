@@ -63,10 +63,11 @@ public:
       UNKNOWN           = -1,
       PLACEHOLDER       = 11,
 
-      TEXTURE1D         = 17,
-      GEOMETRY          = 18,
+      TEXTURE1D         = 16,
+      GEOMETRY          = 17,
 
-      POINTS            = 19,
+      POINTS            = 18,
+      SPHERES           = 19,
       LINES             = 20,
       TRIANGLES         = 21,
       POLYGONS          = 22,

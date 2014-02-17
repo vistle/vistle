@@ -136,22 +136,24 @@ QList<QString> MainWindow::loadModuleFile()
     QList<QString> moduleList;
 
     moduleList << "Add";
-    moduleList << "Collect";
-    moduleList << "CuttingSurface";
-    moduleList << "Gendat";
-    moduleList << "ReadCovise";
-    moduleList << "Replicate";
-    moduleList << "Color";
     moduleList << "COVER";
-    moduleList << "Extrema";
-    moduleList << "IsoSurface";
-    moduleList << "ReadFOAM";
-    moduleList << "ShowUSG";
     moduleList << "CellToVert";
+    moduleList << "Collect";
+    moduleList << "Color";
     moduleList << "CutGeometry";
+    moduleList << "CuttingSurface";
+    moduleList << "Extrema";
     moduleList << "Gather";
+    moduleList << "Gendat";
+    moduleList << "IsoSurface";
     moduleList << "OSGRenderer";
+    moduleList << "ReadCovise";
+    moduleList << "ReadFOAM";
     moduleList << "ReadVistle";
+    moduleList << "Replicate";
+    moduleList << "ShowUSG";
+    moduleList << "Spheres";
+    moduleList << "ToPoints";
     moduleList << "WriteVistle";
 
 

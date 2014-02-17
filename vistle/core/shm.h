@@ -169,6 +169,12 @@ class ShmVector {
             ShmVector *operator->() {
                return &*m_p;
             }
+            const ShmVector &operator*() const {
+               return *m_p;
+            }
+            const ShmVector *operator->() const {
+               return &*m_p;
+            }
 
          private:
             boost::interprocess::offset_ptr<ShmVector> m_p;

@@ -1,6 +1,8 @@
 #include "VistleGeometryGenerator.h"
+#include <kernel/RenderObject.h>
 #include <kernel/VRSceneGraph.h>
 #include <kernel/coVRShader.h>
+#include <kernel/coSphere.h>
 
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -12,6 +14,7 @@
 
 #include <core/polygons.h>
 #include <core/points.h>
+#include <core/spheres.h>
 #include <core/lines.h>
 #include <core/triangles.h>
 #include <core/texture1d.h>
@@ -42,6 +45,7 @@ bool VistleGeometryGenerator::isSupported(vistle::Object::Type t) {
       case vistle::Object::TRIANGLES:
       case vistle::Object::LINES:
       case vistle::Object::POLYGONS:
+      case vistle::Object::SPHERES:
          return true;
 
       default:
@@ -125,6 +129,34 @@ osg::Node *VistleGeometryGenerator::operator()() {
          geom->setStateSet(state.get());
 
          geode->addDrawable(geom.get());
+         break;
+      }
+
+      case vistle::Object::SPHERES: {
+         vistle::Spheres::const_ptr spheres = vistle::Spheres::as(m_geo);
+         const Index numVertices = spheres->getNumSpheres();
+
+         //std::cerr << debug.str() << "Spheres: [ #v " << numVertices << " ]" << std::endl;
+
+         geode = new osg::Geode();
+         osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
+
+         const vistle::Scalar *x = &spheres->x()[0];
+         const vistle::Scalar *y = &spheres->y()[0];
+         const vistle::Scalar *z = &spheres->z()[0];
+         const vistle::Scalar *r = &spheres->r()[0];
+         coSphere *sphere = new coSphere();
+         sphere->setRenderMethod(coSphere::RENDER_METHOD_CPU_BILLBOARDS);
+         sphere->setCoords(numVertices, x, y, z, r);
+         sphere->setColorBinding(Bind::OverAll);
+         float rgba[] = { 1., 0., 0., 1. };
+         sphere->updateColors(&rgba[0], &rgba[1], &rgba[2], &rgba[3]);
+
+         osg::ref_ptr<osg::StateSet> state = VRSceneGraph::instance()->loadDefaultGeostate();
+         state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
+         sphere->setStateSet(state.get());
+
+         geode->addDrawable(sphere);
          break;
       }
 

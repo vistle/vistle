@@ -25,6 +25,7 @@ if(${TEMPLATES_IN_HEADERS})
       coords.cpp
       normals.cpp
       points.cpp
+      spheres.cpp
       indexed.cpp
       lines.cpp
       triangles.cpp
@@ -69,6 +70,8 @@ set(core_HEADERS
    placeholder_impl.h
    points.h
    points_impl.h
+   spheres.h
+   spheres_impl.h
    polygons.h
    polygons_impl.h
    port.h
