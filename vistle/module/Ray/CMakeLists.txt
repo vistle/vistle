@@ -29,7 +29,7 @@ endif()
 
 find_package(TBB)
 if(TBB_FOUND)
-   add_definitions(-DUSE_TBB)
+   #add_definitions(-DUSE_TBB)
 endif()
 
 #use_openmp()
