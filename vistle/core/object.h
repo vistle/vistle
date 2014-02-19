@@ -100,10 +100,12 @@ public:
       static char buf[80];
       snprintf(buf, sizeof(buf), "invalid Object::Type (%d)", v);
       if (v >= VEC) {
-         const int NumScalars = boost::mpl::size<Scalars>::value;
          int dim = (v-Object::VEC) % (MaxDimension+1);
          int scalidx = (v-Object::VEC) / (MaxDimension+1);
+#ifndef NDEBUG
+         const int NumScalars = boost::mpl::size<Scalars>::value;
          assert(scalidx < NumScalars);
+#endif
          const char *scalstr = "(invalid)";
          switch (scalidx) {
             case 0: scalstr = "unsigned char"; break;
