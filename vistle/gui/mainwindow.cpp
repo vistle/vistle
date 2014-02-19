@@ -155,7 +155,7 @@ QList<QString> MainWindow::loadModuleFile()
     moduleList << "Spheres";
     moduleList << "ToPoints";
     moduleList << "WriteVistle";
-
+    moduleList << "Ray";
 
     return moduleList;
 }

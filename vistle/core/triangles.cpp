@@ -50,6 +50,11 @@ Triangles::Data * Triangles::Data::create(const Index numCorners,
    return t;
 }
 
+Index Triangles::getNumElements() const {
+
+   return getNumCorners()/3;
+}
+
 Index Triangles::getNumCorners() const {
 
    return cl().size();

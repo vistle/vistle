@@ -15,6 +15,7 @@ class V_COREEXPORT Triangles: public Coords {
    Triangles(const Index numCorners, const Index numVertices,
              const Meta &meta=Meta());
 
+   Index getNumElements() const;
    Index getNumCorners() const;
    Index getNumVertices() const;
 
