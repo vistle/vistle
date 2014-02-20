@@ -1,6 +1,5 @@
 #include <core/polygons.h>
 #include <core/triangles.h>
-#include <core/texture1d.h>
 
 #include <core/assert.h>
 
@@ -17,8 +16,8 @@ RenderObject::RenderObject(Object::const_ptr container,
 , container(container)
 , geometry(geometry)
 , colors(colors)
-, normals(normals)
-, texture(texture)
+, normals(Normals::as(normals))
+, texture(Texture1D::as(texture))
 , geomId(RTC_INVALID_GEOMETRY_ID)
 , instId(RTC_INVALID_GEOMETRY_ID)
 , indexBuffer(nullptr)
@@ -32,7 +31,7 @@ RenderObject::RenderObject(Object::const_ptr container,
    if (auto tri = Triangles::as(geometry)) {
 
       geomId = rtcNewTriangleMesh(scene, RTC_GEOMETRY_STATIC, tri->getNumElements(), tri->getNumCoords());
-      std::cerr << "Tri: #tri: " << tri->getNumElements() << ", #coord: " << tri->getNumCoords() << std::endl;
+      //std::cerr << "Tri: #tri: " << tri->getNumElements() << ", #coord: " << tri->getNumCoords() << std::endl;
 
       Vertex* vertices = (Vertex*) rtcMapBuffer(scene,geomId,RTC_VERTEX_BUFFER);
       for (Index i=0; i<tri->getNumCoords(); ++i) {
@@ -70,7 +69,7 @@ RenderObject::RenderObject(Object::const_ptr container,
       vassert(ntri >= 0);
 
       geomId = rtcNewTriangleMesh(scene, RTC_GEOMETRY_STATIC, ntri, poly->getNumCoords());
-      std::cerr << "Poly: #tri: " << poly->getNumCorners()-2*poly->getNumElements() << ", #coord: " << poly->getNumCoords() << std::endl;
+      //std::cerr << "Poly: #tri: " << poly->getNumCorners()-2*poly->getNumElements() << ", #coord: " << poly->getNumCoords() << std::endl;
 
       Vertex* vertices = (Vertex*) rtcMapBuffer(scene,geomId,RTC_VERTEX_BUFFER);
       for (Index i=0; i<poly->getNumCoords(); ++i) {
@@ -99,18 +98,19 @@ RenderObject::RenderObject(Object::const_ptr container,
       Index t = 0;
       for (Index i=0; i<poly->getNumElements(); ++i) {
          const Index start = poly->el()[i];
-         const Index nvert = poly->el()[i+1]-start;
-         const Index last = start+nvert-1;
+         const Index end = poly->el()[i+1];
+         const Index nvert = end-start;
+         const Index last = end-1;
          for (Index v=0; v<nvert-2; ++v) {
-            const int v2 = v/2;
+            const Index v2 = v/2;
             if (v%2) {
-               triangles[t].v0 = poly->cl()[start+v2];
-               triangles[t].v1 = poly->cl()[last-v2];
-               triangles[t].v2 = poly->cl()[start+v2+1];
-            } else {
                triangles[t].v0 = poly->cl()[last-v2];
                triangles[t].v1 = poly->cl()[start+v2+1];
                triangles[t].v2 = poly->cl()[last-v2-1];
+            } else {
+               triangles[t].v0 = poly->cl()[start+v2];
+               triangles[t].v1 = poly->cl()[last-v2];
+               triangles[t].v2 = poly->cl()[start+v2+1];
             }
             ++t;
          }

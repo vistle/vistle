@@ -5,6 +5,7 @@ set(ICET_MPI_LIBS "IceTMPI")
 
 find_package(LibVncServer)
 if(NOT LIBVNCSERVER_FOUND)
+   message("Ray: libvncserver not found")
    return()
 endif()
 
@@ -27,22 +28,24 @@ if(NOT EMBREE_FOUND)
    return()
 endif()
 
+use_openmp()
+
 find_package(TBB)
 if(TBB_FOUND)
-   #add_definitions(-DUSE_TBB)
+   if (NOT OPENMP_FOUND)
+      add_definitions(-DUSE_TBB)
+   endif()
 endif()
-
-#use_openmp()
 
 add_executable(Ray
    renderobject.cpp
    ray.cpp
-   framebuffer.cpp
    vncserver.cpp
    )
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
+        ../../../3rdparty/boost-mpi/include
         ${MPI_INCLUDE_PATH}
         ${ICET_INCLUDE_DIRS}
         ${LIBVNCSERVER_INCLUDE_DIR}
@@ -55,6 +58,7 @@ include_directories(
 
 target_link_libraries(Ray
         ${Boost_LIBRARIES}
+        vistle_boost_mpi
         ${MPI_LIBRARIES}
         vistle_module
         ${ICET_CORE_LIBS}

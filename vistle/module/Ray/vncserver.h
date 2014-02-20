@@ -27,7 +27,7 @@ class VncServer
 public:
 
    // plugin methods
-   VncServer(int width, int height);
+   VncServer(int w, int h);
    ~VncServer();
 
    int width() const;
@@ -37,7 +37,7 @@ public:
 
    void resize(int w, int h);
 
-   bool init(int width, int height);
+   bool init(int w, int h);
    void preFrame();
    void postFrame();
    void invalidate(int x, int y, int w, int h);
@@ -100,6 +100,23 @@ public:
       vistle::Vector3 attenuation;
       vistle::Scalar spotCutoff;
       vistle::Scalar spotExponent;
+
+      template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         ar & position;
+         ar & direction;
+
+         ar & transformedPosition;
+         ar & transformedDirection;
+
+         ar & ambient;
+         ar & diffuse;
+         ar & specular;
+
+         ar & attenuation;
+         ar & spotCutoff;
+         ar & spotExponent;
+      }
    };
 
    std::vector<Light> lights;
@@ -129,6 +146,7 @@ private:
    Screen m_screenConfig; //!< configuration for physical screen
 
    rfbScreenInfoPtr m_screen; //!< RFB protocol handler
+   float *m_depth;
    int m_width, m_height; //! size of framebuffer
    int m_numRhrClients;
 

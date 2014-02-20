@@ -8,6 +8,8 @@
 
 #include <core/vector.h>
 #include <core/object.h>
+#include <core/normals.h>
+#include <core/texture1d.h>
 
 static const int MaxPacketSize = 8;
 
@@ -34,8 +36,8 @@ struct RenderObject {
    vistle::Object::const_ptr container;
    vistle::Object::const_ptr geometry;
    vistle::Object::const_ptr colors;
-   vistle::Object::const_ptr normals;
-   vistle::Object::const_ptr texture;
+   vistle::Normals::const_ptr normals;
+   vistle::Texture1D::const_ptr texture;
 
    RTCScene scene;
    unsigned geomId;

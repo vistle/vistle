@@ -2,52 +2,22 @@
  * \brief VncServer plugin class
  * 
  * \author Martin Aumüller <aumueller@hlrs.de>
- * \author (c) 2012, 2013 HLRS
+ * \author (c) 2012, 2013, 2014 HLRS
  *
  * \copyright GPL2+
  */
-
-#if 0
-#include <config/CoviseConfig.h>
-
-#include <kernel/coVRConfig.h>
-#include <kernel/OpenCOVER.h>
-#include <kernel/coVRMSController.h>
-#include <kernel/coVRPluginSupport.h>
-#include <kernel/VRViewer.h>
-#include <kernel/VRSceneGraph.h>
-#include <kernel/RenderObject.h>
-#include <kernel/coVRLighting.h>
-
-#include <PluginUtil/PluginMessageTypes.h>
-
-#include <osg/GLExtensions>
-#include <osg/MatrixTransform>
-#include <osgGA/GUIEventAdapter>
-#include <OpenThreads/Thread>
-#include <OpenThreads/Mutex>
-#include <OpenThreads/Condition>
-
-#include <limits>
-#endif
 
 #include <iostream>
 #include <core/assert.h>
 #include <cmath>
 
-#include "vncserver.h"
-
 #ifdef HAVE_SNAPPY
 #include <snappy.h>
 #endif
 
-#ifdef __linux__
-#include <sys/prctl.h>
-#endif
-
-#include <rfb/rfb.h>
-
 #include <RHR/rfbext.h>
+
+#include "vncserver.h"
 
 VncServer *VncServer::plugin = NULL;
 
@@ -131,24 +101,26 @@ static rfbProtocolExtension applicationExt = {
 
 
 //! called when plugin is loaded
-VncServer::VncServer(int width, int height)
+VncServer::VncServer(int w, int h)
 {
    vassert(plugin == NULL);
    plugin = this;
-   m_numRhrClients = 0;
+
    //fprintf(stderr, "new VncServer plugin\n");
 
-   init(width, height);
+   init(w, h);
 }
 
 unsigned char *VncServer::rgba() const {
 
+   vassert(m_screen->frameBuffer);
    return (unsigned char *)m_screen->frameBuffer;
 }
 
 float *VncServer::depth() const {
 
-   return (float *)(m_screen->frameBuffer+m_width*m_height*4);
+   vassert(m_depth);
+   return m_depth;
 }
 
 int VncServer::width() const {
@@ -201,6 +173,7 @@ const VncServer::Screen &VncServer::screen() const {
 bool VncServer::init(int w, int h)
 {
 
+   m_numRhrClients = 0;
    m_haveNewClient = false;
    m_boundCenter = vistle::Vector3(0., 0., 0.);
    m_boundRadius = 1.;
@@ -223,8 +196,6 @@ bool VncServer::init(int w, int h)
    rfbRegisterProtocolExtension(&depthExt);
    rfbRegisterProtocolExtension(&applicationExt);
 
-   m_numRhrClients = 0;
-
    m_delay = 0;
    m_lastMatrixTime = 0.;
    std::string config("COVER.Plugin.VncServer");
@@ -238,9 +209,15 @@ bool VncServer::init(int w, int h)
    m_depthquant = false;
    m_depthcopy = false;
 
+   m_depth = nullptr;
+
+   m_width = 0;
+   m_height = 0;
+
    int argc = 1;
    char *argv[] = { (char *)"DisCOVERay", NULL };
-   m_screen = rfbGetScreen(&argc, argv, w, h, 8, 3, 4);
+
+   m_screen = rfbGetScreen(&argc, argv, 0, 0, 8, 3, 4);
    m_screen->desktopName = "DisCOVERay";
 
    m_screen->port = 5900;
@@ -253,12 +230,12 @@ bool VncServer::init(int w, int h)
    rfbInitServer(m_screen);
    m_screen->deferUpdateTime = 0;
    m_screen->maxRectsPerUpdate = 10000000;
+   m_screen->handleEventsEagerly = 1;
 
    m_screen->cursor = NULL; // don't show a cursor
 
    m_screen->newClientHook = newClientHook;
 
-   resize(w,h);
    std::string host;
    if(!host.empty())
    {
@@ -276,6 +253,8 @@ bool VncServer::init(int w, int h)
       m_clientList.push_back(c);
    }
 
+   resize(w, h);
+
    return true;
 }
 
@@ -284,7 +263,9 @@ bool VncServer::init(int w, int h)
 VncServer::~VncServer()
 {
    rfbShutdownServer(m_screen, true);
+
    delete[] m_screen->frameBuffer;
+   delete[] m_depth;
 
    //fprintf(stderr,"VncServer::~VncServer\n");
 }
@@ -292,12 +273,20 @@ VncServer::~VncServer()
 
 void VncServer::resize(int w, int h) {
 
-   m_screen->frameBuffer = new char[w*h*4*2]; // RGBA + (Z+stencil or Z as float)
+   if (m_width != w || m_height != h) {
+      m_width = w;
+      m_height = h;
 
-   rfbNewFramebuffer(m_screen, m_screen->frameBuffer,
+      delete[] m_screen->frameBuffer;
+      m_screen->frameBuffer = new char[w*h*4];
+
+      delete[] m_depth;
+      m_depth = new float[w*h];
+
+      rfbNewFramebuffer(m_screen, m_screen->frameBuffer,
                      w, h, 8, 3, 4);
-   m_width = w;
-   m_height = h;
+
+   }
 }
 
 
@@ -352,16 +341,6 @@ rfbBool VncServer::handleMatricesMessage(rfbClientPtr cl, void *data,
       plugin->m_viewMat.data()[i] = msg.view[i];
       plugin->m_projMat.data()[i] = msg.proj[i];
    }
-
-   // transform into order compatible with column vectors
-   // enables multiplication order as used in shaders: P * MV * v
-#if 0
-   plugin->m_scaleMat.transposeInPlace();
-   plugin->m_transformMat.transposeInPlace();
-   plugin->m_viewerMat.transposeInPlace();
-   plugin->m_viewMat.transposeInPlace();
-   plugin->m_projMat.transposeInPlace();
-#endif
 
    return TRUE;
 }
@@ -428,12 +407,12 @@ rfbBool VncServer::handleLightsMessage(rfbClientPtr cl, void *data,
          l.spotCutoff = cl.spot_cutoff;
          l.spotExponent = cl.spot_exponent;
 
-         std::cerr << "Light " << i << ": ambient: " << l.ambient << std::endl;
-         std::cerr << "Light " << i << ": diffuse: " << l.diffuse << std::endl;
+         //std::cerr << "Light " << i << ": ambient: " << l.ambient << std::endl;
+         //std::cerr << "Light " << i << ": diffuse: " << l.diffuse << std::endl;
       }
    }
 
-   std::cerr << "handleLightsMessage: " << plugin->lights.size() << " lights received" << std::endl;
+   //std::cerr << "handleLightsMessage: " << plugin->lights.size() << " lights received" << std::endl;
 
    return TRUE;
 }
@@ -512,7 +491,7 @@ void VncServer::sendDepthMessage(rfbClientPtr cl) {
    }
    msg.compression = rfbDepthRaw;
 
-   const char *zbuf = plugin->m_screen->frameBuffer+plugin->m_width*plugin->m_height*4;
+   const char *zbuf = (const char *)plugin->depth();
    ClientData *cd = static_cast<ClientData *>(cl->clientData);
    if (plugin->m_depthquant && cd->depthCompressions&rfbDepthQuantize) {
       msg.compression |= rfbDepthQuantize;
@@ -767,9 +746,11 @@ void VncServer::setNumTimesteps(int num) {
 //! send bounding sphere of scene to a client
 void VncServer::sendBoundsMessage(rfbClientPtr cl) {
 
+#if 0
    std::cerr << "sending bounds: "
              << "c: " << plugin->m_boundCenter
              << "r: " << plugin->m_boundRadius << std::endl;
+#endif
 
    boundsMsg msg;
    msg.type = rfbBounds;
@@ -806,8 +787,6 @@ rfbBool VncServer::handleBoundsMessage(rfbClientPtr cl, void *data,
 
    if (message->type != rfbBounds)
       return FALSE;
-
-   std::cerr << "bounds" << std::endl;
 
    if (!cl->clientData) {
       cl->clientData = new ClientData();
@@ -1065,8 +1044,6 @@ VncServer::postFrame()
 #endif
    double bpp = 4.;
    int depthps = 4;
-
-   rfbMarkRectAsModified(m_screen,0,0,m_width,m_height);
 
    double pix = m_width*m_height;
    double bytes = pix * bpp;
