@@ -35,6 +35,7 @@ endif()
 #use_openmp()
 
 add_executable(Ray
+   renderobject.cpp
    ray.cpp
    framebuffer.cpp
    vncserver.cpp
