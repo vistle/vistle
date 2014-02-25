@@ -41,6 +41,7 @@ static bool needsSync(const message::Message &m) {
    switch (m.type()) {
       case vistle::message::Message::OBJECTRECEIVED:
       case vistle::message::Message::QUIT:
+      case vistle::message::Message::KILL:
          return true;
       default:
          return false;
