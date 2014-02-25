@@ -28,6 +28,52 @@ typedef Vector3 Vector;
 
 typedef Eigen::Matrix<Scalar, 4, 4> Matrix4;
 
+template<class Archive, class M>
+void serializeMatrix(Archive & ar, M &m, const unsigned int version) {
+
+   for (int j=0; j<m.rows(); ++j) {
+      for (int i=0; i<m.cols(); ++i) {
+         ar & m(i, j);
+      }
+   }
+}
+
 } // namespace vistle
+
+namespace boost {
+namespace serialization {
+
+template<class Archive>
+void serialize(Archive & ar, vistle::Vector1 &v, const unsigned int version) {
+
+   vistle::serializeMatrix(ar, v, version);
+}
+
+template<class Archive>
+void serialize(Archive & ar, vistle::Vector2 &v, const unsigned int version) {
+
+   vistle::serializeMatrix(ar, v, version);
+}
+
+template<class Archive>
+void serialize(Archive & ar, vistle::Vector3 &v, const unsigned int version) {
+
+   vistle::serializeMatrix(ar, v, version);
+}
+
+template<class Archive>
+void serialize(Archive & ar, vistle::Vector4 &v, const unsigned int version) {
+
+   vistle::serializeMatrix(ar, v, version);
+}
+
+template<class Archive>
+void serialize(Archive & ar, vistle::Matrix4 &m, const unsigned int version) {
+
+   vistle::serializeMatrix(ar, m, version);
+}
+
+} // namespace serialization
+} // namespace boost
 
 #endif
