@@ -33,7 +33,7 @@ void serializeMatrix(Archive & ar, M &m, const unsigned int version) {
 
    for (int j=0; j<m.rows(); ++j) {
       for (int i=0; i<m.cols(); ++i) {
-         ar & m(i, j);
+         ar & m(j, i);
       }
    }
 }
