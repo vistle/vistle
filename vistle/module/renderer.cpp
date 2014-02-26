@@ -75,14 +75,14 @@ bool Renderer::dispatch() {
 
             switch (message->type()) {
                case vistle::message::Message::ADDOBJECT: {
-                  if (objectReceivePolicy()==message::ObjectReceivePolicy::Single) {
+                  if (size() == 1) {
                      const message::AddObject *add = static_cast<const message::AddObject *>(message);
                      addInputObject(add->getPortName(), add->takeObject());
                   }
                   break;
                }
                case vistle::message::Message::OBJECTRECEIVED: {
-                  if (objectReceivePolicy()!=message::ObjectReceivePolicy::Single) {
+                  if (size() > 1) {
                      const message::ObjectReceived *recv = static_cast<const message::ObjectReceived *>(message);
                      PlaceHolder::ptr ph(new PlaceHolder(recv->objectName(), recv->meta(), recv->objectType()));
                      const bool send = m_renderMode->getValue() != 1;
