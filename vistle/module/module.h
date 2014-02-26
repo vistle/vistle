@@ -196,6 +196,7 @@ protected:
    typedef std::map<int, std::string> OtherModuleMap;
    OtherModuleMap m_otherModuleMap;
 
+   void updateOutputMode();
    std::streambuf *m_origStreambuf, *m_streambuf;
 
    int m_traceMessages;

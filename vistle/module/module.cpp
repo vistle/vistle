@@ -49,6 +49,8 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
  public:
    msgstreambuf(Module *mod)
    : m_module(mod)
+   , m_console(true)
+   , m_gui(true)
    {}
 
    ~msgstreambuf() {
@@ -60,8 +62,10 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
       boost::unique_lock<boost::recursive_mutex> scoped_lock(m_mutex);
       size_t size = count<0 ? m_buf.size() : count;
       if (size > 0) {
-         m_module->sendText(message::SendText::Cerr, std::string(m_buf.data(), size));
-         std::cout << std::string(m_buf.data(), size) << std::flush;
+         if (m_gui)
+            m_module->sendText(message::SendText::Cerr, std::string(m_buf.data(), size));
+         if (m_console)
+            std::cout << std::string(m_buf.data(), size) << std::flush;
       }
 
       if (size == m_buf.size()) {
@@ -95,10 +99,19 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
       return num;
    }
 
+   void set_console_output(bool enable) {
+      m_console = enable;
+   }
+
+   void set_gui_output(bool enable) {
+      m_gui = enable;
+   }
+
  private:
    Module *m_module;
    std::vector<char> m_buf;
    boost::recursive_mutex m_mutex;
+   bool m_console, m_gui;
 };
 
 
@@ -173,6 +186,18 @@ Module::Module(const std::string &n, const std::string &shmname,
    setParameterChoices(cm, modes);
 
    addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
+
+   Parameter *em = addIntParameter("_error_output_mode", "where stderr is shown", 0, Parameter::Choice);
+   std::vector<std::string> errmodes;
+   errmodes.push_back("No output");
+   errmodes.push_back("Console only");
+   errmodes.push_back("GUI");
+   errmodes.push_back("Console & GUI");
+   setParameterChoices(em, errmodes);
+
+   IntParameter *outrank = addIntParameter("_error_output_rank", "rank from which to show stderr (-1: all ranks)", 0);
+   outrank->setMinimum(-1);
+   outrank->setMaximum(size()-1);
 }
 
 void Module::initDone() {
@@ -442,6 +467,8 @@ IntParameter *Module::addIntParameter(const std::string & name, const std::strin
 bool Module::setIntParameter(const std::string & name,
                              Integer value, const message::SetParameter *inResponseTo) {
 
+   bool ret = setParameter(name, value, inResponseTo);
+
    if (name == "_cache_mode") {
       switch (value) {
       case ObjectCache::CacheNone:
@@ -454,9 +481,30 @@ bool Module::setIntParameter(const std::string & name,
       }
 
       setCacheMode(ObjectCache::CacheMode(value), false);
+   } else if (name == "_error_output_mode" || name == "_error_output_rank") {
+
+      updateOutputMode();
    }
 
-   return setParameter(name, value, inResponseTo);
+   return ret;
+}
+
+void Module::updateOutputMode() {
+
+   const int r = getIntParameter("_error_output_rank");
+   const int m = getIntParameter("_error_output_mode");
+
+   auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf);
+   if (!sbuf)
+      return;
+
+   if (r == -1 || r == rank()) {
+      sbuf->set_console_output(m & 1);
+      sbuf->set_gui_output(m & 2);
+   } else {
+      sbuf->set_console_output(false);
+      sbuf->set_gui_output(false);
+   }
 }
 
 Integer Module::getIntParameter(const std::string & name) const {
