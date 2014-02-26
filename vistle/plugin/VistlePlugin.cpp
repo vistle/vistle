@@ -128,6 +128,8 @@ OsgRenderer::OsgRenderer(const std::string &shmname,
    vistleRoot->setName("VistlePlugin");
    VRSceneGraph::instance()->addNode(vistleRoot, (osg::Group*)NULL, NULL);
 
+   setObjectReceivePolicy(message::ObjectReceivePolicy::Distribute);
+
    initDone();
 }
 

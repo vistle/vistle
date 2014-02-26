@@ -29,8 +29,6 @@ Renderer::Renderer(const std::string & name, const std::string &shmname,
    choices.push_back("Master only");
    setParameterChoices(m_renderMode, choices);
 
-   setObjectReceivePolicy(message::ObjectReceivePolicy::Distribute); // for "All nodes"
-
    //std::cerr << "Renderer starting: rank=" << rank << std::endl;
 }
 
@@ -205,22 +203,6 @@ bool Renderer::dispatch() {
    }
 
    return !quit;
-}
-
-bool Renderer::parameterChanged(Parameter *p) {
-
-
-   if (p == m_renderMode) {
-
-      if (m_renderMode->getValue() == 1) {
-         // local only
-         setObjectReceivePolicy(message::ObjectReceivePolicy::Single);
-      } else {
-         setObjectReceivePolicy(message::ObjectReceivePolicy::Distribute);
-      }
-   }
-
-   return Module::parameterChanged(p);
 }
 
 } // namespace vistle

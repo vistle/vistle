@@ -15,8 +15,6 @@ class V_MODULEEXPORT Renderer: public Module {
 
    bool dispatch();
 
-   bool parameterChanged(Parameter *p);
-
  private:
    virtual void render() = 0;
    IntParameter *m_renderMode;
