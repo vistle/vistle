@@ -315,11 +315,13 @@ class V_COREEXPORT AddObject: public Message {
              vistle::Object::const_ptr obj);
 
    const char * getPortName() const;
+   const char *objectName() const;
    const shm_handle_t & getHandle() const;
    Object::const_ptr takeObject() const;
 
  private:
    port_name_t portName;
+   shm_name_t m_name;
    const shm_handle_t handle;
 };
 BOOST_STATIC_ASSERT(sizeof(AddObject) < Message::MESSAGE_SIZE);

@@ -309,17 +309,24 @@ Port *CreatePort::getPort() const {
 
 AddObject::AddObject(const std::string & p,
                      vistle::Object::const_ptr obj)
-   : Message(Message::ADDOBJECT, sizeof(AddObject)),
-     handle(obj->getHandle()) {
-        // we keep the handle as a reference to obj
-        obj->ref();
+: Message(Message::ADDOBJECT, sizeof(AddObject))
+, handle(obj->getHandle())
+, m_name(obj->getName())
+{
+   // we keep the handle as a reference to obj
+   obj->ref();
 
-      COPY_STRING(portName, p);
+   COPY_STRING(portName, p);
 }
 
 const char * AddObject::getPortName() const {
 
    return portName;
+}
+
+const char *AddObject::objectName() const {
+
+   return m_name;
 }
 
 const shm_handle_t & AddObject::getHandle() const {
