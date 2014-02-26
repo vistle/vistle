@@ -7,6 +7,8 @@ if(NOT COVER_FOUND)
    return()
 endif()
 
+message("Building Vistle plugin for ARCHSUFFIX ${COVISE_ARCHSUFFIX}")
+
 set(SOURCES
    VistlePlugin.cpp
    VistleRenderObject.cpp

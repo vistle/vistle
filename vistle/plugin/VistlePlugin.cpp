@@ -381,7 +381,7 @@ void OsgRenderer::render() {
          }
          VRSceneGraph::instance()->addNode(ro->node(), parent, ro);
       } else {
-         std::cerr << "discarding delayed object " << ro->object()->getName() << ": no node created" << std::endl;
+         std::cerr << rank() << ": discarding delayed object " << ro->object()->getName() << ": no node created" << std::endl;
          delete ro;
       }
       m_delayedObjects.pop_front();
@@ -407,6 +407,14 @@ using opencover::coCommandLine;
 VistlePlugin::VistlePlugin()
 : m_module(nullptr)
 {
+   int initialized = 0;
+   MPI_Initialized(&initialized);
+   if (!initialized) {
+      std::cerr << "VistlePlugin: no MPI support - started from within Vistle?" << std::endl;
+      //throw(vistle::exception("no MPI support"));
+      return;
+   }
+
    if (coCommandLine::argc() < 3) {
       throw(vistle::exception("at least 2 command line arguments required"));
    }
@@ -422,8 +430,10 @@ VistlePlugin::VistlePlugin()
 
 VistlePlugin::~VistlePlugin() {
 
-   MPI_Barrier(MPI_COMM_WORLD);
-   delete m_module;
+   if (m_module) {
+      MPI_Barrier(MPI_COMM_WORLD);
+      delete m_module;
+   }
 }
 
 bool VistlePlugin::init() {
