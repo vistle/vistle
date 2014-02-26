@@ -1,3 +1,5 @@
+#undef NDEBUG
+
 #include "VistleGeometryGenerator.h"
 #include <kernel/RenderObject.h>
 #include <kernel/VRSceneGraph.h>
@@ -91,9 +93,11 @@ osg::Node *VistleGeometryGenerator::operator()() {
       case vistle::Object::PLACEHOLDER: {
 
          vistle::PlaceHolder::const_ptr ph = vistle::PlaceHolder::as(m_geo);
+         debug << "Placeholder [" << ph->originalName() << "]";
          if (isSupported(ph->originalType())) {
             osg::Node *node = new osg::Node();
             node->setName(ph->originalName());
+            std::cerr << debug.str() << std::endl;
             return node;
          }
          break;
@@ -104,7 +108,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          vistle::Points::const_ptr points = vistle::Points::as(m_geo);
          const Index numVertices = points->getNumPoints();
 
-         //std::cerr << debug.str() << "Points: [ #v " << numVertices << " ]" << std::endl;
+         debug << "Points: [ #v " << numVertices << " ]";
 
          geode = new osg::Geode();
          osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
@@ -136,7 +140,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          vistle::Spheres::const_ptr spheres = vistle::Spheres::as(m_geo);
          const Index numVertices = spheres->getNumSpheres();
 
-         //std::cerr << debug.str() << "Spheres: [ #v " << numVertices << " ]" << std::endl;
+         debug << "Spheres: [ #v " << numVertices << " ]";
 
          geode = new osg::Geode();
          osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
@@ -167,7 +171,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numCorners = triangles->getNumCorners();
          const Index numVertices = triangles->getNumVertices();
 
-         //std::cerr << debug.str() << "Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]" << std::endl;
+         debug << "Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]";
 
          Index *cl = &triangles->cl()[0];
          vistle::Scalar *x = &triangles->x()[0];
@@ -254,7 +258,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numElements = lines->getNumElements();
          const Index numCorners = lines->getNumCorners();
 
-         //std::cerr << debug.str() << "Lines: [ #c " << numCorners << ", #e " << numElements << " ]" << std::endl;
+         debug << "Lines: [ #c " << numCorners << ", #e " << numElements << " ]";
 
          Index *el = &lines->el()[0];
          Index *cl = &lines->cl()[0];
@@ -304,7 +308,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const Index numVertices = polygons->getNumVertices();
          const Index numNormals = vec ? vec->getSize() : 0;
 
-         //std::cerr << debug.str() << "Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]" << std::endl;
+         debug << "Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]";
 
          Index *el = &polygons->el()[0];
          Index *cl = &polygons->cl()[0];
@@ -427,6 +431,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
    }
 
    if (geode) {
+      assert(m_geo->getType() == vistle::Object::PLACEHOLDER || isSupported(m_geo->getType()) == true);
       geode->setName(m_geo->getName());
 
       std::map<std::string, std::string> parammap;
@@ -467,6 +472,8 @@ osg::Node *VistleGeometryGenerator::operator()() {
          s_coverMutex.unlock();
       }
    }
+
+   //std::cerr << debug.str() << std::endl;
 
    return geode;
 }
