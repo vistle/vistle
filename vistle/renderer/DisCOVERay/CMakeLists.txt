@@ -40,10 +40,115 @@ if(JPEGTURBO_FOUND)
    add_definitions(-DHAVE_TURBOJPEG)
 endif()
 
-add_module(DisCOVERay
-   rayrenderobject.cpp
-   ray.cpp
-   )
+# BEGIN: ispc
+##############################################################
+# ISA configuration
+##############################################################
+
+SET(XEON_ISA "AVX2" CACHE STRING "Selects highest ISA to support.")
+SET_PROPERTY(CACHE XEON_ISA PROPERTY STRINGS SSE2 SSE3 SSSE3 SSE4.1 SSE4.2 AVX AVX-I AVX2 AVX512)
+
+IF (XEON_ISA STREQUAL "SSE2")
+  SET(ISA  1)
+ENDIF ()
+
+IF (XEON_ISA STREQUAL "SSE3")
+  SET(ISA  2)
+ENDIF ()
+
+IF (XEON_ISA STREQUAL "SSSE3")
+  SET(ISA  3)
+ENDIF ()
+
+IF (XEON_ISA STREQUAL "SSE4.1")
+  SET(ISA  4)
+ENDIF ()
+
+IF (XEON_ISA STREQUAL "SSE4.2")
+  SET(ISA  5)
+ENDIF ()
+
+IF (XEON_ISA STREQUAL "AVX")
+  SET(ISA  6)
+ENDIF ()
+
+IF (XEON_ISA STREQUAL "AVX-I")
+  SET(ISA  7)
+ENDIF ()
+
+IF (XEON_ISA STREQUAL "AVX2")
+  SET(ISA  8)
+ENDIF ()
+
+IF (XEON_ISA STREQUAL "AVX512")
+  SET(ISA  9)
+ENDIF ()
+
+SET(TARGET_SSE2  OFF)
+SET(TARGET_SSE3  OFF)
+SET(TARGET_SSSE3  OFF)
+SET(TARGET_SSE41  OFF)
+SET(TARGET_SSE42  OFF)
+SET(TARGET_AVX  OFF)
+SET(TARGET_AVXI  OFF)
+SET(TARGET_AVX2  OFF)
+SET(TARGET_AVX512 OFF)
+
+IF (ISA GREATER 0)
+  SET(TARGET_SSE2  ON)
+  SET(ISPC_TARGETS "sse2")
+ENDIF ()
+
+IF (ISA GREATER 1)
+  SET(TARGET_SSE3  ON)
+ENDIF ()
+
+IF (ISA GREATER 2)
+  SET(TARGET_SSSE3  ON)
+ENDIF ()
+
+IF (ISA GREATER 3)
+  SET(TARGET_SSE41  ON)
+  LIST(APPEND ISPC_TARGETS "sse4")
+ENDIF ()
+
+IF (ISA GREATER 4)
+  SET(TARGET_SSE42  ON)
+ENDIF ()
+
+IF (ISA GREATER 5)
+  SET(TARGET_AVX  ON)
+  LIST(APPEND ISPC_TARGETS "avx")
+ENDIF ()
+
+IF (ISA GREATER 6)
+  SET(TARGET_AVXI  ON)
+ENDIF ()
+
+IF (ISA GREATER 7)
+  SET(TARGET_AVX2  ON)
+  LIST(APPEND ISPC_TARGETS "avx2")
+ENDIF ()
+
+IF (ISA GREATER 8)
+  SET(TARGET_AVX512  ON)
+ENDIF ()
+
+set(__XEON__ 1)
+set(HAVE_ISPC ON)
+set(ENABLE_ISPC_SUPPORT ON)
+include (ispc)
+include_directories_ispc(${EMBREE_INCLUDE_PATH})
+# END: ispc
+
+if (ENABLE_ISPC_SUPPORT)
+   add_definitions(-DHAVE_ISPC)
+   add_ispc_executable(DisCOVERay rayrenderobject.cpp ray.cpp render.ispc)
+   set_target_properties(DisCOVERay PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
+else()
+   add_module(DisCOVERay rayrenderobject.cpp ray.cpp render.ispc)
+endif()
+
 
 include_directories(
         ../../../3rdparty/${BOOST_MPI_DIR}/include

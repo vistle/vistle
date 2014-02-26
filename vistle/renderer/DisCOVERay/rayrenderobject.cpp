@@ -14,20 +14,25 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       Object::const_ptr colors,
       Object::const_ptr texture)
 : vistle::RenderObject(senderId, senderPort, container, geometry, normals, colors, texture)
+, data(new RenderObjectData)
 {
-   geomId = RTC_INVALID_GEOMETRY_ID;
-   instId = RTC_INVALID_GEOMETRY_ID;
-   indexBuffer = nullptr;
-   texWidth = 0;
-   texData = nullptr;
-   texCoords = nullptr;
+   data->geomId = RTC_INVALID_GEOMETRY_ID;
+   data->instId = RTC_INVALID_GEOMETRY_ID;
+   data->indexBuffer = nullptr;
+   data->texWidth = 0;
+   data->texData = nullptr;
+   data->texCoords = nullptr;
+   data->hasSolidColor = hasSolidColor;
+   for (int c=0; c<4; ++c) {
+      data->solidColor[c] = solidColor[c];
+   }
    if (this->texture) {
-      texWidth = this->texture->getWidth();
-      texData = this->texture->pixels().data();
-      texCoords = this->texture->coords().data();
+      data->texWidth = this->texture->getWidth();
+      data->texData = this->texture->pixels().data();
+      data->texCoords = this->texture->coords().data();
    }
 
-   scene = rtcNewScene(RTC_SCENE_STATIC|sceneFlags, intersections);
+   data->scene = rtcNewScene(RTC_SCENE_STATIC|sceneFlags, intersections);
 
    if (auto tri = Triangles::as(geometry)) {
 
@@ -35,20 +40,20 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       if (numElem == 0) {
          numElem = tri->getNumCoords() / 3;
       }
-      geomId = rtcNewTriangleMesh(scene, RTC_GEOMETRY_STATIC, numElem, tri->getNumCoords());
+      data->geomId = rtcNewTriangleMesh(data->scene, RTC_GEOMETRY_STATIC, numElem, tri->getNumCoords());
       std::cerr << "Tri: #tri: " << tri->getNumElements() << ", #coord: " << tri->getNumCoords() << std::endl;
 
-      Vertex* vertices = (Vertex*) rtcMapBuffer(scene,geomId,RTC_VERTEX_BUFFER);
+      Vertex* vertices = (Vertex*) rtcMapBuffer(data->scene, data->geomId, RTC_VERTEX_BUFFER);
       for (Index i=0; i<tri->getNumCoords(); ++i) {
          vertices[i].x = tri->x()[i];
          vertices[i].y = tri->y()[i];
          vertices[i].z = tri->z()[i];
       }
-      rtcUnmapBuffer(scene,geomId,RTC_VERTEX_BUFFER);
+      rtcUnmapBuffer(data->scene, data->geomId, RTC_VERTEX_BUFFER);
 
-      indexBuffer = new Triangle[numElem];
-      rtcSetBuffer(scene, geomId, RTC_INDEX_BUFFER, indexBuffer, 0, sizeof(Triangle));
-      Triangle* triangles = (Triangle*) rtcMapBuffer(scene,geomId,RTC_INDEX_BUFFER);
+      data->indexBuffer = new Triangle[numElem];
+      rtcSetBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER, data->indexBuffer, 0, sizeof(Triangle));
+      Triangle* triangles = (Triangle*) rtcMapBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER);
       if (tri->getNumElements() == 0) {
          for (Index i=0; i<numElem; ++i) {
             triangles[i].v0 = i*3;
@@ -62,26 +67,26 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
             triangles[i].v2 = tri->cl()[i*3+2];
          }
       }
-      rtcUnmapBuffer(scene,geomId,RTC_INDEX_BUFFER);
+      rtcUnmapBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER);
    } else if (auto poly = Polygons::as(geometry)) {
 
       Index ntri = poly->getNumCorners()-2*poly->getNumElements();
       vassert(ntri >= 0);
 
-      geomId = rtcNewTriangleMesh(scene, RTC_GEOMETRY_STATIC, ntri, poly->getNumCoords());
+      data->geomId = rtcNewTriangleMesh(data->scene, RTC_GEOMETRY_STATIC, ntri, poly->getNumCoords());
       //std::cerr << "Poly: #tri: " << poly->getNumCorners()-2*poly->getNumElements() << ", #coord: " << poly->getNumCoords() << std::endl;
 
-      Vertex* vertices = (Vertex*) rtcMapBuffer(scene,geomId,RTC_VERTEX_BUFFER);
+      Vertex* vertices = (Vertex*) rtcMapBuffer(data->scene, data->geomId, RTC_VERTEX_BUFFER);
       for (Index i=0; i<poly->getNumCoords(); ++i) {
          vertices[i].x = poly->x()[i];
          vertices[i].y = poly->y()[i];
          vertices[i].z = poly->z()[i];
       }
-      rtcUnmapBuffer(scene,geomId,RTC_VERTEX_BUFFER);
+      rtcUnmapBuffer(data->scene, data->geomId, RTC_VERTEX_BUFFER);
 
-      indexBuffer = new Triangle[ntri];
-      rtcSetBuffer(scene, geomId, RTC_INDEX_BUFFER, indexBuffer, 0, sizeof(Triangle));
-      Triangle* triangles = (Triangle*) rtcMapBuffer(scene,geomId,RTC_INDEX_BUFFER);
+      data->indexBuffer = new Triangle[ntri];
+      rtcSetBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER, data->indexBuffer, 0, sizeof(Triangle));
+      Triangle* triangles = (Triangle*) rtcMapBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER);
       Index t = 0;
       for (Index i=0; i<poly->getNumElements(); ++i) {
          const Index start = poly->el()[i];
@@ -103,14 +108,14 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
          }
       }
       vassert(t == ntri);
-      rtcUnmapBuffer(scene,geomId,RTC_INDEX_BUFFER);
+      rtcUnmapBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER);
    }
 
-   rtcCommit(scene);
+   rtcCommit(data->scene);
 }
 
 RayRenderObject::~RayRenderObject() {
 
-   rtcDeleteScene(scene);
-   delete[] indexBuffer;
+   rtcDeleteScene(data->scene);
+   delete[] data->indexBuffer;
 }

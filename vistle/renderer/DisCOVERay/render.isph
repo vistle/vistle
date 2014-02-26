@@ -1,0 +1,52 @@
+#ifndef RENDER_ISPC_H
+#define RENDER_ISPC_H
+
+#include <embree2/rtcore.isph>
+#include <embree2/rtcore_ray.isph>
+
+#include "linalg/math.isph"
+#include "linalg/vec3f.isph"
+#include "linalg/vec4f.isph"
+
+#include "render-generic.h"
+
+struct Vertex   { float x,y,z; };
+
+struct Light {
+   Vec4f ambient;
+   Vec4f diffuse;
+   Vec4f specular;
+   Vec3f transformedPosition;
+   float attenuation[3];
+   bool enabled;
+   bool isDirectional;
+};
+
+struct SceneData {
+
+   RTCScene scene;
+   Vec4f defaultColor;
+   RenderObjectData * const *ro;
+   int doShade;
+   int numLights;
+   uniform Light *lights;
+   Vec4f modelView[4]; //< model-view matrix as row vectors
+};
+
+struct TileData {
+
+   unsigned int8 *rgba;
+   float *depth;
+   int imgWidth;
+   int x0, x1, y0, y1;
+
+   Vec3f origin;
+   Vec3f corner;
+   Vec3f dx, dy;
+   float tNear, tFar;
+   Vec4f depthTransform2, depthTransform3;
+};
+
+export void ispcRenderTile(uniform const SceneData *uniform sceneData, uniform const TileData *uniform tile);
+
+#endif

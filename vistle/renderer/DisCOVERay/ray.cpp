@@ -21,6 +21,12 @@
 #include <renderer/parrendmgr.h>
 #include "rayrenderobject.h"
 
+#ifdef HAVE_ISPC
+#include "render_ispc.h"
+
+#include <xmmintrin.h>
+#include <pmmintrin.h>
+#endif
 
 #ifdef USE_TBB
 #include <tbb/parallel_for.h>
@@ -64,6 +70,8 @@ class RayCaster: public vistle::Renderer {
    int m_tilesize;
    IntParameter *m_shading;
    bool m_doShade;
+   IntParameter *m_useIspcParam;
+   bool m_useIspc;
 
    // object lifetime management
    boost::shared_ptr<RenderObject> addObject(int sender, const std::string &senderPort,
@@ -75,7 +83,7 @@ class RayCaster: public vistle::Renderer {
 
    void removeObject(boost::shared_ptr<RenderObject> ro) override;
 
-   std::vector<boost::shared_ptr<RayRenderObject>> instances;
+   std::vector<RenderObjectData *> instances;
 
    std::vector<boost::shared_ptr<RayRenderObject>> static_geometry;
    std::vector<std::vector<boost::shared_ptr<RayRenderObject>>> anim_geometry;
@@ -98,6 +106,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
 , rayPacketSize(8)
 , m_tilesize(64)
 , m_doShade(true)
+, m_useIspc(false)
 , m_timestep(0)
 , m_currentView(-1)
 {
@@ -109,11 +118,20 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    vassert(s_instance == nullptr);
    s_instance = this;
 
-   m_packetSize = addIntParameter("ray_packet_size", "size of a ray packet (1, 4, 8, or 16)", (Integer)8);
+#ifdef HAVE_ISPC
+   m_useIspc = true;
+
+   /* from embree examples: for best performance set FTZ and DAZ flags in MXCSR control and status * register */
+   _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+   _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
+#endif
+
+   m_packetSize = addIntParameter("ray_packet_size", "size of a ray packet (1, 4, 8, or 16)", (Integer)rayPacketSize);
    setParameterRange(m_packetSize, (Integer)1, (Integer)16);
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
    m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
    setParameterRange(m_renderTileSizeParam, (Integer)1, (Integer)16384);
+   m_useIspcParam = addIntParameter("use_ispc", "use SIMD implementation with ISPC", (Integer)m_useIspc, Parameter::Boolean);
 
    rtcInit("verbose=0");
    m_scene = rtcNewScene(RTC_SCENE_DYNAMIC|sceneFlags, intersections);
@@ -146,6 +164,9 @@ bool RayCaster::parameterChanged(const Parameter *p) {
            m_packetSize->setValue(rayPacketSize);
            std::cerr << "invalid ray packet size, defaulting to " << rayPacketSize << std::endl;
         }
+    } else if (p == m_useIspcParam) {
+
+       m_useIspc = m_useIspcParam->getValue();
     }
 
    return Renderer::parameterChanged(p);
@@ -334,17 +355,114 @@ struct TileTask {
 
 void TileTask::render(int tile) const {
 
-    if (rayPacketSize == 16) {
-        packetRender<RTCRay16>(tile);
-    } else if (rayPacketSize == 8) {
-        packetRender<RTCRay8>(tile);
-    } else if (rayPacketSize == 4) {
-        packetRender<RTCRay4>(tile);
-    } else if (rayPacketSize == 1) {
-        packetRender<RTCRay>(tile);
-    } else {
-       vassert("unsupported ray packet size" == 0);
-    }
+   const int tx = tile%ntx;
+   const int ty = tile/ntx;
+
+#ifdef HAVE_ISPC
+   if (rc.m_useIspc) {
+      ispc::SceneData sceneData;
+      sceneData.scene = rc.m_scene;
+      for (int i=0; i<4; ++i) {
+         auto row = modelView.block<1,4>(i,0);
+         sceneData.modelView[i].x = row[0];
+         sceneData.modelView[i].y = row[1];
+         sceneData.modelView[i].z = row[2];
+         sceneData.modelView[i].w = row[3];
+      }
+      sceneData.doShade = rc.m_doShade;
+      sceneData.defaultColor.x = rc.m_renderManager.m_defaultColor[0];
+      sceneData.defaultColor.y = rc.m_renderManager.m_defaultColor[1];
+      sceneData.defaultColor.z = rc.m_renderManager.m_defaultColor[2];
+      sceneData.defaultColor.w = rc.m_renderManager.m_defaultColor[3];
+      sceneData.ro = rc.instances.data();
+      std::vector<ispc::Light> lights;
+      for (const auto &light: vd.lights) {
+         ispc::Light l;
+         l.enabled = light.enabled;
+         l.transformedPosition.x = light.transformedPosition[0];
+         l.transformedPosition.y = light.transformedPosition[1];
+         l.transformedPosition.z = light.transformedPosition[2];
+         for (int c=0; c<3; ++c) {
+            l.attenuation[c] = light.attenuation[c];
+         }
+         l.isDirectional = light.isDirectional;
+
+         l.ambient.x = light.ambient[0];
+         l.ambient.y = light.ambient[1];
+         l.ambient.z = light.ambient[2];
+         l.ambient.w = light.ambient[3];
+
+         l.diffuse.x = light.diffuse[0];
+         l.diffuse.y = light.diffuse[1];
+         l.diffuse.z = light.diffuse[2];
+         l.diffuse.w = light.diffuse[3];
+
+         l.specular.x = light.specular[0];
+         l.specular.y = light.specular[1];
+         l.specular.z = light.specular[2];
+         l.specular.w = light.specular[3];
+
+         lights.push_back(l);
+      }
+      sceneData.numLights = lights.size();
+      sceneData.lights = lights.data();
+
+      ispc::TileData data;
+      data.rgba = rgba;
+      data.depth = depth;
+      data.imgWidth = imgWidth;
+
+      data.x0=xoff+tx*tilesize;
+      data.x1=std::min(data.x0+tilesize, xlim);
+      data.y0=yoff+ty*tilesize;
+      data.y1=std::min(data.y0+tilesize, ylim);
+
+      data.origin.x = origin[0];
+      data.origin.y = origin[1];
+      data.origin.z = origin[2];
+
+      data.dx.x = dx[0];
+      data.dx.y = dx[1];
+      data.dx.z = dx[2];
+
+      data.dy.x = dy[0];
+      data.dy.y = dy[1];
+      data.dy.z = dy[2];
+
+      const Vector toLowerBottom = lowerBottom - origin;
+      data.corner.x = toLowerBottom[0];
+      data.corner.y = toLowerBottom[1];
+      data.corner.z = toLowerBottom[2];
+
+      data.tNear = tNear;
+      data.tFar = tFar;
+
+      data.depthTransform2.x = depthTransform2[0];
+      data.depthTransform2.y = depthTransform2[1];
+      data.depthTransform2.z = depthTransform2[2];
+      data.depthTransform2.w = depthTransform2[3];
+
+      data.depthTransform3.x = depthTransform3[0];
+      data.depthTransform3.y = depthTransform3[1];
+      data.depthTransform3.z = depthTransform3[2];
+      data.depthTransform3.w = depthTransform3[3];
+
+      ispcRenderTile(&sceneData, &data);
+   } else
+#endif
+   {
+      if (rayPacketSize == 16) {
+         packetRender<RTCRay16>(tile);
+      } else if (rayPacketSize == 8) {
+         packetRender<RTCRay8>(tile);
+      } else if (rayPacketSize == 4) {
+         packetRender<RTCRay4>(tile);
+      } else if (rayPacketSize == 1) {
+         packetRender<RTCRay>(tile);
+      } else {
+         vassert("unsupported ray packet size" == 0);
+      }
+   }
 }
 
 
@@ -422,25 +540,27 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
       if (rc.m_doShade) {
 
          vassert(ray.instID < (int)rc.instances.size());
-         auto ro = rc.instances[ray.instID];
-         vassert(ro->geomId == ray.geomID);
+         auto rod = rc.instances[ray.instID];
+         vassert(rod->geomId == ray.geomID);
 
          Vector4 color = rc.m_renderManager.m_defaultColor;
-         if (ro->hasSolidColor) {
-            color = ro->solidColor;
+         if (rod->hasSolidColor) {
+            for (int c=0; c<4; ++c) {
+               color[c] = rod->solidColor[c];
+            }
          }
-         if (ro->indexBuffer && ro->texData && ro->texCoords) {
+         if (rod->indexBuffer && rod->texData && rod->texCoords) {
 
             const float &u = ray.u;
             const float &v = ray.v;
             const float w = 1.f - u - v;
-            const Index v0 = ro->indexBuffer[ray.primID].v0;
-            const Index v1 = ro->indexBuffer[ray.primID].v1;
-            const Index v2 = ro->indexBuffer[ray.primID].v2;
+            const Index v0 = rod->indexBuffer[ray.primID].v0;
+            const Index v1 = rod->indexBuffer[ray.primID].v1;
+            const Index v2 = rod->indexBuffer[ray.primID].v2;
 
-            const float tc0 = ro->texCoords[v0];
-            const float tc1 = ro->texCoords[v1];
-            const float tc2 = ro->texCoords[v2];
+            const float tc0 = rod->texCoords[v0];
+            const float tc1 = rod->texCoords[v1];
+            const float tc2 = rod->texCoords[v2];
             float tc = w*tc0 + u*tc1 + v*tc2;
             //vassert(tc >= 0.f);
             //vassert(tc <= 1.f);
@@ -448,16 +568,16 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
                tc = 0.f;
             if (tc > 1.f)
                tc = 1.f;
-            unsigned idx = tc * ro->texWidth;
-            if (idx >= ro->texWidth)
-               idx = ro->texWidth-1;
-            const unsigned char *c = &ro->texData[idx*4];
+            unsigned idx = tc * rod->texWidth;
+            if (idx >= rod->texWidth)
+               idx = rod->texWidth-1;
+            const unsigned char *c = &rod->texData[idx*4];
             for (int i=0; i<4; ++i)
                color[i] = c[i];
          }
 
          Vector4 ambientColor = color;
-         ambientColor.block(0,0, 3,1) *= ambientFactor;
+         ambientColor.block<3,1>(0,0) *= ambientFactor;
          Vector3 normal(ray.Ng[0], ray.Ng[1], ray.Ng[2]);
          normal.normalize();
          if (twoSided && normal.dot(viewDir) > 0.f)
@@ -466,12 +586,16 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
          for (const auto &light: vd.lights) {
              if (light.enabled) {
                 const Vector3 lv = light.isDirectional
-                        ? light.transformedPosition.block(0,0, 3,1).normalized()
-                        : (light.transformedPosition.block(0,0, 3,1)-pos).normalized();
+                        ? light.transformedPosition.block<3,1>(0,0).normalized()
+                        : (light.transformedPosition.block<3,1>(0,0)-pos).normalized();
                 float atten = 1.f;
-                if (!light.isDirectional && (light.attenuation[1]>0.f || light.attenuation[2]>0.f)) {
-                    const float d = (modelView * (light.transformedPosition-pos4).block(0,0, 3,1)).norm();
-                    atten = 1.f/(light.attenuation[0] + light.attenuation[1]*d + light.attenuation[2]*d*d);
+                if (!light.isDirectional) {
+                   atten = light.attenuation[0];
+                   if (light.attenuation[1]>0.f || light.attenuation[2]>0.f) {
+                      const float d = (modelView * (light.transformedPosition-pos4)).block<3,1>(0,0).norm();
+                      atten += (light.attenuation[1] + light.attenuation[2]*d)*d;
+                   }
+                   atten = 1.f/atten;
                 }
                 shaded += ambientColor.cwiseProduct(atten*light.ambient);
                 const float ldot = std::max(0.f, normal.dot(lv));
@@ -520,12 +644,12 @@ bool RayCaster::render() {
     if (m_timestep != m_renderManager.timestep()) {
        if (anim_geometry.size() > m_timestep) {
           for (auto &ro: anim_geometry[m_timestep])
-             rtcDisable(m_scene, ro->instId);
+             rtcDisable(m_scene, ro->data->instId);
        }
        m_timestep = m_renderManager.timestep();
        if (anim_geometry.size() > m_timestep) {
           for (auto &ro: anim_geometry[m_timestep])
-             rtcEnable(m_scene, ro->instId);
+             rtcEnable(m_scene, ro->data->instId);
        }
        rtcCommit(m_scene);
     }
@@ -598,7 +722,7 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
    const auto inv = MVP.inverse();
 
    const Vector4 ro4 = MV.inverse().col(3);
-   const Vector ro = ro4.block(0,0, 3,1)/ro4[3];
+   const Vector ro = ro4.block<3,1>(0,0)/ro4[3];
 
    const Vector4 lbn4 = inv * Vector4(-1, -1, -1, 1);
    Vector lbn(lbn4[0], lbn4[1], lbn4[2]);
@@ -685,11 +809,12 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
 void RayCaster::removeObject(boost::shared_ptr<RenderObject> vro) {
 
    auto ro = boost::static_pointer_cast<RayRenderObject>(vro);
+   auto rod = ro->data.get();
 
-   rtcDeleteGeometry(m_scene, ro->instId);
+   rtcDeleteGeometry(m_scene, rod->instId);
    rtcCommit(m_scene);
 
-   instances[ro->instId].reset();
+   instances[rod->instId] = nullptr;
 
    const int t = ro->timestep;
    auto &objlist = t>=0 ? anim_geometry[t] : static_geometry;
@@ -729,22 +854,23 @@ boost::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::stri
       anim_geometry[t].push_back(ro);
    }
 
-   ro->instId = rtcNewInstance(m_scene, ro->scene);
-   if (instances.size() <= ro->instId)
-      instances.resize(ro->instId+1);
-   vassert(!instances[ro->instId]);
-   instances[ro->instId] = ro;
+   auto rod = ro->data.get();
+   rod->instId = rtcNewInstance(m_scene, rod->scene);
+   if (instances.size() <= rod->instId)
+      instances.resize(rod->instId+1);
+   vassert(!instances[rod->instId]);
+   instances[rod->instId] = rod;
 
    float identity[16];
    for (int i=0; i<16; ++i) {
       identity[i] = (i/4 == i%4) ? 1. : 0.;
    }
-   rtcSetTransform(m_scene, ro->instId, RTC_MATRIX_COLUMN_MAJOR_ALIGNED16, identity);
+   rtcSetTransform(m_scene, rod->instId, RTC_MATRIX_COLUMN_MAJOR_ALIGNED16, identity);
    if (t == -1 || size_t(t) == m_timestep) {
-      rtcEnable(m_scene, ro->instId);
+      rtcEnable(m_scene, rod->instId);
       m_renderManager.setModified();
    } else {
-      rtcDisable(m_scene, ro->instId);
+      rtcDisable(m_scene, rod->instId);
    }
    rtcCommit(m_scene);
 

@@ -2,9 +2,7 @@
 #define RAY_RENDEROBJECT_H
 
 #include <vector>
-
-#include <embree2/rtcore.h>
-#include <embree2/rtcore_ray.h>
+#include <memory>
 
 #include <core/vector.h>
 #include <core/object.h>
@@ -13,30 +11,9 @@
 
 #include <renderer/renderobject.h>
 
-static const int MaxPacketSize = 16;
-static const RTCAlgorithmFlags intersections = RTC_INTERSECT1|RTC_INTERSECT4|RTC_INTERSECT8|RTC_INTERSECT16;
-static const RTCSceneFlags sceneFlags = RTC_SCENE_COHERENT;
+#include "render.h"
 
-static const unsigned int RayEnabled = 0xffffffff;
-static const unsigned int RayDisabled = 0;
-
-struct RenderObjectData {
-
-   struct Vertex   { float x,y,z,align; };
-   struct Triangle { unsigned int v0, v1, v2; };
-
-   int t;
-   RTCScene scene;
-   int geomId;
-   unsigned instId;
-   Triangle *indexBuffer;
-
-   unsigned int texWidth;
-   unsigned char *texData;
-   vistle::Scalar *texCoords;
-};
-
-struct RayRenderObject: public vistle::RenderObject, RenderObjectData {
+struct RayRenderObject: public vistle::RenderObject {
 
    RayRenderObject(int senderId, const std::string &senderPort,
          vistle::Object::const_ptr container,
@@ -46,5 +23,7 @@ struct RayRenderObject: public vistle::RenderObject, RenderObjectData {
          vistle::Object::const_ptr texture);
 
    ~RayRenderObject();
+
+   std::unique_ptr<RenderObjectData> data;
 };
 #endif
