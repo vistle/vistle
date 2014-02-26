@@ -373,7 +373,7 @@ static void setStringParam(int id, const char *name, const std::string &value) {
    sendMessage(m);
 }
 
-static void compute(int id) {
+static void compute(int id=-1) {
 
 #ifdef DEBUG
    std::cerr << "Python: compute " << id << std::endl;
@@ -381,6 +381,7 @@ static void compute(int id) {
    message::Compute m(id);
    sendMessage(m);
 }
+BOOST_PYTHON_FUNCTION_OVERLOADS(compute_overloads, compute, 0, 1)
 
 #define param(T, f) \
    def("set" #T "Param", f, "set parameter `arg2` of module with ID `arg1` to `arg3`"); \
@@ -402,7 +403,7 @@ BOOST_PYTHON_MODULE(_vistle)
     def("kill", kill, "kill module with ID `arg1`");
     def("connect", connect, "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
     def("disconnect", disconnect, "disconnect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
-    def("compute", compute, "trigger execution of module with ID `arg1`");
+    def("compute", compute, compute_overloads(args("module id"), "trigger execution of module with ID `arg1`"));
     def("quit", quit, "quit vistle session");
     def("ping", ping, "send first character of `arg1` to every vistle process");
     def("trace", trace, trace_overloads(args("id", "enable"), "enable/disable message tracing for module `arg1`"));
