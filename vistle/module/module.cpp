@@ -468,10 +468,13 @@ IntParameter *Module::addIntParameter(const std::string & name, const std::strin
 bool Module::setIntParameter(const std::string & name,
                              Integer value, const message::SetParameter *inResponseTo) {
 
-   bool ret = setParameter(name, value, inResponseTo);
+   return setParameter(name, value, inResponseTo);
+}
 
-   if (name == "_cache_mode") {
-      switch (value) {
+void Module::updateCacheMode() {
+
+   Integer value = getIntParameter("_cache_mode");
+   switch (value) {
       case ObjectCache::CacheNone:
       case ObjectCache::CacheAll:
       case ObjectCache::CacheDefault:
@@ -479,21 +482,15 @@ bool Module::setIntParameter(const std::string & name,
       default:
          value = ObjectCache::CacheDefault;
          break;
-      }
-
-      setCacheMode(ObjectCache::CacheMode(value), false);
-   } else if (name == "_error_output_mode" || name == "_error_output_rank") {
-
-      updateOutputMode();
    }
 
-   return ret;
+   setCacheMode(ObjectCache::CacheMode(value), false);
 }
 
 void Module::updateOutputMode() {
 
-   const int r = getIntParameter("_error_output_rank");
-   const int m = getIntParameter("_error_output_mode");
+   const Integer r = getIntParameter("_error_output_rank");
+   const Integer m = getIntParameter("_error_output_mode");
 
    auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf);
    if (!sbuf)
@@ -708,7 +705,15 @@ bool Module::isConnected(const std::string &portname) const {
 
 bool Module::parameterChanged(Parameter *p) {
 
-   (void)p;
+   if (p->getName() == "_error_output_mode"
+         || p->getName() == "_error_output_rank") {
+
+      updateOutputMode();
+   } else if (p->getName() == "_cache_mode") {
+
+      updateCacheMode();
+   }
+
    return true;
 }
 

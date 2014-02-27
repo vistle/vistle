@@ -191,6 +191,7 @@ protected:
    std::map<std::string, Parameter *> parameters;
    ObjectCache m_cache;
    ObjectCache::CacheMode m_defaultCacheMode;
+   void updateCacheMode();
    bool m_syncMessageProcessing;
 
    typedef std::map<int, std::string> OtherModuleMap;
