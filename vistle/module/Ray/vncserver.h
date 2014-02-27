@@ -147,6 +147,7 @@ private:
 
    rfbScreenInfoPtr m_screen; //!< RFB protocol handler
    float *m_depth;
+   bool m_depthSent; //!< whether depth has already sent to clients
    int m_width, m_height; //! size of framebuffer
    int m_numRhrClients;
 

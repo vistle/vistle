@@ -551,7 +551,7 @@ void RayCaster::render() {
    m_updateBounds = 0;
 
    m_doRender = mpi::all_reduce(mpi::communicator(), m_doRender, mpi::maximum<int>());
-   m_doRender = 1;
+   //m_doRender = 1;
    if (m_doRender) {
       m_doRender = 0;
 

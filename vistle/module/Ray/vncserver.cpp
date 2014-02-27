@@ -177,6 +177,7 @@ bool VncServer::init(int w, int h)
    m_haveNewClient = false;
    m_boundCenter = vistle::Vector3(0., 0., 0.);
    m_boundRadius = 1.;
+   m_depthSent = false;
 
    m_viewMat = vistle::Matrix4::Identity();
    m_projMat = vistle::Matrix4::Identity();
@@ -553,6 +554,8 @@ void VncServer::sendDepthMessage(rfbClientPtr cl) {
             snappyduration,
             snappyduration > 0. ? sz/snappyduration/1024/1024/1024 : 0.);
    }
+
+   plugin->m_depthSent = true;
 }
 
 //! handle depth request by client
@@ -889,7 +892,7 @@ VncServer::preFrame()
       if (rfbUpdateClient(cl)) {
          struct ClientData *cd = static_cast<ClientData *>(cl->clientData);
          //std::cerr << "it: " << c++ << ", depth: " << (cd && cd->supportsDepth) << std::endl;
-         if (cd && cd->supportsDepth) {
+         if (!m_depthSent && cd && cd->supportsDepth) {
             sendDepthMessage(cl);
          }
       }
@@ -1112,4 +1115,5 @@ VncServer::postFrame()
 void VncServer::invalidate(int x, int y, int w, int h) {
 
    rfbMarkRectAsModified(m_screen, x, y, w, h);
+   m_depthSent = false;
 }
