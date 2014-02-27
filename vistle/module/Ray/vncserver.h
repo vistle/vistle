@@ -90,7 +90,7 @@ public:
       vistle::Vector4 position;
       vistle::Vector3 direction;
 
-      vistle::Vector4 transformedPosition;
+      vistle::Vector3 transformedPosition;
       vistle::Vector3 transformedDirection;
 
       vistle::Vector4 ambient;

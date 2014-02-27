@@ -63,8 +63,7 @@ class RayCaster: public vistle::Renderer {
    bool removeObject(RenderObject *ro);
    void removeAllCreatedBy(int creator);
 
-   typedef std::map<unsigned int, RenderObject *> InstanceMap;
-   InstanceMap instances;
+   std::vector<RenderObject *> instances;
 
    struct Creator {
       Creator(int id, const std::string &basename)
@@ -316,6 +315,8 @@ struct TileTask {
    , tile(tile)
    , tilesize(rc.tilesize)
    , packetSize(rc.packetSize)
+   , packetSizeX((packetSize+1)/2)
+   , packetSizeY(packetSize/packetSizeX)
    {
 
    }
@@ -339,11 +340,12 @@ struct TileTask {
    int imgWidth, imgHeight;
    int xlim, ylim;
    int ntx;
-   Matrix4 rayTransform;
-   Matrix4 depthTransform;
+   Vector4 depthTransform2, depthTransform3;
    Vector3 lowerBottom, dx, dy;
+   Vector3 origin;
    float tNear, tFar;
    const int packetSize;
+   const int packetSizeX, packetSizeY;
    int xoff, yoff;
    float *depth;
    unsigned char *rgba;
@@ -353,6 +355,7 @@ struct TileTask {
 void TileTask::render(int tile) const {
 
    int RTCORE_ALIGN(32) validMask[MaxPacketSize];
+   RTCRay ray;
    RTCRay4 ray4;
    RTCRay8 ray8;
 
@@ -360,70 +363,67 @@ void TileTask::render(int tile) const {
    const int ty = tile/ntx;
    const int x0=xoff+tx*tilesize, x1=x0+tilesize;
    const int y0=yoff+ty*tilesize, y1=y0+tilesize;
-   for (int y=y0; y<y1; ++y) {
-      for (int x=x0; x<x1; ++x) {
+   for (int yy=y0; yy<y1; yy += packetSizeY) {
+      for (int xx=x0; xx<x1; xx += packetSizeX) {
 
-         if (y >= ylim)
+         if (yy >= ylim)
             continue;
-         if (x >= xlim+packetSize-1)
+         if (xx >= xlim)
             continue;
+         
+         int idx = 0;
+         for (int y=yy; y<yy+packetSizeY; ++y) {
+            for (int x=xx; x<xx+packetSizeX; ++x) {
 
-         const int idx = (x-x0)%packetSize;
+               if (x>=xlim || y>=ylim) {
 
-         RTCRay ray;
-         if (x>=xlim || y>=ylim) {
+                  validMask[idx] = RayDisabled;
 
-            validMask[idx] = RayDisabled;
-            ray.mask = RayDisabled;
-            ray.primID = RTC_INVALID_GEOMETRY_ID;
-            ray.geomID = RTC_INVALID_GEOMETRY_ID;
-            ray.instID = RTC_INVALID_GEOMETRY_ID;
-         } else {
+                  ray.mask = RayEnabled;
+                  ray.primID = RTC_INVALID_GEOMETRY_ID;
+                  ray.geomID = RTC_INVALID_GEOMETRY_ID;
+                  ray.instID = RTC_INVALID_GEOMETRY_ID;
+               } else {
 
-            validMask[idx] = RayEnabled;
+                  validMask[idx] = RayEnabled;
 
-            Vector4 ro4 = rayTransform * Vector4(0, 0, 0, 1);
-            Vector rl3 = lowerBottom+x*dx+y*dy;
-            Vector4 rl4 = rayTransform * Vector4(rl3[0], rl3[1], rl3[2], 1);
-            rl4 /= rl4[3];
+                  const Vector rd = lowerBottom+x*dx+y*dy - origin;
+                  ray = makeRay(origin, rd, tNear, tFar);
+               }
 
-            Vector ro(ro4[0]/ro4[3], ro4[1]/ro4[3], ro4[2]/ro4[3]);
-            Vector rl(rl4[0], rl4[1], rl4[2]);
-            Vector rd = rl - ro;
+               if (packetSize==8) {
+                  setRay(ray8, idx, ray);
+               } else if (packetSize==4) {
+                  setRay(ray4, idx, ray);
+               }
 
-            ray = makeRay(ro, rd, tNear, tFar);
+            ++idx;
+            }
          }
 
-         if (packetSize != 8)
-            abort();
-
          if (packetSize==8) {
-            setRay(ray8, idx, ray);
-            if (idx == packetSize-1) {
-               rtcIntersect8(validMask, rc.m_scene, ray8);
-               for (int i=0; i<packetSize; ++i) {
-                  const int idx=packetSize-1-i;
-                  if (validMask[idx] != RayDisabled) {
-                     ray = getRay(ray8, idx);
-                     shadeRay(ray, x-i, y);
-                  }
-               }
-            }
+            rtcIntersect8(validMask, rc.m_scene, ray8);
          } else if (packetSize==4) {
-            setRay(ray4, idx, ray);
-            if (idx == packetSize-1) {
-               rtcIntersect4(validMask, rc.m_scene, ray4);
-               for (int i=0; i<packetSize; ++i) {
-                  const int idx=packetSize-1-i;
-                  if (validMask[idx] != RayDisabled) {
-                     ray = getRay(ray4, idx);
-                     shadeRay(ray, x-i, y);
-                  }
-               }
-            }
+            rtcIntersect4(validMask, rc.m_scene, ray4);
          } else {
             rtcIntersect(rc.m_scene, ray);
-            shadeRay(ray, x, y);
+         }
+
+         idx = 0;
+         for (int y=yy; y<yy+packetSizeY; ++y) {
+            for (int x=xx; x<xx+packetSizeX; ++x) {
+
+               if (validMask[idx] != RayDisabled) {
+                  if (packetSize==8) {
+                     ray = getRay(ray8, idx);
+                  } else if (packetSize==4) {
+                     ray = getRay(ray4, idx);
+                  }
+                  shadeRay(ray, x, y);
+               }
+
+            ++idx;
+            }
          }
       }
    }
@@ -435,59 +435,58 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
    float zValue = 1.;
    if (ray.geomID != RTC_INVALID_GEOMETRY_ID) {
       //std::cerr << "intersection at " << x << "," << y << ": " << ray.tfar*zNear << std::endl;
-      const auto it = rc.instances.find(ray.instID);
-      vassert(it != rc.instances.end());
-      const RenderObject *ro = it->second;
+      vassert(ray.instID < rc.instances.size());
+      const RenderObject *ro = rc.instances[ray.instID];
       vassert(ro->geomId == ray.geomID);
-      const float &u = ray.u;
-      const float &v = ray.v;
-      const float w = 1.f - u - v;
+
       int r = rc.rank()%3;
       int g = (rc.rank()/3)%3;
       int b = (rc.rank()/9)%3;
       Vector4 color(63+r*64, 63+g*64, 63+b*64, 255);
-      if (ro->indexBuffer) {
+      if (ro->indexBuffer && ro->texData && ro->texCoords) {
+
+         const float &u = ray.u;
+         const float &v = ray.v;
+         const float w = 1.f - u - v;
          const Index v0 = ro->indexBuffer[ray.primID].v0;
          const Index v1 = ro->indexBuffer[ray.primID].v1;
          const Index v2 = ro->indexBuffer[ray.primID].v2;
 
-         if (const auto &tex = ro->texture) {
-            const float tc0 = tex->coords()[v0];
-            const float tc1 = tex->coords()[v1];
-            const float tc2 = tex->coords()[v2];
-            const float tc = w*tc0 + u*tc1 + v*tc2;
-            vassert(tc >= 0.f);
-            vassert(tc <= 1.f);
-            unsigned idx = tc * tex->getWidth();
-            if (idx >= tex->getWidth())
-               idx = tex->getWidth()-1;
-            const unsigned char *c = &tex->pixels()[idx*4];
-            color[0] = c[0];
-            color[1] = c[1];
-            color[2] = c[2];
-            color[3] = c[3];
-         }
+         const float tc0 = ro->texCoords[v0];
+         const float tc1 = ro->texCoords[v1];
+         const float tc2 = ro->texCoords[v2];
+         const float tc = w*tc0 + u*tc1 + v*tc2;
+         vassert(tc >= 0.f);
+         vassert(tc <= 1.f);
+         unsigned idx = tc * ro->texWidth;
+         if (idx >= ro->texWidth)
+            idx = ro->texWidth-1;
+         const unsigned char *c = &ro->texData[idx*4];
+         color[0] = c[0];
+         color[1] = c[1];
+         color[2] = c[2];
+         color[3] = c[3];
       }
+
       const Vector3 pos = Vector3(ray.org[0], ray.org[1], ray.org[2])
             + ray.tfar * Vector3(ray.dir[0], ray.dir[1], ray.dir[2]);
       const Vector4 pos4(pos[0], pos[1], pos[2], 1);
+
       Vector3 normal(ray.Ng[0], ray.Ng[1], ray.Ng[2]);
       normal.normalize();
-      Vector4 lit(0, 0, 0, 0);
       for (const auto &light: rc.lights) {
-         Vector4 ldir4 = light.transformedPosition - pos4;
-         Vector ldir(ldir4[0], ldir4[1], ldir4[2]);
+         Vector ldir = light.transformedPosition - pos;
          ldir.normalize();
          const float ldot = fabs(normal.dot(ldir));
-         lit += color.cwiseProduct(light.ambient) + ldot * color.cwiseProduct(light.diffuse);
+         shaded += color.cwiseProduct(light.ambient + ldot*light.diffuse);
       }
       for (int i=0; i<4; ++i)
-         if (lit[i] > 255)
-            lit[i] = 255;
-      const Vector4 win = depthTransform * pos4;
-      const float d = (win[2]/win[3]+1.f)*0.5f;
-      zValue = d;
-      shaded = lit;
+         if (shaded[i] > 255)
+            shaded[i] = 255;
+
+      float win2 = depthTransform2.dot(pos4);
+      float win3 = depthTransform3.dot(pos4);
+      zValue= (win2/win3+1.f)*0.5f;
    }
 
    depth[y*imgWidth+x] = zValue;
@@ -545,7 +544,9 @@ void RayCaster::render() {
       lights = vnc->lights;
       const Matrix4 lightTransform = vnc->viewMat().inverse();
       for (auto &light: lights) {
-         light.transformedPosition = lightTransform * light.position;
+         Vector4 transformedPosition = lightTransform * light.position;
+         transformedPosition /= transformedPosition[3];
+         light.transformedPosition = Vector3(transformedPosition[0], transformedPosition[1], transformedPosition[2]);
       }
    }
    m_updateBounds = 0;
@@ -681,36 +682,34 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
 
    const vistle::Matrix4 MVP = P * MV;
    const auto inv = MVP.inverse();
-   const Vector4 origin4 = inv * Vector4(0, 0, 0, 1);
-   const Vector3 origin(origin4[0]/origin4[3], origin4[1]/origin4[3], origin4[2]/origin4[3]);
-   const vistle::Matrix4 invProj = P.inverse();
-   const Vector4 lbn4 = invProj * Vector4(-1, -1, -1, 1);
+
+   const Vector4 ro4 = MV.inverse().col(3);
+   const Vector ro(ro4[0], ro4[1], ro4[2]);
+
+   const Vector4 lbn4 = inv * Vector4(-1, -1, -1, 1);
    Vector lbn(lbn4[0], lbn4[1], lbn4[2]);
    lbn /= lbn4[3];
-   const Vector4 lbf4 = invProj * Vector4(-1, -1, 1, 1);
+
+   const Vector4 lbf4 = inv * Vector4(-1, -1, 1, 1);
    Vector lbf(lbf4[0], lbf4[1], lbf4[2]);
    lbf /= lbf4[3];
-   const Scalar zNear = -lbn[2];
-   const Scalar zFar = -lbf[2];
-   vassert(zNear > 0.);
-   vassert(zFar > zNear);
 
-   //std::cerr << "near: " << zNear << ", far: " << zFar << std::endl;
-   const Vector4 rbn4 = invProj * Vector4(1, -1, -1, 1);
+   const Vector4 rbn4 = inv * Vector4(1, -1, -1, 1);
    Vector rbn(rbn4[0], rbn4[1], rbn4[2]);
    rbn /= rbn4[3];
-   const Vector4 ltn4 = invProj * Vector4(-1, 1, -1, 1);
+
+   const Vector4 ltn4 = inv * Vector4(-1, 1, -1, 1);
    Vector ltn(ltn4[0], ltn4[1], ltn4[2]);
    ltn /= ltn4[3];
 
-   const Matrix4 rayTransform = MV.inverse();
+   const Scalar tFar = (lbf-ro).norm()/(lbn-ro).norm();
    const Matrix4 depthTransform = MVP;
 
    TileTask renderTile(*this);
    renderTile.rgba = icetImageGetColorub(image);
    renderTile.depth = icetImageGetDepthf(image);
-   renderTile.rayTransform = rayTransform;
-   renderTile.depthTransform = depthTransform;
+   renderTile.depthTransform2 = depthTransform.row(2);
+   renderTile.depthTransform3 = depthTransform.row(3);
    renderTile.ntx = ntx;
    renderTile.xoff = viewport[0];
    renderTile.yoff = viewport[1];
@@ -721,8 +720,9 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
    renderTile.dx = (rbn-lbn)/renderTile.imgWidth;
    renderTile.dy = (ltn-lbn)/renderTile.imgHeight;
    renderTile.lowerBottom = lbn + 0.5*renderTile.dx + 0.5*renderTile.dy;
+   renderTile.origin = ro;
    renderTile.tNear = 1.;
-   renderTile.tFar = zFar/zNear;
+   renderTile.tFar = tFar;
 #ifdef USE_TBB
    tbb::parallel_for(0, ntx*nty, 1, renderTile);
 #else
@@ -739,7 +739,6 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
       TileTask renderTile(*this, t);
       renderTile.rgba = rgba;
       renderTile.depth = depth;
-      renderTile.rayTransform = rayTransform;
       renderTile.depthTransform = depthTransform;
       renderTile.ntx = ntx;
       renderTile.xoff = x0;
@@ -846,7 +845,7 @@ void RayCaster::updateBounds() {
 
 bool RayCaster::removeObject(RenderObject *ro) {
 
-   instances.erase(ro->instId);
+   instances[ro->instId] = nullptr;
 
    int t = ro->t;
    auto &objlist = t>=0 ? anim_geometry[t] : static_geometry;
@@ -922,6 +921,9 @@ void RayCaster::addInputObject(vistle::Object::const_ptr container,
    }
 
    ro->instId = rtcNewInstance(m_scene, ro->scene);
+   if (instances.size() <= ro->instId)
+      instances.resize(ro->instId+1);
+   vassert(instances[ro->instId] == nullptr);
    instances[ro->instId] = ro;
 
    float identity[16];

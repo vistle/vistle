@@ -12,16 +12,25 @@ RenderObject::RenderObject(Object::const_ptr container,
       Object::const_ptr colors,
       Object::const_ptr normals,
       Object::const_ptr texture)
-: t(-1)
-, container(container)
+: container(container)
 , geometry(geometry)
 , colors(colors)
 , normals(Normals::as(normals))
 , texture(Texture1D::as(texture))
-, geomId(RTC_INVALID_GEOMETRY_ID)
-, instId(RTC_INVALID_GEOMETRY_ID)
-, indexBuffer(nullptr)
 {
+   t = -1;
+   geomId = RTC_INVALID_GEOMETRY_ID;
+   instId = RTC_INVALID_GEOMETRY_ID;
+   indexBuffer = nullptr;
+   texWidth = 0;
+   texData = nullptr;
+   texCoords = nullptr;
+   if (this->texture) {
+      texWidth = this->texture->getWidth();
+      texData = this->texture->pixels().data();
+      texCoords = this->texture->coords().data();
+   }
+
    const Scalar smax = std::numeric_limits<Scalar>::max();
    bMin = Vector(smax, smax, smax);
    bMax = Vector(-smax, -smax, -smax);

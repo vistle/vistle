@@ -19,31 +19,38 @@ static const RTCSceneFlags sceneFlags = RTC_SCENE_COHERENT;
 static const unsigned int RayEnabled = 0xffffffff;
 static const unsigned int RayDisabled = 0;
 
-struct RenderObject {
+struct RenderObjectData {
 
    struct Vertex   { float x,y,z,align; };
    struct Triangle { unsigned int v0, v1, v2; };
 
+   int t;
+   RTCScene scene;
+   unsigned geomId;
+   unsigned instId;
+   Triangle *indexBuffer;
+
+   unsigned int texWidth;
+   unsigned char *texData;
+   vistle::Scalar *texCoords;
+};
+
+struct RenderObject: public RenderObjectData {
+
    RenderObject(vistle::Object::const_ptr container,
-   vistle::Object::const_ptr geometry,
-   vistle::Object::const_ptr colors,
-   vistle::Object::const_ptr normals,
-   vistle::Object::const_ptr texture);
+         vistle::Object::const_ptr geometry,
+         vistle::Object::const_ptr colors,
+         vistle::Object::const_ptr normals,
+         vistle::Object::const_ptr texture);
 
    ~RenderObject();
 
-   int t;
    vistle::Object::const_ptr container;
    vistle::Object::const_ptr geometry;
    vistle::Object::const_ptr colors;
    vistle::Normals::const_ptr normals;
    vistle::Texture1D::const_ptr texture;
 
-   RTCScene scene;
-   unsigned geomId;
-   unsigned instId;
    vistle::Vector bMin, bMax;
-   std::vector<unsigned> elementMap;
-   Triangle *indexBuffer;
 };
 #endif
