@@ -101,15 +101,36 @@ static rfbProtocolExtension applicationExt = {
 
 
 //! called when plugin is loaded
-VncServer::VncServer(int w, int h)
+VncServer::VncServer(int w, int h, unsigned short port)
 {
    vassert(plugin == NULL);
    plugin = this;
 
    //fprintf(stderr, "new VncServer plugin\n");
 
-   init(w, h);
+   init(w, h, port);
 }
+
+// this is called if the plugin is removed at runtime
+VncServer::~VncServer()
+{
+   vassert(plugin);
+
+   rfbShutdownServer(m_screen, true);
+
+   delete[] m_screen->frameBuffer;
+   delete[] m_depth;
+
+   //fprintf(stderr,"VncServer::~VncServer\n");
+
+   plugin = nullptr;
+}
+
+unsigned short VncServer::port() const {
+
+   return m_screen->port;
+}
+
 
 unsigned char *VncServer::rgba() const {
 
@@ -170,8 +191,7 @@ const VncServer::Screen &VncServer::screen() const {
 }
 
 //! called after plug-in is loaded and scenegraph is initialized
-bool VncServer::init(int w, int h)
-{
+bool VncServer::init(int w, int h, unsigned short port) {
 
    m_numRhrClients = 0;
    m_haveNewClient = false;
@@ -221,7 +241,9 @@ bool VncServer::init(int w, int h)
    m_screen = rfbGetScreen(&argc, argv, 0, 0, 8, 3, 4);
    m_screen->desktopName = "DisCOVERay";
 
-   m_screen->port = 5900;
+   m_screen->autoPort = FALSE;
+   m_screen->port = port;
+   m_screen->ipv6port = port;
 
    m_screen->kbdAddEvent = &keyEvent;
    m_screen->ptrAddEvent = &pointerEvent;
@@ -257,18 +279,6 @@ bool VncServer::init(int w, int h)
    resize(w, h);
 
    return true;
-}
-
-
-// this is called if the plugin is removed at runtime
-VncServer::~VncServer()
-{
-   rfbShutdownServer(m_screen, true);
-
-   delete[] m_screen->frameBuffer;
-   delete[] m_depth;
-
-   //fprintf(stderr,"VncServer::~VncServer\n");
 }
 
 
@@ -649,7 +659,7 @@ void VncServer::sendApplicationMessage(rfbClientPtr cl, int type, int length, co
 //! send generic application message to all connected clients
 void VncServer::broadcastApplicationMessage(int type, int length, const char *data) {
 
-   rfbClientIteratorPtr it = rfbGetClientIterator(plugin->m_screen);
+   rfbClientIteratorPtr it = rfbGetClientIterator(m_screen);
    while (rfbClientPtr cl = rfbClientIteratorNext(it)) {
       struct ClientData *cd = static_cast<ClientData *>(cl->clientData);
       if (cd && cd->supportsApplication)

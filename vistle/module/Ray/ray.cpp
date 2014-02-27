@@ -50,6 +50,14 @@ class RayCaster: public vistle::Renderer {
    bool compute();
    void render();
 
+   bool parameterChanged(Parameter *p);
+
+   IntParameter *m_continuousRendering;
+   IntParameter *m_colorRank;
+   IntParameter *m_vncOnSlaves;
+   IntParameter *m_vncBasePort;
+   IntParameter *m_shading;
+
    void updateBounds();
 
    void addInputObject(vistle::Object::const_ptr container,
@@ -102,11 +110,14 @@ class RayCaster: public vistle::Renderer {
    Vector3 boundMin, boundMax;
    int m_updateBounds;
    int m_doRender;
+   bool m_doShade;
 
    int rootRank() const {
 
       return m_displayRank==-1 ? 0 : m_displayRank;
    }
+
+   Vector4 m_defaultColor;
 
    std::vector<VncServer::Light> lights;
 
@@ -185,14 +196,22 @@ RayCaster::RayCaster(const std::string &shmname, int rank, int size, int moduleI
 , m_initIcet(true)
 , m_updateBounds(1)
 , m_doRender(1)
+, m_doShade(true)
 {
    vassert(s_instance == nullptr);
    s_instance = this;
 
+   m_vncBasePort = addIntParameter("vnc_base_port", "listen port for VNC server", 31590);
+   setParameterRange(m_vncBasePort, (Integer)1, (Integer)((1<<16)-1));
+   m_vncOnSlaves = addIntParameter("vnc_on_slaves", "start VNC servers on slave ranks", 0, Parameter::Boolean);
+   m_continuousRendering = addIntParameter("continuous_rendering", "render even though nothing has changed", 0, Parameter::Boolean);
+   m_colorRank = addIntParameter("color_rank", "different colors on each rank", 0, Parameter::Boolean);
+   m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
+
+   m_defaultColor = Vector4(127, 127, 127, 255);
+
    if (m_displayRank==-1 || rank==m_displayRank)
-      vnc.reset(new VncServer(width, height));
-   else
-      vnc.reset(new VncServer(width, height));
+      vnc.reset(new VncServer(width, height, m_vncBasePort->getValue()));
 
    icetTiles.resize(size);
 
@@ -205,15 +224,6 @@ RayCaster::RayCaster(const std::string &shmname, int rank, int size, int moduleI
    m_icetCtx = icetCreateContext(m_icetComm);
 
    MODULE_DEBUG(RayCaster);
-
-#if 0
-   vistle::registerTypes();
-   createInputPort("data_in");
-
-   //setObjectReceivePolicy(message::ObjectReceivePolicy::Distribute);
-
-   initDone();
-#endif
 }
 
 
@@ -231,6 +241,47 @@ bool RayCaster::compute() {
    return true;
 }
 
+bool RayCaster::parameterChanged(Parameter *p) {
+
+   if (p == m_colorRank) {
+
+      if (m_colorRank->getValue()) {
+
+         const int r = rank()%3;
+         const int g = (rank()/3)%3;
+         const int b = (rank()/9)%3;
+         m_defaultColor = Vector4(63+r*64, 63+g*64, 63+b*64, 255);
+      } else {
+
+         m_defaultColor = Vector4(127, 127, 127, 255);
+      }
+   } else if (p == m_vncOnSlaves) {
+
+      if (rank() != rootRank()) {
+
+         if (m_vncOnSlaves->getValue()) {
+            if (!vnc) {
+               vnc.reset(new VncServer(state.width, state.height, m_vncBasePort->getValue()));
+            }
+         } else {
+            vnc.reset();
+         }
+      }
+   } else if (p == m_vncBasePort) {
+
+      if (rank() == rootRank() || m_vncOnSlaves->getValue()) {
+         if (!vnc || vnc->port() != m_vncBasePort->getValue())
+            vnc.reset(new VncServer(state.width, state.height, m_vncBasePort->getValue()));
+      }
+   } else if (p == m_shading) {
+
+      m_doShade = m_shading->getValue();
+   }
+
+   m_doRender = 1;
+
+   return Renderer::parameterChanged(p);
+}
 
 template<class RayPacket>
 static void setRay(RayPacket &rayPacket, int i, const RTCRay &ray) {
@@ -435,58 +486,62 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
    float zValue = 1.;
    if (ray.geomID != RTC_INVALID_GEOMETRY_ID) {
       //std::cerr << "intersection at " << x << "," << y << ": " << ray.tfar*zNear << std::endl;
-      vassert(ray.instID < rc.instances.size());
-      const RenderObject *ro = rc.instances[ray.instID];
-      vassert(ro->geomId == ray.geomID);
+      if (rc.m_doShade) {
 
-      int r = rc.rank()%3;
-      int g = (rc.rank()/3)%3;
-      int b = (rc.rank()/9)%3;
-      Vector4 color(63+r*64, 63+g*64, 63+b*64, 255);
-      if (ro->indexBuffer && ro->texData && ro->texCoords) {
+         vassert(ray.instID < rc.instances.size());
+         const RenderObject *ro = rc.instances[ray.instID];
+         vassert(ro->geomId == ray.geomID);
 
-         const float &u = ray.u;
-         const float &v = ray.v;
-         const float w = 1.f - u - v;
-         const Index v0 = ro->indexBuffer[ray.primID].v0;
-         const Index v1 = ro->indexBuffer[ray.primID].v1;
-         const Index v2 = ro->indexBuffer[ray.primID].v2;
+         Vector4 color = rc.m_defaultColor;
+         if (ro->indexBuffer && ro->texData && ro->texCoords) {
 
-         const float tc0 = ro->texCoords[v0];
-         const float tc1 = ro->texCoords[v1];
-         const float tc2 = ro->texCoords[v2];
-         const float tc = w*tc0 + u*tc1 + v*tc2;
-         vassert(tc >= 0.f);
-         vassert(tc <= 1.f);
-         unsigned idx = tc * ro->texWidth;
-         if (idx >= ro->texWidth)
-            idx = ro->texWidth-1;
-         const unsigned char *c = &ro->texData[idx*4];
-         color[0] = c[0];
-         color[1] = c[1];
-         color[2] = c[2];
-         color[3] = c[3];
-      }
+            const float &u = ray.u;
+            const float &v = ray.v;
+            const float w = 1.f - u - v;
+            const Index v0 = ro->indexBuffer[ray.primID].v0;
+            const Index v1 = ro->indexBuffer[ray.primID].v1;
+            const Index v2 = ro->indexBuffer[ray.primID].v2;
 
-      const Vector3 pos = Vector3(ray.org[0], ray.org[1], ray.org[2])
+            const float tc0 = ro->texCoords[v0];
+            const float tc1 = ro->texCoords[v1];
+            const float tc2 = ro->texCoords[v2];
+            const float tc = w*tc0 + u*tc1 + v*tc2;
+            vassert(tc >= 0.f);
+            vassert(tc <= 1.f);
+            unsigned idx = tc * ro->texWidth;
+            if (idx >= ro->texWidth)
+               idx = ro->texWidth-1;
+            const unsigned char *c = &ro->texData[idx*4];
+            color[0] = c[0];
+            color[1] = c[1];
+            color[2] = c[2];
+            color[3] = c[3];
+         }
+
+         const Vector3 pos = Vector3(ray.org[0], ray.org[1], ray.org[2])
             + ray.tfar * Vector3(ray.dir[0], ray.dir[1], ray.dir[2]);
-      const Vector4 pos4(pos[0], pos[1], pos[2], 1);
+         const Vector4 pos4(pos[0], pos[1], pos[2], 1);
 
-      Vector3 normal(ray.Ng[0], ray.Ng[1], ray.Ng[2]);
-      normal.normalize();
-      for (const auto &light: rc.lights) {
-         Vector ldir = light.transformedPosition - pos;
-         ldir.normalize();
-         const float ldot = fabs(normal.dot(ldir));
-         shaded += color.cwiseProduct(light.ambient + ldot*light.diffuse);
+         Vector3 normal(ray.Ng[0], ray.Ng[1], ray.Ng[2]);
+         normal.normalize();
+         for (const auto &light: rc.lights) {
+            Vector ldir = light.transformedPosition - pos;
+            ldir.normalize();
+            const float ldot = fabs(normal.dot(ldir));
+            shaded += color.cwiseProduct(light.ambient + ldot*light.diffuse);
+         }
+         for (int i=0; i<4; ++i)
+            if (shaded[i] > 255)
+               shaded[i] = 255;
+
+         float win2 = depthTransform2.dot(pos4);
+         float win3 = depthTransform3.dot(pos4);
+         zValue= (win2/win3+1.f)*0.5f;
+      } else {
+
+         shaded = rc.m_defaultColor;
+         zValue = 0.;
       }
-      for (int i=0; i<4; ++i)
-         if (shaded[i] > 255)
-            shaded[i] = 255;
-
-      float win2 = depthTransform2.dot(pos4);
-      float win3 = depthTransform3.dot(pos4);
-      zValue= (win2/win3+1.f)*0.5f;
    }
 
    depth[y*imgWidth+x] = zValue;
@@ -552,7 +607,10 @@ void RayCaster::render() {
    m_updateBounds = 0;
 
    m_doRender = mpi::all_reduce(mpi::communicator(), m_doRender, mpi::maximum<int>());
-   //m_doRender = 1;
+
+   if (m_continuousRendering->getValue())
+      m_doRender = 1;
+
    if (m_doRender) {
       m_doRender = 0;
 
@@ -766,7 +824,6 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
       vassert(h == icetImageGetHeight(img));
 
       const IceTUByte *color = icetImageGetColorcub(image);
-      const IceTFloat *depth = icetImageGetDepthcf(image);
 
       memset(vnc->rgba(), 0, w*h*bpp);
 

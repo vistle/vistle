@@ -27,8 +27,10 @@ class VncServer
 public:
 
    // plugin methods
-   VncServer(int w, int h);
+   VncServer(int w, int h, unsigned short port=5900);
    ~VncServer();
+
+   unsigned short port() const;
 
    int width() const;
    int height() const;
@@ -37,7 +39,7 @@ public:
 
    void resize(int w, int h);
 
-   bool init(int w, int h);
+   bool init(int w, int h, unsigned short port);
    void preFrame();
    void postFrame();
    void invalidate(int x, int y, int w, int h);
@@ -169,7 +171,7 @@ private:
    static void sendDepthMessage(rfbClientPtr cl);
    static void sendBoundsMessage(rfbClientPtr cl);
    static void sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data);
-   static void broadcastApplicationMessage(int type, int length, const char *data);
+   void broadcastApplicationMessage(int type, int length, const char *data);
    bool m_haveNewClient;
 };
 #endif
