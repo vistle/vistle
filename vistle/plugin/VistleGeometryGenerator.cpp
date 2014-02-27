@@ -337,18 +337,12 @@ osg::Node *VistleGeometryGenerator::operator()() {
          std::vector<std::vector<osg::Vec3> > vertexNormals;
          vertexNormals.resize(numVertices);
 
-         Index num = 0;
          for (Index index = 0; index < numElements; index ++) {
 
-            osg::Vec3 vert[3];
-
-            if (index == numElements - 1)
-               num = numCorners - el[index];
-            else
-               num = el[index + 1] - el[index];
-
+            const Index num = el[index + 1] - el[index];
             primitives->push_back(num);
 
+            osg::Vec3 vert[3];
             for (Index n = 0; n < num; n ++) {
                Index v = cl[el[index] + n];
 
@@ -390,6 +384,38 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
          geom->setNormalArray(norm.get());
          geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
+
+         if(vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex)) {
+
+            osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
+            osgTex->setDataVariance(osg::Object::DYNAMIC);
+
+            osg::ref_ptr<osg::Image> image = new osg::Image();
+
+            image->setImage(tex->getWidth(), 1, 1, GL_RGBA, GL_RGBA,
+                  GL_UNSIGNED_BYTE, &tex->pixels()[0],
+                  osg::Image::NO_DELETE);
+            osgTex->setImage(image);
+
+            osg::ref_ptr<osg::FloatArray> coords = new osg::FloatArray();
+            for (Index index = 0; index < numElements; index ++) {
+               const Index num = el[index + 1] - el[index];
+
+               for (Index n = 0; n < num; n ++) {
+                  Index v = cl[el[index] + n];
+                  coords->push_back(tex->coords()[v]);
+               }
+            }
+
+            geom->setTexCoordArray(0, coords);
+            state->setTextureAttributeAndModes(0, osgTex,
+                  osg::StateAttribute::ON);
+            osgTex->setFilter(osg::Texture1D::MIN_FILTER,
+                  osg::Texture1D::NEAREST);
+            osgTex->setFilter(osg::Texture1D::MAG_FILTER,
+                  osg::Texture1D::NEAREST);
+         }
+
 
          geode->addDrawable(geom.get());
          break;
