@@ -337,6 +337,7 @@ bool Module::addParameterGeneric(const std::string &name, Parameter *param) {
    std::map<std::string, Parameter *>::iterator i =
       parameters.find(name);
 
+   vassert(i == parameters.end());
    if (i != parameters.end())
       return false;
 
