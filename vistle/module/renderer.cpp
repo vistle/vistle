@@ -22,7 +22,7 @@ Renderer::Renderer(const std::string & name, const std::string &shmname,
 
    createInputPort("data_in", "input data");
 
-   m_renderMode = addIntParameter("render_mode", "Render on which nodes?", 0, Parameter::Choice);
+   m_renderMode = addIntParameter("render_mode", "Render on which nodes?", 1, Parameter::Choice);
    std::vector<std::string> choices;
    choices.push_back("All nodes");
    choices.push_back("Local only");
@@ -73,13 +73,14 @@ bool Renderer::dispatch() {
 
             switch (message->type()) {
                case vistle::message::Message::ADDOBJECT: {
-                  if (size() == 1) {
+                  if (size() == 1 || objectReceivePolicy()==message::ObjectReceivePolicy::Single) {
                      const message::AddObject *add = static_cast<const message::AddObject *>(message);
                      addInputObject(add->getPortName(), add->takeObject());
                   }
                   break;
                }
                case vistle::message::Message::OBJECTRECEIVED: {
+                  vassert(ObjectReceivePolicy() != message::ObjectReceivePolicy::Single);
                   if (size() > 1) {
                      const message::ObjectReceived *recv = static_cast<const message::ObjectReceived *>(message);
                      PlaceHolder::ptr ph(new PlaceHolder(recv->objectName(), recv->meta(), recv->objectType()));
