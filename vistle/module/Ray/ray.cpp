@@ -102,6 +102,7 @@ class RayCaster: public vistle::Renderer {
    bool m_initIcet;
    Vector3 boundMin, boundMax;
    int m_updateBounds;
+   int m_doRender;
 
    int rootRank() const {
 
@@ -184,6 +185,7 @@ RayCaster::RayCaster(const std::string &shmname, int rank, int size, int moduleI
 , m_displayRank(0)
 , m_initIcet(true)
 , m_updateBounds(1)
+, m_doRender(1)
 {
    vassert(s_instance == nullptr);
    s_instance = this;
@@ -519,12 +521,25 @@ void RayCaster::render() {
 
       vnc->preFrame();
 
+      const Matrix4 view = vnc->viewMat() * vnc->transformMat() * vnc->scaleMat();
+
+      if (rank() == rootRank()) {
+
+         if (state.timestep != vnc->timestep()
+             || state.width != vnc->width()
+             || state.height != vnc->height()
+             || state.proj != vnc->projMat()
+             || state.view != view) {
+            m_doRender = 1;
+         }
+      }
+
       state.timestep = vnc->timestep();
 
       state.width = vnc->width();
       state.height = vnc->height();
 
-      state.view = vnc->viewMat() * vnc->transformMat() * vnc->scaleMat();
+      state.view = view;
       state.proj = vnc->projMat();
 
       lights = vnc->lights;
@@ -535,94 +550,100 @@ void RayCaster::render() {
    }
    m_updateBounds = 0;
 
-   mpi::broadcast(mpi::communicator(), state, rootRank());
-   mpi::broadcast(mpi::communicator(), lights, rootRank());
+   m_doRender = mpi::all_reduce(mpi::communicator(), m_doRender, mpi::maximum<int>());
+   m_doRender = 1;
+   if (m_doRender) {
+      m_doRender = 0;
 
-   if (vnc && rank() != rootRank()) {
-      vnc->resize(state.width, state.height);
-   }
+      mpi::broadcast(mpi::communicator(), state, rootRank());
+      mpi::broadcast(mpi::communicator(), lights, rootRank());
 
-   if (m_timestep != state.timestep) {
-      if (anim_geometry.size() > m_timestep) {
-         for (auto &ro: anim_geometry[m_timestep])
-            rtcDisable(m_scene, ro->instId);
-      }
-      m_timestep = state.timestep;
-      if (anim_geometry.size() > m_timestep) {
-         for (auto &ro: anim_geometry[m_timestep])
-            rtcEnable(m_scene, ro->instId);
-      }
-      rtcCommit(m_scene);
-   }
-
-   int resetTiles = 0;
-   if (m_initIcet || (vnc && (width != vnc->width() || height != vnc->height())))
-      resetTiles = 1;
-   resetTiles = mpi::all_reduce(mpi::communicator(), resetTiles, mpi::maximum<int>());
-
-   if (resetTiles) {
-      width = height = 0;
-      if (vnc) {
-         width =  vnc->width();
-         height = vnc->height();
+      if (vnc && rank() != rootRank()) {
+         vnc->resize(state.width, state.height);
       }
 
-      icetTiles[rank()].x = 0;
-      icetTiles[rank()].y = 0;
-      icetTiles[rank()].width = width;
-      icetTiles[rank()].height = height;
-
-      mpi::all_gather(mpi::communicator(), icetTiles[rank()], icetTiles);
-
-      icetResetTiles();
-
-      for (int i=0; i<size(); ++i) {
-         if (i == m_displayRank || m_displayRank == -1) {
-            if (icetTiles[i].width>0 && icetTiles[i].height>0)
-               icetAddTile(icetTiles[i].x, icetTiles[i].y, icetTiles[i].width, icetTiles[i].height, i);
+      if (m_timestep != state.timestep) {
+         if (anim_geometry.size() > m_timestep) {
+            for (auto &ro: anim_geometry[m_timestep])
+               rtcDisable(m_scene, ro->instId);
          }
+         m_timestep = state.timestep;
+         if (anim_geometry.size() > m_timestep) {
+            for (auto &ro: anim_geometry[m_timestep])
+               rtcEnable(m_scene, ro->instId);
+         }
+         rtcCommit(m_scene);
       }
 
-      icetDisable(ICET_COMPOSITE_ONE_BUFFER); // include depth buffer in compositing result
-      icetStrategy(ICET_STRATEGY_REDUCE);
-      icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
-      icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-      icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+      int resetTiles = 0;
+      if (m_initIcet || (vnc && (width != vnc->width() || height != vnc->height())))
+         resetTiles = 1;
+      resetTiles = mpi::all_reduce(mpi::communicator(), resetTiles, mpi::maximum<int>());
 
-      icetDrawCallback(drawCallback);
-   }
+      if (resetTiles) {
+         width = height = 0;
+         if (vnc) {
+            width =  vnc->width();
+            height = vnc->height();
+         }
 
-   icetBoundingBoxf(boundMin[0], boundMax[0],
-         boundMin[1], boundMax[1],
-         boundMin[2], boundMax[2]);
+         icetTiles[rank()].x = 0;
+         icetTiles[rank()].y = 0;
+         icetTiles[rank()].width = width;
+         icetTiles[rank()].height = height;
 
-   Matrix4 modelview;
-   IceTDouble proj[16], mv[16];
-   for (int i=0; i<16; ++i) {
-      proj[i] = state.proj.data()[i];
-      mv[i] = state.view.data()[i];
-   }
-   IceTFloat bg[4] = { 0., 0., 0., 1. };
+         mpi::all_gather(mpi::communicator(), icetTiles[rank()], icetTiles);
 
-   IceTImage img = icetDrawFrame(proj, mv, bg);
+         icetResetTiles();
 
-   if (rank() == m_displayRank || m_displayRank==-1) {
-      vassert(vnc);
-      const int bpp = 4;
-      const int w = vnc->width();
-      const int h = vnc->height();
-      vassert(w == icetImageGetWidth(img));
-      vassert(h == icetImageGetHeight(img));
+         for (int i=0; i<size(); ++i) {
+            if (i == m_displayRank || m_displayRank == -1) {
+               if (icetTiles[i].width>0 && icetTiles[i].height>0)
+                  icetAddTile(icetTiles[i].x, icetTiles[i].y, icetTiles[i].width, icetTiles[i].height, i);
+            }
+         }
 
-      const IceTUByte *color = icetImageGetColorcub(img);
-      const IceTFloat *depth = icetImageGetDepthcf(img);
+         icetDisable(ICET_COMPOSITE_ONE_BUFFER); // include depth buffer in compositing result
+         icetStrategy(ICET_STRATEGY_REDUCE);
+         icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+         icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+         icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
 
-      for (int y=0; y<h; ++y) {
-         memcpy(vnc->rgba()+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
-         memcpy(vnc->depth()+w*y, depth+w*(h-1-y), sizeof(float)*w);
+         icetDrawCallback(drawCallback);
       }
 
-      vnc->invalidate(0, 0, vnc->width(), vnc->height());
+      icetBoundingBoxf(boundMin[0], boundMax[0],
+            boundMin[1], boundMax[1],
+            boundMin[2], boundMax[2]);
+
+      Matrix4 modelview;
+      IceTDouble proj[16], mv[16];
+      for (int i=0; i<16; ++i) {
+         proj[i] = state.proj.data()[i];
+         mv[i] = state.view.data()[i];
+      }
+      IceTFloat bg[4] = { 0., 0., 0., 1. };
+
+      IceTImage img = icetDrawFrame(proj, mv, bg);
+
+      if (rank() == m_displayRank || m_displayRank==-1) {
+         vassert(vnc);
+         const int bpp = 4;
+         const int w = vnc->width();
+         const int h = vnc->height();
+         vassert(w == icetImageGetWidth(img));
+         vassert(h == icetImageGetHeight(img));
+
+         const IceTUByte *color = icetImageGetColorcub(img);
+         const IceTFloat *depth = icetImageGetDepthcf(img);
+
+         for (int y=0; y<h; ++y) {
+            memcpy(vnc->rgba()+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
+            memcpy(vnc->depth()+w*y, depth+w*(h-1-y), sizeof(float)*w);
+         }
+
+         vnc->invalidate(0, 0, vnc->width(), vnc->height());
+      }
    }
    if (vnc)
       vnc->postFrame();
@@ -830,6 +851,9 @@ bool RayCaster::removeObject(RenderObject *ro) {
    int t = ro->t;
    auto &objlist = t>=0 ? anim_geometry[t] : static_geometry;
 
+   if (t == -1 || t == m_timestep)
+      m_doRender = 1;
+
    bool ret = false;
    auto it = std::find(objlist.begin(), objlist.end(), ro);
    if (it != objlist.end()) {
@@ -847,7 +871,7 @@ bool RayCaster::removeObject(RenderObject *ro) {
    updateBounds();
 
    delete ro;
-
+   
    return ret;
 }
 
@@ -907,6 +931,7 @@ void RayCaster::addInputObject(vistle::Object::const_ptr container,
    rtcSetTransform(m_scene, ro->instId, RTC_MATRIX_COLUMN_MAJOR_ALIGNED16, identity);
    if (t < 0 || t == m_timestep) {
       rtcEnable(m_scene, ro->instId);
+      m_doRender = 1;
    } else {
       rtcDisable(m_scene, ro->instId);
    }
