@@ -154,6 +154,7 @@ QList<QString> MainWindow::loadModuleFile()
     moduleList << "ShowUSG";
     moduleList << "Spheres";
     moduleList << "ToPoints";
+    moduleList << "ToTriangles";
     moduleList << "WriteVistle";
     moduleList << "Ray";
 
