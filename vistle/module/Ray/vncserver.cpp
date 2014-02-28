@@ -194,7 +194,6 @@ const VncServer::Screen &VncServer::screen() const {
 bool VncServer::init(int w, int h, unsigned short port) {
 
    m_numRhrClients = 0;
-   m_haveNewClient = false;
    m_boundCenter = vistle::Vector3(0., 0., 0.);
    m_boundRadius = 1.;
    m_depthSent = false;
@@ -256,8 +255,6 @@ bool VncServer::init(int w, int h, unsigned short port) {
    m_screen->handleEventsEagerly = 1;
 
    m_screen->cursor = NULL; // don't show a cursor
-
-   m_screen->newClientHook = newClientHook;
 
    std::string host;
    if(!host.empty())
@@ -734,12 +731,6 @@ rfbBool VncServer::handleApplicationMessage(rfbClientPtr cl, void *data,
    return TRUE;
 }
 
-rfbNewClientAction VncServer::newClientHook(rfbClientPtr cl) {
-
-   plugin->m_haveNewClient = true;
-   return RFB_CLIENT_ACCEPT;
-}
-
 int VncServer::timestep() const {
 
    return m_timestep;
@@ -912,8 +903,6 @@ VncServer::preFrame()
    while (rfbProcessEvents(m_screen, 0))
       ;
 #endif
-
-   m_haveNewClient = false;
 }
 
 template<typename T>

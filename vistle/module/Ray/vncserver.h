@@ -70,8 +70,6 @@ public:
    static rfbBool handleApplicationMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
 
-   static enum rfbNewClientAction newClientHook(rfbClientPtr cl);
-
    const vistle::Matrix4 &viewMat() const;
    const vistle::Matrix4 &projMat() const;
    const vistle::Matrix4 &scaleMat() const;
@@ -172,6 +170,5 @@ private:
    static void sendBoundsMessage(rfbClientPtr cl);
    static void sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data);
    void broadcastApplicationMessage(int type, int length, const char *data);
-   bool m_haveNewClient;
 };
 #endif
