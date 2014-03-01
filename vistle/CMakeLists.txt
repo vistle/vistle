@@ -46,7 +46,8 @@ endif(WIN32)
 find_package(TBB)
 find_package(Thrust)
 
-find_package(Eigen3 REQUIRED)
+#find_package(Eigen3 REQUIRED)
+set(EIGEN3_INCLUDE_PATH "../3rdparty")
 include_directories(${EIGEN3_INCLUDE_PATH})
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
