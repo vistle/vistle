@@ -80,7 +80,7 @@ bool Renderer::dispatch() {
                   break;
                }
                case vistle::message::Message::OBJECTRECEIVED: {
-                  vassert(ObjectReceivePolicy() != message::ObjectReceivePolicy::Single);
+                  vassert(objectReceivePolicy() != message::ObjectReceivePolicy::Single);
                   if (size() > 1) {
                      const message::ObjectReceived *recv = static_cast<const message::ObjectReceived *>(message);
                      PlaceHolder::ptr ph(new PlaceHolder(recv->objectName(), recv->meta(), recv->objectType()));
