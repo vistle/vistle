@@ -310,8 +310,8 @@ Port *CreatePort::getPort() const {
 AddObject::AddObject(const std::string & p,
                      vistle::Object::const_ptr obj)
 : Message(Message::ADDOBJECT, sizeof(AddObject))
-, handle(obj->getHandle())
 , m_name(obj->getName())
+, handle(obj->getHandle())
 {
    // we keep the handle as a reference to obj
    obj->ref();
