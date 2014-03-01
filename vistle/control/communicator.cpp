@@ -264,7 +264,7 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
       std::vector<MPI_Request> s(m_size);
       for (int index = 0; index < m_size; ++index) {
          if (index != m_rank)
-            MPI_Isend(const_cast<unsigned int *>(&message.m_size), 1, MPI_INT, index, TagToAny,
+            MPI_Isend(const_cast<unsigned int *>(&message.m_size), 1, MPI_UNSIGNED, index, TagToAny,
                   MPI_COMM_WORLD, &s[index]);
       }
 
