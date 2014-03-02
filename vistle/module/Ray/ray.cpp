@@ -820,8 +820,8 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
       const int bpp = 4;
       const int w = vnc->width();
       const int h = vnc->height();
-      vassert(w == icetImageGetWidth(img));
-      vassert(h == icetImageGetHeight(img));
+      vassert(w == icetImageGetWidth(image));
+      vassert(h == icetImageGetHeight(image));
 
       const IceTUByte *color = icetImageGetColorcub(image);
 
