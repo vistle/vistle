@@ -37,7 +37,7 @@ if(TBB_FOUND)
    endif()
 endif()
 
-add_executable(Ray
+add_module(Ray
    renderobject.cpp
    ray.cpp
    vncserver.cpp

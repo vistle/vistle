@@ -1,4 +1,4 @@
-add_executable(ToPoints ToPoints.cpp)
+add_module(ToPoints ToPoints.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

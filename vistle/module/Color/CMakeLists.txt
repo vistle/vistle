@@ -1,4 +1,4 @@
-add_executable(Color Color.cpp)
+add_module(Color Color.cpp)
 
 use_openmp()
 

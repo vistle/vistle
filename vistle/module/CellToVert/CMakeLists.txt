@@ -1,4 +1,4 @@
-add_executable(CellToVert CellToVert.cpp coCellToVert.cpp)
+add_module(CellToVert CellToVert.cpp coCellToVert.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

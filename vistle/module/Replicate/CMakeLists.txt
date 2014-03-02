@@ -1,4 +1,4 @@
-add_executable(Replicate Replicate.cpp)
+add_module(Replicate Replicate.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

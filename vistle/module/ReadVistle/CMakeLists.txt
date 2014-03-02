@@ -1,4 +1,4 @@
-add_executable(ReadVistle ReadVistle.cpp)
+add_module(ReadVistle ReadVistle.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

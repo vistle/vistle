@@ -28,7 +28,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
    add_compile_flags(ReadFOAM.cpp -std=c++0x)
 endif()
 
-add_executable(ReadFOAM ReadFOAM.cpp foamtoolbox.cpp)
+add_module(ReadFOAM ReadFOAM.cpp foamtoolbox.cpp)
 target_link_libraries(ReadFOAM
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}

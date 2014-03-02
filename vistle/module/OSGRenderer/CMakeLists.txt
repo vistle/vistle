@@ -12,7 +12,7 @@ if(NOT OPENSCENEGRAPH_FOUND OR NOT OPENGL_FOUND)
     return()
 endif()
 
-add_executable(OSGRenderer OSGRenderer.cpp OSGRenderer_vistle.cpp)
+add_module(OSGRenderer OSGRenderer.cpp OSGRenderer_vistle.cpp)
 
 if(WIN32)
 else(WIN32)

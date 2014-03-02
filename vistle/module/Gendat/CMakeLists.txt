@@ -6,7 +6,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}
 )
 
-add_executable(Gendat Gendat.cpp)
+add_module(Gendat Gendat.cpp)
 target_link_libraries(Gendat
         ${Boost_LIBRARIES}
         ${MPI_LIBRARIES}

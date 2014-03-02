@@ -1,4 +1,4 @@
-add_executable(Spheres Spheres.cpp)
+add_module(Spheres Spheres.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

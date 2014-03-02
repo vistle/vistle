@@ -1,4 +1,4 @@
-add_executable(CuttingSurface CuttingSurface.cpp)
+add_module(CuttingSurface CuttingSurface.cpp)
 
 use_openmp()
 

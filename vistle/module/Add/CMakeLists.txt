@@ -1,4 +1,4 @@
-add_executable(Add Add.cpp)
+add_module(Add Add.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

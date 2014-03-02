@@ -1,4 +1,4 @@
-add_executable(CutGeometry CutGeometry.cpp)
+add_module(CutGeometry CutGeometry.cpp)
 
 use_openmp()
 

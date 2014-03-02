@@ -1,4 +1,4 @@
-add_executable(ToTriangles ToTriangles.cpp)
+add_module(ToTriangles ToTriangles.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

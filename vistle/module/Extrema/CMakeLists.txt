@@ -1,6 +1,6 @@
 #find_package(Boost 1.40 REQUIRED COMPONENTS mpi)
 
-add_executable(Extrema Extrema.cpp)
+add_module(Extrema Extrema.cpp)
 
 use_openmp()
 

@@ -13,7 +13,7 @@ include_directories(
         ..
 )
 
-add_executable(COVER coverwrapper.cpp)
+add_module(COVER coverwrapper.cpp)
 target_link_libraries(COVER ${EXTRA_LIBS} vistle_util)
 if(NOT APPLE AND NOT WINDOWS)
    target_link_libraries(COVER ${EXTRA_LIBS} -ldl)

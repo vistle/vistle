@@ -1,5 +1,3 @@
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
-
 set(module_SOURCES
    module.cpp
    renderer.cpp
@@ -31,6 +29,14 @@ include_directories(
         ${MPI_INCLUDE_PATH}
         ..
 )
+
+macro(add_module targetname)
+
+    add_executable(${targetname} ${ARGN})
+
+    set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
+endmacro(add_module)
+
 
 add_subdirectory(Add)
 add_subdirectory(CellToVert)

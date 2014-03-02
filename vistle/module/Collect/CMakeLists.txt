@@ -1,4 +1,4 @@
-add_executable(Collect Collect.cpp)
+add_module(Collect Collect.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

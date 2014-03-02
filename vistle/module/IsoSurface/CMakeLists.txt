@@ -1,4 +1,4 @@
-add_executable(IsoSurface IsoSurface.cpp)
+add_module(IsoSurface IsoSurface.cpp)
 
 use_openmp()
 

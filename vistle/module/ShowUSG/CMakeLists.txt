@@ -1,4 +1,4 @@
-add_executable(ShowUSG ShowUSG.cpp)
+add_module(ShowUSG ShowUSG.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

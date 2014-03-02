@@ -5,7 +5,7 @@ if(NOT COVISE_FOUND)
    return()
 endif()
 
-add_executable(ReadCovise ReadCovise.cpp)
+add_module(ReadCovise ReadCovise.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
