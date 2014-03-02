@@ -255,10 +255,10 @@ class V_COREEXPORT Compute: public Message {
    void setReason(Reason r);
 
 private:
-   bool m_allRanks; //! whether compute should be broadcasted across all MPI ranks
-   int module; //! destination module, -1: all sources
-   int executionCount;
-   Reason m_reason; //! reason why this message was generated
+   bool m_allRanks; //!< whether compute should be broadcasted across all MPI ranks
+   int module; //!< destination module, -1: all sources
+   int executionCount; //!< count of execution which triggered this compute
+   Reason m_reason; //!< reason why this message was generated
 };
 BOOST_STATIC_ASSERT(sizeof(Compute) < Message::MESSAGE_SIZE);
 
