@@ -27,8 +27,10 @@ class V_CONTROLEXPORT Executor {
 
       void run();
 
-      void setInput(const std::string &input);
-      void setFile(const std::string &filename);
+      bool scanModules(const std::string &directory) const;
+
+      void setInput(const std::string &input) const;
+      void setFile(const std::string &filename) const;
 
       int getRank() const { return m_rank; }
       int getSize() const { return m_size; }

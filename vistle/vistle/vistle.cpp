@@ -71,7 +71,7 @@ class Vistle: public Executor {
          }
       }
 
-      return true;
+      return scanModules(bindir + "/../libexec/module");
    }
 };
 

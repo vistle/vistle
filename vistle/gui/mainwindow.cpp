@@ -42,8 +42,6 @@ MainWindow::MainWindow(QWidget *parent)
     m_parameters = ui->parameterEditor;
 
     m_moduleBrowser = ui->moduleBrowser;
-    auto modules = loadModuleFile();
-    m_moduleBrowser->setModules(modules);
 
     ui->drawArea->setAttribute(Qt::WA_AlwaysShowToolTips);
     ui->drawArea->setDragMode(QGraphicsView::RubberBandDrag);
@@ -70,6 +68,11 @@ MainWindow::~MainWindow()
 void MainWindow::setModified(bool state)
 {
    setWindowModified(state);
+}
+
+void MainWindow::moduleAvailable(const QString &mod) {
+
+    m_moduleBrowser->addModule(mod);
 }
 
 void MainWindow::moduleInfo(const QString &text)
@@ -124,41 +127,6 @@ void MainWindow::closeEvent(QCloseEvent *e) {
    if (!allowed) {
       e->ignore();
    }
-}
-
-/*!
- * \brief MainWindow::loadModuleFile read the list of modules.
- *
- * The module list is read in and put inside a list widget
- */
-QList<QString> MainWindow::loadModuleFile()
-{
-    QList<QString> moduleList;
-
-    moduleList << "Add";
-    moduleList << "COVER";
-    moduleList << "CellToVert";
-    moduleList << "Collect";
-    moduleList << "Color";
-    moduleList << "CutGeometry";
-    moduleList << "CuttingSurface";
-    moduleList << "Extrema";
-    moduleList << "Gather";
-    moduleList << "Gendat";
-    moduleList << "IsoSurface";
-    moduleList << "OSGRenderer";
-    moduleList << "ReadCovise";
-    moduleList << "ReadFOAM";
-    moduleList << "ReadVistle";
-    moduleList << "Replicate";
-    moduleList << "ShowUSG";
-    moduleList << "Spheres";
-    moduleList << "ToPoints";
-    moduleList << "ToTriangles";
-    moduleList << "WriteVistle";
-    moduleList << "Ray";
-
-    return moduleList;
 }
 
 } //namespace gui

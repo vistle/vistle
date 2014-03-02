@@ -3,6 +3,7 @@
  */
 #include <util/sysdep.h>
 #include <boost/foreach.hpp>
+#include <boost/filesystem.hpp>
 
 #include <mpi.h>
 
@@ -59,6 +60,50 @@ int ModuleManager::getRank() const {
 int ModuleManager::getSize() const {
 
    return m_size;
+}
+
+bool ModuleManager::scanModules(const std::string &dir) {
+
+    namespace bf = boost::filesystem;
+    bf::path p(dir);
+    if (!bf::is_directory(p)) {
+        CERR << "scanModules: " << dir << " is not a directory" << std::endl;
+        return false;
+    }
+
+    for (bf::directory_iterator it(p);
+            it != bf::directory_iterator();
+            ++it) {
+
+        bf::path ent(*it);
+        std::string stem = ent.stem().string();
+        if (stem.size() > sizeof(message::module_name_t)) {
+            CERR << "scanModules: skipping " << stem << " - name too long" << std::endl;
+        }
+
+        std::string ext = ent.extension().string();
+
+        AvailableModule mod;
+        mod.name = stem;
+        mod.path = bf::path(*it).string();
+
+        auto prev = m_availableMap.find(stem);
+        if (prev != m_availableMap.end()) {
+            CERR << "scanModules: overriding " << stem << ", " << prev->second.path << " -> " << mod.path << std::endl;
+        }
+        m_availableMap[stem] = mod;
+    }
+
+    return true;
+}
+
+std::vector<ModuleManager::AvailableModule> ModuleManager::availableModules() const {
+
+    std::vector<AvailableModule> ret;
+    for (auto mod: m_availableMap) {
+        ret.push_back(mod.second);
+    }
+    return ret;
 }
 
 int ModuleManager::newModuleID() {
@@ -288,8 +333,13 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    if ((baseRank + m_rank) % (rankSkip+1) != 0)
       onThisRank = false;
 
-   std::string name = m_bindir + "/../libexec/module/" + spawn.getName();
-   //CERR << "spawning " << name << ": size=" << m_size << ", num=" << numSpwan << ", base=" << baseRank << ", skip=" << rankSkip << ", local: " << onThisRank << std::endl;
+   std::string name = spawn.getName();
+   auto it = m_availableMap.find(name);
+   if (it == m_availableMap.end()) {
+       CERR << "refusing to spawn " << name << ": not in list of available modules" << std::endl;
+       return true;
+   }
+   std::string path = it->second.path;
 
    std::stringstream modID;
    modID << moduleID;
@@ -314,13 +364,13 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
       }
    }
 
-   std::string executable = name;
+   std::string executable = path;
    std::vector<const char *> argv;
 #if 0
    if (spawn.getDebugFlag()) {
       CERR << "spawn with debug on rank " << spawn.getDebugRank() << std::endl;
       executable = "debug_vistle.sh";
-      argv.push_back(name.c_str());
+      argv.push_back(path.c_str());
    }
 #endif
 

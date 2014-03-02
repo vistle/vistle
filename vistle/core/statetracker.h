@@ -23,6 +23,8 @@ class V_COREEXPORT StateObserver {
    StateObserver(): m_modificationCount(0) {}
    virtual ~StateObserver() {}
 
+   virtual void moduleAvailable(const std::string &moduleName) = 0;
+
    virtual void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) = 0;
    virtual void deleteModule(int moduleId) = 0;
 
@@ -102,10 +104,16 @@ class V_COREEXPORT StateTracker {
    bool handle(const message::ReplayFinished &reset);
    bool handle(const message::SendText &info);
    bool handle(const message::Quit &quit);
+   bool handle(const message::ModuleAvailable &mod);
 
    PortTracker *portTracker() const;
 
    std::vector<char> getState() const;
+
+   struct AvailableModule {
+       std::string name;
+   };
+   const std::vector<AvailableModule> &availableModules() const;
 
    void registerObserver(StateObserver *observer);
 
@@ -127,6 +135,8 @@ class V_COREEXPORT StateTracker {
    RunningMap runningMap;
    typedef std::set<int> ModuleSet;
    ModuleSet busySet;
+
+   std::vector<AvailableModule> m_availableModules;
 
    std::set<StateObserver *> m_observers;
 

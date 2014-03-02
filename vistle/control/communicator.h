@@ -43,6 +43,7 @@ class V_CONTROLEXPORT Communicator {
 
    void setInput(const std::string &input);
    void setFile(const std::string &filename);
+   bool scanModules(const std::string &dir) const;
 
    bool dispatch();
    bool handleMessage(const message::Message &message);

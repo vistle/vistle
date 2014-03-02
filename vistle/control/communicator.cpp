@@ -106,6 +106,11 @@ void Communicator::setFile(const std::string &filename) {
    m_initialFile = filename;
 }
 
+bool Communicator::scanModules(const std::string &dir) const {
+
+    return m_moduleManager->scanModules(dir);
+}
+
 void Communicator::setQuitFlag() {
 
    m_quitFlag = true;

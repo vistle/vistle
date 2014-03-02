@@ -916,6 +916,19 @@ bool Trace::on() const {
    return m_on;
 }
 
+ModuleAvailable::ModuleAvailable(const std::string &name)
+: Message(Message::MODULEAVAILABLE, sizeof(ModuleAvailable))
+{
+
+   COPY_STRING(m_name, name);
+}
+
+const char *ModuleAvailable::name() const {
+
+    return m_name;
+}
+
+
 std::ostream &operator<<(std::ostream &s, const Message &m) {
 
    using namespace vistle::message;

@@ -34,7 +34,9 @@ public:
 
    ModuleBrowser(QWidget *parent=nullptr);
    ~ModuleBrowser();
-   void setModules(const QStringList &modules);
+
+public slots:
+   void addModule(QString module);
 
 private:
    Ui::ModuleBrowser *ui;

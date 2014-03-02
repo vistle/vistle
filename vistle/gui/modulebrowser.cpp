@@ -49,12 +49,9 @@ ModuleBrowser::~ModuleBrowser()
    delete ui;
 }
 
-void ModuleBrowser::setModules(const QStringList &modules)
-{
-   for (const QString &m: modules) {
-      ui->moduleListWidget->addItem(m);
-   }
-}
+void ModuleBrowser::addModule(QString module) {
 
+    ui->moduleListWidget->addItem(module);
+}
 
 } // namespace gui

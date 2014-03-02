@@ -33,6 +33,8 @@ class V_CONTROLEXPORT ModuleManager {
    ~ModuleManager();
    static ModuleManager &the();
 
+   bool scanModules(const std::string &dir);
+
    bool dispatch(bool &received);
 
    bool sendMessage(int receiver, const message::Message &message) const;
@@ -53,6 +55,13 @@ class V_CONTROLEXPORT ModuleManager {
    int getBarrierCounter();
    boost::mutex &barrierMutex();
    boost::condition_variable &barrierCondition();
+
+   struct AvailableModule {
+
+       std::string name;
+       std::string path;
+   };
+   std::vector<AvailableModule> availableModules() const;
 
    std::vector<int> getRunningList() const;
    std::vector<int> getBusyList() const;
@@ -108,6 +117,9 @@ class V_CONTROLEXPORT ModuleManager {
    const int m_rank;
    const int m_size;
    const std::vector<std::string> m_hosts;
+
+   typedef std::map<std::string, AvailableModule> AvailableMap;
+   AvailableMap m_availableMap;
 
    struct Module {
       message::MessageQueue *sendQueue;

@@ -122,7 +122,7 @@ Executor::~Executor()
    Shm::the().detach();
 }
 
-void Executor::setFile(const std::string &filename) {
+void Executor::setFile(const std::string &filename) const {
 
    m_comm->setFile(filename);
 }
@@ -132,9 +132,14 @@ unsigned short Executor::uiPort() const
    return m_comm->uiPort();
 }
 
-void Executor::setInput(const std::string &input) {
+void Executor::setInput(const std::string &input) const {
 
    m_comm->setInput(input);
+}
+
+bool Executor::scanModules(const std::string &dir) const {
+
+    return m_comm->scanModules(dir);
 }
 
 bool Executor::config(int argc, char *argv[]) {

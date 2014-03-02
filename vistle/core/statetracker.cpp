@@ -183,6 +183,11 @@ std::vector<char> StateTracker::getState() const {
    return state;
 }
 
+const std::vector<StateTracker::AvailableModule> &StateTracker::availableModules() const {
+
+    return m_availableModules;
+}
+
 bool StateTracker::handleMessage(const message::Message &msg) {
 
    using namespace vistle::message;
@@ -309,6 +314,11 @@ bool StateTracker::handleMessage(const message::Message &msg) {
       case Message::SENDTEXT: {
          const SendText &info = static_cast<const SendText &>(msg);
          return handle(info);
+         break;
+      }
+      case Message::MODULEAVAILABLE: {
+         const ModuleAvailable &mod = static_cast<const ModuleAvailable &>(msg);
+         return handle(mod);
          break;
       }
       default:
@@ -617,6 +627,22 @@ bool StateTracker::handle(const message::SendText &info)
    }
    return true;
 }
+
+bool StateTracker::handle(const message::ModuleAvailable &avail) {
+
+    AvailableModule mod;
+    mod.name = avail.name();
+
+    m_availableModules.push_back(mod);
+
+   for (StateObserver *o: m_observers) {
+      o->moduleAvailable(mod.name);
+   }
+
+    return true;
+}
+
+
 
 StateTracker::~StateTracker() {
 

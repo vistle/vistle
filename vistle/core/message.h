@@ -86,6 +86,7 @@ class V_COREEXPORT Message {
       (SCHEDULINGPOLICY)
       (REDUCEPOLICY)
       (EXECUTIONPROGRESS)
+      (MODULEAVAILABLE)
    )
 
    Message(const Type type, const unsigned int size);
@@ -646,6 +647,18 @@ class V_COREEXPORT Trace: public Message {
    bool m_on;
 };
 BOOST_STATIC_ASSERT(sizeof(Trace) < Message::MESSAGE_SIZE);
+
+//! announce availability of a module to UI
+class V_COREEXPORT ModuleAvailable: public Message {
+
+ public:
+   ModuleAvailable(const std::string &name);
+   const char *name() const;
+
+ private:
+   module_name_t m_name;
+};
+BOOST_STATIC_ASSERT(sizeof(ModuleAvailable) < Message::MESSAGE_SIZE);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

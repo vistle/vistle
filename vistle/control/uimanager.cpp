@@ -119,6 +119,11 @@ void UiManager::addClient(boost::shared_ptr<UiClient> c) {
       sendMessage(c, *msg);
    }
    sendMessage(c, message::ReplayFinished());
+
+   auto avail = Communicator::the().moduleManager().availableModules();
+   for(const auto &mod: avail) {
+       sendMessage(c, message::ModuleAvailable(mod.name));
+   }
 }
 
 void UiManager::join() {
