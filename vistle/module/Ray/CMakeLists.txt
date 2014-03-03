@@ -4,25 +4,28 @@ set(ICET_CORE_LIBS "IceTCore")
 set(ICET_MPI_LIBS "IceTMPI")
 
 find_package(LibVncServer)
-if(NOT LIBVNCSERVER_FOUND)
-   message("Ray: libvncserver not found")
-   return()
-endif()
-
+find_package(embree)                                                                                                     
+find_package(TBB)
 set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/cmake" ${CMAKE_MODULE_PATH})
 find_package(COVER)
+
 if(NOT COVER_FOUND)
    message("Ray: COVER not found")
    return()
 endif()
 
 using(SNAPPY optional)
+
+if(NOT LIBVNCSERVER_FOUND)
+   message("Ray: libvncserver not found")
+   return()
+endif()
+
 if(NOT SNAPPY_FOUND)
    message("Ray: Snappy not found")
    return()
 endif()
 
-find_package(embree)                                                                                                     
 if(NOT EMBREE_FOUND)
    message("Ray: Embree not found")
    return()
@@ -30,7 +33,6 @@ endif()
 
 use_openmp()
 
-find_package(TBB)
 if(TBB_FOUND)
    if (NOT OPENMP_FOUND)
       add_definitions(-DUSE_TBB)
