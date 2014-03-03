@@ -641,11 +641,18 @@ Boundaries loadBoundary(const std::string &meshdir) {
       std::map<std::string, std::string>::const_iterator nFaces = cur.find("nFaces");
       std::map<std::string, std::string>::const_iterator startFace = cur.find("startFace");
       std::map<std::string, std::string>::const_iterator type = cur.find("type");
+      std::map<std::string, std::string>::const_iterator myProc = cur.find("myProcNo");
+      std::map<std::string, std::string>::const_iterator neighbor = cur.find("neighbProcNo");
       if (nFaces != cur.end() && startFace != cur.end() && type != cur.end()) {
          std::string t = type->second;
          index_t n = atol(nFaces->second.c_str());
          index_t s = atol(startFace->second.c_str());
-         bounds.addBoundary(Boundary(name, s, n, t, index));
+         Boundary b(name, s, n, t, index);
+         if(myProc != cur.end())
+            b.myProc = atol(myProc->second.c_str());
+         if (neighbor != cur.end())
+            b.neighborProc = atol(neighbor->second.c_str());
+         bounds.addBoundary(b);
          ++index;
       }
    }
@@ -713,18 +720,20 @@ DimensionInfo readDimensions(const std::string &meshdir) {
    struct dimParser<std::string::iterator> dimParser;
    struct dimSkipper<std::string::iterator> dimSkipper;
    boost::shared_ptr<std::istream> fileIn = getStreamForFile(meshdir, "owner");
+   DimensionInfo info;
    if (!fileIn) {
       std::cerr << "failed to open " << meshdir + "/polyMesh/owner for reading dimensions" << std::endl;
+      info.valid = false;
+      return info;
    }
    std::string header = getFoamHeader(*fileIn);
 
-   DimensionInfo info;
-   bool r = qi::phrase_parse(header.begin(), header.end(), dimParser, dimSkipper, info);
+   info.valid = qi::phrase_parse(header.begin(), header.end(), dimParser, dimSkipper, info);
    return info;
 }
 
-index_t findVertexAlongEdge(const index_t & point,
-      const index_t & homeface,
+index_t findVertexAlongEdge(const index_t point,
+      const index_t homeface,
       const std::vector<index_t> & cellfaces,
       const std::vector<std::vector<index_t> > & faces) {
 
@@ -753,11 +762,11 @@ index_t findVertexAlongEdge(const index_t & point,
    return -1;
 }
 
-bool isPointingInwards(index_t &face,
-      index_t &cell,
-      index_t &ninternalFaces,
-      std::vector<index_t> &owners,
-      std::vector<index_t> &neighbors) {
+bool isPointingInwards(index_t face,
+      index_t cell,
+      index_t ninternalFaces,
+      const std::vector<index_t> &owners,
+      const std::vector<index_t> &neighbors) {
 
    //check if the normal vector of the cell is pointing inwards
    //(in openFOAM it always points into the cell with the higher index)

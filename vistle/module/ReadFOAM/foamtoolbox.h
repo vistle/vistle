@@ -37,11 +37,13 @@ struct DimensionInfo {
         , cells(0)
         , faces (0)
         , internalFaces(0)
+        , valid(false)
    {}
    index_t points;
    index_t cells;
    index_t faces;
    index_t internalFaces;
+   bool valid;
 };
 
 
@@ -67,6 +69,8 @@ class Boundary {
       , numFaces(num)
       , type(t)
       , index(ind)
+      , myProc(-1)
+      , neighborProc(-1)
       {
       }
 
@@ -75,12 +79,16 @@ class Boundary {
    index_t numFaces;
    std::string type;
    index_t index;
+   int myProc;
+   int neighborProc;
+   std::vector<index_t> ghostVertices;
+   std::vector<index_t> owner;
 };
 
 
 class Boundaries {
  public:
-   Boundaries(): valid(false) {}
+   Boundaries(): valid(false), minFace(std::numeric_limits<index_t>::max()) {}
 
    bool isBoundaryFace(const index_t face) {
 
@@ -99,6 +107,9 @@ class Boundaries {
       } else {
          boundaries.push_back(b);
       }
+
+      if (minFace < b.startFace)
+         minFace = b.startFace;
    }
 
    int findBoundaryIndexByName(const std::string &b) {
@@ -112,13 +123,26 @@ class Boundaries {
       return result;
    }
 
+   int findBoundaryIndexForProc(int proc) {
+      for (int i=0; i<boundaries.size(); ++i) {
+         const Boundary &b = procboundaries[i];
+         if (b.neighborProc == proc)
+            return i;
+      }
+      return -1;
+   }
+
    bool valid;
 
    std::vector<Boundary> boundaries;
    std::vector<Boundary> procboundaries;
 
  private:
+   index_t minFace;
    bool isBoundaryFace(const std::vector<Boundary> &bound, const index_t face) {
+
+      if (face < minFace)
+         return false;
 
       for (std::vector<Boundary>::const_iterator i = bound.begin(); i != bound.end(); ++i) {
          if (face >= i->startFace && face < i->startFace+i->numFaces)
@@ -143,15 +167,15 @@ bool readFloatVectorArray(std::istream &stream, scalar_t *x, scalar_t *y, scalar
 
 Boundaries loadBoundary(const std::string &meshdir);
 
-index_t findVertexAlongEdge(const index_t & point,
-      const index_t & homeface,
-      const std::vector<index_t> & cellfaces,
-      const std::vector<std::vector<index_t> > & faces);
-bool isPointingInwards(index_t &face,
-      index_t &cell,
-      index_t &ninternalFaces,
-      std::vector<index_t> &owners,
-      std::vector<index_t> &neighbors);
+index_t findVertexAlongEdge(const index_t point,
+      const index_t homeface,
+      const std::vector<index_t> &cellfaces,
+      const std::vector<std::vector<index_t> > &faces);
+bool isPointingInwards(index_t face,
+      index_t cell,
+      index_t ninternalFaces,
+      const std::vector<index_t> &owners,
+      const std::vector<index_t> &neighbors);
 std::vector<index_t> getVerticesForCell(const std::vector<index_t> &cellfaces,
       const std::vector<std::vector<index_t>  > &faces);
 
