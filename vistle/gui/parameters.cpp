@@ -230,6 +230,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
    } else if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
       m_floatManager->setValue(prop, fp->getValue());
       m_floatManager->setRange(prop, fp->minimum(), fp->maximum());
+      m_floatManager->setDecimals(prop, NumDec);
 
       QString tip = QString("%1 (%2 – %3)").arg(
                QString::fromStdString(p->description()),
