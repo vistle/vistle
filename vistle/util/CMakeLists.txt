@@ -1,3 +1,5 @@
+find_package(Boost 1.40 REQUIRED COMPONENTS chrono system)
+
 set(util_SOURCES
    coRestraint.cpp
    findself.cpp

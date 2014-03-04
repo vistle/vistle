@@ -4,22 +4,24 @@
 #include "export.h"
 
 #include <string>
-#include <chrono>
+#include <boost/chrono.hpp>
 
 namespace vistle {
 
-   class V_UTILEXPORT StopWatch {
+namespace chrono = boost::chrono;
 
-    public:
-      typedef std::chrono::high_resolution_clock clock_type;
+class V_UTILEXPORT StopWatch {
 
-      StopWatch(const char *description);
-      ~StopWatch();
+ public:
+   typedef chrono::high_resolution_clock clock_type;
 
-    private:
-      std::string m_description;
-      clock_type::time_point m_start;
-   };
+   StopWatch(const char *description);
+   ~StopWatch();
+
+ private:
+   std::string m_description;
+   clock_type::time_point m_start;
+};
 
 } // namespace vistle
 

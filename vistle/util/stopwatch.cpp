@@ -1,7 +1,6 @@
 #include "stopwatch.h"
 
 #include <iostream>
-#include <chrono>
 
 namespace vistle {
 
@@ -14,7 +13,7 @@ StopWatch::StopWatch(const char *description)
 StopWatch::~StopWatch() {
 
    const clock_type::time_point stop = clock_type::now();
-   const double duration = 1e-9*std::chrono::duration_cast<std::chrono::nanoseconds>(stop-m_start).count();
+   const double duration = 1e-9*chrono::duration_cast<chrono::nanoseconds>(stop-m_start).count();
    std::cerr << m_description << ": " << duration << "s" << std::endl;
 }
 
