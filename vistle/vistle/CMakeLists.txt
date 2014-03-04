@@ -1,5 +1,3 @@
-find_package(PythonLibs)
-
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}

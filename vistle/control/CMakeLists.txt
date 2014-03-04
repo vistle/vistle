@@ -1,4 +1,3 @@
-find_package(PythonLibs)
 find_package(Boost 1.40 REQUIRED COMPONENTS python thread system filesystem)
 find_package(Readline)
 

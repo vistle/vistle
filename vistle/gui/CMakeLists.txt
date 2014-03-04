@@ -6,8 +6,6 @@ find_qt()
 
 add_subdirectory(propertybrowser)
 
-find_package(PythonLibs)
-
 set(CMAKE_AUTOMOC ON)
 
 include_directories(

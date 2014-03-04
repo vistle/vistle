@@ -43,6 +43,8 @@ endif(WIN32)
 
 #set(CMAKE_BUILD_TYPE Debug)
 
+find_package(PythonLibs REQUIRED)
+
 find_package(TBB)
 find_package(Thrust)
 
