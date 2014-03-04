@@ -80,6 +80,7 @@ add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
 find_package(MPI REQUIRED)
 include_directories(${MPI_C_INCLUDE_DIR})
 set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
+add_definitions(-DOMPI_SKIP_MPICXX)
 set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
 
 add_subdirectory(3rdparty)
