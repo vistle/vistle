@@ -42,7 +42,7 @@ add_library(vistle_control ${VISTLE_LIB_TYPE} ${control_SOURCES} ${control_HEADE
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
-        ${MPI_INCLUDE_PATH}
+        ${MPI_C_INCLUDE_PATH}
         ${PYTHON_INCLUDE_PATH}
         ..
         ../userinterface
@@ -50,7 +50,7 @@ include_directories(
 
 target_link_libraries(vistle_control
         ${Boost_LIBRARIES}
-        ${MPI_LIBRARIES}
+        ${MPI_C_LIBRARIES}
         ${PYTHON_LIBRARIES}
         ${EXTRA_LIBRARIES}
         vistle_core

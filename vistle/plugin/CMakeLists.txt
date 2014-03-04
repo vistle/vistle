@@ -23,7 +23,7 @@ endif(WIN32)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
-        ${MPI_INCLUDE_PATH}
+        ${MPI_C_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
         ${COVISE_INCLUDE_DIRS}
         ${COVER_INCLUDE_DIRS}

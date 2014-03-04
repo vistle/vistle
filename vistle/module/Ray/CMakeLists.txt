@@ -48,7 +48,7 @@ add_module(Ray
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ../../../3rdparty/boost-mpi/include
-        ${MPI_INCLUDE_PATH}
+        ${MPI_C_INCLUDE_PATH}
         ${ICET_INCLUDE_DIRS}
         ${LIBVNCSERVER_INCLUDE_DIR}
         ${COVER_RHR_INCLUDE_DIR}
@@ -61,7 +61,7 @@ include_directories(
 target_link_libraries(Ray
         ${Boost_LIBRARIES}
         vistle_boost_mpi
-        ${MPI_LIBRARIES}
+        ${MPI_C_LIBRARIES}
         vistle_module
         ${ICET_CORE_LIBS}
         ${ICET_MPI_LIBS}

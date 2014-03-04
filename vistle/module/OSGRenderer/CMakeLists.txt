@@ -22,7 +22,7 @@ endif(WIN32)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
-        ${MPI_INCLUDE_PATH}
+        ${MPI_C_INCLUDE_PATH}
         ${OPENSCENEGRAPH_INCLUDE_DIRS}
         ${OPENGL_INCLUDE_DIRS}
         ${ICET_INCLUDE_DIRS}
@@ -31,7 +31,7 @@ include_directories(
 
 target_link_libraries(OSGRenderer
         ${Boost_LIBRARIES}
-        ${MPI_LIBRARIES}
+        ${MPI_C_LIBRARIES}
         ${OPENSCENEGRAPH_LIBRARIES}
         ${OPENGL_LIBRARIES}
         vistle_module

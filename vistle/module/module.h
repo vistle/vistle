@@ -205,12 +205,6 @@ protected:
 
 } // namespace vistle
 
-#ifndef _WIN32
-#define MPICPPEXCEPTIONS MPI_Comm_set_errhandler(MPI_COMM_WORLD, MPI::ERRORS_THROW_EXCEPTIONS);
-#else
-#define MPICPPEXCEPTIONS
-#endif
-
 #define MODULE_MAIN(X) \
    int main(int argc, char **argv) { \
       MPI_Init(&argc, &argv); \
@@ -222,7 +216,6 @@ protected:
             MPI_Finalize(); \
             exit(1); \
          } \
-         MPICPPEXCEPTIONS \
          MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
          MPI_Comm_size(MPI_COMM_WORLD, &size); \
          const std::string &shmname = argv[1]; \

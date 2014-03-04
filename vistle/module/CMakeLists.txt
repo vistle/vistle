@@ -21,12 +21,12 @@ target_link_libraries(vistle_module
         vistle_util
         vistle_core
         ${Boost_LIBRARIES}
-        ${MPI_LIBRARIES}
+        ${MPI_C_LIBRARIES}
 )
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
-        ${MPI_INCLUDE_PATH}
+        ${MPI_C_INCLUDE_PATH}
         ..
 )
 

@@ -2,14 +2,14 @@ enable_testing()
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
-        ${MPI_INCLUDE_PATH}
+        ${MPI_C_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
 )
 
 add_module(Gendat Gendat.cpp)
 target_link_libraries(Gendat
         ${Boost_LIBRARIES}
-        ${MPI_LIBRARIES}
+        ${MPI_C_LIBRARIES}
         vistle_module
 )
 
@@ -17,7 +17,7 @@ target_link_libraries(Gendat
 add_executable(GendatChecker GendatChecker.cpp)
 target_link_libraries(GendatChecker
         ${Boost_LIBRARIES}
-        ${MPI_LIBRARIES}
+        ${MPI_C_LIBRARIES}
         vistle_module
 )
 
@@ -25,7 +25,7 @@ add_executable(GendatTest GendatTest.cpp)
 add_test(GendatTest GendatTest)
 target_link_libraries(GendatTest
         ${Boost_LIBRARIES}
-        ${MPI_LIBRARIES}
+        ${MPI_C_LIBRARIES}
         vistle_core
         vistle_control
 )

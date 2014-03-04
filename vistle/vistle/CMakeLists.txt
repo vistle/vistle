@@ -2,7 +2,7 @@ find_package(PythonLibs)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
-        ${MPI_INCLUDE_PATH}
+        ${MPI_C_INCLUDE_PATH}
         ${PYTHON_INCLUDE_PATH}
         ../core
         ..
@@ -11,7 +11,7 @@ include_directories(
 add_executable(vistle vistle.cpp)
 target_link_libraries(vistle
         ${Boost_LIBRARIES}
-        ${MPI_LIBRARIES}
+        ${MPI_C_LIBRARIES}
         vistle_core
         vistle_control
 )
@@ -19,6 +19,6 @@ target_link_libraries(vistle
 add_executable(clean_vistle clean_vistle.cpp)
 target_link_libraries(clean_vistle
         ${Boost_LIBRARIES}
-        ${MPI_LIBRARIES}
+        ${MPI_C_LIBRARIES}
         vistle_core
 )
