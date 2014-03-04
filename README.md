@@ -27,18 +27,38 @@ Build Requirements
 - **C++ compiler**:
   support for C++11 (ISO/IEC 14882:2011) is required
 
+  Known good compilers:
+  - GCC (4.6, 4.8)
+  - Clang (Xcode 5.0)
+  - Intel (14.0.2 - but use Boost 1.52 and not on Cray, 13.1.3 with GCC 4.6.3)
+  
+  Known bad compilers:
+  - GCC 4.4 (not enough C++11)
+  - PGI 13.10 (no atomics for boost:interprocess)
+  - Cray CC 8.2.3 (crashes on IceT, not enough C++11)
+
 - **CMake**:
   at least 2.8
 
 - **MPI**:
-  only tested with Open MPI (`MPI_Comm_spawn_multiple` behavior is particularly critical – Vistle relies on controlling the host on which processes are started)
+  `MPI_Comm_spawn_multiple` behavior is particularly critical – Vistle relies on controlling the host on which processes are started
+
+  Known good versions:
+  - Open MPI 1.6.3
+  
+  Known bad versions:
+  
+  - Open MPI 1.7.4
 
 - **Boost**:
   Build boost with the following options:
 
-         b2 --with-filesystem --with-iostreams --with-python --with-serialization --with-system --with-thread
-
-     Note: in order to switch MPI implementations without requiring a recompilation of boost, we compile Boost.MPI together with Vistle.
+         b2 --with-filesystem --with-iostreams --with-python \
+             --with-serialization --with-system --with-thread \
+             --with-regex --with-chrono --with-date_time
+     Notes:
+     - in order to switch MPI implementations without requiring a recompilation of boost, we compile Boost.MPI together with Vistle
+     - Intel compiler (at least 14.0.2) does not work with 1.55 because of missing `std::nullptr_t`, use 1.52
 
 - **Python**:
   for interpreting Vistle scripts (.vsl), only tested with Python 2.6 and 2.7
@@ -47,8 +67,13 @@ Build Requirements
   history and line editing for command line interface
 
 - **COVISE**:
-  a compiled source code distribution or a developer installation is required for the COVER plugin and the ReadCovise module,
-  get it from [HLRS](http://www.hlrs.de/organization/av/vis/covise/support/download/)
+  a compiled source code distribution or a developer installation is required,
+  get it from [HLRS](http://www.hlrs.de/organization/av/vis/covise/support/download/),
+  needed for:
+  
+  - ReadCovise module
+  - COVER plug-in
+  - ray casting render module
 
 - **OpenSceneGraph**:
   the version of OpenSceneGraph that was used for compiling COVER
