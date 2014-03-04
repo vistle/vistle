@@ -1,8 +1,17 @@
-if (NOT ${VISTLE_GUI})
-   return()
-endif()
+set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
+set(CMAKE_PREFIX_PATH $ENV{EXTERNLIBS}/qt5 ${CMAKE_PREFIX_PATH})
 
-find_qt()
+find_package(Qt5Core)
+# don't bother to continue if not even QtCore was found
+if (NOT Qt5Core_FOUND)
+    message("Not building GUI: Qt5 Core library not found")
+    return()
+endif()
+find_package(Qt5Widgets)
+find_package(Qt5Gui)
+
+set(CMAKE_PREFIX_PATH ${SAVED_CMAKE_PREFIX_PATH})
+
 
 add_subdirectory(propertybrowser)
 
@@ -69,7 +78,7 @@ if (APPLE)
 endif(APPLE)
 
 
-qt_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
+qt5_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
 add_definitions(${QT_DEFINITIONS})
 add_executable(${gui_name}
   MACOSX_BUNDLE

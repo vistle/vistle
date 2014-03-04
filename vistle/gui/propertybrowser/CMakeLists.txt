@@ -1,5 +1,3 @@
-find_qt()
-
 set(CMAKE_AUTOMOC ON)
 
 include_directories(
@@ -44,7 +42,7 @@ set(HEADERS
 set(FORMS
 )
 
-qt_wrap_ui(UI_SRCS ${FORMS})
+qt5_wrap_ui(UI_SRCS ${FORMS})
 add_definitions(${QT_DEFINITIONS})
 add_definitions("-DQT_DISABLE_DEPRECATED_BEFORE=0x000000")
 add_library(vistle_propertybrowser STATIC
