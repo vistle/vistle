@@ -1,6 +1,6 @@
 #ifndef COVISE_RESTRAINT_H
 #define COVISE_RESTRAINT_H
-/**************************************************************************\ 
+/**************************************************************************\
  **                                                                        **
  **                                                                        **
  ** Description: Interface classes for application modules to the COVISE   **
