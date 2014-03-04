@@ -1,5 +1,6 @@
 project(vistle_3rdparty)
 
+set(ICET_BUILD_TESTING OFF)
 add_subdirectory(IceT)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/../vistle/bin")
