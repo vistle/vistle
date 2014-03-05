@@ -18,10 +18,12 @@
 #include <core/parameter.h>
 #include <util/findself.h>
 
-#include "clientmanager.h"
 #include "uimanager.h"
 #include "communicator.h"
 #include "modulemanager.h"
+#ifdef HAVE_PYTHON
+#include "clientmanager.h"
+#endif
 
 #define CERR \
    std::cerr << "comm [" << m_rank << "/" << m_size << "] "
@@ -127,6 +129,7 @@ bool Communicator::dispatch() {
       // check for new UIs and other network clients
       if (m_rank == 0) {
 
+#ifdef HAVE_PYTHON
          if (!m_clientManager) {
             bool file = !m_initialFile.empty();
             m_clientManager = new ClientManager(file ? m_initialFile : m_initialInput,
@@ -134,6 +137,7 @@ bool Communicator::dispatch() {
          }
 
          done = !m_clientManager->check();
+#endif
 
          if (!done)
             done = m_quitFlag;
@@ -547,8 +551,10 @@ Communicator::~Communicator() {
    m_uiManager = NULL;
    delete m_moduleManager;
    m_moduleManager = NULL;
+#ifdef HAVE_PYTHON
    delete m_clientManager;
    m_clientManager = NULL;
+#endif
 
    if (m_size > 1) {
       int dummy = 0;

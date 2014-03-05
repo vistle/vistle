@@ -1,7 +1,6 @@
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
-        ${PYTHON_INCLUDE_PATH}
         ../core
         ..
 )

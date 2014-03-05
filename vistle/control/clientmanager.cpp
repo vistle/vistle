@@ -9,10 +9,13 @@
 
 #include <boost/asio.hpp>
 
-#include <userinterface/pythoninterface.h>
-#include <userinterface/pythonmodule.h>
 #include "clientmanager.h"
 #include "client.h"
+
+#ifdef HAVE_PYTHON
+#include <userinterface/pythoninterface.h>
+#include <userinterface/pythonmodule.h>
+#endif
 
 namespace asio = boost::asio;
 

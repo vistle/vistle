@@ -8,7 +8,6 @@
 #include <boost/asio.hpp>
 #include <boost/interprocess/ipc/message_queue.hpp>
 
-#include "pythoninterface.h"
 #include "uimanager.h"
 #include "uiclient.h"
 #include "communicator.h"

@@ -9,7 +9,6 @@ ADD_DEFINITIONS(-DRENAME_MAIN=realmain)
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
-        ${PYTHON_INCLUDE_PATH}
         ..
 )
 
