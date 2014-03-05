@@ -1,4 +1,5 @@
 find_package(Boost 1.40 REQUIRED COMPONENTS iostreams filesystem system)
+find_package(ZLIB)
 
 function(add_compile_flags file flags)
    get_property(MY_CFLAGS SOURCE ${file} PROPERTY COMPILE_FLAGS)
@@ -32,8 +33,9 @@ add_module(ReadFOAM ReadFOAM.cpp foamtoolbox.cpp)
 target_link_libraries(ReadFOAM
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
+        ${ZLIB_LIBRARIES}
         vistle_module
 )
 
 add_executable(foambounds bounds.cpp foamtoolbox.cpp)
-target_link_libraries(foambounds ${Boost_LIBRARIES})
+target_link_libraries(foambounds ${Boost_LIBRARIES} ${ZLIB_LIBRARIES})
