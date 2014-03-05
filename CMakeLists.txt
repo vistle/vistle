@@ -1,15 +1,13 @@
 cmake_minimum_required(VERSION 2.8)
 project(vistle_all)
 
-option(VISTLE_BUILD_SHARED "Build all libraries as static libraries instead of shared" ON)
-
+option(VISTLE_BUILD_SHARED "Build all libraries as shared libraries instead of static" ON)
 if (VISTLE_BUILD_SHARED)
    set(VISTLE_LIB_TYPE SHARED)
 else()
    set(VISTLE_LIB_TYPE STATIC)
    add_definitions(-DVISTLE_STATIC)
 endif()
-
 set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED})
 
 enable_testing()
