@@ -7,14 +7,13 @@ find_package(LibVncServer)
 find_package(embree)                                                                                                     
 find_package(TBB)
 set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/cmake" ${CMAKE_MODULE_PATH})
-find_package(COVER)
+find_package(COVISE OPTIONAL_COMPONENTS RHR)
+using(SNAPPY optional)
 
-if(NOT COVER_FOUND)
-   message("Ray: COVER not found")
+if(NOT COVISE_RHR_FOUND)
+   message("Ray: COVISE RHR not found")
    return()
 endif()
-
-using(SNAPPY optional)
 
 if(NOT LIBVNCSERVER_FOUND)
    message("Ray: libvncserver not found")
@@ -51,7 +50,7 @@ include_directories(
         ${MPI_C_INCLUDE_PATH}
         ${ICET_INCLUDE_DIRS}
         ${LIBVNCSERVER_INCLUDE_DIR}
-        ${COVER_RHR_INCLUDE_DIR}
+        ${COVISE_RHR_INCLUDE_DIRS}
         ${SNAPPY_INCLUDE_DIR}
         ${PROJECT_SOURCE_DIR}
         ${EMBREE_INCLUDE_PATH}

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/cmake" ${CMAKE_MODULE_PATH})
-find_package(COVISE)
-if(NOT COVISE_FOUND)
+find_package(COVISE COMPONENTS File)
+if(NOT COVISE_FILE_FOUND)
    return()
 endif()
 
@@ -11,7 +11,7 @@ include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
-        ${COVISE_INCLUDE_DIRS}
+        ${COVISE_FILE_INCLUDE_DIRS}
 )
 
 target_link_libraries(ReadCovise
