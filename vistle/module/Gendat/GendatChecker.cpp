@@ -45,12 +45,12 @@ bool GendatChecker::compute() {
       vistle::Triangles::const_ptr t = vistle::Triangles::as(grid);
       vassert(t.get() && "expected Triangles");
       vassert(t->cl().size() == 6);
-      vassert(t->cl()[0] = 0);
-      vassert(t->cl()[1] = 1);
-      vassert(t->cl()[2] = 2);
-      vassert(t->cl()[3] = 0);
-      vassert(t->cl()[4] = 2);
-      vassert(t->cl()[5] = 3);
+      vassert(t->cl()[0] == 0);
+      vassert(t->cl()[1] == 1);
+      vassert(t->cl()[2] == 2);
+      vassert(t->cl()[3] == 0);
+      vassert(t->cl()[4] == 2);
+      vassert(t->cl()[5] == 3);
       vassert(t->x().size() == 4);
       vassert(t->y().size() == 4);
       vassert(t->z().size() == 4);
@@ -64,7 +64,7 @@ bool GendatChecker::compute() {
       vassert(v.get() && "expected Vec<Scalar>");
       vassert(v->x().size() == 4);
       for (size_t i=0; i<v->x().size(); ++i) {
-         vassert(v->x()[i] = vistle::Scalar(i));
+         vassert(v->x()[i] == vistle::Scalar(i));
       }
 
 #if 0

@@ -36,27 +36,29 @@ int main(int argc, char *argv[]) {
    std::map<std::string, std::string> env;
    std::map<std::string, bool> envToSet;
    if (rank == 0) {
-      for (auto v: {
-           "PATH",
-           "LD_LIBRARY_PATH",
-           "DYLD_LIBRARY_PATH",
-           "DYLD_FRAMEWORK_PATH",
-           "LANG",
-           "COCONFIG",
-           "COCONFIG_LOCAL",
-           "COCONFIG_DEBUG",
-           "COVISE_CONFIG",
-           //"COVISE_HOST",
-           "COVISEDIR",
-           "COVISE_PATH",
-           "ARCHSUFFIX",
-           "OSGFILEPATH",
-           "OSG_FILE_PATH",
-           "OSG_NOTIFY_LEVEL",
-           "OSG_LIBRARY_PATH",
-           "OSG_LD_LIBRARY_PATH",
-   }) {
-         const char *val = getenv(v);
+      std::vector<std::string> envvars;
+      envvars.push_back("PATH");
+      envvars.push_back("PATH");
+      envvars.push_back("LD_LIBRARY_PATH");
+      envvars.push_back("DYLD_LIBRARY_PATH");
+      envvars.push_back("DYLD_FRAMEWORK_PATH");
+      envvars.push_back("LANG");
+      envvars.push_back("COCONFIG");
+      envvars.push_back("COCONFIG_LOCAL");
+      envvars.push_back("COCONFIG_DEBUG");
+      envvars.push_back("COVISE_CONFIG");
+      //envvars.push_back("COVISE_HOST");
+      envvars.push_back("COVISEDIR");
+      envvars.push_back("COVISE_PATH");
+      envvars.push_back("ARCHSUFFIX");
+      envvars.push_back("OSGFILEPATH");
+      envvars.push_back("OSG_FILE_PATH");
+      envvars.push_back("OSG_NOTIFY_LEVEL");
+      envvars.push_back("OSG_LIBRARY_PATH");
+      envvars.push_back("OSG_LD_LIBRARY_PATH");
+      for (auto v: envvars) {
+
+         const char *val = getenv(v.c_str());
          if (val)
             env[v] = val;
       }

@@ -108,7 +108,9 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
          std::stringstream s;
          s << "fieldname" << i;
          StringParameter *p =  addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
-         setParameterChoices(p, std::vector<std::string>({"(NONE)"}));
+         std::vector<std::string> choices;
+         choices.push_back("(NONE)");
+         setParameterChoices(p, choices);
          m_fieldOut.push_back(p);
       }
    }
@@ -121,7 +123,8 @@ ReadFOAM::~ReadFOAM()       //Destructor
 
 std::vector<std::string> ReadFOAM::fieldChoices() const {
 
-   std::vector<std::string> choices({"(NONE)"});
+   std::vector<std::string> choices;
+   choices.push_back("(NONE)");
 
    if (m_case.valid) {
       for (auto &field: m_case.constantFields)
