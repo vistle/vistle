@@ -9,6 +9,8 @@ find_package(TBB)
 set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/cmake" ${CMAKE_MODULE_PATH})
 find_package(COVISE OPTIONAL_COMPONENTS RHR)
 using(SNAPPY optional)
+find_package(ZLIB)
+find_package(JPEG)
 
 if(NOT COVISE_RHR_FOUND)
    message("Ray: COVISE RHR not found")
@@ -65,8 +67,10 @@ target_link_libraries(Ray
         ${ICET_CORE_LIBS}
         ${ICET_MPI_LIBS}
         ${LIBVNCSERVER_SERVER_LIBRARY}
+        ${JPEG_LIBRARIES}
+        ${ZLIB_LIBRARIES}
         ${COVER_RHR_LIBRARY}
         ${SNAPPY_LIBRARIES}
-        ${EMBREE_LIBRARY}
+        ${EMBREE_LIBRARIES}
         ${TBB_LIBRARIES}
 )
