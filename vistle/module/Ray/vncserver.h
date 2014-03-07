@@ -35,7 +35,8 @@ public:
    int width() const;
    int height() const;
    unsigned char *rgba() const;
-   float *depth() const;
+   float *depth();
+   const float *depth() const;
 
    void resize(int w, int h);
 
@@ -138,15 +139,14 @@ private:
    int m_depthprecision; //!< depth buffer read-back precision (bits) for integer formats
    bool m_depthfloat; //!< whether depth should be retrieved as floating point
    bool m_depthquant; //!< whether depth should be sent quantized
-   bool m_depthcopy; //!< whether depth should be copied to color for read-back
-   bool m_glextChecked; //!< whether availability of GL extensions has been already checked
    double m_lastMatrixTime; //!< time when last matrix message was sent by client
    int m_delay; //!< artificial delay (us)
 
    Screen m_screenConfig; //!< configuration for physical screen
 
    rfbScreenInfoPtr m_screen; //!< RFB protocol handler
-   float *m_depth;
+   std::vector<float> m_depth;
+   std::vector<char> m_quant;
    bool m_depthSent; //!< whether depth has already sent to clients
    int m_width, m_height; //! size of framebuffer
    int m_numRhrClients;

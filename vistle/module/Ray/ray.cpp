@@ -414,6 +414,7 @@ void TileTask::render(int tile) const {
    const int ty = tile/ntx;
    const int x0=xoff+tx*tilesize, x1=x0+tilesize;
    const int y0=yoff+ty*tilesize, y1=y0+tilesize;
+   const Vector toLowerBottom = lowerBottom - origin;
    for (int yy=y0; yy<y1; yy += packetSizeY) {
       for (int xx=x0; xx<x1; xx += packetSizeX) {
 
@@ -426,20 +427,13 @@ void TileTask::render(int tile) const {
          for (int y=yy; y<yy+packetSizeY; ++y) {
             for (int x=xx; x<xx+packetSizeX; ++x) {
 
+               const Vector rd = toLowerBottom + x*dx + y*dy;
+               ray = makeRay(origin, rd, tNear, tFar);
+
                if (x>=xlim || y>=ylim) {
-
                   validMask[idx] = RayDisabled;
-
-                  ray.mask = RayEnabled;
-                  ray.primID = RTC_INVALID_GEOMETRY_ID;
-                  ray.geomID = RTC_INVALID_GEOMETRY_ID;
-                  ray.instID = RTC_INVALID_GEOMETRY_ID;
                } else {
-
                   validMask[idx] = RayEnabled;
-
-                  const Vector rd = lowerBottom+x*dx+y*dy - origin;
-                  ray = makeRay(origin, rd, tNear, tFar);
                }
 
                if (packetSize==8) {
@@ -464,7 +458,7 @@ void TileTask::render(int tile) const {
          for (int y=yy; y<yy+packetSizeY; ++y) {
             for (int x=xx; x<xx+packetSizeX; ++x) {
 
-               if (validMask[idx] != RayDisabled) {
+               if (validMask[idx] == RayEnabled) {
                   if (packetSize==8) {
                      ray = getRay(ray8, idx);
                   } else if (packetSize==4) {

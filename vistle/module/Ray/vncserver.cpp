@@ -16,8 +16,18 @@
 #endif
 
 #include <RHR/rfbext.h>
+#include <RHR/depthquant.h>
 
 #include "vncserver.h"
+
+#include <boost/chrono.hpp>
+
+static double now() {
+    namespace chrono = boost::chrono;
+    typedef chrono::high_resolution_clock clock_type;
+    const clock_type::time_point now = clock_type::now();
+    return 1e-9*chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
+}
 
 VncServer *VncServer::plugin = NULL;
 
@@ -119,7 +129,6 @@ VncServer::~VncServer()
    rfbShutdownServer(m_screen, true);
 
    delete[] m_screen->frameBuffer;
-   delete[] m_depth;
 
    //fprintf(stderr,"VncServer::~VncServer\n");
 
@@ -138,10 +147,14 @@ unsigned char *VncServer::rgba() const {
    return (unsigned char *)m_screen->frameBuffer;
 }
 
-float *VncServer::depth() const {
+float *VncServer::depth() {
 
-   vassert(m_depth);
-   return m_depth;
+   return m_depth.data();
+}
+
+const float *VncServer::depth() const {
+
+   return m_depth.data();
 }
 
 int VncServer::width() const {
@@ -226,10 +239,7 @@ bool VncServer::init(int w, int h, unsigned short port) {
 
    m_depthprecision = 32;
    m_depthfloat = true;
-   m_depthquant = false;
-   m_depthcopy = false;
-
-   m_depth = nullptr;
+   m_depthquant = true;
 
    m_width = 0;
    m_height = 0;
@@ -288,8 +298,7 @@ void VncServer::resize(int w, int h) {
       delete[] m_screen->frameBuffer;
       m_screen->frameBuffer = new char[w*h*4];
 
-      delete[] m_depth;
-      m_depth = new float[w*h];
+      m_depth.resize(w*h);
 
       rfbNewFramebuffer(m_screen, m_screen->frameBuffer,
                      w, h, 8, 3, 4);
@@ -498,59 +507,46 @@ void VncServer::sendDepthMessage(rfbClientPtr cl) {
       }
    }
    msg.compression = rfbDepthRaw;
+   msg.size = sz;
 
    const char *zbuf = (const char *)plugin->depth();
    ClientData *cd = static_cast<ClientData *>(cl->clientData);
-   if (plugin->m_depthquant && cd->depthCompressions&rfbDepthQuantize) {
+   if (plugin->m_depthquant && (cd->depthCompressions&rfbDepthQuantize)) {
       msg.compression |= rfbDepthQuantize;
-      sz = msg.width * msg.height;
-      int edge = 1;
-      if (plugin->m_depthprecision <= 16) {
-         edge = DepthQuantize16::edge;
-         sz /= edge*edge;
-         sz *= sizeof(DepthQuantize16);
-      } else {
-         edge = DepthQuantize24::edge;
-         sz /= edge*edge;
-         sz *= sizeof(DepthQuantize24);
-      }
+      const int ds = plugin->m_depthprecision<=16 ? 2 : 3;
+      msg.format = ds==2 ? rfbDepth16Bit : rfbDepth24Bit;
+      msg.size = depthquant_size(DepthFloat, ds, msg.width, msg.height);
+      std::cerr << "required size for quant: " << msg.size << std::endl;
+      if (msg.size > plugin->m_quant.size())
+          plugin->m_quant.resize(msg.size);
+      depthquant(plugin->m_quant.data(), zbuf, DepthFloat, ds, 0, 0, msg.width, msg.height);
+      zbuf = plugin->m_quant.data();
+      sz = msg.size;
    }
-   msg.size = sz;
    double snappyduration = 0.;
 #ifdef HAVE_SNAPPY
    if((cd->depthCompressions & rfbDepthSnappy)) {
-      if (snappy::MaxCompressedLength(sz) > cd->buf.size()) {
-         cd->buf.resize(snappy::MaxCompressedLength(sz));
+      if (snappy::MaxCompressedLength(msg.size) > cd->buf.size()) {
+         cd->buf.resize(snappy::MaxCompressedLength(msg.size));
       }
-#if 0
       double snappystart = 0.;
       if (plugin->m_benchmark)
-         snappystart = cover->currentTime();
-#endif
+         snappystart = now();
       size_t compressed = 0;
-      snappy::RawCompress(zbuf, sz, &cd->buf[0], &compressed);
-#if 0
+      snappy::RawCompress(zbuf, msg.size, cd->buf.data(), &compressed);
       if (plugin->m_benchmark)
-         snappyduration = cover->currentTime() - snappystart;
-#endif
-      //std::cerr << "compressed " << sz << " to " << compressed << " (buf: " << cd->buf.size() << ")" << std::endl;
+         snappyduration = now() - snappystart;
+      //std::cerr << "compressed " << msg.size << " to " << compressed << " (buf: " << cd->buf.size() << ")" << std::endl;
       msg.compression |= rfbDepthSnappy;
       msg.size = compressed;
-      if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-         rfbLogPerror("sendDepthMessage: write");
-      }
-      if (rfbWriteExact(cl, &cd->buf[0], msg.size) < 0) {
-         rfbLogPerror("sendDepthMessage: write");
-      }
-   } else
+      zbuf = cd->buf.data();
+   }
 #endif
-   {
-      if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-         rfbLogPerror("sendDepthMessage: write");
-      }
-      if (rfbWriteExact(cl, zbuf, msg.size) < 0) {
-         rfbLogPerror("sendDepthMessage: write");
-      }
+   if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
+       rfbLogPerror("sendDepthMessage: write header");
+   }
+   if (rfbWriteExact(cl, zbuf, msg.size) < 0) {
+       rfbLogPerror("sendDepthMessage: write paylod");
    }
 
    if (plugin->m_benchmark || plugin->m_compressionrate) {
@@ -851,27 +847,6 @@ void VncServer::pointerEvent(int buttonmask, int ex, int ey, rfbClientPtr cl)
 {
    // necessary to update other clients
    rfbDefaultPtrAddEvent(buttonmask, ex, ey, cl);
-
-   static int lastmask = 0;
-#if 0
-   int x,y,w,h;
-   osgViewer::GraphicsWindow *win = coVRConfig::instance()->windows[0].window;
-   win->getWindowRectangle(x,y,w,h);
-   cover->handleMouseEvent(osgGA::GUIEventAdapter::DRAG, ex, h-1-ey);
-#endif
-   int changed = lastmask ^ buttonmask;
-   lastmask = buttonmask;
-
-#if 0
-   for(int i=0; i<3; ++i) {
-      if (changed&1) {
-         cover->handleMouseEvent((buttonmask&1) ? osgGA::GUIEventAdapter::PUSH : osgGA::GUIEventAdapter::RELEASE, lastmask, 0);
-         fprintf(stderr, "button %d %s\n", i+1, buttonmask&1 ? "push" : "release");
-      }
-      buttonmask >>= 1;
-      changed >>= 1;
-   }
-#endif
 }
 
 
@@ -899,10 +874,6 @@ VncServer::preFrame()
       }
    }
    rfbReleaseClientIterator(i);
-#if 0
-   while (rfbProcessEvents(m_screen, 0))
-      ;
-#endif
 }
 
 template<typename T>
@@ -1010,20 +981,16 @@ void depthcompare_t(const T *ref, const T *check, unsigned w, unsigned h) {
          totalerror/nonblack,
          totalerror/nonblack*100./(double)Max
          );
-#if 0
    fprintf(stderr, "BITS: totalvalid=%lu, min=%d, max=%d, mean=%f\n",
          totalvalidbits, minvalidbits, maxvalidbits, (double)totalvalidbits/(double)nonblack);
-#endif
 
    fprintf(stderr, "PSNR (2x%d+16x%d): %f dB (non-black: %f)\n",
          Quant::precision, Quant::bits_per_pixel,
          PSNR, PSNR_nonblack);
 
-#if 0
    fprintf(stderr, "RANGE: ref %lu - %lu, act %lu - %lu\n",
          (unsigned long)refminval, (unsigned long)refmaxval,
          (unsigned long)minval, (unsigned long)maxval);
-#endif
 }
 
 static void depthcompare(const char *ref, const char *check, int precision, unsigned w, unsigned h) {
@@ -1039,58 +1006,35 @@ static void depthcompare(const char *ref, const char *check, int precision, unsi
 void
 VncServer::postFrame()
 {
-   double start = 0.;
-#if 0
-   if(m_benchmark)
-      start = cover->currentTime();
-#endif
    double bpp = 4.;
    int depthps = 4;
 
    double pix = m_width*m_height;
-   double bytes = pix * bpp;
    if(m_benchmark || m_errormetric || m_compressionrate) {
-#if 0
-      double colordur = colorfinish - start;
-      if (m_benchmark) {
-         fprintf(stderr, "COLOR %fs: %f mpix/s, %f gb/s (cuda=%d)\n",
-               colordur,
-               pix/colordur/1e6, bytes/colordur/(1024*1024*1024),
-               m_cudaColor!=NULL);
-      }
-#endif
-
       if (m_numRhrClients > 0) {
-#if 0
-         double depthdur = cover->currentTime() - colorfinish;
-#endif
-
-         const size_t sz = m_width*m_height*depthps;
-         std::vector<char> depth(sz);
 
 #ifdef HAVE_SNAPPY
+         const size_t sz = m_width*m_height*depthps;
          size_t maxsz = snappy::MaxCompressedLength(sz);
          std::vector<char> compressed(maxsz);
 
-#if 0
-         double snappystart = cover->currentTime();
-#endif
+         double snappystart = now();
          size_t compressedsz = 0;
-         snappy::RawCompress(&depth[0], sz, &compressed[0], &compressedsz);
-#if 0
-         double snappydur = cover->currentTime() - snappystart;
+         snappy::RawCompress((const char *)depth(), sz, &compressed[0], &compressedsz);
+         double snappydur = now() - snappystart;
          if (m_compressionrate) {
             fprintf(stderr, "snappy solo: %ld -> %ld, %f s, %f gb/s\n", sz, compressedsz, snappydur,
                   sz/snappydur/1024/1024/1024);
          }
 #endif
-#endif
 
+#if 0
          if (m_errormetric && m_depthquant) {
             std::vector<char> dequant(m_width*m_height*depthps);
             depthdequant(&dequant[0], m_screen->frameBuffer+4*m_width*m_height, depthps, m_width, m_height);
-            depthcompare(&depth[0], &dequant[0], m_depthprecision, m_width, m_height);
+            depthcompare(depth(), &dequant[0], m_depthprecision, m_width, m_height);
          }
+#endif
 
          double bytesraw = pix * depthps;
          double bytesread = pix;
@@ -1104,7 +1048,7 @@ VncServer::postFrame()
                   pix/depthdur/1e6,
                   bytesraw/depthdur/(1024*1024*1024),
                   bytesread/depthdur/(1024*1024*1024),
-                  m_cudaDepth!=NULL, depthps, structsz);
+                  0, depthps, structsz);
          }
 #endif
       }
