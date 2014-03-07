@@ -69,7 +69,7 @@ target_link_libraries(Ray
         ${LIBVNCSERVER_SERVER_LIBRARY}
         ${JPEG_LIBRARIES}
         ${ZLIB_LIBRARIES}
-        ${COVER_RHR_LIBRARY}
+        ${COVISE_RHR_LIBRARIES}
         ${SNAPPY_LIBRARIES}
         ${EMBREE_LIBRARIES}
         ${TBB_LIBRARIES}
