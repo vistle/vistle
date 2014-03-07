@@ -10,6 +10,14 @@ namespace vistle {
 
 namespace chrono = boost::chrono;
 
+class V_UTILEXPORT Clock {
+
+ public:
+   typedef chrono::high_resolution_clock clock_type;
+
+   static double time();
+};
+
 class V_UTILEXPORT StopWatch {
 
  public:
