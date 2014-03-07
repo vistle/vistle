@@ -1,6 +1,6 @@
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "$ENV{EXTERNLIBS}/OpenSceneGraph")
 
-find_package(OpenSceneGraph 2.8.0 COMPONENTS osgViewer osgGA osgDB)
+find_package(OpenSceneGraph 2.8.0 COMPONENTS osgViewer osgGA osgDB osgUtil osgText)
 find_package(OpenGL)
 
 #find_package(IceT REQUIRED)
