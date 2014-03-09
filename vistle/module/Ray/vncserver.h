@@ -45,6 +45,10 @@ public:
    void postFrame();
    void invalidate(int x, int y, int w, int h);
 
+   void enableQuantization(bool value);
+   void enableSnappy(bool value);
+   void setDepthPrecision(int bits);
+
    int timestep() const;
    void setNumTimesteps(int num);
 
@@ -139,6 +143,7 @@ private:
    int m_depthprecision; //!< depth buffer read-back precision (bits) for integer formats
    bool m_depthfloat; //!< whether depth should be retrieved as floating point
    bool m_depthquant; //!< whether depth should be sent quantized
+   bool m_depthsnappy; //!< whether depth should be entropy-encoded with SNAPPY
    double m_lastMatrixTime; //!< time when last matrix message was sent by client
    int m_delay; //!< artificial delay (us)
 

@@ -135,6 +135,21 @@ VncServer::~VncServer()
    plugin = nullptr;
 }
 
+void VncServer::enableQuantization(bool value) {
+
+    m_depthquant = value;
+}
+
+void VncServer::enableSnappy(bool value) {
+
+    m_depthsnappy = value;
+}
+
+void VncServer::setDepthPrecision(int bits) {
+
+    m_depthprecision = bits;
+}
+
 unsigned short VncServer::port() const {
 
    return m_screen->port;
@@ -240,6 +255,7 @@ bool VncServer::init(int w, int h, unsigned short port) {
    m_depthprecision = 32;
    m_depthfloat = true;
    m_depthquant = true;
+   m_depthsnappy = true;
 
    m_width = 0;
    m_height = 0;
@@ -525,7 +541,7 @@ void VncServer::sendDepthMessage(rfbClientPtr cl) {
    }
    double snappyduration = 0.;
 #ifdef HAVE_SNAPPY
-   if((cd->depthCompressions & rfbDepthSnappy)) {
+   if(plugin->m_depthsnappy && (cd->depthCompressions & rfbDepthSnappy)) {
       if (snappy::MaxCompressedLength(msg.size) > cd->buf.size()) {
          cd->buf.resize(snappy::MaxCompressedLength(msg.size));
       }
