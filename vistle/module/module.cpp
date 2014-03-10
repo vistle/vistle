@@ -187,7 +187,7 @@ Module::Module(const std::string &n, const std::string &shmname,
 
    addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
 
-   Parameter *em = addIntParameter("_error_output_mode", "where stderr is shown", 0, Parameter::Choice);
+   Parameter *em = addIntParameter("_error_output_mode", "where stderr is shown", size()==1 ? 3 : 0, Parameter::Choice);
    std::vector<std::string> errmodes;
    errmodes.push_back("No output");
    errmodes.push_back("Console only");
