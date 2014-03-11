@@ -510,7 +510,7 @@ void VncServer::sendDepthMessage(rfbClientPtr cl) {
    msg.x = 0;
    msg.y = 0;
    size_t sz = msg.width * msg.height;
-   if (plugin->m_depthfloat) {
+   if (plugin->m_depthfloat && !plugin->m_depthquant) {
       msg.format = rfbDepthFloat;
       sz *= 4;
    } else {
@@ -532,7 +532,7 @@ void VncServer::sendDepthMessage(rfbClientPtr cl) {
       const int ds = plugin->m_depthprecision<=16 ? 2 : 3;
       msg.format = ds==2 ? rfbDepth16Bit : rfbDepth24Bit;
       msg.size = depthquant_size(DepthFloat, ds, msg.width, msg.height);
-      std::cerr << "required size for quant: " << msg.size << std::endl;
+      //std::cerr << "required size for quant: " << msg.size << std::endl;
       if (msg.size > plugin->m_quant.size())
           plugin->m_quant.resize(msg.size);
       depthquant(plugin->m_quant.data(), zbuf, DepthFloat, ds, 0, 0, msg.width, msg.height);
@@ -604,15 +604,7 @@ rfbBool VncServer::handleDepthMessage(rfbClientPtr cl, void *data,
       return TRUE;
    }
    cd->depthCompressions = msg.compression;
-   size_t sz = msg.width*msg.height;
-   switch (msg.format) {
-      case rfbDepth8Bit: break;
-      case rfbDepth16Bit: sz *= 2; break;
-      case rfbDepth24Bit: sz *= 4; break;
-      case rfbDepth32Bit: sz *= 4; break;
-      case rfbDepthFloat: sz *= 4; break;
-   }
-   std::vector<char> buf(sz);
+   std::vector<char> buf(msg.size);
    n = rfbReadExact(cl, &buf[0], msg.size);
    if (n <= 0) {
       if (n!= 0)
