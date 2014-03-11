@@ -134,5 +134,5 @@ RenderObject::RenderObject(Object::const_ptr container,
 RenderObject::~RenderObject() {
 
    rtcDeleteScene(scene);
-   delete indexBuffer;
+   delete[] indexBuffer;
 }

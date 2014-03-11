@@ -22,6 +22,9 @@
 
 #include <boost/chrono.hpp>
 
+#include <tbb/parallel_for.h>
+#include <tbb/concurrent_queue.h>
+
 static double now() {
     namespace chrono = boost::chrono;
     typedef chrono::high_resolution_clock clock_type;
@@ -35,15 +38,16 @@ VncServer *VncServer::plugin = NULL;
 struct ClientData {
    ClientData()
       : supportsBounds(false)
-      , supportsDepth(false)
-      , depthCompressions(0)
+      , supportsTile(false)
+      , tileCompressions(0)
       , supportsApplication(false)
       , supportsLights(false)
    {
    }
    bool supportsBounds;
-   bool supportsDepth;
    uint8_t depthCompressions;
+   bool supportsTile;
+   uint8_t tileCompressions;
    std::vector<char> buf;
    bool supportsApplication;
    bool supportsLights;
@@ -85,12 +89,12 @@ static rfbProtocolExtension boundsExt = {
    NULL, // next extension
 };
 
-static rfbProtocolExtension depthExt = {
+static rfbProtocolExtension tileExt = {
    NULL, // newClient
    NULL, // init
-   depthEncodings, // pseudoEncodings
-   VncServer::enableDepth, // enablePseudoEncoding
-   VncServer::handleDepthMessage, // handleMessage
+   tileEncodings, // pseudoEncodings
+   VncServer::enableTile, // enablePseudoEncoding
+   VncServer::handleTileMessage, // handleMessage
    NULL, // close
    NULL, // usage
    NULL, // processArgument
@@ -137,17 +141,18 @@ VncServer::~VncServer()
 
 void VncServer::enableQuantization(bool value) {
 
-    m_depthquant = value;
+   m_param.depthQuant = value;
 }
 
 void VncServer::enableSnappy(bool value) {
 
-    m_depthsnappy = value;
+    m_param.depthSnappy = value;
+    m_param.rgbaSnappy = value;
 }
 
 void VncServer::setDepthPrecision(int bits) {
 
-    m_depthprecision = bits;
+    m_param.depthPrecision = bits;
 }
 
 unsigned short VncServer::port() const {
@@ -174,37 +179,37 @@ const float *VncServer::depth() const {
 
 int VncServer::width() const {
 
-   return m_width;
+   return m_param.width;
 }
 
 int VncServer::height() const {
 
-   return m_height;
+   return m_param.height;
 }
 
 const vistle::Matrix4 &VncServer::viewMat() const {
 
-   return m_viewMat;
+   return m_param.view;
 }
 
 const vistle::Matrix4 &VncServer::projMat() const {
 
-   return m_projMat;
+   return m_param.proj;
 }
 
 const vistle::Matrix4 &VncServer::scaleMat() const {
 
-   return m_scaleMat;
+   return m_param.scale;
 }
 
 const vistle::Matrix4 &VncServer::transformMat() const {
 
-   return m_transformMat;
+   return m_param.transform;
 }
 
 const vistle::Matrix4 &VncServer::viewerMat() const {
 
-   return m_viewerMat;
+   return m_param.viewer;
 }
 
 void VncServer::setBoundingSphere(const vistle::Vector3 &center, const vistle::Scalar &radius) {
@@ -221,44 +226,35 @@ const VncServer::Screen &VncServer::screen() const {
 //! called after plug-in is loaded and scenegraph is initialized
 bool VncServer::init(int w, int h, unsigned short port) {
 
+   m_numTimesteps = 0;
+
+   m_numClients = 0;
    m_numRhrClients = 0;
    m_boundCenter = vistle::Vector3(0., 0., 0.);
    m_boundRadius = 1.;
-   m_depthSent = false;
-
-   m_viewMat = vistle::Matrix4::Identity();
-   m_projMat = vistle::Matrix4::Identity();
-   m_transformMat = vistle::Matrix4::Identity();
-   m_scaleMat = vistle::Matrix4::Identity();
-   m_viewerMat = vistle::Matrix4::Identity();
-
-   double zNear = 1.;
-   m_projMat <<  zNear,0,0,0,
-   0,zNear,0,0,
-   0,0,-11./9.,-20./9.,
-   0,0,-1,0;
 
    rfbRegisterProtocolExtension(&matricesExt);
    rfbRegisterProtocolExtension(&lightsExt);
    rfbRegisterProtocolExtension(&boundsExt);
-   rfbRegisterProtocolExtension(&depthExt);
+   rfbRegisterProtocolExtension(&tileExt);
    rfbRegisterProtocolExtension(&applicationExt);
 
    m_delay = 0;
-   m_lastMatrixTime = 0.;
    std::string config("COVER.Plugin.VncServer");
 
    m_benchmark = false;
    m_errormetric = false;
    m_compressionrate = false;
 
-   m_depthprecision = 32;
-   m_depthfloat = true;
-   m_depthquant = true;
-   m_depthsnappy = true;
+   m_param.depthPrecision = 32;
+   m_param.depthQuant = true;
+   m_param.depthSnappy = true;
+   m_param.rgbaSnappy = true;
+   m_param.depthFloat = true;
 
-   m_width = 0;
-   m_height = 0;
+   m_resizeBlocked = false;
+   m_resizeDeferred = false;
+   m_newWidth = m_newHeight = 0;
 
    int argc = 1;
    char *argv[] = { (char *)"DisCOVERay", NULL };
@@ -272,6 +268,7 @@ bool VncServer::init(int w, int h, unsigned short port) {
 
    m_screen->kbdAddEvent = &keyEvent;
    m_screen->ptrAddEvent = &pointerEvent;
+   m_screen->newClientHook = &newClientHook;
 
    m_screen->deferUpdateTime = 0;
    m_screen->maxRectsPerUpdate = 10000000;
@@ -307,9 +304,25 @@ bool VncServer::init(int w, int h, unsigned short port) {
 
 void VncServer::resize(int w, int h) {
 
-   if (m_width != w || m_height != h) {
-      m_width = w;
-      m_height = h;
+   if (m_resizeBlocked) {
+       m_resizeDeferred = true;
+       m_newWidth = w;
+       m_newHeight = h;
+       return;
+   }
+
+   if (w==-1 && h==-1) {
+       if (!m_resizeDeferred)
+           return;
+
+       m_resizeDeferred = false;
+       w = m_newWidth;
+       h = m_newHeight;
+   }
+
+   if (m_param.width != w || m_param.height != h) {
+      m_param.width = w;
+      m_param.height = h;
 
       delete[] m_screen->frameBuffer;
       m_screen->frameBuffer = new char[w*h*4];
@@ -322,13 +335,25 @@ void VncServer::resize(int w, int h) {
    }
 }
 
+//! count connected clients
+enum rfbNewClientAction VncServer::newClientHook(rfbClientPtr cl) {
+
+   ++plugin->m_numClients;
+   cl->clientGoneHook = clientGoneHook;
+
+   return RFB_CLIENT_ACCEPT;
+}
+
 
 //! clean up per-client data when client disconnects
 void VncServer::clientGoneHook(rfbClientPtr cl) {
+
+   --plugin->m_numClients;
+
    ClientData *cd = static_cast<ClientData *>(cl->clientData);
-   if (cd->supportsDepth) {
-      std::cerr << "VncServer: RHR client gone" << std::endl;
+   if (cd->supportsTile) {
       --plugin->m_numRhrClients;
+      std::cerr << "VncServer: RHR client gone (#RHR: " << plugin->m_numClients << ", #total: " << plugin->m_numClients << ")" << std::endl;
    }
    delete cd;
 }
@@ -365,14 +390,14 @@ rfbBool VncServer::handleMatricesMessage(rfbClientPtr cl, void *data,
       return TRUE;
    }
 
-   plugin->m_lastMatrixTime = msg.time;
+   plugin->m_param.matrixTime = msg.time;
 
    for (int i=0; i<16; ++i) {
-      plugin->m_scaleMat.data()[i] = msg.scale[i];
-      plugin->m_transformMat.data()[i] = msg.transform[i];
-      plugin->m_viewerMat.data()[i] = msg.viewer[i];
-      plugin->m_viewMat.data()[i] = msg.view[i];
-      plugin->m_projMat.data()[i] = msg.proj[i];
+      plugin->m_param.scale.data()[i] = msg.scale[i];
+      plugin->m_param.transform.data()[i] = msg.transform[i];
+      plugin->m_param.viewer.data()[i] = msg.viewer[i];
+      plugin->m_param.view.data()[i] = msg.view[i];
+      plugin->m_param.proj.data()[i] = msg.proj[i];
    }
 
    return TRUE;
@@ -411,7 +436,6 @@ rfbBool VncServer::handleLightsMessage(rfbClientPtr cl, void *data,
 
    if (!cl->clientData) {
       cl->clientData = new ClientData();
-      cl->clientGoneHook = clientGoneHook;
    }
    ClientData *cd = static_cast<ClientData *>(cl->clientData);
    cd->supportsLights = true;
@@ -450,175 +474,64 @@ rfbBool VncServer::handleLightsMessage(rfbClientPtr cl, void *data,
    return TRUE;
 }
 
-//! enable sending of depth buffer
-rfbBool VncServer::enableDepth(rfbClientPtr cl, void **data, int encoding) {
+//! enable sending of image tiles
+rfbBool VncServer::enableTile(rfbClientPtr cl, void **data, int encoding) {
 
-   if (encoding != rfbDepth)
+   if (encoding != rfbTile)
       return FALSE;
 
-   depthMsg msg;
-   msg.type = rfbDepth;
-   msg.x = 0;
-   msg.y = 0;
-   msg.width = 0;
-   msg.height = 0;
-   msg.size = 0;
+   tileMsg msg;
    if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-         rfbLogPerror("enableDepth: write");
+         rfbLogPerror("enableTile: write");
    }
 
    return TRUE;
 }
 
-//! send depth buffer to a client
-void VncServer::sendDepthMessage(rfbClientPtr cl) {
-
-   if (!plugin->m_screen->frameBuffer)
-      return;
-
-   depthMsg msg;
-   msg.type = rfbDepth;
-   msg.requesttime = plugin->m_lastMatrixTime;
-#if 0
-#if 0
-   const osg::Matrix &v = cover->getViewerMat();
-   const osg::Matrix &t = cover->getXformMat();
-   const osg::Matrix &s = cover->getObjectsScale()->getMatrix();
-   for (int i=0; i<16; ++i) {
-      //TODO: swap to big-endian
-      msg.requestview[i] = v(i%4, i/4);
-      msg.requesttransform[i] = t(i%4, i/4);
-      msg.requestscale[i] = s(i%4, i/4);
-   }
-#else
-   const osg::Matrix &view = coVRConfig::instance()->screens[0].rightView;
-   const osg::Matrix &proj = coVRConfig::instance()->screens[0].rightProj;
-   const osg::Matrix &t = cover->getXformMat();
-   const osg::Matrix &s = cover->getObjectsScale()->getMatrix();
-   for (int i=0; i<16; ++i) {
-      //TODO: swap to big-endian
-      msg.view[i] = view(i%4, i/4);
-      msg.proj[i] = proj(i%4, i/4);
-      msg.transform[i] = t(i%4, i/4);
-      msg.scale[i] = s(i%4, i/4);
-   }
-#endif
-#endif
-   msg.sendreply = 0;
-   msg.width = plugin->m_width;
-   msg.height = plugin->m_height;
-   msg.x = 0;
-   msg.y = 0;
-   size_t sz = msg.width * msg.height;
-   if (plugin->m_depthfloat && !plugin->m_depthquant) {
-      msg.format = rfbDepthFloat;
-      sz *= 4;
-   } else {
-      sz *= plugin->m_depthprecision==24 ? 4 : plugin->m_depthprecision/8;
-      switch (plugin->m_depthprecision) {
-         case 8: msg.format = rfbDepth8Bit; break;
-         case 16: msg.format = rfbDepth16Bit; break;
-         case 24: msg.format = rfbDepth24Bit; break;
-         case 32: msg.format = rfbDepth32Bit; break;
-      }
-   }
-   msg.compression = rfbDepthRaw;
-   msg.size = sz;
-
-   const char *zbuf = (const char *)plugin->depth();
-   ClientData *cd = static_cast<ClientData *>(cl->clientData);
-   if (plugin->m_depthquant && (cd->depthCompressions&rfbDepthQuantize)) {
-      msg.compression |= rfbDepthQuantize;
-      const int ds = plugin->m_depthprecision<=16 ? 2 : 3;
-      msg.format = ds==2 ? rfbDepth16Bit : rfbDepth24Bit;
-      msg.size = depthquant_size(DepthFloat, ds, msg.width, msg.height);
-      //std::cerr << "required size for quant: " << msg.size << std::endl;
-      if (msg.size > plugin->m_quant.size())
-          plugin->m_quant.resize(msg.size);
-      depthquant(plugin->m_quant.data(), zbuf, DepthFloat, ds, 0, 0, msg.width, msg.height);
-      zbuf = plugin->m_quant.data();
-      sz = msg.size;
-   }
-   double snappyduration = 0.;
-#ifdef HAVE_SNAPPY
-   if(plugin->m_depthsnappy && (cd->depthCompressions & rfbDepthSnappy)) {
-      if (snappy::MaxCompressedLength(msg.size) > cd->buf.size()) {
-         cd->buf.resize(snappy::MaxCompressedLength(msg.size));
-      }
-      double snappystart = 0.;
-      if (plugin->m_benchmark)
-         snappystart = now();
-      size_t compressed = 0;
-      snappy::RawCompress(zbuf, msg.size, cd->buf.data(), &compressed);
-      if (plugin->m_benchmark)
-         snappyduration = now() - snappystart;
-      //std::cerr << "compressed " << msg.size << " to " << compressed << " (buf: " << cd->buf.size() << ")" << std::endl;
-      msg.compression |= rfbDepthSnappy;
-      msg.size = compressed;
-      zbuf = cd->buf.data();
-   }
-#endif
-   if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-       rfbLogPerror("sendDepthMessage: write header");
-   }
-   if (rfbWriteExact(cl, zbuf, msg.size) < 0) {
-       rfbLogPerror("sendDepthMessage: write paylod");
-   }
-
-   if (plugin->m_benchmark || plugin->m_compressionrate) {
-      fprintf(stderr, "Depth: raw=%ld, quant=%ld, snappy=%ld, %f s, %f gb/s\n",
-            (long)msg.width*msg.height*plugin->m_depthprecision/8,
-            (long)sz,
-            (long)msg.size,
-            snappyduration,
-            snappyduration > 0. ? sz/snappyduration/1024/1024/1024 : 0.);
-   }
-
-   plugin->m_depthSent = true;
-}
-
-//! handle depth request by client
-rfbBool VncServer::handleDepthMessage(rfbClientPtr cl, void *data,
+//! handle image tile request by client
+rfbBool VncServer::handleTileMessage(rfbClientPtr cl, void *data,
       const rfbClientToServerMsg *message) {
 
-   if (message->type != rfbDepth)
+   if (message->type != rfbTile)
       return FALSE;
 
    if (!cl->clientData) {
       cl->clientData = new ClientData();
-      cl->clientGoneHook = clientGoneHook;
    }
    ClientData *cd = static_cast<ClientData *>(cl->clientData);
-   if (!cd->supportsDepth) {
-      std::cerr << "VncServer: RHR client connected" << std::endl;
+   if (!cd->supportsTile) {
       ++plugin->m_numRhrClients;
+      std::cerr << "VncServer: RHR client connected (#RHR: " << plugin->m_numClients << ", #total: " << plugin->m_numClients << ")" << std::endl;
    }
-   cd->supportsDepth = true;
+   cd->supportsTile = true;
 
-   depthMsg msg;
+   tileMsg msg;
    int n = rfbReadExact(cl, ((char *)&msg)+1, sizeof(msg)-1);
    if (n <= 0) {
       if (n!= 0)
-         rfbLogPerror("handleDepthMessage: read");
+         rfbLogPerror("handleTileMessage: read");
       rfbCloseClient(cl);
       return TRUE;
    }
-   cd->depthCompressions = msg.compression;
+   cd->tileCompressions = msg.compression;
    std::vector<char> buf(msg.size);
    n = rfbReadExact(cl, &buf[0], msg.size);
    if (n <= 0) {
       if (n!= 0)
-         rfbLogPerror("handleDepthMessage: read data");
+         rfbLogPerror("handleTileMessage: read data");
       rfbCloseClient(cl);
       return TRUE;
    }
 
-   if (msg.sendreply) {
-      sendDepthMessage(cl);
+   if (msg.flags & rfbTileRequest) {
+       std::cerr << "VncServer: tile request ignored" << std::endl;
+      // FIXME
+      //sendDepthMessage(cl);
    }
 
    return TRUE;
 }
+
 
 //! enable generic application messages
 rfbBool VncServer::enableApplication(rfbClientPtr cl, void **data, int encoding) {
@@ -678,10 +591,9 @@ rfbBool VncServer::handleApplicationMessage(rfbClientPtr cl, void *data,
 
    if (!cl->clientData) {
       cl->clientData = new ClientData();
-      cl->clientGoneHook = clientGoneHook;
 
       appAnimationTimestep app;
-      app.current = plugin->m_timestep;
+      app.current = plugin->m_param.timestep;
       app.total = plugin->m_numTimesteps;
       sendApplicationMessage(cl, rfbAnimationTimestep, sizeof(app), (char *)&app);
    }
@@ -727,7 +639,7 @@ rfbBool VncServer::handleApplicationMessage(rfbClientPtr cl, void *data,
       case rfbAnimationTimestep: {
          appAnimationTimestep app;
          memcpy(&app, &buf[0], sizeof(app));
-         plugin->m_timestep = app.current;
+         plugin->m_param.timestep = app.current;
       }
       break;
    }
@@ -737,7 +649,7 @@ rfbBool VncServer::handleApplicationMessage(rfbClientPtr cl, void *data,
 
 int VncServer::timestep() const {
 
-   return m_timestep;
+   return m_param.timestep;
 }
 
 void VncServer::setNumTimesteps(int num) {
@@ -745,7 +657,7 @@ void VncServer::setNumTimesteps(int num) {
    if (num != m_numTimesteps) {
       m_numTimesteps = num;
       appAnimationTimestep app;
-      app.current = m_timestep;
+      app.current = m_param.timestep;
       app.total = num;
       broadcastApplicationMessage(rfbAnimationTimestep, sizeof(app), (char *)&app);
    }
@@ -798,7 +710,6 @@ rfbBool VncServer::handleBoundsMessage(rfbClientPtr cl, void *data,
 
    if (!cl->clientData) {
       cl->clientData = new ClientData();
-      cl->clientGoneHook = clientGoneHook;
    }
    ClientData *cd = static_cast<ClientData *>(cl->clientData);
    cd->supportsBounds = true;
@@ -874,11 +785,6 @@ VncServer::preFrame()
    rfbClientIteratorPtr i = rfbGetClientIterator(m_screen);
    while (rfbClientPtr cl = rfbClientIteratorNext(i)) {
       if (rfbUpdateClient(cl)) {
-         struct ClientData *cd = static_cast<ClientData *>(cl->clientData);
-         //std::cerr << "it: " << c++ << ", depth: " << (cd && cd->supportsDepth) << std::endl;
-         if (!m_depthSent && cd && cd->supportsDepth) {
-            sendDepthMessage(cl);
-         }
       }
    }
    rfbReleaseClientIterator(i);
@@ -1014,15 +920,16 @@ static void depthcompare(const char *ref, const char *check, int precision, unsi
 void
 VncServer::postFrame()
 {
+#if 0
    double bpp = 4.;
    int depthps = 4;
 
-   double pix = m_width*m_height;
+   double pix = m_param.width*m_param.height;
    if(m_benchmark || m_errormetric || m_compressionrate) {
       if (m_numRhrClients > 0) {
 
 #ifdef HAVE_SNAPPY
-         const size_t sz = m_width*m_height*depthps;
+         const size_t sz = m_param.width*m_param.height*depthps;
          size_t maxsz = snappy::MaxCompressedLength(sz);
          std::vector<char> compressed(maxsz);
 
@@ -1059,12 +966,267 @@ VncServer::postFrame()
                   0, depthps, structsz);
          }
 #endif
+
       }
    }
+#endif
 }
 
 void VncServer::invalidate(int x, int y, int w, int h) {
 
-   rfbMarkRectAsModified(m_screen, x, y, w, h);
-   m_depthSent = false;
+    if (m_numClients - m_numRhrClients > 0) {
+        rfbMarkRectAsModified(m_screen, x, y, w, h);
+    }
+
+    if (m_numRhrClients > 0) {
+        encodeAndSend(x, y, w, h);
+    }
+}
+
+struct EncodeResult {
+
+    EncodeResult(tileMsg *msg=nullptr)
+        : message(msg)
+        , payload(nullptr)
+        {}
+
+    tileMsg *message;
+    const char *payload;
+};
+
+struct EncodeTask: public tbb::task {
+
+    tbb::concurrent_queue<EncodeResult> &resultQueue;
+    int x, y, w, h, stride;
+    int bpp;
+    float *depth;
+    unsigned char *rgba;
+    tileMsg *message;
+
+    EncodeTask(tbb::concurrent_queue<EncodeResult> &resultQueue, int x, int y, int w, int h,
+          float *depth, const VncServer::ImageParameters &param)
+    : resultQueue(resultQueue)
+    , x(x)
+    , y(y)
+    , w(w)
+    , h(h)
+    , stride(param.width)
+    , bpp(4)
+    , depth(depth)
+    , rgba(nullptr)
+    , message(nullptr)
+    {
+        assert(depth);
+        initMsg(param, x, y, w, h);
+
+        message->size = message->width * message->height;
+        if (param.depthFloat) {
+            message->format = rfbDepthFloat;
+            bpp = 4;
+        } else {
+            switch(param.depthPrecision) {
+                case 8:
+                    message->format = rfbDepth8Bit;
+                    bpp = 1;
+                    break;
+                case 16:
+                    message->format = rfbDepth16Bit;
+                    bpp = 2;
+                    break;
+                case 24:
+                    message->format = rfbDepth24Bit;
+                    bpp = 4;
+                    break;
+                case 32:
+                    message->format = rfbDepth32Bit;
+                    bpp = 4;
+                    break;
+            }
+        }
+
+        message->size = bpp * message->width * message->height;
+
+        if (param.depthQuant) {
+            message->format = param.depthPrecision<=16 ? rfbDepth16Bit : rfbDepth24Bit;
+            message->compression |= rfbTileDepthQuantize;
+        }
+        if (param.depthSnappy) {
+            message->compression |= rfbTileSnappy;
+        }
+    }
+
+    EncodeTask(tbb::concurrent_queue<EncodeResult> &resultQueue, int x, int y, int w, int h,
+          unsigned char *rgba, const VncServer::ImageParameters &param)
+    : resultQueue(resultQueue)
+    , x(x)
+    , y(y)
+    , w(w)
+    , h(h)
+    , stride(param.width)
+    , bpp(4)
+    , depth(nullptr)
+    , rgba(rgba)
+    , message(nullptr)
+    {
+       assert(rgba);
+       initMsg(param, x, y, w, h);
+       message->size = message->width * message->height * bpp;
+       message->format = rfbColorRGBA;
+
+        if (param.rgbaSnappy) {
+            message->compression |= rfbTileSnappy;
+        }
+    }
+
+    void initMsg(const VncServer::ImageParameters &param, int x, int y, int w, int h) {
+
+        assert(x+w <= param.width);
+        assert(y+h <= param.height);
+        assert(stride == param.width);
+
+        assert(message == nullptr);
+
+        message = new tileMsg;
+        message->width = w;
+        message->height = h;
+        message->x = x;
+        message->y = y;
+        message->totalwidth = param.width;
+        message->totalheight = param.height;
+        message->size = 0;
+        message->compression = rfbTileRaw;
+
+        message->framenumber = param.frameNumber;
+        message->requesttime = param.matrixTime;
+        for (int i=0; i<16; ++i) {
+            message->scale[i] = param.scale.data()[i];
+            message->transform[i] = param.transform.data()[i];
+            message->view[i] = param.view.data()[i];
+            message->proj[i] = param.proj.data()[i];
+        }
+    }
+
+    tbb::task* execute() {
+
+        auto &msg = *message;
+        EncodeResult result(message);
+        if (depth) {
+            const char *zbuf = reinterpret_cast<const char *>(depth);
+            if (msg.compression & rfbTileDepthQuantize) {
+                const int ds = msg.format == rfbDepth16Bit ? 2 : 3;
+                msg.size = depthquant_size(DepthFloat, ds, w, h);
+                char *qbuf = new char[msg.size];
+                depthquant(qbuf, zbuf, DepthFloat, ds, x, y, w, h, stride);
+                result.payload = qbuf;
+            } else {
+                char *tilebuf = new char[msg.size];
+                for (int yy=0; yy<h; ++yy) {
+                    memcpy(tilebuf+yy*bpp*w, zbuf+((yy+y)*stride+x)*bpp, w*bpp);
+                }
+                result.payload = tilebuf;
+            }
+        } else if (rgba) {
+            if (msg.compression & rfbTileJpeg) {
+                msg.compression &= ~rfbTileJpeg;
+            }
+            if (msg.compression & rfbTileJpeg) {
+            } else {
+                char *tilebuf = new char[msg.size];
+                for (int yy=0; yy<h; ++yy) {
+                    memcpy(tilebuf+yy*bpp*w, rgba+((yy+y)*stride+x)*bpp, w*bpp);
+                }
+                result.payload = tilebuf;
+            }
+        }
+#ifdef HAVE_SNAPPY
+        if((msg.compression & rfbTileSnappy) && !(msg.compression & rfbTileJpeg)) {
+            size_t maxsize = snappy::MaxCompressedLength(msg.size);
+            char *sbuf = new char[maxsize];
+            size_t compressed = 0;
+            snappy::RawCompress(result.payload, msg.size, sbuf, &compressed);
+            msg.size = compressed;
+
+            //std::cerr << "compressed " << msg.size << " to " << compressed << " (buf: " << cd->buf.size() << ")" << std::endl;
+            delete[] result.payload;
+            result.payload = sbuf;
+        } else {
+            msg.compression &= ~rfbTileSnappy;
+        }
+#endif
+        resultQueue.push(result);
+        return nullptr; // or a pointer to a new task to be executed immediately
+    }
+};
+
+void VncServer::encodeAndSend(int x0, int y0, int w, int h) {
+
+    const int tileWidth = 128, tileHeight = 128;
+    tbb::concurrent_queue<EncodeResult> resultQueue;
+
+    size_t queued = 0;
+    for (int y=y0; y<y0+h; y+=tileHeight) {
+        for (int x=x0; x<x0+w; x+=tileWidth) {
+
+            auto dt = new(tbb::task::allocate_root()) EncodeTask(resultQueue,
+                    x, y,
+                    std::min(tileWidth, x0+w-x),
+                    std::min(tileHeight, y0+h-y),
+                    depth(), m_param);
+            tbb::task::enqueue(*dt);
+            ++queued;
+
+#if 1
+            auto ct = new(tbb::task::allocate_root()) EncodeTask(resultQueue,
+                    x, y,
+                    std::min(tileWidth, x0+w-x),
+                    std::min(tileHeight, y0+h-y),
+                    rgba(), m_param);
+            tbb::task::enqueue(*ct);
+            ++queued;
+#endif
+        }
+    }
+
+    m_resizeBlocked = true;
+    bool first = true;
+    do {
+        EncodeResult result;
+        if (resultQueue.try_pop(result)) {
+            if (result.message) {
+                tileMsg &msg = *result.message;
+                if (first)
+                    msg.flags |= rfbTileFirst;
+                first = false;
+                --queued;
+                if (queued == 0) {
+                    msg.flags |= rfbTileLast;
+                    //std::cerr << "last tile: x=" << msg.x << ", y=" << msg.y << ", rgba: " << (msg.format==rfbColorRGBA) << std::endl;
+                }
+
+                rfbCheckFds(m_screen, 0);
+                rfbHttpCheckFds(m_screen);
+                rfbClientIteratorPtr i = rfbGetClientIterator(m_screen);
+                while (rfbClientPtr cl = rfbClientIteratorNext(i)) {
+                    if (cl->clientData) {
+                        rfbUpdateClient(cl);
+                        if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
+                            rfbLogPerror("sendTileMessage: write header");
+                        }
+                        if (result.payload && msg.size > 0) {
+                            if (rfbWriteExact(cl, result.payload, msg.size) < 0) {
+                                rfbLogPerror("sendTileMessage: write paylod");
+                            }
+                        }
+                    }
+                    rfbUpdateClient(cl);
+                }
+                rfbReleaseClientIterator(i);
+            }
+            delete result.payload;
+            delete result.message;
+        }
+    } while (queued > 0);
+
+    m_resizeBlocked = false;
+    resize(-1, -1);
 }

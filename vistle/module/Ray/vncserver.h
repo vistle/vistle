@@ -67,8 +67,8 @@ public:
    static rfbBool handleBoundsMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
 
-   static rfbBool enableDepth(rfbClientPtr cl, void **data, int encoding);
-   static rfbBool handleDepthMessage(rfbClientPtr cl, void *data,
+   static rfbBool enableTile(rfbClientPtr cl, void **data, int encoding);
+   static rfbBool handleTileMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
 
    static rfbBool enableApplication(rfbClientPtr cl, void **data, int encoding);
@@ -126,6 +126,44 @@ public:
 
    std::vector<Light> lights;
 
+   struct ImageParameters {
+       uint32_t frameNumber;
+       int timestep;
+       double matrixTime;
+       int width, height;
+       vistle::Matrix4 proj;
+       vistle::Matrix4 viewer;
+       vistle::Matrix4 view;
+       vistle::Matrix4 transform;
+       vistle::Matrix4 scale;
+       bool depthFloat; //!< whether depth should be retrieved as floating point
+       int depthPrecision; //!< depth buffer read-back precision (bits) for integer formats
+       bool depthQuant; //!< whether depth should be sent quantized
+       bool depthSnappy; //!< whether depth should be entropy-encoded with SNAPPY
+       bool rgbaJpeg;
+       bool rgbaSnappy;
+
+       ImageParameters()
+       : frameNumber(0)
+       , timestep(-1)
+       , matrixTime(0.)
+       , width(0)
+       , height(0)
+       , depthFloat(false)
+       , depthPrecision(24)
+       , depthQuant(false)
+       , depthSnappy(false)
+       , rgbaJpeg(false)
+       , rgbaSnappy(false)
+       {
+           view = vistle::Matrix4::Identity();
+           proj = vistle::Matrix4::Identity();
+           transform = vistle::Matrix4::Identity();
+           scale = vistle::Matrix4::Identity();
+           viewer = vistle::Matrix4::Identity();
+       }
+   };
+
 private:
    static VncServer *plugin; //<! access to plug-in from static member functions
 
@@ -140,40 +178,42 @@ private:
    bool m_benchmark; //!< whether timing information should be printed
    bool m_errormetric; //!< whether compression errors should be checked
    bool m_compressionrate; //!< whether compression ratio should be evaluated
-   int m_depthprecision; //!< depth buffer read-back precision (bits) for integer formats
-   bool m_depthfloat; //!< whether depth should be retrieved as floating point
-   bool m_depthquant; //!< whether depth should be sent quantized
-   bool m_depthsnappy; //!< whether depth should be entropy-encoded with SNAPPY
+#if 0
+#endif
    double m_lastMatrixTime; //!< time when last matrix message was sent by client
    int m_delay; //!< artificial delay (us)
+   ImageParameters m_param; //!< parameters for color/depth tiles
+   bool m_resizeBlocked, m_resizeDeferred;
+   int m_newWidth, m_newHeight;
 
    Screen m_screenConfig; //!< configuration for physical screen
 
    rfbScreenInfoPtr m_screen; //!< RFB protocol handler
    std::vector<float> m_depth;
-   std::vector<char> m_quant;
-   bool m_depthSent; //!< whether depth has already sent to clients
-   int m_width, m_height; //! size of framebuffer
-   int m_numRhrClients;
+   int m_numClients, m_numRhrClients;
 
+#if 0
    vistle::Matrix4 m_transformMat;
    vistle::Matrix4 m_viewerMat;
    vistle::Matrix4 m_scaleMat;
    vistle::Matrix4 m_viewMat;
    vistle::Matrix4 m_projMat;
+#endif
 
    vistle::Vector3 m_boundCenter;
    vistle::Scalar m_boundRadius;
 
-   int m_timestep, m_numTimesteps;
+   int m_numTimesteps;
 
    static void keyEvent(rfbBool down, rfbKeySym sym, rfbClientPtr cl);
    static void pointerEvent(int buttonmask, int x, int y, rfbClientPtr cl);
 
+   static enum rfbNewClientAction newClientHook(rfbClientPtr cl);
    static void clientGoneHook(rfbClientPtr cl);
-   static void sendDepthMessage(rfbClientPtr cl);
    static void sendBoundsMessage(rfbClientPtr cl);
    static void sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data);
    void broadcastApplicationMessage(int type, int length, const char *data);
+
+   void encodeAndSend(int x, int y, int w, int h);
 };
 #endif

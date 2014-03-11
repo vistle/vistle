@@ -207,6 +207,11 @@ RayCaster::RayCaster(const std::string &shmname, int rank, int size, int moduleI
 , m_quant(true)
 , m_prec(24)
 {
+#if 0
+    std::cerr << "Ray: " << getpid() << std::endl;
+    sleep(10);
+#endif
+
    vassert(s_instance == nullptr);
    s_instance = this;
 
