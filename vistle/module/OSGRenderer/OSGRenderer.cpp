@@ -707,11 +707,11 @@ void OSGRenderer::distributeAndHandleEvents() {
    }
 
    unsigned int numEvents = events.size();
-   MPI_Bcast(&numEvents, 1, MPI_INT, 0, MPI_COMM_WORLD);
+   MPI_Bcast(&numEvents, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
    if (numEvents) {
       if (rank())
          events.resize(numEvents);
-      MPI_Bcast(&(events[0]), numEvents * sizeof(GUIEvent), MPI_CHAR, 0,
+      MPI_Bcast(reinterpret_cast<char *>(&(events[0])), numEvents * sizeof(GUIEvent), MPI_CHAR, 0,
                 MPI_COMM_WORLD);
    }
 
