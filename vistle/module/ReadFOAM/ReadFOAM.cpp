@@ -62,11 +62,6 @@
 
 const size_t MaxHeaderLines = 1000;
 
-namespace bi = boost::iostreams;
-namespace bs = boost::spirit;
-namespace bf = boost::filesystem;
-namespace classic = boost::spirit::classic;
-
 template<typename Alloc = std::allocator<char> >
 struct basic_gzip_decompressor;
 typedef basic_gzip_decompressor<> gzip_decompressor;
