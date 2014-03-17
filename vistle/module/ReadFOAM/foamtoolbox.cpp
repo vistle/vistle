@@ -204,11 +204,18 @@ bool checkMeshDirectory(CaseInfo &info, const std::string &meshdir, bool time) {
    if (meshfiles.size() == 4) {
       if (time) {
          info.varyingGrid = true;
+         info.varyingCoords = true;
       }
       return true;
    }
    if (meshfiles.size() == 1 && time && havePoints) {
+      info.varyingGrid = false;
       info.varyingCoords = true;
+      return true;
+   }
+   if (meshfiles.size() == 3 && time && !havePoints) {
+      info.varyingGrid = true;
+      info.varyingCoords = false;
       return true;
    }
 
@@ -733,7 +740,7 @@ DimensionInfo readDimensions(const std::string &meshdir) {
 }
 
 index_t findVertexAlongEdge(const index_t point,
-      const index_t homeface,
+      const index_t homeface, //the vertex we are looking for is certainly not on this face
       const std::vector<index_t> & cellfaces,
       const std::vector<std::vector<index_t> > & faces) {
 
@@ -770,20 +777,21 @@ bool isPointingInwards(index_t face,
 
    //check if the normal vector of the cell is pointing inwards
    //(in openFOAM it always points into the cell with the higher index)
-   if (face>=ninternalFaces) {//if ia is bigger than the number of internal faces
-      return true;                    //then a is a boundary face and normal vector goes inwards by default
+   if (face>=ninternalFaces) {//if face is bigger than the number of internal faces
+      return true;            //then a is a boundary face and normal vector goes inwards by default
    } else {
       index_t j,o,n;
       o=owners[face];
       n=neighbors[face];
       if (o==cell) {j=n;}
-      else {j=o;} //now i is the index of current cell and j is index of other cell sharing the same face
+      else {j=o;} //now cell is the index of current cell and j is index of other cell sharing the same face
       if (cell>j) {return true;} //if index of active cell is higher than index of "next door" cell
       else {return false;}    //then normal vector points inwards else outwards
    }
 }
 
-std::vector<index_t> getVerticesForCell(const std::vector<index_t> &cellfaces,
+std::vector<index_t> getVerticesForCell(
+      const std::vector<index_t> &cellfaces,
       const std::vector<std::vector<index_t> > &faces) {
 
    std::vector<index_t> cellvertices;
@@ -792,7 +800,7 @@ std::vector<index_t> getVerticesForCell(const std::vector<index_t> &cellfaces,
          cellvertices.push_back(faces[cellfaces[i]][j]);
       }
    }
-   std::sort(cellvertices.begin(),cellvertices.end());
+   std::sort(cellvertices.begin(),cellvertices.end()); //Sort Vector by ascending Value
    cellvertices.erase(std::unique(cellvertices.begin(), cellvertices.end()), cellvertices.end()); //Delete duplicate entries
    return cellvertices;
 }
