@@ -1313,52 +1313,39 @@ void Module::sendText(int type, const std::string &msg) const {
    sendMessage(info);
 }
 
-void vistle::Module::sendInfo(const char *fmt, ...) const {
+static void sendTextVarArgs(const Module *self, message::SendText::TextType type, const char *fmt, va_list args) {
 
    if(!fmt) {
       fmt = "(empty message)";
    }
-   char *text = new char[strlen(fmt)+500];
+   std::vector<char> text(strlen(fmt)+500);
+   vsnprintf(text.data(), text.size(), fmt, args);
+   message::SendText info(type, text.data());
+   self->sendMessage(info);
+}
+
+void Module::sendInfo(const char *fmt, ...) const {
 
    va_list args;
    va_start(args, fmt);
-   vsnprintf(text, strlen(fmt)+500, fmt, args);
+   sendTextVarArgs(this, message::SendText::Info, fmt, args);
    va_end(args);
-
-   message::SendText info(message::SendText::Info, text);
-   sendMessage(info);
 }
 
 void Module::sendWarning(const char *fmt, ...) const {
 
-   if(!fmt) {
-      fmt = "(empty message)";
-   }
-   char *text = new char[strlen(fmt)+500];
-
    va_list args;
    va_start(args, fmt);
-   vsnprintf(text, strlen(fmt)+500, fmt, args);
+   sendTextVarArgs(this, message::SendText::Warning, fmt, args);
    va_end(args);
-
-   message::SendText info(message::SendText::Warning, text);
-   sendMessage(info);
 }
 
 void Module::sendError(const char *fmt, ...) const {
 
-   if(!fmt) {
-      fmt = "(empty message)";
-   }
-   char *text = new char[strlen(fmt)+500];
-
    va_list args;
    va_start(args, fmt);
-   vsnprintf(text, strlen(fmt)+500, fmt, args);
+   sendTextVarArgs(this, message::SendText::Error, fmt, args);
    va_end(args);
-
-   message::SendText info(message::SendText::Error, text);
-   sendMessage(info);
 }
 
 void Module::sendError(const message::Message &msg, const char *fmt, ...) const {
@@ -1366,14 +1353,13 @@ void Module::sendError(const message::Message &msg, const char *fmt, ...) const 
    if(!fmt) {
       fmt = "(empty message)";
    }
-   char *text = new char[strlen(fmt)+500];
-
+   std::vector<char> text(strlen(fmt)+500);
    va_list args;
    va_start(args, fmt);
-   vsnprintf(text, strlen(fmt)+500, fmt, args);
+   vsnprintf(text.data(), text.size(), fmt, args);
    va_end(args);
 
-   message::SendText info(text, msg);
+   message::SendText info(text.data(), msg);
    sendMessage(info);
 }
 
