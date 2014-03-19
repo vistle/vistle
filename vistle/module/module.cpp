@@ -1332,6 +1332,12 @@ void Module::sendInfo(const char *fmt, ...) const {
    va_end(args);
 }
 
+void Module::sendInfo(const std::string &text) const {
+
+   message::SendText info(message::SendText::Info, text);
+   sendMessage(info);
+}
+
 void Module::sendWarning(const char *fmt, ...) const {
 
    va_list args;
@@ -1340,12 +1346,24 @@ void Module::sendWarning(const char *fmt, ...) const {
    va_end(args);
 }
 
+void Module::sendWarning(const std::string &text) const {
+
+   message::SendText info(message::SendText::Warning, text);
+   sendMessage(info);
+}
+
 void Module::sendError(const char *fmt, ...) const {
 
    va_list args;
    va_start(args, fmt);
    sendTextVarArgs(this, message::SendText::Error, fmt, args);
    va_end(args);
+}
+
+void Module::sendError(const std::string &text) const {
+
+   message::SendText info(message::SendText::Error, text);
+   sendMessage(info);
 }
 
 void Module::sendError(const message::Message &msg, const char *fmt, ...) const {
@@ -1360,6 +1378,12 @@ void Module::sendError(const message::Message &msg, const char *fmt, ...) const 
    va_end(args);
 
    message::SendText info(text.data(), msg);
+   sendMessage(info);
+}
+
+void Module::sendError(const message::Message &msg, const std::string &text) const {
+
+   message::SendText info(text, msg);
    sendMessage(info);
 }
 

@@ -106,30 +106,42 @@ class V_MODULEEXPORT Module {
    //! type should be a message::SendText::TextType
    void sendText(int type, const std::string &msg) const;
 
-   /// send message to UI - printf style
+   /// send info message to UI - printf style
    void sendInfo(const char *fmt, ...) const
 #ifdef __GNUC__
    __attribute__ ((format (printf, 2, 3)))
 #endif
    ;
-   /// send message to UI - printf style
+
+   /// send warning message to UI - printf style
    void sendWarning(const char *fmt, ...) const
 #ifdef __GNUC__
    __attribute__ ((format (printf, 2, 3)))
 #endif
    ;
-   /// send message to UI - printf style
+
+   /// send error message to UI - printf style
    void sendError(const char *fmt, ...) const
 #ifdef __GNUC__
    __attribute__ ((format (printf, 2, 3)))
 #endif
    ;
+
    /// send response message to UI - printf style
    void sendError(const message::Message &msg, const char *fmt, ...) const
 #ifdef __GNUC__
    __attribute__ ((format (printf, 3, 4)))
 #endif
    ;
+
+   /// send info message to UI - string style
+   void sendInfo(const std::string &text) const;
+   /// send warning message to UI - string style
+   void sendWarning(const std::string &text) const;
+   /// send error message to UI - string style
+   void sendError(const std::string &text) const;
+   /// send response message to UI - string style
+   void sendError(const message::Message &msg, const std::string &text) const;
 
    int schedulingPolicy() const;
    void setSchedulingPolicy(int schedulingPolicy /*< really message::SchedulingPolicy::Schedule */); 
