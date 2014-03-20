@@ -52,6 +52,7 @@ class RayCaster: public vistle::Renderer {
 
    bool parameterChanged(Parameter *p);
 
+   // parameters
    IntParameter *m_continuousRendering;
    IntParameter *m_colorRank;
    IntParameter *m_vncOnSlaves;
@@ -63,6 +64,7 @@ class RayCaster: public vistle::Renderer {
 
    void updateBounds();
 
+   // object lifetime management
    void addInputObject(vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr colors,
@@ -96,20 +98,16 @@ class RayCaster: public vistle::Renderer {
    std::vector<RenderObject *> static_geometry;
    std::vector<std::vector<RenderObject *>> anim_geometry;
 
-   int width, height;
-   int packetSize;
+
+   int rayPacketSize;
+   const int tilesize = 64;
    boost::shared_ptr<VncServer> vnc;
 
    RTCScene m_scene;
 
    int m_timestep;
 
-   const int tilesize = 64;
-
-   IceTContext m_icetCtx;
-   IceTCommunicator m_icetComm;
    int m_displayRank;
-   bool m_initIcet;
    Vector3 boundMin, boundMax;
    int m_updateBounds;
    int m_doRender;
@@ -125,8 +123,7 @@ class RayCaster: public vistle::Renderer {
 
    Vector4 m_defaultColor;
 
-   std::vector<VncServer::Light> lights;
-
+   //! serializable description of one IceT tile - usable by boost::mpi
    struct DisplayTile {
 
       int rank;
@@ -149,21 +146,37 @@ class RayCaster: public vistle::Renderer {
       }
 
    };
-   std::vector<DisplayTile> icetTiles;
 
-   struct SharedState {
-
+   //! state shared among all views
+   struct GlobalState {
       int timestep;
       int numTimesteps;
-      int width, height;
       Vector3 bMin, bMax;
-      Matrix4 view;
-      Matrix4 proj;
 
-      SharedState()
+      GlobalState()
       : timestep(-1)
       , numTimesteps(-1)
-      , width(0)
+      {
+      }
+
+      template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+         ar & timestep;
+         ar & numTimesteps;
+      }
+   };
+   struct GlobalState m_state;
+
+   struct PerViewState {
+       // synchronized across all ranks
+
+      int width, height;
+      Matrix4 view;
+      Matrix4 proj;
+      std::vector<VncServer::Light> lights;
+
+      PerViewState()
+      : width(0)
       , height(0)
       {
 
@@ -173,16 +186,33 @@ class RayCaster: public vistle::Renderer {
 
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
-         ar & timestep;
-         ar & numTimesteps;
          ar & width;
          ar & height;
          ar & view;
          ar & proj;
+         ar & lights;
       }
    };
+   std::vector<PerViewState> m_viewData; // synchronized from rank 0 to slaves
+   int m_currentView; //!< holds no. of view currently being rendered - not a problem is IceT is not reentrant anyway
 
-   SharedState state;
+   //! per view IceT state
+   struct IceTData {
+
+       bool ctxValid;
+       int width, height; // dimensions of local tile
+       IceTContext ctx;
+
+       IceTData()
+       : ctxValid(false)
+       , width(0)
+       , height(0)
+       {
+           ctx = 0;
+       }
+   };
+   std::vector<IceTData> m_icet; // managed locally
+   IceTCommunicator m_icetComm; // common for all contexts
 
    void composite();
    static void drawCallback(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image);
@@ -194,18 +224,16 @@ RayCaster *RayCaster::s_instance = nullptr;
 
 RayCaster::RayCaster(const std::string &shmname, int rank, int size, int moduleId)
 : Renderer("RayCaster", shmname, rank, size, moduleId)
-, width(1024)
-, height(768)
-, packetSize(MaxPacketSize)
+, rayPacketSize(MaxPacketSize)
 , m_timestep(0)
 , m_displayRank(0)
-, m_initIcet(true)
 , m_updateBounds(1)
 , m_doRender(1)
 , m_doShade(true)
 , m_snappy(true)
 , m_quant(true)
 , m_prec(24)
+, m_currentView(-1)
 {
 #if 0
     std::cerr << "Ray: " << getpid() << std::endl;
@@ -231,10 +259,8 @@ RayCaster::RayCaster(const std::string &shmname, int rank, int size, int moduleI
 
    m_defaultColor = Vector4(127, 127, 127, 255);
 
-   if (m_displayRank==-1 || rank==m_displayRank)
-      vnc.reset(new VncServer(width, height, m_vncBasePort->getValue()));
-
-   icetTiles.resize(size);
+   if (rank == rootRank())
+      vnc.reset(new VncServer(1024, 768, m_vncBasePort->getValue()));
 
    rtcInit("verbose=1");
    m_scene = rtcNewScene(RTC_SCENE_DYNAMIC|sceneFlags, intersections);
@@ -242,7 +268,6 @@ RayCaster::RayCaster(const std::string &shmname, int rank, int size, int moduleI
    rtcCommit(m_scene);
 
    m_icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
-   m_icetCtx = icetCreateContext(m_icetComm);
 }
 
 
@@ -280,7 +305,7 @@ bool RayCaster::parameterChanged(Parameter *p) {
 
          if (m_vncOnSlaves->getValue()) {
             if (!vnc) {
-               vnc.reset(new VncServer(state.width, state.height, m_vncBasePort->getValue()));
+               vnc.reset(new VncServer(1024, 768, m_vncBasePort->getValue()));
             }
          } else {
             vnc.reset();
@@ -290,7 +315,7 @@ bool RayCaster::parameterChanged(Parameter *p) {
 
       if (rank() == rootRank() || m_vncOnSlaves->getValue()) {
          if (!vnc || vnc->port() != m_vncBasePort->getValue())
-            vnc.reset(new VncServer(state.width, state.height, m_vncBasePort->getValue()));
+            vnc.reset(new VncServer(1024, 768, m_vncBasePort->getValue()));
       }
    } else if (p == m_shading) {
 
@@ -398,13 +423,14 @@ static RTCRay makeRay(const Vector3 &origin, const Vector3 &direction, float tNe
 
 
 struct TileTask {
-   TileTask(const RayCaster &rc, int tile=-1)
+   TileTask(const RayCaster &rc, const RayCaster::PerViewState &vd, int tile=-1)
    : rc(rc)
+   , vd(vd)
    , tile(tile)
    , tilesize(rc.tilesize)
-   , packetSize(rc.packetSize)
-   , packetSizeX((packetSize+1)/2)
-   , packetSizeY(packetSize/packetSizeX)
+   , rayPacketSize(rc.rayPacketSize)
+   , packetSizeX((rayPacketSize+1)/2)
+   , packetSizeY(rayPacketSize/packetSizeX)
    {
 
    }
@@ -423,6 +449,7 @@ struct TileTask {
    }
 
    const RayCaster &rc;
+   const RayCaster::PerViewState &vd;
    const int tile;
    const int tilesize;
    int imgWidth, imgHeight;
@@ -432,7 +459,7 @@ struct TileTask {
    Vector3 lowerBottom, dx, dy;
    Vector3 origin;
    float tNear, tFar;
-   const int packetSize;
+   const int rayPacketSize;
    const int packetSizeX, packetSizeY;
    int xoff, yoff;
    float *depth;
@@ -473,9 +500,9 @@ void TileTask::render(int tile) const {
                   validMask[idx] = RayEnabled;
                }
 
-               if (packetSize==8) {
+               if (rayPacketSize==8) {
                   setRay(ray8, idx, ray);
-               } else if (packetSize==4) {
+               } else if (rayPacketSize==4) {
                   setRay(ray4, idx, ray);
                }
 
@@ -483,9 +510,9 @@ void TileTask::render(int tile) const {
             }
          }
 
-         if (packetSize==8) {
+         if (rayPacketSize==8) {
             rtcIntersect8(validMask, rc.m_scene, ray8);
-         } else if (packetSize==4) {
+         } else if (rayPacketSize==4) {
             rtcIntersect4(validMask, rc.m_scene, ray4);
          } else {
             rtcIntersect(rc.m_scene, ray);
@@ -496,9 +523,9 @@ void TileTask::render(int tile) const {
             for (int x=xx; x<xx+packetSizeX; ++x) {
 
                if (validMask[idx] == RayEnabled) {
-                  if (packetSize==8) {
+                  if (rayPacketSize==8) {
                      ray = getRay(ray8, idx);
-                  } else if (packetSize==4) {
+                  } else if (rayPacketSize==4) {
                      ray = getRay(ray4, idx);
                   }
                   shadeRay(ray, x, y);
@@ -555,7 +582,7 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
 
          Vector3 normal(ray.Ng[0], ray.Ng[1], ray.Ng[2]);
          normal.normalize();
-         for (const auto &light: rc.lights) {
+         for (const auto &light: vd.lights) {
             Vector ldir = light.transformedPosition - pos;
             ldir.normalize();
             const float ldot = fabs(normal.dot(ldir));
@@ -586,53 +613,64 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
 
 void RayCaster::render() {
 
-   state.numTimesteps = anim_geometry.size();
-   state.numTimesteps = mpi::all_reduce(mpi::communicator(), state.numTimesteps, mpi::maximum<int>());
+   //vistle::StopWatch timer("render");
+   m_state.numTimesteps = anim_geometry.size();
+   m_state.numTimesteps = mpi::all_reduce(mpi::communicator(), m_state.numTimesteps, mpi::maximum<int>());
 
    m_updateBounds = mpi::all_reduce(mpi::communicator(), m_updateBounds, mpi::maximum<int>());
    if (m_updateBounds) {
-      mpi::all_reduce(mpi::communicator(), boundMin.data(), 3, state.bMin.data(), mpi::minimum<Scalar>());
-      mpi::all_reduce(mpi::communicator(), boundMax.data(), 3, state.bMax.data(), mpi::maximum<Scalar>());
+      mpi::all_reduce(mpi::communicator(), boundMin.data(), 3, m_state.bMin.data(), mpi::minimum<Scalar>());
+      mpi::all_reduce(mpi::communicator(), boundMax.data(), 3, m_state.bMax.data(), mpi::maximum<Scalar>());
    }
 
    if (vnc) {
       if (m_updateBounds) {
-         Vector center = 0.5*(state.bMin+state.bMax);
-         Scalar radius = (state.bMax-state.bMin).norm()*0.5;
+         Vector center = 0.5*(m_state.bMin+m_state.bMax);
+         Scalar radius = (m_state.bMax-m_state.bMin).norm()*0.5;
          vnc->setBoundingSphere(center, radius);
       }
 
-      vnc->setNumTimesteps(state.numTimesteps);
+      vnc->setNumTimesteps(m_state.numTimesteps);
 
       vnc->preFrame();
-
-      const Matrix4 view = vnc->viewMat() * vnc->transformMat() * vnc->scaleMat();
-
       if (rank() == rootRank()) {
 
-         if (state.timestep != vnc->timestep()
-             || state.width != vnc->width()
-             || state.height != vnc->height()
-             || state.proj != vnc->projMat()
-             || state.view != view) {
-            m_doRender = 1;
-         }
+          if (m_state.timestep != vnc->timestep())
+              m_doRender = 1;
+      }
+      m_state.timestep = vnc->timestep();
+
+      for (int i=m_viewData.size(); i<vnc->numViews(); ++i) {
+          std::cerr << "new view no. " << i << std::endl;
+          m_doRender = 1;
+          m_viewData.emplace_back();
+          PerViewState &vd = m_viewData.back();
       }
 
-      state.timestep = vnc->timestep();
+      for (int i=0; i<vnc->numViews(); ++i) {
 
-      state.width = vnc->width();
-      state.height = vnc->height();
+          PerViewState &vd = m_viewData[i];
 
-      state.view = view;
-      state.proj = vnc->projMat();
+          const Matrix4 view = vnc->viewMat(i) * vnc->transformMat(i) * vnc->scaleMat(i);
+          if (vd.width != vnc->width(i)
+                  || vd.height != vnc->height(i)
+                  || vd.proj != vnc->projMat(i)
+                  || vd.view != view) {
+              m_doRender = 1;
+          }
 
-      lights = vnc->lights;
-      const Matrix4 lightTransform = vnc->viewMat().inverse();
-      for (auto &light: lights) {
-         Vector4 transformedPosition = lightTransform * light.position;
-         transformedPosition /= transformedPosition[3];
-         light.transformedPosition = Vector3(transformedPosition[0], transformedPosition[1], transformedPosition[2]);
+          vd.width = vnc->width(i);
+          vd.height = vnc->height(i);
+          vd.view = view;
+          vd.proj = vnc->projMat(i);
+
+          vd.lights = vnc->lights;
+          const Matrix4 lightTransform = vnc->viewMat(i).inverse();
+          for (auto &light: vd.lights) {
+              Vector4 transformedPosition = lightTransform * light.position;
+              transformedPosition /= transformedPosition[3];
+              light.transformedPosition = Vector3(transformedPosition[0], transformedPosition[1], transformedPosition[2]);
+          }
       }
    }
    m_updateBounds = 0;
@@ -642,22 +680,27 @@ void RayCaster::render() {
    if (m_continuousRendering->getValue())
       m_doRender = 1;
 
+   m_currentView = -1;
    if (m_doRender) {
       m_doRender = 0;
 
-      mpi::broadcast(mpi::communicator(), state, rootRank());
-      mpi::broadcast(mpi::communicator(), lights, rootRank());
+      mpi::broadcast(mpi::communicator(), m_state, rootRank());
+      mpi::broadcast(mpi::communicator(), m_viewData, rootRank());
 
       if (vnc && rank() != rootRank()) {
-         vnc->resize(state.width, state.height);
+          for (int i=0; i<m_viewData.size(); ++i) {
+              const PerViewState &vd = m_viewData[i];
+              vnc->resize(i, vd.width, vd.height);
+          }
       }
 
-      if (m_timestep != state.timestep) {
+      // switch time steps in embree scene
+      if (m_timestep != m_state.timestep) {
          if (anim_geometry.size() > m_timestep) {
             for (auto &ro: anim_geometry[m_timestep])
                rtcDisable(m_scene, ro->instId);
          }
-         m_timestep = state.timestep;
+         m_timestep = m_state.timestep;
          if (anim_geometry.size() > m_timestep) {
             for (auto &ro: anim_geometry[m_timestep])
                rtcEnable(m_scene, ro->instId);
@@ -665,78 +708,103 @@ void RayCaster::render() {
          rtcCommit(m_scene);
       }
 
-      int resetTiles = 0;
-      if (m_initIcet || (vnc && (width != vnc->width() || height != vnc->height())))
-         resetTiles = 1;
-      resetTiles = mpi::all_reduce(mpi::communicator(), resetTiles, mpi::maximum<int>());
+      for (int i=0; i<m_viewData.size(); ++i) {
+          PerViewState &vd = m_viewData[i];
 
-      if (resetTiles) {
-         width = height = 0;
-         if (vnc) {
-            width =  vnc->width();
-            height = vnc->height();
-         }
+          int resetTiles = 0;
+          if (m_icet.size() <= i) {
+              resetTiles = 1;
+              m_icet.emplace_back();
+              assert(m_icet.size() == i+1);
+              auto &icet = m_icet.back();
+              icet.ctx = icetCreateContext(m_icetComm);
+              icet.ctxValid = true;
+          }
+          auto &icet = m_icet[i];
+          //std::cerr << "setting IceT context: " << icet.ctx << " (valid: " << icet.ctxValid << ")" << std::endl;
+          icetSetContext(icet.ctx);
+          m_currentView = i;
 
-         icetTiles[rank()].x = 0;
-         icetTiles[rank()].y = 0;
-         icetTiles[rank()].width = width;
-         icetTiles[rank()].height = height;
+          if (vnc) {
+              if (icet.width != vnc->width(i) || icet.height != vnc->height(i))
+                  resetTiles = 1;
+          }
+          resetTiles = mpi::all_reduce(mpi::communicator(), resetTiles, mpi::maximum<int>());
 
-         mpi::all_gather(mpi::communicator(), icetTiles[rank()], icetTiles);
+          if (resetTiles) {
+              std::cerr << "resetting IceT tiles for view " << i << "..." << std::endl;
+              icet.width = icet.height = 0;
+              if (rank() == rootRank()) {
+                  icet.width =  vnc->width(i);
+                  icet.height = vnc->height(i);
+                  std::cerr << "IceT dims on rank " << rank() << ": " << icet.width << "x" << icet.height << std::endl;
+              }
+              
+              DisplayTile localTile;              
+              localTile.x = 0;
+              localTile.y = 0;
+              localTile.width = icet.width;
+              localTile.height = icet.height;
 
-         icetResetTiles();
+              std::vector<DisplayTile> icetTiles;
+              mpi::all_gather(mpi::communicator(), localTile, icetTiles);
+              vassert(icetTiles.size() == size());
 
-         for (int i=0; i<size(); ++i) {
-            if (i == m_displayRank || m_displayRank == -1) {
-               if (icetTiles[i].width>0 && icetTiles[i].height>0)
-                  icetAddTile(icetTiles[i].x, icetTiles[i].y, icetTiles[i].width, icetTiles[i].height, i);
-            }
-         }
+              icetResetTiles();
 
-         icetDisable(ICET_COMPOSITE_ONE_BUFFER); // include depth buffer in compositing result
-         icetStrategy(ICET_STRATEGY_REDUCE);
-         icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
-         icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-         icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+              for (int i=0; i<size(); ++i) {
+                  if (icetTiles[i].width>0 && icetTiles[i].height>0)
+                      icetAddTile(icetTiles[i].x, icetTiles[i].y, icetTiles[i].width, icetTiles[i].height, i);
+              }
 
-         icetDrawCallback(drawCallback);
+              icetDisable(ICET_COMPOSITE_ONE_BUFFER); // include depth buffer in compositing result
+              icetStrategy(ICET_STRATEGY_REDUCE);
+              icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+              icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
+              icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+
+              icetDrawCallback(drawCallback);
+          }
+
+          icetBoundingBoxf(boundMin[0], boundMax[0],
+                  boundMin[1], boundMax[1],
+                  boundMin[2], boundMax[2]);
+
+          Matrix4 modelview;
+          IceTDouble proj[16], mv[16];
+          for (int i=0; i<16; ++i) {
+              proj[i] = vd.proj.data()[i];
+              mv[i] = vd.view.data()[i];
+          }
+          IceTFloat bg[4] = { 0., 0., 0., 1. };
+
+          IceTImage img = icetDrawFrame(proj, mv, bg);
+
+          if (rank() == rootRank()) {
+              vassert(vnc);
+              const int bpp = 4;
+              const int w = vnc->width(i);
+              const int h = vnc->height(i);
+              vassert(w == icetImageGetWidth(img));
+              vassert(h == icetImageGetHeight(img));
+
+              const IceTUByte *color = icetImageGetColorcub(img);
+              const IceTFloat *depth = icetImageGetDepthcf(img);
+
+              if (color && depth) {
+                  for (int y=0; y<h; ++y) {
+                      memcpy(vnc->rgba(i)+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
+                      memcpy(vnc->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
+                  }
+
+                  vnc->invalidate(i, 0, 0, vnc->width(i), vnc->height(i), i==m_viewData.size()-1);
+              }
+          }
       }
-
-      icetBoundingBoxf(boundMin[0], boundMax[0],
-            boundMin[1], boundMax[1],
-            boundMin[2], boundMax[2]);
-
-      Matrix4 modelview;
-      IceTDouble proj[16], mv[16];
-      for (int i=0; i<16; ++i) {
-         proj[i] = state.proj.data()[i];
-         mv[i] = state.view.data()[i];
-      }
-      IceTFloat bg[4] = { 0., 0., 0., 1. };
-
-      IceTImage img = icetDrawFrame(proj, mv, bg);
-
-      if (rank() == m_displayRank || m_displayRank==-1) {
-         vassert(vnc);
-         const int bpp = 4;
-         const int w = vnc->width();
-         const int h = vnc->height();
-         vassert(w == icetImageGetWidth(img));
-         vassert(h == icetImageGetHeight(img));
-
-         const IceTUByte *color = icetImageGetColorcub(img);
-         const IceTFloat *depth = icetImageGetDepthcf(img);
-
-         for (int y=0; y<h; ++y) {
-            memcpy(vnc->rgba()+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
-            memcpy(vnc->depth()+w*y, depth+w*(h-1-y), sizeof(float)*w);
-         }
-
-         vnc->invalidate(0, 0, vnc->width(), vnc->height());
-      }
+      m_currentView = -1;
    }
    if (vnc)
-      vnc->postFrame();
+       vnc->postFrame();
 }
 
 void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image) {
@@ -794,7 +862,7 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
    const Scalar tFar = (lbf-ro).norm()/(lbn-ro).norm();
    const Matrix4 depthTransform = MVP;
 
-   TileTask renderTile(*this);
+   TileTask renderTile(*this, m_viewData[m_currentView]);
    renderTile.rgba = icetImageGetColorub(image);
    renderTile.depth = icetImageGetDepthf(image);
    renderTile.depthTransform2 = depthTransform.row(2);
@@ -847,22 +915,23 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
    }
 #endif
 
-   if (vnc && rank() != m_displayRank && m_displayRank != -1) {
+   if (vnc && rank() != rootRank()) {
+      // observe what slaves are rendering
       const int bpp = 4;
-      const int w = vnc->width();
-      const int h = vnc->height();
+      const int w = vnc->width(m_currentView);
+      const int h = vnc->height(m_currentView);
       vassert(w == icetImageGetWidth(image));
       vassert(h == icetImageGetHeight(image));
 
       const IceTUByte *color = icetImageGetColorcub(image);
 
-      memset(vnc->rgba(), 0, w*h*bpp);
+      memset(vnc->rgba(m_currentView), 0, w*h*bpp);
 
       for (int y=viewport[1]; y<viewport[1]+viewport[3]; ++y) {
-         memcpy(vnc->rgba()+(w*y+viewport[0])*bpp, color+(w*(h-1-y)+viewport[0])*bpp, bpp*viewport[2]);
+         memcpy(vnc->rgba(m_currentView)+(w*y+viewport[0])*bpp, color+(w*(h-1-y)+viewport[0])*bpp, bpp*viewport[2]);
       }
 
-      vnc->invalidate(0, 0, vnc->width(), vnc->height());
+      vnc->invalidate(m_currentView, 0, 0, vnc->width(m_currentView), vnc->height(m_currentView), true);
    }
 
    int err = rtcGetError();

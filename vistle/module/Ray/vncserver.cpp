@@ -25,6 +25,8 @@
 #include <tbb/parallel_for.h>
 #include <tbb/concurrent_queue.h>
 
+#include <util/stopwatch.h>
+
 static double now() {
     namespace chrono = boost::chrono;
     typedef chrono::high_resolution_clock clock_type;
@@ -141,18 +143,18 @@ VncServer::~VncServer()
 
 void VncServer::enableQuantization(bool value) {
 
-   m_param.depthQuant = value;
+   m_imageParam.depthQuant = value;
 }
 
 void VncServer::enableSnappy(bool value) {
 
-    m_param.depthSnappy = value;
-    m_param.rgbaSnappy = value;
+    m_imageParam.depthSnappy = value;
+    m_imageParam.rgbaSnappy = value;
 }
 
 void VncServer::setDepthPrecision(int bits) {
 
-    m_param.depthPrecision = bits;
+    m_imageParam.depthPrecision = bits;
 }
 
 unsigned short VncServer::port() const {
@@ -160,56 +162,64 @@ unsigned short VncServer::port() const {
    return m_screen->port;
 }
 
+int VncServer::numViews() const {
 
-unsigned char *VncServer::rgba() const {
-
-   vassert(m_screen->frameBuffer);
-   return (unsigned char *)m_screen->frameBuffer;
+    return m_viewData.size();
 }
 
-float *VncServer::depth() {
+unsigned char *VncServer::rgba(int i) {
 
-   return m_depth.data();
+    return m_viewData[i].rgba.data();
 }
 
-const float *VncServer::depth() const {
+const unsigned char *VncServer::rgba(int i) const {
 
-   return m_depth.data();
+    return m_viewData[i].rgba.data();
 }
 
-int VncServer::width() const {
+float *VncServer::depth(int i) {
 
-   return m_param.width;
+    return m_viewData[i].depth.data();
 }
 
-int VncServer::height() const {
+const float *VncServer::depth(int i) const {
 
-   return m_param.height;
+    return m_viewData[i].depth.data();
 }
 
-const vistle::Matrix4 &VncServer::viewMat() const {
+int VncServer::width(int i) const {
 
-   return m_param.view;
+   return m_viewData[i].param.width;
 }
 
-const vistle::Matrix4 &VncServer::projMat() const {
+int VncServer::height(int i) const {
 
-   return m_param.proj;
+   return m_viewData[i].param.height;
 }
 
-const vistle::Matrix4 &VncServer::scaleMat() const {
+const vistle::Matrix4 &VncServer::viewMat(int i) const {
 
-   return m_param.scale;
+   return m_viewData[i].param.view;
 }
 
-const vistle::Matrix4 &VncServer::transformMat() const {
+const vistle::Matrix4 &VncServer::projMat(int i) const {
 
-   return m_param.transform;
+   return m_viewData[i].param.proj;
 }
 
-const vistle::Matrix4 &VncServer::viewerMat() const {
+const vistle::Matrix4 &VncServer::scaleMat(int i) const {
 
-   return m_param.viewer;
+   return m_viewData[i].param.scale;
+}
+
+const vistle::Matrix4 &VncServer::transformMat(int i) const {
+
+   return m_viewData[i].param.transform;
+}
+
+const vistle::Matrix4 &VncServer::viewerMat(int i) const {
+
+   return m_viewData[i].param.viewer;
 }
 
 void VncServer::setBoundingSphere(const vistle::Vector3 &center, const vistle::Scalar &radius) {
@@ -246,15 +256,16 @@ bool VncServer::init(int w, int h, unsigned short port) {
    m_errormetric = false;
    m_compressionrate = false;
 
-   m_param.depthPrecision = 32;
-   m_param.depthQuant = true;
-   m_param.depthSnappy = true;
-   m_param.rgbaSnappy = true;
-   m_param.depthFloat = true;
+   m_imageParam.depthPrecision = 32;
+   m_imageParam.depthQuant = true;
+   m_imageParam.depthSnappy = true;
+   m_imageParam.rgbaSnappy = true;
+   m_imageParam.depthFloat = true;
 
    m_resizeBlocked = false;
    m_resizeDeferred = false;
-   m_newWidth = m_newHeight = 0;
+   m_queuedTiles = 0;
+   m_firstTile = false;
 
    int argc = 1;
    char *argv[] = { (char *)"DisCOVERay", NULL };
@@ -296,43 +307,63 @@ bool VncServer::init(int w, int h, unsigned short port) {
       m_clientList.push_back(c);
    }
 
-   resize(w, h);
+   resize(0, w, h);
 
    return true;
 }
 
 
-void VncServer::resize(int w, int h) {
+void VncServer::resize(int viewNum, int w, int h) {
 
+#if 0
+    if (w!=-1 && h!=-1) {
+        std::cout << "resize: view=" << viewNum << ", w=" << w << ", h=" << h << std::endl;
+    }
+#endif
+    if (viewNum >= numViews()) {
+        if (viewNum == 0)
+            m_viewData.emplace_back();
+        else
+            return;
+    }
+
+   ViewData &vd = m_viewData[viewNum];
    if (m_resizeBlocked) {
        m_resizeDeferred = true;
-       m_newWidth = w;
-       m_newHeight = h;
+
+       vd.newWidth = w;
+       vd.newHeight = h;
        return;
    }
 
    if (w==-1 && h==-1) {
-       if (!m_resizeDeferred)
-           return;
 
-       m_resizeDeferred = false;
-       w = m_newWidth;
-       h = m_newHeight;
+       w = vd.newWidth;
+       h = vd.newHeight;
    }
 
-   if (m_param.width != w || m_param.height != h) {
-      m_param.width = w;
-      m_param.height = h;
+   if (vd.nparam.width != w || vd.nparam.height != h) {
+      vd.nparam.width = w;
+      vd.nparam.height = h;
 
-      delete[] m_screen->frameBuffer;
-      m_screen->frameBuffer = new char[w*h*4];
+      vd.rgba.resize(w*h*4);
+      vd.depth.resize(w*h);
 
-      m_depth.resize(w*h);
-
-      rfbNewFramebuffer(m_screen, m_screen->frameBuffer,
-                     w, h, 8, 3, 4);
-
+      if (viewNum == 0) {
+          m_screen->frameBuffer = reinterpret_cast<char *>(vd.rgba.data());
+          rfbNewFramebuffer(m_screen, m_screen->frameBuffer,
+                  w, h, 8, 3, 4);
+      }
    }
+}
+
+void VncServer::deferredResize() {
+
+    assert(!m_resizeBlocked);
+    for (int i=0; i<numViews(); ++i) {
+        resize(i, -1, -1);
+    }
+    m_resizeDeferred = false;
 }
 
 //! count connected clients
@@ -390,14 +421,33 @@ rfbBool VncServer::handleMatricesMessage(rfbClientPtr cl, void *data,
       return TRUE;
    }
 
-   plugin->m_param.matrixTime = msg.time;
+   int viewNum = msg.viewNum;
+   if (viewNum < 0)
+       viewNum = 0;
+
+   if (viewNum >= plugin->m_viewData.size()) {
+       plugin->m_viewData.resize(viewNum+1);
+   }
+   
+   plugin->resize(viewNum, msg.width, msg.height);
+
+   ViewData &vd = plugin->m_viewData[viewNum];
+
+   vd.nparam.matrixTime = msg.time;
+   vd.nparam.requestNumber = msg.requestNumber;
 
    for (int i=0; i<16; ++i) {
-      plugin->m_param.scale.data()[i] = msg.scale[i];
-      plugin->m_param.transform.data()[i] = msg.transform[i];
-      plugin->m_param.viewer.data()[i] = msg.viewer[i];
-      plugin->m_param.view.data()[i] = msg.view[i];
-      plugin->m_param.proj.data()[i] = msg.proj[i];
+      vd.nparam.scale.data()[i] = msg.scale[i];
+      vd.nparam.transform.data()[i] = msg.transform[i];
+      vd.nparam.viewer.data()[i] = msg.viewer[i];
+      vd.nparam.view.data()[i] = msg.view[i];
+      vd.nparam.proj.data()[i] = msg.proj[i];
+   }
+
+   if (msg.last) {
+       for (int i=0; i<plugin->numViews(); ++i) {
+           plugin->m_viewData[i].param = plugin->m_viewData[i].nparam;
+       }
    }
 
    return TRUE;
@@ -593,7 +643,7 @@ rfbBool VncServer::handleApplicationMessage(rfbClientPtr cl, void *data,
       cl->clientData = new ClientData();
 
       appAnimationTimestep app;
-      app.current = plugin->m_param.timestep;
+      app.current = plugin->m_imageParam.timestep;
       app.total = plugin->m_numTimesteps;
       sendApplicationMessage(cl, rfbAnimationTimestep, sizeof(app), (char *)&app);
    }
@@ -622,7 +672,7 @@ rfbBool VncServer::handleApplicationMessage(rfbClientPtr cl, void *data,
       {
          appScreenConfig app;
          memcpy(&app, &buf[0], sizeof(app));
-         plugin->resize(app.width, app.height);
+         plugin->resize(0, app.width, app.height);
          plugin->m_screenConfig.hsize = app.hsize;
          plugin->m_screenConfig.vsize = app.vsize;
          for (int i=0; i<3; ++i) {
@@ -639,7 +689,7 @@ rfbBool VncServer::handleApplicationMessage(rfbClientPtr cl, void *data,
       case rfbAnimationTimestep: {
          appAnimationTimestep app;
          memcpy(&app, &buf[0], sizeof(app));
-         plugin->m_param.timestep = app.current;
+         plugin->m_imageParam.timestep = app.current;
       }
       break;
    }
@@ -649,7 +699,7 @@ rfbBool VncServer::handleApplicationMessage(rfbClientPtr cl, void *data,
 
 int VncServer::timestep() const {
 
-   return m_param.timestep;
+   return m_imageParam.timestep;
 }
 
 void VncServer::setNumTimesteps(int num) {
@@ -657,7 +707,7 @@ void VncServer::setNumTimesteps(int num) {
    if (num != m_numTimesteps) {
       m_numTimesteps = num;
       appAnimationTimestep app;
-      app.current = m_param.timestep;
+      app.current = m_imageParam.timestep;
       app.total = num;
       broadcastApplicationMessage(rfbAnimationTimestep, sizeof(app), (char *)&app);
    }
@@ -724,6 +774,7 @@ rfbBool VncServer::handleBoundsMessage(rfbClientPtr cl, void *data,
    }
 
    if (msg.sendreply) {
+       std::cout << "SENDING BOUNDS" << std::endl;
       sendBoundsMessage(cl);
    }
 
@@ -972,52 +1023,43 @@ VncServer::postFrame()
 #endif
 }
 
-void VncServer::invalidate(int x, int y, int w, int h) {
+void VncServer::invalidate(int viewNum, int x, int y, int w, int h, bool lastView) {
 
     if (m_numClients - m_numRhrClients > 0) {
         rfbMarkRectAsModified(m_screen, x, y, w, h);
     }
 
     if (m_numRhrClients > 0) {
-        encodeAndSend(x, y, w, h);
+        encodeAndSend(viewNum, x, y, w, h, lastView);
     }
 }
 
-struct EncodeResult {
-
-    EncodeResult(tileMsg *msg=nullptr)
-        : message(msg)
-        , payload(nullptr)
-        {}
-
-    tileMsg *message;
-    const char *payload;
-};
-
 struct EncodeTask: public tbb::task {
 
-    tbb::concurrent_queue<EncodeResult> &resultQueue;
+    tbb::concurrent_queue<VncServer::EncodeResult> &resultQueue;
+    int viewNum;
     int x, y, w, h, stride;
     int bpp;
     float *depth;
     unsigned char *rgba;
     tileMsg *message;
 
-    EncodeTask(tbb::concurrent_queue<EncodeResult> &resultQueue, int x, int y, int w, int h,
-          float *depth, const VncServer::ImageParameters &param)
+    EncodeTask(tbb::concurrent_queue<VncServer::EncodeResult> &resultQueue, int viewNum, int x, int y, int w, int h,
+          float *depth, const VncServer::ImageParameters &param, const VncServer::ViewParameters &vp)
     : resultQueue(resultQueue)
+    , viewNum(viewNum)
     , x(x)
     , y(y)
     , w(w)
     , h(h)
-    , stride(param.width)
+    , stride(vp.width)
     , bpp(4)
     , depth(depth)
     , rgba(nullptr)
     , message(nullptr)
     {
         assert(depth);
-        initMsg(param, x, y, w, h);
+        initMsg(param, vp, viewNum, x, y, w, h);
 
         message->size = message->width * message->height;
         if (param.depthFloat) {
@@ -1055,21 +1097,22 @@ struct EncodeTask: public tbb::task {
         }
     }
 
-    EncodeTask(tbb::concurrent_queue<EncodeResult> &resultQueue, int x, int y, int w, int h,
-          unsigned char *rgba, const VncServer::ImageParameters &param)
+    EncodeTask(tbb::concurrent_queue<VncServer::EncodeResult> &resultQueue, int viewNum, int x, int y, int w, int h,
+          unsigned char *rgba, const VncServer::ImageParameters &param, const VncServer::ViewParameters &vp)
     : resultQueue(resultQueue)
+    , viewNum(viewNum)
     , x(x)
     , y(y)
     , w(w)
     , h(h)
-    , stride(param.width)
+    , stride(vp.width)
     , bpp(4)
     , depth(nullptr)
     , rgba(rgba)
     , message(nullptr)
     {
        assert(rgba);
-       initMsg(param, x, y, w, h);
+       initMsg(param, vp, viewNum, x, y, w, h);
        message->size = message->width * message->height * bpp;
        message->format = rfbColorRGBA;
 
@@ -1078,38 +1121,40 @@ struct EncodeTask: public tbb::task {
         }
     }
 
-    void initMsg(const VncServer::ImageParameters &param, int x, int y, int w, int h) {
+    void initMsg(const VncServer::ImageParameters &param, const VncServer::ViewParameters &vp, int viewNum, int x, int y, int w, int h) {
 
-        assert(x+w <= param.width);
-        assert(y+h <= param.height);
-        assert(stride == param.width);
+        assert(x+w <= vp.width);
+        assert(y+h <= vp.height);
+        assert(stride == vp.width);
 
         assert(message == nullptr);
 
         message = new tileMsg;
+        message->viewNum = viewNum;
         message->width = w;
         message->height = h;
         message->x = x;
         message->y = y;
-        message->totalwidth = param.width;
-        message->totalheight = param.height;
+        message->totalwidth = vp.width;
+        message->totalheight = vp.height;
         message->size = 0;
         message->compression = rfbTileRaw;
 
-        message->framenumber = param.frameNumber;
-        message->requesttime = param.matrixTime;
+        message->frameNumber = vp.frameNumber;
+        message->requestNumber = vp.requestNumber;
+        message->requestTime = vp.matrixTime;
         for (int i=0; i<16; ++i) {
-            message->scale[i] = param.scale.data()[i];
-            message->transform[i] = param.transform.data()[i];
-            message->view[i] = param.view.data()[i];
-            message->proj[i] = param.proj.data()[i];
+            message->scale[i] = vp.scale.data()[i];
+            message->transform[i] = vp.transform.data()[i];
+            message->view[i] = vp.view.data()[i];
+            message->proj[i] = vp.proj.data()[i];
         }
     }
 
     tbb::task* execute() {
 
         auto &msg = *message;
-        EncodeResult result(message);
+        VncServer::EncodeResult result(message);
         if (depth) {
             const char *zbuf = reinterpret_cast<const char *>(depth);
             if (msg.compression & rfbTileDepthQuantize) {
@@ -1158,50 +1203,60 @@ struct EncodeTask: public tbb::task {
     }
 };
 
-void VncServer::encodeAndSend(int x0, int y0, int w, int h) {
+void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, bool lastView) {
 
+    if (!m_resizeBlocked) {
+        m_firstTile = true;
+    }
+    m_resizeBlocked = true;
+
+    //vistle::StopWatch timer("encodeAndSend");
     const int tileWidth = 128, tileHeight = 128;
-    tbb::concurrent_queue<EncodeResult> resultQueue;
+    static int framecount=0;
+    ++framecount;
 
-    size_t queued = 0;
     for (int y=y0; y<y0+h; y+=tileHeight) {
         for (int x=x0; x<x0+w; x+=tileWidth) {
 
-            auto dt = new(tbb::task::allocate_root()) EncodeTask(resultQueue,
+            auto dt = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
+                    viewNum,
                     x, y,
                     std::min(tileWidth, x0+w-x),
                     std::min(tileHeight, y0+h-y),
-                    depth(), m_param);
+                    depth(viewNum), m_imageParam, m_viewData[viewNum].param);
             tbb::task::enqueue(*dt);
-            ++queued;
+            ++m_queuedTiles;
 
-#if 1
-            auto ct = new(tbb::task::allocate_root()) EncodeTask(resultQueue,
+            auto ct = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
+                    viewNum,
                     x, y,
                     std::min(tileWidth, x0+w-x),
                     std::min(tileHeight, y0+h-y),
-                    rgba(), m_param);
+                    rgba(viewNum), m_imageParam, m_viewData[viewNum].param);
             tbb::task::enqueue(*ct);
-            ++queued;
-#endif
+            ++m_queuedTiles;
         }
     }
 
-    m_resizeBlocked = true;
-    bool first = true;
+    bool tileReady = false;
     do {
-        EncodeResult result;
-        if (resultQueue.try_pop(result)) {
+        VncServer::EncodeResult result;
+        tileReady = false;
+        if (m_resultQueue.try_pop(result)) {
+            --m_queuedTiles;
+            tileReady = true;
             if (result.message) {
                 tileMsg &msg = *result.message;
-                if (first)
+                if (m_firstTile) {
                     msg.flags |= rfbTileFirst;
-                first = false;
-                --queued;
-                if (queued == 0) {
-                    msg.flags |= rfbTileLast;
-                    //std::cerr << "last tile: x=" << msg.x << ", y=" << msg.y << ", rgba: " << (msg.format==rfbColorRGBA) << std::endl;
+                    std::cerr << "first tile: req=" << msg.requestNumber << std::endl;
                 }
+                m_firstTile = false;
+                if (m_queuedTiles == 0 && lastView) {
+                    msg.flags |= rfbTileLast;
+                    std::cerr << "last tile: req=" << msg.requestNumber << std::endl;
+                }
+                msg.frameNumber = framecount;
 
                 rfbCheckFds(m_screen, 0);
                 rfbHttpCheckFds(m_screen);
@@ -1225,8 +1280,12 @@ void VncServer::encodeAndSend(int x0, int y0, int w, int h) {
             delete result.payload;
             delete result.message;
         }
-    } while (queued > 0);
+    } while (m_queuedTiles > 0 && (tileReady || lastView));
 
-    m_resizeBlocked = false;
-    resize(-1, -1);
+    if (lastView) {
+        vassert(m_queuedTiles == 0);
+        m_resizeBlocked = false;
+        deferredResize();
+    }
+    //sleep(1);
 }

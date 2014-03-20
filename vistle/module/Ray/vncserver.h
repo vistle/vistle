@@ -15,11 +15,14 @@
 #include <string>
 
 #include <rfb/rfb.h>
+#include <RHR/rfbext.h>
 #ifdef max
 #undef max
 #endif
 
 #include <core/vector.h>
+
+#include <tbb/concurrent_queue.h>
 
 //! Implement remote hybrid rendering server based on VNC protocol
 class VncServer
@@ -32,18 +35,19 @@ public:
 
    unsigned short port() const;
 
-   int width() const;
-   int height() const;
-   unsigned char *rgba() const;
-   float *depth();
-   const float *depth() const;
+   int width(int viewNum) const;
+   int height(int viewNum) const;
+   unsigned char *rgba(int viewNum);
+   const unsigned char *rgba(int viewNum) const;
+   float *depth(int viewNum);
+   const float *depth(int viewNum) const;
 
-   void resize(int w, int h);
+   void resize(int viewNum, int w, int h);
 
    bool init(int w, int h, unsigned short port);
    void preFrame();
    void postFrame();
-   void invalidate(int x, int y, int w, int h);
+   void invalidate(int viewNum, int x, int y, int w, int h, bool lastView);
 
    void enableQuantization(bool value);
    void enableSnappy(bool value);
@@ -75,11 +79,12 @@ public:
    static rfbBool handleApplicationMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
 
-   const vistle::Matrix4 &viewMat() const;
-   const vistle::Matrix4 &projMat() const;
-   const vistle::Matrix4 &scaleMat() const;
-   const vistle::Matrix4 &transformMat() const;
-   const vistle::Matrix4 &viewerMat() const;
+   int numViews() const;
+   const vistle::Matrix4 &viewMat(int viewNum) const;
+   const vistle::Matrix4 &projMat(int viewNum) const;
+   const vistle::Matrix4 &scaleMat(int viewNum) const;
+   const vistle::Matrix4 &transformMat(int viewNum) const;
+   const vistle::Matrix4 &viewerMat(int viewNum) const;
 
    void setBoundingSphere(const vistle::Vector3 &center, const vistle::Scalar &radius);
 
@@ -127,15 +132,7 @@ public:
    std::vector<Light> lights;
 
    struct ImageParameters {
-       uint32_t frameNumber;
        int timestep;
-       double matrixTime;
-       int width, height;
-       vistle::Matrix4 proj;
-       vistle::Matrix4 viewer;
-       vistle::Matrix4 view;
-       vistle::Matrix4 transform;
-       vistle::Matrix4 scale;
        bool depthFloat; //!< whether depth should be retrieved as floating point
        int depthPrecision; //!< depth buffer read-back precision (bits) for integer formats
        bool depthQuant; //!< whether depth should be sent quantized
@@ -144,11 +141,7 @@ public:
        bool rgbaSnappy;
 
        ImageParameters()
-       : frameNumber(0)
-       , timestep(-1)
-       , matrixTime(0.)
-       , width(0)
-       , height(0)
+       : timestep(-1)
        , depthFloat(false)
        , depthPrecision(24)
        , depthQuant(false)
@@ -156,12 +149,42 @@ public:
        , rgbaJpeg(false)
        , rgbaSnappy(false)
        {
+       }
+   };
+
+   struct ViewParameters {
+       uint32_t frameNumber;
+       uint32_t requestNumber;
+       double matrixTime;
+       int width, height;
+       vistle::Matrix4 proj;
+       vistle::Matrix4 viewer;
+       vistle::Matrix4 view;
+       vistle::Matrix4 transform;
+       vistle::Matrix4 scale;
+
+       ViewParameters()
+       : frameNumber(0)
+       , requestNumber(0)
+       , matrixTime(0.)
+       , width(0)
+       , height(0)
+       {
            view = vistle::Matrix4::Identity();
            proj = vistle::Matrix4::Identity();
            transform = vistle::Matrix4::Identity();
            scale = vistle::Matrix4::Identity();
            viewer = vistle::Matrix4::Identity();
        }
+   };
+
+   struct ViewData {
+
+       ViewParameters param; //!< parameters for color/depth tiles
+       ViewParameters nparam; //!< parameters for color/depth tiles currently being updated
+       int newWidth, newHeight; //!< in case resizing was blocked while message was received
+       std::vector<unsigned char> rgba;
+       std::vector<float> depth;
    };
 
 private:
@@ -174,31 +197,20 @@ private:
       int port; //!< TCP port number
    };
    std::vector<Client> m_clientList; //!< list of clients to which reverse connections should be tried
+   std::vector<ViewData> m_viewData;
    
    bool m_benchmark; //!< whether timing information should be printed
    bool m_errormetric; //!< whether compression errors should be checked
    bool m_compressionrate; //!< whether compression ratio should be evaluated
-#if 0
-#endif
    double m_lastMatrixTime; //!< time when last matrix message was sent by client
    int m_delay; //!< artificial delay (us)
-   ImageParameters m_param; //!< parameters for color/depth tiles
+   ImageParameters m_imageParam; //!< parameters for color/depth codec
    bool m_resizeBlocked, m_resizeDeferred;
-   int m_newWidth, m_newHeight;
 
    Screen m_screenConfig; //!< configuration for physical screen
 
    rfbScreenInfoPtr m_screen; //!< RFB protocol handler
-   std::vector<float> m_depth;
    int m_numClients, m_numRhrClients;
-
-#if 0
-   vistle::Matrix4 m_transformMat;
-   vistle::Matrix4 m_viewerMat;
-   vistle::Matrix4 m_scaleMat;
-   vistle::Matrix4 m_viewMat;
-   vistle::Matrix4 m_projMat;
-#endif
 
    vistle::Vector3 m_boundCenter;
    vistle::Scalar m_boundRadius;
@@ -214,6 +226,25 @@ private:
    static void sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data);
    void broadcastApplicationMessage(int type, int length, const char *data);
 
-   void encodeAndSend(int x, int y, int w, int h);
+   void encodeAndSend(int viewNum, int x, int y, int w, int h, bool lastView);
+
+   struct EncodeResult {
+
+       EncodeResult(tileMsg *msg=nullptr)
+           : message(msg)
+           , payload(nullptr)
+           {}
+
+       tileMsg *message;
+       const char *payload;
+   };
+
+   friend struct EncodeTask;
+
+   tbb::concurrent_queue<EncodeResult> m_resultQueue;
+   size_t m_queuedTiles;
+   bool m_firstTile;
+
+   void deferredResize();
 };
 #endif
