@@ -35,9 +35,9 @@ endif()
 use_openmp()
 
 if(TBB_FOUND)
-   if (NOT OPENMP_FOUND)
+    #if (NOT OPENMP_FOUND)
       add_definitions(-DUSE_TBB)
-   endif()
+      #endif()
 endif()
 
 add_module(Ray
