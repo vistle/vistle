@@ -45,7 +45,7 @@ class ReadFOAM: public vistle::Module
 
       CaseInfo m_case;
 
-      std::vector<std::string> fieldChoices() const;
+      std::vector<std::string> getFieldList() const;
 
       bool parameterChanged(vistle::Parameter *p);
       bool readDirectory(const std::string &dir, int processor, int timestep);

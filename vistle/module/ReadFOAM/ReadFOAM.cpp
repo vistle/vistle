@@ -100,7 +100,7 @@ ReadFOAM::~ReadFOAM()       //Destructor
 {
 }
 
-std::vector<std::string> ReadFOAM::fieldChoices() const {
+std::vector<std::string> ReadFOAM::getFieldList() const {
 
    std::vector<std::string> choices;
    choices.push_back("(NONE)");
@@ -134,8 +134,23 @@ bool ReadFOAM::parameterChanged(Parameter *p)
       std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
       std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
 
-      std::vector<std::string> choices = fieldChoices();
+      //print out a list of boundary patches to Vistle Console
+      std::stringstream meshdir;
+      meshdir << casedir << "/constant/polyMesh"; //<< m_case.constantdir << "/polyMesh";
+      sendInfo("Listing Boundary Patches!");
+      Boundaries bounds = loadBoundary(meshdir.str());
+      for (int i=0;i<bounds.boundaries.size();++i) {
+         std::stringstream info;
+         info << bounds.boundaries[i].index<< " ## " << bounds.boundaries[i].name;
+         sendInfo("%s", info.str().c_str());
+      }
+
+      //fill choice parameters
+      std::vector<std::string> choices = getFieldList();
       for (StringParameter *out: m_fieldOut) {
+         setParameterChoices(out, choices);
+      }
+      for (StringParameter *out: m_field2dOut) {
          setParameterChoices(out, choices);
       }
       sendMessage(message::Idle());
