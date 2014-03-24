@@ -17,7 +17,7 @@
 #include <core/vec.h>
 #include <core/message.h>
 
-//Includes copied from vistle ReadFOAM.cpp
+//Includes copied from covise ReadFOAM.cpp
 #include <sstream>
 #include <fstream>
 #include <iostream>
@@ -26,49 +26,16 @@
 #include <set>
 #include <cctype>
 
-#include <time.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <ctime>
+#include <cstdio>
+#include <cstdlib>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/copy.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
-
-#include <boost/spirit/include/qi.hpp>
-#include <boost/spirit/include/qi_no_skip.hpp>
-#include <boost/spirit/include/support_istream_iterator.hpp>
-#include <boost/spirit/include/support_multi_pass.hpp>
-#include <boost/spirit/include/classic_position_iterator.hpp>
-
-#include <boost/spirit/include/phoenix_core.hpp>
-#include <boost/spirit/include/phoenix_operator.hpp>
-#include <boost/spirit/include/phoenix_object.hpp>
-
-#include <boost/fusion/include/adapt_struct.hpp>
-#include <boost/fusion/include/io.hpp>
-#include <boost/fusion/include/vector.hpp>
-#include <boost/fusion/iterator.hpp>
-#include <boost/fusion/include/iterator.hpp>
-#include <boost/fusion/container/vector/vector_fwd.hpp>
-#include <boost/fusion/include/vector_fwd.hpp>
-#include <boost/fusion/include/std_pair.hpp>
-
-#include <boost/filesystem.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include "foamtoolbox.h"
-
-const size_t MaxHeaderLines = 1000;
-
-template<typename Alloc = std::allocator<char> >
-struct basic_gzip_decompressor;
-typedef basic_gzip_decompressor<> gzip_decompressor;
-
-namespace qi = boost::spirit::qi;
-namespace ascii = boost::spirit::ascii;
-
 
 using namespace vistle;
 
