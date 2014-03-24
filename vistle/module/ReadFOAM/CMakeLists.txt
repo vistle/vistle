@@ -37,5 +37,5 @@ target_link_libraries(ReadFOAM
         vistle_module
 )
 
-add_executable(foambounds bounds.cpp foamtoolbox.cpp)
-target_link_libraries(foambounds ${Boost_LIBRARIES} ${ZLIB_LIBRARIES})
+#add_executable(foambounds bounds.cpp foamtoolbox.cpp)
+#target_link_libraries(foambounds ${Boost_LIBRARIES} ${ZLIB_LIBRARIES})
