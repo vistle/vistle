@@ -47,7 +47,7 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
    // file browser parameter
    m_casedir = addStringParameter("casedir", "OpenFOAM case directory",
       "/data/OpenFOAM/PumpTurbine/", Parameter::Directory);
-
+   //Time Parameters
    m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
    setParameterMinimum<Float>(m_starttime, 0.);
    m_stoptime = addFloatParameter("stoptime", "stop reading at the last step before this time",
@@ -56,24 +56,41 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
    m_timeskip = addIntParameter("timeskip", "number of timesteps to skip", 0);
    setParameterMinimum<Integer>(m_timeskip, 0);
 
-   // the output ports
+   //Mesh ports
    m_gridOut = createOutputPort("grid_out");
    m_boundOut = createOutputPort("grid_out1");
 
    for (int i=0; i<NumPorts; ++i) {
-      {
+      {// Data Ports
          std::stringstream s;
          s << "data_out" << i;
          m_dataOut.push_back(createOutputPort(s.str()));
       }
-      {
+      {// Date Choice Parameters
          std::stringstream s;
-         s << "fieldname" << i;
+         s << "Data" << i;
          StringParameter *p =  addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
          std::vector<std::string> choices;
          choices.push_back("(NONE)");
          setParameterChoices(p, choices);
          m_fieldOut.push_back(p);
+      }
+   }
+   m_patches = addStringParameter("patches", "select patches","all");
+   for (int i=0; i<NumBoundaryPorts; ++i) {
+      {// 2d Data Ports
+         std::stringstream s;
+         s << "data_2d_out" << i;
+         m_data2dOut.push_back(createOutputPort(s.str()));
+      }
+      {// 2d Data Choice Parameters
+         std::stringstream s;
+         s << "Data2d" << i;
+         StringParameter *p =  addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
+         std::vector<std::string> choices;
+         choices.push_back("(NONE)");
+         setParameterChoices(p, choices);
+         m_field2dOut.push_back(p);
       }
    }
 }
