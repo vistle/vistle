@@ -10,7 +10,17 @@ set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/cmake" ${CMAKE_MODULE_PATH})
 find_package(COVISE OPTIONAL_COMPONENTS RHR)
 using(SNAPPY optional)
 find_package(ZLIB)
-find_package(JPEG)
+find_package(JPEGTURBO)
+
+if(NOT JPEGTURBO_FOUND)
+   RETURN()
+endif(NOT JPEGTURBO_FOUND)
+if(NOT TURBOJPEG_LIBRARY_STATIC)
+   return()
+endif()
+if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
+   return()
+endif()
 
 if(NOT COVISE_RHR_FOUND)
    message("Ray: COVISE RHR not found")
@@ -32,12 +42,16 @@ if(NOT EMBREE_FOUND)
    return()
 endif()
 
-use_openmp()
-
 if(TBB_FOUND)
     #if (NOT OPENMP_FOUND)
       add_definitions(-DUSE_TBB)
       #endif()
+else()
+   use_openmp()
+endif()
+
+if(JPEGTURBO_FOUND)
+   add_definitions(-DHAVE_TURBOJPEG)
 endif()
 
 add_module(Ray
@@ -57,6 +71,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}
         ${EMBREE_INCLUDE_PATH}
         ${TBB_INCLUDE_DIRS}
+        ${JPEGTURBO_INCLUDE_DIR}
 )
 
 target_link_libraries(Ray

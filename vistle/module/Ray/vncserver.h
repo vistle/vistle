@@ -29,6 +29,12 @@ class VncServer
 {
 public:
 
+  enum ColorCodec {
+      Raw,
+      Jpeg,
+      Snappy,
+  };
+
    // plugin methods
    VncServer(int w, int h, unsigned short port=5900);
    ~VncServer();
@@ -49,8 +55,9 @@ public:
    void postFrame();
    void invalidate(int viewNum, int x, int y, int w, int h, bool lastView);
 
+   void setColorCodec(ColorCodec value);
    void enableQuantization(bool value);
-   void enableSnappy(bool value);
+   void enableDepthSnappy(bool value);
    void setDepthPrecision(int bits);
 
    int timestep() const;

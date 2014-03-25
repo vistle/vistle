@@ -58,6 +58,7 @@ class RayCaster: public vistle::Renderer {
    IntParameter *m_vncOnSlaves;
    IntParameter *m_vncBasePort;
    IntParameter *m_shading;
+   IntParameter *m_rgbaEncoding;
    IntParameter *m_depthQuant;
    IntParameter *m_depthSnappy;
    IntParameter *m_depthPrec;
@@ -112,6 +113,7 @@ class RayCaster: public vistle::Renderer {
    int m_updateBounds;
    int m_doRender;
    bool m_doShade;
+   VncServer::ColorCodec m_rgbaCodec;
    bool m_snappy;
    bool m_quant;
    Integer m_prec;
@@ -230,6 +232,7 @@ RayCaster::RayCaster(const std::string &shmname, int rank, int size, int moduleI
 , m_updateBounds(1)
 , m_doRender(1)
 , m_doShade(true)
+, m_rgbaCodec(VncServer::Jpeg)
 , m_snappy(true)
 , m_quant(true)
 , m_prec(24)
@@ -249,10 +252,20 @@ RayCaster::RayCaster(const std::string &shmname, int rank, int size, int moduleI
    m_continuousRendering = addIntParameter("continuous_rendering", "render even though nothing has changed", 0, Parameter::Boolean);
    m_colorRank = addIntParameter("color_rank", "different colors on each rank", 0, Parameter::Boolean);
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
+
+   std::vector<std::string> choices;
+   m_rgbaEncoding = addIntParameter("color_codec", "codec for image data", m_rgbaCodec, Parameter::Choice);
+   choices.clear();
+   choices.push_back("Raw");
+   choices.push_back("JPEG");
+   choices.push_back("SNAPPY");
+   setParameterChoices(m_rgbaEncoding, choices);
+
    m_depthSnappy = addIntParameter("depth_snappy", "compress depth with SNAPPY", (Integer)m_snappy, Parameter::Boolean);
    m_depthQuant = addIntParameter("depth_quant", "DXT-like depth quantization", (Integer)m_quant, Parameter::Boolean);
+
    m_depthPrec = addIntParameter("depth_prec", "quantized depth precision", (Integer)(m_prec==24), Parameter::Choice);
-   std::vector<std::string> choices;
+   choices.clear();
    choices.push_back("16 bit + 2 bit/pixel");
    choices.push_back("24 bit + 3 bit/pixel");
    setParameterChoices(m_depthPrec, choices);
@@ -332,12 +345,17 @@ bool RayCaster::parameterChanged(Parameter *p) {
 
        m_snappy = m_depthSnappy->getValue();
        if (vnc)
-           vnc->enableSnappy(m_snappy);
+           vnc->enableDepthSnappy(m_snappy);
    } else if (p == m_depthQuant) {
 
        m_quant = m_depthQuant->getValue();
        if (vnc)
            vnc->enableQuantization(m_quant);
+   } else if (p == m_rgbaEncoding) {
+
+       m_rgbaCodec = (VncServer::ColorCodec)m_rgbaEncoding->getValue();
+       if (vnc)
+           vnc->setColorCodec(m_rgbaCodec);
    }
 
    m_doRender = 1;

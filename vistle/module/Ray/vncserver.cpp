@@ -24,8 +24,29 @@
 
 #include <tbb/parallel_for.h>
 #include <tbb/concurrent_queue.h>
+#include <tbb/enumerable_thread_specific.h>
 
 #include <util/stopwatch.h>
+
+#ifdef HAVE_TURBOJPEG
+#include <turbojpeg.h>
+
+struct TjComp {
+
+       TjComp()
+                 : handle(tjInitCompress())
+                       {}
+
+          ~TjComp() {
+                    tjDestroy(handle);
+                       }
+
+             tjhandle handle;
+};
+
+typedef tbb::enumerable_thread_specific<TjComp> TjContext;
+static TjContext tjContexts;
+#endif
 
 static double now() {
     namespace chrono = boost::chrono;
@@ -141,15 +162,32 @@ VncServer::~VncServer()
    plugin = nullptr;
 }
 
+void VncServer::setColorCodec(ColorCodec value) {
+
+    switch(value) {
+        case Raw:
+            m_imageParam.rgbaJpeg = false;
+            m_imageParam.rgbaSnappy = false;
+            break;
+        case Jpeg:
+            m_imageParam.rgbaJpeg = true;
+            m_imageParam.rgbaSnappy = false;
+            break;
+        case Snappy:
+            m_imageParam.rgbaJpeg = false;
+            m_imageParam.rgbaSnappy = true;
+            break;
+    }
+}
+
 void VncServer::enableQuantization(bool value) {
 
    m_imageParam.depthQuant = value;
 }
 
-void VncServer::enableSnappy(bool value) {
+void VncServer::enableDepthSnappy(bool value) {
 
     m_imageParam.depthSnappy = value;
-    m_imageParam.rgbaSnappy = value;
 }
 
 void VncServer::setDepthPrecision(int bits) {
@@ -1116,7 +1154,9 @@ struct EncodeTask: public tbb::task {
        message->size = message->width * message->height * bpp;
        message->format = rfbColorRGBA;
 
-        if (param.rgbaSnappy) {
+        if (param.rgbaJpeg) {
+            message->compression |= rfbTileJpeg;
+        } else if (param.rgbaSnappy) {
             message->compression |= rfbTileSnappy;
         }
     }
@@ -1172,10 +1212,25 @@ struct EncodeTask: public tbb::task {
             }
         } else if (rgba) {
             if (msg.compression & rfbTileJpeg) {
-                msg.compression &= ~rfbTileJpeg;
+                int ret = -1;
+#ifdef HAVE_TURBOJPEG
+                TJSAMP subsamp = TJSAMP_420;
+                TjContext::reference tj = tjContexts.local();
+                size_t maxsize = tjBufSize(msg.width, msg.height, subsamp);
+                char *jpegbuf = new char[maxsize];
+                unsigned long sz = 0;
+                unsigned char *src = reinterpret_cast<unsigned char *>(rgba);
+                rgba += (msg.totalwidth*msg.y+msg.x)*bpp;
+                ret = tjCompress(tj.handle, rgba, msg.width, msg.totalwidth*bpp, msg.height, bpp, reinterpret_cast<unsigned char *>(jpegbuf), &sz, subsamp, 90, TJ_BGR);
+                if (ret >= 0) {
+                    msg.size = sz;
+                    result.payload = jpegbuf;
+                }
+#endif
+                if (ret < 0)
+                    msg.compression &= ~rfbTileJpeg;
             }
-            if (msg.compression & rfbTileJpeg) {
-            } else {
+            if (!(msg.compression & rfbTileJpeg)) {
                 char *tilebuf = new char[msg.size];
                 for (int yy=0; yy<h; ++yy) {
                     memcpy(tilebuf+yy*bpp*w, rgba+((yy+y)*stride+x)*bpp, w*bpp);
