@@ -1,0 +1,216 @@
+#ifndef CELLTREE_H
+#define CELLTREE_H
+
+#include "export.h"
+#include "scalar.h"
+#include "index.h"
+#include "shm.h"
+#include "object.h"
+#include "vector.h"
+
+namespace vistle {
+
+// a bounding volume hierarchy, cf. C. Garth and K. I. Joy:
+// “Fast, memory-efficient cell location in unstructured grids for visualization”,
+// IEEE Transactions on Visualization and Computer Graphics, vol. 16, no. 6, pp. 1541–1550, 2010.
+
+template<size_t IndexSize, int NumDimensions>
+struct CelltreeNode;
+
+template<typename Scalar, typename Index, int NumDimensions=3>
+class V_COREEXPORT Celltree: public Object {
+   V_OBJECT(Celltree);
+
+ public:
+   typedef Object Base;
+
+   typedef typename VistleScalarVector<NumDimensions>::type Vector;
+   typedef CelltreeNode<sizeof(Index), NumDimensions> Node;
+
+   class VisitFunctor {
+
+    public:
+      enum Order {
+         None = 0,
+         RightFirst = 1,
+         RightSecond = 2,
+         Left = 4,
+         Right = RightFirst,
+         LeftRight = Left|RightSecond,
+         RightLeft = Left|RightFirst,
+      };
+
+      bool checkBounds(const Scalar *min, const Scalar *max) {
+
+         (void)min;
+         (void)max;
+         return true; // continue traversal
+      }
+
+      Order operator()(const Node &node, const Scalar *min, const Scalar *max) {
+
+         (void)node;
+         (void)min;
+         (void)max;
+         return LeftRight;
+      }
+   };
+
+   class LeafFunctor {
+    public:
+      bool operator()(Index elem) {
+         return true; // continue traversal
+      }
+   };
+
+   Celltree(const Index numCells,
+         const Meta &meta=Meta());
+
+   void init(const Vector *min, const Vector *max, const Vector &gmin, const Vector &gmax);
+   void refine(const Vector *min, const Vector *max, Index nodeIdx, const Vector &gmin, const Vector &gmax);
+
+   Scalar *min() const { return &(*(*d()->m_bounds)())[0]; }
+   Scalar *max() const { return &(*(*d()->m_bounds)())[NumDimensions]; }
+   typename shm<Node>::array &nodes() const { return *(*d()->m_nodes)(); }
+   typename shm<Index>::array &cells() const { return *(*d()->m_cells)(); }
+
+   template<class InnerNodeFunctor, class ElementFunctor>
+   void traverse(InnerNodeFunctor &visitNode, ElementFunctor &visitElement) const {
+      if (!visitNode.checkBounds(min(), max()))
+         return;
+      traverseNode(0, nodes().data(), cells().data(), min(), max(), visitNode, visitElement);
+   }
+
+ private:
+   template<class InnerNodeFunctor, class ElementFunctor>
+   bool traverseNode(Index curNode, const Node *nodes, const Index *cells, Scalar *min, Scalar *max, InnerNodeFunctor &visitNode, ElementFunctor &visitElement) const {
+
+      const Node &node = nodes[curNode];
+      if (node.dim == NumDimensions) {
+         // leaf node
+         for (Index i = node.start; i < node.start+node.size; ++i) {
+            const Index cell = cells[i];
+            if (!visitElement(cell))
+               return false;
+         }
+         return true;
+      }
+
+      const typename VisitFunctor::Order order = visitNode(node, min, max);
+      const Scalar smin = min[node.dim];
+      const Scalar smax = max[node.dim];
+      bool continueTraversal = true;
+      if (continueTraversal && (order & VisitFunctor::RightFirst)) {
+         min[node.dim] = node.Rmin;
+         continueTraversal = traverseNode(node.child+1, nodes, cells, min, max, visitNode, visitElement);
+         min[node.dim] = smin;
+      }
+      if (continueTraversal && (order & VisitFunctor::Left)) {
+         max[node.dim] = node.Lmax;
+         continueTraversal = traverseNode(node.child, nodes, cells, min, max, visitNode, visitElement);
+         max[node.dim] = smax;
+      }
+      if (continueTraversal && (order & VisitFunctor::RightSecond)) {
+         min[node.dim] = node.Rmin;
+         continueTraversal = traverseNode(node.child+1, nodes, cells, min, max, visitNode, visitElement);
+         min[node.dim] = smin;
+      }
+
+      return continueTraversal;
+   }
+
+   template<class Functor>
+   bool traverseNode(Index curNode, Functor &func) const;
+
+   V_DATA_BEGIN(Celltree);
+      typename ShmVector<Scalar>::ptr m_bounds;
+      typename ShmVector<Index>::ptr m_cells;
+      typename ShmVector<Node>::ptr m_nodes;
+
+      static Data *create(const Index numCells = 0,
+            const Meta &m=Meta());
+      Data(const std::string &name = "", const Index numCells = 0,
+            const Meta &m=Meta());
+   V_DATA_END(Celltree);
+};
+
+template<int NumDimensions>
+struct CelltreeNode<8, NumDimensions> {
+   union {
+      struct {
+         Scalar Lmax, Rmin; //< for inner nodes: max of left subvolume, min of right subvolume
+      };
+      struct {
+         Index start, size; //< for leaf nodes: index into cell array
+      };
+   };
+
+   Index dim: NumDimensions==1 ? 1 : 2; //< split dimension, or NumDimensions for leaf nodes
+   Index child: sizeof(Index)*8-(NumDimensions==1 ? 1 : 2); //< index of first child for inner nodes
+
+   CelltreeNode(Index start=0, Index size=0) // leaf node
+      : start(start)
+      , size(size)
+      , dim(NumDimensions)
+      , child(0)
+      {}
+
+   CelltreeNode(int dim, Scalar Lmax, Scalar Rmin, Index children) // inner node
+      : Lmax(Lmax)
+      , Rmin(Rmin)
+      , dim(dim)
+      , child(children)
+      {}
+
+ private:
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {}
+};
+
+template<int NumDimensions>
+struct CelltreeNode<4, NumDimensions> {
+   union {
+      struct {
+         Scalar Lmax, Rmin; //< for inner nodes: max of left subvolume, min of right subvolume
+      };
+      struct {
+         Index start, size; //< for leaf nodes: index into cell array
+      };
+   };
+
+   Index dim; //< split dimension, or NumDimensions for leaf nodes
+   Index child; //< index of first child for inner nodes
+
+   CelltreeNode(Index start=0, Index size=0) // leaf node
+      : start(start)
+      , size(size)
+      , dim(NumDimensions)
+      , child(0)
+      {}
+
+   CelltreeNode(int dim, Scalar Lmax, Scalar Rmin, Index children) // inner node
+      : Lmax(Lmax)
+      , Rmin(Rmin)
+      , dim(dim)
+      , child(children)
+      {}
+
+ private:
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {}
+};
+
+BOOST_STATIC_ASSERT(sizeof(Celltree<Scalar, Index>::Node) % 8 == 0);
+
+typedef Celltree<Scalar, Index, 1> Celltree1;
+typedef Celltree<Scalar, Index, 2> Celltree2;
+typedef Celltree<Scalar, Index, 3> Celltree3;
+
+} // namespace vistle
+
+#ifdef VISTLE_IMPL
+#include "celltree_impl.h"
+#endif
+#endif

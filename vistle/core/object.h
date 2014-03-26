@@ -73,6 +73,9 @@ public:
       POLYGONS          = 22,
       UNSTRUCTUREDGRID  = 23,
 
+      CELLTREE1         = 96,
+      CELLTREE2         = 97,
+      CELLTREE3         = 98,
       NORMALS           = 99,
 
       VEC               = 100, // base type id for all Vec types
@@ -91,6 +94,9 @@ public:
          V_OBJECT_CASE(TRIANGLES)
          V_OBJECT_CASE(POLYGONS)
          V_OBJECT_CASE(UNSTRUCTUREDGRID)
+         V_OBJECT_CASE(CELLTREE1)
+         V_OBJECT_CASE(CELLTREE2)
+         V_OBJECT_CASE(CELLTREE3)
          V_OBJECT_CASE(NORMALS)
          default:
             break;
@@ -437,7 +443,34 @@ class ObjectTypeRegistry {
       ar.register_type<Type1, Type2 >(); \
    }
 
-#define V_SERIALIZERS(ObjType) \
+#define V_SERIALIZERS2(ObjType, prefix) \
+   prefix \
+   void ObjType::registerTextIArchive(boost::archive::text_iarchive &ar) { \
+      ar.register_type<ObjType >(); \
+   } \
+   prefix \
+   void ObjType::registerTextOArchive(boost::archive::text_oarchive &ar) { \
+      ar.register_type<ObjType >(); \
+   } \
+   prefix \
+   void ObjType::registerXmlIArchive(boost::archive::xml_iarchive &ar) { \
+      ar.register_type<ObjType >(); \
+   } \
+   prefix \
+   void ObjType::registerXmlOArchive(boost::archive::xml_oarchive &ar) { \
+      ar.register_type<ObjType >(); \
+   } \
+   prefix \
+   void ObjType::registerBinaryIArchive(boost::archive::binary_iarchive &ar) { \
+      ar.register_type<ObjType >(); \
+   } \
+   prefix \
+   void ObjType::registerBinaryOArchive(boost::archive::binary_oarchive &ar) { \
+      ar.register_type<ObjType >(); \
+   }
+
+#define V_SERIALIZERS(ObjType) V_SERIALIZERS2(ObjType,)
+#if 0
    void ObjType::registerTextIArchive(boost::archive::text_iarchive &ar) { \
       ar.register_type<ObjType >(); \
    } \
@@ -456,6 +489,7 @@ class ObjectTypeRegistry {
    void ObjType::registerBinaryOArchive(boost::archive::binary_oarchive &ar) { \
       ar.register_type<ObjType >(); \
    }
+#endif
 
 #ifdef VISTLE_STATIC
 #define REGISTER_TYPE(ObjType, id) \
@@ -493,6 +527,10 @@ class ObjectTypeRegistry {
       typedef Type1,Type2 ObjType; \
       V_OBJECT_TYPE3INT(ObjType, suffix, id) \
    }
+
+#define V_OBJECT_TYPE_T(ObjType, id) \
+   V_SERIALIZERS2(ObjType, template<>) \
+   V_OBJECT_TYPE3(ObjType, ObjType, id)
 
 //! register a new Object type (simple form for non-templates, symbol suffix determined automatically)
 #define V_OBJECT_TYPE(ObjType, id) \

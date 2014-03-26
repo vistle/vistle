@@ -6,6 +6,7 @@ set(core_SOURCES
    objectcache.cpp
    objectmeta.cpp
    object.cpp
+   allobjects.cpp # just one file including all the others for faster compilation
    message.cpp
    messagequeue.cpp
    tcpmessage.cpp
@@ -22,6 +23,7 @@ if(${TEMPLATES_IN_HEADERS})
    # but just one file including all the others for faster compilation
    set(core_SOURCES ${core_SOURCES}
       vec.cpp
+      celltree.cpp
       coords.cpp
       normals.cpp
       points.cpp
@@ -43,6 +45,8 @@ endif()
 set(core_HEADERS
    assert.h
    archives.h
+   celltree.h
+   celltree_impl.h
    coords.h
    coords_impl.h
    dimensions.h

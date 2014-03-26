@@ -36,6 +36,9 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
 
    shm<unsigned char>::array &tl() const { return *(*d()->tl)(); }
 
+   Index findCell(const Vector &point) const;
+   bool inside(Index elem, const Vector &point) const;
+
    V_DATA_BEGIN(UnstructuredGrid);
       ShmVector<unsigned char>::ptr tl;
 

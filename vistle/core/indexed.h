@@ -6,6 +6,7 @@
 #include "shm.h"
 #include "coords.h"
 #include "export.h"
+#include "celltree.h"
 
 namespace vistle {
 
@@ -14,6 +15,7 @@ class  V_COREEXPORT Indexed: public Coords {
 
  public:
    typedef Coords Base;
+   typedef vistle::Celltree<Scalar, Index> Celltree;
 
    Indexed(const Index numElements, const Index numCorners,
          const Index numVertices,
@@ -25,6 +27,12 @@ class  V_COREEXPORT Indexed: public Coords {
 
    typename shm<Index>::array &el() const { return *(*d()->el)(); }
    typename shm<Index>::array &cl() const { return *(*d()->cl)(); }
+
+   bool hasCelltree() const;
+   Celltree::const_ptr getCelltree() const;
+
+ private:
+   void createCelltree() const;
 
    V_DATA_BEGIN(Indexed);
       ShmVector<Index>::ptr el; //< element list: index into connectivity list - last element: sentinel

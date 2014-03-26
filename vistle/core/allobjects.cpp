@@ -15,6 +15,7 @@
 #include "geometry.cpp"
 #include "texture1d.cpp"
 #include "placeholder.cpp"
+#include "celltree.cpp"
 
 #else
 
@@ -31,6 +32,7 @@
 #include "geometry.h"
 #include "texture1d.h"
 #include "placeholder.h"
+#include "celltree.h"
 
 #endif
 
@@ -66,6 +68,9 @@ void registerTypes() {
    REGISTER_TYPE(Triangles, Object::TRIANGLES);
    REGISTER_TYPE(Polygons, Object::POLYGONS);
    REGISTER_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID);
+   REGISTER_TYPE(Celltree1, Object::CELLTREE1);
+   REGISTER_TYPE(Celltree2, Object::CELLTREE2);
+   REGISTER_TYPE(Celltree3, Object::CELLTREE3);
 
    typedef Vec<unsigned char,1> Vec_uchar_1;
    REGISTER_TYPE(Vec_uchar_1, Vec_uchar_1::type());
@@ -76,6 +81,11 @@ void registerTypes() {
    REGISTER_TYPE(Vec_int_1, Vec_int_1::type());
    typedef Vec<int,3> Vec_int_3;
    REGISTER_TYPE(Vec_int_3, Vec_int_3::type());
+
+   typedef Vec<unsigned int,1> Vec_uint_1;
+   REGISTER_TYPE(Vec_uint_1, Vec_uint_1::type());
+   typedef Vec<unsigned int,3> Vec_uint_3;
+   REGISTER_TYPE(Vec_uint_3, Vec_uint_3::type());
 
    typedef Vec<size_t,1> Vec_szt_1;
    REGISTER_TYPE(Vec_szt_1, Vec_szt_1::type());

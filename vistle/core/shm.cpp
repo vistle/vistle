@@ -13,6 +13,7 @@
 #include "message.h"
 #include "messagequeue.h"
 #include "scalars.h"
+#include "celltree.h"
 
 #ifndef TEMPLATES_IN_HEADERS
 #define VISTLE_IMPL
@@ -369,6 +370,9 @@ struct instantiator {
 void instantiate_shmvector() {
 
    mpl::for_each<Scalars>(instantiator());
+
+   typedef boost::mpl::vector<Celltree<Scalar, Index>::Node> CelltreeNodes;
+   mpl::for_each<CelltreeNodes>(instantiator());
 }
 
 } // namespace vistle

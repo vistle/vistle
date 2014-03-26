@@ -31,6 +31,68 @@ bool Indexed::checkImpl() const {
    return true;
 }
 
+bool Indexed::hasCelltree() const {
+
+   return hasAttachment("celltree");
+}
+
+Indexed::Celltree::const_ptr Indexed::getCelltree() const {
+
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
+   Celltree::const_ptr ct;
+   if (!hasAttachment("celltree"))
+      createCelltree();
+
+   ct = Celltree::as(getAttachment("celltree"));
+   assert(ct);
+   return ct;
+}
+
+void Indexed::createCelltree() const {
+
+   if (hasCelltree())
+      return;
+
+   const Scalar *coords[3] = {
+      x().data(),
+      y().data(),
+      z().data()
+   };
+   const Scalar smax = std::numeric_limits<Scalar>::max();
+
+   const Index nelem = getNumElements();
+   std::vector<Vector> min(nelem, Vector(smax, smax, smax));
+   std::vector<Vector> max(nelem, Vector(-smax, -smax, -smax));
+   auto cl = this->cl().data();
+   auto el = this->el().data();
+
+   Vector gmin(smax, smax, smax), gmax(-smax, -smax, -smax);
+   for (Index i=0; i<nelem; ++i) {
+      const Index start = el[i], end = el[i+1];
+      for (Index c = start; c<end; ++c) {
+         const Index v = cl[c];
+         for (int d=0; d<3; ++d) {
+            if (min[i][d] > coords[d][v]) {
+               min[i][d] = coords[d][v];
+               if (gmin[d] > min[i][d])
+                  gmin[d] = min[i][d];
+            }
+            if (max[i][d] < coords[d][v]) {
+               max[i][d] = coords[d][v];
+               if (gmax[d] < max[i][d])
+                  gmax[d] = max[i][d];
+            }
+         }
+      }
+   }
+
+   Celltree::ptr ct(new Celltree(getNumElements()));
+   ct->init(min.data(), max.data(), gmin, gmax);
+   addAttachment("celltree", ct);
+}
+
+
+
 Indexed::Data::Data(const Index numElements, const Index numCorners,
              const Index numVertices,
              Type id, const std::string & name,
