@@ -5,7 +5,7 @@
 
 namespace vistle {
 
-typedef int Index;
+typedef unsigned int Index;
 
 } // namespace vistle
 
