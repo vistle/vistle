@@ -166,7 +166,7 @@ public:
    std::vector<std::string> getAttributes(const std::string &key) const;
 
    // attachments, e.g. Celltrees
-   bool addAttachment(const std::string &key, Object::const_ptr att);
+   bool addAttachment(const std::string &key, Object::const_ptr att) const;
    bool hasAttachment(const std::string &key) const;
    void copyAttachments(Object::const_ptr src, bool replace = true);
    Object::const_ptr getAttachment(const std::string &key) const;
@@ -186,7 +186,7 @@ public:
     struct Data {
       Type type;
       shm_name_t name;
-      mutable boost::interprocess::interprocess_mutex mutex; //< protects refcount and attachments
+      boost::interprocess::interprocess_mutex ref_mutex; //< protects refcount
       int refcount;
 
       Meta meta;

@@ -254,20 +254,20 @@ void instantiate_all_io() {
 }
 
 void Object::Data::ref() {
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(ref_mutex);
    ++refcount;
 }
 
 void Object::Data::unref() {
-   mutex.lock();
+   ref_mutex.lock();
    --refcount;
    assert(refcount >= 0);
    if (refcount == 0) {
-      mutex.unlock();
+      ref_mutex.unlock();
       ObjectTypeRegistry::getDestroyer(type)(name);
       return;
    }
-   mutex.unlock();
+   ref_mutex.unlock();
 }
 
 shm_handle_t Object::getHandle() const {
@@ -505,7 +505,7 @@ std::vector<std::string> Object::Data::getAttributes(const std::string &key) con
    return attrs;
 }
 
-bool Object::addAttachment(const std::string &key, Object::const_ptr obj) {
+bool Object::addAttachment(const std::string &key, Object::const_ptr obj) const {
 
    return d()->addAttachment(key, obj);
 }
@@ -532,7 +532,7 @@ bool Object::removeAttachment(const std::string &key) const {
 
 bool Object::Data::hasAttachment(const std::string &key) const {
 
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
    const Key skey(key.c_str(), Shm::the().allocator());
    AttachmentMap::iterator it = attachments->find(skey);
    return it != attachments->end();
@@ -540,7 +540,7 @@ bool Object::Data::hasAttachment(const std::string &key) const {
 
 Object::const_ptr Object::Data::getAttachment(const std::string &key) const {
 
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
    const Key skey(key.c_str(), Shm::the().allocator());
    AttachmentMap::iterator it = attachments->find(skey);
    if (it == attachments->end()) {
@@ -551,7 +551,7 @@ Object::const_ptr Object::Data::getAttachment(const std::string &key) const {
 
 bool Object::Data::addAttachment(const std::string &key, Object::const_ptr obj) {
 
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(mutex);
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
    const Key skey(key.c_str(), Shm::the().allocator());
    AttachmentMap::iterator it = attachments->find(skey);
    if (it != attachments->end()) {
