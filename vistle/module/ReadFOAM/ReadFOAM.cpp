@@ -47,7 +47,7 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
 {
    // file browser parameter
    m_casedir = addStringParameter("casedir", "OpenFOAM case directory",
-      "/data/OpenFOAM/PumpTurbine/", Parameter::Directory);
+      "/mnt/raid/home/hpcchkop/OpenFoamFiles/motorBike", Parameter::Directory);
    //Time Parameters
    m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
    setParameterMinimum<Float>(m_starttime, 0.);
@@ -177,11 +177,15 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
    bool readGrid = m_readGrid->getValue();
    bool readBoundary = m_readBoundary->getValue();
 
+   if (!readGrid && !readBoundary) {
+      return std::make_pair(UnstructuredGrid::ptr(), Polygons::ptr()); //Module crashes when this is returned
+   }
+
    Boundaries boundaries = loadBoundary(meshdir);
    DimensionInfo dim = readDimensions(meshdir);
 
-   UnstructuredGrid::ptr grid(new UnstructuredGrid(dim.cells, 0, 0));
    Polygons::ptr poly(new Polygons(0, 0, 0));
+   UnstructuredGrid::ptr grid(new UnstructuredGrid(dim.cells, 0, 0));
 
    {
       boost::shared_ptr<std::istream> ownersIn = getStreamForFile(meshdir, "owner");
@@ -210,38 +214,28 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
          << "#faces: " << dim.faces << ", "
          << "#internal faces: " << dim.internalFaces << std::endl;
 
-      auto &polys = poly->el();
-      auto &conn = poly->cl();
-      Index num_bound = dim.faces - dim.internalFaces;
-      polys.reserve(num_bound);
-      for (Index i=dim.internalFaces; i<dim.faces; ++i) {
-         if (!boundaries.isProcessorBoundaryFace(i)) {
-            polys.push_back(conn.size());
-            auto &face = faces[i];
-            for (int j=0; j<face.size(); ++j) {
-               conn.push_back(face[j]);
+      if (readBoundary) {
+         auto &polys = poly->el();
+         auto &conn = poly->cl();
+         //Index num_bound = dim.faces - dim.internalFaces;
+         //polys.reserve(num_bound); //TODO
+         for (std::vector<Boundary>::const_iterator it=boundaries.boundaries.begin();
+              it!=boundaries.boundaries.end();
+              ++it) {
+            int boundaryIndex=it->index;
+            std::string selection=m_patchSelection->getValue();
+            if (m_boundaryPatches(boundaryIndex) || strcmp(selection.c_str(),"all")==0) {
+               for (index_t i=it->startFace; i<it->startFace + it->numFaces; ++i) {
+                  polys.push_back(conn.size());
+                  auto &face = faces[i];
+                  for (int j=0; j<face.size(); ++j) {
+                     conn.push_back(face[j]);
+                  }
+               }
+               polys.push_back(conn.size());
             }
          }
       }
-      polys.push_back(conn.size());
-
-//      for (std::vector<Boundary>::const_iterator it=boundaries.boundaries.begin();
-//           it!=boundaries.boundaries.end();
-//           ++it) {
-//         int boundaryIndex=it->index;
-//         if (res(boundaryIndex) || strcmp(selection.c_str(),"all")==0) {
-//            for (index_t i=it->startFace; i<it->startFace + it->numFaces; ++i) {
-//               *polygonList=cornercount;
-//               ++polygonList;
-//               std::vector<index_t> &face=faces[i];
-//               for (index_t j=0;j<face.size();j++) {
-//                  *cornerList=pointmap[face[j]];
-//                  ++cornerList;
-//                  ++cornercount;
-//               }
-//            }
-//         }
-//      }
 
       //Create CellFaceMap
       //std::cerr << " " << "Creating cell to face Map ... " << std::flush;
@@ -406,10 +400,13 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
       el[dim.cells] = connectivities.size();
    }
 
+
    loadCoords(meshdir, grid);
-   poly->d()->x[0] = grid->d()->x[0];
-   poly->d()->x[1] = grid->d()->x[1];
-   poly->d()->x[2] = grid->d()->x[2];
+   if (readBoundary) {
+      poly->d()->x[0] = grid->d()->x[0];
+      poly->d()->x[1] = grid->d()->x[1];
+      poly->d()->x[2] = grid->d()->x[2];
+   }
 
    //std::cerr << " done!" << std::endl;
 
@@ -600,7 +597,6 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 bool ReadFOAM::compute()     //Compute is called when Module is executed
 {
    const std::string casedir = m_casedir->getValue();
-   //coRestraint m_boundaryPatches;
    m_boundaryPatches.add(m_patchSelection->getValue());
    m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
    if (!m_case.valid) {
