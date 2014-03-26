@@ -205,6 +205,7 @@ public:
       std::string getAttribute(const std::string &key) const;
       std::vector<std::string> getAttributes(const std::string &key) const;
 
+      mutable boost::interprocess::interprocess_recursive_mutex attachment_mutex; //< protects attachments
       typedef interprocess::offset_ptr<Object::Data> Attachment;
       typedef std::pair<const Key, Attachment> AttachmentMapValueType;
       typedef shm<AttachmentMapValueType>::allocator AttachmentMapAllocator;
