@@ -37,20 +37,28 @@ int main(int argc, char *argv[]) {
    std::map<std::string, bool> envToSet;
    if (rank == 0) {
       std::vector<std::string> envvars;
-      envvars.push_back("PATH");
+      // system
       envvars.push_back("PATH");
       envvars.push_back("LD_LIBRARY_PATH");
       envvars.push_back("DYLD_LIBRARY_PATH");
       envvars.push_back("DYLD_FRAMEWORK_PATH");
       envvars.push_back("LANG");
+      // covise config
       envvars.push_back("COCONFIG");
       envvars.push_back("COCONFIG_LOCAL");
       envvars.push_back("COCONFIG_DEBUG");
+      envvars.push_back("COCONFIG_DIR");
+      envvars.push_back("COCONFIG_SCHEMA");
       envvars.push_back("COVISE_CONFIG");
+      // cover
+      envvars.push_back("COVER_PLUGINS");
+      envvars.push_back("COVER_TABLETPC");
+      envvars.push_back("COVISE_SG_DEBUG");
       //envvars.push_back("COVISE_HOST");
       envvars.push_back("COVISEDIR");
       envvars.push_back("COVISE_PATH");
       envvars.push_back("ARCHSUFFIX");
+      // OpenSceneGraph
       envvars.push_back("OSGFILEPATH");
       envvars.push_back("OSG_FILE_PATH");
       envvars.push_back("OSG_NOTIFY_LEVEL");
