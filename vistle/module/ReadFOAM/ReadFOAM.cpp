@@ -36,6 +36,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include "foamtoolbox.h"
+//#include <util/coRestraint.h>
 
 using namespace vistle;
 
@@ -55,6 +56,7 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
    setParameterMinimum<Float>(m_stoptime, 0.);
    m_timeskip = addIntParameter("timeskip", "number of timesteps to skip", 0);
    setParameterMinimum<Integer>(m_timeskip, 0);
+   m_readGrid = addIntParameter("read_grid", "load the grid?", 1, Parameter::Boolean);
 
    //Mesh ports
    m_gridOut = createOutputPort("grid_out");
@@ -64,7 +66,7 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
       {// Data Ports
          std::stringstream s;
          s << "data_out" << i;
-         m_dataOut.push_back(createOutputPort(s.str()));
+         m_volumeDataOut.push_back(createOutputPort(s.str()));
       }
       {// Date Choice Parameters
          std::stringstream s;
@@ -76,12 +78,13 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
          m_fieldOut.push_back(p);
       }
    }
-   m_patches = addStringParameter("patches", "select patches","all");
+   m_readBoundary = addIntParameter("read_boundary", "load the boundary?", 1, Parameter::Boolean);
+   m_patchSelection = addStringParameter("patches", "select patches","all");
    for (int i=0; i<NumBoundaryPorts; ++i) {
       {// 2d Data Ports
          std::stringstream s;
          s << "data_2d_out" << i;
-         m_data2dOut.push_back(createOutputPort(s.str()));
+         m_boundaryDataOut.push_back(createOutputPort(s.str()));
       }
       {// 2d Data Choice Parameters
          std::stringstream s;
@@ -90,7 +93,7 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
          std::vector<std::string> choices;
          choices.push_back("(NONE)");
          setParameterChoices(p, choices);
-         m_field2dOut.push_back(p);
+         m_boundaryOut.push_back(p);
       }
    }
 }
@@ -150,7 +153,7 @@ bool ReadFOAM::parameterChanged(Parameter *p)
       for (StringParameter *out: m_fieldOut) {
          setParameterChoices(out, choices);
       }
-      for (StringParameter *out: m_field2dOut) {
+      for (StringParameter *out: m_boundaryOut) {
          setParameterChoices(out, choices);
       }
       sendMessage(message::Idle());
@@ -171,11 +174,13 @@ bool loadCoords(const std::string &meshdir, UnstructuredGrid::ptr grid) {
 
 std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::string &meshdir) {
 
+   bool readGrid = m_readGrid->getValue();
+   bool readBoundary = m_readBoundary->getValue();
+
    Boundaries boundaries = loadBoundary(meshdir);
-
    DimensionInfo dim = readDimensions(meshdir);
-   UnstructuredGrid::ptr grid(new UnstructuredGrid(dim.cells, 0, 0));
 
+   UnstructuredGrid::ptr grid(new UnstructuredGrid(dim.cells, 0, 0));
    Polygons::ptr poly(new Polygons(0, 0, 0));
 
    {
@@ -219,6 +224,24 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
          }
       }
       polys.push_back(conn.size());
+
+//      for (std::vector<Boundary>::const_iterator it=boundaries.boundaries.begin();
+//           it!=boundaries.boundaries.end();
+//           ++it) {
+//         int boundaryIndex=it->index;
+//         if (res(boundaryIndex) || strcmp(selection.c_str(),"all")==0) {
+//            for (index_t i=it->startFace; i<it->startFace + it->numFaces; ++i) {
+//               *polygonList=cornercount;
+//               ++polygonList;
+//               std::vector<index_t> &face=faces[i];
+//               for (index_t j=0;j<face.size();j++) {
+//                  *cornerList=pointmap[face[j]];
+//                  ++cornerList;
+//                  ++cornercount;
+//               }
+//            }
+//         }
+//      }
 
       //Create CellFaceMap
       //std::cerr << " " << "Creating cell to face Map ... " << std::flush;
@@ -445,7 +468,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
          continue;
       Object::ptr obj = loadField(meshdir, field);
       setMeta(obj, processor, timestep);
-      addObject(m_dataOut[i], obj);
+      addObject(m_volumeDataOut[i], obj);
    }
 
    return true;
@@ -577,6 +600,8 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 bool ReadFOAM::compute()     //Compute is called when Module is executed
 {
    const std::string casedir = m_casedir->getValue();
+   //coRestraint m_boundaryPatches;
+   m_boundaryPatches.add(m_patchSelection->getValue());
    m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
    if (!m_case.valid) {
       std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;

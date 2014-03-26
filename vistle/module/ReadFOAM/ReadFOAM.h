@@ -22,11 +22,13 @@
 #include <core/polygons.h>
 
 #include "foamtoolbox.h"
+#include <util/coRestraint.h>
 
 class ReadFOAM: public vistle::Module
 {
    static const int NumPorts = 3;
    static const int NumBoundaryPorts = 3;
+
  public:
       virtual bool compute();
       ReadFOAM(const std::string &shmname, int rank, int size, int moduleId);
@@ -34,15 +36,16 @@ class ReadFOAM: public vistle::Module
 
    private:
       //Parameter
-      vistle::StringParameter *m_casedir, *m_patches;
+      vistle::StringParameter *m_casedir, *m_patchSelection;
       vistle::FloatParameter *m_starttime, *m_stoptime;
       vistle::IntParameter *m_timeskip;
-      std::vector<vistle::StringParameter *> m_fieldOut;
-      std::vector<vistle::StringParameter *> m_field2dOut;
+      vistle::IntParameter *m_readGrid, *m_readBoundary;
+      std::vector<vistle::StringParameter *> m_fieldOut , m_boundaryOut;
       //Ports
       vistle::Port *m_gridOut, *m_boundOut;
-      std::vector<vistle::Port *> m_dataOut, m_data2dOut;
+      std::vector<vistle::Port *> m_volumeDataOut, m_boundaryDataOut;
 
+      vistle::coRestraint m_boundaryPatches;
       CaseInfo m_case;
 
       std::vector<std::string> getFieldList() const;
