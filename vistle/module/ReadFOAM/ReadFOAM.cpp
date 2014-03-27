@@ -172,6 +172,16 @@ bool loadCoords(const std::string &meshdir, UnstructuredGrid::ptr grid) {
    return true;
 }
 
+bool loadCoords(const std::string &meshdir, Polygons::ptr poly) {
+
+   boost::shared_ptr<std::istream> pointsIn = getStreamForFile(meshdir, "points");
+   HeaderInfo pointsH = readFoamHeader(*pointsIn);
+   poly->setSize(pointsH.lines);
+   readFloatVectorArray(*pointsIn, poly->x().data(), poly->y().data(), poly->z().data(), pointsH.lines);
+
+   return true;
+}
+
 std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::string &meshdir) {
 
    bool readGrid = m_readGrid->getValue();
@@ -185,9 +195,10 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
    DimensionInfo dim = readDimensions(meshdir);
 
    Polygons::ptr poly(new Polygons(0, 0, 0));
-   UnstructuredGrid::ptr grid(new UnstructuredGrid(dim.cells, 0, 0));
+   UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0));
 
    {
+      //read mesh files
       boost::shared_ptr<std::istream> ownersIn = getStreamForFile(meshdir, "owner");
       HeaderInfo ownerH = readFoamHeader(*ownersIn);
       std::vector<Index> owners(ownerH.lines);
@@ -206,19 +217,21 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
       std::vector<Index> neighbour(neighbourH.lines);
       readIndexArray(*neighborsIn, neighbour.data(), neighbour.size());
 
-
-
-      //Load mesh dimensions
-      std::cerr << "#points: " << dim.points << ", "
-         << "#cells: " << dim.cells << ", "
-         << "#faces: " << dim.faces << ", "
-         << "#internal faces: " << dim.internalFaces << std::endl;
-
+      //Boundary Polygon
       if (readBoundary) {
          auto &polys = poly->el();
          auto &conn = poly->cl();
-         //Index num_bound = dim.faces - dim.internalFaces;
-         //polys.reserve(num_bound); //TODO
+         Index num_bound = 0;
+         for (std::vector<Boundary>::const_iterator it=boundaries.boundaries.begin();
+              it!=boundaries.boundaries.end();
+              ++it) {
+            int boundaryIndex=it->index;
+            std::string selection=m_patchSelection->getValue();
+            if (m_boundaryPatches(boundaryIndex) || strcmp(selection.c_str(),"all")==0) {
+               num_bound+=it->numFaces;
+            }
+         }
+         polys.reserve(num_bound);
          for (std::vector<Boundary>::const_iterator it=boundaries.boundaries.begin();
               it!=boundaries.boundaries.end();
               ++it) {
@@ -237,179 +250,163 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
          }
       }
 
-      //Create CellFaceMap
-      //std::cerr << " " << "Creating cell to face Map ... " << std::flush;
-      std::vector<std::vector<Index>> cellfacemap(dim.cells);
-      for (Index face = 0; face < owners.size(); ++face) {
-         cellfacemap[owners[face]].push_back(face);
-      }
-      for (Index face = 0; face < neighbour.size(); ++face) {
-         cellfacemap[neighbour[face]].push_back(face);
-      }
-      //std::cerr << "done! ## size: " << cellfacemap.size() << std::endl;
+      //Grid
+      if (readGrid) {
+         grid->el().resize(dim.cells+1);
+         grid->tl().resize(dim.cells);
+         //Create CellFaceMap
+         std::vector<std::vector<Index>> cellfacemap(dim.cells);
+         for (Index face = 0; face < owners.size(); ++face) {
+            cellfacemap[owners[face]].push_back(face);
+         }
+         for (Index face = 0; face < neighbour.size(); ++face) {
+            cellfacemap[neighbour[face]].push_back(face);
+         }
+         auto types = grid->tl().data();
+         Index num_conn = 0;
+         //Check Shape of Cells and add fill Type_List
+         for (index_t i=0; i<dim.cells; i++) {
+            const std::vector<Index> &cellfaces=cellfacemap[i];
+            const std::vector<index_t> cellvertices = getVerticesForCell(cellfaces, faces);
+            bool onlySimpleFaces=true; //Simple Face = Triangle or Square
+            for (index_t j=0; j<cellfaces.size(); ++j) {
+               if (faces[cellfaces[j]].size()<3 || faces[cellfaces[j]].size()>4) {
+                  onlySimpleFaces=false;
+                  break;
+               }
+            }
+            const Index num_faces = cellfaces.size();
+            Index num_verts = cellvertices.size();
+            if (num_faces==6 && num_verts==8 && onlySimpleFaces) {
+               types[i]=UnstructuredGrid::HEXAHEDRON;
+            } else if (num_faces==5 && num_verts==6 && onlySimpleFaces) {
+               types[i]=UnstructuredGrid::PRISM;
+            } else if (num_faces==5 && num_verts==5 && onlySimpleFaces) {
+               types[i]=UnstructuredGrid::PYRAMID;
+            } else if (num_faces==4 && num_verts==4 && onlySimpleFaces) {
+               types[i]=UnstructuredGrid::TETRAHEDRON;
+            } else {
+               types[i]=UnstructuredGrid::POLYHEDRON;
+               num_verts=0;
+               for (Index j=0; j<cellfaces.size(); ++j) {
+                  num_verts += faces[cellfaces[j]].size() + 1;
+               }
+            }
+            num_conn += num_verts;
+         }
+         // save data cell by cell to element, connectivity and type list
+         //go cell by cell (element by element)
 
-      //std::cerr << "Setting Typelist and adding connectivities ... " << std::flush;
+         auto el = grid->el().data();
+         auto &connectivities = grid->cl();
+         auto inserter = std::back_inserter(connectivities);
+         connectivities.reserve(num_conn);
+         for(index_t i=0;  i<dim.cells; i++) {
+            //element list
+            el[i] = connectivities.size();
+            //connectivity list
+            const auto &cellfaces=cellfacemap[i];//get all faces of current cell
+            switch (types[i]) {
+               case UnstructuredGrid::HEXAHEDRON: {
+                  index_t ia=cellfaces[0];//Pick the first index in the vector as index of the random starting face
+                  std::vector<index_t> a=faces[ia];//find face that corresponds to index ia
 
-      auto types = grid->tl().data();
+                  if (!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                     std::reverse(a.begin(), a.end());
+                  }
 
-      Index num_conn = 0;
-      Index num_hex=0, num_tet=0, num_prism=0, num_pyr=0, num_poly=0;
-      for (index_t i=0; i<dim.cells; i++) {
-         const std::vector<Index> &cellfaces=cellfacemap[i];
-         const std::vector<index_t> cellvertices = getVerticesForCell(cellfaces, faces);
-         bool onlyViableFaces=true;
-         for (index_t j=0; j<cellfaces.size(); ++j) {
-            if (faces[cellfaces[j]].size()<3 || faces[cellfaces[j]].size()>4) {
-               onlyViableFaces=false;
+                  std::copy(a.begin(), a.end(), inserter);
+                  connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
+                  connectivities.push_back(findVertexAlongEdge(a[1],ia,cellfaces,faces));
+                  connectivities.push_back(findVertexAlongEdge(a[2],ia,cellfaces,faces));
+                  connectivities.push_back(findVertexAlongEdge(a[3],ia,cellfaces,faces));
+               }
                break;
-            }
-         }
-         const Index num_faces = cellfaces.size();
-         Index num_verts = cellvertices.size();
-         if (num_faces==6 && num_verts==8 && onlyViableFaces) {
-            types[i]=UnstructuredGrid::HEXAHEDRON;
-            ++num_hex;
-         } else if (num_faces==5 && num_verts==6 && onlyViableFaces) {
-            types[i]=UnstructuredGrid::PRISM;
-            ++num_prism;
-         } else if (num_faces==5 && num_verts==5 && onlyViableFaces) {
-            types[i]=UnstructuredGrid::PYRAMID;
-            ++num_pyr;
-         } else if (num_faces==4 && num_verts==4 && onlyViableFaces) {
-            types[i]=UnstructuredGrid::TETRAHEDRON;
-            ++num_tet;
-         } else {
-            ++num_poly;
-            types[i]=UnstructuredGrid::POLYHEDRON;
-            num_verts=0;
-            for (Index j=0; j<cellfaces.size(); ++j) {
-               num_verts += faces[cellfaces[j]].size() + 1;
-            }
-         }
-         num_conn += num_verts;
-      }
-      //std::cerr << "done!" << std::endl;
 
-      std::cerr << "#hexa: " << num_hex << ", "
-         << "#prism: " << num_prism << ", "
-         << "#pyramid: " << num_pyr << ", "
-         << "#tetra: " << num_tet << ", "
-         << "#poly: " << num_poly << std::endl;
+               case UnstructuredGrid::PRISM: {
+                  index_t it=1;
+                  index_t ia=cellfaces[0];
+                  while (faces[ia].size()>3) {
+                     ia=cellfaces[it++];
+                  }
 
-      //std::cerr << " " << "Connectivities: "<<num_conn << std::endl;
-
-      // save data cell by cell to element, connectivity and type list
-      //std::cerr << " " << "Saving elements, connectivites and types to covise object ..."<<std::flush;
-
-      //go cell by cell (element by element)
-      auto el = grid->el().data();
-      auto &connectivities = grid->cl();
-      auto inserter = std::back_inserter(connectivities);
-      connectivities.reserve(num_conn);
-      for(index_t i=0;  i<dim.cells; i++) {
-         //std::cerr << i << std::endl;
-         //element list
-         el[i] = connectivities.size();
-         //connectivity list
-         const auto &cellfaces=cellfacemap[i];//get all faces of current cell
-         switch (types[i]) {
-            case UnstructuredGrid::HEXAHEDRON: {
-               index_t ia=cellfaces[0];//Pick the first index in the vector as index of the random starting face
-               std::vector<index_t> a=faces[ia];//find face that corresponds to index ia
-
-               if (!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
-                  std::reverse(a.begin(), a.end());
-               }
-
-               std::copy(a.begin(), a.end(), inserter);
-               connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
-               connectivities.push_back(findVertexAlongEdge(a[1],ia,cellfaces,faces));
-               connectivities.push_back(findVertexAlongEdge(a[2],ia,cellfaces,faces));
-               connectivities.push_back(findVertexAlongEdge(a[3],ia,cellfaces,faces));
-            }
-            break;
-
-            case UnstructuredGrid::PRISM: {
-               index_t it=1;
-               index_t ia=cellfaces[0];
-               while (faces[ia].size()>3) {
-                  ia=cellfaces[it++];
-               }
-
-               std::vector<index_t> a=faces[ia];
-
-               if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
-                  std::reverse(a.begin(), a.end());
-               }
-
-               std::copy(a.begin(), a.end(), inserter);
-               connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
-               connectivities.push_back(findVertexAlongEdge(a[1],ia,cellfaces,faces));
-               connectivities.push_back(findVertexAlongEdge(a[2],ia,cellfaces,faces));
-            }
-            break;
-
-            case UnstructuredGrid::PYRAMID: {
-               index_t it=1;
-               index_t ia=cellfaces[0];
-               while (faces[ia].size()<4) {
-                  ia=cellfaces[it++];
-               }
-
-               std::vector<index_t> a=faces[ia];
-
-               if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
-                  std::reverse(a.begin(), a.end());
-               }
-
-               std::copy(a.begin(), a.end(), inserter);
-               connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
-            }
-            break;
-
-            case UnstructuredGrid::TETRAHEDRON: {
-               index_t ia=cellfaces[0];
-               std::vector<index_t> a=faces[ia];
-
-               if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
-                  std::reverse(a.begin(), a.end());
-               }
-
-               std::copy(a.begin(), a.end(), inserter);
-               connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
-            }
-            break;
-
-            case UnstructuredGrid::POLYHEDRON: {
-               for (index_t j=0;j<cellfaces.size();j++) {
-                  index_t ia=cellfaces[j];
                   std::vector<index_t> a=faces[ia];
 
                   if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
                      std::reverse(a.begin(), a.end());
                   }
 
-                  for (index_t k=0; k<=a.size(); ++k) {
-                     connectivities.push_back(a[k % a.size()]);
+                  std::copy(a.begin(), a.end(), inserter);
+                  connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
+                  connectivities.push_back(findVertexAlongEdge(a[1],ia,cellfaces,faces));
+                  connectivities.push_back(findVertexAlongEdge(a[2],ia,cellfaces,faces));
+               }
+               break;
+
+               case UnstructuredGrid::PYRAMID: {
+                  index_t it=1;
+                  index_t ia=cellfaces[0];
+                  while (faces[ia].size()<4) {
+                     ia=cellfaces[it++];
+                  }
+
+                  std::vector<index_t> a=faces[ia];
+
+                  if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                     std::reverse(a.begin(), a.end());
+                  }
+
+                  std::copy(a.begin(), a.end(), inserter);
+                  connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
+               }
+               break;
+
+               case UnstructuredGrid::TETRAHEDRON: {
+                  index_t ia=cellfaces[0];
+                  std::vector<index_t> a=faces[ia];
+
+                  if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                     std::reverse(a.begin(), a.end());
+                  }
+
+                  std::copy(a.begin(), a.end(), inserter);
+                  connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
+               }
+               break;
+
+               case UnstructuredGrid::POLYHEDRON: {
+                  for (index_t j=0;j<cellfaces.size();j++) {
+                     index_t ia=cellfaces[j];
+                     std::vector<index_t> a=faces[ia];
+
+                     if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                        std::reverse(a.begin(), a.end());
+                     }
+
+                     for (index_t k=0; k<=a.size(); ++k) {
+                        connectivities.push_back(a[k % a.size()]);
+                     }
                   }
                }
+               break;
             }
-            break;
          }
+         el[dim.cells] = connectivities.size();
       }
-      el[dim.cells] = connectivities.size();
    }
 
+   if (readGrid) {
+      loadCoords(meshdir, grid);
 
-   loadCoords(meshdir, grid);
-   if (readBoundary) {
-      poly->d()->x[0] = grid->d()->x[0];
-      poly->d()->x[1] = grid->d()->x[1];
-      poly->d()->x[2] = grid->d()->x[2];
+      if (readBoundary) {
+         poly->d()->x[0] = grid->d()->x[0];
+         poly->d()->x[1] = grid->d()->x[1];
+         poly->d()->x[2] = grid->d()->x[2];
+      }
+   } else {
+      loadCoords(meshdir, poly);
    }
-
-   //std::cerr << " done!" << std::endl;
-
+   std::cout << "loadGrid done" << std::endl;
    return std::make_pair(grid, poly);
 }
 
