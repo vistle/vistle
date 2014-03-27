@@ -1304,12 +1304,12 @@ void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, bool la
                 tileMsg &msg = *result.message;
                 if (m_firstTile) {
                     msg.flags |= rfbTileFirst;
-                    std::cerr << "first tile: req=" << msg.requestNumber << std::endl;
+                    //std::cerr << "first tile: req=" << msg.requestNumber << std::endl;
                 }
                 m_firstTile = false;
                 if (m_queuedTiles == 0 && lastView) {
                     msg.flags |= rfbTileLast;
-                    std::cerr << "last tile: req=" << msg.requestNumber << std::endl;
+                    //std::cerr << "last tile: req=" << msg.requestNumber << std::endl;
                 }
                 msg.frameNumber = framecount;
 
