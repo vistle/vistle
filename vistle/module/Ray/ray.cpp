@@ -176,6 +176,7 @@ class RayCaster: public vistle::Renderer {
       Matrix4 view;
       Matrix4 proj;
       std::vector<VncServer::Light> lights;
+      VncServer::ViewParameters vncParam;
 
       PerViewState()
       : width(0)
@@ -677,6 +678,8 @@ void RayCaster::render() {
               m_doRender = 1;
           }
 
+          vd.vncParam = vnc->getViewParameters(i);
+
           vd.width = vnc->width(i);
           vd.height = vnc->height(i);
           vd.view = view;
@@ -815,7 +818,7 @@ void RayCaster::render() {
                       memcpy(vnc->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
                   }
 
-                  vnc->invalidate(i, 0, 0, vnc->width(i), vnc->height(i), i==m_viewData.size()-1);
+                  vnc->invalidate(i, 0, 0, vnc->width(i), vnc->height(i), m_viewData[i].vncParam, i==m_viewData.size()-1);
               }
           }
       }
@@ -949,7 +952,7 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
          memcpy(vnc->rgba(m_currentView)+(w*y+viewport[0])*bpp, color+(w*(h-1-y)+viewport[0])*bpp, bpp*viewport[2]);
       }
 
-      vnc->invalidate(m_currentView, 0, 0, vnc->width(m_currentView), vnc->height(m_currentView), true);
+      vnc->invalidate(m_currentView, 0, 0, vnc->width(m_currentView), vnc->height(m_currentView), vnc->getViewParameters(m_currentView), true);
    }
 
    int err = rtcGetError();

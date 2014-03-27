@@ -53,7 +53,10 @@ public:
    bool init(int w, int h, unsigned short port);
    void preFrame();
    void postFrame();
-   void invalidate(int viewNum, int x, int y, int w, int h, bool lastView);
+
+   struct ViewParameters;
+   ViewParameters getViewParameters(int viewNum) const;
+   void invalidate(int viewNum, int x, int y, int w, int h, const ViewParameters &param, bool lastView);
 
    void setColorCodec(ColorCodec value);
    void enableQuantization(bool value);
@@ -233,7 +236,7 @@ private:
    static void sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data);
    void broadcastApplicationMessage(int type, int length, const char *data);
 
-   void encodeAndSend(int viewNum, int x, int y, int w, int h, bool lastView);
+   void encodeAndSend(int viewNum, int x, int y, int w, int h, const ViewParameters &param, bool lastView);
 
    struct EncodeResult {
 

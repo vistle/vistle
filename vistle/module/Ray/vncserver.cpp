@@ -1061,14 +1061,14 @@ VncServer::postFrame()
 #endif
 }
 
-void VncServer::invalidate(int viewNum, int x, int y, int w, int h, bool lastView) {
+void VncServer::invalidate(int viewNum, int x, int y, int w, int h, const VncServer::ViewParameters &param, bool lastView) {
 
     if (m_numClients - m_numRhrClients > 0) {
         rfbMarkRectAsModified(m_screen, x, y, w, h);
     }
 
     if (m_numRhrClients > 0) {
-        encodeAndSend(viewNum, x, y, w, h, lastView);
+        encodeAndSend(viewNum, x, y, w, h, param, lastView);
     }
 }
 
@@ -1258,7 +1258,7 @@ struct EncodeTask: public tbb::task {
     }
 };
 
-void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, bool lastView) {
+void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const VncServer::ViewParameters &param, bool lastView) {
 
     if (!m_resizeBlocked) {
         m_firstTile = true;
@@ -1278,7 +1278,7 @@ void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, bool la
                     x, y,
                     std::min(tileWidth, x0+w-x),
                     std::min(tileHeight, y0+h-y),
-                    depth(viewNum), m_imageParam, m_viewData[viewNum].param);
+                    depth(viewNum), m_imageParam, param);
             tbb::task::enqueue(*dt);
             ++m_queuedTiles;
 
@@ -1287,7 +1287,7 @@ void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, bool la
                     x, y,
                     std::min(tileWidth, x0+w-x),
                     std::min(tileHeight, y0+h-y),
-                    rgba(viewNum), m_imageParam, m_viewData[viewNum].param);
+                    rgba(viewNum), m_imageParam, param);
             tbb::task::enqueue(*ct);
             ++m_queuedTiles;
         }
@@ -1343,4 +1343,9 @@ void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, bool la
         deferredResize();
     }
     //sleep(1);
+}
+
+VncServer::ViewParameters VncServer::getViewParameters(int viewNum) const {
+
+    return m_viewData[viewNum].param;
 }
