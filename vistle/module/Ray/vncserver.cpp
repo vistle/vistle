@@ -1266,7 +1266,7 @@ void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, bool la
     m_resizeBlocked = true;
 
     //vistle::StopWatch timer("encodeAndSend");
-    const int tileWidth = 128, tileHeight = 128;
+    const int tileWidth = 256, tileHeight = 256;
     static int framecount=0;
     ++framecount;
 
@@ -1332,7 +1332,7 @@ void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, bool la
                 }
                 rfbReleaseClientIterator(i);
             }
-            delete result.payload;
+            delete[] result.payload;
             delete result.message;
         }
     } while (m_queuedTiles > 0 && (tileReady || lastView));
