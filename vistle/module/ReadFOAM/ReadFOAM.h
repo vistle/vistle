@@ -57,6 +57,7 @@ class ReadFOAM: public vistle::Module
 
       std::pair<vistle::UnstructuredGrid::ptr, vistle::Polygons::ptr> loadGrid(const std::string &dir);
       vistle::Object::ptr loadField(const std::string &dir, const std::string &field);
+      vistle::Object::ptr loadBoundaryField(const std::string &dir, const std::string &field);
       bool loadFields(const std::string &dir, const std::map<std::string, int> &fields,
             int processor, int timestep);
 
