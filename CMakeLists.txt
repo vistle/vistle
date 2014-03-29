@@ -10,6 +10,9 @@ else()
 endif()
 set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED})
 
+# allow for optimizations in Boost.MPI
+add_definitions(-DBOOST_MPI_HOMOGENEOUS)
+
 enable_testing()
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
