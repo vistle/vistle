@@ -38,7 +38,7 @@ bool ShowUSG::compute() {
             vistle::Lines::ptr out(new vistle::Lines(Object::Initialized));
             vistle::UnstructuredGrid::const_ptr in = vistle::UnstructuredGrid::as(object);
 
-            for (size_t index = 0; index < in->getNumElements(); index ++)
+            for (size_t index = 0; index < in->getNumElements(); index ++) {
                switch (in->tl()[index]) {
                   case vistle::UnstructuredGrid::HEXAHEDRON:
 
@@ -97,6 +97,8 @@ bool ShowUSG::compute() {
                   default:
                      break;
                }
+            }
+            out->el().push_back(out->cl().size()); // sentinel
 
             int numVertices = in->getNumVertices();
             for (int index = 0; index < numVertices; index ++) {
