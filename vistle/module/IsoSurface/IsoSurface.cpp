@@ -42,10 +42,10 @@ bool IsoSurface::prepare() {
 
    min = std::numeric_limits<Scalar>::max();
    max = -std::numeric_limits<Scalar>::max();
-   return true;
+   return Module::prepare();
 }
 
-bool IsoSurface::reduce(int /* timestep */) {
+bool IsoSurface::reduce(int timestep) {
 
    boost::mpi::all_reduce(boost::mpi::communicator(),
          min, min, boost::mpi::minimum<Scalar>());
@@ -54,7 +54,7 @@ bool IsoSurface::reduce(int /* timestep */) {
 
    setParameterRange(m_isovalue, (double)min, (double)max);
 
-   return true;
+   return Module::reduce(timestep);
 }
 
 #define lerp(a, b, t) ( a + t * (b - a) )

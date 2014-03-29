@@ -9,6 +9,8 @@ set(module_HEADERS
    renderer.h
 )
 
+use_openmp()
+
 add_library(vistle_module ${VISTLE_LIB_TYPE} ${module_SOURCES} ${module_HEADERS})
 
 if(UNIX AND NOT APPLE)

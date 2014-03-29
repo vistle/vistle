@@ -179,6 +179,14 @@ protected:
 
    virtual bool parameterChanged(Parameter *p);
 
+   int openmpThreads() const;
+   void setOpenmpThreads(int, bool updateParam=true);
+
+   void enableBenchmark(bool benchmark, bool updateParam=true);
+
+   virtual bool prepare(); //< prepare execution - called on each rank individually
+   virtual bool reduce(int timestep); //< do reduction for timestep (-1: global) - called on all ranks
+
  private:
    int m_receivePolicy;
    int m_schedulingPolicy;
@@ -192,9 +200,7 @@ protected:
    virtual bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName);
    virtual bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg);
 
-   virtual bool prepare(); //< prepare execution - called on each rank individually
    virtual bool compute() = 0; //< do processing - called on each rank individually
-   virtual bool reduce(int timestep); //< do reduction for timestep (-1: global) - called on all ranks
 
    std::map<std::string, Port*> outputPorts;
    std::map<std::string, Port*> inputPorts;
@@ -213,6 +219,8 @@ protected:
    std::streambuf *m_origStreambuf, *m_streambuf;
 
    int m_traceMessages;
+   bool m_benchmark;
+   double m_benchmarkStart;
 };
 
 } // namespace vistle

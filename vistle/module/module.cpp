@@ -17,6 +17,10 @@
 #include <iomanip>
 #include <algorithm>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/mpl/vector.hpp>
@@ -25,6 +29,7 @@
 #include <boost/thread/recursive_mutex.hpp>
 
 #include <util/sysdep.h>
+#include <util/stopwatch.h>
 #include <core/object.h>
 #include <core/message.h>
 #include <core/messagequeue.h>
@@ -133,6 +138,7 @@ Module::Module(const std::string &n, const std::string &shmname,
 , m_origStreambuf(nullptr)
 , m_streambuf(nullptr)
 , m_traceMessages(0)
+, m_benchmark(false)
 {
 #ifdef _WIN32
     WSADATA wsaData;
@@ -198,6 +204,9 @@ Module::Module(const std::string &n, const std::string &shmname,
    IntParameter *outrank = addIntParameter("_error_output_rank", "rank from which to show stderr (-1: all ranks)", 0);
    outrank->setMinimum(-1);
    outrank->setMaximum(size()-1);
+
+   IntParameter *openmp_threads = addIntParameter("_openmp_threads", "number of OpenMP threads (0: system default)", 0);
+   addIntParameter("_benchmark", "show timing information", m_benchmark ? 1 : 0, Parameter::Boolean);
 }
 
 void Module::initDone() {
@@ -230,6 +239,49 @@ unsigned int Module::rank() const {
 unsigned int Module::size() const {
 
    return m_size;
+}
+
+int Module::openmpThreads() const {
+
+    int ret =  getIntParameter("_openmp_threads");
+    if (ret == 0) {
+#ifdef _OPENMP
+        ret = omp_get_thread_limit();
+#else
+        ret = -1;
+#endif
+    }
+    return ret;
+}
+
+void Module::setOpenmpThreads(int nthreads, bool updateParam) {
+
+#ifdef _OPENMP
+    if (nthreads <= 0) {
+        nthreads = omp_get_thread_limit();
+        updateParam = true;
+    }
+    if (nthreads <= 0) {
+       nthreads = 1;
+        updateParam = true;
+    }
+    omp_set_num_threads(nthreads);
+#endif
+    if (updateParam)
+        setIntParameter("_openmp_threads", nthreads);
+}
+
+void Module::enableBenchmark(bool benchmark, bool updateParam) {
+
+    m_benchmark = benchmark;
+    if (updateParam)
+        setIntParameter("_benchmark", benchmark ? 1 : 0);
+    int red = m_reducePolicy;
+    if (m_benchmark) {
+       if (red == message::ReducePolicy::Never)
+          red = message::ReducePolicy::OverAll;
+    }
+    sendMessage(message::ReducePolicy(message::ReducePolicy::Reduce(red)));
 }
 
 bool Module::syncMessageProcessing() const {
@@ -705,13 +757,22 @@ bool Module::isConnected(const std::string &portname) const {
 
 bool Module::parameterChanged(Parameter *p) {
 
-   if (p->getName() == "_error_output_mode"
-         || p->getName() == "_error_output_rank") {
+   std::string name = p->getName();
+   if (name[0] != '_')
+      return true;
+
+   if (name == "_error_output_mode" || name == "_error_output_rank") {
 
       updateOutputMode();
-   } else if (p->getName() == "_cache_mode") {
+   } else if (name == "_cache_mode") {
 
       updateCacheMode();
+   } else if (name == "_openmp_threads") {
+
+      setOpenmpThreads(getIntParameter(name), false);
+   } else if (name == "_benchmark") {
+
+      enableBenchmark(getIntParameter(name), false);
    }
 
    return true;
@@ -742,6 +803,10 @@ void Module::setReducePolicy(int reducePolicy)
    vassert(reducePolicy <= message::ReducePolicy::OverAll);
 
    m_reducePolicy = reducePolicy;
+   if (m_benchmark) {
+      if (reducePolicy == message::ReducePolicy::Never)
+         reducePolicy = message::ReducePolicy::OverAll;
+   }
    sendMessage(message::ReducePolicy(message::ReducePolicy::Reduce(reducePolicy)));
 }
 
@@ -1400,11 +1465,20 @@ int Module::objectReceivePolicy() const {
 
 bool Module::prepare() {
 
+   m_benchmarkStart = Clock::time();
    return true;
 }
 
-bool Module::reduce(int /* timestep */) {
+bool Module::reduce(int timestep) {
 
+   if (m_benchmark && timestep==-1) {
+      double duration = Clock::time() - m_benchmarkStart;
+      if (rank() == 0) {
+         sendInfo("compute() took %fs (OpenMP threads: %d)", duration, openmpThreads());
+         printf("%s:%d: compute() took %fs (OpenMP threads: %d)",
+               name().c_str(), id(), duration, openmpThreads());
+      }
+   }
    return true;
 }
 

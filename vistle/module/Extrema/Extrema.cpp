@@ -237,7 +237,7 @@ bool Extrema::reduce(int timestep) {
       addObject("grid_out", box);
    }
 
-   return true;
+   return Module::reduce(timestep);
 }
 
 MODULE_MAIN(Extrema)
