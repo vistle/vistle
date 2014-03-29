@@ -582,7 +582,7 @@ bool ModuleManager::handle(const message::ExecutionProgress &prog) {
    // initiate reduction if requested by module
    auto &mod = i->second;
    bool forward = true;
-   if (mod.reducePolicy == message::ReducePolicy::OverAll
+   if (mod.reducePolicy != message::ReducePolicy::Never
          && prog.stage() == message::ExecutionProgress::Finish
          && !mod.reducing) {
       // will be sent after reduce()
@@ -605,7 +605,7 @@ bool ModuleManager::handle(const message::ExecutionProgress &prog) {
                assert(mod.ranksStarted == m_size);
                mod.ranksFinished = 0;
 
-               if (!mod.reducing && mod.reducePolicy == message::ReducePolicy::OverAll) {
+               if (!mod.reducing && mod.reducePolicy != message::ReducePolicy::Never) {
                   mod.reducing = true;
                   message::Reduce red(prog.senderId());
                   Communicator::the().broadcastAndHandleMessage(red);
