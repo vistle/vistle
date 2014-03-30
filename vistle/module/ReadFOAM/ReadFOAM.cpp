@@ -162,22 +162,14 @@ bool ReadFOAM::parameterChanged(Parameter *p)
    return Module::parameterChanged(p);
 }
 
-bool loadCoords(const std::string &meshdir, UnstructuredGrid::ptr grid) {
+bool loadCoords(const std::string &meshdir, Coords::ptr grid) {
 
    boost::shared_ptr<std::istream> pointsIn = getStreamForFile(meshdir, "points");
+   if (!pointsIn)
+      return false;
    HeaderInfo pointsH = readFoamHeader(*pointsIn);
    grid->setSize(pointsH.lines);
    readFloatVectorArray(*pointsIn, grid->x().data(), grid->y().data(), grid->z().data(), pointsH.lines);
-
-   return true;
-}
-
-bool loadCoords(const std::string &meshdir, Polygons::ptr poly) {
-
-   boost::shared_ptr<std::istream> pointsIn = getStreamForFile(meshdir, "points");
-   HeaderInfo pointsH = readFoamHeader(*pointsIn);
-   poly->setSize(pointsH.lines);
-   readFloatVectorArray(*pointsIn, poly->x().data(), poly->y().data(), poly->z().data(), pointsH.lines);
 
    return true;
 }
@@ -194,22 +186,29 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
    Boundaries boundaries = loadBoundary(meshdir);
    DimensionInfo dim = readDimensions(meshdir);
 
-   Polygons::ptr poly(new Polygons(0, 0, 0));
    UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0));
+   Polygons::ptr poly(new Polygons(0, 0, 0));
+   auto result = std::make_pair(grid, poly);
 
    {
       //read mesh files
       boost::shared_ptr<std::istream> ownersIn = getStreamForFile(meshdir, "owner");
+      if (!ownersIn)
+         return result;
       HeaderInfo ownerH = readFoamHeader(*ownersIn);
       std::vector<Index> owners(ownerH.lines);
       readIndexArray(*ownersIn, owners.data(), owners.size());
 
       boost::shared_ptr<std::istream> facesIn = getStreamForFile(meshdir, "faces");
+      if (!facesIn)
+         return result;
       HeaderInfo facesH = readFoamHeader(*facesIn);
       std::vector<std::vector<Index>> faces(facesH.lines);
       readIndexListArray(*facesIn, faces.data(), faces.size());
 
       boost::shared_ptr<std::istream> neighborsIn = getStreamForFile(meshdir, "neighbour");
+      if (!neighborsIn)
+         return result;
       HeaderInfo neighbourH = readFoamHeader(*neighborsIn);
       if (neighbourH.lines != dim.internalFaces) {
          std::cerr << "inconsistency: #internalFaces != #neighbours" << std::endl;
@@ -407,7 +406,7 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
       loadCoords(meshdir, poly);
    }
    std::cout << "loadGrid done" << std::endl;
-   return std::make_pair(grid, poly);
+   return result;
 }
 
 Object::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &field) {
