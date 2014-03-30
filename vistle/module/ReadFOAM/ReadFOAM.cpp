@@ -676,7 +676,7 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
    m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
    if (!m_case.valid) {
       std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
-      return false;
+      return true;
    }
 
    std::cerr << "# processors: " << m_case.numblocks << std::endl;
