@@ -108,7 +108,7 @@ class Boundaries {
          boundaries.push_back(b);
       }
 
-      if (minFace < b.startFace)
+      if (minFace > b.startFace)
          minFace = b.startFace;
    }
 
