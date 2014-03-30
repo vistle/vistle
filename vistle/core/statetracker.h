@@ -47,7 +47,7 @@ class V_COREEXPORT StateObserver {
    virtual void deleteConnection(int fromId, const std::string &fromName,
          int toId, const std::string &toName) = 0;
 
-   virtual void info(const std::string &text, int senderId, int senderRank, message::Message::Type refType, const message::Message::uuid_t &refUuid) = 0;
+   virtual void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Message::Type refType, const message::Message::uuid_t &refUuid) = 0;
 
    virtual void quitRequested();
 

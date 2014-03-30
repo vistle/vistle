@@ -31,7 +31,7 @@ void moduleAvailable_s(QString name);
                       		int toId, QString toName);
    void modified(bool state);
 
-   void info_s(QString msg);
+   void info_s(QString msg, int type);
 
    void quit_s();
 
@@ -50,7 +50,7 @@ public:
 	void deleteConnection(int fromId, const std::string &fromName,
                           int toId, const std::string &toName);
 
-   void info(const std::string &text, int senderId, int senderRank, vistle::message::Message::Type refType, const vistle::message::Message::uuid_t &refUuid);
+   void info(const std::string &text, vistle::message::SendText::TextType textType, int senderId, int senderRank, vistle::message::Message::Type refType, const vistle::message::Message::uuid_t &refUuid);
 
    void quitRequested();
 

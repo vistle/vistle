@@ -163,7 +163,7 @@ void QConsole::reset(const QString &welcomeText)
 //QConsole constructor (init the QTextEdit & the attributes)
 QConsole::QConsole(QWidget *parent, const QString &welcomeText)
 		: QTextEdit(parent), errColor_(Qt::red),
-		outColor_(Qt::blue), completionColor(Qt::darkGreen),
+		outColor_(Qt::blue), completionColor(Qt::darkGreen), infoColor_(Qt::darkGreen),
 		promptLength(0), promptParagraph(0)
 {
 	QPalette palette = QApplication::palette();

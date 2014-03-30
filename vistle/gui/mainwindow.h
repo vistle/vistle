@@ -48,10 +48,6 @@ signals:
 protected:
     void closeEvent(QCloseEvent *);
 
-private slots:
-    void moduleInfo(const QString &text);
-
-
 private:
     Ui::MainWindow *ui;
     VistleConsole *m_console;

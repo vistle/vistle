@@ -34,6 +34,7 @@
 #include <boost/python.hpp>
 #include "vistleconsole.h"
 #include <userinterface/pythonmodule.h>
+#include <core/message.h>
 
 #include <QApplication>
 #include <QDebug>
@@ -146,9 +147,15 @@ void VistleConsole::printHistory()
     }
 }
 
-void VistleConsole::appendInfo(const QString &text)
+void VistleConsole::appendInfo(const QString &text, int type)
 {
-   setTextColor(errColor());
+   using namespace vistle::message;
+
+   if (type == SendText::Info) {
+      setTextColor(infoColor());
+   } else if (type == SendText::Cerr) {
+      setTextColor(errColor());
+   }
    append(text);
    setTextColor(cmdColor());
 }

@@ -105,13 +105,13 @@ void VistleObserver::resetModificationCount()
       emit modified(false);
 }
 
-void gui::VistleObserver::info(const std::string &text, int senderId, int senderRank, vistle::message::Message::Type refType, const vistle::message::Message::uuid_t &refUuid) {
+void gui::VistleObserver::info(const std::string &text, vistle::message::SendText::TextType textType, int senderId, int senderRank, vistle::message::Message::Type refType, const vistle::message::Message::uuid_t &refUuid) {
 
    QString t = QString::fromStdString(text);
    while(t.endsWith('\n'))
       t.chop(1);
    QString msg = QString("%1_%2(%3): %4").arg(m_moduleNames[senderId], QString::number(senderId), QString::number(senderRank), t);
-   emit info_s(msg);
+   emit info_s(msg, textType);
 }
 
 void VistleObserver::quitRequested() {

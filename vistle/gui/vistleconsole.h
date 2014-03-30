@@ -58,7 +58,7 @@ public:
     void printHistory();
 
 public slots:
-    void appendInfo(const QString &text);
+    void appendInfo(const QString &text, int type=-1);
     void appendDebug(const QString &text);
 
     void setNormalPrompt(bool display) { setPrompt("> ", display); }

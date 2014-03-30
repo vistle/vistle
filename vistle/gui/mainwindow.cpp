@@ -75,11 +75,6 @@ void MainWindow::moduleAvailable(const QString &mod) {
     m_moduleBrowser->addModule(mod);
 }
 
-void MainWindow::moduleInfo(const QString &text)
-{
-   m_console->appendInfo(text);
-}
-
 void MainWindow::setFilename(const QString &filename)
 {
    setWindowFilePath(filename);

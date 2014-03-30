@@ -110,6 +110,12 @@ public:
 		// @}
 
 		// @{
+		/// get/set info color
+		QColor infoColor() const { return infoColor_; }
+		void setInfoColor(QColor c) {infoColor_ = c;}
+		// @}
+
+		// @{
 		/// get/set output color
 		QColor outColor() const { return outColor_; }
 		void setOutColor(QColor c) {outColor_ = c;}
@@ -154,7 +160,7 @@ private:
 //protected attributes
 protected:
 		//colors
-		QColor cmdColor_, errColor_, outColor_, completionColor;
+		QColor cmdColor_, errColor_, outColor_, completionColor, infoColor_;
 
 		int oldPosition;
 		// cached prompt length
