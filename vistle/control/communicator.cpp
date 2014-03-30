@@ -330,13 +330,15 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::TRACE: {
          const Trace &trace = static_cast<const Trace &>(message);
          sendUi(trace);
-         if (trace.module() == 0) {
+         if (trace.module() <= 0) {
             if (trace.on())
                m_traceMessages = trace.messageType();
             else
                m_traceMessages = 0;
             result = true;
-         } else {
+         }
+
+         if (trace.module() > 0 || trace.module() == -1) {
             result = m_moduleManager->handle(trace);
          }
          break;

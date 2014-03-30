@@ -294,7 +294,11 @@ bool ModuleManager::handle(const message::Pong &pong) {
 bool ModuleManager::handle(const message::Trace &trace) {
 
    m_stateTracker.handle(trace);
-   sendMessage(trace.module(), trace);
+   if (trace.module() > 0) {
+      sendMessage(trace.module(), trace);
+   } else {
+      sendAll(trace);
+   }
    return true;
 }
 
