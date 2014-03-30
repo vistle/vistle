@@ -46,13 +46,13 @@ class VistleConsole : public QConsole
    Q_OBJECT
 
 public:
-    //destructor
+    //! destructor
     ~VistleConsole();
 
-    //private constructor
+    //! private constructor
     VistleConsole(QWidget *parent = NULL);
 
-    //get the QPyConsole instance
+    //! get the QPyConsole instance
     static VistleConsole *the();
 
     void printHistory();
@@ -63,27 +63,27 @@ public slots:
 
     void setNormalPrompt(bool display) { setPrompt("> ", display); }
 protected:
-    //give suggestions to complete a command (not working...)
+    //! give suggestions to complete a command (not working...)
     QStringList suggestCommand(const QString &cmd, QString& prefix);
 
-    //execute a validated command
+    //! execute a validated command
     QString interpretCommand(const QString &command, int *res);
 
     void setMultilinePrompt(bool display) { setPrompt("... ", display); }
 
 private:
 
-    //The instance
+    //! the instance
     static VistleConsole *s_instance;
 
 private:
-    // function to check if current command compiled and if not hinted for a multiline statement
+    //! function to check if current command compiled and if not hinted for a multiline statement
     bool py_check_for_unexpected_eof();
 
-    // string holding the current command
+    //! string holding the current command
     QString command;
 
-    // number of lines associated with current command
+    //! number of lines associated with current command
     int lines;
 };
 

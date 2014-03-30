@@ -141,11 +141,6 @@ private:
 
 		//Return false if the command is incomplete (e.g. unmatched braces)
 		virtual bool isCommandComplete(const QString &command);
-		//Get the command to validate
-		QString getCurrentCommand();
-
-		//Replace current command with a new one
-		void replaceCurrentCommand(const QString &newCommand);
 
 		//Test whether the cursor is in the edition zone
 		bool isInEditionZone();
@@ -177,6 +172,12 @@ protected:
 		int promptParagraph;
 
 protected:
+		//Get the command to validate
+		virtual QString getCurrentCommand();
+
+		//Replace current command with a new one
+		virtual void replaceCurrentCommand(const QString &newCommand);
+
 		//Implement paste with middle mouse button
 		void mousePressEvent(QMouseEvent*);
 
