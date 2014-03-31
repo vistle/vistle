@@ -24,6 +24,21 @@
 #include "foamtoolbox.h"
 #include <util/coRestraint.h>
 
+typedef boost::shared_ptr<std::vector<vistle::Index> > sharedVectorPointer;
+
+struct GridDataContainer {
+
+   GridDataContainer(vistle::UnstructuredGrid::ptr g, vistle::Polygons::ptr p, sharedVectorPointer o) {
+      grid=g;
+      polygon=p;
+      owners=o;
+   }
+
+   vistle::UnstructuredGrid::ptr grid;
+   vistle::Polygons::ptr polygon;
+   sharedVectorPointer owners;
+};
+
 class ReadFOAM: public vistle::Module
 {
    static const int NumPorts = 3;
@@ -55,7 +70,7 @@ class ReadFOAM: public vistle::Module
       bool readConstant(const std::string &dir);
       bool readTime(const std::string &dir, int timestep);
 
-      std::pair<vistle::UnstructuredGrid::ptr, vistle::Polygons::ptr> loadGrid(const std::string &dir);
+      GridDataContainer loadGrid(const std::string &dir);
       vistle::Object::ptr loadField(const std::string &dir, const std::string &field);
       vistle::Object::ptr loadBoundaryField(const std::string &dir, const std::string &field);
       bool loadFields(const std::string &dir, const std::map<std::string, int> &fields,
@@ -65,5 +80,6 @@ class ReadFOAM: public vistle::Module
 
       std::map<int, vistle::UnstructuredGrid::ptr> m_basegrid;
       std::map<int, vistle::Polygons::ptr> m_basebound;
+      std::vector< std::vector<sharedVectorPointer> > m_owners;
 };
 #endif // READFOAM_H

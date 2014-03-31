@@ -174,28 +174,29 @@ bool loadCoords(const std::string &meshdir, Coords::ptr grid) {
    return true;
 }
 
-std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::string &meshdir) {
+GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
 
    bool readGrid = m_readGrid->getValue();
    bool readBoundary = m_readBoundary->getValue();
-
-   if (!readGrid && !readBoundary) {
-      return std::make_pair(UnstructuredGrid::ptr(), Polygons::ptr()); //Module crashes when this is returned
-   }
 
    Boundaries boundaries = loadBoundary(meshdir);
    DimensionInfo dim = readDimensions(meshdir);
 
    UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0));
    Polygons::ptr poly(new Polygons(0, 0, 0));
-   auto result = std::make_pair(grid, poly);
+   sharedVectorPointer owners(new std::vector<Index>());
+   GridDataContainer result(grid,poly,owners);
+
+   if (!readGrid && !readBoundary) {
+      return result;
+   }
 
    //read mesh files
    boost::shared_ptr<std::istream> ownersIn = getStreamForFile(meshdir, "owner");
    if (!ownersIn)
       return result;
    HeaderInfo ownerH = readFoamHeader(*ownersIn);
-   boost::shared_ptr<std::vector<Index> > owners(new std::vector<Index>(ownerH.lines));
+   owners->resize(ownerH.lines);
    readIndexArray(*ownersIn, (*owners).data(), (*owners).size());
 
    {
@@ -563,9 +564,9 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
       dir += "/" + m_case.constantdir;
       if (!m_case.varyingGrid) {
          auto ret = loadGrid(dir + "/polyMesh");
-         UnstructuredGrid::ptr grid = ret.first;
+         UnstructuredGrid::ptr grid = ret.grid;
          setMeta(grid, processor, timestep);
-         Polygons::ptr poly = ret.second;
+         Polygons::ptr poly = ret.polygon;
          setMeta(poly, processor, timestep);
 
          if (m_case.varyingCoords) {
@@ -615,8 +616,8 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
             }
          } else {
             auto ret = loadGrid(dir + "/polyMesh");
-            grid = ret.first;
-            poly = ret.second;
+            grid = ret.grid;
+            poly = ret.polygon;
          }
          setMeta(grid, processor, timestep);
          addObject(m_gridOut, grid);
