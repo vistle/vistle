@@ -179,14 +179,14 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
    bool readGrid = m_readGrid->getValue();
    bool readBoundary = m_readBoundary->getValue();
 
-   Boundaries boundaries = loadBoundary(meshdir);
    DimensionInfo dim = readDimensions(meshdir);
 
    UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0));
    Polygons::ptr poly(new Polygons(0, 0, 0));
-   sharedVectorPointer owners(new std::vector<Index>());
-   GridDataContainer result(grid,poly,owners);
-
+   boost::shared_ptr<std::vector<vistle::Index> > owners(new std::vector<Index>());
+   boost::shared_ptr<Boundaries> boundaries(new Boundaries());
+   GridDataContainer result(grid,poly,owners,boundaries);
+   (*boundaries) = loadBoundary(meshdir);
    if (!readGrid && !readBoundary) {
       return result;
    }
@@ -223,23 +223,17 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          auto &polys = poly->el();
          auto &conn = poly->cl();
          Index num_bound = 0;
-         std::string selection=m_patchSelection->getValue();
-         for (std::vector<Boundary>::const_iterator it=boundaries.boundaries.begin();
-              it!=boundaries.boundaries.end();
-              ++it) {
-            int boundaryIndex=it->index;
-            if (m_boundaryPatches(boundaryIndex) || strcmp(selection.c_str(),"all")==0) {
-               num_bound+=it->numFaces;
+         for (const auto &b: (*boundaries).boundaries) {
+            int boundaryIndex=b.index;
+            if (m_boundaryPatches(boundaryIndex)) {
+               num_bound+=b.numFaces;
             }
          }
          polys.reserve(num_bound);
-         for (std::vector<Boundary>::const_iterator it=boundaries.boundaries.begin();
-              it!=boundaries.boundaries.end();
-              ++it) {
-            int boundaryIndex=it->index;
-            std::string selection=m_patchSelection->getValue();
-            if (m_boundaryPatches(boundaryIndex) || strcmp(selection.c_str(),"all")==0) {
-               for (index_t i=it->startFace; i<it->startFace + it->numFaces; ++i) {
+         for (const auto &b: (*boundaries).boundaries) {
+            int boundaryIndex=b.index;
+            if (m_boundaryPatches(boundaryIndex)) {
+               for (index_t i=b.startFace; i<b.startFace + b.numFaces; ++i) {
                   polys.push_back(conn.size());
                   auto &face = faces[i];
                   for (int j=0; j<face.size(); ++j) {
@@ -433,69 +427,60 @@ Object::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &f
    return Object::ptr();
 }
 
-Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::string &field) {
-//   std::cout << "start boundary Data" << std::endl;
-//   Boundaries boundaries = loadBoundary(meshdir);
-//   std::vector<index_t> dataMapping;
-//   std::cout << "Data" << std::endl;
-//   { //Create the dataMpping Vector
-//      std::cout << "start reading owner" << std::endl;
-//      boost::shared_ptr<std::istream> ownersIn = getStreamForFile(meshdir, "owner");
-//      HeaderInfo ownerH = readFoamHeader(*ownersIn);
-//      std::vector<Index> owners(ownerH.lines);
-//      readIndexArray(*ownersIn, owners.data(), owners.size());
+Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::string &field,
+                                        const int &processor) {
+   std::cout << "start boundary Data" << std::endl;
+   auto &boundaries = *m_boundaries[processor];
+   auto owners = m_owners[processor]->data();
+   std::vector<index_t> dataMapping;
+   //Create the dataMpping Vector
+   std::cout << "start mapping Data" << std::endl;
+   for (const auto &b: boundaries.boundaries) {
+      Index boundaryIndex=b.index;
+      if (m_boundaryPatches(boundaryIndex)) {
+         for (index_t i=b.startFace; i<b.startFace + b.numFaces; ++i) {
+            dataMapping.push_back(owners[i]);
+         }
+      }
+   }
+   std::cout << "start reading header" << std::endl;
 
-//      std::cout << "start mapping Data" << std::endl;
-//      std::string selection=m_patchSelection->getValue();
-//      for (std::vector<Boundary>::const_iterator it=boundaries.boundaries.begin();
-//           it!=boundaries.boundaries.end();
-//           ++it) {
-//         int boundaryIndex=it->index;
-//         if (m_boundaryPatches(boundaryIndex) || strcmp(selection.c_str(),"all")==0) {
-//            for (index_t i=it->startFace; i<it->startFace + it->numFaces; ++i) {
-//                  dataMapping.push_back(owners[i]);
-//            }
-//         }
-//      }
-//   }
-//   std::cout << "start reading header" << std::endl;
+   boost::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
+   if (!stream) {
+      std::cerr << "failed to open " << meshdir << "/" << field << std::endl;
+      return Object::ptr();
+   }
+   HeaderInfo header = readFoamHeader(*stream);
+   std::cout << "start reading Data" << std::endl;
+   if (header.fieldclass == "volScalarField") {
+      std::vector<scalar_t> fullX(header.lines);
+      readFloatArray(*stream, fullX.data(), header.lines);
 
-//   boost::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
-//   if (!stream) {
-//      std::cerr << "failed to open " << meshdir << "/" << field << std::endl;
-//      return Object::ptr();
-//   }
-//   HeaderInfo header = readFoamHeader(*stream);
-//   std::cout << "start reading Data" << std::endl;
-//   if (header.fieldclass == "volScalarField") {
-//      std::vector<scalar_t> fullX(header.lines);
-//      readFloatArray(*stream, fullX.data(), header.lines);
+      Vec<Scalar>::ptr s(new Vec<Scalar>(dataMapping.size()));
+      auto x = s->x().data();
+      for (index_t i=0;i<dataMapping.size();++i) {
+         x[i] = fullX[dataMapping[i]];
+      }
 
-//      Vec<Scalar>::ptr s(new Vec<Scalar>(dataMapping.size()));
-//      auto x = s->x().data();
-//      for (index_t i=0;i<dataMapping.size();++i) {
-//         x[i] = fullX[dataMapping[i]];
-//      }
+      return s;
 
-//      return s;
+   } else if (header.fieldclass == "volVectorField") {
+      std::vector<scalar_t> fullX(header.lines),fullY(header.lines),fullZ(header.lines);
+      readFloatVectorArray(*stream,fullX.data(),fullY.data(),fullZ.data(),header.lines);
 
-//   } else if (header.fieldclass == "volVectorField") {
-//      std::vector<scalar_t> fullX(header.lines),fullY(header.lines),fullZ(header.lines);
-//      readFloatVectorArray(*stream,fullX.data(),fullY.data(),fullZ.data(),header.lines);
+      Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(dataMapping.size()));
+      auto x = v->x().data();
+      auto y = v->y().data();
+      auto z = v->z().data();
+      for (index_t i=0;i<dataMapping.size();++i) {
+         x[i] = fullX[dataMapping[i]];
+         y[i] = fullY[dataMapping[i]];
+         z[i] = fullZ[dataMapping[i]];
+      }
+      return v;
+   }
 
-//      Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(dataMapping.size()));
-//      auto x = v->x().data();
-//      auto y = v->y().data();
-//      auto z = v->z().data();
-//      for (index_t i=0;i<dataMapping.size();++i) {
-//         x[i] = fullX[dataMapping[i]];
-//         y[i] = fullY[dataMapping[i]];
-//         z[i] = fullZ[dataMapping[i]];
-//      }
-//      return v;
-//   }
-
-//   std::cerr << "cannot interpret " << meshdir << "/" << field << std::endl;
+   std::cerr << "cannot interpret " << meshdir << "/" << field << std::endl;
    return Object::ptr();
 }
 
@@ -532,15 +517,15 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
       addObject(m_volumeDataOut[i], obj);
    }
 
-//   for (int i=0; i<NumBoundaryPorts; ++i) {
-//      std::string field = m_boundaryOut[i]->getValue();
-//      auto it = fields.find(field);
-//      if (it == fields.end())
-//         continue;
-//      Object::ptr obj = loadBoundaryField(meshdir, field);
-//      setMeta(obj, processor, timestep);
-//      addObject(m_boundaryDataOut[i], obj);
-//   }
+   for (int i=0; i<NumBoundaryPorts; ++i) {
+      std::string field = m_boundaryOut[i]->getValue();
+      auto it = fields.find(field);
+      if (it == fields.end())
+         continue;
+      Object::ptr obj = loadBoundaryField(meshdir, field, processor);
+      setMeta(obj, processor, timestep);
+      addObject(m_boundaryDataOut[i], obj);
+   }
 
    return true;
 }
@@ -551,8 +536,6 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
 bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int timestep) {
 
    std::string dir = casedir;
-   bool readGrid = m_readGrid->getValue();
-   bool readBoundary = m_readBoundary->getValue();
 
    if (processor >= 0) {
       std::stringstream s;
@@ -562,12 +545,14 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
 
    if (timestep < 0) {
       dir += "/" + m_case.constantdir;
-      if (!m_case.varyingGrid) {
+      if (!m_case.varyingGrid){
          auto ret = loadGrid(dir + "/polyMesh");
          UnstructuredGrid::ptr grid = ret.grid;
          setMeta(grid, processor, timestep);
          Polygons::ptr poly = ret.polygon;
          setMeta(poly, processor, timestep);
+         m_owners[processor] = ret.owners;
+         m_boundaries[processor] = ret.boundaries;
 
          if (m_case.varyingCoords) {
             m_basegrid[processor] = grid;
@@ -595,7 +580,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
       if (m_case.varyingGrid || m_case.varyingCoords) {
          UnstructuredGrid::ptr grid;
          Polygons::ptr poly;
-         if (m_case.varyingCoords) {
+         if (m_case.varyingCoords && !m_case.varyingGrid) {
             {
                grid.reset(new UnstructuredGrid(0, 0, 0));
                UnstructuredGrid::Data *od = m_basegrid[processor]->d();
@@ -618,6 +603,8 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
             auto ret = loadGrid(dir + "/polyMesh");
             grid = ret.grid;
             poly = ret.polygon;
+            m_owners[processor] = ret.owners;
+            m_boundaries[processor] = ret.boundaries;
          }
          setMeta(grid, processor, timestep);
          addObject(m_gridOut, grid);
@@ -692,6 +679,9 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
    }
 
    m_basegrid.clear();
+   m_basebound.clear();
+   m_owners.clear();
+   m_boundaries.clear();
    std::cerr << "ReadFoam: done" << std::endl;
 
    return true;
