@@ -190,14 +190,15 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
    Polygons::ptr poly(new Polygons(0, 0, 0));
    auto result = std::make_pair(grid, poly);
 
+   //read mesh files
+   boost::shared_ptr<std::istream> ownersIn = getStreamForFile(meshdir, "owner");
+   if (!ownersIn)
+      return result;
+   HeaderInfo ownerH = readFoamHeader(*ownersIn);
+   boost::shared_ptr<std::vector<Index> > owners(new std::vector<Index>(ownerH.lines));
+   readIndexArray(*ownersIn, (*owners).data(), (*owners).size());
+
    {
-      //read mesh files
-      boost::shared_ptr<std::istream> ownersIn = getStreamForFile(meshdir, "owner");
-      if (!ownersIn)
-         return result;
-      HeaderInfo ownerH = readFoamHeader(*ownersIn);
-      std::vector<Index> owners(ownerH.lines);
-      readIndexArray(*ownersIn, owners.data(), owners.size());
 
       boost::shared_ptr<std::istream> facesIn = getStreamForFile(meshdir, "faces");
       if (!facesIn)
@@ -255,8 +256,8 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
          grid->tl().resize(dim.cells);
          //Create CellFaceMap
          std::vector<std::vector<Index>> cellfacemap(dim.cells);
-         for (Index face = 0; face < owners.size(); ++face) {
-            cellfacemap[owners[face]].push_back(face);
+         for (Index face = 0; face < (*owners).size(); ++face) {
+            cellfacemap[(*owners)[face]].push_back(face);
          }
          for (Index face = 0; face < neighbour.size(); ++face) {
             cellfacemap[neighbour[face]].push_back(face);
@@ -310,7 +311,7 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
                   index_t ia=cellfaces[0];//Pick the first index in the vector as index of the random starting face
                   std::vector<index_t> a=faces[ia];//find face that corresponds to index ia
 
-                  if (!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                  if (!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbour)) {
                      std::reverse(a.begin(), a.end());
                   }
 
@@ -331,7 +332,7 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
 
                   std::vector<index_t> a=faces[ia];
 
-                  if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                  if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbour)) {
                      std::reverse(a.begin(), a.end());
                   }
 
@@ -351,7 +352,7 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
 
                   std::vector<index_t> a=faces[ia];
 
-                  if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                  if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbour)) {
                      std::reverse(a.begin(), a.end());
                   }
 
@@ -364,7 +365,7 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
                   index_t ia=cellfaces[0];
                   std::vector<index_t> a=faces[ia];
 
-                  if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                  if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbour)) {
                      std::reverse(a.begin(), a.end());
                   }
 
@@ -378,7 +379,7 @@ std::pair<UnstructuredGrid::ptr, Polygons::ptr> ReadFOAM::loadGrid(const std::st
                      index_t ia=cellfaces[j];
                      std::vector<index_t> a=faces[ia];
 
-                     if(!isPointingInwards(ia,i,dim.internalFaces,owners,neighbour)) {
+                     if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbour)) {
                         std::reverse(a.begin(), a.end());
                      }
 
