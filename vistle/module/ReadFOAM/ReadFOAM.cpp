@@ -401,7 +401,6 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
    } else {
       loadCoords(meshdir, poly);
    }
-   std::cout << "loadGrid done" << std::endl;
    return result;
 }
 
@@ -429,12 +428,10 @@ Object::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &f
 
 Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::string &field,
                                         const int &processor) {
-   std::cout << "start boundary Data" << std::endl;
    auto &boundaries = *m_boundaries[processor];
    auto owners = m_owners[processor]->data();
    std::vector<index_t> dataMapping;
    //Create the dataMpping Vector
-   std::cout << "start mapping Data" << std::endl;
    for (const auto &b: boundaries.boundaries) {
       Index boundaryIndex=b.index;
       if (m_boundaryPatches(boundaryIndex)) {
@@ -443,7 +440,6 @@ Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::s
          }
       }
    }
-   std::cout << "start reading header" << std::endl;
 
    boost::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
    if (!stream) {
@@ -451,7 +447,6 @@ Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::s
       return Object::ptr();
    }
    HeaderInfo header = readFoamHeader(*stream);
-   std::cout << "start reading Data" << std::endl;
    if (header.fieldclass == "volScalarField") {
       std::vector<scalar_t> fullX(header.lines);
       readFloatArray(*stream, fullX.data(), header.lines);
