@@ -766,7 +766,7 @@ bool isPointingInwards(index_t face,
    //check if the normal vector of the cell is pointing inwards
    //(in openFOAM it always points into the cell with the higher index)
    if (face>=ninternalFaces) {//if face is bigger than the number of internal faces
-      return true;            //then a is a boundary face and normal vector goes inwards by default
+      return true;            //then face is a boundary-face and normal vector goes inwards by default
    } else {
       index_t j,o,n;
       o=owners[face];

@@ -90,15 +90,15 @@ class Boundaries {
  public:
    Boundaries(): valid(false), minFace(std::numeric_limits<index_t>::max()) {}
 
-   bool isBoundaryFace(const index_t face) {
+//   bool isBoundaryFace(const index_t face) {
 
-      return isBoundaryFace(boundaries, face);
-   }
+//      return isBoundaryFace(boundaries, face);
+//   }
 
-   bool isProcessorBoundaryFace(const index_t face) {
+//   bool isProcessorBoundaryFace(const index_t face) {
 
-      return isBoundaryFace(procboundaries, face);
-   }
+//      return isBoundaryFace(procboundaries, face);
+//   }
 
    void addBoundary(const Boundary &b) {
 
@@ -139,17 +139,17 @@ class Boundaries {
 
  private:
    index_t minFace;
-   bool isBoundaryFace(const std::vector<Boundary> &bound, const index_t face) {
+//   bool isBoundaryFace(const std::vector<Boundary> &bound, const index_t face) {
 
-      if (face < minFace)
-         return false;
+//      if (face < minFace)
+//         return false;
 
-      for (std::vector<Boundary>::const_iterator i = bound.begin(); i != bound.end(); ++i) {
-         if (face >= i->startFace && face < i->startFace+i->numFaces)
-            return true;
-      }
-      return false;
-   }
+//      for (std::vector<Boundary>::const_iterator i = bound.begin(); i != bound.end(); ++i) {
+//         if (face >= i->startFace && face < i->startFace+i->numFaces)
+//            return true;
+//      }
+//      return false;
+//   }
 
 };
 

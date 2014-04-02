@@ -36,7 +36,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include "foamtoolbox.h"
-//#include <util/coRestraint.h>
+#include <util/coRestraint.h>
 
 using namespace vistle;
 
