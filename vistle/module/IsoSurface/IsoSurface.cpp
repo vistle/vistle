@@ -13,6 +13,8 @@
 #include "tables.h"
 #include "IsoSurface.h"
 
+#include <util/openmp.h>
+
 MODULE_MAIN(IsoSurface)
 
 using namespace vistle;
@@ -162,7 +164,7 @@ class Leveller {
       {
          Scalar tmin = std::numeric_limits<Scalar>::max();
          Scalar tmax = -std::numeric_limits<Scalar>::max();
-#pragma omp for schedule (dynamic)
+#pragma omp for
          for (Index elem=0; elem<numElem; ++elem) {
 
             Index n = 0;
@@ -171,11 +173,8 @@ class Leveller {
                   n = processHexahedron(elem, 0, true /* count only */, tmin, tmax);
                }
             }
-#pragma omp critical
-            {
-               outputIdx[elem] = curidx;
-               curidx += n;
-            }
+
+            outputIdx[elem] = fetch_and_add(curidx, n);
          }
 #pragma omp critical
          {
@@ -202,7 +201,7 @@ class Leveller {
          out_d = m_outData->x().data();
       }
 
-#pragma omp parallel for schedule (dynamic)
+#pragma omp parallel for
       for (Index elem = 0; elem<numElem; ++elem) {
          switch (tl[elem]) {
             case UnstructuredGrid::HEXAHEDRON: {
