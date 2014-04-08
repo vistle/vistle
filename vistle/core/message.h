@@ -360,6 +360,8 @@ class V_COREEXPORT Connect: public Message {
    int getModuleA() const;
    int getModuleB() const;
 
+   void reverse(); //! swap source and destination
+
  private:
    port_name_t portAName;
    port_name_t portBName;
@@ -382,12 +384,14 @@ class V_COREEXPORT Disconnect: public Message {
    int getModuleA() const;
    int getModuleB() const;
 
+   void reverse(); //! swap source and destination
+
  private:
    port_name_t portAName;
    port_name_t portBName;
 
-   const int moduleA;
-   const int moduleB;
+   int moduleA;
+   int moduleB;
 };
 BOOST_STATIC_ASSERT(sizeof(Disconnect) < Message::MESSAGE_SIZE);
 

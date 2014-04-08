@@ -7,6 +7,8 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include <algorithm>
+
 namespace vistle {
 namespace message {
 
@@ -404,6 +406,12 @@ int Connect::getModuleB() const {
    return moduleB;
 }
 
+void Connect::reverse() {
+
+   std::swap(moduleA, moduleB);
+   std::swap(portAName, portBName);
+}
+
 Disconnect::Disconnect(const int moduleIDA, const std::string & portA,
                  const int moduleIDB, const std::string & portB)
    : Message(Message::DISCONNECT, sizeof(Disconnect)),
@@ -431,6 +439,12 @@ int Disconnect::getModuleA() const {
 int Disconnect::getModuleB() const {
 
    return moduleB;
+}
+
+void Disconnect::reverse() {
+
+   std::swap(moduleA, moduleB);
+   std::swap(portAName, portBName);
 }
 
 AddParameter::AddParameter(const Parameter *param, const std::string &modname)

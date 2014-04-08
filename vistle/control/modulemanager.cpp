@@ -440,38 +440,60 @@ bool ModuleManager::handle(const message::Started &started) {
 
 bool ModuleManager::handle(const message::Connect &connect) {
 
-   m_stateTracker.handle(connect);
-   if (m_portManager.addConnection(connect.getModuleA(),
-            connect.getPortAName(),
-            connect.getModuleB(),
-            connect.getPortBName())) {
+   int modFrom = connect.getModuleA();
+   int modTo = connect.getModuleB();
+   const char *portFrom = connect.getPortAName();
+   const char *portTo = connect.getPortBName();
+   const Port *from = m_portManager.getPort(modFrom, portFrom);
+   const Port *to = m_portManager.getPort(modTo, portTo);
+
+   message::Connect c = connect;
+   if (from->getType() == Port::INPUT && to->getType() == Port::OUTPUT) {
+      c.reverse();
+      std::swap(modFrom, modTo);
+      std::swap(portFrom, portTo);
+   }
+
+   m_stateTracker.handle(c);
+   if (m_portManager.addConnection(modFrom, portFrom, modTo, portTo)) {
       // inform modules about connections
-      sendMessage(connect.getModuleA(), connect);
-      sendMessage(connect.getModuleB(), connect);
-      sendUi(connect);
+      sendMessage(modFrom, c);
+      sendMessage(modTo, c);
+      sendUi(c);
    } else {
-      queueMessage(connect);
+      queueMessage(c);
    }
    return true;
 }
 
 bool ModuleManager::handle(const message::Disconnect &disconnect) {
 
-   m_stateTracker.handle(disconnect);
-   if (m_portManager.removeConnection(disconnect.getModuleA(),
-            disconnect.getPortAName(),
-            disconnect.getModuleB(),
-            disconnect.getPortBName())) {
+   int modFrom = disconnect.getModuleA();
+   int modTo = disconnect.getModuleB();
+   const char *portFrom = disconnect.getPortAName();
+   const char *portTo = disconnect.getPortBName();
+   const Port *from = m_portManager.getPort(modFrom, portFrom);
+   const Port *to = m_portManager.getPort(modTo, portTo);
 
-      sendMessage(disconnect.getModuleA(), disconnect);
-      sendMessage(disconnect.getModuleB(), disconnect);
-      sendUi(disconnect);
+   message::Disconnect d = disconnect;
+   if (from->getType() == Port::INPUT && to->getType() == Port::OUTPUT) {
+      d.reverse();
+      std::swap(modFrom, modTo);
+      std::swap(portFrom, portTo);
+   }
+   
+   m_stateTracker.handle(d);
+   if (m_portManager.removeConnection(modFrom, portFrom, modTo, portTo)) {
+
+      sendMessage(modFrom, d);
+      sendMessage(modTo, d);
+      sendUi(d);
    } else {
 
       if (!m_messageQueue.empty()) {
          // only if messages are already queued, there is a chance that this
          // connection might still be established
-         queueMessage(disconnect);
+         queueMessage(d);
       }
    }
 
