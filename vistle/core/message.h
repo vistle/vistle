@@ -2,6 +2,7 @@
 #define MESSAGE_H
 
 #include <string>
+#include <array>
 #include <boost/uuid/uuid.hpp>
 
 
@@ -35,14 +36,14 @@ class V_COREEXPORT DefaultSender {
       static DefaultSender s_instance;
 };
 
-typedef char module_name_t[32];
-typedef char port_name_t[32];
-typedef char param_name_t[32];
-typedef char param_value_t[256];
-typedef char param_desc_t[512];
-typedef char param_choice_t[40];
+typedef std::array<char, 32> module_name_t;
+typedef std::array<char, 32> port_name_t;
+typedef std::array<char, 32> param_name_t;
+typedef std::array<char, 256> param_value_t;
+typedef std::array<char, 512> param_desc_t;
+typedef std::array<char, 40> param_choice_t;
 const int param_num_choices = 22;
-typedef char text_t[900];
+typedef std::array<char, 900> text_t;
 
 class V_COREEXPORT Message {
    // this is POD
@@ -363,8 +364,8 @@ class V_COREEXPORT Connect: public Message {
    port_name_t portAName;
    port_name_t portBName;
 
-   const int moduleA;
-   const int moduleB;
+   int moduleA;
+   int moduleB;
 };
 BOOST_STATIC_ASSERT(sizeof(Connect) < Message::MESSAGE_SIZE);
 

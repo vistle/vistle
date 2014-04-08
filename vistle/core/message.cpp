@@ -15,10 +15,10 @@ static T min(T a, T b) { return a<b ? a : b; }
 
 #define COPY_STRING(dst, src) \
    { \
-      size_t size = min(src.size(), sizeof(dst)-1); \
-      src.copy(dst, size); \
+      const size_t size = min(src.size(), dst.size()-1); \
+      src.copy(dst.data(), size); \
       dst[size] = '\0'; \
-      assert(src.size() <= sizeof(dst)-1); \
+      assert(src.size() < dst.size()); \
    }
 
 DefaultSender DefaultSender::s_instance;
@@ -158,7 +158,7 @@ void Spawn::setSpawnId(int id) {
 
 const char * Spawn::getName() const {
 
-   return name;
+   return name.data();
 }
 
 int Spawn::getMpiSize() const {
@@ -185,7 +185,7 @@ Started::Started(const std::string &n)
 
 const char * Started::getName() const {
 
-   return name;
+   return name.data();
 }
 
 Kill::Kill(const int m)
@@ -304,7 +304,7 @@ CreatePort::CreatePort(const Port *port)
 
 Port *CreatePort::getPort() const {
 
-   return new Port(senderId(), m_name, static_cast<Port::Type>(m_porttype), m_flags);
+   return new Port(senderId(), m_name.data(), static_cast<Port::Type>(m_porttype), m_flags);
 }
 
 AddObject::AddObject(const std::string & p,
@@ -321,7 +321,7 @@ AddObject::AddObject(const std::string & p,
 
 const char * AddObject::getPortName() const {
 
-   return portName;
+   return portName.data();
 }
 
 const char *AddObject::objectName() const {
@@ -362,7 +362,7 @@ const Meta &ObjectReceived::meta() const {
 
 const char *ObjectReceived::getPortName() const {
 
-   return portName;
+   return portName.data();
 }
 
 const char *ObjectReceived::objectName() const {
@@ -386,12 +386,12 @@ Connect::Connect(const int moduleIDA, const std::string & portA,
 
 const char * Connect::getPortAName() const {
 
-   return portAName;
+   return portAName.data();
 }
 
 const char * Connect::getPortBName() const {
 
-   return portBName;
+   return portBName.data();
 }
 
 int Connect::getModuleA() const {
@@ -415,12 +415,12 @@ Disconnect::Disconnect(const int moduleIDA, const std::string & portA,
 
 const char * Disconnect::getPortAName() const {
 
-   return portAName;
+   return portAName.data();
 }
 
 const char * Disconnect::getPortBName() const {
 
-   return portBName;
+   return portBName.data();
 }
 
 int Disconnect::getModuleA() const {
@@ -452,12 +452,12 @@ AddParameter::AddParameter(const Parameter *param, const std::string &modname)
 
 const char *AddParameter::getName() const {
 
-   return name;
+   return name.data();
 }
 
 const char *AddParameter::moduleName() const {
 
-   return module;
+   return module.data();
 }
 
 int AddParameter::getParameterType() const {
@@ -472,12 +472,12 @@ int AddParameter::getPresentation() const {
 
 const char *AddParameter::description() const {
 
-   return m_description;
+   return m_description.data();
 }
 
 const char *AddParameter::group() const {
 
-   return m_group;
+   return m_group.data();
 }
 
 Parameter *AddParameter::getParameter() const {
@@ -634,7 +634,7 @@ int SetParameter::rangeType() const {
 
 const char *SetParameter::getName() const {
 
-   return name;
+   return name.data();
 }
 
 int SetParameter::getModule() const {
@@ -668,7 +668,7 @@ ParamVector SetParameter::getVector() const {
 std::string SetParameter::getString() const {
 
    assert(paramtype == Parameter::String);
-   return v_string;
+   return v_string.data();
 }
 
 bool SetParameter::apply(Parameter *param) const {
@@ -692,7 +692,7 @@ bool SetParameter::apply(Parameter *param) const {
       if (rt == Parameter::Minimum) pvec->setMinimum(ParamVector(dim, &v_vector[0]));
       if (rt == Parameter::Maximum) pvec->setMaximum(ParamVector(dim, &v_vector[0]));
    } else if (StringParameter *pstring = dynamic_cast<StringParameter *>(param)) {
-      if (rt == Parameter::Value) pstring->setValue(v_string, initialize);
+      if (rt == Parameter::Value) pstring->setValue(v_string.data(), initialize);
    } else {
       std::cerr << "SetParameter::apply(): type " << param->type() << " not handled" << std::endl;
       assert("invalid parameter type" == 0);
@@ -724,7 +724,7 @@ int SetParameterChoices::getModule() const
 
 const char *SetParameterChoices::getName() const
 {
-   return name;
+   return name.data();
 }
 
 bool SetParameterChoices::apply(Parameter *param) const {
@@ -742,8 +742,8 @@ bool SetParameterChoices::apply(Parameter *param) const {
 
    std::vector<std::string> ch;
    for (int i=0; i<numChoices && i<param_num_choices; ++i) {
-      size_t len = strnlen(choices[i], sizeof(choices[i]));
-      ch.push_back(std::string(choices[i], len));
+      size_t len = strnlen(choices[i].data(), choices[i].size());
+      ch.push_back(std::string(choices[i].data(), len));
    }
 
    param->setChoices(ch);
@@ -835,7 +835,7 @@ Message::uuid_t SendText::referenceUuid() const {
 
 const char *SendText::text() const {
 
-   return m_text;
+   return m_text.data();
 }
 
 bool SendText::truncated() const {
@@ -925,7 +925,7 @@ ModuleAvailable::ModuleAvailable(const std::string &name)
 
 const char *ModuleAvailable::name() const {
 
-    return m_name;
+    return m_name.data();
 }
 
 
