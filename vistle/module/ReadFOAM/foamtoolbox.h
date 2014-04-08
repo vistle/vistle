@@ -90,16 +90,6 @@ class Boundaries {
  public:
    Boundaries(): valid(false), minFace(std::numeric_limits<index_t>::max()) {}
 
-//   bool isBoundaryFace(const index_t face) {
-
-//      return isBoundaryFace(boundaries, face);
-//   }
-
-//   bool isProcessorBoundaryFace(const index_t face) {
-
-//      return isBoundaryFace(procboundaries, face);
-//   }
-
    void addBoundary(const Boundary &b) {
 
       if (b.type == "processor") {
@@ -139,17 +129,6 @@ class Boundaries {
 
  private:
    index_t minFace;
-//   bool isBoundaryFace(const std::vector<Boundary> &bound, const index_t face) {
-
-//      if (face < minFace)
-//         return false;
-
-//      for (std::vector<Boundary>::const_iterator i = bound.begin(); i != bound.end(); ++i) {
-//         if (face >= i->startFace && face < i->startFace+i->numFaces)
-//            return true;
-//      }
-//      return false;
-//   }
 
 };
 
