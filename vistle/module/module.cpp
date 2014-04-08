@@ -243,13 +243,9 @@ unsigned int Module::size() const {
 
 int Module::openmpThreads() const {
 
-    int ret =  getIntParameter("_openmp_threads");
-    if (ret == 0) {
-#ifdef _OPENMP
-        ret = omp_get_thread_limit();
-#else
-        ret = -1;
-#endif
+    int ret = getIntParameter("_openmp_threads");
+    if (ret <= 0) {
+        ret = 0;
     }
     return ret;
 }
@@ -257,15 +253,10 @@ int Module::openmpThreads() const {
 void Module::setOpenmpThreads(int nthreads, bool updateParam) {
 
 #ifdef _OPENMP
-    if (nthreads <= 0) {
-        nthreads = omp_get_thread_limit();
-        updateParam = true;
-    }
-    if (nthreads <= 0) {
-       nthreads = 1;
-        updateParam = true;
-    }
-    omp_set_num_threads(nthreads);
+    if (nthreads <= 0)
+       nthreads = omp_get_num_procs();
+    if (nthreads > 0)
+       omp_set_num_threads(nthreads);
 #endif
     if (updateParam)
         setIntParameter("_openmp_threads", nthreads);
