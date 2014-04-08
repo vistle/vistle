@@ -47,7 +47,7 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
 {
    // file browser parameter
    m_casedir = addStringParameter("casedir", "OpenFOAM case directory",
-      "/mnt/raid/home/hpcchkop/OpenFoamFiles/motorBike", Parameter::Directory);
+      "/data/OpenFOAM/PumpTurbine", Parameter::Directory);
    //Time Parameters
    m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
    setParameterMinimum<Float>(m_starttime, 0.);
