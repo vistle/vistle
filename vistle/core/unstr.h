@@ -24,7 +24,13 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
       PRISM       =  6,
       HEXAHEDRON  =  7,
       POINT       = 10,
-      POLYHEDRON  = 11
+      POLYHEDRON  = 11,
+
+      GHOST_TETRAHEDRON = TETRAHEDRON|128,
+      GHOST_PYRAMID     =     PYRAMID|128,
+      GHOST_PRISM       =       PRISM|128,
+      GHOST_HEXAHEDRON  =  HEXAHEDRON|128,
+      GHOST_POLYHEDRON  =  POLYHEDRON|128
    };
 
    static const int NumVertices[POLYHEDRON+1];
