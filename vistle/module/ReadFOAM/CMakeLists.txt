@@ -22,6 +22,7 @@ include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
+        ../../../3rdparty/boost-mpi/include
 )
 
 if (CMAKE_COMPILER_IS_GNUCC)
@@ -35,6 +36,7 @@ target_link_libraries(ReadFOAM
         ${MPI_C_LIBRARIES}
         ${ZLIB_LIBRARIES}
         vistle_module
+        vistle_boost_mpi
 )
 
 #add_executable(foambounds bounds.cpp foamtoolbox.cpp)
