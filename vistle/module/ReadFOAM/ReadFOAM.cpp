@@ -37,6 +37,8 @@
 
 #include "foamtoolbox.h"
 #include <util/coRestraint.h>
+#include <boost/mpi/communicator.hpp>
+namespace mpi = boost::mpi;
 
 using namespace vistle;
 
@@ -47,7 +49,7 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
 {
    // file browser parameter
    m_casedir = addStringParameter("casedir", "OpenFOAM case directory",
-      "/data/OpenFOAM/PumpTurbine", Parameter::Directory);
+      "/mnt/raid/home/hpcchkop/test", Parameter::Directory);//data/OpenFOAM/PumpTurbine
    //Time Parameters
    m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
    setParameterMinimum<Float>(m_starttime, 0.);
@@ -656,6 +658,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
 bool ReadFOAM::compute()     //Compute is called when Module is executed
 {
+   std::cout << rank() << " " << size() << std::endl;
    const std::string casedir = m_casedir->getValue();
    m_boundaryPatches.add(m_patchSelection->getValue());
    m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
@@ -668,7 +671,6 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
    std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
    std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
    std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
-
    readConstant(casedir);
    int skipfactor = m_timeskip->getValue()+1;
    for (int timestep=0; timestep<m_case.timedirs.size()/skipfactor; ++timestep) {
@@ -679,7 +681,7 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
    m_basebound.clear();
    m_owners.clear();
    m_boundaries.clear();
-   std::cerr << "ReadFoam: done" << std::endl;
+   std::cout << "ReadFoam: done" << std::endl;
 
    return true;
 }
