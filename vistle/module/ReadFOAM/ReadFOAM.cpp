@@ -232,7 +232,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          polys.reserve(num_bound);
          for (const auto &b: (*boundaries).boundaries) {
             int boundaryIndex=b.index;
-            if (m_boundaryPatches(boundaryIndex)) {
+            if (m_boundaryPatches(boundaryIndex) && b.numFaces>0) {
                for (index_t i=b.startFace; i<b.startFace + b.numFaces; ++i) {
                   polys.push_back(conn.size());
                   auto &face = faces[i];
