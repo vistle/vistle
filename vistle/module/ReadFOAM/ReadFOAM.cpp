@@ -240,8 +240,10 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                      conn.push_back(face[j]);
                   }
                }
-               polys.push_back(conn.size());
             }
+         }
+         if (conn.size()>0) {
+            polys.push_back(conn.size());
          }
       }
 
