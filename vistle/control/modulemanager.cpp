@@ -448,7 +448,7 @@ bool ModuleManager::handle(const message::Connect &connect) {
    const Port *to = m_portManager.getPort(modTo, portTo);
 
    message::Connect c = connect;
-   if (from->getType() == Port::INPUT && to->getType() == Port::OUTPUT) {
+   if (from && to && from->getType() == Port::INPUT && to->getType() == Port::OUTPUT) {
       c.reverse();
       std::swap(modFrom, modTo);
       std::swap(portFrom, portTo);
