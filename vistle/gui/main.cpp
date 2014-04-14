@@ -7,6 +7,7 @@
 /**********************************************************************************/
 #include "uicontroller.h"
 #include <QApplication>
+#include <QIcon>
 
 #include <boost/uuid/uuid.hpp>
 
@@ -22,6 +23,8 @@ int main(int argc, char *argv[])
 
    try {
       QApplication a(argc, argv);
+      QIcon icon(":/vistle.png");
+      a.setWindowIcon(icon);
       UiController control(argc, argv, &a);
       int val = a.exec();
       control.finish();

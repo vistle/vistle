@@ -74,6 +74,9 @@ if (APPLE)
           DEPENDS gui_wrapper.sh
           SOURCES gui_wrapper.sh
   )
+  set(MACOSX_BUNDLE_ICON_FILE vistle.icns)
+  set(gui_SOURCES ${gui_SOURCES} ${MACOSX_BUNDLE_ICON_FILE})
+  set_source_files_properties(${MACOSX_BUNDLE_ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
   set(gui_name Vistle)
 endif(APPLE)
 
@@ -86,6 +89,8 @@ add_executable(${gui_name}
   ${GUI_UI_SRCS})
 
 qt5_use_modules(${gui_name} Widgets)
+
+qt5_add_resources(${gui_name} gui.qrc)
 
 target_link_libraries(${gui_name}
   ${QT_LIBRARIES}
