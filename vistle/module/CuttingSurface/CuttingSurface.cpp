@@ -139,9 +139,10 @@ class PlaneCut {
    bool process() {
       const Index numElem = m_grid->getNumElements();
 
-      Index curidx = 0;
-      std::vector<Index> outputIdx(numElem);
-#pragma omp parallel for schedule (dynamic)
+      std::vector<Index> outputIdxV(numElem+1);
+      auto outputIdx = outputIdxV.data();
+      outputIdx[0] = 0;
+#pragma omp parallel for
       for (Index elem=0; elem<numElem; ++elem) {
 
          Index n = 0;
@@ -150,30 +151,31 @@ class PlaneCut {
                n = processHexahedron(elem, 0, true /* count only */);
             }
          }
-#pragma omp critical
-         {
-            outputIdx[elem] = curidx;
-            curidx += n;
-         }
+         outputIdx[elem+1] = n;
       }
 
-      //std::cerr << "CuttingSurface: " << curidx << " vertices" << std::endl;
+      for (Index elem=0; elem<numElem; ++elem) {
+         outputIdx[elem+1] += outputIdx[elem];
+      }
+      Index numVert = outputIdx[numElem];
 
-      m_triangles->cl().resize(curidx);
+      //std::cerr << "CuttingSurface: " << numVert << " vertices" << std::endl;
+
+      m_triangles->cl().resize(numVert);
       out_cl = m_triangles->cl().data();
-      m_triangles->x().resize(curidx);
+      m_triangles->x().resize(numVert);
       out_x = m_triangles->x().data();
-      m_triangles->y().resize(curidx);
+      m_triangles->y().resize(numVert);
       out_y = m_triangles->y().data();
-      m_triangles->z().resize(curidx);
+      m_triangles->z().resize(numVert);
       out_z = m_triangles->z().data();
 
       if (m_outData) {
-         m_outData->x().resize(curidx);
+         m_outData->x().resize(numVert);
          out_d = m_outData->x().data();
       }
 
-#pragma omp parallel for schedule (dynamic)
+#pragma omp parallel for
       for (Index elem = 0; elem<numElem; ++elem) {
          switch (tl[elem]) {
             case UnstructuredGrid::HEXAHEDRON: {

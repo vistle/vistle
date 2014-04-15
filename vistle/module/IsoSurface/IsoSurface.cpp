@@ -158,8 +158,9 @@ class Leveller {
    bool process() {
       const Index numElem = m_grid->getNumElements();
 
-      Index curidx = 0;
-      std::vector<Index> outputIdx(numElem);
+      std::vector<Index> outputIdxV(numElem+1);
+      auto outputIdx = outputIdxV.data();
+      outputIdx[0] = 0;
 #pragma omp parallel
       {
          Scalar tmin = std::numeric_limits<Scalar>::max();
@@ -174,7 +175,7 @@ class Leveller {
                }
             }
 
-            outputIdx[elem] = fetch_and_add(curidx, n);
+            outputIdx[elem+1] = n;
          }
 #pragma omp critical
          {
@@ -185,19 +186,25 @@ class Leveller {
          }
       }
 
-      //std::cerr << "CuttingSurface: " << curidx << " vertices" << std::endl;
+      for (Index elem=0; elem<numElem; ++elem) {
+         outputIdx[elem+1] += outputIdx[elem];
+      }
 
-      m_triangles->cl().resize(curidx);
+      Index numVert = outputIdx[numElem];
+
+      //std::cerr << "IsoSurface: " << numVert << " vertices" << std::endl;
+
+      m_triangles->cl().resize(numVert);
       out_cl = m_triangles->cl().data();
-      m_triangles->x().resize(curidx);
+      m_triangles->x().resize(numVert);
       out_x = m_triangles->x().data();
-      m_triangles->y().resize(curidx);
+      m_triangles->y().resize(numVert);
       out_y = m_triangles->y().data();
-      m_triangles->z().resize(curidx);
+      m_triangles->z().resize(numVert);
       out_z = m_triangles->z().data();
 
       if (m_outData) {
-         m_outData->x().resize(curidx);
+         m_outData->x().resize(numVert);
          out_d = m_outData->x().data();
       }
 

@@ -140,33 +140,37 @@ class PlaneClip {
       if (m_tri) {
          const Index numElem = m_tri->getNumCorners()/3;
 
-         Index curCorner=0, curCoord=numCoordsIn;
-         std::vector<Index> outIdxCorner(numElem), outIdxCoord(numElem);
+         std::vector<Index> outIdxCorner(numElem+1), outIdxCoord(numElem+1);
+         outIdxCorner[0] = 0;
+         outIdxCoord[0] = numCoordsIn;
 #pragma omp parallel for schedule (dynamic)
          for (Index elem=0; elem<numElem; ++elem) {
 
             Index numCorner=0, numCoord=0;
             processTriangle(elem, numCorner, numCoord, true);
 
-#pragma omp critical
-            {
-               outIdxCorner[elem] = curCorner;
-               outIdxCoord[elem] = curCoord;
-               curCorner += numCorner;
-               curCoord += numCoord;
-            }
+            outIdxCorner[elem+1] = numCorner;
+            outIdxCoord[elem+1] = numCoord;
          }
 
-         m_outTri->cl().resize(curCorner);
+         for (Index elem=0; elem<numElem; ++elem) {
+            outIdxCoord[elem+1] += outIdxCoord[elem];
+            outIdxCorner[elem+1] += outIdxCorner[elem];
+         }
+
+         Index numCoord = outIdxCoord[numElem];
+         Index numCorner = outIdxCorner[numElem];
+
+         m_outTri->cl().resize(numCorner);
          out_cl = m_outTri->cl().data();
 
-         m_outTri->setSize(curCoord);
+         m_outTri->setSize(numCoord);
          out_x = m_outTri->x().data();
          out_y = m_outTri->y().data();
          out_z = m_outTri->z().data();
 
          if (m_outData) {
-            m_outData->x().resize(curCoord);
+            m_outData->x().resize(numCoord);
             out_d = m_outData->x().data();
          }
 
@@ -180,38 +184,42 @@ class PlaneClip {
       } else if (m_poly) {
          const Index numElem = m_poly->getNumElements();
 
-         Index curPoly=0, curCorner=0, curCoord=numCoordsIn;
-         std::vector<Index> outIdxPoly(numElem), outIdxCorner(numElem), outIdxCoord(numElem);
+         std::vector<Index> outIdxPoly(numElem+1), outIdxCorner(numElem+1), outIdxCoord(numElem+1);
+         outIdxPoly[0] = 0;
+         outIdxCorner[0] = 0;
+         outIdxCoord[0] = numCoordsIn;
 #pragma omp parallel for schedule (dynamic)
          for (Index elem=0; elem<numElem; ++elem) {
 
             Index numPoly=0, numCorner=0, numCoord=0;
             processPolygon(elem, numPoly, numCorner, numCoord, true);
-
-#pragma omp critical
-            {
-               outIdxPoly[elem] = curPoly;
-               outIdxCorner[elem] = curCorner;
-               outIdxCoord[elem] = curCoord;
-               curPoly += numPoly;
-               curCorner += numCorner;
-               curCoord += numCoord;
-            }
+            outIdxPoly[elem+1] = numPoly;
+            outIdxCorner[elem+1] = numCorner;
+            outIdxCoord[elem+1] = numCoord;
          }
 
-         m_outPoly->el().resize(curPoly+1);
+         for (Index elem=0; elem<numElem; ++elem) {
+            outIdxPoly[elem+1] += outIdxPoly[elem];
+            outIdxCorner[elem+1] += outIdxCorner[elem];
+            outIdxCoord[elem+1] += outIdxCoord[elem];
+         }
+         Index numPoly = outIdxPoly[numElem];
+         Index numCorner = outIdxCorner[numElem];
+         Index numCoord = outIdxCoord[numElem];
+
+         m_outPoly->el().resize(numPoly+1);
          out_el = m_outPoly->el().data();
-         out_el[curPoly] = curCorner;
-         m_outPoly->cl().resize(curCorner);
+         out_el[numPoly] = numCorner;
+         m_outPoly->cl().resize(numCorner);
          out_cl = m_outPoly->cl().data();
 
-         m_outPoly->setSize(curCoord);
+         m_outPoly->setSize(numCoord);
          out_x = m_outPoly->x().data();
          out_y = m_outPoly->y().data();
          out_z = m_outPoly->z().data();
 
          if (m_outData) {
-            m_outData->x().resize(curCoord);
+            m_outData->x().resize(numCoord);
             out_d = m_outData->x().data();
          }
 
