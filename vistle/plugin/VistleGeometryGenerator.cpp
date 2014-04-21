@@ -4,7 +4,7 @@
 #include <kernel/RenderObject.h>
 #include <kernel/VRSceneGraph.h>
 #include <kernel/coVRShader.h>
-#include <kernel/coSphere.h>
+#include <PluginUtil/coSphere.h>
 
 #include <osg/Geode>
 #include <osg/Geometry>
