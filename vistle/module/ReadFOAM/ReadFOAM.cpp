@@ -533,7 +533,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
 
 
 bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int timestep) {
-
+   std::cout << "rank " << rank() << " reading " << casedir << " // processor :" << processor << " // timestep: " << timestep << std::endl;
    std::string dir = casedir;
 
    if (processor >= 0) {
@@ -626,6 +626,9 @@ bool ReadFOAM::readConstant(const std::string &casedir)
                return false;
          }
       }
+      mpi::communicator c;
+      c.barrier();
+      std::cout << rank() << " broke barrier (constant)" << std::endl;
    } else {
       if (rank() == 0) {
          if (!readDirectory(casedir, -1, -1))
@@ -646,6 +649,9 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
                return false;
          }
       }
+      mpi::communicator c;
+      c.barrier();
+      std::cout << rank() << " broke barrier (time: " << timestep << ")" << std::endl;
    } else {
       if (rank() == 0) {
          if (!readDirectory(casedir, -1, timestep))
@@ -658,7 +664,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
 bool ReadFOAM::compute()     //Compute is called when Module is executed
 {
-   std::cout << rank() << " " << size() << std::endl;
+   std::cout << "starting // rank: " << rank() << " " << "// size: " << size() << std::endl;
    const std::string casedir = m_casedir->getValue();
    m_boundaryPatches.add(m_patchSelection->getValue());
    m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
@@ -666,7 +672,6 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
       std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
       return true;
    }
-
    std::cerr << "# processors: " << m_case.numblocks << std::endl;
    std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
    std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
