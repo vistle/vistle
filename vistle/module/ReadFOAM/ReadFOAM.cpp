@@ -231,21 +231,18 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                num_bound+=b.numFaces;
             }
          }
-         polys.reserve(num_bound);
+         polys.reserve(num_bound+1);
          for (const auto &b: (*boundaries).boundaries) {
             int boundaryIndex=b.index;
             if (m_boundaryPatches(boundaryIndex) && b.numFaces>0) {
                for (index_t i=b.startFace; i<b.startFace + b.numFaces; ++i) {
-                  polys.push_back(conn.size());
                   auto &face = faces[i];
                   for (int j=0; j<face.size(); ++j) {
                      conn.push_back(face[j]);
                   }
+                  polys.push_back(conn.size());
                }
             }
-         }
-         if (conn.size()>0) {
-            polys.push_back(conn.size());
          }
       }
 
