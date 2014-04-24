@@ -67,6 +67,10 @@ class ReadFOAM: public vistle::Module
 
       bool parameterChanged(vistle::Parameter *p);
       bool readDirectory(const std::string &dir, int processor, int timestep);
+      bool addGhostCells(const std::string &dir, int processor, int timestep);
+      bool addGhostCellsData(const std::string &dir, int processor, int timestep);
+      bool addGridToPorts(int processor);
+      bool addDataToPorts(int processor);
       bool readConstant(const std::string &dir);
       bool readTime(const std::string &dir, int timestep);
 
@@ -81,6 +85,8 @@ class ReadFOAM: public vistle::Module
 
       std::map<int, vistle::UnstructuredGrid::ptr> m_basegrid;
       std::map<int, vistle::Polygons::ptr> m_basebound;
+      std::map<int, vistle::UnstructuredGrid::ptr> m_currentgrid;
+      std::map<int, std::map<int, vistle::Object::ptr> > m_currentvolumedata;
       std::map<int, boost::shared_ptr<std::vector<vistle::Index> > > m_owners;
       std::map<int, boost::shared_ptr<Boundaries>> m_boundaries;
 };

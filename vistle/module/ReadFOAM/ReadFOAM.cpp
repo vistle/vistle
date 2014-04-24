@@ -293,7 +293,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
             }
             num_conn += num_verts;
          }
-         // save data cell by cell to element, connectivity and type list
+         //save data cell by cell to element, connectivity and type list
          //go cell by cell (element by element)
 
          auto el = grid->el().data();
@@ -513,7 +513,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
          continue;
       Object::ptr obj = loadField(meshdir, field);
       setMeta(obj, processor, timestep);
-      addObject(m_volumeDataOut[i], obj);
+      m_currentvolumedata[i][processor]= obj;
    }
 
    for (int i=0; i<NumBoundaryPorts; ++i) {
@@ -557,7 +557,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
             m_basegrid[processor] = grid;
             m_basebound[processor] = poly;
          } else {
-            addObject(m_gridOut, grid);
+            m_currentgrid[processor] = grid;
             addObject(m_boundOut, poly);
          }
       }
@@ -606,14 +606,35 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
             m_boundaries[processor] = ret.boundaries;
          }
          setMeta(grid, processor, timestep);
-         addObject(m_gridOut, grid);
          setMeta(poly, processor, timestep);
+         m_currentgrid[processor] = grid;
          addObject(m_boundOut, poly);
       }
       loadFields(dir, m_case.varyingFields, processor, timestep);
    }
 
    return true;
+}
+
+bool ReadFOAM::addGhostCells(const std::string &casedir, int processor, int timestep) {
+
+   return true;
+}
+
+bool ReadFOAM::addGhostCellsData(const std::string &casedir, int processor, int timestep) {
+
+   return true;
+}
+
+bool ReadFOAM::addGridToPorts(int processor) {
+   addObject(m_gridOut, m_currentgrid[processor]);
+}
+
+bool ReadFOAM::addDataToPorts(int processor) {
+   for (auto &data: m_currentvolumedata) {
+      int portnum=data.first;
+      addObject(m_volumeDataOut[portnum], m_currentvolumedata[portnum][processor]);
+   }
 }
 
 bool ReadFOAM::readConstant(const std::string &casedir)
@@ -626,15 +647,33 @@ bool ReadFOAM::readConstant(const std::string &casedir)
                return false;
          }
       }
-      mpi::communicator c;
-      c.barrier();
-      std::cout << rank() << " broke barrier (constant)" << std::endl;
    } else {
       if (rank() == 0) {
          if (!readDirectory(casedir, -1, -1))
             return false;
       }
    }
+
+   mpi::communicator c;
+   c.barrier();
+   std::cout << rank() << " broke barrier (constant)" << std::endl;
+
+   if (!m_case.varyingCoords && !m_case.varyingGrid) {
+      if (m_case.numblocks > 0) {
+         for (int i=0; i<m_case.numblocks; ++i) {
+            if (i % size() == rank()) {
+               if (!addGhostCells(casedir, i, -1))
+                  return false;
+            }
+            addGridToPorts(i);
+         }
+      } else {
+         addGridToPorts(-1);
+      }
+   }
+
+   m_currentgrid.clear();
+   m_currentvolumedata.clear();
 
    return true;
 }
@@ -649,15 +688,43 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
                return false;
          }
       }
-      mpi::communicator c;
-      c.barrier();
-      std::cout << rank() << " broke barrier (time: " << timestep << ")" << std::endl;
    } else {
       if (rank() == 0) {
          if (!readDirectory(casedir, -1, timestep))
             return false;
       }
    }
+
+   mpi::communicator c;
+   c.barrier();
+   std::cout << rank() << " broke barrier (timestep " << timestep << ")" << std::endl;
+   
+   if (m_case.varyingCoords || m_case.varyingGrid) {
+      if (m_case.numblocks > 0) {
+         for (int i=0; i<m_case.numblocks; ++i) {
+            if (i % size() == rank()) {
+               if (!addGhostCells(casedir, i, timestep))
+                  return false;
+            }
+            addGridToPorts(i);
+         }
+      } else {
+         addGridToPorts(-1);
+      }
+   }
+
+   if (m_case.numblocks > 0) {
+      for (int i=0; i<m_case.numblocks; ++i) {
+         if (!addGhostCellsData(casedir, i, timestep))
+            return false;
+         addDataToPorts(i);
+      }
+   } else {
+      addDataToPorts(-1);
+   }
+
+   m_currentgrid.clear();
+   m_currentvolumedata.clear();
 
    return true;
 }
