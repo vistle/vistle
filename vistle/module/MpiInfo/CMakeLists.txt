@@ -5,10 +5,10 @@ add_module(MpiInfo MpiInfo.cpp)
 use_openmp()
 
 include_directories(
+        ../../../3rdparty/boost-mpi/include
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
-        ../../../3rdparty/boost-mpi/include
 )
 
 target_link_libraries(MpiInfo

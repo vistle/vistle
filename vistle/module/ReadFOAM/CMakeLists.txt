@@ -19,10 +19,10 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif()
 
 include_directories(
+        ../../../3rdparty/boost-mpi/include
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
-        ../../../3rdparty/boost-mpi/include
 )
 
 if (CMAKE_COMPILER_IS_GNUCC)
