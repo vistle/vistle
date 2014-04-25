@@ -5,6 +5,7 @@ set(util_SOURCES
    findself.cpp
    stopwatch.cpp
    tools.cpp
+   spawnprocess.cpp
 )
 
 set(util_HEADERS
@@ -17,6 +18,7 @@ set(util_HEADERS
    stopwatch.h
    valgrind.h
    vecstreambuf.h
+   spawnprocess.h
 )
 
 add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})

@@ -105,7 +105,7 @@ void VistleObserver::resetModificationCount()
       emit modified(false);
 }
 
-void gui::VistleObserver::info(const std::string &text, vistle::message::SendText::TextType textType, int senderId, int senderRank, vistle::message::Message::Type refType, const vistle::message::Message::uuid_t &refUuid) {
+void gui::VistleObserver::info(const std::string &text, vistle::message::SendText::TextType textType, int senderId, int senderRank, vistle::message::Message::Type refType, const vistle::message::uuid_t &refUuid) {
 
    QString t = QString::fromStdString(text);
    while(t.endsWith('\n'))

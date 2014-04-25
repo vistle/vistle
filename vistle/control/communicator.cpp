@@ -2,6 +2,7 @@
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
 #include <boost/foreach.hpp>
+#include <boost/asio.hpp>
 
 #include <mpi.h>
 
@@ -13,22 +14,19 @@
 #include <iomanip>
 
 #include <core/message.h>
-#include <core/messagequeue.h>
+#include <core/tcpmessage.h>
 #include <core/object.h>
 #include <core/parameter.h>
 #include <util/findself.h>
 
-#include "uimanager.h"
 #include "communicator.h"
 #include "modulemanager.h"
-#ifdef HAVE_PYTHON
-#include "clientmanager.h"
-#endif
 
 #define CERR \
    std::cerr << "comm [" << m_rank << "/" << m_size << "] "
 
 using namespace boost::interprocess;
+namespace asio = boost::asio;
 
 namespace vistle {
 
@@ -41,18 +39,18 @@ enum MpiTags {
 Communicator *Communicator::s_singleton = NULL;
 
 Communicator::Communicator(int argc, char *argv[], int r, const std::vector<std::string> &hosts)
-: m_clientManager(NULL)
-, m_uiManager(NULL)
-, m_moduleManager(new ModuleManager(argc, argv, r, hosts))
+: m_moduleManager(new ModuleManager(argc, argv, r, hosts))
 , m_rank(r)
 , m_size(hosts.size())
 , m_quitFlag(false)
 , m_recvSize(0)
-, m_commandQueue(message::MessageQueue::create(message::MessageQueue::createName("command_queue", 0, r)))
 , m_traceMessages(0)
+, m_hubSocket(m_ioService)
 {
    assert(s_singleton == NULL);
    s_singleton = this;
+
+   CERR << "started" << std::endl;
 
    message::DefaultSender::init(0, m_rank);
 
@@ -64,11 +62,6 @@ Communicator::Communicator(int argc, char *argv[], int r, const std::vector<std:
    if (m_rank == 0) {
       m_recvBufTo0.resize(message::Message::MESSAGE_SIZE);
       MPI_Irecv(m_recvBufTo0.data(), m_recvBufTo0.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
-   }
-
-   if (m_rank == 0) {
-
-      m_uiManager = new UiManager(m_commandQueue);
    }
 }
 
@@ -90,25 +83,39 @@ int Communicator::getSize() const {
    return m_size;
 }
 
-unsigned short Communicator::uiPort() const
-{
-   if (!m_uiManager)
-      return 0;
+bool Communicator::connectHub(const std::string &host, unsigned short port) {
 
-   return m_uiManager->port();
+   int ret = 1;
+   if (getRank() == 0) {
+
+      CERR << "connecting to hub on " << host << ":" << port << "..." << std::endl;
+      std::stringstream portstr;
+      portstr << port;
+
+      asio::ip::tcp::resolver resolver(m_ioService);
+      asio::ip::tcp::resolver::query query(host, portstr.str());
+      asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+      boost::system::error_code ec;
+      asio::connect(m_hubSocket, endpoint_iterator, ec);
+      if (ec) {
+         CERR << " could not establish connection to " << host << ":" << port << std::endl;
+         ret = 0;
+      }
+   }
+
+   MPI_Bcast(&ret, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+   return ret;
 }
 
-void Communicator::setInput(const std::string &input) {
+bool Communicator::sendHub(const message::Message &message) {
 
-   m_initialInput = input;
+   if (getRank() == 0)
+      return message::send(m_hubSocket, message);
 }
 
-void Communicator::setFile(const std::string &filename) {
 
-   m_initialFile = filename;
-}
-
-bool Communicator::scanModules(const std::string &dir) const {
+bool Communicator::scanModules(const std::string &dir) {
 
     return m_moduleManager->scanModules(dir);
 }
@@ -129,24 +136,11 @@ bool Communicator::dispatch() {
       // check for new UIs and other network clients
       if (m_rank == 0) {
 
-#ifdef HAVE_PYTHON
-         if (!m_clientManager) {
-            bool file = !m_initialFile.empty();
-            m_clientManager = new ClientManager(file ? m_initialFile : m_initialInput,
-                                                file ? ClientManager::File : ClientManager::String);
-         }
-
-         done = !m_clientManager->check();
-#endif
-
          if (!done)
             done = m_quitFlag;
 
-         if (!done && m_uiManager)
-            done = !m_uiManager->check();
-
          if (done) {
-            sendUi(message::Quit());
+            sendHub(message::Quit());
          }
       }
 
@@ -196,9 +190,18 @@ bool Communicator::dispatch() {
          MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
       }
 
-      // handle messages from Python front-end and UIs
-      if (!tryReceiveAndHandleMessage(*m_commandQueue, received, true))
-         done = true;
+      if (m_rank == 0) {
+         m_ioService.poll();
+         bool received = false;
+         std::vector<char> buf(message::Message::MESSAGE_SIZE);
+         message::Message *message = (message::Message *)buf.data();
+         if (!message::recv(m_hubSocket, *message, received)) {
+            done = true;
+         } else if (received) {
+            if(!broadcastAndHandleMessage(*message))
+               done = true;
+         }
+      }
 
       // test for messages from modules
       if (done) {
@@ -220,33 +223,6 @@ bool Communicator::dispatch() {
       }
 
    } while (!done && received);
-
-   return !done;
-}
-
-bool Communicator::tryReceiveAndHandleMessage(message::MessageQueue &mq, bool &received, bool broadcast) {
-
-   bool done = false;
-   try {
-      char msgRecvBuf[vistle::message::Message::MESSAGE_SIZE];
-      message::Message *msg = reinterpret_cast<message::Message *>(msgRecvBuf);
-
-      received = mq.tryReceive(*msg);
-
-      if (received) {
-         if (broadcast) {
-            if (!broadcastAndHandleMessage(*msg))
-               done = true;
-         } else {
-            if (!handleMessage(*msg))
-               done = true;
-         }
-         return !done;
-      }
-   } catch (interprocess_exception &ex) {
-      CERR << "receive mq " << ex.what() << std::endl;
-      exit(-1);
-   }
 
    return !done;
 }
@@ -310,11 +286,21 @@ bool Communicator::handleMessage(const message::Message &message) {
 
    bool result = true;
    switch (message.type()) {
+      case Message::IDENTIFY: {
+
+         const Identify &id = static_cast<const message::Identify &>(message);
+         sendHub(Identify(Identify::MANAGER));
+         auto avail = moduleManager().availableModules();
+         for(const auto &mod: avail) {
+            sendHub(message::ModuleAvailable(mod.name));
+         }
+         break;
+      }
 
       case message::Message::PING: {
 
          const message::Ping &ping = static_cast<const message::Ping &>(message);
-         sendUi(ping);
+         sendHub(ping);
          result = m_moduleManager->handle(ping);
          break;
       }
@@ -322,14 +308,14 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::PONG: {
 
          const message::Pong &pong = static_cast<const message::Pong &>(message);
-         sendUi(pong);
+         sendHub(pong);
          result = m_moduleManager->handle(pong);
          break;
       }
 
       case message::Message::TRACE: {
          const Trace &trace = static_cast<const Trace &>(message);
-         sendUi(trace);
+         sendHub(trace);
          if (trace.module() <= 0) {
             if (trace.on())
                m_traceMessages = trace.messageType();
@@ -347,7 +333,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::QUIT: {
 
          const message::Quit &quit = static_cast<const message::Quit &>(message);
-         sendUi(quit);
+         sendHub(quit);
          result = false;
          break;
       }
@@ -362,7 +348,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::STARTED: {
 
          const message::Started &started = static_cast<const message::Started &>(message);
-         sendUi(started);
+         sendHub(started);
          result = m_moduleManager->handle(started);
          break;
       }
@@ -370,7 +356,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::KILL: {
 
          const message::Kill &kill = static_cast<const message::Kill &>(message);
-         sendUi(kill);
+         sendHub(kill);
          result = m_moduleManager->handle(kill);
          break;
       }
@@ -393,7 +379,7 @@ bool Communicator::handleMessage(const message::Message &message) {
 
          const message::ModuleExit &moduleExit = static_cast<const message::ModuleExit &>(message);
          result = m_moduleManager->handle(moduleExit);
-         sendUi(moduleExit);
+         sendHub(moduleExit);
          break;
       }
 
@@ -420,7 +406,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::BUSY: {
 
          const message::Busy &busy = static_cast<const message::Busy &>(message);
-         sendUi(busy);
+         sendHub(busy);
          result = m_moduleManager->handle(busy);
          break;
       }
@@ -428,7 +414,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::IDLE: {
 
          const message::Idle &idle = static_cast<const message::Idle &>(message);
-         sendUi(idle);
+         sendHub(idle);
          result = m_moduleManager->handle(idle);
          break;
       }
@@ -449,7 +435,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::SETPARAMETER: {
 
          const message::SetParameter &m = static_cast<const message::SetParameter &>(message);
-         sendUi(m);
+         sendHub(m);
          result = m_moduleManager->handle(m);
          break;
       }
@@ -457,7 +443,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::SETPARAMETERCHOICES: {
 
          const message::SetParameterChoices &m = static_cast<const message::SetParameterChoices &>(message);
-         sendUi(m);
+         sendHub(m);
          result = m_moduleManager->handle(m);
          break;
       }
@@ -465,7 +451,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::ADDPARAMETER: {
          
          const message::AddParameter &m = static_cast<const message::AddParameter &>(message);
-         sendUi(m);
+         sendHub(m);
          result = m_moduleManager->handle(m);
          break;
       }
@@ -473,7 +459,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::CREATEPORT: {
 
          const message::CreatePort &m = static_cast<const message::CreatePort &>(message);
-         sendUi(m);
+         sendHub(m);
          result = m_moduleManager->handle(m);
          break;
       }
@@ -501,7 +487,7 @@ bool Communicator::handleMessage(const message::Message &message) {
       case message::Message::SENDTEXT: {
          const message::SendText &m = static_cast<const message::SendText &>(message);
          if (m_rank == 0) {
-            sendUi(m);
+            sendHub(m);
          } else {
             result = forwardToMaster(m);
          }
@@ -541,22 +527,10 @@ bool Communicator::handleMessage(const message::Message &message) {
    return result;
 }
 
-void Communicator::sendUi(const message::Message &msg) const {
-
-   if (m_uiManager)
-      m_uiManager->sendMessage(msg);
-}
-
 Communicator::~Communicator() {
 
-   delete m_uiManager;
-   m_uiManager = NULL;
    delete m_moduleManager;
    m_moduleManager = NULL;
-#ifdef HAVE_PYTHON
-   delete m_clientManager;
-   m_clientManager = NULL;
-#endif
 
    if (m_size > 1) {
       int dummy = 0;
@@ -576,11 +550,6 @@ Communicator::~Communicator() {
 ModuleManager &Communicator::moduleManager() const {
 
    return *m_moduleManager;
-}
-
-message::MessageQueue &Communicator::commandQueue() {
-
-   return *m_commandQueue;
 }
 
 } // namespace vistle

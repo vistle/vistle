@@ -1,4 +1,4 @@
-find_package(Boost 1.40 REQUIRED COMPONENTS serialization system date_time regex)
+find_package(Boost 1.40 REQUIRED COMPONENTS serialization system date_time regex thread)
 
 set(core_SOURCES
    exception.cpp

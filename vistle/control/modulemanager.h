@@ -6,9 +6,6 @@
 
 #include <boost/interprocess/ipc/message_queue.hpp>
 
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition_variable.hpp>
-
 #include <core/statetracker.h>
 #include <core/message.h>
 #include <core/messagequeue.h>
@@ -41,6 +38,7 @@ class V_CONTROLEXPORT ModuleManager {
    bool sendAll(const message::Message &message) const;
    bool sendAllOthers(int excluded, const message::Message &message) const;
    bool sendUi(const message::Message &message) const;
+   bool sendHub(const message::Message &message) const;
 
    bool quit();
    bool quitOk() const;
@@ -52,9 +50,6 @@ class V_CONTROLEXPORT ModuleManager {
    int newModuleID();
    int currentExecutionCount();
    int newExecutionCount();
-   int getBarrierCounter();
-   boost::mutex &barrierMutex();
-   boost::condition_variable &barrierCondition();
 
    struct AvailableModule {
 
@@ -150,13 +145,10 @@ class V_CONTROLEXPORT ModuleManager {
    int m_executionCounter; //< incremented each time the pipeline is executed
 
    // barrier related stuff
-   boost::mutex m_barrierMutex;
-   boost::condition_variable m_barrierCondition;
-   bool checkBarrier(int id) const;
-   void barrierReached(int id);
-   int m_barrierCounter;
-   int m_activeBarrier;
-   message::Message::uuid_t m_barrierUuid;
+   bool checkBarrier(const message::uuid_t &uuid) const;
+   void barrierReached(const message::uuid_t &uuid);
+   bool m_barrierActive;
+   message::uuid_t m_barrierUuid;
    int m_reachedBarriers;
    typedef std::set<int> ModuleSet;
    ModuleSet reachedSet;

@@ -65,7 +65,9 @@ add_subdirectory(core)
 add_subdirectory(control)
 add_subdirectory(userinterface)
 
-add_subdirectory(vistle)
+add_subdirectory(bin)
+add_subdirectory(manager)
+add_subdirectory(hub)
 add_subdirectory(blower)
 
 add_subdirectory(module)

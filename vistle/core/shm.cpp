@@ -76,6 +76,13 @@ std::string operator+(const std::string &s, const shm_name_t &n) {
    return s + n.name;
 }
 
+std::string Shm::instanceName(const std::string &host, unsigned short port) {
+
+   std::stringstream str;
+   str << "vistle_" << host << "_" << port;
+   return str.str();
+}
+
 Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
          message::MessageQueue * mq, bool create)
    : m_name(name), m_created(create), m_moduleID(m), m_rank(r), m_objectID(0) {

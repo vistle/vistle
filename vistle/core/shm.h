@@ -86,6 +86,7 @@ struct shm {
 class V_COREEXPORT Shm {
 
  public:
+   static std::string instanceName(const std::string &host, unsigned short port);
    static Shm & the();
    static Shm & create(const std::string &shmname, const int moduleID, const int rank,
                          message::MessageQueue *messageQueue = NULL);

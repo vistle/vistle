@@ -29,7 +29,7 @@ public:
 
    void sendMessage(const vistle::message::Message &msg) const;
    bool requestReplyAsync(const vistle::message::Message &send) const;
-   bool waitForReplyAsync(const vistle::message::Message::uuid_t &uuid, vistle::message::Message &reply) const;
+   bool waitForReplyAsync(const vistle::message::uuid_t &uuid, vistle::message::Message &reply) const;
    bool waitForReply(const vistle::message::Message &send, vistle::message::Message &reply) const;
 
    std::vector<std::string> getParameters(int id) const;
@@ -41,7 +41,7 @@ public:
    void connect(const Port *from, const Port *to) const;
    void disconnect(const Port *from, const Port *to) const;
 
-   int barrier() const;
+   bool barrier() const;
    void resetDataFlowNetwork() const;
    void executeSources() const;
 

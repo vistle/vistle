@@ -56,18 +56,22 @@ Executor::Executor(int argc, char *argv[])
    MPI_Comm_size(MPI_COMM_WORLD, &m_size);
 
    // process with the smallest rank on each host allocates shm
-   const int HOSTNAMESIZE = 64;
+   const int HOSTNAMESIZE = 256;
 
    char hostname[HOSTNAMESIZE];
    std::vector<char> hostnames(HOSTNAMESIZE * m_size);
    gethostname(hostname, HOSTNAMESIZE - 1);
 
-   std::stringstream instanceName;
-   if (!m_rank) {
-      int pid = static_cast<int>(getpid());
-      instanceName << "vistle_" << hostname << "_" << pid;
+   if (argc < 3) {
+      std::cerr << "usage: " << argv[0] << " [hostname] [port]" << std::endl;
+      std::cerr << "  hostname and port where Vistle hub can be reached have to be specified" << std::endl;
+      exit(1);
    }
-   m_name = instanceName.str();
+
+   std::stringstream pstr(argv[2]);
+   unsigned short port = 0;
+   pstr >> port;
+   m_name = Shm::instanceName(argv[1], port);
 
    if (!m_rank) {
       uint64_t len = m_name.length();
@@ -113,6 +117,11 @@ Executor::Executor(int argc, char *argv[])
    MPI_Barrier(MPI_COMM_WORLD);
 
    m_comm = new vistle::Communicator(argc, argv, m_rank, hosts);
+   if (!m_comm->connectHub(argv[1], port)) {
+      std::stringstream err;
+      err << "failed to connect to Vistle hub on " << argv[1] << ":" << port;
+      throw vistle::exception(err.str());
+   }
 }
 
 Executor::~Executor()
@@ -120,21 +129,6 @@ Executor::~Executor()
    delete m_comm;
 
    Shm::the().detach();
-}
-
-void Executor::setFile(const std::string &filename) const {
-
-   m_comm->setFile(filename);
-}
-
-unsigned short Executor::uiPort() const
-{
-   return m_comm->uiPort();
-}
-
-void Executor::setInput(const std::string &input) const {
-
-   m_comm->setInput(input);
 }
 
 bool Executor::scanModules(const std::string &dir) const {

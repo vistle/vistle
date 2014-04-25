@@ -4,6 +4,7 @@
 #include <string>
 #include <array>
 #include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 
 #include <util/enum.h>
@@ -45,6 +46,8 @@ typedef std::array<char, 40> param_choice_t;
 const int param_num_choices = 22;
 typedef std::array<char, 900> text_t;
 
+typedef boost::uuids::uuid uuid_t;
+
 class V_COREEXPORT Message {
    // this is POD
 
@@ -52,13 +55,14 @@ class V_COREEXPORT Message {
 
  public:
    static const size_t MESSAGE_SIZE = 1024; // fixed message size is imposed by boost::interprocess::message_queue
-   typedef boost::uuids::uuid uuid_t;
 
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
       (INVALID)
+      (IDENTIFY)
       (DEBUG)
       (TRACE)
       (SPAWN)
+      (EXEC)
       (STARTED)
       (KILL)
       (QUIT)
@@ -88,6 +92,7 @@ class V_COREEXPORT Message {
       (REDUCEPOLICY)
       (EXECUTIONPROGRESS)
       (MODULEAVAILABLE)
+      (LOCKUI)
    )
 
    Message(const Type type, const unsigned int size);
@@ -128,6 +133,25 @@ class V_COREEXPORT Message {
    int m_rank;
 };
 
+//! 
+class V_COREEXPORT Identify: public Message {
+
+ public:
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Identity,
+         (UNKNOWN)
+         (UI)
+         (MANAGER)
+         (HUB)
+         );
+
+   Identify(Identity id=UNKNOWN);
+   Identity identity() const;
+
+ private:
+   Identity m_identity;
+};
+BOOST_STATIC_ASSERT(sizeof(Identify) <= Message::MESSAGE_SIZE);
+
 //! debug: request a reply containing character 'c'
 class V_COREEXPORT Ping: public Message {
 
@@ -139,7 +163,7 @@ class V_COREEXPORT Ping: public Message {
  private:
    const char character;
 };
-BOOST_STATIC_ASSERT(sizeof(Ping) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Ping) <= Message::MESSAGE_SIZE);
 
 //! debug: reply to pong
 class V_COREEXPORT Pong: public Message {
@@ -154,7 +178,7 @@ class V_COREEXPORT Pong: public Message {
    const char character;
    int module;
 };
-BOOST_STATIC_ASSERT(sizeof(Pong) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Pong) <= Message::MESSAGE_SIZE);
 
 //! spawn a module
 class V_COREEXPORT Spawn: public Message {
@@ -182,7 +206,23 @@ class V_COREEXPORT Spawn: public Message {
    //! name of module to be started
    module_name_t name;
 };
-BOOST_STATIC_ASSERT(sizeof(Spawn) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Spawn) <= Message::MESSAGE_SIZE);
+
+//! execute a command via Vistle hub
+class V_COREEXPORT Exec: public Message {
+
+ public:
+   Exec(const std::string &pathname, const std::vector<std::string> &args, int moduleId=0);
+   std::string pathname() const;
+   std::vector<std::string> args() const;
+   int moduleId() const;
+
+ private:
+   int m_moduleId;
+   int nargs;
+   text_t path_and_args;
+};
+BOOST_STATIC_ASSERT(sizeof(Exec) <= Message::MESSAGE_SIZE);
 
 //! acknowledge that a module has been spawned
 class V_COREEXPORT Started: public Message {
@@ -196,7 +236,7 @@ class V_COREEXPORT Started: public Message {
    //! name of module to be started
    module_name_t name;
 };
-BOOST_STATIC_ASSERT(sizeof(Started) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Started) <= Message::MESSAGE_SIZE);
 
 //! request a module to quit
 class V_COREEXPORT Kill: public Message {
@@ -210,7 +250,7 @@ class V_COREEXPORT Kill: public Message {
    //! ID of module to stop
    const int module;
 };
-BOOST_STATIC_ASSERT(sizeof(Kill) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Kill) <= Message::MESSAGE_SIZE);
 
 //! request all modules to quit for terminating the session
 class V_COREEXPORT Quit: public Message {
@@ -220,7 +260,7 @@ class V_COREEXPORT Quit: public Message {
 
  private:
 };
-BOOST_STATIC_ASSERT(sizeof(Quit) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Quit) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT ModuleExit: public Message {
 
@@ -232,7 +272,7 @@ class V_COREEXPORT ModuleExit: public Message {
  private:
    bool forwarded;
 };
-BOOST_STATIC_ASSERT(sizeof(ModuleExit) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(ModuleExit) <= Message::MESSAGE_SIZE);
 
 //! trigger computation for a module
 class V_COREEXPORT Compute: public Message {
@@ -261,7 +301,7 @@ private:
    int executionCount; //!< count of execution which triggered this compute
    Reason m_reason; //!< reason why this message was generated
 };
-BOOST_STATIC_ASSERT(sizeof(Compute) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Compute) <= Message::MESSAGE_SIZE);
 
 //! trigger reduce() for a module
 class V_COREEXPORT Reduce: public Message {
@@ -275,7 +315,7 @@ class V_COREEXPORT Reduce: public Message {
    int m_module;
    int m_timestep;
 };
-BOOST_STATIC_ASSERT(sizeof(Reduce) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Reduce) <= Message::MESSAGE_SIZE);
 
 //! indicate that a module has started computing
 class V_COREEXPORT Busy: public Message {
@@ -285,7 +325,7 @@ class V_COREEXPORT Busy: public Message {
 
  private:
 };
-BOOST_STATIC_ASSERT(sizeof(Busy) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Busy) <= Message::MESSAGE_SIZE);
 
 //! indicate that a module has finished computing
 class V_COREEXPORT Idle: public Message {
@@ -295,7 +335,7 @@ class V_COREEXPORT Idle: public Message {
 
  private:
 };
-BOOST_STATIC_ASSERT(sizeof(Idle) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Idle) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT CreatePort: public Message {
 
@@ -307,7 +347,7 @@ class V_COREEXPORT CreatePort: public Message {
    int m_porttype;
    int m_flags;
 };
-BOOST_STATIC_ASSERT(sizeof(CreatePort) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(CreatePort) <= Message::MESSAGE_SIZE);
 
 //! add an object to the input queue of an input port
 class V_COREEXPORT AddObject: public Message {
@@ -326,7 +366,7 @@ class V_COREEXPORT AddObject: public Message {
    shm_name_t m_name;
    const shm_handle_t handle;
 };
-BOOST_STATIC_ASSERT(sizeof(AddObject) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(AddObject) <= Message::MESSAGE_SIZE);
 
 //! notify rank 0 controller that an object was received
 class V_COREEXPORT ObjectReceived: public Message {
@@ -345,7 +385,7 @@ class V_COREEXPORT ObjectReceived: public Message {
    Meta m_meta;
    int m_objectType;
 };
-BOOST_STATIC_ASSERT(sizeof(ObjectReceived) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(ObjectReceived) <= Message::MESSAGE_SIZE);
 
 //! connect an output port to an input port of another module
 class V_COREEXPORT Connect: public Message {
@@ -369,7 +409,7 @@ class V_COREEXPORT Connect: public Message {
    int moduleA;
    int moduleB;
 };
-BOOST_STATIC_ASSERT(sizeof(Connect) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Connect) <= Message::MESSAGE_SIZE);
 
 //! disconnect an output port from an input port of another module
 class V_COREEXPORT Disconnect: public Message {
@@ -393,7 +433,7 @@ class V_COREEXPORT Disconnect: public Message {
    int moduleA;
    int moduleB;
 };
-BOOST_STATIC_ASSERT(sizeof(Disconnect) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Disconnect) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT AddParameter: public Message {
    public:
@@ -415,7 +455,7 @@ class V_COREEXPORT AddParameter: public Message {
       int paramtype;
       int presentation;
 };
-BOOST_STATIC_ASSERT(sizeof(AddParameter) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(AddParameter) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT SetParameter: public Message {
    public:
@@ -465,7 +505,7 @@ class V_COREEXPORT SetParameter: public Message {
          param_value_t v_string;
       };
 };
-BOOST_STATIC_ASSERT(sizeof(SetParameter) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(SetParameter) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT SetParameterChoices: public Message {
    public:
@@ -485,31 +525,21 @@ class V_COREEXPORT SetParameterChoices: public Message {
       param_name_t name;
       param_choice_t choices[param_num_choices];
 };
-BOOST_STATIC_ASSERT(sizeof(SetParameterChoices) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(SetParameterChoices) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT Barrier: public Message {
 
  public:
-   Barrier(const int id);
-
-   int getBarrierId() const;
-
- private:
-   const int barrierid;
+   Barrier();
 };
-BOOST_STATIC_ASSERT(sizeof(Barrier) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Barrier) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT BarrierReached: public Message {
 
  public:
-   BarrierReached(const int id);
-
-   int getBarrierId() const;
-
- private:
-   const int barrierid;
+   BarrierReached();
 };
-BOOST_STATIC_ASSERT(sizeof(BarrierReached) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(BarrierReached) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT SetId: public Message {
 
@@ -521,21 +551,21 @@ class V_COREEXPORT SetId: public Message {
  private:
    const int m_id;
 };
-BOOST_STATIC_ASSERT(sizeof(SetId) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(SetId) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT ResetModuleIds: public Message {
 
  public:
    ResetModuleIds();
 };
-BOOST_STATIC_ASSERT(sizeof(ResetModuleIds) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(ResetModuleIds) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT ReplayFinished: public Message {
 
 public:
    ReplayFinished();
 };
-BOOST_STATIC_ASSERT(sizeof(ReplayFinished) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(ReplayFinished) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT SendText: public Message {
 
@@ -571,7 +601,7 @@ private:
    //! whether m_text has been truncated
    bool m_truncated;
 };
-BOOST_STATIC_ASSERT(sizeof(SendText) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(SendText) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT ObjectReceivePolicy: public Message {
 
@@ -586,7 +616,7 @@ public:
 private:
    Policy m_policy;
 };
-BOOST_STATIC_ASSERT(sizeof(ObjectReceivePolicy) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(ObjectReceivePolicy) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT SchedulingPolicy: public Message {
 
@@ -601,7 +631,7 @@ public:
 private:
    Schedule m_policy;
 };
-BOOST_STATIC_ASSERT(sizeof(SchedulingPolicy) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(SchedulingPolicy) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT ReducePolicy: public Message {
 
@@ -616,7 +646,7 @@ class V_COREEXPORT ReducePolicy: public Message {
  private:
    Reduce m_reduce;
 };
-BOOST_STATIC_ASSERT(sizeof(ReducePolicy) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(ReducePolicy) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT ExecutionProgress: public Message {
 
@@ -635,7 +665,7 @@ class V_COREEXPORT ExecutionProgress: public Message {
    Progress m_stage;
    int m_step;
 };
-BOOST_STATIC_ASSERT(sizeof(ExecutionProgress) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(ExecutionProgress) <= Message::MESSAGE_SIZE);
 
 //! enable/disable message tracing for a module
 class V_COREEXPORT Trace: public Message {
@@ -651,7 +681,7 @@ class V_COREEXPORT Trace: public Message {
    int m_messageType;
    bool m_on;
 };
-BOOST_STATIC_ASSERT(sizeof(Trace) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Trace) <= Message::MESSAGE_SIZE);
 
 //! announce availability of a module to UI
 class V_COREEXPORT ModuleAvailable: public Message {
@@ -663,7 +693,28 @@ class V_COREEXPORT ModuleAvailable: public Message {
  private:
    module_name_t m_name;
 };
-BOOST_STATIC_ASSERT(sizeof(ModuleAvailable) < Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(ModuleAvailable) <= Message::MESSAGE_SIZE);
+
+//! lock UI (block user interaction)
+class V_COREEXPORT LockUi: public Message {
+
+ public:
+   LockUi(bool locked);
+   bool locked() const;
+
+ private:
+   bool m_locked;
+};
+BOOST_STATIC_ASSERT(sizeof(LockUi) <= Message::MESSAGE_SIZE);
+
+union Buffer {
+
+   Buffer(): msg(Message::INVALID, Message::MESSAGE_SIZE) {}
+
+   class Message msg;
+   std::array<char, Message::MESSAGE_SIZE> buf;
+};
+BOOST_STATIC_ASSERT(sizeof(Buffer) <= Message::MESSAGE_SIZE);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

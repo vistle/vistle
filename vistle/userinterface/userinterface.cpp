@@ -28,6 +28,7 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
 , m_isConnected(false)
 , m_stateTracker(&m_portTracker)
 , m_socket(m_ioService)
+, m_locked(false)
 {
    message::DefaultSender::init(0, 0);
 
@@ -129,17 +130,23 @@ bool UserInterface::dispatch() {
 
 bool UserInterface::sendMessage(const message::Message &message) {
 
+   if (m_locked) {
+      m_sendQueue.emplace_back();
+      memcpy(m_sendQueue.back().buf.data(), &message, message.size());
+      return true;
+   }
+
    return message::send(socket(), message);
 }
 
 
 bool UserInterface::handleMessage(const vistle::message::Message *message) {
 
-   bool ret = m_stateTracker.handleMessage(*message);
+   bool ret = m_stateTracker.handle(*message);
 
    {
       boost::mutex::scoped_lock lock(m_messageMutex);
-      MessageMap::iterator it = m_messageMap.find(const_cast<message::Message::uuid_t &>(message->uuid()));
+      MessageMap::iterator it = m_messageMap.find(const_cast<message::uuid_t &>(message->uuid()));
       if (it != m_messageMap.end()) {
          it->second->buf.resize(message->size());
          memcpy(it->second->buf.data(), message, message->size());
@@ -149,12 +156,33 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
    }
 
    switch (message->type()) {
+      case message::Message::IDENTIFY: {
+         const message::Identify *id = static_cast<const message::Identify *>(message);
+         if (id->identity() == message::Identify::UNKNOWN) {
+            const message::Identify reply(message::Identify::UI);
+            sendMessage(reply);
+         }
+         return true;
+         break;
+      }
 
       case message::Message::SETID: {
          const message::SetId *id = static_cast<const message::SetId *>(message);
          m_id = id->getId();
          message::DefaultSender::init(m_id, 0);
          //std::cerr << "received new UI id: " << m_id << std::endl;
+         break;
+      }
+
+      case message::Message::LOCKUI: {
+         auto lock = static_cast<const message::LockUi *>(message);
+         m_locked = lock->locked();
+         if (!m_locked) {
+            for (auto &m: m_sendQueue) {
+               sendMessage(m.msg);
+            }
+            m_sendQueue.clear();
+         }
          break;
       }
 
@@ -172,7 +200,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
    return ret;
 }
 
-bool UserInterface::getLockForMessage(const message::Message::uuid_t &uuid) {
+bool UserInterface::getLockForMessage(const message::uuid_t &uuid) {
 
    boost::mutex::scoped_lock lock(m_messageMutex);
    MessageMap::iterator it = m_messageMap.find(uuid);
@@ -180,11 +208,11 @@ bool UserInterface::getLockForMessage(const message::Message::uuid_t &uuid) {
       it = m_messageMap.insert(std::make_pair(uuid, boost::shared_ptr<RequestedMessage>(new RequestedMessage()))).first;
    }
    it->second->mutex.lock();
-   //m_messageMap[const_cast<message::Message::uuid_t &>(uuid)]->mutex.lock();
+   //m_messageMap[const_cast<message::uuid_t &>(uuid)]->mutex.lock();
    return true;
 }
 
-bool UserInterface::getMessage(const message::Message::uuid_t &uuid, message::Message &msg) {
+bool UserInterface::getMessage(const message::uuid_t &uuid, message::Message &msg) {
 
    m_messageMutex.lock();
    MessageMap::iterator it = m_messageMap.find(uuid);

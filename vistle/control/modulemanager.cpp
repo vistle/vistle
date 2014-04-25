@@ -24,6 +24,14 @@
 #include "modulemanager.h"
 #include "communicator.h"
 
+#ifdef NOHUB
+#ifdef _WIN32
+#define SPAWN_WITH_MPI
+#else
+#include <unistd.h>
+#endif
+#endif
+
 #define CERR \
    std::cerr << "mod mgr [" << m_rank << "/" << m_size << "] "
 
@@ -42,9 +50,7 @@ ModuleManager::ModuleManager(int argc, char *argv[], int r, const std::vector<st
 , m_hosts(hosts)
 , m_moduleCounter(0)
 , m_executionCounter(1)
-, m_barrierCounter(0)
-, m_activeBarrier(-1)
-, m_reachedBarriers(-1)
+, m_barrierActive(false)
 {
 
    message::DefaultSender::init(0, m_rank);
@@ -127,48 +133,32 @@ void ModuleManager::resetModuleCounter() {
    m_moduleCounter = 0;
 }
 
-int ModuleManager::getBarrierCounter() {
+bool ModuleManager::checkBarrier(const message::uuid_t &uuid) const {
 
-   ++m_barrierCounter;
-   return m_barrierCounter;
-}
-
-boost::mutex &ModuleManager::barrierMutex() {
-
-   return m_barrierMutex;
-}
-
-boost::condition_variable &ModuleManager::barrierCondition() {
-
-   return m_barrierCondition;
-}
-
-bool ModuleManager::checkBarrier(int id) const {
-
+   assert(m_barrierActive);
    int numLocal = 0;
    for (const auto &m: runningMap) {
       if (m.second.local)
          ++numLocal;
    }
-   //CERR << "checkBarrier " << id << ": #local=" << numLocal << ", #reached=" << reachedSet.size() << std::endl;
+   //CERR << "checkBarrier " << uuid << ": #local=" << numLocal << ", #reached=" << reachedSet.size() << std::endl;
    if (reachedSet.size() == numLocal)
       return true;
 
    return false;
 }
 
-void ModuleManager::barrierReached(int id) {
+void ModuleManager::barrierReached(const message::uuid_t &uuid) {
 
-   assert(id >= 0);
+   assert(m_barrierActive);
    MPI_Barrier(MPI_COMM_WORLD);
-   m_reachedBarriers = id;
-   m_activeBarrier = -1;
    reachedSet.clear();
-   CERR << "Barrier [" << id << "] reached" << std::endl;
-   m_barrierCondition.notify_all();
-   message::BarrierReached m(id);
-   m.setUuid(m_barrierUuid);
-   sendUi(m);
+   m_barrierActive = false;
+   CERR << "Barrier [" << uuid << "] reached" << std::endl;
+   message::BarrierReached m;
+   m.setUuid(uuid);
+   sendHub(m);
+   m_stateTracker.handle(m);
 }
 
 std::vector<int> ModuleManager::getRunningList() const {
@@ -206,11 +196,19 @@ bool ModuleManager::dispatch(bool &received) {
          continue;
 
       if (mod.local) {
-         message::MessageQueue *mq = mod.recvQueue;
-
          bool recv = false;
-         if (!Communicator::the().tryReceiveAndHandleMessage(*mq, recv)) {
-            if (recv)
+         char msgRecvBuf[vistle::message::Message::MESSAGE_SIZE];
+         message::Message *msg = reinterpret_cast<message::Message *>(msgRecvBuf);
+         message::MessageQueue *mq = mod.recvQueue;
+         try {
+            recv = mq->tryReceive(*msg);
+         } catch (boost::interprocess::interprocess_exception &ex) {
+            CERR << "receive mq " << ex.what() << std::endl;
+            exit(-1);
+         }
+
+         if (recv) {
+            if (!Communicator::the().handleMessage(*msg))
                done = true;
          }
 
@@ -258,8 +256,12 @@ bool ModuleManager::sendAllOthers(int excluded, const message::Message &message)
 
 bool ModuleManager::sendUi(const message::Message &message) const {
 
-   Communicator::the().sendUi(message);
-   return true;
+   return Communicator::the().sendHub(message);
+}
+
+bool ModuleManager::sendHub(const message::Message &message) const {
+
+   return Communicator::the().sendHub(message);
 }
 
 bool ModuleManager::sendMessage(const int moduleId, const message::Message &message) const {
@@ -313,9 +315,8 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    }
    message::Spawn toUi = spawn;
    toUi.setSpawnId(moduleID);
-   sendUi(toUi);
    m_stateTracker.handle(toUi);
-   sendAll(toUi);
+   sendUi(toUi);
 
    int numSpwan = spawn.getMpiSize();
    if (numSpwan <= 0 || numSpwan > m_size)
@@ -369,37 +370,10 @@ bool ModuleManager::handle(const message::Spawn &spawn) {
    }
 
    std::string executable = path;
-   std::vector<const char *> argv;
-#if 0
-   if (spawn.getDebugFlag()) {
-      CERR << "spawn with debug on rank " << spawn.getDebugRank() << std::endl;
-      executable = "debug_vistle.sh";
-      argv.push_back(path.c_str());
-   }
-#endif
-
-   argv.push_back(Shm::the().name().c_str());
-   argv.push_back(id.c_str());
-   argv.push_back(NULL);
-
-   std::vector<char *> commands(numSpwan, const_cast<char *>(executable.c_str()));
-   std::vector<char **> argvs(numSpwan, const_cast<char **>(&argv[0]));
-   std::vector<int> maxprocs(numSpwan, 1);
-   std::vector<MPI_Info> infos(numSpwan);
-   for (int i=0; i<infos.size(); ++i) {
-      MPI_Info_create(&infos[i]);
-      int hostidx = baseRank + i*(rankSkip+1);
-      MPI_Info_set(infos[i], const_cast<char *>("host"), const_cast<char *>(m_hosts[hostidx].c_str()));
-   }
-   std::vector<int> errors(infos.size());
-
-   MPI_Comm interComm;
-   MPI_Comm_spawn_multiple(infos.size(), &commands[0], &argvs[0], &maxprocs[0], &infos[0],
-         0, MPI_COMM_WORLD, &interComm, &errors[0]);
-
-   for (int i=0; i<infos.size(); ++i) {
-      MPI_Info_free(&infos[i]);
-   }
+   std::vector<std::string> argv;
+   argv.push_back(Shm::the().name());
+   argv.push_back(id);
+   sendHub(message::Exec(executable, argv, moduleID));
 
    // inform newly started module about current parameter values of other modules
    for (auto &mit: runningMap) {
@@ -546,8 +520,8 @@ bool ModuleManager::handle(const message::ModuleExit &moduleExit) {
          reachedSet.erase(it);
    }
 
-   if (m_activeBarrier >= 0 && checkBarrier(m_activeBarrier))
-      barrierReached(m_activeBarrier);
+   if (m_barrierActive && checkBarrier(m_barrierUuid))
+      barrierReached(m_barrierUuid);
 
    return true;
 }
@@ -882,13 +856,13 @@ bool ModuleManager::handle(const message::ObjectReceived &objRecv) {
 
 bool ModuleManager::handle(const message::Barrier &barrier) {
 
+   m_barrierActive = true;
    m_stateTracker.handle(barrier);
-   CERR << "Barrier [" << barrier.getBarrierId() << "]" << std::endl;
-   assert(m_activeBarrier == -1);
-   m_activeBarrier = barrier.getBarrierId();
+   sendHub(barrier);
+   CERR << "Barrier [" << barrier.uuid() << "]" << std::endl;
    m_barrierUuid = barrier.uuid();
-   if (checkBarrier(m_activeBarrier)) {
-      barrierReached(m_activeBarrier);
+   if (checkBarrier(m_barrierUuid)) {
+      barrierReached(m_barrierUuid);
    } else {
       sendAll(barrier);
    }
@@ -897,18 +871,14 @@ bool ModuleManager::handle(const message::Barrier &barrier) {
 
 bool ModuleManager::handle(const message::BarrierReached &barrReached) {
 
-   m_stateTracker.handle(barrReached);
+   assert(m_barrierActive);
 #ifdef DEBUG
-   CERR << "BarrierReached [barrier " << barrReached.getBarrierId() << ", module " << barrReached.senderId() << "]" << std::endl;
+   CERR << "BarrierReached [barrier " << barrReached.uuid() << ", module " << barrReached.senderId() << "]" << std::endl;
 #endif
-   if (m_activeBarrier == -1) {
-      m_activeBarrier = barrReached.getBarrierId();
-   }
-   assert(m_activeBarrier == barrReached.getBarrierId());
    reachedSet.insert(barrReached.senderId());
 
-   if (checkBarrier(m_activeBarrier)) {
-      barrierReached(m_activeBarrier);
+   if (checkBarrier(m_barrierUuid)) {
+      barrierReached(m_barrierUuid);
 #ifdef DEBUG
    } else {
       CERR << "BARRIER: reached by " << reachedSet.size() << "/" << numRunning() << std::endl;

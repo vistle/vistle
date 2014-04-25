@@ -4,18 +4,16 @@
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/scoped_ptr.hpp>
 #include <core/message.h>
 #include <core/messagequeue.h>
-#include "export.h"
 
 namespace vistle {
 
 class UiManager;
 
-class V_CONTROLEXPORT UiClient {
+class UiClient {
    public:
-      UiClient(UiManager &manager, int id, boost::shared_ptr<message::MessageQueue> sendQueue, boost::shared_ptr<message::MessageQueue> recvQueue);
+      UiClient(UiManager &manager, int id, boost::shared_ptr<boost::asio::ip::tcp::socket> socket);
       ~UiClient();
 
       int id() const;
@@ -23,10 +21,6 @@ class V_CONTROLEXPORT UiClient {
       void cancel();
       bool done() const;
       UiManager &manager() const;
-
-      message::MessageQueue &sendQueue() const;
-      message::MessageQueue &recvQueue() const;
-
       boost::asio::ip::tcp::socket &socket();
 
    private:
@@ -34,10 +28,8 @@ class V_CONTROLEXPORT UiClient {
 
       int m_id;
       bool m_done;
-      boost::asio::io_service m_ioService;
-      boost::scoped_ptr<boost::asio::ip::tcp::socket> m_socket;
+      boost::shared_ptr<boost::asio::ip::tcp::socket> m_socket;
       UiManager &m_manager;
-      boost::shared_ptr<message::MessageQueue> m_sendQueue, m_recvQueue;
 };
 
 } // namespace vistle

@@ -29,13 +29,8 @@ class V_CONTROLEXPORT Executor {
 
       bool scanModules(const std::string &directory) const;
 
-      void setInput(const std::string &input) const;
-      void setFile(const std::string &filename) const;
-
       int getRank() const { return m_rank; }
       int getSize() const { return m_size; }
-
-      unsigned short uiPort() const;
 
    private:
       std::string m_name;

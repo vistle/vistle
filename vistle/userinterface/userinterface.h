@@ -42,8 +42,8 @@ class V_UIEXPORT UserInterface {
 
    StateTracker &state();
 
-   bool getLockForMessage(const message::Message::uuid_t &uuid);
-   bool getMessage(const message::Message::uuid_t &uuid, message::Message &msg);
+   bool getLockForMessage(const message::uuid_t &uuid);
+   bool getMessage(const message::uuid_t &uuid, message::Message &msg);
 
    void registerObserver(StateObserver *observer);
 
@@ -72,9 +72,11 @@ class V_UIEXPORT UserInterface {
       RequestedMessage(): received(false) {}
    };
 
-   typedef std::map<message::Message::uuid_t, boost::shared_ptr<RequestedMessage>> MessageMap;
+   typedef std::map<message::uuid_t, boost::shared_ptr<RequestedMessage>> MessageMap;
    MessageMap m_messageMap;
    boost::mutex m_messageMutex; //< protect access to m_messageMap
+   bool m_locked;
+   std::vector<message::Buffer> m_sendQueue;
 };
 
 } // namespace vistle

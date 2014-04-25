@@ -7,6 +7,8 @@
 #include <string>
 
 #include <boost/scoped_ptr.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/condition_variable.hpp>
 
 #include "export.h"
 #include "message.h"
@@ -47,7 +49,7 @@ class V_COREEXPORT StateObserver {
    virtual void deleteConnection(int fromId, const std::string &fromName,
          int toId, const std::string &toName) = 0;
 
-   virtual void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Message::Type refType, const message::Message::uuid_t &refUuid) = 0;
+   virtual void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Message::Type refType, const message::uuid_t &refUuid) = 0;
 
    virtual void quitRequested();
 
@@ -76,35 +78,7 @@ class V_COREEXPORT StateTracker {
    std::vector<std::string> getParameters(int id) const;
    Parameter *getParameter(int id, const std::string &name) const;
 
-   bool handleMessage(const message::Message &msg);
-
-   bool handle(const message::Ping &ping);
-   bool handle(const message::Pong &pong);
-   bool handle(const message::Trace &trace);
-   bool handle(const message::Spawn &spawn);
-   bool handle(const message::Started &started);
-   bool handle(const message::Connect &connect);
-   bool handle(const message::Disconnect &disc);
-   bool handle(const message::ModuleExit &moduleExit);
-   bool handle(const message::Compute &compute);
-   bool handle(const message::Reduce &reduce);
-   bool handle(const message::ExecutionProgress &prog);
-   bool handle(const message::Busy &busy);
-   bool handle(const message::Idle &idle);
-   bool handle(const message::CreatePort &createPort);
-   bool handle(const message::AddParameter &addParam);
-   bool handle(const message::SetParameter &setParam);
-   bool handle(const message::SetParameterChoices &choices);
-   bool handle(const message::Kill &kill);
-   bool handle(const message::AddObject &addObj);
-   bool handle(const message::ObjectReceived &objRecv);
-   bool handle(const message::Barrier &barrier);
-   bool handle(const message::BarrierReached &barrierReached);
-   bool handle(const message::ResetModuleIds &reset);
-   bool handle(const message::ReplayFinished &reset);
-   bool handle(const message::SendText &info);
-   bool handle(const message::Quit &quit);
-   bool handle(const message::ModuleAvailable &mod);
+   bool handle(const message::Message &msg);
 
    PortTracker *portTracker() const;
 
@@ -117,7 +91,13 @@ class V_COREEXPORT StateTracker {
 
    void registerObserver(StateObserver *observer);
 
+   bool registerRequest(const message::uuid_t &uuid);
+   boost::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid);
+
  protected:
+   boost::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
+   bool registerReply(const message::uuid_t &uuid, const message::Message &msg);
+
    typedef std::map<std::string, Parameter *> ParameterMap;
    typedef std::map<int, std::string> ParameterOrder;
    struct Module {
@@ -141,7 +121,39 @@ class V_COREEXPORT StateTracker {
    std::set<StateObserver *> m_observers;
 
  private:
+   bool handlePriv(const message::Ping &ping);
+   bool handlePriv(const message::Pong &pong);
+   bool handlePriv(const message::Trace &trace);
+   bool handlePriv(const message::Spawn &spawn);
+   bool handlePriv(const message::Started &started);
+   bool handlePriv(const message::Connect &connect);
+   bool handlePriv(const message::Disconnect &disc);
+   bool handlePriv(const message::ModuleExit &moduleExit);
+   bool handlePriv(const message::Compute &compute);
+   bool handlePriv(const message::Reduce &reduce);
+   bool handlePriv(const message::ExecutionProgress &prog);
+   bool handlePriv(const message::Busy &busy);
+   bool handlePriv(const message::Idle &idle);
+   bool handlePriv(const message::CreatePort &createPort);
+   bool handlePriv(const message::AddParameter &addParam);
+   bool handlePriv(const message::SetParameter &setParam);
+   bool handlePriv(const message::SetParameterChoices &choices);
+   bool handlePriv(const message::Kill &kill);
+   bool handlePriv(const message::AddObject &addObj);
+   bool handlePriv(const message::ObjectReceived &objRecv);
+   bool handlePriv(const message::Barrier &barrier);
+   bool handlePriv(const message::BarrierReached &barrierReached);
+   bool handlePriv(const message::ResetModuleIds &reset);
+   bool handlePriv(const message::ReplayFinished &reset);
+   bool handlePriv(const message::SendText &info);
+   bool handlePriv(const message::Quit &quit);
+   bool handlePriv(const message::ModuleAvailable &mod);
+
    PortTracker *m_portTracker;
+
+   boost::mutex m_replyMutex;
+   boost::condition_variable m_replyCondition;
+   std::map<message::uuid_t, boost::shared_ptr<message::Buffer>> m_outstandingReplies;
 };
 
 } // namespace vistle

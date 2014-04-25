@@ -188,37 +188,43 @@ const std::vector<StateTracker::AvailableModule> &StateTracker::availableModules
     return m_availableModules;
 }
 
-bool StateTracker::handleMessage(const message::Message &msg) {
+bool StateTracker::handle(const message::Message &msg) {
 
    using namespace vistle::message;
 
    switch (msg.type()) {
-      case Message::DEBUG: {
+      case Message::IDENTIFY: {
          break;
+      }
+      case Message::DEBUG: {
       }
       case Message::SPAWN: {
          const Spawn &spawn = static_cast<const Spawn &>(msg);
-         return handle(spawn);
+         registerReply(msg.uuid(), msg);
+         handlePriv(spawn);
+         break;
+      }
+      case Message::EXEC: {
          break;
       }
       case Message::STARTED: {
          const Started &started = static_cast<const Started &>(msg);
-         return handle(started);
+         handlePriv(started);
          break;
       }
       case Message::KILL: {
          const Kill &kill = static_cast<const Kill &>(msg);
-         return handle(kill);
+         handlePriv(kill);
          break;
       }
       case Message::QUIT: {
          const Quit &quit = static_cast<const Quit &>(msg);
-         return handle(quit);
+         handlePriv(quit);
          break;
       }
       case Message::MODULEEXIT: {
          const ModuleExit &modexit = static_cast<const ModuleExit &>(msg);
-         return handle(modexit);
+         handlePriv(modexit);
          break;
       }
       case Message::COMPUTE: {
@@ -226,7 +232,7 @@ bool StateTracker::handleMessage(const message::Message &msg) {
       }
       case Message::CREATEPORT: {
          const CreatePort &cp = static_cast<const CreatePort &>(msg);
-         return handle(cp);
+         handlePriv(cp);
          break;
       }
       case Message::ADDOBJECT: {
@@ -237,88 +243,97 @@ bool StateTracker::handleMessage(const message::Message &msg) {
       }
       case Message::CONNECT: {
          const Connect &conn = static_cast<const Connect &>(msg);
-         return handle(conn);
+         handlePriv(conn);
          break;
       }
       case Message::DISCONNECT: {
          const Disconnect &disc = static_cast<const Disconnect &>(msg);
-         return handle(disc);
+         handlePriv(disc);
          break;
       }
       case Message::ADDPARAMETER: {
          const AddParameter &add = static_cast<const AddParameter &>(msg);
-         return handle(add);
+         handlePriv(add);
          break;
       }
       case Message::SETPARAMETER: {
          const SetParameter &set = static_cast<const SetParameter &>(msg);
-         return handle(set);
+         handlePriv(set);
          break;
       }
       case Message::SETPARAMETERCHOICES: {
          const SetParameterChoices &choice = static_cast<const SetParameterChoices &>(msg);
-         return handle(choice);
+         handlePriv(choice);
          break;
       }
       case Message::PING: {
          const Ping &ping = static_cast<const Ping &>(msg);
-         return handle(ping);
+         handlePriv(ping);
          break;
       }
       case Message::PONG: {
          const Pong &pong = static_cast<const Pong &>(msg);
-         return handle(pong);
+         handlePriv(pong);
          break;
       }
       case Message::TRACE: {
          const Trace &trace = static_cast<const Trace &>(msg);
-         return handle(trace);
+         handlePriv(trace);
          break;
       }
       case Message::BUSY: {
          const Busy &busy = static_cast<const Busy &>(msg);
-         return handle(busy);
+         handlePriv(busy);
          break;
       }
       case Message::IDLE: {
          const Idle &idle = static_cast<const Idle &>(msg);
-         return handle(idle);
+         handlePriv(idle);
          break;
       }
       case Message::BARRIER: {
          const Barrier &barrier = static_cast<const Barrier &>(msg);
-         return handle(barrier);
+         handlePriv(barrier);
          break;
       }
       case Message::BARRIERREACHED: {
          const BarrierReached &reached = static_cast<const BarrierReached &>(msg);
-         return handle(reached);
+         handlePriv(reached);
+         registerReply(msg.uuid(), msg);
          break;
       }
       case Message::SETID: {
          const SetId &setid = static_cast<const SetId &>(msg);
          (void)setid;
-         return true;
          break;
       }
       case Message::RESETMODULEIDS: {
          const ResetModuleIds &reset = static_cast<const ResetModuleIds &>(msg);
-         return handle(reset);
+         handlePriv(reset);
          break;
       }
       case Message::REPLAYFINISHED: {
          const ReplayFinished &fin = static_cast<const ReplayFinished &>(msg);
-         return handle(fin);
+         handlePriv(fin);
          break;
       }
       case Message::SENDTEXT: {
          const SendText &info = static_cast<const SendText &>(msg);
-         return handle(info);
+         handlePriv(info);
          break;
       }
       case Message::MODULEAVAILABLE: {
          const ModuleAvailable &mod = static_cast<const ModuleAvailable &>(msg);
-         return handle(mod);
+         handlePriv(mod);
+         break;
+      }
+      case Message::EXECUTIONPROGRESS: {
+         break;
+      }
+      case Message::REDUCE: {
+         break;
+      }
+      case Message::LOCKUI: {
          break;
       }
       default:
@@ -327,26 +342,26 @@ bool StateTracker::handleMessage(const message::Message &msg) {
          break;
    }
 
-   return false;
+   return true;
 }
 
-bool StateTracker::handle(const message::Ping &ping) {
+bool StateTracker::handlePriv(const message::Ping &ping) {
 
    return true;
 }
 
-bool StateTracker::handle(const message::Pong &pong) {
+bool StateTracker::handlePriv(const message::Pong &pong) {
 
    CERR << "Pong [" << pong.senderId() << " " << pong.getCharacter() << "]" << std::endl;
    return true;
 }
 
-bool StateTracker::handle(const message::Trace &trace) {
+bool StateTracker::handlePriv(const message::Trace &trace) {
 
    return true;
 }
 
-bool StateTracker::handle(const message::Spawn &spawn) {
+bool StateTracker::handlePriv(const message::Spawn &spawn) {
 
    int moduleId = spawn.spawnId();
    assert(moduleId > 0);
@@ -362,7 +377,7 @@ bool StateTracker::handle(const message::Spawn &spawn) {
    return true;
 }
 
-bool StateTracker::handle(const message::Started &started) {
+bool StateTracker::handlePriv(const message::Started &started) {
 
    int moduleId = started.senderId();
    runningMap[moduleId].initialized = true;
@@ -374,7 +389,7 @@ bool StateTracker::handle(const message::Started &started) {
    return true;
 }
 
-bool StateTracker::handle(const message::Connect &connect) {
+bool StateTracker::handlePriv(const message::Connect &connect) {
 
    portTracker()->addConnection(connect.getModuleA(),
          connect.getPortAName(),
@@ -390,7 +405,7 @@ bool StateTracker::handle(const message::Connect &connect) {
    return true;
 }
 
-bool StateTracker::handle(const message::Disconnect &disconnect) {
+bool StateTracker::handlePriv(const message::Disconnect &disconnect) {
 
    portTracker()->removeConnection(disconnect.getModuleA(),
          disconnect.getPortAName(),
@@ -406,7 +421,7 @@ bool StateTracker::handle(const message::Disconnect &disconnect) {
    return true;
 }
 
-bool StateTracker::handle(const message::ModuleExit &moduleExit) {
+bool StateTracker::handlePriv(const message::ModuleExit &moduleExit) {
 
    int mod = moduleExit.senderId();
 
@@ -434,22 +449,22 @@ bool StateTracker::handle(const message::ModuleExit &moduleExit) {
    return true;
 }
 
-bool StateTracker::handle(const message::Compute &compute) {
+bool StateTracker::handlePriv(const message::Compute &compute) {
 
    return true;
 }
 
-bool StateTracker::handle(const message::Reduce &reduce) {
+bool StateTracker::handlePriv(const message::Reduce &reduce) {
 
    return true;
 }
 
-bool StateTracker::handle(const message::ExecutionProgress &prog) {
+bool StateTracker::handlePriv(const message::ExecutionProgress &prog) {
 
    return true;
 }
 
-bool StateTracker::handle(const message::Busy &busy) {
+bool StateTracker::handlePriv(const message::Busy &busy) {
 
    const int id = busy.senderId();
    if (busySet.find(id) != busySet.end()) {
@@ -466,7 +481,7 @@ bool StateTracker::handle(const message::Busy &busy) {
    return true;
 }
 
-bool StateTracker::handle(const message::Idle &idle) {
+bool StateTracker::handlePriv(const message::Idle &idle) {
 
    const int id = idle.senderId();
    ModuleSet::iterator it = busySet.find(id);
@@ -484,7 +499,7 @@ bool StateTracker::handle(const message::Idle &idle) {
    return true;
 }
 
-bool StateTracker::handle(const message::AddParameter &addParam) {
+bool StateTracker::handlePriv(const message::AddParameter &addParam) {
 
 #ifdef DEBUG
    CERR << "AddParameter: module=" << addParam.moduleName() << "(" << addParam.senderId() << "), name=" << addParam.getName() << std::endl;
@@ -518,7 +533,7 @@ bool StateTracker::handle(const message::AddParameter &addParam) {
    return true;
 }
 
-bool StateTracker::handle(const message::SetParameter &setParam) {
+bool StateTracker::handlePriv(const message::SetParameter &setParam) {
 
 #ifdef DEBUG
    CERR << "SetParameter: sender=" << setParam.senderId() << ", module=" << setParam.getModule() << ", name=" << setParam.getName() << std::endl;
@@ -536,7 +551,7 @@ bool StateTracker::handle(const message::SetParameter &setParam) {
    return true;
 }
 
-bool StateTracker::handle(const message::SetParameterChoices &choices) {
+bool StateTracker::handlePriv(const message::SetParameterChoices &choices) {
 
    Parameter *p = getParameter(choices.getModule(), choices.getName());
    if (!p)
@@ -554,7 +569,7 @@ bool StateTracker::handle(const message::SetParameterChoices &choices) {
    return true;
 }
 
-bool StateTracker::handle(const message::Quit &quit) {
+bool StateTracker::handlePriv(const message::Quit &quit) {
 
    for (StateObserver *o: m_observers) {
       o->quitRequested();
@@ -563,7 +578,7 @@ bool StateTracker::handle(const message::Quit &quit) {
    return true;
 }
 
-bool StateTracker::handle(const message::Kill &kill) {
+bool StateTracker::handlePriv(const message::Kill &kill) {
 
    const int id = kill.getModule();
    runningMap[id].killed = true;
@@ -575,27 +590,27 @@ bool StateTracker::handle(const message::Kill &kill) {
    return true;
 }
 
-bool StateTracker::handle(const message::AddObject &addObj) {
+bool StateTracker::handlePriv(const message::AddObject &addObj) {
 
    return true;
 }
 
-bool StateTracker::handle(const message::ObjectReceived &objRecv) {
+bool StateTracker::handlePriv(const message::ObjectReceived &objRecv) {
 
    return true;
 }
 
-bool StateTracker::handle(const message::Barrier &barrier) {
+bool StateTracker::handlePriv(const message::Barrier &barrier) {
 
    return true;
 }
 
-bool StateTracker::handle(const message::BarrierReached &barrReached) {
+bool StateTracker::handlePriv(const message::BarrierReached &barrReached) {
 
    return true;
 }
 
-bool StateTracker::handle(const message::CreatePort &createPort) {
+bool StateTracker::handlePriv(const message::CreatePort &createPort) {
 
    Port * p = portTracker()->addPort(createPort.getPort());
 
@@ -607,12 +622,12 @@ bool StateTracker::handle(const message::CreatePort &createPort) {
    return true;
 }
 
-bool StateTracker::handle(const vistle::message::ResetModuleIds &reset)
+bool StateTracker::handlePriv(const vistle::message::ResetModuleIds &reset)
 {
    return true;
 }
 
-bool StateTracker::handle(const message::ReplayFinished &reset)
+bool StateTracker::handlePriv(const message::ReplayFinished &reset)
 {
    for (StateObserver *o: m_observers) {
       o->resetModificationCount();
@@ -620,7 +635,7 @@ bool StateTracker::handle(const message::ReplayFinished &reset)
    return true;
 }
 
-bool StateTracker::handle(const message::SendText &info)
+bool StateTracker::handlePriv(const message::SendText &info)
 {
    for (StateObserver *o: m_observers) {
       o->info(info.text(), info.textType(), info.senderId(), info.rank(), info.referenceType(), info.referenceUuid());
@@ -628,7 +643,7 @@ bool StateTracker::handle(const message::SendText &info)
    return true;
 }
 
-bool StateTracker::handle(const message::ModuleAvailable &avail) {
+bool StateTracker::handlePriv(const message::ModuleAvailable &avail) {
 
     AvailableModule mod;
     mod.name = avail.name();
@@ -681,6 +696,67 @@ Parameter *StateTracker::getParameter(int id, const std::string &name) const {
       return NULL;
 
    return pit->second;
+}
+
+bool StateTracker::registerRequest(const message::uuid_t &uuid) {
+
+   boost::lock_guard<boost::mutex> locker(m_replyMutex);
+
+   auto it = m_outstandingReplies.find(uuid);
+   if (it != m_outstandingReplies.end()) {
+      std::cerr << "StateTracker: duplicate attempt to wait for reply" << std::endl;
+      return false;
+   }
+
+   m_outstandingReplies[uuid] = boost::shared_ptr<message::Buffer>();;
+   return true;
+}
+
+boost::shared_ptr<message::Buffer> StateTracker::waitForReply(const message::uuid_t &uuid) {
+
+   boost::unique_lock<boost::mutex> locker(m_replyMutex);
+   boost::shared_ptr<message::Buffer> ret = removeRequest(uuid);
+   while (!ret) {
+      m_replyCondition.wait(locker);
+      ret = removeRequest(uuid);
+   }
+   return ret;
+}
+
+boost::shared_ptr<message::Buffer> StateTracker::removeRequest(const message::uuid_t &uuid) {
+
+   auto ret = boost::shared_ptr<message::Buffer>();
+   auto it = m_outstandingReplies.find(uuid);
+   if (it != m_outstandingReplies.end() && it->second) {
+      ret = it->second;
+      m_outstandingReplies.erase(it);
+   }
+   return ret;
+}
+
+bool StateTracker::registerReply(const message::uuid_t &uuid, const message::Message &msg) {
+
+   {
+      boost::lock_guard<boost::mutex> locker(m_replyMutex);
+      auto it = m_outstandingReplies.find(uuid);
+      if (it == m_outstandingReplies.end()) {
+         return false;
+      }
+      if (it->second) {
+         assert(!it->second);
+         return false;
+      }
+
+      auto buf = boost::shared_ptr<message::Buffer>(new message::Buffer);
+      memcpy(buf->buf.data(), &msg, msg.size());
+      it->second = buf;
+
+      std::cerr << "notifying all for " << uuid  << " and " << m_outstandingReplies.size() << " others" << std::endl;
+   }
+
+   m_replyCondition.notify_all();
+
+   return true;
 }
 
 void StateTracker::registerObserver(StateObserver *observer) {

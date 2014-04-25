@@ -2,15 +2,8 @@
 #define COMMUNICATOR_COLLECTIVE_H
 
 #include <vector>
-#include <map>
 
-#include <boost/interprocess/shared_memory_object.hpp>
-#include <boost/interprocess/mapped_region.hpp>
-#include <boost/interprocess/ipc/message_queue.hpp>
-#include <boost/scoped_ptr.hpp>
-
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition_variable.hpp>
+#include <boost/asio.hpp>
 
 #include <mpi.h>
 
@@ -18,19 +11,10 @@
 
 #include "export.h"
 
-namespace bi = boost::interprocess;
-
 namespace vistle {
-
-namespace message {
-   class Message;
-   class MessageQueue;
-}
 
 class Parameter;
 class PythonEmbed;
-class ClientManager;
-class UiManager;
 class ModuleManager;
 
 class V_CONTROLEXPORT Communicator {
@@ -41,9 +25,7 @@ class V_CONTROLEXPORT Communicator {
    ~Communicator();
    static Communicator &the();
 
-   void setInput(const std::string &input);
-   void setFile(const std::string &filename);
-   bool scanModules(const std::string &dir) const;
+   bool scanModules(const std::string &dir);
 
    bool dispatch();
    bool handleMessage(const message::Message &message);
@@ -58,16 +40,12 @@ class V_CONTROLEXPORT Communicator {
    unsigned short uiPort() const;
 
    ModuleManager &moduleManager() const;
-   message::MessageQueue &commandQueue();
+   bool connectHub(const std::string &host, unsigned short port);
 
  private:
-   void sendUi(const message::Message &message) const;
-   ClientManager *m_clientManager;
-   UiManager *m_uiManager;
-   ModuleManager *m_moduleManager;
+   bool sendHub(const message::Message &message);
 
-   std::string m_initialFile;
-   std::string m_initialInput;
+   ModuleManager *m_moduleManager;
 
    const int m_rank;
    const int m_size;
@@ -78,15 +56,14 @@ class V_CONTROLEXPORT Communicator {
    std::vector<char> m_recvBufTo0, m_recvBufToAny;
    MPI_Request m_reqAny, m_reqToRank0;
 
-   typedef std::map<int, message::MessageQueue *> MessageQueueMap;
-   boost::shared_ptr<message::MessageQueue> m_commandQueue;
-   bool tryReceiveAndHandleMessage(message::MessageQueue &mq, bool &received, bool broadcast=false);
-
    int m_traceMessages;
 
    static Communicator *s_singleton;
 
    Communicator(const Communicator &other); // not implemented
+
+   boost::asio::io_service m_ioService;
+   boost::asio::ip::tcp::socket m_hubSocket;
 };
 
 } // namespace vistle

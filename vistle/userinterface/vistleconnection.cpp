@@ -144,7 +144,7 @@ bool VistleConnection::requestReplyAsync(const vistle::message::Message &send) c
    return true;
 }
 
-bool VistleConnection::waitForReplyAsync(const vistle::message::Message::uuid_t &uuid, vistle::message::Message &reply) const {
+bool VistleConnection::waitForReplyAsync(const vistle::message::uuid_t &uuid, vistle::message::Message &reply) const {
 
    return ui().getMessage(uuid, reply);
 }
@@ -163,28 +163,36 @@ std::vector<std::string> vistle::VistleConnection::getParameters(int id) const
    return ui().state().getParameters(id);
 }
 
-int vistle::VistleConnection::barrier() const {
+bool vistle::VistleConnection::barrier() const {
 
    std::vector<char> msgBuf(message::Message::MESSAGE_SIZE);
    message::Message *msg = (message::Message *)msgBuf.data();
 
-   message::Barrier m(0);
-   if (!waitForReply(m, *msg)) {
-      return false;
-   }
-
-   switch(msg->type()) {
-      case message::Message::BARRIERREACHED: {
-         const message::BarrierReached *reached = static_cast<const message::BarrierReached *>(msg);
-         return reached->getBarrierId();
-         break;
+   message::Barrier m;
+   for (;;) {
+      if (!waitForReply(m, *msg)) {
+         return false;
       }
-      default:
-         assert("expected BarrierReached message" == 0);
-         break;
+
+      switch(msg->type()) {
+         case message::Message::BARRIERREACHED: {
+            const message::BarrierReached *reached = static_cast<const message::BarrierReached *>(msg);
+            assert(m.uuid() == reached->uuid());
+            return true;
+            break;
+         }
+         case message::Message::BARRIER: {
+            continue;
+            break;
+         }
+         default:
+            std::cerr << "VistleConnection: expected BarrierReached, got " << *msg << std::endl;
+            assert("expected BarrierReached message" == 0);
+            break;
+      }
    }
 
-   return -1;
+   return false;
 }
 
 void vistle::VistleConnection::resetDataFlowNetwork() const

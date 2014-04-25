@@ -61,17 +61,17 @@ Message::Message(const Type t, const unsigned int s)
 , m_rank(DefaultSender::rank())
 {
 
-   assert(m_size < MESSAGE_SIZE);
+   assert(m_size <= MESSAGE_SIZE);
 
    assert(m_rank >= 0);
 }
 
-const Message::uuid_t &Message::uuid() const {
+const uuid_t &Message::uuid() const {
 
    return m_uuid;
 }
 
-void Message::setUuid(const Message::uuid_t &uuid) {
+void Message::setUuid(const uuid_t &uuid) {
 
    m_uuid = uuid;
 }
@@ -109,6 +109,16 @@ size_t Message::size() const {
 bool Message::broadcast() const {
 
    return m_broadcast;
+}
+
+Identify::Identify(Identity id)
+: Message(Message::IDENTIFY, sizeof(Identify))
+, m_identity(id)
+{}
+
+Identify::Identity Identify::identity() const {
+
+   return m_identity;
 }
 
 Ping::Ping(const char c)
@@ -176,6 +186,54 @@ int Spawn::getBaseRank() const {
 int Spawn::getRankSkip() const {
 
    return rankSkip;
+}
+
+Exec::Exec(const std::string &pathname, const std::vector<std::string> &args, int id)
+: Message(Message::EXEC, sizeof(Exec))
+, m_moduleId(id)
+, nargs(args.size())
+{
+   memset(path_and_args.data(), '\0', path_and_args.size());
+   char *p = path_and_args.data();
+   char *end = p + path_and_args.size();
+   COPY_STRING(path_and_args, pathname);
+   p += pathname.length()+1;
+   for (const auto &a: args) {
+      if (p + a.length() < end) {
+         memcpy(p, a.data(), a.length());
+         p += a.length()+1;
+      } else {
+         break;
+      }
+   }
+}
+
+std::string Exec::pathname() const {
+
+   auto end = std::find(path_and_args.data(), path_and_args.data()+path_and_args.size(), '\0');
+   return std::string(path_and_args.data(), end-path_and_args.data());
+}
+
+std::vector<std::string> Exec::args() const {
+
+   std::vector<std::string> ret;
+
+   auto start = std::find(path_and_args.data(), path_and_args.data()+path_and_args.size(), '\0');
+   if (start < path_and_args.data()+path_and_args.size()) {
+      ++start;
+      while (start < path_and_args.data() + path_and_args.size()) {
+         auto end = std::find(start, path_and_args.data()+path_and_args.size(), '\0');
+         if (ret.size() < nargs)
+            ret.push_back(std::string(start, end-start));
+         start = end+1;
+      }
+   }
+   return ret;
+}
+
+int Exec::moduleId() const {
+
+   return m_moduleId;
 }
 
 Started::Started(const std::string &n)
@@ -764,26 +822,14 @@ bool SetParameterChoices::apply(Parameter *param) const {
    return true;
 }
 
-Barrier::Barrier(const int id)
+Barrier::Barrier()
 : Message(Message::BARRIER, sizeof(Barrier))
-, barrierid(id)
 {
 }
 
-int Barrier::getBarrierId() const {
-
-   return barrierid;
-}
-
-BarrierReached::BarrierReached(const int id)
+BarrierReached::BarrierReached()
 : Message(Message::BARRIERREACHED, sizeof(BarrierReached))
-, barrierid(id)
 {
-}
-
-int BarrierReached::getBarrierId() const {
-
-   return barrierid;
 }
 
 SetId::SetId(const int id)
@@ -842,7 +888,7 @@ Message::Type SendText::referenceType() const {
    return m_referenceType;
 }
 
-Message::uuid_t SendText::referenceUuid() const {
+uuid_t SendText::referenceUuid() const {
 
    return m_referenceUuid;
 }
@@ -942,6 +988,16 @@ const char *ModuleAvailable::name() const {
     return m_name.data();
 }
 
+LockUi::LockUi(bool locked)
+: Message(Message::LOCKUI, sizeof(LockUi))
+, m_locked(locked)
+{
+}
+
+bool LockUi::locked() const {
+
+   return m_locked;
+}
 
 std::ostream &operator<<(std::ostream &s, const Message &m) {
 
@@ -962,6 +1018,21 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       case Message::EXECUTIONPROGRESS: {
          auto mm = static_cast<const ExecutionProgress &>(m);
          s << ", stage: " << ExecutionProgress::toString(mm.stage()) << ", step: " << mm.step();
+         break;
+      }
+      case Message::ADDPARAMETER: {
+         auto mm = static_cast<const AddParameter &>(m);
+         s << ", name: " << mm.getName();
+         break;
+      }
+      case Message::SETPARAMETER: {
+         auto mm = static_cast<const SetParameter &>(m);
+         s << ", name: " << mm.getName();
+         break;
+      }
+      case Message::CREATEPORT: {
+         auto mm = static_cast<const CreatePort &>(m);
+         s << ", name: " << mm.getPort()->getName();
          break;
       }
       default:

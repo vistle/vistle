@@ -5,8 +5,8 @@ include_directories(
         ..
 )
 
-add_executable(vistle vistle.cpp)
-target_link_libraries(vistle
+add_executable(vistle_manager vistle_manager.cpp)
+target_link_libraries(vistle_manager
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
         vistle_core
