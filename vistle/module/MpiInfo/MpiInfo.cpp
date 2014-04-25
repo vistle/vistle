@@ -59,6 +59,8 @@ bool MpiInfo::prepare() {
 }
 
 bool MpiInfo::reduce(int timestep) {
+
+   return Module::reduce(timestep);
 }
 
 MODULE_MAIN(MpiInfo)
