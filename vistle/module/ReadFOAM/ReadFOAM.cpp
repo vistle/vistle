@@ -625,6 +625,7 @@ bool ReadFOAM::addGhostCellsData(const std::string &casedir, int processor, int 
 
 bool ReadFOAM::addGridToPorts(int processor) {
    addObject(m_gridOut, m_currentgrid[processor]);
+   return true;
 }
 
 bool ReadFOAM::addDataToPorts(int processor) {
@@ -632,6 +633,7 @@ bool ReadFOAM::addDataToPorts(int processor) {
       int portnum=data.first;
       addObject(m_volumeDataOut[portnum], m_currentvolumedata[portnum][processor]);
    }
+   return true;
 }
 
 bool ReadFOAM::readConstant(const std::string &casedir)
