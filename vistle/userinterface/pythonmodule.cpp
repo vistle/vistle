@@ -202,6 +202,17 @@ static std::vector<int> getRunning() {
    return MODULEMANAGER.getRunningList();
 }
 
+static std::vector<std::string> getAvailable() {
+
+   LOCKED();
+   const auto &avail = MODULEMANAGER.availableModules();
+   std::vector<std::string> ret;
+   for (auto &a: avail) {
+      ret.push_back(a.name);
+   }
+   return ret;
+}
+
 static std::vector<int> getBusy() {
 
    LOCKED();
@@ -418,6 +429,7 @@ BOOST_PYTHON_MODULE(_vistle)
     param(Vector, setVectorParam3);
     param(Vector, setVectorParam4);
 
+    def("getAvailable", getAvailable, "get list of names of available modules");
     def("getRunning", getRunning, "get list of IDs of running modules");
     def("getBusy", getBusy, "get list of IDs of busy modules");
     def("getModuleName", getModuleName, "get name of module with ID `arg1`");

@@ -35,6 +35,11 @@ class _stdin:
 #   current_module = sys.modules[__name__]
 #   python_help(current_module)
 
+def showAvailable():
+   avail = getAvailable()
+   for name in avail:
+      print name
+
 def getNumRunning():
    return len(getRunning())
 
