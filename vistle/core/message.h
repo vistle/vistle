@@ -59,7 +59,6 @@ class V_COREEXPORT Message {
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
       (INVALID)
       (IDENTIFY)
-      (DEBUG)
       (TRACE)
       (SPAWN)
       (EXEC)

@@ -196,8 +196,6 @@ bool StateTracker::handle(const message::Message &msg) {
       case Message::IDENTIFY: {
          break;
       }
-      case Message::DEBUG: {
-      }
       case Message::SPAWN: {
          const Spawn &spawn = static_cast<const Spawn &>(msg);
          registerReply(msg.uuid(), msg);
