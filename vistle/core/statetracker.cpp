@@ -8,7 +8,7 @@
 #include "statetracker.h"
 
 #define CERR \
-   std::cerr << "state tracker "
+   std::cerr << "state tracker: "
 
 //#define DEBUG
 
@@ -494,7 +494,7 @@ bool StateTracker::handle(const message::AddParameter &addParam) {
    ParameterOrder &po = runningMap[addParam.senderId()].paramOrder;
    ParameterMap::iterator it = pm.find(addParam.getName());
    if (it != pm.end()) {
-      CERR << "duplicate parameter" << std::endl;
+      CERR << "duplicate parameter " << addParam.moduleName() << ":" << addParam.getName() << std::endl;
    } else {
       pm[addParam.getName()] = addParam.getParameter();
       int maxIdx = 0;
