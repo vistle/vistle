@@ -52,6 +52,11 @@ find_package(Thrust)
 set(EIGEN3_INCLUDE_PATH "../3rdparty")
 include_directories(${EIGEN3_INCLUDE_PATH})
 
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "$ENV{EXTERNLIBS}/openscenegraph")
+find_package(OpenSceneGraph 2.8.0 COMPONENTS osgViewer osgGA osgDB osgUtil
+   osgText osgParticle osgSim osgFX)
+find_package(OpenGL)
+
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 

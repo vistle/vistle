@@ -418,6 +418,9 @@ VistlePlugin::VistlePlugin()
    }
 
    if (coCommandLine::argc() < 3) {
+      for (int i=0; i<coCommandLine::argc(); ++i) {
+         std::cout << i << ": " << coCommandLine::argv(i) << std::endl;
+      }
       throw(vistle::exception("at least 2 command line arguments required"));
    }
 
