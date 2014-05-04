@@ -1,6 +1,4 @@
-#find_package(Boost 1.40 REQUIRED COMPONENTS mpi)
-
-add_executable(CreateCelltree CreateCelltree.cpp)
+add_module(CreateCelltree CreateCelltree.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

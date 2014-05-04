@@ -1,6 +1,4 @@
-#find_package(Boost 1.40 REQUIRED COMPONENTS mpi)
-
-add_executable(AttachObject AttachObject.cpp)
+add_module(AttachObject AttachObject.cpp)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
