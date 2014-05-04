@@ -14,18 +14,9 @@ target_link_libraries(Gendat
 )
 
 #set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
-add_executable(GendatChecker GendatChecker.cpp)
+add_module(GendatChecker GendatChecker.cpp)
 target_link_libraries(GendatChecker
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
         vistle_module
-)
-
-add_executable(GendatTest GendatTest.cpp)
-add_test(GendatTest GendatTest)
-target_link_libraries(GendatTest
-        ${Boost_LIBRARIES}
-        ${MPI_C_LIBRARIES}
-        vistle_core
-        vistle_control
 )
