@@ -250,7 +250,7 @@ struct process_Cell {
             vertlist[10] = interp(m_data.m_isovalue, newv[2], newv[6], field[2], field[6]);
             vertlist[11] = interp(m_data.m_isovalue, newv[3], newv[7], field[3], field[7]);
 
-            for (int idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx += 3) {
+            for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx += 3) {
 
                for (int i=0; i<3; ++i) {
 
@@ -407,11 +407,11 @@ struct process_Cell {
 
          case UnstructuredGrid::POLYHEDRON: {
 
-            int sidebegin = -1;
+            SIndex sidebegin = -1;
             Vector middleVector(0,0,0);
             bool vertexSaved=false;
             Vector savedVertex;
-            int j = 0;
+            Index j = 0;
             int flag = 0;
             Index outIdx = m_data.m_LocationList[ValidCellIndex];
             for (Index i = Cellbegin; i < Cellend; i++) {
@@ -468,7 +468,7 @@ struct process_Cell {
             }
             middleVector /= j;
 
-            for (int i = 2; i < numVert; i+=3) {
+            for (Index i = 2; i < numVert; i+=3) {
 
                const Index idx = m_data.m_LocationList[ValidCellIndex]+i;
                m_data.m_xpointer[idx] = middleVector[0];
@@ -559,8 +559,8 @@ struct classify_cell {
 
          case UnstructuredGrid::POLYHEDRON: {
 
-            int sidebegin = -1;
-            int vertcounter = 0;
+            SIndex sidebegin = -1;
+            Index vertcounter = 0;
             for (Index i = Start; i < Start + diff; i++) {
 
                if (m_data.m_cl[i] == sidebegin) {
