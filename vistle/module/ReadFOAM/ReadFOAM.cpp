@@ -254,21 +254,27 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
       //Ghost cell vertices
       for (const auto &b: (*boundaries).procboundaries) {
          std::vector<Index> outerVertices;
-         std::vector<Index> neighborOuterVertices;
-         for (int i=b.startFace; i<b.startFace+b.numFaces; ++i) {
-            auto face=faces[i];
-            //create one with own numbering
-            for (int j=0; j<face.size(); ++j) {
-               outerVertices.push_back(face[j]);
+         int myProc=b.myProc;
+         int neighborProc=b.neighborProc;
+         if (myProc < neighborProc) {
+            //create with own numbering
+            for (int i=b.startFace; i<b.startFace+b.numFaces; ++i) {
+               auto face=faces[i];
+               for (int j=0; j<face.size(); ++j) {
+                  outerVertices.push_back(face[j]);
+               }
             }
-            //create one with neighbour numbering
-            neighborOuterVertices.push_back(face[0]);
-            for (int j=face.size()-1; j>0; --j) {
-               neighborOuterVertices.push_back(face[j]);
+         } else {
+            //create with neighbour numbering
+            for (int i=b.startFace; i<b.startFace+b.numFaces; ++i) {
+               auto face=faces[i];
+               outerVertices.push_back(face[0]);
+               for (int j=face.size()-1; j>0; --j) {
+                  outerVertices.push_back(face[j]);
+               }
             }
          }
          m_procBoundaryVertices[b.myProc][b.neighborProc] = outerVertices;
-         m_neighborProcBoundaryVertices[b.myProc][b.neighborProc] = neighborOuterVertices;
       }
 
       //Grid
@@ -653,14 +659,14 @@ bool ReadFOAM::addGhostCells(int processor, int timestep) {
 
    for (const auto &b :boundaries.procboundaries) {
       std::vector<Index> elOut;
-      std::vector<int> clOut;
+      std::vector<SIndex> clOut;
       std::vector<Index> tlOut;
       std::vector<Scalar> pointsOutX;
       std::vector<Scalar> pointsOutY;
       std::vector<Scalar> pointsOutZ;
 
       Index neighborProc=b.neighborProc;
-      std::vector<Index> &neighbourProcBoundaryVertices = m_neighborProcBoundaryVertices[processor][neighborProc];
+      std::vector<Index> &procBoundaryVertices = m_procBoundaryVertices[processor][neighborProc];
 
       elOut.reserve(b.numFaces + 1);
       elOut.push_back(0);
@@ -671,7 +677,7 @@ bool ReadFOAM::addGhostCells(int processor, int timestep) {
          Index elementStart = el[cell];
          Index elementEnd = el[cell + 1];
          for (Index j=elementStart; j<elementEnd; ++j) {
-            int point = cl[j];
+            SIndex point = cl[j];
             clOut.push_back(point);
             ++conncount;
          }
@@ -680,24 +686,24 @@ bool ReadFOAM::addGhostCells(int processor, int timestep) {
       }
 
       //Create Vertices Mapping
-      std::map<Index, int> verticesMapping;
+      std::map<Index, SIndex> verticesMapping;
       //shared vertices that don't have to be sent (mapped to negative values)
-      int c=-1;
-      for (const Index &v: neighbourProcBoundaryVertices) {
+      SIndex c=-1;
+      for (const Index &v: procBoundaryVertices) {
          if (verticesMapping.emplace(v,c).second) {
             --c;
          }
       }
       //vertices that have to be sent (mapped to positive values)
       c=0;
-      for (const int &v: clOut) {
+      for (const SIndex &v: clOut) {
          if (verticesMapping.emplace(v,c).second) {
             ++c;
          }
       }
 
       //Change connectivity list to use the mapped values
-      for (int &v: clOut) {
+      for (SIndex &v: clOut) {
          v = verticesMapping[v];
       }
 
@@ -708,7 +714,7 @@ bool ReadFOAM::addGhostCells(int processor, int timestep) {
 
       for (auto &v: verticesMapping) {
          Index f=v.first;
-         int s=v.second;
+         SIndex s=v.second;
          if (s > -1) {
             pointsOutX[s] = x[f];
             pointsOutY[s] = y[f];

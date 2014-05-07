@@ -93,6 +93,5 @@ class ReadFOAM: public vistle::Module
       std::map<int, boost::shared_ptr<std::vector<vistle::Index> > > m_owners;
       std::map<int, boost::shared_ptr<Boundaries>> m_boundaries;
       std::map<int, std::map<int, std::vector<vistle::Index> > > m_procBoundaryVertices;
-      std::map<int, std::map<int, std::vector<vistle::Index> > > m_neighborProcBoundaryVertices;
 };
 #endif // READFOAM_H
