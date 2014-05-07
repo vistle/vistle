@@ -131,8 +131,7 @@ bool UserInterface::dispatch() {
 bool UserInterface::sendMessage(const message::Message &message) {
 
    if (m_locked) {
-      m_sendQueue.emplace_back();
-      memcpy(m_sendQueue.back().buf.data(), &message, message.size());
+      m_sendQueue.emplace_back(message);
       return true;
    }
 

@@ -710,8 +710,19 @@ union Buffer {
 
    Buffer(): msg(Message::INVALID, Message::MESSAGE_SIZE) {}
 
-   class Message msg;
+   Buffer(const Message &msg) {
+
+       memcpy(buf.data(), &msg, msg.size());
+   }
+
+   const Buffer &operator=(const Buffer &rhs) {
+
+       memcpy(buf.data(), rhs.buf.data(), rhs.msg.size());
+       return *this;
+   }
+
    std::array<char, Message::MESSAGE_SIZE> buf;
+   class Message msg;
 };
 BOOST_STATIC_ASSERT(sizeof(Buffer) <= Message::MESSAGE_SIZE);
 
