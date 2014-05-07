@@ -38,6 +38,7 @@
 #include "foamtoolbox.h"
 #include <util/coRestraint.h>
 #include <boost/mpi/communicator.hpp>
+#include <boost/serialization/vector.hpp>
 namespace mpi = boost::mpi;
 
 using namespace vistle;
@@ -185,7 +186,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
 
    UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0));
    Polygons::ptr poly(new Polygons(0, 0, 0));
-   boost::shared_ptr<std::vector<vistle::Index> > owners(new std::vector<Index>());
+   boost::shared_ptr<std::vector<Index> > owners(new std::vector<Index>());
    boost::shared_ptr<Boundaries> boundaries(new Boundaries());
    GridDataContainer result(grid,poly,owners,boundaries);
    (*boundaries) = loadBoundary(meshdir);
@@ -244,6 +245,26 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                }
             }
          }
+      }
+
+      //Ghost cell vertices
+      for (const auto &b: (*boundaries).procboundaries) {
+         std::vector<Index> outerVertices;
+         std::vector<Index> neighborOuterVertices;
+         for (int i=b.startFace; i<b.startFace+b.numFaces; ++i) {
+            auto face=faces[i];
+            //create one with own numbering
+            for (int j=0; j<face.size(); ++j) {
+               outerVertices.push_back(face[j]);
+            }
+            //create one with neighbour numbering
+            neighborOuterVertices.push_back(face[0]);
+            for (int j=face.size()-1; j>0; --j) {
+               neighborOuterVertices.push_back(face[j]);
+            }
+         }
+         m_procBoundaryVertices[b.myProc][b.neighborProc] = outerVertices;
+         m_neighborProcBoundaryVertices[b.myProc][b.neighborProc] = neighborOuterVertices;
       }
 
       //Grid
@@ -422,7 +443,7 @@ Object::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &f
       readFloatVectorArray(*stream, v->x().data(), v->y().data(), v->z().data(), v->x().size());
       return v;
    }
-   
+
    std::cerr << "cannot interpret " << meshdir << "/" << field << std::endl;
    return Object::ptr();
 }
@@ -530,7 +551,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
 
 
 bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int timestep) {
-   std::cout << "rank " << rank() << " reading " << casedir << " // processor :" << processor << " // timestep: " << timestep << std::endl;
+   std::cout << "rank " << rank() << " reading " << casedir << " // processor: " << processor << " // timestep: " << timestep << std::endl;
    std::string dir = casedir;
 
    if (processor >= 0) {
@@ -613,7 +634,123 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
    return true;
 }
 
-bool ReadFOAM::addGhostCells(const std::string &casedir, int processor, int timestep) {
+bool ReadFOAM::addGhostCells(int processor, int timestep) {
+   std::cout << "rank " << rank() << " reading GhostCells // processor: " << processor << " // timestep: " << timestep << std::endl;
+   auto &boundaries = *m_boundaries[processor];
+   auto &owners = *m_owners[processor];
+
+   UnstructuredGrid::ptr grid = m_currentgrid[processor];
+   auto &el = grid->el();
+   auto &cl = grid->cl();
+   auto &tl = grid->tl();
+   auto &x = grid->x();
+   auto &y = grid->y();
+   auto &z = grid->z();
+
+   for (const auto &b :boundaries.procboundaries) {
+      std::vector<Index> elOut;
+      std::vector<int> clOut;
+      std::vector<Index> tlOut;
+      std::vector<Scalar> pointsOutX;
+      std::vector<Scalar> pointsOutY;
+      std::vector<Scalar> pointsOutZ;
+
+      Index neighborProc=b.neighborProc;
+      std::vector<Index> &neighbourProcBoundaryVertices = m_neighborProcBoundaryVertices[processor][neighborProc];
+
+      elOut.reserve(b.numFaces + 1);
+      elOut.push_back(0);
+      tlOut.reserve(b.numFaces);
+      Index conncount=0;
+      for (Index i=0;i<b.numFaces;++i) {
+         Index cell=owners[b.startFace + i];
+         Index elementStart = el[cell];
+         Index elementEnd = el[cell + 1];
+         for (Index j=elementStart; j<elementEnd; ++j) {
+            int point = cl[j];
+            clOut.push_back(point);
+            ++conncount;
+         }
+         elOut.push_back(conncount);
+         tlOut.push_back(tl[cell]);
+      }
+
+      //Create Vertices Mapping
+      std::map<Index, int> verticesMapping;
+      //shared vertices that don't have to be sent (mapped to negative values)
+      int c=-1;
+      for (const Index &v: neighbourProcBoundaryVertices) {
+         if (verticesMapping.emplace(v,c).second) {
+            --c;
+         }
+      }
+      //vertices that have to be sent (mapped to positive values)
+      c=0;
+      for (const int &v: clOut) {
+         if (verticesMapping.emplace(v,c).second) {
+            ++c;
+         }
+      }
+
+      //Change connectivity list to use the mapped values
+      for (int &v: clOut) {
+         v = verticesMapping[v];
+      }
+
+      //create Coordinate Vectors for NOT shared Vertices
+      pointsOutX.resize(c);
+      pointsOutY.resize(c);
+      pointsOutZ.resize(c);
+
+      for (auto &v: verticesMapping) {
+         Index f=v.first;
+         int s=v.second;
+         if (s > -1) {
+            pointsOutX[s] = x[f];
+            pointsOutY[s] = y[f];
+            pointsOutZ[s] = z[f];
+         }
+      }
+
+      std::cout << "EL: " << processor << " - " << neighborProc << " (size: " << elOut.size() << ") // ";
+      for (auto &q: elOut) {
+         std::cout << q << "|";
+      }
+      std::cout << std::endl;
+
+      std::cout << "CL: " << processor << " - " << neighborProc << " (size: " << clOut.size() << ") // ";
+      for (auto &q: clOut) {
+         std::cout << q << "|";
+      }
+      std::cout << std::endl;
+
+      std::cout << "TL: " << processor << " - " << neighborProc << " (size: " << tlOut.size() << ") // ";
+      for (auto &q: tlOut) {
+         std::cout << q << "|";
+      }
+      std::cout << std::endl;
+
+      std::cout << "PointsX: " << processor << " - " << neighborProc << " (size: " << pointsOutX.size() << ") // ";
+      for (auto &q: pointsOutX) {
+         std::cout << q << "|";
+      }
+      std::cout << std::endl;
+
+      std::cout << "PointsY: " << processor << " - " << neighborProc << " (size: " << pointsOutY.size() << ") // ";
+      for (auto &q: pointsOutY) {
+         std::cout << q << "|";
+      }
+      std::cout << std::endl;
+
+      std::cout << "PointsZ: " << processor << " - " << neighborProc << " (size: " << pointsOutZ.size() << ") // ";
+      for (auto &q: pointsOutZ) {
+         std::cout << q << "|";
+      }
+      std::cout << std::endl;
+
+
+      // Save/Send vectors??
+   }
 
    return true;
 }
@@ -661,7 +798,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
       if (m_case.numblocks > 0) {
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
-               if (!addGhostCells(casedir, i, -1))
+               if (!addGhostCells(i, -1))
                   return false;
             }
             addGridToPorts(i);
@@ -697,12 +834,12 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
    mpi::communicator c;
    c.barrier();
    std::cout << rank() << " broke barrier (timestep " << timestep << ")" << std::endl;
-   
+
    if (m_case.varyingCoords || m_case.varyingGrid) {
       if (m_case.numblocks > 0) {
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
-               if (!addGhostCells(casedir, i, timestep))
+               if (!addGhostCells(i, timestep))
                   return false;
             }
             addGridToPorts(i);
@@ -730,7 +867,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
 bool ReadFOAM::compute()     //Compute is called when Module is executed
 {
-   std::cout << "starting // rank: " << rank() << " " << "// size: " << size() << std::endl;
+   std::cout << std::endl << std::time(0) << " // starting // rank: " << rank() << " " << "// size: " << size() << std::endl;
    const std::string casedir = m_casedir->getValue();
    m_boundaryPatches.add(m_patchSelection->getValue());
    m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
@@ -752,7 +889,7 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
    m_basebound.clear();
    m_owners.clear();
    m_boundaries.clear();
-   std::cout << "ReadFoam: done" << std::endl;
+   std::cout << std::time(0) << " // ReadFoam: done" << std::endl;
 
    return true;
 }

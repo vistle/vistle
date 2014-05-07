@@ -26,7 +26,10 @@
 
 struct GridDataContainer {
 
-   GridDataContainer(vistle::UnstructuredGrid::ptr g, vistle::Polygons::ptr p, boost::shared_ptr<std::vector<vistle::Index> > o, boost::shared_ptr<Boundaries> b) {
+   GridDataContainer(vistle::UnstructuredGrid::ptr g
+                     , vistle::Polygons::ptr p
+                     , boost::shared_ptr<std::vector<vistle::Index> > o
+                     , boost::shared_ptr<Boundaries> b) {
       grid=g;
       polygon=p;
       owners=o;
@@ -67,7 +70,7 @@ class ReadFOAM: public vistle::Module
 
       bool parameterChanged(vistle::Parameter *p);
       bool readDirectory(const std::string &dir, int processor, int timestep);
-      bool addGhostCells(const std::string &dir, int processor, int timestep);
+      bool addGhostCells(int processor, int timestep);
       bool addGhostCellsData(const std::string &dir, int processor, int timestep);
       bool addGridToPorts(int processor);
       bool addDataToPorts(int processor);
@@ -89,5 +92,7 @@ class ReadFOAM: public vistle::Module
       std::map<int, std::map<int, vistle::Object::ptr> > m_currentvolumedata;
       std::map<int, boost::shared_ptr<std::vector<vistle::Index> > > m_owners;
       std::map<int, boost::shared_ptr<Boundaries>> m_boundaries;
+      std::map<int, std::map<int, std::vector<vistle::Index> > > m_procBoundaryVertices;
+      std::map<int, std::map<int, std::vector<vistle::Index> > > m_neighborProcBoundaryVertices;
 };
 #endif // READFOAM_H
