@@ -6,6 +6,7 @@
 namespace vistle {
 
 typedef unsigned int Index;
+typedef int SIndex;
 
 } // namespace vistle
 
