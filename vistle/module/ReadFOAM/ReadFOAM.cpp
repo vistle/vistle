@@ -143,8 +143,12 @@ bool ReadFOAM::parameterChanged(Parameter *p)
       //print out a list of boundary patches to Vistle Console
       std::stringstream meshdir;
       meshdir << casedir << "/constant/polyMesh"; //<< m_case.constantdir << "/polyMesh";
-      sendInfo("Listing Boundary Patches!");
       Boundaries bounds = loadBoundary(meshdir.str());
+      if (bounds.valid) {
+         sendInfo("boundary patches:");
+      } else {
+         sendInfo("No global boundary file was found");
+      }
       for (int i=0;i<bounds.boundaries.size();++i) {
          std::stringstream info;
          info << bounds.boundaries[i].index<< " ## " << bounds.boundaries[i].name;
