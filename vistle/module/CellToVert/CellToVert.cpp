@@ -42,6 +42,7 @@ bool CellToVert::compute() {
       if (out) {
          out->copyAttributes(data);
          addObject("data_out", out);
+         passThroughObject("grid_out", grid);
       }
    }
 
