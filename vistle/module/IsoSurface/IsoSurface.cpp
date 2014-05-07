@@ -32,9 +32,23 @@
 //#include <thrust/system/cuda/vector.h>
 //#endif
 
+#ifdef USE_OMP
+#ifndef _OPENMP
+#error "no OpenMP support"
+#endif
 #include <thrust/system/omp/vector.h>
 #include <thrust/system/omp/execution_policy.h>
-#include <util/openmp.h>
+#endif
+
+#ifdef USE_TBB
+#include <thrust/system/tbb/vector.h>
+#include <thrust/system/tbb/execution_policy.h>
+#endif
+
+#ifdef USE_CPP
+#include <thrust/system/cpp/vector.h>
+#include <thrust/system/cpp/execution_policy.h>
+#endif
 
 MODULE_MAIN(IsoSurface)
 
@@ -179,19 +193,6 @@ template<class Data>
 struct process_Cell {
    process_Cell(Data &data) : m_data(data) {
 
-      Index totalnumvertices = 0;
-      if (!m_data.m_numVertices.empty()) {
-         totalnumvertices += m_data.m_numVertices.back();
-      }
-
-      if (!m_data.m_LocationList.empty()) {
-         totalnumvertices += m_data.m_LocationList.back();
-      }
-
-      m_data.m_xCoordinateVector->resize(totalnumvertices);
-      m_data.m_yCoordinateVector->resize(totalnumvertices);
-      m_data.m_zCoordinateVector->resize(totalnumvertices);
-
       m_data.m_xpointer = m_data.m_xCoordinateVector->data();
       m_data.m_ypointer = m_data.m_yCoordinateVector->data();
       m_data.m_zpointer = m_data.m_zCoordinateVector->data();
@@ -200,11 +201,12 @@ struct process_Cell {
    Data &m_data;
 
    __host__ __device__
-   int operator()(Index ValidCellIndex) {
+   void operator()(Index ValidCellIndex) {
 
       Index CellNr = m_data.m_ValidCellVector[ValidCellIndex];
       Index Cellbegin = m_data.m_el[CellNr];
       Index Cellend = m_data.m_el[CellNr+1];
+      Index numVert = m_data.m_numVertices[ValidCellIndex];
 
       switch (m_data.m_tl[CellNr]) {
 
@@ -405,86 +407,74 @@ struct process_Cell {
 
          case UnstructuredGrid::POLYHEDRON: {
 
-#if 0
-            Vector interpolationValues[CellNr];
             int sidebegin = -1;
-            int j = 0;
-
-            int flag = 0;
-
-            Vector newv[Cellend-Cellbegin];
-            for (int idx = Cellbegin; idx < Cellend; idx ++) {
-
-               newv[idx-Cellbegin][0] = m_data.m_x[m_data.m_cl[idx]];
-               newv[idx-Cellbegin][1] = m_data.m_y[m_data.m_cl[idx]];
-               newv[idx-Cellbegin][2] = m_data.m_z[m_data.m_cl[idx]];
-            }
-
+            Vector middleVector(0,0,0);
             bool vertexSaved=false;
             Vector savedVertex;
-            for (int i = Cellbegin; i < Cellend; i++) {
+            int j = 0;
+            int flag = 0;
+            Index outIdx = m_data.m_LocationList[ValidCellIndex];
+            for (Index i = Cellbegin; i < Cellend; i++) {
 
-               if (m_data.m_cl[i] == sidebegin){// Wenn die Seite endet
+               const Index c1 = m_data.m_cl[i];
+               const Index c2 = m_data.m_cl[i+1];
+               if (c1 == sidebegin) { // Wenn die Seite endet
 
                   sidebegin = -1;
                   if (vertexSaved) {
-                     interpolationValues[j] = savedVertex;
-                     ++j;
+                     m_data.m_xpointer[outIdx] = savedVertex[0];
+                     m_data.m_ypointer[outIdx] = savedVertex[1];
+                     m_data.m_zpointer[outIdx] = savedVertex[2];
+                     outIdx += 2;
                      vertexSaved=false;
                   }
                   continue;
                } else if(sidebegin == -1) { //Wenn die Neue Seite beginnt
 
                   flag = 0;
-                  sidebegin = m_data.m_cl[i];
+                  sidebegin = c1;
                }
 
-               if (m_data.m_volumedata[m_data.m_cl[i]] <= m_data.m_isovalue && m_data.m_volumedata[m_data.m_cl[i+1]] > m_data.m_isovalue) {
+               auto d1 = m_data.m_volumedata[c1], d2 = m_data.m_volumedata[c2];
+               Vector v1(m_data.m_x[c1], m_data.m_y[c1], m_data.m_z[c1]);
+               Vector v2(m_data.m_x[c2], m_data.m_y[c2], m_data.m_z[c2]);
+               if (d1 <= m_data.m_isovalue && d2 > m_data.m_isovalue) {
 
-                  interpolationValues[j] = interp(m_data.m_isovalue, newv[i-Cellbegin], newv[i+1-Cellbegin],m_data.m_volumedata[m_data.m_cl[i]], m_data.m_volumedata[m_data.m_cl[i+1]] );
+                  const Vector v = interp(m_data.m_isovalue, v1, v2, d1, d2);
+                  middleVector += v;
+                  m_data.m_xpointer[outIdx] = v[0];
+                  m_data.m_ypointer[outIdx] = v[1];
+                  m_data.m_zpointer[outIdx] = v[2];
+                  ++outIdx;
                   ++j;
                   flag = 1;
-               } else if(m_data.m_volumedata[m_data.m_cl[i]] > m_data.m_isovalue && m_data.m_volumedata[m_data.m_cl[i+1]] <= m_data.m_isovalue){
+               } else if (d1 > m_data.m_isovalue && d2 <= m_data.m_isovalue) {
 
+                  const Vector v = interp(m_data.m_isovalue, v1, v2, d1, d2);
+                  middleVector += v;
+                  ++j;
                   if (flag == 1) { //fall 2 nach fall 1
 
-                     interpolationValues[j] = interp(m_data.m_isovalue, newv[i-Cellbegin], newv[i+1-Cellbegin], m_data.m_volumedata[m_data.m_cl[i]], m_data.m_volumedata[m_data.m_cl[i+1]] );
-                     ++j;
+                     m_data.m_xpointer[outIdx] = v[0];
+                     m_data.m_ypointer[outIdx] = v[1];
+                     m_data.m_zpointer[outIdx] = v[2];
+                     outIdx+=2;
                   } else { //fall 2 zuerst
 
-                     savedVertex= interp(m_data.m_isovalue, newv[i-Cellbegin], newv[i+1-Cellbegin], m_data.m_volumedata[m_data.m_cl[i]], m_data.m_volumedata[m_data.m_cl[i+1]]);
+                     savedVertex = v;
                      vertexSaved=true;
                   }
-
                }
-
-            }
-
-            Vector middleVector(0,0,0);
-            for (int i = 0; i < j; i++) {
-
-               middleVector += interpolationValues[i];
             }
             middleVector /= j;
 
-            int k = 0;
-            for (int i = 0; i < m_data.m_numVertices[ValidCellIndex]; i+=3) {
+            for (int i = 2; i < numVert; i+=3) {
 
-               m_data.m_xpointer[m_data.m_LocationList[ValidCellIndex]+i] = interpolationValues[k][0];
-               m_data.m_ypointer[m_data.m_LocationList[ValidCellIndex]+i] = interpolationValues[k][1];
-               m_data.m_zpointer[m_data.m_LocationList[ValidCellIndex]+i] = interpolationValues[k][2];
-
-               m_data.m_xpointer[m_data.m_LocationList[ValidCellIndex]+i+1] = interpolationValues[k+1][0];
-               m_data.m_ypointer[m_data.m_LocationList[ValidCellIndex]+i+1] = interpolationValues[k+1][1];
-               m_data.m_zpointer[m_data.m_LocationList[ValidCellIndex]+i+1] = interpolationValues[k+1][2];
-
-               m_data.m_xpointer[m_data.m_LocationList[ValidCellIndex]+i+2] = middleVector[0];
-               m_data.m_ypointer[m_data.m_LocationList[ValidCellIndex]+i+2] = middleVector[1];
-               m_data.m_zpointer[m_data.m_LocationList[ValidCellIndex]+i+2] = middleVector[2];
-
-               k+=2;
+               const Index idx = m_data.m_LocationList[ValidCellIndex]+i;
+               m_data.m_xpointer[idx] = middleVector[0];
+               m_data.m_ypointer[idx] = middleVector[1];
+               m_data.m_zpointer[idx] = middleVector[2];
             }
-#endif
          }
          break;
       }
@@ -719,13 +709,13 @@ class Leveller {
          case 0: {
 
             HostData HD(m_isoValue, dataobj->x(), m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
-            calculateSurface<HostData, decltype(thrust::omp::par)>(HD);
-
-            if (!HD.m_numVertices.empty())
-               totalNumVertices += HD.m_numVertices.back();
-
-            if (!HD.m_LocationList.empty())
-               totalNumVertices += HD.m_LocationList.back();
+#if defined(USE_OMP)
+            totalNumVertices = calculateSurface<HostData, decltype(thrust::omp::par)>(HD);
+#elif defined(USE_TBB)
+            totalNumVertices = calculateSurface<HostData, decltype(thrust::tbb::par)>(HD);
+#else
+            totalNumVertices = calculateSurface<HostData, decltype(thrust::cpp::par)>(HD);
+#endif
 
             m_triangles->d()->x[0] = HD.m_xCoordinateVector;
             m_triangles->d()->x[1] = HD.m_yCoordinateVector;
@@ -736,13 +726,7 @@ class Leveller {
          case 1: {
 
             DeviceData DD(m_isoValue, dataobj->x(), m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
-            //calculateSurface<DeviceData, decltype(thrust::cuda::par)>(DD);
-
-            if (!DD.m_numVertices.empty())
-               totalNumVertices += DD.m_numVertices.back();
-
-            if (!DD.m_LocationList.empty())
-               totalNumVertices += DD.m_LocationList.back();
+            // totalNumVertices = calculateSurface<DeviceData, decltype(thrust::cuda::par)>(DD);
 
             m_triangles->x().resize(totalNumVertices);
             out_x = m_triangles->x().data();
@@ -797,8 +781,15 @@ class Leveller {
          if (!data.m_LocationList.empty())
             totalNumVertices += data.m_LocationList.back();
 
+
+         data.m_xCoordinateVector->resize(totalNumVertices);
+         data.m_yCoordinateVector->resize(totalNumVertices);
+         data.m_zCoordinateVector->resize(totalNumVertices);
+
          thrust::counting_iterator<Index> start(0), finish(numValidCells);
          thrust::for_each(pol(), start, finish, process_Cell<Data>(data));
+
+         return totalNumVertices;
       }
 
    void addData(Object::const_ptr obj) {
