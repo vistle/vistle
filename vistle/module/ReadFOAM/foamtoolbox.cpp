@@ -78,6 +78,15 @@ BOOST_FUSION_ADAPT_STRUCT(
    (index_t, internalFaces)
 )
 
+static bool is_directory(const bf::path &p) {
+   try {
+      return bf::is_directory(p);
+   } catch (const bf::filesystem_error &e) {
+      std::cerr << "is_directory: " << e.what() << std::endl;
+      return false;
+   }
+}
+
 class FilteringStreamDeleter {
  public:
    FilteringStreamDeleter(bi::filtering_istream *f, std::ifstream *s)
@@ -115,7 +124,7 @@ boost::shared_ptr<std::istream> getStreamForFile(const std::string &filename) {
 boost::shared_ptr<std::istream> getStreamForFile(const std::string &dir, const std::string &basename) {
 
    bf::path zipped(dir + "/" + basename + ".gz");
-   if (bf::exists(zipped) && !bf::is_directory(zipped))
+   if (bf::exists(zipped) && !::is_directory(zipped))
       return getStreamForFile(zipped.string());
    else
       return getStreamForFile(dir + "/" + basename);
@@ -165,7 +174,7 @@ bool checkMeshDirectory(CaseInfo &info, const std::string &meshdir, bool time) {
 
    //std::cerr << "checking meshdir " << meshdir << std::endl;
    bf::path p(meshdir);
-   if (!bf::is_directory(p)) {
+   if (!::is_directory(p)) {
       std::cerr << meshdir << " is not a directory" << std::endl;
       return false;
    }
@@ -179,7 +188,7 @@ bool checkMeshDirectory(CaseInfo &info, const std::string &meshdir, bool time) {
       std::string stem = ent.stem().string();
       std::string ext = ent.extension().string();
       if (stem == "points" || stem == "faces" || stem == "owner" || stem == "neighbour") {
-         if (bf::is_directory(*it) || (!ext.empty() && ext != ".gz")) {
+         if (::is_directory(*it) || (!ext.empty() && ext != ".gz")) {
             std::cerr << "ignoring " << *it << std::endl;
          } else {
             meshfiles[stem] = bf::path(*it).string();
@@ -218,7 +227,7 @@ bool checkSubDirectory(CaseInfo &info, const std::string &timedir, bool time) {
       std::cerr << "timestep directory " << timedir << " does not exist" << std::endl;
       return false;
    }
-   if (!bf::is_directory(timedir)) {
+   if (!::is_directory(timedir)) {
       std::cerr << "timestep directory " << timedir << " is not a directory" << std::endl;
       return false;
    }
@@ -227,7 +236,7 @@ bool checkSubDirectory(CaseInfo &info, const std::string &timedir, bool time) {
          it != bf::directory_iterator();
          ++it) {
       bf::path p(*it);
-      if (bf::is_directory(*it)) {
+      if (::is_directory(*it)) {
          std::string name = p.filename().string();
          if (name == "polyMesh") {
             if (!checkMeshDirectory(info, p.string(), time))
@@ -254,7 +263,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
       std::cerr << "case directory " << casedir << " does not exist" << std::endl;
       return false;
    }
-   if (!bf::is_directory(casedir)) {
+   if (!::is_directory(casedir)) {
       std::cerr << "case directory " << casedir << " is not a directory" << std::endl;
       return false;
    }
@@ -263,7 +272,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
    for (bf::directory_iterator it(dir);
          it != bf::directory_iterator();
          ++it) {
-      if (bf::is_directory(*it)) {
+      if (::is_directory(*it)) {
          if (isProcessorDir(bf::basename(it->path())))
             ++num_processors;
       }
@@ -302,7 +311,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
    for (bf::directory_iterator it(dir);
          it != bf::directory_iterator();
          ++it) {
-      if (bf::is_directory(*it)) {
+      if (::is_directory(*it)) {
          std::string bn = it->path().filename().string();
          if (isTimeDir(bn)) {
             double t = atof(bn.c_str());
@@ -345,7 +354,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
    for (bf::directory_iterator it(dir);
          it != bf::directory_iterator();
          ++it) {
-      if (bf::is_directory(*it)) {
+      if (::is_directory(*it)) {
          std::string bn = it->path().filename().string();
          if (isTimeDir(bn)) {
             double t = atof(bn.c_str());
