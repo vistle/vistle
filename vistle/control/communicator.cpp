@@ -112,6 +112,8 @@ bool Communicator::sendHub(const message::Message &message) {
 
    if (getRank() == 0)
       return message::send(m_hubSocket, message);
+   else
+      return true;
 }
 
 
