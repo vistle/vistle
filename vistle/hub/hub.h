@@ -23,7 +23,6 @@ class Hub {
 
    bool init(int argc, char *argv[]);
    bool processScript();
-   bool startUi();
    bool dispatch();
    bool sendMessage(boost::shared_ptr<socket> sock, const message::Message &msg);
    unsigned short port() const;
@@ -39,6 +38,7 @@ class Hub {
    StateTracker &stateTracker();
 
 private:
+   bool startUi(const std::string &uipath);
    bool startServer();
    bool startAccept();
    void handleAccept(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
@@ -61,7 +61,6 @@ private:
    std::map<process_handle, int> m_processMap;
    bool m_managerConnected;
 
-   std::string m_uiPath;
    std::string m_scriptPath;
    bool m_quitting;
 

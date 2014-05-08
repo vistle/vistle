@@ -397,11 +397,10 @@ bool Hub::init(int argc, char *argv[]) {
          std::string cmd = "vistle_gui";
          if (start_tui)
             cmd = "blower";
-         m_uiPath = bindir + "/" + cmd;
+         std::string uipath = bindir + "/" + cmd;
+         startUi(uipath);
       }
    }
-
-   startUi();
 
    if (argc > 1)
       m_scriptPath = argv[1];
@@ -427,20 +426,20 @@ bool Hub::init(int argc, char *argv[]) {
    return true;
 }
 
-bool Hub::startUi() {
+bool Hub::startUi(const std::string &uipath) {
 
    std::stringstream s;
    s << this->port();
    std::string port = s.str();
 
    std::vector<std::string> args;
-   args.push_back(m_uiPath);
+   args.push_back(uipath);
    args.push_back("-from-vistle");
    args.push_back("localhost");
    args.push_back(port);
-   auto pid = vistle::spawn_process(m_uiPath, args);
+   auto pid = vistle::spawn_process(uipath, args);
    if (!pid) {
-      CERR << "failed to spawn UI " << m_uiPath << std::endl;
+      CERR << "failed to spawn UI " << uipath << std::endl;
       return false;
    }
 
