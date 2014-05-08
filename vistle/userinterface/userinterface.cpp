@@ -168,7 +168,8 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
       case message::Message::SETID: {
          const message::SetId *id = static_cast<const message::SetId *>(message);
          m_id = id->getId();
-         message::DefaultSender::init(m_id, 0);
+         assert(m_id > 0);
+         message::DefaultSender::init(-m_id, 0);
          //std::cerr << "received new UI id: " << m_id << std::endl;
          break;
       }
