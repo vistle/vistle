@@ -10,3 +10,6 @@
 [submodule "3rdparty/eigen3"]
 	path = 3rdparty/eigen3
 	url = git://github.com/vistle/eigen.git
+[submodule "3rdparty/thrust"]
+	path = 3rdparty/thrust
+	url = git://github.com/thrust/thrust.git

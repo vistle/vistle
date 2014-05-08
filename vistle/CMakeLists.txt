@@ -46,7 +46,8 @@ endif(WIN32)
 find_package(PythonLibs)
 
 find_package(TBB)
-find_package(Thrust)
+#find_package(Thrust REQUIRED)
+set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/../3rdparty/thrust")
 
 #find_package(Eigen3 REQUIRED)
 set(EIGEN3_INCLUDE_PATH "../3rdparty")
