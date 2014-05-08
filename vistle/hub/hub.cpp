@@ -370,6 +370,12 @@ bool Hub::init(int argc, char *argv[]) {
    {
       // start UI
       bool start_gui = true;
+      if (const char *pbs_env = getenv("PBS_ENVIRONMENT")) {
+          if (std::string("PBS_INTERACTIVE") != pbs_env) {
+              start_gui = false;
+              CERR << "apparently running in PBS batch mode - not starting UI" << std::endl;
+          }
+      }
       bool start_tui = false;
       if (argc > 1) {
          bool haveUiArg = true;
