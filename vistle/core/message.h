@@ -8,6 +8,7 @@
 
 
 #include <util/enum.h>
+#include <util/directory.h>
 #include "object.h"
 #include "scalar.h"
 #include "paramvector.h"
@@ -37,7 +38,7 @@ class V_COREEXPORT DefaultSender {
       static DefaultSender s_instance;
 };
 
-typedef std::array<char, 32> module_name_t;
+typedef std::array<char, ModuleNameLength> module_name_t;
 typedef std::array<char, 32> port_name_t;
 typedef std::array<char, 32> param_name_t;
 typedef std::array<char, 256> param_value_t;
@@ -686,11 +687,15 @@ BOOST_STATIC_ASSERT(sizeof(Trace) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT ModuleAvailable: public Message {
 
  public:
-   ModuleAvailable(const std::string &name);
+   ModuleAvailable(const std::string &name, const std::string &path = std::string());
    const char *name() const;
+   const char *path() const;
+   int hub() const;
 
  private:
+   int m_hub;
    module_name_t m_name;
+   text_t m_path;
 };
 BOOST_STATIC_ASSERT(sizeof(ModuleAvailable) <= Message::MESSAGE_SIZE);
 

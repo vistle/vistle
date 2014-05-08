@@ -6,6 +6,8 @@
 
 #include <boost/interprocess/ipc/message_queue.hpp>
 
+#include <util/directory.h>
+
 #include <core/statetracker.h>
 #include <core/message.h>
 #include <core/messagequeue.h>
@@ -51,11 +53,6 @@ class V_CONTROLEXPORT ModuleManager {
    int currentExecutionCount();
    int newExecutionCount();
 
-   struct AvailableModule {
-
-       std::string name;
-       std::string path;
-   };
    std::vector<AvailableModule> availableModules() const;
 
    std::vector<int> getRunningList() const;
@@ -106,6 +103,7 @@ class V_CONTROLEXPORT ModuleManager {
    bool handle(const message::ObjectReceivePolicy &receivePolicy);
    bool handle(const message::SchedulingPolicy &schedulingPolicy);
    bool handle(const message::ReducePolicy &reducePolicy);
+   bool handle(const message::ModuleAvailable &avail);
 
    std::string m_bindir;
 
@@ -113,7 +111,6 @@ class V_CONTROLEXPORT ModuleManager {
    const int m_size;
    const std::vector<std::string> m_hosts;
 
-   typedef std::map<std::string, AvailableModule> AvailableMap;
    AvailableMap m_availableMap;
 
    struct Module {

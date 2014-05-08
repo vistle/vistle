@@ -976,16 +976,28 @@ bool Trace::on() const {
    return m_on;
 }
 
-ModuleAvailable::ModuleAvailable(const std::string &name)
+ModuleAvailable::ModuleAvailable(const std::string &name, const std::string &path)
 : Message(Message::MODULEAVAILABLE, sizeof(ModuleAvailable))
+, m_hub(0)
 {
 
    COPY_STRING(m_name, name);
+   COPY_STRING(m_path, path);
+}
+
+int ModuleAvailable::hub() const {
+
+   return m_hub;
 }
 
 const char *ModuleAvailable::name() const {
 
     return m_name.data();
+}
+
+const char *ModuleAvailable::path() const {
+
+   return m_path.data();
 }
 
 LockUi::LockUi(bool locked)

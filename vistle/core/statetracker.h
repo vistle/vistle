@@ -85,7 +85,11 @@ class V_COREEXPORT StateTracker {
    std::vector<char> getState() const;
 
    struct AvailableModule {
+       int hub;
        std::string name;
+       std::string path;
+
+       AvailableModule() : hub(0) {}
    };
    const std::vector<AvailableModule> &availableModules() const;
 

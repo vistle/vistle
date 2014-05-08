@@ -70,40 +70,14 @@ int ModuleManager::getSize() const {
 
 bool ModuleManager::scanModules(const std::string &dir) {
 
-    namespace bf = boost::filesystem;
-    bf::path p(dir);
-    if (!bf::is_directory(p)) {
-        CERR << "scanModules: " << dir << " is not a directory" << std::endl;
-        return false;
-    }
-
-    for (bf::directory_iterator it(p);
-            it != bf::directory_iterator();
-            ++it) {
-
-        bf::path ent(*it);
-        std::string stem = ent.stem().string();
-        if (stem.size() > sizeof(message::module_name_t)) {
-            CERR << "scanModules: skipping " << stem << " - name too long" << std::endl;
-        }
-
-        std::string ext = ent.extension().string();
-
-        AvailableModule mod;
-        mod.name = stem;
-        mod.path = bf::path(*it).string();
-
-        auto prev = m_availableMap.find(stem);
-        if (prev != m_availableMap.end()) {
-            CERR << "scanModules: overriding " << stem << ", " << prev->second.path << " -> " << mod.path << std::endl;
-        }
-        m_availableMap[stem] = mod;
-    }
-
+#ifdef SCAN_MODULES_ON_HUB
     return true;
+#else
+    return vistle::scanModules(dir, m_availableMap);
+#endif
 }
 
-std::vector<ModuleManager::AvailableModule> ModuleManager::availableModules() const {
+std::vector<AvailableModule> ModuleManager::availableModules() const {
 
     std::vector<AvailableModule> ret;
     for (auto mod: m_availableMap) {
@@ -272,10 +246,19 @@ bool ModuleManager::sendMessage(const int moduleId, const message::Message &mess
       return false;
    }
 
-
    if (it->second.local)
       it->second.sendQueue->send(message);
 
+   return true;
+}
+
+bool ModuleManager::handle(const message::ModuleAvailable &avail) {
+
+   AvailableModule m;
+   m.name = avail.name();
+   m.path = avail.path();
+   m_availableMap[avail.name()] = m;
+   sendHub(avail);
    return true;
 }
 

@@ -1,4 +1,4 @@
-find_package(Boost 1.40 REQUIRED COMPONENTS chrono system)
+find_package(Boost 1.40 REQUIRED COMPONENTS chrono system filesystem)
 
 set(util_SOURCES
    coRestraint.cpp
@@ -6,6 +6,7 @@ set(util_SOURCES
    stopwatch.cpp
    tools.cpp
    spawnprocess.cpp
+   directory.cpp
 )
 
 set(util_HEADERS
@@ -19,6 +20,7 @@ set(util_HEADERS
    valgrind.h
    vecstreambuf.h
    spawnprocess.h
+   directory.h
 )
 
 add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})

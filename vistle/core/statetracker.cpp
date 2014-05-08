@@ -644,7 +644,9 @@ bool StateTracker::handlePriv(const message::SendText &info)
 bool StateTracker::handlePriv(const message::ModuleAvailable &avail) {
 
     AvailableModule mod;
+    mod.hub = avail.hub();
     mod.name = avail.name();
+    mod.path = avail.path();
 
     m_availableModules.push_back(mod);
 

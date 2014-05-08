@@ -294,7 +294,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          sendHub(Identify(Identify::MANAGER));
          auto avail = moduleManager().availableModules();
          for(const auto &mod: avail) {
-            sendHub(message::ModuleAvailable(mod.name));
+            sendHub(message::ModuleAvailable(mod.name, mod.path));
          }
          break;
       }
@@ -511,6 +511,12 @@ bool Communicator::handleMessage(const message::Message &message) {
 
       case Message::REDUCEPOLICY: {
          const ReducePolicy &m = static_cast<const ReducePolicy &>(message);
+         result = m_moduleManager->handle(m);
+         break;
+      }
+
+      case Message::MODULEAVAILABLE: {
+         const ModuleAvailable &m = static_cast<const ModuleAvailable &>(message);
          result = m_moduleManager->handle(m);
          break;
       }

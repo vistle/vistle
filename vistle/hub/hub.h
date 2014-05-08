@@ -6,6 +6,7 @@
 #include <core/porttracker.h>
 #include <core/statetracker.h>
 #include <util/spawnprocess.h>
+#include <util/directory.h>
 #include "uimanager.h"
 
 namespace vistle {
@@ -63,6 +64,8 @@ private:
    std::string m_uiPath;
    std::string m_scriptPath;
    bool m_quitting;
+
+   AvailableMap m_availableModules;
 };
 
 }

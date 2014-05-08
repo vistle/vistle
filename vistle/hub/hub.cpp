@@ -275,6 +275,10 @@ bool Hub::handleMessage(shared_ptr<asio::ip::tcp::socket> sock, const message::M
             case Identify::MANAGER: {
                assert(!m_managerConnected);
                m_managerConnected = true;
+               for (auto &am: m_availableModules) {
+                  message::ModuleAvailable m(am.second.name, am.second.path);
+                  sendMaster(m);
+               }
                processScript();
                break;
             }
@@ -358,6 +362,11 @@ std::string hostname() {
 bool Hub::init(int argc, char *argv[]) {
 
    std::string bindir = getbindir(argc, argv);
+
+#ifdef SCAN_MODULES_ON_HUB
+   scanModules(bindir + "/../libexec/module", m_availableModules);
+#endif
+
    {
       // start UI
       bool start_gui = true;
