@@ -1027,7 +1027,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case Message::SETPARAMETER: {
          auto mm = static_cast<const SetParameter &>(m);
-         s << ", name: " << mm.getName();
+         s << ", dest: " << mm.getModule() << ", name: " << mm.getName();
          break;
       }
       case Message::CREATEPORT: {

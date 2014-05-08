@@ -696,7 +696,7 @@ bool ModuleManager::handle(const message::SetParameter &setParam) {
       else
          queueMessage(setParam);
    } else {
-      // notification of owning module about a changed parameter
+      // notification by owning module about a changed parameter
       if (param) {
          setParam.apply(param);
       } else {

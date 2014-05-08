@@ -69,11 +69,13 @@ void VistleConnection::setParameter(int id, const std::string &name, const T &va
 {
    mutex_lock lock(m_mutex);
    vistle::Parameter *generic = getParameter(id, name);
-   if (!generic)
+   if (!generic) {
+      std::cerr << "VistleConnection:setParameter: no such parameter: " << id << ":" << name << std::endl;
       return;
+   }
    vistle::ParameterBase<T> *p = dynamic_cast<vistle::ParameterBase<T> *>(generic);
    if (!p) {
-      std::cerr << "parameter not of appropriate type: " << id << ":" << name << std::endl;
+      std::cerr << "VistleConnection:setParameter: parameter not of appropriate type: " << id << ":" << name << std::endl;
       return;
    }
 
