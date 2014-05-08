@@ -706,7 +706,7 @@ class V_COREEXPORT LockUi: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(LockUi) <= Message::MESSAGE_SIZE);
 
-union Buffer {
+union V_COREEXPORT Buffer {
 
    Buffer(): msg(Message::INVALID, Message::MESSAGE_SIZE) {}
 
