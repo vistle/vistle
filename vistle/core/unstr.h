@@ -15,6 +15,8 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
 
    // make sure that these types match those from COVISE: src/kernel/do/coDoUnstructuredGrid.h
    enum Type {
+      GHOST_BIT = 0x80,
+
       NONE        =  0,
       BAR         =  1,
       TRIANGLE    =  2,
@@ -26,11 +28,11 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
       POINT       = 10,
       POLYHEDRON  = 11,
 
-      GHOST_TETRAHEDRON = TETRAHEDRON|128,
-      GHOST_PYRAMID     =     PYRAMID|128,
-      GHOST_PRISM       =       PRISM|128,
-      GHOST_HEXAHEDRON  =  HEXAHEDRON|128,
-      GHOST_POLYHEDRON  =  POLYHEDRON|128
+      GHOST_TETRAHEDRON = TETRAHEDRON|GHOST_BIT,
+      GHOST_PYRAMID     =     PYRAMID|GHOST_BIT,
+      GHOST_PRISM       =       PRISM|GHOST_BIT,
+      GHOST_HEXAHEDRON  =  HEXAHEDRON|GHOST_BIT,
+      GHOST_POLYHEDRON  =  POLYHEDRON|GHOST_BIT
    };
 
    static const int NumVertices[POLYHEDRON+1];
