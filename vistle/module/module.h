@@ -1,10 +1,14 @@
 #ifndef MODULE_H
 #define MODULE_H
 
+#if 0
 #ifndef MPICH_IGNORE_CXX_SEEK
 #define MPICH_IGNORE_CXX_SEEK
 #endif
 #include <mpi.h>
+#else
+#include <boost/mpi.hpp>
+#endif
 
 #include <iostream>
 #include <list>
@@ -21,6 +25,8 @@
 #include <module/export.h>
 
 namespace vistle {
+
+class StateTracker;
 
 namespace message {
 class Message;
@@ -54,7 +60,7 @@ class V_MODULEEXPORT Module {
    void setCurrentParameterGroup(const std::string &group);
    const std::string &currentParameterGroup() const;
 
-   bool addParameterGeneric(const std::string &name, Parameter *parameter);
+   Parameter *addParameterGeneric(const std::string &name, boost::shared_ptr<Parameter> parameter);
    bool updateParameter(const std::string &name, const Parameter *parameter, const message::SetParameter *inResponseTo, Parameter::RangeType rt=Parameter::Value);
 
    template<class T>
@@ -178,7 +184,7 @@ protected:
 
    std::string getModuleName(int id) const;
 
-   virtual bool parameterChanged(Parameter *p);
+   virtual bool parameterChanged(const Parameter *p);
 
    int openmpThreads() const;
    void setOpenmpThreads(int, bool updateParam=true);
@@ -189,12 +195,13 @@ protected:
    virtual bool reduce(int timestep); //< do reduction for timestep (-1: global) - called on all ranks
 
  private:
+   boost::shared_ptr<StateTracker> m_stateTracker;
    int m_receivePolicy;
    int m_schedulingPolicy;
    int m_reducePolicy;
    int m_executionDepth; //< number of input ports that have sent ExecutionProgress::Start
 
-   Parameter *findParameter(const std::string &name) const;
+   boost::shared_ptr<Parameter> findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;
    Port *findOutputPort(const std::string &name) const;
 
@@ -207,14 +214,11 @@ protected:
    std::map<std::string, Port*> inputPorts;
 
    std::string m_currentParameterGroup;
-   std::map<std::string, Parameter *> parameters;
+   std::map<std::string, boost::shared_ptr<Parameter>> parameters;
    ObjectCache m_cache;
    ObjectCache::CacheMode m_defaultCacheMode;
    void updateCacheMode();
    bool m_syncMessageProcessing;
-
-   typedef std::map<int, std::string> OtherModuleMap;
-   OtherModuleMap m_otherModuleMap;
 
    void updateOutputMode();
    std::streambuf *m_origStreambuf, *m_streambuf;

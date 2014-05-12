@@ -4,7 +4,7 @@
 
 namespace vistle {
 
-bool scanModules(const std::string &dir, AvailableMap &available) {
+bool scanModules(const std::string &dir, int hub, AvailableMap &available) {
 
    namespace bf = boost::filesystem;
    bf::path p(dir);
@@ -34,11 +34,12 @@ bool scanModules(const std::string &dir, AvailableMap &available) {
       mod.name = stem;
       mod.path = bf::path(*it).string();
 
-      auto prev = available.find(stem);
+      AvailableModule::Key key(hub, stem);
+      auto prev = available.find(key);
       if (prev != available.end()) {
          std::cerr << "scanModules: overriding " << stem << ", " << prev->second.path << " -> " << mod.path << std::endl;
       }
-      available[stem] = mod;
+      available[key] = mod;
    }
 
    return true;

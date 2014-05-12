@@ -70,9 +70,9 @@ void MainWindow::setModified(bool state)
    setWindowModified(state);
 }
 
-void MainWindow::moduleAvailable(const QString &mod) {
+void MainWindow::moduleAvailable(int hub, const QString &mod, const QString &path) {
 
-    m_moduleBrowser->addModule(mod);
+    m_moduleBrowser->addModule(hub, mod, path);
 }
 
 void MainWindow::setFilename(const QString &filename)

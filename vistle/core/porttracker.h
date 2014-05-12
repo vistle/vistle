@@ -8,6 +8,7 @@
 
 #include "export.h"
 #include "port.h"
+#include "message.h"
 
 namespace vistle {
 
@@ -44,6 +45,8 @@ class V_COREEXPORT PortTracker {
    std::vector<Port *> getPorts(const int moduleID, Port::Type type) const;
    std::vector<Port *> getInputPorts(const int moduleID) const;
    std::vector<Port *> getOutputPorts(const int moduleID) const;
+
+   std::vector<message::Buffer> removeConnectionsWithModule(int moduleId);
 
  protected:
 

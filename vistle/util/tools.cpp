@@ -2,9 +2,12 @@
 #include <iostream>
 #include <cstdlib>
 
+#include <boost/lexical_cast.hpp>
+
 #ifndef _WIN32
 #include <execinfo.h>
 #include <unistd.h>
+#include <signal.h>
 #else
 #include <util/sysdep.h>
 #endif
@@ -41,6 +44,8 @@ std::string backtrace()
 
 bool attach_debugger() {
 
+   return true;
+
 #ifdef _WIN32
    DebugBreak();
    return true;
@@ -50,6 +55,8 @@ bool attach_debugger() {
       std::cerr << "failed to fork for attaching debugger" << std::endl;
       return false;
    } else if (pid == 0) {
+      execlp("attach_debugger_vistle.sh", "attach_debugger_vistle.sh", boost::lexical_cast<std::string>(getppid()).c_str(), nullptr);
+#if 0
       std::stringstream cmd;
       cmd << "attach_debugger_vistle.sh";
       cmd << " ";
@@ -62,7 +69,14 @@ bool attach_debugger() {
          exit(ret);
       }
       return false;
+#else
+      std::cerr << "failed to execute debugger: " << strerror(errno) << std::endl;
+      exit(1);
+#endif
    } else {
+      kill(getpid(), SIGSTOP);
+      sleep(1);
+#if 0
       const int wait = 30;
       unsigned int remain = sleep(wait);
       if (remain == 0) {
@@ -70,8 +84,18 @@ bool attach_debugger() {
          return false;
       }
       sleep(3);
+#endif
       return true;
    }
+#endif
+}
+
+bool parentProcessDied() {
+
+#ifdef _WIN32
+   return false;
+#else
+   return kill(getppid(), 0) == -1;
 #endif
 }
 

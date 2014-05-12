@@ -7,6 +7,7 @@ set(util_SOURCES
    tools.cpp
    spawnprocess.cpp
    directory.cpp
+   sleep.cpp
 )
 
 set(util_HEADERS
@@ -21,6 +22,7 @@ set(util_HEADERS
    vecstreambuf.h
    spawnprocess.h
    directory.h
+   sleep.h
 )
 
 add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})

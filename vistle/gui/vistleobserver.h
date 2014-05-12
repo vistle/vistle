@@ -17,13 +17,13 @@ class VistleObserver: public QObject, public vistle::StateObserver
 	Q_OBJECT
 
 signals:
-void moduleAvailable_s(QString name);
-        void newModule_s(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName);
+   void moduleAvailable_s(int hub, QString name, QString path);
+   void newModule_s(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName);
 	void deleteModule_s(int moduleId);
    void moduleStateChanged_s(int moduleId, int stateBits);
 	void newParameter_s(int moduleId, QString parameterName);
-        void parameterValueChanged_s(int moduleId, QString parameterName);
-        void parameterChoicesChanged_s(int moduleId, QString parameterName);
+   void parameterValueChanged_s(int moduleId, QString parameterName);
+   void parameterChoicesChanged_s(int moduleId, QString parameterName);
    void newPort_s(int moduleId, QString portName);
 	void newConnection_s(int fromId, QString fromName,
                    		 int toId, QString toName);
@@ -37,7 +37,7 @@ void moduleAvailable_s(QString name);
 
 public:
    VistleObserver(QObject *parent=0);
-   void moduleAvailable(const std::string &name);
+   void moduleAvailable(int hub, const std::string &name, const std::string &path);
    void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName);
 	void deleteModule(int moduleId);
 	void moduleStateChanged(int moduleId, int stateBits);

@@ -5,7 +5,7 @@ add_definitions(-DVISTLE_CONTROL)
 
 set(control_SOURCES
    portmanager.cpp
-   modulemanager.cpp
+   clustermanager.cpp
    communicator.cpp
    executor.cpp
 )
@@ -14,7 +14,7 @@ set(control_HEADERS
    communicator.h
    executor.h
    export.h
-   modulemanager.h
+   clustermanager.h
    portmanager.h
 )
 

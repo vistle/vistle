@@ -17,11 +17,10 @@ class UiClient {
       ~UiClient();
 
       int id() const;
-      void operator()();
       void cancel();
       bool done() const;
       UiManager &manager() const;
-      boost::asio::ip::tcp::socket &socket();
+      boost::shared_ptr<boost::asio::ip::tcp::socket> socket();
 
    private:
       UiClient(const UiClient &o);

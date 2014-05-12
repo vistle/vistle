@@ -58,11 +58,13 @@ void DataFlowView::dropEvent(QDropEvent *event)
         QByteArray encoded = event->mimeData()->data(ModuleBrowser::mimeFormat());
         QDataStream stream(&encoded, QIODevice::ReadOnly);
 
-        while (!stream.atEnd())
-        {
+        while (!stream.atEnd()) {
+
+           int hubId;
+           stream >> hubId;
            QString moduleName;
            stream >> moduleName;
-           scene()->addModule(moduleName, newPos);
+           scene()->addModule(hubId, moduleName, newPos);
         }
     }
 }

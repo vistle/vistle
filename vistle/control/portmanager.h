@@ -9,12 +9,12 @@
 
 namespace vistle {
 
-class ModuleManager;
+class ClusterManager;
 
 class V_CONTROLEXPORT PortManager: public PortTracker {
 
  public:
-   PortManager(ModuleManager *moduleManager);
+   PortManager(ClusterManager *clusterManager);
    virtual ~PortManager();
 
    virtual Port * getPort(const int moduleID, const std::string & name) const;
@@ -22,7 +22,7 @@ class V_CONTROLEXPORT PortManager: public PortTracker {
 
  private:
 
-   ModuleManager *m_moduleManager;
+   ClusterManager *m_clusterManager;
 };
 } // namespace vistle
 

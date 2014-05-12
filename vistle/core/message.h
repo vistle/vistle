@@ -23,6 +23,21 @@ class Port;
 
 namespace message {
 
+struct Id {
+
+   enum Reserved {
+      ModuleBase = 1, //< >= ModuleBase: modules
+      Invalid = 0,
+      Broadcast = -1, //< master is broadcasting
+      NextHop = -2,
+      UI = -3,
+      ForBroadcast = -4, //< to master for broadcasting
+      LocalManager = -5,
+      LocalHub = -6,
+      MasterHub = -7, //< < MasterHub: slave hubs
+   };
+};
+
 class V_COREEXPORT DefaultSender {
 
    public:
@@ -49,6 +64,7 @@ typedef std::array<char, 900> text_t;
 
 typedef boost::uuids::uuid uuid_t;
 
+
 class V_COREEXPORT Message {
    // this is POD
 
@@ -58,20 +74,25 @@ class V_COREEXPORT Message {
    static const size_t MESSAGE_SIZE = 1024; // fixed message size is imposed by boost::interprocess::message_queue
 
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Type,
-      (INVALID)
+      (INVALID) // keep 1st
+      (ANY) //< for Trace: enables tracing of all message types -- keep 2nd
       (IDENTIFY)
+      (SETID)
       (TRACE)
       (SPAWN)
-      (EXEC)
-      (STARTED)
+      (SPAWNPREPARED)
       (KILL)
       (QUIT)
+      (STARTED)
       (MODULEEXIT)
+      (BUSY)
+      (IDLE)
+      (EXECUTIONPROGRESS)
       (COMPUTE)
       (REDUCE)
-      (CREATEPORT)
       (ADDOBJECT)
       (OBJECTRECEIVED)
+      (ADDPORT)
       (CONNECT)
       (DISCONNECT)
       (ADDPARAMETER)
@@ -79,24 +100,23 @@ class V_COREEXPORT Message {
       (SETPARAMETERCHOICES)
       (PING)
       (PONG)
-      (BUSY)
-      (IDLE)
       (BARRIER)
       (BARRIERREACHED)
-      (SETID)
-      (RESETMODULEIDS)
-      (REPLAYFINISHED)
       (SENDTEXT)
       (OBJECTRECEIVEPOLICY)
       (SCHEDULINGPOLICY)
       (REDUCEPOLICY)
-      (EXECUTIONPROGRESS)
       (MODULEAVAILABLE)
       (LOCKUI)
+      (REPLAYFINISHED)
+      (NumMessageTypes) // keep last
    )
 
    Message(const Type type, const unsigned int size);
    // Message (or its subclasses) may not require destructors
+
+   //! processing flags for messages of a type, composed of RoutingFlags
+   unsigned long typeFlags() const;
 
    //! message uuid - copied to related messages (i.e. responses or errors)
    const uuid_t &uuid() const;
@@ -116,6 +136,11 @@ class V_COREEXPORT Message {
    size_t size() const;
    //! broadacast to all ranks?
    bool broadcast() const;
+   
+   //! id of message destination
+   int destId() const;
+   //! set id of message destination
+   void setDestId(int id);
 
   protected:
    //! broadcast to all ranks?
@@ -131,7 +156,10 @@ class V_COREEXPORT Message {
    int m_senderId;
    //! sender rank
    int m_rank;
+   //! destination ID
+   int m_destId;
 };
+V_ENUM_OUTPUT_OP(Type, Message)
 
 //! 
 class V_COREEXPORT Identify: public Message {
@@ -142,6 +170,7 @@ class V_COREEXPORT Identify: public Message {
          (UI)
          (MANAGER)
          (HUB)
+         (SLAVEHUB)
          );
 
    Identify(Identity id=UNKNOWN);
@@ -151,6 +180,7 @@ class V_COREEXPORT Identify: public Message {
    Identity m_identity;
 };
 BOOST_STATIC_ASSERT(sizeof(Identify) <= Message::MESSAGE_SIZE);
+V_ENUM_OUTPUT_OP(Identity, Identify)
 
 //! debug: request a reply containing character 'c'
 class V_COREEXPORT Ping: public Message {
@@ -169,7 +199,7 @@ BOOST_STATIC_ASSERT(sizeof(Ping) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT Pong: public Message {
 
  public:
-   Pong(const char c, const int module);
+   Pong(const Ping &ping);
 
    char getCharacter() const;
    int getDestination() const;
@@ -184,9 +214,9 @@ BOOST_STATIC_ASSERT(sizeof(Pong) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT Spawn: public Message {
 
  public:
-   Spawn(const int spawnID,
-         const std::string &name, int size=-1, int baserank=-1, int rankskip=-1);
+   Spawn(int hubId, const std::string &name, int size=-1, int baserank=-1, int rankskip=-1);
 
+   int hubId() const;
    int spawnId() const;
    void setSpawnId(int id);
    const char *getName() const;
@@ -195,8 +225,10 @@ class V_COREEXPORT Spawn: public Message {
    int getRankSkip() const;
 
  private:
+   //! id of hub where to spawn module
+   int m_hub;
    //! ID of module to spawn
-   int spawnID;
+   int m_spawnId;
    //! number of ranks in communicator
    int mpiSize;
    //! first rank on which to spawn process
@@ -208,21 +240,26 @@ class V_COREEXPORT Spawn: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Spawn) <= Message::MESSAGE_SIZE);
 
-//! execute a command via Vistle hub
-class V_COREEXPORT Exec: public Message {
+//! notification of manager that spawning is possible (i.e. shmem has been set up)
+class V_COREEXPORT SpawnPrepared: public Message {
 
  public:
-   Exec(const std::string &pathname, const std::vector<std::string> &args, int moduleId=0);
-   std::string pathname() const;
-   std::vector<std::string> args() const;
-   int moduleId() const;
+   SpawnPrepared(const Spawn &spawn);
+
+   int hubId() const;
+   int spawnId() const;
+   void setSpawnId(int id);
+   const char *getName() const;
 
  private:
-   int m_moduleId;
-   int nargs;
-   text_t path_and_args;
+   //! id of hub where to spawn module
+   int m_hub;
+   //! ID of module to spawn
+   int m_spawnId;
+   //! name of module to be started
+   module_name_t name;
 };
-BOOST_STATIC_ASSERT(sizeof(Exec) <= Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(SpawnPrepared) <= Message::MESSAGE_SIZE);
 
 //! acknowledge that a module has been spawned
 class V_COREEXPORT Started: public Message {
@@ -278,7 +315,7 @@ BOOST_STATIC_ASSERT(sizeof(ModuleExit) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT Compute: public Message {
 
  public:
-   Compute(const int module, const int count=-1);
+   Compute(const int module=Id::Broadcast, const int count=-1);
 
    void setModule(int );
    int getModule() const;
@@ -302,6 +339,7 @@ private:
    Reason m_reason; //!< reason why this message was generated
 };
 BOOST_STATIC_ASSERT(sizeof(Compute) <= Message::MESSAGE_SIZE);
+V_ENUM_OUTPUT_OP(Reason, Compute)
 
 //! trigger reduce() for a module
 class V_COREEXPORT Reduce: public Message {
@@ -337,17 +375,17 @@ class V_COREEXPORT Idle: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Idle) <= Message::MESSAGE_SIZE);
 
-class V_COREEXPORT CreatePort: public Message {
+class V_COREEXPORT AddPort: public Message {
 
  public:
-   CreatePort(const Port *port);
+   AddPort(const Port *port);
    Port *getPort() const;
  private:
    port_name_t m_name;
    int m_porttype;
    int m_flags;
 };
-BOOST_STATIC_ASSERT(sizeof(CreatePort) <= Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(AddPort) <= Message::MESSAGE_SIZE);
 
 //! add an object to the input queue of an input port
 class V_COREEXPORT AddObject: public Message {
@@ -437,7 +475,7 @@ BOOST_STATIC_ASSERT(sizeof(Disconnect) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT AddParameter: public Message {
    public:
-      AddParameter(const Parameter *param, const std::string &moduleName);
+      AddParameter(const Parameter &param, const std::string &moduleName);
 
       const char *getName() const;
       const char *moduleName() const;
@@ -445,7 +483,7 @@ class V_COREEXPORT AddParameter: public Message {
       const char *group() const;
       int getParameterType() const;
       int getPresentation() const;
-      Parameter *getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
+      boost::shared_ptr<Parameter> getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
 
    private:
       param_name_t name;
@@ -460,7 +498,7 @@ BOOST_STATIC_ASSERT(sizeof(AddParameter) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT SetParameter: public Message {
    public:
       SetParameter(const int module,
-            const std::string & name, const Parameter *param, Parameter::RangeType rt=Parameter::Value);
+            const std::string & name, const boost::shared_ptr<Parameter> param, Parameter::RangeType rt=Parameter::Value);
       SetParameter(const int module,
             const std::string & name, const Integer value);
       SetParameter(const int module,
@@ -488,7 +526,7 @@ class V_COREEXPORT SetParameter: public Message {
       Float getFloat() const;
       ParamVector getVector() const;
 
-      bool apply(Parameter *param) const;
+      bool apply(boost::shared_ptr<Parameter> param) const;
 
    private:
       const int module;
@@ -517,7 +555,7 @@ class V_COREEXPORT SetParameterChoices: public Message {
       int getNumChoices() const;
       const char *getChoice(int idx) const;
 
-      bool apply(Parameter *param) const;
+      bool apply(boost::shared_ptr<Parameter> param) const;
 
    private:
       const int module;
@@ -537,7 +575,7 @@ BOOST_STATIC_ASSERT(sizeof(Barrier) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT BarrierReached: public Message {
 
  public:
-   BarrierReached();
+   BarrierReached(const uuid_t &uuid);
 };
 BOOST_STATIC_ASSERT(sizeof(BarrierReached) <= Message::MESSAGE_SIZE);
 
@@ -552,13 +590,6 @@ class V_COREEXPORT SetId: public Message {
    const int m_id;
 };
 BOOST_STATIC_ASSERT(sizeof(SetId) <= Message::MESSAGE_SIZE);
-
-class V_COREEXPORT ResetModuleIds: public Message {
-
- public:
-   ResetModuleIds();
-};
-BOOST_STATIC_ASSERT(sizeof(ResetModuleIds) <= Message::MESSAGE_SIZE);
 
 class V_COREEXPORT ReplayFinished: public Message {
 
@@ -602,6 +633,7 @@ private:
    bool m_truncated;
 };
 BOOST_STATIC_ASSERT(sizeof(SendText) <= Message::MESSAGE_SIZE);
+V_ENUM_OUTPUT_OP(TextType, SendText)
 
 class V_COREEXPORT ObjectReceivePolicy: public Message {
 
@@ -617,6 +649,7 @@ private:
    Policy m_policy;
 };
 BOOST_STATIC_ASSERT(sizeof(ObjectReceivePolicy) <= Message::MESSAGE_SIZE);
+V_ENUM_OUTPUT_OP(Policy, ObjectReceivePolicy)
 
 class V_COREEXPORT SchedulingPolicy: public Message {
 
@@ -632,7 +665,9 @@ private:
    Schedule m_policy;
 };
 BOOST_STATIC_ASSERT(sizeof(SchedulingPolicy) <= Message::MESSAGE_SIZE);
+V_ENUM_OUTPUT_OP(Schedule, SchedulingPolicy)
 
+//! control whether/when prepare() and reduce() are called
 class V_COREEXPORT ReducePolicy: public Message {
 
  public:
@@ -647,18 +682,28 @@ class V_COREEXPORT ReducePolicy: public Message {
    Reduce m_reduce;
 };
 BOOST_STATIC_ASSERT(sizeof(ReducePolicy) <= Message::MESSAGE_SIZE);
+V_ENUM_OUTPUT_OP(Reduce, ReducePolicy)
 
+//! steer execution stages
+/*!
+ * module ranks notify the cluster manager about their execution stage
+ *
+ *
+ */
 class V_COREEXPORT ExecutionProgress: public Message {
 
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Progress,
-      (Start)
+      (Start) //< execution starts
+      (StartCompute) //< compute() will be called for first timestep/iteration
+      (FinishCompute) //< compute() has been called for final timestep/iteration
       (Iteration)
       (Timestep)
-      (Finish)
+      (Finish) //< compute() or - if applicable, reduce() - has finished
    )
    ExecutionProgress(Progress stage, int step=-1);
    Progress stage() const;
+   void setStage(Progress stage);
    int step() const;
 
  private:
@@ -666,19 +711,20 @@ class V_COREEXPORT ExecutionProgress: public Message {
    int m_step;
 };
 BOOST_STATIC_ASSERT(sizeof(ExecutionProgress) <= Message::MESSAGE_SIZE);
+V_ENUM_OUTPUT_OP(Progress, ExecutionProgress)
 
 //! enable/disable message tracing for a module
 class V_COREEXPORT Trace: public Message {
 
  public:
-   Trace(int module, int type, bool onoff);
+   Trace(int module, Message::Type type, bool onoff);
    int module() const;
-   int messageType() const;
+   Type messageType() const;
    bool on() const;
 
  private:
    int m_module;
-   int m_messageType;
+   Type m_messageType;
    bool m_on;
 };
 BOOST_STATIC_ASSERT(sizeof(Trace) <= Message::MESSAGE_SIZE);
@@ -687,7 +733,7 @@ BOOST_STATIC_ASSERT(sizeof(Trace) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT ModuleAvailable: public Message {
 
  public:
-   ModuleAvailable(const std::string &name, const std::string &path = std::string());
+   ModuleAvailable(int hub, const std::string &name, const std::string &path = std::string());
    const char *name() const;
    const char *path() const;
    int hub() const;
@@ -713,7 +759,7 @@ BOOST_STATIC_ASSERT(sizeof(LockUi) <= Message::MESSAGE_SIZE);
 
 union V_COREEXPORT Buffer {
 
-   Buffer(): msg(Message::INVALID, Message::MESSAGE_SIZE) {}
+   Buffer(): msg(Message::ANY, Message::MESSAGE_SIZE) {}
 
    Buffer(const Message &msg) {
 
@@ -733,13 +779,64 @@ BOOST_STATIC_ASSERT(sizeof(Buffer) <= Message::MESSAGE_SIZE);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 
-V_ENUM_OUTPUT_OP(Type, Message)
-V_ENUM_OUTPUT_OP(Reason, Compute)
-V_ENUM_OUTPUT_OP(TextType, SendText)
-V_ENUM_OUTPUT_OP(Policy, ObjectReceivePolicy)
-V_ENUM_OUTPUT_OP(Schedule, SchedulingPolicy)
-V_ENUM_OUTPUT_OP(Reduce, ReducePolicy)
-V_ENUM_OUTPUT_OP(Progress, ExecutionProgress)
+enum RoutingFlags {
+
+   Track                = 0x000001,
+   NodeLocal            = 0x000002,
+   ClusterLocal         = 0x000004,
+
+   DestMasterHub        = 0x000008,
+   DestSlaveHub         = 0x000010,
+   DestLocalHub         = 0x000020,
+   DestHub              = DestMasterHub|DestSlaveHub,
+   DestUi               = 0x000040,
+   DestModules          = 0x000080,
+   DestMasterManager    = 0x000100,
+   DestSlaveManager     = 0x000200,
+   DestLocalManager     = 0x000400,
+   DestManager          = DestSlaveManager|DestMasterManager,
+
+   Special              = 0x000800,
+   RequiresSubscription = 0x001000,
+
+   //Broadcast            = DestHub|DestUi|DestManager,
+   Broadcast            = 0x100000,
+   BroadcastModule      = Broadcast|DestModules,
+
+   HandleOnNode         = 0x002000,
+   HandleOnRank0        = 0x004000,
+   HandleOnHub          = 0x008000,
+   HandleOnMaster       = 0x010000,
+   HandleOnDest         = 0x020000,
+
+   QueueIfUnhandled     = 0x040000,
+   TriggerQueue         = 0x080000,
+};
+
+class V_COREEXPORT Router {
+
+   friend class Message;
+
+ public:
+   static Router &the();
+   static void init(Identify::Identity identity, int id);
+
+   bool toUi(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
+   bool toMasterHub(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN, int senderHub=Id::Invalid);
+   bool toSlaveHub(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN, int senderHub=Id::Invalid);
+   bool toManager(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
+   bool toModule(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
+   bool toTracker(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
+   bool toHandler(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
+
+ private:
+   static unsigned rt[Message::NumMessageTypes];
+   Router();
+   Identify::Identity m_identity;
+   int m_id;
+
+   static void initRoutingTable();
+};
 
 } // namespace message
 } // namespace vistle

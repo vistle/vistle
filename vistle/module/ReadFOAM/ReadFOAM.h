@@ -110,7 +110,7 @@ class ReadFOAM: public vistle::Module
       vistle::FloatParameter *m_starttime, *m_stoptime;
       vistle::IntParameter *m_timeskip;
       vistle::IntParameter *m_readGrid, *m_readBoundary;
-      std::vector<vistle::StringParameter *> m_fieldOut , m_boundaryOut;
+      std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
       //Ports
       vistle::Port *m_gridOut, *m_boundOut;
       std::vector<vistle::Port *> m_volumeDataOut, m_boundaryDataOut;
@@ -120,7 +120,7 @@ class ReadFOAM: public vistle::Module
 
       std::vector<std::string> getFieldList() const;
 
-      bool parameterChanged(vistle::Parameter *p);
+      bool parameterChanged(const vistle::Parameter *p);
       bool readDirectory(const std::string &dir, int processor, int timestep);
       bool buildGhostCells(int processor, GhostMode mode);
       bool buildGhostCellData(int processor);

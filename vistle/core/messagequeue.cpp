@@ -1,6 +1,10 @@
 #include <sstream>
 #include <iomanip>
 
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/thread/thread_time.hpp>
+
+#include <util/tools.h>
 #include "message.h"
 #include "messagequeue.h"
 #include "shm.h"
@@ -70,11 +74,24 @@ void MessageQueue::receive(Message &msg) {
 
    size_t recvSize = 0;
    unsigned priority = 0;
+#ifdef NO_CHECK_FOR_DEAD_PARENT
    m_mq.receive(&msg, message::Message::MESSAGE_SIZE, recvSize, priority);
+#else
+   while (!m_mq.timed_receive(&msg, message::Message::MESSAGE_SIZE, recvSize, priority,
+                              boost::get_system_time() + boost::posix_time::seconds(5))) {
+      if (parentProcessDied())
+         throw except::parent_died();
+   }
+#endif
    vassert(recvSize == message::Message::MESSAGE_SIZE);
 }
 
 bool MessageQueue::tryReceive(Message &msg) {
+
+#ifndef NO_CHECK_FOR_DEAD_PARENT
+   if (parentProcessDied())
+      throw except::parent_died();
+#endif
 
    size_t recvSize = 0;
    unsigned priority = 0;

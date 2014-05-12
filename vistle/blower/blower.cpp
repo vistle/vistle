@@ -8,6 +8,8 @@
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 
+#include <util/sleep.h>
+
 using namespace vistle;
 
 class UiRunner {
@@ -30,7 +32,10 @@ class UiRunner {
             if (m_done)
                break;
          }
-         usleep(10000);
+      }
+      {
+         boost::unique_lock<boost::mutex> lock(m_mutex);
+         m_done = true;
       }
    }
 
@@ -47,8 +52,8 @@ class StatePrinter: public StateObserver {
       : m_out(out)
       {}
 
-   void moduleAvailable(const std::string &name) {
-       m_out << "   module: " << name << std::endl;
+   void moduleAvailable(int hub, const std::string &name, const std::string &path) {
+       m_out << "   hub: " << hub << ", module: " << name << " (" << path << ")" << std::endl;
    }
 
    void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) {

@@ -6,11 +6,11 @@ namespace vistle {
 template<class T>
 bool Module::setParameter(const std::string &name, const T &value, const message::SetParameter *inResponseTo) {
 
-   ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(findParameter(name));
+   auto p = boost::dynamic_pointer_cast<ParameterBase<T>>(findParameter(name));
    if (!p)
       return false;
 
-   return setParameter(p, value, inResponseTo);
+   return setParameter(p.get(), value, inResponseTo);
 }
 
 template<class T>
@@ -36,11 +36,11 @@ bool Module::setParameterMaximum(ParameterBase<T> *param, const T &maximum) {
 template<class T>
 bool Module::setParameterRange(const std::string &name, const T &minimum, const T &maximum) {
 
-   ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(findParameter(name));
+   auto p = boost::dynamic_pointer_cast<ParameterBase<T>>(findParameter(name));
    if (!p)
       return false;
 
-   return setParameterRange(p, minimum, maximum);
+   return setParameterRange(p.get(), minimum, maximum);
 }
 
 template<class T>
@@ -75,7 +75,7 @@ bool Module::setParameterRange(ParameterBase<T> *param, const T &minimum, const 
 template<class T>
 bool Module::getParameter(const std::string &name, T &value) const {
 
-   if (ParameterBase<T> *p = dynamic_cast<ParameterBase<T> *>(findParameter(name))) {
+   if (auto p = boost::dynamic_pointer_cast<ParameterBase<T>>(findParameter(name))) {
       value = p->getValue();
    } else {
       std::cerr << "Module::getParameter(" << name << "): type failure" << std::endl;

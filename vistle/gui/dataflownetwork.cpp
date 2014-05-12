@@ -51,7 +51,7 @@ DataFlowNetwork::~DataFlowNetwork()
  * \param modName
  * \param dropPos
  */
-void DataFlowNetwork::addModule(QString modName, QPointF dropPos)
+void DataFlowNetwork::addModule(int hub, QString modName, QPointF dropPos)
 {
     Module *module = new Module(0, modName);
     ///\todo improve how the data such as the name is set in the module.
@@ -60,7 +60,8 @@ void DataFlowNetwork::addModule(QString modName, QPointF dropPos)
     module->setPositionValid();
     module->setStatus(Module::SPAWNING);
 
-    vistle::message::Spawn spawnMsg(0, modName.toUtf8().constData());
+    vistle::message::Spawn spawnMsg(hub, modName.toUtf8().constData());
+    spawnMsg.setDestId(vistle::message::Id::MasterHub); // to master, for module id generation
     module->setSpawnUuid(spawnMsg.uuid());
     m_vistleConnection->sendMessage(spawnMsg);
 

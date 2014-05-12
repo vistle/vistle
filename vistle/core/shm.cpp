@@ -89,7 +89,7 @@ std::string Shm::instanceName(const std::string &host, unsigned short port) {
 
 Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
          message::MessageQueue * mq, bool create)
-   : m_name(name), m_created(create), m_moduleID(m), m_rank(r), m_objectID(0) {
+   : m_name(name), m_remove(create), m_moduleID(m), m_rank(r), m_objectID(0) {
 
       if (create) {
          m_shm = new managed_shared_memory(open_or_create, m_name.c_str(), size);
@@ -106,7 +106,7 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
 
 Shm::~Shm() {
 
-   if (m_created) {
+   if (m_remove) {
       shared_memory_object::remove(m_name.c_str());
       std::cerr << "removed shm " << m_name << std::endl;
    }
@@ -120,6 +120,11 @@ void Shm::detach() {
 
    delete s_singleton;
    s_singleton = NULL;
+}
+
+void Shm::setRemoveOnDetach() {
+
+   m_remove = true;
 }
 
 std::string Shm::shmIdFilename() {

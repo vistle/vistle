@@ -25,7 +25,7 @@ public:
     DataFlowNetwork(vistle::VistleConnection *conn, QObject *parent = 0);
     ~DataFlowNetwork();
 
-    void addModule(QString modName, QPointF dropPos);
+    void addModule(int hub, QString modName, QPointF dropPos);
 
     void addConnection(Port *portFrom, Port *portTo, bool sendToController=false);
     void removeConnection(Port *portFrom, Port *portTo, bool sendToController=false);

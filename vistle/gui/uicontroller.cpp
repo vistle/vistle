@@ -92,8 +92,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    connect(&m_observer, SIGNAL(parameterValueChanged_s(int, QString)),
            SLOT(parameterValueChanged(int, QString)));
 
-   connect(&m_observer, SIGNAL(moduleAvailable_s(QString)),
-           &m_mainWindow, SLOT(moduleAvailable(QString)));
+   connect(&m_observer, SIGNAL(moduleAvailable_s(int, QString, QString)),
+           &m_mainWindow, SLOT(moduleAvailable(int, QString, QString)));
 
    m_mainWindow.show();
 }
@@ -104,6 +104,9 @@ UiController::~UiController()
 
 void UiController::finish() {
 
+   delete m_scene;
+   m_scene = nullptr;
+
    m_vistleConnection->cancel();
    m_thread->join();
    delete m_thread;
@@ -112,14 +115,11 @@ void UiController::finish() {
    delete m_pythonMod;
    m_pythonMod = nullptr;
 
-   delete m_vistleConnection;
-   m_vistleConnection = nullptr;
-
    delete m_ui;
    m_ui = nullptr;
 
-   delete m_scene;
-   m_scene = nullptr;
+   delete m_vistleConnection;
+   m_vistleConnection = nullptr;
 
    delete m_python;
    m_python = nullptr;
@@ -249,8 +249,8 @@ void UiController::newParameter(int moduleId, QString parameterName)
 #if 1
     if (parameterName == "_position") {
        if (Module *m = m_scene->findModule(moduleId)) {
-          vistle::Parameter *p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
-          vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p);
+          auto p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
+          auto vp = boost::dynamic_pointer_cast<vistle::VectorParameter>(p);
           if (vp && vp->isDefault() && m->isPositionValid()) {
              m->sendPosition();
           }
@@ -267,8 +267,8 @@ void UiController::parameterValueChanged(int moduleId, QString parameterName)
 #endif
    if (parameterName == "_position") {
       if (Module *m = m_scene->findModule(moduleId)) {
-         vistle::Parameter *p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
-         vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p);
+         auto p = vistle::VistleConnection::the().getParameter(moduleId, "_position");
+         auto vp = boost::dynamic_pointer_cast<vistle::VectorParameter>(p);
          if (vp && !vp->isDefault()) {
             vistle::ParamVector pos = vp->getValue();
             m->setPos(pos[0], pos[1]);

@@ -35,7 +35,7 @@ public:
 public slots:
     void setFilename(const QString &filename);
     void setModified(bool state);
-    void moduleAvailable(const QString &module);
+    void moduleAvailable(int hub, const QString &module, const QString &path);
 
 signals:
     void quitRequested(bool &allowed);

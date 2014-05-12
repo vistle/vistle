@@ -93,6 +93,7 @@ class V_COREEXPORT Shm {
    static Shm & attach(const std::string &shmname, const int moduleID, const int rank,
                          message::MessageQueue *messageQueue = NULL);
    void detach();
+   void setRemoveOnDetach();
 
    const std::string &name() const;
 
@@ -123,7 +124,7 @@ class V_COREEXPORT Shm {
 
    void_allocator *m_allocator;
    std::string m_name;
-   bool m_created;
+   bool m_remove;
    const int m_moduleID;
    const int m_rank;
    int m_objectID;

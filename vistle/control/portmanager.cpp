@@ -1,13 +1,13 @@
 #include "portmanager.h"
-#include "modulemanager.h"
+#include "clustermanager.h"
 #include <core/message.h>
 #include <iostream>
 #include <algorithm>
 
 namespace vistle {
 
-PortManager::PortManager(ModuleManager *moduleManager)
-: m_moduleManager(moduleManager)
+PortManager::PortManager(ClusterManager *clusterManager)
+: m_clusterManager(clusterManager)
 {
 }
 
@@ -24,11 +24,9 @@ Port * PortManager::getPort(const int moduleID,
    if (p != std::string::npos) {
       Port *parent = getPort(moduleID, name.substr(0, p-1));
       if (parent && (parent->flags() & Port::MULTI)) {
-         std::stringstream idxstr(name.substr(p+1));
-         size_t idx=0;
-         idxstr >> idx;
+         size_t idx=boost::lexical_cast<size_t>(name.substr(p+1));
          Port *port = parent->child(idx);
-         m_moduleManager->sendMessage(moduleID, message::CreatePort(port));
+         m_clusterManager->sendMessage(moduleID, message::AddPort(port));
          return port;
       }
    }
@@ -59,11 +57,11 @@ void PortManager::removeConnections(const int moduleID) {
          removeConnection(port, other);
          removeConnection(other, port);
          message::Disconnect d1(port->getModuleID(), port->getName(), other->getModuleID(), other->getName());
-         m_moduleManager->sendAll(d1);
-         m_moduleManager->sendUi(d1);
+         m_clusterManager->sendAll(d1);
+         m_clusterManager->sendUi(d1);
          message::Disconnect d2(other->getModuleID(), other->getName(), port->getModuleID(), port->getName());
-         m_moduleManager->sendAll(d2);
-         m_moduleManager->sendUi(d2);
+         m_clusterManager->sendAll(d2);
+         m_clusterManager->sendUi(d2);
          if (cl.size() == oldsize) {
             std::cerr << "failed to remove all connections for module " << moduleID << ", still left: " << cl.size() << std::endl;
             for (int i=0; i<cl.size(); ++i) {

@@ -27,9 +27,10 @@ static T min(T a, T b) { return a<b ? a : b; }
 DefaultSender DefaultSender::s_instance;
 
 DefaultSender::DefaultSender()
-: m_id(-1)
+: m_id(Id::Invalid)
 , m_rank(-1)
 {
+   Router::the();
 }
 
 int DefaultSender::id() {
@@ -57,16 +58,30 @@ static boost::uuids::random_generator s_uuidGenerator = boost::uuids::random_gen
 
 Message::Message(const Type t, const unsigned int s)
 : m_broadcast(false)
-, m_uuid(t == Message::INVALID ? boost::uuids::nil_generator()() : s_uuidGenerator())
+, m_uuid(t == Message::ANY ? boost::uuids::nil_generator()() : s_uuidGenerator())
 , m_size(s)
 , m_type(t)
 , m_senderId(DefaultSender::id())
 , m_rank(DefaultSender::rank())
+, m_destId(Id::NextHop)
 {
 
    assert(m_size <= MESSAGE_SIZE);
+   assert(m_type > INVALID);
+   assert(m_type < NumMessageTypes);
+}
 
-   assert(m_rank >= 0);
+unsigned long Message::typeFlags() const {
+
+   assert(type() > ANY && type() > INVALID && type() < NumMessageTypes);
+   if (type() <= ANY || type() <= INVALID) {
+      return 0;
+   }
+   if (type() >= NumMessageTypes) {
+      return 0;
+   }
+
+   return Router::rt[type()];
 }
 
 const uuid_t &Message::uuid() const {
@@ -87,6 +102,16 @@ int Message::senderId() const {
 void Message::setSenderId(int id) {
 
    m_senderId = id;
+}
+
+int Message::destId() const {
+
+   return m_destId;
+}
+
+void Message::setDestId(int id) {
+
+   m_destId = id;
 }
 
 int Message::rank() const {
@@ -134,9 +159,10 @@ char Ping::getCharacter() const {
    return character;
 }
 
-Pong::Pong(const char c, const int module)
-   : Message(Message::PONG, sizeof(Pong)), character(c), module(module) {
+Pong::Pong(const Ping &ping)
+   : Message(Message::PONG, sizeof(Pong)), character(ping.getCharacter()), module(ping.senderId()) {
 
+   setUuid(ping.uuid());
 }
 
 char Pong::getCharacter() const {
@@ -149,10 +175,11 @@ int Pong::getDestination() const {
    return module;
 }
 
-Spawn::Spawn(const int s,
+Spawn::Spawn(int hub,
              const std::string & n, int mpiSize, int baseRank, int rankSkip)
    : Message(Message::SPAWN, sizeof(Spawn))
-   , spawnID(s)
+   , m_hub(hub)
+   , m_spawnId(Id::Invalid)
    , mpiSize(mpiSize)
    , baseRank(baseRank)
    , rankSkip(rankSkip)
@@ -161,14 +188,19 @@ Spawn::Spawn(const int s,
    COPY_STRING(name, n);
 }
 
+int Spawn::hubId() const {
+
+   return m_hub;
+}
+
 int Spawn::spawnId() const {
 
-   return spawnID;
+   return m_spawnId;
 }
 
 void Spawn::setSpawnId(int id) {
 
-   spawnID = id;
+   m_spawnId = id;
 }
 
 const char * Spawn::getName() const {
@@ -191,52 +223,29 @@ int Spawn::getRankSkip() const {
    return rankSkip;
 }
 
-Exec::Exec(const std::string &pathname, const std::vector<std::string> &args, int id)
-: Message(Message::EXEC, sizeof(Exec))
-, m_moduleId(id)
-, nargs(args.size())
+SpawnPrepared::SpawnPrepared(const Spawn &spawn)
+   : Message(Message::SPAWNPREPARED, sizeof(SpawnPrepared))
+   , m_hub(spawn.hubId())
+   , m_spawnId(spawn.spawnId())
 {
-   memset(path_and_args.data(), '\0', path_and_args.size());
-   char *p = path_and_args.data();
-   char *end = p + path_and_args.size();
-   COPY_STRING(path_and_args, pathname);
-   p += pathname.length()+1;
-   for (const auto &a: args) {
-      if (p + a.length() < end) {
-         memcpy(p, a.data(), a.length());
-         p += a.length()+1;
-      } else {
-         break;
-      }
-   }
+
+   setUuid(spawn.uuid());
+   COPY_STRING(name, std::string(spawn.getName()));
 }
 
-std::string Exec::pathname() const {
+int SpawnPrepared::hubId() const {
 
-   auto end = std::find(path_and_args.data(), path_and_args.data()+path_and_args.size(), '\0');
-   return std::string(path_and_args.data(), end-path_and_args.data());
+   return m_hub;
 }
 
-std::vector<std::string> Exec::args() const {
+int SpawnPrepared::spawnId() const {
 
-   std::vector<std::string> ret;
-
-   auto start = std::find(path_and_args.data(), path_and_args.data()+path_and_args.size(), '\0');
-   if (start < path_and_args.data()+path_and_args.size()) {
-      ++start;
-      while (start < path_and_args.data() + path_and_args.size()) {
-         auto end = std::find(start, path_and_args.data()+path_and_args.size(), '\0');
-         if (ret.size() < nargs)
-            ret.push_back(std::string(start, end-start));
-         start = end+1;
-      }
-   }
-   return ret;
+   return m_spawnId;
 }
 
-int Exec::moduleId() const {
+const char * SpawnPrepared::getName() const {
 
-   return m_moduleId;
+   return name.data();
 }
 
 Started::Started(const std::string &n)
@@ -357,15 +366,15 @@ Idle::Idle()
 : Message(Message::IDLE, sizeof(Idle)) {
 }
 
-CreatePort::CreatePort(const Port *port)
-: Message(Message::CREATEPORT, sizeof(CreatePort))
+AddPort::AddPort(const Port *port)
+: Message(Message::ADDPORT, sizeof(AddPort))
 , m_porttype(port->getType())
 , m_flags(port->flags())
 {
    COPY_STRING(m_name, port->getName());
 }
 
-Port *CreatePort::getPort() const {
+Port *AddPort::getPort() const {
 
    return new Port(senderId(), m_name.data(), static_cast<Port::Type>(m_porttype), m_flags);
 }
@@ -508,10 +517,10 @@ void Disconnect::reverse() {
    std::swap(portAName, portBName);
 }
 
-AddParameter::AddParameter(const Parameter *param, const std::string &modname)
+AddParameter::AddParameter(const Parameter &param, const std::string &modname)
 : Message(Message::ADDPARAMETER, sizeof(AddParameter))
-, paramtype(param->type())
-, presentation(param->presentation())
+, paramtype(param.type())
+, presentation(param.presentation())
 {
    assert(paramtype > Parameter::Unknown);
    assert(paramtype < Parameter::Invalid);
@@ -519,10 +528,10 @@ AddParameter::AddParameter(const Parameter *param, const std::string &modname)
    assert(presentation >= Parameter::Generic);
    assert(presentation <= Parameter::InvalidPresentation);
 
-   COPY_STRING(name, param->getName());
-   COPY_STRING(m_group, param->group());
+   COPY_STRING(name, param.getName());
+   COPY_STRING(m_group, param.group());
    COPY_STRING(module, modname);
-   COPY_STRING(m_description, param->description());
+   COPY_STRING(m_description, param.description());
 }
 
 const char *AddParameter::getName() const {
@@ -555,21 +564,21 @@ const char *AddParameter::group() const {
    return m_group.data();
 }
 
-Parameter *AddParameter::getParameter() const {
+boost::shared_ptr<Parameter> AddParameter::getParameter() const {
 
-   Parameter *p = nullptr;
+   boost::shared_ptr<Parameter> p;
    switch (getParameterType()) {
       case Parameter::Integer:
-         p = new IntParameter(senderId(), getName());
+         p.reset(new IntParameter(senderId(), getName()));
          break;
       case Parameter::Float:
-         p = new FloatParameter(senderId(), getName());
+         p.reset(new FloatParameter(senderId(), getName()));
          break;
       case Parameter::Vector:
-         p = new VectorParameter(senderId(), getName());
+         p.reset(new VectorParameter(senderId(), getName()));
          break;
       case Parameter::String:
-         p = new StringParameter(senderId(), getName());
+         p.reset(new StringParameter(senderId(), getName()));
          break;
       case Parameter::Invalid:
       case Parameter::Unknown:
@@ -577,20 +586,21 @@ Parameter *AddParameter::getParameter() const {
    }
 
    if (p) {
+
       p->setDescription(description());
       p->setGroup(group());
       p->setPresentation(Parameter::Presentation(getPresentation()));
-      return p;
+   } else {
+
+      std::cerr << "AddParameter::getParameter: type " << type() << " not handled" << std::endl;
+      assert("parameter type not supported" == 0);
    }
 
-   std::cerr << "AddParameter::getParameter: type " << type() << " not handled" << std::endl;
-   assert("parameter type not supported" == 0);
-
-   return NULL;
+   return p;
 }
 
 SetParameter::SetParameter(const int module,
-      const std::string &n, const Parameter *param, Parameter::RangeType rt)
+      const std::string &n, const boost::shared_ptr<Parameter> param, Parameter::RangeType rt)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , module(module)
 , paramtype(param->type())
@@ -600,16 +610,16 @@ SetParameter::SetParameter(const int module,
 {
 
    COPY_STRING(name, n);
-   if (const IntParameter *pint = dynamic_cast<const IntParameter *>(param)) {
+   if (const auto pint = boost::dynamic_pointer_cast<const IntParameter>(param)) {
       v_int = pint->getValue(rt);
-   } else if (const FloatParameter *pfloat = dynamic_cast<const FloatParameter *>(param)) {
+   } else if (const auto pfloat = boost::dynamic_pointer_cast<const FloatParameter>(param)) {
       v_scalar = pfloat->getValue(rt);
-   } else if (const VectorParameter *pvec = dynamic_cast<const VectorParameter *>(param)) {
+   } else if (const auto pvec = boost::dynamic_pointer_cast<const VectorParameter>(param)) {
       ParamVector v = pvec->getValue(rt);
       dim = v.dim;
       for (int i=0; i<MaxDimension; ++i)
          v_vector[i] = v[i];
-   } else if (const StringParameter *pstring = dynamic_cast<const StringParameter *>(param)) {
+   } else if (const auto pstring = boost::dynamic_pointer_cast<const StringParameter>(param)) {
       COPY_STRING(v_string, pstring->getValue(rt));
    } else {
       std::cerr << "SetParameter: type " << param->type() << " not handled" << std::endl;
@@ -746,7 +756,7 @@ std::string SetParameter::getString() const {
    return v_string.data();
 }
 
-bool SetParameter::apply(Parameter *param) const {
+bool SetParameter::apply(boost::shared_ptr<vistle::Parameter> param) const {
 
    if (paramtype != param->type()) {
       std::cerr << "SetParameter::apply(): type mismatch for " << param->module() << ":" << param->getName() << std::endl;
@@ -754,19 +764,19 @@ bool SetParameter::apply(Parameter *param) const {
    }
 
    const int rt = rangeType();
-   if (IntParameter *pint = dynamic_cast<IntParameter *>(param)) {
+   if (auto pint = boost::dynamic_pointer_cast<IntParameter>(param)) {
       if (rt == Parameter::Value) pint->setValue(v_int, initialize);
       if (rt == Parameter::Minimum) pint->setMinimum(v_int);
       if (rt == Parameter::Maximum) pint->setMaximum(v_int);
-   } else if (FloatParameter *pfloat = dynamic_cast<FloatParameter *>(param)) {
+   } else if (auto pfloat = boost::dynamic_pointer_cast<FloatParameter>(param)) {
       if (rt == Parameter::Value) pfloat->setValue(v_scalar, initialize);
       if (rt == Parameter::Minimum) pfloat->setMinimum(v_scalar);
       if (rt == Parameter::Maximum) pfloat->setMaximum(v_scalar);
-   } else if (VectorParameter *pvec = dynamic_cast<VectorParameter *>(param)) {
+   } else if (auto pvec = boost::dynamic_pointer_cast<VectorParameter>(param)) {
       if (rt == Parameter::Value) pvec->setValue(ParamVector(dim, &v_vector[0]), initialize);
       if (rt == Parameter::Minimum) pvec->setMinimum(ParamVector(dim, &v_vector[0]));
       if (rt == Parameter::Maximum) pvec->setMaximum(ParamVector(dim, &v_vector[0]));
-   } else if (StringParameter *pstring = dynamic_cast<StringParameter *>(param)) {
+   } else if (auto pstring = boost::dynamic_pointer_cast<StringParameter>(param)) {
       if (rt == Parameter::Value) pstring->setValue(v_string.data(), initialize);
    } else {
       std::cerr << "SetParameter::apply(): type " << param->type() << " not handled" << std::endl;
@@ -802,7 +812,7 @@ const char *SetParameterChoices::getName() const
    return name.data();
 }
 
-bool SetParameterChoices::apply(Parameter *param) const {
+bool SetParameterChoices::apply(boost::shared_ptr<vistle::Parameter> param) const {
 
    if (param->type() != Parameter::Integer
          && param->type() != Parameter::String) {
@@ -830,9 +840,10 @@ Barrier::Barrier()
 {
 }
 
-BarrierReached::BarrierReached()
+BarrierReached::BarrierReached(const vistle::message::uuid_t &uuid)
 : Message(Message::BARRIERREACHED, sizeof(BarrierReached))
 {
+   setUuid(uuid);
 }
 
 SetId::SetId(const int id)
@@ -844,11 +855,6 @@ SetId::SetId(const int id)
 int SetId::getId() const {
 
    return m_id;
-}
-
-ResetModuleIds::ResetModuleIds()
-: Message(Message::RESETMODULEIDS, sizeof(ResetModuleIds))
-{
 }
 
 ReplayFinished::ReplayFinished()
@@ -951,12 +957,17 @@ ExecutionProgress::Progress ExecutionProgress::stage() const {
    return m_stage;
 }
 
+void ExecutionProgress::setStage(ExecutionProgress::Progress stage) {
+
+   m_stage = stage;
+}
+
 int ExecutionProgress::step() const {
 
    return m_step;
 }
 
-Trace::Trace(int module, int messageType, bool onoff)
+Trace::Trace(int module, Message::Type messageType, bool onoff)
 : Message(Message::TRACE, sizeof(Trace))
 , m_module(module)
 , m_messageType(messageType)
@@ -969,7 +980,7 @@ int Trace::module() const {
    return m_module;
 }
 
-int Trace::messageType() const {
+Message::Type Trace::messageType() const {
 
    return m_messageType;
 }
@@ -979,9 +990,9 @@ bool Trace::on() const {
    return m_on;
 }
 
-ModuleAvailable::ModuleAvailable(const std::string &name, const std::string &path)
+ModuleAvailable::ModuleAvailable(int hub, const std::string &name, const std::string &path)
 : Message(Message::MODULEAVAILABLE, sizeof(ModuleAvailable))
-, m_hub(0)
+, m_hub(hub)
 {
 
    COPY_STRING(m_name, name);
@@ -1022,6 +1033,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       << ", type: " << m.type()
       << ", size: " << m.size()
       << ", sender: " << m.senderId()
+      << ", dest: " << m.destId()
       << ", rank: " << m.rank();
 
    switch (m.type()) {
@@ -1045,9 +1057,24 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
          s << ", dest: " << mm.getModule() << ", name: " << mm.getName();
          break;
       }
-      case Message::CREATEPORT: {
-         auto mm = static_cast<const CreatePort &>(m);
+      case Message::SETPARAMETERCHOICES: {
+         auto mm = static_cast<const SetParameterChoices &>(m);
+         s << ", dest: " << mm.getModule() << ", name: " << mm.getName();
+         break;
+      }
+      case Message::ADDPORT: {
+         auto mm = static_cast<const AddPort &>(m);
          s << ", name: " << mm.getPort()->getName();
+         break;
+      }
+      case Message::MODULEAVAILABLE: {
+         auto mm = static_cast<const ModuleAvailable &>(m);
+         s << ", name: " << mm.name() << ", hub: " << mm.hub();
+         break;
+      }
+      case Message::SPAWN: {
+         auto mm = static_cast<const Spawn &>(m);
+         s << ", name: " << mm.getName() << ", id: " << mm.spawnId() << ", hub: " << mm.hubId();
          break;
       }
       default:
@@ -1055,6 +1082,246 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
    }
 
    return s;
+}
+
+
+unsigned Router::rt[Message::NumMessageTypes];
+
+void Router::initRoutingTable() {
+
+   typedef Message M;
+   memset(&rt, '\0', sizeof(rt));
+
+   rt[M::INVALID]               = 0;
+   rt[M::IDENTIFY]              = Special;
+   rt[M::SETID]                 = Special;
+   rt[M::REPLAYFINISHED]        = Special;
+   rt[M::TRACE]                 = Broadcast|Track;
+   rt[M::SPAWN]                 = Track|HandleOnMaster;
+   rt[M::SPAWNPREPARED]         = DestLocalHub|HandleOnHub;
+   rt[M::STARTED]               = Broadcast|Track|DestUi;
+   rt[M::MODULEEXIT]            = Broadcast|Track|DestUi;
+   rt[M::KILL]                  = DestModules|HandleOnDest;
+   rt[M::QUIT]                  = Broadcast|HandleOnMaster|HandleOnHub|HandleOnNode;
+   rt[M::COMPUTE]               = Special|HandleOnMaster;
+   rt[M::REDUCE]                = DestModules;
+   rt[M::MODULEAVAILABLE]       = Track|DestHub|DestUi|HandleOnHub;
+   rt[M::ADDPORT]               = Broadcast|Track|DestUi|TriggerQueue;
+   rt[M::ADDPARAMETER]          = Broadcast|Track|DestUi|TriggerQueue;
+   rt[M::CONNECT]               = Track|Broadcast|QueueIfUnhandled|DestManager;
+   rt[M::DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager;
+   rt[M::SETPARAMETER]          = Track|QueueIfUnhandled|DestManager;
+   rt[M::SETPARAMETERCHOICES]   = Track|QueueIfUnhandled|DestManager;
+   rt[M::PING]                  = DestModules|HandleOnDest;
+   rt[M::PONG]                  = DestUi|HandleOnDest;
+   rt[M::BUSY]                  = Special;
+   rt[M::IDLE]                  = Special;
+   rt[M::LOCKUI]                = DestUi;
+   rt[M::SENDTEXT]              = DestUi|DestMasterHub;
+
+   rt[M::OBJECTRECEIVEPOLICY]   = DestLocalManager|Track;
+   rt[M::SCHEDULINGPOLICY]      = DestLocalManager|Track;
+   rt[M::REDUCEPOLICY]          = DestLocalManager|Track;
+   rt[M::EXECUTIONPROGRESS]     = DestLocalManager|HandleOnRank0;
+
+   rt[M::ADDOBJECT]             = DestLocalManager|HandleOnNode;
+
+   rt[M::BARRIER]               = HandleOnDest;
+   rt[M::BARRIERREACHED]        = HandleOnDest;
+   rt[M::OBJECTRECEIVED]        = HandleOnRank0;
+
+   for (int i=M::ANY+1; i<M::NumMessageTypes; ++i) {
+      if (rt[i] == 0) {
+         std::cerr << "message routing table not initialized for " << (Message::Type)i << std::endl;
+      }
+      assert(rt[i] != 0);
+   }
+}
+
+Router &Router::the() {
+
+   static Router router;
+   return router;
+}
+
+Router::Router() {
+
+   m_identity = Identify::UNKNOWN;
+   m_id = Id::Invalid;
+   initRoutingTable();
+}
+
+void Router::init(Identify::Identity identity, int id) {
+
+   the().m_identity = identity;
+   the().m_id = id;
+}
+
+bool Router::toUi(const Message &msg, Identify::Identity senderType) {
+
+   if (msg.destId() == Id::ForBroadcast)
+      return false;
+   if (msg.destId() >= Id::ModuleBase)
+      return false;
+   if (msg.destId() == Id::Broadcast)
+      return true;
+   if (msg.destId() == Id::UI)
+      return true;
+   const int t = msg.type();
+   if (rt[t] & DestUi)
+      return true;
+   if (rt[t] & Broadcast)
+      return true;
+
+   return false;
+}
+
+bool Router::toMasterHub(const Message &msg, Identify::Identity senderType, int senderHub) {
+
+   if (m_identity != Identify::SLAVEHUB)
+      return false;
+   if (senderType == Identify::HUB)
+      return false;
+
+   if (msg.destId() == Id::ForBroadcast)
+      return true;
+
+   const int t = msg.type();
+   if (rt[t] & DestMasterHub) {
+      if (senderType != Identify::HUB)
+         if (m_identity != Identify::HUB)
+            return true;
+   }
+
+   if (rt[t] & DestSlaveHub) {
+      return true;
+   }
+
+   if (rt[t] & Broadcast) {
+      if (msg.senderId() == m_id)
+         return true;
+      std::cerr << "toMasterHub: sender id: " << msg.senderId() << ", hub: " << senderHub << std::endl;
+      if (senderHub == m_id)
+         return true;
+   }
+
+   return false;
+}
+
+bool Router::toSlaveHub(const Message &msg, Identify::Identity senderType, int senderHub) {
+
+   if (msg.destId() == Id::ForBroadcast)
+      return false;
+
+   if (m_identity != Identify::HUB)
+      return false;
+
+   if (msg.destId() == Id::Broadcast) {
+      return true;
+   }
+
+   const int t = msg.type();
+   if (rt[t] & DestSlaveHub) {
+      return true;
+   }
+
+#if 0
+   if (m_identity == Identify::SLAVEHUB) {
+      if (rt[t] & DestManager)
+         return true;
+   } else if (m_identity == Identify::HUB) {
+      if (rt[t] & DestManager)
+         return true;
+   }
+#endif
+
+   if (rt[t] & Broadcast)
+      return true;
+
+   return false;
+}
+
+bool Router::toManager(const Message &msg, Identify::Identity senderType) {
+
+   const int t = msg.type();
+   if (msg.destId() <= Id::MasterHub) {
+      return false;
+   }
+   if (senderType != Identify::MANAGER) {
+      if (rt[t] & DestManager)
+         return true;
+      if  (rt[t] & DestModules)
+         return true;
+      if (rt[t] & Broadcast)
+         return true;
+   }
+
+   return false;
+}
+
+bool Router::toModule(const Message &msg, Identify::Identity senderType) {
+
+   if (msg.destId() == Id::ForBroadcast)
+      return false;
+
+   const int t = msg.type();
+   if (rt[t] & DestModules)
+      return true;
+   if (rt[t] & Broadcast)
+      return true;
+
+   return false;
+}
+
+bool Router::toTracker(const Message &msg, Identify::Identity senderType) {
+
+   if (msg.destId() == Id::ForBroadcast)
+      return false;
+
+   const int t = msg.type();
+   if (rt[t] & Track) {
+      if (m_identity == Identify::HUB) {
+         return senderType == Identify::MANAGER;
+      }
+      if (m_identity == Identify::SLAVEHUB) {
+         return senderType == Identify::HUB || senderType == Identify::MANAGER;
+      }
+   }
+
+   return false;
+}
+
+bool Router::toHandler(const Message &msg, Identify::Identity senderType) {
+
+   const int t = msg.type();
+   if (msg.destId() == Id::NextHop || msg.destId() == Id::Broadcast || msg.destId() == m_id) {
+      return true;
+   }
+   if (m_identity == Identify::HUB) {
+      if (rt[t] & HandleOnMaster) {
+         return true;
+      }
+      if (rt[t] & DestMasterHub)
+         return true;
+   }
+   if (m_identity == Identify::SLAVEHUB || m_identity == Identify::HUB) {
+      if (rt[t] & HandleOnHub)
+         return true;
+      if (rt[t] & DestLocalHub)
+         return true;
+   }
+   if (m_identity == Identify::SLAVEHUB) {
+      if (rt[t] & DestSlaveHub)
+         return true;
+   }
+   if (m_identity == Identify::MANAGER) {
+      if (m_id == Id::MasterHub)
+         return rt[t] & DestMasterManager;
+      else
+         return rt[t] & DestSlaveManager;
+   }
+
+   return false;
 }
 
 } // namespace message

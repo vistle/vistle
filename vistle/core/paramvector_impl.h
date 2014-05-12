@@ -1,11 +1,11 @@
 #ifndef VECTOR_IMPL_H
 #define VECTOR_IMPL_H
 
-#include <sstream>
 #include <core/assert.h>
 #include <cstring>
 #include <limits>
 #include <boost/static_assert.hpp>
+#include <boost/lexical_cast.hpp>
 
 namespace vistle {
 
@@ -219,9 +219,7 @@ ParameterVector<S> ParameterVector<S>::maximum() const {
 template<typename S>
 std::string ParameterVector<S>::str() const {
 
-   std::stringstream str;
-   str << *this;
-   return str.str();
+   return boost::lexical_cast<std::string>(*this);
 }
 
 template<typename S>
