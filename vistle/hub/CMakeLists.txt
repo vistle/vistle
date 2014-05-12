@@ -1,4 +1,4 @@
-find_package(Boost 1.40 REQUIRED OPTIONAL_COMPONENTS python)
+find_package(Boost 1.40 REQUIRED program_options OPTIONAL_COMPONENTS python)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

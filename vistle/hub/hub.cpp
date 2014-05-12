@@ -20,6 +20,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <boost/program_options.hpp>
 
 #include "uimanager.h"
 #include "uiclient.h"
@@ -361,55 +362,67 @@ std::string hostname() {
 
 bool Hub::init(int argc, char *argv[]) {
 
-   std::string bindir = getbindir(argc, argv);
+   namespace po = boost::program_options;
+   po::options_description desc("usage");
+   desc.add_options()
+      ("help,h", "show this message")
+      ("batch,b", "do not start user interface")
+      ("gui,g", "start graphical user interface")
+      ("tui,t", "start command line interface")
+      ("filename", "Vistle script to process")
+      ;
+   po::variables_map vm;
+   try {
+      po::positional_options_description popt;
+      popt.add("filename", 1);
+      po::store(po::command_line_parser(argc, argv).options(desc).positional(popt).run(), vm);
+      po::notify(vm);
+   } catch (std::exception &e) {
+      CERR << e.what() << std::endl;
+      CERR << desc << std::endl;
+      return false;
+   }
 
+   if (vm.count("help")) {
+      CERR << desc << std::endl;
+      return false;
+   }
+
+   if (vm.count("") > 0) {
+      CERR << desc << std::endl;
+      return false;
+   }
+
+   std::string bindir = getbindir(argc, argv);
 #ifdef SCAN_MODULES_ON_HUB
    scanModules(bindir + "/../libexec/module", m_availableModules);
 #endif
 
-   {
-      // start UI
-      bool start_gui = true;
-      if (const char *pbs_env = getenv("PBS_ENVIRONMENT")) {
-          if (std::string("PBS_INTERACTIVE") != pbs_env) {
-              start_gui = false;
-              CERR << "apparently running in PBS batch mode - not starting UI" << std::endl;
-          }
-      }
-      bool start_tui = false;
-      if (argc > 1) {
-         bool haveUiArg = true;
-         std::string arg = argv[1];
-         if (arg == "-no-ui" || arg == "-batch") {
-            start_gui = false;
-            start_tui = false;
-         } else if (arg == "-gui") {
-            start_gui = true;
-            start_tui = false;
-         } else if (arg == "-tui") {
-            start_gui = false;
-            start_tui = true;
-         } else {
-            haveUiArg = false;
-         }
-
-         if (haveUiArg) {
-            --argc;
-            ++argv;
-         }
-      }
-
-      if (start_gui || start_tui) {
-         std::string cmd = "vistle_gui";
-         if (start_tui)
-            cmd = "blower";
-         std::string uipath = bindir + "/" + cmd;
-         startUi(uipath);
+   // start UI
+   std::string uiCmd = "vistle_gui";
+   if (const char *pbs_env = getenv("PBS_ENVIRONMENT")) {
+      if (std::string("PBS_INTERACTIVE") != pbs_env) {
+         CERR << "apparently running in PBS batch mode - defaulting to no UI" << std::endl;
+         uiCmd.clear();
       }
    }
+   if (vm.count("gui")) {
+      uiCmd = "vistle_gui";
+   } else if (vm.count("tui")) {
+      uiCmd = "blower";
+   }
+   if (vm.count("batch")) {
+      uiCmd.clear();
+   }
 
-   if (argc > 1)
-      m_scriptPath = argv[1];
+   if (!uiCmd.empty()) {
+      std::string uipath = bindir + "/" + uiCmd;
+      startUi(uipath);
+   }
+
+   if (vm.count("filename") == 1) {
+      m_scriptPath = vm["filename"].as<std::string>();
+   }
 
    std::stringstream s;
    s << this->port();
@@ -474,7 +487,9 @@ bool Hub::processScript() {
 int main(int argc, char *argv[]) {
 
    Hub hub;
-   hub.init(argc, argv);
+   if (!hub.init(argc, argv)) {
+      return 1;
+   }
 
    while(hub.dispatch())
       ;
