@@ -23,6 +23,7 @@
 
 #include "foamtoolbox.h"
 #include <util/coRestraint.h>
+#include <boost/mpi/request.hpp>
 
 struct GridDataContainer {
 
@@ -41,6 +42,49 @@ struct GridDataContainer {
    boost::shared_ptr<std::vector<vistle::Index> > owners;
    boost::shared_ptr<Boundaries> boundaries;
 };
+
+class GhostCells {
+private:
+   friend class boost::serialization::access;
+
+   template<class Archive>
+   void serialize(Archive & ar, const unsigned int version)
+   {
+       ar & el;
+       ar & cl;
+       ar & tl;
+       ar & x;
+       ar & y;
+       ar & z;
+   }
+
+public:
+   GhostCells() {}
+   std::vector<vistle::Index> el;
+   std::vector<vistle::SIndex> cl;
+   std::vector<vistle::Index> tl;
+   std::vector<vistle::Scalar> x;
+   std::vector<vistle::Scalar> y;
+   std::vector<vistle::Scalar> z;
+};
+
+class GhostData {
+private:
+   template<class Archive>
+   void serialize(Archive & ar, const unsigned int version)
+   {
+      ar & dim;
+      for (int i=0; i<dim;++i) {
+         ar & x[i];
+      }
+   }
+public:
+   GhostData(int d=1)
+      :dim(d) {}
+   std::vector<vistle::Scalar> x[vistle::MaxDimension];
+   int dim;
+};
+
 
 class ReadFOAM: public vistle::Module
 {
@@ -70,10 +114,12 @@ class ReadFOAM: public vistle::Module
 
       bool parameterChanged(vistle::Parameter *p);
       bool readDirectory(const std::string &dir, int processor, int timestep);
-      bool addGhostCells(int processor, int timestep);
+      bool buildGhostCells(int processor, int timestep);
+      bool sendGhostCells();
+      bool applyGhostCells(int processor, int timestep);
       bool addGhostCellsData(const std::string &dir, int processor, int timestep);
       bool addGridToPorts(int processor);
-      bool addDataToPorts(int processor);
+      bool addVolumeDataToPorts(int processor);
       bool readConstant(const std::string &dir);
       bool readTime(const std::string &dir, int timestep);
 
@@ -93,5 +139,8 @@ class ReadFOAM: public vistle::Module
       std::map<int, boost::shared_ptr<std::vector<vistle::Index> > > m_owners;
       std::map<int, boost::shared_ptr<Boundaries>> m_boundaries;
       std::map<int, std::map<int, std::vector<vistle::Index> > > m_procBoundaryVertices;
+      std::map<int, std::map<int, boost::shared_ptr<GhostCells> > > m_GhostCellsOut;
+      std::map<int, std::map<int, boost::shared_ptr<GhostCells> > > m_GhostCellsIn;
+      std::map<int, std::vector<boost::mpi::request> > m_requests;
 };
 #endif // READFOAM_H

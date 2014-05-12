@@ -37,8 +37,8 @@
 
 #include "foamtoolbox.h"
 #include <util/coRestraint.h>
-#include <boost/mpi/communicator.hpp>
 #include <boost/serialization/vector.hpp>
+#include <boost/mpi.hpp>
 namespace mpi = boost::mpi;
 
 using namespace vistle;
@@ -644,7 +644,11 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
    return true;
 }
 
-bool ReadFOAM::addGhostCells(int processor, int timestep) {
+int tag(int p, int n) {
+   return p*1000+n;
+}
+
+bool ReadFOAM::buildGhostCells(int processor, int timestep) {
    std::cout << "rank " << rank() << " reading GhostCells // processor: " << processor << " // timestep: " << timestep << std::endl;
    auto &boundaries = *m_boundaries[processor];
    auto &owners = *m_owners[processor];
@@ -658,15 +662,17 @@ bool ReadFOAM::addGhostCells(int processor, int timestep) {
    auto &z = grid->z();
 
    for (const auto &b :boundaries.procboundaries) {
-      std::vector<Index> elOut;
-      std::vector<SIndex> clOut;
-      std::vector<Index> tlOut;
-      std::vector<Scalar> pointsOutX;
-      std::vector<Scalar> pointsOutY;
-      std::vector<Scalar> pointsOutZ;
-
       Index neighborProc=b.neighborProc;
+      boost::shared_ptr<GhostCells> out(new GhostCells());
+      m_GhostCellsOut[processor][neighborProc] = out;
       std::vector<Index> &procBoundaryVertices = m_procBoundaryVertices[processor][neighborProc];
+
+      std::vector<Index> &elOut = out->el;
+      std::vector<SIndex> &clOut = out->cl;
+      std::vector<Index> &tlOut = out->tl;
+      std::vector<Scalar> &pointsOutX = out->x;
+      std::vector<Scalar> &pointsOutY = out->y;
+      std::vector<Scalar> &pointsOutZ = out->z;
 
       elOut.reserve(b.numFaces + 1);
       elOut.push_back(0);
@@ -721,7 +727,7 @@ bool ReadFOAM::addGhostCells(int processor, int timestep) {
             pointsOutZ[s] = z[f];
          }
       }
-
+#if 0
       std::cout << "EL: " << processor << " - " << neighborProc << " (size: " << elOut.size() << ") // ";
       for (auto &q: elOut) {
          std::cout << q << "|";
@@ -757,10 +763,87 @@ bool ReadFOAM::addGhostCells(int processor, int timestep) {
          std::cout << q << "|";
       }
       std::cout << std::endl;
+#endif
 
-
-      // Save/Send vectors??
    }
+
+   mpi::communicator world;
+   for (const auto &b :boundaries.procboundaries) {
+      Index neighborProc=b.neighborProc;
+      int myRank=rank();
+      int neighborRank = neighborProc % size();
+      boost::shared_ptr<GhostCells> out = m_GhostCellsOut[processor][neighborProc];
+      m_requests[myRank].push_back(world.isend(neighborRank, tag(processor,neighborProc), *out));
+      boost::shared_ptr<GhostCells> in(new GhostCells());
+      m_GhostCellsIn[processor][neighborProc] = in;
+      m_requests[myRank].push_back(world.irecv(neighborRank, tag(neighborProc,processor), *in));
+   }
+
+   return true;
+}
+
+bool ReadFOAM::sendGhostCells() {
+   std::vector<mpi::request> r=m_requests[rank()];
+   std::cout << "Rank " << rank() << " sending/receiving" << std::endl;
+   mpi::wait_all(r.begin(),r.end());
+   std::cout << "Rank " << rank() << " sending/receiving DONE" << std::endl;
+   m_requests.clear();
+   m_GhostCellsOut.clear();
+   return true;
+}
+
+bool ReadFOAM::applyGhostCells(int processor, int timestep) {
+   auto &boundaries = *m_boundaries[processor];
+
+   UnstructuredGrid::ptr grid = m_currentgrid[processor];
+   auto &el = grid->el();
+   auto &cl = grid->cl();
+   auto &tl = grid->tl();
+   auto &x = grid->x();
+   auto &y = grid->y();
+   auto &z = grid->z();
+
+   for (const auto &b :boundaries.procboundaries) {
+       Index neighborProc=b.neighborProc;
+       std::vector<Index> &procBoundaryVertices = m_procBoundaryVertices[processor][neighborProc];
+       std::vector<Index> sharedVerticesMapping;
+       for (const Index &v: procBoundaryVertices) {
+          if(std::find(sharedVerticesMapping.begin(), sharedVerticesMapping.end(), v) == sharedVerticesMapping.end()) {
+              sharedVerticesMapping.push_back(v);
+          }
+       }
+       boost::shared_ptr<GhostCells> in = m_GhostCellsIn[processor][neighborProc];
+       std::vector<Index> &elIn = in->el;
+       std::vector<SIndex> &clIn = in->cl;
+       std::vector<Index> &tlIn = in->tl;
+       std::vector<Scalar> &pointsInX = in->x;
+       std::vector<Scalar> &pointsInY = in->y;
+       std::vector<Scalar> &pointsInZ = in->z;
+       Index pointsSize=x.size();
+
+       for (int cell = 0; cell < tlIn.size();++cell) {
+          Index elementStart = elIn[cell];
+          Index elementEnd = elIn[cell + 1];
+          for (Index i = elementStart; i < elementEnd; ++i) {
+             SIndex point = clIn[i];
+             if (point < 0) {
+                point=sharedVerticesMapping[(point*-1)-1];
+             } else {
+                point+=pointsSize;
+             }
+             cl.push_back(point);
+          }
+          el.push_back(cl.size());
+          tl.push_back(tlIn[cell]|UnstructuredGrid::GHOST_BIT);
+       }
+
+       for (int i=0; i<pointsInX.size(); ++i) {
+          x.push_back(pointsInX[i]);
+          y.push_back(pointsInY[i]);
+          z.push_back(pointsInZ[i]);
+       }
+   }
+   m_GhostCellsIn[processor].clear();
 
    return true;
 }
@@ -775,7 +858,7 @@ bool ReadFOAM::addGridToPorts(int processor) {
    return true;
 }
 
-bool ReadFOAM::addDataToPorts(int processor) {
+bool ReadFOAM::addVolumeDataToPorts(int processor) {
    for (auto &data: m_currentvolumedata) {
       int portnum=data.first;
       addObject(m_volumeDataOut[portnum], m_currentvolumedata[portnum][processor]);
@@ -802,17 +885,29 @@ bool ReadFOAM::readConstant(const std::string &casedir)
 
    mpi::communicator c;
    c.barrier();
-   std::cout << rank() << " broke barrier (constant)" << std::endl;
+   std::cout << rank() << " broke barrier (constant grid created)" << std::endl;
 
    if (!m_case.varyingCoords && !m_case.varyingGrid) {
       if (m_case.numblocks > 0) {
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
-               if (!addGhostCells(i, -1))
+               if (!buildGhostCells(i, -1))
+                  return false;
+            }
+         }
+
+         c.barrier();
+         std::cout << rank() << " broke barrier (constant ghost cells created)" << std::endl;
+         sendGhostCells();
+
+         for (int i=0; i<m_case.numblocks; ++i) {
+            if (i % size() == rank()) {
+               if (!applyGhostCells(i, -1))
                   return false;
             }
             addGridToPorts(i);
          }
+
       } else {
          addGridToPorts(-1);
       }
@@ -843,16 +938,26 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
    mpi::communicator c;
    c.barrier();
-   std::cout << rank() << " broke barrier (timestep " << timestep << ")" << std::endl;
+   std::cout << rank() << " broke barrier (timestep " << timestep << " grid created)" << std::endl;
 
    if (m_case.varyingCoords || m_case.varyingGrid) {
       if (m_case.numblocks > 0) {
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
-               if (!addGhostCells(i, timestep))
+               if (!buildGhostCells(i, timestep))
                   return false;
             }
-            addGridToPorts(i);
+         }
+
+         c.barrier();
+         std::cout << rank() << " broke barrier (timestep " << timestep << " ghost cells created)" << std::endl;
+         sendGhostCells();
+
+         for (int i=0; i<m_case.numblocks; ++i) {
+            if (i % size() == rank()) {
+               if (!applyGhostCells(i, timestep))
+                  return false;
+            }
          }
       } else {
          addGridToPorts(-1);
@@ -863,10 +968,10 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
       for (int i=0; i<m_case.numblocks; ++i) {
          if (!addGhostCellsData(casedir, i, timestep))
             return false;
-         addDataToPorts(i);
+         addVolumeDataToPorts(i);
       }
    } else {
-      addDataToPorts(-1);
+      addVolumeDataToPorts(-1);
    }
 
    m_currentgrid.clear();
@@ -889,6 +994,9 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
    std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
    std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
    std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
+   m_requests.clear();
+   m_GhostCellsOut.clear();
+   m_GhostCellsIn.clear();
    readConstant(casedir);
    int skipfactor = m_timeskip->getValue()+1;
    for (int timestep=0; timestep<m_case.timedirs.size()/skipfactor; ++timestep) {
