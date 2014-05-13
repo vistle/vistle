@@ -25,5 +25,4 @@ target_link_libraries(vistle
         ${Boost_LIBRARIES}
         ${EXTRA_LIBRARIES}
         vistle_core
-        vistle_control
 )
