@@ -7,7 +7,7 @@
 #include <string>
 
 #include <boost/scoped_ptr.hpp>
-#include <boost/thread/mutex.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 #include <boost/thread/condition_variable.hpp>
 
 #include "export.h"
@@ -62,11 +62,16 @@ private:
 };
 
 class V_COREEXPORT StateTracker {
+   friend class StateTrackerLocker;
    friend class PortTracker;
 
  public:
    StateTracker(PortTracker *portTracker);
    ~StateTracker();
+
+   typedef boost::recursive_mutex mutex;
+   typedef boost::unique_lock<mutex> mutex_locker;
+   mutex &getMutex();
 
    bool dispatch(bool &received);
 
@@ -155,8 +160,8 @@ class V_COREEXPORT StateTracker {
 
    PortTracker *m_portTracker;
 
-   boost::mutex m_replyMutex;
-   boost::condition_variable m_replyCondition;
+   mutex m_replyMutex;
+   boost::condition_variable_any m_replyCondition;
    std::map<message::uuid_t, boost::shared_ptr<message::Buffer>> m_outstandingReplies;
 };
 

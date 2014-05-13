@@ -1,4 +1,5 @@
 #include <boost/foreach.hpp>
+#include <boost/thread.hpp>
 
 #include "message.h"
 #include "parameter.h"
@@ -32,6 +33,11 @@ StateTracker::StateTracker(PortTracker *portTracker)
 : m_portTracker(portTracker)
 {
    assert(m_portTracker);
+}
+
+StateTracker::mutex &StateTracker::getMutex() {
+
+   return m_replyMutex;
 }
 
 std::vector<int> StateTracker::getRunningList() const {
@@ -190,6 +196,7 @@ const std::vector<StateTracker::AvailableModule> &StateTracker::availableModules
 
 bool StateTracker::handle(const message::Message &msg) {
 
+   mutex_locker locker(getMutex());
    using namespace vistle::message;
 
    switch (msg.type()) {
@@ -700,21 +707,22 @@ Parameter *StateTracker::getParameter(int id, const std::string &name) const {
 
 bool StateTracker::registerRequest(const message::uuid_t &uuid) {
 
-   boost::lock_guard<boost::mutex> locker(m_replyMutex);
+   boost::lock_guard<mutex> locker(m_replyMutex);
 
    auto it = m_outstandingReplies.find(uuid);
    if (it != m_outstandingReplies.end()) {
-      std::cerr << "StateTracker: duplicate attempt to wait for reply" << std::endl;
+      CERR << "duplicate attempt to wait for reply" << std::endl;
       return false;
    }
 
-   m_outstandingReplies[uuid] = boost::shared_ptr<message::Buffer>();;
+   //CERR << "waiting for " << uuid  << std::endl;
+   m_outstandingReplies[uuid] = boost::shared_ptr<message::Buffer>();
    return true;
 }
 
 boost::shared_ptr<message::Buffer> StateTracker::waitForReply(const message::uuid_t &uuid) {
 
-   boost::unique_lock<boost::mutex> locker(m_replyMutex);
+   boost::unique_lock<mutex> locker(m_replyMutex);
    boost::shared_ptr<message::Buffer> ret = removeRequest(uuid);
    while (!ret) {
       m_replyCondition.wait(locker);
@@ -725,10 +733,12 @@ boost::shared_ptr<message::Buffer> StateTracker::waitForReply(const message::uui
 
 boost::shared_ptr<message::Buffer> StateTracker::removeRequest(const message::uuid_t &uuid) {
 
-   auto ret = boost::shared_ptr<message::Buffer>();
+   //CERR << "remove request try: " << uuid << std::endl;
+   boost::shared_ptr<message::Buffer> ret;
    auto it = m_outstandingReplies.find(uuid);
    if (it != m_outstandingReplies.end() && it->second) {
       ret = it->second;
+      //CERR << "remove request success: " << uuid << std::endl;
       m_outstandingReplies.erase(it);
    }
    return ret;
@@ -736,23 +746,20 @@ boost::shared_ptr<message::Buffer> StateTracker::removeRequest(const message::uu
 
 bool StateTracker::registerReply(const message::uuid_t &uuid, const message::Message &msg) {
 
-   {
-      boost::lock_guard<boost::mutex> locker(m_replyMutex);
-      auto it = m_outstandingReplies.find(uuid);
-      if (it == m_outstandingReplies.end()) {
-         return false;
-      }
-      if (it->second) {
-         assert(!it->second);
-         return false;
-      }
-
-      auto buf = boost::shared_ptr<message::Buffer>(new message::Buffer);
-      memcpy(buf->buf.data(), &msg, msg.size());
-      it->second = buf;
-
-      std::cerr << "notifying all for " << uuid  << " and " << m_outstandingReplies.size() << " others" << std::endl;
+   boost::lock_guard<mutex> locker(m_replyMutex);
+   auto it = m_outstandingReplies.find(uuid);
+   if (it == m_outstandingReplies.end()) {
+      return false;
    }
+   if (it->second) {
+      CERR << "attempt to register duplicate reply for " << uuid << std::endl;
+      assert(!it->second);
+      return false;
+   }
+
+   it->second.reset(new message::Buffer(msg));
+
+   //CERR << "notifying all for " << uuid  << " and " << m_outstandingReplies.size() << " others" << std::endl;
 
    m_replyCondition.notify_all();
 

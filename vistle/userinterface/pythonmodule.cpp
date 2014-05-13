@@ -24,8 +24,7 @@
 #include <hub/hub.h>
 #define PORTMANAGER (*Hub::the().stateTracker().portTracker())
 #define MODULEMANAGER (Hub::the().stateTracker())
-//#define LOCKED() std::unique_ptr<vistle::VistleConnection::Locker> lock = PythonModule::the().vistleConnection().locked()
-#define LOCKED()
+#define LOCKED() StateTracker::mutex_locker locker(Hub::the().stateTracker().getMutex())
 
 #else
 
