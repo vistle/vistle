@@ -541,7 +541,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
          continue;
       Object::ptr obj = loadField(meshdir, field);
       setMeta(obj, processor, timestep);
-      m_currentvolumedata[i][processor]= obj;
+      m_currentvolumedata[processor][i]= obj;
    }
 
    for (int i=0; i<NumBoundaryPorts; ++i) {
@@ -561,7 +561,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
 
 
 bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int timestep) {
-   std::cout << "rank " << rank() << " reading " << casedir << " // processor: " << processor << " // timestep: " << timestep << std::endl;
+   //std::cout << "rank " << rank() << " reading " << casedir << " // processor: " << processor << " // timestep: " << timestep << std::endl;
    std::string dir = casedir;
 
    if (processor >= 0) {
@@ -644,12 +644,12 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
    return true;
 }
 
-int tag(int p, int n) {
-   return p*1000+n;
+int tag(int p, int n, int i=0) {
+   return p*10000+n*100+i;
 }
 
 bool ReadFOAM::buildGhostCells(int processor, int timestep) {
-   std::cout << "rank " << rank() << " reading GhostCells // processor: " << processor << " // timestep: " << timestep << std::endl;
+   //std::cout << "rank " << rank() << " reading GhostCells // processor: " << processor << " // timestep: " << timestep << std::endl;
    auto &boundaries = *m_boundaries[processor];
    auto &owners = *m_owners[processor];
 
@@ -727,51 +727,15 @@ bool ReadFOAM::buildGhostCells(int processor, int timestep) {
             pointsOutZ[s] = z[f];
          }
       }
-#if 0
-      std::cout << "EL: " << processor << " - " << neighborProc << " (size: " << elOut.size() << ") // ";
-      for (auto &q: elOut) {
-         std::cout << q << "|";
-      }
-      std::cout << std::endl;
-
-      std::cout << "CL: " << processor << " - " << neighborProc << " (size: " << clOut.size() << ") // ";
-      for (auto &q: clOut) {
-         std::cout << q << "|";
-      }
-      std::cout << std::endl;
-
-      std::cout << "TL: " << processor << " - " << neighborProc << " (size: " << tlOut.size() << ") // ";
-      for (auto &q: tlOut) {
-         std::cout << q << "|";
-      }
-      std::cout << std::endl;
-
-      std::cout << "PointsX: " << processor << " - " << neighborProc << " (size: " << pointsOutX.size() << ") // ";
-      for (auto &q: pointsOutX) {
-         std::cout << q << "|";
-      }
-      std::cout << std::endl;
-
-      std::cout << "PointsY: " << processor << " - " << neighborProc << " (size: " << pointsOutY.size() << ") // ";
-      for (auto &q: pointsOutY) {
-         std::cout << q << "|";
-      }
-      std::cout << std::endl;
-
-      std::cout << "PointsZ: " << processor << " - " << neighborProc << " (size: " << pointsOutZ.size() << ") // ";
-      for (auto &q: pointsOutZ) {
-         std::cout << q << "|";
-      }
-      std::cout << std::endl;
-#endif
-
    }
 
+   //build requests for Ghost Cells
    mpi::communicator world;
    for (const auto &b :boundaries.procboundaries) {
       Index neighborProc=b.neighborProc;
       int myRank=rank();
       int neighborRank = neighborProc % size();
+
       boost::shared_ptr<GhostCells> out = m_GhostCellsOut[processor][neighborProc];
       m_requests[myRank].push_back(world.isend(neighborRank, tag(processor,neighborProc), *out));
       boost::shared_ptr<GhostCells> in(new GhostCells());
@@ -782,12 +746,80 @@ bool ReadFOAM::buildGhostCells(int processor, int timestep) {
    return true;
 }
 
-bool ReadFOAM::sendGhostCells() {
+bool ReadFOAM::buildGhostCellData(int processor, int timestep) {
+   //std::cout << "rank " << rank() << " reading GhostCells DATA // processor: " << processor << " // timestep: " << timestep << std::endl;
+   auto &boundaries = *m_boundaries[processor];
+   auto &owners = *m_owners[processor];
+   for (const auto &b :boundaries.procboundaries) {
+      Index neighborProc=b.neighborProc;
+      for (int i = 0; i < NumPorts; ++i) {
+         int dim;
+         auto f=m_currentvolumedata[processor].find(i);
+         if (f == m_currentvolumedata[processor].end()) {
+            continue;
+         }
+         Object::ptr obj = f->second;
+         Vec<Scalar, 3>::ptr v3 = Vec<Scalar, 3>::as(obj);
+         Vec<Scalar>::ptr v1 = Vec<Scalar>::as(obj);
+         if (!v1 && !v3) {
+            continue;
+            std::cerr << "Could not send Data - unknown Object Type" << std::endl;
+         }
+         if (v1) {
+            dim=1;
+            boost::shared_ptr<GhostData> dataOut(new GhostData(dim));
+            m_GhostDataOut[processor][neighborProc][i] = dataOut;
+            for (Index i=0;i<b.numFaces;++i) {
+               Index cell=owners[b.startFace + i];
+               for (Index j=0; j<dim; ++j) {
+                  auto &d=v1->x(j);
+                  (*dataOut).x[j].push_back(d[cell]);
+               }
+            }
+         } else if (v3) {
+            dim=3;
+            boost::shared_ptr<GhostData> dataOut(new GhostData(dim));
+            m_GhostDataOut[processor][neighborProc][i] = dataOut;
+            for (Index i=0;i<b.numFaces;++i) {
+               Index cell=owners[b.startFace + i];
+               for (Index j=0; j<dim; ++j) {
+                  auto &d=v3->x(j);
+                  (*dataOut).x[j].push_back(d[cell]);
+               }
+            }
+         }
+      }
+   }
+
+   //build requests for Ghost Data
+   mpi::communicator world;
+   for (const auto &b :boundaries.procboundaries) {
+      Index neighborProc=b.neighborProc;
+      int myRank=rank();
+      int neighborRank = neighborProc % size();
+
+      std::map<int, boost::shared_ptr<GhostData> > &m = m_GhostDataOut[processor][neighborProc];
+      for (Index i=0; i<NumPorts; ++i) {
+         if (m.find(i) != m.end()) {
+            boost::shared_ptr<GhostData> dataOut = m[i];
+            m_requests[myRank].push_back(world.isend(neighborRank, tag(processor,neighborProc,i+1), *dataOut));
+            boost::shared_ptr<GhostData> dataIn(new GhostData((*dataOut).dim));
+            m_GhostDataIn[processor][neighborProc][i] = dataIn;
+            m_requests[myRank].push_back(world.irecv(neighborRank, tag(neighborProc,processor,i+1), *dataIn));
+         }
+      }
+   }
+
+   return true;
+}
+
+bool ReadFOAM::processAllRequests() {
    std::vector<mpi::request> r=m_requests[rank()];
-   std::cout << "Rank " << rank() << " sending/receiving" << std::endl;
+   //std::cout << "Rank " << rank() << " sending/receiving" << std::endl;
    mpi::wait_all(r.begin(),r.end());
-   std::cout << "Rank " << rank() << " sending/receiving DONE" << std::endl;
+   //std::cout << "Rank " << rank() << " sending/receiving DONE" << std::endl;
    m_requests.clear();
+   m_GhostDataOut.clear();
    m_GhostCellsOut.clear();
    return true;
 }
@@ -844,12 +876,51 @@ bool ReadFOAM::applyGhostCells(int processor, int timestep) {
        }
    }
    m_GhostCellsIn[processor].clear();
-
    return true;
 }
 
-bool ReadFOAM::addGhostCellsData(const std::string &casedir, int processor, int timestep) {
+bool ReadFOAM::applyGhostCellsData(int processor, int timestep) {
+   auto &boundaries = *m_boundaries[processor];
 
+   for (const auto &b :boundaries.procboundaries) {
+      Index neighborProc=b.neighborProc;
+      for (int i = 0; i < NumPorts; ++i) {
+         int dim;
+         auto f=m_currentvolumedata[processor].find(i);
+         if (f == m_currentvolumedata[processor].end()) {
+            continue;
+         }
+         Object::ptr obj = f->second;
+         Vec<Scalar, 3>::ptr v3 = Vec<Scalar, 3>::as(obj);
+         Vec<Scalar>::ptr v1 = Vec<Scalar>::as(obj);
+         if (!v1 && !v3) {
+            continue;
+            std::cerr << "Could not apply Data - unknown Object Type" << std::endl;
+         }
+         if (v1) {
+            dim=1;
+            boost::shared_ptr<GhostData> dataIn = m_GhostDataIn[processor][neighborProc][i];
+            for (Index j=0; j<dim; ++j) {
+               auto &d=v1->x(j);
+               std::vector<Scalar> &x=(*dataIn).x[j];
+               for (Index i=0;i<b.numFaces;++i) {
+                  d.push_back(x[i]);
+               }
+            }
+         } else if (v3) {
+            dim=3;
+            boost::shared_ptr<GhostData> dataIn = m_GhostDataIn[processor][neighborProc][i];
+            for (Index j=0; j<dim; ++j) {
+               auto &d=v3->x(j);
+               std::vector<Scalar> &x=(*dataIn).x[j];
+               for (Index i=0;i<b.numFaces;++i) {
+                  d.push_back(x[i]);
+               }
+            }
+         }
+      }
+   }
+   m_GhostDataIn[processor].clear();
    return true;
 }
 
@@ -861,7 +932,7 @@ bool ReadFOAM::addGridToPorts(int processor) {
 bool ReadFOAM::addVolumeDataToPorts(int processor) {
    for (auto &data: m_currentvolumedata) {
       int portnum=data.first;
-      addObject(m_volumeDataOut[portnum], m_currentvolumedata[portnum][processor]);
+      addObject(m_volumeDataOut[portnum], m_currentvolumedata[processor][portnum]);
    }
    return true;
 }
@@ -885,7 +956,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
 
    mpi::communicator c;
    c.barrier();
-   std::cout << rank() << " broke barrier (constant grid created)" << std::endl;
+   //std::cout << rank() << " broke barrier (constant grid created)" << std::endl;
 
    if (!m_case.varyingCoords && !m_case.varyingGrid) {
       if (m_case.numblocks > 0) {
@@ -897,8 +968,8 @@ bool ReadFOAM::readConstant(const std::string &casedir)
          }
 
          c.barrier();
-         std::cout << rank() << " broke barrier (constant ghost cells created)" << std::endl;
-         sendGhostCells();
+         //std::cout << rank() << " broke barrier (constant ghost cells created)" << std::endl;
+         processAllRequests();
 
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
@@ -938,7 +1009,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
    mpi::communicator c;
    c.barrier();
-   std::cout << rank() << " broke barrier (timestep " << timestep << " grid created)" << std::endl;
+   //std::cout << rank() << " broke barrier (timestep " << timestep << " grid created)" << std::endl;
 
    if (m_case.varyingCoords || m_case.varyingGrid) {
       if (m_case.numblocks > 0) {
@@ -950,8 +1021,8 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
          }
 
          c.barrier();
-         std::cout << rank() << " broke barrier (timestep " << timestep << " ghost cells created)" << std::endl;
-         sendGhostCells();
+         //std::cout << rank() << " broke barrier (timestep " << timestep << " ghost cells created)" << std::endl;
+         processAllRequests();
 
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
@@ -964,11 +1035,26 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
       }
    }
 
+
+
    if (m_case.numblocks > 0) {
       for (int i=0; i<m_case.numblocks; ++i) {
-         if (!addGhostCellsData(casedir, i, timestep))
-            return false;
-         addVolumeDataToPorts(i);
+         if (i % size() == rank()) {
+            if (!buildGhostCellData(i, timestep))
+               return false;
+         }
+      }
+
+      c.barrier();
+      //std::cout << rank() << " broke barrier (timestep " << timestep << " ghost cells data created)" << std::endl;
+      processAllRequests();
+
+      for (int i=0; i<m_case.numblocks; ++i) {
+         if (i % size() == rank()) {
+            if (!applyGhostCellsData(i, timestep))
+               return false;
+            addVolumeDataToPorts(i);
+         }
       }
    } else {
       addVolumeDataToPorts(-1);
@@ -982,7 +1068,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
 bool ReadFOAM::compute()     //Compute is called when Module is executed
 {
-   std::cout << std::endl << std::time(0) << " // starting // rank: " << rank() << " " << "// size: " << size() << std::endl;
+   std::cout << std::time(0) << "rank: " << rank() << " // starting" << std::endl;
    const std::string casedir = m_casedir->getValue();
    m_boundaryPatches.add(m_patchSelection->getValue());
    m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
@@ -997,6 +1083,8 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
    m_requests.clear();
    m_GhostCellsOut.clear();
    m_GhostCellsIn.clear();
+   m_GhostDataIn.clear();
+   m_GhostDataOut.clear();
    readConstant(casedir);
    int skipfactor = m_timeskip->getValue()+1;
    for (int timestep=0; timestep<m_case.timedirs.size()/skipfactor; ++timestep) {
@@ -1007,7 +1095,7 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
    m_basebound.clear();
    m_owners.clear();
    m_boundaries.clear();
-   std::cout << std::time(0) << " // ReadFoam: done" << std::endl;
+   std::cout << std::time(0) << "rank: " << rank() << " // ReadFOAM done" << std::endl;
 
    return true;
 }
