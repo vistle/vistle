@@ -943,6 +943,7 @@ bool ReadFOAM::addVolumeDataToPorts(int processor) {
 
 bool ReadFOAM::readConstant(const std::string &casedir)
 {
+   bool readGrid = m_readGrid->getValue();
    std::cerr << "reading constant data..." << std::endl;
    if (m_case.numblocks > 0) {
       for (int i=0; i<m_case.numblocks; ++i) {
@@ -962,7 +963,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
    c.barrier();
    //std::cout << rank() << " broke barrier (constant grid created)" << std::endl;
 
-   if (!m_case.varyingCoords && !m_case.varyingGrid) {
+   if (!m_case.varyingCoords && !m_case.varyingGrid && readGrid) {
       if (m_case.numblocks > 0) {
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
@@ -995,7 +996,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
 }
 
 bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
-
+   bool readGrid = m_readGrid->getValue();
    std::cerr << "reading time step " << timestep << "..." << std::endl;
    if (m_case.numblocks > 0) {
       for (int i=0; i<m_case.numblocks; ++i) {
@@ -1015,7 +1016,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
    c.barrier();
    //std::cout << rank() << " broke barrier (timestep " << timestep << " grid created)" << std::endl;
 
-   if (m_case.varyingCoords || m_case.varyingGrid) {
+   if ((m_case.varyingCoords || m_case.varyingGrid) && readGrid) {
       if (m_case.numblocks > 0) {
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
@@ -1042,7 +1043,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
 
 
-   if (m_case.numblocks > 0) {
+   if (m_case.numblocks > 0 && readGrid) {
       for (int i=0; i<m_case.numblocks; ++i) {
          if (i % size() == rank()) {
             if (!buildGhostCellData(i, timestep))
