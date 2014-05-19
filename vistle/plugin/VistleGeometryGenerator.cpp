@@ -188,8 +188,13 @@ osg::Node *VistleGeometryGenerator::operator()() {
          geom->setVertexArray(vertices.get());
 
          osg::ref_ptr<osg::DrawElementsUInt> corners = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
-         for (Index corner = 0; corner < numCorners; corner ++)
-            corners->push_back(cl[corner]);
+         if (numCorners > 0) {
+            for (Index corner = 0; corner < numCorners; corner ++)
+               corners->push_back(cl[corner]);
+         } else {
+            for (Index corner = 0; corner < numVertices; corner ++)
+               corners->push_back(corner);
+         }
 
          std::vector<osg::Vec3> *vertexNormals = new std::vector<osg::Vec3>[numVertices];
          for (Index c = 0; c < numCorners; c += 3) {
@@ -218,27 +223,31 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
          if(vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex)) {
 
-            osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
-            osgTex->setDataVariance(osg::Object::DYNAMIC);
+            if (tex->getNumElements() != numVertices) {
+               std::cerr << "VistleGeometryGenerator: Triangles: texture size mismatch" << std::endl;
+            } else {
+               osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
+               osgTex->setDataVariance(osg::Object::DYNAMIC);
 
-            osg::ref_ptr<osg::Image> image = new osg::Image();
+               osg::ref_ptr<osg::Image> image = new osg::Image();
 
-            image->setImage(tex->getWidth(), 1, 1, GL_RGBA, GL_RGBA,
-                  GL_UNSIGNED_BYTE, &tex->pixels()[0],
-                  osg::Image::NO_DELETE);
-            osgTex->setImage(image);
+               image->setImage(tex->getWidth(), 1, 1, GL_RGBA, GL_RGBA,
+                     GL_UNSIGNED_BYTE, &tex->pixels()[0],
+                     osg::Image::NO_DELETE);
+               osgTex->setImage(image);
 
-            osg::ref_ptr<osg::FloatArray> coords = new osg::FloatArray();
-            std::copy(tex->coords().begin(), tex->coords().end(),
-                  std::back_inserter(*coords));
+               osg::ref_ptr<osg::FloatArray> coords = new osg::FloatArray();
+               std::copy(tex->coords().begin(), tex->coords().end(),
+                     std::back_inserter(*coords));
 
-            geom->setTexCoordArray(0, coords);
-            state->setTextureAttributeAndModes(0, osgTex,
-                  osg::StateAttribute::ON);
-            osgTex->setFilter(osg::Texture1D::MIN_FILTER,
-                  osg::Texture1D::NEAREST);
-            osgTex->setFilter(osg::Texture1D::MAG_FILTER,
-                  osg::Texture1D::NEAREST);
+               geom->setTexCoordArray(0, coords);
+               state->setTextureAttributeAndModes(0, osgTex,
+                     osg::StateAttribute::ON);
+               osgTex->setFilter(osg::Texture1D::MIN_FILTER,
+                     osg::Texture1D::NEAREST);
+               osgTex->setFilter(osg::Texture1D::MAG_FILTER,
+                     osg::Texture1D::NEAREST);
+            }
          }
 
          geom->addPrimitiveSet(corners.get());
@@ -391,33 +400,37 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
          if(vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex)) {
 
-            osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
-            osgTex->setDataVariance(osg::Object::DYNAMIC);
+            if (tex->getNumElements() != numVertices) {
+               std::cerr << "VistleGeometryGenerator: Polygons: texture size mismatch" << std::endl;
+            } else {
+               osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
+               osgTex->setDataVariance(osg::Object::DYNAMIC);
 
-            osg::ref_ptr<osg::Image> image = new osg::Image();
+               osg::ref_ptr<osg::Image> image = new osg::Image();
 
-            image->setImage(tex->getWidth(), 1, 1, GL_RGBA, GL_RGBA,
-                  GL_UNSIGNED_BYTE, &tex->pixels()[0],
-                  osg::Image::NO_DELETE);
-            osgTex->setImage(image);
+               image->setImage(tex->getWidth(), 1, 1, GL_RGBA, GL_RGBA,
+                     GL_UNSIGNED_BYTE, &tex->pixels()[0],
+                     osg::Image::NO_DELETE);
+               osgTex->setImage(image);
 
-            osg::ref_ptr<osg::FloatArray> coords = new osg::FloatArray();
-            for (Index index = 0; index < numElements; index ++) {
-               const Index num = el[index + 1] - el[index];
+               osg::ref_ptr<osg::FloatArray> coords = new osg::FloatArray();
+               for (Index index = 0; index < numElements; index ++) {
+                  const Index num = el[index + 1] - el[index];
 
-               for (Index n = 0; n < num; n ++) {
-                  Index v = cl[el[index] + n];
-                  coords->push_back(tex->coords()[v]);
+                  for (Index n = 0; n < num; n ++) {
+                     Index v = cl[el[index] + n];
+                     coords->push_back(tex->coords()[v]);
+                  }
                }
-            }
 
-            geom->setTexCoordArray(0, coords);
-            state->setTextureAttributeAndModes(0, osgTex,
-                  osg::StateAttribute::ON);
-            osgTex->setFilter(osg::Texture1D::MIN_FILTER,
-                  osg::Texture1D::NEAREST);
-            osgTex->setFilter(osg::Texture1D::MAG_FILTER,
-                  osg::Texture1D::NEAREST);
+               geom->setTexCoordArray(0, coords);
+               state->setTextureAttributeAndModes(0, osgTex,
+                     osg::StateAttribute::ON);
+               osgTex->setFilter(osg::Texture1D::MIN_FILTER,
+                     osg::Texture1D::NEAREST);
+               osgTex->setFilter(osg::Texture1D::MAG_FILTER,
+                     osg::Texture1D::NEAREST);
+            }
          }
 
 
