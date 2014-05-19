@@ -28,13 +28,27 @@ QMimeData *ModuleListWidget::mimeData(const QList<QListWidgetItem *> dragList) c
    return md;
 }
 
+void ModuleListWidget::setFilter(QString filter) {
+
+   filter = filter.trimmed();
+
+   for (int idx=0; idx<count(); ++idx) {
+
+      const auto i = item(idx);
+      const auto name = i->data(ModuleBrowser::nameRole()).toString();
+      const bool match = name.contains(filter, Qt::CaseInsensitive);
+      i->setHidden(!match);
+   }
+}
+
 
 const char *ModuleBrowser::mimeFormat() {
    return "application/x-modulebrowser";
 }
 
 int ModuleBrowser::nameRole() {
-   return 1;
+
+   return Qt::DisplayRole;
 }
 
 ModuleBrowser::ModuleBrowser(QWidget *parent)
@@ -42,6 +56,9 @@ ModuleBrowser::ModuleBrowser(QWidget *parent)
    , ui(new Ui::ModuleBrowser)
 {
    ui->setupUi(this);
+
+   connect(filterEdit(), SIGNAL(textChanged(QString)), SLOT(setFilter(QString)));
+   ui->moduleListWidget->setFocusProxy(filterEdit());
 }
 
 ModuleBrowser::~ModuleBrowser()
@@ -52,6 +69,16 @@ ModuleBrowser::~ModuleBrowser()
 void ModuleBrowser::addModule(QString module) {
 
     ui->moduleListWidget->addItem(module);
+}
+
+QLineEdit *ModuleBrowser::filterEdit() const {
+
+   return ui->filterEdit;
+}
+
+void ModuleBrowser::setFilter(QString filter) {
+
+   ui->moduleListWidget->setFilter(filter);
 }
 
 } // namespace gui

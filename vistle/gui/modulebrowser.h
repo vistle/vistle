@@ -16,9 +16,13 @@ class ModuleBrowser;
 } //namespace Ui
 
 class ModuleListWidget: public QListWidget {
+   Q_OBJECT
 
 public:
    ModuleListWidget(QWidget *parent=nullptr);
+
+public slots:
+   void setFilter(QString filter);
 
 protected:
    QMimeData *mimeData(const QList<QListWidgetItem *> dragList) const;
@@ -37,8 +41,11 @@ public:
 
 public slots:
    void addModule(QString module);
+   void setFilter(QString filter);
 
 private:
+   QLineEdit *filterEdit() const;
+
    Ui::ModuleBrowser *ui;
 };
 
