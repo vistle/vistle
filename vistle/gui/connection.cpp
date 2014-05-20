@@ -22,13 +22,13 @@ namespace gui {
 
 Connection::Connection(Port *startPort, Port *endPort, State state, QGraphicsItem *parent)
 : Base(parent)
+, m_highlight(false)
 , m_state(state)
+, m_color(Qt::black)
+, m_source(startPort)
+, m_destination(endPort)
 {
 
-   // Do something
-   m_source = startPort;
-   m_destination = endPort;
-   m_color = Qt::black;
    if (startPort->portType()==Port::Parameter && endPort->portType()==Port::Parameter)
       m_connectionType = Port::Parameter;
    else
@@ -36,7 +36,7 @@ Connection::Connection(Port *startPort, Port *endPort, State state, QGraphicsIte
 
    setPen(QPen(m_color, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
    setFlag(QGraphicsItem::ItemIsSelectable, true);
-   setCursor(Qt::OpenHandCursor);
+   setCursor(Qt::CrossCursor);
    setState(m_state);
 
    setAcceptHoverEvents(true);
