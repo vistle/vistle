@@ -23,7 +23,7 @@ GenIsoDat::GenIsoDat(const std::string &shmname, int rank, int size, int moduleI
 
     createOutputPort("grid_out");
     createOutputPort("data_out");
-    createOutputPort("lines_out");
+    createOutputPort("mapdata_out");
     createOutputPort("Vertices_low");
     createOutputPort("Vertices_high");
 
@@ -53,6 +53,7 @@ bool GenIsoDat::compute() {
 
     vistle::Points::ptr points_high(new vistle::Points(Index(0)));
     vistle::Vec<Scalar>::ptr data(new vistle::Vec<Scalar>(Index(0)));
+    vistle::Vec<Scalar>::ptr mapdata(new vistle::Vec<Scalar>(Index(0)));
 
 
     auto &cl = grid->cl();
@@ -168,6 +169,7 @@ bool GenIsoDat::compute() {
                 else{
                     data->x().push_back(-1);
                 }
+                mapdata->x().push_back(j);
             }
 
         };
@@ -267,6 +269,7 @@ bool GenIsoDat::compute() {
                 else{
                     data->x().push_back(-1);
                 }
+                mapdata->x().push_back(j);
             }
 
         };
@@ -370,6 +373,7 @@ bool GenIsoDat::compute() {
                 else{
                     data->x().push_back(-1);
                 }
+                mapdata->x().push_back(j);
             }
 
 
@@ -469,6 +473,7 @@ bool GenIsoDat::compute() {
                 else{
                     data->x().push_back(-1);
                 }
+                mapdata->x().push_back(j);
             };
 
 
@@ -575,6 +580,7 @@ bool GenIsoDat::compute() {
                 else{
                     data->x().push_back(-1);
                 }
+                mapdata->x().push_back(j);
             }
 
 
@@ -586,6 +592,7 @@ bool GenIsoDat::compute() {
     }
 
     addObject("data_out", data);
+    addObject("mapdata_out", mapdata);
     addObject("grid_out", grid);
     addObject("Vertices_high", points_high);
 
