@@ -23,10 +23,12 @@ public:
 
 public slots:
    void setFilter(QString filter);
+   void filterItem(QListWidgetItem *item) const;
 
 protected:
    QMimeData *mimeData(const QList<QListWidgetItem *> dragList) const;
 
+   QString m_filter;
 };
 
 class ModuleBrowser: public QWidget {

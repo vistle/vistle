@@ -30,15 +30,21 @@ QMimeData *ModuleListWidget::mimeData(const QList<QListWidgetItem *> dragList) c
 
 void ModuleListWidget::setFilter(QString filter) {
 
-   filter = filter.trimmed();
+   m_filter = filter.trimmed();
 
    for (int idx=0; idx<count(); ++idx) {
 
       const auto i = item(idx);
-      const auto name = i->data(ModuleBrowser::nameRole()).toString();
-      const bool match = name.contains(filter, Qt::CaseInsensitive);
-      i->setHidden(!match);
+      filterItem(i);
    }
+}
+
+
+void ModuleListWidget::filterItem(QListWidgetItem *item) const {
+
+   const auto name = item->data(ModuleBrowser::nameRole()).toString();
+   const bool match = name.contains(m_filter, Qt::CaseInsensitive);
+   item->setHidden(!match);
 }
 
 
@@ -69,6 +75,7 @@ ModuleBrowser::~ModuleBrowser()
 void ModuleBrowser::addModule(QString module) {
 
     ui->moduleListWidget->addItem(module);
+    ui->moduleListWidget->filterItem(item);
 }
 
 QLineEdit *ModuleBrowser::filterEdit() const {
