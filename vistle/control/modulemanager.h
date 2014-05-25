@@ -65,8 +65,6 @@ class V_CONTROLEXPORT ModuleManager {
 
    const PortManager &portManager() const;
 
-   bool checkMessageQueue() const;
-
  private:
    void queueMessage(const message::Message &msg);
    void replayMessages();

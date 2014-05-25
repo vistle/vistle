@@ -976,18 +976,6 @@ Parameter *ModuleManager::getParameter(int id, const std::string &name) const {
    return m_stateTracker.getParameter(id, name);
 }
 
-bool ModuleManager::checkMessageQueue() const {
-
-   if (!m_messageQueue.empty()) {
-      CERR << m_messageQueue.size()/message::Message::MESSAGE_SIZE << " not ready for processing:" << std::endl;
-      for (size_t i=0; i<m_messageQueue.size(); i+=message::Message::MESSAGE_SIZE) {
-         const message::Message &m = *static_cast<const message::Message *>(static_cast<const void *>(&m_messageQueue[i]));
-         std::cerr << "   " << "from: " << m.senderId() << ", type: " << m.type() << std::endl;
-      }
-   }
-   return m_messageQueue.empty();
-}
-
 void ModuleManager::queueMessage(const message::Message &msg) {
 
    const char *m = static_cast<const char *>(static_cast<const void *>(&msg));
