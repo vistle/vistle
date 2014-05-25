@@ -165,19 +165,17 @@ std::vector<std::string> vistle::VistleConnection::getParameters(int id) const
 
 bool vistle::VistleConnection::barrier() const {
 
-   std::vector<char> msgBuf(message::Message::MESSAGE_SIZE);
-   message::Message *msg = (message::Message *)msgBuf.data();
-
+   message::Buffer buf;
    message::Barrier m;
    for (;;) {
-      if (!waitForReply(m, *msg)) {
+      if (!waitForReply(m, buf.msg)) {
          return false;
       }
 
-      switch(msg->type()) {
+      switch(buf.msg.type()) {
          case message::Message::BARRIERREACHED: {
-            const message::BarrierReached *reached = static_cast<const message::BarrierReached *>(msg);
-            assert(m.uuid() == reached->uuid());
+            const message::BarrierReached &reached = static_cast<const message::BarrierReached &>(buf.msg);
+            assert(m.uuid() == reached.uuid());
             return true;
             break;
          }
@@ -186,7 +184,7 @@ bool vistle::VistleConnection::barrier() const {
             break;
          }
          default:
-            std::cerr << "VistleConnection: expected BarrierReached, got " << *msg << std::endl;
+            std::cerr << "VistleConnection: expected BarrierReached, got " << buf.msg << std::endl;
             assert("expected BarrierReached message" == 0);
             break;
       }
