@@ -74,7 +74,8 @@ ModuleBrowser::~ModuleBrowser()
 
 void ModuleBrowser::addModule(QString module) {
 
-    ui->moduleListWidget->addItem(module);
+    QListWidgetItem *item = new QListWidgetItem(module);
+    ui->moduleListWidget->addItem(item);
     ui->moduleListWidget->filterItem(item);
 }
 
