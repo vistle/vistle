@@ -76,7 +76,6 @@ bool GenIsoDat::compute() {
             numVert = 2048;
             numShift = 32;
             numElements = 256;
-
         }
         else{
 
@@ -140,11 +139,7 @@ bool GenIsoDat::compute() {
             tl.push_back(UnstructuredGrid::HEXAHEDRON);
         }
 
-
-
-
         std::bitset<8> newdata;
-
 
         for(int i = 0; i < numElements; i++){
 

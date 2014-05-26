@@ -15,6 +15,7 @@
 
 #include <QGraphicsView>
 #include <QGraphicsSceneMouseEvent>
+#include <QDebug>
 
 namespace gui {
 
@@ -288,9 +289,11 @@ void DataFlowNetwork::mousePressEvent(QGraphicsSceneMouseEvent *event)
  */
 void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
+   qDebug() << "mouse release";
     QGraphicsItem *item;
     // if there was a click
     if ((m_mousePressed) && (event->scenePos() == vLastPoint)) {
+       qDebug() << "eq vLastPoint";
         item = itemAt(event->scenePos(), QTransform());
         if (item) {
             if (Connection *connection = dynamic_cast<Connection *>(item)) {
@@ -299,6 +302,7 @@ void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         } //end if (item)
     // if there was not a click, and if m_line already was drawn
     } else if (m_mousePressed && m_Line) {
+       qDebug() << "have m_Line";
 
        // clean up connection
        removeItem(m_Line);
@@ -316,6 +320,7 @@ void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                 endModule = dynamic_cast<Module *>(endPort->parentItem());
                 if (startModule != endModule) {
                    addConnection(startPort, endPort, true);
+                   qDebug() << "add conn: out -> in";
                 }
              }
              break;
@@ -324,6 +329,7 @@ void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                 endModule = dynamic_cast<Module *>(endPort->parentItem());
                 if (startModule != endModule) {
                    addConnection(startPort, endPort, true);
+                   qDebug() << "add conn: in -> out";
                 }
              }
              break;
@@ -332,6 +338,7 @@ void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                 endModule = dynamic_cast<Module *>(endPort->parentItem());
                 if (startModule != endModule) {
                    addConnection(startPort, endPort, true);
+                   qDebug() << "add conn: par -> par";
                 }
              }
              break;

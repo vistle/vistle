@@ -10,10 +10,13 @@ class IsoSurface: public vistle::Module {
    ~IsoSurface();
 
  private:
-   vistle::Object::ptr generateIsoSurface(vistle::Object::const_ptr grid,
+   std::pair<vistle::Object::ptr, vistle::Object::ptr> generateIsoSurface(
+                                       vistle::Object::const_ptr grid,
                                        vistle::Object::const_ptr data,
+                                       vistle::Object::const_ptr mapdata,
                                        const vistle::Scalar isoValue,
-                                          int processorType);
+                                       int processorType
+                                        );
 
    virtual bool compute();
    virtual bool prepare();
