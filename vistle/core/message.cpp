@@ -4,6 +4,7 @@
 #include "port.h"
 
 #include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/nil_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -52,9 +53,11 @@ const DefaultSender &DefaultSender::instance() {
    return s_instance;
 }
 
+static boost::uuids::random_generator s_uuidGenerator = boost::uuids::random_generator();
+
 Message::Message(const Type t, const unsigned int s)
 : m_broadcast(false)
-, m_uuid(boost::uuids::random_generator()())
+, m_uuid(t == Message::INVALID ? boost::uuids::nil_generator()() : s_uuidGenerator())
 , m_size(s)
 , m_type(t)
 , m_senderId(DefaultSender::id())
