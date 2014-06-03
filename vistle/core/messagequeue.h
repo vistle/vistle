@@ -36,7 +36,6 @@ class V_COREEXPORT MessageQueue {
 
    const std::string m_name;
    message_queue m_mq;
-   bool m_removeOnExit;
 };
 
 } // namespace message

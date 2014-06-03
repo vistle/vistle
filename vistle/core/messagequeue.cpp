@@ -34,25 +34,25 @@ MessageQueue * MessageQueue::create(const std::string & n) {
 
 MessageQueue * MessageQueue::open(const std::string & n) {
 
-   return new MessageQueue(n, open_only);
+   auto ret = new MessageQueue(n, open_only);
+   message_queue::remove(n.c_str());
+   return ret;
 }
 
 MessageQueue::MessageQueue(const std::string & n, create_only_t)
    : m_name(n),  m_mq(create_only, m_name.c_str(), 256 /* num msg */,
-                  message::Message::MESSAGE_SIZE),
-     m_removeOnExit(true) {
-
+                  message::Message::MESSAGE_SIZE)
+{
 }
 
 MessageQueue::MessageQueue(const std::string & n, open_only_t)
-   : m_name(n), m_mq(open_only, m_name.c_str()), m_removeOnExit(false) {
-
+   : m_name(n), m_mq(open_only, m_name.c_str())
+{
 }
 
 MessageQueue::~MessageQueue() {
 
-   if (m_removeOnExit)
-      message_queue::remove(m_name.c_str());
+   message_queue::remove(m_name.c_str());
 }
 
 const std::string & MessageQueue::getName() const {
@@ -70,7 +70,7 @@ void MessageQueue::receive(Message &msg) {
    size_t recvSize = 0;
    unsigned priority = 0;
    m_mq.receive(&msg, message::Message::MESSAGE_SIZE, recvSize, priority);
-   assert(recvSize == message::Message::MESSAGE_SIZE);
+   vassert(recvSize == message::Message::MESSAGE_SIZE);
 }
 
 bool MessageQueue::tryReceive(Message &msg) {
@@ -79,7 +79,7 @@ bool MessageQueue::tryReceive(Message &msg) {
    unsigned priority = 0;
    bool result = m_mq.try_receive(&msg, message::Message::MESSAGE_SIZE, recvSize, priority);
    if (result) {
-      assert(recvSize == message::Message::MESSAGE_SIZE);
+      vassert(recvSize == message::Message::MESSAGE_SIZE);
    }
    return result;
 }
