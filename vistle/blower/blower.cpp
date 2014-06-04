@@ -2,6 +2,7 @@
 #include <userinterface/pythonmodule.h>
 #include <userinterface/userinterface.h>
 #include <userinterface/vistleconnection.h>
+#include <util/findself.h>
 
 #include <boost/ref.hpp>
 #include <boost/thread.hpp>
@@ -118,6 +119,7 @@ int main(int argc, char *argv[]) {
          std::string arg(argv[1]);
          if (arg == "-from-vistle") {
             quitOnExit = true;
+            argv[1] = argv[0];
             --argc;
             ++argv;
          }
@@ -135,7 +137,7 @@ int main(int argc, char *argv[]) {
       PythonInterface python("blower");
       VistleConnection conn(ui);
       conn.setQuitOnExit(quitOnExit);
-      PythonModule pythonmodule(&conn);
+      PythonModule pythonmodule(&conn, getbindir(argc, argv) + "/../lib/");
       boost::thread runnerThread(boost::ref(conn));
 
       while(!std::cin.eof() && !conn.done()) {
@@ -149,6 +151,10 @@ int main(int argc, char *argv[]) {
       conn.cancel();
       runnerThread.join();
 
+   } catch (vistle::except::exception &ex) {
+
+      std::cerr << "exception: " << ex.what() << std::endl << ex.where() << std::endl;
+      return 1;
    } catch (std::exception &ex) {
 
       std::cerr << "exception: " << ex.what() << std::endl;

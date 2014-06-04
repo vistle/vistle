@@ -9,7 +9,7 @@ namespace vistle {
 
 class V_UIEXPORT VistleConnection
 {
-   friend class PythonModule;
+
 public:
    class Locker {
 

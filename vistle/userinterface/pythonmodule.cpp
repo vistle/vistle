@@ -21,6 +21,7 @@
 
 #ifdef VISTLE_CONTROL
 
+// if embedded in Vistle hub
 #include <hub/hub.h>
 #define PORTMANAGER (*Hub::the().stateTracker().portTracker())
 #define MODULEMANAGER (Hub::the().stateTracker())
@@ -28,6 +29,7 @@
 
 #else
 
+// if part of a user interface
 #include "vistleconnection.h"
 #define PORTMANAGER (*(PythonModule::the().vistleConnection().ui().state().portTracker()))
 #define MODULEMANAGER ((PythonModule::the().vistleConnection().ui().state()))
@@ -410,22 +412,26 @@ BOOST_PYTHON_MODULE(_vistle)
     def("getStringParam", getParameterValue<std::string>, "get value of parameter named `arg2` of module with ID `arg1`");
 }
 
-PythonModule::PythonModule()
+PythonModule::PythonModule(const std::string &path)
 : m_vistleConnection(nullptr)
 {
    assert(s_instance == nullptr);
    s_instance = this;
 
-   import(&PythonInterface::the().nameSpace());
+   if (!import(&PythonInterface::the().nameSpace(), path)) {
+      throw(vistle::except::exception("vistle python import failure"));
+   }
 }
 
-PythonModule::PythonModule(VistleConnection *vc)
+PythonModule::PythonModule(VistleConnection *vc, const std::string &path)
    : m_vistleConnection(vc)
 {
    assert(s_instance == nullptr);
    s_instance = this;
 
-   import(&PythonInterface::the().nameSpace());
+   if (!import(&PythonInterface::the().nameSpace(), path)) {
+      throw(vistle::except::exception("vistle python import failure"));
+   }
 }
 
 PythonModule &PythonModule::the()
@@ -440,7 +446,7 @@ VistleConnection &PythonModule::vistleConnection() const
    return *m_vistleConnection;
 }
 
-bool PythonModule::import(boost::python::object *ns) {
+bool PythonModule::import(boost::python::object *ns, const std::string &path) {
 
    bp::class_<std::vector<int> >("vector<int>")
       .def(bp::vector_indexing_suite<std::vector<int> >());
@@ -459,32 +465,54 @@ bool PythonModule::import(boost::python::object *ns) {
       .def(bp::vector_indexing_suite<ParameterVector<Float> >());
 
    try {
-#  if PY_VERSION_HEX >= 0x03000000
+#if PY_VERSION_HEX >= 0x03000000
       PyInit__vistle();
 #else
       init_vistle();
 #endif
    } catch (bp::error_already_set) {
-      std::cerr << "vistle Python module initialisation failed" << std::endl;
-      PyErr_Print();
+      std::cerr << "vistle Python module initialisation failed: " << std::endl;
+      if (PyErr_Occurred()) {
+         std::cerr << PythonInterface::errorString() << std::endl;
+      }
+      bp::handle_exception();
+      PyErr_Clear();
       return false;
    }
 
+   // load boost::python wrapper - statically linked into binary
    try {
       (*ns)["_vistle"] = bp::import("_vistle");
    } catch (bp::error_already_set) {
       std::cerr << "vistle Python module import failed" << std::endl;
-      PyErr_Print();
+      if (PyErr_Occurred()) {
+         std::cerr << PythonInterface::errorString() << std::endl;
+      }
+      bp::handle_exception();
+      PyErr_Clear();
       return false;
    }
 
-   if (!PythonInterface::the().exec("import vistle")) {
-      std::cerr << "loading vistle Python add-on failed" << std::endl;
-      PyErr_Print();
+   // load vistle.py
+   try {
+      bp::dict locals;
+      locals["modulename"] = "vistle";
+      locals["path"] = path + "/vistle.py";
+      bp::exec("import imp\n"
+           "newmodule = imp.load_module(modulename, open(path), path, ('py', 'U', imp.PY_SOURCE))\n",
+           *ns, locals);
+      (*ns)["vistle"] = locals["newmodule"];
+   } catch (bp::error_already_set) {
+      std::cerr << "loading of vistle.py failed" << std::endl;
+      if (PyErr_Occurred()) {
+         std::cerr << PythonInterface::errorString() << std::endl;
+      }
+      bp::handle_exception();
+      PyErr_Clear();
       return false;
    }
    if (!PythonInterface::the().exec("from vistle import *")) {
-      std::cerr << "importing vistle Python add-on failed" << std::endl;
+      std::cerr << "importing vistle.py Python add-on failed" << std::endl;
       PyErr_Print();
       return false;
    }

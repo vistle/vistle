@@ -6,6 +6,7 @@
  */
 /**********************************************************************************/
 #include "uicontroller.h"
+#include <core/exception.h>
 #include <QApplication>
 #include <QIcon>
 
@@ -29,11 +30,14 @@ int main(int argc, char *argv[])
       int val = a.exec();
       control.finish();
       return val;
+   } catch (vistle::except::exception &ex) {
+      std::cerr << "GUI: fatal exception: " << ex.what() << std::endl << ex.where() << std::endl;
+      return 1;
    } catch(std::exception &ex) {
-      std::cerr << "exception: " << ex.what() << std::endl;
+      std::cerr << "GUI: fatal exception: " << ex.what() << std::endl;
       return 1;
    } catch (...) {
-      std::cerr << "unknown exception" << std::endl;
+      std::cerr << "GUI: fatal exception: unknown" << std::endl;
       return 1;
    }
 }

@@ -1085,12 +1085,14 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             static_cast<const message::Compute *>(message);
 
          if (comp->reason() == message::Compute::Execute) {
-            prepare();
-            vassert(m_executionDepth == 0);
-            ++m_executionDepth;
+            if (reducePolicy() != message::ReducePolicy::Never) {
+               prepare();
+            }
             message::ExecutionProgress start(message::ExecutionProgress::Start);
             start.setUuid(comp->uuid());
             sendMessage(start);
+            vassert(m_executionDepth == 0);
+            ++m_executionDepth;
          }
 
          if (m_executionCount < comp->getExecutionCount())
@@ -1150,6 +1152,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
       case message::Message::REDUCE: {
 
          const message::Reduce *red = static_cast<const message::Reduce *>(message);
+         vassert(reducePolicy() != message::ReducePolicy::Never);
 
          message::Busy busy;
          busy.setUuid(red->uuid());
@@ -1187,7 +1190,9 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          switch (prog->stage()) {
             case message::ExecutionProgress::Start:
                if (m_executionDepth == 0) {
-                  prepare();
+                  if (reducePolicy() != message::ReducePolicy::Never) {
+                     prepare();
+                  }
                   sendMessage(forward);
                }
                ++m_executionDepth;

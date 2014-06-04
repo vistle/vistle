@@ -6,6 +6,7 @@
 #include "vistleconsole.h"
 #include <userinterface/pythoninterface.h>
 #include <userinterface/pythonmodule.h>
+#include <util/findself.h>
 
 #include <boost/thread.hpp>
 
@@ -31,6 +32,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    bool quitOnExit = false;
    if (argc > 1 && argv[1] == std::string("-from-vistle")) {
       quitOnExit = true;
+      argv[1] = argv[0];
       --argc;
       ++argv;
    }
@@ -50,7 +52,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    m_ui->registerObserver(&m_observer);
    m_vistleConnection = new vistle::VistleConnection(*m_ui);
    m_vistleConnection->setQuitOnExit(quitOnExit);
-   m_pythonMod = new vistle::PythonModule(m_vistleConnection);
+   m_pythonMod = new vistle::PythonModule(m_vistleConnection, vistle::getbindir(argc, argv) + "/../lib/");
    m_thread = new boost::thread(boost::ref(*m_vistleConnection));
    m_mainWindow.parameters()->setVistleConnection(m_vistleConnection);
 

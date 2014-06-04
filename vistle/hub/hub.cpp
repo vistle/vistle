@@ -472,7 +472,7 @@ bool Hub::processScript() {
 #ifdef HAVE_PYTHON
    m_uiManager.lockUi(true);
    if (!m_scriptPath.empty()) {
-      PythonInterpreter inter(m_scriptPath);
+      PythonInterpreter inter(m_scriptPath, m_bindir + "/../lib/");
       while(inter.check()) {
          dispatch();
       }
@@ -488,6 +488,9 @@ int main(int argc, char *argv[]) {
 
    Hub hub;
    if (!hub.init(argc, argv)) {
+      return 1;
+   } catch (std::exception &e) {
+      std::cerr << "Hub: fatal exception: " << e.what() << std::endl;
       return 1;
    }
 

@@ -15,14 +15,12 @@ PythonInterface::PythonInterface(const std::string &name)
    assert(s_singleton == NULL);
    s_singleton = this;
 
-   static char namebuf[1024];
-   strncpy(namebuf, name.c_str(), sizeof(namebuf));
-   namebuf[sizeof(namebuf)-1] = '\0';
 #ifdef _WIN32
    static std::wstring wideName = std::wstring(name.begin(), name.end());
    Py_SetProgramName((wchar_t *)wideName.c_str());
 #else
-   Py_SetProgramName(namebuf);
+   static std::string namebuf(name);
+   Py_SetProgramName((char *)namebuf.c_str());
 #endif
    Py_Initialize();
 
@@ -45,6 +43,26 @@ PythonInterface &PythonInterface::the() {
 boost::python::object &PythonInterface::nameSpace()
 {
    return m_namespace;
+}
+
+// cf. http://stackoverflow.com/questions/1418015/how-to-get-python-exception-text
+// decode a Python exception into a string
+std::string PythonInterface::errorString() {
+
+    PyObject *exc,*val,*tb;
+    PyErr_Fetch(&exc,&val,&tb);
+    bp::handle<> hexc(exc), hval(bp::allow_null(val)), htb(bp::allow_null(tb));
+    bp::object traceback(bp::import("traceback"));
+    bp::object formatted_list;
+    if (!tb) {
+        bp::object format_exception_only(traceback.attr("format_exception_only"));
+        formatted_list = format_exception_only(hexc, hval);
+    } else {
+        bp::object format_exception(traceback.attr("format_exception"));
+        formatted_list = format_exception(hexc,hval,htb);
+    }
+    bp::object formatted = bp::str("\n").join(formatted_list);
+    return bp::extract<std::string>(formatted);
 }
 
 bool PythonInterface::exec(const std::string &python) {
