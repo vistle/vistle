@@ -14,6 +14,8 @@
 #endif
 #include <errno.h>
 
+//#define DEBUG
+
 namespace vistle {
 
 static void splitpath(const std::string &value, std::vector<std::string> *components)
@@ -47,7 +49,7 @@ std::string getbindir(int argc, char *argv[]) {
    char *wd = getcwd(NULL, 0);
    if (!wd) {
 
-      std::cerr << "Communicator: failed to determine working directory: " << strerror(errno) << std::endl;
+      std::cerr << "findself.cpp: failed to determine working directory: " << strerror(errno) << std::endl;
       exit(1);
    }
    std::string cwd(wd);
@@ -87,7 +89,7 @@ std::string getbindir(int argc, char *argv[]) {
 
                DIR *dir = opendir(component.c_str());
                if (!dir) {
-                  std::cerr << "Communicator: failed to open directory " << component << ": " << strerror(errno) << std::endl;
+                  std::cerr << "findself.cpp: failed to open directory " << component << ": " << strerror(errno) << std::endl;
                   continue;
                }
 
@@ -119,6 +121,25 @@ std::string getbindir(int argc, char *argv[]) {
 #ifdef _WIN32
       std::string::size_type idx = dir.find_last_of("\\/");
 #else
+#if defined(__APPLE__)
+      {
+         std::string::size_type idx = dir.rfind('/');
+         if (idx != std::string::npos) {
+            std::string macosdir = executable.substr(0, idx);
+            const std::string bundle = ".app/Contents/MacOS";
+            const auto len = bundle.length();
+            if (executable.length() >= len) {
+               std::string tail = macosdir.substr(macosdir.length()-len);
+               if (tail == bundle) {
+                  dir = macosdir.substr(0, macosdir.length()-len);
+#ifdef DEBUG
+                  std::cerr << "findself.cpp: stripped .app bundle dir: " << dir << std::endl;
+#endif
+               }
+            }
+         }
+      }
+#endif
       std::string::size_type idx = dir.rfind('/');
 #endif
       if (idx == std::string::npos) {
@@ -130,7 +151,7 @@ std::string getbindir(int argc, char *argv[]) {
       }
 
 #ifdef DEBUG
-      std::cerr << "Communicator: vistle bin directory determined to be " << dir << std::endl;
+      std::cerr << "findself.cpp: vistle bin directory determined to be " << dir << std::endl;
 #endif
       return dir;
    }
