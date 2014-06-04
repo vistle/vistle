@@ -478,10 +478,16 @@ bool PythonModule::import(boost::python::object *ns) {
       return false;
    }
 
-   if (!PythonInterface::the().exec("import vistle"))
+   if (!PythonInterface::the().exec("import vistle")) {
+      std::cerr << "loading vistle Python add-on failed" << std::endl;
+      PyErr_Print();
       return false;
-   if (!PythonInterface::the().exec("from vistle import *"))
+   }
+   if (!PythonInterface::the().exec("from vistle import *")) {
+      std::cerr << "importing vistle Python add-on failed" << std::endl;
+      PyErr_Print();
       return false;
+   }
 
    return true;
 }
