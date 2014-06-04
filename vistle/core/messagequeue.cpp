@@ -62,7 +62,8 @@ const std::string & MessageQueue::getName() const {
 
 void MessageQueue::send(const Message &msg) {
 
-   m_mq.send(&msg, message::Message::MESSAGE_SIZE, 0);
+   Buffer buf(msg);
+   m_mq.send(&buf.msg, message::Message::MESSAGE_SIZE, 0);
 }
 
 void MessageQueue::receive(Message &msg) {
