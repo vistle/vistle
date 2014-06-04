@@ -564,11 +564,13 @@ bool ReadCovise::load(const std::string & name) {
 
       readRecursive(fd, elem);
    } catch(vistle::exception &e) {
-      deleteRecursive(elem);
       covCloseInFile(fd);
+      deleteRecursive(elem);
 
       throw(e);
    }
+   covCloseInFile(fd);
+   deleteRecursive(elem);
 
    return true;
 }
