@@ -32,7 +32,6 @@ using namespace vistle;
 
 ReadCovise::ReadCovise(const std::string &shmname, int rank, int size, int moduleID)
    : Module("ReadCovise", shmname, rank, size, moduleID)
-   , object_counter(0)
 {
 
    createOutputPort("grid_out");
@@ -437,7 +436,27 @@ Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *e
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Element *elem) {
+vistle::Object::ptr ReadCovise::readOBJREF(const int fd, bool skeleton) {
+
+   int objNum = -1;
+   if (covReadOBJREF(fd, &objNum) == -1) {
+      std::cerr << "ReadCovise: failed to read OBJREF" << std::endl;
+      return Object::ptr();
+   }
+
+   if (objNum < 0 || objNum >= m_objects.size()) {
+      std::cerr << "ReadCovise: invalid OBJREF" << std::endl;
+      return Object::ptr();
+   }
+
+   Element *elem = m_objects[objNum];
+   if (!skeleton && !elem->obj) {
+      elem->obj = readObjectIntern(fd, skeleton, elem, true);
+   }
+   return elem->obj;
+}
+
+Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Element *elem, bool force) {
 
    Object::ptr object;
 
@@ -445,7 +464,7 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
       if (elem->objnum < 0)
          return object;
 
-      if (elem->objnum % size() != rank())
+      if (elem->objnum % size() != rank() && !force)
          return object;
    }
 
@@ -479,10 +498,14 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
 #undef HANDLE
 
    bool leaf_object = handled;
+   bool objref = false;
    if (!handled) {
       if (type == "GEOTEX") {
          object = readGEOTEX(fd, skeleton, elem);
          leaf_object = true;
+      } else if (type == "OBJREF") {
+         object = readOBJREF(fd, skeleton);
+         objref = true;
       } else {
          if (type == "SETELE") {
             if (skeleton) {
@@ -497,18 +520,18 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
       }
    }
 
-   if (skeleton && leaf_object) {
-      elem->objnum = object_counter;
-      ++object_counter;
-   } else {
-      elem->objnum = -1;
-   }
-
    if (skeleton) {
+      if (leaf_object) {
+         elem->objnum = m_objects.size();;
+         m_objects.push_back(elem);
+      } else {
+         elem->objnum = -1;
+      }
       elem->attribs = readAttributes(fd);
    } else {
-      if (object) {
+      if (object && !objref) {
          applyAttributes(object, *elem);
+         elem->obj = object;
          std::cerr << "ReadCovise: " << type << " [ b# " << object->getBlock() << ", t# " << object->getTimestep() << " ]" << std::endl;
       }
    }
@@ -577,8 +600,8 @@ bool ReadCovise::load(const std::string & name) {
 
 bool ReadCovise::compute() {
 
-   object_counter = 0;
-   if (! load(getStringParameter("filename"))) {
+   m_objects.clear();
+   if (!load(getStringParameter("filename"))) {
       std::cerr << "cannot open " << getStringParameter("filename") << std::endl;
    }
    return true;

@@ -21,6 +21,7 @@ struct Element {
 
    Element(const Element &other)
       : parent(other.parent)
+      , obj(other.obj)
       , in_geometry(other.in_geometry)
       , objnum(other.objnum)
       , index(other.index)
@@ -33,6 +34,7 @@ struct Element {
    Element &operator=(const Element &rhs) {
       if (&rhs != this) {
          parent = rhs.parent;
+         obj = rhs.obj;
          in_geometry = rhs.in_geometry;
          objnum = rhs.objnum;
          index = rhs.index;
@@ -44,6 +46,7 @@ struct Element {
    }
 
    Element *parent;
+   vistle::Object::ptr obj;
    bool in_geometry;
    ssize_t objnum;
    int index;
@@ -72,17 +75,18 @@ class ReadCovise: public vistle::Module {
    vistle::Object::ptr readLINES(const int fd, bool skeleton);
    vistle::Object::ptr readPOINTS(const int fd, bool skeleton);
    vistle::Object::ptr readUSTVDT(const int fd, bool skeleton);
+   vistle::Object::ptr readOBJREF(const int fd, bool skeleton);
 
    bool readRecursive(const int fd, const Element &elem);
    void deleteRecursive(Element &elem);
    vistle::Object::ptr readObject(const int fd, const Element &elem);
-   vistle::Object::ptr readObjectIntern(const int fd, bool skeleton, Element *elem);
+   vistle::Object::ptr readObjectIntern(const int fd, bool skeleton, Element *elem, bool force=false);
 
    bool load(const std::string & filename);
 
    virtual bool compute();
 
-   ssize_t object_counter;
+   std::vector<Element *> m_objects;
 };
 
 #endif
