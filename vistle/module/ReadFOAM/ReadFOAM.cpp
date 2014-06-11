@@ -123,9 +123,8 @@ std::vector<std::string> ReadFOAM::getFieldList() const {
 
 bool ReadFOAM::parameterChanged(Parameter *p)
 {
-   StringParameter *sp = dynamic_cast<StringParameter *>(p);
+   auto sp = dynamic_cast<const StringParameter *>(&p);
    if (sp == m_casedir) {
-      sendMessage(message::Busy());
       std::string casedir = sp->getValue();
 
       m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
@@ -165,7 +164,6 @@ bool ReadFOAM::parameterChanged(Parameter *p)
       for (StringParameter *out: m_boundaryOut) {
          setParameterChoices(out, choices);
       }
-      sendMessage(message::Idle());
    }
 
    return Module::parameterChanged(p);
@@ -1126,7 +1124,6 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
 {
    if (rank() == 0)
       std::cout << time(0) << " starting" << std::endl;
-   sendMessage(message::Busy());
    const std::string casedir = m_casedir->getValue();
    m_boundaryPatches.add(m_patchSelection->getValue());
    m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
@@ -1145,7 +1142,6 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
       readTime(casedir, timestep);
    }
 
-   sendMessage(message::Idle());
    if (rank() == 0)
       std::cout << time(0) << " done" << std::endl;
    return true;
