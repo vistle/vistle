@@ -16,6 +16,7 @@ class shm_array {
 
  public: 
    typedef T value_type;
+   typedef const value_type &const_reference;
 
    shm_array(const allocator &alloc = allocator())
    : m_size(0)
