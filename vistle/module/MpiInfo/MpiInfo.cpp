@@ -35,6 +35,12 @@ using namespace vistle;
 MpiInfo::MpiInfo(const std::string &shmname, int rank, int size, int moduleID)
    : Module("MPI info", shmname, rank, size, moduleID)
 {
+   std::vector<char> hostname(1024);
+   gethostname(hostname.data(), hostname.size());
+
+   std::stringstream str;
+   str << "ctor: rank " << rank << "/" << size << " on host " << hostname.data() << std::endl;
+   sendInfo(str.str());
 }
 
 MpiInfo::~MpiInfo() {
@@ -47,7 +53,7 @@ bool MpiInfo::compute() {
    gethostname(hostname.data(), hostname.size());
 
    std::stringstream str;
-   str << "rank " << rank() << "/" << size() << " on host " << hostname.data() << std::endl;
+   str << "compute(): rank " << rank() << "/" << size() << " on host " << hostname.data() << std::endl;
    sendInfo(str.str());
 
    return true;
