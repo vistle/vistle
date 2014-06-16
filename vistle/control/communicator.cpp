@@ -88,7 +88,7 @@ bool Communicator::connectHub(const std::string &host, unsigned short port) {
    int ret = 1;
    if (getRank() == 0) {
 
-      CERR << "connecting to hub on " << host << ":" << port << "..." << std::endl;
+      CERR << "connecting to hub on " << host << ":" << port << "..." << std::flush;
       std::stringstream portstr;
       portstr << port;
 
@@ -98,8 +98,11 @@ bool Communicator::connectHub(const std::string &host, unsigned short port) {
       boost::system::error_code ec;
       asio::connect(m_hubSocket, endpoint_iterator, ec);
       if (ec) {
-         CERR << " could not establish connection to " << host << ":" << port << std::endl;
+         std::cerr << std::endl;
+         CERR << "could not establish connection to hub at " << host << ":" << port << std::endl;
          ret = 0;
+      } else {
+         std::cerr << " ok." << std::endl;
       }
    }
 
