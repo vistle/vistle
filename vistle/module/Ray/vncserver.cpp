@@ -148,14 +148,29 @@ VncServer::VncServer(int w, int h, unsigned short port)
    init(w, h, port);
 }
 
+//! called when plugin is loaded
+VncServer::VncServer(int w, int h, const std::string &host, unsigned short port) {
+   vassert(plugin == NULL);
+   plugin = this;
+
+   //fprintf(stderr, "new VncServer plugin\n");
+
+   init(w, h, port);
+
+   Client c;
+   c.host = host;
+   c.port = port;
+   m_clientList.push_back(c);
+}
+
 // this is called if the plugin is removed at runtime
 VncServer::~VncServer()
 {
    vassert(plugin);
 
    rfbShutdownServer(m_screen, true);
-
-   delete[] m_screen->frameBuffer;
+   rfbScreenCleanup(m_screen);
+   m_screen = nullptr;
 
    //fprintf(stderr,"VncServer::~VncServer\n");
 
@@ -197,7 +212,18 @@ void VncServer::setDepthPrecision(int bits) {
 
 unsigned short VncServer::port() const {
 
-   return m_screen->port;
+   if (m_clientList.empty())
+      return m_screen->port;
+   else
+      return m_clientList.front().port;
+}
+
+std::string VncServer::host() const {
+
+   if (m_clientList.empty())
+      return "";
+   else
+      return m_clientList.front().host;
 }
 
 int VncServer::numViews() const {
@@ -327,23 +353,6 @@ bool VncServer::init(int w, int h, unsigned short port) {
    m_screen->handleEventsEagerly = 1;
 
    m_screen->cursor = NULL; // don't show a cursor
-
-   std::string host;
-   if(!host.empty())
-   {
-      Client c;
-      c.host = host;
-      c.port = 31042;
-      m_clientList.push_back(c);
-   }
-   //host = covise::coCoviseConfig::getEntry("alternateClientHost", config);
-   if(!host.empty())
-   {
-      Client c;
-      c.host = host;
-      c.port = 31042;
-      m_clientList.push_back(c);
-   }
 
    resize(0, w, h);
 
@@ -866,6 +875,14 @@ VncServer::preFrame()
 
    if (m_delay) {
       usleep(m_delay);
+   }
+
+   if (m_numClients == 0) {
+      for (int i=0; i<m_clientList.size(); ++i) {
+         if (rfbReverseConnection(m_screen, const_cast<char *>(m_clientList[i].host.c_str()), m_clientList[i].port)) {
+            break;
+         }
+      }
    }
 
    rfbCheckFds(m_screen, wait_msec*1000);

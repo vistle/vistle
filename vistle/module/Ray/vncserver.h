@@ -37,9 +37,11 @@ public:
 
    // plugin methods
    VncServer(int w, int h, unsigned short port=5900);
+   VncServer(int w, int h, const std::string &host, unsigned short port=5900);
    ~VncServer();
 
    unsigned short port() const;
+   std::string host() const;
 
    int width(int viewNum) const;
    int height(int viewNum) const;

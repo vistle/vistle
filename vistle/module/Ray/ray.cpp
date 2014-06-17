@@ -57,6 +57,9 @@ class RayCaster: public vistle::Renderer {
    IntParameter *m_colorRank;
    IntParameter *m_vncOnSlaves;
    IntParameter *m_vncBasePort;
+   IntParameter *m_vncReverse;
+   StringParameter *m_vncRevHost;
+   IntParameter *m_vncRevPort;
    IntParameter *m_shading;
    IntParameter *m_rgbaEncoding;
    IntParameter *m_depthQuant;
@@ -250,6 +253,10 @@ RayCaster::RayCaster(const std::string &shmname, int rank, int size, int moduleI
    m_vncBasePort = addIntParameter("vnc_base_port", "listen port for VNC server", 31590);
    setParameterRange(m_vncBasePort, (Integer)1, (Integer)((1<<16)-1));
    m_vncOnSlaves = addIntParameter("vnc_on_slaves", "start VNC servers on slave ranks", 0, Parameter::Boolean);
+   m_vncReverse = addIntParameter("vnc_reverse", "establish VNC connection from server to client", 0, Parameter::Boolean);
+   m_vncRevHost = addStringParameter("vnc_reverse_host", "establish reverse connection to client on host", "localhost");
+   m_vncRevPort = addIntParameter("vnc_reverse_port", "establish reverse connection to client on port", 31059);
+   setParameterRange(m_vncRevPort, (Integer)1, (Integer)((1<<16)-1));
    m_continuousRendering = addIntParameter("continuous_rendering", "render even though nothing has changed", 0, Parameter::Boolean);
    m_colorRank = addIntParameter("color_rank", "different colors on each rank", 0, Parameter::Boolean);
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
@@ -325,11 +332,29 @@ bool RayCaster::parameterChanged(Parameter *p) {
             vnc.reset();
          }
       }
-   } else if (p == m_vncBasePort) {
+   } else if (p == m_vncBasePort
+         || p == m_vncReverse
+         || p == m_vncRevHost
+         || p == m_vncRevPort) {
 
-      if (rank() == rootRank() || m_vncOnSlaves->getValue()) {
-         if (!vnc || vnc->port() != m_vncBasePort->getValue())
-            vnc.reset(new VncServer(1024, 768, m_vncBasePort->getValue()));
+      if (m_vncReverse->getValue()) {
+         if (rank() == rootRank()) {
+            if (!vnc || vnc->port() != m_vncRevPort->getValue() || vnc->host() != m_vncRevHost->getValue()) {
+               vnc.reset(); // make sure that dtor runs for ctor of new VncServer
+               vnc.reset(new VncServer(1024, 768, m_vncRevHost->getValue(), m_vncRevPort->getValue()));
+            }
+         } else {
+            vnc.reset();
+         }
+      } else {
+         if (rank() == rootRank() || m_vncOnSlaves->getValue()) {
+            if (!vnc || vnc->port() != m_vncBasePort->getValue()) {
+               vnc.reset(); // make sure that dtor runs for ctor of new VncServer
+               vnc.reset(new VncServer(1024, 768, m_vncBasePort->getValue()));
+            }
+         } else {
+            vnc.reset();
+         }
       }
    } else if (p == m_shading) {
 
