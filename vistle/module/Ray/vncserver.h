@@ -179,8 +179,8 @@ public:
        : frameNumber(0)
        , requestNumber(0)
        , matrixTime(0.)
-       , width(0)
-       , height(0)
+       , width(1)
+       , height(1)
        {
            view = vistle::Matrix4::Identity();
            proj = vistle::Matrix4::Identity();
