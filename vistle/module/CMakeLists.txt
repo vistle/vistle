@@ -22,11 +22,13 @@ endif()
 target_link_libraries(vistle_module
         vistle_util
         vistle_core
+        vistle_boost_mpi
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
 )
 
 include_directories(
+        ../../3rdparty/boost-mpi/include
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ..
