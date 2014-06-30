@@ -17,6 +17,8 @@ RenderObject::RenderObject(Object::const_ptr container,
 , colors(colors)
 , normals(Normals::as(normals))
 , texture(Texture1D::as(texture))
+, hasSolidColor(false)
+, solidColor(0., 0., 0., 0.)
 {
    t = -1;
    geomId = RTC_INVALID_GEOMETRY_ID;
@@ -36,6 +38,26 @@ RenderObject::RenderObject(Object::const_ptr container,
    bMax = Vector(-smax, -smax, -smax);
 
    scene = rtcNewScene(RTC_SCENE_STATIC|sceneFlags, intersections);
+
+   if (geometry && geometry->hasAttribute("_color")) {
+
+      hasSolidColor = true;
+      std::stringstream str(geometry->getAttribute("_color"));
+      str << std::hex;
+      unsigned long c = 0xffffffffL;
+      str >> c;
+      if (c > 0x00ffffffL) {
+         c = 0x00ffffffL;
+      }
+      float b = (c & 0xffL) / 255.f;
+      c >>= 8;
+      float g = (c & 0xffL) / 255.f;
+      c >>= 8;
+      float r = (c & 0xffL) / 255.f;
+      c >>= 8;
+
+      solidColor = Vector4(r, g, b, 1.f);
+   }
 
    if (auto tri = Triangles::as(geometry)) {
 

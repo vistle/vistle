@@ -595,6 +595,9 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
          vassert(ro->geomId == ray.geomID);
 
          Vector4 color = rc.m_defaultColor;
+         if (ro->hasSolidColor) {
+            color = ro->solidColor;
+         }
          if (ro->indexBuffer && ro->texData && ro->texCoords) {
 
             const float &u = ray.u;

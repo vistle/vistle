@@ -52,5 +52,8 @@ struct RenderObject: public RenderObjectData {
    vistle::Texture1D::const_ptr texture;
 
    vistle::Vector bMin, bMax;
+
+   bool hasSolidColor;
+   vistle::Vector4 solidColor;
 };
 #endif
