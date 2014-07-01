@@ -473,7 +473,7 @@ bool StateTracker::handlePriv(const message::Busy &busy) {
 
    const int id = busy.senderId();
    if (busySet.find(id) != busySet.end()) {
-      CERR << "module " << id << " sent Busy twice" << std::endl;
+      //CERR << "module " << id << " sent Busy twice" << std::endl;
    } else {
       busySet.insert(id);
    }
@@ -493,7 +493,7 @@ bool StateTracker::handlePriv(const message::Idle &idle) {
    if (it != busySet.end()) {
       busySet.erase(it);
    } else {
-      CERR << "module " << id << " sent Idle, but was not busy" << std::endl;
+      //CERR << "module " << id << " sent Idle, but was not busy" << std::endl;
    }
    runningMap[id].busy = false;
 
