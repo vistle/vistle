@@ -175,7 +175,7 @@ def reset():
    for m in mods:
       kill(m)
    barrier()
-   _vistle._resetModuleCounter()
+   #_vistle._resetModuleCounter()
    _loaded_file = None
 
 def load(filename = None):
