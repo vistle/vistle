@@ -148,8 +148,8 @@ int VistleInteractor::getFloatSliderParam(const std::string &paraName, float &mi
 
    if (fparam->minimum() <= -std::numeric_limits<float>::max()
          || fparam->maximum() >= std::numeric_limits<float>::min()) {
-      min = val - 100.;
-      max = val + 100.;
+      min = val - 5.;
+      max = val + 5.;
    } else {
       min = fparam->minimum();
       max = fparam->maximum();
