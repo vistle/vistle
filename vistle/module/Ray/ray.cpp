@@ -610,9 +610,13 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
             const float tc0 = ro->texCoords[v0];
             const float tc1 = ro->texCoords[v1];
             const float tc2 = ro->texCoords[v2];
-            const float tc = w*tc0 + u*tc1 + v*tc2;
-            vassert(tc >= 0.f);
-            vassert(tc <= 1.f);
+            float tc = w*tc0 + u*tc1 + v*tc2;
+            //vassert(tc >= 0.f);
+            //vassert(tc <= 1.f);
+            if (tc < 0.f)
+               tc = 0.f;
+            if (tc > 1.f)
+               tc = 1.f;
             unsigned idx = tc * ro->texWidth;
             if (idx >= ro->texWidth)
                idx = ro->texWidth-1;
