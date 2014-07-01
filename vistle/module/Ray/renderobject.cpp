@@ -41,22 +41,26 @@ RenderObject::RenderObject(Object::const_ptr container,
 
    if (geometry && geometry->hasAttribute("_color")) {
 
-      hasSolidColor = true;
       std::stringstream str(geometry->getAttribute("_color"));
-      str << std::hex;
-      unsigned long c = 0xffffffffL;
-      str >> c;
-      if (c > 0x00ffffffL) {
-         c = 0x00ffffffL;
-      }
-      float b = (c & 0xffL) / 255.f;
-      c >>= 8;
-      float g = (c & 0xffL) / 255.f;
-      c >>= 8;
-      float r = (c & 0xffL) / 255.f;
-      c >>= 8;
+      char ch;
+      str >> ch;
+      if (ch == '#') {
+         str << std::hex;
+         unsigned long c = 0xffffffffL;
+         str >> c;
+         if (c > 0x00ffffffL) {
+            c = 0x00ffffffL;
+         }
+         float b = (c & 0xffL);
+         c >>= 8;
+         float g = (c & 0xffL);
+         c >>= 8;
+         float r = (c & 0xffL);
+         c >>= 8;
 
-      solidColor = Vector4(r, g, b, 1.f);
+         hasSolidColor = true;
+         solidColor = Vector4(r, g, b, 255.f);
+      }
    }
 
    if (auto tri = Triangles::as(geometry)) {
