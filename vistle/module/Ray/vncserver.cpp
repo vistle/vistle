@@ -157,9 +157,7 @@ VncServer::VncServer(int w, int h, const std::string &host, unsigned short port)
 
    init(w, h, port);
 
-   Client c;
-   c.host = host;
-   c.port = port;
+   Client c(host, port);
    m_clientList.push_back(c);
 }
 

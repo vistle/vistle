@@ -125,6 +125,7 @@ public:
 
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
+
          ar & position;
          ar & direction;
 
@@ -188,6 +189,23 @@ public:
            scale = vistle::Matrix4::Identity();
            viewer = vistle::Matrix4::Identity();
        }
+
+      template<class Archive>
+      void serialize(Archive &ar, const unsigned int version) {
+
+         std::cout << "SER ViewParameters" << std::endl << std::flush;
+         ar & frameNumber;
+         ar & requestNumber;
+         ar & matrixTime;
+         ar & width;
+         ar & height;
+
+         ar & proj;
+         ar & viewer;
+         ar & view;
+         ar & transform;
+         ar & scale;
+      }
    };
 
    struct ViewData {
@@ -197,6 +215,8 @@ public:
        int newWidth, newHeight; //!< in case resizing was blocked while message was received
        std::vector<unsigned char> rgba;
        std::vector<float> depth;
+
+       ViewData(): newWidth(-1), newHeight(-1) {}
    };
 
 private:
@@ -206,7 +226,10 @@ private:
    struct Client
    {
       std::string host; //!< host name
-      int port; //!< TCP port number
+      unsigned short port; //!< TCP port number
+
+      Client(): port(0) {}
+      Client(const std::string &host, unsigned short port): host(host), port(port) {}
    };
    std::vector<Client> m_clientList; //!< list of clients to which reverse connections should be tried
    std::vector<ViewData> m_viewData;
