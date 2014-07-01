@@ -1120,11 +1120,16 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          try {
             ret = compute();
          } catch (boost::interprocess::interprocess_exception &e) {
+            std::cout << name() << "::compute(): interprocess_exception: " << e.what()
+               << ", error code: " << e.get_error_code()
+               << ", native error: " << e.get_native_error()
+               << std::endl << std::flush;
             std::cerr << name() << "::compute(): interprocess_exception: " << e.what()
                << ", error code: " << e.get_error_code()
                << ", native error: " << e.get_native_error()
                << std::endl;
          } catch (std::exception &e) {
+            std::cout << name() << "::compute(): exception - " << e.what() << std::endl << std::flush;
             std::cerr << name() << "::compute(): exception - " << e.what() << std::endl;
          }
          message::Idle idle;
@@ -1153,6 +1158,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          try {
             ret = reduce(red->timestep());
          } catch (std::exception &e) {
+            std::cout << name() << "::reduce(): exception - " << e.what() << std::endl << std::flush;
             std::cerr << name() << "::reduce(): exception - " << e.what() << std::endl;
          }
          message::Idle idle;
