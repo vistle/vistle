@@ -1,5 +1,5 @@
+#include <boost/lexical_cast.hpp>
 #include <module/module.h>
-#include <core/points.h>
 
 using namespace vistle;
 
