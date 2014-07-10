@@ -116,11 +116,11 @@ class ReadFOAM: public vistle::Module
 
       bool parameterChanged(vistle::Parameter *p);
       bool readDirectory(const std::string &dir, int processor, int timestep);
-      bool buildGhostCells(int processor, int timestep);
-      bool buildGhostCellData(int processor, int timestep);
+      bool buildGhostCells(int processor);
+      bool buildGhostCellData(int processor);
       bool processAllRequests();
-      bool applyGhostCells(int processor, int timestep);
-      bool applyGhostCellsData(int processor, int timestep);
+      bool applyGhostCells(int processor);
+      bool applyGhostCellsData(int processor);
       bool addGridToPorts(int processor);
       bool addVolumeDataToPorts(int processor);
       bool readConstant(const std::string &dir);

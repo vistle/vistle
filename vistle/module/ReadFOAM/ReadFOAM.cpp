@@ -607,7 +607,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
       if (m_case.varyingGrid || m_case.varyingCoords) {
          UnstructuredGrid::ptr grid;
          Polygons::ptr poly;
-         if (m_case.varyingCoords && !m_case.varyingGrid) {
+         if (!m_case.varyingGrid) {
             {
                grid.reset(new UnstructuredGrid(0, 0, 0));
                UnstructuredGrid::Data *od = m_basegrid[processor]->d();
@@ -648,7 +648,7 @@ int tag(int p, int n, int i=0) {
    return p*10000+n*100+i;
 }
 
-bool ReadFOAM::buildGhostCells(int processor, int timestep) {
+bool ReadFOAM::buildGhostCells(int processor) {
    //std::cout << "rank " << rank() << " reading GhostCells // processor: " << processor << " // timestep: " << timestep << std::endl;
    auto &boundaries = *m_boundaries[processor];
    auto &owners = *m_owners[processor];
@@ -749,7 +749,7 @@ bool ReadFOAM::buildGhostCells(int processor, int timestep) {
    return true;
 }
 
-bool ReadFOAM::buildGhostCellData(int processor, int timestep) {
+bool ReadFOAM::buildGhostCellData(int processor) {
    //std::cout << "rank " << rank() << " reading GhostCells DATA // processor: " << processor << " // timestep: " << timestep << std::endl;
    auto &boundaries = *m_boundaries[processor];
    auto &owners = *m_owners[processor];
@@ -765,7 +765,7 @@ bool ReadFOAM::buildGhostCellData(int processor, int timestep) {
          Vec<Scalar, 3>::ptr v3 = Vec<Scalar, 3>::as(obj);
          if (!v1 && !v3) {
             continue;
-            std::cerr << "Could not send Data - unknown Object Type" << std::endl;
+            std::cerr << "Could not send Data - unsupported Data-Object Type" << std::endl;
          }
          if (v1) {
             boost::shared_ptr<GhostData> dataOut(new GhostData(1));
@@ -831,7 +831,7 @@ bool ReadFOAM::processAllRequests() {
    return true;
 }
 
-bool ReadFOAM::applyGhostCells(int processor, int timestep) {
+bool ReadFOAM::applyGhostCells(int processor) {
    //std::cout << "Rank " << rank() << " applying GhostCells" << std::endl;
    auto &boundaries = *m_boundaries[processor];
 
@@ -887,7 +887,7 @@ bool ReadFOAM::applyGhostCells(int processor, int timestep) {
    return true;
 }
 
-bool ReadFOAM::applyGhostCellsData(int processor, int timestep) {
+bool ReadFOAM::applyGhostCellsData(int processor) {
    //std::cout << "Rank " << rank() << " applying GhostCellData" << std::endl;
    auto &boundaries = *m_boundaries[processor];
 
@@ -903,7 +903,7 @@ bool ReadFOAM::applyGhostCellsData(int processor, int timestep) {
          Vec<Scalar, 3>::ptr v3 = Vec<Scalar, 3>::as(obj);
          if (!v1 && !v3) {
             continue;
-            std::cerr << "Could not apply Data - unknown Object Type" << std::endl;
+            std::cerr << "Could not apply Data - unsupported Data-Object Type" << std::endl;
          }
          if (v1) {
             boost::shared_ptr<GhostData> dataIn = m_GhostDataIn[processor][neighborProc][i];
@@ -967,7 +967,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
       if (m_case.numblocks > 0) {
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
-               if (!buildGhostCells(i, -1))
+               if (!buildGhostCells(i))
                   return false;
             }
          }
@@ -978,7 +978,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
 
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
-               if (!applyGhostCells(i, -1))
+               if (!applyGhostCells(i))
                   return false;
             }
             addGridToPorts(i);
@@ -1020,7 +1020,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
       if (m_case.numblocks > 0) {
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
-               if (!buildGhostCells(i, timestep))
+               if (!buildGhostCells(i))
                   return false;
             }
          }
@@ -1031,7 +1031,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
-               if (!applyGhostCells(i, timestep))
+               if (!applyGhostCells(i))
                   return false;
             }
             addGridToPorts(i);
@@ -1046,7 +1046,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
    if (m_case.numblocks > 0 && readGrid) {
       for (int i=0; i<m_case.numblocks; ++i) {
          if (i % size() == rank()) {
-            if (!buildGhostCellData(i, timestep))
+            if (!buildGhostCellData(i))
                return false;
          }
       }
@@ -1057,7 +1057,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
       for (int i=0; i<m_case.numblocks; ++i) {
          if (i % size() == rank()) {
-            if (!applyGhostCellsData(i, timestep))
+            if (!applyGhostCellsData(i))
                return false;
          }
          addVolumeDataToPorts(i);
