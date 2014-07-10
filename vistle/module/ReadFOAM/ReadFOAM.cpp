@@ -583,6 +583,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
 
          if (m_case.varyingCoords) {
             m_basegrid[processor] = grid;
+            m_currentgrid[processor] = grid;
             m_basebound[processor] = poly;
          } else {
             m_currentgrid[processor] = grid;
@@ -648,7 +649,7 @@ int tag(int p, int n, int i=0) {
    return p*10000+n*100+i;
 }
 
-bool ReadFOAM::buildGhostCells(int processor) {
+bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
    //std::cout << "rank " << rank() << " reading GhostCells // processor: " << processor << " // timestep: " << timestep << std::endl;
    auto &boundaries = *m_boundaries[processor];
    auto &owners = *m_owners[processor];
@@ -674,57 +675,85 @@ bool ReadFOAM::buildGhostCells(int processor) {
       std::vector<Scalar> &pointsOutY = out->y;
       std::vector<Scalar> &pointsOutZ = out->z;
 
-      elOut.reserve(b.numFaces + 1);
-      elOut.push_back(0);
-      tlOut.reserve(b.numFaces);
-      Index conncount=0;
-      for (Index i=0;i<b.numFaces;++i) {
-         Index cell=owners[b.startFace + i];
-         Index elementStart = el[cell];
-         Index elementEnd = el[cell + 1];
-         for (Index j=elementStart; j<elementEnd; ++j) {
-            SIndex point = cl[j];
-            clOut.push_back(point);
-            ++conncount;
+      if (mode == ALL || mode == BASE) {
+         elOut.reserve(b.numFaces + 1);
+         elOut.push_back(0);
+         tlOut.reserve(b.numFaces);
+         Index conncount=0;
+         for (Index i=0;i<b.numFaces;++i) {
+            Index cell=owners[b.startFace + i];
+            Index elementStart = el[cell];
+            Index elementEnd = el[cell + 1];
+            for (Index j=elementStart; j<elementEnd; ++j) {
+               SIndex point = cl[j];
+               clOut.push_back(point);
+               ++conncount;
+            }
+            elOut.push_back(conncount);
+            tlOut.push_back(tl[cell]);
          }
-         elOut.push_back(conncount);
-         tlOut.push_back(tl[cell]);
-      }
 
-      //Create Vertices Mapping
-      std::map<Index, SIndex> verticesMapping;
-      //shared vertices that don't have to be sent (mapped to negative values)
-      SIndex c=-1;
-      for (const Index &v: procBoundaryVertices) {
-         if (verticesMapping.emplace(v,c).second) {
-            --c;
+         //Create Vertices Mapping
+         std::map<Index, SIndex> verticesMapping;
+         //shared vertices that don't have to be sent (mapped to negative values)
+         SIndex c=-1;
+         for (const Index &v: procBoundaryVertices) {
+            if (verticesMapping.emplace(v,c).second) {
+               --c;
+            }
          }
-      }
-      //vertices that have to be sent (mapped to positive values)
-      c=0;
-      for (const SIndex &v: clOut) {
-         if (verticesMapping.emplace(v,c).second) {
-            ++c;
+         //vertices that have to be sent (mapped to positive values)
+         c=0;
+         for (const SIndex &v: clOut) {
+            if (verticesMapping.emplace(v,c).second) {
+               ++c;
+            }
          }
-      }
 
-      //Change connectivity list to use the mapped values
-      for (SIndex &v: clOut) {
-         v = verticesMapping[v];
-      }
+         //Change connectivity list to use the mapped values
+         for (SIndex &v: clOut) {
+            v = verticesMapping[v];
+         }
 
-      //create Coordinate Vectors for NOT shared Vertices
-      pointsOutX.resize(c);
-      pointsOutY.resize(c);
-      pointsOutZ.resize(c);
+         if (mode == BASE) {
+            m_verticesMappings[processor][neighborProc]=verticesMapping;
+         }
 
-      for (auto &v: verticesMapping) {
-         Index f=v.first;
-         SIndex s=v.second;
-         if (s > -1) {
-            pointsOutX[s] = x[f];
-            pointsOutY[s] = y[f];
-            pointsOutZ[s] = z[f];
+         //create Coordinate Vectors for NOT shared Vertices
+         pointsOutX.resize(c);
+         pointsOutY.resize(c);
+         pointsOutZ.resize(c);
+
+         for (auto &v: verticesMapping) {
+            Index f=v.first;
+            SIndex s=v.second;
+            if (s > -1) {
+               pointsOutX[s] = x[f];
+               pointsOutY[s] = y[f];
+               pointsOutZ[s] = z[f];
+            }
+         }
+      } else if (mode == COORDS){
+         std::map<Index, SIndex> verticesMapping = m_verticesMappings[processor][neighborProc];
+         SIndex c=0;
+         for (auto &v: verticesMapping) {
+            SIndex s=v.second;
+            if (s > -1) {
+               ++c;
+            }
+         }
+         pointsOutX.resize(c);
+         pointsOutY.resize(c);
+         pointsOutZ.resize(c);
+
+         for (auto &v: verticesMapping) {
+            Index f=v.first;
+            SIndex s=v.second;
+            if (s > -1) {
+               pointsOutX[s] = x[f];
+               pointsOutY[s] = y[f];
+               pointsOutZ[s] = z[f];
+            }
          }
       }
    }
@@ -745,6 +774,7 @@ bool ReadFOAM::buildGhostCells(int processor) {
          m_GhostCellsIn[processor][neighborProc] = out;
       }
    }
+
 
    return true;
 }
@@ -831,7 +861,7 @@ bool ReadFOAM::processAllRequests() {
    return true;
 }
 
-bool ReadFOAM::applyGhostCells(int processor) {
+bool ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
    //std::cout << "Rank " << rank() << " applying GhostCells" << std::endl;
    auto &boundaries = *m_boundaries[processor];
 
@@ -861,26 +891,34 @@ bool ReadFOAM::applyGhostCells(int processor) {
        std::vector<Scalar> &pointsInZ = in->z;
        Index pointsSize=x.size();
 
-       for (int cell = 0; cell < tlIn.size();++cell) {
-          Index elementStart = elIn[cell];
-          Index elementEnd = elIn[cell + 1];
-          for (Index i = elementStart; i < elementEnd; ++i) {
-             SIndex point = clIn[i];
-             if (point < 0) {
-                point=sharedVerticesMapping[(point*-1)-1];
-             } else {
-                point+=pointsSize;
+       if (mode == ALL) {
+          for (int cell = 0; cell < tlIn.size();++cell) {
+             Index elementStart = elIn[cell];
+             Index elementEnd = elIn[cell + 1];
+             for (Index i = elementStart; i < elementEnd; ++i) {
+                SIndex point = clIn[i];
+                if (point < 0) {
+                   point=sharedVerticesMapping[(point*-1)-1];
+                } else {
+                   point+=pointsSize;
+                }
+                cl.push_back(point);
              }
-             cl.push_back(point);
+             el.push_back(cl.size());
+             tl.push_back(tlIn[cell]|UnstructuredGrid::GHOST_BIT);
           }
-          el.push_back(cl.size());
-          tl.push_back(tlIn[cell]|UnstructuredGrid::GHOST_BIT);
-       }
 
-       for (int i=0; i<pointsInX.size(); ++i) {
-          x.push_back(pointsInX[i]);
-          y.push_back(pointsInY[i]);
-          z.push_back(pointsInZ[i]);
+          for (int i=0; i<pointsInX.size(); ++i) {
+             x.push_back(pointsInX[i]);
+             y.push_back(pointsInY[i]);
+             z.push_back(pointsInZ[i]);
+          }
+       } else { //mode == COORDS
+          for (int i=0; i<pointsInX.size(); ++i) {
+             x.push_back(pointsInX[i]);
+             y.push_back(pointsInY[i]);
+             z.push_back(pointsInZ[i]);
+          }
        }
    }
    m_GhostCellsIn[processor].clear();
@@ -967,7 +1005,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
       if (m_case.numblocks > 0) {
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
-               if (!buildGhostCells(i))
+               if (!buildGhostCells(i,ALL))
                   return false;
             }
          }
@@ -978,7 +1016,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
 
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
-               if (!applyGhostCells(i))
+               if (!applyGhostCells(i,ALL))
                   return false;
             }
             addGridToPorts(i);
@@ -986,6 +1024,26 @@ bool ReadFOAM::readConstant(const std::string &casedir)
 
       } else {
          addGridToPorts(-1);
+      }
+
+   } else if (m_case.varyingCoords) {
+      if (m_case.numblocks > 0) {
+         for (int i=0; i<m_case.numblocks; ++i) {
+            if (i % size() == rank()) {
+               if (!buildGhostCells(i,BASE))
+                  return false;
+            }
+         }
+
+         c.barrier();
+         processAllRequests();
+
+         for (int i=0; i<m_case.numblocks; ++i) {
+            if (i % size() == rank()) {
+               if (!applyGhostCells(i,ALL))
+                  return false;
+            }
+         }
       }
    }
 
@@ -1020,8 +1078,13 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
       if (m_case.numblocks > 0) {
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
-               if (!buildGhostCells(i))
-                  return false;
+               if (m_case.varyingGrid) {
+                  if (!buildGhostCells(i,ALL))
+                     return false;
+               } else {
+                  if (!buildGhostCells(i,COORDS))
+                     return false;
+               }
             }
          }
 
@@ -1031,8 +1094,13 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
-               if (!applyGhostCells(i))
-                  return false;
+               if (m_case.varyingGrid) {
+                  if (!applyGhostCells(i,ALL))
+                     return false;
+               } else {
+                  if (!applyGhostCells(i,COORDS))
+                     return false;
+               }
             }
             addGridToPorts(i);
          }

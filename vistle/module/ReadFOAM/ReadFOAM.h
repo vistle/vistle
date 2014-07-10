@@ -94,6 +94,12 @@ class ReadFOAM: public vistle::Module
    static const int NumBoundaryPorts = 3;
 
  public:
+      enum GhostMode {
+         ALL,
+         BASE,
+         COORDS
+      };
+
       virtual bool compute();
       ReadFOAM(const std::string &shmname, int rank, int size, int moduleId);
       virtual ~ReadFOAM();
@@ -116,10 +122,10 @@ class ReadFOAM: public vistle::Module
 
       bool parameterChanged(vistle::Parameter *p);
       bool readDirectory(const std::string &dir, int processor, int timestep);
-      bool buildGhostCells(int processor);
+      bool buildGhostCells(int processor, GhostMode mode);
       bool buildGhostCellData(int processor);
       bool processAllRequests();
-      bool applyGhostCells(int processor);
+      bool applyGhostCells(int processor, GhostMode mode);
       bool applyGhostCellsData(int processor);
       bool addGridToPorts(int processor);
       bool addVolumeDataToPorts(int processor);
@@ -147,5 +153,6 @@ class ReadFOAM: public vistle::Module
       std::map<int, std::map<int, std::map<int, boost::shared_ptr<GhostData> > > > m_GhostDataOut;
       std::map<int, std::map<int, std::map<int, boost::shared_ptr<GhostData> > > > m_GhostDataIn;
       std::map<int, std::vector<boost::mpi::request> > m_requests;
+      std::map<int, std::map<int, std::map<vistle::Index, vistle::SIndex> > > m_verticesMappings;
 };
 #endif // READFOAM_H
