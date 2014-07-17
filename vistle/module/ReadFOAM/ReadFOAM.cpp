@@ -50,14 +50,14 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
 {
    // file browser parameter
    m_casedir = addStringParameter("casedir", "OpenFOAM case directory",
-      "/mnt/raid/home/hpcchkop/test", Parameter::Directory);//data/OpenFOAM/PumpTurbine
+      "/data/OpenFOAM", Parameter::Directory);
    //Time Parameters
    m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
    setParameterMinimum<Float>(m_starttime, 0.);
    m_stoptime = addFloatParameter("stoptime", "stop reading at the last step before this time",
          std::numeric_limits<double>::max());
    setParameterMinimum<Float>(m_stoptime, 0.);
-   m_timeskip = addIntParameter("timeskip", "number of timesteps to skip", 0);
+   m_timeskip = addIntParameter("timeskip", "skip this many timesteps after reading one", 0);
    setParameterMinimum<Integer>(m_timeskip, 0);
    m_readGrid = addIntParameter("read_grid", "load the grid?", 1, Parameter::Boolean);
 
@@ -123,7 +123,6 @@ std::vector<std::string> ReadFOAM::getFieldList() const {
 
 bool ReadFOAM::parameterChanged(Parameter *p)
 {
-
    StringParameter *sp = dynamic_cast<StringParameter *>(p);
    if (sp == m_casedir) {
       sendMessage(message::Busy());
@@ -141,18 +140,21 @@ bool ReadFOAM::parameterChanged(Parameter *p)
       std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
 
       //print out a list of boundary patches to Vistle Console
-      std::stringstream meshdir;
-      meshdir << casedir << "/constant/polyMesh"; //<< m_case.constantdir << "/polyMesh";
-      Boundaries bounds = loadBoundary(meshdir.str());
-      if (bounds.valid) {
-         sendInfo("boundary patches:");
-      } else {
-         sendInfo("No global boundary file was found");
-      }
-      for (int i=0;i<bounds.boundaries.size();++i) {
-         std::stringstream info;
-         info << bounds.boundaries[i].index<< " ## " << bounds.boundaries[i].name;
-         sendInfo("%s", info.str().c_str());
+      if (rank() == 0) {
+         std::stringstream meshdir;
+         meshdir << casedir << "/constant/polyMesh"; //<< m_case.constantdir << "/polyMesh";
+         Boundaries bounds = loadBoundary(meshdir.str());
+         if (bounds.valid) {
+            sendInfo("boundary patches:");
+            for (int i=0;i<bounds.boundaries.size();++i) {
+               std::stringstream info;
+               info << bounds.boundaries[i].index<< " ## " << bounds.boundaries[i].name;
+               sendInfo("%s", info.str().c_str());
+            }
+         } else {
+            sendInfo("No global boundary file was found at:");
+            sendInfo(meshdir.str());
+         }
       }
 
       //fill choice parameters
@@ -251,7 +253,11 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          }
       }
 
-      //Ghost cell vertices
+      //Vertices lists for GhostCell creation -
+      //each node creates lists of the outer vertices that are shared with other domains
+      //with either its own or the neighbouring domain's face-numbering (clockwise or ccw)
+      //so that two domains have the same list for a mutual border
+      //therefore m_procBoundaryVertices[0][1] == m_procBoundaryVertices[1][0]
       for (const auto &b: (*boundaries).procboundaries) {
          std::vector<Index> outerVertices;
          int myProc=b.myProc;
@@ -265,7 +271,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                }
             }
          } else {
-            //create with neighbour numbering
+            //create with neighbour numbering (reverse direction)
             for (int i=b.startFace; i<b.startFace+b.numFaces; ++i) {
                auto face=faces[i];
                outerVertices.push_back(face[0]);
@@ -274,7 +280,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                }
             }
          }
-         m_procBoundaryVertices[b.myProc][b.neighborProc] = outerVertices;
+         m_procBoundaryVertices[myProc][neighborProc] = outerVertices;
       }
 
       //Grid
@@ -295,7 +301,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          for (index_t i=0; i<dim.cells; i++) {
             const std::vector<Index> &cellfaces=cellfacemap[i];
             const std::vector<index_t> cellvertices = getVerticesForCell(cellfaces, faces);
-            bool onlySimpleFaces=true; //Simple Face = Triangle or Square
+            bool onlySimpleFaces=true; //Simple Face = Triangle or Rectangle
             for (index_t j=0; j<cellfaces.size(); ++j) {
                if (faces[cellfaces[j]].size()<3 || faces[cellfaces[j]].size()>4) {
                   onlySimpleFaces=false;
@@ -322,8 +328,6 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
             num_conn += num_verts;
          }
          //save data cell by cell to element, connectivity and type list
-         //go cell by cell (element by element)
-
          auto el = grid->el().data();
          auto &connectivities = grid->cl();
          auto inserter = std::back_inserter(connectivities);
@@ -335,8 +339,8 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
             const auto &cellfaces=cellfacemap[i];//get all faces of current cell
             switch (types[i]) {
                case UnstructuredGrid::HEXAHEDRON: {
-                  index_t ia=cellfaces[0];//Pick the first index in the vector as index of the random starting face
-                  std::vector<index_t> a=faces[ia];//find face that corresponds to index ia
+                  index_t ia=cellfaces[0];//use the first face as starting face
+                  std::vector<index_t> a=faces[ia];
 
                   if (!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbour)) {
                      std::reverse(a.begin(), a.end());
@@ -353,7 +357,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                case UnstructuredGrid::PRISM: {
                   index_t it=1;
                   index_t ia=cellfaces[0];
-                  while (faces[ia].size()>3) {
+                  while (faces[ia].size()>3) {//find first face with 3 vertices to use as starting face
                      ia=cellfaces[it++];
                   }
 
@@ -373,7 +377,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                case UnstructuredGrid::PYRAMID: {
                   index_t it=1;
                   index_t ia=cellfaces[0];
-                  while (faces[ia].size()<4) {
+                  while (faces[ia].size()<4) {//find the rectangular face to use as starting face
                      ia=cellfaces[it++];
                   }
 
@@ -389,7 +393,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                break;
 
                case UnstructuredGrid::TETRAHEDRON: {
-                  index_t ia=cellfaces[0];
+                  index_t ia=cellfaces[0];//use first face as starting face
                   std::vector<index_t> a=faces[ia];
 
                   if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbour)) {
@@ -425,7 +429,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
    if (readGrid) {
       loadCoords(meshdir, grid);
 
-      if (readBoundary) {
+      if (readBoundary) {//if grid has been read alaready -> re-use coordinate lists for the boundary-plygon
          poly->d()->x[0] = grid->d()->x[0];
          poly->d()->x[1] = grid->d()->x[1];
          poly->d()->x[2] = grid->d()->x[2];
@@ -463,7 +467,7 @@ Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::s
    auto &boundaries = *m_boundaries[processor];
    auto owners = m_owners[processor]->data();
    std::vector<index_t> dataMapping;
-   //Create the dataMpping Vector
+   //Create the dataMapping Vector
    for (const auto &b: boundaries.boundaries) {
       Index boundaryIndex=b.index;
       if (m_boundaryPatches(boundaryIndex)) {
@@ -533,7 +537,6 @@ void ReadFOAM::setMeta(Object::ptr obj, int processor, int timestep) const {
 }
 
 bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string, int> &fields, int processor, int timestep) {
-
    for (int i=0; i<NumPorts; ++i) {
       std::string field = m_fieldOut[i]->getValue();
       auto it = fields.find(field);
@@ -553,7 +556,6 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
       setMeta(obj, processor, timestep);
       addObject(m_boundaryDataOut[i], obj);
    }
-
    return true;
 }
 
@@ -561,7 +563,6 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
 
 
 bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int timestep) {
-   //std::cout << "rank " << rank() << " reading " << casedir << " // processor: " << processor << " // timestep: " << timestep << std::endl;
    std::string dir = casedir;
 
    if (processor >= 0) {
@@ -645,12 +646,11 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
    return true;
 }
 
-int tag(int p, int n, int i=0) {
+int tag(int p, int n, int i=0) { //MPI needs a unique ID for each send/receive request, this function creates unique ids for each processor pairing
    return p*10000+n*100+i;
 }
 
 bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
-   //std::cout << "rank " << rank() << " reading GhostCells // processor: " << processor << " // timestep: " << timestep << std::endl;
    auto &boundaries = *m_boundaries[processor];
    auto &owners = *m_owners[processor];
 
@@ -664,7 +664,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
 
    for (const auto &b :boundaries.procboundaries) {
       Index neighborProc=b.neighborProc;
-      boost::shared_ptr<GhostCells> out(new GhostCells());
+      boost::shared_ptr<GhostCells> out(new GhostCells()); //object that will be sent to neighbor processor
       m_GhostCellsOut[processor][neighborProc] = out;
       std::vector<Index> &procBoundaryVertices = m_procBoundaryVertices[processor][neighborProc];
 
@@ -675,7 +675,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
       std::vector<Scalar> &pointsOutY = out->y;
       std::vector<Scalar> &pointsOutZ = out->z;
 
-      if (mode == ALL || mode == BASE) {
+      if (mode == ALL || mode == BASE) { //create ghost cell topology and send vertice-coordinates
          elOut.reserve(b.numFaces + 1);
          elOut.push_back(0);
          tlOut.reserve(b.numFaces);
@@ -695,14 +695,14 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
 
          //Create Vertices Mapping
          std::map<Index, SIndex> verticesMapping;
-         //shared vertices that don't have to be sent (mapped to negative values)
+         //shared vertices (coords do not have to be sent) -> mapped to negative values
          SIndex c=-1;
          for (const Index &v: procBoundaryVertices) {
             if (verticesMapping.emplace(v,c).second) {
                --c;
             }
          }
-         //vertices that have to be sent (mapped to positive values)
+         //vertices with coordinates that have to be sent -> mapped to positive values
          c=0;
          for (const SIndex &v: clOut) {
             if (verticesMapping.emplace(v,c).second) {
@@ -715,11 +715,12 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
             v = verticesMapping[v];
          }
 
+         //save the vertices mapping for later use if mode==BASE
          if (mode == BASE) {
             m_verticesMappings[processor][neighborProc]=verticesMapping;
          }
 
-         //create Coordinate Vectors for NOT shared Vertices
+         //create and fill Coordinate Vectors that have to be sent
          pointsOutX.resize(c);
          pointsOutY.resize(c);
          pointsOutZ.resize(c);
@@ -733,7 +734,9 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
                pointsOutZ[s] = z[f];
             }
          }
-      } else if (mode == COORDS){
+      } else if (mode == COORDS){ //only send the unknown vertices and assume that the base-topology is already known from a previous timestep
+                                  //buildGhostCells needs to be called with mode parameter BASE once before this will work
+                                  //and applyGhostCells has to be called with mode parameter COORDS when receiving only coordinates
          std::map<Index, SIndex> verticesMapping = m_verticesMappings[processor][neighborProc];
          SIndex c=0;
          for (auto &v: verticesMapping) {
@@ -774,13 +777,10 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
          m_GhostCellsIn[processor][neighborProc] = out;
       }
    }
-
-
    return true;
 }
 
 bool ReadFOAM::buildGhostCellData(int processor) {
-   //std::cout << "rank " << rank() << " reading GhostCells DATA // processor: " << processor << " // timestep: " << timestep << std::endl;
    auto &boundaries = *m_boundaries[processor];
    auto &owners = *m_owners[processor];
    for (const auto &b :boundaries.procboundaries) {
@@ -805,11 +805,6 @@ bool ReadFOAM::buildGhostCellData(int processor) {
                Index cell=owners[b.startFace + i];
                (*dataOut).x[0].push_back(d[cell]);
             }
-//            std::cout << "Data created | Processor: " << processor << " - " << neighborProc << " Size: " << (*dataOut).x[0].size() << " // ";
-//            for (auto q : (*dataOut).x[0]) {
-//               std::cout << q << "|";
-//            }
-//            std::cout << std::endl;
          } else if (v3) {
             boost::shared_ptr<GhostData> dataOut(new GhostData(3));
             m_GhostDataOut[processor][neighborProc][i] = dataOut;
@@ -846,15 +841,12 @@ bool ReadFOAM::buildGhostCellData(int processor) {
          }
       }
    }
-
    return true;
 }
 
 bool ReadFOAM::processAllRequests() {
    std::vector<mpi::request> r=m_requests[rank()];
-   //std::cout << "Rank " << rank() << " sending/receiving" << std::endl;
    mpi::wait_all(r.begin(),r.end());
-   //std::cout << "Rank " << rank() << " sending/receiving DONE" << std::endl;
    m_requests.clear();
    m_GhostCellsOut.clear();
    m_GhostDataOut.clear();
@@ -862,9 +854,7 @@ bool ReadFOAM::processAllRequests() {
 }
 
 bool ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
-   //std::cout << "Rank " << rank() << " applying GhostCells" << std::endl;
    auto &boundaries = *m_boundaries[processor];
-
    UnstructuredGrid::ptr grid = m_currentgrid[processor];
    auto &el = grid->el();
    auto &cl = grid->cl();
@@ -892,14 +882,14 @@ bool ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
        Index pointsSize=x.size();
 
        if (mode == ALL) {
-          for (int cell = 0; cell < tlIn.size();++cell) {
+          for (int cell = 0; cell < tlIn.size();++cell) {//append new topology to old grid
              Index elementStart = elIn[cell];
              Index elementEnd = elIn[cell + 1];
              for (Index i = elementStart; i < elementEnd; ++i) {
                 SIndex point = clIn[i];
-                if (point < 0) {
+                if (point < 0) {//if point<0 then vertice is already known and can be looked up in sharedVerticesMapping
                    point=sharedVerticesMapping[(point*-1)-1];
-                } else {
+                } else {//else the vertice is unknown and its coordinates will be appended to the old coord-lists so we point to an index beyond the current size
                    point+=pointsSize;
                 }
                 cl.push_back(point);
@@ -908,13 +898,14 @@ bool ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
              tl.push_back(tlIn[cell]|UnstructuredGrid::GHOST_BIT);
           }
 
-          for (int i=0; i<pointsInX.size(); ++i) {
+          for (int i=0; i<pointsInX.size(); ++i) {//append new coordinates to old coordinate-lists
              x.push_back(pointsInX[i]);
              y.push_back(pointsInY[i]);
              z.push_back(pointsInZ[i]);
           }
+
        } else { //mode == COORDS
-          for (int i=0; i<pointsInX.size(); ++i) {
+          for (int i=0; i<pointsInX.size(); ++i) { //base topology is already known and only unknown vertices have to be applied again
              x.push_back(pointsInX[i]);
              y.push_back(pointsInY[i]);
              z.push_back(pointsInZ[i]);
@@ -926,7 +917,6 @@ bool ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
 }
 
 bool ReadFOAM::applyGhostCellsData(int processor) {
-   //std::cout << "Rank " << rank() << " applying GhostCellData" << std::endl;
    auto &boundaries = *m_boundaries[processor];
 
    for (const auto &b :boundaries.procboundaries) {
@@ -943,6 +933,7 @@ bool ReadFOAM::applyGhostCellsData(int processor) {
             continue;
             std::cerr << "Could not apply Data - unsupported Data-Object Type" << std::endl;
          }
+         //append ghost cell data to old data objects
          if (v1) {
             boost::shared_ptr<GhostData> dataIn = m_GhostDataIn[processor][neighborProc][i];
             auto &d=v1->x(0);
@@ -982,7 +973,6 @@ bool ReadFOAM::addVolumeDataToPorts(int processor) {
 bool ReadFOAM::readConstant(const std::string &casedir)
 {
    bool readGrid = m_readGrid->getValue();
-   std::cerr << "reading constant data..." << std::endl;
    if (m_case.numblocks > 0) {
       for (int i=0; i<m_case.numblocks; ++i) {
          if (i % size() == rank()) {
@@ -999,7 +989,6 @@ bool ReadFOAM::readConstant(const std::string &casedir)
 
    mpi::communicator c;
    c.barrier();
-   //std::cout << rank() << " broke barrier (constant grid created)" << std::endl;
 
    if (!m_case.varyingCoords && !m_case.varyingGrid && readGrid) {
       if (m_case.numblocks > 0) {
@@ -1011,7 +1000,6 @@ bool ReadFOAM::readConstant(const std::string &casedir)
          }
 
          c.barrier();
-         //std::cout << rank() << " broke barrier (constant ghost cells created)" << std::endl;
          processAllRequests();
 
          for (int i=0; i<m_case.numblocks; ++i) {
@@ -1049,13 +1037,11 @@ bool ReadFOAM::readConstant(const std::string &casedir)
 
    m_currentgrid.clear();
    m_currentvolumedata.clear();
-
    return true;
 }
 
 bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
    bool readGrid = m_readGrid->getValue();
-   std::cerr << "reading time step " << timestep << "..." << std::endl;
    if (m_case.numblocks > 0) {
       for (int i=0; i<m_case.numblocks; ++i) {
          if (i % size() == rank()) {
@@ -1072,7 +1058,6 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
    mpi::communicator c;
    c.barrier();
-   //std::cout << rank() << " broke barrier (timestep " << timestep << " grid created)" << std::endl;
 
    if ((m_case.varyingCoords || m_case.varyingGrid) && readGrid) {
       if (m_case.numblocks > 0) {
@@ -1089,7 +1074,6 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
          }
 
          c.barrier();
-         //std::cout << rank() << " broke barrier (timestep " << timestep << " ghost cells created)" << std::endl;
          processAllRequests();
 
          for (int i=0; i<m_case.numblocks; ++i) {
@@ -1120,7 +1104,6 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
       }
 
       c.barrier();
-      //std::cout << rank() << " broke barrier (timestep " << timestep << " ghost cells data created)" << std::endl;
       processAllRequests();
 
       for (int i=0; i<m_case.numblocks; ++i) {
@@ -1136,13 +1119,14 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
    m_currentgrid.clear();
    m_currentvolumedata.clear();
-
    return true;
 }
 
 bool ReadFOAM::compute()     //Compute is called when Module is executed
 {
-   std::cout << std::time(0) << "rank: " << rank() << " // starting" << std::endl;
+   if (rank() == 0)
+      std::cout << time(0) << " starting" << std::endl;
+   sendMessage(message::Busy());
    const std::string casedir = m_casedir->getValue();
    m_boundaryPatches.add(m_patchSelection->getValue());
    m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
@@ -1154,23 +1138,16 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
    std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
    std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
    std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
-   m_requests.clear();
-   m_GhostCellsOut.clear();
-   m_GhostCellsIn.clear();
-   m_GhostDataIn.clear();
-   m_GhostDataOut.clear();
+
    readConstant(casedir);
    int skipfactor = m_timeskip->getValue()+1;
    for (int timestep=0; timestep<m_case.timedirs.size()/skipfactor; ++timestep) {
       readTime(casedir, timestep);
    }
 
-   m_basegrid.clear();
-   m_basebound.clear();
-   m_owners.clear();
-   m_boundaries.clear();
-   std::cout << std::time(0) << "rank: " << rank() << " // ReadFOAM done" << std::endl;
-
+   sendMessage(message::Idle());
+   if (rank() == 0)
+      std::cout << time(0) << " done" << std::endl;
    return true;
 }
 
