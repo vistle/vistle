@@ -1,5 +1,4 @@
-﻿
-#include <sstream>
+﻿#include <sstream>
 #include <iomanip>
 #include <core/message.h>
 #include <core/object.h>
@@ -64,9 +63,6 @@ inline Vector lerp3(const Vector &a, const Vector &b, const Scalar t) {
 
    return lerp(a, b, t);
 
-   std::cerr << "this is t:  " << t << std::endl;
-
-
 }
 
 inline Scalar cvlerp3(const Scalar &a, const Scalar &b, const Scalar t) {
@@ -80,14 +76,14 @@ inline Scalar tinterp(Scalar iso, const Scalar &f0, const Scalar &f1) {
 
    Scalar diff = (f1 - f0);
 
-//   if (fabs(diff) < EPSILON)
-//      return p0;
+   if (fabs(diff) < EPSILON)
+      return 0;
 
-//   if (fabs(iso - f0) < EPSILON)
-//      return p0;
+   if (fabs(iso - f0) < EPSILON)
+      return 0;
 
-//   if (fabs(iso - f1) < EPSILON)
-//      return p1;
+   if (fabs(iso - f1) < EPSILON)
+      return 1;
 
    Scalar t = (iso - f0) / diff;
 
@@ -116,13 +112,13 @@ inline Scalar cvinterp(Scalar iso, const Scalar &f0, const Scalar &f1, const Sca
 
    Scalar diff = (f1 - f0);
 
-   if (diff < EPSILON)
+   if (fabs(diff) < EPSILON)
       return f2;
 
-   if (iso - f0 < EPSILON)
+   if (fabs(iso - f0) < EPSILON)
       return f2;
 
-   if (iso - f1 < EPSILON)
+   if (fabs(iso - f1) < EPSILON)
       return f3;
 
    Scalar t = (iso - f0) / diff;
@@ -133,6 +129,7 @@ inline Scalar cvinterp(Scalar iso, const Scalar &f0, const Scalar &f1, const Sca
 struct HostData {
 
    Scalar m_isovalue;
+   Index m_numinputdata;
    const vistle::shm<Scalar>::array &m_volumedata;
    const vistle::shm<Scalar>::array &m_volumemapdata;
    const vistle::shm<Index>::array &m_el;
@@ -148,15 +145,23 @@ struct HostData {
    vistle::ShmVector<Scalar>::ptr m_xCoordinateVector;
    vistle::ShmVector<Scalar>::ptr m_yCoordinateVector;
    vistle::ShmVector<Scalar>::ptr m_zCoordinateVector;
-   vistle::ShmVector<Scalar>::ptr m_mapdataVector;
+   vistle::ShmVector<Scalar>::ptr m_mapdataVector;   
+   std::vector<vistle::ShmVector<Scalar>::ptr> m_outData;
+   std::vector<const vistle::shm<Scalar>::array *> m_InData;
+
+   std::vector<Scalar*> m_inputpointer;
+   std::vector<Scalar*> m_outputpointer;
 
    Scalar* m_xpointer;
    Scalar* m_ypointer;
    Scalar* m_zpointer;
    Scalar* m_mapdatapointer;
+   Scalar* m_datapointer;
+
    typedef vistle::shm<Index>::array::iterator Indexiterator;
 
    HostData(Scalar isoValue
+
          , const vistle::shm<Scalar>::array &data
          , const vistle::shm<Scalar>::array &mapdata
          , const vistle::shm<Index>::array &el
@@ -164,7 +169,9 @@ struct HostData {
          , const vistle::shm<Index>::array &cl
          , const vistle::shm<Scalar>::array &x
          , const vistle::shm<Scalar>::array &y
-         , const vistle::shm<Scalar>::array &z)
+         , const vistle::shm<Scalar>::array &z
+         ,Index inputdim)
+
       : m_isovalue(isoValue)
       , m_volumedata(data)
       , m_volumemapdata(mapdata)
@@ -173,18 +180,37 @@ struct HostData {
       , m_tl(tl)
       , m_x(x)
       , m_y(y)
-      , m_z(z) {
+      , m_z(z)
+      , m_numinputdata(inputdim) {
 
          m_xCoordinateVector = new vistle::ShmVector<Scalar>;
          m_yCoordinateVector = new vistle::ShmVector<Scalar>;
          m_zCoordinateVector = new vistle::ShmVector<Scalar>;
          m_mapdataVector = new vistle::ShmVector<Scalar>;
-      }
+         m_InData.push_back(&x);
+         m_InData.push_back(&y);
+         m_InData.push_back(&z);
+         m_InData.push_back(&mapdata);
+
+
+         m_inputpointer.push_back(x.data());
+         m_inputpointer.push_back(y.data());
+         m_inputpointer.push_back(z.data());
+         m_inputpointer.push_back(mapdata.data());
+
+
+         for(int i = 0; i < inputdim; i++){
+             m_outData.push_back(new vistle::ShmVector<Scalar>);
+             m_outputpointer.push_back(new Scalar);
+         }
+
+   }
 
    std::vector<Scalar> xCoordinateVector;
    std::vector<Scalar> yCoordinateVector;
    std::vector<Scalar> zCoordinateVector;
    std::vector<Scalar> mapdataVector;
+   std::vector<std::vector<Scalar>> outData;
 };
 
 struct DeviceData {
@@ -231,7 +257,6 @@ struct DeviceData {
          for (Index i = 0; i < mapdata.size(); i++) {
             m_volumemapdata[i] = mapdata[i];
          }
-
          m_el.resize(el.size());
          for (Index i = 0; i < el.size(); i++) {
             m_el[i]=el[i];
@@ -262,11 +287,9 @@ struct DeviceData {
 template<class Data>
 struct process_Cell {
    process_Cell(Data &data) : m_data(data) {
-
-      m_data.m_xpointer = m_data.m_xCoordinateVector->data();
-      m_data.m_ypointer = m_data.m_yCoordinateVector->data();
-      m_data.m_zpointer = m_data.m_zCoordinateVector->data();
-      m_data.m_mapdatapointer = m_data.m_mapdataVector->data();
+       for (int i = 0; i < 4; i++){
+           m_data.m_outputpointer[i] = m_data.m_outData[i]->data();
+        }
    }
 
    Data &m_data;
@@ -278,175 +301,79 @@ struct process_Cell {
       Index Cellbegin = m_data.m_el[CellNr];
       Index Cellend = m_data.m_el[CellNr+1];
       Index numVert = m_data.m_numVertices[ValidCellIndex];
-      Scalar t;
 
       switch (m_data.m_tl[CellNr]) {
 
-         case UnstructuredGrid::HEXAHEDRON: {
+      case UnstructuredGrid::HEXAHEDRON: {
 
-            Index newindex[8];
-            newindex[0] = m_data.m_cl[Cellbegin];
-            newindex[1] = m_data.m_cl[Cellbegin +1];
-            newindex[2] = m_data.m_cl[Cellbegin +2];
-            newindex[3] = m_data.m_cl[Cellbegin +3];
-            newindex[4] = m_data.m_cl[Cellbegin +4];
-            newindex[5] = m_data.m_cl[Cellbegin +5];
-            newindex[6] = m_data.m_cl[Cellbegin +6];
-            newindex[7] = m_data.m_cl[Cellbegin +7];
+          Index newindex[8];
+          newindex[0] = m_data.m_cl[Cellbegin];
+          newindex[1] = m_data.m_cl[Cellbegin +1];
+          newindex[2] = m_data.m_cl[Cellbegin +2];
+          newindex[3] = m_data.m_cl[Cellbegin +3];
+          newindex[4] = m_data.m_cl[Cellbegin +4];
+          newindex[5] = m_data.m_cl[Cellbegin +5];
+          newindex[6] = m_data.m_cl[Cellbegin +6];
+          newindex[7] = m_data.m_cl[Cellbegin +7];
 
-            Scalar field[8];
-            for (int idx = 0; idx < 8; idx ++) {
-               field[idx] = m_data.m_volumedata[newindex[idx]];
-            }
+          Scalar field[8];
+          for (int idx = 0; idx < 8; idx ++) {
+              field[idx] = m_data.m_volumedata[newindex[idx]];
+          }
 
-            Scalar mapdatafield[8];
-            for (int idx = 0; idx < 8; idx ++) {
-               mapdatafield[idx] = m_data.m_volumemapdata[newindex[idx]];
-            }
+          for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
 
+              const int edge = hexaTriTable[m_data.m_caseNums[ValidCellIndex]][idx];
 
-            Vector newv[8];
-            for (int idx = 0; idx < 8; idx ++) {
-               newv[idx][0] = m_data.m_x[newindex[idx]];
-               newv[idx][1] = m_data.m_y[newindex[idx]];
-               newv[idx][2] = m_data.m_z[newindex[idx]];
-            }
+              const int v1 = hexaEdgeTable[0][edge];
+              const int v2 = hexaEdgeTable[1][edge];
 
-            Scalar tlist[12];
-            tlist[0] = tinterp(m_data.m_isovalue, field[0], field[1]);
-            tlist[1] = tinterp(m_data.m_isovalue, field[1], field[2]);
-            tlist[2] = tinterp(m_data.m_isovalue, field[2], field[3]);
-            tlist[3] = tinterp(m_data.m_isovalue, field[3], field[0]);
+              Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]);
 
-            tlist[4] = tinterp(m_data.m_isovalue, field[4], field[5]);
-            tlist[5] = tinterp(m_data.m_isovalue, field[5], field[6]);
-            tlist[6] = tinterp(m_data.m_isovalue, field[6], field[7]);
-            tlist[7] = tinterp(m_data.m_isovalue, field[7], field[4]);
+              Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx;
 
-            tlist[8] = tinterp(m_data.m_isovalue, field[0], field[4]);
-            tlist[9] = tinterp(m_data.m_isovalue, field[1], field[5]);
-            tlist[10] = tinterp(m_data.m_isovalue, field[2], field[6]);
-            tlist[11] = tinterp(m_data.m_isovalue, field[3], field[7]);
+              for(Index j = 0; j < 4; j++){
 
-            Scalar cvvertlist[12];
-            cvvertlist[0] = cvlerp3(mapdatafield[0], mapdatafield[1], tlist[0]);
-            cvvertlist[1] = cvlerp3(mapdatafield[1], mapdatafield[2], tlist[1]);
-            cvvertlist[2] = cvlerp3(mapdatafield[2], mapdatafield[3], tlist[2]);
-            cvvertlist[3] = cvlerp3(mapdatafield[3], mapdatafield[0], tlist[3]);
+                  m_data.m_outputpointer[j][outvertexindex] = lerp(m_data.m_inputpointer[j][newindex[v1]], m_data.m_inputpointer[j][newindex[v2]], t);
 
-            cvvertlist[4] = cvlerp3(mapdatafield[4], mapdatafield[5], tlist[4]);
-            cvvertlist[5] = cvlerp3(mapdatafield[5], mapdatafield[6], tlist[5]);
-            cvvertlist[6] = cvlerp3(mapdatafield[6], mapdatafield[7], tlist[6]);
-            cvvertlist[7] = cvlerp3(mapdatafield[7], mapdatafield[4], tlist[7]);
+              }
 
-            cvvertlist[8] = cvlerp3(mapdatafield[0], mapdatafield[4], tlist[8]);
-            cvvertlist[9] = cvlerp3(mapdatafield[1], mapdatafield[5], tlist[9]);
-            cvvertlist[10] = cvlerp3(mapdatafield[2], mapdatafield[6], tlist[10]);
-            cvvertlist[11] = cvlerp3(mapdatafield[3], mapdatafield[7], tlist[11]);
-
-            Vector vertlist[12];
-            vertlist[0] = lerp3(newv[0], newv[1], tlist[0]);
-            vertlist[1] = lerp3(newv[1], newv[2], tlist[1]);
-            vertlist[2] = lerp3(newv[2], newv[3], tlist[2]);
-            vertlist[3] = lerp3(newv[3], newv[0], tlist[3]);
-
-            vertlist[4] = lerp3(newv[4], newv[5], tlist[4]);
-            vertlist[5] = lerp3(newv[5], newv[6], tlist[5]);
-            vertlist[6] = lerp3(newv[6], newv[7], tlist[6]);
-            vertlist[7] = lerp3(newv[7], newv[4], tlist[7]);
-
-            vertlist[8] = lerp3(newv[0], newv[4], tlist[8]);
-            vertlist[9] = lerp3(newv[1], newv[5], tlist[9]);
-            vertlist[10] = lerp3(newv[2], newv[6], tlist[10]);
-            vertlist[11] = lerp3(newv[3], newv[7], tlist[11]);
-
-            for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx += 3) {
-
-               for (int i=0; i<3; ++i) {
-
-                  const int edge = hexaTriTable[m_data.m_caseNums[ValidCellIndex]][idx+i];
-
-                  const Vector &newv = vertlist[edge];
-                  const Scalar &newv1 = cvvertlist[edge];
-
-                  m_data.m_xpointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv[0];
-                  m_data.m_ypointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv[1];
-                  m_data.m_zpointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv[2];
-
-                  m_data.m_mapdatapointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv1;
-
-               }
-            }            
-         }
+          }
+      }
          break;
 
-         case UnstructuredGrid::TETRAHEDRON: {
-
-            Index newindex[4];
-            newindex[0] = m_data.m_cl[Cellbegin ];
-            newindex[1] = m_data.m_cl[Cellbegin +1];
-            newindex[2] = m_data.m_cl[Cellbegin +2];
-            newindex[3] = m_data.m_cl[Cellbegin +3];
-
-            Scalar field[4];
-            for (int idx = 0; idx < 4; idx ++) {
-               field[idx] = m_data.m_volumedata[newindex[idx]];
-            }
-
-            Scalar mapdatafield[4];
-            for (int idx = 0; idx < 4; idx ++) {
-               mapdatafield[idx] = m_data.m_volumemapdata[newindex[idx]];
-            }
-
-            Vector newv[4];
-            for (int idx = 0; idx < 4; idx ++) {
-               newv[idx][0] = m_data.m_x[newindex[idx]];
-               newv[idx][1] = m_data.m_y[newindex[idx]];
-               newv[idx][2] = m_data.m_z[newindex[idx]];
-            }            
-
-            Scalar tlist[6];
-            tlist[0] = tinterp(m_data.m_isovalue, field[0], field[1]);
-            tlist[1] = tinterp(m_data.m_isovalue, field[0], field[2]);
-            tlist[2] = tinterp(m_data.m_isovalue, field[0], field[3]);
-            tlist[3] = tinterp(m_data.m_isovalue, field[1], field[2]);
-            tlist[4] = tinterp(m_data.m_isovalue, field[1], field[3]);
-            tlist[5] = tinterp(m_data.m_isovalue, field[2], field[3]);
-
-            Scalar cvvertlist[12];
-            cvvertlist[0] = cvlerp3(mapdatafield[0], mapdatafield[1], tlist[0]);
-            cvvertlist[1] = cvlerp3(mapdatafield[0], mapdatafield[2], tlist[1]);
-            cvvertlist[2] = cvlerp3(mapdatafield[0], mapdatafield[3], tlist[2]);
-            cvvertlist[3] = cvlerp3(mapdatafield[1], mapdatafield[2], tlist[3]);
-            cvvertlist[4] = cvlerp3(mapdatafield[1], mapdatafield[3], tlist[4]);
-            cvvertlist[5] = cvlerp3(mapdatafield[2], mapdatafield[3], tlist[5]);
+      case UnstructuredGrid::TETRAHEDRON: {
+          
+          Index newindex[8];
+          newindex[0] = m_data.m_cl[Cellbegin];
+          newindex[1] = m_data.m_cl[Cellbegin +1];
+          newindex[2] = m_data.m_cl[Cellbegin +2];
+          newindex[3] = m_data.m_cl[Cellbegin +3];
 
 
-            Vector vertlist[12];
-            vertlist[0] = lerp3(newv[0], newv[1], tlist[0]);
-            vertlist[1] = lerp3(newv[0], newv[2], tlist[1]);
-            vertlist[2] = lerp3(newv[0], newv[3], tlist[2]);
-            vertlist[3] = lerp3(newv[1], newv[2], tlist[3]);
-            vertlist[4] = lerp3(newv[1], newv[3], tlist[4]);
-            vertlist[5] = lerp3(newv[2], newv[3], tlist[5]);
+          Scalar field[4];
+          for (int idx = 0; idx < 4; idx ++) {
+              field[idx] = m_data.m_volumedata[newindex[idx]];
+          }
 
+          for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
 
-            for (int idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx += 3) {
+              const int edge = tetraTriTable[m_data.m_caseNums[ValidCellIndex]][idx];
 
-               for (int i=0; i<3; ++i) {
+              const int v1 = tetraEdgeTable[0][edge];
+              const int v2 = tetraEdgeTable[1][edge];
 
-                  const int edge = tetraTriTable[m_data.m_caseNums[ValidCellIndex]][idx+i];
-                  const Vector &newv = vertlist[edge];
-                  const Scalar &newv1 = cvvertlist[edge];
+              Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]);
 
-                  m_data.m_xpointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv[0];
-                  m_data.m_ypointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv[1];
-                  m_data.m_zpointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv[2];
+              Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx;
 
-                  m_data.m_mapdatapointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv1;
-               }
-            }
-         }
+              for(Index j = 0; j < 4; j++){
+
+                  m_data.m_outputpointer[j][outvertexindex] = lerp(m_data.m_inputpointer[j][newindex[v1]], m_data.m_inputpointer[j][newindex[v2]], t);
+
+              }
+          }
+      }
          break;
 
          case UnstructuredGrid::PYRAMID: {
@@ -461,68 +388,24 @@ struct process_Cell {
             Scalar field[5];
             for (int idx = 0; idx < 5; idx ++) {
                field[idx] = m_data.m_volumedata[newindex[idx]];
-            }            
-
-            Scalar mapdatafield[4];
-            for (int idx = 0; idx < 5; idx ++) {
-               mapdatafield[idx] = m_data.m_volumemapdata[newindex[idx]];
             }
 
+            for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
 
-            Vector newv[5];
-            for (int idx = 0; idx < 5; idx ++) {
-               newv[idx][0] = m_data.m_x[newindex[idx]];
-               newv[idx][1] = m_data.m_y[newindex[idx]];
-               newv[idx][2] = m_data.m_z[newindex[idx]];
-            }
+                const int edge = pyrTriTable[m_data.m_caseNums[ValidCellIndex]][idx];
 
-            Scalar tlist[8];
-            tlist[0] = tinterp(m_data.m_isovalue, field[0], field[1]);
-            tlist[1] = tinterp(m_data.m_isovalue, field[0], field[4]);
-            tlist[2] = tinterp(m_data.m_isovalue, field[0], field[3]);
-            tlist[3] = tinterp(m_data.m_isovalue, field[1], field[4]);
+                const int v1 = pyrEdgeTable[0][edge];
+                const int v2 = pyrEdgeTable[1][edge];
 
-            tlist[4] = tinterp(m_data.m_isovalue, field[1], field[2]);
-            tlist[5] = tinterp(m_data.m_isovalue, field[2], field[3]);
-            tlist[6] = tinterp(m_data.m_isovalue, field[2], field[4]);
-            tlist[7] = tinterp(m_data.m_isovalue, field[3], field[4]);
+                Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]);
 
-            Scalar cvvertlist[8];
-            cvvertlist[0] = cvlerp3(mapdatafield[0], mapdatafield[1], tlist[0]);
-            cvvertlist[1] = cvlerp3(mapdatafield[0], mapdatafield[4], tlist[1]);
-            cvvertlist[2] = cvlerp3(mapdatafield[0], mapdatafield[3], tlist[2]);
-            cvvertlist[3] = cvlerp3(mapdatafield[1], mapdatafield[4], tlist[3]);
+                Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx;
 
-            cvvertlist[4] = cvlerp3(mapdatafield[1], mapdatafield[2], tlist[4]);
-            cvvertlist[5] = cvlerp3(mapdatafield[2], mapdatafield[3], tlist[5]);
-            cvvertlist[6] = cvlerp3(mapdatafield[2], mapdatafield[4], tlist[6]);
-            cvvertlist[7] = cvlerp3(mapdatafield[3], mapdatafield[4], tlist[7]);
+                for(Index j = 0; j < 4; j++){
 
-            Vector vertlist[8];
-            vertlist[0] = lerp3(newv[0], newv[1], tlist[0]);
-            vertlist[1] = lerp3(newv[0], newv[4], tlist[1]);
-            vertlist[2] = lerp3(newv[0], newv[3], tlist[2]);
-            vertlist[3] = lerp3(newv[1], newv[4], tlist[3]);
+                    m_data.m_outputpointer[j][outvertexindex] = lerp(m_data.m_inputpointer[j][newindex[v1]], m_data.m_inputpointer[j][newindex[v2]], t);
 
-            vertlist[4] = lerp3(newv[1], newv[2], tlist[4]);
-            vertlist[5] = lerp3(newv[2], newv[3], tlist[5]);
-            vertlist[6] = lerp3(newv[2], newv[4], tlist[6]);
-            vertlist[7] = lerp3(newv[3], newv[4], tlist[7]);
-
-            for (int idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx += 3) {
-
-               for (int i=0; i<3; ++i) {
-
-                  const int edge = pyrTriTable[m_data.m_caseNums[ValidCellIndex]][idx+i];
-                  const Vector &newv = vertlist[edge];
-                  const Scalar &newv1 = cvvertlist[edge];
-
-                  m_data.m_xpointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv[0];
-                  m_data.m_ypointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv[1];
-                  m_data.m_zpointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv[2];
-
-                  m_data.m_mapdatapointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv1;
-               }
+                }
             }
          }
          break;
@@ -542,68 +425,22 @@ struct process_Cell {
                field[idx] = m_data.m_volumedata[newindex[idx]];
             }
 
-            Scalar mapdatafield[8];
-            for (int idx = 0; idx < 8; idx ++) {
-               mapdatafield[idx] = m_data.m_volumemapdata[newindex[idx]];
-            }
+            for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
 
-            Vector newv[6];
-            for (int idx = 0; idx < 6; idx ++) {
-               newv[idx][0] = m_data.m_x[newindex[idx]];
-               newv[idx][1] = m_data.m_y[newindex[idx]];
-               newv[idx][2] = m_data.m_z[newindex[idx]];
-            }
+                const int edge = prismTriTable[m_data.m_caseNums[ValidCellIndex]][idx];
 
+                const int v1 = prismEdgeTable[0][edge];
+                const int v2 = prismEdgeTable[1][edge];
 
-            Scalar tlist[9];
-            tlist[0] = tinterp(m_data.m_isovalue, field[0], field[1]);
-            tlist[1] = tinterp(m_data.m_isovalue, field[1], field[2]);
-            tlist[2] = tinterp(m_data.m_isovalue, field[0], field[2]);
-            tlist[3] = tinterp(m_data.m_isovalue, field[3], field[4]);
-            tlist[4] = tinterp(m_data.m_isovalue, field[4], field[5]);
-            tlist[5] = tinterp(m_data.m_isovalue, field[3], field[5]);
-            tlist[6] = tinterp(m_data.m_isovalue, field[0], field[3]);
-            tlist[7] = tinterp(m_data.m_isovalue, field[1], field[4]);
-            tlist[8] = tinterp(m_data.m_isovalue, field[2], field[5]);
+                Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]);
 
-            Scalar cvvertlist[9];
-            cvvertlist[0] = cvlerp3(mapdatafield[0], mapdatafield[1], tlist[0]);
-            cvvertlist[1] = cvlerp3(mapdatafield[1], mapdatafield[2], tlist[1]);
-            cvvertlist[2] = cvlerp3(mapdatafield[0], mapdatafield[2], tlist[2]);
-            cvvertlist[3] = cvlerp3(mapdatafield[3], mapdatafield[4], tlist[3]);
-            cvvertlist[4] = cvlerp3(mapdatafield[4], mapdatafield[5], tlist[4]);
-            cvvertlist[5] = cvlerp3(mapdatafield[3], mapdatafield[5], tlist[5]);
-            cvvertlist[6] = cvlerp3(mapdatafield[0], mapdatafield[3], tlist[6]);
-            cvvertlist[7] = cvlerp3(mapdatafield[1], mapdatafield[4], tlist[7]);
-            cvvertlist[8] = cvlerp3(mapdatafield[2], mapdatafield[5], tlist[8]);
+                Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx;
 
+                for(Index j = 0; j < 4; j++){
 
-            Vector vertlist[9];
-            vertlist[0] = lerp3(newv[0], newv[1], tlist[0]);
-            vertlist[1] = lerp3(newv[1], newv[2], tlist[1]);
-            vertlist[2] = lerp3(newv[0], newv[2], tlist[2]);
-            vertlist[3] = lerp3(newv[3], newv[4], tlist[3]);
-            vertlist[4] = lerp3(newv[4], newv[5], tlist[4]);
-            vertlist[5] = lerp3(newv[3], newv[5], tlist[5]);
-            vertlist[6] = lerp3(newv[0], newv[3], tlist[6]);
-            vertlist[7] = lerp3(newv[1], newv[4], tlist[7]);
-            vertlist[8] = lerp3(newv[2], newv[5], tlist[8]);
+                    m_data.m_outputpointer[j][outvertexindex] = lerp(m_data.m_inputpointer[j][newindex[v1]], m_data.m_inputpointer[j][newindex[v2]], t);
 
-            for (int idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx += 3) {
-
-               for (int i=0; i<3; ++i) {
-
-                  const int edge = prismTriTable[m_data.m_caseNums[ValidCellIndex]][idx+i];
-                  const Vector &newv = vertlist[edge];
-                  const Scalar &newv1 = cvvertlist[edge];
-
-                  m_data.m_xpointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv[0];
-                  m_data.m_ypointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv[1];
-                  m_data.m_zpointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv[2];                  
-
-                  m_data.m_mapdatapointer[m_data.m_LocationList[ValidCellIndex]+idx+i] = newv1;
-
-               }
+                }
             }
          }
          break;
@@ -612,12 +449,15 @@ struct process_Cell {
 
             SIndex sidebegin = -1;
             Vector middleVector(0,0,0);
-            Scalar middleValue;
+
             bool vertexSaved=false;
             Vector savedVertex;
-            Scalar savedValue;
+            Index numdataonly = m_data.m_numinputdata - 3;
+            Scalar savedValue [numdataonly];
             Index j = 0;
             int flag = 0;
+            Scalar middleValue [numdataonly];
+
             Index outIdx = m_data.m_LocationList[ValidCellIndex];
             for (Index i = Cellbegin; i < Cellend; i++) {
 
@@ -627,11 +467,13 @@ struct process_Cell {
 
                   sidebegin = -1;
                   if (vertexSaved) {
-                     m_data.m_xpointer[outIdx] = savedVertex[0];
-                     m_data.m_ypointer[outIdx] = savedVertex[1];
-                     m_data.m_zpointer[outIdx] = savedVertex[2];
+                     m_data.m_outputpointer[0][outIdx] = savedVertex[0];
+                     m_data.m_outputpointer[1][outIdx] = savedVertex[1];
+                     m_data.m_outputpointer[2][outIdx] = savedVertex[2];
 
-                     m_data.m_mapdatapointer[outIdx] = savedValue;
+                     for(Index i = 0; i < numdataonly; i++){
+                     m_data.m_outputpointer[i][outIdx] = savedValue[i];
+                     };
 
                      outIdx += 2;
                      vertexSaved=false;
@@ -643,60 +485,112 @@ struct process_Cell {
                   sidebegin = c1;
                }
 
-               const Scalar cd1 = m_data.m_volumemapdata[c1], cd2 = m_data.m_volumemapdata[c2];
-               auto d1 = m_data.m_volumedata[c1], d2 = m_data.m_volumedata[c2];
-               Vector v1(m_data.m_x[c1], m_data.m_y[c1], m_data.m_z[c1]);
-               Vector v2(m_data.m_x[c2], m_data.m_y[c2], m_data.m_z[c2]);
+               Scalar cd1 [numdataonly];
+               Scalar cd2 [numdataonly];
+
+               for(int i = 0; i < numdataonly; i++){
+                   cd1[i] = m_data.m_inputpointer[i+3][c1];
+                   cd2[i] = m_data.m_inputpointer[i+3][c2];
+               }
+
+               Scalar d1 = m_data.m_inputpointer[3][c1];
+               Scalar d2 = m_data.m_inputpointer[3][c2];
+
+
+               Vector v1(m_data.m_inputpointer[0][c1], m_data.m_inputpointer[1][c1], m_data.m_inputpointer[2][c1]);
+               Vector v2(m_data.m_inputpointer[0][c2], m_data.m_inputpointer[1][c2], m_data.m_inputpointer[2][c2]);
+
                if (d1 <= m_data.m_isovalue && d2 > m_data.m_isovalue) {
 
-                  const Vector v = interp(m_data.m_isovalue, v1, v2, d1, d2);
-                  const Scalar cv = cvinterp(m_data.m_isovalue, d1, d2, cd1, cd2);
-                  middleVector += v;
-                  middleValue += cv;
-                  m_data.m_xpointer[outIdx] = v[0];
-                  m_data.m_ypointer[outIdx] = v[1];
-                  m_data.m_zpointer[outIdx] = v[2];
+                  Vector v = interp(m_data.m_isovalue, v1, v2, d1, d2);
+                  Scalar cv[numdataonly];
+                         for(Index i = 0; i < numdataonly; i++){
+                          cv[i] = cvinterp(m_data.m_isovalue, d1, d2, cd1[i], cd2[i]);
+                  };
 
-                  m_data.m_mapdatapointer[outIdx] = cv;
+                         std::cerr << "m_iso " << m_data.m_isovalue << std::endl;
+                         std::cerr << "d1 " << d1 << std::endl;
+                         std::cerr << "d2 " << d2 << std::endl;
+                         std::cerr << "v1 " << v1 << std::endl;
+                         std::cerr << "v2 " << v2 << std::endl;
+                         std::cerr << "v  " << interp(m_data.m_isovalue, v1, v2, d1, d2) << std::endl;
+
+                  for(Index i = 0; i < numdataonly; i++){
+
+                      middleValue[i] += cv[i];
+
+                  }
+
+                  m_data.m_outputpointer[0][outIdx] = v[0];
+                  m_data.m_outputpointer[1][outIdx] = v[1];
+                  m_data.m_outputpointer[2][outIdx] = v[2];
+
+                  for(Index i = 0; i < numdataonly; i++){
+                  m_data.m_outputpointer[i][outIdx] = cv[i];
+                  }
 
                   ++outIdx;
                   ++j;
                   flag = 1;
+
                } else if (d1 > m_data.m_isovalue && d2 <= m_data.m_isovalue) {
 
-                  const Vector v = interp(m_data.m_isovalue, v1, v2, d1, d2);
-                  const Scalar cv = cvinterp(m_data.m_isovalue, d1, d2, cd1, cd2);
-                  middleVector += v;
-                  middleValue += cv;
+                  Vector v = interp(m_data.m_isovalue, v1, v2, d1, d2);
+
+                  Scalar cv [numdataonly];
+                         for(Index i = 0; i < numdataonly; i++){
+                          cv[i] = cvinterp(m_data.m_isovalue, d1, d2, cd1[i], cd2[i]);
+                  };
+
+                         middleVector += v;
+
+                  for(Index i = 0; i < numdataonly; i++){
+
+                      middleValue[i] += cv[i];
+
+                  };
                   ++j;
                   if (flag == 1) { //fall 2 nach fall 1
 
-                     m_data.m_xpointer[outIdx] = v[0];
-                     m_data.m_ypointer[outIdx] = v[1];
-                     m_data.m_zpointer[outIdx] = v[2];
+                      m_data.m_outputpointer[0][outIdx] = v[0];
+                      m_data.m_outputpointer[1][outIdx] = v[1];
+                      m_data.m_outputpointer[2][outIdx] = v[2];
 
-                     m_data.m_mapdatapointer[outIdx] = cv;
+                      for(Index i = 0; i < numdataonly; i++){
+                      m_data.m_outputpointer[i][outIdx] = cv[i];
+
+                      }
 
                      outIdx+=2;
+
                   } else { //fall 2 zuerst
 
                      savedVertex = v;
-                     savedValue = cv;
+
+                     for(Index i = 0; i < numdataonly; i++){
+                     savedValue[i] = cv[i];
+                     }
                      vertexSaved=true;
                   }
                }
             }
             middleVector /= j;
-            middleValue /= j;
+
 
             for (Index i = 2; i < numVert; i+=3) {
 
                const Index idx = m_data.m_LocationList[ValidCellIndex]+i;
-               m_data.m_xpointer[idx] = middleVector[0];
-               m_data.m_ypointer[idx] = middleVector[1];
-               m_data.m_zpointer[idx] = middleVector[2];
 
-               m_data.m_mapdatapointer[idx] = middleValue;
+               m_data.m_outputpointer[0][idx] = middleVector[0];
+               m_data.m_outputpointer[1][idx] = middleVector[1];
+               m_data.m_outputpointer[2][idx] = middleVector[2];
+
+               for(Index a = 0; a < numdataonly; a++){
+
+                   middleValue[a] /= j;
+                   m_data.m_outputpointer[3][idx] = middleValue[a];
+
+               }
             }
          }
          break;
@@ -834,7 +728,7 @@ IsoSurface::IsoSurface(const std::string &shmname, int rank, int size, int modul
    setParameterChoices(m_processortype, choices);
 
    m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
-   m_shader = addStringParameter("shader", "name of shader to apply to geometry", "Gouraud");
+   m_shader = addStringParameter("shader", "name of shader to apply to geometry", "");
    m_shaderParams = addStringParameter("shader_params", "shader parameters (as \"key=value\" \"key=value1 value2\"", "");
 }
 
@@ -922,7 +816,7 @@ class Leveller {
          m_triangles->setMeta(grid->meta());
       }
 
-   bool process() {
+   bool process(Index inputdim) {
 
       Vec<Scalar>::const_ptr mapdataobj = Vec<Scalar>::as(m_mapdata[0]);
 
@@ -936,7 +830,7 @@ class Leveller {
 
          case 0: {
 
-            HostData HD(m_isoValue, dataobj->x(), mapdataobj->x(), m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
+            HostData HD(m_isoValue, dataobj->x(), mapdataobj->x(), m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z(), inputdim);
 #if defined(USE_OMP)
             totalNumVertices = calculateSurface<HostData, decltype(thrust::omp::par)>(HD);
 #elif defined(USE_TBB)
@@ -945,13 +839,18 @@ class Leveller {
             totalNumVertices = calculateSurface<HostData, decltype(thrust::cpp::par)>(HD);
 #endif
 
-            m_triangles->d()->x[0] = HD.m_xCoordinateVector;
-            m_triangles->d()->x[1] = HD.m_yCoordinateVector;
-            m_triangles->d()->x[2] = HD.m_zCoordinateVector;
-            m_outmapData->d()->x[0] = HD.m_mapdataVector;
+//            m_triangles->d()->x[0] = HD.m_xCoordinateVector;
+//            m_triangles->d()->x[1] = HD.m_yCoordinateVector;
+//            m_triangles->d()->x[2] = HD.m_zCoordinateVector;
+//            m_outmapData->d()->x[0] = HD.m_mapdataVector;
 
 
-         }
+            m_triangles->d()->x[0] = HD.m_outData[0];
+            m_triangles->d()->x[1] = HD.m_outData[1];
+            m_triangles->d()->x[2] = HD.m_outData[2];
+            m_outmapData->d()->x[0] = HD.m_outData[3];
+
+      }
          break;
 
          case 1: {
@@ -1012,11 +911,16 @@ class Leveller {
          if (!data.m_LocationList.empty())
             totalNumVertices += data.m_LocationList.back();
 
-
          data.m_xCoordinateVector->resize(totalNumVertices);
          data.m_yCoordinateVector->resize(totalNumVertices);
          data.m_zCoordinateVector->resize(totalNumVertices);
          data.m_mapdataVector->resize(totalNumVertices);
+
+         for(int i = 0; i < data.m_numinputdata; i++){
+
+         data.m_outData[i]->resize(totalNumVertices);
+
+         };
 
          thrust::counting_iterator<Index> start(0), finish(numValidCells);
          thrust::for_each(pol(), start, finish, process_Cell<Data>(data));
@@ -1024,7 +928,9 @@ class Leveller {
          return totalNumVertices;
       }
 
-   void addData(Object::const_ptr obj, Object::const_ptr mapobj) {
+   Index addData(Object::const_ptr obj, Object::const_ptr mapobj) {
+
+      Index m_inputdim = 3;
 
       m_data.push_back(obj);
       auto data = Vec<Scalar, 1>::as(obj);
@@ -1032,6 +938,7 @@ class Leveller {
          d = &data->x()[0];
          m_outData = Vec<Scalar>::ptr(new Vec<Scalar>(Object::Initialized));
          m_outData->setMeta(data->meta());
+
       }
       m_mapdata.push_back(mapobj);
       auto mapdata = Vec<Scalar, 1>::as(mapobj);
@@ -1039,7 +946,17 @@ class Leveller {
          md = &mapdata->x()[0];
          m_outmapData = Vec<Scalar>::ptr(new Vec<Scalar>(Object::Initialized));
          m_outmapData->setMeta(mapdata->meta());
+         m_inputdim++;
       }
+      auto vecdata = Vec<Scalar,3>::as(mapobj);
+      if(vecdata) {
+          md = &mapdata->x()[0];
+          m_outmapData = Vec<Scalar>::ptr(new Vec<Scalar>(Object::Initialized));
+          m_outmapData->setMeta(mapdata->meta());
+          m_inputdim=+3;
+
+      }
+      return m_inputdim;
    }
 
    Object::ptr result() {
@@ -1066,6 +983,7 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
       int processorType) {
     Object::ptr result;
     Object::ptr mapresult;
+    Index inputdim;
 
    if (!grid_object || !data_object)
       return std::make_pair(result, mapresult);
@@ -1081,9 +999,9 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
 
    Leveller l(grid, isoValue, processorType);
 
-   l.addData(data, mapdata);
+   inputdim = l.addData(data, mapdata);
 
-   l.process();
+   l.process(inputdim);
 
    auto range = l.range();
    if (range.first < min)
@@ -1094,10 +1012,6 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
    result = l.result();
    mapresult = l.mapresult();
 
-   std::cerr << "mapresult" <<  l.mapresult() << std::endl;
-   std::cerr << "result" <<  l.result() << std::endl;
-
-
    return std::make_pair(result, mapresult);
 
 }
@@ -1106,6 +1020,8 @@ bool IsoSurface::compute() {
 
    const Scalar isoValue = getFloatParameter("isovalue");
 
+   std::cerr<< " ISO " << isoValue << std::endl;
+
    Index processorType = getIntParameter("processortype");
 
    while (hasObject("grid_in") && hasObject("data_in")) {
@@ -1113,6 +1029,7 @@ bool IsoSurface::compute() {
       Object::const_ptr grid = takeFirstObject("grid_in");
       Object::const_ptr data = takeFirstObject("data_in");
       Object::const_ptr mapdata = takeFirstObject("mapdata_in");
+      //calc number of objectdimensions here
 
       std::pair<Object::ptr, Object::ptr> object = generateIsoSurface(grid, data, mapdata, isoValue, processorType);
 

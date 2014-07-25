@@ -5,6 +5,29 @@
 // triangle table maps same cube vertex index to a list of up to 5 triangles
 // which are built from the interpolated edge vertices
 #define X 255
+
+//Vector vertlist[12];
+//vertlist[0] = lerp3(newv[0], newv[1], tlist[0]);
+//vertlist[1] = lerp3(newv[1], newv[2], tlist[1]);
+//vertlist[2] = lerp3(newv[2], newv[3], tlist[2]);
+//vertlist[3] = lerp3(newv[3], newv[0], tlist[3]);
+
+//vertlist[4] = lerp3(newv[4], newv[5], tlist[4]);
+//vertlist[5] = lerp3(newv[5], newv[6], tlist[5]);
+//vertlist[6] = lerp3(newv[6], newv[7], tlist[6]);
+//vertlist[7] = lerp3(newv[7], newv[4], tlist[7]);
+
+//vertlist[8] = lerp3(newv[0], newv[4], tlist[8]);
+//vertlist[9] = lerp3(newv[1], newv[5], tlist[9]);
+//vertlist[10] = lerp3(newv[2], newv[6], tlist[10]);
+//vertlist[11] = lerp3(newv[3], newv[7], tlist[11]);
+
+
+static uint hexaEdgeTable[2][12] = {
+    {0,1,2,3,4,5,6,7,0,1,2,3},
+    {1,2,3,0,5,6,7,4,4,5,6,7},
+};
+
 static uint hexaTriTable[256][16] = {
    {X, X, X, X, X, X, X, X, X, X, X, X, X, X, X, X},
 	{0, 8, 3, X, X, X, X, X, X, X, X, X, X, X, X, X},
@@ -577,19 +600,9 @@ static uint tetraNumVertsTable[16]={
     0,
 };
 
-static uint tetraEdgeTable[12] = {
-    0,
-    1,
-    0,
-    2,
-    0,
-    3,
-    1,
-    2,
-    1,
-    3,
-    2,
-    3,
+static uint tetraEdgeTable[2][6] = {
+    {0,0,0,1,1,2},
+    {1,2,3,2,3,3},
 };
 
 
@@ -747,27 +760,9 @@ static uint prismNumVertsTable[64] = {
 
 };
 
-static uint prisEdgeTable[18] = {
-
-    0,
-    1,
-    1,
-    2,
-    2,
-    0,
-    3,
-    4,
-    4,
-    5,
-    5,
-    3,
-    0,
-    3,
-    1,
-    4,
-    2,
-    5,
-
+static uint prismEdgeTable[2][9] = {
+    {0,1,0,3,4,3,0,1,2},
+    {1,2,2,4,5,5,3,4,5},
 };
 
 
@@ -856,23 +851,9 @@ static uint pyrNumVertsTable[32] = {
     0
 };
 
-static uint pyrEdgeTable[16] = {
-    0,
-    1,
-    0,
-    4,
-    0,
-    3,
-    1,
-    4,
-    1,
-    2,
-    2,
-    3,
-    2,
-    4,
-    3,
-    4,
+static uint pyrEdgeTable[2][8] = {
+ {0,0,0,1,1,2,2,3},
+ {1,4,3,4,2,3,4,4},
 };
 
 
