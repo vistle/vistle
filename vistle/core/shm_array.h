@@ -90,12 +90,21 @@ class shm_array {
    void clear() { resize(0); }
 
    size_t size() const { return m_size; }
-   void resize(const size_t size) { reserve(size); m_size = size; }
+   void resize(const size_t size) {
+      reserve(size);
+      if (!boost::has_trivial_copy<T>::value) {
+         for (size_t i=m_size; i<size; ++i)
+            new(&m_data[i])T();
+      }
+      m_size = size;
+      assert(m_size <= m_capacity);
+   }
    void resize(const size_t size, const T &value) {
       reserve(size);
       for (size_t i=m_size; i<size; ++i)
          new(&m_data[i])T(value);
       m_size = size;
+      assert(m_size <= m_capacity);
    }
 
    size_t capacity() const { return m_capacity; }
