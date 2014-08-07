@@ -385,7 +385,7 @@ bool GenIsoDat::compute() {
         if(m_caseNumParam->getValue() == -1){
 
             numVert = 160;
-            numShift = 16;
+            numShift = 32;
             numElements = 32;
 
         }
@@ -402,7 +402,7 @@ bool GenIsoDat::compute() {
             cl.push_back(i);
         }
 
-        for(int i = 0; i < numShift; i+=2){
+        for(int i = 0; i < 4; i+=2){
 
             for(int j = 0; j < numShift; j+=2){
 
@@ -577,11 +577,7 @@ bool GenIsoDat::compute() {
                 }
                 mapdata->x().push_back(j);
             }
-
-
         };
-
-
     }
         break;
     }

@@ -135,7 +135,7 @@ vistle::Object::ptr Color::addTexture(vistle::Object::const_ptr object,
 
    std::cerr << "Color: cannot handle input" << std::endl;
 
-   return vistle::Object::ptr();
+   return vistle::Object::ptr(new Empty(Object::Initialized));
 }
 
 bool Color::compute() {
@@ -147,8 +147,9 @@ bool Color::compute() {
 
    ColorMap cmap(pins, 32);
 
-   while (Object::const_ptr obj = takeFirstObject("data_in")) {
+   while (hasObject("data_in")) {
 
+      Object::const_ptr obj = takeFirstObject("data_in");
       Scalar min = std::numeric_limits<Scalar>::max();
       Scalar max = -std::numeric_limits<Scalar>::max();
 
@@ -162,9 +163,9 @@ bool Color::compute() {
       //std::cerr << "Color: [" << min << "--" << max << "]" << std::endl;
 
       vistle::Object::ptr out(addTexture(obj, min, max, cmap));
-      if (out.get()) {
+
          addObject("data_out", out);
-      }
+
    }
 
    return true;
