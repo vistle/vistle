@@ -9,6 +9,7 @@
 #include "scalar.h"
 #include "dimensions.h"
 #include "exception.h"
+#include "vector.h"
 #include "export.h"
 
 namespace vistle {
@@ -65,6 +66,11 @@ public:
 
    operator S &() { assert(dim==1); return v[0]; }
    operator S() const { assert(dim==1); return dim>0 ? v[0] : S(); }
+
+   operator Vector1() const { assert(dim==1); return dim>=1 ? Vector1(v[0]) : Vector1(0.); }
+   operator Vector2() const { assert(dim==2); return dim>=2 ? Vector2(v[0], v[1]) : Vector2(0., 0.); }
+   operator Vector3() const { assert(dim==3); return dim>=3 ? Vector3(v[0], v[1], v[2]) : Vector3(0., 0., 0.); }
+   operator Vector4() const { assert(dim==4); return dim>=4 ? Vector4(v[0], v[1], v[2], v[3]) : Vector4(0., 0., 0., 0.); }
 
    std::string str() const;
 
