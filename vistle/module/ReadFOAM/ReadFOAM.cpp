@@ -1014,7 +1014,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
          addGridToPorts(-1);
       }
 
-   } else if (m_case.varyingCoords) {
+   } else if (m_case.varyingCoords && readGrid) {
       if (m_case.numblocks > 0) {
          for (int i=0; i<m_case.numblocks; ++i) {
             if (i % size() == rank()) {
