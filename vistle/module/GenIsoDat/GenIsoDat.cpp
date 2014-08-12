@@ -381,19 +381,21 @@ bool GenIsoDat::compute() {
 
     case 3:{
 
+        Index numSideshift;
 
         if(m_caseNumParam->getValue() == -1){
 
             numVert = 160;
-            numShift = 32;
+            numShift = 32;            
             numElements = 32;
-
+            numSideshift = 4;
         }
         else{
 
             numVert = 5;
             numShift = 2;
             numElements = 1;
+            numSideshift = 2;
 
         };
 
@@ -402,7 +404,7 @@ bool GenIsoDat::compute() {
             cl.push_back(i);
         }
 
-        for(int i = 0; i < 4; i+=2){
+        for(int i = 0; i < numSideshift; i+=2){
 
             for(int j = 0; j < numShift; j+=2){
 
@@ -422,27 +424,20 @@ bool GenIsoDat::compute() {
         }
 
         for(int i = 0; i < numElements; i++){
-
             z.push_back(0);
             z.push_back(0);
             z.push_back(0);
             z.push_back(0);
             z.push_back(1);
-
         }
 
         for(int i = 0; i < numElements; i++){
-
             el.push_back(el[i]+5);
-
         }
 
         for(int i = 0; i < numElements; i++){
-
             tl.push_back(UnstructuredGrid::PYRAMID);
         }
-
-
 
         std::bitset<5> newdata;
 
@@ -470,11 +465,7 @@ bool GenIsoDat::compute() {
                 }
                 mapdata->x().push_back(j);
             };
-
-
         };
-
-
     }; break;
     case 4:{
 
@@ -511,8 +502,6 @@ bool GenIsoDat::compute() {
         cl.push_back(3);
         cl.push_back(1);
 
-
-
         for(int i = 0; i < numShift; i+=2){
 
 
@@ -546,8 +535,6 @@ bool GenIsoDat::compute() {
 
             tl.push_back(UnstructuredGrid::POLYHEDRON);
         }
-
-
 
         std::bitset<4> newdata;
 

@@ -376,18 +376,18 @@ struct process_Cell {
         case UnstructuredGrid::POLYHEDRON: {
 
             SIndex sidebegin = -1;
-            Vector middleVector(0,0,0);
-
-            bool vertexSaved=false;
-            Vector savedVertex;
-            Index numdataonly = 3;
-            Scalar savedValue [numdataonly];
+            bool vertexSaved = false;
+            Index maxNumdata = 6;
+            Scalar savedData [maxNumdata];
             Index j = 0;
             int flag = 0;
-            Scalar middleValue[numdataonly];
-            for(int i = 0; i < numdataonly; i++ ){
-                middleValue[i] = 0;
+            Scalar middleData[maxNumdata];
+            for(int i = 0; i < maxNumdata; i++ ){
+                middleData[i] = 0;
             };
+            Scalar cd1 [maxNumdata];
+            Scalar cd2 [maxNumdata];
+
             Index outIdx = m_data.m_LocationList[ValidCellIndex];
             for (Index i = Cellbegin; i < Cellend; i++) {
 
@@ -398,17 +398,12 @@ struct process_Cell {
 
                     sidebegin = -1;
                     if (vertexSaved) {
-                        m_data.m_outputpointer[0][outIdx] = savedVertex[0];
-                        m_data.m_outputpointer[1][outIdx] = savedVertex[1];
-                        m_data.m_outputpointer[2][outIdx] = savedVertex[2];
 
-                        for(Index i = 0; i < m_data.m_numinputdata - 3; i++){
-
-                            m_data.m_outputpointer[i+3][outIdx] = savedValue[i];
+                        for(Index i = 0; i < m_data.m_numinputdata; i++){
+                            m_data.m_outputpointer[i][outIdx] = savedData[i];
                         };
 
-                        outIdx+=2;
-
+                        outIdx += 2;
                         vertexSaved=false;
                     }
                     continue;
@@ -419,42 +414,29 @@ struct process_Cell {
                     vertexSaved = false;
                 }
 
-                Scalar cd1 [numdataonly];
-                Scalar cd2 [numdataonly];
-
-                for(int i = 0; i < m_data.m_numinputdata - 3; i++){
-                    cd1[i] = m_data.m_inputpointer[i+3][c1];
-                    cd2[i] = m_data.m_inputpointer[i+3][c2];
+                for(int i = 0; i < m_data.m_numinputdata; i++){
+                    cd1[i] = m_data.m_inputpointer[i][c1];
+                    cd2[i] = m_data.m_inputpointer[i][c2];
                 }
 
                 Scalar d1 = m_data.m_volumedata[c1];
                 Scalar d2 = m_data.m_volumedata[c2];
-
-                Vector v1(m_data.m_inputpointer[0][c1], m_data.m_inputpointer[1][c1], m_data.m_inputpointer[2][c1]);
-                Vector v2(m_data.m_inputpointer[0][c2], m_data.m_inputpointer[1][c2], m_data.m_inputpointer[2][c2]);
                 Scalar t = tinterp(m_data.m_isovalue, d1, d2);
 
                 if (d1 <= m_data.m_isovalue && d2 > m_data.m_isovalue) {
 
-                    Vector v = lerp(v1, v2, t);
-                    Scalar cv[numdataonly];
+                    Scalar v [maxNumdata];
 
-                    for(Index i = 0; i < m_data.m_numinputdata - 3; i++){
-                        cv[i] = lerp(cd1[i], cd2[i], t);
+                    for(Index i = 0; i < m_data.m_numinputdata; i++){
+                        v[i] = lerp(cd1[i], cd2[i], t);
                     };
 
-                    middleVector += v;
-
-                    for(Index i = 0; i < m_data.m_numinputdata - 3; i++){
-                        middleValue[i] += cv[i];
+                    for(Index i = 0; i < m_data.m_numinputdata; i++){
+                        middleData[i] += v[i];
                     }
 
-                    m_data.m_outputpointer[0][outIdx] = v[0];
-                    m_data.m_outputpointer[1][outIdx] = v[1];
-                    m_data.m_outputpointer[2][outIdx] = v[2];
-
-                    for(Index i = 0; i < m_data.m_numinputdata - 3; i++){
-                        m_data.m_outputpointer[3][outIdx] = cv[i];
+                    for(Index i = 0; i < m_data.m_numinputdata; i++){
+                        m_data.m_outputpointer[i][outIdx] = v[i];
                     }
 
                     ++outIdx;
@@ -463,60 +445,46 @@ struct process_Cell {
 
                 } else if (d1 > m_data.m_isovalue && d2 <= m_data.m_isovalue) {
 
-                    Vector v = lerp(v1, v2, t);
-                    Scalar cv[numdataonly];
+                    Scalar v [maxNumdata];
 
-                    for(Index i = 0; i < m_data.m_numinputdata - 3; i++){
-                        cv[i] = lerp(cd1[i], cd2[i], t);
+                    for(Index i = 0; i < m_data.m_numinputdata; i++){
+                        v[i] = lerp(cd1[i], cd2[i], t);
                     };
 
-                    middleVector += v;
-
-                    for(Index i = 0; i < m_data.m_numinputdata - 3; i++){
-                        middleValue[i] += cv[i];
+                    for(Index i = 0; i < m_data.m_numinputdata; i++){
+                        middleData[i] += v[i];
                     };
 
                     ++j;
 
                     if (flag == 1) { //fall 2 nach fall 1
 
-                        m_data.m_outputpointer[0][outIdx] = v[0];
-                        m_data.m_outputpointer[1][outIdx] = v[1];
-                        m_data.m_outputpointer[2][outIdx] = v[2];
-
-                        for(Index i = 0; i < m_data.m_numinputdata - 3; i++){
-                            m_data.m_outputpointer[i+3][outIdx] = cv[i];
+                        for(Index i = 0; i < m_data.m_numinputdata; i++){
+                            m_data.m_outputpointer[i][outIdx] = v[i];
                         }
 
-                        outIdx+=2;
+                        outIdx += 2;
 
                     } else { //fall 2 zuerst
 
-                        savedVertex = v;
-
-                        for(Index i = 0; i < m_data.m_numinputdata - 3; i++){
-                            savedValue[i] = cv[i];
+                        for(Index i = 0; i < m_data.m_numinputdata; i++){
+                            savedData[i] = v[i];
                         }
                         vertexSaved=true;
                     }
                 }
             }
 
-            middleVector /= j;
-            for(Index i = 0; i < m_data.m_numinputdata - 3; i++){
-                middleValue[i] /= j;
+            for(Index i = 0; i < m_data.m_numinputdata; i++){
+                middleData[i] /= j;
             };
 
-            for (Index i = 2; i < numVert; i+=3) {
+            for (Index i = 2; i < numVert; i += 3) {
 
                 const Index idx = m_data.m_LocationList[ValidCellIndex]+i;
 
-                m_data.m_outputpointer[0][idx] = middleVector[0];
-                m_data.m_outputpointer[1][idx] = middleVector[1];
-                m_data.m_outputpointer[2][idx] = middleVector[2];
-
-                for(Index i = 0; i < m_data.m_numinputdata - 3; i++){
-                    m_data.m_outputpointer[i+3][idx] = middleValue[i];
+                for(Index i = 0; i < m_data.m_numinputdata; i++){
+                    m_data.m_outputpointer[i][idx] = middleData[i];
                 }
             };
         }
