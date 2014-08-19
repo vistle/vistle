@@ -78,11 +78,22 @@ inline Scalar tinterp(Scalar iso, const Scalar &f0, const Scalar &f1) {
 
 }
 
+struct IsoDataFunctor {
+
+    IsoDataFunctor(const vistle::shm<Scalar>::array &data)
+        : m_volumedata(data)
+    {}
+    __host__ __device__ Scalar operator()(Index i) { return m_volumedata[i]; }
+
+    const vistle::shm<Scalar>::array &m_volumedata;
+
+};
+
 struct HostData {
 
     Scalar m_isovalue;
     Index m_numinputdata;
-    const vistle::shm<Scalar>::array &m_volumedata;
+    IsoDataFunctor m_isoFunc;
     const vistle::shm<Index>::array &m_el;
     const vistle::shm<Index>::array &m_cl;
     const vistle::shm<unsigned char>::array &m_tl;
@@ -100,7 +111,7 @@ struct HostData {
     typedef vistle::shm<Index>::array::iterator Indexiterator;
 
     HostData(Scalar isoValue
-             , const vistle::shm<Scalar>::array &data
+             , IsoDataFunctor isoFunc
              , const vistle::shm<Index>::array &el
              , const vistle::shm<unsigned char>::array &tl
              , const vistle::shm<Index>::array &cl
@@ -108,8 +119,8 @@ struct HostData {
              , const vistle::shm<Scalar>::array &y
              , const vistle::shm<Scalar>::array &z
              )
-        : m_isovalue(isoValue)
-        , m_volumedata(data)
+        : m_isovalue(isoValue)        
+        , m_isoFunc(isoFunc)
         , m_el(el)
         , m_cl(cl)
         , m_tl(tl)
@@ -247,7 +258,7 @@ struct process_Cell {
 
             Scalar field[8];
             for (int idx = 0; idx < 8; idx ++) {
-                field[idx] = m_data.m_volumedata[newindex[idx]];
+                field[idx] = m_data.m_isoFunc(newindex[idx]);
             }
 
             for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
@@ -281,7 +292,7 @@ struct process_Cell {
 
             Scalar field[4];
             for (int idx = 0; idx < 4; idx ++) {
-                field[idx] = m_data.m_volumedata[newindex[idx]];
+                field[idx] = m_data.m_isoFunc(newindex[idx]);
             }
 
             for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
@@ -315,7 +326,7 @@ struct process_Cell {
 
             Scalar field[5];
             for (int idx = 0; idx < 5; idx ++) {
-                field[idx] = m_data.m_volumedata[newindex[idx]];
+                field[idx] = m_data.m_isoFunc(newindex[idx]);
             }
 
             for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
@@ -350,7 +361,7 @@ struct process_Cell {
 
             Scalar field[6];
             for (int idx = 0; idx < 6; idx ++) {
-                field[idx] = m_data.m_volumedata[newindex[idx]];
+                field[idx] = m_data.m_isoFunc(newindex[idx]);
             }
 
             for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
@@ -419,8 +430,8 @@ struct process_Cell {
                     cd2[i] = m_data.m_inputpointer[i][c2];
                 }
 
-                Scalar d1 = m_data.m_volumedata[c1];
-                Scalar d2 = m_data.m_volumedata[c2];
+                Scalar d1 = m_data.m_isoFunc(c1);
+                Scalar d2 = m_data.m_isoFunc(c2);
                 Scalar t = tinterp(m_data.m_isovalue, d1, d2);
 
                 if (d1 <= m_data.m_isovalue && d2 > m_data.m_isovalue) {
@@ -508,12 +519,15 @@ struct checkcell {
         int havelower = 0;
         int havehigher = 0;
 
+//        DataFunctor DF;
+//        std::cerr << "DataFunctor " << DF.ReturnData(4) << std::endl;
+
         Index Cell = iCell.get<0>();
         Index nextCell = iCell.get<1>();
 
         for (Index i=Cell; i<nextCell; i++) {
 
-            float val = m_data.m_volumedata[m_data.m_cl[i]];
+            float val = m_data.m_isoFunc(m_data.m_cl[i]);
             if (val>m_data.m_isovalue) {
                 havelower=1;
                 if (havehigher)
@@ -547,7 +561,7 @@ struct classify_cell {
         if (CellType != UnstructuredGrid::POLYHEDRON) {
             for (int idx = 0; idx < diff; idx ++) {
 
-                tableIndex += (((int) (m_data.m_volumedata[m_data.m_cl[Start+idx]] > m_data.m_isovalue)) << idx);
+                tableIndex += (((int) (m_data.m_isoFunc(m_data.m_cl[Start+idx]) > m_data.m_isovalue)) << idx);
             }
         }
 
@@ -584,10 +598,10 @@ struct classify_cell {
                     sidebegin = m_data.m_cl[i];
                 }
 
-                if (m_data.m_volumedata[m_data.m_cl[i]] <= m_data.m_isovalue && m_data.m_volumedata[m_data.m_cl[i+1]] > m_data.m_isovalue) {
+                if (m_data.m_isoFunc(m_data.m_cl[i]) <= m_data.m_isovalue && m_data.m_isoFunc(m_data.m_cl[i+1]) > m_data.m_isovalue) {
 
                     vertcounter += 1;
-                } else if(m_data.m_volumedata[m_data.m_cl[i]] > m_data.m_isovalue && m_data.m_volumedata[m_data.m_cl[i+1]] <= m_data.m_isovalue) {
+                } else if(m_data.m_isoFunc(m_data.m_cl[i]) > m_data.m_isovalue && m_data.m_isoFunc(m_data.m_cl[i+1]) <= m_data.m_isovalue) {
 
                     vertcounter += 1;
                 }
@@ -603,7 +617,6 @@ struct classify_cell {
 
 IsoSurface::IsoSurface(const std::string &shmname, int rank, int size, int moduleID)
     : Module("IsoSurface", shmname, rank, size, moduleID) {
-
 
     setDefaultCacheMode(ObjectCache::CacheAll);
     setReducePolicy(message::ReducePolicy::OverAll);
@@ -691,7 +704,7 @@ public:
 
         case 0: {
 
-            HostData HD(m_isoValue, dataobj->x(), m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
+            HostData HD(m_isoValue, IsoDataFunctor(dataobj->x()), m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
 
             if(m_mapdata.size()){
                 if(auto Scal = Vec<Scalar>::as(m_mapdata[0])){
@@ -837,57 +850,16 @@ public:
     }
 };
 
-std::pair<Object::ptr, Object::ptr>
-IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
-                               Object::const_ptr data_object,
-                               Object::const_ptr mapdata_object,
-                               const Scalar isoValue,
-                               int processorType) {
-    Object::ptr result;
-    Object::ptr mapresult;
-
-
-    if (!grid_object || !data_object)
-        return std::make_pair(result, mapresult);
-
-    UnstructuredGrid::const_ptr grid = UnstructuredGrid::as(grid_object);
-    Vec<Scalar>::const_ptr data = Vec<Scalar>::as(data_object);
-
-    if (!grid || !data) {
-        std::cerr << "IsoSurface: incompatible input" << std::endl;
-        return std::make_pair(result, mapresult);
-    }
-
-    Leveller l(grid, isoValue, processorType);
-
-
-    l.setIsoData(data);
-    if(mapdata_object){
-        l.addMappedData(mapdata_object);
-    };
-
-    l.process();
-
-    auto range = l.range();
-    if (range.first < min)
-        min = range.first;
-    if (range.second > max)
-        max = range.second;
-
-    result = l.result();
-    mapresult = l.mapresult();
-
-    return std::make_pair(result, mapresult);
-
-}
-
 bool IsoSurface::compute() {
 
     const Scalar isoValue = getFloatParameter("isovalue");
-
-    Index processorType = getIntParameter("processortype");
-
-    while (hasObject("grid_in") && hasObject("data_in") && (!isConnected("mapdata_in") || hasObject("mapdata_in"))) {
+    int processorType = getIntParameter("processortype");
+    while (hasObject("grid_in")
+       #ifndef CUTTINGSURFACE
+           && hasObject("data_in")
+       #endif
+         
+           && (!isConnected("mapdata_in") || hasObject("mapdata_in"))) {
 
         Object::const_ptr grid = takeFirstObject("grid_in");
         Object::const_ptr data = takeFirstObject("data_in");
@@ -896,7 +868,34 @@ bool IsoSurface::compute() {
             mapdata = takeFirstObject("mapdata_in");
         }
 
-        std::pair<Object::ptr, Object::ptr> object = generateIsoSurface(grid, data, mapdata, isoValue, processorType);
+        Object::ptr result;
+        Object::ptr mapresult;
+
+        if (!grid || !data)
+            std::pair<Object::ptr, Object::ptr> object = std::make_pair(result, mapresult);
+
+        UnstructuredGrid::const_ptr gridS = UnstructuredGrid::as(grid);
+        Vec<Scalar>::const_ptr dataS = Vec<Scalar>::as(data);
+
+        Leveller l(gridS, isoValue, processorType);
+
+        l.setIsoData(dataS);
+        if(mapdata){
+            l.addMappedData(mapdata);
+        };
+
+        l.process();
+
+        auto range = l.range();
+        if (range.first < min)
+            min = range.first;
+        if (range.second > max)
+            max = range.second;
+
+        result = l.result();
+        mapresult = l.mapresult();
+
+        std::pair<Object::ptr, Object::ptr> object = std::make_pair(result, mapresult);
 
         if (object.first && !object.first->isEmpty()) {
             object.first->copyAttributes(data);
@@ -916,8 +915,6 @@ bool IsoSurface::compute() {
             }
             addObject("mapdata_out", object.second);
         }
-
     }
-
     return true;
 }
