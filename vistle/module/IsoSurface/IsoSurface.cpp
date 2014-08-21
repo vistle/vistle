@@ -634,17 +634,18 @@ IsoSurface::~IsoSurface() {
 
 bool IsoSurface::prepare() {
 
-    min = std::numeric_limits<Scalar>::max() ;
-    max = -std::numeric_limits<Scalar>::max();
+    m_min = std::numeric_limits<Scalar>::max() ;
+    m_max = -std::numeric_limits<Scalar>::max();
     return Module::prepare();
 }
 
 bool IsoSurface::reduce(int timestep) {
 
+    Scalar min, max;
     boost::mpi::all_reduce(boost::mpi::communicator(),
-                           min, min, boost::mpi::minimum<Scalar>());
+                           m_min, min, boost::mpi::minimum<Scalar>());
     boost::mpi::all_reduce(boost::mpi::communicator(),
-                           max, max, boost::mpi::maximum<Scalar>());
+                           m_max, max, boost::mpi::maximum<Scalar>());
 
     setParameterRange(m_isovalue, (double)min, (double)max);
 
@@ -869,10 +870,10 @@ IsoSurface::generateIsoSurface(Object::const_ptr grid_object,
     l.process();
 
     auto range = l.range();
-    if (range.first < min)
-        min = range.first;
-    if (range.second > max)
-        max = range.second;
+    if (range.first < m_min)
+        m_min = range.first;
+    if (range.second > m_max)
+        m_max = range.second;
 
     result = l.result();
     mapresult = l.mapresult();
