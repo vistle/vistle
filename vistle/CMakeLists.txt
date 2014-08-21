@@ -75,6 +75,7 @@ vistle_find_package(OpenGL)
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+set(COVISEDESTDIR ${PROJECT_BINARY_DIR})
 
 add_subdirectory(util)
 add_subdirectory(core)
