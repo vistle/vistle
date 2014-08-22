@@ -581,6 +581,25 @@ ParamVector Module::getVectorParameter(const std::string & name) const {
    return value;
 }
 
+IntVectorParameter *Module::addIntVectorParameter(const std::string & name, const std::string &description,
+                                const IntParamVector & value) {
+
+   return dynamic_cast<IntVectorParameter *>(addParameter(name, description, value));
+}
+
+bool Module::setIntVectorParameter(const std::string & name,
+                                const IntParamVector & value, const message::SetParameter *inResponseTo) {
+
+   return setParameter(name, value, inResponseTo);
+}
+
+IntParamVector Module::getIntVectorParameter(const std::string & name) const {
+
+   IntParamVector value;
+   getParameter(name, value);
+   return value;
+}
+
 void Module::updateMeta(vistle::Object::ptr obj) const {
 
    if (obj) {
@@ -1293,6 +1312,9 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                   break;
                case Parameter::Vector:
                   setVectorParameter(param->getName(), param->getVector(), param);
+                  break;
+               case Parameter::IntVector:
+                  setIntVectorParameter(param->getName(), param->getIntVector(), param);
                   break;
                case Parameter::String:
                   setStringParameter(param->getName(), param->getString(), param);

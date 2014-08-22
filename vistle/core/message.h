@@ -506,6 +506,8 @@ class V_COREEXPORT SetParameter: public Message {
       SetParameter(const int module,
             const std::string & name, const ParamVector &value);
       SetParameter(const int module,
+            const std::string & name, const IntParamVector &value);
+      SetParameter(const int module,
             const std::string & name, const std::string &value);
 
       void setInit();
@@ -525,6 +527,7 @@ class V_COREEXPORT SetParameter: public Message {
       std::string getString() const;
       Float getFloat() const;
       ParamVector getVector() const;
+      IntParamVector getIntVector() const;
 
       bool apply(boost::shared_ptr<Parameter> param) const;
 
@@ -540,6 +543,7 @@ class V_COREEXPORT SetParameter: public Message {
          Integer v_int;
          Float v_scalar;
          Float v_vector[MaxDimension];
+         Integer v_ivector[MaxDimension];
          param_value_t v_string;
       };
 };

@@ -92,6 +92,8 @@ def getParameter(id, name):
       return getFloatParam(id, name)
    elif t == "Vector":
       return getVectorParam(id, name)
+   elif t == "IntVector":
+      return getIntVectorParam(id, name)
    elif t == "String":
       return getStringParam(id, name)
    elif t == "None":
@@ -105,6 +107,16 @@ def getSavableParam(id, name):
       return "'"+getStringParam(id, name)+"'"
    elif t == "Vector":
       v = getVectorParam(id, name)
+      s = ''
+      first=True
+      for c in v:
+         if not first:
+            s += ', '
+         first = False
+         s += str(c)
+      return s
+   elif t == "IntVector":
+      v = getIntVectorParam(id, name)
       s = ''
       first=True
       for c in v:

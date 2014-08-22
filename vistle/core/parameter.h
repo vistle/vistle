@@ -14,8 +14,6 @@
 
 namespace vistle {
 
-typedef long Integer;
-
 typedef boost::mpl::vector<Integer, Float, ParamVector, std::string> Parameters;
 
 class V_COREEXPORT Parameter {
@@ -26,6 +24,7 @@ class V_COREEXPORT Parameter {
       (Float)
       (Integer)
       (Vector)
+      (IntVector)
       (String)
       (Invalid) // keep last
    )
@@ -198,6 +197,15 @@ struct ParameterType<ParamVector> {
 };
 
 template<>
+struct ParameterType<IntParamVector> {
+   typedef IntParamVector T;
+   static const Parameter::Type type = Parameter::IntVector;
+   static const bool isNumber = true;
+   static T min() { return T::min(); }
+   static T max() { return T::max(); }
+};
+
+template<>
 struct ParameterType<std::string> {
    typedef std::string T;
    static const Parameter::Type type = Parameter::String;
@@ -237,6 +245,7 @@ struct ParameterCheck<std::string> {
 };
 
 typedef ParameterBase<ParamVector> VectorParameter;
+typedef ParameterBase<IntParamVector> IntVectorParameter;
 typedef ParameterBase<Float> FloatParameter;
 typedef ParameterBase<Integer> IntParameter;
 typedef ParameterBase<std::string> StringParameter;

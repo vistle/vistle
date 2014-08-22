@@ -25,6 +25,7 @@
 #include "propertybrowser/qtlongpropertymanager.h"
 #include "propertybrowser/qtlongeditorfactory.h"
 #include "propertybrowser/qtvectorpropertymanager.h"
+#include "propertybrowser/qtlongvectorpropertymanager.h"
 
 namespace gui {
 
@@ -55,6 +56,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
 , m_stringChoiceManager(nullptr)
 , m_intChoiceManager(nullptr)
 , m_vectorManager(nullptr)
+, m_intVectorManager(nullptr)
 {
    m_groupManager = new QtGroupPropertyManager(this); // no change notifications
 
@@ -65,6 +67,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
    m_stringManager = addPropertyManager<QtStringPropertyManager>(this);
    m_stringChoiceManager = addPropertyManager<QtEnumPropertyManager>(this);
    m_vectorManager = addPropertyManager<QtVectorPropertyManager>(this);
+   m_intVectorManager = addPropertyManager<QtLongVectorPropertyManager>(this);
 
    QtCheckBoxFactory *checkBoxFactory = new QtCheckBoxFactory(this);
    setFactoryForManager(m_boolManager, checkBoxFactory);
@@ -137,6 +140,9 @@ void Parameters::newParameter(int moduleId, QString parameterName)
 
    const auto &it = m_paramToProp.find(parameterName);
    assert(it == m_paramToProp.end());
+   if (it != m_paramToProp.end()) {
+      //qDebug() << "duplicate parameter " << parameterName << " for module " << m_moduleId;
+   }
 
    QtProperty *prop = nullptr;
    if (auto ip = boost::dynamic_pointer_cast<vistle::IntParameter>(p)) {
@@ -161,7 +167,12 @@ void Parameters::newParameter(int moduleId, QString parameterName)
       prop = m_vectorManager->addProperty(displayName(parameterName));
       m_vectorManager->setDecimals(prop, NumDec);
       m_vectorManager->setDimension(prop, value.dim);
+   } else if (auto vp = boost::dynamic_pointer_cast<vistle::IntVectorParameter>(p)) {
+      vistle::IntParamVector value = vp->getValue();
+      prop = m_intVectorManager->addProperty(displayName(parameterName));
+      m_intVectorManager->setDimension(prop, value.dim);
    } else {
+      std::cerr << "parameter type not handled in Parameters::newParameter" << std::endl;
    }
 
    if (prop) {
@@ -261,7 +272,16 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
       }
       m_vectorManager->setValue(prop, value);
       m_vectorManager->setRange(prop, vp->minimum(), vp->maximum());
+   } else if (auto vp = boost::dynamic_pointer_cast<vistle::IntVectorParameter>(p)) {
+      vistle::IntParamVector value = vp->getValue();
+      if (!prop) {
+         prop = m_intVectorManager->addProperty(displayName(parameterName));
+         m_intVectorManager->setDimension(prop, value.dim);
+      }
+      m_intVectorManager->setValue(prop, value);
+      m_intVectorManager->setRange(prop, vp->minimum(), vp->maximum());
    } else {
+      std::cerr << "parameter type not handled in Parameters::parameterValueChanged" << std::endl;
    }
 }
 
@@ -360,6 +380,11 @@ void Parameters::propertyChanged(QtProperty *prop)
       if (vp->getValue() != m_vectorManager->value(prop)) {
          changed = true;
          vp->setValue(m_vectorManager->value(prop));
+      }
+   } else if (auto vp = boost::dynamic_pointer_cast<vistle::IntVectorParameter>(p)) {
+      if (vp->getValue() != m_intVectorManager->value(prop)) {
+         changed = true;
+         vp->setValue(m_intVectorManager->value(prop));
       }
    } else {
       std::cerr << "property type not handled for " << paramName << std::endl;

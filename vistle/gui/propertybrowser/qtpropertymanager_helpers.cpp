@@ -50,6 +50,8 @@ static void orderSizeBorders(Value &minVal, Value &maxVal)
     maxVal = toSize;
 }
 
+//XXX: currently not needed
+#if 0
 void orderBorders(QSize &minVal, QSize &maxVal)
 {
     orderSizeBorders(minVal, maxVal);
@@ -59,6 +61,7 @@ void orderBorders(QSizeF &minVal, QSizeF &maxVal)
 {
     orderSizeBorders(minVal, maxVal);
 }
+#endif
 
 }
 }

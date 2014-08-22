@@ -577,6 +577,9 @@ boost::shared_ptr<Parameter> AddParameter::getParameter() const {
       case Parameter::Vector:
          p.reset(new VectorParameter(senderId(), getName()));
          break;
+      case Parameter::IntVector:
+         p.reset(new IntVectorParameter(senderId(), getName()));
+         break;
       case Parameter::String:
          p.reset(new StringParameter(senderId(), getName()));
          break;
@@ -619,6 +622,11 @@ SetParameter::SetParameter(const int module,
       dim = v.dim;
       for (int i=0; i<MaxDimension; ++i)
          v_vector[i] = v[i];
+   } else if (const auto ipvec = boost::dynamic_pointer_cast<const IntVectorParameter>(param)) {
+      IntParamVector v = ipvec->getValue(rt);
+      dim = v.dim;
+      for (int i=0; i<MaxDimension; ++i)
+         v_ivector[i] = v[i];
    } else if (const auto pstring = boost::dynamic_pointer_cast<const StringParameter>(param)) {
       COPY_STRING(v_string, pstring->getValue(rt));
    } else {
@@ -669,6 +677,22 @@ SetParameter::SetParameter(const int module,
    dim = v.dim;
    for (int i=0; i<MaxDimension; ++i)
       v_vector[i] = v[i];
+}
+
+SetParameter::SetParameter(const int module,
+      const std::string &n, const IntParamVector &v)
+: Message(Message::SETPARAMETER, sizeof(SetParameter))
+, module(module)
+, paramtype(Parameter::IntVector)
+, initialize(false)
+, reply(false)
+, rangetype(Parameter::Value)
+{
+
+   COPY_STRING(name, n);
+   dim = v.dim;
+   for (int i=0; i<MaxDimension; ++i)
+      v_ivector[i] = v[i];
 }
 
 SetParameter::SetParameter(const int module,
@@ -750,6 +774,12 @@ ParamVector SetParameter::getVector() const {
    return ParamVector(dim, &v_vector[0]);
 }
 
+IntParamVector SetParameter::getIntVector() const {
+
+   assert(paramtype == Parameter::IntVector);
+   return IntParamVector(dim, &v_ivector[0]);
+}
+
 std::string SetParameter::getString() const {
 
    assert(paramtype == Parameter::String);
@@ -776,6 +806,10 @@ bool SetParameter::apply(boost::shared_ptr<vistle::Parameter> param) const {
       if (rt == Parameter::Value) pvec->setValue(ParamVector(dim, &v_vector[0]), initialize);
       if (rt == Parameter::Minimum) pvec->setMinimum(ParamVector(dim, &v_vector[0]));
       if (rt == Parameter::Maximum) pvec->setMaximum(ParamVector(dim, &v_vector[0]));
+   } else if (auto pivec = boost::dynamic_pointer_cast<IntVectorParameter>(param)) {
+      if (rt == Parameter::Value) pivec->setValue(IntParamVector(dim, &v_ivector[0]), initialize);
+      if (rt == Parameter::Minimum) pivec->setMinimum(IntParamVector(dim, &v_ivector[0]));
+      if (rt == Parameter::Maximum) pivec->setMaximum(IntParamVector(dim, &v_ivector[0]));
    } else if (auto pstring = boost::dynamic_pointer_cast<StringParameter>(param)) {
       if (rt == Parameter::Value) pstring->setValue(v_string.data(), initialize);
    } else {

@@ -246,6 +246,7 @@ static std::string getParameterType(int id, const std::string &name) {
       case Parameter::Integer: return "Int";
       case Parameter::Float: return "Float";
       case Parameter::Vector: return "Vector";
+      case Parameter::IntVector: return "IntVector";
       case Parameter::String: return "String";
       case Parameter::Invalid: return "None";
       case Parameter::Unknown: return "None";
@@ -360,6 +361,34 @@ static void setVectorParam1(int id, const char *name, Float v1) {
    sendMessage(m);
 }
 
+static void setIntVectorParam4(int id, const char *name, Integer v1, Integer v2, Integer v3, Integer v4) {
+
+   message::SetParameter m(id, name, IntParamVector(v1, v2, v3, v4));
+   m.setDestId(id);
+   sendMessage(m);
+}
+
+static void setIntVectorParam3(int id, const char *name, Integer v1, Integer v2, Integer v3) {
+
+   message::SetParameter m(id, name, IntParamVector(v1, v2, v3));
+   m.setDestId(id);
+   sendMessage(m);
+}
+
+static void setIntVectorParam2(int id, const char *name, Integer v1, Integer v2) {
+
+   message::SetParameter m(id, name, IntParamVector(v1, v2));
+   m.setDestId(id);
+   sendMessage(m);
+}
+
+static void setIntVectorParam1(int id, const char *name, Integer v1) {
+
+   message::SetParameter m(id, name, IntParamVector(v1));
+   m.setDestId(id);
+   sendMessage(m);
+}
+
 static void setStringParam(int id, const char *name, const std::string &value) {
 
 #ifdef DEBUG
@@ -418,6 +447,10 @@ BOOST_PYTHON_MODULE(_vistle)
     param(Vector, setVectorParam2);
     param(Vector, setVectorParam3);
     param(Vector, setVectorParam4);
+    param(IntVector, setIntVectorParam1);
+    param(IntVector, setIntVectorParam2);
+    param(IntVector, setIntVectorParam3);
+    param(IntVector, setIntVectorParam4);
 
     def("getAvailable", getAvailable, "get list of names of available modules");
     def("getRunning", getRunning, "get list of IDs of running modules");
@@ -432,6 +465,7 @@ BOOST_PYTHON_MODULE(_vistle)
     def("getIntParam", getParameterValue<Integer>, "get value of parameter named `arg2` of module with ID `arg1`");
     def("getFloatParam", getParameterValue<Float>, "get value of parameter named `arg2` of module with ID `arg1`");
     def("getVectorParam", getParameterValue<ParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");
+    def("getIntVectorParam", getParameterValue<IntParamVector>, "get value of parameter named `arg2` of module with ID `arg1`");
     def("getStringParam", getParameterValue<std::string>, "get value of parameter named `arg2` of module with ID `arg1`");
 }
 
@@ -486,6 +520,9 @@ bool PythonModule::import(boost::python::object *ns, const std::string &path) {
 
    bp::class_<ParameterVector<Float> >("ParameterVector<Float>")
       .def(bp::vector_indexing_suite<ParameterVector<Float> >());
+
+   bp::class_<ParameterVector<Integer> >("ParameterVector<Integer>")
+      .def(bp::vector_indexing_suite<ParameterVector<Integer> >());
 
    try {
 #if PY_VERSION_HEX >= 0x03000000
