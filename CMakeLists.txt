@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 2.8)
 project(vistle_all)
 
+# vim's YouCompleteMe can make use of this
+set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+
 option(VISTLE_BUILD_SHARED "Build all libraries as shared libraries instead of static" ON)
 if (VISTLE_BUILD_SHARED)
    set(VISTLE_LIB_TYPE SHARED)
