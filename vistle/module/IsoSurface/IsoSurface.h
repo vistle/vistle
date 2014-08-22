@@ -23,7 +23,6 @@ class IsoSurface: public vistle::Module {
    virtual bool reduce(int timestep);
 
    vistle::FloatParameter *m_isovalue;
-   vistle::StringParameter *m_shader, *m_shaderParams;
    vistle::IntParameter *m_processortype;
 
    vistle::Scalar m_min, m_max;
