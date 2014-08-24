@@ -171,6 +171,7 @@ public:
    bool hasAttribute(const std::string &key) const;
    std::string getAttribute(const std::string &key) const;
    std::vector<std::string> getAttributes(const std::string &key) const;
+   std::vector<std::string> getAttributeList() const;
 
    // attachments, e.g. Celltrees
    bool addAttachment(const std::string &key, Object::const_ptr att) const;
@@ -211,6 +212,7 @@ public:
       bool hasAttribute(const std::string &key) const;
       std::string getAttribute(const std::string &key) const;
       std::vector<std::string> getAttributes(const std::string &key) const;
+      std::vector<std::string> getAttributeList() const;
 
       mutable boost::interprocess::interprocess_recursive_mutex attachment_mutex; //< protects attachments
       typedef interprocess::offset_ptr<Object::Data> Attachment;

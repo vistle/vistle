@@ -429,6 +429,10 @@ std::vector<std::string> Object::getAttributes(const std::string &key) const {
    return d()->getAttributes(key);
 }
 
+std::vector<std::string> Object::getAttributeList() const {
+   return d()->getAttributeList();
+}
+
 void Object::Data::addAttribute(const std::string &key, const std::string &value) {
 
    const Key skey(key.c_str(), Shm::the().allocator());
@@ -503,6 +507,18 @@ std::vector<std::string> Object::Data::getAttributes(const std::string &key) con
       attrs.push_back(i->c_str());
    }
    return attrs;
+}
+
+std::vector<std::string> Object::Data::getAttributeList() const {
+
+   std::vector<std::string> result;
+   for (AttributeMap::iterator it = attributes->begin();
+         it != attributes->end();
+         ++it) {
+      auto key = it->first;
+      result.push_back(key.c_str());
+   }
+   return result;
 }
 
 bool Object::addAttachment(const std::string &key, Object::const_ptr obj) const {
