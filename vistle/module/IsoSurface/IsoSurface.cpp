@@ -78,6 +78,31 @@ inline Scalar tinterp(Scalar iso, const Scalar &f0, const Scalar &f1) {
 
 }
 
+#ifdef CUTTINGSURFACE
+
+struct IsoDataFunctor {
+
+    IsoDataFunctor(const Vector &normal, const Vector &point, const Scalar* x, const Scalar* y, const Scalar* z
+                   )
+        : m_normal(normal), m_point(point) , m_x(x)
+        , m_y(y)
+        , m_z(z)
+        , m_distance(normal.dot(point))
+    {}
+    __host__ __device__ Scalar operator()(Index i) {
+
+        return m_normal[0]*m_x[i] + m_normal[1]*m_y[i] + m_normal[2]*m_z[i] - m_distance;
+
+    }
+
+    const Scalar* m_x;
+    const Scalar* m_y;
+    const Scalar* m_z;
+    const Scalar m_distance;
+    const Vector m_normal;
+    const Vector m_point;
+};
+#else
 struct IsoDataFunctor {
 
     IsoDataFunctor(const vistle::shm<Scalar>::array &data)
@@ -88,6 +113,7 @@ struct IsoDataFunctor {
     const vistle::shm<Scalar>::array &m_volumedata;
 
 };
+#endif
 
 struct HostData {
 
@@ -152,76 +178,77 @@ struct HostData {
     std::vector<std::vector<Scalar>> outData;
 };
 
-struct DeviceData {
+//struct DeviceData {
 
-    Scalar m_isovalue;
-    thrust::device_vector<Scalar> m_volumedata;
-    thrust::device_vector<Scalar> m_volumemapdata;
-    thrust::device_vector<Index> m_el;
-    thrust::device_vector<Index> m_cl;
-    thrust::device_vector<unsigned char> m_tl;
-    thrust::device_vector<Index> m_caseNums;
-    thrust::device_vector<Index> m_numVertices;
-    thrust::device_vector<Index> m_LocationList;
-    thrust::device_vector<Index> m_ValidCellVector;
-    thrust::device_vector<Scalar> m_x;
-    thrust::device_vector<Scalar> m_y;
-    thrust::device_vector<Scalar> m_z;
-    thrust::device_vector<Scalar> m_xCoordinateVector;
-    thrust::device_vector<Scalar> m_yCoordinateVector;
-    thrust::device_vector<Scalar> m_zCoordinateVector;
+//    Scalar m_isovalue;
+//    Index m_numinputdata;
+//    IsoDataFunctor m_isoFunc;
+//    thrust::device_vector<Scalar> m_volumemapdata;
+//    thrust::device_vector<Index> m_el;
+//    thrust::device_vector<Index> m_cl;
+//    thrust::device_vector<unsigned char> m_tl;
+//    thrust::device_vector<Index> m_caseNums;
+//    thrust::device_vector<Index> m_numVertices;
+//    thrust::device_vector<Index> m_LocationList;
+//    thrust::device_vector<Index> m_ValidCellVector;
+//    thrust::device_vector<Scalar> m_x;
+//    thrust::device_vector<Scalar> m_y;
+//    thrust::device_vector<Scalar> m_z;
+//    thrust::device_vector<Scalar> m_xCoordinateVector;
+//    thrust::device_vector<Scalar> m_yCoordinateVector;
+//    thrust::device_vector<Scalar> m_zCoordinateVector;
 
 
-    Scalar* m_xpointer;
-    Scalar* m_ypointer;
-    Scalar* m_zpointer;
-    Scalar* m_mapdatapointer;
-    typedef thrust::device_vector<Index>::iterator Indexiterator;
+//    Scalar* m_xpointer;
+//    Scalar* m_ypointer;
+//    Scalar* m_zpointer;
+//    Scalar* m_mapdatapointer;
+//    typedef thrust::device_vector<Index>::iterator Indexiterator;
 
-    DeviceData(Scalar isoValue
-               , const vistle::shm<Scalar>::array &data
-               , const vistle::shm<Index>::array &el
-               , const vistle::shm<unsigned char>::array &tl
-               , const vistle::shm<Index>::array &cl
-               , const vistle::shm<Scalar>::array &x
-               , const vistle::shm<Scalar>::array &y
-               , const vistle::shm<Scalar>::array &z)
-        : m_isovalue(isoValue) {
+//    DeviceData(Scalar isoValue
+//               , IsoDataFunctor isoFunc
+//               , const vistle::shm<Index>::array &el
+//               , const vistle::shm<unsigned char>::array &tl
+//               , const vistle::shm<Index>::array &cl
+//               , const vistle::shm<Scalar>::array &x
+//               , const vistle::shm<Scalar>::array &y
+//               , const vistle::shm<Scalar>::array &z)
+//        : m_isovalue(isoValue) {
 
-        m_volumedata.resize(data.size());
-        for (Index i = 0; i < data.size(); i++) {
-            m_volumedata[i] = data[i];
-        }
-        //         m_volumemapdata.resize(mmapdata.size());
-        //         for (Index i = 0; i < mapdata.size(); i++) {
-        //            m_volumemapdata[i] = mapdata[i];
-        //         }
-        m_el.resize(el.size());
-        for (Index i = 0; i < el.size(); i++) {
-            m_el[i]=el[i];
-        }
-        m_cl.resize(cl.size());
-        for (Index i = 0; i < cl.size(); i++) {
-            m_cl[i]=cl[i];
-        }
-        m_tl.resize(tl.size());
-        for (Index i = 0; i < tl.size(); i++) {
-            m_tl[i] = tl[i];
-        }
-        m_x.resize(x.size());
-        for (Index i = 0; i < x.size(); i++) {
-            m_x[i] = x[i];
-        }
-        m_y.resize(y.size());
-        for (Index i = 0; i < y.size(); i++) {
-            m_y[i] = y[i];
-        }
-        m_z.resize(z.size());
-        for (Index i = 0; i < z.size(); i++) {
-            m_z[i] = z[i];
-        }
-    }
-};
+//        m_volumedata.resize(data.size());
+//        for (Index i = 0; i < data.size(); i++) {
+//            m_volumedata[i] = data[i];
+//        }
+//        //         m_volumemapdata.resize(mmapdata.size());
+//        //         for (Index i = 0; i < mapdata.size(); i++) {
+//        //            m_volumemapdata[i] = mapdata[i];
+//        //         }
+//        m_el.resize(el.size());
+//        for (Index i = 0; i < el.size(); i++) {
+//            m_el[i]=el[i];
+//        }
+//        m_cl.resize(cl.size());
+//        for (Index i = 0; i < cl.size(); i++) {
+//            m_cl[i]=cl[i];
+//        }
+//        m_tl.resize(tl.size());
+//        for (Index i = 0; i < tl.size(); i++) {
+//            m_tl[i] = tl[i];
+//        }
+//        m_x.resize(x.size());
+//        for (Index i = 0; i < x.size(); i++) {
+//            m_x[i] = x[i];
+//        }
+//        m_y.resize(y.size());
+//        for (Index i = 0; i < y.size(); i++) {
+//            m_y[i] = y[i];
+//        }
+//        m_z.resize(z.size());
+//        for (Index i = 0; i < z.size(); i++) {
+//            m_z[i] = z[i];
+//        }
+//    }
+//};
 
 template<class Data>
 struct process_Cell {
@@ -623,8 +650,13 @@ IsoSurface::IsoSurface(const std::string &shmname, int rank, int size, int modul
 
     createInputPort("grid_in");
 #ifndef CUTTINGSURFACE
-    createInputPort("data_in");
+    createInputPort("data_in");    
+
+#else
+    addVectorParameter("point", "point on plane", ParamVector(0.0, 0.0, 0.0));
+    addVectorParameter("normal", "normal on plane", ParamVector(0.0, 0.0, 1.0));
 #endif
+
     createInputPort("mapdata_in");
 
     createOutputPort("grid_out");
@@ -664,10 +696,15 @@ bool IsoSurface::reduce(int timestep) {
     return Module::reduce(timestep);
 }
 
-class Leveller {
+class Leveller  {
 
     UnstructuredGrid::const_ptr m_grid;
+#ifndef CUTTINGSURFACE
     Vec<Scalar>::const_ptr m_data;
+#else
+    Vector normal;
+    Vector point;
+#endif
     std::vector<Object::const_ptr> m_mapdata;
     Scalar m_isoValue;
     Index m_processortype;
@@ -692,10 +729,12 @@ public:
         if(m_mapdata.size()){
             Vec<Scalar>::const_ptr mapdataobj = Vec<Scalar>::as(m_mapdata[0]);
         }
-
+#ifndef CUTTINGSURFACE
         Vec<Scalar>::const_ptr dataobj = Vec<Scalar>::as(m_data);
         if (!dataobj)
             return false;
+#else
+#endif
 
         Index totalNumVertices = 0;
 
@@ -704,7 +743,13 @@ public:
 
         case 0: {
 
-            HostData HD(m_isoValue, IsoDataFunctor(dataobj->x()), m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
+            HostData HD(m_isoValue,
+            #ifndef CUTTINGSURFACE
+                        IsoDataFunctor(dataobj->x()),
+            #else
+                        IsoDataFunctor(normal, point, m_grid->x().data(), m_grid->y().data(), m_grid->z().data()),
+            #endif
+                        m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
 
             if(m_mapdata.size()){
                 if(auto Scal = Vec<Scalar>::as(m_mapdata[0])){
@@ -753,9 +798,17 @@ public:
         }
             break;
 
-        case 1: {
+        /*case 1: {
 
-            DeviceData DD(m_isoValue, dataobj->x(), m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
+            DeviceData DD(m_isoValue,
+              #ifndef CUTTINGSURFACE
+                          IsoDataFunctor(dataobj->x()),
+              #else
+                          IsoDataFunctor(normal, point, m_grid->x().data(), m_grid->y().data(), m_grid->z().data()),
+              #endif
+
+                          m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
+
             // totalNumVertices = calculateSurface<DeviceData, decltype(thrust::cuda::par)>(DD);
 
             m_triangles->x().resize(totalNumVertices);
@@ -768,7 +821,7 @@ public:
             thrust::copy(DD.m_xCoordinateVector.begin(), DD.m_xCoordinateVector.end(), out_x);
             thrust::copy(DD.m_yCoordinateVector.begin(), DD.m_yCoordinateVector.end(), out_y);
             thrust::copy(DD.m_zCoordinateVector.begin(), DD.m_zCoordinateVector.end(), out_z);
-        }
+        }*/
             break;
         }
 
@@ -823,10 +876,17 @@ public:
 
         return totalNumVertices;
     }
+#ifdef CUTTINGSURFACE
+    void setCutData(const Vector m_normal, const Vector m_point){
+        normal = m_normal;
+        point = m_point;
+    }
+#else
 
     void setIsoData(Vec<Scalar>::const_ptr obj) {
         m_data = obj;
     }
+#endif
     void addMappedData(Object::const_ptr mapobj ){
         m_mapdata.push_back(mapobj);
     }
@@ -862,7 +922,11 @@ bool IsoSurface::compute() {
            && (!isConnected("mapdata_in") || hasObject("mapdata_in"))) {
 
         Object::const_ptr grid = takeFirstObject("grid_in");
+
+#ifndef CUTTINGSURFACE
         Object::const_ptr data = takeFirstObject("data_in");
+#endif
+
         Object::const_ptr mapdata;
         if(isConnected("mapdata_in")){
             mapdata = takeFirstObject("mapdata_in");
@@ -871,15 +935,28 @@ bool IsoSurface::compute() {
         Object::ptr result;
         Object::ptr mapresult;
 
-        if (!grid || !data)
+        if (!grid
+                #ifndef CUTTINGSURFACE
+                || !data
+            #endif
+            )
             std::pair<Object::ptr, Object::ptr> object = std::make_pair(result, mapresult);
 
         UnstructuredGrid::const_ptr gridS = UnstructuredGrid::as(grid);
+
+        #ifndef CUTTINGSURFACE
         Vec<Scalar>::const_ptr dataS = Vec<Scalar>::as(data);
+        #endif
 
         Leveller l(gridS, isoValue, processorType);
-
+#ifndef CUTTINGSURFACE
         l.setIsoData(dataS);
+#else
+        const Vector normal = getVectorParameter("point");
+        const Vector point = getVectorParameter("normal");
+        l.setCutData(normal,point);
+#endif
+
         if(mapdata){
             l.addMappedData(mapdata);
         };
@@ -898,8 +975,10 @@ bool IsoSurface::compute() {
         std::pair<Object::ptr, Object::ptr> object = std::make_pair(result, mapresult);
 
         if (object.first && !object.first->isEmpty()) {
-            object.first->copyAttributes(data);
 
+#ifndef CUTTINGSURFACE
+            object.first->copyAttributes(data);
+#endif
             object.first->copyAttributes(grid, false);
             if (!m_shader->getValue().empty()) {
                 object.first->addAttribute("shader", m_shader->getValue());
