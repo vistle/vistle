@@ -10,6 +10,9 @@ else()
 endif()
 set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED})
 
+# disable rpath - only rely on LD_LIBRARY_PATH and the likes
+set(CMAKE_SKIP_RPATH TRUE)
+
 # allow for optimizations in Boost.MPI
 add_definitions(-DBOOST_MPI_HOMOGENEOUS)
 

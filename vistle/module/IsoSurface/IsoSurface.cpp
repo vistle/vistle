@@ -679,17 +679,18 @@ IsoSurface::~IsoSurface() {
 
 bool IsoSurface::prepare() {
 
-    min = std::numeric_limits<Scalar>::max() ;
-    max = -std::numeric_limits<Scalar>::max();
+    m_min = std::numeric_limits<Scalar>::max() ;
+    m_max = -std::numeric_limits<Scalar>::max();
     return Module::prepare();
 }
 
 bool IsoSurface::reduce(int timestep) {
 
+    Scalar min, max;
     boost::mpi::all_reduce(boost::mpi::communicator(),
-                           min, min, boost::mpi::minimum<Scalar>());
+                           m_min, min, boost::mpi::minimum<Scalar>());
     boost::mpi::all_reduce(boost::mpi::communicator(),
-                           max, max, boost::mpi::maximum<Scalar>());
+                           m_max, max, boost::mpi::maximum<Scalar>());
 
     setParameterRange(m_isovalue, (double)min, (double)max);
 
@@ -952,8 +953,8 @@ bool IsoSurface::compute() {
 #ifndef CUTTINGSURFACE
         l.setIsoData(dataS);
 #else
-        const Vector normal = getVectorParameter("point");
-        const Vector point = getVectorParameter("normal");
+        const Vector normal = getVectorParameter("normal");
+        const Vector point = getVectorParameter("point");
         l.setCutData(normal,point);
 #endif
 
@@ -963,11 +964,11 @@ bool IsoSurface::compute() {
 
         l.process();
 
-        auto range = l.range();
-        if (range.first < min)
-            min = range.first;
-        if (range.second > max)
-            max = range.second;
+//        auto range = l.range();
+//        if (range.first < min)
+//            min = range.first;
+//        if (range.second > max)
+//            max = range.second;
 
         result = l.result();
         mapresult = l.mapresult();

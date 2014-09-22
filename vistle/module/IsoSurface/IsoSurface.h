@@ -26,7 +26,7 @@ class IsoSurface: public vistle::Module {
    vistle::StringParameter *m_shader, *m_shaderParams;
    vistle::IntParameter *m_processortype;
 
-   vistle::Scalar min, max;
+   vistle::Scalar m_min, m_max;
 };
 
 #endif
