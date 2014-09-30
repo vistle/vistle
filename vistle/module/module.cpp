@@ -138,6 +138,7 @@ Module::Module(const std::string &n, const std::string &shmname,
 , m_schedulingPolicy(message::SchedulingPolicy::Single)
 , m_reducePolicy(message::ReducePolicy::Never)
 , m_executionDepth(0)
+, m_inParameterChanged(false)
 , m_defaultCacheMode(ObjectCache::CacheNone)
 , m_syncMessageProcessing(false)
 , m_origStreambuf(nullptr)
@@ -224,7 +225,7 @@ void Module::initDone() {
    sendMessage(start);
 
    for (auto &pair: parameters) {
-      parameterChanged(pair.second.get());
+      parameterChangedWrapper(pair.second.get());
    }
 }
 
@@ -770,6 +771,17 @@ bool Module::isConnected(const std::string &portname) const {
       return false;
 
    return !p->connections().empty();
+}
+
+bool Module::parameterChangedWrapper(const Parameter *p) {
+
+   if (m_inParameterChanged)
+      return false;
+
+   m_inParameterChanged = true;
+   bool ret = parameterChanged(p);
+   m_inParameterChanged = false;
+   return ret;
 }
 
 bool Module::parameterChanged(const Parameter *p) {
@@ -1326,7 +1338,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             }
 
             if (auto p = findParameter(param->getName())) {
-               parameterChanged(p.get());
+               parameterChangedWrapper(p.get());
             }
 
             // notification of controller about current value happens in set...Parameter
@@ -1341,7 +1353,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const message::SetParameterChoices *choices = static_cast<const message::SetParameterChoices *>(message);
          if (choices->senderId() != id()) {
             //FIXME: handle somehow
-            //parameterChanged(choices->senderId(), choices->getName());
+            //parameterChangedWrapper(choices->senderId(), choices->getName());
          }
          break;
       }

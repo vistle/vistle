@@ -17,7 +17,7 @@ template<class T>
 bool Module::setParameter(ParameterBase<T> *param, const T &value, const message::SetParameter *inResponseTo) {
 
    param->setValue(value);
-   parameterChanged(param);
+   parameterChangedWrapper(param);
    return updateParameter(param->getName(), param, inResponseTo);
 }
 

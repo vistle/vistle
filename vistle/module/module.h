@@ -204,10 +204,13 @@ protected:
    int m_schedulingPolicy;
    int m_reducePolicy;
    int m_executionDepth; //< number of input ports that have sent ExecutionProgress::Start
+   bool m_inParameterChanged; //< prevent recursive calls of parameterChanged
 
    boost::shared_ptr<Parameter> findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;
    Port *findOutputPort(const std::string &name) const;
+
+   bool parameterChangedWrapper(const Parameter *p); //< wrapper to prevent recursive calls to parameterChanged
 
    virtual bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName);
    virtual bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg);
