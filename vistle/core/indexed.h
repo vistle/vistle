@@ -30,6 +30,9 @@ class  V_COREEXPORT Indexed: public Coords {
 
    bool hasCelltree() const;
    Celltree::const_ptr getCelltree() const;
+   bool validateCelltree() const;
+
+   bool getElementBounds(Index elem, Vector *min, Vector *max) const;
 
  private:
    void createCelltree() const;

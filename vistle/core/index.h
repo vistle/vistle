@@ -8,6 +8,8 @@ namespace vistle {
 typedef unsigned int Index;
 typedef int SIndex;
 
+const Index InvalidIndex = ~(Index)(0);
+
 } // namespace vistle
 
 #endif

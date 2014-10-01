@@ -36,6 +36,9 @@ class PointVisitationFunctor: public Celltree<Scalar, Index>::VisitFunctor {
    }
 
    bool checkBounds(const Scalar *min, const Scalar *max) {
+      std::cerr << "checkBounds: min: "
+         << min[0] << " " << min[1] << " " << min[2]
+         << ", max: " << max[0] << " " << max[1] << " " << max[2] << std::endl;
       for (int i=0; i<3; ++i) {
          if (min[i] > m_point[i])
             return false;
@@ -46,6 +49,12 @@ class PointVisitationFunctor: public Celltree<Scalar, Index>::VisitFunctor {
    }
 
    Order operator()(const typename Celltree::Node &node, Scalar *min, Scalar *max) {
+
+      std::cerr << "visit subtree: min: "
+         << min[0] << " " << min[1] << " " << min[2]
+         << ", max: " << max[0] << " " << max[1] << " " << max[2]
+         << ", node: Lmax: " << node.Lmax << ", Rmin: " << node.Rmin
+         << std::endl;
 
       const Scalar c = m_point[node.dim];
       if (c > node.Lmax && c < node.Rmin)
@@ -73,7 +82,7 @@ template<typename Scalar, typename Index>
 class PointInclusionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
 
  public:
-   PointInclusionFunctor(UnstructuredGrid::const_ptr grid, const Vector &point)
+   PointInclusionFunctor(const UnstructuredGrid *grid, const Vector &point)
       : m_grid(grid)
       , m_point(point)
       , cell(-1)
@@ -81,12 +90,15 @@ class PointInclusionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
    }
 
    bool operator()(Index elem) {
+      std::cerr << "PointInclusionFunctor: checking cell: " << elem << std::endl;
       if (m_grid->inside(elem, m_point)) {
+         std::cerr << "PointInclusionFunctor: found cell: " << elem << std::endl;
+         cell = elem;
          return false; // stop traversal
       }
       return true;
    }
-   UnstructuredGrid::const_ptr m_grid;
+   const UnstructuredGrid *m_grid;
    Vector m_point;
    Index cell;
 
@@ -98,17 +110,15 @@ Index UnstructuredGrid::findCell(const Vector &point) const {
    if (hasCelltree()) {
 
       PointVisitationFunctor<Scalar, Index> nodeFunc(point);
-      PointInclusionFunctor<Scalar, Index> elemFunc(UnstructuredGrid::const_ptr(this), point);
+      PointInclusionFunctor<Scalar, Index> elemFunc(this, point);
       getCelltree()->traverse(nodeFunc, elemFunc);
       return elemFunc.cell;
    }
 
    Index size = getNumElements();
-   Index *elems = el().data();
    for (Index i=0; i<size; ++i) {
-      Index e = elems[i];
-      if (inside(e, point))
-         return e;
+      if (inside(i, point))
+         return i;
    }
    return -1;
 }
@@ -125,10 +135,10 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
          int faces[6][4] = {
             { 3, 2, 1, 0 },
             { 4, 5, 6, 7 },
-            { 4, 5, 1, 0 },
-            { 3, 2, 6, 7 },
-            { 5, 6, 2, 1 },
-            { 0, 3, 7, 4 },
+            { 0, 1, 5, 4 },
+            { 7, 6, 2, 3 },
+            { 1, 2, 6, 5 },
+            { 4, 7, 3, 0 },
          };
 
          for (int f=0; f<6; ++f) {
@@ -137,13 +147,15 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
             Vector v0(x[first], y[first], z[first]);
             Vector edge1(x[second], y[second], z[second]);
             edge1 -= v0;
-            Vector n;
+            Vector n(0, 0, 0);
             for (int i=2; i<4; ++i) {
                Index other = cl[faces[f][i]];
                Vector edge(x[other], y[other], z[other]);
                edge -= v0;
                n += edge1.cross(edge);
             }
+
+            //std::cerr << "normal: " << n.transpose() << ", v0: " << v0.transpose() << ", rel: " << (point-v0).transpose() << ", dot: " << n.dot(point-v0) << std::endl;
 
             if (n.dot(point-v0) > 0)
                return false;

@@ -3,6 +3,8 @@
 
 namespace vistle {
 
+//#define CT_DEBUG
+
 //const Scalar Epsilon = std::numeric_limits<Scalar>::epsilon();
 
 template<typename Scalar, typename Index, int NumDimensions>
@@ -15,6 +17,9 @@ void Celltree<Scalar, Index, NumDimensions>::init(const Celltree::Vector *min, c
    for (int i=0; i<NumDimensions; ++i)
       this->max()[i] = gmax[i];
    refine(min, max, 0, gmin, gmax);
+#ifdef CT_DEBUG
+   std::cerr << "created celltree: " << nodes().size() << " nodes, " << cells().size() << " cells" << std::endl;
+#endif
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
@@ -58,6 +63,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
       }
    }
 
+   // sort cells into buckets
    const Vector crange = cmax - cmin;
    for (Index i=node->start; i<node->start+node->size; ++i) {
       const Index cell = cells[i];
@@ -74,7 +80,9 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
             b = NumBuckets-1;
          }
          if (print) {
-            //std::cerr << "bad bucket: min=" << cmin[d] << ", max=" << cmax[d] << ", range=" << crange[d] << ", center=" << center[d] << std::endl;
+#ifdef CT_DEBUG
+            std::cerr << "bad bucket: min=" << cmin[d] << ", max=" << cmax[d] << ", range=" << crange[d] << ", center=" << center[d] << std::endl;
+#endif
          }
          assert(b >= 0);
          assert(b < NumBuckets);
@@ -83,6 +91,18 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
             bmin[b][d] = min[cell][d];
          if (bmax[b][d] < max[cell][d])
             bmax[b][d] = max[cell][d];
+      }
+   }
+
+   // adjust bucket bounds for empty buckets
+   for (int d=0; d<NumDimensions; ++d) {
+      for (int b=NumBuckets-2; b>=0; --b) {
+         if (bmin[b][d] > bmin[b+1][d])
+            bmin[b][d] = bmin[b+1][d];
+      }
+      for (int b=1; b<NumBuckets; ++b) {
+         if (bmax[b][d] < bmax[b-1][d])
+            bmax[b][d] = bmax[b-1][d];
       }
    }
 
@@ -110,7 +130,9 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
       std::cerr << "abandoning split with " << node->size << " children" << std::endl;
       return;
    }
+#ifdef CT_DEBUG
    std::cerr << "split: dim=" << best_dim << ", bucket=" << best_bucket << std::endl;
+#endif
 
    // split index lists...
    const Index start = node->start;
@@ -158,6 +180,52 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
    nmin[best_dim] = bmin[best_bucket+1][best_dim];
    nmax[best_dim] = bmax[NumBuckets-1][best_dim];
    refine(min, max, r, nmin, nmax);
+}
+
+template<typename Scalar, typename Index, int NumDimensions>
+template<class BoundsFunctor>
+bool Celltree<Scalar, Index, NumDimensions>::validateTree(BoundsFunctor &boundFunc) const {
+
+#ifdef CT_DEBUG
+   std::cerr << "validateCelltree: min=" << min()[0] << " " << min()[1] << " " << min()[2] << ", max=" << max()[0] << " " << max()[1] << " " << max()[2] << std::endl;
+#endif
+   return validateNode(boundFunc, 0,
+                       Vector(min()[0], min()[1], min()[2]),
+                       Vector(max()[0], max()[1], max()[2]));
+}
+
+template<typename Scalar, typename Index, int NumDimensions>
+template<class BoundsFunctor>
+bool Celltree<Scalar, Index, NumDimensions>::validateNode(BoundsFunctor &boundFunc, Index nodenum, const Celltree::Vector &min, const Celltree::Vector &max) const {
+
+   bool valid = true;
+   Index *cells = (*d()->m_cells)()->data();
+   Node *node = &(nodes()[nodenum]);
+   if (node->isLeaf()) {
+      for (Index i=node->start; i<node->start+node->size; ++i) {
+         const Index elem = cells[i];
+         Vector emin, emax;
+         boundFunc(elem, &emin, &emax);
+         for (int i=0; i<NumDimensions; ++i) {
+            if (emin[i] < min[i]) {
+               std::cerr << "celltree: min violation on elem " << elem << ": is " << emin << ", should " << min << std::endl;
+               valid = false;
+            }
+            if (emax[i] > max[i]) {
+               std::cerr << "celltree: max violation on elem " << elem << ": is " << emax << ", should " << max << std::endl;
+               valid = false;
+            }
+         }
+      }
+      return valid;
+   }
+
+   Vector lmax(max), rmin(min);
+   lmax[node->dim] = node->Lmax;
+   rmin[node->dim] = node->Rmin;
+
+   return validateNode(boundFunc, node->left(), min, lmax)
+      && validateNode(boundFunc, node->right(), rmin, max);
 }
 
 template <class Scalar, class Index, int NumDimensions>
