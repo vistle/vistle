@@ -6,6 +6,7 @@ if [ "$1" = "-x" ]; then
 else
    EXIT=''
 fi
+EXIT='; exit'
 
 WD="$(pwd)"
 exec osascript \
