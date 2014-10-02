@@ -1,9 +1,113 @@
 #include "unstr.h"
+#include <core/assert.h>
 
 namespace vistle {
 
+static const Index MaxNumVertices = 4;
+static const Index MaxNumFaces = 6;
+
 const int UnstructuredGrid::NumVertices[UnstructuredGrid::POLYHEDRON+1] = {
    0, 2, 3, 4, 4, 5, 6, 8, -1, -1, 1, -1
+};
+const int UnstructuredGrid::NumFaces[UnstructuredGrid::POLYHEDRON+1] = {
+   0, 2, 3, 4, 4, 5, 6, 8, -1, -1, 1, -1
+};
+
+Index face_sizes[UnstructuredGrid::POLYHEDRON+1][MaxNumFaces] = {
+   // none
+   { 0, 0, 0, 0, 0, 0 },
+   // bar
+   { 0, 0, 0, 0, 0, 0 },
+   // triangle
+   { 3, 0, 0, 0, 0, 0 },
+   // quad
+   { 4, 0, 0, 0, 0, 0 },
+   // tetrahedron
+   { 3, 3, 3, 3, 0, 0 },
+   // pyramid
+   { 4, 3, 3, 3, 0, 0 },
+   // prism
+   { 3, 4, 4, 4, 3, 0 },
+   // hexahedron
+   { 4, 4, 4, 4, 4, 4 },
+};
+
+Index face_vertices[UnstructuredGrid::POLYHEDRON+1][MaxNumFaces][MaxNumVertices] = {
+{ // none
+},
+{ // bar
+},
+{ // triangle
+},
+{ // quad
+},
+{ // tetrahedron
+  /*
+               3
+              /|\
+             / | \
+            /  |  \
+           /   2   \
+          /  /   \  \
+         / /       \ \
+        //           \\
+       0---------------1
+   */
+  { 2, 1, 0 },
+  { 0, 1, 3 },
+  { 1, 2, 3 },
+  { 2, 0, 3 },
+},
+{ // pyramid
+  /*
+                 4
+             / /  \    \
+          0--/------\-------1
+         / /          \    /
+        //              \ /
+       3-----------------2
+*/
+   { 3, 2, 1, 0 },
+   { 0, 1, 4 },
+   { 1, 2, 4 },
+   { 2, 3, 4 },
+   { 3, 0, 4 },
+},
+{ // prism
+  /*
+             5
+           / | \
+         /   |   \
+       3 -------- 4
+       |     2    |
+       |   /   \  |
+       | /       \|
+       0----------1
+  */
+   {2, 1, 0},
+   {0, 1, 4, 3},
+   {1, 2, 5, 4},
+   {2, 0, 3, 5},
+   {3, 4, 5}
+},
+{ // hexahedron
+  /*
+          7 -------- 6
+         /|         /|
+        / |        / |
+       4 -------- 5  |
+       |  3-------|--2
+       | /        | /
+       |/         |/
+       0----------1
+   */
+   { 3, 2, 1, 0 },
+   { 4, 5, 6, 7 },
+   { 0, 1, 5, 4 },
+   { 7, 6, 2, 3 },
+   { 1, 2, 6, 5 },
+   { 4, 7, 3, 0 },
+}
 };
 
 UnstructuredGrid::UnstructuredGrid(const Index numElements,
@@ -133,46 +237,449 @@ Index UnstructuredGrid::findCell(const Vector &point) const {
 
 bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
 
-   const Index *cl = &this->cl()[this->el()[elem]];
+   const Index *el = this->el().data();
+   const Index *cl = &this->cl()[el[elem]];
    const Scalar *x = this->x().data();
    const Scalar *y = this->y().data();
    const Scalar *z = this->z().data();
 
-   switch (tl().at(elem)) {
-      case UnstructuredGrid::HEXAHEDRON:
-         int faces[6][4] = {
-            { 3, 2, 1, 0 },
-            { 4, 5, 6, 7 },
-            { 0, 1, 5, 4 },
-            { 7, 6, 2, 3 },
-            { 1, 2, 6, 5 },
-            { 4, 7, 3, 0 },
-         };
-
-         for (int f=0; f<6; ++f) {
-            Index first = cl[faces[f][0]];
-            Index second = cl[faces[f][1]];
-            Vector v0(x[first], y[first], z[first]);
-            Vector edge1(x[second], y[second], z[second]);
-            edge1 -= v0;
-            Vector n(0, 0, 0);
-            for (int i=2; i<4; ++i) {
-               Index other = cl[faces[f][i]];
-               Vector edge(x[other], y[other], z[other]);
-               edge -= v0;
-               n += edge1.cross(edge);
-            }
-
-            //std::cerr << "normal: " << n.transpose() << ", v0: " << v0.transpose() << ", rel: " << (point-v0).transpose() << ", dot: " << n.dot(point-v0) << std::endl;
-
-            if (n.dot(point-v0) > 0)
+   const auto type(tl().at(elem) & ~GHOST_BIT);
+   if (type == UnstructuredGrid::POLYHEDRON) {
+      const Index nVert = el[elem+1] - el[elem];
+      Index startVert = InvalidIndex;
+      Vector normal(0,0,0);
+      Vector v0(0,0,0), edge1(0,0,0);
+      Index faceVert = 0;
+      for (Index i=0; i<nVert; ++i) {
+         const Index v = cl[i];
+         if (v == startVert) {
+            startVert = InvalidIndex;
+            if (normal.dot(point-v0) > 0)
                return false;
+            continue;
          }
-         return true;
-         break;
+         if (startVert == InvalidIndex) {
+            startVert = v;
+            faceVert = 0;
+            normal = Vector(0,0,0);
+         } else {
+            ++faceVert;
+         }
+         if (faceVert == 0) {
+            v0 = Vector(x[v], y[v], z[v]);
+         } else if (faceVert == 1) {
+            edge1 = Vector(x[v], y[v], z[v])-v0;
+         } else {
+            normal += edge1.cross(Vector(x[v], y[v], z[v])-v0);
+         }
+      }
+      return true;
+   } else {
+      const auto numFaces = NumFaces[type];
+      const auto &faces = face_vertices[type];
+      const auto &sizes = face_sizes[type];
+      for (int f=0; f<numFaces; ++f) {
+         Index first = cl[faces[f][0]];
+         Index second = cl[faces[f][1]];
+         Vector v0(x[first], y[first], z[first]);
+         Vector edge1(x[second], y[second], z[second]);
+         edge1 -= v0;
+         Vector n(0, 0, 0);
+         for (unsigned i=2; i<sizes[f]; ++i) {
+            Index other = cl[faces[f][i]];
+            Vector edge(x[other], y[other], z[other]);
+            edge -= v0;
+            n += edge1.cross(edge);
+         }
+
+         //std::cerr << "normal: " << n.transpose() << ", v0: " << v0.transpose() << ", rel: " << (point-v0).transpose() << ", dot: " << n.dot(point-v0) << std::endl;
+
+         if (n.dot(point-v0) > 0)
+            return false;
+      }
+      return true;
    }
 
    return false;
+}
+
+namespace {
+
+// cf. http://stackoverflow.com/questions/808441/inverse-bilinear-interpolation
+Vector2 bilinearInverse(const Vector &p0, const Vector p[4]) {
+
+    const int iter = 5;
+    const Scalar tol = 1e-6;
+    Vector2 ss(0.5, 0.5); // initial guess
+
+    const Scalar tol2 = tol*tol;
+    for (int k=0; k<iter; ++k) {
+       const Scalar s(ss[0]), t(ss[1]);
+       Vector res
+             = p[0]*(1-s)*(1-t) + p[1]*s*(1-t)
+             + p[2]*s*t     + p[3]*(1-s)*t
+             - p0;
+
+       //std::cerr << "iter: " << k << ", res: " << res.transpose() << ", weights: " << ss.transpose() << std::endl;
+
+       if (res.squaredNorm() < tol2)
+          break;
+       const auto Js = -p[0]*(1-t) + p[1]*(1-t) + p[2]*t - p[3]*t;
+       const auto Jt = -p[0]*(1-s) - p[1]*s + p[2]*s + p[3]*(1-s);
+       Matrix3x2 J;
+       J << Js, Jt;
+       ss -= (J.transpose()*J).llt().solve(J.transpose()*res);
+    }
+    return ss;
+}
+
+// cf. http://stackoverflow.com/questions/808441/inverse-bilinear-interpolation
+static Vector trilinearInverse(const Vector &p0, const Vector p[8]) {
+// Computes the inverse of the trilinear map from [0,1]^3 to the box defined
+// by points p[0],...,p[7], where the points are ordered consistent with our hexahedron order:
+// p[0]~(0,0,0), p[1]~(0,0,1), p[2]~(0,1,1), p[3]~(0,1,0),
+// p[4]~(1,0,0), p[5]~(1,0,1), p[6]~(1,1,1), p[7]~(1,1,0)
+// Uses Gauss-Newton method. Inputs must be column vectors.
+
+    const int iter = 5;
+    const Scalar tol = 1e-6;
+    Vector ss(0.5, 0.5, 0.5); // initial guess
+
+    const Scalar tol2 = tol*tol;
+    for (int k=0; k<iter; ++k) {
+       const Scalar s(ss[0]), t(ss[1]), w(ss[2]);
+       const Vector res
+             = p[0]*(1-s)*(1-t)*(1-w) + p[1]*s*(1-t)*(1-w)
+             + p[2]*s*t*(1-w)         + p[3]*(1-s)*t*(1-w)
+             + p[4]*(1-s)*(1-t)*w     + p[5]*s*(1-t)*w
+             + p[6]*s*t*w             + p[7]*(1-s)*t*w
+             - p0;
+
+       //std::cerr << "iter: " << k << ", res: " << res.transpose() << ", weights: " << ss.transpose() << std::endl;
+
+       if (res.squaredNorm() < tol2)
+          break;
+
+       const auto Js
+             = -p[0]*(1-t)*(1-w) + p[1]*(1-t)*(1-w)
+             +  p[2]*t*(1-w)     - p[3]*t*(1-w)
+             + -p[4]*(1-t)*w     + p[5]*(1-t)*w
+             +  p[6]*t*w         - p[7]*t*w;
+       const auto Jt
+             = -p[0]*(1-s)*(1-w) - p[1]*s*(1-w)
+             +  p[2]*s*(1-w)     + p[3]*(1-s)*(1-w)
+             + -p[4]*(1-s)*w     - p[5]*s*w
+             +  p[6]*s*w         + p[7]*(1-s)*w;
+       const auto Jw
+             = -p[0]*(1-s)*(1-t) - p[1]*s*(1-t)
+             + -p[2]*s*t         - p[3]*(1-s)*t
+             +  p[4]*(1-s)*(1-t) + p[5]*s*(1-t)
+             +  p[6]*s*t         + p[7]*(1-s)*t;
+       Matrix3 J;
+       J << Js, Jt, Jw;
+       //ss = ss - (J'*J)\(J'*r);
+       ss -= (J.transpose()*J).llt().solve(J.transpose()*res);
+    }
+
+    return ss;
+}
+
+bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal) {
+
+   Index max = 0;
+   normal.cwiseAbs().maxCoeff(&max);
+   int c1=0, c2=1;
+   if (max == 0) {
+      c1 = 1;
+      c2 = 2;
+   } else if (max == 1) {
+      c1 = 0;
+      c2 = 2;
+   }
+   Vector2 point2;
+   point2 << point[c1], point[c2];
+   std::vector<Vector2> corners2(nCorners);
+   for (Index i=0; i<nCorners; ++i) {
+      corners2[i] << corners[i][c1], corners[i][c2];
+      corners2[i] -= point2;
+   }
+
+   std::cerr << "inside: normal: " << normal.transpose() << ", point: " << point.transpose() << ", p2: " << point2.transpose() << std::endl;
+
+   for (Index i=0; i<nCorners; ++i) {
+      Vector2 n = corners2[(i+1)%nCorners] - corners2[i];
+      std::swap(n[0],n[1]);
+      n[0] *= -1;
+      if (n.dot(corners2[i]) < 0)
+         return false;
+   }
+
+   return true;
+}
+
+} // anon namespace
+
+UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, const Vector &point) const {
+
+   vassert(inside(elem, point));
+
+   if (!inside(elem, point)) {
+      return Interpolator();
+   }
+
+   const auto el = this->el().data();
+   const auto tl = this->tl().data();
+   const auto cl = this->cl().data()+el[elem];
+   const Scalar *x[3] = { this->x().data(), this->y().data(), this->z().data() };
+
+   const Index nvert = el[elem+1] - el[elem];
+   std::vector<Scalar> result(nvert);
+   std::vector<Index> indices(nvert);
+   switch(tl[elem] & ~GHOST_BIT) {
+      case TETRAHEDRON: {
+         vassert(nvert == 4);
+         Vector coord[4];
+         for (int i=0; i<4; ++i) {
+            const Index ind = cl[i];
+            indices[i] = ind;
+            for (int c=0; c<3; ++c) {
+               coord[i][c] = x[c][ind];
+            }
+         }
+         Matrix3 T;
+         T << coord[0]-coord[3], coord[1]-coord[3], coord[2]-coord[3];
+         Vector3 w = T.inverse() * (point-coord[3]);
+         result[3] = 1.;
+         for (int c=0; c<3; ++c) {
+            result[c] = w[c];
+            result[3] -= w[c];
+         }
+         break;
+      }
+      case PYRAMID: {
+         vassert(nvert == 5);
+         Vector coord[5];
+         for (int i=0; i<5; ++i) {
+            const Index ind = cl[i];
+            indices[i] = ind;
+            for (int c=0; c<3; ++c) {
+               coord[i][c] = x[c][ind];
+            }
+         }
+         const Vector first(coord[1] - coord[0]);
+         Vector normal(0, 0, 0);
+         for (int i=2; i<4; ++i) {
+            normal += first.cross(coord[i]-coord[i-1]);
+         }
+         const Vector top = coord[4] - coord[0];
+         const Scalar h = normal.dot(top);
+         const Scalar hp = normal.dot(point-coord[0]);
+         result[4] = hp/h;
+         const Scalar w = 1-result[4];
+         const Vector p = (point-result[4]*coord[4])/w;
+         const Vector2 ss = bilinearInverse(p, coord);
+         result[0] = (1-ss[0])*(1-ss[1])*w;
+         result[1] = ss[0]*(1-ss[1])*w;
+         result[2] = ss[0]*ss[1]*w;
+         result[3] = (1-ss[0])*ss[1]*w;
+         break;
+      }
+      case PRISM: {
+         vassert(nvert == 6);
+         Vector coord[8];
+         for (int i=0; i<3; ++i) {
+            const Index ind1 = cl[i];
+            const Index ind2 = cl[i+3];
+            indices[i] = ind1;
+            indices[i+3] = ind2;
+            for (int c=0; c<3; ++c) {
+               coord[i][c] = x[c][ind1];
+               coord[i+4][c] = x[c][ind2];
+            }
+         }
+         // we interpolate in a hexahedron with coinciding corners
+         coord[3] = coord[2];
+         coord[7] = coord[6];
+         const Vector ss = trilinearInverse(point, coord);
+         result[0] = (1-ss[0])*(1-ss[1])*(1-ss[2]);
+         result[1] = ss[0]*(1-ss[1])*(1-ss[2]);
+         result[2] = ss[1]*(1-ss[2]);
+         result[3] = (1-ss[0])*(1-ss[1])*ss[2];
+         result[4] = ss[0]*(1-ss[1])*ss[2];
+         result[5] = ss[1]*ss[2];
+         break;
+      }
+      case HEXAHEDRON: {
+         vassert(nvert == 8);
+         Vector coord[8];
+         for (int i=0; i<8; ++i) {
+            const Index ind = cl[i];
+            indices[i] = ind;
+            for (int c=0; c<3; ++c) {
+               coord[i][c] = x[c][ind];
+            }
+         }
+         const Vector ss = trilinearInverse(point, coord);
+         result[0] = (1-ss[0])*(1-ss[1])*(1-ss[2]);
+         result[1] = ss[0]*(1-ss[1])*(1-ss[2]);
+         result[2] = ss[0]*ss[1]*(1-ss[2]);
+         result[3] = (1-ss[0])*ss[1]*(1-ss[2]);
+         result[4] = (1-ss[0])*(1-ss[1])*ss[2];
+         result[5] = ss[0]*(1-ss[1])*ss[2];
+         result[6] = ss[0]*ss[1]*ss[2];
+         result[7] = (1-ss[0])*ss[1]*ss[2];
+         break;
+      }
+      case POLYHEDRON: {
+         /* subdivide n-hedron into n pyramids with tip at the center,
+            interpolate within pyramid containing point */
+
+         // polyhedron compute center
+         std::vector<Vector> coord(nvert);
+         Vector center(0, 0, 0);
+         Index startVert = InvalidIndex;
+         Index nfaces = 0;
+         for (Index i=0; i<nvert; ++i) {
+            const Index k = cl[i];
+            indices[i] = k;
+            if (k == startVert) {
+               startVert = InvalidIndex;
+               ++nfaces;
+               continue;
+            }
+            if (startVert == InvalidIndex) {
+               startVert = k;
+            }
+            for (int c=0; c<3; ++c) {
+               coord[i][c] = x[c][k];
+            }
+            center += coord[i];
+         }
+         center /= (nvert-nfaces);
+         std::cerr << "center: " << center.transpose() << std::endl;
+
+         // find face that is hit by ray from polyhedron center through query point
+         Index nFaceVert = 0;
+         Vector normal, edge1, isect;
+         startVert = InvalidIndex;
+         Index startIndex = 0;
+         Scalar scale = 0;
+         bool foundFace = false;
+         for (Index i=0; i<nvert; ++i) {
+            const Index k = cl[i];
+            if (k == startVert) {
+               startVert = InvalidIndex;
+               const Vector dir = point-center;
+               scale = normal.dot(coord[startIndex]-center)/normal.dot(dir);
+               std::cerr << "face: vert=" << i << ", scale=" << scale << std::endl;
+               assert(scale >= 1 || scale <= 0); // otherwise, point is outside of the polyhedron
+               if (scale >= 1) {
+                  isect = center + scale * dir;
+                  if (insideConvexPolygon(isect, &coord[startIndex], nFaceVert, normal)) {
+                     std::cerr << "found: normal: " << normal.transpose() << ", first: " << coord[startIndex].transpose() << ", dir: " << dir.transpose() << ", isect: " << isect.transpose() << std::endl;
+                     foundFace = true;
+                     break;
+                  }
+               }
+               continue;
+            }
+            if (startVert == InvalidIndex) {
+               startVert = k;
+               startIndex = i;
+               nFaceVert = 0;
+               normal = Vector(0, 0, 0);
+            } else if (nFaceVert == 1) {
+               edge1 = coord[i]-coord[i-1];
+            } else {
+               normal += edge1.cross(coord[i]-coord[i-1]);
+            }
+            ++nFaceVert;
+         }
+
+         if (foundFace) {
+            // compute contribution of polyhedron center
+            Scalar centerWeight = 1 - 1/scale;
+            std::cerr << "center weight: " << centerWeight << ", scale: " << scale << std::endl;
+            Index startVert = InvalidIndex;
+            Scalar sum = 0;
+            for (Index i=0; i<nvert; ++i) {
+               const Index k = cl[i];
+               if (startVert == InvalidIndex) {
+                  startVert = k;
+               } else if (k == startVert) {
+                  startVert = InvalidIndex;
+                  result[i] = 0;
+                  continue;
+               }
+               Scalar centerDist = (coord[i] - center).norm();
+               //std::cerr << "ind " << i << ", centerDist: " << centerDist << std::endl;
+               result[i] = 1/centerDist;
+               sum += result[i];
+            }
+            std::cerr << "sum: " << sum << std::endl;
+            for (Index i=0; i<nvert; ++i) {
+               result[i] *= centerWeight/sum;
+            }
+
+            // contribution of hit face,
+            // interpolate compatible with simple cells for faces with 3 or 4 vertices
+            if (nFaceVert == 3) {
+               Matrix2 T;
+               T << (coord[startIndex+0]-coord[startIndex+2]).block<2,1>(0,0), (coord[startIndex+1]-coord[startIndex+2]).block<2,1>(0,0);
+               Vector2 w = T.inverse() * (isect-coord[startIndex+2]).block<2,1>(0,0);
+               result[startIndex] += w[0] * (1-centerWeight);
+               result[startIndex+1] += w[1] * (1-centerWeight);
+               result[startIndex+2] += (1-w[0]-w[1]) * (1-centerWeight);
+            } else if (nFaceVert == 4) {
+               Vector2 ss = bilinearInverse(isect, &coord[startIndex]);
+               result[startIndex] = (1-ss[0])*(1-ss[1])*(1-centerWeight);
+               result[startIndex+1] = ss[0]*(1-ss[1])*(1-centerWeight);
+               result[startIndex+2] = ss[0]*ss[1]*(1-centerWeight);
+               result[startIndex+3] = (1-ss[0])*ss[1]*(1-centerWeight);
+            } else {
+               // compute center of face and subdivide face into triangles
+               Vector3 faceCenter(0, 0, 0);
+               for (Index i=0; i<nFaceVert; ++i) {
+                  faceCenter += coord[startIndex+i];
+               }
+               faceCenter /= nFaceVert;
+
+               Scalar sum = 0;
+               std::vector<Scalar> weights(nFaceVert);
+               for (Index i=0; i<nFaceVert; ++i) {
+                  Scalar centerDist = (coord[i] - faceCenter).norm();
+                  weights[i] = 1/centerDist;
+                  sum += weights[i];
+               }
+               for (Index i=0; i<nFaceVert; ++i) {
+                  result[i+startIndex] += weights[i]/sum*(1-centerWeight);
+               }
+            }
+         }
+         break;
+      }
+   }
+#ifndef NDEBUG
+   Scalar total = 0;
+   std::cerr << "weights:";
+   for (const auto w: result) {
+      total += w;
+      std::cerr << " " << w;
+   }
+   std::cerr << ", total: " << total << std::endl;
+   vassert(fabs(total - 1) < 1e5);
+#endif
+
+   return Interpolator(result, indices);
+}
+
+UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(const Vector &point) const {
+
+   const Index elem = findCell(point);
+   if (elem == InvalidIndex) {
+      return Interpolator();
+   }
+   return getInterpolator(elem, point);
 }
 
 std::pair<Vector, Vector> UnstructuredGrid::getBounds() const {

@@ -26,6 +26,12 @@ typedef Eigen::Matrix<Scalar, 4, 1> Vector4;
 
 typedef Vector3 Vector;
 
+typedef Eigen::Matrix<Scalar, 2, 3> Matrix2x3;
+typedef Eigen::Matrix<Scalar, 3, 2> Matrix3x2;
+
+typedef Eigen::Matrix<Scalar, 1, 1> Matrix1;
+typedef Eigen::Matrix<Scalar, 2, 2> Matrix2;
+typedef Eigen::Matrix<Scalar, 3, 3> Matrix3;
 typedef Eigen::Matrix<Scalar, 4, 4> Matrix4;
 
 template<class Archive, class M>

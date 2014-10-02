@@ -36,6 +36,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
    };
 
    static const int NumVertices[POLYHEDRON+1];
+   static const int NumFaces[POLYHEDRON+1];
 
    UnstructuredGrid(const Index numElements,
          const Index numCorners,
@@ -47,6 +48,37 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
    Index findCell(const Vector &point) const;
    bool inside(Index elem, const Vector &point) const;
    std::pair<Vector, Vector> getBounds() const;
+
+   class Interpolator {
+      friend class UnstructuredGrid;
+      std::vector<Scalar> weights;
+      std::vector<Index> indices;
+      Interpolator() {}
+      Interpolator(std::vector<Scalar> &weights, std::vector<Index> &indices)
+      : weights(std::move(weights)), indices(std::move(indices))
+      {}
+
+    public:
+      Scalar operator()(const Scalar *field) const {
+         Scalar ret(0);
+         for (size_t i=0; i<weights.size(); ++i)
+            ret += field[indices[i]] * weights[i];
+         return ret;
+      }
+
+      Vector3 operator()(const Scalar *f0, const Scalar *f1, const Scalar *f2) const {
+         Vector3 ret(0, 0, 0);
+         for (size_t i=0; i<weights.size(); ++i) {
+            const Index ind(indices[i]);
+            const Scalar w(weights[i]);
+            ret += Vector3(f0[ind], f1[ind], f2[ind]) * w;
+         }
+         return ret;
+      }
+   };
+
+   Interpolator getInterpolator(Index elem, const Vector &point) const;
+   Interpolator getInterpolator(const Vector &point) const;
 
    V_DATA_BEGIN(UnstructuredGrid);
       ShmVector<unsigned char>::ptr tl;
@@ -60,6 +92,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
                                     const Meta &meta=Meta());
 
    V_DATA_END(UnstructuredGrid);
+
 };
 
 } // namespace vistle
