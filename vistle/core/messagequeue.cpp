@@ -40,7 +40,7 @@ MessageQueue * MessageQueue::open(const std::string & n) {
 }
 
 MessageQueue::MessageQueue(const std::string & n, create_only_t)
-   : m_name(n),  m_mq(create_only, m_name.c_str(), 256 /* num msg */,
+   : m_name(n),  m_mq(create_only, m_name.c_str(), 1024 /* num msg */,
                   message::Message::MESSAGE_SIZE)
 {
 }
