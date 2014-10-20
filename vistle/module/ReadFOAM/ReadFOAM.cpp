@@ -99,6 +99,8 @@ ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
          m_boundaryOut.push_back(p);
       }
    }
+   m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);
+   m_buildGhost = m_buildGhostcellsParam->getValue();
 }
 
 
@@ -990,22 +992,28 @@ bool ReadFOAM::readConstant(const std::string &casedir)
 
    if (!m_case.varyingCoords && !m_case.varyingGrid && readGrid) {
       if (m_case.numblocks > 0) {
-         for (int i=0; i<m_case.numblocks; ++i) {
-            if (i % size() == rank()) {
-               if (!buildGhostCells(i,ALL))
-                  return false;
+         if (m_buildGhost) {
+            for (int i=0; i<m_case.numblocks; ++i) {
+               if (i % size() == rank()) {
+                  if (!buildGhostCells(i,ALL))
+                     return false;
+               }
             }
-         }
 
-         c.barrier();
-         processAllRequests();
+            c.barrier();
+            processAllRequests();
 
-         for (int i=0; i<m_case.numblocks; ++i) {
-            if (i % size() == rank()) {
-               if (!applyGhostCells(i,ALL))
-                  return false;
+            for (int i=0; i<m_case.numblocks; ++i) {
+               if (i % size() == rank()) {
+                  if (!applyGhostCells(i,ALL))
+                     return false;
+               }
+               addGridToPorts(i);
             }
-            addGridToPorts(i);
+         } else {
+            for (int i=0; i<m_case.numblocks; ++i) {
+               addGridToPorts(i);
+            }
          }
 
       } else {
@@ -1014,20 +1022,22 @@ bool ReadFOAM::readConstant(const std::string &casedir)
 
    } else if (m_case.varyingCoords && readGrid) {
       if (m_case.numblocks > 0) {
-         for (int i=0; i<m_case.numblocks; ++i) {
-            if (i % size() == rank()) {
-               if (!buildGhostCells(i,BASE))
-                  return false;
+         if (m_buildGhost) {
+            for (int i=0; i<m_case.numblocks; ++i) {
+               if (i % size() == rank()) {
+                  if (!buildGhostCells(i,BASE))
+                     return false;
+               }
             }
-         }
 
-         c.barrier();
-         processAllRequests();
+            c.barrier();
+            processAllRequests();
 
-         for (int i=0; i<m_case.numblocks; ++i) {
-            if (i % size() == rank()) {
-               if (!applyGhostCells(i,ALL))
-                  return false;
+            for (int i=0; i<m_case.numblocks; ++i) {
+               if (i % size() == rank()) {
+                  if (!applyGhostCells(i,ALL))
+                     return false;
+               }
             }
          }
       }
@@ -1059,32 +1069,38 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
    if ((m_case.varyingCoords || m_case.varyingGrid) && readGrid) {
       if (m_case.numblocks > 0) {
-         for (int i=0; i<m_case.numblocks; ++i) {
-            if (i % size() == rank()) {
-               if (m_case.varyingGrid) {
-                  if (!buildGhostCells(i,ALL))
-                     return false;
-               } else {
-                  if (!buildGhostCells(i,COORDS))
-                     return false;
+         if (m_buildGhost) {
+            for (int i=0; i<m_case.numblocks; ++i) {
+               if (i % size() == rank()) {
+                  if (m_case.varyingGrid) {
+                     if (!buildGhostCells(i,ALL))
+                        return false;
+                  } else {
+                     if (!buildGhostCells(i,COORDS))
+                        return false;
+                  }
                }
             }
-         }
 
-         c.barrier();
-         processAllRequests();
+            c.barrier();
+            processAllRequests();
 
-         for (int i=0; i<m_case.numblocks; ++i) {
-            if (i % size() == rank()) {
-               if (m_case.varyingGrid) {
-                  if (!applyGhostCells(i,ALL))
-                     return false;
-               } else {
-                  if (!applyGhostCells(i,COORDS))
-                     return false;
+            for (int i=0; i<m_case.numblocks; ++i) {
+               if (i % size() == rank()) {
+                  if (m_case.varyingGrid) {
+                     if (!applyGhostCells(i,ALL))
+                        return false;
+                  } else {
+                     if (!applyGhostCells(i,COORDS))
+                        return false;
+                  }
                }
+               addGridToPorts(i);
             }
-            addGridToPorts(i);
+         } else {
+            for (int i=0; i<m_case.numblocks; ++i) {
+               addGridToPorts(i);
+            }
          }
       } else {
          addGridToPorts(-1);
@@ -1094,22 +1110,28 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
 
    if (m_case.numblocks > 0 && readGrid) {
-      for (int i=0; i<m_case.numblocks; ++i) {
-         if (i % size() == rank()) {
-            if (!buildGhostCellData(i))
-               return false;
+      if (m_buildGhost) {
+         for (int i=0; i<m_case.numblocks; ++i) {
+            if (i % size() == rank()) {
+               if (!buildGhostCellData(i))
+                  return false;
+            }
          }
-      }
 
-      c.barrier();
-      processAllRequests();
+         c.barrier();
+         processAllRequests();
 
-      for (int i=0; i<m_case.numblocks; ++i) {
-         if (i % size() == rank()) {
-            if (!applyGhostCellsData(i))
-               return false;
+         for (int i=0; i<m_case.numblocks; ++i) {
+            if (i % size() == rank()) {
+               if (!applyGhostCellsData(i))
+                  return false;
+            }
+            addVolumeDataToPorts(i);
          }
-         addVolumeDataToPorts(i);
+      } else {
+         for (int i=0; i<m_case.numblocks; ++i) {
+            addVolumeDataToPorts(i);
+         }
       }
    } else {
       addVolumeDataToPorts(-1);
@@ -1122,6 +1144,8 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
 bool ReadFOAM::compute()     //Compute is called when Module is executed
 {
+   m_buildGhost = m_buildGhostcellsParam->getValue();
+
    if (rank() == 0)
       std::cout << time(0) << " starting" << std::endl;
    const std::string casedir = m_casedir->getValue();
