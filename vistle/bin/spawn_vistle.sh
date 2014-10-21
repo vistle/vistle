@@ -10,7 +10,9 @@ case $(hostname) in
       if [ "$MPISIZE" = "" ]; then
          MPISIZE=16
       fi
-      exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} "$@"
+      #echo LD_LIBRARY_PATH=$LD_LIBRARY_PATH
+      export MV2_ENABLE_AFFINITY=0
+      exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none -envlist LD_LIBRARY_PATH "$@"
       ;;
    *)
       #echo mpirun "$@"
