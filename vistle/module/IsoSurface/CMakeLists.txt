@@ -12,10 +12,10 @@ else()
    add_definitions(-DUSE_CPP)
 endif()
 
-#find_package(CUDA)
-#if(CUDA_FOUND)
-##   add_definitions(-DHAVE_CUDA)
-#endif()
+find_package(CUDA)
+if(CUDA_FOUND)
+   add_definitions(-DHAVE_CUDA)
+endif()
 
 
 include_directories(
