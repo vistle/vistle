@@ -18,10 +18,10 @@ class IsoSurface: public vistle::Module {
                                        int processorType
                                         );
 
-   virtual bool compute();
-   virtual bool prepare();
-   virtual bool reduce(int timestep);
-   bool parameterChanged(vistle::Parameter *param);
+   virtual bool compute() override;
+   virtual bool prepare() override;
+   virtual bool reduce(int timestep) override;
+   bool parameterChanged(const vistle::Parameter *param) override;
 
 
 

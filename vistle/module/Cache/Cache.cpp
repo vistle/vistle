@@ -12,9 +12,7 @@ class Cache: public vistle::Module {
    ~Cache();
 
  private:
-   virtual bool compute();
-
-   StringParameter *p_color;
+   virtual bool compute() override;
 };
 
 using namespace vistle;
@@ -27,8 +25,8 @@ Cache::Cache(const std::string &shmname, int rank, int size, int moduleID)
    for (int i=0; i<NumPorts; ++i) {
       std::string suffix = boost::lexical_cast<std::string>(i);
 
-      Port *din = createInputPort("data_in"+suffix, "input data "+suffix);
-      Port *dout = createOutputPort("data_out"+suffix, "output data "+suffix);
+      createInputPort("data_in"+suffix, "input data "+suffix);
+      createOutputPort("data_out"+suffix, "output data "+suffix);
    }
 }
 

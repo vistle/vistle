@@ -94,12 +94,12 @@ inline Scalar tinterp(Scalar iso, const Scalar &f0, const Scalar &f1) {
 struct IsoDataFunctor {
 
    IsoDataFunctor(const Vector &vertex, const Vector &point, const Vector &direction, const Scalar* x, const Scalar* y, const Scalar* z, int option)
-      : m_vertex(vertex)
-      , m_point(point)
-      , m_direction(direction)
-      , m_x(x)
+      : m_x(x)
       , m_y(y)
       , m_z(z)
+      , m_vertex(vertex)
+      , m_point(point)
+      , m_direction(direction)
       , m_distance(vertex.dot(point))
       , m_option(option)
       , m_vectorprod(m_direction.cross(m_point-m_vertex))
@@ -126,10 +126,10 @@ struct IsoDataFunctor {
    const Scalar* m_x;
    const Scalar* m_y;
    const Scalar* m_z;
-   const Scalar m_distance;
    const Vector m_vertex;
    const Vector m_point;
    const Vector m_direction;
+   const Scalar m_distance;
    const int m_option;
    const Vector m_vectorprod;
    const Scalar m_cylinderradius2;
@@ -689,7 +689,7 @@ IsoSurface::~IsoSurface() {
 
 }
 
-bool IsoSurface::parameterChanged(Parameter* param) {
+bool IsoSurface::parameterChanged(const Parameter* param) {
 #ifdef CUTTINGSURFACE
    switch(m_option->getValue()) {
    case Plane: {
@@ -797,11 +797,11 @@ public:
          #endif
             )
       : m_grid(grid)
-      , m_isoValue(isovalue)
-      , m_processortype(processortype)
    #ifdef CUTTINGSURFACE
       , m_option(option)
    #endif
+      , m_isoValue(isovalue)
+      , m_processortype(processortype)
       , gmin(std::numeric_limits<Scalar>::max())
       , gmax(-std::numeric_limits<Scalar>::max())
    {
