@@ -1079,6 +1079,7 @@ VncServer::postFrame()
 void VncServer::invalidate(int viewNum, int x, int y, int w, int h, const VncServer::ViewParameters &param, bool lastView) {
 
     if (m_numClients - m_numRhrClients > 0) {
+        std::cerr << "Non-RHR clients: " << m_numClients - m_numRhrClients << std::endl;
         rfbMarkRectAsModified(m_screen, x, y, w, h);
     }
 

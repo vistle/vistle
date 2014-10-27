@@ -53,7 +53,7 @@ bool Renderer::dispatch() {
    char msgRecvBuf[message::Message::MESSAGE_SIZE];
    vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
 
-   bool quit = false;
+   int quit = 0;
    bool checkAgain = false;
    int numSync = 0;
    do {
@@ -196,7 +196,9 @@ bool Renderer::dispatch() {
 
    } while (checkAgain && !quit);
 
-   if (quit) {
+   int doQuit = 0;
+   MPI_Allreduce(&quit, &doQuit, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+   if (doQuit) {
       vistle::message::ModuleExit m;
       sendMessageQueue->send(m);
    } else {

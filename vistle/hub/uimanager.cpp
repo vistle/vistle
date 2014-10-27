@@ -1,8 +1,6 @@
 /*
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
-#include <boost/thread.hpp>
-
 #include <core/statetracker.h>
 #include <core/messagequeue.h>
 #include <core/tcpmessage.h>
@@ -16,29 +14,59 @@ namespace vistle {
 UiManager::UiManager(Hub &hub, StateTracker &stateTracker)
 : m_hub(hub)
 , m_stateTracker(stateTracker)
+, m_locked(false)
 , m_requestQuit(false)
 , m_uiCount(0)
-, m_locked(false)
 {
 }
 
-void UiManager::sendMessage(const message::Message &msg) const {
+UiManager::~UiManager() {
 
-   for(auto ent: m_threads) {
-      sendMessage(ent.second, msg);
+   disconnect();
+}
+
+bool UiManager::handleMessage(const message::Message &msg, boost::shared_ptr<boost::asio::ip::tcp::socket> sock) {
+
+   if (msg.type() == message::Message::MODULEEXIT) {
+      auto it = m_clients.find(sock);
+      if (it == m_clients.end()) {
+         std::cerr << "UiManager: unknown UI quit" << std::endl;
+         return false;
+      }
+      removeClient(it->second);
+      return true;
+   }
+
+   if (isLocked()) {
+
+      m_queue.emplace_back(msg);
+      return true;
+   }
+
+   return m_hub.handleMessage(msg, sock);
+}
+
+void UiManager::sendMessage(const message::Message &msg) {
+
+   std::vector<boost::shared_ptr<UiClient>> toRemove;
+
+   for(auto ent: m_clients) {
+      if (!sendMessage(ent.second, msg)) {
+         toRemove.push_back(ent.second);
+      }
+   }
+
+   for (auto ent: toRemove) {
+      removeClient(ent);
    }
 }
 
-void UiManager::sendMessage(boost::shared_ptr<UiClient> c, const message::Message &msg) const {
+bool UiManager::sendMessage(boost::shared_ptr<UiClient> c, const message::Message &msg) const {
 
-   auto &ioService = c->socket().get_io_service();
-   message::send(c->socket(), msg);
+   auto &ioService = c->socket()->get_io_service();
+   bool ret = message::send(*c->socket(), msg);
    ioService.poll();
-}
-
-bool UiManager::handleMessage(const message::Message &msg) const {
-
-   return m_hub.handleUiMessage(msg);
+   return ret;
 }
 
 void UiManager::requestQuit() {
@@ -47,38 +75,23 @@ void UiManager::requestQuit() {
    sendMessage(message::Quit());
 }
 
-UiManager::~UiManager() {
-
-   disconnect();
-}
-
-void UiManager::removeThread(boost::thread *thread) {
-
-   m_threads.erase(thread);
-}
-
 void UiManager::disconnect() {
 
    sendMessage(message::Quit());
 
-   for(const auto &v: m_threads) {
-      const auto &c = v.second;
-      c->cancel();
+   for(const auto &c: m_clients) {
+      c.second->cancel();
    }
 
-   join();
-   if (!m_threads.empty()) {
-      std::cerr << "UiManager: waiting for " << m_threads.size() << " threads to quit" << std::endl;
-      sleep(1);
-      join();
-   }
-
+   m_clients.clear();
 }
 
-void UiManager::addClient(boost::shared_ptr<UiClient> c) {
+void UiManager::addClient(boost::shared_ptr<boost::asio::ip::tcp::socket> sock) {
 
-   boost::thread *t = new boost::thread(boost::ref(*c));
-   m_threads[t] = c;
+   ++m_uiCount;
+   boost::shared_ptr<UiClient> c(new UiClient(*this, m_uiCount, sock));
+
+   m_clients.insert(std::make_pair(sock, c));
 
    if (m_requestQuit) {
 
@@ -89,36 +102,25 @@ void UiManager::addClient(boost::shared_ptr<UiClient> c) {
 
       sendMessage(c, message::LockUi(m_locked));
 
-      std::vector<char> state = m_stateTracker.getState();
-
-      for (size_t i=0; i<state.size(); i+=message::Message::MESSAGE_SIZE) {
-         const message::Message *msg = (const message::Message *)&state[i];
-         sendMessage(c, *msg);
-      }
-      sendMessage(c, message::ReplayFinished());
-
-      auto avail = m_stateTracker.availableModules();
-      for(const auto &mod: avail) {
-         sendMessage(c, message::ModuleAvailable(mod.name));
+      auto state = m_stateTracker.getState();
+      for (auto &m: state) {
+         sendMessage(c, m.msg);
       }
    }
 }
 
-void UiManager::join() {
+bool UiManager::removeClient(boost::shared_ptr<UiClient> c) {
 
-   for (ThreadMap::iterator it = m_threads.begin();
-         it != m_threads.end();
-       ) {
-      boost::thread *t = it->first;
-      auto c = it->second;
-      ThreadMap::iterator next = it;
-      ++next;
-      if (c->done()) {
-         t->join();
-         m_threads.erase(it);
+   for (auto &ent: m_clients) {
+      if (ent.second == c) {
+         sendMessage(c, message::Quit());
+         c->cancel();
+         m_clients.erase(ent.first);
+         return true;
       }
-      it = next;
    }
+
+   return false;
 }
 
 void UiManager::lockUi(bool locked) {
@@ -127,6 +129,18 @@ void UiManager::lockUi(bool locked) {
       sendMessage(message::LockUi(locked));
       m_locked = locked;
    }
+
+   if (!m_locked) {
+      for (auto &m: m_queue) {
+         m_hub.handleMessage(m.msg);
+      }
+      m_queue.clear();
+   }
+}
+
+bool UiManager::isLocked() const {
+
+   return m_locked;
 }
 
 } // namespace vistle

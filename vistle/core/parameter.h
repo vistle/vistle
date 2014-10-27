@@ -14,8 +14,6 @@
 
 namespace vistle {
 
-typedef long Integer;
-
 typedef boost::mpl::vector<Integer, Float, ParamVector, std::string> Parameters;
 
 class V_COREEXPORT Parameter {
@@ -26,6 +24,7 @@ class V_COREEXPORT Parameter {
       (Float)
       (Integer)
       (Vector)
+      (IntVector)
       (String)
       (Invalid) // keep last
    )
@@ -115,7 +114,7 @@ class ParameterBase: public Parameter {
    {}
    virtual ~ParameterBase() {}
 
-   ParameterBase<T> *clone() const {
+   virtual ParameterBase<T> *clone() const {
       return new ParameterBase<T>(*this);
    }
 
@@ -163,7 +162,7 @@ class ParameterBase: public Parameter {
       m_maximum = value;
    }
 
-   operator std::string() const { std::stringstream str; str << m_value; return str.str(); }
+   operator std::string() const { return boost::lexical_cast<std::string>(m_value); }
  private:
    T m_value;
    T m_defaultValue;
@@ -192,6 +191,15 @@ template<>
 struct ParameterType<ParamVector> {
    typedef ParamVector T;
    static const Parameter::Type type = Parameter::Vector;
+   static const bool isNumber = true;
+   static T min() { return T::min(); }
+   static T max() { return T::max(); }
+};
+
+template<>
+struct ParameterType<IntParamVector> {
+   typedef IntParamVector T;
+   static const Parameter::Type type = Parameter::IntVector;
    static const bool isNumber = true;
    static T min() { return T::min(); }
    static T max() { return T::max(); }
@@ -237,6 +245,7 @@ struct ParameterCheck<std::string> {
 };
 
 typedef ParameterBase<ParamVector> VectorParameter;
+typedef ParameterBase<IntParamVector> IntVectorParameter;
 typedef ParameterBase<Float> FloatParameter;
 typedef ParameterBase<Integer> IntParameter;
 typedef ParameterBase<std::string> StringParameter;

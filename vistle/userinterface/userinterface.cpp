@@ -1,4 +1,3 @@
-#include <stdlib.h>
 #include <stdio.h>
 
 #include <sys/types.h>
@@ -26,11 +25,11 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
 , m_remoteHost(host)
 , m_remotePort(port)
 , m_isConnected(false)
-, m_stateTracker(&m_portTracker)
+, m_stateTracker("UI state")
 , m_socket(m_ioService)
 , m_locked(false)
 {
-   message::DefaultSender::init(0, 0);
+   message::DefaultSender::init(message::Id::UI, 0);
 
    if (observer)
       m_stateTracker.registerObserver(observer);
@@ -49,6 +48,17 @@ UserInterface::UserInterface(const std::string &host, const unsigned short port,
    m_hostname = hostname;
 
    tryConnect();
+}
+
+void UserInterface::stop() {
+
+   vistle::message::ModuleExit m;
+   m.setDestId(vistle::message::Id::LocalHub);
+   sendMessage(m);
+
+   m_socket.cancel();
+   m_socket.shutdown(asio::ip::tcp::socket::shutdown_both);
+   m_ioService.stop();
 }
 
 int UserInterface::id() const {
@@ -75,11 +85,8 @@ bool UserInterface::tryConnect() {
 
    assert(m_isConnected == false);
 
-   std::stringstream portstr;
-   portstr << m_remotePort;
-
    asio::ip::tcp::resolver resolver(m_ioService);
-   asio::ip::tcp::resolver::query query(m_remoteHost, portstr.str());
+   asio::ip::tcp::resolver::query query(m_remoteHost, boost::lexical_cast<std::string>(m_remotePort));
    asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
    boost::system::error_code ec;
    asio::connect(socket(), endpoint_iterator, ec);
@@ -105,21 +112,20 @@ StateTracker &UserInterface::state() {
 
 bool UserInterface::dispatch() {
 
-   char msgRecvBuf[message::Message::MESSAGE_SIZE];
-   vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
+   message::Buffer buf;
 
    bool received = true;
    while (received) {
 
       received = false;
-      if (!message::recv(socket(), *message, received)) {
+      if (!message::recv(socket(), buf.msg, received, true /* blocking */)) {
          return false;
       }
       
       if (!received)
          break;
 
-      if (!handleMessage(message))
+      if (!handleMessage(&buf.msg))
          return false;
 
    }
@@ -169,7 +175,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
          const message::SetId *id = static_cast<const message::SetId *>(message);
          m_id = id->getId();
          assert(m_id > 0);
-         message::DefaultSender::init(-m_id, 0);
+         //message::DefaultSender::init(-m_id, 0);
          //std::cerr << "received new UI id: " << m_id << std::endl;
          break;
       }
@@ -247,9 +253,6 @@ void UserInterface::registerObserver(StateObserver *observer) {
 }
 
 UserInterface::~UserInterface() {
-
-   vistle::message::ModuleExit m;
-   sendMessage(m);
 
    std::cerr << "  userinterface [" << host() << "] [" << id()
              << "] quit" << std::endl;

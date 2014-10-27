@@ -63,8 +63,8 @@ void Indexed::createCelltree() const {
    const Index nelem = getNumElements();
    std::vector<Vector> min(nelem, Vector(smax, smax, smax));
    std::vector<Vector> max(nelem, Vector(-smax, -smax, -smax));
-   auto cl = this->cl().data();
-   auto el = this->el().data();
+   const auto cl = this->cl().data();
+   const auto el = this->el().data();
 
    Vector gmin(smax, smax, smax), gmax(-smax, -smax, -smax);
    for (Index i=0; i<nelem; ++i) {
@@ -91,7 +91,58 @@ void Indexed::createCelltree() const {
    addAttachment("celltree", ct);
 }
 
+struct CellBoundsFunctor: public Indexed::Celltree::CellBoundsFunctor {
 
+   CellBoundsFunctor(const Indexed *indexed)
+      : m_indexed(indexed)
+      {}
+
+   bool operator()(Index elem, Vector *min, Vector *max) const {
+
+      return m_indexed->getElementBounds(elem, min, max);
+   }
+
+   const Indexed *m_indexed;
+};
+
+bool Indexed::validateCelltree() const {
+
+   if (!hasCelltree())
+      return false;
+
+   CellBoundsFunctor boundFunc(this);
+   auto ct = getCelltree();
+   return ct->validateTree(boundFunc);
+}
+
+bool Indexed::getElementBounds(Index elem, Vector *min, Vector *max) const {
+
+   const Scalar smax = std::numeric_limits<Scalar>::max();
+   *min = Vector(smax, smax, smax);
+   *max = Vector(-smax, -smax, -smax);
+   const auto cl = this->cl().data();
+   const auto el = this->el().data();
+   const Scalar *coords[3] = {
+      x().data(),
+      y().data(),
+      z().data()
+   };
+
+   const Index begin = el[elem], end = el[elem+1];
+   for (Index c=begin; c<end; ++c) {
+      const Index v = cl[c];
+      for (int d=0; d<3; ++d) {
+         if ((*min)[d] > coords[d][v]) {
+            (*min)[d] = coords[d][v];
+         }
+         if ((*max)[d] < coords[d][v]) {
+            (*max)[d] = coords[d][v];
+         }
+      }
+   }
+
+   return true;
+}
 
 Indexed::Data::Data(const Index numElements, const Index numCorners,
              const Index numVertices,

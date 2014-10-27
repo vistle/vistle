@@ -34,7 +34,7 @@ const double Module::portDistance = 3.;
  */
 Module::Module(QGraphicsItem *parent, QString name)
 : Base(parent)
-, m_id(0)
+, m_id(vistle::message::Id::Invalid)
 , m_Status(SPAWNING)
 , m_validPosition(false)
 , m_fontHeight(0.)
@@ -74,6 +74,7 @@ void Module::deleteModule()
 {
    setStatus(KILLED);
    vistle::message::Kill m(m_id);
+   m.setDestId(m_id);
    vistle::VistleConnection::the().sendMessage(m);
 }
 
@@ -211,7 +212,7 @@ void Module::contextMenuEvent(QGraphicsSceneContextMenuEvent *event)
 
 void Module::updatePosition(QPointF newPos) const
 {
-   if (id() > 0 && isPositionValid()) {
+   if (id() != vistle::message::Id::Invalid && isPositionValid()) {
       // don't update until we have our module id
       const double x = newPos.x();
       const double y = newPos.y();
@@ -320,7 +321,7 @@ void Module::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 
 void Module::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
 
-   vistle::VectorParameter *p = getParameter<vistle::ParamVector>("_position");
+   auto p = getParameter<vistle::ParamVector>("_position");
    if (p) {
       vistle::ParamVector v = p->getValue();
       if (v[0] != pos().x() || v[1] != pos().y())

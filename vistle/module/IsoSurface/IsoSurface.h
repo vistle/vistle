@@ -26,7 +26,6 @@ class IsoSurface: public vistle::Module {
 
 
    vistle::FloatParameter *m_isovalue;
-   vistle::StringParameter *m_shader, *m_shaderParams;
    vistle::IntParameter *m_processortype;
    vistle::IntParameter *m_option;
 

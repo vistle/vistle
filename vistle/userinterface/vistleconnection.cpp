@@ -47,10 +47,6 @@ VistleConnection::VistleConnection(vistle::UserInterface &ui)
 
 VistleConnection::~VistleConnection() {
 
-   if (m_quitOnExit) {
-      sendMessage(message::Quit());
-   }
-
    s_instance = nullptr;
 }
 
@@ -67,19 +63,28 @@ bool VistleConnection::done() const {
 }
 
 void VistleConnection::cancel() {
+
+   if (!done()) {
+      mutex_lock lock(m_mutex);
+      m_done = true;
+   }
+
+   if (m_quitOnExit) {
+      sendMessage(message::Quit());
+      m_quitOnExit = false;
+   }
+
    mutex_lock lock(m_mutex);
-   m_done = true;
+   m_ui.stop();
 }
 
 void VistleConnection::operator()() {
+
    while(m_ui.dispatch()) {
-      {
-         mutex_lock lock(m_mutex);
-         if (m_done) {
-            break;
-         }
+      mutex_lock lock(m_mutex);
+      if (m_done) {
+         break;
       }
-      usleep(10000);
    }
    {
       mutex_lock lock(m_mutex);
@@ -118,20 +123,21 @@ void VistleConnection::sendMessage(const vistle::message::Message &msg) const
    ui().sendMessage(msg);
 }
 
-vistle::Parameter *VistleConnection::getParameter(int id, const std::string &name) const
+boost::shared_ptr<vistle::Parameter> VistleConnection::getParameter(int id, const std::string &name) const
 {
    mutex_lock lock(m_mutex);
-   vistle::Parameter *p = ui().state().getParameter(id, name);
+   auto p = ui().state().getParameter(id, name);
    if (!p) {
       std::cerr << "no such parameter: " << id << ":" << name << std::endl;
    }
    return p;
 }
 
-void vistle::VistleConnection::sendParameter(const Parameter *p) const
+void vistle::VistleConnection::sendParameter(const boost::shared_ptr<Parameter> p) const
 {
    mutex_lock lock(m_mutex);
    vistle::message::SetParameter set(p->module(), p->getName(), p);
+   set.setDestId(p->module());
    sendMessage(set);
 }
 
@@ -214,16 +220,9 @@ void vistle::VistleConnection::resetDataFlowNetwork() const
 void VistleConnection::executeSources() const
 {
    mutex_lock lock(m_mutex);
-   for (int id: ui().state().getRunningList()) {
-      auto inputs = ui().state().portTracker()->getInputPorts(id);
-      bool isSource = true;
-      for (auto input: inputs) {
-         if (!input->connections().empty())
-            isSource = false;
-      }
-      if (isSource)
-         sendMessage(message::Compute(id));
-   }
+   message::Compute comp;
+   comp.setDestId(message::Id::MasterHub);
+   sendMessage(comp);
 }
 
 void VistleConnection::connect(const Port *from, const Port *to) const {

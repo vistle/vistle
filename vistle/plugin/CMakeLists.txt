@@ -22,6 +22,7 @@ set_source_files_properties(VistlePlugin.cpp PROPERTIES COMPILE_FLAGS "-Wno-over
 endif(WIN32)
 
 include_directories(
+        ../../3rdparty/boost-mpi/include
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
@@ -30,4 +31,4 @@ include_directories(
 )
 
 cover_add_plugin(VistlePlugin ${HEADERS} ${SOURCES})
-target_link_libraries(VistlePlugin vistle_module)
+target_link_libraries(VistlePlugin vistle_module vistle_boost_mpi)

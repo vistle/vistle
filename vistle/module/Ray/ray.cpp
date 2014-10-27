@@ -50,7 +50,7 @@ class RayCaster: public vistle::Renderer {
    bool compute();
    void render();
 
-   bool parameterChanged(Parameter *p);
+   bool parameterChanged(const Parameter *p);
 
    // parameters
    IntParameter *m_continuousRendering;
@@ -306,7 +306,7 @@ bool RayCaster::compute() {
    return true;
 }
 
-bool RayCaster::parameterChanged(Parameter *p) {
+bool RayCaster::parameterChanged(const Parameter *p) {
 
    if (p == m_colorRank) {
 

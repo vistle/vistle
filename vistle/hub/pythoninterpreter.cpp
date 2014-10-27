@@ -40,9 +40,9 @@ class Executor {
    const std::string &m_filename;
 };
 
-PythonInterpreter::PythonInterpreter(const std::string &file)
+PythonInterpreter::PythonInterpreter(const std::string &file, const std::string &path)
 : m_interpreter(new PythonInterface("vistle"))
-, m_module(new PythonModule())
+, m_module(new PythonModule(path))
 , m_executor(new Executor(*this, file))
 , m_thread(boost::ref(*m_executor))
 {

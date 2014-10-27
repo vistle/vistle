@@ -40,7 +40,7 @@ public:
                   BUSY,
                   ERROR_STATUS };
 
-    Module(QGraphicsItem *parent = 0, QString name = 0);
+    Module(QGraphicsItem *parent = nullptr, QString name = QString());
     virtual ~Module();
     QRectF boundingRect() const;                        // re-implemented
     void paint(QPainter *painter,
@@ -65,7 +65,7 @@ public:
     template<class T>
     void setParameter(QString name, const T &value) const;
     template<class T>
-    vistle::ParameterBase<T> *getParameter(QString name) const;
+    boost::shared_ptr<vistle::ParameterBase<T>> getParameter(QString name) const;
     void sendPosition() const;
     bool isPositionValid() const;
     void setPositionValid();
@@ -120,9 +120,9 @@ void Module::setParameter(QString name, const T &value) const {
 }
 
 template <class T>
-vistle::ParameterBase<T> *Module::getParameter(QString name) const {
+boost::shared_ptr<vistle::ParameterBase<T>> Module::getParameter(QString name) const {
 
-   return dynamic_cast<vistle::ParameterBase<T> *>(vistle::VistleConnection::the().getParameter(id(), name.toStdString()));
+   return boost::dynamic_pointer_cast<vistle::ParameterBase<T>>(vistle::VistleConnection::the().getParameter(id(), name.toStdString()));
 }
 
 } //namespace gui

@@ -6,6 +6,7 @@
 #ifdef _WIN32
 #else
 #include <unistd.h>
+#include <signal.h>
 #include <sys/wait.h>
 #endif
 
@@ -33,6 +34,15 @@ process_handle spawn_process(const std::string &executable, const std::vector<st
    }
 #endif
    return pid;
+}
+
+bool kill_process(process_handle pid) {
+
+#ifdef _WIN32
+#error("not implemented")
+#else
+   return kill(pid, SIGTERM) == 0;
+#endif
 }
 
 process_handle try_wait() {

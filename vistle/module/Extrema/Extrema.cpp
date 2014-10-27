@@ -28,6 +28,8 @@ class Extrema: public vistle::Module {
    bool handled;
    bool haveGeometry;
    ParamVector min, max, gmin, gmax;
+   IntParamVector minIndex, maxIndex, gminIndex, gmaxIndex;
+   IntParamVector minBlock, maxBlock, gminBlock, gmaxBlock;
 
    virtual bool compute();
    virtual bool reduce(int timestep);
@@ -41,6 +43,8 @@ class Extrema: public vistle::Module {
       for (int c=0; c<MaxDim; ++c) {
          gmin[c] =  std::numeric_limits<ParamVector::Scalar>::max();
          gmax[c] = -std::numeric_limits<ParamVector::Scalar>::max();
+         gminIndex[c] = -1;
+         gmaxIndex[c] = -1;
       }
 
       return true;
@@ -65,21 +69,38 @@ class Extrema: public vistle::Module {
          module->handled = true;
          module->min.dim = Dim;
          module->max.dim = Dim;
+         module->minIndex.dim = Dim;
+         module->maxIndex.dim = Dim;
+         module->minBlock.dim = Dim;
+         module->maxBlock.dim = Dim;
 
          size_t size = in->getSize();
 #pragma omp parallel
          for (int c=0; c<Dim; ++c) {
             S min = module->min[c];
             S max = module->max[c];
-            S *x = in->x(c).data();
+            const S *x = in->x(c).data();
+            Index imin=InvalidIndex, imax=InvalidIndex;
             for (unsigned int index = 0; index < size; index ++) {
-               if (min > x[index])
+               if (x[index] < min) {
                   min = x[index];
-               if (max < x[index])
+                  imin = index;
+               }
+               if (x[index] > max) {
                   max = x[index];
+                  imax = index;
+               }
             }
-            module->min[c] = min;
-            module->max[c] = max;
+            if (imin != InvalidIndex) {
+               module->min[c] = min;
+               module->minIndex[c] = imin;
+               module->minBlock[c] = in->getBlock();
+            }
+            if (imax != InvalidIndex) {
+               module->max[c] = max;
+               module->maxIndex[c] = imax;
+               module->maxBlock[c] = in->getBlock();
+            }
          }
       }
    };
@@ -113,6 +134,18 @@ Extrema::Extrema(const std::string &shmname, int rank, int size, int moduleID)
             -std::numeric_limits<ParamVector::Scalar>::max(),
             -std::numeric_limits<ParamVector::Scalar>::max()
             ));
+   addIntVectorParameter("min_block",
+         "output parameter: block numbers containing minimum",
+         IntParamVector(-1, -1, -1));
+   addIntVectorParameter("max_block",
+         "output parameter: block numbers containing maximum",
+         IntParamVector(-1, -1, -1));
+   addIntVectorParameter("min_index",
+         "output parameter: indices of minimum",
+         IntParamVector(-1, -1, -1));
+   addIntVectorParameter("max_index",
+         "output parameter: indices of maximum",
+         IntParamVector(-1, -1, -1));
 }
 
 Extrema::~Extrema() {
@@ -147,6 +180,10 @@ bool Extrema::compute() {
          dim = min.dim;
          gmin.dim = dim;
          gmax.dim = dim;
+         gminIndex.dim = dim;
+         gmaxIndex.dim = dim;
+         gminBlock.dim = dim;
+         gmaxBlock.dim = dim;
       } else if (dim != min.dim) {
          std::string error("input dimensions not equal");
          std::cerr << "Extrema: " << error << std::endl;
@@ -156,15 +193,23 @@ bool Extrema::compute() {
       Object::ptr out = obj->clone();
       out->addAttribute("min", min.str());
       out->addAttribute("max", max.str());
+      out->addAttribute("minIndex", minIndex.str());
+      out->addAttribute("maxIndex", maxIndex.str());
       //std::cerr << "Extrema: min " << min << ", max " << max << std::endl;
 
       addObject("data_out", out);
 
       for (int c=0; c<MaxDim; ++c) {
-         if (gmin[c] > min[c])
+         if (gmin[c] > min[c]) {
             gmin[c] = min[c];
-         if (gmax[c] < max[c])
+            gminIndex[c] = minIndex[c];
+            gminBlock[c] = minBlock[c];
+         }
+         if (gmax[c] < max[c]) {
             gmax[c] = max[c];
+            gmaxIndex[c] = maxIndex[c];
+            gmaxBlock[c] = maxBlock[c];
+         }
       }
 
       if (Coords::as(obj)) {
@@ -190,6 +235,10 @@ bool Extrema::reduce(int timestep) {
 
    setVectorParameter("min", gmin);
    setVectorParameter("max", gmax);
+   setIntVectorParameter("min_block", gminBlock);
+   setIntVectorParameter("max_block", gmaxBlock);
+   setIntVectorParameter("min_index", gminIndex);
+   setIntVectorParameter("max_index", gmaxIndex);
 
    if (haveGeometry && rank() == 0) {
 

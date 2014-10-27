@@ -29,6 +29,7 @@
 #include <boost/thread/recursive_mutex.hpp>
 
 #include <util/sysdep.h>
+#include <util/tools.h>
 #include <util/stopwatch.h>
 #include <core/object.h>
 #include <core/message.h>
@@ -38,6 +39,7 @@
 #include <core/objectcache.h>
 #include <core/port.h>
 #include <core/exception.h>
+#include <core/statetracker.h>
 
 #ifndef TEMPLATES_IN_HEADERS
 #define VISTLE_IMPL
@@ -47,6 +49,8 @@
 using namespace boost::interprocess;
 
 namespace vistle {
+
+using message::Id;
 
 template<typename CharT, typename TraitsT = std::char_traits<CharT> >
 class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
@@ -129,15 +133,17 @@ Module::Module(const std::string &n, const std::string &shmname,
 , m_size(s)
 , m_id(m)
 , m_executionCount(0)
+, m_stateTracker(new StateTracker(m_name))
 , m_receivePolicy(message::ObjectReceivePolicy::Single)
 , m_schedulingPolicy(message::SchedulingPolicy::Single)
 , m_reducePolicy(message::ReducePolicy::Never)
 , m_executionDepth(0)
+, m_inParameterChanged(false)
 , m_defaultCacheMode(ObjectCache::CacheNone)
 , m_syncMessageProcessing(false)
 , m_origStreambuf(nullptr)
 , m_streambuf(nullptr)
-, m_traceMessages(0)
+, m_traceMessages(message::Message::INVALID)
 , m_benchmark(false)
 {
 #ifdef _WIN32
@@ -181,7 +187,7 @@ Module::Module(const std::string &n, const std::string &shmname,
              << std::endl;
 #endif
 
-   Parameter *cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheDefault, Parameter::Choice);
+   auto cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheDefault, Parameter::Choice);
    std::vector<std::string> modes;
    vassert(ObjectCache::CacheDefault == 0);
    modes.push_back("default");
@@ -193,7 +199,7 @@ Module::Module(const std::string &n, const std::string &shmname,
 
    addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
 
-   Parameter *em = addIntParameter("_error_output_mode", "where stderr is shown", size()==1 ? 3 : 0, Parameter::Choice);
+   auto em = addIntParameter("_error_output_mode", "where stderr is shown", size()==1 ? 3 : 0, Parameter::Choice);
    std::vector<std::string> errmodes;
    errmodes.push_back("No output");
    errmodes.push_back("Console only");
@@ -201,11 +207,11 @@ Module::Module(const std::string &n, const std::string &shmname,
    errmodes.push_back("Console & GUI");
    setParameterChoices(em, errmodes);
 
-   IntParameter *outrank = addIntParameter("_error_output_rank", "rank from which to show stderr (-1: all ranks)", 0);
-   outrank->setMinimum(-1);
-   outrank->setMaximum(size()-1);
+   auto outrank = addIntParameter("_error_output_rank", "rank from which to show stderr (-1: all ranks)", 0);
+   setParameterRange<Integer>(outrank, -1, size()-1);
 
-   IntParameter *openmp_threads = addIntParameter("_openmp_threads", "number of OpenMP threads (0: system default)", 0);
+   auto openmp_threads = addIntParameter("_openmp_threads", "number of OpenMP threads (0: system default)", 0);
+   setParameterRange<Integer>(openmp_threads, 0, 4096);
    addIntParameter("_benchmark", "show timing information", m_benchmark ? 1 : 0, Parameter::Boolean);
 }
 
@@ -214,10 +220,12 @@ void Module::initDone() {
    m_streambuf = new msgstreambuf<char>(this);
    m_origStreambuf = std::cerr.rdbuf(m_streambuf);
 
-   sendMessage(message::Started(name()));
+   message::Started start(name());
+   start.setDestId(Id::Broadcast);
+   sendMessage(start);
 
    for (auto &pair: parameters) {
-      parameterChanged(pair.second);
+      parameterChangedWrapper(pair.second.get());
    }
 }
 
@@ -320,12 +328,12 @@ Port *Module::createInputPort(const std::string &name, const std::string &descri
       Port *p = new Port(id(), name, Port::INPUT, flags);
       inputPorts[name] = p;
 
-      message::CreatePort message(p);
-      sendMessageQueue->send(message);
+      message::AddPort message(p);
+      sendMessage(message);
       return p;
    }
 
-   return NULL;
+   return nullptr;
 }
 
 Port *Module::createOutputPort(const std::string &name, const std::string &description, const int flags) {
@@ -337,11 +345,11 @@ Port *Module::createOutputPort(const std::string &name, const std::string &descr
       Port *p = new Port(id(), name, Port::OUTPUT, flags);
       outputPorts[name] = p;
 
-      message::CreatePort message(p);
+      message::AddPort message(p);
       sendMessage(message);
       return p;
    }
-   return NULL;
+   return nullptr;
 }
 
 void Module::setCurrentParameterGroup(const std::string &group) {
@@ -375,30 +383,31 @@ Port *Module::findOutputPort(const std::string &name) const {
 }
 
 
-bool Module::addParameterGeneric(const std::string &name, Parameter *param) {
+Parameter *Module::addParameterGeneric(const std::string &name, boost::shared_ptr<Parameter> param) {
 
-   std::map<std::string, Parameter *>::iterator i =
-      parameters.find(name);
+   auto i = parameters.find(name);
 
    vassert(i == parameters.end());
    if (i != parameters.end())
-      return false;
+      return nullptr;
 
    parameters[name] = param;
 
-   message::AddParameter add(param, m_name);
+   message::AddParameter add(*param, m_name);
+   add.setDestId(Id::Broadcast);
    sendMessage(add);
    message::SetParameter set(id(), name, param);
+   set.setDestId(Id::Broadcast);
    set.setInit();
    set.setUuid(add.uuid());
    sendMessage(set);
 
-   return true;
+   return param.get();
 }
 
 bool Module::updateParameter(const std::string &name, const Parameter *param, const message::SetParameter *inResponseTo, Parameter::RangeType rt) {
 
-   std::map<std::string, Parameter *>::iterator i = parameters.find(name);
+   auto i = parameters.find(name);
 
    if (i == parameters.end()) {
       std::cerr << "setParameter: " << name << " not found" << std::endl;
@@ -410,16 +419,17 @@ bool Module::updateParameter(const std::string &name, const Parameter *param, co
       return false;
    }
 
-   if (&*i->second != param) {
+   if (i->second.get() != param) {
       std::cerr << "setParameter: pointer mismatch for " << name << std::endl;
       return false;
    }
 
-   message::SetParameter set(id(), name, param, rt);
+   message::SetParameter set(id(), name, i->second, rt);
    if (inResponseTo) {
       set.setReply();
       set.setUuid(inResponseTo->uuid());
    }
+   set.setDestId(Id::Broadcast);
    sendMessage(set);
 
    return true;
@@ -427,15 +437,16 @@ bool Module::updateParameter(const std::string &name, const Parameter *param, co
 
 void Module::setParameterChoices(const std::string &name, const std::vector<std::string> &choices)
 {
-   Parameter *p = findParameter(name);
+   auto p = findParameter(name);
    if (p)
-      setParameterChoices(p, choices);
+      setParameterChoices(p.get(), choices);
 }
 
 void Module::setParameterChoices(Parameter *param, const std::vector<std::string> &choices)
 {
    if (choices.size() <= message::param_num_choices) {
       message::SetParameterChoices sc(id(), param->getName(), choices);
+      sc.setDestId(Id::Broadcast);
       sendMessage(sc);
    }
 }
@@ -443,23 +454,20 @@ void Module::setParameterChoices(Parameter *param, const std::vector<std::string
 template<class T>
 Parameter *Module::addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation pres) {
 
-   Parameter *p = new ParameterBase<T>(id(), name, value);
+   boost::shared_ptr<Parameter> p(new ParameterBase<T>(id(), name, value));
    p->setDescription(description);
    p->setGroup(currentParameterGroup());
    p->setPresentation(pres);
-   if (!addParameterGeneric(name, p)) {
-      delete p;
-      return NULL;
-   }
-   return p;
+
+   return addParameterGeneric(name, p);
 }
 
-Parameter *Module::findParameter(const std::string &name) const {
+boost::shared_ptr<Parameter> Module::findParameter(const std::string &name) const {
 
-   std::map<std::string, Parameter *>::const_iterator i = parameters.find(name);
+   auto i = parameters.find(name);
 
    if (i == parameters.end())
-      return NULL;
+      return boost::shared_ptr<Parameter>();
 
    return i->second;
 }
@@ -483,7 +491,7 @@ std::string Module::getStringParameter(const std::string & name) const {
    return value;
 }
 
-FloatParameter *Module::addFloatParameter(const std::string & name, const std::string &description,
+FloatParameter *Module::addFloatParameter(const std::string &name, const std::string &description,
                                const Float value) {
 
    return dynamic_cast<FloatParameter *>(addParameter(name, description, value));
@@ -570,6 +578,25 @@ bool Module::setVectorParameter(const std::string & name,
 ParamVector Module::getVectorParameter(const std::string & name) const {
 
    ParamVector value;
+   getParameter(name, value);
+   return value;
+}
+
+IntVectorParameter *Module::addIntVectorParameter(const std::string & name, const std::string &description,
+                                const IntParamVector & value) {
+
+   return dynamic_cast<IntVectorParameter *>(addParameter(name, description, value));
+}
+
+bool Module::setIntVectorParameter(const std::string & name,
+                                const IntParamVector & value, const message::SetParameter *inResponseTo) {
+
+   return setParameter(name, value, inResponseTo);
+}
+
+IntParamVector Module::getIntVectorParameter(const std::string & name) const {
+
+   IntParamVector value;
    getParameter(name, value);
    return value;
 }
@@ -746,7 +773,18 @@ bool Module::isConnected(const std::string &portname) const {
    return !p->connections().empty();
 }
 
-bool Module::parameterChanged(Parameter *p) {
+bool Module::parameterChangedWrapper(const Parameter *p) {
+
+   if (m_inParameterChanged)
+      return false;
+
+   m_inParameterChanged = true;
+   bool ret = parameterChanged(p);
+   m_inParameterChanged = false;
+   return ret;
+}
+
+bool Module::parameterChanged(const Parameter *p) {
 
    std::string name = p->getName();
    if (name[0] != '_')
@@ -821,30 +859,19 @@ bool Module::parameterChanged(const int senderId, const std::string &name, const
 
 bool Module::dispatch() {
 
-   char msgRecvBuf[message::Message::MESSAGE_SIZE];
-   vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
-
    bool again = true;
-   receiveMessageQueue->receive(*message);
 
-   if (syncMessageProcessing()) {
-      int sync = 0, allsync = 0;
+   try {
+      if (parentProcessDied())
+         throw(except::parent_died());
 
-      switch (message->type()) {
-         case vistle::message::Message::OBJECTRECEIVED:
-         case vistle::message::Message::QUIT:
-            sync = 1;
-            break;
-         default:
-            break;
-      }
+      message::Buffer buf;
+      receiveMessageQueue->receive(buf.msg);
 
-      MPI_Allreduce(&sync, &allsync, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+      if (syncMessageProcessing()) {
+         int sync = 0, allsync = 0;
 
-      do {
-         vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
-
-         switch (message->type()) {
+         switch (buf.msg.type()) {
             case vistle::message::Message::OBJECTRECEIVED:
             case vistle::message::Message::QUIT:
                sync = 1;
@@ -853,16 +880,36 @@ bool Module::dispatch() {
                break;
          }
 
-         again &= handleMessage(message);
+         MPI_Allreduce(&sync, &allsync, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
-         if (allsync && !sync) {
-            receiveMessageQueue->receive(*message);
-         }
+         do {
+            switch (buf.msg.type()) {
+               case vistle::message::Message::OBJECTRECEIVED:
+               case vistle::message::Message::QUIT:
+                  sync = 1;
+                  break;
+               default:
+                  break;
+            }
 
-      } while(allsync && !sync);
-   } else {
+            m_stateTracker->handle(buf.msg);
+            again &= handleMessage(&buf.msg);
 
-      again &= handleMessage(message);
+            if (allsync && !sync) {
+               receiveMessageQueue->receive(buf.msg);
+            }
+
+         } while(allsync && !sync);
+      } else {
+
+         m_stateTracker->handle(buf.msg);
+         again &= handleMessage(&buf.msg);
+      }
+   } catch (vistle::except::parent_died &e) {
+
+      // if parent died something is wrong - make sure that shm get cleaned up
+      Shm::the().setRemoveOnDetach();
+      throw(e);
    }
 
    return again;
@@ -873,7 +920,7 @@ void Module::sendMessage(const message::Message &message) const {
 
    // exclude SendText messages to avoid circular calls
    if (message.type() != message::Message::SENDTEXT
-         && (m_traceMessages == -1 ||  m_traceMessages == message.type())) {
+         && (m_traceMessages == message::Message::ANY || m_traceMessages == message.type())) {
       std::cerr << "SEND: " << message << std::endl;
    }
    sendMessageQueue->send(message);
@@ -883,7 +930,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
    using namespace vistle::message;
 
-   if (m_traceMessages == -1 || message->type() == m_traceMessages) {
+   if (m_traceMessages == message::Message::ANY || message->type() == m_traceMessages) {
       std::cerr << "RECV: " << *message << std::endl;
    }
 
@@ -897,8 +944,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
                    << rank() << "/" << size() << "] ping ["
                    << ping->getCharacter() << "]" << std::endl;
-         vistle::message::Pong m(ping->getCharacter(), ping->senderId());
-         m.setUuid(ping->uuid());
+         vistle::message::Pong m(*ping);
+         m.setDestId(ping->senderId());
          sendMessage(m);
          break;
       }
@@ -920,7 +967,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          if (trace->on()) {
             m_traceMessages = trace->messageType();
          } else {
-            m_traceMessages = 0;
+            m_traceMessages = message::Message::INVALID;
          }
 
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
@@ -944,7 +991,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const message::Kill *kill =
             static_cast<const message::Kill *>(message);
          //TODO: uuid should be included in coresponding ModuleExit message
-         if (kill->getModule() == id() || kill->getModule() == -1) {
+         if (kill->getModule() == id() || kill->getModule() == message::Id::Broadcast) {
             return false;
          } else {
             std::cerr << "module [" << name() << "] [" << id() << "] ["
@@ -953,10 +1000,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::CREATEPORT: {
+      case message::Message::ADDPORT: {
 
-         const message::CreatePort *cp =
-            static_cast<const message::CreatePort *>(message);
+         const message::AddPort *cp =
+            static_cast<const message::AddPort *>(message);
          Port *port = cp->getPort();
          std::string name = port->getName();
          std::string::size_type p = name.find('[');
@@ -964,8 +1011,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          size_t idx = 0;
          if (p != std::string::npos) {
             basename = name.substr(0, p-1);
-            std::stringstream idxstr(name.substr(p+1));
-            idxstr >> idx;
+            idx = boost::lexical_cast<size_t>(name.substr(p+1));
          }
          Port *existing = NULL;
          Port *parent = NULL;
@@ -996,14 +1042,14 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                break;
          }
          if (newport) {
-            message::CreatePort np(newport);
+            message::AddPort np(newport);
             np.setUuid(cp->uuid());
             sendMessage(np);
             const Port::PortSet &links = newport->linkedPorts();
             for (Port::PortSet::iterator it = links.begin();
                   it != links.end();
                   ++it) {
-               message::CreatePort linked(*it);
+               message::AddPort linked(*it);
                linked.setUuid(cp->uuid());
                sendMessage(linked);
             }
@@ -1035,6 +1081,9 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                other = new Port(conn->getModuleA(), conn->getPortAName(), Port::OUTPUT);
                ports = &port->connections();
             }
+         } else {
+            // ignore: not connected to us
+            break;
          }
 
          if (ports && port && other) {
@@ -1085,13 +1134,21 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             static_cast<const message::Compute *>(message);
 
          if (comp->reason() == message::Compute::Execute) {
-            prepare();
-            vassert(m_executionDepth == 0);
-            ++m_executionDepth;
             message::ExecutionProgress start(message::ExecutionProgress::Start);
             start.setUuid(comp->uuid());
+            start.setDestId(Id::LocalManager);
             sendMessage(start);
+            if (reducePolicy() != message::ReducePolicy::Never) {
+               m_benchmarkStart = Clock::time();
+               prepare();
+            }
          }
+         message::ExecutionProgress startc(message::ExecutionProgress::StartCompute);
+         startc.setUuid(comp->uuid());
+         startc.setDestId(Id::LocalManager);
+         sendMessage(startc);
+         //vassert(m_executionDepth == 0);
+         ++m_executionDepth;
 
          if (m_executionCount < comp->getExecutionCount())
             m_executionCount = comp->getExecutionCount();
@@ -1115,6 +1172,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          */
          message::Busy busy;
          busy.setUuid(comp->uuid());
+         busy.setDestId(Id::LocalManager);
          sendMessage(busy);
          bool ret = false;
          try {
@@ -1134,14 +1192,22 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          }
          message::Idle idle;
          idle.setUuid(comp->uuid());
+         idle.setDestId(Id::LocalManager);
          sendMessage(idle);
 
+         message::ExecutionProgress fin(message::ExecutionProgress::FinishCompute);
+         fin.setUuid(comp->uuid());
+         fin.setDestId(Id::LocalManager);
+         sendMessage(fin);
          if (comp->reason() == message::Compute::Execute) {
             --m_executionDepth;
-            vassert(m_executionDepth == 0);
-            message::ExecutionProgress fin(message::ExecutionProgress::Finish);
-            fin.setUuid(comp->uuid());
-            sendMessage(fin);
+            //vassert(m_executionDepth == 0);
+            if (reducePolicy() == message::ReducePolicy::Never) {
+               message::ExecutionProgress finc(message::ExecutionProgress::Finish);
+               finc.setUuid(comp->uuid());
+               finc.setDestId(Id::LocalManager);
+               sendMessage(finc);
+            }
          }
          return ret;
          break;
@@ -1150,32 +1216,45 @@ bool Module::handleMessage(const vistle::message::Message *message) {
       case message::Message::REDUCE: {
 
          const message::Reduce *red = static_cast<const message::Reduce *>(message);
+         vassert(reducePolicy() != message::ReducePolicy::Never);
 
          message::Busy busy;
          busy.setUuid(red->uuid());
+         busy.setDestId(Id::LocalManager);
          sendMessage(busy);
          bool ret = false;
          try {
             ret = reduce(red->timestep());
+            if (m_benchmark && red->timestep()==-1) {
+               double duration = Clock::time() - m_benchmarkStart;
+               if (rank() == 0) {
+                  sendInfo("compute() took %fs (OpenMP threads: %d)", duration, openmpThreads());
+                  printf("%s:%d: compute() took %fs (OpenMP threads: %d)",
+                         name().c_str(), id(), duration, openmpThreads());
+               }
+            }
          } catch (std::exception &e) {
             std::cout << name() << "::reduce(): exception - " << e.what() << std::endl << std::flush;
             std::cerr << name() << "::reduce(): exception - " << e.what() << std::endl;
          }
          message::Idle idle;
          idle.setUuid(red->uuid());
+         idle.setDestId(Id::LocalManager);
          sendMessage(idle);
 
-         vassert(m_executionDepth == 0);
+         //vassert(m_executionDepth == 0);
          message::ExecutionProgress fin(red->timestep()<0
                ? message::ExecutionProgress::Finish
                : message::ExecutionProgress::Timestep);
          fin.setUuid(red->uuid());
+         fin.setDestId(Id::LocalManager);
          sendMessage(fin);
 
          return ret;
          break;
       }
 
+#if 0
       case message::Message::EXECUTIONPROGRESS: {
          
          const message::ExecutionProgress *prog =
@@ -1187,15 +1266,29 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          switch (prog->stage()) {
             case message::ExecutionProgress::Start:
                if (m_executionDepth == 0) {
-                  prepare();
+                  if (reducePolicy() != message::ReducePolicy::Never) {
+                     m_benchmarkStart = Clock::time();
+                     prepare();
+                  }
                   sendMessage(forward);
                }
                ++m_executionDepth;
                break;
+            case message::ExecutionProgress::StartCompute:
+               sendMessage(forward);
+               break;
+            case message::ExecutionProgress::FinishCompute:
+               break;
             case message::ExecutionProgress::Finish:
                --m_executionDepth;
-               if (m_executionDepth == 0)
+               if (m_executionDepth == 0) {
+                  forward.setStage(message::ExecutionProgress::FinishCompute);
                   sendMessage(forward);
+                  if (reducePolicy() == message::ReducePolicy::Never) {
+                     forward.setStage(message::ExecutionProgress::Finish);
+                     sendMessage(forward);
+                  }
+               }
                break;
             case message::ExecutionProgress::Iteration:
                break;
@@ -1204,6 +1297,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          }
          break;
       }
+#endif
 
       case message::Message::ADDOBJECT: {
 
@@ -1231,6 +1325,9 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                case Parameter::Vector:
                   setVectorParameter(param->getName(), param->getVector(), param);
                   break;
+               case Parameter::IntVector:
+                  setIntVectorParameter(param->getName(), param->getIntVector(), param);
+                  break;
                case Parameter::String:
                   setStringParameter(param->getName(), param->getString(), param);
                   break;
@@ -1240,16 +1337,11 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                   break;
             }
 
-            if (Parameter *p = findParameter(param->getName())) {
-               parameterChanged(p);
+            if (auto p = findParameter(param->getName())) {
+               parameterChangedWrapper(p.get());
             }
 
-            // notify controller about current value
-#if 0
-            if (Parameter *p = findParameter(param->getName())) {
-               sendMessage(message::SetParameter(id(), param->getName(), p));
-            }
-#endif
+            // notification of controller about current value happens in set...Parameter
          } else {
 
             parameterChanged(param->senderId(), param->getName(), *param);
@@ -1261,7 +1353,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const message::SetParameterChoices *choices = static_cast<const message::SetParameterChoices *>(message);
          if (choices->senderId() != id()) {
             //FIXME: handle somehow
-            //parameterChanged(choices->senderId(), choices->getName());
+            //parameterChangedWrapper(choices->senderId(), choices->getName());
          }
          break;
       }
@@ -1275,31 +1367,26 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::SPAWN: {
-         const message::Spawn *spawn =
-            static_cast<const message::Spawn *>(message);
-         m_otherModuleMap[spawn->spawnId()] = spawn->getName();
-         break;
-      }
-
-      case message::Message::MODULEEXIT: {
-         const message::ModuleExit *exit =
-            static_cast<const message::ModuleExit *>(message);
-         m_otherModuleMap.erase(exit->senderId());
-         break;
-      }
-
       case message::Message::BARRIER: {
 
          const message::Barrier *barrier = static_cast<const message::Barrier *>(message);
-         message::BarrierReached reached;
-         reached.setUuid(barrier->uuid());
+         message::BarrierReached reached(barrier->uuid());
+         reached.setDestId(Id::LocalManager);
          sendMessage(reached);
          break;
       }
 
       case message::Message::OBJECTRECEIVED:
          // currently only relevant for renderers
+         break;
+
+      //case Message::ADDPORT:
+      //case Message::ADDPARAMETER:
+      case Message::MODULEEXIT:
+      case Message::SPAWN:
+      case Message::STARTED:
+      case Message::MODULEAVAILABLE:
+      case Message::REPLAYFINISHED:
          break;
 
       default:
@@ -1315,16 +1402,13 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
 std::string Module::getModuleName(int id) const {
 
-   auto it = m_otherModuleMap.find(id);
-   if (it == m_otherModuleMap.end())
-      return std::string();
-
-   return it->second;
+   return m_stateTracker->getModuleName(id);
 }
 
 Module::~Module() {
 
    m_cache.clear();
+   Shm::the().detach();
 
    if (m_origStreambuf)
       std::cerr.rdbuf(m_origStreambuf);
@@ -1332,8 +1416,6 @@ Module::~Module() {
 
    vistle::message::ModuleExit m;
    sendMessage(m);
-
-   Shm::the().detach();
 
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
              << "/" << size() << "]: I'm quitting" << std::endl;
@@ -1356,9 +1438,9 @@ public:
 struct instantiator {
    template<typename P> P operator()(P) {
       InstModule m;
-      ParameterBase<P> p(m.id(), "param");
-      m.setParameterMinimum(&p, P());
-      m.setParameterMaximum(&p, P());
+      ParameterBase<P> *p(new ParameterBase<P>(m.id(), "param"));
+      m.setParameterMinimum(p, P());
+      m.setParameterMaximum(p, P());
       return P();
    }
 };
@@ -1462,20 +1544,13 @@ int Module::objectReceivePolicy() const {
 
 bool Module::prepare() {
 
-   m_benchmarkStart = Clock::time();
+   MPI_Barrier(MPI_COMM_WORLD);
    return true;
 }
 
 bool Module::reduce(int timestep) {
 
-   if (m_benchmark && timestep==-1) {
-      double duration = Clock::time() - m_benchmarkStart;
-      if (rank() == 0) {
-         sendInfo("compute() took %fs (OpenMP threads: %d)", duration, openmpThreads());
-         printf("%s:%d: compute() took %fs (OpenMP threads: %d)",
-               name().c_str(), id(), duration, openmpThreads());
-      }
-   }
+   MPI_Barrier(MPI_COMM_WORLD);
    return true;
 }
 

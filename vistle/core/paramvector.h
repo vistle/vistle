@@ -112,6 +112,7 @@ V_CORETEMPLATE_EXPORT bool operator>(const ParameterVector<S> &v1, const Paramet
 //typedef ParameterVector<Scalar> ScalarVector;
 //typedef ScalarVector Vector;
 typedef ParameterVector<Float> ParamVector;
+typedef ParameterVector<Integer> IntParamVector;
 
 template<typename S>
 V_CORETEMPLATE_EXPORT std::ostream &operator<<(std::ostream &out, const ParameterVector<S> &v);

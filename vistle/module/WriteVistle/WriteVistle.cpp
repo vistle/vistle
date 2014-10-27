@@ -31,7 +31,7 @@ WriteVistle::WriteVistle(const std::string &shmname, int rank, int size, int mod
 {
 
    createInputPort("grid_in");
-   Parameter *fp = addIntParameter("format", "file format", 0, Parameter::Choice);
+   auto fp = addIntParameter("format", "file format", 0, Parameter::Choice);
    std::vector<std::string> choices;
    choices.push_back("binary");
    choices.push_back("ASCII");

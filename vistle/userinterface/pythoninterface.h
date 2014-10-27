@@ -21,6 +21,8 @@ class V_UIEXPORT PythonInterface {
       bool exec(const std::string &python);
       bool exec_file(const std::string &filename);
 
+      static std::string errorString();
+
    private:
       boost::python::object m_namespace;
       static PythonInterface *s_singleton;

@@ -15,10 +15,10 @@ namespace vistle {
 
 class Parameter;
 class PythonEmbed;
-class ModuleManager;
+class ClusterManager;
 
 class V_CONTROLEXPORT Communicator {
-   friend class ModuleManager;
+   friend class ClusterManager;
 
  public:
    Communicator(int argc, char *argv[], int rank, const std::vector<std::string> &hosts);
@@ -27,36 +27,40 @@ class V_CONTROLEXPORT Communicator {
 
    bool scanModules(const std::string &dir);
 
-   bool dispatch();
+   void run();
+   bool dispatch(bool *work);
    bool handleMessage(const message::Message &message);
    bool forwardToMaster(const message::Message &message);
    bool broadcastAndHandleMessage(const message::Message &message);
    bool sendMessage(int receiver, const message::Message &message) const;
    void setQuitFlag();
 
+   int hubId() const;
    int getRank() const;
    int getSize() const;
 
    unsigned short uiPort() const;
 
-   ModuleManager &moduleManager() const;
+   ClusterManager &clusterManager() const;
    bool connectHub(const std::string &host, unsigned short port);
 
  private:
    bool sendHub(const message::Message &message);
 
-   ModuleManager *m_moduleManager;
+   ClusterManager *m_clusterManager;
 
+   bool isMaster() const;
+   int m_hubId;
    const int m_rank;
    const int m_size;
 
    bool m_quitFlag;
 
    int m_recvSize;
-   std::vector<char> m_recvBufTo0, m_recvBufToAny;
+   message::Buffer m_recvBufTo0, m_recvBufToAny;
    MPI_Request m_reqAny, m_reqToRank0;
 
-   int m_traceMessages;
+   message::Message::Type m_traceMessages;
 
    static Communicator *s_singleton;
 

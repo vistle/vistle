@@ -25,6 +25,8 @@ class V_UIEXPORT UserInterface {
    UserInterface(const std::string &host, const unsigned short port, StateObserver *observer=nullptr);
    virtual ~UserInterface();
 
+   void stop();
+
    virtual bool dispatch();
    bool sendMessage(const message::Message &message);
 
@@ -55,7 +57,6 @@ class V_UIEXPORT UserInterface {
    unsigned short m_remotePort;
    bool m_isConnected;
 
-   PortTracker m_portTracker;
    StateTracker m_stateTracker;
 
    bool handleMessage(const message::Message *message);

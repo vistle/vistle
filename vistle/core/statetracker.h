@@ -10,12 +10,15 @@
 #include <boost/thread/recursive_mutex.hpp>
 #include <boost/thread/condition_variable.hpp>
 
+#include <util/directory.h>
+
 #include "export.h"
 #include "message.h"
 
 namespace vistle {
 
 class Parameter;
+typedef std::set<boost::shared_ptr<Parameter>> ParameterSet;
 class PortTracker;
 
 class V_COREEXPORT StateObserver {
@@ -25,7 +28,7 @@ class V_COREEXPORT StateObserver {
    StateObserver(): m_modificationCount(0) {}
    virtual ~StateObserver() {}
 
-   virtual void moduleAvailable(const std::string &moduleName) = 0;
+   virtual void moduleAvailable(int hub, const std::string &moduleName, const std::string &path) = 0;
 
    virtual void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) = 0;
    virtual void deleteModule(int moduleId) = 0;
@@ -62,11 +65,11 @@ private:
 };
 
 class V_COREEXPORT StateTracker {
-   friend class StateTrackerLocker;
-   friend class PortTracker;
+   friend class ClusterManager;
+   friend class Hub;
 
  public:
-   StateTracker(PortTracker *portTracker);
+   StateTracker(const std::string &name, boost::shared_ptr<PortTracker> portTracker=boost::shared_ptr<PortTracker>());
    ~StateTracker();
 
    typedef boost::recursive_mutex mutex;
@@ -77,25 +80,21 @@ class V_COREEXPORT StateTracker {
 
    std::vector<int> getRunningList() const;
    std::vector<int> getBusyList() const;
+   int getHub(int id) const;
    std::string getModuleName(int id) const;
    int getModuleState(int id) const;
 
    std::vector<std::string> getParameters(int id) const;
-   Parameter *getParameter(int id, const std::string &name) const;
+   boost::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;
 
-   bool handle(const message::Message &msg);
+   ParameterSet getConnectedParameters(const Parameter &param) const;
 
-   PortTracker *portTracker() const;
+   bool handle(const message::Message &msg, bool track=true);
 
-   std::vector<char> getState() const;
+   boost::shared_ptr<PortTracker> portTracker() const;
 
-   struct AvailableModule {
-       int hub;
-       std::string name;
-       std::string path;
+   std::vector<message::Buffer> getState() const;
 
-       AvailableModule() : hub(0) {}
-   };
    const std::vector<AvailableModule> &availableModules() const;
 
    void registerObserver(StateObserver *observer);
@@ -107,9 +106,10 @@ class V_COREEXPORT StateTracker {
    boost::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
    bool registerReply(const message::uuid_t &uuid, const message::Message &msg);
 
-   typedef std::map<std::string, Parameter *> ParameterMap;
+   typedef std::map<std::string, boost::shared_ptr<Parameter>> ParameterMap;
    typedef std::map<int, std::string> ParameterOrder;
    struct Module {
+      int hub;
       bool initialized;
       bool killed;
       bool busy;
@@ -117,8 +117,14 @@ class V_COREEXPORT StateTracker {
       ParameterMap parameters;
       ParameterOrder paramOrder;
 
+      message::ObjectReceivePolicy::Policy objectPolicy;
+      message::SchedulingPolicy::Schedule schedulingPolicy;
+      message::ReducePolicy::Reduce reducePolicy;
+
       int state() const;
-      Module(): initialized(false), killed(false), busy(false) {}
+      Module(): hub(0), initialized(false), killed(false), busy(false),
+         objectPolicy(message::ObjectReceivePolicy::Single), schedulingPolicy(message::SchedulingPolicy::Single), reducePolicy(message::ReducePolicy::Never)
+      {}
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;
@@ -128,6 +134,9 @@ class V_COREEXPORT StateTracker {
    std::vector<AvailableModule> m_availableModules;
 
    std::set<StateObserver *> m_observers;
+
+   std::vector<message::Buffer> m_queue;
+   void processQueue();
 
  private:
    bool handlePriv(const message::Ping &ping);
@@ -143,7 +152,7 @@ class V_COREEXPORT StateTracker {
    bool handlePriv(const message::ExecutionProgress &prog);
    bool handlePriv(const message::Busy &busy);
    bool handlePriv(const message::Idle &idle);
-   bool handlePriv(const message::CreatePort &createPort);
+   bool handlePriv(const message::AddPort &createPort);
    bool handlePriv(const message::AddParameter &addParam);
    bool handlePriv(const message::SetParameter &setParam);
    bool handlePriv(const message::SetParameterChoices &choices);
@@ -152,17 +161,23 @@ class V_COREEXPORT StateTracker {
    bool handlePriv(const message::ObjectReceived &objRecv);
    bool handlePriv(const message::Barrier &barrier);
    bool handlePriv(const message::BarrierReached &barrierReached);
-   bool handlePriv(const message::ResetModuleIds &reset);
-   bool handlePriv(const message::ReplayFinished &reset);
    bool handlePriv(const message::SendText &info);
+   bool handlePriv(const message::ReplayFinished &reset);
    bool handlePriv(const message::Quit &quit);
    bool handlePriv(const message::ModuleAvailable &mod);
+   bool handlePriv(const message::ObjectReceivePolicy &pol);
+   bool handlePriv(const message::ReducePolicy &pol);
+   bool handlePriv(const message::SchedulingPolicy &pol);
 
-   PortTracker *m_portTracker;
+   boost::shared_ptr<PortTracker> m_portTracker;
 
    mutex m_replyMutex;
    boost::condition_variable_any m_replyCondition;
    std::map<message::uuid_t, boost::shared_ptr<message::Buffer>> m_outstandingReplies;
+
+   message::Message::Type m_traceType;
+   int m_traceId;
+   std::string m_name;
 };
 
 } // namespace vistle

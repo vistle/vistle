@@ -58,6 +58,12 @@ assertion_failure::assertion_failure(const std::string &what)
 
 }
 
+parent_died::parent_died(const std::string &what)
+: exception(what)
+{
+
+}
+
 } //namespace exception
 
 } //namespace vistle

@@ -31,15 +31,16 @@ class V_COREEXPORT Celltree: public Object {
 
     public:
       enum Order {
-         None = 0,
-         RightFirst = 1,
-         RightSecond = 2,
-         Left = 4,
-         Right = RightFirst,
-         LeftRight = Left|RightSecond,
-         RightLeft = Left|RightFirst,
+         None = 0, //< none of the subnodes have to be visited
+         RightFirst = 1, //< right subnode has to be visited, should be visited first
+         RightSecond = 2, //< right subnode has to be visited, should be visited last
+         Left = 4, //< left subnode has to be visited
+         Right = RightFirst, //< right subnode has to be visited
+         LeftRight = Left|RightSecond, //< both subnodes have to be visited, preferably left first
+         RightLeft = Left|RightFirst, //< both subnodes have to be visited, preferably right first
       };
 
+      //! check whether the celltree is within bounds min and max, otherwise no traversal
       bool checkBounds(const Scalar *min, const Scalar *max) {
 
          (void)min;
@@ -47,6 +48,7 @@ class V_COREEXPORT Celltree: public Object {
          return true; // continue traversal
       }
 
+      //! return whether and in which order to visit children of a node
       Order operator()(const Node &node, const Scalar *min, const Scalar *max) {
 
          (void)node;
@@ -56,10 +58,19 @@ class V_COREEXPORT Celltree: public Object {
       }
    };
 
+   //! return whether further cells have to be visited
    class LeafFunctor {
     public:
       bool operator()(Index elem) {
          return true; // continue traversal
+      }
+   };
+
+   //! compute bounding box of a cell
+   class CellBoundsFunctor {
+    public:
+      bool operator()(Index elem, Vector *min, Vector *max) {
+         return false; // couldn't compute bounds
       }
    };
 
@@ -68,6 +79,8 @@ class V_COREEXPORT Celltree: public Object {
 
    void init(const Vector *min, const Vector *max, const Vector &gmin, const Vector &gmax);
    void refine(const Vector *min, const Vector *max, Index nodeIdx, const Vector &gmin, const Vector &gmax);
+   template<class BoundsFunctor>
+   bool validateTree(BoundsFunctor &func) const;
 
    Scalar *min() const { return &(*(*d()->m_bounds)())[0]; }
    Scalar *max() const { return &(*(*d()->m_bounds)())[NumDimensions]; }
@@ -82,6 +95,8 @@ class V_COREEXPORT Celltree: public Object {
    }
 
  private:
+   template<class BoundsFunctor>
+   bool validateNode(BoundsFunctor &func, Index nodenum, const Celltree::Vector &min, const Celltree::Vector &max) const;
    template<class InnerNodeFunctor, class ElementFunctor>
    bool traverseNode(Index curNode, const Node *nodes, const Index *cells, Scalar *min, Scalar *max, InnerNodeFunctor &visitNode, ElementFunctor &visitElement) const {
 
@@ -162,6 +177,10 @@ struct CelltreeNode<8, NumDimensions> {
       , child(children)
       {}
 
+   bool isLeaf() { return dim == NumDimensions; }
+   Index left() { return child; }
+   Index right() { return child+1; }
+
  private:
    friend class boost::serialization::access;
    template<class Archive>
@@ -195,6 +214,10 @@ struct CelltreeNode<4, NumDimensions> {
       , dim(dim)
       , child(children)
       {}
+
+   bool isLeaf() { return dim == NumDimensions; }
+   Index left() { return child; }
+   Index right() { return child+1; }
 
  private:
    friend class boost::serialization::access;

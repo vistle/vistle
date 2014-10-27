@@ -5,7 +5,7 @@ add_definitions(-DVISTLE_CONTROL)
 
 set(control_SOURCES
    portmanager.cpp
-   modulemanager.cpp
+   clustermanager.cpp
    communicator.cpp
    executor.cpp
 )
@@ -14,7 +14,7 @@ set(control_HEADERS
    communicator.h
    executor.h
    export.h
-   modulemanager.h
+   clustermanager.h
    portmanager.h
 )
 
@@ -31,4 +31,10 @@ target_link_libraries(vistle_control
         ${MPI_C_LIBRARIES}
         vistle_core
         vistle_util
+)
+
+add_custom_target(vistle_python ALL
+   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/vistle.py ${LIBRARY_OUTPUT_PATH}/vistle.py
+   DEPENDS vistle.py
+   SOURCES vistle.py
 )

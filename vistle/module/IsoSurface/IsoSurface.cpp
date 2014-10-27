@@ -682,8 +682,7 @@ IsoSurface::IsoSurface(const std::string &shmname, int rank, int size, int modul
 #ifndef CUTTINGSURFACE
    m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
 #endif
-   m_shader = addStringParameter("shader", "name of shader to apply to geometry", "");
-   m_shaderParams = addStringParameter("shader_params", "shader parameters (as \"key=value\" \"key=value1 value2\"", "");
+
 }
 
 IsoSurface::~IsoSurface() {
@@ -1029,6 +1028,7 @@ bool IsoSurface::compute() {
          l.addMappedData(mapdata);
       };
 
+
       l.process();
 
       //        auto range = l.range();
@@ -1036,6 +1036,8 @@ bool IsoSurface::compute() {
       //            min = range.first;
       //        if (range.second > max)
       //            max = range.second;
+
+
 
       result = l.result();
       mapresult = l.mapresult();
@@ -1045,12 +1047,6 @@ bool IsoSurface::compute() {
          object.first->copyAttributes(data);
 #endif
          object.first->copyAttributes(grid, false);
-         if (!m_shader->getValue().empty()) {
-            object.first->addAttribute("shader", m_shader->getValue());
-            if (!m_shaderParams->getValue().empty()) {
-               object.first->addAttribute("shader_params", m_shaderParams->getValue());
-            }
-         }
          addObject("grid_out", object.first);
          if(!Empty::as(object.second)) {
             object.second->copyAttributes(mapdata);

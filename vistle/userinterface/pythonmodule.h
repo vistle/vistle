@@ -13,12 +13,12 @@ class VistleConnection;
 class V_UIEXPORT PythonModule {
 
 public:
-   PythonModule();
-   PythonModule(VistleConnection *vc);
+   PythonModule(const std::string &path);
+   PythonModule(VistleConnection *vc, const std::string &path);
    static PythonModule &the();
 
    VistleConnection &vistleConnection() const;
-   bool import(boost::python::object *m_namespace);
+   bool import(boost::python::object *m_namespace, const std::string &path);
 
 private:
    VistleConnection *m_vistleConnection;

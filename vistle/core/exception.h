@@ -44,6 +44,12 @@ class V_COREEXPORT consistency_error: public exception {
    consistency_error(const std::string &what = "consistency check failure");
 };
 
+class V_COREEXPORT parent_died: public exception {
+
+public:
+   parent_died(const std::string &what = "parent process died");
+};
+
 } // namespace exception
 
 using except::exception;

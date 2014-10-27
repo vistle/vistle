@@ -12,7 +12,7 @@ class Executor;
 class PythonInterpreter {
 
  public:
-   PythonInterpreter(const std::string &filename);
+   PythonInterpreter(const std::string &filename, const std::string &path);
    ~PythonInterpreter();
 
    bool check();

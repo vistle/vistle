@@ -25,6 +25,7 @@
 #include "propertybrowser/qtlongpropertymanager.h"
 #include "propertybrowser/qtlongeditorfactory.h"
 #include "propertybrowser/qtvectorpropertymanager.h"
+#include "propertybrowser/qtlongvectorpropertymanager.h"
 
 namespace gui {
 
@@ -55,6 +56,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
 , m_stringChoiceManager(nullptr)
 , m_intChoiceManager(nullptr)
 , m_vectorManager(nullptr)
+, m_intVectorManager(nullptr)
 {
    m_groupManager = new QtGroupPropertyManager(this); // no change notifications
 
@@ -65,6 +67,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
    m_stringManager = addPropertyManager<QtStringPropertyManager>(this);
    m_stringChoiceManager = addPropertyManager<QtEnumPropertyManager>(this);
    m_vectorManager = addPropertyManager<QtVectorPropertyManager>(this);
+   m_intVectorManager = addPropertyManager<QtLongVectorPropertyManager>(this);
 
    QtCheckBoxFactory *checkBoxFactory = new QtCheckBoxFactory(this);
    setFactoryForManager(m_boolManager, checkBoxFactory);
@@ -131,15 +134,18 @@ void Parameters::newParameter(int moduleId, QString parameterName)
    if (m_moduleId != moduleId)
       return;
 
-   vistle::Parameter *p = m_vistle->getParameter(moduleId, parameterName.toStdString());
+   auto p = m_vistle->getParameter(moduleId, parameterName.toStdString());
    if (!p)
       return;
 
    const auto &it = m_paramToProp.find(parameterName);
    assert(it == m_paramToProp.end());
+   if (it != m_paramToProp.end()) {
+      //qDebug() << "duplicate parameter " << parameterName << " for module " << m_moduleId;
+   }
 
    QtProperty *prop = nullptr;
-   if (vistle::IntParameter *ip = dynamic_cast<vistle::IntParameter *>(p)) {
+   if (auto ip = boost::dynamic_pointer_cast<vistle::IntParameter>(p)) {
       if (ip->presentation() == vistle::Parameter::Boolean) {
          prop = m_boolManager->addProperty(displayName(parameterName));
       } else if (ip->presentation() == vistle::Parameter::Choice) {
@@ -147,21 +153,26 @@ void Parameters::newParameter(int moduleId, QString parameterName)
       } else {
          prop = m_intManager->addProperty(displayName(parameterName));
       }
-   } else if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
+   } else if (auto fp = boost::dynamic_pointer_cast<vistle::FloatParameter>(p)) {
       prop = m_floatManager->addProperty(displayName(parameterName));
       m_floatManager->setDecimals(prop, NumDec);
-   } else if (vistle::StringParameter *sp = dynamic_cast<vistle::StringParameter *>(p)) {
+   } else if (auto sp = boost::dynamic_pointer_cast<vistle::StringParameter>(p)) {
       if (sp->presentation() == vistle::Parameter::Choice) {
          prop = m_stringChoiceManager->addProperty(displayName(parameterName));
       } else {
          prop = m_stringManager->addProperty(displayName(parameterName));
       }
-   } else if (vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p)) {
+   } else if (auto vp = boost::dynamic_pointer_cast<vistle::VectorParameter>(p)) {
       vistle::ParamVector value = vp->getValue();
       prop = m_vectorManager->addProperty(displayName(parameterName));
       m_vectorManager->setDecimals(prop, NumDec);
       m_vectorManager->setDimension(prop, value.dim);
+   } else if (auto vp = boost::dynamic_pointer_cast<vistle::IntVectorParameter>(p)) {
+      vistle::IntParamVector value = vp->getValue();
+      prop = m_intVectorManager->addProperty(displayName(parameterName));
+      m_intVectorManager->setDimension(prop, value.dim);
    } else {
+      std::cerr << "parameter type not handled in Parameters::newParameter" << std::endl;
    }
 
    if (prop) {
@@ -197,7 +208,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
    if (m_moduleId != moduleId)
       return;
 
-   vistle::Parameter *p = m_vistle->getParameter(moduleId, parameterName.toStdString());
+   auto p = m_vistle->getParameter(moduleId, parameterName.toStdString());
    if (!p)
       return;
 
@@ -212,7 +223,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
 
    //std::cerr << "property " << parameterName.toStdString() << (insert?" to insert":"") << std::endl;
 
-   if (vistle::IntParameter *ip = dynamic_cast<vistle::IntParameter *>(p)) {
+   if (auto ip = boost::dynamic_pointer_cast<vistle::IntParameter>(p)) {
       if (ip->presentation() == vistle::Parameter::Boolean) {
          m_boolManager->setValue(prop, ip->getValue() != 0);
       } else if (ip->presentation() == vistle::Parameter::Choice) {
@@ -227,7 +238,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
                QString::number(ip->maximum()));
             prop->setToolTip(tip);
       }
-   } else if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
+   } else if (auto fp = boost::dynamic_pointer_cast<vistle::FloatParameter>(p)) {
       m_floatManager->setValue(prop, fp->getValue());
       // prevent insane width of parameter widget
       typedef vistle::FloatParameter::ValueType F;
@@ -241,7 +252,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
                QString::number(fp->minimum()),
                QString::number(fp->maximum()));
             prop->setToolTip(tip);
-   } else if (vistle::StringParameter *sp = dynamic_cast<vistle::StringParameter *>(p)) {
+   } else if (auto sp = boost::dynamic_pointer_cast<vistle::StringParameter>(p)) {
       if (sp->presentation() == vistle::Parameter::Choice) {
          QStringList choices = m_stringChoiceManager->enumNames(prop);
          QString val = QString::fromStdString(sp->getValue());
@@ -252,7 +263,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
       } else {
          m_stringManager->setValue(prop, QString::fromStdString(sp->getValue()));
       }
-   } else if (vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p)) {
+   } else if (auto vp = boost::dynamic_pointer_cast<vistle::VectorParameter>(p)) {
       vistle::ParamVector value = vp->getValue();
       if (!prop) {
          prop = m_vectorManager->addProperty(displayName(parameterName));
@@ -261,7 +272,16 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
       }
       m_vectorManager->setValue(prop, value);
       m_vectorManager->setRange(prop, vp->minimum(), vp->maximum());
+   } else if (auto vp = boost::dynamic_pointer_cast<vistle::IntVectorParameter>(p)) {
+      vistle::IntParamVector value = vp->getValue();
+      if (!prop) {
+         prop = m_intVectorManager->addProperty(displayName(parameterName));
+         m_intVectorManager->setDimension(prop, value.dim);
+      }
+      m_intVectorManager->setValue(prop, value);
+      m_intVectorManager->setRange(prop, vp->minimum(), vp->maximum());
    } else {
+      std::cerr << "parameter type not handled in Parameters::parameterValueChanged" << std::endl;
    }
 }
 
@@ -271,7 +291,7 @@ void Parameters::parameterChoicesChanged(int moduleId, QString parameterName)
    if (m_moduleId != moduleId)
       return;
 
-   vistle::Parameter *p = m_vistle->getParameter(moduleId, parameterName.toStdString());
+   auto p = m_vistle->getParameter(moduleId, parameterName.toStdString());
    if (!p)
       return;
 
@@ -291,9 +311,9 @@ void Parameters::parameterChoicesChanged(int moduleId, QString parameterName)
    for (auto &choice: p->choices()) {
       choices << QString::fromStdString(choice);
    }
-   if (dynamic_cast<vistle::IntParameter *>(p)) {
+   if (boost::dynamic_pointer_cast<vistle::IntParameter>(p)) {
       m_intChoiceManager->setEnumNames(prop, choices);
-   } else if (dynamic_cast<vistle::StringParameter *>(p)) {
+   } else if (boost::dynamic_pointer_cast<vistle::StringParameter>(p)) {
       m_stringChoiceManager->setEnumNames(prop, choices);
    } else {
    }
@@ -310,13 +330,13 @@ void Parameters::propertyChanged(QtProperty *prop)
       return;
    }
    std::string paramName = it->second.toStdString();
-   vistle::Parameter *p= m_vistle->getParameter(m_moduleId, paramName);
+   auto p= m_vistle->getParameter(m_moduleId, paramName);
    assert(p);
    if (!p)
       return;
 
    bool changed = false;
-   if (vistle::IntParameter *ip = dynamic_cast<vistle::IntParameter *>(p)) {
+   if (auto ip = boost::dynamic_pointer_cast<vistle::IntParameter>(p)) {
       if (ip->presentation() == vistle::Parameter::Boolean) {
          vistle::Integer value = m_boolManager->value(prop) ? 1 : 0;
          if (ip->getValue() != value) {
@@ -336,12 +356,12 @@ void Parameters::propertyChanged(QtProperty *prop)
             ip->setValue(m_intManager->value(prop));
          }
       }
-   } else if (vistle::FloatParameter *fp = dynamic_cast<vistle::FloatParameter *>(p)) {
+   } else if (auto fp = boost::dynamic_pointer_cast<vistle::FloatParameter>(p)) {
       if (fp->getValue() != m_floatManager->value(prop)) {
          changed = true;
          fp->setValue(m_floatManager->value(prop));
       }
-   } else if (vistle::StringParameter *sp = dynamic_cast<vistle::StringParameter *>(p)) {
+   } else if (auto sp = boost::dynamic_pointer_cast<vistle::StringParameter>(p)) {
       std::string value;
       if (sp->presentation() == vistle::Parameter::Choice) {
          int choice = m_stringChoiceManager->value(prop);
@@ -356,10 +376,15 @@ void Parameters::propertyChanged(QtProperty *prop)
          changed = true;
          sp->setValue(value);
       }
-   } else if (vistle::VectorParameter *vp = dynamic_cast<vistle::VectorParameter *>(p)) {
+   } else if (auto vp = boost::dynamic_pointer_cast<vistle::VectorParameter>(p)) {
       if (vp->getValue() != m_vectorManager->value(prop)) {
          changed = true;
          vp->setValue(m_vectorManager->value(prop));
+      }
+   } else if (auto vp = boost::dynamic_pointer_cast<vistle::IntVectorParameter>(p)) {
+      if (vp->getValue() != m_intVectorManager->value(prop)) {
+         changed = true;
+         vp->setValue(m_intVectorManager->value(prop));
       }
    } else {
       std::cerr << "property type not handled for " << paramName << std::endl;
