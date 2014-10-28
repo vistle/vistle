@@ -221,7 +221,7 @@ struct ParameterCheck<Integer> {
          // choices not yet initialized
          return true;
       }
-      if (value < 0 || value >= choices.size()) {
+      if (value < 0 || size_t(value) >= choices.size()) {
          std::cerr << "IntParameter: choice out of range" << std::endl;
          return false;
       }

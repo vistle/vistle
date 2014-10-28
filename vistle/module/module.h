@@ -46,8 +46,8 @@ class V_MODULEEXPORT Module {
    virtual bool dispatch();
 
    const std::string &name() const;
-   unsigned int rank() const;
-   unsigned int size() const;
+   int rank() const;
+   int size() const;
    int id() const;
 
    ObjectCache::CacheMode setCacheMode(ObjectCache::CacheMode mode, bool update=true);
@@ -166,8 +166,8 @@ protected:
    int objectReceivePolicy() const;
 
    const std::string m_name;
-   const unsigned int m_rank;
-   const unsigned int m_size;
+   const int m_rank;
+   const int m_size;
    const int m_id;
 
    int m_executionCount;

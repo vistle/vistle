@@ -444,7 +444,7 @@ vistle::Object::ptr ReadCovise::readOBJREF(const int fd, bool skeleton) {
       return Object::ptr();
    }
 
-   if (objNum < 0 || objNum >= m_objects.size()) {
+   if (objNum < 0 || size_t(objNum) >= m_objects.size()) {
       std::cerr << "ReadCovise: invalid OBJREF" << std::endl;
       return Object::ptr();
    }

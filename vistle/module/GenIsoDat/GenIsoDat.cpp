@@ -85,13 +85,13 @@ bool GenIsoDat::compute() {
 
         };
 
-        for(int i = 0; i < numVert; i++){
+        for(Index i = 0; i < numVert; i++){
             cl.push_back(i);
         }
 
-        for(int i = 0; i < numShift; i+=2){
+        for(Index i = 0; i < numShift; i+=2){
 
-            for(int j = 0; j < numShift; j+=2){
+            for(Index j = 0; j < numShift; j+=2){
 
                 x.push_back(i);
                 x.push_back(i);
@@ -115,7 +115,7 @@ bool GenIsoDat::compute() {
             }
         }
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             z.push_back(1);
             z.push_back(1);
@@ -128,20 +128,20 @@ bool GenIsoDat::compute() {
 
         }
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             el.push_back(el[i]+8);
 
         }
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             tl.push_back(UnstructuredGrid::HEXAHEDRON);
         }
 
         std::bitset<8> newdata;
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             if(m_caseNumParam->getValue() == -1){
                 newdata = i;
@@ -190,14 +190,14 @@ bool GenIsoDat::compute() {
         };
 
 
-        for(int i = 0; i < numVert; i++){
+        for(Index i = 0; i < numVert; i++){
             cl.push_back(i);
         }
 
-        for(int i = 0; i < numShift; i+=2){
+        for(Index i = 0; i < numShift; i+=2){
 
 
-            for(int j = 0; j < numShift; j+=2){
+            for(Index j = 0; j < numShift; j+=2){
 
                 x.push_back(i);
                 x.push_back(i+1);
@@ -213,7 +213,7 @@ bool GenIsoDat::compute() {
             }
         }
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             z.push_back(0);
             z.push_back(0);
@@ -223,13 +223,13 @@ bool GenIsoDat::compute() {
 
         }
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             el.push_back(el[i]+4);
 
         }
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             tl.push_back(UnstructuredGrid::TETRAHEDRON);
         }
@@ -239,7 +239,7 @@ bool GenIsoDat::compute() {
         std::bitset<4> newdata;
 
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             if(m_caseNumParam->getValue() == -1){
                 newdata = i;
@@ -293,14 +293,14 @@ bool GenIsoDat::compute() {
         };
 
 
-        for(int i = 0; i < numVert; i++){
+        for(Index i = 0; i < numVert; i++){
             cl.push_back(i);
         }
 
-        for(int i = 0; i < numShift; i+=2){
+        for(Index i = 0; i < numShift; i+=2){
 
 
-            for(int j = 0; j < numShift; j+=2){
+            for(Index j = 0; j < numShift; j+=2){
 
                 x.push_back(i);
                 x.push_back(i);
@@ -319,7 +319,7 @@ bool GenIsoDat::compute() {
             }
         }
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             z.push_back(1);
             z.push_back(1);
@@ -330,13 +330,13 @@ bool GenIsoDat::compute() {
 
         }
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             el.push_back(el[i]+6);
 
         }
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             tl.push_back(UnstructuredGrid::PRISM);
         }
@@ -346,7 +346,7 @@ bool GenIsoDat::compute() {
         std::bitset<6> newdata;
 
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             if(m_caseNumParam->getValue() == -1){
                 newdata = i;
@@ -400,13 +400,13 @@ bool GenIsoDat::compute() {
         };
 
 
-        for(int i = 0; i < numVert; i++){
+        for(Index i = 0; i < numVert; i++){
             cl.push_back(i);
         }
 
-        for(int i = 0; i < numSideshift; i+=2){
+        for(Index i = 0; i < numSideshift; i+=2){
 
-            for(int j = 0; j < numShift; j+=2){
+            for(Index j = 0; j < numShift; j+=2){
 
                 x.push_back(i);
                 x.push_back(i+1);
@@ -423,7 +423,7 @@ bool GenIsoDat::compute() {
             }
         }
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
             z.push_back(0);
             z.push_back(0);
             z.push_back(0);
@@ -431,17 +431,17 @@ bool GenIsoDat::compute() {
             z.push_back(1);
         }
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
             el.push_back(el[i]+5);
         }
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
             tl.push_back(UnstructuredGrid::PYRAMID);
         }
 
         std::bitset<5> newdata;
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             if(m_caseNumParam->getValue() == -1){
                 newdata = i;
@@ -502,10 +502,10 @@ bool GenIsoDat::compute() {
         cl.push_back(3);
         cl.push_back(1);
 
-        for(int i = 0; i < numShift; i+=2){
+        for(Index i = 0; i < numShift; i+=2){
 
 
-            for(int j = 0; j < numShift; j+=2){
+            for(Index j = 0; j < numShift; j+=2){
 
                 x.push_back(i);
                 x.push_back(i+1);
@@ -520,7 +520,7 @@ bool GenIsoDat::compute() {
             }
         }
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             z.push_back(0);
             z.push_back(0);
@@ -531,14 +531,14 @@ bool GenIsoDat::compute() {
 
         el.push_back(16);
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             tl.push_back(UnstructuredGrid::POLYHEDRON);
         }
 
         std::bitset<4> newdata;
 
-        for(int i = 0; i < numElements; i++){
+        for(Index i = 0; i < numElements; i++){
 
             if(m_caseNumParam->getValue() == -1){
                 newdata = i;

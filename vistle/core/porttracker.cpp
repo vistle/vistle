@@ -318,7 +318,7 @@ std::vector<message::Buffer> PortTracker::removeConnectionsWithModule(int module
          ret.push_back(d2);
          if (cl.size() == oldsize) {
             std::cerr << "failed to remove all connections for module " << moduleId << ", still left: " << cl.size() << std::endl;
-            for (int i=0; i<cl.size(); ++i) {
+            for (size_t i=0; i<cl.size(); ++i) {
                std::cerr << "   " << port->getModuleID() << ":" << port->getName() << " <--> " << other->getModuleID() << ":" << other->getName() << std::endl;
             }
             break;

@@ -192,7 +192,7 @@ struct HostData {
       m_inputpointer.push_back(y.data());
       m_inputpointer.push_back(z.data());
 
-      for(int i = 0; i < m_inputpointer.size(); i++){
+      for(size_t i = 0; i < m_inputpointer.size(); i++){
          m_outData.push_back(new vistle::ShmVector<Scalar>);
          m_outputpointer.push_back(new Scalar);
       }

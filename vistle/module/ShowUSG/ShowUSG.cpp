@@ -39,8 +39,8 @@ bool ShowUSG::compute() {
    bool showpri = getIntParameter("prism");
    bool showhex = getIntParameter("hexahedron");
    bool showpol = getIntParameter("polyhedron");
-   Index cellnrmin = getIntParameter("Show Cells from Cell Nr. :");
-   Index cellnrmax = getIntParameter("Show Cells to Cell Nr. :");
+   Integer cellnrmin = getIntParameter("Show Cells from Cell Nr. :");
+   Integer cellnrmax = getIntParameter("Show Cells to Cell Nr. :");
 
    ObjectList objects = getObjects("grid_in");
    std::cout << "ShowUSG: " << objects.size() << " objects" << std::endl;
@@ -56,8 +56,7 @@ bool ShowUSG::compute() {
             vistle::Lines::ptr out(new vistle::Lines(Object::Initialized));
             vistle::UnstructuredGrid::const_ptr in = vistle::UnstructuredGrid::as(object);
 
-            int x;
-            int y;
+            Index x, y;
 
             if(cellnrmin == -1 || cellnrmax == -1) {
                 x = 0;
@@ -198,7 +197,7 @@ bool ShowUSG::compute() {
                 case vistle::UnstructuredGrid::POLYHEDRON:
                     if (showpol) {
 
-                        Index sidebegin = -1;
+                        Index sidebegin = InvalidIndex;
 
                         for (Index i = in->el()[index]; i < in->el()[index+1]; i++) {
 
@@ -206,11 +205,11 @@ bool ShowUSG::compute() {
 
                             if (in->cl()[i] == sidebegin){// Wenn die Seite endet
 
-                                sidebegin = -1;
+                                sidebegin = InvalidIndex;
 
                                 out->el().push_back(out->cl().size());
 
-                            } else if(sidebegin == -1) { //Wenn die Neue Seite beginnt
+                            } else if(sidebegin == InvalidIndex) { //Wenn die Neue Seite beginnt
 
                                 sidebegin = in->cl()[i];
 

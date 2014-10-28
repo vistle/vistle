@@ -239,12 +239,12 @@ int Module::id() const {
    return m_id;
 }
 
-unsigned int Module::rank() const {
+int Module::rank() const {
 
    return m_rank;
 }
 
-unsigned int Module::size() const {
+int Module::size() const {
 
    return m_size;
 }
