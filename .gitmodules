@@ -9,7 +9,10 @@
 	url = git://github.com/vistle/boost-mpi.git
 [submodule "3rdparty/eigen3"]
 	path = 3rdparty/eigen3
-	url = git://github.com/vistle/eigen.git
+	url = git://github.com/RLovelett/eigen.git
 [submodule "3rdparty/thrust"]
 	path = 3rdparty/thrust
 	url = git://github.com/thrust/thrust.git
+[submodule "eigen"]
+	path = eigen
+	url = git://github.com/RLovelett/eigen.git
