@@ -9,7 +9,7 @@
 
 namespace vistle {
 
-#if !(defined(__GNUC__) && __GNUC__==4 && __GNUC_MINOR__<=6)
+#if __cplusplus >= 201103L
 template<int d>
 using ScalarVector = Eigen::Matrix<Scalar, d, 1>;
 #endif

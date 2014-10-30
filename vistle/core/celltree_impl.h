@@ -144,7 +144,10 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
    // add leaf nodes:
    // ...left node
    for (int b=0; b<best_bucket+1; ++b) {
-      for (Index c: bucket[best_dim][b]) {
+      for (typename std::vector<Index>::const_iterator it = bucket[best_dim][b].begin();
+            it != bucket[best_dim][b].end();
+            ++it) {
+         const Index c = *it;
          cells[i] = c;
          ++i;
       }
@@ -155,7 +158,10 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
 
    // ...right node
    for (int b=best_bucket+1; b<NumBuckets; ++b) {
-      for (Index c: bucket[best_dim][b]) {
+      for (typename std::vector<Index>::const_iterator it = bucket[best_dim][b].begin();
+            it != bucket[best_dim][b].end();
+            ++it) {
+         const Index c = *it;
          cells[i] = c;
          ++i;
       }
@@ -277,7 +283,7 @@ Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, cons
 , m_nodes(new ShmVector<Node>(1))
 {
 
-   auto cells = m_cells->data();
+   Index *cells = m_cells->data();
    for (Index i=0; i<numCells; ++i) {
       cells[i] = i;
    }
