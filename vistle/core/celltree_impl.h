@@ -136,7 +136,6 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
 
    // split index lists...
    const Index start = node->start;
-   const Index size = node->size;
    Index i = start;
 
    // record children into node being split
