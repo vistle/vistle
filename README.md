@@ -31,8 +31,8 @@ Build Requirements
   support for C++11 (ISO/IEC 14882:2011) is required
 
   Known good compilers:
-  - GCC (4.6, 4.8)
-  - Clang (Xcode 5.0)
+  - GCC (4.6, 4.8, 4.9)
+  - Clang (Xcode 5.0–6.1)
   - Intel (14.0.2 - but use Boost 1.52 and not on Cray, 13.1.3 with GCC 4.6.3)
   
   Known bad compilers:
@@ -44,16 +44,11 @@ Build Requirements
   at least 2.8
 
 - **MPI**:
-  `MPI_Comm_spawn_multiple` behavior is particularly critical – Vistle relies on controlling the host on which processes are started
-
-  Known good versions:
-  - Open MPI 1.6.3
-  
-  Known bad versions:
-  
-  - Open MPI 1.7.4
+  Open MPI, MPICH and MVAPCH2 has been used successfully.
 
 - **Boost**:
+  The included Boost.MPI comes from Boost 1.55 and requires Boost <= 1.55.
+
   Build boost with the following options:
 
          b2 --with-filesystem --with-iostreams --with-python \
@@ -99,17 +94,17 @@ Then build with your build tool, e.g.:
 Invoking Vistle
 ---------------
 
-      vistle [-batch|-noui|-gui|-tui] [scriptfile]
+      vistle [--batch|--gui|--tui] [scriptfile]
 
 Options:
 
-* `-batch`|`-noui`:
+* `-b`|`--batch`:
   do not start a user interface
 
-* `-gui` (default):
+* `-g`|`--gui` (default):
   start a graphical user interface on rank 0
 
-* `-tui`:
+* `-t`|`--tui`:
   start a command line user interface on rank 0
 
 You can connect a user interface to a running Vistle session later on:
