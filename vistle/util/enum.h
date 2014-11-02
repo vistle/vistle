@@ -5,6 +5,8 @@
 // define an enum like this:
 //    DEFINE_ENUM_WITH_STRING_CONVERSIONS(OS_type, (Linux)(Apple)(Windows))
 
+#include <vector>
+#include <string>
 #include <boost/preprocessor.hpp>
 
 #ifdef ENUMS_FOR_PYTHON
@@ -12,10 +14,13 @@
 #endif
 
 #define X_DEFINE_ENUM_WITH_STRING_CONVERSIONS_TOSTRING_CASE(r, data, elem)   \
-   case elem : return BOOST_PP_STRINGIZE(elem);
+   case elem: return BOOST_PP_STRINGIZE(elem);
 
 #define X_DEFINE_ENUM_FOR_PYTHON_VALUE(r, data, elem)                        \
    .value(BOOST_PP_STRINGIZE(elem), elem)
+
+#define X_DEFINE_ENUM_ADD_VALUE(r, data, elem) \
+   values.push_back(BOOST_PP_STRINGIZE(elem));
 
 #ifdef ENUMS_FOR_PYTHON
 #define DEFINE_ENUM_WITH_STRING_CONVERSIONS(name, enumerators)               \
@@ -43,12 +48,6 @@ static inline void enumForPython_##name(const char *pythonName) { \
       ) \
    ; \
 }
-
-#define V_ENUM_OUTPUT_OP(name, scope) \
-   inline std::ostream &operator<<(std::ostream &s, scope::name v) { \
-      s << scope::toString(v) << " (" << (int)v << ")"; \
-      return s; \
-}
 #else
 #define DEFINE_ENUM_WITH_STRING_CONVERSIONS(name, enumerators)               \
 enum name {                                                                  \
@@ -64,13 +63,25 @@ static inline const char *toString(name v) {                                 \
       )                                                                      \
       default: return "[Unknown " BOOST_PP_STRINGIZE(name) "]";              \
    }                                                                         \
+} \
+\
+static inline std::vector<std::string> valueList(name) { \
+   std::vector<std::string> values; \
+      BOOST_PP_SEQ_FOR_EACH(                                                 \
+            X_DEFINE_ENUM_ADD_VALUE,                                         \
+            name,                                                            \
+            enumerators                                                      \
+      )                                                                      \
+   return values; \
 }
+#endif
 
 #define V_ENUM_OUTPUT_OP(name, scope) \
    inline std::ostream &operator<<(std::ostream &s, scope::name v) { \
       s << scope::toString(v) << " (" << (int)v << ")"; \
       return s; \
 }
-#endif
 
+#define V_ENUM_SET_CHOICES(param, name) \
+   setParameterChoices(param, valueList((name)0))
 #endif
