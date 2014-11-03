@@ -135,6 +135,9 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
 #endif
 
    // split index lists...
+#ifndef NDEBUG
+   const Index size = node->size;
+#endif
    const Index start = node->start;
    Index i = start;
 
@@ -169,9 +172,9 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
    Index r = nodes().size();
    nodes().push_back(Node(start+lSize, i-start-lSize));
 
-   assert(nodes()[l].size < node->size);
-   assert(nodes()[r].size < node->size);
-   assert(nodes()[l].size + nodes()[r].size == node->size);
+   assert(nodes()[l].size < size);
+   assert(nodes()[r].size < size);
+   assert(nodes()[l].size + nodes()[r].size == size);
 
    Vector nmin = gmin;
    Vector nmax = gmax;
