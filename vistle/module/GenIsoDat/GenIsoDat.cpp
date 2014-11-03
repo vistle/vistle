@@ -6,13 +6,14 @@
 #include <core/unstr.h>
 #include <core/lines.h>
 #include <core/points.h>
+#include <util/enum.h>
 
 #include "../IsoSurface/tables.h"
 
 #include "GenIsoDat.h"
 
 
-
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(Choices, (Tetrahedron)(Pyramid)(Prism)(Hexahedron)(Polyhedron))
 
 MODULE_MAIN(GenIsoDat)
 
@@ -28,15 +29,7 @@ GenIsoDat::GenIsoDat(const std::string &shmname, int rank, int size, int moduleI
     createOutputPort("Vertices_high");
 
     m_cellTypeParam = addIntParameter("cell_type", "type of cells", 1, Parameter::Choice);
-    std::vector<std::string> choices;
-
-    choices.push_back("Hexahedron");
-    choices.push_back("Tetrahedron");
-    choices.push_back("Prism");
-    choices.push_back("Pyramid");
-    choices.push_back("Polyhedron");
-
-    setParameterChoices(m_cellTypeParam, choices);
+    V_ENUM_SET_CHOICES(m_cellTypeParam, Choices);
 
     m_caseNumParam = addIntParameter("case_num", "case number (-1: all)", -1);
 }
@@ -69,29 +62,24 @@ bool GenIsoDat::compute() {
 
     switch(m_cellTypeParam->getValue()){
 
-    case 0:{
+       case Hexahedron: {
 
-        if(m_caseNumParam->getValue() == -1){
+          if(m_caseNumParam->getValue() == -1){
+             numVert = 2048;
+             numShift = 32;
+             numElements = 256;
+          } else{
+             numVert = 8;
+             numShift = 2;
+             numElements = 1;
+          };
 
-            numVert = 2048;
-            numShift = 32;
-            numElements = 256;
-        }
-        else{
+          for(Index i = 0; i < numVert; i++){
+             cl.push_back(i);
+          }
 
-            numVert = 8;
-            numShift = 2;
-            numElements = 1;
-
-        };
-
-        for(Index i = 0; i < numVert; i++){
-            cl.push_back(i);
-        }
-
-        for(Index i = 0; i < numShift; i+=2){
-
-            for(Index j = 0; j < numShift; j+=2){
+          for(Index i = 0; i < numShift; i+=2){
+             for(Index j = 0; j < numShift; j+=2){
 
                 x.push_back(i);
                 x.push_back(i);
@@ -111,92 +99,71 @@ bool GenIsoDat::compute() {
                 y.push_back(j+1);
                 y.push_back(j+1);
                 y.push_back(j);
+             }
+          }
 
-            }
-        }
+          for(Index i = 0; i < numElements; i++){
 
-        for(Index i = 0; i < numElements; i++){
+             z.push_back(1);
+             z.push_back(1);
+             z.push_back(1);
+             z.push_back(1);
+             z.push_back(0);
+             z.push_back(0);
+             z.push_back(0);
+             z.push_back(0);
 
-            z.push_back(1);
-            z.push_back(1);
-            z.push_back(1);
-            z.push_back(1);
-            z.push_back(0);
-            z.push_back(0);
-            z.push_back(0);
-            z.push_back(0);
+          }
 
-        }
+          for(Index i = 0; i < numElements; i++){
+             el.push_back(el[i]+8);
+          }
 
-        for(Index i = 0; i < numElements; i++){
+          for(Index i = 0; i < numElements; i++){
+             tl.push_back(UnstructuredGrid::HEXAHEDRON);
+          }
 
-            el.push_back(el[i]+8);
+          std::bitset<8> newdata;
+          for(Index i = 0; i < numElements; i++){
 
-        }
-
-        for(Index i = 0; i < numElements; i++){
-
-            tl.push_back(UnstructuredGrid::HEXAHEDRON);
-        }
-
-        std::bitset<8> newdata;
-
-        for(Index i = 0; i < numElements; i++){
-
-            if(m_caseNumParam->getValue() == -1){
+             if(m_caseNumParam->getValue() == -1){
                 newdata = i;
-
-            }
-            else{
-
+             } else{
                 newdata = m_caseNumParam->getValue();
+             }
 
-            }
-
-            for(int j = 0; j < 8; j++){
+             for(int j = 0; j < 8; j++){
                 if(newdata[j]){
-                    data->x().push_back(1);
-                    points_high->x().push_back(x[j]);
-                    points_high->y().push_back(y[j]);
-                    points_high->z().push_back(z[j]);
-
-                }
-                else{
-                    data->x().push_back(-1);
+                   data->x().push_back(1);
+                   points_high->x().push_back(x[j]);
+                   points_high->y().push_back(y[j]);
+                   points_high->z().push_back(z[j]);
+                } else{
+                   data->x().push_back(-1);
                 }
                 mapdata->x().push_back(j);
-            }
+             }
+          }
+          break;
+       }
 
-        };
-
-
-
-    }; break;
-    case 1:{
+    case Tetrahedron: {
 
         if(m_caseNumParam->getValue() == -1){
-
             numVert = 64;
             numShift = 8;
             numElements = 16;
-
-        }
-        else{
-
+        } else{
             numVert = 4;
             numShift = 2;
             numElements = 1;
-
         };
-
 
         for(Index i = 0; i < numVert; i++){
             cl.push_back(i);
         }
 
         for(Index i = 0; i < numShift; i+=2){
-
-
             for(Index j = 0; j < numShift; j+=2){
 
                 x.push_back(i);
@@ -208,46 +175,31 @@ bool GenIsoDat::compute() {
                 y.push_back(j);
                 y.push_back(j+1);
                 y.push_back(j+0.5);
-
-
             }
         }
 
         for(Index i = 0; i < numElements; i++){
-
             z.push_back(0);
             z.push_back(0);
             z.push_back(0);
             z.push_back(1);
-
-
         }
 
         for(Index i = 0; i < numElements; i++){
-
             el.push_back(el[i]+4);
-
         }
 
         for(Index i = 0; i < numElements; i++){
-
             tl.push_back(UnstructuredGrid::TETRAHEDRON);
         }
 
-
-
         std::bitset<4> newdata;
-
-
         for(Index i = 0; i < numElements; i++){
 
             if(m_caseNumParam->getValue() == -1){
                 newdata = i;
-
             }else{
-
                 newdata = m_caseNumParam->getValue();
-
             }
 
 
@@ -259,37 +211,26 @@ bool GenIsoDat::compute() {
                     points_high->x().push_back(x[j]);
                     points_high->y().push_back(y[j]);
                     points_high->z().push_back(z[j]);
-
-                }
-                else{
+                } else{
                     data->x().push_back(-1);
                 }
                 mapdata->x().push_back(j);
             }
 
         };
+       break;
+    }
 
-
-
-
-
-    }; break;
-
-    case 2:{
+    case Prism: {
 
         if(m_caseNumParam->getValue() == -1){
-
             numVert = 384;
             numShift = 16;
             numElements = 64;
-
-        }
-        else{
-
+        } else{
             numVert = 6;
             numShift = 2;
             numElements = 1;
-
         };
 
 
@@ -298,8 +239,6 @@ bool GenIsoDat::compute() {
         }
 
         for(Index i = 0; i < numShift; i+=2){
-
-
             for(Index j = 0; j < numShift; j+=2){
 
                 x.push_back(i);
@@ -315,46 +254,33 @@ bool GenIsoDat::compute() {
                 y.push_back(j);
                 y.push_back(j+1);
                 y.push_back(j+1);
-
             }
         }
 
         for(Index i = 0; i < numElements; i++){
-
             z.push_back(1);
             z.push_back(1);
             z.push_back(1);
             z.push_back(0);
             z.push_back(0);
             z.push_back(0);
-
         }
 
         for(Index i = 0; i < numElements; i++){
-
             el.push_back(el[i]+6);
-
         }
 
         for(Index i = 0; i < numElements; i++){
-
             tl.push_back(UnstructuredGrid::PRISM);
         }
 
-
-
         std::bitset<6> newdata;
-
-
         for(Index i = 0; i < numElements; i++){
 
             if(m_caseNumParam->getValue() == -1){
                 newdata = i;
-
             }else{
-
                 newdata = m_caseNumParam->getValue();
-
             }
 
             for(int j = 0; j < 6; j++){
@@ -363,40 +289,32 @@ bool GenIsoDat::compute() {
                     points_high->x().push_back(x[j]);
                     points_high->y().push_back(y[j]);
                     points_high->z().push_back(z[j]);
-
-                }
-                else{
+                } else {
                     data->x().push_back(-1);
                 }
                 mapdata->x().push_back(j);
             }
 
-
             std::cerr << newdata << std::endl;
-
         };
+       break;
+    }
 
-
-    };break;
-
-    case 3:{
+    case Pyramid: {
 
         Index numSideshift;
 
         if(m_caseNumParam->getValue() == -1){
-
             numVert = 160;
             numShift = 32;            
             numElements = 32;
             numSideshift = 4;
         }
         else{
-
             numVert = 5;
             numShift = 2;
             numElements = 1;
             numSideshift = 2;
-
         };
 
 
@@ -419,7 +337,6 @@ bool GenIsoDat::compute() {
                 y.push_back(j+1);
                 y.push_back(j+1);
                 y.push_back(j+0.5);
-
             }
         }
 
@@ -445,11 +362,8 @@ bool GenIsoDat::compute() {
 
             if(m_caseNumParam->getValue() == -1){
                 newdata = i;
-
             }else{
-
                 newdata = m_caseNumParam->getValue();
-
             }
 
             for(int j = 0; j < 5; j++){
@@ -466,107 +380,92 @@ bool GenIsoDat::compute() {
                 mapdata->x().push_back(j);
             };
         };
-    }; break;
-    case 4:{
-
-
-        if(m_caseNumParam->getValue() == -1){
-
-            numVert = 64;
-            numShift = 8;
-            numElements = 16;
-
-        }
-        else{
-
-            numVert = 4;
-            numShift = 2;
-            numElements = 1;
-
-        };
-
-        cl.push_back(0);
-        cl.push_back(1);
-        cl.push_back(3);
-        cl.push_back(0);
-        cl.push_back(0);
-        cl.push_back(3);
-        cl.push_back(2);
-        cl.push_back(0);
-        cl.push_back(0);
-        cl.push_back(2);
-        cl.push_back(1);
-        cl.push_back(0);
-        cl.push_back(1);
-        cl.push_back(2);
-        cl.push_back(3);
-        cl.push_back(1);
-
-        for(Index i = 0; i < numShift; i+=2){
-
-
-            for(Index j = 0; j < numShift; j+=2){
-
-                x.push_back(i);
-                x.push_back(i+1);
-                x.push_back(i+0.5);
-                x.push_back(i+0.5);
-
-                y.push_back(j);
-                y.push_back(j);
-                y.push_back(j+1);
-                y.push_back(j+0.5);
-
-            }
-        }
-
-        for(Index i = 0; i < numElements; i++){
-
-            z.push_back(0);
-            z.push_back(0);
-            z.push_back(0);
-            z.push_back(1);
-
-        }
-
-        el.push_back(16);
-
-        for(Index i = 0; i < numElements; i++){
-
-            tl.push_back(UnstructuredGrid::POLYHEDRON);
-        }
-
-        std::bitset<4> newdata;
-
-        for(Index i = 0; i < numElements; i++){
-
-            if(m_caseNumParam->getValue() == -1){
-                newdata = i;
-
-            }else{
-
-                newdata = m_caseNumParam->getValue();
-
-            }
-
-            for(int j = 0; j < 4; j++){
-
-                if(newdata[j]){
-
-                    data->x().push_back(1);
-                    points_high->x().push_back(x[j]);
-                    points_high->y().push_back(y[j]);
-                    points_high->z().push_back(z[j]);
-
-                }
-                else{
-                    data->x().push_back(-1);
-                }
-                mapdata->x().push_back(j);
-            }
-        };
+       break;
     }
-        break;
+    case Polyhedron: {
+
+       if(m_caseNumParam->getValue() == -1 && false){
+          numVert = 64;
+          numShift = 8;
+          numElements = 16;
+       } else{
+          numVert = 4;
+          numShift = 2;
+          numElements = 1;
+       };
+
+       cl.push_back(0);
+       cl.push_back(1);
+       cl.push_back(3);
+       cl.push_back(0);
+       cl.push_back(0);
+       cl.push_back(3);
+       cl.push_back(2);
+       cl.push_back(0);
+       cl.push_back(0);
+       cl.push_back(2);
+       cl.push_back(1);
+       cl.push_back(0);
+       cl.push_back(1);
+       cl.push_back(2);
+       cl.push_back(3);
+       cl.push_back(1);
+
+       for(Index i = 0; i < numShift; i+=2){
+          for(Index j = 0; j < numShift; j+=2){
+
+             x.push_back(i);
+             x.push_back(i+1);
+             x.push_back(i+0.5);
+             x.push_back(i+0.5);
+
+             y.push_back(j);
+             y.push_back(j);
+             y.push_back(j+1);
+             y.push_back(j+0.5);
+          }
+       }
+
+       for(Index i = 0; i < numElements; i++){
+
+          z.push_back(0);
+          z.push_back(0);
+          z.push_back(0);
+          z.push_back(1);
+       }
+
+       el.push_back(16);
+
+       for(Index i = 0; i < numElements; i++){
+          tl.push_back(UnstructuredGrid::POLYHEDRON);
+       }
+
+       std::bitset<4> newdata;
+       for(Index i = 0; i < numElements; i++){
+
+          if(m_caseNumParam->getValue() == -1){
+             newdata = i;
+          }else{
+             newdata = m_caseNumParam->getValue();
+          }
+
+          for(int j = 0; j < 4; j++){
+
+             if(newdata[j]){
+
+                data->x().push_back(1);
+                points_high->x().push_back(x[j]);
+                points_high->y().push_back(y[j]);
+                points_high->z().push_back(z[j]);
+
+             } else{
+                data->x().push_back(-1);
+             }
+             mapdata->x().push_back(j);
+          }
+       };
+       break;
+    }
     }
 
     addObject("data_out", data);
