@@ -36,9 +36,11 @@ class PointVisitationFunctor: public Celltree<Scalar, Index>::VisitFunctor {
    }
 
    bool checkBounds(const Scalar *min, const Scalar *max) {
+#ifdef CT_DEBUG
       std::cerr << "checkBounds: min: "
          << min[0] << " " << min[1] << " " << min[2]
          << ", max: " << max[0] << " " << max[1] << " " << max[2] << std::endl;
+#endif
       for (int i=0; i<3; ++i) {
          if (min[i] > m_point[i])
             return false;
@@ -50,11 +52,13 @@ class PointVisitationFunctor: public Celltree<Scalar, Index>::VisitFunctor {
 
    Order operator()(const typename Celltree::Node &node, Scalar *min, Scalar *max) {
 
+#ifdef CT_DEBUG
       std::cerr << "visit subtree: min: "
          << min[0] << " " << min[1] << " " << min[2]
          << ", max: " << max[0] << " " << max[1] << " " << max[2]
          << ", node: Lmax: " << node.Lmax << ", Rmin: " << node.Rmin
          << std::endl;
+#endif
 
       const Scalar c = m_point[node.dim];
       if (c > node.Lmax && c < node.Rmin)
@@ -90,9 +94,13 @@ class PointInclusionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
    }
 
    bool operator()(Index elem) {
+#ifdef CT_DEBUG
       std::cerr << "PointInclusionFunctor: checking cell: " << elem << std::endl;
+#endif
       if (m_grid->inside(elem, m_point)) {
+#ifdef CT_DEBUG
          std::cerr << "PointInclusionFunctor: found cell: " << elem << std::endl;
+#endif
          cell = elem;
          return false; // stop traversal
       }
