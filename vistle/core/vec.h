@@ -5,6 +5,7 @@
 #include "dimensions.h"
 #include "shm.h"
 #include "object.h"
+#include "vector.h"
 
 
 namespace vistle {
@@ -20,6 +21,8 @@ class Vec: public Object {
  public:
    typedef Object Base;
    typedef typename shm<T>::array array;
+   typedef T Scalar;
+   typedef typename VistleScalarVector<Dim>::type Vector;
 
    Vec(const Index size,
         const Meta &meta=Meta());
@@ -34,6 +37,8 @@ class Vec: public Object {
    array &y() const { return *(*d()->x[1])(); }
    array &z() const { return *(*d()->x[2])(); }
    array &w() const { return *(*d()->x[3])(); }
+
+   std::pair<Vector, Vector> getMinMax() const;
 
    struct Data: public Base::Data {
 

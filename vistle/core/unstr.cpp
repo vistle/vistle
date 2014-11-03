@@ -167,6 +167,15 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
    return false;
 }
 
+std::pair<Vector, Vector> UnstructuredGrid::getBounds() const {
+   if (hasCelltree()) {
+      const auto &ct = getCelltree();
+      return std::make_pair(Vector(ct->min()), Vector(ct->max()));
+   }
+
+   return Base::getMinMax();
+}
+
 UnstructuredGrid::Data::Data(const UnstructuredGrid::Data &o, const std::string &n)
 : UnstructuredGrid::Base::Data(o, n)
 , tl(o.tl)

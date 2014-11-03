@@ -46,6 +46,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
 
    Index findCell(const Vector &point) const;
    bool inside(Index elem, const Vector &point) const;
+   std::pair<Vector, Vector> getBounds() const;
 
    V_DATA_BEGIN(UnstructuredGrid);
       ShmVector<unsigned char>::ptr tl;

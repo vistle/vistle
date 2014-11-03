@@ -3,6 +3,8 @@
 
 #include "scalars.h"
 
+#include <limits>
+
 #include <boost/mpl/size.hpp>
 
 namespace vistle {
@@ -32,6 +34,25 @@ bool Vec<T,Dim>::checkImpl() const {
       V_CHECK (d()->x[c]->size() == d()->x[0]->size());
 
    return true;
+}
+
+template <class T, int Dim>
+std::pair<typename Vec<T,Dim>::Vector, typename Vec<T,Dim>::Vector> Vec<T,Dim>::getMinMax() const {
+
+   Scalar smax = std::numeric_limits<Scalar>::max();
+   Vector min = Vector(smax, smax, smax), max = Vector(-smax, -smax, -smax);
+   Index sz = getSize();
+   for (int c=0; c<Dim; ++c) {
+      const auto d = x(c).data();
+      for (Index i=0; i<sz; ++i) {
+         if (d[i] < min[c])
+            min[c] = d[i];
+         if (d[i] > max[c])
+            max[c] = d[i];
+
+      }
+   }
+   return std::make_pair(min, max);
 }
 
 template <class T, int Dim>
