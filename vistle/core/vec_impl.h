@@ -43,7 +43,7 @@ std::pair<typename Vec<T,Dim>::Vector, typename Vec<T,Dim>::Vector> Vec<T,Dim>::
    Vector min = Vector(smax, smax, smax), max = Vector(-smax, -smax, -smax);
    Index sz = getSize();
    for (int c=0; c<Dim; ++c) {
-      const auto d = x(c).data();
+      const Scalar *d = x(c).data();
       for (Index i=0; i<sz; ++i) {
          if (d[i] < min[c])
             min[c] = d[i];

@@ -55,7 +55,11 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
       std::vector<Index> indices;
       Interpolator() {}
       Interpolator(std::vector<Scalar> &weights, std::vector<Index> &indices)
+#if __cplusplus >= 201103L
       : weights(std::move(weights)), indices(std::move(indices))
+#else
+      : weights(weights), indices(indices)
+#endif
       {}
 
     public:
