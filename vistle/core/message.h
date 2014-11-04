@@ -779,7 +779,7 @@ union V_COREEXPORT Buffer {
    std::array<char, Message::MESSAGE_SIZE> buf;
    class Message msg;
 };
-BOOST_STATIC_ASSERT(sizeof(Buffer) <= Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Buffer) == Message::MESSAGE_SIZE);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 
