@@ -704,15 +704,19 @@ bool Module::hasObject(const std::string &portName) const {
 
    std::map<std::string, Port *>::const_iterator i = inputPorts.find(portName);
 
-   if (i != inputPorts.end()) {
+   if (i == inputPorts.end()) {
+      std::cerr << "Module::hasObject: input port " << portName << " not found" << std::endl;
+      vassert(i != inputPorts.end());
 
-      return !i->second->objects().empty();
+      return false;
    }
 
-   std::cerr << "Module::hasObject: input port " << portName << " not found" << std::endl;
-   vassert(i != inputPorts.end());
+   return hasObject(i->second);
+}
 
-   return false;
+bool Module::hasObject(const Port *port) const {
+
+   return !port->objects().empty();
 }
 
 vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
@@ -725,11 +729,16 @@ vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
       return vistle::Object::ptr();
    }
 
-   if (!i->second->objects().empty()) {
+   return takeFirstObject(i->second);
+}
 
-      Object::const_ptr obj = i->second->objects().front();
+vistle::Object::const_ptr Module::takeFirstObject(Port *port) {
+
+   if (!port->objects().empty()) {
+
+      Object::const_ptr obj = port->objects().front();
       vassert(obj->check());
-      i->second->objects().pop_front();
+      port->objects().pop_front();
       return obj;
    }
 
@@ -770,7 +779,12 @@ bool Module::isConnected(const std::string &portname) const {
    if (!p)
       return false;
 
-   return !p->connections().empty();
+   return isConnected(p);
+}
+
+bool Module::isConnected(const Port *port) const {
+
+   return !port->connections().empty();
 }
 
 bool Module::parameterChangedWrapper(const Parameter *p) {
@@ -1093,7 +1107,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                delete other;
          } else {
             if (!findParameter(ownPortName))
-               std::cerr << name() << " did not find port" << std::endl;
+               std::cerr << name() << " did not find port " << ownPortName << std::endl;
          }
          break;
       }

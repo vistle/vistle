@@ -109,7 +109,9 @@ class V_MODULEEXPORT Module {
 
    ObjectList getObjects(const std::string &portName);
    void removeObject(const std::string &portName, vistle::Object::const_ptr object);
+   bool hasObject(const Port *port) const;
    bool hasObject(const std::string &portName) const;
+   vistle::Object::const_ptr takeFirstObject(Port *port);
    vistle::Object::const_ptr takeFirstObject(const std::string &portName);
 
    void sendMessage(const message::Message &message) const;
@@ -184,6 +186,7 @@ protected:
    bool syncMessageProcessing() const;
    void setSyncMessageProcessing(bool sync);
 
+   bool isConnected(const Port *port) const;
    bool isConnected(const std::string &portname) const;
 
    std::string getModuleName(int id) const;

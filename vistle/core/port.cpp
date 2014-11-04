@@ -32,6 +32,11 @@ ObjectList &Port::objects() {
    return m_objects;
 }
 
+const ObjectList &Port::objects() const {
+
+   return m_objects;
+}
+
 const Port::PortSet &Port::connections() const {
 
    return m_connections;
