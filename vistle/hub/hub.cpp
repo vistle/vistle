@@ -205,8 +205,8 @@ bool Hub::dispatch() {
       boost::asio::socket_base::bytes_readable command(true);
       sock->io_control(command);
       if (command.get() > 0) {
-         char buf[message::Message::MESSAGE_SIZE];
-         message::Message &msg = *reinterpret_cast<message::Message *>(buf);
+         message::Buffer buf;
+         message::Message &msg = buf.msg;
          bool received = false;
          if (message::recv(*sock, msg, received) && received) {
             work = true;

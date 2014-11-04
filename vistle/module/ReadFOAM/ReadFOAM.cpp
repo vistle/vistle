@@ -147,7 +147,7 @@ bool ReadFOAM::parameterChanged(const Parameter *p)
          Boundaries bounds = loadBoundary(meshdir.str());
          if (bounds.valid) {
             sendInfo("boundary patches:");
-            for (int i=0;i<bounds.boundaries.size();++i) {
+            for (Index i=0;i<bounds.boundaries.size();++i) {
                std::stringstream info;
                info << bounds.boundaries[i].index<< " ## " << bounds.boundaries[i].name;
                sendInfo("%s", info.str().c_str());
@@ -244,7 +244,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
             if (m_boundaryPatches(boundaryIndex) && b.numFaces>0) {
                for (index_t i=b.startFace; i<b.startFace + b.numFaces; ++i) {
                   auto &face = faces[i];
-                  for (int j=0; j<face.size(); ++j) {
+                  for (Index j=0; j<face.size(); ++j) {
                      conn.push_back(face[j]);
                   }
                   polys.push_back(conn.size());
@@ -264,18 +264,18 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          int neighborProc=b.neighborProc;
          if (myProc < neighborProc) {
             //create with own numbering
-            for (int i=b.startFace; i<b.startFace+b.numFaces; ++i) {
+            for (Index i=b.startFace; i<b.startFace+b.numFaces; ++i) {
                auto face=faces[i];
-               for (int j=0; j<face.size(); ++j) {
+               for (Index j=0; j<face.size(); ++j) {
                   outerVertices.push_back(face[j]);
                }
             }
          } else {
             //create with neighbour numbering (reverse direction)
-            for (int i=b.startFace; i<b.startFace+b.numFaces; ++i) {
+            for (Index i=b.startFace; i<b.startFace+b.numFaces; ++i) {
                auto face=faces[i];
                outerVertices.push_back(face[0]);
-               for (int j=face.size()-1; j>0; --j) {
+               for (Index j=face.size()-1; j>0; --j) {
                   outerVertices.push_back(face[j]);
                }
             }
@@ -593,8 +593,8 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
       }
       loadFields(dir, m_case.constantFields, processor, timestep);
    } else {
-      int i = 0;
-      int skipfactor = m_timeskip->getValue()+1;
+      Index i = 0;
+      Index skipfactor = m_timeskip->getValue()+1;
       for (auto &ts: m_case.timedirs) {
          if (i == timestep*skipfactor) {
             dir += "/" + ts.second;
@@ -882,7 +882,7 @@ bool ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
        Index pointsSize=x.size();
 
        if (mode == ALL) {
-          for (int cell = 0; cell < tlIn.size();++cell) {//append new topology to old grid
+          for (Index cell = 0; cell < tlIn.size();++cell) {//append new topology to old grid
              Index elementStart = elIn[cell];
              Index elementEnd = elIn[cell + 1];
              for (Index i = elementStart; i < elementEnd; ++i) {
@@ -898,14 +898,14 @@ bool ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
              tl.push_back(tlIn[cell]|UnstructuredGrid::GHOST_BIT);
           }
 
-          for (int i=0; i<pointsInX.size(); ++i) {//append new coordinates to old coordinate-lists
+          for (Index i=0; i<pointsInX.size(); ++i) {//append new coordinates to old coordinate-lists
              x.push_back(pointsInX[i]);
              y.push_back(pointsInY[i]);
              z.push_back(pointsInZ[i]);
           }
 
        } else { //mode == COORDS
-          for (int i=0; i<pointsInX.size(); ++i) { //base topology is already known and only unknown vertices have to be applied again
+          for (Index i=0; i<pointsInX.size(); ++i) { //base topology is already known and only unknown vertices have to be applied again
              x.push_back(pointsInX[i]);
              y.push_back(pointsInY[i]);
              z.push_back(pointsInZ[i]);
@@ -1162,7 +1162,7 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
 
    readConstant(casedir);
    int skipfactor = m_timeskip->getValue()+1;
-   for (int timestep=0; timestep<m_case.timedirs.size()/skipfactor; ++timestep) {
+   for (Index timestep=0; timestep<m_case.timedirs.size()/skipfactor; ++timestep) {
       readTime(casedir, timestep);
    }
 

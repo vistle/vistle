@@ -307,7 +307,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
       return true;
    }
 
-   int num_timesteps = 0;
+   index_t num_timesteps = 0;
    for (bf::directory_iterator it(dir);
          it != bf::directory_iterator();
          ++it) {

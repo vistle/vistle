@@ -374,7 +374,7 @@ void OsgRenderer::render() {
          osg::ref_ptr<osg::Group> parent = creator.constant;
          int t = m_delayedObjects.front().timestep;
          if (t >= 0) {
-            while (t >= creator.animated->getNumChildren()) {
+            while (size_t(t) >= creator.animated->getNumChildren()) {
                creator.animated->addChild(new osg::Group);
             }
             parent = dynamic_cast<osg::Group *>(creator.animated->getChild(t));

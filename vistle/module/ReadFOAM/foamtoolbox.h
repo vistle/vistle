@@ -104,7 +104,7 @@ class Boundaries {
 
    int findBoundaryIndexByName(const std::string &b) {
       int result=-1;
-      for (int i=0;i<boundaries.size();++i) {
+      for (size_t i=0;i<boundaries.size();++i) {
          if (!b.compare(boundaries[i].name)) {
             result=i;
             break;
@@ -114,7 +114,7 @@ class Boundaries {
    }
 
    int findBoundaryIndexForProc(int proc) {
-      for (int i=0; i<boundaries.size(); ++i) {
+      for (size_t i=0; i<boundaries.size(); ++i) {
          const Boundary &b = procboundaries[i];
          if (b.neighborProc == proc)
             return i;

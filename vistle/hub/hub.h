@@ -85,7 +85,7 @@ private:
    int m_execCount;
 
    bool m_barrierActive;
-   int m_barrierReached;
+   unsigned m_barrierReached;
    message::uuid_t m_barrierUuid;
 
    bool handlePriv(const message::Compute &compute);
