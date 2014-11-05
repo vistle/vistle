@@ -1222,6 +1222,9 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                finc.setDestId(Id::LocalManager);
                sendMessage(finc);
             }
+            else{
+                reduce(-1);
+            }
          }
          return ret;
          break;
