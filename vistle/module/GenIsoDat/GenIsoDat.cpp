@@ -1,14 +1,9 @@
-#include <sstream>
-#include <iomanip>
-
 #include <core/object.h>
 #include <core/vec.h>
 #include <core/unstr.h>
 #include <core/lines.h>
 #include <core/points.h>
 #include <util/enum.h>
-
-#include "../IsoSurface/tables.h"
 
 #include "GenIsoDat.h"
 
