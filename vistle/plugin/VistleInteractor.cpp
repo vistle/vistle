@@ -127,7 +127,25 @@ int VistleInteractor::getFloatScalarParam(const std::string &paraName, float &va
 
 int VistleInteractor::getIntSliderParam(const std::string &paraName, int &min, int &max, int &val) const
 {
-   return -1;
+   auto param = findParam(paraName);
+   if (!param)
+      return -1;
+   auto iparam = boost::dynamic_pointer_cast<IntParameter>(param);
+   if (!iparam)
+      return -1;
+
+   val = iparam->getValue();
+
+   if (iparam->minimum() <= std::numeric_limits<int>::min()
+         || iparam->maximum() >= std::numeric_limits<int>::max()) {
+      min = val - 50;
+      max = val + 50;
+   } else {
+      min = iparam->minimum();
+      max = iparam->maximum();
+   }
+
+   return 0;
 }
 
 int VistleInteractor::getFloatSliderParam(const std::string &paraName, float &min, float &max, float &val) const
@@ -142,7 +160,7 @@ int VistleInteractor::getFloatSliderParam(const std::string &paraName, float &mi
    val = fparam->getValue();
 
    if (fparam->minimum() <= -std::numeric_limits<float>::max()
-         || fparam->maximum() >= std::numeric_limits<float>::min()) {
+         || fparam->maximum() >= std::numeric_limits<float>::max()) {
       min = val - 5.;
       max = val + 5.;
    } else {

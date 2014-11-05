@@ -49,10 +49,11 @@ Tracer::Tracer(const std::string &shmname, int rank, int size, int moduleID)
 
     addVectorParameter("startpoint1", "1st initial point", ParamVector(0,0.2,0));
     addVectorParameter("startpoint2", "2nd initial point", ParamVector(1,0,0));
-    addIntParameter("num_points", "number of startpoints", 2);
+    addIntParameter("no_startp", "number of startpoints", 2);
+    setParameterRange("no_startp", (Integer)0, (Integer)10000);
     addIntParameter("steps_max", "maximum number of timesteps per particle", 1000);
     addIntParameter("steps_comm", "number of timesteps until communication", 10);
-    IntParameter* task_type = addIntParameter("task_type", "task_type", 0, Parameter::Choice);
+    IntParameter* task_type = addIntParameter("taskType", "task type", 0, Parameter::Choice);
     std::vector<std::string> choices;
     choices.push_back("moving points");
     choices.push_back("streamlines");
@@ -421,11 +422,11 @@ bool Tracer::compute(){
 bool Tracer::reduce(int timestep){
 
     Index numblocks = grid_in.size();
-    Index numpoints = getIntParameter("num_points");
+    Index numpoints = getIntParameter("no_startp");
     Index steps_max = getIntParameter("steps_max");
     Index steps_comm = getIntParameter("steps_comm");
     Scalar dt = getFloatParameter("timestep");
-    Index tasktype = getIntParameter("task_type");
+    Index tasktype = getIntParameter("taskType");
     boost::mpi::communicator world;
 
     if(data_in1.size()<numblocks){

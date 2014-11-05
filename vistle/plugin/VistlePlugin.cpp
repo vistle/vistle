@@ -152,6 +152,7 @@ bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, co
 
    if (moduleName == "CuttingSurface"
          || moduleName == "CutGeometry"
+         || moduleName == "Tracer"
          || moduleName == "IsoSurface") {
 
       if (moduleName == "CutGeometry") {
