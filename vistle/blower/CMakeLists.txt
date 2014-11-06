@@ -16,3 +16,10 @@ target_link_libraries(blower
         vistle_core
         vistle_userinterface
 )
+
+if(UNIX AND NOT APPLE)
+	target_link_libraries(blower
+		-ldl
+		-lutil
+	)
+endif()

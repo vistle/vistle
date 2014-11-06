@@ -10,6 +10,7 @@ if (VISTLE_BUILD_SHARED)
 else()
    set(VISTLE_LIB_TYPE STATIC)
    add_definitions(-DVISTLE_STATIC)
+   set(Boost_USE_STATIC_LIBS TRUE)
 endif()
 set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED})
 

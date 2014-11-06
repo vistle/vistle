@@ -26,3 +26,10 @@ target_link_libraries(vistle
         ${EXTRA_LIBRARIES}
         vistle_core
 )
+
+if(UNIX AND NOT APPLE)
+	target_link_libraries(vistle
+		-ldl
+		-lutil
+	)
+endif()
