@@ -5,12 +5,20 @@ project(vistle_all)
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
 option(VISTLE_BUILD_SHARED "Build all libraries as shared libraries instead of static" ON)
+
+option(VISTLE_SANITIZE_UNDEFINED "Build with -fsanitize=undefined" OFF)
+option(VISTLE_SANITIZE_ADDRESS "Build with -fsanitize=address" OFF)
+option(VISTLE_SANITIZE_THREAD "Build with -fsanitize=thread" OFF)
+
+if (NOT "$ENV{VBUILD}" STREQUAL "")
+   include("${PROJECT_SOURCE_DIR}/build/$ENV{VBUILD}.cmake")
+endif()
+
 if (VISTLE_BUILD_SHARED)
    set(VISTLE_LIB_TYPE SHARED)
 else()
    set(VISTLE_LIB_TYPE STATIC)
    add_definitions(-DVISTLE_STATIC)
-   set(Boost_USE_STATIC_LIBS TRUE)
 endif()
 set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED})
 
@@ -26,9 +34,9 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
    add_definitions(-DNDEBUG)
 endif()
 
-option(VISTLE_SANITIZE_UNDEFINED "Build with -fsanitize=undefined" OFF)
-option(VISTLE_SANITIZE_ADDRESS "Build with -fsanitize=address" OFF)
-option(VISTLE_SANITIZE_THREAD "Build with -fsanitize=thread" OFF)
+#add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
+add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int)
+
 set(ASAN_COMPILE_FLAGS "")
 set(ASAN_LINK_FLAGS "")
 if (VISTLE_SANITIZE_UNDEFINED)
