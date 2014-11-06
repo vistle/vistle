@@ -20,8 +20,6 @@
 
 #include "vncserver.h"
 
-#include <boost/chrono.hpp>
-
 #include <tbb/parallel_for.h>
 #include <tbb/concurrent_queue.h>
 #include <tbb/enumerable_thread_specific.h>
@@ -47,13 +45,6 @@ struct TjComp {
 typedef tbb::enumerable_thread_specific<TjComp> TjContext;
 static TjContext tjContexts;
 #endif
-
-static double now() {
-    namespace chrono = boost::chrono;
-    typedef chrono::high_resolution_clock clock_type;
-    const clock_type::time_point now = clock_type::now();
-    return 1e-9*chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
-}
 
 VncServer *VncServer::plugin = NULL;
 
@@ -1037,10 +1028,10 @@ VncServer::postFrame()
          size_t maxsz = snappy::MaxCompressedLength(sz);
          std::vector<char> compressed(maxsz);
 
-         double snappystart = now();
+         double snappystart = Clock::time();
          size_t compressedsz = 0;
          snappy::RawCompress((const char *)depth(), sz, &compressed[0], &compressedsz);
-         double snappydur = now() - snappystart;
+         double snappydur = Clock::time() - snappystart;
          if (m_compressionrate) {
             fprintf(stderr, "snappy solo: %ld -> %ld, %f s, %f gb/s\n", sz, compressedsz, snappydur,
                   sz/snappydur/1024/1024/1024);
