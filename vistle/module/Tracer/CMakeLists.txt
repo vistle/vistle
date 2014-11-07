@@ -5,10 +5,10 @@ add_module(Tracer Tracer.cpp)
 use_openmp()
 
 include_directories(
+        ../../../3rdparty/${BOOST_MPI_DIR}/include
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
-        ../../../3rdparty/boost-mpi/include
 )
 
 target_link_libraries(Tracer

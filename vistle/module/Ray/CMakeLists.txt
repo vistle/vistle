@@ -63,8 +63,8 @@ add_module(Ray
    )
 
 include_directories(
+        ../../../3rdparty/${BOOST_MPI_DIR}/include
         ${Boost_INCLUDE_DIRS}
-        ../../../3rdparty/boost-mpi/include
         ${MPI_C_INCLUDE_PATH}
         ${ICET_INCLUDE_DIRS}
         ${LIBVNCSERVER_INCLUDE_DIR}

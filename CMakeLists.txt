@@ -116,6 +116,12 @@ endif(WIN32)
 
 find_package(Boost 1.40 REQUIRED thread system)
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
+if (Boost_VERSION VERSION_GREATER 1.55)
+   set(BOOST_MPI_DIR "boost-mpi")
+else()
+   set(BOOST_MPI_DIR "boost-mpi-1.55")
+endif()
+message("Using Boost.MPI from ${BOOST_MPI_DIR}")
 
 find_package(MPI REQUIRED)
 include_directories(${MPI_C_INCLUDE_DIR})

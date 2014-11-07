@@ -4,9 +4,6 @@
 [submodule "3rdparty/qt-solutions"]
 	path = 3rdparty/qt-solutions
 	url = git://gitorious.org/qt-solutions/qt-solutions.git
-[submodule "3rdparty/boost-mpi"]
-	path = 3rdparty/boost-mpi
-	url = git://github.com/vistle/boost-mpi.git
 [submodule "3rdparty/eigen3"]
 	path = 3rdparty/eigen3
 	url = git://github.com/RLovelett/eigen.git
@@ -16,3 +13,9 @@
 [submodule "eigen"]
 	path = eigen
 	url = git://github.com/RLovelett/eigen.git
+[submodule "3rdparty/boost-mpi"]
+	path = 3rdparty/boost-mpi
+	url = git://github.com/boostorg/mpi.git
+[submodule "3rdparty/boost-mpi-1.55"]
+	path = 3rdparty/boost-mpi-1.55
+	url = git://github.com/boostorg/mpi.git

@@ -47,13 +47,12 @@ Build Requirements
   Open MPI, MPICH and MVAPCH2 has been used successfully.
 
 - **Boost**:
-  The included Boost.MPI comes from Boost 1.55 and requires Boost <= 1.55.
-
   Build boost with the following options:
 
          b2 --with-filesystem --with-iostreams --with-python \
              --with-serialization --with-system --with-thread \
-             --with-regex --with-chrono --with-date_time
+             --with-regex --with-chrono --with-date_time \
+             --with-program_options
      Notes:
      - in order to switch MPI implementations without requiring a recompilation of boost, we compile Boost.MPI together with Vistle
      - Intel compiler (at least 14.0.2) does not work with 1.55 because of missing `std::nullptr_t`, use 1.52
