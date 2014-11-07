@@ -14,6 +14,7 @@ class TestInterpolation: public vistle::Module {
 
    vistle::IntParameter *m_count;
    vistle::IntParameter *m_createCelltree;
+   vistle::IntParameter *m_mode;
 };
 
 #endif

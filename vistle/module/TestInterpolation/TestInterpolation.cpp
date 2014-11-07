@@ -2,6 +2,7 @@
 #include <core/unstr.h>
 #include <core/message.h>
 #include "TestInterpolation.h"
+#include <util/enum.h>
 
 MODULE_MAIN(TestInterpolation)
 
@@ -16,6 +17,8 @@ TestInterpolation::TestInterpolation(const std::string &shmname, int rank, int s
 
     m_count = addIntParameter("count", "number of randoim points to generate per block", 100);
     m_createCelltree = addIntParameter("create_celltree", "create celltree", 0, Parameter::Boolean);
+    m_mode = addIntParameter("mode", "interpolation mode", 0, Parameter::Choice);
+    V_ENUM_SET_CHOICES_SCOPE(m_mode, InterpolationMode, UnstructuredGrid);
 }
 
 TestInterpolation::~TestInterpolation() {
@@ -35,6 +38,7 @@ namespace {
 bool TestInterpolation::compute() {
 
    const Index count = getIntParameter("count");
+   const UnstructuredGrid::InterpolationMode mode = (UnstructuredGrid::InterpolationMode)m_mode->getValue();
 
    while (hasObject("data_in")) {
 
@@ -62,7 +66,7 @@ bool TestInterpolation::compute() {
          Index idx = grid->findCell(point);
          if (idx != InvalidIndex) {
             ++numChecked;
-            UnstructuredGrid::Interpolator interpol = grid->getInterpolator(idx, point);
+            UnstructuredGrid::Interpolator interpol = grid->getInterpolator(idx, point, mode);
             Vector p = interpol(x, y, z);
             Scalar d2 = (point-p).squaredNorm();
             if (d2 > 0.01) {

@@ -4,6 +4,7 @@
 
 #include "shm.h"
 #include "indexed.h"
+#include <util/enum.h>
 
 namespace vistle {
 
@@ -81,8 +82,14 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
       }
    };
 
-   Interpolator getInterpolator(Index elem, const Vector &point) const;
-   Interpolator getInterpolator(const Vector &point) const;
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(InterpolationMode, (First) // value of first vertex
+         (Mean) // mean value of all vertices
+         (Nearest) // value of nearest vertex
+         (Linear) // barycentric/multilinear interpolation
+         );
+
+   Interpolator getInterpolator(Index elem, const Vector &point, InterpolationMode mode=Linear) const;
+   Interpolator getInterpolator(const Vector &point, InterpolationMode mode=Linear) const;
 
    V_DATA_BEGIN(UnstructuredGrid);
       ShmVector<unsigned char>::ptr tl;

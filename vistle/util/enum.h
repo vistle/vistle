@@ -82,6 +82,9 @@ static inline std::vector<std::string> valueList(name) { \
       return s; \
 }
 
+#define V_ENUM_SET_CHOICES_SCOPE(param, name, scope) \
+   setParameterChoices(param, scope::valueList((scope::name)0))
+
 #define V_ENUM_SET_CHOICES(param, name) \
    setParameterChoices(param, valueList((name)0))
 #endif
