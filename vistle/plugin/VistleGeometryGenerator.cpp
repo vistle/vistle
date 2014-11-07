@@ -87,6 +87,8 @@ osg::Node *VistleGeometryGenerator::operator()() {
    debug << "b " << b << ", t " << t << "  ";
 
    osg::Geode *geode = NULL;
+   osg::ref_ptr<osg::Geometry> geom;
+   osg::ref_ptr<osg::StateSet> state = VRSceneGraph::instance()->loadDefaultGeostate();
 
    switch (m_geo->getType()) {
 
@@ -111,7 +113,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          debug << "Points: [ #v " << numVertices << " ]";
 
          geode = new osg::Geode();
-         osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
+         geom = new osg::Geometry();
 
          const vistle::Scalar *x = &points->x()[0];
          const vistle::Scalar *y = &points->y()[0];
@@ -127,10 +129,8 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
          geom->addPrimitiveSet(idx.get());
 
-         osg::ref_ptr<osg::StateSet> state = VRSceneGraph::instance()->loadDefaultGeostate();
          state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
          state->setAttribute(new osg::Point(2.0f), osg::StateAttribute::ON);
-         geom->setStateSet(state.get());
 
          geode->addDrawable(geom.get());
          break;
@@ -143,7 +143,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          debug << "Spheres: [ #v " << numVertices << " ]";
 
          geode = new osg::Geode();
-         osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
+         geom = new osg::Geometry();
 
          const vistle::Scalar *x = &spheres->x()[0];
          const vistle::Scalar *y = &spheres->y()[0];
@@ -156,7 +156,6 @@ osg::Node *VistleGeometryGenerator::operator()() {
          float rgba[] = { 1., 0., 0., 1. };
          sphere->updateColors(&rgba[0], &rgba[1], &rgba[2], &rgba[3]);
 
-         osg::ref_ptr<osg::StateSet> state = VRSceneGraph::instance()->loadDefaultGeostate();
          state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
          sphere->setStateSet(state.get());
 
@@ -179,7 +178,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          vistle::Scalar *z = &triangles->z()[0];
 
          geode = new osg::Geode();
-         osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
+         geom = new osg::Geometry();
 
          osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
          for (Index v = 0; v < numVertices; v ++)
@@ -197,15 +196,28 @@ osg::Node *VistleGeometryGenerator::operator()() {
          }
 
          std::vector<osg::Vec3> *vertexNormals = new std::vector<osg::Vec3>[numVertices];
-         for (Index c = 0; c < numCorners; c += 3) {
-            osg::Vec3 u(x[cl[c + 0]], y[cl[c + 0]], z[cl[c + 0]]);
-            osg::Vec3 v(x[cl[c + 1]], y[cl[c + 1]], z[cl[c + 1]]);
-            osg::Vec3 w(x[cl[c + 2]], y[cl[c + 2]], z[cl[c + 2]]);
-            osg::Vec3 normal = (w - u) ^ (v - u) * -1;
-            normal.normalize();
-            vertexNormals[cl[c]].push_back(normal);
-            vertexNormals[cl[c + 1]].push_back(normal);
-            vertexNormals[cl[c + 2]].push_back(normal);
+         if (numCorners > 0) {
+            for (Index c = 0; c < numCorners; c += 3) {
+               osg::Vec3 u(x[cl[c + 0]], y[cl[c + 0]], z[cl[c + 0]]);
+               osg::Vec3 v(x[cl[c + 1]], y[cl[c + 1]], z[cl[c + 1]]);
+               osg::Vec3 w(x[cl[c + 2]], y[cl[c + 2]], z[cl[c + 2]]);
+               osg::Vec3 normal = (w - u) ^ (v - u) * -1;
+               normal.normalize();
+               vertexNormals[cl[c]].push_back(normal);
+               vertexNormals[cl[c + 1]].push_back(normal);
+               vertexNormals[cl[c + 2]].push_back(normal);
+            }
+         } else {
+            for (Index c = 0; c < numVertices; c += 3) {
+               osg::Vec3 u(x[c + 0], y[c + 0], z[c + 0]);
+               osg::Vec3 v(x[c + 1], y[c + 1], z[c + 1]);
+               osg::Vec3 w(x[c + 2], y[c + 2], z[c + 2]);
+               osg::Vec3 normal = (w - u) ^ (v - u) * -1;
+               normal.normalize();
+               vertexNormals[c].push_back(normal);
+               vertexNormals[c + 1].push_back(normal);
+               vertexNormals[c + 2].push_back(normal);
+            }
          }
 
          osg::ref_ptr<osg::Vec3Array> norm = new osg::Vec3Array();
@@ -218,46 +230,13 @@ osg::Node *VistleGeometryGenerator::operator()() {
          }
          delete[] vertexNormals;
 
-         osg::ref_ptr<osg::StateSet> state = VRSceneGraph::instance()->loadDefaultGeostate();
          state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
-
-         if(vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex)) {
-
-            if (tex->getNumElements() != numVertices) {
-               std::cerr << "VistleGeometryGenerator: Triangles: texture size mismatch" << std::endl;
-            } else {
-               osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
-               osgTex->setDataVariance(osg::Object::DYNAMIC);
-
-               osg::ref_ptr<osg::Image> image = new osg::Image();
-
-               image->setImage(tex->getWidth(), 1, 1, GL_RGBA, GL_RGBA,
-                     GL_UNSIGNED_BYTE, &tex->pixels()[0],
-                     osg::Image::NO_DELETE);
-               osgTex->setImage(image);
-
-               osg::ref_ptr<osg::FloatArray> coords = new osg::FloatArray();
-               std::copy(tex->coords().begin(), tex->coords().end(),
-                     std::back_inserter(*coords));
-
-               geom->setTexCoordArray(0, coords);
-               state->setTextureAttributeAndModes(0, osgTex,
-                     osg::StateAttribute::ON);
-               osgTex->setFilter(osg::Texture1D::MIN_FILTER,
-                     osg::Texture1D::NEAREST);
-               osgTex->setFilter(osg::Texture1D::MAG_FILTER,
-                     osg::Texture1D::NEAREST);
-            }
-         }
 
          geom->addPrimitiveSet(corners.get());
          geom->setNormalArray(norm.get());
          geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
 
          geode->addDrawable(geom.get());
-
-         geom->setStateSet(state.get());
-
          break;
       }
 
@@ -276,7 +255,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          vistle::Scalar *z = &lines->z()[0];
 
          geode = new osg::Geode();
-         osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
+         geom = new osg::Geometry();
          osg::ref_ptr<osg::DrawArrayLengths> primitives =
             new osg::DrawArrayLengths(osg::PrimitiveSet::LINE_STRIP);
 
@@ -300,7 +279,6 @@ osg::Node *VistleGeometryGenerator::operator()() {
          geom->addPrimitiveSet(primitives.get());
 
          geode->addDrawable(geom.get());
-
          break;
       }
 
@@ -334,17 +312,14 @@ osg::Node *VistleGeometryGenerator::operator()() {
          }
 
          geode = new osg::Geode();
-         osg::ref_ptr<osg::Geometry> geom = new osg::Geometry();
+         geom = new osg::Geometry();
          osg::ref_ptr<osg::DrawArrayLengths> primitives =
             new osg::DrawArrayLengths(osg::PrimitiveSet::POLYGON);
 
          osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
          osg::ref_ptr<osg::Vec3Array> norm = new osg::Vec3Array();
 
-         osg::ref_ptr<osg::StateSet> state = VRSceneGraph::instance()->loadDefaultGeostate();
          state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
-
-         geom->setStateSet(state.get());
 
          std::map<Index, Index> vertexMap;
          std::vector<std::vector<osg::Vec3> > vertexNormals;
@@ -398,42 +373,6 @@ osg::Node *VistleGeometryGenerator::operator()() {
          geom->setNormalArray(norm.get());
          geom->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
 
-         if(vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex)) {
-
-            if (tex->getNumElements() != numVertices) {
-               std::cerr << "VistleGeometryGenerator: Polygons: texture size mismatch" << std::endl;
-            } else {
-               osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
-               osgTex->setDataVariance(osg::Object::DYNAMIC);
-
-               osg::ref_ptr<osg::Image> image = new osg::Image();
-
-               image->setImage(tex->getWidth(), 1, 1, GL_RGBA, GL_RGBA,
-                     GL_UNSIGNED_BYTE, &tex->pixels()[0],
-                     osg::Image::NO_DELETE);
-               osgTex->setImage(image);
-
-               osg::ref_ptr<osg::FloatArray> coords = new osg::FloatArray();
-               for (Index index = 0; index < numElements; index ++) {
-                  const Index num = el[index + 1] - el[index];
-
-                  for (Index n = 0; n < num; n ++) {
-                     Index v = cl[el[index] + n];
-                     coords->push_back(tex->coords()[v]);
-                  }
-               }
-
-               geom->setTexCoordArray(0, coords);
-               state->setTextureAttributeAndModes(0, osgTex,
-                     osg::StateAttribute::ON);
-               osgTex->setFilter(osg::Texture1D::MIN_FILTER,
-                     osg::Texture1D::NEAREST);
-               osgTex->setFilter(osg::Texture1D::MAG_FILTER,
-                     osg::Texture1D::NEAREST);
-            }
-         }
-
-
          geode->addDrawable(geom.get());
          break;
       }
@@ -483,6 +422,57 @@ osg::Node *VistleGeometryGenerator::operator()() {
          coVRShader *shader = coVRShaderList::instance()->get(name, &parammap);
          shader->apply(geode);
          s_coverMutex.unlock();
+      }
+
+      if (geom)
+         geom->setStateSet(state.get());
+
+      vistle::Coords::const_ptr coords = vistle::Coords::as(m_geo);
+      vistle::Indexed::const_ptr indexed = vistle::Indexed::as(m_geo);
+      if (geom && coords) {
+         if(vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex)) {
+
+            if (tex->getNumElements() != coords->getNumCoords()) {
+               std::cerr << "VistleGeometryGenerator: Coords: texture size mismatch" << std::endl;
+            } else {
+               osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
+               osgTex->setDataVariance(osg::Object::DYNAMIC);
+
+               osg::ref_ptr<osg::Image> image = new osg::Image();
+               image->setImage(tex->getWidth(), 1, 1, GL_RGBA, GL_RGBA,
+                     GL_UNSIGNED_BYTE, &tex->pixels()[0],
+                     osg::Image::NO_DELETE);
+               osgTex->setImage(image);
+
+               osg::ref_ptr<osg::FloatArray> tc = new osg::FloatArray();
+               const Index *cl = (indexed && indexed->getNumCorners() > 0) ? indexed->cl().data() : nullptr;
+               if (cl) {
+                  const auto el = indexed->el().data();
+                  const auto numElements = indexed->getNumElements();
+                  for (Index index = 0; index < numElements; ++index) {
+                     const Index num = el[index + 1] - el[index];
+                     for (Index n = 0; n < num; n ++) {
+                        Index v = cl[el[index] + n];
+                        tc->push_back(tex->coords()[v]);
+                     }
+                  }
+               } else {
+                  const auto numCoords = coords->getNumCoords();
+                  for (Index index = 0; index < numCoords; ++index) {
+                     tc->push_back(tex->coords()[index]);
+                  }
+               }
+
+               geom->setTexCoordArray(0, tc);
+               state->setTextureAttributeAndModes(0, osgTex,
+                     osg::StateAttribute::ON);
+               osgTex->setFilter(osg::Texture1D::MIN_FILTER,
+                     osg::Texture1D::NEAREST);
+               osgTex->setFilter(osg::Texture1D::MAG_FILTER,
+                     osg::Texture1D::NEAREST);
+            }
+         }
+
       }
    }
 
