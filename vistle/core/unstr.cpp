@@ -2,6 +2,8 @@
 #include <core/assert.h>
 #include <algorithm>
 
+//#define INTERPOL_DEBUG
+
 namespace vistle {
 
 static const Index MaxNumVertices = 4;
@@ -405,7 +407,9 @@ bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorn
       corners2[i] -= point2;
    }
 
+#ifdef INTERPOL_DEBUG
    std::cerr << "inside: normal: " << normal.transpose() << ", point: " << point.transpose() << ", p2: " << point2.transpose() << std::endl;
+#endif
 
    for (Index i=0; i<nCorners; ++i) {
       Vector2 n = corners2[(i+1)%nCorners] - corners2[i];
@@ -424,9 +428,11 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
 
    vassert(inside(elem, point));
 
+#ifdef INTERPOL_DEBUG
    if (!inside(elem, point)) {
       return Interpolator();
    }
+#endif
 
    const auto el = this->el().data();
    const auto tl = this->tl().data();
@@ -434,7 +440,7 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
    const Scalar *x[3] = { this->x().data(), this->y().data(), this->z().data() };
 
    const Index nvert = el[elem+1] - el[elem];
-   std::vector<Scalar> result((mode==Linear || mode==Mean) ? nvert : 1);
+   std::vector<Scalar> weights((mode==Linear || mode==Mean) ? nvert : 1);
    std::vector<Index> indices((mode==Linear || mode==Mean) ? nvert : 1);
 
    if (mode == Mean) {
@@ -446,15 +452,15 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
          const auto &end = std::unique(indices.begin(), indices.end());
          const Index n = end-indices.begin();
          indices.resize(n);
-         result.resize(n);
+         weights.resize(n);
          Scalar w = Scalar(1)/n;
          for (Index i=0; i<n; ++i)
-            result[i] = w;
+            weights[i] = w;
       } else {
          const Scalar w = Scalar(1)/nvert;
          for (Index i=0; i<nvert; ++i) {
             indices[i] = cl[i];
-            result[i] = w;
+            weights[i] = w;
          }
       }
    } else if (mode == Linear) {
@@ -472,10 +478,10 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
             Matrix3 T;
             T << coord[0]-coord[3], coord[1]-coord[3], coord[2]-coord[3];
             Vector3 w = T.inverse() * (point-coord[3]);
-            result[3] = 1.;
+            weights[3] = 1.;
             for (int c=0; c<3; ++c) {
-               result[c] = w[c];
-               result[3] -= w[c];
+               weights[c] = w[c];
+               weights[3] -= w[c];
             }
             break;
          }
@@ -497,14 +503,14 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
             const Vector top = coord[4] - coord[0];
             const Scalar h = normal.dot(top);
             const Scalar hp = normal.dot(point-coord[0]);
-            result[4] = hp/h;
-            const Scalar w = 1-result[4];
-            const Vector p = (point-result[4]*coord[4])/w;
+            weights[4] = hp/h;
+            const Scalar w = 1-weights[4];
+            const Vector p = (point-weights[4]*coord[4])/w;
             const Vector2 ss = bilinearInverse(p, coord);
-            result[0] = (1-ss[0])*(1-ss[1])*w;
-            result[1] = ss[0]*(1-ss[1])*w;
-            result[2] = ss[0]*ss[1]*w;
-            result[3] = (1-ss[0])*ss[1]*w;
+            weights[0] = (1-ss[0])*(1-ss[1])*w;
+            weights[1] = ss[0]*(1-ss[1])*w;
+            weights[2] = ss[0]*ss[1]*w;
+            weights[3] = (1-ss[0])*ss[1]*w;
             break;
          }
          case PRISM: {
@@ -524,12 +530,12 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
             coord[3] = coord[2];
             coord[7] = coord[6];
             const Vector ss = trilinearInverse(point, coord);
-            result[0] = (1-ss[0])*(1-ss[1])*(1-ss[2]);
-            result[1] = ss[0]*(1-ss[1])*(1-ss[2]);
-            result[2] = ss[1]*(1-ss[2]);
-            result[3] = (1-ss[0])*(1-ss[1])*ss[2];
-            result[4] = ss[0]*(1-ss[1])*ss[2];
-            result[5] = ss[1]*ss[2];
+            weights[0] = (1-ss[0])*(1-ss[1])*(1-ss[2]);
+            weights[1] = ss[0]*(1-ss[1])*(1-ss[2]);
+            weights[2] = ss[1]*(1-ss[2]);
+            weights[3] = (1-ss[0])*(1-ss[1])*ss[2];
+            weights[4] = ss[0]*(1-ss[1])*ss[2];
+            weights[5] = ss[1]*ss[2];
             break;
          }
          case HEXAHEDRON: {
@@ -543,14 +549,14 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
                }
             }
             const Vector ss = trilinearInverse(point, coord);
-            result[0] = (1-ss[0])*(1-ss[1])*(1-ss[2]);
-            result[1] = ss[0]*(1-ss[1])*(1-ss[2]);
-            result[2] = ss[0]*ss[1]*(1-ss[2]);
-            result[3] = (1-ss[0])*ss[1]*(1-ss[2]);
-            result[4] = (1-ss[0])*(1-ss[1])*ss[2];
-            result[5] = ss[0]*(1-ss[1])*ss[2];
-            result[6] = ss[0]*ss[1]*ss[2];
-            result[7] = (1-ss[0])*ss[1]*ss[2];
+            weights[0] = (1-ss[0])*(1-ss[1])*(1-ss[2]);
+            weights[1] = ss[0]*(1-ss[1])*(1-ss[2]);
+            weights[2] = ss[0]*ss[1]*(1-ss[2]);
+            weights[3] = (1-ss[0])*ss[1]*(1-ss[2]);
+            weights[4] = (1-ss[0])*(1-ss[1])*ss[2];
+            weights[5] = ss[0]*(1-ss[1])*ss[2];
+            weights[6] = ss[0]*ss[1]*ss[2];
+            weights[7] = (1-ss[0])*ss[1]*ss[2];
             break;
          }
          case POLYHEDRON: {
@@ -583,7 +589,9 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
                center += coord[i];
             }
             center /= (nvert-nfaces);
+#ifdef INTERPOL_DEBUG
             std::cerr << "center: " << center.transpose() << std::endl;
+#endif
 
             // find face that is hit by ray from polyhedron center through query point
             Index nFaceVert = 0;
@@ -598,12 +606,16 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
                   startVert = InvalidIndex;
                   const Vector dir = point-center;
                   scale = normal.dot(coord[startIndex]-center)/normal.dot(dir);
+#ifdef INTERPOL_DEBUG
                   std::cerr << "face: vert=" << i << ", scale=" << scale << std::endl;
+#endif
                   assert(scale >= 1 || scale <= 0); // otherwise, point is outside of the polyhedron
                   if (scale >= 1) {
                      isect = center + scale * dir;
                      if (insideConvexPolygon(isect, &coord[startIndex], nFaceVert, normal)) {
+#ifdef INTERPOL_DEBUG
                         std::cerr << "found: normal: " << normal.transpose() << ", first: " << coord[startIndex].transpose() << ", dir: " << dir.transpose() << ", isect: " << isect.transpose() << std::endl;
+#endif
                         foundFace = true;
                         break;
                      }
@@ -626,7 +638,9 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
             if (foundFace) {
                // compute contribution of polyhedron center
                Scalar centerWeight = 1 - 1/scale;
+#ifdef INTERPOL_DEBUG
                std::cerr << "center weight: " << centerWeight << ", scale: " << scale << std::endl;
+#endif
                Index startVert = InvalidIndex;
                Scalar sum = 0;
                for (Index i=0; i<nvert; ++i) {
@@ -635,17 +649,21 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
                      startVert = k;
                   } else if (k == startVert) {
                      startVert = InvalidIndex;
-                     result[i] = 0;
+                     weights[i] = 0;
                      continue;
                   }
                   Scalar centerDist = (coord[i] - center).norm();
+#ifdef INTERPOL_DEBUG
                   //std::cerr << "ind " << i << ", centerDist: " << centerDist << std::endl;
-                  result[i] = 1/centerDist;
-                  sum += result[i];
+#endif
+                  weights[i] = 1/centerDist;
+                  sum += weights[i];
                }
+#ifdef INTERPOL_DEBUG
                std::cerr << "sum: " << sum << std::endl;
+#endif
                for (Index i=0; i<nvert; ++i) {
-                  result[i] *= centerWeight/sum;
+                  weights[i] *= centerWeight/sum;
                }
 
                // contribution of hit face,
@@ -654,15 +672,15 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
                   Matrix2 T;
                   T << (coord[startIndex+0]-coord[startIndex+2]).block<2,1>(0,0), (coord[startIndex+1]-coord[startIndex+2]).block<2,1>(0,0);
                   Vector2 w = T.inverse() * (isect-coord[startIndex+2]).block<2,1>(0,0);
-                  result[startIndex] += w[0] * (1-centerWeight);
-                  result[startIndex+1] += w[1] * (1-centerWeight);
-                  result[startIndex+2] += (1-w[0]-w[1]) * (1-centerWeight);
+                  weights[startIndex] += w[0] * (1-centerWeight);
+                  weights[startIndex+1] += w[1] * (1-centerWeight);
+                  weights[startIndex+2] += (1-w[0]-w[1]) * (1-centerWeight);
                } else if (nFaceVert == 4) {
                   Vector2 ss = bilinearInverse(isect, &coord[startIndex]);
-                  result[startIndex] = (1-ss[0])*(1-ss[1])*(1-centerWeight);
-                  result[startIndex+1] = ss[0]*(1-ss[1])*(1-centerWeight);
-                  result[startIndex+2] = ss[0]*ss[1]*(1-centerWeight);
-                  result[startIndex+3] = (1-ss[0])*ss[1]*(1-centerWeight);
+                  weights[startIndex] = (1-ss[0])*(1-ss[1])*(1-centerWeight);
+                  weights[startIndex+1] = ss[0]*(1-ss[1])*(1-centerWeight);
+                  weights[startIndex+2] = ss[0]*ss[1]*(1-centerWeight);
+                  weights[startIndex+3] = (1-ss[0])*ss[1]*(1-centerWeight);
                } else {
                   // compute center of face and subdivide face into triangles
                   Vector3 faceCenter(0, 0, 0);
@@ -679,7 +697,7 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
                      sum += weights[i];
                   }
                   for (Index i=0; i<nFaceVert; ++i) {
-                     result[i+startIndex] += weights[i]/sum*(1-centerWeight);
+                     weights[i+startIndex] += weights[i]/sum*(1-centerWeight);
                   }
                }
             }
@@ -689,7 +707,7 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
    }
 
    if (mode != Linear && mode != Mean) {
-      result[0] = 1;
+      weights[0] = 1;
 
       if (mode == First) {
          indices[0] = cl[0];
@@ -707,16 +725,23 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
    }
 #ifndef NDEBUG
    Scalar total = 0;
+#ifdef INTERPOL_DEBUG
    std::cerr << "weights:";
-   for (const auto w: result) {
+#endif
+   for (const auto w: weights) {
+      vassert(w >= 0);
       total += w;
+#ifdef INTERPOL_DEBUG
       std::cerr << " " << w;
+#endif
    }
+#ifdef INTERPOL_DEBUG
    std::cerr << ", total: " << total << std::endl;
+#endif
    vassert(fabs(total - 1) < 1e5);
 #endif
 
-   return Interpolator(result, indices);
+   return Interpolator(weights, indices);
 }
 
 UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(const Vector &point, InterpolationMode mode) const {

@@ -70,20 +70,26 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
       const Vector center = (min[cell]+max[cell])*Scalar(0.5);
       for (int d=0; d<NumDimensions; ++d) {
          int b = int((center[d] - cmin[d])/crange[d] * NumBuckets);
+#ifdef CT_DEBUG
          bool print=false;
+#endif
          if (b < 0) {
+#ifdef CT_DEBUG
             print = true;
+#endif
             b = 0;
          }
          if (b >= NumBuckets) {
+#ifdef CT_DEBUG
             print = true;
+#endif
             b = NumBuckets-1;
          }
-         if (print) {
 #ifdef CT_DEBUG
+         if (print) {
             std::cerr << "bad bucket: min=" << cmin[d] << ", max=" << cmax[d] << ", range=" << crange[d] << ", center=" << center[d] << std::endl;
-#endif
          }
+#endif
          assert(b >= 0);
          assert(b < NumBuckets);
          bucket[d][b].push_back(cell);
