@@ -68,14 +68,12 @@ class OsgRenderer: public vistle::Renderer {
    InteractorMap m_interactorMap;
 
    struct DelayedObject {
-      DelayedObject(VistleRenderObject *ro, int time, VistleGeometryGenerator generator)
+      DelayedObject(VistleRenderObject *ro, VistleGeometryGenerator generator)
          : ro(ro)
-         , timestep(time)
          , generator(generator)
          , node_future(std::async(std::launch::async, generator))
       {}
       VistleRenderObject *ro;
-      int timestep;
       VistleGeometryGenerator generator;
       std::future<osg::Node *> node_future;
    };
@@ -212,7 +210,7 @@ bool OsgRenderer::removeObject(VistleRenderObject *ro) {
    osg::Node *node = ro->node();
    if (node) {
       VRSceneGraph::instance()->deleteNode(ro->getName(), false);
-      if (node->getNumParents() > 0) {
+      while (node->getNumParents() > 0) {
          osg::Group *parent = node->getParent(0);
          parent->removeChild(node);
       }
@@ -239,6 +237,13 @@ void OsgRenderer::removeAllCreatedBy(int creator) {
       if (it->second->object()->getCreator() == creator) {
          removeObject(it->second);
       }
+   }
+
+   auto it = creatorMap.find(creator);
+   if (it != creatorMap.end()) {
+      Creator &cr = it->second;
+      coVRAnimationManager::instance()->removeSequence(cr.animated);
+      cr.animated->removeChildren(0, cr.animated->getNumChildren());
    }
 }
 
@@ -286,7 +291,8 @@ void OsgRenderer::addInputObject(vistle::Object::const_ptr container,
    if (t < 0 && texture) {
       t = texture->getTimestep();
    }
-   m_delayedObjects.push_back(DelayedObject(ro, t, VistleGeometryGenerator(geometry, colors, normals, texture)));
+   ro->setTimestep(t);
+   m_delayedObjects.push_back(DelayedObject(ro, VistleGeometryGenerator(geometry, colors, normals, texture)));
 }
 
 
@@ -374,7 +380,7 @@ void OsgRenderer::render() {
          objects[ro->object()->getName()] = ro;
          node->setName(ro->object()->getName());
          osg::ref_ptr<osg::Group> parent = creator.constant;
-         int t = m_delayedObjects.front().timestep;
+         const int t = ro->timestep();
          if (t >= 0) {
             while (size_t(t) >= creator.animated->getNumChildren()) {
                creator.animated->addChild(new osg::Group);

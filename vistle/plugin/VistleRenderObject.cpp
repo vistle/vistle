@@ -15,6 +15,7 @@ VistleRenderObject::VistleRenderObject(const vistle::Object::const_ptr &geo)
 , m_roCol(NULL)
 , m_roNorm(NULL)
 , m_roTex(NULL)
+, m_timestep(-1)
 {
 }
 
@@ -24,6 +25,16 @@ VistleRenderObject::~VistleRenderObject() {
    delete m_roCol;
    delete m_roNorm;
    delete m_roTex;
+}
+
+void VistleRenderObject::setTimestep(int t) {
+
+   m_timestep = t;
+}
+
+int VistleRenderObject::timestep() const {
+
+   return m_timestep;
 }
 
 const char *VistleRenderObject::getName() const {

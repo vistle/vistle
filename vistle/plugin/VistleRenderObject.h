@@ -68,6 +68,9 @@ class VistleRenderObject: public BaseRenderObject {
    const char *getAttributeName(size_t idx) const;
    const char *getAttributeValue(size_t idx) const;
 
+   int timestep() const;
+   void setTimestep(int t);
+
    protected:
 
    mutable std::string m_name;
@@ -85,6 +88,8 @@ class VistleRenderObject: public BaseRenderObject {
       mutable opencover::RenderObject *m_roCol;
       mutable opencover::RenderObject *m_roNorm;
       mutable opencover::RenderObject *m_roTex;
+
+   int m_timestep;
 };
 
 // pseudo RenderObject for handling module parameters
