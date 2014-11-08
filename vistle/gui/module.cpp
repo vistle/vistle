@@ -181,7 +181,7 @@ void Module::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QW
    painter->setBrush(brush);
 
    QPen highlightPen(m_borderColor, 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
-   if (isSelected()) {
+   if (isSelected() && m_Status != BUSY) {
 
       QPen pen(scene()->highlightColor(), 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
       painter->setPen(pen);
