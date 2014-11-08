@@ -1354,10 +1354,6 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                   break;
             }
 
-            if (auto p = findParameter(param->getName())) {
-               parameterChangedWrapper(p.get());
-            }
-
             // notification of controller about current value happens in set...Parameter
          } else {
 
