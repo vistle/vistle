@@ -202,12 +202,14 @@ protected:
    virtual bool reduce(int timestep); //< do reduction for timestep (-1: global) - called on all ranks
 
  private:
+   bool reduceWrapper(const message::Message *req);
+   bool prepareWrapper(const message::Message *req);
+
    boost::shared_ptr<StateTracker> m_stateTracker;
    int m_receivePolicy;
    int m_schedulingPolicy;
    int m_reducePolicy;
    int m_executionDepth; //< number of input ports that have sent ExecutionProgress::Start
-   bool m_inParameterChanged; //< prevent recursive calls of parameterChanged
 
    boost::shared_ptr<Parameter> findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;

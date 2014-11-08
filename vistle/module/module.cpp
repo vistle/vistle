@@ -137,7 +137,6 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_schedulingPolicy(message::SchedulingPolicy::Single)
 , m_reducePolicy(message::ReducePolicy::Never)
 , m_executionDepth(0)
-, m_inParameterChanged(false)
 , m_defaultCacheMode(ObjectCache::CacheNone)
 , m_syncMessageProcessing(false)
 , m_origStreambuf(nullptr)
@@ -791,34 +790,30 @@ bool Module::isConnected(const Port *port) const {
 
 bool Module::parameterChangedWrapper(const Parameter *p) {
 
-   if (m_inParameterChanged)
-      return false;
+   std::string name = p->getName();
+   if (name[0] == '_') {
 
-   m_inParameterChanged = true;
-   bool ret = parameterChanged(p);
-   m_inParameterChanged = false;
-   return ret;
+      if (name == "_error_output_mode" || name == "_error_output_rank") {
+
+         updateOutputMode();
+      } else if (name == "_cache_mode") {
+
+         updateCacheMode();
+      } else if (name == "_openmp_threads") {
+
+         setOpenmpThreads(getIntParameter(name), false);
+      } else if (name == "_benchmark") {
+
+         enableBenchmark(getIntParameter(name), false);
+      }
+
+      return true;
+   }
+
+   return parameterChanged(p);
 }
 
 bool Module::parameterChanged(const Parameter *p) {
-
-   std::string name = p->getName();
-   if (name[0] != '_')
-      return true;
-
-   if (name == "_error_output_mode" || name == "_error_output_rank") {
-
-      updateOutputMode();
-   } else if (name == "_cache_mode") {
-
-      updateCacheMode();
-   } else if (name == "_openmp_threads") {
-
-      setOpenmpThreads(getIntParameter(name), false);
-   } else if (name == "_benchmark") {
-
-      enableBenchmark(getIntParameter(name), false);
-   }
 
    return true;
 }
@@ -1149,20 +1144,13 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const message::Compute *comp =
             static_cast<const message::Compute *>(message);
 
+         message::Busy busy;
+         busy.setUuid(comp->uuid());
+         busy.setDestId(Id::LocalManager);
+         sendMessage(busy);
          if (comp->reason() == message::Compute::Execute) {
-            message::ExecutionProgress start(message::ExecutionProgress::Start);
-            start.setUuid(comp->uuid());
-            start.setDestId(Id::LocalManager);
-            sendMessage(start);
-            if (reducePolicy() != message::ReducePolicy::Never) {
-               m_benchmarkStart = Clock::time();
-               prepare();
-            }
+            prepareWrapper(comp);
          }
-         message::ExecutionProgress startc(message::ExecutionProgress::StartCompute);
-         startc.setUuid(comp->uuid());
-         startc.setDestId(Id::LocalManager);
-         sendMessage(startc);
          //vassert(m_executionDepth == 0);
          ++m_executionDepth;
 
@@ -1186,10 +1174,6 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
                    << rank() << "/" << size << "] compute" << std::endl;
          */
-         message::Busy busy;
-         busy.setUuid(comp->uuid());
-         busy.setDestId(Id::LocalManager);
-         sendMessage(busy);
          bool ret = false;
          try {
             ret = compute();
@@ -1206,28 +1190,17 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             std::cout << name() << "::compute(): exception - " << e.what() << std::endl << std::flush;
             std::cerr << name() << "::compute(): exception - " << e.what() << std::endl;
          }
+
+         --m_executionDepth;
+         //vassert(m_executionDepth == 0);
+         if (comp->reason() == message::Compute::Execute) {
+            reduceWrapper(comp);
+         }
          message::Idle idle;
          idle.setUuid(comp->uuid());
          idle.setDestId(Id::LocalManager);
          sendMessage(idle);
 
-         message::ExecutionProgress fin(message::ExecutionProgress::FinishCompute);
-         fin.setUuid(comp->uuid());
-         fin.setDestId(Id::LocalManager);
-         sendMessage(fin);
-         if (comp->reason() == message::Compute::Execute) {
-            --m_executionDepth;
-            //vassert(m_executionDepth == 0);
-            if (reducePolicy() == message::ReducePolicy::Never) {
-               message::ExecutionProgress finc(message::ExecutionProgress::Finish);
-               finc.setUuid(comp->uuid());
-               finc.setDestId(Id::LocalManager);
-               sendMessage(finc);
-            }
-            else{
-                reduce(-1);
-            }
-         }
          return ret;
          break;
       }
@@ -1241,33 +1214,11 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          busy.setUuid(red->uuid());
          busy.setDestId(Id::LocalManager);
          sendMessage(busy);
-         bool ret = false;
-         try {
-            ret = reduce(red->timestep());
-            if (m_benchmark && red->timestep()==-1) {
-               double duration = Clock::time() - m_benchmarkStart;
-               if (rank() == 0) {
-                  sendInfo("compute() took %fs (OpenMP threads: %d)", duration, openmpThreads());
-                  printf("%s:%d: compute() took %fs (OpenMP threads: %d)",
-                         name().c_str(), id(), duration, openmpThreads());
-               }
-            }
-         } catch (std::exception &e) {
-            std::cout << name() << "::reduce(): exception - " << e.what() << std::endl << std::flush;
-            std::cerr << name() << "::reduce(): exception - " << e.what() << std::endl;
-         }
+         bool ret = reduceWrapper(red);
          message::Idle idle;
          idle.setUuid(red->uuid());
          idle.setDestId(Id::LocalManager);
          sendMessage(idle);
-
-         //vassert(m_executionDepth == 0);
-         message::ExecutionProgress fin(red->timestep()<0
-               ? message::ExecutionProgress::Finish
-               : message::ExecutionProgress::Timestep);
-         fin.setUuid(red->uuid());
-         fin.setDestId(Id::LocalManager);
-         sendMessage(fin);
 
          return ret;
          break;
@@ -1285,10 +1236,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          switch (prog->stage()) {
             case message::ExecutionProgress::Start:
                if (m_executionDepth == 0) {
-                  if (reducePolicy() != message::ReducePolicy::Never) {
-                     m_benchmarkStart = Clock::time();
-                     prepare();
-                  }
+                  prepareWrapper();
                   sendMessage(forward);
                }
                ++m_executionDepth;
@@ -1557,15 +1505,71 @@ int Module::objectReceivePolicy() const {
    return m_receivePolicy;
 }
 
+bool Module::prepareWrapper(const message::Message *req) {
+
+   message::ExecutionProgress start(message::ExecutionProgress::Start);
+   start.setUuid(req->uuid());
+   start.setDestId(Id::LocalManager);
+   sendMessage(start);
+
+   if (m_benchmark) {
+
+      MPI_Barrier(MPI_COMM_WORLD);
+      m_benchmarkStart = Clock::time();
+   }
+
+   if (reducePolicy() != message::ReducePolicy::Never) {
+
+      return prepare();
+   }
+
+   return true;
+}
+
 bool Module::prepare() {
 
+#ifndef NDEBUG
    MPI_Barrier(MPI_COMM_WORLD);
+#endif
    return true;
+}
+
+bool Module::reduceWrapper(const message::Message *req) {
+
+   bool ret = true;
+   if (reducePolicy() != message::ReducePolicy::Never) {
+      ret = false;
+      try {
+         ret = reduce(-1);
+      } catch (std::exception &e) {
+         std::cout << name() << "::reduce(): exception - " << e.what() << std::endl << std::flush;
+         std::cerr << name() << "::reduce(): exception - " << e.what() << std::endl;
+      }
+   }
+
+   if (m_benchmark) {
+      MPI_Barrier(MPI_COMM_WORLD);
+      double duration = Clock::time() - m_benchmarkStart;
+      if (rank() == 0) {
+         sendInfo("compute() took %fs (OpenMP threads: %d)", duration, openmpThreads());
+         printf("%s:%d: compute() took %fs (OpenMP threads: %d)",
+               name().c_str(), id(), duration, openmpThreads());
+      }
+   }
+
+   message::ExecutionProgress fin(message::ExecutionProgress::Finish);
+   fin.setUuid(req->uuid());
+   fin.setDestId(Id::LocalManager);
+   sendMessage(fin);
+
+   return ret;
 }
 
 bool Module::reduce(int timestep) {
 
+#ifndef NDEBUG
    MPI_Barrier(MPI_COMM_WORLD);
+#endif
    return true;
 }
 
