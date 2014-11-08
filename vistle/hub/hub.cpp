@@ -542,6 +542,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             argv.push_back("spawn_vistle.sh");
             argv.push_back(executable);
             argv.push_back(Shm::instanceName(hostname(), m_port));
+            argv.push_back(name);
             argv.push_back(boost::lexical_cast<std::string>(spawn.spawnId()));
 
             auto pid = spawn_process("spawn_vistle.sh", argv);

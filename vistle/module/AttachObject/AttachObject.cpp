@@ -6,7 +6,7 @@ using namespace vistle;
 class AttachObject: public vistle::Module {
 
  public:
-   AttachObject(const std::string &shmname, int rank, int size, int moduleID);
+   AttachObject(const std::string &shmname, const std::string &name, int moduleID);
    ~AttachObject();
 
  private:
@@ -15,8 +15,8 @@ class AttachObject: public vistle::Module {
 
 using namespace vistle;
 
-AttachObject::AttachObject(const std::string &shmname, int rank, int size, int moduleID)
-: Module("AttachObject", shmname, rank, size, moduleID)
+AttachObject::AttachObject(const std::string &shmname, const std::string &name, int moduleID)
+: Module("AttachObject", shmname, name, moduleID)
 {
 
    Port *din = createInputPort("data_in", "input data", Port::MULTI);

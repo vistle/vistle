@@ -10,8 +10,8 @@ MODULE_MAIN(ToPoints)
 
 using namespace vistle;
 
-ToPoints::ToPoints(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("ToPoints", shmname, rank, size, moduleID) {
+ToPoints::ToPoints(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("ToPoints", shmname, name, moduleID) {
 
    createInputPort("grid_in");
    createOutputPort("grid_out");

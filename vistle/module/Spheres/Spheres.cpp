@@ -10,8 +10,8 @@ MODULE_MAIN(ToSpheres)
 
 using namespace vistle;
 
-ToSpheres::ToSpheres(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("Spheres", shmname, rank, size, moduleID) {
+ToSpheres::ToSpheres(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("Spheres", shmname, name, moduleID) {
 
    createInputPort("grid_in");
    createOutputPort("grid_out");

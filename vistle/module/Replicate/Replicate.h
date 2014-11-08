@@ -7,7 +7,7 @@
 class Replicate: public vistle::Module {
 
  public:
-   Replicate(const std::string &shmname, int rank, int size, int moduleID);
+   Replicate(const std::string &shmname, const std::string &name, int moduleID);
    ~Replicate();
 
  private:

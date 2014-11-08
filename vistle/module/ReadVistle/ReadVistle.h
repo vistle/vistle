@@ -7,7 +7,7 @@
 class ReadVistle: public vistle::Module {
 
  public:
-   ReadVistle(const std::string &shmname, int rank, int size, int moduleID);
+   ReadVistle(const std::string &shmname, const std::string &name, int moduleID);
    ~ReadVistle();
 
  private:

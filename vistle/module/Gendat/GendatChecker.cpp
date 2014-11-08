@@ -9,8 +9,8 @@
 
 MODULE_MAIN(GendatChecker)
 
-GendatChecker::GendatChecker(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("GendatChecker", shmname, rank, size, moduleID) {
+GendatChecker::GendatChecker(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("GendatChecker", shmname, name, moduleID) {
 
    createOutputPort("grid_in");
    createOutputPort("data_in");

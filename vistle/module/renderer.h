@@ -9,8 +9,8 @@ namespace vistle {
 class V_MODULEEXPORT Renderer: public Module {
 
  public:
-   Renderer(const std::string &name, const std::string &shmname,
-            const int rank, const int size, const int moduleID);
+   Renderer(const std::string &desc, const std::string &shmname,
+            const std::string &name, const int moduleID);
    virtual ~Renderer();
 
    bool dispatch();

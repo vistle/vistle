@@ -15,8 +15,8 @@ namespace ba = boost::archive;
 
 MODULE_MAIN(ReadVistle)
 
-ReadVistle::ReadVistle(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("ReadVistle", shmname, rank, size, moduleID) {
+ReadVistle::ReadVistle(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("ReadVistle", shmname, name, moduleID) {
 
    createOutputPort("grid_out");
    addStringParameter("filename", "Vistle file", "");

@@ -39,7 +39,7 @@ class OsgRenderer: public vistle::Renderer {
 
  public:
    OsgRenderer(const std::string &shmname,
-         int rank, int size, int moduleId);
+         const std::string &name, int moduleId);
    ~OsgRenderer();
 
    bool compute();
@@ -118,8 +118,8 @@ class OsgRenderer: public vistle::Renderer {
 };
 
 OsgRenderer::OsgRenderer(const std::string &shmname,
-      int rank, int size, int moduleId)
-: vistle::Renderer("COVER", shmname, rank, size, moduleId)
+      const std::string &name, int moduleId)
+: vistle::Renderer("COVER", shmname, name, moduleId)
 {
    vistle::registerTypes();
    createInputPort("data_in");
@@ -429,9 +429,10 @@ VistlePlugin::VistlePlugin()
    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
    MPI_Comm_size(MPI_COMM_WORLD, &size);
    const std::string &shmname = coCommandLine::argv(1);
-   int moduleID = atoi(coCommandLine::argv(2));
+   const std::string &name = coCommandLine::argv(2);
+   int moduleID = atoi(coCommandLine::argv(3));
 
-   m_module = new OsgRenderer(shmname, rank, size, moduleID);
+   m_module = new OsgRenderer(shmname, name, moduleID);
 }
 
 VistlePlugin::~VistlePlugin() {

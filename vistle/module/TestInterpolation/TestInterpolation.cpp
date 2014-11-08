@@ -8,8 +8,8 @@ MODULE_MAIN(TestInterpolation)
 
 using namespace vistle;
 
-TestInterpolation::TestInterpolation(const std::string &shmname, int rank, int size, int moduleID)
-    : Module("test interpolation", shmname, rank, size, moduleID) {
+TestInterpolation::TestInterpolation(const std::string &shmname, const std::string &name, int moduleID)
+    : Module("test interpolation", shmname, name, moduleID) {
 
     setDefaultCacheMode(ObjectCache::CacheAll);
 

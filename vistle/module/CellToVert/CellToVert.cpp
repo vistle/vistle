@@ -15,8 +15,8 @@ using namespace vistle;
 
 MODULE_MAIN(CellToVert)
 
-CellToVert::CellToVert(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("CellToVert", shmname, rank, size, moduleID) {
+CellToVert::CellToVert(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("CellToVert", shmname, name, moduleID) {
 
    createInputPort("grid_in");
    createInputPort("data_in");

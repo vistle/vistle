@@ -471,8 +471,8 @@ static void callbackIceT(const IceTDouble * proj, const IceTDouble * mv,
 }
 #endif
 
-OSGRenderer::OSGRenderer(const std::string &shmname, int rank, int size, int moduleID)
-   : Renderer("OSGRenderer", shmname, rank, size, moduleID), osgViewer::Viewer() {
+OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, int moduleID)
+   : Renderer("OSGRenderer", shmname, name, moduleID), osgViewer::Viewer() {
 
    addIntParameter("debug", "COVER debug level", 1);
 
@@ -490,7 +490,7 @@ OSGRenderer::OSGRenderer(const std::string &shmname, int rank, int size, int mod
       setCameraManipulator(new osgGA::TrackballManipulator());
 
    setThreadingModel(SingleThreaded);
-   if (size != 1)
+   if (size() != 1)
       getCamera()->setComputeNearFarMode(osgUtil::CullVisitor::DO_NOT_COMPUTE_NEAR_FAR);
 
    getCamera()->setClearColor(osg::Vec4(1.0, 1.0, 1.0, 1.0));
@@ -573,7 +573,7 @@ OSGRenderer::OSGRenderer(const std::string &shmname, int rank, int size, int mod
    //addEventHandler(new osgViewer::WindowSizeHandler);
    //addEventHandler(new osgViewer::StatsHandler);
    //addEventHandler(new osgViewer::HelpHandler);
-   addEventHandler(new HelpHandler(rank));
+   addEventHandler(new HelpHandler(rank()));
 
    scene->addChild(proj.get());
 

@@ -6,7 +6,7 @@
 class TestInterpolation: public vistle::Module {
 
  public:
-   TestInterpolation(const std::string &shmname, int rank, int size, int moduleID);
+   TestInterpolation(const std::string &shmname, const std::string &name, int moduleID);
    ~TestInterpolation();
 
  private:

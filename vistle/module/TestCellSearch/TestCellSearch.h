@@ -6,7 +6,7 @@
 class TestCellSearch: public vistle::Module {
 
  public:
-   TestCellSearch(const std::string &shmname, int rank, int size, int moduleID);
+   TestCellSearch(const std::string &shmname, const std::string &name, int moduleID);
    ~TestCellSearch();
 
  private:

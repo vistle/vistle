@@ -14,8 +14,8 @@ MODULE_MAIN(GenIsoDat)
 
 using namespace vistle;
 
-GenIsoDat::GenIsoDat(const std::string &shmname, int rank, int size, int moduleID)
-    : Module("GenIsoDat", shmname, rank, size, moduleID) {
+GenIsoDat::GenIsoDat(const std::string &shmname, const std::string &name, int moduleID)
+    : Module("GenIsoDat", shmname, name, moduleID) {
 
     createOutputPort("grid_out");
     createOutputPort("data_out");

@@ -38,8 +38,8 @@ class MessageQueue;
 class V_MODULEEXPORT Module {
 
  public:
-   Module(const std::string &name, const std::string &shmname,
-          const unsigned int rank, const unsigned int size, const int moduleID);
+   Module(const std::string &description, const std::string &shmname,
+          const std::string &name, const int moduleID);
    virtual ~Module();
    void initDone(); // to be called from MODULE_MAIN after module ctor has run
 
@@ -168,8 +168,8 @@ protected:
    int objectReceivePolicy() const;
 
    const std::string m_name;
-   const int m_rank;
-   const int m_size;
+   int m_rank;
+   int m_size;
    const int m_id;
 
    int m_executionCount;
@@ -251,17 +251,18 @@ protected:
       vistle::registerTypes(); \
       int rank=-1, size=-1; \
       try { \
-         if (argc != 3) { \
-            std::cerr << "module requires exactly 2 parameters" << std::endl; \
+         if (argc != 4) { \
+            std::cerr << "module requires exactly 4 parameters" << std::endl; \
             MPI_Finalize(); \
             exit(1); \
          } \
          MPI_Comm_rank(MPI_COMM_WORLD, &rank); \
          MPI_Comm_size(MPI_COMM_WORLD, &size); \
-         const std::string &shmname = argv[1]; \
-         int moduleID = atoi(argv[2]); \
+         const std::string shmname = argv[1]; \
+         const std::string name = argv[2]; \
+         int moduleID = atoi(argv[3]); \
          {  \
-            X module(shmname, rank, size, moduleID); \
+            X module(shmname, name, moduleID); \
             module.initDone(); \
             while (module.dispatch()) \
                ; \

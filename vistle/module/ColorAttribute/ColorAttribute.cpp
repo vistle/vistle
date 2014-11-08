@@ -6,7 +6,7 @@ using namespace vistle;
 class ColorAttribute: public vistle::Module {
 
  public:
-   ColorAttribute(const std::string &shmname, int rank, int size, int moduleID);
+   ColorAttribute(const std::string &shmname, const std::string &name, int moduleID);
    ~ColorAttribute();
 
  private:
@@ -17,8 +17,8 @@ class ColorAttribute: public vistle::Module {
 
 using namespace vistle;
 
-ColorAttribute::ColorAttribute(const std::string &shmname, int rank, int size, int moduleID)
-: Module("add color attribute", shmname, rank, size, moduleID)
+ColorAttribute::ColorAttribute(const std::string &shmname, const std::string &name, int moduleID)
+: Module("add color attribute", shmname, name, moduleID)
 {
 
    Port *din = createInputPort("data_in", "input data", Port::MULTI);

@@ -11,8 +11,8 @@ MODULE_MAIN(CutGeometry)
 
 using namespace vistle;
 
-CutGeometry::CutGeometry(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("CutGeometry", shmname, rank, size, moduleID) {
+CutGeometry::CutGeometry(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("CutGeometry", shmname, name, moduleID) {
 
    setDefaultCacheMode(ObjectCache::CacheAll);
 

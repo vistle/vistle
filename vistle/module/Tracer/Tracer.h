@@ -6,7 +6,7 @@
 class Tracer: public vistle::Module {
 
 public:
-    Tracer(const std::string &shmname, int rank, int size, int moduleID);
+    Tracer(const std::string &shmname, const std::string &name, int moduleID);
     ~Tracer();
 
 

@@ -6,7 +6,7 @@
 class GenIsoDat: public vistle::Module {
 
  public:
-   GenIsoDat(const std::string &shmname, int rank, int size, int moduleID);
+   GenIsoDat(const std::string &shmname, const std::string &name, int moduleID);
    ~GenIsoDat();
 
  private:

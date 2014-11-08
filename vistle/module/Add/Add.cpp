@@ -13,7 +13,7 @@ using namespace vistle;
 class Add: public vistle::Module {
 
  public:
-   Add(const std::string &shmname, int rank, int size, int moduleID);
+   Add(const std::string &shmname, const std::string &name, int moduleID);
    ~Add();
 
  private:
@@ -60,8 +60,8 @@ class Add: public vistle::Module {
 
 using namespace vistle;
 
-Add::Add(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("Add", shmname, rank, size, moduleID) {
+Add::Add(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("Add", shmname, name, moduleID) {
 
    createInputPort("data_in");
    createOutputPort("data_out");

@@ -12,8 +12,8 @@ MODULE_MAIN(Gendat)
 
 using namespace vistle;
 
-Gendat::Gendat(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("Gendat", shmname, rank, size, moduleID) {
+Gendat::Gendat(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("Gendat", shmname, name, moduleID) {
 
    createOutputPort("grid_out");
    createOutputPort("data_out");

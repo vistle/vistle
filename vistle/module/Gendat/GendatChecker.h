@@ -6,7 +6,7 @@
 class GendatChecker: public vistle::Module {
 
  public:
-   GendatChecker(const std::string &shmname, int rank, int size, int moduleID);
+   GendatChecker(const std::string &shmname, const std::string &name, int moduleID);
    ~GendatChecker();
 
  private:

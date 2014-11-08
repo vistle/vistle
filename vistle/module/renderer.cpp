@@ -16,9 +16,9 @@ namespace vistle {
 
 const int MaxObjectsPerFrame = 50;
 
-Renderer::Renderer(const std::string & name, const std::string &shmname,
-                   const int rank, const int size, const int moduleID)
-   : Module(name, shmname, rank, size, moduleID) {
+Renderer::Renderer(const std::string &description, const std::string &shmname,
+                   const std::string &name, const int moduleID)
+   : Module(description, shmname, name, moduleID) {
 
    createInputPort("data_in", "input data");
 

@@ -44,7 +44,7 @@ public:
 class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
 
  public:
-   OSGRenderer(const std::string &shmname, int rank, int size, int moduleID);
+   OSGRenderer(const std::string &shmname, const std::string &name, int moduleID);
    ~OSGRenderer();
    void scheduleResize(int x, int y, int w, int h);
 

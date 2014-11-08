@@ -35,8 +35,8 @@ MODULE_MAIN(Tracer)
 using namespace vistle;
 
 
-Tracer::Tracer(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("Tracer", shmname, rank, size, moduleID) {
+Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("Tracer", shmname, name, moduleID) {
 
    setDefaultCacheMode(ObjectCache::CacheAll);
    setReducePolicy(message::ReducePolicy::OverAll);

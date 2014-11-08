@@ -101,7 +101,7 @@ class ReadFOAM: public vistle::Module
       };
 
       virtual bool compute();
-      ReadFOAM(const std::string &shmname, int rank, int size, int moduleId);
+      ReadFOAM(const std::string &shmname, const std::string &name, int moduleId);
       virtual ~ReadFOAM();
 
    private:

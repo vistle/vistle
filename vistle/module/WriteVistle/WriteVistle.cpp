@@ -22,8 +22,8 @@ using namespace vistle;
 
 MODULE_MAIN(WriteVistle)
 
-WriteVistle::WriteVistle(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("WriteVistle", shmname, rank, size, moduleID)
+WriteVistle::WriteVistle(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("WriteVistle", shmname, name, moduleID)
    , m_ofs(NULL)
    , m_binAr(NULL)
    , m_textAr(NULL)

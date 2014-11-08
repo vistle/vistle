@@ -6,8 +6,8 @@ MODULE_MAIN(AttachShader)
 
 using namespace vistle;
 
-AttachShader::AttachShader(const std::string &shmname, int rank, int size, int moduleID)
-    : Module("attach GLSL shader in COVER", shmname, rank, size, moduleID) {
+AttachShader::AttachShader(const std::string &shmname, const std::string &name, int moduleID)
+    : Module("attach GLSL shader in COVER", shmname, name, moduleID) {
 
     setDefaultCacheMode(ObjectCache::CacheAll);
 

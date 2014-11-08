@@ -43,8 +43,8 @@ namespace mpi = boost::mpi;
 
 using namespace vistle;
 
-ReadFOAM::ReadFOAM(const std::string &shmname, int rank, int size, int moduleId)
-: Module("ReadFoam", shmname, rank, size, moduleId)
+ReadFOAM::ReadFOAM(const std::string &shmname, const std::string &name, int moduleId)
+: Module("ReadFoam", shmname, name, moduleId)
 , m_gridOut(nullptr)
 , m_boundOut(nullptr)
 {

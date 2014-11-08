@@ -19,7 +19,7 @@ using namespace vistle;
 class Stats: public vistle::Module {
 
  public:
-   Stats(const std::string &shmname, int rank, int size, int moduleID);
+   Stats(const std::string &shmname, const std::string &name, int moduleID);
    ~Stats();
 
    struct stats {
@@ -142,8 +142,8 @@ Stats::stats operator+(const Stats::stats &lhs, const Stats::stats &rhs) {
 
 using namespace vistle;
 
-Stats::Stats(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("object statistics", shmname, rank, size, moduleID)
+Stats::Stats(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("object statistics", shmname, name, moduleID)
 {
 
    setDefaultCacheMode(ObjectCache::CacheAll);

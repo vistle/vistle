@@ -125,13 +125,12 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
 
 
-Module::Module(const std::string &n, const std::string &shmname,
-      const unsigned int r,
-      const unsigned int s, const int m)
-: m_name(n)
-, m_rank(r)
-, m_size(s)
-, m_id(m)
+Module::Module(const std::string &desc, const std::string &shmname,
+      const std::string &moduleName, const int moduleId)
+: m_name(moduleName)
+, m_rank(-1)
+, m_size(-1)
+, m_id(moduleId)
 , m_executionCount(0)
 , m_stateTracker(new StateTracker(m_name))
 , m_receivePolicy(message::ObjectReceivePolicy::Single)
@@ -150,6 +149,9 @@ Module::Module(const std::string &n, const std::string &shmname,
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
 #endif
+
+   MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
+   MPI_Comm_size(MPI_COMM_WORLD, &m_size);
 
    message::DefaultSender::init(m_id, m_rank);
 
@@ -1443,7 +1445,7 @@ using namespace boost;
 class InstModule: public Module {
 public:
    InstModule()
-   : Module("inst", "anything", 0, 1, 1)
+   : Module("description", "shmid", "name", 1)
    {}
    bool compute() { return true; }
 };

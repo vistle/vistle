@@ -60,8 +60,8 @@ ColorMap::~ColorMap() {
    delete[] data;
 }
 
-Color::Color(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("Color", shmname, rank, size, moduleID) {
+Color::Color(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("Color", shmname, name, moduleID) {
 
    createInputPort("data_in");
    createOutputPort("data_out");

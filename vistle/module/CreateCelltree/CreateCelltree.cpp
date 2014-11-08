@@ -7,7 +7,7 @@ using namespace vistle;
 class CreateCelltree: public vistle::Module {
 
  public:
-   CreateCelltree(const std::string &shmname, int rank, int size, int moduleID);
+   CreateCelltree(const std::string &shmname, const std::string &name, int moduleID);
    ~CreateCelltree();
 
  private:
@@ -16,8 +16,8 @@ class CreateCelltree: public vistle::Module {
 
 using namespace vistle;
 
-CreateCelltree::CreateCelltree(const std::string &shmname, int rank, int size, int moduleID)
-: Module("CreateCelltree", shmname, rank, size, moduleID)
+CreateCelltree::CreateCelltree(const std::string &shmname, const std::string &name, int moduleID)
+: Module("CreateCelltree", shmname, name, moduleID)
 {
 
    Port *din = createInputPort("grid_in", "input grid", Port::MULTI);

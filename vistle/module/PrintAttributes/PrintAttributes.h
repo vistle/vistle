@@ -6,7 +6,7 @@
 class PrintAttributes: public vistle::Module {
 
  public:
-   PrintAttributes(const std::string &shmname, int rank, int size, int moduleID);
+   PrintAttributes(const std::string &shmname, const std::string &name, int moduleID);
    ~PrintAttributes();
 
  private:

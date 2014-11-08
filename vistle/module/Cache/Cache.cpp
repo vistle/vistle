@@ -8,7 +8,7 @@ static const int NumPorts = 5;
 class Cache: public vistle::Module {
 
  public:
-   Cache(const std::string &shmname, int rank, int size, int moduleID);
+   Cache(const std::string &shmname, const std::string &name, int moduleID);
    ~Cache();
 
  private:
@@ -17,8 +17,8 @@ class Cache: public vistle::Module {
 
 using namespace vistle;
 
-Cache::Cache(const std::string &shmname, int rank, int size, int moduleID)
-: Module("cache input objects", shmname, rank, size, moduleID)
+Cache::Cache(const std::string &shmname, const std::string &name, int moduleID)
+: Module("cache input objects", shmname, name, moduleID)
 {
    setDefaultCacheMode(ObjectCache::CacheAll);
 

@@ -20,8 +20,8 @@ MODULE_MAIN(IsoSurface)
 using namespace vistle;
 
 
-IsoSurface::IsoSurface(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("IsoSurface", shmname, rank, size, moduleID) {
+IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("IsoSurface", shmname, name, moduleID) {
 
    setDefaultCacheMode(ObjectCache::CacheAll);
    setReducePolicy(message::ReducePolicy::OverAll);

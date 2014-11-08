@@ -6,7 +6,7 @@
 class ToTriangles: public vistle::Module {
 
  public:
-   ToTriangles(const std::string &shmname, int rank, int size, int moduleID);
+   ToTriangles(const std::string &shmname, const std::string &name, int moduleID);
    ~ToTriangles();
 
  private:

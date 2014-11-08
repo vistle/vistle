@@ -9,7 +9,7 @@
 class WriteVistle: public vistle::Module {
 
  public:
-   WriteVistle(const std::string &shmname, int rank, int size, int moduleID);
+   WriteVistle(const std::string &shmname, const std::string &name, int moduleID);
    ~WriteVistle();
 
  private:

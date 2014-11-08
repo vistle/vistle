@@ -39,7 +39,7 @@ class RayCaster: public vistle::Renderer {
       unsigned char r, g, b, a;
    };
 
-   RayCaster(const std::string &shmname, int rank, int size, int moduleId);
+   RayCaster(const std::string &shmname, const std::string &name, int moduleId);
    ~RayCaster();
 
    static RayCaster &the() {
@@ -228,8 +228,8 @@ class RayCaster: public vistle::Renderer {
 RayCaster *RayCaster::s_instance = nullptr;
 
 
-RayCaster::RayCaster(const std::string &shmname, int rank, int size, int moduleId)
-: Renderer("RayCaster", shmname, rank, size, moduleId)
+RayCaster::RayCaster(const std::string &shmname, const std::string &name, int moduleId)
+: Renderer("RayCaster", shmname, name, moduleId)
 , rayPacketSize(MaxPacketSize)
 , m_timestep(0)
 , m_displayRank(0)
@@ -280,7 +280,7 @@ RayCaster::RayCaster(const std::string &shmname, int rank, int size, int moduleI
 
    m_defaultColor = Vector4(127, 127, 127, 255);
 
-   if (rank == rootRank())
+   if (rank() == rootRank())
       vnc.reset(new VncServer(1024, 768, m_vncBasePort->getValue()));
 
    rtcInit("verbose=1");

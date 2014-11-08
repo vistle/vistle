@@ -11,8 +11,8 @@ MODULE_MAIN(ShowUSG)
 
 using namespace vistle;
 
-ShowUSG::ShowUSG(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("ShowUSG", shmname, rank, size, moduleID) {
+ShowUSG::ShowUSG(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("ShowUSG", shmname, name, moduleID) {
 
 
    createInputPort("grid_in");

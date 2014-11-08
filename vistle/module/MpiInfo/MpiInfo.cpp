@@ -19,7 +19,7 @@ using namespace vistle;
 class MpiInfo: public vistle::Module {
 
  public:
-   MpiInfo(const std::string &shmname, int rank, int size, int moduleID);
+   MpiInfo(const std::string &shmname, const std::string &name, int moduleID);
    ~MpiInfo();
 
  private:
@@ -32,14 +32,14 @@ class MpiInfo: public vistle::Module {
 
 using namespace vistle;
 
-MpiInfo::MpiInfo(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("MPI info", shmname, rank, size, moduleID)
+MpiInfo::MpiInfo(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("MPI info", shmname, name, moduleID)
 {
    std::vector<char> hostname(1024);
    gethostname(hostname.data(), hostname.size());
 
    std::stringstream str;
-   str << "ctor: rank " << rank << "/" << size << " on host " << hostname.data() << std::endl;
+   str << "ctor: rank " << rank() << "/" << size() << " on host " << hostname.data() << std::endl;
    sendInfo(str.str());
 }
 

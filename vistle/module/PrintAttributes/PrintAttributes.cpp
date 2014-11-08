@@ -7,8 +7,8 @@ MODULE_MAIN(PrintAttributes)
 
 using namespace vistle;
 
-PrintAttributes::PrintAttributes(const std::string &shmname, int rank, int size, int moduleID)
-    : Module("show object attributes", shmname, rank, size, moduleID) {
+PrintAttributes::PrintAttributes(const std::string &shmname, const std::string &name, int moduleID)
+    : Module("show object attributes", shmname, name, moduleID) {
 
     createInputPort("data_in");
 }

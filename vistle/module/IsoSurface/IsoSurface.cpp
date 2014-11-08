@@ -17,14 +17,14 @@ MODULE_MAIN(IsoSurface)
 
 using namespace vistle;
 
-IsoSurface::IsoSurface(const std::string &shmname, int rank, int size, int moduleID)
+IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int moduleID)
    : Module(
 #ifdef CUTTINGSURFACE
 "cut through grids"
 #else
 "extract isosurfaces"
 #endif
-, shmname, rank, size, moduleID) {
+, shmname, name, moduleID) {
 
    setDefaultCacheMode(ObjectCache::CacheAll);
    setReducePolicy(message::ReducePolicy::OverAll);

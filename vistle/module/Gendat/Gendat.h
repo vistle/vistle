@@ -6,7 +6,7 @@
 class Gendat: public vistle::Module {
 
  public:
-   Gendat(const std::string &shmname, int rank, int size, int moduleID);
+   Gendat(const std::string &shmname, const std::string &name, int moduleID);
    ~Gendat();
 
  private:

@@ -11,8 +11,8 @@ MODULE_MAIN(Collect)
 using namespace vistle;
 
 
-Collect::Collect(const std::string &shmname, int rank, int size, int moduleID)
-   : Module("Collect", shmname, rank, size, moduleID) {
+Collect::Collect(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("Collect", shmname, name, moduleID) {
 
    createInputPort("grid_in");
    createInputPort("normal_in");
