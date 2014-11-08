@@ -1,4 +1,5 @@
 #include <future>
+#include <boost/algorithm/string/predicate.hpp>
 
 // cover
 #include <kernel/coVRPluginSupport.h>
@@ -150,16 +151,16 @@ OsgRenderer::~OsgRenderer() {
 
 bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
 
-   if (moduleName == "CuttingSurface"
-         || moduleName == "CutGeometry"
-         || moduleName == "Tracer"
-         || moduleName == "IsoSurface") {
+   std::string plugin = moduleName;
+   if (boost::algorithm::ends_with(name, "Old"))
+      plugin = plugin.substr(0, plugin.size()-3);
+   if (plugin == "CutGeometry")
+      plugin = "CuttingSurface";
 
-      if (moduleName == "CutGeometry") {
-         cover->addPlugin("CuttingSurface");
-      } else {
-         cover->addPlugin(moduleName.c_str());
-      }
+   if (plugin == "CuttingSurface"
+         || plugin == "Tracer"
+         || plugin == "IsoSurface") {
+      cover->addPlugin(plugin.c_str());
 
 #if 0
       auto creator = creatorMap.find(senderId);
