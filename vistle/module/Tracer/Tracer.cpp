@@ -74,8 +74,8 @@ private:
     Vec<Scalar>::const_ptr m_pdata;
     Lines::ptr m_lines;
     std::vector<Points::ptr> m_points;  //Points::ptr?
-    Vec<Scalar, 3>::ptr m_v_interpol;
-    Vec<Scalar>::ptr m_p_interpol;
+    std::vector<Vec<Scalar, 3>::ptr> m_v_interpol;
+    std::vector<Vec<Scalar>::ptr> m_p_interpol;
 
 public:
 
@@ -87,9 +87,7 @@ public:
         m_grid(grid),
         m_vdata(vdata),
         m_pdata(pdata),
-        m_lines(new Lines(Object::Initialized)),
-        m_v_interpol(new Vec<Scalar, 3>(Object::Initialized)),
-        m_p_interpol(new Vec<Scalar>(Object::Initialized)){
+        m_lines(new Lines(Object::Initialized)){
     }
 
     UnstructuredGrid::const_ptr getGrid(){
@@ -100,12 +98,24 @@ public:
         return m_vdata;
     }
 
+    Vec<Scalar>::const_ptr getPressureData(){
+        return m_pdata;
+    }
+
     Lines::ptr getLines(){
         return m_lines;
     }
 
     std::vector<Points::ptr> getPoints(){
         return m_points;
+    }
+
+    std::vector<Vec<Scalar, 3>::ptr> getInterpolVelo(){
+        return m_v_interpol;
+    }
+
+    std::vector<Vec<Scalar>::ptr> getInterpolPress(){
+        return m_p_interpol;
     }
 
     void addLines(const std::vector<Vector3> &points){
@@ -131,62 +141,114 @@ public:
         m_lines->el().push_back(numcorn);
     }
 
-    /*void addPoints(const std::vector<Vector3> &points, Index first_timestep){
+    void addData(std::vector<Vector3> points,
+                 std::vector<Vector3> velocities,
+                 std::vector<Scalar> pressures,
+                 Index tasktype,
+                 Index first_timestep =0){
 
-        Index numpoints = points.size();
-        Index numobjects = m_points.size();
+        switch(tasktype){
 
-        for(Index i=0; i<numpoints; i++){
+        case 0:{
+            Index numpoints = points.size();
+            Index numobjects = m_points.size();
 
-            bool exists = false;
-            Index timestep = first_timestep+i;
+            for(Index i=0; i<numpoints; i++){
 
-            for(Index j=0; j<numobjects; j++){
+                bool havepress = (pressures.size()==points.size());
+                bool exists = false;
+                Index timestep = first_timestep+i;
 
-                if(m_points[j]->getTimestep()==timestep){
+                for(Index j=0; j<numobjects; j++){
 
-                    bool exists = true;
-                    m_points[j]->x().push_back(points[i](0));
-                    m_points[j]->y().push_back(points[i](1));
-                    m_points[j]->z().push_back(points[i](2));
-                    break;
+                    if(m_points[j]->getTimestep()==timestep){
+
+                        exists = true;
+                        m_points[j]->x().push_back(points[i](0));
+                        m_points[j]->y().push_back(points[i](1));
+                        m_points[j]->z().push_back(points[i](2));
+
+                        m_v_interpol[j]->x().push_back(velocities[i](0));
+                        m_v_interpol[j]->x().push_back(velocities[i](1));
+                        m_v_interpol[j]->x().push_back(velocities[i](2));
+
+                        if(havepress){
+                            m_p_interpol[j]->x().push_back(pressures[i]);
+                        }
+                        break;
+                    }
+                }
+                if(!exists){
+
+                    m_points.emplace_back(new Points(Object::Initialized));
+                    Index back = m_points.size() -1;
+                    m_points[back]->x().push_back(points[i](0));
+                    m_points[back]->y().push_back(points[i](1));
+                    m_points[back]->z().push_back(points[i](2));
+                    m_points[back]->setTimestep(timestep);
+
+                    m_v_interpol.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
+                    m_v_interpol[back]->x().push_back(velocities[i](0));
+                    m_v_interpol[back]->y().push_back(velocities[i](1));
+                    m_v_interpol[back]->z().push_back(velocities[i](2));
+                    m_v_interpol[back]->setTimestep(timestep);
+
+                    if(havepress){
+                        m_p_interpol.emplace_back(new Vec<Scalar>(Object::Initialized));
+                        m_p_interpol[back]->x().push_back(pressures[i]);
+                        m_p_interpol[back]->setTimestep(timestep);
+                    }
                 }
             }
-            if(!exists){
+        }
 
-                m_points.push_back(new Points(Object::Initialized));
-                Index back = m_points.size() -1;
-                m_points[back]->x().push_back(points[i](0));
-                m_points[back]->y().push_back(points[i](1));
-                m_points[back]->z().push_back(points[i](2));
-                m_points[back]->setTimestep(timestep);
+            break;
+
+        case 1:{
+            Index numpoints = points.size();
+            Index size0 = m_lines->getNumVertices();
+            Index size1 = size0 + numpoints;
+
+            m_lines->cl().resize(size1);
+            m_lines->x().resize(size1);
+            m_lines->y().resize(size1);
+            m_lines->z().resize(size1);
+
+            if(m_v_interpol.size()==0){
+                m_v_interpol.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
+            }
+            m_v_interpol[0]->x().resize(size1);
+            m_v_interpol[0]->y().resize(size1);
+            m_v_interpol[0]->z().resize(size1);
+
+            for(Index i=0; i<numpoints; i++){
+
+                m_lines->cl()[size0+i] = size0+i;
+                m_lines->x()[size0+i] = points[i](0);
+                m_lines->y()[size0+i] = points[i](1);
+                m_lines->z()[size0+i] = points[i](2);
+                m_v_interpol[0]->x()[size0+i] = velocities[i](0);
+                m_v_interpol[0]->y()[size0+i] = velocities[i](1);
+                m_v_interpol[0]->z()[size0+i] = velocities[i](2);
+            }
+
+            Index numcorn = m_lines->getNumCorners();
+            m_lines->el().push_back(numcorn);
+
+            if(pressures.size()<velocities.size()){
+                return;
+            }
+
+            if(m_p_interpol.size()==0){
+                m_p_interpol.emplace_back(new Vec<Scalar>(Object::Initialized));
+            }
+            m_p_interpol[0]->x().resize(size1);
+            for(Index i=0; i<numpoints; i++){
+                m_p_interpol[0]->x()[size0+i] = pressures[i];
             }
         }
-
-        numobjects = m_points.size();
-        for(Index i=0; i<numobjects; i++){
-
-            m_points[i]->setNumTimesteps(numobjects);
         }
     }
-
-    void addData(std::vector<Vec<Scalar, 3>::ptr> data){
-
-        Index num = data.size();
-        Index size0 = m_v_interpol->getNumVertices();
-        Index size1 = size0 + numpoints;
-
-        m_v_interpol->x().resize(size1);
-        m_v_interpol->y().resize(size1);
-        m_v_interpol->z().resize(size1);
-
-        for(Index i=0; i<num; i++){
-
-            m_v_interpol->x()[size0+i] = points[i](0);
-            m_v_interpol->y()[size0+i] = points[i](1);
-            m_v_interpol->z()[size0+i] = points[i](2);
-        }
-    } */
 };
 
 
@@ -233,7 +295,7 @@ public:
         return m_ingrid;
     }
 
-    void setStatus(std::vector<BlockData*> block, Index steps_max){
+    void setStatus(std::vector<BlockData*> block, Index steps_max, Index tasktype){
 
         if(!m_ingrid){
             return;
@@ -244,20 +306,26 @@ public:
         }
 
         if(m_stepcount == steps_max){
+            m_block->addData(m_positions, m_velocities, m_pressures, tasktype);
+            m_positions.clear();
+            m_velocities.clear();
+            m_pressures.clear();
+            m_out = true;
+            this->Deactivate();
             return;
         }
 
-        bool moving = (m_velocity.norm()!=0);
+        bool moving = (m_velocity(0)!=0 || m_velocity(1)!=0 || 0 || m_velocity(2)!=0);
         if(!moving){
             if(m_block){
 
-                m_positions.push_back(m_position);
-                m_block->addLines(m_positions);
-                //m_block->addPoints(m_positions, m_stepcount);
+                m_block->addData(m_positions, m_velocities, m_pressures, tasktype);
                 m_positions.clear();
-                m_block = nullptr;
+                m_velocities.clear();
+                m_pressures.clear();
+                m_out = true;
             }
-            m_ingrid = false;
+            this->Deactivate();
             return;
         }
 
@@ -269,15 +337,15 @@ public:
             }
             m_cell = grid->findCell(m_position);
             if(m_cell==InvalidIndex){
-                m_positions.push_back(m_position);
-                m_block->addLines(m_positions);
-                //m_block->addPoints(m_positions, m_stepcount);
-                //m_block->addData(m_velocities);
+
+                m_block->addData(m_positions, m_velocities, m_pressures, tasktype);
                 m_positions.clear();
+                m_velocities.clear();
+                m_pressures.clear();
                 m_block = nullptr;
                 m_out = true;
                 m_in = true;
-                setStatus(block, steps_max);
+                setStatus(block, steps_max, tasktype);
             }
             return;
         }
@@ -310,10 +378,11 @@ public:
 
     void Interpolation(){
 
-        UnstructuredGrid::const_ptr grid = this->m_block->getGrid();
-        Vec<Scalar, 3>::const_ptr velo = this->m_block->getVelocityData();
-        Index cell = this->m_cell;
-        Vector3 point = this->m_position;
+        /*UnstructuredGrid::const_ptr grid = m_block->getGrid();
+        Vec<Scalar, 3>::const_ptr v_data = m_block->getVelocityData();
+        Vec<Scalar>::const_ptr p_data = m_block->getPressureData();
+        Index cell = m_cell;
+        Vector3 point = m_position;
         Index numvert = grid->el()[cell+1] - grid->el()[cell];
         Vector3 vert, d_vec;
         Scalar d, d_min;
@@ -342,10 +411,24 @@ public:
             }
         }
 
-        this->m_velocity << velo->x()[vert_dmin],
-                            velo->y()[vert_dmin],
-                            velo->z()[vert_dmin];
-        this->m_velocities.push_back(this->m_velocity);
+        m_velocity << v_data->x()[vert_dmin],
+                            v_data->y()[vert_dmin],
+                            v_data->z()[vert_dmin];
+        m_velocities.push_back(this->m_velocity);
+
+        if(p_data){
+            m_pressures.push_back(p_data->x()[vert_dmin]);
+        }*/
+
+        UnstructuredGrid::const_ptr grid = m_block->getGrid();
+        Vec<Scalar, 3>::const_ptr v_data = m_block->getVelocityData();
+        Vec<Scalar>::const_ptr p_data = m_block->getPressureData();
+        UnstructuredGrid::Interpolator interpolator = grid->getInterpolator(m_cell, m_position);
+        Scalar* u = v_data->x().data();
+        Scalar* v = v_data->y().data();
+        Scalar* w = v_data->z().data();
+        m_velocity = interpolator(u,v,w);
+        m_velocities.push_back(m_velocity);
     }
 
     void Integration(const Scalar &dt){
@@ -373,7 +456,7 @@ public:
 
         boost::mpi::broadcast(mpi_comm, m_position, root);
         boost::mpi::broadcast(mpi_comm, m_stepcount, root);
-        boost::mpi::all_reduce(mpi_comm, m_ingrid, std::logical_and<bool>());
+        m_ingrid = boost::mpi::all_reduce(mpi_comm, m_ingrid, std::logical_and<bool>());
 
         m_out = false;
         if(mpi_comm.rank()!=root){
@@ -426,7 +509,7 @@ bool Tracer::reduce(int timestep){
     Index steps_max = getIntParameter("steps_max");
     Index steps_comm = getIntParameter("steps_comm");
     Scalar dt = getFloatParameter("timestep");
-    Index tasktype = getIntParameter("taskType");
+    Index task_type = getIntParameter("taskType");
     boost::mpi::communicator world;
 
     if(data_in1.size()<numblocks){
@@ -461,7 +544,7 @@ bool Tracer::reduce(int timestep){
     //find cell and set status of particle objects
     for(Index i=0; i<numpoints; i++){
 
-        particle[i]->setStatus(block, steps_max);
+        particle[i]->setStatus(block, steps_max, task_type);
     }
 
     //erase inactive particles
@@ -506,7 +589,7 @@ bool Tracer::reduce(int timestep){
                 particle[i]->Integration(dt);
             }
 
-            particle[i]->setStatus(block, steps_max);
+            particle[i]->setStatus(block, steps_max, task_type);
 
             if(particle[i]->leftNode()){
 
@@ -522,7 +605,7 @@ bool Tracer::reduce(int timestep){
                 Index root = boost::mpi::all_reduce(world, sendlist[i], boost::mpi::minimum<Index>());
                 if(root<mpisize){
                     particle[i]->Communicator(world, root);
-                    particle[i]->setStatus(block, steps_max);
+                    particle[i]->setStatus(block, steps_max, task_type);
                     bool active = particle[i]->isActive();
                     active = boost::mpi::all_reduce(world, active, std::logical_or<bool>());
                     if(!active){
@@ -530,26 +613,26 @@ bool Tracer::reduce(int timestep){
                     }
                 }
             }
-        stepcount = 0;
-        }
+            ingrid = false;
+            for(Index i=0; i<numpoints; i++){
 
-        ingrid = false;
-        for(Index i=0; i<numpoints; i++){
+                if(particle[i]->inGrid()){
 
-            if(particle[i]->inGrid()){
-
-                ingrid = true;
-                break;
+                    ingrid = true;
+                    break;
+                }
             }
+            stepcount = 0;
         }
     }
 
-    switch(tasktype){
+    switch(task_type){
 
     case 0:
 
-        /*//add Points objects to output port
+        //add Points objects to output port
         for(Index i=0; i<numblocks; i++){
+
 
             std::vector<Points::ptr> points = block[i]->getPoints();
             Index numobjects = points.size();
@@ -559,16 +642,51 @@ bool Tracer::reduce(int timestep){
                     addObject("geom_out", points[j]);
                 }
             }
-        }*/
+
+            /*std::vector<Vec<Scalar, 3>::ptr> v_vec = block[i]->getInterpolVelo();
+            Vec<Scalar, 3>::ptr v;
+            for(Index j=0; j<numobjects; j++){
+                if(v_vec.size()>0){
+                    v = v_vec[j];
+                    addObject("data_out0", v);
+                }
+            }
+
+            if(data_in1[0]){
+                std::vector<Vec<Scalar>::ptr> p_vec = block[i]->getInterpolPress();
+                Vec<Scalar>::ptr p;
+                for(Index j=0; j<numobjects; j++){
+                    if(p_vec.size()>0){
+                        p = p_vec[j];
+                        addObject("data_in1", p);
+                    }
+                }
+            }*/
+        }
 
     case 1:
-
         //add Lines-objects to output port
         for(Index i=0; i<numblocks; i++){
 
             Lines::ptr lines = block[i]->getLines();
             if(lines->getNumElements()>0){
                 addObject("geom_out", lines);
+            }
+
+            std::vector<Vec<Scalar, 3>::ptr> v_vec = block[i]->getInterpolVelo();
+            Vec<Scalar, 3>::ptr v;
+            if(v_vec.size()>0){
+                v = v_vec[0];
+                addObject("data_out0", v);
+            }
+
+            if(data_in1[0]){
+                std::vector<Vec<Scalar>::ptr> p_vec = block[i]->getInterpolPress();
+                Vec<Scalar>::ptr p;
+                if(p_vec.size()>0){
+                    addObject("data_in1", p);
+                    p = p_vec[0];
+                }
             }
         }        
     }
