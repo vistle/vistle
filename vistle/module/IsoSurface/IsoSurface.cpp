@@ -186,11 +186,21 @@ bool IsoSurface::compute() {
 
       l.process();
 
+#ifndef CUTTINGSURFACE
+#if 0
       auto range = l.range();
       if (range.first < m_min)
          m_min = range.first;
       if (range.second > m_max)
          m_max = range.second;
+#else
+      auto minmax = dataS->getMinMax();
+      if (minmax.first[0] < m_min)
+         m_min = minmax.first[0];
+      if (minmax.second[0] > m_max)
+         m_max = minmax.second[0];
+#endif
+#endif
 
       Object::ptr result = l.result();
       Object::ptr mapresult = l.mapresult();

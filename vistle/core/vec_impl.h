@@ -40,9 +40,11 @@ template <class T, int Dim>
 std::pair<typename Vec<T,Dim>::Vector, typename Vec<T,Dim>::Vector> Vec<T,Dim>::getMinMax() const {
 
    Scalar smax = std::numeric_limits<Scalar>::max();
-   Vector min = Vector(smax, smax, smax), max = Vector(-smax, -smax, -smax);
+   Vector min, max;
    Index sz = getSize();
    for (int c=0; c<Dim; ++c) {
+      min[c] = smax;
+      max[c] = -smax;
       const Scalar *d = x(c).data();
       for (Index i=0; i<sz; ++i) {
          if (d[i] < min[c])
