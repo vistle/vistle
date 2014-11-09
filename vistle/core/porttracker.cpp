@@ -248,7 +248,7 @@ std::vector<std::string> PortTracker::getOutputPortNames(const int moduleID) con
    return getPortNames(moduleID, Port::OUTPUT);
 }
 
-std::vector<Port *> PortTracker::getPorts(const int moduleID, Port::Type type) const
+std::vector<Port *> PortTracker::getPorts(const int moduleID, Port::Type type, bool connectedOnly) const
 {
    std::vector<Port *> result;
 
@@ -272,8 +272,11 @@ std::vector<Port *> PortTracker::getPorts(const int moduleID, Port::Type type) c
       const auto &it2 = portmap.find(name);
       assert(it2 != portmap.end());
 
-      if (type == Port::ANY || it2->second->getType() == type)
-         result.push_back(it2->second);
+      if (type == Port::ANY || it2->second->getType() == type) {
+         if (!connectedOnly || !it2->second->connections().empty()) {
+            result.push_back(it2->second);
+         }
+      }
    }
 
    return result;
@@ -284,9 +287,19 @@ std::vector<Port *> PortTracker::getInputPorts(const int moduleID) const {
    return getPorts(moduleID, Port::INPUT);
 }
 
+std::vector<Port *> PortTracker::getConnectedInputPorts(const int moduleID) const {
+
+   return getPorts(moduleID, Port::INPUT, true);
+}
+
 std::vector<Port *> PortTracker::getOutputPorts(const int moduleID) const {
 
    return getPorts(moduleID, Port::OUTPUT);
+}
+
+std::vector<Port *> PortTracker::getConnectedOutputPorts(const int moduleID) const {
+
+   return getPorts(moduleID, Port::OUTPUT, true);
 }
 
 std::vector<message::Buffer> PortTracker::removeConnectionsWithModule(int moduleId) {
