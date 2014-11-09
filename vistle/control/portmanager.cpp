@@ -73,4 +73,45 @@ void PortManager::removeConnections(const int moduleID) {
    }
 }
 
+void PortManager::addObject(const Port *port) {
+
+   m_numReset[port] = 0;
+   ++m_numObject[port];
+}
+
+bool PortManager::hasObject(const Port *port) {
+
+   return m_numObject[port] > 0;
+}
+
+void PortManager::popObject(const Port *port) {
+
+   vassert(m_numObject[port] > 0);
+   --m_numObject[port];
+}
+
+void PortManager::resetInput(const Port *port) {
+
+   ++m_numReset[port];
+}
+
+bool PortManager::isReset(const Port *port) {
+
+   return m_numReset[port] > 0;
+}
+
+void PortManager::finishInput(const Port *port) {
+
+   vassert(m_numObject[port] == 0);
+   ++m_numFinish[port];
+}
+
+bool PortManager::isFinished(const Port *port) {
+
+   vassert(m_numObject[port] == 0);
+   vassert(m_numReset[port] == 0);
+   return m_numFinish[port] > 0;
+}
+
+
 } // namespace vistle

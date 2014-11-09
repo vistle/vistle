@@ -356,6 +356,13 @@ bool ClusterManager::handle(const message::Message &message) {
          break;
       }
 
+      case message::Message::ADDOBJECT: {
+
+         const message::AddObject &m = static_cast<const message::AddObject &>(message);
+         result = handlePriv(m);
+         break;
+      }
+
       case message::Message::EXECUTIONPROGRESS: {
 
          const message::ExecutionProgress &prog = static_cast<const message::ExecutionProgress &>(message);
@@ -374,13 +381,6 @@ bool ClusterManager::handle(const message::Message &message) {
 
          const message::Idle &idle = static_cast<const message::Idle &>(message);
          result = handlePriv(idle);
-         break;
-      }
-
-      case message::Message::ADDOBJECT: {
-
-         const message::AddObject &m = static_cast<const message::AddObject &>(message);
-         result = handlePriv(m);
          break;
       }
 
@@ -644,6 +644,104 @@ bool ClusterManager::handlePriv(const message::Compute &compute) {
    return true;
 }
 
+bool ClusterManager::handlePriv(const message::AddObject &addObj) {
+
+   Object::const_ptr obj = addObj.takeObject();
+   vassert(obj->refcount() >= 1);
+#if 0
+   std::cerr << "Module " << addObj.senderId() << ": "
+      << "AddObject " << addObj.getHandle() << " (" << obj->getName() << ")"
+      << " ref " << obj->refcount()
+      << " to port " << addObj.getPortName() << std::endl;
+#endif
+
+   Port *port = portManager().getPort(addObj.senderId(), addObj.getPortName());
+   if (!port) {
+      CERR << "AddObject ["
+         << addObj.getHandle() << "] to port ["
+         << addObj.getPortName() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
+      vassert(port);
+      return true;
+   }
+   const Port::PortSet *list = portManager().getConnectionList(port);
+   if (!list) {
+      CERR << "AddObject ["
+         << addObj.getHandle() << "] to port ["
+         << addObj.getPortName() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
+      vassert(list);
+      return true;
+   }
+
+   for (const Port *destPort: *list) {
+
+      int destId = destPort->getModuleID();
+
+      message::AddObject a(destPort->getName(), obj);
+      a.setSenderId(addObj.senderId());
+      a.setUuid(addObj.uuid());
+      a.setRank(addObj.rank());
+      sendMessage(destId, a);
+
+      portManager().addObject(destPort);
+
+      auto it = m_stateTracker.runningMap.find(destId);
+      if (it == m_stateTracker.runningMap.end()) {
+         CERR << "port connection to module that is not running" << std::endl;
+         vassert("port connection to module that is not running" == 0);
+         continue;
+      }
+      auto &destMod = it->second;
+
+      const auto &inputs = portManager().getConnectedInputPorts(destId);
+      bool allReady = true;
+      for (const auto input: portManager().getConnectedInputPorts(destId)) {
+         if (!portManager().hasObject(input)) {
+            allReady = false;
+            break;
+         }
+      }
+
+      if (allReady) {
+
+         for (const auto input: portManager().getConnectedInputPorts(destId)) {
+            portManager().popObject(input);
+         }
+
+         message::Compute c(destId);
+         c.setUuid(addObj.uuid());
+         c.setReason(message::Compute::AddObject);
+         if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
+            sendMessage(destId, c);
+         } else {
+            c.setAllRanks(true);
+            if (!Communicator::the().broadcastAndHandleMessage(c))
+               return false;
+         }
+
+         if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
+               || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
+            message::ObjectReceived recv(addObj.getPortName(), obj);
+            recv.setUuid(addObj.uuid());
+            recv.setSenderId(destId);
+
+            if (!Communicator::the().broadcastAndHandleMessage(recv))
+               return false;
+         }
+
+         switch (destMod.reducePolicy) {
+            case message::ReducePolicy::Never:
+               break;
+            case message::ReducePolicy::PerTimestep:
+               break;
+            case message::ReducePolicy::OverAll:
+               break;
+         }
+      }
+   }
+
+   return true;
+}
+
 bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
    RunningMap::iterator i = runningMap.find(prog.senderId());
@@ -680,11 +778,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             break;
          }
 
-         case message::ExecutionProgress::StartCompute: {
-            break;
-         }
-
-         case message::ExecutionProgress::FinishCompute: {
+         case message::ExecutionProgress::Finish/*Compute*/: {
             ++mod.ranksFinished;
             if (mod.ranksFinished == m_size) {
                vassert(mod.ranksStarted == m_size);
@@ -701,18 +795,13 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             break;
          }
 
+#if 0
          case message::ExecutionProgress::Finish: {
             mod.reducing = false;
             break;
          }
+#endif
 
-         case message::ExecutionProgress::Iteration: {
-            break;
-         }
-
-         case message::ExecutionProgress::Timestep: {
-            break;
-         }
       }
    } else {
       result = Communicator::the().forwardToMaster(prog);
@@ -854,81 +943,6 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
    }
 
    return handled;
-}
-
-bool ClusterManager::handlePriv(const message::AddObject &addObj) {
-
-   Object::const_ptr obj = addObj.takeObject();
-   vassert(obj->refcount() >= 1);
-#if 0
-   std::cerr << "Module " << addObj.senderId() << ": "
-      << "AddObject " << addObj.getHandle() << " (" << obj->getName() << ")"
-      << " ref " << obj->refcount()
-      << " to port " << addObj.getPortName() << std::endl;
-#endif
-
-   Port *port = portManager().getPort(addObj.senderId(), addObj.getPortName());
-   const Port::PortSet *list = NULL;
-   if (port) {
-      list = portManager().getConnectionList(port);
-   }
-   if (list) {
-      Port::PortSet::const_iterator pi;
-      for (pi = list->begin(); pi != list->end(); ++pi) {
-
-         int destId = (*pi)->getModuleID();
-
-         message::AddObject a((*pi)->getName(), obj);
-         a.setSenderId(addObj.senderId());
-         a.setUuid(addObj.uuid());
-         a.setRank(addObj.rank());
-         sendMessage(destId, a);
-
-         auto it = m_stateTracker.runningMap.find(destId);
-         if (it == m_stateTracker.runningMap.end()) {
-            CERR << "port connection to module that is not running" << std::endl;
-            vassert("port connection to module that is not running" == 0);
-            continue;
-         }
-         auto &destMod = it->second;
-
-         message::Compute c(destId);
-         c.setUuid(addObj.uuid());
-         c.setReason(message::Compute::AddObject);
-         if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
-            sendMessage(destId, c);
-         } else {
-            c.setAllRanks(true);
-            if (!Communicator::the().broadcastAndHandleMessage(c))
-               return false;
-         }
-
-         if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
-            || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
-            message::ObjectReceived recv(addObj.getPortName(), obj);
-            recv.setUuid(addObj.uuid());
-            recv.setSenderId(destId);
-
-            if (!Communicator::the().broadcastAndHandleMessage(recv))
-               return false;
-         }
-
-         switch (destMod.reducePolicy) {
-            case message::ReducePolicy::Never:
-               break;
-            case message::ReducePolicy::PerTimestep:
-               break;
-            case message::ReducePolicy::OverAll:
-               break;
-         }
-      }
-   }
-   else
-      CERR << "AddObject ["
-         << addObj.getHandle() << "] to port ["
-         << addObj.getPortName() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
-
-   return true;
 }
 
 bool ClusterManager::handlePriv(const message::Barrier &barrier) {
