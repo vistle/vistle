@@ -26,9 +26,11 @@ class V_CONTROLEXPORT PortManager: public PortTracker {
 
    void resetInput(const Port *port);
    bool isReset(const Port *port);
+   void popReset(const Port *port);
 
    void finishInput(const Port *port);
    bool isFinished(const Port *port);
+   void popFinish(const Port *port);
 
  private:
 

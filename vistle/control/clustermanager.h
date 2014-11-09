@@ -70,8 +70,7 @@ class V_CONTROLEXPORT ClusterManager {
    bool handlePriv(const message::Connect &connect);
    bool handlePriv(const message::Disconnect &disc);
    bool handlePriv(const message::ModuleExit &moduleExit);
-   bool handlePriv(const message::Compute &compute);
-   bool handlePriv(const message::Reduce &reduce);
+   bool handlePriv(const message::Execute &exec);
    bool handlePriv(const message::ExecutionProgress &prog);
    bool handlePriv(const message::Busy &busy);
    bool handlePriv(const message::Idle &idle);

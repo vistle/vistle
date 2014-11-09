@@ -343,16 +343,10 @@ bool ClusterManager::handle(const message::Message &message) {
          break;
       }
 
-      case message::Message::COMPUTE: {
+      case message::Message::EXECUTE: {
 
-         const message::Compute &comp = static_cast<const message::Compute &>(message);
-         result = handlePriv(comp);
-         break;
-      }
-
-      case message::Message::REDUCE: {
-         const message::Reduce &red = static_cast<const message::Reduce &>(message);
-         result = handlePriv(red);
+         const message::Execute &exec = static_cast<const message::Execute &>(message);
+         result = handlePriv(exec);
          break;
       }
 
@@ -627,17 +621,17 @@ bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
    return true;
 }
 
-bool ClusterManager::handlePriv(const message::Compute &compute) {
+bool ClusterManager::handlePriv(const message::Execute &exec) {
 
-   if (compute.senderId() >= Id::ModuleBase) {
+   if (exec.senderId() >= Id::ModuleBase) {
 
-      sendHub(compute);
+      sendHub(exec);
    } else {
 
-      vassert (compute.getModule() >= Id::ModuleBase);
-      RunningMap::iterator i = runningMap.find(compute.getModule());
+      vassert (exec.getModule() >= Id::ModuleBase);
+      RunningMap::iterator i = runningMap.find(exec.getModule());
       if (i != runningMap.end()) {
-         i->second.sendQueue->send(compute);
+         i->second.sendQueue->send(exec);
       }
    }
 
@@ -692,7 +686,6 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
       }
       auto &destMod = it->second;
 
-      const auto &inputs = portManager().getConnectedInputPorts(destId);
       bool allReady = true;
       for (const auto input: portManager().getConnectedInputPorts(destId)) {
          if (!portManager().hasObject(input)) {
@@ -707,9 +700,8 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
             portManager().popObject(input);
          }
 
-         message::Compute c(destId);
+         message::Execute c(message::Execute::ComputeObject, destId);
          c.setUuid(addObj.uuid());
-         c.setReason(message::Compute::AddObject);
          if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
             sendMessage(destId, c);
          } else {
@@ -726,15 +718,6 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
 
             if (!Communicator::the().broadcastAndHandleMessage(recv))
                return false;
-         }
-
-         switch (destMod.reducePolicy) {
-            case message::ReducePolicy::Never:
-               break;
-            case message::ReducePolicy::PerTimestep:
-               break;
-            case message::ReducePolicy::OverAll:
-               break;
          }
       }
    }
@@ -754,89 +737,96 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       return false;
    }
 
-   //FIXME
-   return true;
-
    // initiate reduction if requested by module
    auto &mod = i->second;
    auto &mod2 = i2->second;
-   bool forward = true;
-   if (mod2.reducePolicy != message::ReducePolicy::Never
-         && prog.stage() == message::ExecutionProgress::Finish
-         && !mod.reducing) {
-      // will be sent after reduce()
-      forward = false;
+
+   const bool handleOnMaster = mod2.reducePolicy != message::ReducePolicy::Never;
+   if (handleOnMaster && m_rank != 0) {
+      return Communicator::the().forwardToMaster(prog);
    }
 
+   bool readyForPrepare = false, readyForReduce = false;
    bool result = true;
-   if (m_rank == 0) {
-      std::cerr << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << "/" << prog.rank() << std::endl;
-      switch (prog.stage()) {
-         case message::ExecutionProgress::Start: {
+   //std::cerr << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << "/" << prog.rank() << std::endl;
+   switch (prog.stage()) {
+      case message::ExecutionProgress::Start: {
+         readyForPrepare = true;
+         if (handleOnMaster) {
             vassert(mod.ranksFinished < m_size);
             ++mod.ranksStarted;
-            break;
+            readyForPrepare = mod.ranksStarted==m_size;
          }
+         break;
+      }
 
-         case message::ExecutionProgress::Finish/*Compute*/: {
+      case message::ExecutionProgress::Finish: {
+         readyForReduce = true;
+         if (handleOnMaster) {
             ++mod.ranksFinished;
             if (mod.ranksFinished == m_size) {
                vassert(mod.ranksStarted == m_size);
                mod.ranksFinished = 0;
                mod.ranksStarted = 0;
-
-               vassert(!mod.reducing);
-               if (mod2.reducePolicy != message::ReducePolicy::Never) {
-                  mod.reducing = true;
-                  message::Reduce red(prog.senderId());
-                  Communicator::the().broadcastAndHandleMessage(red);
-               }
+            } else {
+               readyForReduce = false;
             }
-            break;
          }
-
-#if 0
-         case message::ExecutionProgress::Finish: {
-            mod.reducing = false;
-            break;
-         }
-#endif
-
+         break;
       }
-   } else {
-      result = Communicator::the().forwardToMaster(prog);
    }
 
-   // forward message to all directly connected down-stream modules, but only once - even if there are several connections
-   if (forward) {
-      std::set<int> connectedIds;
-      auto out = portManager().getOutputPorts(prog.senderId());
-      for (Port *port: out) {
-         const Port::PortSet *list = NULL;
-         if (port) {
-            list = portManager().getConnectionList(port);
-         }
-         if (list) {
-            Port::PortSet::const_iterator pi;
-            for (pi = list->begin(); pi != list->end(); ++pi) {
+   //std::cerr << prog.senderId() << " ready for prepare: " << readyForPrepare << ", reduce: " << readyForReduce << std::endl;
+   for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
+      const Port::PortSet *list = portManager().getConnectionList(output);
+      for (const Port *destPort: *list) {
+         if (readyForPrepare)
+            portManager().resetInput(destPort);
+         if (readyForReduce)
+            portManager().finishInput(destPort);
+      }
+   }
 
-               int destId = (*pi)->getModuleID();
-               connectedIds.insert(destId);
+   for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
+      const Port::PortSet *list = portManager().getConnectionList(output);
+      for (const Port *destPort: *list) {
+         bool allReadyForPrepare = true, allReadyForReduce = true;
+         int destId = destPort->getModuleID();
+         auto allInputs = portManager().getConnectedInputPorts(destId);
+         for (auto input: allInputs) {
+            if (!portManager().isReset(input))
+               allReadyForPrepare = false;
+            if (!portManager().isFinished(input))
+               allReadyForReduce = false;
+         }
+         if (allReadyForPrepare) {
+            for (auto input: allInputs) {
+               portManager().popReset(input);
+            }
+            auto exec = message::Execute(message::Execute::Prepare, destId);
+            if (handleOnMaster) {
+               if (!Communicator::the().broadcastAndHandleMessage(exec))
+                  return false;
+            } else {
+               sendMessage(destId, exec);
             }
          }
-      }
-      for (int id: connectedIds) {
-         sendMessage(id, prog);
+         if (allReadyForReduce) {
+            for (auto input: allInputs) {
+               portManager().popFinish(input);
+            }
+            auto exec = message::Execute(message::Execute::Reduce, destId);
+            if (handleOnMaster) {
+               if (!Communicator::the().broadcastAndHandleMessage(exec))
+                  return false;
+            } else {
+               sendMessage(destId, exec);
+            }
+         }
       }
    }
 
    return result;
-}
-
-bool ClusterManager::handlePriv(const message::Reduce &reduce) {
-
-   sendMessage(reduce.module(), reduce);
-   return true;
 }
 
 bool ClusterManager::handlePriv(const message::Busy &busy) {

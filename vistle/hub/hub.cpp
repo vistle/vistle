@@ -611,9 +611,9 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
 
-         case Message::COMPUTE: {
-            auto &comp = static_cast<const Compute &>(msg);
-            handlePriv(comp);
+         case Message::EXECUTE: {
+            auto &exec = static_cast<const Execute &>(msg);
+            handlePriv(exec);
             break;
          }
 
@@ -841,17 +841,17 @@ bool Hub::processScript() {
 #endif
 }
 
-bool Hub::handlePriv(const message::Compute &compute) {
+bool Hub::handlePriv(const message::Execute &exec) {
 
-   message::Compute toSend(compute);
-   if (compute.getExecutionCount() > m_execCount)
-      m_execCount = compute.getExecutionCount();
-   if (compute.getExecutionCount() < 0)
+   message::Execute toSend(exec);
+   if (exec.getExecutionCount() > m_execCount)
+      m_execCount = exec.getExecutionCount();
+   if (exec.getExecutionCount() < 0)
       toSend.setExecutionCount(++m_execCount);
 
-   if (compute.getModule() >= Id::ModuleBase) {
-      const int hub = m_stateTracker.getHub(compute.getModule());
-      toSend.setDestId(compute.getModule());
+   if (exec.getModule() >= Id::ModuleBase) {
+      const int hub = m_stateTracker.getHub(exec.getModule());
+      toSend.setDestId(exec.getModule());
       sendManager(toSend, hub);
    } else {
       // execute all sources in dataflow graph

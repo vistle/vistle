@@ -75,7 +75,6 @@ void PortManager::removeConnections(const int moduleID) {
 
 void PortManager::addObject(const Port *port) {
 
-   m_numReset[port] = 0;
    ++m_numObject[port];
 }
 
@@ -100,6 +99,11 @@ bool PortManager::isReset(const Port *port) {
    return m_numReset[port] > 0;
 }
 
+void PortManager::popReset(const Port *port) {
+
+   --m_numReset[port];
+}
+
 void PortManager::finishInput(const Port *port) {
 
    vassert(m_numObject[port] == 0);
@@ -111,6 +115,11 @@ bool PortManager::isFinished(const Port *port) {
    vassert(m_numObject[port] == 0);
    vassert(m_numReset[port] == 0);
    return m_numFinish[port] > 0;
+}
+
+void PortManager::popFinish(const Port *port) {
+
+   --m_numFinish[port];
 }
 
 

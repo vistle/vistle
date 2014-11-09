@@ -88,8 +88,7 @@ class V_COREEXPORT Message {
       (BUSY)
       (IDLE)
       (EXECUTIONPROGRESS)
-      (COMPUTE)
-      (REDUCE)
+      (EXECUTE)
       (ADDOBJECT)
       (OBJECTRECEIVED)
       (ADDPORT)
@@ -311,11 +310,18 @@ class V_COREEXPORT ModuleExit: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(ModuleExit) <= Message::MESSAGE_SIZE);
 
-//! trigger computation for a module
-class V_COREEXPORT Compute: public Message {
+//! trigger execution of a module function
+class V_COREEXPORT Execute: public Message {
 
  public:
-   Compute(const int module=Id::Broadcast, const int count=-1);
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(What,
+      (Prepare) // call prepare()
+      (ComputeExecute) // call compute() - because this module was executed
+      (ComputeObject) // call compute() - because objects have been received
+      (Reduce) // call reduce()
+   )
+
+   Execute(What what=Execute::ComputeExecute, const int module=Id::Broadcast, const int count=-1);
 
    void setModule(int );
    int getModule() const;
@@ -325,35 +331,17 @@ class V_COREEXPORT Compute: public Message {
    bool allRanks() const;
    void setAllRanks(bool allRanks);
 
-   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Reason,
-      (Execute)
-      (AddObject)
-   )
-   Reason reason() const;
-   void setReason(Reason r);
+   What what() const;
+   void setWhat(What r);
 
 private:
-   bool m_allRanks; //!< whether compute should be broadcasted across all MPI ranks
+   bool m_allRanks; //!< whether execute should be broadcasted across all MPI ranks
    int module; //!< destination module, -1: all sources
-   int executionCount; //!< count of execution which triggered this compute
-   Reason m_reason; //!< reason why this message was generated
+   int executionCount; //!< count of execution which triggered this execute
+   What m_what; //!< reason why this message was generated
 };
-BOOST_STATIC_ASSERT(sizeof(Compute) <= Message::MESSAGE_SIZE);
-V_ENUM_OUTPUT_OP(Reason, Compute)
-
-//! trigger reduce() for a module
-class V_COREEXPORT Reduce: public Message {
-
- public:
-   Reduce(int module, int timestep=-1);
-   int module() const;
-   int timestep() const;
-
- private:
-   int m_module;
-   int m_timestep;
-};
-BOOST_STATIC_ASSERT(sizeof(Reduce) <= Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(Execute) <= Message::MESSAGE_SIZE);
+V_ENUM_OUTPUT_OP(What, Execute)
 
 //! indicate that a module has started computing
 class V_COREEXPORT Busy: public Message {
@@ -698,21 +686,15 @@ class V_COREEXPORT ExecutionProgress: public Message {
 
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Progress,
-      (Start) //< execution starts
-      (StartCompute) //< compute() will be called for first timestep/iteration
-      (FinishCompute) //< compute() has been called for final timestep/iteration
-      (Iteration)
-      (Timestep)
-      (Finish) //< compute() or - if applicable, reduce() - has finished
+      (Start) //< execution starts - if applicable, prepare() will be invoked
+      (Finish) //< execution finishes - if applicable, reduce() has finished
    )
-   ExecutionProgress(Progress stage, int step=-1);
+   ExecutionProgress(Progress stage);
    Progress stage() const;
    void setStage(Progress stage);
-   int step() const;
 
  private:
    Progress m_stage;
-   int m_step;
 };
 BOOST_STATIC_ASSERT(sizeof(ExecutionProgress) <= Message::MESSAGE_SIZE);
 V_ENUM_OUTPUT_OP(Progress, ExecutionProgress)

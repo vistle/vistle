@@ -88,7 +88,7 @@ private:
    unsigned m_barrierReached;
    message::uuid_t m_barrierUuid;
 
-   bool handlePriv(const message::Compute &compute);
+   bool handlePriv(const message::Execute &exec);
    bool handlePriv(const message::Barrier &barrier);
    bool handlePriv(const message::BarrierReached &reached);
 };

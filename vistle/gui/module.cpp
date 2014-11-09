@@ -63,7 +63,7 @@ Module::~Module()
 
 void Module::execModule()
 {
-   vistle::message::Compute m(m_id, -1);
+   vistle::message::Execute m(vistle::message::Execute::ComputeExecute, m_id);
    vistle::VistleConnection::the().sendMessage(m);
 }
 

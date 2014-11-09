@@ -472,9 +472,9 @@ void VistlePlugin::requestQuit(bool killSession)
 
 bool VistlePlugin::executeAll() {
 
-   message::Compute comp; // execute all sources in data flow graph
-   comp.setDestId(message::Id::MasterHub);
-   m_module->sendMessage(comp);
+   message::Execute exec; // execute all sources in data flow graph
+   exec.setDestId(message::Id::MasterHub);
+   m_module->sendMessage(exec);
    return true;
 }
 

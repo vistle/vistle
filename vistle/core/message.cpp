@@ -290,71 +290,53 @@ bool ModuleExit::isForwarded() const {
    return forwarded;
 }
 
-Compute::Compute(const int m, const int count)
-   : Message(Message::COMPUTE, sizeof(Compute))
+Execute::Execute(Execute::What what, const int module, const int count)
+   : Message(Message::EXECUTE, sizeof(Execute))
    , m_allRanks(false)
-   , module(m)
+   , module(module)
    , executionCount(count)
-   , m_reason(Compute::Execute)
+   , m_what(what)
 {
 }
 
-void Compute::setModule(int m) {
+void Execute::setModule(int m) {
 
    module = m;
 }
 
-int Compute::getModule() const {
+int Execute::getModule() const {
 
    return module;
 }
 
-void Compute::setExecutionCount(int count) {
+void Execute::setExecutionCount(int count) {
 
    executionCount = count;
 }
 
-int Compute::getExecutionCount() const {
+int Execute::getExecutionCount() const {
 
    return executionCount;
 }
 
-bool Compute::allRanks() const
+bool Execute::allRanks() const
 {
    return m_allRanks;
 }
 
-void Compute::setAllRanks(bool allRanks)
+void Execute::setAllRanks(bool allRanks)
 {
    m_allRanks = allRanks;
 }
 
-Compute::Reason Compute::reason() const
+Execute::What Execute::what() const
 {
-   return m_reason;
+   return m_what;
 }
 
-void Compute::setReason(Compute::Reason r)
+void Execute::setWhat(Execute::What what)
 {
-   m_reason = r;
-}
-
-
-Reduce::Reduce(int module, int timestep)
-: Message(Message::REDUCE, sizeof(Reduce))
-, m_module(module)
-, m_timestep(timestep)
-{
-}
-
-int Reduce::module() const {
-
-   return m_module;
-}
-
-int Reduce::timestep() const {
-
-   return m_timestep;
+   m_what = what;
 }
 
 
@@ -979,10 +961,9 @@ ReducePolicy::Reduce ReducePolicy::policy() const {
    return m_reduce;
 }
 
-ExecutionProgress::ExecutionProgress(Progress stage, int step)
+ExecutionProgress::ExecutionProgress(Progress stage)
 : Message(Message::EXECUTIONPROGRESS, sizeof(ExecutionProgress))
 , m_stage(stage)
-, m_step(step)
 {
 }
 
@@ -994,11 +975,6 @@ ExecutionProgress::Progress ExecutionProgress::stage() const {
 void ExecutionProgress::setStage(ExecutionProgress::Progress stage) {
 
    m_stage = stage;
-}
-
-int ExecutionProgress::step() const {
-
-   return m_step;
 }
 
 Trace::Trace(int module, Message::Type messageType, bool onoff)
@@ -1071,14 +1047,14 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       << ", rank: " << m.rank();
 
    switch (m.type()) {
-      case Message::COMPUTE: {
-         auto mm = static_cast<const Compute &>(m);
-         s << ", module: " << mm.getModule() << ", execcount: " << mm.getExecutionCount();
+      case Message::EXECUTE: {
+         auto mm = static_cast<const Execute &>(m);
+         s << ", module: " << mm.getModule() << ", what: " << mm.what() << ", execcount: " << mm.getExecutionCount();
          break;
       }
       case Message::EXECUTIONPROGRESS: {
          auto mm = static_cast<const ExecutionProgress &>(m);
-         s << ", stage: " << ExecutionProgress::toString(mm.stage()) << ", step: " << mm.step();
+         s << ", stage: " << ExecutionProgress::toString(mm.stage());
          break;
       }
       case Message::ADDPARAMETER: {
@@ -1137,8 +1113,7 @@ void Router::initRoutingTable() {
    rt[M::MODULEEXIT]            = Broadcast|Track|DestUi;
    rt[M::KILL]                  = DestModules|HandleOnDest;
    rt[M::QUIT]                  = Broadcast|HandleOnMaster|HandleOnHub|HandleOnNode;
-   rt[M::COMPUTE]               = Special|HandleOnMaster;
-   rt[M::REDUCE]                = DestModules;
+   rt[M::EXECUTE]               = Special|HandleOnMaster;
    rt[M::MODULEAVAILABLE]       = Track|DestHub|DestUi|HandleOnHub;
    rt[M::ADDPORT]               = Broadcast|Track|DestUi|TriggerQueue;
    rt[M::ADDPARAMETER]          = Broadcast|Track|DestUi|TriggerQueue;

@@ -220,9 +220,9 @@ void vistle::VistleConnection::resetDataFlowNetwork() const
 void VistleConnection::executeSources() const
 {
    mutex_lock lock(m_mutex);
-   message::Compute comp;
-   comp.setDestId(message::Id::MasterHub);
-   sendMessage(comp);
+   message::Execute exec;
+   exec.setDestId(message::Id::MasterHub);
+   sendMessage(exec);
 }
 
 void VistleConnection::connect(const Port *from, const Port *to) const {

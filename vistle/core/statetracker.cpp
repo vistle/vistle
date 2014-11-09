@@ -270,7 +270,7 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
          handled = handlePriv(modexit);
          break;
       }
-      case Message::COMPUTE: {
+      case Message::EXECUTE: {
          break;
       }
       case Message::ADDOBJECT: {
@@ -366,9 +366,6 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
          break;
       }
       case Message::EXECUTIONPROGRESS: {
-         break;
-      }
-      case Message::REDUCE: {
          break;
       }
       case Message::LOCKUI: {
@@ -554,12 +551,7 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit) {
    return true;
 }
 
-bool StateTracker::handlePriv(const message::Compute &compute) {
-
-   return true;
-}
-
-bool StateTracker::handlePriv(const message::Reduce &reduce) {
+bool StateTracker::handlePriv(const message::Execute &execute) {
 
    return true;
 }

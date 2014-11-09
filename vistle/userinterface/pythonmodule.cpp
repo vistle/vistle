@@ -404,7 +404,7 @@ static void compute(int id=message::Id::Broadcast) {
 #ifdef DEBUG
    std::cerr << "Python: compute " << id << std::endl;
 #endif
-   message::Compute m(id);
+   message::Execute m(message::Execute::ComputeExecute, id);
    if (id == message::Id::Broadcast)
       m.setDestId(message::Id::MasterHub);
    else

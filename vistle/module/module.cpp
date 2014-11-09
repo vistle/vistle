@@ -1139,132 +1139,81 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::COMPUTE: {
+      case message::Message::EXECUTE: {
 
-         const message::Compute *comp =
-            static_cast<const message::Compute *>(message);
+         const Execute *exec =
+            static_cast<const Execute *>(message);
 
-         message::Busy busy;
-         busy.setUuid(comp->uuid());
+         bool ret = true;
+
+         Busy busy;
+         busy.setUuid(exec->uuid());
          busy.setDestId(Id::LocalManager);
          sendMessage(busy);
-         if (comp->reason() == message::Compute::Execute) {
-            prepareWrapper(comp);
+         if (exec->what() == Execute::ComputeExecute
+             || exec->what() == Execute::Prepare ) {
+            ret &= prepareWrapper(exec);
          }
-         //vassert(m_executionDepth == 0);
-         ++m_executionDepth;
 
-         if (m_executionCount < comp->getExecutionCount())
-            m_executionCount = comp->getExecutionCount();
+         if (exec->what() == Execute::ComputeExecute
+             || exec->what() == Execute::ComputeObject) {
+            //vassert(m_executionDepth == 0);
+            ++m_executionDepth;
 
-         if (comp->getExecutionCount() > 0) {
-            // Compute not triggered by adding an object, get objects from cache
-            for (std::map<std::string, Port *>::iterator pit = inputPorts.begin();
-                  pit != inputPorts.end();
-                  ++pit) {
-               pit->second->objects() = m_cache.getObjects(pit->first);
+            if (m_executionCount < exec->getExecutionCount())
+               m_executionCount = exec->getExecutionCount();
+
+            if (exec->getExecutionCount() > 0) {
+               // Compute not triggered by adding an object, get objects from cache
+               for (std::map<std::string, Port *>::iterator pit = inputPorts.begin();
+                    pit != inputPorts.end();
+                    ++pit) {
+                  pit->second->objects() = m_cache.getObjects(pit->first);
+               }
             }
+
+            if (exec->allRanks()) {
+               MPI_Allreduce(&m_executionCount, &m_executionCount, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+            }
+
+            /*
+            std::cerr << "    module [" << name() << "] [" << id() << "] ["
+               << rank() << "/" << size << "] compute" << std::endl;
+            */
+            bool computeOk = false;
+            try {
+               computeOk = compute();
+            } catch (boost::interprocess::interprocess_exception &e) {
+               std::cout << name() << "::compute(): interprocess_exception: " << e.what()
+                         << ", error code: " << e.get_error_code()
+                         << ", native error: " << e.get_native_error()
+                         << std::endl << std::flush;
+               std::cerr << name() << "::compute(): interprocess_exception: " << e.what()
+                         << ", error code: " << e.get_error_code()
+                         << ", native error: " << e.get_native_error()
+                         << std::endl;
+            } catch (std::exception &e) {
+               std::cout << name() << "::compute(): exception - " << e.what() << std::endl << std::flush;
+               std::cerr << name() << "::compute(): exception - " << e.what() << std::endl;
+            }
+            ret &= computeOk;
+
+            --m_executionDepth;
+            //vassert(m_executionDepth == 0);
          }
 
-         if (comp->allRanks()) {
-            MPI_Allreduce(&m_executionCount, &m_executionCount, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-         }
-
-         /*
-         std::cerr << "    module [" << name() << "] [" << id() << "] ["
-                   << rank() << "/" << size << "] compute" << std::endl;
-         */
-         bool ret = false;
-         try {
-            ret = compute();
-         } catch (boost::interprocess::interprocess_exception &e) {
-            std::cout << name() << "::compute(): interprocess_exception: " << e.what()
-               << ", error code: " << e.get_error_code()
-               << ", native error: " << e.get_native_error()
-               << std::endl << std::flush;
-            std::cerr << name() << "::compute(): interprocess_exception: " << e.what()
-               << ", error code: " << e.get_error_code()
-               << ", native error: " << e.get_native_error()
-               << std::endl;
-         } catch (std::exception &e) {
-            std::cout << name() << "::compute(): exception - " << e.what() << std::endl << std::flush;
-            std::cerr << name() << "::compute(): exception - " << e.what() << std::endl;
-         }
-
-         --m_executionDepth;
-         //vassert(m_executionDepth == 0);
-         if (comp->reason() == message::Compute::Execute) {
-            reduceWrapper(comp);
+         if (exec->what() == Execute::ComputeExecute
+             || exec->what() == Execute::Reduce) {
+            ret &= reduceWrapper(exec);
          }
          message::Idle idle;
-         idle.setUuid(comp->uuid());
+         idle.setUuid(exec->uuid());
          idle.setDestId(Id::LocalManager);
          sendMessage(idle);
 
          return ret;
          break;
       }
-
-      case message::Message::REDUCE: {
-
-         const message::Reduce *red = static_cast<const message::Reduce *>(message);
-         vassert(reducePolicy() != message::ReducePolicy::Never);
-
-         message::Busy busy;
-         busy.setUuid(red->uuid());
-         busy.setDestId(Id::LocalManager);
-         sendMessage(busy);
-         bool ret = reduceWrapper(red);
-         message::Idle idle;
-         idle.setUuid(red->uuid());
-         idle.setDestId(Id::LocalManager);
-         sendMessage(idle);
-
-         return ret;
-         break;
-      }
-
-#if 0
-      case message::Message::EXECUTIONPROGRESS: {
-         
-         const message::ExecutionProgress *prog =
-            static_cast<const message::ExecutionProgress *>(message);
-
-         message::ExecutionProgress forward(*prog);
-         forward.setSenderId(id());
-
-         switch (prog->stage()) {
-            case message::ExecutionProgress::Start:
-               if (m_executionDepth == 0) {
-                  prepareWrapper();
-                  sendMessage(forward);
-               }
-               ++m_executionDepth;
-               break;
-            case message::ExecutionProgress::StartCompute:
-               sendMessage(forward);
-               break;
-            case message::ExecutionProgress::FinishCompute:
-               break;
-            case message::ExecutionProgress::Finish:
-               --m_executionDepth;
-               if (m_executionDepth == 0) {
-                  forward.setStage(message::ExecutionProgress::FinishCompute);
-                  sendMessage(forward);
-                  if (reducePolicy() == message::ReducePolicy::Never) {
-                     forward.setStage(message::ExecutionProgress::Finish);
-                     sendMessage(forward);
-                  }
-               }
-               break;
-            case message::ExecutionProgress::Iteration:
-               break;
-            case message::ExecutionProgress::Timestep:
-               break;
-         }
-         break;
-      }
-#endif
 
       case message::Message::ADDOBJECT: {
 
