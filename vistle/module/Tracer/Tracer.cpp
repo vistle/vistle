@@ -73,7 +73,7 @@ private:
     Vec<Scalar, 3>::const_ptr m_vdata;
     Vec<Scalar>::const_ptr m_pdata;
     Lines::ptr m_lines;
-    std::vector<Points::ptr> m_points;  //Points::ptr?
+    std::vector<Points::ptr> m_points;
     std::vector<Vec<Scalar, 3>::ptr> m_v_interpol;
     std::vector<Vec<Scalar>::ptr> m_p_interpol;
 
@@ -457,8 +457,9 @@ public:
         boost::mpi::broadcast(mpi_comm, m_position, root);
         boost::mpi::broadcast(mpi_comm, m_stepcount, root);
         //m_ingrid = boost::mpi::all_reduce(mpi_comm, m_ingrid, std::logical_and<bool>());
-        boost::mpi::broadcast(mpi_comm, m_ingrid, root);
-
+        if(mpi_comm.rank()==root && !m_ingrid){
+            boost::mpi::broadcast(mpi_comm, m_ingrid, root);
+        }
         m_out = false;
         if(mpi_comm.rank()!=root){
 
@@ -546,31 +547,6 @@ bool Tracer::reduce(int timestep){
     for(Index i=0; i<numpoints; i++){
 
         particle[i]->setStatus(block, steps_max, task_type);
-    }
-
-    //erase inactive particles
-    {Index i=0;
-        while(i<particle.size()){
-
-            bool active = particle[i]->isActive();
-            active = boost::mpi::all_reduce(world, active, std::logical_or<bool>());
-
-            if(!active){
-                particle.erase(particle.begin()+i);
-            }
-            else{i++;}
-    }}
-
-    if(particle.size() ==0){
-        if(world.rank() ==0){
-            std::cout << "0 particles inside grid" << std::endl;
-        }
-        return true;
-    }
-    else {
-        if(world.rank() ==0){
-            std::cout << particle.size() << " of " << numpoints << " particles inside grid" << std::endl;
-        }
     }
 
     Index stepcount=0;
