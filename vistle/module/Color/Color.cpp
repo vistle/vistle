@@ -78,29 +78,54 @@ void Color::getMinMax(vistle::Object::const_ptr object,
                       vistle::Scalar & min, vistle::Scalar & max) {
 
    
-   Vec<Scalar>::const_ptr data(Vec<Scalar>::as(object));
-   if (!data)
-      return;
-
-   const vistle::Scalar *x = &data->x()[0];
-   size_t numElements = data->getSize();
+   if (Vec<Scalar>::const_ptr scal = Vec<Scalar>::as(object)) {
+      const vistle::Scalar *x = &scal->x()[0];
+      size_t numElements = scal->getSize();
 #pragma omp parallel
-   {
-      Scalar tmin = std::numeric_limits<Scalar>::max();
-      Scalar tmax = -std::numeric_limits<Scalar>::max();
-#pragma omp for
-      for (size_t index = 0; index < numElements; index ++) {
-         if (x[index] < tmin)
-            tmin = x[index];
-         if (x[index] > tmax)
-            tmax = x[index];
-      }
-#pragma omp critical
       {
-         if (tmin < min)
-            min = tmin;
-         if (tmax > max)
-            max = tmax;
+         Scalar tmin = std::numeric_limits<Scalar>::max();
+         Scalar tmax = -std::numeric_limits<Scalar>::max();
+#pragma omp for
+         for (size_t index = 0; index < numElements; index ++) {
+            if (x[index] < tmin)
+               tmin = x[index];
+            if (x[index] > tmax)
+               tmax = x[index];
+         }
+#pragma omp critical
+         {
+            if (tmin < min)
+               min = tmin;
+            if (tmax > max)
+               max = tmax;
+         }
+      }
+   }
+
+   if (Vec<Scalar,3>::const_ptr vec = Vec<Scalar,3>::as(object)) {
+      const vistle::Scalar *x = vec->x().data();
+      const vistle::Scalar *y = vec->y().data();
+      const vistle::Scalar *z = vec->z().data();
+      size_t numElements = vec->getSize();
+#pragma omp parallel
+      {
+         Scalar tmin = std::numeric_limits<Scalar>::max();
+         Scalar tmax = -std::numeric_limits<Scalar>::max();
+#pragma omp for
+         for (size_t index = 0; index < numElements; index ++) {
+            Scalar v = Vector(x[index], y[index], z[index]).norm();
+            if (v < tmin)
+               tmin = v;
+            if (v > tmax)
+               tmax = v;
+         }
+#pragma omp critical
+         {
+            if (tmin < min)
+               min = tmin;
+            if (tmax > max)
+               max = tmax;
+         }
       }
    }
 }
@@ -129,6 +154,32 @@ vistle::Object::ptr Color::addTexture(vistle::Object::const_ptr object,
 #pragma omp parallel for
       for (size_t index = 0; index < numElem; index ++)
          tc[index] = (x[index] - min) / range;
+
+      return tex;
+   }
+
+   if (Vec<Scalar,3>::const_ptr f = Vec<Scalar,3>::as(object)) {
+
+      const size_t numElem = f->getSize();
+      const vistle::Scalar *x = f->x().data();
+      const vistle::Scalar *y = f->y().data();
+      const vistle::Scalar *z = f->z().data();
+
+      vistle::Texture1D::ptr tex(new vistle::Texture1D(cmap.width, min, max));
+      tex->setMeta(object->meta());
+
+      unsigned char *pix = &tex->pixels()[0];
+#pragma omp parallel for
+      for (size_t index = 0; index < cmap.width * 4; index ++)
+         pix[index] = cmap.data[index];
+
+      tex->coords().resize(numElem);
+      auto tc = tex->coords().data();
+#pragma omp parallel for
+      for (size_t index = 0; index < numElem; index ++) {
+         Scalar v = Vector(x[index], y[index], z[index]).norm();
+         tc[index] = (v - min) / range;
+      }
 
       return tex;
    }
