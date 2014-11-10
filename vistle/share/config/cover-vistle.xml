@@ -74,7 +74,7 @@
    </Input>
 
    <Plugin>
-      <CompositorIceT menu="true" value="off" />
+      <CompositorIceT menu="true" value="on" />
       <RRServer value="off" />
     <COVERScript value="off" />
     <Volume menu="true" value="off" />

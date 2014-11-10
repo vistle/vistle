@@ -456,7 +456,8 @@ public:
 
         boost::mpi::broadcast(mpi_comm, m_position, root);
         boost::mpi::broadcast(mpi_comm, m_stepcount, root);
-        m_ingrid = boost::mpi::all_reduce(mpi_comm, m_ingrid, std::logical_and<bool>());
+        //m_ingrid = boost::mpi::all_reduce(mpi_comm, m_ingrid, std::logical_and<bool>());
+        boost::mpi::broadcast(mpi_comm, m_ingrid, root);
 
         m_out = false;
         if(mpi_comm.rank()!=root){
