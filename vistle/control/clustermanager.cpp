@@ -25,6 +25,8 @@
 #include "clustermanager.h"
 #include "communicator.h"
 
+//#define QUEUE_DEBUG
+
 #ifdef NOHUB
 #ifdef _WIN32
 #define SPAWN_WITH_MPI
@@ -1035,15 +1037,19 @@ boost::shared_ptr<Parameter> ClusterManager::getParameter(int id, const std::str
 void ClusterManager::queueMessage(const message::Message &msg) {
 
    m_messageQueue.emplace_back(msg);
+#ifdef QUEUE_DEBUG
    CERR << "queueing " << msg.type() << ", now " << m_messageQueue.size() << " in queue" << std::endl;
+#endif
 }
 
 void ClusterManager::replayMessages() {
 
    std::vector<message::Buffer> queue;
    std::swap(m_messageQueue, queue);
+#ifdef QUEUE_DEBUG
    if (!queue.empty())
       CERR << "replaying " << queue.size() << " messages" << std::endl;
+#endif
    for (const auto &m: queue) {
       Communicator::the().handleMessage(m.msg);
    }
