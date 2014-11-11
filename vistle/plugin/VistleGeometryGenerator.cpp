@@ -275,6 +275,8 @@ osg::Node *VistleGeometryGenerator::operator()() {
             }
          }
 
+         state->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+
          geom->setVertexArray(vertices.get());
          geom->addPrimitiveSet(primitives.get());
 
