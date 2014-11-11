@@ -598,20 +598,13 @@ bool Tracer::reduce(int timestep){
                     }
                 }
             }
-            for(Index i=0; i<numpoints; i++){
+            /*for(Index i=0; i<numpoints; i++){
                 bool active = false;
                 active = boost::mpi::all_reduce(world, particle[i]->isActive(), std::logical_or<bool>());
             if(!active){
                 particle[i]->Deactivate();
             }
-        }
-            bool test = false;
-            for(Index i=0; i<numpoints; i++){
-                if(particle[i]->inGrid()){
-                    test = true;
-                    break;
-                }
-            }
+        }*/
 
             ingrid = false;
             for(Index i=0; i<numpoints; i++){
