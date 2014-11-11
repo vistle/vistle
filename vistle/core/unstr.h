@@ -46,7 +46,8 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
 
    shm<unsigned char>::array &tl() const { return *(*d()->tl)(); }
 
-   Index findCell(const Vector &point) const;
+   bool isGhostCell(Index elem) const;
+   Index findCell(const Vector &point, bool acceptGhost=false) const;
    bool inside(Index elem, const Vector &point) const;
    std::pair<Vector, Vector> getBounds() const;
 

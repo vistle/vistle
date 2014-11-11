@@ -219,23 +219,34 @@ class PointInclusionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
 
 };
 
+bool UnstructuredGrid::isGhostCell(const Index elem) const {
 
-Index UnstructuredGrid::findCell(const Vector &point) const {
+   if (elem == InvalidIndex)
+      return false;
+   return tl()[elem] & GHOST_BIT;
+}
+
+Index UnstructuredGrid::findCell(const Vector &point, bool acceptGhost) const {
 
    if (hasCelltree()) {
 
       PointVisitationFunctor<Scalar, Index> nodeFunc(point);
       PointInclusionFunctor<Scalar, Index> elemFunc(this, point);
       getCelltree()->traverse(nodeFunc, elemFunc);
-      return elemFunc.cell;
+      if (acceptGhost ||!isGhostCell(elemFunc.cell))
+         return elemFunc.cell;
+      else
+         return InvalidIndex;
    }
 
    Index size = getNumElements();
    for (Index i=0; i<size; ++i) {
-      if (inside(i, point))
-         return i;
+      if (acceptGhost || !isGhostCell(i)) {
+         if (inside(i, point))
+            return i;
+      }
    }
-   return -1;
+   return InvalidIndex;
 }
 
 bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
