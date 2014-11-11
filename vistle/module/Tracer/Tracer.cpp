@@ -267,9 +267,10 @@ private:
     bool m_ingrid;
     bool m_out;
     bool m_in;
+    Scalar m_stepsize;
 
 public:
-    Particle(Index i, Vector3 pos):
+    Particle(Index i, Vector3 pos, Scalar dt):
         m_index(i),
         m_stepcount(0),
         m_cell(InvalidIndex),
@@ -277,9 +278,8 @@ public:
         m_ingrid(true),
         m_position(pos),
         m_in(true),
-        m_out(false){
-        //initialize velocity: velocity.norm()!=0
-        m_velocity << 1,0,0;
+        m_out(false),
+        m_stepsize(dt){
     }
 
     bool isActive(){
@@ -376,47 +376,6 @@ public:
 
     void Interpolation(){
 
-        /*UnstructuredGrid::const_ptr grid = m_block->getGrid();
-        Vec<Scalar, 3>::const_ptr v_data = m_block->getVelocityData();
-        Vec<Scalar>::const_ptr p_data = m_block->getPressureData();
-        Index cell = m_cell;
-        Vector3 point = m_position;
-        Index numvert = grid->el()[cell+1] - grid->el()[cell];
-        Vector3 vert, d_vec;
-        Scalar d, d_min;
-        Index vert_dmin;
-        //nearest neighbor interpolation
-        vert << grid->x()[grid->cl()[grid->el()[cell]]],
-                grid->y()[grid->cl()[grid->el()[cell]]],
-                grid->z()[grid->cl()[grid->el()[cell]]];
-        d_vec = point - vert;
-        d_min = d_vec.norm();
-        vert_dmin = grid->cl()[grid->el()[cell]];
-
-        for(Index i=1; i<numvert; i++){
-
-            vert << grid->x()[grid->cl()[grid->el()[cell]+i]],
-                    grid->y()[grid->cl()[grid->el()[cell]+i]],
-                    grid->z()[grid->cl()[grid->el()[cell]+i]];
-            d_vec = point - vert;
-            d = d_vec.norm();
-
-            if(d<d_min){
-
-                d_min = d;
-                vert_dmin = grid->cl()[grid->el()[cell]+i];
-
-            }
-        }
-
-        m_velocity << v_data->x()[vert_dmin],
-                            v_data->y()[vert_dmin],
-                            v_data->z()[vert_dmin];
-        m_velocities.push_back(this->m_velocity);
-
-        if(p_data){
-            m_pressures.push_back(p_data->x()[vert_dmin]);
-        }*/
 
         UnstructuredGrid::const_ptr grid = m_block->getGrid();
         Vec<Scalar, 3>::const_ptr v_data = m_block->getVelocityData();
@@ -429,25 +388,45 @@ public:
         m_velocities.push_back(m_velocity);
     }
 
-    void Integration(const Scalar &dt){
+    void Integration(){
+        /*
+        //fourth order Runge-Kutta method with step size control
+        Vector3 v0 = m_velocity;
+        Vector3 p0 = m_position;
+        Vector3 k[3];
+        Vector3 v;
+        UnstructuredGrid::Interpolator interpolator;
+        UnstructuredGrid::const_ptr grid;
+        Vec<Scalar, 3>::const_ptr vdata;
+        Scalar* vx = vdata->x().data();
+        Scalar* vy = vdata->y().data();
+        Scalar* vz = v_ata->z().data();
+        Scalar eps = 1e-03;
+        Scalar r = eps+1;
+        Scalar p_n;
 
-        Vector3 v0 = this->m_velocity;
-        Vector3 p0 = this->m_position;
-        Vector3 k[4];
-        Vector3 v[3];
+        while(r>eps){
+            k[0] = v0*m_stepsize;
+            interpolator = grid->getInterpolator(m_cell, p0 + k[0]);
+            v = interpolator(vx,vy,vz);
+            k[1] = v*m_stepsize;
+            interpolator = grid->getInterpolator(m_cell, p0 + k[1]*0.25 + k[2]*0.25);
+            v = interpolator(vx,vy,vz);
+            k[2] = v*m_stepsize;
+            p_n = p0 + 0.5*dt*(k[0]+k[1]);
+            Vector3 p_1 = p0 + dt*((k[0]+k[1])/6 + 2/3*k[2]);
+            Vector3 diff = p - p_1;
+            Scalar r = diff.norm()/dt;
+            m_stepsize = 0.84*(r/eps);
+        }
 
-        //fourth order Runge-Kutta method
-        k[0] = v0*dt;
-        v[0] = p0 + k[0]/2;
-        k[1] = v[0]*dt;
-        v[1] = p0 + k[1]/2;
-        k[2] = v[1]*dt;
-        v[2] = p0 + k[2];
-        k[3] = v[2]*dt;
+        m_position = p;
+        m_positions.push_back(m_position);
+        m_stepcount +=1;*/
 
-        this->m_position = p0 + (k[0] + 2*k[1] + 2*k[2] + k[3])/6;
-        this->m_positions.push_back(m_position);
-        this->m_stepcount +=1;
+        m_position = m_position + m_velocity*m_stepsize;
+        m_positions.push_back(m_position);
+        ++m_stepcount;
     }
 
     void Communicator(boost::mpi::communicator mpi_comm, Index root){
@@ -536,7 +515,7 @@ bool Tracer::reduce(int timestep){
     std::vector<Particle*> particle(numpoints);
     for(Index i=0; i<numpoints; i++){
 
-        particle[i] = new Particle(i, startpoints[i]);
+        particle[i] = new Particle(i, startpoints[i], dt);
     }
 
     //find cell and set status of particle objects
@@ -583,7 +562,7 @@ bool Tracer::reduce(int timestep){
             if(particle[i]->isActive()){
 
                 particle[i]->Interpolation();
-                particle[i]->Integration(dt);
+                particle[i]->Integration();
             }
 
             particle[i]->setStatus(block, steps_max, task_type);
