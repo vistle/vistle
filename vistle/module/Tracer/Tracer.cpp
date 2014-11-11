@@ -444,7 +444,11 @@ public:
 
     bool leftNode(){
 
-        return m_out;
+        if(m_out){
+            m_out = false;
+            return true;
+        }
+        return false;
     }
 
 };
@@ -576,16 +580,21 @@ bool Tracer::reduce(int timestep){
         if(stepcount == steps_comm){
             for(Index mpirank=0; mpirank<mpisize; mpirank++){
 
-                std::vector<Index> tmplist = sendlist;
-                boost::mpi::broadcast(world, tmplist, mpirank);
-                for(Index i=0; i<tmplist.size(); i++){
-                    Index p_index = tmplist[i];
-                    particle[p_index]->Communicator(world, mpirank);
-                    particle[p_index]->setStatus(block, steps_max, task_type);
-                    bool active = particle[p_index]->isActive();
-                    active = boost::mpi::all_reduce(world, particle[p_index]->isActive(), std::logical_or<bool>());
-                    if(!active){
-                        particle[p_index]->Deactivate();
+                Index num_send = sendlist.size();
+                boost::mpi::broadcast(world, num_send, mpirank);
+
+                if(num_send>0){
+                    std::vector<Index> tmplist = sendlist;
+                    boost::mpi::broadcast(world, tmplist, mpirank);
+                    for(Index i=0; i<num_send; i++){
+                        Index p_index = tmplist[i];
+                        particle[p_index]->Communicator(world, mpirank);
+                        particle[p_index]->setStatus(block, steps_max, task_type);
+                        bool active = particle[p_index]->isActive();
+                        active = boost::mpi::all_reduce(world, particle[p_index]->isActive(), std::logical_or<bool>());
+                        if(!active){
+                            particle[p_index]->Deactivate();
+                        }
                     }
                 }
             }
