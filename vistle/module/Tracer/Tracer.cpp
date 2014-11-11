@@ -591,7 +591,6 @@ bool Tracer::reduce(int timestep){
             if(particle[i]->leftNode()){
 
                 sendlist.push_back(i);
-                std::cout << world.rank() << std::endl;
             }
         }
         ++stepcount;
@@ -605,9 +604,7 @@ bool Tracer::reduce(int timestep){
                     particle[p_index]->Communicator(world, mpirank);
                     particle[p_index]->setStatus(block, steps_max, task_type);
                     bool active = particle[p_index]->isActive();
-                    std::cout << "  " << active << "(b)  " << std::endl;
                     active = boost::mpi::all_reduce(world, particle[p_index]->isActive(), std::logical_or<bool>());
-                    std::cout << "  " << active << "(a)  " << std::endl;
                     if(!active){
                         particle[p_index]->Deactivate();
                     }
@@ -627,22 +624,7 @@ bool Tracer::reduce(int timestep){
                     break;
                 }
             }
-            std::cout << test << std::endl;
 
-            /*for(Index i=0; i<numpoints; i++){
-
-                Index root = boost::mpi::all_reduce(world, sendlist[i], boost::mpi::minimum<Index>());
-                if(root<mpisize){
-                    particle[i]->Communicator(world, root);
-                    particle[i]->setStatus(block, steps_max, task_type);
-                    bool active = particle[i]->isActive();
-                    active = boost::mpi::all_reduce(world, active, std::logical_or<bool>());
-                    std::cout << active << std::endl;
-                    if(!active){
-                        particle[i]->Deactivate();
-                    }
-                }
-            }*/
             ingrid = false;
             for(Index i=0; i<numpoints; i++){
 
