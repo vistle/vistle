@@ -126,46 +126,49 @@ public:
         case 1:{
 
             Index numpoints = points.size();
-            Index size0 = m_lines->getNumVertices();
-            Index size1 = size0 + numpoints;
-
-            m_lines->cl().resize(size1);
-            m_lines->x().resize(size1);
-            m_lines->y().resize(size1);
-            m_lines->z().resize(size1);
+            Scalar phi_max = 1e-06;
 
             if(m_v_interpol.size()==0){
                 m_v_interpol.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
             }
-            m_v_interpol[0]->x().resize(size1);
-            m_v_interpol[0]->y().resize(size1);
-            m_v_interpol[0]->z().resize(size1);
 
-            for(Index i=0; i<numpoints; i++){
-
-                m_lines->cl()[size0+i] = size0+i;
-                m_lines->x()[size0+i] = points[i](0);
-                m_lines->y()[size0+i] = points[i](1);
-                m_lines->z()[size0+i] = points[i](2);
-                m_v_interpol[0]->x()[size0+i] = velocities[i](0);
-                m_v_interpol[0]->y()[size0+i] = velocities[i](1);
-                m_v_interpol[0]->z()[size0+i] = velocities[i](2);
-            }
-
-            Index numcorn = m_lines->getNumCorners();
-            m_lines->el().push_back(numcorn);
-
-            if(pressures.size()<velocities.size()){
-                return;
-            }
-
-            if(m_p_interpol.size()==0){
+            if(pressures.size()==numpoints && m_p_interpol.size()==0){
                 m_p_interpol.emplace_back(new Vec<Scalar>(Object::Initialized));
             }
-            m_p_interpol[0]->x().resize(size1);
+
             for(Index i=0; i<numpoints; i++){
-                m_p_interpol[0]->x()[size0+i] = pressures[i];
+
+                bool addpoint = true;
+                if(i>1 && i<numpoints-1){
+
+                    Vector3 vec1 = points[i-1]-points[i-2];
+                    Vector3 vec2 = points[i]-points[i-1];
+                    Scalar cos_phi = vec1.dot(vec2)/(vec1.norm()*vec2.norm());
+                    Scalar phi = acos(cos_phi);
+                    if(phi<phi_max){
+                        addpoint = false;
+                    }
+                }
+
+                if(addpoint){
+
+                    m_lines->x().push_back(points[i](0));
+                    m_lines->y().push_back(points[i](1));
+                    m_lines->z().push_back(points[i](2));
+                    Index numcorn = m_lines->getNumCorners();
+                    m_lines->cl().push_back(numcorn);
+
+                    m_v_interpol[0]->x().push_back(velocities[0](0));
+                    m_v_interpol[0]->y().push_back(velocities[0](1));
+                    m_v_interpol[0]->z().push_back(velocities[0](2));
+
+                    if(pressures.size()==numpoints){
+                        m_p_interpol[0]->x().push_back(pressures[0]);
+                    }
+                }
             }
+            Index numcorn = m_lines->getNumCorners();
+            m_lines->el().push_back(numcorn);
         }
         }
     }
@@ -561,7 +564,6 @@ bool Tracer::reduce(int timestep){
         break;
     }
 
-    std::cout << world.rank() << std::endl;
     world.barrier();
     if(world.rank()==0){
         std::cout << "Tracer done" << std::endl;
