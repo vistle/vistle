@@ -126,7 +126,7 @@ public:
         case 1:{
 
             Index numpoints = points.size();
-            Scalar phi_max = 1e-06;
+            Scalar phi_max = 1e-03;
 
             if(m_v_interpol.size()==0){
                 m_v_interpol.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
@@ -224,11 +224,9 @@ public:
             return;
         }
 
-        if(m_out){
-            return;
-        }
-
         if(m_stepcount == steps_max){
+
+            m_velocities.push_back(m_velocity);
             m_block->addData(m_positions, m_velocities, m_pressures, tasktype);
             m_positions.clear();
             m_velocities.clear();
@@ -241,6 +239,7 @@ public:
         bool moving = (m_velocity(0)!=0 || m_velocity(1)!=0 || 0 || m_velocity(2)!=0);
         if(!moving){
 
+            m_velocities.push_back(m_velocity);
             m_block->addData(m_positions, m_velocities, m_pressures, tasktype);
             m_positions.clear();
             m_velocities.clear();
@@ -259,6 +258,7 @@ public:
             m_cell = grid->findCell(m_position);
             if(m_cell==InvalidIndex){
 
+                m_velocities.push_back(m_velocity);
                 m_block->addData(m_positions, m_velocities, m_pressures, tasktype);
                 m_positions.clear();
                 m_velocities.clear();
@@ -355,6 +355,7 @@ public:
 
         boost::mpi::broadcast(mpi_comm, m_position, root);
         boost::mpi::broadcast(mpi_comm, m_stepcount, root);
+        boost::mpi::broadcast(mpi_comm, m_velocity, root);
         boost::mpi::broadcast(mpi_comm, m_ingrid, root);
 
         m_out = false;
