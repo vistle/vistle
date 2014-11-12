@@ -113,7 +113,6 @@ void PortManager::finishInput(const Port *port) {
 bool PortManager::isFinished(const Port *port) {
 
    vassert(m_numObject[port] == 0);
-   vassert(m_numReset[port] == 0);
    return m_numFinish[port] > 0;
 }
 
