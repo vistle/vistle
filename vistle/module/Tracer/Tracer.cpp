@@ -71,7 +71,6 @@ private:
     Vec<Scalar, 3>::const_ptr m_vdata;
     Vec<Scalar>::const_ptr m_pdata;
     Lines::ptr m_lines;
-    std::vector<Points::ptr> m_points;
     std::vector<Vec<Scalar, 3>::ptr> m_v_interpol;
     std::vector<Vec<Scalar>::ptr> m_p_interpol;
 
@@ -104,10 +103,6 @@ public:
         return m_lines;
     }
 
-    std::vector<Points::ptr> getPoints(){
-        return m_points;
-    }
-
     std::vector<Vec<Scalar, 3>::ptr> getInterpolVelo(){
         return m_v_interpol;
     }
@@ -116,9 +111,9 @@ public:
         return m_p_interpol;
     }
 
-    void addData(std::vector<Vector3> points,
-                 std::vector<Vector3> velocities,
-                 std::vector<Scalar> pressures,
+    void addData(const std::vector<Vector3> &points,
+                 const std::vector<Vector3> &velocities,
+                 const std::vector<Scalar> &pressures,
                  Index tasktype,
                  Index first_timestep =0){
 
@@ -196,13 +191,14 @@ private:
 public:
     Particle(Index i, Vector3 pos, Scalar dt):
         m_index(i),
-        m_stepcount(0),
-        m_cell(InvalidIndex),
-        m_block(nullptr),
-        m_ingrid(true),
         m_position(pos),
-        m_in(true),
+        m_velocity(Vector3(1,0,0)),
+        m_stepcount(0),
+        m_block(nullptr),
+        m_cell(InvalidIndex),        
+        m_ingrid(true),
         m_out(false),
+        m_in(true),        
         m_stepsize(dt){
     }
 
