@@ -2,7 +2,6 @@
 #include <iostream>
 #include <limits>
 #include <algorithm>
-
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpi/collectives/all_reduce.hpp>
 #include <boost/mpi/collectives/all_gather.hpp>
@@ -12,7 +11,6 @@
 #include <boost/mpi/packed_oarchive.hpp>
 #include <boost/mpi.hpp>
 #include <boost/mpi/operations.hpp>
-
 #include <core/vec.h>
 #include <module/module.h>
 #include <core/scalars.h>
@@ -55,7 +53,6 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addIntParameter("steps_comm", "number of timesteps until communication", 10);
     IntParameter* tasktype = addIntParameter("taskType", "task type", 0, Parameter::Choice);
     std::vector<std::string> choices;
-    choices.push_back("moving points");
     choices.push_back("streamlines");
     setParameterChoices(tasktype, choices);
     addFloatParameter("timestep", "timestep for integration", 1e-04);
@@ -73,7 +70,7 @@ private:
     Vec<Scalar, 3>::const_ptr m_vdata;
     Vec<Scalar>::const_ptr m_pdata;
     Lines::ptr m_lines;
-    std::vector<Points::ptr> m_points;  //Points::ptr?
+    std::vector<Points::ptr> m_points;
     std::vector<Vec<Scalar, 3>::ptr> m_v_interpol;
     std::vector<Vec<Scalar>::ptr> m_p_interpol;
 
@@ -118,29 +115,6 @@ public:
         return m_p_interpol;
     }
 
-    void addLines(const std::vector<Vector3> &points){
-
-        Index numpoints = points.size();
-        Index size0 = m_lines->getNumVertices();
-        Index size1 = size0 + numpoints;
-
-        m_lines->cl().resize(size1);
-        m_lines->x().resize(size1);
-        m_lines->y().resize(size1);
-        m_lines->z().resize(size1);
-
-        for(Index i=0; i<numpoints; i++){
-
-            m_lines->cl()[size0+i] = size0+i;
-            m_lines->x()[size0+i] = points[i](0);
-            m_lines->y()[size0+i] = points[i](1);
-            m_lines->z()[size0+i] = points[i](2);
-        }
-
-        Index numcorn = m_lines->getNumCorners();
-        m_lines->el().push_back(numcorn);
-    }
-
     void addData(std::vector<Vector3> points,
                  std::vector<Vector3> velocities,
                  std::vector<Scalar> pressures,
@@ -149,62 +123,8 @@ public:
 
         switch(tasktype){
 
-        case 0:{
-            Index numpoints = points.size();
-            Index numobjects = m_points.size();
-
-            for(Index i=0; i<numpoints; i++){
-
-                bool havepress = (pressures.size()==points.size());
-                bool exists = false;
-                Index timestep = first_timestep+i;
-
-                for(Index j=0; j<numobjects; j++){
-
-                    if(m_points[j]->getTimestep()==timestep){
-
-                        exists = true;
-                        m_points[j]->x().push_back(points[i](0));
-                        m_points[j]->y().push_back(points[i](1));
-                        m_points[j]->z().push_back(points[i](2));
-
-                        m_v_interpol[j]->x().push_back(velocities[i](0));
-                        m_v_interpol[j]->x().push_back(velocities[i](1));
-                        m_v_interpol[j]->x().push_back(velocities[i](2));
-
-                        if(havepress){
-                            m_p_interpol[j]->x().push_back(pressures[i]);
-                        }
-                        break;
-                    }
-                }
-                if(!exists){
-
-                    m_points.emplace_back(new Points(Object::Initialized));
-                    Index back = m_points.size() -1;
-                    m_points[back]->x().push_back(points[i](0));
-                    m_points[back]->y().push_back(points[i](1));
-                    m_points[back]->z().push_back(points[i](2));
-                    m_points[back]->setTimestep(timestep);
-
-                    m_v_interpol.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
-                    m_v_interpol[back]->x().push_back(velocities[i](0));
-                    m_v_interpol[back]->y().push_back(velocities[i](1));
-                    m_v_interpol[back]->z().push_back(velocities[i](2));
-                    m_v_interpol[back]->setTimestep(timestep);
-
-                    if(havepress){
-                        m_p_interpol.emplace_back(new Vec<Scalar>(Object::Initialized));
-                        m_p_interpol[back]->x().push_back(pressures[i]);
-                        m_p_interpol[back]->setTimestep(timestep);
-                    }
-                }
-            }
-        }
-
-            break;
-
         case 1:{
+
             Index numpoints = points.size();
             Index size0 = m_lines->getNumVertices();
             Index size1 = size0 + numpoints;
@@ -376,7 +296,6 @@ public:
 
     void Interpolation(){
 
-
         UnstructuredGrid::const_ptr grid = m_block->getGrid();
         Vec<Scalar, 3>::const_ptr v_data = m_block->getVelocityData();
         Vec<Scalar>::const_ptr p_data = m_block->getPressureData();
@@ -417,7 +336,7 @@ public:
             Vector3 p_1 = p0 + dt*((k[0]+k[1])/6 + 2/3*k[2]);
             Vector3 diff = p - p_1;
             Scalar r = diff.norm()/dt;
-            m_stepsize = 0.84*(r/eps);
+            m_stepsize = 0.84*pow((r/eps), 0.25);
         }
 
         m_position = p;
@@ -492,7 +411,7 @@ bool Tracer::reduce(int timestep){
     Scalar dt = getFloatParameter("timestep");
     Index task_type = getIntParameter("taskType");
     boost::mpi::communicator world;
-
+    std::cout << task_type << std::endl;
     if(data_in1.size()<numblocks){
 
         data_in1.assign(numblocks, nullptr);
@@ -560,7 +479,6 @@ bool Tracer::reduce(int timestep){
     std::vector<Index> sendlist(0);
 
     while(ingrid){
-
         for(Index i=0; i<numpoints; i++){
 
             if(particle[i]->isActive()){
@@ -598,13 +516,6 @@ bool Tracer::reduce(int timestep){
                     }
                 }
             }
-            /*for(Index i=0; i<numpoints; i++){
-                bool active = false;
-                active = boost::mpi::all_reduce(world, particle[i]->isActive(), std::logical_or<bool>());
-            if(!active){
-                particle[i]->Deactivate();
-            }
-        }*/
 
             ingrid = false;
             for(Index i=0; i<numpoints; i++){
@@ -621,42 +532,6 @@ bool Tracer::reduce(int timestep){
     }
 
     switch(task_type){
-
-    case 0:
-
-        //add Points objects to output port
-        for(Index i=0; i<numblocks; i++){
-
-
-            std::vector<Points::ptr> points = block[i]->getPoints();
-            Index numobjects = points.size();
-            for(Index j=0; j<numobjects; j++){
-
-                if(points[j]->getNumPoints() >0){
-                    addObject("geom_out", points[j]);
-                }
-            }
-
-            /*std::vector<Vec<Scalar, 3>::ptr> v_vec = block[i]->getInterpolVelo();
-            Vec<Scalar, 3>::ptr v;
-            for(Index j=0; j<numobjects; j++){
-                if(v_vec.size()>0){
-                    v = v_vec[j];
-                    addObject("data_out0", v);
-                }
-            }
-
-            if(data_in1[0]){
-                std::vector<Vec<Scalar>::ptr> p_vec = block[i]->getInterpolPress();
-                Vec<Scalar>::ptr p;
-                for(Index j=0; j<numobjects; j++){
-                    if(p_vec.size()>0){
-                        p = p_vec[j];
-                        addObject("data_in1", p);
-                    }
-                }
-            }*/
-        }
 
     case 1:
         //add Lines-objects to output port
@@ -683,7 +558,9 @@ bool Tracer::reduce(int timestep){
                 }
             }
         }
+        break;
     }
+
     std::cout << world.rank() << std::endl;
     world.barrier();
     if(world.rank()==0){
