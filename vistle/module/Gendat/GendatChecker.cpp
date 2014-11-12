@@ -37,35 +37,33 @@ bool GendatChecker::compute() {
    */
 #endif
 
-   while (hasObject("grid_in") && hasObject("data_in")) {
+   vistle::Object::const_ptr grid = takeFirstObject("grid_in");
+   vistle::Object::const_ptr data = takeFirstObject("data_in");
 
-      vistle::Object::const_ptr grid = takeFirstObject("grid_in");
-      vistle::Object::const_ptr data = takeFirstObject("data_in");
+   vistle::Triangles::const_ptr t = expect<vistle::Triangles>("grid_in");
+   vassert(t.get() && "expected Triangles");
+   vassert(t->cl().size() == 6);
+   vassert(t->cl()[0] == 0);
+   vassert(t->cl()[1] == 1);
+   vassert(t->cl()[2] == 2);
+   vassert(t->cl()[3] == 0);
+   vassert(t->cl()[4] == 2);
+   vassert(t->cl()[5] == 3);
+   vassert(t->x().size() == 4);
+   vassert(t->y().size() == 4);
+   vassert(t->z().size() == 4);
+   for(size_t i=0; i<t->x().size(); ++i) {
+      vassert(t->x()[i] == 1. + rank());
+      vassert(t->y()[i] == 0.);
+      vassert(t->z()[i] == 0.);
+   }
 
-      vistle::Triangles::const_ptr t = vistle::Triangles::as(grid);
-      vassert(t.get() && "expected Triangles");
-      vassert(t->cl().size() == 6);
-      vassert(t->cl()[0] == 0);
-      vassert(t->cl()[1] == 1);
-      vassert(t->cl()[2] == 2);
-      vassert(t->cl()[3] == 0);
-      vassert(t->cl()[4] == 2);
-      vassert(t->cl()[5] == 3);
-      vassert(t->x().size() == 4);
-      vassert(t->y().size() == 4);
-      vassert(t->z().size() == 4);
-      for(size_t i=0; i<t->x().size(); ++i) {
-         vassert(t->x()[i] == 1. + rank());
-         vassert(t->y()[i] == 0.);
-         vassert(t->z()[i] == 0.);
-      }
-
-      vistle::Vec<vistle::Scalar>::const_ptr v = vistle::Vec<vistle::Scalar>::as(data);
-      vassert(v.get() && "expected Vec<Scalar>");
-      vassert(v->x().size() == 4);
-      for (size_t i=0; i<v->x().size(); ++i) {
-         vassert(v->x()[i] == vistle::Scalar(i));
-      }
+   vistle::Vec<vistle::Scalar>::const_ptr v = expect<vistle::Vec<vistle::Scalar>>("data_in");
+   vassert(v.get() && "expected Vec<Scalar>");
+   vassert(v->x().size() == 4);
+   for (size_t i=0; i<v->x().size(); ++i) {
+      vassert(v->x()[i] == vistle::Scalar(i));
+   }
 
 #if 0
    vistle::Triangles *t = new vistle::Triangles(6, 4);
@@ -104,6 +102,5 @@ bool GendatChecker::compute() {
    addObject("data_out", v);
 #endif
 
-   }
    return true;
 }

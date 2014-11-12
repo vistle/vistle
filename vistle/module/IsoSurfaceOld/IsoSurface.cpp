@@ -32,8 +32,6 @@ IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int 
    createOutputPort("grid_out");
 
    m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
-   m_shader = addStringParameter("shader", "name of shader to apply to geometry", "Gouraud");
-   m_shaderParams = addStringParameter("shader_params", "shader parameters (as \"key=value\" \"key=value1 value2\"", "");
 }
 
 IsoSurface::~IsoSurface() {
@@ -347,24 +345,17 @@ bool IsoSurface::compute() {
 
    const Scalar isoValue = getFloatParameter("isovalue");
 
-   while (hasObject("grid_in") && hasObject("data_in")) {
+   Object::const_ptr grid = expect<Object>("grid_in");
+   Object::const_ptr data = expect<Object>("data_in");
+   if (!grid || !data)
+      return false;
 
-      Object::const_ptr grid = takeFirstObject("grid_in");
-      Object::const_ptr data = takeFirstObject("data_in");
-      Object::ptr object =
-         generateIsoSurface(grid, data, isoValue);
+   Object::ptr object = generateIsoSurface(grid, data, isoValue);
 
-      if (object && !object->isEmpty()) {
-         object->copyAttributes(data);
-         object->copyAttributes(grid, false);
-         if (!m_shader->getValue().empty()) {
-            object->addAttribute("shader", m_shader->getValue());
-            if (!m_shaderParams->getValue().empty()) {
-               object->addAttribute("shader_params", m_shaderParams->getValue());
-            }
-         }
-         addObject("grid_out", object);
-      }
+   if (object && !object->isEmpty()) {
+      object->copyAttributes(data);
+      object->copyAttributes(grid, false);
+      addObject("grid_out", object);
    }
 
    return true;

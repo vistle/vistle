@@ -746,6 +746,27 @@ vistle::Object::const_ptr Module::takeFirstObject(Port *port) {
    return vistle::Object::ptr();
 }
 
+// specialized for avoiding Object::type(), which does not exist
+template<>
+Object::const_ptr Module::expect<Object>(Port *port) {
+   Object::const_ptr obj;
+   if (port->objects().empty()) {
+      std::stringstream str;
+      str << "no object available at " << port->getName() << ", but one is required" << std::endl;
+      sendError(str.str());
+   }
+   obj = port->objects().front();
+   port->objects().pop_front();
+   if (!obj) {
+      std::stringstream str;
+      str << "did not receive valid object at " << port->getName() << ", but one is required" << std::endl;
+      sendError(str.str());
+      return obj;
+   }
+   vassert(obj->check());
+   return obj;
+}
+
 bool Module::addInputObject(const std::string & portName,
                             Object::const_ptr object) {
 

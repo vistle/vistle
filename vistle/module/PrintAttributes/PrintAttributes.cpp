@@ -19,31 +19,31 @@ PrintAttributes::~PrintAttributes() {
 
 bool PrintAttributes::compute() {
 
-   while (hasObject("data_in")) {
+   Object::const_ptr obj = expect<Object>("data_in");
+   if (!obj)
+      return false;
 
-      Object::const_ptr obj = takeFirstObject("data_in");
-      std::stringstream str;
-      auto attribs = obj->getAttributeList();
-      str << attribs.size() << " attributes for " << obj->getName();
-      sendInfo(str.str());
-      std::string empty;
-      for (auto attr: attribs) {
-         std::string val = obj->getAttribute(attr);
-         if (val.empty()) {
-            empty += " ";
-            empty += attr;
-         }
+   std::stringstream str;
+   auto attribs = obj->getAttributeList();
+   str << attribs.size() << " attributes for " << obj->getName();
+   sendInfo(str.str());
+   std::string empty;
+   for (auto attr: attribs) {
+      std::string val = obj->getAttribute(attr);
+      if (val.empty()) {
+         empty += " ";
+         empty += attr;
       }
-      if (!empty.empty()) {
-         sendInfo("empty:" + empty);
-      }
-      for (auto attr: obj->getAttributeList()) {
-         std::string val = obj->getAttribute(attr);
-         if (!val.empty()) {
-            std::stringstream str;
-            str << "   " << attr << " -> " << val;
-            sendInfo(str.str());
-         }
+   }
+   if (!empty.empty()) {
+      sendInfo("empty:" + empty);
+   }
+   for (auto attr: obj->getAttributeList()) {
+      std::string val = obj->getAttribute(attr);
+      if (!val.empty()) {
+         std::stringstream str;
+         str << "   " << attr << " -> " << val;
+         sendInfo(str.str());
       }
    }
 

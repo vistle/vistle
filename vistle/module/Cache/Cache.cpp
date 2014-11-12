@@ -36,36 +36,14 @@ Cache::~Cache() {
 
 bool Cache::compute() {
 
-   for (;;) {
+   for (int i=0; i<NumPorts; ++i) {
+      std::string suffix = boost::lexical_cast<std::string>(i);
+      std::string in = std::string("data_in")+suffix;
+      std::string out = std::string("data_out")+suffix;
 
-      int numConnected=0, numObject=0;
-      for (int i=0; i<NumPorts; ++i) {
-         std::string suffix = boost::lexical_cast<std::string>(i);
-         std::string in = std::string("data_in")+suffix;
-
-         if (!isConnected(in))
-            continue;
-         ++numConnected;
-
-         if (hasObject(in))
-            ++numObject;
-      }
-
-      if (numObject == 0 || numObject < numConnected) {
-         break;
-      }
-
-      for (int i=0; i<NumPorts; ++i) {
-         std::string suffix = boost::lexical_cast<std::string>(i);
-         std::string in = std::string("data_in")+suffix;
-         std::string out = std::string("data_out")+suffix;
-
-         if (!isConnected(in))
-            continue;
-
-         Object::const_ptr obj = takeFirstObject(in);
+      Object::const_ptr obj = accept<Object>(in);
+      if (obj)
          passThroughObject(out, obj);
-      }
    }
 
    return true;

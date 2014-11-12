@@ -324,23 +324,22 @@ bool CuttingSurface::compute() {
    }
    const Scalar distance = proj[max]/normal[max];
 
-   while (hasObject("grid_in") && hasObject("data_in")) {
+   Object::const_ptr grid = expect<Object>("grid_in");
+   Object::const_ptr data = expect<Object>("data_in");
+   if (!grid || !data)
+      return false;
 
-      Object::const_ptr grid = takeFirstObject("grid_in");
-      Object::const_ptr data = takeFirstObject("data_in");
-
-      std::pair<Object::ptr, Object::ptr> object =
+   std::pair<Object::ptr, Object::ptr> object =
          generateCuttingSurface(grid, data,
                                 normal, distance);
 
-      if (object.first && !object.first->isEmpty()) {
-         object.first->copyAttributes(grid);
-         addObject("grid_out", object.first);
+   if (object.first && !object.first->isEmpty()) {
+      object.first->copyAttributes(grid);
+      addObject("grid_out", object.first);
 
-         if (object.second) {
-            object.second->copyAttributes(data);
-            addObject("data_out", object.second);
-         }
+      if (object.second) {
+         object.second->copyAttributes(data);
+         addObject("data_out", object.second);
       }
    }
 

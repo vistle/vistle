@@ -114,6 +114,16 @@ class V_MODULEEXPORT Module {
    vistle::Object::const_ptr takeFirstObject(Port *port);
    vistle::Object::const_ptr takeFirstObject(const std::string &portName);
 
+   template<class Type>
+   typename Type::const_ptr accept(Port *port);
+   template<class Type>
+   typename Type::const_ptr accept(const std::string &port);
+
+   template<class Type>
+   typename Type::const_ptr expect(Port *port);
+   template<class Type>
+   typename Type::const_ptr expect(const std::string &port);
+
    void sendMessage(const message::Message &message) const;
 
    //! type should be a message::SendText::TextType
@@ -239,6 +249,9 @@ protected:
    bool m_benchmark;
    double m_benchmarkStart;
 };
+
+template<>
+V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 
 } // namespace vistle
 

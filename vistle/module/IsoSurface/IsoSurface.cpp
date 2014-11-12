@@ -140,81 +140,72 @@ bool IsoSurface::reduce(int timestep) {
 
 bool IsoSurface::compute() {
 
+   const int processorType = getIntParameter("processortype");
 #ifdef CUTTINGSURFACE
    const Scalar isoValue = 0.0;
    int option = getIntParameter("option");
+   const Vector vertex = getVectorParameter("vertex");
+   const Vector point = getVectorParameter("point");
+   const Vector direction = getVectorParameter("direction");
 #else
    const Scalar isoValue = getFloatParameter("isovalue");
 #endif
-   int processorType = getIntParameter("processortype");
-   while (hasObject("grid_in")
-#ifndef CUTTINGSURFACE
-         && hasObject("data_in")
-#endif
-         && (!isConnected(m_mapDataIn) || hasObject(m_mapDataIn))) {
 
-      Object::const_ptr grid = takeFirstObject("grid_in");
+   auto gridS = expect<UnstructuredGrid>("grid_in");
+   if (!gridS)
+      return false;
+
 #ifndef CUTTINGSURFACE
-      Object::const_ptr data = takeFirstObject("data_in");
+   auto dataS = expect<Vec<Scalar>>("data_in");
+   if (!dataS)
+      return false;
 #endif
 
-      Object::const_ptr mapdata;
-      if(isConnected(m_mapDataIn)){
-         mapdata = takeFirstObject(m_mapDataIn);
-      }
-
-      UnstructuredGrid::const_ptr gridS = UnstructuredGrid::as(grid);
-#ifndef CUTTINGSURFACE
-      Vec<Scalar>::const_ptr dataS = Vec<Scalar>::as(data);
-#endif
-      Leveller l(gridS, isoValue, processorType
+   Leveller l(gridS, isoValue, processorType
 #ifdef CUTTINGSURFACE
-            , option
+              , option
 #endif
-            );
+              );
+
 #ifdef CUTTINGSURFACE
-      const Vector vertex = getVectorParameter("vertex");
-      const Vector point = getVectorParameter("point");
-      const Vector direction = getVectorParameter("direction");
-      l.setCutData(vertex,point, direction);
+   l.setCutData(vertex,point, direction);
 #else
-      l.setIsoData(dataS);
+   l.setIsoData(dataS);
 #endif
-      if(mapdata){
-         l.addMappedData(mapdata);
-      };
-
-      l.process();
+   auto mapdata = accept<Object>(m_mapDataIn);
+   if(mapdata){
+      l.addMappedData(mapdata);
+   };
+   l.process();
 
 #ifndef CUTTINGSURFACE
 #if 0
-      auto range = l.range();
-      if (range.first < m_min)
-         m_min = range.first;
-      if (range.second > m_max)
-         m_max = range.second;
+   auto range = l.range();
+   if (range.first < m_min)
+      m_min = range.first;
+   if (range.second > m_max)
+      m_max = range.second;
 #else
-      auto minmax = dataS->getMinMax();
-      if (minmax.first[0] < m_min)
-         m_min = minmax.first[0];
-      if (minmax.second[0] > m_max)
-         m_max = minmax.second[0];
+   auto minmax = dataS->getMinMax();
+   if (minmax.first[0] < m_min)
+      m_min = minmax.first[0];
+   if (minmax.second[0] > m_max)
+      m_max = minmax.second[0];
 #endif
 #endif
 
-      Object::ptr result = l.result();
-      Object::ptr mapresult = l.mapresult();
-      if (result && !result->isEmpty()) {
+   Object::ptr result = l.result();
+   Object::ptr mapresult = l.mapresult();
+   if (result && !result->isEmpty()) {
 #ifndef CUTTINGSURFACE
-         result->copyAttributes(data);
+      result->copyAttributes(dataS);
 #endif
-         result->copyAttributes(grid, false);
-         addObject("grid_out", result);
-         if(!Empty::as(mapresult)) {
-            mapresult->copyAttributes(mapdata);
-         }
-         addObject(m_mapDataOut, mapresult);
+      result->copyAttributes(gridS, false);
+      addObject("grid_out", result);
+      if(!Empty::as(mapresult)) {
+         mapresult->copyAttributes(mapdata);
       }
+      addObject(m_mapDataOut, mapresult);
    }
    return true;
 }

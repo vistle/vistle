@@ -32,18 +32,16 @@ bool CellToVert::compute() {
 
    coCellToVert algo;
 
-   while (hasObject("grid_in") && hasObject("data_in")) {
+   Object::const_ptr grid = expect<Object>("grid_in");
+   Object::const_ptr data = expect<Object>("data_in");
+   if (!grid || !data)
+      return false;
 
-      Object::const_ptr grid = takeFirstObject("grid_in");
-      Object::const_ptr data = takeFirstObject("data_in");
-
-      Object::ptr out = algo.interpolate(grid, data);
-
-      if (out) {
-         out->copyAttributes(data);
-         addObject("data_out", out);
-         passThroughObject("grid_out", grid);
-      }
+   Object::ptr out = algo.interpolate(grid, data);
+   if (out) {
+      out->copyAttributes(data);
+      addObject("data_out", out);
+      passThroughObject("grid_out", grid);
    }
 
    return true;
