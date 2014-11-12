@@ -44,6 +44,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     createInputPort("data_in1");
     createOutputPort("geom_out");
     createOutputPort("data_out0");
+    createOutputPort("data_out1");
 
     addVectorParameter("startpoint1", "1st initial point", ParamVector(0,0.2,0));
     addVectorParameter("startpoint2", "2nd initial point", ParamVector(1,0,0));
@@ -218,7 +219,7 @@ public:
         return m_ingrid;
     }
 
-    void setStatus(std::vector<BlockData*> block, Index steps_max, Index tasktype){
+    void setStatus(const std::vector<std::unique_ptr<BlockData>> &block, Index steps_max, Index tasktype){
 
         if(!m_ingrid){
             return;
@@ -279,7 +280,7 @@ public:
                 m_cell = grid->findCell(m_position);
                 if(m_cell!=InvalidIndex){
 
-                    m_block = block[i];
+                    m_block = block[i].get();
                     m_positions.resize(1);
                     m_positions[0] = m_position;
                     m_out = false;
@@ -336,7 +337,7 @@ public:
             v = interpolator(vx,vy,vz);
             k[2] = v*m_stepsize;
             p_n = p0 + 0.5*dt*(k[0]+k[1]);
-            Vector3 p_1 = p0 + dt*((k[0]+k[1])/6 + 2/3*k[2]);
+            Vector3 p_1 = p0 + k[0]+k[1])/6 + 2/3*k[2];
             Vector3 diff = p - p_1;
             Scalar r = diff.norm()/dt;
             m_stepsize = 0.84*pow((r/eps), 0.25);
@@ -397,9 +398,13 @@ bool Tracer::compute(){
         data_in0.push_back(Vec<Scalar, 3>::as(takeFirstObject("data_in0")));
     }
 
+
     while(hasObject("data_in1")){
 
-        data_in1.push_back(Vec<Scalar>::as(takeFirstObject("data_in1")));
+        Object::const_ptr datain1 = takeFirstObject(("data_in1"));
+        if(Vec<Scalar>::as(datain1)){
+            data_in1.push_back(Vec<Scalar>::as(datain1));
+        }
     }
 
     return true;
@@ -415,7 +420,6 @@ bool Tracer::reduce(int timestep){
     Scalar dt = getFloatParameter("timestep");
     Index task_type = getIntParameter("taskType");
     boost::mpi::communicator world;
-    std::cout << task_type << std::endl;
     if(data_in1.size()<numblocks){
 
         data_in1.assign(numblocks, nullptr);
@@ -432,17 +436,17 @@ bool Tracer::reduce(int timestep){
     }
 
     //create BlockData objects
-    std::vector<BlockData*> block(numblocks);
+    std::vector<std::unique_ptr<BlockData>> block(numblocks);
     for(Index i=0; i<numblocks; i++){
 
-        block[i] = new BlockData(i, grid_in[i], data_in0[i], data_in1[i]);
+        block[i].reset(new BlockData(i, grid_in[i], data_in0[i], data_in1[i]));
     }
 
     //create particle objects
-    std::vector<Particle*> particle(numpoints);
+    std::vector<std::unique_ptr<Particle>> particle(numpoints);
     for(Index i=0; i<numpoints; i++){
 
-        particle[i] = new Particle(i, startpoints[i], dt);
+        particle[i].reset(new Particle(i, startpoints[i], dt));
     }
 
     //find cell and set status of particle objects
@@ -557,7 +561,7 @@ bool Tracer::reduce(int timestep){
                 std::vector<Vec<Scalar>::ptr> p_vec = block[i]->getInterpolPress();
                 Vec<Scalar>::ptr p;
                 if(p_vec.size()>0){
-                    addObject("data_in1", p);
+                    addObject("data_out1", p);
                     p = p_vec[0];
                 }
             }
