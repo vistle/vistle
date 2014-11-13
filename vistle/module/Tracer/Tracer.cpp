@@ -51,8 +51,10 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addIntParameter("no_startp", "number of startpoints", 2);
     setParameterRange("no_startp", (Integer)0, (Integer)10000);
     addIntParameter("steps_max", "maximum number of timesteps per particle", 1000);
-    addIntParameter("steps_comm", "number of timesteps until communication", 10);
+    addIntParameter("steps_comm", "maximum number of timesteps before communication", 10);
     IntParameter* tasktype = addIntParameter("taskType", "task type", 0, Parameter::Choice);
+    addIntParameter("particles_step", "number of particles traced on each node before next communication", 1000);
+    setParameterRange("particles_step", (Integer)1, (Integer)10000);
     std::vector<std::string> choices;
     choices.push_back("streamlines");
     setParameterChoices(tasktype, choices);
@@ -176,6 +178,7 @@ class Particle{
 private:
     const Index m_index;
     Vector3 m_position;
+    Vector3 m_positionold;
     std::vector<Vector3> m_positions;
     Vector3 m_velocity;
     std::vector<Vector3> m_velocities;
@@ -223,7 +226,6 @@ public:
 
         if(m_stepcount == steps_max){
 
-            m_velocities.push_back(m_velocity);
             m_block->addData(m_positions, m_velocities, m_pressures, tasktype);
             m_positions.clear();
             m_velocities.clear();
@@ -236,7 +238,6 @@ public:
         bool moving = (m_velocity(0)!=0 || m_velocity(1)!=0 || 0 || m_velocity(2)!=0);
         if(!moving){
 
-            m_velocities.push_back(m_velocity);
             m_block->addData(m_positions, m_velocities, m_pressures, tasktype);
             m_positions.clear();
             m_velocities.clear();
@@ -255,7 +256,6 @@ public:
             m_cell = grid->findCell(m_position);
             if(m_cell==InvalidIndex){
 
-                m_velocities.push_back(m_velocity);
                 m_block->addData(m_positions, m_velocities, m_pressures, tasktype);
                 m_positions.clear();
                 m_velocities.clear();
@@ -277,8 +277,11 @@ public:
                 if(m_cell!=InvalidIndex){
 
                     m_block = block[i].get();
-                    m_positions.resize(1);
-                    m_positions[0] = m_position;
+                    if(m_stepcount!=0){
+                        m_velocities.push_back(m_velocity);
+                        m_positions.push_back(m_positionold);
+                    }
+                    m_positions.push_back(m_position);
                     m_out = false;
                     break;
                 }
@@ -308,41 +311,8 @@ public:
     }
 
     void Integration(){
-        /*
-        //fourth order Runge-Kutta method with step size control
-        Vector3 v0 = m_velocity;
-        Vector3 p0 = m_position;
-        Vector3 k[3];
-        Vector3 v;
-        UnstructuredGrid::Interpolator interpolator;
-        UnstructuredGrid::const_ptr grid;
-        Vec<Scalar, 3>::const_ptr vdata;
-        Scalar* vx = vdata->x().data();
-        Scalar* vy = vdata->y().data();
-        Scalar* vz = v_ata->z().data();
-        Scalar eps = 1e-03;
-        Scalar r = eps+1;
-        Scalar p_n;
 
-        while(r>eps){
-            k[0] = v0*m_stepsize;
-            interpolator = grid->getInterpolator(m_cell, p0 + k[0]);
-            v = interpolator(vx,vy,vz);
-            k[1] = v*m_stepsize;
-            interpolator = grid->getInterpolator(m_cell, p0 + k[1]*0.25 + k[2]*0.25);
-            v = interpolator(vx,vy,vz);
-            k[2] = v*m_stepsize;
-            p_n = p0 + 0.5*dt*(k[0]+k[1]);
-            Vector3 p_1 = p0 + k[0]+k[1])/6 + 2/3*k[2];
-            Vector3 diff = p - p_1;
-            Scalar r = diff.norm()/dt;
-            m_stepsize = 0.84*pow((r/eps), 0.25);
-        }
-
-        m_position = p;
-        m_positions.push_back(m_position);
-        m_stepcount +=1;*/
-
+        m_positionold = m_position;
         m_position = m_position + m_velocity*m_stepsize;
         m_positions.push_back(m_position);
         ++m_stepcount;
@@ -351,6 +321,7 @@ public:
     void Communicator(boost::mpi::communicator mpi_comm, Index root){
 
         boost::mpi::broadcast(mpi_comm, m_position, root);
+        boost::mpi::broadcast(mpi_comm, m_positionold, root);
         boost::mpi::broadcast(mpi_comm, m_stepcount, root);
         boost::mpi::broadcast(mpi_comm, m_velocity, root);
         boost::mpi::broadcast(mpi_comm, m_ingrid, root);
@@ -410,11 +381,15 @@ bool Tracer::compute(){
 bool Tracer::reduce(int timestep){
 
     Index numblocks = grid_in.size();
+
+    //get parameters
     Index numpoints = getIntParameter("no_startp");
     Index steps_max = getIntParameter("steps_max");
     Index steps_comm = getIntParameter("steps_comm");
     Scalar dt = getFloatParameter("timestep");
     Index task_type = getIntParameter("taskType");
+    Index num2comm = getIntParameter("particles_comm");
+
     boost::mpi::communicator world;
     if(data_in1.size()<numblocks){
 
@@ -451,31 +426,16 @@ bool Tracer::reduce(int timestep){
         particle[i]->setStatus(block, steps_max, task_type);
     }
 
-    //erase inactive particles
-    {Index i=0;
-        while(i<particle.size()){
 
-            bool active = particle[i]->isActive();
-            active = boost::mpi::all_reduce(world, active, std::logical_or<bool>());
+    for(Index i=0; i<numpoints; i++){
 
-            if(!active){
-                particle.erase(particle.begin()+i);
-            }
-            else{i++;}
-    }}
-
-    if(particle.size() ==0){
-        if(world.rank() ==0){
-            std::cout << "0 particles inside grid" << std::endl;
-        }
-        return true;
-    }
-    else {
-        if(world.rank() ==0){
-            std::cout << particle.size() << " of " << numpoints << " particles inside grid" << std::endl;
+        bool active = particle[i]->isActive();
+        active = boost::mpi::all_reduce(world, active, std::logical_or<bool>());
+        if(!active){
+            particle[i]->Deactivate();
         }
     }
-    numpoints = particle.size();
+
 
     Index stepcount=0;
     bool ingrid = true;
@@ -483,12 +443,16 @@ bool Tracer::reduce(int timestep){
     std::vector<Index> sendlist(0);
 
     while(ingrid){
+
+        bool anyactive = false;
+
         for(Index i=0; i<numpoints; i++){
 
             if(particle[i]->isActive()){
 
                 particle[i]->Interpolation();
                 particle[i]->Integration();
+                anyactive = true;
             }
 
             particle[i]->setStatus(block, steps_max, task_type);
@@ -498,8 +462,8 @@ bool Tracer::reduce(int timestep){
                 sendlist.push_back(i);
             }
         }
-        ++stepcount;
-        if(stepcount == steps_comm){
+
+        if(!anyactive || stepcount == steps_comm){
             for(Index mpirank=0; mpirank<mpisize; mpirank++){
 
                 Index num_send = sendlist.size();
