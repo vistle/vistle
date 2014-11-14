@@ -8,7 +8,7 @@ case $(hostname) in
          MPIHOSTS=$(echo viscluster{70..77}|sed -e 's/ /,/g')
       fi
       if [ "$MPISIZE" = "" ]; then
-         MPISIZE=1
+         MPISIZE=8
       fi
       exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} "$@"
       #exec mpirun -np 8  -hosts localhost "$@"
