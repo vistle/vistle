@@ -26,6 +26,8 @@
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
 #include <math.h>
+#include <boost/chrono.hpp>
+
 
 MODULE_MAIN(Tracer)
 
@@ -53,8 +55,8 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addIntParameter("steps_max", "maximum number of timesteps per particle", 1000);
     addIntParameter("steps_comm", "maximum number of timesteps before communication", 10);
     IntParameter* tasktype = addIntParameter("taskType", "task type", 0, Parameter::Choice);
-    addIntParameter("particles_step", "number of particles traced on each node before next communication", 1000);
-    setParameterRange("particles_step", (Integer)1, (Integer)10000);
+    addIntParameter("particles_comm", "number of particles traced on each node before next communication", 1000);
+    setParameterRange("particles_comm", (Integer)0, (Integer)10000);
     std::vector<std::string> choices;
     choices.push_back("streamlines");
     setParameterChoices(tasktype, choices);
@@ -121,7 +123,7 @@ public:
 
         switch(tasktype){
 
-        case 1:{
+        case 0:{
 
             Index numpoints = points.size();
             Scalar phi_max = 1e-03;
@@ -198,10 +200,10 @@ public:
         m_velocity(Vector3(1,0,0)),
         m_stepcount(0),
         m_block(nullptr),
-        m_cell(InvalidIndex),        
+        m_cell(InvalidIndex),
         m_ingrid(true),
         m_out(false),
-        m_in(true),        
+        m_in(true),
         m_stepsize(dt){
     }
 
@@ -380,6 +382,12 @@ bool Tracer::compute(){
 
 bool Tracer::reduce(int timestep){
 
+boost::chrono::high_resolution_clock::time_point st = boost::chrono::high_resolution_clock::now();
+boost::chrono::high_resolution_clock::time_point et;
+boost::chrono::high_resolution_clock::time_point sc;
+boost::chrono::high_resolution_clock::time_point ec;
+double ect = 0;
+
     Index numblocks = grid_in.size();
 
     //get parameters
@@ -389,6 +397,9 @@ bool Tracer::reduce(int timestep){
     Scalar dt = getFloatParameter("timestep");
     Index task_type = getIntParameter("taskType");
     Index num2comm = getIntParameter("particles_comm");
+    if(num2comm<numpoints){
+        num2comm = numpoints;
+    }
 
     boost::mpi::communicator world;
     if(data_in1.size()<numblocks){
@@ -441,67 +452,70 @@ bool Tracer::reduce(int timestep){
     bool ingrid = true;
     Index mpisize = world.size();
     std::vector<Index> sendlist(0);
-
+    Index numsets = numpoints/num2comm +1;
     while(ingrid){
 
         bool anyactive = false;
+        for(Index k=0; k<numsets; k++){
+            for(Index i=k*num2comm; i<(k+1)*num2comm && i<numpoints; i++){
 
-        for(Index i=0; i<numpoints; i++){
+                if(particle[i]->isActive()){
 
-            if(particle[i]->isActive()){
+                    particle[i]->Interpolation();
+                    particle[i]->Integration();
+                    anyactive = true;
+                }
 
-                particle[i]->Interpolation();
-                particle[i]->Integration();
-                anyactive = true;
+                particle[i]->setStatus(block, steps_max, task_type);
+
+                if(particle[i]->leftNode()){
+
+                    sendlist.push_back(i);
+                }
             }
+            ++stepcount;
+sc = boost::chrono::high_resolution_clock::now();
+            if(stepcount == steps_comm){
+                for(Index mpirank=0; mpirank<mpisize; mpirank++){
 
-            particle[i]->setStatus(block, steps_max, task_type);
+                    Index num_send = sendlist.size();
+                    boost::mpi::broadcast(world, num_send, mpirank);
 
-            if(particle[i]->leftNode()){
-
-                sendlist.push_back(i);
-            }
-        }
-
-        if(!anyactive || stepcount == steps_comm){
-            for(Index mpirank=0; mpirank<mpisize; mpirank++){
-
-                Index num_send = sendlist.size();
-                boost::mpi::broadcast(world, num_send, mpirank);
-
-                if(num_send>0){
-                    std::vector<Index> tmplist = sendlist;
-                    boost::mpi::broadcast(world, tmplist, mpirank);
-                    for(Index i=0; i<num_send; i++){
-                        Index p_index = tmplist[i];
-                        particle[p_index]->Communicator(world, mpirank);
-                        particle[p_index]->setStatus(block, steps_max, task_type);
-                        bool active = particle[p_index]->isActive();
-                        active = boost::mpi::all_reduce(world, particle[p_index]->isActive(), std::logical_or<bool>());
-                        if(!active){
-                            particle[p_index]->Deactivate();
+                    if(num_send>0){
+                        std::vector<Index> tmplist = sendlist;
+                        boost::mpi::broadcast(world, tmplist, mpirank);
+                        for(Index i=0; i<num_send; i++){
+                            Index p_index = tmplist[i];
+                            particle[p_index]->Communicator(world, mpirank);
+                            particle[p_index]->setStatus(block, steps_max, task_type);
+                            bool active = particle[p_index]->isActive();
+                            active = boost::mpi::all_reduce(world, particle[p_index]->isActive(), std::logical_or<bool>());
+                            if(!active){
+                                particle[p_index]->Deactivate();
+                            }
                         }
                     }
                 }
-            }
+ec = boost::chrono::high_resolution_clock::now();
+ect = ect + 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>(ec-sc).count();
+                ingrid = false;
+                for(Index i=0; i<numpoints; i++){
 
-            ingrid = false;
-            for(Index i=0; i<numpoints; i++){
+                    if(particle[i]->inGrid()){
 
-                if(particle[i]->inGrid()){
-
-                    ingrid = true;
-                    break;
+                        ingrid = true;
+                        break;
+                    }
                 }
+                stepcount = 0;
+                sendlist.clear();
             }
-            stepcount = 0;
-            sendlist.clear();
         }
     }
 
     switch(task_type){
 
-    case 1:
+    case 0:
         //add Lines-objects to output port
         for(Index i=0; i<numblocks; i++){
 
@@ -530,6 +544,12 @@ bool Tracer::reduce(int timestep){
     }
 
     world.barrier();
+et = boost::chrono::high_resolution_clock::now();
+
+if(world.rank()==0){
+    std::cout << "total: " << 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>(et-st).count() << std::endl <<
+                 "comm: " << ect << std::endl;
+}
     if(world.rank()==0){
         std::cout << "Tracer done" << std::endl;
     }
