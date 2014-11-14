@@ -5,7 +5,7 @@ echo SPAWN "$@"
 case $(hostname) in
    viscluster70)
       if [ -z "$MPIHOSTS" ]; then
-         MPIHOSTS=$(echo viscluster{51..58} viscluster{70..77}|sed -e 's/ /,/g')
+         MPIHOSTS=$(echo viscluster{70..77} viscluster{51..58}|sed -e 's/ /,/g')
       fi
       if [ "$MPISIZE" = "" ]; then
          MPISIZE=16
