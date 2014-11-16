@@ -83,7 +83,7 @@ std::string operator+(const std::string &s, const shm_name_t &n) {
 std::string Shm::instanceName(const std::string &host, unsigned short port) {
 
    std::stringstream str;
-   str << "vistle_" << host << "_" << port;
+   str << "vistle_" << host << "_" << getuid() << "_" << port;
    return str.str();
 }
 
