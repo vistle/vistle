@@ -205,7 +205,7 @@ bool Color::compute() {
    Scalar min = std::numeric_limits<Scalar>::max();
    Scalar max = -std::numeric_limits<Scalar>::max();
 
-   if (getFloatParameter("min") == getFloatParameter("max"))
+   if (getFloatParameter("min") >= getFloatParameter("max"))
       getMinMax(obj, min, max);
    else {
       min = getFloatParameter("min");
