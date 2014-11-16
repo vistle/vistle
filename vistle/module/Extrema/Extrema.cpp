@@ -74,14 +74,14 @@ class Extrema: public vistle::Module {
          module->minBlock.dim = Dim;
          module->maxBlock.dim = Dim;
 
-         size_t size = in->getSize();
+         Index size = in->getSize();
 #pragma omp parallel
          for (int c=0; c<Dim; ++c) {
             S min = module->min[c];
             S max = module->max[c];
             const S *x = in->x(c).data();
             Index imin=InvalidIndex, imax=InvalidIndex;
-            for (unsigned int index = 0; index < size; index ++) {
+            for (Index index = 0; index < size; index ++) {
                if (x[index] < min) {
                   min = x[index];
                   imin = index;
