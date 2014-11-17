@@ -357,7 +357,7 @@ void VncServer::resize(int viewNum, int w, int h) {
     }
 #endif
     if (viewNum >= numViews()) {
-        if (viewNum == 0)
+        if (viewNum != 0)
             m_viewData.emplace_back();
         else
             return;

@@ -283,7 +283,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    if (rank() == rootRank())
       vnc.reset(new VncServer(1024, 768, m_vncBasePort->getValue()));
 
-   rtcInit("verbose=1");
+   rtcInit("verbose=0");
    m_scene = rtcNewScene(RTC_SCENE_DYNAMIC|sceneFlags, intersections);
 
    rtcCommit(m_scene);
