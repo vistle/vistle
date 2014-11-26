@@ -97,7 +97,7 @@ bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const {
       if (m.second.hub == Communicator::the().hubId())
          ++numLocal;
    }
-   CERR << "checkBarrier " << uuid << ": #local=" << numLocal << ", #reached=" << reachedSet.size() << std::endl;
+   //CERR << "checkBarrier " << uuid << ": #local=" << numLocal << ", #reached=" << reachedSet.size() << std::endl;
    if (reachedSet.size() == numLocal)
       return true;
 

@@ -330,7 +330,7 @@ bool Hub::sendSlaves(const message::Message &msg, bool returnToSender) {
 
    for (auto &sock: m_slaveSockets) {
       if (sock.first != senderHub || returnToSender) {
-         std::cerr << "to slave id: " << sock.first << " (!= " << senderHub << ")" << std::endl;
+         //std::cerr << "to slave id: " << sock.first << " (!= " << senderHub << ")" << std::endl;
          sendMessage(sock.second, msg);
       }
    }
