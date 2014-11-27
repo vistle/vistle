@@ -235,7 +235,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
 : Renderer("RayCaster", shmname, name, moduleId)
 , rayPacketSize(MaxPacketSize)
 , m_tilesize(64)
-, m_sendTilesize((Integer)256, (Integer)256)
+, m_sendTilesize((Integer)1440, (Integer)1440)
 , m_timestep(0)
 , m_displayRank(0)
 , m_updateBounds(1)
@@ -283,8 +283,8 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
 
    m_depthPrec = addIntParameter("depth_prec", "quantized depth precision", (Integer)(m_prec==24), Parameter::Choice);
    choices.clear();
-   choices.push_back("16 bit + 2 bit/pixel");
-   choices.push_back("24 bit + 3 bit/pixel");
+   choices.push_back("16 bit + 4 bits/pixel");
+   choices.push_back("24 bit + 3 bits/pixel");
    setParameterChoices(m_depthPrec, choices);
 
    m_defaultColor = Vector4(127, 127, 127, 255);

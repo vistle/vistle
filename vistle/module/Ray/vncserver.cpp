@@ -26,6 +26,8 @@
 
 #include <util/stopwatch.h>
 
+#define QUANT_ERROR
+
 #ifdef HAVE_TURBOJPEG
 #include <turbojpeg.h>
 
@@ -1086,6 +1088,11 @@ struct EncodeTask: public tbb::task {
                 msg.size = depthquant_size(DepthFloat, ds, w, h);
                 char *qbuf = new char[msg.size];
                 depthquant(qbuf, zbuf, DepthFloat, ds, x, y, w, h, stride);
+#ifdef QUANT_ERROR
+                std::vector<char> dequant(ds*w*h);
+                depthdequant(dequant.data(), qbuf, ds, 0, 0, w, h);
+                depthcompare(zbuf, dequant.data(), ds*8, w, h);
+#endif
                 result.payload = qbuf;
             } else {
                 char *tilebuf = new char[msg.size];
