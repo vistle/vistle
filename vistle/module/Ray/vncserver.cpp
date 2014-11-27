@@ -289,6 +289,9 @@ const VncServer::Screen &VncServer::screen() const {
 //! called after plug-in is loaded and scenegraph is initialized
 bool VncServer::init(int w, int h, unsigned short port) {
 
+   m_tileWidth = 256;
+   m_tileHeight = 256;
+
    m_numTimesteps = 0;
 
    m_numClients = 0;
@@ -1139,6 +1142,12 @@ struct EncodeTask: public tbb::task {
     }
 };
 
+void VncServer::setTileSize(int w, int h) {
+
+   m_tileWidth = w;
+   m_tileHeight = h;
+}
+
 void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const VncServer::ViewParameters &param, bool lastView) {
 
     if (!m_resizeBlocked) {
@@ -1147,7 +1156,7 @@ void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const V
     m_resizeBlocked = true;
 
     //vistle::StopWatch timer("encodeAndSend");
-    const int tileWidth = 256, tileHeight = 256;
+    const int tileWidth = m_tileWidth, tileHeight = m_tileHeight;
     static int framecount=0;
     ++framecount;
 

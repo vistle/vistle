@@ -64,6 +64,7 @@ public:
    void enableQuantization(bool value);
    void enableDepthSnappy(bool value);
    void setDepthPrecision(int bits);
+   void setTileSize(int w, int h);
 
    int timestep() const;
    void setNumTimesteps(int num);
@@ -221,6 +222,8 @@ public:
 
 private:
    static VncServer *plugin; //<! access to plug-in from static member functions
+
+   int m_tileWidth, m_tileHeight;
 
    //! address of client to which a connection should be established (reverse connection)
    struct Client
