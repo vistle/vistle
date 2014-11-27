@@ -89,7 +89,7 @@
 
     <ClipPlane value="on" />
 
-    <VncClient menu="true" value="off" rfbHost="visent.hlrs.de" rfbPort="31590" />
+    <VncClient menu="true" value="on" rfbHost="visent.hlrs.de" rfbPort="31590" />
     <!--
     <VncClient value="on" rfbHost="viscose.hlrs.de" >
     </VncClient>
@@ -99,7 +99,7 @@
      <Attachment value="TOP" />
      <Scale value=".8" />
      <MinClickTime value="0.2" />
-     <Position x="-980" y="0" z="630" />
+     <Position x="-980" y="0" z="980" />
      <ShortCut value="viewall" name="viewall" />
      <ShortCut value="scale" name="scale" />
      <ShortCut value="xform" name="xform" />
@@ -113,7 +113,7 @@
     <Position x="600" y="0" z="500" />
    </Menu>
    <ViewerPosition x="0" y="-2000" z="0" />
-   <SceneSize value="1500" />
+   <SceneSize value="2500" />
    <DebugLevel value="1" />
    <FPS value="false" />
 
@@ -127,14 +127,14 @@
    </ChannelConfig>
             
    <WindowConfig>
-    <Window width="1024" comment="FRONT" window="0" pipeIndex="0" height="768" left="0" bottom="0" name="0" decoration="true" />
+    <Window width="1440" comment="FRONT" window="0" pipeIndex="0" height="1440" left="100" bottom="0" name="0" decoration="false" />
     <Window width="1024" comment="FRONT2" window="1" pipeIndex="0" height="768" left="1024" bottom="0" name="1" decoration="true" />
    </WindowConfig>
 
    <NumScreens value="1" />
    <ScreenConfig>
    <!--Screen value="FRONT 400 300 0 0 0 0.0 0.0 0.0" name="0" screen="0" /-->
-   <Screen width="2000" comment="FRONT" h="0.0" originX="0" originY="0" originZ="0" height="1500" p="0.0" r="0.0" name="0" screen="0" />
+   <Screen width="2000" comment="FRONT" h="0.0" originX="0" originY="0" originZ="0" height="2000" p="0.0" r="0.0" name="0" screen="0" />
    <Screen width="2000" comment="FRONT2" h="0.0" originX="2000" originY="0" originZ="0" height="1500" p="0.0" r="0.0" name="1" screen="1" />
    </ScreenConfig>
 
