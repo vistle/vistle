@@ -27,6 +27,7 @@
 #include <util/stopwatch.h>
 
 #define QUANT_ERROR
+#define TIMING
 
 #ifdef HAVE_TURBOJPEG
 #include <turbojpeg.h>
@@ -1089,9 +1090,10 @@ struct EncodeTask: public tbb::task {
                 char *qbuf = new char[msg.size];
                 depthquant(qbuf, zbuf, DepthFloat, ds, x, y, w, h, stride);
 #ifdef QUANT_ERROR
-                std::vector<char> dequant(ds*w*h);
-                depthdequant(dequant.data(), qbuf, ds, 0, 0, w, h);
-                depthcompare(zbuf, dequant.data(), ds*8, w, h);
+                std::vector<char> dequant(sizeof(float)*w*h);
+                depthdequant(dequant.data(), qbuf, DepthFloat, ds, 0, 0, w, h);
+                //depthquant(qbuf, dequant.data(), DepthFloat, ds, x, y, w, h, stride); // test depthcompare
+                depthcompare(zbuf, dequant.data(), DepthFloat, ds, w, h);
 #endif
                 result.payload = qbuf;
             } else {
@@ -1112,7 +1114,16 @@ struct EncodeTask: public tbb::task {
                 unsigned long sz = 0;
                 unsigned char *src = reinterpret_cast<unsigned char *>(rgba);
                 rgba += (msg.totalwidth*msg.y+msg.x)*bpp;
-                ret = tjCompress(tj.handle, rgba, msg.width, msg.totalwidth*bpp, msg.height, bpp, reinterpret_cast<unsigned char *>(jpegbuf), &sz, subsamp, 90, TJ_BGR);
+                {
+#ifdef TIMING
+                   double start = vistle::Clock::time();
+#endif
+                   ret = tjCompress(tj.handle, rgba, msg.width, msg.totalwidth*bpp, msg.height, bpp, reinterpret_cast<unsigned char *>(jpegbuf), &sz, subsamp, 90, TJ_BGR);
+#ifdef TIMING
+                   double dur = vistle::Clock::time() - start;
+                   std::cerr << "JPEG compression: " << dur << "s, " << msg.width*(msg.height/dur)/1e6 << " MPix/s" << std::endl;
+#endif
+                }
                 if (ret >= 0) {
                     msg.size = sz;
                     result.payload = jpegbuf;
@@ -1134,7 +1145,17 @@ struct EncodeTask: public tbb::task {
             size_t maxsize = snappy::MaxCompressedLength(msg.size);
             char *sbuf = new char[maxsize];
             size_t compressed = 0;
-            snappy::RawCompress(result.payload, msg.size, sbuf, &compressed);
+            { 
+#ifdef TIMING
+               double start = vistle::Clock::time();
+#endif
+               snappy::RawCompress(result.payload, msg.size, sbuf, &compressed);
+#ifdef TIMING
+               vistle::StopWatch timer(rgba ? "snappy RGBA" : "snappy depth");
+               double dur = vistle::Clock::time() - start;
+               std::cerr << "SNAPPY " << (rgba ? "RGB" : "depth") << ": " << dur << "s, " << msg.width*(msg.height/dur)/1e6 << " MPix/s" << std::endl;
+#endif
+            }
             msg.size = compressed;
 
             //std::cerr << "compressed " << msg.size << " to " << compressed << " (buf: " << cd->buf.size() << ")" << std::endl;
