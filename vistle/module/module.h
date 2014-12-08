@@ -230,6 +230,8 @@ protected:
    virtual bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName);
    virtual bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg);
 
+   virtual bool objectAdded(const Port *port); //< notification when data object has been added - called on each rank individually
+
    virtual bool compute() = 0; //< do processing - called on each rank individually
 
    std::map<std::string, Port*> outputPorts;

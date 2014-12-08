@@ -892,6 +892,10 @@ bool Module::parameterChanged(const int senderId, const std::string &name, const
    return false;
 }
 
+bool Module::objectAdded(const Port *port) {
+
+   return true;
+}
 
 bool Module::dispatch() {
 
@@ -1193,8 +1197,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
             Index numObject = 0;
             if (exec->getExecutionCount() > 0) {
-               Index numConnected = 0;
                // Compute not triggered by adding an object, get objects from cache
+               Index numConnected = 0;
                for (auto &port: inputPorts) {
                   port.second->objects() = m_cache.getObjects(port.first);
                   if (!isConnected(port.second))
@@ -1262,6 +1266,16 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const message::AddObject *add =
             static_cast<const message::AddObject *>(message);
          addInputObject(add->getPortName(), add->takeObject());
+         const Port *p = findInputPort(add->getPortName());
+         if (!p) {
+            std::cerr << "unknown input port " << add->getPortName() << " in AddObject" << std::endl;
+            return false;
+         }
+         if (!objectAdded(p)) {
+            std::cerr << "error in objectAdded(" << add->getPortName() << ")" << std::endl;
+            return false;
+         }
+
          break;
       }
 
