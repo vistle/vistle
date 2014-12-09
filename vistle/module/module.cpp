@@ -754,6 +754,7 @@ Object::const_ptr Module::expect<Object>(Port *port) {
       std::stringstream str;
       str << "no object available at " << port->getName() << ", but one is required" << std::endl;
       sendError(str.str());
+      return obj;
    }
    obj = port->objects().front();
    port->objects().pop_front();
