@@ -53,6 +53,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionSave, SIGNAL(triggered()), SIGNAL(saveDataFlow()));
     connect(ui->actionSave_As, SIGNAL(triggered()), SIGNAL(saveDataFlowAs()));
     connect(ui->actionExecute, SIGNAL(triggered()), SIGNAL(executeDataFlow()));
+    connect(ui->actionConnect, SIGNAL(triggered()), SIGNAL(connectVistle()));
 
     ui->modulesDock->show();
     ui->modulesDock->raise();

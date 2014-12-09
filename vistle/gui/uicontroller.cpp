@@ -45,10 +45,12 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    }
 
    m_python = new vistle::PythonInterface("Vistle GUI");
-   std::cerr << "trying to connect UI to " << host << ":" << port << std::endl;
 
    m_mainWindow.parameters()->setVistleObserver(&m_observer);
    m_ui = new vistle::UserInterface(host, port, &m_observer);
+   if (!m_ui->isConnected()) {
+      std::cerr << "UI: not yet connected to " << host << ":" << port << std::endl;
+   }
    m_ui->registerObserver(&m_observer);
    m_vistleConnection = new vistle::VistleConnection(*m_ui);
    m_vistleConnection->setQuitOnExit(quitOnExit);
@@ -66,6 +68,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    connect(&m_mainWindow, SIGNAL(saveDataFlow()), SLOT(saveDataFlowNetwork()));
    connect(&m_mainWindow, SIGNAL(saveDataFlowAs()), SLOT(saveDataFlowNetworkAs()));
    connect(&m_mainWindow, SIGNAL(executeDataFlow()), SLOT(executeDataFlowNetwork()));
+   connect(&m_mainWindow, SIGNAL(connectVistle()), SLOT(connectVistle()));
 
    connect(m_scene, SIGNAL(selectionChanged()), SLOT(moduleSelectionChanged()));
 
@@ -212,6 +215,12 @@ void UiController::saveDataFlowNetworkAs(const QString &filename)
 void UiController::executeDataFlowNetwork()
 {
    m_vistleConnection->executeSources();
+}
+
+void UiController::connectVistle()
+{
+   if (!m_vistleConnection->ui().isConnected())
+      m_vistleConnection->ui().tryConnect();
 }
 
 void UiController::moduleSelectionChanged()

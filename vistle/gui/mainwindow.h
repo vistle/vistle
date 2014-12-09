@@ -44,6 +44,7 @@ signals:
     void saveDataFlow();
     void saveDataFlowAs();
     void executeDataFlow();
+    void connectVistle();
 
 protected:
     void closeEvent(QCloseEvent *);

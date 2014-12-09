@@ -109,7 +109,7 @@
      <string>View</string>
     </property>
     <addaction name="actionArrange"/>
-    <addaction name="actionTranspose"/>
+    <addaction name="actionConnect"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -223,7 +223,7 @@
    <addaction name="actionExecute"/>
    <addaction name="separator"/>
    <addaction name="actionArrange"/>
-   <addaction name="actionTranspose"/>
+   <addaction name="actionConnect"/>
   </widget>
   <widget class="QDockWidget" name="modulesDock">
    <property name="features">
@@ -323,12 +323,12 @@
     <string>Automatically arrange modules</string>
    </property>
   </action>
-  <action name="actionTranspose">
+  <action name="actionConnect">
    <property name="text">
-    <string>Transpose</string>
+    <string>Connect</string>
    </property>
    <property name="toolTip">
-    <string>Transpose modules</string>
+    <string>Connect to Vistle</string>
    </property>
   </action>
   <action name="actionExecute">
