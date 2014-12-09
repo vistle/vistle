@@ -48,7 +48,7 @@ namespace vistle {
 
 PythonModule *PythonModule::s_instance = nullptr;
 
-static void sendMessage(const vistle::message::Message &m) {
+static bool sendMessage(const vistle::message::Message &m) {
 
 #ifdef VISTLE_CONTROL
    bool ret = Hub::the().handleMessage(m);
@@ -56,8 +56,9 @@ static void sendMessage(const vistle::message::Message &m) {
    if (!ret) {
       std::cerr << "Python: failed to send message " << m << std::endl;
    }
+   return ret;
 #else
-   PythonModule::the().vistleConnection().sendMessage(m);
+   return PythonModule::the().vistleConnection().sendMessage(m);
 #endif
 }
 
@@ -102,7 +103,8 @@ static bool barrier() {
    message::Barrier m;
    m.setDestId(message::Id::MasterHub);
    MODULEMANAGER.registerRequest(m.uuid());
-   sendMessage(m);
+   if (!sendMessage(m))
+      return false;
    auto buf = MODULEMANAGER.waitForReply(m.uuid());
    if (buf->msg.type() == message::Message::BARRIERREACHED) {
       return true;
@@ -119,7 +121,8 @@ static std::string spawnAsync(int hub, const char *module, int numSpawn=-1, int 
    message::Spawn m(hub, module, numSpawn, baseRank, rankSkip);
    m.setDestId(message::Id::MasterHub); // to master for module id generation
    MODULEMANAGER.registerRequest(m.uuid());
-   sendMessage(m);
+   if (!sendMessage(m))
+      return "";
    std::string uuid = boost::lexical_cast<std::string>(m.uuid());
 
    return uuid;
