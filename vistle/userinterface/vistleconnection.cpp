@@ -203,7 +203,9 @@ bool vistle::VistleConnection::resetDataFlowNetwork() const
    {
       mutex_lock lock(m_mutex);
       for (int id: ui().state().getRunningList()) {
-         if (!sendMessage(message::Kill(id)))
+         message::Kill m(id);
+         m.setDestId(id);
+         if (!sendMessage(m))
             return false;
       }
    }
