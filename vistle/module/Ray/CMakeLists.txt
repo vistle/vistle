@@ -1,8 +1,3 @@
-#find_package(IceT REQUIRED)
-set(ICET_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/3rdparty/IceT/src/include;${CMAKE_BINARY_DIR}/3rdparty/IceT/src/include)
-set(ICET_CORE_LIBS "IceTCore")
-set(ICET_MPI_LIBS "IceTMPI")
-
 find_package(LibVncServer)
 find_package(embree)                                                                                                     
 find_package(TBB)

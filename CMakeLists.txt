@@ -39,6 +39,12 @@ endif()
 #add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
 add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int)
 
+#find_package(IceT REQUIRED)
+set(ICET_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/3rdparty/IceT/src/include;${CMAKE_BINARY_DIR}/3rdparty/IceT/src/include)
+set(ICET_CORE_LIBS "IceTCore")
+set(ICET_MPI_LIBS "IceTMPI")
+set(ICET_FOUND TRUE)
+
 if (VISTLE_USE_CUDA)
    set (CUDA_HOST_COMPILER ${PROJECT_SOURCE_DIR}/scripts/cuda-host-compiler CACHE STRING "CUDA nvcc host compiler" FORCE)
    if (APPLE)

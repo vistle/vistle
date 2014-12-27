@@ -68,7 +68,7 @@ add_subdirectory(blower)
 
 add_subdirectory(module)
 
-add_subdirectory(plugin)
+add_subdirectory(cover)
 
 add_subdirectory(gui)
 
