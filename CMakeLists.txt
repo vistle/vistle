@@ -10,6 +10,8 @@ option(VISTLE_SANITIZE_UNDEFINED "Build with -fsanitize=undefined" OFF)
 option(VISTLE_SANITIZE_ADDRESS "Build with -fsanitize=address" OFF)
 option(VISTLE_SANITIZE_THREAD "Build with -fsanitize=thread" OFF)
 
+option(VISTLE_USE_CUDA "Build with CUDA support" ON)
+
 if (NOT "$ENV{VBUILD}" STREQUAL "")
    include("${PROJECT_SOURCE_DIR}/build/$ENV{VBUILD}.cmake")
 endif()
@@ -36,6 +38,13 @@ endif()
 
 #add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
 add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=int)
+
+if (VISTLE_USE_CUDA)
+   set (CUDA_HOST_COMPILER ${PROJECT_SOURCE_DIR}/scripts/cuda-host-compiler CACHE STRING "CUDA nvcc host compiler" FORCE)
+   if (APPLE)
+      set(CUDA_NVCC_FLAGS "\"-DBOOST_NOINLINE=__attribute__ ((noinline))\"")
+   endif (APPLE)
+endif()
 
 set(ASAN_COMPILE_FLAGS "")
 set(ASAN_LINK_FLAGS "")

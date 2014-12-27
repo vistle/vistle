@@ -16,7 +16,7 @@
 
 #include <util/stopwatch.h>
 
-#include "vncserver.h"
+#include <rhr/vncserver.h>
 #include "renderobject.h"
 
 

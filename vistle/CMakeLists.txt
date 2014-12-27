@@ -57,6 +57,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 add_subdirectory(util)
 add_subdirectory(core)
+add_subdirectory(rhr)
 add_subdirectory(control)
 add_subdirectory(userinterface)
 
