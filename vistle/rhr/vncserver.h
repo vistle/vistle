@@ -2,9 +2,9 @@
  * \brief VncServer plugin class
  * 
  * \author Martin Aumüller <aumueller@hlrs.de>
- * \author (c) 2012, 2013 HLRS
+ * \author (c) 2012, 2013, 2014 HLRS
  *
- * \copyright GPL2+
+ * \copyright LGPL2+
  */
 
 #ifndef VNC_SERVER_H
@@ -15,7 +15,7 @@
 #include <string>
 
 #include <rfb/rfb.h>
-#include <RHR/rfbext.h>
+#include <rhr/rfbext.h>
 #ifdef max
 #undef max
 #endif
@@ -57,7 +57,6 @@ public:
 
    bool init(int w, int h, unsigned short port);
    void preFrame();
-   void postFrame();
 
    typedef bool (*AppMessageHandlerFunc)(int type, const std::vector<char> &msg);
    void setAppMessageHandler(AppMessageHandlerFunc handler);

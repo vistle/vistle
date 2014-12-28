@@ -872,8 +872,6 @@ void RayCaster::render() {
       }
       m_currentView = -1;
    }
-   if (vnc)
-       vnc->postFrame();
 }
 
 void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image) {

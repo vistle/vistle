@@ -912,62 +912,6 @@ VncServer::preFrame()
    rfbReleaseClientIterator(i);
 }
 
-//! called after back-buffer has been swapped to front-buffer
-void
-VncServer::postFrame()
-{
-#if 0
-   double bpp = 4.;
-   int depthps = 4;
-
-   double pix = m_param.width*m_param.height;
-   if(m_benchmark || m_errormetric || m_compressionrate) {
-      if (m_numRhrClients > 0) {
-
-#ifdef HAVE_SNAPPY
-         const size_t sz = m_param.width*m_param.height*depthps;
-         size_t maxsz = snappy::MaxCompressedLength(sz);
-         std::vector<char> compressed(maxsz);
-
-         double snappystart = Clock::time();
-         size_t compressedsz = 0;
-         snappy::RawCompress((const char *)depth(), sz, &compressed[0], &compressedsz);
-         double snappydur = Clock::time() - snappystart;
-         if (m_compressionrate) {
-            fprintf(stderr, "snappy solo: %ld -> %ld, %f s, %f gb/s\n", sz, compressedsz, snappydur,
-                  sz/snappydur/1024/1024/1024);
-         }
-#endif
-
-#if 0
-         if (m_errormetric && m_depthquant) {
-            std::vector<char> dequant(m_width*m_height*depthps);
-            depthdequant(&dequant[0], m_screen->frameBuffer+4*m_width*m_height, depthps, m_width, m_height);
-            depthcompare(depth(), &dequant[0], m_depthprecision, m_width, m_height);
-         }
-#endif
-
-         double bytesraw = pix * depthps;
-         double bytesread = pix;
-         int structsz = 1;
-         bytesread *= depthps;
-
-#if 0
-         if (m_benchmark) {
-            fprintf(stderr, "DEPTH %fs: %f mpix/s, %f gb/s raw, %f gb/s read (cuda=%d) (ps=%d, ts=%d)\n",
-                  depthdur,
-                  pix/depthdur/1e6,
-                  bytesraw/depthdur/(1024*1024*1024),
-                  bytesread/depthdur/(1024*1024*1024),
-                  0, depthps, structsz);
-         }
-#endif
-
-      }
-   }
-#endif
-}
-
 void VncServer::invalidate(int viewNum, int x, int y, int w, int h, const VncServer::ViewParameters &param, bool lastView) {
 
     if (m_numClients - m_numRhrClients > 0) {

@@ -47,23 +47,18 @@ public:
    void key(int type, int keySym, int mod);
 
    // other methods
-   static rfbBool enableMatrices(rfbClientPtr cl, void **data, int encoding);
    static rfbBool handleMatricesMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
 
-   static rfbBool enableLights(rfbClientPtr cl, void **data, int encoding);
    static rfbBool handleLightsMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
 
-   static rfbBool enableBounds(rfbClientPtr cl, void **data, int encoding);
    static rfbBool handleBoundsMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
 
-   static rfbBool enableDepth(rfbClientPtr cl, void **data, int encoding);
    static rfbBool handleDepthMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
 
-   static rfbBool enableApplication(rfbClientPtr cl, void **data, int encoding);
    static rfbBool handleApplicationMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
 
@@ -99,9 +94,7 @@ private:
 	GLenum format, int ps, GLubyte *bits, GLint buf, GLenum type=GL_UNSIGNED_BYTE);
    bool m_cudapinnedmemory; //!< wether CUDA host memory should be pinned
 
-   //rfbScreenInfoPtr m_screen; //!< RFB protocol handler
    int m_width, m_height; //! size of framebuffer
-   int m_numRhrClients;
 
    static void keyEvent(rfbBool down, rfbKeySym sym, rfbClientPtr cl);
    static void pointerEvent(int buttonmask, int x, int y, rfbClientPtr cl);

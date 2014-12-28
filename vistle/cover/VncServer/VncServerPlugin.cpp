@@ -77,75 +77,11 @@ struct ClientData {
    bool supportsApplication;
 };
 
-#if 0
-static rfbProtocolExtension matricesExt = {
-   NULL, // newClient
-   NULL, // init
-   matricesEncodings, // pseudoEncodings
-   VncServerPlugin::enableMatrices, // enablePseudoEncoding
-   VncServerPlugin::handleMatricesMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-
-static rfbProtocolExtension lightsExt = {
-   NULL, // newClient
-   NULL, // init
-   lightsEncodings, // pseudoEncodings
-   VncServerPlugin::enableLights, // enablePseudoEncoding
-   VncServerPlugin::handleLightsMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-
-static rfbProtocolExtension boundsExt = {
-   NULL, // newClient
-   NULL, // init
-   boundsEncodings, // pseudoEncodings
-   VncServerPlugin::enableBounds, // enablePseudoEncoding
-   VncServerPlugin::handleBoundsMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-
-static rfbProtocolExtension depthExt = {
-   NULL, // newClient
-   NULL, // init
-   depthEncodings, // pseudoEncodings
-   VncServerPlugin::enableDepth, // enablePseudoEncoding
-   VncServerPlugin::handleDepthMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-
-static rfbProtocolExtension applicationExt = {
-   NULL, // newClient
-   NULL, // init
-   applicationEncodings, // pseudoEncodings
-   VncServerPlugin::enableApplication, // enablePseudoEncoding
-   VncServerPlugin::handleApplicationMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-#endif
-
-
 //! called when plugin is loaded
 VncServerPlugin::VncServerPlugin()
 {
    assert(plugin == NULL);
    plugin = this;
-   m_numRhrClients = 0;
    //fprintf(stderr, "new VncServer plugin\n");
 }
 
@@ -154,15 +90,6 @@ VncServerPlugin::VncServerPlugin()
 bool VncServerPlugin::init()
 {
    m_vnc = NULL;
-#if 0
-   rfbRegisterProtocolExtension(&matricesExt);
-   rfbRegisterProtocolExtension(&lightsExt);
-   rfbRegisterProtocolExtension(&boundsExt);
-   rfbRegisterProtocolExtension(&depthExt);
-   rfbRegisterProtocolExtension(&applicationExt);
-#endif
-
-   m_numRhrClients = 0;
 
    m_delay = 0;
    m_lastMatrixTime = 0.;
@@ -205,28 +132,6 @@ bool VncServerPlugin::init()
       m_vnc = new VncServer(m_width, m_height, coCoviseConfig::getInt("rfbPort", config, 5900));
    }
 
-#if 0
-   int argc = 1;
-   char *argv[] = { (char *)"OpenCOVER", NULL };
-   m_screen = rfbGetScreen(&argc, argv, w, h, 8, 3, 4);
-   m_screen->desktopName = "OpenCOVER";
-
-   m_screen->kbdAddEvent = &keyEvent;
-   m_screen->ptrAddEvent = &pointerEvent;
-
-   m_screen->port = coCoviseConfig::getInt("rfbPort", config, 5900);
-   m_screen->frameBuffer = NULL;
-
-   m_screen->deferUpdateTime = 0;
-   m_screen->maxRectsPerUpdate = 10000000;
-   rfbInitServer(m_screen);
-   m_screen->deferUpdateTime = 0;
-   m_screen->maxRectsPerUpdate = 10000000;
-   m_screen->handleEventsEagerly = 1;
-
-   m_screen->cursor = NULL; // don't show a cursor
-#endif
-
    std::string host = covise::coCoviseConfig::getEntry("clientHost", config);
    if(!host.empty())
    {
@@ -252,7 +157,6 @@ bool VncServerPlugin::init()
 VncServerPlugin::~VncServerPlugin()
 {
    delete m_vnc;
-   //rfbShutdownServer(m_screen, true);
    if (m_cudapinnedmemory) {
 #ifdef HAVE_CUDA
       //cudaFreeHost(m_screen->frameBuffer);
@@ -267,32 +171,6 @@ VncServerPlugin::~VncServerPlugin()
    delete m_cudaDepth;
 
    //fprintf(stderr,"VncServerPlugin::~VncServerPlugin\n");
-}
-
-//! enable sending of matrices
-rfbBool VncServerPlugin::enableMatrices(rfbClientPtr cl, void **data, int encoding) {
-
-   if (encoding != rfbMatrices)
-      return FALSE;
-
-   VRSceneGraph::instance()->setMenu(false);
-
-   matricesMsg msg;
-   msg.type = rfbMatrices;
-   const osg::Matrix &v = cover->getViewerMat();
-   const osg::Matrix &t = cover->getXformMat();
-   const osg::Matrix &s = cover->getObjectsScale()->getMatrix();
-   for (int i=0; i<16; ++i) {
-      //TODO: swap to big-endian
-      msg.viewer[i] = v.ptr()[i];
-      msg.transform[i] = t.ptr()[i];
-      msg.scale[i] = s.ptr()[i];
-   }
-   if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-         rfbLogPerror("enableMatrices: write");
-   }
-
-   return TRUE;
 }
 
 //! handle matrix update message
@@ -323,20 +201,6 @@ rfbBool VncServerPlugin::handleMatricesMessage(rfbClientPtr cl, void *data,
    VRViewer::instance()->updateViewerMat(view);
    cover->setXformMat(transform);
    cover->getObjectsScale()->setMatrix(scale);
-
-   return TRUE;
-}
-
-//! enable sending of lighting parameters
-rfbBool VncServerPlugin::enableLights(rfbClientPtr cl, void **data, int encoding) {
-
-   if (encoding != rfbLights)
-      return FALSE;
-
-   lightsMsg msg;
-   if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-         rfbLogPerror("enableLights: write");
-   }
 
    return TRUE;
 }
@@ -402,26 +266,6 @@ rfbBool VncServerPlugin::handleLightsMessage(rfbClientPtr cl, void *data,
 }
 
 #if 0
-//! enable sending of depth buffer
-rfbBool VncServerPlugin::enableDepth(rfbClientPtr cl, void **data, int encoding) {
-
-   if (encoding != rfbDepth)
-      return FALSE;
-
-   depthMsg msg;
-   msg.type = rfbDepth;
-   msg.x = 0;
-   msg.y = 0;
-   msg.width = 0;
-   msg.height = 0;
-   msg.size = 0;
-   if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-         rfbLogPerror("enableDepth: write");
-   }
-
-   return TRUE;
-}
-
 //! send depth buffer to a client
 void VncServerPlugin::sendDepthMessage(rfbClientPtr cl) {
 
@@ -535,13 +379,6 @@ rfbBool VncServerPlugin::handleDepthMessage(rfbClientPtr cl, void *data,
       cl->clientData = new ClientData();
       cl->clientGoneHook = clientGoneHook;
    }
-   ClientData *cd = static_cast<ClientData *>(cl->clientData);
-   if (!cd->supportsDepth) {
-      std::cerr << "VncServerPlugin: RHR client connected" << std::endl;
-      ++plugin->m_numRhrClients;
-   }
-   cd->supportsDepth = true;
-
    depthMsg msg;
    int n = rfbReadExact(cl, ((char *)&msg)+1, sizeof(msg)-1);
    if (n <= 0) {
@@ -570,25 +407,6 @@ rfbBool VncServerPlugin::handleDepthMessage(rfbClientPtr cl, void *data,
 
    if (msg.sendreply) {
       sendDepthMessage(cl);
-   }
-
-   return TRUE;
-}
-
-//! enable generic application messages
-rfbBool VncServerPlugin::enableApplication(rfbClientPtr cl, void **data, int encoding) {
-
-   if (encoding != rfbApplication)
-      return FALSE;
-
-   applicationMsg msg;
-   msg.type = rfbApplication;
-   msg.appType = 0;
-   msg.sendreply = 0;
-   msg.version = 0;
-   msg.size = 0;
-   if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-         rfbLogPerror("enableApplication: write");
    }
 
    return TRUE;
@@ -735,26 +553,6 @@ static void sendBoundsMessage(rfbClientPtr cl) {
    msg.center[2] = bs.center()[2];
    msg.radius = bs.radius();
    rfbWriteExact(cl, (char *)&msg, sizeof(msg));
-}
-
-
-//! enable bounding sphere messages
-rfbBool VncServerPlugin::enableBounds(rfbClientPtr cl, void **data, int encoding) {
-
-   if (encoding != rfbBounds)
-      return FALSE;
-
-   boundsMsg msg;
-   msg.type = rfbBounds;
-   msg.center[0] = 0.;
-   msg.center[1] = 0.;
-   msg.center[2] = 0.;
-   msg.radius = 0.;
-   if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-         rfbLogPerror("enableBounds: write");
-   }
-
-   return TRUE;
 }
 
 //! handle request for a bounding sphere update
@@ -1137,7 +935,7 @@ VncServerPlugin::postSwapBuffers(int windowNumber)
    if (m_benchmark)
       colorfinish = cover->currentTime();
 
-   if (m_numRhrClients > 0) {
+   if (m_vnc->numRhrClients() > 0) {
       if (m_depthcopy) {
          glCopyPixels(0, 0, m_width, m_height, GL_DEPTH_STENCIL_TO_RGBA_NV);
          depthformat = GL_BGRA;
@@ -1162,8 +960,6 @@ VncServerPlugin::postSwapBuffers(int windowNumber)
 
    m_vnc->invalidate(0, 0, 0, m_vnc->width(0), m_vnc->height(0), m_vncParam, true);
 
-   //rfbMarkRectAsModified(m_screen,0,0,m_width,m_height);
-
    double pix = m_width*m_height;
    double bytes = pix * bpp;
    if(m_benchmark || m_errormetric || m_compressionrate) {
@@ -1175,7 +971,7 @@ VncServerPlugin::postSwapBuffers(int windowNumber)
                m_cudaColor!=NULL);
       }
 
-      if (m_numRhrClients > 0) {
+      if (m_vnc->numRhrClients() > 0) {
          double depthdur = cover->currentTime() - colorfinish;
 
          const size_t sz = m_width*m_height*depthps;
