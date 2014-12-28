@@ -15,9 +15,8 @@
 #include <snappy.h>
 #endif
 
-#include <RHR/rfbext.h>
-#include <RHR/depthquant.h>
-
+#include "rfbext.h"
+#include "depthquant.h"
 #include "vncserver.h"
 
 #include <tbb/parallel_for.h>
@@ -292,6 +291,8 @@ const VncServer::Screen &VncServer::screen() const {
 //! called after plug-in is loaded and scenegraph is initialized
 bool VncServer::init(int w, int h, unsigned short port) {
 
+   m_appHandler = nullptr;
+
    m_tileWidth = 256;
    m_tileHeight = 256;
 
@@ -354,6 +355,20 @@ bool VncServer::init(int w, int h, unsigned short port) {
    return true;
 }
 
+void VncServer::setAppMessageHandler(AppMessageHandlerFunc handler) {
+
+   m_appHandler = handler;
+}
+
+int VncServer::numClients() const {
+
+   return m_numClients;
+}
+
+int VncServer::numRhrClients() const {
+
+   return m_numRhrClients;
+}
 
 void VncServer::resize(int viewNum, int w, int h) {
 
@@ -707,6 +722,12 @@ rfbBool VncServer::handleApplicationMessage(rfbClientPtr cl, void *data,
          rfbLogPerror("handleApplicationMessage: read data");
       rfbCloseClient(cl);
       return TRUE;
+   }
+
+   if (plugin->m_appHandler) {
+      bool handled = plugin->m_appHandler(msg.appType, buf);
+      if (handled)
+         return TRUE;
    }
 
    switch (msg.appType) {

@@ -1,5 +1,5 @@
 /**\file
- * \brief VncServer plugin class
+ * \brief VncServerPlugin plugin class
  * 
  * \author Martin Aumüller <aumueller@hlrs.de>
  * \author (c) 2012, 2013 HLRS
@@ -7,28 +7,29 @@
  * \copyright GPL2+
  */
 
-#ifndef VNC_SERVER_H
-#define VNC_SERVER_H
+#ifndef VNC_SERVER_PLUGIN_H
+#define VNC_SERVER_PLUGIN_H
 
 #include <kernel/coVRPluginSupport.h>
 
 #include <deque>
 #include <string>
 
-#include <rfb/rfb.h>
+#include <rhr/vncserver.h>
 
 using namespace covise;
 using namespace opencover;
 
 class ReadBackCuda;
+class VncServer;
 
 //! Implement remote hybrid rendering server based on VNC protocol
-class VncServer: public coVRPlugin
+class VncServerPlugin: public coVRPlugin
 {
 public:
    // plugin methods
-   VncServer();
-   ~VncServer();
+   VncServerPlugin();
+   ~VncServerPlugin();
    bool init();
    void preFrame();
    void postSwapBuffers(int windowNumber);
@@ -67,7 +68,9 @@ public:
          const rfbClientToServerMsg *message);
 
 private:
-   static VncServer *plugin; //<! access to plug-in from static member functions
+   static VncServerPlugin *plugin; //<! access to plug-in from static member functions
+
+   static bool vncAppMessageHandler(int type, const std::vector<char> &msg);
 
    //! address of client to which a connection should be established (reverse connection)
    struct Client
@@ -77,6 +80,8 @@ private:
    };
    std::vector<Client> m_clientList; //!< list of clients to which reverse connections should be tried
    
+   VncServer *m_vnc; //!< VNC server handler
+   VncServer::ViewParameters m_vncParam;
    ReadBackCuda *m_cudaColor; //!< color transfer using CUDA, if available
    ReadBackCuda *m_cudaDepth; //!< depth transfer using CUDA, if available
    bool m_benchmark; //!< whether timing information should be printed
@@ -94,17 +99,13 @@ private:
 	GLenum format, int ps, GLubyte *bits, GLint buf, GLenum type=GL_UNSIGNED_BYTE);
    bool m_cudapinnedmemory; //!< wether CUDA host memory should be pinned
 
-   rfbScreenInfoPtr m_screen; //!< RFB protocol handler
+   //rfbScreenInfoPtr m_screen; //!< RFB protocol handler
    int m_width, m_height; //! size of framebuffer
    int m_numRhrClients;
 
    static void keyEvent(rfbBool down, rfbKeySym sym, rfbClientPtr cl);
    static void pointerEvent(int buttonmask, int x, int y, rfbClientPtr cl);
 
-   static void clientGoneHook(rfbClientPtr cl);
-   static void sendDepthMessage(rfbClientPtr cl);
-   static void sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data);
-   static void broadcastApplicationMessage(int type, int length, const char *data);
    static void broadcastAddObject(RenderObject *base,
          bool isBase=false,
          RenderObject *geo=NULL,

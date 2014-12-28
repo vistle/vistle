@@ -52,9 +52,15 @@ public:
 
    void resize(int viewNum, int w, int h);
 
+   int numClients() const;
+   int numRhrClients() const;
+
    bool init(int w, int h, unsigned short port);
    void preFrame();
    void postFrame();
+
+   typedef bool (*AppMessageHandlerFunc)(int type, const std::vector<char> &msg);
+   void setAppMessageHandler(AppMessageHandlerFunc handler);
 
    struct ViewParameters;
    ViewParameters getViewParameters(int viewNum) const;
@@ -220,8 +226,10 @@ public:
        ViewData(): newWidth(-1), newHeight(-1) {}
    };
 
+   void broadcastApplicationMessage(int type, int length, const char *data);
 private:
    static VncServer *plugin; //<! access to plug-in from static member functions
+   AppMessageHandlerFunc m_appHandler;
 
    int m_tileWidth, m_tileHeight;
 
@@ -262,7 +270,6 @@ private:
    static void clientGoneHook(rfbClientPtr cl);
    static void sendBoundsMessage(rfbClientPtr cl);
    static void sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data);
-   void broadcastApplicationMessage(int type, int length, const char *data);
 
    void encodeAndSend(int viewNum, int x, int y, int w, int h, const ViewParameters &param, bool lastView);
 

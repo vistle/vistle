@@ -5,14 +5,17 @@ endif()
 
 using(SNAPPY optional)
 
-include_directories(${LIBVNCSERVER_INCLUDE_DIR})
+include_directories(
+   ${PROJECT_SOURCE_DIR}
+   ${LIBVNCSERVER_INCLUDE_DIR}
+)
 
 set(HEADERS
-  VncServer.h
+  VncServerPlugin.h
 )
 
 set(SOURCES
-  VncServer.cpp
+  VncServerPlugin.cpp
 )
 
 if(CUDA_FOUND AND VISTLE_USE_CUDA)
@@ -21,6 +24,10 @@ if(CUDA_FOUND AND VISTLE_USE_CUDA)
 endif()
 
 #use_openmp()
+
+if(NOT WIN32)
+   set_source_files_properties(VncServerPlugin.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
+endif()
 
 cover_add_plugin(VncServer ${CUDA_OBJ} ${HEADER} ${SOURCES})
 target_link_libraries(VncServer vistle_rhr)
