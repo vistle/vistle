@@ -52,11 +52,8 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addVectorParameter("startpoint2", "2nd initial point", ParamVector(1,0,0));
     addIntParameter("no_startp", "number of startpoints", 2);
     setParameterRange("no_startp", (Integer)0, (Integer)10000);
-    addIntParameter("steps_max", "maximum number of timesteps per particle", 1000);
-    addIntParameter("steps_comm", "maximum number of timesteps before communication", 10);
+    addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
     IntParameter* tasktype = addIntParameter("taskType", "task type", 0, Parameter::Choice);
-    addIntParameter("particles_comm", "number of particles traced on each node before next communication", 1000);
-    setParameterRange("particles_comm", (Integer)0, (Integer)10000);
     std::vector<std::string> choices;
     choices.push_back("streamlines");
     setParameterChoices(tasktype, choices);
@@ -393,13 +390,8 @@ double ect = 0;
     //get parameters
     Index numpoints = getIntParameter("no_startp");
     Index steps_max = getIntParameter("steps_max");
-    Index steps_comm = getIntParameter("steps_comm");
     Scalar dt = getFloatParameter("timestep");
     Index task_type = getIntParameter("taskType");
-    Index num2comm = getIntParameter("particles_comm");
-    if(num2comm<numpoints){
-        num2comm = numpoints;
-    }
 
     boost::mpi::communicator world;
     if(data_in1.size()<numblocks){
@@ -452,47 +444,38 @@ double ect = 0;
     bool ingrid = true;
     Index mpisize = world.size();
     std::vector<Index> sendlist(0);
-    Index numsets = numpoints/num2comm +1;
     while(ingrid){
 
-        bool anyactive = false;
-        for(Index k=0; k<numsets; k++){
-            for(Index i=k*num2comm; i<(k+1)*num2comm && i<numpoints; i++){
+            for(Index i=0; i<numpoints; i++){
 
-                if(particle[i]->isActive()){
+                while(particle[i]->isActive()){
 
                     particle[i]->Interpolation();
                     particle[i]->Integration();
-                    anyactive = true;
-                }
-
-                particle[i]->setStatus(block, steps_max, task_type);
-
-                if(particle[i]->leftNode()){
-
-                    sendlist.push_back(i);
+                    particle[i]->setStatus(block, steps_max, task_type);
+                    if(particle[i]->leftNode()){
+                        sendlist.push_back(i);
+                    }
                 }
             }
-            ++stepcount;
+
 sc = boost::chrono::high_resolution_clock::now();
-            if(stepcount == steps_comm){
-                for(Index mpirank=0; mpirank<mpisize; mpirank++){
+            for(Index mpirank=0; mpirank<mpisize; mpirank++){
 
-                    Index num_send = sendlist.size();
-                    boost::mpi::broadcast(world, num_send, mpirank);
+                Index num_send = sendlist.size();
+                boost::mpi::broadcast(world, num_send, mpirank);
 
-                    if(num_send>0){
-                        std::vector<Index> tmplist = sendlist;
-                        boost::mpi::broadcast(world, tmplist, mpirank);
-                        for(Index i=0; i<num_send; i++){
-                            Index p_index = tmplist[i];
-                            particle[p_index]->Communicator(world, mpirank);
-                            particle[p_index]->setStatus(block, steps_max, task_type);
-                            bool active = particle[p_index]->isActive();
-                            active = boost::mpi::all_reduce(world, particle[p_index]->isActive(), std::logical_or<bool>());
-                            if(!active){
-                                particle[p_index]->Deactivate();
-                            }
+                if(num_send>0){
+                    std::vector<Index> tmplist = sendlist;
+                    boost::mpi::broadcast(world, tmplist, mpirank);
+                    for(Index i=0; i<num_send; i++){
+                        Index p_index = tmplist[i];
+                        particle[p_index]->Communicator(world, mpirank);
+                        particle[p_index]->setStatus(block, steps_max, task_type);
+                        bool active = particle[p_index]->isActive();
+                        active = boost::mpi::all_reduce(world, particle[p_index]->isActive(), std::logical_or<bool>());
+                        if(!active){
+                            particle[p_index]->Deactivate();
                         }
                     }
                 }
@@ -507,10 +490,8 @@ ect = ect + 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>(ec-sc)
                         break;
                     }
                 }
-                stepcount = 0;
-                sendlist.clear();
             }
-        }
+            sendlist.clear();
     }
 
     switch(task_type){

@@ -5,10 +5,10 @@ echo SPAWN "$@"
 case $(hostname) in
    viscluster70)
       if [ -z "$MPIHOSTS" ]; then
-         MPIHOSTS=$(echo viscluster{70..77} viscluster{51..58}|sed -e 's/ /,/g')
+         MPIHOSTS=$(echo viscluster{50..57}|sed -e 's/ /,/g')
       fi
       if [ "$MPISIZE" = "" ]; then
-         MPISIZE=16
+         MPISIZE=8
       fi
       exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} "$@"
       #exec mpirun -np 8  -hosts localhost "$@"

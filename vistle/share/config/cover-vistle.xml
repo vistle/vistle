@@ -95,7 +95,7 @@
     </VncClient>
     -->
 
-    <AKToolbar value="on">
+    <AKToolbar value="off">
      <Attachment value="TOP" />
      <Scale value=".8" />
      <MinClickTime value="0.2" />
