@@ -419,7 +419,7 @@ static void depthquant_t(const uchar *inimg, Quant *quantbuf, int x0, int y0, in
                }
             } else {
                if (haveFar) {
-                  for (int idx=idx=0; idx<size; ++idx) {
+                  for (int idx=0; idx<size; ++idx) {
 
                      const uint32_t depth = depths[idx];
                      uint32_t quant = 0;
@@ -433,7 +433,7 @@ static void depthquant_t(const uchar *inimg, Quant *quantbuf, int x0, int y0, in
                      bits |= uint64_t(quant)<<(idx*quantbits);
                   }
                } else {
-                  for (int idx=idx=0; idx<size; ++idx) {
+                  for (int idx=0; idx<size; ++idx) {
 
                      const uint32_t depth = depths[idx];
                      uint32_t quant = ((depth-mindepth)*qscale)/range;
@@ -479,7 +479,7 @@ static void depthquant_t(const uchar *inimg, Quant *quantbuf, int x0, int y0, in
                }
             } else {
                if (haveFar) {
-                  for (int idx=idx=0; idx<size; ++idx) {
+                  for (int idx=0; idx<size; ++idx) {
                      const uint32_t depth = depths[idx];
                      uint32_t quant = 0;
 
@@ -507,7 +507,7 @@ static void depthquant_t(const uchar *inimg, Quant *quantbuf, int x0, int y0, in
                      bits |= uint64_t(quant)<<(idx*quantbits);
                   }
                } else {
-                  for (int idx=idx=0; idx<size; ++idx) {
+                  for (int idx=0; idx<size; ++idx) {
                      const uint32_t depth = depths[idx];
                      uint32_t quant = 0;
 
