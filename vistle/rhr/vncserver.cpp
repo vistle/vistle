@@ -25,8 +25,8 @@
 
 #include <util/stopwatch.h>
 
-//#define QUANT_ERROR
-//#define TIMING
+#define QUANT_ERROR
+#define TIMING
 
 #ifdef HAVE_TURBOJPEG
 #include <turbojpeg.h>
