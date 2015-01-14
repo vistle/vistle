@@ -16,11 +16,6 @@ if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
    return()
 endif()
 
-if(NOT LIBVNCSERVER_FOUND)
-   message("Ray: libvncserver not found")
-   return()
-endif()
-
 if(NOT SNAPPY_FOUND)
    message("Ray: Snappy not found")
    return()
@@ -47,9 +42,23 @@ set(RHR_SOURCES
 set(RHR_HEADERS
    depthquant.h
    rfbext.h
-   vncserver.h
    ReadBackCuda.h
    )
+
+if(LIBVNCSERVER_FOUND)
+   set(RHR_SOURCES ${RHR_SOURCES} vncserver.cpp)
+   set(RHR_HEADERS ${RHR_HEADERS} vncserver.h)
+endif()
+
+include_directories(
+        ..
+        ${Boost_INCLUDE_DIRS}
+        ${LIBVNCSERVER_INCLUDE_DIR}
+        ${SNAPPY_INCLUDE_DIR}
+        ${TBB_INCLUDE_DIRS}
+        ${JPEGTURBO_INCLUDE_DIR}
+        ..
+)
 
 if(CUDA_FOUND AND GLEW_FOUND AND OPENGL_FOUND AND VISTLE_USE_CUDA)
   set(USE_CUDA TRUE)
@@ -76,15 +85,6 @@ target_link_libraries(vistle_rhr
         ${TBB_LIBRARIES}
         ${JPEG_LIBRARIES}
         ${ZLIB_LIBRARIES}
-)
-
-include_directories(
-        ${Boost_INCLUDE_DIRS}
-        ${LIBVNCSERVER_INCLUDE_DIR}
-        ${SNAPPY_INCLUDE_DIR}
-        ${TBB_INCLUDE_DIRS}
-        ${JPEGTURBO_INCLUDE_DIR}
-        ..
 )
 
 add_executable(depthtest depthtest.cpp)

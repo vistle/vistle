@@ -10,6 +10,8 @@
 #ifndef DEPTH_QUANT_H
 #define DEPTH_QUANT_H
 
+#include "export.h"
+
 #include <stdint.h>
 #include <cstdlib>
 
@@ -226,14 +228,14 @@ inline uint32_t get_depth<DepthInteger, 4>(const unsigned char *img, int x, int 
 }
 
 //! transform depth buffer into quantized values on 4x4 pixel tiles
-void depthquant(char *quantbuf, const char *zbuf, DepthFormat format, int depthps, int x, int y, int width, int height, int stride=-1);
+void V_RHREXPORT depthquant(char *quantbuf, const char *zbuf, DepthFormat format, int depthps, int x, int y, int width, int height, int stride=-1);
 
 //! return size required by depthquant for quantized image
-size_t depthquant_size(DepthFormat format, int depthps, int width, int height);
+size_t V_RHREXPORT depthquant_size(DepthFormat format, int depthps, int width, int height);
 
 //! reverse transformation done by depthquant
-void depthdequant(char *zbuf, const char *quantbuf, DepthFormat format, int depthps, int tx, int dy, int width, int height, int stride=-1);
+void V_RHREXPORT depthdequant(char *zbuf, const char *quantbuf, DepthFormat format, int depthps, int tx, int dy, int width, int height, int stride=-1);
 
 //! compute (and optionally print) PSNR for compressed depth image check compared to reference image ref
-double depthcompare(const char *ref, const char *check, DepthFormat format, int depthps, unsigned w, unsigned h, bool print=true);
+double V_RHREXPORT depthcompare(const char *ref, const char *check, DepthFormat format, int depthps, unsigned w, unsigned h, bool print=true);
 #endif
