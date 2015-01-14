@@ -416,7 +416,7 @@ coCellToVert::interpolate(Object::const_ptr geo_in, Object::const_ptr data_in, A
 {
    if( !geo_in || !data_in )
    {
-      Object::ptr();
+      return Object::ptr();
    }
 
    Scalar *in_data_0=NULL, *in_data_1=NULL, *in_data_2=NULL;
