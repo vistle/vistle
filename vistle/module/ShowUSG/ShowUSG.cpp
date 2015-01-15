@@ -215,6 +215,7 @@ bool ShowUSG::compute() {
       }
 
       out->copyAttributes(in);
+      addObject("grid_out",out);
    }
 
    return true;
