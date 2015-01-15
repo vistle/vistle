@@ -75,7 +75,48 @@ Build Requirements
   the version of OpenSceneGraph that was used for compiling COVER
 
 - **Qt**:
-  Qt 5 is required by the graphical user interface
+  The Qt 5 libraries `Qt5Core`, `Qt5Widgets` and `Qt5Gui` are required by the graphical user interface.
+
+### COVISE requirements
+
+In addition, COVISE has additional dependencies, listed below.
+
+- **Qt**
+  Specifically the following modules:
+    - `Qt5Core`
+    - `Qt5Network`
+    - `Qt5Xml`
+    - `Qt5Widgets`
+    - `Qt5OpenGL`
+    - `Qt5WebKit`
+    - `Qt5WebKitWidgets`
+    - `Qt5Gui`
+    - `Qt5Svg`
+    - `Qt5PrintSupport`
+    - `Qt5UiTools`
+    - `Qt5Script`
+    - `Qt5ScriptTools`
+
+  On Ubuntu 14.04, these packages should suffice:
+    - `qttools5-dev`
+    - `qtscript5-dev`
+    - `libqt5scripttools5`
+    - `libqt5svg5-dev`
+    - `libqt5opengl5-dev`
+    - `libqt5webkit5-dev`
+
+- **GLEW**
+  The OpenGL Extension Wrangler Library
+
+- **TBB**
+  Intel Threading Building Blocks
+
+- **JPEG Turbo**
+
+- **LibVncServer**
+
+- **VTK**
+  Version 6 is required.
 
 
 Building Vistle
