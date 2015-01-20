@@ -680,23 +680,23 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
 
       if (mode == ALL || mode == BASE) { //create ghost cell topology and send vertice-coordinates
          //build ghost cell element list and connectivity list for current boundary patch
-         elOut.reserve(b.numFaces + 1);
          elOut.push_back(0);
-         tlOut.reserve(b.numFaces);
          Index conncount=0;
+         std::map<Index,bool> sentCells;
          for (Index i=0;i<b.numFaces;++i) {
             Index cell=owners[b.startFace + i];
-            Index elementStart = el[cell];
-            Index elementEnd = el[cell + 1];
-            for (Index j=elementStart; j<elementEnd; ++j) {
-               SIndex point = cl[j];
-               clOut.push_back(point);
-               ++conncount;
+            if (sentCells.emplace(cell,true).second) {
+               Index elementStart = el[cell];
+               Index elementEnd = el[cell + 1];
+               for (Index j=elementStart; j<elementEnd; ++j) {
+                  SIndex point = cl[j];
+                  clOut.push_back(point);
+                  ++conncount;
+               }
+               elOut.push_back(conncount);
+               tlOut.push_back(tl[cell]);
             }
-            elOut.push_back(conncount);
-            tlOut.push_back(tl[cell]);
          }
-
          //Create Vertices Mapping
          std::map<Index, SIndex> verticesMapping;
          //shared vertices (coords do not have to be sent) -> mapped to negative values
@@ -778,7 +778,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
          m_GhostCellsIn[processor][neighborProc] = in;
          m_requests[myRank].push_back(world.irecv(neighborRank, tag(neighborProc,processor), *in));
       } else {
-         m_GhostCellsIn[processor][neighborProc] = out;
+         m_GhostCellsIn[neighborProc][processor] = out;
       }
    }
    return true;
@@ -789,6 +789,7 @@ bool ReadFOAM::buildGhostCellData(int processor) {
    auto &owners = *m_owners[processor];
    for (const auto &b :boundaries.procboundaries) {
       Index neighborProc=b.neighborProc;
+      std::map<Index,bool> sentCells;
       for (int i = 0; i < NumPorts; ++i) {
          auto f=m_currentvolumedata[processor].find(i);
          if (f == m_currentvolumedata[processor].end()) {
@@ -807,16 +808,22 @@ bool ReadFOAM::buildGhostCellData(int processor) {
             auto &d=v1->x(0);
             for (Index i=0;i<b.numFaces;++i) {
                Index cell=owners[b.startFace + i];
-               (*dataOut).x[0].push_back(d[cell]);
+               if (sentCells.emplace(cell,true).second) {
+                  (*dataOut).x[0].push_back(d[cell]);
+               }
             }
          } else if (v3) {
             boost::shared_ptr<GhostData> dataOut(new GhostData(3));
             m_GhostDataOut[processor][neighborProc][i] = dataOut;
-            for (Index j=0; j<3; ++j) {
-               auto &d=v3->x(j);
-               for (Index i=0;i<b.numFaces;++i) {
-                  Index cell=owners[b.startFace + i];
-                  (*dataOut).x[j].push_back(d[cell]);
+            auto &d1=v3->x(0);
+            auto &d2=v3->x(1);
+            auto &d3=v3->x(2);
+            for (Index i=0;i<b.numFaces;++i) {
+               Index cell=owners[b.startFace + i];
+               if (sentCells.emplace(cell,true).second) {
+                  (*dataOut).x[0].push_back(d1[cell]);
+                  (*dataOut).x[1].push_back(d2[cell]);
+                  (*dataOut).x[2].push_back(d3[cell]);
                }
             }
          }
@@ -840,7 +847,7 @@ bool ReadFOAM::buildGhostCellData(int processor) {
                m_GhostDataIn[processor][neighborProc][i] = dataIn;
                m_requests[myRank].push_back(world.irecv(neighborRank, tag(neighborProc,processor,i+1), *dataIn));
             } else {
-               m_GhostDataIn[processor][neighborProc][i] = dataOut;
+               m_GhostDataIn[neighborProc][processor][i] = dataOut;
             }
          }
       }
@@ -942,7 +949,7 @@ bool ReadFOAM::applyGhostCellsData(int processor) {
             boost::shared_ptr<GhostData> dataIn = m_GhostDataIn[processor][neighborProc][i];
             auto &d=v1->x(0);
             std::vector<Scalar> &x=(*dataIn).x[0];
-            for (Index i=0;i<b.numFaces;++i) {
+            for (Index i=0;i<x.size();++i) {
                d.push_back(x[i]);
             }
          } else if (v3) {
@@ -950,7 +957,7 @@ bool ReadFOAM::applyGhostCellsData(int processor) {
             for (Index j=0; j<3; ++j) {
                auto &d=v3->x(j);
                std::vector<Scalar> &x=(*dataIn).x[j];
-               for (Index i=0;i<b.numFaces;++i) {
+               for (Index i=0;i<x.size();++i) {
                   d.push_back(x[i]);
                }
             }
