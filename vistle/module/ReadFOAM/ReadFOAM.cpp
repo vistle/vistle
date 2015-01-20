@@ -257,7 +257,8 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
       //each node creates lists of the outer vertices that are shared with other domains
       //with either its own or the neighbouring domain's face-numbering (clockwise or ccw)
       //so that two domains have the same list for a mutual border
-      //therefore m_procBoundaryVertices[0][1] == m_procBoundaryVertices[1][0]
+      //therefore m_procBoundaryVertices[0][1] point to the same vertices in the same order as
+      //m_procBoundaryVertices[1][0] (though each list may use different labels  for each vertice)
       for (const auto &b: (*boundaries).procboundaries) {
          std::vector<Index> outerVertices;
          int myProc=b.myProc;
@@ -297,7 +298,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          }
          auto types = grid->tl().data();
          Index num_conn = 0;
-         //Check Shape of Cells and add fill Type_List
+         //Check Shape of Cells and fill Type_List
          for (index_t i=0; i<dim.cells; i++) {
             const std::vector<Index> &cellfaces=cellfacemap[i];
             const std::vector<index_t> cellvertices = getVerticesForCell(cellfaces, faces);
@@ -339,9 +340,11 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
             const auto &cellfaces=cellfacemap[i];//get all faces of current cell
             switch (types[i]) {
                case UnstructuredGrid::HEXAHEDRON: {
-                  index_t ia=cellfaces[0];//use the first face as starting face
+                  index_t ia=cellfaces[0];//choose the first face as starting face
                   std::vector<index_t> a=faces[ia];
 
+                  //vistle requires that the vertices-numbering of the first face conforms with the right hand rule (pointing into the cell)
+                  //so the starting face is tested if it does and the numbering is reversed if it doesn't
                   if (!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbour)) {
                      std::reverse(a.begin(), a.end());
                   }
@@ -429,12 +432,12 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
    if (readGrid) {
       loadCoords(meshdir, grid);
 
-      if (readBoundary) {//if grid has been read alaready -> re-use coordinate lists for the boundary-plygon
+      if (readBoundary) {//if grid has been read alaready and boundary polygons are read also -> re-use coordinate lists for the boundary-plygon
          poly->d()->x[0] = grid->d()->x[0];
          poly->d()->x[1] = grid->d()->x[1];
          poly->d()->x[2] = grid->d()->x[2];
       }
-   } else {
+   } else {//else read coordinate lists just for boundary polygons
       loadCoords(meshdir, poly);
    }
    return result;
@@ -646,7 +649,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
    return true;
 }
 
-int tag(int p, int n, int i=0) { //MPI needs a unique ID for each send/receive request, this function creates unique ids for each processor pairing
+int tag(int p, int n, int i=0) { //MPI needs a unique ID for each pair of send/receive request, this function creates unique ids for each processor pairing
    return p*10000+n*100+i;
 }
 
@@ -676,6 +679,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
       std::vector<Scalar> &pointsOutZ = out->z;
 
       if (mode == ALL || mode == BASE) { //create ghost cell topology and send vertice-coordinates
+         //build ghost cell element list and connectivity list for current boundary patch
          elOut.reserve(b.numFaces + 1);
          elOut.push_back(0);
          tlOut.reserve(b.numFaces);
@@ -698,8 +702,8 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
          //shared vertices (coords do not have to be sent) -> mapped to negative values
          SIndex c=-1;
          for (const Index &v: procBoundaryVertices) {
-            if (verticesMapping.emplace(v,c).second) {
-               --c;
+            if (verticesMapping.emplace(v,c).second) {//emplace tries to create the map entry with the key/value pair (v,c) - if an entry with the key v  already exists it does not insert the new one
+               --c;                                   //and returns a pair which consosts of a pointer to the already existing key/value pair (first) and a boolean that states if anything was inserted into the map (second)
             }
          }
          //vertices with coordinates that have to be sent -> mapped to positive values
@@ -710,7 +714,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
             }
          }
 
-         //Change connectivity list to use the mapped values
+         //Change connectivity list entries to the mapped values
          for (SIndex &v: clOut) {
             v = verticesMapping[v];
          }
@@ -867,7 +871,7 @@ bool ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
        Index neighborProc=b.neighborProc;
        std::vector<Index> &procBoundaryVertices = m_procBoundaryVertices[processor][neighborProc];
        std::vector<Index> sharedVerticesMapping;
-       for (const Index &v: procBoundaryVertices) {
+       for (const Index &v: procBoundaryVertices) {//create sharedVerticesMapping vector that consists of all the shared(already known) vertices without duplicates and in order of "first appearance" when going through the boundary cells
           if(std::find(sharedVerticesMapping.begin(), sharedVerticesMapping.end(), v) == sharedVerticesMapping.end()) {
               sharedVerticesMapping.push_back(v);
           }
@@ -881,7 +885,7 @@ bool ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
        std::vector<Scalar> &pointsInZ = in->z;
        Index pointsSize=x.size();
 
-       if (mode == ALL) {
+       if (mode == ALL) { //ghost cell topology is unnknown and has to be appended to the current topology
           for (Index cell = 0; cell < tlIn.size();++cell) {//append new topology to old grid
              Index elementStart = elIn[cell];
              Index elementEnd = elIn[cell + 1];
@@ -889,7 +893,7 @@ bool ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
                 SIndex point = clIn[i];
                 if (point < 0) {//if point<0 then vertice is already known and can be looked up in sharedVerticesMapping
                    point=sharedVerticesMapping[(point*-1)-1];
-                } else {//else the vertice is unknown and its coordinates will be appended to the old coord-lists so we point to an index beyond the current size
+                } else {//else the vertice is unknown and its coordinates will be appended (in order of first appearance) to the old coord-lists so we point to an index beyond the current size
                    point+=pointsSize;
                 }
                 cl.push_back(point);
@@ -905,7 +909,7 @@ bool ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
           }
 
        } else { //mode == COORDS
-          for (Index i=0; i<pointsInX.size(); ++i) { //base topology is already known and only unknown vertices have to be applied again
+          for (Index i=0; i<pointsInX.size(); ++i) { //ghost topology is already known and only the new vertice coordinates have to be applied again
              x.push_back(pointsInX[i]);
              y.push_back(pointsInY[i]);
              z.push_back(pointsInZ[i]);
