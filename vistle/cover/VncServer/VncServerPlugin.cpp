@@ -17,6 +17,8 @@
 #include <kernel/VRSceneGraph.h>
 #include <kernel/RenderObject.h>
 #include <kernel/coVRLighting.h>
+#include <kernel/input/input.h>
+#include <kernel/input/coMousePointer.h>
 
 #include <PluginUtil/PluginMessageTypes.h>
 
@@ -627,13 +629,13 @@ void VncServerPlugin::pointerEvent(int buttonmask, int ex, int ey, rfbClientPtr 
    int x,y,w,h;
    osgViewer::GraphicsWindow *win = coVRConfig::instance()->windows[0].window;
    win->getWindowRectangle(x,y,w,h);
-   cover->handleMouseEvent(osgGA::GUIEventAdapter::DRAG, ex, h-1-ey);
+   Input::instance()->mouse()->handleEvent(osgGA::GUIEventAdapter::DRAG, ex, h-1-ey);
    int changed = lastmask ^ buttonmask;
    lastmask = buttonmask;
 
    for(int i=0; i<3; ++i) {
       if (changed&1) {
-         cover->handleMouseEvent((buttonmask&1) ? osgGA::GUIEventAdapter::PUSH : osgGA::GUIEventAdapter::RELEASE, lastmask, 0);
+         Input::instance()->mouse()->handleEvent((buttonmask&1) ? osgGA::GUIEventAdapter::PUSH : osgGA::GUIEventAdapter::RELEASE, lastmask, 0);
          fprintf(stderr, "button %d %s\n", i+1, buttonmask&1 ? "push" : "release");
       }
       buttonmask >>= 1;
