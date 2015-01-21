@@ -1,7 +1,6 @@
 find_package(Boost 1.40 REQUIRED COMPONENTS serialization system date_time regex thread)
 
 set(core_SOURCES
-   exception.cpp
    shm.cpp
    objectcache.cpp
    objectmeta.cpp
@@ -51,7 +50,6 @@ set(core_HEADERS
    coords.h
    coords_impl.h
    dimensions.h
-   exception.h
    export.h
    geometry.h
    geometry_impl.h

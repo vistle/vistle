@@ -31,6 +31,7 @@
 #include <util/sysdep.h>
 #include <util/tools.h>
 #include <util/stopwatch.h>
+#include <util/exception.h>
 #include <core/object.h>
 #include <core/message.h>
 #include <core/messagequeue.h>
@@ -38,7 +39,6 @@
 #include <core/shm.h>
 #include <core/objectcache.h>
 #include <core/port.h>
-#include <core/exception.h>
 #include <core/statetracker.h>
 
 #ifndef TEMPLATES_IN_HEADERS

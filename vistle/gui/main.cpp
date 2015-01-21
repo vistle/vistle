@@ -6,7 +6,7 @@
  */
 /**********************************************************************************/
 #include "uicontroller.h"
-#include <core/exception.h>
+#include <util/exception.h>
 #include <QApplication>
 #include <QIcon>
 

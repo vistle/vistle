@@ -11,19 +11,19 @@
 
 // vistle
 #include <module/renderer.h>
-#include <core/exception.h>
+#include <util/exception.h>
 #include <core/message.h>
-
-#include <osg/Group>
-#include <osg/Node>
-#include <osg/Sequence>
-
 #include <core/object.h>
 #include <core/lines.h>
 #include <core/triangles.h>
 #include <core/polygons.h>
 #include <core/texture1d.h>
 #include <core/geometry.h>
+
+
+#include <osg/Group>
+#include <osg/Node>
+#include <osg/Sequence>
 
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>

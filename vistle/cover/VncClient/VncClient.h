@@ -27,6 +27,10 @@
 
 #include <OpenVRUI/coMenuItem.h> // covise::coMenuListener
 
+namespace osg {
+class TextureRectangle;
+}
+
 namespace covise {
 class coSubMenuItem;
 class coRowMenu;
