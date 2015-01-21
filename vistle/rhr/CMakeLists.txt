@@ -48,12 +48,14 @@ set(RHR_HEADERS
 if(LIBVNCSERVER_FOUND)
    set(RHR_SOURCES ${RHR_SOURCES} vncserver.cpp)
    set(RHR_HEADERS ${RHR_HEADERS} vncserver.h)
+   include_directories(
+        ${LIBVNCSERVER_INCLUDE_DIR}
+   )
 endif()
 
 include_directories(
         ..
         ${Boost_INCLUDE_DIRS}
-        ${LIBVNCSERVER_INCLUDE_DIR}
         ${SNAPPY_INCLUDE_DIR}
         ${TBB_INCLUDE_DIRS}
         ${JPEGTURBO_INCLUDE_DIR}
@@ -80,12 +82,15 @@ endif()
 target_link_libraries(vistle_rhr
         vistle_util
         ${Boost_LIBRARIES}
-        ${LIBVNCSERVER_SERVER_LIBRARY}
         ${SNAPPY_LIBRARIES}
         ${TBB_LIBRARIES}
         ${JPEG_LIBRARIES}
         ${ZLIB_LIBRARIES}
 )
+
+if(LIBVNCSERVER_FOUND)
+   target_link_libraries(vistle_rhr ${LIBVNCSERVER_SERVER_LIBRARY})
+endif()
 
 add_executable(depthtest depthtest.cpp)
 target_link_libraries(depthtest vistle_rhr)
