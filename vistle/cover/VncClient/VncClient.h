@@ -25,20 +25,20 @@
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
 
-#include <OpenVRUI/coMenuItem.h> // covise::coMenuListener
+#include <OpenVRUI/coMenuItem.h> // vrui::coMenuListener
 
 namespace osg {
 class TextureRectangle;
 }
 
-namespace covise {
+namespace vrui {
 class coSubMenuItem;
 class coRowMenu;
 class coCheckboxMenuItem;
 class coPotiMenuItem;
 }
 
-using namespace covise;
+using namespace vrui;
 using namespace opencover;
 
 class RemoteRenderObject;
