@@ -100,7 +100,6 @@ ReadFOAM::ReadFOAM(const std::string &shmname, const std::string &name, int modu
       }
    }
    m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);
-   m_buildGhost = m_buildGhostcellsParam->getValue();
 }
 
 
@@ -253,37 +252,6 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          }
       }
 
-      //Vertices lists for GhostCell creation -
-      //each node creates lists of the outer vertices that are shared with other domains
-      //with either its own or the neighbouring domain's face-numbering (clockwise or ccw)
-      //so that two domains have the same list for a mutual border
-      //therefore m_procBoundaryVertices[0][1] point to the same vertices in the same order as
-      //m_procBoundaryVertices[1][0] (though each list may use different labels  for each vertice)
-      for (const auto &b: (*boundaries).procboundaries) {
-         std::vector<Index> outerVertices;
-         int myProc=b.myProc;
-         int neighborProc=b.neighborProc;
-         if (myProc < neighborProc) {
-            //create with own numbering
-            for (Index i=b.startFace; i<b.startFace+b.numFaces; ++i) {
-               auto face=faces[i];
-               for (Index j=0; j<face.size(); ++j) {
-                  outerVertices.push_back(face[j]);
-               }
-            }
-         } else {
-            //create with neighbour numbering (reverse direction)
-            for (Index i=b.startFace; i<b.startFace+b.numFaces; ++i) {
-               auto face=faces[i];
-               outerVertices.push_back(face[0]);
-               for (Index j=face.size()-1; j>0; --j) {
-                  outerVertices.push_back(face[j]);
-               }
-            }
-         }
-         m_procBoundaryVertices[myProc][neighborProc] = outerVertices;
-      }
-
       //Grid
       if (readGrid) {
          grid->el().resize(dim.cells+1);
@@ -296,12 +264,64 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          for (Index face = 0; face < neighbour.size(); ++face) {
             cellfacemap[neighbour[face]].push_back(face);
          }
+
+         //Vertices lists for GhostCell creation -
+         //each node creates lists of the outer vertices that are shared with other domains
+         //with either its own or the neighbouring domain's face-numbering (clockwise or ccw)
+         //so that two domains have the same list for a mutual border
+         //therefore m_procBoundaryVertices[0][1] point to the same vertices in the same order as
+         //m_procBoundaryVertices[1][0] (though each list may use different labels  for each vertice)
+         if (m_buildGhost) {
+            for (const auto &b: (*boundaries).procboundaries) {
+               std::vector<Index> outerVertices;
+               int myProc=b.myProc;
+               int neighborProc=b.neighborProc;
+               if (myProc < neighborProc) {
+                  //create with own numbering
+                  for (Index i=b.startFace; i<b.startFace+b.numFaces; ++i) {
+                     auto face=faces[i];
+                     for (Index j=0; j<face.size(); ++j) {
+                        outerVertices.push_back(face[j]);
+                     }
+                  }
+               } else {
+                  //create with neighbour numbering (reverse direction)
+                  for (Index i=b.startFace; i<b.startFace+b.numFaces; ++i) {
+                     auto face=faces[i];
+                     outerVertices.push_back(face[0]);
+                     for (Index j=face.size()-1; j>0; --j) {
+                        outerVertices.push_back(face[j]);
+                     }
+                  }
+               }
+               m_procBoundaryVertices[myProc][neighborProc] = outerVertices;
+            }
+         }
+
          auto types = grid->tl().data();
          Index num_conn = 0;
          //Check Shape of Cells and fill Type_List
          for (index_t i=0; i<dim.cells; i++) {
             const std::vector<Index> &cellfaces=cellfacemap[i];
             const std::vector<index_t> cellvertices = getVerticesForCell(cellfaces, faces);
+
+            //check if current cell is a ghost cell
+            if (m_buildGhost) {
+               for (const auto &b: (*boundaries).procboundaries) {
+                  int myProc=b.myProc;
+                  int neighborProc=b.neighborProc;
+                  std::vector<Index> ghostCellCandidates;
+                  const std::vector<Index> &outerVertices = m_procBoundaryVertices[myProc][neighborProc];
+                  for (Index j=0; j<outerVertices.size(); ++j) {
+
+                     if(std::find(cellvertices.begin(), cellvertices.end(), outerVertices[j]) != cellvertices.end()) {
+                        m_procGhostCellCandidates[myProc][neighborProc].push_back(i);
+                        break;
+                     }
+                  }
+               }
+            }
+
             bool onlySimpleFaces=true; //Simple Face = Triangle or Rectangle
             for (index_t j=0; j<cellfaces.size(); ++j) {
                if (faces[cellfaces[j]].size()<3 || faces[cellfaces[j]].size()>4) {
@@ -655,7 +675,6 @@ int tag(int p, int n, int i=0) { //MPI needs a unique ID for each pair of send/r
 
 bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
    auto &boundaries = *m_boundaries[processor];
-   auto &owners = *m_owners[processor];
 
    UnstructuredGrid::ptr grid = m_currentgrid[processor];
    auto &el = grid->el();
@@ -670,6 +689,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
       boost::shared_ptr<GhostCells> out(new GhostCells()); //object that will be sent to neighbor processor
       m_GhostCellsOut[processor][neighborProc] = out;
       std::vector<Index> &procBoundaryVertices = m_procBoundaryVertices[processor][neighborProc];
+      std::vector<Index> &procGhostCellCandidates = m_procGhostCellCandidates[processor][neighborProc];
 
       std::vector<Index> &elOut = out->el;
       std::vector<SIndex> &clOut = out->cl;
@@ -682,20 +702,17 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
          //build ghost cell element list and connectivity list for current boundary patch
          elOut.push_back(0);
          Index conncount=0;
-         std::map<Index,bool> sentCells;
-         for (Index i=0;i<b.numFaces;++i) {
-            Index cell=owners[b.startFace + i];
-            if (sentCells.emplace(cell,true).second) {
-               Index elementStart = el[cell];
-               Index elementEnd = el[cell + 1];
-               for (Index j=elementStart; j<elementEnd; ++j) {
-                  SIndex point = cl[j];
-                  clOut.push_back(point);
-                  ++conncount;
-               }
-               elOut.push_back(conncount);
-               tlOut.push_back(tl[cell]);
+         for (Index i=0;i<procGhostCellCandidates.size();++i) {
+            Index cell=procGhostCellCandidates[i];
+            Index elementStart = el[cell];
+            Index elementEnd = el[cell + 1];
+            for (Index j=elementStart; j<elementEnd; ++j) {
+               SIndex point = cl[j];
+               clOut.push_back(point);
+               ++conncount;
             }
+            elOut.push_back(conncount);
+            tlOut.push_back(tl[cell]);
          }
          //Create Vertices Mapping
          std::map<Index, SIndex> verticesMapping;
@@ -786,10 +803,9 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
 
 bool ReadFOAM::buildGhostCellData(int processor) {
    auto &boundaries = *m_boundaries[processor];
-   auto &owners = *m_owners[processor];
    for (const auto &b :boundaries.procboundaries) {
       Index neighborProc=b.neighborProc;
-      std::map<Index,bool> sentCells;
+      std::vector<Index> &procGhostCellCandidates = m_procGhostCellCandidates[processor][neighborProc];
       for (int i = 0; i < NumPorts; ++i) {
          auto f=m_currentvolumedata[processor].find(i);
          if (f == m_currentvolumedata[processor].end()) {
@@ -806,11 +822,9 @@ bool ReadFOAM::buildGhostCellData(int processor) {
             boost::shared_ptr<GhostData> dataOut(new GhostData(1));
             m_GhostDataOut[processor][neighborProc][i] = dataOut;
             auto &d=v1->x(0);
-            for (Index i=0;i<b.numFaces;++i) {
-               Index cell=owners[b.startFace + i];
-               if (sentCells.emplace(cell,true).second) {
-                  (*dataOut).x[0].push_back(d[cell]);
-               }
+            for (Index i=0;i<procGhostCellCandidates.size();++i) {
+               Index cell=procGhostCellCandidates[i];
+               (*dataOut).x[0].push_back(d[cell]);
             }
          } else if (v3) {
             boost::shared_ptr<GhostData> dataOut(new GhostData(3));
@@ -818,13 +832,11 @@ bool ReadFOAM::buildGhostCellData(int processor) {
             auto &d1=v3->x(0);
             auto &d2=v3->x(1);
             auto &d3=v3->x(2);
-            for (Index i=0;i<b.numFaces;++i) {
-               Index cell=owners[b.startFace + i];
-               if (sentCells.emplace(cell,true).second) {
-                  (*dataOut).x[0].push_back(d1[cell]);
-                  (*dataOut).x[1].push_back(d2[cell]);
-                  (*dataOut).x[2].push_back(d3[cell]);
-               }
+            for (Index i=0;i<procGhostCellCandidates.size();++i) {
+               Index cell=procGhostCellCandidates[i];
+               (*dataOut).x[0].push_back(d1[cell]);
+               (*dataOut).x[1].push_back(d2[cell]);
+               (*dataOut).x[2].push_back(d3[cell]);
             }
          }
       }
