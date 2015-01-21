@@ -310,8 +310,8 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                         std::cout << "ERROR finding GhostCellCandidates" << std::endl;
                   }
                }
-//               std::sort(ghostCellCandidates.begin(),ghostCellCandidates.end()); //Sort Vector by ascending Value
-//               ghostCellCandidates.erase(std::unique(ghostCellCandidates.begin(), ghostCellCandidates.end()), ghostCellCandidates.end()); //Delete duplicate entries
+               std::sort(ghostCellCandidates.begin(),ghostCellCandidates.end()); //Sort Vector by ascending Value
+               ghostCellCandidates.erase(std::unique(ghostCellCandidates.begin(), ghostCellCandidates.end()), ghostCellCandidates.end()); //Delete duplicate entries
                m_procGhostCellCandidates[myProc][neighborProc] = ghostCellCandidates;
                m_procBoundaryVertices[myProc][neighborProc] = outerVertices;
             }
