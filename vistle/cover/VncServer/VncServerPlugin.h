@@ -10,7 +10,7 @@
 #ifndef VNC_SERVER_PLUGIN_H
 #define VNC_SERVER_PLUGIN_H
 
-#include <kernel/coVRPluginSupport.h>
+#include <cover/coVRPluginSupport.h>
 
 #include <deque>
 #include <string>

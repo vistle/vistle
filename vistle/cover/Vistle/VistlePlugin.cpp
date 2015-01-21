@@ -2,12 +2,12 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 // cover
-#include <kernel/coVRPluginSupport.h>
-#include <kernel/VRSceneGraph.h>
-#include <kernel/coVRAnimationManager.h>
-#include <kernel/coCommandLine.h>
-#include <kernel/OpenCOVER.h>
-#include <kernel/coVRPluginList.h>
+#include <cover/coVRPluginSupport.h>
+#include <cover/VRSceneGraph.h>
+#include <cover/coVRAnimationManager.h>
+#include <cover/coCommandLine.h>
+#include <cover/OpenCOVER.h>
+#include <cover/coVRPluginList.h>
 
 // vistle
 #include <module/renderer.h>

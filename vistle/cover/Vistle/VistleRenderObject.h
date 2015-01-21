@@ -1,7 +1,7 @@
 #ifndef VISTLERENDEROBJECT_H
 #define VISTLERENDEROBJECT_H
 
-#include <kernel/RenderObject.h>
+#include <cover/RenderObject.h>
 
 #include <core/polygons.h>
 #include <core/normals.h>

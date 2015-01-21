@@ -9,15 +9,15 @@
 
 #include <config/CoviseConfig.h>
 
-#include <kernel/coVRConfig.h>
-#include <kernel/OpenCOVER.h>
-#include <kernel/coVRMSController.h>
-#include <kernel/coVRPluginSupport.h>
-#include <kernel/coVRPluginList.h>
-#include <kernel/VRViewer.h>
-#include <kernel/VRSceneGraph.h>
-#include <kernel/coVRLighting.h>
-#include <kernel/coVRAnimationManager.h>
+#include <cover/coVRConfig.h>
+#include <cover/OpenCOVER.h>
+#include <cover/coVRMSController.h>
+#include <cover/coVRPluginSupport.h>
+#include <cover/coVRPluginList.h>
+#include <cover/VRViewer.h>
+#include <cover/VRSceneGraph.h>
+#include <cover/coVRLighting.h>
+#include <cover/coVRAnimationManager.h>
 
 #include <PluginUtil/PluginMessageTypes.h>
 

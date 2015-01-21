@@ -10,7 +10,7 @@
 #ifndef REMOTE_RENDER_OBJECT_H
 #define REMOTE_RENDER_OBJECT_H
 
-#include <kernel/RenderObject.h>
+#include <cover/RenderObject.h>
 
 //! proxy RenderObject for RenderObjects residing on server
 class RemoteRenderObject: public opencover::RenderObject {

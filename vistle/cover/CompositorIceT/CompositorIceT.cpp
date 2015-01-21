@@ -1,9 +1,9 @@
 #include <IceT.h>
 #include <IceTMPI.h>
 
-#include <kernel/coVRPluginSupport.h>
-#include <kernel/coVRConfig.h>
-#include <kernel/coVRMSController.h>
+#include <cover/coVRPluginSupport.h>
+#include <cover/coVRConfig.h>
+#include <cover/coVRMSController.h>
 #include "CompositorIceT.h"
 
 #include <osg/MatrixTransform>

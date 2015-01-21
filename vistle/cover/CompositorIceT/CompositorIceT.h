@@ -13,7 +13,7 @@
 #include <vector>
 #include <IceTMPI.h>
 
-#include <kernel/coVRPlugin.h>
+#include <cover/coVRPlugin.h>
 
 class ReadBackCuda;
 

@@ -8,9 +8,9 @@
  */
 
 #include <util/common.h>
-#include <kernel/coVRPluginSupport.h>
-#include <kernel/coVRMSController.h>
-#include <kernel/RenderObject.h>
+#include <cover/coVRPluginSupport.h>
+#include <cover/coVRMSController.h>
+#include <cover/RenderObject.h>
 
 #include "coRemoteCoviseInteractor.h"
 #include "VncClient.h"
