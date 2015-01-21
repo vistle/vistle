@@ -133,6 +133,20 @@ class ReadFOAM: public vistle::Module
       bool addVolumeDataToPorts(int processor);
       bool readConstant(const std::string &dir);
       bool readTime(const std::string &dir, int timestep);
+      std::vector<vistle::Index> getAdjacentCells(const vistle::Index &cell,
+                                                  const DimensionInfo &dim,
+                                                  const std::vector<std::vector<vistle::Index>> &cellfacemap,
+                                                  const std::vector<vistle::Index> &owners,
+                                                  const std::vector<vistle::Index> &neighbours);
+      bool checkCell(const vistle::Index &cell,
+                     std::vector<vistle::Index> &ghostCellCandidates,
+                     std::vector<vistle::Index> &notGhostCells,
+                     const DimensionInfo &dim,
+                     const std::vector<vistle::Index> &outerVertices,
+                     const std::vector<std::vector<vistle::Index>> &cellfacemap,
+                     const std::vector<std::vector<vistle::Index>> &faces,
+                     const std::vector<vistle::Index> &owners,
+                     const std::vector<vistle::Index> &neighbours);
 
       GridDataContainer loadGrid(const std::string &dir);
       vistle::Object::ptr loadField(const std::string &dir, const std::string &field);

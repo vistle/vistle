@@ -216,15 +216,15 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
       std::vector<std::vector<Index>> faces(facesH.lines);
       readIndexListArray(*facesIn, faces.data(), faces.size());
 
-      boost::shared_ptr<std::istream> neighborsIn = getStreamForFile(meshdir, "neighbour");
-      if (!neighborsIn)
+      boost::shared_ptr<std::istream> neighboursIn = getStreamForFile(meshdir, "neighbour");
+      if (!neighboursIn)
          return result;
-      HeaderInfo neighbourH = readFoamHeader(*neighborsIn);
+      HeaderInfo neighbourH = readFoamHeader(*neighboursIn);
       if (neighbourH.lines != dim.internalFaces) {
          std::cerr << "inconsistency: #internalFaces != #neighbours" << std::endl;
       }
-      std::vector<Index> neighbour(neighbourH.lines);
-      readIndexArray(*neighborsIn, neighbour.data(), neighbour.size());
+      std::vector<Index> neighbours(neighbourH.lines);
+      readIndexArray(*neighboursIn, neighbours.data(), neighbours.size());
 
       //Boundary Polygon
       if (readBoundary) {
@@ -261,8 +261,8 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          for (Index face = 0; face < (*owners).size(); ++face) {
             cellfacemap[(*owners)[face]].push_back(face);
          }
-         for (Index face = 0; face < neighbour.size(); ++face) {
-            cellfacemap[neighbour[face]].push_back(face);
+         for (Index face = 0; face < neighbours.size(); ++face) {
+            cellfacemap[neighbours[face]].push_back(face);
          }
 
          //Vertices lists for GhostCell creation -
@@ -294,6 +294,25 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                      }
                   }
                }
+
+               //check for ghost cells
+               std::vector<Index> ghostCellCandidates;
+               std::vector<Index> notGhostCells;
+               for (Index i=0;i<b.numFaces;++i) {
+                  Index cell=(*owners)[b.startFace + i];
+                  ghostCellCandidates.push_back(cell);
+               }
+               for (Index i=0;i<b.numFaces;++i) {
+                  Index cell=(*owners)[b.startFace + i];
+                  std::vector<Index> adjacentCells=getAdjacentCells(cell,dim,cellfacemap,*owners,neighbours);
+                  for (Index j=0; j<adjacentCells.size(); ++j) {
+                     if (!checkCell(adjacentCells[j],ghostCellCandidates,notGhostCells,dim,outerVertices,cellfacemap,faces,*owners,neighbours))
+                        std::cout << "ERROR finding GhostCellCandidates" << std::endl;
+                  }
+               }
+//               std::sort(ghostCellCandidates.begin(),ghostCellCandidates.end()); //Sort Vector by ascending Value
+//               ghostCellCandidates.erase(std::unique(ghostCellCandidates.begin(), ghostCellCandidates.end()), ghostCellCandidates.end()); //Delete duplicate entries
+               m_procGhostCellCandidates[myProc][neighborProc] = ghostCellCandidates;
                m_procBoundaryVertices[myProc][neighborProc] = outerVertices;
             }
          }
@@ -304,23 +323,6 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          for (index_t i=0; i<dim.cells; i++) {
             const std::vector<Index> &cellfaces=cellfacemap[i];
             const std::vector<index_t> cellvertices = getVerticesForCell(cellfaces, faces);
-
-            //check if current cell is a ghost cell
-            if (m_buildGhost) {
-               for (const auto &b: (*boundaries).procboundaries) {
-                  int myProc=b.myProc;
-                  int neighborProc=b.neighborProc;
-                  std::vector<Index> ghostCellCandidates;
-                  const std::vector<Index> &outerVertices = m_procBoundaryVertices[myProc][neighborProc];
-                  for (Index j=0; j<outerVertices.size(); ++j) {
-
-                     if(std::find(cellvertices.begin(), cellvertices.end(), outerVertices[j]) != cellvertices.end()) {
-                        m_procGhostCellCandidates[myProc][neighborProc].push_back(i);
-                        break;
-                     }
-                  }
-               }
-            }
 
             bool onlySimpleFaces=true; //Simple Face = Triangle or Rectangle
             for (index_t j=0; j<cellfaces.size(); ++j) {
@@ -365,7 +367,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
 
                   //vistle requires that the vertices-numbering of the first face conforms with the right hand rule (pointing into the cell)
                   //so the starting face is tested if it does and the numbering is reversed if it doesn't
-                  if (!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbour)) {
+                  if (!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbours)) {
                      std::reverse(a.begin(), a.end());
                   }
 
@@ -386,7 +388,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
 
                   std::vector<index_t> a=faces[ia];
 
-                  if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbour)) {
+                  if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbours)) {
                      std::reverse(a.begin(), a.end());
                   }
 
@@ -406,7 +408,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
 
                   std::vector<index_t> a=faces[ia];
 
-                  if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbour)) {
+                  if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbours)) {
                      std::reverse(a.begin(), a.end());
                   }
 
@@ -419,7 +421,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                   index_t ia=cellfaces[0];//use first face as starting face
                   std::vector<index_t> a=faces[ia];
 
-                  if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbour)) {
+                  if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbours)) {
                      std::reverse(a.begin(), a.end());
                   }
 
@@ -433,7 +435,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                      index_t ia=cellfaces[j];
                      std::vector<index_t> a=faces[ia];
 
-                     if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbour)) {
+                     if(!isPointingInwards(ia,i,dim.internalFaces,(*owners),neighbours)) {
                         std::reverse(a.begin(), a.end());
                      }
 
@@ -671,6 +673,73 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
 
 int tag(int p, int n, int i=0) { //MPI needs a unique ID for each pair of send/receive request, this function creates unique ids for each processor pairing
    return p*10000+n*100+i;
+}
+
+std::vector<Index> ReadFOAM::getAdjacentCells(const Index &cell,
+                                              const DimensionInfo &dim,
+                                              const std::vector<std::vector<Index>> &cellfacemap,
+                                              const std::vector<Index> &owners,
+                                              const std::vector<Index> &neighbours) {
+   const std::vector<Index> &cellfaces=cellfacemap[cell];
+   std::vector<Index> adjacentCells;
+   for (Index i=0; i<cellfaces.size(); ++i) {
+      if (cellfaces[i] < dim.internalFaces) {
+         Index adjCell;
+         Index o=owners[cellfaces[i]];
+         Index n=neighbours[cellfaces[i]];
+         adjCell= (o==cell ? n : o);
+         adjacentCells.push_back(adjCell);
+      }
+   }
+   return adjacentCells;
+}
+
+bool ReadFOAM::checkCell(const Index &cell,
+                         std::vector<Index> &ghostCellCandidates,
+                         std::vector<Index> &notGhostCells,
+                         const DimensionInfo &dim,
+                         const std::vector<Index> &outerVertices,
+                         const std::vector<std::vector<Index>> &cellfacemap,
+                         const std::vector<std::vector<Index>> &faces,
+                         const std::vector<Index> &owners,
+                         const std::vector<Index> &neighbours) {
+   if (cell==-1) {
+      return true;
+   }
+
+   if (std::find(notGhostCells.begin(), notGhostCells.end(), cell) != notGhostCells.end()) {// if cell is already known to not be a ghost-cell
+      return true;
+   }
+
+   if (std::find(ghostCellCandidates.begin(), ghostCellCandidates.end(), cell) != ghostCellCandidates.end()) {// if cell is not an already known ghost-cell
+      return true;
+   }
+
+   bool isGhostCell=false;
+   const std::vector<Index> &cellfaces=cellfacemap[cell];
+   const std::vector<Index> cellvertices = getVerticesForCell(cellfaces, faces);
+   for (Index j=0; j<cellvertices.size(); ++j) {//check if the cell has a vertex on the outer boundary
+      if (std::find(outerVertices.begin(), outerVertices.end(), cellvertices[j]) != outerVertices.end()) {
+         isGhostCell=true;
+         break;
+      }
+   }
+
+   if (isGhostCell) {
+      ghostCellCandidates.push_back(cell);
+      std::vector<Index> adjacentCells=getAdjacentCells(cell,dim,cellfacemap,owners,neighbours);
+      for (Index &i :adjacentCells) {
+         if (!checkCell(i,ghostCellCandidates,notGhostCells,dim,outerVertices,cellfacemap,faces,owners,neighbours))
+            return false;
+      }
+      return true;
+   } else {
+
+      notGhostCells.push_back(cell);
+      return true;
+   }
+
+   return false;
 }
 
 bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
