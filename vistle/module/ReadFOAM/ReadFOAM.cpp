@@ -295,13 +295,15 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                   }
                }
 
-               //check for ghost cells
+               //check for ghost cells recursively
                std::vector<Index> ghostCellCandidates;
                std::vector<Index> notGhostCells;
                for (Index i=0;i<b.numFaces;++i) {
                   Index cell=(*owners)[b.startFace + i];
                   ghostCellCandidates.push_back(cell);
                }
+               std::sort(ghostCellCandidates.begin(),ghostCellCandidates.end()); //Sort Vector by ascending Value
+               ghostCellCandidates.erase(std::unique(ghostCellCandidates.begin(), ghostCellCandidates.end()), ghostCellCandidates.end()); //Delete duplicate entries
                for (Index i=0;i<b.numFaces;++i) {
                   Index cell=(*owners)[b.startFace + i];
                   std::vector<Index> adjacentCells=getAdjacentCells(cell,dim,cellfacemap,*owners,neighbours);
@@ -310,8 +312,6 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                         std::cout << "ERROR finding GhostCellCandidates" << std::endl;
                   }
                }
-               std::sort(ghostCellCandidates.begin(),ghostCellCandidates.end()); //Sort Vector by ascending Value
-               ghostCellCandidates.erase(std::unique(ghostCellCandidates.begin(), ghostCellCandidates.end()), ghostCellCandidates.end()); //Delete duplicate entries
                m_procGhostCellCandidates[myProc][neighborProc] = ghostCellCandidates;
                m_procBoundaryVertices[myProc][neighborProc] = outerVertices;
             }
@@ -703,9 +703,6 @@ bool ReadFOAM::checkCell(const Index &cell,
                          const std::vector<std::vector<Index>> &faces,
                          const std::vector<Index> &owners,
                          const std::vector<Index> &neighbours) {
-   if (cell==-1) {
-      return true;
-   }
 
    if (std::find(notGhostCells.begin(), notGhostCells.end(), cell) != notGhostCells.end()) {// if cell is already known to not be a ghost-cell
       return true;
