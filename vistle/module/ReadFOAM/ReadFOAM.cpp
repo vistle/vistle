@@ -39,6 +39,7 @@
 #include <util/coRestraint.h>
 #include <boost/serialization/vector.hpp>
 #include <boost/mpi.hpp>
+#include <unordered_set>
 namespace mpi = boost::mpi;
 
 using namespace vistle;
@@ -296,14 +297,14 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                }
 
                //check for ghost cells recursively
-               std::vector<Index> ghostCellCandidates;
-               std::vector<Index> notGhostCells;
+               std::unordered_set <Index> ghostCellCandidates;
+               std::unordered_set <Index> notGhostCells;
                for (Index i=0;i<b.numFaces;++i) {
                   Index cell=(*owners)[b.startFace + i];
-                  ghostCellCandidates.push_back(cell);
+                  ghostCellCandidates.insert(cell);
                }
-               std::sort(ghostCellCandidates.begin(),ghostCellCandidates.end()); //Sort Vector by ascending Value
-               ghostCellCandidates.erase(std::unique(ghostCellCandidates.begin(), ghostCellCandidates.end()), ghostCellCandidates.end()); //Delete duplicate entries
+//               std::sort(ghostCellCandidates.begin(),ghostCellCandidates.end()); //Sort Vector by ascending Value
+//               ghostCellCandidates.erase(std::unique(ghostCellCandidates.begin(), ghostCellCandidates.end()), ghostCellCandidates.end()); //Delete duplicate entries
                for (Index i=0;i<b.numFaces;++i) {
                   Index cell=(*owners)[b.startFace + i];
                   std::vector<Index> adjacentCells=getAdjacentCells(cell,dim,cellfacemap,*owners,neighbours);
@@ -695,8 +696,8 @@ std::vector<Index> ReadFOAM::getAdjacentCells(const Index &cell,
 }
 
 bool ReadFOAM::checkCell(const Index &cell,
-                         std::vector<Index> &ghostCellCandidates,
-                         std::vector<Index> &notGhostCells,
+                         std::unordered_set<Index> &ghostCellCandidates,
+                         std::unordered_set<Index> &notGhostCells,
                          const DimensionInfo &dim,
                          const std::vector<Index> &outerVertices,
                          const std::vector<std::vector<Index>> &cellfacemap,
@@ -704,11 +705,11 @@ bool ReadFOAM::checkCell(const Index &cell,
                          const std::vector<Index> &owners,
                          const std::vector<Index> &neighbours) {
 
-   if (std::find(notGhostCells.begin(), notGhostCells.end(), cell) != notGhostCells.end()) {// if cell is already known to not be a ghost-cell
+   if (notGhostCells.count(cell) == 1) {// if cell is already known to not be a ghost-cell
       return true;
    }
 
-   if (std::find(ghostCellCandidates.begin(), ghostCellCandidates.end(), cell) != ghostCellCandidates.end()) {// if cell is not an already known ghost-cell
+   if (ghostCellCandidates.count(cell) == 1) {// if cell is not an already known ghost-cell
       return true;
    }
 
@@ -723,7 +724,7 @@ bool ReadFOAM::checkCell(const Index &cell,
    }
 
    if (isGhostCell) {
-      ghostCellCandidates.push_back(cell);
+      ghostCellCandidates.insert(cell);
       std::vector<Index> adjacentCells=getAdjacentCells(cell,dim,cellfacemap,owners,neighbours);
       for (Index &i :adjacentCells) {
          if (!checkCell(i,ghostCellCandidates,notGhostCells,dim,outerVertices,cellfacemap,faces,owners,neighbours))
@@ -732,7 +733,7 @@ bool ReadFOAM::checkCell(const Index &cell,
       return true;
    } else {
 
-      notGhostCells.push_back(cell);
+      notGhostCells.insert(cell);
       return true;
    }
 
@@ -755,7 +756,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
       boost::shared_ptr<GhostCells> out(new GhostCells()); //object that will be sent to neighbor processor
       m_GhostCellsOut[processor][neighborProc] = out;
       std::vector<Index> &procBoundaryVertices = m_procBoundaryVertices[processor][neighborProc];
-      std::vector<Index> &procGhostCellCandidates = m_procGhostCellCandidates[processor][neighborProc];
+      std::unordered_set<Index> &procGhostCellCandidates = m_procGhostCellCandidates[processor][neighborProc];
 
       std::vector<Index> &elOut = out->el;
       std::vector<SIndex> &clOut = out->cl;
@@ -768,8 +769,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
          //build ghost cell element list and connectivity list for current boundary patch
          elOut.push_back(0);
          Index conncount=0;
-         for (Index i=0;i<procGhostCellCandidates.size();++i) {
-            Index cell=procGhostCellCandidates[i];
+         for (const Index& cell: procGhostCellCandidates) {
             Index elementStart = el[cell];
             Index elementEnd = el[cell + 1];
             for (Index j=elementStart; j<elementEnd; ++j) {
@@ -871,7 +871,7 @@ bool ReadFOAM::buildGhostCellData(int processor) {
    auto &boundaries = *m_boundaries[processor];
    for (const auto &b :boundaries.procboundaries) {
       Index neighborProc=b.neighborProc;
-      std::vector<Index> &procGhostCellCandidates = m_procGhostCellCandidates[processor][neighborProc];
+      std::unordered_set<Index> &procGhostCellCandidates = m_procGhostCellCandidates[processor][neighborProc];
       for (int i = 0; i < NumPorts; ++i) {
          auto f=m_currentvolumedata[processor].find(i);
          if (f == m_currentvolumedata[processor].end()) {
@@ -888,8 +888,7 @@ bool ReadFOAM::buildGhostCellData(int processor) {
             boost::shared_ptr<GhostData> dataOut(new GhostData(1));
             m_GhostDataOut[processor][neighborProc][i] = dataOut;
             auto &d=v1->x(0);
-            for (Index i=0;i<procGhostCellCandidates.size();++i) {
-               Index cell=procGhostCellCandidates[i];
+            for (const Index& cell: procGhostCellCandidates) {
                (*dataOut).x[0].push_back(d[cell]);
             }
          } else if (v3) {
@@ -898,8 +897,7 @@ bool ReadFOAM::buildGhostCellData(int processor) {
             auto &d1=v3->x(0);
             auto &d2=v3->x(1);
             auto &d3=v3->x(2);
-            for (Index i=0;i<procGhostCellCandidates.size();++i) {
-               Index cell=procGhostCellCandidates[i];
+            for (const Index& cell: procGhostCellCandidates) {
                (*dataOut).x[0].push_back(d1[cell]);
                (*dataOut).x[1].push_back(d2[cell]);
                (*dataOut).x[2].push_back(d3[cell]);
