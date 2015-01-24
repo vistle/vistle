@@ -550,9 +550,6 @@ Object::ptr CutGeometry::cutGeometry(Object::const_ptr object,
                                           const Vector & point,
                                           const Vector & normal) const {
 
-   if (!object)
-      return Object::ptr();
-
    switch (object->getType()) {
       case Object::TRIANGLES: {
 
@@ -582,15 +579,16 @@ bool CutGeometry::compute() {
    const ParamVector ppoint = getVectorParameter("point");
    Vector point(ppoint[0], ppoint[1], ppoint[2]);
 
-   while(Object::const_ptr oin = takeFirstObject("grid_in")) {
+   Object::const_ptr oin = expect<Object>("grid_in");
+   if (!oin)
+      return false;
 
-      Object::ptr object = cutGeometry(oin, point, normal);
-      if (object && !object->isEmpty()) {
-         object->copyAttributes(oin);
-         addObject("grid_out", object);
-      }
-
+   Object::ptr object = cutGeometry(oin, point, normal);
+   if (object && !object->isEmpty()) {
+      object->copyAttributes(oin);
+      addObject("grid_out", object);
    }
+
    return true;
 }
 

@@ -37,13 +37,13 @@ bool ColorAttribute::compute() {
    //std::cerr << "ColorAttribute: compute: execcount=" << m_executionCount << std::endl;
 
    auto color = p_color->getValue();
-   while(Object::const_ptr obj = takeFirstObject("data_in")) {
+   Object::const_ptr obj = expect<Object>("data_in");
+   if (!obj)
+      return false;
 
-      Object::ptr out = obj->clone();
-      out->addAttribute("_color", color);
-
-      addObject("data_out", out);
-   }
+   Object::ptr out = obj->clone();
+   out->addAttribute("_color", color);
+   addObject("data_out", out);
 
    return true;
 }

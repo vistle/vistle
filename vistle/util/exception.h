@@ -10,7 +10,7 @@ namespace vistle {
 
 namespace except {
 
-class V_COREEXPORT exception: public std::exception {
+class V_UTILEXPORT exception: public std::exception {
 
    public:
    exception(const std::string &what = "vistle error");
@@ -26,25 +26,25 @@ class V_COREEXPORT exception: public std::exception {
    std::string m_where;
 };
 
-class V_COREEXPORT not_implemented: public exception {
+class V_UTILEXPORT not_implemented: public exception {
 
    public:
    not_implemented(const std::string &what = "not implemented");
 };
 
-class V_COREEXPORT assertion_failure: public exception {
+class V_UTILEXPORT assertion_failure: public exception {
 
  public:
    assertion_failure(const std::string &what = "assertion failure");
 };
 
-class V_COREEXPORT consistency_error: public exception {
+class V_UTILEXPORT consistency_error: public exception {
 
  public:
    consistency_error(const std::string &what = "consistency check failure");
 };
 
-class V_COREEXPORT parent_died: public exception {
+class V_UTILEXPORT parent_died: public exception {
 
 public:
    parent_died(const std::string &what = "parent process died");

@@ -68,67 +68,70 @@ bool WriteVistle::compute() {
    bool trunc = false;
    bool end = false;
    std::string format;
-   while (Object::const_ptr obj = takeFirstObject("grid_in")) {
-      std::ios_base::openmode flags = std::ios::out;
-      if (obj->hasAttribute("_mark_begin")) {
-         close();
-         trunc = true;
-         flags |= std::ios::trunc;
-      } else {
-         flags |= std::ios::app;
-      }
-      if (obj->hasAttribute("_mark_end")) {
-         end = true;
-      }
-      switch(getIntParameter("format")) {
-         default:
-         case 0:
-            flags |= std::ios::binary;
-            format = "binary";
-            break;
-         case 1:
-            format = "text";
-            break;
-         case 2:
-            format = "xml";
-            break;
-      }
-      if (!m_ofs) {
-         m_ofs = new std::ofstream(getStringParameter("filename").c_str(), flags);
-      }
-      if (trunc)
-         *m_ofs << "vistle " << format << " 1 start" << std::endl;
+   Object::const_ptr obj = expect<Object>("grid_in");
+   if (!obj)
+      return false;
 
-      switch(getIntParameter("format")) {
-         default:
-         case 0:
-         {
-            if (!m_binAr)
-               m_binAr = new ba::binary_oarchive(*m_ofs);
-            obj->save(*m_binAr);
-            break;
-         }
-         case 1:
-         {
-            if (!m_textAr)
-               m_textAr = new ba::text_oarchive(*m_ofs);
-            obj->save(*m_textAr);
-            break;
-         }
-         case 2:
-         {
-            if (!m_xmlAr)
-               m_xmlAr = new ba::xml_oarchive(*m_ofs);
-            obj->save(*m_xmlAr);
-            break;
-         }
-      }
-      ++count;
-
+   std::ios_base::openmode flags = std::ios::out;
+   if (obj->hasAttribute("_mark_begin")) {
       close();
-
-      //*m_ofs << std::endl << "vistle separator" << std::endl;
+      trunc = true;
+      flags |= std::ios::trunc;
+   } else {
+      flags |= std::ios::app;
    }
+   if (obj->hasAttribute("_mark_end")) {
+      end = true;
+   }
+   switch(getIntParameter("format")) {
+      default:
+      case 0:
+         flags |= std::ios::binary;
+         format = "binary";
+         break;
+      case 1:
+         format = "text";
+         break;
+      case 2:
+         format = "xml";
+         break;
+   }
+   if (!m_ofs) {
+      m_ofs = new std::ofstream(getStringParameter("filename").c_str(), flags);
+   }
+   if (trunc)
+      *m_ofs << "vistle " << format << " 1 start" << std::endl;
+
+   switch(getIntParameter("format")) {
+      default:
+      case 0:
+      {
+         if (!m_binAr)
+            m_binAr = new ba::binary_oarchive(*m_ofs);
+         obj->save(*m_binAr);
+         break;
+      }
+      case 1:
+      {
+         if (!m_textAr)
+            m_textAr = new ba::text_oarchive(*m_ofs);
+         obj->save(*m_textAr);
+         break;
+      }
+      case 2:
+      {
+         if (!m_xmlAr)
+            m_xmlAr = new ba::xml_oarchive(*m_ofs);
+         obj->save(*m_xmlAr);
+         break;
+      }
+   }
+   ++count;
+
+   close();
+
+   //*m_ofs << std::endl << "vistle separator" << std::endl;
+
    if (trunc) {
       std::cerr << "saved";
    } else {

@@ -15,9 +15,8 @@
 #include <snappy.h>
 #endif
 
-#include <RHR/rfbext.h>
-#include <RHR/depthquant.h>
-
+#include "rfbext.h"
+#include "depthquant.h"
 #include "vncserver.h"
 
 #include <tbb/parallel_for.h>
@@ -25,6 +24,9 @@
 #include <tbb/enumerable_thread_specific.h>
 
 #include <util/stopwatch.h>
+
+//#define QUANT_ERROR
+//#define TIMING
 
 #ifdef HAVE_TURBOJPEG
 #include <turbojpeg.h>
@@ -289,6 +291,11 @@ const VncServer::Screen &VncServer::screen() const {
 //! called after plug-in is loaded and scenegraph is initialized
 bool VncServer::init(int w, int h, unsigned short port) {
 
+   m_appHandler = nullptr;
+
+   m_tileWidth = 256;
+   m_tileHeight = 256;
+
    m_numTimesteps = 0;
 
    m_numClients = 0;
@@ -348,6 +355,20 @@ bool VncServer::init(int w, int h, unsigned short port) {
    return true;
 }
 
+void VncServer::setAppMessageHandler(AppMessageHandlerFunc handler) {
+
+   m_appHandler = handler;
+}
+
+int VncServer::numClients() const {
+
+   return m_numClients;
+}
+
+int VncServer::numRhrClients() const {
+
+   return m_numRhrClients;
+}
 
 void VncServer::resize(int viewNum, int w, int h) {
 
@@ -357,7 +378,7 @@ void VncServer::resize(int viewNum, int w, int h) {
     }
 #endif
     if (viewNum >= numViews()) {
-        if (viewNum == 0)
+        if (viewNum != 0)
             m_viewData.emplace_back();
         else
             return;
@@ -703,6 +724,12 @@ rfbBool VncServer::handleApplicationMessage(rfbClientPtr cl, void *data,
       return TRUE;
    }
 
+   if (plugin->m_appHandler) {
+      bool handled = plugin->m_appHandler(msg.appType, buf);
+      if (handled)
+         return TRUE;
+   }
+
    switch (msg.appType) {
       case rfbScreenConfig:
       {
@@ -885,188 +912,6 @@ VncServer::preFrame()
    rfbReleaseClientIterator(i);
 }
 
-template<typename T>
-int clz (T xx)
-{
-   vassert(sizeof(T)<=8);
-   uint64_t x = xx;
-
-   if (xx==0)
-      return 8*sizeof(T);
-
-   int n=0;
-   if ((x & 0xffffffff00000000UL) == 0) { x <<= 32; if (sizeof(T) >= 8) n +=32; }
-   if ((x & 0xffff000000000000UL) == 0) { x <<= 16; if (sizeof(T) >= 4) n +=16; }
-   if ((x & 0xff00000000000000UL) == 0) { x <<= 8;  if (sizeof(T) >= 2) n += 8; }
-   if ((x & 0xf000000000000000UL) == 0) { x <<= 4;  n += 4; }
-   if ((x & 0xc000000000000000UL) == 0) { x <<= 2;  n += 2; }
-   if ((x & 0x8000000000000000UL) == 0) { x <<= 1;  n += 1; }
-   return n;
-}
-
-template<typename T, class Quant>
-void depthcompare_t(const T *ref, const T *check, unsigned w, unsigned h) {
-
-#ifdef max
-#undef max
-#endif
-
-   size_t numlow=0, numhigh=0;
-   unsigned maxx=0, maxy=0;
-   size_t numblack=0, numblackwrong=0;
-   size_t totalvalidbits = 0;
-   int minvalidbits=8*sizeof(T), maxvalidbits=0;
-   double totalerror = 0.;
-   double squarederror = 0.;
-   T Max = std::numeric_limits<T>::max();
-   if (sizeof(T)==4)
-      Max >>= 8;
-   T maxerr = 0;
-   T refminval = Max, minval = Max;
-   T refmaxval = 0, maxval = 0;
-   for (unsigned y=0; y<h; ++y) {
-      for (unsigned x=0; x<w; ++x) {
-         size_t idx = y*w+x;
-         T e = 0;
-
-         T r = ref[idx];
-         T c = check[idx];
-         if (sizeof(T)==4) {
-            r >>= 8;
-            c >>= 8;
-         }
-         if (r == Max) {
-            ++numblack;
-            if (c != r) {
-               ++numblackwrong;
-               fprintf(stderr, "!B: %u %u (%lu)\n", x, y, (unsigned long)c);
-            }
-         } else {
-            int validbits = clz<T>(r^c);
-            if (validbits < minvalidbits)
-               minvalidbits = validbits;
-            if (validbits > maxvalidbits)
-               maxvalidbits = validbits;
-            totalvalidbits += validbits;
-
-            if (r < refminval)
-               refminval = r;
-            if (r > refmaxval)
-               refmaxval = r;
-            if (c < minval)
-               minval = c;
-            if (c > maxval)
-               maxval = c;
-         }
-         if (r > c) {
-            ++numlow;
-            e = r - c;
-         } else if (r < c) {
-            ++numhigh;
-            e = c - r;
-         }
-         if (e > maxerr) {
-            maxx = x;
-            maxy = y;
-            maxerr = e;
-         }
-         double err = e;
-         totalerror += err;
-         squarederror += err*err;
-      }
-   }
-
-   size_t nonblack = w*h-numblack;
-   double MSE = squarederror/w/h;
-   double MSE_nonblack = squarederror/nonblack;
-   double PSNR = -1., PSNR_nonblack=-1.;
-   if (MSE > 0.) {
-      PSNR = 10. * (2.*log10(Max) - log10(MSE));
-      PSNR_nonblack = 10. * (2.*log10(Max) - log10(MSE_nonblack));
-   }
-
-   fprintf(stderr, "ERROR: #high=%ld, #low=%ld, max=%lu (%u %u), total=%f, mean non-black=%f (%f %%)\n",
-         (long)numhigh, (long)numlow, (unsigned long)maxerr, maxx, maxy, totalerror,
-         totalerror/nonblack,
-         totalerror/nonblack*100./(double)Max
-         );
-   fprintf(stderr, "BITS: totalvalid=%lu, min=%d, max=%d, mean=%f\n",
-         totalvalidbits, minvalidbits, maxvalidbits, (double)totalvalidbits/(double)nonblack);
-
-   fprintf(stderr, "PSNR (2x%d+16x%d): %f dB (non-black: %f)\n",
-         Quant::precision, Quant::bits_per_pixel,
-         PSNR, PSNR_nonblack);
-
-   fprintf(stderr, "RANGE: ref %lu - %lu, act %lu - %lu\n",
-         (unsigned long)refminval, (unsigned long)refmaxval,
-         (unsigned long)minval, (unsigned long)maxval);
-}
-
-static void depthcompare(const char *ref, const char *check, int precision, unsigned w, unsigned h) {
-
-   if (precision == 16) {
-      depthcompare_t<uint16_t, DepthQuantize16>((const uint16_t *)ref, (const uint16_t *)check, w, h);
-   } else if (precision == 32) {
-      depthcompare_t<uint32_t, DepthQuantize24>((const uint32_t *)ref, (const uint32_t *)check, w, h);
-   }
-}
-
-//! called after back-buffer has been swapped to front-buffer
-void
-VncServer::postFrame()
-{
-#if 0
-   double bpp = 4.;
-   int depthps = 4;
-
-   double pix = m_param.width*m_param.height;
-   if(m_benchmark || m_errormetric || m_compressionrate) {
-      if (m_numRhrClients > 0) {
-
-#ifdef HAVE_SNAPPY
-         const size_t sz = m_param.width*m_param.height*depthps;
-         size_t maxsz = snappy::MaxCompressedLength(sz);
-         std::vector<char> compressed(maxsz);
-
-         double snappystart = Clock::time();
-         size_t compressedsz = 0;
-         snappy::RawCompress((const char *)depth(), sz, &compressed[0], &compressedsz);
-         double snappydur = Clock::time() - snappystart;
-         if (m_compressionrate) {
-            fprintf(stderr, "snappy solo: %ld -> %ld, %f s, %f gb/s\n", sz, compressedsz, snappydur,
-                  sz/snappydur/1024/1024/1024);
-         }
-#endif
-
-#if 0
-         if (m_errormetric && m_depthquant) {
-            std::vector<char> dequant(m_width*m_height*depthps);
-            depthdequant(&dequant[0], m_screen->frameBuffer+4*m_width*m_height, depthps, m_width, m_height);
-            depthcompare(depth(), &dequant[0], m_depthprecision, m_width, m_height);
-         }
-#endif
-
-         double bytesraw = pix * depthps;
-         double bytesread = pix;
-         int structsz = 1;
-         bytesread *= depthps;
-
-#if 0
-         if (m_benchmark) {
-            fprintf(stderr, "DEPTH %fs: %f mpix/s, %f gb/s raw, %f gb/s read (cuda=%d) (ps=%d, ts=%d)\n",
-                  depthdur,
-                  pix/depthdur/1e6,
-                  bytesraw/depthdur/(1024*1024*1024),
-                  bytesread/depthdur/(1024*1024*1024),
-                  0, depthps, structsz);
-         }
-#endif
-
-      }
-   }
-#endif
-}
-
 void VncServer::invalidate(int viewNum, int x, int y, int w, int h, const VncServer::ViewParameters &param, bool lastView) {
 
     if (m_numClients - m_numRhrClients > 0) {
@@ -1209,6 +1054,12 @@ struct EncodeTask: public tbb::task {
                 msg.size = depthquant_size(DepthFloat, ds, w, h);
                 char *qbuf = new char[msg.size];
                 depthquant(qbuf, zbuf, DepthFloat, ds, x, y, w, h, stride);
+#ifdef QUANT_ERROR
+                std::vector<char> dequant(sizeof(float)*w*h);
+                depthdequant(dequant.data(), qbuf, DepthFloat, ds, 0, 0, w, h);
+                //depthquant(qbuf, dequant.data(), DepthFloat, ds, x, y, w, h, stride); // test depthcompare
+                depthcompare(zbuf, dequant.data(), DepthFloat, ds, w, h);
+#endif
                 result.payload = qbuf;
             } else {
                 char *tilebuf = new char[msg.size];
@@ -1228,7 +1079,16 @@ struct EncodeTask: public tbb::task {
                 unsigned long sz = 0;
                 unsigned char *src = reinterpret_cast<unsigned char *>(rgba);
                 rgba += (msg.totalwidth*msg.y+msg.x)*bpp;
-                ret = tjCompress(tj.handle, rgba, msg.width, msg.totalwidth*bpp, msg.height, bpp, reinterpret_cast<unsigned char *>(jpegbuf), &sz, subsamp, 90, TJ_BGR);
+                {
+#ifdef TIMING
+                   double start = vistle::Clock::time();
+#endif
+                   ret = tjCompress(tj.handle, rgba, msg.width, msg.totalwidth*bpp, msg.height, bpp, reinterpret_cast<unsigned char *>(jpegbuf), &sz, subsamp, 90, TJ_BGR);
+#ifdef TIMING
+                   double dur = vistle::Clock::time() - start;
+                   std::cerr << "JPEG compression: " << dur << "s, " << msg.width*(msg.height/dur)/1e6 << " MPix/s" << std::endl;
+#endif
+                }
                 if (ret >= 0) {
                     msg.size = sz;
                     result.payload = jpegbuf;
@@ -1250,7 +1110,17 @@ struct EncodeTask: public tbb::task {
             size_t maxsize = snappy::MaxCompressedLength(msg.size);
             char *sbuf = new char[maxsize];
             size_t compressed = 0;
-            snappy::RawCompress(result.payload, msg.size, sbuf, &compressed);
+            { 
+#ifdef TIMING
+               double start = vistle::Clock::time();
+#endif
+               snappy::RawCompress(result.payload, msg.size, sbuf, &compressed);
+#ifdef TIMING
+               vistle::StopWatch timer(rgba ? "snappy RGBA" : "snappy depth");
+               double dur = vistle::Clock::time() - start;
+               std::cerr << "SNAPPY " << (rgba ? "RGB" : "depth") << ": " << dur << "s, " << msg.width*(msg.height/dur)/1e6 << " MPix/s" << std::endl;
+#endif
+            }
             msg.size = compressed;
 
             //std::cerr << "compressed " << msg.size << " to " << compressed << " (buf: " << cd->buf.size() << ")" << std::endl;
@@ -1265,6 +1135,12 @@ struct EncodeTask: public tbb::task {
     }
 };
 
+void VncServer::setTileSize(int w, int h) {
+
+   m_tileWidth = w;
+   m_tileHeight = h;
+}
+
 void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const VncServer::ViewParameters &param, bool lastView) {
 
     if (!m_resizeBlocked) {
@@ -1273,13 +1149,14 @@ void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const V
     m_resizeBlocked = true;
 
     //vistle::StopWatch timer("encodeAndSend");
-    const int tileWidth = 256, tileHeight = 256;
+    const int tileWidth = m_tileWidth, tileHeight = m_tileHeight;
     static int framecount=0;
     ++framecount;
 
     for (int y=y0; y<y0+h; y+=tileHeight) {
         for (int x=x0; x<x0+w; x+=tileWidth) {
 
+            // depth
             auto dt = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
                     viewNum,
                     x, y,
@@ -1289,6 +1166,7 @@ void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const V
             tbb::task::enqueue(*dt);
             ++m_queuedTiles;
 
+            // color
             auto ct = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
                     viewNum,
                     x, y,

@@ -2,7 +2,7 @@
 #define CORE_ASSERT_H
 
 #ifndef NDEBUG
-#include "exception.h"
+#include <util/exception.h>
 #include <util/tools.h>
 #include <iostream>
 #include <sstream>

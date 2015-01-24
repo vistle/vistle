@@ -2,9 +2,9 @@
  * \brief VncServer plugin class
  * 
  * \author Martin Aumüller <aumueller@hlrs.de>
- * \author (c) 2012, 2013 HLRS
+ * \author (c) 2012, 2013, 2014 HLRS
  *
- * \copyright GPL2+
+ * \copyright LGPL2+
  */
 
 #ifndef VNC_SERVER_H
@@ -15,7 +15,7 @@
 #include <string>
 
 #include <rfb/rfb.h>
-#include <RHR/rfbext.h>
+#include <rhr/rfbext.h>
 #ifdef max
 #undef max
 #endif
@@ -52,9 +52,14 @@ public:
 
    void resize(int viewNum, int w, int h);
 
+   int numClients() const;
+   int numRhrClients() const;
+
    bool init(int w, int h, unsigned short port);
    void preFrame();
-   void postFrame();
+
+   typedef bool (*AppMessageHandlerFunc)(int type, const std::vector<char> &msg);
+   void setAppMessageHandler(AppMessageHandlerFunc handler);
 
    struct ViewParameters;
    ViewParameters getViewParameters(int viewNum) const;
@@ -64,6 +69,7 @@ public:
    void enableQuantization(bool value);
    void enableDepthSnappy(bool value);
    void setDepthPrecision(int bits);
+   void setTileSize(int w, int h);
 
    int timestep() const;
    void setNumTimesteps(int num);
@@ -219,8 +225,12 @@ public:
        ViewData(): newWidth(-1), newHeight(-1) {}
    };
 
+   void broadcastApplicationMessage(int type, int length, const char *data);
 private:
    static VncServer *plugin; //<! access to plug-in from static member functions
+   AppMessageHandlerFunc m_appHandler;
+
+   int m_tileWidth, m_tileHeight;
 
    //! address of client to which a connection should be established (reverse connection)
    struct Client
@@ -259,7 +269,6 @@ private:
    static void clientGoneHook(rfbClientPtr cl);
    static void sendBoundsMessage(rfbClientPtr cl);
    static void sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data);
-   void broadcastApplicationMessage(int type, int length, const char *data);
 
    void encodeAndSend(int viewNum, int x, int y, int w, int h, const ViewParameters &param, bool lastView);
 

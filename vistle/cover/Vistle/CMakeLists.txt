@@ -1,4 +1,3 @@
-cmake_minimum_required(VERSION 2.8)
 set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/cmake" ${CMAKE_MODULE_PATH})
 find_package(COVER)
 
@@ -7,7 +6,7 @@ if(NOT COVER_FOUND)
    return()
 endif()
 
-message("Building Vistle plugin for ARCHSUFFIX ${COVISE_ARCHSUFFIX}")
+message("Building COVER plugins for ARCHSUFFIX ${COVISE_ARCHSUFFIX}")
 
 set(SOURCES
    VistlePlugin.cpp

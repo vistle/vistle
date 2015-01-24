@@ -16,7 +16,7 @@
 
 #include <util/stopwatch.h>
 
-#include "vncserver.h"
+#include <rhr/vncserver.h>
 #include "renderobject.h"
 
 
@@ -65,6 +65,8 @@ class RayCaster: public vistle::Renderer {
    IntParameter *m_depthQuant;
    IntParameter *m_depthSnappy;
    IntParameter *m_depthPrec;
+   IntParameter *m_renderTileSizeParam;
+   IntVectorParameter *m_sendTileSizeParam;
 
    void updateBounds();
 
@@ -104,7 +106,8 @@ class RayCaster: public vistle::Renderer {
 
 
    int rayPacketSize;
-   const int tilesize = 64;
+   int m_tilesize;
+   IntParamVector m_sendTilesize;
    boost::shared_ptr<VncServer> vnc;
 
    RTCScene m_scene;
@@ -231,6 +234,8 @@ RayCaster *RayCaster::s_instance = nullptr;
 RayCaster::RayCaster(const std::string &shmname, const std::string &name, int moduleId)
 : Renderer("RayCaster", shmname, name, moduleId)
 , rayPacketSize(MaxPacketSize)
+, m_tilesize(64)
+, m_sendTilesize((Integer)1440, (Integer)1440)
 , m_timestep(0)
 , m_displayRank(0)
 , m_updateBounds(1)
@@ -260,6 +265,10 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    m_continuousRendering = addIntParameter("continuous_rendering", "render even though nothing has changed", 0, Parameter::Boolean);
    m_colorRank = addIntParameter("color_rank", "different colors on each rank", 0, Parameter::Boolean);
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
+   m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
+   setParameterRange(m_renderTileSizeParam, (Integer)1, (Integer)16384);
+   m_sendTileSizeParam = addIntVectorParameter("send_tile_size", "edge lengths of tiles used during sending", m_sendTilesize);
+   setParameterRange(m_sendTileSizeParam, IntParamVector(1,1), IntParamVector(16384, 16384));
 
    std::vector<std::string> choices;
    m_rgbaEncoding = addIntParameter("color_codec", "codec for image data", m_rgbaCodec, Parameter::Choice);
@@ -274,8 +283,8 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
 
    m_depthPrec = addIntParameter("depth_prec", "quantized depth precision", (Integer)(m_prec==24), Parameter::Choice);
    choices.clear();
-   choices.push_back("16 bit + 2 bit/pixel");
-   choices.push_back("24 bit + 3 bit/pixel");
+   choices.push_back("16 bit + 4 bits/pixel");
+   choices.push_back("24 bit + 3 bits/pixel");
    setParameterChoices(m_depthPrec, choices);
 
    m_defaultColor = Vector4(127, 127, 127, 255);
@@ -283,7 +292,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    if (rank() == rootRank())
       vnc.reset(new VncServer(1024, 768, m_vncBasePort->getValue()));
 
-   rtcInit("verbose=1");
+   rtcInit("verbose=0");
    m_scene = rtcNewScene(RTC_SCENE_DYNAMIC|sceneFlags, intersections);
 
    rtcCommit(m_scene);
@@ -382,6 +391,11 @@ bool RayCaster::parameterChanged(const Parameter *p) {
        m_rgbaCodec = (VncServer::ColorCodec)m_rgbaEncoding->getValue();
        if (vnc)
            vnc->setColorCodec(m_rgbaCodec);
+   } else if (p == m_sendTileSizeParam) {
+
+       m_sendTilesize = m_sendTileSizeParam->getValue();
+       if (vnc)
+           vnc->setTileSize(m_sendTilesize[0], m_sendTilesize[1]);
    }
 
    m_doRender = 1;
@@ -471,7 +485,7 @@ struct TileTask {
    : rc(rc)
    , vd(vd)
    , tile(tile)
-   , tilesize(rc.tilesize)
+   , tilesize(rc.m_tilesize)
    , rayPacketSize(rc.rayPacketSize)
    , packetSizeX((rayPacketSize+1)/2)
    , packetSizeY(rayPacketSize/packetSizeX)
@@ -663,6 +677,8 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
 
 
 void RayCaster::render() {
+
+   m_tilesize = m_renderTileSizeParam->getValue();
 
    //vistle::StopWatch timer("render");
    m_state.numTimesteps = anim_geometry.size();
@@ -856,8 +872,6 @@ void RayCaster::render() {
       }
       m_currentView = -1;
    }
-   if (vnc)
-       vnc->postFrame();
 }
 
 void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image) {
@@ -874,7 +888,7 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
 
    const int w = viewport[2];
    const int h = viewport[3];
-   const int ts = tilesize;
+   const int ts = m_tilesize;
    const int wt = ((w+ts-1)/ts)*ts;
    const int ht = ((h+ts-1)/ts)*ts;
    const int ntx = wt/ts;

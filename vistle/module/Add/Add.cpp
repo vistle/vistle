@@ -73,14 +73,16 @@ Add::~Add() {
 
 bool Add::compute() {
 
-   while(Object::const_ptr obj = takeFirstObject("data_in")) {
-      handled = false;
-      boost::mpl::for_each<Scalars>(Compute<1>(obj, this));
-      boost::mpl::for_each<Scalars>(Compute<3>(obj, this));
+   Object::const_ptr obj = expect<Object>("data_in");
+   if (!obj)
+      return false;
 
-      if (!handled) {
-         std::cerr << "Add: could not handle input" << std::endl;
-      }
+   handled = false;
+   boost::mpl::for_each<Scalars>(Compute<1>(obj, this));
+   boost::mpl::for_each<Scalars>(Compute<3>(obj, this));
+
+   if (!handled) {
+      std::cerr << "Add: could not handle input" << std::endl;
    }
 
    return true;

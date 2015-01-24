@@ -330,7 +330,7 @@ bool Hub::sendSlaves(const message::Message &msg, bool returnToSender) {
 
    for (auto &sock: m_slaveSockets) {
       if (sock.first != senderHub || returnToSender) {
-         std::cerr << "to slave id: " << sock.first << " (!= " << senderHub << ")" << std::endl;
+         //std::cerr << "to slave id: " << sock.first << " (!= " << senderHub << ")" << std::endl;
          sendMessage(sock.second, msg);
       }
    }
@@ -566,12 +566,15 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             if (m_managerConnected) {
                sendManager(set);
             }
+#ifdef SCAN_MODULES_ON_HUB
             scanModules(m_bindir + "/../libexec/module", m_hubId, m_availableModules);
             for (auto &am: m_availableModules) {
                message::ModuleAvailable m(m_hubId, am.second.name, am.second.path);
                m.setDestId(Id::MasterHub);
                sendMaster(m);
+               m_stateTracker.handle(m);
             }
+#endif
             if (m_managerConnected) {
                auto state = m_stateTracker.getState();
                for (auto &m: state) {

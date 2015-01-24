@@ -117,10 +117,10 @@ std::unique_ptr<VistleConnection::Locker> VistleConnection::locked() {
    return std::unique_ptr<Locker>(new VistleConnectionLocker(m_mutex));
 }
 
-void VistleConnection::sendMessage(const vistle::message::Message &msg) const
+bool VistleConnection::sendMessage(const vistle::message::Message &msg) const
 {
    mutex_lock lock(m_mutex);
-   ui().sendMessage(msg);
+   return ui().sendMessage(msg);
 }
 
 boost::shared_ptr<vistle::Parameter> VistleConnection::getParameter(int id, const std::string &name) const
@@ -133,12 +133,12 @@ boost::shared_ptr<vistle::Parameter> VistleConnection::getParameter(int id, cons
    return p;
 }
 
-void vistle::VistleConnection::sendParameter(const boost::shared_ptr<Parameter> p) const
+bool vistle::VistleConnection::sendParameter(const boost::shared_ptr<Parameter> p) const
 {
    mutex_lock lock(m_mutex);
    vistle::message::SetParameter set(p->module(), p->getName(), p);
    set.setDestId(p->module());
-   sendMessage(set);
+   return sendMessage(set);
 }
 
 bool VistleConnection::requestReplyAsync(const vistle::message::Message &send) const {
@@ -146,8 +146,7 @@ bool VistleConnection::requestReplyAsync(const vistle::message::Message &send) c
    if (!ui().getLockForMessage(send.uuid()))
       return false;
 
-   sendMessage(send);
-   return true;
+   return sendMessage(send);
 }
 
 bool VistleConnection::waitForReplyAsync(const vistle::message::uuid_t &uuid, vistle::message::Message &reply) const {
@@ -199,14 +198,18 @@ bool vistle::VistleConnection::barrier() const {
    return false;
 }
 
-void vistle::VistleConnection::resetDataFlowNetwork() const
+bool vistle::VistleConnection::resetDataFlowNetwork() const
 {
    {
       mutex_lock lock(m_mutex);
       for (int id: ui().state().getRunningList()) {
-         sendMessage(message::Kill(id));
+         message::Kill m(id);
+         m.setDestId(id);
+         if (!sendMessage(m))
+            return false;
       }
    }
+   return true;
 #if 0
    int barrierId = barrier();
    if (barrierId < 0) {
@@ -217,24 +220,24 @@ void vistle::VistleConnection::resetDataFlowNetwork() const
 #endif
 }
 
-void VistleConnection::executeSources() const
+bool VistleConnection::executeSources() const
 {
    mutex_lock lock(m_mutex);
    message::Execute exec;
    exec.setDestId(message::Id::MasterHub);
-   sendMessage(exec);
+   return sendMessage(exec);
 }
 
-void VistleConnection::connect(const Port *from, const Port *to) const {
+bool VistleConnection::connect(const Port *from, const Port *to) const {
 
    message::Connect conn(from->getModuleID(), from->getName(), to->getModuleID(), to->getName());
-   sendMessage(conn);
+   return sendMessage(conn);
 }
 
-void VistleConnection::disconnect(const Port *from, const Port *to) const {
+bool VistleConnection::disconnect(const Port *from, const Port *to) const {
 
    message::Disconnect disc(from->getModuleID(), from->getName(), to->getModuleID(), to->getName());
-   sendMessage(disc);
+   return sendMessage(disc);
 }
 
 } //namespace vistle

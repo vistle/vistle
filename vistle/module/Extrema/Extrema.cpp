@@ -74,14 +74,14 @@ class Extrema: public vistle::Module {
          module->minBlock.dim = Dim;
          module->maxBlock.dim = Dim;
 
-         size_t size = in->getSize();
+         Index size = in->getSize();
 #pragma omp parallel
          for (int c=0; c<Dim; ++c) {
             S min = module->min[c];
             S max = module->max[c];
             const S *x = in->x(c).data();
             Index imin=InvalidIndex, imax=InvalidIndex;
-            for (unsigned int index = 0; index < size; index ++) {
+            for (Index index = 0; index < size; index ++) {
                if (x[index] < min) {
                   min = x[index];
                   imin = index;
@@ -158,63 +158,64 @@ bool Extrema::compute() {
 
    dim = -1;
 
-   while(Object::const_ptr obj = takeFirstObject("data_in")) {
-      handled = false;
+   Object::const_ptr obj = expect<Object>("data_in");
+   if (!obj)
+      return false;
 
-      for (int c=0; c<MaxDim; ++c) {
-         min[c] =  std::numeric_limits<ParamVector::Scalar>::max();
-         max[c] = -std::numeric_limits<ParamVector::Scalar>::max();
+   for (int c=0; c<MaxDim; ++c) {
+      min[c] =  std::numeric_limits<ParamVector::Scalar>::max();
+      max[c] = -std::numeric_limits<ParamVector::Scalar>::max();
+   }
+
+   handled = false;
+
+   boost::mpl::for_each<Scalars>(Compute<1>(obj, this));
+   boost::mpl::for_each<Scalars>(Compute<3>(obj, this));
+
+   if (!handled) {
+      std::string error("could not handle input");
+      std::cerr << "Extrema: " << error << std::endl;
+      throw(vistle::exception(error));
+   }
+
+   if (dim == -1) {
+      dim = min.dim;
+      gmin.dim = dim;
+      gmax.dim = dim;
+      gminIndex.dim = dim;
+      gmaxIndex.dim = dim;
+      gminBlock.dim = dim;
+      gmaxBlock.dim = dim;
+   } else if (dim != min.dim) {
+      std::string error("input dimensions not equal");
+      std::cerr << "Extrema: " << error << std::endl;
+      throw(vistle::exception(error));
+   }
+
+   Object::ptr out = obj->clone();
+   out->addAttribute("min", min.str());
+   out->addAttribute("max", max.str());
+   out->addAttribute("minIndex", minIndex.str());
+   out->addAttribute("maxIndex", maxIndex.str());
+   //std::cerr << "Extrema: min " << min << ", max " << max << std::endl;
+
+   addObject("data_out", out);
+
+   for (int c=0; c<MaxDim; ++c) {
+      if (gmin[c] > min[c]) {
+         gmin[c] = min[c];
+         gminIndex[c] = minIndex[c];
+         gminBlock[c] = minBlock[c];
       }
-
-      boost::mpl::for_each<Scalars>(Compute<1>(obj, this));
-      boost::mpl::for_each<Scalars>(Compute<3>(obj, this));
-
-      if (!handled) {
-
-         std::string error("could not handle input");
-         std::cerr << "Extrema: " << error << std::endl;
-         throw(vistle::exception(error));
+      if (gmax[c] < max[c]) {
+         gmax[c] = max[c];
+         gmaxIndex[c] = maxIndex[c];
+         gmaxBlock[c] = maxBlock[c];
       }
+   }
 
-      if (dim == -1) {
-         dim = min.dim;
-         gmin.dim = dim;
-         gmax.dim = dim;
-         gminIndex.dim = dim;
-         gmaxIndex.dim = dim;
-         gminBlock.dim = dim;
-         gmaxBlock.dim = dim;
-      } else if (dim != min.dim) {
-         std::string error("input dimensions not equal");
-         std::cerr << "Extrema: " << error << std::endl;
-         throw(vistle::exception(error));
-      }
-
-      Object::ptr out = obj->clone();
-      out->addAttribute("min", min.str());
-      out->addAttribute("max", max.str());
-      out->addAttribute("minIndex", minIndex.str());
-      out->addAttribute("maxIndex", maxIndex.str());
-      //std::cerr << "Extrema: min " << min << ", max " << max << std::endl;
-
-      addObject("data_out", out);
-
-      for (int c=0; c<MaxDim; ++c) {
-         if (gmin[c] > min[c]) {
-            gmin[c] = min[c];
-            gminIndex[c] = minIndex[c];
-            gminBlock[c] = minBlock[c];
-         }
-         if (gmax[c] < max[c]) {
-            gmax[c] = max[c];
-            gmaxIndex[c] = maxIndex[c];
-            gmaxBlock[c] = maxBlock[c];
-         }
-      }
-
-      if (Coords::as(obj)) {
-         haveGeometry = true;
-      }
+   if (Coords::as(obj)) {
+      haveGeometry = true;
    }
 
    return true;

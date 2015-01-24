@@ -2,13 +2,13 @@
 #define PARAMVECTOR_H
 
 #include <util/sysdep.h>
+#include <util/exception.h>
 #include <ostream>
 #include <vector>
 #include <core/assert.h>
 #include <util/sysdep.h>
 #include "scalar.h"
 #include "dimensions.h"
-#include "exception.h"
 #include "vector.h"
 #include "export.h"
 

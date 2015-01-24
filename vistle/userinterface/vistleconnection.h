@@ -27,7 +27,7 @@ public:
 
    void setQuitOnExit(bool quit);
 
-   void sendMessage(const vistle::message::Message &msg) const;
+   bool sendMessage(const vistle::message::Message &msg) const;
    bool requestReplyAsync(const vistle::message::Message &send) const;
    bool waitForReplyAsync(const vistle::message::uuid_t &uuid, vistle::message::Message &reply) const;
    bool waitForReply(const vistle::message::Message &send, vistle::message::Message &reply) const;
@@ -36,14 +36,14 @@ public:
    boost::shared_ptr<vistle::Parameter> getParameter(int id, const std::string &name) const;
    template<class T>
    void setParameter(int id, const std::string &name, const T &value) const;
-   void sendParameter(const boost::shared_ptr<Parameter> p) const;
+   bool sendParameter(const boost::shared_ptr<Parameter> p) const;
 
-   void connect(const Port *from, const Port *to) const;
-   void disconnect(const Port *from, const Port *to) const;
+   bool connect(const Port *from, const Port *to) const;
+   bool disconnect(const Port *from, const Port *to) const;
 
    bool barrier() const;
-   void resetDataFlowNetwork() const;
-   void executeSources() const;
+   bool resetDataFlowNetwork() const;
+   bool executeSources() const;
 
    vistle::UserInterface &ui() const;
 

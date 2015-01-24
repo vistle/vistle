@@ -1,9 +1,9 @@
 #undef NDEBUG
 
 #include "VistleGeometryGenerator.h"
-#include <kernel/RenderObject.h>
-#include <kernel/VRSceneGraph.h>
-#include <kernel/coVRShader.h>
+#include <cover/RenderObject.h>
+#include <cover/VRSceneGraph.h>
+#include <cover/coVRShader.h>
 #include <PluginUtil/coSphere.h>
 
 #include <osg/Geode>

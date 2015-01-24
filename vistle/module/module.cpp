@@ -31,6 +31,7 @@
 #include <util/sysdep.h>
 #include <util/tools.h>
 #include <util/stopwatch.h>
+#include <util/exception.h>
 #include <core/object.h>
 #include <core/message.h>
 #include <core/messagequeue.h>
@@ -38,7 +39,6 @@
 #include <core/shm.h>
 #include <core/objectcache.h>
 #include <core/port.h>
-#include <core/exception.h>
 #include <core/statetracker.h>
 
 #ifndef TEMPLATES_IN_HEADERS
@@ -746,6 +746,28 @@ vistle::Object::const_ptr Module::takeFirstObject(Port *port) {
    return vistle::Object::ptr();
 }
 
+// specialized for avoiding Object::type(), which does not exist
+template<>
+Object::const_ptr Module::expect<Object>(Port *port) {
+   Object::const_ptr obj;
+   if (port->objects().empty()) {
+      std::stringstream str;
+      str << "no object available at " << port->getName() << ", but one is required" << std::endl;
+      sendError(str.str());
+      return obj;
+   }
+   obj = port->objects().front();
+   port->objects().pop_front();
+   if (!obj) {
+      std::stringstream str;
+      str << "did not receive valid object at " << port->getName() << ", but one is required" << std::endl;
+      sendError(str.str());
+      return obj;
+   }
+   vassert(obj->check());
+   return obj;
+}
+
 bool Module::addInputObject(const std::string & portName,
                             Object::const_ptr object) {
 
@@ -1162,41 +1184,58 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
             if (m_executionCount < exec->getExecutionCount())
                m_executionCount = exec->getExecutionCount();
-
-            if (exec->getExecutionCount() > 0) {
-               // Compute not triggered by adding an object, get objects from cache
-               for (std::map<std::string, Port *>::iterator pit = inputPorts.begin();
-                    pit != inputPorts.end();
-                    ++pit) {
-                  pit->second->objects() = m_cache.getObjects(pit->first);
-               }
-            }
-
             if (exec->allRanks()) {
                MPI_Allreduce(&m_executionCount, &m_executionCount, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+            }
+
+            Index numObject = 0;
+            if (exec->getExecutionCount() > 0) {
+               Index numConnected = 0;
+               // Compute not triggered by adding an object, get objects from cache
+               for (auto &port: inputPorts) {
+                  port.second->objects() = m_cache.getObjects(port.first);
+                  if (!isConnected(port.second))
+                     continue;
+                  ++numConnected;
+                  if (numObject == 0) {
+                     numObject = port.second->objects().size();
+                  } else if (numObject != port.second->objects().size()) {
+                     std::cerr << name() << "::compute(): input mismatch - expected " << numObject << " objects, have " << port.second->objects().size() << std::endl;
+                     return false;
+                  }
+               }
+               if (numConnected == 0)
+                  numObject = 1;
+            } else {
+               numObject = 1;
             }
 
             /*
             std::cerr << "    module [" << name() << "] [" << id() << "] ["
                << rank() << "/" << size << "] compute" << std::endl;
             */
-            bool computeOk = false;
-            try {
-               computeOk = compute();
-            } catch (boost::interprocess::interprocess_exception &e) {
-               std::cout << name() << "::compute(): interprocess_exception: " << e.what()
-                         << ", error code: " << e.get_error_code()
-                         << ", native error: " << e.get_native_error()
-                         << std::endl << std::flush;
-               std::cerr << name() << "::compute(): interprocess_exception: " << e.what()
-                         << ", error code: " << e.get_error_code()
-                         << ", native error: " << e.get_native_error()
-                         << std::endl;
-            } catch (std::exception &e) {
-               std::cout << name() << "::compute(): exception - " << e.what() << std::endl << std::flush;
-               std::cerr << name() << "::compute(): exception - " << e.what() << std::endl;
+            for (Index i=0; i<numObject; ++i) {
+               bool computeOk = false;
+               try {
+                  computeOk = compute();
+               } catch (boost::interprocess::interprocess_exception &e) {
+                  std::cout << name() << "::compute(): interprocess_exception: " << e.what()
+                     << ", error code: " << e.get_error_code()
+                     << ", native error: " << e.get_native_error()
+                     << std::endl << std::flush;
+                  std::cerr << name() << "::compute(): interprocess_exception: " << e.what()
+                     << ", error code: " << e.get_error_code()
+                     << ", native error: " << e.get_native_error()
+                     << std::endl;
+               } catch (std::exception &e) {
+                  std::cout << name() << "::compute(" << i << "): exception - " << e.what() << std::endl << std::flush;
+                  std::cerr << name() << "::compute(" << i << "): exception - " << e.what() << std::endl;
+               }
+               ret &= computeOk;
+               if (!computeOk) {
+                  break;
+               }
             }
-            ret &= computeOk;
 
             --m_executionDepth;
             //vassert(m_executionDepth == 0);

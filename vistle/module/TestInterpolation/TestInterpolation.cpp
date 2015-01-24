@@ -40,43 +40,40 @@ bool TestInterpolation::compute() {
    const Index count = getIntParameter("count");
    const UnstructuredGrid::InterpolationMode mode = (UnstructuredGrid::InterpolationMode)m_mode->getValue();
 
-   while (hasObject("data_in")) {
+   UnstructuredGrid::const_ptr grid = expect<UnstructuredGrid>("data_in");
+   if (!grid)
+      return false;
 
-      UnstructuredGrid::const_ptr grid = UnstructuredGrid::as(takeFirstObject("data_in"));
-      if (!grid)
-         continue;
-
-      if (m_createCelltree->getValue()) {
-         grid->getCelltree();
-         if (!grid->validateCelltree()) {
-            std::cerr << "celltree validation failed" << std::endl;
-         }
+   if (m_createCelltree->getValue()) {
+      grid->getCelltree();
+      if (!grid->validateCelltree()) {
+         std::cerr << "celltree validation failed" << std::endl;
       }
-
-      auto bounds = grid->getBounds();
-      Vector min = bounds.first, max = bounds.second;
-      const Scalar *x = grid->x().data();
-      const Scalar *y = grid->y().data();
-      const Scalar *z = grid->z().data();
-
-      Index numChecked = 0;
-      Scalar squaredError = 0;
-      for (Index i=0; i<count; ++i) {
-         Vector point(randpoint(min, max));
-         Index idx = grid->findCell(point);
-         if (idx != InvalidIndex) {
-            ++numChecked;
-            UnstructuredGrid::Interpolator interpol = grid->getInterpolator(idx, point, mode);
-            Vector p = interpol(x, y, z);
-            Scalar d2 = (point-p).squaredNorm();
-            if (d2 > 0.01) {
-               std::cerr << "point: " << point.transpose() << ", recons: " << p.transpose() << std::endl;
-            }
-            squaredError += d2;
-         }
-      }
-      std::cerr << "block " << grid->getBlock() << ", bounds: min " << min.transpose() << ", max " << max.transpose() << ", checked: " << numChecked << ", avg error: " << squaredError/numChecked << std::endl;
    }
+
+   auto bounds = grid->getBounds();
+   Vector min = bounds.first, max = bounds.second;
+   const Scalar *x = grid->x().data();
+   const Scalar *y = grid->y().data();
+   const Scalar *z = grid->z().data();
+
+   Index numChecked = 0;
+   Scalar squaredError = 0;
+   for (Index i=0; i<count; ++i) {
+      Vector point(randpoint(min, max));
+      Index idx = grid->findCell(point);
+      if (idx != InvalidIndex) {
+         ++numChecked;
+         UnstructuredGrid::Interpolator interpol = grid->getInterpolator(idx, point, mode);
+         Vector p = interpol(x, y, z);
+         Scalar d2 = (point-p).squaredNorm();
+         if (d2 > 0.01) {
+            std::cerr << "point: " << point.transpose() << ", recons: " << p.transpose() << std::endl;
+         }
+         squaredError += d2;
+      }
+   }
+   std::cerr << "block " << grid->getBlock() << ", bounds: min " << min.transpose() << ", max " << max.transpose() << ", checked: " << numChecked << ", avg error: " << squaredError/numChecked << std::endl;
 
    return true;
 }

@@ -6,7 +6,7 @@
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/array.hpp>
 
-#include "exception.h"
+#include <util/exception.h>
 #include "export.h"
 
 namespace vistle {

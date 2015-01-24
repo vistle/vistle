@@ -41,6 +41,7 @@ private slots:
    void saveDataFlowNetwork(const QString &filename=QString());
    void saveDataFlowNetworkAs(const QString &filename=QString());
    void executeDataFlowNetwork();
+   void connectVistle();
 
     void moduleSelectionChanged();
 

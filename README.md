@@ -151,6 +151,5 @@ Source Code Organization
 - `vistle/module`:
   visualization algorithm modules and base library
 
-- `vistle/plugin`:
-  COVER plugin for connecting to Vistle
-
+- `vistle/cover`:
+  plugins for OpenCOVER, e.g. for connecting to Vistle

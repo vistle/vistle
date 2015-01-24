@@ -160,29 +160,30 @@ bool Stats::compute() {
 
    //std::cerr << "ObjectStatistics: compute: execcount=" << m_executionCount << std::endl;
 
-   while(Object::const_ptr obj = takeFirstObject("data_in")) {
+   Object::const_ptr obj = expect<Object>("data_in");
+   if (!obj)
+      return false;
 
-      if (obj->getTimestep() > m_timesteps)
-         m_timesteps = obj->getTimestep();
+   if (obj->getTimestep() > m_timesteps)
+      m_timesteps = obj->getTimestep();
 
-      stats s;
-      if (auto i = Indexed::as(obj)) {
-         s.elements = i->getNumElements();
-         s.vertices = i->getNumCorners();
-      } else if (auto t = Triangles::as(obj)) {
-         s.elements = t->getNumElements();
-         s.vertices = t->getNumCorners();
-      }
-      if (auto c = Coords::as(obj)) {
-         s.coords = c->getNumCoords();
-      } else if(auto v = Vec<Scalar, 3>::as(obj)) {
-         s.data[3] = v->getSize();
-      } else if(auto v = Vec<Scalar, 1>::as(obj)) {
-         s.data[1] = v->getSize();
-      }
-      s.blocks = 1;
-      m_cur += s;
+   stats s;
+   if (auto i = Indexed::as(obj)) {
+      s.elements = i->getNumElements();
+      s.vertices = i->getNumCorners();
+   } else if (auto t = Triangles::as(obj)) {
+      s.elements = t->getNumElements();
+      s.vertices = t->getNumCorners();
    }
+   if (auto c = Coords::as(obj)) {
+      s.coords = c->getNumCoords();
+   } else if(auto v = Vec<Scalar, 3>::as(obj)) {
+      s.data[3] = v->getSize();
+   } else if(auto v = Vec<Scalar, 1>::as(obj)) {
+      s.data[1] = v->getSize();
+   }
+   s.blocks = 1;
+   m_cur += s;
 
    return true;
 }

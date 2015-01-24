@@ -31,14 +31,12 @@ CreateCelltree::~CreateCelltree() {
 
 bool CreateCelltree::compute() {
 
-   while(Object::const_ptr grid = takeFirstObject("grid_in")) {
+   UnstructuredGrid::const_ptr unstr = expect<UnstructuredGrid>("grid_in");
+   if (!unstr)
+      return false;
 
-      if (UnstructuredGrid::const_ptr unstr = UnstructuredGrid::as(grid)) {
-         unstr->getCelltree();
-      }
-
-      passThroughObject("grid_out", grid);
-   }
+   unstr->getCelltree();
+   passThroughObject("grid_out", unstr);
 
    return true;
 }

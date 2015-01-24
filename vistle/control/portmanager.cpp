@@ -106,13 +106,11 @@ void PortManager::popReset(const Port *port) {
 
 void PortManager::finishInput(const Port *port) {
 
-   vassert(m_numObject[port] == 0);
    ++m_numFinish[port];
 }
 
 bool PortManager::isFinished(const Port *port) {
 
-   vassert(m_numObject[port] == 0);
    return m_numFinish[port] > 0;
 }
 

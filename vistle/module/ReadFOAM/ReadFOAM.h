@@ -24,6 +24,7 @@
 #include "foamtoolbox.h"
 #include <util/coRestraint.h>
 #include <boost/mpi/request.hpp>
+#include <unordered_set>
 
 struct GridDataContainer {
 
@@ -133,6 +134,20 @@ class ReadFOAM: public vistle::Module
       bool addVolumeDataToPorts(int processor);
       bool readConstant(const std::string &dir);
       bool readTime(const std::string &dir, int timestep);
+      std::vector<vistle::Index> getAdjacentCells(const vistle::Index &cell,
+                                                  const DimensionInfo &dim,
+                                                  const std::vector<std::vector<vistle::Index>> &cellfacemap,
+                                                  const std::vector<vistle::Index> &owners,
+                                                  const std::vector<vistle::Index> &neighbours);
+      bool checkCell(const vistle::Index &cell,
+                     std::unordered_set<vistle::Index> &ghostCellCandidates,
+                     std::unordered_set<vistle::Index> &notGhostCells,
+                     const DimensionInfo &dim,
+                     const std::vector<vistle::Index> &outerVertices,
+                     const std::vector<std::vector<vistle::Index>> &cellfacemap,
+                     const std::vector<std::vector<vistle::Index>> &faces,
+                     const std::vector<vistle::Index> &owners,
+                     const std::vector<vistle::Index> &neighbours);
 
       GridDataContainer loadGrid(const std::string &dir);
       vistle::Object::ptr loadField(const std::string &dir, const std::string &field);
@@ -150,6 +165,7 @@ class ReadFOAM: public vistle::Module
       std::map<int, boost::shared_ptr<std::vector<vistle::Index> > > m_owners;
       std::map<int, boost::shared_ptr<Boundaries>> m_boundaries;
       std::map<int, std::map<int, std::vector<vistle::Index> > > m_procBoundaryVertices;
+      std::map<int, std::map<int, std::unordered_set<vistle::Index> > > m_procGhostCellCandidates;
       std::map<int, std::map<int, boost::shared_ptr<GhostCells> > > m_GhostCellsOut;
       std::map<int, std::map<int, boost::shared_ptr<GhostCells> > > m_GhostCellsIn;
       std::map<int, std::map<int, std::map<int, boost::shared_ptr<GhostData> > > > m_GhostDataOut;

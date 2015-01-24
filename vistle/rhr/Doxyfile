@@ -1,0 +1,63 @@
+PROJECT_NAME = "Remote Hybrid Rendering (RHR)"
+INPUT = ../RHR ../VncServer ../VncClient ../CompositorIceT \
+        ../../../kernel/coVRPlugin.h \
+        ../../../kernel/coInteractor.h ../../../kernel/coBaseCoviseInteractor.h \
+        ../../../kernel/RenderObject.h
+FILE_PATTERNS = *.h *.inc *.c *.cpp *.cu
+STRIP_FROM_PATH = ..
+OUTPUT_DIRECTORY = ../RHR
+HTML_OUTPUT = html
+OUTPUT_LANGUAGE = English
+IGNORE_PREFIX          = co
+PREDEFINED             =
+
+INHERIT_DOCS = YES
+SHORT_NAMES            = YES
+BUILTIN_STL_SUPPORT = YES
+SHOW_FILES = NO
+SHOW_NAMESPACES = YES
+VERBATIM_HEADERS = NO
+
+COMPACT_LATEX = YES
+EXTRA_PACKAGES = mathpazo
+USE_PDFLATEX = YES
+PDF_HYPERLINKS = YES
+
+
+WARNINGS = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_FORMAT            = "$file:$line: $text"
+EXTRACT_ALL = YES
+EXTRACT_PRIVATE = NO
+EXTRACT_STATIC = YES
+HIDE_UNDOC_CLASSES     = YES
+HIDE_UNDOC_MEMBERS     = YES
+
+CLASS_DIAGRAMS = YES
+DISTRIBUTE_GROUP_DOC   = NO
+ENABLED_SECTIONS       = 
+#GENERATE_TODOLIST      = YES
+GENERATE_TESTLIST      = NO
+ALPHABETICAL_INDEX     = NO
+DISABLE_INDEX          = NO
+GENERATE_TREEVIEW      = YES
+CLASS_GRAPH            = YES
+COLLABORATION_GRAPH    = YES
+INCLUDE_GRAPH          = NO
+INCLUDED_BY_GRAPH      = NO
+GRAPHICAL_HIERARCHY    = YES
+
+GENERATE_HTML = YES
+#SEARCHENGINE           = YES
+GENERATE_LATEX = YES
+GENERATE_MAN = NO
+RECURSIVE = NO
+HTML_HEADER            = 
+
+GENERATE_RTF = YES
+COMPACT_RTF = YES
+
+HAVE_DOT               = YES
+UML_LOOK = YES
+
+#EXCLUDE_SYMBOLS = opencover

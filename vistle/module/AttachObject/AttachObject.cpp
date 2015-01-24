@@ -32,15 +32,15 @@ bool AttachObject::compute() {
 
    //std::cerr << "AttachObject: compute: execcount=" << m_executionCount << std::endl;
 
-   while(Object::const_ptr obj = takeFirstObject("data_in")) {
+   Object::const_ptr obj = expect<Object>("data_in");
+   if (!obj)
+      return false;
 
-      //Object::ptr out = obj->clone();
-      Object::ptr out = boost::const_pointer_cast<Object>(obj);
-      Object::ptr att(new Points(4));
-      obj->addAttachment("test", att);
+   Object::ptr out = boost::const_pointer_cast<Object>(obj);
+   Object::ptr att(new Points(4));
+   obj->addAttachment("test", att);
 
-      addObject("data_out", out);
-   }
+   addObject("data_out", out);
 
    return true;
 }

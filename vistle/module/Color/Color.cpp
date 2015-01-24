@@ -198,26 +198,25 @@ bool Color::compute() {
 
    ColorMap cmap(pins, 32);
 
-   while (hasObject("data_in")) {
+   Object::const_ptr obj = expect<Object>("data_in");
+   if (!obj)
+      return false;
 
-      Object::const_ptr obj = takeFirstObject("data_in");
-      Scalar min = std::numeric_limits<Scalar>::max();
-      Scalar max = -std::numeric_limits<Scalar>::max();
+   Scalar min = std::numeric_limits<Scalar>::max();
+   Scalar max = -std::numeric_limits<Scalar>::max();
 
-      if (getFloatParameter("min") == getFloatParameter("max"))
-         getMinMax(obj, min, max);
-      else {
-         min = getFloatParameter("min");
-         max = getFloatParameter("max");
-      }
-
-      //std::cerr << "Color: [" << min << "--" << max << "]" << std::endl;
-
-      vistle::Object::ptr out(addTexture(obj, min, max, cmap));
-
-         addObject("data_out", out);
-
+   if (getFloatParameter("min") >= getFloatParameter("max"))
+      getMinMax(obj, min, max);
+   else {
+      min = getFloatParameter("min");
+      max = getFloatParameter("max");
    }
+
+   //std::cerr << "Color: [" << min << "--" << max << "]" << std::endl;
+
+   vistle::Object::ptr out(addTexture(obj, min, max, cmap));
+
+   addObject("data_out", out);
 
    return true;
 }

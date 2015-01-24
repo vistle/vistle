@@ -83,7 +83,7 @@ const boost::asio::ip::tcp::socket &UserInterface::socket() const {
 
 bool UserInterface::tryConnect() {
 
-   assert(m_isConnected == false);
+   assert(!isConnected());
 
    asio::ip::tcp::resolver resolver(m_ioService);
    asio::ip::tcp::resolver::query query(m_remoteHost, boost::lexical_cast<std::string>(m_remotePort));
@@ -102,7 +102,7 @@ bool UserInterface::tryConnect() {
 
 bool UserInterface::isConnected() const {
 
-   return m_isConnected;
+   return m_isConnected && socket().is_open();
 }
 
 StateTracker &UserInterface::state() {
@@ -112,12 +112,12 @@ StateTracker &UserInterface::state() {
 
 bool UserInterface::dispatch() {
 
-   message::Buffer buf;
-
-   bool received = true;
+   bool received = isConnected();
    while (received) {
 
       received = false;
+
+      message::Buffer buf;
       if (!message::recv(socket(), buf.msg, received, true /* blocking */)) {
          return false;
       }

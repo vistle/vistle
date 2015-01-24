@@ -1,7 +1,7 @@
 #ifndef VISTLE_INTERACTOR_H
 #define VISTLE_INTERACTOR_H
 
-#include <kernel/coInteractor.h>
+#include <cover/coInteractor.h>
 #include <core/message.h>
 
 class ModuleRenderObject;

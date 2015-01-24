@@ -2,6 +2,7 @@ find_package(Boost 1.40 REQUIRED COMPONENTS chrono system filesystem)
 
 set(util_SOURCES
    coRestraint.cpp
+   exception.cpp
    findself.cpp
    stopwatch.cpp
    tools.cpp
@@ -13,6 +14,7 @@ set(util_SOURCES
 set(util_HEADERS
    export.h
    coRestraint.h
+   exception.h
    findself.h
    sysdep.h
    tools.h

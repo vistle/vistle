@@ -1,31 +1,15 @@
-#find_package(IceT REQUIRED)
-set(ICET_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/3rdparty/IceT/src/include;${CMAKE_BINARY_DIR}/3rdparty/IceT/src/include)
-set(ICET_CORE_LIBS "IceTCore")
-set(ICET_MPI_LIBS "IceTMPI")
-
 find_package(LibVncServer)
 find_package(embree)                                                                                                     
 find_package(TBB)
-set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/cmake" ${CMAKE_MODULE_PATH})
-find_package(COVISE OPTIONAL_COMPONENTS RHR)
 find_package(ZLIB)
 find_package(JPEGTURBO)
-if (NOT COVISE_FOUND)
-   message("Ray: no COVISE")
-   return()
-endif(NOT COVISE_FOUND)
-using(SNAPPY optional)
+find_package(SNAPPY)
 
 if(NOT JPEGTURBO_FOUND)
    RETURN()
 endif(NOT JPEGTURBO_FOUND)
 if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
    message("Ray: turbojpeg w/o tjMcuWidth")
-   return()
-endif()
-
-if(NOT COVISE_RHR_FOUND)
-   message("Ray: COVISE RHR not found")
    return()
 endif()
 
@@ -59,7 +43,6 @@ endif()
 add_module(Ray
    renderobject.cpp
    ray.cpp
-   vncserver.cpp
    )
 
 include_directories(
@@ -68,7 +51,6 @@ include_directories(
         ${MPI_C_INCLUDE_PATH}
         ${ICET_INCLUDE_DIRS}
         ${LIBVNCSERVER_INCLUDE_DIR}
-        ${COVISE_RHR_INCLUDE_DIRS}
         ${SNAPPY_INCLUDE_DIR}
         ${PROJECT_SOURCE_DIR}
         ${EMBREE_INCLUDE_PATH}
@@ -81,12 +63,12 @@ target_link_libraries(Ray
         vistle_boost_mpi
         ${MPI_C_LIBRARIES}
         vistle_module
+        vistle_rhr
         ${ICET_CORE_LIBS}
         ${ICET_MPI_LIBS}
         ${LIBVNCSERVER_SERVER_LIBRARY}
         ${JPEG_LIBRARIES}
         ${ZLIB_LIBRARIES}
-        ${COVISE_RHR_LIBRARIES}
         ${SNAPPY_LIBRARIES}
         ${EMBREE_LIBRARIES}
         ${TBB_LIBRARIES}
