@@ -64,26 +64,18 @@ bool VecToScalar::compute() {
 }
 
 Object::ptr VecToScalar::extract(Vec<Scalar, 3>::const_ptr &data, const Index &coord) {
-   Index dataSize=0;
-   Vec<Scalar>::ptr dataOut(new Vec<Scalar>(dataSize));
+   Vec<Scalar>::ptr dataOut(new Vec<Scalar>(Object::Initialized));
    dataOut->d()->x[0] = data->d()->x[coord];
    return dataOut;
 }
 
 Object::ptr VecToScalar::calculateAbsolute(Vec<Scalar, 3>::const_ptr &data) {
-   Scalar *in_data_0=NULL, *in_data_1=NULL, *in_data_2=NULL;
-   Index dataSize;
-
-   in_data_0 = data->x().data();
-   in_data_1 = data->y().data();
-   in_data_2 = data->z().data();
-   dataSize = data->getSize();
-
+   Scalar *in_data_0 = data->x().data();
+   Scalar *in_data_1 = data->y().data();
+   Scalar *in_data_2 = data->z().data();
+   Index dataSize = data->getSize();
    Vec<Scalar>::ptr dataOut(new Vec<Scalar>(dataSize));
-   Scalar *out_data = NULL;
-   out_data = dataOut->x().data();
-
-   Scalar n;
+   Scalar *out_data = dataOut->x().data();
    for (int i = 0; i < dataSize; ++i)
    {
       out_data[i] = sqrt(in_data_0[i] * in_data_0[i] + in_data_1[i] * in_data_1[i] + in_data_2[i] * in_data_2[i]);
