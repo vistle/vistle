@@ -4,6 +4,7 @@ find_package(COVER)
 if (NOT COVER_FOUND)
    return()
 endif()
+covise_create_using()
 
 add_subdirectory(Vistle)
 add_subdirectory(CompositorIceT)
