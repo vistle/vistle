@@ -982,9 +982,11 @@ struct EncodeTask: public tbb::task {
             message->format = param.depthPrecision<=16 ? rfbDepth16Bit : rfbDepth24Bit;
             message->compression |= rfbTileDepthQuantize;
         }
+#ifdef HAVE_SNAPPY
         if (param.depthSnappy) {
             message->compression |= rfbTileSnappy;
         }
+#endif
     }
 
     EncodeTask(tbb::concurrent_queue<VncServer::EncodeResult> &resultQueue, int viewNum, int x, int y, int w, int h,
@@ -1008,8 +1010,10 @@ struct EncodeTask: public tbb::task {
 
         if (param.rgbaJpeg) {
             message->compression |= rfbTileJpeg;
+#ifdef HAVE_SNAPPY
         } else if (param.rgbaSnappy) {
             message->compression |= rfbTileSnappy;
+#endif
         }
     }
 

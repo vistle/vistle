@@ -16,11 +16,6 @@ if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
    return()
 endif()
 
-if(NOT SNAPPY_FOUND)
-   message("Ray: Snappy not found")
-   return()
-endif()
-
 if(TBB_FOUND)
     #if (NOT OPENMP_FOUND)
       add_definitions(-DUSE_TBB)
@@ -33,6 +28,10 @@ if(JPEGTURBO_FOUND)
    add_definitions(-DHAVE_TURBOJPEG)
 endif()
 
+if(SNAPPY_FOUND)
+   add_definitions(-DHAVE_SNAPPY)
+   include_directories(${SNAPPY_INCLUDE_DIR})
+endif()
 
 set(RHR_SOURCES
    depthquant.cpp
@@ -56,7 +55,6 @@ endif()
 include_directories(
         ..
         ${Boost_INCLUDE_DIRS}
-        ${SNAPPY_INCLUDE_DIR}
         ${TBB_INCLUDE_DIRS}
         ${JPEGTURBO_INCLUDE_DIR}
         ..
@@ -82,11 +80,14 @@ endif()
 target_link_libraries(vistle_rhr
         vistle_util
         ${Boost_LIBRARIES}
-        ${SNAPPY_LIBRARIES}
         ${TBB_LIBRARIES}
         ${JPEG_LIBRARIES}
         ${ZLIB_LIBRARIES}
 )
+
+if(SNAPPY_FOUND)
+   target_link_libraries(vistle_rhr ${SNAPPY_LIBRARIES})
+endif()
 
 if(LIBVNCSERVER_FOUND)
    target_link_libraries(vistle_rhr ${LIBVNCSERVER_SERVER_LIBRARY})
