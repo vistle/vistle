@@ -1,6 +1,9 @@
 find_package(Boost 1.40 REQUIRED COMPONENTS python)
 
 set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
+if (APPLE)
+   set(CMAKE_PREFIX_PATH /usr/local/opt/qt5 ${CMAKE_PREFIX_PATH})
+endif()
 set(CMAKE_PREFIX_PATH $ENV{EXTERNLIBS}/qt5 ${CMAKE_PREFIX_PATH})
 
 find_package(Qt5Core)
