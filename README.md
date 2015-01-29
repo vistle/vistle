@@ -64,9 +64,8 @@ Build Requirements
   history and line editing for command line interface
 
 - **COVISE**:
-  a compiled source code distribution or a developer installation is required,
-  get it from [HLRS](http://www.hlrs.de/organization/av/vis/covise/support/download/),
-  needed for:
+  a version of COVISE compiled by you is necessary, get it from
+  [GitHub](https://github.com/hlrs-vis/covise), needed for:
   
   - ReadCovise module
   - COVER plug-in
