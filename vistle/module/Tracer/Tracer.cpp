@@ -255,6 +255,8 @@ public:
             m_cell = grid->findCell(m_position);
             if(m_cell==InvalidIndex){
 
+                m_velocities.push_back(m_velocity);
+                m_positions.push_back(m_position);
                 m_block->addData(m_positions, m_velocities, m_pressures, tasktype);
                 m_positions.clear();
                 m_velocities.clear();
@@ -278,7 +280,6 @@ public:
                     m_block = block[i].get();
                     if(m_stepcount!=0){
                         m_velocities.push_back(m_velocity);
-                        m_positions.push_back(m_positionold);
                     }
                     m_positions.push_back(m_position);
                     m_out = false;
@@ -320,9 +321,7 @@ public:
     void Communicator(boost::mpi::communicator mpi_comm, Index root){
 
         boost::mpi::broadcast(mpi_comm, m_position, root);
-        boost::mpi::broadcast(mpi_comm, m_positionold, root);
         boost::mpi::broadcast(mpi_comm, m_stepcount, root);
-        boost::mpi::broadcast(mpi_comm, m_velocity, root);
         boost::mpi::broadcast(mpi_comm, m_ingrid, root);
 
         m_out = false;

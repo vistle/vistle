@@ -74,7 +74,7 @@
    </Input>
 
    <Plugin>
-      <CompositorIceT menu="true" value="on" />
+      <CompositorIceT menu="true" value="off" />
       <RRServer value="off" />
     <COVERScript value="off" />
     <Volume menu="true" value="off" />
@@ -89,7 +89,7 @@
 
     <ClipPlane value="on" />
 
-    <VncClient menu="true" value="on" rfbHost="visent.hlrs.de" rfbPort="31590" />
+    <VncClient menu="true" value="off" rfbHost="visent.hlrs.de" rfbPort="31590" />
     <!--
     <VncClient value="on" rfbHost="viscose.hlrs.de" >
     </VncClient>
@@ -127,7 +127,7 @@
    </ChannelConfig>
             
    <WindowConfig>
-    <Window width="1440" comment="FRONT" window="0" pipeIndex="0" height="1440" left="100" bottom="0" name="0" decoration="false" />
+    <Window width="900" comment="FRONT" window="0" pipeIndex="0" height="675" left="100" bottom="0" name="0" decoration="false" />
     <Window width="1024" comment="FRONT2" window="1" pipeIndex="0" height="768" left="1024" bottom="0" name="1" decoration="true" />
    </WindowConfig>
 
