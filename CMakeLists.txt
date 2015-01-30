@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 2.8)
 project(vistle_all)
 
+if(POLICY CMP0042)
+   # default to finding shlibs relative to @rpath on MacOS
+   cmake_policy(SET CMP0042 NEW)
+endif()
+
 # vim's YouCompleteMe can make use of this
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 

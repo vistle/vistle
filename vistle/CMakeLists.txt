@@ -1,5 +1,10 @@
-cmake_minimum_required(VERSION 2.8)
 project(vistle)
+
+if(POLICY CMP0043)
+   # configuration (RelWithDebInfo, Debug, ...) dependent COMPILE_DEFINITIONS are not used
+   # - default to new behavior
+   cmake_policy(SET CMP0043 NEW)
+endif()
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/Modules/;${CMAKE_MODULE_PATH}")
 
