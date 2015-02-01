@@ -27,6 +27,7 @@
 #include <eigen3/Eigen/Dense>
 #include <math.h>
 #include <boost/chrono.hpp>
+#include <fstream>
 
 
 MODULE_MAIN(Tracer)
@@ -34,6 +35,27 @@ MODULE_MAIN(Tracer)
 
 using namespace vistle;
 
+//for testing
+namespace chrono{
+boost::chrono::high_resolution_clock::time_point fc_start;
+boost::chrono::high_resolution_clock::time_point fc_stop;
+boost::chrono::high_resolution_clock::time_point integ_start;
+boost::chrono::high_resolution_clock::time_point integ_stop;
+boost::chrono::high_resolution_clock::time_point inter_start;
+boost::chrono::high_resolution_clock::time_point inter_stop;
+boost::chrono::high_resolution_clock::time_point comm_start;
+boost::chrono::high_resolution_clock::time_point comm_stop;
+boost::chrono::high_resolution_clock::time_point total_start;
+boost::chrono::high_resolution_clock::time_point total_stop;
+double add(boost::chrono::high_resolution_clock::time_point start, boost::chrono::high_resolution_clock::time_point stop){
+    return 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>(stop-start).count();
+}
+boost::chrono::high_resolution_clock::time_point now(){
+    return boost::chrono::high_resolution_clock::now();
+}
+}
+double fc_dur,integ_dur,inter_dur,comm_dur,other_dur;
+Index no_interpol;
 
 Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID)
    : Module("Tracer", shmname, name, moduleID) {
@@ -62,6 +84,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
 
 Tracer::~Tracer() {
 }
+
 
 
 class BlockData{
@@ -114,16 +137,9 @@ public:
 
     void addData(const std::vector<Vector3> &points,
                  const std::vector<Vector3> &velocities,
-                 const std::vector<Scalar> &pressures,
-                 Index tasktype,
-                 Index first_timestep =0){
-
-        switch(tasktype){
-
-        case 0:{
+                 const std::vector<Scalar> &pressures){
 
             Index numpoints = points.size();
-            Scalar phi_max = 1e-03;
 
             if(m_ivector.size()==0){
                 m_ivector.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
@@ -135,25 +151,10 @@ public:
 
             for(Index i=0; i<numpoints; i++){
 
-                bool addpoint = true;
-                if(i>1 && i<numpoints-1){
-
-                    Vector3 vec1 = points[i-1]-points[i-2];
-                    Vector3 vec2 = points[i]-points[i-1];
-                    Scalar cos_phi = vec1.dot(vec2)/(vec1.norm()*vec2.norm());
-                    Scalar phi = acos(cos_phi);
-                    if(phi<phi_max){
-                        addpoint = false;
-                    }
-                }
-
-                if(addpoint){
-
                     m_lines->x().push_back(points[i](0));
                     m_lines->y().push_back(points[i](1));
                     m_lines->z().push_back(points[i](2));
-                    Index numcorn = m_lines->getNumCorners();
-                    m_lines->cl().push_back(numcorn);
+                    m_lines->cl().push_back(m_lines->getNumCorners());
 
                     m_ivector[0]->x().push_back(velocities[0](0));
                     m_ivector[0]->y().push_back(velocities[0](1));
@@ -162,18 +163,153 @@ public:
                     if(pressures.size()==numpoints){
                         m_iscalar[0]->x().push_back(pressures[0]);
                     }
-                }
             }
             Index numcorn = m_lines->getNumCorners();
             m_lines->el().push_back(numcorn);
-        }
-        }
     }
 };
 
+class Integrator{
+
+private:
+    Vector3 m_k[3];
+    const Scalar m_b2nd[2];
+    const Scalar m_b3rd[3];
+    const Scalar m_a2;
+    const Scalar m_a3[2];
+    const Scalar m_c[2];
+    Scalar m_h;
+    Scalar m_hmin;
+    Scalar m_hmax;
+    short m_stg;
+    Vector3 m_x0;
+
+public:
+    Integrator(Scalar hmin, Scalar hmax, Scalar hinit):
+        m_b2nd{0.5,0.5},
+        m_b3rd{1.0/6.0,1.0/6.0,2.0/3.0},
+        m_a2(1),
+        m_a3{0.25,0.25},
+        m_c{1,0.5},
+        m_h(hinit),
+        m_hmin(hmin),
+        m_hmax(hmax),
+        m_stg(0){
+    }
+
+    ~Integrator();
+
+    void hInit(BlockData* bl, Index el, const Vector3 &point){
+
+        UnstructuredGrid::const_ptr grid = bl->getGrid();
+        UnstructuredGrid::Interpolator ipol = grid->getInterpolator(el,point);
+        Vec<Scalar,3>::const_ptr vecfld = bl->getVField();
+        Scalar* u = vecfld->x().data();
+        Scalar* v = vecfld->y().data();
+        Scalar* w = vecfld->z().data();
+        Vector3 velo = ipol(u,v,w);
+        Index first = grid->el()[el];
+        Index next = grid->el()[el+1];
+        Scalar xmin = grid->x()[grid->cl()[first]];
+        Scalar xmax = xmin;
+        Scalar ymin = grid->y()[grid->cl()[first]];
+        Scalar ymax = ymin;
+        Scalar zmin = grid->z()[grid->cl()[first]];
+        Scalar zmax = zmin;
+        for(Index i=first+1; i<next; i++){
+            Scalar x = grid->x()[grid->cl()[first+1]];
+            Scalar y = grid->y()[grid->cl()[first+1]];
+            Scalar z = grid->z()[grid->cl()[first+1]];
+            xmin = fmin(xmin,x);
+            xmax = fmax(xmax,x);
+            ymin = fmin(ymin,y);
+            ymax = fmax(ymax,y);
+            zmin = fmin(zmin,z);
+            zmax = fmax(zmax,z);
+        }
+        Scalar diag = Vector3(xmax-xmin,ymax-ymin,zmax-zmin).norm();
+        //Scalar repvol = fabs((xmax-xmin)*(ymax-ymin)*(zmax-zmin));
+        //m_h = 0.5*std::pow(repvol,1/3.)/velo.norm();
+        m_h = 0.5*diag/velo.norm();
+    }
+
+    bool rk23(BlockData* block, Index &el, const Vector3 &v, Vector &x){
+
+        Scalar errabs;
+        Scalar tolabs;
+        Index eltmp;
+        Vector3 f,xn;
+        UnstructuredGrid::const_ptr grid = block->getGrid();
+        Vec<Scalar,3>::const_ptr vecfld = block->getVField();
+        m_x0 = x;
+        Vector3 x2nd;
+        Vector3 x3rd;
+
+        switch(m_stg){
+
+        case 0:
+            m_stg++;
+            m_k[0] = v;
+            xn = x + m_h*m_a2*m_k[0];
+            if(!grid->inside(el,xn)){
+                eltmp = grid->findCell(xn);
+                if(eltmp==InvalidIndex){
+                    x = xn;
+                    return false;
+                }
+                el = eltmp;
+            }
+
+        case 1:{
+            UnstructuredGrid::Interpolator ipol = grid->getInterpolator(el,xn);
+            Scalar* u = vecfld->x().data();
+            Scalar* v = vecfld->y().data();
+            Scalar* w = vecfld->z().data();
+            m_stg++;
+            m_k[1] = ipol(u,v,w);
+            xn = xn + (m_a3[0]*m_k[0]+m_a3[1]*m_k[1])*m_h;
+            if(!grid->inside(el,xn)){
+                eltmp = grid->findCell(xn);
+                if(eltmp==InvalidIndex){
+                    x = xn;
+                    return false;
+                }
+                el = eltmp;
+            }}
+        case 2:{
+            UnstructuredGrid::Interpolator ipol = grid->getInterpolator(el,xn);
+            Scalar* u = vecfld->x().data();
+            Scalar* v = vecfld->y().data();
+            Scalar* w = vecfld->z().data();
+            m_k[2] = ipol(u,v,w);
+        }
+        case 3:{
+           x2nd = x + m_h*(m_b2nd[0]*m_k[0] + m_b2nd[1]*m_k[1]);
+           x3rd = x + m_h*(m_b3rd[0]*m_k[0] + m_b3rd[1]*m_k[1] +m_b3rd[2]*m_k[2]);
+           //errabs = fabs(x3rd-x2nd);
+           //tolabs = fmin(x3rd.norm(),x2nd.norm())*0.01;
+           bool accept = true;
+           x = x3rd;
+           m_stg=0;
+           return true;
+        }}
+    }
+
+    void send(boost::mpi::communicator world, Index root){
+
+        if(m_stg>0){
+            boost::mpi::broadcast(world,m_h,root);
+            boost::mpi::broadcast(world,m_k,3,root);
+            boost::mpi::broadcast(world,m_x0,root);
+            return;
+        }
+        boost::mpi::broadcast(world,m_h,root);
+
+    }
+};
 
 class Particle{
-
+friend class Tracer;
 private:
     const Index m_id;
     Vector3 m_x;
@@ -187,10 +323,10 @@ private:
     bool m_ingrid;
     bool m_out;
     bool m_in;
-    Scalar m_stepsize;
+    Integrator* m_integrator;
 
 public:
-    Particle(Index i, Vector3 pos, Scalar dt):
+    Particle(Index i, const std::vector<std::unique_ptr<BlockData>> &bl, const Vector3 &pos):
         m_id(i),
         m_x(pos),
         m_v(Vector3(1,0,0)),
@@ -199,9 +335,16 @@ public:
         m_el(InvalidIndex),
         m_ingrid(true),
         m_out(false),
-        m_in(true),
-        m_stepsize(dt){
+        m_in(true){
+
+        findCell(bl,1000);
+        m_integrator = new Integrator(0.0001,0.01, 0.001);
+        /*if(m_block){
+            m_integrator->hInit(m_block,m_el,pos);
+        }*/
     }
+
+    ~Particle(){}
 
     bool isActive(){
 
@@ -216,7 +359,7 @@ public:
         return m_ingrid;
     }
 
-    void findCell(const std::vector<std::unique_ptr<BlockData>> &block, Index steps_max, Index tasktype){
+    void findCell(const std::vector<std::unique_ptr<BlockData>> &block, Index steps_max){
 
         if(!m_ingrid){
             return;
@@ -224,7 +367,7 @@ public:
 
         if(m_stp == steps_max){
 
-            m_block->addData(m_xhist, m_vhist, m_sclhist, tasktype);
+            m_block->addData(m_xhist, m_vhist, m_sclhist);
             m_xhist.clear();
             m_vhist.clear();
             m_sclhist.clear();
@@ -236,7 +379,7 @@ public:
         bool moving = (m_v(0)!=0 || m_v(1)!=0 || 0 || m_v(2)!=0);
         if(!moving){
 
-            m_block->addData(m_xhist, m_vhist, m_sclhist, tasktype);
+            m_block->addData(m_xhist, m_vhist, m_sclhist);
             m_xhist.clear();
             m_vhist.clear();
             m_sclhist.clear();
@@ -256,14 +399,14 @@ public:
 
                 m_vhist.push_back(m_v);
                 m_xhist.push_back(m_x);
-                m_block->addData(m_xhist, m_vhist, m_sclhist, tasktype);
+                m_block->addData(m_xhist, m_vhist, m_sclhist);
                 m_xhist.clear();
                 m_vhist.clear();
                 m_sclhist.clear();
                 m_block = nullptr;
                 m_out = true;
                 m_in = true;
-                findCell(block, steps_max, tasktype);
+                findCell(block, steps_max);
             }
             return;
         }
@@ -311,9 +454,12 @@ public:
 
     void integr(){
 
-        m_x = m_x + m_v*m_stepsize;
+        /*m_x = m_x + m_v*0.001;
         m_xhist.push_back(m_x);
-        ++m_stp;
+        ++m_stp;*/
+        m_integrator->rk23(m_block,m_el,m_v,m_x);
+        m_xhist.push_back(m_x);
+        m_stp++;
     }
 
     void Communicator(boost::mpi::communicator mpi_comm, Index root){
@@ -321,6 +467,7 @@ public:
         boost::mpi::broadcast(mpi_comm, m_x, root);
         boost::mpi::broadcast(mpi_comm, m_stp, root);
         boost::mpi::broadcast(mpi_comm, m_ingrid, root);
+
 
         m_out = false;
         if(mpi_comm.rank()!=root){
@@ -366,12 +513,6 @@ bool Tracer::compute(){
 
 bool Tracer::reduce(int timestep){
 
-boost::chrono::high_resolution_clock::time_point st = boost::chrono::high_resolution_clock::now();
-boost::chrono::high_resolution_clock::time_point et;
-boost::chrono::high_resolution_clock::time_point sc;
-boost::chrono::high_resolution_clock::time_point ec;
-double ect = 0;
-
     Index numblocks = grid_in.size();
 
     //get parameters
@@ -381,6 +522,17 @@ double ect = 0;
     Index task_type = getIntParameter("taskType");
 
     boost::mpi::communicator world;
+    Index noel = 0;
+    Index novert = 0;
+    for(Index i=0;i<grid_in.size();i++){
+        noel+=grid_in[i]->getNumElements();
+        novert += grid_in[i]->getNumVertices();
+    }
+    noel = boost::mpi::all_reduce(world,noel,std::plus<Index>());
+    novert = boost::mpi::all_reduce(world,novert,std::plus<Index>());
+    if(world.rank()==0){
+        std::cout << "no_elem:  " << noel << std::endl << "no_vert:  " << novert << std::endl;
+    }
     if(data_in1.size()<numblocks){
 
         data_in1.assign(numblocks, nullptr);
@@ -407,13 +559,13 @@ double ect = 0;
     std::vector<std::unique_ptr<Particle>> particle(numpoints);
     for(Index i=0; i<numpoints; i++){
 
-        particle[i].reset(new Particle(i, startpoints[i], dt));
+        particle[i].reset(new Particle(i,block,startpoints[i]));
     }
 
     //find cell and set status of particle objects
     for(Index i=0; i<numpoints; i++){
 
-        particle[i]->findCell(block, steps_max, task_type);
+        particle[i]->findCell(block, steps_max);
     }
 
 
@@ -425,9 +577,10 @@ double ect = 0;
             particle[i]->deact();
         }
     }
-
+    Index count =0;
     bool ingrid = true;
     Index mpisize = world.size();
+    std::vector<boost::mpi::request> reqs;
     std::vector<Index> sendlist(0);
     while(ingrid){
 
@@ -437,14 +590,13 @@ double ect = 0;
                     traced = true;
                     particle[i]->interpol();
                     particle[i]->integr();
-                    particle[i]->findCell(block, steps_max, task_type);
+                    particle[i]->findCell(block, steps_max);
                 }
                 if(traced){
                     sendlist.push_back(i);
                 }
             }
 
-sc = boost::chrono::high_resolution_clock::now();
             for(Index mpirank=0; mpirank<mpisize; mpirank++){
 
                 Index num_send = sendlist.size();
@@ -456,7 +608,7 @@ sc = boost::chrono::high_resolution_clock::now();
                     for(Index i=0; i<num_send; i++){
                         Index p_index = tmplist[i];
                         particle[p_index]->Communicator(world, mpirank);
-                        particle[p_index]->findCell(block, steps_max, task_type);
+                        particle[p_index]->findCell(block, steps_max);
                         bool active = particle[p_index]->isActive();
                         active = boost::mpi::all_reduce(world, particle[p_index]->isActive(), std::logical_or<bool>());
                         if(!active){
@@ -464,8 +616,32 @@ sc = boost::chrono::high_resolution_clock::now();
                         }
                     }
                 }
-ec = boost::chrono::high_resolution_clock::now();
-ect = ect + 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>(ec-sc).count();
+            }
+/*Index left, right;
+right = (world.rank()+1)%world.size();
+if(world.rank()==0){left=world.size()-1;}else{left=world.rank()-1;}
+for(Index i=0; i<sendlist.size(); i++){
+    Index id = sendlist[i];
+    reqs.push_back(world.isend(right,numpoints,id));
+    reqs.push_back(world.isend(right,id,particle[id]->m_x));
+    reqs.push_back(world.isend(right,id,particle[id]->m_ingrid));
+    reqs.push_back(world.isend(right,id,particle[id]->m_stp));
+}
+sendlist.clear();
+while(world.iprobe(left,numpoints)){
+    Index id;
+    world.recv(left,numpoints,id);
+    world.recv(left,id,particle[id]->m_x);
+    world.recv(left,id,particle[id]->m_ingrid);
+    world.recv(left,id,particle[id]->m_stp);
+    particle[id]->m_in = true;
+    particle[id]->findCell(block, steps_max, task_type);
+    if(!particle[id]->m_block){sendlist.push_back(id);}
+}
+Index req=0;
+while(req<reqs.size()){
+    if(reqs[req].test()){reqs.erase(reqs.begin()+req);}else{req++;}
+}*/
                 ingrid = false;
                 for(Index i=0; i<numpoints; i++){
 
@@ -475,9 +651,14 @@ ect = ect + 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>(ec-sc)
                         break;
                     }
                 }
-            }
+                //if(world.rank()==0){std::cout << count << std::endl;}count++; ingrid = count<100;
+            //}
             sendlist.clear();
     }
+    /*world.barrier();
+    for(Index i=0; i<reqs.size(); i++){
+        reqs[i].cancel();
+    }*/
 
     switch(task_type){
 
@@ -509,16 +690,40 @@ ect = ect + 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>(ec-sc)
         break;
     }
 
-    world.barrier();
-et = boost::chrono::high_resolution_clock::now();
-
-if(world.rank()==0){
-    std::cout << "total: " << 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>(et-st).count() << std::endl <<
-                 "comm: " << ect << std::endl;
-}
+    world.barrier();/*
+//********************************************************
+//  FOR TIME MEASUREMENTS
+    std::ofstream out;
+    if(world.rank()==0){
+        out.open("MPISIZE" << world.size() << "-" << meascount << ".csv");
+        for(Index i=0;i<world.size();i++){
+            out << "," << i;
+        }
+        out << ",sum,avrg\n";
+    }
+    double dur[5] = {fc_dur,integ_dur,inter_dur,comm_dur,other_dur}
+    std::vector<double> durall(world.size()-1);
+    for(Index i=0;i<5;i++){
+        boost::mpi::gather(world,dur[i],durall,0);
+        if(world.rank()==0){
+            for(Index j=0; j<durall.size();j++){
+                out <<  "," << dur[i];
+            }
+            out << "\n";
+        }
+    }
+    boost::mpi::gather(world,no_interpol,durall,0);
+    if(world.rank()==0){
+        for(Index j=0; j<durall.size();j++){
+            out <<  "," << dur[i];
+        }
+    }
+//********************************************************
+*/
     if(world.rank()==0){
         std::cout << "Tracer done" << std::endl;
     }
     return true;
 }
-
+//double fc_dur,integ_dur,inter_dur,comm_dur,other_dur;
+//Index no_interpol;
