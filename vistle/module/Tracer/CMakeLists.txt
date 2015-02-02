@@ -1,6 +1,6 @@
 #find_package(Boost 1.40 REQUIRED COMPONENTS mpi)
 
-add_module(Tracer Tracer.cpp)
+add_module(Tracer Tracer.cpp Integrator.cpp)
 
 use_openmp()
 

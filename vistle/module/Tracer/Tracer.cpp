@@ -255,8 +255,6 @@ public:
             m_cell = grid->findCell(m_position);
             if(m_cell==InvalidIndex){
 
-                m_velocities.push_back(m_velocity);
-                m_positions.push_back(m_position);
                 m_block->addData(m_positions, m_velocities, m_pressures, tasktype);
                 m_positions.clear();
                 m_velocities.clear();
@@ -280,6 +278,7 @@ public:
                     m_block = block[i].get();
                     if(m_stepcount!=0){
                         m_velocities.push_back(m_velocity);
+                        m_positions.push_back(m_positionold);
                     }
                     m_positions.push_back(m_position);
                     m_out = false;
@@ -297,17 +296,48 @@ public:
         m_ingrid = false;
     }
 
-    void Interpolation(){
+    void Integrator(){
+
+        Vector3 k[3];
+        Vector3 xtmp;
+        Index el=m_cell;
+        k[0] = Interpolator(m_cell, m_position);
+        m_velocity = k[0];
+        m_velocities.push_back(m_velocity);
+        xtmp = m_position + m_stepsize*k[0];
+        if(!m_block->getGrid()->inside(m_cell,xtmp)){
+            el = m_block->getGrid()->findCell(xtmp);
+            if(el==InvalidIndex){
+                m_position = xtmp;
+                m_positions.push_back(m_position);
+                return;
+            }
+        }
+        k[1] = Interpolator(el, xtmp);
+        xtmp = m_position + m_stepsize*0.25*(k[0]+k[1]);
+        if(!m_block->getGrid()->inside(m_cell,xtmp)){
+            el = m_block->getGrid()->findCell(xtmp);
+            if(el==InvalidIndex){
+                m_position = m_position + m_stepsize*0.5*(k[0]+k[1]);
+                m_positions.push_back(m_position);
+                return;
+            }
+        }
+        k[2] = Interpolator(el,xtmp);
+        m_position = m_position + m_stepsize*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
+        m_positions.push_back(m_position);
+    }
+
+    Vector3 Interpolator(Index el, Vector3 point){
 
         UnstructuredGrid::const_ptr grid = m_block->getGrid();
         Vec<Scalar, 3>::const_ptr v_data = m_block->getVelocityData();
         Vec<Scalar>::const_ptr p_data = m_block->getPressureData();
-        UnstructuredGrid::Interpolator interpolator = grid->getInterpolator(m_cell, m_position);
+        UnstructuredGrid::Interpolator interpolator = grid->getInterpolator(el, point);
         Scalar* u = v_data->x().data();
         Scalar* v = v_data->y().data();
         Scalar* w = v_data->z().data();
-        m_velocity = interpolator(u,v,w);
-        m_velocities.push_back(m_velocity);
+        return interpolator(u,v,w);
     }
 
     void Integration(){
@@ -321,7 +351,9 @@ public:
     void Communicator(boost::mpi::communicator mpi_comm, Index root){
 
         boost::mpi::broadcast(mpi_comm, m_position, root);
+        boost::mpi::broadcast(mpi_comm, m_positionold, root);
         boost::mpi::broadcast(mpi_comm, m_stepcount, root);
+        boost::mpi::broadcast(mpi_comm, m_velocity, root);
         boost::mpi::broadcast(mpi_comm, m_ingrid, root);
 
         m_out = false;
@@ -449,8 +481,7 @@ double ect = 0;
 
                 while(particle[i]->isActive()){
 
-                    particle[i]->Interpolation();
-                    particle[i]->Integration();
+                    particle[i]->Integrator();
                     particle[i]->setStatus(block, steps_max, task_type);
                     if(particle[i]->leftNode()){
                         sendlist.push_back(i);
@@ -535,4 +566,5 @@ if(world.rank()==0){
     }
     return true;
 }
+
 
