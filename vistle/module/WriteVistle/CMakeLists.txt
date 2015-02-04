@@ -1,4 +1,4 @@
-find_package(Boost 1.40 REQUIRED COMPONENTS serialization)
+vistle_find_package(Boost 1.40 REQUIRED COMPONENTS serialization)
 
 add_module(WriteVistle WriteVistle.cpp)
 

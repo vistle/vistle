@@ -1,9 +1,9 @@
-find_package(TBB)
+vistle_find_package(TBB)
 use_openmp()
 
 set(SOURCES "../IsoSurface/IsoSurface.cpp")
 set(CUDA_OBJ "")
-#find_package(CUDA)
+#vistle_find_package(CUDA)
 if(NOT APPLE AND CUDA_FOUND)
    add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA)
    cuda_compile(CUDA_OBJ "../IsoSurface/Leveller.cu")

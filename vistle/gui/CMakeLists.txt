@@ -1,4 +1,4 @@
-find_package(Boost 1.40 REQUIRED COMPONENTS python)
+vistle_find_package(Boost 1.40 REQUIRED COMPONENTS python)
 
 set(SAVED_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
 if (APPLE)
@@ -6,14 +6,14 @@ if (APPLE)
 endif()
 set(CMAKE_PREFIX_PATH $ENV{EXTERNLIBS}/qt5 ${CMAKE_PREFIX_PATH})
 
-find_package(Qt5Core)
+vistle_find_package(Qt5Core)
 # don't bother to continue if not even QtCore was found
 if (NOT Qt5Core_FOUND)
     message("Not building GUI: Qt5 Core library not found")
     return()
 endif()
-find_package(Qt5Widgets)
-find_package(Qt5Gui)
+vistle_find_package(Qt5Widgets)
+vistle_find_package(Qt5Gui)
 
 set(CMAKE_PREFIX_PATH ${SAVED_CMAKE_PREFIX_PATH})
 

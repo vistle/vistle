@@ -1,4 +1,4 @@
-covise_find_package(LibVncServer)
+vistle_find_package(LibVncServer)
 if(NOT LIBVNCSERVER_FOUND)
    return()
 endif()

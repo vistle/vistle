@@ -1,4 +1,4 @@
-covise_find_package(CUDA)
+vistle_find_package(CUDA)
 
 using(OpenGL)
 

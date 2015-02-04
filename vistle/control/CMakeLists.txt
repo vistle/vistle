@@ -1,5 +1,5 @@
-find_package(Boost 1.40 REQUIRED COMPONENTS thread system filesystem)
-find_package(Readline)
+vistle_find_package(Boost 1.40 REQUIRED COMPONENTS thread system filesystem)
+vistle_find_package(Readline)
 
 add_definitions(-DVISTLE_CONTROL)
 

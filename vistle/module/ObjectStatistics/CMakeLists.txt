@@ -1,4 +1,4 @@
-#find_package(Boost 1.40 REQUIRED COMPONENTS mpi)
+#vistle_find_package(Boost 1.40 REQUIRED COMPONENTS mpi)
 
 add_module(ObjectStatistics ObjectStatistics.cpp)
 
