@@ -29,6 +29,9 @@ else()
    add_definitions(-DVISTLE_STATIC)
 endif()
 set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED})
+if (NOT BUILD_SHARED_LIBS)
+   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+endif()
 
 # allow for optimizations in Boost.MPI
 # do not use for now: causes crash in broadcast on OS X
@@ -129,14 +132,17 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
    #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
    if (NOT APPLE)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
    endif()
 
    if (NOT ${BUILD_SHARED_LIBS})
       # for linking the libraries into plugins
-      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -fPIC")
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -fPIC")
+      #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+      #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+      set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
    endif()
 
    if (NOT APPLE)
