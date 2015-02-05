@@ -180,10 +180,7 @@ Particle::Particle(Index i, const Vector3 &pos, Scalar h, Scalar hmin,
                 m_integrator->hInit();
             }
         }
-        else{
-            //m_integrator->setStepsize(h);
-        }
-}
+    }
 
 Particle::~Particle(){}
 

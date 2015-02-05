@@ -102,34 +102,6 @@ bool Integrator::RK32(){
                     return false;
                 }
             }
-            /*Vector3 k[3];
-            Vector3 xtmp;
-            Index el=m_el;
-            k[0] = Interpolator(m_el, m_x);
-            m_v = k[0];
-            m_vhist.push_back(m_v);
-            xtmp = m_x + m_dt*k[0];
-            if(!m_block->getGrid()->inside(m_el,xtmp)){
-                el = m_block->getGrid()->findCell(xtmp);
-                if(el==InvalidIndex){
-                    m_x = xtmp;
-                    m_xhist.push_back(m_x);
-                    return;
-                }
-            }
-            k[1] = Interpolator(el, xtmp);
-            xtmp = m_x + m_dt*0.25*(k[0]+k[1]);
-            if(!m_block->getGrid()->inside(m_el,xtmp)){
-                el = m_block->getGrid()->findCell(xtmp);
-                if(el==InvalidIndex){
-                    m_x = m_x + m_dt*0.5*(k[0]+k[1]);
-                    m_xhist.push_back(m_x);
-                    return;
-                }
-            }
-            k[2] = Interpolator(el,xtmp);
-            m_x = m_x + m_dt*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
-            m_xhist.push_back(m_x);*/
             k[2] = Interpolator(m_ptcl->m_block,el,xtmp);
             m_ptcl->m_x = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
             m_ptcl->m_xhist.push_back(m_ptcl->m_x);
