@@ -17,43 +17,43 @@ Integrator::Integrator(vistle::Scalar h, vistle::Scalar hmin,
 }
 
 void Integrator::hInit(){
-    m_h=0.0001; return;
-    Index el = m_ptcl->m_el;
-    Vector3 v = Interpolator(m_ptcl->m_block, el, m_ptcl->m_x);
+    Vector3 v = Interpolator(m_ptcl->m_block, m_ptcl->m_el, m_ptcl->m_x);
     unsigned char dimmax=0;
-    if(v(1)>v(dimmax)){dimmax=1;}
-    if(v(2)>v(dimmax)){dimmax=2;}
-    Scalar vmax = v(dimmax);
+    if(std::abs(v(1))>std::abs(v(dimmax))){dimmax=1;}
+    if(std::abs(v(2))>std::abs(v(dimmax))){dimmax=2;}
+    Scalar vmax = std::abs(v(dimmax));
     UnstructuredGrid::const_ptr grid = m_ptcl->m_block->getGrid();
-    Index numvert = grid->el()[el+1] - grid->el()[el];
+    Index numvert = grid->el()[m_ptcl->m_el+1] - grid->el()[m_ptcl->m_el];
     Scalar dmin,dmax;
     switch(dimmax){
     case 0:
-        dmin = grid->x()[grid->cl()[grid->el()[el]]];
+        dmin = grid->x()[grid->cl()[grid->el()[m_ptcl->m_el]]];
         dmax = dmin;
         for(Index i=1; i<numvert; i++){
-            dmin = std::min<Scalar>(dmin,grid->x()[grid->cl()[grid->el()[el]+i]]);
-            dmax = std::max<Scalar>(dmax,grid->x()[grid->cl()[grid->el()[el]+i]]);
+            dmin = std::min<Scalar>(dmin,grid->x()[grid->cl()[grid->el()[m_ptcl->m_el]+i]]);
+            dmax = std::max<Scalar>(dmax,grid->x()[grid->cl()[grid->el()[m_ptcl->m_el]+i]]);
         }
         break;
     case 1:
-        dmin = grid->y()[grid->cl()[grid->el()[el]]];
+        dmin = grid->y()[grid->cl()[grid->el()[m_ptcl->m_el]]];
         dmax = dmin;
         for(Index i=1; i<numvert; i++){
-            dmin = std::min<Scalar>(dmin,grid->y()[grid->cl()[grid->el()[el]+i]]);
-            dmax = std::max<Scalar>(dmax,grid->y()[grid->cl()[grid->el()[el]+i]]);
+            dmin = std::min<Scalar>(dmin,grid->y()[grid->cl()[grid->el()[m_ptcl->m_el]+i]]);
+            dmax = std::max<Scalar>(dmax,grid->y()[grid->cl()[grid->el()[m_ptcl->m_el]+i]]);
         }
         break;
     case 2:
-        dmin = grid->z()[grid->cl()[grid->el()[el]]];
+        dmin = grid->z()[grid->cl()[grid->el()[m_ptcl->m_el]]];
         dmax = dmin;
         for(Index i=1; i<numvert; i++){
-            dmin = std::min<Scalar>(dmin,grid->z()[grid->cl()[grid->el()[el]+i]]);
-            dmax = std::max<Scalar>(dmax,grid->z()[grid->cl()[grid->el()[el]+i]]);
+            dmin = std::min<Scalar>(dmin,grid->z()[grid->cl()[grid->el()[m_ptcl->m_el]+i]]);
+            dmax = std::max<Scalar>(dmax,grid->z()[grid->cl()[grid->el()[m_ptcl->m_el]+i]]);
         }
     }
     Scalar chlen = dmax-dmin;
-    m_h =chlen/vmax;
+    m_h =0.5*chlen/vmax;
+    if(m_h>m_hmax){m_h = m_hmax;}
+    if(m_h>m_hmin){m_h = m_hmin;}
 }
 
 bool Integrator::Step(){

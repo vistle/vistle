@@ -202,10 +202,7 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
 
     if(m_stp == m_stpmax){
 
-        m_block->addLines(m_xhist, m_vhist, m_pressures);
-        m_xhist.clear();
-        m_vhist.clear();
-        m_pressures.clear();
+        PointsToLines();
         this->Deactivate();
         return false;
     }
@@ -213,10 +210,7 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
     bool moving = (m_v(0)!=0 || m_v(1)!=0 || 0 || m_v(2)!=0);
     if(!moving){
 
-        m_block->addLines(m_xhist, m_vhist, m_pressures);
-        m_xhist.clear();
-        m_vhist.clear();
-        m_pressures.clear();
+        PointsToLines();
         this->Deactivate();
         return false;
     }
@@ -233,10 +227,7 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
             return true;
         }
         else{
-            m_block->addLines(m_xhist, m_vhist, m_pressures);
-            m_xhist.clear();
-            m_vhist.clear();
-            m_pressures.clear();
+            PointsToLines();
             m_block = nullptr;
             m_in = true;
             findCell(block);
@@ -268,6 +259,9 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
 void Particle::PointsToLines(){
 
     m_block->addLines(m_xhist,m_vhist,m_pressures);
+    m_xhist.clear();
+    m_vhist.clear();
+    m_pressures.clear();
 }
 
 void Particle::Deactivate(){
@@ -283,7 +277,7 @@ void Particle::Step(){
         //m_in = true;
         //PointsToLines
     }
-    m_stp++;
+    //m_stp++;
 }
 
 Vector3 Particle::Interpolator(Index el, Vector3 point){
