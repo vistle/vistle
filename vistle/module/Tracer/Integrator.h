@@ -25,4 +25,5 @@ public:
     bool RK32();
     vistle::Vector3 Interpolator(BlockData* bl, vistle::Index el,const vistle::Vector3 &point);
     void hInit();
+    void setStepsize(vistle::Scalar h);
 };

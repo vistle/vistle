@@ -53,7 +53,7 @@ void Integrator::hInit(){
     Scalar chlen = dmax-dmin;
     m_h =0.5*chlen/vmax;
     if(m_h>m_hmax){m_h = m_hmax;}
-    if(m_h>m_hmin){m_h = m_hmin;}
+    if(m_h<m_hmin){m_h = m_hmin;}
 }
 
 bool Integrator::Step(){

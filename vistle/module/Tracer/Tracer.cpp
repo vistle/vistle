@@ -180,6 +180,9 @@ Particle::Particle(Index i, const Vector3 &pos, Scalar h, Scalar hmin,
                 m_integrator->hInit();
             }
         }
+        else{
+            //m_integrator->setStepsize(h);
+        }
 }
 
 Particle::~Particle(){}
@@ -244,8 +247,8 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
 
                 m_block = block[i].get();
                 if(m_stp!=0){
-                    m_vhist.push_back(m_v);
-                    m_xhist.push_back(m_xold);
+                    //m_vhist.push_back(m_v);
+                    //m_xhist.push_back(m_xold);
                 }
                 m_xhist.push_back(m_x);
                 return true;
@@ -277,7 +280,7 @@ void Particle::Step(){
         //m_in = true;
         //PointsToLines
     }
-    //m_stp++;
+    m_stp++;
 }
 
 Vector3 Particle::Interpolator(Index el, Vector3 point){
@@ -407,11 +410,10 @@ double ect = 0;
 
             for(Index i=0; i<numpoints; i++){
                 bool traced = false;
-                while(particle[i]->isActive()){
+                while(particle[i]->findCell(block)){
 
                     particle[i]->Step();
                     traced = true;
-                    particle[i]->findCell(block);
                 }
                 if(traced){
                     sendlist.push_back(i);
