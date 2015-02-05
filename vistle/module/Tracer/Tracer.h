@@ -2,6 +2,7 @@
 #define TRACER_H
 #include <core/unstr.h>
 #include <module/module.h>
+#include <core/lines.h>
 
 class Tracer: public vistle::Module {
 
@@ -25,4 +26,70 @@ public:
 
 };
 
+
+class BlockData{
+
+private:
+    const vistle::Index m_id;
+    vistle::UnstructuredGrid::const_ptr m_grid;
+    vistle::Vec<vistle::Scalar, 3>::const_ptr m_xecfld;
+    vistle::Vec<vistle::Scalar>::const_ptr m_scafld;
+    vistle::Lines::ptr m_lines;
+    std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> m_ivec;
+    std::vector<vistle::Vec<vistle::Scalar>::ptr> m_iscal;
+
+public:
+    BlockData(vistle::Index i,
+              vistle::UnstructuredGrid::const_ptr grid,
+              vistle::Vec<vistle::Scalar, 3>::const_ptr vdata,
+              vistle::Vec<vistle::Scalar>::const_ptr pdata = nullptr);
+    vistle::UnstructuredGrid::const_ptr getGrid();
+    vistle::Vec<vistle::Scalar, 3>::const_ptr getVecFld();
+    vistle::Vec<vistle::Scalar>::const_ptr getScalFld();
+    vistle::Lines::ptr getLines();
+    std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> getIplVec();
+    std::vector<vistle::Vec<vistle::Scalar>::ptr> getIplScal();
+    ~BlockData();
+    void addLines(const std::vector<vistle::Vector3> &points,
+                 const std::vector<vistle::Vector3> &velocities,
+                 const std::vector<vistle::Scalar> &pressures);
+};
+
+class Integrator;
+
+class Particle{
+
+    friend class Integrator;
+
+private:
+    const vistle::Index m_id;
+    vistle::Vector3 m_x;
+    vistle::Vector3 m_xold;
+    std::vector<vistle::Vector3> m_xhist;
+    vistle::Vector3 m_v;
+    std::vector<vistle::Vector3> m_vhist;
+    std::vector<vistle::Scalar> m_pressures;
+    vistle::Index m_stp;
+    BlockData* m_block;
+    vistle::Index m_el;
+    bool m_ingrid;
+    bool m_in;
+    Integrator* m_integrator;
+    const vistle::Index m_stpmax;
+
+public:
+    Particle(vistle::Index i, const vistle::Vector3 &pos, vistle::Scalar h, vistle::Scalar hmin,
+             vistle::Scalar hmax, vistle::Scalar errtol, int int_mode,const std::vector<std::unique_ptr<BlockData>> &bl,
+             vistle::Index stepsmax);
+    ~Particle();
+    void PointsToLines();
+    bool isActive();
+    bool inGrid();
+    bool findCell(const std::vector<std::unique_ptr<BlockData>> &block);
+    void Deactivate();
+    void Step();
+    vistle::Vector3 Interpolator(vistle::Index el, vistle::Vector3 point);
+    void Communicator(boost::mpi::communicator mpi_comm, vistle::Index root);
+    bool leftNode();
+};
 #endif

@@ -27,6 +27,7 @@
 #include <eigen3/Eigen/Dense>
 #include <math.h>
 #include <boost/chrono.hpp>
+#include "Integrator.h"
 
 
 MODULE_MAIN(Tracer)
@@ -54,319 +55,262 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     setParameterRange("no_startp", (Integer)0, (Integer)10000);
     addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
     IntParameter* tasktype = addIntParameter("taskType", "task type", 0, Parameter::Choice);
-    std::vector<std::string> choices;
-    choices.push_back("streamlines");
-    setParameterChoices(tasktype, choices);
-    addFloatParameter("timestep", "timestep for integration", 1e-04);
+    std::vector<std::string> taskchoices;
+    taskchoices.push_back("streamlines");
+    setParameterChoices(tasktype, taskchoices);
+    IntParameter* integration = addIntParameter("integration", "integration method", 0, Parameter::Choice);
+    std::vector<std::string> integrchoices(2);
+    integrchoices[0] = "rk32";
+    integrchoices[1] = "euler";
+    setParameterChoices(integration,integrchoices);
+    addFloatParameter("h_min","minimum step size for rk32 integration", 1e-04);
+    addFloatParameter("h_max", "maximum step size for rk32 integration", 1e-02);
+    addFloatParameter("err_tol", "desired accuracy for rk32 integration", 1e-06);
+    addFloatParameter("h_euler", "fixed step size for euler integration", 1e-03);
 }
 
 Tracer::~Tracer() {
 }
 
 
-class BlockData{
+BlockData::BlockData(Index i,
+          UnstructuredGrid::const_ptr grid,
+          Vec<Scalar, 3>::const_ptr vdata,
+          Vec<Scalar>::const_ptr pdata):
+    m_id(i),
+    m_grid(grid),
+    m_xecfld(vdata),
+    m_scafld(pdata),
+    m_lines(new Lines(Object::Initialized)){
+}
 
-private:
-    const Index m_id;
-    UnstructuredGrid::const_ptr m_grid;
-    Vec<Scalar, 3>::const_ptr m_xecfld;
-    Vec<Scalar>::const_ptr m_scafld;
-    Lines::ptr m_lines;
-    std::vector<Vec<Scalar, 3>::ptr> m_ivec;
-    std::vector<Vec<Scalar>::ptr> m_iscal;
+BlockData::~BlockData(){}
 
-public:
+UnstructuredGrid::const_ptr BlockData::getGrid(){
+    return m_grid;
+}
 
-    BlockData(Index i,
-              UnstructuredGrid::const_ptr grid,
-              Vec<Scalar, 3>::const_ptr vdata,
-              Vec<Scalar>::const_ptr pdata = nullptr):
-        m_id(i),
-        m_grid(grid),
-        m_xecfld(vdata),
-        m_scafld(pdata),
-        m_lines(new Lines(Object::Initialized)){
-    }
+Vec<Scalar, 3>::const_ptr BlockData::getVecFld(){
+    return m_xecfld;
+}
 
-    UnstructuredGrid::const_ptr getGrid(){
-        return m_grid;
-    }
+Vec<Scalar>::const_ptr BlockData::getScalFld(){
+    return m_scafld;
+}
 
-    Vec<Scalar, 3>::const_ptr getVecFld(){
-        return m_xecfld;
-    }
+Lines::ptr BlockData::getLines(){
+    return m_lines;
+}
 
-    Vec<Scalar>::const_ptr getScalFld(){
-        return m_scafld;
-    }
+std::vector<Vec<Scalar, 3>::ptr> BlockData::getIplVec(){
+    return m_ivec;
+}
 
-    Lines::ptr getLines(){
-        return m_lines;
-    }
+std::vector<Vec<Scalar>::ptr> BlockData::getIplScal(){
+    return m_iscal;
+}
 
-    std::vector<Vec<Scalar, 3>::ptr> getIplVec(){
-        return m_ivec;
-    }
+void BlockData::addLines(const std::vector<Vector3> &points,
+             const std::vector<Vector3> &velocities,
+             const std::vector<Scalar> &pressures){
 
-    std::vector<Vec<Scalar>::ptr> getIplScal(){
-        return m_iscal;
-    }
+        Index numpoints = points.size();
+        Scalar phi_max = 1e-03;
 
-    void addLines(const std::vector<Vector3> &points,
-                 const std::vector<Vector3> &velocities,
-                 const std::vector<Scalar> &pressures,
-                 Index tasktype,
-                 Index first_timestep =0){
+        if(m_ivec.size()==0){
+            m_ivec.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
+        }
 
-        switch(tasktype){
+        if(pressures.size()==numpoints && m_iscal.size()==0){
+            m_iscal.emplace_back(new Vec<Scalar>(Object::Initialized));
+        }
 
-        case 0:{
+        for(Index i=0; i<numpoints; i++){
 
-            Index numpoints = points.size();
-            Scalar phi_max = 1e-03;
+            bool addpoint = true;
+            if(i>1 && i<numpoints-1){
 
-            if(m_ivec.size()==0){
-                m_ivec.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
-            }
-
-            if(pressures.size()==numpoints && m_iscal.size()==0){
-                m_iscal.emplace_back(new Vec<Scalar>(Object::Initialized));
-            }
-
-            for(Index i=0; i<numpoints; i++){
-
-                bool addpoint = true;
-                if(i>1 && i<numpoints-1){
-
-                    Vector3 vec1 = points[i-1]-points[i-2];
-                    Vector3 vec2 = points[i]-points[i-1];
-                    Scalar cos_phi = vec1.dot(vec2)/(vec1.norm()*vec2.norm());
-                    Scalar phi = acos(cos_phi);
-                    if(phi<phi_max){
-                        addpoint = false;
-                    }
-                }
-
-                if(addpoint){
-
-                    m_lines->x().push_back(points[i](0));
-                    m_lines->y().push_back(points[i](1));
-                    m_lines->z().push_back(points[i](2));
-                    Index numcorn = m_lines->getNumCorners();
-                    m_lines->cl().push_back(numcorn);
-
-                    m_ivec[0]->x().push_back(velocities[0](0));
-                    m_ivec[0]->y().push_back(velocities[0](1));
-                    m_ivec[0]->z().push_back(velocities[0](2));
-
-                    if(pressures.size()==numpoints){
-                        m_iscal[0]->x().push_back(pressures[0]);
-                    }
+                Vector3 vec1 = points[i-1]-points[i-2];
+                Vector3 vec2 = points[i]-points[i-1];
+                Scalar cos_phi = vec1.dot(vec2)/(vec1.norm()*vec2.norm());
+                Scalar phi = acos(cos_phi);
+                if(phi<phi_max){
+                    addpoint = false;
                 }
             }
-            Index numcorn = m_lines->getNumCorners();
-            m_lines->el().push_back(numcorn);
+
+            if(addpoint){
+
+                m_lines->x().push_back(points[i](0));
+                m_lines->y().push_back(points[i](1));
+                m_lines->z().push_back(points[i](2));
+                Index numcorn = m_lines->getNumCorners();
+                m_lines->cl().push_back(numcorn);
+
+                m_ivec[0]->x().push_back(velocities[0](0));
+                m_ivec[0]->y().push_back(velocities[0](1));
+                m_ivec[0]->z().push_back(velocities[0](2));
+
+                if(pressures.size()==numpoints){
+                    m_iscal[0]->x().push_back(pressures[0]);
+                }
+            }
         }
-        }
-    }
-};
-
-
-class Particle{
-
-private:
-    const Index m_id;
-    Vector3 m_x;
-    Vector3 m_xold;
-    std::vector<Vector3> m_xhist;
-    Vector3 m_v;
-    std::vector<Vector3> m_vhist;
-    std::vector<Scalar> m_pressures;
-    Index m_stp;
-    BlockData* m_block;
-    Index m_el;
-    bool m_ingrid;
-    bool m_out;
-    bool m_in;
-    Scalar m_dt;
-
-public:
-    Particle(Index i, Vector3 pos, Scalar dt):
-        m_id(i),
-        m_x(pos),
-        m_v(Vector3(1,0,0)),
-        m_stp(0),
-        m_block(nullptr),
-        m_el(InvalidIndex),
-        m_ingrid(true),
-        m_out(false),
-        m_in(true),
-        m_dt(dt){
+        Index numcorn = m_lines->getNumCorners();
+        m_lines->el().push_back(numcorn);
     }
 
-    bool isActive(){
 
-        if(m_ingrid && m_block){
-            return true;
+Particle::Particle(Index i, const Vector3 &pos, Scalar h, Scalar hmin,
+                   Scalar hmax, Scalar errtol, int int_mode,const std::vector<std::unique_ptr<BlockData>> &bl,
+                   Index stepsmax):
+    m_id(i),
+    m_x(pos),
+    m_v(Vector3(1,0,0)),
+    m_stp(0),
+    m_block(nullptr),
+    m_el(InvalidIndex),
+    m_ingrid(true),
+    m_in(true),
+    m_integrator(new Integrator(h,hmin,hmax,errtol,int_mode,this)),
+    m_stpmax(stepsmax){
+
+        if(findCell(bl)){
+            if(int_mode==0){
+                m_integrator->hInit();
+            }
         }
+}
+
+Particle::~Particle(){}
+
+bool Particle::isActive(){
+
+    return m_ingrid && m_block;
+}
+
+bool Particle::inGrid(){
+
+    return m_ingrid;
+}
+
+bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
+
+    if(!(m_block||m_in) || !m_ingrid){
         return false;
     }
 
-    bool inGrid(){
+    if(m_stp == m_stpmax){
 
-        return m_ingrid;
+        m_block->addLines(m_xhist, m_vhist, m_pressures);
+        m_xhist.clear();
+        m_vhist.clear();
+        m_pressures.clear();
+        this->Deactivate();
+        return false;
     }
 
-    bool findCell(const std::vector<std::unique_ptr<BlockData>> &block, Index steps_max, Index tasktype){
+    bool moving = (m_v(0)!=0 || m_v(1)!=0 || 0 || m_v(2)!=0);
+    if(!moving){
 
-        if(!m_ingrid){
-            return false;
-        }
-
-        if(m_stp == steps_max){
-
-            m_block->addLines(m_xhist, m_vhist, m_pressures, tasktype);
-            m_xhist.clear();
-            m_vhist.clear();
-            m_pressures.clear();
-            m_out = true;
-            this->Deactivate();
-            return false;
-        }
-
-        bool moving = (m_v(0)!=0 || m_v(1)!=0 || 0 || m_v(2)!=0);
-        if(!moving){
-
-            m_block->addLines(m_xhist, m_vhist, m_pressures, tasktype);
-            m_xhist.clear();
-            m_vhist.clear();
-            m_pressures.clear();
-            m_out = true;
-            this->Deactivate();
-            return false;
-        }
-
-        if(m_block){
-
-            UnstructuredGrid::const_ptr grid = m_block->getGrid();
-            if(grid->inside(m_el, m_x)){
-                return true;
-            }
-            m_el = grid->findCell(m_x);
-
-            if(m_el!=InvalidIndex){
-                return true;
-            }
-            else{
-                m_block->addLines(m_xhist, m_vhist, m_pressures, tasktype);
-                m_xhist.clear();
-                m_vhist.clear();
-                m_pressures.clear();
-                m_block = nullptr;
-                m_out = true;
-                m_in = true;
-                findCell(block, steps_max, tasktype);
-            }
-        }
-
-        if(m_in){
-            m_in = false;
-            for(Index i=0; i<block.size(); i++){
-
-                UnstructuredGrid::const_ptr grid = block[i]->getGrid();
-                m_el = grid->findCell(m_x);
-                if(m_el!=InvalidIndex){
-
-                    m_block = block[i].get();
-                    if(m_stp!=0){
-                        m_vhist.push_back(m_v);
-                        m_xhist.push_back(m_xold);
-                    }
-                    m_xhist.push_back(m_x);
-                    m_out = false;
-                    return true;
-                }
-            }
-
-            return false;
-        }
+        m_block->addLines(m_xhist, m_vhist, m_pressures);
+        m_xhist.clear();
+        m_vhist.clear();
+        m_pressures.clear();
+        this->Deactivate();
+        return false;
     }
 
-    void Deactivate(){
-
-        m_block = nullptr;
-        m_ingrid = false;
-    }
-
-    void Step(){
-
-        Vector3 k[3];
-        Vector3 xtmp;
-        Index el=m_el;
-        k[0] = Interpolator(m_el, m_x);
-        m_v = k[0];
-        m_vhist.push_back(m_v);
-        xtmp = m_x + m_dt*k[0];
-        if(!m_block->getGrid()->inside(m_el,xtmp)){
-            el = m_block->getGrid()->findCell(xtmp);
-            if(el==InvalidIndex){
-                m_x = xtmp;
-                m_xhist.push_back(m_x);
-                return;
-            }
-        }
-        k[1] = Interpolator(el, xtmp);
-        xtmp = m_x + m_dt*0.25*(k[0]+k[1]);
-        if(!m_block->getGrid()->inside(m_el,xtmp)){
-            el = m_block->getGrid()->findCell(xtmp);
-            if(el==InvalidIndex){
-                m_x = m_x + m_dt*0.5*(k[0]+k[1]);
-                m_xhist.push_back(m_x);
-                return;
-            }
-        }
-        k[2] = Interpolator(el,xtmp);
-        m_x = m_x + m_dt*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
-        m_xhist.push_back(m_x);
-    }
-
-    Vector3 Interpolator(Index el, Vector3 point){
+    if(m_block){
 
         UnstructuredGrid::const_ptr grid = m_block->getGrid();
-        Vec<Scalar, 3>::const_ptr v_data = m_block->getVecFld();
-        Vec<Scalar>::const_ptr p_data = m_block->getScalFld();
-        UnstructuredGrid::Interpolator interpolator = grid->getInterpolator(el, point);
-        Scalar* u = v_data->x().data();
-        Scalar* v = v_data->y().data();
-        Scalar* w = v_data->z().data();
-        return interpolator(u,v,w);
-    }
-
-    void Communicator(boost::mpi::communicator mpi_comm, Index root){
-
-        boost::mpi::broadcast(mpi_comm, m_x, root);
-        boost::mpi::broadcast(mpi_comm, m_xold, root);
-        boost::mpi::broadcast(mpi_comm, m_stp, root);
-        boost::mpi::broadcast(mpi_comm, m_v, root);
-        boost::mpi::broadcast(mpi_comm, m_ingrid, root);
-
-        m_out = false;
-        if(mpi_comm.rank()!=root){
-
-            m_in = true;
-        }
-    }
-
-    bool leftNode(){
-
-        if(m_out){
-            m_out = false;
+        if(grid->inside(m_el, m_x)){
             return true;
         }
-        return false;
+        m_el = grid->findCell(m_x);
+
+        if(m_el!=InvalidIndex){
+            return true;
+        }
+        else{
+            m_block->addLines(m_xhist, m_vhist, m_pressures);
+            m_xhist.clear();
+            m_vhist.clear();
+            m_pressures.clear();
+            m_block = nullptr;
+            m_in = true;
+            findCell(block);
+        }
     }
 
-};
+    if(m_in){
+        m_in = false;
+        for(Index i=0; i<block.size(); i++){
+
+            UnstructuredGrid::const_ptr grid = block[i]->getGrid();
+            m_el = grid->findCell(m_x);
+            if(m_el!=InvalidIndex){
+
+                m_block = block[i].get();
+                if(m_stp!=0){
+                    m_vhist.push_back(m_v);
+                    m_xhist.push_back(m_xold);
+                }
+                m_xhist.push_back(m_x);
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+void Particle::PointsToLines(){
+
+    m_block->addLines(m_xhist,m_vhist,m_pressures);
+}
+
+void Particle::Deactivate(){
+
+    m_block = nullptr;
+    m_ingrid = false;
+}
+
+void Particle::Step(){
+
+    if(!m_integrator->Step()){
+        //m_block = nullptr;
+        //m_in = true;
+        //PointsToLines
+    }
+    m_stp++;
+}
+
+Vector3 Particle::Interpolator(Index el, Vector3 point){
+
+    UnstructuredGrid::const_ptr grid = m_block->getGrid();
+    Vec<Scalar, 3>::const_ptr v_data = m_block->getVecFld();
+    Vec<Scalar>::const_ptr p_data = m_block->getScalFld();
+    UnstructuredGrid::Interpolator interpolator = grid->getInterpolator(el, point);
+    Scalar* u = v_data->x().data();
+    Scalar* v = v_data->y().data();
+    Scalar* w = v_data->z().data();
+    return interpolator(u,v,w);
+}
+
+void Particle::Communicator(boost::mpi::communicator mpi_comm, Index root){
+
+    boost::mpi::broadcast(mpi_comm, m_x, root);
+    boost::mpi::broadcast(mpi_comm, m_xold, root);
+    boost::mpi::broadcast(mpi_comm, m_stp, root);
+    boost::mpi::broadcast(mpi_comm, m_v, root);
+    boost::mpi::broadcast(mpi_comm, m_ingrid, root);
+
+    if(mpi_comm.rank()!=root){
+
+        m_in = true;
+    }
+}
 
 
 bool Tracer::prepare(){
@@ -415,7 +359,6 @@ double ect = 0;
     //get parameters
     Index numpoints = getIntParameter("no_startp");
     Index steps_max = getIntParameter("steps_max");
-    Scalar dt = getFloatParameter("timestep");
     Index task_type = getIntParameter("taskType");
 
     boost::mpi::communicator world;
@@ -441,19 +384,18 @@ double ect = 0;
         block[i].reset(new BlockData(i, grid_in[i], data_in0[i], data_in1[i]));
     }
 
+
+    int int_mode = getIntParameter("integration");
+    Scalar dt = getFloatParameter("h_euler");
+    Scalar dtmin = getFloatParameter("h_min");
+    Scalar dtmax = getFloatParameter("h_max");
+    Scalar errtol = getFloatParameter("err_tol");
     //create particle objects
     std::vector<std::unique_ptr<Particle>> particle(numpoints);
     for(Index i=0; i<numpoints; i++){
 
-        particle[i].reset(new Particle(i, startpoints[i], dt));
+        particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max));
     }
-
-    //find cell and set status of particle objects
-    for(Index i=0; i<numpoints; i++){
-
-        particle[i]->findCell(block, steps_max, task_type);
-    }
-
 
     for(Index i=0; i<numpoints; i++){
 
@@ -471,10 +413,11 @@ double ect = 0;
 
             for(Index i=0; i<numpoints; i++){
                 bool traced = false;
-                while(particle[i]->findCell(block, steps_max, task_type)){
+                while(particle[i]->isActive()){
 
                     particle[i]->Step();
                     traced = true;
+                    particle[i]->findCell(block);
                 }
                 if(traced){
                     sendlist.push_back(i);
@@ -493,7 +436,7 @@ sc = boost::chrono::high_resolution_clock::now();
                     for(Index i=0; i<num_send; i++){
                         Index p_index = tmplist[i];
                         particle[p_index]->Communicator(world, mpirank);
-                        particle[p_index]->findCell(block, steps_max, task_type);
+                        particle[p_index]->findCell(block);
                         bool active = particle[p_index]->isActive();
                         active = boost::mpi::all_reduce(world, particle[p_index]->isActive(), std::logical_or<bool>());
                         if(!active){
@@ -524,6 +467,7 @@ ect = ect + 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>(ec-sc)
 
             Lines::ptr lines = block[i]->getLines();
             if(lines->getNumElements()>0){
+
                 addObject("geom_out", lines);
             }
 
@@ -558,5 +502,3 @@ if(world.rank()==0){
     }
     return true;
 }
-
-
