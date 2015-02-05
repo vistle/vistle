@@ -5,7 +5,7 @@ class Particle;
 class BlockData;
 
 class Integrator{
-
+friend class Particle;
 private:
     vistle::Vector3 m_k[3];
     vistle::Scalar m_h;

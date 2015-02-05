@@ -273,9 +273,9 @@ void Particle::Deactivate(){
 void Particle::Step(){
 
     if(!m_integrator->Step()){
-        //m_block = nullptr;
-        //m_in = true;
-        //PointsToLines
+        m_block = nullptr;
+        m_in = true;
+        PointsToLines();
     }
     m_stp++;
 }
@@ -295,10 +295,9 @@ Vector3 Particle::Interpolator(Index el, Vector3 point){
 void Particle::Communicator(boost::mpi::communicator mpi_comm, Index root){
 
     boost::mpi::broadcast(mpi_comm, m_x, root);
-    boost::mpi::broadcast(mpi_comm, m_xold, root);
     boost::mpi::broadcast(mpi_comm, m_stp, root);
-    boost::mpi::broadcast(mpi_comm, m_v, root);
     boost::mpi::broadcast(mpi_comm, m_ingrid, root);
+    boost::mpi::broadcast(mpi_comm,m_integrator->m_h,root);
 
     if(mpi_comm.rank()!=root){
 
