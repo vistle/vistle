@@ -59,9 +59,36 @@ void Integrator::hInit(){
 bool Integrator::Step(){
     switch(m_mode){
     case 0:
-        RK32();
+        return RK32();
     case 1:
-        Euler();
+        return Euler();
+    }
+}
+
+bool Integrator::hNew(Vector3 higher, Vector3 lower){
+
+    Scalar xerr = std::abs(higher(0)-lower(0));
+    Scalar yerr = std::abs(higher(1)-lower(1));
+    Scalar zerr = std::abs(higher(2)-lower(2));
+    Scalar errest = std::max(std::max(xerr,yerr),zerr);
+
+    Scalar h = 0.9*m_h*std::pow<Scalar,Scalar>((m_errtol/errest),1.0/3.0);
+    if(errest<=m_errtol){
+        if(h<m_hmin){
+            m_h=m_hmin;
+            return true;}
+        else if(h>m_hmax){
+            m_h=m_hmax;
+            return true;}
+        m_h = h;
+        return true;
+    }
+    else{
+        if(h<m_hmin){
+            m_h = m_hmin;
+            return true;}
+        m_h = h;
+        return false;
     }
 }
 
@@ -76,6 +103,8 @@ bool Integrator::Euler(){
 
 bool Integrator::RK32(){
 
+            bool accept;
+            Vector3 x2nd,x3rd;
             Vector3 k[3];
             Vector3 xtmp;
             Index el=m_ptcl->m_el;
@@ -84,26 +113,34 @@ bool Integrator::RK32(){
             m_ptcl->m_vhist.push_back(m_ptcl->m_v);
             xtmp = m_ptcl->m_x + m_h*k[0];
             UnstructuredGrid::const_ptr grid = m_ptcl->m_block->getGrid();
-            if(!grid->inside(el,xtmp)){
-                el = grid->findCell(xtmp);
-                if(el==InvalidIndex){
-                    m_ptcl->m_x = xtmp;
-                    m_ptcl->m_xhist.push_back(m_ptcl->m_x);
-                    return false;
+            while(!accept){
+                if(!grid->inside(el,xtmp)){
+                    el = grid->findCell(xtmp);
+                    if(el==InvalidIndex){
+                        m_ptcl->m_x = xtmp;
+                        m_ptcl->m_xhist.push_back(m_ptcl->m_x);
+                        return false;
+                    }
                 }
-            }
-            k[1] = Interpolator(m_ptcl->m_block,el, xtmp);
-            xtmp = m_ptcl->m_x +m_h*0.25*(k[0]+k[1]);
-            if(!grid->inside(el,xtmp)){
-                el = grid->findCell(xtmp);
-                if(el==InvalidIndex){
-                    m_ptcl->m_x = m_ptcl->m_x + m_h*0.5*(k[0]+k[1]);
-                    m_ptcl->m_xhist.push_back(m_ptcl->m_x);
-                    return false;
+                k[1] = Interpolator(m_ptcl->m_block,el, xtmp);
+                xtmp = m_ptcl->m_x +m_h*0.25*(k[0]+k[1]);
+                if(!grid->inside(el,xtmp)){
+                    el = grid->findCell(xtmp);
+                    if(el==InvalidIndex){
+                        m_ptcl->m_x = m_ptcl->m_x + m_h*0.5*(k[0]+k[1]);
+                        m_ptcl->m_xhist.push_back(m_ptcl->m_x);
+                        return false;
+                    }
                 }
+                k[2] = Interpolator(m_ptcl->m_block,el,xtmp);
+                x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
+                x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
+
+                accept = hNew(x3rd,x2nd);
+                el = m_ptcl->m_el;
+                xtmp = m_ptcl->m_x + m_h*k[0];
             }
-            k[2] = Interpolator(m_ptcl->m_block,el,xtmp);
-            m_ptcl->m_x = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
+            m_ptcl->m_x = x3rd;
             m_ptcl->m_xhist.push_back(m_ptcl->m_x);
             return true;
 }

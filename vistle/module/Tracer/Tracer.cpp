@@ -63,7 +63,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     integrchoices[0] = "rk32";
     integrchoices[1] = "euler";
     setParameterChoices(integration,integrchoices);
-    addFloatParameter("h_min","minimum step size for rk32 integration", 1e-04);
+    addFloatParameter("h_min","minimum step size for rk32 integration", 1e-05);
     addFloatParameter("h_max", "maximum step size for rk32 integration", 1e-02);
     addFloatParameter("err_tol", "desired accuracy for rk32 integration", 1e-06);
     addFloatParameter("h_euler", "fixed step size for euler integration", 1e-03);
@@ -244,8 +244,7 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
 
                 m_block = block[i].get();
                 if(m_stp!=0){
-                    //m_vhist.push_back(m_v);
-                    //m_xhist.push_back(m_xold);
+                    m_vhist.push_back(m_v);
                 }
                 m_xhist.push_back(m_x);
                 return true;
@@ -258,6 +257,8 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
 
 void Particle::PointsToLines(){
 
+    m_vhist.push_back(m_v);
+    //m_pressures.push_back(m_pressures.back());
     m_block->addLines(m_xhist,m_vhist,m_pressures);
     m_xhist.clear();
     m_vhist.clear();
@@ -273,9 +274,9 @@ void Particle::Deactivate(){
 void Particle::Step(){
 
     if(!m_integrator->Step()){
+        PointsToLines();
         m_block = nullptr;
         m_in = true;
-        PointsToLines();
     }
     m_stp++;
 }
