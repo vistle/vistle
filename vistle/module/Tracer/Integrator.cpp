@@ -2,8 +2,11 @@
 #include "Tracer.h"
 #include <core/unstr.h>
 #include <core/vec.h>
+#include "TracerTimes.h"
 
 using namespace vistle;
+
+
 
 Integrator::Integrator(vistle::Scalar h, vistle::Scalar hmin,
            vistle::Scalar hmax, vistle::Scalar errtol,
@@ -115,7 +118,9 @@ bool Integrator::RK32(){
             UnstructuredGrid::const_ptr grid = m_ptcl->m_block->getGrid();
             while(!accept){
                 if(!grid->inside(el,xtmp)){
+                    times::celloc_start = times::start();
                     el = grid->findCell(xtmp);
+                    times::celloc_dur += times::stop(times::celloc_start);
                     if(el==InvalidIndex){
                         m_ptcl->m_x = xtmp;
                         m_ptcl->m_xhist.push_back(m_ptcl->m_x);
@@ -125,7 +130,9 @@ bool Integrator::RK32(){
                 k[1] = Interpolator(m_ptcl->m_block,el, xtmp);
                 xtmp = m_ptcl->m_x +m_h*0.25*(k[0]+k[1]);
                 if(!grid->inside(el,xtmp)){
+                    times::celloc_start = times::start();
                     el = grid->findCell(xtmp);
+                    times::celloc_dur += times::stop(times::celloc_start);
                     if(el==InvalidIndex){
                         m_ptcl->m_x = m_ptcl->m_x + m_h*0.5*(k[0]+k[1]);
                         m_ptcl->m_xhist.push_back(m_ptcl->m_x);
@@ -137,8 +144,10 @@ bool Integrator::RK32(){
                 x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
 
                 accept = hNew(x3rd,x2nd);
-                el = m_ptcl->m_el;
-                xtmp = m_ptcl->m_x + m_h*k[0];
+                if(!accept){
+                    el = m_ptcl->m_el;
+                    xtmp = m_ptcl->m_x + m_h*k[0];
+                }
             }
             m_ptcl->m_x = x3rd;
             m_ptcl->m_xhist.push_back(m_ptcl->m_x);
@@ -146,7 +155,7 @@ bool Integrator::RK32(){
 }
 
 Vector3 Integrator::Interpolator(BlockData* bl, Index el,const Vector3 &point){
-
+times::interp_start = times::start();
     UnstructuredGrid::const_ptr grid = bl->getGrid();
     Vec<Scalar, 3>::const_ptr vecfld = bl->getVecFld();
     Vec<Scalar>::const_ptr scfield = bl->getScalFld();
@@ -154,5 +163,7 @@ Vector3 Integrator::Interpolator(BlockData* bl, Index el,const Vector3 &point){
     Scalar* u = vecfld->x().data();
     Scalar* v = vecfld->y().data();
     Scalar* w = vecfld->z().data();
+times::interp_dur += times::stop(times::interp_start);
+times::no_interp++;
     return interpolator(u,v,w);
 }

@@ -28,6 +28,7 @@
 #include <math.h>
 #include <boost/chrono.hpp>
 #include "Integrator.h"
+#include "TracerTimes.h"
 
 
 MODULE_MAIN(Tracer)
@@ -204,6 +205,7 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
 
         PointsToLines();
         this->Deactivate();
+        m_ingrid = false;
         return false;
     }
 
@@ -212,6 +214,7 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
 
         PointsToLines();
         this->Deactivate();
+        m_ingrid = false;
         return false;
     }
 
@@ -220,9 +223,9 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
         UnstructuredGrid::const_ptr grid = m_block->getGrid();
         if(grid->inside(m_el, m_x)){
             return true;
-        }
+        }times::celloc_start = times::start();
         m_el = grid->findCell(m_x);
-
+        times::celloc_dur += times::stop(times::celloc_start);
         if(m_el!=InvalidIndex){
             return true;
         }
@@ -239,7 +242,9 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
         for(Index i=0; i<block.size(); i++){
 
             UnstructuredGrid::const_ptr grid = block[i]->getGrid();
+            times::celloc_start = times::start();
             m_el = grid->findCell(m_x);
+            times::celloc_dur += times::stop(times::celloc_start);
             if(m_el!=InvalidIndex){
 
                 m_block = block[i].get();
@@ -273,11 +278,7 @@ void Particle::Deactivate(){
 
 void Particle::Step(){
 
-    if(!m_integrator->Step()){
-        PointsToLines();
-        m_block = nullptr;
-        m_in = true;
-    }
+    m_integrator->Step();
     m_stp++;
 }
 
@@ -340,20 +341,23 @@ bool Tracer::compute(){
 }
 
 
+
+
 bool Tracer::reduce(int timestep){
 
-boost::chrono::high_resolution_clock::time_point st = boost::chrono::high_resolution_clock::now();
-boost::chrono::high_resolution_clock::time_point et;
-boost::chrono::high_resolution_clock::time_point sc;
-boost::chrono::high_resolution_clock::time_point ec;
-double ect = 0;
+    times::celloc_dur =0;
+    times::integr_dur =0;
+    times::interp_dur =0;
+    times::comm_dur =0;
+    times::total_dur=0;
+    times::no_interp =0;
+    times::total_start = times::start();
 
     Index numblocks = grid_in.size();
 
     //get parameters
     Index numpoints = getIntParameter("no_startp");
     Index steps_max = getIntParameter("steps_max");
-    Index task_type = getIntParameter("taskType");
 
     boost::mpi::communicator world;
     if(data_in1.size()<numblocks){
@@ -390,7 +394,7 @@ double ect = 0;
 
         particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max));
     }
-
+times::comm_start = times::start();
     for(Index i=0; i<numpoints; i++){
 
         bool active = particle[i]->isActive();
@@ -399,7 +403,7 @@ double ect = 0;
             particle[i]->Deactivate();
         }
     }
-
+times::comm_dur += times::stop(times::comm_start);
     bool ingrid = true;
     Index mpisize = world.size();
     std::vector<Index> sendlist(0);
@@ -408,8 +412,11 @@ double ect = 0;
             for(Index i=0; i<numpoints; i++){
                 bool traced = false;
                 while(particle[i]->findCell(block)){
-
+double celloc_old = times::celloc_dur;
+double integr_old = times::integr_dur;
+times::integr_start = times::start();
                     particle[i]->Step();
+times::integr_dur += times::stop(times::integr_start)-(times::celloc_dur-celloc_old)-(times::integr_dur-integr_old);
                     traced = true;
                 }
                 if(traced){
@@ -417,28 +424,32 @@ double ect = 0;
                 }
             }
 
-sc = boost::chrono::high_resolution_clock::now();
             for(Index mpirank=0; mpirank<mpisize; mpirank++){
-
+times::comm_start = times::start();
                 Index num_send = sendlist.size();
                 boost::mpi::broadcast(world, num_send, mpirank);
-
+times::comm_dur += times::stop(times::comm_start);
                 if(num_send>0){
                     std::vector<Index> tmplist = sendlist;
+times::comm_start = times::start();
                     boost::mpi::broadcast(world, tmplist, mpirank);
+times::comm_dur += times::stop(times::comm_start);
                     for(Index i=0; i<num_send; i++){
+times::comm_start = times::start();
                         Index p_index = tmplist[i];
                         particle[p_index]->Communicator(world, mpirank);
+times::comm_dur += times::stop(times::comm_start);
                         particle[p_index]->findCell(block);
+times::comm_start = times::start();
                         bool active = particle[p_index]->isActive();
                         active = boost::mpi::all_reduce(world, particle[p_index]->isActive(), std::logical_or<bool>());
+times::comm_dur += times::stop(times::comm_start);
                         if(!active){
                             particle[p_index]->Deactivate();
                         }
                     }
                 }
-ec = boost::chrono::high_resolution_clock::now();
-ect = ect + 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>(ec-sc).count();
+
                 ingrid = false;
                 for(Index i=0; i<numpoints; i++){
 
@@ -452,9 +463,6 @@ ect = ect + 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>(ec-sc)
             sendlist.clear();
     }
 
-    switch(task_type){
-
-    case 0:
         //add Lines-objects to output port
         for(Index i=0; i<numblocks; i++){
 
@@ -480,18 +488,9 @@ ect = ect + 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>(ec-sc)
                 }
             }
         }
-        break;
-    }
 
     world.barrier();
-et = boost::chrono::high_resolution_clock::now();
-
-if(world.rank()==0){
-    std::cout << "total: " << 1e-9*boost::chrono::duration_cast<boost::chrono::nanoseconds>(et-st).count() << std::endl <<
-                 "comm: " << ect << std::endl;
-}
-    if(world.rank()==0){
-        std::cout << "Tracer done" << std::endl;
-    }
+    times::total_dur = times::stop(times::total_start);
+    times::output();
     return true;
 }

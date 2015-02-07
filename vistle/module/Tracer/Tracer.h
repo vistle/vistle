@@ -4,6 +4,7 @@
 #include <module/module.h>
 #include <core/lines.h>
 
+
 class Tracer: public vistle::Module {
 
 public:
