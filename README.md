@@ -21,7 +21,7 @@ Getting Vistle is as easy as
 
       git clone https://github.com/vistle/vistle.git
       cd vistle
-      git submodule update --init
+      git submodule update --init --recursive
 
 
 Build Requirements
@@ -54,6 +54,7 @@ Build Requirements
              --with-regex --with-chrono --with-date_time \
              --with-program_options
      Notes:
+
      - in order to switch MPI implementations without requiring a recompilation of boost, we compile Boost.MPI together with Vistle
      - Intel compiler (at least 14.0.2) does not work with 1.55 because of missing `std::nullptr_t`, use 1.52
 
@@ -63,16 +64,16 @@ Build Requirements
 - **Readline library**:
   history and line editing for command line interface
 
-- **COVISE**:
-  a version of COVISE compiled by you is necessary, get it from
+- **COVISE/OpenCOVER**:
+  a version of COVISE including OpenCOVER compiled by you is necessary, get it from
   [GitHub](https://github.com/hlrs-vis/covise), needed for:
   
-  - ReadCovise module
-  - COVER plug-in
-  - ray casting render module
+    - ReadCovise module
+    - COVER plug-ins
+    - ray casting render module
 
 - **OpenSceneGraph**:
-  the version of OpenSceneGraph that was used for compiling COVER
+  the version of OpenSceneGraph that was used for compiling OpenCOVER
 
 - **Qt**:
   Qt 5 is required by the graphical user interface
@@ -81,7 +82,7 @@ Build Requirements
 Building Vistle
 ---------------
 
-Create a subdirectory for building, change to it, and invoke cmake:
+Create a subdirectory for building, change to it, and invoke CMake:
 
       cmake ..
 
@@ -105,7 +106,7 @@ Options:
 * `-t`|`--tui`:
   start a command line user interface on rank 0
 
-You can connect a user interface to a running Vistle session later on:
+You can connect a user interface to a running Vistle session later on, e.g.:
 
       vistle_gui localhost 31093
 
@@ -115,7 +116,7 @@ Source Code Organization
 ------------------------
 
 - `.../cmake`:
-  cmake modules
+  CMake modules
 
 - `scripts`:
   support scripts for building Vistle
@@ -126,29 +127,19 @@ Source Code Organization
 - `vistle`:
   Vistle source code
 
-- `vistle/util`:
-  support code
-
-- `vistle/userinterface`:
-  common library for user interfaces
-
-- `vistle/gui`:
-  graphical user interface
-
-- `vistle/blower`:
-  command line user interface (Python)
-
-- `vistle/control`:
-  library for controlling a Vistle session
-
-- `vistle/vistle`:
-  Vistle session controller
-
-- `vistle/core`:
-  Vistle core data structures
-
-- `vistle/module`:
-  visualization algorithm modules and base library
-
-- `vistle/cover`:
-  plugins for OpenCOVER, e.g. for connecting to Vistle
+    - `vistle/util`: support code
+    - `vistle/core`: Vistle core data structures
+    - `vistle/userinterface`: common library for user interfaces
+    - `vistle/rhr`: library for remote hybrid rendering servers
+    - `vistle/control`: Python code for controlling a Vistle session
+    - `vistle/hub`: Vistle session controller
+    - `vistle/gui`: graphical user interface
+    - `vistle/blower`: command line user interface (Python)
+    - `vistle/module`: visualization algorithm modules and base library
+        - `vistle/module/general`:
+        - `vistle/module/test`: various debugging aids
+    - `vistle/renderer`: renderer modules transforming geometry into pixels
+        - `vistle/renderer/DisCOVERay`: a parallel remote hybrid rendering server based on Embree (CPU ray-casting)
+        - `vistle/renderer/OsgRenderer`: a parallel remote hybrid rendering server based on OpenSceneGraph (OpenGL)
+    - `vistle/cover`: plugins for OpenCOVER, e.g. for connecting to Vistle
+        - `vistle/cover/VncClient`: OpenCOVER remote hybrid rendering client plugin
