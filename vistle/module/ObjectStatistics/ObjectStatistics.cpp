@@ -27,7 +27,7 @@ class Stats: public vistle::Module {
       Index elements; //! no. of elements
       Index vertices; //! no. of vertices
       Index coords; //! no. of coordinates
-      Index data[4]; //! no. of data values of correspoinding dim
+      Index data[4]; //! no. of data values of corresponding dim
 
       stats()
       : blocks(0)
@@ -164,8 +164,8 @@ bool Stats::compute() {
    if (!obj)
       return false;
 
-   if (obj->getTimestep() > m_timesteps)
-      m_timesteps = obj->getTimestep();
+   if (obj->getTimestep()+1 > m_timesteps)
+      m_timesteps = obj->getTimestep()+1;
 
    stats s;
    if (auto i = Indexed::as(obj)) {
@@ -203,9 +203,6 @@ bool Stats::prepare() {
 
 bool Stats::reduce(int timestep) {
 
-   if (timestep >= 0)
-      ++m_timesteps;
-
    auto comm = boost::mpi::communicator();
 
    //std::cerr << "reduction for timestep " << timestep << std::endl;
@@ -218,22 +215,24 @@ bool Stats::reduce(int timestep) {
    int timesteps = 0;
    boost::mpi::reduce(comm, m_timesteps, timesteps, maximum<int>(), 0);
 
-   std::stringstream str;
-
-   if (timestep >= 0) {
-      str << "timestep " << timestep << ": " << total << std::endl;
-   } else {
-      str << "total";
-      if (timesteps > 0)
-         str << " (" << timesteps << " timesteps)";
-      str << ": ";
-      str << m_total << std::endl;
-      str << "  rank min: " << m_min << std::endl;
-      str << "  rank max: " << m_max << std::endl;
-   }
-
    if (rank() == 0)
+   {
+      std::stringstream str;
+
+      if (timestep >= 0) {
+         str << "timestep " << timestep << ": " << total << std::endl;
+      } else {
+         str << "total";
+         if (timesteps > 0)
+            str << " (" << timesteps << " timesteps)";
+         str << ": ";
+         str << m_total << std::endl;
+         str << "  rank min: " << m_min << std::endl;
+         str << "  rank max: " << m_max << std::endl;
+      }
+
       sendInfo(str.str());
+   }
 
    m_cur = stats();
 
