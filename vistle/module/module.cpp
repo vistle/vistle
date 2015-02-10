@@ -1208,6 +1208,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                      numObject = port.second->objects().size();
                   } else if (numObject != port.second->objects().size()) {
                      std::cerr << name() << "::compute(): input mismatch - expected " << numObject << " objects, have " << port.second->objects().size() << std::endl;
+                     throw vistle::except::exception("input object mismatch");
                      return false;
                   }
                }
@@ -1269,7 +1270,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const Port *p = findInputPort(add->getPortName());
          if (!p) {
             std::cerr << "unknown input port " << add->getPortName() << " in AddObject" << std::endl;
-            return false;
+            return true;
          }
          if (!objectAdded(p)) {
             std::cerr << "error in objectAdded(" << add->getPortName() << ")" << std::endl;
