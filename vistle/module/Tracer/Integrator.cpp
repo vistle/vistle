@@ -66,6 +66,7 @@ bool Integrator::Step(){
     case 1:
         return Euler();
     }
+    return false;
 }
 
 bool Integrator::hNew(Vector3 higher, Vector3 lower){
@@ -75,7 +76,7 @@ bool Integrator::hNew(Vector3 higher, Vector3 lower){
     Scalar zerr = std::abs(higher(2)-lower(2));
     Scalar errest = std::max(std::max(xerr,yerr),zerr);
 
-    Scalar h = 0.9*m_h*std::pow<Scalar,Scalar>((m_errtol/errest),1.0/3.0);
+    Scalar h = 0.9*m_h*std::pow(Scalar(m_errtol/errest),Scalar(1.0/3.0));
     if(errest<=m_errtol){
         if(h<m_hmin){
             m_h=m_hmin;
@@ -106,7 +107,7 @@ bool Integrator::Euler(){
 
 bool Integrator::RK32(){
 
-            bool accept;
+            bool accept = false;
             Vector3 x2nd,x3rd;
             Vector3 k[3];
             Vector3 xtmp;
@@ -116,7 +117,7 @@ bool Integrator::RK32(){
             m_ptcl->m_vhist.push_back(m_ptcl->m_v);
             xtmp = m_ptcl->m_x + m_h*k[0];
             UnstructuredGrid::const_ptr grid = m_ptcl->m_block->getGrid();
-            while(!accept){
+            do {
                 if(!grid->inside(el,xtmp)){
                     times::celloc_start = times::start();
                     el = grid->findCell(xtmp);
@@ -148,7 +149,7 @@ bool Integrator::RK32(){
                     el = m_ptcl->m_el;
                     xtmp = m_ptcl->m_x + m_h*k[0];
                 }
-            }
+            } while(!accept);
             m_ptcl->m_x = x3rd;
             m_ptcl->m_xhist.push_back(m_ptcl->m_x);
             return true;
