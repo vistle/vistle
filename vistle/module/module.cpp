@@ -46,6 +46,8 @@
 #endif
 #include "module.h"
 
+//#define DEBUG
+
 using namespace boost::interprocess;
 
 namespace vistle {
@@ -180,11 +182,12 @@ Module::Module(const std::string &desc, const std::string &shmname,
       throw vistle::exception(std::string("opening receive message queue ") + rmqName + ": " + ex.what());
    }
 
+#ifdef DEBUG
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
              << "/" << size() << "] started as " << hostname << ":"
 #ifndef _WIN32
-             << getpid() << std::endl;
-#else
+             << getpid()
+#endif
              << std::endl;
 #endif
 
@@ -1368,8 +1371,10 @@ Module::~Module() {
    vistle::message::ModuleExit m;
    sendMessage(m);
 
+#ifdef DEBUG
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
              << "/" << size() << "]: I'm quitting" << std::endl;
+#endif
 
    MPI_Barrier(MPI_COMM_WORLD);
 }
