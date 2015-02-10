@@ -6,6 +6,7 @@
 #include "renderer.h"
 
 #include <util/vecstreambuf.h>
+#include <util/sleep.h>
 
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
@@ -67,6 +68,8 @@ bool Renderer::dispatch() {
       }
 
       MPI_Allreduce(&sync, &allsync, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+
+      vistle::adaptive_wait(haveMessage || allsync);
 
       do {
          if (haveMessage) {
