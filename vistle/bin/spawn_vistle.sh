@@ -2,6 +2,11 @@
 
 echo SPAWN "$@"
 
+if [ -n "$SLURM_JOB_ID" ]; then
+   exec mpiexec "$@"
+   #exec srun --overcommit --cpu_bind=no "$@"
+fi
+
 case $(hostname) in
    viscluster70)
       if [ -z "$MPIHOSTS" ]; then
