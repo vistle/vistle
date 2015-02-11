@@ -1383,6 +1383,8 @@ Module::~Module() {
       std::cerr.rdbuf(m_origStreambuf);
    delete m_streambuf;
 
+   MPI_Barrier(MPI_COMM_WORLD);
+
    vistle::message::ModuleExit m;
    sendMessage(m);
 
@@ -1390,8 +1392,6 @@ Module::~Module() {
    std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
              << "/" << size() << "]: I'm quitting" << std::endl;
 #endif
-
-   MPI_Barrier(MPI_COMM_WORLD);
 }
 
 namespace {
