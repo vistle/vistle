@@ -16,6 +16,7 @@
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
+#include <deque>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -66,17 +67,28 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
    ~msgstreambuf() {
 
+      boost::unique_lock<boost::recursive_mutex> scoped_lock(m_mutex);
       flush();
+      for (const auto &s: m_backlog) {
+         std::cout << s << std::endl;
+         if (m_gui)
+            m_module->sendText(message::SendText::Cerr, s);
+      }
+      m_backlog.clear();
    }
 
    void flush(ssize_t count=-1) {
       boost::unique_lock<boost::recursive_mutex> scoped_lock(m_mutex);
       size_t size = count<0 ? m_buf.size() : count;
       if (size > 0) {
+         std::string msg(m_buf.data(), size);
+         m_backlog.push_back(msg);
+         if (m_backlog.size() > BacklogSize)
+            m_backlog.pop_front();
          if (m_gui)
-            m_module->sendText(message::SendText::Cerr, std::string(m_buf.data(), size));
+            m_module->sendText(message::SendText::Cerr, msg);
          if (m_console)
-            std::cout << std::string(m_buf.data(), size) << std::flush;
+            std::cout << msg << std::flush;
       }
 
       if (size == m_buf.size()) {
@@ -118,11 +130,17 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
       m_gui = enable;
    }
 
+   void clear_backlog() {
+      m_backlog.clear();
+   }
+
  private:
+   const size_t BacklogSize = 10;
    Module *m_module;
    std::vector<char> m_buf;
    boost::recursive_mutex m_mutex;
    bool m_console, m_gui;
+   std::deque<std::string> m_backlog;
 };
 
 
@@ -1022,6 +1040,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             static_cast<const message::Quit *>(message);
          //TODO: uuid should be included in coresponding ModuleExit message
          (void) quit;
+         if (auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf))
+            sbuf->clear_backlog();
          return false;
          break;
       }
@@ -1032,6 +1052,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             static_cast<const message::Kill *>(message);
          //TODO: uuid should be included in coresponding ModuleExit message
          if (kill->getModule() == id() || kill->getModule() == message::Id::Broadcast) {
+            if (auto sbuf = dynamic_cast<msgstreambuf<char> *>(m_streambuf))
+               sbuf->clear_backlog();
             return false;
          } else {
             std::cerr << "module [" << name() << "] [" << id() << "] ["
@@ -1382,6 +1404,7 @@ Module::~Module() {
    if (m_origStreambuf)
       std::cerr.rdbuf(m_origStreambuf);
    delete m_streambuf;
+   m_streambuf = nullptr;
 
    MPI_Barrier(MPI_COMM_WORLD);
 
