@@ -187,7 +187,9 @@ bool ClusterManager::dispatch(bool &received) {
       if (numRunning() == 0)
          return false;
 
+#if 0
       CERR << numRunning() << " modules still running..." << std::endl;
+#endif
    }
 
    return !done;

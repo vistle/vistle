@@ -279,10 +279,12 @@ bool Hub::dispatch() {
       if (m_processMap.empty()) {
          ret = false;
       } else {
+#if 0
          CERR << "still " << m_processMap.size() << " processes running" << std::endl;
          for (const auto &proc: m_processMap) {
             std::cerr << "   id: " << proc.second << ", pid: " << proc.first << std::endl;
          }
+#endif
       }
    }
 

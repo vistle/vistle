@@ -138,6 +138,7 @@ bool Communicator::scanModules(const std::string &dir) {
 
 void Communicator::setQuitFlag() {
 
+   CERR << "Quit reason: setQuitFlag" << std::endl;
    m_quitFlag = true;
 }
 
@@ -151,6 +152,7 @@ void Communicator::run() {
 
       vistle::adaptive_wait(work);
    }
+   CERR << "Comm: run done" << std::endl;
 }
 
 bool Communicator::dispatch(bool *work) {
@@ -163,8 +165,12 @@ bool Communicator::dispatch(bool *work) {
    // check for new UIs and other network clients
    if (m_rank == 0) {
 
-      if (!done)
+      if (!done) {
          done = m_quitFlag;
+         if (done) {
+            CERR << "Quit reason: quitflag" << std::endl;
+         }
+      }
 
       if (done) {
          sendHub(message::Quit());
@@ -183,11 +189,15 @@ bool Communicator::dispatch(bool *work) {
             received = true;
             message::Message *message = &m_recvBufTo0.msg;
             if (message->broadcast()) {
-               if (!broadcastAndHandleMessage(*message))
+               if (!broadcastAndHandleMessage(*message)) {
+                  CERR << "Quit reason: broadcast & handle" << std::endl;
                   done = true;
+               }
             }  else {
-               if (!handleMessage(*message))
+               if (!handleMessage(*message)) {
+                  CERR << "Quit reason: handle" << std::endl;
                   done = true;
+               }
             }
             MPI_Irecv(m_recvBufTo0.buf.data(), m_recvBufTo0.buf.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
          }
@@ -214,8 +224,10 @@ bool Communicator::dispatch(bool *work) {
             printf("[%02d] message from [%02d] message type %d m_size %d\n",
                   m_rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
 #endif
-            if (!handleMessage(*message))
+            if (!handleMessage(*message)) {
+               CERR << "Quit reason: handle 2" << std::endl;
                done = true;
+            }
          }
 
          MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
@@ -228,16 +240,20 @@ bool Communicator::dispatch(bool *work) {
       bool gotMsg = false;
       if (!message::recv(m_hubSocket, buf.msg, gotMsg)) {
          broadcastAndHandleMessage(message::Quit());
+         CERR << "Quit reason: hub comm interrupted" << std::endl;
          done = true;
       } else if (gotMsg) {
          received = true;
-         if(!broadcastAndHandleMessage(buf.msg))
+         if(!broadcastAndHandleMessage(buf.msg)) {
+            CERR << "Quit reason: broadcast & handle 2" << std::endl;
             done = true;
+         }
       }
    }
 
    // test for messages from modules
    if (done) {
+      CERR << "telling clusterManager to quit" << std::endl;
       if (m_clusterManager) {
          m_clusterManager->quit();
          m_quitFlag = false;
@@ -245,15 +261,21 @@ bool Communicator::dispatch(bool *work) {
       }
    }
    if (m_clusterManager->quitOk()) {
+      CERR << "Quit reason: clustermgr ready for quit" << std::endl;
       done = true;
    }
    if (!done && m_clusterManager) {
       done = !m_clusterManager->dispatch(received);
+      if (done) {
+         CERR << "Quit reason: clustermgr dispatch" << std::endl;
+      }
    }
+#if 0
    if (done) {
       delete m_clusterManager;
       m_clusterManager = nullptr;
    }
+#endif
 
    if (work)
       *work = received;
@@ -330,22 +352,37 @@ bool Communicator::handleMessage(const message::Message &message) {
 
 Communicator::~Communicator() {
 
+   CERR << "shut down: deleting clusterManager" << std::endl;
    delete m_clusterManager;
    m_clusterManager = NULL;
+
+   CERR << "shut down: start init barrier" << std::endl;
+   MPI_Barrier(MPI_COMM_WORLD);
+   CERR << "shut down: done init BARRIER" << std::endl;
 
    if (m_size > 1) {
       int dummy = 0;
       MPI_Request s;
       MPI_Isend(&dummy, 1, MPI_INT, (m_rank + 1) % m_size, TagToAny, MPI_COMM_WORLD, &s);
+      MPI_Wait(&s, MPI_STATUS_IGNORE);
+      CERR << "wait for sending to any" << std::endl;
+      MPI_Wait(&m_reqAny, MPI_STATUS_IGNORE);
+      CERR << "wait for receiving, to any" << std::endl;
+
       if (m_rank == 1) {
          MPI_Request s2;
          MPI_Isend(&dummy, 1, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD, &s2);
-         //MPI_Wait(&s2, MPI_STATUS_IGNORE);
+         MPI_Wait(&s2, MPI_STATUS_IGNORE);
+         CERR << "wait for send to 0" << std::endl;
       }
-      //MPI_Wait(&s, MPI_STATUS_IGNORE);
-      //MPI_Wait(&m_reqAny, MPI_STATUS_IGNORE);
+      if (m_rank == 0) {
+         MPI_Wait(&m_reqToRank0, MPI_STATUS_IGNORE);
+         CERR << "wait for recv from 1" << std::endl;
+      }
    }
+   CERR << "SHUT DOWN COMPLETE" << std::endl;
    MPI_Barrier(MPI_COMM_WORLD);
+   CERR << "SHUT DOWN BARRIER COMPLETE" << std::endl;
 }
 
 ClusterManager &Communicator::clusterManager() const {
