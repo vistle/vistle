@@ -126,6 +126,12 @@ std::vector<std::string> ReadFOAM::getFieldList() const {
 
 int ReadFOAM::rankForBlock(int processor) const {
 
+   if (m_case.numblocks == 0)
+      return 0;
+
+   if (processor == -1)
+      return -1;
+
    return processor % size();
 }
 
@@ -874,7 +880,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
 }
 
 bool ReadFOAM::buildGhostCellData(int processor) {
-   vassert(!m_buildGhost);
+   vassert(m_buildGhost);
    auto &boundaries = *m_boundaries[processor];
    for (const auto &b :boundaries.procboundaries) {
       Index neighborProc=b.neighborProc;
@@ -938,16 +944,17 @@ bool ReadFOAM::buildGhostCellData(int processor) {
    return true;
 }
 
-bool ReadFOAM::processAllRequests() {
+void ReadFOAM::processAllRequests() {
+   vassert(m_buildGhost);
    std::vector<mpi::request> r=m_requests[rank()];
    mpi::wait_all(r.begin(),r.end());
    m_requests.clear();
    m_GhostCellsOut.clear();
    m_GhostDataOut.clear();
-   return true;
 }
 
-bool ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
+void ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
+   vassert(m_buildGhost);
    auto &boundaries = *m_boundaries[processor];
    UnstructuredGrid::ptr grid = m_currentgrid[processor];
    auto &el = grid->el();
@@ -1007,10 +1014,9 @@ bool ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
        }
    }
    m_GhostCellsIn[processor].clear();
-   return true;
 }
 
-bool ReadFOAM::applyGhostCellsData(int processor) {
+void ReadFOAM::applyGhostCellsData(int processor) {
    auto &boundaries = *m_boundaries[processor];
 
    for (const auto &b :boundaries.procboundaries) {
@@ -1048,7 +1054,6 @@ bool ReadFOAM::applyGhostCellsData(int processor) {
       }
    }
    m_GhostDataIn[processor].clear();
-   return true;
 }
 
 bool ReadFOAM::addGridToPorts(int processor) {
@@ -1070,77 +1075,44 @@ bool ReadFOAM::addVolumeDataToPorts(int processor) {
 
 bool ReadFOAM::readConstant(const std::string &casedir)
 {
-   bool readGrid = m_readGrid->getValue();
-   if (m_case.numblocks > 0) {
-      for (int i=0; i<m_case.numblocks; ++i) {
-         if (rankForBlock(i) == rank()) {
-            if (!readDirectory(casedir, i, -1))
-               return false;
-         }
-      }
-   } else {
-      if (rank() == 0) {
-         if (!readDirectory(casedir, -1, -1))
+   for (int i=-1; i<m_case.numblocks; ++i) {
+      if (rankForBlock(i) == rank()) {
+         if (!readDirectory(casedir, i, -1))
             return false;
       }
    }
 
-   mpi::communicator c;
-   c.barrier();
+   if (m_case.varyingCoords && m_case.varyingGrid)
+      return true;
 
-   if (!m_case.varyingCoords && !m_case.varyingGrid && readGrid) {
-      if (m_case.numblocks > 0) {
-         if (m_buildGhost) {
-            for (int i=0; i<m_case.numblocks; ++i) {
-               if (rankForBlock(i) == rank()) {
-                  if (!buildGhostCells(i,ALL))
-                     return false;
-               }
-            }
+   bool readGrid = m_readGrid->getValue();
+   if (!readGrid)
+      return true;
 
-            c.barrier();
-            processAllRequests();
+   GhostMode buildGhostMode = m_case.varyingCoords ? BASE : ALL;
 
-            for (int i=0; i<m_case.numblocks; ++i) {
-               if (rankForBlock(i) == rank()) {
-                  if (!applyGhostCells(i,ALL))
-                     return false;
-               }
-               if (!m_replicateTimestepGeo)
-                  addGridToPorts(i);
-            }
-         } else {
-            for (int i=0; i<m_case.numblocks; ++i) {
-               if (!m_replicateTimestepGeo)
-                  addGridToPorts(i);
-            }
+   if (m_buildGhost) {
+      mpi::communicator c;
+      c.barrier();
+
+      for (int i=0; i<m_case.numblocks; ++i) {
+         if (rankForBlock(i) == rank()) {
+            if (!buildGhostCells(i, buildGhostMode))
+               return false;
          }
-
-      } else {
-         if (!m_replicateTimestepGeo)
-            addGridToPorts(-1);
       }
 
-   } else if (m_case.varyingCoords && readGrid) {
-      if (m_case.numblocks > 0) {
+      c.barrier();
+      processAllRequests();
+   }
+
+   for (int i=-1; i<m_case.numblocks; ++i) {
+      if (rankForBlock(i) == rank()) {
          if (m_buildGhost) {
-            for (int i=0; i<m_case.numblocks; ++i) {
-               if (rankForBlock(i) == rank()) {
-                  if (!buildGhostCells(i,BASE))
-                     return false;
-               }
-            }
-
-            c.barrier();
-            processAllRequests();
-
-            for (int i=0; i<m_case.numblocks; ++i) {
-               if (rankForBlock(i) == rank()) {
-                  if (!applyGhostCells(i,ALL))
-                     return false;
-               }
-            }
+            applyGhostCells(i,ALL);
          }
+         if (!m_replicateTimestepGeo && !m_case.varyingCoords)
+            addGridToPorts(i);
       }
    }
 
@@ -1151,92 +1123,64 @@ bool ReadFOAM::readConstant(const std::string &casedir)
 }
 
 bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
-   bool readGrid = m_readGrid->getValue();
-   if (m_case.numblocks > 0) {
-      for (int i=0; i<m_case.numblocks; ++i) {
-         if (rankForBlock(i) == rank()) {
-            if (!readDirectory(casedir, i, timestep))
-               return false;
-         }
-      }
-   } else {
-      if (rank() == 0) {
-         if (!readDirectory(casedir, -1, timestep))
+   for (int i=-1; i<m_case.numblocks; ++i) {
+      if (rankForBlock(i) == rank()) {
+         if (!readDirectory(casedir, i, timestep))
             return false;
       }
    }
 
-   mpi::communicator c;
-   c.barrier();
+   bool readGrid = m_readGrid->getValue();
+   if (!readGrid)
+      return true;
 
-   if ((m_case.varyingCoords || m_case.varyingGrid) && readGrid) {
-      if (m_case.numblocks > 0) {
-         if (m_buildGhost) {
-            for (int i=0; i<m_case.numblocks; ++i) {
-               if (rankForBlock(i) == rank()) {
-                  if (m_case.varyingGrid) {
-                     if (!buildGhostCells(i,ALL))
-                        return false;
-                  } else {
-                     if (!buildGhostCells(i,COORDS))
-                        return false;
-                  }
-               }
-            }
-
-            c.barrier();
-            processAllRequests();
-
-            for (int i=0; i<m_case.numblocks; ++i) {
-               if (rankForBlock(i) == rank()) {
-                  if (m_case.varyingGrid) {
-                     if (!applyGhostCells(i,ALL))
-                        return false;
-                  } else {
-                     if (!applyGhostCells(i,COORDS))
-                        return false;
-                  }
-               }
-               addGridToPorts(i);
-            }
-         } else {
-            for (int i=0; i<m_case.numblocks; ++i) {
-               addGridToPorts(i);
-            }
-         }
-      } else {
-         addGridToPorts(-1);
-      }
-   }
-
-
-
-   if (m_case.numblocks > 0 && readGrid) {
+   if (m_case.varyingCoords || m_case.varyingGrid) {
+      const GhostMode ghostMode = m_case.varyingGrid ? ALL : COORDS;
       if (m_buildGhost) {
+         mpi::communicator c;
+         c.barrier();
          for (int i=0; i<m_case.numblocks; ++i) {
             if (rankForBlock(i) == rank()) {
-               if (!buildGhostCellData(i))
+               if (!buildGhostCells(i,ghostMode))
                   return false;
             }
          }
 
          c.barrier();
          processAllRequests();
+      }
 
+      for (int i=-1; i<m_case.numblocks; ++i) {
+         if (rankForBlock(i) == rank()) {
+            if (m_buildGhost) {
+               applyGhostCells(i,ghostMode);
+            }
+            addGridToPorts(i);
+         }
+      }
+   }
+
+   if (m_case.numblocks > 0) {
+      if (m_buildGhost) {
+         mpi::communicator c;
          for (int i=0; i<m_case.numblocks; ++i) {
             if (rankForBlock(i) == rank()) {
-               if (!applyGhostCellsData(i))
-                  return false;
+               buildGhostCellData(i);
+            }
+         }
+
+         c.barrier();
+         processAllRequests();
+      }
+
+      for (int i=-1; i<m_case.numblocks; ++i) {
+         if (rankForBlock(i) == rank()) {
+            if (m_buildGhost) {
+               applyGhostCellsData(i);
             }
             addVolumeDataToPorts(i);
          }
-      } else {
-         for (int i=0; i<m_case.numblocks; ++i) {
-            addVolumeDataToPorts(i);
-         }
       }
-   } else {
-      addVolumeDataToPorts(-1);
    }
 
    if (!m_replicateTimestepGeo)
@@ -1247,9 +1191,6 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
 bool ReadFOAM::compute()     //Compute is called when Module is executed
 {
-   m_buildGhost = m_buildGhostcellsParam->getValue();
-   m_replicateTimestepGeo = m_replicateTimestepGeoParam->getValue();
-
    if (rank() == 0)
       std::cout << time(0) << " starting" << std::endl;
    const std::string casedir = m_casedir->getValue();
@@ -1259,6 +1200,10 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
       std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
       return true;
    }
+
+   m_buildGhost = m_buildGhostcellsParam->getValue() && m_case.numblocks>0;
+   m_replicateTimestepGeo = m_replicateTimestepGeoParam->getValue();
+
    std::cerr << "# processors: " << m_case.numblocks << std::endl;
    std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
    std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
