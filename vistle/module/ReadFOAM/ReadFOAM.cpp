@@ -124,6 +124,11 @@ std::vector<std::string> ReadFOAM::getFieldList() const {
    return choices;
 }
 
+int ReadFOAM::rankForBlock(int processor) const {
+
+   return processor % size();
+}
+
 bool ReadFOAM::parameterChanged(const Parameter *p)
 {
    auto sp = dynamic_cast<const StringParameter *>(p);
@@ -854,7 +859,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
    for (const auto &b :boundaries.procboundaries) {
       Index neighborProc=b.neighborProc;
       int myRank=rank();
-      int neighborRank = neighborProc % size();
+      int neighborRank = rankForBlock(neighborProc);
       boost::shared_ptr<GhostCells> out = m_GhostCellsOut[processor][neighborProc];
       if (myRank != neighborRank) {
          m_requests[myRank].push_back(world.isend(neighborRank, tag(processor,neighborProc), *out));
@@ -913,7 +918,7 @@ bool ReadFOAM::buildGhostCellData(int processor) {
    for (const auto &b :boundaries.procboundaries) {
       Index neighborProc=b.neighborProc;
       int myRank=rank();
-      int neighborRank = neighborProc % size();
+      int neighborRank = rankForBlock(neighborProc);
 
       std::map<int, boost::shared_ptr<GhostData> > &m = m_GhostDataOut[processor][neighborProc];
       for (Index i=0; i<NumPorts; ++i) {
@@ -1068,7 +1073,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
    bool readGrid = m_readGrid->getValue();
    if (m_case.numblocks > 0) {
       for (int i=0; i<m_case.numblocks; ++i) {
-         if (i % size() == rank()) {
+         if (rankForBlock(i) == rank()) {
             if (!readDirectory(casedir, i, -1))
                return false;
          }
@@ -1087,7 +1092,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
       if (m_case.numblocks > 0) {
          if (m_buildGhost) {
             for (int i=0; i<m_case.numblocks; ++i) {
-               if (i % size() == rank()) {
+               if (rankForBlock(i) == rank()) {
                   if (!buildGhostCells(i,ALL))
                      return false;
                }
@@ -1097,7 +1102,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
             processAllRequests();
 
             for (int i=0; i<m_case.numblocks; ++i) {
-               if (i % size() == rank()) {
+               if (rankForBlock(i) == rank()) {
                   if (!applyGhostCells(i,ALL))
                      return false;
                }
@@ -1120,7 +1125,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
       if (m_case.numblocks > 0) {
          if (m_buildGhost) {
             for (int i=0; i<m_case.numblocks; ++i) {
-               if (i % size() == rank()) {
+               if (rankForBlock(i) == rank()) {
                   if (!buildGhostCells(i,BASE))
                      return false;
                }
@@ -1130,7 +1135,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
             processAllRequests();
 
             for (int i=0; i<m_case.numblocks; ++i) {
-               if (i % size() == rank()) {
+               if (rankForBlock(i) == rank()) {
                   if (!applyGhostCells(i,ALL))
                      return false;
                }
@@ -1149,7 +1154,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
    bool readGrid = m_readGrid->getValue();
    if (m_case.numblocks > 0) {
       for (int i=0; i<m_case.numblocks; ++i) {
-         if (i % size() == rank()) {
+         if (rankForBlock(i) == rank()) {
             if (!readDirectory(casedir, i, timestep))
                return false;
          }
@@ -1168,7 +1173,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
       if (m_case.numblocks > 0) {
          if (m_buildGhost) {
             for (int i=0; i<m_case.numblocks; ++i) {
-               if (i % size() == rank()) {
+               if (rankForBlock(i) == rank()) {
                   if (m_case.varyingGrid) {
                      if (!buildGhostCells(i,ALL))
                         return false;
@@ -1183,7 +1188,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
             processAllRequests();
 
             for (int i=0; i<m_case.numblocks; ++i) {
-               if (i % size() == rank()) {
+               if (rankForBlock(i) == rank()) {
                   if (m_case.varyingGrid) {
                      if (!applyGhostCells(i,ALL))
                         return false;
@@ -1209,7 +1214,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
    if (m_case.numblocks > 0 && readGrid) {
       if (m_buildGhost) {
          for (int i=0; i<m_case.numblocks; ++i) {
-            if (i % size() == rank()) {
+            if (rankForBlock(i) == rank()) {
                if (!buildGhostCellData(i))
                   return false;
             }
@@ -1219,7 +1224,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
          processAllRequests();
 
          for (int i=0; i<m_case.numblocks; ++i) {
-            if (i % size() == rank()) {
+            if (rankForBlock(i) == rank()) {
                if (!applyGhostCellsData(i))
                   return false;
             }

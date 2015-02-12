@@ -123,6 +123,7 @@ class ReadFOAM: public vistle::Module
 
       std::vector<std::string> getFieldList() const;
 
+      int rankForBlock(int processor) const;
       bool parameterChanged(const vistle::Parameter *p);
       bool readDirectory(const std::string &dir, int processor, int timestep);
       bool buildGhostCells(int processor, GhostMode mode);
