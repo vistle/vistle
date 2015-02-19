@@ -3,12 +3,10 @@
 
 #include <string>
 #include <array>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 
 #include <util/enum.h>
 #include <util/directory.h>
+#include "uuid.h"
 #include "object.h"
 #include "scalar.h"
 #include "paramvector.h"

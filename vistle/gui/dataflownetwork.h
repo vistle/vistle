@@ -6,7 +6,7 @@
 #include <QGraphicsScene>
 
 #include "port.h"
-#include <boost/uuid/uuid.hpp>
+#include <core/uuid.h>
 
 namespace vistle {
 class VistleConnection;

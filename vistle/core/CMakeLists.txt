@@ -99,6 +99,7 @@ set(core_HEADERS
    vector.h
    empty.h
    empty_impl.h
+   uuid.h
 )
 
 add_library(vistle_core ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS})

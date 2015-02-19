@@ -10,7 +10,7 @@
 #include <QApplication>
 #include <QIcon>
 
-#include <boost/uuid/uuid.hpp>
+#include <core/uuid.h>
 
 Q_DECLARE_METATYPE(boost::uuids::uuid);
 

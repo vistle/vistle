@@ -10,7 +10,7 @@
 #include <QGraphicsRectItem>
 #include <QAction>
 
-#include <boost/uuid/uuid.hpp>
+#include <core/uuid.h>
 
 #include <userinterface/vistleconnection.h>
 

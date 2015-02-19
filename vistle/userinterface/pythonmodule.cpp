@@ -4,9 +4,8 @@
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <boost/uuid/string_generator.hpp>
 
+#include <core/uuid.h>
 #include <core/message.h>
 #include <core/parameter.h>
 #include <core/port.h>
