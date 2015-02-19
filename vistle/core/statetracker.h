@@ -167,6 +167,7 @@ class V_COREEXPORT StateTracker {
    bool handlePriv(const message::ObjectReceivePolicy &pol);
    bool handlePriv(const message::ReducePolicy &pol);
    bool handlePriv(const message::SchedulingPolicy &pol);
+   bool handlePriv(const message::RequestTunnel &tunnel);
 
    boost::shared_ptr<PortTracker> m_portTracker;
 

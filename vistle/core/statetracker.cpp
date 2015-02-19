@@ -386,6 +386,12 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
          handled = handlePriv(m);
          break;
       }
+      case Message::REQUESTTUNNEL: {
+         const RequestTunnel &m = static_cast<const RequestTunnel &>(msg);
+         handled = handlePriv(m);
+         break;
+      }
+      
 
       default:
          CERR << "message type not handled: " << msg << std::endl;
@@ -798,6 +804,11 @@ bool StateTracker::handlePriv(const message::ReducePolicy &reducePolicy)
    }
    Module &mod = it->second;
    mod.reducePolicy = reducePolicy.policy();
+   return true;
+}
+
+bool StateTracker::handlePriv(const message::RequestTunnel &tunnel)
+{
    return true;
 }
 

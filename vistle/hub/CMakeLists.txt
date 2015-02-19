@@ -9,6 +9,7 @@ set(hub_SOURCES
    hub.cpp
    uimanager.cpp
    uiclient.cpp
+   tunnel.cpp
    )
 
 if(PYTHONLIBS_FOUND)

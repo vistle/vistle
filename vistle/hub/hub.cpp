@@ -59,7 +59,7 @@ Hub *hub_instance = nullptr;
 
 Hub::Hub()
 : m_port(31093)
-, m_acceptor(m_ioService)
+, m_acceptor(new boost::asio::ip::tcp::acceptor(m_ioService))
 , m_stateTracker("Hub state")
 , m_uiManager(*this, m_stateTracker)
 , m_managerConnected(false)
@@ -113,22 +113,22 @@ bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg) {
 
 bool Hub::startServer() {
 
-   while (!m_acceptor.is_open()) {
+   while (!m_acceptor->is_open()) {
 
       asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), m_port);
-      m_acceptor.open(endpoint.protocol());
-      m_acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(true));
+      m_acceptor->open(endpoint.protocol());
+      m_acceptor->set_option(acceptor::reuse_address(true));
       try {
-         m_acceptor.bind(endpoint);
+         m_acceptor->bind(endpoint);
       } catch(const boost::system::system_error &err) {
          if (err.code() == boost::system::errc::address_in_use) {
-            m_acceptor.close();
+            m_acceptor->close();
             ++m_port;
             continue;
          }
          throw(err);
       }
-      m_acceptor.listen();
+      m_acceptor->listen();
       CERR << "listening for connections on port " << m_port << std::endl;
       startAccept();
    }
@@ -140,7 +140,7 @@ bool Hub::startAccept() {
    
    shared_ptr<asio::ip::tcp::socket> sock(new asio::ip::tcp::socket(m_ioService));
    addSocket(sock);
-   m_acceptor.async_accept(*sock, boost::bind<void>(&Hub::handleAccept, this, sock, asio::placeholders::error));
+   m_acceptor->async_accept(*sock, boost::bind<void>(&Hub::handleAccept, this, sock, asio::placeholders::error));
    return true;
 }
 
@@ -452,6 +452,10 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             addSlave(m_slaveCount, sock);
             break;
          }
+         default: {
+            CERR << "invalid identity: " << id.identity() << std::endl;
+            break;
+         }
       }
       return true;
    }
@@ -627,6 +631,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          case Message::BARRIERREACHED: {
             auto &reached = static_cast<const BarrierReached &>(msg);
             handlePriv(reached);
+            break;
+         }
+
+         case Message::REQUESTTUNNEL: {
+            auto &tunnel = static_cast<const RequestTunnel &>(msg);
+            handlePriv(tunnel);
             break;
          }
 
@@ -918,6 +928,11 @@ bool Hub::handlePriv(const message::BarrierReached &reached) {
       }
    }
    return true;
+}
+
+bool Hub::handlePriv(const message::RequestTunnel &tunnel) {
+
+   return m_tunnelManager.processRequest(tunnel);
 }
 
 int main(int argc, char *argv[]) {

@@ -4,6 +4,10 @@
 #include <string>
 #include <array>
 
+#include <boost/asio/ip/address.hpp>
+#include <boost/asio/ip/address_v6.hpp>
+#include <boost/asio/ip/address_v4.hpp>
+
 #include <util/enum.h>
 #include <util/directory.h>
 #include "uuid.h"
@@ -106,6 +110,7 @@ class V_COREEXPORT Message {
       (MODULEAVAILABLE)
       (LOCKUI)
       (REPLAYFINISHED)
+      (REQUESTTUNNEL)
       (NumMessageTypes) // keep last
    )
 
@@ -164,10 +169,10 @@ class V_COREEXPORT Identify: public Message {
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Identity,
          (UNKNOWN)
-         (UI)
-         (MANAGER)
-         (HUB)
-         (SLAVEHUB)
+         (UI) //< user interface
+         (MANAGER) //< cluster manager
+         (HUB) //< master hub
+         (SLAVEHUB) //< slave hub
          );
 
    Identify(Identity id=UNKNOWN);
@@ -740,6 +745,48 @@ class V_COREEXPORT LockUi: public Message {
    bool m_locked;
 };
 BOOST_STATIC_ASSERT(sizeof(LockUi) <= Message::MESSAGE_SIZE);
+
+//! request hub to listen on TCP port and forward incoming connections
+class V_COREEXPORT RequestTunnel: public Message {
+
+ public:
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(AddressType,
+      (Hostname)
+      (IPv4)
+      (IPv6)
+      (Unspecified)
+   )
+   //! establish tunnel - let hub forward incoming connections to srcPort to destHost::destPort
+   RequestTunnel(unsigned short srcPort, const std::string &destHost, unsigned short destPort);
+   //! establish tunnel - let hub forward incoming connections to srcPort to destHost::destPort
+   RequestTunnel(unsigned short srcPort, const boost::asio::ip::address_v4 destHost, unsigned short destPort);
+   //! establish tunnel - let hub forward incoming connections to srcPort to destHost::destPort
+   RequestTunnel(unsigned short srcPort, const boost::asio::ip::address_v6 destHost, unsigned short destPort);
+   //! establish tunnel - let hub forward incoming connections to srcPort to destPort on local interface, address will be filled in by rank 0 of cluster manager
+   RequestTunnel(unsigned short srcPort, unsigned short destPort);
+   //! remove tunnel
+   RequestTunnel(unsigned short srcPort);
+
+   void setDestAddr(boost::asio::ip::address_v6 addr);
+   void setDestAddr(boost::asio::ip::address_v4 addr);
+   unsigned short srcPort() const;
+   unsigned short destPort() const;
+   AddressType destType() const;
+   bool destIsAddress() const;
+   std::string destHost() const;
+   boost::asio::ip::address destAddr() const;
+   boost::asio::ip::address_v6 destAddrV6() const;
+   boost::asio::ip::address_v4 destAddrV4() const;
+   bool remove() const;
+
+ private:
+   unsigned short m_srcPort;
+   AddressType m_destType;
+   text_t m_destAddr;
+   unsigned short m_destPort;
+   bool m_remove;
+};
+BOOST_STATIC_ASSERT(sizeof(RequestTunnel) <= Message::MESSAGE_SIZE);
 
 union V_COREEXPORT Buffer {
 

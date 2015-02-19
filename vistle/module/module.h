@@ -124,6 +124,11 @@ class V_MODULEEXPORT Module {
    template<class Type>
    typename Type::const_ptr expect(const std::string &port);
 
+   //! request hub to forward incoming connections on forwardPort to be forwarded to localPort
+   void requestPortMapping(unsigned short forwardPort, unsigned short localPort);
+   //! remove port forwarding requested by requestPortMapping
+   void removePortMapping(unsigned short forwardPort);
+
    void sendMessage(const message::Message &message) const;
 
    //! type should be a message::SendText::TextType

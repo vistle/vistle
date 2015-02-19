@@ -4,6 +4,7 @@
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/asio.hpp>
 
 #include <core/uuid.h>
 #include <core/message.h>
@@ -37,6 +38,7 @@
 #endif
 
 namespace bp = boost::python;
+namespace asio = boost::asio;
 
 BOOST_PYTHON_MODULE(vector_indexing_suite_ext){
    bp::class_<std::vector<int> >("PyVec")
@@ -415,6 +417,43 @@ static void compute(int id=message::Id::Broadcast) {
 }
 BOOST_PYTHON_FUNCTION_OVERLOADS(compute_overloads, compute, 0, 1)
 
+static void requestTunnel(unsigned short listenPort, const std::string &destHost, unsigned short destPort=0) {
+#ifdef DEBUG
+   std::cerr << "Python: requestTunnel " << listenPort << " -> " << destHost << ":" << destPort << std::endl;
+#endif
+   if (destPort == 0)
+      destPort = listenPort;
+
+   message::RequestTunnel m(listenPort, destHost, destPort);
+
+   asio::io_service io_service;
+   asio::ip::tcp::resolver resolver(io_service);
+   try {
+      auto endpoints = resolver.resolve({destHost, boost::lexical_cast<std::string>(destPort)});
+      auto addr = (*endpoints).endpoint().address();
+      if (addr.is_v6()) {
+         m.setDestAddr(addr.to_v6());
+         std::cerr << destHost << " resolved to " << addr.to_v6() << std::endl;
+      } else if (addr.is_v4()) {
+         m.setDestAddr(addr.to_v4());
+         std::cerr << destHost << " resolved to " << addr.to_v4() << std::endl;
+      }
+   } catch(...) {
+   }
+
+   sendMessage(m);
+}
+BOOST_PYTHON_FUNCTION_OVERLOADS(requestTunnel_overloads, requestTunnel, 2, 3)
+
+static void removeTunnel(unsigned short listenPort) {
+#ifdef DEBUG
+   std::cerr << "Python: removeTunnel " << listenPort << std::endl;
+#endif
+
+   message::RequestTunnel m(listenPort);
+   sendMessage(m);
+}
+
 #define param(T, f) \
    def("set" #T "Param", f, "set parameter `arg2` of module with ID `arg1` to `arg3`"); \
    def("setParam", f, "set parameter `arg2` of module with ID `arg1` to `arg3`");
@@ -440,6 +479,8 @@ BOOST_PYTHON_MODULE(_vistle)
     def("ping", ping, ping_overloads(args("id", "data"), "send first character of `arg2` to destination `arg1`"));
     def("trace", trace, trace_overloads(args("id", "enable"), "enable/disable message tracing for module `arg1`"));
     def("barrier", barrier, "wait until all modules reply");
+    def("requestTunnel", requestTunnel, requestTunnel_overloads(args("listen port", "dest port", "dest addr"), "start TCP tunnel listening on port `arg1` on hub forwarding incoming connections to `arg2`:`arg3`"));
+    def("removeTunnel", removeTunnel, "remove TCP tunnel listening on port `arg1` on hub");
     //def("checkMessageQueue", checkMessageQueue, "check whether all messages have been processed");
 
     param(Int, setIntParam);

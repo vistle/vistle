@@ -413,6 +413,12 @@ bool ClusterManager::handle(const message::Message &message) {
          break;
       }
 
+      case message::Message::REQUESTTUNNEL: {
+         const message::RequestTunnel &m = static_cast<const message::RequestTunnel &>(message);
+         result = handlePriv(m);
+         break;
+      }
+
       case Message::STARTED:
       case Message::ADDPORT:
       case Message::ADDPARAMETER:
@@ -990,6 +996,42 @@ bool ClusterManager::handlePriv(const message::SendText &text) {
    } else {
       Communicator::the().forwardToMaster(text);
    }
+   return true;
+}
+
+bool ClusterManager::handlePriv(const message::RequestTunnel &tunnel) {
+
+   using message::RequestTunnel;
+
+   CERR << "RequestTunnel: remove=" << tunnel.remove() << " ";
+   std::cerr << "host=" << tunnel.destHost() << " ";
+   if (tunnel.destType() == RequestTunnel::IPv6) {
+      std::cerr << "addr=" << tunnel.destAddrV6();
+   } else if (tunnel.destType() == RequestTunnel::IPv4) {
+      std::cerr << "addr=" << tunnel.destAddrV4();
+   } else if (tunnel.destType() == RequestTunnel::Hostname) {
+      std::cerr << "addr=" << tunnel.destHost();
+   }
+   std::cerr << std::endl;
+
+   message::RequestTunnel tun(tunnel);
+   tun.setDestId(Id::LocalHub);
+   if (m_rank == 0) {
+      if (!tunnel.remove() && tunnel.destType()==RequestTunnel::Unspecified) {
+         CERR << "RequestTunnel: fill in local address" << std::endl;
+         try {
+            auto addr = Communicator::the().m_hubSocket.local_endpoint().address();
+            if (addr.is_v6()) {
+               tun.setDestAddr(addr.to_v6());
+            } else if (addr.is_v4()) {
+               tun.setDestAddr(addr.to_v4());
+            }
+         } catch (std::bad_cast &except) {
+           CERR << "RequestTunnel: failed to convert local address to v6" << std::endl;
+         }
+      }
+   }
+   sendHub(tun);
    return true;
 }
 

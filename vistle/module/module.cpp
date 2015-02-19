@@ -28,6 +28,7 @@
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpl/transform.hpp>
 #include <boost/thread/recursive_mutex.hpp>
+#include <boost/asio.hpp>
 
 #include <util/sysdep.h>
 #include <util/tools.h>
@@ -752,6 +753,20 @@ vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
    }
 
    return takeFirstObject(i->second);
+}
+
+void Module::requestPortMapping(unsigned short forwardPort, unsigned short localPort) {
+
+   message::RequestTunnel m(forwardPort, localPort);
+   m.setDestId(Id::LocalManager);
+   sendMessage(m);
+}
+
+void Module::removePortMapping(unsigned short forwardPort) {
+
+   message::RequestTunnel m(forwardPort);
+   m.setDestId(Id::LocalManager);
+   sendMessage(m);
 }
 
 vistle::Object::const_ptr Module::takeFirstObject(Port *port) {

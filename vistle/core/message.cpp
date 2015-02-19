@@ -1035,6 +1035,114 @@ bool LockUi::locked() const {
    return m_locked;
 }
 
+RequestTunnel::RequestTunnel(unsigned short srcPort, const std::string &destHost, unsigned short destPort)
+: Message(Message::REQUESTTUNNEL, sizeof(RequestTunnel))
+, m_srcPort(srcPort)
+, m_destType(RequestTunnel::Hostname)
+, m_destPort(destPort)
+, m_remove(false)
+{
+   COPY_STRING(m_destAddr, destHost);
+}
+
+RequestTunnel::RequestTunnel(unsigned short srcPort, const boost::asio::ip::address_v6 destAddr, unsigned short destPort)
+: Message(Message::REQUESTTUNNEL, sizeof(RequestTunnel))
+, m_srcPort(srcPort)
+, m_destType(RequestTunnel::IPv6)
+, m_destPort(destPort)
+, m_remove(false)
+{
+   const std::string addr = destAddr.to_string();
+   COPY_STRING(m_destAddr, addr);
+}
+
+RequestTunnel::RequestTunnel(unsigned short srcPort, const boost::asio::ip::address_v4 destAddr, unsigned short destPort)
+: Message(Message::REQUESTTUNNEL, sizeof(RequestTunnel))
+, m_srcPort(srcPort)
+, m_destType(RequestTunnel::IPv4)
+, m_destPort(destPort)
+, m_remove(false)
+{
+   const std::string addr = destAddr.to_string();
+   COPY_STRING(m_destAddr, addr);
+}
+
+RequestTunnel::RequestTunnel(unsigned short srcPort, unsigned short destPort)
+: Message(Message::REQUESTTUNNEL, sizeof(RequestTunnel))
+, m_srcPort(srcPort)
+, m_destType(RequestTunnel::Unspecified)
+, m_destPort(destPort)
+, m_remove(false)
+{
+   const std::string empty;
+   COPY_STRING(m_destAddr, empty);
+}
+
+RequestTunnel::RequestTunnel(unsigned short srcPort)
+: Message(Message::REQUESTTUNNEL, sizeof(RequestTunnel))
+, m_srcPort(srcPort)
+, m_destType(RequestTunnel::Unspecified)
+, m_destPort(0)
+, m_remove(true)
+{
+   const std::string empty;
+   COPY_STRING(m_destAddr, empty);
+}
+
+unsigned short RequestTunnel::srcPort() const {
+   return m_srcPort;
+}
+
+unsigned short RequestTunnel::destPort() const {
+   return m_destPort;
+}
+
+RequestTunnel::AddressType RequestTunnel::destType() const {
+   return m_destType;
+}
+
+bool RequestTunnel::destIsAddress() const {
+   return m_destType == IPv6 || m_destType == IPv4;
+}
+
+void RequestTunnel::setDestAddr(boost::asio::ip::address_v4 addr) {
+   const std::string addrString = addr.to_string();
+   COPY_STRING(m_destAddr, addrString);
+   m_destType = IPv4;
+}
+
+void RequestTunnel::setDestAddr(boost::asio::ip::address_v6 addr) {
+   const std::string addrString = addr.to_string();
+   COPY_STRING(m_destAddr, addrString);
+   m_destType = IPv6;
+}
+
+boost::asio::ip::address RequestTunnel::destAddr() const {
+   vassert(destIsAddress());
+   if (destType() == IPv6)
+      return destAddrV6();
+   else
+      return destAddrV4();
+}
+
+boost::asio::ip::address_v6 RequestTunnel::destAddrV6() const {
+   vassert(m_destType == IPv6);
+   return boost::asio::ip::address_v6::from_string(m_destAddr.data());
+}
+
+boost::asio::ip::address_v4 RequestTunnel::destAddrV4() const {
+   vassert(m_destType == IPv4);
+   return boost::asio::ip::address_v4::from_string(m_destAddr.data());
+}
+
+std::string RequestTunnel::destHost() const {
+   return m_destAddr.data();
+}
+
+bool RequestTunnel::remove() const {
+   return m_remove;
+}
+
 std::ostream &operator<<(std::ostream &s, const Message &m) {
 
    using namespace vistle::message;
@@ -1138,6 +1246,8 @@ void Router::initRoutingTable() {
    rt[M::BARRIER]               = HandleOnDest;
    rt[M::BARRIERREACHED]        = HandleOnDest;
    rt[M::OBJECTRECEIVED]        = HandleOnRank0;
+
+   rt[M::REQUESTTUNNEL]         = HandleOnNode|HandleOnHub;
 
    for (int i=M::ANY+1; i<M::NumMessageTypes; ++i) {
       if (rt[i] == 0) {

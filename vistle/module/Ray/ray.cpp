@@ -60,6 +60,7 @@ class RayCaster: public vistle::Renderer {
    IntParameter *m_vncReverse;
    StringParameter *m_vncRevHost;
    IntParameter *m_vncRevPort;
+   IntParameter *m_vncForward;
    IntParameter *m_shading;
    IntParameter *m_rgbaEncoding;
    IntParameter *m_depthQuant;
@@ -123,6 +124,7 @@ class RayCaster: public vistle::Renderer {
    bool m_snappy;
    bool m_quant;
    Integer m_prec;
+   unsigned short m_forwardPort; //< current port mapping
 
    int rootRank() const {
 
@@ -245,6 +247,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
 , m_snappy(true)
 , m_quant(true)
 , m_prec(24)
+, m_forwardPort(0)
 , m_currentView(-1)
 {
 #if 0
@@ -261,6 +264,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    m_vncReverse = addIntParameter("vnc_reverse", "establish VNC connection from server to client", 0, Parameter::Boolean);
    m_vncRevHost = addStringParameter("vnc_reverse_host", "establish reverse connection to client on host", "localhost");
    m_vncRevPort = addIntParameter("vnc_reverse_port", "establish reverse connection to client on port", 31059);
+   m_vncForward = addIntParameter("vnc_tunnel", "let client connect through hub", 0, Parameter::Boolean);
    setParameterRange(m_vncRevPort, (Integer)1, (Integer)((1<<16)-1));
    m_continuousRendering = addIntParameter("continuous_rendering", "render even though nothing has changed", 0, Parameter::Boolean);
    m_colorRank = addIntParameter("color_rank", "different colors on each rank", 0, Parameter::Boolean);
@@ -364,6 +368,23 @@ bool RayCaster::parameterChanged(const Parameter *p) {
          } else {
             vnc.reset();
          }
+      }
+   } else if (p == m_vncForward) {
+      if (m_vncForward->getValue()) {
+         if (m_forwardPort != m_vncBasePort->getValue()) {
+            if (m_forwardPort) {
+               removePortMapping(m_forwardPort);
+            }
+            m_forwardPort = m_vncBasePort->getValue();
+            if (rank() == 0)
+               requestPortMapping(m_forwardPort, m_vncBasePort->getValue());
+         }
+      } else {
+         if (rank() == 0) {
+            if (m_forwardPort)
+               removePortMapping(m_forwardPort);
+         }
+         m_forwardPort = 0;
       }
    } else if (p == m_shading) {
 

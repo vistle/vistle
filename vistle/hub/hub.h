@@ -8,6 +8,7 @@
 #include <util/spawnprocess.h>
 #include <util/directory.h>
 #include "uimanager.h"
+#include "tunnel.h"
 
 namespace vistle {
 
@@ -15,6 +16,7 @@ class Hub {
 
  public:
    typedef boost::asio::ip::tcp::socket socket;
+   typedef boost::asio::ip::tcp::acceptor acceptor;
    
    static Hub &the();
 
@@ -56,11 +58,12 @@ private:
 
    unsigned short m_port;
    boost::asio::io_service m_ioService;
-   boost::asio::ip::tcp::acceptor m_acceptor;
+   boost::shared_ptr<acceptor> m_acceptor;
 
    std::map<boost::shared_ptr<boost::asio::ip::tcp::socket>, message::Identify::Identity> m_sockets;
    std::set<boost::shared_ptr<boost::asio::ip::tcp::socket>> m_clients;
 
+   TunnelManager m_tunnelManager;
    StateTracker m_stateTracker;
    UiManager m_uiManager;
 
@@ -91,6 +94,7 @@ private:
    bool handlePriv(const message::Execute &exec);
    bool handlePriv(const message::Barrier &barrier);
    bool handlePriv(const message::BarrierReached &reached);
+   bool handlePriv(const message::RequestTunnel &tunnel);
 };
 
 }
