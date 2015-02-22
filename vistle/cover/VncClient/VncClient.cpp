@@ -202,7 +202,6 @@ void VncClient::sendLightsMessage(rfbClient *client) {
 
    for (int i=0; i<lightsMsg::NumLights; ++i) {
 
-      lightsMsg::Light &l = msg.lights[i];
       const osg::Light *light = NULL;
       if (i == 0 && coVRLighting::instance()->headlight) {
          light = coVRLighting::instance()->headlight->getLight();
