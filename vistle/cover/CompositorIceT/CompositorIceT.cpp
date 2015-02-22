@@ -114,8 +114,8 @@ void CompositorIceT::composite(int windowNumber)
 
    IceTDouble mv[16], proj[16];
    if (m_sparseReadback) {
-      const osg::Matrix &osg_mv = coVRConfig::instance()->screens[0].rightView;
-      const osg::Matrix &osg_proj = coVRConfig::instance()->screens[0].rightProj;
+      const osg::Matrix &osg_mv = coVRConfig::instance()->channels[0].rightView;
+      const osg::Matrix &osg_proj = coVRConfig::instance()->channels[0].rightProj;
       for (int i=0; i<16; ++i) {
          mv[i] = osg_mv(i/4, i%4);
          proj[i] = osg_proj(i/4, i%4);

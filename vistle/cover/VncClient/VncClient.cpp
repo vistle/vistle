@@ -119,27 +119,32 @@ rfbBool VncClient::rfbResize(rfbClient *client)
    return true;
 }
 
-void VncClient::fillMatricesMessage(matricesMsg &msg, int screenNum, int viewNum, bool second) {
+void VncClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, bool second) {
 
    msg.type = rfbMatrices;
-   msg.viewNum = m_screenBase + viewNum;
+   msg.viewNum = m_channelBase + viewNum;
    msg.time = cover->frameTime();
    const osg::Matrix &v = cover->getViewerMat();
    const osg::Matrix &t = cover->getXformMat();
    const osg::Matrix &s = cover->getObjectsScale()->getMatrix();
 
-   const screenStruct &scr = coVRConfig::instance()->screens[screenNum];
-   const windowStruct &win = coVRConfig::instance()->windows[scr.window];
-   msg.width = (scr.viewportXMax - scr.viewportXMin) * win.sx;
-   msg.height = (scr.viewportYMax - scr.viewportYMin) * win.sy;
+   const channelStruct &chan = coVRConfig::instance()->channels[channel];
+   if (chan.viewportNum < 0)
+      return;
+   const viewportStruct &vp = coVRConfig::instance()->viewports[chan.viewportNum];
+   if (vp.window < 0)
+      return;
+   const windowStruct &win = coVRConfig::instance()->windows[vp.window];
+   msg.width = (vp.viewportXMax - vp.viewportXMin) * win.sx;
+   msg.height = (vp.viewportYMax - vp.viewportYMin) * win.sy;
 
-   bool left = scr.stereoMode == osg::DisplaySettings::LEFT_EYE;
+   bool left = chan.stereoMode == osg::DisplaySettings::LEFT_EYE;
    if (second)
       left = true;
-   const osg::Matrix &view = left ? scr.leftView : scr.rightView;
-   const osg::Matrix &proj = left ? scr.leftProj : scr.rightProj;
+   const osg::Matrix &view = left ? chan.leftView : chan.rightView;
+   const osg::Matrix &proj = left ? chan.leftProj : chan.rightProj;
 
-   //std::cerr << "retrieving matrices for screen: " << screenNum << ", view: " << viewNum << ", second: " << second << ", left: " << left << std::endl;
+   //std::cerr << "retrieving matrices for channel: " << channelNum << ", view: " << viewNum << ", second: " << second << ", left: " << left << std::endl;
 
    for (int i=0; i<16; ++i) {
       //TODO: swap to big-endian
@@ -483,16 +488,16 @@ void VncClient::swapFrame() {
 
    //std::cerr << "frame: " << msg.framenumber << std::endl;
 
-   for (int s=0; s<m_screenData.size(); ++s) {
-      ScreenData &sd = m_screenData[s];
+   for (int s=0; s<m_channelData.size(); ++s) {
+      ChannelData &cd = m_channelData[s];
 
-      sd.curView = sd.newView;
-      sd.curProj = sd.newProj;
-      sd.curTransform = sd.newTransform;
-      sd.curScale = sd.newScale;
+      cd.curView = cd.newView;
+      cd.curProj = cd.newProj;
+      cd.curTransform = cd.newTransform;
+      cd.curScale = cd.newScale;
 
-      sd.depthTex->getImage()->dirty();
-      sd.colorTex->getImage()->dirty();
+      cd.depthTex->getImage()->dirty();
+      cd.colorTex->getImage()->dirty();
    }
 }
 
@@ -524,11 +529,11 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
       m_numPixels += msg.width*msg.height;
    }
 
-   int view = msg.viewNum - m_screenBase;
+   int view = msg.viewNum - m_channelBase;
    if (view < 0 || view >= m_numViews)
       return;
 
-   ScreenData &sd = m_screenData[view];
+   ChannelData &sd = m_channelData[view];
 
    for (int i=0; i<16; ++i) {
       sd.newView.ptr()[i] = msg.view[i];
@@ -588,14 +593,14 @@ void VncClient::enqueueTask(DecodeTask *task) {
 
    assert(canEnqueue());
 
-   const int view = task->msg->viewNum - m_screenBase;
+   const int view = task->msg->viewNum - m_channelBase;
    const bool last = task->msg->flags & rfbTileLast;
 
    if (view < 0 || view >= m_numViews) {
       task->rgba = NULL;
       task->depth = NULL;
    } else {
-      ScreenData &sd = m_screenData[view];
+      ChannelData &sd = m_channelData[view];
 
       unsigned char *depth = sd.depthTex->getImage()->data();
       unsigned char *rgba = sd.colorTex->getImage()->data();
@@ -951,17 +956,17 @@ VncClient::VncClient()
    //fprintf(stderr, "new VncClient plugin\n");
 }
 
-//! osg::Drawable::DrawCallback for rendering selected geometry on one screen only
+//! osg::Drawable::DrawCallback for rendering selected geometry on one channel only
 /*! decision is made based on cameras currently on osg's stack */
 struct SingleScreenCB: public osg::Drawable::DrawCallback {
 
    osg::ref_ptr<osg::Camera> m_cam;
-   int m_screen;
+   int m_channel;
    bool m_second;
 
-   SingleScreenCB(osg::ref_ptr<osg::Camera> cam, int screen, bool second=false)
+   SingleScreenCB(osg::ref_ptr<osg::Camera> cam, int channel, bool second=false)
       : m_cam(cam)
-      , m_screen(screen)
+      , m_channel(channel)
       , m_second(second)
       {
       }
@@ -969,7 +974,7 @@ struct SingleScreenCB: public osg::Drawable::DrawCallback {
    void  drawImplementation(osg::RenderInfo &ri, const osg::Drawable *d) const {
 
       bool render = false;
-      const bool stereo = coVRConfig::instance()->screens[m_screen].stereoMode == osg::DisplaySettings::QUAD_BUFFER;
+      const bool stereo = coVRConfig::instance()->channels[m_channel].stereoMode == osg::DisplaySettings::QUAD_BUFFER;
 
       bool right = true;
       if (stereo) {
@@ -999,7 +1004,7 @@ struct SingleScreenCB: public osg::Drawable::DrawCallback {
 	 if (!m_second && !right)
 	    render = false;
       }
-      //std::cerr << "investigated " << cameraStack.size() << " cameras for screen " << m_screen << " (2nd: " << m_second << "): render=" << render << ", right=" << right << std::endl;
+      //std::cerr << "investigated " << cameraStack.size() << " cameras for channel " << m_channel << " (2nd: " << m_second << "): render=" << render << ", right=" << right << std::endl;
 
       if (render)
          d->drawImplementation(ri);
@@ -1007,7 +1012,7 @@ struct SingleScreenCB: public osg::Drawable::DrawCallback {
 };
 
 //! create geometry for mapping remote image
-void VncClient::createGeometry(VncClient::ScreenData &sd)
+void VncClient::createGeometry(VncClient::ChannelData &cd)
 {
 
    osg::Vec3Array *coord  = new osg::Vec3Array(4);
@@ -1016,11 +1021,11 @@ void VncClient::createGeometry(VncClient::ScreenData &sd)
    (*coord)[2 ].set( 1.,  1., 0.);
    (*coord)[3 ].set(-1.,  1., 0.);
 
-   sd.texcoord  = new osg::Vec2Array(4);
-   (*sd.texcoord)[0].set(0.0,480.0);
-   (*sd.texcoord)[1].set(640.0,480.0);
-   (*sd.texcoord)[2].set(640.0,0.0);
-   (*sd.texcoord)[3].set(0.0,0.0);
+   cd.texcoord  = new osg::Vec2Array(4);
+   (*cd.texcoord)[0].set(0.0,480.0);
+   (*cd.texcoord)[1].set(640.0,480.0);
+   (*cd.texcoord)[2].set(640.0,0.0);
+   (*cd.texcoord)[3].set(0.0,0.0);
 
    osg::Vec4Array *color = new osg::Vec4Array(1);
    osg::Vec3Array *normal = new osg::Vec3Array(1);
@@ -1041,22 +1046,22 @@ void VncClient::createGeometry(VncClient::ScreenData &sd)
 
    osg::Geode *geometryNode = new osg::Geode();
 
-   osg::ref_ptr<osg::Drawable::DrawCallback> drawCB = new SingleScreenCB(sd.camera, sd.screenNum, sd.second);
+   osg::ref_ptr<osg::Drawable::DrawCallback> drawCB = new SingleScreenCB(cd.camera, cd.channelNum, cd.second);
 
-   sd.fixedGeo = new osg::Geometry();
-   sd.fixedGeo->setDrawCallback(drawCB);
+   cd.fixedGeo = new osg::Geometry();
+   cd.fixedGeo->setDrawCallback(drawCB);
    ushort vertices[4] = { 0, 1, 2, 3 };
    osg::DrawElementsUShort *plane = new osg::DrawElementsUShort(osg::PrimitiveSet::QUADS, 4, vertices);
 
-   sd.fixedGeo->setVertexArray(coord);
-   sd.fixedGeo->addPrimitiveSet(plane);
-   sd.fixedGeo->setColorArray(color);
-   sd.fixedGeo->setColorBinding(osg::Geometry::BIND_OVERALL);
-   sd.fixedGeo->setNormalArray(normal);
-   sd.fixedGeo->setNormalBinding(osg::Geometry::BIND_OVERALL);
-   sd.fixedGeo->setTexCoordArray(0, sd.texcoord);
+   cd.fixedGeo->setVertexArray(coord);
+   cd.fixedGeo->addPrimitiveSet(plane);
+   cd.fixedGeo->setColorArray(color);
+   cd.fixedGeo->setColorBinding(osg::Geometry::BIND_OVERALL);
+   cd.fixedGeo->setNormalArray(normal);
+   cd.fixedGeo->setNormalBinding(osg::Geometry::BIND_OVERALL);
+   cd.fixedGeo->setTexCoordArray(0, cd.texcoord);
    {
-      osg::StateSet *stateSet = sd.fixedGeo->getOrCreateStateSet();
+      osg::StateSet *stateSet = cd.fixedGeo->getOrCreateStateSet();
       //stateSet->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
       //stateSet->setRenderBinDetails(-20,"RenderBin");
       //stateSet->setNestRenderBins(false);
@@ -1066,9 +1071,9 @@ void VncClient::createGeometry(VncClient::ScreenData &sd)
       stateSet->setAttribute(depth);
       stateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
       stateSet->setAttributeAndModes(material, osg::StateAttribute::ON);
-      stateSet->setTextureAttributeAndModes(0, sd.colorTex, osg::StateAttribute::ON);
+      stateSet->setTextureAttributeAndModes(0, cd.colorTex, osg::StateAttribute::ON);
       stateSet->setTextureAttribute(0, texEnv);
-      stateSet->setTextureAttributeAndModes(1, sd.depthTex, osg::StateAttribute::ON);
+      stateSet->setTextureAttributeAndModes(1, cd.depthTex, osg::StateAttribute::ON);
       stateSet->setTextureAttribute(1, texEnv);
 
       osg::Uniform* colSampler = new osg::Uniform("col", 0);
@@ -1089,46 +1094,46 @@ void VncClient::createGeometry(VncClient::ScreenData &sd)
             "}"
             );
       stateSet->setAttributeAndModes(depthProgramObj, osg::StateAttribute::ON);
-      sd.fixedGeo->setStateSet(stateSet);
+      cd.fixedGeo->setStateSet(stateSet);
    }
 
-   sd.reprojGeo = new osg::Geometry();
-   sd.reprojGeo->setDrawCallback(drawCB);
+   cd.reprojGeo = new osg::Geometry();
+   cd.reprojGeo->setDrawCallback(drawCB);
    {
       osg::BoundingBox bb(-0.5,0.,-0.5, 0.5,0.,0.5);
-      sd.reprojGeo->setInitialBound(bb);
+      cd.reprojGeo->setInitialBound(bb);
       osg::Vec3Array *coord = new osg::Vec3Array(1);
       (*coord)[0].set(0., 0., 0.);
-      sd.reprojGeo->setVertexArray(coord);
-      sd.reprojGeo->setColorArray(color);
-      sd.reprojGeo->setColorBinding(osg::Geometry::BIND_OVERALL);
-      sd.reprojGeo->setNormalArray(normal);
-      sd.reprojGeo->setNormalBinding(osg::Geometry::BIND_OVERALL);
+      cd.reprojGeo->setVertexArray(coord);
+      cd.reprojGeo->setColorArray(color);
+      cd.reprojGeo->setColorBinding(osg::Geometry::BIND_OVERALL);
+      cd.reprojGeo->setNormalArray(normal);
+      cd.reprojGeo->setNormalBinding(osg::Geometry::BIND_OVERALL);
       // required for instanced rendering
-      sd.reprojGeo->setUseDisplayList( false );
-      sd.reprojGeo->setUseVertexBufferObjects( true );
+      cd.reprojGeo->setUseDisplayList( false );
+      cd.reprojGeo->setUseVertexBufferObjects( true );
    
-      osg::StateSet *stateSet = sd.reprojGeo->getOrCreateStateSet();
+      osg::StateSet *stateSet = cd.reprojGeo->getOrCreateStateSet();
       osg::Depth* depth = new osg::Depth;
       depth->setFunction(osg::Depth::LEQUAL);
       depth->setRange(0.0,1.0);
       stateSet->setAttribute(depth);
       stateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
       stateSet->setAttributeAndModes(material, osg::StateAttribute::ON);
-      stateSet->setTextureAttributeAndModes(0, sd.colorTex, osg::StateAttribute::ON);
+      stateSet->setTextureAttributeAndModes(0, cd.colorTex, osg::StateAttribute::ON);
       stateSet->setTextureAttribute(0, texEnv);
-      stateSet->setTextureAttributeAndModes(1, sd.depthTex, osg::StateAttribute::ON);
+      stateSet->setTextureAttributeAndModes(1, cd.depthTex, osg::StateAttribute::ON);
       stateSet->setTextureAttribute(1, texEnv);
 
       osg::Uniform *colSampler = new osg::Uniform("col", 0);
       osg::Uniform *depSampler = new osg::Uniform("dep", 1);
-      sd.size = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "size");
-      sd.reprojMat = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "ReprojectionMatrix");
-      sd.reprojMat->set(osg::Matrix::identity());
+      cd.size = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "size");
+      cd.reprojMat = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "ReprojectionMatrix");
+      cd.reprojMat->set(osg::Matrix::identity());
       stateSet->addUniform(colSampler);
       stateSet->addUniform(depSampler);
-      stateSet->addUniform(sd.size);
-      stateSet->addUniform(sd.reprojMat);
+      stateSet->addUniform(cd.size);
+      stateSet->addUniform(cd.reprojMat);
 
       stateSet->setAttribute(new osg::Point( m_pointSize ), osg::StateAttribute::ON); 
 
@@ -1169,41 +1174,41 @@ void VncClient::createGeometry(VncClient::ScreenData &sd)
             );
       stateSet->setAttributeAndModes(reprojProgramObj, osg::StateAttribute::ON);
 
-      sd.reprojGeo->setStateSet(stateSet);
+      cd.reprojGeo->setStateSet(stateSet);
    }
 
-   sd.geode = geometryNode;
+   cd.geode = geometryNode;
 }
 
 
-void VncClient::initScreenData(VncClient::ScreenData &sd) {
+void VncClient::initChannelData(VncClient::ChannelData &cd) {
 
-   sd.camera = coVRConfig::instance()->screens[sd.screenNum].camera;
+   cd.camera = coVRConfig::instance()->channels[cd.channelNum].camera;
 
-   sd.colorTex = new osg::TextureRectangle;
-   sd.colorTex->setImage(new osg::Image());
-   sd.colorTex->setInternalFormat( GL_RGBA ); 
-   sd.colorTex->setBorderWidth( 0 ); 
-   sd.colorTex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST ); 
-   sd.colorTex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST ); 
+   cd.colorTex = new osg::TextureRectangle;
+   cd.colorTex->setImage(new osg::Image());
+   cd.colorTex->setInternalFormat( GL_RGBA );
+   cd.colorTex->setBorderWidth( 0 );
+   cd.colorTex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
+   cd.colorTex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
 
-   sd.depthTex = new osg::TextureRectangle;
-   sd.depthTex->setImage(new osg::Image());
-   sd.depthTex->setInternalFormat( GL_DEPTH_COMPONENT ); 
-   sd.depthTex->setBorderWidth( 0 ); 
-   sd.depthTex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST ); 
-   sd.depthTex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST ); 
+   cd.depthTex = new osg::TextureRectangle;
+   cd.depthTex->setImage(new osg::Image());
+   cd.depthTex->setInternalFormat( GL_DEPTH_COMPONENT );
+   cd.depthTex->setBorderWidth( 0 );
+   cd.depthTex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
+   cd.depthTex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
 
-   createGeometry(sd);
+   createGeometry(cd);
 
    //std::cout << "vp: " << vp->width() << "," << vp->height() << std::endl;
 
    osg::MatrixTransform *imageMat = new osg::MatrixTransform();
    imageMat->setMatrix(osg::Matrix::identity());
-   imageMat->addChild(sd.geode);
+   imageMat->addChild(cd.geode);
    imageMat->setName("VncClient_imageMat");
 
-   sd.scene = imageMat;
+   cd.scene = imageMat;
 }
 
 //! called after plug-in is loaded and scenegraph is initialized
@@ -1261,34 +1266,34 @@ bool VncClient::init()
    m_deferredFrames = 0;
    m_waitForDecode = false;
 
-   m_screenBase = 0;
+   m_channelBase = 0;
 
    const int numScreens = coVRConfig::instance()->numScreens();
    m_numViews = numScreens;
    for (int i=0; i<numScreens; ++i) {
-       if (coVRConfig::instance()->screens[i].stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
+       if (coVRConfig::instance()->channels[i].stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
           ++m_numViews;
        }
    }
    if (coVRMSController::instance()->isMaster()) {
       coVRMSController::SlaveData sd(sizeof(m_numViews));
       coVRMSController::instance()->readSlaves(&sd);
-      int screenBase = m_numViews;
+      int channelBase = m_numViews;
       for (int i=0; i<coVRMSController::instance()->getNumSlaves(); ++i) {
          int *p = static_cast<int *>(sd.data[i]);
          int n = *p;
-         m_numScreens.push_back(n);
-         *p = screenBase;
-         screenBase += n;
+         m_numChannels.push_back(n);
+         *p = channelBase;
+         channelBase += n;
       }
       coVRMSController::instance()->sendSlaves(sd);
    } else {
       coVRMSController::instance()->sendMaster(&m_numViews, sizeof(m_numViews));
-      coVRMSController::instance()->readMaster(&m_screenBase, sizeof(m_screenBase));
+      coVRMSController::instance()->readMaster(&m_channelBase, sizeof(m_channelBase));
    }
 
-   std::cerr << "numScreens: " << numScreens << ", m_screenBase: " << m_screenBase << std::endl;
-   std::cerr << "numViews: " << m_numViews << ", m_screenBase: " << m_screenBase << std::endl;
+   std::cerr << "numScreens: " << numScreens << ", m_channelBase: " << m_channelBase << std::endl;
+   std::cerr << "numViews: " << m_numViews << ", m_channelBase: " << m_channelBase << std::endl;
 
    m_remoteCam = new osg::Camera;
    m_remoteCam->setAllowEventFocus(false);
@@ -1306,21 +1311,21 @@ bool VncClient::init()
    //m_remoteCam->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    m_remoteCam->setClearMask(0);
 
-   //int win = coVRConfig::instance()->screens[0].window;
+   //int win = coVRConfig::instance()->channels[0].window;
    //m_remoteCam->setGraphicsContext(coVRConfig::instance()->windows[win].window);
    // draw subgraph after main camera view.
    m_remoteCam->setRenderOrder(osg::Camera::POST_RENDER, 30);
    //m_remoteCam->setRenderer(new osgViewer::Renderer(m_remoteCam.get()));
 
    for (int i=0; i<numScreens; ++i) {
-      m_screenData.push_back(ScreenData(i));
-      initScreenData(m_screenData.back());
-      m_remoteCam->addChild(m_screenData.back().scene);
-      if (coVRConfig::instance()->screens[i].stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
-	 m_screenData.push_back(ScreenData(i));
-         m_screenData.back().second = true;
-	 initScreenData(m_screenData.back());
-	 m_remoteCam->addChild(m_screenData.back().scene);
+      m_channelData.push_back(ChannelData(i));
+      initChannelData(m_channelData.back());
+      m_remoteCam->addChild(m_channelData.back().scene);
+      if (coVRConfig::instance()->channels[i].stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
+    m_channelData.push_back(ChannelData(i));
+         m_channelData.back().second = true;
+    initChannelData(m_channelData.back());
+    m_remoteCam->addChild(m_channelData.back().scene);
       }
    }
 
@@ -1356,13 +1361,13 @@ VncClient::~VncClient()
 
 void VncClient::switchReprojection(bool reproj) {
 
-   for (int i=0; i<m_screenData.size(); ++i) {
-      m_screenData[i].geode->removeDrawable(m_screenData[i].fixedGeo);
-      m_screenData[i].geode->removeDrawable(m_screenData[i].reprojGeo);
+   for (int i=0; i<m_channelData.size(); ++i) {
+      m_channelData[i].geode->removeDrawable(m_channelData[i].fixedGeo);
+      m_channelData[i].geode->removeDrawable(m_channelData[i].reprojGeo);
       if (reproj) {
-         m_screenData[i].geode->addDrawable(m_screenData[i].reprojGeo);
+         m_channelData[i].geode->addDrawable(m_channelData[i].reprojGeo);
       } else {
-         m_screenData[i].geode->addDrawable(m_screenData[i].fixedGeo);
+         m_channelData[i].geode->addDrawable(m_channelData[i].fixedGeo);
       }
    }
 }
@@ -1370,8 +1375,8 @@ void VncClient::switchReprojection(bool reproj) {
 void VncClient::setPointSize(float sz) {
 
    m_pointSize = sz;
-   for (int i=0; i<m_screenData.size(); ++i) {
-      osg::Geometry *geo = m_screenData[i].reprojGeo;
+   for (int i=0; i<m_channelData.size(); ++i) {
+      osg::Geometry *geo = m_channelData[i].reprojGeo;
       osg::StateSet *stateSet = geo->getOrCreateStateSet();
       stateSet->setAttribute(new osg::Point( m_pointSize ), osg::StateAttribute::ON); 
       geo->setStateSet(stateSet);
@@ -1468,9 +1473,9 @@ VncClient::preFrame()
    int view=0;
    for (int i=0; i<numScreens; ++i) {
 
-      m_screenData[view].scene->setMatrix(osg::Matrix::identity());
+      m_channelData[view].scene->setMatrix(osg::Matrix::identity());
       fillMatricesMessage(messages[view], i, view, false);
-      if (coVRConfig::instance()->screens[i].stereoMode==osg::DisplaySettings::QUAD_BUFFER) {
+      if (coVRConfig::instance()->channels[i].stereoMode==osg::DisplaySettings::QUAD_BUFFER) {
          ++view;
 	 fillMatricesMessage(messages[view], i, view, true);
       }
@@ -1538,11 +1543,11 @@ VncClient::preFrame()
                coVRMSController::instance()->sendSlaves(tile.payload.get(), tile.msg->size);
             }
          } else {
-            int screenBase = coVRConfig::instance()->numScreens();
+            int channelBase = coVRConfig::instance()->numScreens();
             for (int s=0; s<coVRMSController::instance()->getNumSlaves(); ++s) {
-               int numScreens = m_numScreens[i];
+               int numScreens = m_numChannels[i];
                size_t sz = tile.msg->size;
-               if (tile.msg->viewNum < screenBase || tile.msg->viewNum >= screenBase+numScreens) {
+               if (tile.msg->viewNum < channelBase || tile.msg->viewNum >= channelBase+numScreens) {
                   //tile.msg->size = 0;
                }
                coVRMSController::instance()->sendSlave(s, tile.msg.get(), sizeof(*tile.msg));
@@ -1550,7 +1555,7 @@ VncClient::preFrame()
                   coVRMSController::instance()->sendSlave(s, tile.payload.get(), tile.msg->size);
                }
                tile.msg->size = sz;
-               screenBase += numScreens;
+               channelBase += numScreens;
             }
          }
          handleTileMessage(tile.msg, tile.payload);
@@ -1639,29 +1644,29 @@ VncClient::preFrame()
    const osg::Matrix &scale = cover->getObjectsScale()->getMatrix();
    int viewIdx = 0;
    for (int i=0; i<coVRConfig::instance()->numScreens(); ++i) {
-      ScreenData &sd = m_screenData[viewIdx];
-      const screenStruct &scr = coVRConfig::instance()->screens[i];
-      const bool left = scr.stereoMode == osg::DisplaySettings::LEFT_EYE;
-      const osg::Matrix &view = left ? scr.leftView : scr.rightView;
-      const osg::Matrix &proj = left ? scr.leftProj : scr.rightProj;
+      ChannelData &cd = m_channelData[viewIdx];
+      const channelStruct &chan = coVRConfig::instance()->channels[i];
+      const bool left = chan.stereoMode == osg::DisplaySettings::LEFT_EYE;
+      const osg::Matrix &view = left ? chan.leftView : chan.rightView;
+      const osg::Matrix &proj = left ? chan.leftProj : chan.rightProj;
 
       osg::Matrix cur = scale * transform * view * proj;
-      osg::Matrix old = sd.curScale * sd.curTransform * sd.curView * sd.curProj;
+      osg::Matrix old = cd.curScale * cd.curTransform * cd.curView * cd.curProj;
       osg::Matrix oldInv = osg::Matrix::inverse(old);
       osg::Matrix reproj = oldInv * cur;
       //reproj = osg::Matrix::identity();
-      sd.reprojMat->set(reproj);
+      cd.reprojMat->set(reproj);
 
-      if (scr.stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
+      if (chan.stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
          ++viewIdx;
-	 ScreenData &sd = m_screenData[viewIdx];
-	 const osg::Matrix &view = scr.leftView;
-	 const osg::Matrix &proj = scr.leftProj;
+    ChannelData &cd = m_channelData[viewIdx];
+    const osg::Matrix &view = chan.leftView;
+    const osg::Matrix &proj = chan.leftProj;
 	 osg::Matrix cur = scale * transform * view * proj;
-	 osg::Matrix old = sd.curScale * sd.curTransform * sd.curView * sd.curProj;
+    osg::Matrix old = cd.curScale * cd.curTransform * cd.curView * cd.curProj;
 	 osg::Matrix oldInv = osg::Matrix::inverse(old);
 	 osg::Matrix reproj = oldInv * cur;
-	 sd.reprojMat->set(reproj);
+    cd.reprojMat->set(reproj);
       }
       ++viewIdx;
    }

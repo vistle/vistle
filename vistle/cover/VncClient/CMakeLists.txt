@@ -46,5 +46,9 @@ set(SOURCES
 
 #use_openmp()
 
+if(NOT WIN32)
+   set_source_files_properties(VncClient.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
+endif(WIN32)
+
 cover_add_plugin(VncClient ${HEADER} ${SOURCES})
 target_link_libraries(VncClient vistle_rhr ${TURBOJPEG_LIBRARIES} ${LIBVNCSERVER_CLIENT_LIBRARY} ${TBB_LIBRARIES})

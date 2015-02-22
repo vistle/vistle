@@ -68,9 +68,9 @@ public:
 
    void sendFeedback(const char *info, const char *key, const char *data=NULL);
 
-   //! store data associated with one screen
-   struct ScreenData {
-      int screenNum;
+   //! store data associated with one channel
+   struct ChannelData {
+      int channelNum;
       bool second;
       osg::Matrix curProj, curView, curTransform, curScale;
       osg::Matrix newProj, newView, newTransform, newScale;
@@ -87,8 +87,8 @@ public:
       osg::ref_ptr<osg::MatrixTransform> scene;
       osg::ref_ptr<osg::Camera> camera;
 
-      ScreenData(int screen=-1)
-         : screenNum(screen)
+      ChannelData(int channel=-1)
+         : channelNum(channel)
          , second(false)
          , colorTex(NULL)
          , depthTex(NULL)
@@ -105,8 +105,8 @@ private:
    static VncClient *plugin;
 
    void switchReprojection(bool reproj);
-   void initScreenData(VncClient::ScreenData &sd);
-   void createGeometry(VncClient::ScreenData &sd);
+   void initChannelData(VncClient::ChannelData &cd);
+   void createGeometry(VncClient::ChannelData &cd);
    void setPointSize(float sz);
 
    osg::ref_ptr<osg::Camera> m_remoteCam;
@@ -121,7 +121,7 @@ private:
    size_t m_depthBytes, m_rgbBytes, m_depthBpp, m_numPixels;
    size_t m_depthBytesS, m_rgbBytesS, m_depthBppS, m_numPixelsS;
 
-   std::vector<ScreenData> m_screenData;
+   std::vector<ChannelData> m_channelData;
 
    int handleRfbMessages();
    bool connectClient();
@@ -129,7 +129,7 @@ private:
    void sendMatricesMessage(rfbClient *client, std::vector<matricesMsg> &messages, uint32_t requestNum);
    void sendLightsMessage(rfbClient *client);
    void sendApplicationMessage(rfbClient *client, int type, int length, const void *data);
-   void fillMatricesMessage(matricesMsg &msg, int screen, int view, bool second=false);
+   void fillMatricesMessage(matricesMsg &msg, int channel, int view, bool second=false);
 
    //! server connection
    rfbClient *m_client;
@@ -178,9 +178,9 @@ private:
    std::deque<TileMessage> m_receivedTiles;
    int m_lastTileAt;
 
-   int m_screenBase;
+   int m_channelBase;
    int m_numViews;
-   std::vector<int> m_numScreens;
+   std::vector<int> m_numChannels;
 
    coRowMenu *m_menu;
    coSubMenuItem *m_menuItem;
