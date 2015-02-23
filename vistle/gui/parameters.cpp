@@ -213,15 +213,10 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
       return;
 
    QtProperty *prop = nullptr;
-   bool insert = false;
    const auto &it = m_paramToProp.find(parameterName);
    if (it != m_paramToProp.end()) {
       prop = it->second;
-   } else {
-      insert = true;
    }
-
-   //std::cerr << "property " << parameterName.toStdString() << (insert?" to insert":"") << std::endl;
 
    if (auto ip = boost::dynamic_pointer_cast<vistle::IntParameter>(p)) {
       if (ip->presentation() == vistle::Parameter::Boolean) {
