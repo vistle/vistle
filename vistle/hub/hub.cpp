@@ -456,7 +456,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
       return true;
    }
 
-   bool mgr=false, ui=false, master=false, slave=false, handle=false;
+   bool mgr=false, ui=false, master=false, slave=false;
 
    bool track = Router::the().toTracker(msg, senderType);
    m_stateTracker.handle(msg, track);
@@ -493,8 +493,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    }
 
    if (Router::the().toHandler(msg, senderType)) {
-
-      handle=true;
 
       switch(msg.type()) {
 
