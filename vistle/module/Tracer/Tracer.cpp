@@ -258,6 +258,8 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
 
         return false;
     }
+
+    return false;
 }
 
 void Particle::PointsToLines(){
