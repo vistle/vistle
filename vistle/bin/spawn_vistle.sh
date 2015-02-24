@@ -3,7 +3,9 @@
 echo SPAWN "$@"
 
 if [ -n "$SLURM_JOB_ID" ]; then
-   exec mpiexec "$@"
+   export MV2_ENABLE_AFFINITY=0
+   exec mpiexec -bind-to none "$@"
+   #exec srun --overcommit "$@"
    #exec srun --overcommit --cpu_bind=no "$@"
 fi
 
