@@ -774,6 +774,11 @@ bool Hub::init(int argc, char *argv[]) {
 
 bool Hub::startCleaner() {
 
+   if (getenv("SLURM_JOB_ID")) {
+      CERR << "not starting under clean_vistle - running SLURM" << std::endl;
+      return false;
+   }
+
    // run clean_vistle on cluster
    std::string cmd = m_bindir + "/clean_vistle";
    std::vector<std::string> args;
