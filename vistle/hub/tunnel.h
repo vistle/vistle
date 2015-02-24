@@ -23,6 +23,7 @@ public:
    Tunnel(TunnelManager &tunnel, unsigned short listenPort,
          address destAddr, unsigned short destPort);
    ~Tunnel();
+   void cleanUp();
    const address &destAddr() const;
    unsigned short destPort() const;
 
@@ -48,13 +49,14 @@ class TunnelStream {
    ~TunnelStream();
    boost::shared_ptr<TunnelStream> self();
    void destroy();
+   void close();
 
  private:
    boost::shared_ptr<TunnelStream> m_self;
-   std::vector<char> m_buf[2];
+   std::vector<std::vector<char>> m_buf;
    std::vector<boost::shared_ptr<socket>> m_sock;
-   void handleRead(int sockIdx, boost::system::error_code ec, size_t length);
-   void handleWrite(int sockIdx, boost::system::error_code ec);
+   void handleRead(boost::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec, size_t length);
+   void handleWrite(boost::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec);
 };
 
 //! manage tunnel creation and destruction
@@ -70,6 +72,7 @@ class TunnelManager {
    io_service &io();
 
    bool processRequest(const message::RequestTunnel &msg);
+   void cleanUp();
 
  private:
    bool addTunnel(const message::RequestTunnel &msg);
