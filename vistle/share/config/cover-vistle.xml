@@ -90,13 +90,13 @@
 
     <ClipPlane value="on" />
 
-    <VncClient menu="true" value="on" rfbHost="visent.hlrs.de" rfbPort="31590" />
+    <VncClient menu="true" value="off" rfbHost="visent.hlrs.de" rfbPort="31590" />
     <!--
     <VncClient value="on" rfbHost="viscose.hlrs.de" >
     </VncClient>
     -->
 
-    <AKToolbar value="on">
+    <AKToolbar menu="on">
      <Attachment value="TOP" />
      <Scale value=".8" />
      <MinClickTime value="0.2" />
@@ -119,24 +119,36 @@
    <FPS value="false" />
 
    <PipeConfig>
-    <Pipe display="not needed any more" server="0" screen="0" name="0" />
+    <Pipe useDISPLAY="on" />
    </PipeConfig>
 
    <ChannelConfig>
     <Channel width="1" height="1" left="0" bottom="0" comment="MAIN" channel="0" stereoMode="NONE"  windowIndex="0"  name="0"  />
-    <Channel width="1" height="1" left="0" bottom="0" comment="MAIN2" channel="1" stereoMode="NONE"  windowIndex="1"  name="1"  />
+    <Channel width="1" height="1" left="0" bottom="0" comment="MAIN2" channel="l" stereoMode="NONE"  windowIndex="1"  name="1"  />
+    <Channel width="1" height="1" left="0" bottom="0" comment="MAIN3" channel="2" stereoMode="NONE"  windowIndex="2"  name="2"  />
+    <Channel width="1" height="1" left="0" bottom="0" comment="MAIN4" channel="3" stereoMode="NONE"  windowIndex="3"  name="3"  />
+    <Channel width="1" height="1" left="0" bottom="0" comment="MAIN5" channel="4" stereoMode="NONE"  windowIndex="4"  name="4"  />
+    <Channel width="1" height="1" left="0" bottom="0" comment="MAIN6" channel="5" stereoMode="NONE"  windowIndex="5"  name="5"  />
    </ChannelConfig>
             
    <WindowConfig>
-    <Window width="1440" comment="FRONT" window="0" pipeIndex="0" height="1440" left="100" bottom="0" name="0" decoration="false" />
-    <Window width="1024" comment="FRONT2" window="1" pipeIndex="0" height="768" left="1024" bottom="0" name="1" decoration="true" />
+    <Window width="700" comment="FRONT" window="0" pipeIndex="0" height="700" left="60" bottom="0" name="0" decoration="true" />
+    <Window width="700" comment="FRONT2" window="1" pipeIndex="0" height="700" left="780" bottom="0" name="1" decoration="true" />
+    <Window width="700" comment="FRONT3" window="2" pipeIndex="0" height="700" left="1500" bottom="0" name="2" decoration="true" />
+    <Window width="700" comment="FRONT4" window="3" pipeIndex="0" height="700" left="60" bottom="720" name="3" decoration="true" />
+    <Window width="700" comment="FRONT5" window="4" pipeIndex="0" height="700" left="780" bottom="720" name="4" decoration="true" />
+    <Window width="700" comment="FRONT6" window="5" pipeIndex="0" height="700" left="1500" bottom="720" name="5" decoration="true" />
    </WindowConfig>
 
    <NumScreens value="1" />
    <ScreenConfig>
    <!--Screen value="FRONT 400 300 0 0 0 0.0 0.0 0.0" name="0" screen="0" /-->
    <Screen width="2000" comment="FRONT" h="0.0" originX="0" originY="0" originZ="0" height="2000" p="0.0" r="0.0" name="0" screen="0" />
-   <Screen width="2000" comment="FRONT2" h="0.0" originX="2000" originY="0" originZ="0" height="1500" p="0.0" r="0.0" name="1" screen="1" />
+   <Screen width="2000" comment="FRONT2" h="0.0" originX="2000" originY="0" originZ="0" height="2000" p="0.0" r="0.0" name="1" screen="1" />
+   <Screen width="2000" comment="FRONT3" h="0.0" originX="4000" originY="0" originZ="0" height="2000" p="0.0" r="0.0" name="2" screen="2" />
+   <Screen width="2000" comment="FRONT4" h="0.0" originX="0" originY="0" originZ="-2000" height="2000" p="0.0" r="0.0" name="3" screen="3" />
+   <Screen width="2000" comment="FRONT5" h="0.0" originX="2000" originY="0" originZ="-2000" height="2000" p="0.0" r="0.0" name="4" screen="4" />
+   <Screen width="2000" comment="FRONT6" h="0.0" originX="4000" originY="0" originZ="-2000" height="2000" p="0.0" r="0.0" name="5" screen="5" />
    </ScreenConfig>
 
    <!--Background r="1.0" g="1.0" b="1.0"/-->
