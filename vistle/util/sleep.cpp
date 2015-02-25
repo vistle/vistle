@@ -41,12 +41,14 @@ bool adaptive_wait(bool work, const void *client) {
 
    idle += delay;
 
-   if (delay < Sec) {
-      //std::cerr << "usleep " << delay << std::endl;
-      usleep(delay);
-   } else {
-      sleep(delay/Sec);
-      //std::cerr << "sleep " << delay/Sec << std::endl;
+   if (idle > delay) {
+      if (delay < Sec) {
+         //std::cerr << "usleep " << delay << std::endl;
+         usleep(delay);
+      } else {
+         sleep(delay/Sec);
+         //std::cerr << "sleep " << delay/Sec << std::endl;
+      }
    }
 
    return true;

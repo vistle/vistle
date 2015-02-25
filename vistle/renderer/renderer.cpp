@@ -73,7 +73,7 @@ bool Renderer::dispatch() {
 
       MPI_Allreduce(&sync, &allsync, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
-      vistle::adaptive_wait(haveMessage || allsync);
+      //vistle::adaptive_wait(haveMessage || allsync);
 
       do {
          if (haveMessage) {
