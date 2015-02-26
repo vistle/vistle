@@ -196,15 +196,14 @@ bool IsoSurface::compute() {
 
    Object::ptr result = l.result();
    Object::ptr mapresult = l.mapresult();
-   if (result && !result->isEmpty()) {
+   if (result && mapresult) {
 #ifndef CUTTINGSURFACE
       result->copyAttributes(dataS);
 #endif
       result->copyAttributes(gridS, false);
       addObject("grid_out", result);
-      if(!Empty::as(mapresult)) {
+      if (mapdata)
          mapresult->copyAttributes(mapdata);
-      }
       addObject(m_mapDataOut, mapresult);
    }
    return true;

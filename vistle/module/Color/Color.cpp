@@ -6,6 +6,7 @@
 #include <core/object.h>
 #include <core/vec.h>
 #include <core/texture1d.h>
+#include <core/empty.h>
 
 #include "Color.h"
 

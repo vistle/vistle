@@ -584,7 +584,7 @@ bool CutGeometry::compute() {
       return false;
 
    Object::ptr object = cutGeometry(oin, point, normal);
-   if (object && !object->isEmpty()) {
+   if (object) {
       object->copyAttributes(oin);
       addObject("grid_out", object);
    }

@@ -17,7 +17,6 @@
 
 #include <core/paramvector.h>
 #include <core/object.h>
-#include <core/empty.h>
 #include <core/objectcache.h>
 #include <core/parameter.h>
 #include <core/port.h>

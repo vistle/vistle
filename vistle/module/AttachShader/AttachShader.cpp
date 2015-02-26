@@ -29,7 +29,7 @@ bool AttachShader::compute() {
    if (!obj)
       return false;
 
-   if (obj->isEmpty() || !m_shader->getValue().empty()) {
+   if (obj->isEmpty() || m_shader->getValue().empty()) {
       passThroughObject("data_out", obj);
    } else {
       Object::ptr nobj = obj->clone();

@@ -333,7 +333,7 @@ bool CuttingSurface::compute() {
          generateCuttingSurface(grid, data,
                                 normal, distance);
 
-   if (object.first && !object.first->isEmpty()) {
+   if (object.first) {
       object.first->copyAttributes(grid);
       addObject("grid_out", object.first);
 

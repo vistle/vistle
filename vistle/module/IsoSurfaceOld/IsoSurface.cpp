@@ -352,7 +352,7 @@ bool IsoSurface::compute() {
 
    Object::ptr object = generateIsoSurface(grid, data, isoValue);
 
-   if (object && !object->isEmpty()) {
+   if (object) {
       object->copyAttributes(data);
       object->copyAttributes(grid, false);
       addObject("grid_out", object);
