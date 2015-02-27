@@ -678,7 +678,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
 
       int destId = destPort->getModuleID();
 
-      message::AddObject a(destPort->getName(), obj);
+      message::AddObject a(addObj.getSenderPort(), destPort->getName(), obj);
       a.setSenderId(addObj.senderId());
       a.setUuid(addObj.uuid());
       a.setRank(addObj.rank());
@@ -720,7 +720,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
 
          if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
                || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
-            message::ObjectReceived recv(addObj.getPortName(), obj);
+            message::ObjectReceived recv(addObj.getSenderPort(), addObj.getPortName(), obj);
             recv.setUuid(addObj.uuid());
             recv.setSenderId(destId);
 

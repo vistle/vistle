@@ -195,13 +195,16 @@ protected:
    message::MessageQueue *receiveMessageQueue;
    bool handleMessage(const message::Message *message);
 
-   virtual bool addInputObject(const std::string & portName,
+   virtual bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,
                                Object::const_ptr object);
+   virtual bool objectAdded(int sender, const std::string &senderPort, const Port *port); //< notification when data object has been added - called on each rank individually
+
    bool syncMessageProcessing() const;
    void setSyncMessageProcessing(bool sync);
 
    bool isConnected(const Port *port) const;
    bool isConnected(const std::string &portname) const;
+   virtual void connectionRemoved(const Port *from, const Port *to);
 
    std::string getModuleName(int id) const;
 
@@ -233,8 +236,6 @@ protected:
 
    virtual bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName);
    virtual bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg);
-
-   virtual bool objectAdded(const Port *port); //< notification when data object has been added - called on each rank individually
 
    virtual bool compute() = 0; //< do processing - called on each rank individually
 

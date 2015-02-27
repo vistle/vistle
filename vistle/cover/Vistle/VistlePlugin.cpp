@@ -51,8 +51,8 @@ class OsgRenderer: public vistle::Renderer {
          vistle::Object::const_ptr colors,
          vistle::Object::const_ptr normals,
          vistle::Object::const_ptr texture);
-   bool addInputObject(const std::string & portName,
-         vistle::Object::const_ptr object);
+   bool addInputObject(int senderId, const std::string &senderPort, const std::string &portName,
+         vistle::Object::const_ptr object) override;
 
    osg::ref_ptr<osg::Group> vistleRoot;
 
@@ -61,8 +61,8 @@ class OsgRenderer: public vistle::Renderer {
    bool removeObject(VistleRenderObject *ro);
    void removeAllCreatedBy(int creator);
 
-   bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName);
-   bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg);
+   bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) override;
+   bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg) override;
 
    typedef std::map<int, VistleInteractor *> InteractorMap;
    InteractorMap m_interactorMap;
@@ -296,7 +296,7 @@ void OsgRenderer::addInputObject(vistle::Object::const_ptr container,
 }
 
 
-bool OsgRenderer::addInputObject(const std::string & portName,
+bool OsgRenderer::addInputObject(int senderId, const std::string &senderPort, const std::string & portName,
                                  vistle::Object::const_ptr object) {
 
 #if 0

@@ -37,7 +37,8 @@ struct RenderObjectData {
 
 struct RenderObject: public RenderObjectData {
 
-   RenderObject(vistle::Object::const_ptr container,
+   RenderObject(int senderId, const std::string &senderPort,
+         vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr colors,
          vistle::Object::const_ptr normals,
@@ -45,6 +46,8 @@ struct RenderObject: public RenderObjectData {
 
    ~RenderObject();
 
+   int senderId;
+   std::string senderPort;
    vistle::Object::const_ptr container;
    vistle::Object::const_ptr geometry;
    vistle::Object::const_ptr colors;

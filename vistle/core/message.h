@@ -382,15 +382,17 @@ BOOST_STATIC_ASSERT(sizeof(AddPort) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT AddObject: public Message {
 
  public:
-   AddObject(const std::string & portName,
+   AddObject(const std::string &senderPort, const std::string &portName,
              vistle::Object::const_ptr obj);
 
+   const char * getSenderPort() const;
    const char * getPortName() const;
    const char *objectName() const;
    const shm_handle_t & getHandle() const;
    Object::const_ptr takeObject() const;
 
  private:
+   port_name_t senderPort;
    port_name_t portName;
    shm_name_t m_name;
    const shm_handle_t handle;
@@ -401,14 +403,16 @@ BOOST_STATIC_ASSERT(sizeof(AddObject) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT ObjectReceived: public Message {
 
  public:
-   ObjectReceived(const std::string &portName,
+   ObjectReceived(const std::string &senderPort, const std::string &portName,
          vistle::Object::const_ptr obj);
+   const char * getSenderPort() const;
    const char *getPortName() const;
    const char *objectName() const;
    const Meta &meta() const;
    Object::Type objectType() const;
 
  private:
+   port_name_t senderPort;
    port_name_t portName;
    shm_name_t m_name;
    Meta m_meta;

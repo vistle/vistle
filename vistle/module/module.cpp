@@ -667,7 +667,7 @@ bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object) {
 
    vassert(object->check());
 
-   message::AddObject message(port->getName(), object);
+   message::AddObject message(port->getName(), port->getName(), object);
    sendMessageQueue->send(message);
    return true;
 }
@@ -804,7 +804,7 @@ Object::const_ptr Module::expect<Object>(Port *port) {
    return obj;
 }
 
-bool Module::addInputObject(const std::string & portName,
+bool Module::addInputObject(int sender, const std::string &senderPort, const std::string & portName,
                             Object::const_ptr object) {
 
    if (!object)
@@ -925,9 +925,13 @@ bool Module::parameterChanged(const int senderId, const std::string &name, const
    return false;
 }
 
-bool Module::objectAdded(const Port *port) {
+bool Module::objectAdded(int sender, const std::string &senderPort, const Port *port) {
 
    return true;
+}
+
+void Module::connectionRemoved(const Port *from, const Port *to) {
+
 }
 
 bool Module::dispatch() {
@@ -1182,6 +1186,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          Port *port = NULL;
          Port *other = NULL;
          const Port::PortSet *ports = NULL;
+         bool inputConnection = false;
          if (disc->getModuleA() == id()) {
             port = findOutputPort(disc->getPortAName());
             if (port) {
@@ -1191,6 +1196,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             
          } else if (disc->getModuleB() == id()) {
             port = findInputPort(disc->getPortBName());
+            inputConnection = true;
             if (port) {
                other = new Port(disc->getModuleA(), disc->getPortAName(), Port::OUTPUT);
                ports = &port->connections();
@@ -1198,6 +1204,11 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          }
 
          if (ports && port && other) {
+            if (inputConnection) {
+               connectionRemoved(other, port);
+            } else {
+               connectionRemoved(port, other);
+            }
             Port *p = port->removeConnection(other);
             delete other;
             delete p;
@@ -1303,13 +1314,13 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          const message::AddObject *add =
             static_cast<const message::AddObject *>(message);
-         addInputObject(add->getPortName(), add->takeObject());
+         addInputObject(add->senderId(), add->getSenderPort(), add->getPortName(), add->takeObject());
          const Port *p = findInputPort(add->getPortName());
          if (!p) {
             std::cerr << "unknown input port " << add->getPortName() << " in AddObject" << std::endl;
             return true;
          }
-         if (!objectAdded(p)) {
+         if (!objectAdded(add->senderId(), add->getSenderPort(), p)) {
             std::cerr << "error in objectAdded(" << add->getPortName() << ")" << std::endl;
             return false;
          }

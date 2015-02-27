@@ -361,7 +361,7 @@ Port *AddPort::getPort() const {
    return new Port(senderId(), m_name.data(), static_cast<Port::Type>(m_porttype), m_flags);
 }
 
-AddObject::AddObject(const std::string & p,
+AddObject::AddObject(const std::string &sender, const std::string & p,
                      vistle::Object::const_ptr obj)
 : Message(Message::ADDOBJECT, sizeof(AddObject))
 , m_name(obj->getName())
@@ -370,7 +370,13 @@ AddObject::AddObject(const std::string & p,
    // we keep the handle as a reference to obj
    obj->ref();
 
+   COPY_STRING(senderPort, sender);
    COPY_STRING(portName, p);
+}
+
+const char * AddObject::getSenderPort() const {
+
+   return senderPort.data();
 }
 
 const char * AddObject::getPortName() const {
@@ -396,7 +402,7 @@ Object::const_ptr AddObject::takeObject() const {
    return obj;
 }
 
-ObjectReceived::ObjectReceived(const std::string &p,
+ObjectReceived::ObjectReceived(const std::string &sender, const std::string &p,
       vistle::Object::const_ptr obj)
 : Message(Message::OBJECTRECEIVED, sizeof(ObjectReceived))
 , m_name(obj->getName())
@@ -406,12 +412,18 @@ ObjectReceived::ObjectReceived(const std::string &p,
 
    m_broadcast = true;
 
+   COPY_STRING(senderPort, sender);
    COPY_STRING(portName, p);
 }
 
 const Meta &ObjectReceived::meta() const {
 
    return m_meta;
+}
+
+const char *ObjectReceived::getSenderPort() const {
+
+   return senderPort.data();
 }
 
 const char *ObjectReceived::getPortName() const {

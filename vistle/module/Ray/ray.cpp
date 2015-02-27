@@ -72,16 +72,20 @@ class RayCaster: public vistle::Renderer {
    void updateBounds();
 
    // object lifetime management
-   void addInputObject(vistle::Object::const_ptr container,
+   void addInputObject(int sender, const std::string &senderPort,
+         vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr colors,
          vistle::Object::const_ptr normals,
          vistle::Object::const_ptr texture);
-   bool addInputObject(const std::string & portName,
-         vistle::Object::const_ptr object);
+   bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,
+         vistle::Object::const_ptr object) override;
+
+   void connectionRemoved(const Port *from, const Port *to) override;
 
    bool removeObject(RenderObject *ro);
    void removeAllCreatedBy(int creator);
+   void removeAllSentBy(int sender, const std::string &senderPort);
 
    std::vector<RenderObject *> instances;
 
@@ -1050,6 +1054,32 @@ void RayCaster::removeAllCreatedBy(int creator) {
 }
 
 
+void RayCaster::removeAllSentBy(int sender, const std::string &senderPort) {
+
+   std::vector<RenderObject *> toRemove;
+
+   for (RenderObject *ro: static_geometry) {
+      if (ro->senderId == sender && ro->senderPort == senderPort)
+         toRemove.push_back(ro);
+   }
+   for (size_t i=0; i<anim_geometry.size(); ++i) {
+      for (RenderObject *ro: anim_geometry[i]) {
+         if (ro->senderId == sender && ro->senderPort == senderPort)
+            toRemove.push_back(ro);
+      }
+   }
+   while(!toRemove.empty()) {
+      removeObject(toRemove.back());
+      toRemove.pop_back();
+   }
+}
+
+
+void RayCaster::connectionRemoved(const Port *from, const Port *to) {
+
+   removeAllSentBy(from->getModuleID(), from->getName());
+}
+
 void RayCaster::updateBounds() {
 
    const Scalar smax = std::numeric_limits<Scalar>::max();
@@ -1120,7 +1150,8 @@ bool RayCaster::removeObject(RenderObject *ro) {
 }
 
 
-void RayCaster::addInputObject(vistle::Object::const_ptr container,
+void RayCaster::addInputObject(int sender, const std::string &senderPort,
+                                 vistle::Object::const_ptr container,
                                  vistle::Object::const_ptr geometry,
                                  vistle::Object::const_ptr colors,
                                  vistle::Object::const_ptr normals,
@@ -1143,7 +1174,7 @@ void RayCaster::addInputObject(vistle::Object::const_ptr container,
    Creator &creator = it->second;
    creator.age = container->getExecutionCounter();
 
-   RenderObject *ro = new RenderObject(container, geometry, colors, normals, texture);
+   RenderObject *ro = new RenderObject(sender, senderPort, container, geometry, colors, normals, texture);
 
    int t = geometry->getTimestep();
    if (t < 0 && colors) {
@@ -1188,7 +1219,7 @@ void RayCaster::addInputObject(vistle::Object::const_ptr container,
 }
 
 
-bool RayCaster::addInputObject(const std::string & portName,
+bool RayCaster::addInputObject(int sender, const std::string &senderPort, const std::string & portName,
                                  vistle::Object::const_ptr object) {
 
 #if 0
@@ -1212,7 +1243,7 @@ bool RayCaster::addInputObject(const std::string & portName,
             << (geom->texture()?"T":".")
             << " ]" << std::endl;
 #endif
-         addInputObject(object, geom->geometry(), geom->colors(), geom->normals(),
+         addInputObject(sender, senderPort, object, geom->geometry(), geom->colors(), geom->normals(),
                         geom->texture());
 
          break;
@@ -1222,7 +1253,7 @@ bool RayCaster::addInputObject(const std::string & portName,
       default: {
          if (object->getType() == vistle::Object::PLACEHOLDER
                || true /*VistleGeometryGenerator::isSupported(object->getType())*/)
-            addInputObject(object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
+            addInputObject(sender, senderPort, object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
 
          break;
       }

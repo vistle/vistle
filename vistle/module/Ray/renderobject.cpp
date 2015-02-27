@@ -7,12 +7,15 @@
 
 using namespace vistle;
 
-RenderObject::RenderObject(Object::const_ptr container,
+RenderObject::RenderObject(int senderId, const std::string &senderPort,
+      Object::const_ptr container,
       Object::const_ptr geometry,
       Object::const_ptr colors,
       Object::const_ptr normals,
       Object::const_ptr texture)
-: container(container)
+: senderId(senderId)
+, senderPort(senderPort)
+, container(container)
 , geometry(geometry)
 , colors(colors)
 , normals(Normals::as(normals))
