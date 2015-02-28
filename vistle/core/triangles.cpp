@@ -10,7 +10,7 @@ Triangles::Triangles(const Index numCorners, const Index numVertices,
 
 bool Triangles::isEmpty() const {
 
-   return getNumCorners()==0;
+   return getNumCoords()==0;
 }
 
 bool Triangles::checkImpl() const {

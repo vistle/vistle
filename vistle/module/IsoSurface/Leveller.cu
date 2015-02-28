@@ -720,10 +720,6 @@ bool Leveller::process() {
          break;
       }
    }
-   m_triangles->cl().resize(totalNumVertices);
-   Index *out_cl = m_triangles->cl().data();
-   thrust::counting_iterator<Index> first(0), last(totalNumVertices);
-   thrust::copy(first, last, out_cl);
 
    return true;
 }

@@ -68,8 +68,12 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
 
    if (auto tri = Triangles::as(geometry)) {
 
-      geomId = rtcNewTriangleMesh(scene, RTC_GEOMETRY_STATIC, tri->getNumElements(), tri->getNumCoords());
-      //std::cerr << "Tri: #tri: " << tri->getNumElements() << ", #coord: " << tri->getNumCoords() << std::endl;
+      Index numElem = tri->getNumElements();
+      if (numElem == 0) {
+         numElem = tri->getNumCoords() / 3;
+      }
+      geomId = rtcNewTriangleMesh(scene, RTC_GEOMETRY_STATIC, numElem, tri->getNumCoords());
+      std::cerr << "Tri: #tri: " << tri->getNumElements() << ", #coord: " << tri->getNumCoords() << std::endl;
 
       Vertex* vertices = (Vertex*) rtcMapBuffer(scene,geomId,RTC_VERTEX_BUFFER);
       for (Index i=0; i<tri->getNumCoords(); ++i) {
@@ -92,13 +96,21 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
       }
       rtcUnmapBuffer(scene,geomId,RTC_VERTEX_BUFFER);
 
-      indexBuffer = new Triangle[tri->getNumElements()];
+      indexBuffer = new Triangle[numElem];
       rtcSetBuffer(scene, geomId, RTC_INDEX_BUFFER, indexBuffer, 0, sizeof(Triangle));
       Triangle* triangles = (Triangle*) rtcMapBuffer(scene,geomId,RTC_INDEX_BUFFER);
-      for (Index i=0; i<tri->getNumElements(); ++i) {
-         triangles[i].v0 = tri->cl()[i*3];
-         triangles[i].v1 = tri->cl()[i*3+1];
-         triangles[i].v2 = tri->cl()[i*3+2];
+      if (tri->getNumElements() == 0) {
+         for (Index i=0; i<numElem; ++i) {
+            triangles[i].v0 = i*3;
+            triangles[i].v1 = i*3+1;
+            triangles[i].v2 = i*3+2;
+         }
+      } else {
+         for (Index i=0; i<numElem; ++i) {
+            triangles[i].v0 = tri->cl()[i*3];
+            triangles[i].v1 = tri->cl()[i*3+1];
+            triangles[i].v2 = tri->cl()[i*3+2];
+         }
       }
       rtcUnmapBuffer(scene,geomId,RTC_INDEX_BUFFER);
    } else if (auto poly = Polygons::as(geometry)) {
