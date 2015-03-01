@@ -11,6 +11,8 @@
 #include <core/normals.h>
 #include <core/texture1d.h>
 
+#include <module/renderobject.h>
+
 static const int MaxPacketSize = 8;
 
 static const RTCAlgorithmFlags intersections = RTC_INTERSECT1|RTC_INTERSECT4|RTC_INTERSECT8;
@@ -35,28 +37,15 @@ struct RenderObjectData {
    vistle::Scalar *texCoords;
 };
 
-struct RenderObject: public RenderObjectData {
+struct RayRenderObject: public vistle::RenderObject, RenderObjectData {
 
-   RenderObject(int senderId, const std::string &senderPort,
+   RayRenderObject(int senderId, const std::string &senderPort,
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr colors,
          vistle::Object::const_ptr normals,
          vistle::Object::const_ptr texture);
 
-   ~RenderObject();
-
-   int senderId;
-   std::string senderPort;
-   vistle::Object::const_ptr container;
-   vistle::Object::const_ptr geometry;
-   vistle::Object::const_ptr colors;
-   vistle::Normals::const_ptr normals;
-   vistle::Texture1D::const_ptr texture;
-
-   vistle::Vector bMin, bMax;
-
-   bool hasSolidColor;
-   vistle::Vector4 solidColor;
+   ~RayRenderObject();
 };
 #endif

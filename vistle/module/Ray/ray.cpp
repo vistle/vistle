@@ -83,11 +83,11 @@ class RayCaster: public vistle::Renderer {
 
    void connectionRemoved(const Port *from, const Port *to) override;
 
-   bool removeObject(RenderObject *ro);
+   bool removeObject(RayRenderObject *ro);
    void removeAllCreatedBy(int creator);
    void removeAllSentBy(int sender, const std::string &senderPort);
 
-   std::vector<RenderObject *> instances;
+   std::vector<RayRenderObject *> instances;
 
    struct Creator {
       Creator(int id, const std::string &basename)
@@ -106,8 +106,8 @@ class RayCaster: public vistle::Renderer {
    typedef std::map<int, Creator> CreatorMap;
    CreatorMap creatorMap;
 
-   std::vector<RenderObject *> static_geometry;
-   std::vector<std::vector<RenderObject *>> anim_geometry;
+   std::vector<RayRenderObject *> static_geometry;
+   std::vector<std::vector<RayRenderObject *>> anim_geometry;
 
 
    int rayPacketSize;
@@ -630,7 +630,7 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
       if (rc.m_doShade) {
 
          vassert(ray.instID < rc.instances.size());
-         const RenderObject *ro = rc.instances[ray.instID];
+         const RayRenderObject *ro = rc.instances[ray.instID];
          vassert(ro->geomId == ray.geomID);
 
          Vector4 color = rc.m_defaultColor;
@@ -1035,14 +1035,14 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
 
 void RayCaster::removeAllCreatedBy(int creator) {
 
-   std::vector<RenderObject *> toRemove;
+   std::vector<RayRenderObject *> toRemove;
 
-   for (RenderObject *ro: static_geometry) {
+   for (RayRenderObject *ro: static_geometry) {
       if (ro->container->getCreator() == creator)
          toRemove.push_back(ro);
    }
    for (size_t i=0; i<anim_geometry.size(); ++i) {
-      for (RenderObject *ro: anim_geometry[i]) {
+      for (RayRenderObject *ro: anim_geometry[i]) {
          if (ro->container->getCreator() == creator)
             toRemove.push_back(ro);
       }
@@ -1056,14 +1056,14 @@ void RayCaster::removeAllCreatedBy(int creator) {
 
 void RayCaster::removeAllSentBy(int sender, const std::string &senderPort) {
 
-   std::vector<RenderObject *> toRemove;
+   std::vector<RayRenderObject *> toRemove;
 
-   for (RenderObject *ro: static_geometry) {
+   for (RayRenderObject *ro: static_geometry) {
       if (ro->senderId == sender && ro->senderPort == senderPort)
          toRemove.push_back(ro);
    }
    for (size_t i=0; i<anim_geometry.size(); ++i) {
-      for (RenderObject *ro: anim_geometry[i]) {
+      for (RayRenderObject *ro: anim_geometry[i]) {
          if (ro->senderId == sender && ro->senderPort == senderPort)
             toRemove.push_back(ro);
       }
@@ -1085,7 +1085,7 @@ void RayCaster::updateBounds() {
    const Scalar smax = std::numeric_limits<Scalar>::max();
    Vector3 min(smax, smax, smax), max(-smax, -smax, -smax);
 
-   for (RenderObject *ro: static_geometry) {
+   for (RayRenderObject *ro: static_geometry) {
       for (int i=0; i<3; ++i) {
          if (ro->bMin[i] < min[i])
             min[i] = ro->bMin[i];
@@ -1094,7 +1094,7 @@ void RayCaster::updateBounds() {
       }
    }
    for (int ts=0; ts<anim_geometry.size(); ++ts) {
-      for (RenderObject *ro: anim_geometry[ts]) {
+      for (RayRenderObject *ro: anim_geometry[ts]) {
          for (int i=0; i<3; ++i) {
             if (ro->bMin[i] < min[i])
                min[i] = ro->bMin[i];
@@ -1118,7 +1118,7 @@ void RayCaster::updateBounds() {
 }
 
 
-bool RayCaster::removeObject(RenderObject *ro) {
+bool RayCaster::removeObject(RayRenderObject *ro) {
 
    instances[ro->instId] = nullptr;
 
@@ -1174,7 +1174,7 @@ void RayCaster::addInputObject(int sender, const std::string &senderPort,
    Creator &creator = it->second;
    creator.age = container->getExecutionCounter();
 
-   RenderObject *ro = new RenderObject(sender, senderPort, container, geometry, colors, normals, texture);
+   RayRenderObject *ro = new RayRenderObject(sender, senderPort, container, geometry, colors, normals, texture);
 
    int t = geometry->getTimestep();
    if (t < 0 && colors) {

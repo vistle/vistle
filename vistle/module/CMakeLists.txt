@@ -1,12 +1,14 @@
 set(module_SOURCES
    module.cpp
    renderer.cpp
+   renderobject.cpp
 )
 
 set(module_HEADERS
    export.h
    module.h
    renderer.h
+   renderobject.h
 )
 
 use_openmp()

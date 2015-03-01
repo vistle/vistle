@@ -7,21 +7,13 @@
 
 using namespace vistle;
 
-RenderObject::RenderObject(int senderId, const std::string &senderPort,
+RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       Object::const_ptr container,
       Object::const_ptr geometry,
       Object::const_ptr colors,
       Object::const_ptr normals,
       Object::const_ptr texture)
-: senderId(senderId)
-, senderPort(senderPort)
-, container(container)
-, geometry(geometry)
-, colors(colors)
-, normals(Normals::as(normals))
-, texture(Texture1D::as(texture))
-, hasSolidColor(false)
-, solidColor(0., 0., 0., 0.)
+: vistle::RenderObject(senderId, senderPort, container, geometry, colors, normals, texture)
 {
    t = -1;
    geomId = RTC_INVALID_GEOMETRY_ID;
@@ -36,35 +28,7 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
       texCoords = this->texture->coords().data();
    }
 
-   const Scalar smax = std::numeric_limits<Scalar>::max();
-   bMin = Vector(smax, smax, smax);
-   bMax = Vector(-smax, -smax, -smax);
-
    scene = rtcNewScene(RTC_SCENE_STATIC|sceneFlags, intersections);
-
-   if (geometry && geometry->hasAttribute("_color")) {
-
-      std::stringstream str(geometry->getAttribute("_color"));
-      char ch;
-      str >> ch;
-      if (ch == '#') {
-         str << std::hex;
-         unsigned long c = 0xffffffffL;
-         str >> c;
-         if (c > 0x00ffffffL) {
-            c = 0x00ffffffL;
-         }
-         float b = (c & 0xffL);
-         c >>= 8;
-         float g = (c & 0xffL);
-         c >>= 8;
-         float r = (c & 0xffL);
-         c >>= 8;
-
-         hasSolidColor = true;
-         solidColor = Vector4(r, g, b, 255.f);
-      }
-   }
 
    if (auto tri = Triangles::as(geometry)) {
 
@@ -80,19 +44,6 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
          vertices[i].x = tri->x()[i];
          vertices[i].y = tri->y()[i];
          vertices[i].z = tri->z()[i];
-
-         if (vertices[i].x < bMin[0])
-            bMin[0] = vertices[i].x;
-         if (vertices[i].y < bMin[1])
-            bMin[1] = vertices[i].y;
-         if (vertices[i].z < bMin[2])
-            bMin[2] = vertices[i].z;
-         if (vertices[i].x > bMax[0])
-            bMax[0] = vertices[i].x;
-         if (vertices[i].y > bMax[1])
-            bMax[1] = vertices[i].y;
-         if (vertices[i].z > bMax[2])
-            bMax[2] = vertices[i].z;
       }
       rtcUnmapBuffer(scene,geomId,RTC_VERTEX_BUFFER);
 
@@ -126,19 +77,6 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
          vertices[i].x = poly->x()[i];
          vertices[i].y = poly->y()[i];
          vertices[i].z = poly->z()[i];
-
-         if (vertices[i].x < bMin[0])
-            bMin[0] = vertices[i].x;
-         if (vertices[i].y < bMin[1])
-            bMin[1] = vertices[i].y;
-         if (vertices[i].z < bMin[2])
-            bMin[2] = vertices[i].z;
-         if (vertices[i].x > bMax[0])
-            bMax[0] = vertices[i].x;
-         if (vertices[i].y > bMax[1])
-            bMax[1] = vertices[i].y;
-         if (vertices[i].z > bMax[2])
-            bMax[2] = vertices[i].z;
       }
       rtcUnmapBuffer(scene,geomId,RTC_VERTEX_BUFFER);
 
@@ -172,7 +110,7 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
    rtcCommit(scene);
 }
 
-RenderObject::~RenderObject() {
+RayRenderObject::~RayRenderObject() {
 
    rtcDeleteScene(scene);
    delete[] indexBuffer;
