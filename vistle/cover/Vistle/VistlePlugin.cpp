@@ -36,6 +36,25 @@ using namespace opencover;
 
 using namespace vistle;
 
+class PluginRenderObject: public vistle::RenderObject {
+
+ public:
+   PluginRenderObject(int senderId, const std::string &senderPort,
+         vistle::Object::const_ptr container,
+         vistle::Object::const_ptr geometry,
+         vistle::Object::const_ptr normals,
+         vistle::Object::const_ptr colors,
+         vistle::Object::const_ptr texture)
+      : vistle::RenderObject(senderId, senderPort, container, geometry, normals, colors, texture)
+      {
+      }
+
+   ~PluginRenderObject() {
+   }
+
+   boost::shared_ptr<VistleRenderObject> coverRenderObject;
+};
+
 class OsgRenderer: public vistle::Renderer {
 
  public:
@@ -45,21 +64,15 @@ class OsgRenderer: public vistle::Renderer {
 
    bool compute();
    void render();
-
-   void addInputObject(vistle::Object::const_ptr container,
-         vistle::Object::const_ptr geometry,
-         vistle::Object::const_ptr colors,
-         vistle::Object::const_ptr normals,
-         vistle::Object::const_ptr texture);
-   bool addInputObject(int senderId, const std::string &senderPort, const std::string &portName,
-         vistle::Object::const_ptr object) override;
+   boost::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
+      vistle::Object::const_ptr container,
+      vistle::Object::const_ptr geometry,
+      vistle::Object::const_ptr normals,
+      vistle::Object::const_ptr colors,
+      vistle::Object::const_ptr texture) override;
+   void removeObject(boost::shared_ptr<vistle::RenderObject> ro) override;
 
    osg::ref_ptr<osg::Group> vistleRoot;
-
-   typedef std::map<std::string, VistleRenderObject *> ObjectMap;
-   ObjectMap objects;
-   bool removeObject(VistleRenderObject *ro);
-   void removeAllCreatedBy(int creator);
 
    bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) override;
    bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg) override;
@@ -68,12 +81,12 @@ class OsgRenderer: public vistle::Renderer {
    InteractorMap m_interactorMap;
 
    struct DelayedObject {
-      DelayedObject(VistleRenderObject *ro, VistleGeometryGenerator generator)
+      DelayedObject(boost::shared_ptr<PluginRenderObject> ro, VistleGeometryGenerator generator)
          : ro(ro)
          , generator(generator)
          , node_future(std::async(std::launch::async, generator))
       {}
-      VistleRenderObject *ro;
+      boost::shared_ptr<PluginRenderObject> ro;
       VistleGeometryGenerator generator;
       std::future<osg::Node *> node_future;
    };
@@ -83,8 +96,6 @@ class OsgRenderer: public vistle::Renderer {
    struct Creator {
       Creator(int id, const std::string &basename, osg::ref_ptr<osg::Group> parent)
       : id(id)
-      , age(0)
-      , interactor(nullptr)
       {
          std::stringstream s;
          s << basename << "_" << id;
@@ -104,9 +115,7 @@ class OsgRenderer: public vistle::Renderer {
          VRSceneGraph::instance()->addNode(root, parent, NULL);
       }
       int id;
-      int age;
       std::string name;
-      VistleInteractor *interactor;
       osg::ref_ptr<osg::Group> root;
       osg::ref_ptr<osg::Group> constant;
       osg::ref_ptr<osg::Sequence> animated;
@@ -114,6 +123,14 @@ class OsgRenderer: public vistle::Renderer {
    typedef std::map<int, Creator> CreatorMap;
    CreatorMap creatorMap;
 
+   Creator &getCreator(int id) {
+      auto it = creatorMap.find(id);
+      if (it == creatorMap.end()) {
+         std::string name = getModuleName(id);
+         it = creatorMap.insert(std::make_pair(id, Creator(id, name, vistleRoot))).first;
+      }
+      return it->second;
+   }
 };
 
 OsgRenderer::OsgRenderer(const std::string &shmname,
@@ -133,16 +150,6 @@ OsgRenderer::OsgRenderer(const std::string &shmname,
 }
 
 OsgRenderer::~OsgRenderer() {
-
-   for (std::map<std::string, VistleRenderObject *>::iterator it = objects.begin(), next=it;
-         it != objects.end();
-         it = next) {
-      next = it;
-      ++next;
-
-      VistleRenderObject *ro = it->second;
-      removeObject(ro);
-   }
 
    VRSceneGraph::instance()->deleteNode("VistlePlugin", true);
 }
@@ -192,33 +199,59 @@ bool OsgRenderer::parameterChanged(const int senderId, const std::string &name, 
    return true;
 }
 
-bool OsgRenderer::removeObject(VistleRenderObject *ro) {
-   if (!ro)
-      return false;
+void OsgRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> vro) {
+   auto pro = boost::static_pointer_cast<PluginRenderObject>(vro);
+   auto ro = pro->coverRenderObject;
+
+   if (!ro) {
+      std::cerr << "removeObject: no COVER render object" << std::endl;
+      return;
+   }
+
    if (!ro->isGeometry()) {
-      std::cerr << "Node is not geometry: " << ro->getName() << std::endl;
-      return false;
+      std::cerr << "removeObject: Node is not geometry: " << ro->getName() << std::endl;
+      return;
    }
 
-   std::string name = ro->getName();
-   std::map<std::string, VistleRenderObject *>::iterator it = objects.find(name);
-   if (it == objects.end()) {
-      std::cerr << "Did not find node for " << name << std::endl;
-      return false;
-   }
-
-   osg::Node *node = ro->node();
+   osg::ref_ptr<osg::Node> node = ro->node();
    if (node) {
       VRSceneGraph::instance()->deleteNode(ro->getName(), false);
+      Creator &cr= getCreator(pro->container->getCreator());
+      if (pro->timestep == -1) {
+         cr.constant->removeChild(node);
+      } else {
+         if (cr.animated->getNumChildren() > pro->timestep) {
+            osg::Group *gr = cr.animated->getChild(pro->timestep)->asGroup();
+            if (gr) {
+               gr->removeChild(node);
+               if (gr->getNumChildren() == 0) {
+                  bool removed = false;
+                  for (size_t i=cr.animated->getNumChildren()-1; i>0; --i) {
+                     osg::Group *g = cr.animated->getChild(i)->asGroup();
+                     if (!g)
+                        break;
+                     if (g->getNumChildren() > 0)
+                        break;
+                     cr.animated->removeChildren(i, 1);
+                     removed = true;
+                  }
+                  if (removed) {
+                     if (cr.animated->getNumChildren() > 0) {
+                        coVRAnimationManager::instance()->addSequence(cr.animated);
+                     } else {
+                        coVRAnimationManager::instance()->removeSequence(cr.animated);
+                     }
+                  }
+               }
+            }
+         }
+      }
       while (node->getNumParents() > 0) {
          osg::Group *parent = node->getParent(0);
          parent->removeChild(node);
       }
    }
-   delete ro;
-   objects.erase(it);
-
-   return true;
+   pro->coverRenderObject.reset();
 }
 
 bool OsgRenderer::compute() {
@@ -226,117 +259,31 @@ bool OsgRenderer::compute() {
    return true;
 }
 
-void OsgRenderer::removeAllCreatedBy(int creator) {
+boost::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const std::string &senderPort,
+      vistle::Object::const_ptr container,
+      vistle::Object::const_ptr geometry,
+      vistle::Object::const_ptr normals,
+      vistle::Object::const_ptr colors,
+      vistle::Object::const_ptr texture) {
 
-   for (ObjectMap::iterator next, it = objects.begin();
-         it != objects.end();
-         it = next) {
-
-      next = it;
-      ++next;
-      if (it->second->object()->getCreator() == creator) {
-         removeObject(it->second);
-      }
-   }
-
-   auto it = creatorMap.find(creator);
-   if (it != creatorMap.end()) {
-      Creator &cr = it->second;
-      coVRAnimationManager::instance()->removeSequence(cr.animated);
-      cr.animated->removeChildren(0, cr.animated->getNumChildren());
-   }
-}
-
-void OsgRenderer::addInputObject(vistle::Object::const_ptr container,
-                                 vistle::Object::const_ptr geometry,
-                                 vistle::Object::const_ptr colors,
-                                 vistle::Object::const_ptr normals,
-                                 vistle::Object::const_ptr texture) {
+   if (!container)
+      return nullptr;
+   if (!geometry)
+      return nullptr;
 
    int creatorId = container->getCreator();
-   CreatorMap::iterator it = creatorMap.find(creatorId);
-   if (it != creatorMap.end()) {
-      if (it->second.age < container->getExecutionCounter()) {
-         std::cerr << "removing all created by " << creatorId << ", age " << container->getExecutionCounter() << ", was " << it->second.age << std::endl;
-         removeAllCreatedBy(creatorId);
-      } else if (it->second.age > container->getExecutionCounter()) {
-         std::cerr << "received outdated object created by " << creatorId << ", age " << container->getExecutionCounter() << ", was " << it->second.age << std::endl;
-         return;
-      }
-   } else {
-      std::string name = getModuleName(container->getCreator());
-      it = creatorMap.insert(std::make_pair(creatorId, Creator(container->getCreator(), name, vistleRoot))).first;
-   }
-   Creator &creator = it->second;
-   creator.age = container->getExecutionCounter();
+   getCreator(creatorId);
 
-   if (objects.find(container->getName()) != objects.end()) {
-      std::cerr << "Object added twice: " << container->getName() << std::endl;
-      return;
-   }
+   if (geometry->getType() != vistle::Object::PLACEHOLDER && !VistleGeometryGenerator::isSupported(geometry->getType()))
+      return nullptr;
 
-   VistleRenderObject *ro = new VistleRenderObject(container);
-   ro->setGeometry(geometry);
-   ro->setColors(colors);
-   ro->setNormals(normals);
-   ro->setTexture(texture);
+   boost::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
+         container, geometry, normals, colors, texture));
 
-   int t = geometry->getTimestep();
-   if (t < 0 && colors) {
-      t = colors->getTimestep();
-   }
-   if (t < 0 && normals) {
-      t = normals->getTimestep();
-   }
-   if (t < 0 && texture) {
-      t = texture->getTimestep();
-   }
-   ro->setTimestep(t);
-   m_delayedObjects.push_back(DelayedObject(ro, VistleGeometryGenerator(geometry, colors, normals, texture)));
-}
+   pro->coverRenderObject.reset(new VistleRenderObject(pro));
+   m_delayedObjects.push_back(DelayedObject(pro, VistleGeometryGenerator(geometry, colors, normals, texture)));
 
-
-bool OsgRenderer::addInputObject(int senderId, const std::string &senderPort, const std::string & portName,
-                                 vistle::Object::const_ptr object) {
-
-#if 0
-   std::cout << "++++++OSGRenderer addInputObject " << object->getType()
-             << " creator " << object->getCreator()
-             << " exec " << object->getExecutionCounter()
-             << " block " << object->getBlock()
-             << " timestep " << object->getTimestep() << std::endl;
-#endif
-
-   switch (object->getType()) {
-      case vistle::Object::GEOMETRY: {
-
-         vistle::Geometry::const_ptr geom = vistle::Geometry::as(object);
-
-#if 0
-         std::cerr << "   Geometry: [ "
-            << (geom->geometry()?"G":".")
-            << (geom->colors()?"C":".")
-            << (geom->normals()?"N":".")
-            << (geom->texture()?"T":".")
-            << " ]" << std::endl;
-#endif
-         addInputObject(object, geom->geometry(), geom->colors(), geom->normals(),
-                        geom->texture());
-
-         break;
-      }
-
-      case vistle::Object::PLACEHOLDER:
-      default: {
-         if (object->getType() == vistle::Object::PLACEHOLDER
-               || VistleGeometryGenerator::isSupported(object->getType()))
-            addInputObject(object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
-
-         break;
-      }
-   }
-
-   return true;
+   return pro;
 }
 
 void OsgRenderer::render() {
@@ -370,17 +317,14 @@ void OsgRenderer::render() {
       auto &node_future = m_delayedObjects.front().node_future;
       auto &ro = m_delayedObjects.front().ro;
       osg::Node *node = node_future.get();
-      if (node) {
-         int creatorId = ro->object()->getCreator();
-         CreatorMap::iterator it = creatorMap.find(creatorId);
-         assert(it != creatorMap.end());
-         Creator &creator = it->second;
+      if (ro->coverRenderObject && node) {
+         int creatorId = ro->coverRenderObject->getCreator();
+         Creator &creator = getCreator(creatorId);
 
-         ro->setNode(node);
-         objects[ro->object()->getName()] = ro;
-         node->setName(ro->object()->getName());
+         ro->coverRenderObject->setNode(node);
+         node->setName(ro->coverRenderObject->getName());
          osg::ref_ptr<osg::Group> parent = creator.constant;
-         const int t = ro->timestep();
+         const int t = ro->timestep;
          if (t >= 0) {
             while (size_t(t) >= creator.animated->getNumChildren()) {
                creator.animated->addChild(new osg::Group);
@@ -389,10 +333,11 @@ void OsgRenderer::render() {
             assert(parent);
             coVRAnimationManager::instance()->addSequence(creator.animated);
          }
-         VRSceneGraph::instance()->addNode(ro->node(), parent, ro);
-      } else {
-         std::cerr << rank() << ": discarding delayed object " << ro->object()->getName() << ": no node created" << std::endl;
-         delete ro;
+         VRSceneGraph::instance()->addNode(node, parent, ro->coverRenderObject.get());
+      } else if (!ro->coverRenderObject) {
+         std::cerr << rank() << ": discarding delayed object - already deleted" << std::endl;
+      } else if (!node) {
+         std::cerr << rank() << ": discarding delayed object " << ro->coverRenderObject->getName() << ": no node created" << std::endl;
       }
       m_delayedObjects.pop_front();
    }

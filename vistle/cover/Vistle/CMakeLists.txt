@@ -19,5 +19,7 @@ include_directories(
         ${COVER_INCLUDE_DIRS}
 )
 
+add_definitions(-DCOVER_PLUGIN)
+
 cover_add_plugin(VistlePlugin ${HEADERS} ${SOURCES})
 target_link_libraries(VistlePlugin vistle_module vistle_boost_mpi)

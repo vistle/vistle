@@ -2,12 +2,14 @@ if(NOT OPENSCENEGRAPH_FOUND OR NOT OPENGL_FOUND)
     return()
 endif()
 
-add_module(OSGRenderer OSGRenderer.cpp OSGRenderer_vistle.cpp)
+add_module(OSGRenderer
+   OSGRenderer.cpp
+   ../../cover/Vistle/VistleGeometryGenerator.cpp
+   )
 
 if(WIN32)
 else(WIN32)
 set_source_files_properties(OSGRenderer.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
-set_source_files_properties(OSGRenderer_vistle.cpp PROPERTIES COMPILE_FLAGS "-Wno-overloaded-virtual")
 endif(WIN32)
 
 include_directories(
@@ -17,6 +19,7 @@ include_directories(
         ${OPENGL_INCLUDE_DIRS}
         ${ICET_INCLUDE_DIRS}
         ${PROJECT_SOURCE_DIR}
+        ../../cover/Vistle
 )
 
 target_link_libraries(OSGRenderer

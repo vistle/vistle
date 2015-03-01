@@ -10,12 +10,11 @@ using namespace vistle;
 RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       Object::const_ptr container,
       Object::const_ptr geometry,
-      Object::const_ptr colors,
       Object::const_ptr normals,
+      Object::const_ptr colors,
       Object::const_ptr texture)
-: vistle::RenderObject(senderId, senderPort, container, geometry, colors, normals, texture)
+: vistle::RenderObject(senderId, senderPort, container, geometry, normals, colors, texture)
 {
-   t = -1;
    geomId = RTC_INVALID_GEOMETRY_ID;
    instId = RTC_INVALID_GEOMETRY_ID;
    indexBuffer = nullptr;

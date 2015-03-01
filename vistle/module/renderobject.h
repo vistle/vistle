@@ -8,28 +8,33 @@
 #include <core/normals.h>
 #include <core/texture1d.h>
 
+#include "export.h"
+
 namespace vistle {
 
-class RenderObject {
+class V_MODULEEXPORT RenderObject {
 
  public:
    RenderObject(int senderId, const std::string &senderPort,
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
-         vistle::Object::const_ptr colors,
          vistle::Object::const_ptr normals,
+         vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture);
 
-   ~RenderObject();
+   virtual ~RenderObject();
 
+   int creatorId;
    int senderId;
    std::string senderPort;
+
    vistle::Object::const_ptr container;
    vistle::Object::const_ptr geometry;
-   vistle::Object::const_ptr colors;
    vistle::Normals::const_ptr normals;
+   vistle::Object::const_ptr colors;
    vistle::Texture1D::const_ptr texture;
 
+   int timestep;
    vistle::Vector bMin, bMax;
 
    bool hasSolidColor;

@@ -42,8 +42,8 @@ struct RayRenderObject: public vistle::RenderObject, RenderObjectData {
    RayRenderObject(int senderId, const std::string &senderPort,
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
-         vistle::Object::const_ptr colors,
          vistle::Object::const_ptr normals,
+         vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture);
 
    ~RayRenderObject();

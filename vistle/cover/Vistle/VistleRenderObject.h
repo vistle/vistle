@@ -8,6 +8,8 @@
 
 #include <osg/ref_ptr>
 #include <osg/Node>
+#include <module/renderobject.h>
+#include <boost/weak_ptr.hpp>
 
 namespace opencover {
 class coInteractor;
@@ -20,22 +22,22 @@ class BaseRenderObject: public opencover::RenderObject {
    ~BaseRenderObject();
 
    //XXX: hacks for Volume plugin and Tracer
-   bool isSet() const { return false; }
-   size_t getNumElements() const { return 0; }
-   RenderObject *getElement(size_t idx) const { return NULL; }
+   bool isSet() const override { return false; }
+   size_t getNumElements() const override { return 0; }
+   RenderObject *getElement(size_t idx) const override { return NULL; }
 
-   bool isUniformGrid() const { return false; }
-   void getSize(int &nx, int &ny, int &nz) const { nx = ny = nz = 0; }
+   bool isUniformGrid() const override { return false; }
+   void getSize(int &nx, int &ny, int &nz) const override { nx = ny = nz = 0; }
    void getMinMax(float &xmin, float &xmax,
          float &ymin, float &ymax,
-         float &zmin, float &zmax) const { xmin=xmax=ymin=ymax=zmin=zmax=0.; }
+         float &zmin, float &zmax) const override { xmin=xmax=ymin=ymax=zmin=zmax=0.; }
 
-   bool isVectors() const { return false; }
-   const unsigned char *getByte(opencover::Field::Id idx) const { return NULL; }
-   const int *getInt(opencover::Field::Id idx) const { return NULL; }
-   const float *getFloat(opencover::Field::Id idx) const { return NULL; }
+   bool isVectors() const override { return false; }
+   const unsigned char *getByte(opencover::Field::Id idx) const override { return NULL; }
+   const int *getInt(opencover::Field::Id idx) const override { return NULL; }
+   const float *getFloat(opencover::Field::Id idx) const override { return NULL; }
 
-   bool isUnstructuredGrid() const { return false; }
+   bool isUnstructuredGrid() const override { return false; }
 
 };
 
@@ -43,53 +45,39 @@ class BaseRenderObject: public opencover::RenderObject {
 class VistleRenderObject: public BaseRenderObject {
 
    public:
-   VistleRenderObject(const vistle::Object::const_ptr &geo);
+   VistleRenderObject(boost::shared_ptr<const vistle::RenderObject> ro);
+   VistleRenderObject(vistle::Object::const_ptr obj);
    ~VistleRenderObject();
 
-   const char *getName() const;
    void setNode(osg::Node *node);
    osg::Node *node() const;
-   vistle::Object::const_ptr object() const { return m_obj; }
+   boost::shared_ptr<const vistle::RenderObject> renderObject() const;
+   int getCreator() const;
 
-   bool isGeometry() const;
-   RenderObject *getGeometry() const;
-   RenderObject *getColors() const;
-   RenderObject *getNormals() const;
-   RenderObject *getTexture() const;
-   RenderObject *getVertexAttribute() const;
+   const char *getName() const override;
+   bool isGeometry() const override;
+   RenderObject *getGeometry() const override;
+   RenderObject *getColors() const override;
+   RenderObject *getNormals() const override;
+   RenderObject *getTexture() const override;
+   RenderObject *getVertexAttribute() const override;
 
-   void setGeometry(vistle::Object::const_ptr obj);
-   void setColors(vistle::Object::const_ptr obj);
-   void setNormals(vistle::Object::const_ptr obj);
-   void setTexture(vistle::Object::const_ptr obj);
-
-   const char *getAttribute(const char *) const;
-   size_t getNumAttributes() const;
-   const char *getAttributeName(size_t idx) const;
-   const char *getAttributeValue(size_t idx) const;
-
-   int timestep() const;
-   void setTimestep(int t);
+   const char *getAttribute(const char *) const override;
+   size_t getNumAttributes() const override;
+   const char *getAttributeName(size_t idx) const override;
+   const char *getAttributeValue(size_t idx) const override;
 
    protected:
 
+   boost::weak_ptr<const vistle::RenderObject> m_vistleRo;
+   vistle::Object::const_ptr m_obj;
+   osg::ref_ptr<osg::Node> m_node;
+
    mutable std::string m_name;
-
-      vistle::Object::const_ptr m_obj;
-
-      vistle::Object::const_ptr m_geo;
-      vistle::Object::const_ptr m_norm;
-      vistle::Object::const_ptr m_col;
-      vistle::Object::const_ptr m_tex;
-
-      osg::ref_ptr<osg::Node> m_node;
-
-      mutable opencover::RenderObject *m_roGeo;
-      mutable opencover::RenderObject *m_roCol;
-      mutable opencover::RenderObject *m_roNorm;
-      mutable opencover::RenderObject *m_roTex;
-
-   int m_timestep;
+   mutable opencover::RenderObject *m_roGeo;
+   mutable opencover::RenderObject *m_roCol;
+   mutable opencover::RenderObject *m_roNorm;
+   mutable opencover::RenderObject *m_roTex;
 };
 
 // pseudo RenderObject for handling module parameters

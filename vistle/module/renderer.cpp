@@ -2,6 +2,7 @@
 #include <core/messagequeue.h>
 #include <core/object.h>
 #include <core/placeholder.h>
+#include <core/geometry.h>
 
 #include "renderer.h"
 
@@ -209,6 +210,101 @@ bool Renderer::dispatch() {
    }
 
    return !quit;
+}
+
+
+bool Renderer::addInputObject(int sender, const std::string &senderPort, const std::string & portName,
+                                 vistle::Object::const_ptr object) {
+
+   int creatorId = object->getCreator();
+   CreatorMap::iterator it = m_creatorMap.find(creatorId);
+   if (it != m_creatorMap.end()) {
+      if (it->second.age < object->getExecutionCounter()) {
+         std::cerr << "removing all created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
+         removeAllCreatedBy(creatorId);
+      } else if (it->second.age > object->getExecutionCounter()) {
+         std::cerr << "received outdated object created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
+         return nullptr;
+      }
+   } else {
+      std::string name = getModuleName(object->getCreator());
+      it = m_creatorMap.insert(std::make_pair(creatorId, Creator(object->getCreator(), name))).first;
+   }
+   Creator &creator = it->second;
+   creator.age = object->getExecutionCounter();
+
+   boost::shared_ptr<RenderObject> ro;
+#if 0
+   std::cout << "++++++Renderer addInputObject " << object->getType()
+             << " creator " << object->getCreator()
+             << " exec " << object->getExecutionCounter()
+             << " block " << object->getBlock()
+             << " timestep " << object->getTimestep() << std::endl;
+#endif
+
+   switch (object->getType()) {
+      case vistle::Object::GEOMETRY: {
+
+         vistle::Geometry::const_ptr geom = vistle::Geometry::as(object);
+
+#if 0
+         std::cerr << "   Geometry: [ "
+            << (geom->geometry()?"G":".")
+            << (geom->colors()?"C":".")
+            << (geom->normals()?"N":".")
+            << (geom->texture()?"T":".")
+            << " ]" << std::endl;
+#endif
+         ro = addObject(sender, senderPort, object, geom->geometry(), geom->normals(), geom->colors(), geom->texture());
+
+         break;
+      }
+
+      case vistle::Object::PLACEHOLDER:
+      default: {
+         if (object->getType() == vistle::Object::PLACEHOLDER
+               || true /*VistleGeometryGenerator::isSupported(object->getType())*/)
+            ro = addObject(sender, senderPort, object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
+
+         break;
+      }
+   }
+
+   if (ro) {
+      m_objectList.push_back(ro);
+   }
+
+   return true;
+}
+
+void Renderer::connectionRemoved(const Port *from, const Port *to) {
+
+   removeAllSentBy(from->getModuleID(), from->getName());
+}
+
+void Renderer::removeObject(boost::shared_ptr<RenderObject> ro) {
+}
+
+void Renderer::removeAllCreatedBy(int creatorId) {
+
+   for (auto &ro: m_objectList) {
+      if (ro && ro->container && ro->container->getCreator() == creatorId) {
+         removeObject(ro);
+         ro.reset();
+      }
+   }
+   m_objectList.erase(std::remove_if(m_objectList.begin(), m_objectList.end(), [](boost::shared_ptr<vistle::RenderObject> ro) { return !ro; }), m_objectList.end());
+}
+
+void Renderer::removeAllSentBy(int sender, const std::string &senderPort) {
+
+   for (auto &ro: m_objectList) {
+      if (ro && ro->senderId == sender && ro->senderPort == senderPort) {
+         removeObject(ro);
+         ro.reset();
+      }
+   }
+   m_objectList.erase(std::remove_if(m_objectList.begin(), m_objectList.end(), [](boost::shared_ptr<vistle::RenderObject> ro) { return !ro; }), m_objectList.end());
 }
 
 } // namespace vistle

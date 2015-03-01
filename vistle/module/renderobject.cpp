@@ -15,9 +15,10 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
 , senderPort(senderPort)
 , container(container)
 , geometry(geometry)
-, colors(colors)
 , normals(Normals::as(normals))
+, colors(colors)
 , texture(Texture1D::as(texture))
+, timestep(-1)
 , hasSolidColor(false)
 , solidColor(0., 0., 0., 0.)
 {
@@ -60,6 +61,19 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
          }
       }
    }
+
+   if (geometry)
+      timestep = geometry->getTimestep();
+   if (timestep < 0 && colors) {
+      timestep = colors->getTimestep();
+   }
+   if (timestep < 0 && normals) {
+      timestep = normals->getTimestep();
+   }
+   if (timestep < 0 && texture) {
+      timestep = texture->getTimestep();
+   }
+
 }
 
 RenderObject::~RenderObject() {

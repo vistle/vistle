@@ -19,12 +19,26 @@ namespace vistle {
    class Object;
 }
 
+class OsgRenderObject: public vistle::RenderObject {
+
+ public:
+   OsgRenderObject(int senderId, const std::string &senderPort,
+         vistle::Object::const_ptr container,
+         vistle::Object::const_ptr geometry,
+         vistle::Object::const_ptr normals,
+         vistle::Object::const_ptr colors,
+         vistle::Object::const_ptr texture,
+         osg::ref_ptr<osg::Node> node);
+
+      osg::ref_ptr<osg::Node> node;
+};
+
 class TimestepHandler: public osgGA::GUIEventHandler {
 
 public:
    TimestepHandler();
 
-   void addObject(osg::Geode * geode, const int step);
+   void addObject(osg::Node * geode, const int step);
    bool handle(const osgGA::GUIEventAdapter & ea,
                osgGA::GUIActionAdapter & aa,
                osg::Object *obj,
@@ -36,7 +50,7 @@ public:
    int firstTimestep();
    int lastTimestep();
 
-   std::map<int, std::vector<osg::Geode *> *> timesteps;
+   std::map<int, std::vector<osg::Node *> *> timesteps;
 
    int timestep;
 };
@@ -50,13 +64,13 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
 
  private:
    bool compute();
-   void addInputObject(vistle::Object::const_ptr geometry,
-                       vistle::Object::const_ptr colors,
-                       vistle::Object::const_ptr normals,
-                       vistle::Object::const_ptr texture);
-
-   bool addInputObject(const std::string & portName,
-                       vistle::Object::const_ptr object);
+   boost::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
+         vistle::Object::const_ptr container,
+         vistle::Object::const_ptr geometry,
+         vistle::Object::const_ptr normals,
+         vistle::Object::const_ptr colors,
+         vistle::Object::const_ptr texture) override;
+   void removeObject(boost::shared_ptr<vistle::RenderObject> ro) override;
 
    void render();
    void distributeAndHandleEvents();
@@ -64,11 +78,12 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    void distributeProjectionMatrix();
    void resize(int x, int y, int w, int h);
 
-   osg::Group *scene;
-   std::map<std::string, osg::ref_ptr<osg::Geode> > nodes;
+   osg::ref_ptr<osg::Group> scene;
+   std::map<std::string, osg::ref_ptr<osg::Node> > nodes;
 
    osg::ref_ptr<osg::Material> material;
    osg::ref_ptr<osg::LightModel> lightModel;
+   osg::ref_ptr<osg::StateSet> defaultState;
 
    osg::ref_ptr<TimestepHandler> timesteps;
 

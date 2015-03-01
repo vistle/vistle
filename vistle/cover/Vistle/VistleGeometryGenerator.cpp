@@ -1,10 +1,6 @@
 #undef NDEBUG
 
 #include "VistleGeometryGenerator.h"
-#include <cover/RenderObject.h>
-#include <cover/VRSceneGraph.h>
-#include <cover/coVRShader.h>
-#include <PluginUtil/coSphere.h>
 
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -23,7 +19,13 @@
 #include <core/placeholder.h>
 #include <core/normals.h>
 
-using namespace opencover;
+#ifdef COVER_PLUGIN
+#include <cover/RenderObject.h>
+#include <cover/VRSceneGraph.h>
+#include <cover/coVRShader.h>
+#include <PluginUtil/coSphere.h>
+#endif
+
 using namespace vistle;
 
 std::mutex VistleGeometryGenerator::s_coverMutex;
@@ -47,7 +49,9 @@ bool VistleGeometryGenerator::isSupported(vistle::Object::Type t) {
       case vistle::Object::TRIANGLES:
       case vistle::Object::LINES:
       case vistle::Object::POLYGONS:
+#ifdef COVER_PLUGIN
       case vistle::Object::SPHERES:
+#endif
          return true;
 
       default:
@@ -55,7 +59,7 @@ bool VistleGeometryGenerator::isSupported(vistle::Object::Type t) {
    }
 }
 
-osg::Node *VistleGeometryGenerator::operator()() {
+osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defaultState) {
 
    if (!m_geo)
       return NULL;
@@ -88,7 +92,16 @@ osg::Node *VistleGeometryGenerator::operator()() {
 
    osg::Geode *geode = NULL;
    osg::ref_ptr<osg::Geometry> geom;
-   osg::ref_ptr<osg::StateSet> state = VRSceneGraph::instance()->loadDefaultGeostate();
+   osg::ref_ptr<osg::StateSet> state;
+   if (defaultState) {
+      state = new osg::StateSet(*defaultState);
+   } else {
+#ifdef COVER_PLUGIN
+      state = opencover::VRSceneGraph::instance()->loadDefaultGeostate();
+#else
+      state = new osg::StateSet;
+#endif
+   }
 
    switch (m_geo->getType()) {
 
@@ -136,6 +149,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          break;
       }
 
+#ifdef COVER_PLUGIN
       case vistle::Object::SPHERES: {
          vistle::Spheres::const_ptr spheres = vistle::Spheres::as(m_geo);
          const Index numVertices = spheres->getNumSpheres();
@@ -149,10 +163,10 @@ osg::Node *VistleGeometryGenerator::operator()() {
          const vistle::Scalar *y = &spheres->y()[0];
          const vistle::Scalar *z = &spheres->z()[0];
          const vistle::Scalar *r = &spheres->r()[0];
-         coSphere *sphere = new coSphere();
-         sphere->setRenderMethod(coSphere::RENDER_METHOD_CPU_BILLBOARDS);
+         opencover::coSphere *sphere = new opencover::coSphere();
+         sphere->setRenderMethod(opencover::coSphere::RENDER_METHOD_CPU_BILLBOARDS);
          sphere->setCoords(numVertices, x, y, z, r);
-         sphere->setColorBinding(Bind::OverAll);
+         sphere->setColorBinding(opencover::Bind::OverAll);
          float rgba[] = { 1., 0., 0., 1. };
          sphere->updateColors(&rgba[0], &rgba[1], &rgba[2], &rgba[3]);
 
@@ -162,6 +176,7 @@ osg::Node *VistleGeometryGenerator::operator()() {
          geode->addDrawable(sphere);
          break;
       }
+#endif
 
       case vistle::Object::TRIANGLES: {
 
@@ -419,12 +434,14 @@ osg::Node *VistleGeometryGenerator::operator()() {
          }
          escaped = false;
       }
+#ifdef COVER_PLUGIN
       if (!name.empty()) {
          s_coverMutex.lock();
-         coVRShader *shader = coVRShaderList::instance()->get(name, &parammap);
+         opencover::coVRShader *shader = opencover::coVRShaderList::instance()->get(name, &parammap);
          shader->apply(geode);
          s_coverMutex.unlock();
       }
+#endif
 
       if (geom)
          geom->setStateSet(state.get());

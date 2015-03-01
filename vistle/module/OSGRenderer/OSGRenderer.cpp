@@ -31,6 +31,7 @@
 
 #include <osgViewer/ViewerEventHandlers>
 
+#include <VistleGeometryGenerator.h>
 #include "OSGRenderer.h"
 
 MODULE_MAIN(OSGRenderer)
@@ -327,15 +328,15 @@ TimestepHandler::TimestepHandler()
 
 }
 
-void TimestepHandler::addObject(osg::Geode * geode, const int step) {
+void TimestepHandler::addObject(osg::Node * geode, const int step) {
 
-   std::vector<osg::Geode *> *vector = NULL;
-   std::map<int, std::vector<osg::Geode *> *>::iterator i =
+   std::vector<osg::Node *> *vector = NULL;
+   std::map<int, std::vector<osg::Node *> *>::iterator i =
       timesteps.find(step);
    if (i != timesteps.end())
       vector = i->second;
    else {
-      vector = new std::vector<osg::Geode *>;
+      vector = new std::vector<osg::Node *>;
       timesteps[step] = vector;
    }
 
@@ -347,11 +348,10 @@ void TimestepHandler::addObject(osg::Geode * geode, const int step) {
 
 bool TimestepHandler::setTimestepState(const int timestep, const int state) {
 
-   std::map<int, std::vector<osg::Geode *> *>:: iterator ts =
-      timesteps.find(timestep);
+   std::map<int, std::vector<osg::Node *> *>:: iterator ts = timesteps.find(timestep);
 
    if (ts != timesteps.end()) {
-      std::vector<osg::Geode *>::iterator i;
+      std::vector<osg::Node *>::iterator i;
       for (i = ts->second->begin(); i != ts->second->end(); i ++)
          (*i)->setNodeMask(state);
       return true;
@@ -493,7 +493,7 @@ OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, in
    if (size() != 1)
       getCamera()->setComputeNearFarMode(osgUtil::CullVisitor::DO_NOT_COMPUTE_NEAR_FAR);
 
-   getCamera()->setClearColor(osg::Vec4(1.0, 1.0, 1.0, 1.0));
+   getCamera()->setClearColor(osg::Vec4(0.0, 0.0, 0.0, 1.0));
    getCamera()->setViewMatrixAsLookAt(osg::Vec3d(2.0, -1.0, 1.0),
                                       osg::Vec3d(0.0, 0.0, -0.25),
                                       osg::Vec3d(0.0, 0.0, 1.0));
@@ -502,19 +502,14 @@ OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, in
 
    osg::ref_ptr<osg::Geode> geode = new osg::Geode();
 
-   osg::ref_ptr<osg::Image> vistleImage =
-      osgDB::readImageFile("../vistle.png");
-
-   osg::ref_ptr<osg::Texture2D> texture =
-      new osg::Texture2D(vistleImage.get());
+   osg::ref_ptr<osg::Image> vistleImage = osgDB::readImageFile("../../vistle.png");
+   osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D(vistleImage.get());
    texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
    texture->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
 
    osg::ref_ptr<osg::StateSet> stateSet = new osg::StateSet();
 
-   stateSet->setTextureAttributeAndModes(0, texture.get(),
-                                         osg::StateAttribute::ON);
-
+   stateSet->setTextureAttributeAndModes(0, texture.get(), osg::StateAttribute::ON);
    stateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 
    osg::ref_ptr<osg::BlendFunc> blend = new osg::BlendFunc();
@@ -570,9 +565,9 @@ OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, in
 
    addEventHandler(new osgGA::StateSetManipulator(getCamera()->getOrCreateStateSet()));
    addEventHandler(new osgViewer::ThreadingHandler);
-   //addEventHandler(new osgViewer::WindowSizeHandler);
-   //addEventHandler(new osgViewer::StatsHandler);
-   //addEventHandler(new osgViewer::HelpHandler);
+   addEventHandler(new osgViewer::WindowSizeHandler);
+   addEventHandler(new osgViewer::StatsHandler);
+   addEventHandler(new osgViewer::HelpHandler);
    addEventHandler(new HelpHandler(rank()));
 
    scene->addChild(proj.get());
@@ -593,6 +588,11 @@ OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, in
 
    lightModel = new osg::LightModel;
    lightModel->setTwoSided(true);
+
+   defaultState = new osg::StateSet;
+   defaultState->setAttributeAndModes(material.get(), osg::StateAttribute::ON);
+   defaultState->setAttributeAndModes(lightModel.get(), osg::StateAttribute::ON);
+   defaultState->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
 }
 
 OSGRenderer::~OSGRenderer() {
@@ -826,3 +826,46 @@ void OSGRenderer::render() {
 
    renderingTraversals();
 }
+
+bool OSGRenderer::compute() {
+   return true;
+}
+
+boost::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, const std::string &senderPort,
+            vistle::Object::const_ptr container,
+            vistle::Object::const_ptr geometry,
+            vistle::Object::const_ptr normals,
+            vistle::Object::const_ptr colors,
+            vistle::Object::const_ptr texture) {
+
+   boost::shared_ptr<vistle::RenderObject> ro;
+   VistleGeometryGenerator gen(geometry, normals, colors, texture);
+   if (VistleGeometryGenerator::isSupported(geometry->getType()) || geometry->getType() == vistle::Object::PLACEHOLDER) {
+      auto geode = gen(defaultState);
+
+      if (geode) {
+         ro.reset(new OsgRenderObject(senderId, senderPort, container, geometry, normals, colors, texture, geode));
+         timesteps->addObject(geode, ro->timestep);
+         scene->addChild(geode);
+         nodes[container->getName()] = geode;
+      }
+   }
+
+   return ro;
+}
+
+void OSGRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> ro) {
+}
+
+OsgRenderObject::OsgRenderObject(int senderId, const std::string &senderPort,
+         vistle::Object::const_ptr container,
+         vistle::Object::const_ptr geometry,
+         vistle::Object::const_ptr normals,
+         vistle::Object::const_ptr colors,
+         vistle::Object::const_ptr texture,
+         osg::ref_ptr<osg::Node> node)
+: vistle::RenderObject(senderId, senderPort, container, geometry, normals, colors, texture)
+, node(node)
+{
+}
+

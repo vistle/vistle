@@ -72,42 +72,19 @@ class RayCaster: public vistle::Renderer {
    void updateBounds();
 
    // object lifetime management
-   void addInputObject(int sender, const std::string &senderPort,
+   boost::shared_ptr<RenderObject> addObject(int sender, const std::string &senderPort,
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
-         vistle::Object::const_ptr colors,
          vistle::Object::const_ptr normals,
-         vistle::Object::const_ptr texture);
-   bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,
-         vistle::Object::const_ptr object) override;
+         vistle::Object::const_ptr colors,
+         vistle::Object::const_ptr texture) override;
 
-   void connectionRemoved(const Port *from, const Port *to) override;
+   void removeObject(boost::shared_ptr<RenderObject> ro) override;
 
-   bool removeObject(RayRenderObject *ro);
-   void removeAllCreatedBy(int creator);
-   void removeAllSentBy(int sender, const std::string &senderPort);
+   std::vector<boost::shared_ptr<RayRenderObject>> instances;
 
-   std::vector<RayRenderObject *> instances;
-
-   struct Creator {
-      Creator(int id, const std::string &basename)
-      : id(id)
-      , age(0)
-      {
-         std::stringstream s;
-         s << basename << "_" << id;
-         name = s.str();
-
-      }
-      int id;
-      int age;
-      std::string name;
-   };
-   typedef std::map<int, Creator> CreatorMap;
-   CreatorMap creatorMap;
-
-   std::vector<RayRenderObject *> static_geometry;
-   std::vector<std::vector<RayRenderObject *>> anim_geometry;
+   std::vector<boost::shared_ptr<RayRenderObject>> static_geometry;
+   std::vector<std::vector<boost::shared_ptr<RayRenderObject>>> anim_geometry;
 
 
    int rayPacketSize;
@@ -630,7 +607,7 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
       if (rc.m_doShade) {
 
          vassert(ray.instID < rc.instances.size());
-         const RayRenderObject *ro = rc.instances[ray.instID];
+         auto ro = rc.instances[ray.instID];
          vassert(ro->geomId == ray.geomID);
 
          Vector4 color = rc.m_defaultColor;
@@ -1033,59 +1010,12 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
 }
 
 
-void RayCaster::removeAllCreatedBy(int creator) {
-
-   std::vector<RayRenderObject *> toRemove;
-
-   for (RayRenderObject *ro: static_geometry) {
-      if (ro->container->getCreator() == creator)
-         toRemove.push_back(ro);
-   }
-   for (size_t i=0; i<anim_geometry.size(); ++i) {
-      for (RayRenderObject *ro: anim_geometry[i]) {
-         if (ro->container->getCreator() == creator)
-            toRemove.push_back(ro);
-      }
-   }
-   while(!toRemove.empty()) {
-      removeObject(toRemove.back());
-      toRemove.pop_back();
-   }
-}
-
-
-void RayCaster::removeAllSentBy(int sender, const std::string &senderPort) {
-
-   std::vector<RayRenderObject *> toRemove;
-
-   for (RayRenderObject *ro: static_geometry) {
-      if (ro->senderId == sender && ro->senderPort == senderPort)
-         toRemove.push_back(ro);
-   }
-   for (size_t i=0; i<anim_geometry.size(); ++i) {
-      for (RayRenderObject *ro: anim_geometry[i]) {
-         if (ro->senderId == sender && ro->senderPort == senderPort)
-            toRemove.push_back(ro);
-      }
-   }
-   while(!toRemove.empty()) {
-      removeObject(toRemove.back());
-      toRemove.pop_back();
-   }
-}
-
-
-void RayCaster::connectionRemoved(const Port *from, const Port *to) {
-
-   removeAllSentBy(from->getModuleID(), from->getName());
-}
-
 void RayCaster::updateBounds() {
 
    const Scalar smax = std::numeric_limits<Scalar>::max();
    Vector3 min(smax, smax, smax), max(-smax, -smax, -smax);
 
-   for (RayRenderObject *ro: static_geometry) {
+   for (auto ro: static_geometry) {
       for (int i=0; i<3; ++i) {
          if (ro->bMin[i] < min[i])
             min[i] = ro->bMin[i];
@@ -1094,7 +1024,7 @@ void RayCaster::updateBounds() {
       }
    }
    for (int ts=0; ts<anim_geometry.size(); ++ts) {
-      for (RayRenderObject *ro: anim_geometry[ts]) {
+      for (auto ro: anim_geometry[ts]) {
          for (int i=0; i<3; ++i) {
             if (ro->bMin[i] < min[i])
                min[i] = ro->bMin[i];
@@ -1118,76 +1048,44 @@ void RayCaster::updateBounds() {
 }
 
 
-bool RayCaster::removeObject(RayRenderObject *ro) {
+void RayCaster::removeObject(boost::shared_ptr<RenderObject> vro) {
 
-   instances[ro->instId] = nullptr;
+   auto ro = boost::static_pointer_cast<RayRenderObject>(vro);
 
-   int t = ro->t;
+   rtcDeleteGeometry(m_scene, ro->instId);
+   rtcCommit(m_scene);
+
+   instances[ro->instId].reset();
+
+   int t = ro->timestep;
    auto &objlist = t>=0 ? anim_geometry[t] : static_geometry;
 
    if (t == -1 || t == m_timestep)
       m_doRender = 1;
 
-   bool ret = false;
    auto it = std::find(objlist.begin(), objlist.end(), ro);
    if (it != objlist.end()) {
       std::swap(*it, objlist.back());
       objlist.pop_back();
-      ret = true;
    }
 
    while (!anim_geometry.empty() && anim_geometry.back().empty())
       anim_geometry.pop_back();
 
-   rtcDeleteGeometry(m_scene, ro->instId);
-   rtcCommit(m_scene);
-
    updateBounds();
-
-   delete ro;
-   
-   return ret;
 }
 
 
-void RayCaster::addInputObject(int sender, const std::string &senderPort,
+boost::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::string &senderPort,
                                  vistle::Object::const_ptr container,
                                  vistle::Object::const_ptr geometry,
-                                 vistle::Object::const_ptr colors,
                                  vistle::Object::const_ptr normals,
+                                 vistle::Object::const_ptr colors,
                                  vistle::Object::const_ptr texture) {
 
-   int creatorId = container->getCreator();
-   CreatorMap::iterator it = creatorMap.find(creatorId);
-   if (it != creatorMap.end()) {
-      if (it->second.age < container->getExecutionCounter()) {
-         std::cerr << "removing all created by " << creatorId << ", age " << container->getExecutionCounter() << ", was " << it->second.age << std::endl;
-         removeAllCreatedBy(creatorId);
-      } else if (it->second.age > container->getExecutionCounter()) {
-         std::cerr << "received outdated object created by " << creatorId << ", age " << container->getExecutionCounter() << ", was " << it->second.age << std::endl;
-         return;
-      }
-   } else {
-      std::string name = getModuleName(container->getCreator());
-      it = creatorMap.insert(std::make_pair(creatorId, Creator(container->getCreator(), name))).first;
-   }
-   Creator &creator = it->second;
-   creator.age = container->getExecutionCounter();
+   boost::shared_ptr<RayRenderObject> ro(new RayRenderObject(sender, senderPort, container, geometry, normals, colors, texture));
 
-   RayRenderObject *ro = new RayRenderObject(sender, senderPort, container, geometry, colors, normals, texture);
-
-   int t = geometry->getTimestep();
-   if (t < 0 && colors) {
-      t = colors->getTimestep();
-   }
-   if (t < 0 && normals) {
-      t = normals->getTimestep();
-   }
-   if (t < 0 && texture) {
-      t = texture->getTimestep();
-   }
-   ro->t = t;
-
+   const int t = ro->timestep;
    if (t == -1) {
       static_geometry.push_back(ro);
    } else {
@@ -1199,7 +1097,7 @@ void RayCaster::addInputObject(int sender, const std::string &senderPort,
    ro->instId = rtcNewInstance(m_scene, ro->scene);
    if (instances.size() <= ro->instId)
       instances.resize(ro->instId+1);
-   vassert(instances[ro->instId] == nullptr);
+   vassert(!instances[ro->instId]);
    instances[ro->instId] = ro;
 
    float identity[16];
@@ -1216,50 +1114,8 @@ void RayCaster::addInputObject(int sender, const std::string &senderPort,
    rtcCommit(m_scene);
 
    updateBounds();
-}
 
-
-bool RayCaster::addInputObject(int sender, const std::string &senderPort, const std::string & portName,
-                                 vistle::Object::const_ptr object) {
-
-#if 0
-   std::cout << "++++++RayCaster addInputObject " << object->getType()
-             << " creator " << object->getCreator()
-             << " exec " << object->getExecutionCounter()
-             << " block " << object->getBlock()
-             << " timestep " << object->getTimestep() << std::endl;
-#endif
-
-   switch (object->getType()) {
-      case vistle::Object::GEOMETRY: {
-
-         vistle::Geometry::const_ptr geom = vistle::Geometry::as(object);
-
-#if 0
-         std::cerr << "   Geometry: [ "
-            << (geom->geometry()?"G":".")
-            << (geom->colors()?"C":".")
-            << (geom->normals()?"N":".")
-            << (geom->texture()?"T":".")
-            << " ]" << std::endl;
-#endif
-         addInputObject(sender, senderPort, object, geom->geometry(), geom->colors(), geom->normals(),
-                        geom->texture());
-
-         break;
-      }
-
-      case vistle::Object::PLACEHOLDER:
-      default: {
-         if (object->getType() == vistle::Object::PLACEHOLDER
-               || true /*VistleGeometryGenerator::isSupported(object->getType())*/)
-            addInputObject(sender, senderPort, object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
-
-         break;
-      }
-   }
-
-   return true;
+   return ro;
 }
 
 void  RayCaster::drawCallback(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image) {

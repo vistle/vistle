@@ -1,7 +1,6 @@
 #include "VistleRenderObject.h"
 
 using namespace opencover;
-using namespace vistle;
 
 BaseRenderObject::BaseRenderObject() {
 }
@@ -9,13 +8,21 @@ BaseRenderObject::BaseRenderObject() {
 BaseRenderObject::~BaseRenderObject() {
 }
 
-VistleRenderObject::VistleRenderObject(const vistle::Object::const_ptr &geo)
-: m_obj(geo)
+VistleRenderObject::VistleRenderObject(boost::shared_ptr<const vistle::RenderObject> ro)
+: m_vistleRo(ro)
 , m_roGeo(NULL)
 , m_roCol(NULL)
 , m_roNorm(NULL)
 , m_roTex(NULL)
-, m_timestep(-1)
+{
+}
+
+VistleRenderObject::VistleRenderObject(vistle::Object::const_ptr obj)
+: m_obj(obj)
+, m_roGeo(NULL)
+, m_roCol(NULL)
+, m_roNorm(NULL)
+, m_roTex(NULL)
 {
 }
 
@@ -27,28 +34,40 @@ VistleRenderObject::~VistleRenderObject() {
    delete m_roTex;
 }
 
-void VistleRenderObject::setTimestep(int t) {
+boost::shared_ptr<const  vistle::RenderObject> VistleRenderObject::renderObject() const {
 
-   m_timestep = t;
-}
-
-int VistleRenderObject::timestep() const {
-
-   return m_timestep;
+   return m_vistleRo.lock();
 }
 
 const char *VistleRenderObject::getName() const {
 
    if (m_name.empty()) {
-      if (m_obj)
+      m_name = "UNDEFINED";
+      if (m_obj) {
          m_name = m_obj->getName();
-      else if (m_geo)
-         m_name = m_geo->getName() + "_container";
-      else
-         m_name = "UNDEFINED";
+      } else if (auto ro = renderObject()) {
+         if (ro->container)
+            m_name = ro->container->getName();
+         else if (ro->geometry)
+            m_name = ro->geometry->getName() + "_container";
+      }
    }
 
    return m_name.c_str();
+}
+
+int VistleRenderObject::getCreator() const {
+
+   auto ro = renderObject();
+   if (!ro)
+      return 0;
+
+   if (ro->geometry)
+      return ro->geometry->getCreator();
+   else if (ro->container)
+      return ro->container->getCreator();
+
+   return 0;
 }
 
 void VistleRenderObject::setNode(osg::Node *node) {
@@ -64,26 +83,13 @@ osg::Node *VistleRenderObject::node() const {
 
 bool VistleRenderObject::isGeometry() const {
 
-   return m_obj && m_geo;
+   auto ro = renderObject();
+   return ro && ro->container && ro->geometry;
 }
 
-void VistleRenderObject::setGeometry(Object::const_ptr obj) {
-
-   m_geo = obj;
-   if (obj)
-      m_roGeo = new VistleRenderObject(obj);
-}
-
-RenderObject *VistleRenderObject::getGeometry() const {
+opencover::RenderObject *VistleRenderObject::getGeometry() const {
 
    return m_roGeo;
-}
-
-void VistleRenderObject::setNormals(Object::const_ptr obj) {
-
-   m_norm = obj;
-   if (obj)
-      m_roNorm = new VistleRenderObject(obj);
 }
 
 RenderObject *VistleRenderObject::getNormals() const {
@@ -91,23 +97,9 @@ RenderObject *VistleRenderObject::getNormals() const {
    return m_roNorm;
 }
 
-void VistleRenderObject::setColors(Object::const_ptr obj) {
-
-   m_col = obj;
-   if (obj)
-      m_roCol = new VistleRenderObject(obj);
-}
-
 RenderObject *VistleRenderObject::getColors() const {
 
    return m_roCol;
-}
-
-void VistleRenderObject::setTexture(Object::const_ptr obj) {
-
-   m_tex = obj;
-   if (obj)
-      m_roTex = new VistleRenderObject(obj);
 }
 
 RenderObject *VistleRenderObject::getTexture() const {
@@ -138,7 +130,13 @@ const char *VistleRenderObject::getAttributeValue(size_t idx) const {
 const char *VistleRenderObject::getAttribute(const char *attr) const {
 
    static std::string val;
-   val = m_geo->getAttribute(attr).c_str();
+   val.clear();
+   if (m_obj) {
+      val = m_obj->getAttribute(attr).c_str();
+   } else if (auto ro = renderObject()) {
+      if (ro->geometry)
+         val = ro->geometry->getAttribute(attr).c_str();
+   }
    return val.c_str();
 }
 
