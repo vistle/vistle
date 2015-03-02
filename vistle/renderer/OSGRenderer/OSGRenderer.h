@@ -1,11 +1,13 @@
 #ifndef OSGRENDERER_H
 #define OSGRENDERER_H
 
-#include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osg/Sequence>
+#include <osg/MatrixTransform>
 
 #include <renderer/renderer.h>
+#include <renderer/vnccontroller.h>
+#include <renderer/parrendmgr.h>
 
 namespace osg {
    class Group;
@@ -17,6 +19,7 @@ namespace osg {
 namespace vistle {
    class Object;
 }
+
 
 class OsgRenderObject: public vistle::RenderObject {
 
@@ -32,39 +35,60 @@ class OsgRenderObject: public vistle::RenderObject {
       osg::ref_ptr<osg::Node> node;
 };
 
-class TimestepHandler: public osgGA::GUIEventHandler {
+
+class TimestepHandler: public osg::Referenced {
 
 public:
    TimestepHandler();
 
    void addObject(osg::Node * geode, const int step);
    void removeObject(osg::Node * geode, const int step);
-   bool handle(const osgGA::GUIEventAdapter & ea,
-               osgGA::GUIActionAdapter & aa,
-               osg::Object *obj,
-               osg::NodeVisitor *nv);
-   void getUsage(osg::ApplicationUsage &usage) const;
 
-   osg::ref_ptr<osg::Group> root() const;
+   osg::ref_ptr<osg::MatrixTransform> root() const;
+
+   bool setTimestep(const int timestep);
+   size_t numTimesteps() const;
+   void getBounds(vistle::Vector3 &min, vistle::Vector3 &max) const;
 
  private:
-   bool setTimestep(const int timestep);
-   int firstTimestep();
-   int lastTimestep();
-
    int timestep;
 
-   osg::ref_ptr<osg::Group> m_root;
+   osg::ref_ptr<osg::MatrixTransform> m_root;
    osg::ref_ptr<osg::Group> m_fixed;
    osg::ref_ptr<osg::Sequence> m_animated;
 };
 
+
+class OSGRenderer;
+
+
+struct OsgViewData {
+
+   OsgViewData(OSGRenderer &viewer, size_t viewIdx);
+   void createCamera();
+   void update();
+   void composite();
+
+   OSGRenderer &viewer;
+   size_t viewIdx;
+   osg::ref_ptr<osg::GraphicsContext> gc;
+   osg::ref_ptr<osg::Camera> camera;
+   std::vector<GLuint> pboDepth, pboColor;
+   std::vector<GLchar*> mapColor;
+   std::vector<GLfloat*> mapDepth;
+   size_t readPbo;
+   std::deque<GLsync> outstanding;
+   std::deque<size_t> compositePbo;
+};
+
+
 class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
+
+   friend struct OsgViewData;
 
  public:
    OSGRenderer(const std::string &shmname, const std::string &name, int moduleID);
    ~OSGRenderer();
-   void scheduleResize(int x, int y, int w, int h);
 
  private:
    boost::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
@@ -74,26 +98,26 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
          vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture) override;
    void removeObject(boost::shared_ptr<vistle::RenderObject> ro) override;
+   bool parameterChanged(const vistle::Parameter *p) override;
 
    void render();
-   void distributeAndHandleEvents();
-   void distributeModelviewMatrix();
-   void distributeProjectionMatrix();
-   void resize(int x, int y, int w, int h);
 
-   osg::ref_ptr<osg::Group> scene;
+   vistle::IntParameter *m_debugLevel;
+   vistle::IntParameter *m_visibleView;
+   std::vector<boost::shared_ptr<OsgViewData>> m_viewData;
+
+   vistle::ParallelRemoteRenderManager m_renderManager;
+
+   osg::ref_ptr<osg::MatrixTransform> scene;
 
    osg::ref_ptr<osg::Material> material;
    osg::ref_ptr<osg::LightModel> lightModel;
    osg::ref_ptr<osg::StateSet> defaultState;
+   osg::ref_ptr<osg::StateSet> rootState;
 
    osg::ref_ptr<TimestepHandler> timesteps;
-
-   bool m_resize;
-   int m_x;
-   int m_y;
-   int m_width;
-   int m_height;
+   std::vector<osg::ref_ptr<osg::LightSource>> lights;
+   OpenThreads::Mutex *icetMutex;
 };
 
 #endif

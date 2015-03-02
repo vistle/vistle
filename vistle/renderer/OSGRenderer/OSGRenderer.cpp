@@ -1,332 +1,335 @@
-#define USE_ICET
+#undef NDEBUG
+#include <GL/glew.h>
 
-#ifdef USE_ICET
 #include <IceT.h>
 #include <IceTMPI.h>
-#endif
 
 #include <vector>
 
-#include <osgGA/TrackballManipulator>
-#include <osgGA/GUIEventAdapter>
-#include <osgGA/EventQueue>
-#include <osgGA/StateSetManipulator>
-
-#include <osg/AlphaFunc>
-#include <osg/BlendFunc>
 #include <osg/DisplaySettings>
-#include <osg/Geode>
-#include <osg/Geometry>
 #include <osg/Group>
 #include <osg/LightModel>
 #include <osg/Material>
 #include <osg/Matrix>
 #include <osg/MatrixTransform>
 #include <osg/Node>
-#include <osg/Projection>
 #include <osg/GraphicsContext>
-#include <osg/Texture2D>
-
-#include <osgDB/ReadFile>
-
-#include <osgViewer/ViewerEventHandlers>
+#include <osg/io_utils>
 
 #include <VistleGeometryGenerator.h>
 #include "OSGRenderer.h"
+#include "EnableGLDebugOperation.h"
+#include <osgViewer/Renderer>
+#include <osg/TextureRectangle>
+#include <osg/FrameBufferObject>
 
-MODULE_MAIN(OSGRenderer)
+//#define USE_FBO
 
-#ifdef USE_ICET
-class SyncIceTOperation : public osg::Operation {
+namespace {
+
+osg::Matrix toOsg(const vistle::Matrix4 &mat) {
+
+    osg::Matrix ret;
+    for (int i=0; i<16; ++i) {
+        ret.ptr()[i] = mat.data()[i];
+    }
+    return ret;
+}
+
+osg::Vec3 toOsg(const vistle::Vector3 &vec) {
+    return osg::Vec3(vec[0], vec[1], vec[2]);
+}
+
+osg::Vec4 toOsg(const vistle::Vector4 &vec) {
+    return osg::Vec4(vec[0], vec[1], vec[2], vec[3]);
+}
+
+class ReadOperation: public osg::Camera::DrawCallback {
 
 public:
-   SyncIceTOperation(const int r)
-      : osg::Operation("SyncIceTOperation", true), rank(r) { }
+   ReadOperation(OsgViewData &ovd, vistle::ParallelRemoteRenderManager &renderMgr, OpenThreads::Mutex *mutex, size_t idx, const int r)
+      : ovd(ovd), renderMgr(renderMgr), icetMutex(mutex), viewIdx(idx) {}
 
-   void operator () (osg::Object *object) {
+   void 	operator() (osg::RenderInfo &renderInfo) const {
 
-      if (!dynamic_cast<osg::GraphicsContext*>(object))
-         return;
+       const auto &vd = renderMgr.viewData(viewIdx);
+       const auto w = vd.width, h = vd.height;
 
-      IceTDouble proj[16];
-      IceTDouble mv[16];
-      //IceTFloat bg[4] = { 51.0 / 255.0, 51.0 / 255.0, 102.0 / 255.0, 0.0 };
-      IceTFloat bg[4] = { 1.0, 1.0, 1.0, 1.0 };
+       if (ovd.pboDepth[0] == 0) {
+          glewInit();
+          if (!glGenBuffers || !glBindBuffer || !glBufferStorage || !glFenceSync || !glWaitSync || !glMemoryBarrier) {
+              std::cerr << "GL extensions missing" << std::endl;
+              return;
+          }
+          const int flags = GL_MAP_READ_BIT|GL_MAP_PERSISTENT_BIT|GL_MAP_COHERENT_BIT;
 
-      IceTImage image = icetDrawFrame(proj, mv, bg);
-      IceTSizeType width = icetImageGetWidth(image);
-      IceTSizeType height = icetImageGetHeight(image);
+          ovd.mapDepth.resize(ovd.pboDepth.size());
+          glGenBuffers(ovd.pboDepth.size(), ovd.pboDepth.data());
+          for (size_t i=0; i<ovd.pboDepth.size(); ++i) {
+             glBindBuffer(GL_PIXEL_PACK_BUFFER, ovd.pboDepth[i]);
+             glBufferStorage(GL_PIXEL_PACK_BUFFER, w*h*sizeof(GLfloat), nullptr, flags);
+             ovd.mapDepth[i] = static_cast<GLfloat *>(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, w*h*sizeof(GLfloat), GL_MAP_READ_BIT|GL_MAP_PERSISTENT_BIT));
+          }
 
-      if (rank == 0 && !icetImageIsNull(image)) {
+          ovd.mapColor.resize(ovd.pboColor.size());
+          glGenBuffers(ovd.pboColor.size(), ovd.pboColor.data());
+          for (size_t i=0; i<ovd.pboColor.size(); ++i) {
+             glBindBuffer(GL_PIXEL_PACK_BUFFER, ovd.pboColor[i]);
+             glBufferStorage(GL_PIXEL_PACK_BUFFER, w*h*4, nullptr, flags);
+             ovd.mapColor[i] = static_cast<GLchar *>(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, w*h*4, GL_MAP_READ_BIT|GL_MAP_PERSISTENT_BIT));
+          }
+       }
 
-         IceTUByte *color = icetImageGetColorub(image);
-         glDrawPixels(width, height, GL_RGBA, GL_UNSIGNED_BYTE, color);
-      }
+       size_t pbo = ovd.readPbo;
+       std::cerr << "reading to pbo idx " << pbo << std::endl;
 
-      MPI_Barrier(MPI_COMM_WORLD);
+       glBindBuffer(GL_PIXEL_PACK_BUFFER, ovd.pboDepth[pbo]);
+       glReadPixels(0, 0, w, h, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+
+       glBindBuffer(GL_PIXEL_PACK_BUFFER, ovd.pboColor[pbo]);
+       glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+       glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+
+       glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
+       GLsync sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+       ovd.outstanding.push_back(sync);
+       ovd.compositePbo.push_back(pbo);
+       ovd.readPbo = (pbo+1) % ovd.pboDepth.size();
    }
 
-   const int rank;
+   OsgViewData &ovd;
+   vistle::ParallelRemoteRenderManager &renderMgr;
+   OpenThreads::Mutex *icetMutex;
+   size_t viewIdx;
 };
+
+
+}
+
+OsgViewData::OsgViewData(OSGRenderer &viewer, size_t viewIdx)
+: viewer(viewer)
+, viewIdx(viewIdx)
+{
+   readPbo = 0;
+   pboDepth.resize(3);
+   pboColor.resize(3);
+   update();
+}
+
+void OsgViewData::createCamera() {
+
+    const vistle::ParallelRemoteRenderManager::PerViewState &vd = viewer.m_renderManager.viewData(viewIdx);
+
+    if (camera) {
+        int idx = viewer.findSlaveIndexForCamera(camera);
+        if (idx >= 0) {
+           viewer.removeSlave(idx);
+        }
+        camera = nullptr;
+    }
+
+   camera = new osg::Camera;
+   camera->setImplicitBufferAttachmentMask(0, 0);
+   camera->setViewport(0, 0, vd.width, vd.height);
+
+   viewer.addSlave(camera);
+   viewer.realize();
+}
+
+
+void OsgViewData::update() {
+
+    const vistle::ParallelRemoteRenderManager::PerViewState &vd = viewer.m_renderManager.viewData(viewIdx);
+
+    bool create = false, resize = false;
+    if (!camera) {
+        std::cerr << "creating graphics context: no camera" << std::endl;
+        create = true;
+    } else if (!camera->getGraphicsContext()) {
+        std::cerr << "creating graphics context: no context" << std::endl;
+        create = true;
+    } else if(!camera->getGraphicsContext()->getTraits()) {
+        std::cerr << "creating graphics context: no traits" << std::endl;
+        create = true;
+    } else {
+#ifdef USE_FBO
+       auto &buffers = camera->getBufferAttachmentMap();
+       const auto &col = buffers[osg::Camera::COLOR_BUFFER];
+       const auto &dep = buffers[osg::Camera::DEPTH_BUFFER];
+       if (col.width() != vd.width || dep.width() != vd.width
+               || col.height() != vd.height || dep.height() != vd.height) {
+           std::cerr << "resizing FBO" << std::endl;
+           resize = true;
+       }
 #else
-class SyncGLOperation : public osg::Operation {
-
-public:
-   SyncGLOperation(const int r, const int s)
-      : osg::Operation("SyncGLOperation", true), rank(r), size(s) { }
-
-   void operator () (osg::Object *object) {
-
-      osg::GraphicsContext *ctx = dynamic_cast<osg::GraphicsContext*>(object);
-      if (!ctx)
-         return;
-      if (!ctx->getTraits())
-         return;
-
-      const int width = ctx->getTraits()->width;
-      const int height = ctx->getTraits()->height;
-      int metadata[3] = { 0, 0, 0 }; // width, height, sender
-      std::vector<unsigned char> color;
-      std::vector<float> depth;
-
-      if (rank) {
-         color.resize(width*height*4);
-         depth.resize(width*height);
-         glReadBuffer(GL_BACK);
-         glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &color[0]);
-         glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, &depth[0]);
-
-         metadata[0] = width;
-         metadata[1] = height;
-         metadata[2] = rank;
-         MPI_Send(metadata, 3, MPI_INT, 0, 1, MPI_COMM_WORLD);
-         MPI_Send(&color[0], width*height*4, MPI_CHAR, 0, 2, MPI_COMM_WORLD);
-         MPI_Send(&depth[0], width*height, MPI_FLOAT, 0, 3, MPI_COMM_WORLD);
-      } else {
-         glEnable(GL_STENCIL_TEST);
-         for (int i=1; i<size; ++i) {
-            MPI_Status status;
-            MPI_Recv(metadata, 3, MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
-            int w = metadata[0];
-            int h = metadata[1];
-            int sender = metadata[2];
-            color.resize(w*h*4);
-            depth.resize(w*h);
-            MPI_Recv(&color[0], w*h*4, MPI_CHAR, sender, 2, MPI_COMM_WORLD, &status);
-            MPI_Recv(&depth[0], w*h, MPI_FLOAT, sender, 3, MPI_COMM_WORLD, &status);
-
-            glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-            glStencilOp(GL_KEEP, GL_ZERO, GL_REPLACE);
-            glStencilFunc(GL_ALWAYS, 1, ~0);
-            glEnable(GL_DEPTH_TEST);
-            glDepthFunc(GL_LEQUAL);
-            glDrawPixels(w, h, GL_DEPTH_COMPONENT, GL_FLOAT, &depth[0]);
-
-            glDisable(GL_DEPTH_TEST);
-            glStencilOp(GL_ZERO, GL_ZERO, GL_ZERO);
-            glStencilFunc(GL_EQUAL, 1, ~0);
-            glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-            glDrawPixels(w, h, GL_RGBA, GL_UNSIGNED_BYTE, &color[0]);
-         }
-         glDisable(GL_STENCIL_TEST);
-      }
-      MPI_Barrier(MPI_COMM_WORLD);
-   }
-
-   const int rank;
-   const int size;
-};
+        auto traits = camera->getGraphicsContext()->getTraits();
+        if (traits->width != vd.width || traits->height != vd.height) {
+           std::cerr << "recreating PBuffer for resizing" << std::endl;
+            create = true;
+            resize = true;
+        }
 #endif
+    }
+    if (create) {
+        if (gc) {
+            gc = nullptr;
+        }
+#ifdef USE_FBO
+       if (!camera)
+            createCamera();
+       std::cerr << "creating FBO of size " << vd.width << "x" << vd.height << std::endl;
+       camera->setGraphicsContext(viewer.getCamera()->getGraphicsContext());
+       camera->setRenderTargetImplementation(osg::Camera::FRAME_BUFFER_OBJECT);
+       camera->setViewport(new osg::Viewport(0, 0, vd.width, vd.height));
+       //camera->attach(osg::Camera::COLOR_BUFFER, GL_RGBA32F);
+       camera->attach(osg::Camera::COLOR_BUFFER, GL_RGBA);
+       camera->attach(osg::Camera::DEPTH_BUFFER, GL_DEPTH_COMPONENT32F);
+       GLenum buffer = GL_COLOR_ATTACHMENT0;
+#else
+       std::cerr << "creating PBuffer of size " << vd.width << "x" << vd.height << std::endl;
+       createCamera();
+       osg::ref_ptr<osg::DisplaySettings> ds = new osg::DisplaySettings;
+       ds->setStereo(false);
 
-class GUIEvent {
+       osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(ds.get());
+       traits->readDISPLAY();
+       traits->setUndefinedScreenDetailsToDefaultScreen();
+       //traits->sharedContext = viewer.getCamera()->getGraphicsContext();
+       traits->x = 0;
+       traits->y = 0;
+       traits->width = vd.width;
+       traits->height = vd.height;
+       traits->alpha = 8;
+       traits->depth = 24;
+       traits->doubleBuffer = false;
+       traits->windowDecoration = true;
+       traits->windowName = "OsgRenderer: slave " + boost::lexical_cast<std::string>(viewIdx);
+       //traits->pbuffer =true;
+       traits->vsync = false;
+       gc = osg::GraphicsContext::createGraphicsContext(traits);
+       gc->realize();
+#if 0
+       if (gc->isRealized()) {
+          gc->makeCurrent();
+          std::cerr << "enabling debug extension" << std::endl;
+          auto dbg = new EnableGLDebugOperation;
+          (*dbg)(gc);
+          std::cerr << "enabling debug extension: done" << std::endl;
+       } else {
+          std::cerr << "not enabling debug extension: graphics context not realized" << std::endl;
+       }
+#endif
+       camera->setGraphicsContext(gc);
+       camera->setDisplaySettings(ds);
+       camera->setRenderTargetImplementation(osg::Camera::PIXEL_BUFFER);
+       GLenum buffer = traits->doubleBuffer ? GL_BACK : GL_FRONT;
+       camera->setDrawBuffer(buffer);
+       camera->setReadBuffer(buffer);
+#endif
+       camera->setComputeNearFarMode(osgUtil::CullVisitor::DO_NOT_COMPUTE_NEAR_FAR);
 
-public:
-   GUIEvent() {}
-   GUIEvent(const osgGA::GUIEventAdapter &ga)
-      : type(ga.getEventType())
-      , time(ga.getTime())
-      , windowX(ga.getWindowX())
-      , windowY(ga.getWindowY())
-      , windowWidth(ga.getWindowWidth())
-      , windowHeight(ga.getWindowHeight())
-      , key(ga.getKey())
-      , button(ga.getButton())
-      , Xmin(ga.getXmin())
-      , Xmax(ga.getXmax())
-      , Ymin(ga.getYmin())
-      , Ymax(ga.getYmax())
-      , mx(ga.getX())
-      , my(ga.getY())
-      , pressure(ga.getPenPressure())
-      , tiltX(ga.getPenTiltX())
-      , tiltY(ga.getPenTiltY())
-      , rotation(ga.getPenRotation())
-      , buttonMask(ga.getButtonMask())
-      , modKeyMask(ga.getModKeyMask())
-      , scrollingMotion(ga.getScrollingMotion())
-      , scrollingDeltaX(ga.getScrollingDeltaX())
-      , scrollingDeltaY(ga.getScrollingDeltaY())
-      , mouseYOrientation(ga.getMouseYOrientation())
-      , tabletPointerType(ga.getTabletPointerType())
-   {}
+       camera->setClearColor(osg::Vec4(0.0f,0.0f,0.0f,0.0f));
+       camera->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-void copyToGUIEventAdapter(osgGA::GUIEventAdapter *ga) {
-      ga->setEventType(type);
-      ga->setTime(time);
-      ga->setWindowRectangle(windowX, windowY, windowWidth, windowHeight);
-      ga->setKey(key);
-      ga->setButton(button);
-      ga->setInputRange(Xmin, Ymin, Xmax, Ymax);
-      ga->setX(mx);
-      ga->setY(my);
-      ga->setPenPressure(pressure);
-      ga->setPenTiltX(tiltX);
-      ga->setPenTiltY(tiltY);
-      ga->setPenRotation(rotation);
-      ga->setButtonMask(buttonMask);
-      ga->setModKeyMask(modKeyMask);
-      ga->setScrollingMotion(scrollingMotion);
-      ga->setScrollingMotionDelta(scrollingDeltaX, scrollingDeltaY);
-      ga->setMouseYOrientation(mouseYOrientation);
-      ga->setTabletPointerType(tabletPointerType);
-   }
+       camera->setRenderOrder(osg::Camera::PRE_RENDER);
+       camera->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
+       camera->setViewMatrix(osg::Matrix::identity());
+       camera->setProjectionMatrix(osg::Matrix::identity());
+       resize = true;
+    }
+    if (resize) {
+       camera->setViewport(new osg::Viewport(0, 0, vd.width, vd.height));
+#ifdef USE_FBO
+#if 0
+       auto &buffers = camera->getBufferAttachmentMap();
+       buffers.clear();
+#ifdef USE_FBO
+       //auto &buffers = camera->getBufferAttachmentMap();
+       //const auto &col = buffers[osg::Camera::COLOR_BUFFER];
+       //const auto &dep = buffers[osg::Camera::DEPTH_BUFFER];
+#endif
+#endif
+       auto rend = dynamic_cast<osgViewer::Renderer *>(camera->getRenderer());
+       if (rend) {
+          for (size_t i=0; i<2; ++i) {
+             auto sv = rend->getSceneView(i);
+             if (sv) {
+                 sv->setViewport(camera->getViewport());
+                 auto rs = sv->getRenderStage();
+                 if (rs) {
+#if 0
+                     auto fbo = rs->getFrameBufferObject();
+                     if (fbo) {
+                         auto &col = fbo->getAttachment(osg::Camera::COLOR_BUFFER);
+                         auto &dep = fbo->getAttachment(osg::Camera::DEPTH_BUFFER);
+                         for (auto &att: std::vector<osg::FrameBufferAttachment>{col, dep}) {
+                         //for (auto &att: {col, dep}) {
+                             if (auto rb = att.getRenderBuffer()) {
+                                rb->setWidth(vd.width);
+                                rb->setHeight(vd.height);
+                             }
+                         }
+                     }
+#endif
+                     rs->setCameraRequiresSetUp(true);
+                     rs->setFrameBufferObject(nullptr);
+                 }
+             }
+          }
+       }
+#endif
+#if 0
+       std::cerr << "realizing viewer" << std::endl;
+       viewer.realize();
+       std::cerr << "realizing viewer: done" << std::endl;
+#endif
+       camera->setPostDrawCallback(new ReadOperation(*this, viewer.m_renderManager, viewer.icetMutex, viewIdx, viewer.rank()));
+    }
 
-   osgGA::GUIEventAdapter::EventType type;
-   double time;
-   int windowX;
-   int windowY;
-   int windowWidth;
-   int windowHeight;
-   int key;
-   int button;
-   float Xmin;
-   float Xmax;
-   float Ymin;
-   float Ymax;
-   float mx;
-   float my;
-   float pressure;
-   float tiltX;
-   float tiltY;
-   float rotation;
-   unsigned int buttonMask;
-   unsigned int modKeyMask;
-   osgGA::GUIEventAdapter::ScrollingMotion scrollingMotion;
-   float scrollingDeltaX;
-   float scrollingDeltaY;
-   osgGA::GUIEventAdapter::MouseYOrientation mouseYOrientation;
-   osgGA::GUIEventAdapter::TabletPointerType tabletPointerType;
-};
+    //osg::Matrix mv =  toOsg(vd.model) * toOsg(vd.view);
+   camera->setViewMatrix(toOsg(vd.view));
+   camera->setProjectionMatrix(toOsg(vd.proj));
+}
 
-class ResizeHandler: public osgGA::GUIEventHandler {
+void OsgViewData::composite() {
 
-public:
-   ResizeHandler(osg::ref_ptr<osg::Projection> p,
-                 osg::ref_ptr<osg::MatrixTransform> m)
-      : osgGA::GUIEventHandler(),
-        projection(p), modelView(m) {
-   }
+    if (outstanding.empty()) {
+        std::cerr << "no outstanding frames to composite" << std::endl;
+        return;
+    }
 
-   bool handle(const osgGA::GUIEventAdapter &ea,
-               osgGA::GUIActionAdapter &aa,
-               osg::Object *obj,
-               osg::NodeVisitor *nv) {
-      (void)obj;
-      (void)nv;
+    //glWaitSync(fin, 0, GL_TIMEOUT_IGNORED);
+    GLenum ret = 0;
+    while ((ret = glClientWaitSync(outstanding.front(), GL_SYNC_FLUSH_COMMANDS_BIT, 1000)) == GL_TIMEOUT_EXPIRED)
+       ;
+    outstanding.pop_front();
+    size_t pbo = compositePbo.front();
+    compositePbo.pop_front();
 
-      bool handled = false;
+    if (ret == GL_WAIT_FAILED) {
+       std::cerr << "GL sync wait failed" << std::endl;
+       return;
+    }
 
-      switch (ea.getEventType()) {
-
-         case osgGA::GUIEventAdapter::RESIZE: {
-
-            int width = ea.getWindowWidth();
-            int height = ea.getWindowHeight();
-
-            OSGRenderer* rend = dynamic_cast<OSGRenderer *>(&aa);
-            if (!rend)
-               return false;
-            rend->scheduleResize(ea.getWindowX(), ea.getWindowY(), width, height);
-            projection->setMatrix(osg::Matrix::ortho2D(0, width, 0, height));
-            handled = true;
-            break;
-         }
-
-         default:
-            break;
-      }
-      return handled;
-   }
-
-private:
-   osg::ref_ptr<osg::Projection> projection;
-   osg::ref_ptr<osg::MatrixTransform> modelView;
-};
-
-class HelpHandler: public osgGA::GUIEventHandler {
-
-public:
-   HelpHandler(int rank): _applicationUsage(NULL), _rank(rank) {}
-
-   bool handle(const osgGA::GUIEventAdapter &ea,
-               osgGA::GUIActionAdapter &aa,
-               osg::Object *obj,
-               osg::NodeVisitor *nv) {
-      (void)obj;
-      (void)nv;
-
-      osgViewer::View* view = dynamic_cast<osgViewer::View*>(&aa);
-      if (!view) return false;
-
-      osgViewer::ViewerBase* viewer = view->getViewerBase();
-      if (!viewer) return false;
-
-      bool handled = false;
-
-      switch (ea.getEventType()) {
-          case osgGA::GUIEventAdapter::KEYDOWN:
-              if (ea.getKey() == osgGA::GUIEventAdapter::KEY_H) {
-                  handled = true;
-
-                  if (!_applicationUsage) _applicationUsage = new osg::ApplicationUsage();
-                  viewer->getUsage(*_applicationUsage);
-
-                  if (!_rank) {
-                      std::cerr << std::endl;
-                      const osg::ApplicationUsage::UsageMap& keyboardBinding = _applicationUsage->getKeyboardMouseBindings();
-                      for(osg::ApplicationUsage::UsageMap::const_iterator itr = keyboardBinding.begin();
-                              itr != keyboardBinding.end();
-                              ++itr) {
-
-                          std::cerr << itr->first << "\t" << itr->second << std::endl;
-                      }
-                  }
-              }
-              break;
-
-            default:
-              break;
-      }
-
-      return handled;
-   }
-
-   void getUsage(osg::ApplicationUsage &usage) const {
-
-       usage.addKeyboardMouseBinding("h", "show this help");
-   }
-
-private:
-   osg::ApplicationUsage *_applicationUsage;
-   int _rank;
-};
-
-
+    const auto &vd = viewer.m_renderManager.viewData(viewIdx);
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(*viewer.icetMutex);
+    viewer.m_renderManager.setCurrentView(viewIdx);
+    //renderMgr.updateRect(viewIdx, const IceTInt *viewport, const IceTImage image);
+    const osg::Vec4 clear = camera->getClearColor();
+    IceTFloat bg[4] = { clear[0], clear[1], clear[2], clear[3] };
+    IceTDouble proj[16], view[16];
+    IceTInt viewport[4] = {0, 0, vd.width, vd.height};
+    viewer.m_renderManager.getModelViewMat(viewIdx, view);
+    viewer.m_renderManager.getProjMat(viewIdx, proj);
+    IceTImage image = icetCompositeImage(mapColor[pbo], mapDepth[pbo], viewport, proj, view, bg);
+    viewer.m_renderManager.finishCurrentView(image);
+}
 
 TimestepHandler::TimestepHandler()
   : timestep(0) {
 
-     m_root = new osg::Group;
+     m_root = new osg::MatrixTransform;
      m_fixed = new osg::Group;
      m_animated = new osg::Sequence;
 
@@ -354,7 +357,7 @@ void TimestepHandler::removeObject(osg::Node *geode, const int step) {
    if (step < 0) {
       m_fixed->removeChild(geode);
    } else {
-      if (step < m_animated->getNumChildren()) {
+      if (unsigned(step) < m_animated->getNumChildren()) {
          osg::Group *gr = m_animated->getChild(step)->asGroup();
          gr->removeChild(geode);
 
@@ -371,7 +374,7 @@ void TimestepHandler::removeObject(osg::Node *geode, const int step) {
    }
 }
 
-osg::ref_ptr<osg::Group> TimestepHandler::root() const {
+osg::ref_ptr<osg::MatrixTransform> TimestepHandler::root() const {
 
    return m_root;
 }
@@ -382,101 +385,11 @@ bool TimestepHandler::setTimestep(const int timestep) {
    return true;
 }
 
-int TimestepHandler::firstTimestep() {
+size_t TimestepHandler::numTimesteps() const {
 
-   for (int i=0; i<m_animated->getNumChildren(); ++i) {
-      osg::Group *gr = m_animated->getChild(i)->asGroup();
-      if (gr)
-         return i;
-   }
-
-   return 0;
+   return m_animated->getNumChildren();
 }
 
-int TimestepHandler::lastTimestep() {
-
-   for (int i=m_animated->getNumChildren()-1; i>0; --i) {
-      osg::Group *gr = m_animated->getChild(i)->asGroup();
-      if (gr)
-         return i;
-   }
-   return 0;
-}
-
-void TimestepHandler::getUsage(osg::ApplicationUsage &usage) const {
-
-   usage.addKeyboardMouseBinding(",", "step animation back");
-   usage.addKeyboardMouseBinding(".", "step animation forward");
-}
-
-bool TimestepHandler::handle(const osgGA::GUIEventAdapter & ea,
-                             osgGA::GUIActionAdapter & aa,
-                             osg::Object *obj,
-                             osg::NodeVisitor *nv) {
-   (void)obj;
-   (void)nv;
-
-   bool handled = false;
-
-   if (ea.getEventType() == osgGA::GUIEventAdapter::SCROLL) {
-
-      switch (ea.getScrollingMotion()) {
-
-      case osgGA::GUIEventAdapter::SCROLL_UP:
-
-         ++timestep;
-         if (timestep > lastTimestep())
-            timestep = firstTimestep();
-         setTimestep(timestep);
-         handled = true;
-         break;
-
-      case osgGA::GUIEventAdapter::SCROLL_DOWN:
-
-         --timestep;
-         if (timestep < firstTimestep() || timestep < 0)
-            timestep = lastTimestep();
-
-         setTimestep(timestep);
-         handled = true;
-         break;
-
-      default:
-         break;
-      }
-   } else if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN) {
-
-      switch (ea.getKey()) {
-
-      case osgGA::GUIEventAdapter::KEY_Comma:
-         --timestep;
-         if (timestep < firstTimestep() || timestep < 0)
-            timestep = lastTimestep();
-
-         setTimestep(timestep);
-         handled = true;
-         break;
-
-      case osgGA::GUIEventAdapter::KEY_Period:
-         ++timestep;
-         if (timestep > lastTimestep())
-            timestep = firstTimestep();
-
-         setTimestep(timestep);
-         handled = true;
-         break;
-
-      default:
-         break;
-      }
-   }
-
-   if (handled)
-      aa.requestRedraw();
-   return handled;
-}
-
-#ifdef USE_ICET
 static void callbackIceT(const IceTDouble * proj, const IceTDouble * mv,
         const IceTFloat * bg, const IceTInt * viewport,
         IceTImage result) {
@@ -484,124 +397,88 @@ static void callbackIceT(const IceTDouble * proj, const IceTDouble * mv,
    IceTSizeType width = icetImageGetWidth(result);
    IceTSizeType height = icetImageGetHeight(result);
 
+   //std::cerr << "icet draw: w=" << width << ",h=" << height << std::endl;
+
+
    //IceTEnum cf = icetImageGetColorFormat(result);
    //IceTEnum df = icetImageGetDepthFormat(result);
 
    IceTUByte *color = icetImageGetColorub(result);
    IceTFloat *depth = icetImageGetDepthf(result);
 
-   glReadBuffer(GL_BACK);
-   glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, color);
-   glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, depth);
+   if (color) {
+      glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, color);
+   }
+   if (depth) {
+      glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, depth);
+   }
 }
-#endif
 
 OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, int moduleID)
-   : Renderer("OSGRenderer", shmname, name, moduleID), osgViewer::Viewer() {
-
-   addIntParameter("debug", "COVER debug level", 1);
-
-#ifdef __linux__
-   cpu_set_t cpuset;
-   CPU_SET(0, &cpuset);
-   pthread_setaffinity_np(pthread_self(), 1, &cpuset);
+   : Renderer("OSGRenderer", shmname, name, moduleID), osgViewer::Viewer()
+   , m_renderManager(this, callbackIceT)
+{
+#if 0
+   std::cerr << "waiting for debugger: pid=" << getpid() << std::endl;
+   sleep(10);
 #endif
+   icetMutex = new OpenThreads::Mutex;
 
-   resize(0, 0, 512, 512);
+   m_debugLevel = addIntParameter("debug", "debug level", 1);
+   m_visibleView = addIntParameter("visible_view", "no. of visible view (positive values will open window)", -1);
+   setParameterRange(m_visibleView, (vistle::Integer)-1, (vistle::Integer)(m_renderManager.numViews())-1);
 
-   setLightingMode(osgViewer::Viewer::HEADLIGHT);
+   osg::ref_ptr<osg::DisplaySettings> ds = new osg::DisplaySettings;
+   ds->setStereo(false);
 
-   if (!getCameraManipulator() && getCamera()->getAllowEventFocus())
-      setCameraManipulator(new osgGA::TrackballManipulator());
+   osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(ds.get());
+   traits->readDISPLAY();
+   traits->setUndefinedScreenDetailsToDefaultScreen();
+   traits->x = 0;
+   traits->y = 0;
+   traits->width=700;
+   traits->height=700;
+   traits->alpha = 8;
+   traits->windowDecoration = true;
+   traits->windowName = "OsgRenderer: master";
+   traits->doubleBuffer = false;
+   traits->sharedContext = 0;
+   //traits->pbuffer = true;
+   traits->vsync = false;
+   osg::ref_ptr<osg::GraphicsContext> gc = osg::GraphicsContext::createGraphicsContext(traits.get());
+   if (!gc)
+   {
+       std::cerr << "Failed to create master graphics context" << std::endl;
+       return;
+   }
 
-   setThreadingModel(SingleThreaded);
-   if (size() != 1)
-      getCamera()->setComputeNearFarMode(osgUtil::CullVisitor::DO_NOT_COMPUTE_NEAR_FAR);
+   getCamera()->setGraphicsContext(gc.get());
+   getCamera()->setDisplaySettings(ds.get());
+   getCamera()->setViewport(new osg::Viewport(0, 0, traits->width, traits->height));
+   getCamera()->setComputeNearFarMode(osgUtil::CullVisitor::DO_NOT_COMPUTE_NEAR_FAR);
 
-   getCamera()->setClearColor(osg::Vec4(0.0, 0.0, 0.0, 1.0));
-   getCamera()->setViewMatrixAsLookAt(osg::Vec3d(2.0, -1.0, 1.0),
-                                      osg::Vec3d(0.0, 0.0, -0.25),
-                                      osg::Vec3d(0.0, 0.0, 1.0));
-   //getCamera()->setProjectionMatrixAsFrustum(-1.0, 1.0, -1.0, 1.0, 0.1, 10.0);
-   scene = new osg::Group();
+   GLenum buffer = traits->doubleBuffer ? GL_BACK : GL_FRONT;
+   getCamera()->setDrawBuffer(buffer);
+   getCamera()->setReadBuffer(buffer);
+                                  
+   setRealizeOperation(new EnableGLDebugOperation());
+   realize();
 
-   osg::ref_ptr<osg::Geode> geode = new osg::Geode();
+   setThreadingModel(ThreadPerCamera);
+   //setThreadingModel(SingleThreaded);
 
-   osg::ref_ptr<osg::Image> vistleImage = osgDB::readImageFile("../../vistle.png");
-   osg::ref_ptr<osg::Texture2D> texture = new osg::Texture2D(vistleImage.get());
-   texture->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR);
-   texture->setFilter(osg::Texture::MAG_FILTER, osg::Texture::LINEAR);
-
-   osg::ref_ptr<osg::StateSet> stateSet = new osg::StateSet();
-
-   stateSet->setTextureAttributeAndModes(0, texture.get(), osg::StateAttribute::ON);
-   stateSet->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-
-   osg::ref_ptr<osg::BlendFunc> blend = new osg::BlendFunc();
-   stateSet->setAttributeAndModes(blend.get(), osg::StateAttribute::ON);
-
-   osg::ref_ptr<osg::AlphaFunc> alpha = new osg::AlphaFunc();
-   alpha->setFunction(osg::AlphaFunc::GEQUAL, 0.05);
-   stateSet->setAttributeAndModes(alpha.get(), osg::StateAttribute::ON);
-   stateSet->setRenderBinDetails(11, "RenderBin");
-   stateSet->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
-   stateSet->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-
-   osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry();
-   osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
-   vertices->push_back(osg::Vec3(4.0, 4.0, -1.0));
-   vertices->push_back(osg::Vec3(132.0, 4.0, -1.0));
-   vertices->push_back(osg::Vec3(132.0, 68.0, -1.0));
-   vertices->push_back(osg::Vec3(4.0, 68.0, -1.0));
-
-   osg::ref_ptr<osg::DrawElementsUInt> indices
-      = new osg::DrawElementsUInt(osg::PrimitiveSet::POLYGON, 0);
-   indices->push_back(0);
-   indices->push_back(1);
-   indices->push_back(2);
-   indices->push_back(3);
-
-   osg::ref_ptr<osg::Vec2Array> texCoords = new osg::Vec2Array();
-   texCoords->push_back(osg::Vec2(0.0, 0.0));
-   texCoords->push_back(osg::Vec2(1.0, 0.0));
-   texCoords->push_back(osg::Vec2(1.0, 1.0));
-   texCoords->push_back(osg::Vec2(0.0, 1.0));
-
-   geometry->setVertexArray(vertices.get());
-   geometry->addPrimitiveSet(indices.get());
-   geometry->setTexCoordArray(0, texCoords.get());
-   geometry->setStateSet(stateSet.get());
-
-   geode->addDrawable(geometry.get());
-
-   osg::ref_ptr<osg::Projection> proj = new osg::Projection();
-   proj->setMatrix(osg::Matrix::ortho2D(0, 512, 0, 512));
-
-   osg::ref_ptr<osg::MatrixTransform> view = new osg::MatrixTransform();
-   view->setMatrix(osg::Matrix::identity());
-   view->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
-
-   //view->addChild(geode.get());
-   proj->addChild(view.get());
+   getCamera()->setClearColor(osg::Vec4(0.0, 0.0, 0.0, 0.0));
+   getCamera()->setViewMatrix(osg::Matrix::identity());
+   getCamera()->setProjectionMatrix(osg::Matrix::identity());
+   scene = new osg::MatrixTransform();
    timesteps = new TimestepHandler;
-   addEventHandler(timesteps);
    scene->addChild(timesteps->root());
-
-   addEventHandler(new ResizeHandler(proj, view));
-
-   addEventHandler(new osgGA::StateSetManipulator(getCamera()->getOrCreateStateSet()));
-   addEventHandler(new osgViewer::ThreadingHandler);
-   addEventHandler(new osgViewer::WindowSizeHandler);
-   addEventHandler(new osgViewer::StatsHandler);
-   addEventHandler(new osgViewer::HelpHandler);
-   addEventHandler(new HelpHandler(rank()));
-
-   scene->addChild(proj.get());
-
    setSceneData(scene);
+   rootState = scene->getOrCreateStateSet();
 
    material = new osg::Material();
    material->setColorMode(osg::Material::AMBIENT_AND_DIFFUSE);
+   material->setColorMode(osg::Material::OFF);
    material->setAmbient(osg::Material::FRONT_AND_BACK,
                         osg::Vec4(0.2f, 0.2f, 0.2f, 1.0));
    material->setDiffuse(osg::Material::FRONT_AND_BACK,
@@ -611,246 +488,116 @@ OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, in
    material->setEmission(osg::Material::FRONT_AND_BACK,
                          osg::Vec4(0.0f, 0.0f, 0.0f, 1.0));
    material->setShininess(osg::Material::FRONT_AND_BACK, 16.0f);
+   material->setAlpha(osg::Material::FRONT_AND_BACK, 1.0f);
 
    lightModel = new osg::LightModel;
    lightModel->setTwoSided(true);
+   lightModel->setLocalViewer(true);
+   lightModel->setColorControl(osg::LightModel::SEPARATE_SPECULAR_COLOR);
 
    defaultState = new osg::StateSet;
    defaultState->setAttributeAndModes(material.get(), osg::StateAttribute::ON);
    defaultState->setAttributeAndModes(lightModel.get(), osg::StateAttribute::ON);
    defaultState->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
+   defaultState->setMode(GL_LIGHTING, osg::StateAttribute::ON);
+   defaultState->setMode(GL_NORMALIZE, osg::StateAttribute::ON);
+
+   scene->setStateSet(rootState);
 }
 
 OSGRenderer::~OSGRenderer() {
 
 }
 
-void OSGRenderer::resize(int x, int y, int w, int h) {
-
-   m_resize = false;
-   m_x = x;
-   m_y = y;
-   m_width = w;
-   m_height = h;
-
-   if (size() > 1) {
-#ifdef USE_ICET
-      IceTCommunicator icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
-      IceTContext icetContext = icetCreateContext(icetComm);
-      (void)icetContext;
-      icetDestroyMPICommunicator(icetComm);
-
-      icetResetTiles();
-      icetAddTile(0, 0, w, h, 0);
-      icetStrategy(ICET_STRATEGY_REDUCE);
-      icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
-      icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-      icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
-
-      icetDrawCallback(callbackIceT);
-#else
-      if (!rank) {
-         osg::DisplaySettings *ds = getDisplaySettings();
-         if (!ds)
-            ds = new osg::DisplaySettings();
-         ds->setMinimumNumStencilBits(1);
-         setDisplaySettings(ds);
-      }
-#endif
-   }
-
-   setUpViewInWindow(x, y, w, h);
-   realize();
-
-   char title[64];
-   snprintf(title, 64, "vistle renderer %d/%d", rank(), size());
-
-   std::vector<osgViewer::GraphicsWindow *> windows;
-   getWindows(windows);
-   std::vector<osgViewer::GraphicsWindow *>::iterator i;
-   for (i = windows.begin(); i != windows.end(); i ++)
-      (*i)->setWindowName(title);
-
-   if (size() > 1) {
-      Contexts ctx;
-      getContexts(ctx);
-      for (Contexts::iterator c = ctx.begin(); c != ctx.end(); c ++) {
-#ifdef USE_ICET
-         (*c)->add(new SyncIceTOperation(rank()));
-#else
-         (*c)->add(new SyncGLOperation(rank, size));
-#endif
-      }
-   }
-}
-
-void OSGRenderer::scheduleResize(int x, int y, int w, int h) {
-
-   if (w != m_width || h != m_height) {
-      m_resize = true;
-      m_x = x;
-      m_y = y;
-      m_width = w;
-      m_height = h;
-   }
-}
-
-void OSGRenderer::distributeAndHandleEvents() {
-
-   std::vector<GUIEvent> events;
-
-   Contexts ctx;
-   getContexts(ctx);
-   for (Contexts::iterator c = ctx.begin(); c != ctx.end(); c ++) {
-
-      osgViewer::GraphicsWindow * gw =
-         dynamic_cast<osgViewer::GraphicsWindow*>(*c);
-      if (gw) {
-         gw->checkEvents();
-         osgGA::EventQueue::Events ev;
-         gw->getEventQueue()->takeEvents(ev);
-         osgGA::EventQueue::Events::iterator itr;
-         for (itr = ev.begin(); itr != ev.end(); ++itr) {
-            osgGA::GUIEventAdapter *event = itr->get();
-
-            if (!rank() && size() > 0) {
-               events.push_back(GUIEvent(*event));
-            }
-
-            if (!rank()) {
-               for (EventHandlers::iterator hitr = _eventHandlers.begin();
-                     hitr != _eventHandlers.end();
-                     ++hitr)
-                  (*hitr)->handleWithCheckAgainstIgnoreHandledEventsMask(*event,
-                        *this,
-                        0, 0);
-
-               if (_cameraManipulator.valid())
-                  _cameraManipulator->handleWithCheckAgainstIgnoreHandledEventsMask(*event, *this);
-            }
-         }
-      }
-   }
-
-   unsigned int numEvents = events.size();
-   MPI_Bcast(&numEvents, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
-   if (numEvents) {
-      if (rank())
-         events.resize(numEvents);
-      MPI_Bcast(reinterpret_cast<char *>(&(events[0])), numEvents * sizeof(GUIEvent), MPI_CHAR, 0,
-                MPI_COMM_WORLD);
-   }
-
-   if (rank()) {
-      std::vector<osgGA::GUIEventAdapter *> osgEvents;
-      std::vector<GUIEvent>::iterator i;
-      for (i = events.begin(); i != events.end(); i++) {
-
-         osgGA::GUIEventAdapter *event = new osgGA::GUIEventAdapter();
-         i->copyToGUIEventAdapter(event);
-         osgEvents.push_back(event);
-      }
-
-      std::vector<osgGA::GUIEventAdapter *>::iterator itr;
-      for (itr = osgEvents.begin(); itr != osgEvents.end(); itr++) {
-
-         EventHandlers::iterator hitr;
-         for (hitr = _eventHandlers.begin(); hitr != _eventHandlers.end(); hitr ++)
-            (*hitr)->handleWithCheckAgainstIgnoreHandledEventsMask(*(*itr),
-                  *this, 0, 0);
-      }
-   }
-}
-
-void OSGRenderer::distributeProjectionMatrix() {
-
-   if (size() == 1)
-      return;
-
-   double all[6 * size()];
-   double proj[6 * size()];
-   getCamera()->getProjectionMatrixAsFrustum(proj[0], proj[1], proj[2],
-                                             proj[3], proj[4], proj[5]);
-
-   MPI_Allgather(proj, 6, MPI_DOUBLE, all, 6, MPI_DOUBLE, MPI_COMM_WORLD);
-
-   // compute minimum of left, bottom, zNear
-   // compute maximum of right, top, zFar
-   for (size_t item = 0; item < 3; item ++) {
-      for (size_t index = 0; index < size(); index ++) {
-         if (all[index * 6 + item * 2] < proj[item * 2])
-            proj[item * 2] = all[index * 6 + item * 2];
-         if (all[index * 6 + item * 2 + 1] > proj[item * 2 + 1])
-            proj[item * 2 + 1] = all[index * 6 + item * 2 + 1];
-      }
-   }
-   /*
-   printf("%d after  %f %f %f %f %f %f\n", rank,
-          proj[0], proj[1], proj[2], proj[3], proj[4], proj[5]);
-   */
-   getCamera()->setProjectionMatrixAsFrustum(proj[0], proj[1], proj[2], proj[3],
-                                             proj[4], proj[5]);
-}
-
-void OSGRenderer::distributeModelviewMatrix() {
-
-   if (size() == 1)
-      return;
-
-   float matrix[16];
-
-   if (rank() == 0 && size() > 1) {
-
-      if (getCameraManipulator()) {
-         const osg::Matrixd view = getCameraManipulator()->getMatrix();
-
-         for (int y = 0; y < 4; y ++)
-            for (int x = 0; x < 4; x ++)
-               matrix[x + y * 4] = view(x, y);
-      }
-   }
-
-   MPI_Bcast(matrix, 16, MPI_FLOAT, 0, MPI_COMM_WORLD);
-
-   if (rank() != 0) {
-
-      osg::Matrix view;
-
-      for (int y = 0; y < 4; y ++)
-         for (int x = 0; x < 4; x ++)
-            view(x, y) = matrix[x + y * 4];
-
-      if (getCameraManipulator())
-         getCameraManipulator()->setByMatrix(osg::Matrix(view));
-   }
-}
 
 void OSGRenderer::render() {
 
-   static int framecounter = 0;
-   static double laststattime = 0.;
-   ++framecounter;
-   double time = getFrameStamp()->getReferenceTime();
-   if (time - laststattime > 3.) {
-      if (!rank() && getIntParameter("debug") >= 2)
-         std::cerr << "FPS: " << framecounter/(time-laststattime) << std::endl;
-      framecounter = 0;
-      laststattime = time;
+   const size_t numTimesteps = timesteps->numTimesteps();
+   if (m_renderManager.prepareFrame(numTimesteps)) {
+
+      // statistics
+      static int framecounter = 0;
+      static double laststattime = 0.;
+      ++framecounter;
+      double time = getFrameStamp()->getReferenceTime();
+      if (time - laststattime > 3.) {
+         if (!rank() && m_debugLevel->getValue() >= 2)
+            std::cerr << "FPS: " << framecounter/(time-laststattime) << std::endl;
+         framecounter = 0;
+         laststattime = time;
+      }
+
+      int t = m_renderManager.timestep();
+      timesteps->setTimestep(t);
+
+      if (m_renderManager.numViews() != m_viewData.size()) {
+         setParameterRange(m_visibleView, (vistle::Integer)-1, (vistle::Integer)(m_renderManager.numViews())-1);
+
+         if (m_viewData.size() > m_renderManager.numViews()) {
+            m_viewData.resize(m_renderManager.numViews());
+         } else {
+            while (m_renderManager.numViews() > m_viewData.size()) {
+               m_viewData.emplace_back(new OsgViewData(*this, m_viewData.size()));
+            }
+         }
+      }
+
+      if (!m_viewData.empty()) {
+          timesteps->root()->setMatrix(toOsg(m_renderManager.viewData(0).model));
+          getCamera()->setViewMatrix(toOsg(m_renderManager.viewData(0).view));
+          getCamera()->setProjectionMatrix(toOsg(m_renderManager.viewData(0).proj));
+
+          auto &l = m_renderManager.viewData(0).lights;
+          if (lights.size() != l.size()) {
+             std::cerr<< "changing num lights from " << lights.size() << " to " << l.size() << std::endl;
+             for (size_t i=l.size(); i<lights.size(); ++i) {
+                scene->removeChild(lights[i]);
+             }
+             for (size_t i=lights.size(); i<l.size(); ++i) {
+                 lights.push_back(new osg::LightSource);
+                 scene->addChild(lights.back());
+             }
+          }
+          vassert(l.size() == lights.size());
+          for (size_t i=0; i<l.size(); ++i) {
+              osg::Light *light = lights[i]->getLight();
+              if (!light)
+                 light = new osg::Light;
+              light->setLightNum(i);
+              light->setPosition(toOsg(l[i].position));
+              light->setDirection(toOsg(l[i].direction));
+              light->setAmbient(toOsg(l[i].ambient));
+              light->setDiffuse(toOsg(l[i].diffuse));
+              light->setSpecular(toOsg(l[i].specular));
+              light->setSpotCutoff(l[i].spotCutoff);
+              light->setSpotExponent(l[i].spotExponent);
+              lights[i]->setLight(light);
+
+              osg::StateAttribute::Values val = l[i].enabled ? osg::StateAttribute::ON : osg::StateAttribute::OFF;
+              rootState->setAttributeAndModes(light, val);
+              lights[i]->setLocalStateSetModes(val);
+              lights[i]->setStateSetModes(*rootState, val);
+
+          }
+      }
+
+      for (size_t i=0; i<m_viewData.size(); ++i) {
+         m_viewData[i]->update();
+         vassert(m_viewData[i]->outstanding.empty());
+      }
+
+      frame();
+
+      for (size_t i=0; i<m_viewData.size(); ++i) {
+         m_viewData[i]->composite();
+      }
    }
+}
 
-   if (m_resize) {
-      resize(m_x, m_y, m_width, m_height);
-   }
+bool OSGRenderer::parameterChanged(const vistle::Parameter *p) {
 
-   advance();
-
-   distributeAndHandleEvents();
-   distributeModelviewMatrix();
-   //distributeProjectionMatrix();
-
-   updateTraversal();
-
-   renderingTraversals();
+   m_renderManager.handleParam(p);
+   return Renderer::parameterChanged(p);
 }
 
 boost::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, const std::string &senderPort,
@@ -871,6 +618,8 @@ boost::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, con
       }
    }
 
+   m_renderManager.addObject(ro);
+
    return ro;
 }
 
@@ -878,6 +627,7 @@ void OSGRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> ro) {
 
    auto oro = boost::static_pointer_cast<OsgRenderObject>(ro);
    timesteps->removeObject(oro->node, oro->timestep);
+   m_renderManager.removeObject(ro);
 }
 
 OsgRenderObject::OsgRenderObject(int senderId, const std::string &senderPort,
@@ -892,3 +642,4 @@ OsgRenderObject::OsgRenderObject(int senderId, const std::string &senderPort,
 {
 }
 
+MODULE_MAIN(OSGRenderer)
