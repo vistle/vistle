@@ -326,53 +326,81 @@ private:
 TimestepHandler::TimestepHandler()
   : timestep(0) {
 
+     m_root = new osg::Group;
+     m_fixed = new osg::Group;
+     m_animated = new osg::Sequence;
+
+     m_root->addChild(m_fixed);
+     m_root->addChild(m_animated);
 }
 
 void TimestepHandler::addObject(osg::Node * geode, const int step) {
 
-   std::vector<osg::Node *> *vector = NULL;
-   std::map<int, std::vector<osg::Node *> *>::iterator i =
-      timesteps.find(step);
-   if (i != timesteps.end())
-      vector = i->second;
-   else {
-      vector = new std::vector<osg::Node *>;
-      timesteps[step] = vector;
+   if (step < 0) {
+      m_fixed->addChild(geode);
+   } else {
+      for (int i=m_animated->getNumChildren(); i<=step; ++i) {
+         m_animated->addChild(new osg::Group);
+      }
+      osg::Group *gr = m_animated->getChild(step)->asGroup();
+      if (!gr)
+         return;
+      gr->addChild(geode);
    }
-
-   if (step != -1 && step != timestep)
-      geode->setNodeMask(0);
-
-   vector->push_back(geode);
 }
 
-bool TimestepHandler::setTimestepState(const int timestep, const int state) {
+void TimestepHandler::removeObject(osg::Node *geode, const int step) {
 
-   std::map<int, std::vector<osg::Node *> *>:: iterator ts = timesteps.find(timestep);
+   if (step < 0) {
+      m_fixed->removeChild(geode);
+   } else {
+      if (step < m_animated->getNumChildren()) {
+         osg::Group *gr = m_animated->getChild(step)->asGroup();
+         gr->removeChild(geode);
 
-   if (ts != timesteps.end()) {
-      std::vector<osg::Node *>::iterator i;
-      for (i = ts->second->begin(); i != ts->second->end(); i ++)
-         (*i)->setNodeMask(state);
-      return true;
-   } else
-      return false;
+         if (gr->getNumChildren() == 0) {
+            int last = m_animated->getNumChildren()-1;
+            for (; last>0; --last) {
+               osg::Group *gr = m_animated->getChild(last)->asGroup();
+               if (gr->getNumChildren() > 0)
+                  break;
+            }
+            m_animated->removeChildren(last+1, m_animated->getNumChildren()-last-1);
+         }
+      }
+   }
+}
+
+osg::ref_ptr<osg::Group> TimestepHandler::root() const {
+
+   return m_root;
+}
+
+bool TimestepHandler::setTimestep(const int timestep) {
+
+   m_animated->setValue(timestep);
+   return true;
 }
 
 int TimestepHandler::firstTimestep() {
 
-   int index = timesteps.begin()->first;
-   if (index == -1)
-      return 0;
-   return index;
+   for (int i=0; i<m_animated->getNumChildren(); ++i) {
+      osg::Group *gr = m_animated->getChild(i)->asGroup();
+      if (gr)
+         return i;
+   }
+
+   return 0;
 }
 
 int TimestepHandler::lastTimestep() {
 
-   int index = (--timesteps.end())->first;
-   if (index == -1)
-      return 0;
-   return index;
+   for (int i=m_animated->getNumChildren()-1; i>0; --i) {
+      osg::Group *gr = m_animated->getChild(i)->asGroup();
+      if (gr)
+         return i;
+   }
+   return 0;
 }
 
 void TimestepHandler::getUsage(osg::ApplicationUsage &usage) const {
@@ -396,22 +424,20 @@ bool TimestepHandler::handle(const osgGA::GUIEventAdapter & ea,
 
       case osgGA::GUIEventAdapter::SCROLL_UP:
 
-         setTimestepState(timestep, 0);
-         timestep ++;
+         ++timestep;
          if (timestep > lastTimestep())
             timestep = firstTimestep();
-         setTimestepState(timestep, -1);
+         setTimestep(timestep);
          handled = true;
          break;
 
       case osgGA::GUIEventAdapter::SCROLL_DOWN:
 
-         setTimestepState(timestep, 0);
-         timestep --;
+         --timestep;
          if (timestep < firstTimestep() || timestep < 0)
             timestep = lastTimestep();
 
-         setTimestepState(timestep, -1);
+         setTimestep(timestep);
          handled = true;
          break;
 
@@ -423,21 +449,20 @@ bool TimestepHandler::handle(const osgGA::GUIEventAdapter & ea,
       switch (ea.getKey()) {
 
       case osgGA::GUIEventAdapter::KEY_Comma:
-         setTimestepState(timestep, 0);
-         timestep --;
+         --timestep;
          if (timestep < firstTimestep() || timestep < 0)
             timestep = lastTimestep();
 
-         setTimestepState(timestep, -1);
+         setTimestep(timestep);
          handled = true;
          break;
 
       case osgGA::GUIEventAdapter::KEY_Period:
-         setTimestepState(timestep, 0);
-         timestep ++;
+         ++timestep;
          if (timestep > lastTimestep())
             timestep = firstTimestep();
-         setTimestepState(timestep, -1);
+
+         setTimestep(timestep);
          handled = true;
          break;
 
@@ -560,6 +585,7 @@ OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, in
    proj->addChild(view.get());
    timesteps = new TimestepHandler;
    addEventHandler(timesteps);
+   scene->addChild(timesteps->root());
 
    addEventHandler(new ResizeHandler(proj, view));
 
@@ -846,8 +872,6 @@ boost::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, con
       if (geode) {
          ro.reset(new OsgRenderObject(senderId, senderPort, container, geometry, normals, colors, texture, geode));
          timesteps->addObject(geode, ro->timestep);
-         scene->addChild(geode);
-         nodes[container->getName()] = geode;
       }
    }
 
@@ -855,6 +879,9 @@ boost::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, con
 }
 
 void OSGRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> ro) {
+
+   auto oro = boost::static_pointer_cast<OsgRenderObject>(ro);
+   timesteps->removeObject(oro->node, oro->timestep);
 }
 
 OsgRenderObject::OsgRenderObject(int senderId, const std::string &senderPort,

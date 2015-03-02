@@ -1,10 +1,9 @@
 #ifndef OSGRENDERER_H
 #define OSGRENDERER_H
 
-#include <map>
-
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
+#include <osg/Sequence>
 
 #include <module/renderer.h>
 
@@ -39,20 +38,25 @@ public:
    TimestepHandler();
 
    void addObject(osg::Node * geode, const int step);
+   void removeObject(osg::Node * geode, const int step);
    bool handle(const osgGA::GUIEventAdapter & ea,
                osgGA::GUIActionAdapter & aa,
                osg::Object *obj,
                osg::NodeVisitor *nv);
    void getUsage(osg::ApplicationUsage &usage) const;
 
+   osg::ref_ptr<osg::Group> root() const;
+
  private:
-   bool setTimestepState(const int timestep, const int state);
+   bool setTimestep(const int timestep);
    int firstTimestep();
    int lastTimestep();
 
-   std::map<int, std::vector<osg::Node *> *> timesteps;
-
    int timestep;
+
+   osg::ref_ptr<osg::Group> m_root;
+   osg::ref_ptr<osg::Group> m_fixed;
+   osg::ref_ptr<osg::Sequence> m_animated;
 };
 
 class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
@@ -79,7 +83,6 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    void resize(int x, int y, int w, int h);
 
    osg::ref_ptr<osg::Group> scene;
-   std::map<std::string, osg::ref_ptr<osg::Node> > nodes;
 
    osg::ref_ptr<osg::Material> material;
    osg::ref_ptr<osg::LightModel> lightModel;
