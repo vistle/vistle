@@ -71,8 +71,8 @@ public:
    void setDepthPrecision(int bits);
    void setTileSize(int w, int h);
 
-   int timestep() const;
-   void setNumTimesteps(int num);
+   unsigned timestep() const;
+   void setNumTimesteps(unsigned num);
 
    void key(int type, int keySym, int mod);
 
@@ -151,7 +151,7 @@ public:
    std::vector<Light> lights;
 
    struct ImageParameters {
-       int timestep;
+       unsigned timestep;
        bool depthFloat; //!< whether depth should be retrieved as floating point
        int depthPrecision; //!< depth buffer read-back precision (bits) for integer formats
        bool depthQuant; //!< whether depth should be sent quantized
@@ -160,7 +160,7 @@ public:
        bool rgbaSnappy;
 
        ImageParameters()
-       : timestep(-1)
+       : timestep(0)
        , depthFloat(false)
        , depthPrecision(24)
        , depthQuant(false)
@@ -260,7 +260,7 @@ private:
    vistle::Vector3 m_boundCenter;
    vistle::Scalar m_boundRadius;
 
-   int m_numTimesteps;
+   unsigned m_numTimesteps;
 
    static void keyEvent(rfbBool down, rfbKeySym sym, rfbClientPtr cl);
    static void pointerEvent(int buttonmask, int x, int y, rfbClientPtr cl);

@@ -17,6 +17,7 @@
 #include <util/stopwatch.h>
 
 #include <rhr/vncserver.h>
+#include <module/vnccontroller.h>
 #include "renderobject.h"
 
 
@@ -52,24 +53,19 @@ class RayCaster: public vistle::Renderer {
 
    bool parameterChanged(const Parameter *p);
 
+   int m_displayRank;
+   VncController m_vncControl;
+
+   int rayPacketSize;
+
    // parameters
    IntParameter *m_continuousRendering;
-   IntParameter *m_colorRank;
-   IntParameter *m_vncOnSlaves;
-   IntParameter *m_vncBasePort;
-   IntParameter *m_vncReverse;
-   StringParameter *m_vncRevHost;
-   IntParameter *m_vncRevPort;
-   IntParameter *m_vncForward;
-   IntParameter *m_shading;
-   IntParameter *m_rgbaEncoding;
-   IntParameter *m_depthQuant;
-   IntParameter *m_depthSnappy;
-   IntParameter *m_depthPrec;
    IntParameter *m_renderTileSizeParam;
-   IntVectorParameter *m_sendTileSizeParam;
-
-   void updateBounds();
+   int m_tilesize;
+   IntParameter *m_colorRank;
+   Vector4 m_defaultColor;
+   IntParameter *m_shading;
+   bool m_doShade;
 
    // object lifetime management
    boost::shared_ptr<RenderObject> addObject(int sender, const std::string &senderPort,
@@ -81,38 +77,25 @@ class RayCaster: public vistle::Renderer {
 
    void removeObject(boost::shared_ptr<RenderObject> ro) override;
 
+   void updateBounds();
+
    std::vector<boost::shared_ptr<RayRenderObject>> instances;
 
    std::vector<boost::shared_ptr<RayRenderObject>> static_geometry;
    std::vector<std::vector<boost::shared_ptr<RayRenderObject>>> anim_geometry;
 
-
-   int rayPacketSize;
-   int m_tilesize;
-   IntParamVector m_sendTilesize;
-   boost::shared_ptr<VncServer> vnc;
-
    RTCScene m_scene;
 
-   int m_timestep;
-
-   int m_displayRank;
+   size_t m_timestep;
    Vector3 boundMin, boundMax;
+
    int m_updateBounds;
    int m_doRender;
-   bool m_doShade;
-   VncServer::ColorCodec m_rgbaCodec;
-   bool m_snappy;
-   bool m_quant;
-   Integer m_prec;
-   unsigned short m_forwardPort; //< current port mapping
 
    int rootRank() const {
 
       return m_displayRank==-1 ? 0 : m_displayRank;
    }
-
-   Vector4 m_defaultColor;
 
    //! serializable description of one IceT tile - usable by boost::mpi
    struct DisplayTile {
@@ -140,13 +123,13 @@ class RayCaster: public vistle::Renderer {
 
    //! state shared among all views
    struct GlobalState {
-      int timestep;
-      int numTimesteps;
+      unsigned timestep;
+      unsigned numTimesteps;
       Vector3 bMin, bMax;
 
       GlobalState()
-      : timestep(-1)
-      , numTimesteps(-1)
+      : timestep(0)
+      , numTimesteps(0)
       {
       }
 
@@ -216,19 +199,14 @@ RayCaster *RayCaster::s_instance = nullptr;
 
 RayCaster::RayCaster(const std::string &shmname, const std::string &name, int moduleId)
 : Renderer("RayCaster", shmname, name, moduleId)
+, m_displayRank(0)
+, m_vncControl(this, m_displayRank)
 , rayPacketSize(MaxPacketSize)
 , m_tilesize(64)
-, m_sendTilesize((Integer)1440, (Integer)1440)
+, m_doShade(true)
 , m_timestep(0)
-, m_displayRank(0)
 , m_updateBounds(1)
 , m_doRender(1)
-, m_doShade(true)
-, m_rgbaCodec(VncServer::Jpeg)
-, m_snappy(true)
-, m_quant(true)
-, m_prec(24)
-, m_forwardPort(0)
 , m_currentView(-1)
 {
 #if 0
@@ -239,47 +217,16 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    vassert(s_instance == nullptr);
    s_instance = this;
 
-   m_vncBasePort = addIntParameter("vnc_base_port", "listen port for VNC server", 31590);
-   setParameterRange(m_vncBasePort, (Integer)1, (Integer)((1<<16)-1));
-   m_vncOnSlaves = addIntParameter("vnc_on_slaves", "start VNC servers on slave ranks", 0, Parameter::Boolean);
-   m_vncReverse = addIntParameter("vnc_reverse", "establish VNC connection from server to client", 0, Parameter::Boolean);
-   m_vncRevHost = addStringParameter("vnc_reverse_host", "establish reverse connection to client on host", "localhost");
-   m_vncRevPort = addIntParameter("vnc_reverse_port", "establish reverse connection to client on port", 31059);
-   m_vncForward = addIntParameter("vnc_tunnel", "let client connect through hub", 0, Parameter::Boolean);
-   setParameterRange(m_vncRevPort, (Integer)1, (Integer)((1<<16)-1));
    m_continuousRendering = addIntParameter("continuous_rendering", "render even though nothing has changed", 0, Parameter::Boolean);
    m_colorRank = addIntParameter("color_rank", "different colors on each rank", 0, Parameter::Boolean);
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
    m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
    setParameterRange(m_renderTileSizeParam, (Integer)1, (Integer)16384);
-   m_sendTileSizeParam = addIntVectorParameter("send_tile_size", "edge lengths of tiles used during sending", m_sendTilesize);
-   setParameterRange(m_sendTileSizeParam, IntParamVector(1,1), IntParamVector(16384, 16384));
-
-   std::vector<std::string> choices;
-   m_rgbaEncoding = addIntParameter("color_codec", "codec for image data", m_rgbaCodec, Parameter::Choice);
-   choices.clear();
-   choices.push_back("Raw");
-   choices.push_back("JPEG");
-   choices.push_back("SNAPPY");
-   setParameterChoices(m_rgbaEncoding, choices);
-
-   m_depthSnappy = addIntParameter("depth_snappy", "compress depth with SNAPPY", (Integer)m_snappy, Parameter::Boolean);
-   m_depthQuant = addIntParameter("depth_quant", "DXT-like depth quantization", (Integer)m_quant, Parameter::Boolean);
-
-   m_depthPrec = addIntParameter("depth_prec", "quantized depth precision", (Integer)(m_prec==24), Parameter::Choice);
-   choices.clear();
-   choices.push_back("16 bit + 4 bits/pixel");
-   choices.push_back("24 bit + 3 bits/pixel");
-   setParameterChoices(m_depthPrec, choices);
 
    m_defaultColor = Vector4(127, 127, 127, 255);
 
-   if (rank() == rootRank())
-      vnc.reset(new VncServer(1024, 768, m_vncBasePort->getValue()));
-
    rtcInit("verbose=0");
    m_scene = rtcNewScene(RTC_SCENE_DYNAMIC|sceneFlags, intersections);
-
    rtcCommit(m_scene);
 
    m_icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
@@ -302,7 +249,9 @@ bool RayCaster::compute() {
 
 bool RayCaster::parameterChanged(const Parameter *p) {
 
-   if (p == m_colorRank) {
+    m_vncControl.handleParam(p);
+
+    if (p == m_colorRank) {
 
       if (m_colorRank->getValue()) {
 
@@ -314,90 +263,9 @@ bool RayCaster::parameterChanged(const Parameter *p) {
 
          m_defaultColor = Vector4(127, 127, 127, 255);
       }
-   } else if (p == m_vncOnSlaves) {
-
-      if (rank() != rootRank()) {
-
-         if (m_vncOnSlaves->getValue()) {
-            if (!vnc) {
-               vnc.reset(new VncServer(1024, 768, m_vncBasePort->getValue()));
-            }
-         } else {
-            vnc.reset();
-         }
-      }
-   } else if (p == m_vncBasePort
-         || p == m_vncReverse
-         || p == m_vncRevHost
-         || p == m_vncRevPort) {
-
-      if (m_vncReverse->getValue()) {
-         if (rank() == rootRank()) {
-            if (!vnc || vnc->port() != m_vncRevPort->getValue() || vnc->host() != m_vncRevHost->getValue()) {
-               vnc.reset(); // make sure that dtor runs for ctor of new VncServer
-               vnc.reset(new VncServer(1024, 768, m_vncRevHost->getValue(), m_vncRevPort->getValue()));
-            }
-         } else {
-            vnc.reset();
-         }
-      } else {
-         if (rank() == rootRank() || m_vncOnSlaves->getValue()) {
-            if (!vnc || vnc->port() != m_vncBasePort->getValue()) {
-               vnc.reset(); // make sure that dtor runs for ctor of new VncServer
-               vnc.reset(new VncServer(1024, 768, m_vncBasePort->getValue()));
-            }
-         } else {
-            vnc.reset();
-         }
-      }
-   } else if (p == m_vncForward) {
-      if (m_vncForward->getValue()) {
-         if (m_forwardPort != m_vncBasePort->getValue()) {
-            if (m_forwardPort) {
-               removePortMapping(m_forwardPort);
-            }
-            m_forwardPort = m_vncBasePort->getValue();
-            if (rank() == 0)
-               requestPortMapping(m_forwardPort, m_vncBasePort->getValue());
-         }
-      } else {
-         if (rank() == 0) {
-            if (m_forwardPort)
-               removePortMapping(m_forwardPort);
-         }
-         m_forwardPort = 0;
-      }
    } else if (p == m_shading) {
 
       m_doShade = m_shading->getValue();
-   } else if (p == m_depthPrec) {
-
-       if (m_depthPrec->getValue() == 0)
-           m_prec = 16;
-       else
-           m_prec = 24;
-       if (vnc)
-           vnc->setDepthPrecision(m_prec);
-   } else if (p == m_depthSnappy) {
-
-       m_snappy = m_depthSnappy->getValue();
-       if (vnc)
-           vnc->enableDepthSnappy(m_snappy);
-   } else if (p == m_depthQuant) {
-
-       m_quant = m_depthQuant->getValue();
-       if (vnc)
-           vnc->enableQuantization(m_quant);
-   } else if (p == m_rgbaEncoding) {
-
-       m_rgbaCodec = (VncServer::ColorCodec)m_rgbaEncoding->getValue();
-       if (vnc)
-           vnc->setColorCodec(m_rgbaCodec);
-   } else if (p == m_sendTileSizeParam) {
-
-       m_sendTilesize = m_sendTileSizeParam->getValue();
-       if (vnc)
-           vnc->setTileSize(m_sendTilesize[0], m_sendTilesize[1]);
    }
 
    m_doRender = 1;
@@ -529,7 +397,7 @@ struct TileTask {
 
 void TileTask::render(int tile) const {
 
-   int RTCORE_ALIGN(32) validMask[MaxPacketSize];
+   unsigned RTCORE_ALIGN(32) validMask[MaxPacketSize];
    RTCRay ray;
    RTCRay4 ray4;
    RTCRay8 ray8;
@@ -606,7 +474,7 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
       //std::cerr << "intersection at " << x << "," << y << ": " << ray.tfar*zNear << std::endl;
       if (rc.m_doShade) {
 
-         vassert(ray.instID < rc.instances.size());
+         vassert(ray.instID < (int)rc.instances.size());
          auto ro = rc.instances[ray.instID];
          vassert(ro->geomId == ray.geomID);
 
@@ -684,7 +552,7 @@ void RayCaster::render() {
 
    //vistle::StopWatch timer("render");
    m_state.numTimesteps = anim_geometry.size();
-   m_state.numTimesteps = mpi::all_reduce(mpi::communicator(), m_state.numTimesteps, mpi::maximum<int>());
+   m_state.numTimesteps = mpi::all_reduce(mpi::communicator(), m_state.numTimesteps, mpi::maximum<unsigned>());
 
    m_updateBounds = mpi::all_reduce(mpi::communicator(), m_updateBounds, mpi::maximum<int>());
    if (m_updateBounds) {
@@ -692,6 +560,7 @@ void RayCaster::render() {
       mpi::all_reduce(mpi::communicator(), boundMax.data(), 3, m_state.bMax.data(), mpi::maximum<Scalar>());
    }
 
+   auto vnc = m_vncControl.server();
    if (vnc) {
       if (m_updateBounds) {
          Vector center = 0.5*(m_state.bMin+m_state.bMax);
@@ -713,7 +582,6 @@ void RayCaster::render() {
           std::cerr << "new view no. " << i << std::endl;
           m_doRender = 1;
           m_viewData.emplace_back();
-          PerViewState &vd = m_viewData.back();
       }
 
       for (int i=0; i<vnc->numViews(); ++i) {
@@ -759,7 +627,7 @@ void RayCaster::render() {
       mpi::broadcast(mpi::communicator(), m_viewData, rootRank());
 
       if (vnc && rank() != rootRank()) {
-          for (int i=0; i<m_viewData.size(); ++i) {
+          for (size_t i=0; i<m_viewData.size(); ++i) {
               const PerViewState &vd = m_viewData[i];
               vnc->resize(i, vd.width, vd.height);
           }
@@ -779,7 +647,7 @@ void RayCaster::render() {
          rtcCommit(m_scene);
       }
 
-      for (int i=0; i<m_viewData.size(); ++i) {
+      for (size_t i=0; i<m_viewData.size(); ++i) {
           PerViewState &vd = m_viewData[i];
 
           int resetTiles = 0;
@@ -819,7 +687,7 @@ void RayCaster::render() {
 
               std::vector<DisplayTile> icetTiles;
               mpi::all_gather(mpi::communicator(), localTile, icetTiles);
-              vassert(icetTiles.size() == size());
+              vassert(icetTiles.size() == (unsigned)size());
 
               icetResetTiles();
 
@@ -984,6 +852,7 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
    }
 #endif
 
+   auto vnc = m_vncControl.server();
    if (vnc && rank() != rootRank()) {
       // observe what slaves are rendering
       const int bpp = 4;
@@ -1023,7 +892,7 @@ void RayCaster::updateBounds() {
             max[i] = ro->bMax[i];
       }
    }
-   for (int ts=0; ts<anim_geometry.size(); ++ts) {
+   for (size_t ts=0; ts<anim_geometry.size(); ++ts) {
       for (auto ro: anim_geometry[ts]) {
          for (int i=0; i<3; ++i) {
             if (ro->bMin[i] < min[i])

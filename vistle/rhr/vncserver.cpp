@@ -760,12 +760,12 @@ rfbBool VncServer::handleApplicationMessage(rfbClientPtr cl, void *data,
    return TRUE;
 }
 
-int VncServer::timestep() const {
+unsigned VncServer::timestep() const {
 
    return m_imageParam.timestep;
 }
 
-void VncServer::setNumTimesteps(int num) {
+void VncServer::setNumTimesteps(unsigned num) {
 
    if (num != m_numTimesteps) {
       m_numTimesteps = num;
@@ -894,7 +894,7 @@ VncServer::preFrame()
    }
 
    if (m_numClients == 0) {
-      for (int i=0; i<m_clientList.size(); ++i) {
+      for (size_t i=0; i<m_clientList.size(); ++i) {
          if (rfbReverseConnection(m_screen, const_cast<char *>(m_clientList[i].host.c_str()), m_clientList[i].port)) {
             break;
          }
@@ -1081,7 +1081,7 @@ struct EncodeTask: public tbb::task {
                 size_t maxsize = tjBufSize(msg.width, msg.height, subsamp);
                 char *jpegbuf = new char[maxsize];
                 unsigned long sz = 0;
-                unsigned char *src = reinterpret_cast<unsigned char *>(rgba);
+                //unsigned char *src = reinterpret_cast<unsigned char *>(rgba);
                 rgba += (msg.totalwidth*msg.y+msg.x)*bpp;
                 {
 #ifdef TIMING

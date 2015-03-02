@@ -28,7 +28,7 @@ struct RenderObjectData {
 
    int t;
    RTCScene scene;
-   unsigned geomId;
+   int geomId;
    unsigned instId;
    Triangle *indexBuffer;
 

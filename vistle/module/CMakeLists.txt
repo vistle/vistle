@@ -1,3 +1,5 @@
+vistle_find_package(LibVncServer)
+
 set(module_SOURCES
    module.cpp
    renderer.cpp
@@ -10,6 +12,16 @@ set(module_HEADERS
    renderer.h
    renderobject.h
 )
+
+if(LIBVNCSERVER_FOUND)
+   set(module_SOURCES ${module_SOURCES}
+      vnccontroller.cpp
+   )
+   set(module_HEADERS ${module_HEADERS}
+      vnccontroller.h
+   )
+   include_directories(${LIBVNCSERVER_INCLUDE_DIR})
+endif()
 
 use_openmp()
 
@@ -28,6 +40,9 @@ target_link_libraries(vistle_module
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
 )
+if(LIBVNCSERVER_FOUND)
+   target_link_libraries(vistle_module vistle_rhr)
+endif()
 
 include_directories(
         ../../3rdparty/${BOOST_MPI_DIR}/include
