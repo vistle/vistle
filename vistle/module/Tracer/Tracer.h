@@ -31,7 +31,6 @@ public:
 class BlockData{
 
 private:
-    const vistle::Index m_id;
     vistle::UnstructuredGrid::const_ptr m_grid;
     vistle::Vec<vistle::Scalar, 3>::const_ptr m_xecfld;
     vistle::Vec<vistle::Scalar>::const_ptr m_scafld;
@@ -63,7 +62,6 @@ class Particle{
     friend class Integrator;
 
 private:
-    const vistle::Index m_id;
     vistle::Vector3 m_x;
     vistle::Vector3 m_xold;
     std::vector<vistle::Vector3> m_xhist;
