@@ -47,5 +47,10 @@ target_link_libraries(${NAME}
         vistle_module
         vistle_boost_mpi
         ${TBB_LIBRARIES}
-        ${CUDA_LIBRARIES}
 )
+
+if (CUDA_FOUND)
+   target_link_libraries(${NAME}
+        ${CUDA_LIBRARIES}
+   )
+endif()
