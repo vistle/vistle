@@ -67,7 +67,6 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    void scheduleResize(int x, int y, int w, int h);
 
  private:
-   bool compute();
    boost::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,

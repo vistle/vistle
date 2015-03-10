@@ -62,7 +62,6 @@ class OsgRenderer: public vistle::Renderer {
          const std::string &name, int moduleId);
    ~OsgRenderer();
 
-   bool compute();
    void render();
    boost::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
       vistle::Object::const_ptr container,
@@ -252,11 +251,6 @@ void OsgRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> vro) {
       }
    }
    pro->coverRenderObject.reset();
-}
-
-bool OsgRenderer::compute() {
-
-   return true;
 }
 
 boost::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const std::string &senderPort,

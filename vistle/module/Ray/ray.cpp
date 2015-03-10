@@ -48,7 +48,6 @@ class RayCaster: public vistle::Renderer {
       return *s_instance;
    }
 
-   bool compute();
    void render();
 
    bool parameterChanged(const Parameter *p);
@@ -241,11 +240,6 @@ RayCaster::~RayCaster() {
    rtcExit();
 }
 
-
-bool RayCaster::compute() {
-
-   return true;
-}
 
 bool RayCaster::parameterChanged(const Parameter *p) {
 

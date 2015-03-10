@@ -853,10 +853,6 @@ void OSGRenderer::render() {
    renderingTraversals();
 }
 
-bool OSGRenderer::compute() {
-   return true;
-}
-
 boost::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, const std::string &senderPort,
             vistle::Object::const_ptr container,
             vistle::Object::const_ptr geometry,

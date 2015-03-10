@@ -22,6 +22,8 @@ class V_MODULEEXPORT Renderer: public Module {
    virtual void removeObject(boost::shared_ptr<RenderObject> ro);
 
  private:
+   bool compute() override; // provide dummy implementation of Module::compute
+
    virtual void render() = 0;
 
    bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,

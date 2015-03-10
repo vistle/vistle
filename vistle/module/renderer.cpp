@@ -307,4 +307,8 @@ void Renderer::removeAllSentBy(int sender, const std::string &senderPort) {
    m_objectList.erase(std::remove_if(m_objectList.begin(), m_objectList.end(), [](boost::shared_ptr<vistle::RenderObject> ro) { return !ro; }), m_objectList.end());
 }
 
+bool Renderer::compute() {
+   return true;
+}
+
 } // namespace vistle
