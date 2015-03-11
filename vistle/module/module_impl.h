@@ -48,13 +48,13 @@ bool Module::setParameterRange(ParameterBase<T> *param, const T &minimum, const 
 
    bool ok = true;
 
-   if (maximum > minimum) {
-      param->setMinimum(minimum);
-      param->setMaximum(maximum);
-   } else {
+   if (minimum > maximum) {
       std::cerr << "range for parameter " << param->getName() << " swapped: min " << minimum << " > max " << maximum << std::endl;
       param->setMinimum(maximum);
       param->setMaximum(minimum);
+   } else {
+      param->setMinimum(minimum);
+      param->setMaximum(maximum);
    }
    T value = param->getValue();
    if (value < param->minimum()) {
