@@ -52,18 +52,18 @@ bool Module::setParameterRange(ParameterBase<T> *param, const T &minimum, const 
       param->setMinimum(minimum);
       param->setMaximum(maximum);
    } else {
-      std::cerr << "range for parameter " << param->getName() << " swapped" << std::endl;
+      std::cerr << "range for parameter " << param->getName() << " swapped: min " << minimum << " > max " << maximum << std::endl;
       param->setMinimum(maximum);
       param->setMaximum(minimum);
    }
    T value = param->getValue();
    if (value < param->minimum()) {
-      std::cerr << "value for parameter " << param->getName() << " increased to minimum: " << param->minimum() << std::endl;
+      std::cerr << "value " << value << " for parameter " << param->getName() << " increased to minimum: " << param->minimum() << std::endl;
       param->setValue(param->minimum());
       ok &= updateParameter(param->getName(), param, nullptr);
    }
    if (value > param->maximum()) {
-      std::cerr << "value for parameter " << param->getName() << " decreased to maximum: " << param->maximum() << std::endl;
+      std::cerr << "value " << value << " for parameter " << param->getName() << " decreased to maximum: " << param->maximum() << std::endl;
       param->setValue(param->maximum());
       ok &= updateParameter(param->getName(), param, nullptr);
    }
