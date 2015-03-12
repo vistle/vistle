@@ -7,6 +7,7 @@
 #include "coords.h"
 #include "export.h"
 #include "celltree.h"
+#include "vertexownerlist.h"
 
 namespace vistle {
 
@@ -16,6 +17,7 @@ class  V_COREEXPORT Indexed: public Coords {
  public:
    typedef Coords Base;
    typedef vistle::Celltree<Scalar, Index> Celltree;
+   typedef vistle::VertexOwnerList VertexOwnerList;
 
    Indexed(const Index numElements, const Index numCorners,
          const Index numVertices,
@@ -32,10 +34,15 @@ class  V_COREEXPORT Indexed: public Coords {
    Celltree::const_ptr getCelltree() const;
    bool validateCelltree() const;
 
+   bool hasVertexOwnerList() const;
+   VertexOwnerList::const_ptr getVertexOwnerList() const;
+   void removeVertexOwnerList() const;
+
    bool getElementBounds(Index elem, Vector *min, Vector *max) const;
 
  private:
    void createCelltree() const;
+   void createVertexOwnerList() const;
 
    V_DATA_BEGIN(Indexed);
       ShmVector<Index>::ptr el; //< element list: index into connectivity list - last element: sentinel

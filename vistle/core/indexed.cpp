@@ -1,4 +1,5 @@
 #include "indexed.h"
+#include "assert.h"
 
 namespace vistle {
 
@@ -39,12 +40,11 @@ bool Indexed::hasCelltree() const {
 Indexed::Celltree::const_ptr Indexed::getCelltree() const {
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
-   Celltree::const_ptr ct;
    if (!hasAttachment("celltree"))
       createCelltree();
 
-   ct = Celltree::as(getAttachment("celltree"));
-   assert(ct);
+   Celltree::const_ptr ct = Celltree::as(getAttachment("celltree"));
+   vassert(ct);
    return ct;
 }
 
@@ -89,6 +89,93 @@ void Indexed::createCelltree() const {
    Celltree::ptr ct(new Celltree(getNumElements()));
    ct->init(min.data(), max.data(), gmin, gmax);
    addAttachment("celltree", ct);
+}
+
+bool Indexed::hasVertexOwnerList() const {
+
+   return hasAttachment("vertexownerlist");
+}
+
+Indexed::VertexOwnerList::const_ptr Indexed::getVertexOwnerList() const {
+
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
+   if (!hasAttachment("vertexownerlist"))
+      createVertexOwnerList();
+
+   VertexOwnerList::const_ptr vol = VertexOwnerList::as(getAttachment("vertexownerlist"));
+   vassert(vol);
+   return vol;
+}
+
+void Indexed::createVertexOwnerList() const {
+
+   if (hasVertexOwnerList())
+      return;
+
+   Index numelem, numcoord;
+
+   numelem=getNumElements();
+   numcoord=getNumVertices();
+
+   VertexOwnerList::ptr vol(new VertexOwnerList(numcoord));
+   std::vector<Index> tmpl1(numcoord);
+   const auto cl = this->cl().data();
+   const auto el = this->el().data();
+   auto vertexList=vol->vertexList().data();
+
+   std::memset(vertexList, 0, (numcoord+1) * sizeof(Index));
+
+   // Calculation of the number of cells that contain a certain vertex
+   std::vector<Index> used_vertex_list(numcoord, InvalidIndex);
+
+   for (Index i = 0; i < numelem; i++)
+   {
+      for (Index j = el[i]; j < el[i+1]; j++)
+      {
+         if (used_vertex_list[cl[j]] != i)
+         {
+            used_vertex_list[cl[j]] = i;
+            vertexList[cl[j]]++;
+         }
+      }
+   }
+
+   //create the vertexList
+   {
+      Index j=0;
+      for (Index i = 0; i < numcoord; i++)
+      {
+         Index ja = j;
+         j += vertexList[i];
+         vertexList[i] = ja;
+         tmpl1[i] = ja;
+      }
+      vertexList[numcoord] = j;
+      vol->cellList().resize(j);
+   }
+   auto cellList=vol->cellList().data();
+   std::memset(used_vertex_list.data(), 0xff, numcoord * sizeof(Index));
+
+   //fill the cellList
+   for (Index i = 0; i < numelem; i++)
+   {
+      for (Index j = el[i]; j < el[i+1]; j++)
+      {
+         Index clj = cl[j];
+         if (used_vertex_list[clj] != i)
+         {
+            used_vertex_list[clj] = i;
+            cellList[tmpl1[clj]] = i;
+            tmpl1[clj]++;
+         }
+      }
+   }
+
+   addAttachment("vertexownerlist",vol);
+}
+
+void Indexed::removeVertexOwnerList() const {
+   removeAttachment("vertexownerlist");
 }
 
 struct CellBoundsFunctor: public Indexed::Celltree::CellBoundsFunctor {

@@ -95,3 +95,5 @@ add_subdirectory(ToTriangles)
 add_subdirectory(WriteVistle)
 add_subdirectory(Tracer)
 add_subdirectory(VecToScalar)
+add_subdirectory(CreateVertexOwnerList)
+

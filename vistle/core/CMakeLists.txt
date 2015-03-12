@@ -23,6 +23,7 @@ if(${TEMPLATES_IN_HEADERS})
    set(core_SOURCES ${core_SOURCES}
       vec.cpp
       celltree.cpp
+      vertexownerlist.cpp
       coords.cpp
       normals.cpp
       points.cpp
@@ -47,6 +48,8 @@ set(core_HEADERS
    archives.h
    celltree.h
    celltree_impl.h
+   vertexownerlist.h
+   vertexownerlist_impl.h
    coords.h
    coords_impl.h
    dimensions.h

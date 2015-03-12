@@ -74,6 +74,7 @@ public:
       POLYGONS          = 22,
       UNSTRUCTUREDGRID  = 23,
 
+      VERTEXOWNERLIST   = 95,
       CELLTREE1         = 96,
       CELLTREE2         = 97,
       CELLTREE3         = 98,
@@ -95,6 +96,7 @@ public:
          V_OBJECT_CASE(TRIANGLES)
          V_OBJECT_CASE(POLYGONS)
          V_OBJECT_CASE(UNSTRUCTUREDGRID)
+         V_OBJECT_CASE(VERTEXOWNERLIST)
          V_OBJECT_CASE(CELLTREE1)
          V_OBJECT_CASE(CELLTREE2)
          V_OBJECT_CASE(CELLTREE3)

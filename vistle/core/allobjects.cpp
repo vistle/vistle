@@ -16,6 +16,7 @@
 #include "texture1d.cpp"
 #include "placeholder.cpp"
 #include "celltree.cpp"
+#include "vertexownerlist.cpp"
 #include "empty.cpp"
 
 #else
@@ -34,6 +35,7 @@
 #include "texture1d.h"
 #include "placeholder.h"
 #include "celltree.h"
+#include "vertexownerlist.h"
 #include "empty.h"
 
 #endif
@@ -74,6 +76,7 @@ void registerTypes() {
    REGISTER_TYPE(Celltree1, Object::CELLTREE1);
    REGISTER_TYPE(Celltree2, Object::CELLTREE2);
    REGISTER_TYPE(Celltree3, Object::CELLTREE3);
+   REGISTER_TYPE(VertexOwnerList, Object::VERTEXOWNERLIST)
 
    typedef Vec<unsigned char,1> Vec_uchar_1;
    REGISTER_TYPE(Vec_uchar_1, Vec_uchar_1::type());
