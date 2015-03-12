@@ -17,11 +17,13 @@
 #include <GL/gl.h>
 #endif
 
+#include "export.h"
+
 struct cudaGraphicsResource;
 typedef unsigned char uchar;
 
 //! fast framebuffer read-back using CUDA
-class ReadBackCuda
+class V_RHREXPORT ReadBackCuda
 {
    public:
       ReadBackCuda();

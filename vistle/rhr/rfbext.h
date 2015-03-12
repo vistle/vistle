@@ -41,6 +41,7 @@
 
 #include <cstring> // memset
 #include "depthquant.h"
+#include "export.h"
 
 //! RFB protocol extension message types for remote hybrid rendering (RHR)
 enum {
@@ -53,7 +54,7 @@ enum {
 };
 
 //! basic RFB message header
-struct rfbMsg
+struct V_RHREXPORT rfbMsg
 {
    rfbMsg(uint8_t type)
    : type(type)
@@ -63,7 +64,7 @@ struct rfbMsg
 };
 
 //! send matrices from client to server
-struct matricesMsg: public rfbMsg {
+struct V_RHREXPORT matricesMsg: public rfbMsg {
    matricesMsg()
    : rfbMsg(rfbMatrices)
    , last(0)
@@ -94,7 +95,7 @@ struct matricesMsg: public rfbMsg {
 static int matricesEncodings[] = { rfbMatrices, 0 };
 
 //! send lighting parameters from client to server
-struct lightsMsg: public rfbMsg {
+struct V_RHREXPORT lightsMsg: public rfbMsg {
    lightsMsg()
    : rfbMsg(rfbLights)
    , viewNum(-1)
@@ -151,7 +152,7 @@ struct lightsMsg: public rfbMsg {
 static int lightsEncodings[] = { rfbLights, 0 };
 
 //! send scene bounding sphere from server to client
-struct boundsMsg: public rfbMsg {
+struct V_RHREXPORT boundsMsg: public rfbMsg {
    boundsMsg()
    : rfbMsg(rfbBounds)
    , sendreply(0)
@@ -193,7 +194,7 @@ enum rfbTileCompressions {
 };
 
 //! send image tile from server to client
-typedef struct tileMsg: public rfbMsg {
+struct V_RHREXPORT tileMsg: public rfbMsg {
    tileMsg()
    : rfbMsg(rfbTile)
    , flags(rfbTileNone)
@@ -235,7 +236,7 @@ typedef struct tileMsg: public rfbMsg {
    double transform[16]; //!< objects transform matrix in request
    double scale[16]; //!< scale matrix in request
    double requestTime; //!< time copied from matrices request
-} tileMsg;
+};
 static int tileEncodings[] = { rfbTile, 0 };
 
 //! paylod of application dependent messages, \see applicationMsg
@@ -250,11 +251,11 @@ enum rfbApplicationTypes {
 };
 
 //! paylod of rfbApplication message, \see applicationMsg
-struct appSubMessage {
+struct V_RHREXPORT appSubMessage {
 };
 
 //! screen config on client changed
-struct appScreenConfig: public appSubMessage {
+struct V_RHREXPORT appScreenConfig: public appSubMessage {
    appScreenConfig()
    : viewNum(-1)
    , width(0)
@@ -279,7 +280,7 @@ struct appScreenConfig: public appSubMessage {
 };
 
 //! data object was added on server, sub-header of corresponding message
-struct appAddObject: public appSubMessage {
+struct V_RHREXPORT appAddObject: public appSubMessage {
    appAddObject()
    : namelen(0)
    , nattrib(0)
@@ -302,7 +303,7 @@ struct appAddObject: public appSubMessage {
 };
 
 //! header for a single attribute
-struct appAttribute {
+struct V_RHREXPORT appAttribute {
    appAttribute()
    : namelen(0)
    , valuelen(0)
@@ -315,7 +316,7 @@ struct appAttribute {
 
 
 //! send feedback info (module parameter changes, ...) from client to server, sub-header of corresponding message
-struct appFeedback: public appSubMessage {
+struct V_RHREXPORT appFeedback: public appSubMessage {
    appFeedback()
    : infolen(0)
    , keylen(0)
@@ -329,7 +330,7 @@ struct appFeedback: public appSubMessage {
 };
 
 //! data object was removed on server, sub-header of corresponding message
-struct appRemoveObject: public appSubMessage {
+struct V_RHREXPORT appRemoveObject: public appSubMessage {
    appRemoveObject()
    : namelen(0)
    , replace(0)
@@ -341,7 +342,7 @@ struct appRemoveObject: public appSubMessage {
 };
 
 //! control animation timesteps
-struct appAnimationTimestep: public appSubMessage {
+struct V_RHREXPORT appAnimationTimestep: public appSubMessage {
    appAnimationTimestep()
    : total(0)
    , current(0)
@@ -352,7 +353,7 @@ struct appAnimationTimestep: public appSubMessage {
 };
 
 //! send arbitrary, application dependent messages between server and client
-typedef struct applicationMsg: public rfbMsg {
+struct V_RHREXPORT applicationMsg: public rfbMsg {
    applicationMsg()
    : rfbMsg(rfbApplication)
    , appType(0)
@@ -367,7 +368,7 @@ typedef struct applicationMsg: public rfbMsg {
    uint8_t sendreply; //!< request reply
    uint32_t size; //!< payload size
    // followed by message-specific sub-header
-} appMsg;
+};
 static int applicationEncodings[] = { rfbApplication, 0 };
 
 #endif

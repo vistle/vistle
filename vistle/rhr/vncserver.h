@@ -24,8 +24,10 @@
 
 #include <tbb/concurrent_queue.h>
 
+#include "export.h"
+
 //! Implement remote hybrid rendering server based on VNC protocol
-class VncServer
+class V_RHREXPORT VncServer
 {
 public:
 
