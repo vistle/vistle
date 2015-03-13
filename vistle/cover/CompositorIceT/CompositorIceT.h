@@ -47,6 +47,7 @@ class CompositorIceT : public opencover::coVRPlugin
       ReadBackCuda *cudaColor, *cudaDepth; //!< helpers for CUDA read-back
    };
 
+   bool m_initialized; //!< initialization completed successfully
    int m_rank, m_size; //!< MPI rank and communicator size
    int m_displayRank; //!< MPI rank of display node
    bool m_useCuda; //!< whether CUDA shall be used for framebuffer read-back

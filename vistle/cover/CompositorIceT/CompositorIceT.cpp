@@ -16,12 +16,14 @@ using namespace opencover;
 static CompositorIceT *plugin = NULL;
 
 CompositorIceT::CompositorIceT()
-: m_rank(-1)
+: m_initialized(false)
+, m_rank(-1)
 , m_size(-1)
 , m_displayRank(0) // display on master
 , m_useCuda(false)
 , m_sparseReadback(true)
 , m_rhr(false)
+, m_icetComm(0)
 {
    assert(plugin == NULL);
    plugin = this;
@@ -32,7 +34,8 @@ CompositorIceT::CompositorIceT()
 // this is called if the plugin is removed at runtime
 CompositorIceT::~CompositorIceT()
 {
-   icetDestroyMPICommunicator(m_icetComm);
+   if (m_initialized)
+      icetDestroyMPICommunicator(m_icetComm);
    plugin = NULL;
 }
 
@@ -52,6 +55,7 @@ bool CompositorIceT::init()
       m_sparseReadback = false;
    }
    m_icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
+   m_initialized = true;
    return true;
 }
 
