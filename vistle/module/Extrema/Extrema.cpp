@@ -226,10 +226,10 @@ bool Extrema::reduce(int timestep) {
    //std::cerr << "reduction for timestep " << timestep << std::endl;
 
    for (int i=0; i<MaxDim; ++i) {
-      gmin[i] = boost::mpi::all_reduce(boost::mpi::communicator(),
+      gmin[i] = boost::mpi::all_reduce(comm(),
             gmin[i],
             boost::mpi::minimum<ParamVector::Scalar>());
-      gmax[i] = boost::mpi::all_reduce(boost::mpi::communicator(),
+      gmax[i] = boost::mpi::all_reduce(comm(),
             gmax[i],
             boost::mpi::maximum<ParamVector::Scalar>());
    }

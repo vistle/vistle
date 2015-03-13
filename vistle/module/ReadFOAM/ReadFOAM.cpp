@@ -883,17 +883,16 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
    }
 
    //build requests for Ghost Cells
-   mpi::communicator world;
    for (const auto &b :boundaries.procboundaries) {
       Index neighborProc=b.neighborProc;
       int myRank=rank();
       int neighborRank = rankForBlock(neighborProc);
       boost::shared_ptr<GhostCells> out = m_GhostCellsOut[processor][neighborProc];
       if (myRank != neighborRank) {
-         m_requests[myRank].push_back(world.isend(neighborRank, tag(processor,neighborProc), *out));
+         m_requests[myRank].push_back(comm().isend(neighborRank, tag(processor,neighborProc), *out));
          boost::shared_ptr<GhostCells> in(new GhostCells());
          m_GhostCellsIn[processor][neighborProc] = in;
-         m_requests[myRank].push_back(world.irecv(neighborRank, tag(neighborProc,processor), *in));
+         m_requests[myRank].push_back(comm().irecv(neighborRank, tag(neighborProc,processor), *in));
       } else {
          m_GhostCellsIn[neighborProc][processor] = out;
       }
@@ -942,7 +941,6 @@ bool ReadFOAM::buildGhostCellData(int processor) {
    }
 
    //build requests for Ghost Data
-   mpi::communicator world;
    for (const auto &b :boundaries.procboundaries) {
       Index neighborProc=b.neighborProc;
       int myRank=rank();
@@ -953,10 +951,10 @@ bool ReadFOAM::buildGhostCellData(int processor) {
          if (m.find(i) != m.end()) {
             boost::shared_ptr<GhostData> dataOut = m[i];
             if (myRank != neighborRank) {
-               m_requests[myRank].push_back(world.isend(neighborRank, tag(processor,neighborProc,i+1), *dataOut));
+               m_requests[myRank].push_back(comm().isend(neighborRank, tag(processor,neighborProc,i+1), *dataOut));
                boost::shared_ptr<GhostData> dataIn(new GhostData((*dataOut).dim));
                m_GhostDataIn[processor][neighborProc][i] = dataIn;
-               m_requests[myRank].push_back(world.irecv(neighborRank, tag(neighborProc,processor,i+1), *dataIn));
+               m_requests[myRank].push_back(comm().irecv(neighborRank, tag(neighborProc,processor,i+1), *dataIn));
             } else {
                m_GhostDataIn[neighborProc][processor][i] = dataOut;
             }
@@ -1114,8 +1112,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
    GhostMode buildGhostMode = m_case.varyingCoords ? BASE : ALL;
 
    if (m_buildGhost) {
-      mpi::communicator c;
-      c.barrier();
+      comm().barrier();
 
       for (int i=0; i<m_case.numblocks; ++i) {
          if (rankForBlock(i) == rank()) {
@@ -1124,7 +1121,7 @@ bool ReadFOAM::readConstant(const std::string &casedir)
          }
       }
 
-      c.barrier();
+      comm().barrier();
       processAllRequests();
    }
 
@@ -1159,8 +1156,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
    if (m_case.varyingCoords || m_case.varyingGrid) {
       const GhostMode ghostMode = m_case.varyingGrid ? ALL : COORDS;
       if (m_buildGhost) {
-         mpi::communicator c;
-         c.barrier();
+         comm().barrier();
          for (int i=0; i<m_case.numblocks; ++i) {
             if (rankForBlock(i) == rank()) {
                if (!buildGhostCells(i,ghostMode))
@@ -1168,7 +1164,7 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
             }
          }
 
-         c.barrier();
+         comm().barrier();
          processAllRequests();
       }
 
@@ -1183,14 +1179,13 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
    }
 
    if (m_buildGhost) {
-      mpi::communicator c;
       for (int i=0; i<m_case.numblocks; ++i) {
          if (rankForBlock(i) == rank()) {
             buildGhostCellData(i);
          }
       }
 
-      c.barrier();
+      comm().barrier();
       processAllRequests();
    }
 

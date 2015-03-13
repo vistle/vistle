@@ -45,6 +45,7 @@ class V_MODULEEXPORT Module {
    virtual bool dispatch();
 
    const std::string &name() const;
+   const boost::mpi::communicator &comm() const;
    int rank() const;
    int size() const;
    int id() const;
@@ -255,6 +256,7 @@ protected:
    int m_traceMessages;
    bool m_benchmark;
    double m_benchmarkStart;
+   boost::mpi::communicator m_comm;
 };
 
 template<>

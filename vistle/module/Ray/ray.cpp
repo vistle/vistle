@@ -228,7 +228,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    m_scene = rtcNewScene(RTC_SCENE_DYNAMIC|sceneFlags, intersections);
    rtcCommit(m_scene);
 
-   m_icetComm = icetCreateMPICommunicator(MPI_COMM_WORLD);
+   m_icetComm = icetCreateMPICommunicator((MPI_Comm)comm());
 }
 
 
@@ -546,12 +546,12 @@ void RayCaster::render() {
 
    //vistle::StopWatch timer("render");
    m_state.numTimesteps = anim_geometry.size();
-   m_state.numTimesteps = mpi::all_reduce(mpi::communicator(), m_state.numTimesteps, mpi::maximum<unsigned>());
+   m_state.numTimesteps = mpi::all_reduce(comm(), m_state.numTimesteps, mpi::maximum<unsigned>());
 
-   m_updateBounds = mpi::all_reduce(mpi::communicator(), m_updateBounds, mpi::maximum<int>());
+   m_updateBounds = mpi::all_reduce(comm(), m_updateBounds, mpi::maximum<int>());
    if (m_updateBounds) {
-      mpi::all_reduce(mpi::communicator(), boundMin.data(), 3, m_state.bMin.data(), mpi::minimum<Scalar>());
-      mpi::all_reduce(mpi::communicator(), boundMax.data(), 3, m_state.bMax.data(), mpi::maximum<Scalar>());
+      mpi::all_reduce(comm(), boundMin.data(), 3, m_state.bMin.data(), mpi::minimum<Scalar>());
+      mpi::all_reduce(comm(), boundMax.data(), 3, m_state.bMax.data(), mpi::maximum<Scalar>());
    }
 
    auto vnc = m_vncControl.server();
@@ -608,7 +608,7 @@ void RayCaster::render() {
    }
    m_updateBounds = 0;
 
-   m_doRender = mpi::all_reduce(mpi::communicator(), m_doRender, mpi::maximum<int>());
+   m_doRender = mpi::all_reduce(comm(), m_doRender, mpi::maximum<int>());
 
    if (m_continuousRendering->getValue())
       m_doRender = 1;
@@ -617,8 +617,8 @@ void RayCaster::render() {
    if (m_doRender) {
       m_doRender = 0;
 
-      mpi::broadcast(mpi::communicator(), m_state, rootRank());
-      mpi::broadcast(mpi::communicator(), m_viewData, rootRank());
+      mpi::broadcast(comm(), m_state, rootRank());
+      mpi::broadcast(comm(), m_viewData, rootRank());
 
       if (vnc && rank() != rootRank()) {
           for (size_t i=0; i<m_viewData.size(); ++i) {
@@ -662,7 +662,7 @@ void RayCaster::render() {
               if (icet.width != vnc->width(i) || icet.height != vnc->height(i))
                   resetTiles = 1;
           }
-          resetTiles = mpi::all_reduce(mpi::communicator(), resetTiles, mpi::maximum<int>());
+          resetTiles = mpi::all_reduce(comm(), resetTiles, mpi::maximum<int>());
 
           if (resetTiles) {
               std::cerr << "resetting IceT tiles for view " << i << "..." << std::endl;
@@ -680,7 +680,7 @@ void RayCaster::render() {
               localTile.height = icet.height;
 
               std::vector<DisplayTile> icetTiles;
-              mpi::all_gather(mpi::communicator(), localTile, icetTiles);
+              mpi::all_gather(comm(), localTile, icetTiles);
               vassert(icetTiles.size() == (unsigned)size());
 
               icetResetTiles();

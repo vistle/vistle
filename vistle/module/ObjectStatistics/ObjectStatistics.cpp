@@ -203,17 +203,15 @@ bool Stats::prepare() {
 
 bool Stats::reduce(int timestep) {
 
-   auto comm = boost::mpi::communicator();
-
    //std::cerr << "reduction for timestep " << timestep << std::endl;
-   boost::mpi::reduce(comm, m_cur, m_min, minimum<stats>(), 0);
-   boost::mpi::reduce(comm, m_cur, m_max, maximum<stats>(), 0);
+   boost::mpi::reduce(comm(), m_cur, m_min, minimum<stats>(), 0);
+   boost::mpi::reduce(comm(), m_cur, m_max, maximum<stats>(), 0);
    stats total;
-   boost::mpi::reduce(comm, m_cur, total, std::plus<stats>(), 0);
+   boost::mpi::reduce(comm(), m_cur, total, std::plus<stats>(), 0);
    m_total += total;
 
    int timesteps = 0;
-   boost::mpi::reduce(comm, m_timesteps, timesteps, maximum<int>(), 0);
+   boost::mpi::reduce(comm(), m_timesteps, timesteps, maximum<int>(), 0);
 
    if (rank() == 0)
    {

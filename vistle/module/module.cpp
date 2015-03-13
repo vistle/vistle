@@ -1,5 +1,3 @@
-#include <mpi.h>
-
 #include <cstdlib>
 #include <cstdio>
 
@@ -51,6 +49,7 @@
 //#define DEBUG
 
 using namespace boost::interprocess;
+namespace mpi = boost::mpi;
 
 namespace vistle {
 
@@ -164,14 +163,15 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_streambuf(nullptr)
 , m_traceMessages(message::Message::INVALID)
 , m_benchmark(false)
+, m_comm(MPI_COMM_WORLD, mpi::comm_attach)
 {
 #ifdef _WIN32
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
 #endif
 
-   MPI_Comm_rank(MPI_COMM_WORLD, &m_rank);
-   MPI_Comm_size(MPI_COMM_WORLD, &m_size);
+   m_size = comm().size();
+   m_rank = comm().rank();
 
    message::DefaultSender::init(m_id, m_rank);
 
@@ -260,6 +260,11 @@ const std::string &Module::name() const {
 int Module::id() const {
 
    return m_id;
+}
+
+const mpi::communicator &Module::comm() const {
+
+   return m_comm;
 }
 
 int Module::rank() const {
@@ -957,7 +962,7 @@ bool Module::dispatch() {
                break;
          }
 
-         MPI_Allreduce(&sync, &allsync, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+         mpi::all_reduce(comm(), sync, allsync, mpi::maximum<int>());
 
          do {
             switch (buf.msg.type()) {
@@ -1240,7 +1245,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             if (m_executionCount < exec->getExecutionCount())
                m_executionCount = exec->getExecutionCount();
             if (exec->allRanks()) {
-               MPI_Allreduce(&m_executionCount, &m_executionCount, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+               mpi::all_reduce(comm(), m_executionCount, m_executionCount, mpi::maximum<int>());
             }
 
             Index numObject = 0;
@@ -1432,7 +1437,7 @@ Module::~Module() {
    delete m_streambuf;
    m_streambuf = nullptr;
 
-   MPI_Barrier(MPI_COMM_WORLD);
+   comm().barrier();
 
    vistle::message::ModuleExit m;
    sendMessage(m);
@@ -1571,7 +1576,7 @@ bool Module::prepareWrapper(const message::Message *req) {
 
    if (m_benchmark) {
 
-      MPI_Barrier(MPI_COMM_WORLD);
+      comm().barrier();
       m_benchmarkStart = Clock::time();
    }
 
@@ -1586,7 +1591,7 @@ bool Module::prepareWrapper(const message::Message *req) {
 bool Module::prepare() {
 
 #ifndef NDEBUG
-   MPI_Barrier(MPI_COMM_WORLD);
+   comm().barrier();
 #endif
    return true;
 }
@@ -1605,7 +1610,7 @@ bool Module::reduceWrapper(const message::Message *req) {
    }
 
    if (m_benchmark) {
-      MPI_Barrier(MPI_COMM_WORLD);
+      comm().barrier();
       double duration = Clock::time() - m_benchmarkStart;
       if (rank() == 0) {
          sendInfo("compute() took %fs (OpenMP threads: %d)", duration, openmpThreads());
@@ -1625,7 +1630,7 @@ bool Module::reduceWrapper(const message::Message *req) {
 bool Module::reduce(int timestep) {
 
 #ifndef NDEBUG
-   MPI_Barrier(MPI_COMM_WORLD);
+   comm().barrier();
 #endif
    return true;
 }

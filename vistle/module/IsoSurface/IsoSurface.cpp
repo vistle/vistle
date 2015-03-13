@@ -127,9 +127,9 @@ bool IsoSurface::reduce(int timestep) {
 
 #ifndef CUTTINGSURFACE
    Scalar min, max;
-   boost::mpi::all_reduce(boost::mpi::communicator(),
+   boost::mpi::all_reduce(comm(),
                           m_min, min, boost::mpi::minimum<Scalar>());
-   boost::mpi::all_reduce(boost::mpi::communicator(),
+   boost::mpi::all_reduce(comm(),
                           m_max, max, boost::mpi::maximum<Scalar>());
 
    setParameterRange(m_isovalue, (Float)min, (Float)max);
