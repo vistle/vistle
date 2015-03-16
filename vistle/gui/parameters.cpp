@@ -74,6 +74,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
 
    QtLongSpinBoxFactory *spinBoxFactory = new QtLongSpinBoxFactory(this);
    setFactoryForManager(m_intManager, spinBoxFactory);
+   setFactoryForManager(m_intVectorManager->subLongPropertyManager(), spinBoxFactory);
 
    QtDoubleSpinBoxFactory *doubleSpinBoxFactory = new QtDoubleSpinBoxFactory(this);
    setFactoryForManager(m_floatManager, doubleSpinBoxFactory);
