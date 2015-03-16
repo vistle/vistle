@@ -3,7 +3,8 @@
 	url = git://public.kitware.com/IceT.git
 [submodule "3rdparty/qt-solutions"]
 	path = 3rdparty/qt-solutions
-	url = git://gitorious.org/qt-solutions/qt-solutions.git
+	url = git://github.com/qtproject/qt-solutions.git
+	branch = master
 [submodule "3rdparty/eigen3"]
 	path = 3rdparty/eigen3
 	url = git://github.com/RLovelett/eigen.git
