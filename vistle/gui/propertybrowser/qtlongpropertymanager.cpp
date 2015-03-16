@@ -12,7 +12,7 @@ public:
 
     struct Data
     {
-        Data() : val(0), minVal(-LONG_MAX), maxVal(LONG_MAX), singleStep(1), readOnly(false) {}
+        Data() : val(0), minVal(LONG_MIN), maxVal(LONG_MAX), singleStep(1), readOnly(false) {}
         long val;
         long minVal;
         long maxVal;
