@@ -32,6 +32,8 @@ namespace mpi = boost::mpi;
 
 using namespace vistle;
 
+const float Epsilon = 1e-9f;
+
 class RayCaster: public vistle::Renderer {
 
    static RayCaster *s_instance;
@@ -226,7 +228,7 @@ struct TileTask {
    , packetSizeX((rayPacketSize+1)/2)
    , packetSizeY(rayPacketSize/packetSizeX)
    {
-
+       vassert(rayPacketSize == packetSizeX*packetSizeY);
    }
 
    void shadeRay(const RTCRay &ray, int x, int y) const;
@@ -252,6 +254,7 @@ struct TileTask {
    Vector4 depthTransform2, depthTransform3;
    Vector3 lowerBottom, dx, dy;
    Vector3 origin;
+   Matrix4 modelView;
    float tNear, tFar;
    const int rayPacketSize;
    const int packetSizeX, packetSizeY;
@@ -267,6 +270,7 @@ void TileTask::render(int tile) const {
    RTCRay ray;
    RTCRay4 ray4;
    RTCRay8 ray8;
+   RTCRay16 ray16;
 
    const int tx = tile%ntx;
    const int ty = tile/ntx;
@@ -294,7 +298,9 @@ void TileTask::render(int tile) const {
                   validMask[idx] = RayEnabled;
                }
 
-               if (rayPacketSize==8) {
+               if (rayPacketSize==16) {
+                  setRay(ray16, idx, ray);
+               } else if (rayPacketSize==8) {
                   setRay(ray8, idx, ray);
                } else if (rayPacketSize==4) {
                   setRay(ray4, idx, ray);
@@ -304,7 +310,9 @@ void TileTask::render(int tile) const {
             }
          }
 
-         if (rayPacketSize==8) {
+         if (rayPacketSize==16) {
+            rtcIntersect16(validMask, rc.m_scene, ray16);
+         } else if (rayPacketSize==8) {
             rtcIntersect8(validMask, rc.m_scene, ray8);
          } else if (rayPacketSize==4) {
             rtcIntersect4(validMask, rc.m_scene, ray4);
@@ -317,7 +325,9 @@ void TileTask::render(int tile) const {
             for (int x=xx; x<xx+packetSizeX; ++x) {
 
                if (validMask[idx] == RayEnabled) {
-                  if (rayPacketSize==8) {
+                  if (rayPacketSize==16) {
+                     ray = getRay(ray16, idx);
+                  } else if (rayPacketSize==8) {
                      ray = getRay(ray8, idx);
                   } else if (rayPacketSize==4) {
                      ray = getRay(ray4, idx);
@@ -334,10 +344,23 @@ void TileTask::render(int tile) const {
 
 void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
 
+    const float ambientFactor = 0.2f;
+    const Vector4 specColor(0.4f, 0.4f, 0.4f, 1.0f);
+    const float specExp = 16.f;
+    const Vector4 ambient(0.2f, 0.2f, 0.2f, 1.0f);
+    const bool twoSided = true;
+
    Vector4 shaded(0, 0, 0, 0);
    float zValue = 1.;
    if (ray.geomID != RTC_INVALID_GEOMETRY_ID) {
-      //std::cerr << "intersection at " << x << "," << y << ": " << ray.tfar*zNear << std::endl;
+      Vector3 viewDir(ray.dir[0], ray.dir[1], ray.dir[2]);
+      const Vector3 pos = origin + ray.tfar * viewDir;
+      viewDir.normalize();
+      const Vector4 pos4(pos[0], pos[1], pos[2], 1);
+      const float win2 = depthTransform2.dot(pos4);
+      const float win3 = depthTransform3.dot(pos4);
+      zValue= (win2/win3+1.f)*0.5f;
+
       if (rc.m_doShade) {
 
          vassert(ray.instID < (int)rc.instances.size());
@@ -371,35 +394,46 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
             if (idx >= ro->texWidth)
                idx = ro->texWidth-1;
             const unsigned char *c = &ro->texData[idx*4];
-            color[0] = c[0];
-            color[1] = c[1];
-            color[2] = c[2];
-            color[3] = c[3];
+            for (int i=0; i<4; ++i)
+               color[i] = c[i];
          }
 
-         const Vector3 pos = Vector3(ray.org[0], ray.org[1], ray.org[2])
-            + ray.tfar * Vector3(ray.dir[0], ray.dir[1], ray.dir[2]);
-         const Vector4 pos4(pos[0], pos[1], pos[2], 1);
-
+         Vector4 ambientColor = color;
+         ambientColor.block(0,0, 3,1) *= ambientFactor;
          Vector3 normal(ray.Ng[0], ray.Ng[1], ray.Ng[2]);
          normal.normalize();
+         if (twoSided && normal.dot(viewDir) > 0.f)
+             normal *= -1.f;
+         shaded += ambientColor.cwiseProduct(ambient);
          for (const auto &light: vd.lights) {
-            Vector ldir = light.transformedPosition - pos;
-            ldir.normalize();
-            const float ldot = fabs(normal.dot(ldir));
-            shaded += color.cwiseProduct(light.ambient + ldot*light.diffuse);
+             if (light.enabled) {
+                const Vector3 lv = light.isDirectional
+                        ? light.transformedPosition.block(0,0, 3,1).normalized()
+                        : (light.transformedPosition.block(0,0, 3,1)-pos).normalized();
+                float atten = 1.f;
+                if (!light.isDirectional && (light.attenuation[1]>0.f || light.attenuation[2]>0.f)) {
+                    const float d = (modelView * (light.transformedPosition-pos4).block(0,0, 3,1)).norm();
+                    atten = 1.f/(light.attenuation[0] + light.attenuation[1]*d + light.attenuation[2]*d*d);
+                }
+                shaded += ambientColor.cwiseProduct(atten*light.ambient);
+                const float ldot = std::max(0.f, normal.dot(lv));
+                shaded += color.cwiseProduct(atten*ldot*light.diffuse);
+                if (ldot > 0.f) {
+                    const Vector3 halfway = (lv-viewDir).normalized();
+                    const float hdot = std::max(0.f, normal.dot(halfway));
+                    if (hdot > 0) {
+                       shaded += specColor.cwiseProduct(atten*powf(hdot, specExp)*light.specular);
+                    }
+                }
+             }
          }
          for (int i=0; i<4; ++i)
             if (shaded[i] > 255)
                shaded[i] = 255;
 
-         float win2 = depthTransform2.dot(pos4);
-         float win3 = depthTransform3.dot(pos4);
-         zValue= (win2/win3+1.f)*0.5f;
       } else {
 
          shaded = rc.m_renderManager.m_defaultColor;
-         zValue = 0.;
       }
    }
 
@@ -437,8 +471,23 @@ void RayCaster::render() {
          m_renderManager.setCurrentView(i);
          m_currentView = i;
 
+         auto &vd = m_renderManager.viewData(i);
+         const vistle::Matrix4 lightTransform = vd.model.inverse();
+         for (auto &light: vd.lights) {
+            light.transformedPosition = lightTransform * light.position;
+            if (fabs(light.transformedPosition[3]) > Epsilon) {
+               light.isDirectional = false;
+               light.transformedPosition /= light.transformedPosition[3];
+            } else {
+               light.isDirectional = true;
+            }
+#if 0
+            if (light.enabled)
+               std::cerr << "light pos " << light.position.transpose() << " -> " << light.transformedPosition.transpose() << std::endl;
+#endif
+         }
          IceTDouble proj[16], mv[16];
-         m_renderManager.getViewMat(i, mv);
+         m_renderManager.getModelViewMat(i, mv);
          m_renderManager.getProjMat(i, proj);
          IceTFloat bg[4] = { 0., 0., 0., 0. };
 
@@ -484,7 +533,7 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
    const auto inv = MVP.inverse();
 
    const Vector4 ro4 = MV.inverse().col(3);
-   const Vector ro(ro4[0], ro4[1], ro4[2]);
+   const Vector ro = ro4.block(0,0, 3,1)/ro4[3];
 
    const Vector4 lbn4 = inv * Vector4(-1, -1, -1, 1);
    Vector lbn(lbn4[0], lbn4[1], lbn4[2]);
@@ -523,6 +572,7 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
    renderTile.origin = ro;
    renderTile.tNear = 1.;
    renderTile.tFar = tFar;
+   renderTile.modelView = MV;
 #ifdef USE_TBB
    tbb::parallel_for(0, ntx*nty, 1, renderTile);
 #else

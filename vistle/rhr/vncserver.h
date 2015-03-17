@@ -117,40 +117,67 @@ public:
    const Screen &screen() const;
 
    struct Light {
-      vistle::Vector4 position;
-      vistle::Vector3 direction;
+      bool enabled;
 
-      vistle::Vector3 transformedPosition;
-      vistle::Vector3 transformedDirection;
+      vistle::Vector4 position;
+      vistle::Vector3 attenuation;
 
       vistle::Vector4 ambient;
       vistle::Vector4 diffuse;
       vistle::Vector4 specular;
 
-      vistle::Vector3 attenuation;
+      vistle::Vector3 direction;
       vistle::Scalar spotCutoff;
       vistle::Scalar spotExponent;
+
+      mutable vistle::Vector4 transformedPosition;
+      mutable vistle::Vector3 transformedDirection;
+      mutable bool isDirectional;
+
+      bool operator==(const Light &rhs) const {
+
+          if (position != rhs.position)
+              return false;
+          if (attenuation != rhs.attenuation)
+              return false;
+          if (ambient != rhs.ambient)
+              return false;
+          if (diffuse != rhs.diffuse)
+              return false;
+          if (specular != rhs.specular)
+              return false;
+          if (direction != rhs.direction)
+              return false;
+          if (spotCutoff != rhs.spotCutoff)
+              return false;
+          if (spotExponent != rhs.spotExponent)
+              return false;
+          if (enabled != rhs.enabled)
+              return false;
+
+          return true;
+      }
 
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
 
-         ar & position;
-         ar & direction;
+         ar & enabled;
 
-         ar & transformedPosition;
-         ar & transformedDirection;
+         ar & position;
+         ar & attenuation;
 
          ar & ambient;
          ar & diffuse;
          ar & specular;
 
-         ar & attenuation;
+         ar & direction;
          ar & spotCutoff;
          ar & spotExponent;
       }
    };
 
    std::vector<Light> lights;
+   size_t lightsUpdateCount;
 
    struct ImageParameters {
        unsigned timestep;

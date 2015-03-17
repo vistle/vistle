@@ -196,13 +196,15 @@ void VncClient::sendLightsMessage(rfbClient *client) {
    if (!client)
       return;
 
-   std::cerr << "sending lights" << std::endl;
+   //std::cerr << "sending lights" << std::endl;
    lightsMsg msg;
    msg.type = rfbLights;
 
-   for (int i=0; i<lightsMsg::NumLights; ++i) {
+   for (size_t i=0; i<lightsMsg::NumLights; ++i) {
 
       const osg::Light *light = NULL;
+      const auto &lightList = coVRLighting::instance()->lightList;
+#if 0
       if (i == 0 && coVRLighting::instance()->headlight) {
          light = coVRLighting::instance()->headlight->getLight();
       } else if (i == 1 && coVRLighting::instance()->spotlight) {
@@ -212,6 +214,10 @@ void VncClient::sendLightsMessage(rfbClient *client) {
       } else if (i == 3 && coVRLighting::instance()->light2) {
          light = coVRLighting::instance()->light2->getLight();
       }
+#else
+      if (i < lightList.size())
+          light = lightList[i].source->getLight();
+#endif
 
 #define COPY_VEC(d, dst, src) \
       for (int k=0; k<d; ++k) { \
@@ -220,7 +226,11 @@ void VncClient::sendLightsMessage(rfbClient *client) {
 
       if (light) {
 
-         msg.lights[i].enabled = 1;
+         msg.lights[i].enabled = lightList[i].on;
+         if (i == 0) {
+             // headlight is always enabled for menu sub-graph
+             msg.lights[i].enabled = coVRLighting::instance()->headlightState;
+         }
          COPY_VEC(4, msg.lights[i].position, light->getPosition());
          COPY_VEC(4, msg.lights[i].ambient, light->getAmbient());
          COPY_VEC(4, msg.lights[i].diffuse, light->getDiffuse());
@@ -231,6 +241,10 @@ void VncClient::sendLightsMessage(rfbClient *client) {
          msg.lights[i].attenuation[0] = light->getConstantAttenuation();
          msg.lights[i].attenuation[1] = light->getLinearAttenuation();
          msg.lights[i].attenuation[2] = light->getQuadraticAttenuation();
+      }
+      else
+      {
+          msg.lights[i].enabled = false;
       }
 
 #undef COPY_VEC
@@ -1617,6 +1631,7 @@ VncClient::preFrame()
       }
 
       if ((haveMessage || cover->frameTime()-lastMatrices>0.03) && m_client && rfbClientGetClientData(m_client, (void *)rfbMatricesMessage)) {
+         sendLightsMessage(m_client);
          sendMatricesMessage(m_client, messages, m_matrixNum++);
          lastMatrices = cover->frameTime();
       }

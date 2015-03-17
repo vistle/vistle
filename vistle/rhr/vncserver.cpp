@@ -291,6 +291,8 @@ const VncServer::Screen &VncServer::screen() const {
 //! called after plug-in is loaded and scenegraph is initialized
 bool VncServer::init(int w, int h, unsigned short port) {
 
+   lightsUpdateCount = 0;
+
    m_appHandler = nullptr;
 
    m_tileWidth = 256;
@@ -551,26 +553,30 @@ rfbBool VncServer::handleLightsMessage(rfbClientPtr cl, void *data,
          } \
       } while(false)
 
-   plugin->lights.clear();
+   std::vector<Light> newLights;
    for (int i=0; i<lightsMsg::NumLights; ++i) {
 
       const auto &cl = msg.lights[i];
-      if (cl.enabled) {
-         plugin->lights.push_back(Light());
-         auto &l = plugin->lights.back();
+      newLights.emplace_back();
+      auto &l = newLights.back();
 
-         SET_VEC(4, l.position, cl.position);
-         SET_VEC(4, l.ambient, cl.ambient);
-         SET_VEC(4, l.diffuse, cl.diffuse);
-         SET_VEC(4, l.specular, cl.specular);
-         SET_VEC(3, l.attenuation, cl.attenuation);
-         SET_VEC(3, l.direction, cl.spot_direction);
-         l.spotCutoff = cl.spot_cutoff;
-         l.spotExponent = cl.spot_exponent;
+      SET_VEC(4, l.position, cl.position);
+      SET_VEC(4, l.ambient, cl.ambient);
+      SET_VEC(4, l.diffuse, cl.diffuse);
+      SET_VEC(4, l.specular, cl.specular);
+      SET_VEC(3, l.attenuation, cl.attenuation);
+      SET_VEC(3, l.direction, cl.spot_direction);
+      l.spotCutoff = cl.spot_cutoff;
+      l.spotExponent = cl.spot_exponent;
+      l.enabled = cl.enabled;
+      //std::cerr << "Light " << i << ": ambient: " << l.ambient << std::endl;
+      //std::cerr << "Light " << i << ": diffuse: " << l.diffuse << std::endl;
+   }
 
-         //std::cerr << "Light " << i << ": ambient: " << l.ambient << std::endl;
-         //std::cerr << "Light " << i << ": diffuse: " << l.diffuse << std::endl;
-      }
+   std::swap(plugin->lights, newLights);
+   if (plugin->lights != newLights) {
+       ++plugin->lightsUpdateCount;
+       std::cerr << "handleLightsMessage: lights changed" << std::endl;
    }
 
    //std::cerr << "handleLightsMessage: " << plugin->lights.size() << " lights received" << std::endl;

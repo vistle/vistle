@@ -10,6 +10,8 @@ namespace vistle {
 class RenderObject;
 class Renderer;
 
+void V_RENDEREREXPORT toIcet(IceTDouble *imat, const vistle::Matrix4 &vmat);
+
 class V_RENDEREREXPORT ParallelRemoteRenderManager {
 public:
    typedef void (*IceTDrawCallback)(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image);
@@ -24,7 +26,7 @@ public:
    size_t numViews() const;
    void setCurrentView(size_t i);
    void finishCurrentView(const IceTImage &img);
-   void getViewMat(size_t viewIdx, IceTDouble *mat) const;
+   void getModelViewMat(size_t viewIdx, IceTDouble *mat) const;
    void getProjMat(size_t viewIdx, IceTDouble *mat) const;
    const PerViewState &viewData(size_t viewIdx) const;
    void updateRect(size_t viewIdx, const IceTInt *viewport, IceTImage image);
@@ -49,11 +51,13 @@ public:
 
    int m_updateBounds;
    int m_doRender;
+   size_t m_lightsUpdateCount;
 
    struct PerViewState {
        // synchronized across all ranks
 
       int width, height;
+      Matrix4 model;
       Matrix4 view;
       Matrix4 proj;
       std::vector<VncServer::Light> lights;
@@ -64,6 +68,7 @@ public:
       , height(0)
       {
 
+         model.Identity();
          view.Identity();
          proj.Identity();
       }
@@ -72,6 +77,7 @@ public:
       void serialize(Archive &ar, const unsigned int version) {
          ar & width;
          ar & height;
+         ar & model;
          ar & view;
          ar & proj;
          ar & lights;

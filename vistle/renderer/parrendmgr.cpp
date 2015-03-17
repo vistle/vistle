@@ -6,19 +6,25 @@ namespace mpi = boost::mpi;
 
 namespace vistle {
 
+void toIcet(IceTDouble *imat, const vistle::Matrix4 &vmat) {
+   for (int i=0; i<16; ++i) {
+      imat[i] = vmat.data()[i];
+   }
+}
+
 ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module, IceTDrawCallback drawCallback)
 : m_module(module)
 , m_drawCallback(drawCallback)
 , m_displayRank(0)
 , m_vncControl(module, m_displayRank)
-, m_defaultColor(Vector4(127, 127, 127, 255))
+, m_defaultColor(Vector4(255, 255, 255, 255))
 , m_updateBounds(1)
 , m_doRender(1)
+, m_lightsUpdateCount(1000) // start with a value that is different from the one managed by VncServer
 , m_currentView(-1)
 {
    m_continuousRendering = m_module->addIntParameter("continuous_rendering", "render even though nothing has changed", 0, Parameter::Boolean);
    m_colorRank = m_module->addIntParameter("color_rank", "different colors on each rank", 0, Parameter::Boolean);
-   m_defaultColor = Vector4(127, 127, 127, 255);
    m_icetComm = icetCreateMPICommunicator((MPI_Comm)m_module->comm());
 }
 
@@ -58,7 +64,7 @@ bool ParallelRemoteRenderManager::handleParam(const Parameter *p) {
          m_defaultColor = Vector4(63+r*64, 63+g*64, 63+b*64, 255);
       } else {
 
-         m_defaultColor = Vector4(127, 127, 127, 255);
+         m_defaultColor = Vector4(255, 255, 255, 255);
       }
       return true;
     }
@@ -101,6 +107,11 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
       }
       m_state.timestep = vnc->timestep();
 
+      if (vnc->lightsUpdateCount != m_lightsUpdateCount) {
+          m_doRender = 1;
+          m_lightsUpdateCount = vnc->lightsUpdateCount;
+      }
+
       for (int i=m_viewData.size(); i<vnc->numViews(); ++i) {
           std::cerr << "new view no. " << i << std::endl;
           m_doRender = 1;
@@ -111,11 +122,12 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
 
           PerViewState &vd = m_viewData[i];
 
-          const Matrix4 view = vnc->viewMat(i) * vnc->transformMat(i) * vnc->scaleMat(i);
+          const Matrix4 model = vnc->transformMat(i) * vnc->scaleMat(i);
           if (vd.width != vnc->width(i)
                   || vd.height != vnc->height(i)
                   || vd.proj != vnc->projMat(i)
-                  || vd.view != view) {
+                  || vd.view != vnc->viewMat(i)
+                  || vd.model != model) {
               m_doRender = 1;
           }
 
@@ -123,16 +135,11 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
 
           vd.width = vnc->width(i);
           vd.height = vnc->height(i);
-          vd.view = view;
+          vd.model = model;
+          vd.view = vnc->viewMat(i);
           vd.proj = vnc->projMat(i);
 
           vd.lights = vnc->lights;
-          const Matrix4 lightTransform = vnc->viewMat(i).inverse();
-          for (auto &light: vd.lights) {
-              Vector4 transformedPosition = lightTransform * light.position;
-              transformedPosition /= transformedPosition[3];
-              light.transformedPosition = Vector3(transformedPosition[0], transformedPosition[1], transformedPosition[2]);
-          }
       }
    }
    m_updateBounds = 0;
@@ -263,18 +270,15 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img) {
    m_currentView = -1;
 }
 
-void ParallelRemoteRenderManager::getViewMat(size_t viewIdx, IceTDouble *mat) const {
+void ParallelRemoteRenderManager::getModelViewMat(size_t viewIdx, IceTDouble *mat) const {
    const PerViewState &vd = m_viewData[viewIdx];
-   for (int i=0; i<16; ++i) {
-      mat[i] = vd.view.data()[i];
-   }
+   Matrix4 mv = vd.view * vd.model;
+   toIcet(mat, mv);
 }
 
 void ParallelRemoteRenderManager::getProjMat(size_t viewIdx, IceTDouble *mat) const {
    const PerViewState &vd = m_viewData[viewIdx];
-   for (int i=0; i<16; ++i) {
-      mat[i] = vd.proj.data()[i];
-   }
+   toIcet(mat, vd.proj);
 }
 
 const ParallelRemoteRenderManager::PerViewState &ParallelRemoteRenderManager::viewData(size_t viewIdx) const {
