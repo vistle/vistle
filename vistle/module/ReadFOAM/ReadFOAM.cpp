@@ -190,7 +190,7 @@ bool loadCoords(const std::string &meshdir, Coords::ptr grid) {
       return false;
    HeaderInfo pointsH = readFoamHeader(*pointsIn);
    grid->setSize(pointsH.lines);
-   readFloatVectorArray(*pointsIn, grid->x().data(), grid->y().data(), grid->z().data(), pointsH.lines);
+   readFloatVectorArray(pointsH, *pointsIn, grid->x().data(), grid->y().data(), grid->z().data(), pointsH.lines);
 
    return true;
 }
@@ -218,7 +218,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
       return result;
    HeaderInfo ownerH = readFoamHeader(*ownersIn);
    owners->resize(ownerH.lines);
-   readIndexArray(*ownersIn, (*owners).data(), (*owners).size());
+   readIndexArray(ownerH, *ownersIn, (*owners).data(), (*owners).size());
 
    {
 
@@ -227,7 +227,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          return result;
       HeaderInfo facesH = readFoamHeader(*facesIn);
       std::vector<std::vector<Index>> faces(facesH.lines);
-      readIndexListArray(*facesIn, faces.data(), faces.size());
+      readIndexListArray(facesH, *facesIn, faces.data(), faces.size());
 
       boost::shared_ptr<std::istream> neighboursIn = getStreamForFile(meshdir, "neighbour");
       if (!neighboursIn)
@@ -237,7 +237,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          std::cerr << "inconsistency: #internalFaces != #neighbours" << std::endl;
       }
       std::vector<Index> neighbours(neighbourH.lines);
-      readIndexArray(*neighboursIn, neighbours.data(), neighbours.size());
+      readIndexArray(neighbourH, *neighboursIn, neighbours.data(), neighbours.size());
 
       //Boundary Polygon
       if (readBoundary) {
@@ -488,11 +488,11 @@ Object::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &f
    HeaderInfo header = readFoamHeader(*stream);
    if (header.fieldclass == "volScalarField") {
       Vec<Scalar>::ptr s(new Vec<Scalar>(header.lines));
-      readFloatArray(*stream, s->x().data(), s->x().size());
+      readFloatArray(header, *stream, s->x().data(), s->x().size());
       return s;
    } else if (header.fieldclass == "volVectorField") {
       Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(header.lines));
-      readFloatVectorArray(*stream, v->x().data(), v->y().data(), v->z().data(), v->x().size());
+      readFloatVectorArray(header, *stream, v->x().data(), v->y().data(), v->z().data(), v->x().size());
       return v;
    }
 
@@ -523,7 +523,7 @@ Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::s
    HeaderInfo header = readFoamHeader(*stream);
    if (header.fieldclass == "volScalarField") {
       std::vector<scalar_t> fullX(header.lines);
-      readFloatArray(*stream, fullX.data(), header.lines);
+      readFloatArray(header, *stream, fullX.data(), header.lines);
 
       Vec<Scalar>::ptr s(new Vec<Scalar>(dataMapping.size()));
       auto x = s->x().data();
@@ -535,7 +535,7 @@ Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::s
 
    } else if (header.fieldclass == "volVectorField") {
       std::vector<scalar_t> fullX(header.lines),fullY(header.lines),fullZ(header.lines);
-      readFloatVectorArray(*stream,fullX.data(),fullY.data(),fullZ.data(),header.lines);
+      readFloatVectorArray(header, *stream,fullX.data(),fullY.data(),fullZ.data(),header.lines);
 
       Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(dataMapping.size()));
       auto x = v->x().data();

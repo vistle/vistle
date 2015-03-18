@@ -753,7 +753,7 @@ std::istream &operator>>(std::istream &stream, std::vector<T> &vec)
 }
 
 template <typename T>
-bool readVectorArray(std::istream &stream, T *x, T *y, T *z, const size_t lines)
+bool readVectorArray(const HeaderInfo &info, std::istream &stream, T *x, T *y, T *z, const size_t lines)
 {
 
     for (size_t i = 0; i < lines; ++i)
@@ -767,7 +767,7 @@ bool readVectorArray(std::istream &stream, T *x, T *y, T *z, const size_t lines)
 }
 
 template <typename T>
-bool readArray(std::istream &stream, T *p, const size_t lines)
+bool readArray(const HeaderInfo &info, std::istream &stream, T *p, const size_t lines)
 {
 
     for (size_t i = 0; i < lines; ++i)
@@ -778,25 +778,25 @@ bool readArray(std::istream &stream, T *p, const size_t lines)
     return true;
 }
 
-bool readIndexArray(std::istream &stream, index_t *p, const size_t lines)
+bool readIndexArray(const HeaderInfo &info, std::istream &stream, index_t *p, const size_t lines)
 {
-    return readArray<index_t>(stream, p, lines);
+    return readArray<index_t>(info, stream, p, lines);
 }
 
-bool readIndexListArray(std::istream &stream, std::vector<index_t> *p, const size_t lines)
+bool readIndexListArray(const HeaderInfo &info, std::istream &stream, std::vector<index_t> *p, const size_t lines)
 {
-    return readArray<std::vector<index_t> >(stream, p, lines);
+    return readArray<std::vector<index_t> >(info, stream, p, lines);
 }
 
-bool readFloatArray(std::istream &stream, scalar_t *p, const size_t lines)
+bool readFloatArray(const HeaderInfo &info, std::istream &stream, scalar_t *p, const size_t lines)
 {
-    return readArray<scalar_t>(stream, p, lines);
+    return readArray<scalar_t>(info, stream, p, lines);
 }
 
-bool readFloatVectorArray(std::istream &stream, scalar_t *x, scalar_t *y, scalar_t *z, const size_t lines)
+bool readFloatVectorArray(const HeaderInfo &info, std::istream &stream, scalar_t *x, scalar_t *y, scalar_t *z, const size_t lines)
 {
 
-    return readVectorArray(stream, x, y, z, lines);
+    return readVectorArray(info, stream, x, y, z, lines);
 }
 
 DimensionInfo readDimensions(const std::string &meshdir)
