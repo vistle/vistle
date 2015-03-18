@@ -190,8 +190,10 @@ bool loadCoords(const std::string &meshdir, Coords::ptr grid) {
       return false;
    HeaderInfo pointsH = readFoamHeader(*pointsIn);
    grid->setSize(pointsH.lines);
-   readFloatVectorArray(pointsH, *pointsIn, grid->x().data(), grid->y().data(), grid->z().data(), pointsH.lines);
-
+   if (!readFloatVectorArray(pointsH, *pointsIn, grid->x().data(), grid->y().data(), grid->z().data(), pointsH.lines)) {
+      std::cerr << "readFloatVectorArray for " << meshdir << "/points failed" << std::endl;
+      return false;
+   }
    return true;
 }
 
@@ -218,7 +220,10 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
       return result;
    HeaderInfo ownerH = readFoamHeader(*ownersIn);
    owners->resize(ownerH.lines);
-   readIndexArray(ownerH, *ownersIn, (*owners).data(), (*owners).size());
+   if (!readIndexArray(ownerH, *ownersIn, (*owners).data(), (*owners).size())) {
+      std::cerr << "readIndexArray for " << meshdir << "/owner failed" << std::endl;
+      return result;
+   }
 
    {
 
@@ -227,17 +232,22 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          return result;
       HeaderInfo facesH = readFoamHeader(*facesIn);
       std::vector<std::vector<Index>> faces(facesH.lines);
-      readIndexListArray(facesH, *facesIn, faces.data(), faces.size());
+      if (!readIndexListArray(facesH, *facesIn, faces.data(), faces.size())) {
+         std::cerr << "readIndexListArray for " << meshdir << "/faces failed" << std::endl;
+         return result;
+      }
 
       boost::shared_ptr<std::istream> neighboursIn = getStreamForFile(meshdir, "neighbour");
       if (!neighboursIn)
          return result;
       HeaderInfo neighbourH = readFoamHeader(*neighboursIn);
       if (neighbourH.lines != dim.internalFaces) {
-         std::cerr << "inconsistency: #internalFaces != #neighbours" << std::endl;
+         std::cerr << "inconsistency: #internalFaces != #neighbours (" << dim.internalFaces << " != " << neighbourH.lines << ")" << std::endl;
+         return result;
       }
       std::vector<Index> neighbours(neighbourH.lines);
-      readIndexArray(neighbourH, *neighboursIn, neighbours.data(), neighbours.size());
+      if (!readIndexArray(neighbourH, *neighboursIn, neighbours.data(), neighbours.size()))
+         return result;
 
       //Boundary Polygon
       if (readBoundary) {
@@ -322,7 +332,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                   std::vector<Index> adjacentCells=getAdjacentCells(cell,dim,cellfacemap,*owners,neighbours);
                   for (Index j=0; j<adjacentCells.size(); ++j) {
                      if (!checkCell(adjacentCells[j],ghostCellCandidates,notGhostCells,dim,outerVertices,cellfacemap,faces,*owners,neighbours))
-                        std::cout << "ERROR finding GhostCellCandidates" << std::endl;
+                        std::cerr << "ERROR finding GhostCellCandidates" << std::endl;
                   }
                }
                m_procGhostCellCandidates[myProc][neighborProc] = ghostCellCandidates;
@@ -488,11 +498,17 @@ Object::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &f
    HeaderInfo header = readFoamHeader(*stream);
    if (header.fieldclass == "volScalarField") {
       Vec<Scalar>::ptr s(new Vec<Scalar>(header.lines));
-      readFloatArray(header, *stream, s->x().data(), s->x().size());
+      if (!readFloatArray(header, *stream, s->x().data(), s->x().size())) {
+         std::cerr << "readFloatArray for " << meshdir << "/" << field << " failed" << std::endl;
+         return Object::ptr();
+      }
       return s;
    } else if (header.fieldclass == "volVectorField") {
       Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(header.lines));
-      readFloatVectorArray(header, *stream, v->x().data(), v->y().data(), v->z().data(), v->x().size());
+      if (!readFloatVectorArray(header, *stream, v->x().data(), v->y().data(), v->z().data(), v->x().size())) {
+         std::cerr << "readFloatVectorArray for " << meshdir << "/" << field << " failed" << std::endl;
+         return Object::ptr();
+      }
       return v;
    }
 
@@ -523,7 +539,10 @@ Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::s
    HeaderInfo header = readFoamHeader(*stream);
    if (header.fieldclass == "volScalarField") {
       std::vector<scalar_t> fullX(header.lines);
-      readFloatArray(header, *stream, fullX.data(), header.lines);
+      if (!readFloatArray(header, *stream, fullX.data(), header.lines)) {
+         std::cerr << "readFloatArray for " << meshdir << "/" << field << " failed" << std::endl;
+         return Object::ptr();
+      }
 
       Vec<Scalar>::ptr s(new Vec<Scalar>(dataMapping.size()));
       auto x = s->x().data();
@@ -535,7 +554,10 @@ Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::s
 
    } else if (header.fieldclass == "volVectorField") {
       std::vector<scalar_t> fullX(header.lines),fullY(header.lines),fullZ(header.lines);
-      readFloatVectorArray(header, *stream,fullX.data(),fullY.data(),fullZ.data(),header.lines);
+      if (!readFloatVectorArray(header, *stream,fullX.data(),fullY.data(),fullZ.data(),header.lines)) {
+         std::cerr << "readFloatVectorArray for " << meshdir << "/" << field << " failed" << std::endl;
+         return Object::ptr();
+      }
 
       Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(dataMapping.size()));
       auto x = v->x().data();
@@ -1191,8 +1213,6 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
 
 bool ReadFOAM::compute()     //Compute is called when Module is executed
 {
-   if (rank() == 0)
-      std::cout << time(0) << " starting" << std::endl;
    const std::string casedir = m_casedir->getValue();
    m_boundaryPatches.add(m_patchSelection->getValue());
    m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
@@ -1216,8 +1236,6 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
    }
    m_currentgrid.clear();
 
-   if (rank() == 0)
-      std::cout << time(0) << " done" << std::endl;
    return true;
 }
 
