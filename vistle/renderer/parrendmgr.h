@@ -7,12 +7,15 @@
 
 namespace vistle {
 
+class RenderObject;
+class Renderer;
+
 class V_RENDEREREXPORT ParallelRemoteRenderManager {
 public:
    typedef void (*IceTDrawCallback)(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image);
    struct PerViewState;
 
-   ParallelRemoteRenderManager(Module *module, IceTDrawCallback drawCallback);
+   ParallelRemoteRenderManager(Renderer *module, IceTDrawCallback drawCallback);
    ~ParallelRemoteRenderManager();
 
    bool handleParam(const Parameter *p);
@@ -30,8 +33,10 @@ public:
    int rootRank() const {
       return m_displayRank==-1 ? 0 : m_displayRank;
    }
+   void addObject(boost::shared_ptr<RenderObject> ro);
+   void removeObject(boost::shared_ptr<RenderObject> ro);
 
-   Module *m_module;
+   Renderer *m_module;
    IceTDrawCallback m_drawCallback;
    int m_displayRank;
    VncController m_vncControl;
@@ -40,8 +45,7 @@ public:
    IntParameter *m_colorRank;
    Vector4 m_defaultColor;
 
-   size_t m_timestep;
-   Vector3 boundMin, boundMax;
+   Vector3 localBoundMin, localBoundMax;
 
    int m_updateBounds;
    int m_doRender;

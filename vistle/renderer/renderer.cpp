@@ -271,7 +271,10 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
    }
 
    if (ro) {
-      m_objectList.push_back(ro);
+      vassert(ro->timestep >= -1);
+      if (m_objectList.size() <= size_t(ro->timestep+1))
+         m_objectList.resize(ro->timestep+2);
+      m_objectList[ro->timestep+1].push_back(ro);
    }
 
    return true;
@@ -287,28 +290,59 @@ void Renderer::removeObject(boost::shared_ptr<RenderObject> ro) {
 
 void Renderer::removeAllCreatedBy(int creatorId) {
 
-   for (auto &ro: m_objectList) {
-      if (ro && ro->container && ro->container->getCreator() == creatorId) {
-         removeObject(ro);
-         ro.reset();
+   for (auto &ol: m_objectList) {
+      for (auto &ro: ol) {
+         if (ro && ro->container && ro->container->getCreator() == creatorId) {
+            removeObject(ro);
+            ro.reset();
+         }
       }
+      ol.erase(std::remove_if(ol.begin(), ol.end(), [](boost::shared_ptr<vistle::RenderObject> ro) { return !ro; }), ol.end());
    }
-   m_objectList.erase(std::remove_if(m_objectList.begin(), m_objectList.end(), [](boost::shared_ptr<vistle::RenderObject> ro) { return !ro; }), m_objectList.end());
+   while (!m_objectList.empty() && m_objectList.back().empty())
+      m_objectList.pop_back();
 }
 
 void Renderer::removeAllSentBy(int sender, const std::string &senderPort) {
 
-   for (auto &ro: m_objectList) {
-      if (ro && ro->senderId == sender && ro->senderPort == senderPort) {
-         removeObject(ro);
-         ro.reset();
+   for (auto &ol: m_objectList) {
+      for (auto &ro: ol) {
+         if (ro && ro->senderId == sender && ro->senderPort == senderPort) {
+            removeObject(ro);
+            ro.reset();
+         }
       }
+      ol.erase(std::remove_if(ol.begin(), ol.end(), [](boost::shared_ptr<vistle::RenderObject> ro) { return !ro; }), ol.end());
    }
-   m_objectList.erase(std::remove_if(m_objectList.begin(), m_objectList.end(), [](boost::shared_ptr<vistle::RenderObject> ro) { return !ro; }), m_objectList.end());
+   while (!m_objectList.empty() && m_objectList.back().empty())
+      m_objectList.pop_back();
 }
 
 bool Renderer::compute() {
    return true;
+}
+
+void Renderer::getBounds(Vector &min, Vector &max, int t) {
+
+   if (size_t(t+1) < m_objectList.size()) {
+      for (auto &ro: m_objectList[t+1]) {
+         for (int c=0; c<3; ++c) {
+            if (ro->bMin[c] < min[c])
+               min[c] = ro->bMin[c];
+            if (ro->bMax[c] > max[c])
+               max[c] = ro->bMax[c];
+         }
+      }
+   }
+}
+
+void Renderer::getBounds(Vector &min, Vector &max) {
+
+   const Scalar smax = std::numeric_limits<Scalar>::max();
+   min = Vector3(smax, smax, smax);
+   max = -min;
+   for (int t=-1; t<(int)(m_objectList.size())-1; ++t)
+      getBounds(min, max, t);
 }
 
 } // namespace vistle

@@ -73,8 +73,6 @@ class RayCaster: public vistle::Renderer {
 
    void removeObject(boost::shared_ptr<RenderObject> ro) override;
 
-   void updateBounds();
-
    std::vector<boost::shared_ptr<RayRenderObject>> instances;
 
    std::vector<boost::shared_ptr<RayRenderObject>> static_geometry;
@@ -83,7 +81,6 @@ class RayCaster: public vistle::Renderer {
    RTCScene m_scene;
 
    size_t m_timestep;
-   //Vector3 boundMin, boundMax;
 
    int m_currentView; //!< holds no. of view currently being rendered - not a problem is IceT is not reentrant anyway
    static void drawCallback(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image);
@@ -570,41 +567,6 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
 }
 
 
-void RayCaster::updateBounds() {
-
-   const Scalar smax = std::numeric_limits<Scalar>::max();
-   Vector3 min(smax, smax, smax), max(-smax, -smax, -smax);
-
-   for (auto ro: static_geometry) {
-      for (int i=0; i<3; ++i) {
-         if (ro->bMin[i] < min[i])
-            min[i] = ro->bMin[i];
-         if (ro->bMax[i] > max[i])
-            max[i] = ro->bMax[i];
-      }
-   }
-   for (size_t ts=0; ts<anim_geometry.size(); ++ts) {
-      for (auto ro: anim_geometry[ts]) {
-         for (int i=0; i<3; ++i) {
-            if (ro->bMin[i] < min[i])
-               min[i] = ro->bMin[i];
-            if (ro->bMax[i] > max[i])
-               max[i] = ro->bMax[i];
-         }
-      }
-   }
-
-   m_renderManager.setLocalBounds(min, max);
-
-#if 0
-   std::cerr << "<<< BOUNDS <<<" << std::endl;
-   std::cerr << "min: " << min << std::endl;
-   std::cerr << "max: " << max << std::endl;
-   std::cerr << ">>> BOUNDS >>>" << std::endl;
-#endif
-}
-
-
 void RayCaster::removeObject(boost::shared_ptr<RenderObject> vro) {
 
    auto ro = boost::static_pointer_cast<RayRenderObject>(vro);
@@ -630,7 +592,7 @@ void RayCaster::removeObject(boost::shared_ptr<RenderObject> vro) {
    while (!anim_geometry.empty() && anim_geometry.back().empty())
       anim_geometry.pop_back();
 
-   updateBounds();
+   m_renderManager.removeObject(ro);
 }
 
 
@@ -671,7 +633,7 @@ boost::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::stri
    }
    rtcCommit(m_scene);
 
-   updateBounds();
+   m_renderManager.addObject(ro);
 
    return ro;
 }

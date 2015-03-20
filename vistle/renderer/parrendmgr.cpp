@@ -1,10 +1,12 @@
 #include "parrendmgr.h"
+#include "renderobject.h"
+#include "renderer.h"
 
 namespace mpi = boost::mpi;
 
 namespace vistle {
 
-ParallelRemoteRenderManager::ParallelRemoteRenderManager(Module *module, IceTDrawCallback drawCallback)
+ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module, IceTDrawCallback drawCallback)
 : m_module(module)
 , m_drawCallback(drawCallback)
 , m_displayRank(0)
@@ -37,8 +39,8 @@ void ParallelRemoteRenderManager::setModified() {
 
 void ParallelRemoteRenderManager::setLocalBounds(const Vector3 &min, const Vector3 &max) {
 
-   boundMin = min;
-   boundMax = max;
+   localBoundMin = min;
+   localBoundMax = max;
    m_updateBounds = 1;
 }
 
@@ -69,10 +71,16 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
    m_state.numTimesteps = numTimesteps;
    m_state.numTimesteps = mpi::all_reduce(m_module->comm(), m_state.numTimesteps, mpi::maximum<unsigned>());
 
+   if (m_updateBounds) {
+      Vector min, max;
+      m_module->getBounds(min, max);
+      setLocalBounds(min, max);
+   }
+
    m_updateBounds = mpi::all_reduce(m_module->comm(), m_updateBounds, mpi::maximum<int>());
    if (m_updateBounds) {
-      mpi::all_reduce(m_module->comm(), boundMin.data(), 3, m_state.bMin.data(), mpi::minimum<Scalar>());
-      mpi::all_reduce(m_module->comm(), boundMax.data(), 3, m_state.bMax.data(), mpi::maximum<Scalar>());
+      mpi::all_reduce(m_module->comm(), localBoundMin.data(), 3, m_state.bMin.data(), mpi::minimum<Scalar>());
+      mpi::all_reduce(m_module->comm(), localBoundMax.data(), 3, m_state.bMax.data(), mpi::maximum<Scalar>());
    }
 
    auto vnc = m_vncControl.server();
@@ -221,9 +229,9 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
       icetDrawCallback(m_drawCallback);
    }
 
-   icetBoundingBoxf(boundMin[0], boundMax[0],
-         boundMin[1], boundMax[1],
-         boundMin[2], boundMax[2]);
+   icetBoundingBoxf(localBoundMin[0], localBoundMax[0],
+         localBoundMin[1], localBoundMax[1],
+         localBoundMin[2], localBoundMax[2]);
 }
 
 void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img) {
@@ -295,6 +303,14 @@ void ParallelRemoteRenderManager::updateRect(size_t viewIdx, const IceTInt *view
 
       vnc->invalidate(m_currentView, 0, 0, vnc->width(m_currentView), vnc->height(m_currentView), vnc->getViewParameters(m_currentView), true);
    }
+}
+
+void ParallelRemoteRenderManager::addObject(boost::shared_ptr<RenderObject> ro) {
+   m_updateBounds = 1;
+}
+
+void ParallelRemoteRenderManager::removeObject(boost::shared_ptr<RenderObject> ro) {
+   m_updateBounds = 1;
 }
 
 }
