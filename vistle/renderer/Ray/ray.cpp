@@ -18,7 +18,8 @@
 
 #include <rhr/vncserver.h>
 #include <renderer/vnccontroller.h>
-#include "renderobject.h"
+#include <renderer/parrendmgr.h>
+#include "rayrenderobject.h"
 
 
 #ifdef USE_TBB
@@ -52,17 +53,13 @@ class RayCaster: public vistle::Renderer {
 
    bool parameterChanged(const Parameter *p);
 
-   int m_displayRank;
-   VncController m_vncControl;
+   ParallelRemoteRenderManager m_renderManager;
 
    int rayPacketSize;
 
    // parameters
-   IntParameter *m_continuousRendering;
    IntParameter *m_renderTileSizeParam;
    int m_tilesize;
-   IntParameter *m_colorRank;
-   Vector4 m_defaultColor;
    IntParameter *m_shading;
    bool m_doShade;
 
@@ -86,109 +83,9 @@ class RayCaster: public vistle::Renderer {
    RTCScene m_scene;
 
    size_t m_timestep;
-   Vector3 boundMin, boundMax;
+   //Vector3 boundMin, boundMax;
 
-   int m_updateBounds;
-   int m_doRender;
-
-   int rootRank() const {
-
-      return m_displayRank==-1 ? 0 : m_displayRank;
-   }
-
-   //! serializable description of one IceT tile - usable by boost::mpi
-   struct DisplayTile {
-
-      int rank;
-      int x, y, width, height;
-
-      DisplayTile()
-      : rank(-1)
-      , x(0)
-      , y(0)
-      , width(0)
-      , height(0)
-      {}
-
-      template<class Archive>
-      void serialize(Archive &ar, const unsigned int version) {
-         ar & x;
-         ar & y;
-         ar & width;
-         ar & height;
-      }
-
-   };
-
-   //! state shared among all views
-   struct GlobalState {
-      unsigned timestep;
-      unsigned numTimesteps;
-      Vector3 bMin, bMax;
-
-      GlobalState()
-      : timestep(0)
-      , numTimesteps(0)
-      {
-      }
-
-      template<class Archive>
-      void serialize(Archive &ar, const unsigned int version) {
-         ar & timestep;
-         ar & numTimesteps;
-      }
-   };
-   struct GlobalState m_state;
-
-   struct PerViewState {
-       // synchronized across all ranks
-
-      int width, height;
-      Matrix4 view;
-      Matrix4 proj;
-      std::vector<VncServer::Light> lights;
-      VncServer::ViewParameters vncParam;
-
-      PerViewState()
-      : width(0)
-      , height(0)
-      {
-
-         view.Identity();
-         proj.Identity();
-      }
-
-      template<class Archive>
-      void serialize(Archive &ar, const unsigned int version) {
-         ar & width;
-         ar & height;
-         ar & view;
-         ar & proj;
-         ar & lights;
-      }
-   };
-   std::vector<PerViewState> m_viewData; // synchronized from rank 0 to slaves
    int m_currentView; //!< holds no. of view currently being rendered - not a problem is IceT is not reentrant anyway
-
-   //! per view IceT state
-   struct IceTData {
-
-       bool ctxValid;
-       int width, height; // dimensions of local tile
-       IceTContext ctx;
-
-       IceTData()
-       : ctxValid(false)
-       , width(0)
-       , height(0)
-       {
-           ctx = 0;
-       }
-   };
-   std::vector<IceTData> m_icet; // managed locally
-   IceTCommunicator m_icetComm; // common for all contexts
-
-   void composite();
    static void drawCallback(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image);
    void renderRect(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image);
 };
@@ -198,14 +95,11 @@ RayCaster *RayCaster::s_instance = nullptr;
 
 RayCaster::RayCaster(const std::string &shmname, const std::string &name, int moduleId)
 : Renderer("RayCaster", shmname, name, moduleId)
-, m_displayRank(0)
-, m_vncControl(this, m_displayRank)
+, m_renderManager(this, RayCaster::drawCallback)
 , rayPacketSize(MaxPacketSize)
 , m_tilesize(64)
 , m_doShade(true)
 , m_timestep(0)
-, m_updateBounds(1)
-, m_doRender(1)
 , m_currentView(-1)
 {
 #if 0
@@ -216,19 +110,13 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    vassert(s_instance == nullptr);
    s_instance = this;
 
-   m_continuousRendering = addIntParameter("continuous_rendering", "render even though nothing has changed", 0, Parameter::Boolean);
-   m_colorRank = addIntParameter("color_rank", "different colors on each rank", 0, Parameter::Boolean);
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
    m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
    setParameterRange(m_renderTileSizeParam, (Integer)1, (Integer)16384);
 
-   m_defaultColor = Vector4(127, 127, 127, 255);
-
    rtcInit("verbose=0");
    m_scene = rtcNewScene(RTC_SCENE_DYNAMIC|sceneFlags, intersections);
    rtcCommit(m_scene);
-
-   m_icetComm = icetCreateMPICommunicator((MPI_Comm)comm());
 }
 
 
@@ -243,26 +131,13 @@ RayCaster::~RayCaster() {
 
 bool RayCaster::parameterChanged(const Parameter *p) {
 
-    m_vncControl.handleParam(p);
+    m_renderManager.handleParam(p);
 
-    if (p == m_colorRank) {
+    if (p == m_shading) {
 
-      if (m_colorRank->getValue()) {
-
-         const int r = rank()%3;
-         const int g = (rank()/3)%3;
-         const int b = (rank()/9)%3;
-         m_defaultColor = Vector4(63+r*64, 63+g*64, 63+b*64, 255);
-      } else {
-
-         m_defaultColor = Vector4(127, 127, 127, 255);
-      }
-   } else if (p == m_shading) {
-
-      m_doShade = m_shading->getValue();
-   }
-
-   m_doRender = 1;
+       m_doShade = m_shading->getValue();
+       m_renderManager.setModified();
+    }
 
    return Renderer::parameterChanged(p);
 }
@@ -345,7 +220,7 @@ static RTCRay makeRay(const Vector3 &origin, const Vector3 &direction, float tNe
 
 
 struct TileTask {
-   TileTask(const RayCaster &rc, const RayCaster::PerViewState &vd, int tile=-1)
+   TileTask(const RayCaster &rc, const ParallelRemoteRenderManager::PerViewState &vd, int tile=-1)
    : rc(rc)
    , vd(vd)
    , tile(tile)
@@ -371,7 +246,7 @@ struct TileTask {
    }
 
    const RayCaster &rc;
-   const RayCaster::PerViewState &vd;
+   const ParallelRemoteRenderManager::PerViewState &vd;
    const int tile;
    const int tilesize;
    int imgWidth, imgHeight;
@@ -472,7 +347,7 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
          auto ro = rc.instances[ray.instID];
          vassert(ro->geomId == ray.geomID);
 
-         Vector4 color = rc.m_defaultColor;
+         Vector4 color = rc.m_renderManager.m_defaultColor;
          if (ro->hasSolidColor) {
             color = ro->solidColor;
          }
@@ -526,7 +401,7 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
          zValue= (win2/win3+1.f)*0.5f;
       } else {
 
-         shaded = rc.m_defaultColor;
+         shaded = rc.m_renderManager.m_defaultColor;
          zValue = 0.;
       }
    }
@@ -542,98 +417,18 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
 
 void RayCaster::render() {
 
-   m_tilesize = m_renderTileSizeParam->getValue();
-
    //vistle::StopWatch timer("render");
-   m_state.numTimesteps = anim_geometry.size();
-   m_state.numTimesteps = mpi::all_reduce(comm(), m_state.numTimesteps, mpi::maximum<unsigned>());
 
-   m_updateBounds = mpi::all_reduce(comm(), m_updateBounds, mpi::maximum<int>());
-   if (m_updateBounds) {
-      mpi::all_reduce(comm(), boundMin.data(), 3, m_state.bMin.data(), mpi::minimum<Scalar>());
-      mpi::all_reduce(comm(), boundMax.data(), 3, m_state.bMax.data(), mpi::maximum<Scalar>());
-   }
-
-   auto vnc = m_vncControl.server();
-   if (vnc) {
-      if (m_updateBounds) {
-         Vector center = 0.5*(m_state.bMin+m_state.bMax);
-         Scalar radius = (m_state.bMax-m_state.bMin).norm()*0.5;
-         vnc->setBoundingSphere(center, radius);
-      }
-
-      vnc->setNumTimesteps(m_state.numTimesteps);
-
-      vnc->preFrame();
-      if (rank() == rootRank()) {
-
-          if (m_state.timestep != vnc->timestep())
-              m_doRender = 1;
-      }
-      m_state.timestep = vnc->timestep();
-
-      for (int i=m_viewData.size(); i<vnc->numViews(); ++i) {
-          std::cerr << "new view no. " << i << std::endl;
-          m_doRender = 1;
-          m_viewData.emplace_back();
-      }
-
-      for (int i=0; i<vnc->numViews(); ++i) {
-
-          PerViewState &vd = m_viewData[i];
-
-          const Matrix4 view = vnc->viewMat(i) * vnc->transformMat(i) * vnc->scaleMat(i);
-          if (vd.width != vnc->width(i)
-                  || vd.height != vnc->height(i)
-                  || vd.proj != vnc->projMat(i)
-                  || vd.view != view) {
-              m_doRender = 1;
-          }
-
-          vd.vncParam = vnc->getViewParameters(i);
-
-          vd.width = vnc->width(i);
-          vd.height = vnc->height(i);
-          vd.view = view;
-          vd.proj = vnc->projMat(i);
-
-          vd.lights = vnc->lights;
-          const Matrix4 lightTransform = vnc->viewMat(i).inverse();
-          for (auto &light: vd.lights) {
-              Vector4 transformedPosition = lightTransform * light.position;
-              transformedPosition /= transformedPosition[3];
-              light.transformedPosition = Vector3(transformedPosition[0], transformedPosition[1], transformedPosition[2]);
-          }
-      }
-   }
-   m_updateBounds = 0;
-
-   m_doRender = mpi::all_reduce(comm(), m_doRender, mpi::maximum<int>());
-
-   if (m_continuousRendering->getValue())
-      m_doRender = 1;
-
-   m_currentView = -1;
-   if (m_doRender) {
-      m_doRender = 0;
-
-      mpi::broadcast(comm(), m_state, rootRank());
-      mpi::broadcast(comm(), m_viewData, rootRank());
-
-      if (vnc && rank() != rootRank()) {
-          for (size_t i=0; i<m_viewData.size(); ++i) {
-              const PerViewState &vd = m_viewData[i];
-              vnc->resize(i, vd.width, vd.height);
-          }
-      }
+   const size_t numTimesteps = anim_geometry.size();
+   if (m_renderManager.prepareFrame(numTimesteps)) {
 
       // switch time steps in embree scene
-      if (m_timestep != m_state.timestep) {
+      if (m_timestep != m_renderManager.timestep()) {
          if (anim_geometry.size() > m_timestep) {
             for (auto &ro: anim_geometry[m_timestep])
                rtcDisable(m_scene, ro->instId);
          }
-         m_timestep = m_state.timestep;
+         m_timestep = m_renderManager.timestep();
          if (anim_geometry.size() > m_timestep) {
             for (auto &ro: anim_geometry[m_timestep])
                rtcEnable(m_scene, ro->instId);
@@ -641,98 +436,18 @@ void RayCaster::render() {
          rtcCommit(m_scene);
       }
 
-      for (size_t i=0; i<m_viewData.size(); ++i) {
-          PerViewState &vd = m_viewData[i];
+      for (size_t i=0; i<m_renderManager.numViews(); ++i) {
+         m_renderManager.setCurrentView(i);
+         m_currentView = i;
 
-          int resetTiles = 0;
-          if (m_icet.size() <= i) {
-              resetTiles = 1;
-              m_icet.emplace_back();
-              assert(m_icet.size() == i+1);
-              auto &icet = m_icet.back();
-              icet.ctx = icetCreateContext(m_icetComm);
-              icet.ctxValid = true;
-          }
-          auto &icet = m_icet[i];
-          //std::cerr << "setting IceT context: " << icet.ctx << " (valid: " << icet.ctxValid << ")" << std::endl;
-          icetSetContext(icet.ctx);
-          m_currentView = i;
+         IceTDouble proj[16], mv[16];
+         m_renderManager.getViewMat(i, mv);
+         m_renderManager.getProjMat(i, proj);
+         IceTFloat bg[4] = { 0., 0., 0., 1. };
 
-          if (vnc) {
-              if (icet.width != vnc->width(i) || icet.height != vnc->height(i))
-                  resetTiles = 1;
-          }
-          resetTiles = mpi::all_reduce(comm(), resetTiles, mpi::maximum<int>());
+         IceTImage img = icetDrawFrame(proj, mv, bg);
 
-          if (resetTiles) {
-              std::cerr << "resetting IceT tiles for view " << i << "..." << std::endl;
-              icet.width = icet.height = 0;
-              if (rank() == rootRank()) {
-                  icet.width =  vnc->width(i);
-                  icet.height = vnc->height(i);
-                  std::cerr << "IceT dims on rank " << rank() << ": " << icet.width << "x" << icet.height << std::endl;
-              }
-              
-              DisplayTile localTile;              
-              localTile.x = 0;
-              localTile.y = 0;
-              localTile.width = icet.width;
-              localTile.height = icet.height;
-
-              std::vector<DisplayTile> icetTiles;
-              mpi::all_gather(comm(), localTile, icetTiles);
-              vassert(icetTiles.size() == (unsigned)size());
-
-              icetResetTiles();
-
-              for (int i=0; i<size(); ++i) {
-                  if (icetTiles[i].width>0 && icetTiles[i].height>0)
-                      icetAddTile(icetTiles[i].x, icetTiles[i].y, icetTiles[i].width, icetTiles[i].height, i);
-              }
-
-              icetDisable(ICET_COMPOSITE_ONE_BUFFER); // include depth buffer in compositing result
-              icetStrategy(ICET_STRATEGY_REDUCE);
-              icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
-              icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-              icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
-
-              icetDrawCallback(drawCallback);
-          }
-
-          icetBoundingBoxf(boundMin[0], boundMax[0],
-                  boundMin[1], boundMax[1],
-                  boundMin[2], boundMax[2]);
-
-          Matrix4 modelview;
-          IceTDouble proj[16], mv[16];
-          for (int i=0; i<16; ++i) {
-              proj[i] = vd.proj.data()[i];
-              mv[i] = vd.view.data()[i];
-          }
-          IceTFloat bg[4] = { 0., 0., 0., 1. };
-
-          IceTImage img = icetDrawFrame(proj, mv, bg);
-
-          if (rank() == rootRank()) {
-              vassert(vnc);
-              const int bpp = 4;
-              const int w = vnc->width(i);
-              const int h = vnc->height(i);
-              vassert(w == icetImageGetWidth(img));
-              vassert(h == icetImageGetHeight(img));
-
-              const IceTUByte *color = icetImageGetColorcub(img);
-              const IceTFloat *depth = icetImageGetDepthcf(img);
-
-              if (color && depth) {
-                  for (int y=0; y<h; ++y) {
-                      memcpy(vnc->rgba(i)+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
-                      memcpy(vnc->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
-                  }
-
-                  vnc->invalidate(i, 0, 0, vnc->width(i), vnc->height(i), m_viewData[i].vncParam, i==m_viewData.size()-1);
-              }
-          }
+         m_renderManager.finishCurrentView(img);
       }
       m_currentView = -1;
    }
@@ -793,7 +508,7 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
    const Scalar tFar = (lbf-ro).norm()/(lbn-ro).norm();
    const Matrix4 depthTransform = MVP;
 
-   TileTask renderTile(*this, m_viewData[m_currentView]);
+   TileTask renderTile(*this, m_renderManager.viewData(m_currentView));
    renderTile.rgba = icetImageGetColorub(image);
    renderTile.depth = icetImageGetDepthf(image);
    renderTile.depthTransform2 = depthTransform.row(2);
@@ -846,25 +561,7 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
    }
 #endif
 
-   auto vnc = m_vncControl.server();
-   if (vnc && rank() != rootRank()) {
-      // observe what slaves are rendering
-      const int bpp = 4;
-      const int w = vnc->width(m_currentView);
-      const int h = vnc->height(m_currentView);
-      vassert(w == icetImageGetWidth(image));
-      vassert(h == icetImageGetHeight(image));
-
-      const IceTUByte *color = icetImageGetColorcub(image);
-
-      memset(vnc->rgba(m_currentView), 0, w*h*bpp);
-
-      for (int y=viewport[1]; y<viewport[1]+viewport[3]; ++y) {
-         memcpy(vnc->rgba(m_currentView)+(w*y+viewport[0])*bpp, color+(w*(h-1-y)+viewport[0])*bpp, bpp*viewport[2]);
-      }
-
-      vnc->invalidate(m_currentView, 0, 0, vnc->width(m_currentView), vnc->height(m_currentView), vnc->getViewParameters(m_currentView), true);
-   }
+   m_renderManager.updateRect(m_currentView, viewport, image);
 
    int err = rtcGetError();
    if (err != 0) {
@@ -897,10 +594,7 @@ void RayCaster::updateBounds() {
       }
    }
 
-   boundMin = min;
-   boundMax = max;
-
-   m_updateBounds = 1;
+   m_renderManager.setLocalBounds(min, max);
 
 #if 0
    std::cerr << "<<< BOUNDS <<<" << std::endl;
@@ -923,8 +617,9 @@ void RayCaster::removeObject(boost::shared_ptr<RenderObject> vro) {
    int t = ro->timestep;
    auto &objlist = t>=0 ? anim_geometry[t] : static_geometry;
 
-   if (t == -1 || t == m_timestep)
-      m_doRender = 1;
+   if (t == -1 || t == m_timestep) {
+      m_renderManager.setModified();
+   }
 
    auto it = std::find(objlist.begin(), objlist.end(), ro);
    if (it != objlist.end()) {
@@ -970,7 +665,7 @@ boost::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::stri
    rtcSetTransform(m_scene, ro->instId, RTC_MATRIX_COLUMN_MAJOR_ALIGNED16, identity);
    if (t < 0 || t == m_timestep) {
       rtcEnable(m_scene, ro->instId);
-      m_doRender = 1;
+      m_renderManager.setModified();
    } else {
       rtcDisable(m_scene, ro->instId);
    }

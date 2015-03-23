@@ -14,9 +14,11 @@ set(renderer_HEADERS
 if(LIBVNCSERVER_FOUND)
    set(renderer_SOURCES ${renderer_SOURCES}
       vnccontroller.cpp
+      parrendmgr.cpp
    )
    set(renderer_HEADERS ${renderer_HEADERS}
       vnccontroller.h
+      parrendmgr.h
    )
    include_directories(
       ${LIBVNCSERVER_INCLUDE_DIR}

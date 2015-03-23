@@ -3,7 +3,7 @@
 
 #include <core/assert.h>
 
-#include "renderobject.h"
+#include "rayrenderobject.h"
 
 using namespace vistle;
 

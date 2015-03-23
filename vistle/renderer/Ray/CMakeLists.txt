@@ -41,7 +41,7 @@ if(JPEGTURBO_FOUND)
 endif()
 
 add_module(Ray
-   renderobject.cpp
+   rayrenderobject.cpp
    ray.cpp
    )
 
