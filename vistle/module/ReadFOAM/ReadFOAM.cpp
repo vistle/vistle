@@ -1182,26 +1182,24 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
       }
    }
 
-   if (m_case.numblocks > 0) {
-      if (m_buildGhost) {
-         mpi::communicator c;
-         for (int i=0; i<m_case.numblocks; ++i) {
-            if (rankForBlock(i) == rank()) {
-               buildGhostCellData(i);
-            }
+   if (m_buildGhost) {
+      mpi::communicator c;
+      for (int i=0; i<m_case.numblocks; ++i) {
+         if (rankForBlock(i) == rank()) {
+            buildGhostCellData(i);
          }
-
-         c.barrier();
-         processAllRequests();
       }
 
-      for (int i=-1; i<m_case.numblocks; ++i) {
-         if (rankForBlock(i) == rank()) {
-            if (m_buildGhost) {
-               applyGhostCellsData(i);
-            }
-            addVolumeDataToPorts(i);
+      c.barrier();
+      processAllRequests();
+   }
+
+   for (int i=-1; i<m_case.numblocks; ++i) {
+      if (rankForBlock(i) == rank()) {
+         if (m_buildGhost) {
+            applyGhostCellsData(i);
          }
+         addVolumeDataToPorts(i);
       }
    }
 
@@ -1229,10 +1227,15 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
    std::cerr << "grid topology: " << (m_case.varyingGrid?"varying":"constant") << std::endl;
    std::cerr << "grid coordinates: " << (m_case.varyingCoords?"varying":"constant") << std::endl;
 
-   readConstant(casedir);
+   if (!readConstant(casedir)) {
+      std::cerr << "reading of constant data failed" << std::endl;
+      return true;
+   }
    int skipfactor = m_timeskip->getValue()+1;
    for (Index timestep=0; timestep<m_case.timedirs.size()/skipfactor; ++timestep) {
-      readTime(casedir, timestep);
+      if (!readTime(casedir, timestep)) {
+         std::cerr << "reading of data for timestep " << timestep << " failed" << std::endl;
+      }
    }
    m_currentgrid.clear();
 
