@@ -5,7 +5,7 @@
 #include <osgViewer/Viewer>
 #include <osg/Sequence>
 
-#include <module/renderer.h>
+#include <renderer/renderer.h>
 
 namespace osg {
    class Group;

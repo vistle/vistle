@@ -1,12 +1,12 @@
 #ifndef VISTLE_VNCCONTROLLER_H
 #define VISTLE_VNCCONTROLLER_H
 
-#include "module.h"
+#include "renderer.h"
 #include <rhr/vncserver.h>
 
 namespace vistle {
 
-class V_MODULEEXPORT VncController {
+class V_RENDEREREXPORT VncController {
 
  public:
    VncController(vistle::Module *module, int displayRank);

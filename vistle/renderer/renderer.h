@@ -1,13 +1,13 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
-#include "module.h"
+#include <module/module.h>
 #include "renderobject.h"
 #include "export.h"
 
 namespace vistle {
 
-class V_MODULEEXPORT Renderer: public Module {
+class V_RENDEREREXPORT Renderer: public Module {
 
  public:
    Renderer(const std::string &desc, const std::string &shmname,

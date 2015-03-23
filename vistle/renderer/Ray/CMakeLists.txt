@@ -63,6 +63,7 @@ target_link_libraries(Ray
         vistle_boost_mpi
         ${MPI_C_LIBRARIES}
         vistle_module
+        vistle_renderer
         vistle_rhr
         ${ICET_CORE_LIBS}
         ${ICET_MPI_LIBS}

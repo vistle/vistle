@@ -8,7 +8,7 @@
 
 #include <boost/mpi.hpp>
 
-#include <module/renderer.h>
+#include <renderer/renderer.h>
 #include <core/geometry.h>
 #include <core/texture1d.h>
 #include <core/message.h>
@@ -17,7 +17,7 @@
 #include <util/stopwatch.h>
 
 #include <rhr/vncserver.h>
-#include <module/vnccontroller.h>
+#include <renderer/vnccontroller.h>
 #include "renderobject.h"
 
 

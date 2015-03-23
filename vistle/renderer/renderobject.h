@@ -12,7 +12,7 @@
 
 namespace vistle {
 
-class V_MODULEEXPORT RenderObject {
+class V_RENDEREREXPORT RenderObject {
 
  public:
    RenderObject(int senderId, const std::string &senderPort,

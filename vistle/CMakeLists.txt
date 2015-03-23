@@ -75,6 +75,7 @@ add_subdirectory(hub)
 add_subdirectory(blower)
 
 add_subdirectory(module)
+add_subdirectory(renderer)
 
 add_subdirectory(cover)
 

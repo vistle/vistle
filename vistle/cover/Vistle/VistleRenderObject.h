@@ -8,7 +8,7 @@
 
 #include <osg/ref_ptr>
 #include <osg/Node>
-#include <module/renderobject.h>
+#include <renderer/renderobject.h>
 #include <boost/weak_ptr.hpp>
 
 namespace opencover {

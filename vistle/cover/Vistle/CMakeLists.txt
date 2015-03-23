@@ -22,4 +22,4 @@ include_directories(
 add_definitions(-DCOVER_PLUGIN)
 
 cover_add_plugin(VistlePlugin ${HEADERS} ${SOURCES})
-target_link_libraries(VistlePlugin vistle_module vistle_boost_mpi)
+target_link_libraries(VistlePlugin vistle_renderer vistle_boost_mpi)

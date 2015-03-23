@@ -1,29 +1,11 @@
-vistle_find_package(LibVncServer)
-
 set(module_SOURCES
    module.cpp
-   renderer.cpp
-   renderobject.cpp
 )
 
 set(module_HEADERS
    export.h
    module.h
-   renderer.h
-   renderobject.h
 )
-
-if(LIBVNCSERVER_FOUND)
-   set(module_SOURCES ${module_SOURCES}
-      vnccontroller.cpp
-   )
-   set(module_HEADERS ${module_HEADERS}
-      vnccontroller.h
-   )
-   include_directories(${LIBVNCSERVER_INCLUDE_DIR})
-endif()
-
-use_openmp()
 
 add_library(vistle_module ${VISTLE_LIB_TYPE} ${module_SOURCES} ${module_HEADERS})
 
@@ -40,9 +22,6 @@ target_link_libraries(vistle_module
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
 )
-if(LIBVNCSERVER_FOUND)
-   target_link_libraries(vistle_module vistle_rhr)
-endif()
 
 include_directories(
         ../../3rdparty/${BOOST_MPI_DIR}/include
@@ -67,7 +46,6 @@ add_subdirectory(CellToVert)
 add_subdirectory(Collect)
 add_subdirectory(Color)
 add_subdirectory(ColorAttribute)
-add_subdirectory(COVER)
 add_subdirectory(CreateCelltree)
 add_subdirectory(CutGeometry)
 add_subdirectory(CuttingSurface)
@@ -79,9 +57,7 @@ add_subdirectory(IsoSurface)
 add_subdirectory(IsoSurfaceOld)
 add_subdirectory(MpiInfo)
 add_subdirectory(ObjectStatistics)
-add_subdirectory(OSGRenderer)
 add_subdirectory(PrintAttributes)
-add_subdirectory(Ray)
 add_subdirectory(ReadCovise)
 add_subdirectory(ReadFOAM)
 add_subdirectory(ReadVistle)

@@ -10,7 +10,7 @@
 #include <cover/coVRPluginList.h>
 
 // vistle
-#include <module/renderer.h>
+#include <renderer/renderer.h>
 #include <util/exception.h>
 #include <core/message.h>
 #include <core/object.h>

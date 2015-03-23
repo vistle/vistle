@@ -11,7 +11,7 @@
 #include <core/normals.h>
 #include <core/texture1d.h>
 
-#include <module/renderobject.h>
+#include <renderer/renderobject.h>
 
 static const int MaxPacketSize = 8;
 
