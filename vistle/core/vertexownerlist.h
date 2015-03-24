@@ -23,6 +23,7 @@ class V_COREEXPORT VertexOwnerList: public Object {
    shm<Index>::array &cellList() const { return *(*d()->cellList)(); }
    Index getNumVertices() const;
    Index getNeighbour(const Index &cell, const Index &vertex1, const Index &vertex2, const Index &vertex3) const;
+   std::pair<Index*, Index> getSurroundingCells(const Index &v) const;
 
    V_DATA_BEGIN(VertexOwnerList);
    ShmVector<Index>::ptr vertexList;

@@ -42,6 +42,14 @@ Index VertexOwnerList::getNumVertices() const {
    return vertexList().size() - 1;
 }
 
+std::pair<Index*,Index> VertexOwnerList::getSurroundingCells(const Index &v) const {
+   Index start=this->vertexList().data()[v];
+   Index end=this->vertexList().data()[v+1];
+   Index* ptr = &this->cellList().data()[start];
+   Index n=end-start;
+   return std::make_pair(ptr, n);
+}
+
 Index VertexOwnerList::getNeighbour(const Index &cell, const Index &vertex1, const Index &vertex2, const Index &vertex3) const {
    auto vertexList=this->vertexList().data();
    auto cellList=this->cellList().data();
