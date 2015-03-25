@@ -36,8 +36,13 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
       GHOST_POLYHEDRON  =  POLYHEDRON|GHOST_BIT
    };
 
+   static const Index MaxNumVertices = 4;
+   static const Index MaxNumFaces = 6;
+
    static const int NumVertices[POLYHEDRON+1];
    static const int NumFaces[POLYHEDRON+1];
+   static const int FaceSizes[UnstructuredGrid::POLYHEDRON+1][MaxNumFaces];
+   static const int FaceVertices[UnstructuredGrid::POLYHEDRON+1][MaxNumFaces][MaxNumVertices];
 
    UnstructuredGrid(const Index numElements,
          const Index numCorners,

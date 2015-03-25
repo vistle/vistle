@@ -6,9 +6,6 @@
 
 namespace vistle {
 
-static const Index MaxNumVertices = 4;
-static const Index MaxNumFaces = 6;
-
 const int UnstructuredGrid::NumVertices[UnstructuredGrid::POLYHEDRON+1] = {
    0, 2, 3, 4, 4, 5, 6, 8, -1, -1, 1, -1
 };
@@ -16,7 +13,7 @@ const int UnstructuredGrid::NumFaces[UnstructuredGrid::POLYHEDRON+1] = {
    0, 2, 3, 4, 4, 5, 6, 8, -1, -1, 1, -1
 };
 
-Index face_sizes[UnstructuredGrid::POLYHEDRON+1][MaxNumFaces] = {
+const int UnstructuredGrid::FaceSizes[UnstructuredGrid::POLYHEDRON+1][UnstructuredGrid::MaxNumFaces] = {
    // none
    { 0, 0, 0, 0, 0, 0 },
    // bar
@@ -35,7 +32,7 @@ Index face_sizes[UnstructuredGrid::POLYHEDRON+1][MaxNumFaces] = {
    { 4, 4, 4, 4, 4, 4 },
 };
 
-Index face_vertices[UnstructuredGrid::POLYHEDRON+1][MaxNumFaces][MaxNumVertices] = {
+const int UnstructuredGrid::FaceVertices[UnstructuredGrid::POLYHEDRON+1][UnstructuredGrid::MaxNumFaces][UnstructuredGrid::MaxNumVertices] = {
 { // none
 },
 { // bar
@@ -290,8 +287,8 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
       return true;
    } else {
       const auto numFaces = NumFaces[type];
-      const auto &faces = face_vertices[type];
-      const auto &sizes = face_sizes[type];
+      const auto &faces = UnstructuredGrid::FaceVertices[type];
+      const auto &sizes = UnstructuredGrid::FaceSizes[type];
       for (int f=0; f<numFaces; ++f) {
          Index first = cl[faces[f][0]];
          Index second = cl[faces[f][1]];
