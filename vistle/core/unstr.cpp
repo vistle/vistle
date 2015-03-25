@@ -10,7 +10,7 @@ const int UnstructuredGrid::NumVertices[UnstructuredGrid::POLYHEDRON+1] = {
    0, 2, 3, 4, 4, 5, 6, 8, -1, -1, 1, -1
 };
 const int UnstructuredGrid::NumFaces[UnstructuredGrid::POLYHEDRON+1] = {
-   0, 2, 3, 4, 4, 5, 6, 8, -1, -1, 1, -1
+   0, 2, 3, 4, 4, 5, 5, 6, -1, -1, 1, -1
 };
 
 const int UnstructuredGrid::FaceSizes[UnstructuredGrid::POLYHEDRON+1][UnstructuredGrid::MaxNumFaces] = {
