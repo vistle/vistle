@@ -294,7 +294,7 @@ Vector3 Particle::Interpolator(Index el, Vector3 point){
     return interpolator(u,v,w);
 }
 
-void Particle::Communicator(boost::mpi::communicator mpi_comm, Index root){
+void Particle::Communicator(boost::mpi::communicator mpi_comm, int root){
 
     boost::mpi::broadcast(mpi_comm, m_x, root);
     boost::mpi::broadcast(mpi_comm, m_stp, root);
@@ -359,7 +359,6 @@ bool Tracer::reduce(int timestep){
     Index numpoints = getIntParameter("no_startp");
     Index steps_max = getIntParameter("steps_max");
 
-    boost::mpi::communicator world;
     if(data_in1.size()<numblocks){
 
         data_in1.assign(numblocks, nullptr);
@@ -398,14 +397,14 @@ times::comm_start = times::start();
     for(Index i=0; i<numpoints; i++){
 
         bool active = particle[i]->isActive();
-        active = boost::mpi::all_reduce(world, active, std::logical_or<bool>());
+        active = boost::mpi::all_reduce(comm(), active, std::logical_or<bool>());
         if(!active){
             particle[i]->Deactivate();
         }
     }
 times::comm_dur += times::stop(times::comm_start);
     bool ingrid = true;
-    Index mpisize = world.size();
+    int mpisize = comm().size();
     std::vector<Index> sendlist(0);
     while(ingrid){
 
@@ -424,25 +423,25 @@ times::integr_dur += times::stop(times::integr_start)-(times::celloc_dur-celloc_
                 }
             }
 
-            for(Index mpirank=0; mpirank<mpisize; mpirank++){
+            for(int mpirank=0; mpirank<mpisize; mpirank++){
 times::comm_start = times::start();
                 Index num_send = sendlist.size();
-                boost::mpi::broadcast(world, num_send, mpirank);
+                boost::mpi::broadcast(comm(), num_send, mpirank);
 times::comm_dur += times::stop(times::comm_start);
                 if(num_send>0){
                     std::vector<Index> tmplist = sendlist;
 times::comm_start = times::start();
-                    boost::mpi::broadcast(world, tmplist, mpirank);
+                    boost::mpi::broadcast(comm(), tmplist, mpirank);
 times::comm_dur += times::stop(times::comm_start);
                     for(Index i=0; i<num_send; i++){
 times::comm_start = times::start();
                         Index p_index = tmplist[i];
-                        particle[p_index]->Communicator(world, mpirank);
+                        particle[p_index]->Communicator(comm(), mpirank);
 times::comm_dur += times::stop(times::comm_start);
                         particle[p_index]->findCell(block);
 times::comm_start = times::start();
                         bool active = particle[p_index]->isActive();
-                        active = boost::mpi::all_reduce(world, particle[p_index]->isActive(), std::logical_or<bool>());
+                        active = boost::mpi::all_reduce(comm(), particle[p_index]->isActive(), std::logical_or<bool>());
 times::comm_dur += times::stop(times::comm_start);
                         if(!active){
                             particle[p_index]->Deactivate();
@@ -489,7 +488,7 @@ times::comm_dur += times::stop(times::comm_start);
             }
         }
 
-    world.barrier();
+    comm().barrier();
     times::total_dur = times::stop(times::total_start);
     times::output();
     return true;

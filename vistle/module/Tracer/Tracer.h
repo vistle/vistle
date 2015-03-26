@@ -88,7 +88,7 @@ public:
     void Deactivate();
     void Step();
     vistle::Vector3 Interpolator(vistle::Index el, vistle::Vector3 point);
-    void Communicator(boost::mpi::communicator mpi_comm, vistle::Index root);
+    void Communicator(boost::mpi::communicator mpi_comm, int root);
     bool leftNode();
 };
 #endif

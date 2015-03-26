@@ -478,10 +478,7 @@ rfbBool VncServer::handleMatricesMessage(rfbClientPtr cl, void *data,
       return TRUE;
    }
 
-   int viewNum = msg.viewNum;
-   if (viewNum < 0)
-       viewNum = 0;
-
+   size_t viewNum = msg.viewNum >= 0 ? msg.viewNum : 0;
    if (viewNum >= plugin->m_viewData.size()) {
        plugin->m_viewData.resize(viewNum+1);
    }

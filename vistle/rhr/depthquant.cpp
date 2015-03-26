@@ -330,17 +330,21 @@ static int clz (T xx)
    return n;
 }
 
-//! dxt-like compresesion for depth values
+//! dxt-like compression for depth values
 template<int bpp, class Quant, DepthFormat format>
 static void depthquant_t(const uchar *inimg, Quant *quantbuf, int x0, int y0, int w, int h, int stride)
 {
+#define NOCHECK
+#ifndef NOCHECK
+   const uint32_t qm2 = (1U << quantbits)/2;
+#endif
+
    const int edge = Quant::edge;
    const int size = edge*edge;
    const int scalebits = Quant::scale_bits;
    const int quantbits = Quant::bits_per_pixel;
    const uint32_t Far = 0x00ffffff;
    const uint32_t mask = (1U << quantbits)-1;
-   const uint32_t qm2 = (1U << quantbits)/2;
    const uint32_t Valid = Quant::precision == 24 ? (Far & ~((1U<<scalebits)-1)) : 0x00ffff00;
    const uint32_t Next = Far - Valid + 1;
 
@@ -469,7 +473,6 @@ static void depthquant_t(const uchar *inimg, Quant *quantbuf, int x0, int y0, in
                   upperscale = 1<<scalebits;
             }
 
-#define NOCHECK
             uint64_t bits = 0;
             if (range == 0) {
                if (haveFar) {
