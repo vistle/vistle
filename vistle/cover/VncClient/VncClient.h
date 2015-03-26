@@ -107,6 +107,7 @@ private:
    void switchReprojection(bool reproj);
    void initChannelData(VncClient::ChannelData &cd);
    void createGeometry(VncClient::ChannelData &cd);
+   void clearChannelData();
    void setPointSize(float sz);
 
    osg::ref_ptr<osg::Camera> m_remoteCam;

@@ -1185,15 +1185,19 @@ void VncClient::initChannelData(VncClient::ChannelData &cd) {
    cd.camera = coVRConfig::instance()->channels[cd.channelNum].camera;
 
    cd.colorTex = new osg::TextureRectangle;
+   auto cimg = new osg::Image();
    cd.colorTex->setImage(new osg::Image());
+   cimg->setPixelBufferObject(new osg::PixelBufferObject(cimg));
    cd.colorTex->setInternalFormat( GL_RGBA );
    cd.colorTex->setBorderWidth( 0 );
    cd.colorTex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
    cd.colorTex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
 
    cd.depthTex = new osg::TextureRectangle;
-   cd.depthTex->setImage(new osg::Image());
-   cd.depthTex->setInternalFormat( GL_DEPTH_COMPONENT );
+   auto dimg = new osg::Image();
+   cd.depthTex->setImage(dimg);
+   dimg->setPixelBufferObject(new osg::PixelBufferObject(dimg));
+   cd.depthTex->setInternalFormat( GL_DEPTH_COMPONENT32F );
    cd.depthTex->setBorderWidth( 0 );
    cd.depthTex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
    cd.depthTex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::NEAREST );
@@ -1208,6 +1212,21 @@ void VncClient::initChannelData(VncClient::ChannelData &cd) {
    imageMat->setName("VncClient_imageMat");
 
    cd.scene = imageMat;
+}
+
+void VncClient::clearChannelData() {
+
+    for (size_t view=0; view<m_channelData.size(); ++view) {
+       ChannelData &cd = m_channelData[view];
+
+       osg::Image *depth =  cd.depthTex->getImage();
+       memset(depth->data(), 0xff, depth->getTotalSizeInBytes());
+       depth->dirty();
+
+       osg::Image *color =  cd.colorTex->getImage();
+       memset(color->data(), 0, color->getTotalSizeInBytes());
+       color->dirty();
+    }
 }
 
 //! called after plug-in is loaded and scenegraph is initialized
@@ -1321,10 +1340,10 @@ bool VncClient::init()
       initChannelData(m_channelData.back());
       m_remoteCam->addChild(m_channelData.back().scene);
       if (coVRConfig::instance()->channels[i].stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
-    m_channelData.push_back(ChannelData(i));
+         m_channelData.push_back(ChannelData(i));
          m_channelData.back().second = true;
-    initChannelData(m_channelData.back());
-    m_remoteCam->addChild(m_channelData.back().scene);
+         initChannelData(m_channelData.back());
+         m_remoteCam->addChild(m_channelData.back().scene);
       }
    }
 
@@ -1419,10 +1438,12 @@ VncClient::preFrame()
    bool connected = coVRMSController::instance()->syncBool(m_client && !m_listen);
 
    if (connected != m_haveConnection) {
-      if (connected)
+      if (connected) {
          cover->getScene()->addChild(m_remoteCam);
-      else
+      } else {
          cover->getScene()->removeChild(m_remoteCam.get());
+         clearChannelData();
+      }
    }
 
    m_haveConnection = connected;
