@@ -96,8 +96,8 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
                triangles[t].v2 = poly->cl()[last-v2-1];
             } else {
                triangles[t].v0 = poly->cl()[start+v2];
-               triangles[t].v1 = poly->cl()[last-v2];
-               triangles[t].v2 = poly->cl()[start+v2+1];
+               triangles[t].v1 = poly->cl()[start+v2+1];
+               triangles[t].v2 = poly->cl()[last-v2];
             }
             ++t;
          }
