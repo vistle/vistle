@@ -705,6 +705,8 @@ void QConsole::contextMenuEvent ( QContextMenuEvent * event)
 		del->setShortcut(tr("Del"));
 		QAction *selectAll = new QAction(tr("Select All"), this);
 		selectAll->setShortcut(tr("Ctrl+A"));
+		QAction *clear = new QAction(tr("Clear"), this);
+		clear->setShortcut(tr("Ctrl+L"));
 
 		menu->addAction(undo);
 		menu->addAction(redo);
@@ -715,6 +717,7 @@ void QConsole::contextMenuEvent ( QContextMenuEvent * event)
 		menu->addAction(del);
 		menu->addSeparator();
 		menu->addAction(selectAll);
+		menu->addAction(clear);
 
 		connect(undo, SIGNAL(triggered()), this, SLOT(undo()));
 		connect(redo, SIGNAL(triggered()), this, SLOT(redo()));
@@ -723,6 +726,7 @@ void QConsole::contextMenuEvent ( QContextMenuEvent * event)
 		connect(paste, SIGNAL(triggered()), this, SLOT(paste()));
 		connect(del, SIGNAL(triggered()), this, SLOT(del()));
 		connect(selectAll, SIGNAL(triggered()), this, SLOT(selectAll()));
+		connect(clear, SIGNAL(triggered()), this, SLOT(clear()));
 
 
 		menu->exec(event->globalPos());
@@ -765,7 +769,6 @@ void QConsole::del()
 				textCursor().deleteChar();
 		}
 }
-
 
 void QConsole::correctPathName(QString& pathName)
 {
