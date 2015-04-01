@@ -335,19 +335,17 @@ struct DecodeTask: public tbb::task {
          sz = msg->width * msg->height * bpp;
       } else {
          assert(depth);
-
-         GLenum format = GL_FLOAT;
          switch (msg->format) {
-            case rfbDepthFloat: format = GL_FLOAT; bpp=4; break;
-            case rfbDepth8Bit: format = GL_UNSIGNED_BYTE; bpp=1; break;
-            case rfbDepth16Bit: format = GL_UNSIGNED_SHORT; bpp=2; break;
-            case rfbDepth24Bit: format = GL_UNSIGNED_INT; bpp=4; break;
-            case rfbDepth32Bit: format = GL_UNSIGNED_INT; bpp=4; break;
+         case rfbDepthFloat: bpp=4; break;
+         case rfbDepth8Bit: bpp=1; break;
+         case rfbDepth16Bit: bpp=2; break;
+         case rfbDepth24Bit: bpp=4; break;
+         case rfbDepth32Bit: bpp=4; break;
          }
 
          if (msg->compression & rfbTileDepthQuantize) {
-            assert(format != GL_FLOAT);
-            sz = depthquant_size(DepthInteger, bpp, msg->width, msg->height);
+            assert(msg->format != rfbDepthFloat);
+            sz = depthquant_size(bpp==4 ? DepthFloat : DepthInteger, bpp, msg->width, msg->height);
          } else {
             sz = msg->width * msg->height * bpp;
          }
@@ -371,7 +369,7 @@ struct DecodeTask: public tbb::task {
 
       if (msg->format!=rfbColorRGBA && (msg->compression & rfbTileDepthQuantize)) {
 
-         depthdequant(depth, decompbuf.get(), DepthInteger, bpp, msg->x, msg->y, msg->width, msg->height, msg->totalwidth);
+         depthdequant(depth, decompbuf.get(), bpp==4 ? DepthFloat : DepthInteger, bpp, msg->x, msg->y, msg->width, msg->height, msg->totalwidth);
       } else if (msg->compression == rfbTileJpeg) {
 
 #ifdef HAVE_TURBOJPEG
@@ -515,13 +513,6 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
       m_rgbBytes = 0;
    }
    if (msg.format != rfbColorRGBA) {
-      switch (msg.format) {
-         case rfbDepthFloat: m_depthBpp=3; break; // just 24 bits are actually used in our case
-         case rfbDepth8Bit: m_depthBpp=1; break;
-         case rfbDepth16Bit: m_depthBpp=2; break;
-         case rfbDepth24Bit: m_depthBpp=3; break;
-         case rfbDepth32Bit: m_depthBpp=3; break;
-      }
       m_depthBytes += msg.size;
    } else {
       m_rgbBytes += msg.size;
@@ -562,15 +553,13 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
          case rfbDepthFloat: format = GL_FLOAT; m_depthBpp=4; break;
          case rfbDepth8Bit: format = GL_UNSIGNED_BYTE; m_depthBpp=1; break;
          case rfbDepth16Bit: format = GL_UNSIGNED_SHORT; m_depthBpp=2; break;
-         case rfbDepth24Bit: format = GL_UNSIGNED_INT; m_depthBpp=3; break;
-         case rfbDepth32Bit: format = GL_UNSIGNED_INT; m_depthBpp=4; break;
+         case rfbDepth24Bit: format = GL_FLOAT; m_depthBpp=4; break;
+         case rfbDepth32Bit: format = GL_FLOAT; m_depthBpp=4; break;
       }
 
       osg::Image *img = sd.depthTex->getImage();
       if (img->s() != w || img->t() != h || img->getDataType() != format) {
          img->allocateImage(w, h, 1, GL_DEPTH_COMPONENT, format);
-
-         std::cerr << "updating depth size to " << msg.width << "x" << msg.height << std::endl;
 
          osg::Geometry *geo = sd.reprojGeo;
          if (geo->getNumPrimitiveSets() > 0) {
@@ -1010,6 +999,106 @@ struct SingleScreenCB: public osg::Drawable::DrawCallback {
    }
 };
 
+const char reprojVert[] =
+
+      // for % operator on integers
+      "#extension GL_EXT_gpu_shader4: enable\n"
+      "#extension GL_ARB_draw_instanced: enable\n"
+      "#extension GL_ARB_texture_rectangle: enable\n"
+      "\n"
+      "uniform sampler2DRect col;\n"
+      "uniform sampler2DRect dep;\n"
+      "uniform vec2 size;\n"
+      "uniform mat4 ReprojectionMatrix;\n"
+      "\n"
+
+      "vec4 pos(vec2 xy) {\n"
+      "   float d = texture2DRect(dep, xy).r;\n"
+      "   vec4 p = vec4(xy.x/size.x, 1.-xy.y/size.y, d, 1.);\n"
+      "   p.xyz *= 2.;\n"
+      "   p.xyz -= vec3(1., 1., 1.);\n"
+      "   return ReprojectionMatrix * p;\n"
+      "}\n"
+
+      "void main(void) {\n"
+      "   vec2 xy = vec2(float(gl_InstanceIDARB%int(size.x)), float(gl_InstanceIDARB/int(size.x)))+vec2(0.5,0.5);\n"
+
+      "   vec4 color = texture2DRect(col, xy);\n"
+      "   gl_FrontColor = color;\n"
+
+      "   gl_Position = pos(xy);\n"
+
+      "}\n";
+
+const char reprojAdaptVert[] =
+
+      // for % operator on integers
+      "#extension GL_EXT_gpu_shader4: enable\n"
+      "#extension GL_ARB_draw_instanced: enable\n"
+      "#extension GL_ARB_texture_rectangle: enable\n"
+      "\n"
+      "uniform sampler2DRect col;\n"
+      "uniform sampler2DRect dep;\n"
+      "uniform vec2 size;\n"
+      "uniform mat4 ReprojectionMatrix;\n"
+      "\n"
+
+      "bool is_far(float d) {\n"
+      "   return d == 1.;\n"
+      "}\n"
+
+      "float depth(vec2 xy) {\n"
+      "   return texture2DRect(dep, xy).r;\n"
+      "}\n"
+
+      "vec4 pos(vec2 xy, float d) {\n"
+      "   vec4 p = vec4(xy.x/size.x-0.5, 0.5-xy.y/size.y, d-0.5, 0.5)*2.;\n"
+      "   return ReprojectionMatrix * p;\n"
+      "}\n"
+
+      "vec2 screenpos(vec4 p, vec2 off) {\n"
+      "   return round(p.xy/p.w*size.xy*0.5+off);\n"
+      "}\n"
+
+      "vec2 sdiff(vec2 xy, vec2 ref, vec2 off) {\n"
+      "   float d = depth(xy);\n"
+      "   if (is_far(d)) return vec2(1.,1.);\n"
+      "   return abs(screenpos(pos(xy, d), off)-ref);\n"
+      "}\n"
+
+      "void main(void) {\n"
+      "   vec2 xy = vec2(float(gl_InstanceIDARB%int(size.x)), float(gl_InstanceIDARB/int(size.x)))+vec2(0.5,0.5);\n"
+      "   vec2 off = vec2(float(int(size.x+1)%2), float(int(size.y+1)%2))*0.5;\n"
+      "   const vec4 Clip = vec4(2.,2.,2.,1.);\n"
+
+      "   float d = depth(xy);\n"
+      "   if (is_far(d)) { gl_Position = Clip; return; }\n"
+      "   gl_Position = pos(xy, d);\n"
+      //"   if (is_far(d)) { gl_PointSize=1.; gl_FrontColor = vec4(1,0,0,1); return; }\n"
+
+      "   vec4 color = texture2DRect(col, xy);\n"
+      "   gl_FrontColor = color;\n"
+
+      "   vec2 spos = screenpos(gl_Position, off);\n"
+      "   vec2 dxp = sdiff(xy+vec2(1.,0.), spos, off);\n"
+      "   vec2 dyp = sdiff(xy+vec2(0.,1.), spos, off);\n"
+      "   vec2 dxm = sdiff(xy+vec2(-1.,0.), spos, off);\n"
+      "   vec2 dym = sdiff(xy+vec2(0.,-1.), spos, off);\n"
+      "   vec2 dmax = max(max(dxp,dym),max(dxm,dym));\n"
+      //"   vec2 dmax = max(dxp,dym);\n"
+      "   float ps = max(dmax.x, dmax.y);\n"
+      //"   if (ps > 1.00008 && ps < 2.) { ps=2.; }\n"
+      //"   if (ps > 1. && ps <= 2.) { ps=2.; gl_FrontColor=vec4(1,0,0,1); }\n"
+      //"   if (ps >= 4.) ps = 1.;\n"
+
+      "   gl_PointSize = clamp(ps, 1., 3.);\n"
+      "}\n";
+
+const char reprojFrag[] =
+        "void main(void) {\n"
+        "   gl_FragColor = gl_Color;\n"
+        "}\n";
+
 //! create geometry for mapping remote image
 void VncClient::createGeometry(VncClient::ChannelData &cd)
 {
@@ -1134,44 +1223,27 @@ void VncClient::createGeometry(VncClient::ChannelData &cd)
       stateSet->addUniform(cd.size);
       stateSet->addUniform(cd.reprojMat);
 
-      stateSet->setAttribute(new osg::Point( m_pointSize ), osg::StateAttribute::ON); 
+      {
+         cd.reprojConstProgram = new osg::Program;
+         osg::Shader *reprojVertexObj = new osg::Shader( osg::Shader::VERTEX );
+         reprojVertexObj->setShaderSource(reprojVert);
+         cd.reprojConstProgram->addShader(reprojVertexObj);
 
-      osg::Program *reprojProgramObj = new osg::Program;
-      osg::Shader *reprojVertexObj = new osg::Shader( osg::Shader::VERTEX );
-      reprojProgramObj->addShader(reprojVertexObj);
-      reprojVertexObj->setShaderSource(
-            // for % operator on integers
-            "#extension GL_EXT_gpu_shader4: enable\n"
-            "#extension GL_ARB_draw_instanced: enable\n"
-            "#extension GL_ARB_texture_rectangle: enable\n"
-            "\n"
-            "uniform sampler2DRect col;\n"
-            "uniform sampler2DRect dep;\n"
-            "uniform vec2 size;\n"
-            "uniform mat4 ReprojectionMatrix;\n"
-            "\n"
-            "void main(void) {\n"
-            "   vec2 xy = vec2(float(gl_InstanceIDARB%int(size.x)), float(gl_InstanceIDARB/int(size.x)));\n"
+         osg::Shader *reprojFragmentObj = new osg::Shader( osg::Shader::FRAGMENT );
+         reprojFragmentObj->setShaderSource(reprojFrag);
+         cd.reprojConstProgram->addShader(reprojFragmentObj);
+      }
 
-            "   vec4 color = texture2DRect(col, xy);\n"
-            "   gl_FrontColor = color;\n"
+      {
+         cd.reprojAdaptProgram = new osg::Program;
+         osg::Shader *reprojVertexObj = new osg::Shader( osg::Shader::VERTEX );
+         reprojVertexObj->setShaderSource(reprojAdaptVert);
+         cd.reprojAdaptProgram->addShader(reprojVertexObj);
 
-            "   float d = texture2DRect(dep, xy).r;\n"
-            "   vec4 p = vec4(xy.x/size.x, 1.-xy.y/size.y, d, 1.);\n"
-            "   p.xyz *= 2.;\n"
-            "   p.xyz -= vec3(1., 1., 1.);\n"
-            "   gl_Position = ReprojectionMatrix * p;\n"
-            "}\n"
-            );
-
-      osg::Shader *reprojFragmentObj = new osg::Shader( osg::Shader::FRAGMENT );
-      reprojProgramObj->addShader(reprojFragmentObj);
-      reprojFragmentObj->setShaderSource(
-            "void main(void) {"
-            "   gl_FragColor = gl_Color;"
-            "}"
-            );
-      stateSet->setAttributeAndModes(reprojProgramObj, osg::StateAttribute::ON);
+         osg::Shader *reprojFragmentObj = new osg::Shader( osg::Shader::FRAGMENT );
+         reprojFragmentObj->setShaderSource(reprojFrag);
+         cd.reprojAdaptProgram->addShader(reprojFragmentObj);
+      }
 
       cd.reprojGeo->setStateSet(stateSet);
    }
@@ -1237,7 +1309,7 @@ bool VncClient::init()
    m_listen = false;
 
    m_reproject = true;
-   m_pointSize = 1.0;
+   m_adapt = true;
 
 #if 0
    std::cout << "COVER waiting for debugger: pid=" << getpid() << std::endl;
@@ -1348,6 +1420,7 @@ bool VncClient::init()
    }
 
    switchReprojection(m_reproject);
+   switchAdaptivePointSize(m_adapt);
 
    m_menuItem = new coSubMenuItem("Hybrid Rendering...");
    m_menu = new coRowMenu("Hybrid Rendering");
@@ -1356,13 +1429,14 @@ bool VncClient::init()
    cover->getMenu()->add(m_menuItem);
 
    m_reprojCheck = new coCheckboxMenuItem("Reproject", m_reproject);
+   m_adaptCheck = new coCheckboxMenuItem("Adapt Point Size", m_adapt);
    m_allTilesCheck = new coCheckboxMenuItem("Show all tiles", false);
    m_reprojCheck->setMenuListener(this);
+   m_adaptCheck->setMenuListener(this);
    m_allTilesCheck->setMenuListener(this);
    m_menu->add(m_reprojCheck);
+   m_menu->add(m_adaptCheck);
    //m_menu->add(m_allTilesCheck);
-   m_pointSizePoti = new coPotiMenuItem("Point Size", 0.1, 3.0, m_pointSize);
-   m_menu->add(m_pointSizePoti);
 
    return true;
 }
@@ -1394,14 +1468,21 @@ void VncClient::switchReprojection(bool reproj) {
    }
 }
 
-void VncClient::setPointSize(float sz) {
+void VncClient::switchAdaptivePointSize(bool adapt) {
 
-   m_pointSize = sz;
    for (int i=0; i<m_channelData.size(); ++i) {
-      osg::Geometry *geo = m_channelData[i].reprojGeo;
-      osg::StateSet *stateSet = geo->getOrCreateStateSet();
-      stateSet->setAttribute(new osg::Point( m_pointSize ), osg::StateAttribute::ON); 
-      geo->setStateSet(stateSet);
+       auto &cd = m_channelData[i];
+       osg::StateSet *state = m_channelData[i].reprojGeo->getStateSet();
+       assert(state);
+       if (adapt) {
+          state->setMode(GL_PROGRAM_POINT_SIZE, osg::StateAttribute::ON);
+          state->setAttributeAndModes(cd.reprojConstProgram, osg::StateAttribute::OFF);
+          state->setAttributeAndModes(cd.reprojAdaptProgram, osg::StateAttribute::ON);
+       } else {
+          state->setMode(GL_PROGRAM_POINT_SIZE, osg::StateAttribute::OFF);
+          state->setAttributeAndModes(cd.reprojAdaptProgram, osg::StateAttribute::OFF);
+          state->setAttributeAndModes(cd.reprojConstProgram, osg::StateAttribute::ON);
+       }
    }
 }
 
@@ -1411,11 +1492,11 @@ void VncClient::menuEvent(coMenuItem *item) {
       m_reproject = m_reprojCheck->getState();
       switchReprojection(m_reproject);
    }
-   if (item == m_allTilesCheck) {
+   if (item = m_adaptCheck) {
+       m_adapt = m_adaptCheck->getState();
+       switchAdaptivePointSize(m_adapt);
    }
-   if (item == m_pointSizePoti) {
-      float size = m_pointSizePoti->getValue();
-      setPointSize(size);
+   if (item == m_allTilesCheck) {
    }
 }
 
@@ -1689,7 +1770,7 @@ VncClient::preFrame()
 	 osg::Matrix cur = scale * transform * view * proj;
     osg::Matrix old = cd.curScale * cd.curTransform * cd.curView * cd.curProj;
 	 osg::Matrix oldInv = osg::Matrix::inverse(old);
-	 osg::Matrix reproj = oldInv * cur;
+     osg::Matrix reproj = oldInv * cur;
     cd.reprojMat->set(reproj);
       }
       ++viewIdx;

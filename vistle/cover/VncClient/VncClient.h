@@ -86,6 +86,8 @@ public:
       osg::Geode *geode;
       osg::ref_ptr<osg::MatrixTransform> scene;
       osg::ref_ptr<osg::Camera> camera;
+      osg::ref_ptr<osg::Program> reprojConstProgram;
+      osg::ref_ptr<osg::Program> reprojAdaptProgram;
 
       ChannelData(int channel=-1)
          : channelNum(channel)
@@ -105,10 +107,10 @@ private:
    static VncClient *plugin;
 
    void switchReprojection(bool reproj);
+   void switchAdaptivePointSize(bool adapt);
    void initChannelData(VncClient::ChannelData &cd);
    void createGeometry(VncClient::ChannelData &cd);
    void clearChannelData();
-   void setPointSize(float sz);
 
    osg::ref_ptr<osg::Camera> m_remoteCam;
 
@@ -185,10 +187,8 @@ private:
 
    coRowMenu *m_menu;
    coSubMenuItem *m_menuItem;
-   coCheckboxMenuItem *m_reprojCheck;
+   coCheckboxMenuItem *m_reprojCheck, *m_adaptCheck;
+   bool m_reproject, m_adapt;
    coCheckboxMenuItem *m_allTilesCheck;
-   coPotiMenuItem *m_pointSizePoti;
-   bool m_reproject;
-   float m_pointSize;
 };
 #endif
