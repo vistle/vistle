@@ -1351,6 +1351,10 @@ bool VncClient::init()
 //! this is called if the plugin is removed at runtime
 VncClient::~VncClient()
 {
+   cover->getScene()->removeChild(m_remoteCam.get());
+   clearChannelData();
+   m_channelData.clear();
+
    delete m_menu;
    delete m_menuItem;
 
