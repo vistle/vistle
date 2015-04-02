@@ -5,6 +5,9 @@ set(SOURCES "../IsoSurface/IsoSurface.cpp")
 set(CUDA_OBJ "")
 #vistle_find_package(CUDA)
 if(NOT APPLE AND CUDA_FOUND AND FALSE)
+   include_directories(
+        ${CUDA_INCLUDE_DIRS}
+   )
    add_definitions(-DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CUDA)
    cuda_compile(CUDA_OBJ "../IsoSurface/Leveller.cu")
 else()
@@ -34,7 +37,6 @@ include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
-        ${CUDA_INCLUDE_DIRS}
         ${THRUST_INCLUDE_DIR}
         ${TBB_INCLUDE_DIRS}
 )
