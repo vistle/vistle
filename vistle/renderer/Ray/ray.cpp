@@ -440,7 +440,7 @@ void RayCaster::render() {
          IceTDouble proj[16], mv[16];
          m_renderManager.getViewMat(i, mv);
          m_renderManager.getProjMat(i, proj);
-         IceTFloat bg[4] = { 0., 0., 0., 1. };
+         IceTFloat bg[4] = { 0., 0., 0., 0. };
 
          IceTImage img = icetDrawFrame(proj, mv, bg);
 
