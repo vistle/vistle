@@ -87,6 +87,12 @@ typedef tbb::enumerable_thread_specific<TjDecomp> TjContext;
 static TjContext tjContexts;
 #endif
 
+// requires GL 3.2
+#ifndef GL_PROGRAM_POINT_SIZE
+#define GL_PROGRAM_POINT_SIZE             0x8642
+#endif
+
+
 //! for use with shared_ptr and arrays allocated with new[]
 template <typename T>
 struct array_deleter {
@@ -1506,7 +1512,7 @@ void VncClient::menuEvent(coMenuItem *item) {
       m_reproject = m_reprojCheck->getState();
       switchReprojection(m_reproject);
    }
-   if (item = m_adaptCheck) {
+   if (item == m_adaptCheck) {
        m_adapt = m_adaptCheck->getState();
        switchAdaptivePointSize(m_adapt);
    }
