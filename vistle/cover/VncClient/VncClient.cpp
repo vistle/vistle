@@ -87,6 +87,8 @@ typedef tbb::enumerable_thread_specific<TjDecomp> TjContext;
 static TjContext tjContexts;
 #endif
 
+//#define INSTANCED
+
 // requires GL 3.2
 #ifndef GL_PROGRAM_POINT_SIZE
 #define GL_PROGRAM_POINT_SIZE             0x8642
@@ -563,9 +565,8 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
          (*sd.texcoord)[2].set(w, 0.);
          (*sd.texcoord)[3].set(0., 0.);
          sd.fixedGeo->setTexCoordArray(0, sd.texcoord);
-       }
+      }
    }
-  
 
    if (msg.format != rfbColorRGBA) {
       GLenum format = GL_FLOAT;
@@ -582,12 +583,30 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
          img->allocateImage(w, h, 1, GL_DEPTH_COMPONENT, format);
 
          osg::Geometry *geo = sd.reprojGeo;
+#ifdef INSTANCED
          if (geo->getNumPrimitiveSets() > 0) {
             geo->setPrimitiveSet(0, new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, 1, w*h));
          } else {
             geo->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, 1, w*h));
          }
+#else
+         sd.coord->resizeArray(w*h);
+         for (int y=0; y<h; ++y) {
+            for (int x=0; x<w; ++x) {
+               (*sd.coord)[y*w+x].set(x+0.5f, y+0.5f);
+            }
+         }
+         sd.coord->dirty();
+
+         if (geo->getNumPrimitiveSets() > 0) {
+            geo->setPrimitiveSet(0, new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, w*h));
+         } else {
+            geo->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, w*h));
+         }
+         geo->dirtyDisplayList();
+#endif
          sd.size->set(osg::Vec2(w, h));
+         sd.pixelOffset->set(osg::Vec2((w+1)%2*0.5f, (h+1)%2*0.5f));
       }
    }
 }
@@ -1021,9 +1040,11 @@ struct SingleScreenCB: public osg::Drawable::DrawCallback {
 
 const char reprojVert[] =
 
+#ifdef INSTANCED
       // for % operator on integers
       "#extension GL_EXT_gpu_shader4: enable\n"
       "#extension GL_ARB_draw_instanced: enable\n"
+#endif
       "#extension GL_ARB_texture_rectangle: enable\n"
       "\n"
       "uniform sampler2DRect col;\n"
@@ -1032,35 +1053,45 @@ const char reprojVert[] =
       "uniform mat4 ReprojectionMatrix;\n"
       "\n"
 
-      "vec4 pos(vec2 xy) {\n"
-      "   float d = texture2DRect(dep, xy).r;\n"
-      "   vec4 p = vec4(xy.x/size.x, 1.-xy.y/size.y, d, 1.);\n"
-      "   p.xyz *= 2.;\n"
-      "   p.xyz -= vec3(1., 1., 1.);\n"
+      "float depth(vec2 xy) {\n"
+      "   return texture2DRect(dep, xy).r;\n"
+      "}\n"
+
+      "vec4 pos(vec2 xy, float d) {\n"
+      "   vec4 p = vec4(xy.x/size.x-0.5, 0.5-xy.y/size.y, d-0.5, 0.5)*2.;\n"
       "   return ReprojectionMatrix * p;\n"
       "}\n"
 
       "void main(void) {\n"
+#ifdef INSTANCED
       "   vec2 xy = vec2(float(gl_InstanceIDARB%int(size.x)), float(gl_InstanceIDARB/int(size.x)))+vec2(0.5,0.5);\n"
-
+#else
+      "   vec2 xy = gl_Vertex.xy;\n"
+#endif
       "   vec4 color = texture2DRect(col, xy);\n"
       "   gl_FrontColor = color;\n"
 
-      "   gl_Position = pos(xy);\n"
+      "   gl_Position = pos(xy, depth(xy));\n"
 
       "}\n";
 
 const char reprojAdaptVert[] =
 
+#ifdef INSTANCED
       // for % operator on integers
       "#extension GL_EXT_gpu_shader4: enable\n"
       "#extension GL_ARB_draw_instanced: enable\n"
+#else
+      // for round
+      "#extension GL_EXT_gpu_shader4: enable\n"
+#endif
       "#extension GL_ARB_texture_rectangle: enable\n"
       "\n"
       "uniform sampler2DRect col;\n"
       "uniform sampler2DRect dep;\n"
       "uniform vec2 size;\n"
       "uniform mat4 ReprojectionMatrix;\n"
+      "uniform vec2 offset;"
       "\n"
 
       "bool is_far(float d) {\n"
@@ -1076,19 +1107,22 @@ const char reprojAdaptVert[] =
       "   return ReprojectionMatrix * p;\n"
       "}\n"
 
-      "vec2 screenpos(vec4 p, vec2 off) {\n"
-      "   return round(p.xy/p.w*size.xy*0.5+off);\n"
+      "vec2 screenpos(vec4 p) {\n"
+      "   return round(p.xy/p.w*size.xy*0.5+offset);\n"
       "}\n"
 
-      "vec2 sdiff(vec2 xy, vec2 ref, vec2 off) {\n"
+      "vec2 sdiff(vec2 xy, vec2 ref) {\n"
       "   float d = depth(xy);\n"
       "   if (is_far(d)) return vec2(1.,1.);\n"
-      "   return abs(screenpos(pos(xy, d), off)-ref);\n"
+      "   return abs(screenpos(pos(xy, d))-ref);\n"
       "}\n"
 
       "void main(void) {\n"
+#ifdef INSTANCED
       "   vec2 xy = vec2(float(gl_InstanceIDARB%int(size.x)), float(gl_InstanceIDARB/int(size.x)))+vec2(0.5,0.5);\n"
-      "   vec2 off = vec2(float(int(size.x+1)%2), float(int(size.y+1)%2))*0.5;\n"
+#else
+      "   vec2 xy = gl_Vertex.xy;\n"
+#endif
       "   const vec4 Clip = vec4(2.,2.,2.,1.);\n"
 
       "   float d = depth(xy);\n"
@@ -1099,11 +1133,11 @@ const char reprojAdaptVert[] =
       "   vec4 color = texture2DRect(col, xy);\n"
       "   gl_FrontColor = color;\n"
 
-      "   vec2 spos = screenpos(gl_Position, off);\n"
-      "   vec2 dxp = sdiff(xy+vec2(1.,0.), spos, off);\n"
-      "   vec2 dyp = sdiff(xy+vec2(0.,1.), spos, off);\n"
-      "   vec2 dxm = sdiff(xy+vec2(-1.,0.), spos, off);\n"
-      "   vec2 dym = sdiff(xy+vec2(0.,-1.), spos, off);\n"
+      "   vec2 spos = screenpos(gl_Position);\n"
+      "   vec2 dxp = sdiff(xy+vec2(1.,0.), spos);\n"
+      "   vec2 dyp = sdiff(xy+vec2(0.,1.), spos);\n"
+      "   vec2 dxm = sdiff(xy+vec2(-1.,0.), spos);\n"
+      "   vec2 dym = sdiff(xy+vec2(0.,-1.), spos);\n"
       "   vec2 dmax = max(max(dxp,dym),max(dxm,dym));\n"
       //"   vec2 dmax = max(dxp,dym);\n"
       "   float ps = max(dmax.x, dmax.y);\n"
@@ -1210,14 +1244,14 @@ void VncClient::createGeometry(VncClient::ChannelData &cd)
    {
       osg::BoundingBox bb(-0.5,0.,-0.5, 0.5,0.,0.5);
       cd.reprojGeo->setInitialBound(bb);
-      osg::Vec3Array *coord = new osg::Vec3Array(1);
-      (*coord)[0].set(0., 0., 0.);
-      cd.reprojGeo->setVertexArray(coord);
+      cd.coord = new osg::Vec2Array(1);
+      (*cd.coord)[0].set(0., 0.);
+      cd.reprojGeo->setVertexArray(cd.coord);
       cd.reprojGeo->setColorArray(color);
       cd.reprojGeo->setColorBinding(osg::Geometry::BIND_OVERALL);
       cd.reprojGeo->setNormalArray(normal);
       cd.reprojGeo->setNormalBinding(osg::Geometry::BIND_OVERALL);
-      // required for instanced rendering
+      // required for instanced rendering and also for SingleScreenCB
       cd.reprojGeo->setUseDisplayList( false );
       cd.reprojGeo->setUseVertexBufferObjects( true );
    
@@ -1236,11 +1270,13 @@ void VncClient::createGeometry(VncClient::ChannelData &cd)
       osg::Uniform *colSampler = new osg::Uniform("col", 0);
       osg::Uniform *depSampler = new osg::Uniform("dep", 1);
       cd.size = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "size");
+      cd.pixelOffset = new osg::Uniform(osg::Uniform::FLOAT_VEC2, "offset");
       cd.reprojMat = new osg::Uniform(osg::Uniform::FLOAT_MAT4, "ReprojectionMatrix");
       cd.reprojMat->set(osg::Matrix::identity());
       stateSet->addUniform(colSampler);
       stateSet->addUniform(depSampler);
       stateSet->addUniform(cd.size);
+      stateSet->addUniform(cd.pixelOffset);
       stateSet->addUniform(cd.reprojMat);
 
       {

@@ -81,7 +81,9 @@ public:
       osg::Vec2Array* texcoord;
       osg::ref_ptr<osg::Geometry> fixedGeo;
       osg::ref_ptr<osg::Geometry> reprojGeo;
+      osg::Vec2Array* coord;
       osg::Uniform *size;
+      osg::Uniform *pixelOffset;
       osg::Uniform *reprojMat;
       osg::Geode *geode;
       osg::ref_ptr<osg::MatrixTransform> scene;
@@ -96,6 +98,7 @@ public:
          , depthTex(NULL)
          , texcoord(NULL)
          , size(NULL)
+         , pixelOffset(NULL)
          , reprojMat(NULL)
          , geode(NULL)
       {
