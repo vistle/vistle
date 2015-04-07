@@ -112,13 +112,13 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
           m_lightsUpdateCount = vnc->lightsUpdateCount;
       }
 
-      for (int i=m_viewData.size(); i<vnc->numViews(); ++i) {
+      for (size_t i=m_viewData.size(); i<vnc->numViews(); ++i) {
           std::cerr << "new view no. " << i << std::endl;
           m_doRender = 1;
           m_viewData.emplace_back();
       }
 
-      for (int i=0; i<vnc->numViews(); ++i) {
+      for (size_t i=0; i<vnc->numViews(); ++i) {
 
           PerViewState &vd = m_viewData[i];
 

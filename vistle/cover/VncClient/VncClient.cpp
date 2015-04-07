@@ -152,7 +152,11 @@ void VncClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
    const osg::Matrix &view = left ? chan.leftView : chan.rightView;
    const osg::Matrix &proj = left ? chan.leftProj : chan.rightProj;
 
-   //std::cerr << "retrieving matrices for channel: " << channelNum << ", view: " << viewNum << ", second: " << second << ", left: " << left << std::endl;
+#if 0
+   std::cerr << "retrieving matrices for channel: " << channel << ", view: " << viewNum << ", second: " << second << ", left: " << left << std::endl;
+   std::cerr << "  view mat: " << view << std::endl;
+   std::cerr << "  proj mat: " << proj << std::endl;
+#endif
 
    for (int i=0; i<16; ++i) {
       //TODO: swap to big-endian
@@ -173,7 +177,7 @@ void VncClient::sendMatricesMessage(rfbClient *client, std::vector<matricesMsg> 
 
    messages.back().last = 1;
    //std::cerr << "requesting " << messages.size() << " views" << std::endl;
-   for (int i=0; i<messages.size(); ++i) {
+   for (size_t i=0; i<messages.size(); ++i) {
       matricesMsg &msg = messages[i];
       msg.requestNumber = requestNum;
       if(!WriteToRFBServer(client, (char *)&msg, sizeof(msg))) {
@@ -507,7 +511,7 @@ void VncClient::swapFrame() {
 
    //std::cerr << "frame: " << msg.framenumber << std::endl;
 
-   for (int s=0; s<m_channelData.size(); ++s) {
+   for (size_t s=0; s<m_channelData.size(); ++s) {
       ChannelData &cd = m_channelData[s];
 
       cd.curView = cd.newView;
@@ -1513,7 +1517,7 @@ VncClient::~VncClient()
 
 void VncClient::switchReprojection(bool reproj) {
 
-   for (int i=0; i<m_channelData.size(); ++i) {
+   for (size_t i=0; i<m_channelData.size(); ++i) {
       m_channelData[i].geode->removeDrawable(m_channelData[i].fixedGeo);
       m_channelData[i].geode->removeDrawable(m_channelData[i].reprojGeo);
       if (reproj) {
@@ -1526,7 +1530,7 @@ void VncClient::switchReprojection(bool reproj) {
 
 void VncClient::switchAdaptivePointSize(bool adapt) {
 
-   for (int i=0; i<m_channelData.size(); ++i) {
+   for (size_t i=0; i<m_channelData.size(); ++i) {
        auto &cd = m_channelData[i];
        osg::StateSet *state = m_channelData[i].reprojGeo->getStateSet();
        assert(state);
@@ -1636,15 +1640,15 @@ VncClient::preFrame()
 
       m_channelData[view].scene->setMatrix(osg::Matrix::identity());
       fillMatricesMessage(messages[view], i, view, false);
-      if (coVRConfig::instance()->channels[i].stereoMode==osg::DisplaySettings::QUAD_BUFFER) {
-         ++view;
-	 fillMatricesMessage(messages[view], i, view, true);
-      }
       ++view;
+      if (coVRConfig::instance()->channels[i].stereoMode==osg::DisplaySettings::QUAD_BUFFER) {
+         fillMatricesMessage(messages[view], i, view, true);
+         ++view;
+      }
    }
 
    if (coVRMSController::instance()->isMaster()) {
-      coVRMSController::SlaveData sNumScreens(sizeof(numScreens));
+      coVRMSController::SlaveData sNumScreens(sizeof(m_numViews));
       coVRMSController::instance()->readSlaves(&sNumScreens);
       for (int i=0; i<coVRMSController::instance()->getNumSlaves(); ++i) {
          int n = *static_cast<int *>(sNumScreens.data[i]);
@@ -1655,15 +1659,15 @@ VncClient::preFrame()
          }
       }
    } else {
-      coVRMSController::instance()->sendMaster(&numScreens, sizeof(numScreens));
-      for (int s=0; s<numScreens; ++s) {
+      coVRMSController::instance()->sendMaster(&m_numViews, sizeof(m_numViews));
+      for (int s=0; s<m_numViews; ++s) {
          coVRMSController::instance()->sendMaster(&messages[s], sizeof(messages[s]));
       }
    }
 
    if (coVRMSController::instance()->isMaster()) {
       bool haveMessage = false;
-      int oldFrame = m_remoteFrames;
+      size_t oldFrame = m_remoteFrames;
       while (handleRfbMessages() > 0) {
          haveMessage = true;
          lastUpdate = cover->frameTime();
