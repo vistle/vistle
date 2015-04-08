@@ -57,9 +57,9 @@ class RayCaster: public vistle::Renderer {
 
    ParallelRemoteRenderManager m_renderManager;
 
-   int rayPacketSize;
-
    // parameters
+   IntParameter *m_packetSize;
+   int rayPacketSize;
    IntParameter *m_renderTileSizeParam;
    int m_tilesize;
    IntParameter *m_shading;
@@ -109,6 +109,8 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    vassert(s_instance == nullptr);
    s_instance = this;
 
+   m_packetSize = addIntParameter("ray_packet_size", "size of a ray packet (1, 4, 8, or 16)", (Integer)8);
+   setParameterRange(m_packetSize, (Integer)1, (Integer)16);
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
    m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
    setParameterRange(m_renderTileSizeParam, (Integer)1, (Integer)16384);
@@ -136,6 +138,14 @@ bool RayCaster::parameterChanged(const Parameter *p) {
 
        m_doShade = m_shading->getValue();
        m_renderManager.setModified();
+    } else if (p == m_packetSize) {
+
+        rayPacketSize = m_packetSize->getValue();
+        if (rayPacketSize != 1 && rayPacketSize != 4 && rayPacketSize != 8 && rayPacketSize != 16) {
+           rayPacketSize = 1;
+           m_packetSize->setValue(rayPacketSize);
+           std::cerr << "invalid ray packet size, defaulting to " << rayPacketSize << std::endl;
+        }
     }
 
    return Renderer::parameterChanged(p);
@@ -161,6 +171,12 @@ static void setRay(RayPacket &rayPacket, int i, const RTCRay &ray) {
 
    rayPacket.mask[i] = ray.mask;
    rayPacket.time[i] = ray.time;
+}
+
+template<>
+void setRay<RTCRay>(RTCRay &packet, int i, const RTCRay &ray) {
+
+    packet = ray;
 }
 
 
@@ -197,6 +213,11 @@ static RTCRay getRay(const RayPacket &rays, int i) {
    return ray;
 }
 
+template<>
+RTCRay getRay<RTCRay>(const RTCRay &rays, int i) {
+    return rays;
+}
+
 
 static RTCRay makeRay(const Vector3 &origin, const Vector3 &direction, float tNear, float tFar) {
 
@@ -217,6 +238,54 @@ static RTCRay makeRay(const Vector3 &origin, const Vector3 &direction, float tNe
    return ray;
 }
 
+namespace {
+   void packetIntersect(const void *validMask, RTCScene scene, RTCRay &ray) {
+      rtcIntersect(scene, ray);
+   }
+
+   void packetIntersect(const void *validMask, RTCScene scene, RTCRay4 &ray) {
+      rtcIntersect4(validMask, scene, ray);
+   }
+
+   void packetIntersect(const void *validMask, RTCScene scene, RTCRay8 &ray) {
+      rtcIntersect8(validMask, scene, ray);
+   }
+
+   void packetIntersect(const void *validMask, RTCScene scene, RTCRay16 &ray) {
+      rtcIntersect16(validMask, scene, ray);
+   }
+}
+
+template<class RayPacket>
+struct RayPacketTraits;
+
+template<>
+struct RayPacketTraits<RTCRay> {
+    static const int sizeX = 1;
+    static const int sizeY = 1;
+    static const int size = sizeX*sizeY;
+};
+
+template<>
+struct RayPacketTraits<RTCRay4> {
+    static const int sizeX = 2;
+    static const int sizeY = 2;
+    static const int size = sizeX*sizeY;
+};
+
+template<>
+struct RayPacketTraits<RTCRay8> {
+    static const int sizeX = 4;
+    static const int sizeY = 2;
+    static const int size = sizeX*sizeY;
+};
+
+template<>
+struct RayPacketTraits<RTCRay16> {
+    static const int sizeX = 4;
+    static const int sizeY = 4;
+    static const int size = sizeX*sizeY;
+};
 
 struct TileTask {
    TileTask(const RayCaster &rc, const ParallelRemoteRenderManager::PerViewState &vd, int tile=-1)
@@ -225,15 +294,15 @@ struct TileTask {
    , tile(tile)
    , tilesize(rc.m_tilesize)
    , rayPacketSize(rc.rayPacketSize)
-   , packetSizeX((rayPacketSize+1)/2)
-   , packetSizeY(rayPacketSize/packetSizeX)
    {
-       vassert(rayPacketSize == packetSizeX*packetSizeY);
    }
 
    void shadeRay(const RTCRay &ray, int x, int y) const;
 
    void render(int tile) const;
+
+   template<class RayPacket>
+   void packetRender(int tile) const;
 
    void operator()(int tile) const {
       render(tile);
@@ -257,7 +326,6 @@ struct TileTask {
    Matrix4 modelView;
    float tNear, tFar;
    const int rayPacketSize;
-   const int packetSizeX, packetSizeY;
    int xoff, yoff;
    float *depth;
    unsigned char *rgba;
@@ -266,80 +334,70 @@ struct TileTask {
 
 void TileTask::render(int tile) const {
 
-   unsigned RTCORE_ALIGN(32) validMask[MaxPacketSize];
-   RTCRay ray;
-   RTCRay4 ray4;
-   RTCRay8 ray8;
-   RTCRay16 ray16;
+    if (rayPacketSize == 16) {
+        packetRender<RTCRay16>(tile);
+    } else if (rayPacketSize == 8) {
+        packetRender<RTCRay8>(tile);
+    } else if (rayPacketSize == 4) {
+        packetRender<RTCRay4>(tile);
+    } else if (rayPacketSize == 1) {
+        packetRender<RTCRay>(tile);
+    } else {
+       vassert("unsupported ray packet size" == 0);
+    }
+}
 
-   const int tx = tile%ntx;
-   const int ty = tile/ntx;
-   const int x0=xoff+tx*tilesize, x1=x0+tilesize;
-   const int y0=yoff+ty*tilesize, y1=y0+tilesize;
-   const Vector toLowerBottom = lowerBottom - origin;
-   for (int yy=y0; yy<y1; yy += packetSizeY) {
-      for (int xx=x0; xx<x1; xx += packetSizeX) {
 
-         if (yy >= ylim)
-            continue;
-         if (xx >= xlim)
-            continue;
-         
-         int idx = 0;
-         for (int y=yy; y<yy+packetSizeY; ++y) {
-            for (int x=xx; x<xx+packetSizeX; ++x) {
+template<class RayPacket>
+void TileTask::packetRender(int tile) const {
+    unsigned RTCORE_ALIGN(32) validMask[MaxPacketSize];
+    RTCRay ray;
+    RayPacket packet;
+    RayPacketTraits<RayPacket> traits;
+    const int packetSizeX = traits.sizeX;
+    const int packetSizeY = traits.sizeY;
 
-               const Vector rd = toLowerBottom + x*dx + y*dy;
-               ray = makeRay(origin, rd, tNear, tFar);
+    const int tx = tile%ntx;
+    const int ty = tile/ntx;
+    const int x0=xoff+tx*tilesize, x1=std::min(x0+tilesize, xlim);
+    const int y0=yoff+ty*tilesize, y1=std::min(y0+tilesize, ylim);
+    const Vector toLowerBottom = lowerBottom - origin;
+    for (int yy=y0; yy<y1; yy += packetSizeY) {
+       for (int xx=x0; xx<x1; xx += packetSizeX) {
 
-               if (x>=xlim || y>=ylim) {
-                  validMask[idx] = RayDisabled;
-               } else {
-                  validMask[idx] = RayEnabled;
-               }
+          int idx = 0;
+          for (int y=yy; y<yy+packetSizeY; ++y) {
+             for (int x=xx; x<xx+packetSizeX; ++x) {
 
-               if (rayPacketSize==16) {
-                  setRay(ray16, idx, ray);
-               } else if (rayPacketSize==8) {
-                  setRay(ray8, idx, ray);
-               } else if (rayPacketSize==4) {
-                  setRay(ray4, idx, ray);
-               }
+                if (x>=xlim || y>=ylim) {
+                   validMask[idx] = RayDisabled;
+                } else {
+                   validMask[idx] = RayEnabled;
+                   const Vector rd = toLowerBottom + x*dx + y*dy;
+                   ray = makeRay(origin, rd, tNear, tFar);
+                   setRay(packet, idx, ray);
+                }
 
-            ++idx;
-            }
-         }
+                ++idx;
+             }
+          }
 
-         if (rayPacketSize==16) {
-            rtcIntersect16(validMask, rc.m_scene, ray16);
-         } else if (rayPacketSize==8) {
-            rtcIntersect8(validMask, rc.m_scene, ray8);
-         } else if (rayPacketSize==4) {
-            rtcIntersect4(validMask, rc.m_scene, ray4);
-         } else {
-            rtcIntersect(rc.m_scene, ray);
-         }
+          packetIntersect(validMask, rc.m_scene, packet);
 
-         idx = 0;
-         for (int y=yy; y<yy+packetSizeY; ++y) {
-            for (int x=xx; x<xx+packetSizeX; ++x) {
+          idx = 0;
+          for (int y=yy; y<yy+packetSizeY; ++y) {
+             for (int x=xx; x<xx+packetSizeX; ++x) {
 
-               if (validMask[idx] == RayEnabled) {
-                  if (rayPacketSize==16) {
-                     ray = getRay(ray16, idx);
-                  } else if (rayPacketSize==8) {
-                     ray = getRay(ray8, idx);
-                  } else if (rayPacketSize==4) {
-                     ray = getRay(ray4, idx);
-                  }
-                  shadeRay(ray, x, y);
-               }
+                if (validMask[idx] == RayEnabled) {
+                   ray = getRay(packet, idx);
+                   shadeRay(ray, x, y);
+                }
 
-            ++idx;
-            }
-         }
-      }
-   }
+                ++idx;
+             }
+          }
+       }
+    }
 }
 
 void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
@@ -472,6 +530,7 @@ void RayCaster::render() {
          m_currentView = i;
 
          auto &vd = m_renderManager.viewData(i);
+         //std::cerr << "rendering view " << i << ", proj=" << vd.proj << std::endl;
          const vistle::Matrix4 lightTransform = vd.model.inverse();
          for (auto &light: vd.lights) {
             light.transformedPosition = lightTransform * light.position;
@@ -626,10 +685,10 @@ void RayCaster::removeObject(boost::shared_ptr<RenderObject> vro) {
 
    instances[ro->instId].reset();
 
-   int t = ro->timestep;
+   const int t = ro->timestep;
    auto &objlist = t>=0 ? anim_geometry[t] : static_geometry;
 
-   if (t == -1 || t == m_timestep) {
+   if (t == -1 || size_t(t) == m_timestep) {
       m_renderManager.setModified();
    }
 
@@ -659,7 +718,7 @@ boost::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::stri
    if (t == -1) {
       static_geometry.push_back(ro);
    } else {
-      if (anim_geometry.size() <= t)
+      if (anim_geometry.size() <= size_t(t))
          anim_geometry.resize(t+1);
       anim_geometry[t].push_back(ro);
    }
@@ -675,7 +734,7 @@ boost::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::stri
       identity[i] = (i/4 == i%4) ? 1. : 0.;
    }
    rtcSetTransform(m_scene, ro->instId, RTC_MATRIX_COLUMN_MAJOR_ALIGNED16, identity);
-   if (t < 0 || t == m_timestep) {
+   if (t == -1 || size_t(t) == m_timestep) {
       rtcEnable(m_scene, ro->instId);
       m_renderManager.setModified();
    } else {
