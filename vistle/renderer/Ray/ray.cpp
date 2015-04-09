@@ -51,9 +51,9 @@ class RayCaster: public vistle::Renderer {
       return *s_instance;
    }
 
-   void render();
+   bool render() override;
 
-   bool parameterChanged(const Parameter *p);
+   bool parameterChanged(const Parameter *p) override;
 
    ParallelRemoteRenderManager m_renderManager;
 
@@ -504,58 +504,61 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
 
 
 
-void RayCaster::render() {
+bool RayCaster::render() {
 
-   //vistle::StopWatch timer("render");
+    //vistle::StopWatch timer("render");
 
-   const size_t numTimesteps = anim_geometry.size();
-   if (m_renderManager.prepareFrame(numTimesteps)) {
+    const size_t numTimesteps = anim_geometry.size();
+    if (!m_renderManager.prepareFrame(numTimesteps)) {
+       return false;
+    }
 
-      // switch time steps in embree scene
-      if (m_timestep != m_renderManager.timestep()) {
-         if (anim_geometry.size() > m_timestep) {
-            for (auto &ro: anim_geometry[m_timestep])
-               rtcDisable(m_scene, ro->instId);
-         }
-         m_timestep = m_renderManager.timestep();
-         if (anim_geometry.size() > m_timestep) {
-            for (auto &ro: anim_geometry[m_timestep])
-               rtcEnable(m_scene, ro->instId);
-         }
-         rtcCommit(m_scene);
-      }
+    // switch time steps in embree scene
+    if (m_timestep != m_renderManager.timestep()) {
+       if (anim_geometry.size() > m_timestep) {
+          for (auto &ro: anim_geometry[m_timestep])
+             rtcDisable(m_scene, ro->instId);
+       }
+       m_timestep = m_renderManager.timestep();
+       if (anim_geometry.size() > m_timestep) {
+          for (auto &ro: anim_geometry[m_timestep])
+             rtcEnable(m_scene, ro->instId);
+       }
+       rtcCommit(m_scene);
+    }
 
-      for (size_t i=0; i<m_renderManager.numViews(); ++i) {
-         m_renderManager.setCurrentView(i);
-         m_currentView = i;
+    for (size_t i=0; i<m_renderManager.numViews(); ++i) {
+       m_renderManager.setCurrentView(i);
+       m_currentView = i;
 
-         auto &vd = m_renderManager.viewData(i);
-         std::cerr << "rendering view " << i << ", proj=" << vd.proj << std::endl;
-         const vistle::Matrix4 lightTransform = vd.model.inverse();
-         for (auto &light: vd.lights) {
-            light.transformedPosition = lightTransform * light.position;
-            if (fabs(light.transformedPosition[3]) > Epsilon) {
-               light.isDirectional = false;
-               light.transformedPosition /= light.transformedPosition[3];
-            } else {
-               light.isDirectional = true;
-            }
+       auto &vd = m_renderManager.viewData(i);
+       std::cerr << "rendering view " << i << ", proj=" << vd.proj << std::endl;
+       const vistle::Matrix4 lightTransform = vd.model.inverse();
+       for (auto &light: vd.lights) {
+          light.transformedPosition = lightTransform * light.position;
+          if (fabs(light.transformedPosition[3]) > Epsilon) {
+             light.isDirectional = false;
+             light.transformedPosition /= light.transformedPosition[3];
+          } else {
+             light.isDirectional = true;
+          }
 #if 0
-            if (light.enabled)
-               std::cerr << "light pos " << light.position.transpose() << " -> " << light.transformedPosition.transpose() << std::endl;
+          if (light.enabled)
+             std::cerr << "light pos " << light.position.transpose() << " -> " << light.transformedPosition.transpose() << std::endl;
 #endif
-         }
-         IceTDouble proj[16], mv[16];
-         m_renderManager.getModelViewMat(i, mv);
-         m_renderManager.getProjMat(i, proj);
-         IceTFloat bg[4] = { 0., 0., 0., 0. };
+       }
+       IceTDouble proj[16], mv[16];
+       m_renderManager.getModelViewMat(i, mv);
+       m_renderManager.getProjMat(i, proj);
+       IceTFloat bg[4] = { 0., 0., 0., 0. };
 
-         IceTImage img = icetDrawFrame(proj, mv, bg);
+       IceTImage img = icetDrawFrame(proj, mv, bg);
 
-         m_renderManager.finishCurrentView(img);
-      }
-      m_currentView = -1;
-   }
+       m_renderManager.finishCurrentView(img);
+    }
+    m_currentView = -1;
+
+    return true;
 }
 
 void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image) {

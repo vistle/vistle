@@ -62,7 +62,7 @@ class OsgRenderer: public vistle::Renderer {
          const std::string &name, int moduleId);
    ~OsgRenderer();
 
-   void render();
+   bool render() override;
    boost::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
       vistle::Object::const_ptr container,
       vistle::Object::const_ptr geometry,
@@ -280,10 +280,10 @@ boost::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, con
    return pro;
 }
 
-void OsgRenderer::render() {
+bool OsgRenderer::render() {
 
    if (m_delayedObjects.empty())
-      return;
+      return false;
 
    int numReady = 0;
    for (size_t i=0; i<m_delayedObjects.size(); ++i) {
@@ -335,6 +335,8 @@ void OsgRenderer::render() {
       }
       m_delayedObjects.pop_front();
    }
+
+   return true;
 }
 
 class VistlePlugin: public opencover::coVRPlugin {

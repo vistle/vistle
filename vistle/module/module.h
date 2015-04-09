@@ -26,6 +26,7 @@
 namespace vistle {
 
 class StateTracker;
+class Renderer;
 
 namespace message {
 class Message;
@@ -35,6 +36,7 @@ class MessageQueue;
 }
 
 class V_MODULEEXPORT Module {
+   friend class Renderer;
 
  public:
    Module(const std::string &description, const std::string &shmname,

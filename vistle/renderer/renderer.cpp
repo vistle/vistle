@@ -8,6 +8,7 @@
 
 #include <util/vecstreambuf.h>
 #include <util/sleep.h>
+#include <util/stopwatch.h>
 
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
@@ -206,7 +207,18 @@ bool Renderer::dispatch() {
       vistle::message::ModuleExit m;
       sendMessageQueue->send(m);
    } else {
-      render();
+      double start = 0.;
+      if (m_benchmark) {
+         comm().barrier();
+         start = Clock::time();
+      }
+      if (render() && m_benchmark) {
+         comm().barrier();
+         const double duration = Clock::time() - start;
+         if (rank() == 0) {
+             sendInfo("render took %f s", duration);
+         }
+      }
    }
 
    return !quit;

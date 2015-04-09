@@ -100,7 +100,7 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    void removeObject(boost::shared_ptr<vistle::RenderObject> ro) override;
    bool parameterChanged(const vistle::Parameter *p) override;
 
-   void render();
+   bool render() override;
 
    vistle::IntParameter *m_debugLevel;
    vistle::IntParameter *m_visibleView;

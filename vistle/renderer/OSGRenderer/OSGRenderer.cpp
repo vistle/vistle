@@ -510,88 +510,91 @@ OSGRenderer::~OSGRenderer() {
 }
 
 
-void OSGRenderer::render() {
+bool OSGRenderer::render() {
 
-   const size_t numTimesteps = timesteps->numTimesteps();
-   if (m_renderManager.prepareFrame(numTimesteps)) {
+    const size_t numTimesteps = timesteps->numTimesteps();
+    if (!m_renderManager.prepareFrame(numTimesteps)) {
+       return false;
+    }
 
-      // statistics
-      static int framecounter = 0;
-      static double laststattime = 0.;
-      ++framecounter;
-      double time = getFrameStamp()->getReferenceTime();
-      if (time - laststattime > 3.) {
-         if (!rank() && m_debugLevel->getValue() >= 2)
-            std::cerr << "FPS: " << framecounter/(time-laststattime) << std::endl;
-         framecounter = 0;
-         laststattime = time;
-      }
+    // statistics
+    static int framecounter = 0;
+    static double laststattime = 0.;
+    ++framecounter;
+    double time = getFrameStamp()->getReferenceTime();
+    if (time - laststattime > 3.) {
+       if (!rank() && m_debugLevel->getValue() >= 2)
+          std::cerr << "FPS: " << framecounter/(time-laststattime) << std::endl;
+       framecounter = 0;
+       laststattime = time;
+    }
 
-      int t = m_renderManager.timestep();
-      timesteps->setTimestep(t);
+    int t = m_renderManager.timestep();
+    timesteps->setTimestep(t);
 
-      if (m_renderManager.numViews() != m_viewData.size()) {
-         setParameterRange(m_visibleView, (vistle::Integer)-1, (vistle::Integer)(m_renderManager.numViews())-1);
+    if (m_renderManager.numViews() != m_viewData.size()) {
+       setParameterRange(m_visibleView, (vistle::Integer)-1, (vistle::Integer)(m_renderManager.numViews())-1);
 
-         if (m_viewData.size() > m_renderManager.numViews()) {
-            m_viewData.resize(m_renderManager.numViews());
-         } else {
-            while (m_renderManager.numViews() > m_viewData.size()) {
-               m_viewData.emplace_back(new OsgViewData(*this, m_viewData.size()));
-            }
-         }
-      }
-
-      if (!m_viewData.empty()) {
-          timesteps->root()->setMatrix(toOsg(m_renderManager.viewData(0).model));
-          getCamera()->setViewMatrix(toOsg(m_renderManager.viewData(0).view));
-          getCamera()->setProjectionMatrix(toOsg(m_renderManager.viewData(0).proj));
-
-          auto &l = m_renderManager.viewData(0).lights;
-          if (lights.size() != l.size()) {
-             std::cerr<< "changing num lights from " << lights.size() << " to " << l.size() << std::endl;
-             for (size_t i=l.size(); i<lights.size(); ++i) {
-                scene->removeChild(lights[i]);
-             }
-             for (size_t i=lights.size(); i<l.size(); ++i) {
-                 lights.push_back(new osg::LightSource);
-                 scene->addChild(lights.back());
-             }
+       if (m_viewData.size() > m_renderManager.numViews()) {
+          m_viewData.resize(m_renderManager.numViews());
+       } else {
+          while (m_renderManager.numViews() > m_viewData.size()) {
+             m_viewData.emplace_back(new OsgViewData(*this, m_viewData.size()));
           }
-          vassert(l.size() == lights.size());
-          for (size_t i=0; i<l.size(); ++i) {
-              osg::Light *light = lights[i]->getLight();
-              if (!light)
-                 light = new osg::Light;
-              light->setLightNum(i);
-              light->setPosition(toOsg(l[i].position));
-              light->setDirection(toOsg(l[i].direction));
-              light->setAmbient(toOsg(l[i].ambient));
-              light->setDiffuse(toOsg(l[i].diffuse));
-              light->setSpecular(toOsg(l[i].specular));
-              light->setSpotCutoff(l[i].spotCutoff);
-              light->setSpotExponent(l[i].spotExponent);
-              lights[i]->setLight(light);
+       }
+    }
 
-              osg::StateAttribute::Values val = l[i].enabled ? osg::StateAttribute::ON : osg::StateAttribute::OFF;
-              rootState->setAttributeAndModes(light, val);
-              lights[i]->setLocalStateSetModes(val);
-              lights[i]->setStateSetModes(*rootState, val);
+    if (!m_viewData.empty()) {
+       timesteps->root()->setMatrix(toOsg(m_renderManager.viewData(0).model));
+       getCamera()->setViewMatrix(toOsg(m_renderManager.viewData(0).view));
+       getCamera()->setProjectionMatrix(toOsg(m_renderManager.viewData(0).proj));
 
+       auto &l = m_renderManager.viewData(0).lights;
+       if (lights.size() != l.size()) {
+          std::cerr<< "changing num lights from " << lights.size() << " to " << l.size() << std::endl;
+          for (size_t i=l.size(); i<lights.size(); ++i) {
+             scene->removeChild(lights[i]);
           }
-      }
+          for (size_t i=lights.size(); i<l.size(); ++i) {
+             lights.push_back(new osg::LightSource);
+             scene->addChild(lights.back());
+          }
+       }
+       vassert(l.size() == lights.size());
+       for (size_t i=0; i<l.size(); ++i) {
+          osg::Light *light = lights[i]->getLight();
+          if (!light)
+             light = new osg::Light;
+          light->setLightNum(i);
+          light->setPosition(toOsg(l[i].position));
+          light->setDirection(toOsg(l[i].direction));
+          light->setAmbient(toOsg(l[i].ambient));
+          light->setDiffuse(toOsg(l[i].diffuse));
+          light->setSpecular(toOsg(l[i].specular));
+          light->setSpotCutoff(l[i].spotCutoff);
+          light->setSpotExponent(l[i].spotExponent);
+          lights[i]->setLight(light);
 
-      for (size_t i=0; i<m_viewData.size(); ++i) {
-         m_viewData[i]->update();
-         vassert(m_viewData[i]->outstanding.empty());
-      }
+          osg::StateAttribute::Values val = l[i].enabled ? osg::StateAttribute::ON : osg::StateAttribute::OFF;
+          rootState->setAttributeAndModes(light, val);
+          lights[i]->setLocalStateSetModes(val);
+          lights[i]->setStateSetModes(*rootState, val);
 
-      frame();
+       }
+    }
 
-      for (size_t i=0; i<m_viewData.size(); ++i) {
-         m_viewData[i]->composite();
-      }
-   }
+    for (size_t i=0; i<m_viewData.size(); ++i) {
+       m_viewData[i]->update();
+       vassert(m_viewData[i]->outstanding.empty());
+    }
+
+    frame();
+
+    for (size_t i=0; i<m_viewData.size(); ++i) {
+       m_viewData[i]->composite();
+    }
+
+    return true;
 }
 
 bool OSGRenderer::parameterChanged(const vistle::Parameter *p) {
