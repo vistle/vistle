@@ -47,10 +47,10 @@ bool IsoSurface::prepare() {
 
 bool IsoSurface::reduce(int timestep) {
 
-   boost::mpi::all_reduce(comm(),
-         min, min, boost::mpi::minimum<Scalar>());
-   boost::mpi::all_reduce(comm(),
-         max, max, boost::mpi::maximum<Scalar>());
+   min = boost::mpi::all_reduce(comm(),
+         min, boost::mpi::minimum<Scalar>());
+   max = boost::mpi::all_reduce(comm(),
+         max, boost::mpi::maximum<Scalar>());
 
    setParameterRange(m_isovalue, (double)min, (double)max);
 
