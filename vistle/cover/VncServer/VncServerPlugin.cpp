@@ -194,15 +194,14 @@ rfbBool VncServerPlugin::handleMatricesMessage(rfbClientPtr cl, void *data,
 
    plugin->m_lastMatrixTime = msg.time;
 
-   osg::Matrix view, transform, scale;
+   osg::Matrix view, model;
    for (int i=0; i<16; ++i) {
-      view.ptr()[i] = msg.viewer[i];
-      transform.ptr()[i] = msg.transform[i];
-      scale.ptr()[i] = msg.scale[i];
+      view.ptr()[i] = msg.view[i];
+      model.ptr()[i] = msg.model[i];
    }
    VRViewer::instance()->updateViewerMat(view);
-   cover->setXformMat(transform);
-   cover->getObjectsScale()->setMatrix(scale);
+   cover->setXformMat(model);
+   cover->getObjectsScale()->setMatrix(osg::Matrix::scale(1, 1, 1));
 
    return TRUE;
 }

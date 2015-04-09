@@ -262,19 +262,9 @@ const vistle::Matrix4 &VncServer::projMat(int i) const {
    return m_viewData[i].param.proj;
 }
 
-const vistle::Matrix4 &VncServer::scaleMat(int i) const {
+const vistle::Matrix4 &VncServer::modelMat(int i) const {
 
-   return m_viewData[i].param.scale;
-}
-
-const vistle::Matrix4 &VncServer::transformMat(int i) const {
-
-   return m_viewData[i].param.transform;
-}
-
-const vistle::Matrix4 &VncServer::viewerMat(int i) const {
-
-   return m_viewData[i].param.viewer;
+   return m_viewData[i].param.model;
 }
 
 void VncServer::setBoundingSphere(const vistle::Vector3 &center, const vistle::Scalar &radius) {
@@ -493,11 +483,9 @@ rfbBool VncServer::handleMatricesMessage(rfbClientPtr cl, void *data,
    vd.nparam.requestNumber = msg.requestNumber;
 
    for (int i=0; i<16; ++i) {
-      vd.nparam.scale.data()[i] = msg.scale[i];
-      vd.nparam.transform.data()[i] = msg.transform[i];
-      vd.nparam.viewer.data()[i] = msg.viewer[i];
-      vd.nparam.view.data()[i] = msg.view[i];
       vd.nparam.proj.data()[i] = msg.proj[i];
+      vd.nparam.view.data()[i] = msg.view[i];
+      vd.nparam.model.data()[i] = msg.model[i];
    }
 
    if (msg.last) {
@@ -1043,8 +1031,7 @@ struct EncodeTask: public tbb::task {
         message->requestNumber = vp.requestNumber;
         message->requestTime = vp.matrixTime;
         for (int i=0; i<16; ++i) {
-            message->scale[i] = vp.scale.data()[i];
-            message->transform[i] = vp.transform.data()[i];
+            message->model[i] = vp.model.data()[i];
             message->view[i] = vp.view.data()[i];
             message->proj[i] = vp.proj.data()[i];
         }

@@ -122,12 +122,11 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
 
           PerViewState &vd = m_viewData[i];
 
-          const Matrix4 model = vnc->transformMat(i) * vnc->scaleMat(i);
           if (vd.width != vnc->width(i)
                   || vd.height != vnc->height(i)
                   || vd.proj != vnc->projMat(i)
                   || vd.view != vnc->viewMat(i)
-                  || vd.model != model) {
+                  || vd.model != vnc->modelMat(i)) {
               m_doRender = 1;
           }
 
@@ -135,7 +134,7 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
 
           vd.width = vnc->width(i);
           vd.height = vnc->height(i);
-          vd.model = model;
+          vd.model = vnc->modelMat(i);
           vd.view = vnc->viewMat(i);
           vd.proj = vnc->projMat(i);
 

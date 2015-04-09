@@ -132,9 +132,9 @@ void VncClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
    msg.type = rfbMatrices;
    msg.viewNum = m_channelBase + viewNum;
    msg.time = cover->frameTime();
-   const osg::Matrix &v = cover->getViewerMat();
    const osg::Matrix &t = cover->getXformMat();
    const osg::Matrix &s = cover->getObjectsScale()->getMatrix();
+   const osg::Matrix model = s * t;
 
    const channelStruct &chan = coVRConfig::instance()->channels[channel];
    if (chan.viewportNum < 0)
@@ -160,10 +160,7 @@ void VncClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
 
    for (int i=0; i<16; ++i) {
       //TODO: swap to big-endian
-      msg.viewer[i] = v.ptr()[i];
-      msg.transform[i] = t.ptr()[i];
-      msg.scale[i] = s.ptr()[i];
-
+      msg.model[i] = model.ptr()[i];
       msg.view[i] = view.ptr()[i];
       msg.proj[i] = proj.ptr()[i];
    }
@@ -516,8 +513,7 @@ void VncClient::swapFrame() {
 
       cd.curView = cd.newView;
       cd.curProj = cd.newProj;
-      cd.curTransform = cd.newTransform;
-      cd.curScale = cd.newScale;
+      cd.curModel = cd.newModel;
 
       cd.depthTex->getImage()->dirty();
       cd.colorTex->getImage()->dirty();
@@ -554,8 +550,7 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
    for (int i=0; i<16; ++i) {
       sd.newView.ptr()[i] = msg.view[i];
       sd.newProj.ptr()[i] = msg.proj[i];
-      sd.newTransform.ptr()[i] = msg.transform[i];
-      sd.newScale.ptr()[i] = msg.scale[i];
+      sd.newModel.ptr()[i] = msg.model[i];
    }
 
    int w = msg.totalwidth, h = msg.totalheight;
@@ -1815,9 +1810,10 @@ VncClient::preFrame()
       const bool left = chan.stereoMode == osg::DisplaySettings::LEFT_EYE;
       const osg::Matrix &view = left ? chan.leftView : chan.rightView;
       const osg::Matrix &proj = left ? chan.leftProj : chan.rightProj;
+      const osg::Matrix model = scale * transform;
 
-      osg::Matrix cur = scale * transform * view * proj;
-      osg::Matrix old = cd.curScale * cd.curTransform * cd.curView * cd.curProj;
+      osg::Matrix cur = model * view * proj;
+      osg::Matrix old = cd.curModel * cd.curView * cd.curProj;
       osg::Matrix oldInv = osg::Matrix::inverse(old);
       osg::Matrix reproj = oldInv * cur;
       //reproj = osg::Matrix::identity();
@@ -1825,14 +1821,14 @@ VncClient::preFrame()
 
       if (chan.stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
          ++viewIdx;
-    ChannelData &cd = m_channelData[viewIdx];
-    const osg::Matrix &view = chan.leftView;
-    const osg::Matrix &proj = chan.leftProj;
-	 osg::Matrix cur = scale * transform * view * proj;
-    osg::Matrix old = cd.curScale * cd.curTransform * cd.curView * cd.curProj;
-	 osg::Matrix oldInv = osg::Matrix::inverse(old);
-     osg::Matrix reproj = oldInv * cur;
-    cd.reprojMat->set(reproj);
+         ChannelData &cd = m_channelData[viewIdx];
+         const osg::Matrix &view = chan.leftView;
+         const osg::Matrix &proj = chan.leftProj;
+         osg::Matrix cur = model * view * proj;
+         osg::Matrix old = cd.curModel * cd.curView * cd.curProj;
+         osg::Matrix oldInv = osg::Matrix::inverse(old);
+         osg::Matrix reproj = oldInv * cur;
+         cd.reprojMat->set(reproj);
       }
       ++viewIdx;
    }

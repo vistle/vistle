@@ -74,9 +74,7 @@ struct V_RHREXPORT matricesMsg: public rfbMsg {
    , requestNumber(0)
    , time(0.)
    {
-      memset(viewer, '\0', sizeof(viewer));
-      memset(transform, '\0', sizeof(transform));
-      memset(scale, '\0', sizeof(scale));
+      memset(model, '\0', sizeof(model));
       memset(view, '\0', sizeof(view));
       memset(proj, '\0', sizeof(proj));
    }
@@ -86,9 +84,7 @@ struct V_RHREXPORT matricesMsg: public rfbMsg {
    uint16_t width, height; //!< dimensions of requested viewport
    uint32_t requestNumber; //!< number of render request
    double time; //!< time of request - for latency measurement
-   double viewer[16]; //!< view matrix
-   double transform[16]; //!< transform matrix
-   double scale[16]; //!< scale matrix
+   double model[16]; //!< model matrix
    double view[16]; //!< view matrix
    double proj[16]; //!< projection matrix
 };
@@ -212,10 +208,9 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
    , totalheight(0)
    , requestTime(0.)
    {
+      memset(model, '\0', sizeof(model));
       memset(view, '\0', sizeof(view));
       memset(proj, '\0', sizeof(proj));
-      memset(transform, '\0', sizeof(transform));
-      memset(scale, '\0', sizeof(scale));
    }
 
    uint8_t flags; //!< request depth buffer update
@@ -231,10 +226,9 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
    uint16_t height; //!< height of depth sub-image
    uint16_t totalwidth; //!< total width of image
    uint16_t totalheight; //!< total height of image
-   double view[16]; //!< view matrix
-   double proj[16]; //!< projection matrix
-   double transform[16]; //!< objects transform matrix in request
-   double scale[16]; //!< scale matrix in request
+   double view[16]; //!< view matrix from request
+   double proj[16]; //!< projection matrix from request
+   double model[16]; //!< model matrix from request
    double requestTime; //!< time copied from matrices request
 };
 static int tileEncodings[] = { rfbTile, 0 };

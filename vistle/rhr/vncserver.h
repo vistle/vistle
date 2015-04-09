@@ -102,9 +102,7 @@ public:
    int numViews() const;
    const vistle::Matrix4 &viewMat(int viewNum) const;
    const vistle::Matrix4 &projMat(int viewNum) const;
-   const vistle::Matrix4 &scaleMat(int viewNum) const;
-   const vistle::Matrix4 &transformMat(int viewNum) const;
-   const vistle::Matrix4 &viewerMat(int viewNum) const;
+   const vistle::Matrix4 &modelMat(int viewNum) const;
 
    void setBoundingSphere(const vistle::Vector3 &center, const vistle::Scalar &radius);
 
@@ -206,10 +204,8 @@ public:
        double matrixTime;
        int width, height;
        vistle::Matrix4 proj;
-       vistle::Matrix4 viewer;
        vistle::Matrix4 view;
-       vistle::Matrix4 transform;
-       vistle::Matrix4 scale;
+       vistle::Matrix4 model;
 
        ViewParameters()
        : frameNumber(0)
@@ -218,11 +214,9 @@ public:
        , width(1)
        , height(1)
        {
-           view = vistle::Matrix4::Identity();
            proj = vistle::Matrix4::Identity();
-           transform = vistle::Matrix4::Identity();
-           scale = vistle::Matrix4::Identity();
-           viewer = vistle::Matrix4::Identity();
+           view = vistle::Matrix4::Identity();
+           model = vistle::Matrix4::Identity();
        }
 
       template<class Archive>
@@ -236,10 +230,8 @@ public:
          ar & height;
 
          ar & proj;
-         ar & viewer;
          ar & view;
-         ar & transform;
-         ar & scale;
+         ar & model;
       }
    };
 

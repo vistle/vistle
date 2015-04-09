@@ -72,8 +72,8 @@ public:
    struct ChannelData {
       int channelNum;
       bool second;
-      osg::Matrix curProj, curView, curTransform, curScale;
-      osg::Matrix newProj, newView, newTransform, newScale;
+      osg::Matrix curProj, curView, curModel;
+      osg::Matrix newProj, newView, newModel;
 
    // geometry for mapping depth image
       osg::TextureRectangle *colorTex;
