@@ -488,6 +488,8 @@ rfbBool VncServer::handleMatricesMessage(rfbClientPtr cl, void *data,
       vd.nparam.model.data()[i] = msg.model[i];
    }
 
+   //std::cerr << "handleMatrices: view " << msg.viewNum << ", proj: " << vd.nparam.proj << std::endl;
+
    if (msg.last) {
        for (int i=0; i<plugin->numViews(); ++i) {
            plugin->m_viewData[i].param = plugin->m_viewData[i].nparam;
@@ -1137,6 +1139,7 @@ void VncServer::setTileSize(int w, int h) {
 
 void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const VncServer::ViewParameters &param, bool lastView) {
 
+    //std::cerr << "encodeAndSend: view=" << viewNum << ", c=" << (void *)rgba(viewNum) << ", d=" << depth(viewNum) << std::endl;
     if (!m_resizeBlocked) {
         m_firstTile = true;
     }

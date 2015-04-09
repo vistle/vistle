@@ -526,10 +526,10 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
    bool first = msg.flags&rfbTileFirst;
    bool last = msg.flags&rfbTileLast;
    if (first || last) {
-      std::cout << "TILE: " << (first?"F":" ") << "." << (last?"L":" ") << "req: " << msg.requestNumber << ", frame: " << msg.frameNumber << ", dt: " << cover->frameTime() - msg.requestTime  << std::endl;
+      std::cout << "TILE: " << (first?"F":" ") << "." << (last?"L":" ") << "req: " << msg.requestNumber << ", view: " << msg.viewNum << ", frame: " << msg.frameNumber << ", dt: " << cover->frameTime() - msg.requestTime  << std::endl;
    }
 #endif
-   if (msg.flags & rfbTileFirst) {
+  if (msg.flags & rfbTileFirst) {
       m_numPixels = 0;
       m_depthBytes = 0;
       m_rgbBytes = 0;
@@ -545,25 +545,25 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
    if (view < 0 || view >= m_numViews)
       return;
 
-   ChannelData &sd = m_channelData[view];
+   ChannelData &cd = m_channelData[view];
 
    for (int i=0; i<16; ++i) {
-      sd.newView.ptr()[i] = msg.view[i];
-      sd.newProj.ptr()[i] = msg.proj[i];
-      sd.newModel.ptr()[i] = msg.model[i];
+      cd.newView.ptr()[i] = msg.view[i];
+      cd.newProj.ptr()[i] = msg.proj[i];
+      cd.newModel.ptr()[i] = msg.model[i];
    }
 
    int w = msg.totalwidth, h = msg.totalheight;
    {
-      osg::Image *img = sd.colorTex->getImage();
+      osg::Image *img = cd.colorTex->getImage();
       if (img->s() != w || img->t() != h) {
          img->allocateImage(w, h, 1, GL_RGBA, GL_UNSIGNED_BYTE);
          
-         (*sd.texcoord)[0].set(0., h);
-         (*sd.texcoord)[1].set(w, h);
-         (*sd.texcoord)[2].set(w, 0.);
-         (*sd.texcoord)[3].set(0., 0.);
-         sd.fixedGeo->setTexCoordArray(0, sd.texcoord);
+         (*cd.texcoord)[0].set(0., h);
+         (*cd.texcoord)[1].set(w, h);
+         (*cd.texcoord)[2].set(w, 0.);
+         (*cd.texcoord)[3].set(0., 0.);
+         cd.fixedGeo->setTexCoordArray(0, cd.texcoord);
       }
    }
 
@@ -577,11 +577,11 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
          case rfbDepth32Bit: format = GL_FLOAT; m_depthBpp=4; break;
       }
 
-      osg::Image *img = sd.depthTex->getImage();
+      osg::Image *img = cd.depthTex->getImage();
       if (img->s() != w || img->t() != h || img->getDataType() != format) {
          img->allocateImage(w, h, 1, GL_DEPTH_COMPONENT, format);
 
-         osg::Geometry *geo = sd.reprojGeo;
+         osg::Geometry *geo = cd.reprojGeo;
 #ifdef INSTANCED
          if (geo->getNumPrimitiveSets() > 0) {
             geo->setPrimitiveSet(0, new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, 1, w*h));
@@ -589,13 +589,13 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
             geo->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, 1, w*h));
          }
 #else
-         sd.coord->resizeArray(w*h);
+         cd.coord->resizeArray(w*h);
          for (int y=0; y<h; ++y) {
             for (int x=0; x<w; ++x) {
-               (*sd.coord)[y*w+x].set(x+0.5f, y+0.5f);
+               (*cd.coord)[y*w+x].set(x+0.5f, y+0.5f);
             }
          }
-         sd.coord->dirty();
+         cd.coord->dirty();
 
          if (geo->getNumPrimitiveSets() > 0) {
             geo->setPrimitiveSet(0, new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, w*h));
@@ -604,8 +604,8 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
          }
          geo->dirtyDisplayList();
 #endif
-         sd.size->set(osg::Vec2(w, h));
-         sd.pixelOffset->set(osg::Vec2((w+1)%2*0.5f, (h+1)%2*0.5f));
+         cd.size->set(osg::Vec2(w, h));
+         cd.pixelOffset->set(osg::Vec2((w+1)%2*0.5f, (h+1)%2*0.5f));
       }
    }
 }
@@ -626,10 +626,10 @@ void VncClient::enqueueTask(DecodeTask *task) {
       task->rgba = NULL;
       task->depth = NULL;
    } else {
-      ChannelData &sd = m_channelData[view];
+      ChannelData &cd = m_channelData[view];
 
-      unsigned char *depth = sd.depthTex->getImage()->data();
-      unsigned char *rgba = sd.colorTex->getImage()->data();
+      unsigned char *depth = cd.depthTex->getImage()->data();
+      unsigned char *rgba = cd.colorTex->getImage()->data();
 
       task->rgba = reinterpret_cast<char *>(rgba);
       task->depth = reinterpret_cast<char *>(depth);
@@ -713,12 +713,9 @@ bool VncClient::handleTileMessage(boost::shared_ptr<tileMsg> msg, boost::shared_
       << std::endl;
 #endif
 
-   if (canEnqueue()) {
-      handleTileMeta(*msg);
-   }
-
    DecodeTask *dt = new(tbb::task::allocate_root()) DecodeTask(m_resultQueue, msg, payload);
    if (canEnqueue()) {
+      handleTileMeta(*msg);
       enqueueTask(dt);
    } else {
       if (m_deferredFrames == 0) {
@@ -1023,12 +1020,12 @@ struct SingleScreenCB: public osg::Drawable::DrawCallback {
          ri.pushCamera(cameraStack.back());
          cameraStack.pop_back();
       }
-      
+
       if (stereo) {
-	 if (m_second && right)
-	    render = false;
-	 if (!m_second && !right)
-	    render = false;
+         if (m_second && right)
+            render = false;
+         if (!m_second && !right)
+            render = false;
       }
       //std::cerr << "investigated " << cameraStack.size() << " cameras for channel " << m_channel << " (2nd: " << m_second << "): render=" << render << ", right=" << right << std::endl;
 
@@ -1818,9 +1815,9 @@ VncClient::preFrame()
       osg::Matrix reproj = oldInv * cur;
       //reproj = osg::Matrix::identity();
       cd.reprojMat->set(reproj);
+      ++viewIdx;
 
       if (chan.stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
-         ++viewIdx;
          ChannelData &cd = m_channelData[viewIdx];
          const osg::Matrix &view = chan.leftView;
          const osg::Matrix &proj = chan.leftProj;
@@ -1829,8 +1826,8 @@ VncClient::preFrame()
          osg::Matrix oldInv = osg::Matrix::inverse(old);
          osg::Matrix reproj = oldInv * cur;
          cd.reprojMat->set(reproj);
+         ++viewIdx;
       }
-      ++viewIdx;
    }
 }
 

@@ -530,7 +530,7 @@ void RayCaster::render() {
          m_currentView = i;
 
          auto &vd = m_renderManager.viewData(i);
-         //std::cerr << "rendering view " << i << ", proj=" << vd.proj << std::endl;
+         std::cerr << "rendering view " << i << ", proj=" << vd.proj << std::endl;
          const vistle::Matrix4 lightTransform = vd.model.inverse();
          for (auto &light: vd.lights) {
             light.transformedPosition = lightTransform * light.position;

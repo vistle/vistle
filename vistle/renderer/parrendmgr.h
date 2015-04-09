@@ -129,7 +129,7 @@ public:
    struct GlobalState m_state;
 
    std::vector<PerViewState> m_viewData; // synchronized from rank 0 to slaves
-   int m_currentView; //!< holds no. of view currently being rendered - not a problem is IceT is not reentrant anyway
+   int m_currentView; //!< holds no. of view currently being rendered - not a problem as IceT is not reentrant anyway
 
    //! per view IceT state
    struct IceTData {
