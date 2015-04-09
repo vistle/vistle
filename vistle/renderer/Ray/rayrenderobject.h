@@ -13,9 +13,8 @@
 
 #include <renderer/renderobject.h>
 
-static const int MaxPacketSize = 8;
-
-static const RTCAlgorithmFlags intersections = RTC_INTERSECT1|RTC_INTERSECT4|RTC_INTERSECT8;
+static const int MaxPacketSize = 16;
+static const RTCAlgorithmFlags intersections = RTC_INTERSECT1|RTC_INTERSECT4|RTC_INTERSECT8|RTC_INTERSECT16;
 static const RTCSceneFlags sceneFlags = RTC_SCENE_COHERENT;
 
 static const unsigned int RayEnabled = 0xffffffff;

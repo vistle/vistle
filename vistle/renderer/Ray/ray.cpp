@@ -95,7 +95,7 @@ RayCaster *RayCaster::s_instance = nullptr;
 RayCaster::RayCaster(const std::string &shmname, const std::string &name, int moduleId)
 : Renderer("RayCaster", shmname, name, moduleId)
 , m_renderManager(this, RayCaster::drawCallback)
-, rayPacketSize(MaxPacketSize)
+, rayPacketSize(8)
 , m_tilesize(64)
 , m_doShade(true)
 , m_timestep(0)
@@ -350,12 +350,12 @@ void TileTask::render(int tile) const {
 
 template<class RayPacket>
 void TileTask::packetRender(int tile) const {
-    unsigned RTCORE_ALIGN(32) validMask[MaxPacketSize];
     RTCRay ray;
     RayPacket packet;
     RayPacketTraits<RayPacket> traits;
     const int packetSizeX = traits.sizeX;
     const int packetSizeY = traits.sizeY;
+    unsigned RTCORE_ALIGN(32) validMask[traits.size];
 
     const int tx = tile%ntx;
     const int ty = tile/ntx;
@@ -532,7 +532,7 @@ bool RayCaster::render() {
        m_currentView = i;
 
        auto &vd = m_renderManager.viewData(i);
-       std::cerr << "rendering view " << i << ", proj=" << vd.proj << std::endl;
+       //std::cerr << "rendering view " << i << ", proj=" << vd.proj << std::endl;
        const vistle::Matrix4 lightTransform = vd.model.inverse();
        for (auto &light: vd.lights) {
           light.transformedPosition = lightTransform * light.position;
