@@ -12,7 +12,7 @@ fi
 case $(hostname) in
    viscluster70)
       if [ -z "$MPIHOSTS" ]; then
-         MPIHOSTS=$(echo viscluster{50..60} viscluster{71..77}|sed -e 's/ /,/g')
+         MPIHOSTS=$(echo viscluster70 viscluster{51..60} viscluster{71..77}|sed -e 's/ /,/g')
       fi
       if [ "$MPISIZE" = "" ]; then
          MPISIZE=2
