@@ -65,20 +65,25 @@ class OSGRenderer;
 struct OsgViewData {
 
    OsgViewData(OSGRenderer &viewer, size_t viewIdx);
+   ~OsgViewData();
    void createCamera();
-   void update();
-   void composite();
+   bool update(bool frameQueued);
+   bool composite(size_t maxQueuedFrames, bool wait=true);
 
    OSGRenderer &viewer;
    size_t viewIdx;
    osg::ref_ptr<osg::GraphicsContext> gc;
    osg::ref_ptr<osg::Camera> camera;
+   osg::ref_ptr<osg::Camera::DrawCallback> readOperation;
    std::vector<GLuint> pboDepth, pboColor;
    std::vector<GLchar*> mapColor;
    std::vector<GLfloat*> mapDepth;
+
+   OpenThreads::Mutex mutex;
    size_t readPbo;
    std::deque<GLsync> outstanding;
    std::deque<size_t> compositePbo;
+   int width, height;
 };
 
 
@@ -101,13 +106,18 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    bool parameterChanged(const vistle::Parameter *p) override;
 
    bool render() override;
+   bool composite(size_t maxQueued);
+   void flush();
 
    vistle::IntParameter *m_debugLevel;
    vistle::IntParameter *m_visibleView;
+   vistle::IntParameter *m_threading;
+   vistle::IntParameter *m_async;
    std::vector<boost::shared_ptr<OsgViewData>> m_viewData;
 
    vistle::ParallelRemoteRenderManager m_renderManager;
 
+   osg::ref_ptr<osg::DisplaySettings> displaySettings;
    osg::ref_ptr<osg::MatrixTransform> scene;
 
    osg::ref_ptr<osg::Material> material;
@@ -118,6 +128,9 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    osg::ref_ptr<TimestepHandler> timesteps;
    std::vector<osg::ref_ptr<osg::LightSource>> lights;
    OpenThreads::Mutex *icetMutex;
+   size_t m_numViewsToComposite, m_numFramesToComposite;
+   int m_asyncFrames;
+   ThreadingModel m_requestedThreadingModel;
 };
 
 #endif

@@ -147,9 +147,9 @@ void EnableGLDebugOperation::debugCallback(GLenum source, GLenum type, GLuint id
                     GLsizei length, const GLchar *message, const void *userData)
 { 
     const int ctxId = reinterpret_cast<ptrdiff_t>(userData);
+
     std::string srcStr = "UNDEFINED";
     switch(source)
-
     {
     case GL_DEBUG_SOURCE_API:             srcStr = "API"; break;
     case GL_DEBUG_SOURCE_WINDOW_SYSTEM:   srcStr = "WINDOW_SYSTEM"; break;
@@ -160,10 +160,8 @@ void EnableGLDebugOperation::debugCallback(GLenum source, GLenum type, GLuint id
     }
 
     std::string typeStr = "UNDEFINED";
-
     switch(type)
     {
-
     case GL_DEBUG_TYPE_ERROR:
         //	__debugbreak();
         typeStr = "ERROR";
@@ -173,7 +171,8 @@ void EnableGLDebugOperation::debugCallback(GLenum source, GLenum type, GLuint id
     case GL_DEBUG_TYPE_PORTABILITY:         typeStr = "PORTABILITY"; break;
     case GL_DEBUG_TYPE_PERFORMANCE:         typeStr = "PERFORMANCE"; break;
     case GL_DEBUG_TYPE_OTHER:               typeStr = "OTHER"; break;
+        return;
     }
 
-    std::cerr << "GL ctx " << ctxId << ": " << typeStr <<  " [" << srcStr <<"]: " << std::string(message, length) << std::endl;
+    std::cerr << "GL context (osg) " << ctxId << ": " << typeStr <<  " [" << srcStr <<"]: " << std::string(message, length) << std::endl;
 }

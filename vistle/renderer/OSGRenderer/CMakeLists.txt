@@ -3,6 +3,7 @@ vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
 vistle_find_package(SNAPPY)
+vistle_find_package(X11)
 
 if(NOT OPENSCENEGRAPH_FOUND OR NOT OPENGL_FOUND)
     return()
@@ -65,6 +66,11 @@ include_directories(
         ${PROJECT_SOURCE_DIR}
         ../../cover/Vistle
 )
+if(NOT APPLE AND X11_FOUND)
+   add_definitions(-DUSE_X11)
+   include_directories(${X11_INCLUDES})
+   target_link_libraries(OsgRenderer ${X11_LIBRARIES})
+endif()
 
 target_link_libraries(OSGRenderer
         vistle_boost_mpi

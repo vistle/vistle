@@ -5,6 +5,7 @@
 #include <IceTMPI.h>
 
 #include <vector>
+#include <boost/static_assert.hpp>
 
 #include <osg/DisplaySettings>
 #include <osg/Group>
@@ -23,7 +24,23 @@
 #include <osg/TextureRectangle>
 #include <osg/FrameBufferObject>
 
+#ifdef USE_X11
+#include <X11/Xlib.h>
+#endif
+
 //#define USE_FBO
+const int MaxAsyncFrames = 2;
+BOOST_STATIC_ASSERT(MaxAsyncFrames > 0);
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(OsgThreadingModel,
+   (Single_Threaded)
+   (Cull_Draw_Thread_Per_Context)
+   (Thread_Per_Context)
+   (Draw_Thread_Per_Context)
+   (Cull_Thread_Per_Camera_Draw_Thread_Per_Context)
+   (Thread_Per_Camera)
+   (Automatic_Selection)
+)
 
 namespace {
 
@@ -48,53 +65,72 @@ class ReadOperation: public osg::Camera::DrawCallback {
 
 public:
    ReadOperation(OsgViewData &ovd, vistle::ParallelRemoteRenderManager &renderMgr, OpenThreads::Mutex *mutex, size_t idx, const int r)
-      : ovd(ovd), renderMgr(renderMgr), icetMutex(mutex), viewIdx(idx) {}
+      : ovd(ovd), renderMgr(renderMgr), icetMutex(mutex), viewIdx(idx), init(true), release(false) {}
 
    void 	operator() (osg::RenderInfo &renderInfo) const {
 
        const auto &vd = renderMgr.viewData(viewIdx);
        const auto w = vd.width, h = vd.height;
 
-       if (ovd.pboDepth[0] == 0) {
+       vassert(ovd.pboDepth.size() == ovd.pboColor.size());
+
+       if (release || init) {
           glewInit();
-          if (!glGenBuffers || !glBindBuffer || !glBufferStorage || !glFenceSync || !glWaitSync || !glMemoryBarrier) {
+          if (!glGenBuffers || !glBindBuffer || !glBufferStorage || !glFenceSync || !glClientWaitSync || !glMemoryBarrier) {
               std::cerr << "GL extensions missing" << std::endl;
               return;
           }
-          const int flags = GL_MAP_READ_BIT|GL_MAP_PERSISTENT_BIT|GL_MAP_COHERENT_BIT;
+          release = false;
 
+          if (!ovd.pboDepth.empty())
+             glDeleteBuffers(ovd.pboDepth.size(), ovd.pboDepth.data());
+          if (!ovd.pboColor.empty())
+             glDeleteBuffers(ovd.pboColor.size(), ovd.pboColor.data());
+          ovd.pboDepth.clear();
+          ovd.pboColor.clear();
+          ovd.mapDepth.clear();
+          ovd.mapColor.clear();
+       }
+
+       if (init) {
+          const int mapflags = GL_MAP_READ_BIT|GL_MAP_PERSISTENT_BIT|GL_MAP_COHERENT_BIT;
+          const int createflags = mapflags/*|GL_MAP_COHERENT_BIT*/;
+
+          ovd.pboDepth.resize(MaxAsyncFrames);
+          ovd.pboColor.resize(MaxAsyncFrames);
           ovd.mapDepth.resize(ovd.pboDepth.size());
           glGenBuffers(ovd.pboDepth.size(), ovd.pboDepth.data());
           for (size_t i=0; i<ovd.pboDepth.size(); ++i) {
              glBindBuffer(GL_PIXEL_PACK_BUFFER, ovd.pboDepth[i]);
-             glBufferStorage(GL_PIXEL_PACK_BUFFER, w*h*sizeof(GLfloat), nullptr, flags);
-             ovd.mapDepth[i] = static_cast<GLfloat *>(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, w*h*sizeof(GLfloat), GL_MAP_READ_BIT|GL_MAP_PERSISTENT_BIT));
+             glBufferStorage(GL_PIXEL_PACK_BUFFER, w*h*sizeof(GLfloat), nullptr, createflags);
+             ovd.mapDepth[i] = static_cast<GLfloat *>(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, w*h*sizeof(GLfloat), mapflags));
           }
 
           ovd.mapColor.resize(ovd.pboColor.size());
           glGenBuffers(ovd.pboColor.size(), ovd.pboColor.data());
           for (size_t i=0; i<ovd.pboColor.size(); ++i) {
              glBindBuffer(GL_PIXEL_PACK_BUFFER, ovd.pboColor[i]);
-             glBufferStorage(GL_PIXEL_PACK_BUFFER, w*h*4, nullptr, flags);
-             ovd.mapColor[i] = static_cast<GLchar *>(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, w*h*4, GL_MAP_READ_BIT|GL_MAP_PERSISTENT_BIT));
+             glBufferStorage(GL_PIXEL_PACK_BUFFER, w*h*4, nullptr, createflags);
+             ovd.mapColor[i] = static_cast<GLchar *>(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, w*h*4, mapflags));
           }
        }
 
-       size_t pbo = ovd.readPbo;
-       std::cerr << "reading to pbo idx " << pbo << std::endl;
-
-       glBindBuffer(GL_PIXEL_PACK_BUFFER, ovd.pboDepth[pbo]);
-       glReadPixels(0, 0, w, h, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+       const size_t pbo = ovd.readPbo;
 
        glBindBuffer(GL_PIXEL_PACK_BUFFER, ovd.pboColor[pbo]);
        glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
+       glBindBuffer(GL_PIXEL_PACK_BUFFER, ovd.pboDepth[pbo]);
+       glReadPixels(0, 0, w, h, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+
        glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
-       glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
+       glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT | GL_PIXEL_BUFFER_BARRIER_BIT);
        GLsync sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-       ovd.outstanding.push_back(sync);
+
+       OpenThreads::ScopedLock<OpenThreads::Mutex> lock(ovd.mutex);
        ovd.compositePbo.push_back(pbo);
+       ovd.outstanding.push_back(sync);
        ovd.readPbo = (pbo+1) % ovd.pboDepth.size();
    }
 
@@ -102,6 +138,14 @@ public:
    vistle::ParallelRemoteRenderManager &renderMgr;
    OpenThreads::Mutex *icetMutex;
    size_t viewIdx;
+   mutable bool init, release;
+};
+
+class NoSwapCallback: public osg::GraphicsContext::SwapCallback {
+
+public:
+    void swapBuffersImplementation(osg::GraphicsContext *gc) override {
+    }
 };
 
 
@@ -110,16 +154,14 @@ public:
 OsgViewData::OsgViewData(OSGRenderer &viewer, size_t viewIdx)
 : viewer(viewer)
 , viewIdx(viewIdx)
+, readPbo(0)
+, width(0)
+, height(0)
 {
-   readPbo = 0;
-   pboDepth.resize(3);
-   pboColor.resize(3);
-   update();
+   update(false);
 }
 
-void OsgViewData::createCamera() {
-
-    const vistle::ParallelRemoteRenderManager::PerViewState &vd = viewer.m_renderManager.viewData(viewIdx);
+OsgViewData::~OsgViewData() {
 
     if (camera) {
         int idx = viewer.findSlaveIndexForCamera(camera);
@@ -128,17 +170,47 @@ void OsgViewData::createCamera() {
         }
         camera = nullptr;
     }
+    viewer.realize();
+}
 
-   camera = new osg::Camera;
-   camera->setImplicitBufferAttachmentMask(0, 0);
-   camera->setViewport(0, 0, vd.width, vd.height);
+void OsgViewData::createCamera() {
 
-   viewer.addSlave(camera);
-   viewer.realize();
+    const vistle::ParallelRemoteRenderManager::PerViewState &vd = viewer.m_renderManager.viewData(viewIdx);
+
+    ReadOperation *readOp = nullptr;
+    if (viewIdx >= 0) {
+       if (camera) {
+          int idx = viewer.findSlaveIndexForCamera(camera);
+          if (idx >= 0) {
+             viewer.removeSlave(idx);
+          }
+          camera = nullptr;
+       }
+
+       camera = new osg::Camera;
+       camera->setImplicitBufferAttachmentMask(0, 0);
+       camera->setViewport(0, 0, vd.width, vd.height);
+
+       viewer.addSlave(camera, osg::Matrix::identity(), osg::Matrix::identity(), false);
+       camera->addChild(viewer.scene);
+       viewer.realize();
+       readOp = new ReadOperation(*this, viewer.m_renderManager, viewer.icetMutex, viewIdx, viewer.rank());
+    } else {
+        if (!camera.valid()) {
+           camera = viewer.getCamera();
+           readOp = new ReadOperation(*this, viewer.m_renderManager, viewer.icetMutex, viewIdx, viewer.rank());
+        }
+        camera->setViewport(0, 0, vd.width, vd.height);
+    }
+
+    if(readOp) {
+        readOperation = readOp;
+        camera->setPostDrawCallback(readOp);
+    }
 }
 
 
-void OsgViewData::update() {
+bool OsgViewData::update(bool frameQueued) {
 
     const vistle::ParallelRemoteRenderManager::PerViewState &vd = viewer.m_renderManager.viewData(viewIdx);
 
@@ -165,14 +237,16 @@ void OsgViewData::update() {
 #else
         auto traits = camera->getGraphicsContext()->getTraits();
         if (traits->width != vd.width || traits->height != vd.height) {
-           std::cerr << "recreating PBuffer for resizing" << std::endl;
+            std::cerr << "recreating PBuffer for resizing" << std::endl;
             create = true;
             resize = true;
+            if (frameQueued)
+               std::cerr << "cannot create, because frames queued" << std::endl;
         }
 #endif
     }
-    if (create) {
-        if (gc) {
+    if (create && !frameQueued) {
+        if (gc && viewIdx >= 0) {
             gc = nullptr;
         }
 #ifdef USE_FBO
@@ -189,13 +263,12 @@ void OsgViewData::update() {
 #else
        std::cerr << "creating PBuffer of size " << vd.width << "x" << vd.height << std::endl;
        createCamera();
-       osg::ref_ptr<osg::DisplaySettings> ds = new osg::DisplaySettings;
-       ds->setStereo(false);
 
-       osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(ds.get());
+       osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(viewer.displaySettings);
        traits->readDISPLAY();
+       traits->setScreenIdentifier(":0");
        traits->setUndefinedScreenDetailsToDefaultScreen();
-       //traits->sharedContext = viewer.getCamera()->getGraphicsContext();
+       traits->sharedContext = viewIdx>=0 ? viewer.getCamera()->getGraphicsContext() : nullptr;
        traits->x = 0;
        traits->y = 0;
        traits->width = vd.width;
@@ -204,42 +277,41 @@ void OsgViewData::update() {
        traits->depth = 24;
        traits->doubleBuffer = false;
        traits->windowDecoration = true;
-       traits->windowName = "OsgRenderer: slave " + boost::lexical_cast<std::string>(viewIdx);
-       //traits->pbuffer =true;
+       traits->windowName = "OsgRenderer: view " + boost::lexical_cast<std::string>(viewIdx);
+       traits->pbuffer =true;
        traits->vsync = false;
-       gc = osg::GraphicsContext::createGraphicsContext(traits);
-       gc->realize();
-#if 0
-       if (gc->isRealized()) {
-          gc->makeCurrent();
-          std::cerr << "enabling debug extension" << std::endl;
-          auto dbg = new EnableGLDebugOperation;
-          (*dbg)(gc);
-          std::cerr << "enabling debug extension: done" << std::endl;
+       if (viewIdx >= 0) {
+          gc = osg::GraphicsContext::createGraphicsContext(traits);
+          if (!traits->doubleBuffer)
+             gc->setSwapCallback(new NoSwapCallback);
+          gc->realize();
+          camera->setGraphicsContext(gc);
+          camera->setDisplaySettings(viewer.displaySettings);
+          camera->setRenderTargetImplementation(osg::Camera::PIXEL_BUFFER);
+          GLenum buffer = traits->doubleBuffer ? GL_BACK : GL_FRONT;
+          camera->setDrawBuffer(buffer);
+          camera->setReadBuffer(buffer);
+          camera->setRenderOrder(osg::Camera::PRE_RENDER);
        } else {
-          std::cerr << "not enabling debug extension: graphics context not realized" << std::endl;
+           gc = camera->getGraphicsContext();
        }
-#endif
-       camera->setGraphicsContext(gc);
-       camera->setDisplaySettings(ds);
-       camera->setRenderTargetImplementation(osg::Camera::PIXEL_BUFFER);
-       GLenum buffer = traits->doubleBuffer ? GL_BACK : GL_FRONT;
-       camera->setDrawBuffer(buffer);
-       camera->setReadBuffer(buffer);
 #endif
        camera->setComputeNearFarMode(osgUtil::CullVisitor::DO_NOT_COMPUTE_NEAR_FAR);
 
        camera->setClearColor(osg::Vec4(0.0f,0.0f,0.0f,0.0f));
        camera->setClearMask(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-       camera->setRenderOrder(osg::Camera::PRE_RENDER);
        camera->setReferenceFrame(osg::Transform::ABSOLUTE_RF);
        camera->setViewMatrix(osg::Matrix::identity());
        camera->setProjectionMatrix(osg::Matrix::identity());
        resize = true;
     }
-    if (resize) {
+    if (resize && !frameQueued) {
+        if (gc)
+           gc->resized(0, 0, vd.width, vd.height);
        camera->setViewport(new osg::Viewport(0, 0, vd.width, vd.height));
+       width = vd.width;
+       height = vd.height;
 #ifdef USE_FBO
 #if 0
        auto &buffers = camera->getBufferAttachmentMap();
@@ -284,32 +356,58 @@ void OsgViewData::update() {
        viewer.realize();
        std::cerr << "realizing viewer: done" << std::endl;
 #endif
-       camera->setPostDrawCallback(new ReadOperation(*this, viewer.m_renderManager, viewer.icetMutex, viewIdx, viewer.rank()));
+       ReadOperation *readOp = dynamic_cast<ReadOperation *>(readOperation.get());
+       if (readOp) {
+          readOp->release = true;
+          readOp->init = true;
+       }
     }
 
-    //osg::Matrix mv =  toOsg(vd.model) * toOsg(vd.view);
-   camera->setViewMatrix(toOsg(vd.view));
-   camera->setProjectionMatrix(toOsg(vd.proj));
+    if (camera) {
+       camera->setViewMatrix(toOsg(vd.view));
+       camera->setProjectionMatrix(toOsg(vd.proj));
+    }
+
+   if (frameQueued)
+      return create || resize;
+
+   return false;
 }
 
-void OsgViewData::composite() {
+bool OsgViewData::composite(size_t maxQueuedFrames, bool wait) {
 
-    if (outstanding.empty()) {
-        std::cerr << "no outstanding frames to composite" << std::endl;
-        return;
+    size_t queued = 0;
+    GLsync sync = 0;
+    {
+       OpenThreads::ScopedLock<OpenThreads::Mutex> lock(mutex);
+       queued = outstanding.size();
+       if (queued==0 || queued+1 < maxQueuedFrames) {
+          //std::cerr << "no outstanding frames to composite" << std::endl;
+          return false;
+       }
+       sync = outstanding.front();
     }
 
-    //glWaitSync(fin, 0, GL_TIMEOUT_IGNORED);
     GLenum ret = 0;
-    while ((ret = glClientWaitSync(outstanding.front(), GL_SYNC_FLUSH_COMMANDS_BIT, 1000)) == GL_TIMEOUT_EXPIRED)
-       ;
-    outstanding.pop_front();
-    size_t pbo = compositePbo.front();
-    compositePbo.pop_front();
+    do {
+        ret = glClientWaitSync(sync, GL_SYNC_FLUSH_COMMANDS_BIT, wait ? 100000 : 0);
+        if (!wait && ret == GL_TIMEOUT_EXPIRED)
+            return false;
+    } while (ret == GL_TIMEOUT_EXPIRED);
+
+    glDeleteSync(sync);
+    size_t pbo = 0;
+    {
+       OpenThreads::ScopedLock<OpenThreads::Mutex> lock(mutex);
+       pbo = compositePbo.front();
+       outstanding.pop_front();
+       compositePbo.pop_front();
+       queued = outstanding.size();
+    }
 
     if (ret == GL_WAIT_FAILED) {
        std::cerr << "GL sync wait failed" << std::endl;
-       return;
+       return true;
     }
 
     const auto &vd = viewer.m_renderManager.viewData(viewIdx);
@@ -319,11 +417,13 @@ void OsgViewData::composite() {
     const osg::Vec4 clear = camera->getClearColor();
     IceTFloat bg[4] = { clear[0], clear[1], clear[2], clear[3] };
     IceTDouble proj[16], view[16];
-    IceTInt viewport[4] = {0, 0, vd.width, vd.height};
+    IceTInt viewport[4] = {0, 0, width, height};
     viewer.m_renderManager.getModelViewMat(viewIdx, view);
     viewer.m_renderManager.getProjMat(viewIdx, proj);
     IceTImage image = icetCompositeImage(mapColor[pbo], mapDepth[pbo], viewport, proj, view, bg);
-    viewer.m_renderManager.finishCurrentView(image);
+    viewer.m_renderManager.finishCurrentView(image, false);
+
+    return true;
 }
 
 TimestepHandler::TimestepHandler()
@@ -390,34 +490,16 @@ size_t TimestepHandler::numTimesteps() const {
    return m_animated->getNumChildren();
 }
 
-static void callbackIceT(const IceTDouble * proj, const IceTDouble * mv,
-        const IceTFloat * bg, const IceTInt * viewport,
-        IceTImage result) {
-
-   IceTSizeType width = icetImageGetWidth(result);
-   IceTSizeType height = icetImageGetHeight(result);
-
-   //std::cerr << "icet draw: w=" << width << ",h=" << height << std::endl;
-
-
-   //IceTEnum cf = icetImageGetColorFormat(result);
-   //IceTEnum df = icetImageGetDepthFormat(result);
-
-   IceTUByte *color = icetImageGetColorub(result);
-   IceTFloat *depth = icetImageGetDepthf(result);
-
-   if (color) {
-      glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, color);
-   }
-   if (depth) {
-      glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, depth);
-   }
-}
-
 OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, int moduleID)
    : Renderer("OSGRenderer", shmname, name, moduleID), osgViewer::Viewer()
-   , m_renderManager(this, callbackIceT)
+   , m_renderManager(this, nullptr)
+   , m_numViewsToComposite(0)
+   , m_numFramesToComposite(0)
+   , m_asyncFrames(0)
 {
+#ifdef USE_X11
+    XInitThreads();
+#endif
 #if 0
    std::cerr << "waiting for debugger: pid=" << getpid() << std::endl;
    sleep(10);
@@ -427,23 +509,36 @@ OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, in
    m_debugLevel = addIntParameter("debug", "debug level", 1);
    m_visibleView = addIntParameter("visible_view", "no. of visible view (positive values will open window)", -1);
    setParameterRange(m_visibleView, (vistle::Integer)-1, (vistle::Integer)(m_renderManager.numViews())-1);
+#if 0
+   m_requestedThreadingModel = CullThreadPerCameraDrawThreadPerContext;
+   m_threading = addIntParameter("threading_model", "OpenSceneGraph threading model", Cull_Thread_Per_Camera_Draw_Thread_Per_Context, vistle::Parameter::Choice);
+#else
+   m_requestedThreadingModel = SingleThreaded;
+   m_threading = addIntParameter("threading_model", "OpenSceneGraph threading model", Single_Threaded, vistle::Parameter::Choice);
+#endif
+   V_ENUM_SET_CHOICES(m_threading, OsgThreadingModel);
+   m_async = addIntParameter("asynchronicity", "number of outstanding frames to tolerate", m_asyncFrames);
+   setParameterRange(m_async, (vistle::Integer)0, (vistle::Integer)MaxAsyncFrames);
 
-   osg::ref_ptr<osg::DisplaySettings> ds = new osg::DisplaySettings;
-   ds->setStereo(false);
+   //setRealizeOperation(new EnableGLDebugOperation());
 
-   osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(ds.get());
+   displaySettings = new osg::DisplaySettings;
+   displaySettings->setStereo(false);
+
+   osg::ref_ptr<osg::GraphicsContext::Traits> traits = new osg::GraphicsContext::Traits(displaySettings);
    traits->readDISPLAY();
+   traits->setScreenIdentifier(":0");
    traits->setUndefinedScreenDetailsToDefaultScreen();
    traits->x = 0;
    traits->y = 0;
-   traits->width=700;
-   traits->height=700;
+   traits->width=1;
+   traits->height=1;
    traits->alpha = 8;
    traits->windowDecoration = true;
    traits->windowName = "OsgRenderer: master";
    traits->doubleBuffer = false;
    traits->sharedContext = 0;
-   //traits->pbuffer = true;
+   traits->pbuffer = true;
    traits->vsync = false;
    osg::ref_ptr<osg::GraphicsContext> gc = osg::GraphicsContext::createGraphicsContext(traits.get());
    if (!gc)
@@ -451,9 +546,11 @@ OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, in
        std::cerr << "Failed to create master graphics context" << std::endl;
        return;
    }
+   if (!traits->doubleBuffer)
+      gc->setSwapCallback(new NoSwapCallback);
 
    getCamera()->setGraphicsContext(gc.get());
-   getCamera()->setDisplaySettings(ds.get());
+   getCamera()->setDisplaySettings(displaySettings);
    getCamera()->setViewport(new osg::Viewport(0, 0, traits->width, traits->height));
    getCamera()->setComputeNearFarMode(osgUtil::CullVisitor::DO_NOT_COMPUTE_NEAR_FAR);
 
@@ -461,11 +558,7 @@ OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, in
    getCamera()->setDrawBuffer(buffer);
    getCamera()->setReadBuffer(buffer);
                                   
-   setRealizeOperation(new EnableGLDebugOperation());
    realize();
-
-   setThreadingModel(ThreadPerCamera);
-   //setThreadingModel(SingleThreaded);
 
    getCamera()->setClearColor(osg::Vec4(0.0, 0.0, 0.0, 0.0));
    getCamera()->setViewMatrix(osg::Matrix::identity());
@@ -473,8 +566,8 @@ OSGRenderer::OSGRenderer(const std::string &shmname, const std::string &name, in
    scene = new osg::MatrixTransform();
    timesteps = new TimestepHandler;
    scene->addChild(timesteps->root());
-   setSceneData(scene);
    rootState = scene->getOrCreateStateSet();
+   //setSceneData(scene);
 
    material = new osg::Material();
    material->setColorMode(osg::Material::AMBIENT_AND_DIFFUSE);
@@ -509,12 +602,55 @@ OSGRenderer::~OSGRenderer() {
 
 }
 
+void OSGRenderer::flush() {
+
+    std::cerr << "flushing outstanding frames..." << std::endl;
+    for (size_t f=m_asyncFrames; f>0; --f) {
+       composite(f-1);
+    }
+    vassert(m_numFramesToComposite == 0);
+}
+
+
+bool OSGRenderer::composite(size_t maxQueued) {
+
+   vassert(maxQueued >= 0);
+   vassert(maxQueued <= MaxAsyncFrames);
+   vassert(m_viewData.size()*m_numFramesToComposite == m_numViewsToComposite);
+
+   //std::cerr << "composite(maxQueued=" << maxQueued <<"), to composite: frames=" << m_numFramesToComposite << ", views=" << m_numViewsToComposite << std::endl;
+
+   if (m_viewData.size() == 0)
+      return false;
+
+   if (m_numViewsToComposite == 0)
+       return false;
+
+   if (m_numFramesToComposite == 0)
+       return false;
+
+   for (size_t i=0; i<m_viewData.size(); ++i) {
+      const bool progress = m_viewData[i]->composite(maxQueued);
+      vassert(progress);
+      --m_numViewsToComposite;
+   }
+
+   vassert(m_numViewsToComposite%m_viewData.size() == 0);
+   --m_numFramesToComposite;
+   m_renderManager.finishFrame();
+
+   return true;
+}
 
 bool OSGRenderer::render() {
 
+    bool again = false;
+    if (m_asyncFrames > 0)
+       again = composite(m_asyncFrames-1);
+
     const size_t numTimesteps = timesteps->numTimesteps();
     if (!m_renderManager.prepareFrame(numTimesteps)) {
-       return false;
+       return again;
     }
 
     // statistics
@@ -534,6 +670,8 @@ bool OSGRenderer::render() {
 
     if (m_renderManager.numViews() != m_viewData.size()) {
        setParameterRange(m_visibleView, (vistle::Integer)-1, (vistle::Integer)(m_renderManager.numViews())-1);
+
+       flush();
 
        if (m_viewData.size() > m_renderManager.numViews()) {
           m_viewData.resize(m_renderManager.numViews());
@@ -581,17 +719,26 @@ bool OSGRenderer::render() {
           lights[i]->setStateSetModes(*rootState, val);
 
        }
-    }
 
-    for (size_t i=0; i<m_viewData.size(); ++i) {
-       m_viewData[i]->update();
-       vassert(m_viewData[i]->outstanding.empty());
-    }
+       for (size_t i=0; i<m_viewData.size(); ++i) {
+          if (m_viewData[i]->update(m_numFramesToComposite > 0)) {
 
-    frame();
+              flush();
+              m_viewData[i]->update(m_numFramesToComposite > 0);
+          }
+       }
 
-    for (size_t i=0; i<m_viewData.size(); ++i) {
-       m_viewData[i]->composite();
+       frame();
+       ++m_numFramesToComposite;
+       m_numViewsToComposite += m_viewData.size();
+
+       if (m_asyncFrames == 0)
+          composite(0);
+
+       if (m_requestedThreadingModel != getThreadingModel()) {
+          setThreadingModel(m_requestedThreadingModel);
+       }
+       //usleep(500000);
     }
 
     return true;
@@ -600,6 +747,35 @@ bool OSGRenderer::render() {
 bool OSGRenderer::parameterChanged(const vistle::Parameter *p) {
 
    m_renderManager.handleParam(p);
+
+   if (p == m_threading) {
+       switch(m_threading->getValue()) {
+       case Single_Threaded:
+           m_requestedThreadingModel = SingleThreaded;
+           break;
+       case Cull_Draw_Thread_Per_Context:
+           m_requestedThreadingModel = CullDrawThreadPerContext;
+           break;
+       case Thread_Per_Context:
+           m_requestedThreadingModel = ThreadPerContext;
+           break;
+       case Draw_Thread_Per_Context:
+           m_requestedThreadingModel = DrawThreadPerContext;
+           break;
+       case Cull_Thread_Per_Camera_Draw_Thread_Per_Context:
+           m_requestedThreadingModel = CullThreadPerCameraDrawThreadPerContext;
+           break;
+       case Thread_Per_Camera:
+           m_requestedThreadingModel = ThreadPerCamera;
+           break;
+       case Automatic_Selection:
+           m_requestedThreadingModel = AutomaticSelection;
+           break;
+       }
+   } else if (p == m_async) {
+       m_asyncFrames = m_async->getValue();
+   }
+
    return Renderer::parameterChanged(p);
 }
 
