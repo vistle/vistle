@@ -55,8 +55,7 @@ include_directories(${EIGEN3_INCLUDE_PATH})
 #Boost.MPI is compiled with Vistle - for easy switching of MPI versions
 include_directories(../3rdparty/${BOOST_MPI_DIR}/include)
 
-set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} "$ENV{EXTERNLIBS}/openscenegraph")
-vistle_find_package(OpenSceneGraph 2.8.0 COMPONENTS osgViewer osgGA osgDB osgUtil
+vistle_find_package(OpenSceneGraph 3.2.0 COMPONENTS osgViewer osgGA osgDB osgUtil
    osgText osgParticle osgSim osgFX)
 vistle_find_package(OpenGL)
 
