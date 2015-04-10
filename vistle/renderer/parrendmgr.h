@@ -26,6 +26,7 @@ public:
    size_t numViews() const;
    void setCurrentView(size_t i);
    void finishCurrentView(const IceTImage &img);
+   void finishCurrentView(const IceTImage &img, bool lastView);
    void getModelViewMat(size_t viewIdx, IceTDouble *mat) const;
    void getProjMat(size_t viewIdx, IceTDouble *mat) const;
    const PerViewState &viewData(size_t viewIdx) const;

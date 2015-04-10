@@ -242,10 +242,16 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
 
 void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img) {
 
+   const bool lastView = size_t(m_currentView)==m_viewData.size()-1;
+   finishCurrentView(img, lastView);
+}
+
+void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, bool lastView) {
+
+   vassert(m_currentView >= 0);
    const size_t i = m_currentView;
-   //std::cerr << "finishCurrentView: " << i << std::endl;
-   vassert(i >= 0);
    vassert(i < numViews());
+   //std::cerr << "finishCurrentView: " << i << std::endl;
    if (m_module->rank() == rootRank()) {
       auto vnc = m_vncControl.server();
       vassert(vnc);
@@ -264,7 +270,6 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img) {
             memcpy(vnc->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
          }
 
-         const bool lastView = i==m_viewData.size()-1;
          vnc->invalidate(i, 0, 0, vnc->width(i), vnc->height(i), m_viewData[i].vncParam, lastView);
       }
    }
