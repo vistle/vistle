@@ -22,6 +22,7 @@ ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module, IceTD
 , m_doRender(1)
 , m_lightsUpdateCount(1000) // start with a value that is different from the one managed by VncServer
 , m_currentView(-1)
+, m_frameComplete(true)
 {
    m_continuousRendering = m_module->addIntParameter("continuous_rendering", "render even though nothing has changed", 0, Parameter::Boolean);
    m_colorRank = m_module->addIntParameter("color_rank", "different colors on each rank", 0, Parameter::Boolean);
@@ -274,6 +275,23 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, bool l
       }
    }
    m_currentView = -1;
+   m_frameComplete = lastView;
+}
+
+bool ParallelRemoteRenderManager::finishFrame() {
+
+   vassert(m_currentView == -1);
+
+   if (m_frameComplete)
+      return false;
+
+   if (m_module->rank() == rootRank()) {
+      auto vnc = m_vncControl.server();
+      vassert(vnc);
+      vnc->invalidate(-1, 0, 0, 0, 0, m_viewData[0].vncParam, true);
+   }
+   m_frameComplete = true;
+   return true;
 }
 
 void ParallelRemoteRenderManager::getModelViewMat(size_t viewIdx, IceTDouble *mat) const {

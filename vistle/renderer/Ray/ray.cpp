@@ -506,11 +506,14 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
 
 bool RayCaster::render() {
 
+    // ensure that previous frame is completed
+    bool immed_resched = m_renderManager.finishFrame();
+
     //vistle::StopWatch timer("render");
 
     const size_t numTimesteps = anim_geometry.size();
     if (!m_renderManager.prepareFrame(numTimesteps)) {
-       return false;
+       return immed_resched;
     }
 
     // switch time steps in embree scene
@@ -554,7 +557,7 @@ bool RayCaster::render() {
 
        IceTImage img = icetDrawFrame(proj, mv, bg);
 
-       m_renderManager.finishCurrentView(img);
+       m_renderManager.finishCurrentView(img, false);
     }
     m_currentView = -1;
 

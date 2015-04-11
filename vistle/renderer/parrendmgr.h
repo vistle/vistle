@@ -27,6 +27,7 @@ public:
    void setCurrentView(size_t i);
    void finishCurrentView(const IceTImage &img);
    void finishCurrentView(const IceTImage &img, bool lastView);
+   bool finishFrame();
    void getModelViewMat(size_t viewIdx, IceTDouble *mat) const;
    void getProjMat(size_t viewIdx, IceTDouble *mat) const;
    const PerViewState &viewData(size_t viewIdx) const;
@@ -131,6 +132,7 @@ public:
 
    std::vector<PerViewState> m_viewData; // synchronized from rank 0 to slaves
    int m_currentView; //!< holds no. of view currently being rendered - not a problem as IceT is not reentrant anyway
+   bool m_frameComplete; //!< track whether frame has been flushed to clients
 
    //! per view IceT state
    struct IceTData {

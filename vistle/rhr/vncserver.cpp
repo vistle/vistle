@@ -1150,73 +1150,80 @@ void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const V
     static int framecount=0;
     ++framecount;
 
-    for (int y=y0; y<y0+h; y+=tileHeight) {
-        for (int x=x0; x<x0+w; x+=tileWidth) {
+    if (viewNum >= 0) {
+       for (int y=y0; y<y0+h; y+=tileHeight) {
+          for (int x=x0; x<x0+w; x+=tileWidth) {
 
-            // depth
-            auto dt = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
-                    viewNum,
-                    x, y,
-                    std::min(tileWidth, x0+w-x),
-                    std::min(tileHeight, y0+h-y),
-                    depth(viewNum), m_imageParam, param);
-            tbb::task::enqueue(*dt);
-            ++m_queuedTiles;
+             // depth
+             auto dt = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
+                   viewNum,
+                   x, y,
+                   std::min(tileWidth, x0+w-x),
+                   std::min(tileHeight, y0+h-y),
+                   depth(viewNum), m_imageParam, param);
+             tbb::task::enqueue(*dt);
+             ++m_queuedTiles;
 
-            // color
-            auto ct = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
-                    viewNum,
-                    x, y,
-                    std::min(tileWidth, x0+w-x),
-                    std::min(tileHeight, y0+h-y),
-                    rgba(viewNum), m_imageParam, param);
-            tbb::task::enqueue(*ct);
-            ++m_queuedTiles;
-        }
+             // color
+             auto ct = new(tbb::task::allocate_root()) EncodeTask(m_resultQueue,
+                   viewNum,
+                   x, y,
+                   std::min(tileWidth, x0+w-x),
+                   std::min(tileHeight, y0+h-y),
+                   rgba(viewNum), m_imageParam, param);
+             tbb::task::enqueue(*ct);
+             ++m_queuedTiles;
+          }
+       }
+    } else if (m_queuedTiles == 0) {
+       tileMsg msg;
     }
 
     bool tileReady = false;
     do {
         VncServer::EncodeResult result;
         tileReady = false;
-        if (m_resultQueue.try_pop(result)) {
+        tileMsg *msg = nullptr;
+        if (m_queuedTiles == 0 && lastView) {
+           msg = new tileMsg;
+        } else if (m_resultQueue.try_pop(result)) {
             --m_queuedTiles;
             tileReady = true;
-            if (result.message) {
-                tileMsg &msg = *result.message;
-                if (m_firstTile) {
-                    msg.flags |= rfbTileFirst;
-                    //std::cerr << "first tile: req=" << msg.requestNumber << std::endl;
-                }
-                m_firstTile = false;
-                if (m_queuedTiles == 0 && lastView) {
-                    msg.flags |= rfbTileLast;
-                    //std::cerr << "last tile: req=" << msg.requestNumber << std::endl;
-                }
-                msg.frameNumber = framecount;
-
-                rfbCheckFds(m_screen, 0);
-                rfbHttpCheckFds(m_screen);
-                rfbClientIteratorPtr i = rfbGetClientIterator(m_screen);
-                while (rfbClientPtr cl = rfbClientIteratorNext(i)) {
-                    if (cl->clientData) {
-                        rfbUpdateClient(cl);
-                        if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-                            rfbLogPerror("sendTileMessage: write header");
-                        }
-                        if (result.payload && msg.size > 0) {
-                            if (rfbWriteExact(cl, result.payload, msg.size) < 0) {
-                                rfbLogPerror("sendTileMessage: write paylod");
-                            }
-                        }
-                    }
-                    rfbUpdateClient(cl);
-                }
-                rfbReleaseClientIterator(i);
-            }
-            delete[] result.payload;
-            delete result.message;
+            msg = result.message;
         }
+        if (msg) {
+           if (m_firstTile) {
+              msg->flags |= rfbTileFirst;
+              //std::cerr << "first tile: req=" << msg.requestNumber << std::endl;
+           }
+           m_firstTile = false;
+           if (m_queuedTiles == 0 && lastView) {
+              msg->flags |= rfbTileLast;
+              //std::cerr << "last tile: req=" << msg.requestNumber << std::endl;
+           }
+           msg->frameNumber = framecount;
+
+           rfbCheckFds(m_screen, 0);
+           rfbHttpCheckFds(m_screen);
+           rfbClientIteratorPtr i = rfbGetClientIterator(m_screen);
+           while (rfbClientPtr cl = rfbClientIteratorNext(i)) {
+              if (cl->clientData) {
+                 rfbUpdateClient(cl);
+                 if (rfbWriteExact(cl, (char *)msg, sizeof(*msg)) < 0) {
+                    rfbLogPerror("sendTileMessage: write header");
+                 }
+                 if (result.payload && msg->size > 0) {
+                    if (rfbWriteExact(cl, result.payload, msg->size) < 0) {
+                       rfbLogPerror("sendTileMessage: write paylod");
+                    }
+                 }
+              }
+              rfbUpdateClient(cl);
+           }
+           rfbReleaseClientIterator(i);
+        }
+        delete[] result.payload;
+        delete msg;
     } while (m_queuedTiles > 0 && (tileReady || lastView));
 
     if (lastView) {
