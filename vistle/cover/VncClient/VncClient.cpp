@@ -685,7 +685,7 @@ rfbBool VncClient::rfbTileMessage(rfbClient *client, rfbServerToClientMsg *messa
       }
    }
 
-   if (msg->size==0 && msg->width==0 && msg->height==0) {
+   if (msg->size==0 && msg->width==0 && msg->height==0 && msg->flags == 0) {
       std::cerr << "received initial tile - ignoring" << std::endl;
       return TRUE;
    }
