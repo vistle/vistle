@@ -1187,7 +1187,6 @@ void VncClient::createGeometry(VncClient::ChannelData &cd)
    osg::ref_ptr<osg::Drawable::DrawCallback> drawCB = new SingleScreenCB(cd.camera, cd.channelNum, cd.second);
 
    cd.fixedGeo = new osg::Geometry();
-   cd.fixedGeo->setDrawCallback(drawCB);
    ushort vertices[4] = { 0, 1, 2, 3 };
    osg::DrawElementsUShort *plane = new osg::DrawElementsUShort(osg::PrimitiveSet::QUADS, 4, vertices);
 
@@ -1199,6 +1198,8 @@ void VncClient::createGeometry(VncClient::ChannelData &cd)
    cd.fixedGeo->setNormalBinding(osg::Geometry::BIND_OVERALL);
    cd.fixedGeo->setTexCoordArray(0, cd.texcoord);
    {
+      cd.fixedGeo->setDrawCallback(drawCB);
+      cd.fixedGeo->setUseDisplayList( false ); // required for DrawCallback
       osg::StateSet *stateSet = cd.fixedGeo->getOrCreateStateSet();
       //stateSet->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
       //stateSet->setRenderBinDetails(-20,"RenderBin");
@@ -1236,8 +1237,9 @@ void VncClient::createGeometry(VncClient::ChannelData &cd)
    }
 
    cd.reprojGeo = new osg::Geometry();
-   cd.reprojGeo->setDrawCallback(drawCB);
    {
+      cd.reprojGeo->setDrawCallback(drawCB);
+      cd.reprojGeo->setUseDisplayList( false );
       osg::BoundingBox bb(-0.5,0.,-0.5, 0.5,0.,0.5);
       cd.reprojGeo->setInitialBound(bb);
       cd.coord = new osg::Vec2Array(1);
