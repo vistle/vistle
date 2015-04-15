@@ -2,8 +2,9 @@
 
 echo SPAWN "$@"
 
+export MV2_ENABLE_AFFINITY=0
+
 if [ -n "$SLURM_JOB_ID" ]; then
-   export MV2_ENABLE_AFFINITY=0
    exec mpiexec -bind-to none "$@"
    #exec srun --overcommit "$@"
    #exec srun --overcommit --cpu_bind=no "$@"
@@ -17,19 +18,21 @@ case $(hostname) in
       if [ "$MPISIZE" = "" ]; then
          MPISIZE=2
       fi
-      exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} "$@"
+      #exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} "$@"
+      exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none -envall "$@"
       #exec mpirun -np 8  -hosts localhost "$@"
       ;;
    viscluster*)
       if [ -z "$MPIHOSTS" ]; then
          MPIHOSTS=$(echo viscluster{50..60} viscluster{71..75}|sed -e 's/ /,/g')
+         #MPIHOSTS=$(echo viscluster{50..60}|sed -e 's/ /,/g')
       fi
       if [ "$MPISIZE" = "" ]; then
          MPISIZE=16
       fi
       #echo LD_LIBRARY_PATH=$LD_LIBRARY_PATH
-      export MV2_ENABLE_AFFINITY=0
-      exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none -envlist LD_LIBRARY_PATH "$@"
+      #exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none -envlist LD_LIBRARY_PATH "$@"
+      exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none -envall "$@"
       ;;
    *)
       #echo mpirun "$@"
