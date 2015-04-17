@@ -1362,6 +1362,7 @@ bool VncClient::init()
 
    m_reproject = true;
    m_adapt = true;
+   m_frameReady = false;
 
 #if 0
    std::cout << "COVER waiting for debugger: pid=" << getpid() << std::endl;
