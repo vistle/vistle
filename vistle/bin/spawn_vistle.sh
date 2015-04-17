@@ -1,6 +1,6 @@
 #! /bin/bash
 
-echo SPAWN "$@"
+#echo SPAWN "$@"
 
 export MV2_ENABLE_AFFINITY=0
 export MPI_UNBUFFERED_STDIO=1
@@ -12,47 +12,55 @@ if [ -n "$SLURM_JOB_ID" ]; then
    #exec srun --overcommit --cpu_bind=no "$@"
 fi
 
+VALGRIND=""
+
+OPENMPI=0
+if mpirun -version | grep open-mpi\.org > /dev/null; then
+   OPENMPI=1
+   echo "OpenMPI spawn: $@"
+   LAUNCH="--launch-agent $(which orted)"
+fi
+
+BIND=0
 case $(hostname) in
    viscluster70)
+      BIND=1
       if [ -z "$MPIHOSTS" ]; then
-         MPIHOSTS=$(echo viscluster70 viscluster{51..60} viscluster{71..77}|sed -e 's/ /,/g')
+         MPIHOSTS=$(echo viscluster70 viscluster{51..60} viscluster{71..79}|sed -e 's/ /,/g')
       fi
-      if [ "$MPISIZE" = "" ]; then
-         MPISIZE=2
-      fi
-      #exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} "$@"
-      exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none -envall "$@"
-      #exec mpirun -np 8  -hosts localhost "$@"
       ;;
    viscluster*)
+      BIND=1
       if [ -z "$MPIHOSTS" ]; then
-         MPIHOSTS=$(echo viscluster{50..60} viscluster{71..75}|sed -e 's/ /,/g')
-         #MPIHOSTS=$(echo viscluster{50..60}|sed -e 's/ /,/g')
+         MPIHOSTS=$(echo viscluster{50..60} viscluster{71..79} viscluster70|sed -e 's/ /,/g')
       fi
-      if [ "$MPISIZE" = "" ]; then
-         MPISIZE=16
-      fi
-      #echo LD_LIBRARY_PATH=$LD_LIBRARY_PATH
-      #exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none -envlist LD_LIBRARY_PATH "$@"
-      exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none -envall "$@"
       ;;
    *)
-      #echo mpirun "$@"
-      #exec mpirun -np 1 "$@"
-      #echo EXEC: "$@"
-      #exec mpirun -np 2 "$@"
-      #exec xterm -e gdb --args "$@"
       if [ "$MPISIZE" = "" ]; then
          MPISIZE=1
-      fi
-      if [ -z "$MPIHOSTS" ]; then
-         echo mpirun -np ${MPISIZE} "$@"
-         exec mpirun -envall -np ${MPISIZE} "$@"
-      else
-         echo mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} "$@"
-         exec mpirun -envall -np ${MPISIZE} -hosts ${MPIHOSTS} "$@"
       fi
       ;;
 esac
 
-exec "$@"
+if [ "$MPISIZE" = "" ]; then
+   MPISIZE=$(echo ${MPIHOSTS} | sed -e 's/,/ /g' | wc -w)
+fi
+
+if [ "$OPENMPI" = "1" ]; then
+   if [ -z "$MPIHOSTS" ]; then
+      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} $VALGRIND "$@"
+   else
+      exec mpirun -x LD_LIBRARY_PATH $LAUNCH -np ${MPISIZE} -H ${MPIHOSTS} $VALGRIND "$@"
+   fi
+else
+   if [ -z "$MPIHOSTS" ]; then
+      exec mpirun -envall -prepend-rank -np ${MPISIZE} $VALGRIND "$@" > "$(basename $1)"-$$.log 2>&1 < /dev/null
+   elif [ "$BIND" = "1" ]; then
+      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $VALGRIND "$@" > "$(basename $1)"-$$.log 2>&1 < /dev/null
+   else
+      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} $VALGRIND "$@" > "$(basename $1)"-$$.log 2>&1 < /dev/null
+   fi
+fi
+
+echo "default: $@"
+exec VALGRIND "$@"
