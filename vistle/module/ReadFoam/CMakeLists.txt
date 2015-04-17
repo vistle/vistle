@@ -13,7 +13,7 @@ endfunction(add_compile_flags)
 if (CMAKE_COMPILER_IS_GNUCC)
    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
    if (GCC_VERSION VERSION_LESS 4.2)
-      message(STATUS "GCC version older than 4.2, not building ReadFOAM")
+      message(STATUS "GCC version older than 4.2, not building ReadFoam")
       return()
    endif()
 endif()
@@ -30,8 +30,8 @@ if (CMAKE_COMPILER_IS_GNUCC)
    add_compile_flags(ReadFOAM.cpp -std=c++0x)
 endif()
 
-add_module(ReadFOAM ReadFOAM.cpp foamtoolbox.cpp)
-target_link_libraries(ReadFOAM
+add_module(ReadFoam ReadFOAM.cpp foamtoolbox.cpp)
+target_link_libraries(ReadFoam
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
         ${ZLIB_LIBRARIES}

@@ -68,5 +68,5 @@ endmacro(add_module)
 
 
 add_subdirectory(COVER)
-add_subdirectory(OSGRenderer)
-add_subdirectory(Ray)
+add_subdirectory(OsgRenderer)
+add_subdirectory(DisCOVERay)
