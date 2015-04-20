@@ -35,6 +35,11 @@ class _stdin:
 #   current_module = sys.modules[__name__]
 #   python_help(current_module)
 
+def showHubs():
+   hubs = getAllHubs()
+   for id in hubs:
+      print id
+
 def showAvailable():
    avail = getAvailable()
    for name in avail:
@@ -45,10 +50,11 @@ def getNumRunning():
 
 def showRunning():
    running = getRunning()
-   print "id\tname"
+   print "id\tname\thub"
    for id in running:
       name = getModuleName(id)
-      print id, "\t", name
+      hub = getHub(id)
+      print id, "\t", name, "\t", hub
 
 def showBusy():
    busy = getBusy()
@@ -153,13 +159,29 @@ def save(filename = None):
    global _loaded_file
    if filename == None:
       filename = _loaded_file
+   if filename == None:
+      print("No file loaded and no file specified")
+      return
 
    f = open(filename, 'w')
    mods = getRunning()
+   slavehubs = set()
+   master = getMasterHub()
+   for m in mods:
+      h = getHub(m)
+      if h != master:
+         slavehubs.add(h)
+   if len(slavehubs) > 1:
+      print "slave hubs:", slavehubs
+      f.write("waitForSlaves()\n")
+   elif len(slavehubs) > 0:
+      print "slave hubs:", slavehubs
+      f.write("waitForSlaves()\n")
+
    f.write("uuids = {}\n");
    for m in mods:
       #f.write(modvar(m)+" = spawn('"+getModuleName(m)+"')\n")
-      f.write("u"+modvar(m)+" = spawnAsync('"+getModuleName(m)+"')\n")
+      f.write("u"+modvar(m)+" = spawnAsync("+str(getHub(m))+", '"+getModuleName(m)+"')\n")
 
    for m in mods:
       f.write(modvar(m)+" = waitForSpawn(u"+modvar(m)+")\n")

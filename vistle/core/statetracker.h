@@ -78,6 +78,9 @@ class V_COREEXPORT StateTracker {
 
    bool dispatch(bool &received);
 
+   int getMasterHub() const;
+   std::vector<int> getHubs() const;
+   const std::string &hubName(int id) const;
    std::vector<int> getRunningList() const;
    std::vector<int> getBusyList() const;
    int getHub(int id) const;
@@ -139,6 +142,7 @@ class V_COREEXPORT StateTracker {
    void processQueue();
 
  private:
+   bool handlePriv(const message::AddSlave &slave);
    bool handlePriv(const message::Ping &ping);
    bool handlePriv(const message::Pong &pong);
    bool handlePriv(const message::Trace &trace);
@@ -178,6 +182,17 @@ class V_COREEXPORT StateTracker {
    message::Message::Type m_traceType;
    int m_traceId;
    std::string m_name;
+   struct HubData {
+
+      HubData(int id, const std::string &name)
+      : id(id)
+      , name(name)
+      {}
+
+      int id;
+      std::string name;
+   };
+   std::vector<HubData> m_hubs;
 };
 
 } // namespace vistle

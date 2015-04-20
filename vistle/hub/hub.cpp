@@ -176,13 +176,18 @@ void Hub::addClient(shared_ptr<asio::ip::tcp::socket> sock) {
    m_clients.insert(sock);
 }
 
-void Hub::addSlave(int id, shared_ptr<asio::ip::tcp::socket> sock) {
+void Hub::addSlave(int id, const std::string &name, shared_ptr<asio::ip::tcp::socket> sock) {
 
    const int slaveid = Id::MasterHub - id;
-   m_slaveSockets[slaveid] = sock;
+   m_slaves[slaveid].sock = sock;
+   m_slaves[slaveid].name = name;
 
    message::SetId set(slaveid);
    sendMessage(sock, set);
+
+   message::AddSlave slave(slaveid, name);
+   sendUi(slave);
+   sendSlaves(slave);
 
    auto state = m_stateTracker.getState();
    for (auto &m: state) {
@@ -328,10 +333,10 @@ bool Hub::sendSlaves(const message::Message &msg, bool returnToSender) {
       //std::cerr << " -> hub id " << senderHub << std::endl;
    }
 
-   for (auto &sock: m_slaveSockets) {
-      if (sock.first != senderHub || returnToSender) {
+   for (auto &slave: m_slaves) {
+      if (slave.first != senderHub || returnToSender) {
          //std::cerr << "to slave id: " << sock.first << " (!= " << senderHub << ")" << std::endl;
-         sendMessage(sock.second, msg);
+         sendMessage(slave.second.sock, msg);
       }
    }
    return true;
@@ -347,9 +352,9 @@ bool Hub::sendHub(const message::Message &msg, int hub) {
       return true;
    }
 
-   for (auto &sock: m_slaveSockets) {
-      if (sock.first == hub) {
-         sendMessage(sock.second, msg);
+   for (auto &slave: m_slaves) {
+      if (slave.first == hub) {
+         sendMessage(slave.second.sock, msg);
          return true;
       }
    }
@@ -363,11 +368,11 @@ bool Hub::sendSlave(const message::Message &msg, int dest) {
    if (!m_isMaster)
       return false;
 
-   auto it = m_slaveSockets.find(dest);
-   if (it == m_slaveSockets.end())
+   auto it = m_slaves.find(dest);
+   if (it == m_slaves.end())
       return false;
 
-   return sendMessage(it->second, msg);
+   return sendMessage(it->second.sock, msg);
 }
 
 bool Hub::sendUi(const message::Message &msg) {
@@ -412,7 +417,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             if (m_isMaster) {
                sendMessage(sock, Identify(Identify::HUB));
             } else {
-               sendMessage(sock, Identify(Identify::SLAVEHUB));
+               sendMessage(sock, Identify(Identify::SLAVEHUB, m_name));
             }
             break;
          }
@@ -447,9 +452,9 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          }
          case Identify::SLAVEHUB: {
             vassert(m_isMaster);
-            CERR << "slave hub connected" << std::endl;
+            CERR << "slave hub '" << id.name() << "' connected" << std::endl;
             ++m_slaveCount;
-            addSlave(m_slaveCount, sock);
+            addSlave(m_slaveCount, id.name(), sock);
             break;
          }
          default: {
@@ -661,6 +666,8 @@ bool Hub::init(int argc, char *argv[]) {
 
    m_bindir = getbindir(argc, argv);
 
+   m_name = hostname();
+
    namespace po = boost::program_options;
    po::options_description desc("usage");
    desc.add_options()
@@ -669,12 +676,12 @@ bool Hub::init(int argc, char *argv[]) {
       ("batch,b", "do not start user interface")
       ("gui,g", "start graphical user interface")
       ("tui,t", "start command line interface")
-      ("filename", "Vistle script to process")
+      ("name", "Vistle script to process or slave name")
       ;
    po::variables_map vm;
    try {
       po::positional_options_description popt;
-      popt.add("filename", 1);
+      popt.add("name", 1);
       po::store(po::command_line_parser(argc, argv).options(desc).positional(popt).run(), vm);
       po::notify(vm);
    } catch (std::exception &e) {
@@ -749,8 +756,11 @@ bool Hub::init(int argc, char *argv[]) {
       startUi(uipath);
    }
 
-   if (vm.count("filename") == 1) {
-      m_scriptPath = vm["filename"].as<std::string>();
+   if (vm.count("name") == 1) {
+      if (m_isMaster)
+         m_scriptPath = vm["name"].as<std::string>();
+      else
+         m_name = vm["name"].as<std::string>();
    }
 
    std::string port = boost::lexical_cast<std::string>(this->port());
@@ -811,7 +821,7 @@ bool Hub::connectToMaster(const std::string &host, unsigned short port) {
    }
 
 #if 0
-   message::Identify ident(message::Identify::SLAVEHUB);
+   message::Identify ident(message::Identify::SLAVEHUB, m_name);
    sendMessage(m_masterSocket, ident);
 #endif
    addSocket(m_masterSocket, message::Identify::HUB);
@@ -914,7 +924,7 @@ bool Hub::handlePriv(const message::BarrierReached &reached) {
    vassert(m_barrierUuid == reached.uuid());
    // message must be received from local manager and each slave
    if (m_isMaster) {
-      if (m_barrierReached == m_slaveSockets.size()+1) {
+      if (m_barrierReached == m_slaves.size()+1) {
          m_barrierActive = false;
          m_barrierReached = 0;
          message::BarrierReached r(reached.uuid());

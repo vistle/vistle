@@ -44,7 +44,7 @@ public:
    ~ModuleBrowser();
 
 public slots:
-   void addModule(int hub, QString module, QString path);
+   void addModule(int hub, QString hubName, QString module, QString path);
    void setFilter(QString filter);
 
 private:

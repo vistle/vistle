@@ -17,7 +17,7 @@ class VistleObserver: public QObject, public vistle::StateObserver
 	Q_OBJECT
 
 signals:
-   void moduleAvailable_s(int hub, QString name, QString path);
+   void moduleAvailable_s(int hub, QString hubName, QString name, QString path);
    void newModule_s(int moduleId, const boost::uuids::uuid &spawnUuid, QString moduleName);
 	void deleteModule_s(int moduleId);
    void moduleStateChanged_s(int moduleId, int stateBits);

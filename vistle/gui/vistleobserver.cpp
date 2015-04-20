@@ -35,7 +35,8 @@ void VistleObserver::moduleAvailable(int hub, const std::string &name, const std
 
    QString qname = QString::fromStdString(name);
    QString qpath = QString::fromStdString(path);
-   emit moduleAvailable_s(hub, qname, qpath);
+   QString hubName = QString::fromStdString(vistle::VistleConnection::the().ui().state().hubName(hub));
+   emit moduleAvailable_s(hub, hubName, qname, qpath);
 }
 
 void VistleObserver::newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) {

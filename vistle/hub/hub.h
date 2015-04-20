@@ -28,6 +28,7 @@ class Hub {
    bool dispatch();
    bool sendMessage(boost::shared_ptr<socket> sock, const message::Message &msg);
    unsigned short port() const;
+   const std::string &name() const;
 
    bool handleMessage(const message::Message &msg,
          boost::shared_ptr<boost::asio::ip::tcp::socket> sock = boost::shared_ptr<boost::asio::ip::tcp::socket>());
@@ -51,7 +52,7 @@ private:
    void addSocket(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, message::Identify::Identity ident = message::Identify::UNKNOWN);
    bool removeSocket(boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void addClient(boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
-   void addSlave(int id, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
+   void addSlave(int id, const std::string &name, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    bool startCleaner();
 
    int idToHub(int id) const;
@@ -78,9 +79,14 @@ private:
 
    bool m_isMaster;
    boost::shared_ptr<boost::asio::ip::tcp::socket> m_masterSocket;
-   std::map<int, boost::shared_ptr<boost::asio::ip::tcp::socket>> m_slaveSockets;
+   struct Slave {
+      boost::shared_ptr<boost::asio::ip::tcp::socket> sock;
+      std::string name;
+   };
+   std::map<int, Slave> m_slaves;
    int m_slaveCount;
    int m_hubId;
+   std::string m_name;
 
    int m_moduleCount;
    int m_traceMessages;

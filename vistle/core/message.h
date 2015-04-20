@@ -79,6 +79,8 @@ class V_COREEXPORT Message {
       (INVALID) // keep 1st
       (ANY) //< for Trace: enables tracing of all message types -- keep 2nd
       (IDENTIFY)
+      (ADDSLAVE)
+      (REMOVESLAVE)
       (SETID)
       (TRACE)
       (SPAWN)
@@ -175,14 +177,32 @@ class V_COREEXPORT Identify: public Message {
          (SLAVEHUB) //< slave hub
          );
 
-   Identify(Identity id=UNKNOWN);
+   Identify(Identity id=UNKNOWN, const std::string &name = "");
    Identity identity() const;
+   const char *name() const;
 
  private:
    Identity m_identity;
+   text_t m_name;
+
 };
 BOOST_STATIC_ASSERT(sizeof(Identify) <= Message::MESSAGE_SIZE);
 V_ENUM_OUTPUT_OP(Identity, Identify)
+
+//! announce that a slave has connected
+class V_COREEXPORT AddSlave: public Message {
+
+ public:
+   AddSlave(int id, const std::string &name);
+   int id() const;
+   const char *name() const;
+
+ private:
+   int m_id;
+   text_t m_name;
+
+};
+BOOST_STATIC_ASSERT(sizeof(AddSlave) <= Message::MESSAGE_SIZE);
 
 //! debug: request a reply containing character 'c'
 class V_COREEXPORT Ping: public Message {

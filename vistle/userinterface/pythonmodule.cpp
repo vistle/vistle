@@ -176,6 +176,24 @@ static void kill(int id) {
    sendMessage(m);
 }
 
+static int getHub(int id) {
+
+   LOCKED();
+   return MODULEMANAGER.getHub(id);
+}
+
+static int getMasterHub() {
+
+   LOCKED();
+   return MODULEMANAGER.getMasterHub();
+}
+
+static std::vector<int> getAllHubs() {
+
+   LOCKED();
+   return MODULEMANAGER.getHubs();
+}
+
 static std::vector<int> getRunning() {
 
    LOCKED();
@@ -500,6 +518,9 @@ BOOST_PYTHON_MODULE(_vistle)
     def("getBusy", getBusy, "get list of IDs of busy modules");
     def("getModuleName", getModuleName, "get name of module with ID `arg1`");
     def("getInputPorts", getInputPorts, "get name of input ports of module with ID `arg1`");
+    def("getMasterHub", getMasterHub, "get ID of master hub");
+    def("getAllHubs", getAllHubs, "get ID of all known hubs");
+    def("getHub", getHub, "get ID of hub for module with ID `arg1`");
     def("getOutputPorts", getOutputPorts, "get name of input ports of module with ID `arg1`");
     def("getConnections", getConnections, "get connections to/from port `arg2` of module with ID `arg1`");
     def("getParameters", getParameters, "get list of parameters for module with ID `arg1`");

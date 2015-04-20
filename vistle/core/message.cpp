@@ -139,14 +139,36 @@ bool Message::broadcast() const {
    return m_broadcast;
 }
 
-Identify::Identify(Identity id)
+Identify::Identify(Identity id, const std::string &name)
 : Message(Message::IDENTIFY, sizeof(Identify))
 , m_identity(id)
-{}
+{
+   COPY_STRING(m_name, name);
+}
 
 Identify::Identity Identify::identity() const {
 
    return m_identity;
+}
+
+const char *Identify::name() const {
+
+   return m_name.data();
+}
+
+AddSlave::AddSlave(int id, const std::string &name)
+: Message(Message::ADDSLAVE, sizeof(AddSlave))
+, m_id(id)
+{
+   COPY_STRING(m_name, name);
+}
+
+int AddSlave::id() const {
+   return m_id;
+}
+
+const char *AddSlave::name() const {
+   return m_name.data();
 }
 
 Ping::Ping(const char c)
@@ -1225,6 +1247,8 @@ void Router::initRoutingTable() {
    rt[M::INVALID]               = 0;
    rt[M::IDENTIFY]              = Special;
    rt[M::SETID]                 = Special;
+   rt[M::ADDSLAVE]              = Broadcast|Track|DestUi;
+   rt[M::REMOVESLAVE]           = Broadcast|Track|DestUi;
    rt[M::REPLAYFINISHED]        = Special;
    rt[M::TRACE]                 = Broadcast|Track;
    rt[M::SPAWN]                 = Track|HandleOnMaster;

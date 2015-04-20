@@ -82,12 +82,13 @@ ModuleBrowser::~ModuleBrowser()
    delete ui;
 }
 
-void ModuleBrowser::addModule(int hub, QString module, QString path) {
+void ModuleBrowser::addModule(int hub, QString hubName, QString module, QString path) {
 
     auto item = new QListWidgetItem(module);
     item->setData(hubRole(), hub);
-    QString tt = QString::number(hub);
-    tt += ":";
+    QString tt = hubName;
+    tt += "(" + QString::number(hub) + ")";
+    tt += ": ";
     tt += path;
     item->setData(Qt::ToolTipRole, tt);
     ui->moduleListWidget->addItem(item);

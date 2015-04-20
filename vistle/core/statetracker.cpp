@@ -17,6 +17,10 @@ namespace bi = boost::interprocess;
 
 namespace vistle {
 
+namespace {
+const std::string unknown("(unknown)");
+}
+
 using message::Id;
 
 int StateTracker::Module::state() const {
@@ -44,6 +48,27 @@ StateTracker::StateTracker(const std::string &name, boost::shared_ptr<PortTracke
 StateTracker::mutex &StateTracker::getMutex() {
 
    return m_replyMutex;
+}
+
+int StateTracker::getMasterHub() const {
+
+   return Id::MasterHub;
+}
+
+std::vector<int> StateTracker::getHubs() const {
+    std::vector<int> hubs;
+    for (const auto &h: m_hubs)
+       hubs.push_back(h.id);
+    return hubs;
+}
+
+const std::string &StateTracker::hubName(int id) const {
+
+    for (const auto &h: m_hubs) {
+       if (h.id == id)
+          return h.name;
+    }
+    return unknown;
 }
 
 std::vector<int> StateTracker::getRunningList() const {
@@ -244,6 +269,11 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
       case Message::IDENTIFY: {
          break;
       }
+      case Message::ADDSLAVE: {
+         const AddSlave &slave = static_cast<const AddSlave &>(msg);
+         handled = handlePriv(slave);
+         break;
+      }
       case Message::SPAWN: {
          const Spawn &spawn = static_cast<const Spawn &>(msg);
          registerReply(msg.uuid(), msg);
@@ -427,6 +457,11 @@ void StateTracker::processQueue() {
    }
 
    processing = false;
+}
+
+bool StateTracker::handlePriv(const message::AddSlave &slave) {
+   m_hubs.emplace_back(slave.id(), slave.name());
+   return true;
 }
 
 bool StateTracker::handlePriv(const message::Ping &ping) {
