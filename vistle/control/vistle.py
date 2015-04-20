@@ -155,6 +155,12 @@ def showAllParameters():
 def modvar(id):
    return "m" + getModuleName(id) + str(id)
 
+def hubvar(id):
+   hub = getHub(id)
+   if (hub == getMasterHub()):
+      return "MasterId"
+   return str(hub);
+
 def save(filename = None):
    global _loaded_file
    if filename == None:
@@ -167,6 +173,7 @@ def save(filename = None):
    mods = getRunning()
    slavehubs = set()
    master = getMasterHub()
+   f.write("MasterId="+str(master)+"\n")
    for m in mods:
       h = getHub(m)
       if h != master:
@@ -181,7 +188,7 @@ def save(filename = None):
    f.write("uuids = {}\n");
    for m in mods:
       #f.write(modvar(m)+" = spawn('"+getModuleName(m)+"')\n")
-      f.write("u"+modvar(m)+" = spawnAsync("+str(getHub(m))+", '"+getModuleName(m)+"')\n")
+      f.write("u"+modvar(m)+" = spawnAsync("+hubvar(m)+", '"+getModuleName(m)+"')\n")
 
    for m in mods:
       f.write(modvar(m)+" = waitForSpawn(u"+modvar(m)+")\n")
