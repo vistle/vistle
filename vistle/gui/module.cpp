@@ -34,6 +34,7 @@ const double Module::portDistance = 3.;
  */
 Module::Module(QGraphicsItem *parent, QString name)
 : Base(parent)
+, m_hub(0)
 , m_id(vistle::message::Id::Invalid)
 , m_Status(SPAWNING)
 , m_validPosition(false)
@@ -80,7 +81,7 @@ void Module::deleteModule()
 
 void Module::createGeometry()
 {
-   m_color = QColor(100, 200, 200);
+   setHub(m_hub);
 }
 
 /*!
@@ -264,6 +265,21 @@ int Module::id() const
 void Module::setId(int id)
 {
    m_id = id;
+}
+
+int Module::hub() const
+{
+   return m_hub;
+}
+
+void Module::setHub(int hub)
+{
+   m_hub = hub;
+
+   const int r = hub%2;
+   const int g = 1-(hub>>2)%2;
+   const int b = 1-(hub>>1)%2;
+   m_color = QColor(100+r*100, 100+g*100, 100+b*100);
 }
 
 boost::uuids::uuid Module::spawnUuid() const

@@ -58,6 +58,8 @@ public:
 
     int id() const;
     void setId(int id);
+    int hub() const;
+    void setHub(int hub);
 
     boost::uuids::uuid spawnUuid() const;
     void setSpawnUuid(const boost::uuids::uuid &uuid);
@@ -96,6 +98,7 @@ private:
     QAction *m_deleteAct;
     QAction *m_execAct;
 
+    int m_hub;
     int m_id;
     boost::uuids::uuid m_spawnUuid;
 
