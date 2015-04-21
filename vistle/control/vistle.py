@@ -155,11 +155,13 @@ def showAllParameters():
 def modvar(id):
    return "m" + getModuleName(id) + str(id)
 
-def hubvar(id):
+def hubvar(id, numSlaves):
    hub = getHub(id)
    if (hub == getMasterHub()):
-      return "MasterId"
-   return str(hub);
+      return "MasterHub"
+   if (numSlaves == 1):
+      return "SlaveHub"
+   return "Slave"+str(hub);
 
 def save(filename = None):
    global _loaded_file
@@ -171,24 +173,29 @@ def save(filename = None):
 
    f = open(filename, 'w')
    mods = getRunning()
-   slavehubs = set()
+
    master = getMasterHub()
-   f.write("MasterId="+str(master)+"\n")
+   f.write("MasterHub="+str(master)+"\n")
+
+   slavehubs = set()
    for m in mods:
       h = getHub(m)
       if h != master:
          slavehubs.add(h)
-   if len(slavehubs) > 1:
+   numSlaves = len(slavehubs)
+   if numSlaves > 1:
       print "slave hubs:", slavehubs
       f.write("waitForSlaves()\n")
-   elif len(slavehubs) > 0:
+      f.write("waitForHub()\n")
+   elif numSlaves > 0:
       print "slave hubs:", slavehubs
-      f.write("waitForSlaves()\n")
+      f.write("print 'waiting for a slave hub to connect...'\n")
+      f.write("SlaveHub=waitForHub()\n")
 
    f.write("uuids = {}\n");
    for m in mods:
       #f.write(modvar(m)+" = spawn('"+getModuleName(m)+"')\n")
-      f.write("u"+modvar(m)+" = spawnAsync("+hubvar(m)+", '"+getModuleName(m)+"')\n")
+      f.write("u"+modvar(m)+" = spawnAsync("+hubvar(m, numSlaves)+", '"+getModuleName(m)+"')\n")
 
    for m in mods:
       f.write(modvar(m)+" = waitForSpawn(u"+modvar(m)+")\n")

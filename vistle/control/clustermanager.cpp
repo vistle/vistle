@@ -239,6 +239,7 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
    RunningMap::const_iterator it = runningMap.find(moduleId);
    if (it == runningMap.end()) {
       CERR << "sendMessage: module " << moduleId << " not found" << std::endl;
+      std::cerr << "  message: " << message << std::endl;
       return false;
    }
 
@@ -419,6 +420,8 @@ bool ClusterManager::handle(const message::Message &message) {
          break;
       }
 
+      case Message::ADDSLAVE:
+      case Message::REMOVESLAVE:
       case Message::STARTED:
       case Message::ADDPORT:
       case Message::ADDPARAMETER:

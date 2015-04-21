@@ -105,6 +105,9 @@ class V_COREEXPORT StateTracker {
    bool registerRequest(const message::uuid_t &uuid);
    boost::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid);
 
+   std::vector<int> waitForSlaveHubs(size_t count);
+   std::vector<int> waitForSlaveHubs(const std::vector<std::string> &names);
+
  protected:
    boost::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
    bool registerReply(const message::uuid_t &uuid, const message::Message &msg);
@@ -178,6 +181,9 @@ class V_COREEXPORT StateTracker {
    mutex m_replyMutex;
    boost::condition_variable_any m_replyCondition;
    std::map<message::uuid_t, boost::shared_ptr<message::Buffer>> m_outstandingReplies;
+
+   mutex m_slaveMutex;
+   boost::condition_variable_any m_slaveCondition;
 
    message::Message::Type m_traceType;
    int m_traceId;

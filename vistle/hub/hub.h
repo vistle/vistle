@@ -44,6 +44,7 @@ class Hub {
    StateTracker &stateTracker();
 
 private:
+   void hubReady();
    bool connectToMaster(const std::string &host, unsigned short port);
    bool startUi(const std::string &uipath);
    bool startServer();
@@ -52,7 +53,7 @@ private:
    void addSocket(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, message::Identify::Identity ident = message::Identify::UNKNOWN);
    bool removeSocket(boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void addClient(boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
-   void addSlave(int id, const std::string &name, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
+   void addSlave(const std::string &name, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    bool startCleaner();
 
    int idToHub(int id) const;

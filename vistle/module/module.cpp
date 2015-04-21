@@ -1409,6 +1409,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
       case Message::STARTED:
       case Message::MODULEAVAILABLE:
       case Message::REPLAYFINISHED:
+      case Message::ADDSLAVE:
+      case Message::REMOVESLAVE:
          break;
 
       default:

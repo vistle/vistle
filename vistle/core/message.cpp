@@ -1229,6 +1229,11 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
          s << ", name: " << mm.getName() << ", id: " << mm.spawnId() << ", hub: " << mm.hubId();
          break;
       }
+      case Message::ADDSLAVE: {
+         auto mm = static_cast<const AddSlave &>(m);
+         s << ", name: " << mm.name() << ", id: " << mm.id();
+         break;
+      }
       default:
          break;
    }

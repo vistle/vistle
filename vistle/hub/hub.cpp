@@ -176,18 +176,16 @@ void Hub::addClient(shared_ptr<asio::ip::tcp::socket> sock) {
    m_clients.insert(sock);
 }
 
-void Hub::addSlave(int id, const std::string &name, shared_ptr<asio::ip::tcp::socket> sock) {
+void Hub::addSlave(const std::string &name, shared_ptr<asio::ip::tcp::socket> sock) {
 
-   const int slaveid = Id::MasterHub - id;
+   vassert(m_isMaster);
+   ++m_slaveCount;
+   const int slaveid = Id::MasterHub - m_slaveCount;
    m_slaves[slaveid].sock = sock;
    m_slaves[slaveid].name = name;
 
    message::SetId set(slaveid);
    sendMessage(sock, set);
-
-   message::AddSlave slave(slaveid, name);
-   sendUi(slave);
-   sendSlaves(slave);
 
    auto state = m_stateTracker.getState();
    for (auto &m: state) {
@@ -302,8 +300,11 @@ bool Hub::sendMaster(const message::Message &msg) {
 bool Hub::sendManager(const message::Message &msg, int hub) {
 
    if (hub == Id::LocalHub || hub == m_hubId || (hub == Id::MasterHub && m_isMaster)) {
-      if (!m_managerConnected)
+      vassert(m_managerConnected);
+      if (!m_managerConnected) {
+         CERR << "sendManager: no connection, cannot send " << msg << std::endl;
          return false;
+      }
 
       int numSent = 0;
       for (auto &sock: m_sockets) {
@@ -389,6 +390,18 @@ int Hub::idToHub(int id) const {
    return id;
 }
 
+void Hub::hubReady() {
+   vassert(m_managerConnected);
+   if (m_isMaster) {
+      processScript();
+   } else {
+      message::AddSlave slave(m_hubId, m_name);
+      sendMaster(slave);
+      sendUi(slave);
+      sendManager(slave);
+   }
+}
+
 bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock) {
 
    using namespace vistle::message;
@@ -399,7 +412,8 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    auto it = m_sockets.find(sock);
    if (sock) {
       vassert(it != m_sockets.end());
-      senderType = it->second;
+      if (it != m_sockets.end())
+         senderType = it->second;
    }
 
    if (senderType == Identify::UI)
@@ -435,9 +449,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                   }
                }
             }
-            if (m_isMaster) {
-               processScript();
-            }
+            hubReady();
             m_uiManager.lockUi(false);
             break;
          }
@@ -453,8 +465,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          case Identify::SLAVEHUB: {
             vassert(m_isMaster);
             CERR << "slave hub '" << id.name() << "' connected" << std::endl;
-            ++m_slaveCount;
-            addSlave(m_slaveCount, id.name(), sock);
+            addSlave(id.name(), sock);
             break;
          }
          default: {
@@ -587,6 +598,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                for (auto &m: state) {
                   sendMessage(sock, m.msg);
                }
+               hubReady();
             }
             break;
          }

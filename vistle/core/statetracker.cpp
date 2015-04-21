@@ -134,6 +134,10 @@ std::vector<message::Buffer> StateTracker::getState() const {
    using namespace vistle::message;
    std::vector<message::Buffer> state;
 
+   for (const auto &slave: m_hubs) {
+      appendMessage(state, AddSlave(slave.id, slave.name));
+   }
+
    // available modules
    auto avail = availableModules();
    for(const auto &mod: avail) {
@@ -460,7 +464,9 @@ void StateTracker::processQueue() {
 }
 
 bool StateTracker::handlePriv(const message::AddSlave &slave) {
+   boost::lock_guard<mutex> locker(m_slaveMutex);
    m_hubs.emplace_back(slave.id(), slave.name());
+   m_slaveCondition.notify_all();
    return true;
 }
 
@@ -947,6 +953,48 @@ bool StateTracker::registerReply(const message::uuid_t &uuid, const message::Mes
    m_replyCondition.notify_all();
 
    return true;
+}
+
+std::vector<int> StateTracker::waitForSlaveHubs(size_t count) {
+
+   auto hubIds = getHubs();
+   while (hubIds.size() < count) {
+      boost::unique_lock<mutex> locker(m_slaveMutex);
+      m_slaveCondition.wait(locker);
+      hubIds = getHubs();
+   }
+   return hubIds;
+}
+
+std::vector<int> StateTracker::waitForSlaveHubs(const std::vector<std::string> &names) {
+
+   auto findAll = [this](const std::vector<std::string> &names, std::vector<int> &ids) -> bool {
+      const auto hubIds = getHubs();
+      std::vector<std::string> available;
+      for (int id: hubIds)
+         available.push_back(hubName(id));
+      
+      ids.clear();
+      size_t found=0;
+      for (const auto &name: names) {
+         for (const auto &slave: m_hubs) {
+            if (name == slave.name) {
+               ++found;
+               ids.push_back(slave.id);
+            } else {
+               ids.push_back(Id::Invalid);
+            }
+         }
+      }
+      return found == names.size();
+   };
+
+   std::vector<int> ids;
+   while (!findAll(names, ids)) {
+      boost::unique_lock<mutex> locker(m_slaveMutex);
+      m_slaveCondition.wait(locker);
+   }
+   return ids;
 }
 
 void StateTracker::registerObserver(StateObserver *observer) {

@@ -176,6 +176,36 @@ static void kill(int id) {
    sendMessage(m);
 }
 
+static int waitForAnySlaveHub() {
+   auto hubs = MODULEMANAGER.getHubs();
+   if (hubs.size() >= 2)
+      return hubs[1];
+
+   hubs = MODULEMANAGER.waitForSlaveHubs(1);
+   if (!hubs.empty())
+      return hubs[0];
+
+   return message::Id::Invalid;
+}
+
+static int waitForNamedHub(const std::string &name) {
+   std::vector<std::string> names;
+   names.push_back(name);
+   const auto ids = MODULEMANAGER.waitForSlaveHubs(names);
+   for (const auto id: ids) {
+      const auto n = MODULEMANAGER.hubName(id);
+      if (n == name)
+      {
+         return id;
+      }
+   }
+   return message::Id::Invalid;
+}
+
+static std::vector<int> waitForHubs(const std::vector<std::string> &names) {
+   return MODULEMANAGER.waitForSlaveHubs(names);
+}
+
 static int getHub(int id) {
 
    LOCKED();
@@ -518,6 +548,9 @@ BOOST_PYTHON_MODULE(_vistle)
     def("getBusy", getBusy, "get list of IDs of busy modules");
     def("getModuleName", getModuleName, "get name of module with ID `arg1`");
     def("getInputPorts", getInputPorts, "get name of input ports of module with ID `arg1`");
+    def("waitForHub", waitForNamedHub, "wait for slave hub named `arg1` to connect");
+    def("waitForHub", waitForAnySlaveHub, "wait for any additional slave hub to connect");
+    def("waitForHubs", waitForHubs, "wait for named hubs to connect");
     def("getMasterHub", getMasterHub, "get ID of master hub");
     def("getAllHubs", getAllHubs, "get ID of all known hubs");
     def("getHub", getHub, "get ID of hub for module with ID `arg1`");
