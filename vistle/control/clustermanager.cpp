@@ -276,7 +276,7 @@ bool ClusterManager::handle(const message::Message &message) {
       destHub = m_stateTracker.getHub(destHub);
    if (message.typeFlags() & Broadcast || message.destId() == Id::Broadcast) {
       if (message.senderId() != hubId && senderHub == hubId) {
-         //CERR << "BC: " << message << std::endl;
+         CERR << "BC: " << message << std::endl;
          sendHub(message);
       }
       if (message.typeFlags() & BroadcastModule) {
@@ -570,11 +570,10 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
    m_stateTracker.handle(d);
    if (portManager().removeConnection(modFrom, portFrom, modTo, portTo)) {
 
-      if (Communicator::the().isMaster()) {
+      if (m_stateTracker.getHub(modFrom) == Communicator::the().hubId())
          sendMessage(modFrom, d);
+      if (m_stateTracker.getHub(modTo) == Communicator::the().hubId())
          sendMessage(modTo, d);
-         sendUi(d);
-      }
    } else {
 
       if (!m_messageQueue.empty()) {
