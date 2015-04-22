@@ -183,14 +183,24 @@ void Hub::addSlave(const std::string &name, shared_ptr<asio::ip::tcp::socket> so
    const int slaveid = Id::MasterHub - m_slaveCount;
    m_slaves[slaveid].sock = sock;
    m_slaves[slaveid].name = name;
+   m_slaves[slaveid].ready = false;
 
    message::SetId set(slaveid);
    sendMessage(sock, set);
+}
+
+void Hub::slaveReady(Slave &slave) {
+
+   CERR << "slave hub '" << slave.name << "' ready" << std::endl;
+
+   vassert(m_isMaster);
+   vassert(!slave.ready);
 
    auto state = m_stateTracker.getState();
    for (auto &m: state) {
-      sendMessage(sock, m.msg);
+      sendMessage(slave.sock, m.msg);
    }
+   slave.ready = true;
 }
 
 bool Hub::dispatch() {
@@ -337,7 +347,8 @@ bool Hub::sendSlaves(const message::Message &msg, bool returnToSender) {
    for (auto &slave: m_slaves) {
       if (slave.first != senderHub || returnToSender) {
          //std::cerr << "to slave id: " << sock.first << " (!= " << senderHub << ")" << std::endl;
-         sendMessage(slave.second.sock, msg);
+         if (slave.second.ready)
+            sendMessage(slave.second.sock, msg);
       }
    }
    return true;
@@ -419,61 +430,77 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    if (senderType == Identify::UI)
       msg.setSenderId(m_hubId);
 
-   if (msg.type() == message::Message::IDENTIFY) {
+   switch (msg.type()) {
+      case message::Message::IDENTIFY: {
 
-      auto &id = static_cast<const Identify &>(msg);
-      CERR << "ident msg: " << id.identity() << std::endl;
-      if (id.identity() != Identify::UNKNOWN) {
-         it->second = id.identity();
-      }
-      switch(id.identity()) {
-         case Identify::UNKNOWN: {
-            if (m_isMaster) {
-               sendMessage(sock, Identify(Identify::HUB));
-            } else {
-               sendMessage(sock, Identify(Identify::SLAVEHUB, m_name));
-            }
-            break;
+         auto &id = static_cast<const Identify &>(msg);
+         CERR << "ident msg: " << id.identity() << std::endl;
+         if (id.identity() != Identify::UNKNOWN) {
+            it->second = id.identity();
          }
-         case Identify::MANAGER: {
-            vassert(!m_managerConnected);
-            m_managerConnected = true;
-
-            if (m_hubId != Id::Invalid) {
-               message::SetId set(m_hubId);
-               sendMessage(sock, set);
-               if (m_hubId <= Id::MasterHub) {
-                  auto state = m_stateTracker.getState();
-                  for (auto &m: state) {
-                     sendMessage(sock, m.msg);
-                  }
+         switch(id.identity()) {
+            case Identify::UNKNOWN: {
+               if (m_isMaster) {
+                  sendMessage(sock, Identify(Identify::HUB));
+               } else {
+                  sendMessage(sock, Identify(Identify::SLAVEHUB, m_name));
                }
+               break;
             }
-            hubReady();
-            m_uiManager.lockUi(false);
-            break;
+            case Identify::MANAGER: {
+               vassert(!m_managerConnected);
+               m_managerConnected = true;
+
+               if (m_hubId != Id::Invalid) {
+                  message::SetId set(m_hubId);
+                  sendMessage(sock, set);
+                  if (m_hubId <= Id::MasterHub) {
+                     auto state = m_stateTracker.getState();
+                     for (auto &m: state) {
+                        sendMessage(sock, m.msg);
+                     }
+                  }
+                  hubReady();
+               }
+               m_uiManager.lockUi(false);
+               break;
+            }
+            case Identify::UI: {
+               m_uiManager.addClient(sock);
+               break;
+            }
+            case Identify::HUB: {
+               vassert(!m_isMaster);
+               CERR << "master hub connected" << std::endl;
+               break;
+            }
+            case Identify::SLAVEHUB: {
+               vassert(m_isMaster);
+               CERR << "slave hub '" << id.name() << "' connected" << std::endl;
+               addSlave(id.name(), sock);
+               break;
+            }
+            default: {
+               CERR << "invalid identity: " << id.identity() << std::endl;
+               break;
+            }
          }
-         case Identify::UI: {
-            m_uiManager.addClient(sock);
-            break;
-         }
-         case Identify::HUB: {
-            vassert(!m_isMaster);
-            CERR << "master hub connected" << std::endl;
-            break;
-         }
-         case Identify::SLAVEHUB: {
-            vassert(m_isMaster);
-            CERR << "slave hub '" << id.name() << "' connected" << std::endl;
-            addSlave(id.name(), sock);
-            break;
-         }
-         default: {
-            CERR << "invalid identity: " << id.identity() << std::endl;
-            break;
-         }
+         return true;
       }
-      return true;
+      case message::Message::ADDSLAVE: {
+         auto &mm = static_cast<const AddSlave &>(msg);
+         if (m_isMaster) {
+            auto it = m_slaves.find(mm.id());
+            if (it == m_slaves.end()) {
+               break;
+            }
+            auto &slave = it->second;
+            slaveReady(slave);
+         }
+         break;
+      }
+      default:
+         break;
    }
 
    bool mgr=false, ui=false, master=false, slave=false;
