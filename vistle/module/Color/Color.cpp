@@ -201,7 +201,7 @@ bool Color::compute() {
 
    Object::const_ptr obj = expect<Object>("data_in");
    if (!obj)
-      return false;
+      return true;
 
    Scalar min = std::numeric_limits<Scalar>::max();
    Scalar max = -std::numeric_limits<Scalar>::max();
