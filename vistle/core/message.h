@@ -165,7 +165,7 @@ class V_COREEXPORT Message {
 };
 V_ENUM_OUTPUT_OP(Type, Message)
 
-//! 
+//! indicate the kind of a communication partner
 class V_COREEXPORT Identify: public Message {
 
  public:
@@ -189,7 +189,7 @@ class V_COREEXPORT Identify: public Message {
 BOOST_STATIC_ASSERT(sizeof(Identify) <= Message::MESSAGE_SIZE);
 V_ENUM_OUTPUT_OP(Identity, Identify)
 
-//! announce that a slave has connected
+//! announce that a slave hub has connected
 class V_COREEXPORT AddSlave: public Message {
 
  public:
@@ -321,6 +321,7 @@ class V_COREEXPORT Quit: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Quit) <= Message::MESSAGE_SIZE);
 
+//! notify that a module has quit
 class V_COREEXPORT ModuleExit: public Message {
 
  public:
@@ -386,6 +387,7 @@ class V_COREEXPORT Idle: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Idle) <= Message::MESSAGE_SIZE);
 
+//! notification that a module has created an input/output port
 class V_COREEXPORT AddPort: public Message {
 
  public:
@@ -488,6 +490,7 @@ class V_COREEXPORT Disconnect: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(Disconnect) <= Message::MESSAGE_SIZE);
 
+//! notification that a module has created a parameter
 class V_COREEXPORT AddParameter: public Message {
    public:
       AddParameter(const Parameter &param, const std::string &moduleName);
@@ -510,6 +513,7 @@ class V_COREEXPORT AddParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(AddParameter) <= Message::MESSAGE_SIZE);
 
+//! request parameter value update or notify that a parameter value has been changed
 class V_COREEXPORT SetParameter: public Message {
    public:
       SetParameter(const int module,
@@ -564,6 +568,7 @@ class V_COREEXPORT SetParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(SetParameter) <= Message::MESSAGE_SIZE);
 
+//! set list of choice descriptions for a choice parameter
 class V_COREEXPORT SetParameterChoices: public Message {
    public:
       SetParameterChoices(const int module,
@@ -617,6 +622,7 @@ public:
 };
 BOOST_STATIC_ASSERT(sizeof(ReplayFinished) <= Message::MESSAGE_SIZE);
 
+//! send text messages to user interfaces
 class V_COREEXPORT SendText: public Message {
 
 public:
