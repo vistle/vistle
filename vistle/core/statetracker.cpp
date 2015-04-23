@@ -41,8 +41,10 @@ StateTracker::StateTracker(const std::string &name, boost::shared_ptr<PortTracke
 , m_traceId(Id::Invalid)
 , m_name(name)
 {
-   if (!m_portTracker)
+   if (!m_portTracker) {
       m_portTracker.reset(new PortTracker());
+      m_portTracker->setTracker(this);
+   }
 }
 
 StateTracker::mutex &StateTracker::getMutex() {
@@ -532,23 +534,14 @@ bool StateTracker::handlePriv(const message::Started &started) {
 
 bool StateTracker::handlePriv(const message::Connect &connect) {
 
-   bool handled = true;
    if (portTracker()) {
-      handled = portTracker()->addConnection(connect.getModuleA(),
+      return portTracker()->addConnection(connect.getModuleA(),
             connect.getPortAName(),
             connect.getModuleB(),
             connect.getPortBName());
    }
 
-   if (handled) {
-      for (StateObserver *o: m_observers) {
-         o->incModificationCount();
-         o->newConnection(connect.getModuleA(), connect.getPortAName(),
-                          connect.getModuleB(), connect.getPortBName());
-      }
-   }
-
-   return handled;
+   return true;
 }
 
 bool StateTracker::handlePriv(const message::Disconnect &disconnect) {
@@ -558,12 +551,6 @@ bool StateTracker::handlePriv(const message::Disconnect &disconnect) {
             disconnect.getPortAName(),
             disconnect.getModuleB(),
             disconnect.getPortBName());
-   }
-
-   for (StateObserver *o: m_observers) {
-      o->incModificationCount();
-      o->deleteConnection(disconnect.getModuleA(), disconnect.getPortAName(),
-            disconnect.getModuleB(), disconnect.getPortBName());
    }
 
    return true;
@@ -857,6 +844,9 @@ bool StateTracker::handlePriv(const message::RequestTunnel &tunnel)
 
 StateTracker::~StateTracker() {
 
+    if (m_portTracker) {
+        m_portTracker->setTracker(nullptr);
+    }
 }
 
 boost::shared_ptr<PortTracker> StateTracker::portTracker() const {

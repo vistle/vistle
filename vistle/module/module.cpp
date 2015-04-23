@@ -350,6 +350,7 @@ ObjectCache::CacheMode Module::cacheMode(ObjectCache::CacheMode mode) const {
 Port *Module::createInputPort(const std::string &name, const std::string &description, const int flags) {
 
    std::map<std::string, Port*>::iterator i = inputPorts.find(name);
+   vassert(i == inputPorts.end());
 
    if (i == inputPorts.end()) {
 
@@ -367,6 +368,7 @@ Port *Module::createInputPort(const std::string &name, const std::string &descri
 Port *Module::createOutputPort(const std::string &name, const std::string &description, const int flags) {
 
    std::map<std::string, Port *>::iterator i = outputPorts.find(name);
+   vassert(i == outputPorts.end());
 
    if (i == outputPorts.end()) {
 

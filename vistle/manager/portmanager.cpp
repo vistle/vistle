@@ -35,42 +35,12 @@ Port * PortManager::getPort(const int moduleID,
 }
 
 //! remove all connections to and from ports to a module
-void PortManager::removeConnections(const int moduleID) {
+std::vector<message::Buffer> PortManager::removeConnectionsWithModule(const int moduleID) {
 
-   typedef std::map<std::string, Port *> PortMap;
-   typedef std::map<int, PortMap *> ModulePortMap;
-
-   ModulePortMap::const_iterator mports = m_ports.find(moduleID);
-   if (mports == m_ports.end())
-      return;
-
-   const PortMap &portmap = *mports->second;
-   for(PortMap::const_iterator it = portmap.begin();
-         it != portmap.end();
-         ++it) {
-
-      Port *port = it->second;
-      const Port::PortSet &cl = port->connections();
-      while (!cl.empty()) {
-         size_t oldsize = cl.size();
-         const Port *other = *cl.begin();
-         removeConnection(port, other);
-         removeConnection(other, port);
-         message::Disconnect d1(port->getModuleID(), port->getName(), other->getModuleID(), other->getName());
-         m_clusterManager->sendAll(d1);
-         m_clusterManager->sendUi(d1);
-         message::Disconnect d2(other->getModuleID(), other->getName(), port->getModuleID(), port->getName());
-         m_clusterManager->sendAll(d2);
-         m_clusterManager->sendUi(d2);
-         if (cl.size() == oldsize) {
-            std::cerr << "failed to remove all connections for module " << moduleID << ", still left: " << cl.size() << std::endl;
-            for (size_t i=0; i<cl.size(); ++i) {
-               std::cerr << "   " << port->getModuleID() << ":" << port->getName() << " <--> " << other->getModuleID() << ":" << other->getName() << std::endl;
-            }
-            break;
-         }
-      }
-   }
+   std::vector<message::Buffer> msgs = PortTracker::removeConnectionsWithModule(moduleID);
+   for (const auto &msg: msgs)
+      m_clusterManager->sendAll(msg.msg);
+   return msgs;
 }
 
 void PortManager::addObject(const Port *port) {

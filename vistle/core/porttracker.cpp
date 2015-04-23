@@ -8,10 +8,21 @@
 namespace vistle {
 
 PortTracker::PortTracker()
+: m_stateTracker(nullptr)
 {
 }
 
 PortTracker::~PortTracker() {
+}
+
+void PortTracker::setTracker(StateTracker *tracker) {
+
+    m_stateTracker = tracker;
+}
+
+StateTracker *PortTracker::tracker() const {
+
+   return m_stateTracker;
 }
 
 Port * PortTracker::addPort(const int moduleID, const std::string & name,
@@ -116,12 +127,13 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
    assert(f);
    assert(t);
 
+   bool added = false;
    if (from->getType() == Port::OUTPUT && to->getType() == Port::INPUT) {
 
       f->addConnection(t);
       t->addConnection(f);
 
-      return true;
+      added = true;
    }
 
    if (from->getType() == Port::PARAMETER && to->getType() == Port::PARAMETER) {
@@ -129,6 +141,17 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
       f->addConnection(t);
       t->addConnection(f);
 
+      added = true;
+   }
+
+   if (added) {
+      if (tracker()) {
+         for (StateObserver *o: tracker()->m_observers) {
+            o->incModificationCount();
+            o->newConnection(f->getModuleID(), f->getName(),
+                                t->getModuleID(), t->getName());
+         }
+      }
       return true;
    }
 
@@ -172,6 +195,14 @@ bool PortTracker::removeConnection(const Port *from, const Port *to) {
 
       f->removeConnection(to);
       t->removeConnection(from);
+
+      if (tracker()) {
+         for (StateObserver *o: tracker()->m_observers) {
+            o->incModificationCount();
+            o->deleteConnection(f->getModuleID(), f->getName(),
+                                t->getModuleID(), t->getName());
+         }
+      }
 
       return true;
    }

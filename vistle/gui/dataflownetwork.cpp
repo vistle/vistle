@@ -332,7 +332,7 @@ void DataFlowNetwork::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
              if (startPort->portType() == Port::Input) {
                 endModule = dynamic_cast<Module *>(endPort->parentItem());
                 if (startModule != endModule) {
-                   addConnection(startPort, endPort, true);
+                   addConnection(endPort, startPort, true);
                    qDebug() << "add conn: in -> out";
                 }
              }

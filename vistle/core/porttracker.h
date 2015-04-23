@@ -12,11 +12,15 @@
 
 namespace vistle {
 
+class StateTracker;
+
 class V_COREEXPORT PortTracker {
 
  public:
    PortTracker();
    virtual ~PortTracker();
+   void setTracker(StateTracker *tracker);
+   StateTracker *tracker() const;
 
    Port *addPort(const int moduleID, const std::string & name,
                   const Port::Type type);
@@ -48,11 +52,13 @@ class V_COREEXPORT PortTracker {
    std::vector<Port *> getOutputPorts(const int moduleID) const;
    std::vector<Port *> getConnectedOutputPorts(const int moduleID) const;
 
-   std::vector<message::Buffer> removeConnectionsWithModule(int moduleId);
+   virtual std::vector<message::Buffer> removeConnectionsWithModule(int moduleId);
 
  protected:
 
    Port *getPort(const Port *p) const;
+
+   StateTracker *m_stateTracker;
 
    typedef std::map<int, std::string> PortOrder;
    typedef std::map<std::string, Port *> PortMap;

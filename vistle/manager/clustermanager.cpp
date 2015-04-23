@@ -54,6 +54,12 @@ ClusterManager::ClusterManager(int argc, char *argv[], int r, const std::vector<
 , m_size(hosts.size())
 , m_barrierActive(false)
 {
+    m_portManager->setTracker(&m_stateTracker);
+}
+
+ClusterManager::~ClusterManager() {
+
+    m_portManager->setTracker(nullptr);
 }
 
 int ClusterManager::getRank() const {
@@ -207,6 +213,7 @@ bool ClusterManager::sendAllOthers(int excluded, const message::Message &message
    for(auto it = runningMap.begin(), next = it;
          it != runningMap.end();
          it = next) {
+      // modules might be removed during message processing
       next = it;
       ++next;
 
@@ -590,7 +597,6 @@ bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
 
    int mod = moduleExit.senderId();
    sendAllOthers(mod, moduleExit);
-   portManager().removeConnections(mod);
 
    if (!moduleExit.isForwarded()) {
 
@@ -1057,10 +1063,6 @@ bool ClusterManager::quit() {
 bool ClusterManager::quitOk() const {
 
    return m_quitFlag && numRunning()==0;
-}
-
-ClusterManager::~ClusterManager() {
-
 }
 
 PortManager &ClusterManager::portManager() const {

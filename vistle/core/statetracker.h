@@ -69,6 +69,7 @@ private:
 class V_COREEXPORT StateTracker {
    friend class ClusterManager;
    friend class Hub;
+   friend class PortTracker;
 
  public:
    StateTracker(const std::string &name, boost::shared_ptr<PortTracker> portTracker=boost::shared_ptr<PortTracker>());

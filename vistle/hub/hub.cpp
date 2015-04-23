@@ -267,7 +267,7 @@ bool Hub::dispatch() {
             if (m_isMaster) {
                sendSlaves(m);
             } else {
-               sendManager(m);
+               sendMaster(m);
             }
          }
       }
