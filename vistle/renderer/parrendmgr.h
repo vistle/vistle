@@ -46,6 +46,9 @@ public:
    VncController m_vncControl;
    IntParameter *m_continuousRendering;
 
+   FloatParameter *m_delay;
+   double m_delaySec;
+
    IntParameter *m_colorRank;
    Vector4 m_defaultColor;
 

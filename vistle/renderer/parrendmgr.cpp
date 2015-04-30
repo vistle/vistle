@@ -17,6 +17,8 @@ ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module, IceTD
 , m_drawCallback(drawCallback)
 , m_displayRank(0)
 , m_vncControl(module, m_displayRank)
+, m_delay(nullptr)
+, m_delaySec(0.)
 , m_defaultColor(Vector4(255, 255, 255, 255))
 , m_updateBounds(1)
 , m_doRender(1)
@@ -25,6 +27,8 @@ ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module, IceTD
 , m_frameComplete(true)
 {
    m_continuousRendering = m_module->addIntParameter("continuous_rendering", "render even though nothing has changed", 0, Parameter::Boolean);
+   m_delay = m_module->addFloatParameter("delay", "artificial delay (s)", m_delaySec);
+   m_module->setParameterRange(m_delay, 0., 3.);
    m_colorRank = m_module->addIntParameter("color_rank", "different colors on each rank", 0, Parameter::Boolean);
    m_icetComm = icetCreateMPICommunicator((MPI_Comm)m_module->comm());
 }
@@ -68,6 +72,8 @@ bool ParallelRemoteRenderManager::handleParam(const Parameter *p) {
          m_defaultColor = Vector4(255, 255, 255, 255);
       }
       return true;
+    } else if (p == m_delay) {
+       m_delaySec = m_delay->getValue();
     }
 
     return m_vncControl.handleParam(p);
@@ -284,6 +290,10 @@ bool ParallelRemoteRenderManager::finishFrame() {
 
    if (m_frameComplete)
       return false;
+
+   if (m_delaySec > 0.) {
+      usleep(useconds_t(m_delaySec*1e6));
+   }
 
    if (m_module->rank() == rootRank()) {
       auto vnc = m_vncControl.server();
