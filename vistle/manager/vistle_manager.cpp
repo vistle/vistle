@@ -12,7 +12,7 @@
 
 #include <util/findself.h>
 #include <core/object.h>
-#include <control/executor.h>
+#include "executor.h"
 
 using namespace vistle;
 

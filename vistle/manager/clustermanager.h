@@ -11,7 +11,6 @@
 #include <core/messagequeue.h>
 
 #include "portmanager.h"
-#include "export.h"
 
 namespace vistle {
 
@@ -22,7 +21,7 @@ namespace message {
 
 class Parameter;
 
-class V_CONTROLEXPORT ClusterManager {
+class ClusterManager {
    friend class Communicator;
 
  public:

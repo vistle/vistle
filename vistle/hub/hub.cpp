@@ -13,7 +13,6 @@
 #include <util/spawnprocess.h>
 #include <util/sleep.h>
 #include <core/object.h>
-#include <control/executor.h>
 #include <core/message.h>
 #include <core/tcpmessage.h>
 #include <core/porttracker.h>

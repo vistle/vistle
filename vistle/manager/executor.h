@@ -6,8 +6,6 @@
 #include <core/scalar.h>
 #include <core/paramvector.h>
 
-#include "export.h"
-
 namespace vistle {
 
 class Communicator;
@@ -16,7 +14,7 @@ namespace message {
 class Message;
 };
 
-class V_CONTROLEXPORT Executor {
+class Executor {
 
    public:
 

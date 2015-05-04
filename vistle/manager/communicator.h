@@ -9,15 +9,13 @@
 
 #include <core/message.h>
 
-#include "export.h"
-
 namespace vistle {
 
 class Parameter;
 class PythonEmbed;
 class ClusterManager;
 
-class V_CONTROLEXPORT Communicator {
+class Communicator {
    friend class ClusterManager;
 
  public:
