@@ -34,9 +34,11 @@ class V_COREEXPORT StateObserver {
    virtual void deleteModule(int moduleId) = 0;
 
    enum ModuleStateBits {
-      Initialized = 1,
-      Killed = 2,
-      Busy = 4,
+      Unknown = 0,
+      Known = 1,
+      Initialized = 2,
+      Killed = 4,
+      Busy = 8,
    };
    virtual void moduleStateChanged(int moduleId, int stateBits) = 0;
 

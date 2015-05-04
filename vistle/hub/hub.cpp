@@ -259,7 +259,8 @@ bool Hub::dispatch() {
                }
             }
          }
-         if (id >= message::Id::ModuleBase) {
+         if (id >= message::Id::ModuleBase && m_stateTracker.getModuleState(id) != StateObserver::Unknown) {
+            // synthesize ModuleExit message for crashed modules
             message::ModuleExit m;
             m.setSenderId(id);
             sendManager(m);

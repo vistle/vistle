@@ -25,7 +25,7 @@ using message::Id;
 
 int StateTracker::Module::state() const {
 
-   int s = 0;
+   int s = StateObserver::Known;
    if (initialized)
       s |= StateObserver::Initialized;
    if (busy)
@@ -119,7 +119,7 @@ int StateTracker::getModuleState(int id) const {
 
    RunningMap::const_iterator it = runningMap.find(id);
    if (it == runningMap.end())
-      return 0;
+      return StateObserver::Unknown;
 
    return it->second.state();
 }
