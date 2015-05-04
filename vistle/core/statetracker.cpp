@@ -98,8 +98,11 @@ std::vector<int> StateTracker::getBusyList() const {
 int StateTracker::getHub(int id) const {
 
    RunningMap::const_iterator it = runningMap.find(id);
-   if (it == runningMap.end())
-      return Id::Invalid;
+   if (it == runningMap.end()) {
+      it = quitMap.find(id);
+      if (it == quitMap.end())
+         return Id::Invalid;
+   }
 
    if (it->second.hub > Id::MasterHub) {
       CERR << "getHub for " << id << " failed" << std::endl;
@@ -566,6 +569,7 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit) {
    { 
       RunningMap::iterator it = runningMap.find(mod);
       if (it != runningMap.end()) {
+         quitMap.insert(*it);
          runningMap.erase(it);
       } else {
          CERR << " ModuleExit [" << mod << "] not found in map" << std::endl;

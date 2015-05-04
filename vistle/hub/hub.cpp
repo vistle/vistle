@@ -535,6 +535,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             slave = true;
          } else if (sender == m_hubId) {
             sendMaster(msg);
+            master = true;
          }
       }
    }

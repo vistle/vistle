@@ -136,7 +136,8 @@ class V_COREEXPORT StateTracker {
       {}
    };
    typedef std::map<int, Module> RunningMap;
-   RunningMap runningMap;
+   RunningMap runningMap; //< currently running modules on all connected clusters
+   RunningMap quitMap; //< history of already terminated modules - for module -> hub mapping
    typedef std::set<int> ModuleSet;
    ModuleSet busySet;
 
