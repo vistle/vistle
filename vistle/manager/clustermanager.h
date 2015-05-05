@@ -96,6 +96,12 @@ class ClusterManager {
          delete sendQueue;
          delete recvQueue;
       }
+      bool send(const message::Message &msg) const {
+         return sendQueue->send(msg);
+      }
+      bool update() const {
+         return sendQueue->progress();
+      }
       int ranksStarted, ranksFinished;
       bool reducing;
       int busyCount;

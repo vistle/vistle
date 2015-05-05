@@ -150,8 +150,10 @@ bool ClusterManager::dispatch(bool &received) {
          message::Buffer buf;
          message::MessageQueue *mq = nullptr;
          auto it = runningMap.find(modId);
-         if (it != runningMap.end())
+         if (it != runningMap.end()) {
+            it->second.update();
             mq = it->second.recvQueue;
+         }
          if (mq) {
             try {
                recv = mq->tryReceive(buf.msg);
@@ -224,7 +226,7 @@ bool ClusterManager::sendAllOthers(int excluded, const message::Message &message
       const int hub = m_stateTracker.getHub(modId);
 
       if (hub == Communicator::the().hubId()) {
-         mod.sendQueue->send(message);
+         mod.send(message);
       }
    }
 
@@ -255,7 +257,7 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
 
    if (hub == Communicator::the().hubId()) {
       //std::cerr << "local send to " << moduleId << ": " << message << std::endl;
-      mod.sendQueue->send(message);
+      mod.send(message);
    } else {
       std::cerr << "remote send to " << moduleId << ": " << message << std::endl;
       message::Buffer buf(message);
@@ -513,6 +515,8 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
       exit(-1);
    }
 
+   mod.sendQueue->makeNonBlocking();
+
    MPI_Barrier(MPI_COMM_WORLD);
 
    message::SpawnPrepared prep(spawn);
@@ -647,7 +651,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
       vassert (exec.getModule() >= Id::ModuleBase);
       RunningMap::iterator i = runningMap.find(exec.getModule());
       if (i != runningMap.end()) {
-         i->second.sendQueue->send(exec);
+         i->second.send(exec);
       }
    }
 

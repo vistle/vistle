@@ -44,13 +44,16 @@ MessageQueue * MessageQueue::open(const std::string & n) {
 }
 
 MessageQueue::MessageQueue(const std::string & n, create_only_t)
-   : m_name(n),  m_mq(create_only, m_name.c_str(), 1024 /* num msg */,
-                  message::Message::MESSAGE_SIZE)
+: m_blocking(true)
+, m_name(n)
+, m_mq(create_only, m_name.c_str(), 10 /* num msg */, message::Message::MESSAGE_SIZE)
 {
 }
 
 MessageQueue::MessageQueue(const std::string & n, open_only_t)
-   : m_name(n), m_mq(open_only, m_name.c_str())
+: m_blocking(true)
+, m_name(n)
+, m_mq(open_only, m_name.c_str())
 {
 }
 
@@ -59,15 +62,34 @@ MessageQueue::~MessageQueue() {
    message_queue::remove(m_name.c_str());
 }
 
+void MessageQueue::makeNonBlocking() {
+   m_blocking = false;
+}
+
 const std::string & MessageQueue::getName() const {
 
    return m_name;
 }
 
-void MessageQueue::send(const Message &msg) {
+bool MessageQueue::progress() {
 
-   Buffer buf(msg);
-   m_mq.send(&buf.msg, message::Message::MESSAGE_SIZE, 0);
+   while (!m_queue.empty()) {
+      if (m_blocking) {
+         m_mq.send(m_queue.front().buf.data(), message::Message::MESSAGE_SIZE, 0);
+      } else {
+         if (!m_mq.try_send(m_queue.front().buf.data(), message::Message::MESSAGE_SIZE, 0)) {
+            return m_queue.empty();
+         }
+      }
+      m_queue.pop_front();
+   }
+   return m_queue.empty();
+}
+
+bool MessageQueue::send(const Message &msg) {
+
+   m_queue.emplace_back(msg);
+   return progress();
 }
 
 void MessageQueue::receive(Message &msg) {

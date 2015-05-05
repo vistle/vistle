@@ -822,9 +822,9 @@ union V_COREEXPORT Buffer {
 
    Buffer(): msg(Message::ANY, Message::MESSAGE_SIZE) {}
 
-   Buffer(const Message &msg) {
+   Buffer(const Message &message) {
 
-       memcpy(buf.data(), &msg, msg.size());
+       memcpy(buf.data(), &message, message.size());
    }
 
    const Buffer &operator=(const Buffer &rhs) {
