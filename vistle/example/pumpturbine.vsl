@@ -1,5 +1,5 @@
 uuids = {}
-umReadFOAM1 = spawnAsync('ReadFOAM')
+umReadFOAM1 = spawnAsync('ReadFoam')
 umCellToVert2 = spawnAsync('CellToVert')
 umCellToVert3 = spawnAsync('CellToVert')
 umCutGeometry4 = spawnAsync('CutGeometry')

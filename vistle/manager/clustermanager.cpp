@@ -14,6 +14,7 @@
 #include <sstream>
 #include <iostream>
 #include <iomanip>
+#include <queue>
 
 #include <core/message.h>
 #include <core/messagequeue.h>
@@ -131,15 +132,26 @@ bool ClusterManager::dispatch(bool &received) {
 
    bool done = false;
 
-   // handle messages from modules
-   for(auto it = m_stateTracker.runningMap.begin(), next = it;
-         it != m_stateTracker.runningMap.end();
-         it = next) {
-      next = it;
-      ++next;
+   // handle messages from modules closer to sink first
+   // - should allow for objects to travel through the pipeline more quickly
+   typedef StateTracker::Module Module;
+   struct Comp {
+      bool operator()(const Module &a, const Module &b) {
+         return a.height > b.height;
+      }
+   };
+   std::priority_queue<Module, std::vector<Module>, Comp> modules;
+   for (auto m: m_stateTracker.runningMap) {
+      const auto &mod = m.second;
+      modules.emplace(mod);
+   }
 
-      const int modId = it->first;
-      const auto &mod = it->second;
+   // handle messages from modules
+   while (!modules.empty()) {
+
+      auto mod = modules.top();
+      modules.pop();
+      const int modId = mod.id;
 
       // keep messages from modules that have already reached a barrier on hold
       if (reachedSet.find(modId) != reachedSet.end())

@@ -511,7 +511,8 @@ bool StateTracker::handlePriv(const message::Spawn &spawn) {
 
    int hub = spawn.hubId();
 
-   Module &mod = runningMap[moduleId];
+   auto result = runningMap.emplace(moduleId, moduleId);
+   Module &mod = result.first->second;
    mod.hub = hub;
    mod.name = spawn.getName();
 
@@ -526,10 +527,13 @@ bool StateTracker::handlePriv(const message::Spawn &spawn) {
 bool StateTracker::handlePriv(const message::Started &started) {
 
    int moduleId = started.senderId();
-   runningMap[moduleId].initialized = true;
+   auto it = runningMap.find(moduleId);
+   vassert(it != runningMap.end());
+   auto &mod = it->second;
+   mod.initialized = true;
 
    for (StateObserver *o: m_observers) {
-      o->moduleStateChanged(moduleId, runningMap[moduleId].state());
+      o->moduleStateChanged(moduleId, mod.state());
    }
 
    return true;
@@ -537,12 +541,15 @@ bool StateTracker::handlePriv(const message::Started &started) {
 
 bool StateTracker::handlePriv(const message::Connect &connect) {
 
+   bool ret = true;
    if (portTracker()) {
-      return portTracker()->addConnection(connect.getModuleA(),
+      ret = portTracker()->addConnection(connect.getModuleA(),
             connect.getPortAName(),
             connect.getModuleB(),
             connect.getPortBName());
    }
+
+   computeHeights();
 
    return true;
 }
@@ -555,6 +562,8 @@ bool StateTracker::handlePriv(const message::Disconnect &disconnect) {
             disconnect.getModuleB(),
             disconnect.getPortBName());
    }
+
+   computeHeights();
 
    return true;
 }
@@ -607,10 +616,13 @@ bool StateTracker::handlePriv(const message::Busy &busy) {
    } else {
       busySet.insert(id);
    }
-   runningMap[id].busy = true;
+   auto it = runningMap.find(id);
+   vassert(it != runningMap.end());
+   auto &mod = it->second;
+   mod.busy = true;
 
    for (StateObserver *o: m_observers) {
-      o->moduleStateChanged(id, runningMap[id].state());
+      o->moduleStateChanged(id, mod.state());
    }
 
    return true;
@@ -1021,6 +1033,43 @@ ParameterSet StateTracker::getConnectedParameters(const Parameter &param) const 
    if (port->getType() != Port::PARAMETER)
       return ParameterSet();
    return findAllConnectedPorts(port, ParameterSet());
+}
+
+void StateTracker::computeHeights() {
+
+   std::set<Module *> modules;
+   for (auto &mod: runningMap) {
+      mod.second.height = -1;
+      modules.insert(&mod.second);
+   }
+
+   while (!modules.empty()) {
+      for (auto mod: modules) {
+         int id = mod->id;
+         auto outputs = portTracker()->getOutputPorts(id);
+
+         int height = -1;
+         bool isSink = true;
+         for (auto &output: outputs) {
+            for (auto &port: output->connections()) {
+               isSink = false;
+               const int otherId = port->getModuleID();
+               const auto &otherMod = runningMap[otherId];
+               if (otherMod.height != -1 && (height == -1 || otherMod.height+1 < height)) {
+                  height = otherMod.height + 1;
+               }
+            }
+         }
+         if (isSink) {
+            height = 0;
+         }
+         if (height != -1) {
+            mod->height = height;
+            modules.erase(mod);
+            break;
+         }
+      }
+   }
 }
 
 void StateObserver::quitRequested() {

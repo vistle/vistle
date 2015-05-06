@@ -118,6 +118,7 @@ class V_COREEXPORT StateTracker {
    typedef std::map<std::string, boost::shared_ptr<Parameter>> ParameterMap;
    typedef std::map<int, std::string> ParameterOrder;
    struct Module {
+      int id;
       int hub;
       bool initialized;
       bool killed;
@@ -125,18 +126,22 @@ class V_COREEXPORT StateTracker {
       std::string name;
       ParameterMap parameters;
       ParameterOrder paramOrder;
+      int height; //< length of shortest path to a sink
 
       message::ObjectReceivePolicy::Policy objectPolicy;
       message::SchedulingPolicy::Schedule schedulingPolicy;
       message::ReducePolicy::Reduce reducePolicy;
 
       int state() const;
-      Module(): hub(0), initialized(false), killed(false), busy(false),
+      bool isSink() const { return height==0; }
+      Module(int id = message::Id::Invalid): id(id), hub(0), initialized(false), killed(false), busy(false), height(0),
          objectPolicy(message::ObjectReceivePolicy::Single), schedulingPolicy(message::SchedulingPolicy::Single), reducePolicy(message::ReducePolicy::Never)
       {}
    };
+
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap; //< currently running modules on all connected clusters
+   void computeHeights(); //< compute heights for all modules in runningMap
    RunningMap quitMap; //< history of already terminated modules - for module -> hub mapping
    typedef std::set<int> ModuleSet;
    ModuleSet busySet;
