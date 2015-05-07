@@ -206,6 +206,7 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
    , height(0)
    , totalwidth(0)
    , totalheight(0)
+   , timestep(-1)
    , requestTime(0.)
    {
       memset(model, '\0', sizeof(model));
@@ -226,6 +227,7 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
    uint16_t height; //!< height of depth sub-image
    uint16_t totalwidth; //!< total width of image
    uint16_t totalheight; //!< total height of image
+   int32_t timestep; //! number of rendered timestep 
    double view[16]; //!< view matrix from request
    double proj[16]; //!< projection matrix from request
    double model[16]; //!< model matrix from request

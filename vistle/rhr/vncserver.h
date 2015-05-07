@@ -201,6 +201,7 @@ public:
    struct ViewParameters {
        uint32_t frameNumber;
        uint32_t requestNumber;
+       int32_t timestep;
        double matrixTime;
        int width, height;
        vistle::Matrix4 proj;
@@ -210,6 +211,7 @@ public:
        ViewParameters()
        : frameNumber(0)
        , requestNumber(0)
+       , timestep(0)
        , matrixTime(0.)
        , width(1)
        , height(1)
@@ -225,6 +227,7 @@ public:
          std::cout << "SER ViewParameters" << std::endl << std::flush;
          ar & frameNumber;
          ar & requestNumber;
+         ar & timestep;
          ar & matrixTime;
          ar & width;
          ar & height;

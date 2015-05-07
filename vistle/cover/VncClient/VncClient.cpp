@@ -485,7 +485,6 @@ bool VncClient::updateTileQueue() {
 void VncClient::finishFrame(const tileMsg &msg) {
 
    m_waitForDecode = false;
-   m_frameReady = true;
 
    ++m_remoteFrames;
    double delay = cover->frameTime() - msg.requestTime;
@@ -499,6 +498,37 @@ void VncClient::finishFrame(const tileMsg &msg) {
    m_rgbBytesS += m_rgbBytes;
    m_depthBppS = m_depthBpp;
    m_numPixelsS = m_numPixels;
+
+   std::cerr << "finishFrame: t=" << msg.timestep << ", req=" << m_requestedTimestep << std::endl;
+   if (m_remoteTimestep == m_requestedTimestep) {
+      commitTimestep(m_remoteTimestep);
+      m_requestedTimestep = -1;
+      m_frameReady = false;
+   } else {
+      m_frameReady = true;
+   }
+}
+
+void VncClient::checkSwapFrame() {
+
+   bool doSwap = m_frameReady;
+   if (coVRMSController::instance()->isMaster()) {
+      coVRMSController::SlaveData sd(sizeof(bool));
+      coVRMSController::instance()->readSlaves(&sd);
+      for (int s=0; s<coVRMSController::instance()->getNumSlaves(); ++s) {
+         bool ready = *static_cast<bool *>(sd.data[s]);
+         if (!ready) {
+            doSwap = false;
+            break;
+         }
+      }
+   } else {
+      coVRMSController::instance()->sendMaster(&m_frameReady, sizeof(m_frameReady));
+   }
+   doSwap = coVRMSController::instance()->syncBool(doSwap);
+   if (doSwap) {
+      swapFrame();
+   }
 }
 
 void VncClient::swapFrame() {
@@ -506,7 +536,10 @@ void VncClient::swapFrame() {
    assert(m_frameReady = true);
    m_frameReady = false;
 
-   //std::cerr << "frame: " << msg.framenumber << std::endl;
+   m_visibleTimestep = m_remoteTimestep;
+   m_remoteTimestep = -1;
+
+   std::cerr << "frame: timestep=" << m_visibleTimestep << std::endl;
 
    for (size_t s=0; s<m_channelData.size(); ++s) {
       ChannelData &cd = m_channelData[s];
@@ -547,6 +580,7 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
 
    ChannelData &cd = m_channelData[view];
 
+   m_remoteTimestep = msg.timestep;
    for (int i=0; i<16; ++i) {
       cd.newView.ptr()[i] = msg.view[i];
       cd.newProj.ptr()[i] = msg.proj[i];
@@ -558,7 +592,7 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
       osg::Image *img = cd.colorTex->getImage();
       if (img->s() != w || img->t() != h) {
          img->allocateImage(w, h, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-         
+
          (*cd.texcoord)[0].set(0., h);
          (*cd.texcoord)[1].set(w, h);
          (*cd.texcoord)[2].set(w, 0.);
@@ -912,7 +946,7 @@ rfbBool VncClient::rfbApplicationMessage(rfbClient *client, rfbServerToClientMsg
       case rfbAnimationTimestep: {
          appAnimationTimestep app;
          memcpy(&app, &buf[0], sizeof(app));
-         plugin->m_remoteTimesteps = app.total;
+         plugin->m_numRemoteTimesteps = app.total;
       }
       break;
    }
@@ -970,9 +1004,10 @@ static rfbClientProtocolExtension applicationExt = {
 
 //! called when plugin is loaded
 VncClient::VncClient()
-: m_timestep(-1)
-, m_totalTimesteps(-1)
-, m_remoteTimesteps(-1)
+: m_requestedTimestep(-1)
+, m_remoteTimestep(-1)
+, m_visibleTimestep(-1)
+, m_numRemoteTimesteps(-1)
 {
    assert(plugin == NULL);
    plugin = this;
@@ -1587,22 +1622,11 @@ VncClient::preFrame()
    if (!connected)
       return;
 
-   coVRMSController::instance()->syncData(&m_remoteTimesteps, sizeof(m_remoteTimesteps));
-   if (m_remoteTimesteps > 0)
-      coVRAnimationManager::instance()->setNumTimesteps(m_remoteTimesteps, this);
+   coVRMSController::instance()->syncData(&m_numRemoteTimesteps, sizeof(m_numRemoteTimesteps));
+   if (m_numRemoteTimesteps > 0)
+      coVRAnimationManager::instance()->setNumTimesteps(m_numRemoteTimesteps, this);
    else
       coVRAnimationManager::instance()->removeTimestepProvider(this);
-
-   if (m_timestep != coVRAnimationManager::instance()->getAnimationFrame()
-         || m_totalTimesteps != coVRAnimationManager::instance()->getNumTimesteps()) {
-      m_timestep = coVRAnimationManager::instance()->getAnimationFrame();
-      m_totalTimesteps = coVRAnimationManager::instance()->getNumTimesteps();
-
-      appAnimationTimestep msg;
-      msg.current = m_timestep;
-      msg.total = m_totalTimesteps;
-      sendApplicationMessage(m_client, rfbAnimationTimestep, sizeof(msg), &msg);
-   }
 
    osgViewer::GraphicsWindow *win = coVRConfig::instance()->windows[0].window;
    int x,y,w,h;
@@ -1746,24 +1770,7 @@ VncClient::preFrame()
    while (updateTileQueue())
       ++remoteSkipped;
 
-   bool doSwap = m_frameReady;
-   if (coVRMSController::instance()->isMaster()) {
-      coVRMSController::SlaveData sd(sizeof(bool));
-      coVRMSController::instance()->readSlaves(&sd);
-      for (int s=0; s<coVRMSController::instance()->getNumSlaves(); ++s) {
-         bool ready = *static_cast<bool *>(sd.data[s]);
-         if (!ready) {
-            doSwap = false;
-            break;
-         }
-      }
-   } else {
-      coVRMSController::instance()->sendMaster(&m_frameReady, sizeof(m_frameReady));
-   }
-   doSwap = coVRMSController::instance()->syncBool(doSwap);
-   if (doSwap) {
-      swapFrame();
-   }
+   checkSwapFrame();
 
    ++m_localFrames;
    double diff = cover->frameTime() - m_lastStat;
@@ -1872,6 +1879,30 @@ void VncClient::expandBoundingSphere(osg::BoundingSphere &bs) {
    while (!bd->updated);
 
    bs.expandBy(bd->boundsNode->getBound());
+}
+
+void VncClient::setTimestep(int t) {
+
+   m_frameReady = true;
+   checkSwapFrame();
+}
+
+void VncClient::requestTimestep(int t) {
+
+   std::cerr << "m_requestedTimestep: " << m_requestedTimestep << " -> " << t << std::endl;
+   if (t < 0)
+      t = 0;
+
+   if (m_remoteTimestep==t || (m_remoteTimestep==-1 && m_visibleTimestep==t)) {
+      commitTimestep(t);
+   } else {
+      m_requestedTimestep = t;
+
+      appAnimationTimestep msg;
+      msg.current = t;
+      msg.total = coVRAnimationManager::instance()->getNumTimesteps();
+      sendApplicationMessage(m_client, rfbAnimationTimestep, sizeof(msg), &msg);
+   }
 }
 
 //! returns number of handled messages, -1 on error
@@ -1985,7 +2016,7 @@ void VncClient::clientCleanup(rfbClient *cl) {
    rfbClientCleanup(cl);
    if (m_client == cl) {
       m_client = NULL;
-      m_remoteTimesteps = -1;
+      m_numRemoteTimesteps = -1;
    }
 }
 

@@ -479,6 +479,7 @@ rfbBool VncServer::handleMatricesMessage(rfbClientPtr cl, void *data,
 
    ViewData &vd = plugin->m_viewData[viewNum];
 
+   vd.nparam.timestep = plugin->timestep();
    vd.nparam.matrixTime = msg.time;
    vd.nparam.requestNumber = msg.requestNumber;
 
@@ -691,6 +692,7 @@ rfbBool VncServer::handleApplicationMessage(rfbClientPtr cl, void *data,
 
    if (!cl->clientData) {
       cl->clientData = new ClientData();
+      std::cerr << "new client -> sending num timesteps: " << plugin->m_numTimesteps << std::endl;
 
       appAnimationTimestep app;
       app.current = plugin->m_imageParam.timestep;
@@ -919,6 +921,41 @@ void VncServer::invalidate(int viewNum, int x, int y, int w, int h, const VncSer
     }
 }
 
+namespace {
+
+tileMsg *newTileMsg(const VncServer::ImageParameters &param, const VncServer::ViewParameters &vp, int viewNum, int x, int y, int w, int h) {
+
+   assert(x+w <= vp.width);
+   assert(y+h <= vp.height);
+   assert(stride == vp.width);
+
+   tileMsg *message = new tileMsg;
+
+   message->viewNum = viewNum;
+   message->width = w;
+   message->height = h;
+   message->x = x;
+   message->y = y;
+   message->totalwidth = vp.width;
+   message->totalheight = vp.height;
+   message->size = 0;
+   message->compression = rfbTileRaw;
+
+   message->frameNumber = vp.frameNumber;
+   message->requestNumber = vp.requestNumber;
+   message->requestTime = vp.matrixTime;
+   message->timestep = vp.timestep;
+   for (int i=0; i<16; ++i) {
+      message->model[i] = vp.model.data()[i];
+      message->view[i] = vp.view.data()[i];
+      message->proj[i] = vp.proj.data()[i];
+   }
+
+   return message;
+}
+
+}
+
 struct EncodeTask: public tbb::task {
 
     tbb::concurrent_queue<VncServer::EncodeResult> &resultQueue;
@@ -944,7 +981,7 @@ struct EncodeTask: public tbb::task {
     , message(nullptr)
     {
         assert(depth);
-        initMsg(param, vp, viewNum, x, y, w, h);
+        message = newTileMsg(param, vp, viewNum, x, y, w, h);
 
         message->size = message->width * message->height;
         if (param.depthFloat) {
@@ -999,7 +1036,7 @@ struct EncodeTask: public tbb::task {
     , message(nullptr)
     {
        assert(rgba);
-       initMsg(param, vp, viewNum, x, y, w, h);
+       message = newTileMsg(param, vp, viewNum, x, y, w, h);
        message->size = message->width * message->height * bpp;
        message->format = rfbColorRGBA;
 
@@ -1009,35 +1046,6 @@ struct EncodeTask: public tbb::task {
         } else if (param.rgbaSnappy) {
             message->compression |= rfbTileSnappy;
 #endif
-        }
-    }
-
-    void initMsg(const VncServer::ImageParameters &param, const VncServer::ViewParameters &vp, int viewNum, int x, int y, int w, int h) {
-
-        assert(x+w <= vp.width);
-        assert(y+h <= vp.height);
-        assert(stride == vp.width);
-
-        assert(message == nullptr);
-
-        message = new tileMsg;
-        message->viewNum = viewNum;
-        message->width = w;
-        message->height = h;
-        message->x = x;
-        message->y = y;
-        message->totalwidth = vp.width;
-        message->totalheight = vp.height;
-        message->size = 0;
-        message->compression = rfbTileRaw;
-
-        message->frameNumber = vp.frameNumber;
-        message->requestNumber = vp.requestNumber;
-        message->requestTime = vp.matrixTime;
-        for (int i=0; i<16; ++i) {
-            message->model[i] = vp.model.data()[i];
-            message->view[i] = vp.view.data()[i];
-            message->proj[i] = vp.proj.data()[i];
         }
     }
 
@@ -1177,8 +1185,6 @@ void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const V
              ++m_queuedTiles;
           }
        }
-    } else if (m_queuedTiles == 0) {
-       tileMsg msg;
     }
 
     bool tileReady = false;
@@ -1187,7 +1193,7 @@ void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const V
         tileReady = false;
         tileMsg *msg = nullptr;
         if (m_queuedTiles == 0 && lastView) {
-           msg = new tileMsg;
+           msg = newTileMsg(m_imageParam, param, viewNum, x0, y0, w, h);
         } else if (m_resultQueue.try_pop(result)) {
             --m_queuedTiles;
             tileReady = true;

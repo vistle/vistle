@@ -52,10 +52,12 @@ public:
    VncClient();
    ~VncClient();
 
-   bool init();
-   void preFrame();
-   void expandBoundingSphere(osg::BoundingSphere &bs);
-   void menuEvent(coMenuItem* item);
+   bool init() override;
+   void preFrame() override;
+   void expandBoundingSphere(osg::BoundingSphere &bs) override;
+   void menuEvent(coMenuItem* item) override;
+   void setTimestep(int t) override;
+   void requestTimestep(int t) override;
 
    static rfbBool rfbMatricesMessage(rfbClient *client, rfbServerToClientMsg *message);
    static rfbBool rfbLightsMessage(rfbClient *client, rfbServerToClientMsg *message);
@@ -152,7 +154,7 @@ private:
    ObjectMap m_objectMap;
    RemoteRenderObject *findObject(const std::string &name) const;
 
-   int m_timestep, m_totalTimesteps, m_remoteTimesteps;
+   int m_requestedTimestep, m_remoteTimestep, m_visibleTimestep, m_numRemoteTimesteps;
 
    bool handleTileMessage(boost::shared_ptr<tileMsg> msg, boost::shared_ptr<char> payload);
    // work queue management for decoding tiles
@@ -165,6 +167,7 @@ private:
    void handleTileMeta(const tileMsg &msg);
    void finishFrame(const tileMsg &msg);
    void swapFrame();
+   void checkSwapFrame();
    bool canEnqueue() const;
    void enqueueTask(DecodeTask *task);
    osg::ref_ptr<osg::Image> m_fbImg;

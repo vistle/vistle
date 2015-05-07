@@ -677,7 +677,7 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
 
    int err = rtcGetError();
    if (err != 0) {
-      std::cerr << "RTC error: " << rtcGetError() << std::endl;
+      std::cerr << "RTC error: " << err << std::endl;
    }
 }
 
