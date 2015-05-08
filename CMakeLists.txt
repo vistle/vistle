@@ -33,7 +33,8 @@ set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED})
 set(CMAKE_SKIP_RPATH TRUE)
 
 # allow for optimizations in Boost.MPI
-add_definitions(-DBOOST_MPI_HOMOGENEOUS)
+# do not use for now: causes crash in broadcast on OS X
+#add_definitions(-DBOOST_MPI_HOMOGENEOUS)
 
 enable_testing()
 
