@@ -907,10 +907,12 @@ VncServer::preFrame()
 
 void VncServer::invalidate(int viewNum, int x, int y, int w, int h, const VncServer::ViewParameters &param, bool lastView) {
 
+#if 0
     if (m_numClients - m_numRhrClients > 0) {
         std::cerr << "Non-RHR clients: " << m_numClients - m_numRhrClients << std::endl;
         rfbMarkRectAsModified(m_screen, x, y, w, h);
     }
+#endif
 
     if (m_numRhrClients > 0) {
         encodeAndSend(viewNum, x, y, w, h, param, lastView);
