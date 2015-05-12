@@ -185,7 +185,7 @@ unsigned short Tunnel::destPort() const {
 void Tunnel::startAccept() {
 
    m_listeningSocket.reset(new tcp_socket(m_manager.io()));
-   m_acceptor.async_accept(*m_listeningSocket, boost::bind<void>(&Tunnel::handleAccept, this, asio::placeholders::error));
+   m_acceptor.async_accept(*m_listeningSocket, [this](boost::system::error_code ec){handleAccept(ec);});
 }
 
 void Tunnel::handleAccept(const boost::system::error_code &error) {
@@ -235,7 +235,9 @@ TunnelStream::TunnelStream(boost::shared_ptr<boost::asio::ip::tcp::socket> sock0
 
    for (size_t i=0; i<m_sock.size(); ++i) {
       m_sock[i]->async_read_some(asio::buffer(m_buf[i].data(), m_buf[i].size()),
-                                 boost::bind<void>(&TunnelStream::handleRead, this, self(), i, asio::placeholders::error, asio::placeholders::bytes_transferred));
+            [this, i](boost::system::error_code ec, size_t length) {
+               handleRead(self(), i, ec, length);
+            });
    }
 }
 
@@ -271,7 +273,9 @@ void TunnelStream::handleRead(boost::shared_ptr<TunnelStream> self, size_t sockI
       return;
    }
    async_write(*m_sock[other], asio::buffer(m_buf[sockIdx].data(), length),
-                                   boost::bind<void>(&TunnelStream::handleWrite, this, self, other, asio::placeholders::error));
+         [this, self, sockIdx](boost::system::error_code error, size_t length) {
+            handleWrite(self, sockIdx, error);
+         });
 }
 
 void TunnelStream::handleWrite(boost::shared_ptr<TunnelStream> self, size_t sockIdx, boost::system::error_code ec) {
@@ -284,7 +288,9 @@ void TunnelStream::handleWrite(boost::shared_ptr<TunnelStream> self, size_t sock
       return;
    }
    m_sock[other]->async_read_some(asio::buffer(m_buf[other].data(), m_buf[other].size()),
-                                  boost::bind<void>(&TunnelStream::handleRead, this, self, other, asio::placeholders::error, asio::placeholders::bytes_transferred));
+         [this, self, sockIdx](boost::system::error_code error, size_t length) {
+            handleRead(self, sockIdx, error, length);
+         });
 }
 
 }

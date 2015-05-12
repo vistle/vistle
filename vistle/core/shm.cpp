@@ -2,6 +2,7 @@
 #include <util/sysdep.h>
 
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/for_each.hpp>

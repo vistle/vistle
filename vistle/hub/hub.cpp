@@ -139,7 +139,9 @@ bool Hub::startAccept() {
    
    shared_ptr<asio::ip::tcp::socket> sock(new asio::ip::tcp::socket(m_ioService));
    addSocket(sock);
-   m_acceptor->async_accept(*sock, boost::bind<void>(&Hub::handleAccept, this, sock, asio::placeholders::error));
+   m_acceptor->async_accept(*sock, [this, sock](boost::system::error_code ec) {
+         handleAccept(sock, ec);
+         });
    return true;
 }
 

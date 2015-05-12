@@ -1,4 +1,5 @@
 #include <sstream>
+#include <fstream>
 #include <iomanip>
 
 #include <boost/date_time/posix_time/posix_time.hpp>

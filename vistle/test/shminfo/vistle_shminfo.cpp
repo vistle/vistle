@@ -4,6 +4,7 @@
 
 
 #include <iostream>
+#include <fstream>
 #include <cstdlib>
 
 #include <mpi.h>
