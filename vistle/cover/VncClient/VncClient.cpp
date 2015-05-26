@@ -499,7 +499,7 @@ void VncClient::finishFrame(const tileMsg &msg) {
    m_depthBppS = m_depthBpp;
    m_numPixelsS = m_numPixels;
 
-   std::cerr << "finishFrame: t=" << msg.timestep << ", req=" << m_requestedTimestep << std::endl;
+   //std::cerr << "finishFrame: t=" << msg.timestep << ", req=" << m_requestedTimestep << std::endl;
    if (m_remoteTimestep == m_requestedTimestep) {
       commitTimestep(m_remoteTimestep);
       m_requestedTimestep = -1;
@@ -539,7 +539,7 @@ void VncClient::swapFrame() {
    m_visibleTimestep = m_remoteTimestep;
    m_remoteTimestep = -1;
 
-   std::cerr << "frame: timestep=" << m_visibleTimestep << std::endl;
+   //std::cerr << "frame: timestep=" << m_visibleTimestep << std::endl;
 
    for (size_t s=0; s<m_channelData.size(); ++s) {
       ChannelData &cd = m_channelData[s];
