@@ -87,16 +87,8 @@ export void ispcRenderTile(uniform const SceneData *uniform scene, uniform const
                const float tc0 = ro->texCoords[v0];
                const float tc1 = ro->texCoords[v1];
                const float tc2 = ro->texCoords[v2];
-               float tc = w*tc0 + u*tc1 + v*tc2;
-               //vassert(tc >= 0.f);
-               //vassert(tc <= 1.f);
-               if (tc < 0.f)
-                  tc = 0.f;
-               if (tc > 1.f)
-                  tc = 1.f;
-               unsigned idx = tc * ro->texWidth;
-               if (idx >= ro->texWidth)
-                  idx = ro->texWidth-1;
+               const float tc = clamp(w*tc0 + u*tc1 + v*tc2, 0.f, 1.f);
+               const unsigned idx = min(tc * ro->texWidth, ro->texWidth-1);
                const unsigned int8 *c = &ro->texData[idx*4];
                color.x = c[0];
                color.y = c[1];
