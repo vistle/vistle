@@ -7,14 +7,18 @@
 #include "linalg/vec3f.isph"
 #include "linalg/vec4f.isph"
 
+#include "common.h"
+
 inline uniform float dot(const uniform Vec4f a, const uniform Vec4f b) { return a.x*b.x+a.y*b.y+a.z*b.z+a.w*b.w; }
 inline varying float dot(const varying Vec4f a, const varying Vec4f b) { return a.x*b.x+a.y*b.y+a.z*b.z+a.w*b.w; }
+
+
 
 static void makeRay(RTCRay &ray, uniform const float origin[3], uniform const float direction[3],
       uniform float tNear, uniform float tFar) {
 
 }
-  
+
 export void ispcRenderTile(uniform const SceneData *uniform scene, uniform const TileData *uniform tile) {
 
    uniform const float ambientFactor = 0.2f;
@@ -66,7 +70,7 @@ export void ispcRenderTile(uniform const SceneData *uniform scene, uniform const
          const float win3 = dot(depthTransform3, pos4);
          zValue= (win2/win3+1.f)*0.5f;
 
-         if (scene->doShade) {
+         cif (scene->doShade) {
 
             RenderObjectData *ro = scene->ro[ray.instID];
             assert(ro->geomId == ray.geomID);

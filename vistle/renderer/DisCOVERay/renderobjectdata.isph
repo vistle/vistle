@@ -1,11 +1,6 @@
-#ifndef RENDER_GENERIC_H
-#define RENDER_GENERIC_H
+#pragma once
 
-static const int MaxPacketSize = 16;
-static const RTCSceneFlags sceneFlags = RTC_SCENE_COHERENT;
-
-static const unsigned int RayEnabled = 0xffffffff;
-static const unsigned int RayDisabled = 0;
+#include <embree2/rtcore.isph>
 
 struct Triangle { unsigned int v0, v1, v2; };
 
@@ -26,4 +21,5 @@ struct RenderObjectData {
    float *texCoords; //< 1D texture coordinates (mapped data)
 };
 
-#endif
+export void forceRenderObjectDataExport(uniform RenderObjectData *uniform rod);
+export void forceExportTrangle(uniform Triangle *uniform triangle);

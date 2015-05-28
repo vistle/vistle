@@ -3,9 +3,14 @@
 
 #include <core/assert.h>
 
+#include <embree2/rtcore.h>
+
 #include "rayrenderobject.h"
 
 using namespace vistle;
+
+using ispc::Vertex;
+using ispc::Triangle;
 
 RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       Object::const_ptr container,
@@ -14,7 +19,7 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       Object::const_ptr colors,
       Object::const_ptr texture)
 : vistle::RenderObject(senderId, senderPort, container, geometry, normals, colors, texture)
-, data(new RenderObjectData)
+, data(new ispc::RenderObjectData)
 {
    data->geomId = RTC_INVALID_GEOMETRY_ID;
    data->instId = RTC_INVALID_GEOMETRY_ID;

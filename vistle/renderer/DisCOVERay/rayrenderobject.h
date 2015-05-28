@@ -11,7 +11,12 @@
 
 #include <renderer/renderobject.h>
 
-#include "render.h"
+#include "renderobjectdata_ispc.h"
+#include "render_ispc.h"
+
+#include "common.h"
+
+static const RTCAlgorithmFlags intersections = RTC_INTERSECT1|RTC_INTERSECT4|RTC_INTERSECT8|RTC_INTERSECT16;
 
 struct RayRenderObject: public vistle::RenderObject {
 
@@ -24,6 +29,6 @@ struct RayRenderObject: public vistle::RenderObject {
 
    ~RayRenderObject();
 
-   std::unique_ptr<RenderObjectData> data;
+   std::unique_ptr<ispc::RenderObjectData> data;
 };
 #endif

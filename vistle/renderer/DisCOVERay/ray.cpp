@@ -20,6 +20,7 @@
 #include <renderer/vnccontroller.h>
 #include <renderer/parrendmgr.h>
 #include "rayrenderobject.h"
+#include "common.h"
 
 #ifdef HAVE_ISPC
 #include "render_ispc.h"
@@ -83,7 +84,7 @@ class RayCaster: public vistle::Renderer {
 
    void removeObject(boost::shared_ptr<RenderObject> ro) override;
 
-   std::vector<RenderObjectData *> instances;
+   std::vector<ispc::RenderObjectData *> instances;
 
    std::vector<boost::shared_ptr<RayRenderObject>> static_geometry;
    std::vector<std::vector<boost::shared_ptr<RayRenderObject>>> anim_geometry;
@@ -361,7 +362,7 @@ void TileTask::render(int tile) const {
 #ifdef HAVE_ISPC
    if (rc.m_useIspc) {
       ispc::SceneData sceneData;
-      sceneData.scene = rc.m_scene;
+      sceneData.scene = (ispc::__RTCScene *)rc.m_scene;
       for (int i=0; i<4; ++i) {
          auto row = modelView.block<1,4>(i,0);
          sceneData.modelView[i].x = row[0];
