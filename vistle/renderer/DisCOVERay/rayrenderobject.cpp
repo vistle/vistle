@@ -1,11 +1,13 @@
 #include <core/polygons.h>
 #include <core/triangles.h>
+#include <core/spheres.h>
 
 #include <core/assert.h>
 
 #include <embree2/rtcore.h>
 
 #include "rayrenderobject.h"
+#include "spheres_ispc.h"
 
 using namespace vistle;
 
@@ -23,6 +25,7 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
 {
    data->geomId = RTC_INVALID_GEOMETRY_ID;
    data->instId = RTC_INVALID_GEOMETRY_ID;
+   data->spheres = nullptr;
    data->indexBuffer = nullptr;
    data->texWidth = 0;
    data->texData = nullptr;
@@ -114,6 +117,23 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       }
       vassert(t == ntri);
       rtcUnmapBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER);
+   } else if (auto sph = Spheres::as(geometry)) {
+
+      Index nsph = sph->getNumSpheres();
+      std::cerr << "Spheres: #sph: " << nsph << std::endl;
+      data->spheres = new ispc::Sphere[nsph];
+      auto x = sph->x().data();
+      auto y = sph->y().data();
+      auto z = sph->z().data();
+      auto r = sph->r().data();
+      auto s = data->spheres;
+      for (Index i=0; i<nsph; ++i) {
+         s[i].p.x = x[i];
+         s[i].p.y = y[i];
+         s[i].p.z = z[i];
+         s[i].r = r[i];
+      }
+      data->geomId = registerSpheres((ispc::__RTCScene *)data->scene, data.get(), nsph);
    }
 
    rtcCommit(data->scene);
@@ -121,6 +141,8 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
 
 RayRenderObject::~RayRenderObject() {
 
+   delete[] data->spheres;
+   //rtcDeleteGeometry(data->scene, data->geomId); // not possible for static geometry
    rtcDeleteScene(data->scene);
    delete[] data->indexBuffer;
 }

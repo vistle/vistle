@@ -1,0 +1,16 @@
+#pragma once
+
+#include "linalg/math.isph"
+#include "linalg/vec3f.isph"
+#include <embree2/rtcore.isph>
+
+struct RenderObjectData;
+
+struct Sphere
+{
+  //ALIGNED_STRUCT
+  Vec3f p;                      //!< position of the sphere
+  float r;                      //!< radius of the sphere
+};
+
+export uniform unsigned int registerSpheres(uniform RTCScene scene, uniform RenderObjectData *uniform data, uniform size_t N);

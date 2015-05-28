@@ -46,6 +46,23 @@ class RayCaster: public vistle::Renderer {
    static RayCaster *s_instance;
 
  public:
+   static void rtcErrorCallback(RTCError code, const char *desc) {
+
+      std::string err = "Error: Unknown RTC error.";
+
+      switch (code) {
+         case RTC_NO_ERROR: err = "No error occurred."; break;
+         case RTC_UNKNOWN_ERROR: err = "An unknown error has occurred."; break;
+         case RTC_INVALID_ARGUMENT: err = "An invalid argument was specified."; break;
+         case RTC_INVALID_OPERATION: err = "The operation is not allowed for the specified object."; break;
+         case RTC_OUT_OF_MEMORY: err = "There is not enough memory left to complete the operation."; break;
+         case RTC_UNSUPPORTED_CPU: err = "The CPU is not supported as it does not support SSE2."; break;
+         //case RTC_CANCELLED: err = "The operation got cancelled by an Memory Monitor Callback or Progress Monitor Callback function."; break;
+      }
+
+      std::cerr << "RTC error: " << desc << " - " << err << std::endl;
+   }
+
    struct RGBA {
       unsigned char r, g, b, a;
    };
@@ -135,6 +152,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    m_useIspcParam = addIntParameter("use_ispc", "use SIMD implementation with ISPC", (Integer)m_useIspc, Parameter::Boolean);
 
    rtcInit("verbose=0");
+   rtcSetErrorFunction(rtcErrorCallback);
    m_scene = rtcNewScene(RTC_SCENE_DYNAMIC|sceneFlags, intersections);
    rtcCommit(m_scene);
 }
