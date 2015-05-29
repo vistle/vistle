@@ -1,5 +1,6 @@
 #include <core/polygons.h>
 #include <core/triangles.h>
+#include <core/lines.h>
 #include <core/spheres.h>
 #include <core/points.h>
 
@@ -9,6 +10,7 @@
 
 #include "rayrenderobject.h"
 #include "spheres_ispc.h"
+#include "tubes_ispc.h"
 
 using namespace vistle;
 
@@ -29,6 +31,7 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
    data->geomId = RTC_INVALID_GEOMETRY_ID;
    data->instId = RTC_INVALID_GEOMETRY_ID;
    data->spheres = nullptr;
+   data->primitiveFlags = nullptr;
    data->indexBuffer = nullptr;
    data->texWidth = 0;
    data->texData = nullptr;
@@ -155,6 +158,41 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       }
       data->lighted = 0;
       data->geomId = registerSpheres((ispc::__RTCScene *)data->scene, data.get(), np);
+   } else if (auto line = Lines::as(geometry)) {
+
+      Index nStrips = line->getNumElements();
+      Index nPoints = line->getNumCorners();
+      std::cerr << "Lines: #strips: " << nStrips << ", #corners: " << nPoints << std::endl;
+      data->primitiveFlags = new unsigned int[nPoints];
+      data->spheres = new ispc::Sphere[nPoints];
+
+      auto el = line->el().data();
+      auto cl = line->cl().data();
+      auto x = line->x().data();
+      auto y = line->y().data();
+      auto z = line->z().data();
+      auto s = data->spheres;
+      auto p = data->primitiveFlags;
+      Index idx=0;
+      for (Index strip=0; strip<nStrips; ++strip) {
+         const Index begin = el[strip], end = el[strip+1];
+         for (Index c=begin; c<end; ++c) {
+            
+            Index i = cl[c];
+            s[idx].p.x = x[i];
+            s[idx].p.y = y[i];
+            s[idx].p.z = z[i];
+            s[idx].r = pointSize;
+            p[idx] = ispc::PFNone;
+            if (c == begin)
+               p[idx] |= ispc::PFStart;
+            if (c == end-1)
+               p[idx] |= ispc::PFEnd;
+            ++idx;
+         }
+      }
+      data->lighted = 0;
+      data->geomId = registerTubes((ispc::__RTCScene *)data->scene, data.get(), nPoints);
    }
 
    rtcCommit(data->scene);
@@ -163,6 +201,7 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
 RayRenderObject::~RayRenderObject() {
 
    delete[] data->spheres;
+   delete[] data->primitiveFlags;
    //rtcDeleteGeometry(data->scene, data->geomId); // not possible for static geometry
    rtcDeleteScene(data->scene);
    delete[] data->indexBuffer;

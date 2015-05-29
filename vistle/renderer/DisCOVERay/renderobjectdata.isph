@@ -6,6 +6,12 @@
 
 struct Triangle { unsigned int v0, v1, v2; };
 
+enum PrimitiveFlags {
+   PFNone = 0,
+   PFStart = 1,
+   PFEnd = 2,
+};
+
 struct RenderObjectData {
 
    int t; //!< timestep number
@@ -15,6 +21,7 @@ struct RenderObjectData {
 
    Triangle *indexBuffer; //< triangle list
    Sphere *spheres; //!< sphere data
+   unsigned int *primitiveFlags; //!< bit-wise or of several PrimitiveFlags for each primitive
 
    unsigned int lighted; //!< whether to use lighting
    unsigned int hasSolidColor; //!< whether object has a color different from default
@@ -27,3 +34,4 @@ struct RenderObjectData {
 
 export void forceRenderObjectDataExport(uniform RenderObjectData *uniform rod);
 export void forceExportTrangle(uniform Triangle *uniform triangle);
+export void forceExportPrimitiveFlags(uniform PrimitiveFlags *uniform flags);

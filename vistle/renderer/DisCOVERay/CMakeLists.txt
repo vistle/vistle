@@ -144,7 +144,7 @@ include_directories_ispc(${EMBREE_INCLUDE_PATH})
 if (ENABLE_ISPC_SUPPORT)
    add_definitions(-DHAVE_ISPC)
    add_ispc_executable(DisCOVERay rayrenderobject.cpp ray.cpp
-      render.ispc renderobjectdata.ispc spheres.ispc)
+      render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc)
    set_target_properties(DisCOVERay PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
 else()
    add_module(DisCOVERay rayrenderobject.cpp ray.cpp render.ispc)

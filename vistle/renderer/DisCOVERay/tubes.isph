@@ -1,0 +1,13 @@
+#pragma once
+
+#include "linalg/math.isph"
+#include "linalg/vec3f.isph"
+#include <embree2/rtcore.isph>
+
+#include "spheres.isph"
+
+struct RenderObjectData;
+
+typedef Sphere TubeSection;
+
+export uniform unsigned int registerTubes(uniform RTCScene scene, uniform RenderObjectData *uniform data, uniform size_t N);

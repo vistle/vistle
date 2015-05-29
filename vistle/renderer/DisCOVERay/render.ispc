@@ -79,20 +79,30 @@ export void ispcRenderTile(uniform const SceneData *uniform scene, uniform const
             if (ro->hasSolidColor) {
                color = make_Vec4f(ro->solidColor[0], ro->solidColor[1], ro->solidColor[2], ro->solidColor[3]);
             }
-            if (ro->indexBuffer && ro->texData && ro->texCoords) {
+            if (ro->texData && ro->texCoords) {
 
                const float &u = ray.u;
                const float &v = ray.v;
                const float w = 1.f - u - v;
-               const unsigned int v0 = ro->indexBuffer[ray.primID].v0;
-               const unsigned int v1 = ro->indexBuffer[ray.primID].v1;
-               const unsigned int v2 = ro->indexBuffer[ray.primID].v2;
+               unsigned idx = 0;
+               if (ro->indexBuffer) {
+                  const unsigned int v0 = ro->indexBuffer[ray.primID].v0;
+                  const unsigned int v1 = ro->indexBuffer[ray.primID].v1;
+                  const unsigned int v2 = ro->indexBuffer[ray.primID].v2;
 
-               const float tc0 = ro->texCoords[v0];
-               const float tc1 = ro->texCoords[v1];
-               const float tc2 = ro->texCoords[v2];
-               const float tc = clamp(w*tc0 + u*tc1 + v*tc2, 0.f, 1.f);
-               const unsigned idx = min(tc * ro->texWidth, ro->texWidth-1);
+                  const float tc0 = ro->texCoords[v0];
+                  const float tc1 = ro->texCoords[v1];
+                  const float tc2 = ro->texCoords[v2];
+                  const float tc = clamp(w*tc0 + u*tc1 + v*tc2, 0.f, 1.f);
+                  idx = min(tc * ro->texWidth, ro->texWidth-1);
+               } else {
+                  const unsigned int v0 = ray.primID;
+                  const unsigned int v1 = ray.primID + 1;
+                  const float tc0 = ro->texCoords[v0];
+                  const float tc1 = ro->texCoords[v1];
+                  const float tc = clamp(w*tc0 + u*tc1, 0.f, 1.f);
+                  idx = min(tc * ro->texWidth, ro->texWidth-1);
+               }
                const unsigned int8 *c = &ro->texData[idx*4];
                color.x = c[0];
                color.y = c[1];
