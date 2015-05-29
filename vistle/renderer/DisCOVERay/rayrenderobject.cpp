@@ -1,6 +1,7 @@
 #include <core/polygons.h>
 #include <core/triangles.h>
 #include <core/spheres.h>
+#include <core/points.h>
 
 #include <core/assert.h>
 
@@ -13,6 +14,8 @@ using namespace vistle;
 
 using ispc::Vertex;
 using ispc::Triangle;
+
+float RayRenderObject::pointSize = 0.001f;
 
 RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       Object::const_ptr container,
@@ -30,6 +33,7 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
    data->texWidth = 0;
    data->texData = nullptr;
    data->texCoords = nullptr;
+   data->lighted = 1;
    data->hasSolidColor = hasSolidColor;
    for (int c=0; c<4; ++c) {
       data->solidColor[c] = solidColor[c];
@@ -120,7 +124,7 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
    } else if (auto sph = Spheres::as(geometry)) {
 
       Index nsph = sph->getNumSpheres();
-      std::cerr << "Spheres: #sph: " << nsph << std::endl;
+      //std::cerr << "Spheres: #sph: " << nsph << std::endl;
       data->spheres = new ispc::Sphere[nsph];
       auto x = sph->x().data();
       auto y = sph->y().data();
@@ -134,6 +138,23 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
          s[i].r = r[i];
       }
       data->geomId = registerSpheres((ispc::__RTCScene *)data->scene, data.get(), nsph);
+   } else if (auto point = Points::as(geometry)) {
+
+      Index np = point->getNumPoints();
+      //std::cerr << "Points: #sph: " << np << std::endl;
+      data->spheres = new ispc::Sphere[np];
+      auto x = point->x().data();
+      auto y = point->y().data();
+      auto z = point->z().data();
+      auto s = data->spheres;
+      for (Index i=0; i<np; ++i) {
+         s[i].p.x = x[i];
+         s[i].p.y = y[i];
+         s[i].p.z = z[i];
+         s[i].r = pointSize;
+      }
+      data->lighted = 0;
+      data->geomId = registerSpheres((ispc::__RTCScene *)data->scene, data.get(), np);
    }
 
    rtcCommit(data->scene);

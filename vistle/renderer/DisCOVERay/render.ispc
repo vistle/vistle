@@ -100,44 +100,48 @@ export void ispcRenderTile(uniform const SceneData *uniform scene, uniform const
                color.w = c[3];
             }
 
-            Vec4f ambientColor = color;
-            ambientColor.x *= ambientFactor;
-            ambientColor.y *= ambientFactor;
-            ambientColor.z *= ambientFactor;
-            Vec3f normal = normalize(make_Vec3f(ray.Ngx, ray.Ngy, ray.Ngz));
-            if (twoSided && dot(normal, dir) > 0.f)
-               normal = neg(normal);
+            if (ro->lighted) {
+               Vec4f ambientColor = color;
+               ambientColor.x *= ambientFactor;
+               ambientColor.y *= ambientFactor;
+               ambientColor.z *= ambientFactor;
+               Vec3f normal = normalize(make_Vec3f(ray.Ngx, ray.Ngy, ray.Ngz));
+               if (twoSided && dot(normal, dir) > 0.f)
+                  normal = neg(normal);
 
-            shaded = shaded + ambientColor * ambient;
-            cfor (uniform int l=0; l<scene->numLights; ++l) {
-               const uniform Light &light = scene->lights[l];
-               cif (light.enabled) {
-                  const Vec3f lv = normalize(light.isDirectional ? light.transformedPosition : light.transformedPosition-pos);
-                  float atten = 1.f;
-                  cif (light.isDirectional) {
-                     atten = light.attenuation[0];
-                     cif (light.attenuation[1]>0.f || light.attenuation[2]>0.f) {
-                        Vec4f ec = make_Vec4f(light.transformedPosition-pos);
-                        float d = 0.;
-                        for (int i=0; i<3; ++i) {
-                           float dd = dot(scene->modelView[i], ec);
-                           d += dd*dd;
+               shaded = shaded + ambientColor * ambient;
+               cfor (uniform int l=0; l<scene->numLights; ++l) {
+                  const uniform Light &light = scene->lights[l];
+                  cif (light.enabled) {
+                     const Vec3f lv = normalize(light.isDirectional ? light.transformedPosition : light.transformedPosition-pos);
+                     float atten = 1.f;
+                     cif (light.isDirectional) {
+                        atten = light.attenuation[0];
+                        cif (light.attenuation[1]>0.f || light.attenuation[2]>0.f) {
+                           Vec4f ec = make_Vec4f(light.transformedPosition-pos);
+                           float d = 0.;
+                           for (int i=0; i<3; ++i) {
+                              float dd = dot(scene->modelView[i], ec);
+                              d += dd*dd;
+                           }
+                           atten += (light.attenuation[1] + light.attenuation[2]*d)*d;
                         }
-                        atten += (light.attenuation[1] + light.attenuation[2]*d)*d;
+                        atten = rcp(atten);
                      }
-                     atten = rcp(atten);
-                  }
-                  shaded = shaded + ambientColor * atten * light.ambient;
-                  const float ldot = max(0.f, dot(normal, lv));
-                  shaded = shaded + color * atten *ldot * light.diffuse;
-                  if (ldot > 0.f) {
-                     const Vec3f halfway = normalize(lv-dir);
-                     const float hdot = max(0.f, dot(normal, halfway));
-                     if (hdot > 0.f) {
-                        shaded = shaded + specColor * atten * powf(hdot, specExp) * light.specular;
+                     shaded = shaded + ambientColor * atten * light.ambient;
+                     const float ldot = max(0.f, dot(normal, lv));
+                     shaded = shaded + color * atten *ldot * light.diffuse;
+                     if (ldot > 0.f) {
+                        const Vec3f halfway = normalize(lv-dir);
+                        const float hdot = max(0.f, dot(normal, halfway));
+                        if (hdot > 0.f) {
+                           shaded = shaded + specColor * atten * powf(hdot, specExp) * light.specular;
+                        }
                      }
                   }
                }
+            } else {
+               shaded = color;
             }
 
             shaded.x = clamp(shaded.x, 0.f, 255.f);

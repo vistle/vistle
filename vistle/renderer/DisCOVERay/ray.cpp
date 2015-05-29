@@ -90,6 +90,7 @@ class RayCaster: public vistle::Renderer {
    bool m_doShade;
    IntParameter *m_useIspcParam;
    bool m_useIspc;
+   FloatParameter *m_pointSizeParam;
 
    // object lifetime management
    boost::shared_ptr<RenderObject> addObject(int sender, const std::string &senderPort,
@@ -150,6 +151,8 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
    setParameterRange(m_renderTileSizeParam, (Integer)1, (Integer)16384);
    m_useIspcParam = addIntParameter("use_ispc", "use SIMD implementation with ISPC", (Integer)m_useIspc, Parameter::Boolean);
+   m_pointSizeParam = addFloatParameter("point_size", "size of points", RayRenderObject::pointSize);
+   setParameterRange(m_pointSizeParam, (Float)0, (Float)1e6);
 
    rtcInit("verbose=0");
    rtcSetErrorFunction(rtcErrorCallback);
@@ -186,6 +189,9 @@ bool RayCaster::parameterChanged(const Parameter *p) {
     } else if (p == m_useIspcParam) {
 
        m_useIspc = m_useIspcParam->getValue();
+    } else if (p == m_pointSizeParam) {
+
+       RayRenderObject::pointSize = m_pointSizeParam->getValue();
     }
 
    return Renderer::parameterChanged(p);
@@ -595,38 +601,42 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
                color[i] = c[i];
          }
 
-         Vector4 ambientColor = color;
-         ambientColor.block<3,1>(0,0) *= ambientFactor;
-         Vector3 normal(ray.Ng[0], ray.Ng[1], ray.Ng[2]);
-         normal.normalize();
-         if (twoSided && normal.dot(viewDir) > 0.f)
-             normal *= -1.f;
-         shaded += ambientColor.cwiseProduct(ambient);
-         for (const auto &light: vd.lights) {
-             if (light.enabled) {
-                const Vector3 lv = light.isDirectional
-                        ? light.transformedPosition.block<3,1>(0,0).normalized()
-                        : (light.transformedPosition.block<3,1>(0,0)-pos).normalized();
-                float atten = 1.f;
-                if (!light.isDirectional) {
-                   atten = light.attenuation[0];
-                   if (light.attenuation[1]>0.f || light.attenuation[2]>0.f) {
-                      const float d = (modelView * (light.transformedPosition-pos4)).block<3,1>(0,0).norm();
-                      atten += (light.attenuation[1] + light.attenuation[2]*d)*d;
-                   }
-                   atten = 1.f/atten;
-                }
-                shaded += ambientColor.cwiseProduct(atten*light.ambient);
-                const float ldot = std::max(0.f, normal.dot(lv));
-                shaded += color.cwiseProduct(atten*ldot*light.diffuse);
-                if (ldot > 0.f) {
-                    const Vector3 halfway = (lv-viewDir).normalized();
-                    const float hdot = std::max(0.f, normal.dot(halfway));
-                    if (hdot > 0) {
-                       shaded += specColor.cwiseProduct(atten*powf(hdot, specExp)*light.specular);
-                    }
-                }
-             }
+         if (rod->lighted) {
+            Vector4 ambientColor = color;
+            ambientColor.block<3,1>(0,0) *= ambientFactor;
+            Vector3 normal(ray.Ng[0], ray.Ng[1], ray.Ng[2]);
+            normal.normalize();
+            if (twoSided && normal.dot(viewDir) > 0.f)
+               normal *= -1.f;
+            shaded += ambientColor.cwiseProduct(ambient);
+            for (const auto &light: vd.lights) {
+               if (light.enabled) {
+                  const Vector3 lv = light.isDirectional
+                     ? light.transformedPosition.block<3,1>(0,0).normalized()
+                     : (light.transformedPosition.block<3,1>(0,0)-pos).normalized();
+                  float atten = 1.f;
+                  if (!light.isDirectional) {
+                     atten = light.attenuation[0];
+                     if (light.attenuation[1]>0.f || light.attenuation[2]>0.f) {
+                        const float d = (modelView * (light.transformedPosition-pos4)).block<3,1>(0,0).norm();
+                        atten += (light.attenuation[1] + light.attenuation[2]*d)*d;
+                     }
+                     atten = 1.f/atten;
+                  }
+                  shaded += ambientColor.cwiseProduct(atten*light.ambient);
+                  const float ldot = std::max(0.f, normal.dot(lv));
+                  shaded += color.cwiseProduct(atten*ldot*light.diffuse);
+                  if (ldot > 0.f) {
+                     const Vector3 halfway = (lv-viewDir).normalized();
+                     const float hdot = std::max(0.f, normal.dot(halfway));
+                     if (hdot > 0) {
+                        shaded += specColor.cwiseProduct(atten*powf(hdot, specExp)*light.specular);
+                     }
+                  }
+               }
+            }
+         } else {
+            shaded = color;
          }
          for (int i=0; i<4; ++i)
             if (shaded[i] > 255)

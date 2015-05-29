@@ -20,6 +20,8 @@ static const RTCAlgorithmFlags intersections = RTC_INTERSECT1|RTC_INTERSECT4|RTC
 
 struct RayRenderObject: public vistle::RenderObject {
 
+   static float pointSize;
+
    RayRenderObject(int senderId, const std::string &senderPort,
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
