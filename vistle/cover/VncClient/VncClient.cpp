@@ -1889,7 +1889,7 @@ void VncClient::setTimestep(int t) {
 
 void VncClient::requestTimestep(int t) {
 
-   std::cerr << "m_requestedTimestep: " << m_requestedTimestep << " -> " << t << std::endl;
+   //std::cerr << "m_requestedTimestep: " << m_requestedTimestep << " -> " << t << std::endl;
    if (t < 0)
       t = 0;
 
