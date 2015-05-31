@@ -927,7 +927,6 @@ tileMsg *newTileMsg(const VncServer::ImageParameters &param, const VncServer::Vi
 
    assert(x+w <= vp.width);
    assert(y+h <= vp.height);
-   assert(stride == vp.width);
 
    tileMsg *message = new tileMsg;
 
