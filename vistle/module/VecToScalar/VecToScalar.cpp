@@ -25,9 +25,8 @@ VecToScalar::~VecToScalar() {
 bool VecToScalar::compute() {
 
    Object::const_ptr data = expect<Object>("data_in");
-
    if (!data)
-      return false;
+      return true;
 
    if(auto data_in = Vec<Scalar, 3>::as(data)) {
 

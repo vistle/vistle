@@ -35,7 +35,7 @@ bool CellToVert::compute() {
    Object::const_ptr grid = expect<Object>("grid_in");
    Object::const_ptr data = expect<Object>("data_in");
    if (!grid || !data)
-      return false;
+      return true;
 
    Object::ptr out = algo.interpolate(grid, data);
    if (out) {
