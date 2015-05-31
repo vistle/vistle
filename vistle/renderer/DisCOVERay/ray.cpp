@@ -88,6 +88,8 @@ class RayCaster: public vistle::Renderer {
    int m_tilesize;
    IntParameter *m_shading;
    bool m_doShade;
+   IntParameter *m_uvVisParam;
+   bool m_uvVis;
    IntParameter *m_useIspcParam;
    bool m_useIspc;
    FloatParameter *m_pointSizeParam;
@@ -125,6 +127,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
 , rayPacketSize(8)
 , m_tilesize(64)
 , m_doShade(true)
+, m_uvVis(false)
 , m_useIspc(false)
 , m_timestep(0)
 , m_currentView(-1)
@@ -148,6 +151,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    m_packetSize = addIntParameter("ray_packet_size", "size of a ray packet (1, 4, 8, or 16)", (Integer)rayPacketSize);
    setParameterRange(m_packetSize, (Integer)1, (Integer)16);
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
+   m_uvVisParam = addIntParameter("uv_visualization", "show u/v coordinates", (Integer)m_uvVis, Parameter::Boolean);
    m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
    setParameterRange(m_renderTileSizeParam, (Integer)1, (Integer)16384);
    m_useIspcParam = addIntParameter("use_ispc", "use SIMD implementation with ISPC", (Integer)m_useIspc, Parameter::Boolean);
@@ -178,6 +182,10 @@ bool RayCaster::parameterChanged(const Parameter *p) {
 
        m_doShade = m_shading->getValue();
        m_renderManager.setModified();
+    } else if (p == m_uvVisParam) {
+
+        m_uvVis = m_uvVisParam->getValue();
+        m_renderManager.setModified();
     } else if (p == m_packetSize) {
 
         rayPacketSize = m_packetSize->getValue();
@@ -395,6 +403,7 @@ void TileTask::render(int tile) const {
          sceneData.modelView[i].w = row[3];
       }
       sceneData.doShade = rc.m_doShade;
+      sceneData.uvVis = rc.m_uvVis;
       sceneData.defaultColor.x = rc.m_renderManager.m_defaultColor[0];
       sceneData.defaultColor.y = rc.m_renderManager.m_defaultColor[1];
       sceneData.defaultColor.z = rc.m_renderManager.m_defaultColor[2];

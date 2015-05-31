@@ -25,9 +25,11 @@ if(${TEMPLATES_IN_HEADERS})
       celltree.cpp
       vertexownerlist.cpp
       coords.cpp
+      coordswradius.cpp
       normals.cpp
       points.cpp
       spheres.cpp
+      tubes.cpp
       indexed.cpp
       lines.cpp
       triangles.cpp
@@ -52,6 +54,8 @@ set(core_HEADERS
    vertexownerlist_impl.h
    coords.h
    coords_impl.h
+   coordswradius.h
+   coordswradius_impl.h
    dimensions.h
    export.h
    geometry.h
@@ -79,6 +83,8 @@ set(core_HEADERS
    points_impl.h
    spheres.h
    spheres_impl.h
+   tubes.h
+   tubes_impl.h
    polygons.h
    polygons_impl.h
    port.h

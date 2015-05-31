@@ -70,9 +70,10 @@ public:
       POINTS            = 18,
       SPHERES           = 19,
       LINES             = 20,
-      TRIANGLES         = 21,
-      POLYGONS          = 22,
-      UNSTRUCTUREDGRID  = 23,
+      TUBES             = 21,
+      TRIANGLES         = 22,
+      POLYGONS          = 23,
+      UNSTRUCTUREDGRID  = 24,
 
       VERTEXOWNERLIST   = 95,
       CELLTREE1         = 96,

@@ -1,6 +1,7 @@
 #include <core/polygons.h>
 #include <core/triangles.h>
 #include <core/lines.h>
+#include <core/tubes.h>
 #include <core/spheres.h>
 #include <core/points.h>
 
@@ -184,15 +185,84 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
             s[idx].p.z = z[i];
             s[idx].r = pointSize;
             p[idx] = ispc::PFNone;
-            if (c == begin)
-               p[idx] |= ispc::PFStart;
-            if (c == end-1)
-               p[idx] |= ispc::PFEnd;
+            if (c+1 != end)
+               p[idx] |= ispc::PFCone;
+            p[idx] |= ispc::PFStartSphere;
             ++idx;
          }
       }
+      vassert(idx == nPoints);
       data->lighted = 0;
-      data->geomId = registerTubes((ispc::__RTCScene *)data->scene, data.get(), nPoints);
+      data->geomId = registerTubes((ispc::__RTCScene *)data->scene, data.get(), nPoints-1);
+   } else if (auto tube = Tubes::as(geometry)) {
+
+      Index nStrips = tube->getNumTubes();
+      Index nPoints = tube->getNumCoords();
+      std::cerr << "Tubes: #strips: " << nStrips << ", #corners: " << nPoints << std::endl;
+      data->primitiveFlags = new unsigned int[nPoints];
+      data->spheres = new ispc::Sphere[nPoints];
+      const Tubes::CapStyle startStyle = tube->startStyle(), jointStyle = tube->jointStyle(), endStyle = tube->endStyle();
+
+      auto el = tube->components().data();
+      auto x = tube->x().data();
+      auto y = tube->y().data();
+      auto z = tube->z().data();
+      auto r = tube->r().data();
+      auto s = data->spheres;
+      auto p = data->primitiveFlags;
+      Index idx=0;
+      for (Index strip=0; strip<nStrips; ++strip) {
+         const Index begin = el[strip], end = el[strip+1];
+         vassert(idx == begin);
+         for (Index i=begin; i<end; ++i) {
+            
+            s[idx].p.x = x[i];
+            s[idx].p.y = y[i];
+            s[idx].p.z = z[i];
+            s[idx].r = r[i];
+
+            p[idx] = ispc::PFNone;
+            if (i == begin) {
+               switch(startStyle) {
+                  case Tubes::Flat:
+                     p[idx] |= ispc::PFStartDisc;
+                     break;
+                  case Tubes::Round:
+                     p[idx] |= ispc::PFStartSphere;
+                     break;
+                  default:
+                     break;
+               }
+            } else if (i+1 != end) {
+               if (jointStyle == Tubes::Flat) {
+                  p[idx] |= ispc::PFStartDisc;
+               }
+            }
+
+            if (i+1 != end) {
+               p[idx] |= ispc::PFCone;
+
+               switch((i+2==end) ? endStyle : jointStyle) {
+                  case Tubes::Open:
+                     break;
+                  case Tubes::Flat:
+                     p[idx] |= ispc::PFEndDisc;
+                     break;
+                  case Tubes::Round:
+                     p[idx] |= i+2==end ? ispc::PFEndSphere : ispc::PFEndSphereSect;
+                     break;
+                  case Tubes::Arrow:
+                     p[idx] |= ispc::PFArrow;
+                     break;
+               }
+            }
+
+            ++idx;
+         }
+         vassert(idx == end);
+      }
+      vassert(idx == nPoints);
+      data->geomId = registerTubes((ispc::__RTCScene *)data->scene, data.get(), nPoints-1);
    }
 
    rtcCommit(data->scene);

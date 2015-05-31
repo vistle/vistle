@@ -26,6 +26,7 @@ struct SceneData {
    RTCScene scene;
    Vec4f defaultColor;
    RenderObjectData * const *ro;
+   int uvVis;
    int doShade;
    int numLights;
    uniform Light *lights;

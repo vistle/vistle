@@ -26,6 +26,8 @@
 #include "render.isph"
 #include "spheres.isph"
 
+#include "spheres_isect.isph"
+
 // ======================================================================== //
 //                     User defined sphere geometry                         //
 // ======================================================================== //
@@ -44,52 +46,17 @@ void sphereBoundsFunc(const uniform RenderObjectData* uniform data, uniform size
 void sphereIntersectFunc(const uniform RenderObjectData* uniform data, varying RTCRay& ray, uniform size_t item)
 {
   const uniform Sphere& sphere = data->spheres[item];
-  const Vec3f v = ray.org-sphere.p;
-  const float A = dot(ray.dir,ray.dir);
-  const float B = 2.0f*dot(v,ray.dir);
-  const float C = dot(v,v) - sqr(sphere.r);
-  const float D = B*B - 4.0f*A*C;
-  if (D < 0.0f) return;
-  const float Q = sqrt(D);
-  const float rcpA = rcp(A);
-  const float t0 = 0.5f*rcpA*(-B-Q);
-  const float t1 = 0.5f*rcpA*(-B+Q);
-  if ((ray.tnear < t0) & (t0 < ray.tfar)) {
-    ray.u = 0.0f;
-    ray.v = 0.0f;
-    ray.tfar = t0;
-    ray.geomID = data->geomId;
-    ray.primID = item;
-    ray.Ng = ray.org+t0*ray.dir-sphere.p;
-  }
-  if ((ray.tnear < t1) & (t1 < ray.tfar)) {
-    ray.u = 0.0f;
-    ray.v = 0.0f;
-    ray.tfar = t1;
-    ray.geomID = data->geomId;
-    ray.primID = item;
-    ray.Ng = ray.org+t1*ray.dir-sphere.p;
+  if (sphereIsect(sphere, ray)) {
+     ray.geomID = data->geomId;
+     ray.primID = item;
   }
 }
 
 void sphereOccludedFunc(const uniform RenderObjectData* uniform data, varying RTCRay& ray, uniform size_t item)
 {
   const uniform Sphere& sphere = data->spheres[item];
-  const Vec3f v = ray.org-sphere.p;
-  const float A = dot(ray.dir,ray.dir);
-  const float B = 2.0f*dot(v,ray.dir);
-  const float C = dot(v,v) - sqr(sphere.r);
-  const float D = B*B - 4.0f*A*C;
-  if (D < 0.0f) return;
-  const float Q = sqrt(D);
-  const float rcpA = rcp(A);
-  const float t0 = 0.5f*rcpA*(-B-Q);
-  const float t1 = 0.5f*rcpA*(-B+Q);
-  if ((ray.tnear < t0) & (t0 < ray.tfar)) {
-    ray.geomID = 0;
-  }
-  if ((ray.tnear < t1) & (t1 < ray.tfar)) {
-    ray.geomID = 0;
+  if (sphereOcclude(sphere, ray)) {
+     ray.geomID = 0;
   }
 }
 

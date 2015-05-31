@@ -8,8 +8,13 @@ struct Triangle { unsigned int v0, v1, v2; };
 
 enum PrimitiveFlags {
    PFNone = 0,
-   PFStart = 1,
-   PFEnd = 2,
+   PFCone = 1,
+   PFArrow = 2,
+   PFStartSphere = 4,
+   PFEndSphere = 8,
+   PFEndSphereSect = 16,
+   PFStartDisc = 32,
+   PFEndDisc = 64,
 };
 
 struct RenderObjectData {

@@ -2,26 +2,22 @@
 #define SPHERES_H
 
 
-#include "coords.h"
+#include "coordswradius.h"
 
 namespace vistle {
 
-class  V_COREEXPORT Spheres: public Coords {
+class  V_COREEXPORT Spheres: public CoordsWithRadius {
    V_OBJECT(Spheres);
 
    public:
-   typedef Coords Base;
+   typedef CoordsWithRadius Base;
 
    Spheres(const Index numSpheres,
          const Meta &meta=Meta());
 
    Index getNumSpheres() const;
 
-   shm<Scalar>::array &r() const { return *(*d()->r)(); }
-   
    V_DATA_BEGIN(Spheres);
-      ShmVector<Scalar>::ptr r;
-
       Data(const Index numSpheres = 0,
             const std::string & name = "",
             const Meta &meta=Meta());

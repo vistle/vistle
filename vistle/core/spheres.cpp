@@ -15,7 +15,6 @@ bool Spheres::isEmpty() const {
 
 bool Spheres::checkImpl() const {
 
-   V_CHECK (getNumVertices() == r().size());
    return true;
 }
 
@@ -29,19 +28,16 @@ Spheres::Data::Data(const Index numSpheres,
              const Meta &meta)
    : Spheres::Base::Data(numSpheres,
          Object::SPHERES, name, meta)
-, r(new ShmVector<Scalar>(numSpheres))
 {
 }
 
 Spheres::Data::Data(const Spheres::Data &o, const std::string &n)
 : Spheres::Base::Data(o, n)
-, r(o.r)
 {
 }
 
 Spheres::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n)
 : Spheres::Base::Data(o, n, Object::SPHERES)
-, r(new ShmVector<Scalar>(o.x[0]->size()))
 {
 }
 

@@ -241,6 +241,7 @@ Indexed::Data::Data(const Index numElements, const Index numCorners,
    , el(new ShmVector<Index>(numElements+1))
    , cl(new ShmVector<Index>(numCorners))
 {
+   (*el)[0] = 0;
 }
 
 Indexed::Data::Data(const Indexed::Data &o, const std::string &name)

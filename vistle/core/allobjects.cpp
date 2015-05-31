@@ -4,9 +4,11 @@
 #define VISTLE_IMPL
 #include "vec.cpp"
 #include "coords.cpp"
+#include "coordswradius.cpp"
 #include "normals.cpp"
 #include "points.cpp"
 #include "spheres.cpp"
+#include "tubes.cpp"
 #include "indexed.cpp"
 #include "lines.cpp"
 #include "triangles.cpp"
@@ -23,9 +25,11 @@
 
 #include "vec.h"
 #include "coords.h"
+#include "coordswradius.h"
 #include "normals.h"
 #include "points.h"
 #include "spheres.h"
+#include "tubes.h"
 #include "indexed.h"
 #include "lines.h"
 #include "triangles.h"
@@ -66,17 +70,18 @@ void registerTypes() {
    REGISTER_TYPE(PlaceHolder, Object::PLACEHOLDER);
    REGISTER_TYPE(Texture1D, Object::TEXTURE1D);
    REGISTER_TYPE(Geometry, Object::GEOMETRY);
-   REGISTER_TYPE(Normals, Object::NORMALS);
    REGISTER_TYPE(Points, Object::POINTS);
    REGISTER_TYPE(Spheres, Object::SPHERES);
    REGISTER_TYPE(Lines, Object::LINES);
+   REGISTER_TYPE(Tubes, Object::TUBES);
    REGISTER_TYPE(Triangles, Object::TRIANGLES);
    REGISTER_TYPE(Polygons, Object::POLYGONS);
    REGISTER_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID);
+   REGISTER_TYPE(VertexOwnerList, Object::VERTEXOWNERLIST)
    REGISTER_TYPE(Celltree1, Object::CELLTREE1);
    REGISTER_TYPE(Celltree2, Object::CELLTREE2);
    REGISTER_TYPE(Celltree3, Object::CELLTREE3);
-   REGISTER_TYPE(VertexOwnerList, Object::VERTEXOWNERLIST)
+   REGISTER_TYPE(Normals, Object::NORMALS);
 
    typedef Vec<unsigned char,1> Vec_uchar_1;
    REGISTER_TYPE(Vec_uchar_1, Vec_uchar_1::type());

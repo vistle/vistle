@@ -1,0 +1,65 @@
+// ======================================================================== //
+// Copyright 2009-2015 Intel Corporation                                    //
+//                                                                          //
+// Licensed under the Apache License, Version 2.0 (the "License");          //
+// you may not use this file except in compliance with the License.         //
+// You may obtain a copy of the License at                                  //
+//                                                                          //
+//     http://www.apache.org/licenses/LICENSE-2.0                           //
+//                                                                          //
+// Unless required by applicable law or agreed to in writing, software      //
+// distributed under the License is distributed on an "AS IS" BASIS,        //
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. //
+// See the License for the specific language governing permissions and      //
+// limitations under the License.                                           //
+// ======================================================================== //
+
+inline bool sphereIsect(const uniform Sphere &sphere, varying RTCRay &ray) {
+
+  const Vec3f v = ray.org-sphere.p;
+  const float A = dot(ray.dir,ray.dir);
+  const float B = dot(v,ray.dir);
+  const float C = dot(v,v) - sqr(sphere.r);
+  const float D = B*B - A*C;
+  if (D < 0.0f) return false;
+  const float Q = sqrt(D);
+  const float rcpA = rcp(A);
+  const float t0 = rcpA*(-B-Q);
+  const float t1 = rcpA*(-B+Q);
+  bool hit = false;
+  if ((ray.tnear < t0) & (t0 < ray.tfar)) {
+     hit = true;
+     ray.tfar = t0;
+  }
+  if ((ray.tnear < t1) & (t1 < ray.tfar)) {
+     hit = true;
+     ray.tfar = t1;
+  }
+  if (hit) {
+     ray.Ng = ray.org+ray.tfar*ray.dir-sphere.p;
+     ray.u = 0.f;
+     ray.v = 0.f;
+  }
+  return hit;
+}
+
+inline bool sphereOcclude(const uniform Sphere &sphere, varying RTCRay &ray) {
+
+  const Vec3f v = ray.org-sphere.p;
+  const float A = dot(ray.dir,ray.dir);
+  const float B = dot(v,ray.dir);
+  const float C = dot(v,v) - sqr(sphere.r);
+  const float D = B*B - A*C;
+  if (D < 0.0f) return false;
+  const float Q = sqrt(D);
+  const float rcpA = rcp(A);
+  const float t0 = rcpA*(-B-Q);
+  const float t1 = rcpA*(-B+Q);
+  if ((ray.tnear < t0) & (t0 < ray.tfar)) {
+     return true;
+  }
+  if ((ray.tnear < t1) & (t1 < ray.tfar)) {
+     return true;
+  }
+  return false;
+}
