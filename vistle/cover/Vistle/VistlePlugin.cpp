@@ -137,7 +137,7 @@ OsgRenderer::OsgRenderer(const std::string &shmname,
 : vistle::Renderer("COVER", shmname, name, moduleId)
 {
    vistle::registerTypes();
-   createInputPort("data_in");
+   //createInputPort("data_in"); - already done by Renderer base class
 
    vistleRoot = new osg::Group;
    vistleRoot->setName("VistlePlugin");
