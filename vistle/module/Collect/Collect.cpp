@@ -3,6 +3,8 @@
 
 #include <core/object.h>
 #include <core/geometry.h>
+#include <core/normals.h>
+#include <core/texture1d.h>
 
 #include "Collect.h"
 
@@ -35,11 +37,11 @@ bool Collect::compute() {
    vistle::Geometry::ptr geom(new vistle::Geometry(grid));
    geom->setMeta(grid->meta());
 
-   vistle::Object::const_ptr norm = accept<Object>("normal_in");
+   vistle::Object::const_ptr norm = accept<Normals>("normal_in");
    if (norm)
       geom->setNormals(norm);
 
-   vistle::Object::const_ptr tex = accept<Object>("texture_in");
+   vistle::Object::const_ptr tex = accept<Texture1D>("texture_in");
    if (tex)
       geom->setTexture(tex);
 
