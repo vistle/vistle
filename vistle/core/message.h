@@ -60,8 +60,8 @@ typedef std::array<char, 32> port_name_t;
 typedef std::array<char, 32> param_name_t;
 typedef std::array<char, 256> param_value_t;
 typedef std::array<char, 512> param_desc_t;
-typedef std::array<char, 40> param_choice_t;
-const int param_num_choices = 22;
+typedef std::array<char, 50> param_choice_t;
+const int param_num_choices = 18;
 typedef std::array<char, 900> text_t;
 
 typedef boost::uuids::uuid uuid_t;
