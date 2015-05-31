@@ -13,6 +13,8 @@ class ToSpheres: public vistle::Module {
    virtual bool compute();
 
    vistle::FloatParameter *m_radius;
+   vistle::IntParameter *m_mapMode;
+   vistle::VectorParameter *m_range;
 };
 
 #endif
