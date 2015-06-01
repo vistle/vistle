@@ -29,10 +29,9 @@ bool VecToScalar::compute() {
    if (!data)
       return false;
 
-   Object::ptr out;
-
    if(auto data_in = Vec<Scalar, 3>::as(data)) {
 
+      Object::ptr out;
       switch(m_caseParam->getValue()) {
          case X: {
             out = extract(data_in,0);
@@ -76,7 +75,7 @@ Object::ptr VecToScalar::calculateAbsolute(Vec<Scalar, 3>::const_ptr &data) {
    Index dataSize = data->getSize();
    Vec<Scalar>::ptr dataOut(new Vec<Scalar>(dataSize));
    Scalar *out_data = dataOut->x().data();
-   for (int i = 0; i < dataSize; ++i)
+   for (Index i = 0; i < dataSize; ++i)
    {
       out_data[i] = sqrt(in_data_0[i] * in_data_0[i] + in_data_1[i] * in_data_1[i] + in_data_2[i] * in_data_2[i]);
    }
