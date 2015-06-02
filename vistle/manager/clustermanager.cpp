@@ -583,6 +583,15 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
    const Port *from = portManager().getPort(modFrom, portFrom);
    const Port *to = portManager().getPort(modTo, portTo);
 
+   if (!from) {
+      CERR << " Did not find source port: " << disconnect << std::endl;
+      return true;
+   }
+   if (!to) {
+      CERR << " Did not find destination port: " << disconnect << std::endl;
+      return true;
+   }
+
    message::Disconnect d = disconnect;
    if (from->getType() == Port::INPUT && to->getType() == Port::OUTPUT) {
       d.reverse();
