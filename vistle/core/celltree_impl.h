@@ -42,57 +42,44 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
    // sort cells into buckets for each possible split dimension
 
    // initialize min/max extents of buckets
-   std::vector<Index> bucket[NumDimensions][NumBuckets];
+   Index bucket[NumDimensions][NumBuckets];
    Vector bmin[NumBuckets], bmax[NumBuckets];
    for (int i=0; i<NumBuckets; ++i) {
+      for (int d=0; d<NumDimensions; ++d)
+         bucket[d][i] = 0;
       bmin[i] = Vector(smax, smax, smax);
       bmax[i] = Vector(-smax, -smax, -smax);
    }
+
+   auto center = [min, max](Index c) -> Vector { return min[c]+max[c]; };
 
    // find min/max extents of cell centers
    Vector cmin(smax, smax, smax);
    Vector cmax(-smax, -smax, -smax);
    for (Index i=node->start; i<node->start+node->size; ++i) {
       const Index cell = cells[i];
-      Vector center = (min[cell]+max[cell])*Scalar(0.5);
+      Vector cent = center(cell);
       for (int d=0; d<NumDimensions; ++d) {
-         if (cmin[d] > center[d])
-            cmin[d] = center[d];
-         if (cmax[d] < center[d])
-            cmax[d] = center[d];
+         if (cmin[d] > cent[d])
+            cmin[d] = cent[d];
+         if (cmax[d] < cent[d])
+            cmax[d] = cent[d];
       }
    }
 
    // sort cells into buckets
    const Vector crange = cmax - cmin;
+
+   auto getBucket = [cmin, cmax, crange] (Vector center, int d) -> int { return crange[d] == 0 ? 0 : std::min(int((center[d] - cmin[d])/crange[d] * NumBuckets), NumBuckets-1); };
+
    for (Index i=node->start; i<node->start+node->size; ++i) {
       const Index cell = cells[i];
-      const Vector center = (min[cell]+max[cell])*Scalar(0.5);
+      const Vector cent = center(cell);
       for (int d=0; d<NumDimensions; ++d) {
-         int b = int((center[d] - cmin[d])/crange[d] * NumBuckets);
-#ifdef CT_DEBUG
-         bool print=false;
-#endif
-         if (b < 0) {
-#ifdef CT_DEBUG
-            print = true;
-#endif
-            b = 0;
-         }
-         if (b >= NumBuckets) {
-#ifdef CT_DEBUG
-            print = true;
-#endif
-            b = NumBuckets-1;
-         }
-#ifdef CT_DEBUG
-         if (print) {
-            std::cerr << "bad bucket: min=" << cmin[d] << ", max=" << cmax[d] << ", range=" << crange[d] << ", center=" << center[d] << std::endl;
-         }
-#endif
+         const int b = getBucket(cent, d);
          assert(b >= 0);
          assert(b < NumBuckets);
-         bucket[d][b].push_back(cell);
+         ++bucket[d][b];
          if (bmin[b][d] > min[cell][d])
             bmin[b][d] = min[cell][d];
          if (bmax[b][d] < max[cell][d])
@@ -118,12 +105,12 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
    for (int d=0; d<NumDimensions; ++d) {
       Index nleft = 0;
       for (int split_b=0; split_b<NumBuckets-1; ++split_b) {
-         nleft += bucket[d][split_b].size();
+         nleft += bucket[d][split_b];
          assert(node->size >= nleft);
          const Index nright = node->size - nleft;
          Scalar weight = nleft * (bmax[split_b][d]-bmin[0][d])
             + nright * (bmax[NumBuckets-1][d]-bmin[split_b+1][d]);
-         weight /= node->size;
+         weight /= node->size * crange[d];
          //std::cerr << "d="<<d<< ", b=" << split_b<< ", weight=" << weight << std::endl;
          if (nleft>0 && nright>0 && weight < min_weight) {
             min_weight = weight;
@@ -131,52 +118,94 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
             best_bucket = split_b;
          }
       }
+      assert(nleft+bucket[d][NumBuckets-1] == node->size);
    }
    if (best_dim == -1) {
       std::cerr << "abandoning split with " << node->size << " children" << std::endl;
       return;
    }
-#ifdef CT_DEBUG
-   std::cerr << "split: dim=" << best_dim << ", bucket=" << best_bucket << std::endl;
-#endif
 
    // split index lists...
-#ifndef NDEBUG
    const Index size = node->size;
-#endif
    const Index start = node->start;
-   Index i = start;
 
    // record children into node being split
-   *node = Node(best_dim, bmax[best_bucket][best_dim], bmin[best_bucket+1][best_dim], nodes().size());
+   const Scalar Lmax = bmax[best_bucket][best_dim];
+   const Scalar Rmin = bmin[best_bucket+1][best_dim];
+   *node = Node(best_dim, Lmax, Rmin, nodes().size());
+   const Index D = best_dim;
 
-   // add leaf nodes:
-   // ...left node
-   for (int b=0; b<best_bucket+1; ++b) {
-      for (typename std::vector<Index>::const_iterator it = bucket[best_dim][b].begin();
-            it != bucket[best_dim][b].end();
-            ++it) {
-         const Index c = *it;
-         cells[i] = c;
-         ++i;
+   auto centerD = [min, max, D](Index c) -> Scalar { return min[c][D]+max[c][D]; };
+   auto getBucketD = [cmin, cmax, crange, D] (Scalar center) -> int { return crange[D] == 0 ? 0 : std::min(int((center - cmin[D])/crange[D] * NumBuckets), NumBuckets-1); };
+
+#ifdef CT_DEBUG
+   const Scalar split = cmin[D] + crange[D] / NumBuckets * (best_bucket+1);
+   std::cerr << "split: dim=" << best_dim << ", bucket=" << best_bucket;
+   std::cerr << " (";
+   for (int i=0; i<NumBuckets; ++i) {
+      std::cerr << bucket[best_dim][i];
+      if (i == best_bucket)
+         std::cerr << "|";
+      else if (i<NumBuckets-1)
+         std::cerr << " ";
+   }
+   std::cerr << ")";
+   std::cerr << " split: " << split;
+   std::cerr << " (" << cmin[D] << " - " << cmax[D] << ")";
+   std::cerr << std::endl;
+#endif
+
+   Index nleft = 0;
+   Index *top = &cells[start+size];
+   for (Index *c = &cells[start]; c < top; ++c) {
+      const Scalar cent = centerD(*c);
+      const int b = getBucketD(cent);
+      if (b > best_bucket) {
+         for (Scalar other; ; ) {
+            --top;
+            other = centerD(*top);
+            const int bo = getBucketD(other);
+            if (bo < best_bucket+1) {
+               if (c < top) {
+                  std::swap(*c, *top);
+                  ++nleft;
+               }
+               break;
+            }
+         }
+      } else {
+         ++nleft;
       }
    }
+
+#ifdef CT_DEBUG
+   for (Index i=nleft; i<size; ++i) {
+      Index c = cells[start+i];
+      Vector cent = center(c);
+      assert(cent[D] >= split);
+      assert(min[c][D] >= Rmin);
+      for (int i=0; i<3; ++i) {
+         assert(min[c][i] >= gmin[i]);
+         assert(max[c][i] <= gmax[i]);
+      }
+   }
+   for (Index i=0; i<nleft; ++i) {
+      Index c = cells[start+i];
+      Vector cent = center(c);
+      assert(cent[D] <= split);
+      assert(max[c][D] <= Lmax);
+      for (int i=0; i<3; ++i) {
+         assert(min[c][i] >= gmin[i]);
+         assert(max[c][i] <= gmax[i]);
+      }
+   }
+#endif
+
    Index l = nodes().size();
-   Index lSize = i-start;
-   nodes().push_back(Node(start, i-start));
+   nodes().push_back(Node(start, nleft));
 
-   // ...right node
-   for (int b=best_bucket+1; b<NumBuckets; ++b) {
-      for (typename std::vector<Index>::const_iterator it = bucket[best_dim][b].begin();
-            it != bucket[best_dim][b].end();
-            ++it) {
-         const Index c = *it;
-         cells[i] = c;
-         ++i;
-      }
-   }
    Index r = nodes().size();
-   nodes().push_back(Node(start+lSize, i-start-lSize));
+   nodes().push_back(Node(start+nleft, size-nleft));
 
    assert(nodes()[l].size < size);
    assert(nodes()[r].size < size);

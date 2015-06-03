@@ -1,5 +1,7 @@
 #include "celltree.h"
 
+#include "celltree_impl.h"
+
 namespace vistle {
 
 V_OBJECT_TYPE_T(Celltree1, Object::CELLTREE1);

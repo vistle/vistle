@@ -234,6 +234,7 @@ typedef Celltree<Scalar, Index, 3> Celltree3;
 } // namespace vistle
 
 #ifdef VISTLE_IMPL
-#include "celltree_impl.h"
+// include only where actually required
+//#include "celltree_impl.h"
 #endif
 #endif

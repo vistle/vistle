@@ -1,4 +1,5 @@
 #include "indexed.h"
+#include "celltree_impl.h"
 #include "assert.h"
 
 namespace vistle {
