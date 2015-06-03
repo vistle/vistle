@@ -16,6 +16,7 @@ public:
     virtual bool compute();
     virtual bool prepare();
     virtual bool reduce(int timestep);
+
     std::vector<vistle::UnstructuredGrid::const_ptr> grid_in;
     std::vector<vistle::Vec<vistle::Scalar,3>::const_ptr> data_in0;
     std::vector<vistle::Vec<vistle::Scalar>::const_ptr> data_in1;
@@ -24,6 +25,8 @@ public:
                            vistle::UnstructuredGrid::const_ptr grid,
                            std::array<vistle::Vector3, 2> boundingbox,
                            vistle::Index lastcell);
+
+    vistle::IntParameter *m_useCelltree;
 
 };
 

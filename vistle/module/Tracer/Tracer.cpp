@@ -68,6 +68,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addFloatParameter("h_max", "maximum step size for rk32 integration", 1e-02);
     addFloatParameter("err_tol", "desired accuracy for rk32 integration", 1e-06);
     addFloatParameter("h_euler", "fixed step size for euler integration", 1e-03);
+    m_useCelltree = addIntParameter("use_celltree", "use celltree for accelerated cell location", (Integer)1, Parameter::Boolean);
 }
 
 Tracer::~Tracer() {
@@ -320,10 +321,13 @@ bool Tracer::prepare(){
 
 bool Tracer::compute(){
 
+    bool useCelltree = m_useCelltree->getValue();
+
     while(hasObject("grid_in") && hasObject("data_in0")){
 
         UnstructuredGrid::const_ptr grid = UnstructuredGrid::as((takeFirstObject("grid_in")));
-        grid->getCelltree();
+        if (useCelltree)
+           grid->getCelltree();
         grid_in.push_back(grid);
         data_in0.push_back(Vec<Scalar, 3>::as(takeFirstObject("data_in0")));
     }
