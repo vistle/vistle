@@ -737,7 +737,7 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
    std::cerr << "weights:";
 #endif
    for (const auto w: weights) {
-      vassert(w >= 0);
+      vassert(w >= -1e-4);
       total += w;
 #ifdef INTERPOL_DEBUG
       std::cerr << " " << w;
@@ -746,7 +746,7 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
 #ifdef INTERPOL_DEBUG
    std::cerr << ", total: " << total << std::endl;
 #endif
-   vassert(fabs(total - 1) < 1e5);
+   vassert(fabs(total - 1) < 1e-4);
 #endif
 
    return Interpolator(weights, indices);
