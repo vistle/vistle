@@ -319,27 +319,41 @@ bool Tracer::prepare(){
 }
 
 
-bool Tracer::compute(){
+bool Tracer::compute() {
 
     bool useCelltree = m_useCelltree->getValue();
+    auto grid = expect<UnstructuredGrid>("grid_in");
+    auto data0 = expect<Vec<Scalar, 3>>("data_in0");
+    auto data1 = accept<Vec<Scalar>>("data_in1");
 
-    while(hasObject("grid_in") && hasObject("data_in0")){
+    if (!grid || !data0)
+       return true;
 
-        UnstructuredGrid::const_ptr grid = UnstructuredGrid::as((takeFirstObject("grid_in")));
-        if (useCelltree)
-           grid->getCelltree();
-        grid_in.push_back(grid);
-        data_in0.push_back(Vec<Scalar, 3>::as(takeFirstObject("data_in0")));
+    if (useCelltree) {
+       grid->getCelltree();
+       if (!grid->validateCelltree()) {                                                                                                                                                                                                                                                        
+          std::cerr << "celltree validation failed" << std::endl;
+       }
     }
 
-
-    while(hasObject("data_in1")){
-
-        Object::const_ptr datain1 = takeFirstObject(("data_in1"));
-        if(Vec<Scalar>::as(datain1)){
-            data_in1.push_back(Vec<Scalar>::as(datain1));
-        }
+    int t = data0->getTimestep();
+    if (grid->getTimestep() >= 0) {
+       if (t != grid->getTimestep()) {
+          std::cerr << "timestep mismatch: grid=" << grid->getTimestep() << ", velocity=" << t << std::endl;
+       }
     }
+    if (t < 0)
+       t = 0;
+
+    if (grid_in.size() <= t) {
+       grid_in.resize(t+1);
+       data_in0.resize(t+1);
+       data_in1.resize(t+1);
+    }
+
+    grid_in[t].push_back(grid);
+    data_in0[t].push_back(data0);
+    data_in1[t].push_back(data1);
 
     return true;
 }
@@ -347,153 +361,157 @@ bool Tracer::compute(){
 
 
 
-bool Tracer::reduce(int timestep){
+bool Tracer::reduce(int timestep) {
 
-    times::celloc_dur =0;
-    times::integr_dur =0;
-    times::interp_dur =0;
-    times::comm_dur =0;
-    times::total_dur=0;
-    times::no_interp =0;
-    times::total_start = times::start();
+   times::celloc_dur =0;
+   times::integr_dur =0;
+   times::interp_dur =0;
+   times::comm_dur =0;
+   times::total_dur=0;
+   times::no_interp =0;
+   times::total_start = times::start();
 
-    Index numblocks = grid_in.size();
+   //get parameters
+   Index numpoints = getIntParameter("no_startp");
+   Index steps_max = getIntParameter("steps_max");
 
-    //get parameters
-    Index numpoints = getIntParameter("no_startp");
-    Index steps_max = getIntParameter("steps_max");
+   //determine startpoints
+   std::vector<Vector3> startpoints(numpoints);
+   Vector3 startpoint1 = getVectorParameter("startpoint1");
+   Vector3 startpoint2 = getVectorParameter("startpoint2");
+   Vector3 delta = (startpoint2-startpoint1)/(numpoints-1);
+   for(Index i=0; i<numpoints; i++){
 
-    if(data_in1.size()<numblocks){
+      startpoints[i] = startpoint1 + i*delta;
+   }
 
-        data_in1.assign(numblocks, nullptr);
-    }
-
-    //determine startpoints
-    std::vector<Vector3> startpoints(numpoints);
-    Vector3 startpoint1 = getVectorParameter("startpoint1");
-    Vector3 startpoint2 = getVectorParameter("startpoint2");
-    Vector3 delta = (startpoint2-startpoint1)/(numpoints-1);
-    for(Index i=0; i<numpoints; i++){
-
-        startpoints[i] = startpoint1 + i*delta;
-    }
-
-    //create BlockData objects
-    std::vector<std::unique_ptr<BlockData>> block(numblocks);
-    for(Index i=0; i<numblocks; i++){
-
-        block[i].reset(new BlockData(i, grid_in[i], data_in0[i], data_in1[i]));
-    }
+   int int_mode = getIntParameter("integration");
+   Scalar dt = getFloatParameter("h_euler");
+   Scalar dtmin = getFloatParameter("h_min");
+   Scalar dtmax = getFloatParameter("h_max");
+   Scalar errtol = getFloatParameter("err_tol");
 
 
-    int int_mode = getIntParameter("integration");
-    Scalar dt = getFloatParameter("h_euler");
-    Scalar dtmin = getFloatParameter("h_min");
-    Scalar dtmax = getFloatParameter("h_max");
-    Scalar errtol = getFloatParameter("err_tol");
-    //create particle objects
-    std::vector<std::unique_ptr<Particle>> particle(numpoints);
-    for(Index i=0; i<numpoints; i++){
+   Index numtime = grid_in.size();
+   for (Index t=0; t<numtime; ++t) {
+      Index numblocks = grid_in[t].size();
 
-        particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max));
-    }
-times::comm_start = times::start();
-    for(Index i=0; i<numpoints; i++){
+      //create BlockData objects
+      std::vector<std::unique_ptr<BlockData>> block(numblocks);
+      for(Index i=0; i<numblocks; i++){
 
-        bool active = particle[i]->isActive();
-        active = boost::mpi::all_reduce(comm(), active, std::logical_or<bool>());
-        if(!active){
+         block[i].reset(new BlockData(i, grid_in[t][i], data_in0[t][i], data_in1[t][i]));
+      }
+
+
+      //create particle objects
+      std::vector<std::unique_ptr<Particle>> particle(numpoints);
+      for(Index i=0; i<numpoints; i++){
+
+         particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max));
+      }
+      times::comm_start = times::start();
+      for(Index i=0; i<numpoints; i++){
+
+         bool active = particle[i]->isActive();
+         active = boost::mpi::all_reduce(comm(), active, std::logical_or<bool>());
+         if(!active){
             particle[i]->Deactivate();
-        }
-    }
-times::comm_dur += times::stop(times::comm_start);
-    bool ingrid = true;
-    int mpisize = comm().size();
-    std::vector<Index> sendlist(0);
-    while(ingrid){
+         }
+      }
+      times::comm_dur += times::stop(times::comm_start);
+      bool ingrid = true;
+      int mpisize = comm().size();
+      std::vector<Index> sendlist(0);
+      while(ingrid){
 
+         for(Index i=0; i<numpoints; i++){
+            bool traced = false;
+            while(particle[i]->findCell(block)){
+               double celloc_old = times::celloc_dur;
+               double integr_old = times::integr_dur;
+               times::integr_start = times::start();
+               particle[i]->Step();
+               times::integr_dur += times::stop(times::integr_start)-(times::celloc_dur-celloc_old)-(times::integr_dur-integr_old);
+               traced = true;
+            }
+            if(traced){
+               sendlist.push_back(i);
+            }
+         }
+
+         for(int mpirank=0; mpirank<mpisize; mpirank++){
+            times::comm_start = times::start();
+            Index num_send = sendlist.size();
+            boost::mpi::broadcast(comm(), num_send, mpirank);
+            times::comm_dur += times::stop(times::comm_start);
+            if(num_send>0){
+               std::vector<Index> tmplist = sendlist;
+               times::comm_start = times::start();
+               boost::mpi::broadcast(comm(), tmplist, mpirank);
+               times::comm_dur += times::stop(times::comm_start);
+               for(Index i=0; i<num_send; i++){
+                  times::comm_start = times::start();
+                  Index p_index = tmplist[i];
+                  particle[p_index]->Communicator(comm(), mpirank);
+                  times::comm_dur += times::stop(times::comm_start);
+                  particle[p_index]->findCell(block);
+                  times::comm_start = times::start();
+                  bool active = particle[p_index]->isActive();
+                  active = boost::mpi::all_reduce(comm(), particle[p_index]->isActive(), std::logical_or<bool>());
+                  times::comm_dur += times::stop(times::comm_start);
+                  if(!active){
+                     particle[p_index]->Deactivate();
+                  }
+               }
+            }
+
+            ingrid = false;
             for(Index i=0; i<numpoints; i++){
-                bool traced = false;
-                while(particle[i]->findCell(block)){
-double celloc_old = times::celloc_dur;
-double integr_old = times::integr_dur;
-times::integr_start = times::start();
-                    particle[i]->Step();
-times::integr_dur += times::stop(times::integr_start)-(times::celloc_dur-celloc_old)-(times::integr_dur-integr_old);
-                    traced = true;
-                }
-                if(traced){
-                    sendlist.push_back(i);
-                }
+
+               if(particle[i]->inGrid()){
+
+                  ingrid = true;
+                  break;
+               }
             }
+         }
+         sendlist.clear();
+      }
 
-            for(int mpirank=0; mpirank<mpisize; mpirank++){
-times::comm_start = times::start();
-                Index num_send = sendlist.size();
-                boost::mpi::broadcast(comm(), num_send, mpirank);
-times::comm_dur += times::stop(times::comm_start);
-                if(num_send>0){
-                    std::vector<Index> tmplist = sendlist;
-times::comm_start = times::start();
-                    boost::mpi::broadcast(comm(), tmplist, mpirank);
-times::comm_dur += times::stop(times::comm_start);
-                    for(Index i=0; i<num_send; i++){
-times::comm_start = times::start();
-                        Index p_index = tmplist[i];
-                        particle[p_index]->Communicator(comm(), mpirank);
-times::comm_dur += times::stop(times::comm_start);
-                        particle[p_index]->findCell(block);
-times::comm_start = times::start();
-                        bool active = particle[p_index]->isActive();
-                        active = boost::mpi::all_reduce(comm(), particle[p_index]->isActive(), std::logical_or<bool>());
-times::comm_dur += times::stop(times::comm_start);
-                        if(!active){
-                            particle[p_index]->Deactivate();
-                        }
-                    }
-                }
+      //add Lines-objects to output port
+      for(Index i=0; i<numblocks; i++){
 
-                ingrid = false;
-                for(Index i=0; i<numpoints; i++){
+         Meta meta(i, t);
+         meta.setNumTimesteps(grid_in.size());
+         meta.setNumBlocks(numblocks);
 
-                    if(particle[i]->inGrid()){
+         Lines::ptr lines = block[i]->getLines();
+         lines->setMeta(meta);
+         addObject("geom_out", lines);
 
-                        ingrid = true;
-                        break;
-                    }
-                }
+         std::vector<Vec<Scalar, 3>::ptr> v_vec = block[i]->getIplVec();
+         Vec<Scalar, 3>::ptr v;
+         if(v_vec.size()>0){
+            v = v_vec[0];
+            v->setMeta(meta);
+            addObject("data_out0", v);
+         }
+
+         if(data_in1[t][0]){
+            std::vector<Vec<Scalar>::ptr> p_vec = block[i]->getIplScal();
+            Vec<Scalar>::ptr p;
+            if(p_vec.size()>0){
+               p->setMeta(meta);
+               addObject("data_out1", p);
+               p = p_vec[0];
             }
-            sendlist.clear();
-    }
+         }
+      }
+   }
 
-        //add Lines-objects to output port
-        for(Index i=0; i<numblocks; i++){
-
-            Lines::ptr lines = block[i]->getLines();
-            if(lines->getNumElements()>0){
-
-                addObject("geom_out", lines);
-            }
-
-            std::vector<Vec<Scalar, 3>::ptr> v_vec = block[i]->getIplVec();
-            Vec<Scalar, 3>::ptr v;
-            if(v_vec.size()>0){
-                v = v_vec[0];
-                addObject("data_out0", v);
-            }
-
-            if(data_in1[0]){
-                std::vector<Vec<Scalar>::ptr> p_vec = block[i]->getIplScal();
-                Vec<Scalar>::ptr p;
-                if(p_vec.size()>0){
-                    addObject("data_out1", p);
-                    p = p_vec[0];
-                }
-            }
-        }
-
-    comm().barrier();
-    times::total_dur = times::stop(times::total_start);
-    times::output();
-    return true;
+   comm().barrier();
+   times::total_dur = times::stop(times::total_start);
+   times::output();
+   return true;
 }
