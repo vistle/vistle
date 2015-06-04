@@ -48,7 +48,7 @@ namespace vistle {
 
 class V_COREEXPORT Meta {
    public:
-      Meta(int timestep=-1, int block=-1, int animationstep=-1, int iteration=-1, int execcount=-1, int creator=-1);
+      Meta(int block=-1, int timestep=-1, int animationstep=-1, int iteration=-1, int execcount=-1, int creator=-1);
       int block() const { return m_block; }
       void setBlock(int block) { m_block = block; }
       int numBlocks() const { return m_numBlocks; }
