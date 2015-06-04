@@ -1,5 +1,8 @@
 #ifndef TRACER_H
 #define TRACER_H
+
+#include <future>
+
 #include <core/unstr.h>
 #include <module/module.h>
 #include <core/lines.h>
@@ -18,6 +21,7 @@ public:
     virtual bool reduce(int timestep);
 
     std::vector<std::vector<vistle::UnstructuredGrid::const_ptr>> grid_in;
+    std::vector<std::vector<std::future<vistle::Celltree3::const_ptr>>> celltree;
     std::vector<std::vector<vistle::Vec<vistle::Scalar,3>::const_ptr>> data_in0;
     std::vector<std::vector<vistle::Vec<vistle::Scalar>::const_ptr>> data_in1;
     vistle::Vector3 Integration(const vistle::Vector3 &p0, const vistle::Vector3 &v0, const vistle::Scalar &dt);

@@ -312,6 +312,7 @@ void Particle::Communicator(boost::mpi::communicator mpi_comm, int root){
 bool Tracer::prepare(){
 
     grid_in.clear();
+    celltree.clear();
     data_in0.clear();
     data_in1.clear();
 
@@ -329,13 +330,6 @@ bool Tracer::compute() {
     if (!grid || !data0)
        return true;
 
-    if (useCelltree) {
-       grid->getCelltree();
-       if (!grid->validateCelltree()) {                                                                                                                                                                                                                                                        
-          std::cerr << "celltree validation failed" << std::endl;
-       }
-    }
-
     int t = data0->getTimestep();
     if (grid->getTimestep() >= 0) {
        if (t != grid->getTimestep()) {
@@ -347,8 +341,13 @@ bool Tracer::compute() {
 
     if (grid_in.size() <= t) {
        grid_in.resize(t+1);
+       celltree.resize(t+1);
        data_in0.resize(t+1);
        data_in1.resize(t+1);
+    }
+
+    if (useCelltree) {
+       celltree[t].emplace_back(std::async(std::launch::async, [grid]() -> Celltree3::const_ptr { return grid->getCelltree(); }));
     }
 
     grid_in[t].push_back(grid);
@@ -372,6 +371,7 @@ bool Tracer::reduce(int timestep) {
    times::total_start = times::start();
 
    //get parameters
+   bool useCelltree = m_useCelltree->getValue();
    Index numpoints = getIntParameter("no_startp");
    Index steps_max = getIntParameter("steps_max");
 
@@ -400,6 +400,9 @@ bool Tracer::reduce(int timestep) {
       std::vector<std::unique_ptr<BlockData>> block(numblocks);
       for(Index i=0; i<numblocks; i++){
 
+         if (useCelltree) {
+            celltree[t][i].get();
+         }
          block[i].reset(new BlockData(i, grid_in[t][i], data_in0[t][i], data_in1[t][i]));
       }
 
