@@ -153,12 +153,12 @@ bool IsoSurface::compute() {
 
    auto gridS = expect<UnstructuredGrid>("grid_in");
    if (!gridS)
-      return false;
+      return true;
 
 #ifndef CUTTINGSURFACE
    auto dataS = expect<Vec<Scalar>>("data_in");
    if (!dataS)
-      return false;
+      return true;
 #endif
 
    Leveller l(gridS, isoValue, processorType
