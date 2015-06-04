@@ -134,7 +134,7 @@ typename Type::const_ptr Module::expect(Port *port) {
    vassert(obj->check());
    if (!ret) {
       std::stringstream str;
-      str << "received " << Object::toString(Type::type()) << " at " << port->getName() << ", but " << Object::toString(Type::type()) << " is required" << std::endl;
+      str << "received " << Object::toString(obj->getType()) << " at " << port->getName() << ", but " << Object::toString(Type::type()) << " is required" << std::endl;
       sendError(str.str());
    }
    return ret;
