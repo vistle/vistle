@@ -94,7 +94,6 @@ public:
     bool findCell(const std::vector<std::unique_ptr<BlockData>> &block);
     void Deactivate();
     void Step();
-    vistle::Vector3 Interpolator(vistle::Index el, vistle::Vector3 point);
     void Communicator(boost::mpi::communicator mpi_comm, int root);
     bool leftNode();
 };

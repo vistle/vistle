@@ -283,18 +283,6 @@ void Particle::Step(){
     m_stp++;
 }
 
-Vector3 Particle::Interpolator(Index el, Vector3 point){
-
-    UnstructuredGrid::const_ptr grid = m_block->getGrid();
-    Vec<Scalar, 3>::const_ptr v_data = m_block->getVecFld();
-    Vec<Scalar>::const_ptr p_data = m_block->getScalFld();
-    UnstructuredGrid::Interpolator interpolator = grid->getInterpolator(el, point);
-    Scalar* u = v_data->x().data();
-    Scalar* v = v_data->y().data();
-    Scalar* w = v_data->z().data();
-    return interpolator(u,v,w);
-}
-
 void Particle::Communicator(boost::mpi::communicator mpi_comm, int root){
 
     boost::mpi::broadcast(mpi_comm, m_x, root);
