@@ -20,7 +20,7 @@ bool Indexed::checkImpl() const {
 
    V_CHECK (el().size() > 0);
    if (getNumElements() > 0) {
-      V_CHECK (el()[0] < getNumCorners());
+      V_CHECK (el()[0] == 0);
       V_CHECK (el()[getNumElements()-1] < getNumCorners());
       V_CHECK (el()[getNumElements()] == getNumCorners());
    }
