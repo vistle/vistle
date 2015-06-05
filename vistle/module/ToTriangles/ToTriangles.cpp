@@ -8,6 +8,7 @@
 #include <core/normals.h>
 #include <core/polygons.h>
 #include <core/spheres.h>
+#include <core/tubes.h>
 
 #include "ToTriangles.h"
 
@@ -34,11 +35,19 @@ struct ReplicateData {
    Object::const_ptr object;
    Object::ptr &result;
    Index n;
-   ReplicateData(Object::const_ptr obj, Object::ptr &result, Index n)
+   Index nElem;
+   const Index *const el;
+   Index nStart, nEnd;
+   ReplicateData(Object::const_ptr obj, Object::ptr &result, Index n, Index nElem, Index *el, Index nStart, Index nEnd)
       : object(obj)
       , result(result)
       , n(n)
+      , nElem(nElem)
+      , el(el)
+      , nStart(nStart)
+      , nEnd(nEnd)
       {
+         vassert(nElem==0 || el);
       }
    template<typename S> void operator()(S) {
 
@@ -47,27 +56,46 @@ struct ReplicateData {
       if (!in)
          return;
 
-      typename V::ptr out(new V(in->getSize()*n));
+      typename V::ptr out(new V(in->getSize()*n+nElem*(nStart+nEnd)));
       for (int i=0; i<Dim; ++i) {
          auto din = in->x(i).data();
          auto dout = out->x(i).data();
 
-         for (Index j=0; j<in->getSize(); ++j) {
-            for (Index k=0; k<n; ++k) {
-               *dout++ = *din;
+         const Index N = in->getSize();
+         if (el) {
+            for (Index e=0; e<nElem; ++e) {
+               const Index start = el[e], end = el[e+1];
+               for (Index k=0; k<nStart; ++k) {
+                  *dout++ = *din;
+               }
+               for (Index i=start; i<end; ++i) {
+                  for (Index k=0; k<n; ++k) {
+                     *dout++ = *din;
+                  }
+                  ++din;
+               }
+               for (Index k=0; k<nEnd; ++k) {
+                  *dout++ = *(din-1);
+               }
             }
-            ++din;
+         } else {
+            for (Index j=0; j<N; ++j) {
+               for (Index k=0; k<n; ++k) {
+                  *dout++ = *din;
+               }
+               ++din;
+            }
          }
       }
       result = out;
    }
 };
 
-Object::ptr replicateData(Object::const_ptr src, Index n) {
+Object::ptr replicateData(Object::const_ptr src, Index n, Index nElem=0, Index *el=nullptr, Index nStart=0, Index nEnd=0) {
 
    Object::ptr result;
-   boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, n));
-   boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, n));
+   boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, n, nElem, el, nStart, nEnd));
+   boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, n, nElem, el, nStart, nEnd));
    return result;
 }
 
@@ -224,6 +252,234 @@ bool ToTriangles::compute() {
 
       if (data) {
          auto out = replicateData(data, CoordPerSphere);
+         addObject("data_out", out);
+
+      }
+   }
+
+   if (auto tube = Tubes::as(obj)) {
+      const int NumSeg = 5;
+      BOOST_STATIC_ASSERT(NumSeg >= 3);
+      Index TriPerSection = NumSeg * 2;
+
+      Index n = tube->getNumTubes();
+      Index s = tube->getNumCoords();
+      auto x = tube->x().data();
+      auto y = tube->y().data();
+      auto z = tube->z().data();
+      auto r = tube->r().data();
+      auto el = tube->components().data();
+      const auto startStyle = tube->startStyle();
+      const auto endStyle = tube->endStyle();
+
+      Index numCoordStart = 0, numCoordEnd = 0;
+      Index numIndStart = 0, numIndEnd = 0;
+      if (startStyle != Tubes::Open) {
+         numCoordStart = 1+NumSeg;
+         numIndStart = 3*NumSeg;
+      }
+      if (endStyle == Tubes::Arrow) {
+         numCoordEnd = 3*NumSeg;
+         numIndEnd = 3*3*NumSeg;
+      } else if (endStyle == Tubes::Flat) {
+         numCoordEnd = 1+NumSeg;
+         numIndEnd = 3*NumSeg;
+      }
+
+      Triangles::ptr tri(new Triangles((s-n)*3*TriPerSection+n*(numIndStart+numIndEnd), s*NumSeg+n*(numCoordStart+numCoordEnd)));
+      auto tx = tri->x().data();
+      auto ty = tri->y().data();
+      auto tz = tri->z().data();
+      auto ti = tri->cl().data();
+
+      Normals::ptr norm(new Normals(s*NumSeg+n*(numCoordStart+numCoordEnd)));
+      vassert(norm->getSize() == tri->getSize());
+      auto nx = norm->x().data();
+      auto ny = norm->y().data();
+      auto nz = norm->z().data();
+
+      Index ci = 0; // coord index
+      Index ii = 0; // index index
+      for (Index i=0; i<n; ++i) {
+         const Index begin = el[i], end = el[i+1];
+
+         Vector normal;
+         for (Index k=begin; k<end; ++k) {
+
+            Vector cur(x[k], y[k], z[k]);
+            Vector next = k+1<end ? Vector(x[k+1], y[k+1], z[k+1]) : Vector(0., 0., 0.);
+
+            Vector l1 = next - cur;
+            Vector dir;
+            if (k == begin) {
+               dir = l1.normalized();
+            } else {
+               Vector l2(x[k]-x[k-1], y[k]-y[k-1], z[k]-z[k-1]);
+               if (k+1 == end) {
+                  dir = l2.normalized();
+               } else {
+                  dir = (l1.normalized()+l2.normalized()).normalized();
+               }
+            }
+
+            if (k == begin) {
+               normal = dir.cross(Vector(0,0,1)).normalized();
+            } else {
+               normal = (normal-dir.dot(normal)*dir).normalized();
+            }
+
+            Quaternion qrot(AngleAxis(2.*M_PI/NumSeg, dir));
+            const auto rot = qrot.toRotationMatrix();
+            const auto rot2 = Quaternion(AngleAxis(M_PI/NumSeg, dir)).toRotationMatrix();
+
+            // start cap
+            if (k == begin && startStyle != Tubes::Open) {
+               tx[ci] = cur[0];
+               ty[ci] = cur[1];
+               tz[ci] = cur[2];
+               nx[ci] = dir[0];
+               ny[ci] = dir[1];
+               nz[ci] = dir[2];
+               ++ci;
+
+               for (Index l=0; l<NumSeg; ++l) {
+                  ti[ii++] = ci-1;
+                  ti[ii++] = ci+l;
+                  ti[ii++] = ci+(l+1)%NumSeg;
+               }
+
+               Vector rad = normal;
+               for (Index l=0; l<NumSeg; ++l) {
+                  nx[ci] = dir[0];
+                  ny[ci] = dir[1];
+                  nz[ci] = dir[2];
+                  Vector p = cur+r[k]*rad;
+                  rad = rot * rad;
+                  tx[ci] = p[0];
+                  ty[ci] = p[1];
+                  tz[ci] = p[2];
+                  ++ci;
+               }
+            }
+
+            // indices
+            if (k+1 < end) {
+               for (Index l=0; l<NumSeg; ++l) {
+                  ti[ii++] = ci+l;
+                  ti[ii++] = ci+(l+1)%NumSeg;
+                  ti[ii++] = ci+(l+1)%NumSeg+NumSeg;
+                  ti[ii++] = ci+l;
+                  ti[ii++] = ci+(l+1)%NumSeg+NumSeg;
+                  ti[ii++] = ci+l+NumSeg;
+               }
+            }
+
+            // coordinates and normals
+            for (Index l=0; l<NumSeg; ++l) {
+               nx[ci] = normal[0];
+               ny[ci] = normal[1];
+               nz[ci] = normal[2];
+               Vector p = cur+r[k]*normal;
+               normal = rot * normal;
+               tx[ci] = p[0];
+               ty[ci] = p[1];
+               tz[ci] = p[2];
+               ++ci;
+            }
+
+            // end cap/arrow
+            if (k+1 == end) {
+               if (endStyle==Tubes::Arrow) {
+
+                  Index tipStart = ci;
+                  for (Index l=0; l<NumSeg; ++l) {
+                     tx[ci] = tx[ci-NumSeg];
+                     ty[ci] = ty[ci-NumSeg];
+                     tz[ci] = tz[ci-NumSeg];
+                     nx[ci] = dir[0];
+                     ny[ci] = dir[1];
+                     nz[ci] = dir[2];
+                     ++ci;
+                  }
+
+                  Vector tip = cur + Scalar(1.5)*dir*r[k];
+                  for (Index l=0; l<NumSeg; ++l) {
+                     Vector norm = (normal+dir).normalized();
+                     Vector p = cur+Scalar(1.5)*r[k]*normal;
+                     normal = rot * normal;
+
+                     nx[ci] = norm[0];
+                     ny[ci] = norm[1];
+                     nz[ci] = norm[2];
+                     tx[ci] = p[0];
+                     ty[ci] = p[1];
+                     tz[ci] = p[2];
+                     ++ci;
+                  }
+
+                  normal = rot2 * normal;
+                  for (Index l=0; l<NumSeg; ++l) {
+                     Vector norm = (normal+dir).normalized();
+                     normal = rot * normal;
+
+                     nx[ci] = norm[0];
+                     ny[ci] = norm[1];
+                     nz[ci] = norm[2];
+                     tx[ci] = tip[0];
+                     ty[ci] = tip[1];
+                     tz[ci] = tip[2];
+                     ++ci;
+                  }
+
+                  for (Index l=0; l<NumSeg; ++l) {
+                     ti[ii++] = tipStart+l;
+                     ti[ii++] = tipStart+(l+1)%NumSeg;
+                     ti[ii++] = tipStart+NumSeg+(l+1)%NumSeg;
+
+                     ti[ii++] = tipStart+NumSeg+(l+1)%NumSeg;
+                     ti[ii++] = tipStart+NumSeg+l;
+                     ti[ii++] = tipStart+l;
+
+                     ti[ii++] = tipStart+NumSeg+l;
+                     ti[ii++] = tipStart+NumSeg+(l+1)%NumSeg;
+                     ti[ii++] = tipStart+2*NumSeg+l;
+                  }
+               } else if (endStyle == Tubes::Flat) {
+
+                  for (Index l=0; l<NumSeg; ++l) {
+                     tx[ci] = tx[ci-NumSeg];
+                     ty[ci] = ty[ci-NumSeg];
+                     tz[ci] = tz[ci-NumSeg];
+                     nx[ci] = dir[0];
+                     ny[ci] = dir[1];
+                     nz[ci] = dir[2];
+                     ++ci;
+                  }
+
+                  tx[ci] = cur[0];
+                  ty[ci] = cur[1];
+                  tz[ci] = cur[2];
+                  nx[ci] = dir[0];
+                  ny[ci] = dir[1];
+                  nz[ci] = dir[2];
+                  for (Index l=0; l<NumSeg; ++l) {
+                     ti[ii++] = ci-NumSeg+l;
+                     ti[ii++] = ci-NumSeg+(l+1)%NumSeg;
+                     ti[ii++] = ci;
+                  }
+                  ++ci;
+               }
+            }
+         }
+      }
+      vassert(ci == s*NumSeg+n*(numCoordStart+numCoordEnd));
+      vassert(ii == (s-n)*3*TriPerSection+n*(numIndStart+numIndEnd));
+
+      addObject("grid_out", tri);
+      addObject("normal_out", norm);
+
+      if (data) {
+         auto out = replicateData(data, NumSeg, n, el, numCoordStart, numCoordEnd);
          addObject("data_out", out);
       }
    }
