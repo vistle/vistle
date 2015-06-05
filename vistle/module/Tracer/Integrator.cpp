@@ -108,14 +108,13 @@ bool Integrator::Euler(){
 bool Integrator::RK32(){
 
             bool accept = false;
-            Vector3 x2nd,x3rd;
-            Vector3 k[3];
-            Vector3 xtmp;
             Index el=m_ptcl->m_el;
+            Vector3 x3rd;
+            Vector3 k[3];
             k[0] = Interpolator(m_ptcl->m_block,m_ptcl->m_el, m_ptcl->m_x);
             m_ptcl->m_v = k[0];
             m_ptcl->m_vhist.push_back(m_ptcl->m_v);
-            xtmp = m_ptcl->m_x + m_h*k[0];
+            Vector xtmp = m_ptcl->m_x + m_h*k[0];
             UnstructuredGrid::const_ptr grid = m_ptcl->m_block->getGrid();
             do {
                 if(!grid->inside(el,xtmp)){
@@ -141,7 +140,7 @@ bool Integrator::RK32(){
                     }
                 }
                 k[2] = Interpolator(m_ptcl->m_block,el,xtmp);
-                x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
+                Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
                 x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
 
                 accept = hNew(x3rd,x2nd);

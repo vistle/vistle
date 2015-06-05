@@ -30,6 +30,7 @@
 #include "Integrator.h"
 #include "TracerTimes.h"
 
+const vistle::Scalar Epsilon = 1e-8;
 
 MODULE_MAIN(Tracer)
 
@@ -148,12 +149,12 @@ void BlockData::addLines(const std::vector<Vector3> &points,
                 Index numcorn = m_lines->getNumCorners();
                 m_lines->cl().push_back(numcorn);
 
-                m_ivec[0]->x().push_back(velocities[0](0));
-                m_ivec[0]->y().push_back(velocities[0](1));
-                m_ivec[0]->z().push_back(velocities[0](2));
+                m_ivec[0]->x().push_back(velocities[i](0));
+                m_ivec[0]->y().push_back(velocities[i](1));
+                m_ivec[0]->z().push_back(velocities[i](2));
 
                 if(pressures.size()==numpoints){
-                    m_iscal[0]->x().push_back(pressures[0]);
+                    m_iscal[0]->x().push_back(pressures[i]);
                 }
             }
         }
@@ -200,7 +201,8 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
         return false;
     }
 
-    if(m_stp == m_stpmax){
+    bool moving = m_v.norm() > Epsilon;
+    if(m_stp == m_stpmax || !moving){
 
         PointsToLines();
         this->Deactivate();
@@ -208,27 +210,20 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
         return false;
     }
 
-    bool moving = (m_v(0)!=0 || m_v(1)!=0 || 0 || m_v(2)!=0);
-    if(!moving){
-
-        PointsToLines();
-        this->Deactivate();
-        m_ingrid = false;
-        return false;
-    }
-
-    if(m_block){
+    if(m_block) {
 
         UnstructuredGrid::const_ptr grid = m_block->getGrid();
         if(grid->inside(m_el, m_x)){
             return true;
-        }times::celloc_start = times::start();
+        }
+        times::celloc_start = times::start();
         m_el = grid->findCell(m_x);
         times::celloc_dur += times::stop(times::celloc_start);
         if(m_el!=InvalidIndex){
             return true;
         }
-        else{
+        else
+        {
             PointsToLines();
             m_block = nullptr;
             m_in = true;
