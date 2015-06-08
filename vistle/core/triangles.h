@@ -12,22 +12,21 @@ class V_COREEXPORT Triangles: public Coords {
  public:
    typedef Coords Base;
 
-   Triangles(const Index numCorners, const Index numVertices,
+   Triangles(const Index numCorners, const Index numCoords,
              const Meta &meta=Meta());
 
    Index getNumElements() const;
    Index getNumCorners() const;
-   Index getNumVertices() const;
 
    shm<Index>::array &cl() const { return *(*d()->cl)(); }
 
    V_DATA_BEGIN(Triangles);
       ShmVector<Index>::ptr cl;
 
-      Data(const Index numCorners = 0, const Index numVertices = 0,
+      Data(const Index numCorners = 0, const Index numCoords = 0,
             const std::string & name = "",
             const Meta &meta=Meta());
-      static Data *create(const Index numCorners = 0, const Index numVertices = 0,
+      static Data *create(const Index numCorners = 0, const Index numCoords = 0,
             const Meta &meta=Meta());
    V_DATA_END(Triangles);
 };
