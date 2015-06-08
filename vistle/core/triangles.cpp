@@ -18,6 +18,9 @@ bool Triangles::checkImpl() const {
    if (getNumCorners() > 0) {
       V_CHECK (cl()[0] < getNumVertices());
       V_CHECK (cl()[getNumCorners()-1] < getNumVertices());
+      V_CHECK (getNumCorners() % 3 == 0);
+   } else {
+      V_CHECK (getNumCoords() % 3 == 0);
    }
    return true;
 }
