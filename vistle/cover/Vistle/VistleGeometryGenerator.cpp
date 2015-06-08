@@ -210,40 +210,51 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
                corners->push_back(corner);
          }
 
-         std::vector<osg::Vec3> *vertexNormals = new std::vector<osg::Vec3>[numVertices];
-         if (numCorners > 0) {
-            for (Index c = 0; c < numCorners; c += 3) {
-               osg::Vec3 u(x[cl[c + 0]], y[cl[c + 0]], z[cl[c + 0]]);
-               osg::Vec3 v(x[cl[c + 1]], y[cl[c + 1]], z[cl[c + 1]]);
-               osg::Vec3 w(x[cl[c + 2]], y[cl[c + 2]], z[cl[c + 2]]);
-               osg::Vec3 normal = (w - u) ^ (v - u) * -1;
-               normal.normalize();
-               vertexNormals[cl[c]].push_back(normal);
-               vertexNormals[cl[c + 1]].push_back(normal);
-               vertexNormals[cl[c + 2]].push_back(normal);
-            }
-         } else {
-            for (Index c = 0; c < numVertices; c += 3) {
-               osg::Vec3 u(x[c + 0], y[c + 0], z[c + 0]);
-               osg::Vec3 v(x[c + 1], y[c + 1], z[c + 1]);
-               osg::Vec3 w(x[c + 2], y[c + 2], z[c + 2]);
-               osg::Vec3 normal = (w - u) ^ (v - u) * -1;
-               normal.normalize();
-               vertexNormals[c].push_back(normal);
-               vertexNormals[c + 1].push_back(normal);
-               vertexNormals[c + 2].push_back(normal);
-            }
-         }
-
          osg::ref_ptr<osg::Vec3Array> norm = new osg::Vec3Array();
-         for (Index vertex = 0; vertex < numVertices; vertex ++) {
-            osg::Vec3 n;
-            std::vector<osg::Vec3>::iterator i;
-            for (i = vertexNormals[vertex].begin(); i != vertexNormals[vertex].end(); i ++)
-               n += *i;
-            norm->push_back(n);
+         if (m_normal) {
+            vistle::Normals::const_ptr vec = vistle::Normals::as(m_normal);
+            auto x = vec->x().data(), y = vec->y().data(), z = vec->z().data();
+            for (Index vertex = 0; vertex < numVertices; vertex ++) {
+               osg::Vec3 n(x[vertex], y[vertex], z[vertex]);
+               n.normalize();
+               norm->push_back(n);
+            }
+
+         } else {
+            std::vector<osg::Vec3> *vertexNormals = new std::vector<osg::Vec3>[numVertices];
+            if (numCorners > 0) {
+               for (Index c = 0; c < numCorners; c += 3) {
+                  osg::Vec3 u(x[cl[c + 0]], y[cl[c + 0]], z[cl[c + 0]]);
+                  osg::Vec3 v(x[cl[c + 1]], y[cl[c + 1]], z[cl[c + 1]]);
+                  osg::Vec3 w(x[cl[c + 2]], y[cl[c + 2]], z[cl[c + 2]]);
+                  osg::Vec3 normal = (w - u) ^ (v - u) * -1;
+                  normal.normalize();
+                  vertexNormals[cl[c]].push_back(normal);
+                  vertexNormals[cl[c + 1]].push_back(normal);
+                  vertexNormals[cl[c + 2]].push_back(normal);
+               }
+            } else {
+               for (Index c = 0; c < numVertices; c += 3) {
+                  osg::Vec3 u(x[c + 0], y[c + 0], z[c + 0]);
+                  osg::Vec3 v(x[c + 1], y[c + 1], z[c + 1]);
+                  osg::Vec3 w(x[c + 2], y[c + 2], z[c + 2]);
+                  osg::Vec3 normal = (w - u) ^ (v - u) * -1;
+                  normal.normalize();
+                  vertexNormals[c].push_back(normal);
+                  vertexNormals[c + 1].push_back(normal);
+                  vertexNormals[c + 2].push_back(normal);
+               }
+            }
+
+            for (Index vertex = 0; vertex < numVertices; vertex ++) {
+               osg::Vec3 n;
+               std::vector<osg::Vec3>::iterator i;
+               for (i = vertexNormals[vertex].begin(); i != vertexNormals[vertex].end(); i ++)
+                  n += *i;
+               norm->push_back(n);
+            }
+            delete[] vertexNormals;
          }
-         delete[] vertexNormals;
 
          state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
 
@@ -452,7 +463,7 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
          if(vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex)) {
 
             if (tex->getNumElements() != coords->getNumCoords()) {
-               std::cerr << "VistleGeometryGenerator: Coords: texture size mismatch" << std::endl;
+               std::cerr << "VistleGeometryGenerator: Coords: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumElements() << std::endl;
             } else {
                osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
                osgTex->setDataVariance(osg::Object::DYNAMIC);
