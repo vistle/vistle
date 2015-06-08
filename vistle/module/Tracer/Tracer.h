@@ -7,6 +7,8 @@
 #include <module/module.h>
 #include <core/lines.h>
 
+#include "Integrator.h"
+
 
 class Tracer: public vistle::Module {
 
@@ -37,26 +39,30 @@ public:
 
 class BlockData{
 
+    friend class Integrator;
+
 private:
     vistle::UnstructuredGrid::const_ptr m_grid;
-    vistle::Vec<vistle::Scalar, 3>::const_ptr m_xecfld;
+    vistle::Vec<vistle::Scalar, 3>::const_ptr m_vecfld;
     vistle::Vec<vistle::Scalar>::const_ptr m_scafld;
     vistle::Lines::ptr m_lines;
     std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> m_ivec;
     std::vector<vistle::Vec<vistle::Scalar>::ptr> m_iscal;
+    const vistle::Scalar *m_vx, *m_vy, *m_vz, *m_p;
 
 public:
     BlockData(vistle::Index i,
               vistle::UnstructuredGrid::const_ptr grid,
               vistle::Vec<vistle::Scalar, 3>::const_ptr vdata,
               vistle::Vec<vistle::Scalar>::const_ptr pdata = nullptr);
+    ~BlockData();
+
     vistle::UnstructuredGrid::const_ptr getGrid();
     vistle::Vec<vistle::Scalar, 3>::const_ptr getVecFld();
     vistle::Vec<vistle::Scalar>::const_ptr getScalFld();
     vistle::Lines::ptr getLines();
     std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> getIplVec();
     std::vector<vistle::Vec<vistle::Scalar>::ptr> getIplScal();
-    ~BlockData();
     void addLines(const std::vector<vistle::Vector3> &points,
                  const std::vector<vistle::Vector3> &velocities,
                  const std::vector<vistle::Scalar> &pressures);
@@ -64,24 +70,24 @@ public:
 
 class Integrator;
 
-class Particle{
+class Particle {
 
     friend class Integrator;
 
 private:
-    vistle::Vector3 m_x;
-    vistle::Vector3 m_xold;
-    std::vector<vistle::Vector3> m_xhist;
-    vistle::Vector3 m_v;
-    std::vector<vistle::Vector3> m_vhist;
-    std::vector<vistle::Scalar> m_pressures;
-    vistle::Index m_stp;
-    BlockData* m_block;
-    vistle::Index m_el;
-    bool m_ingrid;
-    bool m_in;
-    Integrator* m_integrator;
-    const vistle::Index m_stpmax;
+    vistle::Vector3 m_x; //!< current position
+    vistle::Vector3 m_xold; //!< previous position
+    std::vector<vistle::Vector3> m_xhist; //!< trajectory
+    vistle::Vector3 m_v; //!< current velocity
+    std::vector<vistle::Vector3> m_vhist; //!< previous velocities
+    std::vector<vistle::Scalar> m_pressures; //!< previous pressures
+    vistle::Index m_stp; //!< current integration step
+    BlockData* m_block; //!< block for current particle position
+    vistle::Index m_el; //!< index of cell for current particle position
+    bool m_ingrid; //!< particle still within domain on some rank
+    bool m_init; //!< particle is new - has to be initialized
+    Integrator m_integrator;
+    const vistle::Index m_stpmax; //!< maximum number of integration steps
 
 public:
     Particle(vistle::Index i, const vistle::Vector3 &pos, vistle::Scalar h, vistle::Scalar hmin,
@@ -93,7 +99,7 @@ public:
     bool inGrid();
     bool findCell(const std::vector<std::unique_ptr<BlockData>> &block);
     void Deactivate();
-    void Step();
+    bool Step();
     void Communicator(boost::mpi::communicator mpi_comm, int root);
     bool leftNode();
 };

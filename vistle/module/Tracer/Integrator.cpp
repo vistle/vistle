@@ -60,6 +60,19 @@ void Integrator::hInit(){
 }
 
 bool Integrator::Step(){
+
+   const auto &block = m_ptcl->m_block;
+   const auto &grid = block->getGrid();
+   const auto &el = m_ptcl->m_el;
+   const auto &point = m_ptcl->m_x;
+   const auto inter = grid->getInterpolator(el, point);
+   m_ptcl->m_xhist.push_back(point);
+   m_ptcl->m_v = inter(block->m_vx, block->m_vy, block->m_vz);
+   m_ptcl->m_vhist.push_back(m_ptcl->m_v);
+   if (block->m_p) {
+      m_ptcl->m_pressures.push_back(inter(block->m_p));
+   }
+
     switch(m_mode){
     case 0:
         return RK32();
@@ -96,62 +109,55 @@ bool Integrator::hNew(Vector3 higher, Vector3 lower){
     }
 }
 
-bool Integrator::Euler(){
+bool Integrator::Euler() {
 
-    m_ptcl->m_v = Interpolator(m_ptcl->m_block,m_ptcl->m_el, m_ptcl->m_x);
-    m_ptcl->m_vhist.push_back(m_ptcl->m_v);
-    m_ptcl->m_x = m_ptcl->m_x + m_ptcl->m_v*m_h;
-    m_ptcl->m_xhist.push_back(m_ptcl->m_x);
-    return true;
+   m_ptcl->m_x = m_ptcl->m_x + m_ptcl->m_v*m_h;
+   return true;
 }
 
-bool Integrator::RK32(){
+bool Integrator::RK32() {
 
-            bool accept = false;
-            Index el=m_ptcl->m_el;
-            Vector3 x3rd;
-            Vector3 k[3];
-            k[0] = Interpolator(m_ptcl->m_block,m_ptcl->m_el, m_ptcl->m_x);
-            m_ptcl->m_v = k[0];
-            m_ptcl->m_vhist.push_back(m_ptcl->m_v);
-            Vector xtmp = m_ptcl->m_x + m_h*k[0];
-            UnstructuredGrid::const_ptr grid = m_ptcl->m_block->getGrid();
-            do {
-                if(!grid->inside(el,xtmp)){
-                    times::celloc_start = times::start();
-                    el = grid->findCell(xtmp);
-                    times::celloc_dur += times::stop(times::celloc_start);
-                    if(el==InvalidIndex){
-                        m_ptcl->m_x = xtmp;
-                        m_ptcl->m_xhist.push_back(m_ptcl->m_x);
-                        return false;
-                    }
-                }
-                k[1] = Interpolator(m_ptcl->m_block,el, xtmp);
-                xtmp = m_ptcl->m_x +m_h*0.25*(k[0]+k[1]);
-                if(!grid->inside(el,xtmp)){
-                    times::celloc_start = times::start();
-                    el = grid->findCell(xtmp);
-                    times::celloc_dur += times::stop(times::celloc_start);
-                    if(el==InvalidIndex){
-                        m_ptcl->m_x = m_ptcl->m_x + m_h*0.5*(k[0]+k[1]);
-                        m_ptcl->m_xhist.push_back(m_ptcl->m_x);
-                        return false;
-                    }
-                }
-                k[2] = Interpolator(m_ptcl->m_block,el,xtmp);
-                Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
-                x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
+   bool accept = false;
+   Index el=m_ptcl->m_el;
+   Vector3 x3rd;
+   Vector3 k[3];
+   k[0] = Interpolator(m_ptcl->m_block,m_ptcl->m_el, m_ptcl->m_x);
+   m_ptcl->m_v = k[0];
+   Vector xtmp = m_ptcl->m_x + m_h*k[0];
+   UnstructuredGrid::const_ptr grid = m_ptcl->m_block->getGrid();
+   do {
+      if(!grid->inside(el,xtmp)){
+         times::celloc_start = times::start();
+         el = grid->findCell(xtmp);
+         times::celloc_dur += times::stop(times::celloc_start);
+         if(el==InvalidIndex){
+            m_ptcl->m_x = xtmp;
+            return false;
+         }
+      }
+      k[1] = Interpolator(m_ptcl->m_block,el, xtmp);
+      xtmp = m_ptcl->m_x +m_h*0.25*(k[0]+k[1]);
+      if(!grid->inside(el,xtmp)){
+         times::celloc_start = times::start();
+         el = grid->findCell(xtmp);
+         times::celloc_dur += times::stop(times::celloc_start);
+         if(el==InvalidIndex){
+            m_ptcl->m_x = m_ptcl->m_x + m_h*0.5*(k[0]+k[1]);
+            return false;
+         }
+      }
+      k[2] = Interpolator(m_ptcl->m_block,el,xtmp);
+      Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
+      x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
 
-                accept = hNew(x3rd,x2nd);
-                if(!accept){
-                    el = m_ptcl->m_el;
-                    xtmp = m_ptcl->m_x + m_h*k[0];
-                }
-            } while(!accept);
-            m_ptcl->m_x = x3rd;
-            m_ptcl->m_xhist.push_back(m_ptcl->m_x);
-            return true;
+      accept = hNew(x3rd,x2nd);
+      if(!accept){
+         el = m_ptcl->m_el;
+         xtmp = m_ptcl->m_x + m_h*k[0];
+      }
+   } while(!accept);
+   m_ptcl->m_x = x3rd;
+   return true;
 }
 
 Vector3 Integrator::Interpolator(BlockData* bl, Index el,const Vector3 &point){

@@ -80,10 +80,25 @@ BlockData::BlockData(Index i,
           UnstructuredGrid::const_ptr grid,
           Vec<Scalar, 3>::const_ptr vdata,
           Vec<Scalar>::const_ptr pdata):
-    m_grid(grid),
-    m_xecfld(vdata),
-    m_scafld(pdata),
-    m_lines(new Lines(Object::Initialized)){
+m_grid(grid),
+m_vecfld(vdata),
+m_scafld(pdata),
+m_lines(new Lines(Object::Initialized)),
+m_vx(nullptr),
+m_vy(nullptr),
+m_vz(nullptr),
+m_p(nullptr)
+{
+
+   if (m_vecfld) {
+      m_vx = m_vecfld->x().data();
+      m_vy = m_vecfld->y().data();
+      m_vz = m_vecfld->z().data();
+   }
+
+   if (m_scafld) {
+      m_p = m_scafld->x().data();
+   }
 }
 
 BlockData::~BlockData(){}
@@ -93,7 +108,7 @@ UnstructuredGrid::const_ptr BlockData::getGrid(){
 }
 
 Vec<Scalar, 3>::const_ptr BlockData::getVecFld(){
-    return m_xecfld;
+    return m_vecfld;
 }
 
 Vec<Scalar>::const_ptr BlockData::getScalFld(){
@@ -114,74 +129,76 @@ std::vector<Vec<Scalar>::ptr> BlockData::getIplScal(){
 
 void BlockData::addLines(const std::vector<Vector3> &points,
              const std::vector<Vector3> &velocities,
-             const std::vector<Scalar> &pressures){
+             const std::vector<Scalar> &pressures) {
 
-        Index numpoints = points.size();
-        Scalar phi_max = 1e-03;
+   Scalar phi_max = 1e-03;
+   Index numpoints = points.size();
+   assert(numpoints == velocities.size());
+   assert(!p || pressures.size()==numpoints);
 
-        if(m_ivec.size()==0){
-            m_ivec.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
-        }
+   if(m_ivec.empty()) {
+      m_ivec.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
+   }
 
-        if(pressures.size()==numpoints && m_iscal.size()==0){
-            m_iscal.emplace_back(new Vec<Scalar>(Object::Initialized));
-        }
+   if(m_iscal.empty() && m_p) {
+      m_iscal.emplace_back(new Vec<Scalar>(Object::Initialized));
+   }
 
-        for(Index i=0; i<numpoints; i++){
+   for(Index i=0; i<numpoints; i++) {
 
-            bool addpoint = true;
-            if(i>1 && i<numpoints-1){
+      bool addpoint = true;
+      if(i>1 && i<numpoints-1){
 
-                Vector3 vec1 = points[i-1]-points[i-2];
-                Vector3 vec2 = points[i]-points[i-1];
-                Scalar cos_phi = vec1.dot(vec2)/(vec1.norm()*vec2.norm());
-                Scalar phi = acos(cos_phi);
-                if(phi<phi_max){
-                    addpoint = false;
-                }
-            }
+         Vector3 vec1 = points[i-1]-points[i-2];
+         Vector3 vec2 = points[i]-points[i-1];
+         Scalar cos_phi = vec1.dot(vec2)/(vec1.norm()*vec2.norm());
+         Scalar phi = acos(cos_phi);
+         if(phi<phi_max){
+            addpoint = false;
+         }
+      }
 
-            if(addpoint){
+      if(addpoint){
 
-                m_lines->x().push_back(points[i](0));
-                m_lines->y().push_back(points[i](1));
-                m_lines->z().push_back(points[i](2));
-                Index numcorn = m_lines->getNumCorners();
-                m_lines->cl().push_back(numcorn);
+         m_lines->x().push_back(points[i](0));
+         m_lines->y().push_back(points[i](1));
+         m_lines->z().push_back(points[i](2));
+         Index numcorn = m_lines->getNumCorners();
+         m_lines->cl().push_back(numcorn);
 
-                m_ivec[0]->x().push_back(velocities[i](0));
-                m_ivec[0]->y().push_back(velocities[i](1));
-                m_ivec[0]->z().push_back(velocities[i](2));
+         m_ivec[0]->x().push_back(velocities[i](0));
+         m_ivec[0]->y().push_back(velocities[i](1));
+         m_ivec[0]->z().push_back(velocities[i](2));
 
-                if(pressures.size()==numpoints){
-                    m_iscal[0]->x().push_back(pressures[i]);
-                }
-            }
-        }
-        Index numcorn = m_lines->getNumCorners();
-        m_lines->el().push_back(numcorn);
-    }
+         if (m_p) {
+            m_iscal[0]->x().push_back(pressures[i]);
+         }
+      }
+   }
+   Index numcorn = m_lines->getNumCorners();
+   m_lines->el().push_back(numcorn);
+}
 
 
 Particle::Particle(Index i, const Vector3 &pos, Scalar h, Scalar hmin,
-                   Scalar hmax, Scalar errtol, int int_mode,const std::vector<std::unique_ptr<BlockData>> &bl,
-                   Index stepsmax):
-    m_x(pos),
-    m_v(Vector3(1,0,0)),
-    m_stp(0),
-    m_block(nullptr),
-    m_el(InvalidIndex),
-    m_ingrid(true),
-    m_in(true),
-    m_integrator(new Integrator(h,hmin,hmax,errtol,int_mode,this)),
-    m_stpmax(stepsmax){
+      Scalar hmax, Scalar errtol, int int_mode,const std::vector<std::unique_ptr<BlockData>> &bl,
+      Index stepsmax):
+m_x(pos),
+m_v(Vector3(1,0,0)), // keep large enough so that particle moves initially
+m_stp(0),
+m_block(nullptr),
+m_el(InvalidIndex),
+m_ingrid(true),
+m_init(true),
+m_integrator(h,hmin,hmax,errtol,int_mode,this),
+m_stpmax(stepsmax) {
 
-        if(findCell(bl)){
-            if(int_mode==0){
-                m_integrator->hInit();
-            }
-        }
-    }
+   if(findCell(bl)) {
+      if(int_mode==0) {
+         m_integrator.hInit();
+      }
+   }
+}
 
 Particle::~Particle(){}
 
@@ -197,7 +214,7 @@ bool Particle::inGrid(){
 
 bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
 
-    if(!(m_block||m_in) || !m_ingrid){
+    if(!(m_block||m_init) || !m_ingrid){
         return false;
     }
 
@@ -219,38 +236,31 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
         times::celloc_start = times::start();
         m_el = grid->findCell(m_x);
         times::celloc_dur += times::stop(times::celloc_start);
-        if(m_el!=InvalidIndex){
+        if(m_el!=InvalidIndex) {
             return true;
         }
         else
         {
             PointsToLines();
             m_block = nullptr;
-            m_in = true;
-            findCell(block);
+            m_init = true;
         }
     }
 
-    if(m_in){
-        m_in = false;
-        for(Index i=0; i<block.size(); i++){
+    if(m_init) {
+        m_init = false;
+        for(Index i=0; i<block.size(); i++) {
 
             UnstructuredGrid::const_ptr grid = block[i]->getGrid();
             times::celloc_start = times::start();
             m_el = grid->findCell(m_x);
             times::celloc_dur += times::stop(times::celloc_start);
-            if(m_el!=InvalidIndex){
+            if(m_el!=InvalidIndex) {
 
                 m_block = block[i].get();
-                if(m_stp!=0){
-                    m_vhist.push_back(m_v);
-                }
-                m_xhist.push_back(m_x);
                 return true;
             }
         }
-
-        return false;
     }
 
     return false;
@@ -258,9 +268,8 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
 
 void Particle::PointsToLines(){
 
-    m_vhist.push_back(m_v);
-    //m_pressures.push_back(m_pressures.back());
     m_block->addLines(m_xhist,m_vhist,m_pressures);
+
     m_xhist.clear();
     m_vhist.clear();
     m_pressures.clear();
@@ -272,10 +281,11 @@ void Particle::Deactivate(){
     m_ingrid = false;
 }
 
-void Particle::Step(){
+bool Particle::Step() {
 
-    m_integrator->Step();
+    bool ret = m_integrator.Step();
     m_stp++;
+    return ret;
 }
 
 void Particle::Communicator(boost::mpi::communicator mpi_comm, int root){
@@ -283,11 +293,11 @@ void Particle::Communicator(boost::mpi::communicator mpi_comm, int root){
     boost::mpi::broadcast(mpi_comm, m_x, root);
     boost::mpi::broadcast(mpi_comm, m_stp, root);
     boost::mpi::broadcast(mpi_comm, m_ingrid, root);
-    boost::mpi::broadcast(mpi_comm,m_integrator->m_h,root);
+    boost::mpi::broadcast(mpi_comm, m_integrator.m_h, root);
 
     if(mpi_comm.rank()!=root){
 
-        m_in = true;
+        m_init = true;
     }
 }
 
@@ -408,9 +418,11 @@ bool Tracer::reduce(int timestep) {
       times::comm_dur += times::stop(times::comm_start);
       bool ingrid = true;
       int mpisize = comm().size();
-      std::vector<Index> sendlist(0);
       while(ingrid){
 
+         std::vector<Index> sendlist;
+
+//#pragma omp parallel for
          for(Index i=0; i<numpoints; i++){
             bool traced = false;
             while(particle[i]->findCell(block)){
@@ -422,11 +434,12 @@ bool Tracer::reduce(int timestep) {
                traced = true;
             }
             if(traced){
+//#pragma omp critical
                sendlist.push_back(i);
             }
          }
 
-         for(int mpirank=0; mpirank<mpisize; mpirank++){
+         for(int mpirank=0; mpirank<mpisize; mpirank++) {
             times::comm_start = times::start();
             Index num_send = sendlist.size();
             boost::mpi::broadcast(comm(), num_send, mpirank);
@@ -462,7 +475,6 @@ bool Tracer::reduce(int timestep) {
                }
             }
          }
-         sendlist.clear();
       }
 
       //add Lines-objects to output port
@@ -488,9 +500,9 @@ bool Tracer::reduce(int timestep) {
             std::vector<Vec<Scalar>::ptr> p_vec = block[i]->getIplScal();
             Vec<Scalar>::ptr p;
             if(p_vec.size()>0){
+               p = p_vec[0];
                p->setMeta(meta);
                addObject("data_out1", p);
-               p = p_vec[0];
             }
          }
       }

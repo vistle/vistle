@@ -1,3 +1,6 @@
+#ifndef TRACER_INTEGRATOR_H
+#define TRACER_INTEGRATOR_H
+
 #include <core/vec.h>
 
 
@@ -27,3 +30,5 @@ public:
     void hInit();
     bool hNew(vistle::Vector3 higher, vistle::Vector3 lower);
 };
+
+#endif
