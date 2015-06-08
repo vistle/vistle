@@ -128,6 +128,8 @@ bool ToTubes::compute() {
    tubes->d()->components = lines->d()->el;
 
    tubes->setCapStyles((Tubes::CapStyle)m_startStyle->getValue(), (Tubes::CapStyle)m_jointStyle->getValue(), (Tubes::CapStyle)m_endStyle->getValue());
+   tubes->setMeta(lines->meta());
+   tubes->copyAttributes(lines);
    addObject("grid_out", tubes);
 
    return true;

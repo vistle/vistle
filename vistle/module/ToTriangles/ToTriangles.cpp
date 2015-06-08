@@ -475,11 +475,16 @@ bool ToTriangles::compute() {
       vassert(ci == s*NumSeg+n*(numCoordStart+numCoordEnd));
       vassert(ii == (s-n)*3*TriPerSection+n*(numIndStart+numIndEnd));
 
+      tri->setMeta(obj->meta());
+      tri->copyAttributes(obj);
       addObject("grid_out", tri);
+      norm->setMeta(obj->meta());
       addObject("normal_out", norm);
 
       if (data) {
          auto out = replicateData(data, NumSeg, n, el, numCoordStart, numCoordEnd);
+         out->setMeta(data->meta());
+         out->copyAttributes(data);
          addObject("data_out", out);
       }
    }

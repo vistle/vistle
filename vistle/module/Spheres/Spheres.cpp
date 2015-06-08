@@ -81,6 +81,8 @@ bool ToSpheres::compute() {
 
       r[i] = clamp(r[i], rmin, rmax);
    }
+   spheres->setMeta(v->meta());
+   spheres->copyAttributes(v);
    addObject("grid_out", spheres);
 
    return true;
