@@ -733,20 +733,28 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
    }
 #ifndef NDEBUG
    Scalar total = 0;
-#ifdef INTERPOL_DEBUG
-   std::cerr << "weights:";
-#endif
+   bool ok = true;
    for (const auto w: weights) {
-      vassert(w >= -1e-4);
+      if (w < -1e-4)
+         ok = false;
       total += w;
-#ifdef INTERPOL_DEBUG
-      std::cerr << " " << w;
-#endif
    }
-#ifdef INTERPOL_DEBUG
-   std::cerr << ", total: " << total << std::endl;
+   if (fabs(total - 1) > 1e-4)
+      ok = false;
+
+#ifndef INTERPOL_DEBUG
+   if (!ok)
 #endif
-   vassert(fabs(total - 1) < 1e-4);
+   {
+      if (!ok) {
+         std::cerr << "PROBLEM: ";
+      }
+      std::cerr << "weights:";
+      for (const auto w: weights) {
+         std::cerr << " " << w;
+      }
+      std::cerr << ", total: " << total << std::endl;
+   }
 #endif
 
    return Interpolator(weights, indices);
