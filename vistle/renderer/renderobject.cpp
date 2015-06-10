@@ -1,4 +1,5 @@
 #include <core/coords.h>
+#include <core/coordswradius.h>
 #include <core/assert.h>
 
 #include "renderobject.h"
@@ -50,7 +51,16 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
       }
    }
 
-   if (auto coords = Coords::as(geometry)) {
+   if (auto coords = CoordsWithRadius::as(geometry)) {
+      for (Index i=0; i<coords->getNumCoords(); ++i) {
+         for (int c=0; c<3; ++c) {
+            if (coords->x(c)[i]-coords->r()[i] < bMin[c])
+               bMin[c] = coords->x(c)[i]-coords->r()[i];
+            if (coords->x(c)[i]+coords->r()[i] > bMax[c])
+               bMax[c] = coords->x(c)[i]+coords->r()[i];
+         }
+      }
+   } else if (auto coords = Coords::as(geometry)) {
 
       for (Index i=0; i<coords->getNumCoords(); ++i) {
          for (int c=0; c<3; ++c) {
