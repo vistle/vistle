@@ -1,4 +1,5 @@
 vistle_find_package(LibVncServer)
+vistle_find_package(TBB)
 
 set(renderer_SOURCES
    renderer.cpp
@@ -11,7 +12,7 @@ set(renderer_HEADERS
    renderobject.h
 )
 
-if(LIBVNCSERVER_FOUND)
+if(LIBVNCSERVER_FOUND AND TBB_FOUND)
    set(renderer_SOURCES ${renderer_SOURCES}
       vnccontroller.cpp
       parrendmgr.cpp
@@ -21,6 +22,7 @@ if(LIBVNCSERVER_FOUND)
       parrendmgr.h
    )
    include_directories(
+      ${TBB_INCLUDE_DIR}
       ${LIBVNCSERVER_INCLUDE_DIR}
       ${ICET_INCLUDE_DIRS}
    )
@@ -44,7 +46,7 @@ target_link_libraries(vistle_renderer
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
 )
-if(LIBVNCSERVER_FOUND)
+if(LIBVNCSERVER_FOUND AND TBB_FOUND)
    target_link_libraries(vistle_renderer
       vistle_rhr
       ${ICET_CORE_LIBS}

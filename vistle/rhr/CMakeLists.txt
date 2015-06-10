@@ -35,7 +35,6 @@ endif()
 
 set(RHR_SOURCES
    depthquant.cpp
-   vncserver.cpp
    )
 
 set(RHR_HEADERS
@@ -44,7 +43,7 @@ set(RHR_HEADERS
    ReadBackCuda.h
    )
 
-if(LIBVNCSERVER_FOUND)
+if(LIBVNCSERVER_FOUND AND TBB_FOUND)
    set(RHR_SOURCES ${RHR_SOURCES} vncserver.cpp)
    set(RHR_HEADERS ${RHR_HEADERS} vncserver.h)
    include_directories(

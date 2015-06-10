@@ -27,6 +27,11 @@ if(NOT SNAPPY_FOUND)
    return()
 endif()
 
+if (NOT TBB_FOUND)
+   message("OsgRenderer: TBB not found")
+   return()
+endif()
+
 if(TBB_FOUND)
     #if (NOT OPENMP_FOUND)
       add_definitions(-DUSE_TBB)

@@ -18,6 +18,11 @@ if(NOT LIBVNCSERVER_FOUND)
    return()
 endif()
 
+if (NOT TBB_FOUND)
+   message("DisCOVERay: TBB not found")
+   return()
+endif()
+
 if(NOT SNAPPY_FOUND)
    message("DisCOVERay: Snappy not found")
    return()
