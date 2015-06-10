@@ -1,13 +1,19 @@
 vistle_find_package(LibVncServer)
+vistle_find_package(TBB)
 if(NOT LIBVNCSERVER_FOUND)
    return()
 endif()
+if(NOT TBB_FOUND)
+   return()
+endif()
+
 
 using(SNAPPY optional)
 
 include_directories(
    ${PROJECT_SOURCE_DIR}
    ${LIBVNCSERVER_INCLUDE_DIR}
+   ${TBB_INCLUDE_DIR}
 )
 
 set(HEADERS
