@@ -134,7 +134,7 @@ void BlockData::addLines(const std::vector<Vector3> &points,
    Scalar phi_max = 1e-03;
    Index numpoints = points.size();
    assert(numpoints == velocities.size());
-   assert(!p || pressures.size()==numpoints);
+   assert(!m_p || pressures.size()==numpoints);
 
    if(m_ivec.empty()) {
       m_ivec.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
