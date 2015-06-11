@@ -131,7 +131,6 @@ void BlockData::addLines(const std::vector<Vector3> &points,
              const std::vector<Vector3> &velocities,
              const std::vector<Scalar> &pressures) {
 
-   Scalar phi_max = 1e-03;
    Index numpoints = points.size();
    assert(numpoints == velocities.size());
    assert(!m_p || pressures.size()==numpoints);
@@ -146,33 +145,18 @@ void BlockData::addLines(const std::vector<Vector3> &points,
 
    for(Index i=0; i<numpoints; i++) {
 
-      bool addpoint = true;
-      if(i>1 && i<numpoints-1){
+      m_lines->x().push_back(points[i](0));
+      m_lines->y().push_back(points[i](1));
+      m_lines->z().push_back(points[i](2));
+      Index numcorn = m_lines->getNumCorners();
+      m_lines->cl().push_back(numcorn);
 
-         Vector3 vec1 = points[i-1]-points[i-2];
-         Vector3 vec2 = points[i]-points[i-1];
-         Scalar cos_phi = vec1.dot(vec2)/(vec1.norm()*vec2.norm());
-         Scalar phi = acos(cos_phi);
-         if(phi<phi_max){
-            addpoint = false;
-         }
-      }
+      m_ivec[0]->x().push_back(velocities[i](0));
+      m_ivec[0]->y().push_back(velocities[i](1));
+      m_ivec[0]->z().push_back(velocities[i](2));
 
-      if(addpoint){
-
-         m_lines->x().push_back(points[i](0));
-         m_lines->y().push_back(points[i](1));
-         m_lines->z().push_back(points[i](2));
-         Index numcorn = m_lines->getNumCorners();
-         m_lines->cl().push_back(numcorn);
-
-         m_ivec[0]->x().push_back(velocities[i](0));
-         m_ivec[0]->y().push_back(velocities[i](1));
-         m_ivec[0]->z().push_back(velocities[i](2));
-
-         if (m_p) {
-            m_iscal[0]->x().push_back(pressures[i]);
-         }
+      if (m_p) {
+         m_iscal[0]->x().push_back(pressures[i]);
       }
    }
    Index numcorn = m_lines->getNumCorners();
