@@ -59,7 +59,7 @@ void Integrator::hInit(){
     if(m_h<m_hmin){m_h = m_hmin;}
 }
 
-bool Integrator::Step(){
+bool Integrator::Step(Index step){
 
    const auto &block = m_ptcl->m_block;
    const auto &grid = block->getGrid();
@@ -69,6 +69,7 @@ bool Integrator::Step(){
    m_ptcl->m_xhist.push_back(point);
    m_ptcl->m_v = inter(block->m_vx, block->m_vy, block->m_vz);
    m_ptcl->m_vhist.push_back(m_ptcl->m_v);
+   m_ptcl->m_steps.push_back(step);
    if (block->m_p) {
       m_ptcl->m_pressures.push_back(inter(block->m_p));
    }

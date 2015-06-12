@@ -50,6 +50,8 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     createOutputPort("geom_out");
     createOutputPort("data_out0");
     createOutputPort("data_out1");
+    createOutputPort("particle_id");
+    createOutputPort("timestep");
 
     addVectorParameter("startpoint1", "1st initial point", ParamVector(0,0.2,0));
     addVectorParameter("startpoint2", "2nd initial point", ParamVector(1,0,0));
@@ -103,6 +105,19 @@ m_p(nullptr)
 
 BlockData::~BlockData(){}
 
+void BlockData::setMeta(const vistle::Meta &meta) {
+
+   m_lines->setMeta(meta);
+   m_ids->setMeta(meta);
+   m_steps->setMeta(meta);
+   for (auto &v: m_ivec) {
+      v->setMeta(meta);
+   }
+   for (auto &s: m_iscal) {
+      s->setMeta(meta);
+   }
+}
+
 UnstructuredGrid::const_ptr BlockData::getGrid(){
     return m_grid;
 }
@@ -127,9 +142,18 @@ std::vector<Vec<Scalar>::ptr> BlockData::getIplScal(){
     return m_iscal;
 }
 
-void BlockData::addLines(const std::vector<Vector3> &points,
+Vec<Index>::ptr BlockData::ids() const {
+   return m_ids;
+}
+
+Vec<Index>::ptr BlockData::steps() const {
+   return m_steps;
+}
+
+void BlockData::addLines(Index id, const std::vector<Vector3> &points,
              const std::vector<Vector3> &velocities,
-             const std::vector<Scalar> &pressures) {
+             const std::vector<Scalar> &pressures,
+             const std::vector<Index> &steps) {
 
    Index numpoints = points.size();
    assert(numpoints == velocities.size());
@@ -141,6 +165,13 @@ void BlockData::addLines(const std::vector<Vector3> &points,
 
    if(m_iscal.empty() && m_p) {
       m_iscal.emplace_back(new Vec<Scalar>(Object::Initialized));
+   }
+
+   if (!m_steps) {
+      m_steps.reset(new Vec<Index>(Object::Initialized));
+   }
+   if (!m_ids) {
+      m_ids.reset(new Vec<Index>(Object::Initialized));
    }
 
    for(Index i=0; i<numpoints; i++) {
@@ -158,6 +189,9 @@ void BlockData::addLines(const std::vector<Vector3> &points,
       if (m_p) {
          m_iscal[0]->x().push_back(pressures[i]);
       }
+
+      m_ids->x().push_back(id);
+      m_steps->x().push_back(steps[i]);
    }
    Index numcorn = m_lines->getNumCorners();
    m_lines->el().push_back(numcorn);
@@ -167,6 +201,7 @@ void BlockData::addLines(const std::vector<Vector3> &points,
 Particle::Particle(Index i, const Vector3 &pos, Scalar h, Scalar hmin,
       Scalar hmax, Scalar errtol, int int_mode,const std::vector<std::unique_ptr<BlockData>> &bl,
       Index stepsmax):
+m_id(i),
 m_x(pos),
 m_v(Vector3(1,0,0)), // keep large enough so that particle moves initially
 m_stp(0),
@@ -252,11 +287,12 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
 
 void Particle::PointsToLines(){
 
-    m_block->addLines(m_xhist,m_vhist,m_pressures);
+    m_block->addLines(m_id,m_xhist,m_vhist,m_pressures,m_steps);
 
     m_xhist.clear();
     m_vhist.clear();
     m_pressures.clear();
+    m_steps.clear();
 }
 
 void Particle::Deactivate(){
@@ -267,7 +303,7 @@ void Particle::Deactivate(){
 
 bool Particle::Step() {
 
-    bool ret = m_integrator.Step();
+    bool ret = m_integrator.Step(m_stp);
     m_stp++;
     return ret;
 }
@@ -468,15 +504,16 @@ bool Tracer::reduce(int timestep) {
          meta.setNumTimesteps(grid_in.size());
          meta.setNumBlocks(numblocks);
 
+         block[i]->setMeta(meta);
          Lines::ptr lines = block[i]->getLines();
-         lines->setMeta(meta);
          addObject("geom_out", lines);
+         addObject("particle_id", block[i]->ids());
+         addObject("timestep", block[i]->steps());
 
          std::vector<Vec<Scalar, 3>::ptr> v_vec = block[i]->getIplVec();
          Vec<Scalar, 3>::ptr v;
          if(v_vec.size()>0){
             v = v_vec[0];
-            v->setMeta(meta);
             addObject("data_out0", v);
          }
 
@@ -485,7 +522,6 @@ bool Tracer::reduce(int timestep) {
             Vec<Scalar>::ptr p;
             if(p_vec.size()>0){
                p = p_vec[0];
-               p->setMeta(meta);
                addObject("data_out1", p);
             }
          }

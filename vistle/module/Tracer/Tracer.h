@@ -48,6 +48,8 @@ private:
     vistle::Lines::ptr m_lines;
     std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> m_ivec;
     std::vector<vistle::Vec<vistle::Scalar>::ptr> m_iscal;
+    vistle::Vec<vistle::Index>::ptr m_ids;
+    vistle::Vec<vistle::Index>::ptr m_steps;
     const vistle::Scalar *m_vx, *m_vy, *m_vz, *m_p;
 
 public:
@@ -57,15 +59,19 @@ public:
               vistle::Vec<vistle::Scalar>::const_ptr pdata = nullptr);
     ~BlockData();
 
+    void setMeta(const vistle::Meta &meta);
     vistle::UnstructuredGrid::const_ptr getGrid();
+    vistle::Vec<vistle::Index>::ptr ids() const;
+    vistle::Vec<vistle::Index>::ptr steps() const;
     vistle::Vec<vistle::Scalar, 3>::const_ptr getVecFld();
     vistle::Vec<vistle::Scalar>::const_ptr getScalFld();
     vistle::Lines::ptr getLines();
     std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> getIplVec();
     std::vector<vistle::Vec<vistle::Scalar>::ptr> getIplScal();
-    void addLines(const std::vector<vistle::Vector3> &points,
+    void addLines(vistle::Index id, const std::vector<vistle::Vector3> &points,
                  const std::vector<vistle::Vector3> &velocities,
-                 const std::vector<vistle::Scalar> &pressures);
+                 const std::vector<vistle::Scalar> &pressures,
+                 const std::vector<vistle::Index> &steps);
 };
 
 class Integrator;
@@ -75,12 +81,14 @@ class Particle {
     friend class Integrator;
 
 private:
+    vistle::Index m_id; //!< particle id
     vistle::Vector3 m_x; //!< current position
     vistle::Vector3 m_xold; //!< previous position
     std::vector<vistle::Vector3> m_xhist; //!< trajectory
     vistle::Vector3 m_v; //!< current velocity
     std::vector<vistle::Vector3> m_vhist; //!< previous velocities
     std::vector<vistle::Scalar> m_pressures; //!< previous pressures
+    std::vector<vistle::Index> m_steps; //!< previous steps
     vistle::Index m_stp; //!< current integration step
     BlockData* m_block; //!< block for current particle position
     vistle::Index m_el; //!< index of cell for current particle position

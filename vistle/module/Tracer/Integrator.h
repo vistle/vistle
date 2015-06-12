@@ -23,7 +23,7 @@ public:
     Integrator(vistle::Scalar h, vistle::Scalar hmin,
                vistle::Scalar hmax, vistle::Scalar errtol,
                int int_mode, Particle* ptcl);
-    bool Step();
+    bool Step(vistle::Index step);
     bool Euler();
     bool RK32();
     vistle::Vector3 Interpolator(BlockData* bl, vistle::Index el,const vistle::Vector3 &point);
