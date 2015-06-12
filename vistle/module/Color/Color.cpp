@@ -159,6 +159,28 @@ vistle::Object::ptr Color::addTexture(vistle::Object::const_ptr object,
       return tex;
    }
 
+   if (Vec<Index>::const_ptr f = Vec<Index>::as(object)) {
+
+      const size_t numElem = f->getSize();
+      const vistle::Index *x = &f->x()[0];
+
+      vistle::Texture1D::ptr tex(new vistle::Texture1D(cmap.width, min, max));
+      tex->setMeta(object->meta());
+
+      unsigned char *pix = &tex->pixels()[0];
+#pragma omp parallel for
+      for (size_t index = 0; index < cmap.width * 4; index ++)
+         pix[index] = cmap.data[index];
+
+      tex->coords().resize(numElem);
+      auto tc = tex->coords().data();
+#pragma omp parallel for
+      for (size_t index = 0; index < numElem; index ++)
+         tc[index] = (x[index] - min) / range;
+
+      return tex;
+   }
+
    if (Vec<Scalar,3>::const_ptr f = Vec<Scalar,3>::as(object)) {
 
       const size_t numElem = f->getSize();
