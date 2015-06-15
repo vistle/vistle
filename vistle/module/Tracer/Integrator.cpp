@@ -20,43 +20,27 @@ Integrator::Integrator(vistle::Scalar h, vistle::Scalar hmin,
 }
 
 void Integrator::hInit(){
+    if (m_mode != 0)
+        return;
+
     Vector3 v = Interpolator(m_ptcl->m_block, m_ptcl->m_el, m_ptcl->m_x);
-    unsigned char dimmax=0;
-    if(std::abs(v(1))>std::abs(v(dimmax))){dimmax=1;}
-    if(std::abs(v(2))>std::abs(v(dimmax))){dimmax=2;}
+    Vector3::Index dimmax = 0, dummy;
+    v.maxCoeff(&dimmax, &dummy);
     Scalar vmax = std::abs(v(dimmax));
     UnstructuredGrid::const_ptr grid = m_ptcl->m_block->getGrid();
-    Index numvert = grid->el()[m_ptcl->m_el+1] - grid->el()[m_ptcl->m_el];
-    Scalar dmin,dmax;
-    switch(dimmax){
-    case 0:
-        dmin = grid->x()[grid->cl()[grid->el()[m_ptcl->m_el]]];
-        dmax = dmin;
-        for(Index i=1; i<numvert; i++){
-            dmin = std::min<Scalar>(dmin,grid->x()[grid->cl()[grid->el()[m_ptcl->m_el]+i]]);
-            dmax = std::max<Scalar>(dmax,grid->x()[grid->cl()[grid->el()[m_ptcl->m_el]+i]]);
-        }
-        break;
-    case 1:
-        dmin = grid->y()[grid->cl()[grid->el()[m_ptcl->m_el]]];
-        dmax = dmin;
-        for(Index i=1; i<numvert; i++){
-            dmin = std::min<Scalar>(dmin,grid->y()[grid->cl()[grid->el()[m_ptcl->m_el]+i]]);
-            dmax = std::max<Scalar>(dmax,grid->y()[grid->cl()[grid->el()[m_ptcl->m_el]+i]]);
-        }
-        break;
-    case 2:
-        dmin = grid->z()[grid->cl()[grid->el()[m_ptcl->m_el]]];
-        dmax = dmin;
-        for(Index i=1; i<numvert; i++){
-            dmin = std::min<Scalar>(dmin,grid->z()[grid->cl()[grid->el()[m_ptcl->m_el]+i]]);
-            dmax = std::max<Scalar>(dmax,grid->z()[grid->cl()[grid->el()[m_ptcl->m_el]+i]]);
-        }
+    Index end = grid->el()[m_ptcl->m_el+1];
+    Index begin = grid->el()[m_ptcl->m_el];
+    Scalar dmin = std::numeric_limits<Scalar>::max(), dmax = -std::numeric_limits<Scalar>::max();
+    for(Index i=begin; i<end; i++){
+       const Scalar s = grid->x(dimmax)[grid->cl()[i]];
+       dmin = std::min<Scalar>(dmin,s);
+       dmax = std::max<Scalar>(dmax,s);
     }
+
     Scalar chlen = dmax-dmin;
     m_h =0.5*chlen/vmax;
-    if(m_h>m_hmax){m_h = m_hmax;}
-    if(m_h<m_hmin){m_h = m_hmin;}
+    if(m_h>m_hmax) {m_h = m_hmax;}
+    if(m_h<m_hmin) {m_h = m_hmin;}
 }
 
 bool Integrator::Step() {

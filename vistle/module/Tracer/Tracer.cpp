@@ -213,9 +213,7 @@ m_integrator(h,hmin,hmax,errtol,int_mode,this),
 m_stpmax(stepsmax) {
 
    if(findCell(bl)) {
-      if(int_mode==0) {
-         m_integrator.hInit();
-      }
+      m_integrator.hInit();
    }
 }
 

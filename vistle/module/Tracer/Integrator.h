@@ -10,7 +10,6 @@ class BlockData;
 class Integrator{
 friend class Particle;
 private:
-    vistle::Vector3 m_k[3];
     vistle::Scalar m_h;
     vistle::Scalar m_hmin;
     vistle::Scalar m_hmax;

@@ -74,8 +74,6 @@ public:
                  const std::vector<vistle::Index> &steps);
 };
 
-class Integrator;
-
 class Particle {
 
     friend class Integrator;
