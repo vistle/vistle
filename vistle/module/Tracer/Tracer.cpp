@@ -301,11 +301,24 @@ void Particle::Deactivate(){
     m_ingrid = false;
 }
 
-bool Particle::Step() {
+bool Particle::Step(bool integrate) {
 
-    bool ret = m_integrator.Step(m_stp);
-    m_stp++;
-    return ret;
+   const auto &grid = m_block->getGrid();
+   const auto &el = m_el;
+   const auto &point = m_x;
+   const auto inter = grid->getInterpolator(el, point);
+   m_xhist.push_back(point);
+   m_v = inter(m_block->m_vx, m_block->m_vy, m_block->m_vz);
+   m_vhist.push_back(m_v);
+   m_steps.push_back(m_stp);
+   if (m_block->m_p) {
+      m_pressures.push_back(inter(m_block->m_p));
+   }
+
+   if (!integrate)
+       return false;
+
+   return m_integrator.Step();
 }
 
 void Particle::Communicator(boost::mpi::communicator mpi_comm, int root){
@@ -454,6 +467,7 @@ bool Tracer::reduce(int timestep) {
                traced = true;
             }
             if(traced){
+               particle[i]->Step(false);
 //#pragma omp critical
                sendlist.push_back(i);
             }

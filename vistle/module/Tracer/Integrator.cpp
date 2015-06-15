@@ -59,20 +59,7 @@ void Integrator::hInit(){
     if(m_h<m_hmin){m_h = m_hmin;}
 }
 
-bool Integrator::Step(Index step){
-
-   const auto &block = m_ptcl->m_block;
-   const auto &grid = block->getGrid();
-   const auto &el = m_ptcl->m_el;
-   const auto &point = m_ptcl->m_x;
-   const auto inter = grid->getInterpolator(el, point);
-   m_ptcl->m_xhist.push_back(point);
-   m_ptcl->m_v = inter(block->m_vx, block->m_vy, block->m_vz);
-   m_ptcl->m_vhist.push_back(m_ptcl->m_v);
-   m_ptcl->m_steps.push_back(step);
-   if (block->m_p) {
-      m_ptcl->m_pressures.push_back(inter(block->m_p));
-   }
+bool Integrator::Step() {
 
     switch(m_mode){
     case 0:
@@ -122,8 +109,7 @@ bool Integrator::RK32() {
    Index el=m_ptcl->m_el;
    Vector3 x3rd;
    Vector3 k[3];
-   k[0] = Interpolator(m_ptcl->m_block,m_ptcl->m_el, m_ptcl->m_x);
-   m_ptcl->m_v = k[0];
+   k[0] = m_ptcl->m_v;
    Vector xtmp = m_ptcl->m_x + m_h*k[0];
    UnstructuredGrid::const_ptr grid = m_ptcl->m_block->getGrid();
    do {

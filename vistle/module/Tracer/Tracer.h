@@ -39,7 +39,7 @@ public:
 
 class BlockData{
 
-    friend class Integrator;
+    friend class Particle;
 
 private:
     vistle::UnstructuredGrid::const_ptr m_grid;
@@ -107,7 +107,7 @@ public:
     bool inGrid();
     bool findCell(const std::vector<std::unique_ptr<BlockData>> &block);
     void Deactivate();
-    bool Step();
+    bool Step(bool integrate=true);
     void Communicator(boost::mpi::communicator mpi_comm, int root);
     bool leftNode();
 };
