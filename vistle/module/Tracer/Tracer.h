@@ -33,6 +33,7 @@ public:
                            vistle::Index lastcell);
 
     vistle::IntParameter *m_useCelltree;
+    bool m_havePressure;
 
 };
 
@@ -84,6 +85,7 @@ private:
     vistle::Vector3 m_xold; //!< previous position
     std::vector<vistle::Vector3> m_xhist; //!< trajectory
     vistle::Vector3 m_v; //!< current velocity
+    vistle::Scalar m_p; //!< current pressure
     std::vector<vistle::Vector3> m_vhist; //!< previous velocities
     std::vector<vistle::Scalar> m_pressures; //!< previous pressures
     std::vector<vistle::Index> m_steps; //!< previous steps
@@ -91,7 +93,7 @@ private:
     BlockData* m_block; //!< block for current particle position
     vistle::Index m_el; //!< index of cell for current particle position
     bool m_ingrid; //!< particle still within domain on some rank
-    bool m_init; //!< particle is new - has to be initialized
+    bool m_searchBlock; //!< particle is new - has to be initialized
     Integrator m_integrator;
     const vistle::Index m_stpmax; //!< maximum number of integration steps
 
@@ -105,8 +107,9 @@ public:
     bool inGrid();
     bool findCell(const std::vector<std::unique_ptr<BlockData>> &block);
     void Deactivate();
-    bool Step(bool integrate=true);
-    void Communicator(boost::mpi::communicator mpi_comm, int root);
+    void EmitData(bool havePressure);
+    bool Step();
+    void Communicator(boost::mpi::communicator mpi_comm, int root, bool havePressure);
     bool leftNode();
 };
 #endif

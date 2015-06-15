@@ -108,13 +108,17 @@ BlockData::~BlockData(){}
 void BlockData::setMeta(const vistle::Meta &meta) {
 
    m_lines->setMeta(meta);
-   m_ids->setMeta(meta);
-   m_steps->setMeta(meta);
+   if (m_ids)
+      m_ids->setMeta(meta);
+   if (m_steps)
+      m_steps->setMeta(meta);
    for (auto &v: m_ivec) {
-      v->setMeta(meta);
+       if (v)
+          v->setMeta(meta);
    }
    for (auto &s: m_iscal) {
-      s->setMeta(meta);
+       if (s)
+          s->setMeta(meta);
    }
 }
 
@@ -208,7 +212,7 @@ m_stp(0),
 m_block(nullptr),
 m_el(InvalidIndex),
 m_ingrid(true),
-m_init(true),
+m_searchBlock(true),
 m_integrator(h,hmin,hmax,errtol,int_mode,this),
 m_stpmax(stepsmax) {
 
@@ -231,7 +235,7 @@ bool Particle::inGrid(){
 
 bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
 
-    if(!(m_block||m_init) || !m_ingrid){
+    if((!m_block && !m_searchBlock) || !m_ingrid){
         return false;
     }
 
@@ -253,19 +257,17 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
         times::celloc_start = times::start();
         m_el = grid->findCell(m_x);
         times::celloc_dur += times::stop(times::celloc_start);
-        if(m_el!=InvalidIndex) {
+        if (m_el!=InvalidIndex) {
             return true;
-        }
-        else
-        {
+        } else {
             PointsToLines();
             m_block = nullptr;
-            m_init = true;
+            m_searchBlock = true;
         }
     }
 
-    if(m_init) {
-        m_init = false;
+    if (m_searchBlock) {
+        m_searchBlock = false;
         for(Index i=0; i<block.size(); i++) {
 
             UnstructuredGrid::const_ptr grid = block[i]->getGrid();
@@ -299,41 +301,52 @@ void Particle::Deactivate(){
     m_ingrid = false;
 }
 
-bool Particle::Step(bool integrate) {
+void Particle::EmitData(bool havePressure) {
 
-   const auto &grid = m_block->getGrid();
-   const auto &el = m_el;
-   const auto &point = m_x;
-   const auto inter = grid->getInterpolator(el, point);
-   m_xhist.push_back(point);
-   m_v = inter(m_block->m_vx, m_block->m_vy, m_block->m_vz);
+   m_xhist.push_back(m_xold);
    m_vhist.push_back(m_v);
    m_steps.push_back(m_stp);
+   if (havePressure)
+      m_pressures.push_back(m_p); // will be ignored later on
+}
+
+bool Particle::Step() {
+
+   const auto &grid = m_block->getGrid();
+   const auto inter = grid->getInterpolator(m_el, m_x);
+   m_v = inter(m_block->m_vx, m_block->m_vy, m_block->m_vz);
    if (m_block->m_p) {
-      m_pressures.push_back(inter(m_block->m_p));
+      m_p = inter(m_block->m_p);
    }
 
-   if (!integrate)
-       return false;
+   m_xold = m_x;
+
+   EmitData(m_block->m_p);
 
    return m_integrator.Step();
 }
 
-void Particle::Communicator(boost::mpi::communicator mpi_comm, int root){
+void Particle::Communicator(boost::mpi::communicator mpi_comm, int root, bool havePressure){
 
     boost::mpi::broadcast(mpi_comm, m_x, root);
+    boost::mpi::broadcast(mpi_comm, m_xold, root);
+    boost::mpi::broadcast(mpi_comm, m_v, root);
     boost::mpi::broadcast(mpi_comm, m_stp, root);
+    if(havePressure)
+       boost::mpi::broadcast(mpi_comm, m_p, root);
     boost::mpi::broadcast(mpi_comm, m_ingrid, root);
     boost::mpi::broadcast(mpi_comm, m_integrator.m_h, root);
 
-    if(mpi_comm.rank()!=root){
+    if (mpi_comm.rank()!=root) {
 
-        m_init = true;
+        m_searchBlock = true;
     }
 }
 
 
 bool Tracer::prepare(){
+
+    m_havePressure = true;
 
     grid_in.clear();
     celltree.clear();
@@ -377,6 +390,8 @@ bool Tracer::compute() {
     grid_in[t].push_back(grid);
     data_in0[t].push_back(data0);
     data_in1[t].push_back(data1);
+    if (!data1)
+        m_havePressure = false;
 
     return true;
 }
@@ -465,7 +480,6 @@ bool Tracer::reduce(int timestep) {
                traced = true;
             }
             if(traced){
-               particle[i]->Step(false);
 //#pragma omp critical
                sendlist.push_back(i);
             }
@@ -484,9 +498,16 @@ bool Tracer::reduce(int timestep) {
                for(Index i=0; i<num_send; i++){
                   times::comm_start = times::start();
                   Index p_index = tmplist[i];
-                  particle[p_index]->Communicator(comm(), mpirank);
+                  particle[p_index]->Communicator(comm(), mpirank, m_havePressure);
                   times::comm_dur += times::stop(times::comm_start);
-                  particle[p_index]->findCell(block);
+               }
+               for(Index i=0; i<num_send; i++){
+                  Index p_index = tmplist[i];
+                  if (particle[p_index]->findCell(block))
+                      particle[p_index]->EmitData(m_havePressure);
+               }
+               for(Index i=0; i<num_send; i++){
+                  Index p_index = tmplist[i];
                   times::comm_start = times::start();
                   bool active = particle[p_index]->isActive();
                   active = boost::mpi::all_reduce(comm(), particle[p_index]->isActive(), std::logical_or<bool>());
