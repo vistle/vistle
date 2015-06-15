@@ -71,6 +71,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addFloatParameter("h_max", "maximum step size for rk32 integration", 1e-02);
     addFloatParameter("err_tol", "desired accuracy for rk32 integration", 1e-06);
     addFloatParameter("h_euler", "fixed step size for euler integration", 1e-03);
+    addFloatParameter("comm_threshold", "ratio of active particles that have to leave current block for starting communication phase", 0.1);
     m_useCelltree = addIntParameter("use_celltree", "use celltree for accelerated cell location", (Integer)1, Parameter::Boolean);
 }
 
@@ -159,46 +160,49 @@ void BlockData::addLines(Index id, const std::vector<Vector3> &points,
              const std::vector<Scalar> &pressures,
              const std::vector<Index> &steps) {
 
-   Index numpoints = points.size();
-   assert(numpoints == velocities.size());
-   assert(!m_p || pressures.size()==numpoints);
+//#pragma omp critical
+    {
+       Index numpoints = points.size();
+       assert(numpoints == velocities.size());
+       assert(!m_p || pressures.size()==numpoints);
 
-   if(m_ivec.empty()) {
-      m_ivec.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
-   }
+       if(m_ivec.empty()) {
+          m_ivec.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
+       }
 
-   if(m_iscal.empty() && m_p) {
-      m_iscal.emplace_back(new Vec<Scalar>(Object::Initialized));
-   }
+       if(m_iscal.empty() && m_p) {
+          m_iscal.emplace_back(new Vec<Scalar>(Object::Initialized));
+       }
 
-   if (!m_steps) {
-      m_steps.reset(new Vec<Index>(Object::Initialized));
-   }
-   if (!m_ids) {
-      m_ids.reset(new Vec<Index>(Object::Initialized));
-   }
+       if (!m_steps) {
+          m_steps.reset(new Vec<Index>(Object::Initialized));
+       }
+       if (!m_ids) {
+          m_ids.reset(new Vec<Index>(Object::Initialized));
+       }
 
-   for(Index i=0; i<numpoints; i++) {
+       for(Index i=0; i<numpoints; i++) {
 
-      m_lines->x().push_back(points[i](0));
-      m_lines->y().push_back(points[i](1));
-      m_lines->z().push_back(points[i](2));
-      Index numcorn = m_lines->getNumCorners();
-      m_lines->cl().push_back(numcorn);
+          m_lines->x().push_back(points[i](0));
+                m_lines->y().push_back(points[i](1));
+                m_lines->z().push_back(points[i](2));
+                Index numcorn = m_lines->getNumCorners();
+          m_lines->cl().push_back(numcorn);
 
-      m_ivec[0]->x().push_back(velocities[i](0));
-      m_ivec[0]->y().push_back(velocities[i](1));
-      m_ivec[0]->z().push_back(velocities[i](2));
+          m_ivec[0]->x().push_back(velocities[i](0));
+                m_ivec[0]->y().push_back(velocities[i](1));
+                m_ivec[0]->z().push_back(velocities[i](2));
 
-      if (m_p) {
-         m_iscal[0]->x().push_back(pressures[i]);
-      }
+                if (m_p) {
+             m_iscal[0]->x().push_back(pressures[i]);
+          }
 
-      m_ids->x().push_back(id);
-      m_steps->x().push_back(steps[i]);
-   }
-   Index numcorn = m_lines->getNumCorners();
-   m_lines->el().push_back(numcorn);
+          m_ids->x().push_back(id);
+          m_steps->x().push_back(steps[i]);
+       }
+       Index numcorn = m_lines->getNumCorners();
+       m_lines->el().push_back(numcorn);
+    }
 }
 
 
@@ -244,7 +248,6 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
 
         PointsToLines();
         this->Deactivate();
-        m_ingrid = false;
         return false;
     }
 
@@ -261,7 +264,6 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
             return true;
         } else {
             PointsToLines();
-            m_block = nullptr;
             m_searchBlock = true;
         }
     }
@@ -271,10 +273,15 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
         for(Index i=0; i<block.size(); i++) {
 
             UnstructuredGrid::const_ptr grid = block[i]->getGrid();
+            if (block[i].get() == m_block) {
+                // don't try previous block again
+                m_block = nullptr;
+                continue;
+            }
             times::celloc_start = times::start();
             m_el = grid->findCell(m_x);
             times::celloc_dur += times::stop(times::celloc_start);
-            if(m_el!=InvalidIndex) {
+            if (m_el!=InvalidIndex) {
 
                 m_block = block[i].get();
                 return true;
@@ -429,6 +436,7 @@ bool Tracer::reduce(int timestep) {
    Scalar dtmin = getFloatParameter("h_min");
    Scalar dtmax = getFloatParameter("h_max");
    Scalar errtol = getFloatParameter("err_tol");
+   Scalar commthresh = getFloatParameter("comm_threshold");
 
 
    Index numtime = grid_in.size();
@@ -447,6 +455,7 @@ bool Tracer::reduce(int timestep) {
 
 
       //create particle objects
+      Index numActive = numpoints;
       std::vector<std::unique_ptr<Particle>> particle(numpoints);
       for(Index i=0; i<numpoints; i++){
 
@@ -459,17 +468,17 @@ bool Tracer::reduce(int timestep) {
          active = boost::mpi::all_reduce(comm(), active, std::logical_or<bool>());
          if(!active){
             particle[i]->Deactivate();
+            --numActive;
          }
       }
       times::comm_dur += times::stop(times::comm_start);
-      bool ingrid = true;
       int mpisize = comm().size();
-      while(ingrid){
+      while(numActive > 0) {
 
          std::vector<Index> sendlist;
 
 //#pragma omp parallel for
-         for(Index i=0; i<numpoints; i++){
+         for(Index i=0; i<numpoints; i++) {
             bool traced = false;
             while(particle[i]->findCell(block)){
                double celloc_old = times::celloc_dur;
@@ -482,31 +491,37 @@ bool Tracer::reduce(int timestep) {
             if(traced){
 //#pragma omp critical
                sendlist.push_back(i);
+               if (sendlist.size() >= commthresh*numActive)
+                   break;
             }
          }
 
+         Index num_send = sendlist.size();
+         std::vector<Index> num_transmit(mpisize);
+         boost::mpi::all_gather(comm(), num_send, num_transmit);
          for(int mpirank=0; mpirank<mpisize; mpirank++) {
             times::comm_start = times::start();
-            Index num_send = sendlist.size();
-            boost::mpi::broadcast(comm(), num_send, mpirank);
             times::comm_dur += times::stop(times::comm_start);
-            if(num_send>0){
+            Index num_recv = num_transmit[mpirank];
+            if(num_recv>0) {
                std::vector<Index> tmplist = sendlist;
                times::comm_start = times::start();
                boost::mpi::broadcast(comm(), tmplist, mpirank);
                times::comm_dur += times::stop(times::comm_start);
-               for(Index i=0; i<num_send; i++){
+               for(Index i=0; i<num_recv; i++){
                   times::comm_start = times::start();
                   Index p_index = tmplist[i];
                   particle[p_index]->Communicator(comm(), mpirank, m_havePressure);
                   times::comm_dur += times::stop(times::comm_start);
                }
-               for(Index i=0; i<num_send; i++){
+               for(Index i=0; i<num_recv; i++){
                   Index p_index = tmplist[i];
-                  if (particle[p_index]->findCell(block))
+                  if (particle[p_index]->findCell(block)) {
+                      // if the particle trajectory continues in this block, repeat last data point from previous block
                       particle[p_index]->EmitData(m_havePressure);
+                  }
                }
-               for(Index i=0; i<num_send; i++){
+               for(Index i=0; i<num_recv; i++){
                   Index p_index = tmplist[i];
                   times::comm_start = times::start();
                   bool active = particle[p_index]->isActive();
@@ -514,17 +529,8 @@ bool Tracer::reduce(int timestep) {
                   times::comm_dur += times::stop(times::comm_start);
                   if(!active){
                      particle[p_index]->Deactivate();
+                     --numActive;
                   }
-               }
-            }
-
-            ingrid = false;
-            for(Index i=0; i<numpoints; i++){
-
-               if(particle[i]->inGrid()){
-
-                  ingrid = true;
-                  break;
                }
             }
          }
