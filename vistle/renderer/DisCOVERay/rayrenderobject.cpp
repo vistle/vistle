@@ -29,6 +29,7 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
 : vistle::RenderObject(senderId, senderPort, container, geometry, normals, colors, texture)
 , data(new ispc::RenderObjectData)
 {
+   data->scene = nullptr;
    data->geomId = RTC_INVALID_GEOMETRY_ID;
    data->instId = RTC_INVALID_GEOMETRY_ID;
    data->spheres = nullptr;
@@ -46,6 +47,10 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       data->texWidth = this->texture->getWidth();
       data->texData = this->texture->pixels().data();
       data->texCoords = this->texture->coords().data();
+   }
+
+   if (geometry->isEmpty()) {
+      return;
    }
 
    data->scene = rtcNewScene(RTC_SCENE_STATIC|sceneFlags, intersections);
@@ -262,7 +267,7 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
          vassert(idx == end);
       }
       vassert(idx == nPoints);
-      data->geomId = registerTubes((ispc::__RTCScene *)data->scene, data.get(), nPoints-1);
+      data->geomId = registerTubes((ispc::__RTCScene *)data->scene, data.get(), nPoints > 0 ? nPoints-1 : 0);
    }
 
    rtcCommit(data->scene);
@@ -273,6 +278,7 @@ RayRenderObject::~RayRenderObject() {
    delete[] data->spheres;
    delete[] data->primitiveFlags;
    //rtcDeleteGeometry(data->scene, data->geomId); // not possible for static geometry
-   rtcDeleteScene(data->scene);
+   if (data->scene)
+      rtcDeleteScene(data->scene);
    delete[] data->indexBuffer;
 }

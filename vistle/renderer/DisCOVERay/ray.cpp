@@ -682,12 +682,14 @@ bool RayCaster::render() {
     if (m_timestep != m_renderManager.timestep()) {
        if (anim_geometry.size() > m_timestep) {
           for (auto &ro: anim_geometry[m_timestep])
-             rtcDisable(m_scene, ro->data->instId);
+             if (ro->data->scene)
+                rtcDisable(m_scene, ro->data->instId);
        }
        m_timestep = m_renderManager.timestep();
        if (anim_geometry.size() > m_timestep) {
           for (auto &ro: anim_geometry[m_timestep])
-             rtcEnable(m_scene, ro->data->instId);
+             if (ro->data->scene)
+                rtcEnable(m_scene, ro->data->instId);
        }
        rtcCommit(m_scene);
     }
@@ -849,10 +851,12 @@ void RayCaster::removeObject(boost::shared_ptr<RenderObject> vro) {
    auto ro = boost::static_pointer_cast<RayRenderObject>(vro);
    auto rod = ro->data.get();
 
-   rtcDeleteGeometry(m_scene, rod->instId);
-   rtcCommit(m_scene);
+   if (rod->scene) {
+      rtcDeleteGeometry(m_scene, rod->instId);
+      rtcCommit(m_scene);
 
-   instances[rod->instId] = nullptr;
+      instances[rod->instId] = nullptr;
+   }
 
    const int t = ro->timestep;
    auto &objlist = t>=0 ? anim_geometry[t] : static_geometry;
@@ -893,24 +897,26 @@ boost::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::stri
    }
 
    auto rod = ro->data.get();
-   rod->instId = rtcNewInstance(m_scene, rod->scene);
-   if (instances.size() <= rod->instId)
-      instances.resize(rod->instId+1);
-   vassert(!instances[rod->instId]);
-   instances[rod->instId] = rod;
+   if (rod->scene) {
+      rod->instId = rtcNewInstance(m_scene, rod->scene);
+      if (instances.size() <= rod->instId)
+         instances.resize(rod->instId+1);
+      vassert(!instances[rod->instId]);
+      instances[rod->instId] = rod;
 
-   float identity[16];
-   for (int i=0; i<16; ++i) {
-      identity[i] = (i/4 == i%4) ? 1. : 0.;
+      float identity[16];
+      for (int i=0; i<16; ++i) {
+         identity[i] = (i/4 == i%4) ? 1. : 0.;
+      }
+      rtcSetTransform(m_scene, rod->instId, RTC_MATRIX_COLUMN_MAJOR_ALIGNED16, identity);
+      if (t == -1 || size_t(t) == m_timestep) {
+         rtcEnable(m_scene, rod->instId);
+         m_renderManager.setModified();
+      } else {
+         rtcDisable(m_scene, rod->instId);
+      }
+      rtcCommit(m_scene);
    }
-   rtcSetTransform(m_scene, rod->instId, RTC_MATRIX_COLUMN_MAJOR_ALIGNED16, identity);
-   if (t == -1 || size_t(t) == m_timestep) {
-      rtcEnable(m_scene, rod->instId);
-      m_renderManager.setModified();
-   } else {
-      rtcDisable(m_scene, rod->instId);
-   }
-   rtcCommit(m_scene);
 
    m_renderManager.addObject(ro);
 
