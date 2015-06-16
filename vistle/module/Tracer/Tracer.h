@@ -95,7 +95,6 @@ private:
     bool m_ingrid; //!< particle still within domain on some rank
     bool m_searchBlock; //!< particle is new - has to be initialized
     Integrator m_integrator;
-    const vistle::Index m_stpmax; //!< maximum number of integration steps
 
 public:
     Particle(vistle::Index i, const vistle::Vector3 &pos, vistle::Scalar h, vistle::Scalar hmin,
@@ -105,6 +104,7 @@ public:
     void PointsToLines();
     bool isActive();
     bool inGrid();
+    bool isMoving(vistle::Index maxSteps, vistle::Scalar minSpeed);
     bool findCell(const std::vector<std::unique_ptr<BlockData>> &block);
     void Deactivate();
     void EmitData(bool havePressure);

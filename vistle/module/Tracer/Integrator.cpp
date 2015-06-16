@@ -56,29 +56,32 @@ bool Integrator::Step() {
 
 bool Integrator::hNew(Vector3 higher, Vector3 lower){
 
-    Scalar xerr = std::abs(higher(0)-lower(0));
-    Scalar yerr = std::abs(higher(1)-lower(1));
-    Scalar zerr = std::abs(higher(2)-lower(2));
-    Scalar errest = std::max(std::max(xerr,yerr),zerr);
+   Scalar xerr = std::abs(higher(0)-lower(0));
+   Scalar yerr = std::abs(higher(1)-lower(1));
+   Scalar zerr = std::abs(higher(2)-lower(2));
+   Scalar errest = std::max(std::max(xerr,yerr),zerr);
 
-    Scalar h = 0.9*m_h*std::pow(Scalar(m_errtol/errest),Scalar(1.0/3.0));
-    if(errest<=m_errtol){
-        if(h<m_hmin){
-            m_h=m_hmin;
-            return true;}
-        else if(h>m_hmax){
-            m_h=m_hmax;
-            return true;}
-        m_h = h;
-        return true;
-    }
-    else{
-        if(h<m_hmin){
-            m_h = m_hmin;
-            return true;}
-        m_h = h;
-        return false;
-    }
+   Scalar h = 0.9*m_h*std::pow(Scalar(m_errtol/errest),Scalar(1.0/3.0));
+   if(errest<=m_errtol) {
+      if(h<m_hmin) {
+         m_h=m_hmin;
+         return true;
+      } else if(h>m_hmax) {
+         m_h=m_hmax;
+         return true;
+      } else {
+         m_h = h;
+         return true;
+      }
+   } else {
+      if (h<m_hmin) {
+         m_h = m_hmin;
+         return true;
+      } else {
+         m_h = h;
+         return false;
+      }
+   }
 }
 
 bool Integrator::Euler() {

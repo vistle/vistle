@@ -71,6 +71,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addFloatParameter("h_max", "maximum step size for rk32 integration", 1e-02);
     addFloatParameter("err_tol", "desired accuracy for rk32 integration", 1e-06);
     addFloatParameter("h_euler", "fixed step size for euler integration", 1e-03);
+    addFloatParameter("min_speed", "miniumum particle speed", 1e-4);
     addFloatParameter("comm_threshold", "ratio of active particles that have to leave current block for starting communication phase", 0.1);
     m_useCelltree = addIntParameter("use_celltree", "use celltree for accelerated cell location", (Integer)1, Parameter::Boolean);
 }
@@ -87,11 +88,14 @@ m_grid(grid),
 m_vecfld(vdata),
 m_scafld(pdata),
 m_lines(new Lines(Object::Initialized)),
+m_ids(new Vec<Index>(Object::Initialized)),
+m_steps(new Vec<Index>(Object::Initialized)),
 m_vx(nullptr),
 m_vy(nullptr),
 m_vz(nullptr),
 m_p(nullptr)
 {
+   m_ivec.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
 
    if (m_vecfld) {
       m_vx = m_vecfld->x().data();
@@ -101,6 +105,7 @@ m_p(nullptr)
 
    if (m_scafld) {
       m_p = m_scafld->x().data();
+      m_iscal.emplace_back(new Vec<Scalar>(Object::Initialized));
    }
 }
 
@@ -166,21 +171,6 @@ void BlockData::addLines(Index id, const std::vector<Vector3> &points,
        assert(numpoints == velocities.size());
        assert(!m_p || pressures.size()==numpoints);
 
-       if(m_ivec.empty()) {
-          m_ivec.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
-       }
-
-       if(m_iscal.empty() && m_p) {
-          m_iscal.emplace_back(new Vec<Scalar>(Object::Initialized));
-       }
-
-       if (!m_steps) {
-          m_steps.reset(new Vec<Index>(Object::Initialized));
-       }
-       if (!m_ids) {
-          m_ids.reset(new Vec<Index>(Object::Initialized));
-       }
-
        for(Index i=0; i<numpoints; i++) {
 
           m_lines->x().push_back(points[i](0));
@@ -217,10 +207,9 @@ m_block(nullptr),
 m_el(InvalidIndex),
 m_ingrid(true),
 m_searchBlock(true),
-m_integrator(h,hmin,hmax,errtol,int_mode,this),
-m_stpmax(stepsmax) {
-
-   if(findCell(bl)) {
+m_integrator(h,hmin,hmax,errtol,int_mode,this)
+{
+   if (findCell(bl)) {
       m_integrator.hInit();
    }
 }
@@ -229,7 +218,7 @@ Particle::~Particle(){}
 
 bool Particle::isActive(){
 
-    return m_ingrid && m_block;
+    return m_ingrid && (m_block || m_searchBlock);
 }
 
 bool Particle::inGrid(){
@@ -237,21 +226,30 @@ bool Particle::inGrid(){
     return m_ingrid;
 }
 
-bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
+bool Particle::isMoving(Index maxSteps, Scalar minSpeed) {
 
-    if((!m_block && !m_searchBlock) || !m_ingrid){
+    if (!m_ingrid) {
+       return false;
+    }
+
+    bool moving = m_v.norm() > minSpeed;
+    if(m_stp > maxSteps || !moving){
+
+       PointsToLines();
+       this->Deactivate();
+       return false;
+    }
+
+    return true;
+}
+
+bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
+
+    if (!m_ingrid) {
         return false;
     }
 
-    bool moving = m_v.norm() > Epsilon;
-    if(m_stp == m_stpmax || !moving){
-
-        PointsToLines();
-        this->Deactivate();
-        return false;
-    }
-
-    if(m_block) {
+    if (m_block) {
 
         UnstructuredGrid::const_ptr grid = m_block->getGrid();
         if(grid->inside(m_el, m_x)){
@@ -287,6 +285,7 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block){
                 return true;
             }
         }
+        m_block = nullptr;
     }
 
     return false;
@@ -439,7 +438,7 @@ bool Tracer::reduce(int timestep) {
    Scalar dtmax = getFloatParameter("h_max");
    Scalar errtol = getFloatParameter("err_tol");
    Scalar commthresh = getFloatParameter("comm_threshold");
-
+   Scalar minspeed = getFloatParameter("min_speed");
 
    Index numtime = grid_in.size();
    for (Index t=0; t<numtime; ++t) {
@@ -455,34 +454,34 @@ bool Tracer::reduce(int timestep) {
          block[i].reset(new BlockData(i, grid_in[t][i], data_in0[t][i], data_in1[t][i]));
       }
 
+      Index numActive = numpoints;
 
       //create particle objects
-      Index numActive = numpoints;
       std::vector<std::unique_ptr<Particle>> particle(numpoints);
       for(Index i=0; i<numpoints; i++){
 
          particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max));
-      }
-      times::comm_start = times::start();
-      for(Index i=0; i<numpoints; i++){
 
-         bool active = particle[i]->isActive();
-         active = boost::mpi::all_reduce(comm(), active, std::logical_or<bool>());
+         times::comm_start = times::start();
+         bool active = boost::mpi::all_reduce(comm(), particle[i]->isActive(), std::logical_or<bool>());
+         times::comm_dur += times::stop(times::comm_start);
          if(!active){
             particle[i]->Deactivate();
             --numActive;
          }
       }
-      times::comm_dur += times::stop(times::comm_start);
-      int mpisize = comm().size();
+      const int mpisize = comm().size();
+
       while(numActive > 0) {
 
          std::vector<Index> sendlist;
 
 //#pragma omp parallel for
+         // trace local particles
          for(Index i=0; i<numpoints; i++) {
             bool traced = false;
-            while(particle[i]->findCell(block)){
+            while(particle[i]->isMoving(steps_max, minspeed)
+                  && particle[i]->findCell(block)) {
                double celloc_old = times::celloc_dur;
                double integr_old = times::integr_dur;
                times::integr_start = times::start();
@@ -490,14 +489,20 @@ bool Tracer::reduce(int timestep) {
                times::integr_dur += times::stop(times::integr_start)-(times::celloc_dur-celloc_old)-(times::integr_dur-integr_old);
                traced = true;
             }
-            if(traced){
+            if(traced) {
 //#pragma omp critical
                sendlist.push_back(i);
-               if (sendlist.size() >= commthresh*numActive)
-                   break;
+               if (commthresh > 1.) {
+                  if (sendlist.size() >= commthresh)
+                     break;
+               } else {
+                  if (sendlist.size() >= commthresh*numActive)
+                     break;
+               }
             }
          }
 
+         // communicate
          Index num_send = sendlist.size();
          std::vector<Index> num_transmit(mpisize);
          boost::mpi::all_gather(comm(), num_send, num_transmit);
@@ -516,11 +521,14 @@ bool Tracer::reduce(int timestep) {
                   particle[p_index]->Communicator(comm(), mpirank, m_havePressure);
                   times::comm_dur += times::stop(times::comm_start);
                }
-               for(Index i=0; i<num_recv; i++){
-                  Index p_index = tmplist[i];
-                  if (particle[p_index]->findCell(block)) {
-                      // if the particle trajectory continues in this block, repeat last data point from previous block
-                      particle[p_index]->EmitData(m_havePressure);
+               if (mpirank != rank()) {
+                  for(Index i=0; i<num_recv; i++){
+                     Index p_index = tmplist[i];
+                     if (particle[p_index]->isMoving(steps_max, minspeed)
+                         && particle[p_index]->findCell(block)) {
+                        // if the particle trajectory continues in this block, repeat last data point from previous block
+                        particle[p_index]->EmitData(m_havePressure);
+                     }
                   }
                }
                for(Index i=0; i<num_recv; i++){
