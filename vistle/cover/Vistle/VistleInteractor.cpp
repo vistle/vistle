@@ -224,7 +224,48 @@ int VistleInteractor::VistleInteractor::getStringParam(const std::string &paraNa
 
 int VistleInteractor::getChoiceParam(const std::string &paraName, int &num, char **&labels, int &active) const
 {
-   return -1;
+   static std::vector<std::string> s_choices;
+   static std::vector<const char *> s_labels;
+
+   auto param = findParam(paraName);
+   if (!param)
+      return -1;
+   if (param->presentation() != Parameter::Choice)
+      return -1;
+
+   if (auto sparam = boost::dynamic_pointer_cast<StringParameter>(param)) {
+      s_choices = sparam->choices();
+      std::string val = sparam->getValue();
+      size_t idx = 0;
+      bool found = false;
+      for (auto &c: s_choices) {
+         if (c == val) {
+            found = true;
+            break;
+         }
+         ++idx;
+      }
+      if (found) {
+         active = idx;
+      } else {
+         return -1;
+      }
+   } else if (auto iparam = boost::dynamic_pointer_cast<IntParameter>(param)) {
+      s_choices = iparam->choices();
+      num = s_choices.size();
+      active = iparam->getValue();
+   } else {
+      return -1;
+   }
+
+   num = s_choices.size();
+   s_labels.clear();
+   for (auto &c: s_choices) {
+      s_labels.push_back(c.c_str());
+   }
+   labels = &labels[0];
+
+   return 0;
 }
 
 int VistleInteractor::getFileBrowserParam(const std::string &paraName, char *&val) const
