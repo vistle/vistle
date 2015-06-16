@@ -61,7 +61,6 @@ public:
 
    enum Type {
       UNKNOWN           = -1,
-      EMPTY             =  1,
       PLACEHOLDER       = 11,
 
       TEXTURE1D         = 16,
@@ -93,7 +92,6 @@ public:
 #define V_OBJECT_CASE(sym) case sym: return #sym;
       switch(v) {
          V_OBJECT_CASE(UNKNOWN)
-         V_OBJECT_CASE(EMPTY)
          V_OBJECT_CASE(PLACEHOLDER)
 
          V_OBJECT_CASE(TEXTURE1D)

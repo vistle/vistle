@@ -38,7 +38,6 @@ if(${TEMPLATES_IN_HEADERS})
       geometry.cpp
       texture1d.cpp
       placeholder.cpp
-      empty.cpp
    )
 else()
    set(core_SOURCES ${core_SOURCES}
@@ -106,8 +105,6 @@ set(core_HEADERS
    vec.h
    vec_impl.h
    vector.h
-   empty.h
-   empty_impl.h
    uuid.h
 )
 

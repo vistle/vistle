@@ -8,7 +8,6 @@
 #include <core/scalar.h>
 #include <core/unstr.h>
 #include <core/triangles.h>
-#include <core/empty.h>
 #include <core/shm.h>
 #include <thrust/execution_policy.h>
 #include <thrust/device_vector.h>
@@ -748,7 +747,7 @@ Object::ptr Leveller::mapresult() {
    if(m_outmapData.size())
       return m_outmapData[0];
    else
-      return Object::ptr(new Empty(Object::Initialized));
+      return Object::ptr();
 }
 
 std::pair<Scalar, Scalar> Leveller::range() {

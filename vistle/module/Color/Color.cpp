@@ -6,7 +6,6 @@
 #include <core/object.h>
 #include <core/vec.h>
 #include <core/texture1d.h>
-#include <core/empty.h>
 
 #include "Color.h"
 
@@ -75,13 +74,34 @@ Color::~Color() {
 
 }
 
-void Color::getMinMax(vistle::Object::const_ptr object,
+void Color::getMinMax(vistle::DataBase::const_ptr object,
                       vistle::Scalar & min, vistle::Scalar & max) {
 
-   
-   if (Vec<Scalar>::const_ptr scal = Vec<Scalar>::as(object)) {
+   size_t numElements = object->getSize();
+
+   if (Vec<Index>::const_ptr scal = Vec<Index>::as(object)) {
+      const vistle::Index *x = &scal->x()[0];
+#pragma omp parallel
+      {
+         Index tmin = std::numeric_limits<Index>::max();
+         Index tmax = -std::numeric_limits<Index>::min();
+#pragma omp for
+         for (size_t index = 0; index < numElements; index ++) {
+            if (x[index] < tmin)
+               tmin = x[index];
+            if (x[index] > tmax)
+               tmax = x[index];
+         }
+#pragma omp critical
+         {
+            if (tmin < min)
+               min = tmin;
+            if (tmax > max)
+               max = tmax;
+         }
+      }
+   } else  if (Vec<Scalar>::const_ptr scal = Vec<Scalar>::as(object)) {
       const vistle::Scalar *x = &scal->x()[0];
-      size_t numElements = scal->getSize();
 #pragma omp parallel
       {
          Scalar tmin = std::numeric_limits<Scalar>::max();
@@ -101,13 +121,10 @@ void Color::getMinMax(vistle::Object::const_ptr object,
                max = tmax;
          }
       }
-   }
-
-   if (Vec<Scalar,3>::const_ptr vec = Vec<Scalar,3>::as(object)) {
+   } else  if (Vec<Scalar,3>::const_ptr vec = Vec<Scalar,3>::as(object)) {
       const vistle::Scalar *x = vec->x().data();
       const vistle::Scalar *y = vec->y().data();
       const vistle::Scalar *z = vec->z().data();
-      size_t numElements = vec->getSize();
 #pragma omp parallel
       {
          Scalar tmin = std::numeric_limits<Scalar>::max();
@@ -131,85 +148,56 @@ void Color::getMinMax(vistle::Object::const_ptr object,
    }
 }
 
-vistle::Object::ptr Color::addTexture(vistle::Object::const_ptr object,
+vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
       const vistle::Scalar min, const vistle::Scalar max,
       const ColorMap & cmap) {
 
-   const Scalar range = max - min;
+   const Scalar invRange = 1.f / (max - min);
+
+   vistle::Texture1D::ptr tex(new vistle::Texture1D(cmap.width, min, max));
+   unsigned char *pix = &tex->pixels()[0];
+   for (size_t index = 0; index < cmap.width * 4; index ++)
+      pix[index] = cmap.data[index];
+
+   const size_t numElem = object->getSize();
+   tex->coords().resize(numElem);
+   auto tc = tex->coords().data();
 
    if (Vec<Scalar>::const_ptr f = Vec<Scalar>::as(object)) {
 
-      const size_t numElem = f->getSize();
       const vistle::Scalar *x = &f->x()[0];
 
-      vistle::Texture1D::ptr tex(new vistle::Texture1D(cmap.width, min, max));
-      tex->setMeta(object->meta());
-
-      unsigned char *pix = &tex->pixels()[0];
-#pragma omp parallel for
-      for (size_t index = 0; index < cmap.width * 4; index ++)
-         pix[index] = cmap.data[index];
-
-      tex->coords().resize(numElem);
-      auto tc = tex->coords().data();
 #pragma omp parallel for
       for (size_t index = 0; index < numElem; index ++)
-         tc[index] = (x[index] - min) / range;
+         tc[index] = (x[index] - min) * invRange;
+   } else if (Vec<Index>::const_ptr f = Vec<Index>::as(object)) {
 
-      return tex;
-   }
-
-   if (Vec<Index>::const_ptr f = Vec<Index>::as(object)) {
-
-      const size_t numElem = f->getSize();
       const vistle::Index *x = &f->x()[0];
 
-      vistle::Texture1D::ptr tex(new vistle::Texture1D(cmap.width, min, max));
-      tex->setMeta(object->meta());
-
-      unsigned char *pix = &tex->pixels()[0];
-#pragma omp parallel for
-      for (size_t index = 0; index < cmap.width * 4; index ++)
-         pix[index] = cmap.data[index];
-
-      tex->coords().resize(numElem);
-      auto tc = tex->coords().data();
 #pragma omp parallel for
       for (size_t index = 0; index < numElem; index ++)
-         tc[index] = (x[index] - min) / range;
+         tc[index] = (x[index] - min) * invRange;
+   } else  if (Vec<Scalar,3>::const_ptr f = Vec<Scalar,3>::as(object)) {
 
-      return tex;
-   }
-
-   if (Vec<Scalar,3>::const_ptr f = Vec<Scalar,3>::as(object)) {
-
-      const size_t numElem = f->getSize();
       const vistle::Scalar *x = f->x().data();
       const vistle::Scalar *y = f->y().data();
       const vistle::Scalar *z = f->z().data();
 
-      vistle::Texture1D::ptr tex(new vistle::Texture1D(cmap.width, min, max));
-      tex->setMeta(object->meta());
-
-      unsigned char *pix = &tex->pixels()[0];
-#pragma omp parallel for
-      for (size_t index = 0; index < cmap.width * 4; index ++)
-         pix[index] = cmap.data[index];
-
-      tex->coords().resize(numElem);
-      auto tc = tex->coords().data();
 #pragma omp parallel for
       for (size_t index = 0; index < numElem; index ++) {
-         Scalar v = Vector(x[index], y[index], z[index]).norm();
-         tc[index] = (v - min) / range;
+         const Scalar v = Vector(x[index], y[index], z[index]).norm();
+         tc[index] = (v - min) * invRange;
       }
+   } else {
+       std::cerr << "Color: cannot handle input of type " << object->getType() << std::endl;
 
-      return tex;
+#pragma omp parallel for
+      for (size_t index = 0; index < numElem; index ++) {
+         tc[index] = 0.;
+      }
    }
 
-   std::cerr << "Color: cannot handle input" << std::endl;
-
-   return vistle::Object::ptr(new Empty(Object::Initialized));
+   return tex;
 }
 
 bool Color::compute() {
@@ -221,7 +209,7 @@ bool Color::compute() {
 
    ColorMap cmap(pins, 32);
 
-   Object::const_ptr obj = expect<Object>("data_in");
+   DataBase::const_ptr obj = expect<DataBase>("data_in");
    if (!obj)
       return true;
 
@@ -238,6 +226,7 @@ bool Color::compute() {
    //std::cerr << "Color: [" << min << "--" << max << "]" << std::endl;
 
    vistle::Object::ptr out(addTexture(obj, min, max, cmap));
+   out->setMeta(obj->meta());
 
    addObject("data_out", out);
 

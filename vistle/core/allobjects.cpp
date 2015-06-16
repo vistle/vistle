@@ -19,7 +19,6 @@
 #include "placeholder.cpp"
 #include "celltree.cpp"
 #include "vertexownerlist.cpp"
-#include "empty.cpp"
 
 #else
 
@@ -40,7 +39,6 @@
 #include "placeholder.h"
 #include "celltree.h"
 #include "vertexownerlist.h"
-#include "empty.h"
 
 #endif
 
@@ -66,7 +64,6 @@ void registerTypes() {
 
 #ifdef VISTLE_STATIC
    using namespace vistle;
-   REGISTER_TYPE(Empty, Object::EMPTY);
    REGISTER_TYPE(PlaceHolder, Object::PLACEHOLDER);
    REGISTER_TYPE(Texture1D, Object::TEXTURE1D);
    REGISTER_TYPE(Geometry, Object::GEOMETRY);
