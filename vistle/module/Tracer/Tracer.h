@@ -98,7 +98,7 @@ private:
 
 public:
     Particle(vistle::Index i, const vistle::Vector3 &pos, vistle::Scalar h, vistle::Scalar hmin,
-             vistle::Scalar hmax, vistle::Scalar errtol, int int_mode,const std::vector<std::unique_ptr<BlockData>> &bl,
+             vistle::Scalar hmax, vistle::Scalar errtol, IntegrationMethod int_mode, const std::vector<std::unique_ptr<BlockData>> &bl,
              vistle::Index stepsmax);
     ~Particle();
     void PointsToLines();

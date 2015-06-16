@@ -10,17 +10,17 @@ using namespace vistle;
 
 Integrator::Integrator(vistle::Scalar h, vistle::Scalar hmin,
            vistle::Scalar hmax, vistle::Scalar errtol,
-           int int_mode, Particle* ptcl):
+           IntegrationMethod mode, Particle* ptcl):
     m_h(h),
     m_hmin(hmin),
     m_hmax(hmax),
     m_errtol(errtol),
-    m_mode(int_mode),
+    m_mode(mode),
     m_ptcl(ptcl){
 }
 
 void Integrator::hInit(){
-    if (m_mode != 0)
+    if (m_mode == Euler)
         return;
 
     Vector3 v = Interpolator(m_ptcl->m_block, m_ptcl->m_el, m_ptcl->m_x);
@@ -46,10 +46,10 @@ void Integrator::hInit(){
 bool Integrator::Step() {
 
     switch(m_mode){
-    case 0:
-        return RK32();
-    case 1:
-        return Euler();
+    case Euler:
+        return StepEuler();
+    case RK32:
+        return StepRK32();
     }
     return false;
 }
@@ -84,13 +84,13 @@ bool Integrator::hNew(Vector3 higher, Vector3 lower){
    }
 }
 
-bool Integrator::Euler() {
+bool Integrator::StepEuler() {
 
    m_ptcl->m_x = m_ptcl->m_x + m_ptcl->m_v*m_h;
    return true;
 }
 
-bool Integrator::RK32() {
+bool Integrator::StepRK32() {
 
    bool accept = false;
    Index el=m_ptcl->m_el;

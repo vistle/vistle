@@ -30,13 +30,16 @@
 #include "Integrator.h"
 #include "TracerTimes.h"
 
-const vistle::Scalar Epsilon = 1e-8;
-
 MODULE_MAIN(Tracer)
 
 
 using namespace vistle;
 
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(StartStyle,
+      (Line)
+      (Plane)
+      (Cylinder)
+)
 
 Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID)
    : Module("Tracer", shmname, name, moduleID) {
@@ -53,25 +56,35 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     createOutputPort("particle_id");
     createOutputPort("timestep");
 
+#if 0
+    const char *TracerInteraction::P_DIRECTION = "direction";
+    const char *TracerInteraction::P_TDIRECTION = "tdirection";
+    const char *TracerInteraction::P_TASKTYPE = "taskType";
+    const char *TracerInteraction::P_STARTSTYLE = "startStyle";
+    const char *TracerInteraction::P_TRACE_LEN = "trace_len";
+    const char *TracerInteraction::P_FREE_STARTPOINTS = "FreeStartPoints";
+#endif
+
     addVectorParameter("startpoint1", "1st initial point", ParamVector(0,0.2,0));
     addVectorParameter("startpoint2", "2nd initial point", ParamVector(1,0,0));
+    addVectorParameter("direction", "direction for Plane", ParamVector(1,0,0));
     addIntParameter("no_startp", "number of startpoints", 2);
     setParameterRange("no_startp", (Integer)0, (Integer)10000);
     addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
+    //addFloatParameter("trace_len", "maximum number of integrations per particle", 1000);
     IntParameter* tasktype = addIntParameter("taskType", "task type", 0, Parameter::Choice);
     std::vector<std::string> taskchoices;
     taskchoices.push_back("streamlines");
     setParameterChoices(tasktype, taskchoices);
-    IntParameter* integration = addIntParameter("integration", "integration method", 0, Parameter::Choice);
-    std::vector<std::string> integrchoices(2);
-    integrchoices[0] = "rk32";
-    integrchoices[1] = "euler";
-    setParameterChoices(integration,integrchoices);
+    IntParameter *startStyle = addIntParameter("startStyle", "initial particle position configuration", (Integer)Line, Parameter::Choice);
+    V_ENUM_SET_CHOICES(startStyle, StartStyle);
+    IntParameter* integration = addIntParameter("integration", "integration method", (Integer)RK32, Parameter::Choice);
+    V_ENUM_SET_CHOICES(integration, IntegrationMethod);
+    addFloatParameter("min_speed", "miniumum particle speed", 1e-4);
+    addFloatParameter("h_euler", "fixed step size for euler integration", 1e-03);
     addFloatParameter("h_min","minimum step size for rk32 integration", 1e-05);
     addFloatParameter("h_max", "maximum step size for rk32 integration", 1e-02);
     addFloatParameter("err_tol", "desired accuracy for rk32 integration", 1e-06);
-    addFloatParameter("h_euler", "fixed step size for euler integration", 1e-03);
-    addFloatParameter("min_speed", "miniumum particle speed", 1e-4);
     addFloatParameter("comm_threshold", "ratio of active particles that have to leave current block for starting communication phase", 0.1);
     m_useCelltree = addIntParameter("use_celltree", "use celltree for accelerated cell location", (Integer)1, Parameter::Boolean);
 }
@@ -197,7 +210,7 @@ void BlockData::addLines(Index id, const std::vector<Vector3> &points,
 
 
 Particle::Particle(Index i, const Vector3 &pos, Scalar h, Scalar hmin,
-      Scalar hmax, Scalar errtol, int int_mode,const std::vector<std::unique_ptr<BlockData>> &bl,
+      Scalar hmax, Scalar errtol, IntegrationMethod int_mode,const std::vector<std::unique_ptr<BlockData>> &bl,
       Index stepsmax):
 m_id(i),
 m_x(pos),
@@ -432,7 +445,7 @@ bool Tracer::reduce(int timestep) {
       startpoints[i] = startpoint1 + i*delta;
    }
 
-   int int_mode = getIntParameter("integration");
+   IntegrationMethod int_mode = (IntegrationMethod)getIntParameter("integration");
    Scalar dt = getFloatParameter("h_euler");
    Scalar dtmin = getFloatParameter("h_min");
    Scalar dtmax = getFloatParameter("h_max");
