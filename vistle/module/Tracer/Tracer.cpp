@@ -330,7 +330,9 @@ bool Particle::Step() {
 
    EmitData(m_block->m_p);
 
-   return m_integrator.Step();
+   bool ret = m_integrator.Step();
+   ++m_stp;
+   return ret;
 }
 
 void Particle::Communicator(boost::mpi::communicator mpi_comm, int root, bool havePressure){
