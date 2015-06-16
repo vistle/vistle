@@ -32,7 +32,7 @@ bool Collect::compute() {
 
    vistle::Object::const_ptr grid = expect<Object>("grid_in");
    if (!grid)
-      return false;
+      return true;
 
    vistle::Geometry::ptr geom(new vistle::Geometry(grid));
    geom->setMeta(grid->meta());
