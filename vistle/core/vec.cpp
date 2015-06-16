@@ -8,6 +8,60 @@
 
 namespace vistle {
 
+bool DataBase::isEmpty() const {
+
+   return Base::isEmpty();
+}
+
+bool DataBase::checkImpl() const {
+
+   return true;
+}
+
+Object::Type DataBase::type()  {
+
+    return DATABASE;
+}
+
+DataBase::Data::Data(Type id, const std::string &name,
+      const Meta &meta)
+   : DataBase::Base::Data(id, name, meta)
+{
+}
+
+DataBase::Data::Data(const DataBase::Data &o, const std::string &n, Type id)
+: DataBase::Base::Data(o, n, id)
+{
+}
+
+
+DataBase::Data::Data(const DataBase::Data &o, const std::string &n)
+: DataBase::Base::Data(o, n)
+{
+}
+
+DataBase::Data *DataBase::Data::create(Type id, const Meta &meta) {
+
+   assert("should never be called" == NULL);
+
+   return NULL;
+}
+
+Index DataBase::getSize() const {
+
+   assert("should never be called" == NULL);
+
+   return 0;
+}
+
+void DataBase::setSize(Index size ) {
+
+   assert("should never be called" == NULL);
+}
+
+V_SERIALIZERS(DataBase);
+
+
 V_SERIALIZERS4(Vec<T,Dim>, template<class T,int Dim>);
 
 namespace mpl = boost::mpl;

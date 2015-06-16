@@ -82,6 +82,10 @@ public:
       NORMALS           = 99,
 
       VEC               = 100, // base type id for all Vec types
+
+      DATABASE          = 200, // type ids for abstract object classes
+      COORD             = 201,
+      COORDWRADIUS      = 202,
    };
 
    static inline const char *toString(Type v) {
@@ -89,11 +93,16 @@ public:
 #define V_OBJECT_CASE(sym) case sym: return #sym;
       switch(v) {
          V_OBJECT_CASE(UNKNOWN)
+         V_OBJECT_CASE(EMPTY)
          V_OBJECT_CASE(PLACEHOLDER)
+
          V_OBJECT_CASE(TEXTURE1D)
          V_OBJECT_CASE(GEOMETRY)
+
          V_OBJECT_CASE(POINTS)
+         V_OBJECT_CASE(SPHERES)
          V_OBJECT_CASE(LINES)
+         V_OBJECT_CASE(TUBES)
          V_OBJECT_CASE(TRIANGLES)
          V_OBJECT_CASE(POLYGONS)
          V_OBJECT_CASE(UNSTRUCTUREDGRID)
@@ -102,6 +111,10 @@ public:
          V_OBJECT_CASE(CELLTREE2)
          V_OBJECT_CASE(CELLTREE3)
          V_OBJECT_CASE(NORMALS)
+
+         V_OBJECT_CASE(DATABASE)
+         V_OBJECT_CASE(COORD)
+         V_OBJECT_CASE(COORDWRADIUS)
          default:
             break;
       }

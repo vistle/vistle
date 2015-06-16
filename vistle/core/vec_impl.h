@@ -9,10 +9,15 @@
 
 namespace vistle {
 
+template<class Archive>
+void DataBase::Data::serialize(Archive &ar, const unsigned int version) {
+   ar & V_NAME("base:object", boost::serialization::base_object<Base::Data>(*this));
+}
+
 template <class T, int Dim>
 Vec<T,Dim>::Vec(const Index size,
         const Meta &meta)
-      : Object(Data::create(size, meta)) {
+      : Base(Data::create(size, meta)) {
    }
 
 template <class T, int Dim>

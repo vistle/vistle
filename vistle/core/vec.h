@@ -10,8 +10,23 @@
 
 namespace vistle {
 
+class DataBase: public Object {
+   V_OBJECT(DataBase);
+
+public:
+   typedef Object Base;
+   virtual Index getSize() const;
+   virtual void setSize(const Index size);
+
+   V_DATA_BEGIN(DataBase);
+      Data(Type id = UNKNOWN, const std::string & name = "", const Meta &meta=Meta());
+      Data(const Data &o, const std::string & name, Type id);
+      static Data *create(Type id = UNKNOWN, const Meta &meta=Meta());
+   V_DATA_END(DataBase);
+};
+
 template <typename T, int Dim=1>
-class Vec: public Object {
+class Vec: public DataBase {
    V_OBJECT(Vec);
 
    static const int MaxDim = MaxDimension;
@@ -19,7 +34,7 @@ class Vec: public Object {
    BOOST_STATIC_ASSERT(Dim <= MaxDim);
 
  public:
-   typedef Object Base;
+   typedef DataBase Base;
    typedef typename shm<T>::array array;
    typedef T Scalar;
    typedef typename VistleScalarVector<Dim>::type Vector;
