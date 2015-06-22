@@ -1,5 +1,8 @@
 #include "vec.h"
 #include "scalars.h"
+#include "assert.h"
+#include "indexed.h"
+#include "celltree_impl.h"
 
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/vector_c.hpp>
@@ -21,6 +24,35 @@ bool DataBase::checkImpl() const {
 Object::Type DataBase::type()  {
 
     return DATABASE;
+}
+
+bool DataBase::hasCelltree() const {
+
+   return hasAttachment("celltree");
+}
+
+Object::const_ptr DataBase::getCelltree() const {
+
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
+   if (!hasAttachment("celltree")) {
+      if (!grid()) {
+         return Object::ptr();
+      }
+
+      if (auto g = Indexed::as(grid())) {
+         createCelltree(g->getNumElements(), g->el().data(), g->cl().data());
+      }
+   }
+
+   Object::const_ptr ct = getAttachment("celltree");
+   vassert(ct);
+   return ct;
+}
+
+void DataBase::createCelltree(Index nelem, const Index *el, const Index *cl) const {
+   (void)nelem;
+   (void)el;
+   (void)cl;
 }
 
 DataBase::Data::Data(Type id, const std::string &name,
@@ -98,8 +130,15 @@ namespace {
 template<int Dim>
 struct instantiator {
    template <typename V> void operator()(V) {
-      auto v = new Vec<V, Dim>(0, Meta());
-      v->setSize(1);
+      typedef Vec<V, Dim> VEC;
+      auto vec = new VEC(0, Meta());
+      vec->setSize(1);
+      vec->createCelltree(0, nullptr, nullptr);
+      Index size = 0;
+      auto ct = new typename Vec<V, Dim>::Celltree(size);
+      
+      typename VEC::Vector v;
+      ct->init(&v, &v, v, v);
    }
 };
 

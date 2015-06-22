@@ -6,6 +6,7 @@
 #include <limits>
 
 #include <boost/mpl/size.hpp>
+#include "celltree_impl.h"
 
 namespace vistle {
 
@@ -116,6 +117,50 @@ void Vec<T,Dim>::Data::serialize(Archive &ar, const unsigned int version) {
    for (int c=0; c<Dim; ++c) {
       ar & V_NAME("x", *x[c]);
    }
+}
+
+template <class T, int Dim>
+void Vec<T,Dim>::createCelltree(Index nelem, const Index *el, const Index *cl) const {
+
+   if (hasCelltree())
+      return;
+
+   const Scalar *coords[3] = {
+      x().data(),
+      y().data(),
+      z().data()
+   };
+   const Scalar smax = std::numeric_limits<Scalar>::max();
+   Vector vmin, vmax;
+   vmin.fill(-smax);
+   vmax.fill(smax);
+
+   std::vector<Vector> min(nelem, vmax);
+   std::vector<Vector> max(nelem, vmin);
+
+   Vector gmin=vmax, gmax=vmin;
+   for (Index i=0; i<nelem; ++i) {
+      const Index start = el[i], end = el[i+1];
+      for (Index c = start; c<end; ++c) {
+         const Index v = cl[c];
+         for (int d=0; d<3; ++d) {
+            if (min[i][d] > coords[d][v]) {
+               min[i][d] = coords[d][v];
+               if (gmin[d] > min[i][d])
+                  gmin[d] = min[i][d];
+            }
+            if (max[i][d] < coords[d][v]) {
+               max[i][d] = coords[d][v];
+               if (gmax[d] < max[i][d])
+                  gmax[d] = max[i][d];
+            }
+         }
+      }
+   }
+
+   typename Celltree::ptr ct(new Celltree(nelem));
+   ct->init(min.data(), max.data(), gmin, gmax);
+   addAttachment("celltree", ct);
 }
 
 } // namespace vistle

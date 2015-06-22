@@ -6,6 +6,7 @@
 #include "shm.h"
 #include "object.h"
 #include "vector.h"
+#include "celltree.h"
 
 
 namespace vistle {
@@ -19,6 +20,11 @@ public:
    virtual void setSize(const Index size);
    Object::const_ptr grid() const;
    void setGrid(Object::const_ptr grid);
+   bool hasCelltree() const;
+   Object::const_ptr getCelltree() const;
+
+private:
+   virtual void createCelltree(Index nelem, const Index *el, const Index *cl) const;
 
    V_DATA_BEGIN(DataBase);
       boost::interprocess::offset_ptr<Object::Data> grid;
@@ -43,6 +49,7 @@ class Vec: public DataBase {
    typedef typename shm<T>::array array;
    typedef T Scalar;
    typedef typename VistleScalarVector<Dim>::type Vector;
+   typedef vistle::Celltree<Scalar, Index, Dim> Celltree;
 
    Vec(const Index size,
         const Meta &meta=Meta());
@@ -60,6 +67,12 @@ class Vec: public DataBase {
 
    std::pair<Vector, Vector> getMinMax() const;
 
+   bool validateCelltree() const;
+   virtual void createCelltree(Index nelem, const Index *el, const Index *cl) const;
+
+ private:
+
+ public:
    struct Data: public Base::Data {
 
       typename ShmVector<T>::ptr x[Dim];

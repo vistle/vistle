@@ -16,7 +16,6 @@ class  V_COREEXPORT Indexed: public Coords {
 
  public:
    typedef Coords Base;
-   typedef vistle::Celltree<Scalar, Index> Celltree;
    typedef vistle::VertexOwnerList VertexOwnerList;
 
    Indexed(const Index numElements, const Index numCorners,
@@ -30,7 +29,7 @@ class  V_COREEXPORT Indexed: public Coords {
    typename shm<Index>::array &el() const { return *(*d()->el)(); }
    typename shm<Index>::array &cl() const { return *(*d()->cl)(); }
 
-   bool hasCelltree() const;
+
    Celltree::const_ptr getCelltree() const;
    bool validateCelltree() const;
 
@@ -41,7 +40,6 @@ class  V_COREEXPORT Indexed: public Coords {
    bool getElementBounds(Index elem, Vector *min, Vector *max) const;
 
  private:
-   void createCelltree() const;
    void createVertexOwnerList() const;
 
    V_DATA_BEGIN(Indexed);

@@ -47,15 +47,16 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
    for (int i=0; i<NumBuckets; ++i) {
       for (int d=0; d<NumDimensions; ++d)
          bucket[d][i] = 0;
-      bmin[i] = Vector(smax, smax, smax);
-      bmax[i] = Vector(-smax, -smax, -smax);
+      bmin[i].fill(smax);
+      bmax[i].fill(-smax);
    }
 
    auto center = [min, max](Index c) -> Vector { return min[c]+max[c]; };
 
    // find min/max extents of cell centers
-   Vector cmin(smax, smax, smax);
-   Vector cmax(-smax, -smax, -smax);
+   Vector cmin, cmax;
+   cmin.fill(smax);
+   cmax.fill(-smax);
    for (Index i=node->start; i<node->start+node->size; ++i) {
       const Index cell = cells[i];
       Vector cent = center(cell);
