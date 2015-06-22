@@ -14,6 +14,7 @@ bool Coords::isEmpty() const {
 
 bool Coords::checkImpl() const {
 
+   V_CHECK(!normals() || normals()->getNumNormals() == getSize());
    return true;
 }
 
@@ -23,16 +24,21 @@ Coords::Data::Data(const Index numVertices,
    : Coords::Base::Data(numVertices,
          id, name,
          meta)
+   , normals(nullptr)
 {
 }
 
 Coords::Data::Data(const Coords::Data &o, const std::string &n)
 : Coords::Base::Data(o, n)
+, normals(o.normals)
 {
+   if (normals)
+      normals->ref();
 }
 
 Coords::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n, Type id)
 : Coords::Base::Data(o, n, id)
+, normals(nullptr)
 {
 }
 
@@ -52,6 +58,20 @@ Index Coords::getNumVertices() const {
 Index Coords::getNumCoords() const {
 
    return getSize();
+}
+
+Normals::const_ptr Coords::normals() const {
+
+   return Normals::as(Object::create(&*d()->normals));
+}
+
+void Coords::setNormals(Normals::const_ptr normals) {
+
+   if (d()->normals)
+      d()->normals->unref();
+   d()->normals = normals->d();
+   if (normals)
+      normals->ref();
 }
 
 V_SERIALIZERS(Coords);

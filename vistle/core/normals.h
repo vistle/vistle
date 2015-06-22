@@ -2,15 +2,15 @@
 #define NORMALS_H
 
 
-#include "coords.h"
+#include "vec.h"
 
 namespace vistle {
 
-class  V_COREEXPORT Normals: public Coords {
+class  V_COREEXPORT Normals: public Vec<Scalar, 3> {
    V_OBJECT(Normals);
 
    public:
-   typedef Coords Base;
+   typedef Vec<Scalar,3> Base;
 
    Normals(const Index numNormals,
          const Meta &meta=Meta());

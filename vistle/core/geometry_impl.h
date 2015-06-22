@@ -12,7 +12,6 @@ void Geometry::Data::serialize(Archive &ar, const unsigned int version) {
 
 template<class Archive>
 void Geometry::Data::load(Archive &ar, const unsigned int version) {
-   ar & V_NAME("base:object", boost::serialization::base_object<Base::Data>(*this));
 
    bool haveGeometry = false;
    geometry = NULL;
@@ -61,7 +60,6 @@ void Geometry::Data::load(Archive &ar, const unsigned int version) {
 
 template<class Archive>
 void Geometry::Data::save(Archive &ar, const unsigned int version) const {
-   ar & V_NAME("base:object", boost::serialization::base_object<Base::Data>(*this));
 
    // make sure that boost::serialization's object tracking is not tricked
    // into thinking that all these are the same object

@@ -20,7 +20,7 @@ bool Normals::checkImpl() const {
 
 Index Normals::getNumNormals() const {
 
-   return getNumCoords();
+   return getSize();
 }
 
 Normals::Data::Data(const Index numNormals,
