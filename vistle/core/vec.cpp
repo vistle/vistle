@@ -26,18 +26,31 @@ Object::Type DataBase::type()  {
 DataBase::Data::Data(Type id, const std::string &name,
       const Meta &meta)
    : DataBase::Base::Data(id, name, meta)
+   , grid(nullptr)
 {
 }
 
 DataBase::Data::Data(const DataBase::Data &o, const std::string &n, Type id)
 : DataBase::Base::Data(o, n, id)
+, grid(o.grid)
 {
+   if (grid)
+      grid->ref();
 }
 
 
 DataBase::Data::Data(const DataBase::Data &o, const std::string &n)
 : DataBase::Base::Data(o, n)
+, grid(o.grid)
 {
+   if (grid)
+      grid->ref();
+}
+
+DataBase::Data::~Data() {
+
+   if (grid)
+      grid->unref();
 }
 
 DataBase::Data *DataBase::Data::create(Type id, const Meta &meta) {
@@ -57,6 +70,20 @@ Index DataBase::getSize() const {
 void DataBase::setSize(Index size ) {
 
    assert("should never be called" == NULL);
+}
+
+Object::const_ptr DataBase::grid() const {
+
+   return Object::create(&*d()->grid);
+}
+
+void DataBase::setGrid(Object::const_ptr grid) {
+
+   if (d()->grid)
+      d()->grid->unref();
+   d()->grid = grid->d();
+   if (d()->grid)
+      d()->grid->ref();
 }
 
 V_SERIALIZERS(DataBase);

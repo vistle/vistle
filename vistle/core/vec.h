@@ -17,10 +17,15 @@ public:
    typedef Object Base;
    virtual Index getSize() const;
    virtual void setSize(const Index size);
+   Object::const_ptr grid() const;
+   void setGrid(Object::const_ptr grid);
 
    V_DATA_BEGIN(DataBase);
+      boost::interprocess::offset_ptr<Object::Data> grid;
+
       Data(Type id = UNKNOWN, const std::string & name = "", const Meta &meta=Meta());
       Data(const Data &o, const std::string & name, Type id);
+      ~Data();
       static Data *create(Type id = UNKNOWN, const Meta &meta=Meta());
    V_DATA_END(DataBase);
 };
