@@ -21,11 +21,6 @@ bool DataBase::checkImpl() const {
    return true;
 }
 
-Object::Type DataBase::type()  {
-
-    return DATABASE;
-}
-
 bool DataBase::hasCelltree() const {
 
    return hasAttachment("celltree");
@@ -118,7 +113,7 @@ void DataBase::setGrid(Object::const_ptr grid) {
       d()->grid->ref();
 }
 
-V_SERIALIZERS(DataBase);
+V_OBJECT_TYPE(DataBase, Object::DATABASE);
 
 
 V_SERIALIZERS4(Vec<T,Dim>, template<class T,int Dim>);

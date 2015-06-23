@@ -49,6 +49,6 @@ CoordsWithRadius::Data *CoordsWithRadius::Data::create(Type id, const Index numC
    return NULL;
 }
 
-V_SERIALIZERS(CoordsWithRadius);
+V_OBJECT_TYPE(CoordsWithRadius, Object::COORDWRADIUS);
 
 } // namespace vistle

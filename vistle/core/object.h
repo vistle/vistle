@@ -60,7 +60,12 @@ public:
    };
 
    enum Type {
+
+      DATABASE          = -200, // type ids for abstract object classes - keep smaller than UNKNOWN
+      COORD             = -201,
+      COORDWRADIUS      = -202,
       UNKNOWN           = -1,
+
       PLACEHOLDER       = 11,
 
       TEXTURE1D         = 16,
@@ -81,10 +86,6 @@ public:
       NORMALS           = 99,
 
       VEC               = 100, // base type id for all Vec types
-
-      DATABASE          = 200, // type ids for abstract object classes
-      COORD             = 201,
-      COORDWRADIUS      = 202,
    };
 
    static inline const char *toString(Type v) {

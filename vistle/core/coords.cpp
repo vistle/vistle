@@ -74,6 +74,6 @@ void Coords::setNormals(Normals::const_ptr normals) {
       normals->ref();
 }
 
-V_SERIALIZERS(Coords);
+V_OBJECT_TYPE(Coords, Object::COORD);
 
 } // namespace vistle

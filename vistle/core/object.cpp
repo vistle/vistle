@@ -201,6 +201,8 @@ bool Object::check() const {
    }
    V_CHECK (terminated);
 
+   V_CHECK(d()->type > UNKNOWN);
+
    V_CHECK (d()->meta.timeStep() >= -1);
    V_CHECK (d()->meta.timeStep() < d()->meta.numTimesteps() || d()->meta.numTimesteps()==-1);
    V_CHECK (d()->meta.animationStep() >= -1);
