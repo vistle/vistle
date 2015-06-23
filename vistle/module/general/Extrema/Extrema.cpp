@@ -158,9 +158,9 @@ bool Extrema::compute() {
 
    dim = -1;
 
-   Object::const_ptr obj = expect<Object>("data_in");
+   Object::const_ptr obj = expect<DataBase>("data_in");
    if (!obj)
-      return false;
+      return true;
 
    for (int c=0; c<MaxDim; ++c) {
       min[c] =  std::numeric_limits<ParamVector::Scalar>::max();
