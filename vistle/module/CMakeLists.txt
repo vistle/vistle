@@ -40,6 +40,7 @@ endmacro(add_module)
 
 add_subdirectory(Add)
 add_subdirectory(AttachGrid)
+add_subdirectory(AttachNormals)
 add_subdirectory(AttachObject)
 add_subdirectory(AttachShader)
 add_subdirectory(Cache)
