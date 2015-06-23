@@ -26,7 +26,7 @@ int main(int argc, char ** argv) {
          vistle::Shm::the().detach();
       } else {
 
-         ret = vistle::Shm::cleanAll() ? 0 : 1;
+         vistle::Shm::cleanAll();
       }
 
       MPI_Finalize();
