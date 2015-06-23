@@ -3,6 +3,7 @@
 #include <core/object.h>
 #include <core/placeholder.h>
 #include <core/geometry.h>
+#include <core/coords.h>
 
 #include "renderer.h"
 
@@ -232,7 +233,7 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
    CreatorMap::iterator it = m_creatorMap.find(creatorId);
    if (it != m_creatorMap.end()) {
       if (it->second.age < object->getExecutionCounter()) {
-         std::cerr << "removing all created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
+         //std::cerr << "removing all created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
          removeAllCreatedBy(creatorId);
       } else if (it->second.age > object->getExecutionCounter()) {
          std::cerr << "received outdated object created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
@@ -254,18 +255,29 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
              << " timestep " << object->getTimestep() << std::endl;
 #endif
 
-   switch (object->getType()) {
+   if (auto tex = vistle::Texture1D::as(object)) {
+       if (auto grid = vistle::Coords::as(tex->grid())) {
+         ro = addObject(sender, senderPort, object, grid, grid->normals(), nullptr, tex);
+       }
+   } else if (auto data = vistle::DataBase::as(object)) {
+       if (auto grid = vistle::Coords::as(data->grid())) {
+         ro = addObject(sender, senderPort, object, grid, grid->normals(), nullptr, nullptr);
+       }
+   }
+
+   if (!ro) {
+      switch (object->getType()) {
       case vistle::Object::GEOMETRY: {
 
          vistle::Geometry::const_ptr geom = vistle::Geometry::as(object);
 
 #if 0
          std::cerr << "   Geometry: [ "
-            << (geom->geometry()?"G":".")
-            << (geom->colors()?"C":".")
-            << (geom->normals()?"N":".")
-            << (geom->texture()?"T":".")
-            << " ]" << std::endl;
+                   << (geom->geometry()?"G":".")
+                   << (geom->colors()?"C":".")
+                   << (geom->normals()?"N":".")
+                   << (geom->texture()?"T":".")
+                   << " ]" << std::endl;
 #endif
          ro = addObject(sender, senderPort, object, geom->geometry(), geom->normals(), geom->colors(), geom->texture());
 
@@ -275,10 +287,11 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
       case vistle::Object::PLACEHOLDER:
       default: {
          if (object->getType() == vistle::Object::PLACEHOLDER
-               || true /*VistleGeometryGenerator::isSupported(object->getType())*/)
+             || true /*VistleGeometryGenerator::isSupported(object->getType())*/)
             ro = addObject(sender, senderPort, object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
 
          break;
+      }
       }
    }
 

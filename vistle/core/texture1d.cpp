@@ -24,18 +24,16 @@ Texture1D::Data::Data(const Texture1D::Data &o, const std::string &n)
 , min(o.min)
 , max(o.max)
 , pixels(o.pixels)
-, coords(o.coords)
 {
 }
 
 Texture1D::Data::Data(const std::string &name, const Index width,
                      const Scalar mi, const Scalar ma,
                      const Meta &meta)
-   : Texture1D::Base::Data(Object::TEXTURE1D, name, meta)
+   : Texture1D::Base::Data(0, Object::TEXTURE1D, name, meta)
    , min(mi)
    , max(ma)
    , pixels(new ShmVector<unsigned char>(width * 4))
-   , coords(new ShmVector<Scalar>(1))
 {
 }
 
@@ -48,11 +46,6 @@ Texture1D::Data *Texture1D::Data::create(const Index width,
    publish(tex);
 
    return tex;
-}
-
-Index Texture1D::getNumElements() const {
-
-   return d()->coords->size();
 }
 
 Index Texture1D::getWidth() const {

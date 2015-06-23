@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <core/index.h>
+#include <core/vec.h>
 #include <core/scalar.h>
 #include <core/unstr.h>
 #include <core/triangles.h>
@@ -36,7 +37,7 @@ class Leveller  {
    vistle::Scalar m_isoValue;
    vistle::Index m_processortype;
    vistle::Triangles::ptr m_triangles;
-   std::vector<vistle::Object::ptr> m_outmapData;
+   std::vector<vistle::DataBase::ptr> m_outmapData;
    vistle::Scalar gmin, gmax;
 
    template<class Data, class pol>
@@ -57,7 +58,7 @@ public:
 #endif
    void addMappedData(vistle::Object::const_ptr mapobj );
    vistle::Object::ptr result();
-   vistle::Object::ptr mapresult();
+   vistle::DataBase::ptr mapresult();
    std::pair<vistle::Scalar, vistle::Scalar> range();
 };
 

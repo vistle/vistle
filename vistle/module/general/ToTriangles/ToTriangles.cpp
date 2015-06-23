@@ -9,6 +9,7 @@
 #include <core/polygons.h>
 #include <core/spheres.h>
 #include <core/tubes.h>
+#include <core/texture1d.h>
 
 #include "ToTriangles.h"
 
@@ -20,10 +21,7 @@ ToTriangles::ToTriangles(const std::string &shmname, const std::string &name, in
    : Module("transform Polygons into Triangles", shmname, name, moduleID) {
 
    createInputPort("grid_in");
-   createInputPort("data_in");
    createOutputPort("grid_out");
-   createOutputPort("normal_out");
-   createOutputPort("data_out");
 }
 
 ToTriangles::~ToTriangles() {
@@ -32,13 +30,13 @@ ToTriangles::~ToTriangles() {
 
 template<int Dim>
 struct ReplicateData {
-   Object::const_ptr object;
-   Object::ptr &result;
+   DataBase::const_ptr object;
+   DataBase::ptr &result;
    Index n;
    Index nElem;
    const Index *const el;
    Index nStart, nEnd;
-   ReplicateData(Object::const_ptr obj, Object::ptr &result, Index n, Index nElem, Index *el, Index nStart, Index nEnd)
+   ReplicateData(DataBase::const_ptr obj, DataBase::ptr &result, Index n, Index nElem, Index *el, Index nStart, Index nEnd)
       : object(obj)
       , result(result)
       , n(n)
@@ -91,29 +89,53 @@ struct ReplicateData {
    }
 };
 
-Object::ptr replicateData(Object::const_ptr src, Index n, Index nElem=0, Index *el=nullptr, Index nStart=0, Index nEnd=0) {
+DataBase::ptr replicateData(DataBase::const_ptr src, Index n, Index nElem=0, Index *el=nullptr, Index nStart=0, Index nEnd=0) {
 
-   Object::ptr result;
+   DataBase::ptr result;
    boost::mpl::for_each<Scalars>(ReplicateData<1>(src, result, n, nElem, el, nStart, nEnd));
    boost::mpl::for_each<Scalars>(ReplicateData<3>(src, result, n, nElem, el, nStart, nEnd));
+   if (auto tex = Texture1D::as(src)) {
+       auto vec1 = Vec<Scalar, 1>::as(Object::as(result));
+       vassert(vec1);
+       auto result2 = tex->clone();
+       result2->d()->x[0] = vec1->d()->x[0];
+       result = result2;
+   }
    return result;
 }
 
 bool ToTriangles::compute() {
 
-   auto obj = expect<Object>("grid_in");
+   auto data = expect<DataBase>("grid_in");
+   if (!data) {
+      return true;
+   }
+   auto obj = data->grid();
    if (!obj) {
-      return false;
+      obj = data;
+      data.reset();
    }
 
-   auto data = accept<Object>("data_in");
+   // pass through triangles
+   if (auto tri = Triangles::as(obj)) {
+
+       passThroughObject("grid_out", tri);
+       if (data)
+          passThroughObject("data_out", data);
+       return true;
+   }
+
+   // transform the rest, if possible
+   Triangles::ptr tri;
+   DataBase::ptr ndata;
 
    if (auto poly = Polygons::as(obj)) {
+
       Index nelem = poly->getNumElements();
       Index nvert = poly->getNumCorners();
       Index ntri = nvert-2*nelem;
 
-      Triangles::ptr tri(new Triangles(3*ntri, 0));
+      tri.reset(new Triangles(3*ntri, 0));
       for (int i=0; i<3; ++i)
          tri->d()->x[i] = poly->d()->x[i];
 
@@ -137,13 +159,8 @@ bool ToTriangles::compute() {
          }
       }
       vassert(i == 3*ntri);
+   }  else  if (auto sphere = Spheres::as(obj)) {
 
-      addObject("grid_out", tri);
-      if (data)
-         passThroughObject("data_out", data);
-   }
-
-   if (auto sphere = Spheres::as(obj)) {
       const int NumLat = 8;
       const int NumLong = 13;
       BOOST_STATIC_ASSERT(NumLat >= 3);
@@ -157,7 +174,7 @@ bool ToTriangles::compute() {
       auto z = sphere->z().data();
       auto r = sphere->r().data();
 
-      Triangles::ptr tri(new Triangles(n*3*TriPerSphere, n*CoordPerSphere));
+      tri.reset(new Triangles(n*3*TriPerSphere, n*CoordPerSphere));
       auto tx = tri->x().data();
       auto ty = tri->y().data();
       auto tz = tri->z().data();
@@ -247,17 +264,14 @@ bool ToTriangles::compute() {
             }
          }
       }
-      addObject("grid_out", tri);
-      addObject("normal_out", norm);
+      norm->setMeta(obj->meta());
+      tri->setNormals(norm);
 
       if (data) {
-         auto out = replicateData(data, CoordPerSphere);
-         addObject("data_out", out);
-
+         ndata = replicateData(data, CoordPerSphere);
       }
-   }
+   } else  if (auto tube = Tubes::as(obj)) {
 
-   if (auto tube = Tubes::as(obj)) {
       const int NumSeg = 5;
       BOOST_STATIC_ASSERT(NumSeg >= 3);
       Index TriPerSection = NumSeg * 2;
@@ -286,7 +300,7 @@ bool ToTriangles::compute() {
          numIndEnd = 3*NumSeg;
       }
 
-      Triangles::ptr tri(new Triangles((s-n)*3*TriPerSection+n*(numIndStart+numIndEnd), s*NumSeg+n*(numCoordStart+numCoordEnd)));
+      tri.reset(new Triangles((s-n)*3*TriPerSection+n*(numIndStart+numIndEnd), s*NumSeg+n*(numCoordStart+numCoordEnd)));
       auto tx = tri->x().data();
       auto ty = tri->y().data();
       auto tz = tri->z().data();
@@ -475,17 +489,27 @@ bool ToTriangles::compute() {
       vassert(ci == s*NumSeg+n*(numCoordStart+numCoordEnd));
       vassert(ii == (s-n)*3*TriPerSection+n*(numIndStart+numIndEnd));
 
-      tri->setMeta(obj->meta());
-      tri->copyAttributes(obj);
-      addObject("grid_out", tri);
       norm->setMeta(obj->meta());
-      addObject("normal_out", norm);
+      tri->setNormals(norm);
 
       if (data) {
-         auto out = replicateData(data, NumSeg, n, el, numCoordStart, numCoordEnd);
-         out->setMeta(data->meta());
-         out->copyAttributes(data);
-         addObject("data_out", out);
+         ndata = replicateData(data, NumSeg, n, el, numCoordStart, numCoordEnd);
+      }
+   }
+
+   if (tri) {
+      tri->setMeta(obj->meta());
+      tri->copyAttributes(obj);
+
+      if (data) {
+         if (!ndata)
+            ndata = data->clone();
+         ndata->setMeta(data->meta());
+         ndata->copyAttributes(data);
+         ndata->setGrid(tri);
+         addObject("grid_out", ndata);
+      } else {
+         addObject("grid_out", tri);
       }
    }
 

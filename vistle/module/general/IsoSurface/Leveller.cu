@@ -743,11 +743,11 @@ Object::ptr Leveller::result() {
       return m_triangles;
    }
 
-Object::ptr Leveller::mapresult() {
+DataBase::ptr Leveller::mapresult() {
    if(m_outmapData.size())
       return m_outmapData[0];
    else
-      return Object::ptr();
+      return DataBase::ptr();
 }
 
 std::pair<Scalar, Scalar> Leveller::range() {

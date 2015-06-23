@@ -21,7 +21,6 @@ ToSpheres::ToSpheres(const std::string &shmname, const std::string &name, int mo
    : Module("Spheres", shmname, name, moduleID) {
 
    createInputPort("grid_in");
-   createInputPort("data_in");
    createOutputPort("grid_out");
 
    auto MaxRad = std::numeric_limits<Scalar>::max();
@@ -45,18 +44,30 @@ S clamp(S v, S vmin, S vmax) {
 
 bool ToSpheres::compute() {
 
-   auto v = expect<Vec<Scalar, 3>>("grid_in");
-   if (!v)
+   auto points = accept<Vec<Scalar, 3>>("grid_in");
+   Vec<Scalar, 1>::const_ptr radius;
+   Vec<Scalar, 3>::const_ptr radius3;
+   if (points && points->grid()) {
+       radius3 = points;
+       points = Vec<Scalar, 3>::as(points->grid());
+   } else {
+      radius = accept<Vec<Scalar, 1>>("grid_in");
+      if (radius) {
+          points = Vec<Scalar, 3>::as(radius->grid());
+      }
+   }
+   if (!points) {
+      sendError("no Points object");
       return true;
+   }
 
    const MapMode mode = (MapMode)m_mapMode->getValue();
-   auto radius = accept<Vec<Scalar, 1>>("data_in");
-   if (mode != Fixed && !radius) {
+   if (mode != Fixed && !radius && !radius3) {
       sendError("data input required for varying radius");
       return true;
    }
 
-   Spheres::ptr spheres = Spheres::clone<Vec<Scalar, 3>>(v);
+   Spheres::ptr spheres = Spheres::clone<Vec<Scalar, 3>>(points);
    auto r = spheres->r().data();
 
    auto rad = radius ? radius->x().data() : nullptr;
@@ -81,8 +92,8 @@ bool ToSpheres::compute() {
 
       r[i] = clamp(r[i], rmin, rmax);
    }
-   spheres->setMeta(v->meta());
-   spheres->copyAttributes(v);
+   spheres->setMeta(points->meta());
+   spheres->copyAttributes(points);
    addObject("grid_out", spheres);
 
    return true;

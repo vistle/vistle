@@ -18,10 +18,8 @@ MODULE_MAIN(CellToVert)
 CellToVert::CellToVert(const std::string &shmname, const std::string &name, int moduleID)
    : Module("CellToVert", shmname, name, moduleID) {
 
-   createInputPort("grid_in");
    createInputPort("data_in");
 
-   createOutputPort("grid_out");
    createOutputPort("data_out");
 }
 
@@ -32,16 +30,21 @@ bool CellToVert::compute() {
 
    coCellToVert algo;
 
-   Object::const_ptr grid = expect<Object>("grid_in");
-   Object::const_ptr data = expect<Object>("data_in");
-   if (!grid || !data)
+   auto data = expect<DataBase>("data_in");
+   if (!data)
       return true;
 
-   Object::ptr out = algo.interpolate(grid, data);
+   auto grid = data->grid();
+   if (!grid) {
+      sendError("grid is required on input object");
+      return true;
+   }
+
+   DataBase::ptr out = algo.interpolate(grid, data);
    if (out) {
       out->copyAttributes(data);
+      out->setGrid(grid);
       addObject("data_out", out);
-      passThroughObject("grid_out", grid);
    }
 
    return true;

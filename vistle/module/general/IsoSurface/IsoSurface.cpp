@@ -28,7 +28,6 @@ IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int 
 
    setDefaultCacheMode(ObjectCache::CacheAll);
    setReducePolicy(message::ReducePolicy::OverAll);
-   createInputPort("grid_in");
 #ifdef CUTTINGSURFACE
    m_mapDataIn = createInputPort("data_in");
    addVectorParameter("point", "point on plane", ParamVector(0.0, 0.0, 0.0));
@@ -39,15 +38,14 @@ IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int 
    createInputPort("data_in");
    m_mapDataIn = createInputPort("mapdata_in");
 #endif    
-   createOutputPort("grid_out");
+   m_dataOut = createOutputPort("data_out");
+
    m_processortype = addIntParameter("processortype", "processortype", 0, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_processortype, ThrustBackend);
 #ifdef CUTTINGSURFACE
-   m_mapDataOut = createOutputPort("data_out");
    m_option = addIntParameter("option", "option", 0, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_option, SurfaceOption);
 #else
-   m_mapDataOut = createOutputPort("mapdata_out");
    m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
 #endif
 
@@ -151,14 +149,25 @@ bool IsoSurface::compute() {
    const Scalar isoValue = getFloatParameter("isovalue");
 #endif
 
-   auto gridS = expect<UnstructuredGrid>("grid_in");
-   if (!gridS)
-      return true;
-
-#ifndef CUTTINGSURFACE
+#ifdef CUTTINGSURFACE
+   auto mapdata = expect<DataBase>(m_mapDataIn);
+   if (!mapdata)
+       return true;
+   auto  gridS = UnstructuredGrid::as(mapdata->grid());
+   if (!gridS) {
+       sendError("grid required on input data");
+       return true;
+   }
+#else
+   auto mapdata = accept<DataBase>(m_mapDataIn);
    auto dataS = expect<Vec<Scalar>>("data_in");
    if (!dataS)
       return true;
+   auto  gridS = UnstructuredGrid::as(dataS->grid());
+   if (!gridS) {
+       sendError("grid required on input data");
+       return true;
+   }
 #endif
 
    Leveller l(gridS, isoValue, processorType
@@ -172,7 +181,6 @@ bool IsoSurface::compute() {
 #else
    l.setIsoData(dataS);
 #endif
-   auto mapdata = accept<Object>(m_mapDataIn);
    if(mapdata){
       l.addMappedData(mapdata);
    };
@@ -195,16 +203,22 @@ bool IsoSurface::compute() {
 #endif
 
    Object::ptr result = l.result();
-   Object::ptr mapresult = l.mapresult();
-   if (result && mapresult) {
+   DataBase::ptr mapresult = l.mapresult();
+   if (result) {
 #ifndef CUTTINGSURFACE
       result->copyAttributes(dataS);
 #endif
       result->copyAttributes(gridS, false);
-      addObject("grid_out", result);
-      if (mapdata)
+      if (mapdata && mapresult) {
          mapresult->copyAttributes(mapdata);
-      addObject(m_mapDataOut, mapresult);
+         mapresult->setGrid(result);
+         addObject(m_dataOut, mapresult);
+      }
+#ifndef CUTTINGSURFACE
+      else {
+          addObject(m_dataOut, result);
+      }
+#endif
    }
    return true;
 }

@@ -25,6 +25,7 @@ ToTubes::ToTubes(const std::string &shmname, const std::string &name, int module
    createInputPort("grid_in");
    createInputPort("data_in");
    createOutputPort("grid_out");
+   createOutputPort("data_out");
 
    m_radius = addFloatParameter("radius", "radius or radius scale factor of tube", 1.);
    setParameterMinimum(m_radius, (Float)0.);
@@ -52,13 +53,24 @@ S clamp(S v, S vmin, S vmax) {
 
 bool ToTubes::compute() {
 
-   auto lines = expect<Lines>("grid_in");
-   if (!lines)
+   auto lines = accept<Lines>("grid_in");
+   auto radius = accept<Vec<Scalar, 1>>("grid_in");
+   auto radius3 = accept<Vec<Scalar, 3>>("grid_in");
+   DataBase::ptr basedata;
+   if (!lines && radius) {
+      lines = Lines::as(radius->grid());
+      basedata = radius->clone();
+   }
+   if (!lines && radius3) {
+      lines = Lines::as(radius3->grid());
+      basedata = radius3->clone();
+   }
+   if (!lines) {
+      sendError("no Lines object");
       return true;
+   }
 
    const MapMode mode = (MapMode)m_mapMode->getValue();
-   auto radius = accept<Vec<Scalar, 1>>("data_in");
-   auto radius3 = accept<Vec<Scalar, 3>>("data_in");
    if (mode != Fixed && !radius && !radius3) {
       sendError("data input required for varying radius");
       return true;
@@ -130,7 +142,20 @@ bool ToTubes::compute() {
    tubes->setCapStyles((Tubes::CapStyle)m_startStyle->getValue(), (Tubes::CapStyle)m_jointStyle->getValue(), (Tubes::CapStyle)m_endStyle->getValue());
    tubes->setMeta(lines->meta());
    tubes->copyAttributes(lines);
-   addObject("grid_out", tubes);
+
+   if (basedata) {
+       basedata->setGrid(tubes);
+       addObject("grid_out", basedata);
+   } else {
+       addObject("grid_out", tubes);
+   }
+
+   auto data = accept<DataBase>("data_in");
+   if (data) {
+       auto ndata = data->clone();
+       ndata->setGrid(tubes);
+       addObject("data_out", ndata);
+   }
 
    return true;
 }

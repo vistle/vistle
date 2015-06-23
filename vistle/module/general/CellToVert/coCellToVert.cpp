@@ -326,7 +326,7 @@ coCellToVert::weightedAlgo( Index num_elem, Index num_conn, Index num_point,
    return true;
 }
 
-Object::ptr
+DataBase::ptr
 coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, Index num_point,
       const Index *elem_list, const Index *conn_list, const unsigned char *type_list, 
       const Index *neighbour_cells, const Index *neighbour_idx,
@@ -334,7 +334,7 @@ coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, In
       Index numComp, Index &dataSize, const Scalar *in_data_0, const Scalar *in_data_1, const Scalar *in_data_2, 
       Algorithm algo_option )
 {
-   Object::ptr data_return;
+   DataBase::ptr data_return;
 
    Scalar *out_data_0 = NULL;
    Scalar *out_data_1 = NULL;
@@ -357,13 +357,13 @@ coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, In
             elem_list, conn_list, type_list, neighbour_cells, neighbour_idx, xcoord, ycoord, zcoord,
             numComp, dataSize, in_data_0, in_data_1, in_data_2, out_data_0, out_data_1, out_data_2, algo_option ) ) 
    {
-      return Object::ptr();
+      return DataBase::ptr();
    }
 
    return data_return;			        
 }			   
 
-Object::ptr
+DataBase::ptr
 coCellToVert::interpolate(Object::const_ptr geo_in,
       Index numComp, Index &dataSize, const Scalar *in_data_0, const Scalar *in_data_1, const Scalar *in_data_2, 
       Algorithm algo_option )
@@ -375,7 +375,7 @@ coCellToVert::interpolate(Object::const_ptr geo_in,
 
    if( !geo_in )
    {
-      Object::ptr();
+      DataBase::ptr();
    }
 
    Index *neighbour_cells = NULL;
@@ -403,7 +403,7 @@ coCellToVert::interpolate(Object::const_ptr geo_in,
 #endif
       }
    } else {
-      return Object::ptr();
+      return DataBase::ptr();
    }
 
    return interpolate( unstructured, num_elem, num_conn, num_point,
@@ -411,12 +411,12 @@ coCellToVert::interpolate(Object::const_ptr geo_in,
          numComp, dataSize, in_data_0, in_data_1, in_data_2, algo_option);    
 }		   
 
-Object::ptr
-coCellToVert::interpolate(Object::const_ptr geo_in, Object::const_ptr data_in, Algorithm algo_option )
+DataBase::ptr
+coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in, Algorithm algo_option )
 {
    if( !geo_in || !data_in )
    {
-      return Object::ptr();
+      return DataBase::ptr();
    }
 
    Scalar *in_data_0=NULL, *in_data_1=NULL, *in_data_2=NULL;

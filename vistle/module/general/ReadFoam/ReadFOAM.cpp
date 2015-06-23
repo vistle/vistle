@@ -488,35 +488,35 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
    return result;
 }
 
-Object::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &field) {
+DataBase::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &field) {
 
    boost::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
    if (!stream) {
       std::cerr << "failed to open " << meshdir << "/" << field << std::endl;
-      return Object::ptr();
+      return DataBase::ptr();
    }
    HeaderInfo header = readFoamHeader(*stream);
    if (header.fieldclass == "volScalarField") {
       Vec<Scalar>::ptr s(new Vec<Scalar>(header.lines));
       if (!readFloatArray(header, *stream, s->x().data(), s->x().size())) {
          std::cerr << "readFloatArray for " << meshdir << "/" << field << " failed" << std::endl;
-         return Object::ptr();
+         return DataBase::ptr();
       }
       return s;
    } else if (header.fieldclass == "volVectorField") {
       Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(header.lines));
       if (!readFloatVectorArray(header, *stream, v->x().data(), v->y().data(), v->z().data(), v->x().size())) {
          std::cerr << "readFloatVectorArray for " << meshdir << "/" << field << " failed" << std::endl;
-         return Object::ptr();
+         return DataBase::ptr();
       }
       return v;
    }
 
    std::cerr << "cannot interpret " << meshdir << "/" << field << std::endl;
-   return Object::ptr();
+   return DataBase::ptr();
 }
 
-Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::string &field,
+DataBase::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::string &field,
                                         const int &processor) {
    auto &boundaries = *m_boundaries[processor];
    auto owners = m_owners[processor]->data();
@@ -534,14 +534,14 @@ Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::s
    boost::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
    if (!stream) {
       std::cerr << "failed to open " << meshdir << "/" << field << std::endl;
-      return Object::ptr();
+      return DataBase::ptr();
    }
    HeaderInfo header = readFoamHeader(*stream);
    if (header.fieldclass == "volScalarField") {
       std::vector<scalar_t> fullX(header.lines);
       if (!readFloatArray(header, *stream, fullX.data(), header.lines)) {
          std::cerr << "readFloatArray for " << meshdir << "/" << field << " failed" << std::endl;
-         return Object::ptr();
+         return DataBase::ptr();
       }
 
       Vec<Scalar>::ptr s(new Vec<Scalar>(dataMapping.size()));
@@ -556,7 +556,7 @@ Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::s
       std::vector<scalar_t> fullX(header.lines),fullY(header.lines),fullZ(header.lines);
       if (!readFloatVectorArray(header, *stream,fullX.data(),fullY.data(),fullZ.data(),header.lines)) {
          std::cerr << "readFloatVectorArray for " << meshdir << "/" << field << " failed" << std::endl;
-         return Object::ptr();
+         return DataBase::ptr();
       }
 
       Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(dataMapping.size()));
@@ -572,7 +572,7 @@ Object::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::s
    }
 
    std::cerr << "cannot interpret " << meshdir << "/" << field << std::endl;
-   return Object::ptr();
+   return DataBase::ptr();
 }
 
 void ReadFOAM::setMeta(Object::ptr obj, int processor, int timestep) const {
@@ -602,7 +602,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
       auto it = fields.find(field);
       if (it == fields.end())
          continue;
-      Object::ptr obj = loadField(meshdir, field);
+      DataBase::ptr obj = loadField(meshdir, field);
       setMeta(obj, processor, timestep);
       m_currentvolumedata[processor][i]= obj;
    }
@@ -612,7 +612,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
       auto it = fields.find(field);
       if (it == fields.end())
          continue;
-      Object::ptr obj = loadBoundaryField(meshdir, field, processor);
+      DataBase::ptr obj = loadBoundaryField(meshdir, field, processor);
       setMeta(obj, processor, timestep);
       addObject(m_boundaryDataOut[i], obj);
    }
@@ -1088,6 +1088,7 @@ bool ReadFOAM::addVolumeDataToPorts(int processor) {
    }
    for (auto &data: m_currentvolumedata[processor]) {
       int portnum=data.first;
+      m_currentvolumedata[processor][portnum]->setGrid(m_currentgrid[processor]);
       addObject(m_volumeDataOut[portnum], m_currentvolumedata[processor][portnum]);
    }
    return true;

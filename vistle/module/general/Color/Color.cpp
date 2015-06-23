@@ -225,7 +225,8 @@ bool Color::compute() {
 
    //std::cerr << "Color: [" << min << "--" << max << "]" << std::endl;
 
-   vistle::Object::ptr out(addTexture(obj, min, max, cmap));
+   auto out(addTexture(obj, min, max, cmap));
+   out->setGrid(obj->grid());
    out->setMeta(obj->meta());
 
    addObject("data_out", out);

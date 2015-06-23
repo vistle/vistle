@@ -47,10 +47,8 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
    setDefaultCacheMode(ObjectCache::CacheAll);
    setReducePolicy(message::ReducePolicy::OverAll);
 
-    createInputPort("grid_in");
     createInputPort("data_in0");
     createInputPort("data_in1");
-    createOutputPort("geom_out");
     createOutputPort("data_out0");
     createOutputPort("data_out1");
     createOutputPort("particle_id");
@@ -381,12 +379,16 @@ bool Tracer::prepare(){
 bool Tracer::compute() {
 
     bool useCelltree = m_useCelltree->getValue();
-    auto grid = expect<UnstructuredGrid>("grid_in");
     auto data0 = expect<Vec<Scalar, 3>>("data_in0");
     auto data1 = accept<Vec<Scalar>>("data_in1");
 
-    if (!grid || !data0)
+    if (!data0)
        return true;
+    auto grid = UnstructuredGrid::as(data0->grid());
+    if (!grid) {
+        sendError("grid attachment required at data_in0");
+        return true;
+    }
 
     int t = data0->getTimestep();
     if (grid->getTimestep() >= 0) {
@@ -568,14 +570,16 @@ bool Tracer::reduce(int timestep) {
 
          block[i]->setMeta(meta);
          Lines::ptr lines = block[i]->getLines();
-         addObject("geom_out", lines);
+         block[i]->ids()->setGrid(lines);
          addObject("particle_id", block[i]->ids());
+         block[i]->steps()->setGrid(lines);
          addObject("timestep", block[i]->steps());
 
          std::vector<Vec<Scalar, 3>::ptr> v_vec = block[i]->getIplVec();
          Vec<Scalar, 3>::ptr v;
          if(v_vec.size()>0){
             v = v_vec[0];
+            v->setGrid(lines);
             addObject("data_out0", v);
          }
 
@@ -584,6 +588,7 @@ bool Tracer::reduce(int timestep) {
             Vec<Scalar>::ptr p;
             if(p_vec.size()>0){
                p = p_vec[0];
+               p->setGrid(lines);
                addObject("data_out1", p);
             }
          }

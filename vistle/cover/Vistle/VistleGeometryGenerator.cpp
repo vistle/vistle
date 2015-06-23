@@ -462,8 +462,8 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
       if (geom && coords) {
          if(vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex)) {
 
-            if (tex->getNumElements() != coords->getNumCoords()) {
-               std::cerr << "VistleGeometryGenerator: Coords: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumElements() << std::endl;
+            if (tex->getNumCoords() != coords->getNumCoords()) {
+               std::cerr << "VistleGeometryGenerator: Coords: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
             } else {
                osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
                osgTex->setDataVariance(osg::Object::DYNAMIC);

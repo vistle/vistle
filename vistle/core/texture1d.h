@@ -5,23 +5,24 @@
 #include "scalar.h"
 #include "shm.h"
 #include "object.h"
+#include "vec.h"
 
 namespace vistle {
 
-class V_COREEXPORT Texture1D: public Object {
+class V_COREEXPORT Texture1D: public Vec<Scalar> {
    V_OBJECT(Texture1D);
 
  public:
-   typedef Object Base;
+   typedef Vec<Scalar> Base;
 
    Texture1D(const Index width,
          const Scalar min, const Scalar max,
          const Meta &meta=Meta());
 
-   Index getNumElements() const;
    Index getWidth() const;
+   Index getNumCoords() const { return getSize(); }
    shm<unsigned char>::array &pixels() const { return *(*d()->pixels)(); }
-   shm<Scalar>::array &coords() const { return *(*d()->coords)(); }
+   shm<Scalar>::array &coords() const { return x(); }
 
    V_DATA_BEGIN(Texture1D);
       Scalar min;

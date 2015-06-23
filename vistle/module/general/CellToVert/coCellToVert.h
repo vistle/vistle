@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <core/object.h>
 #include <core/scalar.h>
+#include <core/vec.h>
 
 using namespace vistle;
 
@@ -60,18 +61,18 @@ class coCellToVert
 	//
 	//  returns NULL in case of an error
 	//
-        Object::ptr interpolate( bool unstructured, Index num_elem, Index num_conn, Index num_point,
+        DataBase::ptr interpolate( bool unstructured, Index num_elem, Index num_conn, Index num_point,
                            const Index *elem_list, const Index *conn_list, const unsigned char *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
 			   const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
                            Index numComp, Index &dataSize, const Scalar *in_data_0, const Scalar *in_data_1, const Scalar *in_data_2, 
                            Algorithm algo_option=SIMPLE );
  
-        Object::ptr interpolate(Object::const_ptr geo_in,
+        DataBase::ptr interpolate(Object::const_ptr geo_in,
                            Index numComp, Index &dataSize, const Scalar *in_data_0, const Scalar *in_data_1, const Scalar *in_data_2, 
                            Algorithm algo_option=SIMPLE );
 		
 	// note: no attributes copied		   
-        Object::ptr interpolate(Object::const_ptr geo_in, Object::const_ptr data_in,
+        DataBase::ptr interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in,
                            Algorithm algo_option=SIMPLE );			   
                
         //

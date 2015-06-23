@@ -28,7 +28,7 @@ class IsoSurface: public vistle::Module {
    vistle::FloatParameter *m_isovalue;
    vistle::IntParameter *m_processortype;
    vistle::IntParameter *m_option;
-   vistle::Port *m_mapDataIn, *m_mapDataOut;
+   vistle::Port *m_mapDataIn, *m_dataOut;
 
    vistle::Scalar m_min, m_max;
 };
