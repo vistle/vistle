@@ -11,7 +11,7 @@
 #include <boost/mpi/collectives.hpp>
 
 #include "IsoSurface.h"
-#include "../IsoSurface/tables.h"
+#include "../../general/IsoSurface/tables.h"
 
 #include <util/openmp.h>
 
