@@ -183,6 +183,11 @@ Object::~Object() {
    m_data->unref();
 }
 
+Object::ptr Object::clone() const {
+
+   return cloneInternal();
+}
+
 bool Object::check() const {
 
    V_CHECK (d()->refcount >= 0);

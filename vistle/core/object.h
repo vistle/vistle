@@ -144,7 +144,8 @@ public:
 
    virtual ~Object();
 
-   virtual Object::ptr clone() const = 0;
+   Object::ptr clone() const;
+   virtual Object::ptr cloneInternal() const = 0;
 
    virtual bool check() const;
 
@@ -359,11 +360,14 @@ class ObjectTypeRegistry {
    static boost::shared_ptr<const ObjType> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const ObjType>(ptr); } \
    static boost::shared_ptr<ObjType> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<ObjType>(ptr); } \
    static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new ObjType(static_cast<ObjType::Data *>(data))); } \
-   Object::ptr clone() const { \
+   Object::ptr cloneInternal() const { \
       const std::string n(Shm::the().createObjectID()); \
             Data *data = shm<Data>::construct(n)(*d(), n); \
             publish(data); \
             return createFromData(data); \
+   } \
+   ObjType::ptr clone() const { \
+      return ObjType::as(cloneInternal()); \
    } \
    template<class OtherType> \
    static ObjType::ptr clone(typename OtherType::ptr other) { \
