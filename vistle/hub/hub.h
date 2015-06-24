@@ -49,6 +49,7 @@ private:
 
    void hubReady();
    bool connectToMaster(const std::string &host, unsigned short port);
+   bool connectData(int hubId);
    bool startUi(const std::string &uipath);
    bool startServer();
    bool startAccept();

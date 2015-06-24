@@ -140,7 +140,10 @@ std::vector<message::Buffer> StateTracker::getState() const {
    std::vector<message::Buffer> state;
 
    for (const auto &slave: m_hubs) {
-      appendMessage(state, AddSlave(slave.id, slave.name));
+      AddSlave msg(slave.id, slave.name);
+      msg.setPort(slave.port);
+      msg.setAddress(slave.address);
+      appendMessage(state, msg);
    }
 
    // available modules
@@ -471,6 +474,8 @@ void StateTracker::processQueue() {
 bool StateTracker::handlePriv(const message::AddSlave &slave) {
    boost::lock_guard<mutex> locker(m_slaveMutex);
    m_hubs.emplace_back(slave.id(), slave.name());
+   m_hubs.back().port = slave.port();
+   m_hubs.back().address = slave.address();
    m_slaveCondition.notify_all();
    return true;
 }

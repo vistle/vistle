@@ -219,6 +219,7 @@ class V_COREEXPORT AddSlave: public Message {
    boost::asio::ip::address_v4 addressV4() const;
 
    void setPort(unsigned short port);
+   void setAddress(boost::asio::ip::address addr);
    void setAddress(boost::asio::ip::address_v6 addr);
    void setAddress(boost::asio::ip::address_v4 addr);
 

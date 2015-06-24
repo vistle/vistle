@@ -236,6 +236,15 @@ void AddSlave::setPort(unsigned short port) {
    m_port = port;
 }
 
+void AddSlave::setAddress(boost::asio::ip::address addr) {
+   assert(addr.is_v4() || addr.is_v6());
+
+   if (addr.is_v4())
+      setAddress(addr.to_v4());
+   else if (addr.is_v6())
+      setAddress(addr.to_v6());
+}
+
 void AddSlave::setAddress(boost::asio::ip::address_v6 addr) {
    const std::string addrString = addr.to_string();
    COPY_STRING(m_address, addrString);

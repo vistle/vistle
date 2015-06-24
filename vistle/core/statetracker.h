@@ -202,10 +202,13 @@ class V_COREEXPORT StateTracker {
       HubData(int id, const std::string &name)
       : id(id)
       , name(name)
+      , port(0)
       {}
 
       int id;
       std::string name;
+      unsigned short port;
+      boost::asio::ip::address address;
    };
    std::vector<HubData> m_hubs;
 };

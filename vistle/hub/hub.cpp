@@ -397,6 +397,32 @@ bool Hub::sendUi(const message::Message &msg) {
    return true;
 }
 
+bool Hub::connectData(int hubId) {
+   vassert(m_dataSocket.find(hubId) == m_dataSocket.end());
+
+   for (auto &hubData: m_stateTracker.m_hubs) {
+      if (hubData.id == hubId) {
+         auto &sock = m_dataSocket[hubId];
+         boost::asio::ip::tcp::endpoint dest(hubData.address, hubData.port);
+
+         boost::system::error_code ec;
+         asio::connect(*sock, &dest, &dest+1, ec);
+         if (ec) {
+            CERR << "could not establish bulk data connection to " << hubData.address << ":" << hubData.port << std::endl;
+            return false;
+         }
+
+         addSocket(sock, message::Identify::BULKDATA);
+
+         CERR << "connected to hub (data) at " << hubData.address << ":" << hubData.port << std::endl;
+         return true;
+      }
+   }
+
+   CERR << "don't know hub " << hubId << std::endl;
+   return false;
+}
+
 bool Hub::sendData(const message::Message &msg, int hubId) {
 
    if (hubId == m_hubId)
@@ -404,6 +430,11 @@ bool Hub::sendData(const message::Message &msg, int hubId) {
 
    auto it = m_dataSocket.find(hubId);
    if (it == m_dataSocket.end()) {
+      if (!connectData(hubId)) {
+         return false;
+      }
+      it = m_dataSocket.find(hubId);
+      vassert(it != m_dataSocket.end());
    }
    return sendMessage(it->second, msg);
 }
@@ -444,6 +475,8 @@ void Hub::hubReady() {
       sendMaster(slave);
       sendUi(slave);
       sendManager(slave);
+
+      connectData(Id::MasterHub);
    }
 }
 
