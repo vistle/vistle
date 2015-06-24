@@ -179,12 +179,17 @@ class V_COREEXPORT Identify: public Message {
          );
 
    Identify(Identity id=UNKNOWN, const std::string &name = "");
+   Identify(Identity id, int rank);
    Identity identity() const;
    const char *name() const;
+   int id() const;
+   int rank() const;
 
  private:
    Identity m_identity;
    text_t m_name;
+   int m_id;
+   int m_rank;
 
 };
 BOOST_STATIC_ASSERT(sizeof(Identify) <= Message::MESSAGE_SIZE);

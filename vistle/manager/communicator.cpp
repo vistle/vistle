@@ -50,6 +50,7 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts)
 , m_recvSize(0)
 , m_traceMessages(message::Message::INVALID)
 , m_hubSocket(m_ioService)
+, m_dataSocket(m_ioService)
 {
    vassert(s_singleton == NULL);
    s_singleton = this;
@@ -99,15 +100,19 @@ int Communicator::getSize() const {
 
 bool Communicator::connectHub(const std::string &host, unsigned short port) {
 
+   if (getRank() == 0) {
+      CERR << "connecting to hub on " << host << ":" << port << "..." << std::flush;
+   }
+
    int ret = 1;
+   asio::ip::tcp::resolver resolver(m_ioService);
+   asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(port));
+   m_hubEndpoint = resolver.resolve(query);
+   boost::system::error_code ec;
+
    if (getRank() == 0) {
 
-      CERR << "connecting to hub on " << host << ":" << port << "..." << std::flush;
-      asio::ip::tcp::resolver resolver(m_ioService);
-      asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(port));
-      asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-      boost::system::error_code ec;
-      asio::connect(m_hubSocket, endpoint_iterator, ec);
+      asio::connect(m_hubSocket, m_hubEndpoint, ec);
       if (ec) {
          std::cerr << std::endl;
          CERR << "could not establish connection to hub at " << host << ":" << port << std::endl;
@@ -122,12 +127,32 @@ bool Communicator::connectHub(const std::string &host, unsigned short port) {
    return ret;
 }
 
+bool Communicator::connectData() {
+
+   bool ret = true;
+   boost::system::error_code ec;
+
+   asio::connect(m_dataSocket, m_hubEndpoint, ec);
+   if (ec) {
+      std::cerr << std::endl;
+      CERR << "could not establish bulk data connection on rank " << m_rank << std::endl;
+      ret = false;
+   }
+
+   return ret;
+}
+
 bool Communicator::sendHub(const message::Message &message) {
 
    if (getRank() == 0)
       return message::send(m_hubSocket, message);
    else
       return true;
+}
+
+bool Communicator::sendData(const message::Message &message) {
+
+   return message::send(m_dataSocket, message);
 }
 
 
@@ -234,8 +259,8 @@ bool Communicator::dispatch(bool *work) {
       }
    }
 
+   m_ioService.poll();
    if (m_rank == 0) {
-      m_ioService.poll();
       message::Buffer buf;
       bool gotMsg = false;
       if (!message::recv(m_hubSocket, buf.msg, gotMsg)) {
@@ -248,6 +273,18 @@ bool Communicator::dispatch(bool *work) {
             CERR << "Quit reason: broadcast & handle 2" << std::endl;
             done = true;
          }
+      }
+   }
+
+   if (m_dataSocket.is_open()) {
+      message::Buffer buf;
+      bool gotMsg = false;
+      if (!message::recv(m_dataSocket, buf.msg, gotMsg)) {
+         CERR << "Data communication error" << std::endl;
+         //done = true;
+      } else if (gotMsg) {
+         CERR << "Data received" << std::endl;
+         handleDataMessage(buf.msg);
       }
    }
 
@@ -331,6 +368,22 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
    }
 }
 
+bool Communicator::handleDataMessage(const message::Message &message) {
+
+   using namespace vistle::message;
+
+   switch(message.type()) {
+      case Message::IDENTIFY: {
+         sendData(Identify(Identify::BULKDATA, m_rank));
+         break;
+      }
+      default:
+         return true;
+   }
+
+   return true;
+}
+
 
 bool Communicator::handleMessage(const message::Message &message) {
 
@@ -340,7 +393,7 @@ bool Communicator::handleMessage(const message::Message &message) {
          m_hubId = set.getId();
          CERR << "got id " << m_hubId << std::endl;
          message::DefaultSender::init(m_hubId, m_rank);
-         return true;
+         return connectData();
          break;
       }
       default:

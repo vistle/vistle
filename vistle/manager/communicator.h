@@ -28,6 +28,7 @@ class Communicator {
    void run();
    bool dispatch(bool *work);
    bool handleMessage(const message::Message &message);
+   bool handleDataMessage(const message::Message &message);
    bool forwardToMaster(const message::Message &message);
    bool broadcastAndHandleMessage(const message::Message &message);
    bool sendMessage(int receiver, const message::Message &message) const;
@@ -44,6 +45,8 @@ class Communicator {
 
  private:
    bool sendHub(const message::Message &message);
+   bool sendData(const message::Message &message);
+   bool connectData();
 
    ClusterManager *m_clusterManager;
 
@@ -65,7 +68,8 @@ class Communicator {
    Communicator(const Communicator &other); // not implemented
 
    boost::asio::io_service m_ioService;
-   boost::asio::ip::tcp::socket m_hubSocket;
+   boost::asio::ip::tcp::socket m_hubSocket, m_dataSocket;
+   boost::asio::ip::tcp::resolver::iterator m_hubEndpoint;
 };
 
 } // namespace vistle

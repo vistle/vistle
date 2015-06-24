@@ -142,8 +142,21 @@ bool Message::broadcast() const {
 Identify::Identify(Identity id, const std::string &name)
 : Message(Message::IDENTIFY, sizeof(Identify))
 , m_identity(id)
+, m_id(Id::Invalid)
+, m_rank(-1)
 {
    COPY_STRING(m_name, name);
+}
+
+Identify::Identify(Identity id, int rank)
+: Message(Message::IDENTIFY, sizeof(Identify))
+, m_identity(Identify::BULKDATA)
+, m_id(Id::Invalid)
+, m_rank(rank)
+{
+   assert(id == Identify::BULKDATA);
+
+   memset(m_name.data(), 0, m_name.size());
 }
 
 Identify::Identity Identify::identity() const {
@@ -154,6 +167,16 @@ Identify::Identity Identify::identity() const {
 const char *Identify::name() const {
 
    return m_name.data();
+}
+
+int Identify::id() const {
+
+   return m_id;
+}
+
+int Identify::rank() const {
+
+   return m_rank;
 }
 
 AddSlave::AddSlave(int id, const std::string &name)
