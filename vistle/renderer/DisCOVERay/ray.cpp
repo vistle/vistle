@@ -9,7 +9,6 @@
 #include <boost/mpi.hpp>
 
 #include <renderer/renderer.h>
-#include <core/geometry.h>
 #include <core/texture1d.h>
 #include <core/message.h>
 #include <core/assert.h>

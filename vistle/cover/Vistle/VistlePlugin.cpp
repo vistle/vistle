@@ -18,7 +18,6 @@
 #include <core/triangles.h>
 #include <core/polygons.h>
 #include <core/texture1d.h>
-#include <core/geometry.h>
 
 
 #include <osg/Group>

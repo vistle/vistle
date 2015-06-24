@@ -2,7 +2,6 @@
 #include <core/messagequeue.h>
 #include <core/object.h>
 #include <core/placeholder.h>
-#include <core/geometry.h>
 #include <core/coords.h>
 
 #include "renderer.h"
@@ -264,35 +263,8 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
          ro = addObject(sender, senderPort, object, grid, grid->normals(), nullptr, nullptr);
        }
    }
-
    if (!ro) {
-      switch (object->getType()) {
-      case vistle::Object::GEOMETRY: {
-
-         vistle::Geometry::const_ptr geom = vistle::Geometry::as(object);
-
-#if 0
-         std::cerr << "   Geometry: [ "
-                   << (geom->geometry()?"G":".")
-                   << (geom->colors()?"C":".")
-                   << (geom->normals()?"N":".")
-                   << (geom->texture()?"T":".")
-                   << " ]" << std::endl;
-#endif
-         ro = addObject(sender, senderPort, object, geom->geometry(), geom->normals(), geom->colors(), geom->texture());
-
-         break;
-      }
-
-      case vistle::Object::PLACEHOLDER:
-      default: {
-         if (object->getType() == vistle::Object::PLACEHOLDER
-             || true /*VistleGeometryGenerator::isSupported(object->getType())*/)
-            ro = addObject(sender, senderPort, object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
-
-         break;
-      }
-      }
+      ro = addObject(sender, senderPort, object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
    }
 
    if (ro) {

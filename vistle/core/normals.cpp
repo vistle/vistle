@@ -41,8 +41,7 @@ Normals::Data::Data(const Normals::Data &o, const std::string &n)
 {
 }
 
-Normals::Data *Normals::Data::create(const Index numNormals,
-                      const Meta &meta) {
+Normals::Data *Normals::Data::create(const Index numNormals, const Meta &meta) {
 
    const std::string name = Shm::the().createObjectID();
    Data *p = shm<Data>::construct(name)(numNormals, name, meta);

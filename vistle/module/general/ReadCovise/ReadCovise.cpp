@@ -11,7 +11,6 @@
 //#include <google/profiler.h>
 
 #include <core/object.h>
-#include <core/geometry.h>
 #include <core/vec.h>
 #include <core/polygons.h>
 #include <core/lines.h>
@@ -412,25 +411,33 @@ Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *e
    } else {
       vassert(elem->subelems.size() == ncomp);
 
-      Geometry::ptr container(new Geometry(Object::Initialized));
+      DataBase::ptr data;
+      Coords::ptr grid;
 
       if (contains[0]) {
-         container->setGeometry(readObject(fd, *elem->subelems[0]));
-      }
-
-      if (contains[1]) {
-         container->setColors(readObject(fd, *elem->subelems[1]));
+         grid = Coords::as(readObject(fd, *elem->subelems[0]));
       }
 
       if (contains[2]) {
-         container->setNormals(readObject(fd, *elem->subelems[2]));
+         auto normals = Normals::clone<Vec<Scalar,3>>(Vec<Scalar,3>::as(readObject(fd, *elem->subelems[2])));
+         if (grid)
+             grid->setNormals(normals);
       }
 
       if (contains[3]) {
-         container->setTexture(readObject(fd, *elem->subelems[3]));
+         data = DataBase::as(readObject(fd, *elem->subelems[3]));
       }
 
-      return container;
+      if (!data && contains[1]) {
+         data = DataBase::as(readObject(fd, *elem->subelems[1]));
+      }
+
+      if (data) {
+          data->setGrid(grid);
+          return data;
+      }
+
+      return grid;
    }
 
    return Object::ptr();

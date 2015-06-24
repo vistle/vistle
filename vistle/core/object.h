@@ -69,7 +69,6 @@ public:
       PLACEHOLDER       = 11,
 
       TEXTURE1D         = 16,
-      GEOMETRY          = 17,
 
       POINTS            = 18,
       SPHERES           = 19,
@@ -96,7 +95,6 @@ public:
          V_OBJECT_CASE(PLACEHOLDER)
 
          V_OBJECT_CASE(TEXTURE1D)
-         V_OBJECT_CASE(GEOMETRY)
 
          V_OBJECT_CASE(POINTS)
          V_OBJECT_CASE(SPHERES)

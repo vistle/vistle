@@ -35,7 +35,6 @@ if(${TEMPLATES_IN_HEADERS})
       triangles.cpp
       polygons.cpp
       unstr.cpp
-      geometry.cpp
       texture1d.cpp
       placeholder.cpp
    )
@@ -57,8 +56,6 @@ set(core_HEADERS
    coordswradius_impl.h
    dimensions.h
    export.h
-   geometry.h
-   geometry_impl.h
    index.h
    indexed.h
    indexed_impl.h

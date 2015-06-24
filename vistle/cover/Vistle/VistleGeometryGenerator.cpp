@@ -44,10 +44,9 @@ VistleGeometryGenerator::VistleGeometryGenerator(vistle::Object::const_ptr geo,
 bool VistleGeometryGenerator::isSupported(vistle::Object::Type t) {
 
    switch (t) {
-      case vistle::Object::GEOMETRY:
       case vistle::Object::POINTS:
-      case vistle::Object::TRIANGLES:
       case vistle::Object::LINES:
+      case vistle::Object::TRIANGLES:
       case vistle::Object::POLYGONS:
 #ifdef COVER_PLUGIN
       case vistle::Object::SPHERES:

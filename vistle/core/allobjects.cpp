@@ -14,7 +14,6 @@
 #include "triangles.cpp"
 #include "polygons.cpp"
 #include "unstr.cpp"
-#include "geometry.cpp"
 #include "texture1d.cpp"
 #include "placeholder.cpp"
 #include "celltree.cpp"
@@ -34,7 +33,6 @@
 #include "triangles.h"
 #include "polygons.h"
 #include "unstr.h"
-#include "geometry.h"
 #include "texture1d.h"
 #include "placeholder.h"
 #include "celltree.h"
@@ -66,7 +64,6 @@ void registerTypes() {
    using namespace vistle;
    REGISTER_TYPE(PlaceHolder, Object::PLACEHOLDER);
    REGISTER_TYPE(Texture1D, Object::TEXTURE1D);
-   REGISTER_TYPE(Geometry, Object::GEOMETRY);
    REGISTER_TYPE(Points, Object::POINTS);
    REGISTER_TYPE(Spheres, Object::SPHERES);
    REGISTER_TYPE(Lines, Object::LINES);
