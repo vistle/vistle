@@ -12,7 +12,8 @@ class AttachGrid: public vistle::Module {
 
  private:
 
-   vistle::Port *m_gridIn, *m_dataIn, *m_dataOut;
+   vistle::Port *m_gridIn;
+   std::vector<vistle::Port *> m_dataIn, m_dataOut;
    virtual bool compute();
 };
 
