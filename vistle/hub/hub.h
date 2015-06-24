@@ -39,6 +39,7 @@ class Hub {
    bool sendSlave(const message::Message &msg, int id);
    bool sendHub(const message::Message &msg, int id);
    bool sendUi(const message::Message &msg);
+   bool sendData(const message::Message &msg, int hubId);
 
    const StateTracker &stateTracker() const;
    StateTracker &stateTracker();
@@ -83,6 +84,8 @@ private:
 
    bool m_isMaster;
    boost::shared_ptr<boost::asio::ip::tcp::socket> m_masterSocket;
+   typedef std::map<int, boost::shared_ptr<boost::asio::ip::tcp::socket>> DataSocketMap;
+   DataSocketMap m_dataSocket;
    struct Slave {
       boost::shared_ptr<boost::asio::ip::tcp::socket> sock;
       std::string name;

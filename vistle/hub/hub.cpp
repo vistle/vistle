@@ -397,6 +397,18 @@ bool Hub::sendUi(const message::Message &msg) {
    return true;
 }
 
+bool Hub::sendData(const message::Message &msg, int hubId) {
+
+   if (hubId == m_hubId)
+      return true;
+
+   auto it = m_dataSocket.find(hubId);
+   if (it == m_dataSocket.end()) {
+   }
+   return sendMessage(it->second, msg);
+}
+
+
 int Hub::idToHub(int id) const {
 
    if (id >= Id::ModuleBase)
@@ -410,7 +422,25 @@ void Hub::hubReady() {
    if (m_isMaster) {
       processScript();
    } else {
+
       message::AddSlave slave(m_hubId, m_name);
+      slave.setPort(m_port);
+
+      for (auto &sock: m_sockets) {
+         if (sock.second == message::Identify::HUB) {
+            try {
+               auto addr = sock.first->local_endpoint().address();
+               if (addr.is_v6()) {
+                  slave.setAddress(addr.to_v6());
+               } else if (addr.is_v4()) {
+                  slave.setAddress(addr.to_v4());
+               }
+            } catch (std::bad_cast &except) {
+               CERR << "AddSlave: failed to convert local address to v6" << std::endl;
+            }
+         }
+      }
+
       sendMaster(slave);
       sendUi(slave);
       sendManager(slave);
@@ -445,7 +475,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          switch(id.identity()) {
             case Identify::UNKNOWN: {
                if (m_isMaster) {
-                  sendMessage(sock, Identify(Identify::HUB));
+                  sendMessage(sock, Identify(Identify::HUB, m_name));
                } else {
                   sendMessage(sock, Identify(Identify::SLAVEHUB, m_name));
                }
@@ -485,7 +515,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                break;
             }
             case Identify::BULKDATA: {
-               CERR << "bulk data to hub '" << id.name() << "' connected" << std::endl;
+               CERR << "bulk data to hub '" << id.name() << ":" << id.rank() << "' connected" << std::endl;
                break;
             }
             default: {

@@ -63,6 +63,7 @@ typedef std::array<char, 512> param_desc_t;
 typedef std::array<char, 50> param_choice_t;
 const int param_num_choices = 18;
 typedef std::array<char, 900> text_t;
+typedef std::array<char, 300> address_t;
 
 typedef boost::uuids::uuid uuid_t;
 
@@ -198,14 +199,35 @@ V_ENUM_OUTPUT_OP(Identity, Identify)
 //! announce that a slave hub has connected
 class V_COREEXPORT AddSlave: public Message {
 
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(AddressType,
+      (Hostname)
+      (IPv4)
+      (IPv6)
+      (Unspecified)
+   )
+
  public:
    AddSlave(int id, const std::string &name);
    int id() const;
    const char *name() const;
+   unsigned short port() const;
+   AddressType addressType() const;
+   bool isAddress() const;
+   std::string host() const;
+   boost::asio::ip::address address() const;
+   boost::asio::ip::address_v6 addressV6() const;
+   boost::asio::ip::address_v4 addressV4() const;
+
+   void setPort(unsigned short port);
+   void setAddress(boost::asio::ip::address_v6 addr);
+   void setAddress(boost::asio::ip::address_v4 addr);
 
  private:
    int m_id;
-   text_t m_name;
+   address_t m_name;
+   unsigned short m_port;
+   AddressType m_addrType;
+   address_t m_address;
 
 };
 BOOST_STATIC_ASSERT(sizeof(AddSlave) <= Message::MESSAGE_SIZE);
