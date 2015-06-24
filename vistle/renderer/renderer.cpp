@@ -19,18 +19,20 @@ namespace vistle {
 
 const int MaxObjectsPerFrame = 50;
 
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(RenderMode,
+   (LocalOnly)
+   (MasterOnly)
+   (AllNodes)
+)
+
 Renderer::Renderer(const std::string &description, const std::string &shmname,
                    const std::string &name, const int moduleID)
    : Module(description, shmname, name, moduleID) {
 
    createInputPort("data_in", "input data");
 
-   m_renderMode = addIntParameter("render_mode", "Render on which nodes?", 1, Parameter::Choice);
-   std::vector<std::string> choices;
-   choices.push_back("All nodes");
-   choices.push_back("Local only");
-   choices.push_back("Master only");
-   setParameterChoices(m_renderMode, choices);
+   m_renderMode = addIntParameter("render_mode", "Render on which nodes?", LocalOnly, Parameter::Choice);
+   V_ENUM_SET_CHOICES(m_renderMode, RenderMode);
 
    //std::cerr << "Renderer starting: rank=" << rank << std::endl;
 }
@@ -89,9 +91,10 @@ bool Renderer::dispatch() {
                   if (size() > 1) {
                      const message::ObjectReceived *recv = static_cast<const message::ObjectReceived *>(message);
                      PlaceHolder::ptr ph(new PlaceHolder(recv->objectName(), recv->meta(), recv->objectType()));
-                     const bool send = m_renderMode->getValue() != 1;
-                     const bool bcast = m_renderMode->getValue() == 0;
-                     bool localAdd = ((send || bcast) && m_rank==0) || (m_renderMode->getValue()==1 && recv->rank() == rank());
+                     RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
+                     const bool send = rm != LocalOnly;
+                     const bool bcast = rm == AllNodes;
+                     bool localAdd = rm == AllNodes || (rm == MasterOnly && m_rank==0) || (rm == LocalOnly && recv->rank() == rank());
                      if (recv->rank() == rank()) {
                         Object::const_ptr obj = Shm::the().getObjectFromName(recv->objectName());
                         if (send) {
