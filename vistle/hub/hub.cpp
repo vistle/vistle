@@ -484,6 +484,10 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                addSlave(id.name(), sock);
                break;
             }
+            case Identify::BULKDATA: {
+               CERR << "bulk data to hub '" << id.name() << "' connected" << std::endl;
+               break;
+            }
             default: {
                CERR << "invalid identity: " << id.identity() << std::endl;
                break;

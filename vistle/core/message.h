@@ -175,6 +175,7 @@ class V_COREEXPORT Identify: public Message {
          (MANAGER) //< cluster manager
          (HUB) //< master hub
          (SLAVEHUB) //< slave hub
+         (BULKDATA) //< bulk data transfer
          );
 
    Identify(Identity id=UNKNOWN, const std::string &name = "");
