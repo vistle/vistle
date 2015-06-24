@@ -290,10 +290,12 @@ const managed_shared_memory & Shm::shm() const {
 std::string Shm::createObjectID() {
 
    std::stringstream name;
-   name << "m" << std::setw(8) << std::setfill('0') << m_moduleID
-        << "r" << std::setw(8) << std::setfill('0') << m_rank
-        << "id" << std::setw(8) << std::setfill('0') << m_objectID++
+   name << "m" << m_moduleID
+        << "id" << m_objectID++
+        << "r" << m_rank
         << "OBJ";
+
+   vassert(name.str().size() < sizeof(shm_name_t));
 
    return name.str();
 }
