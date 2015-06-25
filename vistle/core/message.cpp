@@ -1264,6 +1264,52 @@ bool RequestTunnel::remove() const {
    return m_remove;
 }
 
+RequestObject::RequestObject(const std::string &objId)
+: Message(Message::REQUESTOBJECT, sizeof(RequestObject))
+, m_objectId(objId)
+{
+}
+
+const char *RequestObject::objectId() const {
+   return m_objectId;
+}
+
+SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size_t payloadSize)
+: Message(Message::SENDOBJECT, sizeof(SendObject))
+, m_objectId()
+, m_payloadSize(payloadSize)
+{
+   auto &meta = obj->meta();
+   m_block = meta.block();
+   m_numBlocks = meta.numBlocks();
+   m_timestep = meta.timeStep();
+   m_numTimesteps = meta.numTimesteps();
+   m_animationstep = meta.animationStep();
+   m_numAnimationsteps = meta.numAnimationSteps();
+   m_iteration = meta.iteration();
+   m_executionCount = meta.executionCounter();
+   m_creator = meta.creator();
+   m_realtime = meta.realTime();
+}
+
+const char *SendObject::objectId() const {
+   return m_objectId;
+}
+
+size_t SendObject::payloadSize() const {
+   return m_payloadSize;
+}
+
+Meta SendObject::objectMeta() const {
+
+   Meta meta(m_block, m_timestep, m_animationstep, m_iteration, m_executionCount, m_creator);
+   meta.setNumBlocks(m_numBlocks);
+   meta.setNumTimesteps(m_numTimesteps);
+   meta.setNumAnimationSteps(m_numAnimationsteps);
+   meta.setRealTime(m_realtime);
+   return meta;
+}
+
 std::ostream &operator<<(std::ostream &s, const Message &m) {
 
    using namespace vistle::message;
@@ -1376,6 +1422,9 @@ void Router::initRoutingTable() {
    rt[M::OBJECTRECEIVED]        = HandleOnRank0;
 
    rt[M::REQUESTTUNNEL]         = HandleOnNode|HandleOnHub;
+
+   rt[M::REQUESTOBJECT]         = Special;
+   rt[M::SENDOBJECT]            = Special;
 
    for (int i=M::ANY+1; i<M::NumMessageTypes; ++i) {
       if (rt[i] == 0) {

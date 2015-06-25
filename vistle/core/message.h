@@ -114,6 +114,8 @@ class V_COREEXPORT Message {
       (LOCKUI)
       (REPLAYFINISHED)
       (REQUESTTUNNEL)
+      (REQUESTOBJECT)
+      (SENDOBJECT)
       (NumMessageTypes) // keep last
    )
 
@@ -846,6 +848,40 @@ class V_COREEXPORT RequestTunnel: public Message {
    bool m_remove;
 };
 BOOST_STATIC_ASSERT(sizeof(RequestTunnel) <= Message::MESSAGE_SIZE);
+
+//! request remote data object
+class V_COREEXPORT RequestObject: public Message {
+
+ public:
+   RequestObject(const std::string &objId);
+   const char *objectId() const;
+
+ private:
+   shm_name_t m_objectId;
+};
+BOOST_STATIC_ASSERT(sizeof(RequestObject) <= Message::MESSAGE_SIZE);
+
+//! header for data object transmission
+class V_COREEXPORT SendObject: public Message {
+
+ public:
+   SendObject(const RequestObject &request, vistle::Object::const_ptr obj, size_t payloadSize);
+   const char *objectId() const;
+   size_t payloadSize() const;
+   Meta objectMeta() const;
+
+ private:
+   shm_name_t m_objectId;
+   uint64_t m_payloadSize;
+   int32_t m_block, m_numBlocks;
+   int32_t m_timestep, m_numTimesteps;
+   int32_t m_animationstep, m_numAnimationsteps;
+   int32_t m_iteration;
+   int32_t m_executionCount;
+   int32_t m_creator;
+   double m_realtime;
+};
+BOOST_STATIC_ASSERT(sizeof(RequestObject) <= Message::MESSAGE_SIZE);
 
 union V_COREEXPORT Buffer {
 
