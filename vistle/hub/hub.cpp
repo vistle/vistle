@@ -403,6 +403,8 @@ bool Hub::connectData(int hubId) {
    for (auto &hubData: m_stateTracker.m_hubs) {
       if (hubData.id == hubId) {
          auto &sock = m_dataSocket[hubId];
+         vassert(!sock);
+         sock.reset(new boost::asio::ip::tcp::socket(m_ioService));
          boost::asio::ip::tcp::endpoint dest(hubData.address, hubData.port);
 
          boost::system::error_code ec;
@@ -475,8 +477,6 @@ void Hub::hubReady() {
       sendMaster(slave);
       sendUi(slave);
       sendManager(slave);
-
-      connectData(Id::MasterHub);
    }
 }
 
@@ -497,6 +497,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    if (senderType == Identify::UI)
       msg.setSenderId(m_hubId);
 
+   bool masterAdded = false;
    switch (msg.type()) {
       case message::Message::IDENTIFY: {
 
@@ -567,6 +568,14 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             }
             auto &slave = it->second;
             slaveReady(slave);
+         } else {
+            if (mm.id() == Id::MasterHub) {
+               auto m = mm;
+               m.setAddress(m_masterSocket->remote_endpoint().address());
+               m_stateTracker.handle(m, true);
+               connectData(Id::MasterHub);
+               masterAdded = true;
+            }
          }
          break;
       }
@@ -576,7 +585,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
    bool mgr=false, ui=false, master=false, slave=false;
 
-   bool track = Router::the().toTracker(msg, senderType);
+   bool track = Router::the().toTracker(msg, senderType) && !masterAdded;
    m_stateTracker.handle(msg, track);
 
    const int dest = idToHub(msg.destId());
