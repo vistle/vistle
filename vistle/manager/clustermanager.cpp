@@ -443,7 +443,7 @@ bool ClusterManager::handle(const message::Message &message) {
          break;
       }
 
-      case Message::ADDSLAVE:
+      case Message::ADDHUB:
       case Message::REMOVESLAVE:
       case Message::STARTED:
       case Message::ADDPORT:

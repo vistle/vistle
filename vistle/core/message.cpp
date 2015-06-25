@@ -179,42 +179,42 @@ int Identify::rank() const {
    return m_rank;
 }
 
-AddSlave::AddSlave(int id, const std::string &name)
-: Message(Message::ADDSLAVE, sizeof(AddSlave))
+AddHub::AddHub(int id, const std::string &name)
+: Message(Message::ADDHUB, sizeof(AddHub))
 , m_id(id)
 , m_port(0)
-, m_addrType(AddSlave::Unspecified)
+, m_addrType(AddHub::Unspecified)
 {
    COPY_STRING(m_name, name);
    memset(m_address.data(), 0, m_address.size());
 }
 
-int AddSlave::id() const {
+int AddHub::id() const {
    return m_id;
 }
 
-const char *AddSlave::name() const {
+const char *AddHub::name() const {
    return m_name.data();
 }
 
-unsigned short AddSlave::port() const {
+unsigned short AddHub::port() const {
 
    return m_port;
 }
 
-AddSlave::AddressType AddSlave::addressType() const {
+AddHub::AddressType AddHub::addressType() const {
    return m_addrType;
 }
 
-bool AddSlave::isAddress() const {
+bool AddHub::isAddress() const {
    return m_addrType == IPv6 || m_addrType == IPv4;
 }
 
-std::string AddSlave::host() const {
+std::string AddHub::host() const {
    return m_address.data();
 }
 
-boost::asio::ip::address AddSlave::address() const {
+boost::asio::ip::address AddHub::address() const {
    vassert(isAddress());
    if (addressType() == IPv6)
       return addressV6();
@@ -222,21 +222,21 @@ boost::asio::ip::address AddSlave::address() const {
       return addressV4();
 }
 
-boost::asio::ip::address_v6 AddSlave::addressV6() const {
+boost::asio::ip::address_v6 AddHub::addressV6() const {
    vassert(m_addrType == IPv6);
    return boost::asio::ip::address_v6::from_string(m_address.data());
 }
 
-boost::asio::ip::address_v4 AddSlave::addressV4() const {
+boost::asio::ip::address_v4 AddHub::addressV4() const {
    vassert(m_addrType == IPv4);
    return boost::asio::ip::address_v4::from_string(m_address.data());
 }
 
-void AddSlave::setPort(unsigned short port) {
+void AddHub::setPort(unsigned short port) {
    m_port = port;
 }
 
-void AddSlave::setAddress(boost::asio::ip::address addr) {
+void AddHub::setAddress(boost::asio::ip::address addr) {
    assert(addr.is_v4() || addr.is_v6());
 
    if (addr.is_v4())
@@ -245,13 +245,13 @@ void AddSlave::setAddress(boost::asio::ip::address addr) {
       setAddress(addr.to_v6());
 }
 
-void AddSlave::setAddress(boost::asio::ip::address_v6 addr) {
+void AddHub::setAddress(boost::asio::ip::address_v6 addr) {
    const std::string addrString = addr.to_string();
    COPY_STRING(m_address, addrString);
    m_addrType = IPv6;
 }
 
-void AddSlave::setAddress(boost::asio::ip::address_v4 addr) {
+void AddHub::setAddress(boost::asio::ip::address_v4 addr) {
    const std::string addrString = addr.to_string();
    COPY_STRING(m_address, addrString);
    m_addrType = IPv4;
@@ -1316,8 +1316,8 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
          s << ", name: " << mm.getName() << ", id: " << mm.spawnId() << ", hub: " << mm.hubId();
          break;
       }
-      case Message::ADDSLAVE: {
-         auto mm = static_cast<const AddSlave &>(m);
+      case Message::ADDHUB: {
+         auto mm = static_cast<const AddHub &>(m);
          s << ", name: " << mm.name() << ", id: " << mm.id();
          break;
       }
@@ -1339,7 +1339,7 @@ void Router::initRoutingTable() {
    rt[M::INVALID]               = 0;
    rt[M::IDENTIFY]              = Special;
    rt[M::SETID]                 = Special;
-   rt[M::ADDSLAVE]              = Broadcast|Track|DestUi;
+   rt[M::ADDHUB]                = Broadcast|Track|DestUi;
    rt[M::REMOVESLAVE]           = Broadcast|Track|DestUi;
    rt[M::REPLAYFINISHED]        = Special;
    rt[M::TRACE]                 = Broadcast|Track;

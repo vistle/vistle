@@ -154,7 +154,7 @@ class V_COREEXPORT StateTracker {
    void processQueue();
 
  private:
-   bool handlePriv(const message::AddSlave &slave);
+   bool handlePriv(const message::AddHub &slave);
    bool handlePriv(const message::Ping &ping);
    bool handlePriv(const message::Pong &pong);
    bool handlePriv(const message::Trace &trace);

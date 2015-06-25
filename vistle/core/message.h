@@ -80,7 +80,7 @@ class V_COREEXPORT Message {
       (INVALID) // keep 1st
       (ANY) //< for Trace: enables tracing of all message types -- keep 2nd
       (IDENTIFY)
-      (ADDSLAVE)
+      (ADDHUB)
       (REMOVESLAVE)
       (SETID)
       (TRACE)
@@ -197,7 +197,7 @@ BOOST_STATIC_ASSERT(sizeof(Identify) <= Message::MESSAGE_SIZE);
 V_ENUM_OUTPUT_OP(Identity, Identify)
 
 //! announce that a slave hub has connected
-class V_COREEXPORT AddSlave: public Message {
+class V_COREEXPORT AddHub: public Message {
 
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(AddressType,
       (Hostname)
@@ -207,7 +207,7 @@ class V_COREEXPORT AddSlave: public Message {
    )
 
  public:
-   AddSlave(int id, const std::string &name);
+   AddHub(int id, const std::string &name);
    int id() const;
    const char *name() const;
    unsigned short port() const;
@@ -231,7 +231,7 @@ class V_COREEXPORT AddSlave: public Message {
    address_t m_address;
 
 };
-BOOST_STATIC_ASSERT(sizeof(AddSlave) <= Message::MESSAGE_SIZE);
+BOOST_STATIC_ASSERT(sizeof(AddHub) <= Message::MESSAGE_SIZE);
 
 //! debug: request a reply containing character 'c'
 class V_COREEXPORT Ping: public Message {

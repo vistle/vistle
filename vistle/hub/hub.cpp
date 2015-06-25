@@ -454,7 +454,7 @@ void Hub::hubReady() {
       processScript();
    } else {
 
-      message::AddSlave slave(m_hubId, m_name);
+      message::AddHub slave(m_hubId, m_name);
       slave.setPort(m_port);
 
       for (auto &sock: m_sockets) {
@@ -467,7 +467,7 @@ void Hub::hubReady() {
                   slave.setAddress(addr.to_v4());
                }
             } catch (std::bad_cast &except) {
-               CERR << "AddSlave: failed to convert local address to v6" << std::endl;
+               CERR << "AddHub: failed to convert local address to v6" << std::endl;
             }
          }
       }
@@ -558,8 +558,8 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          }
          return true;
       }
-      case message::Message::ADDSLAVE: {
-         auto &mm = static_cast<const AddSlave &>(msg);
+      case message::Message::ADDHUB: {
+         auto &mm = static_cast<const AddHub &>(msg);
          if (m_isMaster) {
             auto it = m_slaves.find(mm.id());
             if (it == m_slaves.end()) {

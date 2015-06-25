@@ -140,7 +140,7 @@ std::vector<message::Buffer> StateTracker::getState() const {
    std::vector<message::Buffer> state;
 
    for (const auto &slave: m_hubs) {
-      AddSlave msg(slave.id, slave.name);
+      AddHub msg(slave.id, slave.name);
       msg.setPort(slave.port);
       msg.setAddress(slave.address);
       appendMessage(state, msg);
@@ -281,8 +281,8 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
       case Message::IDENTIFY: {
          break;
       }
-      case Message::ADDSLAVE: {
-         const AddSlave &slave = static_cast<const AddSlave &>(msg);
+      case Message::ADDHUB: {
+         const AddHub &slave = static_cast<const AddHub &>(msg);
          handled = handlePriv(slave);
          break;
       }
@@ -471,7 +471,7 @@ void StateTracker::processQueue() {
    processing = false;
 }
 
-bool StateTracker::handlePriv(const message::AddSlave &slave) {
+bool StateTracker::handlePriv(const message::AddHub &slave) {
    boost::lock_guard<mutex> locker(m_slaveMutex);
    m_hubs.emplace_back(slave.id(), slave.name());
    m_hubs.back().port = slave.port();
