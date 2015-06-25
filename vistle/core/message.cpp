@@ -206,7 +206,7 @@ AddHub::AddressType AddHub::addressType() const {
    return m_addrType;
 }
 
-bool AddHub::isAddress() const {
+bool AddHub::hasAddress() const {
    return m_addrType == IPv6 || m_addrType == IPv4;
 }
 
@@ -215,7 +215,7 @@ std::string AddHub::host() const {
 }
 
 boost::asio::ip::address AddHub::address() const {
-   vassert(isAddress());
+   vassert(hasAddress());
    if (addressType() == IPv6)
       return addressV6();
    else

@@ -839,6 +839,10 @@ bool Hub::init(int argc, char *argv[]) {
       message::DefaultSender::init(m_hubId, 0);
       Router::init(message::Identify::HUB, m_hubId);
 
+      message::AddHub master(m_hubId, m_name);
+      master.setPort(m_port);
+      m_stateTracker.handle(master);
+
 #ifdef SCAN_MODULES_ON_HUB
       scanModules(m_bindir + "/../libexec/module", m_hubId, m_availableModules);
       for (auto &am: m_availableModules) {

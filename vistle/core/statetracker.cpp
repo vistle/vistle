@@ -475,7 +475,8 @@ bool StateTracker::handlePriv(const message::AddHub &slave) {
    boost::lock_guard<mutex> locker(m_slaveMutex);
    m_hubs.emplace_back(slave.id(), slave.name());
    m_hubs.back().port = slave.port();
-   m_hubs.back().address = slave.address();
+   if (slave.hasAddress())
+      m_hubs.back().address = slave.address();
    m_slaveCondition.notify_all();
    return true;
 }

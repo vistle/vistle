@@ -212,7 +212,7 @@ class V_COREEXPORT AddHub: public Message {
    const char *name() const;
    unsigned short port() const;
    AddressType addressType() const;
-   bool isAddress() const;
+   bool hasAddress() const;
    std::string host() const;
    boost::asio::ip::address address() const;
    boost::asio::ip::address_v6 addressV6() const;
