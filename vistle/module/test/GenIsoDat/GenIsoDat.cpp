@@ -17,11 +17,8 @@ using namespace vistle;
 GenIsoDat::GenIsoDat(const std::string &shmname, const std::string &name, int moduleID)
     : Module("GenIsoDat", shmname, name, moduleID) {
 
-    createOutputPort("grid_out");
     createOutputPort("data_out");
     createOutputPort("mapdata_out");
-    createOutputPort("Vertices_low");
-    createOutputPort("Vertices_high");
 
     m_cellTypeParam = addIntParameter("cell_type", "type of cells", 1, Parameter::Choice);
     V_ENUM_SET_CHOICES(m_cellTypeParam, Choices);
@@ -39,9 +36,12 @@ bool GenIsoDat::compute() {
 
     vistle::UnstructuredGrid::ptr grid(new vistle::UnstructuredGrid(0, 0, 0));
 
-    vistle::Points::ptr points_high(new vistle::Points(Index(0)));
     vistle::Vec<Scalar>::ptr data(new vistle::Vec<Scalar>(Index(0)));
+    data->setBlock(rank());
+    data->setNumBlocks(size());
     vistle::Vec<Scalar>::ptr mapdata(new vistle::Vec<Scalar>(Index(0)));
+    mapdata->setBlock(rank());
+    mapdata->setNumBlocks(size());
 
 
     auto &cl = grid->cl();
@@ -130,9 +130,6 @@ bool GenIsoDat::compute() {
              for(int j = 0; j < 8; j++){
                 if(newdata[j]){
                    data->x().push_back(1);
-                   points_high->x().push_back(x[j]);
-                   points_high->y().push_back(y[j]);
-                   points_high->z().push_back(z[j]);
                 } else{
                    data->x().push_back(-1);
                 }
@@ -203,9 +200,6 @@ bool GenIsoDat::compute() {
             for(int j = 0; j < 4; j++){
                 if(newdata[j]){
                     data->x().push_back(1);
-                    points_high->x().push_back(x[j]);
-                    points_high->y().push_back(y[j]);
-                    points_high->z().push_back(z[j]);
                 } else{
                     data->x().push_back(-1);
                 }
@@ -281,9 +275,6 @@ bool GenIsoDat::compute() {
             for(int j = 0; j < 6; j++){
                 if(newdata[j]){
                     data->x().push_back(1);
-                    points_high->x().push_back(x[j]);
-                    points_high->y().push_back(y[j]);
-                    points_high->z().push_back(z[j]);
                 } else {
                     data->x().push_back(-1);
                 }
@@ -364,10 +355,6 @@ bool GenIsoDat::compute() {
             for(int j = 0; j < 5; j++){
                 if(newdata[j]){
                     data->x().push_back(1);
-                    points_high->x().push_back(x[j]);
-                    points_high->y().push_back(y[j]);
-                    points_high->z().push_back(z[j]);
-
                 }
                 else{
                     data->x().push_back(-1);
@@ -449,10 +436,6 @@ bool GenIsoDat::compute() {
              if(newdata[j]){
 
                 data->x().push_back(1);
-                points_high->x().push_back(x[j]);
-                points_high->y().push_back(y[j]);
-                points_high->z().push_back(z[j]);
-
              } else{
                 data->x().push_back(-1);
              }
@@ -463,10 +446,14 @@ bool GenIsoDat::compute() {
     }
     }
 
+    for (Index i=0; i<grid->getSize(); ++i) {
+       z[i] += 2*rank();
+    }
+
+    data->setGrid(grid);
     addObject("data_out", data);
+    mapdata->setGrid(grid);
     addObject("mapdata_out", mapdata);
-    addObject("grid_out", grid);
-    addObject("Vertices_high", points_high);
 
     return true;
 }
