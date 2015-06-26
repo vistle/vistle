@@ -31,6 +31,7 @@ class IsoSurface: public vistle::Module {
    vistle::Port *m_mapDataIn, *m_dataOut;
 
    vistle::Scalar m_min, m_max;
+   vistle::Float m_paraMin, m_paraMax;
 };
 
 #endif

@@ -49,6 +49,8 @@ IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int 
    m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
 #endif
 
+   m_paraMin = m_paraMax = 0.f;
+
 }
 
 IsoSurface::~IsoSurface() {
@@ -130,7 +132,11 @@ bool IsoSurface::reduce(int timestep) {
    boost::mpi::all_reduce(comm(),
                           m_max, max, boost::mpi::maximum<Scalar>());
 
-   setParameterRange(m_isovalue, (Float)min, (Float)max);
+   if (m_paraMin != (Float)min || m_paraMax != (Float)max)
+      setParameterRange(m_isovalue, (Float)min, (Float)max);
+
+   m_paraMax = max;
+   m_paraMin = min;
 #endif
 
    return Module::reduce(timestep);
