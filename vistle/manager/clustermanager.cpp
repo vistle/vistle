@@ -119,7 +119,8 @@ void ClusterManager::barrierReached(const message::uuid_t &uuid) {
    CERR << "Barrier [" << uuid << "] reached" << std::endl;
    message::BarrierReached m(uuid);
    m.setDestId(message::Id::MasterHub);
-   sendHub(m);
+   if (getRank() == 0)
+      sendHub(m);
 }
 
 std::string ClusterManager::getModuleName(int id) const {
@@ -213,14 +214,16 @@ bool ClusterManager::sendAllOthers(int excluded, const message::Message &message
    if (!localOnly) {
       if (Communicator::the().isMaster()) {
          buf.msg.setDestId(Id::Broadcast);
-         sendHub(buf.msg);
+         if (getRank() == 0)
+            sendHub(buf.msg);
       } else {
          int senderHub = message.senderId();
          if (senderHub >= Id::ModuleBase)
             senderHub = m_stateTracker.getHub(senderHub);
          if (senderHub == Communicator::the().hubId()) {
             buf.msg.setDestId(Id::Broadcast);
-            sendHub(buf.msg);
+            if (getRank() == 0)
+               sendHub(buf.msg);
          }
       }
    }
@@ -300,7 +303,8 @@ bool ClusterManager::handle(const message::Message &message) {
    if (message.typeFlags() & Broadcast || message.destId() == Id::Broadcast) {
       if (message.senderId() != hubId && senderHub == hubId) {
          //CERR << "BC: " << message << std::endl;
-         sendHub(message);
+         if (getRank() == 0)
+            sendHub(message);
       }
       if (message.typeFlags() & BroadcastModule) {
          sendAllLocal(message);
@@ -321,10 +325,12 @@ bool ClusterManager::handle(const message::Message &message) {
 
          const Identify &id = static_cast<const message::Identify &>(message);
          vassert(id.identity() == Identify::UNKNOWN);
-         sendHub(Identify(Identify::MANAGER));
-         auto avail = availableModules();
-         for(const auto &mod: avail) {
-            sendHub(message::ModuleAvailable(hubId, mod.name, mod.path));
+         if (getRank() == 0) {
+            sendHub(Identify(Identify::MANAGER));
+            auto avail = availableModules();
+            for(const auto &mod: avail) {
+               sendHub(message::ModuleAvailable(hubId, mod.name, mod.path));
+            }
          }
          break;
       }
@@ -535,7 +541,8 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
 
    message::SpawnPrepared prep(spawn);
    prep.setDestId(Id::LocalHub);
-   sendHub(prep);
+   if (getRank() == 0)
+      sendHub(prep);
 
    // inform newly started module about current parameter values of other modules
    auto state = m_stateTracker.getState();
@@ -668,7 +675,8 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
 
    if (exec.senderId() >= Id::ModuleBase) {
 
-      sendHub(exec);
+      if (getRank() == 0)
+         sendHub(exec);
    } else {
 
       vassert (exec.getModule() >= Id::ModuleBase);
@@ -1027,16 +1035,12 @@ bool ClusterManager::handlePriv(const message::BarrierReached &barrReached) {
 
 bool ClusterManager::handlePriv(const message::SendText &text) {
 
-   if (m_rank == 0) {
-      if (Communicator::the().isMaster()) {
-         message::Buffer buf(text);
-         buf.msg.setDestId(Id::MasterHub);
-         sendHub(buf.msg);
-      } else {
-         sendHub(text);
-      }
+   if (Communicator::the().isMaster()) {
+      message::Buffer buf(text);
+      buf.msg.setDestId(Id::MasterHub);
+      sendHub(buf.msg);
    } else {
-      Communicator::the().forwardToMaster(text);
+      sendHub(text);
    }
    return true;
 }
@@ -1073,7 +1077,8 @@ bool ClusterManager::handlePriv(const message::RequestTunnel &tunnel) {
          }
       }
    }
-   sendHub(tun);
+   if (getRank() == 0)
+      sendHub(tun);
    return true;
 }
 
