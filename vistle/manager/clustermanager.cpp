@@ -73,6 +73,17 @@ int ClusterManager::getSize() const {
    return m_size;
 }
 
+bool ClusterManager::isLocal(int id) const {
+
+   if (id == Id::LocalHub)
+      return true;
+   if (Id::isHub(id)) {
+      return (id == Communicator::the().hubId());
+   }
+   int hub = m_stateTracker.getHub(id);
+   return hub == Communicator::the().hubId();
+}
+
 bool ClusterManager::scanModules(const std::string &dir) {
 
 #ifdef SCAN_MODULES_ON_HUB
@@ -260,7 +271,7 @@ bool ClusterManager::sendHub(const message::Message &message) const {
    return Communicator::the().sendHub(message);
 }
 
-bool ClusterManager::sendMessage(const int moduleId, const message::Message &message) const {
+bool ClusterManager::sendMessage(const int moduleId, const message::Message &message, int destRank) const {
 
    const int hub = m_stateTracker.getHub(moduleId);
 
@@ -273,12 +284,17 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
          return false;
       }
 
-      auto &mod = it->second;
-      mod.send(message);
+      if (destRank == -1 || destRank == getRank()) {
+         auto &mod = it->second;
+         mod.send(message);
+      } else {
+         Communicator::the().sendMessage(moduleId, message, destRank);
+      }
    } else {
       std::cerr << "remote send to " << moduleId << ": " << message << std::endl;
       message::Buffer buf(message);
       buf.msg.setDestId(moduleId);
+      buf.msg.setDestRank(destRank);
       sendHub(message);
    }
 
@@ -692,90 +708,109 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
 bool ClusterManager::handlePriv(const message::AddObject &addObj) {
 
    Object::const_ptr obj = addObj.takeObject();
-   if (!obj) {
-      CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
-      message::RequestObject req(addObj.objectName());
-      req.setUuid(addObj.uuid());
-      Communicator::the().sendData(req);
-   }
+   CERR << "ADDOBJECT: " << addObj << std::endl;
+   if (!isLocal(addObj.senderId())) {
 
-   vassert(obj->refcount() >= 1);
+      CERR << "ADDOBJECT from remote" << std::endl;
+
+      int destRank = -1;
+      if (getRank() == 0) {
+         int block = addObj.meta().block();
+         if (block >= 0) {
+            destRank = block % getSize();
+         }
+         sendMessage(addObj.destId(), addObj, destRank);
+      }
+      if (destRank == getRank() || (getRank() == 0 && destRank == -1)) {
+         if (!obj) {
+            CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
+            message::RequestObject req(addObj.objectName());
+            req.setUuid(addObj.uuid());
+            Communicator::the().sendData(req);
+         }
+      }
+
+   } else {
+
+      vassert(obj->refcount() >= 1);
 #if 0
-   std::cerr << "Module " << addObj.senderId() << ": "
-      << "AddObject " << addObj.getHandle() << " (" << obj->getName() << ")"
-      << " ref " << obj->refcount()
-      << " to port " << addObj.getPortName() << std::endl;
+      std::cerr << "Module " << addObj.senderId() << ": "
+         << "AddObject " << addObj.getHandle() << " (" << obj->getName() << ")"
+         << " ref " << obj->refcount()
+         << " to port " << addObj.getPortName() << std::endl;
 #endif
 
-   Port *port = portManager().getPort(addObj.senderId(), addObj.getPortName());
-   if (!port) {
-      CERR << "AddObject ["
-         << addObj.getHandle() << "] to port ["
-         << addObj.getPortName() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
-      vassert(port);
-      return true;
-   }
-   const Port::PortSet *list = portManager().getConnectionList(port);
-   if (!list) {
-      CERR << "AddObject ["
-         << addObj.getHandle() << "] to port ["
-         << addObj.getPortName() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
-      vassert(list);
-      return true;
-   }
-
-   for (const Port *destPort: *list) {
-
-      int destId = destPort->getModuleID();
-
-      message::AddObject a(addObj.getSenderPort(), destPort->getName(), obj);
-      a.setSenderId(addObj.senderId());
-      a.setUuid(addObj.uuid());
-      a.setRank(addObj.rank());
-      sendMessage(destId, a);
-
-      portManager().addObject(destPort);
-
-      auto it = m_stateTracker.runningMap.find(destId);
-      if (it == m_stateTracker.runningMap.end()) {
-         CERR << "port connection to module that is not running" << std::endl;
-         vassert("port connection to module that is not running" == 0);
-         continue;
+      Port *port = portManager().getPort(addObj.senderId(), addObj.getPortName());
+      if (!port) {
+         CERR << "AddObject ["
+            << addObj.getHandle() << "] to port ["
+            << addObj.getPortName() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
+         vassert(port);
+         return true;
       }
-      auto &destMod = it->second;
+      const Port::PortSet *list = portManager().getConnectionList(port);
+      if (!list) {
+         CERR << "AddObject ["
+            << addObj.getHandle() << "] to port ["
+            << addObj.getPortName() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
+         vassert(list);
+         return true;
+      }
 
-      bool allReady = true;
-      for (const auto input: portManager().getConnectedInputPorts(destId)) {
-         if (!portManager().hasObject(input)) {
-            allReady = false;
-            break;
+      for (const Port *destPort: *list) {
+
+         int destId = destPort->getModuleID();
+
+         message::AddObject a(addObj.getSenderPort(), destPort->getName(), obj);
+         a.setSenderId(addObj.senderId());
+         a.setUuid(addObj.uuid());
+         a.setRank(addObj.rank());
+         a.setDestId(destId);
+         sendMessage(destId, a);
+
+         portManager().addObject(destPort);
+
+         auto it = m_stateTracker.runningMap.find(destId);
+         if (it == m_stateTracker.runningMap.end()) {
+            CERR << "port connection to module that is not running" << std::endl;
+            vassert("port connection to module that is not running" == 0);
+            continue;
          }
-      }
+         auto &destMod = it->second;
 
-      if (allReady) {
-
+         bool allReady = true;
          for (const auto input: portManager().getConnectedInputPorts(destId)) {
-            portManager().popObject(input);
+            if (!portManager().hasObject(input)) {
+               allReady = false;
+               break;
+            }
          }
 
-         message::Execute c(message::Execute::ComputeObject, destId);
-         c.setUuid(addObj.uuid());
-         if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
-            sendMessage(destId, c);
-         } else {
-            c.setAllRanks(true);
-            if (!Communicator::the().broadcastAndHandleMessage(c))
-               return false;
-         }
+         if (allReady) {
 
-         if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
-               || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
-            message::ObjectReceived recv(addObj.getSenderPort(), addObj.getPortName(), obj);
-            recv.setUuid(addObj.uuid());
-            recv.setSenderId(destId);
+            for (const auto input: portManager().getConnectedInputPorts(destId)) {
+               portManager().popObject(input);
+            }
 
-            if (!Communicator::the().broadcastAndHandleMessage(recv))
-               return false;
+            message::Execute c(message::Execute::ComputeObject, destId);
+            c.setUuid(addObj.uuid());
+            if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
+               sendMessage(destId, c);
+            } else {
+               c.setAllRanks(true);
+               if (!Communicator::the().broadcastAndHandleMessage(c))
+                  return false;
+            }
+
+            if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
+                  || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
+               message::ObjectReceived recv(addObj.getSenderPort(), addObj.getPortName(), obj);
+               recv.setUuid(addObj.uuid());
+               recv.setSenderId(destId);
+
+               if (!Communicator::the().broadcastAndHandleMessage(recv))
+                  return false;
+            }
          }
       }
    }

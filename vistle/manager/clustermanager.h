@@ -32,7 +32,7 @@ class ClusterManager {
 
    bool dispatch(bool &received);
 
-   bool sendMessage(int receiver, const message::Message &message) const;
+   bool sendMessage(int receiver, const message::Message &message, int destRank=-1) const;
    bool sendAll(const message::Message &message) const;
    bool sendAllLocal(const message::Message &message) const;
    bool sendAllOthers(int excluded, const message::Message &message, bool localOnly=false) const;
@@ -58,6 +58,7 @@ class ClusterManager {
  private:
    void queueMessage(const message::Message &msg);
    void replayMessages();
+   bool isLocal(int id) const;
    std::vector<message::Buffer> m_messageQueue;
 
    boost::shared_ptr<PortManager> m_portManager;

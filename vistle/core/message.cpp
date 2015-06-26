@@ -64,6 +64,7 @@ Message::Message(const Type t, const unsigned int s)
 , m_senderId(DefaultSender::id())
 , m_rank(DefaultSender::rank())
 , m_destId(Id::NextHop)
+, m_destRank(-1)
 {
 
    assert(m_size <= MESSAGE_SIZE);
@@ -112,6 +113,14 @@ int Message::destId() const {
 void Message::setDestId(int id) {
 
    m_destId = id;
+}
+
+int Message::destRank() const {
+   return m_destRank;
+}
+
+void Message::setDestRank(int r) {
+   m_destRank = r;
 }
 
 int Message::rank() const {
@@ -515,7 +524,8 @@ Object::Type AddObject::objectType() const {
 
 Object::const_ptr AddObject::takeObject() const {
 
-   vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
+   //vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
+   vistle::Object::const_ptr obj = Shm::the().getObjectFromName(m_name);
    if (obj)
       obj->unref();
    return obj;

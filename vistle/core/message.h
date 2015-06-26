@@ -38,6 +38,9 @@ struct Id {
       LocalHub = -6,
       MasterHub = -7, //< < MasterHub: slave hubs
    };
+
+   static bool isHub(int id) { return id <= Id::LocalHub; }
+   static bool isModule(int id) { return id >= Id::ModuleBase; }
 };
 
 class V_COREEXPORT DefaultSender {
@@ -149,6 +152,11 @@ class V_COREEXPORT Message {
    //! set id of message destination
    void setDestId(int id);
 
+   //! rank of message destination
+   int destRank() const;
+   //! set rank of destination
+   void setDestRank(int r);
+
   protected:
    //! broadcast to all ranks?
    bool m_broadcast;
@@ -165,6 +173,8 @@ class V_COREEXPORT Message {
    int m_rank;
    //! destination ID
    int m_destId;
+   //! destination rank - -1: dependent on message, most often current rank
+   int m_destRank;
 };
 V_ENUM_OUTPUT_OP(Type, Message)
 
