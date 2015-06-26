@@ -257,18 +257,18 @@ bool ClusterManager::sendHub(const message::Message &message) const {
 
 bool ClusterManager::sendMessage(const int moduleId, const message::Message &message) const {
 
-   RunningMap::const_iterator it = runningMap.find(moduleId);
-   if (it == runningMap.end()) {
-      CERR << "sendMessage: module " << moduleId << " not found" << std::endl;
-      std::cerr << "  message: " << message << std::endl;
-      return false;
-   }
-
-   auto &mod = it->second;
    const int hub = m_stateTracker.getHub(moduleId);
 
    if (hub == Communicator::the().hubId()) {
       //std::cerr << "local send to " << moduleId << ": " << message << std::endl;
+      RunningMap::const_iterator it = runningMap.find(moduleId);
+      if (it == runningMap.end()) {
+         CERR << "sendMessage: module " << moduleId << " not found" << std::endl;
+         std::cerr << "  message: " << message << std::endl;
+         return false;
+      }
+
+      auto &mod = it->second;
       mod.send(message);
    } else {
       std::cerr << "remote send to " << moduleId << ": " << message << std::endl;
