@@ -443,11 +443,15 @@ class V_COREEXPORT AddObject: public Message {
    const char *objectName() const;
    const shm_handle_t & getHandle() const;
    Object::const_ptr takeObject() const;
+   const Meta &meta() const;
+   Object::Type objectType() const;
 
  private:
    port_name_t senderPort;
    port_name_t portName;
    shm_name_t m_name;
+   Meta m_meta;
+   int m_objectType;
    const shm_handle_t handle;
 };
 BOOST_STATIC_ASSERT(sizeof(AddObject) <= Message::MESSAGE_SIZE);
@@ -868,10 +872,14 @@ class V_COREEXPORT SendObject: public Message {
    SendObject(const RequestObject &request, vistle::Object::const_ptr obj, size_t payloadSize);
    const char *objectId() const;
    size_t payloadSize() const;
+   const Meta &meta() const;
+   Object::Type objectType() const;
    Meta objectMeta() const;
 
  private:
    shm_name_t m_objectId;
+   int m_objectType;
+   Meta m_meta;
    uint64_t m_payloadSize;
    int32_t m_block, m_numBlocks;
    int32_t m_timestep, m_numTimesteps;

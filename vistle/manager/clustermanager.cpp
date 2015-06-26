@@ -684,6 +684,13 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
 bool ClusterManager::handlePriv(const message::AddObject &addObj) {
 
    Object::const_ptr obj = addObj.takeObject();
+   if (!obj) {
+      CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
+      message::RequestObject req(addObj.objectName());
+      req.setUuid(addObj.uuid());
+      Communicator::the().sendData(req);
+   }
+
    vassert(obj->refcount() >= 1);
 #if 0
    std::cerr << "Module " << addObj.senderId() << ": "

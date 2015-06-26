@@ -474,6 +474,8 @@ AddObject::AddObject(const std::string &sender, const std::string & p,
                      vistle::Object::const_ptr obj)
 : Message(Message::ADDOBJECT, sizeof(AddObject))
 , m_name(obj->getName())
+, m_objectType(obj->getType())
+, m_meta(obj->meta())
 , handle(obj->getHandle())
 {
    // we keep the handle as a reference to obj
@@ -501,6 +503,14 @@ const char *AddObject::objectName() const {
 const shm_handle_t & AddObject::getHandle() const {
 
    return handle;
+}
+
+const Meta &AddObject::meta() const {
+   return m_meta;
+}
+
+Object::Type AddObject::objectType() const {
+   return static_cast<Object::Type>(m_objectType);
 }
 
 Object::const_ptr AddObject::takeObject() const {
@@ -1277,8 +1287,12 @@ const char *RequestObject::objectId() const {
 SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size_t payloadSize)
 : Message(Message::SENDOBJECT, sizeof(SendObject))
 , m_objectId()
+, m_meta(obj->meta())
 , m_payloadSize(payloadSize)
+, m_objectType(obj->getType())
 {
+   setUuid(request.uuid());
+
    auto &meta = obj->meta();
    m_block = meta.block();
    m_numBlocks = meta.numBlocks();
@@ -1299,6 +1313,15 @@ const char *SendObject::objectId() const {
 size_t SendObject::payloadSize() const {
    return m_payloadSize;
 }
+
+const Meta &SendObject::meta() const {
+   return m_meta;
+}
+
+Object::Type SendObject::objectType() const {
+   return static_cast<Object::Type>(m_objectType);
+}
+
 
 Meta SendObject::objectMeta() const {
 
