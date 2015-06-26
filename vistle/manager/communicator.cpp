@@ -34,8 +34,7 @@ namespace vistle {
 using message::Id;
 
 enum MpiTags {
-   TagModulue,
-   TagToRank0,
+   TagToRank,
    TagToAny,
 };
 
@@ -63,9 +62,7 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts)
    if (m_size > 1) {
       MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
 
-      if (m_rank == 0) {
-         MPI_Irecv(m_recvBufTo0.buf.data(), m_recvBufTo0.buf.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
-      }
+      MPI_Irecv(m_recvBufToRank.buf.data(), m_recvBufToRank.buf.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank, MPI_COMM_WORLD, &m_reqToRank);
    }
 }
 
@@ -204,28 +201,26 @@ bool Communicator::dispatch(bool *work) {
 
    // handle or broadcast messages received from slaves (rank > 0)
    if (m_size > 1) {
-      if (m_rank == 0) {
-         int flag;
-         MPI_Status status;
-         MPI_Test(&m_reqToRank0, &flag, &status);
-         if (flag && status.MPI_TAG == TagToRank0) {
+      int flag;
+      MPI_Status status;
+      MPI_Test(&m_reqToRank, &flag, &status);
+      if (flag && status.MPI_TAG == TagToRank) {
 
-            vassert(m_rank == 0);
-            received = true;
-            message::Message *message = &m_recvBufTo0.msg;
-            if (message->broadcast()) {
-               if (!broadcastAndHandleMessage(*message)) {
-                  CERR << "Quit reason: broadcast & handle" << std::endl;
-                  done = true;
-               }
-            }  else {
-               if (!handleMessage(*message)) {
-                  CERR << "Quit reason: handle" << std::endl;
-                  done = true;
-               }
+         vassert(m_rank == 0);
+         received = true;
+         message::Message *message = &m_recvBufToRank.msg;
+         if (m_rank == 0 && message->broadcast()) {
+            if (!broadcastAndHandleMessage(*message)) {
+               CERR << "Quit reason: broadcast & handle" << std::endl;
+               done = true;
             }
-            MPI_Irecv(m_recvBufTo0.buf.data(), m_recvBufTo0.buf.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank0, MPI_COMM_WORLD, &m_reqToRank0);
+         }  else {
+            if (!handleMessage(*message)) {
+               CERR << "Quit reason: handle" << std::endl;
+               done = true;
+            }
          }
+         MPI_Irecv(m_recvBufToRank.buf.data(), m_recvBufToRank.buf.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank, MPI_COMM_WORLD, &m_reqToRank);
       }
 
       // test for message size from another MPI node
@@ -233,8 +228,6 @@ bool Communicator::dispatch(bool *work) {
       //    - receive actual message from slave rank (on rank 0) for broadcasting
       //    - handle message
       //    - post another MPI receive for size of next message
-      int flag;
-      MPI_Status status;
       MPI_Test(&m_reqAny, &flag, &status);
       if (flag && status.MPI_TAG == TagToAny) {
 
@@ -320,9 +313,13 @@ bool Communicator::dispatch(bool *work) {
    return !done;
 }
 
-bool Communicator::sendMessage(const int moduleId, const message::Message &message) const {
+bool Communicator::sendMessage(const int moduleId, const message::Message &message, int destRank) const {
 
-   return clusterManager().sendMessage(moduleId, message);
+   if (m_rank == destRank || destRank == -1) {
+      return clusterManager().sendMessage(moduleId, message);
+   } else {
+      MPI_Send(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, destRank, TagToRank, MPI_COMM_WORLD);
+   }
 }
 
 bool Communicator::forwardToMaster(const message::Message &message) {
@@ -330,7 +327,7 @@ bool Communicator::forwardToMaster(const message::Message &message) {
    vassert(m_rank != 0);
    if (m_rank != 0) {
 
-      MPI_Send(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD);
+      MPI_Send(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD);
    }
 
    return true;
@@ -361,7 +358,7 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
       return result;
    } else {
-      MPI_Send(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD);
+      MPI_Send(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD);
 
       // message will be handled when received again from rank 0
       return true;
@@ -422,16 +419,18 @@ Communicator::~Communicator() {
       MPI_Wait(&m_reqAny, MPI_STATUS_IGNORE);
       CERR << "wait for receiving, to any" << std::endl;
 
+#if 0
       if (m_rank == 1) {
          MPI_Request s2;
-         MPI_Isend(&dummy, 1, MPI_BYTE, 0, TagToRank0, MPI_COMM_WORLD, &s2);
+         MPI_Isend(&dummy, 1, MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD, &s2);
          MPI_Wait(&s2, MPI_STATUS_IGNORE);
          CERR << "wait for send to 0" << std::endl;
       }
       if (m_rank == 0) {
-         MPI_Wait(&m_reqToRank0, MPI_STATUS_IGNORE);
+         MPI_Wait(&m_reqToRank, MPI_STATUS_IGNORE);
          CERR << "wait for recv from 1" << std::endl;
       }
+#endif
    }
    CERR << "SHUT DOWN COMPLETE" << std::endl;
    MPI_Barrier(MPI_COMM_WORLD);

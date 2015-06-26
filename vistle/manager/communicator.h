@@ -31,7 +31,7 @@ class Communicator {
    bool handleDataMessage(const message::Message &message);
    bool forwardToMaster(const message::Message &message);
    bool broadcastAndHandleMessage(const message::Message &message);
-   bool sendMessage(int receiver, const message::Message &message) const;
+   bool sendMessage(int receiver, const message::Message &message, int rank=-1) const;
    void setQuitFlag();
 
    int hubId() const;
@@ -58,8 +58,8 @@ class Communicator {
    bool m_quitFlag;
 
    int m_recvSize;
-   message::Buffer m_recvBufTo0, m_recvBufToAny;
-   MPI_Request m_reqAny, m_reqToRank0;
+   message::Buffer m_recvBufToRank, m_recvBufToAny;
+   MPI_Request m_reqAny, m_reqToRank;
 
    message::Message::Type m_traceMessages;
 
