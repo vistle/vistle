@@ -48,6 +48,8 @@
 
 //#define DEBUG
 
+#define CERR std::cerr << m_name << "_" << id() << " [" << rank() << "/" << size() << "] "
+
 using namespace boost::interprocess;
 namespace mpi = boost::mpi;
 
@@ -440,17 +442,17 @@ bool Module::updateParameter(const std::string &name, const Parameter *param, co
    auto i = parameters.find(name);
 
    if (i == parameters.end()) {
-      std::cerr << "setParameter: " << name << " not found" << std::endl;
+      CERR << "setParameter: " << name << " not found" << std::endl;
       return false;
    }
 
    if (i->second->type() != param->type()) {
-      std::cerr << "setParameter: type mismatch for " << name << " " << i->second->type() << " != " << param->type() << std::endl;
+      CERR << "setParameter: type mismatch for " << name << " " << i->second->type() << " != " << param->type() << std::endl;
       return false;
    }
 
    if (i->second.get() != param) {
-      std::cerr << "setParameter: pointer mismatch for " << name << std::endl;
+      CERR << "setParameter: pointer mismatch for " << name << std::endl;
       return false;
    }
 
@@ -645,7 +647,7 @@ bool Module::addObject(const std::string &portName, vistle::Object::ptr object) 
    if (i != outputPorts.end()) {
       return addObject(i->second, object);
    }
-   std::cerr << "Module::addObject: output port " << portName << " not found" << std::endl;
+   CERR << "Module::addObject: output port " << portName << " not found" << std::endl;
    vassert(i != outputPorts.end());
    return false;
 }
@@ -662,7 +664,7 @@ bool Module::passThroughObject(const std::string &portName, vistle::Object::cons
    if (i != outputPorts.end()) {
       return passThroughObject(i->second, object);
    }
-   std::cerr << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
+   CERR << "Module::passThroughObject: output port " << portName << " not found" << std::endl;
    vassert(i != outputPorts.end());
    return false;
 }
@@ -695,7 +697,7 @@ ObjectList Module::getObjects(const std::string &portName) {
             objects.push_back(object);
       }
    } else {
-      std::cerr << "Module::getObjects: input port " << portName << " not found" << std::endl;
+      CERR << "Module::getObjects: input port " << portName << " not found" << std::endl;
       vassert(i != inputPorts.end());
    }
 
@@ -720,10 +722,10 @@ void Module::removeObject(const std::string &portName, vistle::Object::const_ptr
             ++it;
       }
       if (!erased)
-         std::cerr << "Module " << id() << " removeObject didn't find"
+         CERR << "Module " << id() << " removeObject didn't find"
             " object [" << object->getName() << "]" << std::endl;
    } else {
-      std::cerr << "Module " << id() << " removeObject didn't find port ["
+      CERR << "Module " << id() << " removeObject didn't find port ["
                 << portName << "]" << std::endl;
 
       vassert(i != inputPorts.end());
@@ -735,7 +737,7 @@ bool Module::hasObject(const std::string &portName) const {
    std::map<std::string, Port *>::const_iterator i = inputPorts.find(portName);
 
    if (i == inputPorts.end()) {
-      std::cerr << "Module::hasObject: input port " << portName << " not found" << std::endl;
+      CERR << "Module::hasObject: input port " << portName << " not found" << std::endl;
       vassert(i != inputPorts.end());
 
       return false;
@@ -754,7 +756,7 @@ vistle::Object::const_ptr Module::takeFirstObject(const std::string &portName) {
    std::map<std::string, Port *>::iterator i = inputPorts.find(portName);
 
    if (i == inputPorts.end()) {
-      std::cerr << "Module::takeFirstObject: input port " << portName << " not found" << std::endl;
+      CERR << "Module::takeFirstObject: input port " << portName << " not found" << std::endl;
       vassert(i != inputPorts.end());
       return vistle::Object::ptr();
    }
@@ -814,8 +816,10 @@ Object::const_ptr Module::expect<Object>(Port *port) {
 bool Module::addInputObject(int sender, const std::string &senderPort, const std::string & portName,
                             Object::const_ptr object) {
 
-   if (!object)
+   if (!object) {
+      CERR << "Module::addInputObject: input port " << portName << " - did not receive object" << std::endl;
       return false;
+   }
 
    if (object)
       vassert(object->check());
@@ -831,7 +835,7 @@ bool Module::addInputObject(int sender, const std::string &senderPort, const std
       return true;
    }
 
-   std::cerr << "Module::addInputObject: input port " << portName << " not found" << std::endl;
+   CERR << "Module::addInputObject: input port " << portName << " not found" << std::endl;
    vassert(p);
 
    return false;
@@ -1005,7 +1009,7 @@ void Module::sendMessage(const message::Message &message) const {
    // exclude SendText messages to avoid circular calls
    if (message.type() != message::Message::SENDTEXT
          && (m_traceMessages == message::Message::ANY || m_traceMessages == message.type())) {
-      std::cerr << "SEND: " << message << std::endl;
+      CERR << "SEND: " << message << std::endl;
    }
    sendMessageQueue->send(message);
 }
@@ -1015,7 +1019,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
    using namespace vistle::message;
 
    if (m_traceMessages == message::Message::ANY || message->type() == m_traceMessages) {
-      std::cerr << "RECV: " << *message << std::endl;
+      CERR << "RECV: " << *message << std::endl;
    }
 
    switch (message->type()) {
@@ -1319,14 +1323,17 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
       case message::Message::ADDOBJECT: {
 
-         const message::AddObject *add =
-            static_cast<const message::AddObject *>(message);
-         addInputObject(add->senderId(), add->getSenderPort(), add->getPortName(), add->takeObject());
+         const message::AddObject *add = static_cast<const message::AddObject *>(message);
          const Port *p = findInputPort(add->getPortName());
          if (!p) {
             std::cerr << "unknown input port " << add->getPortName() << " in AddObject" << std::endl;
             return true;
          }
+         auto obj = add->takeObject();
+         if (!obj) {
+            std::cerr << "did not find object " << add->objectName() << " for port " << add->getPortName() << " in AddObject" << std::endl;
+         }
+         addInputObject(add->senderId(), add->getSenderPort(), add->getPortName(), add->takeObject());
          if (!objectAdded(add->senderId(), add->getSenderPort(), p)) {
             std::cerr << "error in objectAdded(" << add->getPortName() << ")" << std::endl;
             return false;
