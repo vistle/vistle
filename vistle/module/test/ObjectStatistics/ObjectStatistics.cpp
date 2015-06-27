@@ -24,6 +24,8 @@ class Stats: public vistle::Module {
 
    struct stats {
       Index blocks; //!< no. of blocks/partitions
+      Index grids; //! no. of grid attachments
+      Index normals; //! no. of normal attachments
       Index elements; //! no. of elements
       Index vertices; //! no. of vertices
       Index coords; //! no. of coordinates
@@ -31,6 +33,8 @@ class Stats: public vistle::Module {
 
       stats()
       : blocks(0)
+      , grids(0)
+      , normals(0)
       , elements(0)
       , vertices(0)
       , coords(0)
@@ -41,6 +45,8 @@ class Stats: public vistle::Module {
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
          ar & blocks;
+         ar & grids;
+         ar & normals;
          ar & elements;
          ar & vertices;
          ar & coords;
@@ -53,6 +59,8 @@ class Stats: public vistle::Module {
       void apply(const operation &op, const stats &rhs) {
 
          blocks = op(blocks, rhs.blocks);
+         grids = op(grids, rhs.grids);
+         normals = op(normals, rhs.normals);
          elements = op(elements, rhs.elements);
          vertices = op(vertices, rhs.vertices);
          coords = op(coords, rhs.coords);
@@ -94,6 +102,8 @@ class Stats: public vistle::Module {
 std::ostream &operator<<(std::ostream &str, const Stats::stats &s) {
 
    str << "blocks: " << s.blocks
+      << ", with grid: " << s.grids
+      << ", with normals: " << s.normals
       << ", elements: " << s.elements
       << ", vertices: " << s.vertices
       << ", coords: " << s.coords
@@ -162,7 +172,7 @@ bool Stats::compute() {
 
    Object::const_ptr obj = expect<Object>("data_in");
    if (!obj)
-      return false;
+      return true;
 
    if (obj->getTimestep()+1 > m_timesteps)
       m_timesteps = obj->getTimestep()+1;
@@ -177,10 +187,16 @@ bool Stats::compute() {
    }
    if (auto c = Coords::as(obj)) {
       s.coords = c->getNumCoords();
-   } else if(auto v = Vec<Scalar, 3>::as(obj)) {
-      s.data[3] = v->getSize();
-   } else if(auto v = Vec<Scalar, 1>::as(obj)) {
-      s.data[1] = v->getSize();
+      if (c->normals())
+         ++s.normals;
+   } else if (auto d = DataBase::as(obj)) {
+      if (d->grid())
+         ++s.grids;
+      if(auto v = Vec<Scalar, 3>::as(obj)) {
+         s.data[3] = v->getSize();
+      } else if(auto v = Vec<Scalar, 1>::as(obj)) {
+         s.data[1] = v->getSize();
+      }
    }
    s.blocks = 1;
    m_cur += s;
