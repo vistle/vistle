@@ -37,7 +37,7 @@ class ClusterManager {
    bool sendAllLocal(const message::Message &message) const;
    bool sendAllOthers(int excluded, const message::Message &message, bool localOnly=false) const;
    bool sendUi(const message::Message &message) const;
-   bool sendHub(const message::Message &message) const;
+   bool sendHub(const message::Message &message, int destHub=message::Id::Broadcast) const;
 
    bool quit();
    bool quitOk() const;
@@ -84,6 +84,24 @@ class ClusterManager {
 
    const int m_rank;
    const int m_size;
+
+   struct AddObjectCompare {
+      bool operator()(const message::AddObject &a1, const message::AddObject &a2) {
+         if (a1.uuid() != a2.uuid()) {
+            return a1.uuid() < a2.uuid();
+         }
+         if (a1.destId() != a2.destId()) {
+            return a1.destId() < a2.destId();
+         }
+#if 0
+         if (!strcmp(a1.getDestPort(), a2.getDestPort())) {
+            return strcmp(a1.getDestPort(), a2.getDestPort());
+         }
+#endif
+         return false;
+      }
+   };
+   std::set<message::AddObject, AddObjectCompare> m_inTransitObjects;
 
    struct Module {
       message::MessageQueue *sendQueue;

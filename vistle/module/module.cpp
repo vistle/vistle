@@ -680,7 +680,7 @@ bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object) {
 
    vassert(object->check());
 
-   message::AddObject message(port->getName(), port->getName(), object);
+   message::AddObject message(port->getName(), object);
    sendMessageQueue->send(message);
    return true;
 }
@@ -1329,18 +1329,18 @@ bool Module::handleMessage(const vistle::message::Message *message) {
       case message::Message::ADDOBJECT: {
 
          const message::AddObject *add = static_cast<const message::AddObject *>(message);
-         const Port *p = findInputPort(add->getPortName());
+         auto obj = add->takeObject();
+         const Port *p = findInputPort(add->getDestPort());
          if (!p) {
-            std::cerr << "unknown input port " << add->getPortName() << " in AddObject" << std::endl;
+            std::cerr << "unknown input port " << add->getDestPort() << " in AddObject" << std::endl;
             return true;
          }
-         auto obj = add->takeObject();
          if (!obj) {
-            std::cerr << "did not find object " << add->objectName() << " for port " << add->getPortName() << " in AddObject" << std::endl;
+            std::cerr << "did not find object " << add->objectName() << " for port " << add->getDestPort() << " in AddObject" << std::endl;
          }
-         addInputObject(add->senderId(), add->getSenderPort(), add->getPortName(), obj);
+         addInputObject(add->senderId(), add->getSenderPort(), add->getDestPort(), obj);
          if (!objectAdded(add->senderId(), add->getSenderPort(), p)) {
-            std::cerr << "error in objectAdded(" << add->getPortName() << ")" << std::endl;
+            std::cerr << "error in objectAdded(" << add->getSenderPort() << ")" << std::endl;
             return false;
          }
 

@@ -320,6 +320,7 @@ bool Communicator::sendMessage(const int moduleId, const message::Message &messa
    } else {
       MPI_Send(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, destRank, TagToRank, MPI_COMM_WORLD);
    }
+   return true;
 }
 
 bool Communicator::forwardToMaster(const message::Message &message) {

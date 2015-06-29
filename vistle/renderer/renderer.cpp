@@ -82,7 +82,7 @@ bool Renderer::dispatch() {
                case vistle::message::Message::ADDOBJECT: {
                   if (size() == 1 || objectReceivePolicy()==message::ObjectReceivePolicy::Single) {
                      const message::AddObject *add = static_cast<const message::AddObject *>(message);
-                     addInputObject(add->senderId(), add->getSenderPort(), add->getPortName(), add->takeObject());
+                     addInputObject(add->senderId(), add->getSenderPort(), add->getDestPort(), add->takeObject());
                   }
                   break;
                }
@@ -130,7 +130,7 @@ bool Renderer::dispatch() {
                         }
                         vassert(obj->check());
                         if (localAdd) {
-                           addInputObject(recv->senderId(), recv->getSenderPort(), recv->getPortName(), obj);
+                           addInputObject(recv->senderId(), recv->getSenderPort(), recv->getDestPort(), obj);
                         }
                         obj->unref(); // normally done in AddObject::takeObject();
                      } else {
@@ -163,7 +163,7 @@ bool Renderer::dispatch() {
                                  //std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;
                                  vassert(obj->check());
                                  if (localAdd) {
-                                    addInputObject(recv->senderId(), recv->getSenderPort(), recv->getPortName(), obj);
+                                    addInputObject(recv->senderId(), recv->getSenderPort(), recv->getDestPort(), obj);
                                  }
                               } else {
                                  localAdd = false;
@@ -176,7 +176,7 @@ bool Renderer::dispatch() {
                         }
                      }
                      if (!localAdd)
-                        addInputObject(recv->senderId(), recv->getSenderPort(), recv->getPortName(), ph);
+                        addInputObject(recv->senderId(), recv->getSenderPort(), recv->getDestPort(), ph);
                   }
                   break;
                }

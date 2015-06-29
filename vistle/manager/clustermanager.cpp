@@ -266,9 +266,15 @@ bool ClusterManager::sendUi(const message::Message &message) const {
    return Communicator::the().sendHub(message);
 }
 
-bool ClusterManager::sendHub(const message::Message &message) const {
+bool ClusterManager::sendHub(const message::Message &message, int destHub) const {
 
-   return Communicator::the().sendHub(message);
+   if (destHub == Id::Broadcast) {
+      return Communicator::the().sendHub(message);
+   } else {
+      message::Buffer buf(message);
+      buf.msg.setDestId(destHub);
+      return Communicator::the().sendHub(buf.msg);
+   }
 }
 
 bool ClusterManager::sendMessage(const int moduleId, const message::Message &message, int destRank) const {
@@ -707,10 +713,10 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
 
 bool ClusterManager::handlePriv(const message::AddObject &addObj) {
 
-   Object::const_ptr obj = addObj.takeObject();
    CERR << "ADDOBJECT: " << addObj << std::endl;
    if (!isLocal(addObj.senderId())) {
 
+      Object::const_ptr obj = addObj.takeObject();
       CERR << "ADDOBJECT from remote" << std::endl;
 
       int destRank = -1;
@@ -732,6 +738,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
 
    } else {
 
+      Object::const_ptr obj = addObj.takeObject();
       vassert(obj->refcount() >= 1);
 #if 0
       std::cerr << "Module " << addObj.senderId() << ": "
@@ -740,11 +747,11 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
          << " to port " << addObj.getPortName() << std::endl;
 #endif
 
-      Port *port = portManager().getPort(addObj.senderId(), addObj.getPortName());
+      Port *port = portManager().getPort(addObj.senderId(), addObj.getSenderPort());
       if (!port) {
          CERR << "AddObject ["
             << addObj.getHandle() << "] to port ["
-            << addObj.getPortName() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
+            << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
          vassert(port);
          return true;
       }
@@ -752,20 +759,32 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
       if (!list) {
          CERR << "AddObject ["
             << addObj.getHandle() << "] to port ["
-            << addObj.getPortName() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
+            << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
          vassert(list);
          return true;
       }
 
+      std::set<int> receivingHubs;
+
       for (const Port *destPort: *list) {
 
          int destId = destPort->getModuleID();
-
-         message::AddObject a(addObj.getSenderPort(), destPort->getName(), obj);
+         message::AddObject a(addObj.getSenderPort(), obj, destPort->getName());
          a.setSenderId(addObj.senderId());
          a.setUuid(addObj.uuid());
          a.setRank(addObj.rank());
          a.setDestId(destId);
+
+         if (!isLocal(destId)) {
+            int hub = m_stateTracker.getHub(destId);
+            if (receivingHubs.find(hub) == receivingHubs.end()) {
+               sendHub(a, hub);
+               receivingHubs.insert(hub);
+               m_inTransitObjects.emplace(a);
+            }
+            continue;
+         }
+
          sendMessage(destId, a);
 
          portManager().addObject(destPort);
@@ -804,7 +823,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
 
             if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
                   || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
-               message::ObjectReceived recv(addObj.getSenderPort(), addObj.getPortName(), obj);
+               message::ObjectReceived recv(addObj.getSenderPort(), obj, addObj.getDestPort());
                recv.setUuid(addObj.uuid());
                recv.setSenderId(destId);
 

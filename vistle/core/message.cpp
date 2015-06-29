@@ -479,19 +479,19 @@ Port *AddPort::getPort() const {
    return new Port(senderId(), m_name.data(), static_cast<Port::Type>(m_porttype), m_flags);
 }
 
-AddObject::AddObject(const std::string &sender, const std::string & p,
-                     vistle::Object::const_ptr obj)
+AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj,
+      const std::string & dest)
 : Message(Message::ADDOBJECT, sizeof(AddObject))
 , m_name(obj->getName())
-, m_objectType(obj->getType())
 , m_meta(obj->meta())
+, m_objectType(obj->getType())
 , handle(obj->getHandle())
 {
    // we keep the handle as a reference to obj
    obj->ref();
 
    COPY_STRING(senderPort, sender);
-   COPY_STRING(portName, p);
+   COPY_STRING(destPort, dest);
 }
 
 const char * AddObject::getSenderPort() const {
@@ -499,9 +499,9 @@ const char * AddObject::getSenderPort() const {
    return senderPort.data();
 }
 
-const char * AddObject::getPortName() const {
+const char * AddObject::getDestPort() const {
 
-   return portName.data();
+   return destPort.data();
 }
 
 const char *AddObject::objectName() const {
@@ -531,8 +531,8 @@ Object::const_ptr AddObject::takeObject() const {
    return obj;
 }
 
-ObjectReceived::ObjectReceived(const std::string &sender, const std::string &p,
-      vistle::Object::const_ptr obj)
+ObjectReceived::ObjectReceived(const std::string &sender, vistle::Object::const_ptr obj,
+      const std::string &p)
 : Message(Message::OBJECTRECEIVED, sizeof(ObjectReceived))
 , m_name(obj->getName())
 , m_meta(obj->meta())
@@ -555,7 +555,7 @@ const char *ObjectReceived::getSenderPort() const {
    return senderPort.data();
 }
 
-const char *ObjectReceived::getPortName() const {
+const char *ObjectReceived::getDestPort() const {
 
    return portName.data();
 }
@@ -1297,9 +1297,9 @@ const char *RequestObject::objectId() const {
 SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size_t payloadSize)
 : Message(Message::SENDOBJECT, sizeof(SendObject))
 , m_objectId()
+, m_objectType(obj->getType())
 , m_meta(obj->meta())
 , m_payloadSize(payloadSize)
-, m_objectType(obj->getType())
 {
    setUuid(request.uuid());
 
