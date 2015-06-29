@@ -725,7 +725,6 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
          if (block >= 0) {
             destRank = block % getSize();
          }
-         sendMessage(addObj.destId(), addObj, destRank);
       }
       if (destRank == getRank() || (getRank() == 0 && destRank == -1)) {
          if (!obj) {
@@ -764,7 +763,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
          return true;
       }
 
-      std::set<int> receivingHubs;
+      std::set<int> receivingHubs; // make sure that message is only sent once per remote hub
 
       for (const Port *destPort: *list) {
 

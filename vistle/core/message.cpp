@@ -1465,6 +1465,7 @@ void Router::initRoutingTable() {
    rt[M::EXECUTIONPROGRESS]     = DestLocalManager|HandleOnRank0;
 
    rt[M::ADDOBJECT]             = DestLocalManager|HandleOnNode;
+   rt[M::ADDOBJECTCOMPLETED]    = Special;
 
    rt[M::BARRIER]               = HandleOnDest;
    rt[M::BARRIERREACHED]        = HandleOnDest;
@@ -1590,6 +1591,9 @@ bool Router::toManager(const Message &msg, Identify::Identity senderType) {
 
    const int t = msg.type();
    if (msg.destId() <= Id::MasterHub) {
+      if (msg.destId() == m_id && rt[t] & DestLocalManager) {
+         return true;
+      }
       return false;
    }
    if (senderType != Identify::MANAGER) {
