@@ -204,6 +204,10 @@ void Hub::slaveReady(Slave &slave) {
    slave.ready = true;
 }
 
+void Hub::addLocalData(int rank, shared_ptr<asio::ip::tcp::socket> sock) {
+   m_localDataSocket[rank] = sock;
+}
+
 bool Hub::dispatch() {
 
    m_ioService.poll();
@@ -227,6 +231,8 @@ bool Hub::dispatch() {
             bool ok = true;
             if (senderType == message::Identify::UI) {
                ok = m_uiManager.handleMessage(msg, sock);
+            } else if (senderType == message::Identify::LOCALBULKDATA) {
+               ok = handleLocalData(msg, sock);
             } else {
                ok = handleMessage(msg, sock);
             }
@@ -398,11 +404,11 @@ bool Hub::sendUi(const message::Message &msg) {
 }
 
 bool Hub::connectData(int hubId) {
-   vassert(m_dataSocket.find(hubId) == m_dataSocket.end());
+   vassert(m_remoteDataSocket.find(hubId) == m_remoteDataSocket.end());
 
    for (auto &hubData: m_stateTracker.m_hubs) {
       if (hubData.id == hubId) {
-         auto &sock = m_dataSocket[hubId];
+         auto &sock = m_remoteDataSocket[hubId];
          vassert(!sock);
          sock.reset(new boost::asio::ip::tcp::socket(m_ioService));
          boost::asio::ip::tcp::endpoint dest(hubData.address, hubData.port);
@@ -414,7 +420,7 @@ bool Hub::connectData(int hubId) {
             return false;
          }
 
-         addSocket(sock, message::Identify::BULKDATA);
+         addSocket(sock, message::Identify::REMOTEBULKDATA);
 
          CERR << "connected to hub (data) at " << hubData.address << ":" << hubData.port << std::endl;
          return true;
@@ -430,13 +436,13 @@ bool Hub::sendData(const message::Message &msg, int hubId) {
    if (hubId == m_hubId)
       return true;
 
-   auto it = m_dataSocket.find(hubId);
-   if (it == m_dataSocket.end()) {
+   auto it = m_remoteDataSocket.find(hubId);
+   if (it == m_remoteDataSocket.end()) {
       if (!connectData(hubId)) {
          return false;
       }
-      it = m_dataSocket.find(hubId);
-      vassert(it != m_dataSocket.end());
+      it = m_remoteDataSocket.find(hubId);
+      vassert(it != m_remoteDataSocket.end());
    }
    return sendMessage(it->second, msg);
 }
@@ -548,8 +554,14 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                addSlave(id.name(), sock);
                break;
             }
-            case Identify::BULKDATA: {
-               CERR << "bulk data to hub '" << id.name() << ":" << id.rank() << "' connected" << std::endl;
+            case Identify::LOCALBULKDATA: {
+               CERR << "bulk data to rank " << id.rank() << " connected" << std::endl;
+               addLocalData(id.rank(), sock);
+               break;
+            }
+            case Identify::REMOTEBULKDATA: {
+               CERR << "bulk data to hub '" << id.name() << "' connected" << std::endl;
+               addLocalData(id.rank(), sock);
                break;
             }
             default: {
@@ -781,6 +793,14 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
       std::cerr << " " << msg << std::endl;
    }
 
+   return true;
+}
+
+bool Hub::handleLocalData(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock) {
+   return true;
+}
+
+bool Hub::handleRemoteData(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock) {
    return true;
 }
 

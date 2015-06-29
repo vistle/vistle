@@ -159,11 +159,11 @@ Identify::Identify(Identity id, const std::string &name)
 
 Identify::Identify(Identity id, int rank)
 : Message(Message::IDENTIFY, sizeof(Identify))
-, m_identity(Identify::BULKDATA)
+, m_identity(id)
 , m_id(Id::Invalid)
 , m_rank(rank)
 {
-   assert(id == Identify::BULKDATA);
+   assert(id == Identify::LOCALBULKDATA || id == Identify::REMOTEBULKDATA);
 
    memset(m_name.data(), 0, m_name.size());
 }

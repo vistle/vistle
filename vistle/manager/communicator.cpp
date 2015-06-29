@@ -372,7 +372,7 @@ bool Communicator::handleDataMessage(const message::Message &message) {
 
    switch(message.type()) {
       case Message::IDENTIFY: {
-         sendData(Identify(Identify::BULKDATA, m_rank));
+         sendData(Identify(Identify::LOCALBULKDATA, m_rank));
          break;
       }
       default:

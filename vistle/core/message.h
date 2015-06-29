@@ -189,7 +189,8 @@ class V_COREEXPORT Identify: public Message {
          (MANAGER) //< cluster manager
          (HUB) //< master hub
          (SLAVEHUB) //< slave hub
-         (BULKDATA) //< bulk data transfer
+         (LOCALBULKDATA) //< bulk data transfer to local MPI ranks
+         (REMOTEBULKDATA) //< bulk data transfer to remote hubs
          );
 
    Identify(Identity id=UNKNOWN, const std::string &name = "");

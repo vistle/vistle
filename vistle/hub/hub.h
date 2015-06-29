@@ -32,6 +32,10 @@ class Hub {
 
    bool handleMessage(const message::Message &msg,
          boost::shared_ptr<boost::asio::ip::tcp::socket> sock = boost::shared_ptr<boost::asio::ip::tcp::socket>());
+   bool handleLocalData(const message::Message &msg,
+         boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
+   bool handleRemoteData(const message::Message &msg,
+         boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
 
    bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub);
    bool sendMaster(const message::Message &msg);
@@ -59,6 +63,7 @@ private:
    void addClient(boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void addSlave(const std::string &name, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void slaveReady(Slave &slave);
+   void addLocalData(int rank, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    bool startCleaner();
 
    int idToHub(int id) const;
@@ -86,7 +91,8 @@ private:
    bool m_isMaster;
    boost::shared_ptr<boost::asio::ip::tcp::socket> m_masterSocket;
    typedef std::map<int, boost::shared_ptr<boost::asio::ip::tcp::socket>> DataSocketMap;
-   DataSocketMap m_dataSocket;
+   DataSocketMap m_localDataSocket; // sockets to local MPI ranks
+   DataSocketMap m_remoteDataSocket; // sockets to remote hubs
    struct Slave {
       boost::shared_ptr<boost::asio::ip::tcp::socket> sock;
       std::string name;
