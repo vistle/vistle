@@ -43,7 +43,8 @@ class Hub {
    bool sendSlave(const message::Message &msg, int id);
    bool sendHub(const message::Message &msg, int id);
    bool sendUi(const message::Message &msg);
-   bool sendData(const message::Message &msg, int hubId);
+   bool sendRemoteData(const message::Message &msg, int hubId);
+   bool sendLocalData(const message::Message &msg, int rank);
 
    const StateTracker &stateTracker() const;
    StateTracker &stateTracker();
@@ -53,7 +54,7 @@ private:
 
    void hubReady();
    bool connectToMaster(const std::string &host, unsigned short port);
-   bool connectData(int hubId);
+   bool connectRemoteData(int hubId);
    bool startUi(const std::string &uipath);
    bool startServer();
    bool startAccept();

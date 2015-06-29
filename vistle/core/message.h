@@ -881,7 +881,7 @@ BOOST_STATIC_ASSERT(sizeof(RequestTunnel) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT RequestObject: public Message {
 
  public:
-   RequestObject(const std::string &objId);
+   RequestObject(int destId, int destRank, const std::string &objId);
    const char *objectId() const;
 
  private:

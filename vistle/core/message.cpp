@@ -1300,10 +1300,12 @@ bool RequestTunnel::remove() const {
    return m_remove;
 }
 
-RequestObject::RequestObject(const std::string &objId)
+RequestObject::RequestObject(int destId, int destRank, const std::string &objId)
 : Message(Message::REQUESTOBJECT, sizeof(RequestObject))
 , m_objectId(objId)
 {
+   setDestId(destId);
+   setDestRank(destRank);
 }
 
 const char *RequestObject::objectId() const {

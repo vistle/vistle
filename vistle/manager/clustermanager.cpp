@@ -729,7 +729,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
       if (destRank == getRank() || (getRank() == 0 && destRank == -1)) {
          if (!obj) {
             CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
-            message::RequestObject req(addObj.objectName());
+            message::RequestObject req(addObj.senderId(), addObj.rank(), addObj.objectName());
             req.setUuid(addObj.uuid());
             Communicator::the().sendData(req);
          }
