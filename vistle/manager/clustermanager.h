@@ -76,6 +76,7 @@ class ClusterManager {
    bool handlePriv(const message::Idle &idle);
    bool handlePriv(const message::SetParameter &setParam);
    bool handlePriv(const message::AddObject &addObj);
+   bool handlePriv(const message::AddObjectCompleted &complete);
    bool handlePriv(const message::ObjectReceived &objRecv);
    bool handlePriv(const message::Barrier &barrier);
    bool handlePriv(const message::BarrierReached &barrierReached);

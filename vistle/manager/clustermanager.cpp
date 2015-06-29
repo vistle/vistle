@@ -837,6 +837,19 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
    return true;
 }
 
+bool ClusterManager::handlePriv(const message::AddObjectCompleted &complete) {
+
+   message::AddObject key(complete.originalSenderPort(), nullptr);
+   key.setUuid(complete.uuid());
+   key.setDestId(complete.destId());
+   auto it = m_inTransitObjects.find(key);
+   if (it == m_inTransitObjects.end()) {
+      CERR << "AddObject message for completion notification not found: " << complete << std::endl;
+      return false;
+   }
+   return true;
+}
+
 bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
    RunningMap::iterator i = runningMap.find(prog.senderId());

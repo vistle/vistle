@@ -531,6 +531,22 @@ Object::const_ptr AddObject::takeObject() const {
    return obj;
 }
 
+
+AddObjectCompleted::AddObjectCompleted(const AddObject &msg)
+: Message(Message::ADDOBJECTCOMPLETED, sizeof(AddObjectCompleted))
+, m_orgSenderId(msg.senderId())
+{
+   COPY_STRING(m_orgSenderPort, std::string(msg.getSenderPort()));
+}
+
+int AddObjectCompleted::originalSenderId() const {
+   return m_orgSenderId;
+}
+
+const char *AddObjectCompleted::originalSenderPort() const {
+   return m_orgSenderPort.data();
+}
+
 ObjectReceived::ObjectReceived(const std::string &sender, vistle::Object::const_ptr obj,
       const std::string &p)
 : Message(Message::OBJECTRECEIVED, sizeof(ObjectReceived))

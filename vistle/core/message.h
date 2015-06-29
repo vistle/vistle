@@ -98,6 +98,7 @@ class V_COREEXPORT Message {
       (EXECUTIONPROGRESS)
       (EXECUTE)
       (ADDOBJECT)
+      (ADDOBJECTCOMPLETED)
       (OBJECTRECEIVED)
       (ADDPORT)
       (CONNECT)
@@ -465,6 +466,19 @@ class V_COREEXPORT AddObject: public Message {
    const shm_handle_t handle;
 };
 BOOST_STATIC_ASSERT(sizeof(AddObject) <= Message::MESSAGE_SIZE);
+
+class V_COREEXPORT AddObjectCompleted: public Message {
+
+ public:
+   AddObjectCompleted(const AddObject &msg);
+   const char *originalSenderPort() const;
+   int originalSenderId() const;
+
+ private:
+   port_name_t m_orgSenderPort;
+   int m_orgSenderId;
+};
+BOOST_STATIC_ASSERT(sizeof(AddObjectCompleted) <= Message::MESSAGE_SIZE);
 
 //! notify rank 0 controller that an object was received
 class V_COREEXPORT ObjectReceived: public Message {
