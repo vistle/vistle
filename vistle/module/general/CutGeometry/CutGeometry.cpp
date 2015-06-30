@@ -14,7 +14,7 @@ using namespace vistle;
 CutGeometry::CutGeometry(const std::string &shmname, const std::string &name, int moduleID)
    : Module("CutGeometry", shmname, name, moduleID) {
 
-   setDefaultCacheMode(ObjectCache::CacheAll);
+   setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
    createInputPort("grid_in");
    createOutputPort("grid_out");

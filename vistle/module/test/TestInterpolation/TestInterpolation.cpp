@@ -11,7 +11,7 @@ using namespace vistle;
 TestInterpolation::TestInterpolation(const std::string &shmname, const std::string &name, int moduleID)
     : Module("test interpolation", shmname, name, moduleID) {
 
-    setDefaultCacheMode(ObjectCache::CacheAll);
+    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
     createInputPort("data_in");
 

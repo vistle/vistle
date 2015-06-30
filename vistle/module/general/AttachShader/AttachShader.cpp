@@ -9,7 +9,7 @@ using namespace vistle;
 AttachShader::AttachShader(const std::string &shmname, const std::string &name, int moduleID)
     : Module("attach GLSL shader in COVER", shmname, name, moduleID) {
 
-    setDefaultCacheMode(ObjectCache::CacheAll);
+    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
     createInputPort("data_in");
 

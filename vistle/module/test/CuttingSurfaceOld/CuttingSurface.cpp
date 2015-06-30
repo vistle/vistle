@@ -16,7 +16,7 @@ MODULE_MAIN(CuttingSurface)
 CuttingSurface::CuttingSurface(const std::string &shmname, const std::string &name, int moduleID)
    : Module("CuttingSurface", shmname, name, moduleID) {
 
-   setDefaultCacheMode(ObjectCache::CacheAll);
+   setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
    createInputPort("grid_in");
    createInputPort("data_in");

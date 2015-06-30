@@ -26,7 +26,7 @@ IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int 
 #endif
 , shmname, name, moduleID) {
 
-   setDefaultCacheMode(ObjectCache::CacheAll);
+   setDefaultCacheMode(ObjectCache::CacheDeleteLate);
    setReducePolicy(message::ReducePolicy::OverAll);
 #ifdef CUTTINGSURFACE
    m_mapDataIn = createInputPort("data_in");

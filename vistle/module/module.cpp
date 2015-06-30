@@ -213,6 +213,8 @@ Module::Module(const std::string &desc, const std::string &shmname,
 #endif
 
    auto cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheDefault, Parameter::Choice);
+   V_ENUM_SET_CHOICES_SCOPE("_cache_mode", CacheMode, ObjectCache);
+#if 0
    std::vector<std::string> modes;
    vassert(ObjectCache::CacheDefault == 0);
    modes.push_back("default");
@@ -221,6 +223,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
    vassert(ObjectCache::CacheAll == 2);
    modes.push_back("all");
    setParameterChoices(cm, modes);
+#endif
 
    addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
 
@@ -559,7 +562,8 @@ void Module::updateCacheMode() {
    Integer value = getIntParameter("_cache_mode");
    switch (value) {
       case ObjectCache::CacheNone:
-      case ObjectCache::CacheAll:
+      case ObjectCache::CacheDeleteEarly:
+      case ObjectCache::CacheDeleteLate:
       case ObjectCache::CacheDefault:
          break;
       default:
@@ -1311,6 +1315,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          if (exec->what() == Execute::ComputeExecute
              || exec->what() == Execute::Reduce) {
             ret &= reduceWrapper(exec);
+            m_cache.clearOld();
          }
          message::Idle idle;
          idle.setUuid(exec->uuid());
@@ -1441,6 +1446,7 @@ std::string Module::getModuleName(int id) const {
 Module::~Module() {
 
    m_cache.clear();
+   m_cache.clearOld();
    Shm::the().detach();
 
    if (m_origStreambuf)

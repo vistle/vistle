@@ -23,7 +23,7 @@ using namespace vistle;
 IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int moduleID)
    : Module("IsoSurface", shmname, name, moduleID) {
 
-   setDefaultCacheMode(ObjectCache::CacheAll);
+   setDefaultCacheMode(ObjectCache::CacheDeleteLate);
    setReducePolicy(message::ReducePolicy::OverAll);
 
    createInputPort("grid_in");

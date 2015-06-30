@@ -156,7 +156,7 @@ Stats::Stats(const std::string &shmname, const std::string &name, int moduleID)
    : Module("object statistics", shmname, name, moduleID)
 {
 
-   setDefaultCacheMode(ObjectCache::CacheAll);
+   setDefaultCacheMode(ObjectCache::CacheDeleteLate);
    setReducePolicy(message::ReducePolicy::OverAll);
 
    createInputPort("data_in", "input data", Port::MULTI);

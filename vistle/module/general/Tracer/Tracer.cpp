@@ -44,7 +44,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(StartStyle,
 Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID)
    : Module("Tracer", shmname, name, moduleID) {
 
-   setDefaultCacheMode(ObjectCache::CacheAll);
+   setDefaultCacheMode(ObjectCache::CacheDeleteLate);
    setReducePolicy(message::ReducePolicy::OverAll);
 
     createInputPort("data_in0");

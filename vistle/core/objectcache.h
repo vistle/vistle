@@ -17,13 +17,15 @@ class V_COREEXPORT ObjectCache {
       DEFINE_ENUM_WITH_STRING_CONVERSIONS(CacheMode,
          (CacheDefault)
          (CacheNone)
-         (CacheAll)
+         (CacheDeleteEarly)
+         (CacheDeleteLate)
       )
 
       ObjectCache();
       ~ObjectCache();
 
       void clear();
+      void clearOld();
       CacheMode cacheMode() const;
       void setCacheMode(CacheMode mode);
 
@@ -32,7 +34,7 @@ class V_COREEXPORT ObjectCache {
 
    private:
       CacheMode m_cacheMode;
-      std::map<std::string, ObjectList> m_cache;
+      std::map<std::string, ObjectList> m_cache, m_oldCache;
       ObjectList m_emptyList;
 };
 

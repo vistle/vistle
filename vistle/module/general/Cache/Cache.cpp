@@ -20,7 +20,7 @@ using namespace vistle;
 Cache::Cache(const std::string &shmname, const std::string &name, int moduleID)
 : Module("cache input objects", shmname, name, moduleID)
 {
-   setDefaultCacheMode(ObjectCache::CacheAll);
+   setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
    for (int i=0; i<NumPorts; ++i) {
       std::string suffix = boost::lexical_cast<std::string>(i);

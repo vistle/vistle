@@ -14,7 +14,7 @@ using namespace vistle;
 ShowCelltree::ShowCelltree(const std::string &shmname, const std::string &name, int moduleID)
 : Module("ShowCelltree", shmname, name, moduleID) {
 
-   setDefaultCacheMode(ObjectCache::CacheAll);
+   setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
    m_maxDepth = addIntParameter("maximum_depth", "maximum depth of nodes to show", 10);
 

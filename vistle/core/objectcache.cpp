@@ -12,7 +12,16 @@ ObjectCache::~ObjectCache() {
 
 void ObjectCache::clear() {
 
-   m_cache.clear();
+   if (m_cacheMode == CacheDeleteLate) {
+      m_oldCache.clear();
+      std::swap(m_cache, m_oldCache);
+   } else {
+      m_cache.clear();
+   }
+}
+
+void ObjectCache::clearOld() {
+   m_oldCache.clear();
 }
 
 ObjectCache::CacheMode ObjectCache::cacheMode() const {
