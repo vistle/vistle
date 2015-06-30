@@ -773,9 +773,9 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
 bool ClusterManager::handlePriv(const message::AddObject &addObj) {
 
    CERR << "ADDOBJECT: " << addObj << std::endl;
+   Object::const_ptr obj;
    if (!isLocal(addObj.senderId())) {
 
-      Object::const_ptr obj = addObj.takeObject();
       CERR << "ADDOBJECT from remote" << std::endl;
 
       int destRank = -1;
@@ -786,108 +786,110 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
          }
       }
       if (destRank == getRank() || (getRank() == 0 && destRank == -1)) {
+         obj = addObj.takeObject();
          if (!obj) {
             CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
             message::RequestObject req(addObj.senderId(), addObj.rank(), addObj.objectName());
             req.setUuid(addObj.uuid());
             Communicator::the().sendData(req);
+            return true;
          }
       }
 
-   } else {
+   }
 
-      Object::const_ptr obj = addObj.takeObject();
-      vassert(obj->refcount() >= 1);
+   obj = addObj.takeObject();
+   vassert(obj);
+   vassert(obj->refcount() >= 1);
 #if 0
-      std::cerr << "Module " << addObj.senderId() << ": "
-         << "AddObject " << addObj.getHandle() << " (" << obj->getName() << ")"
-         << " ref " << obj->refcount()
-         << " to port " << addObj.getPortName() << std::endl;
+   std::cerr << "Module " << addObj.senderId() << ": "
+      << "AddObject " << addObj.getHandle() << " (" << obj->getName() << ")"
+      << " ref " << obj->refcount()
+      << " to port " << addObj.getPortName() << std::endl;
 #endif
 
-      Port *port = portManager().getPort(addObj.senderId(), addObj.getSenderPort());
-      if (!port) {
-         CERR << "AddObject ["
-            << addObj.getHandle() << "] to port ["
-            << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
-         vassert(port);
-         return true;
-      }
-      const Port::PortSet *list = portManager().getConnectionList(port);
-      if (!list) {
-         CERR << "AddObject ["
-            << addObj.getHandle() << "] to port ["
-            << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
-         vassert(list);
-         return true;
-      }
+   Port *port = portManager().getPort(addObj.senderId(), addObj.getSenderPort());
+   if (!port) {
+      CERR << "AddObject ["
+         << addObj.getHandle() << "] to port ["
+         << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
+      vassert(port);
+      return true;
+   }
+   const Port::PortSet *list = portManager().getConnectionList(port);
+   if (!list) {
+      CERR << "AddObject ["
+         << addObj.getHandle() << "] to port ["
+         << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
+      vassert(list);
+      return true;
+   }
 
-      std::set<int> receivingHubs; // make sure that message is only sent once per remote hub
+   std::set<int> receivingHubs; // make sure that message is only sent once per remote hub
 
-      for (const Port *destPort: *list) {
+   for (const Port *destPort: *list) {
 
-         int destId = destPort->getModuleID();
-         message::AddObject a(addObj.getSenderPort(), obj, destPort->getName());
-         a.setSenderId(addObj.senderId());
-         a.setUuid(addObj.uuid());
-         a.setRank(addObj.rank());
-         a.setDestId(destId);
+      int destId = destPort->getModuleID();
+      message::AddObject a(addObj.getSenderPort(), obj, destPort->getName());
+      a.setSenderId(addObj.senderId());
+      a.setUuid(addObj.uuid());
+      a.setRank(addObj.rank());
+      a.setDestId(destId);
 
-         if (!isLocal(destId)) {
-            int hub = m_stateTracker.getHub(destId);
-            if (receivingHubs.find(hub) == receivingHubs.end()) {
-               sendHub(a, hub);
-               receivingHubs.insert(hub);
-               m_inTransitObjects.emplace(a);
-            }
-            continue;
+      if (!isLocal(destId)) {
+         int hub = m_stateTracker.getHub(destId);
+         if (receivingHubs.find(hub) == receivingHubs.end()) {
+            sendHub(a, hub);
+            receivingHubs.insert(hub);
+            m_inTransitObjects.emplace(a);
          }
+         continue;
+      }
 
-         sendMessage(destId, a);
+      sendMessage(destId, a);
 
-         portManager().addObject(destPort);
+      portManager().addObject(destPort);
 
-         auto it = m_stateTracker.runningMap.find(destId);
-         if (it == m_stateTracker.runningMap.end()) {
-            CERR << "port connection to module that is not running" << std::endl;
-            vassert("port connection to module that is not running" == 0);
-            continue;
+      auto it = m_stateTracker.runningMap.find(destId);
+      if (it == m_stateTracker.runningMap.end()) {
+         CERR << "port connection to module that is not running" << std::endl;
+         vassert("port connection to module that is not running" == 0);
+         continue;
+      }
+      auto &destMod = it->second;
+
+      bool allReady = true;
+      for (const auto input: portManager().getConnectedInputPorts(destId)) {
+         if (!portManager().hasObject(input)) {
+            allReady = false;
+            break;
          }
-         auto &destMod = it->second;
+      }
 
-         bool allReady = true;
+      if (allReady) {
+
          for (const auto input: portManager().getConnectedInputPorts(destId)) {
-            if (!portManager().hasObject(input)) {
-               allReady = false;
-               break;
-            }
+            portManager().popObject(input);
          }
 
-         if (allReady) {
+         message::Execute c(message::Execute::ComputeObject, destId);
+         c.setUuid(addObj.uuid());
+         if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
+            sendMessage(destId, c);
+         } else {
+            c.setAllRanks(true);
+            if (!Communicator::the().broadcastAndHandleMessage(c))
+               return false;
+         }
 
-            for (const auto input: portManager().getConnectedInputPorts(destId)) {
-               portManager().popObject(input);
-            }
+         if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
+               || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
+            message::ObjectReceived recv(addObj.getSenderPort(), obj, addObj.getDestPort());
+            recv.setUuid(addObj.uuid());
+            recv.setSenderId(destId);
 
-            message::Execute c(message::Execute::ComputeObject, destId);
-            c.setUuid(addObj.uuid());
-            if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
-               sendMessage(destId, c);
-            } else {
-               c.setAllRanks(true);
-               if (!Communicator::the().broadcastAndHandleMessage(c))
-                  return false;
-            }
-
-            if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
-                  || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
-               message::ObjectReceived recv(addObj.getSenderPort(), obj, addObj.getDestPort());
-               recv.setUuid(addObj.uuid());
-               recv.setSenderId(destId);
-
-               if (!Communicator::the().broadcastAndHandleMessage(recv))
-                  return false;
-            }
+            if (!Communicator::the().broadcastAndHandleMessage(recv))
+               return false;
          }
       }
    }
