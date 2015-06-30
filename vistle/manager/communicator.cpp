@@ -368,6 +368,7 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
 bool Communicator::handleDataMessage(const message::Message &message) {
 
+   CERR << "handleDataMessage: " << message << std::endl;
    using namespace vistle::message;
 
    switch(message.type()) {
@@ -376,12 +377,10 @@ bool Communicator::handleDataMessage(const message::Message &message) {
          break;
       }
       default:
-         return true;
+         return m_clusterManager->handleData(message);
    }
-
    return true;
 }
-
 
 bool Communicator::handleMessage(const message::Message &message) {
 

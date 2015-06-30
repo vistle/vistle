@@ -54,6 +54,7 @@ class ClusterManager {
    PortManager &portManager() const;
 
    bool handle(const message::Message &msg);
+   bool handleData(const message::Message &msg);
 
  private:
    void queueMessage(const message::Message &msg);
@@ -82,6 +83,9 @@ class ClusterManager {
    bool handlePriv(const message::BarrierReached &barrierReached);
    bool handlePriv(const message::SendText &text);
    bool handlePriv(const message::RequestTunnel &tunnel);
+
+   bool handlePriv(const message::RequestObject &req);
+   bool handlePriv(const message::SendObject &send);
 
    const int m_rank;
    const int m_size;

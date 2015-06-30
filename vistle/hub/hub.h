@@ -44,7 +44,9 @@ class Hub {
    bool sendHub(const message::Message &msg, int id);
    bool sendUi(const message::Message &msg);
    bool sendRemoteData(const message::Message &msg, int hubId);
+   bool sendRemoteData(const char *buf, size_t n, int hubId);
    bool sendLocalData(const message::Message &msg, int rank);
+   bool sendLocalData(const char *buf, size_t n, int hubId);
 
    const StateTracker &stateTracker() const;
    StateTracker &stateTracker();
@@ -65,6 +67,7 @@ private:
    void addSlave(const std::string &name, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void slaveReady(Slave &slave);
    void addLocalData(int rank, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
+   void addRemoteData(int hub, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    bool startCleaner();
 
    int idToHub(int id) const;

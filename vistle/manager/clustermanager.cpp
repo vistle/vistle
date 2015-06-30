@@ -510,6 +510,36 @@ bool ClusterManager::handle(const message::Message &message) {
    return result;
 }
 
+bool ClusterManager::handleData(const message::Message &message) {
+
+   using namespace vistle::message;
+   bool result = false;
+   switch (message.type()) {
+      case Message::REQUESTOBJECT: {
+         auto req = static_cast<const RequestObject &>(message);
+         result = handlePriv(req);
+         break;
+      }
+      case Message::SENDOBJECT: {
+         auto send = static_cast<const SendObject &>(message);
+         result = handlePriv(send);
+         break;
+      }
+      default:
+         break;
+   }
+
+   return result;
+}
+
+bool ClusterManager::handlePriv(const message::RequestObject &req) {
+   return true;
+}
+
+bool ClusterManager::handlePriv(const message::SendObject &send) {
+   return true;
+}
+
 bool ClusterManager::handlePriv(const message::Trace &trace) {
 
    if (trace.module() >= Id::ModuleBase) {
