@@ -22,9 +22,14 @@
 #include <core/shm.h>
 #include <core/parameter.h>
 #include <util/findself.h>
+#include <util/vecstreambuf.h>
 
 #include "clustermanager.h"
 #include "communicator.h"
+
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+namespace ba = boost::archive;
 
 //#define QUEUE_DEBUG
 
@@ -533,10 +538,34 @@ bool ClusterManager::handleData(const message::Message &message) {
 }
 
 bool ClusterManager::handlePriv(const message::RequestObject &req) {
+   Object::const_ptr obj = Shm::the().getObjectFromName(req.objectId());
+   if (!obj) {
+      CERR << "cannot find object with name " << req.objectId() << std::endl;
+      return true;
+   }
+   vecstreambuf<char> buf;
+   ba::binary_oarchive memar(buf);
+   obj->save(memar);
+   const std::vector<char> &mem = buf.get_vector();
+   message::SendObject send(req, obj, mem.size());
+   Communicator::the().sendData(send);
+   Communicator::the().sendData(mem.data(), mem.size());
+
    return true;
 }
 
 bool ClusterManager::handlePriv(const message::SendObject &send) {
+
+   std::vector<char> buf(send.payloadSize());
+   Communicator::the().readData(buf.data(), buf.size());
+   vecstreambuf<char> membuf(buf);
+   ba::binary_iarchive memar(membuf);
+   Object::ptr obj = Object::load(memar);
+   if (obj) {
+      //std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;
+      vassert(obj->check());
+   }
+
    return true;
 }
 

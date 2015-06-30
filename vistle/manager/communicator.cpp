@@ -152,6 +152,14 @@ bool Communicator::sendData(const message::Message &message) {
    return message::send(m_dataSocket, message);
 }
 
+bool Communicator::sendData(const char *buf, size_t n) {
+
+   return asio::write(m_dataSocket, asio::buffer(buf, n));
+}
+
+bool Communicator::readData(char *buf, size_t n) {
+   return asio::read(m_dataSocket, asio::buffer(buf, n));
+}
 
 bool Communicator::scanModules(const std::string &dir) {
 

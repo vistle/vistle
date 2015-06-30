@@ -874,9 +874,6 @@ bool Hub::handleRemoteData(const message::Message &recv, shared_ptr<asio::ip::tc
    CERR << "handleRemoteData: " << recv << std::endl;
    using namespace message;
    switch (recv.type()) {
-      case Message::IDENTIFY: {
-         auto ident = static_cast<const Identify &>(recv);
-      }
       case Message::REQUESTOBJECT: {
          auto req = static_cast<const RequestObject &>(recv);
          return sendLocalData(req, req.destRank());

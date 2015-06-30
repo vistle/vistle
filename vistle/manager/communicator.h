@@ -46,6 +46,8 @@ class Communicator {
  private:
    bool sendHub(const message::Message &message);
    bool sendData(const message::Message &message);
+   bool sendData(const char *buf, size_t n);
+   bool readData(char *buf, size_t n);
    bool connectData();
 
    ClusterManager *m_clusterManager;
