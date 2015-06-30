@@ -773,10 +773,13 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
 bool ClusterManager::handlePriv(const message::AddObject &addObj) {
 
    CERR << "ADDOBJECT: " << addObj << std::endl;
+   bool localAdd = true;
+   bool haveObject = true;
    Object::const_ptr obj;
    if (!isLocal(addObj.senderId())) {
 
       CERR << "ADDOBJECT from remote" << std::endl;
+      localAdd = false;
 
       int destRank = -1;
       if (getRank() == 0) {
@@ -792,6 +795,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
             message::RequestObject req(addObj.senderId(), addObj.rank(), addObj.objectName());
             req.setUuid(addObj.uuid());
             Communicator::the().sendData(req);
+            haveObject = false;
             return true;
          }
       }
@@ -836,7 +840,8 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
       a.setRank(addObj.rank());
       a.setDestId(destId);
 
-      if (!isLocal(destId)) {
+      if (localAdd && !isLocal(destId)) {
+         // if object was generated locally, forward message to remote hubs with connected modules
          int hub = m_stateTracker.getHub(destId);
          if (receivingHubs.find(hub) == receivingHubs.end()) {
             sendHub(a, hub);

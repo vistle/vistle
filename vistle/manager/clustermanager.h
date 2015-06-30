@@ -114,14 +114,52 @@ class ClusterManager {
 
       Module(): sendQueue(nullptr), recvQueue(nullptr),
          ranksStarted(0), ranksFinished(0), reducing(false),
-         busyCount(0)
+         busyCount(0), blocked(false)
          {}
       ~Module() {
          delete sendQueue;
          delete recvQueue;
       }
+      void block(const message::Message &msg) {
+         blocked = true;
+         blockers.push_back(message::Buffer(msg));
+      }
+      void unblock(const message::Message &msg) {
+         assert(blocked);
+         assert(!blockers.empty());
+         if (blocked) {
+            if (msg.uuid() == blockers.front().msg.uuid()) {
+               blockers.pop_front();
+               if (blockers.empty()) {
+                  blocked = false;
+                  while (!blockedMessages.empty()) {
+                     sendQueue->send(blockedMessages.front().msg);
+                     blockedMessages.pop_front();
+                  }
+               } else {
+                  const auto &uuid = blockers.front().msg.uuid();
+                  while (blockedMessages.front().msg.uuid() != uuid) {
+                     sendQueue->send(blockedMessages.front().msg);
+                     blockedMessages.pop_front();
+                  }
+               }
+            } else {
+               const auto &uuid = msg.uuid();
+               auto it = std::find_if(blockers.begin(), blockers.end(), [uuid](const message::Buffer &buf) -> bool { return buf.msg.uuid() == uuid; });
+               assert(it != blockers.end());
+               if (it != blockers.end()) {
+                  blockers.erase(it);
+               }
+            }
+         }
+      }
       bool send(const message::Message &msg) const {
-         return sendQueue->send(msg);
+         if (blocked) {
+            blockedMessages.emplace_back(msg);
+            return true;
+         } else {
+            return sendQueue->send(msg);
+         }
       }
       bool update() const {
          return sendQueue->progress();
@@ -129,6 +167,8 @@ class ClusterManager {
       int ranksStarted, ranksFinished;
       bool reducing;
       int busyCount;
+      mutable bool blocked;
+      mutable std::deque<message::Buffer> blockedMessages, blockers;
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;
