@@ -76,7 +76,7 @@ class ClusterManager {
    bool handlePriv(const message::Busy &busy);
    bool handlePriv(const message::Idle &idle);
    bool handlePriv(const message::SetParameter &setParam);
-   bool handlePriv(const message::AddObject &addObj);
+   bool handlePriv(const message::AddObject &addObj, bool synthesized=false);
    bool handlePriv(const message::AddObjectCompleted &complete);
    bool handlePriv(const message::ObjectReceived &objRecv);
    bool handlePriv(const message::Barrier &barrier);
@@ -130,6 +130,9 @@ class ClusterManager {
          if (blocked) {
             if (msg.uuid() == blockers.front().msg.uuid()) {
                blockers.pop_front();
+               assert(blockedMessages.front().msg.uuid() == msg.uuid());
+               blockedMessages.pop_front();
+               sendQueue->send(msg);
                if (blockers.empty()) {
                   blocked = false;
                   while (!blockedMessages.empty()) {
@@ -149,6 +152,11 @@ class ClusterManager {
                assert(it != blockers.end());
                if (it != blockers.end()) {
                   blockers.erase(it);
+               }
+               it = std::find_if(blockedMessages.begin(), blockedMessages.end(), [uuid](const message::Buffer &buf) -> bool { return buf.msg.uuid() == uuid; });
+               assert (it != blockedMessages.end());
+               if (it != blockedMessages.end()) {
+                  *it = message::Buffer(msg);
                }
             }
          }

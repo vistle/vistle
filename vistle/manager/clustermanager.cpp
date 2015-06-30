@@ -564,6 +564,10 @@ bool ClusterManager::handlePriv(const message::SendObject &send) {
    if (obj) {
       //std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;
       vassert(obj->check());
+      message::AddObject a("", obj);
+      a.setSenderId(send.senderId());
+      a.setUuid(send.uuid());
+      return handlePriv(a, /* synthesized = */ true);
    }
 
    return true;
@@ -770,7 +774,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
    return true;
 }
 
-bool ClusterManager::handlePriv(const message::AddObject &addObj) {
+bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesized) {
 
    CERR << "ADDOBJECT: " << addObj << std::endl;
    bool localAdd = true;
@@ -796,15 +800,15 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
             req.setUuid(addObj.uuid());
             Communicator::the().sendData(req);
             haveObject = false;
-            return true;
          }
       }
-
+   }
+   if (synthesized || localAdd) {
+      vassert(obj);
    }
 
    obj = addObj.takeObject();
-   vassert(obj);
-   vassert(obj->refcount() >= 1);
+   vassert(!obj || obj->refcount() >= 1);
 #if 0
    std::cerr << "Module " << addObj.senderId() << ": "
       << "AddObject " << addObj.getHandle() << " (" << obj->getName() << ")"
@@ -840,19 +844,29 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj) {
       a.setRank(addObj.rank());
       a.setDestId(destId);
 
-      if (localAdd && !isLocal(destId)) {
-         // if object was generated locally, forward message to remote hubs with connected modules
-         int hub = m_stateTracker.getHub(destId);
-         if (receivingHubs.find(hub) == receivingHubs.end()) {
-            sendHub(a, hub);
-            receivingHubs.insert(hub);
-            m_inTransitObjects.emplace(a);
+      if (!isLocal(destId)) {
+         if (localAdd) {
+            // if object was generated locally, forward message to remote hubs with connected modules
+            const int hub = m_stateTracker.getHub(destId);
+            if (receivingHubs.find(hub) == receivingHubs.end()) {
+               sendHub(a, hub);
+               receivingHubs.insert(hub);
+               m_inTransitObjects.emplace(a);
+            }
          }
          continue;
       }
 
-      sendMessage(destId, a);
+      if (!haveObject) {
+         auto it = runningMap.find(destId);
+         if (it != runningMap.end()) {
+            it->second.block(a);
+         }
+         sendMessage(destId, a);
+         continue;
+      }
 
+      sendMessage(destId, a);
       portManager().addObject(destPort);
 
       auto it = m_stateTracker.runningMap.find(destId);
