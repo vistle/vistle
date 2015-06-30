@@ -472,6 +472,8 @@ void StateTracker::processQueue() {
 }
 
 bool StateTracker::handlePriv(const message::AddHub &slave) {
+   if (slave.id() == Id::MasterHub)
+      return true;
    boost::lock_guard<mutex> locker(m_slaveMutex);
    m_hubs.emplace_back(slave.id(), slave.name());
    m_hubs.back().port = slave.port();
