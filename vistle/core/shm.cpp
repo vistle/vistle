@@ -58,27 +58,27 @@ shm<ShmDebugInfo>::vector *Shm::s_shmdebug = NULL;
 shm_name_t::shm_name_t(const std::string &s) {
 
    size_t len = s.size();
-   assert(len < sizeof(name));
-   if (len >= sizeof(name))
-      len = sizeof(name)-1;
-   strncpy(name, &s[0], len);
+   assert(len < name.size());
+   if (len >= name.size())
+      len = name.size()-1;
+   strncpy(name.data(), &s[0], len);
    name[len] = '\0';
 }
 
 shm_name_t::operator const char *() const {
-   return name;
+   return name.data();
 }
 
 shm_name_t::operator char *() {
-   return name;
+   return name.data();
 }
 
 shm_name_t::operator std::string () const {
-   return name;
+   return name.data();
 }
 
 std::string operator+(const std::string &s, const shm_name_t &n) {
-   return s + n.name;
+   return s + n.name.data();
 }
 
 std::string Shm::instanceName(const std::string &host, unsigned short port) {
@@ -373,7 +373,7 @@ struct archive_instantiator {
       typedef T Archive;
       Stream stream;
       Archive ar(stream);
-      ar & V_NAME("shm_ptr", *p);
+      ar & V_NAME("shm_ptr", p);
    }
 };
 

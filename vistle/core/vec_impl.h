@@ -115,7 +115,7 @@ void Vec<T,Dim>::Data::serialize(Archive &ar, const unsigned int version) {
    ar & V_NAME("dim", dim);
    assert(dim == Dim);
    for (int c=0; c<Dim; ++c) {
-      ar & V_NAME("x", *x[c]);
+      ar & V_NAME("x", x[c]);
    }
 }
 

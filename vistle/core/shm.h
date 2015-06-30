@@ -28,12 +28,17 @@ namespace vistle {
 typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 
 struct V_COREEXPORT shm_name_t {
-   char name[32];
+   std::array<char, 32> name;
    shm_name_t(const std::string &s = "INVALID");
 
    operator const char *() const;
    operator char *();
    operator std::string () const;
+
+ private:
+   friend class boost::serialization::access;
+   template<class Archive>
+      void serialize(Archive &ar, const unsigned int version);
 };
 std::string operator+(const std::string &s, const shm_name_t &n);
 
@@ -179,6 +184,14 @@ class ShmVector {
             }
 
          private:
+            friend class boost::serialization::access;
+            template<class Archive>
+               void serialize(Archive &ar, const unsigned int version);
+            template<class Archive>
+               void save(Archive &ar, const unsigned int version) const;
+            template<class Archive>
+               void load(Archive &ar, const unsigned int version);
+
             boost::interprocess::offset_ptr<ShmVector> m_p;
       };
 

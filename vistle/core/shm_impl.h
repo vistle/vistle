@@ -122,6 +122,35 @@ void ShmVector<T>::unref() {
    m_mutex.unlock();
 }
 
+template<class Archive>
+void shm_name_t::serialize(Archive &ar, const unsigned int version) {
+
+   ar & boost::serialization::make_nvp("shm_name_t", boost::serialization::make_array(name.data(), name.size()));
+}
+
+template<typename T>
+template<class Archive>
+void ShmVector<T>::ptr::serialize(Archive &ar, const unsigned int version) {
+
+   boost::serialization::split_member(ar, *this, version);
+}
+
+template<typename T>
+template<class Archive>
+void ShmVector<T>::ptr::load(Archive &ar, const unsigned int version) {
+
+   ar & boost::serialization::make_nvp("shm_name", m_p->m_name);
+   ar & boost::serialization::make_nvp("shm_ptr", *m_p);
+}
+
+template<typename T>
+template<class Archive>
+void ShmVector<T>::ptr::save(Archive &ar, const unsigned int version) const {
+
+   ar & boost::serialization::make_nvp("shm_name", m_p->m_name);
+   ar & boost::serialization::make_nvp("shm_ptr", *m_p);
+}
+
 template<typename T>
 template<class Archive>
 void ShmVector<T>::serialize(Archive &ar, const unsigned int version) {
