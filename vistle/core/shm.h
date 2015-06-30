@@ -39,6 +39,10 @@ struct V_COREEXPORT shm_name_t {
    friend class boost::serialization::access;
    template<class Archive>
       void serialize(Archive &ar, const unsigned int version);
+   template<class Archive>
+      void save(Archive &ar, const unsigned int version) const;
+   template<class Archive>
+      void load(Archive &ar, const unsigned int version);
 };
 std::string operator+(const std::string &s, const shm_name_t &n);
 

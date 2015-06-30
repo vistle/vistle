@@ -125,7 +125,26 @@ void ShmVector<T>::unref() {
 template<class Archive>
 void shm_name_t::serialize(Archive &ar, const unsigned int version) {
 
-   ar & boost::serialization::make_nvp("shm_name_t", boost::serialization::make_array(name.data(), name.size()));
+   boost::serialization::split_member(ar, *this, version);
+}
+
+template<class Archive>
+void shm_name_t::save(Archive &ar, const unsigned int version) const {
+
+   std::string n(name.data(), name.size());
+   ar & boost::serialization::make_nvp("shm_name_t", n);
+}
+
+template<class Archive>
+void shm_name_t::load(Archive &ar, const unsigned int version) {
+
+   std::string n;
+   ar & boost::serialization::make_nvp("shm_name_t", n);
+   assert(n.size() < name.size());
+   if (n.size() < name.size())
+      std::copy(n.begin(), n.end(), name.data());
+   else
+      memset(name.data(), 0, name.size());
 }
 
 template<typename T>
