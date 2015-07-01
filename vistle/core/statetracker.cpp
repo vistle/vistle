@@ -980,7 +980,7 @@ bool StateTracker::registerReply(const message::uuid_t &uuid, const message::Mes
 std::vector<int> StateTracker::waitForSlaveHubs(size_t count) {
 
    auto hubIds = getSlaveHubs();
-   while (hubIds.size() <= count) {
+   while (hubIds.size() < count) {
       boost::unique_lock<mutex> locker(m_slaveMutex);
       m_slaveCondition.wait(locker);
       hubIds = getSlaveHubs();
