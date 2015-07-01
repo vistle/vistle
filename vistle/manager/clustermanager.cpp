@@ -52,6 +52,63 @@ namespace vistle {
 
 using message::Id;
 
+void ClusterManager::Module::block(const message::Message &msg) {
+   blocked = true;
+   blockers.push_back(message::Buffer(msg));
+}
+
+void ClusterManager::Module::unblock(const message::Message &msg) {
+   assert(blocked);
+   assert(!blockers.empty());
+   if (blocked) {
+      if (msg.uuid() == blockers.front().msg.uuid()) {
+         blockers.pop_front();
+         assert(blockedMessages.front().msg.uuid() == msg.uuid());
+         blockedMessages.pop_front();
+         sendQueue->send(msg);
+         if (blockers.empty()) {
+            blocked = false;
+            while (!blockedMessages.empty()) {
+               sendQueue->send(blockedMessages.front().msg);
+               blockedMessages.pop_front();
+            }
+         } else {
+            const auto &uuid = blockers.front().msg.uuid();
+            while (blockedMessages.front().msg.uuid() != uuid) {
+               sendQueue->send(blockedMessages.front().msg);
+               blockedMessages.pop_front();
+            }
+         }
+      } else {
+         const auto &uuid = msg.uuid();
+         auto it = std::find_if(blockers.begin(), blockers.end(), [uuid](const message::Buffer &buf) -> bool { return buf.msg.uuid() == uuid; });
+         assert(it != blockers.end());
+         if (it != blockers.end()) {
+            blockers.erase(it);
+         }
+         it = std::find_if(blockedMessages.begin(), blockedMessages.end(), [uuid](const message::Buffer &buf) -> bool { return buf.msg.uuid() == uuid; });
+         assert (it != blockedMessages.end());
+         if (it != blockedMessages.end()) {
+            *it = message::Buffer(msg);
+         }
+      }
+   }
+}
+
+bool ClusterManager::Module::send(const message::Message &msg) const {
+   if (blocked) {
+      blockedMessages.emplace_back(msg);
+      return true;
+   } else {
+      return sendQueue->send(msg);
+   }
+}
+
+bool ClusterManager::Module::update() const {
+   return sendQueue->progress();
+}
+
+
 ClusterManager::ClusterManager(int r, const std::vector<std::string> &hosts)
 : m_portManager(new PortManager(this))
 , m_stateTracker(std::string("ClusterManager state rk")+boost::lexical_cast<std::string>(r), m_portManager)

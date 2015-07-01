@@ -111,6 +111,11 @@ class ClusterManager {
    struct Module {
       message::MessageQueue *sendQueue;
       message::MessageQueue *recvQueue;
+      int ranksStarted, ranksFinished;
+      bool reducing;
+      int busyCount;
+      mutable bool blocked;
+      mutable std::deque<message::Buffer> blockedMessages, blockers;
 
       Module(): sendQueue(nullptr), recvQueue(nullptr),
          ranksStarted(0), ranksFinished(0), reducing(false),
@@ -120,63 +125,10 @@ class ClusterManager {
          delete sendQueue;
          delete recvQueue;
       }
-      void block(const message::Message &msg) {
-         blocked = true;
-         blockers.push_back(message::Buffer(msg));
-      }
-      void unblock(const message::Message &msg) {
-         assert(blocked);
-         assert(!blockers.empty());
-         if (blocked) {
-            if (msg.uuid() == blockers.front().msg.uuid()) {
-               blockers.pop_front();
-               assert(blockedMessages.front().msg.uuid() == msg.uuid());
-               blockedMessages.pop_front();
-               sendQueue->send(msg);
-               if (blockers.empty()) {
-                  blocked = false;
-                  while (!blockedMessages.empty()) {
-                     sendQueue->send(blockedMessages.front().msg);
-                     blockedMessages.pop_front();
-                  }
-               } else {
-                  const auto &uuid = blockers.front().msg.uuid();
-                  while (blockedMessages.front().msg.uuid() != uuid) {
-                     sendQueue->send(blockedMessages.front().msg);
-                     blockedMessages.pop_front();
-                  }
-               }
-            } else {
-               const auto &uuid = msg.uuid();
-               auto it = std::find_if(blockers.begin(), blockers.end(), [uuid](const message::Buffer &buf) -> bool { return buf.msg.uuid() == uuid; });
-               assert(it != blockers.end());
-               if (it != blockers.end()) {
-                  blockers.erase(it);
-               }
-               it = std::find_if(blockedMessages.begin(), blockedMessages.end(), [uuid](const message::Buffer &buf) -> bool { return buf.msg.uuid() == uuid; });
-               assert (it != blockedMessages.end());
-               if (it != blockedMessages.end()) {
-                  *it = message::Buffer(msg);
-               }
-            }
-         }
-      }
-      bool send(const message::Message &msg) const {
-         if (blocked) {
-            blockedMessages.emplace_back(msg);
-            return true;
-         } else {
-            return sendQueue->send(msg);
-         }
-      }
-      bool update() const {
-         return sendQueue->progress();
-      }
-      int ranksStarted, ranksFinished;
-      bool reducing;
-      int busyCount;
-      mutable bool blocked;
-      mutable std::deque<message::Buffer> blockedMessages, blockers;
+      void block(const message::Message &msg);
+      void unblock(const message::Message &msg);
+      bool send(const message::Message &msg) const;
+      bool update() const;
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;
