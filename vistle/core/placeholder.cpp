@@ -4,7 +4,7 @@
 namespace vistle {
 
 PlaceHolder::PlaceHolder(const std::string &originalName, const Meta &originalMeta, Object::Type originalType)
-   : PlaceHolder::Base(PlaceHolder::Data::create(originalName, originalMeta, originalType))
+   : PlaceHolder::Base(PlaceHolder::Data::create("", originalName, originalMeta, originalType))
 {
 }
 
@@ -47,18 +47,9 @@ PlaceHolder::Data::~Data() {
       real->unref();
 }
 
-PlaceHolder::Data * PlaceHolder::Data::create() {
+PlaceHolder::Data * PlaceHolder::Data::create(const std::string &objId, const std::string &originalName, const Meta &originalMeta, Object::Type originalType) {
 
-   const std::string name = Shm::the().createObjectID();
-   Data *p = shm<Data>::construct(name)(name, "", Meta(), Object::UNKNOWN);
-   publish(p);
-
-   return p;
-}
-
-PlaceHolder::Data * PlaceHolder::Data::create(const std::string &originalName, const Meta &originalMeta, Object::Type originalType) {
-
-   const std::string name = Shm::the().createObjectID();
+   const std::string name = Shm::the().createObjectID(objId);
    Data *p = shm<Data>::construct(name)(name, originalName, originalMeta, originalType);
    publish(p);
 

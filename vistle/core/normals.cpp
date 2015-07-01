@@ -4,7 +4,7 @@ namespace vistle {
 
 Normals::Normals(const Index numNormals,
          const Meta &meta)
-   : Normals::Base(Normals::Data::create(numNormals, meta))
+   : Normals::Base(Normals::Data::create("", numNormals, meta))
 {
 }
 
@@ -41,9 +41,9 @@ Normals::Data::Data(const Normals::Data &o, const std::string &n)
 {
 }
 
-Normals::Data *Normals::Data::create(const Index numNormals, const Meta &meta) {
+Normals::Data *Normals::Data::create(const std::string &objId, const Index numNormals, const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID();
+   const std::string name = objId.empty() ? Shm::the().createObjectID() : objId;
    Data *p = shm<Data>::construct(name)(numNormals, name, meta);
    publish(p);
 

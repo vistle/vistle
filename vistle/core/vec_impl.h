@@ -18,7 +18,7 @@ void DataBase::Data::serialize(Archive &ar, const unsigned int version) {
 template <class T, int Dim>
 Vec<T,Dim>::Vec(const Index size,
         const Meta &meta)
-      : Base(Data::create(size, meta)) {
+      : Base(Data::create("", size, meta)) {
    }
 
 template <class T, int Dim>
@@ -98,8 +98,8 @@ Vec<T,Dim>::Data::Data(const Data &o, const std::string &n, Type id)
 }
 
 template <class T, int Dim>
-typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::create(Index size, const Meta &meta) {
-   std::string name = Shm::the().createObjectID();
+typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::create(const std::string &objId, Index size, const Meta &meta) {
+   std::string name = Shm::the().createObjectID(objId);
    Data *t = shm<Data>::construct(name)(size, name, meta);
    publish(t);
 

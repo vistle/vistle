@@ -203,7 +203,7 @@ Indexed::Data::Data(const Indexed::Data &o, const std::string &name)
 {
 }
 
-Indexed::Data *Indexed::Data::create(Type id,
+Indexed::Data *Indexed::Data::create(const std::string &objId, Type id,
             const Index numElements, const Index numCorners,
             const Index numVertices,
             const Meta &meta) {

@@ -114,7 +114,7 @@ UnstructuredGrid::UnstructuredGrid(const Index numElements,
       const Index numCorners,
       const Index numVertices,
       const Meta &meta)
-   : UnstructuredGrid::Base(UnstructuredGrid::Data::create(numElements, numCorners, numVertices, meta))
+   : UnstructuredGrid::Base(UnstructuredGrid::Data::create("", numElements, numCorners, numVertices, meta))
 {
 }
 
@@ -795,12 +795,12 @@ UnstructuredGrid::Data::Data(const Index numElements,
 {
 }
 
-UnstructuredGrid::Data * UnstructuredGrid::Data::create(const Index numElements,
+UnstructuredGrid::Data * UnstructuredGrid::Data::create(const std::string &objId, const Index numElements,
                                             const Index numCorners,
                                             const Index numVertices,
                                             const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID();
+   const std::string name = Shm::the().createObjectID(objId);
    Data *u = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, meta);
    publish(u);
 

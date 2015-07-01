@@ -284,7 +284,7 @@ void Celltree<Scalar, Index, NumDimensions>::Data::serialize(Archive &ar, const 
 template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Celltree(const Index numCells,
       const Meta &meta)
-: Celltree::Base(Celltree::Data::create(numCells, meta))
+: Celltree::Base(Celltree::Data::create("", numCells, meta))
 {
 }
 
@@ -331,10 +331,10 @@ Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, cons
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-typename Celltree<Scalar, Index, NumDimensions>::Data *Celltree<Scalar, Index, NumDimensions>::Data::create(const Index numCells,
+typename Celltree<Scalar, Index, NumDimensions>::Data *Celltree<Scalar, Index, NumDimensions>::Data::create(const std::string &objId, const Index numCells,
                               const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID();
+   const std::string name = Shm::the().createObjectID(objId);
    Data *ct = shm<Data>::construct(name)(name, numCells, meta);
    publish(ct);
 

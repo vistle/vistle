@@ -289,8 +289,12 @@ const managed_shared_memory & Shm::shm() const {
    return *m_shm;
 }
 
-std::string Shm::createObjectID() {
+std::string Shm::createObjectID(const std::string &id) {
 
+   vassert(id.size() < sizeof(shm_name_t));
+   if (!id.empty()) {
+      return id;
+   }
    std::stringstream name;
    name << "m" << m_moduleID
         << "id" << m_objectID++
@@ -302,7 +306,11 @@ std::string Shm::createObjectID() {
    return name.str();
 }
 
-std::string Shm::createArrayId() {
+std::string Shm::createArrayId(const std::string &id) {
+   vassert(id.size() < sizeof(shm_name_t));
+   if (!id.empty()) {
+      return id;
+   }
 
    std::stringstream name;
    name << "m" << m_moduleID
@@ -373,6 +381,8 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name) const {
    if (mem) {
       return Object::create(static_cast<Object::Data *>(mem));
    }
+
+   std::cerr << "Shm::getObjectFromName: did not find " << name << std::endl;
 
    return Object::const_ptr();
 }

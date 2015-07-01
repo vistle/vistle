@@ -247,7 +247,7 @@ public:
       V_COREEXPORT void operator delete(void *ptr, void* voidptr2);
       void ref();
       void unref();
-      static Data *create(Type id, const Meta &m);
+      static Data *create(Type id, const std::string &name, const Meta &m);
 
       friend class boost::serialization::access;
       template<class Archive>
@@ -396,7 +396,7 @@ class ObjectTypeRegistry {
    static void registerXmlOArchive(boost::archive::xml_oarchive &ar); \
    static void registerBinaryIArchive(boost::archive::binary_iarchive &ar); \
    static void registerBinaryOArchive(boost::archive::binary_oarchive &ar); \
-   ObjType(Object::InitializedFlags) : Base(ObjType::Data::create()) {} \
+   ObjType(Object::InitializedFlags) : Base(ObjType::Data::create("")) {} \
    virtual bool isEmpty() const; \
    bool check() const { if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
    struct Data; \
@@ -413,9 +413,11 @@ class ObjectTypeRegistry {
       } \
    template<class Archive> \
       void load(Archive &ar, const unsigned int version) { \
+         std::string name; \
+         ar & V_NAME("name", name); \
          int type = Object::UNKNOWN; \
          ar & V_NAME("type", type); \
-         Object::m_data = Data::create(); \
+         Object::m_data = Data::create(name); \
          Object::ref(); \
          d()->template serialize<Archive>(ar, version); \
          assert(type == Object::getType()); \
@@ -423,6 +425,8 @@ class ObjectTypeRegistry {
    template<class Archive> \
       void save(Archive &ar, const unsigned int version) const { \
          int type = Object::getType(); \
+         std::string name = d()->name; \
+         ar & V_NAME("name", name); \
          ar & V_NAME("type", type); \
          d()->template serialize<Archive>(ar, version); \
       } \

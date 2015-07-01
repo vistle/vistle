@@ -22,7 +22,7 @@ class V_COREEXPORT Polygons: public Indexed {
       Data(const Index numElements, const Index numCorners,
             const Index numVertices, const std::string & name,
             const Meta &meta);
-      static Data *create(const Index numElements = 0,
+      static Data *create(const std::string &name, const Index numElements = 0,
             const Index numCorners = 0,
             const Index numVertices = 0,
             const Meta &meta=Meta());

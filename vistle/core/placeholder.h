@@ -27,8 +27,7 @@ class V_COREEXPORT PlaceHolder: public Object {
       Data(const std::string & name, const std::string &originalName,
             const Meta &m, Object::Type originalType);
       ~Data();
-      static Data *create();
-      static Data *create(const std::string &originalName, const Meta &originalMeta, const Object::Type originalType);
+      static Data *create(const std::string &name="", const std::string &originalName="", const Meta &originalMeta=Meta(), const Object::Type originalType=Object::UNKNOWN);
 
       private:
       shm_name_t originalName;

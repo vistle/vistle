@@ -80,7 +80,7 @@ DataBase::Data::~Data() {
       grid->unref();
 }
 
-DataBase::Data *DataBase::Data::create(Type id, const Meta &meta) {
+DataBase::Data *DataBase::Data::create(const std::string &name, Type id, const Meta &meta) {
 
    assert("should never be called" == NULL);
 

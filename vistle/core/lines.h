@@ -22,7 +22,7 @@ class V_COREEXPORT Lines: public Indexed {
       Data(const Index numElements = 0, const Index numCorners = 0,
          const Index numVertices = 0, const std::string & name = "",
          const Meta &meta=Meta());
-      static Data *create(const Index numElements = 0, const Index numCorners = 0,
+      static Data *create(const std::string &name="", const Index numElements = 0, const Index numCorners = 0,
          const Index numVertices = 0,
          const Meta &meta=Meta());
    V_DATA_END(Lines);

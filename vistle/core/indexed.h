@@ -50,7 +50,7 @@ class  V_COREEXPORT Indexed: public Coords {
            const Index numVertices = 0,
             Type id = UNKNOWN, const std::string &name = "",
             const Meta &meta=Meta());
-      static Data *create(Type id = UNKNOWN,
+      static Data *create(const std::string &name="", Type id = UNKNOWN,
             const Index numElements = 0, const Index numCorners = 0,
             const Index numVertices = 0,
             const Meta &meta=Meta());

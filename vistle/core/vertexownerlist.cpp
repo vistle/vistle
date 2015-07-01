@@ -4,7 +4,7 @@ namespace vistle {
 
 VertexOwnerList::VertexOwnerList(const Index numVertices,
       const Meta &meta)
-: VertexOwnerList::Base(VertexOwnerList::Data::create(numVertices, meta))
+: VertexOwnerList::Base(VertexOwnerList::Data::create("", numVertices, meta))
 {
 }
 
@@ -24,10 +24,10 @@ VertexOwnerList::Data::Data(const std::string &name, const Index numVertices,
 {
 }
 
-VertexOwnerList::Data *VertexOwnerList::Data::create(const Index size,
+VertexOwnerList::Data *VertexOwnerList::Data::create(const std::string &objId, const Index size,
                               const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID();
+   const std::string name = Shm::the().createObjectID(objId);
    Data *vol = shm<Data>::construct(name)(name, size, meta);
    publish(vol);
 

@@ -42,7 +42,7 @@ Coords::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n, Type id)
 {
 }
 
-Coords::Data *Coords::Data::create(Type id, const Index numVertices,
+Coords::Data *Coords::Data::create(const std::string &objId, Type id, const Index numVertices,
             const Meta &meta) {
 
    assert("should never be called" == NULL);

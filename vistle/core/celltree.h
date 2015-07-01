@@ -142,7 +142,7 @@ class V_COREEXPORT Celltree: public Object {
       typename ShmVector<Index>::ptr m_cells;
       typename ShmVector<Node>::ptr m_nodes;
 
-      static Data *create(const Index numCells = 0,
+      static Data *create(const std::string &name="", const Index numCells = 0,
             const Meta &m=Meta());
       Data(const std::string &name = "", const Index numCells = 0,
             const Meta &m=Meta());

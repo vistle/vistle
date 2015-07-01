@@ -111,8 +111,8 @@ class V_COREEXPORT Shm {
 
    boost::interprocess::managed_shared_memory &shm();
    const boost::interprocess::managed_shared_memory &shm() const;
-   std::string createArrayId();
-   std::string createObjectID();
+   std::string createArrayId(const std::string &name="");
+   std::string createObjectID(const std::string &name="");
 
    boost::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle) const;
    shm_handle_t getHandleFromObject(boost::shared_ptr<const Object> object) const;

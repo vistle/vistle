@@ -29,7 +29,7 @@ class V_COREEXPORT VertexOwnerList: public Object {
    ShmVector<Index>::ptr vertexList;
    ShmVector<Index>::ptr cellList;
 
-   static Data *create(const Index size = 0,
+   static Data *create(const std::string &name="", const Index size = 0,
                        const Meta &m=Meta());
    Data(const std::string &name = "", const Index numVertices = 0,
         const Meta &m=Meta());

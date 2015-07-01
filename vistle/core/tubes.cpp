@@ -4,7 +4,7 @@ namespace vistle {
 
 Tubes::Tubes(const Index numTubes, const Index numCoords,
          const Meta &meta)
-   : Tubes::Base(Tubes::Data::create(numTubes, numCoords, meta))
+   : Tubes::Base(Tubes::Data::create("", numTubes, numCoords, meta))
 {
 }
 
@@ -80,10 +80,10 @@ Tubes::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n)
    (*style)[0] = (*style)[1] = (*style)[2] = Tubes::Open;
 }
 
-Tubes::Data *Tubes::Data::create(const Index numTubes, const Index numCoords,
+Tubes::Data *Tubes::Data::create(const std::string &objId, const Index numTubes, const Index numCoords,
                       const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID();
+   const std::string name = Shm::the().createObjectID(objId);
    Data *p = shm<Data>::construct(name)(numTubes, numCoords, name, meta);
    publish(p);
 

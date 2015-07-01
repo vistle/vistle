@@ -5,7 +5,7 @@ namespace vistle {
 Lines::Lines(const Index numElements, const Index numCorners,
                       const Index numVertices,
                       const Meta &meta)
-   : Lines::Base(Lines::Data::create(numElements, numCorners,
+   : Lines::Base(Lines::Data::create("", numElements, numCorners,
             numVertices, meta))
 {
 }
@@ -34,11 +34,11 @@ Lines::Data::Data(const Index numElements, const Index numCorners,
 }
 
 
-Lines::Data * Lines::Data::create(const Index numElements, const Index numCorners,
+Lines::Data * Lines::Data::create(const std::string &objId, const Index numElements, const Index numCorners,
                       const Index numVertices,
                       const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID();
+   const std::string name = Shm::the().createObjectID(objId);
    Data *l = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, meta);
    publish(l);
 

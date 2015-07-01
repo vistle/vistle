@@ -32,7 +32,7 @@ private:
       Data(Type id = UNKNOWN, const std::string & name = "", const Meta &meta=Meta());
       Data(const Data &o, const std::string & name, Type id);
       ~Data();
-      static Data *create(Type id = UNKNOWN, const Meta &meta=Meta());
+      static Data *create(const std::string &name="", Type id = UNKNOWN, const Meta &meta=Meta());
    V_DATA_END(DataBase);
 };
 
@@ -85,7 +85,7 @@ class Vec: public DataBase {
       Data(const Index size, Type id, const std::string &name,
             const Meta &meta=Meta());
       Data(const Data &other, const std::string &name, Type id=UNKNOWN);
-      static Data *create(Index size = 0, const Meta &meta=Meta());
+      static Data *create(const std::string &name, Index size = 0, const Meta &meta=Meta());
 
       private:
       friend class Vec;

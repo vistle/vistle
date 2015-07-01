@@ -4,7 +4,7 @@ namespace vistle {
 
 Spheres::Spheres(const Index numSpheres,
          const Meta &meta)
-   : Spheres::Base(Spheres::Data::create(numSpheres, meta))
+   : Spheres::Base(Spheres::Data::create("", numSpheres, meta))
 {
 }
 
@@ -41,10 +41,10 @@ Spheres::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n)
 {
 }
 
-Spheres::Data *Spheres::Data::create(const Index numSpheres,
+Spheres::Data *Spheres::Data::create(const std::string &objId, const Index numSpheres,
                       const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID();
+   const std::string name = Shm::the().createObjectID(objId);
    Data *p = shm<Data>::construct(name)(numSpheres, name, meta);
    publish(p);
 

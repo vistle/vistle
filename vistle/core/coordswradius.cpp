@@ -41,7 +41,7 @@ CoordsWithRadius::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n
 {
 }
 
-CoordsWithRadius::Data *CoordsWithRadius::Data::create(Type id, const Index numCoords,
+CoordsWithRadius::Data *CoordsWithRadius::Data::create(const std::string &objId, Type id, const Index numCoords,
                       const Meta &meta) {
 
    assert("should never be called" == NULL);

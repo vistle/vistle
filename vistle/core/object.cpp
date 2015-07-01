@@ -161,9 +161,9 @@ void Object::Data::operator delete(void *p, void *voidp2) {
 }
 
 
-Object::Data *Object::Data::create(Type id, const Meta &m) {
+Object::Data *Object::Data::create(Type id, const std::string &objId, const Meta &m) {
 
-   std::string name = Shm::the().createObjectID();
+   std::string name = Shm::the().createObjectID(objId);
    return shm<Data>::construct(name)(id, name, m);
 }
 

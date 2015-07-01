@@ -132,7 +132,7 @@ void shm_name_t::serialize(Archive &ar, const unsigned int version) {
 template<class Archive>
 void shm_name_t::save(Archive &ar, const unsigned int version) const {
 
-   std::string n(name.data(), name.size());
+   std::string n(name.data());
    ar & boost::serialization::make_nvp("shm_name_t", n);
 }
 
@@ -141,10 +141,14 @@ void shm_name_t::load(Archive &ar, const unsigned int version) {
 
    std::string n;
    ar & boost::serialization::make_nvp("shm_name_t", n);
+   auto end = n.find('0');
+   if (end != std::string::npos) {
+      n = n.substr(0, end);
+   }
    if (n.size() < name.size()) {
       std::copy(n.begin(), n.end(), name.data());
    } else {
-      std::cerr << "shm_name_t: name to long: " << n << " (" << n.size() << " chars)" << std::endl;
+      std::cerr << "shm_name_t: name too long: " << n << " (" << n.size() << " chars)" << std::endl;
       memset(name.data(), 0, name.size());
       assert(n.size() < name.size());
    }

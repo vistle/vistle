@@ -4,7 +4,7 @@ namespace vistle {
 
 Triangles::Triangles(const Index numCorners, const Index numCoords,
                      const Meta &meta)
-   : Triangles::Base(Triangles::Data::create(numCorners, numCoords,
+   : Triangles::Base(Triangles::Data::create("", numCorners, numCoords,
             meta)) {
 }
 
@@ -42,11 +42,11 @@ Triangles::Data::Data(const Index numCorners, const Index numCoords,
 }
 
 
-Triangles::Data * Triangles::Data::create(const Index numCorners,
+Triangles::Data * Triangles::Data::create(const std::string &objId, const Index numCorners,
                               const Index numCoords,
                               const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID();
+   const std::string name = Shm::the().createObjectID(objId);
    Data *t = shm<Data>::construct(name)(numCorners, numCoords, name, meta);
    publish(t);
 

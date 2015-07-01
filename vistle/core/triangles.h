@@ -26,7 +26,7 @@ class V_COREEXPORT Triangles: public Coords {
       Data(const Index numCorners = 0, const Index numCoords = 0,
             const std::string & name = "",
             const Meta &meta=Meta());
-      static Data *create(const Index numCorners = 0, const Index numCoords = 0,
+      static Data *create(const std::string &name, const Index numCorners = 0, const Index numCoords = 0,
             const Meta &meta=Meta());
    V_DATA_END(Triangles);
 };

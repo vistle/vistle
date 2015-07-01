@@ -31,7 +31,7 @@ class V_COREEXPORT Texture1D: public Vec<Scalar> {
       ShmVector<unsigned char>::ptr pixels;
       ShmVector<Scalar>::ptr coords;
 
-      static Data *create(const Index width = 0,
+      static Data *create(const std::string &name, const Index width = 0,
             const Scalar min = 0, const Scalar max = 0,
             const Meta &m=Meta());
       Data(const std::string &name = "", const Index size = 0,
