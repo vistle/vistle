@@ -44,7 +44,7 @@ Points::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n)
 Points::Data *Points::Data::create(const std::string &objId, const Index numPoints,
                       const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID(objId);
+   const std::string name = Shm::the().createObjectId(objId);
    Data *p = shm<Data>::construct(name)(numPoints, name, meta);
    publish(p);
 

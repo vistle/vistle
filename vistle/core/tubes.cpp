@@ -83,7 +83,7 @@ Tubes::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n)
 Tubes::Data *Tubes::Data::create(const std::string &objId, const Index numTubes, const Index numCoords,
                       const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID(objId);
+   const std::string name = Shm::the().createObjectId(objId);
    Data *p = shm<Data>::construct(name)(numTubes, numCoords, name, meta);
    publish(p);
 

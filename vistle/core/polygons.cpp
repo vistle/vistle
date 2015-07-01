@@ -39,7 +39,7 @@ Polygons::Data * Polygons::Data::create(const std::string &objId, const Index nu
                             const Index numVertices,
                             const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID(objId);
+   const std::string name = Shm::the().createObjectId(objId);
    Data *p = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, meta);
    publish(p);
 

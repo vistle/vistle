@@ -46,7 +46,7 @@ Triangles::Data * Triangles::Data::create(const std::string &objId, const Index 
                               const Index numCoords,
                               const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID(objId);
+   const std::string name = Shm::the().createObjectId(objId);
    Data *t = shm<Data>::construct(name)(numCorners, numCoords, name, meta);
    publish(t);
 

@@ -361,7 +361,7 @@ class ObjectTypeRegistry {
    static boost::shared_ptr<ObjType> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<ObjType>(ptr); } \
    static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new ObjType(static_cast<ObjType::Data *>(data))); } \
    Object::ptr cloneInternal() const { \
-      const std::string n(Shm::the().createObjectID()); \
+      const std::string n(Shm::the().createObjectId()); \
             Data *data = shm<Data>::construct(n)(*d(), n); \
             publish(data); \
             return createFromData(data); \
@@ -377,7 +377,7 @@ class ObjectTypeRegistry {
    } \
    template<class OtherType> \
    static ObjType::ptr clone(typename OtherType::ptr other) { \
-      const std::string n(Shm::the().createObjectID()); \
+      const std::string n(Shm::the().createObjectId()); \
       typename ObjType::Data *data = shm<typename ObjType::Data>::construct(n)(*other->d(), n); \
       assert(data->type == ObjType::type()); \
       ObjType::ptr ret = ObjType::as(createFromData(data)); \

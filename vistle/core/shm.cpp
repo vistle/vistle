@@ -91,7 +91,7 @@ std::string Shm::instanceName(const std::string &host, unsigned short port) {
 
 Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
          message::MessageQueue * mq, bool create)
-   : m_name(name), m_remove(create), m_moduleID(m), m_rank(r), m_objectID(0) {
+   : m_name(name), m_remove(create), m_moduleId(m), m_rank(r), m_objectId(0), m_arrayId(0) {
 
       if (create) {
          m_shm = new managed_shared_memory(open_or_create, m_name.c_str(), size);
@@ -110,8 +110,12 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
 Shm::~Shm() {
 
    if (m_remove) {
+#ifdef SHMDEBUG
+      std::cerr << "SHMDEBUG: not removing shm " << m_name << std::endl;
+#else
       shared_memory_object::remove(m_name.c_str());
       std::cerr << "removed shm " << m_name << std::endl;
+#endif
    }
 
    delete m_allocator;
@@ -289,17 +293,17 @@ const managed_shared_memory & Shm::shm() const {
    return *m_shm;
 }
 
-std::string Shm::createObjectID(const std::string &id) {
+std::string Shm::createObjectId(const std::string &id) {
 
    vassert(id.size() < sizeof(shm_name_t));
    if (!id.empty()) {
       return id;
    }
    std::stringstream name;
-   name << "m" << m_moduleID
-        << "id" << m_objectID++
+   name << "m" << m_moduleId
+        << "id" << m_objectId++
         << "r" << m_rank
-        << "OBJ";
+        << "obj";
 
    vassert(name.str().size() < sizeof(shm_name_t));
 
@@ -313,10 +317,10 @@ std::string Shm::createArrayId(const std::string &id) {
    }
 
    std::stringstream name;
-   name << "m" << m_moduleID
-        << "id" << m_objectID++
+   name << "m" << m_moduleId
+        << "id" << m_arrayId++
         << "r" << m_rank
-        << "ARR";
+        << "arr";
 
    vassert(name.str().size() < sizeof(shm_name_t));
 

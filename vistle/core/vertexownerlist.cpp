@@ -27,7 +27,7 @@ VertexOwnerList::Data::Data(const std::string &name, const Index numVertices,
 VertexOwnerList::Data *VertexOwnerList::Data::create(const std::string &objId, const Index size,
                               const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID(objId);
+   const std::string name = Shm::the().createObjectId(objId);
    Data *vol = shm<Data>::construct(name)(name, size, meta);
    publish(vol);
 

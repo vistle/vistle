@@ -99,7 +99,7 @@ Vec<T,Dim>::Data::Data(const Data &o, const std::string &n, Type id)
 
 template <class T, int Dim>
 typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::create(const std::string &objId, Index size, const Meta &meta) {
-   std::string name = Shm::the().createObjectID(objId);
+   std::string name = Shm::the().createObjectId(objId);
    Data *t = shm<Data>::construct(name)(size, name, meta);
    publish(t);
 

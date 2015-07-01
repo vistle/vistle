@@ -16,7 +16,7 @@
 #include "export.h"
 
 //#define USE_BOOST_VECTOR
-//#define SHMDEBUG
+#define SHMDEBUG
 //#define SHMPUBLISH
 
 #ifndef USE_BOOST_VECTOR
@@ -112,7 +112,7 @@ class V_COREEXPORT Shm {
    boost::interprocess::managed_shared_memory &shm();
    const boost::interprocess::managed_shared_memory &shm() const;
    std::string createArrayId(const std::string &name="");
-   std::string createObjectID(const std::string &name="");
+   std::string createObjectId(const std::string &name="");
 
    boost::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle) const;
    shm_handle_t getHandleFromObject(boost::shared_ptr<const Object> object) const;
@@ -137,9 +137,10 @@ class V_COREEXPORT Shm {
    void_allocator *m_allocator;
    std::string m_name;
    bool m_remove;
-   const int m_moduleID;
+   const int m_moduleId;
    const int m_rank;
-   int m_objectID;
+   int m_objectId;
+   int m_arrayId;
    static Shm *s_singleton;
    boost::interprocess::managed_shared_memory *m_shm;
 };

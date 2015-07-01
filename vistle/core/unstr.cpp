@@ -800,7 +800,7 @@ UnstructuredGrid::Data * UnstructuredGrid::Data::create(const std::string &objId
                                             const Index numVertices,
                                             const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectID(objId);
+   const std::string name = Shm::the().createObjectId(objId);
    Data *u = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, meta);
    publish(u);
 

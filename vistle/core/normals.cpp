@@ -43,7 +43,7 @@ Normals::Data::Data(const Normals::Data &o, const std::string &n)
 
 Normals::Data *Normals::Data::create(const std::string &objId, const Index numNormals, const Meta &meta) {
 
-   const std::string name = objId.empty() ? Shm::the().createObjectID() : objId;
+   const std::string name = objId.empty() ? Shm::the().createObjectId() : objId;
    Data *p = shm<Data>::construct(name)(numNormals, name, meta);
    publish(p);
 

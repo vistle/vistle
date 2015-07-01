@@ -49,7 +49,7 @@ PlaceHolder::Data::~Data() {
 
 PlaceHolder::Data * PlaceHolder::Data::create(const std::string &objId, const std::string &originalName, const Meta &originalMeta, Object::Type originalType) {
 
-   const std::string name = Shm::the().createObjectID(objId);
+   const std::string name = Shm::the().createObjectId(objId);
    Data *p = shm<Data>::construct(name)(name, originalName, originalMeta, originalType);
    publish(p);
 
