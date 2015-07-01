@@ -451,6 +451,7 @@ class V_COREEXPORT AddObject: public Message {
          const std::string &destPort = "");
 
    const char * getSenderPort() const;
+   void setDestPort(const std::string &destPort);
    const char * getDestPort() const;
    const char *objectName() const;
    const shm_handle_t & getHandle() const;

@@ -606,6 +606,8 @@ bool ClusterManager::handlePriv(const message::RequestObject &req) {
    obj->save(memar);
    const std::vector<char> &mem = buf.get_vector();
    message::SendObject send(req, obj, mem.size());
+   send.setDestId(req.senderId());
+   send.setDestRank(req.rank());
    Communicator::the().sendData(send);
    Communicator::the().sendData(mem.data(), mem.size());
 
@@ -925,12 +927,18 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
 
    for (const Port *destPort: *list) {
 
+      message::Buffer msgBuf(addObj);
+      message::AddObject &a = static_cast<message::AddObject &>(msgBuf.msg);
       int destId = destPort->getModuleID();
-      message::AddObject a(addObj.getSenderPort(), obj, destPort->getName());
+      if (haveObject) {
+         message::AddObject add(addObj.getSenderPort(), obj, destPort->getName());
+         msgBuf.buf = message::Buffer(add).buf;
+      }
+      a.setDestPort(destPort->getName());
+      a.setDestId(destId);
       a.setSenderId(addObj.senderId());
       a.setUuid(addObj.uuid());
       a.setRank(addObj.rank());
-      a.setDestId(destId);
 
       if (!isLocal(destId)) {
          assert(!synthesized);

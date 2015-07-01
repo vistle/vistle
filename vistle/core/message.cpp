@@ -499,6 +499,10 @@ const char * AddObject::getSenderPort() const {
    return senderPort.data();
 }
 
+void AddObject::setDestPort(const std::string &dest) {
+   COPY_STRING(destPort, dest);
+}
+
 const char * AddObject::getDestPort() const {
 
    return destPort.data();
@@ -1336,7 +1340,7 @@ bool RequestObject::isArray() const {
 
 SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size_t payloadSize)
 : Message(Message::SENDOBJECT, sizeof(SendObject))
-, m_objectId()
+, m_objectId(obj->getName())
 , m_objectType(obj->getType())
 , m_meta(obj->meta())
 , m_payloadSize(payloadSize)
@@ -1438,6 +1442,21 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       case Message::ADDHUB: {
          auto mm = static_cast<const AddHub &>(m);
          s << ", name: " << mm.name() << ", id: " << mm.id();
+         break;
+      }
+      case Message::ADDOBJECT: {
+         auto mm = static_cast<const AddObject &>(m);
+         s << ", obj: " << mm.objectName() << ", " << mm.getSenderPort() << " -> " << mm.getDestPort();
+         break;
+      }
+      case Message::REQUESTOBJECT: {
+         auto mm = static_cast<const RequestObject &>(m);
+         s << ", obj: " << mm.objectId();
+         break;
+      }
+      case Message::SENDOBJECT: {
+         auto mm = static_cast<const SendObject &>(m);
+         s << ", obj: " << mm.objectId();
          break;
       }
       default:

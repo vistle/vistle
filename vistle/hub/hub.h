@@ -57,6 +57,7 @@ private:
    void hubReady();
    bool connectToMaster(const std::string &host, unsigned short port);
    bool connectRemoteData(int hubId);
+   boost::shared_ptr<boost::asio::ip::tcp::socket> getRemoteDataSock(int hubId);
    bool startUi(const std::string &uipath);
    bool startServer();
    bool startAccept();
