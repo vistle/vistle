@@ -828,6 +828,11 @@ bool Hub::init(int argc, char *argv[]) {
 
 bool Hub::startCleaner() {
 
+#ifdef SHMDEBUG
+   CERR << "SHMDEBUG: preserving shm for session " << Shm::instanceName(hostname(), m_port) << std::endl;
+   return true;
+#endif
+
    if (getenv("SLURM_JOB_ID")) {
       CERR << "not starting under clean_vistle - running SLURM" << std::endl;
       return false;
