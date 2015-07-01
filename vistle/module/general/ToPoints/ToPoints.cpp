@@ -23,12 +23,20 @@ ToPoints::~ToPoints() {
 
 bool ToPoints::compute() {
 
-   auto v = expect<Vec<Scalar, 3>>("grid_in");
-   if (!v) {
-      return false;
+   auto d = accept<DataBase>("grid_in");
+   Coords::const_ptr grid;
+   if (d) {
+      grid = Coords::as(d->grid());
+   }
+   if (!grid) {
+      grid = accept<Coords>("grid_in");
+   }
+   if (!grid) {
+      sendError("no grid");
+      return true;
    }
 
-   Points::ptr points = Points::clone<Vec<Scalar, 3>>(v);
+   Points::ptr points = Points::clone<Vec<Scalar, 3>>(grid);
    addObject("grid_out", points);
 
    return true;
