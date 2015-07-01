@@ -47,7 +47,7 @@ namespace vistle {
 
 using message::Id;
 
-ClusterManager::ClusterManager(int argc, char *argv[], int r, const std::vector<std::string> &hosts)
+ClusterManager::ClusterManager(int r, const std::vector<std::string> &hosts)
 : m_portManager(new PortManager(this))
 , m_stateTracker(std::string("ClusterManager state rk")+boost::lexical_cast<std::string>(r), m_portManager)
 , m_quitFlag(false)

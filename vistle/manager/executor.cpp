@@ -114,7 +114,7 @@ Executor::Executor(int argc, char *argv[])
       vistle::Shm::attach(m_name, 0, m_rank, NULL);
    MPI_Barrier(MPI_COMM_WORLD);
 
-   m_comm = new vistle::Communicator(argc, argv, m_rank, hosts);
+   m_comm = new vistle::Communicator(m_rank, hosts);
    if (!m_comm->connectHub(argv[1], port)) {
       std::stringstream err;
       err << "failed to connect to Vistle hub on " << argv[1] << ":" << port;

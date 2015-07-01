@@ -41,8 +41,8 @@ enum MpiTags {
 
 Communicator *Communicator::s_singleton = NULL;
 
-Communicator::Communicator(int argc, char *argv[], int r, const std::vector<std::string> &hosts)
-: m_clusterManager(new ClusterManager(argc, argv, r, hosts))
+Communicator::Communicator(int r, const std::vector<std::string> &hosts)
+: m_clusterManager(new ClusterManager(r, hosts))
 , m_hubId(message::Id::Invalid)
 , m_rank(r)
 , m_size(hosts.size())

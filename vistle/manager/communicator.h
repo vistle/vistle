@@ -19,7 +19,7 @@ class Communicator {
    friend class ClusterManager;
 
  public:
-   Communicator(int argc, char *argv[], int rank, const std::vector<std::string> &hosts);
+   Communicator(int rank, const std::vector<std::string> &hosts);
    ~Communicator();
    static Communicator &the();
 

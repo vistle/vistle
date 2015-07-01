@@ -25,7 +25,7 @@ class ClusterManager {
    friend class Communicator;
 
  public:
-   ClusterManager(int argc, char *argv[], int rank, const std::vector<std::string> &hosts);
+   ClusterManager(int rank, const std::vector<std::string> &hosts);
    ~ClusterManager();
 
    bool scanModules(const std::string &dir);
