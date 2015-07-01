@@ -15,6 +15,7 @@
 #include <iostream>
 #include <iomanip>
 #include <queue>
+#include <future>
 
 #include <core/message.h>
 #include <core/messagequeue.h>
@@ -621,10 +622,24 @@ bool ClusterManager::handlePriv(const message::SendObject &send) {
    if (obj) {
       //std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;
       vassert(obj->check());
-      message::AddObject a("", obj);
-      a.setSenderId(send.senderId());
-      a.setUuid(send.uuid());
-      return handlePriv(a, /* synthesized = */ true);
+      auto reqIt = m_outstandingRequests.find(send.objectId());
+      if (reqIt == m_outstandingRequests.end())
+         return false;
+      message::AddObject &add = reqIt->second;
+      auto addIt = m_outstandingAdds.find(add);
+      if (addIt == m_outstandingAdds.end())
+         return false;
+      auto &ids = addIt->second;
+      auto it = std::find(ids.begin(), ids.end(), send.objectId());
+      if (it != ids.end()) {
+         ids.erase(it);
+      }
+      m_outstandingRequests.erase(reqIt);
+      if (ids.empty()) {
+         m_outstandingAdds.erase(addIt);
+         return handlePriv(add, /* synthesized = */ true);
+      }
+      return true;
    }
 
    return true;
@@ -831,6 +846,23 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
    return true;
 }
 
+bool ClusterManager::requestObject(const message::AddObject &add, const std::string &objId, bool array) {
+
+   if (array) {
+      return false;
+   } else {
+      Object::const_ptr obj = Shm::the().getObjectFromName(objId);
+      if (obj) {
+         return false;
+      }
+      m_outstandingAdds[add].push_back(objId);
+      m_outstandingRequests.emplace(objId, add);
+      message::RequestObject req(add, objId);
+      Communicator::the().sendData(req);
+      return true;
+   }
+}
+
 bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesized) {
 
    CERR << "ADDOBJECT: " << addObj << std::endl;
@@ -853,10 +885,8 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
          obj = addObj.takeObject();
          if (!obj) {
             CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
-            message::RequestObject req(addObj.senderId(), addObj.rank(), addObj.objectName());
-            req.setUuid(addObj.uuid());
-            Communicator::the().sendData(req);
             haveObject = false;
+            requestObject(addObj, addObj.objectName(), false);
          }
       }
    }
@@ -864,7 +894,8 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       vassert(obj);
    }
 
-   obj = addObj.takeObject();
+   if (!obj)
+      obj = addObj.takeObject();
    vassert(!obj || obj->refcount() >= 1);
 #if 0
    std::cerr << "Module " << addObj.senderId() << ": "
@@ -902,6 +933,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       a.setDestId(destId);
 
       if (!isLocal(destId)) {
+         assert(!synthesized);
          if (localAdd) {
             // if object was generated locally, forward message to remote hubs with connected modules
             const int hub = m_stateTracker.getHub(destId);
@@ -915,11 +947,16 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       }
 
       if (!haveObject) {
+         assert(!synthesized);
          auto it = runningMap.find(destId);
          if (it != runningMap.end()) {
             it->second.block(a);
          }
-         sendMessage(destId, a);
+      } else if (synthesized) {
+         auto it = runningMap.find(destId);
+         if (it != runningMap.end()) {
+            it->second.unblock(a);
+         }
          continue;
       }
 

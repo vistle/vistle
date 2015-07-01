@@ -1300,9 +1300,22 @@ bool RequestTunnel::remove() const {
    return m_remove;
 }
 
-RequestObject::RequestObject(int destId, int destRank, const std::string &objId)
+RequestObject::RequestObject(const AddObject &add, const std::string &objId, const std::string &referrer, bool array)
 : Message(Message::REQUESTOBJECT, sizeof(RequestObject))
 , m_objectId(objId)
+, m_referrer(referrer.empty() ? add.objectName() : referrer)
+, m_array(array)
+{
+   setUuid(add.uuid());
+   setDestId(add.senderId());
+   setDestRank(add.rank());
+}
+
+RequestObject::RequestObject(int destId, int destRank, const std::string &objId, const std::string &referrer, bool array)
+: Message(Message::REQUESTOBJECT, sizeof(RequestObject))
+, m_objectId(objId)
+, m_referrer(referrer)
+, m_array(array)
 {
    setDestId(destId);
    setDestRank(destRank);
@@ -1311,6 +1324,15 @@ RequestObject::RequestObject(int destId, int destRank, const std::string &objId)
 const char *RequestObject::objectId() const {
    return m_objectId;
 }
+
+const char *RequestObject::referrer() const {
+   return m_referrer;
+}
+
+bool RequestObject::isArray() const {
+   return m_array;
+}
+
 
 SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size_t payloadSize)
 : Message(Message::SENDOBJECT, sizeof(SendObject))
