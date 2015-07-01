@@ -111,6 +111,7 @@ class V_COREEXPORT Shm {
 
    boost::interprocess::managed_shared_memory &shm();
    const boost::interprocess::managed_shared_memory &shm() const;
+   std::string createArrayId();
    std::string createObjectID();
 
    boost::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle) const;
@@ -199,7 +200,7 @@ class ShmVector {
             boost::interprocess::offset_ptr<ShmVector> m_p;
       };
 
-      ShmVector(Index size = 0);
+      ShmVector(Index size = 0, const std::string &name="");
       int refcount() const;
       void* operator new(size_t size);
       void operator delete(void *p);

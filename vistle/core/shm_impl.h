@@ -47,10 +47,10 @@ typename ShmVector<T>::ptr &ShmVector<T>::ptr::operator=(ShmVector<T> *init) {
 }
 
 template<typename T>
-ShmVector<T>::ShmVector(Index size)
+ShmVector<T>::ShmVector(Index size, const std::string &name)
 : m_refcount(0)
 {
-   std::string n(Shm::the().createObjectID());
+   std::string n(name.empty() ? Shm::the().createArrayId() : name);
    size_t nsize = n.size();
    if (nsize >= sizeof(m_name)) {
       nsize = sizeof(m_name)-1;

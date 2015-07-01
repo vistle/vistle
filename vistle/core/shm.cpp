@@ -300,6 +300,19 @@ std::string Shm::createObjectID() {
    return name.str();
 }
 
+std::string Shm::createArrayId() {
+
+   std::stringstream name;
+   name << "m" << m_moduleID
+        << "id" << m_objectID++
+        << "r" << m_rank
+        << "ARR";
+
+   vassert(name.str().size() < sizeof(shm_name_t));
+
+   return name.str();
+}
+
 #ifdef SHMDEBUG
 void Shm::markAsRemoved(const std::string &name) {
    for (size_t i=0; i<s_shmdebug->size(); ++i) {
