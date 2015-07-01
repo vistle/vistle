@@ -141,11 +141,13 @@ void shm_name_t::load(Archive &ar, const unsigned int version) {
 
    std::string n;
    ar & boost::serialization::make_nvp("shm_name_t", n);
-   assert(n.size() < name.size());
-   if (n.size() < name.size())
+   if (n.size() < name.size()) {
       std::copy(n.begin(), n.end(), name.data());
-   else
+   } else {
+      std::cerr << "shm_name_t: name to long: " << n << " (" << n.size() << " chars)" << std::endl;
       memset(name.data(), 0, name.size());
+      assert(n.size() < name.size());
+   }
 }
 
 template<typename T>
