@@ -51,7 +51,6 @@ void Object::Data::serialize(Archive &ar, const unsigned int version) {
    }
    assert(checktype1 == type);
 #endif
-   ar & V_NAME("name", name);
    ar & V_NAME("meta", meta);
    ar & V_NAME("attributes", *attributes);
 #ifdef DEBUG_SERIALIZATION
