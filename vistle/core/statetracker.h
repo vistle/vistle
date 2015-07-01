@@ -83,6 +83,7 @@ class V_COREEXPORT StateTracker {
 
    int getMasterHub() const;
    std::vector<int> getHubs() const;
+   std::vector<int> getSlaveHubs() const;
    const std::string &hubName(int id) const;
    std::vector<int> getRunningList() const;
    std::vector<int> getBusyList() const;

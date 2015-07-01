@@ -64,6 +64,14 @@ std::vector<int> StateTracker::getHubs() const {
     return hubs;
 }
 
+std::vector<int> StateTracker::getSlaveHubs() const {
+    std::vector<int> hubs;
+    for (const auto &h: m_hubs)
+       if (h.id != Id::MasterHub)
+          hubs.push_back(h.id);
+    return hubs;
+}
+
 const std::string &StateTracker::hubName(int id) const {
 
     for (const auto &h: m_hubs) {
@@ -472,8 +480,6 @@ void StateTracker::processQueue() {
 }
 
 bool StateTracker::handlePriv(const message::AddHub &slave) {
-   if (slave.id() == Id::MasterHub)
-      return true;
    boost::lock_guard<mutex> locker(m_slaveMutex);
    m_hubs.emplace_back(slave.id(), slave.name());
    m_hubs.back().port = slave.port();
@@ -973,11 +979,11 @@ bool StateTracker::registerReply(const message::uuid_t &uuid, const message::Mes
 
 std::vector<int> StateTracker::waitForSlaveHubs(size_t count) {
 
-   auto hubIds = getHubs();
-   while (hubIds.size() < count) {
+   auto hubIds = getSlaveHubs();
+   while (hubIds.size() <= count) {
       boost::unique_lock<mutex> locker(m_slaveMutex);
       m_slaveCondition.wait(locker);
-      hubIds = getHubs();
+      hubIds = getSlaveHubs();
    }
    return hubIds;
 }
@@ -985,7 +991,7 @@ std::vector<int> StateTracker::waitForSlaveHubs(size_t count) {
 std::vector<int> StateTracker::waitForSlaveHubs(const std::vector<std::string> &names) {
 
    auto findAll = [this](const std::vector<std::string> &names, std::vector<int> &ids) -> bool {
-      const auto hubIds = getHubs();
+      const auto hubIds = getSlaveHubs();
       std::vector<std::string> available;
       for (int id: hubIds)
          available.push_back(hubName(id));
@@ -994,6 +1000,8 @@ std::vector<int> StateTracker::waitForSlaveHubs(const std::vector<std::string> &
       size_t found=0;
       for (const auto &name: names) {
          for (const auto &slave: m_hubs) {
+            if (slave.id == Id::MasterHub)
+               continue;
             if (name == slave.name) {
                ++found;
                ids.push_back(slave.id);

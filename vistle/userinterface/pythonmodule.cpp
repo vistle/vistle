@@ -177,7 +177,7 @@ static void kill(int id) {
 }
 
 static int waitForAnySlaveHub() {
-   auto hubs = MODULEMANAGER.getHubs();
+   auto hubs = MODULEMANAGER.getSlaveHubs();
    if (hubs.size() >= 2)
       return hubs[1];
 
@@ -221,7 +221,7 @@ static int getMasterHub() {
 static std::vector<int> getAllHubs() {
 
    LOCKED();
-   return MODULEMANAGER.getHubs();
+   return MODULEMANAGER.getSlaveHubs();
 }
 
 static std::vector<int> getRunning() {
