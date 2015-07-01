@@ -886,18 +886,23 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       if (destRank == getRank() || (getRank() == 0 && destRank == -1)) {
          obj = addObj.takeObject();
          if (!obj) {
+            vassert(!synthesized);
             CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
             haveObject = false;
             requestObject(addObj, addObj.objectName(), false);
          }
       }
    }
-   if (synthesized || localAdd) {
+   if (synthesized) {
       vassert(obj);
    }
 
-   if (!obj)
+   if (!obj) {
       obj = addObj.takeObject();
+   }
+   if (synthesized || localAdd) {
+      vassert(obj);
+   }
    vassert(!obj || obj->refcount() >= 1);
 #if 0
    std::cerr << "Module " << addObj.senderId() << ": "
