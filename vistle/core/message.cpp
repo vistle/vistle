@@ -486,6 +486,7 @@ AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj,
 , m_meta(obj->meta())
 , m_objectType(obj->getType())
 , handle(obj->getHandle())
+, m_handleValid(true)
 {
    // we keep the handle as a reference to obj
    obj->ref();
@@ -504,11 +505,18 @@ AddObject::AddObject(const AddObject &o)
 , m_meta(o.m_meta)
 , m_objectType(o.m_objectType)
 , handle(o.handle)
+, m_handleValid(false)
 {
     if (Shm::isAttached() && Shm::the().name() == std::string(m_shmname.data())) {
         vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
         obj->ref();
+        m_handleValid = true;
     }
+}
+
+AddObject::~AddObject() {
+
+    vassert(!m_handleValid);
 }
 
 const char * AddObject::getSenderPort() const {
@@ -532,6 +540,7 @@ const char *AddObject::objectName() const {
 
 const shm_handle_t & AddObject::getHandle() const {
 
+   vassert(m_handleValid);
    return handle;
 }
 
@@ -546,10 +555,12 @@ Object::Type AddObject::objectType() const {
 Object::const_ptr AddObject::takeObject() const {
 
    if (Shm::isAttached() && Shm::the().name() == std::string(m_shmname.data())) {
+      vassert(m_handleValid);
       vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
       if (obj) {
          // ref count has been increased during AddObject construction
          obj->unref();
+         m_handleValid = false;
       } else {
           std::cerr << "did not find " << m_name << " by handle" << std::endl;
       }

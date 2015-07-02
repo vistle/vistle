@@ -451,6 +451,7 @@ class V_COREEXPORT AddObject: public Message {
    AddObject(const std::string &senderPort, vistle::Object::const_ptr obj,
          const std::string &destPort = "");
    AddObject(const AddObject &other);
+   ~AddObject();
 
    const char * getSenderPort() const;
    void setDestPort(const std::string &destPort);
@@ -469,6 +470,7 @@ class V_COREEXPORT AddObject: public Message {
    Meta m_meta;
    int m_objectType;
    const shm_handle_t handle;
+   mutable bool m_handleValid;
 };
 BOOST_STATIC_ASSERT(sizeof(AddObject) <= Message::MESSAGE_SIZE);
 
