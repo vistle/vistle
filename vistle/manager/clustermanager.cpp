@@ -54,17 +54,21 @@ namespace vistle {
 using message::Id;
 
 void ClusterManager::Module::block(const message::Message &msg) {
+   std::cerr << "BLOCK: " << msg << std::endl;
    blocked = true;
    blockers.push_back(message::Buffer(msg));
 }
 
 void ClusterManager::Module::unblock(const message::Message &msg) {
-   assert(blocked);
-   assert(!blockers.empty());
+   std::cerr << "UNBLOCK: " << msg << std::endl;
+   vassert(blocked);
+   vassert(!blockers.empty());
    if (blocked) {
-      if (msg.uuid() == blockers.front().msg.uuid()) {
+      const auto &front = blockers.front().msg;
+      if (msg.uuid()==front.uuid() && msg.type()==front.type()) {
          blockers.pop_front();
-         assert(blockedMessages.front().msg.uuid() == msg.uuid());
+         vassert(blockedMessages.front().msg.uuid() == msg.uuid()
+                && blockedMessages.front().msg.type() == msg.type());
          blockedMessages.pop_front();
          sendQueue->send(msg);
          if (blockers.empty()) {
@@ -81,14 +85,17 @@ void ClusterManager::Module::unblock(const message::Message &msg) {
             }
          }
       } else {
-         const auto &uuid = msg.uuid();
-         auto it = std::find_if(blockers.begin(), blockers.end(), [uuid](const message::Buffer &buf) -> bool { return buf.msg.uuid() == uuid; });
-         assert(it != blockers.end());
+         auto pred = [msg](const message::Buffer &buf) -> bool {
+            return buf.msg.uuid() == msg.uuid()
+                  && buf.msg.type() == msg.type();
+         };
+         auto it = std::find_if(blockers.begin(), blockers.end(), pred);
+         vassert(it != blockers.end());
          if (it != blockers.end()) {
             blockers.erase(it);
          }
-         it = std::find_if(blockedMessages.begin(), blockedMessages.end(), [uuid](const message::Buffer &buf) -> bool { return buf.msg.uuid() == uuid; });
-         assert (it != blockedMessages.end());
+         it = std::find_if(blockedMessages.begin(), blockedMessages.end(), pred);
+         vassert (it != blockedMessages.end());
          if (it != blockedMessages.end()) {
             *it = message::Buffer(msg);
          }
@@ -638,8 +645,9 @@ bool ClusterManager::handlePriv(const message::SendObject &send) {
       }
       m_outstandingRequests.erase(reqIt);
       if (ids.empty()) {
+         bool ret = handlePriv(add, /* synthesized = */ true);
          m_outstandingAdds.erase(addIt);
-         return handlePriv(add, /* synthesized = */ true);
+         return ret;
       }
       return true;
    }
@@ -868,13 +876,11 @@ bool ClusterManager::requestObject(const message::AddObject &add, const std::str
 bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesized) {
 
    CERR << "ADDOBJECT: " << addObj << std::endl;
-   bool localAdd = true;
-   bool haveObject = true;
-   Object::const_ptr obj;
-   if (!isLocal(addObj.senderId())) {
+   const bool localAdd = isLocal(addObj.senderId());
+   Object::const_ptr obj = addObj.takeObject();
 
+   if (!localAdd) {
       CERR << "ADDOBJECT from remote" << std::endl;
-      localAdd = false;
 
       int destRank = -1;
       if (getRank() == 0) {
@@ -884,66 +890,43 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
          }
       }
       if (destRank == getRank() || (getRank() == 0 && destRank == -1)) {
-         obj = addObj.takeObject();
          if (!obj) {
             vassert(!synthesized);
             CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
-            haveObject = false;
             requestObject(addObj, addObj.objectName(), false);
          }
+      } else {
+          return true;
       }
    }
-   if (synthesized) {
-      vassert(obj);
-   }
 
-   if (!obj) {
-      obj = addObj.takeObject();
-   }
+   vassert(!(synthesized && localAdd));
    if (synthesized || localAdd) {
       vassert(obj);
    }
    vassert(!obj || obj->refcount() >= 1);
-#if 0
-   std::cerr << "Module " << addObj.senderId() << ": "
-      << "AddObject " << addObj.getHandle() << " (" << obj->getName() << ")"
-      << " ref " << obj->refcount()
-      << " to port " << addObj.getPortName() << std::endl;
-#endif
 
    Port *port = portManager().getPort(addObj.senderId(), addObj.getSenderPort());
    if (!port) {
-      CERR << "AddObject ["
-         << addObj.getHandle() << "] to port ["
+      CERR << "AddObject [" << addObj.getHandle() << "] to port ["
          << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
       vassert(port);
       return true;
    }
    const Port::PortSet *list = portManager().getConnectionList(port);
    if (!list) {
-      CERR << "AddObject ["
-         << addObj.getHandle() << "] to port ["
+      CERR << "AddObject [" << addObj.getHandle() << "] to port ["
          << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
       vassert(list);
       return true;
    }
 
    std::set<int> receivingHubs; // make sure that message is only sent once per remote hub
-
    for (const Port *destPort: *list) {
-
-      message::Buffer msgBuf(addObj);
-      message::AddObject &a = static_cast<message::AddObject &>(msgBuf.msg);
       int destId = destPort->getModuleID();
-      if (haveObject) {
-         message::AddObject add(addObj.getSenderPort(), obj, destPort->getName());
-         msgBuf.buf = message::Buffer(add).buf;
-      }
+      message::AddObject a(addObj);
       a.setDestPort(destPort->getName());
       a.setDestId(destId);
-      a.setSenderId(addObj.senderId());
-      a.setUuid(addObj.uuid());
-      a.setRank(addObj.rank());
 
       if (!isLocal(destId)) {
          if (localAdd) {
@@ -958,13 +941,15 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
          continue;
       }
 
-      if (!haveObject) {
-         assert(!synthesized);
+      if (!obj) {
+         // block messages of receiving module until remote object is available
+         vassert(!synthesized);
          auto it = runningMap.find(destId);
          if (it != runningMap.end()) {
             it->second.block(a);
          }
       } else if (synthesized) {
+         // remote object available: unblock messages of receiving module and update AddObject message - all further messages have already been queued
          auto it = runningMap.find(destId);
          if (it != runningMap.end()) {
             it->second.unblock(a);
@@ -975,14 +960,6 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       sendMessage(destId, a);
       portManager().addObject(destPort);
 
-      auto it = m_stateTracker.runningMap.find(destId);
-      if (it == m_stateTracker.runningMap.end()) {
-         CERR << "port connection to module that is not running" << std::endl;
-         vassert("port connection to module that is not running" == 0);
-         continue;
-      }
-      auto &destMod = it->second;
-
       bool allReady = true;
       for (const auto input: portManager().getConnectedInputPorts(destId)) {
          if (!portManager().hasObject(input)) {
@@ -992,11 +969,17 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       }
 
       if (allReady) {
-
          for (const auto input: portManager().getConnectedInputPorts(destId)) {
             portManager().popObject(input);
          }
 
+         auto it = m_stateTracker.runningMap.find(destId);
+         if (it == m_stateTracker.runningMap.end()) {
+            CERR << "port connection to module that is not running" << std::endl;
+            vassert("port connection to module that is not running" == 0);
+            continue;
+         }
+         auto &destMod = it->second;
          message::Execute c(message::Execute::ComputeObject, destId);
          c.setUuid(addObj.uuid());
          if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
@@ -1008,7 +991,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
          }
 
          if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
-               || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
+             || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
             message::ObjectReceived recv(addObj.getSenderPort(), obj, addObj.getDestPort());
             recv.setUuid(addObj.uuid());
             recv.setSenderId(destId);
@@ -1049,9 +1032,21 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
    // initiate reduction if requested by module
    auto &mod = i->second;
-   auto &mod2 = i2->second;
+   auto &modState = i2->second;
 
-   const bool handleOnMaster = mod2.reducePolicy != message::ReducePolicy::Never;
+   bool haveRemoteDownstream = false;
+   for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
+      const Port::PortSet *list = portManager().getConnectionList(output);
+      for (const Port *destPort: *list) {
+         int otherMod = destPort->getModuleID();
+         if (!isLocal(otherMod)) {
+             haveRemoteDownstream = true;
+             break;
+         }
+      }
+   }
+
+   const bool handleOnMaster = haveRemoteDownstream || modState.reducePolicy != message::ReducePolicy::Never;
    if (handleOnMaster && m_rank != 0) {
       return Communicator::the().forwardToMaster(prog);
    }
@@ -1113,24 +1108,28 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             for (auto input: allInputs) {
                portManager().popReset(input);
             }
-            auto exec = message::Execute(message::Execute::Prepare, destId);
-            if (handleOnMaster) {
-               if (!Communicator::the().broadcastAndHandleMessage(exec))
-                  return false;
-            } else {
-               sendMessage(destId, exec);
+            if (!isLocal(destId)) {
+               auto exec = message::Execute(message::Execute::Prepare, destId);
+               if (handleOnMaster) {
+                  if (!Communicator::the().broadcastAndHandleMessage(exec))
+                     return false;
+               } else {
+                  sendMessage(destId, exec);
+               }
             }
          }
          if (allReadyForReduce) {
             for (auto input: allInputs) {
                portManager().popFinish(input);
             }
-            auto exec = message::Execute(message::Execute::Reduce, destId);
-            if (handleOnMaster) {
-               if (!Communicator::the().broadcastAndHandleMessage(exec))
-                  return false;
-            } else {
-               sendMessage(destId, exec);
+            if (isLocal(destId)) {
+               auto exec = message::Execute(message::Execute::Reduce, destId);
+               if (handleOnMaster) {
+                  if (!Communicator::the().broadcastAndHandleMessage(exec))
+                     return false;
+               } else {
+                  sendMessage(destId, exec);
+               }
             }
          }
       }

@@ -450,6 +450,7 @@ class V_COREEXPORT AddObject: public Message {
  public:
    AddObject(const std::string &senderPort, vistle::Object::const_ptr obj,
          const std::string &destPort = "");
+   AddObject(const AddObject &other);
 
    const char * getSenderPort() const;
    void setDestPort(const std::string &destPort);

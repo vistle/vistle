@@ -101,6 +101,8 @@ class V_COREEXPORT Shm {
                          message::MessageQueue *messageQueue = NULL);
    static Shm & attach(const std::string &shmname, const int moduleID, const int rank,
                          message::MessageQueue *messageQueue = NULL);
+   static bool isAttached();
+
    void detach();
    void setRemoveOnDetach();
 

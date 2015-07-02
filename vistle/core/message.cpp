@@ -495,6 +495,22 @@ AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj,
    COPY_STRING(m_shmname, Shm::the().name());
 }
 
+AddObject::AddObject(const AddObject &o)
+: Message(o)
+, senderPort(o.senderPort)
+, destPort(o.destPort)
+, m_name(o.m_name)
+, m_shmname(o.m_shmname)
+, m_meta(o.m_meta)
+, m_objectType(o.m_objectType)
+, handle(o.handle)
+{
+    if (Shm::isAttached() && Shm::the().name() == std::string(m_shmname.data())) {
+        vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
+        obj->ref();
+    }
+}
+
 const char * AddObject::getSenderPort() const {
 
    return senderPort.data();
@@ -529,15 +545,21 @@ Object::Type AddObject::objectType() const {
 
 Object::const_ptr AddObject::takeObject() const {
 
-   if (Shm::the().name() == std::string(m_shmname.data())) {
+   if (Shm::isAttached() && Shm::the().name() == std::string(m_shmname.data())) {
       vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
       if (obj) {
          // ref count has been increased during AddObject construction
          obj->unref();
+      } else {
+          std::cerr << "did not find " << m_name << " by handle" << std::endl;
       }
       return obj;
    }
-   return Shm::the().getObjectFromName(m_name);
+   auto obj = Shm::the().getObjectFromName(m_name);
+   if (!obj) {
+      std::cerr << "did not find " << m_name << " by handle" << std::endl;
+   }
+   return obj;
 }
 
 

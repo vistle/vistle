@@ -219,6 +219,10 @@ Shm &Shm::the() {
    return *s_singleton;
 }
 
+bool Shm::isAttached() {
+    return s_singleton;
+}
+
 Shm & Shm::create(const std::string &name, const int moduleID, const int rank,
                     message::MessageQueue * mq) {
 
