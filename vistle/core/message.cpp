@@ -492,6 +492,7 @@ AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj,
 
    COPY_STRING(senderPort, sender);
    COPY_STRING(destPort, dest);
+   COPY_STRING(m_shmname, Shm::the().name());
 }
 
 const char * AddObject::getSenderPort() const {
@@ -528,11 +529,15 @@ Object::Type AddObject::objectType() const {
 
 Object::const_ptr AddObject::takeObject() const {
 
-   //vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
-   vistle::Object::const_ptr obj = Shm::the().getObjectFromName(m_name);
-   if (obj)
-      obj->unref();
-   return obj;
+   if (Shm::the().name() == std::string(m_shmname.data())) {
+      vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
+      if (obj) {
+         // ref count has been increased during AddObject construction
+         obj->unref();
+      }
+      return obj;
+   }
+   return Shm::the().getObjectFromName(m_name);
 }
 
 
@@ -1456,7 +1461,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case Message::SENDOBJECT: {
          auto mm = static_cast<const SendObject &>(m);
-         s << ", obj: " << mm.objectId();
+         s << ", obj: " << mm.objectId() << ", payload: " << mm.payloadSize();
          break;
       }
       default:

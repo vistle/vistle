@@ -65,6 +65,7 @@ typedef std::array<char, 256> param_value_t;
 typedef std::array<char, 512> param_desc_t;
 typedef std::array<char, 50> param_choice_t;
 const int param_num_choices = 18;
+typedef std::array<char, 300> shmsegname_t;
 typedef std::array<char, 900> text_t;
 typedef std::array<char, 300> address_t;
 
@@ -455,7 +456,7 @@ class V_COREEXPORT AddObject: public Message {
    const char * getDestPort() const;
    const char *objectName() const;
    const shm_handle_t & getHandle() const;
-   Object::const_ptr takeObject() const;
+   Object::const_ptr takeObject() const; //!< may only be called once
    const Meta &meta() const;
    Object::Type objectType() const;
 
@@ -463,6 +464,7 @@ class V_COREEXPORT AddObject: public Message {
    port_name_t senderPort;
    port_name_t destPort;
    shm_name_t m_name;
+   shmsegname_t m_shmname;
    Meta m_meta;
    int m_objectType;
    const shm_handle_t handle;
