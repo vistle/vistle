@@ -509,11 +509,13 @@ int Hub::idToHub(int id) const {
 }
 
 void Hub::hubReady() {
-   message::AddHub hub(m_hubId, m_name);
-   hub.setPort(m_port);
-
    vassert(m_managerConnected);
-   if (!m_isMaster) {
+   if (m_isMaster) {
+      processScript();
+   } else {
+      message::AddHub hub(m_hubId, m_name);
+      hub.setPort(m_port);
+
       for (auto &sock: m_sockets) {
          if (sock.second == message::Identify::HUB) {
             try {
@@ -530,12 +532,8 @@ void Hub::hubReady() {
       }
 
       sendMaster(hub);
-   }
-   sendUi(hub);
-   sendManager(hub);
-
-   if (m_isMaster) {
-      processScript();
+      sendUi(hub);
+      sendManager(hub);
    }
 }
 
@@ -639,6 +637,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             slaveReady(slave);
          } else {
             if (mm.id() == Id::MasterHub) {
+               CERR << "received AddHub for master" << std::endl;
                auto m = mm;
                m.setAddress(m_masterSocket->remote_endpoint().address());
                m_stateTracker.handle(m, true);
@@ -875,7 +874,7 @@ bool Hub::handleLocalData(const message::Message &recv, shared_ptr<asio::ip::tcp
          return sendRemoteData(payload.data(), payloadSize, hubId);
       }
       default:
-         CERR << "invalid message type on data connection: " << recv.type() << std::endl;
+         CERR << "invalid message type on local data connection: " << recv.type() << std::endl;
          return false;
    }
    return true;
@@ -885,6 +884,14 @@ bool Hub::handleRemoteData(const message::Message &recv, shared_ptr<asio::ip::tc
    CERR << "handleRemoteData: " << recv << std::endl;
    using namespace message;
    switch (recv.type()) {
+      case Message::IDENTIFY: {
+         auto id = static_cast<const Identify &>(recv);
+         if (id.identity() != Identify::REMOTEBULKDATA) {
+            CERR << "invalid Identyty on remote data connection: " << id.identity() << std::endl;
+            return false;
+         }
+         break;
+      }
       case Message::REQUESTOBJECT: {
          auto req = static_cast<const RequestObject &>(recv);
          return sendLocalData(req, req.destRank());
@@ -898,7 +905,7 @@ bool Hub::handleRemoteData(const message::Message &recv, shared_ptr<asio::ip::tc
          return sendLocalData(payload.data(), payloadSize, send.destRank());
       }
       default:
-         CERR << "invalid message type on data connection: " << recv.type() << std::endl;
+         CERR << "invalid message type on remote data connection: " << recv.type() << std::endl;
          return false;
    }
    return true;

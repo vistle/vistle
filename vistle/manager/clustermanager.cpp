@@ -622,7 +622,7 @@ bool ClusterManager::handlePriv(const message::SendObject &send) {
    ba::binary_iarchive memar(membuf);
    Object::ptr obj = Object::load(memar);
    if (obj) {
-      //std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;
+      CERR << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
       vassert(obj->check());
       auto reqIt = m_outstandingRequests.find(send.objectId());
       if (reqIt == m_outstandingRequests.end())
@@ -946,7 +946,6 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       a.setRank(addObj.rank());
 
       if (!isLocal(destId)) {
-         assert(!synthesized);
          if (localAdd) {
             // if object was generated locally, forward message to remote hubs with connected modules
             const int hub = m_stateTracker.getHub(destId);
