@@ -762,9 +762,9 @@ class V_COREEXPORT ReducePolicy: public Message {
 
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Reduce,
-      (Never) //< module's reduce() method will never be called
+      (Locally) //< module's prepare()/reduce() methods will be called unsynchronized
       (PerTimestep) //< module's reduce() method will be called on all ranks together once per timestep
-      (OverAll) //< module's reduce() method will be called on all ranks together after all timesteps have been received
+      (OverAll) //< module's prepare()/reduce() method will be called on all ranks together after all timesteps have been received
    )
    ReducePolicy(Reduce red);
    Reduce policy() const;

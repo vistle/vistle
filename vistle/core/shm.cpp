@@ -304,10 +304,9 @@ std::string Shm::createObjectId(const std::string &id) {
       return id;
    }
    std::stringstream name;
-   name << "m" << m_moduleId
-        << "id" << m_objectId++
-        << "r" << m_rank
-        << "obj";
+   name << m_moduleId << "m"
+        << m_objectId++ << "o"
+        << m_rank << "r";
 
    vassert(name.str().size() < sizeof(shm_name_t));
 
@@ -321,10 +320,9 @@ std::string Shm::createArrayId(const std::string &id) {
    }
 
    std::stringstream name;
-   name << "m" << m_moduleId
-        << "id" << m_arrayId++
-        << "r" << m_rank
-        << "arr";
+   name << m_moduleId << "m"
+        << m_arrayId++ << "a"
+        << m_rank << "r";
 
    vassert(name.str().size() < sizeof(shm_name_t));
 

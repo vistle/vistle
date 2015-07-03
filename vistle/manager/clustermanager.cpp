@@ -1046,14 +1046,14 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       }
    }
 
-   const bool handleOnMaster = haveRemoteDownstream || modState.reducePolicy != message::ReducePolicy::Never;
+   const bool handleOnMaster = haveRemoteDownstream || modState.reducePolicy != message::ReducePolicy::Locally;
    if (handleOnMaster && m_rank != 0) {
       return Communicator::the().forwardToMaster(prog);
    }
 
    bool readyForPrepare = false, readyForReduce = false;
    bool result = true;
-   //std::cerr << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << "/" << prog.rank() << std::endl;
+   CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << "/" << prog.rank() << std::endl;
    switch (prog.stage()) {
       case message::ExecutionProgress::Start: {
          readyForPrepare = true;
@@ -1070,6 +1070,9 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
          if (handleOnMaster) {
             ++mod.ranksFinished;
             if (mod.ranksFinished == m_size) {
+               if (mod.ranksStarted != m_size) {
+                  CERR << "mismatch: m_size=" << m_size << ", started=" << mod.ranksStarted << std::endl;
+               }
                vassert(mod.ranksStarted == m_size);
                mod.ranksFinished = 0;
                mod.ranksStarted = 0;
@@ -1081,7 +1084,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       }
    }
 
-   //std::cerr << prog.senderId() << " ready for prepare: " << readyForPrepare << ", reduce: " << readyForReduce << std::endl;
+   std::cerr << prog.senderId() << " ready for prepare: " << readyForPrepare << ", reduce: " << readyForReduce << std::endl;
    for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
       const Port::PortSet *list = portManager().getConnectionList(output);
       for (const Port *destPort: *list) {
@@ -1108,7 +1111,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             for (auto input: allInputs) {
                portManager().popReset(input);
             }
-            if (!isLocal(destId)) {
+            if (isLocal(destId)) {
                auto exec = message::Execute(message::Execute::Prepare, destId);
                if (handleOnMaster) {
                   if (!Communicator::the().broadcastAndHandleMessage(exec))

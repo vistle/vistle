@@ -21,7 +21,7 @@ static T min(T a, T b) { return a<b ? a : b; }
       const size_t size = min(src.size(), dst.size()-1); \
       src.copy(dst.data(), size); \
       dst[size] = '\0'; \
-      assert(src.size() < dst.size()); \
+      vassert(src.size() < dst.size()); \
    }
 
 DefaultSender DefaultSender::s_instance;
@@ -67,14 +67,14 @@ Message::Message(const Type t, const unsigned int s)
 , m_destRank(-1)
 {
 
-   assert(m_size <= MESSAGE_SIZE);
-   assert(m_type > INVALID);
-   assert(m_type < NumMessageTypes);
+   vassert(m_size <= MESSAGE_SIZE);
+   vassert(m_type > INVALID);
+   vassert(m_type < NumMessageTypes);
 }
 
 unsigned long Message::typeFlags() const {
 
-   assert(type() > ANY && type() > INVALID && type() < NumMessageTypes);
+   vassert(type() > ANY && type() > INVALID && type() < NumMessageTypes);
    if (type() <= ANY || type() <= INVALID) {
       return 0;
    }
@@ -163,7 +163,7 @@ Identify::Identify(Identity id, int rank)
 , m_id(Id::Invalid)
 , m_rank(rank)
 {
-   assert(id == Identify::LOCALBULKDATA || id == Identify::REMOTEBULKDATA);
+   vassert(id == Identify::LOCALBULKDATA || id == Identify::REMOTEBULKDATA);
 
    memset(m_name.data(), 0, m_name.size());
 }
@@ -246,7 +246,7 @@ void AddHub::setPort(unsigned short port) {
 }
 
 void AddHub::setAddress(boost::asio::ip::address addr) {
-   assert(addr.is_v4() || addr.is_v6());
+   vassert(addr.is_v4() || addr.is_v6());
 
    if (addr.is_v4())
       setAddress(addr.to_v4());
@@ -515,8 +515,6 @@ AddObject::AddObject(const AddObject &o)
 }
 
 AddObject::~AddObject() {
-
-    vassert(!m_handleValid);
 }
 
 const char * AddObject::getSenderPort() const {
@@ -703,11 +701,11 @@ AddParameter::AddParameter(const Parameter &param, const std::string &modname)
 , paramtype(param.type())
 , presentation(param.presentation())
 {
-   assert(paramtype > Parameter::Unknown);
-   assert(paramtype < Parameter::Invalid);
+   vassert(paramtype > Parameter::Unknown);
+   vassert(paramtype < Parameter::Invalid);
 
-   assert(presentation >= Parameter::Generic);
-   assert(presentation <= Parameter::InvalidPresentation);
+   vassert(presentation >= Parameter::Generic);
+   vassert(presentation <= Parameter::InvalidPresentation);
 
    COPY_STRING(name, param.getName());
    COPY_STRING(m_group, param.group());
@@ -776,8 +774,10 @@ boost::shared_ptr<Parameter> AddParameter::getParameter() const {
       p->setPresentation(Parameter::Presentation(getPresentation()));
    } else {
 
-      std::cerr << "AddParameter::getParameter: type " << type() << " not handled" << std::endl;
-      assert("parameter type not supported" == 0);
+      std::cerr << "AddParameter::getParameter (" <<
+         moduleName() << ":" << getName()
+         << ": type " << getParameterType() << " not handled" << std::endl;
+      vassert("parameter type not supported" == 0);
    }
 
    return p;
@@ -812,7 +812,7 @@ SetParameter::SetParameter(const int module,
       COPY_STRING(v_string, pstring->getValue(rt));
    } else {
       std::cerr << "SetParameter: type " << param->type() << " not handled" << std::endl;
-      assert("invalid parameter type" == 0);
+      vassert("invalid parameter type" == 0);
    }
 }
 
@@ -912,8 +912,8 @@ bool SetParameter::isReply() const {
 
 void SetParameter::setRangeType(int rt) {
 
-   assert(rt >= Parameter::Minimum);
-   assert(rt <= Parameter::Maximum);
+   vassert(rt >= Parameter::Minimum);
+   vassert(rt <= Parameter::Maximum);
    rangetype = rt;
 }
 
@@ -939,31 +939,31 @@ int SetParameter::getParameterType() const {
 
 Integer SetParameter::getInteger() const {
 
-   assert(paramtype == Parameter::Integer);
+   vassert(paramtype == Parameter::Integer);
    return v_int;
 }
 
 Float SetParameter::getFloat() const {
 
-   assert(paramtype == Parameter::Float);
+   vassert(paramtype == Parameter::Float);
    return v_scalar;
 }
 
 ParamVector SetParameter::getVector() const {
 
-   assert(paramtype == Parameter::Vector);
+   vassert(paramtype == Parameter::Vector);
    return ParamVector(dim, &v_vector[0]);
 }
 
 IntParamVector SetParameter::getIntVector() const {
 
-   assert(paramtype == Parameter::IntVector);
+   vassert(paramtype == Parameter::IntVector);
    return IntParamVector(dim, &v_ivector[0]);
 }
 
 std::string SetParameter::getString() const {
 
-   assert(paramtype == Parameter::String);
+   vassert(paramtype == Parameter::String);
    return v_string.data();
 }
 
@@ -995,7 +995,7 @@ bool SetParameter::apply(boost::shared_ptr<vistle::Parameter> param) const {
       if (rt == Parameter::Value) pstring->setValue(v_string.data(), initialize);
    } else {
       std::cerr << "SetParameter::apply(): type " << param->type() << " not handled" << std::endl;
-      assert("invalid parameter type" == 0);
+      vassert("invalid parameter type" == 0);
    }
    
    return true;
@@ -1561,7 +1561,7 @@ void Router::initRoutingTable() {
       if (rt[i] == 0) {
          std::cerr << "message routing table not initialized for " << (Message::Type)i << std::endl;
       }
-      assert(rt[i] != 0);
+      vassert(rt[i] != 0);
    }
 }
 

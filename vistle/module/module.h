@@ -259,6 +259,8 @@ protected:
    bool m_benchmark;
    double m_benchmarkStart;
    boost::mpi::communicator m_comm;
+
+   bool m_prepared, m_computed, m_reduced;
 };
 
 template<>

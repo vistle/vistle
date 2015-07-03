@@ -157,7 +157,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_stateTracker(new StateTracker(m_name))
 , m_receivePolicy(message::ObjectReceivePolicy::Single)
 , m_schedulingPolicy(message::SchedulingPolicy::Single)
-, m_reducePolicy(message::ReducePolicy::Never)
+, m_reducePolicy(message::ReducePolicy::Locally)
 , m_executionDepth(0)
 , m_defaultCacheMode(ObjectCache::CacheNone)
 , m_syncMessageProcessing(false)
@@ -166,6 +166,9 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_traceMessages(message::Message::INVALID)
 , m_benchmark(false)
 , m_comm(MPI_COMM_WORLD, mpi::comm_attach)
+, m_prepared(false)
+, m_computed(false)
+, m_reduced(false)
 {
 #ifdef _WIN32
     WSADATA wsaData;
@@ -310,7 +313,7 @@ void Module::enableBenchmark(bool benchmark, bool updateParam) {
         setIntParameter("_benchmark", benchmark ? 1 : 0);
     int red = m_reducePolicy;
     if (m_benchmark) {
-       if (red == message::ReducePolicy::Never)
+       if (red == message::ReducePolicy::Locally)
           red = message::ReducePolicy::OverAll;
     }
     sendMessage(message::ReducePolicy(message::ReducePolicy::Reduce(red)));
@@ -913,12 +916,12 @@ int Module::reducePolicy() const
 
 void Module::setReducePolicy(int reducePolicy)
 {
-   vassert(reducePolicy >= message::ReducePolicy::Never);
+   vassert(reducePolicy >= message::ReducePolicy::Locally);
    vassert(reducePolicy <= message::ReducePolicy::OverAll);
 
    m_reducePolicy = reducePolicy;
    if (m_benchmark) {
-      if (reducePolicy == message::ReducePolicy::Never)
+      if (reducePolicy == message::ReducePolicy::Locally)
          reducePolicy = message::ReducePolicy::OverAll;
    }
    sendMessage(message::ReducePolicy(message::ReducePolicy::Reduce(reducePolicy)));
@@ -1252,6 +1255,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
              || exec->what() == Execute::ComputeObject) {
             //vassert(m_executionDepth == 0);
             ++m_executionDepth;
+
+            vassert(m_prepared);
+            vassert(!m_reduced);
+            m_computed = true;
 
             if (m_executionCount < exec->getExecutionCount())
                m_executionCount = exec->getExecutionCount();
@@ -1587,6 +1594,11 @@ int Module::objectReceivePolicy() const {
 
 bool Module::prepareWrapper(const message::Message *req) {
 
+   vassert(!m_prepared);
+   vassert(!m_computed);
+
+   m_reduced = false;
+
    message::ExecutionProgress start(message::ExecutionProgress::Start);
    start.setUuid(req->uuid());
    start.setDestId(Id::LocalManager);
@@ -1598,12 +1610,9 @@ bool Module::prepareWrapper(const message::Message *req) {
       m_benchmarkStart = Clock::time();
    }
 
-   if (reducePolicy() != message::ReducePolicy::Never) {
+   m_prepared = true;
 
-      return prepare();
-   }
-
-   return true;
+   return prepare();
 }
 
 bool Module::prepare() {
@@ -1616,15 +1625,17 @@ bool Module::prepare() {
 
 bool Module::reduceWrapper(const message::Message *req) {
 
-   bool ret = true;
-   if (reducePolicy() != message::ReducePolicy::Never) {
-      ret = false;
-      try {
-         ret = reduce(-1);
-      } catch (std::exception &e) {
-         std::cout << name() << "::reduce(): exception - " << e.what() << std::endl << std::flush;
-         std::cerr << name() << "::reduce(): exception - " << e.what() << std::endl;
-      }
+   vassert(m_prepared);
+   vassert(!m_reduced);
+
+   m_reduced = true;
+
+   bool ret = false;
+   try {
+      ret = reduce(-1);
+   } catch (std::exception &e) {
+      std::cout << name() << "::reduce(): exception - " << e.what() << std::endl << std::flush;
+      std::cerr << name() << "::reduce(): exception - " << e.what() << std::endl;
    }
 
    if (m_benchmark) {
@@ -1641,6 +1652,9 @@ bool Module::reduceWrapper(const message::Message *req) {
    fin.setUuid(req->uuid());
    fin.setDestId(Id::LocalManager);
    sendMessage(fin);
+
+   m_computed = false;
+   m_prepared = false;
 
    return ret;
 }
