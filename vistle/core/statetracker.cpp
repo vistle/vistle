@@ -105,6 +105,10 @@ std::vector<int> StateTracker::getBusyList() const {
 
 int StateTracker::getHub(int id) const {
 
+   if (id <= Id::MasterHub) {
+       return id;
+   }
+
    RunningMap::const_iterator it = runningMap.find(id);
    if (it == runningMap.end()) {
       it = quitMap.find(id);
@@ -131,8 +135,13 @@ std::string StateTracker::getModuleName(int id) const {
 int StateTracker::getModuleState(int id) const {
 
    RunningMap::const_iterator it = runningMap.find(id);
-   if (it == runningMap.end())
-      return StateObserver::Unknown;
+   if (it == runningMap.end()) {
+      it = quitMap.find(id);
+      if (it == quitMap.end())
+         return StateObserver::Unknown;
+      else
+         return StateObserver::Quit;
+   }
 
    return it->second.state();
 }

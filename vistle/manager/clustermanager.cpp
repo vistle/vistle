@@ -371,7 +371,7 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
       message::Buffer buf(message);
       buf.msg.setDestId(moduleId);
       buf.msg.setDestRank(destRank);
-      sendHub(message);
+      sendHub(buf.msg);
    }
 
    return true;
@@ -653,6 +653,9 @@ bool ClusterManager::handlePriv(const message::SendObject &send) {
       }
       m_outstandingRequests.erase(reqIt);
       if (ids.empty()) {
+         message::AddObjectCompleted complete(add);
+         sendMessage(send.senderId(), complete, send.rank());
+         message::AddObject nadd(add.getSenderPort(), obj);
          bool ret = handlePriv(add, /* synthesized = */ true);
          m_outstandingAdds.erase(addIt);
          return ret;
@@ -915,14 +918,14 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
 
    Port *port = portManager().getPort(addObj.senderId(), addObj.getSenderPort());
    if (!port) {
-      CERR << "AddObject [" << addObj.getHandle() << "] to port ["
+      CERR << "AddObject [" << addObj.objectName() << "] to port ["
          << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
       vassert(port);
       return true;
    }
    const Port::PortSet *list = portManager().getConnectionList(port);
    if (!list) {
-      CERR << "AddObject [" << addObj.getHandle() << "] to port ["
+      CERR << "AddObject [" << addObj.objectName() << "] to port ["
          << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
       vassert(list);
       return true;
@@ -959,7 +962,10 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
          // remote object available: unblock messages of receiving module and update AddObject message - all further messages have already been queued
          auto it = runningMap.find(destId);
          if (it != runningMap.end()) {
-            it->second.unblock(a);
+            message::AddObject add(a.getSenderPort(), obj, destPort->getName());
+            add.setUuid(a.uuid());
+            add.setDestId(destId);
+            it->second.unblock(add);
          }
          continue;
       }
@@ -1027,9 +1033,10 @@ bool ClusterManager::handlePriv(const message::AddObjectCompleted &complete) {
 
 bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
+   bool localSender = true;
    RunningMap::iterator i = runningMap.find(prog.senderId());
    if (i == runningMap.end()) {
-      return false;
+      localSender = false;
    }
 
    auto i2 = m_stateTracker.runningMap.find(prog.senderId());
@@ -1038,22 +1045,28 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    }
 
    // initiate reduction if requested by module
-   auto &mod = i->second;
    auto &modState = i2->second;
 
-   bool haveRemoteDownstream = false;
-   for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
-      const Port::PortSet *list = portManager().getConnectionList(output);
-      for (const Port *destPort: *list) {
-         int otherMod = destPort->getModuleID();
-         if (!isLocal(otherMod)) {
-             haveRemoteDownstream = true;
-             break;
+   // forward message to remote hubs...
+   std::set<int> receivingHubs; // ...but make sure that message is only sent once per remote hub
+   if (localSender) {
+      for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
+         const Port::PortSet *list = portManager().getConnectionList(output);
+         for (const Port *destPort: *list) {
+            int otherMod = destPort->getModuleID();
+            if (!isLocal(otherMod)) {
+               int hub = m_stateTracker.getHub(otherMod);
+               if (receivingHubs.find(hub) == receivingHubs.end()) {
+                  CERR << "remote send ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << "/" << prog.rank() << " --> hub " << hub << std::endl;
+                  sendMessage(hub, prog);
+               }
+               receivingHubs.insert(hub);
+            }
          }
       }
    }
 
-   const bool handleOnMaster = haveRemoteDownstream || (modState.reducePolicy != message::ReducePolicy::Locally && modState.reducePolicy != message::ReducePolicy::Never);
+   const bool handleOnMaster = !localSender || !receivingHubs.empty() || (modState.reducePolicy != message::ReducePolicy::Locally && modState.reducePolicy != message::ReducePolicy::Never);
    if (handleOnMaster && m_rank != 0) {
       return Communicator::the().forwardToMaster(prog);
    }
@@ -1064,7 +1077,8 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    switch (prog.stage()) {
       case message::ExecutionProgress::Start: {
          readyForPrepare = true;
-         if (handleOnMaster) {
+         if (handleOnMaster && !localSender) {
+            auto &mod = i->second;
             vassert(mod.ranksFinished < m_size);
             ++mod.ranksStarted;
             readyForPrepare = mod.ranksStarted==m_size;
@@ -1074,7 +1088,8 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
       case message::ExecutionProgress::Finish: {
          readyForReduce = true;
-         if (handleOnMaster) {
+         if (handleOnMaster && !localSender) {
+            auto &mod = i->second;
             ++mod.ranksFinished;
             if (mod.ranksFinished == m_size) {
                if (mod.ranksStarted != m_size) {
@@ -1143,7 +1158,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                   } else {
                      sendMessage(destId, exec);
                   }
-               }
+              }
             }
          }
       }
@@ -1410,7 +1425,7 @@ int ClusterManager::numRunning() const {
    int n = 0;
    for (auto &m: runningMap) {
       int state = m_stateTracker.getModuleState(m.first);
-      if ((state & StateObserver::Initialized) && !(state & StateObserver::Killed))
+      if ((state & StateObserver::Initialized) && !(state & StateObserver::Killed) && !(state & StateObserver::Quit))
          ++n;
    }
    return n;

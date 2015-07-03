@@ -67,7 +67,7 @@ Hub::Hub()
 , m_slaveCount(0)
 , m_hubId(Id::Invalid)
 , m_moduleCount(0)
-, m_traceMessages(message::Message::ADDOBJECT)
+, m_traceMessages(message::Message::EXECUTIONPROGRESS)
 , m_execCount(0)
 , m_barrierActive(false)
 , m_barrierReached(0)
@@ -273,7 +273,9 @@ bool Hub::dispatch() {
                }
             }
          }
-         if (id >= message::Id::ModuleBase && m_stateTracker.getModuleState(id) != StateObserver::Unknown) {
+         if (id >= message::Id::ModuleBase
+                 && m_stateTracker.getModuleState(id) != StateObserver::Unknown
+                 && m_stateTracker.getModuleState(id) != StateObserver::Quit) {
             // synthesize ModuleExit message for crashed modules
             message::ModuleExit m;
             m.setSenderId(id);
@@ -505,7 +507,10 @@ int Hub::idToHub(int id) const {
    if (id >= Id::ModuleBase)
       return m_stateTracker.getHub(id);
 
-   return id;
+   if (id == Id::LocalManager || id == Id::LocalHub)
+       return m_hubId;
+
+   return m_stateTracker.getHub(id);
 }
 
 void Hub::hubReady() {

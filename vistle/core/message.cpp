@@ -145,7 +145,11 @@ size_t Message::size() const {
 
 bool Message::broadcast() const {
 
-   return m_broadcast;
+    return m_broadcast;
+}
+
+void Message::setBroadcast(bool enable) {
+    m_broadcast = enable;
 }
 
 Identify::Identify(Identity id, const std::string &name)
@@ -566,7 +570,7 @@ Object::const_ptr AddObject::takeObject() const {
    }
    auto obj = Shm::the().getObjectFromName(m_name);
    if (!obj) {
-      std::cerr << "did not find " << m_name << " by handle" << std::endl;
+      std::cerr << "did not find " << m_name << " by name" << std::endl;
    }
    return obj;
 }

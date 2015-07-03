@@ -38,7 +38,8 @@ class V_COREEXPORT StateObserver {
       Known = 1,
       Initialized = 2,
       Killed = 4,
-      Busy = 8,
+      Quit = 8,
+      Busy = 16,
    };
    virtual void moduleStateChanged(int moduleId, int stateBits) = 0;
 
