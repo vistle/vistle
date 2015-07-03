@@ -29,7 +29,7 @@ Renderer::Renderer(const std::string &description, const std::string &shmname,
                    const std::string &name, const int moduleID)
    : Module(description, shmname, name, moduleID) {
 
-   createInputPort("data_in", "input data");
+   createInputPort("data_in", "input data", Port::COMBINE);
 
    m_renderMode = addIntParameter("render_mode", "Render on which nodes?", LocalOnly, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_renderMode, RenderMode);

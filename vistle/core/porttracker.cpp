@@ -130,10 +130,14 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
    bool added = false;
    if (from->getType() == Port::OUTPUT && to->getType() == Port::INPUT) {
 
-      f->addConnection(t);
-      t->addConnection(f);
+      if (!to->isConnected() || (t->flags() & Port::COMBINE)) {
+         f->addConnection(t);
+         t->addConnection(f);
 
-      added = true;
+         added = true;
+      } else {
+         std::cerr << "PortTracker::addConnection: multiple connection" << std::endl;
+      }
    }
 
    if (from->getType() == Port::PARAMETER && to->getType() == Port::PARAMETER) {
