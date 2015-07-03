@@ -1033,10 +1033,10 @@ bool ClusterManager::handlePriv(const message::AddObjectCompleted &complete) {
 
 bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
-   bool localSender = true;
+   bool localSender = m_stateTracker.getHub(prog.senderId()) == Communicator::the().hubId();
    RunningMap::iterator i = runningMap.find(prog.senderId());
    if (i == runningMap.end()) {
-      localSender = false;
+      vassert(localSender == false);
    }
 
    auto i2 = m_stateTracker.runningMap.find(prog.senderId());
@@ -1056,10 +1056,6 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             int otherMod = destPort->getModuleID();
             if (!isLocal(otherMod)) {
                int hub = m_stateTracker.getHub(otherMod);
-               if (receivingHubs.find(hub) == receivingHubs.end()) {
-                  CERR << "remote send ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << "/" << prog.rank() << " --> hub " << hub << std::endl;
-                  sendMessage(hub, prog);
-               }
                receivingHubs.insert(hub);
             }
          }
@@ -1077,7 +1073,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    switch (prog.stage()) {
       case message::ExecutionProgress::Start: {
          readyForPrepare = true;
-         if (handleOnMaster && !localSender) {
+         if (handleOnMaster && localSender) {
             auto &mod = i->second;
             vassert(mod.ranksFinished < m_size);
             ++mod.ranksStarted;
@@ -1088,7 +1084,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
       case message::ExecutionProgress::Finish: {
          readyForReduce = true;
-         if (handleOnMaster && !localSender) {
+         if (handleOnMaster && localSender) {
             auto &mod = i->second;
             ++mod.ranksFinished;
             if (mod.ranksFinished == m_size) {
@@ -1104,6 +1100,16 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
          }
          break;
       }
+   }
+
+   if (readyForPrepare || readyForReduce) {
+       vassert(!(readyForPrepare && readyForReduce));
+       for (auto hub: receivingHubs) {
+           message::Buffer buf(prog);
+           buf.msg.setBroadcast(false);
+           buf.msg.setDestRank(0);
+           sendMessage(hub, buf.msg);
+       }
    }
 
    std::cerr << prog.senderId() << " ready for prepare: " << readyForPrepare << ", reduce: " << readyForReduce << std::endl;
