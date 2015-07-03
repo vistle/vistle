@@ -565,13 +565,14 @@ bool StateTracker::handlePriv(const message::Connect &connect) {
 
    computeHeights();
 
-   return true;
+   return ret;
 }
 
 bool StateTracker::handlePriv(const message::Disconnect &disconnect) {
 
+   bool ret = true;
    if (portTracker()) {
-      portTracker()->removeConnection(disconnect.getModuleA(),
+      ret = portTracker()->removeConnection(disconnect.getModuleA(),
             disconnect.getPortAName(),
             disconnect.getModuleB(),
             disconnect.getPortBName());
@@ -579,7 +580,7 @@ bool StateTracker::handlePriv(const message::Disconnect &disconnect) {
 
    computeHeights();
 
-   return true;
+   return ret;
 }
 
 bool StateTracker::handlePriv(const message::ModuleExit &moduleExit) {
@@ -786,6 +787,9 @@ bool StateTracker::handlePriv(const message::AddPort &createPort) {
 
    if (portTracker()) {
       Port * p = portTracker()->addPort(createPort.getPort());
+
+      if (!p)
+         return false;
 
       for (StateObserver *o: m_observers) {
          o->incModificationCount();

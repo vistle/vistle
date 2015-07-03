@@ -62,6 +62,19 @@ Port *PortTracker::addPort(Port *port) {
    PortMap::iterator pi = portMap->find(port->getName());
 
    if (pi == portMap->end()) {
+
+      if (port->getType() == Port::INPUT) {
+         const bool combine = port->flags() & Port::COMBINE;
+         for (auto &p: *portMap) {
+            if (p.second->getType() == Port::INPUT) {
+               if ((port->flags() & Port::COMBINE) || combine) {
+                  std::cerr << "COMBINE port has to be only input port of a module" << std::endl;
+                  delete port;
+                  return nullptr;
+               }
+            }
+         }
+      }
       portMap->insert(std::make_pair(port->getName(), port));
 
       int paramNum = 0;
