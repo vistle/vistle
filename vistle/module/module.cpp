@@ -916,7 +916,7 @@ int Module::reducePolicy() const
 
 void Module::setReducePolicy(int reducePolicy)
 {
-   vassert(reducePolicy >= message::ReducePolicy::Locally);
+   vassert(reducePolicy >= message::ReducePolicy::Never);
    vassert(reducePolicy <= message::ReducePolicy::OverAll);
 
    m_reducePolicy = reducePolicy;
@@ -1256,8 +1256,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             //vassert(m_executionDepth == 0);
             ++m_executionDepth;
 
-            vassert(m_prepared);
-            vassert(!m_reduced);
+            if (m_reducePolicy != message::ReducePolicy::Never) {
+               vassert(m_prepared);
+               vassert(!m_reduced);
+            }
             m_computed = true;
 
             if (m_executionCount < exec->getExecutionCount())

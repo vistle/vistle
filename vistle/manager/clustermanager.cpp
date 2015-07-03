@@ -381,7 +381,15 @@ bool ClusterManager::handle(const message::Message &message) {
 
    using namespace vistle::message;
 
-   m_stateTracker.handle(message);
+   switch (message.type()) {
+      case Message::CONNECT:
+      case Message::DISCONNECT:
+         // handled in handlePriv(...)
+         break;
+      default:
+         m_stateTracker.handle(message);
+         break;
+   }
 
    bool result = true;
    const int hubId = Communicator::the().hubId();
@@ -736,8 +744,7 @@ bool ClusterManager::handlePriv(const message::Connect &connect) {
       std::swap(portFrom, portTo);
    }
 
-   m_stateTracker.handle(c);
-   if (portManager().addConnection(modFrom, portFrom, modTo, portTo)) {
+   if (m_stateTracker.handle(c)) {
       // inform modules about connections
       if (Communicator::the().isMaster()) {
          sendMessage(modFrom, c);
@@ -1046,7 +1053,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       }
    }
 
-   const bool handleOnMaster = haveRemoteDownstream || modState.reducePolicy != message::ReducePolicy::Locally;
+   const bool handleOnMaster = haveRemoteDownstream || (modState.reducePolicy != message::ReducePolicy::Locally && modState.reducePolicy != message::ReducePolicy::Never);
    if (handleOnMaster && m_rank != 0) {
       return Communicator::the().forwardToMaster(prog);
    }
@@ -1088,50 +1095,54 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
       const Port::PortSet *list = portManager().getConnectionList(output);
       for (const Port *destPort: *list) {
-         if (readyForPrepare)
-            portManager().resetInput(destPort);
-         if (readyForReduce)
-            portManager().finishInput(destPort);
+         if (!(destPort->flags() & Port::COMBINE)) {
+            if (readyForPrepare)
+               portManager().resetInput(destPort);
+            if (readyForReduce)
+               portManager().finishInput(destPort);
+         }
       }
    }
 
    for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
       const Port::PortSet *list = portManager().getConnectionList(output);
       for (const Port *destPort: *list) {
-         bool allReadyForPrepare = true, allReadyForReduce = true;
-         int destId = destPort->getModuleID();
-         auto allInputs = portManager().getConnectedInputPorts(destId);
-         for (auto input: allInputs) {
-            if (!portManager().isReset(input))
-               allReadyForPrepare = false;
-            if (!portManager().isFinished(input))
-               allReadyForReduce = false;
-         }
-         if (allReadyForPrepare) {
+         if (!(destPort->flags() & Port::COMBINE)) {
+            bool allReadyForPrepare = true, allReadyForReduce = true;
+            int destId = destPort->getModuleID();
+            auto allInputs = portManager().getConnectedInputPorts(destId);
             for (auto input: allInputs) {
-               portManager().popReset(input);
+               if (!portManager().isReset(input))
+                  allReadyForPrepare = false;
+               if (!portManager().isFinished(input))
+                  allReadyForReduce = false;
             }
-            if (isLocal(destId)) {
-               auto exec = message::Execute(message::Execute::Prepare, destId);
-               if (handleOnMaster) {
-                  if (!Communicator::the().broadcastAndHandleMessage(exec))
-                     return false;
-               } else {
-                  sendMessage(destId, exec);
+            if (allReadyForPrepare) {
+               for (auto input: allInputs) {
+                  portManager().popReset(input);
+               }
+               if (isLocal(destId)) {
+                  auto exec = message::Execute(message::Execute::Prepare, destId);
+                  if (handleOnMaster) {
+                     if (!Communicator::the().broadcastAndHandleMessage(exec))
+                        return false;
+                  } else {
+                     sendMessage(destId, exec);
+                  }
                }
             }
-         }
-         if (allReadyForReduce) {
-            for (auto input: allInputs) {
-               portManager().popFinish(input);
-            }
-            if (isLocal(destId)) {
-               auto exec = message::Execute(message::Execute::Reduce, destId);
-               if (handleOnMaster) {
-                  if (!Communicator::the().broadcastAndHandleMessage(exec))
-                     return false;
-               } else {
-                  sendMessage(destId, exec);
+            if (allReadyForReduce) {
+               for (auto input: allInputs) {
+                  portManager().popFinish(input);
+               }
+               if (isLocal(destId)) {
+                  auto exec = message::Execute(message::Execute::Reduce, destId);
+                  if (handleOnMaster) {
+                     if (!Communicator::the().broadcastAndHandleMessage(exec))
+                        return false;
+                  } else {
+                     sendMessage(destId, exec);
+                  }
                }
             }
          }
