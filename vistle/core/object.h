@@ -141,6 +141,9 @@ public:
    Object::ptr clone() const;
    virtual Object::ptr cloneInternal() const = 0;
 
+   Object::ptr createEmpty() const;
+   virtual Object::ptr createEmptyInternal() const = 0;
+
    virtual bool check() const;
 
    virtual bool isEmpty() const;
@@ -365,6 +368,12 @@ class ObjectTypeRegistry {
    } \
    ObjType::ptr clone() const { \
       return ObjType::as(cloneInternal()); \
+   } \
+   Object::ptr createEmptyInternal() const { \
+      return Object::ptr(new ObjType(Object::Initialized)); \
+   } \
+   ObjType::ptr createEmpty() const { \
+      return ObjType::as(createEmptyInternal()); \
    } \
    template<class OtherType> \
    static ObjType::ptr clone(typename OtherType::ptr other) { \

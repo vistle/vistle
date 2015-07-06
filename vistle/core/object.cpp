@@ -188,6 +188,11 @@ Object::ptr Object::clone() const {
    return cloneInternal();
 }
 
+Object::ptr Object::createEmpty() const {
+
+   return createEmptyInternal();
+}
+
 bool Object::check() const {
 
    V_CHECK (d()->refcount >= 0);
