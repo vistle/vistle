@@ -1048,7 +1048,7 @@ bool ClusterManager::handlePriv(const message::AddObjectCompleted &complete) {
 
 bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
-   bool localSender = m_stateTracker.getHub(prog.senderId()) == Communicator::the().hubId();
+   const bool localSender = m_stateTracker.getHub(prog.senderId()) == Communicator::the().hubId();
    RunningMap::iterator i = runningMap.find(prog.senderId());
    if (i == runningMap.end()) {
       vassert(localSender == false);
