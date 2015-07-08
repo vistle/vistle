@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cmath>
 #include <limits>
+#include <sstream>
 
 //#define TIMING
 
@@ -14,6 +15,8 @@
 //#undef NDEBUG
 //#define NDEBUG
 #include <cassert>
+
+//#define ERRORPIC
 
 typedef unsigned char uchar;
 
@@ -121,7 +124,27 @@ static void depthdequant_t(ZType *zbuf, const Quant *quantbuf, DepthFormat forma
                   uint32_t zz = d1 + zoff;
                   set_z(zbuf[(yy+dy)*stride+dx+xx], zz);
                }
-            } else if (d1 > d2) {
+            } else if (bits == AllFar) {
+               for (int i=0; i<size; ++i) {
+                  const int xx = x+i%edge;
+                  const int yy = y+i/edge;
+                  if (xx >= width)
+                     continue;
+                  if (yy >= height)
+                     continue;
+                  set_z(zbuf[(yy+dy)*stride+dx+xx], Far);
+               }
+            } else if (bits == 0) {
+               for (int i=0; i<size; ++i) {
+                  const int xx = x+i%edge;
+                  const int yy = y+i/edge;
+                  if (xx >= width)
+                     continue;
+                  if (yy >= height)
+                     continue;
+                  set_z(zbuf[(yy+dy)*stride+dx+xx], d1);
+               }
+            } else {
                d1 += Next-1;
                // max quantized interpolation value means maximum posssible framebuffer depth
                const float range = d1-d2;
@@ -140,16 +163,6 @@ static void depthdequant_t(ZType *zbuf, const Quant *quantbuf, DepthFormat forma
                      zz = d2 + zoff;
                   }
                   set_z(zbuf[(yy+dy)*stride+dx+xx], zz);
-               }
-            } else {
-               for (int i=0; i<size; ++i) {
-                  const int xx = x+i%edge;
-                  const int yy = y+i/edge;
-                  if (xx >= width)
-                     continue;
-                  if (yy >= height)
-                     continue;
-                  set_z(zbuf[(yy+dy)*stride+dx+xx], d1);
                }
             }
          }
@@ -342,6 +355,11 @@ static void depthquant_t(const uchar *inimg, Quant *quantbuf, int x0, int y0, in
    const uint32_t mask = (1U << quantbits)-1;
    const uint32_t Valid = Quant::precision == 24 ? (Far & ~((1U<<scalebits)-1)) : 0x00ffff00;
    const uint32_t Next = Far - Valid + 1;
+
+   assert(Valid <= Far);
+   assert(Next > 0);
+   assert((Next & Valid) > 0);
+   assert(((Next-1) & Valid) == 0);
 #define NOCHECK
 #if !defined(NOCHECK) || !defined(NDEBUG)
    const uint32_t qm2 = (1U << quantbits)/2;
@@ -398,15 +416,16 @@ static void depthquant_t(const uchar *inimg, Quant *quantbuf, int x0, int y0, in
          }
 
          mindepth &= Valid;
-         if ((maxdepth & Valid) != maxdepth) {
+         if (maxdepth != mindepth) {
             maxdepth &= Valid;
-            if (maxdepth != (Far & Valid))
+            if (maxdepth != (Far & Valid)) {
                maxdepth += Next;
+            }
             maxdepth += Next-1;
+            assert(haveFar || (mindepth&Valid) < (maxdepth&Valid));
          }
 
          assert(mindepth <= maxdepth);
-         assert(haveFar || (mindepth&Valid) < (maxdepth&Valid));
          const float qscale = haveFar ? mask-0.5f : mask+0.5f;
 
          Quant &sq = quantbuf[((yy-y0)/edge)*((w+edge-1)/edge)+(xx-x0)/edge];
@@ -430,8 +449,8 @@ static void depthquant_t(const uchar *inimg, Quant *quantbuf, int x0, int y0, in
                         quant = mask;
                      } else {
                         quant = ((depth-mindepth)*qscale)/range;
+                        assert(quant < mask);
                      }
-                     assert(quant <= mask);
 
                      bits |= uint64_t(quant)<<(idx*quantbits);
                   }
@@ -611,7 +630,7 @@ void depthquant(char *quantbufS, const char *zbufS, DepthFormat format, int dept
 }
 
 template<typename T>
-double depthcompare_t(const T *ref, const T *check, unsigned w, unsigned h, int precision, int bits_per_pixel, bool print) {
+double depthcompare_t(const T *ref, const T *check, int xx, int yy, int w, int h, int stride, int precision, int bits_per_pixel, bool print) {
 
    size_t numlow=0, numhigh=0;
    unsigned maxx=0, maxy=0;
@@ -631,7 +650,7 @@ double depthcompare_t(const T *ref, const T *check, unsigned w, unsigned h, int 
          size_t idx = y*w+x;
          T e = 0;
 
-         T r = ref[idx];
+         T r = ref[(yy+y)*stride+xx+x];
          T c = check[idx];
          if (sizeof(T)==4) {
             r >>= 8;
@@ -714,7 +733,17 @@ double depthcompare_t(const T *ref, const T *check, unsigned w, unsigned h, int 
 }
 
 template<>
-double depthcompare_t(const float *ref, const float *check, unsigned w, unsigned h, int precision, int bits_per_pixel, bool print) {
+double depthcompare_t(const float *ref, const float *check, int xx, int yy, int w, int h, int stride, int precision, int bits_per_pixel, bool print) {
+
+#ifdef ERRORPIC
+   static int count = 0;
+   std::stringstream filename;
+   filename << "dq_error_" << count << ".ppm";
+   ++count;
+   FILE *errorpic = fopen(filename.str().c_str(), "w");
+   if (errorpic)
+      fprintf(errorpic,"P3\n%u %u\n%d\n",w,h,255);
+#endif
 
    typedef float T;
    size_t numlow=0, numhigh=0;
@@ -731,14 +760,21 @@ double depthcompare_t(const float *ref, const float *check, unsigned w, unsigned
          size_t idx = y*w+x;
          T e = 0;
 
-         T r = ref[idx];
+         T r = ref[(yy+y)*stride+xx+x];
          T c = check[idx];
+#ifdef ERRORPIC
+         if (errorpic) {
+            float abserr = fabs(r-c);
+            unsigned err = abserr*((1<<24)-1);
+            fprintf(errorpic, "%4u %4u %4u ", err>>16, (err>>8)&0xff, err&0xff);
+         }
+#endif
          if (r == Max) {
             ++numblack;
             if (c != r) {
                ++numblackwrong;
                if (print)
-                  fprintf(stderr, "!B: %u %u (%lu)\n", x, y, (unsigned long)c);
+                  fprintf(stderr, "!B f: %u %u (%lu)\n", x, y, (unsigned long)c);
             }
          } else {
 
@@ -796,10 +832,14 @@ double depthcompare_t(const float *ref, const float *check, unsigned w, unsigned
 #endif
    }
 
+#ifdef ERRORPIC
+   fclose(errorpic);
+#endif
+
    return PSNR;
 }
 
-double depthcompare(const char *ref, const char *check, DepthFormat format, int depthps, unsigned w, unsigned h, bool print) {
+double depthcompare(const char *ref, const char *check, DepthFormat format, int depthps, int x, int y, int w, int h, int stride, bool print) {
 
    int precision = 0, bits_per_pixel = 0;
    if (depthps == 2) {
@@ -811,12 +851,12 @@ double depthcompare(const char *ref, const char *check, DepthFormat format, int 
    }
 
    if (format == DepthFloat) {
-      return depthcompare_t<float>((const float *)ref, (const float *)check, w, h, precision, bits_per_pixel, print);
+      return depthcompare_t<float>((const float *)ref, (const float *)check, x, y, w, h, stride, precision, bits_per_pixel, print);
    } else {
       if (depthps == 2) {
-         return depthcompare_t<uint16_t>((const uint16_t *)ref, (const uint16_t *)check, w, h, precision, bits_per_pixel, print);
+         return depthcompare_t<uint16_t>((const uint16_t *)ref, (const uint16_t *)check, x, y, w, h, stride, precision, bits_per_pixel, print);
       } else if (depthps == 4) {
-         return depthcompare_t<uint32_t>((const uint32_t *)ref, (const uint32_t *)check, w, h, precision, bits_per_pixel, print);
+         return depthcompare_t<uint32_t>((const uint32_t *)ref, (const uint32_t *)check, x, y, w, h, stride, precision, bits_per_pixel, print);
       }
    }
 

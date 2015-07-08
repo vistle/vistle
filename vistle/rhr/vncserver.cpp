@@ -1063,7 +1063,7 @@ struct EncodeTask: public tbb::task {
                 std::vector<char> dequant(sizeof(float)*w*h);
                 depthdequant(dequant.data(), qbuf, DepthFloat, ds, 0, 0, w, h);
                 //depthquant(qbuf, dequant.data(), DepthFloat, ds, x, y, w, h, stride); // test depthcompare
-                depthcompare(zbuf, dequant.data(), DepthFloat, ds, w, h);
+                depthcompare(zbuf, dequant.data(), DepthFloat, ds, x, y, w, h, stride);
 #endif
                 result.payload = qbuf;
             } else {

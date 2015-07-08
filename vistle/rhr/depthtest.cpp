@@ -35,7 +35,7 @@ void measure(const std::string &name, const float *depth, size_t sz, int precisi
       double dstart = Clock::time();
       depthdequant((char *)&dequant[0], &quant[0], DepthFloat, precision, 0, 0, sz, sz);
       double ddur = Clock::time() - dstart;
-      double psnr = depthcompare((const char *)depth, (const char *)&dequant[0], DepthFloat, 4, sz, sz, false);
+      double psnr = depthcompare((const char *)depth, (const char *)&dequant[0], DepthFloat, 4, 0, 0, sz, sz, sz, false);
 
       dtotal += ddur;
       if (ddur < dfast)
@@ -53,7 +53,7 @@ void measure(const std::string &name, const float *depth, size_t sz, int precisi
       depthquant(&quant2[0], (const char *)&dequant[0], DepthFloat, precision, 0, 0, sz, sz);
       std::vector<float> dequant2(num_pix);
       depthdequant((char *)&dequant2[0], &quant2[0], DepthFloat, precision, 0, 0, sz, sz);
-      double psnr2 = depthcompare((const char *)&dequant[0], (const char *)&dequant2[0], DepthFloat, 4, sz, sz, false);
+      double psnr2 = depthcompare((const char *)&dequant[0], (const char *)&dequant2[0], DepthFloat, 4, 0, 0, sz, sz, sz, false);
       if (i == 0)
          std::cout << "PSNR: " << psnr << " dB (recompressed: " << psnr2 << " dB)" << std::endl;
    }
