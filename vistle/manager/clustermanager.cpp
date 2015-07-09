@@ -896,12 +896,13 @@ bool ClusterManager::requestObject(const message::AddObject &add, const std::str
 
 bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesized) {
 
-   CERR << "ADDOBJECT: " << addObj << std::endl;
+   CERR << "ADDOBJECT: " << addObj << ", synthesized=" << synthesized << std::endl;
    const bool localAdd = isLocal(addObj.senderId());
-   Object::const_ptr obj = addObj.takeObject();
+   Object::const_ptr obj;
 
-   if (!localAdd) {
-      CERR << "ADDOBJECT from remote" << std::endl;
+   if (localAdd) {
+      obj = addObj.takeObject();
+   } else {
 
       int destRank = -1;
       if (getRank() == 0) {
@@ -910,7 +911,9 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
             destRank = block % getSize();
          }
       }
+      CERR << "ADDOBJECT from remote, handling on rank " << destRank << std::endl;
       if (destRank == getRank() || (getRank() == 0 && destRank == -1)) {
+         obj = addObj.takeObject();
          if (!obj) {
             vassert(!synthesized);
             CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
@@ -925,7 +928,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
    if (synthesized || localAdd) {
       vassert(obj);
    }
-   vassert(!obj || obj->refcount() >= 1);
+   vassert(!obj || (obj->refcount() >= 1 && localAdd));
 
    Port *port = portManager().getPort(addObj.senderId(), addObj.getSenderPort());
    if (!port) {
@@ -965,6 +968,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       if (!obj) {
          // block messages of receiving module until remote object is available
          vassert(!synthesized);
+         vassert(!localAdd);
          auto it = runningMap.find(destId);
          if (it != runningMap.end()) {
             it->second.block(a);
@@ -1080,7 +1084,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
    bool readyForPrepare = false, readyForReduce = false;
    bool result = true;
-   CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << "/" << prog.rank() << std::endl;
+   CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << std::endl;
    switch (prog.stage()) {
       case message::ExecutionProgress::Start: {
          readyForPrepare = true;
