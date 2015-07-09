@@ -529,6 +529,12 @@ bool ClusterManager::handle(const message::Message &message) {
          break;
       }
 
+      case Message::SETPARAMETERCHOICES: {
+         const message::SetParameterChoices &m = static_cast<const message::SetParameterChoices &>(message);
+         result = handlePriv(m);
+         break;
+      }
+
       case message::Message::BARRIER: {
 
          const message::Barrier &m = static_cast<const message::Barrier &>(message);
@@ -560,7 +566,6 @@ bool ClusterManager::handle(const message::Message &message) {
       case Message::STARTED:
       case Message::ADDPORT:
       case Message::ADDPARAMETER:
-      case Message::SETPARAMETERCHOICES:
       case Message::MODULEAVAILABLE:
       case Message::REPLAYFINISHED:
       case Message::REDUCEPOLICY:
@@ -1280,6 +1285,31 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
 #endif
          }
       }
+   }
+
+   return handled;
+}
+
+bool ClusterManager::handlePriv(const message::SetParameterChoices &setChoices) {
+#ifdef DEBUG
+   CERR << "SetParameter: sender=" << setParam.senderId() << ", module=" << setParam.getModule() << ", name=" << setParam.getName() << std::endl;
+#endif
+
+   bool handled = true;
+   auto param = getParameter(setChoices.getModule(), setChoices.getName());
+
+   if (setChoices.senderId() == setChoices.getModule()) {
+      // notification by owning module about changed parameter choices
+      if (param) {
+         setChoices.apply(param);
+      } else {
+         CERR << "no such parameter: module id=" << setChoices.getModule() << ", name=" << setChoices.getName() << std::endl;
+      }
+
+      // let all modules know that a parameter was changed
+      sendAllOthers(setChoices.senderId(), setChoices);
+   } else {
+      handled = false;
    }
 
    return handled;

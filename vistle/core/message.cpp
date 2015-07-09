@@ -1618,6 +1618,8 @@ bool Router::toMasterHub(const Message &msg, Identify::Identity senderType, int 
 
    if (msg.destId() == Id::ForBroadcast)
       return true;
+   if (msg.destId() == Id::Broadcast)
+      return true;
 
    const int t = msg.type();
    if (rt[t] & DestMasterHub) {
