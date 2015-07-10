@@ -511,6 +511,8 @@ AddObject::AddObject(const AddObject &o)
 , handle(o.handle)
 , m_handleValid(false)
 {
+    setUuid(o.uuid());
+
     if (Shm::isAttached() && Shm::the().name() == std::string(m_shmname.data())) {
         vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
         obj->ref();
