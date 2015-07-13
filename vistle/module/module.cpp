@@ -1333,7 +1333,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          if (!obj) {
             std::cerr << "did not find object " << add->objectName() << " for port " << add->getPortName() << " in AddObject" << std::endl;
          }
-         addInputObject(add->senderId(), add->getSenderPort(), add->getPortName(), add->takeObject());
+         addInputObject(add->senderId(), add->getSenderPort(), add->getPortName(), obj);
          if (!objectAdded(add->senderId(), add->getSenderPort(), p)) {
             std::cerr << "error in objectAdded(" << add->getPortName() << ")" << std::endl;
             return false;
