@@ -119,7 +119,7 @@ int StateTracker::getHub(int id) const {
    if (it->second.hub > Id::MasterHub) {
       CERR << "getHub for " << id << " failed - invalid value " << it->second.hub  << std::endl;
    }
-   assert(it->second.hub <= Id::MasterHub);
+   //assert(it->second.hub <= Id::MasterHub);
    return it->second.hub;
 }
 
