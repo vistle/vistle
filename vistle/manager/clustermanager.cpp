@@ -928,7 +928,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
    if (synthesized || localAdd) {
       vassert(obj);
    }
-   vassert(!obj || (obj->refcount() >= 1 && localAdd));
+   vassert(!obj || (obj->refcount() >= 1 && (localAdd || synthesized)));
 
    Port *port = portManager().getPort(addObj.senderId(), addObj.getSenderPort());
    if (!port) {
