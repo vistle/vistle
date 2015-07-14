@@ -1448,9 +1448,9 @@ bool VncClient::init()
 
    m_channelBase = 0;
 
-   const int numScreens = coVRConfig::instance()->numScreens();
-   m_numViews = numScreens;
-   for (int i=0; i<numScreens; ++i) {
+   const int numChannels = coVRConfig::instance()->numChannels();
+   m_numViews = numChannels;
+   for (int i=0; i<numChannels; ++i) {
        if (coVRConfig::instance()->channels[i].stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
           ++m_numViews;
        }
@@ -1472,7 +1472,7 @@ bool VncClient::init()
       coVRMSController::instance()->readMaster(&m_channelBase, sizeof(m_channelBase));
    }
 
-   std::cerr << "numScreens: " << numScreens << ", m_channelBase: " << m_channelBase << std::endl;
+   std::cerr << "numChannels: " << numChannels << ", m_channelBase: " << m_channelBase << std::endl;
    std::cerr << "numViews: " << m_numViews << ", m_channelBase: " << m_channelBase << std::endl;
 
    m_remoteCam = new osg::Camera;
@@ -1497,7 +1497,7 @@ bool VncClient::init()
    m_remoteCam->setRenderOrder(osg::Camera::POST_RENDER, 30);
    //m_remoteCam->setRenderer(new osgViewer::Renderer(m_remoteCam.get()));
 
-   for (int i=0; i<numScreens; ++i) {
+   for (int i=0; i<numChannels; ++i) {
       m_channelData.push_back(ChannelData(i));
       initChannelData(m_channelData.back());
       m_remoteCam->addChild(m_channelData.back().scene);
@@ -1652,10 +1652,10 @@ VncClient::preFrame()
       sendApplicationMessage(m_client, rfbScreenConfig, sizeof(activeConfig), &activeConfig);
    }
 
-   const int numScreens = coVRConfig::instance()->numScreens();
+   const int numChannels = coVRConfig::instance()->numChannels();
    std::vector<matricesMsg> messages(m_numViews);
    int view=0;
-   for (int i=0; i<numScreens; ++i) {
+   for (int i=0; i<numChannels; ++i) {
 
       m_channelData[view].scene->setMatrix(osg::Matrix::identity());
       fillMatricesMessage(messages[view], i, view, false);
@@ -1728,11 +1728,11 @@ VncClient::preFrame()
                coVRMSController::instance()->sendSlaves(tile.payload.get(), tile.msg->size);
             }
          } else {
-            int channelBase = coVRConfig::instance()->numScreens();
+            int channelBase = coVRConfig::instance()->numChannels();
             for (int s=0; s<coVRMSController::instance()->getNumSlaves(); ++s) {
-               int numScreens = m_numChannels[i];
+               int numChannels = m_numChannels[i];
                size_t sz = tile.msg->size;
-               if (tile.msg->viewNum < channelBase || tile.msg->viewNum >= channelBase+numScreens) {
+               if (tile.msg->viewNum < channelBase || tile.msg->viewNum >= channelBase+numChannels) {
                   //tile.msg->size = 0;
                }
                coVRMSController::instance()->sendSlave(s, tile.msg.get(), sizeof(*tile.msg));
@@ -1740,7 +1740,7 @@ VncClient::preFrame()
                   coVRMSController::instance()->sendSlave(s, tile.payload.get(), tile.msg->size);
                }
                tile.msg->size = sz;
-               channelBase += numScreens;
+               channelBase += numChannels;
             }
          }
          handleTileMessage(tile.msg, tile.payload);
@@ -1811,7 +1811,7 @@ VncClient::preFrame()
    const osg::Matrix &transform = cover->getXformMat();
    const osg::Matrix &scale = cover->getObjectsScale()->getMatrix();
    int viewIdx = 0;
-   for (int i=0; i<coVRConfig::instance()->numScreens(); ++i) {
+   for (int i=0; i<coVRConfig::instance()->numChannels(); ++i) {
       ChannelData &cd = m_channelData[viewIdx];
       const channelStruct &chan = coVRConfig::instance()->channels[i];
       const bool left = chan.stereoMode == osg::DisplaySettings::LEFT_EYE;
