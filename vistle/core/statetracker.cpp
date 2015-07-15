@@ -534,8 +534,9 @@ bool StateTracker::handlePriv(const message::Spawn &spawn) {
 
    int hub = spawn.hubId();
 
-   auto result = runningMap.emplace(moduleId, moduleId);
+   auto result = runningMap.emplace(moduleId, Module(moduleId, hub));
    Module &mod = result.first->second;
+   vassert(hub <= Id::MasterHub);
    mod.hub = hub;
    mod.name = spawn.getName();
 
@@ -564,9 +565,8 @@ bool StateTracker::handlePriv(const message::Started &started) {
 
 bool StateTracker::handlePriv(const message::Connect &connect) {
 
-   bool ret = true;
    if (portTracker()) {
-      ret = portTracker()->addConnection(connect.getModuleA(),
+      portTracker()->addConnection(connect.getModuleA(),
             connect.getPortAName(),
             connect.getModuleB(),
             connect.getPortBName());
@@ -663,10 +663,13 @@ bool StateTracker::handlePriv(const message::Idle &idle) {
    } else {
       //CERR << "module " << id << " sent Idle, but was not busy" << std::endl;
    }
-   runningMap[id].busy = false;
+   auto rit = runningMap.find(id);
+   vassert(rit != runningMap.end());
+   auto &mod = rit->second;
+   mod.busy = false;
 
    for (StateObserver *o: m_observers) {
-      o->moduleStateChanged(id, runningMap[id].state());
+      o->moduleStateChanged(id, mod.state());
    }
 
    return true;
@@ -678,8 +681,11 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam) {
    CERR << "AddParameter: module=" << addParam.moduleName() << "(" << addParam.senderId() << "), name=" << addParam.getName() << std::endl;
 #endif
 
-   ParameterMap &pm = runningMap[addParam.senderId()].parameters;
-   ParameterOrder &po = runningMap[addParam.senderId()].paramOrder;
+   auto mit = runningMap.find(addParam.senderId());
+   vassert(mit != runningMap.end());
+   auto &mod = mit->second;
+   ParameterMap &pm = mod.parameters;
+   ParameterOrder &po = mod.paramOrder;
    ParameterMap::iterator it = pm.find(addParam.getName());
    if (it != pm.end()) {
       CERR << "duplicate parameter " << addParam.moduleName() << ":" << addParam.getName() << std::endl;
@@ -763,10 +769,13 @@ bool StateTracker::handlePriv(const message::Quit &quit) {
 bool StateTracker::handlePriv(const message::Kill &kill) {
 
    const int id = kill.getModule();
-   runningMap[id].killed = true;
+   auto it = runningMap.find(id);
+   vassert(it != runningMap.end());
+   auto &mod = it->second;
+   mod.killed = true;
 
    for (StateObserver *o: m_observers) {
-      o->moduleStateChanged(id, runningMap[id].state());
+      o->moduleStateChanged(id, mod.state());
    }
 
    return true;
@@ -1085,7 +1094,9 @@ void StateTracker::computeHeights() {
             for (auto &port: output->connections()) {
                isSink = false;
                const int otherId = port->getModuleID();
-               const auto &otherMod = runningMap[otherId];
+               auto it = runningMap.find(otherId);
+               vassert(it != runningMap.end());
+               const auto &otherMod = it->second;
                if (otherMod.height != -1 && (height == -1 || otherMod.height+1 < height)) {
                   height = otherMod.height + 1;
                }
