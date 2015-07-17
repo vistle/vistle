@@ -701,8 +701,10 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
       // ignore messages where master hub did not yet create an id
       return true;
    }
-   if (spawn.destId() != Communicator::the().hubId())
+   sendAllLocal(spawn);
+   if (spawn.destId() != Communicator::the().hubId()) {
       return true;
+   }
 
    int newId = spawn.spawnId();
    const std::string idStr = boost::lexical_cast<std::string>(newId);
