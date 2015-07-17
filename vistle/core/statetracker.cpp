@@ -565,8 +565,9 @@ bool StateTracker::handlePriv(const message::Started &started) {
 
 bool StateTracker::handlePriv(const message::Connect &connect) {
 
+   bool ret = true;
    if (portTracker()) {
-      portTracker()->addConnection(connect.getModuleA(),
+      ret = portTracker()->addConnection(connect.getModuleA(),
             connect.getPortAName(),
             connect.getModuleB(),
             connect.getPortBName());
