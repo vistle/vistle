@@ -118,14 +118,14 @@ bool UserInterface::dispatch() {
       received = false;
 
       message::Buffer buf;
-      if (!message::recv(socket(), buf.msg, received, true /* blocking */)) {
+      if (!message::recv(socket(), buf, received, true /* blocking */)) {
          return false;
       }
       
       if (!received)
          break;
 
-      if (!handleMessage(&buf.msg))
+      if (!handleMessage(&buf))
          return false;
 
    }
@@ -185,7 +185,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
          m_locked = lock->locked();
          if (!m_locked) {
             for (auto &m: m_sendQueue) {
-               sendMessage(m.msg);
+               sendMessage(m);
             }
             m_sendQueue.clear();
          }

@@ -62,7 +62,7 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts)
    if (m_size > 1) {
       MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
 
-      MPI_Irecv(m_recvBufToRank.buf.data(), m_recvBufToRank.buf.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank, MPI_COMM_WORLD, &m_reqToRank);
+      MPI_Irecv(m_recvBufToRank.data(), m_recvBufToRank.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank, MPI_COMM_WORLD, &m_reqToRank);
    }
 }
 
@@ -216,7 +216,7 @@ bool Communicator::dispatch(bool *work) {
 
          vassert(m_rank == 0);
          received = true;
-         message::Message *message = &m_recvBufToRank.msg;
+         message::Message *message = &m_recvBufToRank;
          if (m_rank == 0 && message->broadcast()) {
             if (!broadcastAndHandleMessage(*message)) {
                CERR << "Quit reason: broadcast & handle" << std::endl;
@@ -228,7 +228,7 @@ bool Communicator::dispatch(bool *work) {
                done = true;
             }
          }
-         MPI_Irecv(m_recvBufToRank.buf.data(), m_recvBufToRank.buf.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank, MPI_COMM_WORLD, &m_reqToRank);
+         MPI_Irecv(m_recvBufToRank.data(), m_recvBufToRank.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank, MPI_COMM_WORLD, &m_reqToRank);
       }
 
       // test for message size from another MPI node
@@ -239,13 +239,13 @@ bool Communicator::dispatch(bool *work) {
       MPI_Test(&m_reqAny, &flag, &status);
       if (flag && status.MPI_TAG == TagToAny) {
 
-         vassert(m_recvSize <= m_recvBufToAny.buf.size());
-         MPI_Bcast(m_recvBufToAny.buf.data(), m_recvSize, MPI_BYTE,
+         vassert(m_recvSize <= m_recvBufToAny.size());
+         MPI_Bcast(m_recvBufToAny.data(), m_recvSize, MPI_BYTE,
                status.MPI_SOURCE, MPI_COMM_WORLD);
          if (m_recvSize > 0) {
             received = true;
 
-            message::Message *message = &m_recvBufToAny.msg;
+            message::Message *message = &m_recvBufToAny;
 #if 0
             printf("[%02d] message from [%02d] message type %d m_size %d\n",
                   m_rank, status.MPI_SOURCE, message->getType(), mpiMessageSize);
@@ -264,13 +264,13 @@ bool Communicator::dispatch(bool *work) {
    if (m_rank == 0) {
       message::Buffer buf;
       bool gotMsg = false;
-      if (!message::recv(m_hubSocket, buf.msg, gotMsg)) {
+      if (!message::recv(m_hubSocket, buf, gotMsg)) {
          broadcastAndHandleMessage(message::Quit());
          CERR << "Quit reason: hub comm interrupted" << std::endl;
          done = true;
       } else if (gotMsg) {
          received = true;
-         if(!broadcastAndHandleMessage(buf.msg)) {
+         if(!broadcastAndHandleMessage(buf)) {
             CERR << "Quit reason: broadcast & handle 2" << std::endl;
             done = true;
          }
@@ -280,12 +280,12 @@ bool Communicator::dispatch(bool *work) {
    if (m_dataSocket.is_open()) {
       message::Buffer buf;
       bool gotMsg = false;
-      if (!message::recv(m_dataSocket, buf.msg, gotMsg)) {
+      if (!message::recv(m_dataSocket, buf, gotMsg)) {
          CERR << "Data communication error" << std::endl;
          //done = true;
       } else if (gotMsg) {
          CERR << "Data received" << std::endl;
-         handleDataMessage(buf.msg);
+         handleDataMessage(buf);
       }
    }
 

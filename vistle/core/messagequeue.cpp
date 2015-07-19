@@ -76,9 +76,9 @@ bool MessageQueue::progress() {
 
    while (!m_queue.empty()) {
       if (m_blocking) {
-         m_mq.send(m_queue.front().buf.data(), message::Message::MESSAGE_SIZE, 0);
+         m_mq.send(m_queue.front().data(), message::Message::MESSAGE_SIZE, 0);
       } else {
-         if (!m_mq.try_send(m_queue.front().buf.data(), message::Message::MESSAGE_SIZE, 0)) {
+         if (!m_mq.try_send(m_queue.front().data(), message::Message::MESSAGE_SIZE, 0)) {
             return m_queue.empty();
          }
       }

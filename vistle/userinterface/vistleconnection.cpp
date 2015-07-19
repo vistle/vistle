@@ -173,13 +173,13 @@ bool vistle::VistleConnection::barrier() const {
    message::Buffer buf;
    message::Barrier m;
    for (;;) {
-      if (!waitForReply(m, buf.msg)) {
+      if (!waitForReply(m, buf)) {
          return false;
       }
 
-      switch(buf.msg.type()) {
+      switch(buf.type()) {
          case message::Message::BARRIERREACHED: {
-            const message::BarrierReached &reached = static_cast<const message::BarrierReached &>(buf.msg);
+            auto &reached = buf.as<message::BarrierReached>();
             assert(m.uuid() == reached.uuid());
             return true;
             break;
@@ -189,7 +189,7 @@ bool vistle::VistleConnection::barrier() const {
             break;
          }
          default:
-            std::cerr << "VistleConnection: expected BarrierReached, got " << buf.msg << std::endl;
+            std::cerr << "VistleConnection: expected BarrierReached, got " << buf << std::endl;
             assert("expected BarrierReached message" == 0);
             break;
       }

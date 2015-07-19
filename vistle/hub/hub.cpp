@@ -199,7 +199,7 @@ void Hub::slaveReady(Slave &slave) {
 
    auto state = m_stateTracker.getState();
    for (auto &m: state) {
-      sendMessage(slave.sock, m.msg);
+      sendMessage(slave.sock, m);
    }
    slave.ready = true;
 }
@@ -228,7 +228,7 @@ bool Hub::dispatch() {
       sock->io_control(command);
       if (command.get() > 0) {
          message::Buffer buf;
-         message::Message &msg = buf.msg;
+         message::Message &msg = buf;
          bool received = false;
          if (message::recv(*sock, msg, received) && received) {
             work = true;
@@ -547,7 +547,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    using namespace vistle::message;
 
    message::Buffer buf(recv);
-   Message &msg = buf.msg;
+   Message &msg = buf;
    message::Identify::Identity senderType = message::Identify::UNKNOWN;
    auto it = m_sockets.find(sock);
    if (sock) {
@@ -591,7 +591,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                   if (m_hubId <= Id::MasterHub) {
                      auto state = m_stateTracker.getState();
                      for (auto &m: state) {
-                        sendMessage(sock, m.msg);
+                        sendMessage(sock, m);
                      }
                   }
                   hubReady();
@@ -780,7 +780,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             if (m_managerConnected) {
                auto state = m_stateTracker.getState();
                for (auto &m: state) {
-                  sendMessage(sock, m.msg);
+                  sendMessage(sock, m);
                }
                hubReady();
             }
@@ -1174,10 +1174,10 @@ bool Hub::handlePriv(const message::Barrier &barrier) {
    m_barrierActive = true;
    m_barrierUuid = barrier.uuid();
    message::Buffer buf(barrier);
-   buf.msg.setDestId(Id::Broadcast);
+   buf.setDestId(Id::Broadcast);
    if (m_isMaster)
-      sendSlaves(buf.msg, true);
-   sendManager(buf.msg);
+      sendSlaves(buf, true);
+   sendManager(buf);
    return true;
 }
 

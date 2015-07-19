@@ -962,12 +962,12 @@ bool Module::dispatch() {
          throw(except::parent_died());
 
       message::Buffer buf;
-      receiveMessageQueue->receive(buf.msg);
+      receiveMessageQueue->receive(buf);
 
       if (syncMessageProcessing()) {
          int sync = 0, allsync = 0;
 
-         switch (buf.msg.type()) {
+         switch (buf.type()) {
             case vistle::message::Message::OBJECTRECEIVED:
             case vistle::message::Message::QUIT:
                sync = 1;
@@ -979,7 +979,7 @@ bool Module::dispatch() {
          mpi::all_reduce(comm(), sync, allsync, mpi::maximum<int>());
 
          do {
-            switch (buf.msg.type()) {
+            switch (buf.type()) {
                case vistle::message::Message::OBJECTRECEIVED:
                case vistle::message::Message::QUIT:
                   sync = 1;
@@ -988,18 +988,18 @@ bool Module::dispatch() {
                   break;
             }
 
-            m_stateTracker->handle(buf.msg);
-            again &= handleMessage(&buf.msg);
+            m_stateTracker->handle(buf);
+            again &= handleMessage(&buf);
 
             if (allsync && !sync) {
-               receiveMessageQueue->receive(buf.msg);
+               receiveMessageQueue->receive(buf);
             }
 
          } while(allsync && !sync);
       } else {
 
-         m_stateTracker->handle(buf.msg);
-         again &= handleMessage(&buf.msg);
+         m_stateTracker->handle(buf);
+         again &= handleMessage(&buf);
       }
    } catch (vistle::except::parent_died &e) {
 

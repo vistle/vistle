@@ -39,7 +39,7 @@ std::vector<message::Buffer> PortManager::removeConnectionsWithModule(const int 
 
    std::vector<message::Buffer> msgs = PortTracker::removeConnectionsWithModule(moduleID);
    for (const auto &msg: msgs)
-      m_clusterManager->sendAll(msg.msg);
+      m_clusterManager->sendAll(msg);
    return msgs;
 }
 

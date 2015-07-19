@@ -170,7 +170,7 @@ class V_COREEXPORT Message {
    //! message size
    unsigned int m_size;
    //! message type
-   const Type m_type;
+   Type m_type;
    //! sender ID
    int m_senderId;
    //! sender rank
@@ -181,6 +181,34 @@ class V_COREEXPORT Message {
    int m_destRank;
 };
 V_ENUM_OUTPUT_OP(Type, Message)
+
+class V_COREEXPORT Buffer: public Message {
+
+  public:
+   Buffer(): Message(Message::ANY, Message::MESSAGE_SIZE) {}
+   Buffer(const Message &message): Message(message) {
+      memcpy(payload.data(), (char *)&message+sizeof(Message), message.size()-sizeof(Message));
+   }
+   const Buffer &operator=(const Buffer &rhs) {
+      *static_cast<Message *>(this) = rhs;
+      memcpy(payload.data(), rhs.payload.data(), payload.size());
+      return *this;
+   }
+
+   template<class SomeMessage>
+   SomeMessage &as() { return *static_cast<SomeMessage *>(static_cast<Message *>(this)); }
+   template<class SomeMessage>
+   SomeMessage const &as() const { return *static_cast<const SomeMessage *>(static_cast<const Message *>(this)); }
+
+   size_t size() const { return Message::MESSAGE_SIZE; }
+   char *data() { return static_cast<char *>(static_cast<void *>(this)); }
+   const char *data() const { return static_cast<const char *>(static_cast<const void *>(this)); }
+
+  private:
+   std::array<char, Message::MESSAGE_SIZE - sizeof(Message)> payload;
+
+};
+BOOST_STATIC_ASSERT(sizeof(Buffer) == Message::MESSAGE_SIZE);
 
 //! indicate the kind of a communication partner
 class V_COREEXPORT Identify: public Message {
@@ -928,26 +956,6 @@ class V_COREEXPORT SendObject: public Message {
    double m_realtime;
 };
 BOOST_STATIC_ASSERT(sizeof(RequestObject) <= Message::MESSAGE_SIZE);
-
-union V_COREEXPORT Buffer {
-
-   Buffer(): msg(Message::ANY, Message::MESSAGE_SIZE) {}
-
-   Buffer(const Message &message) {
-
-       memcpy(buf.data(), &message, message.size());
-   }
-
-   const Buffer &operator=(const Buffer &rhs) {
-
-       memcpy(buf.data(), rhs.buf.data(), rhs.msg.size());
-       return *this;
-   }
-
-   std::array<char, Message::MESSAGE_SIZE> buf;
-   class Message msg;
-};
-BOOST_STATIC_ASSERT(sizeof(Buffer) == Message::MESSAGE_SIZE);
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

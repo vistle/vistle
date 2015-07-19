@@ -104,7 +104,7 @@ void UiManager::addClient(boost::shared_ptr<boost::asio::ip::tcp::socket> sock) 
 
       auto state = m_stateTracker.getState();
       for (auto &m: state) {
-         sendMessage(c, m.msg);
+         sendMessage(c, m);
       }
    }
 }
@@ -132,7 +132,7 @@ void UiManager::lockUi(bool locked) {
 
    if (!m_locked) {
       for (auto &m: m_queue) {
-         m_hub.handleMessage(m.msg);
+         m_hub.handleMessage(m);
       }
       m_queue.clear();
    }

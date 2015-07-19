@@ -107,7 +107,7 @@ static bool barrier() {
    if (!sendMessage(m))
       return false;
    auto buf = MODULEMANAGER.waitForReply(m.uuid());
-   if (buf->msg.type() == message::Message::BARRIERREACHED) {
+   if (buf->type() == message::Message::BARRIERREACHED) {
       return true;
    }
    return false;
@@ -141,11 +141,11 @@ static int waitForSpawn(const std::string &uuid) {
    boost::uuids::string_generator gen;
    message::uuid_t u = gen(uuid);
    auto buf = MODULEMANAGER.waitForReply(u);
-   if (buf->msg.type() == message::Message::SPAWN) {
-      auto spawn = static_cast<const message::Spawn &>(buf->msg);
+   if (buf->type() == message::Message::SPAWN) {
+      auto &spawn = buf->as<message::Spawn>();
       return spawn.spawnId();
    } else {
-      std::cerr << "waitForSpawn: got " << buf->msg << std::endl;
+      std::cerr << "waitForSpawn: got " << buf << std::endl;
    }
 
    return message::Id::Invalid;

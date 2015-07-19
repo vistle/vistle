@@ -58,19 +58,19 @@ static bool needsSync(const message::Message &m) {
 
 bool Renderer::dispatch() {
 
-   char msgRecvBuf[message::Message::MESSAGE_SIZE];
-   vistle::message::Message *message = (vistle::message::Message *) msgRecvBuf;
+   message::Buffer buf;
+   message::Message &message = buf;
 
    int quit = 0;
    bool checkAgain = false;
    int numSync = 0;
    do {
-      bool haveMessage = receiveMessageQueue->tryReceive(*message);
+      bool haveMessage = receiveMessageQueue->tryReceive(message);
 
       int sync = 0, allsync = 0;
 
       if (haveMessage) {
-         if (needsSync(*message))
+         if (needsSync(message))
             sync = 1;
       }
 
@@ -81,25 +81,25 @@ bool Renderer::dispatch() {
       do {
          if (haveMessage) {
 
-            switch (message->type()) {
+            switch (message.type()) {
                case vistle::message::Message::ADDOBJECT: {
                   if (size() == 1 || objectReceivePolicy()==message::ObjectReceivePolicy::Single) {
-                     const message::AddObject *add = static_cast<const message::AddObject *>(message);
-                     addInputObject(add->senderId(), add->getSenderPort(), add->getDestPort(), add->takeObject());
+                     auto add = static_cast<const message::AddObject &>(message);
+                     addInputObject(add.senderId(), add.getSenderPort(), add.getDestPort(), add.takeObject());
                   }
                   break;
                }
                case vistle::message::Message::OBJECTRECEIVED: {
                   vassert(objectReceivePolicy() != message::ObjectReceivePolicy::Single);
                   if (size() > 1) {
-                     const message::ObjectReceived *recv = static_cast<const message::ObjectReceived *>(message);
-                     PlaceHolder::ptr ph(new PlaceHolder(recv->objectName(), recv->meta(), recv->objectType()));
+                     auto recv = static_cast<const message::ObjectReceived &>(message);
+                     PlaceHolder::ptr ph(new PlaceHolder(recv.objectName(), recv.meta(), recv.objectType()));
                      RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
                      const bool send = rm != LocalOnly;
                      const bool bcast = rm == AllNodes;
-                     bool localAdd = rm == AllNodes || (rm == MasterOnly && m_rank==0) || (rm == LocalOnly && recv->rank() == rank());
-                     if (recv->rank() == rank()) {
-                        Object::const_ptr obj = Shm::the().getObjectFromName(recv->objectName());
+                     bool localAdd = rm == AllNodes || (rm == MasterOnly && m_rank==0) || (rm == LocalOnly && recv.rank() == rank());
+                     if (recv.rank() == rank()) {
+                        Object::const_ptr obj = Shm::the().getObjectFromName(recv.objectName());
                         if (send) {
                            if (obj) {
                               vecstreambuf<char> memstr;
@@ -128,12 +128,12 @@ bool Renderer::dispatch() {
                                  MPI_Isend(&len, 1, MPI_UINT64_T, 0, 0, MPI_COMM_WORLD, &r);
                                  MPI_Wait(&r, MPI_STATUS_IGNORE);
                               }
-                              std::cerr << "Rank " << rank() << ": OBJECT NOT FOUND: " << recv->objectName() << std::endl;
+                              std::cerr << "Rank " << rank() << ": OBJECT NOT FOUND: " << recv.objectName() << std::endl;
                            }
                         }
                         vassert(obj->check());
                         if (localAdd) {
-                           addInputObject(recv->senderId(), recv->getSenderPort(), recv->getDestPort(), obj);
+                           addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), obj);
                         }
                         obj->unref(); // normally done in AddObject::takeObject();
                      } else {
@@ -141,10 +141,10 @@ bool Renderer::dispatch() {
                            uint64_t len = 0;
                            //std::cerr << "Rank " << rank() << ": Waiting to receive" << std::endl;
                            if (bcast) {
-                              MPI_Bcast(&len, 1, MPI_UINT64_T, recv->rank(), MPI_COMM_WORLD);
+                              MPI_Bcast(&len, 1, MPI_UINT64_T, recv.rank(), MPI_COMM_WORLD);
                            } else if (rank() == 0) {
                               MPI_Request r;
-                              MPI_Irecv(&len, 1, MPI_UINT64_T, recv->rank(), 0, MPI_COMM_WORLD, &r);
+                              MPI_Irecv(&len, 1, MPI_UINT64_T, recv.rank(), 0, MPI_COMM_WORLD, &r);
                               MPI_Wait(&r, MPI_STATUS_IGNORE);
                            }
                            if (len > 0) {
@@ -152,10 +152,10 @@ bool Renderer::dispatch() {
                               std::vector<char> mem(len);
                               char *data = mem.data();
                               if (bcast) {
-                                 MPI_Bcast(data, mem.size(), MPI_BYTE, recv->rank(), MPI_COMM_WORLD);
+                                 MPI_Bcast(data, mem.size(), MPI_BYTE, recv.rank(), MPI_COMM_WORLD);
                               } else if (rank() == 0) {
                                  MPI_Request r;
-                                 MPI_Irecv(data, mem.size(), MPI_BYTE, recv->rank(), 0, MPI_COMM_WORLD, &r);
+                                 MPI_Irecv(data, mem.size(), MPI_BYTE, recv.rank(), 0, MPI_COMM_WORLD, &r);
                                  MPI_Wait(&r, MPI_STATUS_IGNORE);
                               }
                               //std::cerr << "Rank " << rank() << ": Received " << len << " bytes for " << recv->objectName() << std::endl;
@@ -166,7 +166,7 @@ bool Renderer::dispatch() {
                                  //std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;
                                  vassert(obj->check());
                                  if (localAdd) {
-                                    addInputObject(recv->senderId(), recv->getSenderPort(), recv->getDestPort(), obj);
+                                    addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), obj);
                                  }
                               } else {
                                  localAdd = false;
@@ -179,21 +179,21 @@ bool Renderer::dispatch() {
                         }
                      }
                      if (!localAdd)
-                        addInputObject(recv->senderId(), recv->getSenderPort(), recv->getDestPort(), ph);
+                        addInputObject(recv.senderId(), recv.getSenderPort(), recv.getDestPort(), ph);
                   }
                   break;
                }
                default:
-                  quit = !handleMessage(message);
+                  quit = !handleMessage(&message);
                   break;
             }
 
-            if (needsSync(*message))
+            if (needsSync(message))
                sync = 1;
          }
 
          if (allsync && !sync) {
-            receiveMessageQueue->receive(*message);
+            receiveMessageQueue->receive(message);
             haveMessage = true;
          }
 

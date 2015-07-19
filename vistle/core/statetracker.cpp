@@ -482,7 +482,7 @@ void StateTracker::processQueue() {
    std::swap(m_queue, queue);
 
    for (auto &m: queue) {
-      handle(m.msg);
+      handle(m);
    }
 
    processing = false;
