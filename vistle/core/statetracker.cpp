@@ -581,7 +581,9 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit) {
          quitMap.insert(*it);
          runningMap.erase(it);
       } else {
-         CERR << " ModuleExit [" << mod << "] not found in map" << std::endl;
+         it = quitMap.find(mod);
+         if (it == quitMap.end())
+            CERR << " ModuleExit [" << mod << "] not found in map" << std::endl;
       }
    }
    {
