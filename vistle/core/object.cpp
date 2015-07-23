@@ -399,12 +399,8 @@ const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int 
          funcs.func_name(ar); \
       } \
    }
-REG_WITH_ARCHIVE(boost::archive::text_iarchive, registerTextIArchive)
-REG_WITH_ARCHIVE(boost::archive::text_oarchive, registerTextOArchive)
-REG_WITH_ARCHIVE(boost::archive::binary_iarchive, registerBinaryIArchive)
-REG_WITH_ARCHIVE(boost::archive::binary_oarchive, registerBinaryOArchive)
-REG_WITH_ARCHIVE(boost::archive::xml_iarchive, registerXmlIArchive)
-REG_WITH_ARCHIVE(boost::archive::xml_oarchive, registerXmlOArchive)
+REG_WITH_ARCHIVE(iarchive, registerIArchive)
+REG_WITH_ARCHIVE(oarchive, registerOArchive)
 
 void Object::addAttribute(const std::string &key, const std::string &value) {
    d()->addAttribute(key, value);

@@ -10,10 +10,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/xml_oarchive.hpp>
-
+#include <core/archives.h>
 #include <core/object.h>
 
 #include "WriteVistle.h"

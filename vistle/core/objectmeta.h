@@ -29,21 +29,6 @@ boost::serialization::nvp<T> vistle_make_nvp(const char *name, T &t) {
    boost::serialization::make_nvp(name, (obj))
 #endif
 
-namespace boost {
-namespace archive {
-
-class text_iarchive;
-class text_oarchive;
-class xml_oarchive;
-class xml_iarchive;
-class binary_oarchive;
-class binary_iarchive;
-
-
-} // namespace archive
-} // namespace boost
-
-
 namespace vistle {
 
 class V_COREEXPORT Meta {

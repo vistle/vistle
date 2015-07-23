@@ -81,17 +81,9 @@ Object::ptr Object::load(Archive &ar) {
 }
 
 template<>
-V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(boost::archive::text_iarchive &ar);
+V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(iarchive &ar);
 template<>
-V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(boost::archive::text_oarchive &ar);
-template<>
-V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(boost::archive::binary_iarchive &ar);
-template<>
-V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(boost::archive::binary_oarchive &ar);
-template<>
-V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(boost::archive::xml_iarchive &ar);
-template<>
-V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(boost::archive::xml_oarchive &ar);
+V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(oarchive &ar);
 
 } // namespace vistle
 

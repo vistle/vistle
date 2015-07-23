@@ -3,17 +3,13 @@
 #include <core/object.h>
 #include <core/placeholder.h>
 #include <core/coords.h>
+#include <core/archives.h>
 
 #include "renderer.h"
 
 #include <util/vecstreambuf.h>
 #include <util/sleep.h>
 #include <util/stopwatch.h>
-
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
-
-namespace ba = boost::archive;
 
 namespace vistle {
 
@@ -103,7 +99,7 @@ bool Renderer::dispatch() {
                         if (send) {
                            if (obj) {
                               vecstreambuf<char> memstr;
-                              ba::binary_oarchive memar(memstr);
+                              vistle::oarchive memar(memstr);
                               obj->save(memar);
                               const std::vector<char> &mem = memstr.get_vector();
                               uint64_t len = mem.size();
@@ -160,7 +156,7 @@ bool Renderer::dispatch() {
                               }
                               //std::cerr << "Rank " << rank() << ": Received " << len << " bytes for " << recv->objectName() << std::endl;
                               vecstreambuf<char> membuf(mem);
-                              ba::binary_iarchive memar(membuf);
+                              vistle::iarchive memar(membuf);
                               Object::ptr obj = Object::load(memar);
                               if (obj) {
                                  //std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;

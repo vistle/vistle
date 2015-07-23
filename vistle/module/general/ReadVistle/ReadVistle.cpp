@@ -3,10 +3,7 @@
 #include <iomanip>
 #include <string>
 
-#include <boost/archive/binary_iarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/xml_iarchive.hpp>
-
+#include <core/archives.h>
 #include <core/object.h>
 
 #include "ReadVistle.h"

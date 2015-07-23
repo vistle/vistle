@@ -1,6 +1,7 @@
 vistle_find_package(Boost 1.40 REQUIRED COMPONENTS serialization system date_time regex thread)
 
 set(core_SOURCES
+   archives.cpp
    shm.cpp
    objectcache.cpp
    objectmeta.cpp

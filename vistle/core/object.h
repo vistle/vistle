@@ -21,26 +21,14 @@
 #include "dimensions.h"
 #include "export.h"
 
-namespace boost {
-namespace archive {
-
-class text_iarchive;
-class text_oarchive;
-class xml_oarchive;
-class xml_iarchive;
-class binary_oarchive;
-class binary_iarchive;
-
-
-} // namespace archive
-} // namespace boost
-
-
 namespace vistle {
 
 namespace interprocess = boost::interprocess;
 
 typedef interprocess::managed_shared_memory::handle_t shm_handle_t;
+
+class oarchive;
+class iarchive;
 
 class Shm;
 
@@ -289,12 +277,8 @@ class ObjectTypeRegistry {
    public:
    typedef Object::ptr (*CreateFunc)(Object::Data *d);
    typedef void (*DestroyFunc)(const std::string &name);
-   typedef void (*RegisterTextIArchiveFunc)(boost::archive::text_iarchive &ar);
-   typedef void (*RegisterTextOArchiveFunc)(boost::archive::text_oarchive &ar);
-   typedef void (*RegisterXmlIArchiveFunc)(boost::archive::xml_iarchive &ar);
-   typedef void (*RegisterXmlOArchiveFunc)(boost::archive::xml_oarchive &ar);
-   typedef void (*RegisterBinaryIArchiveFunc)(boost::archive::binary_iarchive &ar);
-   typedef void (*RegisterBinaryOArchiveFunc)(boost::archive::binary_oarchive &ar);
+   typedef void (*RegisterIArchiveFunc)(iarchive &ar);
+   typedef void (*RegisterOArchiveFunc)(oarchive &ar);
 
    template<class O>
    static void registerType(int id) {
@@ -304,12 +288,8 @@ class ObjectTypeRegistry {
       struct FunctionTable t = {
          O::createFromData,
          O::destroy,
-         O::registerBinaryIArchive,
-         O::registerBinaryOArchive,
-         O::registerTextIArchive,
-         O::registerTextOArchive,
-         O::registerXmlIArchive,
-         O::registerXmlOArchive,
+         O::registerIArchive,
+         O::registerOArchive,
       };
       typeMap()[id] = t;
    }
@@ -321,12 +301,8 @@ class ObjectTypeRegistry {
    struct FunctionTable {
       CreateFunc create;
       DestroyFunc destroy;
-      RegisterBinaryIArchiveFunc registerBinaryIArchive;
-      RegisterBinaryOArchiveFunc registerBinaryOArchive;
-      RegisterTextIArchiveFunc registerTextIArchive;
-      RegisterTextOArchiveFunc registerTextOArchive;
-      RegisterXmlIArchiveFunc registerXmlIArchive;
-      RegisterXmlOArchiveFunc registerXmlOArchive;
+      RegisterIArchiveFunc registerIArchive;
+      RegisterOArchiveFunc registerOArchive;
    };
    static const struct FunctionTable &getType(int id);
    typedef std::map<int, FunctionTable> TypeMap;
@@ -391,12 +367,8 @@ class ObjectTypeRegistry {
       return ObjType::clone<OtherType>(boost::const_pointer_cast<OtherType>(other)); \
    } \
    static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \
-   static void registerTextIArchive(boost::archive::text_iarchive &ar); \
-   static void registerTextOArchive(boost::archive::text_oarchive &ar); \
-   static void registerXmlIArchive(boost::archive::xml_iarchive &ar); \
-   static void registerXmlOArchive(boost::archive::xml_oarchive &ar); \
-   static void registerBinaryIArchive(boost::archive::binary_iarchive &ar); \
-   static void registerBinaryOArchive(boost::archive::binary_oarchive &ar); \
+   static void registerIArchive(iarchive &ar); \
+   static void registerOArchive(oarchive &ar); \
    ObjType(Object::InitializedFlags) : Base(ObjType::Data::create("")) {} \
    virtual bool isEmpty() const; \
    bool check() const { refresh(); if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
@@ -451,77 +423,25 @@ class ObjectTypeRegistry {
 
 #define V_SERIALIZERS4(Type1, Type2, prefix1, prefix2) \
    prefix1, prefix2 \
-   void Type1, Type2::registerTextIArchive(boost::archive::text_iarchive &ar) { \
+   void Type1, Type2::registerIArchive(iarchive &ar) { \
       ar.register_type<Type1, Type2 >(); \
    } \
    prefix1, prefix2 \
-   void Type1, Type2::registerTextOArchive(boost::archive::text_oarchive &ar) { \
-      ar.register_type<Type1, Type2 >(); \
-   } \
-   prefix1, prefix2 \
-   void Type1, Type2::registerXmlIArchive(boost::archive::xml_iarchive &ar) { \
-      ar.register_type<Type1, Type2 >(); \
-   } \
-   prefix1, prefix2 \
-   void Type1, Type2::registerXmlOArchive(boost::archive::xml_oarchive &ar) { \
-      ar.register_type<Type1, Type2 >(); \
-   } \
-   prefix1, prefix2 \
-   void Type1, Type2::registerBinaryIArchive(boost::archive::binary_iarchive &ar) { \
-      ar.register_type<Type1, Type2 >(); \
-   } \
-   prefix1, prefix2 \
-   void Type1, Type2::registerBinaryOArchive(boost::archive::binary_oarchive &ar) { \
+   void Type1, Type2::registerOArchive(oarchive &ar) { \
       ar.register_type<Type1, Type2 >(); \
    }
 
 #define V_SERIALIZERS2(ObjType, prefix) \
    prefix \
-   void ObjType::registerTextIArchive(boost::archive::text_iarchive &ar) { \
+   void ObjType::registerIArchive(iarchive &ar) { \
       ar.register_type<ObjType >(); \
    } \
    prefix \
-   void ObjType::registerTextOArchive(boost::archive::text_oarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   } \
-   prefix \
-   void ObjType::registerXmlIArchive(boost::archive::xml_iarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   } \
-   prefix \
-   void ObjType::registerXmlOArchive(boost::archive::xml_oarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   } \
-   prefix \
-   void ObjType::registerBinaryIArchive(boost::archive::binary_iarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   } \
-   prefix \
-   void ObjType::registerBinaryOArchive(boost::archive::binary_oarchive &ar) { \
+   void ObjType::registerOArchive(oarchive &ar) { \
       ar.register_type<ObjType >(); \
    }
 
 #define V_SERIALIZERS(ObjType) V_SERIALIZERS2(ObjType,)
-#if 0
-   void ObjType::registerTextIArchive(boost::archive::text_iarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   } \
-   void ObjType::registerTextOArchive(boost::archive::text_oarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   } \
-   void ObjType::registerXmlIArchive(boost::archive::xml_iarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   } \
-   void ObjType::registerXmlOArchive(boost::archive::xml_oarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   } \
-   void ObjType::registerBinaryIArchive(boost::archive::binary_iarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   } \
-   void ObjType::registerBinaryOArchive(boost::archive::binary_oarchive &ar) { \
-      ar.register_type<ObjType >(); \
-   }
-#endif
 
 #ifdef VISTLE_STATIC
 #define REGISTER_TYPE(ObjType, id) \

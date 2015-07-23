@@ -22,15 +22,12 @@
 #include <core/object.h>
 #include <core/shm.h>
 #include <core/parameter.h>
+#include <core/archives.h>
 #include <util/findself.h>
 #include <util/vecstreambuf.h>
 
 #include "clustermanager.h"
 #include "communicator.h"
-
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
-namespace ba = boost::archive;
 
 //#define QUEUE_DEBUG
 
@@ -628,7 +625,7 @@ bool ClusterManager::handlePriv(const message::RequestObject &req) {
       return true;
    }
    vecstreambuf<char> buf;
-   ba::binary_oarchive memar(buf);
+   vistle::oarchive memar(buf);
    obj->save(memar);
    const std::vector<char> &mem = buf.get_vector();
    message::SendObject send(req, obj, mem.size());
@@ -645,7 +642,7 @@ bool ClusterManager::handlePriv(const message::SendObject &send) {
    std::vector<char> buf(send.payloadSize());
    Communicator::the().readData(buf.data(), buf.size());
    vecstreambuf<char> membuf(buf);
-   ba::binary_iarchive memar(membuf);
+   vistle::iarchive memar(membuf);
    Object::ptr obj = Object::load(memar);
    if (obj) {
       CERR << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
