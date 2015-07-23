@@ -43,6 +43,8 @@ class V_COREEXPORT Coords: public Vec<Scalar,3> {
    V_DATA_END(Coords);
 };
 
+BOOST_SERIALIZATION_ASSUME_ABSTRACT(Coords)
+
 } // namespace vistle
 
 #ifdef VISTLE_IMPL

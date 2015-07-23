@@ -113,7 +113,7 @@ void DataBase::setGrid(Object::const_ptr grid) {
       d()->grid->ref();
 }
 
-V_OBJECT_TYPE(DataBase, Object::DATABASE);
+//V_OBJECT_TYPE(DataBase, Object::DATABASE);
 
 
 V_SERIALIZERS4(Vec<T,Dim>, template<class T,int Dim>);

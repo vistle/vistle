@@ -58,6 +58,8 @@ class  V_COREEXPORT Indexed: public Coords {
    V_DATA_END(Indexed);
 };
 
+BOOST_SERIALIZATION_ASSUME_ABSTRACT(Indexed)
+
 } // namespace vistle
 
 #ifdef VISTLE_IMPL

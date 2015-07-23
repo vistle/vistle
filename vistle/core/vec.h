@@ -36,6 +36,8 @@ private:
    V_DATA_END(DataBase);
 };
 
+BOOST_SERIALIZATION_ASSUME_ABSTRACT(DataBase)
+
 template <typename T, int Dim=1>
 class Vec: public DataBase {
    V_OBJECT(Vec);

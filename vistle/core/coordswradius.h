@@ -30,6 +30,8 @@ class  V_COREEXPORT CoordsWithRadius: public Coords {
    V_DATA_END(CoordsWithRadius);
 };
 
+BOOST_SERIALIZATION_ASSUME_ABSTRACT(CoordsWithRadius)
+
 } // namespace vistle
 
 #ifdef VISTLE_IMPL

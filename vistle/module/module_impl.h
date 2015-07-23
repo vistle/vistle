@@ -118,7 +118,7 @@ typename Type::const_ptr Module::expect(Port *port) {
    Object::const_ptr obj;
    if (port->objects().empty()) {
       std::stringstream str;
-      str << "no object available at " << port->getName() << ", but " << Object::toString(Type::type()) << " is required" << std::endl;
+      str << "no object available at " << port->getName() << ", but " << Object::typeName() << " is required" << std::endl;
       sendError(str.str());
       return nullptr;
    }
@@ -127,14 +127,14 @@ typename Type::const_ptr Module::expect(Port *port) {
    port->objects().pop_front();
    if (!obj) {
       std::stringstream str;
-      str << "did not receive valid object at " << port->getName() << ", but " << Object::toString(Type::type()) << " is required" << std::endl;
+      str << "did not receive valid object at " << port->getName() << ", but " << Object::typeName() << " is required" << std::endl;
       sendError(str.str());
       return ret;
    }
    vassert(obj->check());
    if (!ret) {
       std::stringstream str;
-      str << "received " << Object::toString(obj->getType()) << " at " << port->getName() << ", but " << Object::toString(Type::type()) << " is required" << std::endl;
+      str << "received " << Object::toString(obj->getType()) << " at " << port->getName() << ", but " << Object::typeName() << " is required" << std::endl;
       sendError(str.str());
    }
    return ret;

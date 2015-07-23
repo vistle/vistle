@@ -61,9 +61,6 @@ public:
 
    enum Type {
 
-      DATABASE          = -200, // type ids for abstract object classes - keep smaller than UNKNOWN
-      COORD             = -201,
-      COORDWRADIUS      = -202,
       UNKNOWN           = -1,
 
       PLACEHOLDER       = 11,
@@ -109,9 +106,6 @@ public:
          V_OBJECT_CASE(CELLTREE3)
          V_OBJECT_CASE(NORMALS)
 
-         V_OBJECT_CASE(DATABASE)
-         V_OBJECT_CASE(COORD)
-         V_OBJECT_CASE(COORDWRADIUS)
          default:
             break;
       }
@@ -143,6 +137,7 @@ public:
 
    virtual ~Object();
 
+   static const char *typeName() { return "Object"; }
    Object::ptr clone() const;
    virtual Object::ptr cloneInternal() const = 0;
 
@@ -282,6 +277,8 @@ public:
    Object &operator=(const Object &);
 };
 
+BOOST_SERIALIZATION_ASSUME_ABSTRACT(Object)
+
 class ObjectTypeRegistry {
    friend struct Object::Data;
    friend Object::ptr Object::create(Object::Data *);
@@ -356,6 +353,7 @@ class ObjectTypeRegistry {
    typedef boost::shared_ptr<const ObjType> const_ptr; \
    typedef ObjType Class; \
    static Object::Type type(); \
+   static const char *typeName() { return #ObjType; } \
    static boost::shared_ptr<const ObjType> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const ObjType>(ptr); } \
    static boost::shared_ptr<ObjType> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<ObjType>(ptr); } \
    static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new ObjType(static_cast<ObjType::Data *>(data))); } \
