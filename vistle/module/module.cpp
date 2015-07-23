@@ -216,17 +216,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 #endif
 
    auto cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheDefault, Parameter::Choice);
-   V_ENUM_SET_CHOICES_SCOPE("_cache_mode", CacheMode, ObjectCache);
-#if 0
-   std::vector<std::string> modes;
-   vassert(ObjectCache::CacheDefault == 0);
-   modes.push_back("default");
-   vassert(ObjectCache::CacheNone == 1);
-   modes.push_back("none");
-   vassert(ObjectCache::CacheAll == 2);
-   modes.push_back("all");
-   setParameterChoices(cm, modes);
-#endif
+   V_ENUM_SET_CHOICES_SCOPE(cm, CacheMode, ObjectCache);
 
    addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
 
