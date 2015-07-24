@@ -34,6 +34,7 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
 
 bool DataManager::prepareTransfer(const message::AddObject &add) {
     m_inTransitObjects.emplace(add);
+    return true;
 }
 
 bool DataManager::completeTransfer(const message::AddObjectCompleted &complete) {

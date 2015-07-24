@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <map>
-#include <future>
 
 #include <util/directory.h>
 
@@ -88,38 +87,8 @@ class ClusterManager {
    bool handlePriv(const message::SendText &text);
    bool handlePriv(const message::RequestTunnel &tunnel);
 
-#if 0
-   bool handlePriv(const message::RequestObject &req);
-   bool handlePriv(const message::SendObject &send);
-
-   //! request object or data array, return true if request was sent, false if object already present
-   bool requestObject(const message::AddObject &add, const std::string &objId, bool array);
-#endif
-
    const int m_rank;
    const int m_size;
-
-#if 0
-   struct AddObjectCompare {
-      bool operator()(const message::AddObject &a1, const message::AddObject &a2) const {
-         if (a1.uuid() != a2.uuid()) {
-            return a1.uuid() < a2.uuid();
-         }
-         if (a1.destId() != a2.destId()) {
-            return a1.destId() < a2.destId();
-         }
-#if 0
-         if (!strcmp(a1.getDestPort(), a2.getDestPort())) {
-            return strcmp(a1.getDestPort(), a2.getDestPort());
-         }
-#endif
-         return false;
-      }
-   };
-   std::set<message::AddObject, AddObjectCompare> m_inTransitObjects; //!< objects for which AddObject messages have been sent to remote hubs
-   std::map<message::AddObject, std::vector<std::string>, AddObjectCompare> m_outstandingAdds; //!< AddObject messages for which requests to retrieve objects from remote have been sent
-   std::map<std::string, message::AddObject> m_outstandingRequests; //!< requests for (sub-)objects which have not been serviced yet
-#endif
 
    struct Module {
       message::MessageQueue *sendQueue;
