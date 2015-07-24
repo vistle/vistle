@@ -25,6 +25,7 @@
 #include <boost/archive/impl/basic_binary_iarchive.ipp>
 
 #include "archives.h"
+#include "message.h"
 
 namespace ba = boost::archive;
 
@@ -61,3 +62,33 @@ template class binary_iarchive_impl<
 
 } // namespace archive
 } // namespace boost
+
+
+namespace vistle {
+
+iarchive::iarchive(std::istream &is, unsigned int flags)
+: Base(is, flags)
+, m_hub(message::Id::Invalid)
+, m_rank(-1)
+{}
+
+iarchive::iarchive(std::streambuf &bsb, unsigned int flags)
+: Base(bsb, flags)
+, m_hub(message::Id::Invalid)
+, m_rank(-1)
+{}
+
+void iarchive::setSource(int hub, int rank) {
+    m_hub = hub;
+    m_rank = rank;
+}
+
+int iarchive::sourceHub() const {
+    return m_hub;
+}
+
+int iarchive::sourceRank() const {
+    return m_rank;
+}
+
+} // namespace vistle

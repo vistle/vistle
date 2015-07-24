@@ -28,24 +28,16 @@ class iarchive: public boost::archive::binary_iarchive_impl<iarchive, std::istre
 
     typedef boost::archive::binary_iarchive_impl<iarchive, std::istream::char_type, std::istream::traits_type> Base;
 public:
-    iarchive(std::istream &is, unsigned int flags=0)
-       : boost::archive::binary_iarchive_impl<iarchive, std::istream::char_type, std::istream::traits_type>(is, flags)
-    {}
-    iarchive(std::streambuf &bsb, unsigned int flags=0)
-       : boost::archive::binary_iarchive_impl<iarchive, std::istream::char_type, std::istream::traits_type>(bsb, flags)
-    {}
+    iarchive(std::istream &is, unsigned int flags=0);
+    iarchive(std::streambuf &bsb, unsigned int flags=0);
 
+    void setSource(int hub, int rank);
+    int sourceHub() const;
+    int sourceRank() const;
+
+private:
+    int m_hub, m_rank;
 };
-
-#if 0
-#if 1
-using iarchive = boost::archive::vistle_iarchive;
-using oarchive = boost::archive::vistle_oarchive;
-#else
-using iarchive = boost::archive::binary_iarchive;
-using oarchive = boost::archive::binary_oarchive;
-#endif
-#endif
 
 typedef boost::mpl::vector<
    iarchive
