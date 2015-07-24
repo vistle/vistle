@@ -1,8 +1,8 @@
 /*
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
-#include <boost/foreach.hpp>
 #include <boost/asio.hpp>
+#include <boost/thread/lock_guard.hpp>
 
 #include <mpi.h>
 
@@ -22,6 +22,7 @@
 
 #include "communicator.h"
 #include "clustermanager.h"
+#include "datamanager.h"
 
 #define CERR \
    std::cerr << "comm [" << m_rank << "/" << m_size << "] "
@@ -280,9 +281,9 @@ bool Communicator::dispatch(bool *work) {
    if (m_dataSocket.is_open()) {
       message::Buffer buf;
       bool gotMsg = false;
+      boost::lock_guard<boost::mutex> lock(m_dataReadMutex);
       if (!message::recv(m_dataSocket, buf, gotMsg)) {
          CERR << "Data communication error" << std::endl;
-         //done = true;
       } else if (gotMsg) {
          CERR << "Data received" << std::endl;
          handleDataMessage(buf);
@@ -385,7 +386,7 @@ bool Communicator::handleDataMessage(const message::Message &message) {
          break;
       }
       default:
-         return m_clusterManager->handleData(message);
+         return m_dataManager->handle(message);
    }
    return true;
 }
@@ -448,6 +449,11 @@ Communicator::~Communicator() {
 ClusterManager &Communicator::clusterManager() const {
 
    return *m_clusterManager;
+}
+
+DataManager &Communicator::dataManager() const {
+
+   return *m_dataManager;
 }
 
 } // namespace vistle

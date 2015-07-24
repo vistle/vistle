@@ -24,6 +24,7 @@ class Parameter;
 
 class ClusterManager {
    friend class Communicator;
+   friend class DataManager;
 
  public:
    ClusterManager(int rank, const std::vector<std::string> &hosts);
@@ -32,6 +33,7 @@ class ClusterManager {
    bool scanModules(const std::string &dir);
 
    bool dispatch(bool &received);
+   const StateTracker &state() const;
 
    bool sendMessage(int receiver, const message::Message &message, int destRank=-1) const;
    bool sendAll(const message::Message &message) const;
@@ -55,7 +57,7 @@ class ClusterManager {
    PortManager &portManager() const;
 
    bool handle(const message::Message &msg);
-   bool handleData(const message::Message &msg);
+   //bool handleData(const message::Message &msg);
 
  private:
    void queueMessage(const message::Message &msg);
@@ -86,15 +88,18 @@ class ClusterManager {
    bool handlePriv(const message::SendText &text);
    bool handlePriv(const message::RequestTunnel &tunnel);
 
+#if 0
    bool handlePriv(const message::RequestObject &req);
    bool handlePriv(const message::SendObject &send);
 
    //! request object or data array, return true if request was sent, false if object already present
    bool requestObject(const message::AddObject &add, const std::string &objId, bool array);
+#endif
 
    const int m_rank;
    const int m_size;
 
+#if 0
    struct AddObjectCompare {
       bool operator()(const message::AddObject &a1, const message::AddObject &a2) const {
          if (a1.uuid() != a2.uuid()) {
@@ -114,6 +119,7 @@ class ClusterManager {
    std::set<message::AddObject, AddObjectCompare> m_inTransitObjects; //!< objects for which AddObject messages have been sent to remote hubs
    std::map<message::AddObject, std::vector<std::string>, AddObjectCompare> m_outstandingAdds; //!< AddObject messages for which requests to retrieve objects from remote have been sent
    std::map<std::string, message::AddObject> m_outstandingRequests; //!< requests for (sub-)objects which have not been serviced yet
+#endif
 
    struct Module {
       message::MessageQueue *sendQueue;

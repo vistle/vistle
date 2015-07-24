@@ -27,6 +27,7 @@
 #include <util/vecstreambuf.h>
 
 #include "clustermanager.h"
+#include "datamanager.h"
 #include "communicator.h"
 
 //#define QUEUE_DEBUG
@@ -134,6 +135,10 @@ ClusterManager::ClusterManager(int r, const std::vector<std::string> &hosts)
 ClusterManager::~ClusterManager() {
 
     m_portManager->setTracker(nullptr);
+}
+
+const StateTracker &ClusterManager::state() const {
+   return m_stateTracker;
 }
 
 int ClusterManager::getRank() const {
@@ -596,6 +601,7 @@ bool ClusterManager::handle(const message::Message &message) {
    return result;
 }
 
+#if 0
 bool ClusterManager::handleData(const message::Message &message) {
 
    using namespace vistle::message;
@@ -643,6 +649,7 @@ bool ClusterManager::handlePriv(const message::SendObject &send) {
    Communicator::the().readData(buf.data(), buf.size());
    vecstreambuf<char> membuf(buf);
    vistle::iarchive memar(membuf);
+   memar.setSource(m_stateTracker.getHub(send.senderId()), send.rank());
    Object::ptr obj = Object::load(memar);
    if (obj) {
       CERR << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
@@ -673,6 +680,7 @@ bool ClusterManager::handlePriv(const message::SendObject &send) {
 
    return true;
 }
+#endif
 
 bool ClusterManager::handlePriv(const message::Trace &trace) {
 
@@ -876,6 +884,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
    return true;
 }
 
+#if 0
 bool ClusterManager::requestObject(const message::AddObject &add, const std::string &objId, bool array) {
 
    if (array) {
@@ -892,6 +901,7 @@ bool ClusterManager::requestObject(const message::AddObject &add, const std::str
       return true;
    }
 }
+#endif
 
 bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesized) {
 
@@ -916,7 +926,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
          if (!obj) {
             vassert(!synthesized);
             CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
-            requestObject(addObj, addObj.objectName(), false);
+            Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), false);
          }
       } else {
           return true;
@@ -958,7 +968,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
             if (receivingHubs.find(hub) == receivingHubs.end()) {
                sendHub(a, hub);
                receivingHubs.insert(hub);
-               m_inTransitObjects.emplace(a);
+               Communicator::the().dataManager().prepareTransfer(a);
             }
          }
          continue;
@@ -1034,15 +1044,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
 
 bool ClusterManager::handlePriv(const message::AddObjectCompleted &complete) {
 
-   message::AddObject key(complete.originalSenderPort(), nullptr);
-   key.setUuid(complete.uuid());
-   key.setDestId(complete.destId());
-   auto it = m_inTransitObjects.find(key);
-   if (it == m_inTransitObjects.end()) {
-      CERR << "AddObject message for completion notification not found: " << complete << std::endl;
-      return false;
-   }
-   return true;
+    return Communicator::the().dataManager().completeTransfer(complete);
 }
 
 bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <boost/asio.hpp>
+#include <boost/thread/mutex.hpp>
 
 #include <mpi.h>
 
@@ -14,9 +15,11 @@ namespace vistle {
 class Parameter;
 class PythonEmbed;
 class ClusterManager;
+class DataManager;
 
 class Communicator {
    friend class ClusterManager;
+   friend class DataManager;
 
  public:
    Communicator(int rank, const std::vector<std::string> &hosts);
@@ -41,6 +44,7 @@ class Communicator {
    unsigned short uiPort() const;
 
    ClusterManager &clusterManager() const;
+   DataManager &dataManager() const;
    bool connectHub(const std::string &host, unsigned short port);
 
  private:
@@ -51,6 +55,7 @@ class Communicator {
    bool connectData();
 
    ClusterManager *m_clusterManager;
+   DataManager *m_dataManager;
 
    bool isMaster() const;
    int m_hubId;
@@ -72,6 +77,7 @@ class Communicator {
    boost::asio::io_service m_ioService;
    boost::asio::ip::tcp::socket m_hubSocket, m_dataSocket;
    boost::asio::ip::tcp::resolver::iterator m_hubEndpoint;
+   boost::mutex m_dataReadMutex, m_dataWriteMutex;
 };
 
 } // namespace vistle

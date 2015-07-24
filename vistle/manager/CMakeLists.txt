@@ -8,12 +8,14 @@ vistle_add_executable(vistle_manager
    vistle_manager.cpp
    clustermanager.h
    clustermanager.cpp
-   communicator.cpp
+   datamanager.h
+   datamanager.cpp
    communicator.h
-   executor.cpp
+   communicator.cpp
    executor.h
-   portmanager.cpp
+   executor.cpp
    portmanager.h
+   portmanager.cpp
    )
 target_link_libraries(vistle_manager
         ${Boost_LIBRARIES}
