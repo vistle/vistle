@@ -43,6 +43,7 @@ Communicator *Communicator::s_singleton = NULL;
 
 Communicator::Communicator(int r, const std::vector<std::string> &hosts)
 : m_clusterManager(new ClusterManager(r, hosts))
+, m_dataManager(new DataManager(r, hosts.size()))
 , m_hubId(message::Id::Invalid)
 , m_rank(r)
 , m_size(hosts.size())
@@ -50,7 +51,6 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts)
 , m_recvSize(0)
 , m_traceMessages(message::Message::INVALID)
 , m_hubSocket(m_ioService)
-, m_dataSocket(m_ioService)
 {
    vassert(s_singleton == NULL);
    s_singleton = this;
@@ -127,17 +127,7 @@ bool Communicator::connectHub(const std::string &host, unsigned short port) {
 
 bool Communicator::connectData() {
 
-   bool ret = true;
-   boost::system::error_code ec;
-
-   asio::connect(m_dataSocket, m_hubEndpoint, ec);
-   if (ec) {
-      std::cerr << std::endl;
-      CERR << "could not establish bulk data connection on rank " << m_rank << std::endl;
-      ret = false;
-   }
-
-   return ret;
+    return m_dataManager->connect(m_hubEndpoint);
 }
 
 bool Communicator::sendHub(const message::Message &message) {
@@ -146,20 +136,6 @@ bool Communicator::sendHub(const message::Message &message) {
       return message::send(m_hubSocket, message);
    else
       return forwardToMaster(message);
-}
-
-bool Communicator::sendData(const message::Message &message) {
-
-   return message::send(m_dataSocket, message);
-}
-
-bool Communicator::sendData(const char *buf, size_t n) {
-
-   return asio::write(m_dataSocket, asio::buffer(buf, n));
-}
-
-bool Communicator::readData(char *buf, size_t n) {
-   return asio::read(m_dataSocket, asio::buffer(buf, n));
 }
 
 bool Communicator::scanModules(const std::string &dir) {
@@ -278,17 +254,7 @@ bool Communicator::dispatch(bool *work) {
       }
    }
 
-   if (m_dataSocket.is_open()) {
-      message::Buffer buf;
-      bool gotMsg = false;
-      boost::lock_guard<boost::mutex> lock(m_dataReadMutex);
-      if (!message::recv(m_dataSocket, buf, gotMsg)) {
-         CERR << "Data communication error" << std::endl;
-      } else if (gotMsg) {
-         CERR << "Data received" << std::endl;
-         handleDataMessage(buf);
-      }
-   }
+   m_dataManager->dispatch();
 
    // test for messages from modules
    if (done) {
@@ -373,22 +339,6 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
       // message will be handled when received again from rank 0
       return true;
    }
-}
-
-bool Communicator::handleDataMessage(const message::Message &message) {
-
-   CERR << "handleDataMessage: " << message << std::endl;
-   using namespace vistle::message;
-
-   switch(message.type()) {
-      case Message::IDENTIFY: {
-         sendData(Identify(Identify::LOCALBULKDATA, m_rank));
-         break;
-      }
-      default:
-         return m_dataManager->handle(message);
-   }
-   return true;
 }
 
 bool Communicator::handleMessage(const message::Message &message) {

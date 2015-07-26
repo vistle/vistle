@@ -4,7 +4,6 @@
 #include <vector>
 
 #include <boost/asio.hpp>
-#include <boost/thread/mutex.hpp>
 
 #include <mpi.h>
 
@@ -49,9 +48,6 @@ class Communicator {
 
  private:
    bool sendHub(const message::Message &message);
-   bool sendData(const message::Message &message);
-   bool sendData(const char *buf, size_t n);
-   bool readData(char *buf, size_t n);
    bool connectData();
 
    ClusterManager *m_clusterManager;
@@ -75,9 +71,8 @@ class Communicator {
    Communicator(const Communicator &other); // not implemented
 
    boost::asio::io_service m_ioService;
-   boost::asio::ip::tcp::socket m_hubSocket, m_dataSocket;
+   boost::asio::ip::tcp::socket m_hubSocket;
    boost::asio::ip::tcp::resolver::iterator m_hubEndpoint;
-   boost::mutex m_dataReadMutex, m_dataWriteMutex;
 };
 
 } // namespace vistle
