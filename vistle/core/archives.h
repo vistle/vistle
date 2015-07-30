@@ -9,7 +9,13 @@
 
 #include <boost/mpl/vector.hpp>
 
+#include "shm.h"
+
 namespace vistle {
+
+class Object;
+typedef boost::shared_ptr<Object> obj_ptr;
+typedef boost::shared_ptr<const Object> obj_const_ptr;
 
 class oarchive: public boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type> {
 
@@ -34,6 +40,10 @@ public:
     void setSource(int hub, int rank);
     int sourceHub() const;
     int sourceRank() const;
+
+    template<typename T>
+    ShmVector<T> getArray(const std::string &name) const;
+    obj_const_ptr getObject(const std::string &name) const;
 
 private:
     int m_hub, m_rank;

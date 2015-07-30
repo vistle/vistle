@@ -120,6 +120,7 @@ class V_COREEXPORT Shm {
    shm_handle_t getHandleFromObject(boost::shared_ptr<const Object> object) const;
    shm_handle_t getHandleFromObject(const Object *object) const;
    boost::shared_ptr<const Object> getObjectFromName(const std::string &name) const;
+   void *getArrayFromName(const std::string &name) const;
 
    static std::string shmIdFilename();
    static bool cleanAll();

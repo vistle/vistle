@@ -3,8 +3,10 @@
 
 #include <boost/type_traits.hpp>
 
+#if 0
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/array.hpp>
+#endif
 
 #include <util/exception.h>
 #include "export.h"
@@ -148,9 +150,11 @@ class shm_array {
    pointer m_data;
    allocator m_allocator;
 
+#if 0
    friend class boost::serialization::access;
    template<class Archive>
       void serialize(Archive &ar, const unsigned int version);
+#endif
 
    // not implemented
    shm_array(const shm_array &other);

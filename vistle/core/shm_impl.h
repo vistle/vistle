@@ -165,6 +165,31 @@ template<typename T>
 template<class Archive>
 void ShmVector<T>::ptr::load(Archive &ar, const unsigned int version) {
 
+#if 0
+   // get a unique identifier.  Using a constant means that all shared pointers
+   // are held in the same set.  Thus we detect handle multiple pointers to the
+   // same value instances in the archive.
+   const void *shmvector_ptr_helper_id = 0;
+   shared_ptr_serialization_helper &hlp = ar.template get_helper<shared_ptr_serialization_helper>(helper_instance_id);
+
+   // load shared pointer object
+   ...
+
+   shared_ptr_serialization_helper &hlp = ar.template get_helper<shared_ptr_serialization_helper>(shared_ptr_helper_id);
+
+   // look up object in helper object
+   T *shared_object hlp.lookup(...);
+
+   // if found, return the one from the table
+
+   // load the shared_ptr data
+   shared_ptr sp = ...
+
+   // and add it to the table
+   hlp.insert(sp);
+   // implement shared_ptr_serialization_helper load algorithm with the aid of hlp
+
+#endif
    ar & boost::serialization::make_nvp("shm_name", m_p->m_name);
    ar & boost::serialization::make_nvp("shm_ptr", *m_p);
 }
