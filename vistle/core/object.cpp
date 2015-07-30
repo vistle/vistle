@@ -193,6 +193,9 @@ Object::ptr Object::createEmpty() const {
    return createEmptyInternal();
 }
 
+void Object::refresh() const {
+}
+
 bool Object::check() const {
 
    V_CHECK (d()->refcount >= 0);

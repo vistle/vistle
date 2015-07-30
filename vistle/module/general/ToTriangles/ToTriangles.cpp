@@ -56,7 +56,7 @@ struct ReplicateData {
 
       typename V::ptr out(new V(in->getSize()*n+nElem*(nStart+nEnd)));
       for (int i=0; i<Dim; ++i) {
-         auto din = in->x(i).data();
+         auto din = &in->x(i)[0];
          auto dout = out->x(i).data();
 
          const Index N = in->getSize();
@@ -140,9 +140,9 @@ bool ToTriangles::compute() {
          tri->d()->x[i] = poly->d()->x[i];
 
       Index i = 0;
-      auto el = poly->el().data();
-      auto cl = poly->cl().data();
-      auto tcl = tri->cl().data();
+      auto el = &poly->el()[0];
+      auto cl = &poly->cl()[0];
+      auto tcl = &tri->cl()[0];
       for (Index e=0; e<nelem; ++e) {
          const Index begin=el[e], end=el[e+1], last=end-1;
          for (Index v=begin; v<end-2; ++v) {
@@ -169,10 +169,10 @@ bool ToTriangles::compute() {
       Index CoordPerSphere = NumLong * (NumLat - 2) + 2;
 
       Index n = sphere->getNumSpheres();
-      auto x = sphere->x().data();
-      auto y = sphere->y().data();
-      auto z = sphere->z().data();
-      auto r = sphere->r().data();
+      auto x = &sphere->x()[0];
+      auto y = &sphere->y()[0];
+      auto z = &sphere->z()[0];
+      auto r = &sphere->r()[0];
 
       tri.reset(new Triangles(n*3*TriPerSphere, n*CoordPerSphere));
       auto tx = tri->x().data();
@@ -278,10 +278,10 @@ bool ToTriangles::compute() {
 
       Index n = tube->getNumTubes();
       Index s = tube->getNumCoords();
-      auto x = tube->x().data();
-      auto y = tube->y().data();
-      auto z = tube->z().data();
-      auto r = tube->r().data();
+      auto x = &tube->x()[0];
+      auto y = &tube->y()[0];
+      auto z = &tube->z()[0];
+      auto r = &tube->r()[0];
       auto el = tube->components().data();
       const auto startStyle = tube->startStyle();
       const auto endStyle = tube->endStyle();

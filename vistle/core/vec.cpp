@@ -35,7 +35,7 @@ Object::const_ptr DataBase::getCelltree() const {
       }
 
       if (auto g = Indexed::as(grid())) {
-         createCelltree(g->getNumElements(), g->el().data(), g->cl().data());
+         createCelltree(g->getNumElements(), &g->el()[0], &g->cl()[0]);
       }
    }
 
@@ -114,6 +114,7 @@ void DataBase::setGrid(Object::const_ptr grid) {
 }
 
 //V_OBJECT_TYPE(DataBase, Object::DATABASE);
+V_OBJECT_CTOR(DataBase);
 
 
 V_SERIALIZERS4(Vec<T,Dim>, template<class T,int Dim>);

@@ -9,6 +9,7 @@ Indexed::Indexed(const Index numElements, const Index numCorners,
                       const Meta &meta)
    : Indexed::Base(static_cast<Data *>(NULL))
 {
+    refreshImpl();
 }
 
 bool Indexed::isEmpty() const {
@@ -18,7 +19,7 @@ bool Indexed::isEmpty() const {
 
 bool Indexed::checkImpl() const {
 
-   V_CHECK (el().size() > 0);
+   V_CHECK (d()->el->size() > 0);
    if (getNumElements() > 0) {
       V_CHECK (el()[0] == 0);
       V_CHECK (el()[getNumElements()-1] < getNumCorners());
@@ -36,8 +37,10 @@ bool Indexed::checkImpl() const {
 Indexed::Celltree::const_ptr Indexed::getCelltree() const {
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
-   if (!hasAttachment("celltree"))
-      createCelltree(getNumElements(), el().data(), cl().data());
+   if (!hasAttachment("celltree")) {
+      refresh();
+      createCelltree(getNumElements(), &el()[0], &cl()[0]);
+   }
 
    Celltree::const_ptr ct = Celltree::as(getAttachment("celltree"));
    vassert(ct);
@@ -72,8 +75,8 @@ void Indexed::createVertexOwnerList() const {
 
    VertexOwnerList::ptr vol(new VertexOwnerList(numcoord));
    std::vector<Index> tmpl1(numcoord);
-   const auto cl = this->cl().data();
-   const auto el = this->el().data();
+   const auto cl = &this->cl()[0];
+   const auto el = &this->el()[0];
    auto vertexList=vol->vertexList().data();
 
    std::memset(vertexList, 0, (numcoord+1) * sizeof(Index));
@@ -160,12 +163,12 @@ bool Indexed::getElementBounds(Index elem, Vector *min, Vector *max) const {
    const Scalar smax = std::numeric_limits<Scalar>::max();
    *min = Vector(smax, smax, smax);
    *max = Vector(-smax, -smax, -smax);
-   const auto cl = this->cl().data();
-   const auto el = this->el().data();
+   const auto cl = &this->cl()[0];
+   const auto el = &this->el()[0];
    const Scalar *coords[3] = {
-      x().data(),
-      y().data(),
-      z().data()
+      &x()[0],
+      &y()[0],
+      &z()[0],
    };
 
    const Index begin = el[elem], end = el[elem+1];
@@ -182,6 +185,12 @@ bool Indexed::getElementBounds(Index elem, Vector *min, Vector *max) const {
    }
 
    return true;
+}
+
+void Indexed::refreshImpl() const {
+
+    m_el = d()->el->data();
+    m_cl = d()->cl->data();
 }
 
 Indexed::Data::Data(const Index numElements, const Index numCorners,
@@ -217,19 +226,25 @@ Indexed::Data *Indexed::Data::create(const std::string &objId, Type id,
 
 Index Indexed::getNumElements() const {
 
-   return el().size()-1;
+   return d()->el->size()-1;
 }
 
 Index Indexed::getNumCorners() const {
 
-   return cl().size();
+   return d()->cl->size();
 }
 
 Index Indexed::getNumVertices() const {
 
-   return x(0).size();
+    return getSize();
+}
+
+void Indexed::refresh() const {
+    Base::refresh();
+    refreshImpl();
 }
 
 V_SERIALIZERS(Indexed);
+V_OBJECT_CTOR_REFRESH(Indexed);
 
 } // namespace vistle

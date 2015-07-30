@@ -289,6 +289,17 @@ Celltree<Scalar, Index, NumDimensions>::Celltree(const Index numCells,
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
+Celltree<Scalar, Index, NumDimensions>::Celltree()
+: Base()
+{}
+
+template<typename Scalar, typename Index, int NumDimensions>
+Celltree<Scalar, Index, NumDimensions>::Celltree(Celltree::Data *data)
+: Base(data)
+{}
+
+
+template<typename Scalar, typename Index, int NumDimensions>
 bool Celltree<Scalar, Index, NumDimensions>::isEmpty() const {
 
    return d()->m_nodes->empty() || d()->m_cells->empty();

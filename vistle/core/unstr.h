@@ -49,7 +49,10 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
          const Index numVertices,
          const Meta &meta=Meta());
 
-   shm<unsigned char>::array &tl() const { return *(*d()->tl)(); }
+   void refresh() const override;
+
+   shm<unsigned char>::array &tl() { return *(*d()->tl)(); }
+   const unsigned char *tl() const { return m_tl; }
 
    bool isGhostCell(Index elem) const;
    Index findCell(const Vector &point, bool acceptGhost=false) const;
@@ -96,6 +99,10 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
 
    Interpolator getInterpolator(Index elem, const Vector &point, InterpolationMode mode=Linear) const;
    Interpolator getInterpolator(const Vector &point, InterpolationMode mode=Linear) const;
+
+ private:
+   void refreshImpl() const;
+   mutable const unsigned char *m_tl;
 
    V_DATA_BEGIN(UnstructuredGrid);
       ShmVector<unsigned char>::ptr tl;

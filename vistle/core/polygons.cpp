@@ -47,5 +47,6 @@ Polygons::Data * Polygons::Data::create(const std::string &objId, const Index nu
 }
 
 V_OBJECT_TYPE(Polygons, Object::POLYGONS);
+V_OBJECT_CTOR(Polygons);
 
 } // namespace vistle

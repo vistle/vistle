@@ -90,9 +90,9 @@ class Leveller {
    std::vector<Object::const_ptr> m_data;
    Scalar m_isoValue;
 
-   unsigned char *tl;
-   Index *el;
-   Index *cl;
+   const unsigned char *tl;
+   const Index *el;
+   const Index *cl;
    const Scalar *x;
    const Scalar *y;
    const Scalar *z;

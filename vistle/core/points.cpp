@@ -52,5 +52,6 @@ Points::Data *Points::Data::create(const std::string &objId, const Index numPoin
 }
 
 V_OBJECT_TYPE(Points, Object::POINTS);
+V_OBJECT_CTOR(Points);
 
 } // namespace vistle

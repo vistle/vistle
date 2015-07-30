@@ -56,16 +56,23 @@ class Vec: public DataBase {
    Vec(const Index size,
         const Meta &meta=Meta());
 
+   void refresh() const override;
+
    Index getSize() const {
       return d()->x[0]->size();
    }
 
    void setSize(const Index size);
 
-   array &x(int c=0) const { return *(*d()->x[c])(); }
-   array &y() const { return *(*d()->x[1])(); }
-   array &z() const { return *(*d()->x[2])(); }
-   array &w() const { return *(*d()->x[3])(); }
+   array &x(int c=0) { return *(*d()->x[c])(); }
+   array &y() { return *(*d()->x[1])(); }
+   array &z() { return *(*d()->x[2])(); }
+   array &w() { return *(*d()->x[3])(); }
+
+   const T *x(int c=0) const { return m_x[c]; }
+   const T *y() const { return m_x[1]; }
+   const T *z() const { return m_x[2]; }
+   const T *w() const { return m_x[3]; }
 
    std::pair<Vector, Vector> getMinMax() const;
 
@@ -73,6 +80,9 @@ class Vec: public DataBase {
    virtual void createCelltree(Index nelem, const Index *el, const Index *cl) const;
 
  private:
+   void refreshImpl() const;
+   mutable const T *m_x[MaxDim];
+   mutable Index m_size;
 
  public:
    struct Data: public Base::Data {

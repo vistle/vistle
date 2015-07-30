@@ -114,31 +114,31 @@ struct HostData {
    Scalar m_isovalue;
    Index m_numinputdata;
    IsoDataFunctor m_isoFunc;
-   const vistle::shm<Index>::array &m_el;
-   const vistle::shm<Index>::array &m_cl;
-   const vistle::shm<unsigned char>::array &m_tl;
+   const Index *m_el;
+   const Index *m_cl;
+   const unsigned char *m_tl;
    std::vector<Index> m_caseNums;
    std::vector<Index> m_numVertices;
    std::vector<Index> m_LocationList;
    std::vector<Index> m_ValidCellVector;
-   const vistle::shm<Scalar>::array &m_x;
-   const vistle::shm<Scalar>::array &m_y;
-   const vistle::shm<Scalar>::array &m_z;
+   const Scalar *m_x;
+   const Scalar *m_y;
+   const Scalar *m_z;
    std::vector<vistle::ShmVector<Scalar>::ptr> m_outData;
    std::vector<const Scalar*> m_inputpointer;
    std::vector<Scalar*> m_outputpointer;
 
-   typedef vistle::shm<Index>::array::iterator IndexIterator;
+   typedef const Index *IndexIterator;
    typedef std::vector<Index>::iterator VectorIndexIterator;
 
    HostData(Scalar isoValue
             , IsoDataFunctor isoFunc
-            , const vistle::shm<Index>::array &el
-            , const vistle::shm<unsigned char>::array &tl
-            , const vistle::shm<Index>::array &cl
-            , const vistle::shm<Scalar>::array &x
-            , const vistle::shm<Scalar>::array &y
-            , const vistle::shm<Scalar>::array &z
+            , const Index *el
+            , const unsigned char *tl
+            , const Index *cl
+            , const Scalar *x
+            , const Scalar *y
+            , const Scalar *z
             )
       : m_isovalue(isoValue)
       , m_isoFunc(isoFunc)
@@ -149,9 +149,9 @@ struct HostData {
       , m_y(y)
       , m_z(z)
    {
-      m_inputpointer.push_back(x.data());
-      m_inputpointer.push_back(y.data());
-      m_inputpointer.push_back(z.data());
+      m_inputpointer.push_back(&x[0]);
+      m_inputpointer.push_back(&y[0]);
+      m_inputpointer.push_back(&z[0]);
 
       for(size_t i = 0; i < m_inputpointer.size(); i++){
          m_outData.push_back(new vistle::ShmVector<Scalar>);
@@ -160,9 +160,9 @@ struct HostData {
       m_numinputdata = m_inputpointer.size();
    }
 
-   void addmappeddata(const vistle::shm<Scalar>::array &mapdata){
+   void addmappeddata(const Scalar *mapdata){
 
-      m_inputpointer.push_back(mapdata.data());
+      m_inputpointer.push_back(mapdata);
       m_outData.push_back(new vistle::ShmVector<Scalar>);
       m_outputpointer.push_back(NULL);
       m_numinputdata = m_inputpointer.size();
@@ -188,24 +188,28 @@ struct DeviceData {
    std::vector<thrust::device_vector<Scalar> *> m_outData;
    std::vector<thrust::device_ptr<Scalar> > m_inputpointer;
    std::vector<thrust::device_ptr<Scalar> > m_outputpointer;
-   typedef thrust::device_vector<Index>::iterator IndexIterator;
+   typedef const Index *IndexIterator;
+   //typedef thrust::device_vector<Index>::iterator IndexIterator;
 
    DeviceData(Scalar isoValue
               , IsoDataFunctor isoFunc
-              , const vistle::shm<Index>::array &el
-              , const vistle::shm<unsigned char>::array &tl
-              , const vistle::shm<Index>::array &cl
-              , const vistle::shm<Scalar>::array &x
-              , const vistle::shm<Scalar>::array &y
-              , const vistle::shm<Scalar>::array &z)
+              , Index nelem
+              , const Index *el
+              , const unsigned char *tl
+              , Index nconn
+              , const Index *cl
+              , Index ncoord
+              , const Scalar *x
+              , const Scalar *y
+              , const Scalar *z)
    : m_isovalue(isoValue)
    , m_isoFunc(isoFunc)
-   , m_el(el.begin(), el.end())
-   , m_cl(cl.begin(), cl.end())
-   , m_tl(tl.begin(), tl.end())
-   , m_x(x.begin(), x.end())
-   , m_y(y.begin(), y.end())
-   , m_z(z.begin(), z.end())
+   , m_el(el, el+nelem)
+   , m_cl(cl, cl+nconn)
+   , m_tl(tl, tl+nelem)
+   , m_x(x, x+ncoord)
+   , m_y(y, y+ncoord)
+   , m_z(z, z+ncoord)
    {
       m_inputpointer.push_back(m_x.data());
       m_inputpointer.push_back(m_y.data());
@@ -582,7 +586,7 @@ Index Leveller::calculateSurface(Data &data) {
    thrust::counting_iterator<int> last = first + m_grid->getNumElements();
    typedef thrust::tuple<typename Data::IndexIterator, typename Data::IndexIterator> Iteratortuple;
    typedef thrust::zip_iterator<Iteratortuple> ZipIterator;
-   ZipIterator ElTupleVec(thrust::make_tuple(data.m_el.begin(), data.m_el.begin()+1));
+   ZipIterator ElTupleVec(thrust::make_tuple(&data.m_el[0], &data.m_el[1]));
    data.m_ValidCellVector.resize(m_grid->getNumElements());
    typename Data::VectorIndexIterator end = thrust::copy_if(pol(), first, last, ElTupleVec, data.m_ValidCellVector.begin(), checkcell<Data>(data));
    size_t numValidCells = end-data.m_ValidCellVector.begin();
@@ -623,9 +627,9 @@ bool Leveller::process() {
 
          HostData HD(m_isoValue,
 #ifndef CUTTINGSURFACE
-               IsoDataFunctor(dataobj->x().data()),
+               IsoDataFunctor(&dataobj->x()[0]),
 #else
-               IsoDataFunctor(vertex, point, direction, m_grid->x().data(), m_grid->y().data(), m_grid->z().data(), m_option),
+               IsoDataFunctor(vertex, point, direction, &m_grid->x()[0], &m_grid->y()[0], &m_grid->z()[0], m_option),
 #endif
                m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
 
@@ -674,11 +678,11 @@ bool Leveller::process() {
 
          DeviceData DD(m_isoValue,
 #ifndef CUTTINGSURFACE
-               IsoDataFunctor(dataobj->x().data()),
+               IsoDataFunctor(&dataobj->x()[0]),
 #else
-               IsoDataFunctor(vertex, point, direction, m_grid->x().data(), m_grid->y().data(), m_grid->z().data(), m_option),
+               IsoDataFunctor(vertex, point, direction, &m_grid->x()[0], &m_grid->y()[0], &m_grid->z()[0], m_option),
 #endif
-               m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
+               m_grid->getNumElements(), m_grid->el(), m_grid->tl(), m_grid->getNumCorners(), m_grid->cl(), m_grid->getSize(), m_grid->x(), m_grid->y(), m_grid->z());
 
 #if 0
          totalNumVertices = calculateSurface<DeviceData, thrust::device>(DD);

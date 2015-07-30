@@ -186,10 +186,10 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
 
          debug << "Triangles: [ #c " << numCorners << ", #v " << numVertices << " ]";
 
-         Index *cl = &triangles->cl()[0];
-         vistle::Scalar *x = &triangles->x()[0];
-         vistle::Scalar *y = &triangles->y()[0];
-         vistle::Scalar *z = &triangles->z()[0];
+         const Index *cl = &triangles->cl()[0];
+         const vistle::Scalar *x = &triangles->x()[0];
+         const vistle::Scalar *y = &triangles->y()[0];
+         const vistle::Scalar *z = &triangles->z()[0];
 
          geode = new osg::Geode();
          geom = new osg::Geometry();
@@ -212,7 +212,7 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
          osg::ref_ptr<osg::Vec3Array> norm = new osg::Vec3Array();
          if (m_normal) {
             vistle::Normals::const_ptr vec = vistle::Normals::as(m_normal);
-            auto x = vec->x().data(), y = vec->y().data(), z = vec->z().data();
+            auto x = &vec->x()[0], y = &vec->y()[0], z = &vec->z()[0];
             for (Index vertex = 0; vertex < numVertices; vertex ++) {
                osg::Vec3 n(x[vertex], y[vertex], z[vertex]);
                n.normalize();
@@ -273,11 +273,11 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
 
          debug << "Lines: [ #c " << numCorners << ", #e " << numElements << " ]";
 
-         Index *el = &lines->el()[0];
-         Index *cl = &lines->cl()[0];
-         vistle::Scalar *x = &lines->x()[0];
-         vistle::Scalar *y = &lines->y()[0];
-         vistle::Scalar *z = &lines->z()[0];
+         const Index *el = &lines->el()[0];
+         const Index *cl = &lines->cl()[0];
+         const vistle::Scalar *x = &lines->x()[0];
+         const vistle::Scalar *y = &lines->y()[0];
+         const vistle::Scalar *z = &lines->z()[0];
 
          geode = new osg::Geode();
          geom = new osg::Geometry();
@@ -324,14 +324,14 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
 
          debug << "Polygons: [ #c " << numCorners << ", #e " << numElements << ", #v " << numVertices << " ]";
 
-         Index *el = &polygons->el()[0];
-         Index *cl = &polygons->cl()[0];
-         vistle::Scalar *x = &polygons->x()[0];
-         vistle::Scalar *y = &polygons->y()[0];
-         vistle::Scalar *z = &polygons->z()[0];
-         vistle::Scalar *nx = NULL;
-         vistle::Scalar *ny = NULL;
-         vistle::Scalar *nz = NULL;
+         const Index *el = &polygons->el()[0];
+         const Index *cl = &polygons->cl()[0];
+         const vistle::Scalar *x = &polygons->x()[0];
+         const vistle::Scalar *y = &polygons->y()[0];
+         const vistle::Scalar *z = &polygons->z()[0];
+         const vistle::Scalar *nx = NULL;
+         const vistle::Scalar *ny = NULL;
+         const vistle::Scalar *nz = NULL;
          if (numNormals) {
             nx = &vec->x()[0];
             ny = &vec->y()[0];
@@ -474,9 +474,9 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
                osgTex->setImage(image);
 
                osg::ref_ptr<osg::FloatArray> tc = new osg::FloatArray();
-               const Index *cl = (indexed && indexed->getNumCorners() > 0) ? indexed->cl().data() : nullptr;
+               const Index *cl = (indexed && indexed->getNumCorners() > 0) ? &indexed->cl()[0] : nullptr;
                if (cl) {
-                  const auto el = indexed->el().data();
+                  const auto el = &indexed->el()[0];
                   const auto numElements = indexed->getNumElements();
                   for (Index index = 0; index < numElements; ++index) {
                      const Index num = el[index + 1] - el[index];

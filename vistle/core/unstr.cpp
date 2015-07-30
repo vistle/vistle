@@ -116,6 +116,13 @@ UnstructuredGrid::UnstructuredGrid(const Index numElements,
       const Meta &meta)
    : UnstructuredGrid::Base(UnstructuredGrid::Data::create("", numElements, numCorners, numVertices, meta))
 {
+    refreshImpl();
+}
+
+void UnstructuredGrid::refresh() const {
+
+    Base::refresh();
+    refreshImpl();
 }
 
 bool UnstructuredGrid::isEmpty() const {
@@ -125,7 +132,7 @@ bool UnstructuredGrid::isEmpty() const {
 
 bool UnstructuredGrid::checkImpl() const {
 
-   V_CHECK(tl().size() == getNumElements());
+   V_CHECK(d()->tl->size() == getNumElements());
    return true;
 }
 
@@ -248,13 +255,13 @@ Index UnstructuredGrid::findCell(const Vector &point, bool acceptGhost) const {
 
 bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
 
-   const Index *el = this->el().data();
+   const Index *el = &this->el()[0];
    const Index *cl = &this->cl()[el[elem]];
-   const Scalar *x = this->x().data();
-   const Scalar *y = this->y().data();
-   const Scalar *z = this->z().data();
+   const Scalar *x = &this->x()[0];
+   const Scalar *y = &this->y()[0];
+   const Scalar *z = &this->z()[0];
 
-   const auto type(tl().at(elem) & ~GHOST_BIT);
+   const auto type(tl()[elem] & ~GHOST_BIT);
    if (type == UnstructuredGrid::POLYHEDRON) {
       const Index nVert = el[elem+1] - el[elem];
       Index startVert = InvalidIndex;
@@ -442,10 +449,10 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
    }
 #endif
 
-   const auto el = this->el().data();
-   const auto tl = this->tl().data();
-   const auto cl = this->cl().data()+el[elem];
-   const Scalar *x[3] = { this->x().data(), this->y().data(), this->z().data() };
+   const auto el = &this->el()[0];
+   const auto tl = &this->tl()[0];
+   const auto cl = &this->cl()[el[elem]];
+   const Scalar *x[3] = { &this->x()[0], &this->y()[0], &this->z()[0] };
 
    const Index nvert = el[elem+1] - el[elem];
    std::vector<Scalar> weights((mode==Linear || mode==Mean) ? nvert : 1);
@@ -769,6 +776,10 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(const Vector &p
    return getInterpolator(elem, point, mode);
 }
 
+void UnstructuredGrid::refreshImpl() const {
+   m_tl = d()->tl->data();
+}
+
 std::pair<Vector, Vector> UnstructuredGrid::getBounds() const {
    if (hasCelltree()) {
       const auto &ct = getCelltree();
@@ -808,5 +819,6 @@ UnstructuredGrid::Data * UnstructuredGrid::Data::create(const std::string &objId
 }
 
 V_OBJECT_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID);
+V_OBJECT_CTOR_REFRESH(UnstructuredGrid);
 
 } // namespace vistle

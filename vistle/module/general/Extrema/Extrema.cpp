@@ -79,7 +79,7 @@ class Extrema: public vistle::Module {
          for (int c=0; c<Dim; ++c) {
             S min = module->min[c];
             S max = module->max[c];
-            const S *x = in->x(c).data();
+            const S *x = &in->x(c)[0];
             Index imin=InvalidIndex, imax=InvalidIndex;
             for (Index index = 0; index < size; index ++) {
                if (x[index] < min) {

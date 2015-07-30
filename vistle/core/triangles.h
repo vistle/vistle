@@ -15,10 +15,16 @@ class V_COREEXPORT Triangles: public Coords {
    Triangles(const Index numCorners, const Index numCoords,
              const Meta &meta=Meta());
 
+   void refresh() const override;
    Index getNumElements() const;
    Index getNumCorners() const;
 
-   shm<Index>::array &cl() const { return *(*d()->cl)(); }
+   shm<Index>::array &cl() { return *(*d()->cl)(); }
+   const Index *cl() const { return m_cl; }
+
+ private:
+   void refreshImpl() const;
+   mutable const Index *m_cl;
 
    V_DATA_BEGIN(Triangles);
       ShmVector<Index>::ptr cl;

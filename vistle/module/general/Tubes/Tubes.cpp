@@ -77,16 +77,16 @@ bool ToTubes::compute() {
    }
 
    Tubes::ptr tubes;
-   auto cl = lines->cl().data();
+   auto cl = &lines->cl()[0];
    // set coordinates
    if (lines->getNumCorners() == 0) {
       tubes = Tubes::clone<Vec<Scalar, 3>>(lines);
       tubes->components().resize(lines->getNumElements()+1);
    } else {
       tubes.reset(new Tubes(lines->getNumElements(), lines->getNumCorners()));
-      auto lx = lines->x().data();
-      auto ly = lines->y().data();
-      auto lz = lines->z().data();
+      auto lx = &lines->x()[0];
+      auto ly = &lines->y()[0];
+      auto lz = &lines->z()[0];
       auto tx = tubes->x().data();
       auto ty = tubes->y().data();
       auto tz = tubes->z().data();
@@ -100,9 +100,9 @@ bool ToTubes::compute() {
 
    // set radii
    auto r = tubes->r().data();
-   auto radx = radius3 ? radius3->x().data() : radius ? radius->x().data() : nullptr;
-   auto rady = radius3 ? radius3->y().data() : nullptr;
-   auto radz = radius3 ? radius3->z().data() : nullptr;
+   auto radx = radius3 ? &radius3->x()[0] : radius ? &radius->x()[0] : nullptr;
+   auto rady = radius3 ? &radius3->y()[0] : nullptr;
+   auto radz = radius3 ? &radius3->z()[0] : nullptr;
    const Scalar scale = m_radius->getValue();
    const Scalar rmin = m_range->getValue()[0];
    const Scalar rmax = m_range->getValue()[1];

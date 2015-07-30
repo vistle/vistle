@@ -33,8 +33,8 @@ struct RenderObjectData {
    float solidColor[4]; //!< object color (if there is no texture)
 
    unsigned int texWidth; //!< size of 1D texture (color table size)
-   unsigned int8 *texData; //!< 1D RGBA texture data (color table)
-   float *texCoords; //!< 1D texture coordinates (mapped data)
+   const unsigned int8 *texData; //!< 1D RGBA texture data (color table)
+   const float *texCoords; //!< 1D texture coordinates (mapped data)
 };
 
 export void forceRenderObjectDataExport(uniform RenderObjectData *uniform rod);

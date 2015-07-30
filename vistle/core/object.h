@@ -144,6 +144,7 @@ public:
    Object::ptr createEmpty() const;
    virtual Object::ptr createEmptyInternal() const = 0;
 
+   virtual void refresh() const; //!< refresh cached pointers from shm
    virtual bool check() const;
 
    virtual bool isEmpty() const;
@@ -403,8 +404,8 @@ class ObjectTypeRegistry {
    Data *d() const { return static_cast<Data *>(Object::m_data); } \
    protected: \
    bool checkImpl() const; \
-   ObjType(Data *data) : Base(data) {} \
-   ObjType() : Base() {} \
+   ObjType(Data *data); \
+   ObjType(); \
    private: \
    friend class boost::serialization::access; \
    template<class Archive> \
@@ -570,6 +571,14 @@ class ObjectTypeRegistry {
    Object::Type ObjType::type() { \
       return id; \
    }
+
+#define V_OBJECT_CTOR(ObjType) \
+   ObjType::ObjType(ObjType::Data *data): ObjType::Base(data) {} \
+   ObjType::ObjType(): ObjType::Base() {}
+
+#define V_OBJECT_CTOR_REFRESH(ObjType) \
+   ObjType::ObjType(ObjType::Data *data): ObjType::Base(data) { refreshImpl(); } \
+   ObjType::ObjType(): ObjType::Base() { refreshImpl(); }
 
 void V_COREEXPORT registerTypes();
 

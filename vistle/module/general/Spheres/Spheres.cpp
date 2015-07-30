@@ -70,7 +70,7 @@ bool ToSpheres::compute() {
    Spheres::ptr spheres = Spheres::clone<Vec<Scalar, 3>>(points);
    auto r = spheres->r().data();
 
-   auto rad = radius ? radius->x().data() : nullptr;
+   auto rad = radius ? &radius->x()[0] : nullptr;
    const Scalar scale = m_radius->getValue();
    const Scalar rmin = m_range->getValue()[0];
    const Scalar rmax = m_range->getValue()[1];

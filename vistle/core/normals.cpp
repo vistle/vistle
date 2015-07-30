@@ -51,5 +51,6 @@ Normals::Data *Normals::Data::create(const std::string &objId, const Index numNo
 }
 
 V_OBJECT_TYPE(Normals, Object::NORMALS);
+V_OBJECT_CTOR(Normals);
 
 } // namespace vistle

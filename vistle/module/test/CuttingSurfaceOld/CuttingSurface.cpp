@@ -76,9 +76,9 @@ class PlaneCut {
    Vector m_normal;
    Scalar m_distance;
 
-   unsigned char *tl;
-   Index *el;
-   Index *cl;
+   const unsigned char *tl;
+   const Index *el;
+   const Index *cl;
    const Scalar *x;
    const Scalar *y;
    const Scalar *z;

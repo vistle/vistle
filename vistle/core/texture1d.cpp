@@ -54,5 +54,6 @@ Index Texture1D::getWidth() const {
 }
 
 V_OBJECT_TYPE(Texture1D, Object::TEXTURE1D);
+V_OBJECT_CTOR(Texture1D);
 
 } // namespace vistle

@@ -46,7 +46,7 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
    if (this->texture) {
       data->texWidth = this->texture->getWidth();
       data->texData = this->texture->pixels().data();
-      data->texCoords = this->texture->coords().data();
+      data->texCoords = &this->texture->coords()[0];
    }
 
    if (geometry->isEmpty()) {
@@ -135,10 +135,10 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       Index nsph = sph->getNumSpheres();
       //std::cerr << "Spheres: #sph: " << nsph << std::endl;
       data->spheres = new ispc::Sphere[nsph];
-      auto x = sph->x().data();
-      auto y = sph->y().data();
-      auto z = sph->z().data();
-      auto r = sph->r().data();
+      auto x = &sph->x()[0];
+      auto y = &sph->y()[0];
+      auto z = &sph->z()[0];
+      auto r = &sph->r()[0];
       auto s = data->spheres;
       for (Index i=0; i<nsph; ++i) {
          s[i].p.x = x[i];
@@ -152,9 +152,9 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       Index np = point->getNumPoints();
       //std::cerr << "Points: #sph: " << np << std::endl;
       data->spheres = new ispc::Sphere[np];
-      auto x = point->x().data();
-      auto y = point->y().data();
-      auto z = point->z().data();
+      auto x = &point->x()[0];
+      auto y = &point->y()[0];
+      auto z = &point->z()[0];
       auto s = data->spheres;
       for (Index i=0; i<np; ++i) {
          s[i].p.x = x[i];
@@ -172,11 +172,11 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       data->primitiveFlags = new unsigned int[nPoints];
       data->spheres = new ispc::Sphere[nPoints];
 
-      auto el = line->el().data();
-      auto cl = line->cl().data();
-      auto x = line->x().data();
-      auto y = line->y().data();
-      auto z = line->z().data();
+      auto el = &line->el()[0];
+      auto cl = &line->cl()[0];
+      auto x = &line->x()[0];
+      auto y = &line->y()[0];
+      auto z = &line->z()[0];
       auto s = data->spheres;
       auto p = data->primitiveFlags;
       Index idx=0;
@@ -209,10 +209,10 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       const Tubes::CapStyle startStyle = tube->startStyle(), jointStyle = tube->jointStyle(), endStyle = tube->endStyle();
 
       auto el = tube->components().data();
-      auto x = tube->x().data();
-      auto y = tube->y().data();
-      auto z = tube->z().data();
-      auto r = tube->r().data();
+      auto x = &tube->x()[0];
+      auto y = &tube->y()[0];
+      auto z = &tube->z()[0];
+      auto r = &tube->r()[0];
       auto s = data->spheres;
       auto p = data->primitiveFlags;
       Index idx=0;

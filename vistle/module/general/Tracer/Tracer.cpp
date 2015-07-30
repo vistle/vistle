@@ -109,13 +109,13 @@ m_p(nullptr)
    m_ivec.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
 
    if (m_vecfld) {
-      m_vx = m_vecfld->x().data();
-      m_vy = m_vecfld->y().data();
-      m_vz = m_vecfld->z().data();
+      m_vx = &m_vecfld->x()[0];
+      m_vy = &m_vecfld->y()[0];
+      m_vz = &m_vecfld->z()[0];
    }
 
    if (m_scafld) {
-      m_p = m_scafld->x().data();
+      m_p = &m_scafld->x()[0];
       m_iscal.emplace_back(new Vec<Scalar>(Object::Initialized));
    }
 }

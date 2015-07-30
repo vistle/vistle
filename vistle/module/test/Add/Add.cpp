@@ -45,7 +45,7 @@ class Add: public vistle::Module {
          size_t size = in->getSize();
          typename V::ptr out(new V(size));
          for (int c=0; c<Dim; ++c) {
-            const S *i = in->x(c).data();
+            const S *i = &in->x(c)[0];
             S *o = out->x(c).data();
             for (unsigned int index = 0; index < size; index ++) {
                o[index] = i[index] + module->rank() + 1;

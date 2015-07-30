@@ -52,5 +52,6 @@ Spheres::Data *Spheres::Data::create(const std::string &objId, const Index numSp
 }
 
 V_OBJECT_TYPE(Spheres, Object::SPHERES);
+V_OBJECT_CTOR(Spheres);
 
 } // namespace vistle

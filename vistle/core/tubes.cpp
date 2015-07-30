@@ -91,5 +91,6 @@ Tubes::Data *Tubes::Data::create(const std::string &objId, const Index numTubes,
 }
 
 V_OBJECT_TYPE(Tubes, Object::TUBES);
+V_OBJECT_CTOR(Tubes);
 
 } // namespace vistle

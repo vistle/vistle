@@ -53,9 +53,9 @@ bool TestInterpolation::compute() {
 
    auto bounds = grid->getBounds();
    Vector min = bounds.first, max = bounds.second;
-   const Scalar *x = grid->x().data();
-   const Scalar *y = grid->y().data();
-   const Scalar *z = grid->z().data();
+   const Scalar *x = &grid->x()[0];
+   const Scalar *y = &grid->y()[0];
+   const Scalar *z = &grid->z()[0];
 
    Index numChecked = 0;
    Scalar squaredError = 0;

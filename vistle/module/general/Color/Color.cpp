@@ -122,9 +122,9 @@ void Color::getMinMax(vistle::DataBase::const_ptr object,
          }
       }
    } else  if (Vec<Scalar,3>::const_ptr vec = Vec<Scalar,3>::as(object)) {
-      const vistle::Scalar *x = vec->x().data();
-      const vistle::Scalar *y = vec->y().data();
-      const vistle::Scalar *z = vec->z().data();
+      const vistle::Scalar *x = &vec->x()[0];
+      const vistle::Scalar *y = &vec->y()[0];
+      const vistle::Scalar *z = &vec->z()[0];
 #pragma omp parallel
       {
          Scalar tmin = std::numeric_limits<Scalar>::max();
@@ -179,9 +179,9 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
          tc[index] = (x[index] - min) * invRange;
    } else  if (Vec<Scalar,3>::const_ptr f = Vec<Scalar,3>::as(object)) {
 
-      const vistle::Scalar *x = f->x().data();
-      const vistle::Scalar *y = f->y().data();
-      const vistle::Scalar *z = f->z().data();
+      const vistle::Scalar *x = &f->x()[0];
+      const vistle::Scalar *y = &f->y()[0];
+      const vistle::Scalar *z = &f->z()[0];
 
 #pragma omp parallel for
       for (size_t index = 0; index < numElem; index ++) {

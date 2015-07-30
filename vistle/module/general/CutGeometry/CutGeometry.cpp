@@ -37,8 +37,8 @@ class PlaneClip {
    Vector m_normal;
 
    bool haveCornerList; // triangle with trivial index list: every coordinate is used exactly once
-   Index *el;
-   Index *cl;
+   const Index *el;
+   const Index *cl;
    const Scalar *x;
    const Scalar *y;
    const Scalar *z;

@@ -369,9 +369,9 @@ coCellToVert::interpolate(Object::const_ptr geo_in,
       Algorithm algo_option )
 {
    Index num_elem, num_conn, num_point;
-   Index *elem_list, *conn_list;
-   unsigned char *type_list=NULL;
-   Scalar *xcoord, *ycoord, *zcoord;
+   const Index *elem_list, *conn_list;
+   const unsigned char *type_list=NULL;
+   const Scalar *xcoord, *ycoord, *zcoord;
 
    if( !geo_in )
    {
@@ -386,14 +386,14 @@ coCellToVert::interpolate(Object::const_ptr geo_in,
       num_elem = pgrid_in->getNumElements();
       num_point = pgrid_in->getNumCoords();
       num_conn = pgrid_in->getNumCorners();
-      xcoord = pgrid_in->x().data();
-      ycoord = pgrid_in->y().data();
-      zcoord = pgrid_in->z().data();
-      conn_list = pgrid_in->cl().data();
-      elem_list = pgrid_in->el().data();
+      xcoord = &pgrid_in->x()[0];
+      ycoord = &pgrid_in->y()[0];
+      zcoord = &pgrid_in->z()[0];
+      conn_list = &pgrid_in->cl()[0];
+      elem_list = &pgrid_in->el()[0];
       if (auto ugrid_in = UnstructuredGrid::as(pgrid_in)) {
          unstructured = true;
-         type_list = ugrid_in->tl().data();
+         type_list = &ugrid_in->tl()[0];
 #if 0
          if( algo_option==SQR_WEIGHT )
          {
@@ -419,21 +419,21 @@ coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in,
       return DataBase::ptr();
    }
 
-   Scalar *in_data_0=NULL, *in_data_1=NULL, *in_data_2=NULL;
+   const Scalar *in_data_0=NULL, *in_data_1=NULL, *in_data_2=NULL;
    Index dataSize;
 
    Index numComp = 0;
    if(auto s_data_in = Vec<Scalar>::as(data_in)) {      
-      in_data_0 = s_data_in->x().data();
+      in_data_0 = &s_data_in->x()[0];
       in_data_1 = NULL;
       in_data_2 = NULL;
       dataSize = s_data_in->getSize();
       numComp = 1;
    }   
    else if(auto v_data_in = Vec<Scalar, 3>::as(data_in)) {
-      in_data_0 = v_data_in->x().data();
-      in_data_1 = v_data_in->y().data();
-      in_data_2 = v_data_in->z().data();
+      in_data_0 = &v_data_in->x()[0];
+      in_data_1 = &v_data_in->y()[0];
+      in_data_2 = &v_data_in->z()[0];
       dataSize = v_data_in->getSize();    
       numComp = 3;
    }

@@ -16,15 +16,51 @@ void DataBase::Data::serialize(Archive &ar, const unsigned int version) {
 }
 
 template <class T, int Dim>
+Vec<T,Dim>::Vec()
+      : Base()
+{
+   refreshImpl();
+}
+
+template <class T, int Dim>
+Vec<T,Dim>::Vec(Vec::Data *data)
+      : Base(data)
+{
+   refreshImpl();
+}
+
+template <class T, int Dim>
 Vec<T,Dim>::Vec(const Index size,
         const Meta &meta)
-      : Base(Data::create("", size, meta)) {
-   }
+      : Base(Data::create("", size, meta))
+{
+   refreshImpl();
+}
 
 template <class T, int Dim>
 void Vec<T,Dim>::setSize(const Index size) {
-   for (int c=0; c<Dim; ++c)
+   for (int c=0; c<Dim; ++c) {
       d()->x[c]->resize(size);
+   }
+   refresh();
+}
+
+template <class T, int Dim>
+void Vec<T,Dim>::refreshImpl() const {
+
+   for (int c=0; c<Dim; ++c) {
+      m_x[c] = d()->x[c]->data();
+   }
+   for (int c=Dim; c<MaxDim; ++c) {
+      m_x[c] = nullptr;
+   }
+   m_size = d()->x[0]->size();
+}
+
+template <class T, int Dim>
+void Vec<T,Dim>::refresh() const {
+   Base::refresh();
+   refreshImpl();
 }
 
 template <class T, int Dim>
@@ -51,7 +87,7 @@ std::pair<typename Vec<T,Dim>::Vector, typename Vec<T,Dim>::Vector> Vec<T,Dim>::
    for (int c=0; c<Dim; ++c) {
       min[c] = smax;
       max[c] = -smax;
-      const Scalar *d = x(c).data();
+      const Scalar *d = &x(c)[0];
       for (Index i=0; i<sz; ++i) {
          if (d[i] < min[c])
             min[c] = d[i];
@@ -126,9 +162,9 @@ void Vec<T,Dim>::createCelltree(Index nelem, const Index *el, const Index *cl) c
       return;
 
    const Scalar *coords[3] = {
-      x().data(),
-      y().data(),
-      z().data()
+      &x()[0],
+      &y()[0],
+      &z()[0]
    };
    const Scalar smax = std::numeric_limits<Scalar>::max();
    Vector vmin, vmax;

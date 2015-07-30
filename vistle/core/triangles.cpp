@@ -6,6 +6,16 @@ Triangles::Triangles(const Index numCorners, const Index numCoords,
                      const Meta &meta)
    : Triangles::Base(Triangles::Data::create("", numCorners, numCoords,
             meta)) {
+    refreshImpl();
+}
+
+void Triangles::refresh() const {
+    Base::refresh();
+    refreshImpl();
+}
+
+void Triangles::refreshImpl() const {
+    m_cl = d()->cl->data();
 }
 
 bool Triangles::isEmpty() const {
@@ -60,9 +70,10 @@ Index Triangles::getNumElements() const {
 
 Index Triangles::getNumCorners() const {
 
-   return cl().size();
+   return d()->cl->size();
 }
 
 V_OBJECT_TYPE(Triangles, Object::TRIANGLES);
+V_OBJECT_CTOR_REFRESH(Triangles);
 
 } // namespace vistle
