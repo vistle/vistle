@@ -9,7 +9,7 @@
 #endif
 
 #ifdef NDEBUG
-#define vassert(true_expr) (void)(true_expr)
+#define vassert(true_expr)
 #else
 #define vassert(true_expr) \
    if (!(true_expr)) { \
