@@ -771,7 +771,10 @@ bool StateTracker::handlePriv(const message::Kill &kill) {
 
    const int id = kill.getModule();
    auto it = runningMap.find(id);
-   vassert(it != runningMap.end());
+   if (it == runningMap.end()) {
+      it = quitMap.find(id);
+      vassert(it != quitMap.end());
+   }
    auto &mod = it->second;
    mod.killed = true;
 
