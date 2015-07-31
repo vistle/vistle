@@ -24,6 +24,10 @@ class V_RENDEREREXPORT Renderer: public Module {
          Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr colors, Object::const_ptr texture) = 0;
    virtual void removeObject(boost::shared_ptr<RenderObject> ro);
 
+   bool parameterChanged(const Parameter *p) override;
+
+   int m_fastestObjectReceivePolicy;
+
  private:
    bool compute() override; // provide dummy implementation of Module::compute
 

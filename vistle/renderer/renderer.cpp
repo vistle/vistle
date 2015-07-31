@@ -20,14 +20,16 @@ namespace vistle {
 const int MaxObjectsPerFrame = 50;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(RenderMode,
-   (LocalOnly)
-   (MasterOnly)
-   (AllNodes)
+(LocalOnly)
+(MasterOnly)
+(AllNodes)
 )
 
 Renderer::Renderer(const std::string &description, const std::string &shmname,
                    const std::string &name, const int moduleID)
-   : Module(description, shmname, name, moduleID) {
+   : Module(description, shmname, name, moduleID)
+   , m_fastestObjectReceivePolicy(message::ObjectReceivePolicy::Single)
+{
 
    setReducePolicy(message::ReducePolicy::Never); // because of COMBINE port
    createInputPort("data_in", "input data", Port::COMBINE);
@@ -321,6 +323,23 @@ void Renderer::removeAllSentBy(int sender, const std::string &senderPort) {
 
 bool Renderer::compute() {
    return true;
+}
+
+bool Renderer::parameterChanged(const Parameter *p) {
+    if (p == m_renderMode) {
+        switch(m_renderMode->getValue()) {
+        case LocalOnly:
+            setObjectReceivePolicy(m_fastestObjectReceivePolicy);
+            break;
+        case MasterOnly:
+            setObjectReceivePolicy(message::ObjectReceivePolicy::NotifyAll);
+            break;
+        case AllNodes:
+            setObjectReceivePolicy(message::ObjectReceivePolicy::Distribute);
+            break;
+        }
+    }
+    return true;
 }
 
 void Renderer::getBounds(Vector &min, Vector &max, int t) {
