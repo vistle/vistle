@@ -30,6 +30,13 @@ public:
 
 };
 
+class Fetcher {
+public:
+    virtual ~Fetcher();
+    virtual void requestArray(const std::string &name) = 0;
+    virtual void requestObject(const std::string &name) = 0;
+};
+
 class iarchive: public boost::archive::binary_iarchive_impl<iarchive, std::istream::char_type, std::istream::traits_type> {
 
     typedef boost::archive::binary_iarchive_impl<iarchive, std::istream::char_type, std::istream::traits_type> Base;
@@ -37,16 +44,17 @@ public:
     iarchive(std::istream &is, unsigned int flags=0);
     iarchive(std::streambuf &bsb, unsigned int flags=0);
 
-    void setSource(int hub, int rank);
-    int sourceHub() const;
-    int sourceRank() const;
+    void setFetcher(boost::shared_ptr<Fetcher> fetcher);
 
     template<typename T>
-    ShmVector<T> getArray(const std::string &name) const;
+    ShmVector<T> *getArray(const std::string &name) const {
+        return static_cast<ShmVector<T> *>(getArrayPointer(name));
+    }
     obj_const_ptr getObject(const std::string &name) const;
 
 private:
-    int m_hub, m_rank;
+    void *getArrayPointer(const std::string &name) const;
+    boost::shared_ptr<Fetcher> m_fetcher;
 };
 
 typedef boost::mpl::vector<

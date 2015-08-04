@@ -66,29 +66,29 @@ template class binary_iarchive_impl<
 
 namespace vistle {
 
+Fetcher::~Fetcher() {
+}
+
 iarchive::iarchive(std::istream &is, unsigned int flags)
 : Base(is, flags)
-, m_hub(message::Id::Invalid)
-, m_rank(-1)
 {}
 
 iarchive::iarchive(std::streambuf &bsb, unsigned int flags)
 : Base(bsb, flags)
-, m_hub(message::Id::Invalid)
-, m_rank(-1)
 {}
 
-void iarchive::setSource(int hub, int rank) {
-    m_hub = hub;
-    m_rank = rank;
+void iarchive::setFetcher(boost::shared_ptr<Fetcher> fetcher) {
+    m_fetcher = fetcher;
 }
 
-int iarchive::sourceHub() const {
-    return m_hub;
-}
+void *iarchive::getArrayPointer(const std::string &name) const {
 
-int iarchive::sourceRank() const {
-    return m_rank;
+    void *ptr = Shm::the().getArrayFromName(name);
+    if (!ptr) {
+        assert(m_fetcher);
+        m_fetcher->requestArray(name);
+    }
+    return ptr;
 }
 
 } // namespace vistle

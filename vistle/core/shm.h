@@ -194,6 +194,13 @@ class ShmVector {
                return &*m_p;
             }
 
+            bool valid() const {
+                return m_p;
+            }
+
+            template<class Archive>
+            bool request(Archive &ar, const unsigned int version);
+
          private:
             friend class boost::serialization::access;
             template<class Archive>
@@ -204,6 +211,7 @@ class ShmVector {
                void load(Archive &ar, const unsigned int version);
 
             boost::interprocess::offset_ptr<ShmVector> m_p;
+            shm_name_t m_name;
       };
 
       ShmVector(Index size = 0, const std::string &name="");

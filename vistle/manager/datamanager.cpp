@@ -67,21 +67,31 @@ bool DataManager::read(char *buf, size_t n) {
    return asio::read(m_dataSocket, asio::buffer(buf, n));
 }
 
-bool DataManager::requestObject(const message::AddObject &add, const std::string &objId, bool array) {
+bool DataManager::requestArray(const std::string &arrayId, int hub, int rank) {
 
-   if (array) {
+   void *ptr= Shm::the().getArrayFromName(arrayId);
+   if (ptr) {
       return false;
-   } else {
-      Object::const_ptr obj = Shm::the().getObjectFromName(objId);
-      if (obj) {
-         return false;
-      }
-      m_outstandingAdds[add].push_back(objId);
-      m_outstandingRequests.emplace(objId, add);
-      message::RequestObject req(add, objId);
-      send(req);
-      return true;
    }
+
+#if 0
+   message::RequestObject req(add, objId);
+   send(req);
+#endif
+   return true;
+}
+
+bool DataManager::requestObject(const message::AddObject &add, const std::string &objId) {
+
+   Object::const_ptr obj = Shm::the().getObjectFromName(objId);
+   if (obj) {
+      return false;
+   }
+   m_outstandingAdds[add].push_back(objId);
+   m_outstandingRequests.emplace(objId, add);
+   message::RequestObject req(add, objId);
+   send(req);
+   return true;
 }
 
 bool DataManager::prepareTransfer(const message::AddObject &add) {
@@ -123,6 +133,32 @@ bool DataManager::handle(const message::Message &msg)
     return false;
 }
 
+class RemoteFetcher: public Fetcher {
+public:
+    RemoteFetcher(DataManager *dmgr, const message::AddObject &add)
+        : m_dmgr(dmgr)
+        , m_add(add)
+        , m_hub(Communicator::the().clusterManager().state().getHub(add.senderId()))
+        , m_rank(add.rank())
+    {
+    }
+
+    void requestArray(const std::string &name) {
+        ++m_numRequests;
+        m_dmgr->requestArray(name, m_hub, m_rank);
+    }
+
+    void requestObject(const std::string &name) {
+        ++m_numRequests;
+        m_dmgr->requestObject(m_add, name);
+    }
+
+    DataManager *m_dmgr;
+    message::AddObject m_add;
+    int m_hub, m_rank;
+    size_t m_numRequests;
+};
+
 bool DataManager::handlePriv(const message::RequestObject &req) {
    Object::const_ptr obj = Shm::the().getObjectFromName(req.objectId());
    if (!obj) {
@@ -144,19 +180,21 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
 
 bool DataManager::handlePriv(const message::SendObject &snd) {
 
+   auto reqIt = m_outstandingRequests.find(snd.objectId());
+   if (reqIt == m_outstandingRequests.end())
+      return false;
+   message::AddObject &add = reqIt->second;
+
    std::vector<char> buf(snd.payloadSize());
    read(buf.data(), buf.size());
    vecstreambuf<char> membuf(buf);
    vistle::iarchive memar(membuf);
-   memar.setSource(Communicator::the().clusterManager().state().getHub(snd.senderId()), snd.rank());
+   boost::shared_ptr<Fetcher> fetcher(new RemoteFetcher(this, add));
+   memar.setFetcher(fetcher);
    Object::ptr obj = Object::load(memar);
    if (obj) {
       CERR << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
       vassert(obj->check());
-      auto reqIt = m_outstandingRequests.find(snd.objectId());
-      if (reqIt == m_outstandingRequests.end())
-         return false;
-      message::AddObject &add = reqIt->second;
       auto addIt = m_outstandingAdds.find(add);
       if (addIt == m_outstandingAdds.end())
          return false;
