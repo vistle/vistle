@@ -248,6 +248,7 @@ class ShmVector {
          void load(Archive &ar, const unsigned int version);
 
       boost::interprocess::interprocess_mutex m_mutex;
+      int m_type;
       int m_refcount;
       shm_name_t m_name;
       typename shm<T>::array_ptr m_x;

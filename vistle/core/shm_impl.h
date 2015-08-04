@@ -2,9 +2,20 @@
 #define SHM_IMPL_H
 
 #include <boost/type_traits.hpp>
+#include <boost/mpl/find.hpp>
+#include <boost/mpl/size.hpp>
+#include <boost/mpl/push_back.hpp>
+
+#include "scalars.h"
+#include "celltreenode.h"
+
 //#include "archives.h"
 
 namespace vistle {
+
+typedef boost::mpl::push_back<Scalars, CelltreeNode<sizeof(Index), 1>>::type VectorTypes1;
+typedef boost::mpl::push_back<VectorTypes1, CelltreeNode<sizeof(Index), 2>>::type VectorTypes2;
+typedef boost::mpl::push_back<VectorTypes2, CelltreeNode<sizeof(Index), 3>>::type VectorTypes;
 
 template<typename T>
 ShmVector<T>::ptr::ptr(ShmVector *p)
@@ -52,6 +63,10 @@ template<typename T>
 ShmVector<T>::ShmVector(Index size, const std::string &name)
 : m_refcount(0)
 {
+   const size_t pos = boost::mpl::find<Scalars, T>::type::pos::value;
+   BOOST_STATIC_ASSERT(pos < boost::mpl::size<VectorTypes>::value);
+   m_type = pos;
+
    std::string n(name.empty() ? Shm::the().createArrayId() : name);
    size_t nsize = n.size();
    if (nsize >= sizeof(m_name)) {
