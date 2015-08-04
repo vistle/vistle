@@ -31,6 +31,7 @@ class V_COREEXPORT Coords: public Vec<Scalar,3> {
             Type id = UNKNOWN, const std::string & name = "",
             const Meta &meta=Meta());
       Data(const Vec<Scalar, 3>::Data &o, const std::string &n, Type id);
+      ~Data();
       static Data *create(const std::string &name="", Type id = UNKNOWN, const Index numVertices = 0,
             const Meta &meta=Meta());
 

@@ -50,6 +50,11 @@ Coords::Data *Coords::Data::create(const std::string &objId, Type id, const Inde
    return NULL;
 }
 
+Coords::Data::~Data() {
+   if (normals)
+      normals->unref();
+}
+
 Index Coords::getNumVertices() const {
 
    return getSize();
