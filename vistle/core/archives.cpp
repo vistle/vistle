@@ -81,12 +81,12 @@ void iarchive::setFetcher(boost::shared_ptr<Fetcher> fetcher) {
     m_fetcher = fetcher;
 }
 
-void *iarchive::getArrayPointer(const std::string &name) const {
+void *iarchive::getArrayPointer(const std::string &name, int type) const {
 
     void *ptr = Shm::the().getArrayFromName(name);
     if (!ptr) {
         assert(m_fetcher);
-        m_fetcher->requestArray(name);
+        m_fetcher->requestArray(name, type);
     }
     return ptr;
 }

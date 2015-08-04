@@ -60,12 +60,17 @@ typename ShmVector<T>::ptr &ShmVector<T>::ptr::operator=(ShmVector<T> *init) {
 }
 
 template<typename T>
+int ShmVector<T>::typeId() {
+   const size_t pos = boost::mpl::find<Scalars, T>::type::pos::value;
+   BOOST_STATIC_ASSERT(pos < boost::mpl::size<VectorTypes>::value);
+   return pos;
+}
+
+template<typename T>
 ShmVector<T>::ShmVector(Index size, const std::string &name)
 : m_refcount(0)
 {
-   const size_t pos = boost::mpl::find<Scalars, T>::type::pos::value;
-   BOOST_STATIC_ASSERT(pos < boost::mpl::size<VectorTypes>::value);
-   m_type = pos;
+   m_type = typeId();
 
    std::string n(name.empty() ? Shm::the().createArrayId() : name);
    size_t nsize = n.size();

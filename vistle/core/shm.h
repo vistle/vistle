@@ -214,7 +214,11 @@ class ShmVector {
             shm_name_t m_name;
       };
 
+      static int typeId();
+
       ShmVector(Index size = 0, const std::string &name="");
+      int type() const { return m_type; }
+
       int refcount() const;
       void* operator new(size_t size);
       void operator delete(void *p, size_t size);

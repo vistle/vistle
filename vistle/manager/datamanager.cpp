@@ -1,3 +1,5 @@
+#include <boost/mpl/for_each.hpp>
+
 #include "datamanager.h"
 #include "clustermanager.h"
 #include "communicator.h"
@@ -67,17 +69,16 @@ bool DataManager::read(char *buf, size_t n) {
    return asio::read(m_dataSocket, asio::buffer(buf, n));
 }
 
-bool DataManager::requestArray(const std::string &arrayId, int hub, int rank) {
+bool DataManager::requestArray(const std::string &arrayId, int type, int hub, int rank) {
 
    void *ptr= Shm::the().getArrayFromName(arrayId);
    if (ptr) {
       return false;
    }
 
-#if 0
-   message::RequestObject req(add, objId);
+   message::RequestObject req(hub, rank, arrayId, type, "" /* FIXME */ );
    send(req);
-#endif
+
    return true;
 }
 
@@ -143,9 +144,9 @@ public:
     {
     }
 
-    void requestArray(const std::string &name) {
+    void requestArray(const std::string &name, int type) {
         ++m_numRequests;
-        m_dmgr->requestArray(name, m_hub, m_rank);
+        m_dmgr->requestArray(name, type, m_hub, m_rank);
     }
 
     void requestObject(const std::string &name) {
@@ -159,20 +160,62 @@ public:
     size_t m_numRequests;
 };
 
+struct ArraySaver {
+
+    ArraySaver(const std::string &name, int type, vistle::oarchive &ar): m_ok(false), m_name(name), m_type(type), m_ar(ar) {}
+
+    template<typename T>
+    void operator()(T) {
+        if (ShmVector<T>::typeId() == m_type) {
+            if (m_ok) {
+                m_ok = false;
+                std::cerr << "multiple type matches for data array " << m_name << std::endl;
+                return;
+            }
+            auto *arr = static_cast<ShmVector<T> *>(Shm::the().getArrayFromName(m_name));
+            if (!arr) {
+                std::cerr << "did not find data array " << m_name << std::endl;
+                return;
+            }
+            if (arr->type() != m_type) {
+                std::cerr << "array " << m_name << " doest not have expected type, is " << arr->type() << ", expected " << m_type << std::endl;
+                return;
+            }
+            m_ok = true;
+        }
+    }
+
+    bool m_ok;
+    std::string m_name;
+    int m_type;
+    vistle::oarchive &m_ar;
+};
+
 bool DataManager::handlePriv(const message::RequestObject &req) {
-   Object::const_ptr obj = Shm::the().getObjectFromName(req.objectId());
-   if (!obj) {
-      CERR << "cannot find object with name " << req.objectId() << std::endl;
-      return true;
-   }
+   boost::shared_ptr<message::SendObject> snd;
    vecstreambuf<char> buf;
-   vistle::oarchive memar(buf);
-   obj->save(memar);
    const std::vector<char> &mem = buf.get_vector();
-   message::SendObject snd(req, obj, mem.size());
-   snd.setDestId(req.senderId());
-   snd.setDestRank(req.rank());
-   send(snd);
+   vistle::oarchive memar(buf);
+   if (req.isArray()) {
+      ArraySaver saver(req.objectId(), req.arrayType(), memar);
+      boost::mpl::for_each<VectorTypes>(saver);
+      if (!saver.m_ok) {
+         CERR << "failed to serialize array " << req.objectId() << std::endl;
+         return true;
+      }
+      snd.reset(new message::SendObject(req, mem.size()));
+   } else {
+      Object::const_ptr obj = Shm::the().getObjectFromName(req.objectId());
+      if (!obj) {
+         CERR << "cannot find object with name " << req.objectId() << std::endl;
+         return true;
+      }
+      obj->save(memar);
+      snd.reset(new message::SendObject(req, obj, mem.size()));
+   }
+   snd->setDestId(req.senderId());
+   snd->setDestRank(req.rank());
+   send(*snd);
    send(mem.data(), mem.size());
 
    return true;

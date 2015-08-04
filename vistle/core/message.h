@@ -919,15 +919,17 @@ class V_COREEXPORT RequestObject: public Message {
 
  public:
    RequestObject(const AddObject &add, const std::string &objId, const std::string &referrer="", bool array=false);
-   RequestObject(int destId, int destRank, const std::string &objId, const std::string &referrer, bool array);
+   RequestObject(int destId, int destRank, const std::string &objId, int type, const std::string &referrer);
    const char *objectId() const;
    const char *referrer() const;
    bool isArray() const;
+   int arrayType() const;
 
  private:
    shm_name_t m_objectId;
    shm_name_t m_referrer;
    bool m_array;
+   int m_arrayType;
 };
 BOOST_STATIC_ASSERT(sizeof(RequestObject) <= Message::MESSAGE_SIZE);
 
@@ -936,6 +938,7 @@ class V_COREEXPORT SendObject: public Message {
 
  public:
    SendObject(const RequestObject &request, vistle::Object::const_ptr obj, size_t payloadSize);
+   SendObject(const RequestObject &request, size_t payloadSize);
    const char *objectId() const;
    size_t payloadSize() const;
    const Meta &meta() const;
@@ -943,6 +946,7 @@ class V_COREEXPORT SendObject: public Message {
    Meta objectMeta() const;
 
  private:
+   bool m_array;
    shm_name_t m_objectId;
    int m_objectType;
    Meta m_meta;

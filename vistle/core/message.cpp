@@ -1353,17 +1353,19 @@ RequestObject::RequestObject(const AddObject &add, const std::string &objId, con
 , m_objectId(objId)
 , m_referrer(referrer.empty() ? add.objectName() : referrer)
 , m_array(array)
+, m_arrayType(-1)
 {
    setUuid(add.uuid());
    setDestId(add.senderId());
    setDestRank(add.rank());
 }
 
-RequestObject::RequestObject(int destId, int destRank, const std::string &objId, const std::string &referrer, bool array)
+RequestObject::RequestObject(int destId, int destRank, const std::string &objId, int type, const std::string &referrer)
 : Message(Message::REQUESTOBJECT, sizeof(RequestObject))
 , m_objectId(objId)
 , m_referrer(referrer)
-, m_array(array)
+, m_array(true)
+, m_arrayType(type)
 {
    setDestId(destId);
    setDestRank(destRank);
@@ -1381,9 +1383,14 @@ bool RequestObject::isArray() const {
    return m_array;
 }
 
+int RequestObject::arrayType() const {
+    return m_arrayType;
+}
+
 
 SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size_t payloadSize)
 : Message(Message::SENDOBJECT, sizeof(SendObject))
+, m_array(false)
 , m_objectId(obj->getName())
 , m_objectType(obj->getType())
 , m_meta(obj->meta())
@@ -1402,6 +1409,16 @@ SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size
    m_executionCount = meta.executionCounter();
    m_creator = meta.creator();
    m_realtime = meta.realTime();
+}
+
+SendObject::SendObject(const RequestObject &request, size_t payloadSize)
+: Message(Message::SENDOBJECT, sizeof(SendObject))
+, m_array(true)
+, m_objectId(request.objectId())
+, m_objectType(request.arrayType())
+, m_payloadSize(payloadSize)
+{
+   setUuid(request.uuid());
 }
 
 const char *SendObject::objectId() const {

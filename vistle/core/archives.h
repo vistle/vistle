@@ -33,7 +33,7 @@ public:
 class Fetcher {
 public:
     virtual ~Fetcher();
-    virtual void requestArray(const std::string &name) = 0;
+    virtual void requestArray(const std::string &name, int type) = 0;
     virtual void requestObject(const std::string &name) = 0;
 };
 
@@ -48,12 +48,12 @@ public:
 
     template<typename T>
     ShmVector<T> *getArray(const std::string &name) const {
-        return static_cast<ShmVector<T> *>(getArrayPointer(name));
+        return static_cast<ShmVector<T> *>(getArrayPointer(name, ShmVector<T>::typeId()));
     }
     obj_const_ptr getObject(const std::string &name) const;
 
 private:
-    void *getArrayPointer(const std::string &name) const;
+    void *getArrayPointer(const std::string &name, int type) const;
     boost::shared_ptr<Fetcher> m_fetcher;
 };
 
