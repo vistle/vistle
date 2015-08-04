@@ -33,6 +33,11 @@ private:
       Data(const Data &o, const std::string & name, Type id);
       ~Data();
       static Data *create(const std::string &name="", Type id = UNKNOWN, const Meta &meta=Meta());
+
+      template<class Archive>
+      void load(Archive &ar, const unsigned int version);
+      template<class Archive>
+      void save(Archive &ar, const unsigned int version) const;
    V_DATA_END(DataBase);
 };
 

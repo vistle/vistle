@@ -7,7 +7,7 @@ template<class Archive>
 void Texture1D::Data::serialize(Archive &ar, const unsigned int version) {
 
    ar & V_NAME("base_vec", boost::serialization::base_object<Base::Data>(*this));
-   ar & V_NAME("pixels", *pixels);
+   ar & V_NAME("pixels", pixels);
    ar & V_NAME("min", min);
    ar & V_NAME("max", max);
 }

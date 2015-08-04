@@ -13,7 +13,43 @@ namespace vistle {
 template<class Archive>
 void DataBase::Data::serialize(Archive &ar, const unsigned int version) {
    ar & V_NAME("base_object", boost::serialization::base_object<Base::Data>(*this));
+
+   boost::serialization::split_member(ar, *this, version);
 }
+
+template<class Archive>
+void DataBase::Data::load(Archive &ar, const unsigned int version) {
+
+   bool haveGrid = false;
+   if (grid)
+      grid->unref();
+   grid = NULL;
+   ar & V_NAME("haveGrid", haveGrid);
+   if (haveGrid) {
+      Object *g = NULL;
+      ar & V_NAME("grid", g);
+      assert(g);
+      grid = g->d();
+      g->ref();
+   }
+}
+
+template<class Archive>
+void DataBase::Data::save(Archive &ar, const unsigned int version) const {
+
+   // make sure that boost::serialization's object tracking is not tricked
+   // into thinking that all these are the same object
+   const Object *g = nullptr;
+
+   bool haveGrid = grid;
+   ar & V_NAME("haveGrid", haveGrid);
+   if (haveGrid) {
+      Object::const_ptr ptr = Object::as(Object::create(&*grid));
+      g = &*ptr;
+      ar & V_NAME("grid", g);
+   }
+}
+
 
 template <class T, int Dim>
 Vec<T,Dim>::Vec()

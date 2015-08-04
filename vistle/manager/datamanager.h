@@ -51,6 +51,7 @@ private:
        }
     };
     std::set<message::AddObject, AddObjectCompare> m_inTransitObjects; //!< objects for which AddObject messages have been sent to remote hubs
+
     std::map<message::AddObject, std::vector<std::string>, AddObjectCompare> m_outstandingAdds; //!< AddObject messages for which requests to retrieve objects from remote have been sent
     std::map<std::string, message::AddObject> m_outstandingRequests; //!< requests for (sub-)objects which have not been serviced yet
 };
