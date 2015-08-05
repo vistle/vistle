@@ -391,7 +391,6 @@ class ObjectTypeRegistry {
          int type = Object::UNKNOWN; \
          ar & V_NAME("type", type); \
          Object::m_data = Data::create(name); \
-         Object::ref(); \
          d()->template serialize<Archive>(ar, version); \
          assert(type == Object::getType()); \
       } \
