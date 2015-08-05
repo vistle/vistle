@@ -17,7 +17,7 @@ public:
     DataManager(int rank, int size);
     bool handle(const message::Message &msg);
     bool requestObject(const message::AddObject &add, const std::string &objId);
-    bool requestArray(const std::string &arrayId, int type, int hub, int rank);
+    bool requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank);
     bool prepareTransfer(const message::AddObject &add);
     bool completeTransfer(const message::AddObjectCompleted &complete);
     bool connect(boost::asio::ip::tcp::resolver::iterator &hub);

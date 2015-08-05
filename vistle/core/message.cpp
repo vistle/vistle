@@ -1448,6 +1448,10 @@ Meta SendObject::objectMeta() const {
    return meta;
 }
 
+bool SendObject::isArray() const {
+   return m_array;
+}
+
 std::ostream &operator<<(std::ostream &s, const Message &m) {
 
    using namespace vistle::message;

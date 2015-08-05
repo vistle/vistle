@@ -944,6 +944,7 @@ class V_COREEXPORT SendObject: public Message {
    const Meta &meta() const;
    Object::Type objectType() const;
    Meta objectMeta() const;
+   bool isArray() const;
 
  private:
    bool m_array;
