@@ -125,6 +125,8 @@ public:
 
    virtual ~Object();
 
+   bool isComplete() const; //! check whether all references have been resolved
+
    static const char *typeName() { return "Object"; }
    Object::ptr clone() const;
    virtual Object::ptr cloneInternal() const = 0;
@@ -195,8 +197,10 @@ public:
     struct Data {
       Type type;
       shm_name_t name;
-      boost::interprocess::interprocess_mutex ref_mutex; //< protects refcount
+      mutable boost::interprocess::interprocess_mutex ref_mutex; //< protects refcount
       int refcount;
+
+      int unresolvedReferences; //!< no. of not-yet-available arrays and referenced objects
 
       Meta meta;
 
@@ -237,14 +241,15 @@ public:
       void ref();
       void unref();
       static Data *create(Type id, const std::string &name, const Meta &m);
+      bool isComplete() const; //! check whether all references have been resolved
 
       friend class boost::serialization::access;
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version);
 
       // not implemented
-      Data(const Data &);
-      Data &operator=(const Data &);
+      Data(const Data &) = delete;
+      Data &operator=(const Data &) = delete;
    };
 
  protected:

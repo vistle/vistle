@@ -91,6 +91,10 @@ Object::ptr Object::create(Object::Data *data) {
    return ObjectTypeRegistry::getCreator(data->type)(data);
 }
 
+bool Object::isComplete() const {
+    return d()->isComplete();
+}
+
 void Object::publish(const Object::Data *d) {
 
 #if defined(SHMDEBUG) || defined(SHMPUBLISH)
@@ -142,6 +146,13 @@ Object::Data::~Data() {
       }
       shm<AttachmentMap>::destroy(std::string("attach_")+name);
    }
+}
+
+bool Object::Data::isComplete() const {
+
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(ref_mutex);
+   // a reference is only established upon return from Object::load
+   return refcount>0 && unresolvedReferences==0;
 }
 
 void *Object::Data::operator new(size_t size) {
