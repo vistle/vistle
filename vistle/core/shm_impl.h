@@ -83,8 +83,9 @@ void* ShmVector<T>::operator new(size_t size) {
 }
 
 template<typename T>
-void ShmVector<T>::operator delete(void *p) {
-   return Shm::the().shm().deallocate(p);
+void ShmVector<T>::operator delete(void *p, size_t size) {
+    if (p)
+        Shm::the().shm().deallocate(p);
 }
 
 template<typename T>

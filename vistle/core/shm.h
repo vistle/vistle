@@ -203,7 +203,7 @@ class ShmVector {
       ShmVector(Index size = 0, const std::string &name="");
       int refcount() const;
       void* operator new(size_t size);
-      void operator delete(void *p);
+      void operator delete(void *p, size_t size);
 
       T &operator[](Index i) { return (*m_x)[i]; }
       const T &operator[](Index i) const { return (*m_x)[i]; }
