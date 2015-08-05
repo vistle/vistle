@@ -242,6 +242,9 @@ public:
       void unref();
       static Data *create(Type id, const std::string &name, const Meta &m);
       bool isComplete() const; //! check whether all references have been resolved
+      template<typename ShmVectorPtr>
+      void arrayValid(const ShmVectorPtr &p);
+      void objectValid(const Object *p);
 
       friend class boost::serialization::access;
       template<class Archive>
@@ -270,8 +273,8 @@ public:
          d()->serialize<Archive>(ar, version);
       }
    // not implemented
-   Object(const Object &);
-   Object &operator=(const Object &);
+   Object(const Object &) = delete;
+   Object &operator=(const Object &) = delete;
 };
 
 BOOST_SERIALIZATION_ASSUME_ABSTRACT(Object)

@@ -21,6 +21,7 @@ void Coords::Data::load(Archive &ar, const unsigned int version) {
    if (haveNormals) {
       Normals *n = NULL;
       ar & V_NAME("normals", n);
+      objectValid(n);
       assert(n);
       normals = n->d();
       n->ref();

@@ -80,6 +80,12 @@ Object::ptr Object::load(Archive &ar) {
    return Object::ptr(p);
 }
 
+template<typename ShmVectorPtr>
+void Object::Data::arrayValid(const ShmVectorPtr &p) {
+    if (!p.valid())
+        ++unresolvedReferences;
+}
+
 template<>
 V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(iarchive &ar);
 template<>

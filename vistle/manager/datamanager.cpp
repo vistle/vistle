@@ -292,7 +292,7 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
        fetcher.reset(new RemoteFetcher(this, add));
        memar.setFetcher(fetcher);
        Object::ptr obj = Object::load(memar);
-       if (obj) {
+       if (obj && obj->isComplete()) {
            CERR << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
            vassert(obj->check());
            auto addIt = m_outstandingAdds.find(add);
@@ -313,6 +313,9 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                return ret;
            }
            return true;
+       } else if (obj) {
+           // FIXME: save reference - otherwise it will get deleted immediately
+
        }
    }
 

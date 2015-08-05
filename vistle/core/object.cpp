@@ -155,6 +155,11 @@ bool Object::Data::isComplete() const {
    return refcount>0 && unresolvedReferences==0;
 }
 
+void Object::Data::objectValid(const Object *p) {
+    if (!p)
+        ++unresolvedReferences;
+}
+
 void *Object::Data::operator new(size_t size) {
    return Shm::the().shm().allocate(size);
 }
