@@ -1,4 +1,5 @@
 #include "celltree.h"
+#include "archives.h"
 
 #include "celltree_impl.h"
 

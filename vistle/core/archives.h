@@ -1,6 +1,8 @@
 #ifndef ARCHIVES_H
 #define ARCHIVES_H
 
+#include <functional>
+
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 
@@ -10,6 +12,7 @@
 #include <boost/mpl/vector.hpp>
 
 #include "shm.h"
+#include "object.h"
 
 namespace vistle {
 
@@ -33,8 +36,8 @@ public:
 class Fetcher {
 public:
     virtual ~Fetcher();
-    virtual void requestArray(const std::string &name, int type) = 0;
-    virtual void requestObject(const std::string &name) = 0;
+    virtual void requestArray(const std::string &name, int type, const std::function<void()> &completeCallback) = 0;
+    virtual void requestObject(const std::string &name, const std::function<void()> &completeCallback) = 0;
 };
 
 class iarchive: public boost::archive::binary_iarchive_impl<iarchive, std::istream::char_type, std::istream::traits_type> {
@@ -45,16 +48,19 @@ public:
     iarchive(std::streambuf &bsb, unsigned int flags=0);
 
     void setFetcher(boost::shared_ptr<Fetcher> fetcher);
+    void setCurrentObject(const Object::Data *data);
+    const Object::Data *currentObject() const;
 
     template<typename T>
-    ShmVector<T> *getArray(const std::string &name) const {
-        return static_cast<ShmVector<T> *>(getArrayPointer(name, ShmVector<T>::typeId()));
+    ShmVector<T> *getArray(const std::string &name, const std::function<void()> &completeCallback) const {
+        return static_cast<ShmVector<T> *>(getArrayPointer(name, ShmVector<T>::typeId(), completeCallback));
     }
     obj_const_ptr getObject(const std::string &name) const;
 
 private:
-    void *getArrayPointer(const std::string &name, int type) const;
+    void *getArrayPointer(const std::string &name, int type, const std::function<void()> &completeCallback) const;
     boost::shared_ptr<Fetcher> m_fetcher;
+    const Object::Data *m_currentObject;
 };
 
 typedef boost::mpl::vector<

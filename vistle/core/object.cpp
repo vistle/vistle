@@ -19,6 +19,8 @@
 #undef VISTLE_IMPL
 #endif
 
+#include "object_impl.h"
+
 #include "message.h"
 #include "messagequeue.h"
 #include "shm.h"
@@ -158,6 +160,13 @@ bool Object::Data::isComplete() const {
 void Object::Data::objectValid(const Object *p) {
     if (!p)
         ++unresolvedReferences;
+}
+
+void Object::Data::referenceResolved() {
+    vassert(unresolvedReferences > 0);
+    --unresolvedReferences;
+    if (unresolvedReferences == 0) {
+    }
 }
 
 void *Object::Data::operator new(size_t size) {

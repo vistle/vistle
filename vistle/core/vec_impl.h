@@ -2,6 +2,7 @@
 #define VEC_IMPL_H
 
 #include "scalars.h"
+#include "archives.h"
 
 #include <limits>
 

@@ -1,4 +1,5 @@
 #include "texture1d.h"
+#include "archives.h"
 
 namespace vistle {
 

@@ -187,9 +187,27 @@ template<typename T>
 template<class Archive>
 void ShmVector<T>::ptr::load(Archive &ar, const unsigned int version) {
 
-   ar & boost::serialization::make_nvp("shm_name", m_p->m_name);
-   const std::string name = m_p->m_name;
-   m_p = ar.template getArray<T>(name);
+   shm_name_t shmname;
+   ar & boost::serialization::make_nvp("shm_name", shmname);
+   std::string name = shmname;
+   if (name == "(nil)") {
+       m_p = nullptr;
+   } else {
+       m_p = ar.template getArray<T>(name, [this, name]() -> void {
+           m_p = static_cast<ShmVector<T> *>(Shm::the().getArrayFromName(name));
+           assert(m_p);
+           assert(m_p->m_name == name);
+           m_p->ref();
+#if 0
+           auto obj = ar.template getObject();
+           if (obj) {
+               obj->referenceResolved();
+           }
+#endif
+       });
+       if (m_p)
+           m_p->ref();
+   }
    //ar & boost::serialization::make_nvp("shm_ptr", *m_p);
 }
 
@@ -197,7 +215,12 @@ template<typename T>
 template<class Archive>
 void ShmVector<T>::ptr::save(Archive &ar, const unsigned int version) const {
 
-   ar & boost::serialization::make_nvp("shm_name", m_p->m_name);
+    if (m_p) {
+        ar & boost::serialization::make_nvp("shm_name", m_p->m_name);
+    } else {
+        shm_name_t name("(nil)");
+        ar & boost::serialization::make_nvp("shm_name", name);
+    }
    //ar & boost::serialization::make_nvp("shm_ptr", *m_p);
 }
 

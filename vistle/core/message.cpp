@@ -1392,6 +1392,7 @@ SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size
 : Message(Message::SENDOBJECT, sizeof(SendObject))
 , m_array(false)
 , m_objectId(obj->getName())
+, m_referrer(request.referrer())
 , m_objectType(obj->getType())
 , m_meta(obj->meta())
 , m_payloadSize(payloadSize)
@@ -1415,6 +1416,7 @@ SendObject::SendObject(const RequestObject &request, size_t payloadSize)
 : Message(Message::SENDOBJECT, sizeof(SendObject))
 , m_array(true)
 , m_objectId(request.objectId())
+, m_referrer(request.referrer())
 , m_objectType(request.arrayType())
 , m_payloadSize(payloadSize)
 {
@@ -1423,6 +1425,10 @@ SendObject::SendObject(const RequestObject &request, size_t payloadSize)
 
 const char *SendObject::objectId() const {
    return m_objectId;
+}
+
+const char *SendObject::referrer() const {
+   return m_referrer;
 }
 
 size_t SendObject::payloadSize() const {

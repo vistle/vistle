@@ -71,22 +71,32 @@ Fetcher::~Fetcher() {
 
 iarchive::iarchive(std::istream &is, unsigned int flags)
 : Base(is, flags)
+, m_currentObject(nullptr)
 {}
 
 iarchive::iarchive(std::streambuf &bsb, unsigned int flags)
 : Base(bsb, flags)
+, m_currentObject(nullptr)
 {}
 
 void iarchive::setFetcher(boost::shared_ptr<Fetcher> fetcher) {
     m_fetcher = fetcher;
 }
 
-void *iarchive::getArrayPointer(const std::string &name, int type) const {
+void iarchive::setCurrentObject(const Object::Data *data) {
+    m_currentObject = data;
+}
+
+const Object::Data *iarchive::currentObject() const {
+    return m_currentObject;
+}
+
+void *iarchive::getArrayPointer(const std::string &name, int type, const std::function<void()> &completeCallback) const {
 
     void *ptr = Shm::the().getArrayFromName(name);
     if (!ptr) {
         assert(m_fetcher);
-        m_fetcher->requestArray(name, type);
+        m_fetcher->requestArray(name, type, completeCallback);
     }
     return ptr;
 }

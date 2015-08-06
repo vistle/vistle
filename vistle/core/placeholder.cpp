@@ -1,5 +1,6 @@
 #include "placeholder.h"
 #include "placeholder_impl.h"
+#include "archives.h"
 
 namespace vistle {
 

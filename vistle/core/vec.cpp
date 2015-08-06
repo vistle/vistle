@@ -3,6 +3,7 @@
 #include "assert.h"
 #include "indexed.h"
 #include "celltree_impl.h"
+#include "archives.h"
 
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/vector_c.hpp>

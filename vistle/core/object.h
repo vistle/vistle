@@ -10,6 +10,7 @@
 #include <boost/interprocess/containers/string.hpp>
 
 #include <boost/serialization/access.hpp>
+#include <boost/serialization/assume_abstract.hpp>
 
 #include <boost/mpl/size.hpp>
 
@@ -245,6 +246,7 @@ public:
       template<typename ShmVectorPtr>
       void arrayValid(const ShmVectorPtr &p);
       void objectValid(const Object *p);
+      void referenceResolved();
 
       friend class boost::serialization::access;
       template<class Archive>
@@ -399,6 +401,7 @@ class ObjectTypeRegistry {
          int type = Object::UNKNOWN; \
          ar & V_NAME("type", type); \
          Object::m_data = Data::create(name); \
+         ar.setCurrentObject(Object::m_data); \
          d()->template serialize<Archive>(ar, version); \
          assert(type == Object::getType()); \
       } \
@@ -514,6 +517,6 @@ V_ENUM_OUTPUT_OP(Type, Object)
 } // namespace vistle
 
 #ifdef VISTLE_IMPL
-#include "object_impl.h"
+//#include "object_impl.h"
 #endif
 #endif

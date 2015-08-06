@@ -1,6 +1,8 @@
 #ifndef DATAMANAGER_H
 #define DATAMANAGER_H
 
+#include <functional>
+
 #include <core/message.h>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -16,8 +18,9 @@ class DataManager {
 public:
     DataManager(int rank, int size);
     bool handle(const message::Message &msg);
-    bool requestObject(const message::AddObject &add, const std::string &objId);
-    bool requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank);
+    bool requestObject(const message::AddObject &add, const std::string &objId, const std::function<void()> &handler);
+    bool requestObject(const std::string &referrer, const std::string &objId, int type, int hub, int rank, const std::function<void()> &handler);
+    bool requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const std::function<void()> &handler);
     bool prepareTransfer(const message::AddObject &add);
     bool completeTransfer(const message::AddObjectCompleted &complete);
     bool connect(boost::asio::ip::tcp::resolver::iterator &hub);
@@ -55,6 +58,10 @@ private:
 
     std::map<message::AddObject, std::vector<std::string>, AddObjectCompare> m_outstandingAdds; //!< AddObject messages for which requests to retrieve objects from remote have been sent
     std::map<std::string, message::AddObject> m_outstandingRequests; //!< requests for (sub-)objects which have not been serviced yet
+
+
+    std::map<std::string, std::vector<std::function<void()>>> m_outstandingArrays; //!< requests for (sub-)objects which have not been serviced yet
+    std::map<std::string, message::AddObject> m_outstandingObjects; //!< requests for (sub-)objects which have not been serviced yet
 };
 
 } // namespace vistle

@@ -15,6 +15,8 @@
 #include "messagequeue.h"
 #include "scalars.h"
 #include "celltree.h"
+#include "archives.h"
+#include "object_impl.h"
 
 #ifndef TEMPLATES_IN_HEADERS
 #define VISTLE_IMPL
@@ -76,6 +78,10 @@ shm_name_t::operator char *() {
 
 shm_name_t::operator std::string () const {
    return name.data();
+}
+
+bool shm_name_t::operator==(const std::string &rhs) const {
+   return rhs == name.data();
 }
 
 std::string operator+(const std::string &s, const shm_name_t &n) {
@@ -422,6 +428,8 @@ struct archive_instantiator {
       typename V::ptr p(new V);
       typename V::ptr q;
       const typename V::ptr c = p;
+      Object::ptr obj;
+      obj->d()->arrayValid(c);
       q = c;
       q = new V();
       q->resize(1);
@@ -444,7 +452,7 @@ struct instantiator {
 
 void instantiate_shmvector() {
 
-   mpl::for_each<Scalars>(instantiator());
+   mpl::for_each<VectorTypes>(instantiator());
 
    typedef boost::mpl::vector<Celltree<Scalar, Index>::Node> CelltreeNodes;
    mpl::for_each<CelltreeNodes>(instantiator());

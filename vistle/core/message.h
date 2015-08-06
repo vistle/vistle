@@ -940,6 +940,7 @@ class V_COREEXPORT SendObject: public Message {
    SendObject(const RequestObject &request, vistle::Object::const_ptr obj, size_t payloadSize);
    SendObject(const RequestObject &request, size_t payloadSize);
    const char *objectId() const;
+   const char *referrer() const;
    size_t payloadSize() const;
    const Meta &meta() const;
    Object::Type objectType() const;
@@ -949,6 +950,7 @@ class V_COREEXPORT SendObject: public Message {
  private:
    bool m_array;
    shm_name_t m_objectId;
+   shm_name_t m_referrer;
    int m_objectType;
    Meta m_meta;
    uint64_t m_payloadSize;

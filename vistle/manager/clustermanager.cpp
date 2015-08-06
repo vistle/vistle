@@ -824,7 +824,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
          if (!obj) {
             vassert(!synthesized);
             CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
-            Communicator::the().dataManager().requestObject(addObj, addObj.objectName());
+            Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), []() -> void {});
          }
       } else {
           return true;

@@ -69,12 +69,20 @@ bool DataManager::read(char *buf, size_t n) {
    return asio::read(m_dataSocket, asio::buffer(buf, n));
 }
 
-bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank) {
+bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const std::function<void()> &handler) {
+
+   auto it = m_outstandingArrays.find(arrayId);
+   if (it != m_outstandingArrays.end()) {
+       it->second.push_back(handler);
+       return true;
+   }
 
    void *ptr= Shm::the().getArrayFromName(arrayId);
    if (ptr) {
       return false;
    }
+
+   m_outstandingArrays[arrayId].push_back(handler);
 
    message::RequestObject req(hub, rank, arrayId, type, referrer);
    send(req);
@@ -82,7 +90,7 @@ bool DataManager::requestArray(const std::string &referrer, const std::string &a
    return true;
 }
 
-bool DataManager::requestObject(const message::AddObject &add, const std::string &objId) {
+bool DataManager::requestObject(const message::AddObject &add, const std::string &objId, const std::function<void ()> &handler) {
 
    Object::const_ptr obj = Shm::the().getObjectFromName(objId);
    if (obj) {
@@ -153,16 +161,16 @@ public:
     {
     }
 
-    void requestArray(const std::string &name, int type) {
+    virtual void requestArray(const std::string &name, int type, const std::function<void()> &completeCallback) override {
         vassert(!m_add);
         ++m_numRequests;
-        m_dmgr->requestArray(m_referrer, name, type, m_hub, m_rank);
+        m_dmgr->requestArray(m_referrer, name, type, m_hub, m_rank, completeCallback);
     }
 
-    void requestObject(const std::string &name) {
+    virtual void requestObject(const std::string &name, const std::function<void()> &completeCallback) override {
         vassert(m_add);
         ++m_numRequests;
-        m_dmgr->requestObject(*m_add, name);
+        m_dmgr->requestObject(*m_add, name, completeCallback);
     }
 
     DataManager *m_dmgr;
@@ -282,6 +290,13 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
            return false;
        }
        CERR << "restored array " << snd.objectId() << ", dangling in memory" << std::endl;
+       auto it = m_outstandingArrays.find(snd.objectId());
+       vassert(it != m_outstandingArrays.end());
+       if (it != m_outstandingArrays.end()) {
+           for (const auto &f: it->second)
+               f();
+           m_outstandingArrays.erase(it);
+       }
        return true;
    } else {
        auto reqIt = m_outstandingRequests.find(snd.objectId());

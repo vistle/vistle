@@ -34,6 +34,7 @@ struct V_COREEXPORT shm_name_t {
    operator const char *() const;
    operator char *();
    operator std::string () const;
+   bool operator==(const std::string &rhs) const;
 
  private:
    friend class boost::serialization::access;
@@ -211,7 +212,6 @@ class ShmVector {
                void load(Archive &ar, const unsigned int version);
 
             boost::interprocess::offset_ptr<ShmVector> m_p;
-            shm_name_t m_name;
       };
 
       static int typeId();
