@@ -49,8 +49,8 @@ public:
     iarchive(std::streambuf &bsb, unsigned int flags=0);
 
     void setFetcher(boost::shared_ptr<Fetcher> fetcher);
-    void setCurrentObject(const ObjectData *data);
-    const ObjectData *currentObject() const;
+    void setCurrentObject(ObjectData *data);
+    ObjectData *currentObject() const;
 
     template<typename T>
     ShmVector<T> *getArray(const std::string &name, const std::function<void()> &completeCallback) const {
@@ -61,7 +61,7 @@ public:
 private:
     void *getArrayPointer(const std::string &name, int type, const std::function<void()> &completeCallback) const;
     boost::shared_ptr<Fetcher> m_fetcher;
-    const ObjectData *m_currentObject;
+    ObjectData *m_currentObject;
 };
 
 typedef boost::mpl::vector<

@@ -83,11 +83,11 @@ void iarchive::setFetcher(boost::shared_ptr<Fetcher> fetcher) {
     m_fetcher = fetcher;
 }
 
-void iarchive::setCurrentObject(const ObjectData *data) {
+void iarchive::setCurrentObject(ObjectData *data) {
     m_currentObject = data;
 }
 
-const ObjectData *iarchive::currentObject() const {
+ObjectData *iarchive::currentObject() const {
     return m_currentObject;
 }
 

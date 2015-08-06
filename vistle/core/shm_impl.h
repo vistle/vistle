@@ -193,20 +193,23 @@ void ShmVector<T>::ptr::load(Archive &ar, const unsigned int version) {
    if (name == "(nil)") {
        m_p = nullptr;
    } else {
-       m_p = ar.template getArray<T>(name, [this, name]() -> void {
+       auto obj = ar.currentObject();
+       m_p = ar.template getArray<T>(name, [this, name, obj]() -> void {
            m_p = static_cast<ShmVector<T> *>(Shm::the().getArrayFromName(name));
            assert(m_p);
            assert(m_p->m_name == name);
            m_p->ref();
-#if 0
-           auto obj = ar.template getObject();
            if (obj) {
                obj->referenceResolved();
            }
-#endif
        });
-       if (m_p)
+       if (m_p) {
            m_p->ref();
+       } else {
+           auto obj = ar.currentObject();
+           if (obj)
+               obj->arrayValid(*this);
+       }
    }
    //ar & boost::serialization::make_nvp("shm_ptr", *m_p);
 }
