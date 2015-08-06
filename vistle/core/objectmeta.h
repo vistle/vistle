@@ -66,6 +66,6 @@ class V_COREEXPORT Meta {
 } // namespace vistle
 
 #ifdef VISTLE_IMPL
-//#include "objectmeta_impl.h"
+#include "objectmeta_impl.h"
 #endif
 #endif

@@ -42,6 +42,12 @@ void access::construct(vistle::Object *t);
 namespace vistle {
 
 template<class Archive>
+void Object::serialize(Archive &ar, const unsigned int version)
+{
+    d()->serialize<Archive>(ar, version);
+}
+
+template<class Archive>
 void Object::Data::serialize(Archive &ar, const unsigned int version) {
 #ifdef DEBUG_SERIALIZATION
    int checktype1 = type;

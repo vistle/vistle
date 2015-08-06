@@ -33,9 +33,12 @@ class iarchive;
 
 class Shm;
 
+struct ObjectData;
+
 class V_COREEXPORT Object {
    friend class Shm;
    friend class ObjectTypeRegistry;
+   friend struct ObjectData;
 #ifdef SHMDEBUG
    friend void Shm::markAsRemoved(const std::string &name);
 #endif
@@ -195,67 +198,7 @@ public:
    void save(Archive &ar) const;
 
  public:
-    struct Data {
-      Type type;
-      shm_name_t name;
-      mutable boost::interprocess::interprocess_mutex ref_mutex; //< protects refcount
-      int refcount;
-
-      int unresolvedReferences; //!< no. of not-yet-available arrays and referenced objects
-
-      Meta meta;
-
-      typedef shm<char>::string Attribute;
-      typedef shm<char>::string Key;
-      typedef shm<Attribute>::vector AttributeList;
-      typedef std::pair<const Key, AttributeList> AttributeMapValueType;
-      typedef shm<AttributeMapValueType>::allocator AttributeMapAllocator;
-      typedef interprocess::map<Key, AttributeList, std::less<Key>, AttributeMapAllocator> AttributeMap;
-      interprocess::offset_ptr<AttributeMap> attributes;
-      void addAttribute(const std::string &key, const std::string &value = "");
-      void setAttributeList(const std::string &key, const std::vector<std::string> &values);
-      void copyAttributes(const Data *src, bool replace);
-      bool hasAttribute(const std::string &key) const;
-      std::string getAttribute(const std::string &key) const;
-      std::vector<std::string> getAttributes(const std::string &key) const;
-      std::vector<std::string> getAttributeList() const;
-
-      mutable boost::interprocess::interprocess_recursive_mutex attachment_mutex; //< protects attachments
-      typedef interprocess::offset_ptr<Object::Data> Attachment;
-      typedef std::pair<const Key, Attachment> AttachmentMapValueType;
-      typedef shm<AttachmentMapValueType>::allocator AttachmentMapAllocator;
-      typedef interprocess::map<Key, Attachment, std::less<Key>, AttachmentMapAllocator> AttachmentMap;
-      interprocess::offset_ptr<AttachmentMap> attachments;
-      bool addAttachment(const std::string &key, Object::const_ptr att);
-      void copyAttachments(const Data *src, bool replace);
-      bool hasAttachment(const std::string &key) const;
-      Object::const_ptr getAttachment(const std::string &key) const;
-      bool removeAttachment(const std::string &key);
-
-      V_COREEXPORT Data(Type id = UNKNOWN, const std::string &name = "", const Meta &m=Meta());
-      V_COREEXPORT Data(const Data &other, const std::string &name, Type id=UNKNOWN); //! shallow copy, except for attributes
-      V_COREEXPORT ~Data();
-      V_COREEXPORT void *operator new(size_t size);
-      V_COREEXPORT void *operator new (std::size_t size, void* ptr);
-      V_COREEXPORT void operator delete(void *ptr);
-      V_COREEXPORT void operator delete(void *ptr, void* voidptr2);
-      void ref();
-      void unref();
-      static Data *create(Type id, const std::string &name, const Meta &m);
-      bool isComplete() const; //! check whether all references have been resolved
-      template<typename ShmVectorPtr>
-      void arrayValid(const ShmVectorPtr &p);
-      void objectValid(const Object *p);
-      void referenceResolved();
-
-      friend class boost::serialization::access;
-      template<class Archive>
-      void serialize(Archive &ar, const unsigned int version);
-
-      // not implemented
-      Data(const Data &) = delete;
-      Data &operator=(const Data &) = delete;
-   };
+   typedef ObjectData Data;
 
  protected:
    Data *m_data;
@@ -271,9 +214,8 @@ public:
  private:
    friend class boost::serialization::access;
    template<class Archive>
-      void serialize(Archive &ar, const unsigned int version) {
-         d()->serialize<Archive>(ar, version);
-      }
+   void serialize(Archive &ar, const unsigned int version);
+
    // not implemented
    Object(const Object &) = delete;
    Object &operator=(const Object &) = delete;
@@ -281,8 +223,71 @@ public:
 
 BOOST_SERIALIZATION_ASSUME_ABSTRACT(Object)
 
+struct ObjectData {
+    Object::Type type;
+    shm_name_t name;
+    mutable boost::interprocess::interprocess_mutex ref_mutex; //< protects refcount
+    int refcount;
+
+    int unresolvedReferences; //!< no. of not-yet-available arrays and referenced objects
+
+    Meta meta;
+
+    typedef shm<char>::string Attribute;
+    typedef shm<char>::string Key;
+    typedef shm<Attribute>::vector AttributeList;
+    typedef std::pair<const Key, AttributeList> AttributeMapValueType;
+    typedef shm<AttributeMapValueType>::allocator AttributeMapAllocator;
+    typedef interprocess::map<Key, AttributeList, std::less<Key>, AttributeMapAllocator> AttributeMap;
+    interprocess::offset_ptr<AttributeMap> attributes;
+    void addAttribute(const std::string &key, const std::string &value = "");
+    void setAttributeList(const std::string &key, const std::vector<std::string> &values);
+    void copyAttributes(const ObjectData *src, bool replace);
+    bool hasAttribute(const std::string &key) const;
+    std::string getAttribute(const std::string &key) const;
+    std::vector<std::string> getAttributes(const std::string &key) const;
+    std::vector<std::string> getAttributeList() const;
+
+    mutable boost::interprocess::interprocess_recursive_mutex attachment_mutex; //< protects attachments
+    typedef interprocess::offset_ptr<ObjectData> Attachment;
+    typedef std::pair<const Key, Attachment> AttachmentMapValueType;
+    typedef shm<AttachmentMapValueType>::allocator AttachmentMapAllocator;
+    typedef interprocess::map<Key, Attachment, std::less<Key>, AttachmentMapAllocator> AttachmentMap;
+    interprocess::offset_ptr<AttachmentMap> attachments;
+    bool addAttachment(const std::string &key, Object::const_ptr att);
+    void copyAttachments(const ObjectData *src, bool replace);
+    bool hasAttachment(const std::string &key) const;
+    Object::const_ptr getAttachment(const std::string &key) const;
+    bool removeAttachment(const std::string &key);
+
+    V_COREEXPORT ObjectData(Object::Type id = Object::UNKNOWN, const std::string &name = "", const Meta &m=Meta());
+    V_COREEXPORT ObjectData(const ObjectData &other, const std::string &name, Object::Type id=Object::UNKNOWN); //! shallow copy, except for attributes
+    V_COREEXPORT ~ObjectData();
+    V_COREEXPORT void *operator new(size_t size);
+    V_COREEXPORT void *operator new (std::size_t size, void* ptr);
+    V_COREEXPORT void operator delete(void *ptr);
+    V_COREEXPORT void operator delete(void *ptr, void* voidptr2);
+    void ref();
+    void unref();
+    static ObjectData *create(Object::Type id, const std::string &name, const Meta &m);
+    bool isComplete() const; //! check whether all references have been resolved
+    template<typename ShmVectorPtr>
+    void arrayValid(const ShmVectorPtr &p);
+    void objectValid(const Object *p);
+    void referenceResolved();
+
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version);
+
+    // not implemented
+    ObjectData(const ObjectData &) = delete;
+    ObjectData &operator=(const ObjectData &) = delete;
+};
+
+
 class ObjectTypeRegistry {
-   friend struct Object::Data;
+   friend struct ObjectData;
    friend Object::ptr Object::create(Object::Data *);
    public:
    typedef Object::ptr (*CreateFunc)(Object::Data *d);
@@ -517,6 +522,6 @@ V_ENUM_OUTPUT_OP(Type, Object)
 } // namespace vistle
 
 #ifdef VISTLE_IMPL
-//#include "object_impl.h"
+#include "object_impl.h"
 #endif
 #endif

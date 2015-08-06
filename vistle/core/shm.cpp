@@ -16,7 +16,6 @@
 #include "scalars.h"
 #include "celltree.h"
 #include "archives.h"
-#include "object_impl.h"
 
 #ifndef TEMPLATES_IN_HEADERS
 #define VISTLE_IMPL

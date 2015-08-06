@@ -17,6 +17,7 @@
 namespace vistle {
 
 class Object;
+struct ObjectData;
 typedef boost::shared_ptr<Object> obj_ptr;
 typedef boost::shared_ptr<const Object> obj_const_ptr;
 
@@ -48,8 +49,8 @@ public:
     iarchive(std::streambuf &bsb, unsigned int flags=0);
 
     void setFetcher(boost::shared_ptr<Fetcher> fetcher);
-    void setCurrentObject(const Object::Data *data);
-    const Object::Data *currentObject() const;
+    void setCurrentObject(const ObjectData *data);
+    const ObjectData *currentObject() const;
 
     template<typename T>
     ShmVector<T> *getArray(const std::string &name, const std::function<void()> &completeCallback) const {
@@ -60,7 +61,7 @@ public:
 private:
     void *getArrayPointer(const std::string &name, int type, const std::function<void()> &completeCallback) const;
     boost::shared_ptr<Fetcher> m_fetcher;
-    const Object::Data *m_currentObject;
+    const ObjectData *m_currentObject;
 };
 
 typedef boost::mpl::vector<

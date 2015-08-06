@@ -114,7 +114,7 @@ void Object::publish(const Object::Data *d) {
 #endif
 }
 
-Object::Data::Data(const Type type, const std::string & n, const Meta &m)
+ObjectData::ObjectData(const Object::Type type, const std::string & n, const Meta &m)
    : type(type)
    , name(n)
    , refcount(0)
@@ -124,7 +124,7 @@ Object::Data::Data(const Type type, const std::string & n, const Meta &m)
 {
 }
 
-Object::Data::Data(const Object::Data &o, const std::string &name, Object::Type id)
+ObjectData::ObjectData(const Object::Data &o, const std::string &name, Object::Type id)
 : type(id==Object::UNKNOWN ? o.type : id)
 , name(name)
 , refcount(0)
@@ -136,7 +136,7 @@ Object::Data::Data(const Object::Data &o, const std::string &name, Object::Type 
    copyAttachments(&o, true);
 }
 
-Object::Data::~Data() {
+ObjectData::~ObjectData() {
 
 
    shm<AttributeMap>::destroy(std::string("attr_")+name);
@@ -186,10 +186,10 @@ void Object::Data::operator delete(void *p, void *voidp2) {
 }
 
 
-Object::Data *Object::Data::create(Type id, const std::string &objId, const Meta &m) {
+ObjectData *ObjectData::create(Object::Type id, const std::string &objId, const Meta &m) {
 
    std::string name = Shm::the().createObjectId(objId);
-   return shm<Data>::construct(name)(id, name, m);
+   return shm<ObjectData>::construct(name)(id, name, m);
 }
 
 Object::Object(Object::Data *data)
@@ -488,7 +488,7 @@ void Object::Data::setAttributeList(const std::string &key, const std::vector<st
    }
 }
 
-void Object::Data::copyAttributes(const Object::Data *src, bool replace) {
+void Object::Data::copyAttributes(const ObjectData *src, bool replace) {
 
    if (replace) {
 
@@ -590,7 +590,7 @@ bool Object::Data::hasAttachment(const std::string &key) const {
    return it != attachments->end();
 }
 
-Object::const_ptr Object::Data::getAttachment(const std::string &key) const {
+Object::const_ptr ObjectData::getAttachment(const std::string &key) const {
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(attachment_mutex);
    const Key skey(key.c_str(), Shm::the().allocator());
@@ -616,7 +616,7 @@ bool Object::Data::addAttachment(const std::string &key, Object::const_ptr obj) 
    return true;
 }
 
-void Object::Data::copyAttachments(const Object::Data *src, bool replace) {
+void Object::Data::copyAttachments(const ObjectData *src, bool replace) {
 
    const AttachmentMap &a = *src->attachments;
 
