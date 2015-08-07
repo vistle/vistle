@@ -7,7 +7,6 @@ template<class Archive>
 void CoordsWithRadius::Data::serialize(Archive &ar, const unsigned int version) {
    ar & V_NAME("base_coords", boost::serialization::base_object<Base::Data>(*this));
    ar & V_NAME("radii", r);
-   arrayValid(r);
 }
 
 } // namespace vistle

@@ -7,9 +7,7 @@ template<class Archive>
 void VertexOwnerList::Data::serialize(Archive &ar, const unsigned int version) {
    ar & V_NAME("base_object", boost::serialization::base_object<Base::Data>(*this));
    ar & V_NAME("vertex_list", vertexList);
-   arrayValid(vertexList);
    ar & V_NAME("cell_list", cellList);
-   arrayValid(cellList);
 }
 
 }//namespace vistle
