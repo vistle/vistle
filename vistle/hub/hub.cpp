@@ -894,7 +894,7 @@ bool Hub::handleRemoteData(const message::Message &recv, shared_ptr<asio::ip::tc
       case Message::IDENTIFY: {
          auto id = static_cast<const Identify &>(recv);
          if (id.identity() != Identify::REMOTEBULKDATA) {
-            CERR << "invalid Identyty on remote data connection: " << id.identity() << std::endl;
+            CERR << "invalid Identity on remote data connection: " << id.identity() << std::endl;
             return false;
          }
          break;

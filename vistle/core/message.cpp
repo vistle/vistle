@@ -1481,6 +1481,11 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       << ", rank: " << m.rank();
 
    switch (m.type()) {
+      case Message::IDENTIFY: {
+         auto mm = static_cast<const Identify &>(m);
+         s << ", identity: " << Identify::toString(mm.identity());
+         break;
+      }
       case Message::EXECUTE: {
          auto mm = static_cast<const Execute &>(m);
          s << ", module: " << mm.getModule() << ", what: " << mm.what() << ", execcount: " << mm.getExecutionCount();
