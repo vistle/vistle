@@ -918,8 +918,9 @@ BOOST_STATIC_ASSERT(sizeof(RequestTunnel) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT RequestObject: public Message {
 
  public:
-   RequestObject(const AddObject &add, const std::string &objId, const std::string &referrer="", bool array=false);
-   RequestObject(int destId, int destRank, const std::string &objId, int type, const std::string &referrer);
+   RequestObject(const AddObject &add, const std::string &objId, const std::string &referrer="");
+   RequestObject(int destId, int destRank, const std::string &objId, const std::string &referrer);
+   RequestObject(int destId, int destRank, const std::string &arrayId, int type, const std::string &referrer);
    const char *objectId() const;
    const char *referrer() const;
    bool isArray() const;

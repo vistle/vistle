@@ -1348,11 +1348,11 @@ bool RequestTunnel::remove() const {
    return m_remove;
 }
 
-RequestObject::RequestObject(const AddObject &add, const std::string &objId, const std::string &referrer, bool array)
+RequestObject::RequestObject(const AddObject &add, const std::string &objId, const std::string &referrer)
 : Message(Message::REQUESTOBJECT, sizeof(RequestObject))
 , m_objectId(objId)
 , m_referrer(referrer.empty() ? add.objectName() : referrer)
-, m_array(array)
+, m_array(false)
 , m_arrayType(-1)
 {
    setUuid(add.uuid());
@@ -1360,9 +1360,20 @@ RequestObject::RequestObject(const AddObject &add, const std::string &objId, con
    setDestRank(add.rank());
 }
 
-RequestObject::RequestObject(int destId, int destRank, const std::string &objId, int type, const std::string &referrer)
+RequestObject::RequestObject(int destId, int destRank, const std::string &objId, const std::string &referrer)
 : Message(Message::REQUESTOBJECT, sizeof(RequestObject))
 , m_objectId(objId)
+, m_referrer(referrer)
+, m_array(false)
+, m_arrayType(-1)
+{
+   setDestId(destId);
+   setDestRank(destRank);
+}
+
+RequestObject::RequestObject(int destId, int destRank, const std::string &arrayId, int type, const std::string &referrer)
+: Message(Message::REQUESTOBJECT, sizeof(RequestObject))
+, m_objectId(arrayId)
 , m_referrer(referrer)
 , m_array(true)
 , m_arrayType(type)

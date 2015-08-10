@@ -162,10 +162,11 @@ void Object::Data::objectValid(const Object *p) {
         ++unresolvedReferences;
 }
 
-void Object::Data::referenceResolved() {
+void Object::Data::referenceResolved(const std::function<void()> &completeCallback) {
     vassert(unresolvedReferences > 0);
     --unresolvedReferences;
-    if (unresolvedReferences == 0) {
+    if (isComplete()) {
+        completeCallback();
     }
 }
 

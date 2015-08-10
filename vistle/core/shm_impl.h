@@ -194,13 +194,14 @@ void ShmVector<T>::ptr::load(Archive &ar, const unsigned int version) {
        m_p = nullptr;
    } else {
        auto obj = ar.currentObject();
-       m_p = ar.template getArray<T>(name, [this, name, obj]() -> void {
+       auto handler = ar.objectCompletionHandler();
+       m_p = ar.template getArray<T>(name, [this, name, obj, handler]() -> void {
            m_p = static_cast<ShmVector<T> *>(Shm::the().getArrayFromName(name));
            assert(m_p);
            assert(m_p->m_name == name);
            m_p->ref();
            if (obj) {
-               obj->referenceResolved();
+               obj->referenceResolved(handler);
            }
        });
        if (m_p) {

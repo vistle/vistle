@@ -38,7 +38,7 @@ private:
     boost::asio::ip::tcp::socket m_dataSocket;
     boost::mutex m_dataReadMutex, m_dataWriteMutex;
 
-    struct AddObjectCompare {
+    struct AddObjectLess {
        bool operator()(const message::AddObject &a1, const message::AddObject &a2) const {
           if (a1.uuid() != a2.uuid()) {
              return a1.uuid() < a2.uuid();
@@ -48,20 +48,20 @@ private:
           }
 #if 0
           if (!strcmp(a1.getDestPort(), a2.getDestPort())) {
-             return strcmp(a1.getDestPort(), a2.getDestPort());
+             return strcmp(a1.getDestPort(), a2.getDestPort()) < 0;
           }
 #endif
           return false;
        }
     };
-    std::set<message::AddObject, AddObjectCompare> m_inTransitObjects; //!< objects for which AddObject messages have been sent to remote hubs
+    std::set<message::AddObject, AddObjectLess> m_inTransitObjects; //!< objects for which AddObject messages have been sent to remote hubs
 
-    std::map<message::AddObject, std::vector<std::string>, AddObjectCompare> m_outstandingAdds; //!< AddObject messages for which requests to retrieve objects from remote have been sent
+    std::map<message::AddObject, std::vector<std::string>, AddObjectLess> m_outstandingAdds; //!< AddObject messages for which requests to retrieve objects from remote have been sent
     std::map<std::string, message::AddObject> m_outstandingRequests; //!< requests for (sub-)objects which have not been serviced yet
 
 
     std::map<std::string, std::vector<std::function<void()>>> m_outstandingArrays; //!< requests for (sub-)objects which have not been serviced yet
-    std::map<std::string, message::AddObject> m_outstandingObjects; //!< requests for (sub-)objects which have not been serviced yet
+    std::map<std::string, std::vector<std::function<void()>>> m_outstandingObjects; //!< requests for (sub-)objects which have not been serviced yet
 };
 
 } // namespace vistle

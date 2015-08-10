@@ -274,7 +274,7 @@ struct ObjectData {
     template<typename ShmVectorPtr>
     void arrayValid(const ShmVectorPtr &p);
     void objectValid(const Object *p);
-    void referenceResolved();
+    void referenceResolved(const std::function<void()> &completeCallback);
 
     friend class boost::serialization::access;
     template<class Archive>

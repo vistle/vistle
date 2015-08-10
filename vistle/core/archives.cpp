@@ -101,4 +101,12 @@ void *iarchive::getArrayPointer(const std::string &name, int type, const std::fu
     return ptr;
 }
 
+void iarchive::setObjectCompletionHandler(const std::function<void()> &completer) {
+    m_completer = completer;
+}
+
+const std::function<void()> &iarchive::objectCompletionHandler() const {
+    return m_completer;
+}
+
 } // namespace vistle

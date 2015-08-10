@@ -58,10 +58,14 @@ public:
     }
     obj_const_ptr getObject(const std::string &name) const;
 
+    void setObjectCompletionHandler(const std::function<void()> &completer);
+    const std::function<void()> &objectCompletionHandler() const;
+
 private:
     void *getArrayPointer(const std::string &name, int type, const std::function<void()> &completeCallback) const;
     boost::shared_ptr<Fetcher> m_fetcher;
     ObjectData *m_currentObject;
+    std::function<void()> m_completer;
 };
 
 typedef boost::mpl::vector<

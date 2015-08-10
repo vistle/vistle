@@ -103,6 +103,18 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
    return true;
 }
 
+bool DataManager::requestObject(const std::string &referrer, const std::string &objId, int type, int hub, int rank, const std::function<void()> &handler) {
+
+   Object::const_ptr obj = Shm::the().getObjectFromName(objId);
+   if (obj) {
+      return false;
+   }
+   m_outstandingObjects[objId].push_back(handler);
+   message::RequestObject req(hub, rank, objId, referrer);
+   send(req);
+   return true;
+}
+
 bool DataManager::prepareTransfer(const message::AddObject &add) {
     m_inTransitObjects.emplace(add);
     return true;
@@ -299,34 +311,56 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
        }
        return true;
    } else {
-       auto reqIt = m_outstandingRequests.find(snd.objectId());
-       if (reqIt == m_outstandingRequests.end())
+       std::string objName = snd.objectId();
+       auto objIt = m_outstandingObjects.find(objName);
+       if (objIt == m_outstandingObjects.end())
            return false;
-       message::AddObject &add = reqIt->second;
 
-       fetcher.reset(new RemoteFetcher(this, add));
+       auto &outstandingAdds = m_outstandingAdds;
+       auto &outstandingRequests = m_outstandingRequests;
+       auto senderId = snd.senderId();
+       auto senderRank = snd.rank();
+       auto completionHandler = [this, &outstandingAdds, &outstandingRequests, senderId, senderRank, objName] () mutable -> void {
+           auto obj = Shm::the().getObjectFromName(objName);
+           if (!obj) {
+               std::cerr << "did not receive an object for " << objName << std::endl;
+               return;
+           }
+           vassert(obj);
+           std::cerr << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
+           vassert(obj->check());
+
+           auto reqIt = outstandingRequests.find(objName);
+           if (reqIt != outstandingRequests.end())
+           {
+               message::AddObject &add = reqIt->second;
+
+               auto addIt = outstandingAdds.find(add);
+               if (addIt == outstandingAdds.end())
+                   return;
+               auto &ids = addIt->second;
+               auto it = std::find(ids.begin(), ids.end(), objName);
+               if (it != ids.end()) {
+                   ids.erase(it);
+               }
+               outstandingRequests.erase(reqIt);
+
+               if (ids.empty()) {
+                   message::AddObjectCompleted complete(add);
+                   Communicator::the().clusterManager().sendMessage(senderId, complete, senderRank);
+                   message::AddObject nadd(add.getSenderPort(), obj);
+                   bool ret = Communicator::the().clusterManager().handlePriv(add, /* synthesized = */ true);
+                   m_outstandingAdds.erase(addIt);
+                   return;
+               }
+           }
+       };
+       memar.setObjectCompletionHandler(completionHandler);
+
+       fetcher.reset(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
        memar.setFetcher(fetcher);
        Object::ptr obj = Object::load(memar);
        if (obj && obj->isComplete()) {
-           CERR << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
-           vassert(obj->check());
-           auto addIt = m_outstandingAdds.find(add);
-           if (addIt == m_outstandingAdds.end())
-               return false;
-           auto &ids = addIt->second;
-           auto it = std::find(ids.begin(), ids.end(), snd.objectId());
-           if (it != ids.end()) {
-               ids.erase(it);
-           }
-           m_outstandingRequests.erase(reqIt);
-           if (ids.empty()) {
-               message::AddObjectCompleted complete(add);
-               Communicator::the().clusterManager().sendMessage(snd.senderId(), complete, snd.rank());
-               message::AddObject nadd(add.getSenderPort(), obj);
-               bool ret = Communicator::the().clusterManager().handlePriv(add, /* synthesized = */ true);
-               m_outstandingAdds.erase(addIt);
-               return ret;
-           }
            return true;
        } else if (obj) {
            // FIXME: save reference - otherwise it will get deleted immediately

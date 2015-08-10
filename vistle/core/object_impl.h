@@ -83,6 +83,8 @@ Object::ptr Object::load(Archive &ar) {
    ObjectTypeRegistry::registerArchiveType(ar);
    Object *p = NULL;
    ar & V_NAME("object", p);
+   if (p->d()->unresolvedReferences == 0)
+       ar.objectCompletionHandler()();
    return Object::ptr(p);
 }
 
