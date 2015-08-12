@@ -71,16 +71,19 @@ bool DataManager::read(char *buf, size_t n) {
 
 bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const std::function<void()> &handler) {
 
+   std::cerr << "requesting array: " << arrayId << " for " << referrer << std::endl;
    auto it = m_outstandingArrays.find(arrayId);
    if (it != m_outstandingArrays.end()) {
        it->second.push_back(handler);
        return true;
    }
 
+#if 0
    void *ptr= Shm::the().getArrayFromName(arrayId);
    if (ptr) {
       return false;
    }
+#endif
 
    m_outstandingArrays[arrayId].push_back(handler);
 
@@ -98,6 +101,7 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
    }
    m_outstandingAdds[add].push_back(objId);
    m_outstandingRequests.emplace(objId, add);
+   m_outstandingObjects[objId].push_back(handler);
    message::RequestObject req(add, objId);
    send(req);
    return true;
@@ -198,23 +202,26 @@ struct ArraySaver {
 
     template<typename T>
     void operator()(T) {
-        if (ShmVector<T>::typeId() == m_type) {
-            if (m_ok) {
-                m_ok = false;
-                std::cerr << "multiple type matches for data array " << m_name << std::endl;
-                return;
-            }
-            auto *arr = static_cast<ShmVector<T> *>(Shm::the().getArrayFromName(m_name));
-            if (!arr) {
-                std::cerr << "did not find data array " << m_name << std::endl;
-                return;
-            }
-            if (arr->type() != m_type) {
-                std::cerr << "array " << m_name << " does not have expected type, is " << arr->type() << ", expected " << m_type << std::endl;
-                return;
-            }
-            m_ok = true;
+        if (ShmVector<T>::typeId() != m_type) {
+            return;
         }
+
+        if (m_ok) {
+            m_ok = false;
+            std::cerr << "ArraySaver: multiple type matches for data array " << m_name << std::endl;
+            return;
+        }
+        auto *arr = Shm::the().getArrayFromName<T>(m_name);
+        if (!arr) {
+            std::cerr << "ArraySaver: did not find data array " << m_name << std::endl;
+            return;
+        }
+        if (arr->type() != m_type) {
+            std::cerr << "ArraySaver: " << m_name << " does not have expected type, is " << arr->type() << ", expected " << m_type << std::endl;
+            return;
+        }
+        m_ar & arr;
+        m_ok = true;
     }
 
     bool m_ok;
@@ -232,18 +239,18 @@ struct ArrayLoader {
         if (ShmVector<T>::typeId() == m_type) {
             if (m_ok) {
                 m_ok = false;
-                std::cerr << "multiple type matches for data array " << m_name << std::endl;
+                std::cerr << "ArrayLoader: type matches for data array " << m_name << std::endl;
                 return;
             }
-            auto *arr = static_cast<ShmVector<T> *>(Shm::the().getArrayFromName(m_name));
+            auto *arr = Shm::the().getArrayFromName<T>(m_name);
             if (arr) {
-                std::cerr << "already have data array with name " << m_name << std::endl;
+                std::cerr << "ArrayLoader: have data array with name " << m_name << std::endl;
                 return;
             }
             arr = new ShmVector<T>();
             m_ar & arr;
             if (arr->type() != m_type) {
-                std::cerr << "array " << m_name << " does not have expected type, is " << arr->type() << ", expected " << m_type << std::endl;
+                std::cerr << "ArrayLoader: " << m_name << " does not have expected type, is " << arr->type() << ", expected " << m_type << std::endl;
                 return;
             }
             m_ok = true;
@@ -313,8 +320,10 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
    } else {
        std::string objName = snd.objectId();
        auto objIt = m_outstandingObjects.find(objName);
-       if (objIt == m_outstandingObjects.end())
+       if (objIt == m_outstandingObjects.end()) {
+           CERR << "object " << objName << " unexpected" << std::endl;
            return false;
+       }
 
        auto &outstandingAdds = m_outstandingAdds;
        auto &outstandingRequests = m_outstandingRequests;
@@ -359,12 +368,12 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
 
        fetcher.reset(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
        memar.setFetcher(fetcher);
+       std::cerr << "loading object from memar" << std::endl;
        Object::ptr obj = Object::load(memar);
        if (obj && obj->isComplete()) {
            return true;
        } else if (obj) {
-           // FIXME: save reference - otherwise it will get deleted immediately
-
+           obj->ref(); // FIXME
        }
    }
 

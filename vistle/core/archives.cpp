@@ -91,8 +91,10 @@ ObjectData *iarchive::currentObject() const {
     return m_currentObject;
 }
 
+#if 0
 void *iarchive::getArrayPointer(const std::string &name, int type, const std::function<void()> &completeCallback) const {
 
+    std::cerr << "getArrayPointer for " << name << std::endl;
     void *ptr = Shm::the().getArrayFromName(name);
     if (!ptr) {
         assert(m_fetcher);
@@ -100,6 +102,7 @@ void *iarchive::getArrayPointer(const std::string &name, int type, const std::fu
     }
     return ptr;
 }
+#endif
 
 void iarchive::setObjectCompletionHandler(const std::function<void()> &completer) {
     m_completer = completer;

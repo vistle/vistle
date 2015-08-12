@@ -27,6 +27,9 @@ namespace vistle {
 
 typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 
+template<typename T>
+class ShmVector;
+
 struct V_COREEXPORT shm_name_t {
    std::array<char, 32> name;
    shm_name_t(const std::string &s = "INVALID");
@@ -121,7 +124,8 @@ class V_COREEXPORT Shm {
    shm_handle_t getHandleFromObject(boost::shared_ptr<const Object> object) const;
    shm_handle_t getHandleFromObject(const Object *object) const;
    boost::shared_ptr<const Object> getObjectFromName(const std::string &name, bool onlyComplete=true) const;
-   void *getArrayFromName(const std::string &name) const;
+   template<typename T>
+   const ShmVector<T> *getArrayFromName(const std::string &name) const;
 
    static std::string shmIdFilename();
    static bool cleanAll();
@@ -196,7 +200,11 @@ class ShmVector {
             }
 
             bool valid() const {
-                return m_p;
+                return !m_p == false;
+            }
+
+            operator bool() {
+                return valid();
             }
 
             template<class Archive>
@@ -237,6 +245,7 @@ class ShmVector {
       typename shm<const T>::array_ptr &operator()() const { return m_x; }
 
       void push_back(const T &d) { m_x->push_back(d); }
+      bool check() const;
 
    private:
       ~ShmVector();

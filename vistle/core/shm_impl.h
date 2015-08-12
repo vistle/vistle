@@ -94,6 +94,12 @@ ShmVector<T>::ShmVector(Index size, const std::string &name)
 }
 
 template<typename T>
+bool ShmVector<T>::check() const {
+
+   return m_type == typeId();
+}
+
+template<typename T>
 int ShmVector<T>::refcount() const {
 
    return m_refcount;
@@ -155,6 +161,7 @@ template<class Archive>
 void shm_name_t::save(Archive &ar, const unsigned int version) const {
 
    std::string n(name.data());
+   std::cerr << "SHM_NAME_T save: '" << n << "'" << std::endl;
    ar & boost::serialization::make_nvp("shm_name_t", n);
 }
 
@@ -163,17 +170,19 @@ void shm_name_t::load(Archive &ar, const unsigned int version) {
 
    std::string n;
    ar & boost::serialization::make_nvp("shm_name_t", n);
-   auto end = n.find('0');
+   auto end = n.find('\0');
    if (end != std::string::npos) {
       n = n.substr(0, end);
    }
    if (n.size() < name.size()) {
       std::copy(n.begin(), n.end(), name.data());
+      name[n.size()] = '\0';
    } else {
       std::cerr << "shm_name_t: name too long: " << n << " (" << n.size() << " chars)" << std::endl;
       memset(name.data(), 0, name.size());
       assert(n.size() < name.size());
    }
+   std::cerr << "SHM_NAME_T load: '" << name.data() << "'" << std::endl;
 }
 
 template<typename T>
@@ -196,7 +205,8 @@ void ShmVector<T>::ptr::load(Archive &ar, const unsigned int version) {
        auto obj = ar.currentObject();
        auto handler = ar.objectCompletionHandler();
        m_p = ar.template getArray<T>(name, [this, name, obj, handler]() -> void {
-           m_p = static_cast<ShmVector<T> *>(Shm::the().getArrayFromName(name));
+           //m_p = static_cast<ShmVector<T> *>(Shm::the().getArrayFromName(name));
+           m_p = const_cast<ShmVector<T> *>(Shm::the().getArrayFromName<T>(name));
            assert(m_p);
            assert(m_p->m_name == name);
            m_p->ref();
@@ -252,6 +262,20 @@ void ShmVector<T>::save(Archive &ar, const unsigned int version) const {
    Index s = m_x->size();
    ar & boost::serialization::make_nvp("size", s);
    ar & boost::serialization::make_nvp("elements", boost::serialization::make_array(&(*m_x)[0], m_x->size()));
+}
+
+template<typename T>
+const ShmVector<T> *Shm::getArrayFromName(const std::string &name) const {
+
+   // we have to use char here, otherwise boost-internal consistency checks fail
+   void *mem = vistle::shm<ShmVector<T>>::find(name);
+   if (mem) {
+      return static_cast<ShmVector<T> *>(mem);
+   }
+
+   std::cerr << "Shm::getArrayFromName: did not find " << name << std::endl;
+
+   return nullptr;
 }
 
 } // namespace vistle

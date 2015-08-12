@@ -20,6 +20,8 @@ bool Indexed::isEmpty() const {
 
 bool Indexed::checkImpl() const {
 
+   V_CHECK (d()->el->check());
+   V_CHECK (d()->cl->check());
    V_CHECK (d()->el->size() > 0);
    V_CHECK (el()[0] == 0);
    if (getNumElements() > 0) {
@@ -190,8 +192,8 @@ bool Indexed::getElementBounds(Index elem, Vector *min, Vector *max) const {
 
 void Indexed::refreshImpl() const {
 
-    m_el = d()->el->data();
-    m_cl = d()->cl->data();
+    m_el = (d() && d()->el.valid()) ? d()->el->data() : nullptr;
+    m_cl = (d() && d()->cl.valid()) ? d()->cl->data() : nullptr;
 }
 
 Indexed::Data::Data(const Index numElements, const Index numCorners,

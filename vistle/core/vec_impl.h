@@ -87,12 +87,12 @@ template <class T, int Dim>
 void Vec<T,Dim>::refreshImpl() const {
 
    for (int c=0; c<Dim; ++c) {
-      m_x[c] = d()->x[c]->data();
+      m_x[c] = (d() && d()->x[c].valid()) ? d()->x[c]->data() : nullptr;
    }
    for (int c=Dim; c<MaxDim; ++c) {
       m_x[c] = nullptr;
    }
-   m_size = d()->x[0]->size();
+   m_size = (d() && d()->x[0]) ? d()->x[0]->size() : 0;
 }
 
 template <class T, int Dim>
@@ -110,8 +110,10 @@ bool Vec<T,Dim>::isEmpty() const {
 template <class T, int Dim>
 bool Vec<T,Dim>::checkImpl() const {
 
-   for (int c=1; c<Dim; ++c)
+   for (int c=0; c<Dim; ++c) {
+      V_CHECK (d()->x[c]->check());
       V_CHECK (d()->x[c]->size() == d()->x[0]->size());
+   }
 
    return true;
 }

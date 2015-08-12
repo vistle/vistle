@@ -133,6 +133,7 @@ bool UnstructuredGrid::isEmpty() const {
 
 bool UnstructuredGrid::checkImpl() const {
 
+   V_CHECK(d()->tl->check());
    V_CHECK(d()->tl->size() == getNumElements());
    return true;
 }
@@ -778,7 +779,7 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(const Vector &p
 }
 
 void UnstructuredGrid::refreshImpl() const {
-   m_tl = d()->tl->data();
+   m_tl = (d() && d()->tl.valid()) ? d()->tl->data() : nullptr;
 }
 
 std::pair<Vector, Vector> UnstructuredGrid::getBounds() const {

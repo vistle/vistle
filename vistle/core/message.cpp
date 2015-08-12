@@ -1538,12 +1538,12 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case Message::REQUESTOBJECT: {
          auto mm = static_cast<const RequestObject &>(m);
-         s << ", obj: " << mm.objectId();
+         s << ", " << (mm.isArray() ? "array" : "object") << ": " << mm.objectId() << ", ref: " << mm.referrer();
          break;
       }
       case Message::SENDOBJECT: {
          auto mm = static_cast<const SendObject &>(m);
-         s << ", obj: " << mm.objectId() << ", payload: " << mm.payloadSize();
+         s << ", " << (mm.isArray() ? "array" : "object") << ": " << mm.objectId() << ", ref: " << mm.referrer() << ", payload size: " << mm.payloadSize();
          break;
       }
       default:

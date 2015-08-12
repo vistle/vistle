@@ -16,7 +16,7 @@ void Triangles::refresh() const {
 }
 
 void Triangles::refreshImpl() const {
-    m_cl = d()->cl->data();
+    m_cl = (d() && d()->cl.valid()) ? d()->cl->data() : nullptr;
 }
 
 bool Triangles::isEmpty() const {
@@ -26,6 +26,7 @@ bool Triangles::isEmpty() const {
 
 bool Triangles::checkImpl() const {
 
+   V_CHECK (d()->cl->check());
    if (getNumCorners() > 0) {
       V_CHECK (cl()[0] < getNumVertices());
       V_CHECK (cl()[getNumCorners()-1] < getNumVertices());

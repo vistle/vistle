@@ -400,19 +400,6 @@ Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyCompl
    return Object::const_ptr();
 }
 
-void *Shm::getArrayFromName(const std::string &name) const {
-
-   // we have to use char here, otherwise boost-internal consistency checks fail
-   void *mem = vistle::shm<char>::find(name);
-   if (mem) {
-      return mem;
-   }
-
-   std::cerr << "Shm::getArrayFromName: did not find " << name << std::endl;
-
-   return nullptr;
-}
-
 namespace {
 
 using namespace boost;

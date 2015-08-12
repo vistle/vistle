@@ -44,7 +44,7 @@ int main(int argc, char ** argv) {
 
 #ifdef SHMDEBUG
    try {
-      Shm &shm = Shm::attach(shmid, -1, -1);
+      Shm::attach(shmid, -1, -1);
    } catch (std::exception &ex) {
       std::cerr << "failed to attach to " << shmid << ": " << ex.what() << std::endl;
       MPI_Finalize();

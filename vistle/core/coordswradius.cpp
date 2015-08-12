@@ -11,7 +11,7 @@ CoordsWithRadius::CoordsWithRadius(const Index numCoords,
 
 void CoordsWithRadius::refreshImpl() const {
 
-    m_r = d()->r->data();
+    m_r = (d() && d()->r.valid()) ? d()->r->data() : nullptr;
 }
 
 void CoordsWithRadius::refresh() const {
@@ -26,6 +26,7 @@ bool CoordsWithRadius::isEmpty() const {
 
 bool CoordsWithRadius::checkImpl() const {
 
+   V_CHECK (d()->r->check());
    V_CHECK (getNumVertices() == d()->r->size());
    return true;
 }
