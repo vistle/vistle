@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>600</height>
+    <width>857</width>
+    <height>733</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -74,7 +74,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>857</width>
      <height>22</height>
     </rect>
    </property>
@@ -176,8 +176,8 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>78</width>
-     <height>78</height>
+     <width>79</width>
+     <height>101</height>
     </size>
    </property>
    <property name="maximumSize">
@@ -198,7 +198,7 @@
    <attribute name="dockWidgetArea">
     <number>2</number>
    </attribute>
-   <widget class="Parameters" name="parameterEditor"/>
+   <widget class="QScrollArea" name="parameterScroller"/>
   </widget>
   <widget class="QToolBar" name="toolBar">
    <property name="windowTitle">
@@ -357,12 +357,6 @@
    <class>gui::VistleConsole</class>
    <extends>QWidget</extends>
    <header>vistleconsole.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>Parameters</class>
-   <extends>QWidget</extends>
-   <header>parameters.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

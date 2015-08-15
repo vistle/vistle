@@ -39,7 +39,14 @@ MainWindow::MainWindow(QWidget *parent)
     m_console = ui->consoleWidget;
     setFocusProxy(m_console);
 
-    m_parameters = ui->parameterEditor;
+    //m_parameters = ui->parameterEditor;
+    m_parameters = new Parameters();
+    m_parameters->setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred));
+    m_parameters->adjustSize();
+    m_parameters->show();
+    ui->parameterScroller->setWidgetResizable(true);
+    ui->parameterScroller->setWidget(m_parameters);
+    ui->parameterScroller->show();
 
     m_moduleBrowser = ui->moduleBrowser;
 

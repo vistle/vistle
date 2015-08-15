@@ -238,6 +238,7 @@ void UiController::moduleSelectionChanged()
       const Module *m = selectedModules[0];
       m_mainWindow.parameters()->setModule(m->id());
       title = QString("Parameters: %1").arg(m->name());
+      m_mainWindow.parameters()->adjustSize();
       m_mainWindow.parameters()->show();
       m_mainWindow.parameterDock()->show();
       m_mainWindow.parameterDock()->raise();
