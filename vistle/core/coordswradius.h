@@ -16,7 +16,7 @@ class  V_COREEXPORT CoordsWithRadius: public Coords {
          const Meta &meta=Meta());
    void refresh() const override;
 
-   shm<Scalar>::array &r() { return *(*d()->r)(); }
+   shm<Scalar>::array &r() { return *(d()->r); }
    const Scalar *r() const { return m_r; }
 
    private:
@@ -24,7 +24,7 @@ class  V_COREEXPORT CoordsWithRadius: public Coords {
    void refreshImpl() const;
 
    V_DATA_BEGIN(CoordsWithRadius);
-      ShmVector<Scalar>::ptr r;
+      ShmVector<Scalar> r;
 
       Data(const Index numCoords = 0,
             Type id = UNKNOWN, const std::string & name = "",

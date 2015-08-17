@@ -3,6 +3,7 @@ vistle_find_package(Boost 1.40 REQUIRED COMPONENTS serialization system date_tim
 set(core_SOURCES
    archives.cpp
    shm.cpp
+   shm_reference.cpp
    objectcache.cpp
    objectmeta.cpp
    object.cpp
@@ -92,6 +93,8 @@ set(core_HEADERS
    shm.h
    shm_array.h
    shm_impl.h
+   shm_reference.h
+   shm_reference_impl.h
    statetracker.h
    tcpmessage.h
    texture1d.h

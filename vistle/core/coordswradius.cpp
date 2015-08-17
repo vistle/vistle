@@ -37,7 +37,7 @@ CoordsWithRadius::Data::Data(const Index numCoords,
              const Meta &meta)
    : CoordsWithRadius::Base::Data(numCoords,
          id, name, meta)
-, r(new ShmVector<Scalar>(numCoords))
+, r(numCoords)
 {
 }
 
@@ -49,7 +49,7 @@ CoordsWithRadius::Data::Data(const CoordsWithRadius::Data &o, const std::string 
 
 CoordsWithRadius::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n, Type id)
 : CoordsWithRadius::Base::Data(o, n, id)
-, r(new ShmVector<Scalar>(o.x[0]->size()))
+, r(o.x[0]->size())
 {
 }
 

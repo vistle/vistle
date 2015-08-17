@@ -27,8 +27,10 @@ namespace vistle {
 
 typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 
+#if 0
 template<typename T>
 class ShmVector;
+#endif
 
 struct V_COREEXPORT shm_name_t {
    std::array<char, 32> name;
@@ -95,6 +97,11 @@ struct shm {
    static T *find(const std::string &name);
    static void destroy(const std::string &name);
 };
+
+template<class T>
+class shm_ref;
+template<class T>
+using ShmVector = shm_ref<shm_array<T, typename shm<T>::allocator>>;
 
 class V_COREEXPORT Shm {
 
@@ -171,8 +178,9 @@ void shm<T>::destroy(const std::string &name) {
 #endif
 }
 
+#if 0
 template<typename T>
-class ShmVector {
+class ShmVector: public shm<T>::array {
 #ifdef SHMDEBUG
    friend void Shm::markAsRemoved(const std::string &name);
 #endif
@@ -225,6 +233,7 @@ class ShmVector {
       static int typeId();
 
       ShmVector(Index size = 0, const std::string &name="");
+      ~ShmVector();
       int type() const { return m_type; }
 
       int refcount() const;
@@ -248,7 +257,6 @@ class ShmVector {
       bool check() const;
 
    private:
-      ~ShmVector();
       void ref();
       void unref();
 
@@ -266,10 +274,20 @@ class ShmVector {
       shm_name_t m_name;
       typename shm<T>::array_ptr m_x;
 };
+#endif
 
 } // namespace vistle
 
 #endif
+
+#include "shm_reference.h"
+#include "shm_array.h"
+
+namespace vistle {
+
+template<class T>
+using ShmVector = shm_ref<shm_array<T, typename shm<T>::allocator>>;
+}
 
 #ifdef VISTLE_IMPL
 #include "shm_impl.h"

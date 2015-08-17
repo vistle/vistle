@@ -17,6 +17,7 @@ typedef boost::mpl::push_back<Scalars, CelltreeNode<sizeof(Index), 1>>::type Vec
 typedef boost::mpl::push_back<VectorTypes1, CelltreeNode<sizeof(Index), 2>>::type VectorTypes2;
 typedef boost::mpl::push_back<VectorTypes2, CelltreeNode<sizeof(Index), 3>>::type VectorTypes;
 
+#if 0
 template<typename T>
 ShmVector<T>::ptr::ptr(ShmVector *p)
 : m_p(p)
@@ -68,7 +69,8 @@ int ShmVector<T>::typeId() {
 
 template<typename T>
 ShmVector<T>::ShmVector(Index size, const std::string &name)
-: m_refcount(0)
+: shm<T>::array(size)
+, m_refcount(0)
 {
    m_type = typeId();
 
@@ -150,6 +152,7 @@ void ShmVector<T>::unref() {
    }
    m_mutex.unlock();
 }
+#endif
 
 template<class Archive>
 void shm_name_t::serialize(Archive &ar, const unsigned int version) {
@@ -185,6 +188,7 @@ void shm_name_t::load(Archive &ar, const unsigned int version) {
    std::cerr << "SHM_NAME_T load: '" << name.data() << "'" << std::endl;
 }
 
+#if 0
 template<typename T>
 template<class Archive>
 void ShmVector<T>::ptr::serialize(Archive &ar, const unsigned int version) {
@@ -268,7 +272,7 @@ template<typename T>
 const ShmVector<T> *Shm::getArrayFromName(const std::string &name) const {
 
    // we have to use char here, otherwise boost-internal consistency checks fail
-   void *mem = vistle::shm<ShmVector<T>>::find(name);
+   void *mem = vistle::shm<T>::find(name);
    if (mem) {
       return static_cast<ShmVector<T> *>(mem);
    }
@@ -277,6 +281,7 @@ const ShmVector<T> *Shm::getArrayFromName(const std::string &name) const {
 
    return nullptr;
 }
+#endif
 
 } // namespace vistle
 

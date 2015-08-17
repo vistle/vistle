@@ -23,7 +23,7 @@ class  V_COREEXPORT Tubes: public CoordsWithRadius {
          const Meta &meta=Meta());
 
    Index getNumTubes() const;
-   shm<Index>::array &components() const { return *(*d()->components)(); }
+   shm<Index>::array &components() const { return *d()->components; }
 
    CapStyle startStyle() const;
    CapStyle jointStyle() const;
@@ -32,8 +32,8 @@ class  V_COREEXPORT Tubes: public CoordsWithRadius {
    void setCapStyles(CapStyle start, CapStyle joint, CapStyle end);
 
    V_DATA_BEGIN(Tubes);
-      ShmVector<Index>::ptr components;
-      ShmVector<unsigned char>::ptr style; // 0: CapStyle for start, 1: CapStyle for connections within, 2: CapStyle for end of each component
+      ShmVector<Index> components;
+      ShmVector<unsigned char> style; // 0: CapStyle for start, 1: CapStyle for connections within, 2: CapStyle for end of each component
 
       Data(const Index numTubes = 0, const Index numCoords = 0,
             const std::string & name = "",

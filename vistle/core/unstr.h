@@ -51,7 +51,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
 
    void refresh() const override;
 
-   shm<unsigned char>::array &tl() { return *(*d()->tl)(); }
+   shm<unsigned char>::array &tl() { return *d()->tl; }
    const unsigned char *tl() const { return m_tl; }
 
    bool isGhostCell(Index elem) const;
@@ -105,7 +105,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
    mutable const unsigned char *m_tl;
 
    V_DATA_BEGIN(UnstructuredGrid);
-      ShmVector<unsigned char>::ptr tl;
+      ShmVector<unsigned char> tl;
 
       Data(const Index numElements = 0, const Index numCorners = 0,
                     const Index numVertices = 0, const std::string & name = "",

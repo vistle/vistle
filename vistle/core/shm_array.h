@@ -59,6 +59,8 @@ class shm_array {
       reserve(0);
    }
 
+   bool check() const { return true; }
+
    typedef typename allocator::pointer pointer;
    typedef T *iterator;
    typedef const T *const_iterator;
@@ -144,7 +146,11 @@ class shm_array {
    }
    void shrink_to_fit() { reserve(m_size); assert(m_capacity == m_size); }
 
+   int ref() { return ++m_refcount; }
+   int unref() { return --m_refcount; }
+
  private:
+   mutable std::atomic<int> m_refcount;
    size_t m_size;
    size_t m_capacity;
    pointer m_data;

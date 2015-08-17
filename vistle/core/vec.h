@@ -69,10 +69,10 @@ class Vec: public DataBase {
 
    void setSize(const Index size);
 
-   array &x(int c=0) { return *(*d()->x[c])(); }
-   array &y() { return *(*d()->x[1])(); }
-   array &z() { return *(*d()->x[2])(); }
-   array &w() { return *(*d()->x[3])(); }
+   array &x(int c=0) { return *d()->x[c]; }
+   array &y() { return *d()->x[1]; }
+   array &z() { return *d()->x[2]; }
+   array &w() { return *d()->x[3]; }
 
    const T *x(int c=0) const { return m_x[c]; }
    const T *y() const { return m_x[1]; }
@@ -92,7 +92,7 @@ class Vec: public DataBase {
  public:
    struct Data: public Base::Data {
 
-      typename ShmVector<T>::ptr x[Dim];
+      ShmVector<T> x[Dim];
       // when used as Vec
       Data(const Index size = 0, const std::string &name = "",
             const Meta &meta=Meta());

@@ -26,8 +26,8 @@ class  V_COREEXPORT Indexed: public Coords {
    Index getNumCorners() const;
    Index getNumVertices() const;
 
-   typename shm<Index>::array &el() { return *(*d()->el)(); }
-   typename shm<Index>::array &cl() { return *(*d()->cl)(); }
+   typename shm<Index>::array &el() { return *d()->el; }
+   typename shm<Index>::array &cl() { return *d()->cl; }
    const Index *el() const { return m_el; }
    const Index *cl() const { return m_cl; }
 
@@ -50,8 +50,8 @@ class  V_COREEXPORT Indexed: public Coords {
    void createVertexOwnerList() const;
 
    V_DATA_BEGIN(Indexed);
-      ShmVector<Index>::ptr el; //< element list: index into connectivity list - last element: sentinel
-      ShmVector<Index>::ptr cl; //< connectivity list: index into coordinates
+      ShmVector<Index> el; //< element list: index into connectivity list - last element: sentinel
+      ShmVector<Index> cl; //< connectivity list: index into coordinates
 
       Data(const Index numElements = 0, const Index numCorners = 0,
            const Index numVertices = 0,

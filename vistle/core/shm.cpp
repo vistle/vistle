@@ -411,15 +411,16 @@ template<typename S, class Stream>
 struct archive_instantiator {
    template<class T> void operator()(wrap<T>) {
       typedef ShmVector<S> V;
-      typename V::ptr p(new V);
-      typename V::ptr q;
-      const typename V::ptr c = p;
+      V p;
+      const V c = p, q;
       Object::ptr obj;
       obj->d()->arrayValid(c);
+#if 0
       q = c;
-      q = new V();
+      q.construct();
       q->resize(1);
       std::cerr << q->refcount() << std::endl;
+#endif
       typedef T Archive;
       Stream stream;
       Archive ar(stream);

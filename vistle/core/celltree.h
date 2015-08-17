@@ -138,9 +138,9 @@ class V_COREEXPORT Celltree: public Object {
    bool traverseNode(Index curNode, Functor &func) const;
 
    V_DATA_BEGIN(Celltree);
-      typename ShmVector<Scalar>::ptr m_bounds;
-      typename ShmVector<Index>::ptr m_cells;
-      typename ShmVector<Node>::ptr m_nodes;
+      ShmVector<Scalar> m_bounds;
+      ShmVector<Index> m_cells;
+      ShmVector<Node> m_nodes;
 
       static Data *create(const std::string &name="", const Index numCells = 0,
             const Meta &m=Meta());

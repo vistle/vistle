@@ -19,7 +19,7 @@ class V_COREEXPORT Triangles: public Coords {
    Index getNumElements() const;
    Index getNumCorners() const;
 
-   shm<Index>::array &cl() { return *(*d()->cl)(); }
+   shm<Index>::array &cl() { return *d()->cl; }
    const Index *cl() const { return m_cl; }
 
  private:
@@ -27,7 +27,7 @@ class V_COREEXPORT Triangles: public Coords {
    mutable const Index *m_cl;
 
    V_DATA_BEGIN(Triangles);
-      ShmVector<Index>::ptr cl;
+      ShmVector<Index> cl;
 
       Data(const Index numCorners = 0, const Index numCoords = 0,
             const std::string & name = "",
