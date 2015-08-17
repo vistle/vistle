@@ -1,6 +1,7 @@
 #ifndef SHM_ARRAY_H
 #define SHM_ARRAY_H
 
+#include <atomic>
 #include <boost/type_traits.hpp>
 
 #if 0
