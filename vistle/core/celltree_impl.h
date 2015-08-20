@@ -37,7 +37,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
       return;
 
    // cell index array, contains runs of cells belonging to nodes
-   Index *cells = (*d()->m_cells)()->data();
+   Index *cells = d()->m_cells->data();
 
    // sort cells into buckets for each possible split dimension
 
@@ -243,7 +243,7 @@ template<class BoundsFunctor>
 bool Celltree<Scalar, Index, NumDimensions>::validateNode(BoundsFunctor &boundFunc, Index nodenum, const Celltree::Vector &min, const Celltree::Vector &max) const {
 
    bool valid = true;
-   Index *cells = (*d()->m_cells)()->data();
+   Index *cells = d()->m_cells->data();
    Node *node = &(nodes()[nodenum]);
    if (node->isLeaf()) {
       for (Index i=node->start; i<node->start+node->size; ++i) {
@@ -328,9 +328,9 @@ template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, const Index numCells,
                      const Meta &meta)
 : Celltree::Base::Data(Object::Type(Object::CELLTREE1-1+NumDimensions), name, meta)
-, m_bounds(new ShmVector<Scalar>(2*NumDimensions))
-, m_cells(new ShmVector<Index>(numCells))
-, m_nodes(new ShmVector<Node>(1))
+, m_bounds(2*NumDimensions)
+, m_cells(numCells)
+, m_nodes(1)
 {
 
    Index *cells = m_cells->data();

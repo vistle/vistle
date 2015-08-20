@@ -124,7 +124,7 @@ struct HostData {
    const Scalar *m_x;
    const Scalar *m_y;
    const Scalar *m_z;
-   std::vector<vistle::ShmVector<Scalar>::ptr> m_outData;
+   std::vector<vistle::shm_ref<vistle::shm_array<Scalar, shm<Scalar>::allocator>>> m_outData;
    std::vector<const Scalar*> m_inputpointer;
    std::vector<Scalar*> m_outputpointer;
 
@@ -154,7 +154,7 @@ struct HostData {
       m_inputpointer.push_back(&z[0]);
 
       for(size_t i = 0; i < m_inputpointer.size(); i++){
-         m_outData.push_back(new vistle::ShmVector<Scalar>);
+         m_outData.emplace_back();
          m_outputpointer.push_back(NULL);
       }
       m_numinputdata = m_inputpointer.size();
@@ -163,7 +163,7 @@ struct HostData {
    void addmappeddata(const Scalar *mapdata){
 
       m_inputpointer.push_back(mapdata);
-      m_outData.push_back(new vistle::ShmVector<Scalar>);
+      m_outData.push_back(vistle::ShmVector<Scalar>());
       m_outputpointer.push_back(NULL);
       m_numinputdata = m_inputpointer.size();
 

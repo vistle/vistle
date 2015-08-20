@@ -216,6 +216,7 @@ int main(int argc, char *argv[]) {
       test_pb_int(v, "uninit array reserve", size);
    }
 
+#if 0
    {
       vistle::shm_array<Aligned, std::allocator<Aligned>> v;
       test_eb(v, "uninit array emplace_back", size);
@@ -242,6 +243,7 @@ int main(int argc, char *argv[]) {
       v.reserve(size);
       test_pb(v, "uninit array reserve", size);
    }
+#endif
 #endif
 
 #if 0
@@ -278,6 +280,7 @@ int main(int argc, char *argv[]) {
    }
 #endif
 
+#if 0
 #ifndef USE_BOOST_VECTOR
    { 
       bi::shared_memory_object::remove(shmname.c_str());
@@ -291,7 +294,6 @@ int main(int argc, char *argv[]) {
    }
 #endif
 
-#if 0
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);

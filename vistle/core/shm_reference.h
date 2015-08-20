@@ -1,19 +1,24 @@
 #ifndef SHM_REFRENCE_H
 #define SHM_REFRENCE_H
 
-//#include "shm.h"
 #include <string>
 
 namespace vistle {
 
 template<class T>
-class shm_ref: public T {
+class shm_ref {
 
  public:
-#if 1
     shm_ref()
     : m_name(Shm::the().createObjectId())
     , m_p(shm<T>::construct(m_name)(Shm::the().allocator()))
+    {
+        ref();
+    }
+
+    shm_ref(const std::string &name, T *p)
+    : m_name(name)
+    , m_p(p)
     {
         ref();
     }
@@ -40,13 +45,16 @@ class shm_ref: public T {
         ref();
     }
 
-   ~shm_ref();
+   ~shm_ref() {
+        unref();
+    }
 
     template<typename... Args>
     void construct(const Args&... args)
     {
         unref();
         m_p = shm<T>::construct(m_name)(args..., Shm::the().allocator());
+        //m_p = Shm::the().shm().construct<T>((const char *)m_name)(args..., Shm::the().allocator());
         ref();
     }
 
@@ -54,12 +62,8 @@ class shm_ref: public T {
         unref();
         m_p = rhs.m_p;
         ref();
+        return *this;
     }
-
-#else
-   shm_ref(T *t, const std::string &name = "");
-   shm_ref(const std::string &name);
-#endif
 
    bool valid() const {
        return m_p;
@@ -75,23 +79,34 @@ class shm_ref: public T {
    T *operator->();
    const T *operator->() const;
 
-   shm_name_t &name() const;
+   const shm_name_t &name() const;
 
  private:
    shm_name_t m_name;
    boost::interprocess::offset_ptr<T> m_p;
    void ref() {
-       if (m_p)
+       if (m_p) {
+           assert(m_p->refcount() >= 0);
            m_p->ref();
+       }
    }
 
    void unref() {
        if (m_p) {
+            assert(m_p->refcount() > 0);
             if (m_p->unref() == 0) {
-                shm<T>::destroy(m_p);
+                shm<T>::destroy_ptr(m_p.get());
             }
        }
    }
+
+   friend class boost::serialization::access;
+   template<class Archive>
+   void serialize(Archive &ar, const unsigned int version);
+   template<class Archive>
+   void save(Archive &ar, const unsigned int version) const;
+   template<class Archive>
+   void load(Archive &ar, const unsigned int version);
 };
 
 } // namespace vistle

@@ -155,6 +155,7 @@ int main(int argc, char *argv[]) {
 #endif
    }
 
+#if 0
    {
       vistle::shm_array<DataType, std::allocator<DataType>> v;
       v.reserve(size);
@@ -177,6 +178,7 @@ int main(int argc, char *argv[]) {
       v.reserve(size);
       time_eb(v, "uninit array reserve+emplace_back class", size);
    }
+#endif
 
    { 
       bi::shared_memory_object::remove(shmname.c_str());

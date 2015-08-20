@@ -82,10 +82,10 @@ class V_COREEXPORT Celltree: public Object {
    template<class BoundsFunctor>
    bool validateTree(BoundsFunctor &func) const;
 
-   Scalar *min() const { return &(*(*d()->m_bounds)())[0]; }
-   Scalar *max() const { return &(*(*d()->m_bounds)())[NumDimensions]; }
-   typename shm<Node>::array &nodes() const { return *(*d()->m_nodes)(); }
-   typename shm<Index>::array &cells() const { return *(*d()->m_cells)(); }
+   Scalar *min() const { return &(*d()->m_bounds)[0]; }
+   Scalar *max() const { return &(*d()->m_bounds)[NumDimensions]; }
+   typename shm<Node>::array &nodes() const { return *d()->m_nodes; }
+   typename shm<Index>::array &cells() const { return *d()->m_cells; }
 
    template<class InnerNodeFunctor, class ElementFunctor>
    void traverse(InnerNodeFunctor &visitNode, ElementFunctor &visitElement) const {

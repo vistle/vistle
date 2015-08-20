@@ -20,8 +20,8 @@ VertexOwnerList::Data::Data(const VertexOwnerList::Data &o, const std::string &n
 VertexOwnerList::Data::Data(const std::string &name, const Index numVertices,
                      const Meta &meta)
 : VertexOwnerList::Base::Data(Object::Type(Object::VERTEXOWNERLIST), name, meta)
-, vertexList(new ShmVector<Index>(numVertices + 1))
-, cellList(new ShmVector<Index>(0))
+, vertexList(numVertices + 1)
+, cellList(0)
 {
 }
 

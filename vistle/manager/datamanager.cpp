@@ -202,7 +202,7 @@ struct ArraySaver {
 
     template<typename T>
     void operator()(T) {
-        if (ShmVector<T>::typeId() != m_type) {
+        if (shm_array<T, typename shm<T>::allocator>::typeId() != m_type) {
             return;
         }
 
@@ -211,15 +211,17 @@ struct ArraySaver {
             std::cerr << "ArraySaver: multiple type matches for data array " << m_name << std::endl;
             return;
         }
-        auto *arr = Shm::the().getArrayFromName<T>(m_name);
+        auto &arr = Shm::the().getArrayFromName<T>(m_name);
         if (!arr) {
             std::cerr << "ArraySaver: did not find data array " << m_name << std::endl;
             return;
         }
+#if 0
         if (arr->type() != m_type) {
             std::cerr << "ArraySaver: " << m_name << " does not have expected type, is " << arr->type() << ", expected " << m_type << std::endl;
             return;
         }
+#endif
         m_ar & arr;
         m_ok = true;
     }
@@ -236,23 +238,25 @@ struct ArrayLoader {
 
     template<typename T>
     void operator()(T) {
-        if (ShmVector<T>::typeId() == m_type) {
+        if (shm_array<T, typename shm<T>::allocator>::typeId() == m_type) {
             if (m_ok) {
                 m_ok = false;
                 std::cerr << "ArrayLoader: type matches for data array " << m_name << std::endl;
                 return;
             }
-            auto *arr = Shm::the().getArrayFromName<T>(m_name);
+            auto arr = Shm::the().getArrayFromName<T>(m_name);
             if (arr) {
                 std::cerr << "ArrayLoader: have data array with name " << m_name << std::endl;
                 return;
             }
-            arr = new ShmVector<T>();
+            arr = ShmVector<T>();
             m_ar & arr;
+#if 0
             if (arr->type() != m_type) {
                 std::cerr << "ArrayLoader: " << m_name << " does not have expected type, is " << arr->type() << ", expected " << m_type << std::endl;
                 return;
             }
+#endif
             m_ok = true;
         }
     }

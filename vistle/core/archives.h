@@ -53,13 +53,21 @@ public:
     ObjectData *currentObject() const;
 
     template<typename T>
-    ShmVector<T> *getArray(const std::string &name, const std::function<void()> &completeCallback) const {
+    ShmVector<T> getArray(const std::string &name, const std::function<void()> &completeCallback) const {
+        auto arr = Shm::the().getArrayFromName<T>(name);
+        if (!arr) {
+            assert(m_fetcher);
+            m_fetcher->requestArray(name, shm<T>::array::typeId(), completeCallback);
+        }
+        return arr;
+#if 0
         auto ptr = const_cast<ShmVector<T> *>(Shm::the().getArrayFromName<T>(name));
         if (!ptr) {
             assert(m_fetcher);
             m_fetcher->requestArray(name, ShmVector<T>::typeId(), completeCallback);
         }
         return ptr;
+#endif
     }
     obj_const_ptr getObject(const std::string &name) const;
 

@@ -202,8 +202,8 @@ Indexed::Data::Data(const Index numElements, const Index numCorners,
              const Meta &meta)
    : Indexed::Base::Data(numVertices, id, name,
          meta)
-   , el(new ShmVector<Index>(numElements+1))
-   , cl(new ShmVector<Index>(numCorners))
+   , el(numElements+1)
+   , cl(numCorners)
 {
    (*el)[0] = 0;
 }

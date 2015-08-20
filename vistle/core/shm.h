@@ -95,7 +95,8 @@ struct shm {
    typedef boost::interprocess::offset_ptr<array> array_ptr;
    static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name);
    static T *find(const std::string &name);
-   static void destroy(const std::string &name);
+   static bool destroy(const std::string &name);
+   static void destroy_ptr(T *ptr);
 };
 
 template<class T>
@@ -132,7 +133,7 @@ class V_COREEXPORT Shm {
    shm_handle_t getHandleFromObject(const Object *object) const;
    boost::shared_ptr<const Object> getObjectFromName(const std::string &name, bool onlyComplete=true) const;
    template<typename T>
-   const ShmVector<T> *getArrayFromName(const std::string &name) const;
+   const ShmVector<T> getArrayFromName(const std::string &name) const;
 
    static std::string shmIdFilename();
    static bool cleanAll();
@@ -171,11 +172,17 @@ T *shm<T>::find(const std::string &name) {
 }
 
 template<typename T>
-void shm<T>::destroy(const std::string &name) {
-      Shm::the().shm().destroy<T>(name.c_str());
+void shm<T>::destroy_ptr(T *ptr) {
+   return Shm::the().shm().destroy_ptr<T>(ptr);
+}
+
+template<typename T>
+bool shm<T>::destroy(const std::string &name) {
+    const bool ret = Shm::the().shm().destroy<T>(name.c_str());
 #ifdef SHMDEBUG
-      Shm::the().markAsRemoved(name);
+    Shm::the().markAsRemoved(name);
 #endif
+    return ret;
 }
 
 #if 0
@@ -281,12 +288,12 @@ class ShmVector: public shm<T>::array {
 #endif
 
 #include "shm_reference.h"
-#include "shm_array.h"
 
 namespace vistle {
 
 template<class T>
 using ShmVector = shm_ref<shm_array<T, typename shm<T>::allocator>>;
+
 }
 
 #ifdef VISTLE_IMPL

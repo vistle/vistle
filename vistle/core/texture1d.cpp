@@ -34,7 +34,7 @@ Texture1D::Data::Data(const std::string &name, const Index width,
    : Texture1D::Base::Data(0, Object::TEXTURE1D, name, meta)
    , min(mi)
    , max(ma)
-   , pixels(new ShmVector<unsigned char>(width * 4))
+   , pixels(width * 4)
 {
 }
 

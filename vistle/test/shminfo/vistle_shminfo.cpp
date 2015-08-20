@@ -75,7 +75,7 @@ int main(int argc, char ** argv) {
                if (info.handle) {
                   const void *p = Shm::the().shm().get_address_from_handle(info.handle);
                   const ShmVector<int> *v = static_cast<const ShmVector<int> *>(p);
-                  std::cout << " ref " << v->refcount() << std::endl;
+                  std::cout << " ref " << (*v)->refcount() << std::endl;
                } else {
                   std::cout << " no handle" << std::endl;
                }

@@ -25,15 +25,19 @@ class shm_array {
    typedef T value_type;
    typedef const value_type &const_reference;
 
+   static int typeId();
+
    shm_array(const allocator &alloc = allocator())
-   : m_size(0)
+   : m_type(typeId())
+   , m_size(0)
    , m_capacity(0)
    , m_data(nullptr)
    , m_allocator(alloc)
    {}
 
    shm_array(const size_t size, const allocator &alloc = allocator())
-   : m_size(0)
+   : m_type(typeId())
+   , m_size(0)
    , m_capacity(0)
    , m_data(nullptr)
    , m_allocator(alloc)
@@ -42,7 +46,8 @@ class shm_array {
    }
 
    shm_array(const size_t size, const T &value, const allocator &alloc = allocator())
-   : m_size(0)
+   : m_type(typeId())
+   , m_size(0)
    , m_capacity(0)
    , m_data(nullptr)
    , m_allocator(alloc)
@@ -50,16 +55,30 @@ class shm_array {
       resize(size, value);
    }
 
+   shm_array(shm_array &&other)
+   : m_type(other.m_type)
+   , m_size(other.m_size)
+   , m_capacity(other.m_capacity)
+   , m_data(other.m_data)
+   , m_allocator(other.m_allocator)
+   {
+       other.m_data = nullptr;
+       other.m_size = 0;
+       other.m_capacity = 0;
+       assert(typeId() == m_type);
+   }
+
 #if 0
    template< class InputIt >
       shm_array( InputIt first, InputIt last, 
-            const allocator &alloc = allocator() );
+            const allocator &alloc = allocator());
 #endif
 
    ~shm_array() {
       reserve(0);
    }
 
+   int type() const { return m_type; }
    bool check() const { return true; }
 
    typedef typename allocator::pointer pointer;
@@ -147,10 +166,12 @@ class shm_array {
    }
    void shrink_to_fit() { reserve(m_size); assert(m_capacity == m_size); }
 
-   int ref() { return ++m_refcount; }
-   int unref() { return --m_refcount; }
+   int ref() const { return ++m_refcount; }
+   int unref() const { return --m_refcount; }
+   int refcount() const { return m_refcount; }
 
  private:
+   const int m_type;
    mutable std::atomic<int> m_refcount;
    size_t m_size;
    size_t m_capacity;
@@ -164,8 +185,8 @@ class shm_array {
 #endif
 
    // not implemented
-   shm_array(const shm_array &other);
-   shm_array &operator=(const shm_array &rhs);
+   shm_array(const shm_array &other) = delete;
+   shm_array &operator=(const shm_array &rhs) = delete;
 };
 
 } // namespace vistle

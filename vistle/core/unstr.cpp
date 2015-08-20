@@ -804,7 +804,7 @@ UnstructuredGrid::Data::Data(const Index numElements,
                                    const Meta &meta)
    : UnstructuredGrid::Base::Data(numElements, numCorners, numVertices,
          Object::UNSTRUCTUREDGRID, name, meta)
-   , tl(new ShmVector<unsigned char>(numElements))
+   , tl(numElements)
 {
 }
 
