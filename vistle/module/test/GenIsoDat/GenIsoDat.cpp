@@ -450,8 +450,11 @@ bool GenIsoDat::compute() {
        z[i] += 2*rank();
     }
 
+    std::cerr << "pre-add data refcount: " << data->refcount() << std::endl;
+
     data->setGrid(grid);
     addObject("data_out", data);
+    std::cerr << "post-add data refcount: " << data->refcount() << std::endl;
     mapdata->setGrid(grid);
     addObject("mapdata_out", mapdata);
 
