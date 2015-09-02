@@ -513,6 +513,7 @@ AddObject::AddObject(const AddObject &o)
 , m_handleValid(false)
 {
     setUuid(o.uuid());
+    ref();
 }
 
 AddObject::~AddObject() {
@@ -1497,67 +1498,67 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
 
    switch (m.type()) {
       case Message::IDENTIFY: {
-         auto mm = static_cast<const Identify &>(m);
+         auto &mm = static_cast<const Identify &>(m);
          s << ", identity: " << Identify::toString(mm.identity());
          break;
       }
       case Message::EXECUTE: {
-         auto mm = static_cast<const Execute &>(m);
+         auto &mm = static_cast<const Execute &>(m);
          s << ", module: " << mm.getModule() << ", what: " << mm.what() << ", execcount: " << mm.getExecutionCount();
          break;
       }
       case Message::EXECUTIONPROGRESS: {
-         auto mm = static_cast<const ExecutionProgress &>(m);
+         auto &mm = static_cast<const ExecutionProgress &>(m);
          s << ", stage: " << ExecutionProgress::toString(mm.stage());
          break;
       }
       case Message::ADDPARAMETER: {
-         auto mm = static_cast<const AddParameter &>(m);
+         auto &mm = static_cast<const AddParameter &>(m);
          s << ", name: " << mm.getName();
          break;
       }
       case Message::SETPARAMETER: {
-         auto mm = static_cast<const SetParameter &>(m);
+         auto &mm = static_cast<const SetParameter &>(m);
          s << ", dest: " << mm.getModule() << ", name: " << mm.getName();
          break;
       }
       case Message::SETPARAMETERCHOICES: {
-         auto mm = static_cast<const SetParameterChoices &>(m);
+         auto &mm = static_cast<const SetParameterChoices &>(m);
          s << ", dest: " << mm.getModule() << ", name: " << mm.getName();
          break;
       }
       case Message::ADDPORT: {
-         auto mm = static_cast<const AddPort &>(m);
+         auto &mm = static_cast<const AddPort &>(m);
          s << ", name: " << mm.getPort()->getName();
          break;
       }
       case Message::MODULEAVAILABLE: {
-         auto mm = static_cast<const ModuleAvailable &>(m);
+         auto &mm = static_cast<const ModuleAvailable &>(m);
          s << ", name: " << mm.name() << ", hub: " << mm.hub();
          break;
       }
       case Message::SPAWN: {
-         auto mm = static_cast<const Spawn &>(m);
+         auto &mm = static_cast<const Spawn &>(m);
          s << ", name: " << mm.getName() << ", id: " << mm.spawnId() << ", hub: " << mm.hubId();
          break;
       }
       case Message::ADDHUB: {
-         auto mm = static_cast<const AddHub &>(m);
+         auto &mm = static_cast<const AddHub &>(m);
          s << ", name: " << mm.name() << ", id: " << mm.id();
          break;
       }
       case Message::ADDOBJECT: {
-         auto mm = static_cast<const AddObject &>(m);
+         auto &mm = static_cast<const AddObject &>(m);
          s << ", obj: " << mm.objectName() << ", " << mm.getSenderPort() << " -> " << mm.getDestPort() << " (handle: " << (mm.handleValid()?"valid":"invalid") << ")";
          break;
       }
       case Message::REQUESTOBJECT: {
-         auto mm = static_cast<const RequestObject &>(m);
+         auto &mm = static_cast<const RequestObject &>(m);
          s << ", " << (mm.isArray() ? "array" : "object") << ": " << mm.objectId() << ", ref: " << mm.referrer();
          break;
       }
       case Message::SENDOBJECT: {
-         auto mm = static_cast<const SendObject &>(m);
+         auto &mm = static_cast<const SendObject &>(m);
          s << ", " << (mm.isArray() ? "array" : "object") << ": " << mm.objectId() << ", ref: " << mm.referrer() << ", payload size: " << mm.payloadSize();
          break;
       }
