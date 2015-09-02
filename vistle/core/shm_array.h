@@ -29,6 +29,7 @@ class shm_array {
 
    shm_array(const allocator &alloc = allocator())
    : m_type(typeId())
+   , m_refcount(0)
    , m_size(0)
    , m_capacity(0)
    , m_data(nullptr)
@@ -37,6 +38,7 @@ class shm_array {
 
    shm_array(const size_t size, const allocator &alloc = allocator())
    : m_type(typeId())
+   , m_refcount(0)
    , m_size(0)
    , m_capacity(0)
    , m_data(nullptr)
@@ -47,6 +49,7 @@ class shm_array {
 
    shm_array(const size_t size, const T &value, const allocator &alloc = allocator())
    : m_type(typeId())
+   , m_refcount(0)
    , m_size(0)
    , m_capacity(0)
    , m_data(nullptr)
@@ -57,6 +60,7 @@ class shm_array {
 
    shm_array(shm_array &&other)
    : m_type(other.m_type)
+   , m_refcount(0)
    , m_size(other.m_size)
    , m_capacity(other.m_capacity)
    , m_data(other.m_data)
