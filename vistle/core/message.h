@@ -487,10 +487,12 @@ class V_COREEXPORT AddObject: public Message {
    void setDestPort(const std::string &destPort);
    const char * getDestPort() const;
    const char *objectName() const;
-   const shm_handle_t & getHandle() const;
    Object::const_ptr takeObject() const; //!< may only be called once
+   bool ref(); //!< may only be called once
    const Meta &meta() const;
    Object::Type objectType() const;
+   const shm_handle_t &getHandle() const;
+   bool handleValid() const;
 
  private:
    port_name_t senderPort;

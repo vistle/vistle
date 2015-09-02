@@ -494,6 +494,7 @@ AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj,
 {
    // we keep the handle as a reference to obj
    obj->ref();
+   std::cerr << "AddObject w/ obj: " << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
 
    COPY_STRING(senderPort, sender);
    COPY_STRING(destPort, dest);
@@ -512,15 +513,23 @@ AddObject::AddObject(const AddObject &o)
 , m_handleValid(false)
 {
     setUuid(o.uuid());
+}
+
+AddObject::~AddObject() {
+}
+
+bool AddObject::ref() {
+
+    assert(!m_handleValid);
 
     if (Shm::isAttached() && Shm::the().name() == std::string(m_shmname.data())) {
         vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
         obj->ref();
+        std::cerr << "AddObject w/ AddObject: " << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
         m_handleValid = true;
     }
-}
 
-AddObject::~AddObject() {
+    return m_handleValid;
 }
 
 const char * AddObject::getSenderPort() const {
@@ -540,6 +549,11 @@ const char * AddObject::getDestPort() const {
 const char *AddObject::objectName() const {
 
    return m_name;
+}
+
+bool AddObject::handleValid() const {
+
+    return m_handleValid;
 }
 
 const shm_handle_t & AddObject::getHandle() const {
@@ -564,6 +578,7 @@ Object::const_ptr AddObject::takeObject() const {
       if (obj) {
          // ref count has been increased during AddObject construction
          obj->unref();
+         std::cerr << "takeObject: " << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
          m_handleValid = false;
       } else {
           std::cerr << "did not find " << m_name << " by handle" << std::endl;
@@ -1533,7 +1548,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case Message::ADDOBJECT: {
          auto mm = static_cast<const AddObject &>(m);
-         s << ", obj: " << mm.objectName() << ", " << mm.getSenderPort() << " -> " << mm.getDestPort();
+         s << ", obj: " << mm.objectName() << ", " << mm.getSenderPort() << " -> " << mm.getDestPort() << " (handle: " << (mm.handleValid()?"valid":"invalid") << ")";
          break;
       }
       case Message::REQUESTOBJECT: {
