@@ -145,7 +145,9 @@ Vec<T,Dim>::Data::Data(const Index size, const std::string &name,
 : Vec<T,Dim>::Base::Data(Vec<T,Dim>::type(), name, m)
 {
    for (int c=0; c<Dim; ++c)
-      x[c].construct(size); // = new ShmVector<T>(size);
+      x[c]->resize(size);
+      //x[c].construct(size);
+      // = new ShmVector<T>(size);
 }
 
 template <class T, int Dim>
@@ -162,7 +164,9 @@ Vec<T,Dim>::Data::Data(const Index size, Type id, const std::string &name,
 : Vec<T,Dim>::Base::Data(id, name, m)
 {
    for (int c=0; c<Dim; ++c)
-      x[c].construct(size); // = new ShmVector<T>(size);
+       x[c]->resize(size);
+      //x[c].construct(size);
+       // = new ShmVector<T>(size);
 }
 
 template <class T, int Dim>

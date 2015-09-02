@@ -5,7 +5,7 @@ namespace vistle {
 #if 0
 template<class T, typename... Args>
 shm_ref::shm_ref(Args...)
-: m_name(Shm::the().createObjectId())
+: m_name(Shm::the().createArrayId())
 , m_p(Shm::the().construct(m_name)(Args))
 {
     m_p->ref();

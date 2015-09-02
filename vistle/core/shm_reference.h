@@ -10,7 +10,7 @@ class shm_ref {
 
  public:
     shm_ref()
-    : m_name(Shm::the().createObjectId())
+    : m_name(Shm::the().createArrayId())
     , m_p(shm<T>::construct(m_name)(Shm::the().allocator()))
     {
         ref();
@@ -25,7 +25,7 @@ class shm_ref {
 
     template<typename... Args>
     shm_ref(const Args&... args)
-    : m_name(Shm::the().createObjectId())
+    : m_name(Shm::the().createArrayId())
     , m_p(shm<T>::construct(m_name)(args..., Shm::the().allocator()))
     {
         ref();
@@ -49,14 +49,23 @@ class shm_ref {
         unref();
     }
 
+    bool find() {
+        if (!m_p) {
+            m_p = shm<T>::find(m_name);
+            ref();
+        }
+        return valid();
+    }
+
+#if 0
     template<typename... Args>
     void construct(const Args&... args)
     {
         unref();
         m_p = shm<T>::construct(m_name)(args..., Shm::the().allocator());
-        //m_p = Shm::the().shm().construct<T>((const char *)m_name)(args..., Shm::the().allocator());
         ref();
     }
+#endif
 
     const shm_ref &operator=(const shm_ref &rhs) {
         unref();
@@ -96,6 +105,7 @@ class shm_ref {
             assert(m_p->refcount() > 0);
             if (m_p->unref() == 0) {
                 shm<T>::destroy_ptr(m_p.get());
+                m_p = nullptr;
             }
        }
    }

@@ -416,7 +416,7 @@ struct archive_instantiator {
       Object::ptr obj;
       obj->d()->arrayValid(c);
       V q = c;
-      q.construct(2);
+      //q.construct(2);
       q->resize(1);
       //std::cerr << q->refcount() << std::endl;
       typedef T Archive;
