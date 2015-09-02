@@ -803,8 +803,8 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
 
 bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesized) {
 
-   CERR << "ADDOBJECT: " << addObj << ", synthesized=" << synthesized << std::endl;
    const bool localAdd = isLocal(addObj.senderId());
+   CERR << "ADDOBJECT: " << addObj << ", local=" << localAdd << ", synthesized=" << synthesized << std::endl;
    Object::const_ptr obj;
 
    if (localAdd) {
