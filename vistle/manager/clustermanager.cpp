@@ -809,6 +809,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
 
    if (localAdd) {
       obj = addObj.takeObject();
+      CERR << "ADDOBJECT: local, name=" << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
    } else {
 
       int destRank = -1;
