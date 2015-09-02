@@ -16,6 +16,8 @@ using namespace vistle;
 
 int main(int argc, char ** argv) {
 
+   vistle::registerTypes();
+
    MPI_Init(&argc, &argv);
 
    std::string shmid;
