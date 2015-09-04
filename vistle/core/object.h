@@ -399,7 +399,7 @@ class ObjectTypeRegistry {
    static void registerBinaryOArchive(boost::archive::binary_oarchive &ar); \
    ObjType(Object::InitializedFlags) : Base(ObjType::Data::create("")) {} \
    virtual bool isEmpty() const; \
-   bool check() const { if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
+   bool check() const { refresh(); if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
    struct Data; \
    Data *d() const { return static_cast<Data *>(Object::m_data); } \
    protected: \
