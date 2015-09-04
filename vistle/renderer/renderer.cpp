@@ -80,7 +80,7 @@ bool Renderer::dispatch() {
             switch (message.type()) {
                case vistle::message::Message::ADDOBJECT: {
                   if (size() == 1 || objectReceivePolicy()==message::ObjectReceivePolicy::Single) {
-                     auto &add = static_cast<const message::AddObject &>(message);
+                     auto add = static_cast<const message::AddObject &>(message);
                      addInputObject(add.senderId(), add.getSenderPort(), add.getDestPort(), add.takeObject());
                   }
                   break;
@@ -88,7 +88,7 @@ bool Renderer::dispatch() {
                case vistle::message::Message::OBJECTRECEIVED: {
                   vassert(objectReceivePolicy() != message::ObjectReceivePolicy::Single);
                   if (size() > 1) {
-                     auto &recv = static_cast<const message::ObjectReceived &>(message);
+                     auto recv = static_cast<const message::ObjectReceived &>(message);
                      PlaceHolder::ptr ph(new PlaceHolder(recv.objectName(), recv.meta(), recv.objectType()));
                      RenderMode rm = static_cast<RenderMode>(m_renderMode->getValue());
                      const bool send = rm != LocalOnly;

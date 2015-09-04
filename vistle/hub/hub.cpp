@@ -863,14 +863,14 @@ bool Hub::handleLocalData(const message::Message &recv, shared_ptr<asio::ip::tcp
    using namespace message;
    switch (recv.type()) {
       case Message::REQUESTOBJECT: {
-         auto &req = static_cast<const RequestObject &>(recv);
+         auto req = static_cast<const RequestObject &>(recv);
          int hubId = idToHub(req.destId());
          std::cerr << "handleLocalData on " << m_hubId << ": sending to " << hubId << std::endl;
          return sendRemoteData(req, hubId);
          break;
       }
       case Message::SENDOBJECT: {
-         auto &send = static_cast<const SendObject &>(recv);
+         auto send = static_cast<const SendObject &>(recv);
          int hubId = idToHub(send.destId());
          std::cerr << "handleLocalData on " << m_hubId << ": sending to " << hubId << std::endl;
          sendRemoteData(send, hubId);
@@ -892,7 +892,7 @@ bool Hub::handleRemoteData(const message::Message &recv, shared_ptr<asio::ip::tc
    using namespace message;
    switch (recv.type()) {
       case Message::IDENTIFY: {
-         auto &id = static_cast<const Identify &>(recv);
+         auto id = static_cast<const Identify &>(recv);
          if (id.identity() != Identify::REMOTEBULKDATA) {
             CERR << "invalid Identity on remote data connection: " << id.identity() << std::endl;
             return false;
@@ -900,11 +900,11 @@ bool Hub::handleRemoteData(const message::Message &recv, shared_ptr<asio::ip::tc
          break;
       }
       case Message::REQUESTOBJECT: {
-         auto &req = static_cast<const RequestObject &>(recv);
+         auto req = static_cast<const RequestObject &>(recv);
          return sendLocalData(req, req.destRank());
       }
       case Message::SENDOBJECT: {
-         auto &send = static_cast<const SendObject &>(recv);
+         auto send = static_cast<const SendObject &>(recv);
          sendLocalData(send, send.destRank());
          size_t payloadSize = send.payloadSize();
          std::vector<char> payload(payloadSize);
