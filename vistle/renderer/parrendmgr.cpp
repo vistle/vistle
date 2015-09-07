@@ -81,6 +81,8 @@ bool ParallelRemoteRenderManager::handleParam(const Parameter *p) {
 
 bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
 
+   m_module->comm().barrier();
+
    m_state.numTimesteps = numTimesteps;
    m_state.numTimesteps = mpi::all_reduce(m_module->comm(), m_state.numTimesteps, mpi::maximum<unsigned>());
 
@@ -150,10 +152,10 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
    }
    m_updateBounds = 0;
 
-   m_doRender = mpi::all_reduce(m_module->comm(), m_doRender, mpi::maximum<int>());
-
    if (m_continuousRendering->getValue())
       m_doRender = 1;
+
+   m_doRender = mpi::all_reduce(m_module->comm(), m_doRender, mpi::maximum<int>());
 
    bool doRender = m_doRender;
    m_doRender = 0;
