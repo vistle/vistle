@@ -1,4 +1,5 @@
 #include <boost/mpl/for_each.hpp>
+#include <boost/ref.hpp>
 
 #include "datamanager.h"
 #include "clustermanager.h"
@@ -199,10 +200,13 @@ public:
 struct ArraySaver {
 
     ArraySaver(const std::string &name, int type, vistle::oarchive &ar): m_ok(false), m_name(name), m_type(type), m_ar(ar) {}
+    ArraySaver() = delete;
+    ArraySaver(const ArraySaver &other) = delete;
 
     template<typename T>
     void operator()(T) {
         if (shm_array<T, typename shm<T>::allocator>::typeId() != m_type) {
+            //std::cerr << "ArraySaver: type mismatch - looking for " << m_type << ", is " << shm_array<T, typename shm<T>::allocator>::typeId() << std::endl;
             return;
         }
 
@@ -235,6 +239,8 @@ struct ArraySaver {
 struct ArrayLoader {
 
     ArrayLoader(const std::string &name, int type, vistle::iarchive &ar): m_ok(false), m_name(name), m_type(type), m_ar(ar) {}
+    ArrayLoader() = delete;
+    ArrayLoader(const ArrayLoader &other) = delete;
 
     template<typename T>
     void operator()(T) {
@@ -275,7 +281,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
    vistle::oarchive memar(buf);
    if (req.isArray()) {
       ArraySaver saver(req.objectId(), req.arrayType(), memar);
-      boost::mpl::for_each<VectorTypes>(saver);
+      boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ArraySaver>(saver));
       if (!saver.m_ok) {
          CERR << "failed to serialize array " << req.objectId() << std::endl;
          return true;
@@ -307,7 +313,7 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
    vistle::iarchive memar(membuf);
    if (snd.isArray()) {
        ArrayLoader loader(snd.objectId(), snd.objectType(), memar);
-       boost::mpl::for_each<VectorTypes>(loader);
+       boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ArrayLoader>(loader));
        if (!loader.m_ok) {
            CERR << "failed to restore array " << snd.objectId() << " from archive" << std::endl;
            return false;
