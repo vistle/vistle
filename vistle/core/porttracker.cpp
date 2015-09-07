@@ -149,7 +149,7 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
 
          added = true;
       } else {
-         std::cerr << "PortTracker::addConnection: multiple connection" << std::endl;
+         //std::cerr << "PortTracker::addConnection: multiple connection" << std::endl;
       }
    }
 

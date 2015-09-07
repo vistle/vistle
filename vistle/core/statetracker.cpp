@@ -1096,12 +1096,14 @@ void StateTracker::computeHeights() {
          bool isSink = true;
          for (auto &output: outputs) {
             for (auto &port: output->connections()) {
-               isSink = false;
                const int otherId = port->getModuleID();
                auto it = runningMap.find(otherId);
                if (it == runningMap.end()) {
-                  CERR << "did not find module " << otherId << ", connected to " << id << " at port " << output->getName() << std::endl;
+                  if (quitMap.find(otherId) == quitMap.end())
+                     CERR << "did not find module " << otherId << ", connected to " << id << " at port " << output->getName() << std::endl;
+                  continue;
                }
+               isSink = false;
                vassert(it != runningMap.end());
                const auto &otherMod = it->second;
                if (otherMod.height != -1 && (height == -1 || otherMod.height+1 < height)) {
