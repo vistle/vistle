@@ -43,7 +43,7 @@ class shm_ref {
     , m_p(shm<T>::find(name))
     {
         if (!m_p) {
-            m_p = shm<T>::construct(m_name)();
+            m_p = shm<T>::construct(m_name)(Shm::the().allocator());
         }
         ref();
     }
