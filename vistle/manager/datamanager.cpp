@@ -227,6 +227,7 @@ struct ArraySaver {
         }
 #endif
         m_ar & arr;
+        m_ar & *arr;
         m_ok = true;
     }
 
@@ -255,8 +256,9 @@ struct ArrayLoader {
                 std::cerr << "ArrayLoader: have data array with name " << m_name << std::endl;
                 return;
             }
-            arr = ShmVector<T>();
+            arr = ShmVector<T>((shm_name_t)m_name);
             m_ar & arr;
+            m_ar & *arr;
 #if 0
             if (arr->type() != m_type) {
                 std::cerr << "ArrayLoader: " << m_name << " does not have expected type, is " << arr->type() << ", expected " << m_type << std::endl;

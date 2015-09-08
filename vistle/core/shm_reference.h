@@ -42,6 +42,9 @@ class shm_ref {
     : m_name(name)
     , m_p(shm<T>::find(name))
     {
+        if (!m_p) {
+            m_p = shm<T>::construct(m_name)();
+        }
         ref();
     }
 

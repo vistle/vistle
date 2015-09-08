@@ -4,7 +4,7 @@
 #include <atomic>
 #include <boost/type_traits.hpp>
 
-#if 0
+#if 1
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/array.hpp>
 #endif
@@ -182,16 +182,46 @@ class shm_array {
    pointer m_data;
    allocator m_allocator;
 
-#if 0
    friend class boost::serialization::access;
    template<class Archive>
-      void serialize(Archive &ar, const unsigned int version);
-#endif
+   void serialize(Archive &ar, const unsigned int version);
+   template<class Archive>
+   void save(Archive &ar, const unsigned int version) const;
+   template<class Archive>
+   void load(Archive &ar, const unsigned int version);
 
    // not implemented
    shm_array(const shm_array &other) = delete;
    shm_array &operator=(const shm_array &rhs) = delete;
 };
+
+template<typename T, class allocator>
+template<class Archive>
+void shm_array<T, allocator>::serialize(Archive &ar, const unsigned int version) {
+    boost::serialization::split_member(ar, *this, version);
+}
+
+template<typename T, class allocator>
+template<class Archive>
+void shm_array<T, allocator>::save(Archive &ar, const unsigned int version) const {
+    ar & m_type;
+    ar & m_size;
+    if (m_size > 0)
+       ar & boost::serialization::make_nvp("elements", boost::serialization::make_array(&m_data[0], m_size));
+}
+
+template<typename T, class allocator>
+template<class Archive>
+void shm_array<T, allocator>::load(Archive &ar, const unsigned int version) {
+    int type = 0;
+    ar & type;
+    assert(m_type == type);
+    size_t size;
+    ar & size;
+    resize(size);
+    if (m_size > 0)
+       ar & boost::serialization::make_nvp("elements", boost::serialization::make_array(&m_data[0], m_size));
+}
 
 } // namespace vistle
 #endif
