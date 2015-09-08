@@ -239,9 +239,21 @@ struct ArraySaver {
 
 struct ArrayLoader {
 
+    struct BaseUnreffer {
+        virtual ~BaseUnreffer() {}
+    };
+
+    template<typename T>
+    struct Unreffer: public BaseUnreffer {
+        Unreffer(ShmVector<T> &ref): m_ref(ref) {}
+        ShmVector<T> m_ref;
+    };
+
     ArrayLoader(const std::string &name, int type, vistle::iarchive &ar): m_ok(false), m_name(name), m_type(type), m_ar(ar) {}
     ArrayLoader() = delete;
     ArrayLoader(const ArrayLoader &other) = delete;
+
+    boost::shared_ptr<BaseUnreffer> m_unreffer;
 
     template<typename T>
     void operator()(T) {
@@ -259,6 +271,7 @@ struct ArrayLoader {
             arr = ShmVector<T>((shm_name_t)m_name);
             m_ar & arr;
             m_ar & *arr;
+            m_unreffer.reset(new Unreffer<T>(arr));
 #if 0
             if (arr->type() != m_type) {
                 std::cerr << "ArrayLoader: " << m_name << " does not have expected type, is " << arr->type() << ", expected " << m_type << std::endl;
@@ -324,8 +337,8 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
        auto it = m_outstandingArrays.find(snd.objectId());
        vassert(it != m_outstandingArrays.end());
        if (it != m_outstandingArrays.end()) {
-           for (const auto &f: it->second)
-               f();
+           for (const auto &completionHandler: it->second)
+               completionHandler();
            m_outstandingArrays.erase(it);
        }
        return true;
@@ -352,8 +365,7 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
            vassert(obj->check());
 
            auto reqIt = outstandingRequests.find(objName);
-           if (reqIt != outstandingRequests.end())
-           {
+           if (reqIt != outstandingRequests.end()) {
                message::AddObject &add = reqIt->second;
 
                auto addIt = outstandingAdds.find(add);
