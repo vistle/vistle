@@ -107,7 +107,18 @@ unsigned short Hub::port() const {
 
 bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg) {
 
-   return message::send(*sock, msg);
+   bool result = true;
+   try {
+      result = message::send(*sock, msg);
+   } catch(const boost::system::system_error &err) {
+      result = false;
+      if (err.code() == boost::system::errc::broken_pipe) {
+         std::cerr << "broken pipe" << std::endl;
+      } else {
+         throw(err);
+      }
+   }
+   return result;
 }
 
 bool Hub::startServer() {
