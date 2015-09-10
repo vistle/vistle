@@ -355,9 +355,10 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
 
        auto &outstandingAdds = m_outstandingAdds;
        auto &outstandingRequests = m_outstandingRequests;
+       auto &outstandingObjects = m_outstandingObjects;
        auto senderId = snd.senderId();
        auto senderRank = snd.rank();
-       auto completionHandler = [this, &outstandingAdds, &outstandingRequests, senderId, senderRank, objName] () mutable -> void {
+       auto completionHandler = [this, &outstandingAdds, &outstandingRequests, &outstandingObjects, senderId, senderRank, objName] () mutable -> void {
            std::cerr << "object completion handler for " << objName << std::endl;
            auto obj = Shm::the().getObjectFromName(objName);
            if (!obj) {
@@ -391,6 +392,12 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                    return;
                }
                outstandingRequests.erase(reqIt);
+           }
+
+           auto objIt = outstandingObjects.find(objName);
+           if (objIt != outstandingObjects.end()) {
+               objIt->second.obj->unref();
+               outstandingObjects.erase(objIt);
            }
        };
        memar.setObjectCompletionHandler(completionHandler);
