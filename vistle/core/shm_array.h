@@ -72,12 +72,6 @@ class shm_array {
        assert(typeId() == m_type);
    }
 
-#if 0
-   template< class InputIt >
-      shm_array( InputIt first, InputIt last, 
-            const allocator &alloc = allocator());
-#endif
-
    ~shm_array() {
       reserve(0);
    }

@@ -27,11 +27,6 @@ namespace vistle {
 
 typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 
-#if 0
-template<typename T>
-class ShmVector;
-#endif
-
 struct V_COREEXPORT shm_name_t {
    std::array<char, 32> name;
    shm_name_t(const std::string &s = "INVALID");
@@ -184,104 +179,6 @@ bool shm<T>::destroy(const std::string &name) {
 #endif
     return ret;
 }
-
-#if 0
-template<typename T>
-class ShmVector: public shm<T>::array {
-#ifdef SHMDEBUG
-   friend void Shm::markAsRemoved(const std::string &name);
-#endif
-
-   public:
-      class ptr {
-         public:
-            ptr(ShmVector *p = NULL);
-            ptr(const ptr &ptr);
-            ~ptr();
-            ptr &operator=(const ptr &other);
-            ptr &operator=(ShmVector *p);
-
-            ShmVector &operator*() {
-               return *m_p;
-            }
-            ShmVector *operator->() {
-               return &*m_p;
-            }
-            const ShmVector &operator*() const {
-               return *m_p;
-            }
-            const ShmVector *operator->() const {
-               return &*m_p;
-            }
-
-            bool valid() const {
-                return !m_p == false;
-            }
-
-            operator bool() {
-                return valid();
-            }
-
-            template<class Archive>
-            bool request(Archive &ar, const unsigned int version);
-
-         private:
-            friend class boost::serialization::access;
-            template<class Archive>
-               void serialize(Archive &ar, const unsigned int version);
-            template<class Archive>
-               void save(Archive &ar, const unsigned int version) const;
-            template<class Archive>
-               void load(Archive &ar, const unsigned int version);
-
-            boost::interprocess::offset_ptr<ShmVector> m_p;
-      };
-
-      static int typeId();
-
-      ShmVector(Index size = 0, const std::string &name="");
-      ~ShmVector();
-      int type() const { return m_type; }
-
-      int refcount() const;
-      void* operator new(size_t size);
-      void operator delete(void *p, size_t size);
-
-      T &operator[](Index i) { return (*m_x)[i]; }
-      const T &operator[](Index i) const { return (*m_x)[i]; }
-      T *data() { return m_x->data(); }
-      const T *data() const { return m_x->data(); }
-
-      bool empty() const { return m_x->empty(); }
-      Index size() const { return m_x->size(); }
-      void resize(Index s);
-      void clear();
-
-      typename shm<T>::array_ptr &operator()() { return m_x; }
-      typename shm<const T>::array_ptr &operator()() const { return m_x; }
-
-      void push_back(const T &d) { m_x->push_back(d); }
-      bool check() const;
-
-   private:
-      void ref();
-      void unref();
-
-      friend class boost::serialization::access;
-      template<class Archive>
-         void serialize(Archive &ar, const unsigned int version);
-      template<class Archive>
-         void save(Archive &ar, const unsigned int version) const;
-      template<class Archive>
-         void load(Archive &ar, const unsigned int version);
-
-      boost::interprocess::interprocess_mutex m_mutex;
-      int m_type;
-      int m_refcount;
-      shm_name_t m_name;
-      typename shm<T>::array_ptr m_x;
-};
-#endif
 
 } // namespace vistle
 
