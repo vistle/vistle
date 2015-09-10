@@ -102,7 +102,7 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
    }
    m_outstandingAdds[add].push_back(objId);
    m_outstandingRequests.emplace(objId, add);
-   m_outstandingObjects[objId].push_back(handler);
+   m_outstandingObjects[objId].completionHandlers.push_back(handler);
    message::RequestObject req(add, objId);
    send(req);
    return true;
@@ -114,7 +114,7 @@ bool DataManager::requestObject(const std::string &referrer, const std::string &
    if (obj) {
       return false;
    }
-   m_outstandingObjects[objId].push_back(handler);
+   m_outstandingObjects[objId].completionHandlers.push_back(handler);
    message::RequestObject req(hub, rank, objId, referrer);
    send(req);
    return true;
@@ -398,7 +398,8 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
        fetcher.reset(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
        memar.setFetcher(fetcher);
        std::cerr << "loading object " << objName << " from memar" << std::endl;
-       Object::load(memar);
+       objIt->second.obj = Object::load(memar);
+       objIt->second.obj->ref();
    }
 
    return true;

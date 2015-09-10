@@ -12,6 +12,7 @@ namespace vistle {
 
 class Communicator;
 class StateTracker;
+class Object;
 
 class DataManager {
 
@@ -61,7 +62,14 @@ private:
 
 
     std::map<std::string, std::vector<std::function<void()>>> m_outstandingArrays; //!< requests for (sub-)objects which have not been serviced yet
-    std::map<std::string, std::vector<std::function<void()>>> m_outstandingObjects; //!< requests for (sub-)objects which have not been serviced yet
+    struct OutstandingObject {
+       OutstandingObject(): obj(nullptr) {}
+
+       vistle::Object *obj;
+       std::vector<std::function<void()>> completionHandlers;
+    };
+
+    std::map<std::string, OutstandingObject> m_outstandingObjects; //!< requests for (sub-)objects which have not been serviced yet
 };
 
 } // namespace vistle
