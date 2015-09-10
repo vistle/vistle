@@ -226,7 +226,7 @@ struct ArraySaver {
             return;
         }
 #endif
-        m_ar & arr;
+        m_ar & m_name;
         m_ar & *arr;
         m_ok = true;
     }
@@ -268,8 +268,11 @@ struct ArrayLoader {
                 std::cerr << "ArrayLoader: have data array with name " << m_name << std::endl;
                 return;
             }
+            std::string name;
+            m_ar & name;
+            vassert(name == m_name);
             arr = ShmVector<T>((shm_name_t)m_name);
-            m_ar & arr;
+            arr.construct();
             m_ar & *arr;
             m_unreffer.reset(new Unreffer<T>(arr));
 #if 0
@@ -355,6 +358,7 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
        auto senderId = snd.senderId();
        auto senderRank = snd.rank();
        auto completionHandler = [this, &outstandingAdds, &outstandingRequests, senderId, senderRank, objName] () mutable -> void {
+           std::cerr << "object completion handler for " << objName << std::endl;
            auto obj = Shm::the().getObjectFromName(objName);
            if (!obj) {
                std::cerr << "did not receive an object for " << objName << std::endl;
@@ -376,7 +380,6 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                if (it != ids.end()) {
                    ids.erase(it);
                }
-               outstandingRequests.erase(reqIt);
 
                if (ids.empty()) {
                    message::AddObjectCompleted complete(add);
@@ -384,16 +387,19 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                    message::AddObject nadd(add.getSenderPort(), obj);
                    bool ret = Communicator::the().clusterManager().handlePriv(add, /* synthesized = */ true);
                    m_outstandingAdds.erase(addIt);
+                   outstandingRequests.erase(reqIt);
                    return;
                }
+               outstandingRequests.erase(reqIt);
            }
        };
        memar.setObjectCompletionHandler(completionHandler);
 
        fetcher.reset(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
        memar.setFetcher(fetcher);
-       std::cerr << "loading object from memar" << std::endl;
+       std::cerr << "loading object " << objName << " from memar" << std::endl;
        Object::ptr obj = Object::load(memar);
+       obj->ref();
        if (obj && obj->isComplete()) {
            return true;
        } else if (obj) {

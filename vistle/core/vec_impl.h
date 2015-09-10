@@ -21,6 +21,7 @@ void DataBase::Data::serialize(Archive &ar, const unsigned int version) {
 template<class Archive>
 void DataBase::Data::load(Archive &ar, const unsigned int version) {
 
+#if 0
    bool haveGrid = false;
    if (grid)
       grid->unref();
@@ -34,11 +35,13 @@ void DataBase::Data::load(Archive &ar, const unsigned int version) {
       grid = g->d();
       g->ref();
    }
+#endif
 }
 
 template<class Archive>
 void DataBase::Data::save(Archive &ar, const unsigned int version) const {
 
+#if 0
    // make sure that boost::serialization's object tracking is not tricked
    // into thinking that all these are the same object
    const Object *g = nullptr;
@@ -50,6 +53,7 @@ void DataBase::Data::save(Archive &ar, const unsigned int version) const {
       g = &*ptr;
       ar & V_NAME("grid", g);
    }
+#endif
 }
 
 
@@ -145,9 +149,7 @@ Vec<T,Dim>::Data::Data(const Index size, const std::string &name,
 : Vec<T,Dim>::Base::Data(Vec<T,Dim>::type(), name, m)
 {
    for (int c=0; c<Dim; ++c)
-      x[c]->resize(size);
-      //x[c].construct(size);
-      // = new ShmVector<T>(size);
+      x[c].construct(size);
 }
 
 template <class T, int Dim>
@@ -164,9 +166,7 @@ Vec<T,Dim>::Data::Data(const Index size, Type id, const std::string &name,
 : Vec<T,Dim>::Base::Data(id, name, m)
 {
    for (int c=0; c<Dim; ++c)
-       x[c]->resize(size);
-      //x[c].construct(size);
-       // = new ShmVector<T>(size);
+       x[c].construct(size);
 }
 
 template <class T, int Dim>

@@ -49,8 +49,8 @@ Triangles::Data::Data(const Index numCorners, const Index numCoords,
    : Base::Data(numCoords,
          Object::TRIANGLES, name,
          meta)
-   , cl(numCorners)
 {
+   cl.construct(numCorners);
 }
 
 

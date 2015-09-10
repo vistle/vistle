@@ -405,10 +405,13 @@ class ObjectTypeRegistry {
          ar & V_NAME("name", name); \
          int type = Object::UNKNOWN; \
          ar & V_NAME("type", type); \
+         std::cerr << "Object::load: creating " << name << std::endl; \
          Object::m_data = Data::create(name); \
+         /* auto saveCurrent = ar.currentObject(); */ \
          ar.setCurrentObject(Object::m_data); \
          d()->template serialize<Archive>(ar, version); \
          assert(type == Object::getType()); \
+         /* ar.setCurrentObject(saveCurrent); */ \
       } \
    template<class Archive> \
       void save(Archive &ar, const unsigned int version) const { \

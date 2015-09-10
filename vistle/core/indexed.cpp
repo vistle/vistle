@@ -202,9 +202,9 @@ Indexed::Data::Data(const Index numElements, const Index numCorners,
              const Meta &meta)
    : Indexed::Base::Data(numVertices, id, name,
          meta)
-   , el(numElements+1)
-   , cl(numCorners)
 {
+   el.construct(numElements+1);
+   cl.construct(numCorners);
    (*el)[0] = 0;
 }
 

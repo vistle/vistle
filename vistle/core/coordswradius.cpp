@@ -37,8 +37,8 @@ CoordsWithRadius::Data::Data(const Index numCoords,
              const Meta &meta)
    : CoordsWithRadius::Base::Data(numCoords,
          id, name, meta)
-, r(numCoords)
 {
+   r.construct(numCoords);
 }
 
 CoordsWithRadius::Data::Data(const CoordsWithRadius::Data &o, const std::string &n)
@@ -49,8 +49,8 @@ CoordsWithRadius::Data::Data(const CoordsWithRadius::Data &o, const std::string 
 
 CoordsWithRadius::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n, Type id)
 : CoordsWithRadius::Base::Data(o, n, id)
-, r(o.x[0]->size())
 {
+    r.construct(o.x[0]->size());
 }
 
 CoordsWithRadius::Data *CoordsWithRadius::Data::create(const std::string &objId, Type id, const Index numCoords,

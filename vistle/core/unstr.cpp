@@ -804,8 +804,8 @@ UnstructuredGrid::Data::Data(const Index numElements,
                                    const Meta &meta)
    : UnstructuredGrid::Base::Data(numElements, numCorners, numVertices,
          Object::UNSTRUCTUREDGRID, name, meta)
-   , tl(numElements)
 {
+   tl.construct(numElements);
 }
 
 UnstructuredGrid::Data * UnstructuredGrid::Data::create(const std::string &objId, const Index numElements,

@@ -140,6 +140,8 @@ ObjectData::ObjectData(const Object::Data &o, const std::string &name, Object::T
 
 ObjectData::~ObjectData() {
 
+   std::cerr << "SHM DESTROY OBJ: " << name << std::endl;
+
 
    shm<AttributeMap>::destroy(std::string("attr_")+name);
    { 
@@ -165,6 +167,7 @@ void Object::Data::objectValid(const Object *p) {
 }
 
 void Object::Data::referenceResolved(const std::function<void()> &completeCallback) {
+    std::cerr << "reference (from " << unresolvedReferences << ") resolved in " << name << std::endl;
     vassert(unresolvedReferences > 0);
     --unresolvedReferences;
     if (isComplete()) {
@@ -207,6 +210,7 @@ Object::Object()
 }
 
 Object::~Object() {
+
 
    m_data->unref();
 }

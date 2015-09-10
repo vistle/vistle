@@ -34,8 +34,8 @@ Texture1D::Data::Data(const std::string &name, const Index width,
    : Texture1D::Base::Data(0, Object::TEXTURE1D, name, meta)
    , min(mi)
    , max(ma)
-   , pixels(width * 4)
 {
+   pixels.construct(width * 4);
 }
 
 Texture1D::Data *Texture1D::Data::create(const std::string &objId, const Index width,

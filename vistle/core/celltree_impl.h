@@ -328,10 +328,10 @@ template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, const Index numCells,
                      const Meta &meta)
 : Celltree::Base::Data(Object::Type(Object::CELLTREE1-1+NumDimensions), name, meta)
-, m_bounds(2*NumDimensions)
-, m_cells(numCells)
-, m_nodes(1)
 {
+   m_bounds.construct(2*NumDimensions);
+   m_cells.construct(numCells);
+   m_nodes.construct(1);
 
    Index *cells = m_cells->data();
    for (Index i=0; i<numCells; ++i) {

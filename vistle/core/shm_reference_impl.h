@@ -36,29 +36,29 @@ template<class Archive>
 void shm_ref<T>::load(Archive &ar, const unsigned int version) {
    shm_name_t shmname;
    ar & boost::serialization::make_nvp("shm_name", shmname);
+   //assert(shmname == m_name);
    std::string name = shmname;
-   if (name == "(nil)") {
-       m_p = nullptr;
+
+   unref();
+   m_p = nullptr;
+   auto obj = ar.currentObject();
+   auto handler = ar.objectCompletionHandler();
+   auto ref =  ar.template getArray<typename T::value_type>(name, [this, name, obj, handler]() -> void {
+      std::cerr << "array completion handler: " << name << std::endl;
+      auto ref = Shm::the().getArrayFromName<typename T::value_type>(name);
+      assert(ref);
+      *this = ref;
+      if (obj) {
+         obj->referenceResolved(handler);
+      }
+   });
+   if (ref) {
+      *this = ref;
    } else {
-       auto obj = ar.currentObject();
-       auto handler = ar.objectCompletionHandler();
-       auto ref =  ar.template getArray<typename T::value_type>(name, [this, name, obj, handler]() -> void {
-           std::cerr << "array completion handler: " << name << std::endl;
-           auto ref = Shm::the().getArrayFromName<typename T::value_type>(name);
-           assert(ref);
-           *this = ref;
-           if (obj) {
-               obj->referenceResolved(handler);
-           }
-       });
-       if (ref) {
-           *this = ref;
-       } else {
-           std::cerr << "waiting for completion of " << name << std::endl;
-           auto obj = ar.currentObject();
-           if (obj)
-               obj->arrayValid(*this);
-       }
+      std::cerr << "waiting for completion of " << name << std::endl;
+      auto obj = ar.currentObject();
+      if (obj)
+         obj->arrayValid(*this);
    }
 }
 

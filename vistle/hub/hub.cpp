@@ -111,6 +111,7 @@ bool Hub::sendMessage(shared_ptr<socket> sock, const message::Message &msg) {
    try {
       result = message::send(*sock, msg);
    } catch(const boost::system::system_error &err) {
+      std::cerr << "exception: err.code()=" << err.code() << std::endl;
       result = false;
       if (err.code() == boost::system::errc::broken_pipe) {
          std::cerr << "broken pipe" << std::endl;

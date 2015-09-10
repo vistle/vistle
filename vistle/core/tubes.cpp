@@ -58,9 +58,9 @@ Tubes::Data::Data(const Index numTubes,
              const Meta &meta)
    : Tubes::Base::Data(numCoords,
          Object::TUBES, name, meta)
-   , components(numTubes+1)
-   , style(3)
 {
+   components.construct(numTubes+1);
+   style.construct(3);
    (*components)[0] = 0;
    (*style)[0] = (*style)[1] = (*style)[2] = Tubes::Open;
 }
@@ -74,9 +74,9 @@ Tubes::Data::Data(const Tubes::Data &o, const std::string &n)
 
 Tubes::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n)
 : Tubes::Base::Data(o, n, Object::TUBES)
-, components(1)
-, style(3)
 {
+   components.construct(1);
+   style.construct(3);
    (*components)[0] = 0;
    (*style)[0] = (*style)[1] = (*style)[2] = Tubes::Open;
 }
