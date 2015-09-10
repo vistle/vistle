@@ -61,7 +61,14 @@ public:
         }
         return arr;
     }
-    obj_const_ptr getObject(const std::string &name) const;
+    obj_const_ptr getObject(const std::string &name, const std::function<void()> &completeCallback) const {
+        auto obj = Shm::the().getObjectFromName(name);
+        if (!obj) {
+            assert(m_fetcher);
+            m_fetcher->requestObject(name, completeCallback);
+        }
+        return obj;
+    }
 
     void setObjectCompletionHandler(const std::function<void()> &completer);
     const std::function<void()> &objectCompletionHandler() const;

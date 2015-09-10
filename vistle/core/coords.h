@@ -25,7 +25,7 @@ class V_COREEXPORT Coords: public Vec<Scalar,3> {
    void setNormals(Normals::const_ptr normals);
 
    V_DATA_BEGIN(Coords);
-      boost::interprocess::offset_ptr<Normals::Data> normals;
+      shm_obj_ref<Normals> normals;
 
       Data(const Index numVertices = 0,
             Type id = UNKNOWN, const std::string & name = "",

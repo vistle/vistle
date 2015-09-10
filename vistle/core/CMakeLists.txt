@@ -4,6 +4,7 @@ set(core_SOURCES
    archives.cpp
    shm.cpp
    shm_reference.cpp
+   shm_obj_ref.cpp
    objectcache.cpp
    objectmeta.cpp
    object.cpp
@@ -95,6 +96,7 @@ set(core_HEADERS
    shm_impl.h
    shm_reference.h
    shm_reference_impl.h
+   shm_obj_ref.h
    statetracker.h
    tcpmessage.h
    texture1d.h

@@ -32,6 +32,8 @@ class oarchive;
 class iarchive;
 
 class Shm;
+template<class T>
+class shm_obj_ref;
 
 struct ObjectData;
 
@@ -39,6 +41,8 @@ class V_COREEXPORT Object {
    friend class Shm;
    friend class ObjectTypeRegistry;
    friend struct ObjectData;
+   template<class ObjType>
+   friend class shm_obj_ref;
 #ifdef SHMDEBUG
    friend void Shm::markAsRemoved(const std::string &name);
 #endif
@@ -273,7 +277,7 @@ struct ObjectData {
     bool isComplete() const; //! check whether all references have been resolved
     template<typename ShmVectorPtr>
     void arrayValid(const ShmVectorPtr &p);
-    void objectValid(const Object *p);
+    void objectValid(const Object::Data *d);
     void referenceResolved(const std::function<void()> &completeCallback);
 
     friend class boost::serialization::access;
@@ -527,4 +531,6 @@ V_ENUM_OUTPUT_OP(Type, Object)
 #ifdef VISTLE_IMPL
 #include "object_impl.h"
 #endif
+
+#include "shm_obj_ref.h"
 #endif

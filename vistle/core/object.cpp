@@ -161,8 +161,8 @@ bool Object::Data::isComplete() const {
    return refcount>0 && unresolvedReferences==0;
 }
 
-void Object::Data::objectValid(const Object *p) {
-    if (!p)
+void Object::Data::objectValid(const Object::Data *d) {
+    if (!d)
         ++unresolvedReferences;
 }
 

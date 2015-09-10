@@ -54,7 +54,6 @@ void DataBase::createCelltree(Index nelem, const Index *el, const Index *cl) con
 DataBase::Data::Data(Type id, const std::string &name,
       const Meta &meta)
    : DataBase::Base::Data(id, name, meta)
-   , grid(nullptr)
 {
 }
 
@@ -62,8 +61,6 @@ DataBase::Data::Data(const DataBase::Data &o, const std::string &n, Type id)
 : DataBase::Base::Data(o, n, id)
 , grid(o.grid)
 {
-   if (grid)
-      grid->ref();
 }
 
 
@@ -71,14 +68,10 @@ DataBase::Data::Data(const DataBase::Data &o, const std::string &n)
 : DataBase::Base::Data(o, n)
 , grid(o.grid)
 {
-   if (grid)
-      grid->ref();
 }
 
 DataBase::Data::~Data() {
 
-   if (grid)
-      grid->unref();
 }
 
 DataBase::Data *DataBase::Data::create(const std::string &name, Type id, const Meta &meta) {
@@ -102,16 +95,12 @@ void DataBase::setSize(Index size ) {
 
 Object::const_ptr DataBase::grid() const {
 
-   return Object::create(&*d()->grid);
+   return d()->grid.getObject();
 }
 
 void DataBase::setGrid(Object::const_ptr grid) {
 
-   if (d()->grid)
-      d()->grid->unref();
-   d()->grid = grid->d();
-   if (d()->grid)
-      d()->grid->ref();
+    d()->grid = grid;
 }
 
 //V_OBJECT_TYPE(DataBase, Object::DATABASE);

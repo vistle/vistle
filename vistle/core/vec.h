@@ -27,7 +27,8 @@ private:
    virtual void createCelltree(Index nelem, const Index *el, const Index *cl) const;
 
    V_DATA_BEGIN(DataBase);
-      boost::interprocess::offset_ptr<Object::Data> grid;
+      //boost::interprocess::offset_ptr<Object::Data> grid;
+      shm_obj_ref<Object> grid;
 
       Data(Type id = UNKNOWN, const std::string & name = "", const Meta &meta=Meta());
       Data(const Data &o, const std::string & name, Type id);

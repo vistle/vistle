@@ -13,6 +13,8 @@ void Coords::Data::serialize(Archive &ar, const unsigned int version) {
 template<class Archive>
 void Coords::Data::load(Archive &ar, const unsigned int version) {
 
+    //FIXME
+#if 0
    bool haveNormals = false;
    if (normals)
       normals->unref();
@@ -26,22 +28,13 @@ void Coords::Data::load(Archive &ar, const unsigned int version) {
       normals = n->d();
       n->ref();
    }
+#endif
 }
 
 template<class Archive>
 void Coords::Data::save(Archive &ar, const unsigned int version) const {
 
-   // make sure that boost::serialization's object tracking is not tricked
-   // into thinking that all these are the same object
-   const Normals *n = nullptr;
-
-   bool haveNormals = normals;
-   ar & V_NAME("haveNormals", haveNormals);
-   if (haveNormals) {
-      Normals::const_ptr ptr = Normals::as(Object::create(&*normals));
-      n = &*ptr;
-      ar & V_NAME("normals", n);
-   }
+   ar & V_NAME("normals", normals);
 }
 
 } // namespace vistle

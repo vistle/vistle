@@ -21,39 +21,14 @@ void DataBase::Data::serialize(Archive &ar, const unsigned int version) {
 template<class Archive>
 void DataBase::Data::load(Archive &ar, const unsigned int version) {
 
-#if 0
-   bool haveGrid = false;
-   if (grid)
-      grid->unref();
-   grid = NULL;
-   ar & V_NAME("haveGrid", haveGrid);
-   if (haveGrid) {
-      Object *g = NULL;
-      ar & V_NAME("grid", g);
-      objectValid(g);
-      assert(g);
-      grid = g->d();
-      g->ref();
-   }
-#endif
+   ar & V_NAME("grid", grid);
+   objectValid(grid.getData());
 }
 
 template<class Archive>
 void DataBase::Data::save(Archive &ar, const unsigned int version) const {
 
-#if 0
-   // make sure that boost::serialization's object tracking is not tricked
-   // into thinking that all these are the same object
-   const Object *g = nullptr;
-
-   bool haveGrid = grid;
-   ar & V_NAME("haveGrid", haveGrid);
-   if (haveGrid) {
-      Object::const_ptr ptr = Object::as(Object::create(&*grid));
-      g = &*ptr;
-      ar & V_NAME("grid", g);
-   }
-#endif
+    ar & V_NAME("grid", grid);
 }
 
 
