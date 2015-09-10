@@ -192,7 +192,7 @@ public:
    int refcount() const;
 
    template<class Archive>
-   static Object::ptr load(Archive &ar);
+   static Object *load(Archive &ar);
 
    template<class Archive>
    void save(Archive &ar) const;

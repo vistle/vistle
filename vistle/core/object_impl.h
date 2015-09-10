@@ -78,7 +78,7 @@ void Object::save(Archive &ar) const {
 }
 
 template<class Archive>
-Object::ptr Object::load(Archive &ar) {
+Object *Object::load(Archive &ar) {
 
    ObjectTypeRegistry::registerArchiveType(ar);
    Object *p = NULL;
@@ -86,7 +86,7 @@ Object::ptr Object::load(Archive &ar) {
    assert(ar.currentObject() == p->d());
    if (p->d()->unresolvedReferences == 0)
        ar.objectCompletionHandler()();
-   return Object::ptr(p);
+   return p;
 }
 
 template<typename ShmVectorPtr>

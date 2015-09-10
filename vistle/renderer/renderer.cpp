@@ -157,7 +157,7 @@ bool Renderer::dispatch() {
                               //std::cerr << "Rank " << rank() << ": Received " << len << " bytes for " << recv->objectName() << std::endl;
                               vecstreambuf<char> membuf(mem);
                               vistle::iarchive memar(membuf);
-                              Object::ptr obj = Object::load(memar);
+                              Object::ptr obj(Object::load(memar));
                               if (obj) {
                                  //std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;
                                  vassert(obj->check());

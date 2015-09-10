@@ -398,13 +398,7 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
        fetcher.reset(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
        memar.setFetcher(fetcher);
        std::cerr << "loading object " << objName << " from memar" << std::endl;
-       Object::ptr obj = Object::load(memar);
-       obj->ref();
-       if (obj && obj->isComplete()) {
-           return true;
-       } else if (obj) {
-           obj->ref(); // FIXME
-       }
+       Object::load(memar);
    }
 
    return true;
