@@ -3,6 +3,7 @@
 echo SPAWN "$@"
 
 export MV2_ENABLE_AFFINITY=0
+export DYLD_LIBRARY_PATH="$VISTLE_DYLD_LIBRARY_PATH"
 
 if [ -n "$SLURM_JOB_ID" ]; then
    exec mpiexec -bind-to none "$@"
@@ -45,10 +46,10 @@ case $(hostname) in
       fi
       if [ -z "$MPIHOSTS" ]; then
          echo mpirun -np ${MPISIZE} "$@"
-         exec mpirun -np ${MPISIZE} "$@"
+         exec mpirun -envall -np ${MPISIZE} "$@"
       else
          echo mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} "$@"
-         exec mpirun -np ${MPISIZE} -hosts ${MPIHOSTS} "$@"
+         exec mpirun -envall -np ${MPISIZE} -hosts ${MPIHOSTS} "$@"
       fi
       ;;
 esac
