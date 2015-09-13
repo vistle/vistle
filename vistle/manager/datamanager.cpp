@@ -108,7 +108,7 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
    return true;
 }
 
-bool DataManager::requestObject(const std::string &referrer, const std::string &objId, int type, int hub, int rank, const std::function<void()> &handler) {
+bool DataManager::requestObject(const std::string &referrer, const std::string &objId, int hub, int rank, const std::function<void()> &handler) {
 
    Object::const_ptr obj = Shm::the().getObjectFromName(objId);
    if (obj) {
@@ -185,9 +185,12 @@ public:
     }
 
     virtual void requestObject(const std::string &name, const std::function<void()> &completeCallback) override {
-        vassert(m_add);
         ++m_numRequests;
-        m_dmgr->requestObject(*m_add, name, completeCallback);
+        if (m_add) {
+           m_dmgr->requestObject(*m_add, name, completeCallback);
+        } else {
+           m_dmgr->requestObject(m_referrer, name, m_hub, m_rank, completeCallback);
+        }
     }
 
     DataManager *m_dmgr;

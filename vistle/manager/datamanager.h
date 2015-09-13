@@ -20,7 +20,7 @@ public:
     DataManager(int rank, int size);
     bool handle(const message::Message &msg);
     bool requestObject(const message::AddObject &add, const std::string &objId, const std::function<void()> &handler);
-    bool requestObject(const std::string &referrer, const std::string &objId, int type, int hub, int rank, const std::function<void()> &handler);
+    bool requestObject(const std::string &referrer, const std::string &objId, int hub, int rank, const std::function<void()> &handler);
     bool requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const std::function<void()> &handler);
     bool prepareTransfer(const message::AddObject &add);
     bool completeTransfer(const message::AddObjectCompleted &complete);
