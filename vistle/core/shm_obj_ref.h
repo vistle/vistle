@@ -68,6 +68,7 @@ class shm_obj_ref {
 
     const shm_obj_ref &operator=(const shm_obj_ref &rhs) {
         unref();
+        m_name = rhs.m_name;
         m_d = rhs.m_d;
         ref();
         return *this;
@@ -75,6 +76,7 @@ class shm_obj_ref {
 
     const shm_obj_ref &operator=(typename ObjType::const_ptr &rhs) {
         unref();
+        m_name = rhs->getName();
         m_d = rhs->d();
         ref();
         return *this;
