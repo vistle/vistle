@@ -159,10 +159,8 @@ class shm_obj_ref {
          }
       });
       if (ref) {
+         // object already present: don't mess with count of outstanding references
          *this = ref;
-         if (obj) {
-            obj->referenceResolved(handler);
-         }
       } else {
          std::cerr << "waiting for completion of object " << name << std::endl;
          auto obj = ar.currentObject();
