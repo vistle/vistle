@@ -7,7 +7,7 @@ Polygons::Polygons(const Index numElements,
       const Index numCorners,
       const Index numVertices,
       const Meta &meta)
-: Polygons::Base(Polygons::Data::create("", numElements, numCorners, numVertices, meta))
+: Polygons::Base(Polygons::Data::create(numElements, numCorners, numVertices, meta))
 {
 }
 
@@ -35,12 +35,12 @@ Polygons::Data::Data(const Index numElements, const Index numCorners,
 }
 
 
-Polygons::Data * Polygons::Data::create(const std::string &objId, const Index numElements,
+Polygons::Data * Polygons::Data::create(const Index numElements,
                             const Index numCorners,
                             const Index numVertices,
                             const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectId(objId);
+   const std::string name = Shm::the().createObjectId();
    Data *p = shm<Data>::construct(name)(numElements, numCorners, numVertices, name, meta);
    publish(p);
 

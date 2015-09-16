@@ -49,7 +49,7 @@ Vec<T,Dim>::Vec(Vec::Data *data)
 template <class T, int Dim>
 Vec<T,Dim>::Vec(const Index size,
         const Meta &meta)
-      : Base(Data::create("", size, meta))
+      : Base(Data::create(size, meta))
 {
    refreshImpl();
 }
@@ -57,7 +57,11 @@ Vec<T,Dim>::Vec(const Index size,
 template <class T, int Dim>
 void Vec<T,Dim>::setSize(const Index size) {
    for (int c=0; c<Dim; ++c) {
-      d()->x[c]->resize(size);
+      if (d()->x[c].valid()) {
+         d()->x[c]->resize(size);
+      } else {
+         d()->x[c].construct(size);
+      }
    }
    refresh();
 }
@@ -119,6 +123,12 @@ std::pair<typename Vec<T,Dim>::Vector, typename Vec<T,Dim>::Vector> Vec<T,Dim>::
 }
 
 template <class T, int Dim>
+Vec<T,Dim>::Data::Data(Object::Type id, const std::string &name, const Meta &m)
+: Vec<T,Dim>::Base::Data(id, name, m)
+{
+}
+
+template <class T, int Dim>
 Vec<T,Dim>::Data::Data(const Index size, const std::string &name,
       const Meta &m)
 : Vec<T,Dim>::Base::Data(Vec<T,Dim>::type(), name, m)
@@ -153,11 +163,18 @@ Vec<T,Dim>::Data::Data(const Data &o, const std::string &n, Type id)
 }
 
 template <class T, int Dim>
-typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::create(const std::string &objId, Index size, const Meta &meta) {
-   std::string name = Shm::the().createObjectId(objId);
+typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::create(Index size, const Meta &meta) {
+   std::string name = Shm::the().createObjectId();
    Data *t = shm<Data>::construct(name)(size, name, meta);
    publish(t);
 
+   return t;
+}
+
+template <class T, int Dim>
+typename Vec<T,Dim>::Data *Vec<T,Dim>::Data::createNamed(Object::Type id, const std::string &name, const Meta &meta) {
+   Data *t = shm<Data>::construct(name)(id, name, meta);
+   publish(t);
    return t;
 }
 

@@ -39,7 +39,7 @@ class  V_COREEXPORT Tubes: public CoordsWithRadius {
             const std::string & name = "",
             const Meta &meta=Meta());
       Data(const Vec<Scalar, 3>::Data &o, const std::string &n);
-      static Data *create(const std::string &name, const Index numTubes = 0, const Index numCoords = 0,
+      static Data *create(const Index numTubes = 0, const Index numCoords = 0,
             const Meta &meta=Meta());
 
    V_DATA_END(Tubes);

@@ -154,7 +154,7 @@ struct HostData {
       m_inputpointer.push_back(&z[0]);
 
       for(size_t i = 0; i < m_inputpointer.size(); i++){
-         m_outData.emplace_back();
+         m_outData.emplace_back(vistle::ShmVector<Scalar>::create(0));
          m_outputpointer.push_back(NULL);
       }
       m_numinputdata = m_inputpointer.size();
@@ -163,7 +163,7 @@ struct HostData {
    void addmappeddata(const Scalar *mapdata){
 
       m_inputpointer.push_back(mapdata);
-      m_outData.push_back(vistle::ShmVector<Scalar>());
+      m_outData.push_back(vistle::ShmVector<Scalar>::create(0));
       m_outputpointer.push_back(NULL);
       m_numinputdata = m_inputpointer.size();
 

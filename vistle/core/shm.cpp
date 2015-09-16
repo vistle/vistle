@@ -59,7 +59,7 @@ boost::interprocess::interprocess_recursive_mutex *Shm::s_shmdebugMutex = NULL;
 
 shm_name_t::shm_name_t(const std::string &s) {
 
-   size_t len = s.size();
+   size_t len = s.length();
    assert(len < name.size());
    if (len >= name.size())
       len = name.size()-1;
@@ -81,6 +81,14 @@ shm_name_t::operator std::string () const {
 
 bool shm_name_t::operator==(const std::string &rhs) const {
    return rhs == name.data();
+}
+
+bool shm_name_t::operator==(const shm_name_t &rhs) const {
+   return !strncmp(name.data(), rhs.name.data(), name.size());
+}
+
+bool shm_name_t::empty() const {
+    return name.data()[0] == '\0' || !strcmp(name.data(), "INVALID");
 }
 
 std::string operator+(const std::string &s, const shm_name_t &n) {
@@ -204,7 +212,7 @@ bool Shm::cleanAll() {
    }
    shmlist.close();
 
-   return false;
+   return ret;
 }
 
 const std::string &Shm::name() const {
@@ -304,6 +312,7 @@ const managed_shared_memory & Shm::shm() const {
 
 std::string Shm::createObjectId(const std::string &id) {
 
+   vassert(m_moduleId > 0 || !id.empty());
    vassert(id.size() < sizeof(shm_name_t));
    if (!id.empty()) {
       return id;
@@ -319,6 +328,7 @@ std::string Shm::createObjectId(const std::string &id) {
 }
 
 std::string Shm::createArrayId(const std::string &id) {
+   vassert(m_moduleId > 0 || !id.empty());
    vassert(id.size() < sizeof(shm_name_t));
    if (!id.empty()) {
       return id;

@@ -13,7 +13,7 @@ class shm_obj_ref {
 
  public:
     shm_obj_ref()
-    : m_name(Shm::the().createObjectId())
+    : m_name()
     , m_d(nullptr)
     {
         ref();
@@ -37,7 +37,6 @@ class shm_obj_ref {
     : m_name(name)
     , m_d(shm<T>::find(name))
     {
-        ref();
     }
 
     ~shm_obj_ref() {
@@ -54,6 +53,7 @@ class shm_obj_ref {
     bool find() {
         auto mem = vistle::shm<ObjData>::find(m_name);
         m_d = mem;
+        ref();
 
         return valid();
     }
@@ -62,6 +62,8 @@ class shm_obj_ref {
     void construct(const Args&... args)
     {
         unref();
+        if (m_name.empty())
+            m_name = Shm::the().createObjectId();
         m_d = shm<T>::construct(m_name)(args..., Shm::the().allocator());
         ref();
     }
@@ -118,6 +120,7 @@ class shm_obj_ref {
 
    void ref() {
        if (m_d) {
+           assert(m_name == m_d->name);
            assert(m_d->refcount >= 0);
            m_d->ref();
        }
@@ -149,20 +152,24 @@ class shm_obj_ref {
 
       unref();
       m_d = nullptr;
+
+      if (m_name.empty())
+          return;
+
       auto obj = ar.currentObject();
       auto handler = ar.objectCompletionHandler();
-      auto ref =  ar.template getObject(name, [this, name, obj, handler]() -> void {
+      auto ref1 =  ar.template getObject(name, [this, name, obj, handler]() -> void {
          std::cerr << "object completion handler: " << name << std::endl;
-         auto ref = Shm::the().getObjectFromName(name);
-         assert(ref);
-         *this = ref;
+         auto ref2 = Shm::the().getObjectFromName(name);
+         assert(ref2);
+         *this = ref2;
          if (obj) {
             obj->referenceResolved(handler);
          }
       });
-      if (ref) {
+      if (ref1) {
          // object already present: don't mess with count of outstanding references
-         *this = ref;
+         *this = ref1;
       } else {
          std::cerr << "waiting for completion of object " << name << std::endl;
          auto obj = ar.currentObject();

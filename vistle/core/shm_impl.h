@@ -33,7 +33,12 @@ const ShmVector<T> Shm::getArrayFromName(const std::string &name) const {
    if (!arr) {
        std::cerr << "Shm::getArrayFromName: did not find " << name << std::endl;
    }
-   return vistle::shm_ref<array>(name, arr);
+   std::string n(name);
+   if (n.empty()) {
+       n = Shm::the().createArrayId();
+       std::cerr << "Shm::getArrayFromName: new name " << n << std::endl;
+   }
+   return vistle::shm_ref<array>(n, arr);
    //return vistle::shm_ref<array>(name, static_cast<array *>(mem));
 }
 
@@ -46,7 +51,8 @@ void shm_name_t::serialize(Archive &ar, const unsigned int version) {
 template<class Archive>
 void shm_name_t::save(Archive &ar, const unsigned int version) const {
 
-   std::string n(name.data());
+   std::string n(".");
+   n += name.data();
    std::cerr << "SHM_NAME_T save: '" << n << "'" << std::endl;
    ar & boost::serialization::make_nvp("shm_name_t", n);
 }
@@ -56,6 +62,8 @@ void shm_name_t::load(Archive &ar, const unsigned int version) {
 
    std::string n;
    ar & boost::serialization::make_nvp("shm_name_t", n);
+   if (n[0] == '.')
+      n = n.substr(1);
    auto end = n.find('\0');
    if (end != std::string::npos) {
       n = n.substr(0, end);

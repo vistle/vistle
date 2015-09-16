@@ -18,10 +18,8 @@ void shm_ref<T>::save(Archive &ar, const unsigned int version) const {
 template<class T>
 template<class Archive>
 void shm_ref<T>::load(Archive &ar, const unsigned int version) {
-   shm_name_t shmname;
-   ar & boost::serialization::make_nvp("shm_name", shmname);
-   //assert(shmname == m_name);
-   std::string name = shmname;
+   ar & boost::serialization::make_nvp("shm_name", m_name);
+   std::string name = m_name;
 
    unref();
    m_p = nullptr;

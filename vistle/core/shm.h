@@ -29,12 +29,15 @@ typedef boost::interprocess::managed_shared_memory::handle_t shm_handle_t;
 
 struct V_COREEXPORT shm_name_t {
    std::array<char, 32> name;
-   shm_name_t(const std::string &s = "INVALID");
+   //shm_name_t(const std::string &s = "INVALID");
+   shm_name_t(const std::string &s = std::string());
 
    operator const char *() const;
    operator char *();
    operator std::string () const;
    bool operator==(const std::string &rhs) const;
+   bool operator==(const shm_name_t &rhs) const;
+   bool empty() const;
 
  private:
    friend class boost::serialization::access;

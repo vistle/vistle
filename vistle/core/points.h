@@ -23,8 +23,7 @@ class  V_COREEXPORT Points: public Coords {
             const std::string & name = "",
             const Meta &meta=Meta());
       Data(const Vec<Scalar, 3>::Data &o, const std::string &n);
-      static Data *create(const std::string &name, const Index numPoints = 0,
-            const Meta &meta=Meta());
+      static Data *create(const Index numPoints = 0, const Meta &meta=Meta());
 
    V_DATA_END(Points);
 };

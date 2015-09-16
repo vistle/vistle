@@ -8,6 +8,13 @@ namespace vistle {
 //const Scalar Epsilon = std::numeric_limits<Scalar>::epsilon();
 
 template<typename Scalar, typename Index, int NumDimensions>
+Object::Type Celltree<Scalar, Index, NumDimensions>::type() {
+
+   return (Object::Type)(Object::CELLTREE1 + NumDimensions - 1);
+}
+
+
+template<typename Scalar, typename Index, int NumDimensions>
 void Celltree<Scalar, Index, NumDimensions>::init(const Celltree::Vector *min, const Celltree::Vector *max,
       const Celltree::Vector &gmin, const Celltree::Vector &gmax) {
 
@@ -325,6 +332,12 @@ Celltree<Scalar, Index, NumDimensions>::Data::Data(const Celltree::Data &o, cons
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
+Celltree<Scalar, Index, NumDimensions>::Data::Data(Object::Type id, const std::string &name, const Meta &meta)
+: Celltree::Base::Data(id, name, meta)
+{
+}
+
+template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, const Index numCells,
                      const Meta &meta)
 : Celltree::Base::Data(Object::Type(Object::CELLTREE1-1+NumDimensions), name, meta)
@@ -351,6 +364,14 @@ typename Celltree<Scalar, Index, NumDimensions>::Data *Celltree<Scalar, Index, N
 
    return ct;
 }
+
+template<typename Scalar, typename Index, int NumDimensions>
+typename Celltree<Scalar, Index, NumDimensions>::Data *Celltree<Scalar, Index, NumDimensions>::Data::createNamed(Object::Type id, const std::string &name) {
+   Data *t = shm<Data>::construct(name)(id, name, Meta());
+   publish(t);
+   return t;
+}
+
 } // namespace vistle
 #endif
 

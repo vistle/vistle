@@ -6,7 +6,7 @@ namespace vistle {
 Texture1D::Texture1D(const Index width,
       const Scalar min, const Scalar max,
       const Meta &meta)
-: Texture1D::Base(Texture1D::Data::create("", width, min, max, meta))
+: Texture1D::Base(Texture1D::Data::create(width, min, max, meta))
 {
 }
 
@@ -38,11 +38,11 @@ Texture1D::Data::Data(const std::string &name, const Index width,
    pixels.construct(width * 4);
 }
 
-Texture1D::Data *Texture1D::Data::create(const std::string &objId, const Index width,
+Texture1D::Data *Texture1D::Data::create(const Index width,
                               const Scalar min, const Scalar max,
                               const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectId(objId);
+   const std::string name = Shm::the().createObjectId();
    Data *tex= shm<Data>::construct(name)(name, width, min, max, meta);
    publish(tex);
 

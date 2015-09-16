@@ -266,6 +266,7 @@ struct ObjectData {
 
     V_COREEXPORT ObjectData(Object::Type id = Object::UNKNOWN, const std::string &name = "", const Meta &m=Meta());
     V_COREEXPORT ObjectData(const ObjectData &other, const std::string &name, Object::Type id=Object::UNKNOWN); //! shallow copy, except for attributes
+    V_COREEXPORT ObjectData(const std::string &name, const Meta &meta);
     V_COREEXPORT ~ObjectData();
     V_COREEXPORT void *operator new(size_t size);
     V_COREEXPORT void *operator new (std::size_t size, void* ptr);
@@ -388,7 +389,7 @@ class ObjectTypeRegistry {
    static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \
    static void registerIArchive(iarchive &ar); \
    static void registerOArchive(oarchive &ar); \
-   ObjType(Object::InitializedFlags) : Base(ObjType::Data::create("")) {} \
+   ObjType(Object::InitializedFlags) : Base(ObjType::Data::create()) {}  \
    virtual bool isEmpty() const; \
    bool check() const { refresh(); if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
    struct Data; \
@@ -410,7 +411,7 @@ class ObjectTypeRegistry {
          int type = Object::UNKNOWN; \
          ar & V_NAME("type", type); \
          std::cerr << "Object::load: creating " << name << std::endl; \
-         Object::m_data = Data::create(name); \
+         Object::m_data = Data::createNamed(ObjType::type(), name); \
          if (!ar.currentObject()) \
              ar.setCurrentObject(Object::m_data); \
          d()->template serialize<Archive>(ar, version); \
@@ -432,6 +433,8 @@ class ObjectTypeRegistry {
 #define V_DATA_BEGIN(ObjType) \
    public: \
    struct Data: public Base::Data { \
+      static Data *createNamed(Object::Type id, const std::string &name); \
+      Data(Object::Type id, const std::string &name, const Meta &meta); \
       Data(const Data &other, const std::string &name) \
 
 #define V_DATA_END(ObjType) \
@@ -513,11 +516,22 @@ class ObjectTypeRegistry {
       return id; \
    }
 
+#define V_OBJECT_CREATE_NAMED(ObjType) \
+   ObjType::Data::Data(Object::Type id, const std::string &name, const Meta &meta) \
+   : ObjType::Base::Data(id, name, meta) {} \
+   ObjType::Data *ObjType::Data::createNamed(Object::Type id, const std::string &name) { \
+      Data *t = shm<Data>::construct(name)(id, name, Meta()); \
+      publish(t); \
+      return t; \
+   }
+
 #define V_OBJECT_CTOR(ObjType) \
+   V_OBJECT_CREATE_NAMED(ObjType) \
    ObjType::ObjType(ObjType::Data *data): ObjType::Base(data) {} \
    ObjType::ObjType(): ObjType::Base() {}
 
 #define V_OBJECT_CTOR_REFRESH(ObjType) \
+   V_OBJECT_CREATE_NAMED(ObjType) \
    ObjType::ObjType(ObjType::Data *data): ObjType::Base(data) { refreshImpl(); } \
    ObjType::ObjType(): ObjType::Base() { refreshImpl(); }
 

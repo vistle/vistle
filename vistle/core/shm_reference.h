@@ -10,7 +10,8 @@ class shm_ref {
 
  public:
     shm_ref()
-    : m_name(Shm::the().createArrayId())
+    //: m_name(Shm::the().createArrayId())
+    : m_name("")
     //, m_p(shm<T>::construct(m_name)(Shm::the().allocator()))
     , m_p(nullptr)
     {
@@ -65,6 +66,7 @@ class shm_ref {
 #endif
 
     bool find() {
+        assert(!m_name.empty());
         if (!m_p) {
             m_p = shm<T>::find(m_name);
             ref();
@@ -76,6 +78,9 @@ class shm_ref {
     void construct(const Args&... args)
     {
         unref();
+        if (m_name.empty())
+            m_name = Shm::the().createArrayId();
+        assert(!m_name.empty());
         m_p = shm<T>::construct(m_name)(args..., Shm::the().allocator());
         ref();
     }

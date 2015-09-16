@@ -5,7 +5,7 @@ namespace vistle {
 
 Points::Points(const Index numPoints,
          const Meta &meta)
-   : Points::Base(Points::Data::create("", numPoints, meta))
+   : Points::Base(Points::Data::create(numPoints, meta))
 {
 }
 
@@ -42,10 +42,9 @@ Points::Data::Data(const Vec<Scalar, 3>::Data &o, const std::string &n)
 {
 }
 
-Points::Data *Points::Data::create(const std::string &objId, const Index numPoints,
-                      const Meta &meta) {
+Points::Data *Points::Data::create(const Index numPoints, const Meta &meta) {
 
-   const std::string name = Shm::the().createObjectId(objId);
+   const std::string name = Shm::the().createObjectId();
    Data *p = shm<Data>::construct(name)(numPoints, name, meta);
    publish(p);
 

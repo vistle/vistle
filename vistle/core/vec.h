@@ -30,10 +30,10 @@ private:
       //boost::interprocess::offset_ptr<Object::Data> grid;
       shm_obj_ref<Object> grid;
 
-      Data(Type id = UNKNOWN, const std::string & name = "", const Meta &meta=Meta());
+      //Data(Type id = UNKNOWN, const std::string & name = "", const Meta &meta=Meta());
       Data(const Data &o, const std::string & name, Type id);
       ~Data();
-      static Data *create(const std::string &name="", Type id = UNKNOWN, const Meta &meta=Meta());
+      static Data *create(Type id = UNKNOWN, const Meta &meta=Meta());
 
       template<class Archive>
       void load(Archive &ar, const unsigned int version);
@@ -101,7 +101,9 @@ class Vec: public DataBase {
       Data(const Index size, Type id, const std::string &name,
             const Meta &meta=Meta());
       Data(const Data &other, const std::string &name, Type id=UNKNOWN);
-      static Data *create(const std::string &name, Index size = 0, const Meta &meta=Meta());
+      Data(Object::Type id, const std::string &name, const Meta &meta);
+      static Data *create(Index size=0, const Meta &meta=Meta());
+      static Data *createNamed(Object::Type id, const std::string &name, const Meta &meta=Meta());
 
       private:
       friend class Vec;

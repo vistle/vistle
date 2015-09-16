@@ -51,11 +51,13 @@ void DataBase::createCelltree(Index nelem, const Index *el, const Index *cl) con
    (void)cl;
 }
 
+#if 0
 DataBase::Data::Data(Type id, const std::string &name,
       const Meta &meta)
    : DataBase::Base::Data(id, name, meta)
 {
 }
+#endif
 
 DataBase::Data::Data(const DataBase::Data &o, const std::string &n, Type id)
 : DataBase::Base::Data(o, n, id)
@@ -74,7 +76,7 @@ DataBase::Data::~Data() {
 
 }
 
-DataBase::Data *DataBase::Data::create(const std::string &name, Type id, const Meta &meta) {
+DataBase::Data *DataBase::Data::create(Type id, const Meta &meta) {
 
    assert("should never be called" == NULL);
 
