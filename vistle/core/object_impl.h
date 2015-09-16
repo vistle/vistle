@@ -95,6 +95,12 @@ void Object::Data::arrayValid(const ShmVectorPtr &p) {
         ++unresolvedReferences;
 }
 
+template<class ObjType>
+void Object::Data::objectValid(const shm_obj_ref<ObjType> &o) {
+    if (!o.valid())
+        ++unresolvedReferences;
+}
+
 template<>
 V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(iarchive &ar);
 template<>

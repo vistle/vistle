@@ -161,11 +161,6 @@ bool Object::Data::isComplete() const {
    return refcount>0 && unresolvedReferences==0;
 }
 
-void Object::Data::objectValid(const Object::Data *d) {
-    if (!d)
-        ++unresolvedReferences;
-}
-
 void Object::Data::referenceResolved(const std::function<void()> &completeCallback) {
     std::cerr << "reference (from " << unresolvedReferences << ") resolved in " << name << std::endl;
     vassert(unresolvedReferences > 0);

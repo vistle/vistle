@@ -85,7 +85,7 @@ class shm_obj_ref {
     }
 
    bool valid() const {
-       return m_d;
+       return m_name.empty() || m_d;
    }
 
    typename ObjType::const_ptr getObject() const {
@@ -176,7 +176,7 @@ class shm_obj_ref {
          std::cerr << "waiting for completion of object " << name << std::endl;
          auto obj = ar.currentObject();
          if (obj)
-            obj->objectValid(getData());
+            obj->objectValid(*this);
       }
    }
 };

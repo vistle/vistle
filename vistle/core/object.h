@@ -278,7 +278,8 @@ struct ObjectData {
     bool isComplete() const; //! check whether all references have been resolved
     template<typename ShmVectorPtr>
     void arrayValid(const ShmVectorPtr &p);
-    void objectValid(const Object::Data *d);
+    template<class ObjType>
+    void objectValid(const shm_obj_ref<ObjType> &o);
     void referenceResolved(const std::function<void()> &completeCallback);
 
     friend class boost::serialization::access;

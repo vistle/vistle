@@ -22,7 +22,7 @@ template<class Archive>
 void DataBase::Data::load(Archive &ar, const unsigned int version) {
 
    ar & V_NAME("grid", grid);
-   objectValid(grid.getData());
+   objectValid(grid);
 }
 
 template<class Archive>

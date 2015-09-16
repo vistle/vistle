@@ -35,6 +35,7 @@ private:
       ~Data();
       static Data *create(Type id = UNKNOWN, const Meta &meta=Meta());
 
+private:
       template<class Archive>
       void load(Archive &ar, const unsigned int version);
       template<class Archive>
