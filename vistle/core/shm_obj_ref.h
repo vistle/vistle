@@ -158,19 +158,21 @@ class shm_obj_ref {
 
       auto obj = ar.currentObject();
       auto handler = ar.objectCompletionHandler();
-      auto ref1 =  ar.template getObject(name, [this, name, obj, handler]() -> void {
+      auto ref0 = ar.template getObject(name, [this, name, obj, handler]() -> void {
          std::cerr << "object completion handler: " << name << std::endl;
-         auto ref2 = Shm::the().getObjectFromName(name);
+         auto ref2 = T::as(Shm::the().getObjectFromName(name));
          assert(ref2);
          *this = ref2;
          if (obj) {
             obj->referenceResolved(handler);
          }
       });
+      auto ref1 = T::as(ref0);
       if (ref1) {
          // object already present: don't mess with count of outstanding references
          *this = ref1;
       } else {
+         assert(!ref0);
          std::cerr << "waiting for completion of object " << name << std::endl;
          auto obj = ar.currentObject();
          if (obj)

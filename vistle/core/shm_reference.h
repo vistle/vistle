@@ -113,6 +113,7 @@ class shm_ref {
    boost::interprocess::offset_ptr<T> m_p;
    void ref() {
        if (m_p) {
+           assert(!m_name.empty());
            assert(m_p->refcount() >= 0);
            m_p->ref();
        }
@@ -120,6 +121,7 @@ class shm_ref {
 
    void unref() {
        if (m_p) {
+            assert(!m_name.empty());
             assert(m_p->refcount() > 0);
             if (m_p->unref() == 0) {
                 shm<T>::destroy_ptr(m_p.get());

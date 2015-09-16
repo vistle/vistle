@@ -35,12 +35,6 @@ class V_COREEXPORT Coords: public Vec<Scalar,3> {
       static Data *create(const std::string &name="", Type id = UNKNOWN, const Index numVertices = 0,
             const Meta &meta=Meta());
 
-   private:
-      template<class Archive>
-         void load(Archive &ar, const unsigned int version);
-      template<class Archive>
-         void save(Archive &ar, const unsigned int version) const;
-
    V_DATA_END(Coords);
 };
 
