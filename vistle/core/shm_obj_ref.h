@@ -112,7 +112,9 @@ class shm_obj_ref {
    const T *operator->() const;
 #endif
 
-   const shm_name_t &name() const;
+   const shm_name_t &name() const {
+       return m_name;
+   }
 
  private:
    shm_name_t m_name;

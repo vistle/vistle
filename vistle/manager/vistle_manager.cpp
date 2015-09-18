@@ -11,7 +11,7 @@
 #include <sstream>
 
 #include <util/findself.h>
-#include <core/object.h>
+#include <core/objectmeta.h>
 #include "executor.h"
 
 using namespace vistle;

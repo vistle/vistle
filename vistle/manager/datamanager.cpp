@@ -79,13 +79,6 @@ bool DataManager::requestArray(const std::string &referrer, const std::string &a
        return true;
    }
 
-#if 0
-   void *ptr= Shm::the().getArrayFromName(arrayId);
-   if (ptr) {
-      return false;
-   }
-#endif
-
    m_outstandingArrays[arrayId].push_back(handler);
 
    message::RequestObject req(hub, rank, arrayId, type, referrer);
@@ -223,12 +216,6 @@ struct ArraySaver {
             std::cerr << "ArraySaver: did not find data array " << m_name << std::endl;
             return;
         }
-#if 0
-        if (arr->type() != m_type) {
-            std::cerr << "ArraySaver: " << m_name << " does not have expected type, is " << arr->type() << ", expected " << m_type << std::endl;
-            return;
-        }
-#endif
         m_ar & m_name;
         m_ar & *arr;
         m_ok = true;
@@ -278,12 +265,6 @@ struct ArrayLoader {
             arr.construct();
             m_ar & *arr;
             m_unreffer.reset(new Unreffer<T>(arr));
-#if 0
-            if (arr->type() != m_type) {
-                std::cerr << "ArrayLoader: " << m_name << " does not have expected type, is " << arr->type() << ", expected " << m_type << std::endl;
-                return;
-            }
-#endif
             m_ok = true;
         }
     }
@@ -395,12 +376,19 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                    return;
                }
                outstandingRequests.erase(reqIt);
+           } else {
+               std::cerr << "no outstanding request for " << obj->getName() << std::endl;
            }
 
            auto objIt = outstandingObjects.find(objName);
            if (objIt != outstandingObjects.end()) {
+               for (const auto &handler: objIt->second.completionHandlers) {
+                   handler();
+               }
                objIt->second.obj->unref();
                outstandingObjects.erase(objIt);
+           } else {
+               std::cerr << "no outstanding object for " << obj->getName() << std::endl;
            }
        };
        memar.setObjectCompletionHandler(completionHandler);

@@ -18,7 +18,7 @@ template<class Archive>
 void Coords::Data::load(Archive &ar, const unsigned int version) {
 
    ar & V_NAME("normals", normals);
-   objectValid(normals);
+   //objectValid(normals);
 }
 
 } // namespace vistle
