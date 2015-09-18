@@ -523,7 +523,7 @@ BOOST_STATIC_ASSERT(sizeof(AddObjectCompleted) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT ObjectReceived: public Message {
 
  public:
-   ObjectReceived(const std::string &senderPort, vistle::Object::const_ptr obj, const std::string &destPort="");
+   ObjectReceived(const AddObject &add, const std::string &destPort="");
    const char * getSenderPort() const;
    const char *getDestPort() const;
    const char *objectName() const;

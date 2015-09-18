@@ -609,17 +609,17 @@ const char *AddObjectCompleted::originalSenderPort() const {
    return m_orgSenderPort.data();
 }
 
-ObjectReceived::ObjectReceived(const std::string &sender, vistle::Object::const_ptr obj,
-      const std::string &p)
+ObjectReceived::ObjectReceived(const AddObject &add, const std::string &p)
 : Message(Message::OBJECTRECEIVED, sizeof(ObjectReceived))
-, m_name(obj->getName())
-, m_meta(obj->meta())
-, m_objectType(obj->getType())
+, m_name(add.objectName())
+, m_meta(add.meta())
+, m_objectType(add.objectType())
 {
 
    m_broadcast = true;
 
-   COPY_STRING(senderPort, sender);
+   std::string port(add.getSenderPort());
+   COPY_STRING(senderPort, port);
    COPY_STRING(portName, p);
 }
 
