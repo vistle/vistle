@@ -87,6 +87,7 @@ class shm_ref {
 
     const shm_ref &operator=(const shm_ref &rhs) {
         unref();
+        m_name = rhs.m_name;
         m_p = rhs.m_p;
         ref();
         return *this;
