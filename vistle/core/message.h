@@ -147,7 +147,7 @@ class V_COREEXPORT Message {
    //! messge size
    size_t size() const;
    //! broadacast to all ranks?
-   bool broadcast() const;
+   bool isBroadcast() const;
    //! mark message for broadcast to all ranks on destination
    void setBroadcast(bool enable=true);
 

@@ -143,7 +143,7 @@ size_t Message::size() const {
    return m_size;
 }
 
-bool Message::broadcast() const {
+bool Message::isBroadcast() const {
 
     return m_broadcast;
 }

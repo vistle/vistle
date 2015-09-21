@@ -977,7 +977,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       }
    }
 
-   const bool handleOnMaster = !localSender || !receivingHubs.empty() || (modState.reducePolicy != message::ReducePolicy::Locally && modState.reducePolicy != message::ReducePolicy::Never);
+   const bool handleOnMaster = localSender && (!receivingHubs.empty() || (modState.reducePolicy != message::ReducePolicy::Locally && modState.reducePolicy != message::ReducePolicy::Never));
    if (handleOnMaster && m_rank != 0) {
       return Communicator::the().forwardToMaster(prog);
    }
@@ -989,29 +989,29 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       case message::ExecutionProgress::Start: {
          readyForPrepare = true;
          if (handleOnMaster && localSender) {
-            auto &mod = i->second;
-            vassert(mod.ranksFinished < m_size);
-            ++mod.ranksStarted;
-            readyForPrepare = mod.ranksStarted==m_size;
+             auto &mod = i->second;
+             vassert(mod.ranksFinished < m_size);
+             ++mod.ranksStarted;
+             readyForPrepare = mod.ranksStarted==m_size;
          }
          break;
       }
 
       case message::ExecutionProgress::Finish: {
          readyForReduce = true;
-         if (handleOnMaster && localSender) {
-            auto &mod = i->second;
-            ++mod.ranksFinished;
-            if (mod.ranksFinished == m_size) {
-               if (mod.ranksStarted != m_size) {
-                  CERR << "mismatch: m_size=" << m_size << ", started=" << mod.ranksStarted << std::endl;
-               }
-               vassert(mod.ranksStarted == m_size);
-               mod.ranksFinished = 0;
-               mod.ranksStarted = 0;
-            } else {
-               readyForReduce = false;
-            }
+         if (handleOnMaster) {
+             auto &mod = i->second;
+             ++mod.ranksFinished;
+             if (mod.ranksFinished == m_size) {
+                if (mod.ranksStarted != m_size) {
+                   CERR << "mismatch: m_size=" << m_size << ", started=" << mod.ranksStarted << std::endl;
+                }
+                vassert(mod.ranksStarted == m_size);
+                mod.ranksFinished = 0;
+                mod.ranksStarted = 0;
+             } else {
+                readyForReduce = false;
+             }
          }
          break;
       }
@@ -1021,7 +1021,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
        vassert(!(readyForPrepare && readyForReduce));
        for (auto hub: receivingHubs) {
            message::Buffer buf(prog);
-           buf.setBroadcast(false);
+           buf.setBroadcast(true);
            buf.setDestRank(0);
            sendMessage(hub, buf);
        }

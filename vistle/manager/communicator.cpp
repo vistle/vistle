@@ -194,7 +194,7 @@ bool Communicator::dispatch(bool *work) {
          vassert(m_rank == 0);
          received = true;
          message::Message *message = &m_recvBufToRank;
-         if (m_rank == 0 && message->broadcast()) {
+         if (m_rank == 0 && message->isBroadcast()) {
             if (!broadcastAndHandleMessage(*message)) {
                CERR << "Quit reason: broadcast & handle" << std::endl;
                done = true;
