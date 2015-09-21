@@ -51,9 +51,8 @@ void shm_name_t::serialize(Archive &ar, const unsigned int version) {
 template<class Archive>
 void shm_name_t::save(Archive &ar, const unsigned int version) const {
 
-   std::string n(".");
-   n += name.data();
-   std::cerr << "SHM_NAME_T save: '" << n << "'" << std::endl;
+   std::string n(name.data());
+   //std::cerr << "SHM_NAME_T save: '" << n << "'" << std::endl;
    ar & boost::serialization::make_nvp("shm_name_t", n);
 }
 
@@ -62,8 +61,6 @@ void shm_name_t::load(Archive &ar, const unsigned int version) {
 
    std::string n;
    ar & boost::serialization::make_nvp("shm_name_t", n);
-   if (n[0] == '.')
-      n = n.substr(1);
    auto end = n.find('\0');
    if (end != std::string::npos) {
       n = n.substr(0, end);
@@ -76,7 +73,7 @@ void shm_name_t::load(Archive &ar, const unsigned int version) {
       memset(name.data(), 0, name.size());
       assert(n.size() < name.size());
    }
-   std::cerr << "SHM_NAME_T load: '" << name.data() << "'" << std::endl;
+   //std::cerr << "SHM_NAME_T load: '" << name.data() << "'" << std::endl;
 }
 
 } // namespace vistle
