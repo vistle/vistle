@@ -28,18 +28,11 @@ template<typename T>
 const ShmVector<T> Shm::getArrayFromName(const std::string &name) const {
    typedef vistle::shm_array<T, typename vistle::shm<T>::allocator> array;
 
-   // we have to use char here, otherwise boost-internal consistency checks fail
    auto arr = vistle::shm<array>::find(name);
    if (!arr) {
-       std::cerr << "Shm::getArrayFromName: did not find " << name << std::endl;
+       //std::cerr << "Shm::getArrayFromName: did not find " << name << std::endl;
    }
-   std::string n(name);
-   if (n.empty()) {
-       n = Shm::the().createArrayId();
-       std::cerr << "Shm::getArrayFromName: new name " << n << std::endl;
-   }
-   return vistle::shm_ref<array>(n, arr);
-   //return vistle::shm_ref<array>(name, static_cast<array *>(mem));
+   return vistle::shm_ref<array>(name, arr);
 }
 
 template<class Archive>

@@ -161,7 +161,7 @@ class shm_obj_ref {
       auto obj = ar.currentObject();
       auto handler = ar.objectCompletionHandler();
       auto ref0 = ar.template getObject(name, [this, name, obj, handler]() -> void {
-         std::cerr << "object completion handler: " << name << std::endl;
+         //std::cerr << "object completion handler: " << name << std::endl;
          auto ref2 = T::as(Shm::the().getObjectFromName(name));
          assert(ref2);
          *this = ref2;
@@ -175,7 +175,7 @@ class shm_obj_ref {
          *this = ref1;
       } else {
          assert(!ref0);
-         std::cerr << "waiting for completion of object " << name << std::endl;
+         //std::cerr << "waiting for completion of object " << name << std::endl;
          auto obj = ar.currentObject();
          if (obj)
             obj->objectValid(*this);

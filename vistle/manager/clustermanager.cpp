@@ -953,14 +953,15 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    if (i == runningMap.end()) {
       vassert(localSender == false);
    }
+   auto &mod = i->second;
 
    auto i2 = m_stateTracker.runningMap.find(prog.senderId());
    if (i2 == m_stateTracker.runningMap.end()) {
       return false;
    }
+   auto &modState = i2->second;
 
    // initiate reduction if requested by module
-   auto &modState = i2->second;
 
    // forward message to remote hubs...
    std::set<int> receivingHubs; // ...but make sure that message is only sent once per remote hub
@@ -977,19 +978,18 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       }
    }
 
-   const bool handleOnMaster = localSender && (!receivingHubs.empty() || (modState.reducePolicy != message::ReducePolicy::Locally && modState.reducePolicy != message::ReducePolicy::Never));
-   if (handleOnMaster && m_rank != 0) {
+   const bool localReduce = modState.reducePolicy == message::ReducePolicy::Locally || modState.reducePolicy == message::ReducePolicy::Never;
+   const bool handleOnMaster = !receivingHubs.empty() || !localReduce;
+   if (localSender && handleOnMaster && m_rank != 0) {
       return Communicator::the().forwardToMaster(prog);
    }
 
    bool readyForPrepare = false, readyForReduce = false;
-   bool result = true;
    CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << std::endl;
    switch (prog.stage()) {
       case message::ExecutionProgress::Start: {
          readyForPrepare = true;
          if (handleOnMaster && localSender) {
-             auto &mod = i->second;
              vassert(mod.ranksFinished < m_size);
              ++mod.ranksStarted;
              readyForPrepare = mod.ranksStarted==m_size;
@@ -999,8 +999,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
       case message::ExecutionProgress::Finish: {
          readyForReduce = true;
-         if (handleOnMaster) {
-             auto &mod = i->second;
+         if (handleOnMaster && localSender) {
              ++mod.ranksFinished;
              if (mod.ranksFinished == m_size) {
                 if (mod.ranksStarted != m_size) {
@@ -1021,7 +1020,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
        vassert(!(readyForPrepare && readyForReduce));
        for (auto hub: receivingHubs) {
            message::Buffer buf(prog);
-           buf.setBroadcast(true);
+           buf.setBroadcast(false);
            buf.setDestRank(0);
            sendMessage(hub, buf);
        }
@@ -1045,7 +1044,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       for (const Port *destPort: *list) {
          if (!(destPort->flags() & Port::COMBINE)) {
             bool allReadyForPrepare = true, allReadyForReduce = true;
-            int destId = destPort->getModuleID();
+            const int destId = destPort->getModuleID();
             auto allInputs = portManager().getConnectedInputPorts(destId);
             for (auto input: allInputs) {
                if (!portManager().isReset(input))
@@ -1053,15 +1052,19 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                if (!portManager().isFinished(input))
                   allReadyForReduce = false;
             }
+            auto it = m_stateTracker.runningMap.find(destId);
+            vassert(it != m_stateTracker.runningMap.end());
+            const bool broadcast = it->second.reducePolicy!=message::ReducePolicy::Locally && it->second.reducePolicy!=message::ReducePolicy::Never;
             if (allReadyForPrepare) {
                for (auto input: allInputs) {
                   portManager().popReset(input);
                }
                if (isLocal(destId)) {
                   auto exec = message::Execute(message::Execute::Prepare, destId);
-                  if (handleOnMaster) {
-                     if (!Communicator::the().broadcastAndHandleMessage(exec))
-                        return false;
+                  if (broadcast) {
+                     if (m_rank == 0)
+                        if (!Communicator::the().broadcastAndHandleMessage(exec))
+                           return false;
                   } else {
                      sendMessage(destId, exec);
                   }
@@ -1073,9 +1076,10 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                }
                if (isLocal(destId)) {
                   auto exec = message::Execute(message::Execute::Reduce, destId);
-                  if (handleOnMaster) {
-                     if (!Communicator::the().broadcastAndHandleMessage(exec))
-                        return false;
+                  if (broadcast) {
+                     if (m_rank == 0)
+                        if (!Communicator::the().broadcastAndHandleMessage(exec))
+                           return false;
                   } else {
                      sendMessage(destId, exec);
                   }
@@ -1085,7 +1089,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       }
    }
 
-   return result;
+   return true;
 }
 
 bool ClusterManager::handlePriv(const message::Busy &busy) {

@@ -48,7 +48,7 @@ bool DataManager::dispatch() {
       if (!message::recv(m_dataSocket, buf, gotMsg)) {
          CERR << "Data communication error" << std::endl;
       } else if (gotMsg) {
-         CERR << "Data received" << std::endl;
+         //CERR << "Data received" << std::endl;
          handle(buf);
       }
    }
@@ -320,7 +320,7 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
            CERR << "failed to restore array " << snd.objectId() << " from archive" << std::endl;
            return false;
        }
-       CERR << "restored array " << snd.objectId() << ", dangling in memory" << std::endl;
+       //CERR << "restored array " << snd.objectId() << ", dangling in memory" << std::endl;
        auto it = m_outstandingArrays.find(snd.objectId());
        vassert(it != m_outstandingArrays.end());
        if (it != m_outstandingArrays.end()) {
