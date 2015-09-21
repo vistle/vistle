@@ -644,7 +644,10 @@ bool StateTracker::handlePriv(const message::Busy &busy) {
       busySet.insert(id);
    }
    auto it = runningMap.find(id);
-   vassert(it != runningMap.end());
+   if (it == runningMap.end()) {
+       vassert(quitMap.find(id) != quitMap.end());
+       return false;
+   }
    auto &mod = it->second;
    mod.busy = true;
 
@@ -665,7 +668,10 @@ bool StateTracker::handlePriv(const message::Idle &idle) {
       //CERR << "module " << id << " sent Idle, but was not busy" << std::endl;
    }
    auto rit = runningMap.find(id);
-   vassert(rit != runningMap.end());
+   if (rit == runningMap.end()) {
+       vassert(quitMap.find(id) != quitMap.end());
+       return false;
+   }
    auto &mod = rit->second;
    mod.busy = false;
 
