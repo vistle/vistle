@@ -660,10 +660,8 @@ BOOST_STATIC_ASSERT(sizeof(SetParameter) <= Message::MESSAGE_SIZE);
 //! set list of choice descriptions for a choice parameter
 class V_COREEXPORT SetParameterChoices: public Message {
    public:
-      SetParameterChoices(const int module,
-            const std::string &name, const std::vector<std::string> &choices);
+      SetParameterChoices(const std::string &name, const std::vector<std::string> &choices);
 
-      int getModule() const;
       const char *getName() const;
       int getNumChoices() const;
       const char *getChoice(int idx) const;
@@ -671,7 +669,6 @@ class V_COREEXPORT SetParameterChoices: public Message {
       bool apply(boost::shared_ptr<Parameter> param) const;
 
    private:
-      const int module;
       int numChoices;
       param_name_t name;
       param_choice_t choices[param_num_choices];

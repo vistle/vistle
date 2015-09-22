@@ -209,7 +209,7 @@ std::vector<message::Buffer> StateTracker::getState() const {
          appendMessage(state, add);
 
          if (param->presentation() == Parameter::Choice) {
-            SetParameterChoices choices(id, name, param->choices());
+            SetParameterChoices choices(name, param->choices());
             choices.setSenderId(id);
             appendMessage(state, choices);
          }
@@ -751,7 +751,11 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam) {
 
 bool StateTracker::handlePriv(const message::SetParameterChoices &choices) {
 
-   auto p = getParameter(choices.getModule(), choices.getName());
+   const int senderId = choices.senderId();
+   if (!message::Id::isModule(senderId)) {
+       return false;
+   }
+   auto p = getParameter(choices.senderId(), choices.getName());
    if (!p)
       return false;
 
@@ -761,7 +765,7 @@ bool StateTracker::handlePriv(const message::SetParameterChoices &choices) {
 
    for (StateObserver *o: m_observers) {
       o->incModificationCount();
-      o->parameterChoicesChanged(choices.getModule(), choices.getName());
+      o->parameterChoicesChanged(choices.senderId(), choices.getName());
    }
 
    return true;

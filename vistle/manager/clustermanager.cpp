@@ -1170,7 +1170,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
    }
 
    if (setParam.isReply()) {
-      sendAllOthers(setParam.senderId(), setParam);
+      sendAllOthers(setParam.senderId(), setParam, true);
    }
 
    // update linked parameters
@@ -1209,24 +1209,25 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
 
 bool ClusterManager::handlePriv(const message::SetParameterChoices &setChoices) {
 #ifdef DEBUG
-   CERR << "SetParameter: sender=" << setParam.senderId() << ", module=" << setParam.getModule() << ", name=" << setParam.getName() << std::endl;
+   CERR << "SetParameterChoices: " << setChoices << std::endl;
 #endif
 
    bool handled = true;
-   auto param = getParameter(setChoices.getModule(), setChoices.getName());
-
-   if (setChoices.senderId() == setChoices.getModule()) {
-      // notification by owning module about changed parameter choices
+   int sender = setChoices.senderId();
+   int dest = setChoices.destId();
+   if (message::Id::isModule(dest)) {
+      // message to owning module
+      auto param = getParameter(dest, setChoices.getName());
       if (param) {
          setChoices.apply(param);
-      } else {
-         CERR << "no such parameter: module id=" << setChoices.getModule() << ", name=" << setChoices.getName() << std::endl;
       }
-
-      // let all modules know that a parameter was changed
-      sendAllOthers(setChoices.senderId(), setChoices);
-   } else {
-      handled = false;
+   } else if (message::Id::isModule(sender)) {
+      // message from owning module
+      auto param = getParameter(sender, setChoices.getName());
+      if (param) {
+         setChoices.apply(param);
+      }
+      sendAllOthers(setChoices.senderId(), setChoices, true);
    }
 
    return handled;

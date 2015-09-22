@@ -1006,10 +1006,8 @@ bool SetParameter::apply(boost::shared_ptr<vistle::Parameter> param) const {
    return true;
 }
 
-SetParameterChoices::SetParameterChoices(const int id, const std::string &n,
-      const std::vector<std::string> &ch)
+SetParameterChoices::SetParameterChoices(const std::string &n, const std::vector<std::string> &ch)
 : Message(Message::SETPARAMETERCHOICES, sizeof(SetParameterChoices))
-, module(id)
 , numChoices(ch.size())
 {
    COPY_STRING(name, n);
@@ -1020,11 +1018,6 @@ SetParameterChoices::SetParameterChoices(const int id, const std::string &n,
    for (int i=0; i<numChoices; ++i) {
       COPY_STRING(choices[i], ch[i]);
    }
-}
-
-int SetParameterChoices::getModule() const
-{
-   return module;
 }
 
 const char *SetParameterChoices::getName() const
@@ -1507,7 +1500,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case Message::SETPARAMETERCHOICES: {
          auto &mm = static_cast<const SetParameterChoices &>(m);
-         s << ", dest: " << mm.getModule() << ", name: " << mm.getName();
+         s << ", name: " << mm.getName();
          break;
       }
       case Message::ADDPORT: {
