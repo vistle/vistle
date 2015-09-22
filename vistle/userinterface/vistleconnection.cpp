@@ -136,7 +136,7 @@ boost::shared_ptr<vistle::Parameter> VistleConnection::getParameter(int id, cons
 bool vistle::VistleConnection::sendParameter(const boost::shared_ptr<Parameter> p) const
 {
    mutex_lock lock(m_mutex);
-   vistle::message::SetParameter set(p->module(), p->getName(), p);
+   vistle::message::SetParameter set(p->getName(), p);
    set.setDestId(p->module());
    return sendMessage(set);
 }

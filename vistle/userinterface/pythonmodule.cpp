@@ -370,7 +370,7 @@ static void setIntParam(int id, const char *name, Integer value) {
 #ifdef DEBUG
    std::cerr << "Python: setIntParam " << id << ":" << name << " = " << value << std::endl;
 #endif
-   message::SetParameter m(id, name, value);
+   message::SetParameter m(name, value);
    m.setDestId(id);
    sendMessage(m);
 }
@@ -380,63 +380,63 @@ static void setFloatParam(int id, const char *name, Float value) {
 #ifdef DEBUG
    std::cerr << "Python: setFloatParam " << id << ":" << name << " = " << value << std::endl;
 #endif
-   message::SetParameter m(id, name, value);
+   message::SetParameter m(name, value);
    m.setDestId(id);
    sendMessage(m);
 }
 
 static void setVectorParam4(int id, const char *name, Float v1, Float v2, Float v3, Float v4) {
 
-   message::SetParameter m(id, name, ParamVector(v1, v2, v3, v4));
+   message::SetParameter m(name, ParamVector(v1, v2, v3, v4));
    m.setDestId(id);
    sendMessage(m);
 }
 
 static void setVectorParam3(int id, const char *name, Float v1, Float v2, Float v3) {
 
-   message::SetParameter m(id, name, ParamVector(v1, v2, v3));
+   message::SetParameter m(name, ParamVector(v1, v2, v3));
    m.setDestId(id);
    sendMessage(m);
 }
 
 static void setVectorParam2(int id, const char *name, Float v1, Float v2) {
 
-   message::SetParameter m(id, name, ParamVector(v1, v2));
+   message::SetParameter m(name, ParamVector(v1, v2));
    m.setDestId(id);
    sendMessage(m);
 }
 
 static void setVectorParam1(int id, const char *name, Float v1) {
 
-   message::SetParameter m(id, name, ParamVector(v1));
+   message::SetParameter m(name, ParamVector(v1));
    m.setDestId(id);
    sendMessage(m);
 }
 
 static void setIntVectorParam4(int id, const char *name, Integer v1, Integer v2, Integer v3, Integer v4) {
 
-   message::SetParameter m(id, name, IntParamVector(v1, v2, v3, v4));
+   message::SetParameter m(name, IntParamVector(v1, v2, v3, v4));
    m.setDestId(id);
    sendMessage(m);
 }
 
 static void setIntVectorParam3(int id, const char *name, Integer v1, Integer v2, Integer v3) {
 
-   message::SetParameter m(id, name, IntParamVector(v1, v2, v3));
+   message::SetParameter m(name, IntParamVector(v1, v2, v3));
    m.setDestId(id);
    sendMessage(m);
 }
 
 static void setIntVectorParam2(int id, const char *name, Integer v1, Integer v2) {
 
-   message::SetParameter m(id, name, IntParamVector(v1, v2));
+   message::SetParameter m(name, IntParamVector(v1, v2));
    m.setDestId(id);
    sendMessage(m);
 }
 
 static void setIntVectorParam1(int id, const char *name, Integer v1) {
 
-   message::SetParameter m(id, name, IntParamVector(v1));
+   message::SetParameter m(name, IntParamVector(v1));
    m.setDestId(id);
    sendMessage(m);
 }
@@ -446,7 +446,7 @@ static void setStringParam(int id, const char *name, const std::string &value) {
 #ifdef DEBUG
    std::cerr << "Python: setStringParam " << id << ":" << name << " = " << value << std::endl;
 #endif
-   message::SetParameter m(id, name, value);
+   message::SetParameter m(name, value);
    m.setDestId(id);
    sendMessage(m);
 }

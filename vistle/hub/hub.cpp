@@ -675,7 +675,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    const int dest = idToHub(msg.destId());
    const int sender = idToHub(msg.senderId());
 
-   if (Router::the().toManager(msg, senderType)
+   if (Router::the().toManager(msg, senderType, sender)
            || (msg.destId() >= Id::ModuleBase && dest == m_hubId)) {
       sendManager(msg);
       mgr = true;

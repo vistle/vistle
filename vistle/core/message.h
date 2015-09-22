@@ -613,18 +613,12 @@ BOOST_STATIC_ASSERT(sizeof(AddParameter) <= Message::MESSAGE_SIZE);
 //! request parameter value update or notify that a parameter value has been changed
 class V_COREEXPORT SetParameter: public Message {
    public:
-      SetParameter(const int module,
-            const std::string & name, const boost::shared_ptr<Parameter> param, Parameter::RangeType rt=Parameter::Value);
-      SetParameter(const int module,
-            const std::string & name, const Integer value);
-      SetParameter(const int module,
-            const std::string & name, const Float value);
-      SetParameter(const int module,
-            const std::string & name, const ParamVector &value);
-      SetParameter(const int module,
-            const std::string & name, const IntParamVector &value);
-      SetParameter(const int module,
-            const std::string & name, const std::string &value);
+      SetParameter(const std::string & name, const boost::shared_ptr<Parameter> param, Parameter::RangeType rt=Parameter::Value);
+      SetParameter(const std::string & name, const Integer value);
+      SetParameter(const std::string & name, const Float value);
+      SetParameter( const std::string & name, const ParamVector &value);
+      SetParameter(const std::string & name, const IntParamVector &value);
+      SetParameter(const std::string & name, const std::string &value);
 
       void setInit();
       bool isInitialization() const;
@@ -635,7 +629,6 @@ class V_COREEXPORT SetParameter: public Message {
       void setRangeType(int rt);
       int rangeType() const;
 
-      int getModule() const;
       const char * getName() const;
       int getParameterType() const;
 
@@ -648,7 +641,6 @@ class V_COREEXPORT SetParameter: public Message {
       bool apply(boost::shared_ptr<Parameter> param) const;
 
    private:
-      const int module;
       param_name_t name;
       int paramtype;
       int dim;
@@ -1009,12 +1001,12 @@ class V_COREEXPORT Router {
 
  public:
    static Router &the();
-   static void init(Identify::Identity identity, int id);
+   static void init(Identify::Identity identity, int hubId);
 
    bool toUi(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
    bool toMasterHub(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN, int senderHub=Id::Invalid);
    bool toSlaveHub(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN, int senderHub=Id::Invalid);
-   bool toManager(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
+   bool toManager(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN, int senderHub=Id::Invalid);
    bool toModule(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
    bool toTracker(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
    bool toHandler(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
@@ -1023,7 +1015,7 @@ class V_COREEXPORT Router {
    static unsigned rt[Message::NumMessageTypes];
    Router();
    Identify::Identity m_identity;
-   int m_id;
+   int m_hubId;
 
    static void initRoutingTable();
 };

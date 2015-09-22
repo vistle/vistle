@@ -805,10 +805,8 @@ boost::shared_ptr<Parameter> AddParameter::getParameter() const {
    return p;
 }
 
-SetParameter::SetParameter(const int module,
-      const std::string &n, const boost::shared_ptr<Parameter> param, Parameter::RangeType rt)
+SetParameter::SetParameter(const std::string &n, const boost::shared_ptr<Parameter> param, Parameter::RangeType rt)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
-, module(module)
 , paramtype(param->type())
 , initialize(false)
 , reply(false)
@@ -838,10 +836,8 @@ SetParameter::SetParameter(const int module,
    }
 }
 
-SetParameter::SetParameter(const int module,
-      const std::string &n, const Integer v)
+SetParameter::SetParameter(const std::string &n, const Integer v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
-, module(module)
 , paramtype(Parameter::Integer)
 , initialize(false)
 , reply(false)
@@ -852,10 +848,8 @@ SetParameter::SetParameter(const int module,
    v_int = v;
 }
 
-SetParameter::SetParameter(const int module,
-      const std::string &n, const Float v)
+SetParameter::SetParameter(const std::string &n, const Float v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
-, module(module)
 , paramtype(Parameter::Float)
 , initialize(false)
 , reply(false)
@@ -866,10 +860,8 @@ SetParameter::SetParameter(const int module,
    v_scalar = v;
 }
 
-SetParameter::SetParameter(const int module,
-      const std::string &n, const ParamVector &v)
+SetParameter::SetParameter(const std::string &n, const ParamVector &v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
-, module(module)
 , paramtype(Parameter::Vector)
 , initialize(false)
 , reply(false)
@@ -882,10 +874,8 @@ SetParameter::SetParameter(const int module,
       v_vector[i] = v[i];
 }
 
-SetParameter::SetParameter(const int module,
-      const std::string &n, const IntParamVector &v)
+SetParameter::SetParameter(const std::string &n, const IntParamVector &v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
-, module(module)
 , paramtype(Parameter::IntVector)
 , initialize(false)
 , reply(false)
@@ -898,10 +888,8 @@ SetParameter::SetParameter(const int module,
       v_ivector[i] = v[i];
 }
 
-SetParameter::SetParameter(const int module,
-      const std::string &n, const std::string &v)
+SetParameter::SetParameter(const std::string &n, const std::string &v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
-, module(module)
 , paramtype(Parameter::String)
 , initialize(false)
 , reply(false)
@@ -947,11 +935,6 @@ int SetParameter::rangeType() const {
 const char *SetParameter::getName() const {
 
    return name.data();
-}
-
-int SetParameter::getModule() const {
-
-   return module;
 }
 
 int SetParameter::getParameterType() const {
@@ -1519,7 +1502,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case Message::SETPARAMETER: {
          auto &mm = static_cast<const SetParameter &>(m);
-         s << ", dest: " << mm.getModule() << ", name: " << mm.getName();
+         s << ", name: " << mm.getName();
          break;
       }
       case Message::SETPARAMETERCHOICES: {
@@ -1608,9 +1591,9 @@ void Router::initRoutingTable() {
    rt[M::OBJECTRECEIVEPOLICY]   = DestLocalManager|Track;
    rt[M::SCHEDULINGPOLICY]      = DestLocalManager|Track;
    rt[M::REDUCEPOLICY]          = DestLocalManager|Track;
-   rt[M::EXECUTIONPROGRESS]     = DestLocalManager|HandleOnRank0;
+   rt[M::EXECUTIONPROGRESS]     = DestManager|HandleOnRank0;
 
-   rt[M::ADDOBJECT]             = DestLocalManager|HandleOnNode;
+   rt[M::ADDOBJECT]             = DestManager|HandleOnNode;
    rt[M::ADDOBJECTCOMPLETED]    = Special;
 
    rt[M::BARRIER]               = HandleOnDest;
@@ -1639,14 +1622,14 @@ Router &Router::the() {
 Router::Router() {
 
    m_identity = Identify::UNKNOWN;
-   m_id = Id::Invalid;
+   m_hubId = Id::Invalid;
    initRoutingTable();
 }
 
-void Router::init(Identify::Identity identity, int id) {
+void Router::init(Identify::Identity identity, int hubId) {
 
    the().m_identity = identity;
-   the().m_id = id;
+   the().m_hubId = hubId;
 }
 
 bool Router::toUi(const Message &msg, Identify::Identity senderType) {
@@ -1692,10 +1675,10 @@ bool Router::toMasterHub(const Message &msg, Identify::Identity senderType, int 
    }
 
    if (rt[t] & Broadcast) {
-      if (msg.senderId() == m_id)
+      if (msg.senderId() == m_hubId)
          return true;
       std::cerr << "toMasterHub: sender id: " << msg.senderId() << ", hub: " << senderHub << std::endl;
-      if (senderHub == m_id)
+      if (senderHub == m_hubId)
          return true;
    }
 
@@ -1735,16 +1718,16 @@ bool Router::toSlaveHub(const Message &msg, Identify::Identity senderType, int s
    return false;
 }
 
-bool Router::toManager(const Message &msg, Identify::Identity senderType) {
+bool Router::toManager(const Message &msg, Identify::Identity senderType, int senderHub) {
 
    const int t = msg.type();
    if (msg.destId() <= Id::MasterHub) {
-      if (msg.destId() == m_id && rt[t] & DestLocalManager) {
+      if (msg.destId() == m_hubId && rt[t] & DestManager) {
          return true;
       }
       return false;
    }
-   if (senderType != Identify::MANAGER) {
+   if (senderType != Identify::MANAGER || senderHub!=m_hubId) {
       if (rt[t] & DestManager)
          return true;
       if  (rt[t] & DestModules)
@@ -1791,7 +1774,7 @@ bool Router::toTracker(const Message &msg, Identify::Identity senderType) {
 bool Router::toHandler(const Message &msg, Identify::Identity senderType) {
 
    const int t = msg.type();
-   if (msg.destId() == Id::NextHop || msg.destId() == Id::Broadcast || msg.destId() == m_id) {
+   if (msg.destId() == Id::NextHop || msg.destId() == Id::Broadcast || msg.destId() == m_hubId) {
       return true;
    }
    if (m_identity == Identify::HUB) {
@@ -1812,7 +1795,7 @@ bool Router::toHandler(const Message &msg, Identify::Identity senderType) {
          return true;
    }
    if (m_identity == Identify::MANAGER) {
-      if (m_id == Id::MasterHub)
+      if (m_hubId == Id::MasterHub)
          return rt[t] & DestMasterManager;
       else
          return rt[t] & DestSlaveManager;

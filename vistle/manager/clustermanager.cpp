@@ -746,10 +746,12 @@ bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
 
    if (!moduleExit.isForwarded()) {
 
-      RunningMap::iterator it = runningMap.find(mod);
-      if (it == runningMap.end()) {
-         CERR << " Module [" << mod << "] quit, but not found in running map" << std::endl;
-         return true;
+      if (isLocal(moduleExit.senderId())) {
+         RunningMap::iterator it = runningMap.find(mod);
+         if (it == runningMap.end()) {
+            CERR << " Module [" << mod << "] quit, but not found in running map" << std::endl;
+            return true;
+         }
       }
       if (m_rank == 0) {
          message::ModuleExit exit = moduleExit;
@@ -957,6 +959,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
    auto i2 = m_stateTracker.runningMap.find(prog.senderId());
    if (i2 == m_stateTracker.runningMap.end()) {
+      CERR << "module " << prog.senderId() << " not found" << std::endl;
       return false;
    }
    auto &modState = i2->second;
@@ -981,6 +984,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    const bool localReduce = modState.reducePolicy == message::ReducePolicy::Locally || modState.reducePolicy == message::ReducePolicy::Never;
    const bool handleOnMaster = !receivingHubs.empty() || !localReduce;
    if (localSender && handleOnMaster && m_rank != 0) {
+      CERR << "exec progr: forward to master" << std::endl;
       return Communicator::the().forwardToMaster(prog);
    }
 
@@ -1052,6 +1056,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                if (!portManager().isFinished(input))
                   allReadyForReduce = false;
             }
+            CERR << "exec prog: checking module " << destId << ":" << destPort->getName() << std::endl;
             auto it = m_stateTracker.runningMap.find(destId);
             vassert(it != m_stateTracker.runningMap.end());
             const bool broadcast = it->second.reducePolicy!=message::ReducePolicy::Locally && it->second.reducePolicy!=message::ReducePolicy::Never;
@@ -1059,13 +1064,18 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                for (auto input: allInputs) {
                   portManager().popReset(input);
                }
+               CERR << "Exec prepare 1" << std::endl;
                if (isLocal(destId)) {
+                  CERR << "Exec prepare 2" << std::endl;
                   auto exec = message::Execute(message::Execute::Prepare, destId);
+                  exec.setDestId(destId);
                   if (broadcast) {
+                     CERR << "Exec prepare 3" << std::endl;
                      if (m_rank == 0)
                         if (!Communicator::the().broadcastAndHandleMessage(exec))
                            return false;
                   } else {
+                     CERR << "Exec prepare 4" << std::endl;
                      sendMessage(destId, exec);
                   }
                }
@@ -1076,6 +1086,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                }
                if (isLocal(destId)) {
                   auto exec = message::Execute(message::Execute::Reduce, destId);
+                  exec.setDestId(destId);
                   if (broadcast) {
                      if (m_rank == 0)
                         if (!Communicator::the().broadcastAndHandleMessage(exec))
@@ -1136,52 +1147,50 @@ bool ClusterManager::handlePriv(const message::ObjectReceived &objRecv) {
 bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
 
 #ifdef DEBUG
-   CERR << "SetParameter: sender=" << setParam.senderId() << ", module=" << setParam.getModule() << ", name=" << setParam.getName() << std::endl;
+   CERR << "SetParameter: " << setParam << std::endl;
 #endif
 
    bool handled = true;
-   auto param = getParameter(setParam.getModule(), setParam.getName());
+   int sender = setParam.senderId();
+   int dest = setParam.destId();
    boost::shared_ptr<Parameter> applied;
-   if (param) {
-      applied.reset(param->clone());
-      setParam.apply(applied);
-   }
-   if (setParam.senderId() != setParam.getModule()) {
+   if (message::Id::isModule(dest)) {
       // message to owning module
-      RunningMap::iterator i = runningMap.find(setParam.getModule());
-      if (i != runningMap.end() && param)
-         sendMessage(setParam.getModule(), setParam);
-      else
-         handled = false;
-   } else {
-      // notification by owning module about a changed parameter
+      auto param = getParameter(dest, setParam.getName());
+      if (param) {
+         applied.reset(param->clone());
+         setParam.apply(applied);
+      }
+   } else if (message::Id::isModule(sender)) {
+      // message from owning module
+      auto param = getParameter(sender, setParam.getName());
       if (param) {
          setParam.apply(param);
-      } else {
-         CERR << "no such parameter: module id=" << setParam.getModule() << ", name=" << setParam.getName() << std::endl;
       }
+   }
 
-      // let all modules know that a parameter was changed
+   if (setParam.isReply()) {
       sendAllOthers(setParam.senderId(), setParam);
    }
 
-   if (!setParam.isReply()) {
+   // update linked parameters
+   if (Communicator::the().isMaster() && message::Id::isModule(dest)) {
+      if (!setParam.isReply()) {
 
-      // update linked parameters
-      if (Communicator::the().isMaster()) {
-         Port *port = portManager().getPort(setParam.getModule(), setParam.getName());
+         Port *port = portManager().getPort(dest, setParam.getName());
          if (port && applied) {
-            ParameterSet conn = m_stateTracker.getConnectedParameters(*param);
+            ParameterSet conn = m_stateTracker.getConnectedParameters(*applied);
 
             for (ParameterSet::iterator it = conn.begin();
                   it != conn.end();
                   ++it) {
                const auto p = *it;
-               if (p->module()==setParam.getModule() && p->getName()==setParam.getName()) {
+               if (p->module()==setParam.destId() && p->getName()==setParam.getName()) {
                   // don't update parameter which was set originally again
                   continue;
                }
-               message::SetParameter set(p->module(), p->getName(), applied);
+               message::SetParameter set(p->getName(), applied);
+               set.setDestId(p->module());
                set.setUuid(setParam.uuid());
                sendMessage(p->module(), set);
             }

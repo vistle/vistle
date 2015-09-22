@@ -424,7 +424,7 @@ Parameter *Module::addParameterGeneric(const std::string &name, boost::shared_pt
    message::AddParameter add(*param, m_name);
    add.setDestId(Id::Broadcast);
    sendMessage(add);
-   message::SetParameter set(id(), name, param);
+   message::SetParameter set(name, param);
    set.setDestId(Id::Broadcast);
    set.setInit();
    set.setUuid(add.uuid());
@@ -452,7 +452,7 @@ bool Module::updateParameter(const std::string &name, const Parameter *param, co
       return false;
    }
 
-   message::SetParameter set(id(), name, i->second, rt);
+   message::SetParameter set(name, i->second, rt);
    if (inResponseTo) {
       set.setReply();
       set.setUuid(inResponseTo->uuid());
@@ -1352,7 +1352,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          const message::SetParameter *param =
             static_cast<const message::SetParameter *>(message);
 
-         if (param->getModule() == id()) {
+         if (param->destId() == id()) {
 
             // sent by controller
             switch (param->getParameterType()) {
@@ -1602,6 +1602,7 @@ bool Module::prepareWrapper(const message::Message *req) {
       m_benchmarkStart = Clock::time();
    }
 
+   CERR << "prepareWrapper: prepared=" << m_prepared << std::endl;
    m_prepared = true;
 
    return prepare();
@@ -1616,6 +1617,8 @@ bool Module::prepare() {
 }
 
 bool Module::reduceWrapper(const message::Message *req) {
+
+   CERR << "reduceWrapper: prepared=" << m_prepared << std::endl;
 
    vassert(m_prepared);
    vassert(!m_reduced);

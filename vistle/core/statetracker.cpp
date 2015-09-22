@@ -214,13 +214,13 @@ std::vector<message::Buffer> StateTracker::getState() const {
             appendMessage(state, choices);
          }
 
-		 SetParameter setV(id, name, param, Parameter::Value);
+         SetParameter setV(name, param, Parameter::Value);
 		 setV.setSenderId(id);
 		 appendMessage(state, setV);
-		 SetParameter setMin(id, name, param, Parameter::Minimum);
+         SetParameter setMin(name, param, Parameter::Minimum);
 		 setMin.setSenderId(id);
 		 appendMessage(state, setMin);
-		 SetParameter setMax(id, name, param, Parameter::Maximum);
+         SetParameter setMax(name, param, Parameter::Maximum);
 		 setMax.setSenderId(id);
 		 appendMessage(state, setMax);
       }
@@ -730,10 +730,13 @@ bool StateTracker::handlePriv(const message::SetParameter &setParam) {
 
    bool handled = false;
 
-   auto param = getParameter(setParam.getModule(), setParam.getName());
-   if (param) {
-      setParam.apply(param);
-      handled = true;
+   const int senderId = setParam.senderId();
+   if (message::Id::isModule(senderId)) {
+      auto param = getParameter(setParam.senderId(), setParam.getName());
+      if (param) {
+         setParam.apply(param);
+         handled = true;
+      }
    }
 
    if (handled) {

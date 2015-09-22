@@ -283,7 +283,7 @@ void VistleInteractor::sendMessage(const message::Message &msg) const
 
 void VistleInteractor::sendParamMessage(const boost::shared_ptr<Parameter> param) const
 {
-   message::SetParameter m(m_moduleId, param->getName(), param);
+   message::SetParameter m(param->getName(), param);
    m.setDestId(m_moduleId);
    sendMessage(m);
 }
