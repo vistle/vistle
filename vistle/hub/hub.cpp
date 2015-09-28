@@ -895,7 +895,7 @@ bool Hub::startUi(const std::string &uipath) {
       return false;
    }
 
-   m_processMap[pid] = 0;
+   m_processMap[pid] = -1;
 
    return true;
 }
