@@ -179,6 +179,8 @@ class V_MODULEEXPORT Module {
    int reducePolicy() const;
    void setReducePolicy(int reduceRequirement /*< really message::ReducePolicy::Reduce */);
 
+   void prepareQuit();
+
 protected:
 
    void setObjectReceivePolicy(int pol);
@@ -261,6 +263,7 @@ protected:
    boost::mpi::communicator m_comm;
 
    bool m_prepared, m_computed, m_reduced;
+   bool m_readyForQuit;
 };
 
 template<>
@@ -301,6 +304,7 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
             module.initDone(); \
             while (module.dispatch()) \
                ; \
+            module.prepareQuit(); \
          } \
          MPI_Barrier(MPI_COMM_WORLD); \
       } catch(vistle::exception &e) { \
@@ -308,11 +312,11 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
          std::cerr << "  info: " << e.info() << std::endl; \
          std::cerr << e.where() << std::endl; \
          MPI_Finalize(); \
-         exit(0); \
+         exit(1); \
       } catch(std::exception &e) { \
          std::cerr << "[" << rank << "/" << size << "]: fatal exception: " << e.what() << std::endl; \
          MPI_Finalize(); \
-         exit(0); \
+         exit(1); \
       } \
       MPI_Finalize(); \
       return 0; \

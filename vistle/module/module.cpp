@@ -169,6 +169,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_prepared(false)
 , m_computed(false)
 , m_reduced(false)
+, m_readyForQuit(false)
 {
 #ifdef _WIN32
     WSADATA wsaData;
@@ -234,6 +235,10 @@ Module::Module(const std::string &desc, const std::string &shmname,
    auto openmp_threads = addIntParameter("_openmp_threads", "number of OpenMP threads (0: system default)", 0);
    setParameterRange<Integer>(openmp_threads, 0, 4096);
    addIntParameter("_benchmark", "show timing information", m_benchmark ? 1 : 0, Parameter::Boolean);
+}
+
+void Module::prepareQuit() {
+    m_readyForQuit = true;
 }
 
 void Module::initDone() {
@@ -1445,6 +1450,13 @@ std::string Module::getModuleName(int id) const {
 
 Module::~Module() {
 
+#ifdef DEBUG
+   CERR << "I'm quitting" << std::endl;
+#endif
+
+   vistle::message::ModuleExit m;
+   sendMessage(m);
+
    m_cache.clear();
    m_cache.clearOld();
    Shm::the().detach();
@@ -1454,15 +1466,12 @@ Module::~Module() {
    delete m_streambuf;
    m_streambuf = nullptr;
 
-   comm().barrier();
+   if (m_readyForQuit) {
+      comm().barrier();
+   } else {
+       CERR << "Emergency quit" << std::endl;
 
-   vistle::message::ModuleExit m;
-   sendMessage(m);
-
-#ifdef DEBUG
-   std::cerr << "  module [" << name() << "] [" << id() << "] [" << rank()
-             << "/" << size() << "]: I'm quitting" << std::endl;
-#endif
+   }
 }
 
 namespace {
