@@ -5,6 +5,8 @@
 #include <iostream>
 #include <algorithm>
 
+#define CERR std::cerr << (m_stateTracker ? m_stateTracker->m_name : "(null)") << ": "
+
 namespace vistle {
 
 PortTracker::PortTracker()
@@ -68,7 +70,7 @@ Port *PortTracker::addPort(Port *port) {
          for (auto &p: *portMap) {
             if (p.second->getType() == Port::INPUT) {
                if ((port->flags() & Port::COMBINE) || combine) {
-                  std::cerr << "COMBINE port has to be only input port of a module" << std::endl;
+                  CERR << "COMBINE port has to be only input port of a module" << std::endl;
                   delete port;
                   return nullptr;
                }
@@ -149,7 +151,7 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
 
          added = true;
       } else {
-         //std::cerr << "PortTracker::addConnection: multiple connection" << std::endl;
+         //CERR << "PortTracker::addConnection: multiple connection" << std::endl;
       }
    }
 
@@ -173,7 +175,7 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
    }
 
 #ifdef DEBUG
-   std::cerr << "PortTracker::addConnection: incompatible types: "
+   CERR << "PortTracker::addConnection: incompatible types: "
       << from->getModuleID() << ":" << from->getName() << " (" << from->getType() << ") "
       << to->getModuleID() << ":" << to->getName() << " (" << to->getType() << ")" << std::endl;
 #endif
@@ -352,6 +354,8 @@ std::vector<Port *> PortTracker::getConnectedOutputPorts(const int moduleID) con
 
 std::vector<message::Buffer> PortTracker::removeConnectionsWithModule(int moduleId) {
 
+   CERR << "removing all connections from/to " << moduleId << std::endl;
+
    typedef std::map<std::string, Port *> PortMap;
    typedef std::map<int, PortMap *> ModulePortMap;
 
@@ -378,14 +382,28 @@ std::vector<message::Buffer> PortTracker::removeConnectionsWithModule(int module
          message::Disconnect d2(other->getModuleID(), other->getName(), port->getModuleID(), port->getName());
          ret.push_back(d2);
          if (cl.size() == oldsize) {
-            std::cerr << "failed to remove all connections for module " << moduleId << ", still left: " << cl.size() << std::endl;
+            CERR << "failed to remove all connections for module " << moduleId << ", still left: " << cl.size() << std::endl;
             for (size_t i=0; i<cl.size(); ++i) {
-               std::cerr << "   " << port->getModuleID() << ":" << port->getName() << " <--> " << other->getModuleID() << ":" << other->getName() << std::endl;
+               CERR << "   " << port->getModuleID() << ":" << port->getName() << " <--> " << other->getModuleID() << ":" << other->getName() << std::endl;
             }
             break;
          }
       }
    }
+
+   for (const auto &mpm: m_ports) {
+       const auto &pm = *mpm.second;
+       for (const auto &pme: pm) {
+           const Port *port = pme.second;
+           const auto &cl = port->connections();
+           for (const auto &other: cl) {
+               if (other->getModuleID() == moduleId) {
+                   CERR << "removeConnectionsWithModule: still connected with " << other->getModuleID() << ":" << other->getName() << std::endl;
+               }
+           }
+       }
+   }
+
    return ret;
 }
 
