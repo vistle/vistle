@@ -118,6 +118,11 @@ bool ClusterManager::Module::update() const {
    return sendQueue->progress();
 }
 
+bool ClusterManager::Module::isExecuting() const {
+
+    return !reducing && ranksStarted==0 && ranksFinished==0;
+}
+
 
 ClusterManager::ClusterManager(int r, const std::vector<std::string> &hosts)
 : m_portManager(new PortManager(this))
@@ -629,7 +634,6 @@ bool ClusterManager::handlePriv(const message::Spawn &spawn) {
    }
 
    int newId = spawn.spawnId();
-   const std::string idStr = boost::lexical_cast<std::string>(newId);
 
    Module &mod = runningMap[newId];
    std::string smqName = message::MessageQueue::createName("smq", newId, m_rank);
@@ -993,7 +997,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       case message::ExecutionProgress::Start: {
          readyForPrepare = true;
          if (handleOnMaster && localSender) {
-             vassert(mod.ranksFinished < m_size);
+             vassert(mod.ranksFinished == 0);
              ++mod.ranksStarted;
              readyForPrepare = mod.ranksStarted==m_size;
          }
@@ -1058,42 +1062,44 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             CERR << "exec prog: checking module " << destId << ":" << destPort->getName() << std::endl;
             auto it = m_stateTracker.runningMap.find(destId);
             vassert(it != m_stateTracker.runningMap.end());
-            const bool broadcast = it->second.reducePolicy!=message::ReducePolicy::Locally && it->second.reducePolicy!=message::ReducePolicy::Never;
-            if (allReadyForPrepare) {
-               for (auto input: allInputs) {
-                  portManager().popReset(input);
-               }
-               CERR << "Exec prepare 1" << std::endl;
-               if (isLocal(destId)) {
-                  CERR << "Exec prepare 2" << std::endl;
-                  auto exec = message::Execute(message::Execute::Prepare, destId);
-                  exec.setDestId(destId);
-                  if (broadcast) {
-                     CERR << "Exec prepare 3" << std::endl;
-                     if (m_rank == 0)
-                        if (!Communicator::the().broadcastAndHandleMessage(exec))
-                           return false;
-                  } else {
-                     CERR << "Exec prepare 4" << std::endl;
-                     sendMessage(destId, exec);
+            if (it->second.reducePolicy != message::ReducePolicy::Never) {
+               const bool broadcast = it->second.reducePolicy!=message::ReducePolicy::Locally;
+               if (allReadyForPrepare) {
+                  for (auto input: allInputs) {
+                     portManager().popReset(input);
+                  }
+                  CERR << "Exec prepare 1" << std::endl;
+                  if (isLocal(destId)) {
+                     CERR << "Exec prepare 2" << std::endl;
+                     auto exec = message::Execute(message::Execute::Prepare, destId);
+                     exec.setDestId(destId);
+                     if (broadcast) {
+                        CERR << "Exec prepare 3" << std::endl;
+                        if (m_rank == 0)
+                           if (!Communicator::the().broadcastAndHandleMessage(exec))
+                              return false;
+                     } else {
+                        CERR << "Exec prepare 4" << std::endl;
+                        sendMessage(destId, exec);
+                     }
                   }
                }
-            }
-            if (allReadyForReduce) {
-               for (auto input: allInputs) {
-                  portManager().popFinish(input);
-               }
-               if (isLocal(destId)) {
-                  auto exec = message::Execute(message::Execute::Reduce, destId);
-                  exec.setDestId(destId);
-                  if (broadcast) {
-                     if (m_rank == 0)
-                        if (!Communicator::the().broadcastAndHandleMessage(exec))
-                           return false;
-                  } else {
-                     sendMessage(destId, exec);
+               if (allReadyForReduce) {
+                  for (auto input: allInputs) {
+                     portManager().popFinish(input);
                   }
-              }
+                  if (isLocal(destId)) {
+                     auto exec = message::Execute(message::Execute::Reduce, destId);
+                     exec.setDestId(destId);
+                     if (broadcast) {
+                        if (m_rank == 0)
+                           if (!Communicator::the().broadcastAndHandleMessage(exec))
+                              return false;
+                     } else {
+                        sendMessage(destId, exec);
+                     }
+                  }
+               }
             }
          }
       }

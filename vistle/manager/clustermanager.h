@@ -111,6 +111,7 @@ class ClusterManager {
       void unblock(const message::Message &msg);
       bool send(const message::Message &msg) const;
       bool update() const;
+      bool isExecuting() const;
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;
