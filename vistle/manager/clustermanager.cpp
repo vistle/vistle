@@ -742,7 +742,7 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
 bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
 
    int mod = moduleExit.senderId();
-   sendAllOthers(mod, moduleExit);
+   sendAllOthers(mod, moduleExit, true);
 
    if (!moduleExit.isForwarded()) {
 
@@ -760,7 +760,6 @@ bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
          if (!Communicator::the().broadcastAndHandleMessage(exit))
             return false;
       }
-      return true;
    }
 
    //CERR << " Module [" << mod << "] quit" << std::endl;
