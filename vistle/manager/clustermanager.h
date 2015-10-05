@@ -87,6 +87,8 @@ class ClusterManager {
    bool handlePriv(const message::SendText &text);
    bool handlePriv(const message::RequestTunnel &tunnel);
 
+   bool checkExecuteObject(int modId);
+
    const int m_rank;
    const int m_size;
 
@@ -95,12 +97,14 @@ class ClusterManager {
       message::MessageQueue *recvQueue;
       int ranksStarted, ranksFinished;
       bool reducing;
+      bool prepared, reduced;
       int busyCount;
       mutable bool blocked;
       mutable std::deque<message::Buffer> blockedMessages, blockers;
 
       Module(): sendQueue(nullptr), recvQueue(nullptr),
          ranksStarted(0), ranksFinished(0), reducing(false),
+         prepared(false), reduced(true),
          busyCount(0), blocked(false)
          {}
       ~Module() {
@@ -111,11 +115,11 @@ class ClusterManager {
       void unblock(const message::Message &msg);
       bool send(const message::Message &msg) const;
       bool update() const;
-      bool isExecuting() const;
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;
    int numRunning() const;
+   bool isReadyForExecute(int modId) const;
 
    // barrier related stuff
    bool checkBarrier(const message::uuid_t &uuid) const;

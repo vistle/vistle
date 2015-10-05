@@ -118,11 +118,6 @@ bool ClusterManager::Module::update() const {
    return sendQueue->progress();
 }
 
-bool ClusterManager::Module::isExecuting() const {
-
-    return !reducing && ranksStarted==0 && ranksFinished==0;
-}
-
 
 ClusterManager::ClusterManager(int r, const std::vector<std::string> &hosts)
 : m_portManager(new PortManager(this))
@@ -424,7 +419,9 @@ bool ClusterManager::handle(const message::Message &message) {
    if (message.destId() >= Id::ModuleBase) {
       if (destHub == hubId) {
          //CERR << "module: " << message << std::endl;
-         return sendMessage(message.destId(), message);
+         if (message.type() != message::Message::EXECUTE) {
+            return sendMessage(message.destId(), message);
+         }
       } else {
          return sendHub(message);
       }
@@ -800,6 +797,30 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
       RunningMap::iterator i = runningMap.find(exec.getModule());
       if (i != runningMap.end()) {
          i->second.send(exec);
+         switch(exec.what()) {
+         case message::Execute::Prepare:
+             vassert(!i->second.prepared);
+             vassert(i->second.reduced);
+             i->second.prepared = true;
+             i->second.reduced = false;
+             CERR << "sent prepare to " << exec.getModule() << ", checking for execution" << std::endl;
+             checkExecuteObject(exec.getModule());
+             break;
+         case message::Execute::Reduce:
+             vassert(i->second.prepared);
+             vassert(!i->second.reduced);
+             i->second.prepared = false;
+             i->second.reduced = true;
+             break;
+         case message::Execute::ComputeExecute:
+             vassert(!i->second.prepared);
+             vassert(i->second.reduced);
+             i->second.reduced = true;
+             i->second.prepared = false;
+             break;
+         case message::Execute::ComputeObject:
+             break;
+         }
       }
    }
 
@@ -901,46 +922,64 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       sendMessage(destId, a);
       portManager().addObject(destPort);
 
-      bool allReady = true;
-      for (const auto input: portManager().getConnectedInputPorts(destId)) {
-         if (!portManager().hasObject(input)) {
-            allReady = false;
-            break;
-         }
+      if (!checkExecuteObject(destId))
+          return false;
+
+      auto it = m_stateTracker.runningMap.find(destId);
+      if (it == m_stateTracker.runningMap.end()) {
+         CERR << "port connection to module that is not running" << std::endl;
+         vassert("port connection to module that is not running" == 0);
+         continue;
       }
+      auto &destMod = it->second;
+      if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
+          || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
+         message::ObjectReceived recv(addObj, addObj.getDestPort());
+         recv.setUuid(addObj.uuid());
+         recv.setSenderId(destId);
 
-      if (allReady) {
-         for (const auto input: portManager().getConnectedInputPorts(destId)) {
-            portManager().popObject(input);
-         }
+         if (!Communicator::the().broadcastAndHandleMessage(recv))
+            return false;
 
-         auto it = m_stateTracker.runningMap.find(destId);
-         if (it == m_stateTracker.runningMap.end()) {
-            CERR << "port connection to module that is not running" << std::endl;
-            vassert("port connection to module that is not running" == 0);
-            continue;
-         }
-         auto &destMod = it->second;
-         message::Execute c(message::Execute::ComputeObject, destId);
-         c.setUuid(addObj.uuid());
-         if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
-            sendMessage(destId, c);
-         } else {
-            c.setAllRanks(true);
-            if (!Communicator::the().broadcastAndHandleMessage(c))
-               return false;
-         }
-
-         if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
-             || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
-            message::ObjectReceived recv(addObj, addObj.getDestPort());
-            recv.setUuid(addObj.uuid());
-            recv.setSenderId(destId);
-
-            if (!Communicator::the().broadcastAndHandleMessage(recv))
-               return false;
-         }
       }
+   }
+
+   return true;
+}
+
+bool ClusterManager::checkExecuteObject(int destId) {
+
+   CERR << "checking whether " << destId << " can be executed" << std::endl;
+   if (!isReadyForExecute(destId))
+       return true;
+   CERR << "CHK ready for exec" << std::endl;
+
+   for (const auto input: portManager().getConnectedInputPorts(destId)) {
+      if (!portManager().hasObject(input)) {
+         return true;
+      }
+   }
+   CERR << "CHK all ready" << std::endl;
+
+   for (const auto input: portManager().getConnectedInputPorts(destId)) {
+      portManager().popObject(input);
+   }
+
+   auto it = m_stateTracker.runningMap.find(destId);
+   if (it == m_stateTracker.runningMap.end()) {
+      CERR << "port connection to module that is not running" << std::endl;
+      vassert("port connection to module that is not running" == 0);
+      return true;
+   }
+   auto &destMod = it->second;
+   message::Execute c(message::Execute::ComputeObject, destId);
+   //c.setUuid(addObj.uuid());
+   if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
+      sendMessage(destId, c);
+   } else {
+      c.setAllRanks(true);
+      if (!Communicator::the().broadcastAndHandleMessage(c))
+         return false;
    }
 
    return true;
@@ -969,23 +1008,33 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
    // initiate reduction if requested by module
 
+   bool handleOnMaster = false;
    // forward message to remote hubs...
    std::set<int> receivingHubs; // ...but make sure that message is only sent once per remote hub
    if (localSender) {
       for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
          const Port::PortSet *list = portManager().getConnectionList(output);
          for (const Port *destPort: *list) {
-            int otherMod = destPort->getModuleID();
-            if (!isLocal(otherMod)) {
-               int hub = m_stateTracker.getHub(otherMod);
+            int destId = destPort->getModuleID();
+            if (!isLocal(destId)) {
+               int hub = m_stateTracker.getHub(destId);
                receivingHubs.insert(hub);
+            }
+            const auto it = m_stateTracker.runningMap.find(destId);
+            vassert(it != m_stateTracker.runningMap.end());
+            const auto &destState = it->second;
+            if (destState.reducePolicy != message::ReducePolicy::Never && destState.reducePolicy != message::ReducePolicy::Locally) {
+                handleOnMaster = true;
             }
          }
       }
    }
+   if (!receivingHubs.empty())
+       handleOnMaster = true;
 
    const bool localReduce = modState.reducePolicy == message::ReducePolicy::Locally || modState.reducePolicy == message::ReducePolicy::Never;
-   const bool handleOnMaster = !receivingHubs.empty() || !localReduce;
+   if (!localReduce)
+       handleOnMaster = true;
    if (localSender && handleOnMaster && m_rank != 0) {
       CERR << "exec progr: forward to master" << std::endl;
       return Communicator::the().forwardToMaster(prog);
@@ -1033,7 +1082,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
        }
    }
 
-   std::cerr << prog.senderId() << " ready for prepare: " << readyForPrepare << ", reduce: " << readyForReduce << std::endl;
+   CERR << prog.senderId() << " ready for prepare: " << readyForPrepare << ", reduce: " << readyForReduce << std::endl;
    for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
       const Port::PortSet *list = portManager().getConnectionList(output);
       for (const Port *destPort: *list) {
@@ -1081,6 +1130,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                      } else {
                         CERR << "Exec prepare 4" << std::endl;
                         sendMessage(destId, exec);
+                        checkExecuteObject(destId);
                      }
                   }
                }
@@ -1394,6 +1444,31 @@ int ClusterManager::numRunning() const {
          ++n;
    }
    return n;
+}
+
+bool ClusterManager::isReadyForExecute(int modId) const {
+
+   auto i = runningMap.find(modId);
+   if (i == runningMap.end()) {
+      CERR << "module " << modId << " not found" << std::endl;
+      return false;
+   }
+   auto &mod = i->second;
+
+   auto i2 = m_stateTracker.runningMap.find(modId);
+   if (i2 == m_stateTracker.runningMap.end()) {
+      CERR << "module " << modId << " not found by state tracker" << std::endl;
+      return false;
+   }
+   auto &modState = i2->second;
+
+   if (modState.reducePolicy == message::ReducePolicy::Never)
+       return true;
+
+   if (!mod.reduced && mod.prepared)
+      return true;
+
+   return false;
 }
 
 } // namespace vistle

@@ -1264,7 +1264,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             }
 
             Index numObject = 0;
-            if (exec->getExecutionCount() > 0) {
+            if (exec->what() == Execute::ComputeExecute) {
                // Compute not triggered by adding an object, get objects from cache
                Index numConnected = 0;
                for (auto &port: inputPorts) {
