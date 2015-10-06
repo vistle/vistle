@@ -497,6 +497,12 @@ bool ClusterManager::handle(const message::Message &message) {
          break;
       }
 
+      case message::Message::ADDOBJECTCOMPLETED: {
+         const message::AddObjectCompleted &m = static_cast<const message::AddObjectCompleted &>(message);
+         result = handlePriv(m);
+         break;
+      }
+
       case message::Message::EXECUTIONPROGRESS: {
 
          const message::ExecutionProgress &prog = static_cast<const message::ExecutionProgress &>(message);
@@ -883,13 +889,13 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
    for (const Port *destPort: *list) {
       int destId = destPort->getModuleID();
       message::AddObject a(addObj);
-      a.setDestPort(destPort->getName());
-      a.setDestId(destId);
+      a.takeObject();
 
       if (!isLocal(destId)) {
          if (localAdd) {
             // if object was generated locally, forward message to remote hubs with connected modules
             const int hub = m_stateTracker.getHub(destId);
+            a.setDestId(hub);
             if (receivingHubs.find(hub) == receivingHubs.end()) {
                sendHub(a, hub);
                receivingHubs.insert(hub);

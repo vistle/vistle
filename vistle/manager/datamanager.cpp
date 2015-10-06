@@ -115,19 +115,26 @@ bool DataManager::requestObject(const std::string &referrer, const std::string &
 
 bool DataManager::prepareTransfer(const message::AddObject &add) {
     m_inTransitObjects.emplace(add);
+    CERR << "preparing transfer: " << add << ", size: " << m_inTransitObjects.size() << std::endl;
+    for (const auto &m: m_inTransitObjects)
+       std::cerr << m << std::endl;
     return true;
 }
 
 bool DataManager::completeTransfer(const message::AddObjectCompleted &complete) {
 
-   message::AddObject key(complete.originalSenderPort(), nullptr);
-   key.setUuid(complete.uuid());
-   key.setDestId(complete.destId());
+   message::AddObject key(complete);
    auto it = m_inTransitObjects.find(key);
    if (it == m_inTransitObjects.end()) {
-      CERR << "AddObject message for completion notification not found: " << complete << std::endl;
-      return false;
+      CERR << "AddObject message for completion notification not found: " << complete << ", size: " << m_inTransitObjects.size() << std::endl;
+      for (const auto &m: m_inTransitObjects)
+          std::cerr << m << std::endl;
+      return true;
    }
+   const auto &add = *it;
+   CERR << "AddObjectCompleted: found request " << add << std::endl;
+   add.takeObject();
+   m_inTransitObjects.erase(it);
    return true;
 }
 
@@ -358,8 +365,10 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                message::AddObject &add = reqIt->second;
 
                auto addIt = outstandingAdds.find(add);
-               if (addIt == outstandingAdds.end())
+               if (addIt == outstandingAdds.end()) {
+                   std::cerr << "no outstanding add for " << objName << std::endl;
                    return;
+               }
                auto &ids = addIt->second;
                auto it = std::find(ids.begin(), ids.end(), objName);
                if (it != ids.end()) {
@@ -367,10 +376,11 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                }
 
                if (ids.empty()) {
+                   std::cerr << "sending completion notification for " << objName << std::endl;
                    message::AddObjectCompleted complete(add);
                    Communicator::the().clusterManager().sendMessage(senderId, complete, senderRank);
                    message::AddObject nadd(add.getSenderPort(), obj);
-                   bool ret = Communicator::the().clusterManager().handlePriv(add, /* synthesized = */ true);
+                   Communicator::the().clusterManager().handlePriv(add, /* synthesized = */ true);
                    m_outstandingAdds.erase(addIt);
                    outstandingRequests.erase(reqIt);
                    return;
@@ -387,6 +397,7 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                }
                objIt->second.obj->unref();
                outstandingObjects.erase(objIt);
+               std::cerr << "erasing from outstanding objects: " << obj->getName() << std::endl;
            } else {
                std::cerr << "no outstanding object for " << obj->getName() << std::endl;
            }

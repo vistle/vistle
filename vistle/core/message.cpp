@@ -516,6 +516,15 @@ AddObject::AddObject(const AddObject &o)
     ref();
 }
 
+AddObject::AddObject(const AddObjectCompleted &complete)
+: Message(Message::ADDOBJECT, sizeof(AddObject))
+, handle(0)
+, m_handleValid(false)
+{
+    setUuid(complete.uuid());
+    setDestId(complete.originalDestination());
+}
+
 AddObject::~AddObject() {
 }
 
@@ -531,6 +540,10 @@ bool AddObject::ref() {
     }
 
     return m_handleValid;
+}
+
+void AddObject::setSenderPort(const std::string &send) {
+   COPY_STRING(senderPort, send);
 }
 
 const char * AddObject::getSenderPort() const {
@@ -596,17 +609,13 @@ Object::const_ptr AddObject::takeObject() const {
 
 AddObjectCompleted::AddObjectCompleted(const AddObject &msg)
 : Message(Message::ADDOBJECTCOMPLETED, sizeof(AddObjectCompleted))
-, m_orgSenderId(msg.senderId())
+, m_orgDestId(msg.destId())
 {
-   COPY_STRING(m_orgSenderPort, std::string(msg.getSenderPort()));
+   setUuid(msg.uuid());
 }
 
-int AddObjectCompleted::originalSenderId() const {
-   return m_orgSenderId;
-}
-
-const char *AddObjectCompleted::originalSenderPort() const {
-   return m_orgSenderPort.data();
+int AddObjectCompleted::originalDestination() const {
+   return m_orgDestId;
 }
 
 ObjectReceived::ObjectReceived(const AddObject &add, const std::string &p)
@@ -1528,6 +1537,11 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
          s << ", obj: " << mm.objectName() << ", " << mm.getSenderPort() << " -> " << mm.getDestPort() << " (handle: " << (mm.handleValid()?"valid":"invalid") << ")";
          break;
       }
+      case Message::ADDOBJECTCOMPLETED: {
+         auto &mm = static_cast<const AddObjectCompleted &>(m);
+         s << ", original destination: " << mm.originalDestination() << std::endl;
+         break;
+      }
       case Message::REQUESTOBJECT: {
          auto &mm = static_cast<const RequestObject &>(m);
          s << ", " << (mm.isArray() ? "array" : "object") << ": " << mm.objectId() << ", ref: " << mm.referrer();
@@ -1587,7 +1601,7 @@ void Router::initRoutingTable() {
    rt[M::EXECUTIONPROGRESS]     = DestManager|HandleOnRank0;
 
    rt[M::ADDOBJECT]             = DestManager|HandleOnNode;
-   rt[M::ADDOBJECTCOMPLETED]    = Special;
+   rt[M::ADDOBJECTCOMPLETED]    = DestManager|HandleOnNode;
 
    rt[M::BARRIER]               = HandleOnDest;
    rt[M::BARRIERREACHED]        = HandleOnDest;

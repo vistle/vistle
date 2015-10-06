@@ -474,6 +474,8 @@ class V_COREEXPORT AddPort: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(AddPort) <= Message::MESSAGE_SIZE);
 
+class AddObjectCompleted;
+
 //! add an object to the input queue of an input port
 class V_COREEXPORT AddObject: public Message {
 
@@ -481,8 +483,10 @@ class V_COREEXPORT AddObject: public Message {
    AddObject(const std::string &senderPort, vistle::Object::const_ptr obj,
          const std::string &destPort = "");
    AddObject(const AddObject &other);
+   AddObject(const AddObjectCompleted &complete);
    ~AddObject();
 
+   void setSenderPort(const std::string &sendPort);
    const char * getSenderPort() const;
    void setDestPort(const std::string &destPort);
    const char * getDestPort() const;
@@ -510,12 +514,10 @@ class V_COREEXPORT AddObjectCompleted: public Message {
 
  public:
    AddObjectCompleted(const AddObject &msg);
-   const char *originalSenderPort() const;
-   int originalSenderId() const;
+   int originalDestination() const;
 
  private:
-   port_name_t m_orgSenderPort;
-   int m_orgSenderId;
+   int m_orgDestId;
 };
 BOOST_STATIC_ASSERT(sizeof(AddObjectCompleted) <= Message::MESSAGE_SIZE);
 
