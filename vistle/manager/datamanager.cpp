@@ -115,9 +115,6 @@ bool DataManager::requestObject(const std::string &referrer, const std::string &
 
 bool DataManager::prepareTransfer(const message::AddObject &add) {
     m_inTransitObjects.emplace(add);
-    CERR << "preparing transfer: " << add << ", size: " << m_inTransitObjects.size() << std::endl;
-    for (const auto &m: m_inTransitObjects)
-       std::cerr << m << std::endl;
     return true;
 }
 
@@ -127,8 +124,6 @@ bool DataManager::completeTransfer(const message::AddObjectCompleted &complete) 
    auto it = m_inTransitObjects.find(key);
    if (it == m_inTransitObjects.end()) {
       CERR << "AddObject message for completion notification not found: " << complete << ", size: " << m_inTransitObjects.size() << std::endl;
-      for (const auto &m: m_inTransitObjects)
-          std::cerr << m << std::endl;
       return true;
    }
    const auto &add = *it;
@@ -379,11 +374,9 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                    std::cerr << "sending completion notification for " << objName << std::endl;
                    message::AddObjectCompleted complete(add);
                    Communicator::the().clusterManager().sendMessage(senderId, complete, senderRank);
-                   message::AddObject nadd(add.getSenderPort(), obj);
+                   //message::AddObject nadd(add.getSenderPort(), obj);
                    Communicator::the().clusterManager().handlePriv(add, /* synthesized = */ true);
                    m_outstandingAdds.erase(addIt);
-                   outstandingRequests.erase(reqIt);
-                   return;
                }
                outstandingRequests.erase(reqIt);
            } else {

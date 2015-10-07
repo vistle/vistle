@@ -889,7 +889,6 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
    for (const Port *destPort: *list) {
       int destId = destPort->getModuleID();
       message::AddObject a(addObj);
-      a.takeObject();
 
       if (!isLocal(destId)) {
          if (localAdd) {
@@ -902,6 +901,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
                Communicator::the().dataManager().prepareTransfer(a);
             }
          }
+         a.takeObject();
          continue;
       }
 
@@ -922,9 +922,12 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
             add.setDestId(destId);
             it->second.unblock(add);
          }
+         a.takeObject();
          continue;
       }
 
+      a.setDestId(destId);
+      a.setDestPort(destPort->getName());
       sendMessage(destId, a);
       portManager().addObject(destPort);
 
