@@ -845,11 +845,9 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
    } else {
 
       int destRank = -1;
-      if (getRank() == 0) {
-         int block = addObj.meta().block();
-         if (block >= 0) {
-            destRank = block % getSize();
-         }
+      int block = addObj.meta().block();
+      if (block >= 0) {
+          destRank = block % getSize();
       }
       CERR << "ADDOBJECT from remote, handling on rank " << destRank << std::endl;
       if (destRank == getRank() || (getRank() == 0 && destRank == -1)) {
