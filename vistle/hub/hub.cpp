@@ -820,10 +820,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                   sendSlaves(quit);
                else
                   sendMaster(quit);
+               sendManager(quit);
                m_quitting = true;
             } else {
                m_uiManager.requestQuit();
                sendSlaves(quit);
+               sendManager(quit);
                m_quitting = true;
             }
             break;
