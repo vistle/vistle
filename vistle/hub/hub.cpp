@@ -807,13 +807,9 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                m_uiManager.requestQuit();
                if (m_isMaster)
                   sendSlaves(quit);
-               m_quitting = true;
-               return true;
             } else if (senderType == message::Identify::HUB) {
                m_uiManager.requestQuit();
                sendManager(quit);
-               m_quitting = true;
-               return true;
             } else if (senderType == message::Identify::UI) {
                m_uiManager.requestQuit();
                if (m_isMaster)
@@ -821,13 +817,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                else
                   sendMaster(quit);
                sendManager(quit);
-               m_quitting = true;
             } else {
                m_uiManager.requestQuit();
                sendSlaves(quit);
                sendManager(quit);
-               m_quitting = true;
             }
+            m_quitting = true;
             break;
          }
 
