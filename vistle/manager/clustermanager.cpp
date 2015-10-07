@@ -1053,7 +1053,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
       case message::ExecutionProgress::Start: {
          readyForPrepare = true;
          if (handleOnMaster && localSender) {
-             vassert(mod.ranksFinished == 0);
+             vassert(mod.ranksFinished < m_size);
              ++mod.ranksStarted;
              readyForPrepare = mod.ranksStarted==m_size;
          }
