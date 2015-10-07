@@ -1595,7 +1595,9 @@ int Module::objectReceivePolicy() const {
 
 bool Module::prepareWrapper(const message::Message *req) {
 
-   vassert(!m_prepared);
+   if (m_reducePolicy != message::ReducePolicy::Never) {
+      vassert(!m_prepared);
+   }
    vassert(!m_computed);
 
    m_reduced = false;
@@ -1614,13 +1616,17 @@ bool Module::prepareWrapper(const message::Message *req) {
    CERR << "prepareWrapper: prepared=" << m_prepared << std::endl;
    m_prepared = true;
 
+   if (reducePolicy() == message::ReducePolicy::Never)
+      return true;
+
    return prepare();
 }
 
 bool Module::prepare() {
 
 #ifndef NDEBUG
-   comm().barrier();
+   if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never)
+      comm().barrier();
 #endif
    return true;
 }
@@ -1630,13 +1636,18 @@ bool Module::reduceWrapper(const message::Message *req) {
    CERR << "reduceWrapper: prepared=" << m_prepared << std::endl;
 
    vassert(m_prepared);
-   vassert(!m_reduced);
+   if (m_reducePolicy != message::ReducePolicy::Never) {
+      vassert(!m_reduced);
+   }
 
    m_reduced = true;
 
    bool ret = false;
    try {
-      ret = reduce(-1);
+      if (reducePolicy() == message::ReducePolicy::Never)
+         ret = true;
+      else
+         ret = reduce(-1);
    } catch (std::exception &e) {
       std::cout << name() << "::reduce(): exception - " << e.what() << std::endl << std::flush;
       std::cerr << name() << "::reduce(): exception - " << e.what() << std::endl;
@@ -1666,7 +1677,8 @@ bool Module::reduceWrapper(const message::Message *req) {
 bool Module::reduce(int timestep) {
 
 #ifndef NDEBUG
-   comm().barrier();
+   if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never)
+      comm().barrier();
 #endif
    return true;
 }
