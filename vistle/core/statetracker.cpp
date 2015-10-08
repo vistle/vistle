@@ -309,6 +309,9 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
          handled = handlePriv(spawn);
          break;
       }
+      case Message::SPAWNPREPARED: {
+         break;
+      }
       case Message::STARTED: {
          const Started &started = static_cast<const Started &>(msg);
          handled = handlePriv(started);
