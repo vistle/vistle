@@ -114,7 +114,10 @@ bool DataManager::requestObject(const std::string &referrer, const std::string &
 }
 
 bool DataManager::prepareTransfer(const message::AddObject &add) {
-    m_inTransitObjects.emplace(add);
+    auto result =  m_inTransitObjects.emplace(add);
+    if (result.second) {
+        result.first->ref();
+    }
     return true;
 }
 
@@ -128,7 +131,8 @@ bool DataManager::completeTransfer(const message::AddObjectCompleted &complete) 
    }
    const auto &add = *it;
    CERR << "AddObjectCompleted: found request " << add << std::endl;
-   add.takeObject();
+   auto obj = add.getObject();
+   obj->unref();
    m_inTransitObjects.erase(it);
    return true;
 }

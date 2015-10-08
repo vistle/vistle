@@ -352,8 +352,9 @@ bool Communicator::handleMessage(const message::Message &message) {
          return connectData();
          break;
       }
-      default:
+      default: {
          return m_clusterManager->handle(message);
+      }
    }
 
    return true;

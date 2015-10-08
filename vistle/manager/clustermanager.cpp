@@ -344,13 +344,13 @@ bool ClusterManager::sendUi(const message::Message &message) const {
 
 bool ClusterManager::sendHub(const message::Message &message, int destHub) const {
 
-   if (destHub == Id::Broadcast) {
-      return Communicator::the().sendHub(message);
-   } else {
-      message::Buffer buf(message);
-      buf.setDestId(destHub);
-      return Communicator::the().sendHub(buf);
-   }
+    if (destHub == Id::Broadcast) {
+       return Communicator::the().sendHub(message);
+    } else {
+       message::Buffer buf(message);
+       buf.setDestId(destHub);
+       return Communicator::the().sendHub(buf);
+    }
 }
 
 bool ClusterManager::sendMessage(const int moduleId, const message::Message &message, int destRank) const {
@@ -416,7 +416,7 @@ bool ClusterManager::handle(const message::Message &message) {
          sendAllLocal(message);
       }
    }
-   if (message.destId() >= Id::ModuleBase) {
+   if (message::Id::isModule(message.destId())) {
       if (destHub == hubId) {
          //CERR << "module: " << message << std::endl;
          if (message.type() != message::Message::EXECUTE) {
@@ -425,6 +425,11 @@ bool ClusterManager::handle(const message::Message &message) {
       } else {
          return sendHub(message);
       }
+   }
+   if (message::Id::isHub(message.destId())) {
+       if (destHub != hubId) {
+           return sendHub(message);
+       }
    }
 
    switch (message.type()) {
@@ -839,19 +844,22 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
    CERR << "ADDOBJECT: " << addObj << ", local=" << localAdd << ", synthesized=" << synthesized << std::endl;
    Object::const_ptr obj;
 
+   int destRank = -1;
+   int block = addObj.meta().block();
+   if (block >= 0) {
+      destRank = block % getSize();
+   }
+   const bool onThisRank = destRank==getRank() || (getRank() == 0 && destRank == -1);
    if (localAdd) {
-      obj = addObj.takeObject();
-      CERR << "ADDOBJECT: local, name=" << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
+       if (onThisRank) {
+          obj = addObj.takeObject();
+          CERR << "ADDOBJECT: local, name=" << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
+       }
    } else {
 
-      int destRank = -1;
-      int block = addObj.meta().block();
-      if (block >= 0) {
-          destRank = block % getSize();
-      }
       CERR << "ADDOBJECT from remote, handling on rank " << destRank << std::endl;
-      if (destRank == getRank() || (getRank() == 0 && destRank == -1)) {
-         obj = addObj.takeObject();
+      if (onThisRank) {
+         obj = addObj.getObject();
          if (!obj) {
             vassert(!synthesized);
             CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
@@ -863,7 +871,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
    }
 
    vassert(!(synthesized && localAdd));
-   if (synthesized || localAdd) {
+   if (synthesized || (localAdd && onThisRank)) {
       vassert(obj);
    }
    vassert(!obj || (obj->refcount() >= 1 && (localAdd || synthesized)));
@@ -899,7 +907,6 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
                Communicator::the().dataManager().prepareTransfer(a);
             }
          }
-         a.takeObject();
          continue;
       }
 
@@ -918,14 +925,17 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
             message::AddObject add(a.getSenderPort(), obj, destPort->getName());
             add.setUuid(a.uuid());
             add.setDestId(destId);
+            add.setSenderId(a.senderId());
             it->second.unblock(add);
          }
-         a.takeObject();
          continue;
       }
 
       a.setDestId(destId);
       a.setDestPort(destPort->getName());
+      if (isLocal(destId) && localAdd && onThisRank) {
+          a.ref();
+      }
       sendMessage(destId, a);
       portManager().addObject(destPort);
 
