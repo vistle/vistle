@@ -513,7 +513,7 @@ AddObject::AddObject(const AddObject &o)
 , m_handleValid(false)
 {
     setUuid(o.uuid());
-    ref();
+    //ref();
 }
 
 AddObject::AddObject(const AddObjectCompleted &complete)
@@ -528,7 +528,7 @@ AddObject::AddObject(const AddObjectCompleted &complete)
 AddObject::~AddObject() {
 }
 
-bool AddObject::ref() {
+bool AddObject::ref() const {
 
     assert(!m_handleValid);
 
@@ -586,8 +586,8 @@ Object::Type AddObject::objectType() const {
 
 Object::const_ptr AddObject::takeObject() const {
 
+   vassert(m_handleValid);
    if (Shm::isAttached() && Shm::the().name() == std::string(m_shmname.data())) {
-      vassert(m_handleValid);
       vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
       if (obj) {
          // ref count has been increased during AddObject construction
@@ -599,6 +599,14 @@ Object::const_ptr AddObject::takeObject() const {
       }
       return obj;
    }
+   auto obj = Shm::the().getObjectFromName(m_name);
+   if (!obj) {
+      std::cerr << "did not find " << m_name << " by name" << std::endl;
+   }
+   return obj;
+}
+
+Object::const_ptr AddObject::getObject() const {
    auto obj = Shm::the().getObjectFromName(m_name);
    if (!obj) {
       std::cerr << "did not find " << m_name << " by name" << std::endl;

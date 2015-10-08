@@ -492,7 +492,8 @@ class V_COREEXPORT AddObject: public Message {
    const char * getDestPort() const;
    const char *objectName() const;
    Object::const_ptr takeObject() const; //!< may only be called once
-   bool ref(); //!< may only be called once
+   Object::const_ptr getObject() const; //! try to retrieve from shmem by name
+   bool ref() const; //!< may only be called once
    const Meta &meta() const;
    Object::Type objectType() const;
    const shm_handle_t &getHandle() const;
