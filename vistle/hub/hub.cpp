@@ -571,6 +571,11 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    if (senderType == Identify::UI)
       msg.setSenderId(m_hubId);
 
+   if (m_hubId == Id::MasterHub) {
+       if (msg.destId() == Id::ForBroadcast)
+           msg.setDestId(Id::Broadcast);
+   }
+
    bool masterAdded = false;
    switch (msg.type()) {
       case message::Message::IDENTIFY: {
@@ -676,7 +681,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    const int sender = idToHub(msg.senderId());
 
    if (Router::the().toManager(msg, senderType, sender)
-           || (msg.destId() >= Id::ModuleBase && dest == m_hubId)) {
+           || (Id::isModule(msg.destId()) && dest == m_hubId)) {
       sendManager(msg);
       mgr = true;
    }
@@ -684,7 +689,9 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
       sendUi(msg);
       ui = true;
    }
-   if (dest > Id::MasterHub) {
+   if (Id::isModule(msg.destId()) && !Id::isHub(dest)) {
+      CERR << "failed to translate module id " << msg.destId() << " to hub" << std::endl;
+   } else  if (!Id::isHub(dest)) {
       if (Router::the().toMasterHub(msg, senderType, sender)) {
          sendMaster(msg);
          master = true;
@@ -697,7 +704,8 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    } else {
       if (dest != m_hubId) {
          if (m_isMaster) {
-            sendSlaves(msg);
+            sendHub(msg, dest);
+            //sendSlaves(msg);
             slave = true;
          } else if (sender == m_hubId) {
             sendMaster(msg);

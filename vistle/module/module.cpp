@@ -247,7 +247,7 @@ void Module::initDone() {
    m_origStreambuf = std::cerr.rdbuf(m_streambuf);
 
    message::Started start(name());
-   start.setDestId(Id::Broadcast);
+   start.setDestId(Id::ForBroadcast);
    sendMessage(start);
 
    for (auto &pair: parameters) {
@@ -427,10 +427,10 @@ Parameter *Module::addParameterGeneric(const std::string &name, boost::shared_pt
    parameters[name] = param;
 
    message::AddParameter add(*param, m_name);
-   add.setDestId(Id::Broadcast);
+   add.setDestId(Id::ForBroadcast);
    sendMessage(add);
    message::SetParameter set(name, param);
-   set.setDestId(Id::Broadcast);
+   set.setDestId(Id::ForBroadcast);
    set.setInit();
    set.setUuid(add.uuid());
    sendMessage(set);
@@ -462,7 +462,7 @@ bool Module::updateParameter(const std::string &name, const Parameter *param, co
       set.setReply();
       set.setUuid(inResponseTo->uuid());
    }
-   set.setDestId(Id::Broadcast);
+   set.setDestId(Id::ForBroadcast);
    sendMessage(set);
 
    return true;
@@ -479,7 +479,7 @@ void Module::setParameterChoices(Parameter *param, const std::vector<std::string
 {
    if (choices.size() <= message::param_num_choices) {
       message::SetParameterChoices sc(param->getName(), choices);
-      sc.setDestId(Id::Broadcast);
+      sc.setDestId(Id::ForBroadcast);
       sendMessage(sc);
    }
 }

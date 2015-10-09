@@ -344,7 +344,7 @@ bool ClusterManager::sendUi(const message::Message &message) const {
 
 bool ClusterManager::sendHub(const message::Message &message, int destHub) const {
 
-    if (destHub == Id::Broadcast) {
+    if (destHub == Id::Broadcast || destHub == Id::ForBroadcast) {
        return Communicator::the().sendHub(message);
     } else {
        message::Buffer buf(message);
@@ -1239,10 +1239,11 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
       if (param) {
          setParam.apply(param);
       }
-   }
-
-   if (setParam.isReply()) {
-      sendAllOthers(setParam.senderId(), setParam, true);
+      if (dest == Id::ForBroadcast) {
+          sendHub(setParam, Id::MasterHub);
+      } else if (!Communicator::the().isMaster()) {
+         sendAllOthers(sender, setParam, true);
+      }
    }
 
    // update linked parameters
