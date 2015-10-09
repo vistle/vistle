@@ -464,7 +464,7 @@ boost::shared_ptr<boost::asio::ip::tcp::socket> Hub::getRemoteDataSock(int hubId
    }
    it = m_remoteDataSocket.find(hubId);
    vassert(it != m_remoteDataSocket.end());
-   CERR << "found remote data sock to hub " << hubId << std::endl;
+   //CERR << "found remote data sock to hub " << hubId << std::endl;
    return it->second;
 }
 
@@ -868,7 +868,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 }
 
 bool Hub::handleLocalData(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock) {
-   CERR << "handleLocalData: " << recv << std::endl;
+   //CERR << "handleLocalData: " << recv << std::endl;
    using namespace message;
    switch (recv.type()) {
       case Message::REQUESTOBJECT: {
@@ -881,12 +881,12 @@ bool Hub::handleLocalData(const message::Message &recv, shared_ptr<asio::ip::tcp
       case Message::SENDOBJECT: {
          auto send = static_cast<const SendObject &>(recv);
          int hubId = idToHub(send.destId());
-         std::cerr << "handleLocalData on " << m_hubId << ": sending to " << hubId << std::endl;
+         //CERR << "handleLocalData on " << m_hubId << ": sending to " << hubId << std::endl;
          sendRemoteData(send, hubId);
          size_t payloadSize = send.payloadSize();
          std::vector<char> payload(payloadSize);
          boost::asio::read(*sock, boost::asio::buffer(payload));
-         std::cerr << "handleLocalData: received local data, now sending" << std::endl;
+         //CERR << "handleLocalData: received local data, now sending" << std::endl;
          return sendRemoteData(payload.data(), payloadSize, hubId);
       }
       default:
@@ -897,7 +897,7 @@ bool Hub::handleLocalData(const message::Message &recv, shared_ptr<asio::ip::tcp
 }
 
 bool Hub::handleRemoteData(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock) {
-   CERR << "handleRemoteData: " << recv << std::endl;
+   //CERR << "handleRemoteData: " << recv << std::endl;
    using namespace message;
    switch (recv.type()) {
       case Message::IDENTIFY: {
