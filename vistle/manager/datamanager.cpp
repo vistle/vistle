@@ -93,9 +93,14 @@ bool DataManager::requestObject(const message::AddObject &add, const std::string
    if (obj) {
       return false;
    }
+   auto it = m_outstandingObjects.find(objId);
+   if (it != m_outstandingObjects.end()) {
+       it->second.completionHandlers.push_back(handler);
+       return true;
+   }
+   m_outstandingObjects[objId].completionHandlers.push_back(handler);
    m_outstandingAdds[add].push_back(objId);
    m_outstandingRequests.emplace(objId, add);
-   m_outstandingObjects[objId].completionHandlers.push_back(handler);
    message::RequestObject req(add, objId);
    send(req);
    return true;
@@ -107,6 +112,12 @@ bool DataManager::requestObject(const std::string &referrer, const std::string &
    if (obj) {
       return false;
    }
+   auto it = m_outstandingObjects.find(objId);
+   if (it != m_outstandingObjects.end()) {
+       it->second.completionHandlers.push_back(handler);
+       return true;
+   }
+
    m_outstandingObjects[objId].completionHandlers.push_back(handler);
    message::RequestObject req(hub, rank, objId, referrer);
    send(req);
