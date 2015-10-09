@@ -1736,7 +1736,7 @@ bool Router::toSlaveHub(const Message &msg, Identify::Identity senderType, int s
 bool Router::toManager(const Message &msg, Identify::Identity senderType, int senderHub) {
 
    const int t = msg.type();
-   if (msg.destId() <= Id::MasterHub) {
+   if (Id::isHub(msg.destId())) {
       if (msg.destId() == m_hubId && rt[t] & DestManager) {
          return true;
       }

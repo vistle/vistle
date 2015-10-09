@@ -93,7 +93,7 @@ template<typename ShmVectorPtr>
 void Object::Data::arrayValid(const ShmVectorPtr &p) {
     if (!p.valid()) {
         ++unresolvedReferences;
-        std::cerr << "outstanding array " << p.name() << " for " << name << ", now " << unresolvedReferences << std::endl;
+        //std::cerr << "outstanding array " << p.name() << " for " << name << ", now " << unresolvedReferences << std::endl;
     }
 }
 
@@ -101,7 +101,7 @@ template<class ObjType>
 void Object::Data::objectValid(const shm_obj_ref<ObjType> &o) {
     if (!o.valid()) {
         ++unresolvedReferences;
-        std::cerr << "outstanding object " << o.name() << " for " << name << ", now " << unresolvedReferences << std::endl;
+        //std::cerr << "outstanding object " << o.name() << " for " << name << ", now " << unresolvedReferences << std::endl;
     }
 }
 

@@ -874,7 +874,7 @@ bool Hub::handleLocalData(const message::Message &recv, shared_ptr<asio::ip::tcp
       case Message::REQUESTOBJECT: {
          auto req = static_cast<const RequestObject &>(recv);
          int hubId = idToHub(req.destId());
-         std::cerr << "handleLocalData on " << m_hubId << ": sending to " << hubId << std::endl;
+         //CERR << "handleLocalData on " << m_hubId << ": sending to " << hubId << std::endl;
          return sendRemoteData(req, hubId);
          break;
       }

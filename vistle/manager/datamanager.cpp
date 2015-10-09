@@ -31,7 +31,7 @@ bool DataManager::connect(asio::ip::tcp::resolver::iterator &hub) {
    asio::connect(m_dataSocket, hub, ec);
    if (ec) {
       std::cerr << std::endl;
-      CERR << "could not establish bulk data connection on rank " << m_rank << std::endl;
+      std::cerr << "could not establish bulk data connection on rank " << m_rank << std::endl;
       ret = false;
    }
 
@@ -72,7 +72,7 @@ bool DataManager::read(char *buf, size_t n) {
 
 bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const std::function<void()> &handler) {
 
-   std::cerr << "requesting array: " << arrayId << " for " << referrer << std::endl;
+   //CERR << "requesting array: " << arrayId << " for " << referrer << std::endl;
    auto it = m_outstandingArrays.find(arrayId);
    if (it != m_outstandingArrays.end()) {
        it->second.push_back(handler);
@@ -360,14 +360,14 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
        auto senderId = snd.senderId();
        auto senderRank = snd.rank();
        auto completionHandler = [this, &outstandingAdds, &outstandingRequests, &outstandingObjects, senderId, senderRank, objName] () mutable -> void {
-           std::cerr << "object completion handler for " << objName << std::endl;
+          CERR << "object completion handler for " << objName << std::endl;
            auto obj = Shm::the().getObjectFromName(objName);
            if (!obj) {
-               std::cerr << "did not receive an object for " << objName << std::endl;
+               CERR << "did not receive an object for " << objName << std::endl;
                return;
            }
            vassert(obj);
-           std::cerr << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
+           CERR << "received " << obj->getName() << ", type: " << obj->getType() << ", refcount: " << obj->refcount() << std::endl;
            vassert(obj->check());
 
            auto reqIt = outstandingRequests.find(objName);
@@ -376,7 +376,7 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
 
                auto addIt = outstandingAdds.find(add);
                if (addIt == outstandingAdds.end()) {
-                   std::cerr << "no outstanding add for " << objName << std::endl;
+                   CERR << "no outstanding add for " << objName << std::endl;
                    return;
                }
                auto &ids = addIt->second;
@@ -386,7 +386,7 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                }
 
                if (ids.empty()) {
-                   std::cerr << "sending completion notification for " << objName << std::endl;
+                   CERR << "sending completion notification for " << objName << std::endl;
                    message::AddObjectCompleted complete(add);
                    Communicator::the().clusterManager().sendMessage(senderId, complete, senderRank);
                    //message::AddObject nadd(add.getSenderPort(), obj);
@@ -395,7 +395,7 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                }
                outstandingRequests.erase(reqIt);
            } else {
-               std::cerr << "no outstanding request for " << obj->getName() << std::endl;
+               CERR << "no outstanding request for " << obj->getName() << std::endl;
            }
 
            auto objIt = outstandingObjects.find(objName);
@@ -405,16 +405,16 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                }
                objIt->second.obj->unref();
                outstandingObjects.erase(objIt);
-               std::cerr << "erasing from outstanding objects: " << obj->getName() << std::endl;
+               //CERR << "erasing from outstanding objects: " << obj->getName() << std::endl;
            } else {
-               std::cerr << "no outstanding object for " << obj->getName() << std::endl;
+               CERR << "no outstanding object for " << obj->getName() << std::endl;
            }
        };
        memar.setObjectCompletionHandler(completionHandler);
 
        fetcher.reset(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
        memar.setFetcher(fetcher);
-       std::cerr << "loading object " << objName << " from memar" << std::endl;
+       //CERR << "loading object " << objName << " from memar" << std::endl;
        objIt->second.obj = Object::load(memar);
        objIt->second.obj->ref();
    }

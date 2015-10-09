@@ -56,7 +56,7 @@ void ClusterManager::Module::block(const message::Message &msg) {
 }
 
 void ClusterManager::Module::unblock(const message::Message &msg) {
-   std::cerr << "UNBLOCK: " << msg << " (blocked: " << blocked << ")" << std::endl;
+   //std::cerr << "UNBLOCK: " << msg << " (blocked: " << blocked << ")" << std::endl;
    vassert(blocked);
    vassert(!blockers.empty());
 
@@ -67,14 +67,14 @@ void ClusterManager::Module::unblock(const message::Message &msg) {
 
    if (blocked) {
       if (pred(blockers.front())) {
-         std::cerr << "UNBLOCK: found as frontmost blocker" << std::endl;
+         //std::cerr << "UNBLOCK: found as frontmost blocker" << std::endl;
          blockers.pop_front();
          vassert(blockedMessages.front().uuid() == msg.uuid()
                 && blockedMessages.front().type() == msg.type());
          blockedMessages.pop_front();
          sendQueue->send(msg);
          if (blockers.empty()) {
-            std::cerr << "UNBLOCK: completely unblocked" << std::endl;
+            //std::cerr << "UNBLOCK: completely unblocked" << std::endl;
             blocked = false;
             while (!blockedMessages.empty()) {
                sendQueue->send(blockedMessages.front());
@@ -88,17 +88,17 @@ void ClusterManager::Module::unblock(const message::Message &msg) {
             }
          }
       } else {
-         std::cerr << "UNBLOCK: frontmost blocker: " << blockers.front() << std::endl;
+         //std::cerr << "UNBLOCK: frontmost blocker: " << blockers.front() << std::endl;
          auto it = std::find_if(blockers.begin(), blockers.end(), pred);
          vassert(it != blockers.end());
          if (it != blockers.end()) {
-            std::cerr << "UNBLOCK: found in blockers" << std::endl;
+            //std::cerr << "UNBLOCK: found in blockers" << std::endl;
             blockers.erase(it);
          }
          it = std::find_if(blockedMessages.begin(), blockedMessages.end(), pred);
          vassert (it != blockedMessages.end());
          if (it != blockedMessages.end()) {
-            std::cerr << "UNBLOCK: updating message" << std::endl;
+            //std::cerr << "UNBLOCK: updating message" << std::endl;
             *it = message::Buffer(msg);
          }
       }

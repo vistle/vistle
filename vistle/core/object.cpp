@@ -162,7 +162,7 @@ bool Object::Data::isComplete() const {
 }
 
 void Object::Data::referenceResolved(const std::function<void()> &completeCallback) {
-    std::cerr << "reference (from " << unresolvedReferences << ") resolved in " << name << std::endl;
+    //std::cerr << "reference (from " << unresolvedReferences << ") resolved in " << name << std::endl;
     vassert(unresolvedReferences > 0);
     --unresolvedReferences;
     if (isComplete()) {
