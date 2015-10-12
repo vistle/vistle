@@ -230,15 +230,24 @@ bool Hub::dispatch() {
 
    bool ret = true;
    bool work = false;
-   for (auto &sock: m_clients) {
+   size_t avail = 0;
+   do {
+      boost::shared_ptr<boost::asio::ip::tcp::socket> sock;
+      avail = 0;
+      for (auto &s: m_clients) {
+         boost::asio::socket_base::bytes_readable command(true);
+         s->io_control(command);
+         if (command.get() > avail) {
+            avail = command.get();
+            sock = s;
+         }
+      }
 
-      message::Identify::Identity senderType = message::Identify::UNKNOWN;
-      auto it = m_sockets.find(sock);
-      if (it != m_sockets.end())
-         senderType = it->second;
-      boost::asio::socket_base::bytes_readable command(true);
-      sock->io_control(command);
-      if (command.get() > 0) {
+      if (sock) {
+         message::Identify::Identity senderType = message::Identify::UNKNOWN;
+         auto it = m_sockets.find(sock);
+         if (it != m_sockets.end())
+            senderType = it->second;
          message::Buffer buf;
          message::Message &msg = buf;
          bool received = false;
@@ -260,7 +269,7 @@ bool Hub::dispatch() {
             }
          }
       }
-   }
+   } while (avail > 0);
 
    if (auto pid = vistle::try_wait()) {
       work = true;
