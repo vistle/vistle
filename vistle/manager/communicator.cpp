@@ -167,7 +167,6 @@ bool Communicator::dispatch(bool *work) {
    bool done = false;
 
    bool received = false;
-   received = false;
 
    // check for new UIs and other network clients
    if (m_rank == 0) {
