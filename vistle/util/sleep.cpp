@@ -13,13 +13,8 @@ bool adaptive_wait(bool work, const void *client) {
 
    static std::map<const void *, long> idleMap;
    const long Sec = 1000000; // 1 s
-#if 1
-   const long MinDelay = Sec/100;
-   const long MaxDelay = Sec/3;
-#else
-   const long MinDelay = 0; // 1 ms
-   const long MaxDelay = 0;
-#endif
+   const long MinDelay = Sec/10000;
+   const long MaxDelay = Sec/10;
 
    auto it = idleMap.find(client);
    if (it == idleMap.end())
@@ -42,6 +37,14 @@ bool adaptive_wait(bool work, const void *client) {
    idle += delay;
 
    if (idle > delay) {
+#if 0
+      if (delay == MinDelay)
+         std::cerr << "." << std::flush;
+      else if (delay == MaxDelay)
+         std::cerr << "O" << std::flush;
+      else
+         std::cerr << "o" << std::flush;
+#endif
       if (delay < Sec) {
          //std::cerr << "usleep " << delay << std::endl;
          usleep(delay);
