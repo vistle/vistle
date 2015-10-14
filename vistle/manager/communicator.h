@@ -44,7 +44,7 @@ class Communicator {
 
    ClusterManager &clusterManager() const;
    DataManager &dataManager() const;
-   bool connectHub(const std::string &host, unsigned short port);
+   bool connectHub(const std::string &host, unsigned short port, unsigned short dataPort);
 
  private:
    bool sendHub(const message::Message &message);
@@ -72,7 +72,7 @@ class Communicator {
 
    boost::asio::io_service m_ioService;
    boost::asio::ip::tcp::socket m_hubSocket;
-   boost::asio::ip::tcp::resolver::iterator m_hubEndpoint;
+   boost::asio::ip::tcp::resolver::iterator m_dataEndpoint;
 };
 
 } // namespace vistle

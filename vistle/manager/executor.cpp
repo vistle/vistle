@@ -62,14 +62,15 @@ Executor::Executor(int argc, char *argv[])
    std::vector<char> hostnames(HOSTNAMESIZE * m_size);
    gethostname(hostname, HOSTNAMESIZE - 1);
 
-   if (argc < 3) {
-      std::cerr << "usage: " << argv[0] << " [hostname] [port]" << std::endl;
+   if (argc < 4) {
+      std::cerr << "usage: " << argv[0] << " [hostname] [port] [dataPort]" << std::endl;
       std::cerr << "  hostname and port where Vistle hub can be reached have to be specified" << std::endl;
       exit(1);
    }
 
    unsigned short port = boost::lexical_cast<unsigned short>(argv[2]);
    m_name = Shm::instanceName(argv[1], port);
+   unsigned short dataPort = boost::lexical_cast<unsigned short>(argv[3]);
 
    if (!m_rank) {
       uint64_t len = m_name.length();
@@ -115,7 +116,7 @@ Executor::Executor(int argc, char *argv[])
    MPI_Barrier(MPI_COMM_WORLD);
 
    m_comm = new vistle::Communicator(m_rank, hosts);
-   if (!m_comm->connectHub(argv[1], port)) {
+   if (!m_comm->connectHub(argv[1], port, dataPort)) {
       std::stringstream err;
       err << "failed to connect to Vistle hub on " << argv[1] << ":" << port;
       throw vistle::exception(err.str());

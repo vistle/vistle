@@ -10,6 +10,7 @@ set(hub_SOURCES
    uimanager.cpp
    uiclient.cpp
    tunnel.cpp
+   dataproxy.cpp
    )
 
 if(PYTHONLIBS_FOUND)

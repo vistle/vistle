@@ -96,7 +96,7 @@ int Communicator::getSize() const {
    return m_size;
 }
 
-bool Communicator::connectHub(const std::string &host, unsigned short port) {
+bool Communicator::connectHub(const std::string &host, unsigned short port, unsigned short dataPort) {
 
    if (getRank() == 0) {
       CERR << "connecting to hub on " << host << ":" << port << "..." << std::flush;
@@ -105,12 +105,14 @@ bool Communicator::connectHub(const std::string &host, unsigned short port) {
    int ret = 1;
    asio::ip::tcp::resolver resolver(m_ioService);
    asio::ip::tcp::resolver::query query(host, boost::lexical_cast<std::string>(port));
-   m_hubEndpoint = resolver.resolve(query);
+   auto ep = resolver.resolve(query);
+   asio::ip::tcp::resolver::query queryd(host, boost::lexical_cast<std::string>(dataPort));
+   m_dataEndpoint = resolver.resolve(queryd);
    boost::system::error_code ec;
 
    if (getRank() == 0) {
 
-      asio::connect(m_hubSocket, m_hubEndpoint, ec);
+      asio::connect(m_hubSocket, ep, ec);
       if (ec) {
          std::cerr << std::endl;
          CERR << "could not establish connection to hub at " << host << ":" << port << std::endl;
@@ -127,7 +129,7 @@ bool Communicator::connectHub(const std::string &host, unsigned short port) {
 
 bool Communicator::connectData() {
 
-    return m_dataManager->connect(m_hubEndpoint);
+    return m_dataManager->connect(m_dataEndpoint);
 }
 
 bool Communicator::sendHub(const message::Message &message) {

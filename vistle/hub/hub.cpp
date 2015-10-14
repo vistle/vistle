@@ -144,6 +144,8 @@ bool Hub::startServer() {
       startAccept();
    }
 
+   m_dataProxy.reset(new DataProxy(*this, m_port+1));
+
    return true;
 }
 
@@ -242,32 +244,10 @@ bool Hub::dispatch() {
             sock = s;
          }
       }
-
+      boost::system::error_code error;
       if (sock) {
-         message::Identify::Identity senderType = message::Identify::UNKNOWN;
-         auto it = m_sockets.find(sock);
-         if (it != m_sockets.end())
-            senderType = it->second;
-         message::Buffer buf;
-         message::Message &msg = buf;
-         bool received = false;
-         if (message::recv(*sock, msg, received) && received) {
-            work = true;
-            bool ok = true;
-            if (senderType == message::Identify::UI) {
-               ok = m_uiManager.handleMessage(msg, sock);
-            } else if (senderType == message::Identify::LOCALBULKDATA) {
-               ok = handleLocalData(msg, sock);
-            } else if (senderType == message::Identify::REMOTEBULKDATA) {
-               ok = handleRemoteData(msg, sock);
-            } else {
-               ok = handleMessage(msg, sock);
-            }
-            if (!ok) {
-               m_quitting = true;
-               break;
-            }
-         }
+          work = true;
+          handleWrite(sock, error);
       }
    } while (avail > 0);
 
@@ -326,6 +306,33 @@ bool Hub::dispatch() {
    vistle::adaptive_wait(work);
 
    return ret;
+}
+
+void Hub::handleWrite(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
+
+    message::Identify::Identity senderType = message::Identify::UNKNOWN;
+    auto it = m_sockets.find(sock);
+    if (it != m_sockets.end())
+       senderType = it->second;
+    message::Buffer buf;
+    message::Message &msg = buf;
+    bool received = false;
+    if (message::recv(*sock, msg, received) && received) {
+       bool ok = true;
+       if (senderType == message::Identify::UI) {
+          ok = m_uiManager.handleMessage(msg, sock);
+       } else if (senderType == message::Identify::LOCALBULKDATA) {
+          ok = handleLocalData(msg, sock);
+       } else if (senderType == message::Identify::REMOTEBULKDATA) {
+          ok = handleRemoteData(msg, sock);
+       } else {
+          ok = handleMessage(msg, sock);
+       }
+       if (!ok) {
+          m_quitting = true;
+          //break;
+       }
+    }
 }
 
 bool Hub::sendMaster(const message::Message &msg) {
@@ -532,6 +539,11 @@ int Hub::idToHub(int id) const {
        return m_hubId;
 
    return m_stateTracker.getHub(id);
+}
+
+int Hub::id() const {
+
+    return m_hubId;
 }
 
 void Hub::hubReady() {
@@ -1050,6 +1062,7 @@ bool Hub::init(int argc, char *argv[]) {
    }
 
    std::string port = boost::lexical_cast<std::string>(this->port());
+   std::string dataPort = boost::lexical_cast<std::string>(m_dataProxy->port());
 
    // start manager on cluster
    std::string cmd = m_bindir + "/vistle_manager";
@@ -1058,6 +1071,7 @@ bool Hub::init(int argc, char *argv[]) {
    args.push_back(cmd);
    args.push_back(hostname());
    args.push_back(port);
+   args.push_back(dataPort);
    auto pid = vistle::spawn_process("spawn_vistle.sh", args);
    if (!pid) {
       CERR << "failed to spawn Vistle manager " << std::endl;

@@ -9,6 +9,7 @@
 #include <util/directory.h>
 #include "uimanager.h"
 #include "tunnel.h"
+#include "dataproxy.h"
 
 namespace vistle {
 
@@ -51,6 +52,9 @@ class Hub {
    const StateTracker &stateTracker() const;
    StateTracker &stateTracker();
 
+   int idToHub(int id) const;
+   int id() const;
+
 private:
    struct Slave;
 
@@ -61,6 +65,7 @@ private:
    bool startUi(const std::string &uipath);
    bool startServer();
    bool startAccept();
+   void handleWrite(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
    void handleAccept(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
    void addSocket(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, message::Identify::Identity ident = message::Identify::UNKNOWN);
    bool removeSocket(boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
@@ -71,8 +76,6 @@ private:
    void addRemoteData(int hub, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    bool startCleaner();
 
-   int idToHub(int id) const;
-
    unsigned short m_port;
    boost::asio::io_service m_ioService;
    boost::shared_ptr<acceptor> m_acceptor;
@@ -80,6 +83,7 @@ private:
    std::map<boost::shared_ptr<boost::asio::ip::tcp::socket>, message::Identify::Identity> m_sockets;
    std::set<boost::shared_ptr<boost::asio::ip::tcp::socket>> m_clients;
 
+   boost::shared_ptr<DataProxy> m_dataProxy;
    TunnelManager m_tunnelManager;
    StateTracker m_stateTracker;
    UiManager m_uiManager;
