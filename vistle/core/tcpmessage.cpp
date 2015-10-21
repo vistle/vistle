@@ -45,22 +45,38 @@ bool recv(socket_t &sock, Message &msg, bool &received, bool block) {
 
 void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::system::error_code ec)> handler) {
 
-   uint32_t sz = 0;
-   auto szbuf = asio::buffer(&sz, sizeof(sz));
-   asio::async_read(sock, szbuf, [sz, &msg, &sock, handler](error_code ec, size_t n) {
+   struct RecvData {
+       uint32_t sz;
+       asio::mutable_buffers_1 buf;
+       message::Buffer &msg;
+       RecvData(message::Buffer &msg)
+           : buf(&sz, sizeof(sz))
+           , msg(msg)
+       {}
+   };
+   boost::shared_ptr<RecvData> recvData(new RecvData(msg));
+   asio::async_read(sock, recvData->buf, [recvData, &msg, &sock, handler](error_code ec, size_t n) {
        if (ec) {
            std::cerr << "message::async_recv err 1: ec=" << ec.message() << std::endl;
            handler(ec);
            return;
        }
-       if (sz != n) {
-           std::cerr << "message::async_recv: expected " << sz << ", received " << n << std::endl;
-           handler(ec);
-           return;
+       if (n != sizeof(uint32_t)) {
+          std::cerr << "message::async_recv: expected " << sizeof(uint32_t) << ", received " << n << std::endl;
+          handler(ec);
+          return;
        }
-       auto msgbuf = asio::buffer(&msg, sz);
-       asio::async_read(sock, msgbuf, [&sock, handler](error_code ec, size_t n){
-          std::cerr << "message::async_recv maybe err 2" << std::endl;
+       recvData->sz = ntohl(recvData->sz);
+       recvData->buf = asio::buffer(&recvData->msg, recvData->sz);
+       asio::async_read(sock, recvData->buf, [recvData, &sock, handler](error_code ec, size_t n){
+          if (recvData->sz != n) {
+             std::cerr << "message::async_recv: expected " << recvData->sz << ", received " << n << std::endl;
+             handler(ec);
+             return;
+          }
+          if (ec) {
+              std::cerr << "message::async_recv err 2: ec=" << ec.message() << std::endl;
+          }
           handler(ec);
        });
    });
@@ -82,18 +98,30 @@ bool send(socket_t &sock, const Message &msg) {
 
 void async_send(socket_t &sock, const message::Message &msg, const std::function<void(error_code ec)> handler) {
 
-      const uint32_t sz = htonl(msg.size());
-      auto szbuf = asio::buffer(&sz, sizeof(sz));
-      asio::async_write(sock, szbuf, [&msg, &sock, handler](error_code ec, size_t n){
-         if (ec) {
-            handler(ec);
-            return;
-         }
-         auto msgbuf = asio::buffer(&msg, msg.size());
-         asio::async_write(sock, msgbuf, [&sock, handler](error_code ec, size_t n){
-            handler(ec);
-         });
+   std::cerr << "message::async_send: " << msg << std::endl;
+   struct SendData {
+      uint32_t sz;
+      const message::Buffer msg;
+      SendData(const message::Message &msg)
+         : sz(htonl(msg.size()))
+         , msg(msg)
+      {}
+   };
+   boost::shared_ptr<SendData> sendData(new SendData(msg));
+
+   asio::async_write(sock, asio::buffer(&sendData->sz, sizeof(sendData->sz)), [sendData, &sock, handler](error_code ec, size_t n){
+      if (ec) {
+         std::cerr << "message::async_send err 1: ec=" << ec.message() << std::endl;
+         handler(ec);
+         return;
+      }
+      asio::async_write(sock, asio::buffer(&sendData->msg, sendData->msg.size()), [sendData, &sock, handler](error_code ec, size_t n){
+          if (ec) {
+             std::cerr << "message::async_send err 2: ec=" << ec.message() << std::endl;
+          }
+         handler(ec);
       });
+   });
 }
 
 } // namespace message
