@@ -43,8 +43,27 @@ bool recv(socket_t &sock, Message &msg, bool &received, bool block) {
    return result;
 }
 
-void async_recv(socket_t &sock, const message::Message &msg, const std::function<void(boost::system::error_code ec)> &handler) {
+void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::system::error_code ec)> handler) {
 
+   uint32_t sz = 0;
+   auto szbuf = asio::buffer(&sz, sizeof(sz));
+   asio::async_read(sock, szbuf, [sz, &msg, &sock, handler](error_code ec, size_t n) {
+       if (ec) {
+           std::cerr << "message::async_recv err 1: ec=" << ec.message() << std::endl;
+           handler(ec);
+           return;
+       }
+       if (sz != n) {
+           std::cerr << "message::async_recv: expected " << sz << ", received " << n << std::endl;
+           handler(ec);
+           return;
+       }
+       auto msgbuf = asio::buffer(&msg, sz);
+       asio::async_read(sock, msgbuf, [&sock, handler](error_code ec, size_t n){
+          std::cerr << "message::async_recv maybe err 2" << std::endl;
+          handler(ec);
+       });
+   });
 }
 
 bool send(socket_t &sock, const Message &msg) {
@@ -61,17 +80,17 @@ bool send(socket_t &sock, const Message &msg) {
    }
 }
 
-void async_send(socket_t &sock, const message::Message &msg, const std::function<void(error_code ec)> &handler) {
+void async_send(socket_t &sock, const message::Message &msg, const std::function<void(error_code ec)> handler) {
 
       const uint32_t sz = htonl(msg.size());
       auto szbuf = asio::buffer(&sz, sizeof(sz));
-      asio::async_write(sock, szbuf, [&msg, &sock, &handler](error_code ec, size_t n){
+      asio::async_write(sock, szbuf, [&msg, &sock, handler](error_code ec, size_t n){
          if (ec) {
             handler(ec);
             return;
          }
          auto msgbuf = asio::buffer(&msg, msg.size());
-         asio::async_write(sock, msgbuf, [&sock, &handler](error_code ec, size_t n){
+         asio::async_write(sock, msgbuf, [&sock, handler](error_code ec, size_t n){
             handler(ec);
          });
       });

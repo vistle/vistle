@@ -70,6 +70,7 @@ private:
 class V_COREEXPORT StateTracker {
    friend class ClusterManager;
    friend class Hub;
+   friend class DataProxy;
    friend class PortTracker;
 
  public:
