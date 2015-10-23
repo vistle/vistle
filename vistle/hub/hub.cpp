@@ -1063,6 +1063,11 @@ bool Hub::init(int argc, char *argv[]) {
          m_name = vm["name"].as<std::string>();
    }
 
+   return startManager();;
+}
+
+bool Hub::startManager() {
+
    std::string port = boost::lexical_cast<std::string>(this->port());
    std::string dataPort = boost::lexical_cast<std::string>(m_dataProxy->port());
 

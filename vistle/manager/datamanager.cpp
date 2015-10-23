@@ -28,11 +28,15 @@ bool DataManager::connect(asio::ip::tcp::resolver::iterator &hub) {
    bool ret = true;
    boost::system::error_code ec;
 
+   CERR << "connecting to local hub..." << std::endl;
+
    asio::connect(m_dataSocket, hub, ec);
    if (ec) {
       std::cerr << std::endl;
-      std::cerr << "could not establish bulk data connection on rank " << m_rank << std::endl;
+      CERR << "could not establish bulk data connection on rank " << m_rank << std::endl;
       ret = false;
+   } else {
+      CERR << "connected to local hub" << std::endl;
    }
 
    return ret;

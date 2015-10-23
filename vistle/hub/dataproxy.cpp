@@ -20,6 +20,7 @@ DataProxy::DataProxy(Hub &hub, unsigned short basePort)
 , m_port(basePort)
 , m_acceptor(m_io)
 {
+   CERR << "new" << std::endl;
    for (bool connected = false; !connected; ) {
       asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), m_port);
       m_acceptor.open(endpoint.protocol());
@@ -43,8 +44,8 @@ DataProxy::DataProxy(Hub &hub, unsigned short basePort)
    CERR << "proxying data connections through port " << m_port << std::endl;
    m_acceptor.listen();
 
-   startThread();
    startAccept();
+   startThread();
 }
 
 DataProxy::~DataProxy() {
@@ -81,6 +82,7 @@ void DataProxy::startThread() {
 
 void DataProxy::startAccept() {
 
+   CERR << "(re-)starting accept" << std::endl;
    boost::shared_ptr<tcp_socket> sock(new tcp_socket(io()));
    m_acceptor.async_accept(*sock, [this, sock](boost::system::error_code ec){handleAccept(ec, sock);});
 }

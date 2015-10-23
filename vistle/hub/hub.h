@@ -75,6 +75,7 @@ private:
    void addLocalData(int rank, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void addRemoteData(int hub, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    bool startCleaner();
+   bool startManager();
 
    unsigned short m_port;
    boost::asio::io_service m_ioService;
