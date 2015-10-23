@@ -163,6 +163,7 @@ void DataProxy::handleLocalWrite(boost::shared_ptr<tcp_socket> sock) {
             CERR << "recv: error " << ec.message() << std::endl;
             return;
         }
+        CERR << "handleLocalWrite: msg received, type=" << msg->type() << std::endl;
         switch(msg->type()) {
         case Message::SENDOBJECT: {
             break;
@@ -171,7 +172,7 @@ void DataProxy::handleLocalWrite(boost::shared_ptr<tcp_socket> sock) {
            //auto &req = static_cast<const RequestObject &>(*msg);
            auto &req = msg->as<const RequestObject>();
            int hubId = m_hub.idToHub(req.destId());
-           CERR << "handleLocalData on " << m_hub.id() << ": sending to " << hubId << std::endl;
+           CERR << "handleLocalWrite on " << m_hub.id() << ": sending to " << hubId << std::endl;
            auto remote = getRemoteDataSock(hubId);
            if (remote) {
               message::async_send(*remote, *msg, [this, msg, hubId, remote](error_code ec){
@@ -296,6 +297,7 @@ boost::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getRemoteDataSock(int
    return it->second;
 }
 
+#if 0
 bool DataProxy::handleLocalData(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock) {
    //CERR << "handleLocalData: " << recv << std::endl;
    using namespace message;
@@ -368,5 +370,6 @@ bool DataProxy::handleRemoteData(const message::Message &recv, shared_ptr<asio::
    }
    return true;
 }
+#endif
 
 }

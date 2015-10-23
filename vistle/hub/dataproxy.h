@@ -42,10 +42,12 @@ private:
    void handleConnect(boost::shared_ptr<boost::asio::ip::tcp::socket> sock0, boost::shared_ptr<boost::asio::ip::tcp::socket> sock1, const boost::system::error_code &error);
    void startThread();
    void cleanUp();
+#if 0
    bool handleLocalData(const message::Message &recv, boost::shared_ptr<tcp_socket> sock);
    bool handleRemoteData(const message::Message &recv, boost::shared_ptr<tcp_socket> sock);
    void handleLocalRead(const message::Message &recv, boost::shared_ptr<tcp_socket> sock);
    void handleRemoteRead(const message::Message &recv, boost::shared_ptr<tcp_socket> sock);
+#endif
    bool connectRemoteData(int hubId);
    boost::shared_ptr<tcp_socket> getRemoteDataSock(int hubId);
    boost::shared_ptr<tcp_socket> getLocalDataSock(int rank);
