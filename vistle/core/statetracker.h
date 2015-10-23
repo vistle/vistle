@@ -206,11 +206,13 @@ class V_COREEXPORT StateTracker {
       : id(id)
       , name(name)
       , port(0)
+      , dataPort(0)
       {}
 
       int id;
       std::string name;
       unsigned short port;
+      unsigned short dataPort;
       boost::asio::ip::address address;
    };
    std::vector<HubData> m_hubs;

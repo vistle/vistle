@@ -256,6 +256,7 @@ class V_COREEXPORT AddHub: public Message {
    int id() const;
    const char *name() const;
    unsigned short port() const;
+   unsigned short dataPort() const;
    AddressType addressType() const;
    bool hasAddress() const;
    std::string host() const;
@@ -264,6 +265,7 @@ class V_COREEXPORT AddHub: public Message {
    boost::asio::ip::address_v4 addressV4() const;
 
    void setPort(unsigned short port);
+   void setDataPort(unsigned short port);
    void setAddress(boost::asio::ip::address addr);
    void setAddress(boost::asio::ip::address_v6 addr);
    void setAddress(boost::asio::ip::address_v4 addr);
@@ -272,6 +274,7 @@ class V_COREEXPORT AddHub: public Message {
    int m_id;
    address_t m_name;
    unsigned short m_port;
+   unsigned short m_dataPort;
    AddressType m_addrType;
    address_t m_address;
 

@@ -196,6 +196,7 @@ AddHub::AddHub(int id, const std::string &name)
 : Message(Message::ADDHUB, sizeof(AddHub))
 , m_id(id)
 , m_port(0)
+, m_dataPort(0)
 , m_addrType(AddHub::Unspecified)
 {
    COPY_STRING(m_name, name);
@@ -213,6 +214,11 @@ const char *AddHub::name() const {
 unsigned short AddHub::port() const {
 
    return m_port;
+}
+
+unsigned short AddHub::dataPort() const {
+
+   return m_dataPort;
 }
 
 AddHub::AddressType AddHub::addressType() const {
@@ -247,6 +253,10 @@ boost::asio::ip::address_v4 AddHub::addressV4() const {
 
 void AddHub::setPort(unsigned short port) {
    m_port = port;
+}
+
+void AddHub::setDataPort(unsigned short port) {
+   m_dataPort = port;
 }
 
 void AddHub::setAddress(boost::asio::ip::address addr) {

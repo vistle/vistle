@@ -553,6 +553,7 @@ void Hub::hubReady() {
    } else {
       message::AddHub hub(m_hubId, m_name);
       hub.setPort(m_port);
+      hub.setDataPort(m_dataProxy->port());
 
       for (auto &sock: m_sockets) {
          if (sock.second == message::Identify::HUB) {
@@ -1022,6 +1023,7 @@ bool Hub::init(int argc, char *argv[]) {
 
       message::AddHub master(m_hubId, m_name);
       master.setPort(m_port);
+      master.setDataPort(m_dataProxy->port());
       m_stateTracker.handle(master);
 
 #ifdef SCAN_MODULES_ON_HUB

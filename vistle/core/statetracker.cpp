@@ -159,6 +159,7 @@ std::vector<message::Buffer> StateTracker::getState() const {
    for (const auto &slave: m_hubs) {
       AddHub msg(slave.id, slave.name);
       msg.setPort(slave.port);
+      msg.setDataPort(slave.dataPort);
       msg.setAddress(slave.address);
       appendMessage(state, msg);
    }
@@ -498,6 +499,7 @@ bool StateTracker::handlePriv(const message::AddHub &slave) {
    boost::lock_guard<mutex> locker(m_slaveMutex);
    m_hubs.emplace_back(slave.id(), slave.name());
    m_hubs.back().port = slave.port();
+   m_hubs.back().dataPort = slave.dataPort();
    if (slave.hasAddress())
       m_hubs.back().address = slave.address();
    m_slaveCondition.notify_all();

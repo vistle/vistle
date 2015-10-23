@@ -242,18 +242,18 @@ bool DataProxy::connectRemoteData(int hubId) {
    for (auto &hubData: m_hub.stateTracker().m_hubs) {
       if (hubData.id == hubId) {
          boost::shared_ptr<asio::ip::tcp::socket> sock(new boost::asio::ip::tcp::socket(io()));
-         boost::asio::ip::tcp::endpoint dest(hubData.address, hubData.port);
+         boost::asio::ip::tcp::endpoint dest(hubData.address, hubData.dataPort);
 
          boost::system::error_code ec;
          asio::connect(*sock, &dest, &dest+1, ec);
          if (ec) {
-            CERR << "could not establish bulk data connection to " << hubData.address << ":" << hubData.port << std::endl;
+            CERR << "could not establish bulk data connection to " << hubData.address << ":" << hubData.dataPort << std::endl;
             return false;
          }
 
          Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
          if (!message::send(*sock, ident)) {
-             CERR << "error when establishing bulk data connection to " << hubData.address << ":" << hubData.port << std::endl;
+             CERR << "error when establishing bulk data connection to " << hubData.address << ":" << hubData.dataPort << std::endl;
              return false;
          }
          m_remoteDataSocket[hubId] = sock;
@@ -266,7 +266,7 @@ bool DataProxy::connectRemoteData(int hubId) {
          addClient(sock);
 #endif
 
-         CERR << "connected to hub (data) at " << hubData.address << ":" << hubData.port << std::endl;
+         CERR << "connected to hub (data) at " << hubData.address << ":" << hubData.dataPort << std::endl;
          return true;
       }
    }
