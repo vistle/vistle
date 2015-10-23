@@ -196,6 +196,13 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
            }
            break;
         }
+        case Message::IDENTIFY: {
+           auto &ident = msg->as<const Identify>();
+           if (ident.identity() != Identify::REMOTEBULKDATA) {
+              CERR << "invalid identity " << ident.identity() << " connected to remote data port" << std::endl;
+           }
+           break;
+        }
         default: {
             CERR << "remoteMsgRecv: unsupported msg type " << msg->type() << std::endl;
             break;
