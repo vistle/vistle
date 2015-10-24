@@ -124,7 +124,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
                     CERR << "send error" << std::endl;
                     return;
                 }
-                localMsgRecv(sock);
+                remoteMsgRecv(sock);
             });
             break;
          }
@@ -136,7 +136,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
                     CERR << "send error" << std::endl;
                     return;
                 }
-                remoteMsgRecv(sock);
+                localMsgRecv(sock);
             });
             break;
          }
@@ -155,7 +155,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
    });
 }
 
-void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
+void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
 
     using namespace vistle::message;
 
@@ -165,7 +165,7 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
             CERR << "recv: error " << ec.message() << std::endl;
             return;
         }
-        CERR << "remoteMsgRecv: msg received, type=" << msg->type() << std::endl;
+        CERR << "localMsgRecv: msg received, type=" << msg->type() << std::endl;
         switch(msg->type()) {
         case Message::SENDOBJECT: {
            auto &send = msg->as<const SendObject>();
@@ -183,7 +183,7 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
            //auto &req = static_cast<const RequestObject &>(*msg);
            auto &req = msg->as<const RequestObject>();
            int hubId = m_hub.idToHub(req.destId());
-           CERR << "remoteMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
+           CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
            auto remote = getRemoteDataSock(hubId);
            if (remote) {
               message::async_send(*remote, *msg, [this, msg, hubId, remote](error_code ec){
@@ -191,7 +191,7 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                     CERR << "error in forwarding RequestObject msg to remote hub " << hubId << std::endl;
                     return;
                  }
-                 localMsgRecv(remote);
+                 remoteMsgRecv(remote);
               });
            }
            break;
@@ -204,14 +204,14 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
            break;
         }
         default: {
-            CERR << "remoteMsgRecv: unsupported msg type " << msg->type() << std::endl;
+            CERR << "localMsgRecv: unsupported msg type " << msg->type() << std::endl;
             break;
         }
         }
     });
 }
 
-void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
+void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
 
     using namespace vistle::message;
 
@@ -240,7 +240,7 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
            int rank = req.destRank();
            CERR << "handleRemoteData on " << m_hub.id() << ": sending to " << hubId << std::endl;
            if (hubId != m_hub.id()) {
-               CERR << "localMsgRecv: hub mismatch" << std::endl;
+               CERR << "remoteMsgRecv: hub mismatch" << std::endl;
                return;
            }
            auto local = getLocalDataSock(rank);
@@ -250,13 +250,13 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                     CERR << "error in forwarding RequestObject msg to local rank " << rank << std::endl;
                     return;
                  }
-                 remoteMsgRecv(local);
+                 localMsgRecv(local);
               });
            }
            break;
         }
         default: {
-            CERR << "localMsgRecv: unsupported msg type " << msg->type() << std::endl;
+            CERR << "remoteMsgRecv: unsupported msg type " << msg->type() << std::endl;
             break;
         }
         }

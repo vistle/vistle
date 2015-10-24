@@ -52,8 +52,8 @@ private:
    boost::shared_ptr<tcp_socket> getRemoteDataSock(int hubId);
    boost::shared_ptr<tcp_socket> getLocalDataSock(int rank);
 
-   void remoteMsgRecv(boost::shared_ptr<tcp_socket> sock);
    void localMsgRecv(boost::shared_ptr<tcp_socket> sock);
+   void remoteMsgRecv(boost::shared_ptr<tcp_socket> sock);
 };
 
 }
