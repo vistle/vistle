@@ -1226,7 +1226,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
          applied.reset(param->clone());
          setParam.apply(applied);
       }
-   } else if (message::Id::isModule(sender)) {
+   } else if (message::Id::isModule(sender) && sender==setParam.getModule()) {
       // message from owning module
       auto param = getParameter(sender, setParam.getName());
       if (param) {
@@ -1241,7 +1241,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
 
    // update linked parameters
    if (Communicator::the().isMaster() && message::Id::isModule(dest)) {
-      if (!setParam.isReply()) {
+      if (setParam.getModule() != setParam.senderId()) {
 
          Port *port = portManager().getPort(dest, setParam.getName());
          if (port && applied) {
@@ -1255,7 +1255,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
                   // don't update parameter which was set originally again
                   continue;
                }
-               message::SetParameter set(p->getName(), applied);
+               message::SetParameter set(p->module(), p->getName(), applied);
                set.setDestId(p->module());
                set.setUuid(setParam.uuid());
                sendMessage(p->module(), set);

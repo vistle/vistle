@@ -832,8 +832,9 @@ boost::shared_ptr<Parameter> AddParameter::getParameter() const {
    return p;
 }
 
-SetParameter::SetParameter(const std::string &n, const boost::shared_ptr<Parameter> param, Parameter::RangeType rt)
+SetParameter::SetParameter(int module, const std::string &n, const boost::shared_ptr<Parameter> param, Parameter::RangeType rt)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
+, m_module(module)
 , paramtype(param->type())
 , initialize(false)
 , reply(false)
@@ -863,8 +864,9 @@ SetParameter::SetParameter(const std::string &n, const boost::shared_ptr<Paramet
    }
 }
 
-SetParameter::SetParameter(const std::string &n, const Integer v)
+SetParameter::SetParameter(int module, const std::string &n, const Integer v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
+, m_module(module)
 , paramtype(Parameter::Integer)
 , initialize(false)
 , reply(false)
@@ -875,8 +877,9 @@ SetParameter::SetParameter(const std::string &n, const Integer v)
    v_int = v;
 }
 
-SetParameter::SetParameter(const std::string &n, const Float v)
+SetParameter::SetParameter(int module, const std::string &n, const Float v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
+, m_module(module)
 , paramtype(Parameter::Float)
 , initialize(false)
 , reply(false)
@@ -887,8 +890,9 @@ SetParameter::SetParameter(const std::string &n, const Float v)
    v_scalar = v;
 }
 
-SetParameter::SetParameter(const std::string &n, const ParamVector &v)
+SetParameter::SetParameter(int module, const std::string &n, const ParamVector &v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
+, m_module(module)
 , paramtype(Parameter::Vector)
 , initialize(false)
 , reply(false)
@@ -901,8 +905,9 @@ SetParameter::SetParameter(const std::string &n, const ParamVector &v)
       v_vector[i] = v[i];
 }
 
-SetParameter::SetParameter(const std::string &n, const IntParamVector &v)
+SetParameter::SetParameter(int module, const std::string &n, const IntParamVector &v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
+, m_module(module)
 , paramtype(Parameter::IntVector)
 , initialize(false)
 , reply(false)
@@ -915,8 +920,9 @@ SetParameter::SetParameter(const std::string &n, const IntParamVector &v)
       v_ivector[i] = v[i];
 }
 
-SetParameter::SetParameter(const std::string &n, const std::string &v)
+SetParameter::SetParameter(int module, const std::string &n, const std::string &v)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
+, m_module(module)
 , paramtype(Parameter::String)
 , initialize(false)
 , reply(false)
@@ -937,6 +943,17 @@ bool SetParameter::isInitialization() const {
    return initialize;
 }
 
+void SetParameter::setModule(int m) {
+
+   m_module = m;
+}
+
+int SetParameter::getModule() const {
+
+   return m_module;
+}
+
+#if 0
 void SetParameter::setReply() {
 
    reply = true;
@@ -946,6 +963,7 @@ bool SetParameter::isReply() const {
 
    return reply;
 }
+#endif
 
 void SetParameter::setRangeType(int rt) {
 

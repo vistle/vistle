@@ -619,17 +619,21 @@ BOOST_STATIC_ASSERT(sizeof(AddParameter) <= Message::MESSAGE_SIZE);
 //! request parameter value update or notify that a parameter value has been changed
 class V_COREEXPORT SetParameter: public Message {
    public:
-      SetParameter(const std::string & name, const boost::shared_ptr<Parameter> param, Parameter::RangeType rt=Parameter::Value);
-      SetParameter(const std::string & name, const Integer value);
-      SetParameter(const std::string & name, const Float value);
-      SetParameter( const std::string & name, const ParamVector &value);
-      SetParameter(const std::string & name, const IntParamVector &value);
-      SetParameter(const std::string & name, const std::string &value);
+      SetParameter(int module, const std::string & name, const boost::shared_ptr<Parameter> param, Parameter::RangeType rt=Parameter::Value);
+      SetParameter(int module, const std::string & name, const Integer value);
+      SetParameter(int module, const std::string & name, const Float value);
+      SetParameter(int module, const std::string & name, const ParamVector &value);
+      SetParameter(int module, const std::string & name, const IntParamVector &value);
+      SetParameter(int module, const std::string & name, const std::string &value);
 
       void setInit();
       bool isInitialization() const;
+      void setModule(int );
+      int getModule() const;
+#if 0
       void setReply();
       bool isReply() const;
+#endif
       bool setType(int type);
 
       void setRangeType(int rt);
@@ -647,6 +651,7 @@ class V_COREEXPORT SetParameter: public Message {
       bool apply(boost::shared_ptr<Parameter> param) const;
 
    private:
+      int m_module; //!< destination module
       param_name_t name;
       int paramtype;
       int dim;

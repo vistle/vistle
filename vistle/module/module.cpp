@@ -429,7 +429,7 @@ Parameter *Module::addParameterGeneric(const std::string &name, boost::shared_pt
    message::AddParameter add(*param, m_name);
    add.setDestId(Id::ForBroadcast);
    sendMessage(add);
-   message::SetParameter set(name, param);
+   message::SetParameter set(m_id, name, param);
    set.setDestId(Id::ForBroadcast);
    set.setInit();
    set.setUuid(add.uuid());
@@ -457,9 +457,8 @@ bool Module::updateParameter(const std::string &name, const Parameter *param, co
       return false;
    }
 
-   message::SetParameter set(name, i->second, rt);
+   message::SetParameter set(m_id, name, i->second, rt);
    if (inResponseTo) {
-      set.setReply();
       set.setUuid(inResponseTo->uuid());
    }
    set.setDestId(Id::ForBroadcast);
@@ -1385,7 +1384,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             // notification of controller about current value happens in set...Parameter
          } else {
 
-            parameterChanged(param->senderId(), param->getName(), *param);
+            parameterChanged(param->getModule(), param->getName(), *param);
          }
          break;
       }

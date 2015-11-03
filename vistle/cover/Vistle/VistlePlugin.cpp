@@ -160,6 +160,7 @@ bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, co
       plugin = plugin.substr(0, plugin.size()-3);
    if (plugin == "CutGeometry")
       plugin = "CuttingSurface";
+    std::cerr << "parameterAdded: sender=" <<  senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
 
    if (plugin == "CuttingSurface"
          || plugin == "Tracer"
@@ -177,6 +178,7 @@ bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, co
       if (it == m_interactorMap.end()) {
          m_interactorMap[senderId] = new VistleInteractor(this, moduleName, senderId);
          it = m_interactorMap.find(senderId);
+         std::cerr << "created interactor for " << moduleName << ":" << senderId << std::endl;
       }
       VistleInteractor *inter = it->second;
       inter->addParam(name, msg);
