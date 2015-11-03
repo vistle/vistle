@@ -1300,7 +1300,11 @@ bool ClusterManager::handlePriv(const message::SetParameterChoices &setChoices) 
       if (param) {
          setChoices.apply(param);
       }
-      sendAllOthers(setChoices.senderId(), setChoices, true);
+      if (dest == Id::ForBroadcast) {
+          sendHub(setChoices, Id::MasterHub);
+      } else if (!Communicator::the().isMaster()) {
+         sendAllOthers(sender, setChoices, true);
+      }
    }
 
    return handled;
