@@ -427,7 +427,7 @@ bool ClusterManager::handle(const message::Message &message) {
       }
    }
    if (message::Id::isHub(message.destId())) {
-       if (destHub != hubId) {
+       if (destHub != hubId || message.type() == message::Message::EXECUTE) {
            return sendHub(message);
        }
    }
@@ -798,40 +798,33 @@ bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
 
 bool ClusterManager::handlePriv(const message::Execute &exec) {
 
-   if (exec.senderId() >= Id::ModuleBase) {
-
-      if (getRank() == 0)
-         sendHub(exec);
-   } else {
-
-      vassert (exec.getModule() >= Id::ModuleBase);
-      RunningMap::iterator i = runningMap.find(exec.getModule());
-      if (i != runningMap.end()) {
-         i->second.send(exec);
-         switch(exec.what()) {
-         case message::Execute::Prepare:
-             vassert(!i->second.prepared);
-             vassert(i->second.reduced);
-             i->second.prepared = true;
-             i->second.reduced = false;
-             CERR << "sent prepare to " << exec.getModule() << ", checking for execution" << std::endl;
-             checkExecuteObject(exec.getModule());
-             break;
-         case message::Execute::Reduce:
-             vassert(i->second.prepared);
-             vassert(!i->second.reduced);
-             i->second.prepared = false;
-             i->second.reduced = true;
-             break;
-         case message::Execute::ComputeExecute:
-             vassert(!i->second.prepared);
-             vassert(i->second.reduced);
-             i->second.reduced = true;
-             i->second.prepared = false;
-             break;
-         case message::Execute::ComputeObject:
-             break;
-         }
+   vassert (exec.getModule() >= Id::ModuleBase);
+   RunningMap::iterator i = runningMap.find(exec.getModule());
+   if (i != runningMap.end()) {
+      i->second.send(exec);
+      switch(exec.what()) {
+      case message::Execute::Prepare:
+         vassert(!i->second.prepared);
+         vassert(i->second.reduced);
+         i->second.prepared = true;
+         i->second.reduced = false;
+         CERR << "sent prepare to " << exec.getModule() << ", checking for execution" << std::endl;
+         checkExecuteObject(exec.getModule());
+         break;
+      case message::Execute::Reduce:
+         vassert(i->second.prepared);
+         vassert(!i->second.reduced);
+         i->second.prepared = false;
+         i->second.reduced = true;
+         break;
+      case message::Execute::ComputeExecute:
+         vassert(!i->second.prepared);
+         vassert(i->second.reduced);
+         i->second.reduced = true;
+         i->second.prepared = false;
+         break;
+      case message::Execute::ComputeObject:
+         break;
       }
    }
 
