@@ -1233,7 +1233,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
          setParam.apply(param);
       }
       if (dest == Id::ForBroadcast) {
-          sendHub(setParam, Id::MasterHub);
+          sendHub(setParam, dest);
       } else if (!Communicator::the().isMaster()) {
          sendAllOthers(sender, setParam, true);
       }

@@ -431,6 +431,7 @@ Parameter *Module::addParameterGeneric(const std::string &name, boost::shared_pt
    sendMessage(add);
    message::SetParameter set(m_id, name, param);
    set.setDestId(Id::ForBroadcast);
+   set.setBroadcast();
    set.setInit();
    set.setUuid(add.uuid());
    sendMessage(set);

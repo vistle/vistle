@@ -593,11 +593,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    if (senderType == Identify::UI)
       msg.setSenderId(m_hubId);
 
-   if (m_hubId == Id::MasterHub) {
-       if (msg.destId() == Id::ForBroadcast)
-           msg.setDestId(Id::Broadcast);
-   }
-
    bool masterAdded = false;
    switch (msg.type()) {
       case message::Message::IDENTIFY: {
@@ -704,8 +699,15 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
    if (Router::the().toManager(msg, senderType, sender)
            || (Id::isModule(msg.destId()) && dest == m_hubId)) {
-      sendManager(msg);
+
       mgr = true;
+   }
+   if (m_hubId == Id::MasterHub) {
+      if (msg.destId() == Id::ForBroadcast)
+         msg.setDestId(Id::Broadcast);
+   }
+   if (mgr) {
+      sendManager(msg);
    }
    if (Router::the().toUi(msg, senderType)) {
       sendUi(msg);

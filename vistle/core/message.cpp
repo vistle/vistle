@@ -1620,10 +1620,10 @@ void Router::initRoutingTable() {
    rt[M::MODULEAVAILABLE]       = Track|DestHub|DestUi|HandleOnHub;
    rt[M::ADDPORT]               = Broadcast|Track|DestUi|TriggerQueue;
    rt[M::ADDPARAMETER]          = Broadcast|Track|DestUi|TriggerQueue;
+   rt[M::SETPARAMETERCHOICES]   = Broadcast|Track|DestUi;
    rt[M::CONNECT]               = Track|Broadcast|QueueIfUnhandled|DestManager;
    rt[M::DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager;
-   rt[M::SETPARAMETER]          = Track|QueueIfUnhandled|DestLocalManager|DestUi;
-   rt[M::SETPARAMETERCHOICES]   = Track|QueueIfUnhandled|DestLocalManager|DestUi;
+   rt[M::SETPARAMETER]          = Track|QueueIfUnhandled|DestLocalManager|DestUi|DestModules;
    rt[M::PING]                  = DestModules|HandleOnDest;
    rt[M::PONG]                  = DestUi|HandleOnDest;
    rt[M::BUSY]                  = Special;
@@ -1764,6 +1764,8 @@ bool Router::toSlaveHub(const Message &msg, Identify::Identity senderType, int s
 bool Router::toManager(const Message &msg, Identify::Identity senderType, int senderHub) {
 
    const int t = msg.type();
+   if (msg.destId() == Id::ForBroadcast)
+       return true;
    if (Id::isHub(msg.destId())) {
       if (msg.destId() == m_hubId && rt[t] & DestManager) {
          return true;
