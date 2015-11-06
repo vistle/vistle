@@ -361,6 +361,7 @@ Port *Module::createInputPort(const std::string &name, const std::string &descri
       inputPorts[name] = p;
 
       message::AddPort message(p);
+      message.setDestId(Id::ForBroadcast);
       sendMessage(message);
       return p;
    }
@@ -379,6 +380,7 @@ Port *Module::createOutputPort(const std::string &name, const std::string &descr
       outputPorts[name] = p;
 
       message::AddPort message(p);
+      message.setDestId(Id::ForBroadcast);
       sendMessage(message);
       return p;
    }
@@ -431,7 +433,6 @@ Parameter *Module::addParameterGeneric(const std::string &name, boost::shared_pt
    sendMessage(add);
    message::SetParameter set(m_id, name, param);
    set.setDestId(Id::ForBroadcast);
-   set.setBroadcast();
    set.setInit();
    set.setUuid(add.uuid());
    sendMessage(set);

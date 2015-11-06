@@ -408,7 +408,7 @@ bool ClusterManager::handle(const message::Message &message) {
       destHub = m_stateTracker.getHub(destHub);
    if (message.typeFlags() & Broadcast || message.destId() == Id::Broadcast) {
       if (message.senderId() != hubId && senderHub == hubId) {
-         //CERR << "BC: " << message << std::endl;
+         CERR << "BC: " << message << std::endl;
          if (getRank() == 0)
             sendHub(message);
       }
