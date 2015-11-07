@@ -2,13 +2,17 @@
 #define SERIALIZE_H
 
 #include <boost/config.hpp>
+#include <boost/version.hpp>
 
 #include <boost/serialization/utility.hpp>
 #include <boost/serialization/collections_save_imp.hpp>
 #include <boost/serialization/collections_load_imp.hpp>
 #include <boost/serialization/split_free.hpp>
+#include <boost/serialization/map.hpp>
 
 #include <boost/serialization/level.hpp>
+
+#include <boost/interprocess/containers/map.hpp>
 
 BOOST_CLASS_IMPLEMENTATION(boost::interprocess::string, boost::serialization::primitive_type)
 
@@ -33,16 +37,19 @@ inline void load(
     boost::interprocess::map<Key, Type, Compare, Allocator> &t,
     const unsigned int /* file_version */
 ){
-    boost::serialization::stl::load_collection<
+#if BOOST_VERSION >= 105900
+    boost::serialization::load_map_collection<
         Archive,
-        boost::interprocess::map<Key, Type, Compare, Allocator>,
-        boost::serialization::stl::archive_input_map<
-            Archive, boost::interprocess::map<Key, Type, Compare, Allocator> >,
-            boost::serialization::stl::no_reserve_imp<boost::interprocess::map<
-                Key, Type, Compare, Allocator
-            >
-        >
+        boost::interprocess::map<Key, Type, Compare, Allocator>
     >(ar, t);
+#else
+    boost::serialization::stl::load_collection<
+       Archive,
+       boost::interprocess::map<Key, Type, Compare, Allocator>,
+       boost::serialization::stl::archive_input_map<Archive, boost::interprocess::map<Key, Type, Compare, Allocator> >,
+       boost::serialization::stl::no_reserve_imp<boost::interprocess::map<Key, Type, Compare, Allocator> >
+    >(ar, t);
+#endif
 }
 
 // split non-intrusive serialization function member into separate
@@ -62,9 +69,9 @@ inline void save(
     const boost::container::vector<U, Allocator> &t,
     const unsigned int /* file_version */
 ){
-    boost::serialization::stl::save_collection<Archive, boost::container::vector<U, Allocator> >(
-        ar, t
-    );
+    const size_t count = t.size();
+    ar & boost::serialization::make_nvp("count", count);
+    ar & boost::serialization::make_nvp("item", boost::serialization::make_array(t.data(), count));
 }
 
 template<class Archive, class U, class Allocator>
@@ -73,14 +80,18 @@ inline void load(
     boost::container::vector<U, Allocator> &t,
     const unsigned int /* file_version */
 ){
-    boost::serialization::stl::load_collection<
-        Archive,
-        boost::container::vector<U, Allocator>,
-        boost::serialization::stl::archive_input_seq<
-            Archive, boost::container::vector<U, Allocator> 
-        >,
-        boost::serialization::stl::reserve_imp<boost::container::vector<U, Allocator> >
-    >(ar, t);
+    size_t count = 0;
+    ar & boost::serialization::make_nvp("count", count);
+    t.clear();
+    t.reserve(count);
+    while(count-- > 0){
+       detail::stack_construct<Archive, U> u(ar, 0);
+       ar >> boost::serialization::make_nvp("item", u.reference());
+       t.push_back(u.reference());
+       ar.reset_object_address(& t.back() , & u.reference());
+    }
+
+    //ar & boost::serialization::make_nvp("item", boost::serialization::make_array(t.data(), count));
 }
 
 

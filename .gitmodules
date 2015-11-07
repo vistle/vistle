@@ -20,3 +20,6 @@
 [submodule "3rdparty/boost-mpi-1.55"]
 	path = 3rdparty/boost-mpi-1.55
 	url = git://github.com/boostorg/mpi.git
+[submodule "3rdparty/boost-mpi-1.58"]
+	path = 3rdparty/boost-mpi-1.58
+	url = git://github.com/boostorg/mpi.git
