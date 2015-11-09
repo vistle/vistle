@@ -719,7 +719,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          master = true;
       }
       if (Router::the().toSlaveHub(msg, senderType, sender)) {
-         sendSlaves(msg);
+         sendSlaves(msg, msg.destId()==Id::Broadcast /* return to sender */ );
          slave = true;
       }
       vassert(!(slave && master));
