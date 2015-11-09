@@ -344,10 +344,14 @@ bool ClusterManager::sendUi(const message::Message &message) const {
 
 bool ClusterManager::sendHub(const message::Message &message, int destHub) const {
 
-   message::Buffer buf(message);
-   if (Id::isHub(destHub))
-      buf.setDestId(destHub);
-   return Communicator::the().sendHub(buf);
+    if (getRank()!=0 && !message::Router::the().toRank0(message)) {
+        return true;
+    }
+
+    message::Buffer buf(message);
+    if (Id::isHub(destHub))
+       buf.setDestId(destHub);
+    return Communicator::the().sendHub(buf);
 }
 
 bool ClusterManager::sendMessage(const int moduleId, const message::Message &message, int destRank) const {

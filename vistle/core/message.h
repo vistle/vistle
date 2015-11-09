@@ -1001,6 +1001,8 @@ enum RoutingFlags {
 
    QueueIfUnhandled     = 0x040000,
    TriggerQueue         = 0x080000,
+
+   OnlyRank0          = 0x100000,
 };
 
 class V_COREEXPORT Router {
@@ -1018,6 +1020,7 @@ class V_COREEXPORT Router {
    bool toModule(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
    bool toTracker(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
    bool toHandler(const Message &msg, Identify::Identity senderType=Identify::UNKNOWN);
+   bool toRank0(const Message &msg);
 
  private:
    static unsigned rt[Message::NumMessageTypes];

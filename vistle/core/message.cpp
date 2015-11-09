@@ -1618,12 +1618,12 @@ void Router::initRoutingTable() {
    rt[M::QUIT]                  = Broadcast|HandleOnMaster|HandleOnHub|HandleOnNode;
    rt[M::EXECUTE]               = Special|HandleOnMaster;
    rt[M::MODULEAVAILABLE]       = Track|DestHub|DestUi|HandleOnHub;
-   rt[M::ADDPORT]               = Track|DestUi|DestManager|DestModules|TriggerQueue;
-   rt[M::ADDPARAMETER]          = Track|DestUi|DestManager|DestModules|TriggerQueue;
-   rt[M::SETPARAMETERCHOICES]   = Track|DestUi|DestModules;
-   rt[M::CONNECT]               = Track|Broadcast|QueueIfUnhandled|DestManager;
-   rt[M::DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager;
-   rt[M::SETPARAMETER]          = Track|QueueIfUnhandled|DestManager|DestUi|DestModules;
+   rt[M::ADDPORT]               = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
+   rt[M::ADDPARAMETER]          = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
+   rt[M::SETPARAMETERCHOICES]   = Track|DestUi|DestModules|OnlyRank0;
+   rt[M::CONNECT]               = Track|Broadcast|QueueIfUnhandled|DestManager|OnlyRank0;
+   rt[M::DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager|OnlyRank0;
+   rt[M::SETPARAMETER]          = Track|QueueIfUnhandled|DestManager|DestUi|DestModules|OnlyRank0;
    rt[M::PING]                  = DestModules|HandleOnDest;
    rt[M::PONG]                  = DestUi|HandleOnDest;
    rt[M::BUSY]                  = Special;
@@ -1849,6 +1849,11 @@ bool Router::toHandler(const Message &msg, Identify::Identity senderType) {
    }
 
    return false;
+}
+
+bool Router::toRank0(const Message &msg) {
+   const int t = msg.type();
+   return !(rt[t] & OnlyRank0);
 }
 
 } // namespace message
