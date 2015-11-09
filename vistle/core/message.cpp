@@ -1618,12 +1618,12 @@ void Router::initRoutingTable() {
    rt[M::QUIT]                  = Broadcast|HandleOnMaster|HandleOnHub|HandleOnNode;
    rt[M::EXECUTE]               = Special|HandleOnMaster;
    rt[M::MODULEAVAILABLE]       = Track|DestHub|DestUi|HandleOnHub;
-   rt[M::ADDPORT]               = Track|DestUi|TriggerQueue;
-   rt[M::ADDPARAMETER]          = Track|DestUi|DestModules|TriggerQueue;
+   rt[M::ADDPORT]               = Track|DestUi|DestManager|DestModules|TriggerQueue;
+   rt[M::ADDPARAMETER]          = Track|DestUi|DestManager|DestModules|TriggerQueue;
    rt[M::SETPARAMETERCHOICES]   = Track|DestUi|DestModules;
    rt[M::CONNECT]               = Track|Broadcast|QueueIfUnhandled|DestManager;
    rt[M::DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager;
-   rt[M::SETPARAMETER]          = Track|QueueIfUnhandled|DestLocalManager|DestUi|DestModules;
+   rt[M::SETPARAMETER]          = Track|QueueIfUnhandled|DestManager|DestUi|DestModules;
    rt[M::PING]                  = DestModules|HandleOnDest;
    rt[M::PONG]                  = DestUi|HandleOnDest;
    rt[M::BUSY]                  = Special;
@@ -1765,6 +1765,8 @@ bool Router::toManager(const Message &msg, Identify::Identity senderType, int se
 
    const int t = msg.type();
    if (msg.destId() == Id::ForBroadcast)
+       return false;
+   if (msg.destId() == Id::Broadcast)
        return true;
    if (Id::isHub(msg.destId())) {
       if (msg.destId() == m_hubId && rt[t] & DestManager) {

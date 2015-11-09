@@ -67,7 +67,7 @@ Hub::Hub()
 , m_slaveCount(0)
 , m_hubId(Id::Invalid)
 , m_moduleCount(0)
-, m_traceMessages(message::Message::EXECUTIONPROGRESS)
+, m_traceMessages(message::Message::ADDPORT)
 , m_execCount(0)
 , m_barrierActive(false)
 , m_barrierReached(0)
@@ -697,17 +697,15 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    const int dest = idToHub(msg.destId());
    const int sender = idToHub(msg.senderId());
 
-   if (Router::the().toManager(msg, senderType, sender)
-           || (Id::isModule(msg.destId()) && dest == m_hubId)) {
-
-      mgr = true;
-   }
    if (m_hubId == Id::MasterHub) {
       if (msg.destId() == Id::ForBroadcast)
          msg.setDestId(Id::Broadcast);
    }
-   if (mgr) {
+   if (Router::the().toManager(msg, senderType, sender)
+           || (Id::isModule(msg.destId()) && dest == m_hubId)) {
+
       sendManager(msg);
+      mgr = true;
    }
    if (Router::the().toUi(msg, senderType)) {
       sendUi(msg);
@@ -778,7 +776,8 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             AvailableModule::Key key(spawn.hubId(), name);
             auto it = m_availableModules.find(key);
             if (it == m_availableModules.end()) {
-               CERR << "refusing to spawn " << name << ": not in list of available modules" << std::endl;
+               if (spawn.hubId() == m_hubId)
+                  CERR << "refusing to spawn " << name << ": not in list of available modules" << std::endl;
                return true;
             }
             std::string path = it->second.path;
@@ -1184,7 +1183,7 @@ bool Hub::handlePriv(const message::Execute &exec) {
    if (exec.getExecutionCount() < 0)
       toSend.setExecutionCount(++m_execCount);
 
-   if (exec.getModule() >= Id::ModuleBase) {
+   if (Id::isModule(exec.getModule())) {
       const int hub = m_stateTracker.getHub(exec.getModule());
       toSend.setDestId(exec.getModule());
       sendManager(toSend, hub);

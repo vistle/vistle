@@ -31,9 +31,9 @@ struct Id {
       ModuleBase = 1, //< >= ModuleBase: modules
       Invalid = 0,
       Broadcast = -1, //< master is broadcasting
-      NextHop = -2,
-      UI = -3,
-      ForBroadcast = -4, //< to master for broadcasting
+      ForBroadcast = -2, //< to master for broadcasting
+      NextHop = -3,
+      UI = -4,
       LocalManager = -5,
       LocalHub = -6,
       MasterHub = -7, //< < MasterHub: slave hubs

@@ -344,13 +344,10 @@ bool ClusterManager::sendUi(const message::Message &message) const {
 
 bool ClusterManager::sendHub(const message::Message &message, int destHub) const {
 
-    if (destHub == Id::Broadcast || destHub == Id::ForBroadcast) {
-       return Communicator::the().sendHub(message);
-    } else {
-       message::Buffer buf(message);
-       buf.setDestId(destHub);
-       return Communicator::the().sendHub(buf);
-    }
+   message::Buffer buf(message);
+   if (Id::isHub(destHub))
+      buf.setDestId(destHub);
+   return Communicator::the().sendHub(buf);
 }
 
 bool ClusterManager::sendMessage(const int moduleId, const message::Message &message, int destRank) const {
@@ -387,6 +384,10 @@ bool ClusterManager::handle(const message::Message &message) {
 
    using namespace vistle::message;
 
+   if (message.destId() == Id::ForBroadcast) {
+       return sendHub(message);
+   }
+
    switch (message.type()) {
       case Message::CONNECT:
       case Message::DISCONNECT:
@@ -407,11 +408,13 @@ bool ClusterManager::handle(const message::Message &message) {
    if (destHub >= Id::ModuleBase)
       destHub = m_stateTracker.getHub(destHub);
    if (message.typeFlags() & Broadcast || message.destId() == Id::Broadcast) {
+#if 0
       if (message.senderId() != hubId && senderHub == hubId) {
          CERR << "BC: " << message << std::endl;
          if (getRank() == 0)
             sendHub(message);
       }
+#endif
       if (message.typeFlags() & BroadcastModule) {
          sendAllLocal(message);
       }
@@ -617,7 +620,7 @@ bool ClusterManager::handlePriv(const message::Trace &trace) {
    if (trace.module() >= Id::ModuleBase) {
       sendMessage(trace.module(), trace);
    } else if (trace.module() == Id::Broadcast) {
-      sendAll(trace);
+      sendAllLocal(trace);
    }
 #if 0
    if (trace.module() == Id::Broadcast || trace.module() == Communicator::the().hubId()) {
@@ -1253,7 +1256,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
                const auto p = *it;
                if (p->module()==setParam.destId() && p->getName()==setParam.getName()) {
                   // don't update parameter which was set originally again
-                  continue;
+                  //continue;
                }
                message::SetParameter set(p->module(), p->getName(), applied);
                set.setDestId(p->module());
