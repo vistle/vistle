@@ -358,7 +358,7 @@ class ObjectTypeRegistry {
    static boost::shared_ptr<const ObjType> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const ObjType>(ptr); } \
    static boost::shared_ptr<ObjType> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<ObjType>(ptr); } \
    static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new ObjType(static_cast<ObjType::Data *>(data))); } \
-   Object::ptr cloneInternal() const { \
+   Object::ptr cloneInternal() const override { \
       const std::string n(Shm::the().createObjectId()); \
             Data *data = shm<Data>::construct(n)(*d(), n); \
             publish(data); \
@@ -367,7 +367,7 @@ class ObjectTypeRegistry {
    ObjType::ptr clone() const { \
       return ObjType::as(cloneInternal()); \
    } \
-   Object::ptr createEmptyInternal() const { \
+   Object::ptr createEmptyInternal() const override { \
       return Object::ptr(new ObjType(Object::Initialized)); \
    } \
    ObjType::ptr createEmpty() const { \
@@ -391,8 +391,8 @@ class ObjectTypeRegistry {
    static void registerIArchive(iarchive &ar); \
    static void registerOArchive(oarchive &ar); \
    ObjType(Object::InitializedFlags) : Base(ObjType::Data::create()) {}  \
-   virtual bool isEmpty() const; \
-   bool check() const { refresh(); if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
+   virtual bool isEmpty() const override; \
+   bool check() const override { refresh(); if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
    struct Data; \
    Data *d() const { return static_cast<Data *>(Object::m_data); } \
    protected: \

@@ -59,11 +59,11 @@ class Vec: public DataBase {
 
    void refresh() const override;
 
-   Index getSize() const {
+   Index getSize() const override {
       return d()->x[0]->size();
    }
 
-   void setSize(const Index size);
+   void setSize(const Index size) override;
 
    array &x(int c=0) { return *d()->x[c]; }
    array &y() { return *d()->x[1]; }
@@ -78,7 +78,7 @@ class Vec: public DataBase {
    std::pair<Vector, Vector> getMinMax() const;
 
    bool validateCelltree() const;
-   virtual void createCelltree(Index nelem, const Index *el, const Index *cl) const;
+   virtual void createCelltree(Index nelem, const Index *el, const Index *cl) const override;
 
  private:
    void refreshImpl() const;
