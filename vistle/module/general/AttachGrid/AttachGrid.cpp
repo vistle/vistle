@@ -25,22 +25,41 @@ AttachGrid::~AttachGrid() {
 
 bool AttachGrid::compute() {
 
+   bool ok = true;
    auto grid = expect<Object>(m_gridIn);
-   if (!grid)
+   if (!grid) {
+       ok = false;
+   }
+
+   std::vector<DataBase::const_ptr> data;
+   for (size_t i=0; i<m_dataIn.size(); ++i) {
+
+       auto &pin = m_dataIn[i];
+       if (isConnected(pin)) {
+          auto d = expect<DataBase>(pin);
+          if (!d) {
+              ok = false;
+          }
+          data.push_back(d);
+       } else {
+          data.push_back(DataBase::const_ptr());
+       }
+   }
+
+   if (!ok) {
+       std::cerr << "did not receive objects at all connected input ports" << std::endl;
        return true;
+   }
 
    for (size_t i=0; i<m_dataIn.size(); ++i) {
 
        auto &pin = m_dataIn[i];
        auto &pout = m_dataOut[i];
        if (isConnected(pin)) {
-          auto data = expect<DataBase>(pin);
-          if (!data) {
-              return true;
-          }
-          auto out = data->clone();
-          out->setGrid(grid);
-          addObject(pout, out);
+           vassert(data[i]);
+           auto out = data[i]->clone();
+           out->setGrid(grid);
+           addObject(pout, out);
        }
    }
 
