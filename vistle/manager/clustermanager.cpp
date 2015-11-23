@@ -122,6 +122,7 @@ bool ClusterManager::Module::update() const {
 ClusterManager::ClusterManager(int r, const std::vector<std::string> &hosts)
 : m_portManager(new PortManager(this))
 , m_stateTracker(std::string("ClusterManager state rk")+boost::lexical_cast<std::string>(r), m_portManager)
+, m_traceMessages(message::Message::INVALID)
 , m_quitFlag(false)
 , m_rank(r)
 , m_size(hosts.size())
@@ -392,6 +393,10 @@ bool ClusterManager::handle(const message::Message &message) {
        return sendHub(message);
    }
 
+   if (message.type() == m_traceMessages || m_traceMessages==Message::ANY) {
+       CERR << "handle: " << message << std::endl;
+   }
+
    switch (message.type()) {
       case Message::CONNECT:
       case Message::DISCONNECT:
@@ -626,14 +631,14 @@ bool ClusterManager::handlePriv(const message::Trace &trace) {
    } else if (trace.module() == Id::Broadcast) {
       sendAllLocal(trace);
    }
-#if 0
+
    if (trace.module() == Id::Broadcast || trace.module() == Communicator::the().hubId()) {
       if (trace.on())
          m_traceMessages = trace.messageType();
       else
          m_traceMessages = message::Message::INVALID;
    }
-#endif
+
    return true;
 }
 

@@ -64,8 +64,6 @@ class Communicator {
    message::Buffer m_recvBufToRank, m_recvBufToAny;
    MPI_Request m_reqAny, m_reqToRank;
 
-   message::Message::Type m_traceMessages;
-
    static Communicator *s_singleton;
 
    Communicator(const Communicator &other); // not implemented

@@ -66,6 +66,8 @@ class ClusterManager {
 
    boost::shared_ptr<PortManager> m_portManager;
    StateTracker m_stateTracker;
+   message::Message::Type m_traceMessages;
+
    bool m_quitFlag;
 
    bool handlePriv(const message::Trace &trace);

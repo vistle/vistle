@@ -49,7 +49,6 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts)
 , m_size(hosts.size())
 , m_quitFlag(false)
 , m_recvSize(0)
-, m_traceMessages(message::Message::INVALID)
 , m_hubSocket(m_ioService)
 {
    vassert(s_singleton == NULL);
