@@ -691,9 +691,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
    bool mgr=false, ui=false, master=false, slave=false;
 
-   bool track = Router::the().toTracker(msg, senderType) && !masterAdded;
-   m_stateTracker.handle(msg, track);
-
    const int dest = idToHub(msg.destId());
    const int sender = idToHub(msg.senderId());
 
@@ -701,6 +698,9 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
       if (msg.destId() == Id::ForBroadcast)
          msg.setDestId(Id::Broadcast);
    }
+   bool track = Router::the().toTracker(msg, senderType) && !masterAdded;
+   m_stateTracker.handle(msg, track);
+
    if (Router::the().toManager(msg, senderType, sender)
            || (Id::isModule(msg.destId()) && dest == m_hubId)) {
 
