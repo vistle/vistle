@@ -14,8 +14,8 @@ class VecToScalar: public vistle::Module {
  private:
    virtual bool compute();
    vistle::IntParameter *m_caseParam;
-   vistle::Object::ptr extract(vistle::Vec<vistle::Scalar, 3>::const_ptr &data, const vistle::Index &coord);
-   vistle::Object::ptr calculateAbsolute(vistle::Vec<vistle::Scalar, 3>::const_ptr &data);
+   vistle::Vec<vistle::Scalar>::ptr extract(vistle::Vec<vistle::Scalar, 3>::const_ptr &data, const vistle::Index &coord);
+   vistle::Vec<vistle::Scalar>::ptr calculateAbsolute(vistle::Vec<vistle::Scalar, 3>::const_ptr &data);
 };
 
 #endif

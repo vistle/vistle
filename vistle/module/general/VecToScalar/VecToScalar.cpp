@@ -24,50 +24,49 @@ VecToScalar::~VecToScalar() {
 
 bool VecToScalar::compute() {
 
-   Object::const_ptr data = expect<Object>("data_in");
-   if (!data)
-      return true;
-
-   if(auto data_in = Vec<Scalar, 3>::as(data)) {
-
-      Object::ptr out;
-      switch(m_caseParam->getValue()) {
-         case X: {
-            out = extract(data_in,0);
-            break;
-         }
-
-         case Y: {
-            out = extract(data_in,1);
-            break;
-         }
-
-         case Z: {
-            out = extract(data_in,2);
-            break;
-         }
-
-         case AbsoluteValue: {
-            out = calculateAbsolute(data_in);
-            break;
-         }
-      }
-
-      out->copyAttributes(data);
-      addObject("data_out", out);
-   } else {
+   Vec<Scalar, 3>::const_ptr data_in = expect<Vec<Scalar, 3>>("data_in");
+   if (!data_in) {
       std::cerr << "VecToScalar: ERROR: Input is not vector data" << std::endl;
-   }
       return true;
+   }
+
+   Vec<Scalar>::ptr out;
+   switch(m_caseParam->getValue()) {
+   case X: {
+      out = extract(data_in,0);
+      break;
+   }
+
+   case Y: {
+      out = extract(data_in,1);
+      break;
+   }
+
+   case Z: {
+      out = extract(data_in,2);
+      break;
+   }
+
+   case AbsoluteValue: {
+      out = calculateAbsolute(data_in);
+      break;
+   }
+   }
+
+   out->copyAttributes(data_in);
+   out->setGrid(data_in->grid());
+   addObject("data_out", out);
+
+   return true;
 }
 
-Object::ptr VecToScalar::extract(Vec<Scalar, 3>::const_ptr &data, const Index &coord) {
+Vec<Scalar>::ptr VecToScalar::extract(Vec<Scalar, 3>::const_ptr &data, const Index &coord) {
    Vec<Scalar>::ptr dataOut(new Vec<Scalar>(Object::Initialized));
    dataOut->d()->x[0] = data->d()->x[coord];
    return dataOut;
 }
 
-Object::ptr VecToScalar::calculateAbsolute(Vec<Scalar, 3>::const_ptr &data) {
+Vec<Scalar>::ptr VecToScalar::calculateAbsolute(Vec<Scalar, 3>::const_ptr &data) {
    const Scalar *in_data_0 = &data->x()[0];
    const Scalar *in_data_1 = &data->y()[0];
    const Scalar *in_data_2 = &data->z()[0];
