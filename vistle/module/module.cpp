@@ -681,7 +681,7 @@ bool Module::passThroughObject(Port *port, vistle::Object::const_ptr object) {
    vassert(object->check());
 
    message::AddObject message(port->getName(), object);
-   sendMessageQueue->send(message);
+   sendMessage(message);
    return true;
 }
 
