@@ -3,6 +3,7 @@
 echo SPAWN "$@"
 
 export MV2_ENABLE_AFFINITY=0
+export MPI_UNBUFFERED_STDIO=1
 export DYLD_LIBRARY_PATH="$VISTLE_DYLD_LIBRARY_PATH"
 
 if [ -n "$SLURM_JOB_ID" ]; then
