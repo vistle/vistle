@@ -626,6 +626,8 @@ bool ClusterManager::handle(const message::Message &message) {
 
 bool ClusterManager::handlePriv(const message::Trace &trace) {
 
+   CERR << "handle: " << trace << std::endl;
+
    if (trace.module() >= Id::ModuleBase) {
       sendMessage(trace.module(), trace);
    } else if (trace.module() == Id::Broadcast) {
@@ -971,7 +973,6 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
 
 bool ClusterManager::checkExecuteObject(int destId) {
 
-   CERR << "checking whether " << destId << " can be executed" << std::endl;
    if (!isReadyForExecute(destId))
        return true;
    CERR << "CHK ready for exec" << std::endl;
@@ -1135,6 +1136,9 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             vassert(it != m_stateTracker.runningMap.end());
             if (it->second.reducePolicy != message::ReducePolicy::Never) {
                const bool broadcast = it->second.reducePolicy!=message::ReducePolicy::Locally;
+               auto i = runningMap.find(destId);
+               vassert(i != runningMap.end());
+               auto &mod = i->second;
                if (allReadyForPrepare) {
                   for (auto input: allInputs) {
                      portManager().popReset(input);
@@ -1152,6 +1156,8 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                      } else {
                         CERR << "Exec prepare 4" << std::endl;
                         sendMessage(destId, exec);
+                        mod.prepared = true;
+                        mod.reduced = false;
                         checkExecuteObject(destId);
                      }
                   }
@@ -1169,6 +1175,8 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                               return false;
                      } else {
                         sendMessage(destId, exec);
+                        mod.prepared = false;
+                        mod.reduced = true;
                      }
                   }
                }
@@ -1475,26 +1483,33 @@ int ClusterManager::numRunning() const {
 
 bool ClusterManager::isReadyForExecute(int modId) const {
 
+   CERR << "checking whether " << modId << " can be executed: ";
+
    auto i = runningMap.find(modId);
    if (i == runningMap.end()) {
-      CERR << "module " << modId << " not found" << std::endl;
+      std::cerr << "module " << modId << " not found" << std::endl;
       return false;
    }
    auto &mod = i->second;
 
    auto i2 = m_stateTracker.runningMap.find(modId);
    if (i2 == m_stateTracker.runningMap.end()) {
-      CERR << "module " << modId << " not found by state tracker" << std::endl;
+      std::cerr << "module " << modId << " not found by state tracker" << std::endl;
       return false;
    }
    auto &modState = i2->second;
 
-   if (modState.reducePolicy == message::ReducePolicy::Never)
+   if (modState.reducePolicy == message::ReducePolicy::Never) {
+       std::cerr << "reduce policy Never" << std::endl;
        return true;
+   }
 
-   if (!mod.reduced && mod.prepared)
+   if (!mod.reduced && mod.prepared) {
+      std::cerr << "prepared & not reduced" << std::endl;
       return true;
+   }
 
+   std::cerr << "prepared: " << mod.prepared << ", reduced: " << mod.reduced << std::endl;
    return false;
 }
 
