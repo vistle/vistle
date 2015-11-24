@@ -338,18 +338,20 @@ bool OsgRenderer::render() {
    return true;
 }
 
-class VistlePlugin: public opencover::coVRPlugin {
+class VistlePlugin: public opencover::coVRPlugin, public vrui::coMenuListener {
 
  public:
    VistlePlugin();
    ~VistlePlugin();
-   bool init();
-   void preFrame();
-   void requestQuit(bool killSession);
+   bool init() override;
+   void menuEvent(vrui::coMenuItem *item) override;
+   void preFrame() override;
+   void requestQuit(bool killSession) override;
    bool executeAll();
 
  private:
    OsgRenderer *m_module;
+   vrui::coButtonMenuItem *executeButton;
 };
 
 using opencover::coCommandLine;
@@ -392,7 +394,26 @@ VistlePlugin::~VistlePlugin() {
 
 bool VistlePlugin::init() {
 
+   VRMenu *covise = VRPinboard::instance()->namedMenu("COVISE");
+   if (!covise)
+   {
+      VRPinboard::instance()->addMenu("COVISE", VRPinboard::instance()->mainMenu->getCoMenu());
+      covise = VRPinboard::instance()->namedMenu("COVISE");
+      cover->addSubmenuButton("COVISE...", NULL, "COVISE", false, NULL, -1, this);
+   }
+   vrui::coMenu *coviseMenu = covise->getCoMenu();
+   executeButton = new vrui::coButtonMenuItem("Execute");
+   executeButton->setMenuListener(this);
+   coviseMenu->add(executeButton);
+
    return m_module;
+}
+
+void VistlePlugin::menuEvent(vrui::coMenuItem *item) {
+
+   if (item == executeButton) {
+      executeAll();
+   }
 }
 
 void VistlePlugin::preFrame() {
