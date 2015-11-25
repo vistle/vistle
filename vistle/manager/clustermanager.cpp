@@ -847,6 +847,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
 
 bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesized) {
 
+
    const bool localAdd = isLocal(addObj.senderId());
    CERR << "ADDOBJECT: " << addObj << ", local=" << localAdd << ", synthesized=" << synthesized << std::endl;
    Object::const_ptr obj;
@@ -1135,7 +1136,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             auto it = m_stateTracker.runningMap.find(destId);
             vassert(it != m_stateTracker.runningMap.end());
             if (it->second.reducePolicy != message::ReducePolicy::Never) {
-               const bool broadcast = it->second.reducePolicy!=message::ReducePolicy::Locally;
+               const bool broadcast = handleOnMaster || it->second.reducePolicy!=message::ReducePolicy::Locally;
                auto i = runningMap.find(destId);
                vassert(i != runningMap.end());
                auto &mod = i->second;
@@ -1155,10 +1156,14 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                               return false;
                      } else {
                         CERR << "Exec prepare 4" << std::endl;
+#if 1
+                        handlePriv(exec);
+#else
                         sendMessage(destId, exec);
                         mod.prepared = true;
                         mod.reduced = false;
                         checkExecuteObject(destId);
+#endif
                      }
                   }
                }
@@ -1174,9 +1179,13 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                            if (!Communicator::the().broadcastAndHandleMessage(exec))
                               return false;
                      } else {
+#if 1
+                        handlePriv(exec);
+#else
                         sendMessage(destId, exec);
                         mod.prepared = false;
                         mod.reduced = true;
+#endif
                      }
                   }
                }
