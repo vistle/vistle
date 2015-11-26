@@ -504,7 +504,7 @@ AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj,
 {
    // we keep the handle as a reference to obj
    obj->ref();
-   std::cerr << "AddObject w/ obj: " << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
+   //std::cerr << "AddObject w/ obj: " << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
 
    COPY_STRING(senderPort, sender);
    COPY_STRING(destPort, dest);
@@ -545,7 +545,7 @@ bool AddObject::ref() const {
     if (Shm::isAttached() && Shm::the().name() == std::string(m_shmname.data())) {
         vistle::Object::const_ptr obj = Shm::the().getObjectFromHandle(handle);
         obj->ref();
-        std::cerr << "AddObject w/ AddObject: " << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
+        //std::cerr << "AddObject w/ AddObject: " << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
         m_handleValid = true;
     }
 
@@ -602,7 +602,7 @@ Object::const_ptr AddObject::takeObject() const {
       if (obj) {
          // ref count has been increased during AddObject construction
          obj->unref();
-         std::cerr << "takeObject: " << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
+         //std::cerr << "takeObject: " << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
          m_handleValid = false;
       } else {
           std::cerr << "did not find " << m_name << " by handle" << std::endl;
@@ -1613,7 +1613,7 @@ void Router::initRoutingTable() {
    rt[M::SPAWN]                 = Track|HandleOnMaster;
    rt[M::SPAWNPREPARED]         = DestLocalHub|HandleOnHub;
    rt[M::STARTED]               = Track|DestUi;
-   rt[M::MODULEEXIT]            = Track|DestUi;
+   rt[M::MODULEEXIT]            = Track|DestUi|DestManager|DestModules;
    rt[M::KILL]                  = DestModules|HandleOnDest;
    rt[M::QUIT]                  = Broadcast|HandleOnMaster|HandleOnHub|HandleOnNode;
    rt[M::EXECUTE]               = Special|HandleOnMaster;
@@ -1621,8 +1621,8 @@ void Router::initRoutingTable() {
    rt[M::ADDPORT]               = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
    rt[M::ADDPARAMETER]          = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
    rt[M::SETPARAMETERCHOICES]   = Track|DestUi|DestModules|OnlyRank0;
-   rt[M::CONNECT]               = Track|Broadcast|QueueIfUnhandled|DestManager|OnlyRank0;
-   rt[M::DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager|OnlyRank0;
+   rt[M::CONNECT]               = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0;
+   rt[M::DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0;
    rt[M::SETPARAMETER]          = Track|QueueIfUnhandled|DestManager|DestUi|DestModules|OnlyRank0;
    rt[M::PING]                  = DestModules|HandleOnDest;
    rt[M::PONG]                  = DestUi|HandleOnDest;

@@ -140,8 +140,7 @@ ObjectData::ObjectData(const Object::Data &o, const std::string &name, Object::T
 
 ObjectData::~ObjectData() {
 
-   std::cerr << "SHM DESTROY OBJ: " << name << std::endl;
-
+   //std::cerr << "SHM DESTROY OBJ: " << name << std::endl;
 
    shm<AttributeMap>::destroy(std::string("attr_")+name);
    { 

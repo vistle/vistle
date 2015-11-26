@@ -849,7 +849,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
 
 
    const bool localAdd = isLocal(addObj.senderId());
-   CERR << "ADDOBJECT: " << addObj << ", local=" << localAdd << ", synthesized=" << synthesized << std::endl;
+   //CERR << "ADDOBJECT: " << addObj << ", local=" << localAdd << ", synthesized=" << synthesized << std::endl;
    Object::const_ptr obj;
 
    int destRank = -1;
@@ -861,16 +861,16 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
    if (localAdd) {
        if (onThisRank) {
           obj = addObj.takeObject();
-          CERR << "ADDOBJECT: local, name=" << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
+          //CERR << "ADDOBJECT: local, name=" << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
        }
    } else {
 
-      CERR << "ADDOBJECT from remote, handling on rank " << destRank << std::endl;
+      //CERR << "ADDOBJECT from remote, handling on rank " << destRank << std::endl;
       if (onThisRank) {
          obj = addObj.getObject();
          if (!obj) {
             vassert(!synthesized);
-            CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
+            //CERR << "AddObject: have to request " << addObj.objectName() << std::endl;
             Communicator::the().dataManager().requestObject(addObj, addObj.objectName(), []() -> void { /* FIXME */ });
          }
       } else {
@@ -886,15 +886,13 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
 
    Port *port = portManager().getPort(addObj.senderId(), addObj.getSenderPort());
    if (!port) {
-      CERR << "AddObject [" << addObj.objectName() << "] to port ["
-         << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
+      //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
       vassert(port);
       return true;
    }
    const Port::PortSet *list = portManager().getConnectionList(port);
    if (!list) {
-      CERR << "AddObject [" << addObj.objectName() << "] to port ["
-         << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
+      //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
       vassert(list);
       return true;
    }
@@ -976,14 +974,14 @@ bool ClusterManager::checkExecuteObject(int destId) {
 
    if (!isReadyForExecute(destId))
        return true;
-   CERR << "CHK ready for exec" << std::endl;
+   //CERR << "CHK ready for exec" << std::endl;
 
    for (const auto input: portManager().getConnectedInputPorts(destId)) {
       if (!portManager().hasObject(input)) {
          return true;
       }
    }
-   CERR << "CHK all ready" << std::endl;
+   //CERR << "CHK all ready" << std::endl;
 
    for (const auto input: portManager().getConnectedInputPorts(destId)) {
       portManager().popObject(input);
@@ -1060,12 +1058,12 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    if (!localReduce)
        handleOnMaster = true;
    if (localSender && handleOnMaster && m_rank != 0) {
-      CERR << "exec progr: forward to master" << std::endl;
+      //CERR << "exec progr: forward to master" << std::endl;
       return Communicator::the().forwardToMaster(prog);
    }
 
    bool readyForPrepare = false, readyForReduce = false;
-   CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << std::endl;
+   //CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << std::endl;
    switch (prog.stage()) {
       case message::ExecutionProgress::Start: {
          readyForPrepare = true;
@@ -1106,7 +1104,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
        }
    }
 
-   CERR << prog.senderId() << " ready for prepare: " << readyForPrepare << ", reduce: " << readyForReduce << std::endl;
+   //CERR << prog.senderId() << " ready for prepare: " << readyForPrepare << ", reduce: " << readyForReduce << std::endl;
    for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
       const Port::PortSet *list = portManager().getConnectionList(output);
       for (const Port *destPort: *list) {
@@ -1132,7 +1130,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                if (!portManager().isFinished(input))
                   allReadyForReduce = false;
             }
-            CERR << "exec prog: checking module " << destId << ":" << destPort->getName() << std::endl;
+            //CERR << "exec prog: checking module " << destId << ":" << destPort->getName() << std::endl;
             auto it = m_stateTracker.runningMap.find(destId);
             vassert(it != m_stateTracker.runningMap.end());
             if (it->second.reducePolicy != message::ReducePolicy::Never) {
@@ -1144,26 +1142,19 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                   for (auto input: allInputs) {
                      portManager().popReset(input);
                   }
-                  CERR << "Exec prepare 1" << std::endl;
+                  //CERR << "Exec prepare 1" << std::endl;
                   if (isLocal(destId)) {
-                     CERR << "Exec prepare 2" << std::endl;
+                     //CERR << "Exec prepare 2" << std::endl;
                      auto exec = message::Execute(message::Execute::Prepare, destId);
                      exec.setDestId(destId);
                      if (broadcast) {
-                        CERR << "Exec prepare 3" << std::endl;
+                        //CERR << "Exec prepare 3" << std::endl;
                         if (m_rank == 0)
                            if (!Communicator::the().broadcastAndHandleMessage(exec))
                               return false;
                      } else {
-                        CERR << "Exec prepare 4" << std::endl;
-#if 1
+                        //CERR << "Exec prepare 4" << std::endl;
                         handlePriv(exec);
-#else
-                        sendMessage(destId, exec);
-                        mod.prepared = true;
-                        mod.reduced = false;
-                        checkExecuteObject(destId);
-#endif
                      }
                   }
                }
@@ -1179,13 +1170,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                            if (!Communicator::the().broadcastAndHandleMessage(exec))
                               return false;
                      } else {
-#if 1
                         handlePriv(exec);
-#else
-                        sendMessage(destId, exec);
-                        mod.prepared = false;
-                        mod.reduced = true;
-#endif
                      }
                   }
                }
@@ -1492,33 +1477,33 @@ int ClusterManager::numRunning() const {
 
 bool ClusterManager::isReadyForExecute(int modId) const {
 
-   CERR << "checking whether " << modId << " can be executed: ";
+   //CERR << "checking whether " << modId << " can be executed: ";
 
    auto i = runningMap.find(modId);
    if (i == runningMap.end()) {
-      std::cerr << "module " << modId << " not found" << std::endl;
+      //std::cerr << "module " << modId << " not found" << std::endl;
       return false;
    }
    auto &mod = i->second;
 
    auto i2 = m_stateTracker.runningMap.find(modId);
    if (i2 == m_stateTracker.runningMap.end()) {
-      std::cerr << "module " << modId << " not found by state tracker" << std::endl;
+      //std::cerr << "module " << modId << " not found by state tracker" << std::endl;
       return false;
    }
    auto &modState = i2->second;
 
    if (modState.reducePolicy == message::ReducePolicy::Never) {
-       std::cerr << "reduce policy Never" << std::endl;
+       //std::cerr << "reduce policy Never" << std::endl;
        return true;
    }
 
    if (!mod.reduced && mod.prepared) {
-      std::cerr << "prepared & not reduced" << std::endl;
+      //std::cerr << "prepared & not reduced" << std::endl;
       return true;
    }
 
-   std::cerr << "prepared: " << mod.prepared << ", reduced: " << mod.reduced << std::endl;
+   //std::cerr << "prepared: " << mod.prepared << ", reduced: " << mod.reduced << std::endl;
    return false;
 }
 
