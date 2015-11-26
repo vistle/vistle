@@ -1456,6 +1456,7 @@ Module::~Module() {
 #endif
 
    vistle::message::ModuleExit m;
+   m.setDestId(Id::ForBroadcast);
    sendMessage(m);
 
    m_cache.clear();
