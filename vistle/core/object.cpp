@@ -100,7 +100,7 @@ void Object::publish(const Object::Data *d) {
 #endif
 
 #ifdef SHMDEBUG
-   Shm::the().s_shmdebug->push_back(ShmDebugInfo('O', d->name, handle));
+   Shm::the().addObject(d->name, handle);
 #endif
 
 #ifdef SHMPUBLISH

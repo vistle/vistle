@@ -124,7 +124,9 @@ class V_COREEXPORT Shm {
 
 #ifdef SHMDEBUG
    static vistle::shm<ShmDebugInfo>::vector *s_shmdebug;
+   static boost::interprocess::interprocess_recursive_mutex *s_shmdebugMutex;
    void markAsRemoved(const std::string &name);
+   void addObject(const std::string &name, const shm_handle_t &handle);
 #endif
 
  private:

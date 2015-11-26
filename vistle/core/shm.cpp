@@ -53,6 +53,7 @@ template<> size_t memorySize<8>() {
 Shm* Shm::s_singleton = NULL;
 #ifdef SHMDEBUG
 shm<ShmDebugInfo>::vector *Shm::s_shmdebug = NULL;
+boost::interprocess::interprocess_recursive_mutex *Shm::s_shmdebugMutex = NULL;
 #endif
 
 shm_name_t::shm_name_t(const std::string &s) {
@@ -101,6 +102,7 @@ Shm::Shm(const std::string &name, const int m, const int r, const size_t size,
       m_allocator = new void_allocator(shm().get_segment_manager());
 
 #ifdef SHMDEBUG
+      s_shmdebugMutex = m_shm->find_or_construct<boost::interprocess::interprocess_recursive_mutex>("shmdebug_mutex")();
       s_shmdebug = m_shm->find_or_construct<vistle::shm<ShmDebugInfo>::vector>("shmdebug")(0, ShmDebugInfo(), allocator());
 #endif
 }
@@ -315,10 +317,20 @@ std::string Shm::createArrayId() {
 
 #ifdef SHMDEBUG
 void Shm::markAsRemoved(const std::string &name) {
+   s_shmdebugMutex->lock();
+
    for (size_t i=0; i<s_shmdebug->size(); ++i) {
       if (!strncmp(name.c_str(), (*s_shmdebug)[i].name, sizeof(shm_name_t)))
          ++(*s_shmdebug)[i].deleted;
    }
+
+   s_shmdebugMutex->unlock();
+}
+
+void Shm::addObject(const std::string &name, const shm_handle_t &handle) {
+   s_shmdebugMutex->lock();
+   Shm::the().s_shmdebug->push_back(ShmDebugInfo('O', name, handle));
+   s_shmdebugMutex->unlock();
 }
 #endif
 
