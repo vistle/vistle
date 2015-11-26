@@ -65,7 +65,7 @@ void ClusterManager::Module::unblock(const message::Message &msg) {
             && buf.type() == msg.type();
    };
 
-   if (blocked) {
+   if (blocked && sendQueue) {
       if (pred(blockers.front())) {
          //std::cerr << "UNBLOCK: found as frontmost blocker" << std::endl;
          blockers.pop_front();
@@ -109,13 +109,18 @@ bool ClusterManager::Module::send(const message::Message &msg) const {
    if (blocked) {
       blockedMessages.emplace_back(msg);
       return true;
-   } else {
+   } else if (sendQueue) {
       return sendQueue->send(msg);
+   } else {
+      return false;
    }
 }
 
 bool ClusterManager::Module::update() const {
-   return sendQueue->progress();
+   if (sendQueue) {
+      return sendQueue->progress();
+   }
+   return false;
 }
 
 
