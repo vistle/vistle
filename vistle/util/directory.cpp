@@ -18,6 +18,8 @@ bool scanModules(const std::string &dir, int hub, AvailableMap &available) {
       return false;
    }
 
+   p = bf::canonical(p);
+
    for (bf::directory_iterator it(p);
          it != bf::directory_iterator();
          ++it) {
