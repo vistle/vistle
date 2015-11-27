@@ -182,7 +182,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
    gethostname(hostname, HOSTNAMESIZE - 1);
 
    try {
-      Shm::attach(shmname, id(), rank(), sendMessageQueue);
+      Shm::attach(shmname, id(), rank());
    } catch (interprocess_exception &ex) {
       std::stringstream str;
       throw vistle::exception(std::string("attaching to shared memory ") + shmname + ": " + ex.what());
