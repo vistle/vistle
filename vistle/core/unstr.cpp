@@ -779,7 +779,8 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(const Vector &p
 }
 
 void UnstructuredGrid::refreshImpl() const {
-   m_tl = (d() && d()->tl.valid()) ? d()->tl->data() : nullptr;
+   const Data *d = static_cast<Data *>(m_data);
+   m_tl = (d && d->tl.valid()) ? d->tl->data() : nullptr;
 }
 
 std::pair<Vector, Vector> UnstructuredGrid::getBounds() const {

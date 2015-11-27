@@ -16,7 +16,8 @@ void Triangles::refresh() const {
 }
 
 void Triangles::refreshImpl() const {
-    m_cl = (d() && d()->cl.valid()) ? d()->cl->data() : nullptr;
+    const Data *d = static_cast<Data *>(m_data);
+    m_cl = (d && d->cl.valid()) ? d->cl->data() : nullptr;
 }
 
 bool Triangles::isEmpty() const {

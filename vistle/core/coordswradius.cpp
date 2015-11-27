@@ -11,7 +11,8 @@ CoordsWithRadius::CoordsWithRadius(const Index numCoords,
 
 void CoordsWithRadius::refreshImpl() const {
 
-    m_r = (d() && d()->r.valid()) ? d()->r->data() : nullptr;
+    const Data *d = static_cast<Data *>(m_data);
+    m_r = (d && d->r.valid()) ? d->r->data() : nullptr;
 }
 
 void CoordsWithRadius::refresh() const {

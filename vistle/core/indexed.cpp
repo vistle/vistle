@@ -192,8 +192,9 @@ bool Indexed::getElementBounds(Index elem, Vector *min, Vector *max) const {
 
 void Indexed::refreshImpl() const {
 
-    m_el = (d() && d()->el.valid()) ? d()->el->data() : nullptr;
-    m_cl = (d() && d()->cl.valid()) ? d()->cl->data() : nullptr;
+    const Data *d = static_cast<Data *>(m_data);
+    m_el = (d && d->el.valid()) ? d->el->data() : nullptr;
+    m_cl = (d && d->cl.valid()) ? d->cl->data() : nullptr;
 }
 
 Indexed::Data::Data(const Index numElements, const Index numCorners,

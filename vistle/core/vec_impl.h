@@ -54,13 +54,15 @@ void Vec<T,Dim>::setSize(const Index size) {
 template <class T, int Dim>
 void Vec<T,Dim>::refreshImpl() const {
 
+   const Data *d = static_cast<Data *>(m_data);
+
    for (int c=0; c<Dim; ++c) {
-      m_x[c] = (d() && d()->x[c].valid()) ? d()->x[c]->data() : nullptr;
+      m_x[c] = (d && d->x[c].valid()) ? d->x[c]->data() : nullptr;
    }
    for (int c=Dim; c<MaxDim; ++c) {
       m_x[c] = nullptr;
    }
-   m_size = (d() && d()->x[0]) ? d()->x[0]->size() : 0;
+   m_size = (d && d->x[0]) ? d->x[0]->size() : 0;
 }
 
 template <class T, int Dim>
