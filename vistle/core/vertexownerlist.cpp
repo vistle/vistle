@@ -7,6 +7,10 @@ VertexOwnerList::VertexOwnerList(const Index numVertices,
       const Meta &meta)
 : VertexOwnerList::Base(VertexOwnerList::Data::create("", numVertices, meta))
 {
+    refreshImpl();
+}
+
+void VertexOwnerList::refreshImpl() const {
 }
 
 VertexOwnerList::Data::Data(const VertexOwnerList::Data &o, const std::string &n)

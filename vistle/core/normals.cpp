@@ -7,6 +7,10 @@ Normals::Normals(const Index numNormals,
          const Meta &meta)
    : Normals::Base(Normals::Data::create(numNormals, meta))
 {
+    refreshImpl();
+}
+
+void Normals::refreshImpl() const {
 }
 
 bool Normals::isEmpty() const {

@@ -10,11 +10,6 @@ Triangles::Triangles(const Index numCorners, const Index numCoords,
     refreshImpl();
 }
 
-void Triangles::refresh() const {
-    Base::refresh();
-    refreshImpl();
-}
-
 void Triangles::refreshImpl() const {
     const Data *d = static_cast<Data *>(m_data);
     m_cl = (d && d->cl.valid()) ? d->cl->data() : nullptr;
@@ -77,6 +72,6 @@ Index Triangles::getNumCorners() const {
 }
 
 V_OBJECT_TYPE(Triangles, Object::TRIANGLES);
-V_OBJECT_CTOR_REFRESH(Triangles);
+V_OBJECT_CTOR(Triangles);
 
 } // namespace vistle

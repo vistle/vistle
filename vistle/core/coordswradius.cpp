@@ -15,11 +15,6 @@ void CoordsWithRadius::refreshImpl() const {
     m_r = (d && d->r.valid()) ? d->r->data() : nullptr;
 }
 
-void CoordsWithRadius::refresh() const {
-    Base::refresh();
-    refreshImpl();
-}
-
 bool CoordsWithRadius::isEmpty() const {
 
    return Base::isEmpty();
@@ -63,6 +58,6 @@ CoordsWithRadius::Data *CoordsWithRadius::Data::create(const std::string &objId,
 }
 
 //V_OBJECT_TYPE(CoordsWithRadius, Object::COORDWRADIUS);
-V_OBJECT_CTOR_REFRESH(CoordsWithRadius);
+V_OBJECT_CTOR(CoordsWithRadius);
 
 } // namespace vistle

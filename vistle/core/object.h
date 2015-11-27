@@ -390,7 +390,9 @@ class ObjectTypeRegistry {
    static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \
    static void registerIArchive(iarchive &ar); \
    static void registerOArchive(oarchive &ar); \
-   ObjType(Object::InitializedFlags) : Base(ObjType::Data::create()) {}  \
+   void refresh() const override { Base::refresh(); refreshImpl(); } \
+   void refreshImpl() const; \
+   ObjType(Object::InitializedFlags) : Base(ObjType::Data::create()) { refreshImpl(); }  \
    virtual bool isEmpty() const override; \
    bool check() const override { refresh(); if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
    struct Data; \
@@ -527,11 +529,6 @@ class ObjectTypeRegistry {
    }
 
 #define V_OBJECT_CTOR(ObjType) \
-   V_OBJECT_CREATE_NAMED(ObjType) \
-   ObjType::ObjType(ObjType::Data *data): ObjType::Base(data) {} \
-   ObjType::ObjType(): ObjType::Base() {}
-
-#define V_OBJECT_CTOR_REFRESH(ObjType) \
    V_OBJECT_CREATE_NAMED(ObjType) \
    ObjType::ObjType(ObjType::Data *data): ObjType::Base(data) { refreshImpl(); } \
    ObjType::ObjType(): ObjType::Base() { refreshImpl(); }

@@ -7,11 +7,15 @@ Points::Points(const Index numPoints,
          const Meta &meta)
    : Points::Base(Points::Data::create(numPoints, meta))
 {
+    refreshImpl();
 }
 
 bool Points::isEmpty() const {
 
    return Base::isEmpty();
+}
+
+void Points::refreshImpl() const {
 }
 
 bool Points::checkImpl() const {

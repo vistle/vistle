@@ -7,6 +7,10 @@ Tubes::Tubes(const Index numTubes, const Index numCoords,
          const Meta &meta)
    : Tubes::Base(Tubes::Data::create(numTubes, numCoords, meta))
 {
+    refreshImpl();
+}
+
+void Tubes::refreshImpl() const {
 }
 
 bool Tubes::isEmpty() const {

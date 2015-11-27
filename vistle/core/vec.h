@@ -57,8 +57,6 @@ class Vec: public DataBase {
    Vec(const Index size,
         const Meta &meta=Meta());
 
-   void refresh() const override;
-
    Index getSize() const override {
       return d()->x[0]->size();
    }
@@ -81,7 +79,6 @@ class Vec: public DataBase {
    virtual void createCelltree(Index nelem, const Index *el, const Index *cl) const override;
 
  private:
-   void refreshImpl() const;
    mutable const T *m_x[MaxDim];
    mutable Index m_size;
 

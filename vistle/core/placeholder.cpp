@@ -7,6 +7,10 @@ namespace vistle {
 PlaceHolder::PlaceHolder(const std::string &originalName, const Meta &originalMeta, Object::Type originalType)
    : PlaceHolder::Base(PlaceHolder::Data::create("", originalName, originalMeta, originalType))
 {
+    refreshImpl();
+}
+
+void PlaceHolder::refreshImpl() const {
 }
 
 bool PlaceHolder::isEmpty() const {

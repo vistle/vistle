@@ -243,17 +243,12 @@ Index Indexed::getNumVertices() const {
     return getSize();
 }
 
-void Indexed::refresh() const {
-    Base::refresh();
-    refreshImpl();
-}
-
 Object::Type Indexed::type() {
    vassert("should not be called" == 0);
    return Object::UNKNOWN;
 }
 
 V_SERIALIZERS(Indexed);
-V_OBJECT_CTOR_REFRESH(Indexed);
+V_OBJECT_CTOR(Indexed);
 
 } // namespace vistle

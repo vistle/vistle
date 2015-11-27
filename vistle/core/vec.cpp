@@ -17,6 +17,9 @@ bool DataBase::isEmpty() const {
    return Base::isEmpty();
 }
 
+void DataBase::refreshImpl() const {
+}
+
 bool DataBase::checkImpl() const {
 
    return true;

@@ -9,6 +9,10 @@ Lines::Lines(const Index numElements, const Index numCorners,
    : Lines::Base(Lines::Data::create("", numElements, numCorners,
             numVertices, meta))
 {
+    refreshImpl();
+}
+
+void Lines::refreshImpl() const {
 }
 
 bool Lines::isEmpty() const {

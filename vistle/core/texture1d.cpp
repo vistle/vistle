@@ -8,6 +8,10 @@ Texture1D::Texture1D(const Index width,
       const Meta &meta)
 : Texture1D::Base(Texture1D::Data::create(width, min, max, meta))
 {
+    refreshImpl();
+}
+
+void Texture1D::refreshImpl() const {
 }
 
 bool Texture1D::isEmpty() const {

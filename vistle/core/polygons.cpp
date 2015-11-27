@@ -9,11 +9,15 @@ Polygons::Polygons(const Index numElements,
       const Meta &meta)
 : Polygons::Base(Polygons::Data::create(numElements, numCorners, numVertices, meta))
 {
+    refreshImpl();
 }
 
 bool Polygons::isEmpty() const {
 
    return Base::isEmpty();
+}
+
+void Polygons::refreshImpl() const {
 }
 
 bool Polygons::checkImpl() const {

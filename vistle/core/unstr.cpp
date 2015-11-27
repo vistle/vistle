@@ -120,12 +120,6 @@ UnstructuredGrid::UnstructuredGrid(const Index numElements,
     refreshImpl();
 }
 
-void UnstructuredGrid::refresh() const {
-
-    Base::refresh();
-    refreshImpl();
-}
-
 bool UnstructuredGrid::isEmpty() const {
 
    return Base::isEmpty();
@@ -822,6 +816,6 @@ UnstructuredGrid::Data * UnstructuredGrid::Data::create(const Index numElements,
 }
 
 V_OBJECT_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID);
-V_OBJECT_CTOR_REFRESH(UnstructuredGrid);
+V_OBJECT_CTOR(UnstructuredGrid);
 
 } // namespace vistle

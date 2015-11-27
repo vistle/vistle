@@ -15,7 +15,6 @@ class V_COREEXPORT Triangles: public Coords {
    Triangles(const Index numCorners, const Index numCoords,
              const Meta &meta=Meta());
 
-   void refresh() const override;
    Index getNumElements() const;
    Index getNumCorners() const;
 
@@ -23,7 +22,6 @@ class V_COREEXPORT Triangles: public Coords {
    const Index *cl() const { return m_cl; }
 
  private:
-   void refreshImpl() const;
    mutable const Index *m_cl;
 
    V_DATA_BEGIN(Triangles);

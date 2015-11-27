@@ -7,6 +7,10 @@ Spheres::Spheres(const Index numSpheres,
          const Meta &meta)
    : Spheres::Base(Spheres::Data::create(numSpheres, meta))
 {
+    refreshImpl();
+}
+
+void Spheres::refreshImpl() const {
 }
 
 bool Spheres::isEmpty() const {

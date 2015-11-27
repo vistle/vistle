@@ -66,12 +66,6 @@ void Vec<T,Dim>::refreshImpl() const {
 }
 
 template <class T, int Dim>
-void Vec<T,Dim>::refresh() const {
-   Base::refresh();
-   refreshImpl();
-}
-
-template <class T, int Dim>
 bool Vec<T,Dim>::isEmpty() const {
 
    return getSize() == 0;

@@ -5,7 +5,12 @@ namespace vistle {
 Coords::Coords(const Index numVertices,
              const Meta &meta)
    : Coords::Base(static_cast<Data *>(NULL))
-{}
+{
+    refreshImpl();
+}
+
+void Coords::refreshImpl() const {
+}
 
 bool Coords::isEmpty() const {
 

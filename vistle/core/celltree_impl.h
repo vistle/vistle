@@ -13,6 +13,9 @@ Object::Type Celltree<Scalar, Index, NumDimensions>::type() {
    return (Object::Type)(Object::CELLTREE1 + NumDimensions - 1);
 }
 
+template<typename Scalar, typename Index, int NumDimensions>
+void Celltree<Scalar, Index, NumDimensions>::refreshImpl() const {
+}
 
 template<typename Scalar, typename Index, int NumDimensions>
 void Celltree<Scalar, Index, NumDimensions>::init(const Celltree::Vector *min, const Celltree::Vector *max,
@@ -293,17 +296,22 @@ Celltree<Scalar, Index, NumDimensions>::Celltree(const Index numCells,
       const Meta &meta)
 : Celltree::Base(Celltree::Data::create("", numCells, meta))
 {
+    refreshImpl();
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Celltree()
 : Base()
-{}
+{
+    refreshImpl();
+}
 
 template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Celltree(Celltree::Data *data)
 : Base(data)
-{}
+{
+    refreshImpl();
+}
 
 
 template<typename Scalar, typename Index, int NumDimensions>

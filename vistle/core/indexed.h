@@ -31,8 +31,6 @@ class  V_COREEXPORT Indexed: public Coords {
    const Index *el() const { return m_el; }
    const Index *cl() const { return m_cl; }
 
-   void refresh() const override;
-
    Celltree::const_ptr getCelltree() const;
    bool validateCelltree() const;
 
@@ -43,7 +41,6 @@ class  V_COREEXPORT Indexed: public Coords {
    bool getElementBounds(Index elem, Vector *min, Vector *max) const;
 
  private:
-   void refreshImpl() const;
    mutable const Index *m_el;
    mutable const Index *m_cl;
 
