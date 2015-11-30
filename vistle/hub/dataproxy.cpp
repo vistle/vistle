@@ -255,6 +255,10 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
            }
            break;
         }
+        case Message::IDENTIFY: {
+            CERR << "remoteMsgRecv: received Identify: " << *msg << std::endl;
+            break;
+        }
         default: {
             CERR << "remoteMsgRecv: unsupported msg type " << msg->type() << std::endl;
             break;
