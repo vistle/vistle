@@ -1009,7 +1009,7 @@ bool ClusterManager::checkExecuteObject(int destId) {
          return false;
    }
 
-   return true;
+   return checkExecuteObject(destId);
 }
 
 bool ClusterManager::handlePriv(const message::AddObjectCompleted &complete) {
