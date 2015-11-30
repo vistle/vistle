@@ -160,21 +160,17 @@ bool IsoSurface::compute() {
    if (!mapdata)
        return true;
    auto  gridS = UnstructuredGrid::as(mapdata->grid());
-   if (!gridS) {
-       sendError("grid required on input data");
-       return true;
-   }
 #else
    auto mapdata = accept<DataBase>(m_mapDataIn);
    auto dataS = expect<Vec<Scalar>>("data_in");
    if (!dataS)
       return true;
    auto  gridS = UnstructuredGrid::as(dataS->grid());
+#endif
    if (!gridS) {
        sendError("grid required on input data");
        return true;
    }
-#endif
 
    Leveller l(gridS, isoValue, processorType
 #ifdef CUTTINGSURFACE
