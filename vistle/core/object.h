@@ -231,7 +231,7 @@ struct ObjectData {
     Object::Type type;
     shm_name_t name;
     mutable boost::interprocess::interprocess_mutex ref_mutex; //< protects refcount
-    int refcount;
+    mutable int refcount;
 
     int unresolvedReferences; //!< no. of not-yet-available arrays and referenced objects
 
@@ -272,8 +272,8 @@ struct ObjectData {
     V_COREEXPORT void *operator new (std::size_t size, void* ptr);
     V_COREEXPORT void operator delete(void *ptr);
     V_COREEXPORT void operator delete(void *ptr, void* voidptr2);
-    void ref();
-    void unref();
+    void ref() const;
+    void unref() const;
     static ObjectData *create(Object::Type id, const std::string &name, const Meta &m);
     bool isComplete() const; //! check whether all references have been resolved
     template<typename ShmVectorPtr>
@@ -396,7 +396,8 @@ class ObjectTypeRegistry {
    virtual bool isEmpty() const override; \
    bool check() const override { refresh(); if (isEmpty()) {}; if (!Base::check()) return false; return checkImpl(); } \
    struct Data; \
-   Data *d() const { return static_cast<Data *>(Object::m_data); } \
+   const Data *d() const { return static_cast<Data *>(Object::m_data); } \
+   Data *d() { return static_cast<Data *>(Object::m_data); } \
    protected: \
    bool checkImpl() const; \
    ObjType(Data *data); \
@@ -426,7 +427,7 @@ class ObjectTypeRegistry {
          std::string name = d()->name; \
          ar & V_NAME("name", name); \
          ar & V_NAME("type", type); \
-         d()->template serialize<Archive>(ar, version); \
+         const_cast<Data *>(d())->template serialize<Archive>(ar, version); \
       } \
    friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &) const; \
    friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>) const; \

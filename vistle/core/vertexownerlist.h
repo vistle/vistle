@@ -19,8 +19,10 @@ class V_COREEXPORT VertexOwnerList: public Object {
    VertexOwnerList(const Index numVertices,
          const Meta &meta=Meta());   
 
-   shm<Index>::array &vertexList() const { return *d()->vertexList; }
-   shm<Index>::array &cellList() const { return *d()->cellList; }
+   shm<Index>::array &vertexList() { return *d()->vertexList; }
+   const shm<Index>::array &vertexList() const { return *d()->vertexList; }
+   shm<Index>::array &cellList() { return *d()->cellList; }
+   const shm<Index>::array &cellList() const { return *d()->cellList; }
    Index getNumVertices() const;
    Index getNeighbour(const Index &cell, const Index &vertex1, const Index &vertex2, const Index &vertex3) const;
    std::pair<Index*, Index> getSurroundingCells(const Index &v) const;

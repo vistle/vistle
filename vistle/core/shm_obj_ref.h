@@ -91,7 +91,7 @@ class shm_obj_ref {
    typename ObjType::const_ptr getObject() const {
        if (!valid())
            return nullptr;
-       return ObjType::as(Object::create(m_d.get()));
+       return ObjType::as(Object::create(const_cast<typename ObjType::Data *>(m_d.get())));
    }
 
    typename ObjType::Data *getData() const {
@@ -118,7 +118,7 @@ class shm_obj_ref {
 
  private:
    shm_name_t m_name;
-   boost::interprocess::offset_ptr<ObjData> m_d;
+   boost::interprocess::offset_ptr<const ObjData> m_d;
 
    void ref() {
        if (m_d) {

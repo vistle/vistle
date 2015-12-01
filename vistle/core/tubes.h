@@ -23,7 +23,8 @@ class  V_COREEXPORT Tubes: public CoordsWithRadius {
          const Meta &meta=Meta());
 
    Index getNumTubes() const;
-   shm<Index>::array &components() const { return *d()->components; }
+   shm<Index>::array &components() { return *d()->components; }
+   const shm<Index>::array &components() const { return *d()->components; }
 
    CapStyle startStyle() const;
    CapStyle jointStyle() const;
