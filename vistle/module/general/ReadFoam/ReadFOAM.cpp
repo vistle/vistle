@@ -642,13 +642,8 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
          m_owners[processor] = ret.owners;
          m_boundaries[processor] = ret.boundaries;
 
-         if (m_case.varyingCoords) {
-            m_currentgrid[processor] = grid;
-         } else {
-            m_currentgrid[processor] = grid;
-            addObject(m_boundOut, poly);
-         }
-
+         m_currentgrid[processor] = grid;
+         m_currentbound[processor] = poly;
          m_basegrid[processor] = grid;
          m_basebound[processor] = poly;
       }
@@ -699,7 +694,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
          setMeta(grid, processor, timestep);
          setMeta(poly, processor, timestep);
          m_currentgrid[processor] = grid;
-         addObject(m_boundOut, poly);
+         m_currentbound[processor] = poly;
 
          if (grid)
             m_basegrid[processor] = grid;
@@ -735,7 +730,7 @@ std::vector<Index> ReadFOAM::getAdjacentCells(const Index &cell,
    return adjacentCells;
 }
 
-bool ReadFOAM::checkCell(const Index &cell,
+bool ReadFOAM::checkCell(const Index cell,
                          std::unordered_set<Index> &ghostCellCandidates,
                          std::unordered_set<Index> &notGhostCells,
                          const DimensionInfo &dim,
@@ -766,7 +761,7 @@ bool ReadFOAM::checkCell(const Index &cell,
    if (isGhostCell) {
       ghostCellCandidates.insert(cell);
       std::vector<Index> adjacentCells=getAdjacentCells(cell,dim,cellfacemap,owners,neighbours);
-      for (Index &i :adjacentCells) {
+      for (Index i: adjacentCells) {
          if (!checkCell(i,ghostCellCandidates,notGhostCells,dim,outerVertices,cellfacemap,faces,owners,neighbours))
             return false;
       }
@@ -1084,6 +1079,7 @@ void ReadFOAM::applyGhostCellsData(int processor) {
 
 bool ReadFOAM::addGridToPorts(int processor) {
    addObject(m_gridOut, m_currentgrid[processor]);
+   addObject(m_boundOut, m_currentbound[processor]);
    return true;
 }
 
@@ -1142,8 +1138,10 @@ bool ReadFOAM::readConstant(const std::string &casedir)
       }
    }
 
-   if (!m_replicateTimestepGeo)
+   if (!m_replicateTimestepGeo) {
+      m_currentbound.clear();
       m_currentgrid.clear();
+   }
    m_currentvolumedata.clear();
    return true;
 }
@@ -1205,8 +1203,10 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
       }
    }
 
-   if (!m_replicateTimestepGeo)
+   if (!m_replicateTimestepGeo) {
+      m_currentbound.clear();
       m_currentgrid.clear();
+   }
    m_currentvolumedata.clear();
    return true;
 }
@@ -1239,6 +1239,7 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
          std::cerr << "reading of data for timestep " << timestep << " failed" << std::endl;
       }
    }
+   m_currentbound.clear();
    m_currentgrid.clear();
 
    return true;

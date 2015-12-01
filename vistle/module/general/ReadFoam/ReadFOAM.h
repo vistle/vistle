@@ -141,7 +141,7 @@ class ReadFOAM: public vistle::Module
                                                   const std::vector<std::vector<vistle::Index>> &cellfacemap,
                                                   const std::vector<vistle::Index> &owners,
                                                   const std::vector<vistle::Index> &neighbours);
-      bool checkCell(const vistle::Index &cell,
+      bool checkCell(const vistle::Index cell,
                      std::unordered_set<vistle::Index> &ghostCellCandidates,
                      std::unordered_set<vistle::Index> &notGhostCells,
                      const DimensionInfo &dim,
@@ -160,9 +160,8 @@ class ReadFOAM: public vistle::Module
 
       void setMeta(vistle::Object::ptr obj, int processor, int timestep) const;
 
-      std::map<int, vistle::UnstructuredGrid::ptr> m_basegrid;
-      std::map<int, vistle::Polygons::ptr> m_basebound;
-      std::map<int, vistle::UnstructuredGrid::ptr> m_currentgrid;
+      std::map<int, vistle::Polygons::ptr> m_basebound, m_currentbound;
+      std::map<int, vistle::UnstructuredGrid::ptr> m_basegrid, m_currentgrid;
       std::map<int, std::map<int, vistle::DataBase::ptr> > m_currentvolumedata;
       std::map<int, boost::shared_ptr<std::vector<vistle::Index> > > m_owners;
       std::map<int, boost::shared_ptr<Boundaries>> m_boundaries;
