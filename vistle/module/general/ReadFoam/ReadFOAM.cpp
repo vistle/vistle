@@ -643,13 +643,14 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
          m_boundaries[processor] = ret.boundaries;
 
          if (m_case.varyingCoords) {
-            m_basegrid[processor] = grid;
             m_currentgrid[processor] = grid;
-            m_basebound[processor] = poly;
          } else {
             m_currentgrid[processor] = grid;
             addObject(m_boundOut, poly);
          }
+
+         m_basegrid[processor] = grid;
+         m_basebound[processor] = poly;
       }
       loadFields(dir, m_case.constantFields, processor, timestep);
    } else {
@@ -699,6 +700,11 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
          setMeta(poly, processor, timestep);
          m_currentgrid[processor] = grid;
          addObject(m_boundOut, poly);
+
+         if (grid)
+            m_basegrid[processor] = grid;
+         if (poly)
+            m_basebound[processor] = poly;
       }
       loadFields(dir, m_case.varyingFields, processor, timestep);
    }
