@@ -1,6 +1,7 @@
 #include "dataproxy.h"
 #include "hub.h"
-#include "core/tcpmessage.h"
+#include <core/tcpmessage.h>
+#include <core/message.h>
 
 #define CERR std::cerr << "DataProxy: "
 
@@ -130,6 +131,12 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
          }
          case Identify::LOCALBULKDATA: {
             m_localDataSocket[id.id()] = sock;
+
+            for (int i=message::Id::MasterHub; i>m_hub.id(); --i) {
+               CERR << "connecting to DataProxy " << i << std::endl;
+               connectRemoteData(i);
+            }
+
             Identify ident(Identify::LOCALBULKDATA, -1);
             async_send(*sock, ident, [this, sock](error_code ec){
                 if (ec) {
@@ -222,42 +229,53 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
             return;
         }
         switch(msg->type()) {
+        case Message::IDENTIFY: {
+            auto &ident = msg->as<const Identify>();
+            if (ident.identity() == Identify::UNKNOWN) {
+               Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
+               async_send(*sock, ident, [this, sock](error_code ec){
+                  if (ec) {
+                     CERR << "send error" << std::endl;
+                     return;
+                  }
+                  remoteMsgRecv(sock);
+               });
+            }
+            break;
+        }
         case Message::SENDOBJECT: {
            auto &send = msg->as<const SendObject>();
            int hubId = m_hub.idToHub(send.destId());
-           CERR << "handleLocalData on " << m_hub.id() << ": sending to " << hubId << std::endl;
+           CERR << "remoteMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
            //sendRemoteData(send, hubId);
            size_t payloadSize = send.payloadSize();
            std::vector<char> payload(payloadSize);
            boost::asio::read(*sock, boost::asio::buffer(payload));
-           CERR << "handleLocalData: received local data, now sending" << std::endl;
+           CERR << "remoteMsgRecv: received local data, now sending" << std::endl;
            //return sendRemoteData(payload.data(), payloadSize, hubId);
+           remoteMsgRecv(sock);
            break;
         }
         case Message::REQUESTOBJECT: {
            auto &req = msg->as<const RequestObject>();
            int hubId = m_hub.idToHub(req.destId());
            int rank = req.destRank();
-           CERR << "handleRemoteData on " << m_hub.id() << ": sending to " << hubId << std::endl;
            if (hubId != m_hub.id()) {
                CERR << "remoteMsgRecv: hub mismatch" << std::endl;
+               CERR << "remoteMsgRecv: on " << m_hub.id() << ": sending to " << hubId << std::endl;
                return;
            }
            auto local = getLocalDataSock(rank);
            if (local) {
-              message::async_send(*local, *msg, [this, msg, rank, local](error_code ec){
+              message::async_send(*local, *msg, [this, msg, rank, sock](error_code ec){
                  if (ec) {
                     CERR << "error in forwarding RequestObject msg to local rank " << rank << std::endl;
                     return;
                  }
-                 localMsgRecv(local);
+                 remoteMsgRecv(sock);
               });
            }
            break;
-        }
-        case Message::IDENTIFY: {
-            CERR << "remoteMsgRecv: received Identify: " << *msg << std::endl;
-            break;
         }
         default: {
             CERR << "remoteMsgRecv: unsupported msg type " << msg->type() << std::endl;
@@ -281,13 +299,16 @@ bool DataProxy::connectRemoteData(int hubId) {
             CERR << "could not establish bulk data connection to " << hubData.address << ":" << hubData.dataPort << std::endl;
             return false;
          }
+         m_remoteDataSocket[hubId] = sock;
+         remoteMsgRecv(sock);
 
+#if 0
          Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
          if (!message::send(*sock, ident)) {
              CERR << "error when establishing bulk data connection to " << hubData.address << ":" << hubData.dataPort << std::endl;
              return false;
          }
-         m_remoteDataSocket[hubId] = sock;
+#endif
 
 #if 0
          addSocket(sock, message::Identify::REMOTEBULKDATA);
@@ -316,12 +337,14 @@ boost::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getLocalDataSock(int 
 boost::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getRemoteDataSock(int hubId) {
 
    auto it = m_remoteDataSocket.find(hubId);
+#if 0
    if (it == m_remoteDataSocket.end()) {
       if (!connectRemoteData(hubId)) {
          CERR << "failed to establish data connection to remote hub with id " << hubId << std::endl;
          return boost::shared_ptr<asio::ip::tcp::socket>();
       }
    }
+#endif
    it = m_remoteDataSocket.find(hubId);
    vassert(it != m_remoteDataSocket.end());
    //CERR << "found remote data sock to hub " << hubId << std::endl;
