@@ -144,8 +144,6 @@ bool Hub::startServer() {
       startAccept();
    }
 
-   m_dataProxy.reset(new DataProxy(*this, m_port+1));
-
    return true;
 }
 
@@ -199,6 +197,7 @@ void Hub::addSlave(const std::string &name, shared_ptr<asio::ip::tcp::socket> so
    m_slaves[slaveid].sock = sock;
    m_slaves[slaveid].name = name;
    m_slaves[slaveid].ready = false;
+   m_slaves[slaveid].id = slaveid;
 
    message::SetId set(slaveid);
    sendMessage(sock, set);
@@ -218,6 +217,7 @@ void Hub::slaveReady(Slave &slave) {
    slave.ready = true;
 }
 
+#if 0
 void Hub::addLocalData(int rank, shared_ptr<asio::ip::tcp::socket> sock) {
    m_localDataSocket[rank] = sock;
 }
@@ -225,6 +225,7 @@ void Hub::addLocalData(int rank, shared_ptr<asio::ip::tcp::socket> sock) {
 void Hub::addRemoteData(int hub, shared_ptr<asio::ip::tcp::socket> sock) {
    m_remoteDataSocket[hub] = sock;
 }
+#endif
 
 bool Hub::dispatch() {
 
@@ -322,9 +323,11 @@ void Hub::handleWrite(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, cons
        if (senderType == message::Identify::UI) {
           ok = m_uiManager.handleMessage(msg, sock);
        } else if (senderType == message::Identify::LOCALBULKDATA) {
-          ok = handleLocalData(msg, sock);
+          //ok = handleLocalData(msg, sock);
+          CERR << "invalid identity on socket: " << senderType << std::endl;
        } else if (senderType == message::Identify::REMOTEBULKDATA) {
-          ok = handleRemoteData(msg, sock);
+          //ok = handleRemoteData(msg, sock);
+          CERR << "invalid identity on socket: " << senderType << std::endl;
        } else {
           ok = handleMessage(msg, sock);
        }
@@ -439,6 +442,7 @@ bool Hub::sendUi(const message::Message &msg) {
    return true;
 }
 
+#if 0
 bool Hub::connectRemoteData(int hubId) {
    vassert(m_remoteDataSocket.find(hubId) == m_remoteDataSocket.end());
 
@@ -529,6 +533,7 @@ bool Hub::sendLocalData(const char *data, size_t n, int rank) {
    }
    return asio::write(*it->second, asio::buffer(data, n));
 }
+#endif
 
 int Hub::idToHub(int id) const {
 
@@ -648,6 +653,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                addSlave(id.name(), sock);
                break;
             }
+#if 0
             case Identify::LOCALBULKDATA: {
                CERR << "bulk data to rank " << id.rank() << " connected" << std::endl;
                addLocalData(id.rank(), sock);
@@ -658,6 +664,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                addRemoteData(id.senderId(), sock);
                break;
             }
+#endif
             default: {
                CERR << "invalid identity: " << id.identity() << std::endl;
                break;
@@ -672,6 +679,8 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             if (it == m_slaves.end()) {
                break;
             }
+            m_stateTracker.handle(mm, true);
+            masterAdded = true;
             auto &slave = it->second;
             slaveReady(slave);
          } else {
@@ -681,7 +690,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                m.setAddress(m_masterSocket->remote_endpoint().address());
                m_stateTracker.handle(m, true);
                masterAdded = true;
+            } else {
+                m_stateTracker.handle(mm, true);
             }
+         }
+         if (mm.id() < m_hubId) {
+             m_dataProxy->connectRemoteData(mm.id());
          }
          break;
       }
@@ -898,6 +912,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
    return true;
 }
 
+#if 0
 bool Hub::handleLocalData(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock) {
    //CERR << "handleLocalData: " << recv << std::endl;
    using namespace message;
@@ -957,6 +972,7 @@ bool Hub::handleRemoteData(const message::Message &recv, shared_ptr<asio::ip::tc
    }
    return true;
 }
+#endif
 
 bool Hub::init(int argc, char *argv[]) {
 
@@ -997,6 +1013,7 @@ bool Hub::init(int argc, char *argv[]) {
    }
 
    startServer();
+   m_dataProxy.reset(new DataProxy(*this, m_port+1));
 
    std::string uiCmd = "vistle_gui";
 

@@ -33,10 +33,12 @@ class Hub {
 
    bool handleMessage(const message::Message &msg,
          boost::shared_ptr<boost::asio::ip::tcp::socket> sock = boost::shared_ptr<boost::asio::ip::tcp::socket>());
+#if 0
    bool handleLocalData(const message::Message &msg,
          boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    bool handleRemoteData(const message::Message &msg,
          boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
+#endif
 
    bool sendManager(const message::Message &msg, int hub = message::Id::LocalHub);
    bool sendMaster(const message::Message &msg);
@@ -60,8 +62,12 @@ private:
 
    void hubReady();
    bool connectToMaster(const std::string &host, unsigned short port);
+#if 0
    bool connectRemoteData(int hubId);
    boost::shared_ptr<boost::asio::ip::tcp::socket> getRemoteDataSock(int hubId);
+   void addLocalData(int rank, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
+   void addRemoteData(int hub, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
+#endif
    bool startUi(const std::string &uipath);
    bool startServer();
    bool startAccept();
@@ -72,8 +78,6 @@ private:
    void addClient(boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void addSlave(const std::string &name, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    void slaveReady(Slave &slave);
-   void addLocalData(int rank, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
-   void addRemoteData(int hub, boost::shared_ptr<boost::asio::ip::tcp::socket> sock);
    bool startCleaner();
    bool startManager();
 
@@ -100,13 +104,16 @@ private:
 
    bool m_isMaster;
    boost::shared_ptr<boost::asio::ip::tcp::socket> m_masterSocket;
+#if 0
    typedef std::map<int, boost::shared_ptr<boost::asio::ip::tcp::socket>> DataSocketMap;
    DataSocketMap m_localDataSocket; // sockets to local MPI ranks
    DataSocketMap m_remoteDataSocket; // sockets to remote hubs
+#endif
    struct Slave {
       boost::shared_ptr<boost::asio::ip::tcp::socket> sock;
       std::string name;
       bool ready = false;
+      int id = 0;
    };
    std::map<int, Slave> m_slaves;
    int m_slaveCount;
