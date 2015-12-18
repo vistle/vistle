@@ -69,6 +69,11 @@ void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::
           return;
        }
        recvData->sz = ntohl(recvData->sz);
+       if (recvData->sz > msg.size()) {
+           std::cerr << "message::async_recv err: buffer too small: have " << msg.size() << ", need " << recvData->sz << std::endl;
+           handler(error_code());
+           return;
+       }
        recvData->buf = asio::buffer(&recvData->msg, recvData->sz);
        asio::async_read(sock, recvData->buf, [recvData, &sock, handler](error_code ec, size_t n){
           if (recvData->sz != n) {
