@@ -1135,9 +1135,6 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             vassert(it != m_stateTracker.runningMap.end());
             if (it->second.reducePolicy != message::ReducePolicy::Never) {
                const bool broadcast = handleOnMaster || it->second.reducePolicy!=message::ReducePolicy::Locally;
-               auto i = runningMap.find(destId);
-               vassert(i != runningMap.end());
-               auto &mod = i->second;
                if (allReadyForPrepare) {
                   for (auto input: allInputs) {
                      portManager().popReset(input);
