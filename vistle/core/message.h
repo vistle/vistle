@@ -185,8 +185,11 @@ V_ENUM_OUTPUT_OP(Type, Message)
 class V_COREEXPORT Buffer: public Message {
 
   public:
-   Buffer(): Message(Message::ANY, Message::MESSAGE_SIZE) {}
+   Buffer(): Message(Message::ANY, Message::MESSAGE_SIZE) {
+      memset(payload.data(), 0, payload.size());
+   }
    Buffer(const Message &message): Message(message) {
+      memset(payload.data(), 0, payload.size());
       memcpy(payload.data(), (char *)&message+sizeof(Message), message.size()-sizeof(Message));
    }
    const Buffer &operator=(const Buffer &rhs) {
