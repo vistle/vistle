@@ -209,8 +209,8 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                int hubId = m_hub.idToHub(send.destId());
                CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
                auto remote = getRemoteDataSock(hubId);
-               LOCKER(remote);
                if (remote) {
+                  LOCKER(remote);
                   boost::asio::async_write(*remote, buffers, [remote, _LOCKER_](error_code ec, size_t n){
                       if (ec) {
                           CERR << "SendObject: error in remote write: " << ec.message() << std::endl;
@@ -232,7 +232,8 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
            CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
            auto remote = getRemoteDataSock(hubId);
            if (remote) {
-              message::async_send(*remote, *msg, [remote, msg, hubId](error_code ec){
+              LOCKER(remote);
+              message::async_send(*remote, *msg, [remote, _LOCKER_, msg, hubId](error_code ec){
                  if (ec) {
                     CERR << "error in forwarding RequestObject msg to remote hub " << hubId << std::endl;
                     return;
@@ -277,7 +278,8 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
             auto &ident = msg->as<const Identify>();
             if (ident.identity() == Identify::UNKNOWN) {
                Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
-               async_send(*sock, ident, [this, sock](error_code ec){
+               LOCKER(sock);
+               async_send(*sock, ident, [this, sock, _LOCKER_](error_code ec){
                   if (ec) {
                      CERR << "send error" << std::endl;
                      return;
@@ -316,8 +318,9 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                int hubId = m_hub.idToHub(send.destId());
                vassert(hubId == m_hub.id());
                auto local = getLocalDataSock(send.destRank());
+               LOCKER(local);
                if (local) {
-                  boost::asio::async_write(*local, buffers, [local](error_code ec, size_t n){
+                  boost::asio::async_write(*local, buffers, [local, _LOCKER_](error_code ec, size_t n){
                       if (ec) {
                           CERR << "SendObject: error in local write: " << ec.message() << std::endl;
                           return;
@@ -343,7 +346,8 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
            }
            auto local = getLocalDataSock(rank);
            if (local) {
-              message::async_send(*local, *msg, [this, msg, rank, sock](error_code ec){
+              LOCKER(local);
+              message::async_send(*local, *msg, [this, msg, rank, sock, _LOCKER_](error_code ec){
                  if (ec) {
                     CERR << "error in forwarding RequestObject msg to local rank " << rank << std::endl;
                     return;
