@@ -13,12 +13,13 @@ namespace vistle {
 class Hub;
 
 class DataProxy {
-   typedef boost::asio::ip::tcp::socket tcp_socket;
    typedef boost::asio::ip::tcp::acceptor acceptor;
    typedef boost::asio::ip::address address;
    typedef boost::asio::io_service io_service;
 
 public:
+   typedef boost::asio::ip::tcp::socket tcp_socket;
+
     DataProxy(Hub &hub, unsigned short basePort);
     ~DataProxy();
     unsigned short port() const;
