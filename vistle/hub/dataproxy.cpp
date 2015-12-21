@@ -2,6 +2,7 @@
 #include "hub.h"
 #include <core/tcpmessage.h>
 #include <core/message.h>
+#include <condition_variable>
 
 #define CERR std::cerr << "DataProxy: "
 
@@ -33,6 +34,70 @@ struct Deleter {
 
 #define LOCKER(sock) boost::shared_ptr<lock_guard> _LOCKER_(new lock_guard(m_socketMutex[sock.get()]), Deleter(sock.get()))
 
+template<class SocketType>
+struct SocketGuardCore
+{
+    typedef SocketType Socket;
+
+    static std::mutex s_mutex;
+    static std::map<Socket*, std::condition_variable> s_conditions;
+    static std::map<Socket*, std::mutex> s_mutexes;
+    static std::map<Socket*, bool> s_busy;
+
+    boost::shared_ptr<Socket> socket;
+    std::mutex *mutex;
+    std::condition_variable *condition;
+    bool *busy;
+    boost::shared_ptr<std::unique_lock<std::mutex>> lock;
+
+    SocketGuardCore(boost::shared_ptr<Socket> socket)
+        : socket(socket)
+        , mutex(nullptr)
+        , condition(nullptr)
+        , busy(nullptr)
+    {
+        CERR << "locking socket " << socket.get() << std::endl;
+        {
+            std::unique_lock<std::mutex> lock(s_mutex);
+            mutex = &s_mutexes[socket.get()];
+            condition = &s_conditions[socket.get()];
+            auto it = s_busy.find(socket.get());
+            if (it == s_busy.end()) {
+                it = s_busy.emplace(socket.get(), false).first;
+            }
+            busy = &it->second;
+            vassert(mutex);
+            vassert(condition);
+            vassert(busy);
+        }
+        lock.reset(new std::unique_lock<std::mutex>(*mutex));
+        while(*busy) {
+            condition->wait(*lock);
+        }
+        *busy = true;
+    }
+
+    ~SocketGuardCore() {
+        CERR << "releasing socket " << socket.get() << std::endl;
+        *busy = false;
+        lock.reset();
+        condition->notify_all();
+    }
+
+};
+
+typedef SocketGuardCore<DataProxy::tcp_socket> SocketGuard;
+typedef boost::shared_ptr<SocketGuard> SocketGuardPtr;
+
+template<class Socket>
+std::mutex SocketGuardCore<Socket>::s_mutex;
+template<class Socket>
+std::map<Socket*, std::condition_variable> SocketGuardCore<Socket>::s_conditions;
+template<class Socket>
+std::map<Socket*, std::mutex> SocketGuardCore<Socket>::s_mutexes;
+template<class Socket>
+std::map<Socket*, bool> SocketGuardCore<Socket>::s_busy;
+
 DataProxy::DataProxy(Hub &hub, unsigned short basePort)
 : m_hub(hub)
 , m_port(basePort)
@@ -62,7 +127,6 @@ DataProxy::DataProxy(Hub &hub, unsigned short basePort)
    m_acceptor.listen();
 
    startAccept();
-   startThread();
 }
 
 DataProxy::~DataProxy() {
@@ -102,6 +166,7 @@ void DataProxy::startAccept() {
    CERR << "(re-)starting accept" << std::endl;
    boost::shared_ptr<tcp_socket> sock(new tcp_socket(io()));
    m_acceptor.async_accept(*sock, [this, sock](boost::system::error_code ec){handleAccept(ec, sock);});
+   startThread();
 }
 
 void DataProxy::handleAccept(const boost::system::error_code &error, boost::shared_ptr<tcp_socket> sock) {
@@ -210,8 +275,8 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
                auto remote = getRemoteDataSock(hubId);
                if (remote) {
-                  LOCKER(remote);
-                  boost::asio::async_write(*remote, buffers, [remote, _LOCKER_](error_code ec, size_t n){
+                  SocketGuardPtr locker(new SocketGuard(remote));
+                  boost::asio::async_write(*remote, buffers, [remote, locker](error_code ec, size_t n){
                       if (ec) {
                           CERR << "SendObject: error in remote write: " << ec.message() << std::endl;
                           return;
@@ -232,8 +297,8 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
            CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
            auto remote = getRemoteDataSock(hubId);
            if (remote) {
-              LOCKER(remote);
-              message::async_send(*remote, *msg, [remote, _LOCKER_, msg, hubId](error_code ec){
+              SocketGuardPtr locker(new SocketGuard(remote));
+              message::async_send(*remote, *msg, [remote, locker, msg, hubId](error_code ec){
                  if (ec) {
                     CERR << "error in forwarding RequestObject msg to remote hub " << hubId << std::endl;
                     return;
@@ -278,8 +343,8 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
             auto &ident = msg->as<const Identify>();
             if (ident.identity() == Identify::UNKNOWN) {
                Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
-               LOCKER(sock);
-               async_send(*sock, ident, [this, sock, _LOCKER_](error_code ec){
+               SocketGuardPtr locker(new SocketGuard(sock));
+               async_send(*sock, ident, [this, sock, locker](error_code ec){
                   if (ec) {
                      CERR << "send error" << std::endl;
                      return;
@@ -318,9 +383,9 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                int hubId = m_hub.idToHub(send.destId());
                vassert(hubId == m_hub.id());
                auto local = getLocalDataSock(send.destRank());
-               LOCKER(local);
                if (local) {
-                  boost::asio::async_write(*local, buffers, [local, _LOCKER_](error_code ec, size_t n){
+                  SocketGuardPtr locker(new SocketGuard(local));
+                  boost::asio::async_write(*local, buffers, [local, locker](error_code ec, size_t n){
                       if (ec) {
                           CERR << "SendObject: error in local write: " << ec.message() << std::endl;
                           return;
@@ -346,8 +411,8 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
            }
            auto local = getLocalDataSock(rank);
            if (local) {
-              LOCKER(local);
-              message::async_send(*local, *msg, [this, msg, rank, sock, _LOCKER_](error_code ec){
+              SocketGuard locker(local);
+              message::async_send(*local, *msg, [this, msg, rank, sock, locker](error_code ec){
                  if (ec) {
                     CERR << "error in forwarding RequestObject msg to local rank " << rank << std::endl;
                     return;
@@ -426,8 +491,8 @@ boost::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getRemoteDataSock(int
          return boost::shared_ptr<asio::ip::tcp::socket>();
       }
    }
-#endif
    it = m_remoteDataSocket.find(hubId);
+#endif
    vassert(it != m_remoteDataSocket.end());
    //CERR << "found remote data sock to hub " << hubId << std::endl;
    return it->second;

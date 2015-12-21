@@ -1612,7 +1612,7 @@ void Router::initRoutingTable() {
    rt[M::TRACE]                 = Broadcast|Track;
    rt[M::SPAWN]                 = Track|HandleOnMaster;
    rt[M::SPAWNPREPARED]         = DestLocalHub|HandleOnHub;
-   rt[M::STARTED]               = Track|DestUi;
+   rt[M::STARTED]               = Track|DestUi|DestManager|DestModules;
    rt[M::MODULEEXIT]            = Track|DestUi|DestManager|DestModules;
    rt[M::KILL]                  = DestModules|HandleOnDest;
    rt[M::QUIT]                  = Broadcast|HandleOnMaster|HandleOnHub|HandleOnNode;
