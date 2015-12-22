@@ -216,6 +216,9 @@ bool Communicator::dispatch(bool *work) {
       MPI_Test(&m_reqAny, &flag, &status);
       if (flag && status.MPI_TAG == TagToAny) {
 
+         if (m_recvSize > m_recvBufToAny.size()) {
+            CERR << "invalid m_recvSize: " << m_recvSize << ", flag=" << flag << ", status.MPI_SOURCE=" << status.MPI_SOURCE << std::endl;
+         }
          vassert(m_recvSize <= m_recvBufToAny.size());
          MPI_Bcast(m_recvBufToAny.data(), m_recvSize, MPI_BYTE,
                status.MPI_SOURCE, MPI_COMM_WORLD);
