@@ -67,7 +67,7 @@ Hub::Hub()
 , m_slaveCount(0)
 , m_hubId(Id::Invalid)
 , m_moduleCount(0)
-, m_traceMessages(message::Message::ADDPORT)
+, m_traceMessages(message::Message::ANY)
 , m_execCount(0)
 , m_barrierActive(false)
 , m_barrierReached(0)
@@ -217,16 +217,6 @@ void Hub::slaveReady(Slave &slave) {
    slave.ready = true;
 }
 
-#if 0
-void Hub::addLocalData(int rank, shared_ptr<asio::ip::tcp::socket> sock) {
-   m_localDataSocket[rank] = sock;
-}
-
-void Hub::addRemoteData(int hub, shared_ptr<asio::ip::tcp::socket> sock) {
-   m_remoteDataSocket[hub] = sock;
-}
-#endif
-
 bool Hub::dispatch() {
 
    m_ioService.poll();
@@ -325,9 +315,11 @@ void Hub::handleWrite(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, cons
        } else if (senderType == message::Identify::LOCALBULKDATA) {
           //ok = handleLocalData(msg, sock);
           CERR << "invalid identity on socket: " << senderType << std::endl;
+          ok = false;
        } else if (senderType == message::Identify::REMOTEBULKDATA) {
           //ok = handleRemoteData(msg, sock);
           CERR << "invalid identity on socket: " << senderType << std::endl;
+          ok = false;
        } else {
           ok = handleMessage(msg, sock);
        }
@@ -441,99 +433,6 @@ bool Hub::sendUi(const message::Message &msg) {
    m_uiManager.sendMessage(msg);
    return true;
 }
-
-#if 0
-bool Hub::connectRemoteData(int hubId) {
-   vassert(m_remoteDataSocket.find(hubId) == m_remoteDataSocket.end());
-
-   for (auto &hubData: m_stateTracker.m_hubs) {
-      if (hubData.id == hubId) {
-         boost::shared_ptr<asio::ip::tcp::socket> sock(new boost::asio::ip::tcp::socket(m_ioService));
-         boost::asio::ip::tcp::endpoint dest(hubData.address, hubData.port);
-
-         boost::system::error_code ec;
-         asio::connect(*sock, &dest, &dest+1, ec);
-         if (ec) {
-            CERR << "could not establish bulk data connection to " << hubData.address << ":" << hubData.port << std::endl;
-            return false;
-         }
-
-         addSocket(sock, message::Identify::REMOTEBULKDATA);
-         sendMessage(sock, message::Identify(message::Identify::REMOTEBULKDATA, m_hubId));
-
-         addRemoteData(hubId, sock);
-         addClient(sock);
-
-         CERR << "connected to hub (data) at " << hubData.address << ":" << hubData.port << std::endl;
-         return true;
-      }
-   }
-
-   CERR << "don't know hub " << hubId << std::endl;
-   return false;
-}
-
-boost::shared_ptr<boost::asio::ip::tcp::socket> Hub::getRemoteDataSock(int hubId) {
-
-   auto it = m_remoteDataSocket.find(hubId);
-   if (it == m_remoteDataSocket.end()) {
-      if (!connectRemoteData(hubId)) {
-         CERR << "failed to establish data connection to remote hub with id " << hubId << std::endl;
-         return boost::shared_ptr<asio::ip::tcp::socket>();
-      }
-   }
-   it = m_remoteDataSocket.find(hubId);
-   vassert(it != m_remoteDataSocket.end());
-   //CERR << "found remote data sock to hub " << hubId << std::endl;
-   return it->second;
-}
-
-bool Hub::sendRemoteData(const message::Message &msg, int hubId) {
-
-   if (hubId == m_hubId)
-      return true;
-
-   auto sock = getRemoteDataSock(hubId);
-   if (!sock) {
-      return false;
-   }
-
-   return sendMessage(sock, msg);
-}
-
-bool Hub::sendRemoteData(const char *data, size_t n, int hubId) {
-
-   if (hubId == m_hubId)
-      return true;
-
-   auto sock = getRemoteDataSock(hubId);
-   if (!sock) {
-      return false;
-   }
-
-   return asio::write(*sock, asio::buffer(data, n));
-}
-
-bool Hub::sendLocalData(const message::Message &msg, int rank) {
-
-   auto it = m_localDataSocket.find(rank);
-   if (it == m_localDataSocket.end()) {
-      vassert(it != m_localDataSocket.end());
-      return false;
-   }
-   return sendMessage(it->second, msg);
-}
-
-bool Hub::sendLocalData(const char *data, size_t n, int rank) {
-
-   auto it = m_localDataSocket.find(rank);
-   if (it == m_localDataSocket.end()) {
-      vassert(it != m_localDataSocket.end());
-      return false;
-   }
-   return asio::write(*it->second, asio::buffer(data, n));
-}
-#endif
 
 int Hub::idToHub(int id) const {
 
@@ -653,18 +552,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                addSlave(id.name(), sock);
                break;
             }
-#if 0
-            case Identify::LOCALBULKDATA: {
-               CERR << "bulk data to rank " << id.rank() << " connected" << std::endl;
-               addLocalData(id.rank(), sock);
-               break;
-            }
-            case Identify::REMOTEBULKDATA: {
-               CERR << "bulk data to hub '" << id.name() << "' connected" << std::endl;
-               addRemoteData(id.senderId(), sock);
-               break;
-            }
-#endif
             default: {
                CERR << "invalid identity: " << id.identity() << std::endl;
                break;
@@ -911,68 +798,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
    return true;
 }
-
-#if 0
-bool Hub::handleLocalData(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock) {
-   //CERR << "handleLocalData: " << recv << std::endl;
-   using namespace message;
-   switch (recv.type()) {
-      case Message::REQUESTOBJECT: {
-         auto req = static_cast<const RequestObject &>(recv);
-         int hubId = idToHub(req.destId());
-         //CERR << "handleLocalData on " << m_hubId << ": sending to " << hubId << std::endl;
-         return sendRemoteData(req, hubId);
-         break;
-      }
-      case Message::SENDOBJECT: {
-         auto send = static_cast<const SendObject &>(recv);
-         int hubId = idToHub(send.destId());
-         //CERR << "handleLocalData on " << m_hubId << ": sending to " << hubId << std::endl;
-         sendRemoteData(send, hubId);
-         size_t payloadSize = send.payloadSize();
-         std::vector<char> payload(payloadSize);
-         boost::asio::read(*sock, boost::asio::buffer(payload));
-         //CERR << "handleLocalData: received local data, now sending" << std::endl;
-         return sendRemoteData(payload.data(), payloadSize, hubId);
-      }
-      default:
-         CERR << "invalid message type on local data connection: " << recv.type() << std::endl;
-         return false;
-   }
-   return true;
-}
-
-bool Hub::handleRemoteData(const message::Message &recv, shared_ptr<asio::ip::tcp::socket> sock) {
-   //CERR << "handleRemoteData: " << recv << std::endl;
-   using namespace message;
-   switch (recv.type()) {
-      case Message::IDENTIFY: {
-         auto id = static_cast<const Identify &>(recv);
-         if (id.identity() != Identify::REMOTEBULKDATA) {
-            CERR << "invalid Identity on remote data connection: " << id.identity() << std::endl;
-            return false;
-         }
-         break;
-      }
-      case Message::REQUESTOBJECT: {
-         auto req = static_cast<const RequestObject &>(recv);
-         return sendLocalData(req, req.destRank());
-      }
-      case Message::SENDOBJECT: {
-         auto send = static_cast<const SendObject &>(recv);
-         sendLocalData(send, send.destRank());
-         size_t payloadSize = send.payloadSize();
-         std::vector<char> payload(payloadSize);
-         boost::asio::read(*sock, boost::asio::buffer(payload));
-         return sendLocalData(payload.data(), payloadSize, send.destRank());
-      }
-      default:
-         CERR << "invalid message type on remote data connection: " << recv.type() << std::endl;
-         return false;
-   }
-   return true;
-}
-#endif
 
 bool Hub::init(int argc, char *argv[]) {
 
