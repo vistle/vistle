@@ -17,6 +17,9 @@
 #include "parameter.h"
 #include "export.h"
 
+#pragma pack(push)
+#pragma pack(1)
+
 namespace vistle {
 
 class Communicator;
@@ -1036,4 +1039,6 @@ class V_COREEXPORT Router {
 
 } // namespace message
 } // namespace vistle
+
+#pragma pack(pop)
 #endif
