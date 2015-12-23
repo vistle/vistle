@@ -581,7 +581,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                 m_stateTracker.handle(mm, true);
             }
          }
-         if (mm.id() < m_hubId) {
+         if (mm.id() > m_hubId) {
              m_dataProxy->connectRemoteData(mm.id());
          }
          break;
