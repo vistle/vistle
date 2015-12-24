@@ -657,7 +657,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
                sendUi(notify);
                sendSlaves(notify);
             } else {
-               if (spawn.spawnId() >= Id::ModuleBase) {
+               if (spawn.spawnId() != Id::Invalid) {
                   m_stateTracker.handle(spawn);
                   sendManager(spawn);
                   sendUi(spawn);
