@@ -118,7 +118,7 @@ void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::
    });
 }
 
-bool send(socket_t &sock, const Message &msg) {
+bool send(socket_t &sock, const Message &msg, std::vector<char> *payload) {
 
    assert(check(msg));
    try {
@@ -126,6 +126,8 @@ bool send(socket_t &sock, const Message &msg) {
       std::vector<boost::asio::const_buffer> buffers;
       buffers.push_back(boost::asio::buffer(&sz, sizeof(sz)));
       buffers.push_back(boost::asio::buffer(&msg, msg.size()));
+      if (payload)
+          buffers.push_back(boost::asio::buffer(*payload));
       error_code ec;
       bool ret = asio::write(sock, buffers, ec);
       if (ec) {
@@ -139,23 +141,28 @@ bool send(socket_t &sock, const Message &msg) {
    }
 }
 
-void async_send(socket_t &sock, const message::Message &msg, const std::function<void(error_code ec)> handler) {
+void async_send(socket_t &sock, const message::Message &msg, const std::function<void(error_code ec)> handler,
+                boost::shared_ptr<std::vector<char>> payload) {
 
    assert(check(msg));
    std::cerr << "message::async_send: " << msg << std::endl;
    struct SendData {
       SizeType sz;
       const message::Buffer msg;
+      boost::shared_ptr<std::vector<char>> payload;
       std::vector<boost::asio::const_buffer> buffers;
-      SendData(const message::Message &msg)
+      SendData(const message::Message &msg, boost::shared_ptr<std::vector<char>> payload)
          : sz(htonl(msg.size()))
          , msg(msg)
+         , payload(payload)
       {
           buffers.push_back(boost::asio::buffer(&sz, sizeof(sz)));
           buffers.push_back(boost::asio::buffer(&msg, msg.size()));
+          if (payload)
+              buffers.push_back(boost::asio::buffer(*payload));
       }
    };
-   boost::shared_ptr<SendData> sendData(new SendData(msg));
+   boost::shared_ptr<SendData> sendData(new SendData(msg, payload));
 
    asio::async_write(sock, sendData->buffers, [sendData, &sock, handler](error_code ec, size_t n){
       if (ec) {

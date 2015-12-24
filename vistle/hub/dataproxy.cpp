@@ -263,24 +263,18 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                    CERR << "SendObject: only received " << n << " instead of " << payload->size() << " bytes of data from local" << std::endl;
                    return;
                }
-               uint32_t sz = htonl(msg->size());
-               std::vector<boost::asio::mutable_buffer> buffers;
-               buffers.push_back(boost::asio::buffer(&sz, sizeof(sz)));
-               buffers.push_back(boost::asio::buffer(msg->data(), msg->size()));
-               buffers.push_back(boost::asio::buffer(*payload));
                auto &send = msg->as<const SendObject>();
                int hubId = m_hub.idToHub(send.destId());
                //CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
                auto remote = getRemoteDataSock(hubId);
                if (remote) {
                   SocketGuardPtr locker(new SocketGuard(remote));
-                  boost::asio::async_write(*remote, buffers, [remote, locker](error_code ec, size_t n){
+                  message::async_send(*remote, send, [remote, locker](error_code ec){
                       if (ec) {
                           CERR << "SendObject: error in remote write: " << ec.message() << std::endl;
                           return;
                       }
-                      //CERR << "SendObject: complete, wrote " << n << " bytes" << std::endl;
-                  });
+                  }, payload);
                } else {
                    CERR << "did not find remote socket for hub " << hubId << std::endl;
                }
@@ -371,24 +365,18 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                    CERR << "SendObject: only received " << n << " instead of " << payload->size() << " bytes of data from remote" << std::endl;
                    return;
                }
-               uint32_t sz = htonl(msg->size());
-               std::vector<boost::asio::mutable_buffer> buffers;
-               buffers.push_back(boost::asio::buffer(&sz, sizeof(sz)));
-               buffers.push_back(boost::asio::buffer(msg->data(), msg->size()));
-               buffers.push_back(boost::asio::buffer(*payload));
                auto &send = msg->as<const SendObject>();
                int hubId = m_hub.idToHub(send.destId());
                vassert(hubId == m_hub.id());
                auto local = getLocalDataSock(send.destRank());
                if (local) {
                   SocketGuardPtr locker(new SocketGuard(local));
-                  boost::asio::async_write(*local, buffers, [local, locker](error_code ec, size_t n){
+                  message::async_send(*local, send, [local, locker](error_code ec){
                       if (ec) {
                           CERR << "SendObject: error in local write: " << ec.message() << std::endl;
                           return;
                       }
-                      //CERR << "SendObject: to local complete, wrote " << n << " bytes" << std::endl;
-                  });
+                  }, payload);
                } else {
                    CERR << "did not find local socket for hub " << hubId << std::endl;
                }
