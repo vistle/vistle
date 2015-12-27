@@ -28,6 +28,7 @@ public:
 
     io_service &io();
 private:
+   boost::mutex m_mutex;
    Hub &m_hub;
    unsigned short m_port;
    io_service m_io;
