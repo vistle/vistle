@@ -29,9 +29,6 @@ else()
 endif()
 set(BUILD_SHARED_LIBS ${VISTLE_BUILD_SHARED})
 
-# disable rpath - only rely on LD_LIBRARY_PATH and the likes
-set(CMAKE_SKIP_RPATH TRUE)
-
 # allow for optimizations in Boost.MPI
 # do not use for now: causes crash in broadcast on OS X
 #add_definitions(-DBOOST_MPI_HOMOGENEOUS)
@@ -40,6 +37,10 @@ enable_testing()
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
    add_definitions(-DNDEBUG)
+   # disable rpath - only rely on LD_LIBRARY_PATH and the likes
+   set(CMAKE_SKIP_RPATH TRUE)
+else()
+   set(CMAKE_SKIP_RPATH FALSE)
 endif()
 
 #add_definitions(-DEIGEN_DEFAULT_DENSE_INDEX_TYPE=short)
