@@ -1,6 +1,7 @@
 #include <boost/asio.hpp>
 
 #include <util/tools.h>
+#include <arpa/inet.h>
 #include "tcpmessage.h"
 #include "message.h"
 
@@ -52,6 +53,9 @@ bool recv(socket_t &sock, Message &msg, bool &received, bool block) {
           received = false;
       } else {
           sz = ntohl(sz);
+          if (sz > Message::MESSAGE_SIZE) {
+             std::cerr << "message::recv: msg size too large: " << sz << ", max is " << Message::MESSAGE_SIZE << std::endl;
+          }
           assert(sz <= Message::MESSAGE_SIZE);
           auto msgbuf = asio::buffer(&msg, sz);
           asio::read(sock, msgbuf, ec);
