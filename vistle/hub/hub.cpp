@@ -590,51 +590,61 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          break;
    }
 
-   bool mgr=false, ui=false, master=false, slave=false;
-
    const int dest = idToHub(msg.destId());
    const int sender = idToHub(msg.senderId());
 
-   if (m_hubId == Id::MasterHub) {
-      if (msg.destId() == Id::ForBroadcast)
-         msg.setDestId(Id::Broadcast);
-   }
-   bool track = Router::the().toTracker(msg, senderType) && !masterAdded;
-   m_stateTracker.handle(msg, track);
+   {
+       bool mgr=false, ui=false, master=false, slave=false;
 
-   if (Router::the().toManager(msg, senderType, sender)
-           || (Id::isModule(msg.destId()) && dest == m_hubId)) {
+       if (m_hubId == Id::MasterHub) {
+           if (msg.destId() == Id::ForBroadcast)
+               msg.setDestId(Id::Broadcast);
+       }
+       bool track = Router::the().toTracker(msg, senderType) && !masterAdded;
+       m_stateTracker.handle(msg, track);
 
-      sendManager(msg);
-      mgr = true;
-   }
-   if (Router::the().toUi(msg, senderType)) {
-      sendUi(msg);
-      ui = true;
-   }
-   if (Id::isModule(msg.destId()) && !Id::isHub(dest)) {
-      CERR << "failed to translate module id " << msg.destId() << " to hub" << std::endl;
-   } else  if (!Id::isHub(dest)) {
-      if (Router::the().toMasterHub(msg, senderType, sender)) {
-         sendMaster(msg);
-         master = true;
-      }
-      if (Router::the().toSlaveHub(msg, senderType, sender)) {
-         sendSlaves(msg, msg.destId()==Id::Broadcast /* return to sender */ );
-         slave = true;
-      }
-      vassert(!(slave && master));
-   } else {
-      if (dest != m_hubId) {
-         if (m_isMaster) {
-            sendHub(msg, dest);
-            //sendSlaves(msg);
-            slave = true;
-         } else if (sender == m_hubId) {
-            sendMaster(msg);
-            master = true;
-         }
-      }
+       if (Router::the().toManager(msg, senderType, sender)
+               || (Id::isModule(msg.destId()) && dest == m_hubId)) {
+
+           sendManager(msg);
+           mgr = true;
+       }
+       if (Router::the().toUi(msg, senderType)) {
+           sendUi(msg);
+           ui = true;
+       }
+       if (Id::isModule(msg.destId()) && !Id::isHub(dest)) {
+           CERR << "failed to translate module id " << msg.destId() << " to hub" << std::endl;
+       } else  if (!Id::isHub(dest)) {
+           if (Router::the().toMasterHub(msg, senderType, sender)) {
+               sendMaster(msg);
+               master = true;
+           }
+           if (Router::the().toSlaveHub(msg, senderType, sender)) {
+               sendSlaves(msg, msg.destId()==Id::Broadcast /* return to sender */ );
+               slave = true;
+           }
+           vassert(!(slave && master));
+       } else {
+           if (dest != m_hubId) {
+               if (m_isMaster) {
+                   sendHub(msg, dest);
+                   //sendSlaves(msg);
+                   slave = true;
+               } else if (sender == m_hubId) {
+                   sendMaster(msg);
+                   master = true;
+               }
+           }
+       }
+
+       if (m_traceMessages == Message::ANY || msg.type() == m_traceMessages) {
+           if (track) std::cerr << "t"; else std::cerr << ".";
+           if (mgr) std::cerr << "m" ;else std::cerr << ".";
+           if (ui) std::cerr << "u"; else std::cerr << ".";
+           if (slave) { std::cerr << "s"; } else if (master) { std::cerr << "M"; } else std::cerr << ".";
+           std::cerr << " " << msg << std::endl;
+       }
    }
 
    if (Router::the().toHandler(msg, senderType)) {
@@ -786,14 +796,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
       }
-   }
-
-   if (m_traceMessages == Message::ANY || msg.type() == m_traceMessages) {
-      if (track) std::cerr << "t"; else std::cerr << ".";
-      if (mgr) std::cerr << "m" ;else std::cerr << ".";
-      if (ui) std::cerr << "u"; else std::cerr << ".";
-      if (slave) { std::cerr << "s"; } else if (master) { std::cerr << "M"; } else std::cerr << ".";
-      std::cerr << " " << msg << std::endl;
    }
 
    return true;
