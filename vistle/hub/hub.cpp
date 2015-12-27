@@ -654,18 +654,21 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          case Message::SPAWN: {
             auto &spawn = static_cast<const Spawn &>(msg);
             if (m_isMaster) {
-               vassert(spawn.spawnId() == Id::Invalid);
                auto notify = spawn;
                notify.setSenderId(m_hubId);
-               notify.setSpawnId(Id::ModuleBase + m_moduleCount);
-               ++m_moduleCount;
+               if (spawn.spawnId() == Id::Invalid) {
+                  vassert(spawn.spawnId() == Id::Invalid);
+                  notify.setSpawnId(Id::ModuleBase + m_moduleCount);
+                  ++m_moduleCount;
+               }
                notify.setDestId(spawn.hubId());
                sendManager(notify, spawn.hubId());
+               CERR << "sendManager: " << notify << std::endl;
                notify.setDestId(Id::Broadcast);
                m_stateTracker.handle(notify);
                sendManager(notify);
                sendUi(notify);
-               sendSlaves(notify);
+               sendSlaves(notify, true /* return to sender */);
             } else {
                if (spawn.spawnId() != Id::Invalid) {
                   m_stateTracker.handle(spawn);
