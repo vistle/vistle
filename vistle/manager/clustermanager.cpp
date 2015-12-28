@@ -1019,13 +1019,13 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    if (i == runningMap.end()) {
       vassert(localSender == false);
    }
-   auto &mod = i->second;
 
    auto i2 = m_stateTracker.runningMap.find(prog.senderId());
    if (i2 == m_stateTracker.runningMap.end()) {
       CERR << "module " << prog.senderId() << " not found" << std::endl;
       return false;
    }
+   auto &mod = i->second;
    auto &modState = i2->second;
 
    // initiate reduction if requested by module
@@ -1081,7 +1081,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
              ++mod.ranksFinished;
              if (mod.ranksFinished == m_size) {
                 if (mod.ranksStarted != m_size) {
-                   CERR << "mismatch: m_size=" << m_size << ", started=" << mod.ranksStarted << std::endl;
+                   CERR << "mismatch for module " << prog.senderId() << ": m_size=" << m_size << ", started=" << mod.ranksStarted << std::endl;
                 }
                 vassert(mod.ranksStarted == m_size);
                 mod.ranksFinished = 0;
