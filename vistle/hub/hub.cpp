@@ -82,6 +82,7 @@ Hub::Hub()
 
 Hub::~Hub() {
 
+   m_dataProxy.reset();
    hub_instance = nullptr;
 }
 
