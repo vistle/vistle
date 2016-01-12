@@ -88,6 +88,7 @@ class ClusterManager {
    bool handlePriv(const message::BarrierReached &barrierReached);
    bool handlePriv(const message::SendText &text);
    bool handlePriv(const message::RequestTunnel &tunnel);
+   bool handlePriv(const message::Ping &ping);
 
    bool checkExecuteObject(int modId);
 

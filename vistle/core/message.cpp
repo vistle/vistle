@@ -1624,7 +1624,7 @@ void Router::initRoutingTable() {
    rt[M::CONNECT]               = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0;
    rt[M::DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0;
    rt[M::SETPARAMETER]          = Track|QueueIfUnhandled|DestManager|DestUi|DestModules|OnlyRank0;
-   rt[M::PING]                  = DestModules|HandleOnDest;
+   rt[M::PING]                  = DestManager|DestModules|HandleOnDest;
    rt[M::PONG]                  = DestUi|HandleOnDest;
    rt[M::BUSY]                  = Special;
    rt[M::IDLE]                  = Special;

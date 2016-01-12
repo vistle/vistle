@@ -208,7 +208,7 @@ void ClusterManager::barrierReached(const message::uuid_t &uuid) {
    message::BarrierReached m(uuid);
    m.setDestId(message::Id::MasterHub);
    if (getRank() == 0)
-      sendHub(m);
+      sendHub(m, Id::MasterHub);
 }
 
 std::string ClusterManager::getModuleName(int id) const {
@@ -586,6 +586,12 @@ bool ClusterManager::handle(const message::Message &message) {
          break;
       }
 
+      case Message::PING: {
+         const message::Ping &m = static_cast<const message::Ping &>(message);
+         result = handlePriv(m);
+         break;
+      }
+
       case Message::ADDHUB:
       case Message::REMOVESLAVE:
       case Message::STARTED:
@@ -595,7 +601,6 @@ bool ClusterManager::handle(const message::Message &message) {
       case Message::REPLAYFINISHED:
       case Message::REDUCEPOLICY:
       case Message::OBJECTRECEIVEPOLICY:
-      case Message::PING:
       case Message::PONG:
          break;
 
@@ -1400,6 +1405,16 @@ bool ClusterManager::handlePriv(const message::RequestTunnel &tunnel) {
    }
    if (getRank() == 0)
       sendHub(tun);
+   return true;
+}
+
+bool ClusterManager::handlePriv(const message::Ping &ping) {
+
+   if (getRank() == 0) {
+      message::Pong pong(ping);
+      pong.setDestId(ping.senderId());
+      sendHub(pong);
+   }
    return true;
 }
 
