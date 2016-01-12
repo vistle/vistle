@@ -178,8 +178,8 @@ static void kill(int id) {
 
 static int waitForAnySlaveHub() {
    auto hubs = MODULEMANAGER.getSlaveHubs();
-   if (hubs.size() >= 2)
-      return hubs[1];
+   if (!hubs.empty())
+      return hubs[0];
 
    hubs = MODULEMANAGER.waitForSlaveHubs(1);
    if (!hubs.empty())
