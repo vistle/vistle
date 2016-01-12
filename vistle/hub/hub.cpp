@@ -1065,7 +1065,7 @@ bool Hub::handlePriv(const message::Barrier &barrier) {
    m_barrierActive = true;
    m_barrierUuid = barrier.uuid();
    message::Buffer buf(barrier);
-   buf.setDestId(Id::Broadcast);
+   buf.setDestId(Id::NextHop);
    if (m_isMaster)
       sendSlaves(buf, true);
    sendManager(buf);
