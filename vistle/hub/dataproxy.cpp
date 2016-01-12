@@ -149,6 +149,7 @@ void DataProxy::cleanUp() {
 }
 
 void DataProxy::startThread() {
+   boost::lock_guard<boost::mutex> lock(m_mutex);
    if (m_threads.size() < boost::thread::hardware_concurrency()) {
       m_threads.emplace_back(boost::bind(&asio::io_service::run, &m_io));
       CERR << "now " << m_threads.size() << " threads in pool" << std::endl;
