@@ -457,6 +457,7 @@ void Hub::hubReady() {
       processScript();
    } else {
       message::AddHub hub(m_hubId, m_name);
+      hub.setDestId(Id::ForBroadcast);
       hub.setPort(m_port);
       hub.setDataPort(m_dataProxy->port());
 
@@ -476,8 +477,6 @@ void Hub::hubReady() {
       }
 
       sendMaster(hub);
-      sendUi(hub);
-      sendManager(hub);
    }
 }
 
@@ -567,8 +566,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             if (it == m_slaves.end()) {
                break;
             }
-            m_stateTracker.handle(mm, true);
-            masterAdded = true;
             auto &slave = it->second;
             slaveReady(slave);
          } else {
