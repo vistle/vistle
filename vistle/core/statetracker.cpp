@@ -560,6 +560,15 @@ bool StateTracker::handlePriv(const message::Started &started) {
 
    int moduleId = started.senderId();
    auto it = runningMap.find(moduleId);
+   if (it == runningMap.end()) {
+       CERR << "did not find " << moduleId << " in runningMap, contents are: ";
+       for (auto it = runningMap.begin(); it != runningMap.end(); ++it) {
+           if (it != runningMap.begin())
+               std::cerr << ", ";
+           std::cerr << it->first;
+       }
+       std::cerr << std::endl;
+   }
    vassert(it != runningMap.end());
    auto &mod = it->second;
    mod.initialized = true;
