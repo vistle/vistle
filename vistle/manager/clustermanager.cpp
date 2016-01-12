@@ -29,6 +29,8 @@
 #include "communicator.h"
 
 //#define QUEUE_DEBUG
+#define BARRIER_DEBUG
+//#define DEBUG
 
 #ifdef NOHUB
 #ifdef _WIN32
@@ -40,8 +42,6 @@
 
 #define CERR \
    std::cerr << "ClusterManager [" << m_rank << "/" << m_size << "] "
-
-//#define DEBUG
 
 namespace bi = boost::interprocess;
 
@@ -300,8 +300,8 @@ bool ClusterManager::sendAllOthers(int excluded, const message::Message &message
 
    message::Buffer buf(message);
    if (!localOnly) {
+      buf.setDestId(Id::ForBroadcast);
       if (Communicator::the().isMaster()) {
-         buf.setDestId(Id::Broadcast);
          if (getRank() == 0)
             sendHub(buf);
       } else {
@@ -309,11 +309,11 @@ bool ClusterManager::sendAllOthers(int excluded, const message::Message &message
          if (senderHub >= Id::ModuleBase)
             senderHub = m_stateTracker.getHub(senderHub);
          if (senderHub == Communicator::the().hubId()) {
-            buf.setDestId(Id::Broadcast);
             if (getRank() == 0)
                sendHub(buf);
          }
       }
+      return true;
    }
 
    // handle messages to modules
@@ -772,18 +772,27 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
 
 bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
 
-   int mod = moduleExit.senderId();
+   const int mod = moduleExit.senderId();
    sendAllOthers(mod, moduleExit, true);
+   const bool local = isLocal(mod);
 
    if (!moduleExit.isForwarded()) {
 
-      if (isLocal(moduleExit.senderId())) {
-         RunningMap::iterator it = runningMap.find(mod);
-         if (it == runningMap.end()) {
-            CERR << " Module [" << mod << "] quit, but not found in running map" << std::endl;
-            return true;
-         }
+      if (local) {
+          if (runningMap.find(mod) == runningMap.end()) {
+              CERR << " Module [" << mod << "] quit, but not found in running map" << std::endl;
+              return true;
+          }
+
+          ModuleSet::iterator it = reachedSet.find(mod);
+          if (it != reachedSet.end()) {
+              reachedSet.erase(it);
+          } else {
+              if (m_barrierActive && checkBarrier(m_barrierUuid))
+                  barrierReached(m_barrierUuid);
+          }
       }
+
       if (m_rank == 0) {
          message::ModuleExit exit = moduleExit;
          exit.setForwarded();
@@ -803,14 +812,6 @@ bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
          CERR << " Module [" << mod << "] not found in map" << std::endl;
       }
    }
-   {
-      ModuleSet::iterator it = reachedSet.find(mod);
-      if (it != reachedSet.end())
-         reachedSet.erase(it);
-   }
-
-   if (m_barrierActive && checkBarrier(m_barrierUuid))
-      barrierReached(m_barrierUuid);
 
    return true;
 }
@@ -1336,7 +1337,7 @@ bool ClusterManager::handlePriv(const message::Barrier &barrier) {
 bool ClusterManager::handlePriv(const message::BarrierReached &barrReached) {
 
    vassert(m_barrierActive);
-#ifdef DEBUG
+#ifdef BARRIER_DEBUG
    CERR << "BarrierReached [barrier " << barrReached.uuid() << ", module " << barrReached.senderId() << "]" << std::endl;
 #endif
 
@@ -1344,7 +1345,7 @@ bool ClusterManager::handlePriv(const message::BarrierReached &barrReached) {
       reachedSet.insert(barrReached.senderId());
       if (checkBarrier(m_barrierUuid)) {
          barrierReached(m_barrierUuid);
-#ifdef DEBUG
+#ifdef BARRIER_DEBUG
       } else {
          CERR << "BARRIER: reached by " << reachedSet.size() << "/" << numRunning() << std::endl;
 #endif
