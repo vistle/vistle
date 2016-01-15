@@ -399,11 +399,12 @@ bool Tracer::compute() {
     if (t < 0)
        t = 0;
 
-    if (grid_in.size() <= t) {
-       grid_in.resize(t+1);
-       celltree.resize(t+1);
-       data_in0.resize(t+1);
-       data_in1.resize(t+1);
+    const size_t numSteps = t+1;
+    if (grid_in.size() < numSteps) {
+       grid_in.resize(numSteps);
+       celltree.resize(numSteps);
+       data_in0.resize(numSteps);
+       data_in1.resize(numSteps);
     }
 
     if (useCelltree) {
