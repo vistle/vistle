@@ -164,16 +164,11 @@ class V_COREEXPORT Message {
    //! set rank of destination
    void setDestRank(int r);
 
-  protected:
-   //! broadcast to all ranks?
-   bool m_broadcast;
  private:
-   //! message uuid
-   uuid_t m_uuid;
-   //! message size
-   unsigned int m_size;
    //! message type
    Type m_type;
+   //! message size
+   unsigned int m_size;
    //! sender ID
    int m_senderId;
    //! sender rank
@@ -182,6 +177,11 @@ class V_COREEXPORT Message {
    int m_destId;
    //! destination rank - -1: dependent on message, most often current rank
    int m_destRank;
+   //! message uuid
+   uuid_t m_uuid;
+  protected:
+   //! broadcast to all ranks?
+   bool m_broadcast;
 };
 V_ENUM_OUTPUT_OP(Type, Message)
 
@@ -963,8 +963,8 @@ class V_COREEXPORT SendObject: public Message {
    shm_name_t m_objectId;
    shm_name_t m_referrer;
    int m_objectType;
-   Meta m_meta;
    uint64_t m_payloadSize;
+   Meta m_meta;
    int32_t m_block, m_numBlocks;
    int32_t m_timestep, m_numTimesteps;
    int32_t m_animationstep, m_numAnimationsteps;

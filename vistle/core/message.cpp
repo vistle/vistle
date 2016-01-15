@@ -57,14 +57,14 @@ const DefaultSender &DefaultSender::instance() {
 static boost::uuids::random_generator s_uuidGenerator = boost::uuids::random_generator();
 
 Message::Message(const Type t, const unsigned int s)
-: m_broadcast(false)
-, m_uuid(t == Message::ANY ? boost::uuids::nil_generator()() : s_uuidGenerator())
+: m_type(t)
 , m_size(s)
-, m_type(t)
 , m_senderId(DefaultSender::id())
 , m_rank(DefaultSender::rank())
 , m_destId(Id::NextHop)
 , m_destRank(-1)
+, m_uuid(t == Message::ANY ? boost::uuids::nil_generator()() : s_uuidGenerator())
+, m_broadcast(false)
 {
 
    vassert(m_size <= MESSAGE_SIZE);
@@ -1448,8 +1448,8 @@ SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size
 , m_objectId(obj->getName())
 , m_referrer(request.referrer())
 , m_objectType(obj->getType())
-, m_meta(obj->meta())
 , m_payloadSize(payloadSize)
+, m_meta(obj->meta())
 {
    setUuid(request.uuid());
 
