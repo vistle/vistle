@@ -141,14 +141,14 @@ bool DataManager::completeTransfer(const message::AddObjectCompleted &complete) 
    message::AddObject key(complete);
    auto it = m_inTransitObjects.find(key);
    if (it == m_inTransitObjects.end()) {
-      CERR << "AddObject message for completion notification not found: " << complete << ", size: " << m_inTransitObjects.size() << std::endl;
+      CERR << "AddObject message for completion notification not found: " << complete << ", still " << m_inTransitObjects.size() << " objects in transit" << std::endl;
       return true;
    }
    const auto &add = *it;
-   CERR << "AddObjectCompleted: found request " << add << std::endl;
    auto obj = add.getObject();
    obj->unref();
    m_inTransitObjects.erase(it);
+   CERR << "AddObjectCompleted: found request " << add << " for " << complete << ", still " << m_inTransitObjects.size() << " outstanding" << std::endl;
    return true;
 }
 
@@ -327,6 +327,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
    snd->setDestRank(req.rank());
    send(*snd);
    send(mem.data(), mem.size());
+   CERR << "sent " << mem.size() << " bytes for " << req << " with " << snd << std::endl;
 
    return true;
 }
@@ -368,7 +369,7 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
        auto senderId = snd.senderId();
        auto senderRank = snd.rank();
        auto completionHandler = [this, &outstandingAdds, &outstandingRequests, &outstandingObjects, senderId, senderRank, objName] () mutable -> void {
-          CERR << "object completion handler for " << objName << std::endl;
+           //CERR << "object completion handler for " << objName << std::endl;
            auto obj = Shm::the().getObjectFromName(objName);
            if (!obj) {
                CERR << "did not receive an object for " << objName << std::endl;
@@ -403,7 +404,7 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                }
                outstandingRequests.erase(reqIt);
            } else {
-               CERR << "no outstanding request for " << obj->getName() << std::endl;
+               //CERR << "no outstanding request for " << obj->getName() << std::endl;
            }
 
            auto objIt = outstandingObjects.find(objName);
