@@ -94,7 +94,7 @@ class shm_ref {
     }
 
    bool valid() const {
-       return m_p;
+       return !!m_p;
    }
 
    operator bool() const {
