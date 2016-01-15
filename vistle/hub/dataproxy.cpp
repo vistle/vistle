@@ -148,6 +148,16 @@ void DataProxy::cleanUp() {
    }
 }
 
+asio::strand &DataProxy::getStrand(boost::shared_ptr<DataProxy::tcp_socket> sock) {
+
+    auto it = m_socketStrand.find(sock.get());
+    if (it == m_socketStrand.end()) {
+        auto p = std::make_pair(sock.get(), asio::strand(m_io));
+        it = m_socketStrand.insert(p).first;
+    }
+    return it->second;
+}
+
 void DataProxy::startThread() {
    boost::lock_guard<boost::mutex> lock(m_mutex);
    if (m_threads.size() < boost::thread::hardware_concurrency()) {
@@ -212,7 +222,6 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
             {
                  boost::lock_guard<boost::mutex> lock(m_mutex);
                  m_localDataSocket[id.rank()] = sock;
-                 m_socketMutex[sock.get()];
             }
 
             Identify ident(Identify::LOCALBULKDATA, -1);
@@ -271,13 +280,14 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                //CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
                auto remote = getRemoteDataSock(hubId);
                if (remote) {
-                  SocketGuardPtr locker(new SocketGuard(remote));
-                  message::async_send(*remote, send, [remote, locker](error_code ec){
-                      if (ec) {
-                          CERR << "SendObject: error in remote write: " << ec.message() << std::endl;
-                          return;
-                      }
-                  }, payload);
+                  getStrand(remote).post([remote, send, payload](){
+                      message::async_send(*remote, send, [remote](error_code ec){
+                          if (ec) {
+                              CERR << "SendObject: error in remote write: " << ec.message() << std::endl;
+                              return;
+                          }
+                      }, payload);
+                  });
                } else {
                    CERR << "did not find remote socket for hub " << hubId << std::endl;
                }
@@ -291,13 +301,14 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
            //CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
            auto remote = getRemoteDataSock(hubId);
            if (remote) {
-              SocketGuardPtr locker(new SocketGuard(remote));
-              message::async_send(*remote, *msg, [remote, locker, msg, hubId](error_code ec){
-                 if (ec) {
-                    CERR << "error in forwarding RequestObject msg to remote hub " << hubId << std::endl;
-                    return;
-                 }
-              });
+               getStrand(remote).post([remote, msg, hubId](){
+                   message::async_send(*remote, *msg, [remote, msg, hubId](error_code ec){
+                       if (ec) {
+                           CERR << "error in forwarding RequestObject msg to remote hub " << hubId << std::endl;
+                           return;
+                       }
+                   });
+               });
            }
            localMsgRecv(sock);
            break;
@@ -354,7 +365,7 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
         }
         case Message::SENDOBJECT: {
            auto &send = msg->as<const SendObject>();
-           int hubId = m_hub.idToHub(send.senderId());
+           //int hubId = m_hub.idToHub(send.senderId());
            //CERR << "remoteMsgRecv on " << m_hub.id() << ": SendObject from " << hubId << std::endl;
            size_t payloadSize = send.payloadSize();
            boost::shared_ptr<std::vector<char>> payload(new std::vector<char>(payloadSize));
@@ -373,13 +384,14 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                vassert(hubId == m_hub.id());
                auto local = getLocalDataSock(send.destRank());
                if (local) {
-                  SocketGuardPtr locker(new SocketGuard(local));
-                  message::async_send(*local, send, [local, locker](error_code ec){
-                      if (ec) {
-                          CERR << "SendObject: error in local write: " << ec.message() << std::endl;
-                          return;
-                      }
-                  }, payload);
+                   getStrand(local).post([local, send, payload](){
+                       message::async_send(*local, send, [local](error_code ec){
+                           if (ec) {
+                               CERR << "SendObject: error in local write: " << ec.message() << std::endl;
+                               return;
+                           }
+                       }, payload);
+                   });
                } else {
                    CERR << "did not find local socket for hub " << hubId << std::endl;
                }
@@ -399,14 +411,15 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
            }
            auto local = getLocalDataSock(rank);
            if (local) {
-              SocketGuard locker(local);
-              message::async_send(*local, *msg, [this, msg, rank, sock, locker](error_code ec){
-                 if (ec) {
-                    CERR << "error in forwarding RequestObject msg to local rank " << rank << std::endl;
-                    return;
-                 }
-                 remoteMsgRecv(sock);
-              });
+               getStrand(local).post([this, local, msg, rank, sock](){
+                   message::async_send(*local, *msg, [this, msg, rank, sock](error_code ec){
+                       if (ec) {
+                           CERR << "error in forwarding RequestObject msg to local rank " << rank << std::endl;
+                           return;
+                       }
+                       remoteMsgRecv(sock);
+                   });
+               });
            }
            break;
         }
@@ -436,7 +449,6 @@ bool DataProxy::connectRemoteData(int hubId) {
             return false;
          }
          m_remoteDataSocket[hubId] = sock;
-         m_socketMutex[sock.get()];
          remoteMsgRecv(sock);
 
 #if 0
