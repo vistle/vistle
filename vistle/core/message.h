@@ -524,9 +524,11 @@ class V_COREEXPORT AddObjectCompleted: public Message {
 
  public:
    AddObjectCompleted(const AddObject &msg);
+   const char *objectName() const;
    int originalDestination() const;
 
  private:
+   shm_name_t m_name;
    int m_orgDestId;
 };
 BOOST_STATIC_ASSERT(sizeof(AddObjectCompleted) <= Message::MESSAGE_SIZE);

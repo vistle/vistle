@@ -627,9 +627,15 @@ Object::const_ptr AddObject::getObject() const {
 
 AddObjectCompleted::AddObjectCompleted(const AddObject &msg)
 : Message(Message::ADDOBJECTCOMPLETED, sizeof(AddObjectCompleted))
+, m_name(msg.objectName())
 , m_orgDestId(msg.destId())
 {
    setUuid(msg.uuid());
+}
+
+const char *AddObjectCompleted::objectName() const {
+
+   return m_name;
 }
 
 int AddObjectCompleted::originalDestination() const {
@@ -1575,7 +1581,7 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case Message::ADDOBJECTCOMPLETED: {
          auto &mm = static_cast<const AddObjectCompleted &>(m);
-         s << ", original destination: " << mm.originalDestination() << std::endl;
+         s << ", obj: " << mm.objectName() << ", original destination: " << mm.originalDestination() << std::endl;
          break;
       }
       case Message::REQUESTOBJECT: {
