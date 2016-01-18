@@ -456,9 +456,9 @@ bool Tracer::reduce(int timestep) {
    Scalar commthresh = getFloatParameter("comm_threshold");
    Scalar minspeed = getFloatParameter("min_speed");
 
-   Index numtime = grid_in.size();
+   Index numtime = boost::mpi::all_reduce(comm(), grid_in.size(), [](Index a, Index b){ return std::max<Index>(a,b); });
    for (Index t=0; t<numtime; ++t) {
-      Index numblocks = grid_in[t].size();
+      Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
 
       //create BlockData objects
       std::vector<std::unique_ptr<BlockData>> block(numblocks);
