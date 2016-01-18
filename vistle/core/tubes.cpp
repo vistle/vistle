@@ -25,7 +25,7 @@ bool Tubes::checkImpl() const {
    V_CHECK (components()[0] == 0);
    V_CHECK (getNumTubes() >= 0);
    V_CHECK (components()[getNumTubes()] <= getNumVertices());
-   V_CHECK (getNumVertices() >= getNumTubes()*2);
+   V_CHECK (getNumVertices() >= getNumTubes());
    return true;
 }
 
