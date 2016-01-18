@@ -20,6 +20,9 @@ bool Coords::isEmpty() const {
 bool Coords::checkImpl() const {
 
    V_CHECK(!normals() || normals()->getNumNormals() == getSize());
+   if (normals()) {
+       V_CHECK(normals()->check());
+   }
    return true;
 }
 

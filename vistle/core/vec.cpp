@@ -22,6 +22,12 @@ void DataBase::refreshImpl() const {
 
 bool DataBase::checkImpl() const {
 
+   if (grid()) {
+       V_CHECK(grid()->check());
+   }
+   if (hasCelltree()) {
+       V_CHECK(getCelltree()->check());
+   }
    return true;
 }
 
