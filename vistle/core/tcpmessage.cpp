@@ -19,8 +19,18 @@ bool check(const Message &msg) {
         return false;
     }
 
-    if (msg.size() < 0 || msg.size() > Message::MESSAGE_SIZE) {
+    if (msg.size() <= 0 || msg.size() > Message::MESSAGE_SIZE) {
         std::cerr << "check message: invalid size " << msg.size() << std::endl;
+        return false;
+    }
+
+    if (msg.rank() < -1) {
+        std::cerr << "check message: invalid source rank " << msg.rank() << std::endl;
+        return false;
+    }
+
+    if (msg.destRank() < -1) {
+        std::cerr << "check message: invalid destination rank " << msg.destRank() << std::endl;
         return false;
     }
 
@@ -102,6 +112,7 @@ void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::
        recvData->sz = ntohl(recvData->sz);
        if (recvData->sz > msg.size()) {
            std::cerr << "message::async_recv err: buffer too small: have " << msg.size() << ", need " << recvData->sz << std::endl;
+           abort();
            handler(error_code());
            return;
        }
