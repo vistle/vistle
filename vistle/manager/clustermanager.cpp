@@ -1049,6 +1049,10 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                receivingHubs.insert(hub);
             }
             const auto it = m_stateTracker.runningMap.find(destId);
+            if (it == m_stateTracker.runningMap.end()) {
+                CERR << "did not find " << destId << " in runningMap, but it is connected to " << prog.senderId() << ":" << output->getName() << std::endl;
+                abort();
+            }
             vassert(it != m_stateTracker.runningMap.end());
             const auto &destState = it->second;
             if (destState.reducePolicy != message::ReducePolicy::Never && destState.reducePolicy != message::ReducePolicy::Locally) {
