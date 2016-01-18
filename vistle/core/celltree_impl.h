@@ -323,10 +323,14 @@ bool Celltree<Scalar, Index, NumDimensions>::isEmpty() const {
 template<typename Scalar, typename Index, int NumDimensions>
 bool Celltree<Scalar, Index, NumDimensions>::checkImpl() const {
 
-   V_CHECK(d()->m_nodes->size() >= 1);
-   V_CHECK((*d()->m_nodes)[0].size <= d()->m_cells->size());
-   V_CHECK(d()->m_nodes->size() <= d()->m_cells->size());
    V_CHECK(d()->m_bounds->size() == 2*NumDimensions);
+   V_CHECK(d()->m_nodes->size() >= 1);
+   V_CHECK(d()->m_nodes->size() <= d()->m_cells->size());
+   if ((*d()->m_nodes)[0].isLeaf()) {
+       V_CHECK((*d()->m_nodes)[0].size <= d()->m_cells->size());
+   } else {
+       V_CHECK((*d()->m_nodes)[0].Lmax >= (*d()->m_nodes)[0].Rmin);
+   }
    return true;
 }
 
