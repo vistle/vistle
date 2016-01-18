@@ -692,7 +692,6 @@ ObjectList Module::getObjects(const std::string &portName) {
 
    if (i != inputPorts.end()) {
 
-      std::list<shm_handle_t>::iterator shmit;
       ObjectList &olist = i->second->objects();
       for (ObjectList::const_iterator it = olist.begin(); it != olist.end(); it++) {
          Object::const_ptr object = *it;
