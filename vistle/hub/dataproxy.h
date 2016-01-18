@@ -38,7 +38,7 @@ private:
    std::vector<boost::thread> m_threads;
    std::map<int, boost::shared_ptr<tcp_socket>> m_localDataSocket; // hub id -> socket
    std::map<int, boost::shared_ptr<tcp_socket>> m_remoteDataSocket; // MPI rank -> socket
-   std::map<tcp_socket *, boost::asio::strand> m_socketStrand;
+   std::map<tcp_socket *, boost::asio::strand> m_socketStrand[2];
    void startAccept();
    void handleAccept(const boost::system::error_code &error, boost::shared_ptr<tcp_socket> sock);
    void handleConnect(boost::shared_ptr<boost::asio::ip::tcp::socket> sock0, boost::shared_ptr<boost::asio::ip::tcp::socket> sock1, const boost::system::error_code &error);
@@ -52,7 +52,9 @@ private:
 #endif
    boost::shared_ptr<tcp_socket> getRemoteDataSock(int hubId);
    boost::shared_ptr<tcp_socket> getLocalDataSock(int rank);
-   boost::asio::strand &getStrand(boost::shared_ptr<tcp_socket> sock);
+   boost::asio::strand &getWriteStrand(boost::shared_ptr<tcp_socket> sock);
+   boost::asio::strand &getReadStrand(boost::shared_ptr<tcp_socket> sock);
+   boost::asio::strand &getStrand(boost::shared_ptr<tcp_socket> sock, int idx);
 
    void localMsgRecv(boost::shared_ptr<tcp_socket> sock);
    void remoteMsgRecv(boost::shared_ptr<tcp_socket> sock);
