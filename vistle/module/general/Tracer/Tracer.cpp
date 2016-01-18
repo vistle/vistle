@@ -456,6 +456,7 @@ bool Tracer::reduce(int timestep) {
    Scalar commthresh = getFloatParameter("comm_threshold");
    Scalar minspeed = getFloatParameter("min_speed");
 
+   bool havePressure = boost::mpi::all_reduce(comm(), m_havePressure, std::logical_and<bool>());
    Index numtime = boost::mpi::all_reduce(comm(), grid_in.size(), [](Index a, Index b){ return std::max<Index>(a,b); });
    for (Index t=0; t<numtime; ++t) {
       Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
@@ -534,7 +535,7 @@ bool Tracer::reduce(int timestep) {
                for(Index i=0; i<num_recv; i++){
                   times::comm_start = times::start();
                   Index p_index = tmplist[i];
-                  particle[p_index]->Communicator(comm(), mpirank, m_havePressure);
+                  particle[p_index]->Communicator(comm(), mpirank, havePressure);
                   times::comm_dur += times::stop(times::comm_start);
                }
                if (mpirank != rank()) {
@@ -543,7 +544,7 @@ bool Tracer::reduce(int timestep) {
                      if (particle[p_index]->isMoving(steps_max, minspeed)
                          && particle[p_index]->findCell(block)) {
                         // if the particle trajectory continues in this block, repeat last data point from previous block
-                        particle[p_index]->EmitData(m_havePressure);
+                        particle[p_index]->EmitData(havePressure);
                      }
                   }
                }
@@ -566,7 +567,7 @@ bool Tracer::reduce(int timestep) {
       for(Index i=0; i<numblocks; i++){
 
          Meta meta(i, t);
-         meta.setNumTimesteps(grid_in.size());
+         meta.setNumTimesteps(numtime);
          meta.setNumBlocks(numblocks);
 
          block[i]->setMeta(meta);
