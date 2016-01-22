@@ -824,7 +824,7 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
       auto &mod = i->second;
       mod.send(exec);
       switch(exec.what()) {
-      case message::Execute::Prepare:
+      case message::Execute::Prepare: {
          vassert(!mod.prepared);
          vassert(mod.reduced);
          mod.prepared = true;
@@ -832,20 +832,26 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
          CERR << "sent prepare to " << exec.getModule() << ", checking for execution" << std::endl;
          checkExecuteObject(exec.getModule());
          break;
-      case message::Execute::Reduce:
+      }
+      case message::Execute::Reduce: {
          vassert(mod.prepared);
          vassert(!mod.reduced);
          mod.prepared = false;
          mod.reduced = true;
          break;
-      case message::Execute::ComputeExecute:
+      }
+      case message::Execute::ComputeExecute: {
+         vassert(!mod.prepared);
+         mod.prepared = false;
+         mod.reduced = true;
+         break;
+      }
+      case message::Execute::ComputeObject: {
          vassert(mod.prepared);
          vassert(!mod.reduced);
-         mod.prepared = false;
          mod.reduced = false;
          break;
-      case message::Execute::ComputeObject:
-         break;
+      }
       }
    }
 
