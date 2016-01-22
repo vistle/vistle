@@ -821,27 +821,28 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
    vassert (exec.getModule() >= Id::ModuleBase);
    RunningMap::iterator i = runningMap.find(exec.getModule());
    if (i != runningMap.end()) {
-      i->second.send(exec);
+      auto &mod = i->second;
+      mod.send(exec);
       switch(exec.what()) {
       case message::Execute::Prepare:
-         vassert(!i->second.prepared);
-         vassert(i->second.reduced);
-         i->second.prepared = true;
-         i->second.reduced = false;
+         vassert(!mod.prepared);
+         vassert(mod.reduced);
+         mod.prepared = true;
+         mod.reduced = false;
          CERR << "sent prepare to " << exec.getModule() << ", checking for execution" << std::endl;
          checkExecuteObject(exec.getModule());
          break;
       case message::Execute::Reduce:
-         vassert(i->second.prepared);
-         vassert(!i->second.reduced);
-         i->second.prepared = false;
-         i->second.reduced = true;
+         vassert(mod.prepared);
+         vassert(!mod.reduced);
+         mod.prepared = false;
+         mod.reduced = true;
          break;
       case message::Execute::ComputeExecute:
-         vassert(!i->second.prepared);
-         vassert(i->second.reduced);
-         i->second.reduced = true;
-         i->second.prepared = false;
+         vassert(mod.prepared);
+         vassert(!mod.reduced);
+         mod.prepared = false;
+         mod.reduced = false;
          break;
       case message::Execute::ComputeObject:
          break;
@@ -1094,8 +1095,8 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                    CERR << "mismatch for module " << prog.senderId() << ": m_size=" << m_size << ", started=" << mod.ranksStarted << std::endl;
                 }
                 vassert(mod.ranksStarted == m_size);
-                mod.ranksFinished = 0;
                 mod.ranksStarted = 0;
+                mod.ranksFinished = 0;
              } else {
                 readyForReduce = false;
              }
@@ -1166,6 +1167,9 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                   }
                }
                if (allReadyForReduce) {
+                  if (handleOnMaster && localSender) {
+                     vassert(mod.ranksFinished==0);
+                  }
                   for (auto input: allInputs) {
                      portManager().popFinish(input);
                   }
@@ -1516,6 +1520,7 @@ bool ClusterManager::isReadyForExecute(int modId) const {
    }
 
    if (!mod.reduced && mod.prepared) {
+      vassert(mod.ranksFinished <= m_size);
       //std::cerr << "prepared & not reduced" << std::endl;
       return true;
    }
