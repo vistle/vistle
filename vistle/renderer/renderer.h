@@ -14,7 +14,7 @@ class V_RENDEREREXPORT Renderer: public Module {
             const std::string &name, const int moduleID);
    virtual ~Renderer();
 
-   bool dispatch();
+   bool dispatch() override;
 
    void getBounds(Vector3 &min, Vector3 &max);
    void getBounds(Vector3 &min, Vector3 &max, int time);

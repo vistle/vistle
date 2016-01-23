@@ -350,7 +350,7 @@ class VistlePlugin: public opencover::coVRPlugin, public vrui::coMenuListener {
    void menuEvent(vrui::coMenuItem *item) override;
    void preFrame() override;
    void requestQuit(bool killSession) override;
-   bool executeAll();
+   bool executeAll() override;
 
  private:
    OsgRenderer *m_module;
