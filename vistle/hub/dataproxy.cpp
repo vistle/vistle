@@ -276,33 +276,35 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                 auto &send = msg->as<const SendObject>();
                 size_t payloadSize = send.payloadSize();
                 boost::shared_ptr<std::vector<char>> payload(new std::vector<char>(payloadSize));
-                boost::asio::async_read(*sock, boost::asio::buffer(*payload), [this, sock, msg, payload](error_code ec, size_t n) {
-                    //CERR << "localMsgRecv: received local data, now sending" << std::endl;
-                    if (ec) {
-                        CERR << "SendObject: error during receive: " << ec.message() << std::endl;
-                        return;
-                    }
-                    if (n != payload->size()) {
-                        CERR << "SendObject: only received " << n << " instead of " << payload->size() << " bytes of data from local" << std::endl;
-                        return;
-                    }
-                    auto &send = msg->as<const SendObject>();
-                    int hubId = m_hub.idToHub(send.destId());
-                    //CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
-                    auto remote = getRemoteDataSock(hubId);
-                    if (remote) {
-                        getWriteStrand(remote).dispatch([remote, send, payload](){
-                            message::async_send(*remote, send, [remote](error_code ec){
-                                if (ec) {
-                                    CERR << "SendObject: error in remote write: " << ec.message() << std::endl;
-                                    return;
-                                }
-                            }, payload);
-                        });
-                    } else {
-                        CERR << "did not find remote socket for hub " << hubId << std::endl;
-                    }
-                    localMsgRecv(sock);
+                getReadStrand(sock).dispatch([this, sock, msg, payload](){
+                    boost::asio::async_read(*sock, boost::asio::buffer(*payload), [this, sock, msg, payload](error_code ec, size_t n) {
+                        //CERR << "localMsgRecv: received local data, now sending" << std::endl;
+                        if (ec) {
+                            CERR << "SendObject: error during receive: " << ec.message() << std::endl;
+                            return;
+                        }
+                        if (n != payload->size()) {
+                            CERR << "SendObject: only received " << n << " instead of " << payload->size() << " bytes of data from local" << std::endl;
+                            return;
+                        }
+                        auto &send = msg->as<const SendObject>();
+                        int hubId = m_hub.idToHub(send.destId());
+                        //CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
+                        auto remote = getRemoteDataSock(hubId);
+                        if (remote) {
+                            getWriteStrand(remote).dispatch([remote, send, payload](){
+                                message::async_send(*remote, send, [remote](error_code ec){
+                                    if (ec) {
+                                        CERR << "SendObject: error in remote write: " << ec.message() << std::endl;
+                                        return;
+                                    }
+                                }, payload);
+                            });
+                        } else {
+                            CERR << "did not find remote socket for hub " << hubId << std::endl;
+                        }
+                        localMsgRecv(sock);
+                    });
                 });
                 break;
             }
