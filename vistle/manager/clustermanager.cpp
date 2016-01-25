@@ -340,7 +340,7 @@ bool ClusterManager::sendAllOthers(int excluded, const message::Message &message
 
 bool ClusterManager::sendUi(const message::Message &message) const {
 
-   return Communicator::the().sendHub(message);
+   return sendHub(message);
 }
 
 bool ClusterManager::sendHub(const message::Message &message, int destHub) const {
