@@ -1628,8 +1628,8 @@ void Router::initRoutingTable() {
    rt[M::TRACE]                 = Broadcast|Track;
    rt[M::SPAWN]                 = Track|HandleOnMaster;
    rt[M::SPAWNPREPARED]         = DestLocalHub|HandleOnHub;
-   rt[M::STARTED]               = Track|DestUi|DestManager|DestModules;
-   rt[M::MODULEEXIT]            = Track|DestUi|DestManager|DestModules;
+   rt[M::STARTED]               = Track|DestUi|DestManager|DestModules|OnlyRank0;
+   rt[M::MODULEEXIT]            = Track|DestUi|DestManager|DestModules|OnlyRank0;
    rt[M::KILL]                  = DestModules|HandleOnDest;
    rt[M::QUIT]                  = Broadcast|HandleOnMaster|HandleOnHub|HandleOnNode;
    rt[M::EXECUTE]               = Special|HandleOnMaster;
