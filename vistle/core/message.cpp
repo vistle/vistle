@@ -1559,6 +1559,16 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
          s << ", name: " << mm.getPort()->getName();
          break;
       }
+      case Message::CONNECT: {
+         auto &mm = static_cast<const Connect &>(m);
+         s << ", from: " << mm.getModuleA() << ":" << mm.getPortAName() << ", to: " << mm.getModuleB() << ":" << mm.getPortBName();
+         break;
+      }
+      case Message::DISCONNECT: {
+         auto &mm = static_cast<const Disconnect &>(m);
+         s << ", from: " << mm.getModuleA() << ":" << mm.getPortAName() << ", to: " << mm.getModuleB() << ":" << mm.getPortBName();
+         break;
+      }
       case Message::MODULEAVAILABLE: {
          auto &mm = static_cast<const ModuleAvailable &>(m);
          s << ", name: " << mm.name() << ", hub: " << mm.hub();
