@@ -27,8 +27,7 @@ public:
     bool connect(boost::asio::ip::tcp::resolver::iterator &hub);
     bool dispatch();
 
-    bool send(const message::Message &message);
-    bool send(const char *buf, size_t n);
+    bool send(const message::Message &message, const std::vector<char> *payload=nullptr);
     bool read(char *buf, size_t n);
 private:
     bool handlePriv(const message::RequestObject &req);

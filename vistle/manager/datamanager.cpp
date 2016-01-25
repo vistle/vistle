@@ -60,14 +60,9 @@ bool DataManager::dispatch() {
     return true;
 }
 
-bool DataManager::send(const message::Message &message) {
+bool DataManager::send(const message::Message &message, const std::vector<char> *payload) {
 
-   return message::send(m_dataSocket, message);
-}
-
-bool DataManager::send(const char *buf, size_t n) {
-
-   return asio::write(m_dataSocket, asio::buffer(buf, n));
+   return message::send(m_dataSocket, message, payload);
 }
 
 bool DataManager::read(char *buf, size_t n) {
@@ -325,8 +320,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
    }
    snd->setDestId(req.senderId());
    snd->setDestRank(req.rank());
-   send(*snd);
-   send(mem.data(), mem.size());
+   send(*snd, &mem);
    CERR << "sent " << mem.size() << " bytes for " << req << " with " << snd << std::endl;
 
    return true;

@@ -133,7 +133,7 @@ void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::
    });
 }
 
-bool send(socket_t &sock, const Message &msg, std::vector<char> *payload) {
+bool send(socket_t &sock, const Message &msg, const std::vector<char> *payload) {
 
    assert(check(msg));
    try {

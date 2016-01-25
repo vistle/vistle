@@ -14,7 +14,7 @@ class Buffer;
 
 typedef boost::asio::ip::tcp::socket socket_t;
 
-bool V_COREEXPORT send(socket_t &sock, const message::Message &msg, std::vector<char> *payload=nullptr);
+bool V_COREEXPORT send(socket_t &sock, const message::Message &msg, const std::vector<char> *payload=nullptr);
 void V_COREEXPORT async_send(socket_t &sock, const Message &msg, const std::function<void(boost::system::error_code ec)> handler,
                              boost::shared_ptr<std::vector<char>> payload=boost::shared_ptr<std::vector<char>>());
 
