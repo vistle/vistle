@@ -19,6 +19,7 @@ using vistle::message::async_recv;
 
 using boost::shared_ptr;
 
+#if 0
 struct Deleter {
     DataProxy::tcp_socket *sock;
     Deleter(DataProxy::tcp_socket *sock): sock(sock) {
@@ -94,6 +95,7 @@ std::map<Socket*, std::mutex> SocketGuardCore<Socket>::s_mutexes;
 template<class Socket>
 std::map<Socket*, bool> SocketGuardCore<Socket>::s_busy;
 
+#endif
 DataProxy::DataProxy(Hub &hub, unsigned short basePort)
 : m_hub(hub)
 , m_port(basePort)
@@ -292,7 +294,7 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                         //CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
                         auto remote = getRemoteDataSock(hubId);
                         if (remote) {
-                            getWriteStrand(remote).dispatch([remote, send, payload](){
+                            getWriteStrand(remote).post([remote, send, payload](){
                                 message::async_send(*remote, send, [remote](error_code ec){
                                     if (ec) {
                                         CERR << "SendObject: error in remote write: " << ec.message() << std::endl;
@@ -314,7 +316,7 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                 //CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
                 auto remote = getRemoteDataSock(hubId);
                 if (remote) {
-                    getWriteStrand(remote).dispatch([remote, msg, hubId](){
+                    getWriteStrand(remote).post([remote, msg, hubId](){
                         message::async_send(*remote, *msg, [remote, msg, hubId](error_code ec){
                             if (ec) {
                                 CERR << "error in forwarding RequestObject msg to remote hub " << hubId << std::endl;
@@ -363,8 +365,7 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                 auto &ident = msg->as<const Identify>();
                 if (ident.identity() == Identify::UNKNOWN) {
                     Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
-                    SocketGuardPtr locker(new SocketGuard(sock));
-                    async_send(*sock, ident, [this, sock, locker](error_code ec){
+                    async_send(*sock, ident, [this, sock](error_code ec){
                         if (ec) {
                             CERR << "send error" << std::endl;
                             return;
@@ -401,7 +402,7 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                         vassert(hubId == m_hub.id());
                         auto local = getLocalDataSock(send.destRank());
                         if (local) {
-                            getWriteStrand(local).dispatch([local, send, payload](){
+                            getWriteStrand(local).post([local, send, payload](){
                                 message::async_send(*local, send, [local](error_code ec){
                                     if (ec) {
                                         CERR << "SendObject: error in local write: " << ec.message() << std::endl;
@@ -429,7 +430,7 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
                 }
                 auto local = getLocalDataSock(rank);
                 if (local) {
-                    getWriteStrand(local).dispatch([this, local, msg, rank, sock](){
+                    getWriteStrand(local).post([this, local, msg, rank, sock](){
                         message::async_send(*local, *msg, [this, msg, rank, sock](error_code ec){
                             if (ec) {
                                 CERR << "error in forwarding RequestObject msg to local rank " << rank << std::endl;
