@@ -1584,6 +1584,11 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
          s << ", name: " << mm.name() << ", id: " << mm.id();
          break;
       }
+      case Message::SENDTEXT: {
+         auto &mm = static_cast<const SendText &>(m);
+         s << ", text: " << mm.text();
+         break;
+      }
       case Message::ADDOBJECT: {
          auto &mm = static_cast<const AddObject &>(m);
          s << ", obj: " << mm.objectName() << ", " << mm.getSenderPort() << " -> " << mm.getDestPort() << " (handle: " << (mm.handleValid()?"valid":"invalid") << ")";
