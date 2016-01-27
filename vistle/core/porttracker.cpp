@@ -210,11 +210,15 @@ bool PortTracker::removeConnection(const Port *from, const Port *to) {
    if (!t)
       return false;
 
-   if ((from->getType() == Port::OUTPUT && to->getType() == Port::INPUT)
+   if (((from->getType() == Port::OUTPUT || from->getType() == Port::ANY) && (to->getType() == Port::INPUT || to->getType() == Port::ANY))
       || (from->getType() == Port::PARAMETER && to->getType() == Port::PARAMETER)) {
 
       f->removeConnection(to);
       t->removeConnection(from);
+
+      if (from->getType() == Port::ANY || to->getType() == Port::ANY) {
+          CERR << "removeConnection: port type ANY: " << *from << " -> " << *to << std::endl;
+      }
 
       if (tracker()) {
          for (StateObserver *o: tracker()->m_observers) {
@@ -225,6 +229,8 @@ bool PortTracker::removeConnection(const Port *from, const Port *to) {
       }
 
       return true;
+   } else {
+       //CERR << "removeConnection: port type mismatch: " << *from << " -> " << *to << std::endl;
    }
 
    return false;
@@ -406,6 +412,12 @@ std::vector<message::Buffer> PortTracker::removeConnectionsWithModule(int module
    }
 
    return ret;
+}
+
+std::ostream &operator<<(std::ostream &s, const Port &port) {
+
+    s << port.getModuleID() << ":" << port.getName();
+    return s;
 }
 
 } // namespace vistle

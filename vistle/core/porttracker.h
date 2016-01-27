@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include <set>
+#include <iostream>
 
 #include "export.h"
 #include "port.h"
@@ -67,6 +68,8 @@ class V_COREEXPORT PortTracker {
    std::map<int, PortMap *> m_ports;
    std::map<int, PortOrder *> m_portOrders;
 };
+
+V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Port &port);
 } // namespace vistle
 
 #endif
