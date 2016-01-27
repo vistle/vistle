@@ -31,6 +31,8 @@
 #include "pythoninterpreter.h"
 #endif
 
+//#define DEBUG_DISTRIBUTED
+
 namespace asio = boost::asio;
 using boost::shared_ptr;
 using namespace vistle;
@@ -67,7 +69,7 @@ Hub::Hub()
 , m_slaveCount(0)
 , m_hubId(Id::Invalid)
 , m_moduleCount(0)
-, m_traceMessages(message::Message::ANY)
+, m_traceMessages(message::Message::INVALID)
 , m_execCount(0)
 , m_barrierActive(false)
 , m_barrierReached(0)
@@ -636,7 +638,12 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
            }
        }
 
-       if (m_traceMessages == Message::ANY || msg.type() == m_traceMessages) {
+       if (m_traceMessages == Message::ANY || msg.type() == m_traceMessages
+#ifdef DEBUG_DISTRIBUTED
+               || msg.type() == Message::ADDOBJECT
+               || msg.type() == Message::ADDOBJECTCOMPLETED
+#endif
+               ) {
            if (track) std::cerr << "t"; else std::cerr << ".";
            if (mgr) std::cerr << "m" ;else std::cerr << ".";
            if (ui) std::cerr << "u"; else std::cerr << ".";
