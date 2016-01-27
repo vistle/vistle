@@ -809,7 +809,7 @@ bool ClusterManager::handlePriv(const message::ModuleExit &moduleExit) {
       if (it != runningMap.end()) {
          runningMap.erase(it);
       } else {
-         CERR << " Module [" << mod << "] not found in map" << std::endl;
+         //CERR << " Module [" << mod << "] not found in map" << std::endl;
       }
    }
 
@@ -963,7 +963,7 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
 
       auto it = m_stateTracker.runningMap.find(destId);
       if (it == m_stateTracker.runningMap.end()) {
-         CERR << "port connection to module that is not running" << std::endl;
+         CERR << "port connection to module " << destId << ":" << destPort->getName() << ", which is not running" << std::endl;
          vassert("port connection to module that is not running" == 0);
          continue;
       }

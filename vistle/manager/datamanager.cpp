@@ -321,7 +321,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
    snd->setDestId(req.senderId());
    snd->setDestRank(req.rank());
    send(*snd, &mem);
-   CERR << "sent " << mem.size() << " bytes for " << req << " with " << snd << std::endl;
+   CERR << "sent " << mem.size() << " bytes for " << req << " with " << *snd << std::endl;
 
    return true;
 }
