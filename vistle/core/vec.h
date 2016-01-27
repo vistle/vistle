@@ -11,7 +11,7 @@
 
 namespace vistle {
 
-class DataBase: public Object {
+class V_COREEXPORT DataBase: public Object {
    V_OBJECT(DataBase);
 
 public:
