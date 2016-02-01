@@ -4,7 +4,7 @@ include_directories(
         ..
 )
 
-add_executable(vistle_manager
+vistle_add_executable(vistle_manager
    vistle_manager.cpp
    clustermanager.h
    clustermanager.cpp
@@ -21,7 +21,7 @@ target_link_libraries(vistle_manager
         vistle_core
 )
 
-add_executable(clean_vistle clean_vistle.cpp)
+vistle_add_executable(clean_vistle clean_vistle.cpp)
 target_link_libraries(clean_vistle
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}

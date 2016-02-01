@@ -4,3 +4,4 @@ add_custom_target(vistle_spawner ALL
    SOURCES spawn_vistle.sh
 )
 
+install(PROGRAMS spawn_vistle.sh DESTINATION bin)

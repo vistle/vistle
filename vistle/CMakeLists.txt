@@ -27,6 +27,23 @@ macro(USE_OPENMP)
    endif()
 endmacro(USE_OPENMP)
 
+macro(vistle_add_library targetname)
+    add_library(${targetname} ${ARGN})
+    install(TARGETS ${targetname} LIBRARY DESTINATION lib64)
+endmacro(vistle_add_library)
+
+macro(vistle_add_executable targetname)
+    add_executable(${targetname} ${ARGN})
+    install(TARGETS ${targetname} RUNTIME DESTINATION bin)
+endmacro(vistle_add_executable)
+
+macro(add_module targetname)
+    add_executable(${targetname} ${ARGN})
+    set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
+    install(TARGETS ${targetname} RUNTIME DESTINATION libexec/module)
+endmacro(add_module)
+
+
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=512")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -44,6 +61,7 @@ endif(WIN32)
 
 vistle_find_package(PythonLibs)
 
+set(ENABLE_INSTALLER TRUE)
 vistle_find_package(TBB)
 #vistle_find_package(Thrust REQUIRED)
 set(THRUST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/../3rdparty/thrust")

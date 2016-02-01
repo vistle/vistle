@@ -9,7 +9,7 @@ include_directories(
         ..
 )
 
-add_executable(blower blower.cpp)
+vistle_add_executable(blower blower.cpp)
 target_link_libraries(blower
         ${Boost_LIBRARIES}
         ${PYTHON_LIBRARIES}

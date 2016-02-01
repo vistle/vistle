@@ -21,7 +21,7 @@ if(PYTHONLIBS_FOUND)
    set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES} ${PYTHON_LIBRARIES})
 endif()
 
-add_executable(vistle ${hub_SOURCES})
+vistle_add_executable(vistle ${hub_SOURCES})
 target_link_libraries(vistle
         ${Boost_LIBRARIES}
         ${EXTRA_LIBRARIES}

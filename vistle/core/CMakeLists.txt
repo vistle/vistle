@@ -105,7 +105,7 @@ set(core_HEADERS
    uuid.h
 )
 
-add_library(vistle_core ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS})
+vistle_add_library(vistle_core ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS})
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_core

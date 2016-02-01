@@ -42,7 +42,7 @@ include_directories(
         ..
 )
 
-add_library(vistle_userinterface ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
+vistle_add_library(vistle_userinterface ${VISTLE_LIB_TYPE} ${userinterface_SOURCES} ${userinterface_HEADERS})
 
 target_link_libraries(vistle_userinterface
         ${Boost_LIBRARIES}

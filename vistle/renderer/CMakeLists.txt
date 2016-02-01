@@ -30,7 +30,7 @@ endif()
 
 use_openmp()
 
-add_library(vistle_renderer ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
+vistle_add_library(vistle_renderer ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
 
 if(UNIX AND NOT APPLE)
 	target_link_libraries(vistle_renderer
@@ -60,14 +60,6 @@ include_directories(
         ${MPI_C_INCLUDE_PATH}
         ..
 )
-
-macro(add_module targetname)
-
-    add_executable(${targetname} ${ARGN})
-
-    set_target_properties(${targetname} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
-endmacro(add_module)
-
 
 add_subdirectory(COVER)
 add_subdirectory(OsgRenderer)

@@ -88,7 +88,7 @@ endif(APPLE)
 
 qt5_wrap_ui(GUI_UI_SRCS ${gui_FORMS})
 add_definitions(${QT_DEFINITIONS})
-add_executable(${gui_name}
+vistle_add_executable(${gui_name}
   MACOSX_BUNDLE
   ${gui_SOURCES} 
   ${GUI_UI_SRCS})

@@ -27,7 +27,7 @@ set(util_HEADERS
    sleep.h
 )
 
-add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
+vistle_add_library(vistle_util ${VISTLE_LIB_TYPE} ${util_SOURCES} ${util_HEADERS})
 
 target_link_libraries(vistle_util
         ${Boost_LIBRARIES}
