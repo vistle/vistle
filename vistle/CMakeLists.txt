@@ -34,7 +34,7 @@ endmacro(vistle_add_library)
 
 macro(vistle_add_executable targetname)
     add_executable(${targetname} ${ARGN})
-    install(TARGETS ${targetname} RUNTIME DESTINATION bin)
+    install(TARGETS ${targetname} RUNTIME DESTINATION bin BUNDLE DESTINATION bin)
 endmacro(vistle_add_executable)
 
 macro(add_module targetname)
