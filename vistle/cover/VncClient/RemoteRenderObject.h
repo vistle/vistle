@@ -53,6 +53,8 @@ class RemoteRenderObject: public opencover::RenderObject {
    void getMinMax(float &xmin, float &xmax,
          float &ymin, float &ymax,
          float &zmin, float &zmax) const { xmin=xmax=ymin=ymax=zmin=zmax=0.; }
+   float getMin(int channel) const { return 0.; }
+   float getMax(int channel) const { return 0.; }
 
    bool isVectors() const { return false; }
    const unsigned char *getByte(opencover::Field::Id idx) const { return NULL; }
