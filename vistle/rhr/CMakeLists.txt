@@ -81,6 +81,7 @@ target_link_libraries(vistle_rhr
         ${Boost_LIBRARIES}
         ${TBB_LIBRARIES}
         ${JPEG_LIBRARIES}
+        ${TURBOJPEG_LIBRARIES}
         ${ZLIB_LIBRARIES}
 )
 
