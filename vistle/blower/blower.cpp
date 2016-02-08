@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
       PythonInterface python("blower");
       VistleConnection conn(ui);
       conn.setQuitOnExit(quitOnExit);
-      PythonModule pythonmodule(&conn, getbindir(argc, argv) + "/../lib/");
+      PythonModule pythonmodule(&conn, getbindir(argc, argv) + "/../share/vistle/");
       boost::thread runnerThread(boost::ref(conn));
 
       while(!std::cin.eof() && !conn.done()) {

@@ -905,7 +905,7 @@ bool Hub::processScript() {
    vassert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
    if (!m_scriptPath.empty()) {
-      PythonInterpreter inter(m_scriptPath, m_bindir + "/../lib/");
+      PythonInterpreter inter(m_scriptPath, m_bindir + "/../share/vistle/");
       while(inter.check()) {
          dispatch();
       }
