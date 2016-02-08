@@ -70,7 +70,11 @@ if(CUDA_FOUND AND GLEW_FOUND AND OPENGL_FOUND AND VISTLE_USE_CUDA)
   cuda_compile(RHR_CUDA_OBJ ${RHR_CUDA_SOURCES} ${VISTLE_LIB_TYPE})
 endif()
 
-vistle_add_library(vistle_rhr ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
+if (${TURBOJPEG_LIBRARY_DYNAMIC})
+  vistle_add_library(vistle_rhr ${VISTLE_LIB_TYPE} ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
+else()
+  vistle_add_library(vistle_rhr STATIC ${RHR_SOURCES} ${RHR_HEADERS} ${RHR_CUDA_OBJ})
+endif()
 
 if(USE_CUDA)
    target_link_libraries(vistle_rhr ${CUDA_LIBRARIES} ${GLEW_LIBRARIES} ${OPENGL_LIBRARIES})
