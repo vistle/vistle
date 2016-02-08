@@ -239,7 +239,7 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
          removeAllCreatedBy(creatorId);
       } else if (it->second.age > object->getExecutionCounter()) {
          std::cerr << "received outdated object created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
-         return nullptr;
+         return false;
       }
    } else {
       std::string name = getModuleName(object->getCreator());
