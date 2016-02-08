@@ -3,6 +3,7 @@ project(vistle_3rdparty)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/../vistle/lib")
 
 set(ICET_BUILD_TESTING OFF)
+set(ICET_INSTALL_LIB_DIR ${INSTALL_LIB_DIR})
 add_subdirectory(IceT)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/../vistle/bin")
