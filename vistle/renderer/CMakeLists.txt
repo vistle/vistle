@@ -30,10 +30,10 @@ endif()
 
 use_openmp()
 
-if ((NOT ${JPEGTURBO_FOUND}) OR ${TURBOJPEG_LIBRARY_DYNAMIC})
-  vistle_add_library(vistle_renderer ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
-else()
+if (JPEGTURBO_FOUND AND ("${TURBOJPEG_LIBRARY_DYNAMIC}" STREQUAL ""))
   vistle_add_library(vistle_renderer STATIC ${renderer_SOURCES} ${renderer_HEADERS})
+else()
+  vistle_add_library(vistle_renderer ${VISTLE_LIB_TYPE} ${renderer_SOURCES} ${renderer_HEADERS})
 endif()
 
 if(UNIX AND NOT APPLE)
