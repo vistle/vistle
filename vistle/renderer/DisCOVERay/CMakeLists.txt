@@ -1,5 +1,5 @@
 vistle_find_package(LibVncServer)
-vistle_find_package(embree)                                                                                                     
+vistle_find_package(embree 2.0)
 vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
