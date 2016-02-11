@@ -6,6 +6,7 @@
 
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Geometry>
+#include <eigen3/Eigen/StdVector>
 
 namespace vistle {
 
@@ -48,6 +49,20 @@ void serializeMatrix(Archive & ar, M &m, const unsigned int version) {
 }
 
 } // namespace vistle
+
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(vistle::Vector1)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(vistle::Vector2)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(vistle::Vector3)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(vistle::Vector4)
+
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(vistle::Matrix2x3)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(vistle::Matrix3x2)
+
+//EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(vistle::Matrix1)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(vistle::Matrix2)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(vistle::Matrix3)
+EIGEN_DEFINE_STL_VECTOR_SPECIALIZATION(vistle::Matrix4)
+
 
 namespace boost {
 namespace serialization {

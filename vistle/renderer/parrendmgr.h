@@ -14,6 +14,8 @@ void V_RENDEREREXPORT toIcet(IceTDouble *imat, const vistle::Matrix4 &vmat);
 
 class V_RENDEREREXPORT ParallelRemoteRenderManager {
 public:
+   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
    typedef void (*IceTDrawCallback)(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image);
    struct PerViewState;
 
@@ -61,12 +63,12 @@ public:
    struct PerViewState {
        // synchronized across all ranks
 
-      int width, height;
       Matrix4 model;
       Matrix4 view;
       Matrix4 proj;
       std::vector<VncServer::Light> lights;
       VncServer::ViewParameters vncParam;
+      int width, height;
 
       PerViewState()
       : width(0)

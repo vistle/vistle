@@ -108,28 +108,30 @@ public:
 
    struct Screen {
       vistle::Vector3 pos;
+      vistle::Scalar hsize;
       vistle::Vector3 hpr;
-      vistle::Scalar hsize, vsize;
+      vistle::Scalar vsize;
    };
 
    const Screen &screen() const;
 
    struct Light {
-      bool enabled;
+      EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
       vistle::Vector4 position;
-      vistle::Vector3 attenuation;
 
       vistle::Vector4 ambient;
       vistle::Vector4 diffuse;
       vistle::Vector4 specular;
 
-      vistle::Vector3 direction;
+      vistle::Vector3 attenuation;
       vistle::Scalar spotCutoff;
+      vistle::Vector3 direction;
       vistle::Scalar spotExponent;
 
       mutable vistle::Vector4 transformedPosition;
       mutable vistle::Vector3 transformedDirection;
+      bool enabled;
       mutable bool isDirectional;
 
       bool operator==(const Light &rhs) const {
@@ -199,14 +201,14 @@ public:
    };
 
    struct ViewParameters {
+       vistle::Matrix4 proj;
+       vistle::Matrix4 view;
+       vistle::Matrix4 model;
        uint32_t frameNumber;
        uint32_t requestNumber;
        int32_t timestep;
        double matrixTime;
        int width, height;
-       vistle::Matrix4 proj;
-       vistle::Matrix4 view;
-       vistle::Matrix4 model;
 
        ViewParameters()
        : frameNumber(0)
@@ -266,7 +268,7 @@ private:
       Client(const std::string &host, unsigned short port): host(host), port(port) {}
    };
    std::vector<Client> m_clientList; //!< list of clients to which reverse connections should be tried
-   std::vector<ViewData> m_viewData;
+   std::vector<ViewData, Eigen::aligned_allocator<ViewData>> m_viewData;
    
    bool m_benchmark; //!< whether timing information should be printed
    bool m_errormetric; //!< whether compression errors should be checked
