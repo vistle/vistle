@@ -63,6 +63,8 @@ public:
    struct PerViewState {
        // synchronized across all ranks
 
+      EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
       Matrix4 model;
       Matrix4 view;
       Matrix4 proj;
@@ -135,7 +137,7 @@ public:
    };
    struct GlobalState m_state;
 
-   std::vector<PerViewState> m_viewData; // synchronized from rank 0 to slaves
+   std::vector<PerViewState, Eigen::aligned_allocator<PerViewState>> m_viewData; // synchronized from rank 0 to slaves
    int m_currentView; //!< holds no. of view currently being rendered - not a problem as IceT is not reentrant anyway
    bool m_frameComplete; //!< track whether frame has been flushed to clients
 
