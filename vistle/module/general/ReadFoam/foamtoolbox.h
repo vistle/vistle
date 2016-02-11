@@ -28,6 +28,8 @@ struct HeaderInfo
     {
     }
 
+    std::string header;
+
     std::string version;
     std::string format;
     std::string fieldclass;
@@ -159,7 +161,7 @@ bool checkPolyMeshDirContent(CaseInfo &info, const std::string &casedir, double 
 boost::shared_ptr<std::istream> getStreamForFile(const std::string &filename);
 boost::shared_ptr<std::istream> getStreamForFile(const std::string &dir, const std::string &basename);
 HeaderInfo readFoamHeader(std::istream &stream);
-DimensionInfo readDimensions(const std::string &meshdir);
+DimensionInfo parseDimensions(std::string header);
 
 bool readIndexArray(const HeaderInfo &info, std::istream &stream, index_t *p, const size_t lines);
 bool readIndexListArray(const HeaderInfo &info, std::istream &stream, std::vector<index_t> *p, const size_t lines);

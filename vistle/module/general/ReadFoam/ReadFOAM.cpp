@@ -202,8 +202,6 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
    bool readGrid = m_readGrid->getValue();
    bool readBoundary = m_readBoundary->getValue();
 
-   DimensionInfo dim = readDimensions(meshdir);
-
    UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0));
    Polygons::ptr poly(new Polygons(0, 0, 0));
    boost::shared_ptr<std::vector<Index> > owners(new std::vector<Index>());
@@ -219,6 +217,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
    if (!ownersIn)
       return result;
    HeaderInfo ownerH = readFoamHeader(*ownersIn);
+   DimensionInfo dim = parseDimensions(ownerH.header);
    owners->resize(ownerH.lines);
    if (!readIndexArray(ownerH, *ownersIn, (*owners).data(), (*owners).size())) {
       std::cerr << "readIndexArray for " << meshdir << "/owner failed" << std::endl;

@@ -685,8 +685,9 @@ HeaderInfo readFoamHeader(std::istream &stream)
     struct FieldHeaderParser<std::string::iterator> fieldHeaderParser;
     struct headerSkipper<std::string::iterator> headerSkipper;
 
-    std::string fileheader = getFoamHeader(stream);
     HeaderInfo info;
+    info.header = getFoamHeader(stream);
+    std::string fileheader = info.header;
 
     info.valid = qi::phrase_parse(fileheader.begin(), fileheader.end(),
                                   headerParser, headerSkipper, info);
@@ -696,7 +697,7 @@ HeaderInfo readFoamHeader(std::istream &stream)
         std::cerr << "parsing FOAM file header failed" << std::endl;
 
         std::cerr << "================================================" << std::endl;
-        std::cerr << fileheader << std::endl;
+        std::cerr << info.header << std::endl;
         std::cerr << "================================================" << std::endl;
     }
 #if 0
@@ -1165,21 +1166,11 @@ bool readFloatVectorArray(const HeaderInfo &info, std::istream &stream, scalar_t
     return readVectorArray(info, stream, x, y, z, lines);
 }
 
-DimensionInfo readDimensions(const std::string &meshdir)
+DimensionInfo parseDimensions(std::string header)
 {
-
     struct dimParser<std::string::iterator> dimParser;
     struct dimSkipper<std::string::iterator> dimSkipper;
-    boost::shared_ptr<std::istream> fileIn = getStreamForFile(meshdir, "owner");
     DimensionInfo info;
-    if (!fileIn)
-    {
-        std::cerr << "failed to open " << meshdir + "/polyMesh/owner for reading dimensions" << std::endl;
-        info.valid = false;
-        return info;
-    }
-    std::string header = getFoamHeader(*fileIn);
-
     info.valid = qi::phrase_parse(header.begin(), header.end(), dimParser, dimSkipper, info);
     return info;
 }
