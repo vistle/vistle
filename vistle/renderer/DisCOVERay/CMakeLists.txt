@@ -1,5 +1,8 @@
-vistle_find_package(LibVncServer)
+include(FindPackageHandleStandardArgs)
 vistle_find_package(embree 2.0)
+find_package_handle_standard_args(EMBREE DEFAULT_MSG EMBREE_LIBRARY EMBREE_INCLUDE_DIRS)
+
+vistle_find_package(LibVncServer)
 vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
@@ -143,7 +146,7 @@ set(__XEON__ 1)
 set(HAVE_ISPC ON)
 set(ENABLE_ISPC_SUPPORT ON)
 include (ispc)
-include_directories_ispc(${EMBREE_INCLUDE_PATH})
+include_directories_ispc(${EMBREE_INCLUDE_DIRS})
 # END: ispc
 
 if (ENABLE_ISPC_SUPPORT)
@@ -164,7 +167,7 @@ include_directories(
         ${LIBVNCSERVER_INCLUDE_DIR}
         ${SNAPPY_INCLUDE_DIR}
         ${PROJECT_SOURCE_DIR}
-        ${EMBREE_INCLUDE_PATH}
+        ${EMBREE_INCLUDE_DIRS}
         ${TBB_INCLUDE_DIRS}
         ${JPEGTURBO_INCLUDE_DIR}
 )
@@ -182,6 +185,6 @@ target_link_libraries(DisCOVERay
         ${JPEG_LIBRARIES}
         ${ZLIB_LIBRARIES}
         ${SNAPPY_LIBRARIES}
-        ${EMBREE_LIBRARIES}
+        ${EMBREE_LIBRARY}
         ${TBB_LIBRARIES}
 )
