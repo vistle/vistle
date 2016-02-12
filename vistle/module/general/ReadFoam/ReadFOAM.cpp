@@ -402,10 +402,29 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                   }
 
                   std::copy(a.begin(), a.end(), inserter);
+#if 0
+                  for (int f=1; f<6; ++f) {
+                      const auto &face = faces[f];
+                      int numCommon = 0;
+                      int commonIndMy = -1, commonIndOther = -1;
+                      for (int i=0; i<4; i+=2) {
+                          for (int j=0; j<4; ++j) {
+                              if (ia[j] == face[i]) {
+                                  ++numCommon;
+                                  commonIndOther = i;
+                                  commonIndMy = j;
+                              }
+                          }
+                      }
+                      if (numCommon == 1) {
+                      }
+                  }
+#else
                   connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
                   connectivities.push_back(findVertexAlongEdge(a[1],ia,cellfaces,faces));
                   connectivities.push_back(findVertexAlongEdge(a[2],ia,cellfaces,faces));
                   connectivities.push_back(findVertexAlongEdge(a[3],ia,cellfaces,faces));
+#endif
                }
                break;
 
@@ -757,9 +776,9 @@ bool ReadFOAM::checkCell(const Index cell,
 
    bool isGhostCell=false;
    const std::vector<Index> &cellfaces=cellfacemap[cell];
-   const std::vector<Index> cellvertices = getVerticesForCell(cellfaces, faces);
-   for (Index j=0; j<cellvertices.size(); ++j) {//check if the cell has a vertex on the outer boundary
-      if (std::find(outerVertices.begin(), outerVertices.end(), cellvertices[j]) != outerVertices.end()) {
+   const auto cellvertices = getVerticesForCell(cellfaces, faces);
+   for (auto it = cellvertices.begin(); it!=cellvertices.end(); ++it) {//check if the cell has a vertex on the outer boundary
+      if (std::find(outerVertices.begin(), outerVertices.end(), *it) != outerVertices.end()) {
          isGhostCell=true;
          break;
       }

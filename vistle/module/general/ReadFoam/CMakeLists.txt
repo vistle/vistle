@@ -25,11 +25,6 @@ include_directories(
         ${PROJECT_SOURCE_DIR}
 )
 
-if (CMAKE_COMPILER_IS_GNUCC)
-   string(REPLACE "-std=c++0x" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-   add_compile_flags(ReadFOAM.cpp -std=c++0x)
-endif()
-
 add_module(ReadFoam ReadFOAM.cpp foamtoolbox.cpp)
 target_link_libraries(ReadFoam
         ${Boost_LIBRARIES}

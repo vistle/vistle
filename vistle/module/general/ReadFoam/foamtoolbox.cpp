@@ -25,7 +25,6 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
-#include <set>
 #include <map>
 #include <cctype>
 
@@ -1255,20 +1254,18 @@ bool isPointingInwards(index_t face,
     }
 }
 
-std::vector<index_t> getVerticesForCell(
+vertex_set getVerticesForCell(
     const std::vector<index_t> &cellfaces,
     const std::vector<std::vector<index_t> > &faces)
 {
 
-    std::vector<index_t> cellvertices;
+    vertex_set cellvertices;
     for (index_t i = 0; i < cellfaces.size(); i++)
     {
         for (index_t j = 0; j < faces[cellfaces[i]].size(); j++)
         {
-            cellvertices.push_back(faces[cellfaces[i]][j]);
+            cellvertices.insert(faces[cellfaces[i]][j]);
         }
     }
-    std::sort(cellvertices.begin(), cellvertices.end()); //Sort Vector by ascending Value
-    cellvertices.erase(std::unique(cellvertices.begin(), cellvertices.end()), cellvertices.end()); //Delete duplicate entries
     return cellvertices;
 }
