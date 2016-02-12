@@ -118,6 +118,34 @@ bool ClusterManager::Module::update() const {
    return sendQueue->progress();
 }
 
+void ClusterManager::Module::delay(const message::Message &msg) {
+    delayedMessages.push_back(msg);
+}
+
+bool  ClusterManager::Module::processDelayed() {
+
+    while (haveDelayed()) {
+        bool ret = true;
+        if (Communicator::the().getRank() == 0) {
+            if (ranksStarted == 0)
+            {
+                auto &msg = delayedMessages.front();
+                auto type = msg.type();
+                ret = Communicator::the().broadcastAndHandleMessage(delayedMessages.front());
+                if (type == message::Message::EXECUTE)
+                    break;
+                delayedMessages.pop_front();
+            }
+        }
+        if (!ret)
+            return false;
+    }
+    return true;
+}
+
+bool ClusterManager::Module::haveDelayed() const {
+    return !delayedMessages.empty();
+}
 
 ClusterManager::ClusterManager(int r, const std::vector<std::string> &hosts)
 : m_portManager(new PortManager(this))
@@ -822,13 +850,13 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
    RunningMap::iterator i = runningMap.find(exec.getModule());
    if (i != runningMap.end()) {
       auto &mod = i->second;
-      mod.send(exec);
       switch(exec.what()) {
       case message::Execute::Prepare: {
          vassert(!mod.prepared);
          vassert(mod.reduced);
          mod.prepared = true;
          mod.reduced = false;
+         mod.send(exec);
          CERR << "sent prepare to " << exec.getModule() << ", checking for execution" << std::endl;
          checkExecuteObject(exec.getModule());
          break;
@@ -838,18 +866,35 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
          vassert(!mod.reduced);
          mod.prepared = false;
          mod.reduced = true;
+         mod.send(exec);
          break;
       }
       case message::Execute::ComputeExecute: {
-         vassert(!mod.prepared);
-         mod.prepared = false;
-         mod.reduced = true;
+         if (exec.isBroadcast()) {
+             mod.send(exec);
+             vassert(!mod.prepared);
+             mod.prepared = false;
+             mod.reduced = true;
+         } else if (Communicator::the().getRank() == 0) {
+             CERR << "non-broadcast Execute: " << exec << std::endl;
+             if (mod.ranksStarted > 0) {
+                 mod.delay(exec);
+             } else {
+                 vassert(!mod.prepared);
+                 mod.prepared = false;
+                 mod.reduced = true;
+                 message::Buffer buf(exec);
+                 buf.setBroadcast(true);
+                 Communicator::the().broadcastAndHandleMessage(buf);
+             }
+         }
          break;
       }
       case message::Execute::ComputeObject: {
          vassert(mod.prepared);
          vassert(!mod.reduced);
          mod.reduced = false;
+         mod.send(exec);
          break;
       }
       }
@@ -1080,6 +1125,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    }
 
    bool readyForPrepare = false, readyForReduce = false;
+   bool unqueueExecute = false;
    //CERR << "ExecutionProgress " << prog.stage() << " received from " << prog.senderId() << ":" << prog.rank() << std::endl;
    switch (prog.stage()) {
       case message::ExecutionProgress::Start: {
@@ -1103,6 +1149,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                 vassert(mod.ranksStarted == m_size);
                 mod.ranksStarted = 0;
                 mod.ranksFinished = 0;
+                unqueueExecute = true;
              } else {
                 readyForReduce = false;
              }
@@ -1194,6 +1241,10 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             }
          }
       }
+   }
+
+   if (unqueueExecute) {
+       mod.processDelayed();
    }
 
    return true;
@@ -1289,7 +1340,14 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
                message::SetParameter set(p->module(), p->getName(), applied);
                set.setDestId(p->module());
                set.setUuid(setParam.uuid());
-               sendMessage(p->module(), set);
+               auto i = runningMap.find(p->module());
+               if (i != runningMap.end()) {
+                   auto &mod = i->second;
+                   if (mod.haveDelayed())
+                       mod.delay(set);
+                   else
+                       sendMessage(p->module(), set);
+               }
             }
          } else {
 #ifdef DEBUG

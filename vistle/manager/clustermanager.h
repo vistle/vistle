@@ -104,6 +104,7 @@ class ClusterManager {
       int busyCount;
       mutable bool blocked;
       mutable std::deque<message::Buffer> blockedMessages, blockers;
+      std::deque<message::Buffer> delayedMessages;
 
       Module(): sendQueue(nullptr), recvQueue(nullptr),
          ranksStarted(0), ranksFinished(0), reducing(false),
@@ -118,6 +119,9 @@ class ClusterManager {
       void unblock(const message::Message &msg);
       bool send(const message::Message &msg) const;
       bool update() const;
+      void delay(const message::Message &msg);
+      bool processDelayed();
+      bool haveDelayed() const;
    };
    typedef std::map<int, Module> RunningMap;
    RunningMap runningMap;
