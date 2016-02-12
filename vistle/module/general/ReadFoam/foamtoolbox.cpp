@@ -1181,7 +1181,8 @@ index_t findVertexAlongEdge(const index_t point,
                             const std::vector<std::vector<index_t> > &faces)
 {
 
-    std::vector<index_t> pointfaces;
+    index_t pointfaces[2];
+    int idx = 0;
     for (index_t i = 0; i < cellfaces.size(); i++)
     {
         if (cellfaces[i] != homeface)
@@ -1191,19 +1192,23 @@ index_t findVertexAlongEdge(const index_t point,
             {
                 if (face[j] == point)
                 {
-                    pointfaces.push_back(cellfaces[i]);
+                    pointfaces[idx++] = cellfaces[i];
                     break;
                 }
             }
+            if (idx >= 2)
+                break;
         }
     }
     const std::vector<index_t> &a = faces[pointfaces[0]];
     const std::vector<index_t> &b = faces[pointfaces[1]];
     for (index_t i = 0; i < a.size(); i++)
     {
+        if (a[i] == point)
+            continue;
         for (index_t j = 0; j < b.size(); j++)
         {
-            if (a[i] == b[j] && a[i] != point)
+            if (a[i] == b[j])
             {
                 return a[i];
             }
