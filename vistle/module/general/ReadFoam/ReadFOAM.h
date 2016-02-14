@@ -29,7 +29,7 @@
 struct GridDataContainer {
 
    GridDataContainer(vistle::UnstructuredGrid::ptr g
-                     , vistle::Polygons::ptr p
+                     , std::vector<vistle::Polygons::ptr> p
                      , boost::shared_ptr<std::vector<vistle::Index> > o
                      , boost::shared_ptr<Boundaries> b) {
       grid=g;
@@ -39,7 +39,7 @@ struct GridDataContainer {
    }
 
    vistle::UnstructuredGrid::ptr grid;
-   vistle::Polygons::ptr polygon;
+   std::vector<vistle::Polygons::ptr> polygon;
    boost::shared_ptr<std::vector<vistle::Index> > owners;
    boost::shared_ptr<Boundaries> boundaries;
 };
@@ -110,7 +110,7 @@ class ReadFOAM: public vistle::Module
       vistle::StringParameter *m_casedir, *m_patchSelection;
       vistle::FloatParameter *m_starttime, *m_stoptime;
       vistle::IntParameter *m_timeskip;
-      vistle::IntParameter *m_readGrid, *m_readBoundary;
+      vistle::IntParameter *m_readGrid, *m_readBoundary, *m_boundaryPatchesAsVariants;
       vistle::IntParameter *m_buildGhostcellsParam, *m_replicateTimestepGeoParam;
       bool m_buildGhost, m_replicateTimestepGeo;
       std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
@@ -153,14 +153,14 @@ class ReadFOAM: public vistle::Module
 
       GridDataContainer loadGrid(const std::string &dir);
       vistle::DataBase::ptr loadField(const std::string &dir, const std::string &field);
-      vistle::DataBase::ptr loadBoundaryField(const std::string &dir, const std::string &field,
+      std::vector<vistle::DataBase::ptr> loadBoundaryField(const std::string &dir, const std::string &field,
                                             const int &processor);
       bool loadFields(const std::string &dir, const std::map<std::string, int> &fields,
             int processor, int timestep);
 
       void setMeta(vistle::Object::ptr obj, int processor, int timestep) const;
 
-      std::map<int, vistle::Polygons::ptr> m_basebound, m_currentbound;
+      std::map<int, std::vector<vistle::Polygons::ptr>> m_basebound, m_currentbound;
       std::map<int, vistle::UnstructuredGrid::ptr> m_basegrid, m_currentgrid;
       std::map<int, std::map<int, vistle::DataBase::ptr> > m_currentvolumedata;
       std::map<int, boost::shared_ptr<std::vector<vistle::Index> > > m_owners;

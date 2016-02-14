@@ -83,6 +83,7 @@ ReadFOAM::ReadFOAM(const std::string &shmname, const std::string &name, int modu
       }
    }
    m_readBoundary = addIntParameter("read_boundary", "load the boundary?", 1, Parameter::Boolean);
+   m_boundaryPatchesAsVariants = addIntParameter("patches_as_variants", "create sub-objects with variant attribute for boundary patches", 1, Parameter::Boolean);
    m_patchSelection = addStringParameter("patches", "select patches","all");
    for (int i=0; i<NumBoundaryPorts; ++i) {
       {// 2d Data Ports
@@ -201,13 +202,17 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
 
    bool readGrid = m_readGrid->getValue();
    bool readBoundary = m_readBoundary->getValue();
+   bool patchesAsVariants = m_boundaryPatchesAsVariants->getValue();
 
-   UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0));
-   Polygons::ptr poly(new Polygons(0, 0, 0));
-   boost::shared_ptr<std::vector<Index> > owners(new std::vector<Index>());
    boost::shared_ptr<Boundaries> boundaries(new Boundaries());
-   GridDataContainer result(grid,poly,owners,boundaries);
-   (*boundaries) = loadBoundary(meshdir);
+   *boundaries = loadBoundary(meshdir);
+   UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0));
+   std::vector<Polygons::ptr> polyList;
+   for (size_t i=0; i<(patchesAsVariants ? boundaries->boundaries.size() : 1); ++i) {
+       polyList.emplace_back(new Polygons(0, 0, 0));
+   }
+   boost::shared_ptr<std::vector<Index> > owners(new std::vector<Index>());
+   GridDataContainer result(grid,polyList,owners,boundaries);
    if (!readGrid && !readBoundary) {
       return result;
    }
@@ -250,28 +255,51 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
 
       //Boundary Polygon
       if (readBoundary) {
-         auto &polys = poly->el();
-         auto &conn = poly->cl();
-         Index num_bound = 0;
-         for (const auto &b: (*boundaries).boundaries) {
-            int boundaryIndex=b.index;
-            if (m_boundaryPatches(boundaryIndex)) {
-               num_bound+=b.numFaces;
-            }
-         }
-         polys.reserve(num_bound+1);
-         for (const auto &b: (*boundaries).boundaries) {
-            int boundaryIndex=b.index;
-            if (m_boundaryPatches(boundaryIndex) && b.numFaces>0) {
-               for (index_t i=b.startFace; i<b.startFace + b.numFaces; ++i) {
-                  auto &face = faces[i];
-                  for (Index j=0; j<face.size(); ++j) {
-                     conn.push_back(face[j]);
+          if (patchesAsVariants) {
+              size_t boundIdx=0;
+              for (const auto &b: boundaries->boundaries) {
+                  int boundaryIndex=b.index;
+                  if (b.numFaces>0 && m_boundaryPatches(boundaryIndex)) {
+                      const auto &poly = polyList[boundIdx];
+                      auto &polys = poly->el();
+                      auto &conn = poly->cl();
+                      polys.reserve(b.numFaces+1);
+
+                      for (index_t i=b.startFace; i<b.startFace + b.numFaces; ++i) {
+                          auto &face = faces[i];
+                          for (Index j=0; j<face.size(); ++j) {
+                              conn.push_back(face[j]);
+                          }
+                          polys.push_back(conn.size());
+                      }
+                      ++boundIdx;
                   }
-                  polys.push_back(conn.size());
-               }
-            }
-         }
+              }
+          } else {
+              Index num_bound = 0;
+              for (const auto &b: boundaries->boundaries) {
+                  int boundaryIndex=b.index;
+                  if (m_boundaryPatches(boundaryIndex)) {
+                      num_bound+=b.numFaces;
+                  }
+              }
+              const auto &poly = polyList[0];
+              auto &polys = poly->el();
+              auto &conn = poly->cl();
+              polys.reserve(num_bound+1);
+              for (const auto &b: boundaries->boundaries) {
+                  int boundaryIndex=b.index;
+                  if (m_boundaryPatches(boundaryIndex) && b.numFaces>0) {
+                      for (index_t i=b.startFace; i<b.startFace + b.numFaces; ++i) {
+                          auto &face = faces[i];
+                          for (Index j=0; j<face.size(); ++j) {
+                              conn.push_back(face[j]);
+                          }
+                          polys.push_back(conn.size());
+                      }
+                  }
+              }
+          }
       }
 
       //Grid
@@ -294,7 +322,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
          //therefore m_procBoundaryVertices[0][1] point to the same vertices in the same order as
          //m_procBoundaryVertices[1][0] (though each list may use different labels  for each vertice)
          if (m_buildGhost) {
-            for (const auto &b: (*boundaries).procboundaries) {
+            for (const auto &b: boundaries->procboundaries) {
                std::vector<Index> outerVertices;
                int myProc=b.myProc;
                int neighborProc=b.neighborProc;
@@ -401,23 +429,46 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
                      std::reverse(a.begin(), a.end());
                   }
 
+                  // bottom face
                   std::copy(a.begin(), a.end(), inserter);
 #if 0
+                  int idx2Common = -1, idxDisjoint = -1;
+                  int commonIndMy[2] = { -1, -1}, commonIndOther[2] = { -1, -1};
+                  Index commonVerts[2];
                   for (int f=1; f<6; ++f) {
-                      const auto &face = faces[f];
+                      const auto &face = faces[cellfaces[f]];
                       int numCommon = 0;
-                      int commonIndMy = -1, commonIndOther = -1;
-                      for (int i=0; i<4; i+=2) {
+                      for (int i=0; i<4; ++i) {
                           for (int j=0; j<4; ++j) {
-                              if (ia[j] == face[i]) {
+                              if (a[j] == face[i] && numCommon < 2) {
+                                  commonVerts[numCommon] = a[j];
+                                  commonIndOther[numCommon] = i;
+                                  commonIndMy[numCommon] = j;
                                   ++numCommon;
-                                  commonIndOther = i;
-                                  commonIndMy = j;
                               }
                           }
                       }
-                      if (numCommon == 1) {
+                      vassert(numCommon == 0 || numCommon == 2);
+                      if (numCommon == 0) {
+                          idxDisjoint = f;
+                          if (idx2Common >= 0)
+                              break;
+                      } else if (numCommon == 2) {
+                          idx2Common = f;
+                          if (idxDisjoint >= 0)
+                              break;
                       }
+                  }
+                  const auto &adjoining_face = faces[cellfaces[idx2Common]];
+                  // top face - bring into correct order
+                  const auto &opposite_face = faces[cellfaces[idxDisjoint]];
+                  int otherVerts[2] = { -1, -1 };
+                  bool reverse = false;
+                  int startIdx = -1;
+                  if (commonIndOther[0]+1 == commonIndOther[1]) {
+                  } else if (commonIndOther[1]+3 == commonIndOther[0]) {
+                  } else if (commonIndOther[0]+3 == commonIndOther[1]) {
+                  } else {
                   }
 #else
                   connectivities.push_back(findVertexAlongEdge(a[0],ia,cellfaces,faces));
@@ -503,13 +554,26 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
    if (readGrid) {
       loadCoords(meshdir, grid);
 
-      if (readBoundary) {//if grid has been read alaready and boundary polygons are read also -> re-use coordinate lists for the boundary-plygon
-         poly->d()->x[0] = grid->d()->x[0];
-         poly->d()->x[1] = grid->d()->x[1];
-         poly->d()->x[2] = grid->d()->x[2];
+      if (readBoundary) {
+          //if grid has been read already and boundary polygons are read also -> re-use coordinate lists for the boundary-plygon
+          for (auto &poly: polyList) {
+              poly->d()->x[0] = grid->d()->x[0];
+              poly->d()->x[1] = grid->d()->x[1];
+              poly->d()->x[2] = grid->d()->x[2];
+          }
       }
-   } else {//else read coordinate lists just for boundary polygons
-      loadCoords(meshdir, poly);
+   } else {
+       //else read coordinate lists just for boundary polygons
+       bool first = true;
+       for (auto &poly: polyList) {
+           if (first) {
+               loadCoords(meshdir, poly);
+           } else {
+              poly->d()->x[0] = polyList[0]->d()->x[0];
+              poly->d()->x[1] = polyList[0]->d()->x[1];
+              poly->d()->x[2] = polyList[0]->d()->x[2];
+           }
+       }
    }
    return result;
 }
@@ -542,63 +606,92 @@ DataBase::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string 
    return DataBase::ptr();
 }
 
-DataBase::ptr ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::string &field,
+std::vector<DataBase::ptr> ReadFOAM::loadBoundaryField(const std::string &meshdir, const std::string &field,
                                         const int &processor) {
+
+   bool asVariants = m_boundaryPatchesAsVariants->getValue();
    auto &boundaries = *m_boundaries[processor];
    auto owners = m_owners[processor]->data();
-   std::vector<index_t> dataMapping;
+
    //Create the dataMapping Vector
-   for (const auto &b: boundaries.boundaries) {
-      Index boundaryIndex=b.index;
-      if (m_boundaryPatches(boundaryIndex)) {
-         for (index_t i=b.startFace; i<b.startFace + b.numFaces; ++i) {
-            dataMapping.push_back(owners[i]);
-         }
-      }
+   std::vector<std::string> patchNames;
+   std::vector<std::vector<index_t>> dataMapping;
+   if (asVariants) {
+       size_t idx=0;
+       for (const auto &b: boundaries.boundaries) {
+           Index boundaryIndex=b.index;
+           if (b.numFaces>0 && m_boundaryPatches(boundaryIndex)) {
+               dataMapping.resize(idx+1);
+               for (index_t i=b.startFace; i<b.startFace + b.numFaces; ++i) {
+                   dataMapping[idx].push_back(owners[i]);
+               }
+               patchNames.emplace_back(b.name);
+               ++idx;
+           }
+       }
+   } else {
+       dataMapping.resize(1);
+       for (const auto &b: boundaries.boundaries) {
+           Index boundaryIndex=b.index;
+           if (b.numFaces>0 && m_boundaryPatches(boundaryIndex)) {
+               for (index_t i=b.startFace; i<b.startFace + b.numFaces; ++i) {
+                   dataMapping[0].push_back(owners[i]);
+               }
+           }
+       }
    }
 
    boost::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
    if (!stream) {
       std::cerr << "failed to open " << meshdir << "/" << field << std::endl;
-      return DataBase::ptr();
    }
    HeaderInfo header = readFoamHeader(*stream);
+   std::vector<scalar_t> fullX(header.lines),fullY(header.lines),fullZ(header.lines);
    if (header.fieldclass == "volScalarField") {
-      std::vector<scalar_t> fullX(header.lines);
+      fullX.resize(header.lines);
       if (!readFloatArray(header, *stream, fullX.data(), header.lines)) {
          std::cerr << "readFloatArray for " << meshdir << "/" << field << " failed" << std::endl;
-         return DataBase::ptr();
       }
-
-      Vec<Scalar>::ptr s(new Vec<Scalar>(dataMapping.size()));
-      auto x = s->x().data();
-      for (index_t i=0;i<dataMapping.size();++i) {
-         x[i] = fullX[dataMapping[i]];
-      }
-
-      return s;
-
    } else if (header.fieldclass == "volVectorField") {
-      std::vector<scalar_t> fullX(header.lines),fullY(header.lines),fullZ(header.lines);
+      fullX.resize(header.lines);
+      fullY.resize(header.lines);
+      fullZ.resize(header.lines);
       if (!readFloatVectorArray(header, *stream,fullX.data(),fullY.data(),fullZ.data(),header.lines)) {
          std::cerr << "readFloatVectorArray for " << meshdir << "/" << field << " failed" << std::endl;
-         return DataBase::ptr();
       }
-
-      Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(dataMapping.size()));
-      auto x = v->x().data();
-      auto y = v->y().data();
-      auto z = v->z().data();
-      for (index_t i=0;i<dataMapping.size();++i) {
-         x[i] = fullX[dataMapping[i]];
-         y[i] = fullY[dataMapping[i]];
-         z[i] = fullZ[dataMapping[i]];
-      }
-      return v;
+   } else {
+       std::cerr << "cannot interpret " << meshdir << "/" << field << std::endl;
    }
 
-   std::cerr << "cannot interpret " << meshdir << "/" << field << std::endl;
-   return DataBase::ptr();
+   std::vector<DataBase::ptr> result;
+
+   for (size_t idx=0; idx<dataMapping.size(); ++idx) {
+       if (header.fieldclass == "volScalarField") {
+           Vec<Scalar>::ptr s(new Vec<Scalar>(dataMapping[idx].size()));
+           auto x = s->x().data();
+           for (index_t i=0;i<dataMapping[idx].size();++i) {
+               x[i] = fullX[dataMapping[idx][i]];
+           }
+           if (asVariants)
+               s->addAttribute("_variant", patchNames[idx]);
+           result.push_back(s);
+
+       } else if (header.fieldclass == "volVectorField") {
+           Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(dataMapping[idx].size()));
+           auto x = v->x().data();
+           auto y = v->y().data();
+           auto z = v->z().data();
+           for (index_t i=0;i<dataMapping[idx].size();++i) {
+               x[i] = fullX[dataMapping[idx][i]];
+               y[i] = fullY[dataMapping[idx][i]];
+               z[i] = fullZ[dataMapping[idx][i]];
+           }
+           if (asVariants)
+               v->addAttribute("_variant", patchNames[idx]);
+           result.push_back(v);
+       }
+   }
+   return result;
 }
 
 void ReadFOAM::setMeta(Object::ptr obj, int processor, int timestep) const {
@@ -638,10 +731,14 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
       auto it = fields.find(field);
       if (it == fields.end())
          continue;
-      DataBase::ptr obj = loadBoundaryField(meshdir, field, processor);
-      setMeta(obj, processor, timestep);
-      obj->setGrid(m_currentbound[processor]);
-      addObject(m_boundaryDataOut[i], obj);
+      auto fields = loadBoundaryField(meshdir, field, processor);
+      vassert(fields.size() == m_currentbound[processor].size());
+      for (size_t j=0; j<fields.size(); ++j) {
+          auto &obj = fields[j];
+          setMeta(obj, processor, timestep);
+          obj->setGrid(m_currentbound[processor][j]);
+          addObject(m_boundaryDataOut[i], obj);
+      }
    }
    return true;
 }
@@ -664,15 +761,15 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
          auto ret = loadGrid(dir + "/polyMesh");
          UnstructuredGrid::ptr grid = ret.grid;
          setMeta(grid, processor, timestep);
-         Polygons::ptr poly = ret.polygon;
+         Polygons::ptr poly = ret.polygon[0];
          setMeta(poly, processor, timestep);
          m_owners[processor] = ret.owners;
          m_boundaries[processor] = ret.boundaries;
 
          m_currentgrid[processor] = grid;
-         m_currentbound[processor] = poly;
+         m_currentbound[processor] = ret.polygon;
          m_basegrid[processor] = grid;
-         m_basebound[processor] = poly;
+         m_basebound[processor] = ret.polygon;
       }
       loadFields(dir, m_case.constantFields, processor, timestep);
    } else {
@@ -691,7 +788,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
       }
       if (m_case.varyingGrid || m_case.varyingCoords) {
          UnstructuredGrid::ptr grid;
-         Polygons::ptr poly;
+         std::vector<Polygons::ptr> polygons;
          if (!m_case.varyingGrid) {
             {
                grid.reset(new UnstructuredGrid(0, 0, 0));
@@ -703,30 +800,34 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
             }
             loadCoords(dir + "/polyMesh", grid);
             {
-               poly.reset(new Polygons(0, 0, 0));
-               Polygons::Data *od = m_basebound[processor]->d();
-               Polygons::Data *nd = poly->d();
-               nd->el = od->el;
-               nd->cl = od->cl;
-               for (int i=0; i<3; ++i)
-                  poly->d()->x[i] = grid->d()->x[i];
+                for (size_t j=0; j<m_basebound[processor].size(); ++j) {
+                    Polygons::ptr poly(new Polygons(0, 0, 0));
+                    Polygons::Data *od = m_basebound[processor][j]->d();
+                    Polygons::Data *nd = poly->d();
+                    nd->el = od->el;
+                    nd->cl = od->cl;
+                    for (int i=0; i<3; ++i)
+                        poly->d()->x[i] = grid->d()->x[i];
+                    polygons.push_back(poly);
+                }
             }
          } else {
             auto ret = loadGrid(dir + "/polyMesh");
             grid = ret.grid;
-            poly = ret.polygon;
+            polygons = ret.polygon;
             m_owners[processor] = ret.owners;
             m_boundaries[processor] = ret.boundaries;
          }
          setMeta(grid, processor, timestep);
-         setMeta(poly, processor, timestep);
+         for (auto &poly: polygons)
+             setMeta(poly, processor, timestep);
          m_currentgrid[processor] = grid;
-         m_currentbound[processor] = poly;
+         m_currentbound[processor] = polygons;
 
          if (grid)
             m_basegrid[processor] = grid;
-         if (poly)
-            m_basebound[processor] = poly;
+         if (!polygons.empty())
+            m_basebound[processor] = polygons;
       }
       loadFields(dir, m_case.varyingFields, processor, timestep);
    }
@@ -1106,7 +1207,8 @@ void ReadFOAM::applyGhostCellsData(int processor) {
 
 bool ReadFOAM::addGridToPorts(int processor) {
    addObject(m_gridOut, m_currentgrid[processor]);
-   addObject(m_boundOut, m_currentbound[processor]);
+   for (auto &poly: m_currentbound[processor])
+       addObject(m_boundOut, poly);
    return true;
 }
 
