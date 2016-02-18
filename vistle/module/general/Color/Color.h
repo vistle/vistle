@@ -29,6 +29,9 @@ class Color: public vistle::Module {
    void getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar & min, vistle::Scalar & max);
 
    virtual bool compute();
+
+   typedef std::map<vistle::Scalar, vistle::Vector> TF;
+   std::map<int, TF> transferFunctions;
 };
 
 #endif

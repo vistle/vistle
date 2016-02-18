@@ -15,6 +15,16 @@ MODULE_MAIN(Color)
 
 using namespace vistle;
 
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
+                                    (COVISE)
+                                    (Star)
+                                    (ITSM)
+                                    (Rainbow)
+                                    (Blue_Light)
+                                    (ANSYS)
+                                    (CoolWarm)
+                                    )
+
 ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
                    const size_t w): width(w) {
 
@@ -68,6 +78,75 @@ Color::Color(const std::string &shmname, const std::string &name, int moduleID)
 
    addFloatParameter("min", "minimum value of range to map", 0.0);
    addFloatParameter("max", "maximum value of range to map", 0.0);
+   auto p = addIntParameter("map", "transfer function name", 0, Parameter::Choice);
+   V_ENUM_SET_CHOICES(p, TransferFunction);
+
+   TF pins;
+
+   using vistle::Vector;
+   pins.insert(std::make_pair(0.0, vistle::Vector(0.0, 0.0, 1.0)));
+   pins.insert(std::make_pair(0.5, vistle::Vector(1.0, 0.0, 0.0)));
+   pins.insert(std::make_pair(1.0, vistle::Vector(1.0, 1.0, 0.0)));
+   transferFunctions[COVISE] = pins;
+   pins.clear();
+
+   pins[0.00] = Vector(0.10, 0.0, 0.90);
+   pins[0.07] = Vector(0.00, 0.00, 1.00);
+   pins[0.14] = Vector(0.63, 0.63, 1.00);
+   pins[0.21] = Vector(0.00, 0.75, 1.00);
+   pins[0.28] = Vector(0.00, 1.00, 1.00);
+   pins[0.35] = Vector(0.10, 0.80, 0.70);
+   pins[0.42] = Vector(0.10, 0.90, 0.00);
+   pins[0.50] = Vector(0.50, 1.00, 0.63);
+   pins[0.57] = Vector(0.75, 1.00, 0.25);
+   pins[0.64] = Vector(1.00, 1.00, 0.00);
+   pins[0.71] = Vector(1.00, 0.80, 0.10);
+   pins[0.78] = Vector(1.00, 0.60, 0.30);
+   pins[0.85] = Vector(1.00, 0.67, 0.95);
+   pins[0.92] = Vector(1.00, 0.00, 0.50);
+   pins[1.00] = Vector(1.00, 0.00, 0.00);
+   transferFunctions[Star] = pins;
+   pins.clear();
+
+   pins[0.] = Vector(1, 1, 1);
+   pins[1.] = Vector(0, 0, 1);
+   transferFunctions[Blue_Light] = pins;
+   pins.clear();
+
+   pins[0.00] = Vector(0, 0, 1);
+   pins[0.25] = Vector(0, 1, 1);
+   pins[0.50] = Vector(0, 1, 0);
+   pins[0.75] = Vector(1, 1, 0);
+   pins[1.00] = Vector(1, 0, 0);
+   transferFunctions[ANSYS] = pins;
+   pins.clear();
+
+   pins[0.00] = Vector(0.231, 0.298, 0.752);
+   pins[0.25] = Vector(0.552, 0.690, 0.996);
+   pins[0.50] = Vector(0.866, 0.866, 0.866);
+   pins[0.75] = Vector(0.956, 0.603, 0.486);
+   pins[1.00] = Vector(0.705, 0.015, 0.149);
+   transferFunctions[CoolWarm] = pins;
+   pins.clear();
+
+   pins[0.00] = Vector(0.00, 0.00, 0.35);
+   pins[0.05] = Vector(0.00, 0.00, 1.00);
+   pins[0.26] = Vector(0.00, 1.00, 1.00);
+   pins[0.50] = Vector(0.00, 0.00, 1.00);
+   pins[0.74] = Vector(1.00, 1.00, 1.00);
+   pins[0.95] = Vector(1.00, 0.00, 0.00);
+   pins[1.00] = Vector(0.40, 0.00, 0.00);
+   transferFunctions[ITSM] = pins;
+   pins.clear();
+
+   pins[0.0] = Vector(0.40, 0.00, 0.40);
+   pins[0.2] = Vector(0.00, 0.00, 1.00);
+   pins[0.4] = Vector(0.00, 1.00, 1.00);
+   pins[0.6] = Vector(0.00, 1.00, 0.00);
+   pins[0.8] = Vector(1.00, 1.00, 0.00);
+   pins[1.0] = Vector(1.00, 0.00, 0.00);
+   transferFunctions[Rainbow] = pins;
+   pins.clear();
 }
 
 Color::~Color() {
@@ -202,11 +281,10 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
 
 bool Color::compute() {
 
-   std::map<vistle::Scalar, vistle::Vector> pins;
-   pins.insert(std::make_pair(0.0, vistle::Vector(0.0, 0.0, 1.0)));
-   pins.insert(std::make_pair(0.5, vistle::Vector(1.0, 0.0, 0.0)));
-   pins.insert(std::make_pair(1.0, vistle::Vector(1.0, 1.0, 0.0)));
-
+   auto pins = transferFunctions[getIntParameter("map")];
+   if (pins.empty()) {
+       pins = transferFunctions[COVISE];
+   }
    ColorMap cmap(pins, 32);
 
    DataBase::const_ptr obj = expect<DataBase>("data_in");
@@ -223,7 +301,7 @@ bool Color::compute() {
       max = getFloatParameter("max");
    }
 
-   //std::cerr << "Color: [" << min << "--" << max << "]" << std::endl;
+   std::cerr << "Color: [" << min << "--" << max << "]" << std::endl;
 
    auto out(addTexture(obj, min, max, cmap));
    out->setGrid(obj->grid());
