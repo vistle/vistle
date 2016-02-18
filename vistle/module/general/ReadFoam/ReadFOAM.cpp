@@ -640,6 +640,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
          continue;
       DataBase::ptr obj = loadBoundaryField(meshdir, field, processor);
       setMeta(obj, processor, timestep);
+      obj->setGrid(m_currentbound[processor]);
       addObject(m_boundaryDataOut[i], obj);
    }
    return true;
