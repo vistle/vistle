@@ -615,7 +615,7 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit) {
    const int mod = moduleExit.senderId();
    portTracker()->removeConnectionsWithModule(mod);
 
-   CERR << " Module [" << mod << "] quit" << std::endl;
+   //CERR << " Module [" << mod << "] quit" << std::endl;
 
    { 
       RunningMap::iterator it = runningMap.find(mod);

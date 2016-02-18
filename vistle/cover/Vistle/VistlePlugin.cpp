@@ -333,7 +333,7 @@ bool OsgRenderer::render() {
       } else if (!ro->coverRenderObject) {
          std::cerr << rank() << ": discarding delayed object - already deleted" << std::endl;
       } else if (!node) {
-         std::cerr << rank() << ": discarding delayed object " << ro->coverRenderObject->getName() << ": no node created" << std::endl;
+         //std::cerr << rank() << ": discarding delayed object " << ro->coverRenderObject->getName() << ": no node created" << std::endl;
       }
       m_delayedObjects.pop_front();
    }

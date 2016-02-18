@@ -361,7 +361,7 @@ std::vector<Port *> PortTracker::getConnectedOutputPorts(const int moduleID) con
 
 std::vector<message::Buffer> PortTracker::removeConnectionsWithModule(int moduleId) {
 
-   CERR << "removing all connections from/to " << moduleId << std::endl;
+   //CERR << "removing all connections from/to " << moduleId << std::endl;
 
    typedef std::map<std::string, Port *> PortMap;
    typedef std::map<int, PortMap *> ModulePortMap;
