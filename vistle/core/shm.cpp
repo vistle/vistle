@@ -91,6 +91,10 @@ bool shm_name_t::empty() const {
     return name.data()[0] == '\0' || !strcmp(name.data(), "INVALID");
 }
 
+void shm_name_t::clear() {
+   name.data()[0] = '\0';
+}
+
 std::string operator+(const std::string &s, const shm_name_t &n) {
    return s + n.name.data();
 }

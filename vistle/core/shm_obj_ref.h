@@ -78,8 +78,13 @@ class shm_obj_ref {
 
     const shm_obj_ref &operator=(typename ObjType::const_ptr &rhs) {
         unref();
-        m_name = rhs->getName();
-        m_d = rhs->d();
+        if (rhs) {
+            m_name = rhs->getName();
+            m_d = rhs->d();
+        } else {
+            m_name.clear();
+            m_d = nullptr;
+        }
         ref();
         return *this;
     }

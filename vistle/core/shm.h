@@ -38,6 +38,7 @@ struct V_COREEXPORT shm_name_t {
    bool operator==(const std::string &rhs) const;
    bool operator==(const shm_name_t &rhs) const;
    bool empty() const;
+   void clear();
 
  private:
    friend class boost::serialization::access;
