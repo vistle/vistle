@@ -21,7 +21,7 @@ struct ObjectData;
 typedef boost::shared_ptr<Object> obj_ptr;
 typedef boost::shared_ptr<const Object> obj_const_ptr;
 
-class oarchive: public boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type> {
+class V_COREEXPORT oarchive: public boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type> {
 
     typedef boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type> Base;
 public:
@@ -34,14 +34,14 @@ public:
 
 };
 
-class Fetcher {
+class V_COREEXPORT Fetcher {
 public:
     virtual ~Fetcher();
     virtual void requestArray(const std::string &name, int type, const std::function<void()> &completeCallback) = 0;
     virtual void requestObject(const std::string &name, const std::function<void()> &completeCallback) = 0;
 };
 
-class iarchive: public boost::archive::binary_iarchive_impl<iarchive, std::istream::char_type, std::istream::traits_type> {
+class V_COREEXPORT iarchive: public boost::archive::binary_iarchive_impl<iarchive, std::istream::char_type, std::istream::traits_type> {
 
     typedef boost::archive::binary_iarchive_impl<iarchive, std::istream::char_type, std::istream::traits_type> Base;
 public:
