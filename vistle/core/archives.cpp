@@ -33,7 +33,7 @@ namespace boost {
 namespace archive {
 
 template class detail::archive_serializer_map<vistle::oarchive>;
-template class V_COREEXPORT basic_binary_oprimitive<
+template class basic_binary_oprimitive<
     vistle::oarchive,
     std::ostream::char_type, 
     std::ostream::traits_type
@@ -48,7 +48,7 @@ template class binary_oarchive_impl<
 
 // explicitly instantiate for this type of stream
 template class detail::archive_serializer_map<vistle::iarchive>;
-template class V_COREEXPORT basic_binary_iprimitive<
+template class basic_binary_iprimitive<
     vistle::iarchive,
     std::istream::char_type,
     std::istream::traits_type
@@ -66,6 +66,18 @@ template class binary_iarchive_impl<
 
 namespace vistle {
 
+oarchive::oarchive(std::ostream &os, unsigned int flags)
+: boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type>(os, flags)
+{}
+
+oarchive::oarchive(std::streambuf &bsb, unsigned int flags)
+: boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type>(bsb, flags)
+{}
+
+oarchive::~oarchive()
+{}
+
+
 Fetcher::~Fetcher() {
 }
 
@@ -77,6 +89,9 @@ iarchive::iarchive(std::istream &is, unsigned int flags)
 iarchive::iarchive(std::streambuf &bsb, unsigned int flags)
 : Base(bsb, flags)
 , m_currentObject(nullptr)
+{}
+
+iarchive::~iarchive()
 {}
 
 void iarchive::setFetcher(boost::shared_ptr<Fetcher> fetcher) {

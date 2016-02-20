@@ -15,6 +15,26 @@
 #include "object.h"
 
 namespace vistle {
+class oarchive;
+class iarchive;
+}
+
+namespace boost {
+namespace archive {
+extern template class V_COREEXPORT basic_binary_oprimitive<
+    vistle::oarchive,
+    std::ostream::char_type, 
+    std::ostream::traits_type
+>;
+extern template class V_COREEXPORT basic_binary_iprimitive<
+    vistle::iarchive,
+    std::istream::char_type, 
+    std::istream::traits_type
+>;
+} // namespace archive
+} // namespace boost
+
+namespace vistle {
 
 class Object;
 struct ObjectData;
@@ -25,12 +45,9 @@ class V_COREEXPORT oarchive: public boost::archive::binary_oarchive_impl<oarchiv
 
     typedef boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type> Base;
 public:
-    oarchive(std::ostream &os, unsigned int flags=0)
-       : boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type>(os, flags)
-    {}
-    oarchive(std::streambuf &bsb, unsigned int flags=0)
-       : boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type>(bsb, flags)
-    {}
+    oarchive(std::ostream &os, unsigned int flags=0);
+    oarchive(std::streambuf &bsb, unsigned int flags=0);
+    ~oarchive();
 
 };
 
@@ -47,6 +64,7 @@ class V_COREEXPORT iarchive: public boost::archive::binary_iarchive_impl<iarchiv
 public:
     iarchive(std::istream &is, unsigned int flags=0);
     iarchive(std::streambuf &bsb, unsigned int flags=0);
+    ~iarchive();
 
     void setFetcher(boost::shared_ptr<Fetcher> fetcher);
     void setCurrentObject(ObjectData *data);
@@ -89,6 +107,7 @@ typedef boost::mpl::vector<
       > OutputArchives;
 
 } // namespace vistle
+
 
 BOOST_SERIALIZATION_REGISTER_ARCHIVE(vistle::oarchive)
 BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(vistle::oarchive)
