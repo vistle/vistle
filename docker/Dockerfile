@@ -38,7 +38,9 @@ RUN apt-get install -y wget \
 RUN git clone git://github.com/embree/embree.git && cd embree && git checkout ${EMBREETAG} \
       && mkdir build && cd build \
       && cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCMAKE_INSTALL_PREFIX=${PREFIX} -DENABLE_TUTORIALS=OFF .. \
-      && make ${PAR} install
+      && make ${PAR} install \
+      && cd ${BUILDDIR} \
+      && rm -rf embree
 
 # build COVISE file I/O library
 RUN git clone git://github.com/hlrs-vis/covise.git \
@@ -48,7 +50,9 @@ RUN git clone git://github.com/hlrs-vis/covise.git \
        && mkdir -p build.covise \
        && cd build.covise \
        && cmake .. -DCOVISE_BUILD_ONLY_FILE=TRUE -DCMAKE_INSTALL_PREFIX=${PREFIX} -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCOVISE_WARNING_IS_ERROR=FALSE \
-       && make ${PAR} install
+       && make ${PAR} install \
+       && cd ${BUILDDIR} \
+      && rm -rf covise
 
 # Vistle proper
 EXPOSE 31093 31590
