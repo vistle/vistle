@@ -1,4 +1,4 @@
-vistle_find_package(Boost 1.40 REQUIRED program_options OPTIONAL_COMPONENTS python)
+vistle_find_package(Boost 1.40 REQUIRED program_options thread system OPTIONAL_COMPONENTS python)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

@@ -1,3 +1,5 @@
+vistle_find_package(Boost 1.40 REQUIRED COMPONENTS system thread filesystem)
+
 include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
