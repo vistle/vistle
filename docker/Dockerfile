@@ -9,6 +9,7 @@ ENV BUILDTYPE Release
 ENV PREFIX /usr
 ENV BUILDDIR /build
 WORKDIR ${BUILDDIR}
+ADD embree-debian-multiarch.diff ${BUILDDIR}/embree-debian-multiarch.diff
 
 RUN apt-get update -y && apt-get install -y \
        libtbb-dev libglew-dev \
@@ -36,6 +37,8 @@ RUN apt-get install -y wget \
 
 # build embree CPU ray tracer
 RUN git clone git://github.com/embree/embree.git && cd embree && git checkout ${EMBREETAG} \
+      && git apply ../embree-debian-multiarch.diff \
+      && rm ../embree-debian-multiarch.diff \
       && mkdir build && cd build \
       && cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCMAKE_INSTALL_PREFIX=${PREFIX} -DENABLE_TUTORIALS=OFF .. \
       && make ${PAR} install \
