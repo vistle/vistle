@@ -55,7 +55,7 @@ RUN git clone git://github.com/hlrs-vis/covise.git \
        && cmake .. -DCOVISE_BUILD_ONLY_FILE=TRUE -DCMAKE_INSTALL_PREFIX=${PREFIX} -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCOVISE_WARNING_IS_ERROR=FALSE \
        && make ${PAR} install \
        && cd ${BUILDDIR} \
-      && rm -rf covise
+       && rm -rf covise
 
 # Vistle proper
 EXPOSE 31093 31590
@@ -65,7 +65,9 @@ RUN git clone --recursive git://github.com/vistle/vistle.git \
        && mkdir build.vistle \
        && cd build.vistle \
        && cmake -DCMAKE_INSTALL_PREFIX=${PREFIX} -DENABLE_INSTALLER=FALSE -DCMAKE_BUILD_TYPE=${BUILDTYPE} .. \
-       && make ${PAR} install
+       && make ${PAR} install \
+       && cd ${BUILDDIR} \
+       && rm -rf vistle
 
 ENTRYPOINT ["/usr/bin/vistle"]
 CMD ["-b"]
