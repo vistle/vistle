@@ -656,6 +656,7 @@ bool Leveller::process() {
 
                Vec<Scalar,1>::ptr out = Vec<Scalar,1>::ptr(new Vec<Scalar,1>(Object::Initialized));
                out->d()->x[0] = HD.m_outData[3];
+               out->setMeta(m_mapdata[0]->meta());
                m_outmapData.push_back(out);
 
             }
@@ -665,11 +666,10 @@ bool Leveller::process() {
                out->d()->x[0] = HD.m_outData[3];
                out->d()->x[1] = HD.m_outData[4];
                out->d()->x[2] = HD.m_outData[5];
+               out->setMeta(m_mapdata[0]->meta());
                m_outmapData.push_back(out);
 
             }
-
-            m_outmapData.back()->setMeta(m_mapdata[0]->meta());
          }
          break;
       }
@@ -705,6 +705,7 @@ bool Leveller::process() {
 
                Vec<Scalar>::ptr out = Vec<Scalar>::ptr(new Vec<Scalar>(totalNumVertices));
                thrust::copy(DD.m_outData[3]->begin(), DD.m_outData[3]->end(), out->x().data());
+               out->setMeta(m_mapdata[0]->meta());
                m_outmapData.push_back(out);
 
             }
@@ -714,11 +715,10 @@ bool Leveller::process() {
                thrust::copy(DD.m_outData[3]->begin(), DD.m_outData[3]->end(), out->x().data());
                thrust::copy(DD.m_outData[4]->begin(), DD.m_outData[4]->end(), out->y().data());
                thrust::copy(DD.m_outData[5]->begin(), DD.m_outData[5]->end(), out->z().data());
+               out->setMeta(m_mapdata[0]->meta());
                m_outmapData.push_back(out);
 
             }
-
-            m_outmapData.back()->setMeta(m_mapdata[0]->meta());
          }
          break;
       }
