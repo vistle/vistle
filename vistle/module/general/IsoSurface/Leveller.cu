@@ -25,10 +25,19 @@
 
 using namespace vistle;
 
-#define lerp(a, b, t) ( a + t * (b - a) )
+template<typename S>
+inline S lerp(S a, S b, Scalar t) {
+    return a+t*(b-a);
+}
+
+template<Index>
+inline Index lerp(Index a, Index b, Scalar t) {
+    return t > 0.5 ? b : a;
+}
+
 
 const Scalar EPSILON = 1.0e-10f;
-const int maxNumdata = 6;
+const int MaxNumData = 6;
 
 inline Scalar __host__ __device__ tinterp(Scalar iso, const Scalar &f0, const Scalar &f1) {
 
@@ -112,7 +121,7 @@ struct IsoDataFunctor {
 struct HostData {
 
    Scalar m_isovalue;
-   Index m_numinputdata;
+   Index m_numinputdata, m_numinputdataI;
    IsoDataFunctor m_isoFunc;
    const Index *m_el;
    const Index *m_cl;
@@ -125,8 +134,11 @@ struct HostData {
    const Scalar *m_y;
    const Scalar *m_z;
    std::vector<vistle::shm_ref<vistle::shm_array<Scalar, shm<Scalar>::allocator>>> m_outData;
+   std::vector<vistle::shm_ref<vistle::shm_array<Index, shm<Index>::allocator>>> m_outDataI;
    std::vector<const Scalar*> m_inputpointer;
+   std::vector<const Index*> m_inputpointerI;
    std::vector<Scalar*> m_outputpointer;
+   std::vector<Index *> m_outputpointerI;
 
    typedef const Index *IndexIterator;
    typedef std::vector<Index>::iterator VectorIndexIterator;
@@ -141,6 +153,8 @@ struct HostData {
             , const Scalar *z
             )
       : m_isovalue(isoValue)
+      , m_numinputdata(0)
+      , m_numinputdataI(0)
       , m_isoFunc(isoFunc)
       , m_el(el)
       , m_cl(cl)
@@ -168,12 +182,21 @@ struct HostData {
       m_numinputdata = m_inputpointer.size();
 
    }
+
+   void addmappeddata(const Index *mapdata){
+
+      m_inputpointerI.push_back(mapdata);
+      m_outDataI.push_back(vistle::ShmVector<Index>::create(0));
+      m_outputpointerI.push_back(NULL);
+      m_numinputdataI = m_inputpointerI.size();
+
+   }
 };
 
 struct DeviceData {
 
    Scalar m_isovalue;
-   Index m_numinputdata;
+   Index m_numinputdata, m_numinputdataI;
    IsoDataFunctor m_isoFunc;
    thrust::device_vector<Index> m_el;
    thrust::device_vector<Index> m_cl;
@@ -186,8 +209,11 @@ struct DeviceData {
    thrust::device_vector<Scalar> m_y;
    thrust::device_vector<Scalar> m_z;
    std::vector<thrust::device_vector<Scalar> *> m_outData;
+   std::vector<thrust::device_vector<Index> *> m_outDataI;
    std::vector<thrust::device_ptr<Scalar> > m_inputpointer;
+   std::vector<thrust::device_ptr<Index> > m_inputpointerI;
    std::vector<thrust::device_ptr<Scalar> > m_outputpointer;
+   std::vector<thrust::device_ptr<Index> > m_outputpointerI;
    typedef const Index *IndexIterator;
    //typedef thrust::device_vector<Index>::iterator IndexIterator;
 
@@ -220,6 +246,11 @@ struct DeviceData {
       }
       m_outputpointer.resize(m_inputpointer.size());
       m_numinputdata = m_inputpointer.size();
+      for(size_t i = 0; i < m_inputpointerI.size(); i++){
+         m_outDataI.push_back(new thrust::device_vector<Index>);
+      }
+      m_outputpointerI.resize(m_inputpointerI.size());
+      m_numinputdataI = m_inputpointerI.size();
    }
 };
 
@@ -228,6 +259,9 @@ struct process_Cell {
    process_Cell(Data &data) : m_data(data) {
       for (int i = 0; i < m_data.m_numinputdata; i++){
          m_data.m_outputpointer[i] = m_data.m_outData[i]->data();
+      }
+      for (int i = 0; i < m_data.m_numinputdataI; i++){
+         m_data.m_outputpointerI[i] = m_data.m_outDataI[i]->data();
       }
    }
 
@@ -242,6 +276,21 @@ struct process_Cell {
       const Index numVert = m_data.m_numVertices[ValidCellIndex];
       const auto &cl = &m_data.m_cl[Cellbegin];
 
+#define INTER(triTable, edgeTable) \
+    const unsigned int edge = triTable[m_data.m_caseNums[ValidCellIndex]][idx]; \
+    const unsigned int v1 = edgeTable[0][edge]; \
+    const unsigned int v2 = edgeTable[1][edge]; \
+    const Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]); \
+    Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx; \
+    for(Index j = 0; j < m_data.m_numinputdata; j++) { \
+        m_data.m_outputpointer[j][outvertexindex] = \
+            lerp(m_data.m_inputpointer[j][cl[v1]], m_data.m_inputpointer[j][cl[v2]], t); \
+    } \
+    for(Index j = 0; j < m_data.m_numinputdataI; j++) { \
+        m_data.m_outputpointerI[j][outvertexindex] = \
+            lerp(m_data.m_inputpointerI[j][cl[v1]], m_data.m_inputpointerI[j][cl[v2]], t); \
+    }
+
       switch (m_data.m_tl[CellNr]) {
 
          case UnstructuredGrid::HEXAHEDRON: {
@@ -252,22 +301,7 @@ struct process_Cell {
             }
 
             for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
-
-               const int edge = hexaTriTable[m_data.m_caseNums[ValidCellIndex]][idx];
-
-               const int v1 = hexaEdgeTable[0][edge];
-               const int v2 = hexaEdgeTable[1][edge];
-
-               Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]);
-
-               Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx;
-
-               for(Index j = 0; j < m_data.m_numinputdata; j++){
-
-                  m_data.m_outputpointer[j][outvertexindex] =
-                     lerp(m_data.m_inputpointer[j][cl[v1]], m_data.m_inputpointer[j][cl[v2]], t);
-
-               }
+               INTER(hexaTriTable, hexaEdgeTable);
             }
             break;
          }
@@ -280,22 +314,7 @@ struct process_Cell {
             }
 
             for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
-
-               const int edge = tetraTriTable[m_data.m_caseNums[ValidCellIndex]][idx];
-
-               const int v1 = tetraEdgeTable[0][edge];
-               const int v2 = tetraEdgeTable[1][edge];
-
-               Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]);
-
-               Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx;
-
-               for(Index j = 0; j < m_data.m_numinputdata; j++){
-
-                  m_data.m_outputpointer[j][outvertexindex] =
-                     lerp(m_data.m_inputpointer[j][cl[v1]], m_data.m_inputpointer[j][cl[v2]], t);
-
-               }
+               INTER(tetraTriTable, tetraEdgeTable);
             }
             break;
          }
@@ -308,22 +327,7 @@ struct process_Cell {
             }
 
             for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
-
-               const int edge = pyrTriTable[m_data.m_caseNums[ValidCellIndex]][idx];
-
-               const int v1 = pyrEdgeTable[0][edge];
-               const int v2 = pyrEdgeTable[1][edge];
-
-               Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]);
-
-               Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx;
-
-               for(Index j = 0; j < m_data.m_numinputdata; j++){
-
-                  m_data.m_outputpointer[j][outvertexindex] =
-                     lerp(m_data.m_inputpointer[j][cl[v1]], m_data.m_inputpointer[j][cl[v2]], t);
-
-               }
+                INTER(pyrTriTable, pyrEdgeTable);
             }
             break;
          }
@@ -336,22 +340,7 @@ struct process_Cell {
             }
 
             for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]; idx++) {
-
-               const int edge = prismTriTable[m_data.m_caseNums[ValidCellIndex]][idx];
-
-               const int v1 = prismEdgeTable[0][edge];
-               const int v2 = prismEdgeTable[1][edge];
-
-               Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]);
-
-               Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx;
-
-               for(Index j = 0; j < m_data.m_numinputdata; j++){
-
-                  m_data.m_outputpointer[j][outvertexindex] =
-                     lerp(m_data.m_inputpointer[j][cl[v1]], m_data.m_inputpointer[j][cl[v2]], t);
-
-               }
+                INTER(prismTriTable, prismEdgeTable);
             }
             break;
          }
@@ -360,15 +349,18 @@ struct process_Cell {
 
             Index sidebegin = InvalidIndex;
             bool vertexSaved = false;
-            Scalar savedData [maxNumdata];
-            Index j = 0;
+            Scalar savedData [MaxNumData];
+            Index savedDataI[MaxNumData];
+            Index numTri = 0;
             int flag = 0;
-            Scalar middleData[maxNumdata];
-            for(int i = 0; i < maxNumdata; i++ ){
+            Scalar middleData[MaxNumData];
+            Index middleDataI[MaxNumData];
+            for(int i = 0; i < MaxNumData; i++ ){
                middleData[i] = 0;
+               middleDataI[i] = 0;
             };
-            Scalar cd1 [maxNumdata];
-            Scalar cd2 [maxNumdata];
+            Scalar cd1[MaxNumData], cd2[MaxNumData];
+            Index cd1I[MaxNumData], cd2I[MaxNumData];
 
             Index outIdx = m_data.m_LocationList[ValidCellIndex];
             for (Index i = Cellbegin; i < Cellend; i++) {
@@ -383,7 +375,10 @@ struct process_Cell {
 
                      for(Index i = 0; i < m_data.m_numinputdata; i++){
                         m_data.m_outputpointer[i][outIdx] = savedData[i];
-                     };
+                     }
+                     for(Index i = 0; i < m_data.m_numinputdataI; i++){
+                        m_data.m_outputpointerI[i][outIdx] = savedDataI[i];
+                     }
 
                      outIdx += 2;
                      vertexSaved=false;
@@ -400,43 +395,51 @@ struct process_Cell {
                   cd1[i] = m_data.m_inputpointer[i][c1];
                   cd2[i] = m_data.m_inputpointer[i][c2];
                }
+               for(int i = 0; i < m_data.m_numinputdataI; i++){
+                  cd1I[i] = m_data.m_inputpointerI[i][c1];
+                  cd2I[i] = m_data.m_inputpointerI[i][c2];
+               }
 
                Scalar d1 = m_data.m_isoFunc(c1);
                Scalar d2 = m_data.m_isoFunc(c2);
                Scalar t = tinterp(m_data.m_isovalue, d1, d2);
 
                if (d1 <= m_data.m_isovalue && d2 > m_data.m_isovalue) {
-                  Scalar v [maxNumdata];
                   for(Index i = 0; i < m_data.m_numinputdata; i++){
-                     v[i] = lerp(cd1[i], cd2[i], t);
+                     Scalar v = lerp(cd1[i], cd2[i], t);
+                     middleData[i] += v;
+                     m_data.m_outputpointer[i][outIdx] = v;
+                  }
+                  for(Index i = 0; i < m_data.m_numinputdataI; i++){
+                     Index vI = lerp(cd1I[i], cd2I[i], t);
+                     middleDataI[i] += vI;
+                     m_data.m_outputpointerI[i][outIdx] = vI;
                   };
 
-                  for(Index i = 0; i < m_data.m_numinputdata; i++){
-                     middleData[i] += v[i];
-                  }
-
-                  for(Index i = 0; i < m_data.m_numinputdata; i++){
-                     m_data.m_outputpointer[i][outIdx] = v[i];
-                  }
-
                   ++outIdx;
-                  ++j;
+                  ++numTri;
                   flag = 1;
 
                } else if (d1 > m_data.m_isovalue && d2 <= m_data.m_isovalue) {
 
-                  Scalar v [maxNumdata];
+                  Scalar v [MaxNumData];
+                  Index vI[MaxNumData];
 
                   for(Index i = 0; i < m_data.m_numinputdata; i++){
                      v[i] = lerp(cd1[i], cd2[i], t);
-                  };
-                  for(Index i = 0; i < m_data.m_numinputdata; i++){
                      middleData[i] += v[i];
-                  };
-                  ++j;
+                  }
+                  for(Index i = 0; i < m_data.m_numinputdataI; i++){
+                     vI[i] = lerp(cd1I[i], cd2I[i], t);
+                     middleDataI[i] += vI[i];
+                  }
+                  ++numTri;
                   if (flag == 1) { //fall 2 nach fall 1
                      for(Index i = 0; i < m_data.m_numinputdata; i++){
                         m_data.m_outputpointer[i][outIdx] = v[i];
+                     }
+                     for(Index i = 0; i < m_data.m_numinputdataI; i++){
+                        m_data.m_outputpointerI[i][outIdx] = vI[i];
                      }
                      outIdx += 2;
                   } else { //fall 2 zuerst
@@ -444,17 +447,28 @@ struct process_Cell {
                      for(Index i = 0; i < m_data.m_numinputdata; i++){
                         savedData[i] = v[i];
                      }
+                     for(Index i = 0; i < m_data.m_numinputdataI; i++){
+                        savedDataI[i] = vI[i];
+                     }
                      vertexSaved=true;
                   }
                }
             }
-            for(Index i = 0; i < m_data.m_numinputdata; i++){
-               middleData[i] /= j;
-            };
+            if (numTri > 0) {
+                for(Index i = 0; i < m_data.m_numinputdata; i++){
+                    middleData[i] /= numTri;
+                }
+                for(Index i = 0; i < m_data.m_numinputdataI; i++){
+                    middleDataI[i] /= numTri;
+                }
+            }
             for (Index i = 2; i < numVert; i += 3) {
                const Index idx = m_data.m_LocationList[ValidCellIndex]+i;
                for(Index i = 0; i < m_data.m_numinputdata; i++){
                   m_data.m_outputpointer[i][idx] = middleData[i];
+               }
+               for(Index i = 0; i < m_data.m_numinputdataI; i++){
+                  m_data.m_outputpointerI[i][idx] = middleDataI[i];
                }
             };
             break;
@@ -602,7 +616,10 @@ Index Leveller::calculateSurface(Data &data) {
       totalNumVertices += data.m_LocationList.back();
    for(int i = 0; i < data.m_numinputdata; i++){
       data.m_outData[i]->resize(totalNumVertices);
-   };
+   }
+   for(int i = 0; i < data.m_numinputdataI; i++){
+      data.m_outDataI[i]->resize(totalNumVertices);
+   }
    thrust::counting_iterator<Index> start(0), finish(numValidCells);
    thrust::for_each(pol(), start, finish, process_Cell<Data>(data));
    return totalNumVertices;
@@ -642,6 +659,9 @@ bool Leveller::process() {
                HD.addmappeddata(Vect->y());
                HD.addmappeddata(Vect->z());
             }
+            if(Vec<Index,1>::const_ptr Idx = Vec<Index,1>::as(m_mapdata[0])){
+               HD.addmappeddata(Idx->x());
+            }
 
          }
 
@@ -666,6 +686,14 @@ bool Leveller::process() {
                out->d()->x[0] = HD.m_outData[3];
                out->d()->x[1] = HD.m_outData[4];
                out->d()->x[2] = HD.m_outData[5];
+               out->setMeta(m_mapdata[0]->meta());
+               m_outmapData.push_back(out);
+
+            }
+            if(Vec<Index>::as(m_mapdata[0])){
+
+               Vec<Index>::ptr out = Vec<Index>::ptr(new Vec<Index>(Object::Initialized));
+               out->d()->x[0] = HD.m_outDataI[0];
                out->setMeta(m_mapdata[0]->meta());
                m_outmapData.push_back(out);
 
