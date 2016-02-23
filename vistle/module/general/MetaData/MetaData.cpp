@@ -37,17 +37,28 @@ MetaData::~MetaData() {
 
 bool MetaData::compute() {
 
-   auto in = expect<DataBase>("grid_in");
-   if (!in)
-      return true;
+   auto grid = accept<UnstructuredGrid>("grid_in");
+   DataBase::const_ptr data;
+   if (!grid) {
+      data = expect<DataBase>("grid_in");
+      if (!data) {
+         return true;
+      }
+      grid = UnstructuredGrid::as(data->grid());
+      if (!grid) {
+         return true;
+      }
+   }
+   if (!data)
+      data = grid;
 
-   Index N = in->getSize();
+   Index N = data->getSize();
    Vec<Index>::ptr out(new Vec<Index>(N));
    auto val = out->x().data();
 
    const Index kind = m_kind->getValue();
-   const Index block = in->getBlock();
-   const Index timestep = in->getTimestep();
+   const Index block = data->getBlock();
+   const Index timestep = data->getTimestep();
 
    for (Index i=0; i<N; ++i) {
       switch(kind) {
@@ -59,7 +70,8 @@ bool MetaData::compute() {
       }
    }
 
-   out->setMeta(in->meta());
+   out->setMeta(data->meta());
+   out->setGrid(grid);
    addObject("data_out", out);
 
    return true;
