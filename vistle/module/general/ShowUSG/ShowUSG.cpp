@@ -56,8 +56,8 @@ bool ShowUSG::compute() {
          x = 0;
          y = in->getNumElements();
       } else {
-         x = cellnrmin;
-         y = cellnrmax;
+         x = std::max((Index)0, (Index)cellnrmin);
+         y = std::min(in->getNumElements(), (Index)cellnrmax);
       }
 
       for (size_t index = x; index < y; index ++) {
