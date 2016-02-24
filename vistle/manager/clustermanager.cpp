@@ -910,18 +910,20 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
    //CERR << "ADDOBJECT: " << addObj << ", local=" << localAdd << ", synthesized=" << synthesized << std::endl;
    Object::const_ptr obj;
 
+   bool onThisRank = false;
    int destRank = -1;
-   int block = addObj.meta().block();
-   if (block >= 0) {
-      destRank = block % getSize();
-   }
-   const bool onThisRank = destRank==getRank() || (getRank() == 0 && destRank == -1);
    if (localAdd) {
-       if (onThisRank) {
-          obj = addObj.takeObject();
-          //CERR << "ADDOBJECT: local, name=" << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
+       if (addObj.rank() == getRank()) {
+           onThisRank = true;
+           obj = addObj.takeObject();
        }
+       //CERR << "ADDOBJECT: local, name=" << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
    } else {
+       int block = addObj.meta().block();
+       if (block >= 0) {
+           destRank = block % getSize();
+       }
+       onThisRank = destRank==getRank() || (getRank() == 0 && destRank == -1);
 
       //CERR << "ADDOBJECT from remote, handling on rank " << destRank << std::endl;
       if (onThisRank) {
