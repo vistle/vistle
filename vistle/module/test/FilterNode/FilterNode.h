@@ -12,7 +12,9 @@ class FilterNode: public vistle::Module {
    ~FilterNode();
 
  private:
-   virtual bool compute();
+   virtual bool compute() override;
+   virtual bool parameterChanged(const vistle::Parameter *p) override;
+   vistle::IntParameter *m_criterionParam;
    vistle::IntParameter *m_nodeParam;
    vistle::IntParameter *m_invertParam;
 };
