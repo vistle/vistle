@@ -53,23 +53,24 @@ class V_COREEXPORT PortTracker {
    std::vector<Port *> getOutputPorts(const int moduleID) const;
    std::vector<Port *> getConnectedOutputPorts(const int moduleID) const;
 
-   virtual std::vector<message::Buffer> removeConnectionsWithModule(int moduleId);
+   virtual std::vector<message::Buffer> removeModule(int moduleId);
 
  protected:
+
+   void check() const;
 
    Port *getPort(const Port *p) const;
 
    StateTracker *m_stateTracker;
 
-   typedef std::map<int, std::string> PortOrder;
-   typedef std::map<std::string, Port *> PortMap;
-
    // module ID -> list of ports belonging to the module
-   std::map<int, PortMap *> m_ports;
+   typedef std::map<std::string, Port *> PortMap;
+   typedef std::map<int, PortMap *> ModulePortMap;
+   ModulePortMap m_ports;
+
+   typedef std::map<int, std::string> PortOrder;
    std::map<int, PortOrder *> m_portOrders;
 };
-
-V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Port &port);
 } // namespace vistle
 
 #endif

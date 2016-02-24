@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <ostream>
 
 #include <util/enum.h>
 #include "objectcache.h"
@@ -40,7 +41,7 @@ class V_COREEXPORT Port {
    typedef std::set<Port *, deref_compare<Port> > PortSet;
    const PortSet &connections() const;
    void setConnections(const PortSet &conn);
-   void addConnection(Port *other);
+   bool addConnection(Port *other);
    Port *removeConnection(const Port *other);
    bool isConnected() const;
 
@@ -68,6 +69,8 @@ class V_COREEXPORT Port {
    std::vector<Port *> m_children;
    PortSet m_linkedPorts;
 };
+
+V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Port &port);
 
 V_ENUM_OUTPUT_OP(Type, Port)
 V_ENUM_OUTPUT_OP(Flags, Port)

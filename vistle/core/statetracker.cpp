@@ -613,7 +613,7 @@ bool StateTracker::handlePriv(const message::Disconnect &disconnect) {
 bool StateTracker::handlePriv(const message::ModuleExit &moduleExit) {
 
    const int mod = moduleExit.senderId();
-   portTracker()->removeConnectionsWithModule(mod);
+   portTracker()->removeModule(mod);
 
    //CERR << " Module [" << mod << "] quit" << std::endl;
 

@@ -47,9 +47,9 @@ void Port::setConnections(const PortSet &conn) {
    m_connections = conn;
 }
 
-void Port::addConnection(Port *other) {
+bool Port::addConnection(Port *other) {
 
-   m_connections.insert(other);
+   return m_connections.insert(other).second;
 }
 
 Port *Port::removeConnection(const Port *other) {
@@ -124,6 +124,12 @@ bool Port::link(Port *other) {
 const Port::PortSet &Port::linkedPorts() const {
 
    return m_linkedPorts;
+}
+
+std::ostream &operator<<(std::ostream &s, const Port &port) {
+
+    s << port.getModuleID() << ":" << port.getName() << "(" << port.getType() << ")";
+    return s;
 }
 
 } // namespace vistle

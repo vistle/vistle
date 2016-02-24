@@ -35,6 +35,8 @@ Port * PortTracker::addPort(const int moduleID, const std::string & name,
 
 Port *PortTracker::addPort(Port *port) {
 
+   assert(port->getType() != Port::ANY);
+
    const int moduleID = port->getModuleID();
 
    PortMap *portMap = NULL;
@@ -143,25 +145,39 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
    assert(t);
 
    bool added = false;
-   if (from->getType() == Port::OUTPUT && to->getType() == Port::INPUT) {
+   if (f->getType() == Port::OUTPUT && t->getType() == Port::INPUT) {
 
-      if (!to->isConnected() || (t->flags() & Port::COMBINE)) {
-         f->addConnection(t);
-         t->addConnection(f);
-
-         added = true;
+      if (!t->isConnected() || (t->flags() & Port::COMBINE)) {
+         if (f->addConnection(t)) {
+            if (t->addConnection(f)) {
+               added = true;
+            } else {
+               f->removeConnection(t);
+               CERR << "PortTracker::addConnection: inconsistent connection states for data connection" << std::endl;
+               return true;
+            }
+         }
       } else {
          //CERR << "PortTracker::addConnection: multiple connection" << std::endl;
          return true;
       }
-   }
+   } else if (f->getType() == Port::PARAMETER && t->getType() == Port::PARAMETER) {
 
-   if (from->getType() == Port::PARAMETER && to->getType() == Port::PARAMETER) {
+      if (f->addConnection(t)) {
+         if (t->addConnection(f)) {
+            added = true;
+         } else {
+            f->removeConnection(t);
+            CERR << "PortTracker::addConnection: inconsistent connection states for parmeter connection" << std::endl;
+            return true;
+         }
+      }
+   } else {
+      CERR << "PortTracker::addConnection: incompatible types: "
+         << from->getModuleID() << ":" << from->getName() << " (" << from->getType() << ") "
+         << to->getModuleID() << ":" << to->getName() << " (" << to->getType() << ")" << std::endl;
 
-      f->addConnection(t);
-      t->addConnection(f);
-
-      added = true;
+      return true;
    }
 
    if (added) {
@@ -176,7 +192,7 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
    }
 
 #ifdef DEBUG
-   CERR << "PortTracker::addConnection: incompatible types: "
+   CERR << "PortTracker::addConnection: have to queue connection: "
       << from->getModuleID() << ":" << from->getName() << " (" << from->getType() << ") "
       << to->getModuleID() << ":" << to->getName() << " (" << to->getType() << ")" << std::endl;
 #endif
@@ -187,14 +203,13 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
 bool PortTracker::addConnection(const int a, const std::string & na,
                                 const int b, const std::string & nb) {
 
-   // FIXME: we add ports, as they might not yet have been created by the module
    Port *portA = getPort(a, na);
    if (!portA) {
-      portA = addPort(a, na, Port::ANY);
+      return false;
    }
    Port *portB = getPort(b, nb);
    if (!portB) {
-      portB = addPort(b, nb, Port::ANY);
+      return false;
    }
 
    return addConnection(portA, portB);
@@ -210,14 +225,16 @@ bool PortTracker::removeConnection(const Port *from, const Port *to) {
    if (!t)
       return false;
 
-   if (((from->getType() == Port::OUTPUT || from->getType() == Port::ANY) && (to->getType() == Port::INPUT || to->getType() == Port::ANY))
-      || (from->getType() == Port::PARAMETER && to->getType() == Port::PARAMETER)) {
+   const auto ft = f->getType();
+   const auto tt = t->getType();
+   if (((ft == Port::OUTPUT || ft == Port::ANY) && (tt == Port::INPUT || tt == Port::ANY))
+      || ((ft == Port::PARAMETER || ft == Port::ANY) && (tt == Port::PARAMETER || tt ==  Port::ANY))) {
 
-      f->removeConnection(to);
-      t->removeConnection(from);
+      f->removeConnection(t);
+      t->removeConnection(f);
 
-      if (from->getType() == Port::ANY || to->getType() == Port::ANY) {
-          CERR << "removeConnection: port type ANY: " << *from << " -> " << *to << std::endl;
+      if (ft == Port::ANY || tt == Port::ANY) {
+          CERR << "removeConnection: port type ANY: " << *f << " -> " << *t << std::endl;
       }
 
       if (tracker()) {
@@ -230,7 +247,7 @@ bool PortTracker::removeConnection(const Port *from, const Port *to) {
 
       return true;
    } else {
-       //CERR << "removeConnection: port type mismatch: " << *from << " -> " << *to << std::endl;
+       CERR << "removeConnection: port type mismatch: " << *f << " -> " << *t << std::endl;
    }
 
    return false;
@@ -267,31 +284,9 @@ PortTracker::getConnectionList(const int moduleID,
 std::vector<std::string> PortTracker::getPortNames(const int moduleID, Port::Type type) const {
 
    std::vector<std::string> result;
-
-   typedef std::map<std::string, Port *> PortMap;
-   typedef std::map<int, PortMap *> ModulePortMap;
-
-   ModulePortMap::const_iterator mports = m_ports.find(moduleID);
-   if (mports == m_ports.end())
-      return result;
-   const auto &portOrderIt = m_portOrders.find(moduleID);
-   if (portOrderIt == m_portOrders.end())
-      return result;
-
-   const PortMap &portmap = *mports->second;
-   const PortOrder &portorder = *portOrderIt->second;
-   for(PortOrder::const_iterator it = portorder.begin();
-         it != portorder.end();
-         ++it) {
-
-      const std::string &name = it->second;
-      const auto &it2 = portmap.find(name);
-      assert(it2 != portmap.end());
-
-      if (type == Port::ANY || it2->second->getType() == type)
-         result.push_back(name);
-   }
-
+   const auto ports = getPorts(moduleID, type);
+   for (const auto &port: ports)
+       result.push_back(port->getName());
    return result;
 }
 
@@ -309,9 +304,6 @@ std::vector<Port *> PortTracker::getPorts(const int moduleID, Port::Type type, b
 {
    std::vector<Port *> result;
 
-   typedef std::map<std::string, Port *> PortMap;
-   typedef std::map<int, PortMap *> ModulePortMap;
-
    ModulePortMap::const_iterator mports = m_ports.find(moduleID);
    if (mports == m_ports.end())
       return result;
@@ -328,10 +320,11 @@ std::vector<Port *> PortTracker::getPorts(const int moduleID, Port::Type type, b
       const std::string &name = it->second;
       const auto &it2 = portmap.find(name);
       assert(it2 != portmap.end());
+      const auto &port = it2->second;
 
-      if (type == Port::ANY || it2->second->getType() == type) {
-         if (!connectedOnly || !it2->second->connections().empty()) {
-            result.push_back(it2->second);
+      if (type == Port::ANY || port->getType() == type) {
+         if (!connectedOnly || !port->connections().empty()) {
+            result.push_back(port);
          }
       }
    }
@@ -359,53 +352,78 @@ std::vector<Port *> PortTracker::getConnectedOutputPorts(const int moduleID) con
    return getPorts(moduleID, Port::OUTPUT, true);
 }
 
-std::vector<message::Buffer> PortTracker::removeConnectionsWithModule(int moduleId) {
+std::vector<message::Buffer> PortTracker::removeModule(int moduleId) {
 
    //CERR << "removing all connections from/to " << moduleId << std::endl;
-
-   typedef std::map<std::string, Port *> PortMap;
-   typedef std::map<int, PortMap *> ModulePortMap;
 
    std::vector<message::Buffer> ret;
 
    ModulePortMap::const_iterator mports = m_ports.find(moduleId);
-   if (mports == m_ports.end())
-      return ret;
+   if (mports != m_ports.end()) {
 
-   const PortMap &portmap = *mports->second;
-   for(PortMap::const_iterator it = portmap.begin();
-         it != portmap.end();
-         ++it) {
+      const PortMap &portmap = *mports->second;
+      for(PortMap::const_iterator it = portmap.begin();
+            it != portmap.end();
+            ++it) {
 
-      Port *port = it->second;
-      const Port::PortSet &cl = port->connections();
-      while (!cl.empty()) {
-         size_t oldsize = cl.size();
-         const Port *other = *cl.begin();
-         removeConnection(port, other);
-         removeConnection(other, port);
-         message::Disconnect d1(port->getModuleID(), port->getName(), other->getModuleID(), other->getName());
-         ret.push_back(d1);
-         message::Disconnect d2(other->getModuleID(), other->getName(), port->getModuleID(), port->getName());
-         ret.push_back(d2);
-         if (cl.size() == oldsize) {
-            CERR << "failed to remove all connections for module " << moduleId << ", still left: " << cl.size() << std::endl;
-            for (size_t i=0; i<cl.size(); ++i) {
-               CERR << "   " << port->getModuleID() << ":" << port->getName() << " <--> " << other->getModuleID() << ":" << other->getName() << std::endl;
+         Port *port = it->second;
+         const Port::PortSet &cl = port->connections();
+         while (!cl.empty()) {
+            size_t oldsize = cl.size();
+            const Port *other = *cl.begin();
+            if (port->getType() != Port::INPUT && removeConnection(port, other)) {
+               message::Disconnect d1(port->getModuleID(), port->getName(), other->getModuleID(), other->getName());
+               ret.push_back(d1);
             }
-            break;
+            if (port->getType() != Port::OUTPUT && removeConnection(other, port)) {
+               message::Disconnect d2(other->getModuleID(), other->getName(), port->getModuleID(), port->getName());
+               ret.push_back(d2);
+            }
+            if (cl.size() == oldsize) {
+               CERR << "failed to remove all connections for module " << moduleId << ", still left: " << cl.size() << std::endl;
+               for (size_t i=0; i<cl.size(); ++i) {
+                  CERR << "   " << *port << " <--> " << *other << std::endl;
+               }
+               break;
+            }
          }
       }
+
+      for(PortMap::const_iterator it = portmap.begin();
+            it != portmap.end();
+            ++it) {
+          delete it->second;
+      }
+      mports->second->clear();
    }
 
    for (const auto &mpm: m_ports) {
        const auto &pm = *mpm.second;
        for (const auto &pme: pm) {
            const Port *port = pme.second;
+           if (port->getModuleID() == moduleId) {
+               CERR << "removeModule " << moduleId << ": " << *port << " still exists" << std::endl;
+           }
            const auto &cl = port->connections();
            for (const auto &other: cl) {
                if (other->getModuleID() == moduleId) {
-                   CERR << "removeConnectionsWithModule: still connected with " << other->getModuleID() << ":" << other->getName() << std::endl;
+                   CERR << "removeModule " << moduleId << ": " << *other << " still connected to " << *port << std::endl;
+               }
+           }
+       }
+   }
+
+   for (const auto &mpm: m_ports) {
+       const auto &pm = *mpm.second;
+       for (const auto &pme: pm) {
+           const Port *port = pme.second;
+           if (port->getModuleID() == moduleId) {
+               CERR << "removeModule " << moduleId << ": " << *port << " still exists" << std::endl;
+           }
+           const auto &cl = port->connections();
+           for (const auto &other: cl) {
+               if (other->getModuleID() == moduleId) {
+                   CERR << "removeModule " << moduleId << ": " << *other << " still connected to " << *port << std::endl;
                }
            }
        }
@@ -414,10 +432,64 @@ std::vector<message::Buffer> PortTracker::removeConnectionsWithModule(int module
    return ret;
 }
 
-std::ostream &operator<<(std::ostream &s, const Port &port) {
+void PortTracker::check() const {
 
-    s << port.getModuleID() << ":" << port.getName();
-    return s;
+   int numInput=0, numOutput=0, numParam=0;
+   for (const auto &mpm: m_ports) {
+       const auto &pm = *mpm.second;
+       for (const auto &pme: pm) {
+           const Port *port = pme.second;
+           const auto &cl = port->connections();
+           if (port->getType() == Port::INPUT && !(port->flags() & Port::COMBINE)) {
+               if (cl.size() > 1) {
+                   CERR << "FAIL: too many connections: " << *port << std::endl;
+               }
+           }
+           const int moduleId = port->getModuleID();
+           for (const auto &other: cl) {
+               if (port->getType() == Port::ANY) {
+                   CERR << "FAIL: ANY port: " << *port << std::endl;
+               }
+               if (other->getType() == Port::ANY) {
+                   CERR << "FAIL: ANY port: " << *other << std::endl;
+               }
+               if (port->getType() == Port::INPUT) {
+                   if (other->getType() != Port::OUTPUT) {
+                       CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
+                   } else {
+                       ++numInput;
+                   }
+                   if (other->getModuleID() == moduleId) {
+                       CERR << "FAIL: from/to same module: " << *port << " <-> " << *other << std::endl;
+                   }
+               } else if (port->getType() == Port::OUTPUT) {
+                   if (other->getType() != Port::INPUT) {
+                       CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
+                   } else {
+                       ++numOutput;
+                   }
+                   if (other->getModuleID() == moduleId) {
+                       CERR << "FAIL: from/to same module: " << *port << " <-> " << *other << std::endl;
+                   }
+               } else if (port->getType() == Port::PARAMETER) {
+                   if (other->getType() != Port::PARAMETER) {
+                       CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
+                   } else {
+                       ++numParam;
+                   }
+               } else {
+                   CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
+               }
+           }
+       }
+   }
+
+   if (numInput != numOutput) {
+       CERR << "FAIL: numInput=" << numInput << ", numOutput=" << numOutput << std::endl;
+   }
+   if (numParam % 2) {
+       CERR << "FAIL: numParam=" << numParam << std::endl;
+   }
 }
 
 } // namespace vistle

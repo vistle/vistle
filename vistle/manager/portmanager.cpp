@@ -35,9 +35,9 @@ Port * PortManager::getPort(const int moduleID,
 }
 
 //! remove all connections to and from ports to a module
-std::vector<message::Buffer> PortManager::removeConnectionsWithModule(const int moduleID) {
+std::vector<message::Buffer> PortManager::removeModule(const int moduleID) {
 
-   std::vector<message::Buffer> msgs = PortTracker::removeConnectionsWithModule(moduleID);
+   std::vector<message::Buffer> msgs = PortTracker::removeModule(moduleID);
    for (const auto &msg: msgs)
       m_clusterManager->sendAll(msg);
    return msgs;
