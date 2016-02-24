@@ -21,6 +21,8 @@ public:
    static const int MaxDimension = vistle::MaxDimension;
 
    ParameterVector(const int dim, const S values[]);
+   template<int Dim>
+   ParameterVector(const ScalarVector<Dim> &v);
    ParameterVector(const S x, const S y, const S z, const S w);
    ParameterVector(const S x, const S y, const S z);
    ParameterVector(const S x, const S y);

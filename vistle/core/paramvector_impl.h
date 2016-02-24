@@ -43,6 +43,19 @@ ParameterVector<S>::ParameterVector(const S _x, const S _y, const S _z, const S 
 }
 
 template<typename S>
+template<int Dim>
+ParameterVector<S>::ParameterVector(const ScalarVector<Dim> &_v)
+: VINIT(Dim)
+{
+   BOOST_STATIC_ASSERT(MaxDimension >= Dim);
+
+   for (int i=0; i<Dim; ++i)
+       v[i] = _v[i];
+   for (int i=Dim; i<MaxDimension; ++i)
+      v[i] = S();
+}
+
+template<typename S>
 ParameterVector<S>::ParameterVector(const S _x, const S _y, const S _z)
 : VINIT(3)
 {
