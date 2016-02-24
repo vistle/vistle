@@ -2,7 +2,10 @@
 #include "Tracer.h"
 #include <core/unstr.h>
 #include <core/vec.h>
+
+#ifdef TIMING
 #include "TracerTimes.h"
+#endif
 
 using namespace vistle;
 
@@ -101,9 +104,13 @@ bool Integrator::StepRK32() {
    UnstructuredGrid::const_ptr grid = m_ptcl->m_block->getGrid();
    do {
       if(!grid->inside(el,xtmp)){
+#ifdef TIMING
          times::celloc_start = times::start();
+#endif
          el = grid->findCell(xtmp);
+#ifdef TIMING
          times::celloc_dur += times::stop(times::celloc_start);
+#endif
          if(el==InvalidIndex){
             m_ptcl->m_x = xtmp;
             return false;
@@ -112,9 +119,13 @@ bool Integrator::StepRK32() {
       k[1] = Interpolator(m_ptcl->m_block,el, xtmp);
       xtmp = m_ptcl->m_x +m_h*0.25*(k[0]+k[1]);
       if(!grid->inside(el,xtmp)){
+#ifdef TIMING
          times::celloc_start = times::start();
+#endif
          el = grid->findCell(xtmp);
+#ifdef TIMING
          times::celloc_dur += times::stop(times::celloc_start);
+#endif
          if(el==InvalidIndex){
             m_ptcl->m_x = m_ptcl->m_x + m_h*0.5*(k[0]+k[1]);
             return false;
@@ -135,7 +146,9 @@ bool Integrator::StepRK32() {
 }
 
 Vector3 Integrator::Interpolator(BlockData* bl, Index el,const Vector3 &point){
+#ifdef TIMING
 times::interp_start = times::start();
+#endif
     UnstructuredGrid::const_ptr grid = bl->getGrid();
     Vec<Scalar, 3>::const_ptr vecfld = bl->getVecFld();
     Vec<Scalar>::const_ptr scfield = bl->getScalFld();
@@ -143,7 +156,9 @@ times::interp_start = times::start();
     const Scalar* u = &vecfld->x()[0];
     const Scalar* v = &vecfld->y()[0];
     const Scalar* w = &vecfld->z()[0];
+#ifdef TIMING
 times::interp_dur += times::stop(times::interp_start);
 times::no_interp++;
+#endif
     return interpolator(u,v,w);
 }

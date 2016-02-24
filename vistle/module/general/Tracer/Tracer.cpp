@@ -28,7 +28,10 @@
 #include <math.h>
 #include <boost/chrono.hpp>
 #include "Integrator.h"
+
+#ifdef TIMING
 #include "TracerTimes.h"
+#endif
 
 MODULE_MAIN(Tracer)
 
@@ -266,9 +269,13 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
         if(grid->inside(m_el, m_x)){
             return true;
         }
+#ifdef TIMING
         times::celloc_start = times::start();
+#endif
         m_el = grid->findCell(m_x);
+#ifdef TIMING
         times::celloc_dur += times::stop(times::celloc_start);
+#endif
         if (m_el!=InvalidIndex) {
             return true;
         } else {
@@ -287,9 +294,13 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
                 m_block = nullptr;
                 continue;
             }
+#ifdef TIMING
             times::celloc_start = times::start();
+#endif
             m_el = grid->findCell(m_x);
+#ifdef TIMING
             times::celloc_dur += times::stop(times::celloc_start);
+#endif
             if (m_el!=InvalidIndex) {
 
                 m_block = block[i].get();
@@ -425,6 +436,7 @@ bool Tracer::compute() {
 
 bool Tracer::reduce(int timestep) {
 
+#ifdef TIMING
    times::celloc_dur =0;
    times::integr_dur =0;
    times::interp_dur =0;
@@ -432,6 +444,7 @@ bool Tracer::reduce(int timestep) {
    times::total_dur=0;
    times::no_interp =0;
    times::total_start = times::start();
+#endif
 
    //get parameters
    bool useCelltree = m_useCelltree->getValue();
@@ -479,9 +492,13 @@ bool Tracer::reduce(int timestep) {
 
          particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max));
 
+#ifdef TIMING
          times::comm_start = times::start();
+#endif
          bool active = boost::mpi::all_reduce(comm(), particle[i]->isActive(), std::logical_or<bool>());
+#ifdef TIMING
          times::comm_dur += times::stop(times::comm_start);
+#endif
          if(!active){
             particle[i]->Deactivate();
             --numActive;
@@ -499,11 +516,15 @@ bool Tracer::reduce(int timestep) {
             bool traced = false;
             while(particle[i]->isMoving(steps_max, minspeed)
                   && particle[i]->findCell(block)) {
+#ifdef TIMING
                double celloc_old = times::celloc_dur;
                double integr_old = times::integr_dur;
                times::integr_start = times::start();
+#endif
                particle[i]->Step();
+#ifdef TIMING
                times::integr_dur += times::stop(times::integr_start)-(times::celloc_dur-celloc_old)-(times::integr_dur-integr_old);
+#endif
                traced = true;
             }
             if(traced) {
@@ -524,19 +545,29 @@ bool Tracer::reduce(int timestep) {
          std::vector<Index> num_transmit(mpisize);
          boost::mpi::all_gather(comm(), num_send, num_transmit);
          for(int mpirank=0; mpirank<mpisize; mpirank++) {
+#ifdef TIMING
             times::comm_start = times::start();
             times::comm_dur += times::stop(times::comm_start);
+#endif
             Index num_recv = num_transmit[mpirank];
             if(num_recv>0) {
                std::vector<Index> tmplist = sendlist;
+#ifdef TIMING
                times::comm_start = times::start();
+#endif
                boost::mpi::broadcast(comm(), tmplist, mpirank);
+#ifdef TIMING
                times::comm_dur += times::stop(times::comm_start);
+#endif
                for(Index i=0; i<num_recv; i++){
+#ifdef TIMING
                   times::comm_start = times::start();
+#endif
                   Index p_index = tmplist[i];
                   particle[p_index]->Communicator(comm(), mpirank, havePressure);
+#ifdef TIMING
                   times::comm_dur += times::stop(times::comm_start);
+#endif
                }
                if (mpirank != rank()) {
                   for(Index i=0; i<num_recv; i++){
@@ -550,10 +581,14 @@ bool Tracer::reduce(int timestep) {
                }
                for(Index i=0; i<num_recv; i++){
                   Index p_index = tmplist[i];
+#ifdef TIMING
                   times::comm_start = times::start();
+#endif
                   bool active = particle[p_index]->isActive();
                   active = boost::mpi::all_reduce(comm(), particle[p_index]->isActive(), std::logical_or<bool>());
+#ifdef TIMING
                   times::comm_dur += times::stop(times::comm_start);
+#endif
                   if(!active){
                      particle[p_index]->Deactivate();
                      --numActive;
@@ -598,7 +633,9 @@ bool Tracer::reduce(int timestep) {
    }
 
    comm().barrier();
+#ifdef TIMING
    times::total_dur = times::stop(times::total_start);
    times::output();
+#endif
    return true;
 }
