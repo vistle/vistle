@@ -27,14 +27,18 @@ IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int 
 , shmname, name, moduleID) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-   setReducePolicy(message::ReducePolicy::OverAll);
 #ifdef CUTTINGSURFACE
    m_mapDataIn = createInputPort("data_in");
    addVectorParameter("point", "point on plane", ParamVector(0.0, 0.0, 0.0));
    addVectorParameter("vertex", "normal on plane", ParamVector(1.0, 0.0, 0.0));
    addFloatParameter("scalar", "distance to origin of ordinates", 0.0);
-   addVectorParameter("direction", "Direction for variable Cylinder", ParamVector(0.0, 0.0, 0.0));
+   m_option = addIntParameter("option", "option", 0, Parameter::Choice);
+   V_ENUM_SET_CHOICES(m_option, SurfaceOption);
+   addVectorParameter("direction", "direction for variable Cylinder", ParamVector(0.0, 0.0, 0.0));
 #else
+   setReducePolicy(message::ReducePolicy::OverAll);
+   m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
+
    createInputPort("data_in");
    m_mapDataIn = createInputPort("mapdata_in");
 #endif    
@@ -42,15 +46,8 @@ IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int 
 
    m_processortype = addIntParameter("processortype", "processortype", 0, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_processortype, ThrustBackend);
-#ifdef CUTTINGSURFACE
-   m_option = addIntParameter("option", "option", 0, Parameter::Choice);
-   V_ENUM_SET_CHOICES(m_option, SurfaceOption);
-#else
-   m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
-#endif
 
    m_paraMin = m_paraMax = 0.f;
-
 }
 
 IsoSurface::~IsoSurface() {
