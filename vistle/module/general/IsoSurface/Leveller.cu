@@ -41,18 +41,14 @@ const int MaxNumData = 6;
 
 inline Scalar __host__ __device__ tinterp(Scalar iso, const Scalar &f0, const Scalar &f1) {
 
-   Scalar diff = (f1 - f0);
+   const Scalar diff = (f1 - f0);
+   const Scalar d0 = iso - f0;
+   if (fabs(diff) < EPSILON) {
+       const Scalar d1 = f1 - iso;
+      return fabs(d0) < fabs(d1) ? 1 : 0;
+   }
 
-   if (fabs(diff) < EPSILON)
-      return 0;
-
-   if (fabs(iso - f0) < EPSILON)
-      return 0;
-
-   if (fabs(iso - f1) < EPSILON)
-      return 1;
-
-   return (iso - f0) / diff;
+   return std::min(Scalar(1), std::max(Scalar(0), d0 / diff));
 }
 
 #ifdef CUTTINGSURFACE
