@@ -74,6 +74,7 @@
    </Input>
 
    <Plugin>
+      <SGBrowser value="on" /> <!-- required for Variants -->
       <CompositorIceT menu="true" value="off" />
       <RRServer value="off" />
     <COVERScript value="off" />

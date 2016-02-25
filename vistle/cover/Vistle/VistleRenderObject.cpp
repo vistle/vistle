@@ -117,10 +117,17 @@ const char *VistleRenderObject::getAttribute(const char *attr) const {
    static std::string val;
    val.clear();
    if (m_obj) {
-      val = m_obj->getAttribute(attr).c_str();
+      val = m_obj->getAttribute(attr);
+      if (val.empty()) {
+         if (auto data = vistle::DataBase::as(m_obj))
+            if (data->grid())
+               val = data->grid()->getAttribute(attr);
+      }
    } else if (auto ro = renderObject()) {
-      if (ro->geometry)
-         val = ro->geometry->getAttribute(attr).c_str();
+      if (ro->container)
+         val = ro->container->getAttribute(attr);
+      if (val.empty() && ro->geometry)
+         val = ro->geometry->getAttribute(attr);
    }
    return val.c_str();
 }

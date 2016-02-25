@@ -35,6 +35,11 @@ using namespace opencover;
 
 using namespace vistle;
 
+
+namespace {
+coVRPlugin *plugin = nullptr;
+}
+
 class PluginRenderObject: public vistle::RenderObject {
 
  public:
@@ -43,8 +48,10 @@ class PluginRenderObject: public vistle::RenderObject {
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
          vistle::Object::const_ptr colors,
-         vistle::Object::const_ptr texture)
+         vistle::Object::const_ptr texture,
+         const std::string &variant)
       : vistle::RenderObject(senderId, senderPort, container, geometry, normals, colors, texture)
+      , variant(variant)
       {
       }
 
@@ -52,6 +59,34 @@ class PluginRenderObject: public vistle::RenderObject {
    }
 
    boost::shared_ptr<VistleRenderObject> coverRenderObject;
+   std::string variant;
+};
+
+class VariantRenderObject: public BaseRenderObject {
+public:
+    VariantRenderObject(const std::string &variantName)
+    : variant(variantName)
+    {}
+
+    const char *getName() const override { return ""; }
+    bool isGeometry() const override { return false; }
+    RenderObject *getGeometry() const override { return nullptr; }
+    RenderObject *getColors() const override { return nullptr; }
+    RenderObject *getNormals() const override { return nullptr; }
+    RenderObject *getTexture() const override { return nullptr; }
+    RenderObject *getVertexAttribute() const override { return nullptr; }
+
+   const char *getAttribute(const char *key) const override {
+       if (key) {
+           std::string k(key);
+           if (k == "VARIANT")
+               return variant.c_str();
+       }
+       return nullptr;
+   }
+
+private:
+    std::string variant;
 };
 
 class OsgRenderer: public vistle::Renderer {
@@ -91,32 +126,69 @@ class OsgRenderer: public vistle::Renderer {
    std::deque<DelayedObject> m_delayedObjects;
 
  protected:
+   struct Variant
+   {
+       std::string variant;
+       std::string name;
+       osg::ref_ptr<osg::Group> root;
+       osg::ref_ptr<osg::Group> constant;
+       osg::ref_ptr<osg::Sequence> animated;
+       VariantRenderObject ro;
+
+       Variant(const std::string &basename, osg::ref_ptr<osg::Group> parent, const std::string &variant=std::string())
+       : variant(variant)
+       , ro(variant)
+       {
+           std::stringstream s;
+           s << basename;
+           if (!variant.empty())
+               s << "/" << variant;
+           name = s.str();
+
+           root = new osg::Group;
+           root->setName(name);
+
+           constant = new osg::Group;
+           constant->setName(name + "/static");
+           root->addChild(constant);
+
+           animated = new osg::Sequence;
+           animated->setName(name + "/animated");
+           root->addChild(animated);
+
+           parent->addChild(root);
+       }
+   };
+
    struct Creator {
-      Creator(int id, const std::string &basename, osg::ref_ptr<osg::Group> parent)
+      Creator(int id, const std::string &name, osg::ref_ptr<osg::Group> parent)
       : id(id)
+      , name(name)
+      , baseVariant(name, parent)
       {
-         std::stringstream s;
-         s << basename << "_" << id;
-         name = s.str();
-
-         root = new osg::Group;
-         root->setName(name);
-
-         constant = new osg::Group;
-         constant->setName(name + "_static");
-         root->addChild(constant);
-
-         animated = new osg::Sequence;
-         animated->setName(name + "_animated");
-         root->addChild(animated);
-
-         parent->addChild(root);
       }
+
+      const Variant &getVariant(const std::string &variantName) const {
+
+          if (variantName.empty() || variantName == "NULL")
+              return baseVariant;
+
+          auto it = variants.find(variantName);
+          if (it == variants.end()) {
+              it = variants.emplace(std::make_pair(variantName, Variant(name, baseVariant.constant, variantName))).first;
+              coVRPluginList::instance()->addNode(it->second.root, &it->second.ro, plugin);
+          }
+          return it->second;
+      }
+
+      osg::ref_ptr<osg::Group> root(const std::string &variant = std::string()) const { return getVariant(variant).root; }
+      osg::ref_ptr<osg::Group> constant(const std::string &variant = std::string()) const { return getVariant(variant).constant; }
+      osg::ref_ptr<osg::Sequence> animated(const std::string &variant = std::string()) const { return getVariant(variant).animated; }
+
       int id;
       std::string name;
-      osg::ref_ptr<osg::Group> root;
-      osg::ref_ptr<osg::Group> constant;
-      osg::ref_ptr<osg::Sequence> animated;
+      Variant baseVariant;
+      mutable std::map<std::string, Variant> variants;
    };
    typedef std::map<int, Creator> CreatorMap;
    CreatorMap creatorMap;
@@ -124,11 +196,13 @@ class OsgRenderer: public vistle::Renderer {
    Creator &getCreator(int id) {
       auto it = creatorMap.find(id);
       if (it == creatorMap.end()) {
-         std::string name = getModuleName(id);
-         it = creatorMap.insert(std::make_pair(id, Creator(id, name, vistleRoot))).first;
+         std::stringstream name;
+         name << getModuleName(id) << "_" << id;
+         it = creatorMap.insert(std::make_pair(id, Creator(id, name.str(), vistleRoot))).first;
       }
       return it->second;
    }
+
 };
 
 OsgRenderer::OsgRenderer(const std::string &shmname,
@@ -203,6 +277,7 @@ bool OsgRenderer::parameterChanged(const int senderId, const std::string &name, 
 void OsgRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> vro) {
    auto pro = boost::static_pointer_cast<PluginRenderObject>(vro);
    auto ro = pro->coverRenderObject;
+   std::string variant = pro->variant;
 
    if (!ro) {
       std::cerr << "removeObject: no COVER render object" << std::endl;
@@ -216,30 +291,31 @@ void OsgRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> vro) {
 
    osg::ref_ptr<osg::Node> node = ro->node();
    if (node) {
+      coVRPluginList::instance()->removeNode(node, false, node);
       Creator &cr= getCreator(pro->container->getCreator());
       if (pro->timestep == -1) {
-         cr.constant->removeChild(node);
+         cr.constant(variant)->removeChild(node);
       } else {
-         if (cr.animated->getNumChildren() > pro->timestep) {
-            osg::Group *gr = cr.animated->getChild(pro->timestep)->asGroup();
+         if (cr.animated(variant)->getNumChildren() > pro->timestep) {
+            osg::Group *gr = cr.animated(variant)->getChild(pro->timestep)->asGroup();
             if (gr) {
                gr->removeChild(node);
                if (gr->getNumChildren() == 0) {
                   bool removed = false;
-                  for (size_t i=cr.animated->getNumChildren()-1; i>0; --i) {
-                     osg::Group *g = cr.animated->getChild(i)->asGroup();
+                  for (size_t i=cr.animated(variant)->getNumChildren()-1; i>0; --i) {
+                     osg::Group *g = cr.animated(variant)->getChild(i)->asGroup();
                      if (!g)
                         break;
                      if (g->getNumChildren() > 0)
                         break;
-                     cr.animated->removeChildren(i, 1);
+                     cr.animated(variant)->removeChildren(i, 1);
                      removed = true;
                   }
                   if (removed) {
-                     if (cr.animated->getNumChildren() > 0) {
-                        coVRAnimationManager::instance()->addSequence(cr.animated);
+                     if (cr.animated(variant)->getNumChildren() > 0) {
+                        coVRAnimationManager::instance()->addSequence(cr.animated(variant));
                      } else {
-                        coVRAnimationManager::instance()->removeSequence(cr.animated);
+                        coVRAnimationManager::instance()->removeSequence(cr.animated(variant));
                      }
                   }
                }
@@ -266,14 +342,40 @@ boost::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, con
    if (!geometry)
       return nullptr;
 
+   std::string plugin = container->getAttribute("_plugin");
+   if (!plugin.empty())
+      cover->addPlugin(plugin.c_str());
+   plugin = geometry->getAttribute("_plugin");
+   if (!plugin.empty())
+      cover->addPlugin(plugin.c_str());
+   if (normals) {
+      plugin = normals->getAttribute("_plugin");
+      if (!plugin.empty())
+         cover->addPlugin(plugin.c_str());
+   }
+   if (colors) {
+      plugin = colors->getAttribute("_plugin");
+      if (!plugin.empty())
+         cover->addPlugin(plugin.c_str());
+   }
+   if (texture) {
+      plugin = texture->getAttribute("_plugin");
+      if (!plugin.empty())
+         cover->addPlugin(plugin.c_str());
+   }
+
    int creatorId = container->getCreator();
    getCreator(creatorId);
 
    if (geometry->getType() != vistle::Object::PLACEHOLDER && !VistleGeometryGenerator::isSupported(geometry->getType()))
       return nullptr;
 
+   std::string variant = container->getAttribute("_variant");
+   if (variant.empty()) {
+       variant = geometry->getAttribute("_variant");
+   }
    boost::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
-         container, geometry, normals, colors, texture));
+         container, geometry, normals, colors, texture, variant));
 
    pro->coverRenderObject.reset(new VistleRenderObject(pro));
    m_delayedObjects.push_back(DelayedObject(pro, VistleGeometryGenerator(geometry, colors, normals, texture)));
@@ -318,15 +420,21 @@ bool OsgRenderer::render() {
 
          ro->coverRenderObject->setNode(node);
          node->setName(ro->coverRenderObject->getName());
-         osg::ref_ptr<osg::Group> parent = creator.constant;
+         const std::string variant = ro->variant;
+         const auto &vro = creator.getVariant(variant).ro;
+         osg::ref_ptr<osg::Group> parent = creator.constant(variant);
          const int t = ro->timestep;
          if (t >= 0) {
-            while (size_t(t) >= creator.animated->getNumChildren()) {
-               creator.animated->addChild(new osg::Group);
+            while (size_t(t) >= creator.animated(variant)->getNumChildren()) {
+               auto g = new osg::Group;
+               std::stringstream name;
+               name << "t" << t;
+               g->setName(name.str());
+               creator.animated(variant)->addChild(g);
             }
-            parent = dynamic_cast<osg::Group *>(creator.animated->getChild(t));
+            parent = dynamic_cast<osg::Group *>(creator.animated(variant)->getChild(t));
             assert(parent);
-            coVRAnimationManager::instance()->addSequence(creator.animated);
+            coVRAnimationManager::instance()->addSequence(creator.animated(variant));
          }
          parent->addChild(node);
       } else if (!ro->coverRenderObject) {
@@ -361,6 +469,9 @@ using opencover::coCommandLine;
 VistlePlugin::VistlePlugin()
 : m_module(nullptr)
 {
+   assert(plugin == nullptr);
+   plugin = this;
+
    int initialized = 0;
    MPI_Initialized(&initialized);
    if (!initialized) {
@@ -392,6 +503,8 @@ VistlePlugin::~VistlePlugin() {
       MPI_Barrier(MPI_COMM_WORLD);
       delete m_module;
    }
+
+   plugin = nullptr;
 }
 
 bool VistlePlugin::init() {
