@@ -65,9 +65,6 @@ class VistleRenderObject: public BaseRenderObject {
    RenderObject *getVertexAttribute() const override;
 
    const char *getAttribute(const char *) const override;
-   size_t getNumAttributes() const override;
-   const char *getAttributeName(size_t idx) const override;
-   const char *getAttributeValue(size_t idx) const override;
 
    protected:
 
@@ -99,9 +96,6 @@ class ModuleRenderObject: public BaseRenderObject {
    RenderObject *getVertexAttribute() const;
 
    const char *getAttribute(const char *) const;
-   size_t getNumAttributes() const;
-   const char *getAttributeName(size_t idx) const;
-   const char *getAttributeValue(size_t idx) const;
 
  private:
    std::string m_moduleName;

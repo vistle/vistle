@@ -41,6 +41,7 @@
 
 #ifdef HAVE_COVISE
 #include <appl/RenderInterface.h>
+#include <plugins/covise/COVISE/CoviseRenderObject.h>
 #endif
 
 #ifdef HAVE_SNAPPY
@@ -645,20 +646,29 @@ void VncServerPlugin::pointerEvent(int buttonmask, int ex, int ey, rfbClientPtr 
 
 //! let all connected clients know when a COVISE object was added
 void
-VncServerPlugin::broadcastAddObject(RenderObject *ro,
+VncServerPlugin::broadcastAddObject(RenderObject *bro,
       bool isBase,
       RenderObject *geomObj,
       RenderObject *normObj,
       RenderObject *colorObj,
       RenderObject *texObj)
 {
-   if (!ro)
+   if (!bro)
       return;
 
+#ifdef HAVE_COVISE
+   CoviseRenderObject *ro = dynamic_cast<CoviseRenderObject *>(bro);
+   if (!ro)
+      return;
+#endif
    appAddObject app;
    app.isbase = isBase ? 1 : 0;
+#ifdef HAVE_COVISE
    app.nattrib = ro->getNumAttributes();
-   const char *objName = ro->getName();
+#else
+   app.nattrib = 0;
+#endif
+   const char *objName = bro->getName();
    app.namelen = strlen(objName);
    app.geonamelen = 0;
    app.normnamelen = 0;
@@ -691,6 +701,7 @@ VncServerPlugin::broadcastAddObject(RenderObject *ro,
    }
    memcpy(&buf[0], &app, sizeof(app));
 
+#ifdef HAVE_COVISE
    for (size_t i=0; i<ro->getNumAttributes(); ++i) {
       const char *name = ro->getAttributeName(i);
       const char *value = ro->getAttributeValue(i);
@@ -701,6 +712,7 @@ VncServerPlugin::broadcastAddObject(RenderObject *ro,
       std::copy(name, name+attr.namelen, std::back_inserter(buf));
       std::copy(value, value+attr.valuelen, std::back_inserter(buf));
    }
+#endif
 
    plugin->m_vnc->broadcastApplicationMessage(rfbAddObject, buf.size(), &buf[0]);
 }

@@ -112,21 +112,6 @@ RenderObject *VistleRenderObject::getVertexAttribute() const {
    return NULL;
 }
 
-size_t VistleRenderObject::getNumAttributes() const {
-
-   return 0;
-}
-
-const char *VistleRenderObject::getAttributeName(size_t idx) const {
-
-   return NULL;
-}
-
-const char *VistleRenderObject::getAttributeValue(size_t idx) const {
-
-   return NULL;
-}
-
 const char *VistleRenderObject::getAttribute(const char *attr) const {
 
    static std::string val;
@@ -192,27 +177,6 @@ RenderObject *ModuleRenderObject::getVertexAttribute() const
 const char *ModuleRenderObject::getAttribute(const char *attrname) const
 {
    if (!strcmp(attrname, "OBJECTNAME"))
-      return getName();
-
-   return NULL;
-}
-
-size_t ModuleRenderObject::getNumAttributes() const
-{
-   return 1;
-}
-
-const char *ModuleRenderObject::getAttributeName(size_t idx) const
-{
-   if (idx == 0)
-      return "OBJECTNAME";
-
-   return NULL;
-}
-
-const char *ModuleRenderObject::getAttributeValue(size_t idx) const
-{
-   if (idx == 0)
       return getName();
 
    return NULL;
