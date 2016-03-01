@@ -110,7 +110,7 @@ class OsgRenderer: public vistle::Renderer {
          animated->setName(name + "_animated");
          root->addChild(animated);
 
-         VRSceneGraph::instance()->addNode(root, parent, NULL);
+         parent->addChild(root);
       }
       int id;
       std::string name;
@@ -140,7 +140,7 @@ OsgRenderer::OsgRenderer(const std::string &shmname,
 
    vistleRoot = new osg::Group;
    vistleRoot->setName("VistlePlugin");
-   VRSceneGraph::instance()->addNode(vistleRoot, (osg::Group*)NULL, NULL);
+   cover->getObjectsRoot()->addChild(vistleRoot);
 
    m_fastestObjectReceivePolicy = message::ObjectReceivePolicy::Distribute;
    setObjectReceivePolicy(m_fastestObjectReceivePolicy);
@@ -150,7 +150,7 @@ OsgRenderer::OsgRenderer(const std::string &shmname,
 
 OsgRenderer::~OsgRenderer() {
 
-   VRSceneGraph::instance()->deleteNode("VistlePlugin", true);
+   cover->getObjectsRoot()->removeChild(vistleRoot);
 }
 
 bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
@@ -216,7 +216,6 @@ void OsgRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> vro) {
 
    osg::ref_ptr<osg::Node> node = ro->node();
    if (node) {
-      VRSceneGraph::instance()->deleteNode(ro->getName(), false);
       Creator &cr= getCreator(pro->container->getCreator());
       if (pro->timestep == -1) {
          cr.constant->removeChild(node);
@@ -329,7 +328,7 @@ bool OsgRenderer::render() {
             assert(parent);
             coVRAnimationManager::instance()->addSequence(creator.animated);
          }
-         VRSceneGraph::instance()->addNode(node, parent, ro->coverRenderObject.get());
+         parent->addChild(node);
       } else if (!ro->coverRenderObject) {
          std::cerr << rank() << ": discarding delayed object - already deleted" << std::endl;
       } else if (!node) {
