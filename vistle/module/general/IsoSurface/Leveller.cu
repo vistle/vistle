@@ -117,7 +117,8 @@ struct IsoDataFunctor {
 struct HostData {
 
    Scalar m_isovalue;
-   Index m_numinputdata, m_numinputdataI;
+   Index m_numInVertData, m_numInVertDataI;
+   Index m_numInCellData, m_numInCellDataI;
    IsoDataFunctor m_isoFunc;
    const Index *m_el;
    const Index *m_cl;
@@ -129,12 +130,12 @@ struct HostData {
    const Scalar *m_x;
    const Scalar *m_y;
    const Scalar *m_z;
-   std::vector<vistle::shm_ref<vistle::shm_array<Scalar, shm<Scalar>::allocator>>> m_outData;
-   std::vector<vistle::shm_ref<vistle::shm_array<Index, shm<Index>::allocator>>> m_outDataI;
-   std::vector<const Scalar*> m_inputpointer;
-   std::vector<const Index*> m_inputpointerI;
-   std::vector<Scalar*> m_outputpointer;
-   std::vector<Index *> m_outputpointerI;
+   std::vector<vistle::shm_ref<vistle::shm_array<Scalar, shm<Scalar>::allocator>>> m_outVertData, m_outCellData;
+   std::vector<vistle::shm_ref<vistle::shm_array<Index, shm<Index>::allocator>>> m_outVertDataI, m_outCellDataI;
+   std::vector<const Scalar*> m_inVertPtr, m_inCellPtr;
+   std::vector<const Index*> m_inVertPtrI, m_inCellPtrI;
+   std::vector<Scalar*> m_outVertPtr, m_outCellPtr;
+   std::vector<Index *> m_outVertPtrI, m_outCellPtrI;
 
    typedef const Index *IndexIterator;
    typedef std::vector<Index>::iterator VectorIndexIterator;
@@ -149,8 +150,10 @@ struct HostData {
             , const Scalar *z
             )
       : m_isovalue(isoValue)
-      , m_numinputdata(0)
-      , m_numinputdataI(0)
+      , m_numInVertData(0)
+      , m_numInVertDataI(0)
+      , m_numInCellData(0)
+      , m_numInCellDataI(0)
       , m_isoFunc(isoFunc)
       , m_el(el)
       , m_cl(cl)
@@ -159,40 +162,55 @@ struct HostData {
       , m_y(y)
       , m_z(z)
    {
-      m_inputpointer.push_back(&x[0]);
-      m_inputpointer.push_back(&y[0]);
-      m_inputpointer.push_back(&z[0]);
+      m_inVertPtr.push_back(&x[0]);
+      m_inVertPtr.push_back(&y[0]);
+      m_inVertPtr.push_back(&z[0]);
 
-      for(size_t i = 0; i < m_inputpointer.size(); i++){
-         m_outData.emplace_back(vistle::ShmVector<Scalar>::create(0));
-         m_outputpointer.push_back(NULL);
+      for(size_t i = 0; i < m_inVertPtr.size(); i++){
+         m_outVertData.emplace_back(vistle::ShmVector<Scalar>::create(0));
+         m_outVertPtr.push_back(NULL);
       }
-      m_numinputdata = m_inputpointer.size();
+      m_numInVertData = m_inVertPtr.size();
    }
 
    void addmappeddata(const Scalar *mapdata){
 
-      m_inputpointer.push_back(mapdata);
-      m_outData.push_back(vistle::ShmVector<Scalar>::create(0));
-      m_outputpointer.push_back(NULL);
-      m_numinputdata = m_inputpointer.size();
-
+      m_inVertPtr.push_back(mapdata);
+      m_outVertData.push_back(vistle::ShmVector<Scalar>::create(0));
+      m_outVertPtr.push_back(NULL);
+      m_numInVertData = m_inVertPtr.size();
    }
 
    void addmappeddata(const Index *mapdata){
 
-      m_inputpointerI.push_back(mapdata);
-      m_outDataI.push_back(vistle::ShmVector<Index>::create(0));
-      m_outputpointerI.push_back(NULL);
-      m_numinputdataI = m_inputpointerI.size();
+      m_inVertPtrI.push_back(mapdata);
+      m_outVertDataI.push_back(vistle::ShmVector<Index>::create(0));
+      m_outVertPtrI.push_back(NULL);
+      m_numInVertDataI = m_inVertPtrI.size();
+   }
 
+   void addcelldata(const Scalar *mapdata){
+
+      m_inCellPtr.push_back(mapdata);
+      m_outCellData.push_back(vistle::ShmVector<Scalar>::create(0));
+      m_outCellPtr.push_back(NULL);
+      m_numInCellData = m_inCellPtr.size();
+   }
+
+   void addcelldata(const Index *mapdata){
+
+      m_inCellPtrI.push_back(mapdata);
+      m_outCellDataI.push_back(vistle::ShmVector<Index>::create(0));
+      m_outCellPtrI.push_back(NULL);
+      m_numInCellDataI = m_inCellPtrI.size();
    }
 };
 
 struct DeviceData {
 
    Scalar m_isovalue;
-   Index m_numinputdata, m_numinputdataI;
+   Index m_numInVertData, m_numInVertDataI;
+   Index m_numInCellData, m_numInCellDataI;
    IsoDataFunctor m_isoFunc;
    thrust::device_vector<Index> m_el;
    thrust::device_vector<Index> m_cl;
@@ -204,12 +222,12 @@ struct DeviceData {
    thrust::device_vector<Scalar> m_x;
    thrust::device_vector<Scalar> m_y;
    thrust::device_vector<Scalar> m_z;
-   std::vector<thrust::device_vector<Scalar> *> m_outData;
-   std::vector<thrust::device_vector<Index> *> m_outDataI;
-   std::vector<thrust::device_ptr<Scalar> > m_inputpointer;
-   std::vector<thrust::device_ptr<Index> > m_inputpointerI;
-   std::vector<thrust::device_ptr<Scalar> > m_outputpointer;
-   std::vector<thrust::device_ptr<Index> > m_outputpointerI;
+   std::vector<thrust::device_vector<Scalar> *> m_outVertData, m_outCellData;
+   std::vector<thrust::device_vector<Index> *> m_outVertDataI, m_outCellDataI;
+   std::vector<thrust::device_ptr<Scalar> > m_inVertPtr, m_inCellPtr;
+   std::vector<thrust::device_ptr<Index> > m_inVertPtrI, m_inCellPtrI;
+   std::vector<thrust::device_ptr<Scalar> > m_outVertPtr, m_outCellPtr;
+   std::vector<thrust::device_ptr<Index> > m_outVertPtrI, m_outCellPtrI;
    typedef const Index *IndexIterator;
    //typedef thrust::device_vector<Index>::iterator IndexIterator;
 
@@ -233,31 +251,37 @@ struct DeviceData {
    , m_y(y, y+ncoord)
    , m_z(z, z+ncoord)
    {
-      m_inputpointer.push_back(m_x.data());
-      m_inputpointer.push_back(m_y.data());
-      m_inputpointer.push_back(m_z.data());
+      m_inVertPtr.push_back(m_x.data());
+      m_inVertPtr.push_back(m_y.data());
+      m_inVertPtr.push_back(m_z.data());
 
-      for(size_t i = 0; i < m_inputpointer.size(); i++){
-         m_outData.push_back(new thrust::device_vector<Scalar>);
+      for(size_t i = 0; i < m_inVertPtr.size(); i++){
+         m_outVertData.push_back(new thrust::device_vector<Scalar>);
       }
-      m_outputpointer.resize(m_inputpointer.size());
-      m_numinputdata = m_inputpointer.size();
-      for(size_t i = 0; i < m_inputpointerI.size(); i++){
-         m_outDataI.push_back(new thrust::device_vector<Index>);
+      m_outVertPtr.resize(m_inVertPtr.size());
+      m_numInVertData = m_inVertPtr.size();
+      for(size_t i = 0; i < m_inVertPtrI.size(); i++){
+         m_outVertDataI.push_back(new thrust::device_vector<Index>);
       }
-      m_outputpointerI.resize(m_inputpointerI.size());
-      m_numinputdataI = m_inputpointerI.size();
+      m_outVertPtrI.resize(m_inVertPtrI.size());
+      m_numInVertDataI = m_inVertPtrI.size();
    }
 };
 
 template<class Data>
 struct process_Cell {
    process_Cell(Data &data) : m_data(data) {
-      for (int i = 0; i < m_data.m_numinputdata; i++){
-         m_data.m_outputpointer[i] = m_data.m_outData[i]->data();
+      for (int i = 0; i < m_data.m_numInVertData; i++){
+         m_data.m_outVertPtr[i] = m_data.m_outVertData[i]->data();
       }
-      for (int i = 0; i < m_data.m_numinputdataI; i++){
-         m_data.m_outputpointerI[i] = m_data.m_outDataI[i]->data();
+      for (int i = 0; i < m_data.m_numInVertDataI; i++){
+         m_data.m_outVertPtrI[i] = m_data.m_outVertDataI[i]->data();
+      }
+      for (int i = 0; i < m_data.m_numInCellData; i++){
+         m_data.m_outCellPtr[i] = m_data.m_outCellData[i]->data();
+      }
+      for (int i = 0; i < m_data.m_numInCellDataI; i++){
+         m_data.m_outCellPtrI[i] = m_data.m_outCellDataI[i]->data();
       }
    }
 
@@ -278,14 +302,24 @@ struct process_Cell {
     const unsigned int v2 = edgeTable[1][edge]; \
     const Scalar t = tinterp(m_data.m_isovalue, field[v1], field[v2]); \
     Index outvertexindex = m_data.m_LocationList[ValidCellIndex]+idx; \
-    for(Index j = 0; j < m_data.m_numinputdata; j++) { \
-        m_data.m_outputpointer[j][outvertexindex] = \
-            lerp(m_data.m_inputpointer[j][cl[v1]], m_data.m_inputpointer[j][cl[v2]], t); \
+    for(Index j = 0; j < m_data.m_numInVertData; j++) { \
+        m_data.m_outVertPtr[j][outvertexindex] = \
+            lerp(m_data.m_inVertPtr[j][cl[v1]], m_data.m_inVertPtr[j][cl[v2]], t); \
     } \
-    for(Index j = 0; j < m_data.m_numinputdataI; j++) { \
-        m_data.m_outputpointerI[j][outvertexindex] = \
-            lerp(m_data.m_inputpointerI[j][cl[v1]], m_data.m_inputpointerI[j][cl[v2]], t); \
+    for(Index j = 0; j < m_data.m_numInVertDataI; j++) { \
+        m_data.m_outVertPtrI[j][outvertexindex] = \
+            lerp(m_data.m_inVertPtrI[j][cl[v1]], m_data.m_inVertPtrI[j][cl[v2]], t); \
     }
+
+      for (Index idx = 0; idx < m_data.m_numVertices[ValidCellIndex]/3; idx++) {
+          Index outcellindex = m_data.m_LocationList[ValidCellIndex]/3+idx; \
+          for(Index j = 0; j < m_data.m_numInCellData; j++) {
+              m_data.m_outCellPtr[j][outcellindex] = m_data.m_inCellPtr[j][CellNr];
+          }
+          for(Index j = 0; j < m_data.m_numInCellDataI; j++) {
+              m_data.m_outCellPtrI[j][outcellindex] = m_data.m_inCellPtrI[j][CellNr];
+          }
+      }
 
       switch (m_data.m_tl[CellNr]) {
 
@@ -369,11 +403,11 @@ struct process_Cell {
                   sidebegin = InvalidIndex;
                   if (vertexSaved) {
 
-                     for(Index i = 0; i < m_data.m_numinputdata; i++){
-                        m_data.m_outputpointer[i][outIdx] = savedData[i];
+                     for(Index i = 0; i < m_data.m_numInVertData; i++){
+                        m_data.m_outVertPtr[i][outIdx] = savedData[i];
                      }
-                     for(Index i = 0; i < m_data.m_numinputdataI; i++){
-                        m_data.m_outputpointerI[i][outIdx] = savedDataI[i];
+                     for(Index i = 0; i < m_data.m_numInVertDataI; i++){
+                        m_data.m_outVertPtrI[i][outIdx] = savedDataI[i];
                      }
 
                      outIdx += 2;
@@ -387,13 +421,13 @@ struct process_Cell {
                   vertexSaved = false;
                }
 
-               for(int i = 0; i < m_data.m_numinputdata; i++){
-                  cd1[i] = m_data.m_inputpointer[i][c1];
-                  cd2[i] = m_data.m_inputpointer[i][c2];
+               for(int i = 0; i < m_data.m_numInVertData; i++){
+                  cd1[i] = m_data.m_inVertPtr[i][c1];
+                  cd2[i] = m_data.m_inVertPtr[i][c2];
                }
-               for(int i = 0; i < m_data.m_numinputdataI; i++){
-                  cd1I[i] = m_data.m_inputpointerI[i][c1];
-                  cd2I[i] = m_data.m_inputpointerI[i][c2];
+               for(int i = 0; i < m_data.m_numInVertDataI; i++){
+                  cd1I[i] = m_data.m_inVertPtrI[i][c1];
+                  cd2I[i] = m_data.m_inVertPtrI[i][c2];
                }
 
                Scalar d1 = m_data.m_isoFunc(c1);
@@ -401,15 +435,15 @@ struct process_Cell {
                Scalar t = tinterp(m_data.m_isovalue, d1, d2);
 
                if (d1 <= m_data.m_isovalue && d2 > m_data.m_isovalue) {
-                  for(Index i = 0; i < m_data.m_numinputdata; i++){
+                  for(Index i = 0; i < m_data.m_numInVertData; i++){
                      Scalar v = lerp(cd1[i], cd2[i], t);
                      middleData[i] += v;
-                     m_data.m_outputpointer[i][outIdx] = v;
+                     m_data.m_outVertPtr[i][outIdx] = v;
                   }
-                  for(Index i = 0; i < m_data.m_numinputdataI; i++){
+                  for(Index i = 0; i < m_data.m_numInVertDataI; i++){
                      Index vI = lerp(cd1I[i], cd2I[i], t);
                      middleDataI[i] += vI;
-                     m_data.m_outputpointerI[i][outIdx] = vI;
+                     m_data.m_outVertPtrI[i][outIdx] = vI;
                   };
 
                   ++outIdx;
@@ -421,29 +455,29 @@ struct process_Cell {
                   Scalar v [MaxNumData];
                   Index vI[MaxNumData];
 
-                  for(Index i = 0; i < m_data.m_numinputdata; i++){
+                  for(Index i = 0; i < m_data.m_numInVertData; i++){
                      v[i] = lerp(cd1[i], cd2[i], t);
                      middleData[i] += v[i];
                   }
-                  for(Index i = 0; i < m_data.m_numinputdataI; i++){
+                  for(Index i = 0; i < m_data.m_numInVertDataI; i++){
                      vI[i] = lerp(cd1I[i], cd2I[i], t);
                      middleDataI[i] += vI[i];
                   }
                   ++numTri;
                   if (flag == 1) { //fall 2 nach fall 1
-                     for(Index i = 0; i < m_data.m_numinputdata; i++){
-                        m_data.m_outputpointer[i][outIdx] = v[i];
+                     for(Index i = 0; i < m_data.m_numInVertData; i++){
+                        m_data.m_outVertPtr[i][outIdx] = v[i];
                      }
-                     for(Index i = 0; i < m_data.m_numinputdataI; i++){
-                        m_data.m_outputpointerI[i][outIdx] = vI[i];
+                     for(Index i = 0; i < m_data.m_numInVertDataI; i++){
+                        m_data.m_outVertPtrI[i][outIdx] = vI[i];
                      }
                      outIdx += 2;
                   } else { //fall 2 zuerst
 
-                     for(Index i = 0; i < m_data.m_numinputdata; i++){
+                     for(Index i = 0; i < m_data.m_numInVertData; i++){
                         savedData[i] = v[i];
                      }
-                     for(Index i = 0; i < m_data.m_numinputdataI; i++){
+                     for(Index i = 0; i < m_data.m_numInVertDataI; i++){
                         savedDataI[i] = vI[i];
                      }
                      vertexSaved=true;
@@ -451,20 +485,20 @@ struct process_Cell {
                }
             }
             if (numTri > 0) {
-                for(Index i = 0; i < m_data.m_numinputdata; i++){
+                for(Index i = 0; i < m_data.m_numInVertData; i++){
                     middleData[i] /= numTri;
                 }
-                for(Index i = 0; i < m_data.m_numinputdataI; i++){
+                for(Index i = 0; i < m_data.m_numInVertDataI; i++){
                     middleDataI[i] /= numTri;
                 }
             }
             for (Index i = 2; i < numVert; i += 3) {
                const Index idx = m_data.m_LocationList[ValidCellIndex]+i;
-               for(Index i = 0; i < m_data.m_numinputdata; i++){
-                  m_data.m_outputpointer[i][idx] = middleData[i];
+               for(Index i = 0; i < m_data.m_numInVertData; i++){
+                  m_data.m_outVertPtr[i][idx] = middleData[i];
                }
-               for(Index i = 0; i < m_data.m_numinputdataI; i++){
-                  m_data.m_outputpointerI[i][idx] = middleDataI[i];
+               for(Index i = 0; i < m_data.m_numInVertDataI; i++){
+                  m_data.m_outVertPtrI[i][idx] = middleDataI[i];
                }
             };
             break;
@@ -610,11 +644,17 @@ Index Leveller::calculateSurface(Data &data) {
       totalNumVertices += data.m_numVertices.back();
    if (!data.m_LocationList.empty())
       totalNumVertices += data.m_LocationList.back();
-   for(int i = 0; i < data.m_numinputdata; i++){
-      data.m_outData[i]->resize(totalNumVertices);
+   for(int i = 0; i < data.m_numInVertData; i++){
+      data.m_outVertData[i]->resize(totalNumVertices);
    }
-   for(int i = 0; i < data.m_numinputdataI; i++){
-      data.m_outDataI[i]->resize(totalNumVertices);
+   for(int i = 0; i < data.m_numInVertDataI; i++){
+      data.m_outVertDataI[i]->resize(totalNumVertices);
+   }
+   for (int i=0; i<data.m_numInCellData; ++i) {
+       data.m_outCellData[i]->resize(totalNumVertices/3);
+   }
+   for (int i=0; i<data.m_numInCellDataI; ++i) {
+       data.m_outCellDataI[i]->resize(totalNumVertices/3);
    }
    thrust::counting_iterator<Index> start(0), finish(numValidCells);
    thrust::for_each(pol(), start, finish, process_Cell<Data>(data));
@@ -622,9 +662,6 @@ Index Leveller::calculateSurface(Data &data) {
 }
 
 bool Leveller::process() {
-   if(m_mapdata.size()){
-      Vec<Scalar>::const_ptr mapdataobj = Vec<Scalar>::as(m_mapdata[0]);
-   }
 #ifndef CUTTINGSURFACE
    Vec<Scalar>::const_ptr dataobj = Vec<Scalar>::as(m_data);
    if (!dataobj)
@@ -646,54 +683,106 @@ bool Leveller::process() {
 #endif
                m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
 
-         if(m_mapdata.size()){
-            if(Vec<Scalar,1>::const_ptr Scal = Vec<Scalar,1>::as(m_mapdata[0])){
+         for (size_t i=0; i<m_vertexdata.size(); ++i) {
+            if(Vec<Scalar,1>::const_ptr Scal = Vec<Scalar,1>::as(m_vertexdata[i])){
                HD.addmappeddata(Scal->x());
             }
-            if(Vec<Scalar,3>::const_ptr Vect = Vec<Scalar,3>::as(m_mapdata[0])){
+            if(Vec<Scalar,3>::const_ptr Vect = Vec<Scalar,3>::as(m_vertexdata[i])){
                HD.addmappeddata(Vect->x());
                HD.addmappeddata(Vect->y());
                HD.addmappeddata(Vect->z());
             }
-            if(Vec<Index,1>::const_ptr Idx = Vec<Index,1>::as(m_mapdata[0])){
+            if(Vec<Index,1>::const_ptr Idx = Vec<Index,1>::as(m_vertexdata[i])){
                HD.addmappeddata(Idx->x());
             }
-
+         }
+         for (size_t i=0; i<m_celldata.size(); ++i) {
+            if(Vec<Scalar,1>::const_ptr Scal = Vec<Scalar,1>::as(m_celldata[i])){
+               HD.addcelldata(Scal->x());
+            }
+            if(Vec<Scalar,3>::const_ptr Vect = Vec<Scalar,3>::as(m_celldata[i])){
+               HD.addcelldata(Vect->x());
+               HD.addcelldata(Vect->y());
+               HD.addcelldata(Vect->z());
+            }
+            if(Vec<Index,1>::const_ptr Idx = Vec<Index,1>::as(m_celldata[i])){
+               HD.addcelldata(Idx->x());
+            }
          }
 
          totalNumVertices = calculateSurface<HostData, thrust::detail::host_t>(HD);
 
-         m_triangles->d()->x[0] = HD.m_outData[0];
-         m_triangles->d()->x[1] = HD.m_outData[1];
-         m_triangles->d()->x[2] = HD.m_outData[2];
+         {
+             size_t idx=0;
+             m_triangles->d()->x[0] = HD.m_outVertData[idx++];
+             m_triangles->d()->x[1] = HD.m_outVertData[idx++];
+             m_triangles->d()->x[2] = HD.m_outVertData[idx++];
 
-         if(m_mapdata.size()){
-            if(Vec<Scalar>::as(m_mapdata[0])){
+             size_t idxI=0;
+             for (size_t i=0; i<m_vertexdata.size(); ++i) {
+                 if(Vec<Scalar>::as(m_vertexdata[i])){
 
-               Vec<Scalar,1>::ptr out = Vec<Scalar,1>::ptr(new Vec<Scalar,1>(Object::Initialized));
-               out->d()->x[0] = HD.m_outData[3];
-               out->setMeta(m_mapdata[0]->meta());
-               m_outmapData.push_back(out);
+                     Vec<Scalar,1>::ptr out = Vec<Scalar,1>::ptr(new Vec<Scalar,1>(Object::Initialized));
+                     out->d()->x[0] = HD.m_outVertData[idx++];
+                     out->setMeta(m_vertexdata[i]->meta());
+                     out->setMapping(DataBase::Vertex);
+                     m_outvertData.push_back(out);
 
-            }
-            if(Vec<Scalar,3>::as(m_mapdata[0])){
+                 }
+                 if(Vec<Scalar,3>::as(m_vertexdata[i])){
 
-               Vec<Scalar,3>::ptr out = Vec<Scalar,3>::ptr(new Vec<Scalar,3>(Object::Initialized));
-               out->d()->x[0] = HD.m_outData[3];
-               out->d()->x[1] = HD.m_outData[4];
-               out->d()->x[2] = HD.m_outData[5];
-               out->setMeta(m_mapdata[0]->meta());
-               m_outmapData.push_back(out);
+                     Vec<Scalar,3>::ptr out = Vec<Scalar,3>::ptr(new Vec<Scalar,3>(Object::Initialized));
+                     out->d()->x[0] = HD.m_outVertData[idx++];
+                     out->d()->x[1] = HD.m_outVertData[idx++];
+                     out->d()->x[2] = HD.m_outVertData[idx++];
+                     out->setMeta(m_vertexdata[i]->meta());
+                     out->setMapping(DataBase::Vertex);
+                     m_outvertData.push_back(out);
 
-            }
-            if(Vec<Index>::as(m_mapdata[0])){
+                 }
+                 if(Vec<Index>::as(m_vertexdata[i])){
 
-               Vec<Index>::ptr out = Vec<Index>::ptr(new Vec<Index>(Object::Initialized));
-               out->d()->x[0] = HD.m_outDataI[0];
-               out->setMeta(m_mapdata[0]->meta());
-               m_outmapData.push_back(out);
+                     Vec<Index>::ptr out = Vec<Index>::ptr(new Vec<Index>(Object::Initialized));
+                     out->d()->x[0] = HD.m_outVertDataI[idxI++];
+                     out->setMeta(m_vertexdata[i]->meta());
+                     out->setMapping(DataBase::Vertex);
+                     m_outvertData.push_back(out);
+                 }
+             }
+         }
+         {
+             size_t idx=0;
+             size_t idxI=0;
+             for (size_t i=0; i<m_celldata.size(); ++i) {
+                 if(Vec<Scalar>::as(m_celldata[i])){
 
-            }
+                     Vec<Scalar,1>::ptr out = Vec<Scalar,1>::ptr(new Vec<Scalar,1>(Object::Initialized));
+                     out->d()->x[0] = HD.m_outCellData[idx++];
+                     out->setMeta(m_celldata[i]->meta());
+                     out->setMapping(DataBase::Element);
+                     m_outcellData.push_back(out);
+
+                 }
+                 if(Vec<Scalar,3>::as(m_celldata[i])){
+
+                     Vec<Scalar,3>::ptr out = Vec<Scalar,3>::ptr(new Vec<Scalar,3>(Object::Initialized));
+                     out->d()->x[0] = HD.m_outCellData[idx++];
+                     out->d()->x[1] = HD.m_outCellData[idx++];
+                     out->d()->x[2] = HD.m_outCellData[idx++];
+                     out->setMeta(m_celldata[i]->meta());
+                     out->setMapping(DataBase::Element);
+                     m_outcellData.push_back(out);
+
+                 }
+                 if(Vec<Index>::as(m_celldata[i])){
+
+                     Vec<Index>::ptr out = Vec<Index>::ptr(new Vec<Index>(Object::Initialized));
+                     out->d()->x[0] = HD.m_outCellDataI[idxI++];
+                     out->setMeta(m_celldata[i]->meta());
+                     out->setMapping(DataBase::Element);
+                     m_outcellData.push_back(out);
+                 }
+             }
          }
          break;
       }
@@ -714,33 +803,33 @@ bool Leveller::process() {
 
          m_triangles->x().resize(totalNumVertices);
          Scalar *out_x = m_triangles->x().data();
-         thrust::copy(DD.m_outData[0]->begin(), DD.m_outData[0]->end(), out_x);
+         thrust::copy(DD.m_outVertData[0]->begin(), DD.m_outVertData[0]->end(), out_x);
 
          m_triangles->y().resize(totalNumVertices);
          Scalar *out_y = m_triangles->y().data();
-         thrust::copy(DD.m_outData[1]->begin(), DD.m_outData[1]->end(), out_y);
+         thrust::copy(DD.m_outVertData[1]->begin(), DD.m_outVertData[1]->end(), out_y);
 
          m_triangles->z().resize(totalNumVertices);
          Scalar *out_z = m_triangles->z().data();
-         thrust::copy(DD.m_outData[2]->begin(), DD.m_outData[2]->end(), out_z);
+         thrust::copy(DD.m_outVertData[2]->begin(), DD.m_outVertData[2]->end(), out_z);
 
-         if(m_mapdata.size()){
-            if(Vec<Scalar>::as(m_mapdata[0])){
+         if(m_vertexdata.size()){
+            if(Vec<Scalar>::as(m_vertexdata[0])){
 
                Vec<Scalar>::ptr out = Vec<Scalar>::ptr(new Vec<Scalar>(totalNumVertices));
-               thrust::copy(DD.m_outData[3]->begin(), DD.m_outData[3]->end(), out->x().data());
-               out->setMeta(m_mapdata[0]->meta());
-               m_outmapData.push_back(out);
+               thrust::copy(DD.m_outVertData[3]->begin(), DD.m_outVertData[3]->end(), out->x().data());
+               out->setMeta(m_vertexdata[0]->meta());
+               m_outvertData.push_back(out);
 
             }
-            if(Vec<Scalar,3>::as(m_mapdata[0])){
+            if(Vec<Scalar,3>::as(m_vertexdata[0])){
 
                Vec<Scalar,3>::ptr out = Vec<Scalar,3>::ptr(new Vec<Scalar,3>(totalNumVertices));
-               thrust::copy(DD.m_outData[3]->begin(), DD.m_outData[3]->end(), out->x().data());
-               thrust::copy(DD.m_outData[4]->begin(), DD.m_outData[4]->end(), out->y().data());
-               thrust::copy(DD.m_outData[5]->begin(), DD.m_outData[5]->end(), out->z().data());
-               out->setMeta(m_mapdata[0]->meta());
-               m_outmapData.push_back(out);
+               thrust::copy(DD.m_outVertData[3]->begin(), DD.m_outVertData[3]->end(), out->x().data());
+               thrust::copy(DD.m_outVertData[4]->begin(), DD.m_outVertData[4]->end(), out->y().data());
+               thrust::copy(DD.m_outVertData[5]->begin(), DD.m_outVertData[5]->end(), out->z().data());
+               out->setMeta(m_vertexdata[0]->meta());
+               m_outvertData.push_back(out);
 
             }
          }
@@ -763,17 +852,29 @@ void Leveller::setIsoData(Vec<Scalar>::const_ptr obj) {
 }
 #endif
 
-void Leveller::addMappedData(Object::const_ptr mapobj ){
-   m_mapdata.push_back(mapobj);
+void Leveller::addMappedData(DataBase::const_ptr mapobj ){
+    if (mapobj->mapping() == DataBase::Element)
+        m_celldata.push_back(mapobj);
+    else
+        m_vertexdata.push_back(mapobj);
 }
 
 Object::ptr Leveller::result() {
       return m_triangles;
    }
 
-DataBase::ptr Leveller::mapresult() {
-   if(m_outmapData.size())
-      return m_outmapData[0];
+DataBase::ptr Leveller::mapresult() const {
+   if(m_outvertData.size())
+      return m_outvertData[0];
+   else if(m_outcellData.size())
+      return m_outcellData[0];
+   else
+      return DataBase::ptr();
+}
+
+DataBase::ptr Leveller::cellresult() const {
+   if(m_outcellData.size())
+      return m_outcellData[0];
    else
       return DataBase::ptr();
 }

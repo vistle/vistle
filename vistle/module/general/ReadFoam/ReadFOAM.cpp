@@ -737,6 +737,7 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
           auto &obj = fields[j];
           setMeta(obj, processor, timestep);
           obj->setGrid(m_currentbound[processor][j]);
+          obj->setMapping(DataBase::Element);
           addObject(m_boundaryDataOut[i], obj);
       }
    }
@@ -1220,6 +1221,7 @@ bool ReadFOAM::addVolumeDataToPorts(int processor) {
    for (auto &data: m_currentvolumedata[processor]) {
       int portnum=data.first;
       m_currentvolumedata[processor][portnum]->setGrid(m_currentgrid[processor]);
+      m_currentvolumedata[processor][portnum]->setMapping(DataBase::Element);
       addObject(m_volumeDataOut[portnum], m_currentvolumedata[processor][portnum]);
    }
    return true;

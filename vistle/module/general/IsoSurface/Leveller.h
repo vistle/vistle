@@ -33,11 +33,13 @@ class Leveller  {
    vistle::Vector direction;
    int m_option;
 #endif
-   std::vector<vistle::Object::const_ptr> m_mapdata;
+   std::vector<vistle::Object::const_ptr> m_vertexdata;
+   std::vector<vistle::DataBase::const_ptr> m_celldata;
    vistle::Scalar m_isoValue;
    vistle::Index m_processortype;
    vistle::Triangles::ptr m_triangles;
-   std::vector<vistle::DataBase::ptr> m_outmapData;
+   std::vector<vistle::DataBase::ptr> m_outvertData;
+   std::vector<vistle::DataBase::ptr> m_outcellData;
    vistle::Scalar gmin, gmax;
 
    template<class Data, class pol>
@@ -56,9 +58,10 @@ public:
 #else
    void setIsoData(vistle::Vec<vistle::Scalar>::const_ptr obj);
 #endif
-   void addMappedData(vistle::Object::const_ptr mapobj );
+   void addMappedData(vistle::DataBase::const_ptr mapobj );
    vistle::Object::ptr result();
-   vistle::DataBase::ptr mapresult();
+   vistle::DataBase::ptr mapresult() const;
+   vistle::DataBase::ptr cellresult() const;
    std::pair<vistle::Scalar, vistle::Scalar> range();
 };
 

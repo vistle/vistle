@@ -31,6 +31,13 @@ bool DataBase::checkImpl() const {
    return true;
 }
 
+void DataBase::copyAttributes(Object::const_ptr src, bool replace) {
+    Base::copyAttributes(src, replace);
+    if (auto d = DataBase::as(src)) {
+        setMapping(d->mapping());
+    }
+}
+
 bool DataBase::hasCelltree() const {
 
    return hasAttachment("celltree");
@@ -71,6 +78,7 @@ DataBase::Data::Data(Type id, const std::string &name,
 DataBase::Data::Data(const DataBase::Data &o, const std::string &n, Type id)
 : DataBase::Base::Data(o, n, id)
 , grid(o.grid)
+, mapping(o.mapping)
 {
 }
 
@@ -78,6 +86,7 @@ DataBase::Data::Data(const DataBase::Data &o, const std::string &n, Type id)
 DataBase::Data::Data(const DataBase::Data &o, const std::string &n)
 : DataBase::Base::Data(o, n)
 , grid(o.grid)
+, mapping(DataBase::Unspecified)
 {
 }
 
@@ -112,6 +121,14 @@ Object::const_ptr DataBase::grid() const {
 void DataBase::setGrid(Object::const_ptr grid) {
 
     d()->grid = grid;
+}
+
+void DataBase::setMapping(DataBase::Mapping mapping) {
+    d()->mapping = mapping;
+}
+
+DataBase::Mapping DataBase::mapping() const {
+    return d()->mapping;
 }
 
 //V_OBJECT_TYPE(DataBase, Object::DATABASE);

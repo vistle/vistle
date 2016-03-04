@@ -15,6 +15,8 @@ class V_COREEXPORT DataBase: public Object {
    V_OBJECT(DataBase);
 
 public:
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(Mapping, (Unspecified)(Vertex)(Element));
+
    typedef Object Base;
    virtual Index getSize() const;
    virtual void setSize(const Index size);
@@ -22,15 +24,18 @@ public:
    void setGrid(Object::const_ptr grid);
    bool hasCelltree() const;
    Object::const_ptr getCelltree() const;
+   Mapping mapping() const;
+   void setMapping(Mapping m);
+
+   void copyAttributes(Object::const_ptr src, bool replace = true) override;
 
 private:
    virtual void createCelltree(Index nelem, const Index *el, const Index *cl) const;
 
    V_DATA_BEGIN(DataBase);
-      //boost::interprocess::offset_ptr<Object::Data> grid;
       shm_obj_ref<Object> grid;
+      Mapping mapping;
 
-      //Data(Type id = UNKNOWN, const std::string & name = "", const Meta &meta=Meta());
       Data(const Data &o, const std::string & name, Type id);
       ~Data();
       static Data *create(Type id = UNKNOWN, const Meta &meta=Meta());

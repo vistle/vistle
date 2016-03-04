@@ -40,10 +40,20 @@ bool CellToVert::compute() {
       return true;
    }
 
+   if (data->mapping() == DataBase::Unspecified) {
+   } else if (data->mapping() != DataBase::Element) {
+      std::stringstream str;
+      str << "unsupported data mapping " << data->mapping() << " on " << data->getName();
+      std::string s = str.str();
+      sendError("%s", s.c_str());
+      return true;
+   }
+
    DataBase::ptr out = algo.interpolate(grid, data);
    if (out) {
       out->copyAttributes(data);
       out->setGrid(grid);
+      out->setMapping(DataBase::Vertex);
       addObject("data_out", out);
    }
 

@@ -178,7 +178,7 @@ public:
 
    void addAttribute(const std::string &key, const std::string &value = "");
    void setAttributeList(const std::string &key, const std::vector<std::string> &values);
-   void copyAttributes(Object::const_ptr src, bool replace = true);
+   virtual void copyAttributes(Object::const_ptr src, bool replace = true);
    bool hasAttribute(const std::string &key) const;
    std::string getAttribute(const std::string &key) const;
    std::vector<std::string> getAttributes(const std::string &key) const;

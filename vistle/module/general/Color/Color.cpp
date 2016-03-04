@@ -306,6 +306,7 @@ bool Color::compute() {
    auto out(addTexture(obj, min, max, cmap));
    out->setGrid(obj->grid());
    out->setMeta(obj->meta());
+   out->copyAttributes(obj);
 
    addObject("data_out", out);
 
