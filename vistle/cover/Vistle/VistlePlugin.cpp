@@ -374,6 +374,9 @@ boost::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, con
    if (variant.empty()) {
        variant = geometry->getAttribute("_variant");
    }
+   if (!variant.empty()) {
+      cover->addPlugin("Variant");
+   }
    boost::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
          container, geometry, normals, colors, texture, variant));
 
