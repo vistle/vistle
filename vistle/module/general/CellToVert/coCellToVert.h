@@ -36,8 +36,7 @@ class coCellToVert
                              const Index *elem_list, const Index *conn_list, const unsigned char *type_list, 
 			     const Index *neighbour_cells, const Index *neighbour_idx,
 			     const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
-                             Index numComp, const Scalar *in_data_0, const Scalar *in_data_1, const Scalar *in_data_2,
-                             Scalar *out_data_0, Scalar *out_data_1, Scalar *out_data_2 );
+                             Index numComp, const Scalar *in_data[], Scalar *out_data[]);
 	
        ////////////////////////////////////////////////////////////////////////////////////////////////////
        //
@@ -49,28 +48,12 @@ class coCellToVert
        			     
        bool simpleAlgo(Index num_elem, Index num_conn, Index num_point,
                            const Index *elem_list, const Index *conn_list,
-                           Index numComp, const Scalar *in_data_0, const Scalar *in_data_1, const Scalar *in_data_2,
-                           Scalar *out_data_0, Scalar *out_data_1, Scalar *out_data_2 );
+                           Index numComp, const Scalar *in_data[], Scalar *out_data[]);
 
     public:
 
         typedef enum { SQR_WEIGHT=1, SIMPLE=2 } Algorithm;
 	
-	//
-	//  geoType/dataType: type string, .e.g. "UNSGRD"
-	//
-	//  returns NULL in case of an error
-	//
-        DataBase::ptr interpolate( bool unstructured, Index num_elem, Index num_conn, Index num_point,
-                           const Index *elem_list, const Index *conn_list, const unsigned char *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
-			   const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
-                           Index numComp, Index &dataSize, const Scalar *in_data_0, const Scalar *in_data_1, const Scalar *in_data_2, 
-                           Algorithm algo_option=SIMPLE );
- 
-        DataBase::ptr interpolate(Object::const_ptr geo_in,
-                           Index numComp, Index &dataSize, const Scalar *in_data_0, const Scalar *in_data_1, const Scalar *in_data_2, 
-                           Algorithm algo_option=SIMPLE );
-		
 	// note: no attributes copied		   
         DataBase::ptr interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in,
                            Algorithm algo_option=SIMPLE );			   
@@ -78,10 +61,9 @@ class coCellToVert
         //
 	//  returns false in case of an error
 	//
-        bool  interpolate( bool unstructured, Index num_elem, Index num_conn, Index num_point,
+        bool  interpolate(bool unstructured, Index num_elem, Index num_conn, Index num_point,
                            const Index *elem_list, const Index *conn_list, const unsigned char *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
-			   const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
-                           Index numComp, Index &dataSize, const Scalar *in_data_0, const Scalar *in_data_1, const Scalar *in_data_2, 
-                           Scalar *out_data_0, Scalar *out_data_1, Scalar *out_data_2,  Algorithm algo_option=SIMPLE );
+               const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
+                           Index numComp, Index &dataSize, const Scalar *in_data[], Scalar *out_data[],  Algorithm algo_option=SIMPLE );
 };
 #endif
