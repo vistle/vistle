@@ -307,15 +307,6 @@ coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in,
       return DataBase::ptr();
    }
 
-   if (data_in->mapping() == DataBase::Vertex) {
-       return data_in->clone();
-   }
-   if (data_in->mapping() == DataBase::Unspecified) {
-       auto coords = Coords::as(geo_in);
-       if (coords && data_in->getSize() == coords->getSize())
-           return data_in->clone();
-   }
-
    Index num_elem=0, num_conn=0, num_point=0;
    const Index *elem_list=nullptr, *conn_list=nullptr;
    const unsigned char *type_list=nullptr;

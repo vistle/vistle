@@ -460,14 +460,9 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
       vistle::Indexed::const_ptr indexed = vistle::Indexed::as(m_geo);
       if (geom && coords) {
          if(vistle::Texture1D::const_ptr tex = vistle::Texture1D::as(m_tex)) {
-            vistle::DataBase::Mapping mapping = tex->mapping();
+            vistle::DataBase::Mapping mapping = tex->guessMapping();
             if (mapping == vistle::DataBase::Unspecified) {
-                if (tex->getNumCoords() == coords->getNumCoords())
-                    mapping = vistle::DataBase::Vertex;
-                else if (tex->getNumCoords() == indexed->getNumElements())
-                    mapping = vistle::DataBase::Element;
-                else
-                    std::cerr << "VistleGeometryGenerator: Coords: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
+                std::cerr << "VistleGeometryGenerator: Coords: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
             }
 
             if (mapping == vistle::DataBase::Vertex) {

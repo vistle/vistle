@@ -40,7 +40,8 @@ bool CellToVert::compute() {
       return true;
    }
 
-   if (data->mapping() == DataBase::Unspecified) {
+   if (data->mapping() == DataBase::Vertex) {
+       passThroughObject("data_out", data);
    } else if (data->mapping() != DataBase::Element) {
       std::stringstream str;
       str << "unsupported data mapping " << data->mapping() << " on " << data->getName();

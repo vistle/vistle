@@ -2,6 +2,7 @@
 #include "scalars.h"
 #include "assert.h"
 #include "indexed.h"
+#include "triangles.h"
 #include "celltree_impl.h"
 #include "archives.h"
 
@@ -129,6 +130,25 @@ void DataBase::setMapping(DataBase::Mapping mapping) {
 
 DataBase::Mapping DataBase::mapping() const {
     return d()->mapping;
+}
+
+DataBase::Mapping DataBase::guessMapping(Object::const_ptr g) const {
+    if (!g)
+        g = grid();
+    if (mapping() == Unspecified) {
+        if (auto i = Indexed::as(g)) {
+            if (getSize() == i->getNumVertices())
+                return Vertex;
+            else if (getSize() == i->getNumElements())
+                return Element;
+        } else if (auto t = Triangles::as(g)) {
+            if (getSize() == t->getNumVertices())
+                return Vertex;
+            else if (getSize() == t->getNumElements())
+                return Element;
+        }
+    }
+    return mapping();
 }
 
 //V_OBJECT_TYPE(DataBase, Object::DATABASE);
