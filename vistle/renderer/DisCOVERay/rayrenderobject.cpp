@@ -40,10 +40,14 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
    data->texCoords = nullptr;
    data->lighted = 1;
    data->hasSolidColor = hasSolidColor;
+   data->perPrimitiveMapping = 0;
    for (int c=0; c<4; ++c) {
       data->solidColor[c] = solidColor[c];
    }
    if (this->texture) {
+      if (this->texture->guessMapping(geometry) == DataBase::Element)
+         data->perPrimitiveMapping = 1;
+
       data->texWidth = this->texture->getWidth();
       data->texData = this->texture->pixels().data();
       data->texCoords = &this->texture->coords()[0];
@@ -80,12 +84,14 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
             triangles[i].v0 = i*3;
             triangles[i].v1 = i*3+1;
             triangles[i].v2 = i*3+2;
+            triangles[i].elem = i;
          }
       } else {
          for (Index i=0; i<numElem; ++i) {
             triangles[i].v0 = tri->cl()[i*3];
             triangles[i].v1 = tri->cl()[i*3+1];
             triangles[i].v2 = tri->cl()[i*3+2];
+            triangles[i].elem = i;
          }
       }
       rtcUnmapBuffer(data->scene, data->geomId, RTC_INDEX_BUFFER);
@@ -115,6 +121,7 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
          const Index nvert = end-start;
          const Index last = end-1;
          for (Index v=0; v<nvert-2; ++v) {
+            triangles[t].elem = i;
             const Index v2 = v/2;
             if (v%2) {
                triangles[t].v0 = poly->cl()[last-v2];

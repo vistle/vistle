@@ -90,7 +90,15 @@ export void ispcRenderTile(uniform const SceneData *uniform scene, uniform const
                const float &v = ray.v;
                const float w = 1.f - u - v;
                unsigned idx = 0;
-               if (ro->indexBuffer) {
+               if (ro->perPrimitiveMapping) {
+                  if (ro->indexBuffer) {
+                     const float tc = clamp(ro->texCoords[ro->indexBuffer[ray.primID].elem], 0.f, 1.f);
+                     idx = min(tc * ro->texWidth, ro->texWidth-1);
+                  } else {
+                     const float tc = clamp(ro->texCoords[ray.primID], 0.f, 1.f);
+                     idx = min(tc * ro->texWidth, ro->texWidth-1);
+                  }
+               } else if (ro->indexBuffer) {
                   const unsigned int v0 = ro->indexBuffer[ray.primID].v0;
                   const unsigned int v1 = ro->indexBuffer[ray.primID].v1;
                   const unsigned int v2 = ro->indexBuffer[ray.primID].v2;

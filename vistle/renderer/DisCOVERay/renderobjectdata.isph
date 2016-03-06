@@ -4,7 +4,7 @@
 
 #include "spheres.isph"
 
-struct Triangle { unsigned int v0, v1, v2; };
+struct Triangle { unsigned int v0, v1, v2, elem; };
 
 enum PrimitiveFlags {
    PFNone = 0,
@@ -30,6 +30,7 @@ struct RenderObjectData {
 
    unsigned int lighted; //!< whether to use lighting
    unsigned int hasSolidColor; //!< whether object has a color different from default
+   unsigned int perPrimitiveMapping; //!< whether color should be applied per primitive
    float solidColor[4]; //!< object color (if there is no texture)
 
    unsigned int texWidth; //!< size of 1D texture (color table size)
