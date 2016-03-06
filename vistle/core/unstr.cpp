@@ -435,7 +435,7 @@ bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorn
 
 } // anon namespace
 
-UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, const Vector &point, InterpolationMode mode) const {
+UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, const Vector &point, Mapping mapping, InterpolationMode mode) const {
 
    vassert(inside(elem, point));
 
@@ -444,6 +444,13 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
       return Interpolator();
    }
 #endif
+
+   if (mapping == Element) {
+       std::vector<Scalar> weights(1, 1.);
+       std::vector<Index> indices(1, elem);
+
+       return Interpolator(weights, indices);
+   }
 
    const auto el = &this->el()[0];
    const auto tl = &this->tl()[0];
@@ -763,13 +770,13 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
    return Interpolator(weights, indices);
 }
 
-UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(const Vector &point, InterpolationMode mode) const {
+UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(const Vector &point, Mapping mapping, InterpolationMode mode) const {
 
    const Index elem = findCell(point);
    if (elem == InvalidIndex) {
       return Interpolator();
    }
-   return getInterpolator(elem, point, mode);
+   return getInterpolator(elem, point, mapping, mode);
 }
 
 void UnstructuredGrid::refreshImpl() const {

@@ -95,8 +95,8 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
          (Linear) // barycentric/multilinear interpolation
          );
 
-   Interpolator getInterpolator(Index elem, const Vector &point, InterpolationMode mode=Linear) const;
-   Interpolator getInterpolator(const Vector &point, InterpolationMode mode=Linear) const;
+   Interpolator getInterpolator(Index elem, const Vector &point, Mapping mapping=Vertex, InterpolationMode mode=Linear) const;
+   Interpolator getInterpolator(const Vector &point, Mapping mapping=Vertex, InterpolationMode mode=Linear) const;
 
  private:
    mutable const unsigned char *m_tl;

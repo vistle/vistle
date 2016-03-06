@@ -49,6 +49,7 @@ private:
     vistle::UnstructuredGrid::const_ptr m_grid;
     vistle::Vec<vistle::Scalar, 3>::const_ptr m_vecfld;
     vistle::Vec<vistle::Scalar>::const_ptr m_scafld;
+    vistle::DataBase::Mapping m_vecmap, m_scamap;
     vistle::Lines::ptr m_lines;
     std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> m_ivec;
     std::vector<vistle::Vec<vistle::Scalar>::ptr> m_iscal;
@@ -68,7 +69,9 @@ public:
     vistle::Vec<vistle::Index>::ptr ids() const;
     vistle::Vec<vistle::Index>::ptr steps() const;
     vistle::Vec<vistle::Scalar, 3>::const_ptr getVecFld();
+    vistle::DataBase::Mapping getVecMapping() const;
     vistle::Vec<vistle::Scalar>::const_ptr getScalFld();
+    vistle::DataBase::Mapping getScalMapping() const;
     vistle::Lines::ptr getLines();
     std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> getIplVec();
     std::vector<vistle::Vec<vistle::Scalar>::ptr> getIplScal();

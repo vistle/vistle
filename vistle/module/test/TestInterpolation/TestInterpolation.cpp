@@ -64,7 +64,7 @@ bool TestInterpolation::compute() {
       Index idx = grid->findCell(point);
       if (idx != InvalidIndex) {
          ++numChecked;
-         UnstructuredGrid::Interpolator interpol = grid->getInterpolator(idx, point, mode);
+         UnstructuredGrid::Interpolator interpol = grid->getInterpolator(idx, point, DataBase::Vertex, mode);
          Vector p = interpol(x, y, z);
          Scalar d2 = (point-p).squaredNorm();
          if (d2 > 0.01) {

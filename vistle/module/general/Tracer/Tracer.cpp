@@ -101,6 +101,8 @@ BlockData::BlockData(Index i,
 m_grid(grid),
 m_vecfld(vdata),
 m_scafld(pdata),
+m_vecmap(DataBase::Vertex),
+m_scamap(DataBase::Vertex),
 m_lines(new Lines(Object::Initialized)),
 m_ids(new Vec<Index>(Object::Initialized)),
 m_steps(new Vec<Index>(Object::Initialized)),
@@ -115,11 +117,18 @@ m_p(nullptr)
       m_vx = &m_vecfld->x()[0];
       m_vy = &m_vecfld->y()[0];
       m_vz = &m_vecfld->z()[0];
+
+      m_vecmap = m_vecfld->guessMapping();
+      if (m_vecmap == DataBase::Unspecified)
+          m_vecmap = DataBase::Vertex;
    }
 
    if (m_scafld) {
       m_p = &m_scafld->x()[0];
       m_iscal.emplace_back(new Vec<Scalar>(Object::Initialized));
+      m_scamap = m_scafld->guessMapping();
+      if (m_scamap == DataBase::Unspecified)
+          m_scamap = DataBase::Vertex;
    }
 }
 
@@ -150,8 +159,16 @@ Vec<Scalar, 3>::const_ptr BlockData::getVecFld(){
     return m_vecfld;
 }
 
+DataBase::Mapping BlockData::getVecMapping() const {
+    return m_vecmap;
+}
+
 Vec<Scalar>::const_ptr BlockData::getScalFld(){
     return m_scafld;
+}
+
+DataBase::Mapping BlockData::getScalMapping() const {
+    return m_scamap;
 }
 
 Lines::ptr BlockData::getLines(){
@@ -341,9 +358,11 @@ void Particle::EmitData(bool havePressure) {
 bool Particle::Step() {
 
    const auto &grid = m_block->getGrid();
-   const auto inter = grid->getInterpolator(m_el, m_x);
+   auto inter = grid->getInterpolator(m_el, m_x, m_block->m_vecmap);
    m_v = inter(m_block->m_vx, m_block->m_vy, m_block->m_vz);
    if (m_block->m_p) {
+      if (m_block->m_scamap != m_block->m_vecmap)
+          inter = grid->getInterpolator(m_el, m_x, m_block->m_scamap);
       m_p = inter(m_block->m_p);
    }
 
