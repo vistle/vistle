@@ -32,7 +32,7 @@ bool
 coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, Index num_point,
       const Index *elem_list, const Index *conn_list, const unsigned char *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
       const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
-      Index numComp, Index &dataSize, const Scalar *in_data[], Scalar *out_data[], Algorithm algo_option)
+      Index numComp, Index dataSize, const Scalar *in_data[], Scalar *out_data[], Algorithm algo_option)
 {
    // check for errors
    if (!xcoord || !ycoord || !zcoord) {
@@ -54,7 +54,7 @@ coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, In
    }
 
    // copy original data if already vertex based   
-   if( dataSize==num_point )
+   if( dataSize==num_point && dataSize!=num_elem )
    {
        for (int c=0; c<numComp; ++c) {
            const Scalar *in = in_data[c];
@@ -66,13 +66,6 @@ coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, In
        }
        return true;
    }
-   // Make sure we have enough elements
-   else if( dataSize < num_elem )
-   {      
-      return false;
-   }
-
-   dataSize=num_elem;
 
    if( unstructured )
    {
@@ -346,7 +339,11 @@ coCellToVert::interpolate(Object::const_ptr geo_in, DataBase::const_ptr data_in,
       conn_list = &tri->cl()[0];
    }
 
-   Index dataSize = data_in->getSize();
+   const Index dataSize = data_in->getSize();
+   if (dataSize < num_elem) {
+      return DataBase::ptr();
+   }
+
    Index numComp = 0;
    DataBase::ptr data_return;
    const Scalar *in_data[3] = { nullptr, nullptr, nullptr };

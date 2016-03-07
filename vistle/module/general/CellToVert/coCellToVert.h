@@ -64,6 +64,6 @@ class coCellToVert
         bool  interpolate(bool unstructured, Index num_elem, Index num_conn, Index num_point,
                            const Index *elem_list, const Index *conn_list, const unsigned char *type_list, const Index *neighbour_cells, const Index *neighbour_idx,
                const Scalar *xcoord, const Scalar *ycoord, const Scalar *zcoord,
-                           Index numComp, Index &dataSize, const Scalar *in_data[], Scalar *out_data[],  Algorithm algo_option=SIMPLE );
+                           Index numComp, Index dataSize, const Scalar *in_data[], Scalar *out_data[],  Algorithm algo_option=SIMPLE );
 };
 #endif
