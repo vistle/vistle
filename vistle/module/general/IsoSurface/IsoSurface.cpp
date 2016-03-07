@@ -162,6 +162,10 @@ bool IsoSurface::compute() {
    auto dataS = expect<Vec<Scalar>>("data_in");
    if (!dataS)
       return true;
+   if (dataS->guessMapping() != DataBase::Vertex) {
+      sendError("need per-vertex mapping on data_in");
+      return true;
+   }
    auto  gridS = UnstructuredGrid::as(dataS->grid());
 #endif
    if (!gridS) {
