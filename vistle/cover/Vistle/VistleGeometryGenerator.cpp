@@ -463,9 +463,7 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
             vistle::DataBase::Mapping mapping = tex->guessMapping();
             if (mapping == vistle::DataBase::Unspecified) {
                 std::cerr << "VistleGeometryGenerator: Coords: texture size mismatch, expected: " << coords->getNumCoords() << ", have: " << tex->getNumCoords() << std::endl;
-            }
-
-            if (mapping == vistle::DataBase::Vertex) {
+            } else {
                osg::ref_ptr<osg::Texture1D> osgTex = new osg::Texture1D;
                osgTex->setDataVariance(osg::Object::DYNAMIC);
 
@@ -474,26 +472,52 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
                      GL_UNSIGNED_BYTE, &tex->pixels()[0],
                      osg::Image::NO_DELETE);
                osgTex->setImage(image);
-
                osg::ref_ptr<osg::FloatArray> tc = new osg::FloatArray();
-               const Index *cl = (indexed && indexed->getNumCorners() > 0) ? &indexed->cl()[0] : nullptr;
-               if (cl) {
-                  const auto el = &indexed->el()[0];
-                  const auto numElements = indexed->getNumElements();
-                  for (Index index = 0; index < numElements; ++index) {
-                     const Index num = el[index + 1] - el[index];
-                     for (Index n = 0; n < num; n ++) {
-                        Index v = cl[el[index] + n];
-                        tc->push_back(tex->coords()[v]);
+
+               if (mapping == vistle::DataBase::Vertex) {
+                  const Index *cl = (indexed && indexed->getNumCorners() > 0) ? &indexed->cl()[0] : nullptr;
+                  if (cl) {
+                     const auto el = &indexed->el()[0];
+                     const auto numElements = indexed->getNumElements();
+                     for (Index index = 0; index < numElements; ++index) {
+                        const Index num = el[index + 1] - el[index];
+                        for (Index n = 0; n < num; n ++) {
+                           Index v = cl[el[index] + n];
+                           tc->push_back(tex->coords()[v]);
+                        }
+                     }
+                  } else {
+                     const auto numCoords = coords->getNumCoords();
+                     for (Index index = 0; index < numCoords; ++index) {
+                        tc->push_back(tex->coords()[index]);
                      }
                   }
-               } else {
-                  const auto numCoords = coords->getNumCoords();
-                  for (Index index = 0; index < numCoords; ++index) {
-                     tc->push_back(tex->coords()[index]);
+               } else if (mapping == vistle::DataBase::Element) {
+                  if (indexed) {
+                     const auto el = &indexed->el()[0];
+                     const auto numElements = indexed->getNumElements();
+                     for (Index index = 0; index < numElements; ++index) {
+                        const Index num = el[index + 1] - el[index];
+                        for (Index n = 0; n < num; n ++) {
+                           Index v = el[index];
+                           tc->push_back(tex->coords()[v]);
+                        }
+                     }
+                  } else if (vistle::Triangles::const_ptr tri = vistle::Triangles::as(m_geo)) {
+                     const Index numTri = tri->getNumCorners()>0 ? tri->getNumCorners()/3 : tri->getNumCoords()/3;
+                     for (Index index = 0; index < numTri; ++index) {
+                        const Index num = 3;
+                        for (Index n = 0; n < num; n ++) {
+                           tc->push_back(tex->coords()[index]);
+                        }
+                     }
+                  } else {
+                     const auto numCoords = coords->getNumCoords();
+                     for (Index index = 0; index < numCoords; ++index) {
+                        tc->push_back(tex->coords()[index]);
+                     }
                   }
                }
-
                geom->setTexCoordArray(0, tc);
                state->setTextureAttributeAndModes(0, osgTex,
                      osg::StateAttribute::ON);
@@ -501,7 +525,6 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
                      osg::Texture1D::NEAREST);
                osgTex->setFilter(osg::Texture1D::MAG_FILTER,
                      osg::Texture1D::NEAREST);
-            } else if (mapping == vistle::DataBase::Element) {
             }
          }
 
