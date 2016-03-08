@@ -132,9 +132,9 @@ bool  ClusterManager::Module::processDelayed() {
                 auto &msg = delayedMessages.front();
                 auto type = msg.type();
                 ret = Communicator::the().broadcastAndHandleMessage(delayedMessages.front());
+                delayedMessages.pop_front();
                 if (type == message::Message::EXECUTE)
                     break;
-                delayedMessages.pop_front();
             }
         }
         if (!ret)
