@@ -142,7 +142,7 @@ bool ReadFOAM::parameterChanged(const Parameter *p)
    if (sp == m_casedir) {
       std::string casedir = sp->getValue();
 
-      m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
+      m_case = getCaseInfo(casedir);
       if (!m_case.valid) {
          std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
          return false;
@@ -198,14 +198,17 @@ bool loadCoords(const std::string &meshdir, Coords::ptr grid) {
    return true;
 }
 
-GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
+GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string topologyDir) {
 
+   //std::cerr << "loadGrid(\"" << meshdir << "\", \"" << topologyDir << "\")" << std::endl;
+   if (topologyDir.empty())
+       topologyDir = meshdir;
    bool readGrid = m_readGrid->getValue();
    bool readBoundary = m_readBoundary->getValue();
    bool patchesAsVariants = m_boundaryPatchesAsVariants->getValue();
 
    boost::shared_ptr<Boundaries> boundaries(new Boundaries());
-   *boundaries = loadBoundary(meshdir);
+   *boundaries = loadBoundary(topologyDir);
    UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0));
    std::vector<Polygons::ptr> polyList;
    for (size_t i=0; i<(patchesAsVariants ? boundaries->boundaries.size() : 1); ++i) {
@@ -218,30 +221,30 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir) {
    }
 
    //read mesh files
-   boost::shared_ptr<std::istream> ownersIn = getStreamForFile(meshdir, "owner");
+   boost::shared_ptr<std::istream> ownersIn = getStreamForFile(topologyDir, "owner");
    if (!ownersIn)
       return result;
    HeaderInfo ownerH = readFoamHeader(*ownersIn);
    DimensionInfo dim = parseDimensions(ownerH.header);
    owners->resize(ownerH.lines);
    if (!readIndexArray(ownerH, *ownersIn, (*owners).data(), (*owners).size())) {
-      std::cerr << "readIndexArray for " << meshdir << "/owner failed" << std::endl;
+      std::cerr << "readIndexArray for " << topologyDir << "/owner failed" << std::endl;
       return result;
    }
 
    {
 
-      boost::shared_ptr<std::istream> facesIn = getStreamForFile(meshdir, "faces");
+      boost::shared_ptr<std::istream> facesIn = getStreamForFile(topologyDir, "faces");
       if (!facesIn)
          return result;
       HeaderInfo facesH = readFoamHeader(*facesIn);
       std::vector<std::vector<Index>> faces(facesH.lines);
       if (!readIndexListArray(facesH, *facesIn, faces.data(), faces.size())) {
-         std::cerr << "readIndexListArray for " << meshdir << "/faces failed" << std::endl;
+         std::cerr << "readIndexListArray for " << topologyDir << "/faces failed" << std::endl;
          return result;
       }
 
-      boost::shared_ptr<std::istream> neighboursIn = getStreamForFile(meshdir, "neighbour");
+      boost::shared_ptr<std::istream> neighboursIn = getStreamForFile(topologyDir, "neighbour");
       if (!neighboursIn)
          return result;
       HeaderInfo neighbourH = readFoamHeader(*neighboursIn);
@@ -776,8 +779,16 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
    } else {
       Index i = 0;
       Index skipfactor = m_timeskip->getValue()+1;
+      std::string completeMeshDir;
       for (auto &ts: m_case.timedirs) {
          if (i == timestep*skipfactor) {
+            completeMeshDir = dir;
+            auto it = m_case.completeMeshDirs.find(ts.first);
+            if (it != m_case.completeMeshDirs.end()) {
+                completeMeshDir = dir + "/" + it->second;
+            } else {
+                completeMeshDir = dir + "/" + it->second;
+            }
             dir += "/" + ts.second;
             break;
          }
@@ -790,7 +801,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
       if (m_case.varyingGrid || m_case.varyingCoords) {
          UnstructuredGrid::ptr grid;
          std::vector<Polygons::ptr> polygons;
-         if (!m_case.varyingGrid) {
+         if (completeMeshDir == m_basedir[processor]) {
             {
                grid.reset(new UnstructuredGrid(0, 0, 0));
                UnstructuredGrid::Data *od = m_basegrid[processor]->d();
@@ -813,7 +824,7 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
                 }
             }
          } else {
-            auto ret = loadGrid(dir + "/polyMesh");
+            auto ret = loadGrid(dir + "/polyMesh", completeMeshDir + "/polyMesh");
             grid = ret.grid;
             polygons = ret.polygon;
             m_owners[processor] = ret.owners;
@@ -825,8 +836,10 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
          m_currentgrid[processor] = grid;
          m_currentbound[processor] = polygons;
 
-         if (grid)
+         if (grid) {
             m_basegrid[processor] = grid;
+            m_basedir[processor] = completeMeshDir;
+         }
          if (!polygons.empty())
             m_basebound[processor] = polygons;
       }
@@ -1346,9 +1359,14 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
 {
    const std::string casedir = m_casedir->getValue();
    m_boundaryPatches.add(m_patchSelection->getValue());
-   m_case = getCaseInfo(casedir, m_starttime->getValue(), m_stoptime->getValue());
+   m_case = getCaseInfo(casedir);
    if (!m_case.valid) {
       std::cerr << casedir << " is not a valid OpenFOAM case" << std::endl;
+      return true;
+   }
+
+   if (!checkPolyMeshDirContent(m_case)) {
+      std::cerr << "failed to gather topology directories for " << casedir << std::endl;
       return true;
    }
 

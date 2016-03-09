@@ -151,7 +151,7 @@ class ReadFOAM: public vistle::Module
                      const std::vector<vistle::Index> &owners,
                      const std::vector<vistle::Index> &neighbours);
 
-      GridDataContainer loadGrid(const std::string &dir);
+      GridDataContainer loadGrid(const std::string &dir, std::string topologyDir=std::string());
       vistle::DataBase::ptr loadField(const std::string &dir, const std::string &field);
       std::vector<vistle::DataBase::ptr> loadBoundaryField(const std::string &dir, const std::string &field,
                                             const int &processor);
@@ -162,6 +162,7 @@ class ReadFOAM: public vistle::Module
 
       std::map<int, std::vector<vistle::Polygons::ptr>> m_basebound, m_currentbound;
       std::map<int, vistle::UnstructuredGrid::ptr> m_basegrid, m_currentgrid;
+      std::map<int, std::string> m_basedir;
       std::map<int, std::map<int, vistle::DataBase::ptr> > m_currentvolumedata;
       std::map<int, boost::shared_ptr<std::vector<vistle::Index> > > m_owners;
       std::map<int, boost::shared_ptr<Boundaries>> m_boundaries;
