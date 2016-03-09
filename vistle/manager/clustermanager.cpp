@@ -109,13 +109,16 @@ bool ClusterManager::Module::send(const message::Message &msg) const {
    if (blocked) {
       blockedMessages.emplace_back(msg);
       return true;
-   } else {
+   } else if (sendQueue) {
       return sendQueue->send(msg);
    }
+   return false;
 }
 
 bool ClusterManager::Module::update() const {
-   return sendQueue->progress();
+    if (sendQueue)
+        return sendQueue->progress();
+    return false;
 }
 
 void ClusterManager::Module::delay(const message::Message &msg) {
