@@ -301,7 +301,7 @@ bool Color::compute() {
       max = getFloatParameter("max");
    }
 
-   std::cerr << "Color: [" << min << "--" << max << "]" << std::endl;
+   //std::cerr << "Color: [" << min << "--" << max << "]" << std::endl;
 
    auto out(addTexture(obj, min, max, cmap));
    out->setGrid(obj->grid());
