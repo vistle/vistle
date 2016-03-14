@@ -12,6 +12,7 @@
 #include <core/triangles.h>
 #include <core/lines.h>
 #include <core/points.h>
+#include <core/normals.h>
 
 #include "ReadModel.h"
 
@@ -79,9 +80,8 @@ Object::ptr ReadModel::load(const std::string &name) {
 
         const aiMesh *mesh = scene->mMeshes[m];
         if (mesh->HasPositions()) {
+            Coords::ptr coords;
             if (mesh->HasFaces()) {
-                Scalar *x[3] = { nullptr, nullptr, nullptr };
-                Coords::ptr coords;
                 auto numVert = mesh->mNumVertices;
                 auto numFace = mesh->mNumFaces;
                 if (mesh->mPrimitiveTypes & aiPrimitiveType_POLYGON) {
@@ -116,17 +116,36 @@ Object::ptr ReadModel::load(const std::string &name) {
                         }
                     }
                 }
-                if (coords) {
+            } else {
+                Points::ptr points(new Points(mesh->mNumVertices));
+                coords = points;
+            }
+            if (coords) {
+                Scalar *x[3] = { nullptr, nullptr, nullptr };
+                for (int c=0; c<3; ++c) {
+                    x[c] = &coords->x(c)[0];
+                }
+                for (Index i=0; i<mesh->mNumVertices; ++i) {
+                    const auto &vert = mesh->mVertices[i];
+                    for (unsigned int c=0; c<3; ++c) {
+                        x[c][i] = vert[c];
+                    }
+                }
+                ret = coords;
+                if (mesh->HasNormals()) {
+                    Normals::ptr normals(new Normals(mesh->mNumVertices));
+                    Scalar *n[3] = { nullptr, nullptr, nullptr };
                     for (int c=0; c<3; ++c) {
-                        x[c] = &coords->x(c)[0];
+                        n[c] = &coords->x(c)[0];
                     }
                     for (Index i=0; i<mesh->mNumVertices; ++i) {
-                        const auto &vert = mesh->mVertices[i];
+                        const auto &norm = mesh->mNormals[i];
                         for (unsigned int c=0; c<3; ++c) {
-                            x[c][i] = vert[c];
+                            n[c][i] = norm[c];
                         }
                     }
-                    ret = coords;
+
+                    coords->setNormals(normals);
                 }
             }
         }
