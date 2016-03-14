@@ -156,6 +156,12 @@ Object::ptr ReadModel::load(const std::string &name) {
                 }
             }
         }
+
+        break;
+    }
+
+    if (scene->mNumMeshes > 1) {
+        sendInfo("file %s contains %d meshes, all but the first have been ignored", name.c_str(), scene->mNumMeshes);
     }
 
     return ret;
