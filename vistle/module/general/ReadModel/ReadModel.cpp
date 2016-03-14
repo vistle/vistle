@@ -60,9 +60,12 @@ Object::ptr ReadModel::load(const std::string &name) {
 
     Object::ptr ret;
     Assimp::Importer importer;
+    bool indexed = false;
     unsigned int readFlags = aiProcess_PreTransformVertices|aiProcess_SortByPType|aiProcess_ImproveCacheLocality|aiProcess_OptimizeGraph|aiProcess_OptimizeMeshes;
-    if (getIntParameter("indexed_geometry"))
+    if (getIntParameter("indexed_geometry")) {
         readFlags |= aiProcess_JoinIdenticalVertices;
+        indexed = true;
+    }
     if (getIntParameter("triangulate"))
         readFlags |= aiProcess_Triangulate;
     const aiScene* scene = importer.ReadFile(name, readFlags);
@@ -92,27 +95,31 @@ Object::ptr ReadModel::load(const std::string &name) {
                     Polygons::ptr poly(new Polygons(numFace, numIndex, numVert));
                     coords = poly;
                     auto *el = &poly->el()[0];
-                    auto *cl = &poly->cl()[0];
+                    auto *cl = indexed ? &poly->cl()[0] : nullptr;
                     Index idx=0, vertCount=0;
                     for (unsigned int f=0; f<numFace; ++f) {
                         el[idx++] = vertCount;
-                        const auto &face = mesh->mFaces[f];
-                        for (unsigned int i=0; i<face.mNumIndices; ++i) {
-                            cl[vertCount++] = face.mIndices[i];
+                        if (indexed) {
+                            const auto &face = mesh->mFaces[f];
+                            for (unsigned int i=0; i<face.mNumIndices; ++i) {
+                                cl[vertCount++] = face.mIndices[i];
+                            }
                         }
                     }
                     el[idx] = vertCount;
                 } else if (mesh->mPrimitiveTypes & aiPrimitiveType_TRIANGLE) {
-                    Index numIndex = mesh->mNumFaces*3;
+                    Index numIndex = indexed ? mesh->mNumFaces*3 : 0;
                     Triangles::ptr tri(new Triangles(numIndex, numVert));
                     coords = tri;
-                    auto *cl = &tri->cl()[0];
-                    Index vertCount=0;
-                    for (unsigned int f=0; f<numFace; ++f) {
-                        const auto &face = mesh->mFaces[f];
-                        vassert(face.mNumIndices == 3);
-                        for (unsigned int i=0; i<face.mNumIndices; ++i) {
-                            cl[vertCount++] = face.mIndices[i];
+                    if (indexed) {
+                        auto *cl = &tri->cl()[0];
+                        Index vertCount=0;
+                        for (unsigned int f=0; f<numFace; ++f) {
+                            const auto &face = mesh->mFaces[f];
+                            vassert(face.mNumIndices == 3);
+                            for (unsigned int i=0; i<face.mNumIndices; ++i) {
+                                cl[vertCount++] = face.mIndices[i];
+                            }
                         }
                     }
                 }
@@ -136,7 +143,7 @@ Object::ptr ReadModel::load(const std::string &name) {
                     Normals::ptr normals(new Normals(mesh->mNumVertices));
                     Scalar *n[3] = { nullptr, nullptr, nullptr };
                     for (int c=0; c<3; ++c) {
-                        n[c] = &coords->x(c)[0];
+                        n[c] = &normals->x(c)[0];
                     }
                     for (Index i=0; i<mesh->mNumVertices; ++i) {
                         const auto &norm = mesh->mNormals[i];
