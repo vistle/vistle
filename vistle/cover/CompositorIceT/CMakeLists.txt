@@ -10,9 +10,11 @@ set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
 
 set(HEADERS
    CompositorIceT.h
+   ../VncClient/MultiChannelDrawer.h
 )
 set(SOURCES
    CompositorIceT.cpp
+   ../VncClient/MultiChannelDrawer.cpp
 )
 cover_add_plugin(CompositorIceT ${CUDA_OBJ} ${HEADER} ${SOURCES})
 target_link_libraries(CompositorIceT vistle_rhr ${ICET_CORE_LIBS} ${ICET_MPI_LIBS} ${MPI_CXX_LIBRARIES})
