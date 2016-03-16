@@ -55,6 +55,14 @@ bool MpiInfo::compute() {
    std::stringstream str;
    str << "compute(): rank " << rank() << "/" << size() << " on host " << hostname.data() << std::endl;
    sendInfo(str.str());
+   if (rank() == 0) {
+       int len = 0;
+       char version[MPI_MAX_LIBRARY_VERSION_STRING];
+       MPI_Get_library_version(version, &len);
+       std::stringstream str;
+       str << "MPI version: " << std::string(version, len) << std::endl;
+       sendInfo(str.str());
+   }
 
    return true;
 }
