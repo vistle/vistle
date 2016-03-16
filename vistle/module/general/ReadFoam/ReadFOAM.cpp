@@ -211,7 +211,14 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
    *boundaries = loadBoundary(topologyDir);
    UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0));
    std::vector<Polygons::ptr> polyList;
-   for (size_t i=0; i<(patchesAsVariants ? boundaries->boundaries.size() : 1); ++i) {
+   size_t numPatches = 0;
+   for (const auto &b: boundaries->boundaries) {
+       int boundaryIndex=b.index;
+       if (b.numFaces>0 && m_boundaryPatches(boundaryIndex)) {
+           ++numPatches;
+       }
+   }
+   for (size_t i=0; i<(patchesAsVariants ? numPatches : 1); ++i) {
        polyList.emplace_back(new Polygons(0, 0, 0));
    }
    boost::shared_ptr<std::vector<Index> > owners(new std::vector<Index>());
@@ -735,6 +742,10 @@ bool ReadFOAM::loadFields(const std::string &meshdir, const std::map<std::string
       if (it == fields.end())
          continue;
       auto fields = loadBoundaryField(meshdir, field, processor);
+      if (fields.size() != m_currentbound[processor].size()) {
+          std::cerr << "MISMATCH: trying to load field " << field << " in " << meshdir << " on proc " << processor << " for t=" << timestep << std::endl;
+          std::cerr << "MISMATCH: fields.size()=" << fields.size() << ", curbound[proc].size()=" << m_currentbound[processor].size() << std::endl;
+      }
       vassert(fields.size() == m_currentbound[processor].size());
       for (size_t j=0; j<fields.size(); ++j) {
           auto &obj = fields[j];
@@ -765,8 +776,8 @@ bool ReadFOAM::readDirectory(const std::string &casedir, int processor, int time
          auto ret = loadGrid(dir + "/polyMesh");
          UnstructuredGrid::ptr grid = ret.grid;
          setMeta(grid, processor, timestep);
-         Polygons::ptr poly = ret.polygon[0];
-         setMeta(poly, processor, timestep);
+         for (auto &poly: ret.polygon)
+             setMeta(poly, processor, timestep);
          m_owners[processor] = ret.owners;
          m_boundaries[processor] = ret.boundaries;
 
