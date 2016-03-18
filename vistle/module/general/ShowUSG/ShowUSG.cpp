@@ -57,105 +57,102 @@ bool ShowUSG::compute() {
          y = in->getNumElements();
       } else {
          x = std::max((Index)0, (Index)cellnrmin);
-         y = std::min(in->getNumElements(), (Index)cellnrmax);
+         y = std::min(in->getNumElements(), (Index)cellnrmax+1);
       }
 
       for (size_t index = x; index < y; index ++) {
-         auto type=in->tl()[index];
+          auto type=in->tl()[index];
+          if (((type&UnstructuredGrid::GHOST_BIT) && !showgho)
+                  || (!(type&UnstructuredGrid::GHOST_BIT) && !shownor))
+              continue;
+          type &= ~vistle::UnstructuredGrid::GHOST_BIT;
 
-         if ((type==vistle::UnstructuredGrid::TETRAHEDRON && shownor) || (type==vistle::UnstructuredGrid::GHOST_TETRAHEDRON && showgho)) {
-            if(showtet) {
-               out->cl().push_back(in->cl()[in->el()[index]]);
-               out->cl().push_back(in->cl()[in->el()[index] + 1]);
-               out->cl().push_back(in->cl()[in->el()[index] + 3]);
-               out->cl().push_back(in->cl()[in->el()[index]]);
-               out->el().push_back(out->cl().size());
+          if (type==vistle::UnstructuredGrid::TETRAHEDRON && showtet) {
+              out->cl().push_back(in->cl()[in->el()[index]]);
+              out->cl().push_back(in->cl()[in->el()[index] + 1]);
+              out->cl().push_back(in->cl()[in->el()[index] + 3]);
+              out->cl().push_back(in->cl()[in->el()[index]]);
+              out->el().push_back(out->cl().size());
 
-               out->cl().push_back(in->cl()[in->el()[index] + 1]);
-               out->cl().push_back(in->cl()[in->el()[index] + 2]);
-               out->cl().push_back(in->cl()[in->el()[index] + 3]);
-               out->el().push_back(out->cl().size());
+              out->cl().push_back(in->cl()[in->el()[index] + 1]);
+              out->cl().push_back(in->cl()[in->el()[index] + 2]);
+              out->cl().push_back(in->cl()[in->el()[index] + 3]);
+              out->el().push_back(out->cl().size());
 
-               out->cl().push_back(in->cl()[in->el()[index] + 2]);
-               out->cl().push_back(in->cl()[in->el()[index]]);
-               out->el().push_back(out->cl().size());
-            }
-         }
+              out->cl().push_back(in->cl()[in->el()[index] + 2]);
+              out->cl().push_back(in->cl()[in->el()[index]]);
+              out->el().push_back(out->cl().size());
+          }
 
-         else if ((type==vistle::UnstructuredGrid::PYRAMID && shownor) || (type==vistle::UnstructuredGrid::GHOST_PYRAMID && showgho)) {
-            if (showpyr) {
-               out->cl().push_back(in->cl()[in->el()[index]]);
-               out->cl().push_back(in->cl()[in->el()[index] + 1]);
-               out->cl().push_back(in->cl()[in->el()[index] + 4]);
-               out->cl().push_back(in->cl()[in->el()[index]]);
-               out->el().push_back(out->cl().size());
+          else if (type==vistle::UnstructuredGrid::PYRAMID && showpyr) {
+              out->cl().push_back(in->cl()[in->el()[index]]);
+              out->cl().push_back(in->cl()[in->el()[index] + 1]);
+              out->cl().push_back(in->cl()[in->el()[index] + 4]);
+              out->cl().push_back(in->cl()[in->el()[index]]);
+              out->el().push_back(out->cl().size());
 
-               out->cl().push_back(in->cl()[in->el()[index] + 1]);
-               out->cl().push_back(in->cl()[in->el()[index] + 2]);
-               out->cl().push_back(in->cl()[in->el()[index] + 4]);
-               out->el().push_back(out->cl().size());
+              out->cl().push_back(in->cl()[in->el()[index] + 1]);
+              out->cl().push_back(in->cl()[in->el()[index] + 2]);
+              out->cl().push_back(in->cl()[in->el()[index] + 4]);
+              out->el().push_back(out->cl().size());
 
-               out->cl().push_back(in->cl()[in->el()[index] + 2]);
-               out->cl().push_back(in->cl()[in->el()[index] + 3]);
-               out->cl().push_back(in->cl()[in->el()[index] + 4]);
-               out->el().push_back(out->cl().size());
+              out->cl().push_back(in->cl()[in->el()[index] + 2]);
+              out->cl().push_back(in->cl()[in->el()[index] + 3]);
+              out->cl().push_back(in->cl()[in->el()[index] + 4]);
+              out->el().push_back(out->cl().size());
 
-               out->cl().push_back(in->cl()[in->el()[index] + 3]);
-               out->cl().push_back(in->cl()[in->el()[index]]);
-               out->el().push_back(out->cl().size());
-            }
-         }
+              out->cl().push_back(in->cl()[in->el()[index] + 3]);
+              out->cl().push_back(in->cl()[in->el()[index]]);
+              out->el().push_back(out->cl().size());
+          }
 
-         else if ((type==vistle::UnstructuredGrid::PRISM && shownor) || (type==vistle::UnstructuredGrid::GHOST_PRISM && showgho)) {
-            if (showpri) {
-               out->cl().push_back(in->cl()[in->el()[index]]);
-               out->cl().push_back(in->cl()[in->el()[index] + 1]);
-               out->cl().push_back(in->cl()[in->el()[index] + 2]);
-               out->cl().push_back(in->cl()[in->el()[index]]);
-               out->cl().push_back(in->cl()[in->el()[index] + 3]);
-               out->cl().push_back(in->cl()[in->el()[index] + 4]);
-               out->cl().push_back(in->cl()[in->el()[index] + 5]);
-               out->cl().push_back(in->cl()[in->el()[index] + 3]);
-               out->el().push_back(out->cl().size());
+          else if (type==vistle::UnstructuredGrid::PRISM && showpri) {
+              out->cl().push_back(in->cl()[in->el()[index]]);
+              out->cl().push_back(in->cl()[in->el()[index] + 1]);
+              out->cl().push_back(in->cl()[in->el()[index] + 2]);
+              out->cl().push_back(in->cl()[in->el()[index]]);
+              out->cl().push_back(in->cl()[in->el()[index] + 3]);
+              out->cl().push_back(in->cl()[in->el()[index] + 4]);
+              out->cl().push_back(in->cl()[in->el()[index] + 5]);
+              out->cl().push_back(in->cl()[in->el()[index] + 3]);
+              out->el().push_back(out->cl().size());
 
-               out->cl().push_back(in->cl()[in->el()[index] + 1]);
-               out->cl().push_back(in->cl()[in->el()[index] + 4]);
-               out->el().push_back(out->cl().size());
+              out->cl().push_back(in->cl()[in->el()[index] + 1]);
+              out->cl().push_back(in->cl()[in->el()[index] + 4]);
+              out->el().push_back(out->cl().size());
 
-               out->cl().push_back(in->cl()[in->el()[index] + 2]);
-               out->cl().push_back(in->cl()[in->el()[index] + 5]);
-               out->el().push_back(out->cl().size());
-            }
-         }
+              out->cl().push_back(in->cl()[in->el()[index] + 2]);
+              out->cl().push_back(in->cl()[in->el()[index] + 5]);
+              out->el().push_back(out->cl().size());
+          }
 
-         else if ((type==vistle::UnstructuredGrid::HEXAHEDRON && shownor) || (type==vistle::UnstructuredGrid::GHOST_HEXAHEDRON && showgho)) {
-            if (showhex) {
-               out->cl().push_back(in->cl()[in->el()[index]]);
-               out->cl().push_back(in->cl()[in->el()[index] + 1]);
-               out->cl().push_back(in->cl()[in->el()[index] + 2]);
-               out->cl().push_back(in->cl()[in->el()[index] + 3]);
-               out->cl().push_back(in->cl()[in->el()[index]]);
-               out->cl().push_back(in->cl()[in->el()[index] + 4]);
-               out->el().push_back(out->cl().size());
+          else if (type==vistle::UnstructuredGrid::HEXAHEDRON && showhex) {
+              out->cl().push_back(in->cl()[in->el()[index]]);
+              out->cl().push_back(in->cl()[in->el()[index] + 1]);
+              out->cl().push_back(in->cl()[in->el()[index] + 2]);
+              out->cl().push_back(in->cl()[in->el()[index] + 3]);
+              out->cl().push_back(in->cl()[in->el()[index]]);
+              out->cl().push_back(in->cl()[in->el()[index] + 4]);
+              out->el().push_back(out->cl().size());
 
-               out->cl().push_back(in->cl()[in->el()[index] + 5]);
-               out->cl().push_back(in->cl()[in->el()[index] + 6]);
-               out->cl().push_back(in->cl()[in->el()[index] + 7]);
-               out->cl().push_back(in->cl()[in->el()[index] + 4]);
-               out->cl().push_back(in->cl()[in->el()[index] + 5]);
-               out->cl().push_back(in->cl()[in->el()[index] + 1]);
-               out->el().push_back(out->cl().size());
+              out->cl().push_back(in->cl()[in->el()[index] + 5]);
+              out->cl().push_back(in->cl()[in->el()[index] + 6]);
+              out->cl().push_back(in->cl()[in->el()[index] + 7]);
+              out->cl().push_back(in->cl()[in->el()[index] + 4]);
+              out->cl().push_back(in->cl()[in->el()[index] + 5]);
+              out->cl().push_back(in->cl()[in->el()[index] + 1]);
+              out->el().push_back(out->cl().size());
 
-               out->cl().push_back(in->cl()[in->el()[index] + 2]);
-               out->cl().push_back(in->cl()[in->el()[index] + 6]);
-               out->el().push_back(out->cl().size());
+              out->cl().push_back(in->cl()[in->el()[index] + 2]);
+              out->cl().push_back(in->cl()[in->el()[index] + 6]);
+              out->el().push_back(out->cl().size());
 
-               out->cl().push_back(in->cl()[in->el()[index] + 3]);
-               out->cl().push_back(in->cl()[in->el()[index] + 7]);
-               out->el().push_back(out->cl().size());
+              out->cl().push_back(in->cl()[in->el()[index] + 3]);
+              out->cl().push_back(in->cl()[in->el()[index] + 7]);
+              out->el().push_back(out->cl().size());
 
 
-               /*
+              /*
                            (*out->el)[lineIdx++] = cornerIdx;
 
                            (*out->cl)[cornerIdx++] = in->cl[in->el[index]];
@@ -181,25 +178,22 @@ bool ShowUSG::compute() {
                            (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 3];
                            (*out->cl)[cornerIdx++] = in->cl[in->el[index] + 7];
                            */
-            }
-         }
+          }
 
-         else if ((type==vistle::UnstructuredGrid::POLYHEDRON && shownor) || (type==vistle::UnstructuredGrid::GHOST_POLYHEDRON && showgho)) {
-            if (showpol) {
-               Index sidebegin = InvalidIndex;
-               for (Index i = in->el()[index]; i < in->el()[index+1]; i++) {
+          else if (type==vistle::UnstructuredGrid::POLYHEDRON && showpol) {
+              Index sidebegin = InvalidIndex;
+              for (Index i = in->el()[index]; i < in->el()[index+1]; i++) {
 
                   out->cl().push_back(in->cl()[i]);
 
                   if (in->cl()[i] == sidebegin){// Wenn die Seite endet
-                     sidebegin = InvalidIndex;
-                     out->el().push_back(out->cl().size());
+                      sidebegin = InvalidIndex;
+                      out->el().push_back(out->cl().size());
                   } else if(sidebegin == InvalidIndex) { //Wenn die Neue Seite beginnt
-                     sidebegin = in->cl()[i];
+                      sidebegin = in->cl()[i];
                   }
-               }
-            }
-         }
+              }
+          }
       }
 
       std::cerr << "getNum corners: " << out->getNumCorners() << std::endl;
