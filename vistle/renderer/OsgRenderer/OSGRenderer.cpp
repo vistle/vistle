@@ -6,6 +6,7 @@
 
 #include <vector>
 #include <boost/static_assert.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include <osg/DisplaySettings>
 #include <osg/Group>
