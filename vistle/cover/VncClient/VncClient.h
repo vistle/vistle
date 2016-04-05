@@ -27,6 +27,8 @@
 
 #include <OpenVRUI/coMenuItem.h> // vrui::coMenuListener
 
+#include "MultiChannelDrawer.h"
+
 namespace osg {
 class TextureRectangle;
 }
@@ -70,54 +72,9 @@ public:
 
    void sendFeedback(const char *info, const char *key, const char *data=NULL);
 
-   //! store data associated with one channel
-   struct ChannelData {
-      int channelNum;
-      bool second;
-      osg::Matrix curProj, curView, curModel;
-      osg::Matrix newProj, newView, newModel;
-
-   // geometry for mapping depth image
-      osg::TextureRectangle *colorTex;
-      osg::TextureRectangle *depthTex;
-      osg::Vec2Array* texcoord;
-      osg::ref_ptr<osg::Geometry> fixedGeo;
-      osg::ref_ptr<osg::Geometry> reprojGeo;
-      osg::Vec2Array* coord;
-      osg::Uniform *size;
-      osg::Uniform *pixelOffset;
-      osg::Uniform *reprojMat;
-      osg::Geode *geode;
-      osg::ref_ptr<osg::MatrixTransform> scene;
-      osg::ref_ptr<osg::Camera> camera;
-      osg::ref_ptr<osg::Program> reprojConstProgram;
-      osg::ref_ptr<osg::Program> reprojAdaptProgram;
-
-      ChannelData(int channel=-1)
-         : channelNum(channel)
-         , second(false)
-         , colorTex(NULL)
-         , depthTex(NULL)
-         , texcoord(NULL)
-         , size(NULL)
-         , pixelOffset(NULL)
-         , reprojMat(NULL)
-         , geode(NULL)
-      {
-      }
-   };
-
 private:
    //! make plugin available to static member functions
    static VncClient *plugin;
-
-   void switchReprojection(bool reproj);
-   void switchAdaptivePointSize(bool adapt);
-   void initChannelData(VncClient::ChannelData &cd);
-   void createGeometry(VncClient::ChannelData &cd);
-   void clearChannelData();
-
-   osg::ref_ptr<osg::Camera> m_remoteCam;
 
    int m_compress; //!< VNC compression level (0: lowest, 9: highest)
    int m_quality; //!< VNC quality (0: lowest, 9: highest)
@@ -128,8 +85,6 @@ private:
    size_t m_remoteFrames, m_localFrames;
    size_t m_depthBytes, m_rgbBytes, m_depthBpp, m_numPixels;
    size_t m_depthBytesS, m_rgbBytesS, m_depthBppS, m_numPixelsS;
-
-   std::vector<ChannelData> m_channelData;
 
    int handleRfbMessages();
    bool connectClient();
@@ -196,5 +151,7 @@ private:
    coCheckboxMenuItem *m_reprojCheck, *m_adaptCheck;
    bool m_reproject, m_adapt;
    coCheckboxMenuItem *m_allTilesCheck;
+
+   osg::ref_ptr<MultiChannelDrawer> m_drawer;
 };
 #endif
