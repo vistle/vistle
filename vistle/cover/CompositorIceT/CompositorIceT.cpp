@@ -239,13 +239,8 @@ osg::ref_ptr<osg::GraphicsContext> CompositorIceT::createGraphicsContext(int vie
         traits->pbuffer = true;
         traits->vsync = false;
 
-#if 1
         gc = osg::GraphicsContext::createGraphicsContext(traits);
         cd.camera->setGraphicsContext(gc);
-#else
-        gc = cd.camera->getGraphicsContext();
-#endif
-        cd.camera->setDisplaySettings(displaySettings);
 #if 0
         cd.camera->setRenderTargetImplementation(osg::Camera::PIXEL_BUFFER);
         cd.camera->setRenderTargetImplementation(osg::Camera::SEPARATE_WINDOW);
@@ -342,29 +337,35 @@ bool CompositorIceT::init()
    m_viewData.resize(numViews);
    m_compositeData.resize(numViews);
 
-   const auto &cam0 = coVRConfig::instance()->channels[0].camera;
+   int view = 0;
+   for (int i=0; i<numChannels; ++i) {
+       int idx = m_viewBase[m_rank]+view;
+       m_compositeData[idx].localIdx = view;
+       m_compositeData[idx].chan = i;
+       ++view;
+       if (coVRConfig::instance()->channels[i].stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
+          int idx = m_viewBase[m_rank]+view;
+          m_compositeData[idx].localIdx = view;
+          m_compositeData[idx].chan = i;
+          ++view;
+       }
+   }
 
    for (int i=0; i<coVRMSController::instance()->getNumSlaves()+1; ++i) {
        for (int v=0; v<m_numViews[i]; ++v) {
            int idx = m_viewBase[i]+v;
            CERR << "adding view " << idx << " for rank " << i << std::endl;
-           m_compositeData[idx].rank = i;
-           if (m_rank == m_compositeData[idx].rank) {
-               m_compositeData[idx].chan = 0; // FIXME: multiple channels
-               m_compositeData[idx].localIdx = 0; // FIXME: stereo channels
-           }
-
            auto &cd = m_compositeData[idx];
+           cd.rank = i;
            cd.camera = new osg::Camera;
            auto &cam = *cd.camera;
-           //cam.setGraphicsContext(cam0->getGraphicsContext());
            cam.setReferenceFrame(osg::Transform::ABSOLUTE_RF);
            cam.setCullMask(~0 & ~(Isect::Collision|Isect::Intersection|Isect::NoMirror|Isect::Pick|Isect::Walk|Isect::Touch));
            cam.setRenderTargetImplementation(osg::Camera::PIXEL_BUFFER);
+           //cam.setRenderTargetImplementation(osg::Camera::SEPARATE_WINDOW);
 #if 0
            cam.setImplicitBufferAttachmentMask(osg::Camera::IMPLICIT_COLOR_BUFFER_ATTACHMENT|osg::Camera::IMPLICIT_DEPTH_BUFFER_ATTACHMENT,
                                                    osg::Camera::IMPLICIT_COLOR_BUFFER_ATTACHMENT|osg::Camera::IMPLICIT_DEPTH_BUFFER_ATTACHMENT);
-           //cam.setRenderTargetImplementation(osg::Camera::SEPARATE_WINDOW);
 #endif
 
            cam.setPostDrawCallback(new CompositeCallback(this, idx));
@@ -373,23 +374,13 @@ bool CompositorIceT::init()
 
            checkResize(idx);
 
-           //auto gc = createGraphicsContext(idx, pbuffer, nullptr);
-           //auto gc = createGraphicsContext(idx, pbuffer, cam0->getGraphicsContext());
-
-           //cam.setView(cam0->getView());
-           //cam.setGraphicsContext(cam0->getGraphicsContext());
-           //cam.setGraphicsContext(gc);
-           //cam.attach(osg::Camera::COLOR_BUFFER, image.get());
            cam.setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
 
-#if 1
            osgViewer::Renderer *renderer = new coVRRenderer(&cam, 0);
            renderer->getSceneView(0)->setSceneData(VRSceneGraph::instance()->getObjectsScene());
            renderer->getSceneView(1)->setSceneData(VRSceneGraph::instance()->getObjectsScene());
            cam.setRenderer(renderer);
-#else
-           cam.addChild(VRSceneGraph::instance()->getObjectsScene());
-#endif
+
            cam.setViewport(0, 0, cd.width, cd.height);
            VRViewer::instance()->addCamera(&cam);
            cover->getScene()->addChild(&cam);
