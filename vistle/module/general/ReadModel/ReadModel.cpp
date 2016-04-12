@@ -174,7 +174,7 @@ bool ReadModel::compute() {
    m_firstStep = getIntParameter("first_step");
    m_lastStep = getIntParameter("last_step");
    m_step = getIntParameter("step");
-   if (m_lastStep-m_firstStep*m_step < 0)
+   if ((m_lastStep-m_firstStep)*m_step < 0)
        m_step *= -1;
    bool reverse = false;
    int step = m_step, first = m_firstStep, last = m_lastStep;

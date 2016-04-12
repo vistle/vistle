@@ -21,8 +21,8 @@ class ReadModel: public vistle::Module {
    virtual bool compute();
    int rankForBlock(int block) const;
 
-   int m_firstBlock, m_lastBlock;
-   int m_firstStep, m_lastStep, m_step;
+   vistle::Integer m_firstBlock, m_lastBlock;
+   vistle::Integer m_firstStep, m_lastStep, m_step;
 };
 
 #endif
