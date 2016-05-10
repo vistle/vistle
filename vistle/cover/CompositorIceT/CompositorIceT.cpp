@@ -376,7 +376,7 @@ bool CompositorIceT::init()
 
            cam.setComputeNearFarMode(osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR);
 
-           osgViewer::Renderer *renderer = new coVRRenderer(&cam, 0);
+           osgViewer::Renderer *renderer = new coVRRenderer(&cam, -1 /* channel */);
            renderer->getSceneView(0)->setSceneData(VRSceneGraph::instance()->getObjectsScene());
            renderer->getSceneView(1)->setSceneData(VRSceneGraph::instance()->getObjectsScene());
            cam.setRenderer(renderer);
@@ -458,17 +458,16 @@ void CompositorIceT::checkResize(int view)
    assert(m_compositeData.size() > view);
 
    CompositeData &cd = m_compositeData[view];
-   int dim[2]; // width, height;
+   int dim[2] = { 0, 0 }; // width, height;
    if (cd.chan >= 0) {
        // channel is local
        const auto &ch = coVRConfig::instance()->channels[cd.chan];
        const viewportStruct &vp = coVRConfig::instance()->viewports[ch.viewportNum];
-       if (vp.window < 0)
-
-           return;
-       const auto &win = coVRConfig::instance()->windows[vp.window];
-       dim[0] = (vp.viewportXMax - vp.viewportXMin) * win.sx;
-       dim[1] = (vp.viewportYMax - vp.viewportYMin) * win.sy;
+       if (vp.window >= 0) {
+          const auto &win = coVRConfig::instance()->windows[vp.window];
+          dim[0] = (vp.viewportXMax - vp.viewportXMin) * win.sx;
+          dim[1] = (vp.viewportYMax - vp.viewportYMin) * win.sy;
+       }
        if (coVRMSController::instance()->isSlave()) {
            coVRMSController::instance()->sendMaster(dim, sizeof(dim));
        }
