@@ -1,9 +1,9 @@
 FROM library/ubuntu:15.10
-MAINTAINER "Martin Aumueller" <aumueller@hlrs.de>
+MAINTAINER "Martin Aumüller" <aumueller@hlrs.de>
 
 ENV PAR -j8
-ENV ISPCVER 1.8.2
-ENV EMBREETAG v2.8.0
+ENV ISPCVER 1.9.0
+ENV EMBREETAG v2.9.0
 ENV ARCHSUFFIX werewolfopt
 ENV BUILDTYPE Release
 ENV PREFIX /usr
