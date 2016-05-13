@@ -12,18 +12,22 @@ WORKDIR ${BUILDDIR}
 ADD embree-debian-multiarch.diff ${BUILDDIR}/embree-debian-multiarch.diff
 
 RUN apt-get update -y && apt-get install -y \
-       libtbb-dev libglew-dev \
-       qttools5-dev qtscript5-dev libqt5scripttools5 libqt5svg5-dev libqt5opengl5-dev libqt5webkit5-dev \
+       libtbb-dev \
        libmpich-dev mpich \
        git cmake make file \
-       libopenscenegraph-dev libjpeg-dev \
+       libjpeg-dev \
        libvncserver-dev \
        libsnappy-dev zlib1g-dev libreadline-dev \
-       libxmu-dev libxi-dev \
+       libassimp-dev \
        libboost-atomic-dev libboost-chrono-dev libboost-date-time-dev libboost-exception-dev libboost-filesystem-dev \
        libboost-iostreams-dev libboost-locale-dev libboost-log-dev libboost-math-dev libboost-program-options-dev libboost-python-dev \
        libboost-random-dev libboost-regex-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev libboost-timer-dev \
        libboost-tools-dev libboost-dev
+
+# dependencies for OpenGL/UI components
+#RUN apt-get install -y libxmu-dev libxi-dev \
+#       libopenscenegraph-dev libglew-dev \
+#       qttools5-dev qtscript5-dev libqt5scripttools5 libqt5svg5-dev libqt5opengl5-dev libqt5webkit5-dev \
 
 # https://bugs.launchpad.net/ubuntu/+source/libjpeg-turbo/+bug/1369067
 RUN apt-get install -y libturbojpeg && cd /usr/lib/x86_64-linux-gnu && ln -s libturbojpeg.so.0 libturbojpeg.so
@@ -64,7 +68,7 @@ RUN git clone --recursive git://github.com/vistle/vistle.git \
        && cd ${BUILDDIR}/vistle \
        && mkdir build.vistle \
        && cd build.vistle \
-       && cmake -DCMAKE_INSTALL_PREFIX=${PREFIX} -DENABLE_INSTALLER=FALSE -DCMAKE_BUILD_TYPE=${BUILDTYPE} .. \
+       && cmake -DCMAKE_INSTALL_PREFIX=${PREFIX} -DICET_USE_OPENGL=OFF -DENABLE_INSTALLER=FALSE -DCMAKE_BUILD_TYPE=${BUILDTYPE} .. \
        && make ${PAR} install \
        && cd ${BUILDDIR} \
        && rm -rf vistle

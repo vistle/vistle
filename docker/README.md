@@ -6,4 +6,4 @@ Docker container based on Ubuntu 15.10.
 `docker build -t hlrs/vistle .`
 
 ## Running
-`docker run local/vistle vistle -b`
+`docker run hlrs/vistle -b`
