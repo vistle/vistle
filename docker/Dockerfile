@@ -11,7 +11,7 @@ ENV BUILDDIR /build
 WORKDIR ${BUILDDIR}
 ADD embree-debian-multiarch.diff ${BUILDDIR}/embree-debian-multiarch.diff
 
-RUN apt-get update -y && apt-get install -y \
+RUN apt-get update -y && apt-get install --no-install-recommends -y \
        libtbb-dev \
        libmpich-dev mpich \
        git cmake make file \
@@ -25,19 +25,21 @@ RUN apt-get update -y && apt-get install -y \
        libboost-tools-dev libboost-dev
 
 # dependencies for OpenGL/UI components
-#RUN apt-get install -y libxmu-dev libxi-dev \
+#RUN apt-get install --no-install-recommends -y libxmu-dev libxi-dev \
 #       libopenscenegraph-dev libglew-dev \
 #       qttools5-dev qtscript5-dev libqt5scripttools5 libqt5svg5-dev libqt5opengl5-dev libqt5webkit5-dev \
 
 # https://bugs.launchpad.net/ubuntu/+source/libjpeg-turbo/+bug/1369067
-RUN apt-get install -y libturbojpeg && cd /usr/lib/x86_64-linux-gnu && ln -s libturbojpeg.so.0 libturbojpeg.so
+RUN apt-get install --no-install-recommends -y libturbojpeg && cd /usr/lib/x86_64-linux-gnu && ln -s libturbojpeg.so.0 libturbojpeg.so
 
 # install ispc - prerequisite for embree
-RUN apt-get install -y wget \
+RUN apt-get install --no-install-recommends -y wget ca-certificates \
        && cd /tmp \
        && wget http://sourceforge.net/projects/ispcmirror/files/v${ISPCVER}/ispc-v${ISPCVER}-linux.tar.gz/download \
        && tar -C /usr/bin -x -f /tmp/download --strip-components=1 ispc-v${ISPCVER}-linux/ispc \
-       && rm download
+       && rm download \
+       && apt-get remove -y wget ca-certificates \
+       && apt-get clean -y
 
 # build embree CPU ray tracer
 RUN git clone git://github.com/embree/embree.git && cd embree && git checkout ${EMBREETAG} \
