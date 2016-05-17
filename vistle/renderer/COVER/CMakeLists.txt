@@ -1,3 +1,10 @@
+set(CMAKE_MODULE_PATH "$ENV{COVISEDIR}/cmake" ${CMAKE_MODULE_PATH})
+vistle_find_package(COVER)
+if (NOT COVER_FOUND)
+   message("COVER not found - not building COVER wrapper")
+   return()
+endif()
+
 include_directories(${MPI_C_INCLUDE_PATH})
 set(CMAKE_CXX_COMPILE_FLAGS "${CMAKE_CXX_COMPILE_FLAGS} ${MPI_C_COMPILE_FLAGS}")
 set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS}")
