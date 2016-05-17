@@ -62,7 +62,7 @@ RUN git clone git://github.com/hlrs-vis/covise.git \
        && rm -rf covise
 
 # Vistle proper
-EXPOSE 31093 31590
+EXPOSE 31093 31094 31590
 RUN git clone --recursive git://github.com/vistle/vistle.git \
        && export COVISEDESTDIR=${BUILDDIR}/covise \
        && cd ${BUILDDIR}/vistle \
