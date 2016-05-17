@@ -34,7 +34,7 @@ set(boost_mpi_SOURCES
 set(boost_mpi_HEADERS
 )
 
-add_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
+vistle_add_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
 
 target_link_libraries(vistle_boost_mpi
         ${Boost_LIBRARIES}
