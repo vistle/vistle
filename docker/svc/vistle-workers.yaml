@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vistle-workers
+spec:
+  selector:
+    process-group: vistle-workers
+  clusterIP: "None"
+  ports:
+  - name: ssh
+    port: 22
+    targetPort: ssh

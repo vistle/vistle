@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vistle
+  labels:
+    k8s-app: vistle
+spec:
+  selector:
+    k8s-app: vistle
+  ports:
+  - name: ssh
+    port: 22
+    targetPort: ssh
+  - name: vistle
+    port: 31093
+    targetPort: vistle
+  - name: vistle-data
+    port: 31094
+    targetPort: vistle-data
+  - name: vistle-vnc
+    port: 31590
+    targetPort: vistle-vnc
+  externalIPs:
+  - 129.206.10.211
