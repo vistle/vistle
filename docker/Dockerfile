@@ -68,7 +68,7 @@ RUN git clone --recursive git://github.com/vistle/vistle.git \
        && cd ${BUILDDIR}/vistle \
        && mkdir build.vistle \
        && cd build.vistle \
-       && cmake -DCMAKE_INSTALL_PREFIX=${PREFIX} -DICET_USE_OPENGL=OFF -DENABLE_INSTALLER=FALSE -DCMAKE_BUILD_TYPE=${BUILDTYPE} .. \
+       && cmake -DVISTLE_BUILD_NATIVE=OFF -DCMAKE_INSTALL_PREFIX=${PREFIX} -DICET_USE_OPENGL=OFF -DENABLE_INSTALLER=FALSE -DCMAKE_BUILD_TYPE=${BUILDTYPE} .. \
        && make ${PAR} install \
        && cd ${BUILDDIR} \
        && rm -rf vistle
