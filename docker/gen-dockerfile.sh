@@ -80,7 +80,7 @@ RUN git clone git://github.com/hlrs-vis/covise.git \
        && cd ${BUILDDIR}/covise \
        && mkdir -p build.covise \
        && cd build.covise \
-       && cmake .. -DCOVISE_BUILD_ONLY_FILE=TRUE -DCMAKE_INSTALL_PREFIX=${PREFIX} -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCOVISE_WARNING_IS_ERROR=FALSE \
+       && cmake .. -DCOVISE_NATIVE_ARCH=OFF -DCOVISE_BUILD_ONLY_FILE=TRUE -DCMAKE_INSTALL_PREFIX=${PREFIX} -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCOVISE_WARNING_IS_ERROR=FALSE \
        && make ${PAR} install \
        && cd ${BUILDDIR} \
        && rm -rf covise
@@ -92,7 +92,7 @@ RUN git clone --recursive git://github.com/vistle/vistle.git \
        && cd ${BUILDDIR}/vistle \
        && mkdir build.vistle \
        && cd build.vistle \
-       && cmake -DVISTLE_BUILD_NATIVE=OFF -DCMAKE_INSTALL_PREFIX=${PREFIX} -DICET_USE_OPENGL=OFF -DENABLE_INSTALLER=FALSE -DCMAKE_BUILD_TYPE=${BUILDTYPE} .. \
+       && cmake -DVISTLE_NATIVE_ARCH=OFF -DCMAKE_INSTALL_PREFIX=${PREFIX} -DICET_USE_OPENGL=OFF -DENABLE_INSTALLER=FALSE -DCMAKE_BUILD_TYPE=${BUILDTYPE} .. \
        && make ${PAR} install \
        && cd ${BUILDDIR} \
        && rm -rf vistle

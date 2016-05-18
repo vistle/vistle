@@ -18,10 +18,10 @@ RUN apt-get install --no-install-recommends -y wget ca-certificates        && cd
 RUN git clone git://github.com/embree/embree.git && cd embree && git checkout v2.9.0       && git apply ../embree-debian-multiarch.diff       && rm ../embree-debian-multiarch.diff       && mkdir build && cd build       && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DENABLE_TUTORIALS=OFF ..       && make -j8 install       && cd /build       && rm -rf embree
 
 # build COVISE file I/O library
-RUN git clone git://github.com/hlrs-vis/covise.git        && export ARCHSUFFIX=werewolfopt        && export COVISEDIR=/build/covise        && cd /build/covise        && mkdir -p build.covise        && cd build.covise        && cmake .. -DCOVISE_BUILD_ONLY_FILE=TRUE -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DCOVISE_WARNING_IS_ERROR=FALSE        && make -j8 install        && cd /build        && rm -rf covise
+RUN git clone git://github.com/hlrs-vis/covise.git        && export ARCHSUFFIX=werewolfopt        && export COVISEDIR=/build/covise        && cd /build/covise        && mkdir -p build.covise        && cd build.covise        && cmake .. -DCOVISE_NATIVE_ARCH=OFF -DCOVISE_BUILD_ONLY_FILE=TRUE -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DCOVISE_WARNING_IS_ERROR=FALSE        && make -j8 install        && cd /build        && rm -rf covise
 
 # Vistle proper
-RUN git clone --recursive git://github.com/vistle/vistle.git        && export ARCHSUFFIX=werewolfopt        && export COVISEDESTDIR=/build/covise        && cd /build/vistle        && mkdir build.vistle        && cd build.vistle        && cmake -DVISTLE_BUILD_NATIVE=OFF -DCMAKE_INSTALL_PREFIX=/usr -DICET_USE_OPENGL=OFF -DENABLE_INSTALLER=FALSE -DCMAKE_BUILD_TYPE=Release ..        && make -j8 install        && cd /build        && rm -rf vistle
+RUN git clone --recursive git://github.com/vistle/vistle.git        && export ARCHSUFFIX=werewolfopt        && export COVISEDESTDIR=/build/covise        && cd /build/vistle        && mkdir build.vistle        && cd build.vistle        && cmake -DVISTLE_NATIVE_ARCH=OFF -DCMAKE_INSTALL_PREFIX=/usr -DICET_USE_OPENGL=OFF -DENABLE_INSTALLER=FALSE -DCMAKE_BUILD_TYPE=Release ..        && make -j8 install        && cd /build        && rm -rf vistle
 EXPOSE 31093 31094 31590
 ENTRYPOINT ["/usr/bin/vistle"]
 CMD ["-b"]
