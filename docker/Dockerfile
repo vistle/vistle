@@ -11,6 +11,9 @@ RUN apt-get update -y && apt-get install --no-install-recommends -y        libtb
 # https://bugs.launchpad.net/ubuntu/+source/libjpeg-turbo/+bug/1369067
 RUN apt-get install --no-install-recommends -y libturbojpeg && cd /usr/lib/x86_64-linux-gnu && ln -s libturbojpeg.so.0 libturbojpeg.so
 
+# for mpirun
+RUN apt-get install --no-install-recommends -y openssh-server && mkdir -p /var/run/sshd
+
 # install ispc - prerequisite for embree
 RUN apt-get install --no-install-recommends -y wget ca-certificates        && cd /tmp        && wget http://sourceforge.net/projects/ispcmirror/files/v1.9.0/ispc-v1.9.0-linux.tar.gz/download        && tar -C /usr/bin -x -f /tmp/download --strip-components=1 ispc-v1.9.0-linux/ispc        && rm download        && apt-get remove -y wget ca-certificates        && apt-get clean -y
 
@@ -22,6 +25,6 @@ RUN git clone git://github.com/hlrs-vis/covise.git        && export ARCHSUFFIX=w
 
 # Vistle proper
 RUN git clone --recursive git://github.com/vistle/vistle.git        && export ARCHSUFFIX=werewolfopt        && export COVISEDESTDIR=/build/covise        && cd /build/vistle        && mkdir build.vistle        && cd build.vistle        && cmake -DVISTLE_NATIVE_ARCH=OFF -DCMAKE_INSTALL_PREFIX=/usr -DICET_USE_OPENGL=OFF -DENABLE_INSTALLER=FALSE -DCMAKE_BUILD_TYPE=Release ..        && make -j8 install        && cd /build        && rm -rf vistle
-EXPOSE 31093 31094 31590
+EXPOSE 22 31093 31094 31590
 ENTRYPOINT ["/usr/bin/vistle"]
 CMD ["-b"]

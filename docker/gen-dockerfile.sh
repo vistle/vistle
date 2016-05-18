@@ -54,6 +54,9 @@ RUN apt-get update -y && apt-get install --no-install-recommends -y \
 # https://bugs.launchpad.net/ubuntu/+source/libjpeg-turbo/+bug/1369067
 RUN apt-get install --no-install-recommends -y libturbojpeg && cd /usr/lib/x86_64-linux-gnu && ln -s libturbojpeg.so.0 libturbojpeg.so
 
+# for mpirun
+RUN apt-get install --no-install-recommends -y openssh-server && mkdir -p /var/run/sshd
+
 # install ispc - prerequisite for embree
 RUN apt-get install --no-install-recommends -y wget ca-certificates \
        && cd /tmp \
@@ -100,12 +103,12 @@ EOF
 
 case $variant in
    frontend)
-      echo EXPOSE 31093 31094 31590
+      echo EXPOSE 22 31093 31094 31590
       echo ENTRYPOINT [\"/usr/bin/vistle\"]
       echo CMD [\"-b\"]
       ;;
    node)
-      echo EXPOSE 1000 31094
+      echo EXPOSE 22 31094
       echo ENTRYPOINT [\"/usr/bin/vistle\"]
       echo CMD [\"-b\"]
       ;;
