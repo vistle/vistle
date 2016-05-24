@@ -25,7 +25,14 @@
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
 
+//#define VRUI
+
+#ifdef VRUI
 #include <OpenVRUI/coMenuItem.h> // vrui::coMenuListener
+#else
+#include <cover/mui/support/EventListener.h>
+#include <cover/coTabletUI.h>
+#endif
 
 #include "MultiChannelDrawer.h"
 
@@ -37,7 +44,11 @@ namespace vrui {
 class coSubMenuItem;
 class coRowMenu;
 class coCheckboxMenuItem;
-class coPotiMenuItem;
+}
+
+namespace mui {
+class Tab;
+class ToggleButton;
 }
 
 using namespace vrui;
@@ -47,8 +58,15 @@ class RemoteRenderObject;
 
 struct DecodeTask;
 
+
 //! implement remote hybrid rendering client based on VNC protocol
-class VncClient: public coVRPlugin, private coMenuListener
+class VncClient: public coVRPlugin
+#ifdef VRUI
+, private coMenuListener
+#else
+, private mui::EventListener
+, private opencover::coTUIListener
+#endif
 {
 public:
    VncClient();
@@ -57,7 +75,12 @@ public:
    bool init() override;
    void preFrame() override;
    void expandBoundingSphere(osg::BoundingSphere &bs) override;
+#ifdef VRUI
    void menuEvent(coMenuItem* item) override;
+#else
+   void muiEvent(mui::Element *muiItem) override;
+   void tabletEvent(coTUIElement *) override;
+#endif
    void setTimestep(int t) override;
    void requestTimestep(int t) override;
 
@@ -76,6 +99,8 @@ private:
    //! make plugin available to static member functions
    static VncClient *plugin;
 
+   std::string m_serverHost;
+   int m_port;
    int m_compress; //!< VNC compression level (0: lowest, 9: highest)
    int m_quality; //!< VNC quality (0: lowest, 9: highest)
    //! do timings
@@ -146,11 +171,19 @@ private:
    int m_numViews;
    std::vector<int> m_numChannels;
 
+#ifdef VRUI
    coRowMenu *m_menu;
    coSubMenuItem *m_menuItem;
    coCheckboxMenuItem *m_reprojCheck, *m_adaptCheck;
-   bool m_reproject, m_adapt;
    coCheckboxMenuItem *m_allTilesCheck;
+#else
+   mui::Tab *m_tab;
+   mui::ToggleButton *m_reprojCheck, *m_adaptCheck, *m_connectCheck;
+   coTUILabel *m_hostLabel, *m_portLabel;
+   coTUIEditTextField *m_hostEdit;
+   coTUIEditIntField *m_portEdit;
+#endif
+   bool m_reproject, m_adapt;
 
    osg::ref_ptr<MultiChannelDrawer> m_drawer;
 };

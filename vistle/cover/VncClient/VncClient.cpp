@@ -19,6 +19,10 @@
 #include <cover/coVRLighting.h>
 #include <cover/coVRAnimationManager.h>
 
+#include <cover/mui/Tab.h>
+#include <cover/mui/ToggleButton.h>
+#include <cover/mui/LabelElement.h>
+
 #include <PluginUtil/PluginMessageTypes.h>
 
 #include <OpenVRUI/coSubMenuItem.h>
@@ -100,6 +104,12 @@ struct array_deleter {
 VncClient *VncClient::plugin = NULL;
 
 static const std::string config("COVER.Plugin.VncClient");
+static std::string muiId(const std::string &id = "") {
+   const std::string base = "plugins.vistle.VncClient";
+   if (id.empty())
+      return base;
+   return base + "." + id;
+}
 
 //! handle update of image region
 void VncClient::rfbUpdate(rfbClient* client, int x, int y, int w, int h)
@@ -951,6 +961,9 @@ VncClient::VncClient()
 //! called after plug-in is loaded and scenegraph is initialized
 bool VncClient::init()
 {
+   m_serverHost = covise::coCoviseConfig::getEntry("rfbHost", config, "localhost");
+   m_port = covise::coCoviseConfig::getInt("rfbPort", config, 31590);
+
    m_client = NULL;
    m_haveConnection = false;
    m_listen = false;
@@ -1037,6 +1050,7 @@ bool VncClient::init()
    m_drawer->switchReprojection(m_reproject);
    m_drawer->switchAdaptivePointSize(m_adapt);
 
+#ifdef VRUI
    m_menuItem = new coSubMenuItem("Hybrid Rendering...");
    m_menu = new coRowMenu("Hybrid Rendering");
    m_menuItem->setMenu(m_menu);
@@ -1052,6 +1066,52 @@ bool VncClient::init()
    m_menu->add(m_reprojCheck);
    m_menu->add(m_adaptCheck);
    //m_menu->add(m_allTilesCheck);
+#else
+   m_tab = mui::Tab::create(muiId());
+   m_tab->setLabel("Hybrid Rendering");
+   m_tab->setEventListener(this);
+   m_tab->setPos(1, 0);
+
+   m_reprojCheck = mui::ToggleButton::create(muiId("reproj"), m_tab);
+   m_reprojCheck->setLabel("Reproject");
+   m_reprojCheck->setEventListener(this);
+   m_reprojCheck->setPos(0,0);
+   m_reprojCheck->setState(m_reproject);
+
+   m_adaptCheck = mui::ToggleButton::create(muiId("adapt"), m_tab);
+   m_adaptCheck->setLabel("Adapt Point Size");
+   m_adaptCheck->setEventListener(this);
+   m_adaptCheck->setPos(1,0);
+   m_adaptCheck->setState(m_adapt);
+
+   coTUITab *tab = dynamic_cast<coTUITab *>(m_tab->getTUI());
+
+   m_hostLabel = new coTUILabel("Host:", tab->getID());
+   m_hostLabel->setEventListener(this);
+   m_hostLabel->setPos(0,1);
+
+   m_hostEdit = new coTUIEditTextField("host", tab->getID());
+   m_hostEdit->setEventListener(this);
+   m_hostEdit->setPos(1,1);
+   m_hostEdit->setText(m_serverHost);
+
+   m_portLabel = new coTUILabel("Port:", tab->getID());
+   m_portLabel->setEventListener(this);
+   m_portLabel->setPos(0,2);
+
+   m_portEdit = new coTUIEditIntField("port", tab->getID());
+   m_portEdit->setEventListener(this);
+   m_portEdit->setPos(1,2);
+   m_portEdit->setValue(m_port);
+   m_portEdit->setMin(1);
+   m_portEdit->setMax(0xffff);
+
+   m_connectCheck = mui::ToggleButton::create(muiId("connect"), m_tab);
+   m_connectCheck->setLabel("Connected");
+   m_connectCheck->setEventListener(this);
+   m_connectCheck->setPos(0,3);
+   m_connectCheck->setState(m_haveConnection);
+#endif
 
    return true;
 }
@@ -1061,13 +1121,18 @@ VncClient::~VncClient()
 {
    cover->getScene()->removeChild(m_drawer);
 
+#ifdef VRUI
    delete m_menu;
    delete m_menuItem;
+#else
+   delete m_tab;
+#endif
 
    clientCleanup(m_client);
    plugin = NULL;
 }
 
+#ifdef VRUI
 void VncClient::menuEvent(coMenuItem *item) {
 
    if (item == m_reprojCheck) {
@@ -1078,9 +1143,34 @@ void VncClient::menuEvent(coMenuItem *item) {
        m_adapt = m_adaptCheck->getState();
        m_drawer->switchAdaptivePointSize(m_adapt);
    }
-   if (item == m_allTilesCheck) {
+}
+#else
+void VncClient::muiEvent(mui::Element *item) {
+   if (item == m_reprojCheck) {
+      m_reproject = m_reprojCheck->getState();
+      m_drawer->switchReprojection(m_reproject);
+   }
+   if (item == m_adaptCheck) {
+       m_adapt = m_adaptCheck->getState();
+       m_drawer->switchAdaptivePointSize(m_adapt);
+   }
+   if (item == m_connectCheck) {
+      if (m_client)
+         clientCleanup(m_client);
+      else
+         connectClient();
+      m_connectCheck->setState(m_haveConnection);
    }
 }
+void VncClient::tabletEvent(coTUIElement *item) {
+   if (item == m_hostEdit) {
+      m_serverHost = m_hostEdit->getText();
+   }
+   if (item == m_portEdit) {
+      m_port = m_portEdit->getValue();
+   }
+}
+#endif
 
 //! this is called before every frame, used for polling for RFB messages
 void
@@ -1105,6 +1195,7 @@ VncClient::preFrame()
        else
            cover->getScene()->removeChild(m_drawer);
        m_haveConnection = connected;
+       m_connectCheck->setState(m_haveConnection);
    }
 
    if (!connected)
@@ -1409,9 +1500,6 @@ bool VncClient::connectClient() {
    if (m_client && !m_listen)
       return true;
 
-   std::string host = covise::coCoviseConfig::getEntry("rfbHost", config, "localhost");
-   int port = covise::coCoviseConfig::getInt("rfbPort", config, 5900);
-
    if (!m_client) {
       m_client = rfbGetClient(8, 3, 4);
       m_client->GotFrameBufferUpdate = rfbUpdate;
@@ -1431,8 +1519,8 @@ bool VncClient::connectClient() {
          m_client->listenPort = covise::coCoviseConfig::getInt("listenPort", config, 31059);
       } else {
 
-         m_client->serverHost = strdup(host.c_str());
-         m_client->serverPort = port;
+         m_client->serverHost = strdup(m_serverHost.c_str());
+         m_client->serverPort = m_port;
       }
    }
 
@@ -1459,7 +1547,7 @@ bool VncClient::connectClient() {
       if (reverse) {
          std::cerr << "VncClient: client initialisation failed - still listening on port " << m_client->listenPort  << std::endl;
       } else {
-         std::cerr << "VncClient: connection to " << host << ":" << port << " failed" << std::endl;
+         std::cerr << "VncClient: connection to " << m_serverHost << ":" << m_port << " failed" << std::endl;
       }
       //FIXME: crash
       //rfbClientCleanup(m_client);
