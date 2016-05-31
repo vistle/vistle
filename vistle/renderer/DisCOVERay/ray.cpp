@@ -56,7 +56,7 @@ class RayCaster: public vistle::Renderer {
          case RTC_INVALID_OPERATION: err = "The operation is not allowed for the specified object."; break;
          case RTC_OUT_OF_MEMORY: err = "There is not enough memory left to complete the operation."; break;
          case RTC_UNSUPPORTED_CPU: err = "The CPU is not supported as it does not support SSE2."; break;
-         //case RTC_CANCELLED: err = "The operation got cancelled by an Memory Monitor Callback or Progress Monitor Callback function."; break;
+         case RTC_CANCELLED: err = "The operation got cancelled by an Memory Monitor Callback or Progress Monitor Callback function."; break;
       }
 
       std::cerr << "RTC error: " << desc << " - " << err << std::endl;
@@ -718,7 +718,13 @@ bool RayCaster::render() {
        m_renderManager.getProjMat(i, proj);
        IceTFloat bg[4] = { 0., 0., 0., 0. };
 
+#if 1
        IceTImage img = icetDrawFrame(proj, mv, bg);
+#else
+       IceTInt viewport[4] = {0, 0, width, height};
+       renderRect(proj, mv, bg, viewport, image);
+       IceTImage img = icetCompositeImage(mapColor[pbo], mapDepth[pbo], viewport, proj, mv, bg);
+#endif
 
        m_renderManager.finishCurrentView(img, false);
     }
