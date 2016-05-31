@@ -270,8 +270,28 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, bool l
       vassert(w == icetImageGetWidth(img));
       vassert(h == icetImageGetHeight(img));
 
-      const IceTUByte *color = icetImageGetColorcub(img);
-      const IceTFloat *depth = icetImageGetDepthcf(img);
+
+      const IceTUByte *color = nullptr;
+      switch (icetImageGetColorFormat(img)) {
+      case ICET_IMAGE_COLOR_RGBA_UBYTE:
+          color = icetImageGetColorcub(img);
+          break;
+      case ICET_IMAGE_COLOR_RGBA_FLOAT:
+          std::cerr << "expected byte color, got float" << std::endl;
+          break;
+      case ICET_IMAGE_COLOR_NONE:
+          std::cerr << "expected byte color, got no color" << std::endl;
+          break;
+      }
+      const IceTFloat *depth = nullptr;
+      switch (icetImageGetDepthFormat(img)) {
+      case ICET_IMAGE_DEPTH_FLOAT:
+          depth = icetImageGetDepthcf(img);
+          break;
+      case ICET_IMAGE_DEPTH_NONE:
+          std::cerr << "expected byte color, got no color" << std::endl;
+          break;
+      }
 
       if (color && depth) {
          for (int y=0; y<h; ++y) {
