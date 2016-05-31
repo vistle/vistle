@@ -115,10 +115,15 @@ Extrema::Extrema(const std::string &shmname, const std::string &name, int module
 
    setReducePolicy(message::ReducePolicy::OverAll);
 
+#ifdef BOUNDINGBOX
+   Port *gin = createInputPort("grid_in", "input data", Port::MULTI);
+   Port *gout = createOutputPort("grid_out", "bounding box", Port::MULTI);
+   gin->link(gout);
+#else
    Port *din = createInputPort("data_in", "input data", Port::MULTI);
-   createOutputPort("grid_out", "bounding box", Port::MULTI);
    Port *dout = createOutputPort("data_out", "output data", Port::MULTI);
    din->link(dout);
+#endif
 
    addVectorParameter("min",
          "output parameter: minimum",
@@ -158,7 +163,18 @@ bool Extrema::compute() {
 
    dim = -1;
 
+#ifdef BOUNDINGBOX
+   Object::const_ptr obj = expect<DataBase>("grid_in");
+   if (!Coords::as(obj)) {
+       if (DataBase::const_ptr data = DataBase::as(obj)) {
+           obj = data->grid();
+       } else {
+           return true;
+       }
+   }
+#else
    Object::const_ptr obj = expect<DataBase>("data_in");
+#endif
    if (!obj)
       return true;
 
@@ -241,6 +257,7 @@ bool Extrema::reduce(int timestep) {
    setIntVectorParameter("min_index", gminIndex);
    setIntVectorParameter("max_index", gmaxIndex);
 
+#ifdef BOUNDINGBOX
    if (haveGeometry && rank() == 0) {
 
       Lines::ptr box(new Lines(4, 16, 8));
@@ -286,6 +303,7 @@ bool Extrema::reduce(int timestep) {
 
       addObject("grid_out", box);
    }
+#endif
 
    return Module::reduce(timestep);
 }
