@@ -199,7 +199,7 @@ MultiChannelDrawer::MultiChannelDrawer(int numChannels, bool flipped)
    setReferenceFrame(osg::Transform::ABSOLUTE_RF);
    setViewMatrix(osg::Matrix::identity());
 
-   setRenderTargetImplementation( osg::Camera::FRAME_BUFFER, osg::Camera::FRAME_BUFFER );
+   //setRenderTargetImplementation( osg::Camera::FRAME_BUFFER, osg::Camera::FRAME_BUFFER );
 
 
    //setClearDepth(0.9999);
@@ -210,8 +210,7 @@ MultiChannelDrawer::MultiChannelDrawer(int numChannels, bool flipped)
 
    //int win = coVRConfig::instance()->channels[0].window;
    //setGraphicsContext(coVRConfig::instance()->windows[win].window);
-   // draw subgraph after main camera view.
-   setRenderOrder(osg::Camera::POST_RENDER, 30);
+   setRenderOrder(osg::Camera::NESTED_RENDER);
    //setRenderer(new osgViewer::Renderer(m_remoteCam.get()));
 
    for (int i=0; i<numChannels; ++i) {

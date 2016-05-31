@@ -139,14 +139,20 @@ void VncClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
    const osg::Matrix model = s * t;
 
    const channelStruct &chan = coVRConfig::instance()->channels[channel];
-   if (chan.viewportNum < 0)
-      return;
-   const viewportStruct &vp = coVRConfig::instance()->viewports[chan.viewportNum];
-   if (vp.window < 0)
-      return;
-   const windowStruct &win = coVRConfig::instance()->windows[vp.window];
-   msg.width = (vp.viewportXMax - vp.viewportXMin) * win.sx;
-   msg.height = (vp.viewportYMax - vp.viewportYMin) * win.sy;
+   if (chan.PBONum >= 0) {
+       const PBOStruct &pbo = coVRConfig::instance()->PBOs[chan.PBONum];
+       msg.width = pbo.PBOsx;
+       msg.height = pbo.PBOsy;
+   } else {
+       if (chan.viewportNum < 0)
+           return;
+       const viewportStruct &vp = coVRConfig::instance()->viewports[chan.viewportNum];
+       if (vp.window < 0)
+           return;
+       const windowStruct &win = coVRConfig::instance()->windows[vp.window];
+       msg.width = (vp.viewportXMax - vp.viewportXMin) * win.sx;
+       msg.height = (vp.viewportYMax - vp.viewportYMin) * win.sy;
+   }
 
    bool left = chan.stereoMode == osg::DisplaySettings::LEFT_EYE;
    if (second)
@@ -155,7 +161,7 @@ void VncClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
    const osg::Matrix &proj = left ? chan.leftProj : chan.rightProj;
 
 #if 0
-   std::cerr << "retrieving matrices for channel: " << channel << ", view: " << viewNum << ", second: " << second << ", left: " << left << std::endl;
+   std::cerr << "retrieving matrices for channel: " << channel << ", view: " << viewNum << ", " << msg.width << "x" << msg.height << ", second: " << second << ", left: " << left << std::endl;
    std::cerr << "  view mat: " << view << std::endl;
    std::cerr << "  proj mat: " << proj << std::endl;
 #endif
