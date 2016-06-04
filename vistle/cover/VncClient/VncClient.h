@@ -134,7 +134,7 @@ private:
    ObjectMap m_objectMap;
    RemoteRenderObject *findObject(const std::string &name) const;
 
-   int m_requestedTimestep, m_remoteTimestep, m_visibleTimestep, m_numRemoteTimesteps;
+   int m_requestedTimestep, m_remoteTimestep, m_visibleTimestep, m_numRemoteTimesteps, m_timestepToCommit;
 
    bool handleTileMessage(boost::shared_ptr<tileMsg> msg, boost::shared_ptr<char> payload);
    // work queue management for decoding tiles

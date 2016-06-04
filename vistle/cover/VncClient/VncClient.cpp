@@ -509,7 +509,7 @@ void VncClient::finishFrame(const tileMsg &msg) {
 
    //std::cerr << "finishFrame: t=" << msg.timestep << ", req=" << m_requestedTimestep << std::endl;
    if (m_remoteTimestep == m_requestedTimestep) {
-      commitTimestep(m_remoteTimestep);
+      m_timestepToCommit = m_remoteTimestep;
       m_requestedTimestep = -1;
       m_frameReady = false;
    } else {
@@ -518,6 +518,12 @@ void VncClient::finishFrame(const tileMsg &msg) {
 }
 
 void VncClient::checkSwapFrame() {
+
+#if 0
+   static int count = 0;
+   std::cerr << "VncClient::checkSwapFrame(): " << count << ", frame ready=" << m_frameReady << std::endl;
+   ++count;
+#endif
 
    bool doSwap = m_frameReady;
    if (coVRMSController::instance()->isMaster()) {
@@ -959,6 +965,7 @@ VncClient::VncClient()
 , m_remoteTimestep(-1)
 , m_visibleTimestep(-1)
 , m_numRemoteTimesteps(-1)
+, m_timestepToCommit(-1)
 {
    assert(plugin == NULL);
    plugin = this;
@@ -1202,16 +1209,15 @@ VncClient::preFrame()
            cover->getScene()->removeChild(m_drawer);
        m_haveConnection = connected;
        m_connectCheck->setState(m_haveConnection);
+       if (!connected)
+       {
+          m_numRemoteTimesteps = -1;
+          coVRAnimationManager::instance()->removeTimestepProvider(this);
+       }
    }
 
    if (!connected)
       return;
-
-   coVRMSController::instance()->syncData(&m_numRemoteTimesteps, sizeof(m_numRemoteTimesteps));
-   if (m_numRemoteTimesteps > 0)
-      coVRAnimationManager::instance()->setNumTimesteps(m_numRemoteTimesteps, this);
-   else
-      coVRAnimationManager::instance()->removeTimestepProvider(this);
 
    osgViewer::GraphicsWindow *win = coVRConfig::instance()->windows[0].window;
    int x,y,w,h;
@@ -1285,6 +1291,11 @@ VncClient::preFrame()
          lastMatrices = cover->frameTime();
       }
    }
+   coVRMSController::instance()->syncData(&m_numRemoteTimesteps, sizeof(m_numRemoteTimesteps));
+   if (m_numRemoteTimesteps > 0)
+      coVRAnimationManager::instance()->setNumTimesteps(m_numRemoteTimesteps, this);
+   else
+      coVRAnimationManager::instance()->removeTimestepProvider(this);
 
    int ntiles = m_receivedTiles.size();
    if (m_lastTileAt >= 0) {
@@ -1354,32 +1365,41 @@ VncClient::preFrame()
    while (updateTileQueue())
       ++remoteSkipped;
 
+   coVRMSController::instance()->syncData(&m_timestepToCommit, sizeof(m_timestepToCommit));
+   if (m_timestepToCommit >= 0) {
+      //std::cerr << "VncClient::commitTimestep(" << m_remoteTimestep << ") B" << std::endl;
+      commitTimestep(m_timestepToCommit);
+      m_timestepToCommit = -1;
+   }
+
    checkSwapFrame();
 
    ++m_localFrames;
    double diff = cover->frameTime() - m_lastStat;
    if (plugin->m_benchmark && diff > 3.) {
 
-      fprintf(stderr, "depth bpp: %ld, depth bytes: %ld, rgb bytes: %ld\n", 
-            (long)m_depthBppS, (long)m_depthBytesS, (long)m_rgbBytesS);
-      double depthRate = (double)m_depthBytesS/((m_remoteFrames)*m_depthBppS*m_numPixelsS);
-      double rgbRate = (double)m_rgbBytesS/((m_remoteFrames)*3*m_numPixelsS);
-      double bandwidthMB = (m_depthBytesS+m_rgbBytesS)/diff/1024/1024;
-      if (m_remoteFrames + remoteSkipped > 0) {
-         fprintf(stderr, "VNC RHR: FPS: local %f, remote %f, SKIPPED: %d, DELAY: min %f, max %f, avg %f\n",
-               m_localFrames/diff, (m_remoteFrames+remoteSkipped)/diff,
-               remoteSkipped,
-               m_minDelay, m_maxDelay, m_accumDelay/m_remoteFrames);
-      } else {
-         fprintf(stderr, "VNC RHR: FPS: local %f, remote %f\n",
-               m_localFrames/diff, (m_remoteFrames+remoteSkipped)/diff);
+      if (coVRMSController::instance()->isMaster()) {
+         fprintf(stderr, "depth bpp: %ld, depth bytes: %ld, rgb bytes: %ld\n", 
+               (long)m_depthBppS, (long)m_depthBytesS, (long)m_rgbBytesS);
+         double depthRate = (double)m_depthBytesS/((m_remoteFrames)*m_depthBppS*m_numPixelsS);
+         double rgbRate = (double)m_rgbBytesS/((m_remoteFrames)*3*m_numPixelsS);
+         double bandwidthMB = (m_depthBytesS+m_rgbBytesS)/diff/1024/1024;
+         if (m_remoteFrames + remoteSkipped > 0) {
+            fprintf(stderr, "VNC RHR: FPS: local %f, remote %f, SKIPPED: %d, DELAY: min %f, max %f, avg %f\n",
+                  m_localFrames/diff, (m_remoteFrames+remoteSkipped)/diff,
+                  remoteSkipped,
+                  m_minDelay, m_maxDelay, m_accumDelay/m_remoteFrames);
+         } else {
+            fprintf(stderr, "VNC RHR: FPS: local %f, remote %f\n",
+                  m_localFrames/diff, (m_remoteFrames+remoteSkipped)/diff);
+         }
+         fprintf(stderr, "    pixels: %ld, bandwidth: %.2f MB/s",
+               (long)m_numPixelsS, bandwidthMB);
+         if (m_remoteFrames > 0)
+            fprintf(stderr, ", depth comp: %.1f%%, rgb comp: %.1f%%",
+                  depthRate*100, rgbRate*100);
+         fprintf(stderr, "\n");
       }
-      fprintf(stderr, "    pixels: %ld, bandwidth: %.2f MB/s",
-            (long)m_numPixelsS, bandwidthMB);
-      if (m_remoteFrames > 0)
-         fprintf(stderr, ", depth comp: %.1f%%, rgb comp: %.1f%%",
-               depthRate*100, rgbRate*100);
-      fprintf(stderr, "\n");
 
       remoteSkipped = 0;
       m_lastStat = cover->frameTime();
@@ -1416,45 +1436,55 @@ VncClient::preFrame()
 //! called when scene bounding sphere is required
 void VncClient::expandBoundingSphere(osg::BoundingSphere &bs) {
 
-   if (!m_client)
-      return;
+   if (coVRMSController::instance()->isMaster()) {
 
-   BoundsData *bd = static_cast<BoundsData *>(rfbClientGetClientData(m_client, (void *)rfbBoundsMessage));
-   if (!bd)
-      return;
+      if (m_client) {
 
-   boundsMsg msg;
-   msg.type = rfbBounds;
-   msg.sendreply = 1;
-   WriteToRFBServer(m_client, (char *)&msg, sizeof(msg));
+         BoundsData *bd = static_cast<BoundsData *>(rfbClientGetClientData(m_client, (void *)rfbBoundsMessage));
+         if (bd) {
 
-   double start = cover->currentTime();
-   bd->updated = false;
-   do {
-      if (handleRfbMessages() < 0)
-         return;
-      double elapsed = cover->currentTime() - start;
-      if (elapsed > 2.) {
-         start = cover->currentTime();
+            boundsMsg msg;
+            msg.type = rfbBounds;
+            msg.sendreply = 1;
+            WriteToRFBServer(m_client, (char *)&msg, sizeof(msg));
+
+            double start = cover->currentTime();
+            bd->updated = false;
+            do {
+               if (handleRfbMessages() < 0)
+               {
+                  break;
+               }
+               double elapsed = cover->currentTime() - start;
+               if (elapsed > 2.) {
+                  start = cover->currentTime();
 #if 0
-         std::cerr << "VncClient: still waiting for bounding sphere from server" << std::endl;
+                  std::cerr << "VncClient: still waiting for bounding sphere from server" << std::endl;
 #else
-         std::cerr << "VncClient: re-requesting bounding sphere from server" << std::endl;
+                  std::cerr << "VncClient: re-requesting bounding sphere from server" << std::endl;
 
-         boundsMsg msg;
-         msg.type = rfbBounds;
-         msg.sendreply = 1;
-         WriteToRFBServer(m_client, (char *)&msg, sizeof(msg));
+                  boundsMsg msg;
+                  msg.type = rfbBounds;
+                  msg.sendreply = 1;
+                  WriteToRFBServer(m_client, (char *)&msg, sizeof(msg));
 #endif
+               }
+            }
+            while (!bd->updated);
+            if (bd->updated) {
+               bs.expandBy(bd->boundsNode->getBound());
+            }
+         }
       }
    }
-   while (!bd->updated);
-
-   bs.expandBy(bd->boundsNode->getBound());
+   coVRMSController::instance()->syncData(&bs, sizeof(bs));
+   // m_numRemoteTimesteps might have been changed during handleRfbMessages()
+   coVRMSController::instance()->syncData(&m_numRemoteTimesteps, sizeof(m_numRemoteTimesteps));
 }
 
 void VncClient::setTimestep(int t) {
 
+   //std::cerr << "setTimestep(" << t << ")" << std::endl;
    m_frameReady = true;
    checkSwapFrame();
 }
@@ -1466,14 +1496,17 @@ void VncClient::requestTimestep(int t) {
       t = 0;
 
    if (m_remoteTimestep==t || (m_remoteTimestep==-1 && m_visibleTimestep==t)) {
+      //std::cerr << "VncClient::commitTimestep(" << t << ") A" << std::endl;
       commitTimestep(t);
    } else {
       m_requestedTimestep = t;
 
-      appAnimationTimestep msg;
-      msg.current = t;
-      msg.total = coVRAnimationManager::instance()->getNumTimesteps();
-      sendApplicationMessage(m_client, rfbAnimationTimestep, sizeof(msg), &msg);
+      if (coVRMSController::instance()->isMaster()) {
+         appAnimationTimestep msg;
+         msg.current = t;
+         msg.total = coVRAnimationManager::instance()->getNumTimesteps();
+         sendApplicationMessage(m_client, rfbAnimationTimestep, sizeof(msg), &msg);
+      }
    }
 }
 
@@ -1585,7 +1618,6 @@ void VncClient::clientCleanup(rfbClient *cl) {
    rfbClientCleanup(cl);
    if (m_client == cl) {
       m_client = NULL;
-      m_numRemoteTimesteps = -1;
    }
 }
 
