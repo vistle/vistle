@@ -386,15 +386,18 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
             bool onlySimpleFaces = true; // only faces with 3 or 4 corners
             std::vector<Index> threeVert, fourVert;
             for (index_t j=0; j<cellfaces.size(); ++j) {
-               if (faces[cellfaces[j]].size() == 4)
+               if (faces[cellfaces[j]].size() == 4) {
                    fourVert.push_back(j);
-               else if (faces[cellfaces[j]].size() == 3)
+                   if (fourVert.size() > 6)
+                      break;
+               } else if (faces[cellfaces[j]].size() == 3) {
                    threeVert.push_back(j);
-               else
+                   if (threeVert.size() > 4)
+                      break;
+               } else {
                    onlySimpleFaces = false;
-
-               if (fourVert.size() > 6 || threeVert.size() > 4 || !onlySimpleFaces)
                    break;
+               }
             }
             const Index num_faces = cellfaces.size();
             Index num_verts = 0;
@@ -1172,19 +1175,13 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
              el.push_back(cl.size());
              tl.push_back(tlIn[cell]|UnstructuredGrid::GHOST_BIT);
           }
+       }
 
-          for (Index i=0; i<pointsInX.size(); ++i) {//append new coordinates to old coordinate-lists
-             x.push_back(pointsInX[i]);
-             y.push_back(pointsInY[i]);
-             z.push_back(pointsInZ[i]);
-          }
-
-       } else { //mode == COORDS
-          for (Index i=0; i<pointsInX.size(); ++i) { //ghost topology is already known and only the new vertice coordinates have to be applied again
-             x.push_back(pointsInX[i]);
-             y.push_back(pointsInY[i]);
-             z.push_back(pointsInZ[i]);
-          }
+       // also for mode==COORDS
+       for (Index i=0; i<pointsInX.size(); ++i) {//append new coordinates to old coordinate-lists
+          x.push_back(pointsInX[i]);
+          y.push_back(pointsInY[i]);
+          z.push_back(pointsInZ[i]);
        }
    }
    m_GhostCellsIn[processor].clear();
