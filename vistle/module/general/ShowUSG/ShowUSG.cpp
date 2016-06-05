@@ -51,19 +51,17 @@ bool ShowUSG::compute() {
 
       vistle::Lines::ptr out(new vistle::Lines(Object::Initialized));
 
-      Index x, y;
-      if (cellnrmin == -1 || cellnrmax == -1) {
-         x = 0;
-         y = in->getNumElements();
-      } else {
-         x = std::max((Index)0, (Index)cellnrmin);
-         y = std::min(in->getNumElements(), (Index)cellnrmax+1);
-      }
+      Index begin = 0, end = in->getNumElements();
+      if (cellnrmin >= 0)
+          begin = std::max(cellnrmin, (Integer)begin);
+      if (cellnrmax >= 0)
+          end = std::min(cellnrmax+1, (Integer)end);
 
-      for (size_t index = x; index < y; index ++) {
+      for (Index index = begin; index < end; ++index) {
           auto type=in->tl()[index];
-          if (((type&UnstructuredGrid::GHOST_BIT) && !showgho)
-                  || (!(type&UnstructuredGrid::GHOST_BIT) && !shownor))
+          const bool ghost = type & UnstructuredGrid::GHOST_BIT;
+          const bool show = (showgho && ghost) || (shownor && !ghost);
+          if (!show)
               continue;
           type &= ~vistle::UnstructuredGrid::GHOST_BIT;
 
