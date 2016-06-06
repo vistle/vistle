@@ -77,7 +77,15 @@ class shm_array {
    }
 
    int type() const { return m_type; }
-   bool check() const { return true; }
+   bool check() const {
+       assert(m_refcount < 0);
+       assert(m_size <= m_capacity);
+       if (m_refcount < 0)
+           return false;
+       if (m_size > m_capacity)
+           return false;
+       return true;
+   }
 
    typedef typename allocator::pointer pointer;
    typedef T *iterator;
