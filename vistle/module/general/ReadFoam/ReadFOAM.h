@@ -160,8 +160,8 @@ class ReadFOAM: public vistle::Module
 
       void setMeta(vistle::Object::ptr obj, int processor, int timestep) const;
 
-      std::map<int, std::vector<vistle::Polygons::ptr>> m_basebound, m_currentbound;
-      std::map<int, vistle::UnstructuredGrid::ptr> m_basegrid, m_currentgrid;
+      std::map<int, std::vector<vistle::Polygons::ptr>> m_currentbound;
+      std::map<int, vistle::UnstructuredGrid::ptr> m_currentgrid;
       std::map<int, std::string> m_basedir;
       std::map<int, std::map<int, vistle::DataBase::ptr> > m_currentvolumedata;
       std::map<int, boost::shared_ptr<std::vector<vistle::Index> > > m_owners;
@@ -172,7 +172,7 @@ class ReadFOAM: public vistle::Module
       std::map<int, std::map<int, boost::shared_ptr<GhostCells> > > m_GhostCellsIn;
       std::map<int, std::map<int, std::map<int, boost::shared_ptr<GhostData> > > > m_GhostDataOut;
       std::map<int, std::map<int, std::map<int, boost::shared_ptr<GhostData> > > > m_GhostDataIn;
-      std::map<int, std::vector<boost::mpi::request> > m_requests;
+      std::vector<boost::mpi::request> m_requests;
       std::map<int, std::map<int, std::map<vistle::Index, vistle::SIndex> > > m_verticesMappings;
 };
 #endif // READFOAM_H
