@@ -46,7 +46,6 @@ using namespace vistle;
 
 ReadFOAM::ReadFOAM(const std::string &shmname, const std::string &name, int moduleId)
 : Module("ReadFoam", shmname, name, moduleId)
-, m_gridOut(nullptr)
 , m_boundOut(nullptr)
 {
    // file browser parameter
@@ -63,7 +62,6 @@ ReadFOAM::ReadFOAM(const std::string &shmname, const std::string &name, int modu
    m_readGrid = addIntParameter("read_grid", "load the grid?", 1, Parameter::Boolean);
 
    //Mesh ports
-   m_gridOut = createOutputPort("grid_out");
    m_boundOut = createOutputPort("grid_out1");
 
    for (int i=0; i<NumPorts; ++i) {
@@ -102,7 +100,6 @@ ReadFOAM::ReadFOAM(const std::string &shmname, const std::string &name, int modu
       }
    }
    m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);
-   m_replicateTimestepGeoParam = addIntParameter("replicate_timestep_geometry", "whether to replicate static geometry for each timestep", 1, Parameter::Boolean);
 }
 
 
@@ -1177,11 +1174,12 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
           }
        }
 
-       // also for mode==COORDS
-       for (Index i=0; i<pointsInX.size(); ++i) {//append new coordinates to old coordinate-lists
-          x.push_back(pointsInX[i]);
-          y.push_back(pointsInY[i]);
-          z.push_back(pointsInZ[i]);
+       if (mode != BASE) {
+           for (Index i=0; i<pointsInX.size(); ++i) {//append new coordinates to old coordinate-lists
+               x.push_back(pointsInX[i]);
+               y.push_back(pointsInY[i]);
+               z.push_back(pointsInZ[i]);
+           }
        }
    }
    m_GhostCellsIn[processor].clear();
@@ -1228,7 +1226,6 @@ void ReadFOAM::applyGhostCellsData(int processor) {
 }
 
 bool ReadFOAM::addGridToPorts(int processor) {
-   addObject(m_gridOut, m_currentgrid[processor]);
    for (auto &poly: m_currentbound[processor])
        addObject(m_boundOut, poly);
    return true;
@@ -1236,15 +1233,16 @@ bool ReadFOAM::addGridToPorts(int processor) {
 
 bool ReadFOAM::addVolumeDataToPorts(int processor) {
 
-   if (!(m_case.varyingCoords || m_case.varyingGrid) && m_replicateTimestepGeo) {
-      addGridToPorts(processor);
-   }
-   for (auto &data: m_currentvolumedata[processor]) {
-      int portnum=data.first;
-      m_currentvolumedata[processor][portnum]->setGrid(m_currentgrid[processor]);
-      m_currentvolumedata[processor][portnum]->setMapping(DataBase::Element);
-      addObject(m_volumeDataOut[portnum], m_currentvolumedata[processor][portnum]);
-   }
+    for (int portnum=0; portnum<NumPorts; ++portnum) {
+        auto &volumedata = m_currentvolumedata[processor];
+        if (volumedata.find(portnum) != volumedata.end()) {
+            volumedata[portnum]->setGrid(m_currentgrid[processor]);
+            volumedata[portnum]->setMapping(DataBase::Element);
+            addObject(m_volumeDataOut[portnum], volumedata[portnum]);
+        } else {
+            addObject(m_volumeDataOut[portnum], m_currentgrid[processor]);
+        }
+    }
    return true;
 }
 
@@ -1285,15 +1283,13 @@ bool ReadFOAM::readConstant(const std::string &casedir)
          if (m_buildGhost) {
             applyGhostCells(i,ALL);
          }
-         if (!m_replicateTimestepGeo && !m_case.varyingCoords)
+         if (!m_case.varyingCoords)
             addGridToPorts(i);
       }
    }
 
-   if (!m_replicateTimestepGeo) {
-      m_currentbound.clear();
-      m_currentgrid.clear();
-   }
+   m_currentbound.clear();
+   m_currentgrid.clear();
    m_currentvolumedata.clear();
    return true;
 }
@@ -1355,10 +1351,8 @@ bool ReadFOAM::readTime(const std::string &casedir, int timestep) {
       }
    }
 
-   if (!m_replicateTimestepGeo) {
-      m_currentbound.clear();
-      m_currentgrid.clear();
-   }
+   m_currentbound.clear();
+   m_currentgrid.clear();
    m_currentvolumedata.clear();
    return true;
 }
@@ -1379,7 +1373,6 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
    }
 
    m_buildGhost = m_buildGhostcellsParam->getValue() && m_case.numblocks>0;
-   m_replicateTimestepGeo = m_replicateTimestepGeoParam->getValue();
 
    std::cerr << "# processors: " << m_case.numblocks << std::endl;
    std::cerr << "# time steps: " << m_case.timedirs.size() << std::endl;
