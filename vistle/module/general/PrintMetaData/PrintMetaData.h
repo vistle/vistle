@@ -42,6 +42,8 @@ class PrintMetaData : public vistle::Module {
    vistle::Index m_numCurrVertices;
    vistle::Index m_numTotalElements;
    vistle::Index m_numTotalVertices;
+   unsigned m_numCurrGhostCells;
+   unsigned m_numTotalGhostCells;
    std::vector<unsigned> m_elCurrTypeVector;
    std::vector<unsigned> m_elTotalTypeVector;
    std::vector<std::string> m_attributesVector;

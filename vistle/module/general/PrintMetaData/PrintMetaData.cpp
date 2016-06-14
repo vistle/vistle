@@ -68,6 +68,7 @@ PrintMetaData::~PrintMetaData() {
 bool PrintMetaData::prepare() {
     m_numCurrElements = 0;
     m_numCurrVertices = 0;
+    m_numCurrGhostCells = 0;
     m_elCurrTypeVector.clear();
     m_isFirstComputeCall = true;
 
@@ -82,9 +83,11 @@ bool PrintMetaData::reduce(int timestep) {
     if (comm().rank() == ROOT_NODE) {
         boost::mpi::reduce(comm(), m_numCurrElements, m_numTotalElements, std::plus<Index>(), ROOT_NODE);
         boost::mpi::reduce(comm(), m_numCurrVertices, m_numTotalVertices, std::plus<Index>(), ROOT_NODE);
+        boost::mpi::reduce(comm(), m_numCurrGhostCells, m_numTotalGhostCells, std::plus<Index>(), ROOT_NODE);
     } else {
         boost::mpi::reduce(comm(), m_numCurrElements, std::plus<Index>(), ROOT_NODE);
         boost::mpi::reduce(comm(), m_numCurrVertices, std::plus<Index>(), ROOT_NODE);
+        boost::mpi::reduce(comm(), m_numCurrGhostCells, std::plus<Index>(), ROOT_NODE);
     }
 
 
@@ -142,9 +145,15 @@ void PrintMetaData::compute_acquireGridData(vistle::UnstructuredGrid::const_ptr 
             m_elCurrTypeVector.resize(numCellVertices + 1, 0);
         }
 
+        // acqiure ghost cell data
+        if (dataGrid->isGhostCell(i)) {
+            m_numCurrGhostCells++;
+        }
+
         m_elCurrTypeVector[numCellVertices]++;
         elPtr++;
     }
+
 }
 
 // REDUCE HELPER FUNCTION - PRINT DATA
@@ -173,7 +182,8 @@ void PrintMetaData::reduce_printData() {
      if (m_isGridAttatched) {
          message += "\n\nGrid Data: ";
          message += "\n   Number of Vertices: " + std::to_string(m_numTotalVertices);
-         message += "\n   Number of Cells: " + std::to_string(m_numTotalElements);
+         message += "\n   Number of Total Cells: " + std::to_string(m_numTotalElements);
+         message += "\n   Number of Ghost Cells: " + std::to_string(m_numTotalGhostCells);
          message += "\n   Cell Types: ";
 
          for (unsigned i = 0; i < m_elTotalTypeVector.size(); i++) {
