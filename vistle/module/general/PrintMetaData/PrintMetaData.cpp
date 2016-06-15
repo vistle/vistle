@@ -207,18 +207,19 @@ bool PrintMetaData::compute() {
 
     // acquire input data object
     DataBase::const_ptr data = expect<DataBase>("data_in");
+
+    // assert existence of useable data <- not sure if this will ever get triggered because of the expect function
+    if (!data) {
+       sendInfo("Error: Unknown Input Data");
+       return true;
+    }
+
     UnstructuredGrid::const_ptr dataGrid = UnstructuredGrid::as(data);
 
     // check if dataGrid has been obtained properly
     // if not, try interpreting data->grid
     if (!dataGrid) {
        dataGrid = UnstructuredGrid::as(data->grid());
-    }
-
-    // assert existence of useable data <- not sure if this will ever get triggered because of the expect function
-    if (!data) {
-       sendInfo("Error: Unknown Input Data");
-       return true;
     }
 
     // record wether dataGrid is available
