@@ -145,7 +145,8 @@ bool ToTriangles::compute() {
       auto tcl = &tri->cl()[0];
       for (Index e=0; e<nelem; ++e) {
          const Index begin=el[e], end=el[e+1], last=end-1;
-         for (Index v=begin; v<end-2; ++v) {
+         const Index N = end - begin;
+         for (Index v=0; v<N-2; ++v) {
             const Index v2 = v/2;
             if (v%2) {
                tcl[i++] = cl[begin+v2+1];
