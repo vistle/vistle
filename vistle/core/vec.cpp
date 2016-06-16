@@ -29,6 +29,7 @@ bool DataBase::checkImpl() const {
    if (hasCelltree()) {
        V_CHECK(getCelltree()->check());
    }
+   V_CHECK(mapping()==Unspecified || mapping()==Vertex || mapping()==Element);
    return true;
 }
 
@@ -68,13 +69,11 @@ void DataBase::createCelltree(Index nelem, const Index *el, const Index *cl) con
    (void)cl;
 }
 
-#if 0
-DataBase::Data::Data(Type id, const std::string &name,
-      const Meta &meta)
+DataBase::Data::Data(Type id, const std::string &name, const Meta &meta)
    : DataBase::Base::Data(id, name, meta)
+   , mapping(DataBase::Unspecified)
 {
 }
-#endif
 
 DataBase::Data::Data(const DataBase::Data &o, const std::string &n, Type id)
 : DataBase::Base::Data(o, n, id)
@@ -152,7 +151,9 @@ DataBase::Mapping DataBase::guessMapping(Object::const_ptr g) const {
 }
 
 //V_OBJECT_TYPE(DataBase, Object::DATABASE);
-V_OBJECT_CTOR(DataBase);
+//V_OBJECT_CTOR(DataBase);
+DataBase::DataBase(DataBase::Data *data): DataBase::Base(data) { refreshImpl(); }
+DataBase::DataBase(): DataBase::Base() { refreshImpl(); }
 
 
 V_SERIALIZERS4(Vec<T,Dim>, template<class T,int Dim>);
