@@ -517,14 +517,18 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
                         tc->push_back(tex->coords()[index]);
                      }
                   }
+               } else {
+                   std::cerr << "VistleGeometryGenerator: unknown data mapping " << mapping << " for Texture1D" << std::endl;
                }
-               geom->setTexCoordArray(0, tc);
-               state->setTextureAttributeAndModes(0, osgTex,
-                     osg::StateAttribute::ON);
-               osgTex->setFilter(osg::Texture1D::MIN_FILTER,
-                     osg::Texture1D::NEAREST);
-               osgTex->setFilter(osg::Texture1D::MAG_FILTER,
-                     osg::Texture1D::NEAREST);
+               if (tc && !tc->empty()) {
+                   geom->setTexCoordArray(0, tc);
+                   state->setTextureAttributeAndModes(0, osgTex,
+                                                      osg::StateAttribute::ON);
+                   osgTex->setFilter(osg::Texture1D::MIN_FILTER,
+                                     osg::Texture1D::NEAREST);
+                   osgTex->setFilter(osg::Texture1D::MAG_FILTER,
+                                     osg::Texture1D::NEAREST);
+               }
             }
          }
 
