@@ -57,14 +57,14 @@ class V_COREEXPORT PortTracker {
 
  protected:
 
-   void check() const;
+   bool check() const;
 
    Port *getPort(const Port *p) const;
 
    StateTracker *m_stateTracker;
 
-   // module ID -> list of ports belonging to the module
    typedef std::map<std::string, Port *> PortMap;
+   // module ID -> list of ports belonging to the module
    typedef std::map<int, PortMap *> ModulePortMap;
    ModulePortMap m_ports;
 

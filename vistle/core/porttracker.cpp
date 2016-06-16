@@ -75,6 +75,7 @@ Port *PortTracker::addPort(Port *port) {
                if ((port->flags() & Port::COMBINE) || combine) {
                   CERR << "COMBINE port has to be only input port of a module" << std::endl;
                   delete port;
+                  check();
                   return nullptr;
                }
             }
@@ -88,15 +89,18 @@ Port *PortTracker::addPort(Port *port) {
          paramNum = rit->first+1;
       (*portOrder)[paramNum] = port->getName();
       
+      check();
       return port;
    } else {
       if (pi->second->getType() == Port::ANY) {
          port->setConnections(pi->second->connections());
          delete pi->second;
          pi->second = port;
+         check();
          return port;
       } else {
          delete port;
+         check();
          return pi->second;
       }
    }
@@ -105,8 +109,7 @@ Port *PortTracker::addPort(Port *port) {
 Port * PortTracker::getPort(const int moduleID,
                             const std::string & name) const {
 
-   std::map<int, PortMap *>::const_iterator i =
-      m_ports.find(moduleID);
+   std::map<int, PortMap *>::const_iterator i = m_ports.find(moduleID);
 
    if (i != m_ports.end()) {
       PortMap::iterator pi = i->second->find(name);
@@ -155,11 +158,13 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
             } else {
                f->removeConnection(t);
                CERR << "PortTracker::addConnection: inconsistent connection states for data connection" << std::endl;
+               check();
                return true;
             }
          }
       } else {
          //CERR << "PortTracker::addConnection: multiple connection" << std::endl;
+         check();
          return true;
       }
    } else if (f->getType() == Port::PARAMETER && t->getType() == Port::PARAMETER) {
@@ -170,6 +175,7 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
          } else {
             f->removeConnection(t);
             CERR << "PortTracker::addConnection: inconsistent connection states for parmeter connection" << std::endl;
+            check();
             return true;
          }
       }
@@ -178,6 +184,7 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
          << from->getModuleID() << ":" << from->getName() << " (" << from->getType() << ") "
          << to->getModuleID() << ":" << to->getName() << " (" << to->getType() << ")" << std::endl;
 
+      check();
       return true;
    }
 
@@ -189,6 +196,7 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
                                 t->getModuleID(), t->getName());
          }
       }
+      check();
       return true;
    }
 
@@ -198,6 +206,7 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
       << to->getModuleID() << ":" << to->getName() << " (" << to->getType() << ")" << std::endl;
 #endif
 
+   check();
    return false;
 }
 
@@ -246,11 +255,13 @@ bool PortTracker::removeConnection(const Port *from, const Port *to) {
          }
       }
 
+      check();
       return true;
    } else {
        CERR << "removeConnection: port type mismatch: " << *f << " -> " << *t << std::endl;
    }
 
+   check();
    return false;
 }
 
@@ -356,6 +367,7 @@ std::vector<Port *> PortTracker::getConnectedOutputPorts(const int moduleID) con
 std::vector<message::Buffer> PortTracker::removeModule(int moduleId) {
 
    //CERR << "removing all connections from/to " << moduleId << std::endl;
+   check();
 
    std::vector<message::Buffer> ret;
 
@@ -380,6 +392,7 @@ std::vector<message::Buffer> PortTracker::removeModule(int moduleId) {
                message::Disconnect d2(other->getModuleID(), other->getName(), port->getModuleID(), port->getName());
                ret.push_back(d2);
             }
+            check();
             if (cl.size() == oldsize) {
                CERR << "failed to remove all connections for module " << moduleId << ", still left: " << cl.size() << std::endl;
                for (size_t i=0; i<cl.size(); ++i) {
@@ -396,7 +409,10 @@ std::vector<message::Buffer> PortTracker::removeModule(int moduleId) {
           delete it->second;
       }
       mports->second->clear();
+      m_ports.erase(mports);
    }
+
+   check();
 
    for (const auto &mpm: m_ports) {
        const auto &pm = *mpm.second;
@@ -433,8 +449,9 @@ std::vector<message::Buffer> PortTracker::removeModule(int moduleId) {
    return ret;
 }
 
-void PortTracker::check() const {
+bool PortTracker::check() const {
 
+   bool ok = true;
    int numInput=0, numOutput=0, numParam=0;
    for (const auto &mpm: m_ports) {
        const auto &pm = *mpm.second;
@@ -450,36 +467,44 @@ void PortTracker::check() const {
            for (const auto &other: cl) {
                if (port->getType() == Port::ANY) {
                    CERR << "FAIL: ANY port: " << *port << std::endl;
+                   ok = false;
                }
                if (other->getType() == Port::ANY) {
                    CERR << "FAIL: ANY port: " << *other << std::endl;
+                   ok = false;
                }
                if (port->getType() == Port::INPUT) {
                    if (other->getType() != Port::OUTPUT) {
                        CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
+                       ok = false;
                    } else {
                        ++numInput;
                    }
                    if (other->getModuleID() == moduleId) {
                        CERR << "FAIL: from/to same module: " << *port << " <-> " << *other << std::endl;
+                       ok = false;
                    }
                } else if (port->getType() == Port::OUTPUT) {
                    if (other->getType() != Port::INPUT) {
                        CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
+                       ok = false;
                    } else {
                        ++numOutput;
                    }
                    if (other->getModuleID() == moduleId) {
                        CERR << "FAIL: from/to same module: " << *port << " <-> " << *other << std::endl;
+                       ok = false;
                    }
                } else if (port->getType() == Port::PARAMETER) {
                    if (other->getType() != Port::PARAMETER) {
                        CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
+                       ok = false;
                    } else {
                        ++numParam;
                    }
                } else {
                    CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
+                   ok = false;
                }
            }
        }
@@ -487,10 +512,16 @@ void PortTracker::check() const {
 
    if (numInput != numOutput) {
        CERR << "FAIL: numInput=" << numInput << ", numOutput=" << numOutput << std::endl;
+       ok = false;
    }
    if (numParam % 2) {
        CERR << "FAIL: numParam=" << numParam << std::endl;
+       ok = false;
    }
+   if (!ok) {
+       CERR << vistle::backtrace() << std::endl;
+   }
+   return ok;
 }
 
 } // namespace vistle
