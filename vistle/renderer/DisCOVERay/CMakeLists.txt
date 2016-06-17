@@ -151,13 +151,14 @@ include_directories_ispc(${EMBREE_INCLUDE_DIRS})
 
 if (ENABLE_ISPC_SUPPORT)
    add_definitions(-DHAVE_ISPC)
-   add_ispc_executable(DisCOVERay rayrenderobject.cpp ray.cpp
+   add_ispc_executable(DisCOVERay rayrenderobject.cpp ray.cpp common.h  rayrenderobject.h
       render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc)
    set_target_properties(DisCOVERay PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)
    install(TARGETS DisCOVERay RUNTIME DESTINATION libexec/module)
 else()
-   add_module(DisCOVERay rayrenderobject.cpp ray.cpp render.ispc)
+   add_module(DisCOVERay rayrenderobject.cpp ray.cpp render.ispc common.h  rayrenderobject.h)
 endif()
+add_custom_target(ispc SOURCES render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc render.isph  renderobjectdata.isph  rtcray.isph  spheres_isect.isph  spheres.isph  tubes.isph)
 
 
 include_directories(
