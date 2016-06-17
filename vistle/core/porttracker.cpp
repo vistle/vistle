@@ -4,6 +4,7 @@
 #include <core/message.h>
 #include <iostream>
 #include <algorithm>
+#include <util/tools.h>
 
 #define CERR std::cerr << (m_stateTracker ? m_stateTracker->m_name : "(null)") << ": "
 
