@@ -28,3 +28,5 @@ add_subdirectory(ToTriangles)
 add_subdirectory(Tracer)
 add_subdirectory(Variant)
 add_subdirectory(VecToScalar)
+add_subdirectory(WriteHDF5)
+

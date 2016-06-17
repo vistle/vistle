@@ -49,11 +49,10 @@ PrintMetaData::PrintMetaData(const std::string &shmname, const std::string &name
    createInputPort("data_in");
 
    // add module parameters
-   // none for now
+   // none
 
    // policies
    setReducePolicy(message::ReducePolicy::OverAll);
-   setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
 }
 
@@ -71,6 +70,7 @@ bool PrintMetaData::prepare() {
     m_numCurrGhostCells = 0;
     m_elCurrTypeVector.clear();
     m_isFirstComputeCall = true;
+    m_isGhostCellsPresent = false;
 
     return Module::prepare();
 }
@@ -80,14 +80,14 @@ bool PrintMetaData::prepare() {
 bool PrintMetaData::reduce(int timestep) {
 
     // reduce necessary data across all node instances of the module
-    if (comm().rank() == ROOT_NODE) {
-        boost::mpi::reduce(comm(), m_numCurrElements, m_numTotalElements, std::plus<Index>(), ROOT_NODE);
-        boost::mpi::reduce(comm(), m_numCurrVertices, m_numTotalVertices, std::plus<Index>(), ROOT_NODE);
-        boost::mpi::reduce(comm(), m_numCurrGhostCells, m_numTotalGhostCells, std::plus<Index>(), ROOT_NODE);
+    if (comm().rank() == M_ROOT_NODE) {
+        boost::mpi::reduce(comm(), m_numCurrElements, m_numTotalElements, std::plus<Index>(), M_ROOT_NODE);
+        boost::mpi::reduce(comm(), m_numCurrVertices, m_numTotalVertices, std::plus<Index>(), M_ROOT_NODE);
+        boost::mpi::reduce(comm(), m_numCurrGhostCells, m_numTotalGhostCells, std::plus<Index>(), M_ROOT_NODE);
     } else {
-        boost::mpi::reduce(comm(), m_numCurrElements, std::plus<Index>(), ROOT_NODE);
-        boost::mpi::reduce(comm(), m_numCurrVertices, std::plus<Index>(), ROOT_NODE);
-        boost::mpi::reduce(comm(), m_numCurrGhostCells, std::plus<Index>(), ROOT_NODE);
+        boost::mpi::reduce(comm(), m_numCurrElements, std::plus<Index>(), M_ROOT_NODE);
+        boost::mpi::reduce(comm(), m_numCurrVertices, std::plus<Index>(), M_ROOT_NODE);
+        boost::mpi::reduce(comm(), m_numCurrGhostCells, std::plus<Index>(), M_ROOT_NODE);
     }
 
 
@@ -97,16 +97,16 @@ bool PrintMetaData::reduce(int timestep) {
     m_elTotalTypeVector = std::vector<unsigned>(maxTypeVectorSize, 0);
     m_elCurrTypeVector.resize(maxTypeVectorSize, 0);
     for (unsigned i = 0; i < maxTypeVectorSize; i++) {
-        if (comm().rank() == ROOT_NODE) {
-            boost::mpi::reduce(comm(), m_elCurrTypeVector[i], m_elTotalTypeVector[i], std::plus<unsigned>(), ROOT_NODE);
+        if (comm().rank() == M_ROOT_NODE) {
+            boost::mpi::reduce(comm(), m_elCurrTypeVector[i], m_elTotalTypeVector[i], std::plus<unsigned>(), M_ROOT_NODE);
         } else {
-            boost::mpi::reduce(comm(), m_elCurrTypeVector[i], std::plus<unsigned>(), ROOT_NODE);
+            boost::mpi::reduce(comm(), m_elCurrTypeVector[i], std::plus<unsigned>(), M_ROOT_NODE);
         }
     }
 
 
     // print finalized data on root node
-    if (comm().rank() == ROOT_NODE) {
+    if (comm().rank() == M_ROOT_NODE) {
         reduce_printData();
     }
 
@@ -131,9 +131,15 @@ void PrintMetaData::compute_acquireGenericData(vistle::DataBase::const_ptr data)
 
 // COMPUTE HELPER FUNCTION - ACQUIRE GRID DATA
 //-------------------------------------------------------------------------
-void PrintMetaData::compute_acquireGridData(vistle::UnstructuredGrid::const_ptr dataGrid) {
+void PrintMetaData::compute_acquireGridData(vistle::Indexed::const_ptr dataGrid) {
     m_numCurrVertices += dataGrid->getNumVertices();
     m_numCurrElements += dataGrid->getNumElements();
+
+    // determine wether the grid is unstructured - used for obtaining ghost cell info
+    UnstructuredGrid::const_ptr unstrGrid = UnstructuredGrid::as(dataGrid);
+    if (unstrGrid) {
+        m_isGhostCellsPresent = true;
+    }
 
     // harvest cell type data
     const Index * elPtr = dataGrid->el() + 1;
@@ -145,13 +151,16 @@ void PrintMetaData::compute_acquireGridData(vistle::UnstructuredGrid::const_ptr 
             m_elCurrTypeVector.resize(numCellVertices + 1, 0);
         }
 
-        // acqiure ghost cell data
-        if (dataGrid->isGhostCell(i)) {
-            m_numCurrGhostCells++;
+        // obtain ghost cell number
+        if (m_isGhostCellsPresent) {
+            if (unstrGrid->isGhostCell(i)) {
+                m_numCurrGhostCells++;
+            }
         }
 
         m_elCurrTypeVector[numCellVertices]++;
         elPtr++;
+
     }
 
 }
@@ -183,9 +192,12 @@ void PrintMetaData::reduce_printData() {
          message += "\n\nGrid Data: ";
          message += "\n   Number of Vertices: " + std::to_string(m_numTotalVertices);
          message += "\n   Number of Total Cells: " + std::to_string(m_numTotalElements);
-         message += "\n   Number of Ghost Cells: " + std::to_string(m_numTotalGhostCells);
-         message += "\n   Cell Types: ";
 
+         if (m_isGhostCellsPresent) {
+            message += "\n   Number of Ghost Cells: " + std::to_string(m_numTotalGhostCells);
+         }
+
+         message += "\n   Cell Types: ";
          for (unsigned i = 0; i < m_elTotalTypeVector.size(); i++) {
              if (m_elTotalTypeVector[i] != 0) {
                  message += "\n      " + std::to_string(i) + " Vertices: " + std::to_string(m_elTotalTypeVector[i]);
@@ -214,20 +226,21 @@ bool PrintMetaData::compute() {
        return true;
     }
 
-    UnstructuredGrid::const_ptr dataGrid = UnstructuredGrid::as(data);
+    Indexed::const_ptr dataGrid = Indexed::as(data);
 
     // check if dataGrid has been obtained properly
     // if not, try interpreting data->grid
     if (!dataGrid) {
-       dataGrid = UnstructuredGrid::as(data->grid());
+       dataGrid = Indexed::as(data->grid());
     }
+
 
     // record wether dataGrid is available
     m_isGridAttatched = (bool) dataGrid;
 
     // obtain generic data on first compute call of module
     // this data does not change between blocks, and only needs to be processed once
-    if (m_isFirstComputeCall && comm().rank() == ROOT_NODE) {
+    if (m_isFirstComputeCall && comm().rank() == M_ROOT_NODE) {
         compute_acquireGenericData(data);
         m_isFirstComputeCall = false;
     }

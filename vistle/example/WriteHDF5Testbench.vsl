@@ -1,0 +1,18 @@
+MasterHub=-7
+uuids = {}
+umReadCovise1 = spawnAsync(MasterHub, 'ReadCovise')
+umPrintMetaData2 = spawnAsync(MasterHub, 'PrintMetaData')
+umWriteHDF53 = spawnAsync(MasterHub, 'WriteHDF5')
+mReadCovise1 = waitForSpawn(umReadCovise1)
+setVectorParam(mReadCovise1, '_position', 65.0, -311.0)
+setStringParam(mReadCovise1, 'filename', '/mnt/raid/soft/covise/share/covise/example-data/tutorial/tiny_geo.covise')
+
+mPrintMetaData2 = waitForSpawn(umPrintMetaData2)
+setVectorParam(mPrintMetaData2, '_position', 71.0, -189.0)
+
+mWriteHDF53 = waitForSpawn(umWriteHDF53)
+setVectorParam(mWriteHDF53, '_position', -52.0, -190.0)
+setStringParam(mWriteHDF53, 'File Name', '/mnt/raid/home/hpcstopa/ayy.h5')
+
+connect(mReadCovise1,'grid_out', mWriteHDF53,'data0_in')
+connect(mReadCovise1,'grid_out', mPrintMetaData2,'data_in')
