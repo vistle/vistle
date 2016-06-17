@@ -20,7 +20,7 @@ using ispc::Triangle;
 
 float RayRenderObject::pointSize = 0.001f;
 
-RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
+RayRenderObject::RayRenderObject(RTCDevice device, int senderId, const std::string &senderPort,
       Object::const_ptr container,
       Object::const_ptr geometry,
       Object::const_ptr normals,
@@ -29,6 +29,7 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
 : vistle::RenderObject(senderId, senderPort, container, geometry, normals, colors, texture)
 , data(new ispc::RenderObjectData)
 {
+   data->device = device;
    data->scene = nullptr;
    data->geomId = RTC_INVALID_GEOMETRY_ID;
    data->instId = RTC_INVALID_GEOMETRY_ID;
@@ -57,7 +58,7 @@ RayRenderObject::RayRenderObject(int senderId, const std::string &senderPort,
       return;
    }
 
-   data->scene = rtcNewScene(RTC_SCENE_STATIC|sceneFlags, intersections);
+   data->scene = rtcDeviceNewScene(data->device, RTC_SCENE_STATIC|sceneFlags, intersections);
 
    if (auto tri = Triangles::as(geometry)) {
 

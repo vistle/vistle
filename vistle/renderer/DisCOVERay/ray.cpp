@@ -108,6 +108,7 @@ class RayCaster: public vistle::Renderer {
    std::vector<boost::shared_ptr<RayRenderObject>> static_geometry;
    std::vector<std::vector<boost::shared_ptr<RayRenderObject>>> anim_geometry;
 
+   RTCDevice m_device;
    RTCScene m_scene;
 
    size_t m_timestep;
@@ -157,9 +158,9 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    m_pointSizeParam = addFloatParameter("point_size", "size of points", RayRenderObject::pointSize);
    setParameterRange(m_pointSizeParam, (Float)0, (Float)1e6);
 
-   rtcInit("verbose=0");
-   rtcSetErrorFunction(rtcErrorCallback);
-   m_scene = rtcNewScene(RTC_SCENE_DYNAMIC|sceneFlags, intersections);
+   m_device = rtcNewDevice("verbose=0");
+   rtcDeviceSetErrorFunction(m_device, rtcErrorCallback);
+   m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_DYNAMIC|sceneFlags, intersections);
    rtcCommit(m_scene);
 }
 
@@ -169,7 +170,7 @@ RayCaster::~RayCaster() {
    vassert(s_instance == this);
    s_instance = nullptr;
    rtcDeleteScene(m_scene);
-   rtcExit();
+   rtcDeleteDevice(m_device);
 }
 
 
@@ -844,7 +845,7 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
 
    m_renderManager.updateRect(m_currentView, viewport, image);
 
-   int err = rtcGetError();
+   int err = rtcDeviceGetError(m_device);
    if (err != 0) {
       std::cerr << "RTC error: " << err << std::endl;
    }
@@ -890,7 +891,7 @@ boost::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::stri
                                  vistle::Object::const_ptr colors,
                                  vistle::Object::const_ptr texture) {
 
-   boost::shared_ptr<RayRenderObject> ro(new RayRenderObject(sender, senderPort, container, geometry, normals, colors, texture));
+   boost::shared_ptr<RayRenderObject> ro(new RayRenderObject(m_device, sender, senderPort, container, geometry, normals, colors, texture));
 
    const int t = ro->timestep;
    if (t == -1) {

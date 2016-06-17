@@ -20,6 +20,7 @@ enum PrimitiveFlags {
 struct RenderObjectData {
 
    int t; //!< timestep number
+   RTCDevice device; //!< embree device
    RTCScene scene; //!< embree scene id for *this* object
    int geomId; //!< embree geometry id of this object's scene
    unsigned int instId; //!< embree instance id of this object's scene
