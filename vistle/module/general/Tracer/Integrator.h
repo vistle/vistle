@@ -20,13 +20,13 @@ private:
     vistle::Scalar m_errtol;
     IntegrationMethod m_mode;
     Particle* m_ptcl;
-
+    bool m_forward;
 
 public:
 
     Integrator(vistle::Scalar h, vistle::Scalar hmin,
                vistle::Scalar hmax, vistle::Scalar errtol,
-               IntegrationMethod mode, Particle* ptcl);
+               IntegrationMethod mode, Particle* ptcl, bool forward);
     bool Step();
     bool StepEuler();
     bool StepRK32();

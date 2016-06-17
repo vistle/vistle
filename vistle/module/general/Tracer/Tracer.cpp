@@ -44,6 +44,12 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(StartStyle,
       (Cylinder)
 )
 
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(TraceDirection,
+      (Both)
+      (Forward)
+      (Backward)
+)
+
 Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID)
    : Module("Tracer", shmname, name, moduleID) {
 
@@ -77,6 +83,8 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     std::vector<std::string> taskchoices;
     taskchoices.push_back("streamlines");
     setParameterChoices(tasktype, taskchoices);
+    IntParameter *traceDirection = addIntParameter("tdirection", "direction in which to trace", 0, Parameter::Choice);
+    V_ENUM_SET_CHOICES(traceDirection, TraceDirection);
     IntParameter *startStyle = addIntParameter("startStyle", "initial particle position configuration", (Integer)Line, Parameter::Choice);
     V_ENUM_SET_CHOICES(startStyle, StartStyle);
     IntParameter* integration = addIntParameter("integration", "integration method", (Integer)RK32, Parameter::Choice);
@@ -229,7 +237,7 @@ void BlockData::addLines(Index id, const std::vector<Vector3> &points,
 
 Particle::Particle(Index i, const Vector3 &pos, Scalar h, Scalar hmin,
       Scalar hmax, Scalar errtol, IntegrationMethod int_mode,const std::vector<std::unique_ptr<BlockData>> &bl,
-      Index stepsmax):
+      Index stepsmax, bool forward):
 m_id(i),
 m_x(pos),
 m_v(Vector3(1,0,0)), // keep large enough so that particle moves initially
@@ -238,7 +246,7 @@ m_block(nullptr),
 m_el(InvalidIndex),
 m_ingrid(true),
 m_searchBlock(true),
-m_integrator(h,hmin,hmax,errtol,int_mode,this)
+m_integrator(h,hmin,hmax,errtol,int_mode,this, forward)
 {
    if (findCell(bl)) {
       m_integrator.hInit();
@@ -467,17 +475,26 @@ bool Tracer::reduce(int timestep) {
 
    //get parameters
    bool useCelltree = m_useCelltree->getValue();
+   TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
    Index numpoints = getIntParameter("no_startp");
+   Index numparticles = numpoints;
+   if (traceDirection == Both)
+       numparticles *= 2;
    Index steps_max = getIntParameter("steps_max");
 
    //determine startpoints
-   std::vector<Vector3> startpoints(numpoints);
+   std::vector<Vector3> startpoints(numparticles);
    Vector3 startpoint1 = getVectorParameter("startpoint1");
    Vector3 startpoint2 = getVectorParameter("startpoint2");
    Vector3 delta = (startpoint2-startpoint1)/(numpoints-1);
    for(Index i=0; i<numpoints; i++){
 
       startpoints[i] = startpoint1 + i*delta;
+   }
+   if (traceDirection == Both) {
+       for(Index i=0; i<numpoints; i++){
+           startpoints[i+numpoints] = startpoints[i];
+       }
    }
 
    IntegrationMethod int_mode = (IntegrationMethod)getIntParameter("integration");
@@ -503,25 +520,46 @@ bool Tracer::reduce(int timestep) {
          block[i].reset(new BlockData(i, grid_in[t][i], data_in0[t][i], data_in1[t][i]));
       }
 
-      Index numActive = numpoints;
+      Index numActive = numparticles;
 
       //create particle objects
-      std::vector<std::unique_ptr<Particle>> particle(numpoints);
-      for(Index i=0; i<numpoints; i++){
+      std::vector<std::unique_ptr<Particle>> particle(numparticles);
+      Index i = 0;
+      if (traceDirection != Backward) {
+          for(; i<numpoints; i++){
 
-         particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max));
+              particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max, true));
 
 #ifdef TIMING
-         times::comm_start = times::start();
+              times::comm_start = times::start();
 #endif
-         bool active = boost::mpi::all_reduce(comm(), particle[i]->isActive(), std::logical_or<bool>());
+              bool active = boost::mpi::all_reduce(comm(), particle[i]->isActive(), std::logical_or<bool>());
 #ifdef TIMING
-         times::comm_dur += times::stop(times::comm_start);
+              times::comm_dur += times::stop(times::comm_start);
 #endif
-         if(!active){
-            particle[i]->Deactivate();
-            --numActive;
-         }
+              if(!active){
+                  particle[i]->Deactivate();
+                  --numActive;
+              }
+          }
+      }
+      if (traceDirection != Forward) {
+          for(; i<numparticles; i++){
+
+              particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max, false));
+
+#ifdef TIMING
+              times::comm_start = times::start();
+#endif
+              bool active = boost::mpi::all_reduce(comm(), particle[i]->isActive(), std::logical_or<bool>());
+#ifdef TIMING
+              times::comm_dur += times::stop(times::comm_start);
+#endif
+              if(!active){
+                  particle[i]->Deactivate();
+                  --numActive;
+              }
+          }
       }
       const int mpisize = comm().size();
 
@@ -531,7 +569,7 @@ bool Tracer::reduce(int timestep) {
 
 //#pragma omp parallel for
          // trace local particles
-         for(Index i=0; i<numpoints; i++) {
+         for(Index i=0; i<numparticles; i++) {
             bool traced = false;
             while(particle[i]->isMoving(steps_max, minspeed)
                   && particle[i]->findCell(block)) {

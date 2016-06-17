@@ -13,13 +13,15 @@ using namespace vistle;
 
 Integrator::Integrator(vistle::Scalar h, vistle::Scalar hmin,
            vistle::Scalar hmax, vistle::Scalar errtol,
-           IntegrationMethod mode, Particle* ptcl):
+           IntegrationMethod mode, Particle* ptcl, bool forward):
     m_h(h),
     m_hmin(hmin),
     m_hmax(hmax),
     m_errtol(errtol),
     m_mode(mode),
-    m_ptcl(ptcl){
+    m_ptcl(ptcl),
+    m_forward(forward)
+{
 }
 
 void Integrator::hInit(){
@@ -89,8 +91,11 @@ bool Integrator::hNew(Vector3 higher, Vector3 lower){
 
 bool Integrator::StepEuler() {
 
-   m_ptcl->m_x = m_ptcl->m_x + m_ptcl->m_v*m_h;
-   return true;
+    if (m_forward)
+        m_ptcl->m_x = m_ptcl->m_x + m_ptcl->m_v*m_h;
+    else
+        m_ptcl->m_x = m_ptcl->m_x - m_ptcl->m_v*m_h;
+    return true;
 }
 
 bool Integrator::StepRK32() {
@@ -100,6 +105,8 @@ bool Integrator::StepRK32() {
    Vector3 x3rd;
    Vector3 k[3];
    k[0] = m_ptcl->m_v;
+   if (!m_forward)
+       k[0] = -k[0];
    Vector xtmp = m_ptcl->m_x + m_h*k[0];
    UnstructuredGrid::const_ptr grid = m_ptcl->m_block->getGrid();
    do {
@@ -117,6 +124,8 @@ bool Integrator::StepRK32() {
          }
       }
       k[1] = Interpolator(m_ptcl->m_block,el, xtmp);
+      if (!m_forward)
+          k[1] = -k[1];
       xtmp = m_ptcl->m_x +m_h*0.25*(k[0]+k[1]);
       if(!grid->inside(el,xtmp)){
 #ifdef TIMING
@@ -132,6 +141,8 @@ bool Integrator::StepRK32() {
          }
       }
       k[2] = Interpolator(m_ptcl->m_block,el,xtmp);
+      if (!m_forward)
+          k[2] = -k[2];
       Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
       x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
 
