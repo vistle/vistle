@@ -9,6 +9,7 @@
 #include <osg/Material>
 #include <osg/Texture1D>
 #include <osg/Point>
+#include <osg/LineWidth>
 
 #include <core/polygons.h>
 #include <core/points.h>
@@ -301,6 +302,7 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
          }
 
          state->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+         state->setAttributeAndModes(new osg::LineWidth(2.f), osg::StateAttribute::ON);
 
          geom->setVertexArray(vertices.get());
          geom->addPrimitiveSet(primitives.get());
