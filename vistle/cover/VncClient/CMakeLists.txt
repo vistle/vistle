@@ -36,14 +36,12 @@ set(HEADERS
   VncClient.h
   RemoteRenderObject.h
   coRemoteCoviseInteractor.h
-  MultiChannelDrawer.h
 )
 
 set(SOURCES
   VncClient.cpp
   RemoteRenderObject.cpp
   coRemoteCoviseInteractor.cpp
-  MultiChannelDrawer.cpp
 )
 
 #use_openmp()

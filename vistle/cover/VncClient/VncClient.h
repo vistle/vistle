@@ -34,7 +34,7 @@
 #include <cover/coTabletUI.h>
 #endif
 
-#include "MultiChannelDrawer.h"
+#include <PluginUtil/MultiChannelDrawer.h>
 
 namespace osg {
 class TextureRectangle;
@@ -185,6 +185,6 @@ private:
 #endif
    bool m_reproject, m_adapt;
 
-   osg::ref_ptr<MultiChannelDrawer> m_drawer;
+   osg::ref_ptr<opencover::MultiChannelDrawer> m_drawer;
 };
 #endif

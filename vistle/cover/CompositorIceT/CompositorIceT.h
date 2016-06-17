@@ -14,7 +14,7 @@
 #include <IceTMPI.h>
 
 #include <cover/coVRPlugin.h>
-#include "../VncClient/MultiChannelDrawer.h"
+#include <PluginUtil/MultiChannelDrawer.h>
 
 class ReadBackCuda;
 struct CompositeCallback;
@@ -93,7 +93,7 @@ class CompositorIceT : public opencover::coVRPlugin
    bool m_sparseReadback; //!< whether local scene bounds shall be used for accelerating read-back and compositing
    bool m_writeDepth; //!< whether depth/z should be taken into account
    IceTCommunicator m_icetComm; //!< IceT communicator
-   osg::ref_ptr<MultiChannelDrawer> m_drawer; //!< component for drawing textures to multiple screens
+   osg::ref_ptr<opencover::MultiChannelDrawer> m_drawer; //!< component for drawing textures to multiple screens
 
    //! do the actual composting work for window with index 'win'
    void composite(int view);
