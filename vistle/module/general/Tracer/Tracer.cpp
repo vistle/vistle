@@ -240,7 +240,9 @@ Particle::Particle(Index i, const Vector3 &pos, Scalar h, Scalar hmin,
       Index stepsmax, bool forward):
 m_id(i),
 m_x(pos),
+m_xold(pos),
 m_v(Vector3(1,0,0)), // keep large enough so that particle moves initially
+m_p(0),
 m_stp(0),
 m_block(nullptr),
 m_el(InvalidIndex),
