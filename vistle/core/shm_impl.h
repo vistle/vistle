@@ -5,6 +5,7 @@
 #include <boost/mpl/find.hpp>
 #include <boost/mpl/size.hpp>
 #include <boost/mpl/push_back.hpp>
+#include <iostream>
 
 #include "scalars.h"
 #include "celltreenode.h"
