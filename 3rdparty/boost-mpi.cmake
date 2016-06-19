@@ -34,15 +34,15 @@ set(boost_mpi_SOURCES
 set(boost_mpi_HEADERS
 )
 
+include_directories(
+        "${BOOST_MPI_DIR}/include"
+        ${Boost_INCLUDE_DIRS}
+        ${MPI_C_INCLUDE_PATH}
+)
+
 vistle_add_library(vistle_boost_mpi ${VISTLE_LIB_TYPE} ${boost_mpi_SOURCES} ${boost_mpi_HEADERS})
 
 target_link_libraries(vistle_boost_mpi
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
-)
-
-include_directories(
-        "${BOOST_MPI_DIR}/include"
-        ${Boost_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
 )
