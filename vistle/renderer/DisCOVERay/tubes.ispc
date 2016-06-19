@@ -43,7 +43,7 @@ bool coneSectionIsect(const uniform TubeSection &section0,
   uniform const float AbsTan = abs(section1.r - section0.r)*coneLengthInv;
   uniform const float Tan2 = sqr(AbsTan);
   uniform bool cylinder = true;
-  if (Tan2 > Epsilon && abs(section0.r - section1.r) > 10.f*Epsilon && coneLength > 10.f*Epsilon)
+  if (Tan2 > 10.f*Epsilon && abs(section0.r - section1.r) > 100.f*Epsilon && coneLength > 100.f*Epsilon)
       cylinder = false;
   uniform const float Cos2 = cylinder ? 1.f : rcp(1.f+Tan2);
 
