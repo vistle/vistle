@@ -10,6 +10,7 @@
 
 namespace vistle {
 
+//! map vertices to owning elements/cells
 class V_COREEXPORT VertexOwnerList: public Object {
    V_OBJECT(VertexOwnerList);
 
@@ -20,12 +21,14 @@ class V_COREEXPORT VertexOwnerList: public Object {
          const Meta &meta=Meta());   
 
    shm<Index>::array &vertexList() { return *d()->vertexList; }
-   const shm<Index>::array &vertexList() const { return *d()->vertexList; }
+   const Index *vertexList() const { return m_vertexList; }
    shm<Index>::array &cellList() { return *d()->cellList; }
-   const shm<Index>::array &cellList() const { return *d()->cellList; }
+   const Index *cellList() const { return m_cellList; }
    Index getNumVertices() const;
-   Index getNeighbour(const Index &cell, const Index &vertex1, const Index &vertex2, const Index &vertex3) const;
-   std::pair<Index*, Index> getSurroundingCells(const Index &v) const;
+   Index getNeighbour(Index cell, Index vertex1, Index vertex2, Index vertex3) const;
+   std::pair<const Index*, Index> getSurroundingCells(Index v) const;
+private:
+   mutable const Index *m_vertexList, *m_cellList;
 
    V_DATA_BEGIN(VertexOwnerList);
    ShmVector<Index> vertexList;

@@ -11,6 +11,9 @@ VertexOwnerList::VertexOwnerList(const Index numVertices,
 }
 
 void VertexOwnerList::refreshImpl() const {
+    const Data *d = static_cast<Data *>(m_data);
+    m_vertexList = (d && d->vertexList.valid()) ? d->vertexList->data() : nullptr;
+    m_cellList = (d && d->cellList.valid()) ? d->cellList->data() : nullptr;
 }
 
 VertexOwnerList::Data::Data(const VertexOwnerList::Data &o, const std::string &n)
@@ -44,20 +47,20 @@ bool VertexOwnerList::isEmpty() const {
 }
 
 Index VertexOwnerList::getNumVertices() const {
-   return vertexList().size() - 1;
+   return d()->vertexList->size() - 1;
 }
 
-std::pair<Index*,Index> VertexOwnerList::getSurroundingCells(const Index &v) const {
-   Index start=this->vertexList().data()[v];
-   Index end=this->vertexList().data()[v+1];
-   Index* ptr = &this->cellList().data()[start];
+std::pair<const Index*,Index> VertexOwnerList::getSurroundingCells(Index v) const {
+   Index start=m_vertexList[v];
+   Index end=m_vertexList[v+1];
+   const Index* ptr = &m_cellList[start];
    Index n=end-start;
    return std::make_pair(ptr, n);
 }
 
-Index VertexOwnerList::getNeighbour(const Index &cell, const Index &vertex1, const Index &vertex2, const Index &vertex3) const {
-   auto vertexList=this->vertexList().data();
-   auto cellList=this->cellList().data();
+Index VertexOwnerList::getNeighbour(Index cell, Index vertex1, Index vertex2, Index vertex3) const {
+   auto vertexList=m_vertexList;
+   auto cellList=m_cellList;
    std::map<Index,Index> cellCount;
    std::vector<Index> vertices = {vertex1, vertex2, vertex3};
 
@@ -86,11 +89,11 @@ Index VertexOwnerList::getNeighbour(const Index &cell, const Index &vertex1, con
 }
 
 bool VertexOwnerList::checkImpl() const {
-   V_CHECK(!vertexList().empty());
-   V_CHECK(vertexList()[0] == 0);
+   V_CHECK(!d()->vertexList->empty());
+   V_CHECK(d()->vertexList->at(0) == 0);
    if (getNumVertices() > 0) {
-      V_CHECK (vertexList()[getNumVertices()-1] < cellList().size());
-      V_CHECK (vertexList()[getNumVertices()] == cellList().size());
+      V_CHECK (d()->vertexList->at(getNumVertices()-1) < d()->cellList->size());
+      V_CHECK (d()->vertexList->at(getNumVertices()) == d()->cellList->size());
    }
    return true;
 }

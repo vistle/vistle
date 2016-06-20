@@ -71,10 +71,8 @@ void Indexed::createVertexOwnerList() const {
    if (hasVertexOwnerList())
       return;
 
-   Index numelem, numcoord;
-
-   numelem=getNumElements();
-   numcoord=getNumVertices();
+   Index numelem=getNumElements();
+   Index numcoord=getNumVertices();
 
    VertexOwnerList::ptr vol(new VertexOwnerList(numcoord));
    std::vector<Index> tmpl1(numcoord);
