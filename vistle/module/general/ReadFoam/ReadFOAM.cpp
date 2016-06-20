@@ -1142,7 +1142,9 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
        Index neighborProc=b.neighborProc;
        std::vector<Index> &procBoundaryVertices = m_procBoundaryVertices[processor][neighborProc];
        std::vector<Index> sharedVerticesMapping;
-       for (const Index &v: procBoundaryVertices) {//create sharedVerticesMapping vector that consists of all the shared(already known) vertices without duplicates and in order of "first appearance" when going through the boundary cells
+       for (const Index &v: procBoundaryVertices) {
+          // create sharedVerticesMapping vector that consists of all the shared (already known) vertices
+          // without duplicates and in order of "first appearance" when going through the boundary cells
           if(std::find(sharedVerticesMapping.begin(), sharedVerticesMapping.end(), v) == sharedVerticesMapping.end()) {
               sharedVerticesMapping.push_back(v);
           }
