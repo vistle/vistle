@@ -71,13 +71,11 @@ Index VertexOwnerList::getNeighbour(Index cell, Index vertex1, Index vertex2, In
    for (Index i=0; i<3; ++i) {
       for (Index j=vertexList[vertices[i]]; j<vertexList[vertices[i] + 1]; ++j) {
          Index cell=cellList[j];
-         if(!cellCount.emplace(cell,1).second) {
-            ++cellCount[cell];
-         }
+         ++cellCount[cell];
       }
    }
 
-   for (auto& c : cellCount) {
+   for (auto &c: cellCount) {
       if (c.second == 3) {
          if (c.first != cell) {
             return c.first;

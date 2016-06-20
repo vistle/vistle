@@ -75,55 +75,53 @@ void Indexed::createVertexOwnerList() const {
    Index numcoord=getNumVertices();
 
    VertexOwnerList::ptr vol(new VertexOwnerList(numcoord));
-   std::vector<Index> tmpl1(numcoord);
    const auto cl = &this->cl()[0];
    const auto el = &this->el()[0];
    auto vertexList=vol->vertexList().data();
 
-   std::memset(vertexList, 0, (numcoord+1) * sizeof(Index));
-
-   // Calculation of the number of cells that contain a certain vertex
+   std::fill(vol->vertexList().begin(), vol->vertexList().end(), 0);
    std::vector<Index> used_vertex_list(numcoord, InvalidIndex);
 
-   for (Index i = 0; i < numelem; i++)
-   {
-      for (Index j = el[i]; j < el[i+1]; j++)
-      {
-         if (used_vertex_list[cl[j]] != i)
-         {
-            used_vertex_list[cl[j]] = i;
-            vertexList[cl[j]]++;
+   // Calculation of the number of cells that contain a certain vertex:
+   // temporarily stored in vertexList
+   for (Index i = 0; i < numelem; i++) {
+      const Index begin = el[i], end = el[i+1];
+      for (Index j = begin; j<end; ++j) {
+         const Index v = cl[j];
+         if (used_vertex_list[v] != j) {
+             vertexList[v]++;
+             used_vertex_list[v] = j;
          }
       }
    }
 
-   //create the vertexList
+   // create the vertexList: prefix sum
+   // vertexList will index into cellList
+   std::vector<Index> outputIndex(numcoord);
    {
-      Index j=0;
+      Index numEnt = 0;
       for (Index i = 0; i < numcoord; i++)
       {
-         Index ja = j;
-         j += vertexList[i];
-         vertexList[i] = ja;
-         tmpl1[i] = ja;
+         Index n = numEnt;
+         numEnt += vertexList[i];
+         vertexList[i] = n;
+         outputIndex[i] = n;
       }
-      vertexList[numcoord] = j;
-      vol->cellList().resize(j);
+      vertexList[numcoord] = numEnt;
+      vol->cellList().resize(numEnt);
    }
-   auto cellList=vol->cellList().data();
-   std::memset(used_vertex_list.data(), 0xff, numcoord * sizeof(Index));
 
    //fill the cellList
-   for (Index i = 0; i < numelem; i++)
-   {
-      for (Index j = el[i]; j < el[i+1]; j++)
-      {
-         Index clj = cl[j];
-         if (used_vertex_list[clj] != i)
-         {
-            used_vertex_list[clj] = i;
-            cellList[tmpl1[clj]] = i;
-            tmpl1[clj]++;
+   std::fill(used_vertex_list.begin(), used_vertex_list.end(), InvalidIndex);
+   auto cellList=vol->cellList().data();
+   for (Index i = 0; i < numelem; i++) {
+      const Index begin = el[i], end = el[i+1];
+      for (Index j = begin; j<end; ++j) {
+         const Index v = cl[j];
+         if (used_vertex_list[v] != j) {
+            used_vertex_list[v] = j;
+            cellList[outputIndex[v]] = i;
+            outputIndex[v]++;
          }
       }
    }
