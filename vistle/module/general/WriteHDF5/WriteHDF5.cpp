@@ -21,7 +21,7 @@
 #include "hdf5.h"
 
 #include "WriteHDF5.h"
-#include "vistleObject_oarchive.h"
+#include "VistleObjectOArchive.h"
 
 using namespace vistle;
 
@@ -107,14 +107,43 @@ bool WriteHDF5::compute() {
 
     for (unsigned i = 0; i < m_numPorts; i++) {
         std::string portName = "data" + std::to_string(i) + "_in";
-        vistleObject_oarchive archive;
+        VistleObjectOArchive archive;
 
         // acquire input data object
         DataBase::const_ptr data = expect<DataBase>(portName);
 
-        archive << *data;
+        archive << *UnstructuredGrid::as(data);
 
-        sendInfo("found %u", archive.getVector().size());
+
+        // debug output
+        sendInfo("vistle object archive found: %u, enum: %u, primitive: %u only: %u shm: %u\n",
+                 archive.nvpCount, archive.enumCount, archive.primitiveCount, archive.onlyCount, archive.shmCount);
+
+        std::string message;
+
+        for (unsigned i = 0; i < archive.getVector().size(); i++) {
+            message += archive.getVector()[i].name + " ";
+
+            if (archive.getVector()[i].typeInfo == typeid(int)) {
+                message += "int";
+            } else if (archive.getVector()[i].typeInfo == typeid(bool)) {
+                message += "bool";
+            } else if (archive.getVector()[i].typeInfo == typeid(float)) {
+                message += "float";
+            } else if (archive.getVector()[i].typeInfo == typeid(std::string)) {
+                message += "string";
+            } else if (archive.getVector()[i].typeInfo == typeid(ShmVector<unsigned int>)) {
+                message += "ShmVector<unsigned int>";
+            } else {
+                message += "unknown";
+            }
+
+            sendInfo("%s", message.c_str());
+            message.clear();
+        }
+
+
+
 
     }
 

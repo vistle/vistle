@@ -168,7 +168,7 @@ void PrintMetaData::compute_acquireGridData(vistle::Indexed::const_ptr dataGrid)
 // REDUCE HELPER FUNCTION - PRINT DATA
 //-------------------------------------------------------------------------
 void PrintMetaData::reduce_printData() {
-     std::string message = "\n-----------------------------------------------------";
+     std::string message = M_HORIZONTAL_RULER;
 
      // print generic data
      message += "\n\nType: " + m_dataType;
@@ -207,6 +207,9 @@ void PrintMetaData::reduce_printData() {
      } else {
          message += "\n\n No grid is overlayed with this data";
      }
+
+     // add end string formatting
+     message += M_HORIZONTAL_RULER;
 
      // print message that has been built
      sendInfo("%s", message.c_str());

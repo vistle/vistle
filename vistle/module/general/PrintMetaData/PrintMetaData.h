@@ -60,6 +60,7 @@ class PrintMetaData : public vistle::Module {
 
    // private constants
    const int M_ROOT_NODE = 0;
+   const std::string M_HORIZONTAL_RULER = "\n-----------------------------------------------------";
 
 };
 

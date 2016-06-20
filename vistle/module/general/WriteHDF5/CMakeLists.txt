@@ -18,7 +18,7 @@ link_directories(
         ${HDF5_LIBRARY_DIRS}
 )
 
-add_module(WriteHDF5 WriteHDF5.cpp vistleObject_oarchive.h)
+add_module(WriteHDF5 WriteHDF5.cpp VistleObjectOArchive.h)
 
 use_openmp()
 
