@@ -13,9 +13,7 @@ using namespace vistle;
 
 DomainSurface::DomainSurface(const std::string &shmname, const std::string &name, int moduleID)
    : Module("DomainSurface", shmname, name, moduleID) {
-   createInputPort("grid_in");
    createInputPort("data_in");
-   createOutputPort("grid_out");
    createOutputPort("data_out");
    addIntParameter("tetrahedron", "Show tetrahedron", 1, Parameter::Boolean);
    addIntParameter("pyramid", "Show pyramid", 1, Parameter::Boolean);
@@ -30,70 +28,78 @@ DomainSurface::~DomainSurface() {
 
 bool DomainSurface::compute() {
    //DomainSurface Polygon
-   m_grid_in = expect<UnstructuredGrid>("grid_in");
-
+   DataBase::const_ptr data;
+   m_grid_in = accept<UnstructuredGrid>("data_in");
    if (!m_grid_in) {
-      std::cerr << "ERROR: No input grid found. Exiting" << std::endl;
-      return false;
+      data = expect<DataBase>("data_in");
+      if (!data) {
+          sendError("no grid and no data received");
+          return true;
+      }
+      m_grid_in = UnstructuredGrid::as(data->grid());
+      if (!m_grid_in) {
+          sendError("no valid grid attached to data");
+          return true;
+      }
    }
 
    if (!createSurface())
       return true;
 
+   m_grid_out->setMeta(m_grid_in->meta());
    m_grid_out->copyAttributes(m_grid_in);
-   addObject("grid_out", m_grid_out);
+   if (!data) {
+       addObject("data_out", m_grid_out);
+       return true;
+   }
 
-   //Data
+   if (data->getSize() != m_grid_in->getNumCoords()) {
+       sendError("data size does not match grid size");
+       return true;
+   }
+
    const bool reuseCoord = getIntParameter("reuseCoordinates");
-   Object::const_ptr data = expect<Object>("data_in");
-   if (data) {
-      if(auto data_in = Vec<Scalar, 3>::as(data)) {
-         if (data_in->getSize() != m_grid_in->getNumCoords()) {
-            std::cerr << "ERROR: Data-Object size does not match the grid size." << std::endl;
-            return true;
-         }
-         if (!reuseCoord) {
-            const Scalar *data_in_x = &data_in->x()[0];
-            const Scalar *data_in_y = &data_in->y()[0];
-            const Scalar *data_in_z = &data_in->z()[0];
-            Vec<Scalar,3>::ptr data_obj_out(new Vec<Scalar,3>(m_verticesMapping.size()));
-            Scalar *data_out_x = data_obj_out->x().data();
-            Scalar *data_out_y = data_obj_out->y().data();
-            Scalar *data_out_z = data_obj_out->z().data();
-            for (auto &v: m_verticesMapping) {
-               Index f=v.first;
-               Index s=v.second;
-               data_out_x[s] = data_in_x[f];
-               data_out_y[s] = data_in_y[f];
-               data_out_z[s] = data_in_z[f];
-            }
-            data_obj_out->copyAttributes(data);
-            addObject("data_out", data_obj_out);
-         } else {
-            passThroughObject("data_out", data);
-         }
-      } else if(auto data_in = Vec<Scalar, 1>::as(data)) {
-         if (data_in->getSize() != m_grid_in->getNumCoords()) {
-            std::cerr << "ERROR: Data-Object size does not match the grid size!" << std::endl;
-            return true;
-         }
-         if (!reuseCoord) {
-            const Scalar *data_in_x = &data_in->x()[0];
-            Vec<Scalar,1>::ptr data_obj_out(new Vec<Scalar,1>(m_verticesMapping.size()));
-            Scalar *data_out_x = data_obj_out->x().data();
-            for (auto &v: m_verticesMapping) {
-               Index f=v.first;
-               Index s=v.second;
-               data_out_x[s] = data_in_x[f];
-            }
-            data_obj_out->copyAttributes(data);
-            addObject("data_out", data_obj_out);
-         } else {
-            passThroughObject("data_out", data);
-         }
-      } else {
+   if (reuseCoord) {
+       DataBase::ptr dout = data->clone();
+       dout->setGrid(m_grid_out);
+       addObject("data_out", dout);
+       return true;
+   }
+
+   if(auto data_in = Vec<Scalar, 3>::as(data)) {
+       const Scalar *data_in_x = &data_in->x()[0];
+       const Scalar *data_in_y = &data_in->y()[0];
+       const Scalar *data_in_z = &data_in->z()[0];
+       Vec<Scalar,3>::ptr data_obj_out(new Vec<Scalar,3>(m_verticesMapping.size()));
+       Scalar *data_out_x = data_obj_out->x().data();
+       Scalar *data_out_y = data_obj_out->y().data();
+       Scalar *data_out_z = data_obj_out->z().data();
+       for (auto &v: m_verticesMapping) {
+           Index f=v.first;
+           Index s=v.second;
+           data_out_x[s] = data_in_x[f];
+           data_out_y[s] = data_in_y[f];
+           data_out_z[s] = data_in_z[f];
+       }
+       data_obj_out->setGrid(m_grid_out);
+       data_obj_out->setMeta(data->meta());
+       data_obj_out->copyAttributes(data);
+       addObject("data_out", data_obj_out);
+   } else if(auto data_in = Vec<Scalar, 1>::as(data)) {
+       const Scalar *data_in_x = &data_in->x()[0];
+       Vec<Scalar,1>::ptr data_obj_out(new Vec<Scalar,1>(m_verticesMapping.size()));
+       Scalar *data_out_x = data_obj_out->x().data();
+       for (auto &v: m_verticesMapping) {
+           Index f=v.first;
+           Index s=v.second;
+           data_out_x[s] = data_in_x[f];
+       }
+       data_obj_out->setGrid(m_grid_out);
+       data_obj_out->copyAttributes(data);
+       data_obj_out->setMeta(data->meta());
+       addObject("data_out", data_obj_out);
+   } else {
          std::cerr << "WARNING: No valid 1D or 3D data on input Port" << std::endl;
-      }
    }
 
    return true;
@@ -117,8 +123,7 @@ bool DomainSurface::createSurface() {
    const Scalar *zcoord = &m_grid_in->z()[0];
    UnstructuredGrid::VertexOwnerList::const_ptr vol=m_grid_in->getVertexOwnerList();
 
-   Polygons::ptr temp(new Polygons(0, 0, 0));
-   m_grid_out = temp;
+   m_grid_out.reset(new Polygons(0, 0, 0));
    auto &pl = m_grid_out->el();
    auto &pcl = m_grid_out->cl();
    auto &px = m_grid_out->x();
@@ -127,74 +132,70 @@ bool DomainSurface::createSurface() {
 
    for (Index i=0; i<num_elem; ++i) {
       unsigned char t = tl[i];
-      switch (t)
-      {
-         case UnstructuredGrid::POLYHEDRON: {
-            if (showpol) {
-               bool facecomplete=true;
-               Index start=0;
-               std::vector<Index> face;
-               for (Index j=el[i]; j<el[i+1]; ++j) {
+      if (t == UnstructuredGrid::POLYHEDRON) {
+          if (showpol) {
+              bool facecomplete=true;
+              Index start=0;
+              std::vector<Index> face;
+              for (Index j=el[i]; j<el[i+1]; ++j) {
                   Index vertex=cl[j];
                   if (facecomplete) {
-                     facecomplete=false;
-                     start=vertex;
-                     face.push_back(vertex);
+                      facecomplete=false;
+                      start=vertex;
+                      face.push_back(vertex);
                   } else if (vertex==start) {
-                     facecomplete=true;
-                     Index neighbour = vol->getNeighbour(i, face[0], face[1], face[2]);
-                     if (neighbour == InvalidIndex) {
-                        pl.push_back(pcl.size());
-                        std::reverse(face.begin(), face.end());
-                        for (const Index &v : face) {
-                           pcl.push_back(v);
-                        }
-                     }
-                     face.clear();
+                      facecomplete=true;
+                      Index neighbour = vol->getNeighbour(i, face[0], face[1], face[2]);
+                      if (neighbour == InvalidIndex) {
+                          std::reverse(face.begin(), face.end());
+                          for (const Index &v : face) {
+                              pcl.push_back(v);
+                          }
+                          pl.push_back(pcl.size());
+                      }
+                      face.clear();
                   } else {
-                     face.push_back(vertex);
+                      face.push_back(vertex);
                   }
-               }
-               if (!facecomplete) {
+              }
+              if (!facecomplete) {
                   std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl;
-               }
-            }
-            break;
-         }
-         case UnstructuredGrid::PYRAMID: {
-            if (!showpyr)
-               break;
-         }
-         case UnstructuredGrid::PRISM: {
-            if (!showpri)
-               break;
-         }
-         case UnstructuredGrid::TETRAHEDRON: {
-            if (!showtet)
-               break;
-         }
-         case UnstructuredGrid::HEXAHEDRON: {
-            if (!showhex)
-               break;
+              }
+          }
+      } else {
+          bool show = false;
+          switch(t) {
+          case UnstructuredGrid::PYRAMID:
+              show = showpyr;
+              break;
+          case UnstructuredGrid::PRISM:
+              show = showpri;
+              break;
+          case UnstructuredGrid::TETRAHEDRON:
+              show = showtet;
+              break;
+          case UnstructuredGrid::HEXAHEDRON:
+              show = showhex;
+              break;
+          default:
+              break;
+          }
 
+          if (show) {
             const auto numFaces = UnstructuredGrid::NumFaces[t];
             const auto &faces = UnstructuredGrid::FaceVertices[t];
             for (int f=0; f<numFaces; ++f) {
                const auto &face = faces[f];
                Index elStart = el[i];
-               const auto &facesize = UnstructuredGrid::FaceSizes[t][f];
+               const auto facesize = UnstructuredGrid::FaceSizes[t][f];
                Index neighbour = vol->getNeighbour(i, cl[elStart + face[0]], cl[elStart + face[1]], cl[elStart + face[2]]);
                if (neighbour == InvalidIndex) {
-                  pl.push_back(pcl.size());
                   for (Index j=0;j<facesize;++j) {
                      pcl.push_back(cl[elStart + face[j]]);
                   }
+                  pl.push_back(pcl.size());
                }
             }
-            break;
-         }
-         default: {
-            break;
          }
       }
    }
@@ -202,8 +203,6 @@ bool DomainSurface::createSurface() {
    if (m_grid_out->getNumElements() == 0) {
       return false;
    }
-
-   pl.push_back(pcl.size());
 
    if (reuseCoord) {
       m_grid_out->d()->x[0] = m_grid_in->d()->x[0];
