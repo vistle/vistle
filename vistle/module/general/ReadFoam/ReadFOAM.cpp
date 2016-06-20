@@ -951,7 +951,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
 
       std::vector<Index> &elOut = out->el;
       std::vector<SIndex> &clOut = out->cl;
-      std::vector<Index> &tlOut = out->tl;
+      std::vector<unsigned char> &tlOut = out->tl;
       std::vector<Scalar> &pointsOutX = out->x;
       std::vector<Scalar> &pointsOutY = out->y;
       std::vector<Scalar> &pointsOutZ = out->z;
@@ -1153,7 +1153,7 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
        boost::shared_ptr<GhostCells> in = m_GhostCellsIn[processor][neighborProc];
        std::vector<Index> &elIn = in->el;
        std::vector<SIndex> &clIn = in->cl;
-       std::vector<Index> &tlIn = in->tl;
+       std::vector<unsigned char> &tlIn = in->tl;
        std::vector<Scalar> &pointsInX = in->x;
        std::vector<Scalar> &pointsInY = in->y;
        std::vector<Scalar> &pointsInZ = in->z;
