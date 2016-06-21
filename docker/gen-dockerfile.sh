@@ -9,10 +9,10 @@ case $1 in
       ;;
 esac
 
-export UBUNTU=15.10
-export PAR=-j8
+export UBUNTU=16.04
+export PAR=-j4
 export ISPCVER=1.9.0
-export EMBREETAG=v2.9.0
+export EMBREETAG=v2.10.0
 export BUILDTYPE=Release
 export PREFIX=/usr
 export BUILDDIR=/build
@@ -31,7 +31,6 @@ FROM library/ubuntu:${UBUNTU}
 MAINTAINER "Martin Aumüller" <aumueller@hlrs.de>
 
 WORKDIR ${BUILDDIR}
-ADD embree-debian-multiarch.diff ${BUILDDIR}/embree-debian-multiarch.diff
 
 RUN apt-get update -y && apt-get install --no-install-recommends -y \
        libtbb-dev \
@@ -65,8 +64,13 @@ RUN apt-get install --no-install-recommends -y wget ca-certificates \
        && rm download \
        && apt-get remove -y wget ca-certificates \
        && apt-get clean -y
+EOF
 
 # build embree CPU ray tracer
+case $EMBREETAG in
+   v2.9.0)
+cat <<EOF-embree-2.9
+ADD embree-debian-multiarch.diff ${BUILDDIR}/embree-debian-multiarch.diff
 RUN git clone git://github.com/embree/embree.git && cd embree && git checkout ${EMBREETAG} \
       && git apply ../embree-debian-multiarch.diff \
       && rm ../embree-debian-multiarch.diff \
@@ -75,7 +79,22 @@ RUN git clone git://github.com/embree/embree.git && cd embree && git checkout ${
       && make ${PAR} install \
       && cd ${BUILDDIR} \
       && rm -rf embree
+EOF-embree-2.9
+      ;;
+   v2.10.0)
+cat <<EOF-embree-2.10
+# build embree CPU ray tracer
+RUN git clone git://github.com/embree/embree.git && cd embree && git checkout ${EMBREETAG} \
+      && mkdir build && cd build \
+      && cmake -DCMAKE_BUILD_TYPE=${BUILDTYPE} -DCMAKE_INSTALL_PREFIX=${PREFIX} -DENABLE_TUTORIALS=OFF .. \
+      && make ${PAR} install \
+      && cd ${BUILDDIR} \
+      && rm -rf embree
+EOF-embree-2.10
+      ;;
+esac
 
+cat <<EOF
 # build COVISE file I/O library
 RUN git clone git://github.com/hlrs-vis/covise.git \
        && export ARCHSUFFIX=${ARCHSUFFIX} \
