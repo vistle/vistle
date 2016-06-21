@@ -59,27 +59,28 @@ std::pair<const Index*,Index> VertexOwnerList::getSurroundingCells(Index v) cons
 }
 
 Index VertexOwnerList::getNeighbour(Index cell, Index vertex1, Index vertex2, Index vertex3) const {
-   auto vertexList=m_vertexList;
-   auto cellList=m_cellList;
    std::map<Index,Index> cellCount;
-   std::vector<Index> vertices = {vertex1, vertex2, vertex3};
+   std::array<Index, 3> vertices({vertex1, vertex2, vertex3});
 
    if (vertex1 == vertex2 || vertex1 == vertex3 || vertex2 == vertex3) {
       std::cerr << "WARNING: getNeighbour was not called with 3 unique vertices." << std::endl;
+      return InvalidIndex;
    }
 
    for (Index i=0; i<3; ++i) {
-      for (Index j=vertexList[vertices[i]]; j<vertexList[vertices[i] + 1]; ++j) {
-         Index cell=cellList[j];
-         ++cellCount[cell];
+      const auto cells_num = getSurroundingCells(vertices[i]);
+      auto cells = cells_num.first;
+      auto num = cells_num.second;
+      for (Index j=0; j<num; ++j) {
+         Index c=cells[j];
+         if (c != cell)
+             ++cellCount[c];
       }
    }
 
    for (auto &c: cellCount) {
       if (c.second == 3) {
-         if (c.first != cell) {
-            return c.first;
-         }
+         return c.first;
       }
    }
 

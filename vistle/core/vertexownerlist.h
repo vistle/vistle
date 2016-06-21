@@ -25,8 +25,9 @@ class V_COREEXPORT VertexOwnerList: public Object {
    shm<Index>::array &cellList() { return *d()->cellList; }
    const Index *cellList() const { return m_cellList; }
    Index getNumVertices() const;
-   // find cell that shares a face with cell which also contains vertex1..vertex3
+   //! find cell that shares a face with cell which also contains vertex1..vertex3
    Index getNeighbour(Index cell, Index vertex1, Index vertex2, Index vertex3) const;
+   //! return surrounding cells and their number
    std::pair<const Index*, Index> getSurroundingCells(Index v) const;
 private:
    mutable const Index *m_vertexList, *m_cellList;
