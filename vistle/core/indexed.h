@@ -37,6 +37,17 @@ class  V_COREEXPORT Indexed: public Coords {
    bool hasVertexOwnerList() const;
    VertexOwnerList::const_ptr getVertexOwnerList() const;
    void removeVertexOwnerList() const;
+   class NeighborFinder {
+       friend class Indexed;
+   public:
+       Index getNeighborElement(Index elem, Index v1, Index v2, Index v3);
+   private:
+       NeighborFinder(const Indexed *indexed);
+       Index numElem, numVert;
+       const Index *el, *cl;
+       const Index *vl, *vol;
+   };
+   NeighborFinder getNeighborFinder() const;
 
    bool getElementBounds(Index elem, Vector *min, Vector *max) const;
 

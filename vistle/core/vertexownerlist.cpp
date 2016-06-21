@@ -58,12 +58,12 @@ std::pair<const Index*,Index> VertexOwnerList::getSurroundingCells(Index v) cons
    return std::make_pair(ptr, n);
 }
 
-Index VertexOwnerList::getNeighbour(Index cell, Index vertex1, Index vertex2, Index vertex3) const {
+Index VertexOwnerList::getNeighbor(Index cell, Index vertex1, Index vertex2, Index vertex3) const {
    std::map<Index,Index> cellCount;
    std::array<Index, 3> vertices({vertex1, vertex2, vertex3});
 
    if (vertex1 == vertex2 || vertex1 == vertex3 || vertex2 == vertex3) {
-      std::cerr << "WARNING: getNeighbour was not called with 3 unique vertices." << std::endl;
+      std::cerr << "WARNING: getNeighbor was not called with 3 unique vertices." << std::endl;
       return InvalidIndex;
    }
 

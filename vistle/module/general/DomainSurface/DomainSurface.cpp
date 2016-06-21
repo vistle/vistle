@@ -124,6 +124,7 @@ bool DomainSurface::createSurface() {
    auto &pl = m_grid_out->el();
    auto &pcl = m_grid_out->cl();
 
+   auto nf = m_grid_in->getNeighborFinder();
    for (Index i=0; i<num_elem; ++i) {
       unsigned char t = tl[i];
       if (t == UnstructuredGrid::POLYHEDRON) {
@@ -139,7 +140,7 @@ bool DomainSurface::createSurface() {
                       face.push_back(vertex);
                   } else if (vertex==start) {
                       facecomplete=true;
-                      Index neighbour = vol->getNeighbour(i, face[0], face[1], face[2]);
+                      Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]);
                       if (neighbour == InvalidIndex) {
                           std::reverse(face.begin(), face.end());
                           for (const Index &v : face) {
@@ -182,7 +183,7 @@ bool DomainSurface::createSurface() {
                const auto &face = faces[f];
                Index elStart = el[i];
                const auto facesize = UnstructuredGrid::FaceSizes[t][f];
-               Index neighbour = vol->getNeighbour(i, cl[elStart + face[0]], cl[elStart + face[1]], cl[elStart + face[2]]);
+               Index neighbour = nf.getNeighborElement(i, cl[elStart + face[0]], cl[elStart + face[1]], cl[elStart + face[2]]);
                if (neighbour == InvalidIndex) {
                   for (Index j=0;j<facesize;++j) {
                      pcl.push_back(cl[elStart + face[j]]);

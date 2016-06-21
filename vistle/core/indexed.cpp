@@ -83,6 +83,7 @@ void Indexed::createVertexOwnerList() const {
 
    std::fill(vol->vertexList().begin(), vol->vertexList().end(), 0);
    std::vector<Index> used_vertex_list(numcoord, InvalidIndex);
+   auto uvl = used_vertex_list.data();
 
    // Calculation of the number of cells that contain a certain vertex:
    // temporarily stored in vertexList
@@ -90,9 +91,9 @@ void Indexed::createVertexOwnerList() const {
       const Index begin = el[i], end = el[i+1];
       for (Index j = begin; j<end; ++j) {
          const Index v = cl[j];
-         if (used_vertex_list[v] != j) {
+         if (uvl[v] != j) {
              vertexList[v]++;
-             used_vertex_list[v] = j;
+             uvl[v] = j;
          }
       }
    }
@@ -100,6 +101,7 @@ void Indexed::createVertexOwnerList() const {
    // create the vertexList: prefix sum
    // vertexList will index into cellList
    std::vector<Index> outputIndex(numcoord);
+   auto outIdx = outputIndex.data();
    {
       Index numEnt = 0;
       for (Index i = 0; i < numcoord; i++)
@@ -107,7 +109,7 @@ void Indexed::createVertexOwnerList() const {
          Index n = numEnt;
          numEnt += vertexList[i];
          vertexList[i] = n;
-         outputIndex[i] = n;
+         outIdx[i] = n;
       }
       vertexList[numcoord] = numEnt;
       vol->cellList().resize(numEnt);
@@ -120,10 +122,10 @@ void Indexed::createVertexOwnerList() const {
       const Index begin = el[i], end = el[i+1];
       for (Index j = begin; j<end; ++j) {
          const Index v = cl[j];
-         if (used_vertex_list[v] != j) {
-            used_vertex_list[v] = j;
-            cellList[outputIndex[v]] = i;
-            outputIndex[v]++;
+         if (uvl[v] != j) {
+            uvl[v] = j;
+            cellList[outIdx[v]] = i;
+            outIdx[v]++;
          }
       }
    }
@@ -132,7 +134,52 @@ void Indexed::createVertexOwnerList() const {
 }
 
 void Indexed::removeVertexOwnerList() const {
-   removeAttachment("vertexownerlist");
+    removeAttachment("vertexownerlist");
+}
+
+Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed) {
+    auto ol = indexed->getVertexOwnerList();
+    numElem = indexed->getNumElements();
+    numVert = indexed->getNumCorners();
+    el = indexed->el();
+    cl = indexed->cl();
+    vl = ol->vertexList();
+    vol = ol->cellList();
+}
+
+Index Indexed::NeighborFinder::getNeighborElement(Index elem, Index v1, Index v2, Index v3) {
+
+   if (v1 == v2 || v1 == v3 || v2 == v3) {
+      std::cerr << "WARNING: getNeighborElement was not called with 3 unique vertices." << std::endl;
+      return InvalidIndex;
+   }
+
+   const Index *elems = &vol[vl[v1]];
+   Index nvert = vl[v1+1] - vl[v1];
+   for (Index j=0; j<nvert; ++j) {
+       Index e = elems[j];
+       if (e == elem)
+           continue;
+       bool f2=false, f3=false;
+       for (Index i=el[e]; i<el[e+1]; ++i) {
+           const Index v = cl[i];
+           if (v == v2) {
+               f2 = true;
+               if (f3)
+                   return e;
+           } else if (v == v3) {
+               f3 = true;
+               if (f2)
+                   return e;
+           }
+       }
+   }
+   return InvalidIndex;
+}
+
+Indexed::NeighborFinder Indexed::getNeighborFinder() const {
+
+    return NeighborFinder(this);
 }
 
 struct CellBoundsFunctor: public Indexed::Celltree::CellBoundsFunctor {
