@@ -35,6 +35,7 @@ class PrintMetaData : public vistle::Module {
    void compute_acquireGenericData(vistle::DataBase::const_ptr data);
    void compute_acquireGridData(vistle::Indexed::const_ptr dataGrid);
    void reduce_printData();
+   void util_printMPIInfo(std::string printTag = "");
 
    // private member variables
    vistle::Index m_numCurrElements;

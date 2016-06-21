@@ -54,6 +54,9 @@ PrintMetaData::PrintMetaData(const std::string &shmname, const std::string &name
    // policies
    setReducePolicy(message::ReducePolicy::OverAll);
 
+   // additional operations
+   util_printMPIInfo("ctor:");
+
 }
 
 // DESTRUCTOR
@@ -104,6 +107,8 @@ bool PrintMetaData::reduce(int timestep) {
         }
     }
 
+    // print MPI information
+    util_printMPIInfo("reduce:");
 
     // print finalized data on root node
     if (comm().rank() == M_ROOT_NODE) {
@@ -254,4 +259,29 @@ bool PrintMetaData::compute() {
     }
 
    return true;
+}
+
+// UTILITY FUNCTION - PRINTS MPI INFORMATION
+//-------------------------------------------------------------------------
+void PrintMetaData::util_printMPIInfo(std::string printTag) {
+    std::vector<char> hostname(1024);
+    gethostname(hostname.data(), hostname.size());
+    std::stringstream str;
+
+    // print mpi rank and size
+    str << printTag << "rank " << rank() << "/" << size() << " on host " << hostname.data() << std::endl;
+    sendInfo(str.str());
+
+    // print mpi library version on root node
+    if (rank() == M_ROOT_NODE && printTag != "ctor:") {
+        int len = 0;
+        char version[MPI_MAX_LIBRARY_VERSION_STRING];
+
+        MPI_Get_library_version(version, &len);
+
+        str.flush();
+        str << "MPI version: " << std::string(version, len) << std::endl;
+
+        sendInfo(str.str());
+    }
 }
