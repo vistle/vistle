@@ -290,7 +290,7 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
          for (Index index = 0; index < numElements; index ++) {
 
             Index start = el[index];
-            Index end = index==numElements-1 ? numCorners : el[index+1];
+            Index end = el[index+1];
             Index num = end - start;
 
             primitives->push_back(num);
