@@ -118,17 +118,11 @@ bool DomainSurface::createSurface() {
    const Index *el = &m_grid_in->el()[0];
    const Index *cl = &m_grid_in->cl()[0];
    const unsigned char *tl = &m_grid_in->tl()[0];
-   const Scalar *xcoord = &m_grid_in->x()[0];
-   const Scalar *ycoord = &m_grid_in->y()[0];
-   const Scalar *zcoord = &m_grid_in->z()[0];
    UnstructuredGrid::VertexOwnerList::const_ptr vol=m_grid_in->getVertexOwnerList();
 
    m_grid_out.reset(new Polygons(0, 0, 0));
    auto &pl = m_grid_out->el();
    auto &pcl = m_grid_out->cl();
-   auto &px = m_grid_out->x();
-   auto &py = m_grid_out->y();
-   auto &pz = m_grid_out->z();
 
    for (Index i=0; i<num_elem; ++i) {
       unsigned char t = tl[i];
@@ -220,6 +214,12 @@ bool DomainSurface::createSurface() {
          }
       }
 
+      const Scalar *xcoord = &m_grid_in->x()[0];
+      const Scalar *ycoord = &m_grid_in->y()[0];
+      const Scalar *zcoord = &m_grid_in->z()[0];
+      auto &px = m_grid_out->x();
+      auto &py = m_grid_out->y();
+      auto &pz = m_grid_out->z();
       px.resize(c);
       py.resize(c);
       pz.resize(c);
