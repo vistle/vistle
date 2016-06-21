@@ -58,8 +58,10 @@ bool Indexed::hasVertexOwnerList() const {
 Indexed::VertexOwnerList::const_ptr Indexed::getVertexOwnerList() const {
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
-   if (!hasAttachment("vertexownerlist"))
+   if (!hasAttachment("vertexownerlist")) {
+      refresh();
       createVertexOwnerList();
+   }
 
    VertexOwnerList::const_ptr vol = VertexOwnerList::as(getAttachment("vertexownerlist"));
    vassert(vol);
