@@ -233,6 +233,7 @@ protected:
    int m_reducePolicy;
    int m_executionDepth; //< number of input ports that have sent ExecutionProgress::Start
 
+   bool havePort(const std::string &name); //< check whether a port or parameter already exists
    boost::shared_ptr<Parameter> findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;
    Port *findOutputPort(const std::string &name) const;

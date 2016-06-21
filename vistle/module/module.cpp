@@ -350,41 +350,55 @@ ObjectCache::CacheMode Module::cacheMode(ObjectCache::CacheMode mode) const {
    return m_cache.cacheMode();
 }
 
+bool Module::havePort(const std::string &name) {
+
+   auto param = findParameter(name);
+   if (param)
+       return true;
+
+   std::map<std::string, Port*>::iterator iout = outputPorts.find(name);
+   if (iout != outputPorts.end())
+       return true;
+
+   std::map<std::string, Port*>::iterator iin = inputPorts.find(name);
+   if (iin != inputPorts.end())
+       return true;
+
+   return false;
+}
+
 Port *Module::createInputPort(const std::string &name, const std::string &description, const int flags) {
 
-   std::map<std::string, Port*>::iterator i = inputPorts.find(name);
-   vassert(i == inputPorts.end());
-
-   if (i == inputPorts.end()) {
-
-      Port *p = new Port(id(), name, Port::INPUT, flags);
-      inputPorts[name] = p;
-
-      message::AddPort message(p);
-      message.setDestId(Id::ForBroadcast);
-      sendMessage(message);
-      return p;
+   vassert(!havePort(name));
+   if (havePort(name)) {
+      CERR << "createInputPort: already have port/parameter with name " << name << std::endl;
+      return nullptr;
    }
 
-   return nullptr;
+   Port *p = new Port(id(), name, Port::INPUT, flags);
+   inputPorts[name] = p;
+
+   message::AddPort message(p);
+   message.setDestId(Id::ForBroadcast);
+   sendMessage(message);
+   return p;
 }
 
 Port *Module::createOutputPort(const std::string &name, const std::string &description, const int flags) {
 
-   std::map<std::string, Port *>::iterator i = outputPorts.find(name);
-   vassert(i == outputPorts.end());
-
-   if (i == outputPorts.end()) {
-
-      Port *p = new Port(id(), name, Port::OUTPUT, flags);
-      outputPorts[name] = p;
-
-      message::AddPort message(p);
-      message.setDestId(Id::ForBroadcast);
-      sendMessage(message);
-      return p;
+   vassert(!havePort(name));
+   if (havePort(name)) {
+      CERR << "createOutputPort: already have port/parameter with name " << name << std::endl;
+      return nullptr;
    }
-   return nullptr;
+
+   Port *p = new Port(id(), name, Port::OUTPUT, flags);
+   outputPorts[name] = p;
+
+   message::AddPort message(p);
+   message.setDestId(Id::ForBroadcast);
+   sendMessage(message);
+   return p;
 }
 
 void Module::setCurrentParameterGroup(const std::string &group) {
@@ -420,11 +434,11 @@ Port *Module::findOutputPort(const std::string &name) const {
 
 Parameter *Module::addParameterGeneric(const std::string &name, boost::shared_ptr<Parameter> param) {
 
-   auto i = parameters.find(name);
-
-   vassert(i == parameters.end());
-   if (i != parameters.end())
+   vassert(!havePort(name));
+   if (havePort(name)) {
+       CERR << "addParameterGeneric: already have port/parameter with name " << name << std::endl;
       return nullptr;
+   }
 
    parameters[name] = param;
 
