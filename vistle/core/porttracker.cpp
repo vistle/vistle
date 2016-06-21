@@ -371,10 +371,10 @@ std::vector<message::Buffer> PortTracker::removeModule(int moduleId) {
 
    std::vector<message::Buffer> ret;
 
-   ModulePortMap::const_iterator mports = m_ports.find(moduleId);
-   if (mports != m_ports.end()) {
+   ModulePortMap::const_iterator modulePorts = m_ports.find(moduleId);
+   if (modulePorts != m_ports.end()) {
 
-      const PortMap &portmap = *mports->second;
+      const PortMap &portmap = *modulePorts->second;
       for(PortMap::const_iterator it = portmap.begin();
             it != portmap.end();
             ++it) {
@@ -408,8 +408,12 @@ std::vector<message::Buffer> PortTracker::removeModule(int moduleId) {
             ++it) {
           delete it->second;
       }
-      mports->second->clear();
-      m_ports.erase(mports);
+      modulePorts->second->clear();
+      m_ports.erase(modulePorts);
+   }
+
+   if (m_ports.find(moduleId) != m_ports.end()) {
+       CERR << "removeModule(" << moduleId << "): not yet removed" << std::endl;
    }
 
    check();
