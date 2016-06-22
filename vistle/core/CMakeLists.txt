@@ -19,6 +19,7 @@ set(core_SOURCES
    porttracker.cpp
    statetracker.cpp
    allobjects.cpp
+   VistleObjectOArchive.cpp
 )
 
 if(${TEMPLATES_IN_HEADERS})
@@ -108,6 +109,7 @@ set(core_HEADERS
    vec.h
    vec_impl.h
    vector.h
+   VistleObjectOArchive.h
    uuid.h
 )
 

@@ -9,6 +9,7 @@
 #define VISTLE_OBJECT_OARCHIVE_H
 
 #include <cstddef>
+#include <stack>
 #include <core/shm.h>
 
 #include <boost/config.hpp>
@@ -21,15 +22,18 @@
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/access.hpp>
+#include <boost/serialization/version.hpp>
 
 #include <typeinfo>
 #include <typeindex>
 #include <type_traits>
 
+#include "export.h"
+
 //-------------------------------------------------------------------------
 // VISTLE OBJECT OARCHIVE CLASS DECLARATION
 //-------------------------------------------------------------------------
-class VistleObjectOArchive {
+class V_COREEXPORT VistleObjectOArchive {
 public:
     // temporary debug variables
     unsigned nvpCount;
@@ -43,6 +47,8 @@ private:
     struct ArchivedEntry {
         std::string name;
         const void * value;
+        unsigned size;
+        bool isPointer;
         std::type_index typeInfo;
     };
 
@@ -52,54 +58,18 @@ private:
     // private member variables
     ArchiveVector m_archiveVector;
     std::string m_currentName;
+    unsigned m_currentSize;
+    bool m_isCurrentPointer;
     bool m_hasName;
 
-    // specific save class: enum type - archive concept requirements
     template<class Archive>
-    struct save_enum_type {
-        template<class T>
-        static void invoke(Archive &ar, const T &t){
-            ar.enumCount++;
+    struct save_enum_type;
 
-            if (ar.m_hasName) {
-                ar.m_archiveVector.push_back({ar.m_currentName, (const void *) &t, typeid(t)});
-            }
-
-            return;
-        }
-    };
-
-    // specific save class: primitive type - archive concept requirements
     template<class Archive>
-    struct save_primitive {
-        template<class T>
-        static void invoke(Archive & ar, const T & t){
-            ar.primitiveCount++;
+    struct save_primitive;
 
-            if (ar.m_hasName) {
-                ar.m_archiveVector.push_back({ar.m_currentName, (const void *) &t, typeid(t)});
-            }
-
-            return;
-        }
-    };
-
-    // specific save class: only type - archive concept requirements
     template<class Archive>
-    struct save_only {
-        template<class T>
-        static void invoke(Archive & ar, const T & t){
-            ar.onlyCount++;
-
-            if (ar.m_hasName) {
-                ar.m_archiveVector.push_back({ar.m_currentName, (const void *) &t, typeid(t)});
-            }
-
-            boost::serialization::serialize_adl(ar, const_cast<T &>(t), ::boost::serialization::version< T >::value);
-
-            return;
-        }
-    };
+    struct save_only;
 
     // unspecified save method - archive concept requirement
     template<class T>
@@ -127,6 +97,9 @@ public:
     VistleObjectOArchive & operator<<(const T (&t)[N]);
     template<class T>
     VistleObjectOArchive & operator<<(const boost::serialization::nvp<T> & t);
+    template<class T>
+    VistleObjectOArchive & operator<<(const vistle::ShmVector<T> & t);
+    VistleObjectOArchive & operator<<(const std::string & t);
 
     // the & operator
     template<class T>
@@ -134,15 +107,59 @@ public:
 
     // constructor - currently only in use due to debuf functions
     VistleObjectOArchive() {nvpCount = 0; primitiveCount = 0; enumCount = 0; onlyCount = 0; shmCount = 0;}
+    VistleObjectOArchive(std::ostream &) {nvpCount = 0; primitiveCount = 0; enumCount = 0; onlyCount = 0; shmCount = 0;}
+
 
     // get functions
-    ArchiveVector & getVector() { return m_archiveVector; }
+    ArchiveVector & vector() { return m_archiveVector; }
 
 };
+
 
 //-------------------------------------------------------------------------
 // VISTLE OBJECT OARCHIVE CLASS DEFINITION
 //-------------------------------------------------------------------------
+
+// specific save class: enum type - archive concept requirements
+template<class Archive>
+struct VistleObjectOArchive::save_enum_type {
+    template<class T>
+    static void invoke(Archive &ar, const T &t){
+        ar.enumCount++;
+
+        ar.m_archiveVector.push_back({ar.m_currentName, (const void *) &t, ar.m_currentSize, ar.m_isCurrentPointer, typeid(t)});
+
+        return;
+    }
+};
+
+// specific save class: primitive type - archive concept requirements
+template<class Archive>
+struct VistleObjectOArchive::save_primitive {
+    template<class T>
+    static void invoke(Archive & ar, const T & t){
+        ar.primitiveCount++;
+
+        ar.m_archiveVector.push_back({ar.m_currentName, (const void *) &t, ar.m_currentSize, ar.m_isCurrentPointer, typeid(t)});
+
+        return;
+    }
+};
+
+// specific save class: only type - archive concept requirements
+template<class Archive>
+struct VistleObjectOArchive::save_only {
+    template<class T>
+    static void invoke(Archive & ar, const T & t){
+        ar.onlyCount++;
+
+        ar.m_archiveVector.push_back({ar.m_currentName, (const void *) &t, ar.m_currentSize, ar.m_isCurrentPointer, typeid(t)});
+
+        boost::serialization::serialize_adl(ar, const_cast<T &>(t), ::boost::serialization::version< T >::value);
+
+        return;
+    }
+};
 
 // UNSPECIFIED SAVE FUNCTION
 // * delegates saving functionality based on the type of the incoming variable.
@@ -166,11 +183,17 @@ void VistleObjectOArchive::save(const T &t){
     typex::invoke(*this, t);
 }
 
+
+
 // << OPERATOR: UNSPECIALISED
 //-------------------------------------------------------------------------
 template<class T>
 VistleObjectOArchive & VistleObjectOArchive::operator<<(T const & t){
-    save(t);
+
+    //if (m_hasName) {
+        save(t);
+    //}
+
     return * this;
 }
 
@@ -180,6 +203,9 @@ template<class T>
 VistleObjectOArchive & VistleObjectOArchive::operator<<(T * const t){
 
     if(t != nullptr) {
+
+        m_isCurrentPointer = true;
+
         *this << * t;
     }
 
@@ -190,35 +216,49 @@ VistleObjectOArchive & VistleObjectOArchive::operator<<(T * const t){
 //-------------------------------------------------------------------------
 template<class T, int N>
 VistleObjectOArchive & VistleObjectOArchive::operator<<(const T (&t)[N]){
-    return *this << boost::serialization::make_array(
-        static_cast<const T *>(&t[0]),
-        N
-    );
+
+    m_currentSize = N;
+
+    return *this << &t;
 }
 
 // << OPERATOR: NVP
 //-------------------------------------------------------------------------
 template<class T>
 VistleObjectOArchive & VistleObjectOArchive::operator<<(const boost::serialization::nvp<T> & t){
-
     nvpCount++;
 
     m_currentName = t.name();
     m_hasName = true;
 
-    * this << t.const_value();
-    return * this;
+    return * this << t.const_value();
 }
+
+// << OPERATOR: SHMVECTOR
+//-------------------------------------------------------------------------
+template<class T>
+VistleObjectOArchive & VistleObjectOArchive::operator<<(const vistle::ShmVector<T> & t) {
+    shmCount++;
+
+    m_currentSize = t->size();
+
+    return * this << t->data();
+}
+
 
 // & OPERATOR
 //-------------------------------------------------------------------------
 template<class T>
 VistleObjectOArchive & VistleObjectOArchive::operator&(const T & t){
 
+    // initialize member variables
     m_hasName = false;
+    m_isCurrentPointer = false;
+    m_currentSize = 1;
+
+    // delegate to appropriate << operator
     return * this << t;
 }
-
 
 
 #endif /* VISTLE_OBJECT_OARCHIVE_H */
