@@ -107,13 +107,13 @@ bool PrintMetaData::reduce(int timestep) {
         }
     }
 
-    // print MPI information
-    util_printMPIInfo("reduce:");
-
     // print finalized data on root node
     if (comm().rank() == M_ROOT_NODE) {
         reduce_printData();
     }
+
+    // print mpi info
+    util_printMPIInfo("reduce:");
 
     return Module::reduce(timestep);
 }
@@ -173,7 +173,7 @@ void PrintMetaData::compute_acquireGridData(vistle::Indexed::const_ptr dataGrid)
 // REDUCE HELPER FUNCTION - PRINT DATA
 //-------------------------------------------------------------------------
 void PrintMetaData::reduce_printData() {
-     std::string message = M_HORIZONTAL_RULER;
+     std::string message = M_HORIZONTAL_RULER + "\nOBJECT METADATA:" + M_HORIZONTAL_RULER;
 
      // print generic data
      message += "\n\nType: " + m_dataType;
@@ -262,26 +262,36 @@ bool PrintMetaData::compute() {
 }
 
 // UTILITY FUNCTION - PRINTS MPI INFORMATION
+// * must be called collectively - mpi barrier used to ensure proper message ordering
 //-------------------------------------------------------------------------
 void PrintMetaData::util_printMPIInfo(std::string printTag) {
     std::vector<char> hostname(1024);
     gethostname(hostname.data(), hostname.size());
-    std::stringstream str;
+    std::string message;
+
+    // print header for MPI info
+    if (rank() == M_ROOT_NODE) {
+        message = std::string(M_HORIZONTAL_RULER + "\nMPI INFO:" + M_HORIZONTAL_RULER);
+
+        // print mpi library version on root node
+        if (printTag == "ctor:") {
+            int len = 0;
+            char version[MPI_MAX_LIBRARY_VERSION_STRING];
+
+            MPI_Get_library_version(version, &len);
+
+            message += "\nMPI version: " + std::string(version, len) + "\n";
+        }
+
+        sendInfo(message);
+    }
+
+    // sync so that header is at top
+    comm().barrier();
+    usleep(10);
 
     // print mpi rank and size
-    str << printTag << "rank " << rank() << "/" << size() << " on host " << hostname.data() << std::endl;
-    sendInfo(str.str());
+    message = printTag + "rank " + std::to_string(rank()) + "/" + std::to_string(size()) + " on host " + hostname.data() + "\n";
 
-    // print mpi library version on root node
-    if (rank() == M_ROOT_NODE && printTag != "ctor:") {
-        int len = 0;
-        char version[MPI_MAX_LIBRARY_VERSION_STRING];
-
-        MPI_Get_library_version(version, &len);
-
-        str.flush();
-        str << "MPI version: " << std::string(version, len) << std::endl;
-
-        sendInfo(str.str());
-    }
+    sendInfo(message);
 }
