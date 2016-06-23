@@ -161,30 +161,20 @@ bool WriteHDF5::compute() {
 
     for (unsigned i = 0; i < m_numPorts; i++) {
         std::string portName = "data" + std::to_string(i) + "_in";
-        std::stringstream ss;
-        PointerOArchive archive(ss);
+        PointerOArchive archive;
 
         // acquire input data object
         Object::const_ptr obj = expect<Object>(portName);
-        //obj->save(archive);
-        obj->getArrays(archive);
 
-        //archive << obj.get();//*UnstructuredGrid::as(data);
+        obj->save(archive);
 
-        //data->save(archive);
 
         // debug output
         if (comm().rank() == 0) {
             debug_printArchive(archive);
         }
 
-        //sendInfo(ss.str());
-
-
-
 //        compute_store(archive, obj);
-
-
     }
 
    return true;
