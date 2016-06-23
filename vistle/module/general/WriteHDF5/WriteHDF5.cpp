@@ -16,13 +16,13 @@
 #include <core/message.h>
 #include <core/vec.h>
 #include <core/unstr.h>
-#include <core/VistleObjectOArchive.h>
+#include <core/pointeroarchive.h>
 
 #include "hdf5.h"
 
 #include "WriteHDF5.h"
 
-BOOST_SERIALIZATION_REGISTER_ARCHIVE(VistleObjectOArchive)
+BOOST_SERIALIZATION_REGISTER_ARCHIVE(PointerOArchive)
 
 using namespace vistle;
 
@@ -162,7 +162,7 @@ bool WriteHDF5::compute() {
     for (unsigned i = 0; i < m_numPorts; i++) {
         std::string portName = "data" + std::to_string(i) + "_in";
         std::stringstream ss;
-        VistleObjectOArchive archive(ss);
+        PointerOArchive archive(ss);
 
         // acquire input data object
         Object::const_ptr obj = expect<Object>(portName);
@@ -192,7 +192,7 @@ bool WriteHDF5::compute() {
 
 // COMPUTE HELPER FUNCTION - STORE DATA OBJECT INTO HDF5 LIBRARY
 //-------------------------------------------------------------------------
-void WriteHDF5::compute_store(VistleObjectOArchive & archive, Object::const_ptr data) {
+void WriteHDF5::compute_store(PointerOArchive & archive, Object::const_ptr data) {
     hid_t currentGroupId;
     hid_t currentDataSet;
     hid_t currentDataSpace;
@@ -287,7 +287,7 @@ void WriteHDF5::compute_store(VistleObjectOArchive & archive, Object::const_ptr 
 
 // DEBUG UTILITY HELPER FUNCTION - ENUMERATE ARCHIVE CONTENTS
 //-------------------------------------------------------------------------
-void WriteHDF5::debug_printArchive(VistleObjectOArchive & archive) {
+void WriteHDF5::debug_printArchive(PointerOArchive & archive) {
     sendInfo("vistle object archive found: %u, enum: %u, primitive: %u only: %u shm: %u\n",
              archive.nvpCount, archive.enumCount, archive.primitiveCount, archive.onlyCount, archive.shmCount);
 

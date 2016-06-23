@@ -15,7 +15,7 @@
 
 #include <core/vec.h>
 #include <core/unstr.h>
-#include <core/VistleObjectOArchive.h>
+#include <core/pointeroarchive.h>
 
 #include "hdf5.h"
 
@@ -38,9 +38,9 @@ class WriteHDF5 : public vistle::Module {
    virtual bool reduce(int timestep);
 
    // private helper functions
-   void compute_store(VistleObjectOArchive & archive, vistle::Object::const_ptr data);
+   void compute_store(PointerOArchive & archive, vistle::Object::const_ptr data);
    void util_checkStatus(herr_t status);
-   void debug_printArchive(VistleObjectOArchive & archive);
+   void debug_printArchive(PointerOArchive & archive);
 
    // private member variables
    vistle::StringParameter *m_fileName;

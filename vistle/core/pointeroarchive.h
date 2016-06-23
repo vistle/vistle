@@ -33,7 +33,7 @@
 //-------------------------------------------------------------------------
 // VISTLE OBJECT OARCHIVE CLASS DECLARATION
 //-------------------------------------------------------------------------
-class V_COREEXPORT VistleObjectOArchive {
+class V_COREEXPORT PointerOArchive {
 public:
     // temporary debug variables
     unsigned nvpCount;
@@ -90,24 +90,24 @@ public:
 
     // the << operators
     template<class T>
-    VistleObjectOArchive & operator<<(T const & t);
+    PointerOArchive & operator<<(T const & t);
     template<class T>
-    VistleObjectOArchive & operator<<(T * const t);
+    PointerOArchive & operator<<(T * const t);
     template<class T, int N>
-    VistleObjectOArchive & operator<<(const T (&t)[N]);
+    PointerOArchive & operator<<(const T (&t)[N]);
     template<class T>
-    VistleObjectOArchive & operator<<(const boost::serialization::nvp<T> & t);
+    PointerOArchive & operator<<(const boost::serialization::nvp<T> & t);
     template<class T>
-    VistleObjectOArchive & operator<<(const vistle::ShmVector<T> & t);
-    VistleObjectOArchive & operator<<(const std::string & t);
+    PointerOArchive & operator<<(const vistle::ShmVector<T> & t);
+    PointerOArchive & operator<<(const std::string & t);
 
     // the & operator
     template<class T>
-    VistleObjectOArchive & operator&(const T & t);
+    PointerOArchive & operator&(const T & t);
 
     // constructor - currently only in use due to debuf functions
-    VistleObjectOArchive() {nvpCount = 0; primitiveCount = 0; enumCount = 0; onlyCount = 0; shmCount = 0;}
-    VistleObjectOArchive(std::ostream &) {nvpCount = 0; primitiveCount = 0; enumCount = 0; onlyCount = 0; shmCount = 0;}
+    PointerOArchive() {nvpCount = 0; primitiveCount = 0; enumCount = 0; onlyCount = 0; shmCount = 0;}
+    PointerOArchive(std::ostream &) {nvpCount = 0; primitiveCount = 0; enumCount = 0; onlyCount = 0; shmCount = 0;}
 
 
     // get functions
@@ -122,7 +122,7 @@ public:
 
 // specific save class: enum type - archive concept requirements
 template<class Archive>
-struct VistleObjectOArchive::save_enum_type {
+struct PointerOArchive::save_enum_type {
     template<class T>
     static void invoke(Archive &ar, const T &t){
         ar.enumCount++;
@@ -135,7 +135,7 @@ struct VistleObjectOArchive::save_enum_type {
 
 // specific save class: primitive type - archive concept requirements
 template<class Archive>
-struct VistleObjectOArchive::save_primitive {
+struct PointerOArchive::save_primitive {
     template<class T>
     static void invoke(Archive & ar, const T & t){
         ar.primitiveCount++;
@@ -148,7 +148,7 @@ struct VistleObjectOArchive::save_primitive {
 
 // specific save class: only type - archive concept requirements
 template<class Archive>
-struct VistleObjectOArchive::save_only {
+struct PointerOArchive::save_only {
     template<class T>
     static void invoke(Archive & ar, const T & t){
         ar.onlyCount++;
@@ -165,10 +165,10 @@ struct VistleObjectOArchive::save_only {
 // * delegates saving functionality based on the type of the incoming variable.
 //-------------------------------------------------------------------------
 template<class T>
-void VistleObjectOArchive::save(const T &t){
+void PointerOArchive::save(const T &t){
     typedef
         BOOST_DEDUCED_TYPENAME boost::mpl::eval_if<boost::is_enum< T >,
-            boost::mpl::identity<save_enum_type<VistleObjectOArchive> >,
+            boost::mpl::identity<save_enum_type<PointerOArchive> >,
         //else
         BOOST_DEDUCED_TYPENAME boost::mpl::eval_if<
             // if its primitive
@@ -176,9 +176,9 @@ void VistleObjectOArchive::save(const T &t){
                     boost::serialization::implementation_level< T >,
                     boost::mpl::int_<boost::serialization::primitive_type>
                 >,
-                boost::mpl::identity<save_primitive<VistleObjectOArchive> >,
+                boost::mpl::identity<save_primitive<PointerOArchive> >,
             // else
-            boost::mpl::identity<save_only<VistleObjectOArchive> >
+            boost::mpl::identity<save_only<PointerOArchive> >
         > >::type typex;
     typex::invoke(*this, t);
 }
@@ -188,7 +188,7 @@ void VistleObjectOArchive::save(const T &t){
 // << OPERATOR: UNSPECIALISED
 //-------------------------------------------------------------------------
 template<class T>
-VistleObjectOArchive & VistleObjectOArchive::operator<<(T const & t){
+PointerOArchive & PointerOArchive::operator<<(T const & t){
 
     //if (m_hasName) {
         save(t);
@@ -200,7 +200,7 @@ VistleObjectOArchive & VistleObjectOArchive::operator<<(T const & t){
 // << OPERATOR: POINTERS
 //-------------------------------------------------------------------------
 template<class T>
-VistleObjectOArchive & VistleObjectOArchive::operator<<(T * const t){
+PointerOArchive & PointerOArchive::operator<<(T * const t){
 
     if(t != nullptr) {
 
@@ -215,7 +215,7 @@ VistleObjectOArchive & VistleObjectOArchive::operator<<(T * const t){
 // << OPERATOR: ARRAYS
 //-------------------------------------------------------------------------
 template<class T, int N>
-VistleObjectOArchive & VistleObjectOArchive::operator<<(const T (&t)[N]){
+PointerOArchive & PointerOArchive::operator<<(const T (&t)[N]){
 
     m_currentSize = N;
 
@@ -225,7 +225,7 @@ VistleObjectOArchive & VistleObjectOArchive::operator<<(const T (&t)[N]){
 // << OPERATOR: NVP
 //-------------------------------------------------------------------------
 template<class T>
-VistleObjectOArchive & VistleObjectOArchive::operator<<(const boost::serialization::nvp<T> & t){
+PointerOArchive & PointerOArchive::operator<<(const boost::serialization::nvp<T> & t){
     nvpCount++;
 
     m_currentName = t.name();
@@ -237,7 +237,7 @@ VistleObjectOArchive & VistleObjectOArchive::operator<<(const boost::serializati
 // << OPERATOR: SHMVECTOR
 //-------------------------------------------------------------------------
 template<class T>
-VistleObjectOArchive & VistleObjectOArchive::operator<<(const vistle::ShmVector<T> & t) {
+PointerOArchive & PointerOArchive::operator<<(const vistle::ShmVector<T> & t) {
     shmCount++;
 
     m_currentSize = t->size();
@@ -249,7 +249,7 @@ VistleObjectOArchive & VistleObjectOArchive::operator<<(const vistle::ShmVector<
 // & OPERATOR
 //-------------------------------------------------------------------------
 template<class T>
-VistleObjectOArchive & VistleObjectOArchive::operator&(const T & t){
+PointerOArchive & PointerOArchive::operator&(const T & t){
 
     // initialize member variables
     m_hasName = false;

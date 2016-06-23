@@ -18,7 +18,7 @@
 #include "placeholder.cpp"
 #include "celltree.cpp"
 #include "vertexownerlist.cpp"
-#include "VistleObjectOArchive.cpp"
+#include "pointeroarchive.cpp"
 
 #else
 
@@ -38,7 +38,7 @@
 #include "placeholder.h"
 #include "celltree.h"
 #include "vertexownerlist.h"
-#include "VistleObjectOArchive.h"
+#include "pointeroarchive.h"
 
 #endif
 

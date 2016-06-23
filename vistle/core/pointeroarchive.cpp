@@ -5,12 +5,12 @@
 // * Sever Topan, 2016
 //-------------------------------------------------------------------------
 
-#include "VistleObjectOArchive.h"
+#include "pointeroarchive.h"
 
 
 // << OPERATOR: STD::STRINGS
 //-------------------------------------------------------------------------
-VistleObjectOArchive & VistleObjectOArchive::operator<<(const std::string & t) {
+PointerOArchive & PointerOArchive::operator<<(const std::string & t) {
 
     m_currentSize = t.size();
 
