@@ -12,6 +12,7 @@
 #include <limits>
 #include <string>
 #include <vector>
+#include <ctime>
 
 #include <core/message.h>
 #include <core/vec.h>
@@ -93,42 +94,46 @@ bool WriteHDF5::prepare() {
 
     // create basic vistle HDF5 Groups: data
     m_groupId_data = H5Gcreate2(m_fileId, "/data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    //-------------------------------------------------------------------------
 
+//    if (rank() == 0) {
+//        hid_t currentGroupId;
+//        hid_t currentDataSet;
+//        hid_t currentDataSpace;
+//        hid_t currentPropertyListId;
+//        herr_t status;
+//            // Create the dataspace for the dataset.
+//            hsize_t dataDimensions[] = { 5 };
+//            currentDataSpace = H5Screate_simple(1, dataDimensions, NULL);
 
-//-------------------------------------------------------------------------
-    hid_t currentDataSet;
-    hid_t currentDataSpace;
-    hid_t currentPropertyListId;
-    // Create the dataspace for the dataset.
-    hsize_t dataDimensions[] = { 5 };
-    currentDataSpace = H5Screate_simple(1, dataDimensions, NULL);
+//            int * d;
+//            d = (int *) malloc(sizeof(int)*5);
+//            d[0] = 1;
+//            d[1] = 3;
+//            d[2] = 1;
+//            d[3] = 6;
+//            d[4] = 1;
 
-    int * d;
-    d = (int *) malloc(sizeof(int)*5);
-    d[0] = 1;
-    d[1] = 3;
-    d[2] = 1;
-    d[3] = 6;
-    d[4] = 1;
+//            // Create the dataset with default properties.
+//            currentDataSet = H5Dcreate(m_groupId_data, std::to_string(comm().rank()).c_str(), H5T_NATIVE_INT, currentDataSpace,
+//                    H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-    // Create the dataset with default properties.
-    currentDataSet = H5Dcreate(m_groupId_data, std::to_string(comm().rank()).c_str(), H5T_NATIVE_INT, currentDataSpace,
-            H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+//            // Create property list for an independent dataset write.
+//            currentPropertyListId = H5Pcreate(H5P_DATASET_XFER);
+//            H5Pset_dxpl_mpio(currentPropertyListId, H5FD_MPIO_INDEPENDENT);
 
-    // Create property list for an independent dataset write.
-    currentPropertyListId = H5Pcreate(H5P_DATASET_XFER);
-    H5Pset_dxpl_mpio(currentPropertyListId, H5FD_MPIO_COLLECTIVE);
+//            // write data
+//            status = H5Dwrite(currentDataSet, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, currentPropertyListId, d);
 
-    // write data
-    status = H5Dwrite(currentDataSet, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, currentPropertyListId,  d);
+//            //close/release respources
+//            H5Dclose(currentDataSet);
+//            H5Sclose(currentDataSpace);
+//            H5Pclose(currentPropertyListId);
 
-    //close/release respources
-    H5Dclose(currentDataSet);
-    H5Sclose(currentDataSpace);
-    H5Pclose(currentPropertyListId);
+//            sendInfo("finished writing");
+//    }
 
-//-------------------------------------------------------------------------
-
+    //-------------------------------------------------------------------------
     status = H5Gclose(m_groupId_data);
     util_checkStatus(status);
 
@@ -174,7 +179,7 @@ bool WriteHDF5::compute() {
             debug_printArchive(archive);
         }
 
-//        compute_store(archive, obj);
+        compute_store(archive, obj);
     }
 
    return true;
@@ -262,6 +267,8 @@ void WriteHDF5::compute_store(PointerOArchive & archive, Object::const_ptr data)
 //        H5Sclose(currentDataSpace);
 //        H5Pclose(currentPropertyListId);
 
+//        sendInfo("finished writing");
+
 ////-------------------------------------------------------------------------
 
 //    // close data writing location group
@@ -278,29 +285,38 @@ void WriteHDF5::compute_store(PointerOArchive & archive, Object::const_ptr data)
 // DEBUG UTILITY HELPER FUNCTION - ENUMERATE ARCHIVE CONTENTS
 //-------------------------------------------------------------------------
 void WriteHDF5::debug_printArchive(PointerOArchive & archive) {
+    std::string message;
+
+    // debug info
     sendInfo("vistle object archive found: %u, enum: %u, primitive: %u only: %u shm: %u\n",
              archive.nvpCount, archive.enumCount, archive.primitiveCount, archive.onlyCount, archive.shmCount);
 
-    std::string message;
 
     for (unsigned i = 0; i < archive.vector().size(); i++) {
-        message += archive.vector()[i].name + " ";
 
+        // indent
+        for (unsigned j = 0; j < archive.vector()[i].heirarchyDepth; j++) {
+            message += "   ";
+        }
+
+        // name
+        message += " parent: " + archive.vector()[i].parentObjectName + " - " + archive.vector()[i].name + " ";
+
+        // is pointer?
         if (archive.vector()[i].isPointer) {
             message += "->";
         }
 
+        // type information
         auto nativeTypeMapIterator = m_nativeTypeMap.find(archive.vector()[i].typeInfo);
-
         if (nativeTypeMapIterator != m_nativeTypeMap.end()) {
             message += "primitive";
         } else {
-            message += "unknown data type: skipping...";
+            message += "unknown";
         }
 
-        if (archive.vector()[i].size > 0) {
-            message += "[" + std::to_string(archive.vector()[i].size) + "]";
-        }
+        // size information
+        message += "[" + std::to_string(archive.vector()[i].size) + "]";
 
 
         sendInfo("%s", message.c_str());

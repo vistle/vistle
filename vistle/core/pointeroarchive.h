@@ -29,6 +29,7 @@
 #include <type_traits>
 
 #include "export.h"
+#include "shm.h"
 
 //-------------------------------------------------------------------------
 // VISTLE OBJECT OARCHIVE CLASS DECLARATION
@@ -46,22 +47,28 @@ private:
     // archive vector entry struct
     struct ArchivedEntry {
         std::string name;
+        std::string parentObjectName;
         const void * value;
         unsigned size;
+        unsigned heirarchyDepth;
         bool isPointer;
         std::type_index typeInfo;
+
+        ArchivedEntry() : typeInfo(typeid(value)) {}
+        ArchivedEntry(std::string _name, std::string _parentObjectName, const void * _value, unsigned _size, unsigned _heirarchyDepth, bool _isPointer, std::type_index _typeInfo)
+            : name(_name), parentObjectName(_parentObjectName), value(_value), size(_size), heirarchyDepth(_heirarchyDepth), isPointer(_isPointer), typeInfo(_typeInfo) {}
     };
 
     // typedefs
     typedef std::vector<ArchivedEntry> ArchiveVector;
+    typedef std::stack<std::string> HeirarchyStack;
 
     // private member variables
     ArchiveVector m_archiveVector;
-    std::string m_currentName;
-    unsigned m_currentSize;
-    bool m_isCurrentPointer;
-    bool m_hasName;
+    HeirarchyStack m_heirarchyStack;
+    ArchivedEntry m_currentEntry;
 
+    // specialized save static structs
     template<class Archive>
     struct save_enum_type;
 
@@ -71,7 +78,7 @@ private:
     template<class Archive>
     struct save_only;
 
-    // unspecified save method - archive concept requirement
+    // unspecialized save static structs
     template<class T>
     void save(const T &t);
 
@@ -120,48 +127,80 @@ public:
 // VISTLE OBJECT OARCHIVE CLASS DEFINITION
 //-------------------------------------------------------------------------
 
-// specific save class: enum type - archive concept requirements
+// SPECIALIZED SAVE FUNCTION: ENUMS
+//-------------------------------------------------------------------------
 template<class Archive>
 struct PointerOArchive::save_enum_type {
     template<class T>
     static void invoke(Archive &ar, const T &t){
         ar.enumCount++;
 
-        ar.m_archiveVector.push_back({ar.m_currentName, (const void *) &t, ar.m_currentSize, ar.m_isCurrentPointer, typeid(t)});
+        // store entry to vector
+        ar.m_currentEntry.parentObjectName = ar.m_heirarchyStack.size() > 0 ? ar.m_heirarchyStack.top() : "/";
+        ar.m_currentEntry.value = (const void *) &t;
+        ar.m_currentEntry.heirarchyDepth = ar.m_heirarchyStack.size();
+        ar.m_currentEntry.typeInfo = typeid(t);
+
+        ar.m_archiveVector.push_back(ar.m_currentEntry);
+
 
         return;
     }
 };
 
-// specific save class: primitive type - archive concept requirements
+// SPECIALIZED SAVE FUNCTION: PRIMITIVES
+//-------------------------------------------------------------------------
 template<class Archive>
 struct PointerOArchive::save_primitive {
     template<class T>
     static void invoke(Archive & ar, const T & t){
         ar.primitiveCount++;
 
-        ar.m_archiveVector.push_back({ar.m_currentName, (const void *) &t, ar.m_currentSize, ar.m_isCurrentPointer, typeid(t)});
+        // store entry to vector
+        ar.m_currentEntry.parentObjectName = ar.m_heirarchyStack.size() > 0 ? ar.m_heirarchyStack.top() : "/";
+        ar.m_currentEntry.value = (const void *) &t;
+        ar.m_currentEntry.heirarchyDepth = ar.m_heirarchyStack.size();
+        ar.m_currentEntry.typeInfo = typeid(t);
+
+        ar.m_archiveVector.push_back(ar.m_currentEntry);
+
 
         return;
     }
 };
 
-// specific save class: only type - archive concept requirements
+// SPECIALIZED SAVE FUNCTION
+// * calls serialize on all non-primitive/non-enum types
+//-------------------------------------------------------------------------
 template<class Archive>
 struct PointerOArchive::save_only {
     template<class T>
     static void invoke(Archive & ar, const T & t){
         ar.onlyCount++;
 
-        ar.m_archiveVector.push_back({ar.m_currentName, (const void *) &t, ar.m_currentSize, ar.m_isCurrentPointer, typeid(t)});
+        // store entry to vector
+        ar.m_currentEntry.parentObjectName = ar.m_heirarchyStack.size() > 0 ? ar.m_heirarchyStack.top() : "/";
+        ar.m_currentEntry.value = (const void *) &t;
+        ar.m_currentEntry.heirarchyDepth = ar.m_heirarchyStack.size();
+        ar.m_currentEntry.typeInfo = typeid(t);
 
+        ar.m_archiveVector.push_back(ar.m_currentEntry);
+
+
+        // push to stack
+        ar.m_heirarchyStack.push(ar.m_currentEntry.name);
+
+        // call serialization delegate
         boost::serialization::serialize_adl(ar, const_cast<T &>(t), ::boost::serialization::version< T >::value);
+
+        // restore stack
+        ar.m_heirarchyStack.pop();
 
         return;
     }
 };
 
-// UNSPECIFIED SAVE FUNCTION
+// UNSPECIALIZED SAVE FUNCTION
 // * delegates saving functionality based on the type of the incoming variable.
 //-------------------------------------------------------------------------
 template<class T>
@@ -190,11 +229,9 @@ void PointerOArchive::save(const T &t){
 template<class T>
 PointerOArchive & PointerOArchive::operator<<(T const & t){
 
-    //if (m_hasName) {
-        save(t);
-    //}
+    save(t);
 
-    return * this;
+    return *this;
 }
 
 // << OPERATOR: POINTERS
@@ -204,12 +241,12 @@ PointerOArchive & PointerOArchive::operator<<(T * const t){
 
     if(t != nullptr) {
 
-        m_isCurrentPointer = true;
+        m_currentEntry.isPointer = true;
 
         *this << * t;
     }
 
-    return * this;
+    return *this;
 }
 
 // << OPERATOR: ARRAYS
@@ -217,7 +254,7 @@ PointerOArchive & PointerOArchive::operator<<(T * const t){
 template<class T, int N>
 PointerOArchive & PointerOArchive::operator<<(const T (&t)[N]){
 
-    m_currentSize = N;
+    m_currentEntry.size = N;
 
     return *this << &t;
 }
@@ -228,10 +265,9 @@ template<class T>
 PointerOArchive & PointerOArchive::operator<<(const boost::serialization::nvp<T> & t){
     nvpCount++;
 
-    m_currentName = t.name();
-    m_hasName = true;
+    m_currentEntry.name = t.name();
 
-    return * this << t.const_value();
+    return *this << t.const_value();
 }
 
 // << OPERATOR: SHMVECTOR
@@ -240,9 +276,9 @@ template<class T>
 PointerOArchive & PointerOArchive::operator<<(const vistle::ShmVector<T> & t) {
     shmCount++;
 
-    m_currentSize = t->size();
+    m_currentEntry.size = t->size();
 
-    return * this << t->data();
+    return *this << t->data();
 }
 
 
@@ -252,12 +288,12 @@ template<class T>
 PointerOArchive & PointerOArchive::operator&(const T & t){
 
     // initialize member variables
-    m_hasName = false;
-    m_isCurrentPointer = false;
-    m_currentSize = 1;
+    m_currentEntry.isPointer = false;
+    m_currentEntry.size = 1;
+    m_currentEntry.name = "";
 
     // delegate to appropriate << operator
-    return * this << t;
+    return *this << t;
 }
 
 

@@ -12,7 +12,7 @@
 //-------------------------------------------------------------------------
 PointerOArchive & PointerOArchive::operator<<(const std::string & t) {
 
-    m_currentSize = t.size();
+    m_currentEntry.size = t.size();
 
     return * this << t.c_str();
 }
