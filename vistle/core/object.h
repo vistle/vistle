@@ -340,7 +340,7 @@ class ObjectTypeRegistry {
 #define V_CHECK(true_expr) \
    if (!(true_expr)) { \
       std::cerr << __FILE__ << ":" << __LINE__ << ": " \
-      << "CONSISTENCY CHECK FAILURE: " \
+      << "CONSISTENCY CHECK FAILURE on " << this->getName() << " " << this->meta() << ": " \
           << #true_expr << std::endl; \
       std::cerr << "   PID: " << getpid() << std::endl; \
       std::stringstream str; \

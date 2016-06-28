@@ -17,4 +17,11 @@ Meta::Meta(int block, int timestep, int animstep, int iteration, int execcount, 
 {
 }
 
+std::ostream &operator<<(std::ostream &out, const Meta &meta) {
+   out << "creator: " << meta.creator() << ", exec: " << meta.executionCounter()
+      << ", block: " << meta.block() << "/" << meta.numBlocks()
+      << ", time: " << meta.timeStep() << "/" << meta.numTimesteps();
+   return out;
+}
+
 } // namespace vistle

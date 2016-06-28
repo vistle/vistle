@@ -63,6 +63,8 @@ class V_COREEXPORT Meta {
       void serialize(Archive &ar, const unsigned int version);
 };
 
+V_COREEXPORT std::ostream &operator<<(std::ostream &out, const Meta &meta);
+
 } // namespace vistle
 
 #ifdef VISTLE_IMPL
