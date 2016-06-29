@@ -105,6 +105,7 @@ class ClusterManager {
       mutable bool blocked;
       mutable std::deque<message::Buffer> blockedMessages, blockers;
       std::deque<message::Buffer> delayedMessages;
+      std::vector<int> objectCount; // no. of available object tuples on each rank
 
       Module(): sendQueue(nullptr), recvQueue(nullptr),
          ranksStarted(0), ranksFinished(0), reducing(false),

@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <queue>
 #include <future>
+#include <numeric>
 
 #include <core/message.h>
 #include <core/messagequeue.h>
@@ -223,7 +224,9 @@ bool ClusterManager::checkBarrier(const message::uuid_t &uuid) const {
       if (m.second.hub == Communicator::the().hubId())
          ++numLocal;
    }
-   //CERR << "checkBarrier " << uuid << ": #local=" << numLocal << ", #reached=" << reachedSet.size() << std::endl;
+#ifdef BARRIER_DEBUG
+   CERR << "checkBarrier " << uuid << ": #local=" << numLocal << ", #reached=" << reachedSet.size() << std::endl;
+#endif
    if (reachedSet.size() == numLocal)
       return true;
 
@@ -631,6 +634,7 @@ bool ClusterManager::handle(const message::Message &message) {
       case Message::MODULEAVAILABLE:
       case Message::REPLAYFINISHED:
       case Message::REDUCEPOLICY:
+      case Message::SCHEDULINGPOLICY:
       case Message::OBJECTRECEIVEPOLICY:
       case Message::PONG:
          break;
@@ -894,10 +898,42 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
          break;
       }
       case message::Execute::ComputeObject: {
+         //CERR << exec << std::endl;
          vassert(mod.prepared);
          vassert(!mod.reduced);
-         mod.reduced = false;
-         mod.send(exec);
+         auto it = m_stateTracker.runningMap.find(exec.getModule());
+         auto pol = message::SchedulingPolicy::Single;
+         if (it != m_stateTracker.runningMap.end()) {
+             pol = it->second.schedulingPolicy;
+         }
+         if (exec.isBroadcast() || pol == message::SchedulingPolicy::Single) {
+             mod.reduced = false;
+             mod.send(exec);
+         } else {
+             if (m_rank == 0) {
+                 bool doExec = pol == message::SchedulingPolicy::Gang;
+                 if (pol == message::SchedulingPolicy::LazyGang) {
+                     if (mod.objectCount.size() < getSize())
+                         mod.objectCount.resize(getSize());
+                     ++mod.objectCount[exec.rank()];
+                     int numObjects = std::accumulate(mod.objectCount.begin(), mod.objectCount.end(), 0);
+                     if (numObjects>0 && numObjects>=getSize()*.2) {
+                         doExec = true;
+                         for (auto &c: mod.objectCount) {
+                             if (c > 0) {
+                                 --c;
+                             }
+                         }
+                     }
+                     if (doExec) {
+                         //CERR << "having " << numObjects << ", executing " << exec.getModule() << std::endl;
+                         message::Buffer buf(exec);
+                         buf.setBroadcast(true);
+                         Communicator::the().broadcastAndHandleMessage(buf);
+                     }
+                 }
+             }
+         }
          break;
       }
       }
@@ -1037,18 +1073,14 @@ bool ClusterManager::checkExecuteObject(int destId) {
 
    if (!isReadyForExecute(destId))
        return true;
-   //CERR << "CHK ready for exec" << std::endl;
 
    for (const auto input: portManager().getConnectedInputPorts(destId)) {
-      if (!portManager().hasObject(input)) {
-         return true;
-      }
+       if (!portManager().hasObject(input)) {
+           return true;
+       }
    }
-   //CERR << "CHK all ready" << std::endl;
-
-   for (const auto input: portManager().getConnectedInputPorts(destId)) {
-      portManager().popObject(input);
-   }
+   for (const auto input: portManager().getConnectedInputPorts(destId))
+       portManager().popObject(input);
 
    auto it = m_stateTracker.runningMap.find(destId);
    if (it == m_stateTracker.runningMap.end()) {
@@ -1058,13 +1090,21 @@ bool ClusterManager::checkExecuteObject(int destId) {
    }
    auto &destMod = it->second;
    message::Execute c(message::Execute::ComputeObject, destId);
+   c.setDestId(destId);
    //c.setUuid(addObj.uuid());
    if (destMod.schedulingPolicy == message::SchedulingPolicy::Single) {
       sendMessage(destId, c);
-   } else {
+   } else if (destMod.schedulingPolicy == message::SchedulingPolicy::Gang) {
       c.setAllRanks(true);
       if (!Communicator::the().broadcastAndHandleMessage(c))
          return false;
+   } else if (destMod.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
+       if (getRank() == 0) {
+           handle(c);
+       } else {
+           if (!Communicator::the().forwardToMaster(c))
+               return false;
+       }
    }
 
    return checkExecuteObject(destId);
@@ -1202,8 +1242,8 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
             //CERR << "exec prog: checking module " << destId << ":" << destPort->getName() << std::endl;
             auto it = m_stateTracker.runningMap.find(destId);
             vassert(it != m_stateTracker.runningMap.end());
-            if (it->second.reducePolicy != message::ReducePolicy::Never) {
-               const bool broadcast = handleOnMaster || it->second.reducePolicy!=message::ReducePolicy::Locally;
+            if (it->second.reducePolicy != message::ReducePolicy::Never || it->second.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
+               bool broadcast = handleOnMaster || it->second.reducePolicy!=message::ReducePolicy::Locally;
                if (allReadyForPrepare) {
                   for (auto input: allInputs) {
                      portManager().popReset(input);
@@ -1227,6 +1267,39 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                if (allReadyForReduce) {
                   if (handleOnMaster && localSender) {
                      vassert(mod.ranksFinished==0);
+                  }
+                  if (isLocal(destId)) {
+                     if (it->second.schedulingPolicy == message::SchedulingPolicy::LazyGang) {
+                         broadcast = true;
+                         RunningMap::iterator i = runningMap.find(destId);
+                         vassert(i != runningMap.end());
+                         auto &destMod = i->second;
+
+                         vassert(destMod.prepared);
+                         vassert(!destMod.reduced);
+                         if (m_rank == 0) {
+                             if (destMod.objectCount.size() < getSize())
+                                 destMod.objectCount.resize(getSize());
+                             int maxNumObject = 0;
+                             for (size_t r=0; r<destMod.objectCount.size(); ++r) {
+                                 auto &c = destMod.objectCount[r];
+                                 if (c > 0) {
+                                     //CERR << "flushing " << c << " objects for rank " << r << ", module " << destId << std::endl;
+                                 }
+                                 if (c > maxNumObject)
+                                     maxNumObject = c;
+                                 c = 0;
+                             }
+                             for (int i=0; i<maxNumObject; ++i) {
+                                 message::Execute exec(message::Execute::ComputeObject, destId);
+                                 message::Buffer buf(exec);
+                                 buf.setBroadcast(true);
+                                 if (!Communicator::the().broadcastAndHandleMessage(buf))
+                                     return false;
+                             }
+                             vassert(std::accumulate(destMod.objectCount.begin(), destMod.objectCount.end(), 0) == 0);
+                         }
+                     }
                   }
                   for (auto input: allInputs) {
                      portManager().popFinish(input);
@@ -1419,6 +1492,7 @@ bool ClusterManager::handlePriv(const message::BarrierReached &barrReached) {
 #endif
 
    if (barrReached.senderId() >= Id::ModuleBase) {
+      vassert(isLocal(barrReached.senderId()));
       reachedSet.insert(barrReached.senderId());
       if (checkBarrier(m_barrierUuid)) {
          barrierReached(m_barrierUuid);

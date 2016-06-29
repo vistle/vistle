@@ -1,6 +1,8 @@
 #ifndef MODULE_IMPL_H
 #define MODULE_IMPL_H
 
+#include <core/message.h>
+
 namespace vistle {
 
 template<class T>
@@ -117,9 +119,11 @@ template<class Type>
 typename Type::const_ptr Module::expect(Port *port) {
    Object::const_ptr obj;
    if (port->objects().empty()) {
-      std::stringstream str;
-      str << "no object available at " << port->getName() << ", but " << Object::typeName() << " is required" << std::endl;
-      sendError(str.str());
+      if (schedulingPolicy() == message::SchedulingPolicy::Single) {
+          std::stringstream str;
+          str << "no object available at " << port->getName() << ", but " << Object::typeName() << " is required" << std::endl;
+          sendError(str.str());
+      }
       return nullptr;
    }
    obj = port->objects().front();

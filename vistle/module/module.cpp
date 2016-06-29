@@ -813,9 +813,11 @@ template<>
 Object::const_ptr Module::expect<Object>(Port *port) {
    Object::const_ptr obj;
    if (port->objects().empty()) {
-      std::stringstream str;
-      str << "no object available at " << port->getName() << ", but one is required" << std::endl;
-      sendError(str.str());
+       if (schedulingPolicy() == message::SchedulingPolicy::Single) {
+           std::stringstream str;
+           str << "no object available at " << port->getName() << ", but one is required" << std::endl;
+           sendError(str.str());
+       }
       return obj;
    }
    obj = port->objects().front();
@@ -1270,12 +1272,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                vassert(!m_reduced);
             }
             m_computed = true;
-
-            if (m_executionCount < exec->getExecutionCount())
-               m_executionCount = exec->getExecutionCount();
-            if (exec->allRanks()) {
-               mpi::all_reduce(comm(), m_executionCount, m_executionCount, mpi::maximum<int>());
-            }
+            const bool gang = schedulingPolicy() == message::SchedulingPolicy::Gang
+                       || schedulingPolicy() == message::SchedulingPolicy::LazyGang;
 
             Index numObject = 0;
             if (exec->what() == Execute::ComputeExecute) {
@@ -1294,11 +1292,23 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                      return false;
                   }
                }
-               if (numConnected == 0)
+               if (numConnected == 0) {
+                  // call compute at least once, e.g. for readers
                   numObject = 1;
+               }
+               if (gang) {
+                   numObject = mpi::all_reduce(comm(), numObject, mpi::maximum<int>());
+               }
             } else {
                numObject = 1;
             }
+
+            if (m_executionCount < exec->getExecutionCount())
+               m_executionCount = exec->getExecutionCount();
+            if (exec->allRanks() || gang) {
+               m_executionCount = mpi::all_reduce(comm(), m_executionCount, mpi::maximum<int>());
+            }
+
 
             /*
             std::cerr << "    module [" << name() << "] [" << id() << "] ["
