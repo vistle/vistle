@@ -5,6 +5,7 @@
 #include <core/vec.h>
 #include <core/triangles.h>
 #include <core/polygons.h>
+#include <core/uniformgrid.h>
 
 #include "Gendat.h"
 
@@ -17,6 +18,7 @@ Gendat::Gendat(const std::string &shmname, const std::string &name, int moduleID
 
    createOutputPort("grid_out");
    createOutputPort("data_out");
+   createOutputPort("UniformGrid_out");
 
    std::vector<std::string> choices;
    m_geoMode = addIntParameter("geo_mode", "geometry generation mode", 0, Parameter::Choice);
@@ -161,5 +163,21 @@ bool Gendat::compute() {
       MPI_Allreduce(local, global, 1024 * 1024, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
    }
 #endif
+
+   // Uniform grid test output
+   if(rank() == 0) {
+   UniformGrid::ptr u(new UniformGrid(Meta()));
+
+   // generate test data
+   for (unsigned i = 0; i < 3; i++) {
+       u->size()[i] = i;
+       u->min()[i] = i;
+       u->max()[i] = i;
+   }
+
+   addObject("UniformGrid_out", u);
+   }
+
+
    return true;
 }

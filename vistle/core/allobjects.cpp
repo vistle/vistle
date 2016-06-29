@@ -19,6 +19,8 @@
 #include "celltree.cpp"
 #include "vertexownerlist.cpp"
 #include "pointeroarchive.cpp"
+#include "structuredgridbase.cpp"
+#include "uniformgrid.cpp"
 
 #else
 
@@ -39,6 +41,8 @@
 #include "celltree.h"
 #include "vertexownerlist.h"
 #include "pointeroarchive.h"
+#include "structuredgridbase.h"
+#include "uniformgrid.h"
 
 #endif
 
@@ -61,6 +65,10 @@ namespace {
             boost::serialization::void_cast_register<Indexed, Indexed::Base>
                (static_cast<Indexed *>(NULL), static_cast<Indexed::Base *>(NULL));
 
+            //@question: add structured grids here?
+            boost::serialization::void_cast_register<StructuredGridBase, StructuredGridBase::Base>
+               (static_cast<StructuredGridBase *>(NULL), static_cast<StructuredGridBase::Base *>(NULL));
+
          }
    };
    static RegisterObjectTypeRelations registerObjectTypeRelations;
@@ -80,6 +88,7 @@ void registerTypes() {
    REGISTER_TYPE(Tubes, Object::TUBES);
    REGISTER_TYPE(Triangles, Object::TRIANGLES);
    REGISTER_TYPE(Polygons, Object::POLYGONS);
+   REGISTER_TYPE(UniformGrid, Object::UNIFORMGRID);
    REGISTER_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID);
    REGISTER_TYPE(VertexOwnerList, Object::VERTEXOWNERLIST)
    REGISTER_TYPE(Celltree1, Object::CELLTREE1);

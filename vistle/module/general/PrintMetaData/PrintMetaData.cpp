@@ -21,6 +21,7 @@
 #include <core/tubes.h>
 #include <core/triangles.h>
 #include <core/polygons.h>
+#include <core/uniformgrid.h>
 #include <core/message.h>
 #include <core/index.h>
 
@@ -51,7 +52,7 @@ PrintMetaData::PrintMetaData(const std::string &shmname, const std::string &name
    // add module parameters
    m_param_doPrintTotals = addIntParameter("Print Totals", "Print the Totals of incoming metadata (i.e. number of: blocks, cells, vertices, etc..)", 1, Parameter::Boolean);
    m_param_doPrintMinMax = addIntParameter("Print Min/Max", "Print max/min rank wise values of incoming data", 1, Parameter::Boolean);
-   m_param_doPrintMPIInfo = addIntParameter("Print MPI Info", "Print each node MPI rank", 1, Parameter::Boolean);
+   m_param_doPrintMPIInfo = addIntParameter("Print MPI Info", "Print each node MPI rank", 0, Parameter::Boolean);
 
 
    // policies
@@ -87,19 +88,16 @@ bool PrintMetaData::prepare() {
 //-------------------------------------------------------------------------
 bool PrintMetaData::reduce(int timestep) {
 
-    sendInfo(std::string("pre - reduce vertices: " + std::to_string(m_currentProfile.vertices)));
-
     // reduce necessary data across all node instances of the module
     if (m_isRootNode) {
-        boost::mpi::reduce(comm(), m_currentProfile, m_TotalsProfile, std::plus<ObjectProfile>(), M_ROOT_NODE);
         boost::mpi::reduce(comm(), m_currentProfile, m_minProfile, ProfileMinimum<ObjectProfile>(), M_ROOT_NODE);
         boost::mpi::reduce(comm(), m_currentProfile, m_maxProfile, ProfileMaximum<ObjectProfile>(), M_ROOT_NODE);
+         boost::mpi::reduce(comm(), m_currentProfile, m_TotalsProfile, std::plus<ObjectProfile>(), M_ROOT_NODE);
     } else {
-        boost::mpi::reduce(comm(), m_currentProfile, std::plus<ObjectProfile>(), M_ROOT_NODE);
         boost::mpi::reduce(comm(), m_currentProfile, ProfileMinimum<ObjectProfile>(), M_ROOT_NODE);
         boost::mpi::reduce(comm(), m_currentProfile, ProfileMaximum<ObjectProfile>(), M_ROOT_NODE);
+        boost::mpi::reduce(comm(), m_currentProfile, std::plus<ObjectProfile>(), M_ROOT_NODE);
     }
-
 
     // reduce type information
     unsigned maxTypeVectorSize;
@@ -181,6 +179,15 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
 
     }
 
+    // Uniform Grids
+    if (auto u = UniformGrid::as(data)) {
+        //iterate and copy min/max coordinates
+        for (unsigned i = 0; i < ObjectProfile::NUM_UNIF; i++) {
+            m_currentProfile.unifMin[i] = (u->min()[i] < m_currentProfile.unifMin[i]) ? u->min()[i] : m_currentProfile.unifMin[i];
+            m_currentProfile.unifMax[i] = (u->max()[i] > m_currentProfile.unifMax[i]) ? u->max()[i] : m_currentProfile.unifMax[i];
+        }
+    }
+
     // obtain coords object profile information
     if (auto coords = Coords::as(data)) {
         if (coords->normals()) {
@@ -255,6 +262,17 @@ void PrintMetaData::reduce_printData() {
      message += "\n   Number of Normals: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.normals, m_minProfile.normals, m_maxProfile.normals);
      message += "\n   Number of Vec 1: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.vecs[1], m_minProfile.vecs[1], m_maxProfile.vecs[1]);
      message += "\n   Number of Vec 3: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.vecs[3], m_minProfile.vecs[3], m_maxProfile.vecs[3]);
+
+     // print uniform grid data
+     if (m_minProfile.unifMin[0] != std::numeric_limits<double>::max()) {
+         message += "\n   Root Node Uniform Grid: ("
+                 + std::to_string(m_minProfile.unifMin[0]) + ", "
+                 + std::to_string(m_minProfile.unifMin[1]) + ", "
+                 + std::to_string(m_minProfile.unifMin[2]) + "), ("
+                 + std::to_string(m_maxProfile.unifMax[0]) + ", "
+                 + std::to_string(m_maxProfile.unifMax[1]) + ", "
+                 + std::to_string(m_maxProfile.unifMax[2]) + ") ";
+     }
 
 
      message += "\n   Cell Types: ";

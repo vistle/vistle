@@ -39,8 +39,10 @@ if(${TEMPLATES_IN_HEADERS})
       triangles.cpp
       polygons.cpp
       unstr.cpp
+      structuredgridbase.cpp
       texture1d.cpp
       placeholder.cpp
+      uniformgrid.cpp
    )
 else()
    set(core_SOURCES ${core_SOURCES}
@@ -98,6 +100,8 @@ set(core_HEADERS
    shm_reference.h
    shm_reference_impl.h
    shm_obj_ref.h
+   structuredgridbase.h
+   structuredgridbase_impl.h
    statetracker.h
    tcpmessage.h
    texture1d.h
@@ -110,6 +114,8 @@ set(core_HEADERS
    vec_impl.h
    vector.h
    pointeroarchive.h
+   uniformgrid.h
+   uniformgrid_impl.h
    uuid.h
 )
 
