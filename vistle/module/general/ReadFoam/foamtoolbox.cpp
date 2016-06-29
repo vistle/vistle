@@ -317,7 +317,7 @@ bool checkPolyMeshDirContent(CaseInfo &info)
 			fullMeshDir = it->second;
 		}
 		info.completeMeshDirs[it->first]=fullMeshDir;
-		std::cerr << "Full Mesh for timestep " << it->second << " found at time = " << fullMeshDir << std::endl;
+        //std::cerr << "Full Mesh for timestep " << it->second << " found at time = " << fullMeshDir << std::endl;
 	}
 
     return true;
@@ -400,7 +400,7 @@ bool checkCaseDirectory(CaseInfo &info, const std::string &casedir, bool compare
             if (isTimeDir(bn))
             {
                 double t = atof(bn.c_str());
-				std::cerr << bn << "is a time directory, " << t  << std::endl;
+                //std::cerr << bn << "is a time directory, " << t  << std::endl;
                 //if (t >= mintime && t <= maxtime)
                 {
                     ++num_timesteps;
