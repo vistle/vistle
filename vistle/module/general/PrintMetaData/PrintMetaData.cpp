@@ -22,6 +22,7 @@
 #include <core/triangles.h>
 #include <core/polygons.h>
 #include <core/uniformgrid.h>
+#include <core/rectilineargrid.h>
 #include <core/message.h>
 #include <core/index.h>
 
@@ -144,10 +145,11 @@ void PrintMetaData::compute_acquireGenericData(vistle::Object::const_ptr data) {
 }
 
 // COMPUTE HELPER FUNCTION - ACQUIRE GRID DATA
+// * the if statements in this functions are organized based on which object profile variables they modify
 //-------------------------------------------------------------------------
 void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
 
-    // obtain indexed/trianges object profile information
+    // obtain object profile information from objects with elements/vertices/types
     if (auto indexed = Indexed::as(data)) {
         m_currentProfile.vertices += indexed->getNumCorners();
         m_currentProfile.elements += indexed->getNumElements();
@@ -179,14 +181,22 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
 
     }
 
-    // Uniform Grids
-    if (auto u = UniformGrid::as(data)) {
-        //iterate and copy min/max coordinates
-        for (unsigned i = 0; i < ObjectProfile::NUM_UNIF; i++) {
-            m_currentProfile.unifMin[i] = (u->min()[i] < m_currentProfile.unifMin[i]) ? u->min()[i] : m_currentProfile.unifMin[i];
-            m_currentProfile.unifMax[i] = (u->max()[i] > m_currentProfile.unifMax[i]) ? u->max()[i] : m_currentProfile.unifMax[i];
+    // Structured Grids
+    if (auto s = StructuredGridBase::as(data)) {
+        m_currentProfile.structuredGridSize[0] = s->getSize_x();
+        m_currentProfile.structuredGridSize[1] = s->getSize_y();
+        m_currentProfile.structuredGridSize[2] = s->getSize_z();
+
+        if (auto u = UniformGrid::as(data)) {
+            //iterate and copy min/max coordinates
+            for (unsigned i = 0; i < ObjectProfile::NUM_STRUCTURED; i++) {
+                m_currentProfile.unifMin[i] = (u->min()[i] < m_currentProfile.unifMin[i]) ? u->min()[i] : m_currentProfile.unifMin[i];
+                m_currentProfile.unifMax[i] = (u->max()[i] > m_currentProfile.unifMax[i]) ? u->max()[i] : m_currentProfile.unifMax[i];
+            }
         }
     }
+
+
 
     // obtain coords object profile information
     if (auto coords = Coords::as(data)) {
@@ -255,17 +265,27 @@ void PrintMetaData::reduce_printData() {
 
      //print object profile
      message += "\n   Number of Vertices: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.vertices, m_minProfile.vertices, m_maxProfile.vertices);
-     message += "\n   Number of Total Cells: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.elements, m_minProfile.elements, m_maxProfile.elements);
+     message += "\n   Number of Elements: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.elements, m_minProfile.elements, m_maxProfile.elements);
      message += "\n   Number of Ghost Cells: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.ghostCells, m_minProfile.ghostCells, m_maxProfile.ghostCells);
      message += "\n   Number of Blocks: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.blocks, m_minProfile.blocks, m_maxProfile.blocks);
      message += "\n   Number of Grids: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.grids, m_minProfile.grids, m_maxProfile.grids);
      message += "\n   Number of Normals: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.normals, m_minProfile.normals, m_maxProfile.normals);
      message += "\n   Number of Vec 1: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.vecs[1], m_minProfile.vecs[1], m_maxProfile.vecs[1]);
      message += "\n   Number of Vec 3: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.vecs[3], m_minProfile.vecs[3], m_maxProfile.vecs[3]);
+     message += "\n   Structured Grid Size: ("
+             + std::to_string(m_TotalsProfile.structuredGridSize[0]) + ", "
+             + std::to_string(m_TotalsProfile.structuredGridSize[1]) + ", "
+             + std::to_string(m_TotalsProfile.structuredGridSize[2]) + "),  {("
+             + std::to_string(m_minProfile.structuredGridSize[0]) + ", "
+             + std::to_string(m_minProfile.structuredGridSize[1]) + ", "
+             + std::to_string(m_minProfile.structuredGridSize[2]) + ")/("
+             + std::to_string(m_maxProfile.structuredGridSize[0]) + ", "
+             + std::to_string(m_maxProfile.structuredGridSize[1]) + ", "
+             + std::to_string(m_maxProfile.structuredGridSize[2]) + ")} ";
 
      // print uniform grid data
      if (m_minProfile.unifMin[0] != std::numeric_limits<double>::max()) {
-         message += "\n   Root Node Uniform Grid: ("
+         message += "\n   Uniform Grid Min/Max: ("
                  + std::to_string(m_minProfile.unifMin[0]) + ", "
                  + std::to_string(m_minProfile.unifMin[1]) + ", "
                  + std::to_string(m_minProfile.unifMin[2]) + "), ("

@@ -25,7 +25,12 @@ public:
    // constructor
    UniformGrid(const Meta &meta);
 
-   // get/set functions
+   // get/set functions for metadata
+   Index getSize_x() const override { return m_size[0]; }
+   Index getSize_y() const override { return m_size[1]; }
+   Index getSize_z() const override { return m_size[2]; }
+
+   // get/set functions for shared memory members
    shm<Index>::array & size() { return *d()->size; }
    shm<double>::array & min() { return *d()->min; }
    shm<double>::array & max() { return *d()->max; }

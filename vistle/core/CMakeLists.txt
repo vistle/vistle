@@ -43,6 +43,7 @@ if(${TEMPLATES_IN_HEADERS})
       texture1d.cpp
       placeholder.cpp
       uniformgrid.cpp
+      rectilineargrid.cpp
    )
 else()
    set(core_SOURCES ${core_SOURCES}
@@ -91,6 +92,8 @@ set(core_HEADERS
    polygons_impl.h
    port.h
    porttracker.h
+   rectilineargrid.h
+   rectilineargrid_impl.h
    scalar.h
    scalars.h
    serialize.h

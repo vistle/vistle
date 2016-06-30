@@ -21,6 +21,7 @@
 #include "pointeroarchive.cpp"
 #include "structuredgridbase.cpp"
 #include "uniformgrid.cpp"
+#include "rectilineargrid.cpp"
 
 #else
 
@@ -43,6 +44,7 @@
 #include "pointeroarchive.h"
 #include "structuredgridbase.h"
 #include "uniformgrid.h"
+#include "rectilineargrid.h"
 
 #endif
 
@@ -89,6 +91,7 @@ void registerTypes() {
    REGISTER_TYPE(Triangles, Object::TRIANGLES);
    REGISTER_TYPE(Polygons, Object::POLYGONS);
    REGISTER_TYPE(UniformGrid, Object::UNIFORMGRID);
+   REGISTER_TYPE(UniformGrid, Object::RECTILINEARGRID);
    REGISTER_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID);
    REGISTER_TYPE(VertexOwnerList, Object::VERTEXOWNERLIST)
    REGISTER_TYPE(Celltree1, Object::CELLTREE1);

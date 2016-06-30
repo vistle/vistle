@@ -24,6 +24,10 @@ class V_COREEXPORT StructuredGridBase : public Object {
 
    StructuredGridBase(const Meta &meta);
 
+   // virtual get/set functions for metadata
+   virtual Index getSize_x() const { return 0; }
+   virtual Index getSize_y() const { return 0; }
+   virtual Index getSize_z() const { return 0; }
 
    // data object
    V_DATA_BEGIN(StructuredGridBase);

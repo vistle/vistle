@@ -11,7 +11,7 @@ namespace vistle {
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
 StructuredGridBase::StructuredGridBase(const Meta &meta) : StructuredGridBase::Base(static_cast<Data *>(NULL)) {
-
+    refreshImpl();
 }
 
 // REFRESH IMPL

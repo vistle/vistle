@@ -12,8 +12,15 @@ class Gendat: public vistle::Module {
  private:
    virtual bool compute();
 
+   // parameters
    vistle::IntParameter *m_geoMode;
    vistle::IntParameter *m_dataMode;
+
+   // parameter choice constants
+   const int M_TRIANGLES = 0;
+   const int M_POLYGONS = 1;
+   const int M_UNIFORM = 2;
+   const int M_RECTILINEAR = 3;
 };
 
 #endif

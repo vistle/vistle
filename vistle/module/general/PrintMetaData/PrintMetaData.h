@@ -24,7 +24,7 @@ class PrintMetaData : public vistle::Module {
 
     struct ObjectProfile {
        static const unsigned NUM_VECS = 4;
-       static const unsigned NUM_UNIF = 3;
+       static const unsigned NUM_STRUCTURED = 3;
 
        vistle::Index blocks;
        vistle::Index grids;
@@ -34,6 +34,7 @@ class PrintMetaData : public vistle::Module {
        vistle::Index vertices;
        std::vector<double> unifMin;
        std::vector<double> unifMax;
+       std::vector<vistle::Index> structuredGridSize;
        std::vector<vistle::Index> vecs;
        std::vector<unsigned> types;
 
@@ -44,8 +45,9 @@ class PrintMetaData : public vistle::Module {
            normals(0),
            elements(0),
            vertices(0),
-           unifMin(NUM_UNIF, std::numeric_limits<double>::max()),
-           unifMax(NUM_UNIF, std::numeric_limits<double>::min()),
+           structuredGridSize(NUM_STRUCTURED, 0),
+           unifMin(NUM_STRUCTURED, std::numeric_limits<double>::max()),
+           unifMax(NUM_STRUCTURED, std::numeric_limits<double>::min()),
            vecs(NUM_VECS, 0)
        {}
 
@@ -127,6 +129,7 @@ void PrintMetaData::ObjectProfile::serialize(Archive &ar, const unsigned int ver
    ar & ghostCells;
    ar & elements;
    ar & vertices;
+   ar & structuredGridSize;
    ar & unifMin;
    ar & unifMax;
    ar & vecs;
@@ -145,14 +148,15 @@ PrintMetaData::ObjectProfile PrintMetaData::ObjectProfile::apply(const operation
       result.elements = op(lhs.elements, rhs.elements);
       result.vertices = op(lhs.vertices, rhs.vertices);
 
-      for (unsigned i = 0; i < PrintMetaData::ObjectProfile::NUM_VECS; i++) {
-         result.vecs[i] = op(lhs.vecs[i], rhs.vecs[i]);
-      }
-
       // currently takes max/min of each individual coordinate
-      for (unsigned i = 0; i < PrintMetaData::ObjectProfile::NUM_UNIF; i++) {
+      for (unsigned i = 0; i < PrintMetaData::ObjectProfile::NUM_STRUCTURED; i++) {
+         result.structuredGridSize[i] = op(lhs.structuredGridSize[i], rhs.structuredGridSize[i]);
          result.unifMax[i] = op(lhs.unifMax[i], rhs.unifMax[i]);
          result.unifMin[i] = op(lhs.unifMin[i], rhs.unifMin[i]);
+      }
+
+      for (unsigned i = 0; i < PrintMetaData::ObjectProfile::NUM_VECS; i++) {
+         result.vecs[i] = op(lhs.vecs[i], rhs.vecs[i]);
       }
 
       return result;

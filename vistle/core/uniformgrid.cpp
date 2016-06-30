@@ -11,6 +11,7 @@ namespace vistle {
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
 UniformGrid::UniformGrid(const Meta &meta) : UniformGrid::Base(UniformGrid::Data::create(meta)) {
+    refreshImpl();
 }
 
 // REFRESH IMPL
