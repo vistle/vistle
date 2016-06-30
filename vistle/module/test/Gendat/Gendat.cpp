@@ -7,6 +7,7 @@
 #include <core/polygons.h>
 #include <core/uniformgrid.h>
 #include <core/rectilineargrid.h>
+#include <core/structuredgrid.h>
 
 #include "Gendat.h"
 
@@ -27,6 +28,7 @@ Gendat::Gendat(const std::string &shmname, const std::string &name, int moduleID
    choices.push_back("Polygons");
    choices.push_back("Uniform");
    choices.push_back("Rectilinear");
+   choices.push_back("Structured");
    setParameterChoices(m_geoMode, choices);
 
    m_dataMode = addIntParameter("data_mode", "data generation mode", 0, Parameter::Choice);
@@ -102,7 +104,7 @@ bool Gendat::compute() {
        geo->z()[3] = 0.0;
        addObject("grid_out", geo);
    } else {
-       if(rank() == 0 && m_geoMode->getValue() == M_UNIFORM) {
+       if (rank() == 0 && m_geoMode->getValue() == M_UNIFORM) {
            UniformGrid::ptr u(new UniformGrid(Meta()));
 
            // generate test data
@@ -124,14 +126,37 @@ bool Gendat::compute() {
            for (unsigned i = 0; i < eg_x + 1; i++) {
                r->coords_x()[i] = i;
            }
+
            for (unsigned i = 0; i < eg_y + 1; i++) {
                r->coords_y()[i] = i;
            }
+
            for (unsigned i = 0; i < eg_z + 1; i++) {
                r->coords_z()[i] = i;
            }
 
            addObject("grid_out", r);
+
+       } else if (rank() == 0 && m_geoMode->getValue() == M_STRUCTURED){
+           const unsigned eg_x = 5;
+           const unsigned eg_y = 8;
+           const unsigned eg_z = 9;
+           StructuredGrid::ptr s(new StructuredGrid(eg_x, eg_y, eg_z));
+
+           // generate test data
+           for (unsigned i = 0; i < eg_x + 1; i++) {
+               s->coords_x()[i] = i;
+           }
+
+           for (unsigned i = 0; i < eg_y + 1; i++) {
+               s->coords_y()[i] = i;
+           }
+
+           for (unsigned i = 0; i < eg_z + 1; i++) {
+               s->coords_z()[i] = i;
+           }
+
+           addObject("grid_out", s);
        }
    }
 
@@ -141,6 +166,7 @@ bool Gendat::compute() {
    for (int i=0; i<4; ++i) {
       v->x()[i] = add + i*0.2;
    }
+
    addObject("data_out", v);
    
    /*

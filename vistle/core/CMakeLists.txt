@@ -44,6 +44,7 @@ if(${TEMPLATES_IN_HEADERS})
       placeholder.cpp
       uniformgrid.cpp
       rectilineargrid.cpp
+      structuredgrid.cpp
    )
 else()
    set(core_SOURCES ${core_SOURCES}
@@ -103,6 +104,8 @@ set(core_HEADERS
    shm_reference.h
    shm_reference_impl.h
    shm_obj_ref.h
+   structuredgrid.h
+   structuredgrid_impl.h
    structuredgridbase.h
    structuredgridbase_impl.h
    statetracker.h

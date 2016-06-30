@@ -21,6 +21,7 @@ class Gendat: public vistle::Module {
    const int M_POLYGONS = 1;
    const int M_UNIFORM = 2;
    const int M_RECTILINEAR = 3;
+   const int M_STRUCTURED = 4;
 };
 
 #endif

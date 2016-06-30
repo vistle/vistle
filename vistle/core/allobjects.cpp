@@ -22,6 +22,7 @@
 #include "structuredgridbase.cpp"
 #include "uniformgrid.cpp"
 #include "rectilineargrid.cpp"
+#include "structuredgrid.cpp"
 
 #else
 
@@ -45,6 +46,7 @@
 #include "structuredgridbase.h"
 #include "uniformgrid.h"
 #include "rectilineargrid.h"
+#include "structuredgrid.h"
 
 #endif
 
@@ -92,6 +94,7 @@ void registerTypes() {
    REGISTER_TYPE(Polygons, Object::POLYGONS);
    REGISTER_TYPE(UniformGrid, Object::UNIFORMGRID);
    REGISTER_TYPE(UniformGrid, Object::RECTILINEARGRID);
+   REGISTER_TYPE(StructuredGrid, Object::STRUCTUREDGRID);
    REGISTER_TYPE(UnstructuredGrid, Object::UNSTRUCTUREDGRID);
    REGISTER_TYPE(VertexOwnerList, Object::VERTEXOWNERLIST)
    REGISTER_TYPE(Celltree1, Object::CELLTREE1);

@@ -23,6 +23,7 @@
 #include <core/polygons.h>
 #include <core/uniformgrid.h>
 #include <core/rectilineargrid.h>
+#include <core/structuredgrid.h>
 #include <core/message.h>
 #include <core/index.h>
 
@@ -182,16 +183,21 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
     }
 
     // Structured Grids
-    if (auto s = StructuredGridBase::as(data)) {
-        m_currentProfile.structuredGridSize[0] = s->getNumElements_x();
-        m_currentProfile.structuredGridSize[1] = s->getNumElements_y();
-        m_currentProfile.structuredGridSize[2] = s->getNumElements_z();
+    if (auto structured = StructuredGridBase::as(data)) {
+        const Index numEl_x = structured->getNumElements_x();
+        const Index numEl_y = structured->getNumElements_y();
+        const Index numEl_z = structured->getNumElements_z();
 
-        if (auto u = UniformGrid::as(data)) {
+        m_currentProfile.structuredGridSize[0] = numEl_x;
+        m_currentProfile.structuredGridSize[1] = numEl_y;
+        m_currentProfile.structuredGridSize[2] = numEl_z;
+        m_currentProfile.elements = numEl_x * numEl_y * numEl_z;
+
+        if (auto uniform = UniformGrid::as(data)) {
             //iterate and copy min/max coordinates
             for (unsigned i = 0; i < ObjectProfile::NUM_STRUCTURED; i++) {
-                m_currentProfile.unifMin[i] = (u->min()[i] < m_currentProfile.unifMin[i]) ? u->min()[i] : m_currentProfile.unifMin[i];
-                m_currentProfile.unifMax[i] = (u->max()[i] > m_currentProfile.unifMax[i]) ? u->max()[i] : m_currentProfile.unifMax[i];
+                m_currentProfile.unifMin[i] = (uniform->min()[i] < m_currentProfile.unifMin[i]) ? uniform->min()[i] : m_currentProfile.unifMin[i];
+                m_currentProfile.unifMax[i] = (uniform->max()[i] > m_currentProfile.unifMax[i]) ? uniform->max()[i] : m_currentProfile.unifMax[i];
             }
         }
     }
