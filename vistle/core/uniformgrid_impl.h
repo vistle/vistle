@@ -13,7 +13,7 @@ namespace vistle {
 template<class Archive>
 void UniformGrid::Data::serialize(Archive &ar, const unsigned int version) {
    ar & V_NAME("base_structuredGridBase", boost::serialization::base_object<Base::Data>(*this));
-   ar & V_NAME("size", size);
+   ar & V_NAME("numElements", numElements);
    ar & V_NAME("min", min);
    ar & V_NAME("max", max);
 }

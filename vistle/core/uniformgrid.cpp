@@ -19,7 +19,7 @@ UniformGrid::UniformGrid(const Meta &meta) : UniformGrid::Base(UniformGrid::Data
 void UniformGrid::refreshImpl() const {
     const Data *d = static_cast<Data *>(m_data);
 
-    m_size = (d && d->size.valid()) ? d->size->data() : nullptr;
+    m_numElements = (d && d->numElements.valid()) ? d->numElements->data() : nullptr;
     m_min = (d && d->min.valid()) ? d->min->data() : nullptr;
     m_max = (d && d->max.valid()) ? d->max->data() : nullptr;
 }
@@ -28,11 +28,11 @@ void UniformGrid::refreshImpl() const {
 //-------------------------------------------------------------------------
 bool UniformGrid::checkImpl() const {
 
-   V_CHECK(d()->size->check());
+   V_CHECK(d()->numElements->check());
    V_CHECK(d()->min->check());
    V_CHECK(d()->max->check());
 
-   V_CHECK(d()->size->size() == 3);
+   V_CHECK(d()->numElements->size() == 3);
    V_CHECK(d()->min->size() == 3);
    V_CHECK(d()->max->size() == 3);
 
@@ -50,7 +50,7 @@ bool UniformGrid::isEmpty() const {
 //-------------------------------------------------------------------------
 UniformGrid::Data::Data(const std::string & name, const Meta &meta)
     : UniformGrid::Base::Data(Object::UNIFORMGRID, name, meta) {
-    size.construct(3);
+    numElements.construct(3);
     min.construct(3);
     max.construct(3);
 }
@@ -59,7 +59,7 @@ UniformGrid::Data::Data(const std::string & name, const Meta &meta)
 //-------------------------------------------------------------------------
 UniformGrid::Data::Data(const UniformGrid::Data &o, const std::string &n)
 : UniformGrid::Base::Data(o, n)
-, size(o.size)
+, numElements(o.numElements)
 , min(o.min)
 , max(o.max) {
 }

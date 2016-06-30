@@ -183,9 +183,9 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
 
     // Structured Grids
     if (auto s = StructuredGridBase::as(data)) {
-        m_currentProfile.structuredGridSize[0] = s->getSize_x();
-        m_currentProfile.structuredGridSize[1] = s->getSize_y();
-        m_currentProfile.structuredGridSize[2] = s->getSize_z();
+        m_currentProfile.structuredGridSize[0] = s->getNumElements_x();
+        m_currentProfile.structuredGridSize[1] = s->getNumElements_y();
+        m_currentProfile.structuredGridSize[2] = s->getNumElements_z();
 
         if (auto u = UniformGrid::as(data)) {
             //iterate and copy min/max coordinates

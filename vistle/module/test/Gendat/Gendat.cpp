@@ -107,7 +107,7 @@ bool Gendat::compute() {
 
            // generate test data
            for (unsigned i = 0; i < 3; i++) {
-               u->size()[i] = i;
+               u->numElements()[i] = i;
                u->min()[i] = i;
                u->max()[i] = i;
            }
@@ -115,16 +115,19 @@ bool Gendat::compute() {
            addObject("grid_out", u);
 
        } else if (rank() == 0 && m_geoMode->getValue() == M_RECTILINEAR){
-           RectilinearGrid::ptr r(new RectilinearGrid(5, 8, 9));
+           const unsigned eg_x = 5;
+           const unsigned eg_y = 8;
+           const unsigned eg_z = 9;
+           RectilinearGrid::ptr r(new RectilinearGrid(eg_x, eg_y, eg_z));
 
            // generate test data
-           for (unsigned i = 0; i < 5; i++) {
+           for (unsigned i = 0; i < eg_x + 1; i++) {
                r->coords_x()[i] = i;
            }
-           for (unsigned i = 0; i < 8; i++) {
+           for (unsigned i = 0; i < eg_y + 1; i++) {
                r->coords_y()[i] = i;
            }
-           for (unsigned i = 0; i < 9; i++) {
+           for (unsigned i = 0; i < eg_z + 1; i++) {
                r->coords_z()[i] = i;
            }
 
@@ -132,6 +135,7 @@ bool Gendat::compute() {
        }
    }
 
+   // add data_out objects
    Scalar add = m_dataMode->getValue() ? rank() : 0.;
    Vec<Scalar>::ptr v(new Vec<Scalar>(4));
    for (int i=0; i<4; ++i) {

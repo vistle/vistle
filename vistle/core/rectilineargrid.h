@@ -23,12 +23,12 @@ public:
    typedef StructuredGridBase Base;
 
    // constructor
-   RectilinearGrid(const Index size_x, const Index size_y, const Index size_z, const Meta &meta=Meta());
+   RectilinearGrid(const Index NumElements_x, const Index NumElements_y, const Index NumElements_z, const Meta &meta=Meta());
 
    // get/set functions for metadata
-   Index getSize_x() const override { return d()->coords_x->size(); }
-   Index getSize_y() const override { return d()->coords_y->size(); }
-   Index getSize_z() const override { return d()->coords_z->size(); }
+   Index getNumElements_x() const override { return d()->coords_x->size() - 1; }
+   Index getNumElements_y() const override { return d()->coords_y->size() - 1; }
+   Index getNumElements_z() const override { return d()->coords_z->size() - 1; }
 
    // get/set functions for shared memory members
    shm<double>::array & coords_x() { return *d()->coords_x; }
@@ -51,9 +51,9 @@ private:
    ShmVector<double> coords_y; //< coordinates of divisions in y
    ShmVector<double> coords_z; //< coordinates of divisions in z
 
-   Data(const Index size_x, const Index size_y, const Index size_z, const std::string & name, const Meta &meta=Meta());
+   Data(const Index NumElements_x, const Index NumElements_y, const Index NumElements_z, const std::string & name, const Meta &meta=Meta());
    ~Data();
-   static Data *create(const Index size_x = 0, const Index size_y = 0, const Index size_z = 0, const Meta &meta = Meta());
+   static Data *create(const Index NumElements_x = 0, const Index NumElements_y = 0, const Index NumElements_z = 0, const Meta &meta = Meta());
 
    V_DATA_END(RectilinearGrid);
 };

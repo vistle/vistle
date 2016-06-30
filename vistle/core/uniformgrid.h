@@ -26,21 +26,21 @@ public:
    UniformGrid(const Meta &meta);
 
    // get/set functions for metadata
-   Index getSize_x() const override { return m_size[0]; }
-   Index getSize_y() const override { return m_size[1]; }
-   Index getSize_z() const override { return m_size[2]; }
+   Index getNumElements_x() const override { return m_numElements[0]; }
+   Index getNumElements_y() const override { return m_numElements[1]; }
+   Index getNumElements_z() const override { return m_numElements[2]; }
 
    // get/set functions for shared memory members
-   shm<Index>::array & size() { return *d()->size; }
+   shm<Index>::array & numElements() { return *d()->numElements; }
    shm<double>::array & min() { return *d()->min; }
    shm<double>::array & max() { return *d()->max; }
-   const Index * size() const { return m_size; }
+   const Index * numElements() const { return m_numElements; }
    const double * min() const { return m_min; }
    const double * max() const { return m_max; }
 
 private:
    // mutable pointers to ShmVectors
-   mutable const Index * m_size;
+   mutable const Index * m_numElements;
    mutable const double * m_min;
    mutable const double * m_max;
 
@@ -48,7 +48,7 @@ private:
    V_DATA_BEGIN(UniformGrid);
 
    // each of the following variables represents a coordinate (by index, in order x, y, z)
-   ShmVector<Index> size; //< number of divisions on each axis
+   ShmVector<Index> numElements; //< number of divisions on each axis
    ShmVector<double> min; //< coordinates of minimum grid point
    ShmVector<double> max; //< coordinates of maximum grid point
 
