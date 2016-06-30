@@ -68,9 +68,9 @@ class V_MODULEEXPORT Module {
    template<class T>
    Parameter *addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation presentation=Parameter::Generic);
    template<class T>
-   bool setParameter(const std::string &name, const T &value, const message::SetParameter *inResponseTo);
+   bool setParameter(const std::string &name, const T &value, const message::SetParameter *inResponseTo=nullptr);
    template<class T>
-   bool setParameter(ParameterBase<T> *param, const T &value, const message::SetParameter *inResponseTo);
+   bool setParameter(ParameterBase<T> *param, const T &value, const message::SetParameter *inResponseTo=nullptr);
    template<class T>
    bool setParameterMinimum(ParameterBase<T> *param, const T &minimum);
    template<class T>

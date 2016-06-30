@@ -2,6 +2,8 @@
 #define ISOSURFACE_H
 
 #include <module/module.h>
+#include <core/vec.h>
+#include <core/unstr.h>
 
 class IsoSurface: public vistle::Module {
 
@@ -18,6 +20,13 @@ class IsoSurface: public vistle::Module {
                                        int processorType
                                         );
 
+   std::vector<vistle::UnstructuredGrid::const_ptr> m_grids;
+   std::vector<vistle::Vec<vistle::Scalar>::const_ptr> m_datas;
+   std::vector<vistle::DataBase::const_ptr> m_mapdatas;
+
+   bool work(vistle::UnstructuredGrid::const_ptr grid,
+             vistle::Vec<vistle::Scalar>::const_ptr data,
+             vistle::DataBase::const_ptr mapdata);
    virtual bool compute() override;
    virtual bool prepare() override;
    virtual bool reduce(int timestep) override;
@@ -26,6 +35,8 @@ class IsoSurface: public vistle::Module {
 
 
    vistle::FloatParameter *m_isovalue;
+   vistle::VectorParameter *m_isopoint;
+   vistle::IntParameter *m_pointOrValue;
    vistle::IntParameter *m_processortype;
    vistle::IntParameter *m_option;
    vistle::Port *m_mapDataIn, *m_dataOut;
