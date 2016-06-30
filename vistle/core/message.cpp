@@ -1521,7 +1521,8 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       << ", size: " << m.size()
       << ", sender: " << m.senderId()
       << ", dest: " << m.destId()
-      << ", rank: " << m.rank();
+      << ", rank: " << m.rank()
+      << ", bcast: " << m.isBroadcast();
 
    switch (m.type()) {
       case Message::IDENTIFY: {
