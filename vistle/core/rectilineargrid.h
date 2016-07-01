@@ -31,25 +31,25 @@ public:
    Index getNumElements_z() const override { return d()->coords_z->size() - 1; }
 
    // get/set functions for shared memory members
-   shm<double>::array & coords_x() { return *d()->coords_x; }
-   shm<double>::array & coords_y() { return *d()->coords_y; }
-   shm<double>::array & coords_z() { return *d()->coords_z; }
-   const double * coords_x() const { return m_coords_x; }
-   const double * coords_y() const { return m_coords_y; }
-   const double * coords_z() const { return m_coords_z; }
+   shm<Scalar>::array & coords_x() { return *d()->coords_x; }
+   shm<Scalar>::array & coords_y() { return *d()->coords_y; }
+   shm<Scalar>::array & coords_z() { return *d()->coords_z; }
+   const Scalar * coords_x() const { return m_coords_x; }
+   const Scalar * coords_y() const { return m_coords_y; }
+   const Scalar * coords_z() const { return m_coords_z; }
 
 private:
    // mutable pointers to ShmVectors
-   mutable const double * m_coords_x;
-   mutable const double * m_coords_y;
-   mutable const double * m_coords_z;
+   mutable const Scalar * m_coords_x;
+   mutable const Scalar * m_coords_y;
+   mutable const Scalar * m_coords_z;
 
    // data object
    V_DATA_BEGIN(RectilinearGrid);
 
-   ShmVector<double> coords_x; //< coordinates of divisions in x
-   ShmVector<double> coords_y; //< coordinates of divisions in y
-   ShmVector<double> coords_z; //< coordinates of divisions in z
+   ShmVector<Scalar> coords_x; //< coordinates of divisions in x
+   ShmVector<Scalar> coords_y; //< coordinates of divisions in y
+   ShmVector<Scalar> coords_z; //< coordinates of divisions in z
 
    Data(const Index NumElements_x, const Index NumElements_y, const Index NumElements_z, const std::string & name, const Meta &meta=Meta());
    ~Data();

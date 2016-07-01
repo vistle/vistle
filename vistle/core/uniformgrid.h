@@ -32,25 +32,25 @@ public:
 
    // get/set functions for shared memory members
    shm<Index>::array & numElements() { return *d()->numElements; }
-   shm<double>::array & min() { return *d()->min; }
-   shm<double>::array & max() { return *d()->max; }
+   shm<Scalar>::array & min() { return *d()->min; }
+   shm<Scalar>::array & max() { return *d()->max; }
    const Index * numElements() const { return m_numElements; }
-   const double * min() const { return m_min; }
-   const double * max() const { return m_max; }
+   const Scalar * min() const { return m_min; }
+   const Scalar * max() const { return m_max; }
 
 private:
    // mutable pointers to ShmVectors
    mutable const Index * m_numElements;
-   mutable const double * m_min;
-   mutable const double * m_max;
+   mutable const Scalar * m_min;
+   mutable const Scalar * m_max;
 
    // data object
    V_DATA_BEGIN(UniformGrid);
 
    // each of the following variables represents a coordinate (by index, in order x, y, z)
    ShmVector<Index> numElements; //< number of divisions on each axis
-   ShmVector<double> min; //< coordinates of minimum grid point
-   ShmVector<double> max; //< coordinates of maximum grid point
+   ShmVector<Scalar> min; //< coordinates of minimum grid point
+   ShmVector<Scalar> max; //< coordinates of maximum grid point
 
    Data(const std::string & name, const Meta &meta=Meta());
    ~Data();

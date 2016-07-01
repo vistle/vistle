@@ -13,6 +13,7 @@ namespace vistle {
 StructuredGrid::StructuredGrid(const Index numVert_x, const Index numVert_y, const Index numVert_z, const Meta &meta)
     : StructuredGrid::Base(StructuredGrid::Data::create(numVert_x, numVert_y, numVert_z, meta)) {
     refreshImpl();
+
 }
 
 // REFRESH IMPL
@@ -85,6 +86,7 @@ StructuredGrid::Data::~Data() {
 //-------------------------------------------------------------------------
 StructuredGrid::Data * StructuredGrid::Data::create(const Index numVert_x, const Index numVert_y, const Index numVert_z, const Meta &meta) {
 
+    // construct shm data
     const std::string name = Shm::the().createObjectId();
     Data *p = shm<Data>::construct(name)(numVert_x, numVert_y, numVert_z, name, meta);
     publish(p);
