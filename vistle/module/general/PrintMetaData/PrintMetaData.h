@@ -80,6 +80,7 @@ class PrintMetaData : public vistle::Module {
    // helper functions
    void compute_acquireGenericData(vistle::Object::const_ptr data);
    void compute_acquireGridData(vistle::Object::const_ptr data);
+   void compute_printVerbose(vistle::Object::const_ptr data);
    void reduce_printData();
    std::string reduce_conditionalProfileEntryPrint(vistle::Index total, vistle::Index min, vistle::Index max);
    void util_printMPIInfo(std::string printTag = "");
@@ -88,6 +89,7 @@ class PrintMetaData : public vistle::Module {
    vistle::IntParameter *m_param_doPrintTotals;
    vistle::IntParameter *m_param_doPrintMinMax;
    vistle::IntParameter *m_param_doPrintMPIInfo;
+   vistle::IntParameter *m_param_doPrintVerbose;
 
    // private member variables
    bool m_isRootNode;

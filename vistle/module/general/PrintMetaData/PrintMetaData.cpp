@@ -55,6 +55,7 @@ PrintMetaData::PrintMetaData(const std::string &shmname, const std::string &name
    m_param_doPrintTotals = addIntParameter("Print Totals", "Print the Totals of incoming metadata (i.e. number of: blocks, cells, vertices, etc..)", 1, Parameter::Boolean);
    m_param_doPrintMinMax = addIntParameter("Print Min/Max", "Print max/min rank wise values of incoming data", 1, Parameter::Boolean);
    m_param_doPrintMPIInfo = addIntParameter("Print MPI Info", "Print each node MPI rank", 0, Parameter::Boolean);
+   m_param_doPrintVerbose = addIntParameter("Print Verbose", "Prints all data elements on each node", 0, Parameter::Boolean);
 
 
    // policies
@@ -184,14 +185,10 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
 
     // Structured Grids
     if (auto structured = StructuredGridBase::as(data)) {
-        const Index numEl_x = structured->getNumElements_x();
-        const Index numEl_y = structured->getNumElements_y();
-        const Index numEl_z = structured->getNumElements_z();
-
-        m_currentProfile.structuredGridSize[0] = numEl_x;
-        m_currentProfile.structuredGridSize[1] = numEl_y;
-        m_currentProfile.structuredGridSize[2] = numEl_z;
-        m_currentProfile.elements = numEl_x * numEl_y * numEl_z;
+        m_currentProfile.structuredGridSize[0] = structured->getNumElements_x();
+        m_currentProfile.structuredGridSize[1] = structured->getNumElements_y();
+        m_currentProfile.structuredGridSize[2] = structured->getNumElements_z();
+        m_currentProfile.elements = structured->getNumElements_total();
 
         if (auto uniform = UniformGrid::as(data)) {
             //iterate and copy min/max coordinates
@@ -228,6 +225,53 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
     }
 
     m_currentProfile.blocks++;
+
+}
+
+// COMPUTE HELPER FUNCTION - PRINT VERBOSE DATA
+//-------------------------------------------------------------------------
+void PrintMetaData::compute_printVerbose(vistle::Object::const_ptr data) {
+    std::string message;
+
+    // verbose print for indexed data types
+    if (auto indexed = Indexed::as(data)) {
+
+        message += "\nel: ";
+        for (unsigned i = 0; i < indexed->getNumElements(); i++) {
+            message += std::to_string(indexed->el()[i]) + ", ";
+        }
+        sendInfo(message);
+        message.clear();
+
+        message += "\ncl: ";
+        for (unsigned i = 0; i < indexed->getNumCorners(); i++) {
+            message += std::to_string(indexed->cl()[i]) + ", ";
+        }
+        sendInfo(message);
+        message.clear();
+
+    }
+
+
+
+    // verbose print for vec data types
+    if (auto vec = Vec<Scalar, 1>::as(data)) {
+        message += "\nvec: ";
+        for (unsigned i = 0; i < vec->getSize(); i++) {
+            message += std::to_string(vec->x()[i]) + ", ";
+        }
+
+    } else if (auto vec = Vec<Scalar, 3>::as(data)) {
+        message += "\nvecs: ";
+        for (unsigned i = 0; i < vec->getSize(); i++) {
+            message += "(" + std::to_string(vec->x()[i]) + ",";
+            message += std::to_string(vec->y()[i]) + ",";
+            message += std::to_string(vec->z()[i]) + "), ";
+        }
+
+    }
+
+    sendInfo(message);
 
 }
 
@@ -340,7 +384,7 @@ bool PrintMetaData::compute() {
     // acquire input data object
     Object::const_ptr data = expect<Object>("data_in");
 
-    // assert existence of useable data <- not sure if this will ever get triggered because of the expect function
+    // assert existence of useable data
     if (!data) {
        sendInfo("Error: Unknown Input Data");
        return true;
@@ -355,6 +399,10 @@ bool PrintMetaData::compute() {
 
     // acquire grid specific data articles
     compute_acquireGridData(data);
+
+    if (m_param_doPrintVerbose->getValue()) {
+        compute_printVerbose(data);
+    }
 
    return true;
 }
