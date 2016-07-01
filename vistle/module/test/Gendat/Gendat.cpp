@@ -109,9 +109,9 @@ bool Gendat::compute() {
 
            // generate test data
            for (unsigned i = 0; i < 3; i++) {
-               u->numElements()[i] = i;
+               u->numElements()[i] = i + 1;
                u->min()[i] = i;
-               u->max()[i] = i;
+               u->max()[i] = i + 1;
            }
 
            addObject("grid_out", u);
@@ -138,21 +138,16 @@ bool Gendat::compute() {
            addObject("grid_out", r);
 
        } else if (rank() == 0 && m_geoMode->getValue() == M_STRUCTURED){
-           const unsigned eg_x = 5;
-           const unsigned eg_y = 8;
-           const unsigned eg_z = 9;
+           const unsigned eg_x = 8;
+           const unsigned eg_y = 2;
+           const unsigned eg_z = 3;
+           const unsigned size = eg_x * eg_y * eg_z;
            StructuredGrid::ptr s(new StructuredGrid(eg_x, eg_y, eg_z));
 
            // generate test data
-           for (unsigned i = 0; i < eg_x + 1; i++) {
+           for (unsigned i = 0; i < size; i++) {
                s->coords_x()[i] = i;
-           }
-
-           for (unsigned i = 0; i < eg_y + 1; i++) {
                s->coords_y()[i] = i;
-           }
-
-           for (unsigned i = 0; i < eg_z + 1; i++) {
                s->coords_z()[i] = i;
            }
 
