@@ -35,6 +35,7 @@ class V_COREEXPORT StructuredGridBase : public Object {
    virtual Index getNumElements_x() const { return 0; }
    virtual Index getNumElements_y() const { return 0; }
    virtual Index getNumElements_z() const { return 0; }
+   virtual Index getNumElements_total() const { return getNumElements_x() * getNumElements_y() * getNumElements_z(); }
 
    // data object
    V_DATA_BEGIN(StructuredGridBase);

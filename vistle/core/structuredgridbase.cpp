@@ -66,8 +66,6 @@ StructuredGridBase::Data * StructuredGridBase::Data::create(Type id, const Meta 
 
 // MACROS
 //-------------------------------------------------------------------------
-//@question do i need this?
-//V_SERIALIZERS(StructuredGridBase)
 V_OBJECT_CTOR(StructuredGridBase)
 
 } // namespace vistle
