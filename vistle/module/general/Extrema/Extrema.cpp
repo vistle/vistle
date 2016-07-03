@@ -215,7 +215,9 @@ bool Extrema::compute() {
    out->addAttribute("maxIndex", maxIndex.str());
    //std::cerr << "Extrema: min " << min << ", max " << max << std::endl;
 
+#ifndef BOUNDINGBOX
    addObject("data_out", out);
+#endif
 
    for (int c=0; c<MaxDim; ++c) {
       if (gmin[c] > min[c]) {
