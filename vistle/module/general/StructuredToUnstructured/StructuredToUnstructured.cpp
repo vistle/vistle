@@ -51,10 +51,15 @@ StructuredToUnstructured::~StructuredToUnstructured() {
 bool StructuredToUnstructured::compute() {
 
     // acquire input data object
-    StructuredGridBase::const_ptr obj = expect<StructuredGridBase>("data_in");
+    DataBase::const_ptr data;
+    StructuredGridBase::const_ptr grid = accept<StructuredGridBase>("data_in");
+    if (!grid) {
+        data = accept<DataBase>("data_in");
+        grid = StructuredGridBase::as(data->grid());
+    }
 
     // assert existence of useable data
-    if (!obj) {
+    if (!grid) {
        sendInfo("Error: Unusable Input Data");
        return true;
     }
@@ -65,13 +70,13 @@ bool StructuredToUnstructured::compute() {
     // * x, y, z members are unique, however
 
     // instantiate output unstructured grid data object
-    const Index numElements = obj->getNumElements();
-    const Index numCorners = obj->getNumElements() * M_NUM_CORNERS_HEXAHEDRON;
-    const Index numVerticesTotal = obj->getNumDivisions(0) * obj->getNumDivisions(1) * obj->getNumDivisions(2);
+    const Index numElements = grid->getNumElements();
+    const Index numCorners = grid->getNumElements() * M_NUM_CORNERS_HEXAHEDRON;
+    const Index numVerticesTotal = grid->getNumDivisions(0) * grid->getNumDivisions(1) * grid->getNumDivisions(2);
     const Cartesian3<Index> numVertices = Cartesian3<Index>(
-                obj->getNumDivisions(0),
-                obj->getNumDivisions(1),
-                obj->getNumDivisions(2)
+                grid->getNumDivisions(0),
+                grid->getNumDivisions(1),
+                grid->getNumDivisions(2)
                 );
 
     UnstructuredGrid::ptr unstrGridOut(new UnstructuredGrid(numElements, numCorners, numVerticesTotal));
@@ -117,20 +122,27 @@ bool StructuredToUnstructured::compute() {
     }
 
     // pass on conversion of x, y, z vectors to specific helper functions based on grid type
-    if (auto uniformGrid = UniformGrid::as(obj)) {
+    if (auto uniformGrid = UniformGrid::as(grid)) {
         compute_uniformVecs(uniformGrid, unstrGridOut, numVertices);
-    } else if (auto rectilinearGrid = RectilinearGrid::as(obj)) {
+    } else if (auto rectilinearGrid = RectilinearGrid::as(grid)) {
         compute_rectilinearVecs(rectilinearGrid, unstrGridOut, numVertices);
-    } else if (auto structuredGrid = StructuredGrid::as(obj)) {
+    } else if (auto structuredGrid = StructuredGrid::as(grid)) {
         compute_structuredVecs(structuredGrid, unstrGridOut, numVerticesTotal);
     } else {
         sendInfo("Error: Unable to convert Structured Grid Base object to a leaf data type");
         return true;
     }
 
-    unstrGridOut->copyAttributes(grid);
     // output data
-    addObject("data_out", unstrGridOut);
+    unstrGridOut->copyAttributes(grid);
+    if (data) {
+        auto outdata = data->clone();
+        outdata->copyAttributes(data);
+        outdata->setGrid(unstrGridOut);
+        addObject("data_out", outdata);
+    } else {
+        addObject("data_out", unstrGridOut);
+    }
 
    return true;
 }
