@@ -25,17 +25,16 @@ class V_COREEXPORT StructuredGridBase : public Object {
    StructuredGridBase(const Meta &meta);
 
    // static inline method to obtain a cell index from (x,y,z) indices and max grid dimensions
-   static inline int obtainCellIndex(const int i[3], const int dims[3])
+   static inline Index obtainCellIndex(const Index i[3], const Index dims[3])
    {
        return (i[0] * dims[1] + i[1]) * dims[2] + i[2];
    }
 
-
    // virtual get/set functions for metadata
-   virtual Index getNumElements_x() const { return 0; }
-   virtual Index getNumElements_y() const { return 0; }
-   virtual Index getNumElements_z() const { return 0; }
-   virtual Index getNumElements_total() const { return getNumElements_x() * getNumElements_y() * getNumElements_z(); }
+   virtual Index getNumElements() { return (getNumDivisions(0)-1)*(getNumDivisions(1)-1)*(getNumDivisions(2)-1); }
+   virtual Index getNumElements() const { return (getNumDivisions(0)-1)*(getNumDivisions(1)-1)*(getNumDivisions(2)-1); }
+   virtual Index getNumDivisions(int d) { return 1; }
+   virtual Index getNumDivisions(int d) const { return 1; }
 
    // data object
    V_DATA_BEGIN(StructuredGridBase);

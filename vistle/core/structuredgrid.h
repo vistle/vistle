@@ -26,34 +26,27 @@ public:
    StructuredGrid(const Index numVert_x, const Index numVert_y, const Index numVert_z, const Meta &meta = Meta());
 
    // get/set functions for metadata
-   Index getNumElements_x() const override { return m_numElements[0]; }
-   Index getNumElements_y() const override { return m_numElements[1]; }
-   Index getNumElements_z() const override { return m_numElements[2]; }
+   Index getNumDivisions(int c) override { return (*d()->numDivisions)[c]; }
+   Index getNumDivisions(int c) const override { return m_numDivisions[c]; }
 
    // get/set functions for shared memory members
-   shm<Index>::array & numElements() { return *d()->numElements; }
-   shm<Scalar>::array & coords_x() { return *d()->coords_x; }
-   shm<Scalar>::array & coords_y() { return *d()->coords_y; }
-   shm<Scalar>::array & coords_z() { return *d()->coords_z; }
-   const Index * numElements() const { return m_numElements; }
-   const Scalar * coords_x() const { return m_coords_x; }
-   const Scalar * coords_y() const { return m_coords_y; }
-   const Scalar * coords_z() const { return m_coords_z; }
+   shm<Scalar>::array & x(int c=0) { return *d()->x[c]; }
+   shm<Scalar>::array & y() { return *d()->x[1]; }
+   shm<Scalar>::array & z() { return *d()->x[2]; }
+   const Scalar * x(int c=0) const { return m_x[c]; }
+   const Scalar * y() const { return m_x[1]; }
+   const Scalar * z() const { return m_x[2]; }
 
 private:
    // mutable pointers to ShmVectors
-   mutable const Index * m_numElements;
-   mutable const Scalar * m_coords_x;
-   mutable const Scalar * m_coords_y;
-   mutable const Scalar * m_coords_z;
+   mutable Index m_numDivisions[3];
+   mutable const Scalar *m_x[3];
 
    // data object
    V_DATA_BEGIN(StructuredGrid);
 
-   ShmVector<Index> numElements; //< number of divisions on each axis (by index, in order x, y, z)
-   ShmVector<Scalar> coords_x; //< coordinates of corners (x)
-   ShmVector<Scalar> coords_y; //< coordinates of corners (y)
-   ShmVector<Scalar> coords_z; //< coordinates of corners (z)
+   ShmVector<Index> numDivisions; //< number of divisions on each axis (1 more than number of cells)
+   ShmVector<Scalar> x[3]; //< coordinates of corners (x, y, and z)
 
    Data(const Index numVert_x, const Index numVert_y, const Index numVert_z, const std::string & name, const Meta &meta = Meta());
    ~Data();

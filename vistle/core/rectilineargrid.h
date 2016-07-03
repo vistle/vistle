@@ -26,30 +26,22 @@ public:
    RectilinearGrid(const Index NumElements_x, const Index NumElements_y, const Index NumElements_z, const Meta &meta=Meta());
 
    // get/set functions for metadata
-   Index getNumElements_x() const override { return d()->coords_x->size() - 1; }
-   Index getNumElements_y() const override { return d()->coords_y->size() - 1; }
-   Index getNumElements_z() const override { return d()->coords_z->size() - 1; }
+   Index getNumDivisions(int c) override { return d()->coords[c]->size(); }
+   Index getNumDivisions(int c) const override { return m_numDivisions[c]; }
 
    // get/set functions for shared memory members
-   shm<Scalar>::array & coords_x() { return *d()->coords_x; }
-   shm<Scalar>::array & coords_y() { return *d()->coords_y; }
-   shm<Scalar>::array & coords_z() { return *d()->coords_z; }
-   const Scalar * coords_x() const { return m_coords_x; }
-   const Scalar * coords_y() const { return m_coords_y; }
-   const Scalar * coords_z() const { return m_coords_z; }
+   shm<Scalar>::array & coords(int c) { return *d()->coords[c]; }
+   const Scalar * coords(int c) const { return m_coords[c]; }
 
 private:
    // mutable pointers to ShmVectors
-   mutable const Scalar * m_coords_x;
-   mutable const Scalar * m_coords_y;
-   mutable const Scalar * m_coords_z;
+   mutable Index m_numDivisions[3];
+   mutable const Scalar *m_coords[3];
 
    // data object
    V_DATA_BEGIN(RectilinearGrid);
 
-   ShmVector<Scalar> coords_x; //< coordinates of divisions in x
-   ShmVector<Scalar> coords_y; //< coordinates of divisions in y
-   ShmVector<Scalar> coords_z; //< coordinates of divisions in z
+   ShmVector<Scalar> coords[3]; //< coordinates of divisions in x, y, and z
 
    Data(const Index NumElements_x, const Index NumElements_y, const Index NumElements_z, const std::string & name, const Meta &meta=Meta());
    ~Data();

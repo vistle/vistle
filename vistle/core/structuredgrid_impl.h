@@ -13,10 +13,10 @@ namespace vistle {
 template<class Archive>
 void StructuredGrid::Data::serialize(Archive &ar, const unsigned int version) {
    ar & V_NAME("base_structuredGridBase", boost::serialization::base_object<Base::Data>(*this));
-   ar & V_NAME("numElements", numElements);
-   ar & V_NAME("coords_x", coords_x);
-   ar & V_NAME("coords_y", coords_y);
-   ar & V_NAME("coords_z", coords_z);
+   ar & V_NAME("num_divisions", numDivisions);
+   ar & V_NAME("coords_x", x[0]);
+   ar & V_NAME("coords_y", x[1]);
+   ar & V_NAME("coords_z", x[2]);
 }
 
 } // namespace vistle

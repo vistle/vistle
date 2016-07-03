@@ -105,11 +105,10 @@ bool Gendat::compute() {
        addObject("grid_out", geo);
    } else {
        if (rank() == 0 && m_geoMode->getValue() == M_UNIFORM) {
-           UniformGrid::ptr u(new UniformGrid(Meta()));
+           UniformGrid::ptr u(new UniformGrid(2,3,4));
 
            // generate test data
            for (unsigned i = 0; i < 3; i++) {
-               u->numElements()[i] = i + 1;
                u->min()[i] = i;
                u->max()[i] = i + 1;
            }
@@ -124,15 +123,15 @@ bool Gendat::compute() {
 
            // generate test data
            for (unsigned i = 0; i < eg_x + 1; i++) {
-               r->coords_x()[i] = i;
+               r->coords(0)[i] = i;
            }
 
            for (unsigned i = 0; i < eg_y + 1; i++) {
-               r->coords_y()[i] = i;
+               r->coords(1)[i] = i;
            }
 
            for (unsigned i = 0; i < eg_z + 1; i++) {
-               r->coords_z()[i] = i;
+               r->coords(2)[i] = i;
            }
 
            addObject("grid_out", r);
@@ -145,10 +144,16 @@ bool Gendat::compute() {
            StructuredGrid::ptr s(new StructuredGrid(eg_x, eg_y, eg_z));
 
            // generate test data
-           for (unsigned i = 0; i < size; i++) {
-               s->coords_x()[i] = i;
-               s->coords_y()[i] = i;
-               s->coords_z()[i] = i;
+           for (unsigned i = 0; i < eg_x + 1; i++) {
+               s->x()[i] = i;
+           }
+
+           for (unsigned i = 0; i < eg_y + 1; i++) {
+               s->y()[i] = i;
+           }
+
+           for (unsigned i = 0; i < eg_z + 1; i++) {
+               s->z()[i] = i;
            }
 
            addObject("grid_out", s);

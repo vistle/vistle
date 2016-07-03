@@ -65,19 +65,19 @@ bool StructuredToUnstructured::compute() {
     // * x, y, z members are unique, however
 
     // instantiate output unstructured grid data object
-    const Index numElements = obj->getNumElements_total();
-    const Index numCorners = obj->getNumElements_total() * M_NUM_CORNERS_HEXAHEDRON;
-    const Index numVerticesTotal = (obj->getNumElements_x() + 1) * (obj->getNumElements_y() + 1) * (obj->getNumElements_z() + 1);
+    const Index numElements = obj->getNumElements();
+    const Index numCorners = obj->getNumElements() * M_NUM_CORNERS_HEXAHEDRON;
+    const Index numVerticesTotal = obj->getNumDivisions(0) * obj->getNumDivisions(1) * obj->getNumDivisions(2);
     const Cartesian3<Index> numVertices = Cartesian3<Index>(
-                obj->getNumElements_x() + 1,
-                obj->getNumElements_y() + 1,
-                obj->getNumElements_z() + 1
+                obj->getNumDivisions(0),
+                obj->getNumDivisions(1),
+                obj->getNumDivisions(2)
                 );
 
     UnstructuredGrid::ptr unstrGridOut(new UnstructuredGrid(numElements, numCorners, numVerticesTotal));
 
     // construct type list and element list
-    for (unsigned i = 0; i < numElements; i++) {
+    for (Index i = 0; i < numElements; i++) {
         unstrGridOut->tl()[i] = UnstructuredGrid::HEXAHEDRON;
         unstrGridOut->el()[i] = i * M_NUM_CORNERS_HEXAHEDRON;
     }
@@ -87,20 +87,34 @@ bool StructuredToUnstructured::compute() {
 
 
     // construct connectivity list (all hexahedra)
-    for (unsigned i = 0; i < numElements; i++) {
-        const Index baseInsertionIndex = i * M_NUM_CORNERS_HEXAHEDRON;
+    const Index dim[3] = { grid->getNumDivisions(0), grid->getNumDivisions(1), grid->getNumDivisions(2) };
+    const Index nx = dim[0]-1;
+    const Index ny = dim[1]-1;
+    const Index nz = dim[2]-1;
+    Index idx[3];
+    Index el = 0;
+    for (Index ix=0; ix<nx; ++ix) {
+        idx[0] = ix;
+        for (Index iy=0; iy<ny; ++iy) {
+            idx[1] = iy;
+            for (Index iz=0; iz<nz; ++iz) {
+                idx[2] = iz;
+                const Index v = UniformGrid::obtainCellIndex(idx, dim);
 
-        unstrGridOut->cl()[baseInsertionIndex] = i;                                                     // 0            7 -------- 6
-        unstrGridOut->cl()[baseInsertionIndex + 1] = i + 1;                                             // 1           /|         /|
-        unstrGridOut->cl()[baseInsertionIndex + 2] = i + numVertices.z + 1;                             // 2          / |        / |
-        unstrGridOut->cl()[baseInsertionIndex + 3] = i + numVertices.z;                                 // 3         4 -------- 5  |
-        unstrGridOut->cl()[baseInsertionIndex + 4] = i + numVertices.z * numVertices.y;                 // 4         |  3-------|--2
-        unstrGridOut->cl()[baseInsertionIndex + 5] = i + numVertices.z * numVertices.y + 1;             // 5         | /        | /
-        unstrGridOut->cl()[baseInsertionIndex + 6] = i + numVertices.z * (numVertices.y + 1) + 1;       // 6         |/         |/
-        unstrGridOut->cl()[baseInsertionIndex + 7] = i + numVertices.z * (numVertices.y + 1);           // 7         0----------1
+                const Index baseInsertionIndex = el * M_NUM_CORNERS_HEXAHEDRON;
+                unstrGridOut->cl()[baseInsertionIndex] = v;                                       // 0            7 -------- 6
+                unstrGridOut->cl()[baseInsertionIndex + 1] = v + 1;                               // 1           /|         /|
+                unstrGridOut->cl()[baseInsertionIndex + 2] = v + dim[2] + 1;                      // 2          / |        / |
+                unstrGridOut->cl()[baseInsertionIndex + 3] = v + dim[2];                          // 3         4 -------- 5  |
+                unstrGridOut->cl()[baseInsertionIndex + 4] = v + dim[2] * dim[1];                 // 4         |  3-------|--2
+                unstrGridOut->cl()[baseInsertionIndex + 5] = v + dim[2] * dim[1] + 1;             // 5         | /        | /
+                unstrGridOut->cl()[baseInsertionIndex + 6] = v + dim[2] * (dim[1] + 1) + 1;       // 6         |/         |/
+                unstrGridOut->cl()[baseInsertionIndex + 7] = v + dim[2] * (dim[1] + 1);           // 7         0----------1
 
+                ++el;
+            }
+        }
     }
-
 
     // pass on conversion of x, y, z vectors to specific helper functions based on grid type
     if (auto uniformGrid = UniformGrid::as(obj)) {
@@ -114,6 +128,7 @@ bool StructuredToUnstructured::compute() {
         return true;
     }
 
+    unstrGridOut->copyAttributes(grid);
     // output data
     addObject("data_out", unstrGridOut);
 
@@ -124,7 +139,7 @@ bool StructuredToUnstructured::compute() {
 //-------------------------------------------------------------------------
 void StructuredToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, UnstructuredGrid::ptr unstrGridOut,
                                                    const Cartesian3<Index> numVertices) {
-    const Index numElements = obj->getNumElements_total();
+    const Index numElements = obj->getNumElements();
     const Cartesian3<Scalar> min = Cartesian3<Scalar>(
                 obj->min()[0],
                 obj->min()[1],
@@ -143,10 +158,15 @@ void StructuredToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, U
 
 
     // construct vertices
-    for (unsigned i = 0; i < numVertices.x; i++) {
-        for (unsigned j = 0; j < numVertices.y; j++) {
-            for (unsigned k = 0; k < numVertices.z; k++) {
-                const Index insertionIndex = (i * numVertices.y + j) * numVertices.z + k;
+    const Index dim[3] = { numVertices.x, numVertices.y, numVertices.z };
+    Index idx[3];
+    for (Index i = 0; i < numVertices.x; i++) {
+        idx[0] = i;
+        for (Index j = 0; j < numVertices.y; j++) {
+            idx[1] = j;
+            for (Index k = 0; k < numVertices.z; k++) {
+                idx[2] = k;
+                const Index insertionIndex = UniformGrid::obtainCellIndex(idx, dim);
 
                 unstrGridOut->x()[insertionIndex] = min.x + i * delta.x;
                 unstrGridOut->y()[insertionIndex] = min.y + j * delta.y;
@@ -170,14 +190,19 @@ void StructuredToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, U
 void StructuredToUnstructured::compute_rectilinearVecs(RectilinearGrid::const_ptr obj, UnstructuredGrid::ptr unstrGridOut,
                                                        const Cartesian3<Index> numVertices) {
 
-    for (unsigned i = 0; i < numVertices.x; i++) {
-        for (unsigned j = 0; j < numVertices.y; j++) {
-            for (unsigned k = 0; k < numVertices.z; k++) {
-                const Index insertionIndex = (i * numVertices.y + j) * numVertices.z + k;
+    const Index dim[3] = { numVertices.x, numVertices.y, numVertices.z };
+    Index idx[3];
+    for (Index i = 0; i < numVertices.x; i++) {
+        idx[0] = i;
+        for (Index j = 0; j < numVertices.y; j++) {
+            idx[1] = j;
+            for (Index k = 0; k < numVertices.z; k++) {
+                idx[2] = k;
+                const Index insertionIndex = UniformGrid::obtainCellIndex(idx, dim);
 
-                unstrGridOut->x()[insertionIndex] = obj->coords_x()[i];
-                unstrGridOut->y()[insertionIndex] = obj->coords_y()[j];
-                unstrGridOut->z()[insertionIndex] = obj->coords_z()[k];
+                unstrGridOut->x()[insertionIndex] = obj->coords(0)[i];
+                unstrGridOut->y()[insertionIndex] = obj->coords(1)[j];
+                unstrGridOut->z()[insertionIndex] = obj->coords(2)[k];
             }
         }
     }
@@ -190,10 +215,10 @@ void StructuredToUnstructured::compute_rectilinearVecs(RectilinearGrid::const_pt
 void StructuredToUnstructured::compute_structuredVecs(StructuredGrid::const_ptr obj, UnstructuredGrid::ptr unstrGridOut,
                                                       const Index numVerticesTotal) {
 
-    for (unsigned i = 0; i < numVerticesTotal; i++) {
-        unstrGridOut->x()[i] = obj->coords_x()[i];
-        unstrGridOut->y()[i] = obj->coords_y()[i];
-        unstrGridOut->z()[i] = obj->coords_z()[i];
+    for (Index i = 0; i < numVerticesTotal; i++) {
+        unstrGridOut->x()[i] = obj->x()[i];
+        unstrGridOut->y()[i] = obj->y()[i];
+        unstrGridOut->z()[i] = obj->z()[i];
     }
 
     return;

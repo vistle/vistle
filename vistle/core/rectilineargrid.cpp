@@ -19,19 +19,18 @@ RectilinearGrid::RectilinearGrid(const Index NumElements_x, const Index NumEleme
 //-------------------------------------------------------------------------
 void RectilinearGrid::refreshImpl() const {
     const Data *d = static_cast<Data *>(m_data);
-
-    m_coords_x = (d && d->coords_x.valid()) ? d->coords_x->data() : nullptr;
-    m_coords_y = (d && d->coords_y.valid()) ? d->coords_y->data() : nullptr;
-    m_coords_z = (d && d->coords_z.valid()) ? d->coords_z->data() : nullptr;
+    for (int c=0; c<3; ++c) {
+        m_coords[c] = (d && d->coords[c].valid()) ? d->coords[c]->data() : nullptr;
+    }
 }
 
 // CHECK IMPL
 //-------------------------------------------------------------------------
 bool RectilinearGrid::checkImpl() const {
 
-   V_CHECK(d()->coords_x->check());
-   V_CHECK(d()->coords_y->check());
-   V_CHECK(d()->coords_z->check());
+    for (int c=0; c<3; ++c) {
+        V_CHECK(d()->coords[c]->check());
+    }
 
    return true;
 }
@@ -40,25 +39,25 @@ bool RectilinearGrid::checkImpl() const {
 //-------------------------------------------------------------------------
 bool RectilinearGrid::isEmpty() const {
 
-   return (getNumElements_x() == 0 || getNumElements_y() == 0 || getNumElements_z() == 0);
+   return (getNumDivisions(0) == 0 || getNumDivisions(1) == 0 || getNumDivisions(2) == 0);
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM NAME & META
 //-------------------------------------------------------------------------
 RectilinearGrid::Data::Data(const Index NumElements_x, const Index NumElements_y, const Index NumElements_z, const std::string & name, const Meta &meta)
     : RectilinearGrid::Base::Data(Object::RECTILINEARGRID, name, meta) {
-    coords_x.construct(NumElements_x + 1);
-    coords_y.construct(NumElements_y + 1);
-    coords_z.construct(NumElements_z + 1);
+    coords[0].construct(NumElements_x + 1);
+    coords[1].construct(NumElements_y + 1);
+    coords[2].construct(NumElements_z + 1);
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM DATA OBJECT AND NAME
 //-------------------------------------------------------------------------
 RectilinearGrid::Data::Data(const RectilinearGrid::Data &o, const std::string &n)
-: RectilinearGrid::Base::Data(o, n)
-, coords_x(o.coords_x)
-, coords_y(o.coords_y)
-, coords_z(o.coords_z) {
+    : RectilinearGrid::Base::Data(o, n) {
+    for (int c=0; c<3; ++c) {
+        coords[c] = o.coords[c];
+    }
 }
 
 // DATA OBJECT - DESTRUCTOR

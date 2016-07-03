@@ -21,22 +21,23 @@ StructuredGrid::StructuredGrid(const Index numVert_x, const Index numVert_y, con
 void StructuredGrid::refreshImpl() const {
     const Data *d = static_cast<Data *>(m_data);
 
-    m_numElements = (d && d->numElements.valid()) ? d->numElements->data() : nullptr;
-    m_coords_x = (d && d->coords_x.valid()) ? d->coords_x->data() : nullptr;
-    m_coords_y = (d && d->coords_y.valid()) ? d->coords_y->data() : nullptr;
-    m_coords_z = (d && d->coords_z.valid()) ? d->coords_z->data() : nullptr;
+    for (int c=0; c<3; ++c) {
+        if (d && d->x[c].valid()) {
+            m_numDivisions[c] = (*d->numDivisions)[c];
+            m_x[c] = d->x[c]->data();
+        } else {
+            m_numDivisions[c] = 0;
+            m_x[c] = nullptr;
+        }
+    }
 }
 
 // CHECK IMPL
 //-------------------------------------------------------------------------
 bool StructuredGrid::checkImpl() const {
 
-   V_CHECK(d()->numElements->check());
-   V_CHECK(d()->coords_x->check());
-   V_CHECK(d()->coords_y->check());
-   V_CHECK(d()->coords_z->check());
-
-   V_CHECK(d()->numElements->size() == 3);
+   for (int c=0; c<3; ++c)
+       V_CHECK(d()->x[c]->check());
 
    return true;
 }
@@ -51,29 +52,27 @@ bool StructuredGrid::isEmpty() const {
 // DATA OBJECT - CONSTRUCTOR FROM NAME & META
 //-------------------------------------------------------------------------
 StructuredGrid::Data::Data(const Index numVert_x, const Index numVert_y, const Index numVert_z, const std::string & name, const Meta &meta)
-    : StructuredGrid::Base::Data(Object::STRUCTUREDGRID, name, meta) {
+    : StructuredGrid::Base::Data(Object::STRUCTUREDGRID, name, meta)
+{
+    numDivisions.construct(3);
+    (*numDivisions)[0] = numVert_x;
+    (*numDivisions)[1] = numVert_y;
+    (*numDivisions)[2] = numVert_z;
+
     const Index numCoords = numVert_x * numVert_y * numVert_z;
-
     // construct ShmVectors
-    numElements.construct(3);
-    coords_x.construct(numCoords);
-    coords_y.construct(numCoords);
-    coords_z.construct(numCoords);
-
-    // insert numElements
-    numElements->data()[0] = numVert_x - 1;
-    numElements->data()[1] = numVert_y - 1;
-    numElements->data()[2] = numVert_z - 1;
+    for (int c=0; c<3; ++c) {
+        x[c].construct(numCoords);
+    }
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM DATA OBJECT AND NAME
 //-------------------------------------------------------------------------
 StructuredGrid::Data::Data(const StructuredGrid::Data &o, const std::string &n)
-: StructuredGrid::Base::Data(o, n)
-, numElements(o.numElements)
-, coords_x(o.coords_x)
-, coords_y(o.coords_y)
-, coords_z(o.coords_z) {
+    : StructuredGrid::Base::Data(o, n)
+    , numDivisions(o.numDivisions) {
+    for (int c=0; c<3; ++c)
+        x[c] = o.x[c];
 }
 
 // DATA OBJECT - DESTRUCTOR
