@@ -174,11 +174,16 @@ void visit(Celltree3::Node *nodes, Celltree3::Node &cur, Vector3 min, Vector3 ma
 
 bool ShowCelltree::compute() {
 
-   UnstructuredGrid::const_ptr in = expect<UnstructuredGrid>("grid_in");
-   if (!in)
-      return true;
+   UnstructuredGrid::const_ptr grid = accept<UnstructuredGrid>("grid_in");
+   if (!grid) {
+      if (auto data = expect<DataBase>("grid_in")) {
+          grid = UnstructuredGrid::as(data->grid());
+      }
+   }
+   if (!grid)
+       return true;
 
-   auto ct = in->getCelltree();
+   auto ct = grid->getCelltree();
 
    vistle::Lines::ptr out(new vistle::Lines(Object::Initialized));
    vistle::Vec<Scalar>::ptr data(new vistle::Vec<Scalar>(Object::Initialized));
@@ -189,7 +194,7 @@ bool ShowCelltree::compute() {
       visit(ct->nodes().data(), ct->nodes()[0], min, max, out, data, 0, m_maxDepth->getValue());
    }
 
-   out->copyAttributes(in);
+   out->copyAttributes(grid);
    addObject("grid_out", out);
    addObject("data_out", data);
 
