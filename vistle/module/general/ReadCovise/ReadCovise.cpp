@@ -16,6 +16,9 @@
 #include <core/lines.h>
 #include <core/points.h>
 #include <core/unstr.h>
+#include <core/uniformgrid.h>
+#include <core/rectilineargrid.h>
+#include <core/structuredgrid.h>
 
 #ifdef _WIN32
 #include <io.h>
@@ -162,6 +165,78 @@ bool ReadCovise::readSETELE(const int fd, Element *parent) {
    return true;
 }
 
+Object::ptr ReadCovise::readUNIGRD(const int fd, const bool skeleton) {
+
+   int dim[3];
+   float min[3], max[3];
+
+   covReadUNIGRD(fd, &dim[0], &dim[1], &dim[2],
+           &min[0], &max[0], &min[1], &max[1], &min[2], &max[2]);
+   if (!skeleton) {
+
+      UniformGrid::ptr uni(new UniformGrid(dim[0], dim[1], dim[2]));
+      for (int i=0; i<3; ++i) {
+          uni->min()[i] = min[i];
+          uni->max()[i] = max[i];
+      }
+
+      return uni;
+   }
+
+   return Object::ptr();
+}
+
+Object::ptr ReadCovise::readRCTGRD(const int fd, const bool skeleton) {
+
+   int dim[3];
+
+   covReadSizeRCTGRD(fd, &dim[0], &dim[1], &dim[2]);
+
+   if (skeleton) {
+      covSkipRCTGRD(fd, dim[0], dim[1], dim[2]);
+   } else {
+      std::vector<float> coord[3];
+      for (int i=0; i<3; ++i)
+          coord[i].resize(dim[i]);
+      covReadRCTGRD(fd, dim[0], dim[1], dim[2], coord[0].data(), coord[1].data(), coord[2].data());
+
+      RectilinearGrid::ptr rect(new RectilinearGrid(dim[0], dim[1], dim[2]));
+      for (int i=0; i<3; ++i) {
+          for (int k=0; k<dim[i]+1; ++k) {
+              rect->coords(i)[k] = coord[i][k];
+          }
+      }
+
+      return rect;
+   }
+
+   return Object::ptr();
+}
+
+Object::ptr ReadCovise::readSTRGRD(const int fd, const bool skeleton) {
+
+   int dim[3];
+   covReadSizeSTRGRD(fd, &dim[0], &dim[1], &dim[2]);
+
+   if (skeleton) {
+      covSkipSTRGRD(fd, dim[0], dim[1], dim[2]);
+   } else {
+       size_t numVertices = dim[0]*dim[1]*dim[2];
+       std::vector<float> v_x(numVertices), v_y(numVertices), v_z(numVertices);
+       float *_x = v_x.data(), *_y = v_y.data(), *_z = v_z.data();
+       covReadSTRGRD(fd, dim[0], dim[1], dim[2], _x, _y, _z);
+       StructuredGrid::ptr str(new StructuredGrid(dim[0], dim[1], dim[2]));
+       Scalar *x=str->x().data(), *y=str->y().data(), *z=str->z().data();
+       for (Index i=0; i<numVertices; ++i) {
+           x[i] = _x[i];
+           y[i] = _y[i];
+           z[i] = _z[i];
+       }
+       return str;
+   }
+   return Object::ptr();
+}
+
 Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
 
    int numElements=-1;
@@ -260,6 +335,67 @@ Object::ptr ReadCovise::readUSTVDT(const int fd, const bool skeleton) {
       Scalar *y = array->y().data();
       Scalar *z = array->z().data();
       for (int i=0; i<numElements; ++i) {
+         x[i] = _x[i];
+         y[i] = _y[i];
+         z[i] = _z[i];
+      }
+
+      return array;
+   }
+
+   return Object::ptr();
+}
+
+Object::ptr ReadCovise::readSTRSDT(const int fd, const bool skeleton) {
+
+   int numElements=-1;
+   int sx=-1, sy=-1, sz=-1;
+   covReadSizeSTRSDT(fd, &numElements, &sx, &sy, &sz);
+   vassert(sx >= 0);
+   vassert(sy >= 0);
+   vassert(sz >= 0);
+   size_t n = sx*sy*sz;
+
+   if (skeleton) {
+
+      covSkipSTRSDT(fd, numElements, sx, sy, sz);
+   } else {
+
+      Vec<Scalar>::ptr array(new Vec<Scalar>(n));
+      std::vector<float> _x(n);
+      covReadSTRSDT(fd, n, &_x[0], sx, sy, sz);
+      auto x = array->x().data();
+      for (int i=0; i<n; ++i)
+         x[i] = _x[i];
+
+      return array;
+   }
+
+   return Object::ptr();
+}
+
+Object::ptr ReadCovise::readSTRVDT(const int fd, const bool skeleton) {
+
+   int numElements=-1;
+   int sx=-1, sy=-1, sz=-1;
+   covReadSizeSTRVDT(fd, &numElements, &sx, &sy, &sz);
+   vassert(sx >= 0);
+   vassert(sy >= 0);
+   vassert(sz >= 0);
+   size_t n = sx*sy*sz;
+
+   if (skeleton) {
+
+      covSkipSTRVDT(fd, numElements, sx, sy, sz);
+   } else {
+
+      Vec<Scalar>::ptr array(new Vec<Scalar>(n));
+      std::vector<float> _x(n), _y(n), _z(n);
+      covReadSTRVDT(fd, n, &_x[0], &_y[0], &_z[0], sx, sy, sz);
+      auto x = array->x().data();
+      auto y = array->y().data();
+      auto z = array->z().data();
+      for (int i=0; i<n; ++i) {
          x[i] = _x[i];
          y[i] = _y[i];
          z[i] = _z[i];
@@ -496,9 +632,14 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
       handled = true; \
       object = read##t(fd, skeleton); \
    }
+   HANDLE(UNIGRD);
+   HANDLE(RCTGRD);
+   HANDLE(STRGRD);
    HANDLE(UNSGRD);
    HANDLE(USTSDT);
    HANDLE(USTVDT);
+   HANDLE(STRSDT);
+   HANDLE(STRVDT);
    HANDLE(POLYGN);
    HANDLE(LINES);
    HANDLE(POINTS);

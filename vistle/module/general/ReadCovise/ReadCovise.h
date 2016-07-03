@@ -69,12 +69,17 @@ class ReadCovise: public vistle::Module {
 
    bool readSETELE(const int fd, Element *parent);
    vistle::Object::ptr readGEOTEX(const int fd, bool skeleton, Element *elem);
+   vistle::Object::ptr readUNIGRD(const int fd, bool skeleton);
+   vistle::Object::ptr readRCTGRD(const int fd, bool skeleton);
+   vistle::Object::ptr readSTRGRD(const int fd, bool skeleton);
    vistle::Object::ptr readUNSGRD(const int fd, bool skeleton);
    vistle::Object::ptr readUSTSDT(const int fd, bool skeleton);
+   vistle::Object::ptr readSTRSDT(const int fd, bool skeleton);
    vistle::Object::ptr readPOLYGN(const int fd, bool skeleton);
    vistle::Object::ptr readLINES(const int fd, bool skeleton);
    vistle::Object::ptr readPOINTS(const int fd, bool skeleton);
    vistle::Object::ptr readUSTVDT(const int fd, bool skeleton);
+   vistle::Object::ptr readSTRVDT(const int fd, bool skeleton);
    vistle::Object::ptr readOBJREF(const int fd, bool skeleton);
 
    bool readRecursive(const int fd, const Element &elem);
