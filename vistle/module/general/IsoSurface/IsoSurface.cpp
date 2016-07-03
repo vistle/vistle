@@ -142,7 +142,7 @@ bool IsoSurface::reduce(int timestep) {
        int found = 0;
        Vector point = m_isopoint->getValue();
        for (size_t i=0; i<m_grids.size(); ++i) {
-           if (m_datas[i]->getTimestep() == 0) {
+           if (m_datas[i]->getTimestep() == 0 || m_datas[i]->getTimestep() == -1) {
                Index cell = m_grids[i]->findCell(point);
                if (cell != InvalidIndex) {
                    found = 1;
