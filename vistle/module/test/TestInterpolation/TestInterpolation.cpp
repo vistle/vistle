@@ -38,7 +38,7 @@ namespace {
 bool TestInterpolation::compute() {
 
    const Index count = getIntParameter("count");
-   const UnstructuredGrid::InterpolationMode mode = (UnstructuredGrid::InterpolationMode)m_mode->getValue();
+   const GridInterface::InterpolationMode mode = (GridInterface::InterpolationMode)m_mode->getValue();
 
    UnstructuredGrid::const_ptr grid = expect<UnstructuredGrid>("data_in");
    if (!grid)

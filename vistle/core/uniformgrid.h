@@ -37,6 +37,7 @@ public:
 
    // GridInterface
    std::pair<Vector, Vector> getBounds() const override;
+   std::pair<Vector, Vector> cellBounds(Index elem) const override;
    Index findCell(const Vector &point, bool acceptGhost=false) const override;
    bool inside(Index elem, const Vector &point) const override;
    Interpolator getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping=DataBase::Vertex, InterpolationMode mode=Linear) const override;

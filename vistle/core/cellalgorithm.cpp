@@ -1,4 +1,4 @@
-#include "cellinterpolation.h"
+#include "cellalgorithm.h"
 
 namespace vistle {
 

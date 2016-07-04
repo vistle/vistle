@@ -55,6 +55,13 @@ std::pair<Vector, Vector> RectilinearGrid::getBounds() const {
             Vector(m_coords[0][m_numDivisions[0]-1], m_coords[1][m_numDivisions[1]-1], m_coords[2][m_numDivisions[2]-1]));
 }
 
+std::pair<Vector, Vector> RectilinearGrid::cellBounds(Index elem) const {
+    auto n = cellCoordinates(elem, m_numDivisions);
+    Vector min(m_coords[0][n[0]], m_coords[1][n[1]], m_coords[2][n[2]]);
+    Vector max(m_coords[0][n[0]+1], m_coords[1][n[1]+1], m_coords[2][n[2]+1]);
+    return std::make_pair(min, max);
+}
+
 Index RectilinearGrid::findCell(const Vector &point, bool acceptGhost) const {
 
     for (int c=0; c<3; ++c) {

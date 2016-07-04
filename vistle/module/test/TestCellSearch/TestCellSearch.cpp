@@ -1,5 +1,6 @@
 ﻿#include <core/object.h>
 #include <core/unstr.h>
+#include <core/structuredgrid.h>
 #include <core/message.h>
 #include "TestCellSearch.h"
 
@@ -28,36 +29,46 @@ bool TestCellSearch::compute() {
 
    const Vector point = m_point->getValue();
 
-   UnstructuredGrid::const_ptr grid = expect<UnstructuredGrid>("data_in");
-   if (!grid)
-      return false;
+   const GridInterface *grid = nullptr;
+   UnstructuredGrid::const_ptr unstr = accept<UnstructuredGrid>("data_in");
+   StructuredGridBase::const_ptr strb = accept<StructuredGridBase>("data_in");
+   Object::const_ptr gridObj;
+   if (unstr) {
+       grid = dynamic_cast<const GridInterface *>(unstr.get());
+       gridObj = unstr;
+   } else if (strb) {
+       grid = dynamic_cast<const GridInterface *>(strb.get());
+       gridObj = boost::static_pointer_cast<const Object>(strb);
+   } else {
+       sendInfo("Unstructured or structured grid required");
+       return true;
+   }
 
    if (m_createCelltree->getValue()) {
-      grid->getCelltree();
-      if (!grid->validateCelltree()) {
-         std::cerr << "celltree validation failed" << std::endl;
+      if (unstr) {
+          unstr->getCelltree();
+          if (!unstr->validateCelltree()) {
+              std::cerr << "UnstructuredGrid celltree validation failed" << std::endl;
+          }
+      } else if (strb) {
+          if (auto str = StructuredGrid::as(gridObj)) {
+              str->getCelltree();
+              str->getCelltree();
+              if (!str->validateCelltree()) {
+                  std::cerr << "StructuredGrid celltree validation failed" << std::endl;
+              }
+          }
       }
    }
    Index idx = grid->findCell(point);
    if (idx != InvalidIndex) {
-      m_block->setValue(grid->getBlock());
+      m_block->setValue(gridObj->getBlock());
       m_cell->setValue(idx);
 
-      const Scalar m = std::numeric_limits<Scalar>::max();
-      Vector min(m, m, m), max(-m, -m, -m);
-      auto cellstart = grid->el()[idx], cellend = grid->el()[idx+1];
-      for (Index i=cellstart; i<cellend; ++i) {
-         Index vert = grid->cl()[i];
-         Vector v(grid->x()[vert], grid->y()[vert], grid->z()[vert]);
-         for (int i=0; i<3; ++i) {
-            if (v[i] < min[i])
-               min[i] = v[i];
-            if (v[i] > max[i])
-               max[i] = v[i];
-         }
-      }
+      const auto bounds = grid->cellBounds(idx);
+      const auto &min = bounds.first, &max = bounds.second;
 
-      std::cerr << "found cell " << idx << " (block " << grid->getBlock() << "): bounds: min " << min.transpose() << ", max " << max.transpose() << std::endl;
+      std::cerr << "found cell " << idx << " (block " << gridObj->getBlock() << "): bounds: min " << min.transpose() << ", max " << max.transpose() << std::endl;
    }
 
    return true;

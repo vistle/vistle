@@ -55,6 +55,14 @@ std::pair<Vector, Vector> UniformGrid::getBounds() const {
     return std::make_pair(Vector(m_min[0], m_min[1], m_min[2]), Vector(m_max[0], m_max[1], m_max[2]));
 }
 
+std::pair<Vector, Vector> UniformGrid::cellBounds(Index elem) const {
+
+    auto n = cellCoordinates(elem, m_numDivisions);
+    Vector min(m_min[0]+n[0]*m_dist[0], m_min[1]+n[1]*m_dist[1], m_min[2]+n[2]*m_dist[2]);
+    Vector max = min + Vector(m_dist[0], m_dist[1], m_dist[2]);
+    return std::make_pair(min, max);
+}
+
 Index UniformGrid::findCell(const Vector &point, bool acceptGhost) const {
 
     for (int c=0; c<3; ++c) {

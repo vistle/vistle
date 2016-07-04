@@ -7,7 +7,7 @@
 #include "structuredgrid.h"
 #include "unstr.h" // for hexahedron topology
 #include <core/assert.h>
-#include "cellinterpolation.h"
+#include "cellalgorithm.h"
 
 namespace vistle {
 
@@ -50,31 +50,110 @@ bool StructuredGrid::isEmpty() const {
    return Base::isEmpty();
 }
 
+StructuredGrid::Celltree::const_ptr StructuredGrid::getCelltree() const {
+
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
+   if (!hasAttachment("celltree")) {
+      refresh();
+      createCelltree(m_numDivisions);
+   }
+
+   Celltree::const_ptr ct = Celltree::as(getAttachment("celltree"));
+   vassert(ct);
+   return ct;
+}
+
+bool StructuredGrid::validateCelltree() const {
+
+   if (!hasCelltree())
+      return false;
+
+   CellBoundsFunctor<Scalar,Index> boundFunc(this);
+   auto ct = getCelltree();
+   return ct->validateTree(boundFunc);
+}
+
+void StructuredGrid::createCelltree(Index dims[3]) const {
+
+   if (hasCelltree())
+      return;
+
+   const Scalar *coords[3] = {
+      &x()[0],
+      &y()[0],
+      &z()[0]
+   };
+   const Scalar smax = std::numeric_limits<Scalar>::max();
+   Vector vmin, vmax;
+   vmin.fill(-smax);
+   vmax.fill(smax);
+
+   const Index nelem = getNumElements();
+   std::vector<Vector> min(nelem, vmax);
+   std::vector<Vector> max(nelem, vmin);
+
+   Vector gmin=vmax, gmax=vmin;
+   for (Index el=0; el<nelem; ++el) {
+       const auto corners = cellVertices(el, dims);
+       for (const auto v: corners) {
+           for (int d=0; d<3; ++d) {
+               if (min[el][d] > coords[d][v]) {
+                   min[el][d] = coords[d][v];
+                   if (gmin[d] > min[el][d])
+                       gmin[d] = min[el][d];
+               }
+               if (max[el][d] < coords[d][v]) {
+                   max[el][d] = coords[d][v];
+                   if (gmax[d] < max[el][d])
+                       gmax[d] = max[el][d];
+               }
+           }
+       }
+   }
+
+   typename Celltree::ptr ct(new Celltree(nelem));
+   ct->init(min.data(), max.data(), gmin, gmax);
+   addAttachment("celltree", ct);
+}
+
+
 std::pair<Vector, Vector> StructuredGrid::getBounds() const {
-#if 0
    if (hasCelltree()) {
       const auto &ct = getCelltree();
       return std::make_pair(Vector(ct->min()), Vector(ct->max()));
    }
-#endif
 
    return Base::getMinMax();
 }
 
+std::pair<Vector,Vector> StructuredGrid::cellBounds(Index elem) const {
+
+    const Scalar *x[3] = { &this->x()[0], &this->y()[0], &this->z()[0] };
+    auto cl = cellVertices(elem, m_numDivisions);
+
+    const Scalar smax = std::numeric_limits<Scalar>::max();
+    Vector min(smax, smax, smax), max(-smax, -smax, -smax);
+    for (Index v: cl) {
+        for (int c=0; c<3; ++c) {
+            min[c] = std::min(min[c], x[c][v]);
+            max[c] = std::max(max[c], x[c][v]);
+        }
+    }
+    return std::make_pair(min, max);
+}
+
 Index StructuredGrid::findCell(const Vec::Vector &point, bool acceptGhost) const {
 
-#if 0
    if (hasCelltree()) {
 
-      PointVisitationFunctor<Scalar, Index> nodeFunc(point);
-      PointInclusionFunctor<Scalar, Index> elemFunc(this, point);
+      vistle::PointVisitationFunctor<Scalar, Index> nodeFunc(point);
+      vistle::PointInclusionFunctor<StructuredGrid, Scalar, Index> elemFunc(this, point);
       getCelltree()->traverse(nodeFunc, elemFunc);
       if (acceptGhost ||!isGhostCell(elemFunc.cell))
          return elemFunc.cell;
       else
          return InvalidIndex;
    }
-#endif
 
    Index size = getNumElements();
    for (Index i=0; i<size; ++i) {
@@ -92,7 +171,6 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
     const Scalar *y = &this->y()[0];
     const Scalar *z = &this->z()[0];
 
-    std::array<Index,3> n = cellCoordinates(elem, m_numDivisions);
     std::array<Index,8> cl = cellVertices(elem, m_numDivisions);
     Vector corners[8];
     for (int i=0; i<8; ++i) {
@@ -110,7 +188,7 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
         Vector edge1 = corners[faces[f][1]];
         edge1 -= v0;
         Vector n(0, 0, 0);
-        for (unsigned i=2; i<sizes[f]; ++i) {
+        for (int i=2; i<sizes[f]; ++i) {
             Vector edge = corners[faces[f][i]];
             edge -= v0;
             n += edge1.cross(edge);
@@ -141,18 +219,17 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
        return Interpolator(weights, indices);
    }
 
-   std::array<Index,3> n = cellCoordinates(elem, m_numDivisions);
-   std::array<Index,8> cl = cellVertices(elem, m_numDivisions);
+   const Index nvert = 8;
+   std::array<Index,nvert> cl = cellVertices(elem, m_numDivisions);
 
    const Scalar *x[3] = { &this->x()[0], &this->y()[0], &this->z()[0] };
-   Vector corners[8];
-   for (int i=0; i<8; ++i) {
+   Vector corners[nvert];
+   for (int i=0; i<nvert; ++i) {
        corners[i][0] = x[0][cl[i]];
        corners[i][1] = x[1][cl[i]];
        corners[i][2] = x[2][cl[i]];
    }
 
-   const Index nvert = 8;
    std::vector<Index> indices((mode==Linear || mode==Mean) ? nvert : 1);
    std::vector<Scalar> weights((mode==Linear || mode==Mean) ? nvert : 1);
 

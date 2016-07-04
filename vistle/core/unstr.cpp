@@ -2,6 +2,7 @@
 #include <core/assert.h>
 #include <algorithm>
 #include "archives.h"
+#include "cellalgorithm.h"
 
 namespace vistle {
 
@@ -143,93 +144,6 @@ bool UnstructuredGrid::checkImpl() const {
    return true;
 }
 
-template<typename Scalar, typename Index>
-class PointVisitationFunctor: public Celltree<Scalar, Index>::VisitFunctor {
-   typedef vistle::Celltree<Scalar, Index> Celltree;
-   typedef typename Celltree::VisitFunctor VisitFunctor;
-   typedef typename VisitFunctor::Order Order;
- public:
-   PointVisitationFunctor(const Vector &point)
-   : m_point(point) {
-   }
-
-   bool checkBounds(const Scalar *min, const Scalar *max) {
-#ifdef CT_DEBUG
-      std::cerr << "checkBounds: min: "
-         << min[0] << " " << min[1] << " " << min[2]
-         << ", max: " << max[0] << " " << max[1] << " " << max[2] << std::endl;
-#endif
-      for (int i=0; i<3; ++i) {
-         if (min[i] > m_point[i])
-            return false;
-         if (max[i] < m_point[i])
-            return false;
-      }
-      return true;
-   }
-
-   Order operator()(const typename Celltree::Node &node, Scalar *min, Scalar *max) {
-
-#ifdef CT_DEBUG
-      std::cerr << "visit subtree: min: "
-         << min[0] << " " << min[1] << " " << min[2]
-         << ", max: " << max[0] << " " << max[1] << " " << max[2]
-         << ", node: Lmax: " << node.Lmax << ", Rmin: " << node.Rmin
-         << std::endl;
-#endif
-
-      const Scalar c = m_point[node.dim];
-      if (c > node.Lmax && c < node.Rmin)
-         return VisitFunctor::None;
-      if (c < node.Rmin) {
-         return VisitFunctor::Left;
-      }
-      if (c > node.Lmax) {
-         return VisitFunctor::Right;
-      }
-
-      const Scalar mean = Scalar(0.5) * (node.Lmax + node.Rmin);
-      if (c < mean) {
-         return VisitFunctor::LeftRight;
-      } else {
-         return VisitFunctor::RightLeft;
-      }
-   }
-
- private:
-   Vector m_point;
-};
-
-template<typename Scalar, typename Index>
-class PointInclusionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
-
- public:
-   PointInclusionFunctor(const UnstructuredGrid *grid, const Vector &point)
-      : m_grid(grid)
-      , m_point(point)
-      , cell(-1)
-   {
-   }
-
-   bool operator()(Index elem) {
-#ifdef CT_DEBUG
-      std::cerr << "PointInclusionFunctor: checking cell: " << elem << std::endl;
-#endif
-      if (m_grid->inside(elem, m_point)) {
-#ifdef CT_DEBUG
-         std::cerr << "PointInclusionFunctor: found cell: " << elem << std::endl;
-#endif
-         cell = elem;
-         return false; // stop traversal
-      }
-      return true;
-   }
-   const UnstructuredGrid *m_grid;
-   Vector m_point;
-   Index cell;
-
-};
-
 bool UnstructuredGrid::isGhostCell(const Index elem) const {
 
    if (elem == InvalidIndex)
@@ -237,12 +151,30 @@ bool UnstructuredGrid::isGhostCell(const Index elem) const {
    return tl()[elem] & GHOST_BIT;
 }
 
+std::pair<Vector, Vector> UnstructuredGrid::cellBounds(Index elem) const {
+
+   const Index *el = &this->el()[0];
+   const Index *cl = &this->cl()[el[elem]];
+   const Scalar *x[3] = { &this->x()[0], &this->y()[0], &this->z()[0] };
+
+   const Scalar smax = std::numeric_limits<Scalar>::max();
+   Vector min(smax, smax, smax), max(-smax, -smax, -smax);
+   for (Index i=el[elem]; i<el[elem+1]; ++i) {
+       Index v=cl[i];
+       for (int c=0; c<3; ++c) {
+           min[c] = std::min(min[c], x[c][v]);
+           max[c] = std::max(max[c], x[c][v]);
+       }
+   }
+   return std::make_pair(min, max);
+}
+
 Index UnstructuredGrid::findCell(const Vector &point, bool acceptGhost) const {
 
    if (hasCelltree()) {
 
-      PointVisitationFunctor<Scalar, Index> nodeFunc(point);
-      PointInclusionFunctor<Scalar, Index> elemFunc(this, point);
+      vistle::PointVisitationFunctor<Scalar, Index> nodeFunc(point);
+      vistle::PointInclusionFunctor<UnstructuredGrid, Scalar, Index> elemFunc(this, point);
       getCelltree()->traverse(nodeFunc, elemFunc);
       if (acceptGhost ||!isGhostCell(elemFunc.cell))
          return elemFunc.cell;
@@ -310,7 +242,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
          Vector edge1(x[second], y[second], z[second]);
          edge1 -= v0;
          Vector n(0, 0, 0);
-         for (unsigned i=2; i<sizes[f]; ++i) {
+         for (int i=2; i<sizes[f]; ++i) {
             Index other = cl[faces[f][i]];
             Vector edge(x[other], y[other], z[other]);
             edge -= v0;
@@ -355,57 +287,6 @@ Vector2 bilinearInverse(const Vector &p0, const Vector p[4]) {
        J << Js, Jt;
        ss -= (J.transpose()*J).llt().solve(J.transpose()*res);
     }
-    return ss;
-}
-
-// cf. http://stackoverflow.com/questions/808441/inverse-bilinear-interpolation
-static Vector trilinearInverse(const Vector &p0, const Vector p[8]) {
-// Computes the inverse of the trilinear map from [0,1]^3 to the box defined
-// by points p[0],...,p[7], where the points are ordered consistent with our hexahedron order:
-// p[0]~(0,0,0), p[1]~(0,0,1), p[2]~(0,1,1), p[3]~(0,1,0),
-// p[4]~(1,0,0), p[5]~(1,0,1), p[6]~(1,1,1), p[7]~(1,1,0)
-// Uses Gauss-Newton method. Inputs must be column vectors.
-
-    const int iter = 5;
-    const Scalar tol = 1e-6;
-    Vector ss(0.5, 0.5, 0.5); // initial guess
-
-    const Scalar tol2 = tol*tol;
-    for (int k=0; k<iter; ++k) {
-       const Scalar s(ss[0]), t(ss[1]), w(ss[2]);
-       const Vector res
-             = p[0]*(1-s)*(1-t)*(1-w) + p[1]*s*(1-t)*(1-w)
-             + p[2]*s*t*(1-w)         + p[3]*(1-s)*t*(1-w)
-             + p[4]*(1-s)*(1-t)*w     + p[5]*s*(1-t)*w
-             + p[6]*s*t*w             + p[7]*(1-s)*t*w
-             - p0;
-
-       //std::cerr << "iter: " << k << ", res: " << res.transpose() << ", weights: " << ss.transpose() << std::endl;
-
-       if (res.squaredNorm() < tol2)
-          break;
-
-       const auto Js
-             = -p[0]*(1-t)*(1-w) + p[1]*(1-t)*(1-w)
-             +  p[2]*t*(1-w)     - p[3]*t*(1-w)
-             + -p[4]*(1-t)*w     + p[5]*(1-t)*w
-             +  p[6]*t*w         - p[7]*t*w;
-       const auto Jt
-             = -p[0]*(1-s)*(1-w) - p[1]*s*(1-w)
-             +  p[2]*s*(1-w)     + p[3]*(1-s)*(1-w)
-             + -p[4]*(1-s)*w     - p[5]*s*w
-             +  p[6]*s*w         + p[7]*(1-s)*w;
-       const auto Jw
-             = -p[0]*(1-s)*(1-t) - p[1]*s*(1-t)
-             + -p[2]*s*t         - p[3]*(1-s)*t
-             +  p[4]*(1-s)*(1-t) + p[5]*s*(1-t)
-             +  p[6]*s*t         + p[7]*(1-s)*t;
-       Matrix3 J;
-       J << Js, Jt, Jw;
-       //ss = ss - (J'*J)\(J'*r);
-       ss -= (J.transpose()*J).llt().solve(J.transpose()*res);
-    }
-
     return ss;
 }
 

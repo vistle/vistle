@@ -16,6 +16,7 @@ class V_COREEXPORT GridInterface: public GeometryInterface {
    virtual bool isGhostCell(Index elem) const = 0;
    virtual Index findCell(const Vector &point, bool acceptGhost=false) const = 0;
    virtual bool inside(Index elem, const Vector &point) const = 0;
+   virtual std::pair<Vector, Vector> cellBounds(Index elem) const = 0;
 
    class Interpolator {
       std::vector<Scalar> weights;

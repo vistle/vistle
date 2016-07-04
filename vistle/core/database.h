@@ -31,7 +31,7 @@ public:
    void copyAttributes(Object::const_ptr src, bool replace = true) override;
 
 private:
-   virtual void createCelltree(Index nelem, const Index *el, const Index *cl) const;
+   void createCelltree(Index nelem, const Index *el, const Index *cl) const;
 
    V_DATA_BEGIN(DataBase);
       shm_obj_ref<Object> grid;

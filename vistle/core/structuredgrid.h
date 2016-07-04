@@ -32,13 +32,19 @@ public:
 
    // GridInterface
    std::pair<Vector, Vector> getBounds() const override;
+   std::pair<Vector, Vector> cellBounds(Index elem) const override;
    Index findCell(const Vector &point, bool acceptGhost=false) const override;
    bool inside(Index elem, const Vector &point) const override;
    Interpolator getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping=DataBase::Vertex, InterpolationMode mode=Linear) const override;
 
+   Celltree::const_ptr getCelltree() const;
+   bool validateCelltree() const;
+
 private:
    // mutable pointers to ShmVectors
    mutable Index m_numDivisions[3];
+
+   void createCelltree(Index dims[]) const;
 
    // data object
    V_DATA_BEGIN(StructuredGrid);
