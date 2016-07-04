@@ -96,25 +96,19 @@ bool StructuredToUnstructured::compute() {
     const Index nx = dim[0]-1;
     const Index ny = dim[1]-1;
     const Index nz = dim[2]-1;
-    Index idx[3];
     Index el = 0;
     for (Index ix=0; ix<nx; ++ix) {
-        idx[0] = ix;
         for (Index iy=0; iy<ny; ++iy) {
-            idx[1] = iy;
             for (Index iz=0; iz<nz; ++iz) {
-                idx[2] = iz;
-                const Index v = UniformGrid::obtainCellIndex(idx, dim);
-
                 const Index baseInsertionIndex = el * M_NUM_CORNERS_HEXAHEDRON;
-                unstrGridOut->cl()[baseInsertionIndex] = v;                                       // 0            7 -------- 6
-                unstrGridOut->cl()[baseInsertionIndex + 1] = v + 1;                               // 1           /|         /|
-                unstrGridOut->cl()[baseInsertionIndex + 2] = v + dim[2] + 1;                      // 2          / |        / |
-                unstrGridOut->cl()[baseInsertionIndex + 3] = v + dim[2];                          // 3         4 -------- 5  |
-                unstrGridOut->cl()[baseInsertionIndex + 4] = v + dim[2] * dim[1];                 // 4         |  3-------|--2
-                unstrGridOut->cl()[baseInsertionIndex + 5] = v + dim[2] * dim[1] + 1;             // 5         | /        | /
-                unstrGridOut->cl()[baseInsertionIndex + 6] = v + dim[2] * (dim[1] + 1) + 1;       // 6         |/         |/
-                unstrGridOut->cl()[baseInsertionIndex + 7] = v + dim[2] * (dim[1] + 1);           // 7         0----------1
+                unstrGridOut->cl()[baseInsertionIndex]   = UniformGrid::vertexIndex(ix,   iy,   iz,   dim);       // 0       7 -------- 6
+                unstrGridOut->cl()[baseInsertionIndex+1] = UniformGrid::vertexIndex(ix+1, iy,   iz,   dim);       // 1      /|         /|
+                unstrGridOut->cl()[baseInsertionIndex+2] = UniformGrid::vertexIndex(ix+1, iy+1, iz,   dim);       // 2     / |        / |
+                unstrGridOut->cl()[baseInsertionIndex+3] = UniformGrid::vertexIndex(ix,   iy+1, iz,   dim);       // 3    4 -------- 5  |
+                unstrGridOut->cl()[baseInsertionIndex+4] = UniformGrid::vertexIndex(ix,   iy,   iz+1, dim);       // 4    |  3-------|--2
+                unstrGridOut->cl()[baseInsertionIndex+5] = UniformGrid::vertexIndex(ix+1, iy,   iz+1, dim);       // 5    | /        | /
+                unstrGridOut->cl()[baseInsertionIndex+6] = UniformGrid::vertexIndex(ix+1, iy+1, iz+1, dim);       // 6    |/         |/
+                unstrGridOut->cl()[baseInsertionIndex+7] = UniformGrid::vertexIndex(ix,   iy+1, iz+1, dim);       // 7    0----------1
 
                 ++el;
             }
@@ -171,14 +165,10 @@ void StructuredToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, U
 
     // construct vertices
     const Index dim[3] = { numVertices.x, numVertices.y, numVertices.z };
-    Index idx[3];
     for (Index i = 0; i < numVertices.x; i++) {
-        idx[0] = i;
         for (Index j = 0; j < numVertices.y; j++) {
-            idx[1] = j;
             for (Index k = 0; k < numVertices.z; k++) {
-                idx[2] = k;
-                const Index insertionIndex = UniformGrid::obtainCellIndex(idx, dim);
+                const Index insertionIndex = UniformGrid::vertexIndex(i, j, k, dim);
 
                 unstrGridOut->x()[insertionIndex] = min.x + i * delta.x;
                 unstrGridOut->y()[insertionIndex] = min.y + j * delta.y;
@@ -203,14 +193,10 @@ void StructuredToUnstructured::compute_rectilinearVecs(RectilinearGrid::const_pt
                                                        const Cartesian3<Index> numVertices) {
 
     const Index dim[3] = { numVertices.x, numVertices.y, numVertices.z };
-    Index idx[3];
     for (Index i = 0; i < numVertices.x; i++) {
-        idx[0] = i;
         for (Index j = 0; j < numVertices.y; j++) {
-            idx[1] = j;
             for (Index k = 0; k < numVertices.z; k++) {
-                idx[2] = k;
-                const Index insertionIndex = UniformGrid::obtainCellIndex(idx, dim);
+                const Index insertionIndex = UniformGrid::vertexIndex(i, j, k, dim);
 
                 unstrGridOut->x()[insertionIndex] = obj->coords(0)[i];
                 unstrGridOut->y()[insertionIndex] = obj->coords(1)[j];
