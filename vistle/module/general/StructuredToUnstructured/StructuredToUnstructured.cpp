@@ -52,10 +52,12 @@ bool StructuredToUnstructured::compute() {
 
     // acquire input data object
     DataBase::const_ptr data;
-    StructuredGridBase::const_ptr grid = accept<StructuredGridBase>("data_in");
+    Object::const_ptr gridObj = accept<Object>("data_in");
+    StructuredGridBase::const_ptr grid = StructuredGridBase::as(gridObj);
     if (!grid) {
         data = accept<DataBase>("data_in");
-        grid = StructuredGridBase::as(data->grid());
+        gridObj = data->grid();
+        grid = StructuredGridBase::as(gridObj);
     }
 
     // assert existence of useable data
@@ -116,11 +118,11 @@ bool StructuredToUnstructured::compute() {
     }
 
     // pass on conversion of x, y, z vectors to specific helper functions based on grid type
-    if (auto uniformGrid = UniformGrid::as(grid)) {
+    if (auto uniformGrid = UniformGrid::as(gridObj)) {
         compute_uniformVecs(uniformGrid, unstrGridOut, numVertices);
-    } else if (auto rectilinearGrid = RectilinearGrid::as(grid)) {
+    } else if (auto rectilinearGrid = RectilinearGrid::as(gridObj)) {
         compute_rectilinearVecs(rectilinearGrid, unstrGridOut, numVertices);
-    } else if (auto structuredGrid = StructuredGrid::as(grid)) {
+    } else if (auto structuredGrid = StructuredGrid::as(gridObj)) {
         compute_structuredVecs(structuredGrid, unstrGridOut, numVerticesTotal);
     } else {
         sendInfo("Error: Unable to convert Structured Grid Base object to a leaf data type");
@@ -128,7 +130,7 @@ bool StructuredToUnstructured::compute() {
     }
 
     // output data
-    unstrGridOut->copyAttributes(grid);
+    unstrGridOut->copyAttributes(gridObj);
     if (data) {
         auto outdata = data->clone();
         outdata->copyAttributes(data);

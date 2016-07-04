@@ -16,11 +16,11 @@ namespace vistle {
 //-------------------------------------------------------------------------
 // DECLARATION OF RECTILINEARGRID
 //-------------------------------------------------------------------------
-class V_COREEXPORT RectilinearGrid : public StructuredGridBase {
+class V_COREEXPORT RectilinearGrid : public Object, public StructuredGridBase {
    V_OBJECT(RectilinearGrid);
 
 public:
-   typedef StructuredGridBase Base;
+   typedef Object Base;
 
    // constructor
    RectilinearGrid(const Index NumElements_x, const Index NumElements_y, const Index NumElements_z, const Meta &meta=Meta());
@@ -32,6 +32,12 @@ public:
    // get/set functions for shared memory members
    shm<Scalar>::array & coords(int c) { return *d()->coords[c]; }
    const Scalar * coords(int c) const { return m_coords[c]; }
+
+   // GridInterface
+   std::pair<Vector, Vector> getBounds() const override;
+   Index findCell(const Vector &point, bool acceptGhost=false) const override;
+   bool inside(Index elem, const Vector &point) const override;
+   Interpolator getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping=DataBase::Vertex, InterpolationMode mode=Linear) const override;
 
 private:
    // mutable pointers to ShmVectors

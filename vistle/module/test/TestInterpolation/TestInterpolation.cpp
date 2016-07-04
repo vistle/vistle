@@ -18,7 +18,7 @@ TestInterpolation::TestInterpolation(const std::string &shmname, const std::stri
     m_count = addIntParameter("count", "number of randoim points to generate per block", 100);
     m_createCelltree = addIntParameter("create_celltree", "create celltree", 0, Parameter::Boolean);
     m_mode = addIntParameter("mode", "interpolation mode", 0, Parameter::Choice);
-    V_ENUM_SET_CHOICES_SCOPE(m_mode, InterpolationMode, UnstructuredGrid);
+    V_ENUM_SET_CHOICES_SCOPE(m_mode, InterpolationMode, GridInterface);
 }
 
 TestInterpolation::~TestInterpolation() {

@@ -16,11 +16,11 @@ namespace vistle {
 //-------------------------------------------------------------------------
 // DECLARATION OF UNIFORMGRID
 //-------------------------------------------------------------------------
-class V_COREEXPORT UniformGrid : public StructuredGridBase {
+class V_COREEXPORT UniformGrid : public Object, public StructuredGridBase {
    V_OBJECT(UniformGrid);
 
 public:
-   typedef StructuredGridBase Base;
+   typedef Object Base;
 
    // constructor
    UniformGrid(Index xdim, Index ydim, Index zdim, const Meta &meta=Meta());
@@ -35,11 +35,18 @@ public:
    const Scalar * min() const { return m_min; }
    const Scalar * max() const { return m_max; }
 
+   // GridInterface
+   std::pair<Vector, Vector> getBounds() const override;
+   Index findCell(const Vector &point, bool acceptGhost=false) const override;
+   bool inside(Index elem, const Vector &point) const override;
+   Interpolator getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping=DataBase::Vertex, InterpolationMode mode=Linear) const override;
+
 private:
    // mutable pointers to ShmVectors
    mutable Index m_numDivisions[3];
    mutable Scalar m_min[3];
    mutable Scalar m_max[3];
+   mutable Scalar m_dist[3];
 
    // data object
    V_DATA_BEGIN(UniformGrid);

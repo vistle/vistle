@@ -21,6 +21,7 @@ set(core_SOURCES
    statetracker.cpp
    allobjects.cpp
    shmvectoroarchive.cpp
+   cellinterpolation.cpp
 )
 
 if(${TEMPLATES_IN_HEADERS})
@@ -47,6 +48,7 @@ if(${TEMPLATES_IN_HEADERS})
       uniformgrid.cpp
       rectilineargrid.cpp
       structuredgrid.cpp
+      grid.cpp
    )
 else()
    set(core_SOURCES ${core_SOURCES}
@@ -128,6 +130,8 @@ set(core_HEADERS
    uniformgrid.h
    uniformgrid_impl.h
    uuid.h
+   grid.h
+   cellinterpolation.h
 )
 
 vistle_add_library(vistle_core ${VISTLE_LIB_TYPE} ${core_SOURCES} ${core_HEADERS})

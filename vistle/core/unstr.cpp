@@ -3,8 +3,6 @@
 #include <algorithm>
 #include "archives.h"
 
-//#define INTERPOL_DEBUG
-
 namespace vistle {
 
 /* cell types:
@@ -448,7 +446,7 @@ bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorn
 
 } // anon namespace
 
-UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, const Vector &point, Mapping mapping, InterpolationMode mode) const {
+GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const Vector &point, Mapping mapping, InterpolationMode mode) const {
 
    vassert(inside(elem, point));
 
@@ -754,42 +752,8 @@ UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(Index elem, con
          }
       }
    }
-#ifndef NDEBUG
-   Scalar total = 0;
-   bool ok = true;
-   for (const auto w: weights) {
-      if (w < -1e-4)
-         ok = false;
-      total += w;
-   }
-   if (fabs(total - 1) > 1e-4)
-      ok = false;
-
-#ifndef INTERPOL_DEBUG
-   if (!ok)
-#endif
-   {
-      if (!ok) {
-         std::cerr << "PROBLEM: ";
-      }
-      std::cerr << "weights:";
-      for (const auto w: weights) {
-         std::cerr << " " << w;
-      }
-      std::cerr << ", total: " << total << std::endl;
-   }
-#endif
 
    return Interpolator(weights, indices);
-}
-
-UnstructuredGrid::Interpolator UnstructuredGrid::getInterpolator(const Vector &point, Mapping mapping, InterpolationMode mode) const {
-
-   const Index elem = findCell(point);
-   if (elem == InvalidIndex) {
-      return Interpolator();
-   }
-   return getInterpolator(elem, point, mapping, mode);
 }
 
 void UnstructuredGrid::refreshImpl() const {

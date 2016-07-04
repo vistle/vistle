@@ -4,11 +4,12 @@
 
 #include "shm.h"
 #include "indexed.h"
+#include "grid.h"
 #include <util/enum.h>
 
 namespace vistle {
 
-class V_COREEXPORT UnstructuredGrid: public Indexed {
+class V_COREEXPORT UnstructuredGrid: public Indexed, public GridInterface {
    V_OBJECT(UnstructuredGrid);
 
  public:
@@ -52,11 +53,12 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
    shm<unsigned char>::array &tl() { return *d()->tl; }
    const unsigned char *tl() const { return m_tl; }
 
-   bool isGhostCell(Index elem) const;
-   Index findCell(const Vector &point, bool acceptGhost=false) const;
-   bool inside(Index elem, const Vector &point) const;
-   std::pair<Vector, Vector> getBounds() const;
+   bool isGhostCell(Index elem) const override;
+   Index findCell(const Vector &point, bool acceptGhost=false) const override;
+   bool inside(Index elem, const Vector &point) const override;
+   std::pair<Vector, Vector> getBounds() const override;
 
+#if 0
    class Interpolator {
       friend class UnstructuredGrid;
       std::vector<Scalar> weights;
@@ -94,9 +96,9 @@ class V_COREEXPORT UnstructuredGrid: public Indexed {
          (Nearest) // value of nearest vertex
          (Linear) // barycentric/multilinear interpolation
          );
+#endif
 
-   Interpolator getInterpolator(Index elem, const Vector &point, Mapping mapping=Vertex, InterpolationMode mode=Linear) const;
-   Interpolator getInterpolator(const Vector &point, Mapping mapping=Vertex, InterpolationMode mode=Linear) const;
+   Interpolator getInterpolator(Index elem, const Vector &point, Mapping mapping=Vertex, InterpolationMode mode=Linear) const override;
 
  private:
    mutable const unsigned char *m_tl;
