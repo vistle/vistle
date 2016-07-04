@@ -30,8 +30,6 @@ PlaceHolder::Data::Data(const PlaceHolder::Data &o, const std::string &n)
 , originalMeta(o.originalMeta)
 , originalType(o.originalType)
 {
-   if (real)
-      real->ref();
 }
 
 PlaceHolder::Data::Data(const std::string & name,
@@ -39,7 +37,6 @@ PlaceHolder::Data::Data(const std::string & name,
       const Meta &m,
       Object::Type originalType)
 : PlaceHolder::Base::Data(Object::PLACEHOLDER, name, m)
-, real(NULL)
 , originalName(originalName)
 , originalMeta(m)
 , originalType(originalType)
@@ -48,8 +45,6 @@ PlaceHolder::Data::Data(const std::string & name,
 
 PlaceHolder::Data::~Data() {
 
-   if (real)
-      real->unref();
 }
 
 PlaceHolder::Data * PlaceHolder::Data::create(const std::string &objId, const std::string &originalName, const Meta &originalMeta, Object::Type originalType) {
@@ -63,16 +58,12 @@ PlaceHolder::Data * PlaceHolder::Data::create(const std::string &objId, const st
 
 void PlaceHolder::setReal(Object::const_ptr r) {
 
-   if (Object::const_ptr old = real())
-      old->unref();
-   d()->real = r->d();
-   if (r)
-      r->ref();
+   d()->real = r;
 }
 
 Object::const_ptr PlaceHolder::real() const {
 
-   return Object::create(&*d()->real);
+   return d()->real.getObject();
 }
 
 std::string PlaceHolder::originalName() const {

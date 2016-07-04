@@ -22,7 +22,7 @@ class V_COREEXPORT PlaceHolder: public Object {
    const Meta &originalMeta() const;
 
    V_DATA_BEGIN(PlaceHolder);
-      boost::interprocess::offset_ptr<Object::Data> real;
+      shm_obj_ref<Object> real;
 
       Data(const std::string & name, const std::string &originalName,
             const Meta &m, Object::Type originalType);
