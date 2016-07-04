@@ -26,6 +26,7 @@ if(${TEMPLATES_IN_HEADERS})
    # but just one file including all the others for faster compilation
    set(core_SOURCES ${core_SOURCES}
       vec.cpp
+      database.cpp
       celltree.cpp
       vertexownerlist.cpp
       coords.cpp
@@ -116,6 +117,8 @@ set(core_HEADERS
    triangles_impl.h
    unstr.h
    unstr_impl.h
+   database.h
+   database_impl.h
    vec.h
    vec_impl.h
    vector.h
