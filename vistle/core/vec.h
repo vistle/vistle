@@ -48,7 +48,6 @@ class Vec: public DataBase {
    std::pair<Vector, Vector> getMinMax() const;
 
    bool validateCelltree() const;
-   virtual void createCelltree(Index nelem, const Index *el, const Index *cl) const override;
 
  private:
    mutable const T *m_x[MaxDim];

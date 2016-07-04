@@ -50,6 +50,50 @@ Indexed::Celltree::const_ptr Indexed::getCelltree() const {
    return ct;
 }
 
+void Indexed::createCelltree(Index nelem, const Index *el, const Index *cl) const {
+
+   if (hasCelltree())
+      return;
+
+   const Scalar *coords[3] = {
+      &x()[0],
+      &y()[0],
+      &z()[0]
+   };
+   const Scalar smax = std::numeric_limits<Scalar>::max();
+   Vector vmin, vmax;
+   vmin.fill(-smax);
+   vmax.fill(smax);
+
+   std::vector<Vector> min(nelem, vmax);
+   std::vector<Vector> max(nelem, vmin);
+
+   Vector gmin=vmax, gmax=vmin;
+   for (Index i=0; i<nelem; ++i) {
+      const Index start = el[i], end = el[i+1];
+      for (Index c = start; c<end; ++c) {
+         const Index v = cl[c];
+         for (int d=0; d<3; ++d) {
+            if (min[i][d] > coords[d][v]) {
+               min[i][d] = coords[d][v];
+               if (gmin[d] > min[i][d])
+                  gmin[d] = min[i][d];
+            }
+            if (max[i][d] < coords[d][v]) {
+               max[i][d] = coords[d][v];
+               if (gmax[d] < max[i][d])
+                  gmax[d] = max[i][d];
+            }
+         }
+      }
+   }
+
+   typename Celltree::ptr ct(new Celltree(nelem));
+   ct->init(min.data(), max.data(), gmin, gmax);
+   addAttachment("celltree", ct);
+}
+
+
 bool Indexed::hasVertexOwnerList() const {
 
    return hasAttachment("vertexownerlist");

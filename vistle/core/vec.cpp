@@ -26,7 +26,6 @@ struct instantiator {
       typedef Vec<V, Dim> VEC;
       auto vec = new VEC(0, Meta());
       vec->setSize(1);
-      vec->createCelltree(0, nullptr, nullptr);
       Index size = 0;
       auto ct = new typename Vec<V, Dim>::Celltree(size);
       

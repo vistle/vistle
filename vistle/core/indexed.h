@@ -56,6 +56,7 @@ class  V_COREEXPORT Indexed: public Coords {
    mutable const Index *m_cl;
 
    void createVertexOwnerList() const;
+   void createCelltree(Index nelem, const Index *el, const Index *cl) const override;
 
    V_DATA_BEGIN(Indexed);
       ShmVector<Index> el; //< element list: index into connectivity list - last element: sentinel
