@@ -389,7 +389,7 @@ Object::ptr ReadCovise::readSTRVDT(const int fd, const bool skeleton) {
       covSkipSTRVDT(fd, numElements, sx, sy, sz);
    } else {
 
-      Vec<Scalar>::ptr array(new Vec<Scalar>(n));
+      Vec<Scalar,3>::ptr array(new Vec<Scalar,3>(n));
       std::vector<float> _x(n), _y(n), _z(n);
       covReadSTRVDT(fd, n, &_x[0], &_y[0], &_z[0], sx, sy, sz);
       auto x = array->x().data();
