@@ -70,6 +70,8 @@ BOOST_SERIALIZATION_ASSUME_ABSTRACT(UniformGrid)
 
 } // namespace vistle
 
+V_OBJECT_DECLARE(vistle::UniformGrid)
+
 #ifdef VISTLE_IMPL
 #include "uniformgrid_impl.h"
 #endif

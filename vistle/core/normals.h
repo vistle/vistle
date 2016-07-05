@@ -29,6 +29,8 @@ class  V_COREEXPORT Normals: public Vec<Scalar, 3> {
 
 } // namespace vistle
 
+V_OBJECT_DECLARE(vistle::Normals)
+
 #ifdef VISTLE_IMPL
 #include "normals_impl.h"
 #endif

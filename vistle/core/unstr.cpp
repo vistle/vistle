@@ -642,15 +642,6 @@ void UnstructuredGrid::refreshImpl() const {
    m_tl = (d && d->tl.valid()) ? d->tl->data() : nullptr;
 }
 
-std::pair<Vector, Vector> UnstructuredGrid::getBounds() const {
-   if (hasCelltree()) {
-      const auto &ct = getCelltree();
-      return std::make_pair(Vector(ct->min()), Vector(ct->max()));
-   }
-
-   return Base::getMinMax();
-}
-
 UnstructuredGrid::Data::Data(const UnstructuredGrid::Data &o, const std::string &n)
 : UnstructuredGrid::Base::Data(o, n)
 , tl(o.tl)

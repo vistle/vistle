@@ -1,6 +1,7 @@
 ﻿#include <core/object.h>
 #include <core/unstr.h>
 #include <core/structuredgrid.h>
+#include <core/celltree.h>
 #include <core/message.h>
 #include "TestCellSearch.h"
 
@@ -29,7 +30,8 @@ bool TestCellSearch::compute() {
 
    const Vector point = m_point->getValue();
 
-   const GridInterface *grid = nullptr;
+   const GridInterface *grid = expectInterface<GridInterface>("data_in");
+#if 0
    UnstructuredGrid::const_ptr unstr = accept<UnstructuredGrid>("data_in");
    StructuredGridBase::const_ptr strb = accept<StructuredGridBase>("data_in");
    Object::const_ptr gridObj;
@@ -43,22 +45,22 @@ bool TestCellSearch::compute() {
        sendInfo("Unstructured or structured grid required");
        return true;
    }
+#else
+   if (!grid) {
+       sendInfo("Unstructured or structured grid required");
+       return true;
+   }
+   auto gridObj = grid->object();
+   auto celltree = gridObj->getInterface<CelltreeInterface<3>>();
+#endif
 
    if (m_createCelltree->getValue()) {
-      if (unstr) {
-          unstr->getCelltree();
-          if (!unstr->validateCelltree()) {
-              std::cerr << "UnstructuredGrid celltree validation failed" << std::endl;
-          }
-      } else if (strb) {
-          if (auto str = StructuredGrid::as(gridObj)) {
-              str->getCelltree();
-              str->getCelltree();
-              if (!str->validateCelltree()) {
-                  std::cerr << "StructuredGrid celltree validation failed" << std::endl;
-              }
-          }
-      }
+       if (celltree) {
+           celltree->getCelltree();
+           if (!celltree->validateCelltree()) {
+               std::cerr << "celltree validation failed" << std::endl;
+           }
+       }
    }
    Index idx = grid->findCell(point);
    if (idx != InvalidIndex) {

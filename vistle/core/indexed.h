@@ -11,12 +11,13 @@
 
 namespace vistle {
 
-class  V_COREEXPORT Indexed: public Coords {
+class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> {
    V_OBJECT(Indexed);
 
  public:
    typedef Coords Base;
    typedef vistle::VertexOwnerList VertexOwnerList;
+   typedef typename vistle::CelltreeInterface<3>::Celltree Celltree;
 
    Indexed(const Index numElements, const Index numCorners,
          const Index numVertices,
@@ -31,8 +32,11 @@ class  V_COREEXPORT Indexed: public Coords {
    const Index *el() const { return m_el; }
    const Index *cl() const { return m_cl; }
 
-   Celltree::const_ptr getCelltree() const;
-   bool validateCelltree() const;
+   std::pair<Vector, Vector> getBounds() const override;
+
+   bool hasCelltree() const override;
+   Celltree::const_ptr getCelltree() const override;
+   bool validateCelltree() const override;
 
    bool hasVertexOwnerList() const;
    VertexOwnerList::const_ptr getVertexOwnerList() const;
@@ -77,6 +81,8 @@ class  V_COREEXPORT Indexed: public Coords {
 BOOST_SERIALIZATION_ASSUME_ABSTRACT(Indexed)
 
 } // namespace vistle
+
+V_OBJECT_DECLARE(vistle::Indexed);
 
 #ifdef VISTLE_IMPL
 #include "indexed_impl.h"

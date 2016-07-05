@@ -30,6 +30,8 @@ class V_COREEXPORT Lines: public Indexed {
 
 } // namespace vistle
 
+V_OBJECT_DECLARE(vistle::Lines)
+
 #ifdef VISTLE_IMPL
 #include "lines_impl.h"
 #endif

@@ -2,7 +2,9 @@
 #include "assert.h"
 #include "indexed.h"
 #include "triangles.h"
+#if 0
 #include "celltree_impl.h"
+#endif
 #include "archives.h"
 
 #include <boost/mpl/vector.hpp>
@@ -25,9 +27,11 @@ bool DataBase::checkImpl() const {
    if (grid()) {
        V_CHECK(grid()->check());
    }
+#if 0
    if (hasCelltree()) {
        V_CHECK(getCelltree()->check());
    }
+#endif
    V_CHECK(mapping()==Unspecified || mapping()==Vertex || mapping()==Element);
    return true;
 }
@@ -39,6 +43,7 @@ void DataBase::copyAttributes(Object::const_ptr src, bool replace) {
     }
 }
 
+#if 0
 bool DataBase::hasCelltree() const {
 
    return hasAttachment("celltree");
@@ -67,6 +72,7 @@ void DataBase::createCelltree(Index nelem, const Index *el, const Index *cl) con
    (void)el;
    (void)cl;
 }
+#endif
 
 DataBase::Data::Data(Type id, const std::string &name, const Meta &meta)
    : DataBase::Base::Data(id, name, meta)

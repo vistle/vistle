@@ -6,7 +6,6 @@
 #include "shm.h"
 #include "object.h"
 #include "vector.h"
-#include "celltree.h"
 #include "database.h"
 
 namespace vistle {
@@ -24,7 +23,9 @@ class Vec: public DataBase {
    typedef typename shm<T>::array array;
    typedef T Scalar;
    typedef typename VistleScalarVector<Dim>::type Vector;
+#if 0
    typedef vistle::Celltree<Scalar, Index, Dim> Celltree;
+#endif
 
    Vec(const Index size,
         const Meta &meta=Meta());
@@ -47,7 +48,9 @@ class Vec: public DataBase {
 
    std::pair<Vector, Vector> getMinMax() const;
 
+#if 0
    bool validateCelltree() const;
+#endif
 
  private:
    mutable const T *m_x[MaxDim];
@@ -77,6 +80,11 @@ class Vec: public DataBase {
 };
 
 } // namespace vistle
+
+namespace boost {
+template<typename S, int d>
+struct is_virtual_base_of<typename vistle::Vec<S,d>::Base, vistle::Vec<S,d>>: public mpl::true_ {};
+}
 
 #ifdef VISTLE_IMPL
 #include "vec_impl.h"

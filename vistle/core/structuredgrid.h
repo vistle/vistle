@@ -10,6 +10,7 @@
 #include "shm.h"
 #include "structuredgridbase.h"
 #include "coords.h"
+#include "celltree.h"
 #include "export.h"
 
 namespace vistle {
@@ -17,11 +18,12 @@ namespace vistle {
 //-------------------------------------------------------------------------
 // DECLARATION OF STRUCTUREDGRID
 //-------------------------------------------------------------------------
-class V_COREEXPORT StructuredGrid: public Coords, public StructuredGridBase {
+class V_COREEXPORT StructuredGrid: public Coords, virtual public StructuredGridBase, virtual public CelltreeInterface<3> {
    V_OBJECT(StructuredGrid);
 
 public:
    typedef Coords Base;
+   typedef typename CelltreeInterface<3>::Celltree Celltree;
 
    // constructor
    StructuredGrid(const Index numVert_x, const Index numVert_y, const Index numVert_z, const Meta &meta = Meta());
@@ -37,8 +39,9 @@ public:
    bool inside(Index elem, const Vector &point) const override;
    Interpolator getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping=DataBase::Vertex, InterpolationMode mode=Linear) const override;
 
-   Celltree::const_ptr getCelltree() const;
-   bool validateCelltree() const;
+   bool hasCelltree() const override;
+   Celltree::const_ptr getCelltree() const override;
+   bool validateCelltree() const override;
 
 private:
    // mutable pointers to ShmVectors
@@ -63,6 +66,8 @@ private:
 BOOST_SERIALIZATION_ASSUME_ABSTRACT(StructuredGrid)
 
 } // namespace vistle
+
+V_OBJECT_DECLARE(vistle::StructuredGrid)
 
 #ifdef VISTLE_IMPL
 #include "structuredgrid_impl.h"

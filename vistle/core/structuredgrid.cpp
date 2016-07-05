@@ -5,6 +5,7 @@
 //-------------------------------------------------------------------------
 
 #include "structuredgrid.h"
+#include "celltree_impl.h"
 #include "unstr.h" // for hexahedron topology
 #include <core/assert.h>
 #include "cellalgorithm.h"
@@ -14,9 +15,9 @@ namespace vistle {
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
 StructuredGrid::StructuredGrid(const Index numVert_x, const Index numVert_y, const Index numVert_z, const Meta &meta)
-    : StructuredGrid::Base(StructuredGrid::Data::create(numVert_x, numVert_y, numVert_z, meta)) {
+: StructuredGrid::Base(StructuredGrid::Data::create(numVert_x, numVert_y, numVert_z, meta))
+{
     refreshImpl();
-
 }
 
 // REFRESH IMPL
@@ -37,8 +38,7 @@ void StructuredGrid::refreshImpl() const {
 //-------------------------------------------------------------------------
 bool StructuredGrid::checkImpl() const {
 
-   for (int c=0; c<3; ++c)
-       V_CHECK(d()->x[c]->check());
+   V_CHECK(getSize() == getNumDivisions(0)*getNumDivisions(1)*getNumDivisions(2));
 
    return true;
 }
@@ -49,6 +49,12 @@ bool StructuredGrid::isEmpty() const {
 
    return Base::isEmpty();
 }
+
+bool StructuredGrid::hasCelltree() const {
+
+   return hasAttachment("celltree");
+}
+
 
 StructuredGrid::Celltree::const_ptr StructuredGrid::getCelltree() const {
 
@@ -149,7 +155,7 @@ Index StructuredGrid::findCell(const Vec::Vector &point, bool acceptGhost) const
       vistle::PointVisitationFunctor<Scalar, Index> nodeFunc(point);
       vistle::PointInclusionFunctor<StructuredGrid, Scalar, Index> elemFunc(this, point);
       getCelltree()->traverse(nodeFunc, elemFunc);
-      if (acceptGhost ||!isGhostCell(elemFunc.cell))
+      if (acceptGhost || !isGhostCell(elemFunc.cell))
          return elemFunc.cell;
       else
          return InvalidIndex;
@@ -179,7 +185,7 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
         corners[i][2] = z[cl[i]];
     }
 
-    UnstructuredGrid::Type type = UnstructuredGrid::HEXAHEDRON;
+    const UnstructuredGrid::Type type = UnstructuredGrid::HEXAHEDRON;
     const auto numFaces = UnstructuredGrid::NumFaces[type];
     const auto &faces = UnstructuredGrid::FaceVertices[type];
     const auto &sizes = UnstructuredGrid::FaceSizes[type];
@@ -277,18 +283,12 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
 // DATA OBJECT - CONSTRUCTOR FROM NAME & META
 //-------------------------------------------------------------------------
 StructuredGrid::Data::Data(const Index numVert_x, const Index numVert_y, const Index numVert_z, const std::string & name, const Meta &meta)
-    : StructuredGrid::Base::Data(Object::STRUCTUREDGRID, name, meta)
+    : StructuredGrid::Base::Data(numVert_x*numVert_y*numVert_z, Object::STRUCTUREDGRID, name, meta)
 {
     numDivisions.construct(3);
     (*numDivisions)[0] = numVert_x;
     (*numDivisions)[1] = numVert_y;
     (*numDivisions)[2] = numVert_z;
-
-    const Index numCoords = numVert_x * numVert_y * numVert_z;
-    // construct ShmVectors
-    for (int c=0; c<3; ++c) {
-        x[c].construct(numCoords);
-    }
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM DATA OBJECT AND NAME
@@ -296,8 +296,6 @@ StructuredGrid::Data::Data(const Index numVert_x, const Index numVert_y, const I
 StructuredGrid::Data::Data(const StructuredGrid::Data &o, const std::string &n)
     : StructuredGrid::Base::Data(o, n)
     , numDivisions(o.numDivisions) {
-    for (int c=0; c<3; ++c)
-        x[c] = o.x[c];
 }
 
 // DATA OBJECT - DESTRUCTOR

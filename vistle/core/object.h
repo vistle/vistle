@@ -4,6 +4,7 @@
 #include <vector>
 #include <util/sysdep.h>
 #include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/map.hpp>
@@ -11,6 +12,7 @@
 
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/assume_abstract.hpp>
+#include <boost/type_traits/is_virtual_base_of.hpp>
 
 #include <boost/mpl/size.hpp>
 
@@ -38,7 +40,16 @@ class shm_obj_ref;
 
 struct ObjectData;
 
-class V_COREEXPORT Object {
+class Object;
+class V_COREEXPORT ObjectInterfaceBase {
+public:
+    //boost::shared_ptr<const Object> object() const { static_cast<const Object *>(this)->shared_from_this(); }
+    virtual boost::shared_ptr<const Object> object() const = 0;
+protected:
+    virtual ~ObjectInterfaceBase() {}
+};
+
+class V_COREEXPORT Object: public boost::enable_shared_from_this<Object>, virtual public ObjectInterfaceBase {
    friend class Shm;
    friend class ObjectTypeRegistry;
    friend struct ObjectData;
@@ -51,7 +62,13 @@ class V_COREEXPORT Object {
 public:
    typedef boost::shared_ptr<Object> ptr;
    typedef boost::shared_ptr<const Object> const_ptr;
-   
+   template<class Interface>
+   const Interface *getInterface() const {
+       return dynamic_cast<const Interface *>(this);
+   }
+
+   boost::shared_ptr<const Object> object() const override { return static_cast<const Object *>(this)->shared_from_this(); }
+
    enum InitializedFlags {
       Initialized
    };
@@ -320,6 +337,7 @@ class ObjectTypeRegistry {
    static boost::shared_ptr<const ObjType> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const ObjType>(ptr); } \
    static boost::shared_ptr<ObjType> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<ObjType>(ptr); } \
    static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new ObjType(static_cast<ObjType::Data *>(data))); } \
+   boost::shared_ptr<const Object> object() const override { return static_cast<const Object *>(this)->shared_from_this(); } \
    Object::ptr cloneInternal() const override { \
       const std::string n(Shm::the().createObjectId()); \
             Data *data = shm<Data>::construct(n)(*d(), n); \
@@ -414,6 +432,11 @@ class ObjectTypeRegistry {
       template<class Archive> \
       void serialize(Archive &ar, const unsigned int version); \
    }
+
+#define V_OBJECT_DECLARE(ObjType) \
+    namespace boost { template<> \
+    struct is_virtual_base_of<ObjType::Base,ObjType>: public mpl::true_ {}; \
+    }
 
 #define V_SERIALIZERS4(Type1, Type2, prefix1, prefix2) \
    prefix1, prefix2 \

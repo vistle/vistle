@@ -11,7 +11,7 @@
 
 namespace vistle {
 
-class V_COREEXPORT GridInterface: public GeometryInterface {
+class V_COREEXPORT GridInterface: virtual public GeometryInterface {
  public:
    virtual bool isGhostCell(Index elem) const = 0;
    virtual Index findCell(const Vector &point, bool acceptGhost=false) const = 0;

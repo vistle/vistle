@@ -7,7 +7,9 @@
 #include <limits>
 
 #include <boost/mpl/size.hpp>
+#if 0
 #include "celltree_impl.h"
+#endif
 
 namespace vistle {
 

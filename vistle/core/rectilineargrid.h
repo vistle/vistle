@@ -16,7 +16,7 @@ namespace vistle {
 //-------------------------------------------------------------------------
 // DECLARATION OF RECTILINEARGRID
 //-------------------------------------------------------------------------
-class V_COREEXPORT RectilinearGrid : public Object, public StructuredGridBase {
+class V_COREEXPORT RectilinearGrid : public Object, virtual public StructuredGridBase {
    V_OBJECT(RectilinearGrid);
 
 public:
@@ -57,11 +57,9 @@ private:
    V_DATA_END(RectilinearGrid);
 };
 
-
-
-BOOST_SERIALIZATION_ASSUME_ABSTRACT(RectilinearGrid)
-
 } // namespace vistle
+
+V_OBJECT_DECLARE(vistle::RectilinearGrid)
 
 #ifdef VISTLE_IMPL
 #include "rectilineargrid_impl.h"

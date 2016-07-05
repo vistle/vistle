@@ -833,6 +833,43 @@ Object::const_ptr Module::expect<Object>(Port *port) {
    return obj;
 }
 
+template<>
+const GridInterface *Module::expectInterface<GridInterface>(Port *port) {
+   Object::const_ptr obj;
+   if (port->objects().empty()) {
+      if (schedulingPolicy() == message::SchedulingPolicy::Single) {
+          std::stringstream str;
+          str << "no object available at " << port->getName() << ", but " << Object::typeName() << " is required" << std::endl;
+          sendError(str.str());
+      }
+      return nullptr;
+   }
+   obj = port->objects().front();
+   auto ret = dynamic_cast<const GridInterface *>(obj.get());
+   port->objects().pop_front();
+   if (!obj) {
+      std::stringstream str;
+      str << "did not receive valid object at " << port->getName() << ", but " << Object::typeName() << " is required" << std::endl;
+      sendError(str.str());
+      return ret;
+   }
+   vassert(obj->check());
+   if (ret) {
+       return ret;
+   }
+   auto data = DataBase::as(obj);
+   if (data) {
+       ret = data->grid()->getInterface<GridInterface>();
+   }
+   if (!ret) {
+      std::stringstream str;
+      str << "received " << Object::toString(obj->getType()) << " at " << port->getName() << ", but " << Object::typeName() << " is required" << std::endl;
+      sendError(str.str());
+   }
+   return ret;
+}
+
+
 bool Module::addInputObject(int sender, const std::string &senderPort, const std::string & portName,
                             Object::const_ptr object) {
 

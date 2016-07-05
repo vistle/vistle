@@ -42,6 +42,8 @@ BOOST_SERIALIZATION_ASSUME_ABSTRACT(Coords)
 
 } // namespace vistle
 
+V_OBJECT_DECLARE(vistle::Coords);
+
 #ifdef VISTLE_IMPL
 #include "coords_impl.h"
 #endif

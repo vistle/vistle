@@ -48,6 +48,8 @@ private:
 
 } // namespace vistle
 
+V_OBJECT_DECLARE(vistle::VertexOwnerList)
+
 #ifdef VISTLE_IMPL
 #include "vertexownerlist_impl.h"
 #endif

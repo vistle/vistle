@@ -37,6 +37,20 @@ bool Indexed::checkImpl() const {
    return true;
 }
 
+std::pair<Vector, Vector> Indexed::getBounds() const {
+   if (hasCelltree()) {
+      const auto &ct = getCelltree();
+      return std::make_pair(Vector(ct->min()), Vector(ct->max()));
+   }
+
+   return Base::getMinMax();
+}
+
+bool Indexed::hasCelltree() const {
+
+   return hasAttachment("celltree");
+}
+
 Indexed::Celltree::const_ptr Indexed::getCelltree() const {
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);

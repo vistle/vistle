@@ -9,7 +9,7 @@
 
 namespace vistle {
 
-class V_COREEXPORT UnstructuredGrid: public Indexed, public GridInterface {
+class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterface {
    V_OBJECT(UnstructuredGrid);
 
  public:
@@ -57,7 +57,6 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, public GridInterface {
    std::pair<Vector, Vector> cellBounds(Index elem) const override;
    Index findCell(const Vector &point, bool acceptGhost=false) const override;
    bool inside(Index elem, const Vector &point) const override;
-   std::pair<Vector, Vector> getBounds() const override;
 
 #if 0
    class Interpolator {
@@ -120,6 +119,8 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, public GridInterface {
 };
 
 } // namespace vistle
+
+V_OBJECT_DECLARE(vistle::UnstructuredGrid)
 
 #ifdef VISTLE_IMPL
 #include "unstr_impl.h"

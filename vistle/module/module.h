@@ -19,6 +19,7 @@
 #include <core/object.h>
 #include <core/parameter.h>
 #include <core/port.h>
+#include <core/grid.h>
 
 #include "objectcache.h"
 #include "export.h"
@@ -120,11 +121,19 @@ class V_MODULEEXPORT Module {
    typename Type::const_ptr accept(Port *port);
    template<class Type>
    typename Type::const_ptr accept(const std::string &port);
+   template<class Interface>
+   const Interface *acceptInterface(Port *port);
+   template<class Interface>
+   const Interface *acceptInterface(const std::string &port);
 
    template<class Type>
    typename Type::const_ptr expect(Port *port);
    template<class Type>
    typename Type::const_ptr expect(const std::string &port);
+   template<class Interface>
+   const Interface *expectInterface(Port *port);
+   template<class Interface>
+   const Interface *expectInterface(const std::string &port);
 
    //! request hub to forward incoming connections on forwardPort to be forwarded to localPort
    void requestPortMapping(unsigned short forwardPort, unsigned short localPort);

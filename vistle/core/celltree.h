@@ -7,6 +7,7 @@
 #include "shm.h"
 #include "object.h"
 #include "vector.h"
+#include "geometry.h"
 
 namespace vistle {
 
@@ -159,7 +160,22 @@ typedef Celltree<Scalar, Index, 1> Celltree1;
 typedef Celltree<Scalar, Index, 2> Celltree2;
 typedef Celltree<Scalar, Index, 3> Celltree3;
 
+template<int Dim>
+class V_COREEXPORT CelltreeInterface: virtual public GeometryInterface {
+
+ public:
+   typedef vistle::Celltree<Scalar, Index, Dim> Celltree;
+   virtual bool hasCelltree() const = 0;
+   virtual typename Celltree::const_ptr getCelltree() const = 0;
+   virtual bool validateCelltree() const = 0;
+};
+
 } // namespace vistle
+
+namespace boost {
+template<typename S, typename I, int d>
+struct is_virtual_base_of<typename vistle::Celltree<S,I,d>::Base, vistle::Celltree<S,I,d>>: public mpl::true_ {};
+}
 
 #ifdef VISTLE_IMPL
 // include only where actually required

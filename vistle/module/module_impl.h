@@ -151,5 +151,13 @@ typename Type::const_ptr Module::expect(const std::string &port) {
    return expect<Type>(p);
 }
 
+template<class Interface>
+const Interface *Module::expectInterface(const std::string &port) {
+   Port *p = findInputPort(port);
+   vassert(p);
+   return expectInterface<Interface>(p);
+}
+
+
 } // namespace vistle
 #endif

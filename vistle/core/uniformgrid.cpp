@@ -11,7 +11,9 @@ namespace vistle {
 
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
-UniformGrid::UniformGrid(Index xdim, Index ydim, Index zdim, const Meta &meta) : UniformGrid::Base(UniformGrid::Data::create(xdim, ydim, zdim, meta)) {
+UniformGrid::UniformGrid(Index xdim, Index ydim, Index zdim, const Meta &meta)
+: UniformGrid::Base(UniformGrid::Data::create(xdim, ydim, zdim, meta))
+{
     refreshImpl();
 }
 

@@ -12,7 +12,8 @@ namespace vistle {
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
 RectilinearGrid::RectilinearGrid(const Index NumElements_x, const Index NumElements_y, const Index NumElements_z, const Meta &meta)
-    : RectilinearGrid::Base(RectilinearGrid::Data::create(NumElements_x, NumElements_y, NumElements_z, meta)) {
+    : RectilinearGrid::Base(RectilinearGrid::Data::create(NumElements_x, NumElements_y, NumElements_z, meta))
+{
     refreshImpl();
 }
 

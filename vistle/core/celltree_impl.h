@@ -14,7 +14,7 @@ Object::Type Celltree<Scalar, Index, NumDimensions>::type() {
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-void Celltree<Scalar, Index, NumDimensions>::refreshImpl() const {
+V_COREEXPORT void Celltree<Scalar, Index, NumDimensions>::refreshImpl() const {
 }
 
 template<typename Scalar, typename Index, int NumDimensions>

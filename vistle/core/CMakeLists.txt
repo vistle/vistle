@@ -41,10 +41,10 @@ if(${TEMPLATES_IN_HEADERS})
       lines.cpp
       triangles.cpp
       polygons.cpp
-      unstr.cpp
-      structuredgridbase.cpp
       texture1d.cpp
       placeholder.cpp
+      unstr.cpp
+      structuredgridbase.cpp
       uniformgrid.cpp
       rectilineargrid.cpp
       structuredgrid.cpp
