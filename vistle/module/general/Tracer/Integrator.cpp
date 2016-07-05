@@ -32,17 +32,11 @@ void Integrator::hInit(){
     Vector3::Index dimmax = 0, dummy;
     v.maxCoeff(&dimmax, &dummy);
     Scalar vmax = std::abs(v(dimmax));
-    UnstructuredGrid::const_ptr grid = m_ptcl->m_block->getGrid();
-    Index end = grid->el()[m_ptcl->m_el+1];
-    Index begin = grid->el()[m_ptcl->m_el];
-    Scalar dmin = std::numeric_limits<Scalar>::max(), dmax = -std::numeric_limits<Scalar>::max();
-    for(Index i=begin; i<end; i++){
-       const Scalar s = grid->x(dimmax)[grid->cl()[i]];
-       dmin = std::min<Scalar>(dmin,s);
-       dmax = std::max<Scalar>(dmax,s);
-    }
+    auto grid = m_ptcl->m_block->getGrid();
+    const auto bounds = grid->cellBounds(m_ptcl->m_el);
+    const auto &min = bounds.first, &max = bounds.second;
 
-    Scalar chlen = dmax-dmin;
+    Scalar chlen = max[dimmax]-min[dimmax];
     m_h =0.5*chlen/vmax;
     if(m_h>m_hmax) {m_h = m_hmax;}
     if(m_h<m_hmin) {m_h = m_hmin;}
@@ -108,7 +102,7 @@ bool Integrator::StepRK32() {
    if (!m_forward)
        k[0] = -k[0];
    Vector xtmp = m_ptcl->m_x + m_h*k[0];
-   UnstructuredGrid::const_ptr grid = m_ptcl->m_block->getGrid();
+   auto grid = m_ptcl->m_block->getGrid();
    do {
       if(!grid->inside(el,xtmp)){
 #ifdef TIMING
@@ -160,10 +154,10 @@ Vector3 Integrator::Interpolator(BlockData* bl, Index el,const Vector3 &point){
 #ifdef TIMING
 times::interp_start = times::start();
 #endif
-    UnstructuredGrid::const_ptr grid = bl->getGrid();
+    auto grid = bl->getGrid();
     Vec<Scalar, 3>::const_ptr vecfld = bl->getVecFld();
     Vec<Scalar>::const_ptr scfield = bl->getScalFld();
-    UnstructuredGrid::Interpolator interpolator = grid->getInterpolator(el, point, bl->getVecMapping());
+    GridInterface::Interpolator interpolator = grid->getInterpolator(el, point, bl->getVecMapping());
     const Scalar* u = &vecfld->x()[0];
     const Scalar* v = &vecfld->y()[0];
     const Scalar* w = &vecfld->z()[0];

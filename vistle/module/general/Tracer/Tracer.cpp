@@ -19,6 +19,8 @@
 #include <core/coords.h>
 #include <core/lines.h>
 #include <core/unstr.h>
+#include <core/structuredgridbase.h>
+#include <core/structuredgrid.h>
 #include <core/points.h>
 #include "Tracer.h"
 #include <core/celltree.h>
@@ -103,10 +105,11 @@ Tracer::~Tracer() {
 
 
 BlockData::BlockData(Index i,
-          UnstructuredGrid::const_ptr grid,
+          Object::const_ptr grid,
           Vec<Scalar, 3>::const_ptr vdata,
           Vec<Scalar>::const_ptr pdata):
 m_grid(grid),
+m_gridInterface(nullptr),
 m_vecfld(vdata),
 m_scafld(pdata),
 m_vecmap(DataBase::Vertex),
@@ -119,6 +122,11 @@ m_vy(nullptr),
 m_vz(nullptr),
 m_p(nullptr)
 {
+   if (UnstructuredGrid::as(m_grid)) {
+       m_gridInterface = dynamic_cast<const GridInterface *>(UnstructuredGrid::as(m_grid).get());
+   } else if (StructuredGridBase::as(m_grid)) {
+       m_gridInterface = dynamic_cast<const GridInterface *>(StructuredGridBase::as(m_grid).get());
+   }
    m_ivec.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
 
    if (m_vecfld) {
@@ -159,8 +167,8 @@ void BlockData::setMeta(const vistle::Meta &meta) {
    }
 }
 
-UnstructuredGrid::const_ptr BlockData::getGrid(){
-    return m_grid;
+const GridInterface *BlockData::getGrid() {
+    return m_gridInterface;
 }
 
 Vec<Scalar, 3>::const_ptr BlockData::getVecFld(){
@@ -292,7 +300,7 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
 
     if (m_block) {
 
-        UnstructuredGrid::const_ptr grid = m_block->getGrid();
+        auto grid = m_block->getGrid();
         if(grid->inside(m_el, m_x)){
             return true;
         }
@@ -315,7 +323,7 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
         m_searchBlock = false;
         for(Index i=0; i<block.size(); i++) {
 
-            UnstructuredGrid::const_ptr grid = block[i]->getGrid();
+            auto grid = block[i]->getGrid();
             if (block[i].get() == m_block) {
                 // don't try previous block again
                 m_block = nullptr;
@@ -424,11 +432,13 @@ bool Tracer::compute() {
 
     if (!data0)
        return true;
-    auto grid = UnstructuredGrid::as(data0->grid());
-    if (!grid) {
+    auto unstr = UnstructuredGrid::as(data0->grid());
+    auto strb = StructuredGridBase::as(data0->grid());
+    if (!strb && !unstr) {
         sendError("grid attachment required at data_in0");
         return true;
     }
+    auto grid = data0->grid();
 
     int t = data0->getTimestep();
     if (grid->getTimestep() >= 0) {
@@ -448,7 +458,11 @@ bool Tracer::compute() {
     }
 
     if (useCelltree) {
-       celltree[t].emplace_back(std::async(std::launch::async, [grid]() -> Celltree3::const_ptr { return grid->getCelltree(); }));
+       if (unstr) {
+           celltree[t].emplace_back(std::async(std::launch::async, [unstr]() -> Celltree3::const_ptr { return unstr->getCelltree(); }));
+       } else if(auto str = StructuredGrid::as(grid)) {
+           celltree[t].emplace_back(std::async(std::launch::async, [str]() -> Celltree3::const_ptr { return str->getCelltree(); }));
+       }
     }
 
     grid_in[t].push_back(grid);

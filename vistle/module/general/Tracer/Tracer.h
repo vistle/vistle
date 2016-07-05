@@ -25,13 +25,13 @@ public:
     virtual bool prepare();
     virtual bool reduce(int timestep);
 
-    std::vector<std::vector<vistle::UnstructuredGrid::const_ptr>> grid_in;
+    std::vector<std::vector<vistle::Object::const_ptr>> grid_in;
     std::vector<std::vector<std::future<vistle::Celltree3::const_ptr>>> celltree;
     std::vector<std::vector<vistle::Vec<vistle::Scalar,3>::const_ptr>> data_in0;
     std::vector<std::vector<vistle::Vec<vistle::Scalar>::const_ptr>> data_in1;
     vistle::Vector3 Integration(const vistle::Vector3 &p0, const vistle::Vector3 &v0, const vistle::Scalar &dt);
     vistle::Index findCell(const vistle::Vector3 &point,
-                           vistle::UnstructuredGrid::const_ptr grid,
+                           vistle::Object::const_ptr grid,
                            std::array<vistle::Vector3, 2> boundingbox,
                            vistle::Index lastcell);
 
@@ -46,7 +46,8 @@ class BlockData{
     friend class Particle;
 
 private:
-    vistle::UnstructuredGrid::const_ptr m_grid;
+    vistle::Object::const_ptr m_grid;
+    const vistle::GridInterface *m_gridInterface;
     vistle::Vec<vistle::Scalar, 3>::const_ptr m_vecfld;
     vistle::Vec<vistle::Scalar>::const_ptr m_scafld;
     vistle::DataBase::Mapping m_vecmap, m_scamap;
@@ -59,13 +60,13 @@ private:
 
 public:
     BlockData(vistle::Index i,
-              vistle::UnstructuredGrid::const_ptr grid,
+              vistle::Object::const_ptr grid,
               vistle::Vec<vistle::Scalar, 3>::const_ptr vdata,
               vistle::Vec<vistle::Scalar>::const_ptr pdata = nullptr);
     ~BlockData();
 
     void setMeta(const vistle::Meta &meta);
-    vistle::UnstructuredGrid::const_ptr getGrid();
+    const vistle::GridInterface *getGrid();
     vistle::Vec<vistle::Index>::ptr ids() const;
     vistle::Vec<vistle::Index>::ptr steps() const;
     vistle::Vec<vistle::Scalar, 3>::const_ptr getVecFld();
