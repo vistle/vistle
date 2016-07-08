@@ -31,6 +31,22 @@ void Meta::serialize(Archive &ar, const unsigned int version) {
 
 }
 
+// update this function to provide Write/Read HDF5 support for metadata object
+// only members that can be typecasted to a double are currently supported
+template<class Functor>
+void Meta::doAllMembers(Functor &f) const {
+    f(m_block);
+    f(m_numBlocks);
+    f(m_timestep);
+    f(m_numTimesteps);
+    f(m_animationstep);
+    f(m_numAnimationsteps);
+    f(m_iteration);
+    f(m_executionCount);
+    f(m_creator);
+    f(m_realtime);
+}
+
 } // namespace vistle
 
 #endif
