@@ -177,13 +177,6 @@ void StructuredToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, U
         }
     }
 
-
-
-
-    /* left off here: add connectivity list,
-        also: ask martin about changing a pushed commit message & commit time of his lazygang scheduling, commit numElements_total
-
-*/
     return;
 }
 
