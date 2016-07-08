@@ -54,6 +54,23 @@ class V_COREEXPORT Meta {
       void setExecutionCounter(int count) { m_executionCount = count; }
       int creator() const { return m_creator; }
       void setCreator(int id) { m_creator = id; }
+
+      // update this function to provide Write/Read HDF5 support for metadata object
+      // only members that can be typecasted to a double are currently supported
+      template<class Functor>
+      void doAllMembers(Functor &f) const {
+          f(m_block);
+          f(m_numBlocks);
+          f(m_timestep);
+          f(m_numTimesteps);
+          f(m_animationstep);
+          f(m_numAnimationsteps);
+          f(m_iteration);
+          f(m_executionCount);
+          f(m_creator);
+          f(m_realtime);
+      }
+
    private:
       int m_block, m_numBlocks, m_timestep, m_numTimesteps, m_animationstep, m_numAnimationsteps, m_iteration, m_executionCount, m_creator;
       double m_realtime;
