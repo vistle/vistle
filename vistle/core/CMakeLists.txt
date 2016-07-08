@@ -19,7 +19,7 @@ set(core_SOURCES
    porttracker.cpp
    statetracker.cpp
    allobjects.cpp
-   pointeroarchive.cpp
+   shmvectoroarchive.cpp
 )
 
 if(${TEMPLATES_IN_HEADERS})
@@ -105,6 +105,7 @@ set(core_HEADERS
    shm_reference.h
    shm_reference_impl.h
    shm_obj_ref.h
+   shmvectoroarchive.h
    structuredgrid.h
    structuredgrid_impl.h
    structuredgridbase.h
@@ -122,7 +123,6 @@ set(core_HEADERS
    vec.h
    vec_impl.h
    vector.h
-   pointeroarchive.h
    uniformgrid.h
    uniformgrid_impl.h
    uuid.h

@@ -17,14 +17,14 @@
 #include <core/message.h>
 #include <core/vec.h>
 #include <core/unstr.h>
-#include <core/pointeroarchive.h>
+#include <core/shmvectoroarchive.h>
 #include <core/placeholder.h>
 
 #include "hdf5.h"
 
 #include "WriteHDF5.h"
 
-BOOST_SERIALIZATION_REGISTER_ARCHIVE(PointerOArchive)
+BOOST_SERIALIZATION_REGISTER_ARCHIVE(ShmVectorOArchive)
 
 using namespace vistle;
 
@@ -152,7 +152,7 @@ bool WriteHDF5::reduce(int timestep) {
 //-------------------------------------------------------------------------
 bool WriteHDF5::compute() {
     Object::const_ptr obj = nullptr;
-    PointerOArchive archive;
+    ShmVectorOArchive archive;
     m_hasObject = false;
     unsigned originPortNumber = 0;
 

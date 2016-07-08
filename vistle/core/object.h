@@ -21,7 +21,7 @@
 #include "scalars.h"
 #include "dimensions.h"
 #include "export.h"
-#include "pointeroarchive.h"
+#include "shmvectoroarchive.h"
 
 namespace vistle {
 
@@ -209,7 +209,7 @@ public:
    template<class Archive>
    void save(Archive &ar) const;
 
-   virtual void save(PointerOArchive &ar) const = 0;
+   virtual void save(ShmVectorOArchive &ar) const = 0;
 
  public:
    typedef ObjectData Data;
@@ -400,7 +400,7 @@ class ObjectTypeRegistry {
    static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \
    static void registerIArchive(iarchive &ar); \
    static void registerOArchive(oarchive &ar); \
-   void save(PointerOArchive &ar) const override { const_cast<ObjType *>(this)->serialize(ar, 0); } \
+   void save(ShmVectorOArchive &ar) const override { const_cast<ObjType *>(this)->serialize(ar, 0); } \
    void refresh() const override { Base::refresh(); refreshImpl(); } \
    void refreshImpl() const; \
    ObjType(Object::InitializedFlags) : Base(ObjType::Data::create()) { refreshImpl(); }  \

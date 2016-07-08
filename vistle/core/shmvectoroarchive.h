@@ -33,7 +33,7 @@
 //-------------------------------------------------------------------------
 // VISTLE OBJECT OARCHIVE CLASS DECLARATION
 //-------------------------------------------------------------------------
-class V_COREEXPORT PointerOArchive {
+class V_COREEXPORT ShmVectorOArchive {
 private:
 
     // private member variables
@@ -69,19 +69,19 @@ public:
 
     // the << operators
     template<class T>
-    PointerOArchive & operator<<(T const & t);
+    ShmVectorOArchive & operator<<(T const & t);
     template<class T>
-    PointerOArchive & operator<<(T * const t);
+    ShmVectorOArchive & operator<<(T * const t);
     template<class T, int N>
-    PointerOArchive & operator<<(const T (&t)[N]);
+    ShmVectorOArchive & operator<<(const T (&t)[N]);
     template<class T>
-    PointerOArchive & operator<<(const boost::serialization::nvp<T> & t);
+    ShmVectorOArchive & operator<<(const boost::serialization::nvp<T> & t);
     template<class T>
-    PointerOArchive & operator<<(const vistle::ShmVector<T> & t);
+    ShmVectorOArchive & operator<<(const vistle::ShmVector<T> & t);
 
     // the & operator
     template<class T>
-    PointerOArchive & operator&(const T & t);
+    ShmVectorOArchive & operator&(const T & t);
 
     // get functions
     std::vector<std::string> & getVector() { return m_shmNameVector; }
@@ -96,7 +96,7 @@ public:
 // SPECIALIZED SAVE FUNCTION: ENUMS
 //-------------------------------------------------------------------------
 template<class Archive>
-struct PointerOArchive::save_enum_type {
+struct ShmVectorOArchive::save_enum_type {
     template<class T>
     static void invoke(Archive &ar, const T &t){
 
@@ -109,7 +109,7 @@ struct PointerOArchive::save_enum_type {
 // SPECIALIZED SAVE FUNCTION: PRIMITIVES
 //-------------------------------------------------------------------------
 template<class Archive>
-struct PointerOArchive::save_primitive {
+struct ShmVectorOArchive::save_primitive {
     template<class T>
     static void invoke(Archive & ar, const T & t){
 
@@ -123,7 +123,7 @@ struct PointerOArchive::save_primitive {
 // * calls serialize on all non-primitive/non-enum types
 //-------------------------------------------------------------------------
 template<class Archive>
-struct PointerOArchive::save_only {
+struct ShmVectorOArchive::save_only {
     template<class T>
     static void invoke(Archive & ar, const T & t){
 
@@ -138,10 +138,10 @@ struct PointerOArchive::save_only {
 // * delegates saving functionality based on the type of the incoming variable.
 //-------------------------------------------------------------------------
 template<class T>
-void PointerOArchive::save(const T &t){
+void ShmVectorOArchive::save(const T &t){
     typedef
         BOOST_DEDUCED_TYPENAME boost::mpl::eval_if<boost::is_enum< T >,
-            boost::mpl::identity<save_enum_type<PointerOArchive> >,
+            boost::mpl::identity<save_enum_type<ShmVectorOArchive> >,
         //else
         BOOST_DEDUCED_TYPENAME boost::mpl::eval_if<
             // if its primitive
@@ -149,9 +149,9 @@ void PointerOArchive::save(const T &t){
                     boost::serialization::implementation_level< T >,
                     boost::mpl::int_<boost::serialization::primitive_type>
                 >,
-                boost::mpl::identity<save_primitive<PointerOArchive> >,
+                boost::mpl::identity<save_primitive<ShmVectorOArchive> >,
             // else
-            boost::mpl::identity<save_only<PointerOArchive> >
+            boost::mpl::identity<save_only<ShmVectorOArchive> >
         > >::type typex;
     typex::invoke(*this, t);
 }
@@ -161,7 +161,7 @@ void PointerOArchive::save(const T &t){
 // << OPERATOR: UNSPECIALIZED
 //-------------------------------------------------------------------------
 template<class T>
-PointerOArchive & PointerOArchive::operator<<(T const & t) {
+ShmVectorOArchive & ShmVectorOArchive::operator<<(T const & t) {
 
     save(t);
 
@@ -171,7 +171,7 @@ PointerOArchive & PointerOArchive::operator<<(T const & t) {
 // << OPERATOR: POINTERS
 //-------------------------------------------------------------------------
 template<class T>
-PointerOArchive & PointerOArchive::operator<<(T * const t) {
+ShmVectorOArchive & ShmVectorOArchive::operator<<(T * const t) {
 
     if(t != nullptr) {
         *this << *t;
@@ -183,7 +183,7 @@ PointerOArchive & PointerOArchive::operator<<(T * const t) {
 // << OPERATOR: ARRAYS
 //-------------------------------------------------------------------------
 template<class T, int N>
-PointerOArchive & PointerOArchive::operator<<(const T (&t)[N]) {
+ShmVectorOArchive & ShmVectorOArchive::operator<<(const T (&t)[N]) {
 
     return *this << &t;
 }
@@ -191,7 +191,7 @@ PointerOArchive & PointerOArchive::operator<<(const T (&t)[N]) {
 // << OPERATOR: NVP
 //-------------------------------------------------------------------------
 template<class T>
-PointerOArchive & PointerOArchive::operator<<(const boost::serialization::nvp<T> & t) {
+ShmVectorOArchive & ShmVectorOArchive::operator<<(const boost::serialization::nvp<T> & t) {
 
     return *this << t.const_value();
 }
@@ -199,7 +199,7 @@ PointerOArchive & PointerOArchive::operator<<(const boost::serialization::nvp<T>
 // << OPERATOR: SHMVECTOR
 //-------------------------------------------------------------------------
 template<class T>
-PointerOArchive & PointerOArchive::operator<<(const vistle::ShmVector<T> & t) {
+ShmVectorOArchive & ShmVectorOArchive::operator<<(const vistle::ShmVector<T> & t) {
 
     // save shmName to archive
     m_shmNameVector.push_back(std::string(t.name().name.data()));
@@ -211,7 +211,7 @@ PointerOArchive & PointerOArchive::operator<<(const vistle::ShmVector<T> & t) {
 // & OPERATOR
 //-------------------------------------------------------------------------
 template<class T>
-PointerOArchive & PointerOArchive::operator&(const T & t){
+ShmVectorOArchive & ShmVectorOArchive::operator&(const T & t){
 
     // delegate to appropriate << operator
     return *this << t;
