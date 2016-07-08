@@ -9,7 +9,6 @@
 #define VISTLE_OBJECT_OARCHIVE_H
 
 #include <cstddef>
-#include <stack>
 #include <core/shm.h>
 
 #include <boost/config.hpp>
@@ -35,38 +34,11 @@
 // VISTLE OBJECT OARCHIVE CLASS DECLARATION
 //-------------------------------------------------------------------------
 class V_COREEXPORT PointerOArchive {
-public:
-    // temporary debug variables
-    unsigned nvpCount;
-    unsigned enumCount;
-    unsigned primitiveCount;
-    unsigned onlyCount;
-    unsigned shmCount;
-
 private:
-    // archive vector entry struct
-    struct ArchivedEntry {
-        std::string name;
-        std::string parentObjectName;
-        const void * value;
-        unsigned size;
-        unsigned heirarchyDepth;
-        bool isPointer;
-        std::type_index typeInfo;
-
-        ArchivedEntry() : typeInfo(typeid(value)) {}
-        ArchivedEntry(std::string _name, std::string _parentObjectName, const void * _value, unsigned _size, unsigned _heirarchyDepth, bool _isPointer, std::type_index _typeInfo)
-            : name(_name), parentObjectName(_parentObjectName), value(_value), size(_size), heirarchyDepth(_heirarchyDepth), isPointer(_isPointer), typeInfo(_typeInfo) {}
-    };
-
-    // typedefs
-    typedef std::vector<ArchivedEntry> ArchiveVector;
-    typedef std::stack<std::string> HeirarchyStack;
 
     // private member variables
-    ArchiveVector m_archiveVector;
-    HeirarchyStack m_heirarchyStack;
-    ArchivedEntry m_currentEntry;
+    std::vector<std::string> m_shmNameVector;
+
 
     // specialized save static structs
     template<class Archive>
@@ -106,19 +78,13 @@ public:
     PointerOArchive & operator<<(const boost::serialization::nvp<T> & t);
     template<class T>
     PointerOArchive & operator<<(const vistle::ShmVector<T> & t);
-    PointerOArchive & operator<<(const std::string & t);
 
     // the & operator
     template<class T>
     PointerOArchive & operator&(const T & t);
 
-    // constructor - currently only in use due to debuf functions
-    PointerOArchive() {nvpCount = 0; primitiveCount = 0; enumCount = 0; onlyCount = 0; shmCount = 0;}
-    PointerOArchive(std::ostream &) {nvpCount = 0; primitiveCount = 0; enumCount = 0; onlyCount = 0; shmCount = 0;}
-
-
     // get functions
-    ArchiveVector & vector() { return m_archiveVector; }
+    std::vector<std::string> & getVector() { return m_shmNameVector; }
 
 };
 
@@ -133,16 +99,8 @@ template<class Archive>
 struct PointerOArchive::save_enum_type {
     template<class T>
     static void invoke(Archive &ar, const T &t){
-        ar.enumCount++;
 
-        // store entry to vector
-        ar.m_currentEntry.parentObjectName = ar.m_heirarchyStack.size() > 0 ? ar.m_heirarchyStack.top() : "/";
-        ar.m_currentEntry.value = (const void *) &t;
-        ar.m_currentEntry.heirarchyDepth = ar.m_heirarchyStack.size();
-        ar.m_currentEntry.typeInfo = typeid(t);
-
-        ar.m_archiveVector.push_back(ar.m_currentEntry);
-
+        // do nothing
 
         return;
     }
@@ -154,16 +112,8 @@ template<class Archive>
 struct PointerOArchive::save_primitive {
     template<class T>
     static void invoke(Archive & ar, const T & t){
-        ar.primitiveCount++;
 
-        // store entry to vector
-        ar.m_currentEntry.parentObjectName = ar.m_heirarchyStack.size() > 0 ? ar.m_heirarchyStack.top() : "/";
-        ar.m_currentEntry.value = (const void *) &t;
-        ar.m_currentEntry.heirarchyDepth = ar.m_heirarchyStack.size();
-        ar.m_currentEntry.typeInfo = typeid(t);
-
-        ar.m_archiveVector.push_back(ar.m_currentEntry);
-
+        // do nothing
 
         return;
     }
@@ -176,25 +126,9 @@ template<class Archive>
 struct PointerOArchive::save_only {
     template<class T>
     static void invoke(Archive & ar, const T & t){
-        ar.onlyCount++;
-
-        // store entry to vector
-        ar.m_currentEntry.parentObjectName = ar.m_heirarchyStack.size() > 0 ? ar.m_heirarchyStack.top() : "/";
-        ar.m_currentEntry.value = (const void *) &t;
-        ar.m_currentEntry.heirarchyDepth = ar.m_heirarchyStack.size();
-        ar.m_currentEntry.typeInfo = typeid(t);
-
-        ar.m_archiveVector.push_back(ar.m_currentEntry);
-
-
-        // push to stack
-        ar.m_heirarchyStack.push(ar.m_currentEntry.name);
 
         // call serialization delegate
         boost::serialization::serialize_adl(ar, const_cast<T &>(t), ::boost::serialization::version< T >::value);
-
-        // restore stack
-        ar.m_heirarchyStack.pop();
 
         return;
     }
@@ -224,10 +158,10 @@ void PointerOArchive::save(const T &t){
 
 
 
-// << OPERATOR: UNSPECIALISED
+// << OPERATOR: UNSPECIALIZED
 //-------------------------------------------------------------------------
 template<class T>
-PointerOArchive & PointerOArchive::operator<<(T const & t){
+PointerOArchive & PointerOArchive::operator<<(T const & t) {
 
     save(t);
 
@@ -237,13 +171,10 @@ PointerOArchive & PointerOArchive::operator<<(T const & t){
 // << OPERATOR: POINTERS
 //-------------------------------------------------------------------------
 template<class T>
-PointerOArchive & PointerOArchive::operator<<(T * const t){
+PointerOArchive & PointerOArchive::operator<<(T * const t) {
 
     if(t != nullptr) {
-
-        m_currentEntry.isPointer = true;
-
-        *this << * t;
+        *this << *t;
     }
 
     return *this;
@@ -252,9 +183,7 @@ PointerOArchive & PointerOArchive::operator<<(T * const t){
 // << OPERATOR: ARRAYS
 //-------------------------------------------------------------------------
 template<class T, int N>
-PointerOArchive & PointerOArchive::operator<<(const T (&t)[N]){
-
-    m_currentEntry.size = N;
+PointerOArchive & PointerOArchive::operator<<(const T (&t)[N]) {
 
     return *this << &t;
 }
@@ -262,10 +191,7 @@ PointerOArchive & PointerOArchive::operator<<(const T (&t)[N]){
 // << OPERATOR: NVP
 //-------------------------------------------------------------------------
 template<class T>
-PointerOArchive & PointerOArchive::operator<<(const boost::serialization::nvp<T> & t){
-    nvpCount++;
-
-    m_currentEntry.name = t.name();
+PointerOArchive & PointerOArchive::operator<<(const boost::serialization::nvp<T> & t) {
 
     return *this << t.const_value();
 }
@@ -274,11 +200,11 @@ PointerOArchive & PointerOArchive::operator<<(const boost::serialization::nvp<T>
 //-------------------------------------------------------------------------
 template<class T>
 PointerOArchive & PointerOArchive::operator<<(const vistle::ShmVector<T> & t) {
-    shmCount++;
 
-    m_currentEntry.size = t->size();
+    // save shmName to archive
+    m_shmNameVector.push_back(std::string(t.name().name.data()));
 
-    return *this << t->data();
+    return *this;
 }
 
 
@@ -286,11 +212,6 @@ PointerOArchive & PointerOArchive::operator<<(const vistle::ShmVector<T> & t) {
 //-------------------------------------------------------------------------
 template<class T>
 PointerOArchive & PointerOArchive::operator&(const T & t){
-
-    // initialize member variables
-    m_currentEntry.isPointer = false;
-    m_currentEntry.size = 1;
-    m_currentEntry.name = "";
 
     // delegate to appropriate << operator
     return *this << t;

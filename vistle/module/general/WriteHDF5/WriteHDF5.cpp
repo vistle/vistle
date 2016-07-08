@@ -18,6 +18,7 @@
 #include <core/vec.h>
 #include <core/unstr.h>
 #include <core/pointeroarchive.h>
+#include <core/placeholder.h>
 
 #include "hdf5.h"
 
@@ -38,6 +39,7 @@ MODULE_MAIN(WriteHDF5)
 //-------------------------------------------------------------------------
 
 // CONSTRUCTOR
+// * intitializes data and records the number of members in the meta object
 //-------------------------------------------------------------------------
 WriteHDF5::WriteHDF5(const std::string &shmname, const std::string &name, int moduleID)
    : Module("WriteHDF5", shmname, name, moduleID) {
@@ -50,10 +52,17 @@ WriteHDF5::WriteHDF5(const std::string &shmname, const std::string &name, int mo
 
    // policies
    setReducePolicy(message::ReducePolicy::OverAll);
+   setSchedulingPolicy(message::SchedulingPolicy::LazyGang);
 
    // variable setup
-   m_isRootNode = (comm().rank() == M_ROOT_NODE);
+   m_isRootNode = (comm().rank() == 0);
    m_numPorts = 1;
+
+   // obtain meta member count
+   PlaceHolder::ptr tempObject(new PlaceHolder("", Meta(), Object::Type::UNKNOWN));
+   MemberCounter memberCounter;
+   tempObject->meta().doAllMembers(memberCounter);
+   WriteHDF5::numMetaMembers = memberCounter.counter;
 
 }
 
@@ -71,77 +80,54 @@ bool WriteHDF5::parameterChanged(const Parameter * p) {
 }
 
 // PREPARE FUNCTION
+// * creates basic groups within the HDF5 file and instantiates the dummy object used
+// * by nodes with null data for writing collectively
 //-------------------------------------------------------------------------
 bool WriteHDF5::prepare() {
     herr_t status;
+    hid_t fileId;
+    hid_t filePropertyListId;
+    hid_t dataSetId;
+    hid_t fileSpaceId;
+    hid_t groupId;
+    hsize_t dims[] = {1};
 
     // Set up file access property list with parallel I/O access
-    m_filePropertyListId = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(m_filePropertyListId, comm(), MPI_INFO_NULL);
+    filePropertyListId = H5Pcreate(H5P_FILE_ACCESS);
+    H5Pset_fapl_mpio(filePropertyListId, comm(), MPI_INFO_NULL);
 
     if (H5Fis_hdf5(m_fileName->getValue().c_str()) > 0 && m_isRootNode) {
         sendInfo("File already exists: Overwriting");
     }
 
     // create new file
-    m_fileId = H5Fcreate(m_fileName->getValue().c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, m_filePropertyListId);
+    fileId = H5Fcreate(m_fileName->getValue().c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, filePropertyListId);
 
 
     // create basic vistle HDF5 Groups: index
-    m_groupId_index = H5Gcreate2(m_fileId, "/index", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    status = H5Gclose(m_groupId_index);
+    groupId = H5Gcreate2(fileId, "/index", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    status = H5Gclose(groupId);
     util_checkStatus(status);
 
     // create basic vistle HDF5 Groups: data
-    m_groupId_data = H5Gcreate2(m_fileId, "/data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    //-------------------------------------------------------------------------
-
-//    if (rank() == 0) {
-//        hid_t currentGroupId;
-//        hid_t currentDataSet;
-//        hid_t currentDataSpace;
-//        hid_t currentPropertyListId;
-//        herr_t status;
-//            // Create the dataspace for the dataset.
-//            hsize_t dataDimensions[] = { 5 };
-//            currentDataSpace = H5Screate_simple(1, dataDimensions, NULL);
-
-//            int * d;
-//            d = (int *) malloc(sizeof(int)*5);
-//            d[0] = 1;
-//            d[1] = 3;
-//            d[2] = 1;
-//            d[3] = 6;
-//            d[4] = 1;
-
-//            // Create the dataset with default properties.
-//            currentDataSet = H5Dcreate(m_groupId_data, std::to_string(comm().rank()).c_str(), H5T_NATIVE_INT, currentDataSpace,
-//                    H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-//            // Create property list for an independent dataset write.
-//            currentPropertyListId = H5Pcreate(H5P_DATASET_XFER);
-//            H5Pset_dxpl_mpio(currentPropertyListId, H5FD_MPIO_INDEPENDENT);
-
-//            // write data
-//            status = H5Dwrite(currentDataSet, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, currentPropertyListId, d);
-
-//            //close/release respources
-//            H5Dclose(currentDataSet);
-//            H5Sclose(currentDataSpace);
-//            H5Pclose(currentPropertyListId);
-
-//            sendInfo("finished writing");
-//    }
-
-    //-------------------------------------------------------------------------
-    status = H5Gclose(m_groupId_data);
+    groupId = H5Gcreate2(fileId, "/object", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    status = H5Gclose(groupId);
     util_checkStatus(status);
 
     // create basic vistle HDF5 Groups: grid
-    m_groupId_grid = H5Gcreate2(m_fileId, "/grid", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    status = H5Gclose(m_groupId_grid);
+    groupId = H5Gcreate2(fileId, "/array", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    status = H5Gclose(groupId);
     util_checkStatus(status);
 
+    // create dummy object
+    fileSpaceId = H5Screate_simple(1, m_dummyObjectDims.data(), NULL);
+    dataSetId = H5Dcreate(fileId, m_dummyObjectName.c_str(), m_dummyObjectType, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    H5Sclose(fileSpaceId);
+    H5Dclose(dataSetId);
+
+    // close all open h5 entities
+    H5Pclose(filePropertyListId);
+    H5Fclose(fileId);
 
     return Module::prepare();
 }
@@ -151,177 +137,273 @@ bool WriteHDF5::prepare() {
 //-------------------------------------------------------------------------
 bool WriteHDF5::reduce(int timestep) {
 
-    // close file property list identifier
-    H5Pclose(m_filePropertyListId);
-
-    // close file
-    H5Fclose(m_fileId);
 
     return Module::reduce(timestep);
 }
 
 // COMPUTE FUNCTION
+// * function procedure:
+// * - serailized incoming object data into a ShmArchive
+// * - transmits information regarding object data sizes to all nodes
+// * - nodes reserve space for all objects independently
+// * - nodes write data into the HDF5 file collectively. If a object is
+// *   not present on the node, null data is written to a dummy object so that
+// *   the call is still made collectively
 //-------------------------------------------------------------------------
 bool WriteHDF5::compute() {
+    Object::const_ptr obj = nullptr;
+    PointerOArchive archive;
+    m_hasObject = false;
+    unsigned originPortNumber = 0;
 
-    for (unsigned i = 0; i < m_numPorts; i++) {
-        std::string portName = "data" + std::to_string(i) + "_in";
-        PointerOArchive archive;
+    // ----- OBTAIN FIRST OBJECT FROM A PORT ----- //
+
+    for (/*defined above*/; originPortNumber < m_numPorts; originPortNumber++) {
+        std::string portName = "data" + std::to_string(originPortNumber) + "_in";
 
         // acquire input data object
-        Object::const_ptr obj = expect<Object>(portName);
+        obj = expect<Object>(portName);
 
-        obj->save(archive);
+        // save if available
+        if (obj) {
+            m_hasObject = true;
+            obj->save(archive);
+
+            break;
+        }
+    }
 
 
-        // debug output
-        if (comm().rank() == 0) {
-            debug_printArchive(archive);
+
+    // ----- TRANSMIT OBJECT DATA DIMENSIONS TO ALL NODES FOR RESERVATION OF FILE DATASPACE ----- //
+
+    std::vector<ReservationInfo> reservationInfoGatherVector;
+    ReservationInfo reservationInfo;
+
+    if (m_hasObject) {
+        reservationInfo.isValid = true;
+        reservationInfo.name = obj->getName();
+
+        // populate reservationInfo shm vector
+        for (unsigned i = 0; i < archive.getVector().size(); i++) {
+            ShmVectorReserver reserver(archive.getVector()[i], &reservationInfo);
+            boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorReserver>(reserver));
         }
 
-        compute_store(archive, obj);
+    } else {
+        reservationInfo.isValid = false;
     }
+
+    // transmit all reservation information
+    boost::mpi::all_gather(comm(), reservationInfo, reservationInfoGatherVector);
+
+    // sort for proper collective io ordering
+    std::sort(reservationInfoGatherVector.begin(), reservationInfoGatherVector.end());
+
+
+
+
+    // ----- RESERVE SPACE WITHIN THE HDF5 FILE ----- //
+
+    // open file
+    herr_t status;
+    hid_t fileId;
+    hid_t filePropertyListId;
+    bool isFirst = true;
+    std::string defaultObjectName;
+
+    hid_t groupId;
+    hid_t dataSetId;
+    hid_t fileSpaceId;
+    hsize_t metaDims[] = {WriteHDF5::numMetaMembers};
+    hsize_t oneDims[] = {1};
+    hsize_t dims[] = {0};
+    double * metaData = nullptr;
+    int * typeData = nullptr;
+    unsigned * originData = nullptr;
+    std::string writeName;
+    MetaToArray metaToArray;
+    int typeValue;
+
+    // Set up file access property list with parallel I/O access and open
+    filePropertyListId = H5Pcreate(H5P_FILE_ACCESS);
+    H5Pset_fapl_mpio(filePropertyListId, comm(), MPI_INFO_NULL);
+    fileId = H5Fopen(m_fileName->getValue().c_str(), H5F_ACC_RDWR, filePropertyListId);
+
+    // reserve space for object
+    for (unsigned i = 0; i < reservationInfoGatherVector.size(); i++) {
+        if (reservationInfoGatherVector[i].isValid) {
+            std::string objectName = "/object/" + reservationInfoGatherVector[i].name;
+
+            // save as default name to be used by nodes without object when writing
+            if (isFirst) {
+                defaultObjectName = objectName;
+                isFirst = false;
+            }
+
+
+            // create object group
+            groupId = H5Gcreate(fileId, objectName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+            // create metadata dataset
+            fileSpaceId = H5Screate_simple(1, metaDims, NULL);
+            dataSetId = H5Dcreate(groupId, "meta", H5T_NATIVE_DOUBLE, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            H5Sclose(fileSpaceId);
+            H5Dclose(dataSetId);
+
+            // create type dataset
+            fileSpaceId = H5Screate_simple(1, oneDims, NULL);
+            dataSetId = H5Dcreate(groupId, "type", H5T_NATIVE_INT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            H5Sclose(fileSpaceId);
+            H5Dclose(dataSetId);
+
+            // create origin dataset
+            fileSpaceId = H5Screate_simple(1, oneDims, NULL);
+            dataSetId = H5Dcreate(groupId, "origin", H5T_NATIVE_UINT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            H5Sclose(fileSpaceId);
+            H5Dclose(dataSetId);
+
+            // handle shmVectors and shmVector links
+            for (unsigned j = 0; j < reservationInfoGatherVector[i].shmVectors.size(); j++) {
+                std::string arrayName = reservationInfoGatherVector[i].shmVectors[j].name;
+                std::string objectPath = "/array/" + arrayName;
+
+                if (m_arraySet.find(arrayName) == m_arraySet.end()) {
+                    m_arraySet.insert(arrayName);
+
+                    // create array dataset
+                    dims[0] = reservationInfoGatherVector[i].shmVectors[j].size;
+                    fileSpaceId = H5Screate_simple(1, dims, NULL);
+                    dataSetId = H5Dcreate(fileId, objectPath.c_str(), reservationInfoGatherVector[i].shmVectors[j].type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                    H5Sclose(fileSpaceId);
+                    H5Dclose(dataSetId);
+                }
+
+                status = H5Lcreate_soft(objectPath.c_str(), groupId, arrayName.c_str(), H5P_DEFAULT, H5P_DEFAULT);
+                util_checkStatus(status);
+            }
+
+            // close group
+            status = H5Gclose(groupId);
+            util_checkStatus(status);
+        }
+    }
+
+
+
+
+
+    // ----- WRITE DATA TO THE HDF5 FILE ----- //
+
+    // write meta info
+    if (m_hasObject) {
+        writeName = "/object/" + obj->getName() + "/meta";
+        obj->meta().doAllMembers(metaToArray);
+        metaData = metaToArray.getDataPtr();
+    }
+
+    util_HDF5write(m_hasObject, writeName, (void *) metaData, fileId, metaDims, H5T_NATIVE_DOUBLE);
+
+
+    // write type info
+    if (m_hasObject) {
+        writeName = "/object/" + obj->getName() + "/type";
+        typeValue = obj->getType();
+        typeData = &typeValue;
+    }
+
+    util_HDF5write(m_hasObject, writeName, typeData, fileId, oneDims, H5T_NATIVE_INT);
+
+
+    // write origin info
+    if (m_hasObject) {
+        writeName = "/object/" + obj->getName() + "/origin";
+        originData = &originPortNumber;
+
+    }
+
+    util_HDF5write(m_hasObject, writeName, originData, fileId, oneDims, H5T_NATIVE_UINT);
+
+
+
+    unsigned maxVectorSize;
+
+    // reduce vector size information for collective calls
+    boost::mpi::all_reduce(comm(), (unsigned) archive.getVector().size(), maxVectorSize, boost::mpi::maximum<unsigned>());
+
+    // write array info
+    for (unsigned i = 0; i < maxVectorSize; i++) {
+
+        if (archive.getVector().size() > i) {
+            // this node has an object to be written
+            ShmVectorWriter shmVectorWriter(archive.getVector()[i], fileId);
+            boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorWriter>(shmVectorWriter));
+
+        } else {
+            // this node does not have an object to be written
+             util_HDF5write(fileId);
+        }
+    }
+
+
+
+    // close all open h5 entities
+    H5Pclose(filePropertyListId);
+    H5Fclose(fileId);
 
    return true;
 }
 
-// COMPUTE HELPER FUNCTION - STORE DATA OBJECT INTO HDF5 LIBRARY
+// GENERIC UTILITY HELPER FUNCTION - WRITE DATA TO HDF5 ABSTRACTION
+// * simplification of function call to be used for nodes which do not have objects
+// * forces dummy object write within other function call
 //-------------------------------------------------------------------------
-void WriteHDF5::compute_store(PointerOArchive & archive, Object::const_ptr data) {
-    hid_t currentGroupId;
-    hid_t currentDataSet;
-    hid_t currentDataSpace;
-    hid_t currentPropertyListId;
+void WriteHDF5::util_HDF5write(hid_t fileId) {
+       util_HDF5write(false, "", nullptr, fileId, nullptr, 0);
+   }
+
+// GENERIC UTILITY HELPER FUNCTION - WRITE DATA TO HDF5 ABSTRACTION
+// * isWriter determines if data will actually be written, otherwise a dummy object is written to
+//-------------------------------------------------------------------------
+void WriteHDF5::util_HDF5write(bool isWriter, std::string name, const void * data, hid_t fileId, hsize_t * dims, hid_t dataType) {
     herr_t status;
+    hid_t dataSetId;
+    hid_t fileSpaceId;
+    hid_t memSpaceId;
+    hid_t writeId;
 
-    // open data writing location group
-    m_groupId_data = H5Gopen1(m_fileId, "/data");
-
-//    std::string newGroupBlock = data->getBlock() >= 0 ? std::to_string(data->getBlock()) : "0";
-//    std::string newGroupTimestep = data->getTimestep() >= 0 ? std::to_string(data->getTimestep()) : "0";
-//    std::string newGroupName = "/data/block_" + newGroupBlock + "_" + newGroupTimestep;
-//    currentGroupId = H5Gcreate2(m_fileId, newGroupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-
-//    for (unsigned i = 0; i < archive.vector().size(); i++) {
-
-//        // obtain variable type
-//        auto nativeTypeMapIterator = m_nativeTypeMap.find(archive.vector()[i].typeInfo);
-
-//        // abort if unidentified
-//        if (nativeTypeMapIterator == m_nativeTypeMap.end()) {
-//            continue;
-//        }
-
-//        sendInfo("%i writing %s", comm().rank(), archive.vector()[i].name.c_str());
+    // assign dummy object values if isWriter is false
+    const std::string writeName = isWriter ? name : m_dummyObjectName;
+    const hid_t writeType = isWriter ? dataType : m_dummyObjectType;
+    const hsize_t * writeDims = isWriter ? dims : m_dummyObjectDims.data();
+    const void * writeData = isWriter ? data : nullptr;
 
 
-//        // Create the dataspace for the dataset.
-//        hsize_t dataDimensions[] = { archive.vector()[i].size };
-//        currentDataSpace = H5Screate_simple(1, dataDimensions, NULL);
+    // set up parallel write
+    writeId = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(writeId, H5FD_MPIO_COLLECTIVE);
 
-//        // Create the dataset with default properties.
-//        currentDataSet = H5Dcreate(m_groupId_data, archive.vector()[i].name.c_str(), nativeTypeMapIterator->second, currentDataSpace,
-//                H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-//        // Create property list for an independent dataset write.
-//        currentPropertyListId = H5Pcreate(H5P_DATASET_XFER);
-//        H5Pset_dxpl_mpio(currentPropertyListId, H5FD_MPIO_INDEPENDENT);
+    // allocate data spaces
+    dataSetId = H5Dopen(fileId, writeName.c_str(), H5P_DEFAULT);
+    fileSpaceId = H5Dget_space(dataSetId);
+    memSpaceId = H5Screate_simple(1, writeDims, NULL);
 
-//        // write data
-//        status = H5Dwrite(currentDataSet, nativeTypeMapIterator->second, H5S_ALL, H5S_ALL, currentPropertyListId, archive.vector()[i].value);
+    // cancel write if not a writer
+    if (!isWriter) {
+        H5Sselect_none(fileSpaceId);
+        H5Sselect_none(memSpaceId);
+    }
 
-//        //close/release respources
-//        H5Dclose(currentDataSet);
-//        H5Sclose(currentDataSpace);
-//        H5Pclose(currentPropertyListId);
-
-//    }
-////-------------------------------------------------------------------------
-
-//        // Create the dataspace for the dataset.
-//        hsize_t dataDimensions[] = { 5 };
-//        currentDataSpace = H5Screate_simple(1, dataDimensions, NULL);
-
-//        int * d;
-//        d = (int *) malloc(sizeof(int)*5);
-//        d[0] = 1;
-//        d[1] = 3;
-//        d[2] = 1;
-//        d[3] = 6;
-//        d[4] = 1;
-
-//        // Create the dataset with default properties.
-//        currentDataSet = H5Dcreate(m_groupId_data, std::to_string(comm().rank()).c_str(), H5T_NATIVE_INT, currentDataSpace,
-//                H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-//        // Create property list for an independent dataset write.
-//        currentPropertyListId = H5Pcreate(H5P_DATASET_XFER);
-//        H5Pset_dxpl_mpio(currentPropertyListId, H5FD_MPIO_INDEPENDENT);
-
-//        // write data
-//        status = H5Dwrite(currentDataSet, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, currentPropertyListId, d);
-
-//        //close/release respources
-//        H5Dclose(currentDataSet);
-//        H5Sclose(currentDataSpace);
-//        H5Pclose(currentPropertyListId);
-
-//        sendInfo("finished writing");
-
-////-------------------------------------------------------------------------
-
-//    // close data writing location group
-//    status = H5Gclose(currentGroupId);
-//    util_checkStatus(status);
-
-    status = H5Gclose(m_groupId_data);
+    // write
+    status = H5Dwrite(dataSetId, writeType, memSpaceId, fileSpaceId, writeId, writeData);
     util_checkStatus(status);
 
-
-    return;
-}
-
-// DEBUG UTILITY HELPER FUNCTION - ENUMERATE ARCHIVE CONTENTS
-//-------------------------------------------------------------------------
-void WriteHDF5::debug_printArchive(PointerOArchive & archive) {
-    std::string message;
-
-    // debug info
-    sendInfo("vistle object archive found: %u, enum: %u, primitive: %u only: %u shm: %u\n",
-             archive.nvpCount, archive.enumCount, archive.primitiveCount, archive.onlyCount, archive.shmCount);
-
-
-    for (unsigned i = 0; i < archive.vector().size(); i++) {
-
-        // indent
-        for (unsigned j = 0; j < archive.vector()[i].heirarchyDepth; j++) {
-            message += "   ";
-        }
-
-        // name
-        message += " parent: " + archive.vector()[i].parentObjectName + " - " + archive.vector()[i].name + " ";
-
-        // is pointer?
-        if (archive.vector()[i].isPointer) {
-            message += "->";
-        }
-
-        // type information
-        auto nativeTypeMapIterator = m_nativeTypeMap.find(archive.vector()[i].typeInfo);
-        if (nativeTypeMapIterator != m_nativeTypeMap.end()) {
-            message += "primitive";
-        } else {
-            message += "unknown";
-        }
-
-        // size information
-        message += "[" + std::to_string(archive.vector()[i].size) + "]";
-
-
-        sendInfo("%s", message.c_str());
-        message.clear();
-    }
+    // release resources
+    H5Sclose(fileSpaceId);
+    H5Sclose(memSpaceId);
+    H5Dclose(dataSetId);
+    H5Pclose(writeId);
 }
 
 // GENERIC UTILITY HELPER FUNCTION - VERIFY HERR_T STATUS
@@ -329,7 +411,7 @@ void WriteHDF5::debug_printArchive(PointerOArchive & archive) {
 void WriteHDF5::util_checkStatus(herr_t status) {
 
     if (status != 0) {
-        sendInfo("Error: status: %i", status);
+//        sendInfo("Error: status: %i", status);
     }
 
     return;
