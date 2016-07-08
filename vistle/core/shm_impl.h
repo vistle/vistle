@@ -33,6 +33,11 @@ const ShmVector<T> Shm::getArrayFromName(const std::string &name) const {
    if (!arr) {
        //std::cerr << "Shm::getArrayFromName: did not find " << name << std::endl;
    }
+
+   if (array::typeId() != arr->type()) {
+       return vistle::shm_ref<array>();
+   }
+
    return vistle::shm_ref<array>(name, arr);
 }
 
