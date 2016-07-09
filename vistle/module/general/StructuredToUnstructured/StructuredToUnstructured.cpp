@@ -157,9 +157,9 @@ void StructuredToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, U
                 obj->max()[2]
                 );
     const Cartesian3<Scalar> delta = Cartesian3<Scalar>(
-                ((max.x - min.x) / numElements),
-                ((max.y - min.y) / numElements),
-                ((max.z - min.z) / numElements)
+                ((max.x - min.x) / numVertices.x),
+                ((max.y - min.y) / numVertices.y),
+                ((max.z - min.z) / numVertices.z)
                 );
 
 
