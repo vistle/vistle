@@ -60,10 +60,9 @@ WriteHDF5::WriteHDF5(const std::string &shmname, const std::string &name, int mo
 
    // obtain meta member count
    PlaceHolder::ptr tempObject(new PlaceHolder("", Meta(), Object::Type::UNKNOWN));
-   MemberCounter memberCounter;
-   tempObject->meta().doAllMembers(memberCounter);
-   WriteHDF5::numMetaMembers = memberCounter.counter;
-
+   MemberCounterArchive memberCounter;
+   boost::serialization::serialize_adl(memberCounter, const_cast<Meta &>(tempObject->meta()), ::boost::serialization::version< Meta >::value);
+   numMetaMembers = memberCounter.getCount();
 }
 
 // DESTRUCTOR
@@ -222,7 +221,7 @@ bool WriteHDF5::compute() {
     int * typeData = nullptr;
     unsigned * originData = nullptr;
     std::string writeName;
-    MetaToArray metaToArray;
+    MetaToArrayArchive metaToArrayArchive;
     int typeValue;
 
     // Set up file access property list with parallel I/O access and open
@@ -298,8 +297,8 @@ bool WriteHDF5::compute() {
     // write meta info
     if (m_hasObject) {
         writeName = "/object/" + obj->getName() + "/meta";
-        obj->meta().doAllMembers(metaToArray);
-        metaData = metaToArray.getDataPtr();
+        boost::serialization::serialize_adl(metaToArrayArchive, const_cast<Meta &>(obj->meta()), ::boost::serialization::version< Object >::value);
+        metaData = metaToArrayArchive.getDataPtr();
     }
 
     util_HDF5write(m_hasObject, writeName, (void *) metaData, fileId, metaDims, H5T_NATIVE_DOUBLE);

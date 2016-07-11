@@ -13,6 +13,17 @@
 #include <unordered_set>
 
 #include <boost/mpl/for_each.hpp>
+#include <boost/config.hpp>
+#include <boost/type_traits/is_enum.hpp>
+#include <boost/mpl/bool.hpp>
+#include <boost/mpl/eval_if.hpp>
+#include <boost/mpl/int.hpp>
+#include <boost/mpl/equal_to.hpp>
+#include <boost/serialization/nvp.hpp>
+#include <boost/serialization/array.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/version.hpp>
 
 #include <module/module.h>
 
@@ -41,13 +52,11 @@ class WriteHDF5 : public vistle::Module {
    struct ReservationInfoShmEntry;
    struct ReservationInfo;
 
-   struct MemberCounter;
-   struct MetaToArray;
-
    struct ShmVectorReserver;
    struct ShmVectorWriter;
 
-
+   class MemberCounterArchive;
+   class MetaToArrayArchive;
 
    // overriden functions
    virtual bool parameterChanged(const vistle::Parameter * p);
@@ -163,34 +172,72 @@ struct WriteHDF5::ReservationInfo {
     void serialize(Archive &ar, const unsigned int version);
 };
 
-// MEMBER COUNTER FUNCTOR
+// MEMBER COUNTER ARCHIVE
 // * used to count members within ObjectMeta
 //-------------------------------------------------------------------------
-struct WriteHDF5::MemberCounter {
-    mutable unsigned counter;
+class WriteHDF5::MemberCounterArchive {
+private:
+    unsigned m_counter;
 
-    MemberCounter() : counter(0) {}
+public:
 
-    template<class Member>
-    void operator()(Member) const { counter++; }
+    // Implement requirements for archive concept
+    typedef boost::mpl::bool_<false> is_loading;
+    typedef boost::mpl::bool_<true> is_saving;
+
+    template<class T>
+    void register_type(const T * = NULL) {}
+
+    unsigned int get_library_version() { return 0; }
+    void save_binary(const void *address, std::size_t count) {}
+
+    MemberCounterArchive() : m_counter(0) {}
+
+    // the & operator
+    template<class T>
+    MemberCounterArchive & operator&(const T & t);
+
+    // get functions
+    unsigned getCount() { return m_counter; }
+
 };
 
-// META TO ARRAY FUNCTOR
+// META TO ARRAY ARCHIVE
 // * used to convert metadata members to an array of doubles for storage
 // * into the HDF5 file
 //-------------------------------------------------------------------------
-struct WriteHDF5::MetaToArray {
+class WriteHDF5::MetaToArrayArchive {
 private:
-    mutable std::vector<double> array;
-    mutable unsigned insertIndex;
+    std::vector<double> m_array;
+    unsigned m_insertIndex;
 
 public:
-    MetaToArray() : insertIndex(0) { array.reserve(WriteHDF5::numMetaMembers); }
 
-    double * getDataPtr() { return array.data(); }
+    // Implement requirements for archive concept
+    typedef boost::mpl::bool_<false> is_loading;
+    typedef boost::mpl::bool_<true> is_saving;
 
-    template<class Member>
-    void operator()(const Member &member) const;
+    template<class T>
+    void register_type(const T * = NULL) {}
+
+    unsigned int get_library_version() { return 0; }
+    void save_binary(const void *address, std::size_t count) {}
+
+    MetaToArrayArchive() : m_insertIndex(0) { m_array.reserve(WriteHDF5::numMetaMembers); }
+
+    // << operators
+    template<class T>
+    MetaToArrayArchive & operator<<(T const & t);
+    template<class T>
+    MetaToArrayArchive & operator<<(const boost::serialization::nvp<T> & t);
+
+    // the & operator
+    template<class T>
+    MetaToArrayArchive & operator&(const T & t);
+
+    // get functions
+    double * getDataPtr() { return m_array.data(); }
+
 };
 
 // SHM VECTOR RESERVER FUNCTOR
@@ -255,15 +302,6 @@ void WriteHDF5::ReservationInfo::serialize(Archive &ar, const unsigned int versi
    ar & isValid;
 }
 
-// META TO ARRAY - () OPERATOR
-// * manifests conversion and storage of members to an array of doubles
-//-------------------------------------------------------------------------
-template<class Member>
-void WriteHDF5::MetaToArray::operator()(const Member &member) const {
-     array[insertIndex] = (double) member;
-     insertIndex++;
-}
-
 // SHM VECTOR RESERVER - () OPERATOR
 // * manifests construction of ReservationInfoShmEntry entries when GetArrayFromName types match
 //-------------------------------------------------------------------------
@@ -302,5 +340,45 @@ void WriteHDF5::ShmVectorWriter::operator()(T) {
 
     }
 }
+
+// MEMBER COUNTER - << OPERATOR: UNSPECIALIZED
+//-------------------------------------------------------------------------
+template<class T>
+WriteHDF5::MemberCounterArchive & WriteHDF5::MemberCounterArchive::operator&(T const & t) {
+
+    m_counter++;
+
+    return *this;
+}
+
+// META TO ARRAY - << OPERATOR: UNSPECIALIZED
+//-------------------------------------------------------------------------
+template<class T>
+WriteHDF5::MetaToArrayArchive & WriteHDF5::MetaToArrayArchive::operator<<(T const & t) {
+
+    // do nothing - this archive assumes all members that need to be saved are stored as name-value pairs
+
+}
+
+// META TO ARRAY - << OPERATOR: NVP
+//-------------------------------------------------------------------------
+template<class T>
+WriteHDF5::MetaToArrayArchive & WriteHDF5::MetaToArrayArchive::operator<<(const boost::serialization::nvp<T> & t) {
+
+    m_array[m_insertIndex] = (double) t.const_value();
+    m_insertIndex++;
+
+    return *this;
+}
+
+// META TO ARRAY - << OPERATOR: UNSPECIALIZED
+//-------------------------------------------------------------------------
+template<class T>
+WriteHDF5::MetaToArrayArchive & WriteHDF5::MetaToArrayArchive::operator&(T const & t) {
+
+    return *this << t;
+
+}
+
 
 #endif /* WRITEHDF5_H */
