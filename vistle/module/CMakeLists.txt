@@ -5,6 +5,7 @@ set(module_SOURCES
 set(module_HEADERS
    export.h
    module.h
+   module_impl.h
 )
 
 vistle_add_library(vistle_module ${VISTLE_LIB_TYPE} ${module_SOURCES} ${module_HEADERS})
