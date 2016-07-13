@@ -256,9 +256,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
        weights[5] = ss[0]*(1-ss[1])*ss[2];
        weights[6] = ss[0]*ss[1]*ss[2];
        weights[7] = (1-ss[0])*ss[1]*ss[2];
-   }
-
-   if (mode != Linear && mode != Mean) {
+   }  else {
       weights[0] = 1;
 
       if (mode == First) {
@@ -270,8 +268,10 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
             const Index k = cl[i];
             const Vector3 vert(x[0][k], x[1][k], x[2][k]);
             const Scalar dist = (point-vert).squaredNorm();
-            if (dist < mindist)
+            if (dist < mindist) {
                indices[0] = k;
+               mindist = dist;
+            }
          }
       }
    }

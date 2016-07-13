@@ -614,9 +614,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             break;
          }
       }
-   }
-
-   if (mode != Linear && mode != Mean) {
+   } else {
       weights[0] = 1;
 
       if (mode == First) {
@@ -628,8 +626,10 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             const Index k = cl[i];
             const Vector3 vert(x[0][k], x[1][k], x[2][k]);
             const Scalar dist = (point-vert).squaredNorm();
-            if (dist < mindist)
+            if (dist < mindist) {
+               mindist = dist;
                indices[0] = k;
+            }
          }
       }
    }
