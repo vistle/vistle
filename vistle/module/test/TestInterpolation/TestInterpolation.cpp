@@ -1,6 +1,10 @@
 ﻿#include <core/object.h>
-#include <core/unstr.h>
+#include <core/grid.h>
 #include <core/message.h>
+#include <core/celltree.h>
+#include <core/vec.h>
+#include <core/uniformgrid.h>
+#include <core/rectilineargrid.h>
 #include "TestInterpolation.h"
 #include <util/enum.h>
 
@@ -17,7 +21,7 @@ TestInterpolation::TestInterpolation(const std::string &shmname, const std::stri
 
     m_count = addIntParameter("count", "number of randoim points to generate per block", 100);
     m_createCelltree = addIntParameter("create_celltree", "create celltree", 0, Parameter::Boolean);
-    m_mode = addIntParameter("mode", "interpolation mode", 0, Parameter::Choice);
+    m_mode = addIntParameter("mode", "interpolation mode", GridInterface::Linear, Parameter::Choice);
     V_ENUM_SET_CHOICES_SCOPE(m_mode, InterpolationMode, GridInterface);
 }
 
@@ -40,22 +44,80 @@ bool TestInterpolation::compute() {
    const Index count = getIntParameter("count");
    const GridInterface::InterpolationMode mode = (GridInterface::InterpolationMode)m_mode->getValue();
 
-   UnstructuredGrid::const_ptr grid = expect<UnstructuredGrid>("data_in");
-   if (!grid)
-      return false;
+   const GridInterface *grid = expectInterface<GridInterface>("data_in");
+   if (!grid) {
+       sendError("structured or unstructured grid required");
+       return true;
+   }
 
    if (m_createCelltree->getValue()) {
-      grid->getCelltree();
-      if (!grid->validateCelltree()) {
-         std::cerr << "celltree validation failed" << std::endl;
-      }
+       auto celltree = grid->object()->getInterface<CelltreeInterface<3>>();
+       if (!celltree->hasCelltree()) {
+           celltree->getCelltree();
+           if (!celltree->validateCelltree()) {
+              sendInfo("celltree validation failed for block %d", (int)grid->object()->getBlock());
+           }
+       }
    }
 
    auto bounds = grid->getBounds();
    Vector min = bounds.first, max = bounds.second;
-   const Scalar *x = &grid->x()[0];
-   const Scalar *y = &grid->y()[0];
-   const Scalar *z = &grid->z()[0];
+   std::vector<Scalar> xx, yy, zz;
+   const Scalar *x=nullptr, *y=nullptr, *z=nullptr;
+   if (auto v3 = Vec<Scalar,3>::as(grid->object())) {
+       x = &v3->x()[0];
+       y = &v3->y()[0];
+       z = &v3->z()[0];
+   } else if (auto uni = UniformGrid::as(grid->object())) {
+       const Index nvert = uni->getNumDivisions(0)*uni->getNumDivisions(1)*uni->getNumDivisions(2);
+       xx.resize(nvert);
+       yy.resize(nvert);
+       zz.resize(nvert);
+       x = xx.data();
+       y = yy.data();
+       z = zz.data();
+       Scalar *x0 = xx.data();
+       Scalar *y0 = yy.data();
+       Scalar *z0 = zz.data();
+
+       Vector dist=max-min;
+       for (int c=0; c<3; ++c) {
+           dist[c] /= uni->getNumDivisions(c);
+       }
+       const Index dim[3] = { uni->getNumDivisions(0), uni->getNumDivisions(1), uni->getNumDivisions(2) };
+       for (Index i = 0; i < dim[0]; i++) {
+           for (Index j = 0; j < dim[1]; j++) {
+               for (Index k = 0; k < dim[2]; k++) {
+                   const Index idx = UniformGrid::vertexIndex(i, j, k, dim);
+                   x0[idx] = min.x() + i*dist.x();
+                   y0[idx] = min.y() + j*dist.y();
+                   z0[idx] = min.z() + k*dist.z();
+               }
+           }
+       }
+   } else if (auto rect = RectilinearGrid::as(grid->object())) {
+       const Index nvert = rect->getNumDivisions(0)*rect->getNumDivisions(1)*rect->getNumDivisions(2);
+       xx.resize(nvert);
+       yy.resize(nvert);
+       zz.resize(nvert);
+       x = xx.data();
+       y = yy.data();
+       z = zz.data();
+       Scalar *x0 = xx.data();
+       Scalar *y0 = yy.data();
+       Scalar *z0 = zz.data();
+       const Index dim[3] = { rect->getNumDivisions(0), rect->getNumDivisions(1), rect->getNumDivisions(2) };
+       for (Index i = 0; i < dim[0]; i++) {
+           for (Index j = 0; j < dim[1]; j++) {
+               for (Index k = 0; k < dim[2]; k++) {
+                   const Index idx = RectilinearGrid::vertexIndex(i, j, k, dim);
+                   x0[idx] = rect->coords(0)[i];
+                   y0[idx] = rect->coords(1)[j];
+                   z0[idx] = rect->coords(2)[k];
+               }
+           }
+       }
+   }
 
    Index numChecked = 0;
    Scalar squaredError = 0;
@@ -64,7 +126,7 @@ bool TestInterpolation::compute() {
       Index idx = grid->findCell(point);
       if (idx != InvalidIndex) {
          ++numChecked;
-         UnstructuredGrid::Interpolator interpol = grid->getInterpolator(idx, point, DataBase::Vertex, mode);
+         GridInterface::Interpolator interpol = grid->getInterpolator(idx, point, DataBase::Vertex, mode);
          Vector p = interpol(x, y, z);
          Scalar d2 = (point-p).squaredNorm();
          if (d2 > 0.01) {
@@ -73,7 +135,7 @@ bool TestInterpolation::compute() {
          squaredError += d2;
       }
    }
-   std::cerr << "block " << grid->getBlock() << ", bounds: min " << min.transpose() << ", max " << max.transpose() << ", checked: " << numChecked << ", avg error: " << squaredError/numChecked << std::endl;
+   std::cerr << "block " << grid->object()->getBlock() << ", bounds: min " << min.transpose() << ", max " << max.transpose() << ", checked: " << numChecked << ", avg error: " << squaredError/numChecked << std::endl;
 
    return true;
 }
