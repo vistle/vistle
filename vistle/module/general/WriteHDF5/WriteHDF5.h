@@ -77,7 +77,7 @@ class WriteHDF5 : public vistle::Module {
 
    bool m_isRootNode;
    bool m_hasObject;
-   std::unordered_set<std::string> m_arraySet;
+   std::unordered_map<std::string, bool> m_arrayMap;
 
 
    // private member constants
@@ -97,7 +97,7 @@ public:
 //-------------------------------------------------------------------------
 const hid_t WriteHDF5::m_dummyObjectType = H5T_NATIVE_INT;
 const std::vector<hsize_t> WriteHDF5::m_dummyObjectDims = {1};
-const std::string WriteHDF5::m_dummyObjectName = "/dummy";
+const std::string WriteHDF5::m_dummyObjectName = "/file/dummy";
 
 unsigned WriteHDF5::numMetaMembers = 0;
 
@@ -147,6 +147,7 @@ struct WriteHDF5::ReservationInfoShmEntry {
     hid_t type;
     unsigned size;
 
+
     ReservationInfoShmEntry() {}
     ReservationInfoShmEntry(std::string _name, hid_t _type, unsigned _size)
         : name(_name), type(_type), size(_size) {}
@@ -161,7 +162,10 @@ struct WriteHDF5::ReservationInfoShmEntry {
 //-------------------------------------------------------------------------
 struct WriteHDF5::ReservationInfo {
     std::string name;
-    std::vector<ReservationInfoShmEntry> shmVectors;
+    std::vector<WriteHDF5::ReservationInfoShmEntry> shmVectors;
+    int block;
+    int timestep;
+    unsigned origin;
     bool isValid;
 
     // < overload for std::sort
@@ -210,8 +214,11 @@ class WriteHDF5::MetaToArrayArchive {
 private:
     std::vector<double> m_array;
     unsigned m_insertIndex;
+    int m_block;
+    int m_timestep;
 
 public:
+    static const int numExclusiveMembers;
 
     // Implement requirements for archive concept
     typedef boost::mpl::bool_<false> is_loading;
@@ -223,7 +230,7 @@ public:
     unsigned int get_library_version() { return 0; }
     void save_binary(const void *address, std::size_t count) {}
 
-    MetaToArrayArchive() : m_insertIndex(0) { m_array.reserve(WriteHDF5::numMetaMembers); }
+    MetaToArrayArchive() : m_insertIndex(0) { m_array.reserve(WriteHDF5::numMetaMembers - numExclusiveMembers); }
 
     // << operators
     template<class T>
@@ -237,8 +244,12 @@ public:
 
     // get functions
     double * getDataPtr() { return m_array.data(); }
-
+    int getBlock() const { return m_block; }
+    int getTimestep() const { return m_timestep; }
 };
+
+// static memeber out-of-class declaration
+const int WriteHDF5::MetaToArrayArchive::numExclusiveMembers = 2;
 
 // SHM VECTOR RESERVER FUNCTOR
 // * used to construct ReservationInfoShmEntry entries within the shmVectors
@@ -262,12 +273,23 @@ struct WriteHDF5::ShmVectorReserver {
 struct WriteHDF5::ShmVectorWriter {
     std::string name;
     hid_t fileId;
+    const boost::mpi::communicator & commPtr;
+    WriteHDF5 * base;
 
-    ShmVectorWriter(std::string _name, hid_t _fileId)
-        : name(_name), fileId(_fileId) {}
+    const unsigned BYTES_IN_GB = 1073741824;
+    const double MAX_WRITE_GB = 2;
+
+    ShmVectorWriter(const boost::mpi::communicator & _commPtr, hid_t _fileId) : commPtr(_commPtr), fileId(_fileId) {}
+    ShmVectorWriter(std::string _name, hid_t _fileId, const boost::mpi::communicator & _commPtr)
+        : name(_name), fileId(_fileId), commPtr(_commPtr) {}
 
     template<typename T>
     void operator()(T);
+
+    template<typename T>
+    void writeRecursive(const vistle::ShmVector<T> & vec, unsigned totalWriteSize, unsigned writeSize, unsigned writeIndex);
+
+    void writeDummy();
 };
 
 
@@ -300,6 +322,9 @@ void WriteHDF5::ReservationInfo::serialize(Archive &ar, const unsigned int versi
    ar & name;
    ar & shmVectors;
    ar & isValid;
+   ar & block;
+   ar & timestep;
+   ar & origin;
 }
 
 // SHM VECTOR RESERVER - () OPERATOR
@@ -328,17 +353,78 @@ void WriteHDF5::ShmVectorWriter::operator()(T) {
     const vistle::ShmVector<T> &vec = vistle::Shm::the().getArrayFromName<T>(name);
 
     if (vec) {
+        unsigned totalWriteSize; // in bytes
+        unsigned vecSize = vec->size();
+        boost::mpi::all_reduce(commPtr, vecSize, totalWriteSize, std::plus<unsigned>());
+
+        // write
+        writeRecursive(vec, totalWriteSize, vec->size(), 0);
+    }
+}
+
+// SHM VECTOR WRITER - RECURSIVE WRITES
+// * splits up arrays to write them recursively into the hdf5 file
+//-------------------------------------------------------------------------
+template<typename T>
+void WriteHDF5::ShmVectorWriter::writeRecursive(const vistle::ShmVector<T> & vec, unsigned totalWriteSize, unsigned writeSize, unsigned writeIndex) {
+
+    if ((long double) totalWriteSize / BYTES_IN_GB > MAX_WRITE_GB) {
+        writeRecursive(vec, totalWriteSize / 2, std::floor(writeSize / 2), writeIndex);
+        writeRecursive(vec, totalWriteSize / 2, std::ceil(writeSize / 2), writeIndex + std::floor(writeSize / 2));
+        base->sendInfo("recursing");
+
+    } else {
         auto nativeTypeMapIter = WriteHDF5::nativeTypeMap.find(typeid(T));
         std::string writeName = "/array/" + name;
-        hsize_t dims[] = {vec->size()};
+        hsize_t dims[] = {writeSize};
+        hsize_t offset[] = {writeIndex};
+        herr_t status;
+        hid_t dataSetId;
+        hid_t fileSpaceId;
+        hid_t memSpaceId;
+        hid_t writeId;
 
         // check wether the needed vector type is not supported within the nativeTypeMap
         assert(nativeTypeMapIter != WriteHDF5::nativeTypeMap.end());
 
-        //write
-        WriteHDF5::util_HDF5write(true, writeName, vec->data(), fileId, dims, nativeTypeMapIter->second);
+        // set up parallel write
+        writeId = H5Pcreate(H5P_DATASET_XFER);
+        H5Pset_dxpl_mpio(writeId, H5FD_MPIO_COLLECTIVE);
 
+
+        // allocate data spaces
+        dataSetId = H5Dopen(fileId , writeName.c_str(), H5P_DEFAULT);
+        fileSpaceId = H5Dget_space(dataSetId);
+        memSpaceId = H5Screate_simple(1, dims, NULL);
+        H5Sselect_hyperslab(fileSpaceId, H5S_SELECT_SET, offset, NULL, dims, NULL);
+
+
+        // write
+        status = H5Dwrite(dataSetId, nativeTypeMapIter->second, memSpaceId, fileSpaceId, writeId, vec->data() /*+ writeIndex)*/);
+        util_checkStatus(status);
+
+        // release resources
+        H5Sclose(fileSpaceId);
+        H5Sclose(memSpaceId);
+        H5Dclose(dataSetId);
+        H5Pclose(writeId);
+        }
+}
+
+// SHM VECTOR WRITER - WRITE DUMMY
+// * handles synchronisation and writing to the dummy object if no ShmVector is available to write
+//-------------------------------------------------------------------------
+void WriteHDF5::ShmVectorWriter::writeDummy() {
+    unsigned totalWriteSize; // in bytes
+    unsigned zero = 0;
+
+    boost::mpi::all_reduce(commPtr, zero, totalWriteSize, std::plus<unsigned>());
+
+    // handle synchronisation of collective writes when over 2gb mpio limit
+    for (unsigned i = 0; i < (unsigned) std::ceil((long double) totalWriteSize / (BYTES_IN_GB * MAX_WRITE_GB)); i++) {
+        WriteHDF5::util_HDF5write(fileId);
     }
+
 }
 
 // MEMBER COUNTER - << OPERATOR: UNSPECIALIZED
@@ -361,12 +447,23 @@ WriteHDF5::MetaToArrayArchive & WriteHDF5::MetaToArrayArchive::operator<<(T cons
 }
 
 // META TO ARRAY - << OPERATOR: NVP
+// * saves Meta member value into appropriate variable
 //-------------------------------------------------------------------------
 template<class T>
 WriteHDF5::MetaToArrayArchive & WriteHDF5::MetaToArrayArchive::operator<<(const boost::serialization::nvp<T> & t) {
+    std::string memberName(t.name());
 
-    m_array[m_insertIndex] = (double) t.const_value();
-    m_insertIndex++;
+    if (memberName == "block") {
+        m_block = t.const_value();
+
+    } else if (memberName == "timestep") {
+        m_timestep = t.const_value();
+
+    } else {
+        m_array[m_insertIndex] = (double) t.const_value();
+        m_insertIndex++;
+
+    }
 
     return *this;
 }
