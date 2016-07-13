@@ -38,8 +38,6 @@ class StructuredToUnstructured : public vistle::Module {
                                const Cartesian3<vistle::Index> numVertices);
    void compute_rectilinearVecs(vistle::RectilinearGrid::const_ptr obj, vistle::UnstructuredGrid::ptr unstrGridOut,
                                    const Cartesian3<vistle::Index> numVertices);
-   void compute_structuredVecs(vistle::StructuredGrid::const_ptr obj, vistle::UnstructuredGrid::ptr unstrGridOut,
-                               const vistle::Index numVerticesTotal);
 
    // private constant members
    const vistle::Index M_NUM_CORNERS_HEXAHEDRON = 8;

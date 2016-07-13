@@ -81,7 +81,8 @@ bool StructuredToUnstructured::compute() {
                 grid->getNumDivisions(2)
                 );
 
-    UnstructuredGrid::ptr unstrGridOut(new UnstructuredGrid(numElements, numCorners, numVerticesTotal));
+    auto structuredGrid = StructuredGrid::as(gridObj);
+    UnstructuredGrid::ptr unstrGridOut(new UnstructuredGrid(numElements, numCorners, structuredGrid ? 0 : numVerticesTotal));
 
     // construct type list and element list
     for (Index i = 0; i < numElements; i++) {
@@ -123,7 +124,9 @@ bool StructuredToUnstructured::compute() {
     } else if (auto rectilinearGrid = RectilinearGrid::as(gridObj)) {
         compute_rectilinearVecs(rectilinearGrid, unstrGridOut, numVertices);
     } else if (auto structuredGrid = StructuredGrid::as(gridObj)) {
-        compute_structuredVecs(structuredGrid, unstrGridOut, numVerticesTotal);
+        for (int c=0; c<3; ++c) {
+            unstrGridOut->d()->x[c] = structuredGrid->d()->x[c];
+        }
     } else {
         sendInfo("Error: Unable to convert Structured Grid Base object to a leaf data type");
         return true;
@@ -147,7 +150,6 @@ bool StructuredToUnstructured::compute() {
 //-------------------------------------------------------------------------
 void StructuredToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, UnstructuredGrid::ptr unstrGridOut,
                                                    const Cartesian3<Index> numVertices) {
-    const Index numElements = obj->getNumElements();
     const Cartesian3<Scalar> min = Cartesian3<Scalar>(
                 obj->min()[0],
                 obj->min()[1],
@@ -201,19 +203,4 @@ void StructuredToUnstructured::compute_rectilinearVecs(RectilinearGrid::const_pt
     }
 
     return;
-}
-
-// COMPUTE HELPER FUNCTION - PROCESS STRUCTURED GRID OBJECT
-//-------------------------------------------------------------------------
-void StructuredToUnstructured::compute_structuredVecs(StructuredGrid::const_ptr obj, UnstructuredGrid::ptr unstrGridOut,
-                                                      const Index numVerticesTotal) {
-
-    for (Index i = 0; i < numVerticesTotal; i++) {
-        unstrGridOut->x()[i] = obj->x()[i];
-        unstrGridOut->y()[i] = obj->y()[i];
-        unstrGridOut->z()[i] = obj->z()[i];
-    }
-
-    return;
-
 }
