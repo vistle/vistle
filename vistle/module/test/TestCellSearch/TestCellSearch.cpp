@@ -31,46 +31,32 @@ bool TestCellSearch::compute() {
    const Vector point = m_point->getValue();
 
    const GridInterface *grid = expectInterface<GridInterface>("data_in");
-#if 0
-   UnstructuredGrid::const_ptr unstr = accept<UnstructuredGrid>("data_in");
-   StructuredGridBase::const_ptr strb = accept<StructuredGridBase>("data_in");
-   Object::const_ptr gridObj;
-   if (unstr) {
-       grid = dynamic_cast<const GridInterface *>(unstr.get());
-       gridObj = unstr;
-   } else if (strb) {
-       grid = dynamic_cast<const GridInterface *>(strb.get());
-       gridObj = boost::static_pointer_cast<const Object>(strb);
-   } else {
-       sendInfo("Unstructured or structured grid required");
-       return true;
-   }
-#else
    if (!grid) {
        sendInfo("Unstructured or structured grid required");
        return true;
    }
    auto gridObj = grid->object();
    auto celltree = gridObj->getInterface<CelltreeInterface<3>>();
-#endif
 
    if (m_createCelltree->getValue()) {
        if (celltree) {
-           celltree->getCelltree();
-           if (!celltree->validateCelltree()) {
-               std::cerr << "celltree validation failed" << std::endl;
+           if (!celltree->hasCelltree()) {
+               celltree->getCelltree();
+               if (!celltree->validateCelltree()) {
+                   sendInfo("celltree validation failed for block %d", (int)gridObj->getBlock());
+               }
            }
        }
    }
    Index idx = grid->findCell(point);
    if (idx != InvalidIndex) {
-      m_block->setValue(gridObj->getBlock());
-      m_cell->setValue(idx);
+       setParameter(m_block, (Integer)gridObj->getBlock());
+       setParameter(m_cell, (Integer)idx);
 
-      const auto bounds = grid->cellBounds(idx);
-      const auto &min = bounds.first, &max = bounds.second;
+       const auto bounds = grid->cellBounds(idx);
+       const auto &min = bounds.first, &max = bounds.second;
 
-      std::cerr << "found cell " << idx << " (block " << gridObj->getBlock() << "): bounds: min " << min.transpose() << ", max " << max.transpose() << std::endl;
+       std::cerr << "found cell " << idx << " (block " << gridObj->getBlock() << "): bounds: min " << min.transpose() << ", max " << max.transpose() << std::endl;
    }
 
    return true;
