@@ -4,14 +4,15 @@
 #include <string>
 #include <map>
 #include <list>
+
 #include <util/enum.h>
-#include "object.h"
+#include <core/object.h>
 
 namespace vistle {
 
 typedef std::list<vistle::Object::const_ptr> ObjectList;
 
-class V_COREEXPORT ObjectCache {
+class ObjectCache {
 
    public:
       DEFINE_ENUM_WITH_STRING_CONVERSIONS(CacheMode,

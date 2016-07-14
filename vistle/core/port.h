@@ -4,13 +4,19 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <list>
 #include <ostream>
 
+#include <boost/shared_ptr.hpp>
+
 #include <util/enum.h>
-#include "objectcache.h"
 #include "export.h"
 
 namespace vistle {
+
+class Object;
+typedef boost::shared_ptr<const Object> obj_const_ptr;
+typedef std::list<obj_const_ptr> ObjectList;
 
 template <class T>
 struct deref_compare: std::binary_function<T*, T*, bool> {

@@ -12,7 +12,6 @@
 #include <boost/mpl/vector.hpp>
 
 #include "shm.h"
-#include "object.h"
 
 namespace vistle {
 class oarchive;

@@ -37,9 +37,10 @@
 #include <core/messagequeue.h>
 #include <core/parameter.h>
 #include <core/shm.h>
-#include <core/objectcache.h>
 #include <core/port.h>
 #include <core/statetracker.h>
+
+#include "objectcache.h"
 
 #ifndef TEMPLATES_IN_HEADERS
 #define VISTLE_IMPL

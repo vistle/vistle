@@ -5,7 +5,6 @@ set(core_SOURCES
    shm.cpp
    shm_reference.cpp
    shm_obj_ref.cpp
-   objectcache.cpp
    objectmeta.cpp
    object.cpp
    allobjects.cpp # just one file including all the others for faster compilation
@@ -76,7 +75,6 @@ set(core_HEADERS
    normals_impl.h
    object.h
    object_impl.h
-   objectcache.h
    objectmeta.h
    objectmeta_impl.h
    parameter.h
