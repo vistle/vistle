@@ -4,6 +4,8 @@
 #include "archives.h"
 #include "cellalgorithm.h"
 
+//#define INTERPOL_DEBUG
+
 namespace vistle {
 
 /* cell types:
@@ -292,6 +294,7 @@ Vector2 bilinearInverse(const Vector &p0, const Vector p[4]) {
 
 bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal) {
 
+   // project into 2D and transform point into origin
    Index max = 0;
    normal.cwiseAbs().maxCoeff(&max);
    int c1=0, c2=1;
@@ -310,17 +313,25 @@ bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorn
       corners2[i] -= point2;
    }
 
-#ifdef INTERPOL_DEBUG
-   std::cerr << "inside: normal: " << normal.transpose() << ", point: " << point.transpose() << ", p2: " << point2.transpose() << std::endl;
-#endif
-
+   // check whether edges pass the origin at the same side
+   Scalar sign(0);
    for (Index i=0; i<nCorners; ++i) {
       Vector2 n = corners2[(i+1)%nCorners] - corners2[i];
       std::swap(n[0],n[1]);
       n[0] *= -1;
-      if (n.dot(corners2[i]) < 0)
+      if (i==0) {
+          sign = n.dot(corners2[i]);
+      } else if (n.dot(corners2[i])*sign < 0) {
+#ifdef INTERPOL_DEBUG
+         std::cerr << "outside: normal: " << normal.transpose() << ", point: " << point.transpose() << ", p2: " << point2.transpose() << std::endl;
+#endif
          return false;
+      }
    }
+
+#ifdef INTERPOL_DEBUG
+   std::cerr << "inside: normal: " << normal.transpose() << ", point: " << point.transpose() << ", p2: " << point2.transpose() << std::endl;
+#endif
 
    return true;
 }
@@ -470,9 +481,6 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             break;
          }
          case POLYHEDRON: {
-            // not yet implemented - fall back to Nearest
-            mode = Nearest;
-            break;
 
             /* subdivide n-hedron into n pyramids with tip at the center,
                interpolate within pyramid containing point */
@@ -485,6 +493,9 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             for (Index i=0; i<nvert; ++i) {
                const Index k = cl[i];
                indices[i] = k;
+               for (int c=0; c<3; ++c) {
+                  coord[i][c] = x[c][k];
+               }
                if (k == startVert) {
                   startVert = InvalidIndex;
                   ++nfaces;
@@ -493,14 +504,12 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                if (startVert == InvalidIndex) {
                   startVert = k;
                }
-               for (int c=0; c<3; ++c) {
-                  coord[i][c] = x[c][k];
-               }
                center += coord[i];
             }
             center /= (nvert-nfaces);
 #ifdef INTERPOL_DEBUG
             std::cerr << "center: " << center.transpose() << std::endl;
+            assert(inside(elem, center));
 #endif
 
             // find face that is hit by ray from polyhedron center through query point
@@ -515,16 +524,17 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                if (k == startVert) {
                   startVert = InvalidIndex;
                   const Vector dir = point-center;
-                  scale = normal.dot(coord[startIndex]-center)/normal.dot(dir);
+                  scale = normal.dot(dir) / normal.dot(coord[startIndex]-center);
 #ifdef INTERPOL_DEBUG
-                  std::cerr << "face: vert=" << i << ", scale=" << scale << std::endl;
+                  std::cerr << "face: endvert=" << i << ", numvert=" << i-startIndex << ", scale=" << scale << std::endl;
 #endif
-                  assert(scale >= 1 || scale <= 0); // otherwise, point is outside of the polyhedron
-                  if (scale >= 1) {
-                     isect = center + scale * dir;
+                  assert(scale <= 1); // otherwise, point is outside of the polyhedron
+                  if (scale > 0) {
+                     isect = center + dir/scale;
+                     std::cerr << "isect: " << isect.transpose() << std::endl;
                      if (insideConvexPolygon(isect, &coord[startIndex], nFaceVert, normal)) {
 #ifdef INTERPOL_DEBUG
-                        std::cerr << "found: normal: " << normal.transpose() << ", first: " << coord[startIndex].transpose() << ", dir: " << dir.transpose() << ", isect: " << isect.transpose() << std::endl;
+                        std::cerr << "found face: normal: " << normal.transpose() << ", first: " << coord[startIndex].transpose() << ", dir: " << dir.transpose() << ", isect: " << isect.transpose() << std::endl;
 #endif
                         foundFace = true;
                         break;
@@ -547,7 +557,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
 
             if (foundFace) {
                // compute contribution of polyhedron center
-               Scalar centerWeight = 1 - 1/scale;
+               Scalar centerWeight = 1 - scale;
 #ifdef INTERPOL_DEBUG
                std::cerr << "center weight: " << centerWeight << ", scale: " << scale << std::endl;
 #endif
@@ -587,10 +597,10 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                   weights[startIndex+2] += (1-w[0]-w[1]) * (1-centerWeight);
                } else if (nFaceVert == 4) {
                   Vector2 ss = bilinearInverse(isect, &coord[startIndex]);
-                  weights[startIndex] = (1-ss[0])*(1-ss[1])*(1-centerWeight);
-                  weights[startIndex+1] = ss[0]*(1-ss[1])*(1-centerWeight);
-                  weights[startIndex+2] = ss[0]*ss[1]*(1-centerWeight);
-                  weights[startIndex+3] = (1-ss[0])*ss[1]*(1-centerWeight);
+                  weights[startIndex] += (1-ss[0])*(1-ss[1])*(1-centerWeight);
+                  weights[startIndex+1] += ss[0]*(1-ss[1])*(1-centerWeight);
+                  weights[startIndex+2] += ss[0]*ss[1]*(1-centerWeight);
+                  weights[startIndex+3] += (1-ss[0])*ss[1]*(1-centerWeight);
                } else {
                   // compute center of face and subdivide face into triangles
                   Vector3 faceCenter(0, 0, 0);
@@ -600,14 +610,14 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                   faceCenter /= nFaceVert;
 
                   Scalar sum = 0;
-                  std::vector<Scalar> weights(nFaceVert);
+                  std::vector<Scalar> fweights(nFaceVert);
                   for (Index i=0; i<nFaceVert; ++i) {
                      Scalar centerDist = (coord[i] - faceCenter).norm();
-                     weights[i] = 1/centerDist;
-                     sum += weights[i];
+                     fweights[i] = 1/centerDist;
+                     sum += fweights[i];
                   }
                   for (Index i=0; i<nFaceVert; ++i) {
-                     weights[i+startIndex] += weights[i]/sum*(1-centerWeight);
+                     weights[i+startIndex] += fweights[i]/sum*(1-centerWeight);
                   }
                }
             }

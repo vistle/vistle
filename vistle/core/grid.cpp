@@ -21,7 +21,7 @@ bool GridInterface::Interpolator::check() const {
 #endif
     {
         if (!ok) {
-            std::cerr << "PROBLEM: ";
+            std::cerr << "GridInterface::Interpolator: PROBLEM: ";
         }
         std::cerr << "weights:";
         for (const auto w: weights) {
