@@ -1,20 +1,6 @@
 #ifndef MESSAGEROUTER_H
 #define MESSAGEROUTER_H
 
-#include <string>
-#include <array>
-
-#include <boost/asio/ip/address.hpp>
-#include <boost/asio/ip/address_v6.hpp>
-#include <boost/asio/ip/address_v4.hpp>
-
-#include <util/enum.h>
-#include <util/directory.h>
-#include "uuid.h"
-#include "object.h"
-#include "scalar.h"
-#include "paramvector.h"
-#include "parameter.h"
 #include "messages.h"
 #include "export.h"
 

@@ -1,8 +1,5 @@
 #include "message.h"
 #include "messagerouter.h"
-#include "shm.h"
-#include "parameter.h"
-#include "port.h"
 
 
 namespace vistle {
