@@ -23,9 +23,6 @@ class Vec: public DataBase {
    typedef typename shm<T>::array array;
    typedef T Scalar;
    typedef typename VistleScalarVector<Dim>::type Vector;
-#if 0
-   typedef vistle::Celltree<Scalar, Index, Dim> Celltree;
-#endif
 
    Vec(const Index size,
         const Meta &meta=Meta());
@@ -47,10 +44,6 @@ class Vec: public DataBase {
    const T *w() const { return m_x[3]; }
 
    std::pair<Vector, Vector> getMinMax() const;
-
-#if 0
-   bool validateCelltree() const;
-#endif
 
  private:
    mutable const T *m_x[MaxDim];

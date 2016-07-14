@@ -2,9 +2,6 @@
 #include "assert.h"
 #include "indexed.h"
 #include "triangles.h"
-#if 0
-#include "celltree_impl.h"
-#endif
 #include "archives.h"
 
 #include <boost/mpl/vector.hpp>
@@ -27,11 +24,7 @@ bool DataBase::checkImpl() const {
    if (grid()) {
        V_CHECK(grid()->check());
    }
-#if 0
-   if (hasCelltree()) {
-       V_CHECK(getCelltree()->check());
-   }
-#endif
+
    V_CHECK(mapping()==Unspecified || mapping()==Vertex || mapping()==Element);
    return true;
 }
@@ -42,37 +35,6 @@ void DataBase::copyAttributes(Object::const_ptr src, bool replace) {
         setMapping(d->mapping());
     }
 }
-
-#if 0
-bool DataBase::hasCelltree() const {
-
-   return hasAttachment("celltree");
-}
-
-Object::const_ptr DataBase::getCelltree() const {
-
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
-   if (!hasAttachment("celltree")) {
-      if (!grid()) {
-         return Object::ptr();
-      }
-
-      if (auto g = Indexed::as(grid())) {
-         createCelltree(g->getNumElements(), &g->el()[0], &g->cl()[0]);
-      }
-   }
-
-   Object::const_ptr ct = getAttachment("celltree");
-   vassert(ct);
-   return ct;
-}
-
-void DataBase::createCelltree(Index nelem, const Index *el, const Index *cl) const {
-   (void)nelem;
-   (void)el;
-   (void)cl;
-}
-#endif
 
 DataBase::Data::Data(Type id, const std::string &name, const Meta &meta)
    : DataBase::Base::Data(id, name, meta)

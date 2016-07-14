@@ -40,23 +40,6 @@ public:
    std::vector<S> m_min, m_max;
    S &x, &y, &z, &w;
 
-#if 0
-   // negate
-   ParameterVector operator-() const;
-
-   // scalar multiplication
-   ParameterVector operator*(S const & rhs) const;
-
-   // vector addition
-   ParameterVector operator+(ParameterVector const & rhs) const;
-
-   // vector supstraction
-   ParameterVector operator-(ParameterVector const & rhs) const;
-
-   // scalar product
-   S operator*(ParameterVector const & rhs) const;
-#endif
-
    S *data() { return v.data(); }
    const S *data() const { return v.data(); }
 

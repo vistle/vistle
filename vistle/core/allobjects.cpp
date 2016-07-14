@@ -70,10 +70,6 @@ namespace {
             boost::serialization::void_cast_register<Indexed, Indexed::Base>
                (static_cast<Indexed *>(NULL), static_cast<Indexed::Base *>(NULL));
 
-#if 0
-            boost::serialization::void_cast_register<StructuredGridBase, StructuredGridBase::Base>
-               (static_cast<StructuredGridBase *>(NULL), static_cast<StructuredGridBase::Base *>(NULL));
-#endif
          }
    };
    static RegisterObjectTypeRelations registerObjectTypeRelations;

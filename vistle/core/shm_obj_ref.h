@@ -109,14 +109,6 @@ class shm_obj_ref {
        return valid();
    }
 
-#if 0
-   T &operator*();
-   const T &operator*() const;
-
-   T *operator->();
-   const T *operator->() const;
-#endif
-
    const shm_name_t &name() const {
        return m_name;
    }

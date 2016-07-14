@@ -36,11 +36,6 @@ class shm_ref {
     : m_name(name)
     , m_p(shm<T>::find(name))
     {
-#if 0
-        if (!m_p) {
-            m_p = shm<T>::construct(m_name)(Shm::the().allocator());
-        }
-#endif
         ref();
     }
 
@@ -48,22 +43,12 @@ class shm_ref {
         unref();
     }
 
-#if 0
-    template<typename... Args>
-    shm_ref(const Args&... args)
-    : m_name(Shm::the().createArrayId())
-    , m_p(shm<T>::construct(m_name)(args..., Shm::the().allocator()))
-    {
-        ref();
-    }
-#else
     template<typename... Args>
     static shm_ref create(const Args&... args) {
        shm_ref result;
        result.construct(args...);
        return result;
     }
-#endif
 
     bool find() {
         assert(!m_name.empty());

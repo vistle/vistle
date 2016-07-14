@@ -451,10 +451,6 @@ class V_COREEXPORT SetParameter: public Message {
       bool isInitialization() const;
       void setModule(int );
       int getModule() const;
-#if 0
-      void setReply();
-      bool isReply() const;
-#endif
       bool setType(int type);
 
       void setRangeType(int rt);

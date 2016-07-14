@@ -6,9 +6,6 @@
 #include "shm.h"
 #include "object.h"
 #include "vector.h"
-#if 0
-#include "celltree.h"
-#endif
 
 
 namespace vistle {
@@ -24,10 +21,6 @@ public:
    virtual void setSize(const Index size);
    Object::const_ptr grid() const;
    void setGrid(Object::const_ptr grid);
-#if 0
-   bool hasCelltree() const;
-   Object::const_ptr getCelltree() const;
-#endif
    Mapping guessMapping(Object::const_ptr grid=Object::const_ptr()) const; //< if Unspecified, try to derive a mapping based on array and grid size
    Mapping mapping() const;
    void setMapping(Mapping m);

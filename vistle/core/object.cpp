@@ -129,16 +129,6 @@ const char *Object::toString(Type v) {
         const char *scalstr = "(invalid)";
         if (scalidx < ScalarTypeNames.size())
             scalstr = ScalarTypeNames[scalidx];
-#if 0
-        switch (scalidx) {
-        case 0: scalstr = "unsigned char"; break;
-        case 1: scalstr = "int"; break;
-        case 2: scalstr = "unsigned int"; break;
-        case 3: scalstr = "size_t"; break;
-        case 4: scalstr = "float"; break;
-        case 5: scalstr = "double"; break;
-        }
-#endif
         snprintf(buf, sizeof(buf), "VEC<%s,%d>", scalstr, dim);
     }
 

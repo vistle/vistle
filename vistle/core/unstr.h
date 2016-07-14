@@ -58,46 +58,6 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
    Index findCell(const Vector &point, bool acceptGhost=false) const override;
    bool inside(Index elem, const Vector &point) const override;
 
-#if 0
-   class Interpolator {
-      friend class UnstructuredGrid;
-      std::vector<Scalar> weights;
-      std::vector<Index> indices;
-      Interpolator() {}
-      Interpolator(std::vector<Scalar> &weights, std::vector<Index> &indices)
-#if __cplusplus >= 201103L
-      : weights(std::move(weights)), indices(std::move(indices))
-#else
-      : weights(weights), indices(indices)
-#endif
-      {}
-
-    public:
-      Scalar operator()(const Scalar *field) const {
-         Scalar ret(0);
-         for (size_t i=0; i<weights.size(); ++i)
-            ret += field[indices[i]] * weights[i];
-         return ret;
-      }
-
-      Vector3 operator()(const Scalar *f0, const Scalar *f1, const Scalar *f2) const {
-         Vector3 ret(0, 0, 0);
-         for (size_t i=0; i<weights.size(); ++i) {
-            const Index ind(indices[i]);
-            const Scalar w(weights[i]);
-            ret += Vector3(f0[ind], f1[ind], f2[ind]) * w;
-         }
-         return ret;
-      }
-   };
-
-   DEFINE_ENUM_WITH_STRING_CONVERSIONS(InterpolationMode, (First) // value of first vertex
-         (Mean) // mean value of all vertices
-         (Nearest) // value of nearest vertex
-         (Linear) // barycentric/multilinear interpolation
-         );
-#endif
-
    Interpolator getInterpolator(Index elem, const Vector &point, Mapping mapping=Vertex, InterpolationMode mode=Linear) const override;
 
  private:

@@ -4,10 +4,8 @@
 #include <atomic>
 #include <boost/type_traits.hpp>
 
-#if 1
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/array.hpp>
-#endif
 
 #include <util/exception.h>
 #include "export.h"

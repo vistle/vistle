@@ -833,18 +833,6 @@ int SetParameter::getModule() const {
    return m_module;
 }
 
-#if 0
-void SetParameter::setReply() {
-
-   reply = true;
-}
-
-bool SetParameter::isReply() const {
-
-   return reply;
-}
-#endif
-
 void SetParameter::setRangeType(int rt) {
 
    vassert(rt >= Parameter::Minimum);
