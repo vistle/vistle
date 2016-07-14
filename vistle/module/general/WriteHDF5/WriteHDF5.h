@@ -47,6 +47,9 @@ class WriteHDF5 : public vistle::Module {
    ~WriteHDF5();
 
  private:
+   // typedefs
+   // IndexTracker: maps: origin (vector) -> timestep (map) -> block (map) -> variants (unsigned)
+   typedef std::vector<std::unordered_map<int, std::unordered_map<int, unsigned>>> IndexTracker;
 
    // structs/functors
    struct ReservationInfoShmEntry;
@@ -78,6 +81,8 @@ class WriteHDF5 : public vistle::Module {
    bool m_isRootNode;
    bool m_hasObject;
    std::unordered_map<std::string, bool> m_arrayMap;
+   std::unordered_set<std::string> m_objectSet;
+   IndexTracker m_indexTracker;
 
 
    // private member constants
@@ -214,8 +219,6 @@ class WriteHDF5::MetaToArrayArchive {
 private:
     std::vector<double> m_array;
     unsigned m_insertIndex;
-    int m_block;
-    int m_timestep;
 
 public:
     static const int numExclusiveMembers;
@@ -244,8 +247,6 @@ public:
 
     // get functions
     double * getDataPtr() { return m_array.data(); }
-    int getBlock() const { return m_block; }
-    int getTimestep() const { return m_timestep; }
 };
 
 // static memeber out-of-class declaration
@@ -400,7 +401,7 @@ void WriteHDF5::ShmVectorWriter::writeRecursive(const vistle::ShmVector<T> & vec
 
 
         // write
-        status = H5Dwrite(dataSetId, nativeTypeMapIter->second, memSpaceId, fileSpaceId, writeId, vec->data() /*+ writeIndex)*/);
+        status = H5Dwrite(dataSetId, nativeTypeMapIter->second, memSpaceId, fileSpaceId, writeId, vec->data() + writeIndex);
         util_checkStatus(status);
 
         // release resources
@@ -453,16 +454,9 @@ template<class T>
 WriteHDF5::MetaToArrayArchive & WriteHDF5::MetaToArrayArchive::operator<<(const boost::serialization::nvp<T> & t) {
     std::string memberName(t.name());
 
-    if (memberName == "block") {
-        m_block = t.const_value();
-
-    } else if (memberName == "timestep") {
-        m_timestep = t.const_value();
-
-    } else {
+    if (memberName != "block" && memberName != "timestep") {
         m_array[m_insertIndex] = (double) t.const_value();
         m_insertIndex++;
-
     }
 
     return *this;
