@@ -9,6 +9,7 @@
 #include "message.h"
 #include "messagequeue.h"
 #include "shm.h"
+#include "assert.h"
 
 using namespace boost::interprocess;
 

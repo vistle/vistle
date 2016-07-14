@@ -9,7 +9,9 @@ set(core_SOURCES
    object.cpp
    allobjects.cpp # just one file including all the others for faster compilation
    message.cpp
+   messages.cpp
    messagequeue.cpp
+   messagerouter.cpp
    tcpmessage.cpp
    port.cpp
    parameter.cpp
@@ -70,7 +72,9 @@ set(core_HEADERS
    lines.h
    lines_impl.h
    message.h
+   messages.h
    messagequeue.h
+   messagerouter.h
    normals.h
    normals_impl.h
    object.h

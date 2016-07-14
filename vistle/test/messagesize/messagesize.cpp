@@ -1,4 +1,6 @@
+#include <iostream>
 #include <core/message.h>
+#include <core/messages.h>
 
 using namespace vistle;
 using namespace vistle::message;

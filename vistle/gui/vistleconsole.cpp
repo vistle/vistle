@@ -35,6 +35,7 @@
 #include "vistleconsole.h"
 #include <userinterface/pythonmodule.h>
 #include <core/message.h>
+#include <core/messages.h>
 
 #include <QApplication>
 #include <QDebug>

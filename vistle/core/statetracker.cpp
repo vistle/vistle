@@ -2,6 +2,8 @@
 #include <boost/thread.hpp>
 
 #include "message.h"
+#include "messages.h"
+#include "messagerouter.h"
 #include "parameter.h"
 #include "port.h"
 #include "porttracker.h"

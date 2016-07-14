@@ -15,6 +15,7 @@
 #include <core/object.h>
 #include <core/message.h>
 #include <core/tcpmessage.h>
+#include <core/messagerouter.h>
 #include <core/porttracker.h>
 #include <core/statetracker.h>
 #include <core/shm.h>

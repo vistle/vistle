@@ -7,6 +7,7 @@
 #include <boost/thread.hpp>
 
 #include <core/message.h>
+#include <core/messages.h>
 
 namespace vistle {
 

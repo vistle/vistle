@@ -20,6 +20,7 @@
 
 #include <core/message.h>
 #include <core/messagequeue.h>
+#include <core/messagerouter.h>
 #include <core/object.h>
 #include <core/shm.h>
 #include <core/parameter.h>

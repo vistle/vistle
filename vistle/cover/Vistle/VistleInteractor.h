@@ -3,6 +3,7 @@
 
 #include <cover/coInteractor.h>
 #include <core/message.h>
+#include <core/messages.h>
 
 class ModuleRenderObject;
 

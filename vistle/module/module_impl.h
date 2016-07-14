@@ -2,6 +2,7 @@
 #define MODULE_IMPL_H
 
 #include <core/message.h>
+#include <core/messages.h>
 
 namespace vistle {
 

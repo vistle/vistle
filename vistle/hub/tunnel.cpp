@@ -3,6 +3,9 @@
 #include <boost/thread.hpp>
 #include <boost/system/error_code.hpp>
 
+#include <core/messages.h>
+
+
 namespace asio = boost::asio;
 namespace ip = boost::asio::ip;
 
