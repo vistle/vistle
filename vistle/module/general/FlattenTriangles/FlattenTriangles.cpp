@@ -95,13 +95,13 @@ bool FlattenTriangles::compute() {
        return true;
    }
 
-   Triangles::ptr tri = in->createEmpty();
+   Triangles::ptr tri = in->cloneType();
    tri->setSize(in->getNumCorners());
    flatten(in, in, tri);
    tri->setMeta(in->meta());
    tri->copyAttributes(in);
    if (data) {
-       DataBase::ptr dout = data->createEmpty();
+       DataBase::ptr dout = data->cloneType();
        flatten(in, data, dout);
        dout->setMeta(data->meta());
        dout->copyAttributes(data);

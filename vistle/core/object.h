@@ -94,8 +94,10 @@ public:
    Object::ptr clone() const;
    virtual Object::ptr cloneInternal() const = 0;
 
-   Object::ptr createEmpty() const;
-   virtual Object::ptr createEmptyInternal() const = 0;
+   Object::ptr cloneType() const;
+   virtual Object::ptr cloneTypeInternal() const = 0;
+
+   static Object::ptr createEmpty();
 
    virtual void refresh() const; //!< refresh cached pointers from shm
    virtual bool check() const;
@@ -253,6 +255,7 @@ class ObjectTypeRegistry {
    friend struct ObjectData;
    friend Object::ptr Object::create(Object::Data *);
    public:
+   typedef Object::ptr (*CreateEmptyFunc)();
    typedef Object::ptr (*CreateFunc)(Object::Data *d);
    typedef void (*DestroyFunc)(const std::string &name);
    typedef void (*RegisterIArchiveFunc)(iarchive &ar);
@@ -264,6 +267,7 @@ class ObjectTypeRegistry {
       assert(typeMap().find(id) == typeMap().end());
 #endif
       struct FunctionTable t = {
+         O::createEmpty,
          O::createFromData,
          O::destroy,
          O::registerIArchive,
@@ -277,6 +281,7 @@ class ObjectTypeRegistry {
 
    private:
    struct FunctionTable {
+      CreateEmptyFunc createEmpty;
       CreateFunc create;
       DestroyFunc destroy;
       RegisterIArchiveFunc registerIArchive;
@@ -324,11 +329,14 @@ class ObjectTypeRegistry {
    ObjType::ptr clone() const { \
       return ObjType::as(cloneInternal()); \
    } \
-   Object::ptr createEmptyInternal() const override { \
+   ObjType::ptr cloneType() const { \
+      return ObjType::as(cloneTypeInternal()); \
+   } \
+   Object::ptr cloneTypeInternal() const override { \
       return Object::ptr(new ObjType(Object::Initialized)); \
    } \
-   ObjType::ptr createEmpty() const { \
-      return ObjType::as(createEmptyInternal()); \
+   static Object::ptr createEmpty() { \
+      return Object::ptr(new ObjType(Object::Initialized)); \
    } \
    template<class OtherType> \
    static ObjType::ptr clone(typename OtherType::ptr other) { \

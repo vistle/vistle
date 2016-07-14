@@ -274,9 +274,15 @@ Object::ptr Object::clone() const {
    return cloneInternal();
 }
 
-Object::ptr Object::createEmpty() const {
+Object::ptr Object::createEmpty() {
 
-   return createEmptyInternal();
+   vassert("cannot create generic Object" == nullptr);
+   return Object::ptr();
+}
+
+Object::ptr Object::cloneType() const {
+
+   return cloneTypeInternal();
 }
 
 void Object::refresh() const {
