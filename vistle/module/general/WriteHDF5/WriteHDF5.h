@@ -275,12 +275,12 @@ struct WriteHDF5::ShmVectorWriter {
     std::string name;
     hid_t fileId;
     const boost::mpi::communicator & commPtr;
-    WriteHDF5 * base;
 
-    const unsigned BYTES_IN_GB = 1073741824;
-    const double MAX_WRITE_GB = 2;
+    // constants
+    const long double BYTES_IN_GB = 1073741824;
+    const long double MAX_WRITE_GB = 2;
 
-    ShmVectorWriter(const boost::mpi::communicator & _commPtr, hid_t _fileId) : commPtr(_commPtr), fileId(_fileId) {}
+    ShmVectorWriter(hid_t _fileId, const boost::mpi::communicator & _commPtr) : commPtr(_commPtr), fileId(_fileId) {}
     ShmVectorWriter(std::string _name, hid_t _fileId, const boost::mpi::communicator & _commPtr)
         : name(_name), fileId(_fileId), commPtr(_commPtr) {}
 
@@ -288,7 +288,7 @@ struct WriteHDF5::ShmVectorWriter {
     void operator()(T);
 
     template<typename T>
-    void writeRecursive(const vistle::ShmVector<T> & vec, unsigned totalWriteSize, unsigned writeSize, unsigned writeIndex);
+    void writeRecursive(const vistle::ShmVector<T> & vec, long double totalWriteSize, unsigned writeSize, unsigned writeIndex);
 
     void writeDummy();
 };
@@ -354,9 +354,9 @@ void WriteHDF5::ShmVectorWriter::operator()(T) {
     const vistle::ShmVector<T> &vec = vistle::Shm::the().getArrayFromName<T>(name);
 
     if (vec) {
-        unsigned totalWriteSize; // in bytes
-        unsigned vecSize = vec->size();
-        boost::mpi::all_reduce(commPtr, vecSize, totalWriteSize, std::plus<unsigned>());
+        long double totalWriteSize; // in bytes
+        long double vecSize = vec->size();
+        boost::mpi::all_reduce(commPtr, vecSize, totalWriteSize, std::plus<long double>());
 
         // write
         writeRecursive(vec, totalWriteSize, vec->size(), 0);
@@ -367,62 +367,66 @@ void WriteHDF5::ShmVectorWriter::operator()(T) {
 // * splits up arrays to write them recursively into the hdf5 file
 //-------------------------------------------------------------------------
 template<typename T>
-void WriteHDF5::ShmVectorWriter::writeRecursive(const vistle::ShmVector<T> & vec, unsigned totalWriteSize, unsigned writeSize, unsigned writeIndex) {
+void WriteHDF5::ShmVectorWriter::writeRecursive(const vistle::ShmVector<T> & vec, long double totalWriteSize, unsigned writeSize, unsigned writeIndex) {
 
-    if ((long double) totalWriteSize / BYTES_IN_GB > MAX_WRITE_GB) {
+    if (totalWriteSize / BYTES_IN_GB > MAX_WRITE_GB) {
         writeRecursive(vec, totalWriteSize / 2, std::floor(writeSize / 2), writeIndex);
         writeRecursive(vec, totalWriteSize / 2, std::ceil(writeSize / 2), writeIndex + std::floor(writeSize / 2));
-        base->sendInfo("recursing");
 
     } else {
-        auto nativeTypeMapIter = WriteHDF5::nativeTypeMap.find(typeid(T));
-        std::string writeName = "/array/" + name;
-        hsize_t dims[] = {writeSize};
-        hsize_t offset[] = {writeIndex};
-        herr_t status;
-        hid_t dataSetId;
-        hid_t fileSpaceId;
-        hid_t memSpaceId;
-        hid_t writeId;
-
-        // check wether the needed vector type is not supported within the nativeTypeMap
-        assert(nativeTypeMapIter != WriteHDF5::nativeTypeMap.end());
-
-        // set up parallel write
-        writeId = H5Pcreate(H5P_DATASET_XFER);
-        H5Pset_dxpl_mpio(writeId, H5FD_MPIO_COLLECTIVE);
+        if (writeSize == 0) {
+            WriteHDF5::util_HDF5write(fileId);
+        } else {
+            auto nativeTypeMapIter = WriteHDF5::nativeTypeMap.find(typeid(T));
+            std::string writeName = "/array/" + name;
+            hsize_t dims[] = {writeSize};
+            hsize_t offset[] = {writeIndex};
+            herr_t status;
+            hid_t dataSetId;
+            hid_t fileSpaceId;
+            hid_t memSpaceId;
+            hid_t writeId;
 
 
-        // allocate data spaces
-        dataSetId = H5Dopen(fileId , writeName.c_str(), H5P_DEFAULT);
-        fileSpaceId = H5Dget_space(dataSetId);
-        memSpaceId = H5Screate_simple(1, dims, NULL);
-        H5Sselect_hyperslab(fileSpaceId, H5S_SELECT_SET, offset, NULL, dims, NULL);
+            // check wether the needed vector type is not supported within the nativeTypeMap
+            assert(nativeTypeMapIter != WriteHDF5::nativeTypeMap.end());
+
+            // set up parallel write
+            writeId = H5Pcreate(H5P_DATASET_XFER);
+            H5Pset_dxpl_mpio(writeId, H5FD_MPIO_COLLECTIVE);
 
 
-        // write
-        status = H5Dwrite(dataSetId, nativeTypeMapIter->second, memSpaceId, fileSpaceId, writeId, vec->data() + writeIndex);
-        util_checkStatus(status);
+            // allocate data spaces
+            dataSetId = H5Dopen(fileId , writeName.c_str(), H5P_DEFAULT);
+            fileSpaceId = H5Dget_space(dataSetId);
+            memSpaceId = H5Screate_simple(1, dims, NULL);
+            H5Sselect_hyperslab(fileSpaceId, H5S_SELECT_SET, offset, NULL, dims, NULL);
 
-        // release resources
-        H5Sclose(fileSpaceId);
-        H5Sclose(memSpaceId);
-        H5Dclose(dataSetId);
-        H5Pclose(writeId);
+
+            // write
+            status = H5Dwrite(dataSetId, nativeTypeMapIter->second, memSpaceId, fileSpaceId, writeId, vec->data() + writeIndex);
+            util_checkStatus(status);
+
+            // release resources
+            H5Sclose(fileSpaceId);
+            H5Sclose(memSpaceId);
+            H5Dclose(dataSetId);
+            H5Pclose(writeId);
         }
+    }
 }
 
 // SHM VECTOR WRITER - WRITE DUMMY
 // * handles synchronisation and writing to the dummy object if no ShmVector is available to write
 //-------------------------------------------------------------------------
 void WriteHDF5::ShmVectorWriter::writeDummy() {
-    unsigned totalWriteSize; // in bytes
-    unsigned zero = 0;
+    long double totalWriteSize; // in bytes
+    long double zero = 0;
 
-    boost::mpi::all_reduce(commPtr, zero, totalWriteSize, std::plus<unsigned>());
+    boost::mpi::all_reduce(commPtr, zero, totalWriteSize, std::plus<long double>());
 
     // handle synchronisation of collective writes when over 2gb mpio limit
-    for (unsigned i = 0; i < (unsigned) std::ceil((long double) totalWriteSize / (BYTES_IN_GB * MAX_WRITE_GB)); i++) {
+    for (unsigned i = 0; i < (unsigned) std::ceil(totalWriteSize / (BYTES_IN_GB * MAX_WRITE_GB)); i++) {
         WriteHDF5::util_HDF5write(fileId);
     }
 

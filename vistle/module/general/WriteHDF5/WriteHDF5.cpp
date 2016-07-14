@@ -151,6 +151,7 @@ bool WriteHDF5::prepare() {
     H5Pclose(filePropertyListId);
     H5Fclose(fileId);
 
+
     return Module::prepare();
 }
 
@@ -177,6 +178,7 @@ bool WriteHDF5::compute() {
     ShmVectorOArchive archive;
     m_hasObject = false;
     unsigned originPortNumber = 0;
+
 
     // ----- OBTAIN FIRST OBJECT FROM A PORT ----- //
 
@@ -230,9 +232,6 @@ bool WriteHDF5::compute() {
 
     // sort for proper collective io ordering
     std::sort(reservationInfoGatherVector.begin(), reservationInfoGatherVector.end());
-
-
-    std::string m = "--------------------------\n";
 
     // ----- RESERVE SPACE WITHIN THE HDF5 FILE ----- //
 
@@ -355,16 +354,8 @@ bool WriteHDF5::compute() {
             // close group
             status = H5Gclose(groupId);
             util_checkStatus(status);
-
-            m += groupName + "\n";
-
         }
     }
-
-
-    if (m_isRootNode)
-        sendInfo(m);
-
 
 
     // ----- WRITE DATA TO THE HDF5 FILE ----- //
@@ -388,6 +379,8 @@ bool WriteHDF5::compute() {
 
     util_HDF5write(m_hasObject, writeName, typeData, fileId, oneDims, H5T_NATIVE_INT);
 
+
+
     // reduce vector size information for collective calls
     boost::mpi::all_reduce(comm(), (unsigned) archive.getVector().size(), maxVectorSize, boost::mpi::maximum<unsigned>());
 
@@ -398,16 +391,14 @@ bool WriteHDF5::compute() {
             m_arrayMap[archive.getVector()[i]] = true;
 
             ShmVectorWriter shmVectorWriter(archive.getVector()[i], fileId, comm());
-            shmVectorWriter.base = this;
             boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorWriter>(shmVectorWriter));
-
         } else {
-            // this node does not have an object to be written
-             ShmVectorWriter shmVectorWriter(comm(), fileId);
-             shmVectorWriter.base = this;
+             // this node does not have an object to be written
+             ShmVectorWriter shmVectorWriter(fileId, comm());
              shmVectorWriter.writeDummy();
 
         }
+
     }
 
 
