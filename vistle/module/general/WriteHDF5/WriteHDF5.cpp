@@ -134,6 +134,14 @@ bool WriteHDF5::prepare() {
     H5Sclose(fileSpaceId);
     H5Dclose(dataSetId);
 
+    // store number of ports
+    hsize_t oneDims[] = {1};
+    const std::string numPortsName("/file/numPorts");
+    fileSpaceId = H5Screate_simple(1, oneDims, NULL);
+    dataSetId = H5Dcreate(fileId, numPortsName.c_str(), H5T_NATIVE_UINT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    H5Sclose(fileSpaceId);
+    H5Dclose(dataSetId);
+    util_HDF5write(m_isRootNode, numPortsName.c_str(), &m_numPorts, fileId, oneDims, H5T_NATIVE_UINT);
 
     // create folders for ports
     for (unsigned i = 0; i < m_numPorts; i++) {
