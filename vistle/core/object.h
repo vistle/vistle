@@ -268,15 +268,21 @@ struct ObjectData {
 };
 
 
-class ObjectTypeRegistry {
-   friend struct ObjectData;
-   friend Object::ptr Object::create(Object::Data *);
-   public:
+class V_COREEXPORT ObjectTypeRegistry {
+public:
    typedef Object::ptr (*CreateEmptyFunc)();
    typedef Object::ptr (*CreateFunc)(Object::Data *d);
    typedef void (*DestroyFunc)(const std::string &name);
    typedef void (*RegisterIArchiveFunc)(iarchive &ar);
    typedef void (*RegisterOArchiveFunc)(oarchive &ar);
+
+   struct FunctionTable {
+       CreateEmptyFunc createEmpty;
+       CreateFunc create;
+       DestroyFunc destroy;
+       RegisterIArchiveFunc registerIArchive;
+       RegisterOArchiveFunc registerOArchive;
+   };
 
    template<class O>
    static void registerType(int id) {
@@ -296,20 +302,15 @@ class ObjectTypeRegistry {
    template<class Archive>
    static void registerArchiveType(Archive &ar);
 
-   private:
-   struct FunctionTable {
-      CreateEmptyFunc createEmpty;
-      CreateFunc create;
-      DestroyFunc destroy;
-      RegisterIArchiveFunc registerIArchive;
-      RegisterOArchiveFunc registerOArchive;
-   };
    static const struct FunctionTable &getType(int id);
+
+   static CreateFunc getCreator(int id);
+   static DestroyFunc getDestroyer(int id);
+
+private:
    typedef std::map<int, FunctionTable> TypeMap;
 
    static TypeMap &typeMap();
-   static CreateFunc getCreator(int id);
-   static DestroyFunc getDestroyer(int id);
 };
 
 //! use in checkImpl
