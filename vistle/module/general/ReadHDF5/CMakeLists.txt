@@ -18,11 +18,11 @@ link_directories(
         ${HDF5_LIBRARY_DIRS}
 )
 
-add_module(WriteHDF5 WriteHDF5.cpp HDF5Objects.h)
+add_module(ReadHDF5 ReadHDF5.cpp)
 
 use_openmp()
 
-target_link_libraries(WriteHDF5
+target_link_libraries(ReadHDF5
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
 	${HDF5_LIBRARIES}
