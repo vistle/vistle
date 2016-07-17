@@ -10,6 +10,8 @@
 #include <core/assert.h>
 #include "cellalgorithm.h"
 
+#define INTERPOL_DEBUG
+
 namespace vistle {
 
 // CONSTRUCTOR
@@ -230,7 +232,7 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
 
    const Scalar *x[3] = { &this->x()[0], &this->y()[0], &this->z()[0] };
    Vector corners[nvert];
-   for (int i=0; i<nvert; ++i) {
+   for (Index i=0; i<nvert; ++i) {
        corners[i][0] = x[0][cl[i]];
        corners[i][1] = x[1][cl[i]];
        corners[i][2] = x[2][cl[i]];
@@ -247,6 +249,9 @@ GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Ve
        }
    } else if (mode == Linear) {
        vassert(nvert == 8);
+       for (Index i=0; i<nvert; ++i) {
+           indices[i] = cl[i];
+       }
        const Vector ss = trilinearInverse(point, corners);
        weights[0] = (1-ss[0])*(1-ss[1])*(1-ss[2]);
        weights[1] = ss[0]*(1-ss[1])*(1-ss[2]);
