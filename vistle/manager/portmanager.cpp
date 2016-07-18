@@ -14,19 +14,18 @@ PortManager::PortManager(ClusterManager *clusterManager)
 PortManager::~PortManager() {
 }
 
-Port * PortManager::getPort(const int moduleID,
-                            const std::string & name) const {
+const Port *PortManager::getPort(const int moduleID, const std::string & name) {
 
-   if (Port *p = PortTracker::getPort(moduleID, name))
+   if (const Port *p = PortTracker::getPort(moduleID, name))
       return p;
 
    std::string::size_type p = name.find('[');
    if (p != std::string::npos) {
-      Port *parent = getPort(moduleID, name.substr(0, p-1));
+      Port *parent = findPort(moduleID, name.substr(0, p-1));
       if (parent && (parent->flags() & Port::MULTI)) {
          size_t idx=boost::lexical_cast<size_t>(name.substr(p+1));
-         Port *port = parent->child(idx);
-         m_clusterManager->sendMessage(moduleID, message::AddPort(port));
+         const Port *port = parent->child(idx);
+         m_clusterManager->sendMessage(moduleID, message::AddPort(*port));
          return port;
       }
    }
@@ -35,7 +34,7 @@ Port * PortManager::getPort(const int moduleID,
 }
 
 //! remove all connections to and from ports to a module
-std::vector<message::Buffer> PortManager::removePort(Port *port) {
+std::vector<message::Buffer> PortManager::removePort(const Port &port) {
 
    std::vector<message::Buffer> msgs = PortTracker::removePort(port);
    for (const auto &msg: msgs)

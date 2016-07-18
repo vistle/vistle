@@ -50,8 +50,8 @@ public:
     QPointF portPos(const Port *port) const;
     void setStatus(Module::Status status);
 
-    void addPort(vistle::Port *port);
-    void removePort(vistle::Port *port);
+    void addPort(const vistle::Port *port);
+    void removePort(const vistle::Port *port);
 
     // vistle methods
     QString name() const;
@@ -73,8 +73,8 @@ public:
     bool isPositionValid() const;
     void setPositionValid();
 
-    Port *getGuiPort(vistle::Port *port) const;
-    vistle::Port *getVistlePort(Port *port) const;
+    Port *getGuiPort(const vistle::Port *port) const;
+    const vistle::Port *getVistlePort(Port *port) const;
 
     DataFlowNetwork *scene() const;
 
@@ -111,8 +111,8 @@ private:
     QList<Port *> m_inPorts, m_outPorts, m_paramPorts;
     QColor m_color;
     qreal m_fontHeight;
-    std::map<vistle::Port *, Port *> m_vistleToGui;
-    std::map<Port *, vistle::Port *> m_guiToVistle;
+    std::map<const vistle::Port *, Port *> m_vistleToGui;
+    std::map<Port *, const vistle::Port *> m_guiToVistle;
 
     QColor m_borderColor;
 };

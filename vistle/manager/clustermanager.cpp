@@ -768,8 +768,8 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
    int modTo = disconnect.getModuleB();
    const char *portFrom = disconnect.getPortAName();
    const char *portTo = disconnect.getPortBName();
-   const Port *from = portManager().getPort(modFrom, portFrom);
-   const Port *to = portManager().getPort(modTo, portTo);
+   const Port *from = portManager().findPort(modFrom, portFrom);
+   const Port *to = portManager().findPort(modTo, portTo);
 
    if (!from) {
       CERR << " Did not find source port: " << disconnect << std::endl;
@@ -984,13 +984,13 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
    }
    vassert(!obj || (obj->refcount() >= 1 && (localAdd || synthesized)));
 
-   Port *port = portManager().getPort(addObj.senderId(), addObj.getSenderPort());
+   const Port *port = portManager().findPort(addObj.senderId(), addObj.getSenderPort());
    if (!port) {
       //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: port not found" << std::endl;
       vassert(port);
       return true;
    }
-   const Port::PortSet *list = portManager().getConnectionList(port);
+   const Port::ConstPortSet *list = portManager().getConnectionList(port);
    if (!list) {
       //CERR << "AddObject [" << addObj.objectName() << "] to port [" << addObj.getSenderPort() << "] of [" << addObj.senderId() << "]: connection list not found" << std::endl;
       vassert(list);
@@ -1139,7 +1139,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    std::set<int> receivingHubs; // ...but make sure that message is only sent once per remote hub
    if (localSender) {
       for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
-         const Port::PortSet *list = portManager().getConnectionList(output);
+         const Port::ConstPortSet *list = portManager().getConnectionList(output);
          for (const Port *destPort: *list) {
             int destId = destPort->getModuleID();
             if (!isLocal(destId)) {
@@ -1216,7 +1216,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
 
    //CERR << prog.senderId() << " ready for prepare: " << readyForPrepare << ", reduce: " << readyForReduce << std::endl;
    for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
-      const Port::PortSet *list = portManager().getConnectionList(output);
+      const Port::ConstPortSet *list = portManager().getConnectionList(output);
       for (const Port *destPort: *list) {
          if (!(destPort->flags() & Port::COMBINE)) {
             if (readyForPrepare)
@@ -1228,7 +1228,7 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
    }
 
    for (auto output: portManager().getConnectedOutputPorts(prog.senderId())) {
-      const Port::PortSet *list = portManager().getConnectionList(output);
+      const Port::ConstPortSet *list = portManager().getConnectionList(output);
       for (const Port *destPort: *list) {
          if (!(destPort->flags() & Port::COMBINE)) {
             bool allReadyForPrepare = true, allReadyForReduce = true;
@@ -1404,7 +1404,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
    if (Communicator::the().isMaster() && message::Id::isModule(dest)) {
       if (setParam.getModule() != setParam.senderId()) {
 
-         Port *port = portManager().getPort(dest, setParam.getName());
+         const Port *port = portManager().findPort(dest, setParam.getName());
          if (port && applied) {
             ParameterSet conn = m_stateTracker.getConnectedParameters(*applied);
 

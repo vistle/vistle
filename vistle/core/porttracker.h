@@ -23,27 +23,27 @@ class V_COREEXPORT PortTracker {
    void setTracker(StateTracker *tracker);
    StateTracker *tracker() const;
 
-   Port *addPort(const int moduleID, const std::string & name,
-                  const Port::Type type);
-   Port *addPort(Port *port);
-   virtual std::vector<message::Buffer> removePort(Port *port);
+   const Port *addPort(const int moduleID, const std::string & name,
+                  const Port::Type type, int flags=0);
+   const Port *addPort(const Port &port);
+   virtual std::vector<message::Buffer> removePort(const Port &port);
 
-   bool addConnection(const Port * out, const Port * in);
-   bool addConnection(const int a, const std::string & na,
-                      const int b, const std::string & nb);
+   bool addConnection(const Port &out, const Port &in);
+   bool addConnection(const int a, const std::string &na,
+                      const int b, const std::string &nb);
 
-   bool removeConnection(const Port *from, const Port *to);
-   bool removeConnection(const int a, const std::string & na,
-                         const int b, const std::string & nb);
+   bool removeConnection(const Port &from, const Port &to);
+   bool removeConnection(const int a, const std::string &na,
+                         const int b, const std::string &nb);
 
    typedef std::vector<const Port *> ConnectionList;
 
-   const Port::PortSet *getConnectionList(const Port * port) const;
-   const Port::PortSet *getConnectionList(const int moduleID,
-                                                       const std::string & name)
-      const;
+   const Port::ConstPortSet *getConnectionList(const Port *port) const;
+   const Port::ConstPortSet *getConnectionList(const int moduleID, const std::string &name) const;
 
-   virtual Port * getPort(const int moduleID, const std::string & name) const;
+   virtual const Port *getPort(const int moduleID, const std::string &name);
+   Port *findPort(const Port &p) const;
+   Port *findPort(const int moduleID, const std::string & name) const;
 
    std::vector<std::string> getPortNames(const int moduleID, Port::Type type) const;
    std::vector<std::string> getInputPortNames(const int moduleID) const;
@@ -60,7 +60,6 @@ class V_COREEXPORT PortTracker {
 
    bool check() const;
 
-   Port *getPort(const Port *p) const;
 
    StateTracker *m_stateTracker;
 

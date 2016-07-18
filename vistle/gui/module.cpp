@@ -221,7 +221,7 @@ void Module::updatePosition(QPointF newPos) const
    }
 }
 
-void Module::addPort(vistle::Port *port)
+void Module::addPort(const vistle::Port *port)
 {
    Port *guiPort = new Port(port, this);
    m_vistleToGui[port] = guiPort;
@@ -245,7 +245,7 @@ void Module::addPort(vistle::Port *port)
    doLayout();
 }
 
-void Module::removePort(vistle::Port *port)
+void Module::removePort(const vistle::Port *port)
 {
    auto vit = m_vistleToGui.find(port);
    if (vit == m_vistleToGui.end())
@@ -321,7 +321,7 @@ void Module::setPositionValid() {
    m_validPosition = true;
 }
 
-Port *Module::getGuiPort(vistle::Port *port) const {
+Port *Module::getGuiPort(const vistle::Port *port) const {
 
    const auto &it = m_vistleToGui.find(port);
    if (it == m_vistleToGui.end())
@@ -330,7 +330,7 @@ Port *Module::getGuiPort(vistle::Port *port) const {
    return it->second;
 }
 
-vistle::Port *Module::getVistlePort(Port *port) const {
+const vistle::Port *Module::getVistlePort(Port *port) const {
 
    const auto &it = m_guiToVistle.find(port);
    if (it == m_guiToVistle.end())

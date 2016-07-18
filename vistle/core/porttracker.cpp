@@ -28,17 +28,10 @@ StateTracker *PortTracker::tracker() const {
    return m_stateTracker;
 }
 
-Port * PortTracker::addPort(const int moduleID, const std::string & name,
-                          const Port::Type type) {
-   Port *port = new Port(moduleID, name, type);
-   return addPort(port);
-}
+const Port *PortTracker::addPort(const int moduleID, const std::string & name,
+                          const Port::Type type, int flags) {
 
-Port *PortTracker::addPort(Port *port) {
-
-   assert(port->getType() != Port::ANY);
-
-   const int moduleID = port->getModuleID();
+   assert(type != Port::ANY);
 
    PortMap *portMap = NULL;
    {
@@ -64,23 +57,23 @@ Port *PortTracker::addPort(Port *port) {
       assert(portOrder);
    }
 
-   PortMap::iterator pi = portMap->find(port->getName());
+   PortMap::iterator pi = portMap->find(name);
 
    if (pi == portMap->end()) {
 
-      if (port->getType() == Port::INPUT) {
-         const bool combine = port->flags() & Port::COMBINE;
+      if (type == Port::INPUT) {
+         const bool combine = flags & Port::COMBINE;
          for (auto &p: *portMap) {
             if (p.second->getType() == Port::INPUT) {
-               if ((port->flags() & Port::COMBINE) || combine) {
+               if ((flags & Port::COMBINE) || combine) {
                   CERR << "COMBINE port has to be only input port of a module" << std::endl;
-                  delete port;
                   check();
                   return nullptr;
                }
             }
          }
       }
+      Port *port = new Port(moduleID, name, type, flags);
       portMap->insert(std::make_pair(port->getName(), port));
 
       int paramNum = 0;
@@ -88,36 +81,36 @@ Port *PortTracker::addPort(Port *port) {
       if (rit != portOrder->rend())
          paramNum = rit->first+1;
       (*portOrder)[paramNum] = port->getName();
-      
+
       check();
       return port;
    } else {
       if (pi->second->getType() == Port::ANY) {
-         port->setConnections(pi->second->connections());
-         delete pi->second;
-         pi->second = port;
+          pi->second->type = type;
          check();
-         return port;
+         return pi->second;
       } else {
-         delete port;
          check();
          return pi->second;
       }
    }
+
+   return nullptr;
 }
 
-std::vector<message::Buffer> PortTracker::removePort(Port *port) {
+const Port *PortTracker::addPort(const Port &port) {
+
+   return addPort(port.getModuleID(), port.getName(), port.getType(), port.flags());
+}
+
+std::vector<message::Buffer> PortTracker::removePort(const Port &p) {
 
    std::vector<message::Buffer> ret;
-   port = getPort(port);
-   assert(port);
-   if (!port)
-       return ret;
 
-   const int moduleID = port->getModuleID();
+   const int moduleID = p.getModuleID();
    PortMap *portMap = NULL;
    {
-      std::map<int, PortMap *>::iterator i = m_ports.find(moduleID);
+      ModulePortMap::iterator i = m_ports.find(moduleID);
       if (i == m_ports.end()) {
          return ret;
       }
@@ -134,28 +127,37 @@ std::vector<message::Buffer> PortTracker::removePort(Port *port) {
       portOrder = i->second;
       assert(portOrder);
    }
+   for (auto kv: *portOrder) {
+       if (kv.second == p.getName()) {
+           portOrder->erase(kv.first);
+       }
+   }
 
-   PortMap::iterator pi = portMap->find(port->getName());
+   PortMap::iterator pi = portMap->find(p.getName());
    assert(pi != portMap->end());
    if (pi == portMap->end()) {
       return ret;
    }
+   auto port = pi->second;
+   assert(port);
+   if (!port)
+       return ret;
 
    check();
-   const Port::PortSet &cl = port->connections();
+   const Port::ConstPortSet &cl = port->connections();
    while (!cl.empty()) {
        size_t oldsize = cl.size();
        const Port *other = *cl.begin();
-       if (port->getType() != Port::INPUT && removeConnection(port, other)) {
+       if (port->getType() != Port::INPUT && removeConnection(*port, *other)) {
            message::Disconnect d1(port->getModuleID(), port->getName(), other->getModuleID(), other->getName());
            ret.push_back(d1);
        }
-       if (port->getType() != Port::OUTPUT && removeConnection(other, port)) {
+       if (port->getType() != Port::OUTPUT && removeConnection(*other, *port)) {
            message::Disconnect d2(other->getModuleID(), other->getName(), port->getModuleID(), port->getName());
            ret.push_back(d2);
        }
-       removeConnection(other, port);
-       removeConnection(port, other);
+       removeConnection(*other, *port);
+       removeConnection(*port, *other);
        check();
        if (cl.size() == oldsize) {
            CERR << "failed to remove all connections for port " << *port << ", still left: " << cl.size() << std::endl;
@@ -172,8 +174,23 @@ std::vector<message::Buffer> PortTracker::removePort(Port *port) {
    return ret;
 }
 
-Port * PortTracker::getPort(const int moduleID,
-                            const std::string & name) const {
+Port *PortTracker::findPort(const int moduleID, const std::string & name) const {
+
+   ModulePortMap::const_iterator i = m_ports.find(moduleID);
+
+   if (i != m_ports.end()) {
+      PortMap::iterator pi = i->second->find(name);
+      if (pi != i->second->end())
+         return pi->second;
+   }
+
+   return nullptr;
+}
+
+const Port *PortTracker::getPort(const int moduleID,
+                            const std::string & name) {
+    return findPort(moduleID, name);
+#if 0
 
    std::map<int, PortMap *>::const_iterator i = m_ports.find(moduleID);
 
@@ -199,17 +216,18 @@ Port * PortTracker::getPort(const int moduleID,
 #endif
 
    return NULL;
+#endif
 }
 
-Port *PortTracker::getPort(const Port *p) const {
+Port *PortTracker::findPort(const Port &p) const {
 
-   return getPort(p->getModuleID(), p->getName());
+   return findPort(p.getModuleID(), p.getName());
 }
 
-bool PortTracker::addConnection(const Port *from, const Port *to) {
+bool PortTracker::addConnection(const Port &from, const Port &to) {
 
-   Port *f = getPort(from);
-   Port *t = getPort(to);
+   Port *f = findPort(from);
+   Port *t = findPort(to);
 
    assert(f);
    assert(t);
@@ -222,7 +240,7 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
             if (t->addConnection(f)) {
                added = true;
             } else {
-               f->removeConnection(t);
+               f->removeConnection(*t);
                CERR << "PortTracker::addConnection: inconsistent connection states for data connection" << std::endl;
                check();
                return true;
@@ -239,7 +257,7 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
          if (t->addConnection(f)) {
             added = true;
          } else {
-            f->removeConnection(t);
+            f->removeConnection(*t);
             CERR << "PortTracker::addConnection: inconsistent connection states for parameter connection" << std::endl;
             check();
             return true;
@@ -247,8 +265,8 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
       }
    } else {
       CERR << "PortTracker::addConnection: incompatible types: "
-         << from->getModuleID() << ":" << from->getName() << " (" << from->getType() << ") "
-         << to->getModuleID() << ":" << to->getName() << " (" << to->getType() << ")" << std::endl;
+         << from << " (" << from.getType() << ") "
+         << to << " (" << to.getType() << ")" << std::endl;
 
       check();
       return true;
@@ -279,25 +297,25 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
 bool PortTracker::addConnection(const int a, const std::string & na,
                                 const int b, const std::string & nb) {
 
-   Port *portA = getPort(a, na);
+   Port *portA = findPort(a, na);
    if (!portA) {
       return false;
    }
-   Port *portB = getPort(b, nb);
+   Port *portB = findPort(b, nb);
    if (!portB) {
       return false;
    }
 
-   return addConnection(portA, portB);
+   return addConnection(*portA, *portB);
 }
 
-bool PortTracker::removeConnection(const Port *from, const Port *to) {
+bool PortTracker::removeConnection(const Port &from, const Port &to) {
 
-   Port *f = getPort(from);
+   Port *f = findPort(from);
    if (!f)
       return false;
 
-   Port *t = getPort(to);
+   Port *t = findPort(to);
    if (!t)
       return false;
 
@@ -306,8 +324,8 @@ bool PortTracker::removeConnection(const Port *from, const Port *to) {
    if (((ft == Port::OUTPUT || ft == Port::ANY) && (tt == Port::INPUT || tt == Port::ANY))
       || ((ft == Port::PARAMETER || ft == Port::ANY) && (tt == Port::PARAMETER || tt ==  Port::ANY))) {
 
-      f->removeConnection(t);
-      t->removeConnection(f);
+      f->removeConnection(*t);
+      t->removeConnection(*f);
 
       if (ft == Port::ANY || tt == Port::ANY) {
           CERR << "removeConnection: port type ANY: " << *f << " -> " << *t << std::endl;
@@ -325,8 +343,8 @@ bool PortTracker::removeConnection(const Port *from, const Port *to) {
       return true;
    } else {
        CERR << "removeConnection: port type mismatch: " << *f << " -> " << *t << std::endl;
-       f->removeConnection(t);
-       t->removeConnection(f);
+       f->removeConnection(*t);
+       t->removeConnection(*f);
    }
 
    check();
@@ -336,26 +354,26 @@ bool PortTracker::removeConnection(const Port *from, const Port *to) {
 bool PortTracker::removeConnection(const int a, const std::string & na,
       const int b, const std::string & nb) {
 
-   Port *from = getPort(a, na);
-   Port *to = getPort(b, nb);
+   const Port *from = findPort(a, na);
+   const Port *to = findPort(b, nb);
 
    if (!from || !to)
       return false;
 
-   return removeConnection(from, to);
+   return removeConnection(*from, *to);
 }
 
-const Port::PortSet *
+const Port::ConstPortSet *
 PortTracker::getConnectionList(const Port * port) const {
 
    return getConnectionList(port->getModuleID(), port->getName());
 }
 
-const Port::PortSet *
+const Port::ConstPortSet *
 PortTracker::getConnectionList(const int moduleID,
                                const std::string & name) const {
 
-   const Port *port = getPort(moduleID, name);
+   const Port *port = findPort(moduleID, name);
    if (!port)
       return NULL;
    return &port->connections();
@@ -451,7 +469,7 @@ std::vector<message::Buffer> PortTracker::removeModule(int moduleId) {
       }
 
       for (auto p: toRemove) {
-         auto r = removePort(p);
+         auto r = removePort(*p);
          std::copy(r.begin(), r.end(), std::back_inserter(ret));
       }
 

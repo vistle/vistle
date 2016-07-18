@@ -26,7 +26,7 @@ public:
       Output,
       };
 
-    Port(vistle::Port *port, Module *parent);
+    Port(const vistle::Port *port, Module *parent);
     Port(Type type, Module *parent);
 
     Type portType() const;
@@ -49,7 +49,7 @@ private:
     void createGeometry();
 
     Type m_portType;						//< type of port
-    vistle::Port *m_port;
+    const vistle::Port *m_port;
     QColor m_color;
     Module *m_module;
 };

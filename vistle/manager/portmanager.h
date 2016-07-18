@@ -15,8 +15,8 @@ class PortManager: public PortTracker {
    PortManager(ClusterManager *clusterManager);
    virtual ~PortManager();
 
-   virtual Port * getPort(const int moduleID, const std::string & name) const override;
-   std::vector<message::Buffer> removePort(Port *port) override;
+   virtual const Port *getPort(const int moduleID, const std::string &name) override;
+   std::vector<message::Buffer> removePort(const Port &port) override;
    std::vector<message::Buffer> removeModule(int moduleId) override;
 
    void addObject(const Port *port);

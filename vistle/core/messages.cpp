@@ -353,30 +353,28 @@ Idle::Idle()
 : Message(Message::IDLE, sizeof(Idle)) {
 }
 
-AddPort::AddPort(const Port *port)
+AddPort::AddPort(const Port &port)
 : Message(Message::ADDPORT, sizeof(AddPort))
-, m_porttype(port->getType())
-, m_flags(port->flags())
+, m_porttype(port.getType())
+, m_flags(port.flags())
 {
-   COPY_STRING(m_name, port->getName());
+   COPY_STRING(m_name, port.getName());
 }
 
-Port *AddPort::getPort() const {
+Port AddPort::getPort() const {
 
-   //FIXME: memory leak
-   return new Port(senderId(), m_name.data(), static_cast<Port::Type>(m_porttype), m_flags);
+   return Port(senderId(), m_name.data(), static_cast<Port::Type>(m_porttype), m_flags);
 }
 
-RemovePort::RemovePort(const Port *port)
+RemovePort::RemovePort(const Port &port)
 : Message(Message::REMOVEPORT, sizeof(RemovePort))
 {
-   COPY_STRING(m_name, port->getName());
+   COPY_STRING(m_name, port.getName());
 }
 
-Port *RemovePort::getPort() const {
+Port RemovePort::getPort() const {
 
-   //FIXME: memory leak
-   return new Port(senderId(), m_name.data(), Port::ANY);
+   return Port(senderId(), m_name.data(), Port::ANY);
 }
 
 AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj,
@@ -1432,7 +1430,12 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case Message::ADDPORT: {
          auto &mm = static_cast<const AddPort &>(m);
-         s << ", name: " << mm.getPort()->getName();
+         s << ", name: " << mm.getPort();
+         break;
+      }
+      case Message::REMOVEPORT: {
+         auto &mm = static_cast<const RemovePort &>(m);
+         s << ", name: " << mm.getPort();
          break;
       }
       case Message::CONNECT: {

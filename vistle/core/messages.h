@@ -287,8 +287,8 @@ BOOST_STATIC_ASSERT(sizeof(Idle) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT AddPort: public Message {
 
  public:
-   AddPort(const Port *port);
-   Port *getPort() const;
+   AddPort(const Port &port);
+   Port getPort() const;
  private:
    port_name_t m_name;
    int m_porttype;
@@ -300,8 +300,8 @@ BOOST_STATIC_ASSERT(sizeof(AddPort) <= Message::MESSAGE_SIZE);
 class V_COREEXPORT RemovePort: public Message {
 
  public:
-   RemovePort(const Port *port);
-   Port *getPort() const;
+   RemovePort(const Port &port);
+   Port getPort() const;
  private:
    port_name_t m_name;
 };

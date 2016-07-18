@@ -230,13 +230,13 @@ std::vector<message::Buffer> StateTracker::getState() const {
 
       if (portTracker()) {
          for (auto &portname: portTracker()->getInputPortNames(id)) {
-            AddPort cp(portTracker()->getPort(id, portname));
+            AddPort cp(*portTracker()->getPort(id, portname));
             cp.setSenderId(id);
             appendMessage(state, cp);
          }
 
          for (auto &portname: portTracker()->getOutputPortNames(id)) {
-            AddPort cp(portTracker()->getPort(id, portname));
+            AddPort cp(*portTracker()->getPort(id, portname));
             cp.setSenderId(id);
             appendMessage(state, cp);
          }
@@ -249,7 +249,7 @@ std::vector<message::Buffer> StateTracker::getState() const {
 
       if (portTracker()) {
          for (auto &portname: portTracker()->getOutputPortNames(id)) {
-            const Port::PortSet *connected = portTracker()->getConnectionList(id, portname);
+            const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, portname);
             for (auto &dest: *connected) {
                Connect c(id, portname, dest->getModuleID(), dest->getName());
                appendMessage(state, c);
@@ -257,7 +257,7 @@ std::vector<message::Buffer> StateTracker::getState() const {
          }
 
          for (auto &paramname: getParameters(id)) {
-            const Port::PortSet *connected = portTracker()->getConnectionList(id, paramname);
+            const Port::ConstPortSet *connected = portTracker()->getConnectionList(id, paramname);
             for (auto &dest: *connected) {
                Connect c(id, paramname, dest->getModuleID(), dest->getName());
                appendMessage(state, c);
@@ -735,8 +735,7 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam) {
    }
 
    if (portTracker()) {
-      Port *p = portTracker()->addPort(new Port(addParam.senderId(), addParam.getName(), Port::PARAMETER));
-
+      const Port *p = portTracker()->addPort(addParam.senderId(), addParam.getName(), Port::PARAMETER);
 
       for (StateObserver *o: m_observers) {
          o->newPort(p->getModuleID(), p->getName());
@@ -845,7 +844,7 @@ bool StateTracker::handlePriv(const message::BarrierReached &barrReached) {
 bool StateTracker::handlePriv(const message::AddPort &createPort) {
 
    if (portTracker()) {
-      Port * p = portTracker()->addPort(createPort.getPort());
+      const Port * p = portTracker()->addPort(createPort.getPort());
 
       if (!p)
          return false;
@@ -862,9 +861,9 @@ bool StateTracker::handlePriv(const message::AddPort &createPort) {
 bool StateTracker::handlePriv(const message::RemovePort &destroyPort) {
 
    if (portTracker()) {
-      Port *p = destroyPort.getPort();
-      int id = p->getModuleID();
-      std::string name = p->getName();
+      Port p = destroyPort.getPort();
+      int id = p.getModuleID();
+      std::string name = p.getName();
 
       for (StateObserver *o: m_observers) {
          o->incModificationCount();
@@ -1112,7 +1111,7 @@ ParameterSet StateTracker::getConnectedParameters(const Parameter &param) const 
 
    std::function<ParameterSet (const Port *, ParameterSet)> findAllConnectedPorts;
    findAllConnectedPorts = [this, &findAllConnectedPorts] (const Port *port, ParameterSet conn) -> ParameterSet {
-      if (const Port::PortSet *list = portTracker()->getConnectionList(port)) {
+      if (const Port::ConstPortSet *list = portTracker()->getConnectionList(port)) {
          for (auto port: *list) {
             auto param = getParameter(port->getModuleID(), port->getName());
             if (param && conn.find(param) == conn.end()) {
@@ -1127,7 +1126,7 @@ ParameterSet StateTracker::getConnectedParameters(const Parameter &param) const 
 
    if (!portTracker())
       return ParameterSet();
-   Port *port = portTracker()->getPort(param.module(), param.getName());
+   const Port *port = portTracker()->findPort(param.module(), param.getName());
    if (!port)
       return ParameterSet();
    if (port->getType() != Port::PARAMETER)

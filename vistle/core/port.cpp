@@ -3,7 +3,7 @@
 namespace vistle {
 
 Port::Port(int m, const std::string & n, const Port::Type t, int f)
-   : moduleID(m), name(n), type(t), m_flags(f) {
+   : moduleID(m), name(n), type(t), m_flags(f), m_parent(nullptr) {
 
 }
 
@@ -37,12 +37,12 @@ const ObjectList &Port::objects() const {
    return m_objects;
 }
 
-const Port::PortSet &Port::connections() const {
+const Port::ConstPortSet &Port::connections() const {
 
    return m_connections;
 }
 
-void Port::setConnections(const PortSet &conn) {
+void Port::setConnections(const ConstPortSet &conn) {
 
    m_connections = conn;
 }
@@ -52,13 +52,13 @@ bool Port::addConnection(Port *other) {
    return m_connections.insert(other).second;
 }
 
-Port *Port::removeConnection(const Port *other) {
+const Port *Port::removeConnection(const Port &other) {
 
-   auto it = m_connections.find(const_cast<Port *>(other));
+   auto it = m_connections.find(&other);
    if (it == m_connections.end())
-      return NULL;
+      return nullptr;
 
-   Port *p = *it;
+   const Port *p = *it;
    m_connections.erase(it);
    return p;
 }
@@ -83,7 +83,7 @@ Port *Port::child(size_t idx, bool link) {
    }
 
    if (link) {
-      for (PortSet::iterator it = m_linkedPorts.begin(); it != m_linkedPorts.end(); ++it) {
+      for (auto it = m_linkedPorts.begin(); it != m_linkedPorts.end(); ++it) {
          for (size_t i=first; i<=idx; ++i) {
             m_children[i]->link((*it)->child(i));
          }
@@ -93,27 +93,27 @@ Port *Port::child(size_t idx, bool link) {
    return m_children[idx];
 }
 
-bool Port::link(Port *other) {
+bool Port::link(Port *linked) {
 
    if (getType() == Port::INPUT) {
-      assert(other->getType() == Port::OUTPUT);
+      assert(linked->getType() == Port::OUTPUT);
       return false;
    }
 
    if (getType() == Port::OUTPUT) {
-      assert(other->getType() == Port::INPUT);
+      assert(linked->getType() == Port::INPUT);
       return false;
    }
 
    bool ok = true;
-   if (m_linkedPorts.find(other) == m_linkedPorts.end()) {
-      m_linkedPorts.insert(other);
+   if (m_linkedPorts.find(linked) == m_linkedPorts.end()) {
+      m_linkedPorts.insert(linked);
    } else {
       ok = false;
    }
 
-   if (other->m_linkedPorts.find(this) == other->m_linkedPorts.end()) {
-      other->m_linkedPorts.insert(this);
+   if (linked->m_linkedPorts.find(this) == linked->m_linkedPorts.end()) {
+      linked->m_linkedPorts.insert(this);
    } else {
       ok = false;
    }

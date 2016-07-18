@@ -379,7 +379,7 @@ Port *Module::createInputPort(const std::string &name, const std::string &descri
    Port *p = new Port(id(), name, Port::INPUT, flags);
    inputPorts[name] = p;
 
-   message::AddPort message(p);
+   message::AddPort message(*p);
    message.setDestId(Id::ForBroadcast);
    sendMessage(message);
    return p;
@@ -396,7 +396,7 @@ Port *Module::createOutputPort(const std::string &name, const std::string &descr
    Port *p = new Port(id(), name, Port::OUTPUT, flags);
    outputPorts[name] = p;
 
-   message::AddPort message(p);
+   message::AddPort message(*p);
    message.setDestId(Id::ForBroadcast);
    sendMessage(message);
    return p;
@@ -427,7 +427,7 @@ bool Module::destroyPort(Port *port) {
        return false;
    }
 
-   message::RemovePort message(port);
+   message::RemovePort message(*port);
    message.setDestId(Id::ForBroadcast);
    sendMessage(message);
    return true;
@@ -1184,8 +1184,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          const message::AddPort *cp =
             static_cast<const message::AddPort *>(message);
-         Port *port = cp->getPort();
-         std::string name = port->getName();
+         Port port = cp->getPort();
+         std::string name = port.getName();
          std::string::size_type p = name.find('[');
          std::string basename = name;
          size_t idx = 0;
@@ -1196,7 +1196,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          Port *existing = NULL;
          Port *parent = NULL;
          Port *newport = NULL;
-         switch (port->getType()) {
+         switch (port.getType()) {
             case Port::INPUT:
                existing = findInputPort(name);
                if (!existing)
@@ -1222,14 +1222,15 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                break;
          }
          if (newport) {
-            message::AddPort np(newport);
+            message::AddPort np(*newport);
             np.setUuid(cp->uuid());
             sendMessage(np);
             const Port::PortSet &links = newport->linkedPorts();
             for (Port::PortSet::iterator it = links.begin();
                   it != links.end();
                   ++it) {
-               message::AddPort linked(*it);
+               const Port *p = *it;
+               message::AddPort linked(*p);
                linked.setUuid(cp->uuid());
                sendMessage(linked);
             }
@@ -1243,7 +1244,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             static_cast<const message::Connect *>(message);
          Port *port = NULL;
          Port *other = NULL;
-         const Port::PortSet *ports = NULL;
+         const Port::ConstPortSet *ports = NULL;
          std::string ownPortName;
          //std::cerr << name() << " receiving connection: " << conn->getModuleA() << ":" << conn->getPortAName() << " -> " << conn->getModuleB() << ":" << conn->getPortBName() << std::endl;
          if (conn->getModuleA() == id()) {
@@ -1280,11 +1281,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
       case message::Message::DISCONNECT: {
 
-         const message::Disconnect *disc =
-            static_cast<const message::Disconnect *>(message);
+         const message::Disconnect *disc = static_cast<const message::Disconnect *>(message);
          Port *port = NULL;
          Port *other = NULL;
-         const Port::PortSet *ports = NULL;
+         const Port::ConstPortSet *ports = NULL;
          bool inputConnection = false;
          if (disc->getModuleA() == id()) {
             port = findOutputPort(disc->getPortAName());
@@ -1308,7 +1308,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             } else {
                connectionRemoved(port, other);
             }
-            Port *p = port->removeConnection(other);
+            const Port *p = port->removeConnection(*other);
             delete other;
             delete p;
          }

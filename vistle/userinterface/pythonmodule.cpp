@@ -270,7 +270,7 @@ static std::vector<std::pair<int, std::string> > getConnections(int id, const st
    LOCKED();
    std::vector<std::pair<int, std::string> > result;
 
-   if (const Port::PortSet *c = PORTMANAGER.getConnectionList(id, port)) {
+   if (const Port::ConstPortSet *c = PORTMANAGER.getConnectionList(id, port)) {
       for (const Port *p: *c) {
          result.push_back(std::pair<int, std::string>(p->getModuleID(), p->getName()));
       }
