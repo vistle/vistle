@@ -105,6 +105,7 @@ const Port *PortTracker::addPort(const Port &port) {
 
 std::vector<message::Buffer> PortTracker::removePort(const Port &p) {
 
+   //CERR << "removing port " << p << std::endl;
    std::vector<message::Buffer> ret;
 
    const int moduleID = p.getModuleID();
@@ -118,6 +119,7 @@ std::vector<message::Buffer> PortTracker::removePort(const Port &p) {
       assert(portMap);
    }
 
+#if 0
    PortOrder *portOrder = NULL;
    {
       std::map<int, PortOrder *>::iterator i = m_portOrders.find(moduleID);
@@ -132,6 +134,7 @@ std::vector<message::Buffer> PortTracker::removePort(const Port &p) {
            portOrder->erase(kv.first);
        }
    }
+#endif
 
    PortMap::iterator pi = portMap->find(p.getName());
    assert(pi != portMap->end());
@@ -156,8 +159,6 @@ std::vector<message::Buffer> PortTracker::removePort(const Port &p) {
            message::Disconnect d2(other->getModuleID(), other->getName(), port->getModuleID(), port->getName());
            ret.push_back(d2);
        }
-       removeConnection(*other, *port);
-       removeConnection(*port, *other);
        check();
        if (cl.size() == oldsize) {
            CERR << "failed to remove all connections for port " << *port << ", still left: " << cl.size() << std::endl;
@@ -311,6 +312,7 @@ bool PortTracker::addConnection(const int a, const std::string & na,
 
 bool PortTracker::removeConnection(const Port &from, const Port &to) {
 
+   //CERR << "removing connection: " << from << " -> " << to << std::endl;
    Port *f = findPort(from);
    if (!f)
       return false;
@@ -453,7 +455,7 @@ std::vector<Port *> PortTracker::getConnectedOutputPorts(const int moduleID) con
 std::vector<message::Buffer> PortTracker::removeModule(int moduleId) {
 
    //CERR << "removing all connections from/to " << moduleId << std::endl;
-   check();
+   //check();
 
    std::vector<message::Buffer> ret;
 

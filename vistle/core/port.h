@@ -59,6 +59,8 @@ class V_COREEXPORT Port {
    bool operator<(const Port &other) const {
       if (getModuleID() < other.getModuleID())
          return true;
+      if (getModuleID() > other.getModuleID())
+         return false;
       return getName() < other.getName();
    }
 

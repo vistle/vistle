@@ -55,8 +55,9 @@ bool Port::addConnection(Port *other) {
 const Port *Port::removeConnection(const Port &other) {
 
    auto it = m_connections.find(&other);
-   if (it == m_connections.end())
+   if (it == m_connections.end()) {
       return nullptr;
+   }
 
    const Port *p = *it;
    m_connections.erase(it);
