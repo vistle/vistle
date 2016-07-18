@@ -77,6 +77,10 @@ class StatePrinter: public StateObserver {
       m_out << "   new parameter: " << moduleId << ":" << parameterName << std::endl;
    }
 
+   void deleteParameter(int moduleId, const std::string &parameterName) {
+      m_out << "   delete parameter: " << moduleId << ":" << parameterName << std::endl;
+   }
+
    void parameterValueChanged(int moduleId, const std::string &parameterName) {
       m_out << "   parameter value changed: " << moduleId << ":" << parameterName << std::endl;
    }

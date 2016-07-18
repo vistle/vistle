@@ -722,6 +722,60 @@ boost::shared_ptr<Parameter> AddParameter::getParameter() const {
    return p;
 }
 
+RemoveParameter::RemoveParameter(const Parameter &param, const std::string &modname)
+: Message(Message::REMOVEPARAMETER, sizeof(RemoveParameter))
+, paramtype(param.type())
+{
+   vassert(paramtype > Parameter::Unknown);
+   vassert(paramtype < Parameter::Invalid);
+
+   COPY_STRING(name, param.getName());
+   COPY_STRING(module, modname);
+}
+
+const char *RemoveParameter::getName() const {
+
+   return name.data();
+}
+
+const char *RemoveParameter::moduleName() const {
+
+   return module.data();
+}
+
+int RemoveParameter::getParameterType() const {
+
+   return paramtype;
+}
+
+boost::shared_ptr<Parameter> RemoveParameter::getParameter() const {
+
+   boost::shared_ptr<Parameter> p;
+   switch (getParameterType()) {
+      case Parameter::Integer:
+         p.reset(new IntParameter(senderId(), getName()));
+         break;
+      case Parameter::Float:
+         p.reset(new FloatParameter(senderId(), getName()));
+         break;
+      case Parameter::Vector:
+         p.reset(new VectorParameter(senderId(), getName()));
+         break;
+      case Parameter::IntVector:
+         p.reset(new IntVectorParameter(senderId(), getName()));
+         break;
+      case Parameter::String:
+         p.reset(new StringParameter(senderId(), getName()));
+         break;
+      case Parameter::Invalid:
+      case Parameter::Unknown:
+         break;
+   }
+
+   return p;
+}
+
+
 SetParameter::SetParameter(int module, const std::string &n, const boost::shared_ptr<Parameter> p, Parameter::RangeType rt)
 : Message(Message::SETPARAMETER, sizeof(SetParameter))
 , m_module(module)
@@ -1415,6 +1469,11 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       }
       case Message::ADDPARAMETER: {
          auto &mm = static_cast<const AddParameter &>(m);
+         s << ", name: " << mm.getName();
+         break;
+      }
+      case Message::REMOVEPARAMETER: {
+         auto &mm = static_cast<const RemoveParameter &>(m);
          s << ", name: " << mm.getName();
          break;
       }

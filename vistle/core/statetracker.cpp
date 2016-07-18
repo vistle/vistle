@@ -362,6 +362,11 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
          handled = handlePriv(add);
          break;
       }
+      case Message::REMOVEPARAMETER: {
+         const RemoveParameter &rem = static_cast<const RemoveParameter &>(msg);
+         handled = handlePriv(rem);
+         break;
+      }
       case Message::CONNECT: {
          const Connect &conn = static_cast<const Connect &>(msg);
          handled = handlePriv(conn);
@@ -740,6 +745,47 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam) {
       for (StateObserver *o: m_observers) {
          o->newPort(p->getModuleID(), p->getName());
       }
+   }
+
+   return true;
+}
+
+bool StateTracker::handlePriv(const message::RemoveParameter &removeParam) {
+
+#ifdef DEBUG
+   CERR << "RemoveParameter: module=" << removeParam.moduleName() << "(" << removeParam.senderId() << "), name=" << removeParam.getName() << std::endl;
+#endif
+
+   auto mit = runningMap.find(removeParam.senderId());
+   vassert(mit != runningMap.end());
+   auto &mod = mit->second;
+   ParameterMap &pm = mod.parameters;
+   ParameterOrder &po = mod.paramOrder;
+   ParameterMap::iterator it = pm.find(removeParam.getName());
+   if (it == pm.end()) {
+      CERR << "parameter to be removed not found: " << removeParam.moduleName() << ":" << removeParam.getName() << std::endl;
+      return false;
+   } else {
+      pm.erase(it);
+      for (auto rit = po.begin(); rit != po.end(); ++rit) {
+          if (rit->second == removeParam.getName()) {
+              po.erase(rit);
+              break;
+          }
+      }
+   }
+
+   if (portTracker()) {
+      portTracker()->removePort(Port(removeParam.senderId(), removeParam.getName(), Port::PARAMETER));
+
+      for (StateObserver *o: m_observers) {
+         o->deletePort(removeParam.senderId(), removeParam.getName());
+      }
+   }
+
+   for (StateObserver *o: m_observers) {
+      o->incModificationCount();
+      o->deleteParameter(removeParam.senderId(), removeParam.getName());
    }
 
    return true;

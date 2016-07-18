@@ -47,6 +47,7 @@ class V_COREEXPORT StateObserver {
    virtual void newParameter(int moduleId, const std::string &parameterName) = 0;
    virtual void parameterValueChanged(int moduleId, const std::string &parameterName) = 0;
    virtual void parameterChoicesChanged(int moduleId, const std::string &parameterName) = 0;
+   virtual void deleteParameter(int moduleId, const std::string &parameterName) = 0;
 
    virtual void newPort(int moduleId, const std::string &portName) = 0;
    virtual void deletePort(int moduleId, const std::string &portName) = 0;
@@ -175,6 +176,7 @@ class V_COREEXPORT StateTracker {
    bool handlePriv(const message::AddPort &createPort);
    bool handlePriv(const message::RemovePort &destroyPort);
    bool handlePriv(const message::AddParameter &addParam);
+   bool handlePriv(const message::RemoveParameter &removeParam);
    bool handlePriv(const message::SetParameter &setParam);
    bool handlePriv(const message::SetParameterChoices &choices);
    bool handlePriv(const message::Kill &kill);

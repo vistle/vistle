@@ -448,6 +448,24 @@ class V_COREEXPORT AddParameter: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(AddParameter) <= Message::MESSAGE_SIZE);
 
+//! notification that a module has removed a parameter
+class V_COREEXPORT RemoveParameter: public Message {
+   public:
+      RemoveParameter(const Parameter &param, const std::string &moduleName);
+
+      const char *getName() const;
+      const char *moduleName() const;
+      int getParameterType() const;
+      boost::shared_ptr<Parameter> getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
+
+   private:
+      param_name_t name;
+      param_name_t m_group;
+      module_name_t module;
+      int paramtype;
+};
+BOOST_STATIC_ASSERT(sizeof(RemoveParameter) <= Message::MESSAGE_SIZE);
+
 //! request parameter value update or notify that a parameter value has been changed
 class V_COREEXPORT SetParameter: public Message {
    public:

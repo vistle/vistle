@@ -33,6 +33,7 @@ namespace message {
 class Message;
 class AddParameter;
 class SetParameter;
+class RemoveParameter;
 class MessageQueue;
 }
 
@@ -106,6 +107,9 @@ class V_MODULEEXPORT Module {
    IntVectorParameter *addIntVectorParameter(const std::string & name, const std::string &description, const IntParamVector & value);
    bool setIntVectorParameter(const std::string & name, const IntParamVector & value, const message::SetParameter *inResponseTo=NULL);
    IntParamVector getIntVectorParameter(const std::string & name) const;
+
+   bool removeParameter(const std::string &name);
+   bool removeParameter(Parameter *param);
 
    bool addObject(Port *port, vistle::Object::ptr object);
    bool addObject(const std::string &portName, vistle::Object::ptr object);
@@ -253,6 +257,7 @@ protected:
 
    virtual bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName);
    virtual bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg);
+   virtual bool parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg);
 
    virtual bool compute() = 0; //< do processing - called on each rank individually
 

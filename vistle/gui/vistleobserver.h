@@ -22,6 +22,7 @@ signals:
 	void deleteModule_s(int moduleId);
    void moduleStateChanged_s(int moduleId, int stateBits);
 	void newParameter_s(int moduleId, QString parameterName);
+    void deleteParameter_s(int moduleId, QString parameterName);
    void parameterValueChanged_s(int moduleId, QString parameterName);
    void parameterChoicesChanged_s(int moduleId, QString parameterName);
    void newPort_s(int moduleId, QString portName);
@@ -38,26 +39,27 @@ signals:
 
 public:
    VistleObserver(QObject *parent=0);
-   void moduleAvailable(int hub, const std::string &name, const std::string &path);
-   void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName);
-	void deleteModule(int moduleId);
-	void moduleStateChanged(int moduleId, int stateBits);
-	void newParameter(int moduleId, const std::string &parameterName);
-	void parameterValueChanged(int moduleId, const std::string &parameterName);
-   void parameterChoicesChanged(int moduleId, const std::string &parameterName);
-   void newPort(int moduleId, const std::string &portName);
-   void deletePort(int moduleId, const std::string &portName);
+   void moduleAvailable(int hub, const std::string &name, const std::string &path) override;
+   void newModule(int moduleId, const boost::uuids::uuid &spawnUuid, const std::string &moduleName) override;
+    void deleteModule(int moduleId) override;
+    void moduleStateChanged(int moduleId, int stateBits) override;
+    void newParameter(int moduleId, const std::string &parameterName) override;
+    void deleteParameter(int moduleId, const std::string &parameterName) override;
+    void parameterValueChanged(int moduleId, const std::string &parameterName) override;
+   void parameterChoicesChanged(int moduleId, const std::string &parameterName) override;
+   void newPort(int moduleId, const std::string &portName) override;
+   void deletePort(int moduleId, const std::string &portName) override;
     void newConnection(int fromId, const std::string &fromName,
-                           int toId, const std::string &toName);
+                           int toId, const std::string &toName) override;
 	void deleteConnection(int fromId, const std::string &fromName,
-                          int toId, const std::string &toName);
+                          int toId, const std::string &toName) override;
 
-   void info(const std::string &text, vistle::message::SendText::TextType textType, int senderId, int senderRank, vistle::message::Message::Type refType, const vistle::message::uuid_t &refUuid);
+   void info(const std::string &text, vistle::message::SendText::TextType textType, int senderId, int senderRank, vistle::message::Message::Type refType, const vistle::message::uuid_t &refUuid) override;
 
-   void quitRequested();
+   void quitRequested() override;
 
-   void incModificationCount();
-   void resetModificationCount();
+   void incModificationCount() override;
+   void resetModificationCount() override;
 
 private:
    std::map<int, QString> m_moduleNames;

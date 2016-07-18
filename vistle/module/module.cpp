@@ -486,6 +486,40 @@ Parameter *Module::addParameterGeneric(const std::string &name, boost::shared_pt
    return param.get();
 }
 
+bool Module::removeParameter(const std::string &name) {
+
+   vassert(havePort(name));
+   if (!havePort(name)) {
+      CERR << "removeParameter: no port with name " << name << std::endl;
+      return false;
+   }
+
+   auto it = parameters.find(name);
+   if (it == parameters.end()) {
+      CERR << "removeParameter: no parameter with name " << name << std::endl;
+      return false;
+   }
+
+   return removeParameter(it->second.get());
+}
+
+bool Module::removeParameter(Parameter *param) {
+
+   auto it = parameters.find(param->getName());
+   if (it == parameters.end()) {
+      CERR << "removeParameter: no parameter with name " << param->getName() << std::endl;
+      return false;
+   }
+
+   message::RemoveParameter remove(*param, m_name);
+   remove.setDestId(Id::ForBroadcast);
+   sendMessage(remove);
+
+   parameters.erase(it);
+
+   return true;
+}
+
 bool Module::updateParameter(const std::string &name, const Parameter *param, const message::SetParameter *inResponseTo, Parameter::RangeType rt) {
 
    auto i = parameters.find(name);
@@ -973,6 +1007,11 @@ bool Module::parameterChangedWrapper(const Parameter *p) {
 bool Module::parameterChanged(const Parameter *p) {
 
    return true;
+}
+
+bool Module::parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg) {
+
+    return true;
 }
 
 int Module::schedulingPolicy() const
@@ -1501,6 +1540,15 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
+      case message::Message::REMOVEPARAMETER: {
+
+         const message::RemoveParameter *param =
+            static_cast<const message::RemoveParameter *>(message);
+
+         parameterRemoved(param->senderId(), param->getName(), *param);
+         break;
+      }
+
       case message::Message::BARRIER: {
 
          const message::Barrier *barrier = static_cast<const message::Barrier *>(message);
@@ -1546,6 +1594,10 @@ Module::~Module() {
 #ifdef DEBUG
    CERR << "I'm quitting" << std::endl;
 #endif
+
+   for (auto &param: parameters) {
+       removeParameter(param.second.get());
+   }
 
    vistle::message::ModuleExit m;
    m.setDestId(Id::ForBroadcast);

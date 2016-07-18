@@ -61,6 +61,11 @@ void VistleObserver::newParameter(int moduleId, const std::string &parameterName
 	emit newParameter_s(moduleId, name);
 }
 
+void VistleObserver::deleteParameter(int moduleId, const std::string &parameterName) {
+    QString name = QString::fromStdString(parameterName);
+    emit deleteParameter_s(moduleId, name);
+}
+
 void VistleObserver::parameterValueChanged(int moduleId, const std::string &parameterName) {
 	QString name = QString::fromStdString(parameterName);
    emit parameterValueChanged_s(moduleId, name);

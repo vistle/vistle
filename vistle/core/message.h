@@ -102,6 +102,7 @@ class V_COREEXPORT Message {
       (CONNECT)
       (DISCONNECT)
       (ADDPARAMETER)
+      (REMOVEPARAMETER)
       (SETPARAMETER)
       (SETPARAMETERCHOICES)
       (PING)

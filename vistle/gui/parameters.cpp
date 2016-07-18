@@ -21,6 +21,7 @@
 #include <QtLineEditFactory>
 #include <QtSpinBoxFactory>
 #include <QtDoubleSpinBoxFactory>
+#include <QtDebug>
 
 #include "propertybrowser/qtlongpropertymanager.h"
 #include "propertybrowser/qtlongeditorfactory.h"
@@ -94,6 +95,8 @@ void Parameters::setVistleObserver(VistleObserver *observer)
 {
    connect(observer, SIGNAL(newParameter_s(int,QString)),
            this, SLOT(newParameter(int,QString)));
+   connect(observer, SIGNAL(deleteParameter_s(int,QString)),
+           this, SLOT(deleteParameter(int,QString)));
    connect(observer, SIGNAL(parameterValueChanged_s(int,QString)),
            this, SLOT(parameterValueChanged(int,QString)));
    connect(observer, SIGNAL(parameterChoicesChanged_s(int,QString)),
@@ -202,6 +205,38 @@ void Parameters::newParameter(int moduleId, QString parameterName)
 
    parameterChoicesChanged(moduleId, parameterName);
    parameterValueChanged(moduleId, parameterName);
+}
+
+void Parameters::deleteParameter(int moduleId, QString parameterName)
+{
+   if (m_moduleId != moduleId)
+      return;
+
+   auto p = m_vistle->getParameter(moduleId, parameterName.toStdString());
+   if (!p)
+      return;
+
+   const auto it = m_paramToProp.find(parameterName);
+   assert(it != m_paramToProp.end());
+   if (it == m_paramToProp.end()) {
+      qDebug() << "Parameters::deleteParameter: did not find parameter " << m_moduleId << ":" << parameterName;
+      return;
+   }
+
+   QtProperty *prop = it->second;
+   QString group = QString::fromStdString(p->group());
+   QtProperty *g = nullptr;
+   if (!group.isEmpty()) {
+       auto it = m_groups.find(group);
+       if (it != m_groups.end()) {
+           g = it->second;
+       }
+   }
+   if (g) {
+       g->removeSubProperty(prop);
+   } else {
+       removeProperty(prop);
+   }
 }
 
 void Parameters::parameterValueChanged(int moduleId, QString parameterName)

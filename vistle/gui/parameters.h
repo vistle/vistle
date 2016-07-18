@@ -39,6 +39,7 @@ public:
 
 private slots:
    void newParameter(int moduleId, QString parameterName);
+   void deleteParameter(int moduleId, QString parameterName);
    void parameterValueChanged(int moduleId, QString parameterName);
    void parameterChoicesChanged(int moduleId, QString parameterName);
    void propertyChanged(QtProperty *prop);

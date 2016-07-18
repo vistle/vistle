@@ -109,6 +109,7 @@ class OsgRenderer: public vistle::Renderer {
 
    bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) override;
    bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg) override;
+   bool parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg) override;
 
    typedef std::map<int, VistleInteractor *> InteractorMap;
    InteractorMap m_interactorMap;
@@ -230,7 +231,7 @@ OsgRenderer::~OsgRenderer() {
 bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
 
    std::string plugin = moduleName;
-   if (boost::algorithm::ends_with(name, "Old"))
+   if (boost::algorithm::ends_with(plugin, "Old"))
       plugin = plugin.substr(0, plugin.size()-3);
    if (plugin == "CutGeometry")
       plugin = "CuttingSurface";
@@ -258,6 +259,16 @@ bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, co
       inter->addParam(name, msg);
    }
    return true;
+}
+
+bool OsgRenderer::parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg) {
+
+    InteractorMap::iterator it = m_interactorMap.find(senderId);
+    if (it != m_interactorMap.end()) {
+        auto inter = it->second;
+        inter->removeParam(name, msg);
+    }
+    return true;
 }
 
 bool OsgRenderer::parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg) {
