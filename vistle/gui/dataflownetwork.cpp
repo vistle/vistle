@@ -126,6 +126,16 @@ void DataFlowNetwork::newPort(int moduleId, QString portName)
    }
 }
 
+void DataFlowNetwork::deletePort(int moduleId, QString portName) {
+
+   if (Module *m = findModule(moduleId)) {
+      vistle::Port *port = m_vistleConnection->ui().state().portTracker()->getPort(moduleId, portName.toStdString());
+      if (port) {
+         m->removePort(port);
+      }
+   }
+}
+
 void DataFlowNetwork::newConnection(int fromId, QString fromName,
                                    int toId, QString toName) {
 

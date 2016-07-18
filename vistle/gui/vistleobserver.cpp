@@ -77,6 +77,11 @@ void VistleObserver::newPort(int moduleId, const std::string &portName) {
 	emit newPort_s(moduleId, name);
 }
 
+void VistleObserver::deletePort(int moduleId, const std::string &portName) {
+    QString name = QString::fromStdString(portName);
+    emit deletePort_s(moduleId, name);
+}
+
 void VistleObserver::newConnection(int fromId, const std::string &fromName,
                    				 int toId, const std::string &toName) {
     QString name = QString::fromStdString(fromName);

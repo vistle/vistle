@@ -245,6 +245,20 @@ void Module::addPort(vistle::Port *port)
    doLayout();
 }
 
+void Module::removePort(vistle::Port *port)
+{
+   auto vit = m_vistleToGui.find(port);
+   if (vit == m_vistleToGui.end())
+       return;
+   auto vport = vit->second;
+   auto git = m_guiToVistle.find(vport);
+   assert(git != m_guiToVistle.end());
+   m_vistleToGui.erase(vit);
+   m_guiToVistle.erase(git);
+
+   doLayout();
+}
+
 QString Module::name() const
 {
    return m_name;

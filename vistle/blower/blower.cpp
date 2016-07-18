@@ -89,6 +89,10 @@ class StatePrinter: public StateObserver {
       m_out << "   new port: " << moduleId << ":" << portName << std::endl;
    }
 
+   void deletePort(int moduleId, const std::string &portName) {
+      m_out << "   delete port: " << moduleId << ":" << portName << std::endl;
+   }
+
    void newConnection(int fromId, const std::string &fromName,
          int toId, const std::string &toName) {
       m_out << "   new connection: "

@@ -98,6 +98,7 @@ class V_COREEXPORT Message {
       (ADDOBJECTCOMPLETED)
       (OBJECTRECEIVED)
       (ADDPORT)
+      (REMOVEPORT)
       (CONNECT)
       (DISCONNECT)
       (ADDPARAMETER)

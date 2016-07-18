@@ -363,7 +363,20 @@ AddPort::AddPort(const Port *port)
 
 Port *AddPort::getPort() const {
 
+   //FIXME: memory leak
    return new Port(senderId(), m_name.data(), static_cast<Port::Type>(m_porttype), m_flags);
+}
+
+RemovePort::RemovePort(const Port *port)
+: Message(Message::REMOVEPORT, sizeof(RemovePort))
+{
+   COPY_STRING(m_name, port->getName());
+}
+
+Port *RemovePort::getPort() const {
+
+   //FIXME: memory leak
+   return new Port(senderId(), m_name.data(), Port::ANY);
 }
 
 AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj,

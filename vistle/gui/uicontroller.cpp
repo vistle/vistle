@@ -85,6 +85,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
       m_scene, SLOT(moduleStateChanged(int, int)));
    connect(&m_observer, SIGNAL(newPort_s(int, QString)),
       m_scene, SLOT(newPort(int, QString)));
+   connect(&m_observer, SIGNAL(deletePort_s(int, QString)),
+      m_scene, SLOT(deletePort(int, QString)));
    connect(&m_observer, SIGNAL(newConnection_s(int, QString, int, QString)),
       m_scene, SLOT(newConnection(int, QString, int, QString)));
    connect(&m_observer, SIGNAL(deleteConnection_s(int, QString, int, QString)),

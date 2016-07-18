@@ -58,6 +58,8 @@ class V_MODULEEXPORT Module {
 
    Port *createInputPort(const std::string &name, const std::string &description="", const int flags=0);
    Port *createOutputPort(const std::string &name, const std::string &description="", const int flags=0);
+   bool destroyPort(const std::string &portName);
+   bool destroyPort(Port *port);
 
    //! set group for all subsequently added parameters, reset with empty group
    void setCurrentParameterGroup(const std::string &group);

@@ -402,6 +402,37 @@ Port *Module::createOutputPort(const std::string &name, const std::string &descr
    return p;
 }
 
+bool Module::destroyPort(const std::string &portName) {
+
+   Port *p = findInputPort(portName);
+   if (!p)
+      p = findOutputPort(portName);
+   if (!p)
+      return false;
+
+   vassert(p);
+   return destroyPort(p);
+}
+
+bool Module::destroyPort(Port *port) {
+
+   vassert(port);
+   if (Port *p = findInputPort(port->getName())) {
+       inputPorts.erase(port->getName());
+       delete p;
+   } else if (Port *p = findOutputPort(port->getName())) {
+       outputPorts.erase(port->getName());
+       delete p;
+   } else {
+       return false;
+   }
+
+   message::RemovePort message(port);
+   message.setDestId(Id::ForBroadcast);
+   sendMessage(message);
+   return true;
+}
+
 void Module::setCurrentParameterGroup(const std::string &group) {
 
    m_currentParameterGroup = group;

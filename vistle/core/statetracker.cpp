@@ -352,6 +352,11 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
          handled = handlePriv(cp);
          break;
       }
+      case Message::REMOVEPORT: {
+         const RemovePort &dp = static_cast<const RemovePort &>(msg);
+         handled = handlePriv(dp);
+         break;
+      }
       case Message::ADDPARAMETER: {
          const AddParameter &add = static_cast<const AddParameter &>(msg);
          handled = handlePriv(add);
@@ -849,6 +854,25 @@ bool StateTracker::handlePriv(const message::AddPort &createPort) {
          o->incModificationCount();
          o->newPort(p->getModuleID(), p->getName());
       }
+   }
+
+   return true;
+}
+
+bool StateTracker::handlePriv(const message::RemovePort &destroyPort) {
+
+   if (portTracker()) {
+      Port *p = destroyPort.getPort();
+      int id = p->getModuleID();
+      std::string name = p->getName();
+
+      for (StateObserver *o: m_observers) {
+         o->incModificationCount();
+         o->deletePort(id, name);
+      }
+
+      auto disconnect = portTracker()->removePort(p);
+
    }
 
    return true;

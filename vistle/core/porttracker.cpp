@@ -106,6 +106,72 @@ Port *PortTracker::addPort(Port *port) {
    }
 }
 
+std::vector<message::Buffer> PortTracker::removePort(Port *port) {
+
+   std::vector<message::Buffer> ret;
+   port = getPort(port);
+   assert(port);
+   if (!port)
+       return ret;
+
+   const int moduleID = port->getModuleID();
+   PortMap *portMap = NULL;
+   {
+      std::map<int, PortMap *>::iterator i = m_ports.find(moduleID);
+      if (i == m_ports.end()) {
+         return ret;
+      }
+      portMap = i->second;
+      assert(portMap);
+   }
+
+   PortOrder *portOrder = NULL;
+   {
+      std::map<int, PortOrder *>::iterator i = m_portOrders.find(moduleID);
+      if (i == m_portOrders.end()) {
+         return ret;
+      }
+      portOrder = i->second;
+      assert(portOrder);
+   }
+
+   PortMap::iterator pi = portMap->find(port->getName());
+   assert(pi != portMap->end());
+   if (pi == portMap->end()) {
+      return ret;
+   }
+
+   check();
+   const Port::PortSet &cl = port->connections();
+   while (!cl.empty()) {
+       size_t oldsize = cl.size();
+       const Port *other = *cl.begin();
+       if (port->getType() != Port::INPUT && removeConnection(port, other)) {
+           message::Disconnect d1(port->getModuleID(), port->getName(), other->getModuleID(), other->getName());
+           ret.push_back(d1);
+       }
+       if (port->getType() != Port::OUTPUT && removeConnection(other, port)) {
+           message::Disconnect d2(other->getModuleID(), other->getName(), port->getModuleID(), port->getName());
+           ret.push_back(d2);
+       }
+       removeConnection(other, port);
+       removeConnection(port, other);
+       check();
+       if (cl.size() == oldsize) {
+           CERR << "failed to remove all connections for port " << *port << ", still left: " << cl.size() << std::endl;
+           for (size_t i=0; i<cl.size(); ++i) {
+               CERR << "   " << *port << " <--> " << *other << std::endl;
+           }
+           break;
+       }
+   }
+   portMap->erase(pi);
+   delete port;
+   check();
+
+   return ret;
+}
+
 Port * PortTracker::getPort(const int moduleID,
                             const std::string & name) const {
 
@@ -174,7 +240,7 @@ bool PortTracker::addConnection(const Port *from, const Port *to) {
             added = true;
          } else {
             f->removeConnection(t);
-            CERR << "PortTracker::addConnection: inconsistent connection states for parmeter connection" << std::endl;
+            CERR << "PortTracker::addConnection: inconsistent connection states for parameter connection" << std::endl;
             check();
             return true;
          }
@@ -259,6 +325,8 @@ bool PortTracker::removeConnection(const Port *from, const Port *to) {
       return true;
    } else {
        CERR << "removeConnection: port type mismatch: " << *f << " -> " << *t << std::endl;
+       f->removeConnection(t);
+       t->removeConnection(f);
    }
 
    check();
@@ -374,41 +442,21 @@ std::vector<message::Buffer> PortTracker::removeModule(int moduleId) {
    ModulePortMap::const_iterator modulePorts = m_ports.find(moduleId);
    if (modulePorts != m_ports.end()) {
 
+      std::vector<Port *> toRemove;
       const PortMap &portmap = *modulePorts->second;
       for(PortMap::const_iterator it = portmap.begin();
             it != portmap.end();
             ++it) {
-
-         Port *port = it->second;
-         const Port::PortSet &cl = port->connections();
-         while (!cl.empty()) {
-            size_t oldsize = cl.size();
-            const Port *other = *cl.begin();
-            if (port->getType() != Port::INPUT && removeConnection(port, other)) {
-               message::Disconnect d1(port->getModuleID(), port->getName(), other->getModuleID(), other->getName());
-               ret.push_back(d1);
-            }
-            if (port->getType() != Port::OUTPUT && removeConnection(other, port)) {
-               message::Disconnect d2(other->getModuleID(), other->getName(), port->getModuleID(), port->getName());
-               ret.push_back(d2);
-            }
-            check();
-            if (cl.size() == oldsize) {
-               CERR << "failed to remove all connections for module " << moduleId << ", still left: " << cl.size() << std::endl;
-               for (size_t i=0; i<cl.size(); ++i) {
-                  CERR << "   " << *port << " <--> " << *other << std::endl;
-               }
-               break;
-            }
-         }
+          toRemove.push_back(it->second);
       }
 
-      for(PortMap::const_iterator it = portmap.begin();
-            it != portmap.end();
-            ++it) {
-          delete it->second;
+      for (auto p: toRemove) {
+         auto r = removePort(p);
+         std::copy(r.begin(), r.end(), std::back_inserter(ret));
       }
-      modulePorts->second->clear();
+
+      assert(portmap.empty());
+
       m_ports.erase(modulePorts);
    }
 

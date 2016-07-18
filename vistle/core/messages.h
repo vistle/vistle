@@ -296,6 +296,17 @@ class V_COREEXPORT AddPort: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(AddPort) <= Message::MESSAGE_SIZE);
 
+//! notification that a module has destroyed an input/output port
+class V_COREEXPORT RemovePort: public Message {
+
+ public:
+   RemovePort(const Port *port);
+   Port *getPort() const;
+ private:
+   port_name_t m_name;
+};
+BOOST_STATIC_ASSERT(sizeof(RemovePort) <= Message::MESSAGE_SIZE);
+
 class AddObjectCompleted;
 
 //! add an object to the input queue of an input port

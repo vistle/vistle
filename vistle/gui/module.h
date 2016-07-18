@@ -51,6 +51,7 @@ public:
     void setStatus(Module::Status status);
 
     void addPort(vistle::Port *port);
+    void removePort(vistle::Port *port);
 
     // vistle methods
     QString name() const;

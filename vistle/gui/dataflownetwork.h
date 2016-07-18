@@ -40,6 +40,7 @@ public slots:
     void deleteModule(int moduleId);
     void moduleStateChanged(int moduleId, int stateBits);
     void newPort(int moduleId, QString portName);
+    void deletePort(int moduleId, QString portName);
     void newConnection(int fromId, QString fromName, int toId, QString toName);
     void deleteConnection(int fromId, QString fromName, int toId, QString toName);
 

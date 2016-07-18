@@ -49,6 +49,7 @@ class V_COREEXPORT StateObserver {
    virtual void parameterChoicesChanged(int moduleId, const std::string &parameterName) = 0;
 
    virtual void newPort(int moduleId, const std::string &portName) = 0;
+   virtual void deletePort(int moduleId, const std::string &portName) = 0;
 
    virtual void newConnection(int fromId, const std::string &fromName,
          int toId, const std::string &toName) = 0;
@@ -172,6 +173,7 @@ class V_COREEXPORT StateTracker {
    bool handlePriv(const message::Busy &busy);
    bool handlePriv(const message::Idle &idle);
    bool handlePriv(const message::AddPort &createPort);
+   bool handlePriv(const message::RemovePort &destroyPort);
    bool handlePriv(const message::AddParameter &addParam);
    bool handlePriv(const message::SetParameter &setParam);
    bool handlePriv(const message::SetParameterChoices &choices);

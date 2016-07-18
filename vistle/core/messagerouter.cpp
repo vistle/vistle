@@ -29,6 +29,7 @@ void Router::initRoutingTable() {
    rt[M::EXECUTE]               = Special|HandleOnMaster;
    rt[M::MODULEAVAILABLE]       = Track|DestHub|DestUi|HandleOnHub;
    rt[M::ADDPORT]               = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
+   rt[M::REMOVEPORT]            = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
    rt[M::ADDPARAMETER]          = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
    rt[M::SETPARAMETERCHOICES]   = Track|DestUi|DestModules|OnlyRank0;
    rt[M::CONNECT]               = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0;
