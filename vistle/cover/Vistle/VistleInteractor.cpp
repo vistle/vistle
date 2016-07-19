@@ -378,19 +378,70 @@ void VistleInteractor::setVectorParam(const char *name, float u, float v, float 
 /// set int vector parameter
 void VistleInteractor::setVectorParam(const char *name, int numElem, int *field)
 {
+   auto param = findParam(name);
+   auto vparam = boost::dynamic_pointer_cast<IntVectorParameter>(param);
+   if (!vparam)
+      return;
+   assert(vparam->getValue().dim == numElem);
+   std::vector<IntParamVector::value_type> v;
+   for (int i=0; i<numElem; ++i)
+      v.push_back(field[i]);
+   vparam->setValue(IntParamVector(numElem, &v[0]));
+   sendParamMessage(vparam);
 }
+
 void VistleInteractor::setVectorParam(const char *name, int u, int v, int w)
 {
+   int vec[] = { u, v, w };
+   setVectorParam(name, sizeof(vec)/sizeof(vec[0]), vec);
 }
 
 /// set string parameter
 void VistleInteractor::setStringParam(const char *name, const char *val)
 {
+   auto param = findParam(name);
+   auto sparam = boost::dynamic_pointer_cast<StringParameter>(param);
+   if (!sparam)
+      return;
+   sparam->setValue(val);
+   sendParamMessage(sparam);
 }
 
 /// set choice parameter, pos starts with 1
 void VistleInteractor::setChoiceParam(const char *name, int num , const char * const *list, int pos)
 {
+   static std::vector<std::string> s_choices;
+   static std::vector<const char *> s_labels;
+
+   auto param = findParam(name);
+   if (!param)
+      return;
+   if (param->presentation() != Parameter::Choice)
+      return;
+
+   std::vector<std::string> choices;
+   for (int i=0; i<num; ++i) {
+      choices.emplace_back(list[i]);
+   }
+
+#if 0
+   {
+      message::SetParameterChoices sc(name, choices);
+      sc.setDestId(param->module());
+      sendMessage(sc);
+   }
+#endif
+
+   if (auto sparam = boost::dynamic_pointer_cast<StringParameter>(param)) {
+      auto val = choices[pos];
+      sparam->setValue(val);
+      sendParamMessage(sparam);
+   } else if (auto iparam = boost::dynamic_pointer_cast<IntParameter>(param)) {
+      iparam->setValue(pos);
+      sendParamMessage(iparam);
+   } else {
+      return;
+   }
 }
 
 /// set browser parameter
