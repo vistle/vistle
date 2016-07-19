@@ -414,19 +414,23 @@ std::vector<Port *> PortTracker::getPorts(const int moduleID, Port::Type type, b
    const PortMap &portmap = *mports->second;
    const PortOrder &portorder = *portOrderIt->second;
    for(PortOrder::const_iterator it = portorder.begin();
-         it != portorder.end();
-         ++it) {
+       it != portorder.end();
+       ++it) {
 
-      const std::string &name = it->second;
-      const auto &it2 = portmap.find(name);
-      assert(it2 != portmap.end());
-      const auto &port = it2->second;
+       const std::string &name = it->second;
+       auto it2 = portmap.find(name);
+       if (it2 != portmap.end()) {
+           assert(it2 != portmap.end());
+           const auto &port = it2->second;
 
-      if (type == Port::ANY || port->getType() == type) {
-         if (!connectedOnly || !port->connections().empty()) {
-            result.push_back(port);
-         }
-      }
+           if (port) {
+               if (type == Port::ANY || port->getType() == type) {
+                   if (!connectedOnly || !port->connections().empty()) {
+                       result.push_back(port);
+                   }
+               }
+           }
+       }
    }
 
    return result;
@@ -434,166 +438,166 @@ std::vector<Port *> PortTracker::getPorts(const int moduleID, Port::Type type, b
 
 std::vector<Port *> PortTracker::getInputPorts(const int moduleID) const {
 
-   return getPorts(moduleID, Port::INPUT);
+    return getPorts(moduleID, Port::INPUT);
 }
 
 std::vector<Port *> PortTracker::getConnectedInputPorts(const int moduleID) const {
 
-   return getPorts(moduleID, Port::INPUT, true);
+    return getPorts(moduleID, Port::INPUT, true);
 }
 
 std::vector<Port *> PortTracker::getOutputPorts(const int moduleID) const {
 
-   return getPorts(moduleID, Port::OUTPUT);
+    return getPorts(moduleID, Port::OUTPUT);
 }
 
 std::vector<Port *> PortTracker::getConnectedOutputPorts(const int moduleID) const {
 
-   return getPorts(moduleID, Port::OUTPUT, true);
+    return getPorts(moduleID, Port::OUTPUT, true);
 }
 
 std::vector<message::Buffer> PortTracker::removeModule(int moduleId) {
 
-   //CERR << "removing all connections from/to " << moduleId << std::endl;
-   //check();
+    //CERR << "removing all connections from/to " << moduleId << std::endl;
+    //check();
 
-   std::vector<message::Buffer> ret;
+    std::vector<message::Buffer> ret;
 
-   ModulePortMap::const_iterator modulePorts = m_ports.find(moduleId);
-   if (modulePorts != m_ports.end()) {
+    ModulePortMap::const_iterator modulePorts = m_ports.find(moduleId);
+    if (modulePorts != m_ports.end()) {
 
-      std::vector<Port *> toRemove;
-      const PortMap &portmap = *modulePorts->second;
-      for(PortMap::const_iterator it = portmap.begin();
+        std::vector<Port *> toRemove;
+        const PortMap &portmap = *modulePorts->second;
+        for(PortMap::const_iterator it = portmap.begin();
             it != portmap.end();
             ++it) {
-          toRemove.push_back(it->second);
-      }
+            toRemove.push_back(it->second);
+        }
 
-      for (auto p: toRemove) {
-         auto r = removePort(*p);
-         std::copy(r.begin(), r.end(), std::back_inserter(ret));
-      }
+        for (auto p: toRemove) {
+            auto r = removePort(*p);
+            std::copy(r.begin(), r.end(), std::back_inserter(ret));
+        }
 
-      assert(portmap.empty());
+        assert(portmap.empty());
 
-      m_ports.erase(modulePorts);
-   }
+        m_ports.erase(modulePorts);
+    }
 
-   if (m_ports.find(moduleId) != m_ports.end()) {
-       CERR << "removeModule(" << moduleId << "): not yet removed" << std::endl;
-   }
+    if (m_ports.find(moduleId) != m_ports.end()) {
+        CERR << "removeModule(" << moduleId << "): not yet removed" << std::endl;
+    }
 
-   check();
+    check();
 
-   for (const auto &mpm: m_ports) {
-       const auto &pm = *mpm.second;
-       for (const auto &pme: pm) {
-           const Port *port = pme.second;
-           if (port->getModuleID() == moduleId) {
-               CERR << "removeModule " << moduleId << ": " << *port << " still exists" << std::endl;
-           }
-           const auto &cl = port->connections();
-           for (const auto &other: cl) {
-               if (other->getModuleID() == moduleId) {
-                   CERR << "removeModule " << moduleId << ": " << *other << " still connected to " << *port << std::endl;
-               }
-           }
-       }
-   }
+    for (const auto &mpm: m_ports) {
+        const auto &pm = *mpm.second;
+        for (const auto &pme: pm) {
+            const Port *port = pme.second;
+            if (port->getModuleID() == moduleId) {
+                CERR << "removeModule " << moduleId << ": " << *port << " still exists" << std::endl;
+            }
+            const auto &cl = port->connections();
+            for (const auto &other: cl) {
+                if (other->getModuleID() == moduleId) {
+                    CERR << "removeModule " << moduleId << ": " << *other << " still connected to " << *port << std::endl;
+                }
+            }
+        }
+    }
 
-   for (const auto &mpm: m_ports) {
-       const auto &pm = *mpm.second;
-       for (const auto &pme: pm) {
-           const Port *port = pme.second;
-           if (port->getModuleID() == moduleId) {
-               CERR << "removeModule " << moduleId << ": " << *port << " still exists" << std::endl;
-           }
-           const auto &cl = port->connections();
-           for (const auto &other: cl) {
-               if (other->getModuleID() == moduleId) {
-                   CERR << "removeModule " << moduleId << ": " << *other << " still connected to " << *port << std::endl;
-               }
-           }
-       }
-   }
+    for (const auto &mpm: m_ports) {
+        const auto &pm = *mpm.second;
+        for (const auto &pme: pm) {
+            const Port *port = pme.second;
+            if (port->getModuleID() == moduleId) {
+                CERR << "removeModule " << moduleId << ": " << *port << " still exists" << std::endl;
+            }
+            const auto &cl = port->connections();
+            for (const auto &other: cl) {
+                if (other->getModuleID() == moduleId) {
+                    CERR << "removeModule " << moduleId << ": " << *other << " still connected to " << *port << std::endl;
+                }
+            }
+        }
+    }
 
-   return ret;
+    return ret;
 }
 
 bool PortTracker::check() const {
 
-   bool ok = true;
-   int numInput=0, numOutput=0, numParam=0;
-   for (const auto &mpm: m_ports) {
-       const auto &pm = *mpm.second;
-       for (const auto &pme: pm) {
-           const Port *port = pme.second;
-           const auto &cl = port->connections();
-           if (port->getType() == Port::INPUT && !(port->flags() & Port::COMBINE)) {
-               if (cl.size() > 1) {
-                   CERR << "FAIL: too many connections: " << *port << std::endl;
-               }
-           }
-           const int moduleId = port->getModuleID();
-           for (const auto &other: cl) {
-               if (port->getType() == Port::ANY) {
-                   CERR << "FAIL: ANY port: " << *port << std::endl;
-                   ok = false;
-               }
-               if (other->getType() == Port::ANY) {
-                   CERR << "FAIL: ANY port: " << *other << std::endl;
-                   ok = false;
-               }
-               if (port->getType() == Port::INPUT) {
-                   if (other->getType() != Port::OUTPUT) {
-                       CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
-                       ok = false;
-                   } else {
-                       ++numInput;
-                   }
-                   if (other->getModuleID() == moduleId) {
-                       CERR << "FAIL: from/to same module: " << *port << " <-> " << *other << std::endl;
-                       ok = false;
-                   }
-               } else if (port->getType() == Port::OUTPUT) {
-                   if (other->getType() != Port::INPUT) {
-                       CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
-                       ok = false;
-                   } else {
-                       ++numOutput;
-                   }
-                   if (other->getModuleID() == moduleId) {
-                       CERR << "FAIL: from/to same module: " << *port << " <-> " << *other << std::endl;
-                       ok = false;
-                   }
-               } else if (port->getType() == Port::PARAMETER) {
-                   if (other->getType() != Port::PARAMETER) {
-                       CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
-                       ok = false;
-                   } else {
-                       ++numParam;
-                   }
-               } else {
-                   CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
-                   ok = false;
-               }
-           }
-       }
-   }
+    bool ok = true;
+    int numInput=0, numOutput=0, numParam=0;
+    for (const auto &mpm: m_ports) {
+        const auto &pm = *mpm.second;
+        for (const auto &pme: pm) {
+            const Port *port = pme.second;
+            const auto &cl = port->connections();
+            if (port->getType() == Port::INPUT && !(port->flags() & Port::COMBINE)) {
+                if (cl.size() > 1) {
+                    CERR << "FAIL: too many connections: " << *port << std::endl;
+                }
+            }
+            const int moduleId = port->getModuleID();
+            for (const auto &other: cl) {
+                if (port->getType() == Port::ANY) {
+                    CERR << "FAIL: ANY port: " << *port << std::endl;
+                    ok = false;
+                }
+                if (other->getType() == Port::ANY) {
+                    CERR << "FAIL: ANY port: " << *other << std::endl;
+                    ok = false;
+                }
+                if (port->getType() == Port::INPUT) {
+                    if (other->getType() != Port::OUTPUT) {
+                        CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
+                        ok = false;
+                    } else {
+                        ++numInput;
+                    }
+                    if (other->getModuleID() == moduleId) {
+                        CERR << "FAIL: from/to same module: " << *port << " <-> " << *other << std::endl;
+                        ok = false;
+                    }
+                } else if (port->getType() == Port::OUTPUT) {
+                    if (other->getType() != Port::INPUT) {
+                        CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
+                        ok = false;
+                    } else {
+                        ++numOutput;
+                    }
+                    if (other->getModuleID() == moduleId) {
+                        CERR << "FAIL: from/to same module: " << *port << " <-> " << *other << std::endl;
+                        ok = false;
+                    }
+                } else if (port->getType() == Port::PARAMETER) {
+                    if (other->getType() != Port::PARAMETER) {
+                        CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
+                        ok = false;
+                    } else {
+                        ++numParam;
+                    }
+                } else {
+                    CERR << "FAIL: connection mismatch: " << *port << " <-> " << *other << std::endl;
+                    ok = false;
+                }
+            }
+        }
+    }
 
-   if (numInput != numOutput) {
-       CERR << "FAIL: numInput=" << numInput << ", numOutput=" << numOutput << std::endl;
-       ok = false;
-   }
-   if (numParam % 2) {
-       CERR << "FAIL: numParam=" << numParam << std::endl;
-       ok = false;
-   }
-   if (!ok) {
-       CERR << vistle::backtrace() << std::endl;
-   }
-   return ok;
+    if (numInput != numOutput) {
+        CERR << "FAIL: numInput=" << numInput << ", numOutput=" << numOutput << std::endl;
+        ok = false;
+    }
+    if (numParam % 2) {
+        CERR << "FAIL: numParam=" << numParam << std::endl;
+        ok = false;
+    }
+    if (!ok) {
+        CERR << vistle::backtrace() << std::endl;
+    }
+    return ok;
 }
 
 } // namespace vistle
