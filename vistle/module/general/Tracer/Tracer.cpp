@@ -76,7 +76,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
 
     addVectorParameter("startpoint1", "1st initial point", ParamVector(0,0.2,0));
     addVectorParameter("startpoint2", "2nd initial point", ParamVector(1,0,0));
-    addVectorParameter("direction", "direction for Plane", ParamVector(1,0,0));
+    addVectorParameter("direction", "direction for plane", ParamVector(1,0,0));
     addIntParameter("no_startp", "number of startpoints", 2);
     setParameterRange("no_startp", (Integer)0, (Integer)10000);
     addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
@@ -492,22 +492,64 @@ bool Tracer::reduce(int timestep) {
    //get parameters
    bool useCelltree = m_useCelltree->getValue();
    TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
-   Index numpoints = getIntParameter("no_startp");
-   Index numparticles = numpoints;
-   if (traceDirection == Both)
-       numparticles *= 2;
    Index steps_max = getIntParameter("steps_max");
+   Index numpoints = getIntParameter("no_startp");
 
    //determine startpoints
-   std::vector<Vector3> startpoints(numparticles);
+   std::vector<Vector3> startpoints;
+   StartStyle startStyle = (StartStyle)getIntParameter("startStyle");
    Vector3 startpoint1 = getVectorParameter("startpoint1");
    Vector3 startpoint2 = getVectorParameter("startpoint2");
-   Vector3 delta = (startpoint2-startpoint1)/(numpoints-1);
-   for(Index i=0; i<numpoints; i++){
+   Vector3 direction = getVectorParameter("direction");
+   if (startStyle == Plane) {
+       direction.normalize();
+       Vector3 v = startpoint2-startpoint1;
+       Scalar l = direction.dot(v);
+       Vector3 v0 = direction*l;
+       Vector3 v1 = v-v0;
+       Scalar r = v0.norm();
+       Scalar s = v1.norm();
+       Index n0, n1;
+       if (r > s) {
+           n1 = Index(sqrt(numpoints*s/r))+1;
+           if (n1 <= 1)
+               n1 = 2;
+           n0 = numpoints / n1;
+           if (n0 <= 1)
+               n0 = 2;
+       } else {
+           n0 = Index(sqrt(numpoints*r/s))+1;
+           if (n0 <= 1)
+               n0 = 2;
+           n1 = numpoints / n0;
+           if (n1 <= 1)
+               n1 = 2;
+       }
+       numpoints = n0*n1;
+       setIntParameter("no_startp", numpoints);
+       startpoints.resize(numpoints);
 
-      startpoints[i] = startpoint1 + i*delta;
+       Scalar s0 = Scalar(1)/(n0-1);
+       Scalar s1 = Scalar(1)/(n1-1);
+       for (Index i=0; i<n0; ++i) {
+           for (Index j=0; j<n1; ++j) {
+               startpoints[i*n1+j] = startpoint1 + v0*s0*i + v1*s1*j;
+           }
+       }
+   } else {
+       startpoints.resize(numpoints);
+
+       Vector3 delta = (startpoint2-startpoint1)/(numpoints-1);
+       for(Index i=0; i<numpoints; i++){
+
+           startpoints[i] = startpoint1 + i*delta;
+       }
    }
+   Index numparticles = numpoints;
    if (traceDirection == Both) {
+       numparticles *= 2;
+       startpoints.resize(numparticles);
+
        for(Index i=0; i<numpoints; i++){
            startpoints[i+numpoints] = startpoints[i];
        }
