@@ -31,7 +31,7 @@ class StructuredToUnstructured : public vistle::Module {
 
  private:
    // overriden functions
-   virtual bool compute();
+   virtual bool compute() override;
 
    // private helper functions
    void compute_uniformVecs(vistle::UniformGrid::const_ptr obj, vistle::UnstructuredGrid::ptr unstrGridOut,

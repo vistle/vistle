@@ -73,9 +73,9 @@ class PrintMetaData : public vistle::Module {
 
  private:
    // overriden functions
-   virtual bool prepare();
-   virtual bool compute();
-   virtual bool reduce(int timestep);
+   virtual bool prepare() override;
+   virtual bool compute() override;
+   virtual bool reduce(int timestep) override;
 
    // helper functions
    void compute_acquireGenericData(vistle::Object::const_ptr data);
