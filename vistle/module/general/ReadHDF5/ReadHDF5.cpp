@@ -87,16 +87,24 @@ bool ReadHDF5::prepare() {
     herr_t status;
     hid_t fileId;
     hid_t filePropertyListId;
-    hid_t groupId;
-    hid_t readId;
 
-    bool groupExists;
+    htri_t oGroupFound;
+    htri_t tGroupFound;
+    htri_t bGroupFound;
+    htri_t vGroupFound;
+    std::string oIndexName;
+    std::string tIndexName;
+    std::string bIndexName;
+    std::string vIndexName;
+
 
     // check file validity before beginning
     if (!util_checkFile()) {
         return true;
     }
 
+    // clear persisitent variables
+    m_arrayMap.clear();
 
     // create file access property list id
     filePropertyListId = H5Pcreate(H5P_FILE_ACCESS);
@@ -105,47 +113,63 @@ bool ReadHDF5::prepare() {
     // open file
     fileId = H5Fopen(m_fileName->getValue().c_str(), H5P_DEFAULT, filePropertyListId);
 
+    // open dummy dataset id for read size 0 sync
+    m_dummyDatasetId = H5Dopen2(fileId, m_dummyObjectName.c_str(), H5P_DEFAULT);
 
     // o_c = origin counter
     // t_c = timestep counter
     // b_c = block counter
     // v_c = variants counter
     // timesteps and blocks can have values of -1;
-    for (unsigned o_c = 0; o_c < m_numPorts; o_c++) {
-        groupExists = true;
-        for (long int t_c = -1; groupExists || t_c <= 0; t_c++) {
-            groupExists = true;
-            for (long int b_c = -1; groupExists || b_c <= 0; b_c++) {
-                groupExists = true;
-                for (unsigned v_c = 0; groupExists; v_c++) {
-                    std::string indexName = "/index/"
-                            + std::to_string(o_c) + "/"
-                            + std::to_string(t_c) + "/"
-                            + std::to_string(b_c) + "/"
-                            + std::to_string(v_c);
+    for (unsigned o_c = 0;
+                o_c < m_numPorts;
+                o_c++
+         ) {
+        oIndexName = "/index/" + std::to_string(o_c);
+        oGroupFound = H5Lexists(fileId, oIndexName.c_str(), H5P_DEFAULT);
+        if (!util_doesExist(oGroupFound)) { break; }
 
-                    groupId = H5Gopen2(fileId, indexName.c_str(), H5P_DEFAULT);
+        for (long int t_c = -1;
+                    util_doesExist(tGroupFound) || t_c <= 0;
+                    t_c++
+             ) {
+            tIndexName = oIndexName + "/" + std::to_string(t_c);
+            tGroupFound = H5Lexists(fileId, tIndexName.c_str(), H5P_DEFAULT);
+            if (!util_doesExist(tGroupFound)) { continue; }
 
-                    // check dataset Validity
-                    if (groupId < 0) {
-                        // skip rest of read if invalid
-                        if (m_isRootNode)
-                            sendInfo("not valid: %s", indexName.c_str());
-                        groupExists = false;
+            for (long int b_c = m_isRootNode ? -1 : rank();
+                        util_doesExist(bGroupFound) || b_c <= 0 || b_c == rank();
+                        b_c  = (b_c == -1) ? 0 : b_c + comm().size()
+                 ) {
+                bIndexName = tIndexName + "/" + std::to_string(b_c);
+                bGroupFound = H5Lexists(fileId, bIndexName.c_str(), H5P_DEFAULT);
+                if (!util_doesExist(bGroupFound)) { continue; }
+
+                for (unsigned v_c = 0;
+                            util_doesExist(vGroupFound) || v_c == 0;
+                            v_c++
+                     ) {
+                    vIndexName = bIndexName + "/" + std::to_string(v_c);
+                    vGroupFound = H5Lexists(fileId, vIndexName.c_str(), H5P_DEFAULT);
+
+                    // check dataset validity
+                    if (vGroupFound == 0) {
+                        // group does not exist
+                        sendInfo("not valid: %s", vIndexName.c_str());
                         break;
+                    } else if (vGroupFound < 0) {
+                        // error has occurred
+                        sendInfo("error reading group: %s", vIndexName.c_str());
+                        return Module::prepare();
+                    } else {
+                        sendInfo("found index: %s", vIndexName.c_str());
                     }
 
-                    // the group exists
-                    groupExists = true;
-
-
-
+                    // group exists; iterate to object
                     LinkIterData linkIterData(this, fileId, o_c, b_c, t_c);
-                    status = H5Literate (groupId, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processObject, &linkIterData);
+                    status = H5Literate_by_name(fileId, vIndexName.c_str(), H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processObject, &linkIterData, H5P_DEFAULT);
                     util_checkStatus(status);
 
-                    status = H5Gclose(groupId);
-                    util_checkStatus(status);
                 }
             }
         }
@@ -153,16 +177,10 @@ bool ReadHDF5::prepare() {
 
 
     // sync nodes for collective reads
-//    unsigned totalReadingNodes;
-//    unsigned isReadingNode = 0;
-//    boost::mpi::all_reduce(comm(), isReadingNode, totalReadingNodes, std::plus<unsigned>());
-
-//    while (totalReadingNodes != 0) {
-
-//    }
-
+    while (!util_readSync(false, comm(), fileId)) { /*wait for all nodes to finish reading*/ }
 
     // close all open h5 entities
+    H5Dclose(m_dummyDatasetId);
     H5Pclose(filePropertyListId);
     H5Fclose(fileId);
 
@@ -175,67 +193,112 @@ bool ReadHDF5::prepare() {
 herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, const H5L_info_t * info, void * opData) {
     LinkIterData * linkIterData = (LinkIterData *) opData;
     std::string objectGroup = "/object/" + std::string(name);
+    std::string typeGroup = objectGroup + "/type";
+    std::string metaGroup = objectGroup + "/meta";
 
     herr_t status;
-    hid_t groupId;
-    hid_t fileId;
     hid_t dataSetId;
     hid_t readId;
 
     int objectType;
-    double objectMeta[ReadHDF5::numMetaMembers - ArrayToMetaArchive::numExclusiveMembers];
-    //ShmVectorOArchive archive;
-
-    // sync nodes for collective read calls
-//    unsigned totalReadingNodes;
-//    unsigned isReadingNode = 1;
-//    boost::mpi::all_reduce(linkIterData->callingModule->comm(), isReadingNode, totalReadingNodes, std::plus<unsigned>());
+    std::vector<double> objectMeta(ReadHDF5::numMetaMembers - ArrayToMetaArchive::numExclusiveMembers);
+    ShmVectorOArchive archive;
 
 
-    // open object group
-    groupId = H5Gopen2(linkIterData->fileId, objectGroup.c_str(), H5P_DEFAULT);
 
     // obtain port number
     readId = H5Pcreate(H5P_DATASET_XFER);
     H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
 
     // read type
-    dataSetId = H5Dopen2(groupId, "type", H5P_DEFAULT);
+    util_readSync(true, linkIterData->callingModule->comm(), linkIterData->fileId);
+    dataSetId = H5Dopen2(linkIterData->fileId, typeGroup.c_str(), H5P_DEFAULT);
     status = H5Dread(dataSetId, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, readId, &objectType);
     H5Dclose(dataSetId);
 
     // read meta
-    dataSetId = H5Dopen2(groupId, "meta", H5P_DEFAULT);
-    status = H5Dread(dataSetId, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, readId, &objectMeta[0]);
+    util_readSync(true, linkIterData->callingModule->comm(), linkIterData->fileId);
+    dataSetId = H5Dopen2(linkIterData->fileId, metaGroup.c_str(), H5P_DEFAULT);
+    status = H5Dread(dataSetId, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, readId, objectMeta.data());
     H5Dclose(dataSetId);
 
 
-    if (linkIterData->callingModule->m_isRootNode) {
-        linkIterData->callingModule->sendInfo("iterated: %s, found type: %d", name, objectType);
-    }
-
-
+    // create empty object by type
     Object::ptr returnObject = ObjectTypeRegistry::getType(objectType).createEmpty();
 
     // construct meta
-    ArrayToMetaArchive arrayToMetaArchive(&objectMeta[0], linkIterData->block, linkIterData->timestep);
+    ArrayToMetaArchive arrayToMetaArchive(objectMeta.data(), linkIterData->block, linkIterData->timestep);
     boost::serialization::serialize_adl(arrayToMetaArchive, const_cast<Meta &>(returnObject->meta()), ::boost::serialization::version< Meta >::value);
 
+    // serialize object and prepare for array iteration
+    returnObject->save(archive);
+    linkIterData->archive = &archive;
 
-    //returnObject->save(archive);
 
+    // iterate through array links
+    status = H5Literate_by_name(linkIterData->fileId, objectGroup.c_str(), H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processArrayContainer, linkIterData, H5P_DEFAULT);
+    linkIterData->callingModule->util_checkStatus(status);
 
     // close all open h5 entities
     H5Pclose(readId);
-
-
-    status = H5Gclose(groupId);
-    linkIterData->callingModule->util_checkStatus(status);
 
     // output object
     linkIterData->callingModule->addObject(std::string("data" + std::to_string(linkIterData->origin) + "_out"), returnObject);
 
     return 0;
+}
+
+// PREPARE UTILITY FUNCTION - PROCESSES AN ARRAY CONTAINER
+// * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
+//-------------------------------------------------------------------------
+herr_t ReadHDF5::prepare_processArrayContainer(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
+    LinkIterData * linkIterData = (LinkIterData *) opData;
+    H5O_info_t objectInfo;
+    herr_t status;
+
+    // only iterate through array links
+    H5Oget_info_by_name(callingGroupId, name, &objectInfo, H5P_DEFAULT);
+    if (objectInfo.type != H5O_TYPE_GROUP) {
+        return 0;
+    }
+
+    // debug output
+    //linkIterData->callingModule->sendInfo("iteratedg: %s", name);
+
+    // check if current version of object contains the correct array name
+    if (linkIterData->archive->getVectorEntryByNvpName(name) == nullptr) {
+        return 0;
+    }
+
+    linkIterData->nvpName = name;
+
+    status = H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processArrayLink, linkIterData, H5P_DEFAULT);
+    linkIterData->callingModule->util_checkStatus(status);
+
+    return 0;
+}
+
+// PREPARE UTILITY FUNCTION - PROCESSES AN ARRAY LINK
+// * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
+//-------------------------------------------------------------------------
+herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
+    LinkIterData * linkIterData = (LinkIterData *) opData;
+
+    //linkIterData->callingModule->sendInfo("iteratedl: %s", name);
+
+    // read arrays
+    ShmVectorReader reader(
+                linkIterData->archive,
+                std::string(name),
+                linkIterData->nvpName,
+                linkIterData->callingModule->m_arrayMap,
+                linkIterData->fileId,
+                linkIterData->callingModule->m_dummyDatasetId,
+                linkIterData->callingModule->comm()
+                );
+
+    boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorReader>(reader));
+
 }
 
 // COMPUTE FUNCTION
@@ -249,7 +312,6 @@ bool ReadHDF5::compute() {
 // REDUCE FUNCTION
 //-------------------------------------------------------------------------
 bool ReadHDF5::reduce(int timestep) {
-
 
     return Module::reduce(timestep);
 }
@@ -306,6 +368,43 @@ bool ReadHDF5::util_checkFile() {
     H5Fclose(fileId);
 
     return true;
+}
+
+// GENERIC UTILITY HELPER FUNCTION - SYNCHRONISE COLLECTIVE READS
+// * returns wether or not all nodes are done
+//-------------------------------------------------------------------------
+bool ReadHDF5::util_readSync(bool isReader, const boost::mpi::communicator & comm, hid_t fileId) {
+    unsigned totalReadingNodes;
+    unsigned isReadingNode = (unsigned) isReader;
+    boost::mpi::all_reduce(comm, isReadingNode, totalReadingNodes, std::plus<unsigned>());
+
+    // check if the read synchronisation is complete
+    if (totalReadingNodes == 0) {
+        return true;
+    }
+
+    // sync for collective calls if not complete
+    if (!isReader) {
+        herr_t status;
+        hid_t dataSetId;
+        hid_t readId;
+        int readDummy;
+
+        // obtain port number
+        readId = H5Pcreate(H5P_DATASET_XFER);
+        H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
+
+        // perform write followed by read
+        dataSetId = H5Dopen2(fileId, m_dummyObjectName.c_str(), H5P_DEFAULT);
+        status = H5Dread(dataSetId, m_dummyObjectType, H5S_ALL, H5S_ALL, readId, &readDummy);
+
+        // release resources
+        H5Pclose(readId);
+        H5Dclose(dataSetId);
+
+    }
+
+    return false;
 }
 
 // GENERIC UTILITY HELPER FUNCTION - VERIFY HERR_T STATUS

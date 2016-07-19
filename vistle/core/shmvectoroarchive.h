@@ -34,11 +34,14 @@
 // VISTLE OBJECT OARCHIVE CLASS DECLARATION
 //-------------------------------------------------------------------------
 class V_COREEXPORT ShmVectorOArchive {
+public:
+    struct ArrayData;
 private:
 
     // private member variables
-    std::vector<std::string> m_shmNameVector;
-
+    std::vector<ArrayData> m_arrayDataVector;
+    std::string m_currNvpTag;
+    unsigned m_indexHint;
 
     // specialized save static structs
     template<class Archive>
@@ -77,21 +80,35 @@ public:
     template<class T>
     ShmVectorOArchive & operator<<(const boost::serialization::nvp<T> & t);
     template<class T>
-    ShmVectorOArchive & operator<<(const vistle::ShmVector<T> & t);
+    ShmVectorOArchive & operator<<(vistle::ShmVector<T> & t);
 
     // the & operator
     template<class T>
     ShmVectorOArchive & operator&(const T & t);
 
-    // get functions
-    std::vector<std::string> & getVector() { return m_shmNameVector; }
+    // constructor
+    ShmVectorOArchive() : m_indexHint(0) {}
 
+    // get functions
+    std::vector<ArrayData> & getVector() { return m_arrayDataVector; }
+    ArrayData * getVectorEntryByNvpName(std::string name);
 };
 
 
 //-------------------------------------------------------------------------
 // VISTLE OBJECT OARCHIVE CLASS DEFINITION
 //-------------------------------------------------------------------------
+
+// ARRAY DATA STRUCT
+//-------------------------------------------------------------------------
+struct ShmVectorOArchive::ArrayData {
+    std::string nvpName;
+    std::string arrayName;
+    void * ref;
+
+    ArrayData(std::string _nvpName, std::string _arrayName, void * _ref)
+        : nvpName(_nvpName), arrayName(_arrayName), ref(_ref) {}
+};
 
 // SPECIALIZED SAVE FUNCTION: ENUMS
 //-------------------------------------------------------------------------
@@ -193,16 +210,18 @@ ShmVectorOArchive & ShmVectorOArchive::operator<<(const T (&t)[N]) {
 template<class T>
 ShmVectorOArchive & ShmVectorOArchive::operator<<(const boost::serialization::nvp<T> & t) {
 
-    return *this << t.const_value();
+    m_currNvpTag = t.name();
+
+    return *this << t.value();
 }
 
 // << OPERATOR: SHMVECTOR
 //-------------------------------------------------------------------------
 template<class T>
-ShmVectorOArchive & ShmVectorOArchive::operator<<(const vistle::ShmVector<T> & t) {
+ShmVectorOArchive & ShmVectorOArchive::operator<<(vistle::ShmVector<T> & t) {
 
     // save shmName to archive
-    m_shmNameVector.push_back(std::string(t.name().name.data()));
+    m_arrayDataVector.push_back(ArrayData(m_currNvpTag, std::string(t.name().name.data()), &t));
 
     return *this;
 }

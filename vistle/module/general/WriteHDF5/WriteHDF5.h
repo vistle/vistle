@@ -63,9 +63,9 @@ class WriteHDF5 : public vistle::Module {
 
    // overriden functions
    virtual bool parameterChanged(const vistle::Parameter * p);
-   virtual bool prepare();
-   virtual bool compute();
-   virtual bool reduce(int timestep);
+   virtual bool prepare() override;
+   virtual bool compute() override;
+   virtual bool reduce(int timestep) override;
 
    // private helper functions
    static void util_checkStatus(herr_t status);
@@ -149,13 +149,14 @@ const std::unordered_map<std::type_index, hid_t> WriteHDF5::nativeTypeMap = {
 //-------------------------------------------------------------------------
 struct WriteHDF5::ReservationInfoShmEntry {
     std::string name;
+    std::string nvpTag;
     hid_t type;
     unsigned size;
 
 
     ReservationInfoShmEntry() {}
-    ReservationInfoShmEntry(std::string _name, hid_t _type, unsigned _size)
-        : name(_name), type(_type), size(_size) {}
+    ReservationInfoShmEntry(std::string _name, std::string _nvpTag, hid_t _type, unsigned _size)
+        : name(_name), nvpTag(_nvpTag), type(_type), size(_size) {}
 
     // serialization method for passing over mpi
     template <class Archive>
@@ -259,9 +260,11 @@ const int WriteHDF5::MetaToArrayArchive::numExclusiveMembers = 2;
 //-------------------------------------------------------------------------
 struct WriteHDF5::ShmVectorReserver {
     std::string name;
+    std::string nvpTag;
     ReservationInfo * reservationInfo;
 
-    ShmVectorReserver(std::string _name, ReservationInfo * _reservationInfo) : name(_name), reservationInfo(_reservationInfo) {}
+    ShmVectorReserver(std::string _name, std::string _nvpTag, ReservationInfo * _reservationInfo)
+        : name(_name), nvpTag(_nvpTag), reservationInfo(_reservationInfo) {}
 
     template<typename T>
     void operator()(T);
@@ -304,6 +307,7 @@ struct WriteHDF5::ShmVectorWriter {
 template <class Archive>
 void WriteHDF5::ReservationInfoShmEntry::serialize(Archive &ar, const unsigned int version) {
    ar & name;
+   ar & nvpTag;
    ar & type;
    ar & size;
 }
@@ -342,7 +346,7 @@ void WriteHDF5::ShmVectorReserver::operator()(T) {
         assert(nativeTypeMapIter != WriteHDF5::nativeTypeMap.end());
 
         // store reservation info
-        reservationInfo->shmVectors.push_back(ReservationInfoShmEntry(name, nativeTypeMapIter->second, vec->size()));
+        reservationInfo->shmVectors.push_back(ReservationInfoShmEntry(name, nvpTag, nativeTypeMapIter->second, vec->size()));
     }
 }
 

@@ -32,7 +32,7 @@
 class ReadHDF5 : public vistle::Module {
  public:
     friend class boost::serialization::access;
-    friend struct ShmVectorWriter;
+    friend struct ShmVectorReader;
 
    ReadHDF5(const std::string &shmname, const std::string &name, int moduleID);
    ~ReadHDF5();
@@ -49,21 +49,26 @@ class ReadHDF5 : public vistle::Module {
    class ArrayToMetaArchive;
 
    struct ShmVectorReserver;
-   struct ShmVectorWriter;
+   struct ShmVectorReader;
 
 
 
    // overriden functions
    virtual bool parameterChanged();
-   virtual bool prepare();
-   virtual bool compute();
-   virtual bool reduce(int timestep);
+   virtual bool prepare() override;
+   virtual bool compute() override;
+   virtual bool reduce(int timestep) override;
 
    // private helper functions
    static herr_t prepare_processObject(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
-   void util_readSync(bool isReader);
+   static herr_t prepare_processArrayContainer(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+   static herr_t prepare_processArrayLink(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+   static bool util_readSync(bool isReader, const boost::mpi::communicator & comm, hid_t fileId);
    void util_checkStatus(herr_t status);
    bool util_checkFile();
+   inline static bool util_doesExist(htri_t exist) {
+       return exist > 0;
+   }
 
 
 
@@ -72,7 +77,8 @@ class ReadHDF5 : public vistle::Module {
    unsigned m_numPorts;
 
    bool m_isRootNode;
-   std::unordered_set<std::string> m_arraySet;
+   std::unordered_map<std::string, std::string> m_arrayMap; //< array name in file -> array name in memory
+   hid_t m_dummyDatasetId;
 
 
    // private member constants
@@ -92,7 +98,7 @@ public:
 //-------------------------------------------------------------------------
 const hid_t ReadHDF5::m_dummyObjectType = H5T_NATIVE_INT;
 const std::vector<hsize_t> ReadHDF5::m_dummyObjectDims = {1};
-const std::string ReadHDF5::m_dummyObjectName = "/dummy";
+const std::string ReadHDF5::m_dummyObjectName = "/file/dummy";
 
 unsigned ReadHDF5::numMetaMembers = 0;
 
@@ -138,6 +144,8 @@ const std::unordered_map<std::type_index, hid_t> ReadHDF5::nativeTypeMap = {
 // * stores data needed for link iteration
 //-------------------------------------------------------------------------
 struct ReadHDF5::LinkIterData {
+    std::string nvpName;
+    ShmVectorOArchive * archive;
     ReadHDF5 * callingModule;
     hid_t fileId;
     unsigned origin;
@@ -145,7 +153,7 @@ struct ReadHDF5::LinkIterData {
     int timestep;
 
     LinkIterData(ReadHDF5 * _callingModule, hid_t _fileId, unsigned _origin, int _block, int _timestep)
-        : callingModule(_callingModule), fileId(_fileId), origin(_origin), block(_block), timestep(_timestep) {}
+        : archive(nullptr), callingModule(_callingModule), fileId(_fileId), origin(_origin), block(_block), timestep(_timestep) {}
 
 };
 
@@ -244,12 +252,19 @@ struct ReadHDF5::ShmVectorReserver {
 // * calls util_HDF5Write for a shmVector
 // * needed in order to iterate over all possible shm VectorTypes
 //-------------------------------------------------------------------------
-struct ReadHDF5::ShmVectorWriter {
-    std::string name;
-    hid_t fileId;
+struct ReadHDF5::ShmVectorReader {
+    typedef std::unordered_map<std::string, std::string> NameMap;
 
-    ShmVectorWriter(std::string _name, hid_t _fileId)
-        : name(_name), fileId(_fileId) {}
+    ShmVectorOArchive * archive;
+    std::string arrayNameInFile;
+    std::string nvpName;
+    NameMap & arrayMap;
+    hid_t fileId;
+    hid_t dummyDatasetId;
+    const boost::mpi::communicator & comm;
+
+    ShmVectorReader(ShmVectorOArchive * _archive,  std::string _arrayNameInFile, std::string _nvpName, NameMap & _arrayMap, hid_t _fileId, hid_t _dummyDatasetId, const boost::mpi::communicator & _comm)
+        : archive(_archive), arrayNameInFile(_arrayNameInFile), nvpName(_nvpName), arrayMap(_arrayMap), fileId(_fileId), dummyDatasetId(_dummyDatasetId), comm(_comm) {}
 
     template<typename T>
     void operator()(T);
@@ -294,34 +309,90 @@ template<typename T>
 void ReadHDF5::ShmVectorReserver::operator()(T) {
     const vistle::ShmVector<T> &vec = vistle::Shm::the().getArrayFromName<T>(name);
 
-    if (vec) {
-        auto nativeTypeMapIter = ReadHDF5::nativeTypeMap.find(typeid(T));
-
-        // check wether the needed vector type is not supported within the nativeTypeMap
-        assert(nativeTypeMapIter != ReadHDF5::nativeTypeMap.end());
-
-        // store reservation info
-        reservationInfo->shmVectors.push_back(ReservationInfoShmEntry(name, nativeTypeMapIter->second, vec->size()));
-    }
 }
 
 // SHM VECTOR WRITER - () OPERATOR
 // * facilitates writing of shmVector data to the HDF5 file when GetArrayFromName types match
 //-------------------------------------------------------------------------
 template<typename T>
-void ReadHDF5::ShmVectorWriter::operator()(T) {
-    const vistle::ShmVector<T> &vec = vistle::Shm::the().getArrayFromName<T>(name);
+void ReadHDF5::ShmVectorReader::operator()(T) {
+    const vistle::ShmVector<T> &foundArray = vistle::Shm::the().getArrayFromName<T>(archive->getVectorEntryByNvpName(nvpName)->arrayName);
 
-    if (vec) {
-        auto nativeTypeMapIter = ReadHDF5::nativeTypeMap.find(typeid(T));
-        std::string writeName = "/array/" + name;
-        hsize_t dims[] = {vec->size()};
+    if (foundArray) {
+        auto arrayMapIter = arrayMap.find(arrayNameInFile);
+        if (arrayMapIter == arrayMap.end()) {
+            // this is a new array
+            vistle::ShmVector<T> &newArray = *((vistle::ShmVector<T> *) archive->getVectorEntryByNvpName(nvpName)->ref);
+            std::string readName = "/array/" + arrayNameInFile;
 
-        // check wether the needed vector type is not supported within the nativeTypeMap
-        assert(nativeTypeMapIter != ReadHDF5::nativeTypeMap.end());
+            herr_t status;
+            hid_t dataType;
+            hid_t dataSetId;
+            hid_t dataSpaceId;
+            hid_t readId;
+            hsize_t dims[] = {0};
+            hsize_t maxDims[] = {0};
 
-        //write
-        //ReadHDF5::util_HDF5write(true, writeName, vec->data(), fileId, dims, nativeTypeMapIter->second);
+            arrayMap[arrayNameInFile] = archive->getVectorEntryByNvpName(nvpName)->arrayName;
+
+            ReadHDF5::util_readSync(true, comm, fileId);
+
+            // open dataset and obtain information needed for read
+            dataSetId = H5Dopen2(fileId, readName.c_str(), H5P_DEFAULT);
+            dataSpaceId = H5Dget_space(dataSetId);
+            status = H5Sget_simple_extent_dims(dataSpaceId, dims, maxDims);
+            dataType = H5Dget_type(dataSetId);
+
+             std::cerr << " --- write dims : " << arrayNameInFile << "->" << archive->getVectorEntryByNvpName(nvpName)->arrayName << " - " << dims[0] << std::endl;
+
+            // error debug message
+            if (status != 1) {
+                std::cerr << "error: erroneous number of dimensions found in dataset" << std::endl;
+                assert(true);
+            }
+
+            // error debug message
+            if (dataType < 0) {
+                std::cerr << "error: invalid datatype found" << std::endl;
+                assert(true);
+            }
+
+            // resize in-memory array
+            newArray->resize(dims[0]);
+
+
+            // perform read
+            readId = H5Pcreate(H5P_DATASET_XFER);
+            H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
+
+            // handle size 0 reads
+            if (dims[0] == 0) {
+                double dummyVar;
+                status = H5Dread(dummyDatasetId, dataType, H5S_ALL, H5S_ALL, readId, &dummyVar);
+            } else {
+                status = H5Dread(dataSetId, dataType, H5S_ALL, H5S_ALL, readId, newArray->data());
+            }
+
+
+            // error debug message
+            if (status != 0) {
+                std::cerr << "error: in shmVector read" << std::endl;
+                assert(true);
+            }
+
+            // release resources
+            H5Pclose(readId);
+            H5Sclose(dataSpaceId);
+            H5Dclose(dataSetId);
+
+        } else {
+            // this array already exists in shared memory
+            // replace current object array with existing array
+            std::cerr << " -- replacing --" << std::endl;
+            *((vistle::ShmVector<T> *) archive->getVectorEntryByNvpName(nvpName)->ref) = foundArray;
+        }
+
+
 
     }
 }
@@ -333,6 +404,7 @@ ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(T const 
 
     // do nothing - this archive assumes all members that need to be saved are stored as name-value pairs
 
+    return *this;
 }
 
 // META TO ARRAY - << OPERATOR: NVP
@@ -352,8 +424,6 @@ ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(const bo
         t.value() = m_array[m_insertIndex];
         m_insertIndex++;
     }
-
-    std::cerr << " --- " << t.name() << " - " << t.value() << " --- " << std::endl;
 
     return *this;
 }

@@ -227,7 +227,7 @@ bool WriteHDF5::compute() {
 
         // populate reservationInfo shm vector
         for (unsigned i = 0; i < archive.getVector().size(); i++) {
-            ShmVectorReserver reserver(archive.getVector()[i], &reservationInfo);
+            ShmVectorReserver reserver(archive.getVector()[i].arrayName, archive.getVector()[i].nvpName, &reservationInfo);
             boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorReserver>(reserver));
         }
 
@@ -292,6 +292,10 @@ bool WriteHDF5::compute() {
                 H5Sclose(fileSpaceId);
                 H5Dclose(dataSetId);
 
+                // close group
+                status = H5Gclose(groupId);
+                util_checkStatus(status);
+
                 // handle shmVectors and shmVector links
                 for (unsigned j = 0; j < reservationInfoGatherVector[i].shmVectors.size(); j++) {
                     std::string arrayName = reservationInfoGatherVector[i].shmVectors[j].name;
@@ -308,13 +312,15 @@ bool WriteHDF5::compute() {
                         H5Dclose(dataSetId);
                     }
 
+                    std::string linkGroupName = objectGroupName + "/" + reservationInfoGatherVector[i].shmVectors[j].nvpTag;
+                    groupId = H5Gcreate2(fileId, linkGroupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
                     status = H5Lcreate_soft(arrayPath.c_str(), groupId, arrayName.c_str(), H5P_DEFAULT, H5P_DEFAULT);
                     util_checkStatus(status);
-                }
 
-                // close group
-                status = H5Gclose(groupId);
-                util_checkStatus(status);
+                    status = H5Gclose(groupId);
+                    util_checkStatus(status);
+                }
             }
 
 
@@ -394,11 +400,11 @@ bool WriteHDF5::compute() {
 
     // write array info
     for (unsigned i = 0; i < maxVectorSize; i++) {
-        if (archive.getVector().size() > i && m_arrayMap[archive.getVector()[i]] == false) {
+        if (archive.getVector().size() > i && m_arrayMap[archive.getVector()[i].arrayName] == false) {
             // this node has an object to be written
-            m_arrayMap[archive.getVector()[i]] = true;
+            m_arrayMap[archive.getVector()[i].arrayName] = true;
 
-            ShmVectorWriter shmVectorWriter(archive.getVector()[i], fileId, comm());
+            ShmVectorWriter shmVectorWriter(archive.getVector()[i].arrayName, fileId, comm());
             boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorWriter>(shmVectorWriter));
         } else {
              // this node does not have an object to be written
