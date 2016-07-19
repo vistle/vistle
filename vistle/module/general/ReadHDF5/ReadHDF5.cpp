@@ -184,6 +184,8 @@ bool ReadHDF5::prepare() {
     H5Pclose(filePropertyListId);
     H5Fclose(fileId);
 
+    m_objectPersistenceVector.clear();
+
     return Module::prepare();
 }
 
@@ -243,6 +245,7 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
     H5Pclose(readId);
 
     // output object
+    linkIterData->callingModule->m_objectPersistenceVector.push_back(returnObject);
     linkIterData->callingModule->addObject(std::string("data" + std::to_string(linkIterData->origin) + "_out"), returnObject);
 
     return 0;
@@ -299,6 +302,7 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
 
     boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorReader>(reader));
 
+    return 0;
 }
 
 // COMPUTE FUNCTION

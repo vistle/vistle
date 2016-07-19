@@ -77,7 +77,8 @@ class ReadHDF5 : public vistle::Module {
    unsigned m_numPorts;
 
    bool m_isRootNode;
-   std::unordered_map<std::string, std::string> m_arrayMap; //< array name in file -> array name in memory
+   std::unordered_map<std::string, std::string> m_arrayMap;         //< array name in file -> array name in memory
+   std::vector<vistle::Object::ptr> m_objectPersistenceVector;      //< stores pointers to objects so that they are not cleared from memory
    hid_t m_dummyDatasetId;
 
 
@@ -316,7 +317,7 @@ void ReadHDF5::ShmVectorReserver::operator()(T) {
 //-------------------------------------------------------------------------
 template<typename T>
 void ReadHDF5::ShmVectorReader::operator()(T) {
-    const vistle::ShmVector<T> &foundArray = vistle::Shm::the().getArrayFromName<T>(archive->getVectorEntryByNvpName(nvpName)->arrayName);
+    const vistle::ShmVector<T> foundArray = vistle::Shm::the().getArrayFromName<T>(archive->getVectorEntryByNvpName(nvpName)->arrayName);
 
     if (foundArray) {
         auto arrayMapIter = arrayMap.find(arrayNameInFile);
@@ -347,14 +348,12 @@ void ReadHDF5::ShmVectorReader::operator()(T) {
 
             // error debug message
             if (status != 1) {
-                std::cerr << "error: erroneous number of dimensions found in dataset" << std::endl;
-                assert(true);
+                assert("error: erroneous number of dimensions found in dataset" == NULL);
             }
 
             // error debug message
             if (dataType < 0) {
-                std::cerr << "error: invalid datatype found" << std::endl;
-                assert(true);
+                assert("error: invalid datatype found" == NULL);
             }
 
             // resize in-memory array
@@ -387,13 +386,16 @@ void ReadHDF5::ShmVectorReader::operator()(T) {
 
         } else {
             // this array already exists in shared memory
+            vistle::ShmVector<T> existingArray = vistle::Shm::the().getArrayFromName<T>(arrayMap[arrayNameInFile]);
+
+            // error debug message
+            if (!existingArray) {
+                assert("error: existing array not found" == NULL);
+            }
+
             // replace current object array with existing array
-            std::cerr << " -- replacing --" << std::endl;
-            *((vistle::ShmVector<T> *) archive->getVectorEntryByNvpName(nvpName)->ref) = foundArray;
+            *((vistle::ShmVector<T> *) archive->getVectorEntryByNvpName(nvpName)->ref) = existingArray;
         }
-
-
-
     }
 }
 
