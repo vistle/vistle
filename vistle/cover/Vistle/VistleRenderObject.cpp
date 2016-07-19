@@ -1,5 +1,7 @@
 #include "VistleRenderObject.h"
 
+#include <cover/coVRPluginList.h>
+
 using namespace opencover;
 
 BaseRenderObject::BaseRenderObject() {
@@ -144,6 +146,7 @@ ModuleRenderObject::ModuleRenderObject(const std::string &moduleName, int module
 
 ModuleRenderObject::~ModuleRenderObject()
 {
+   coVRPluginList::instance()->removeObject(getName(), false);
 }
 
 const char *ModuleRenderObject::getName() const

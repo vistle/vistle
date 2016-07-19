@@ -267,6 +267,11 @@ bool OsgRenderer::parameterRemoved(const int senderId, const std::string &name, 
     if (it != m_interactorMap.end()) {
         auto inter = it->second;
         inter->removeParam(name, msg);
+        if (!inter->hasParams()) {
+            std::cerr << "removing interactor for " << senderId << " (" << getModuleName(senderId) << ")" << std::endl;
+            delete inter;
+            m_interactorMap.erase(it);
+        }
     }
     return true;
 }

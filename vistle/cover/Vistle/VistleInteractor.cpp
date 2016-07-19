@@ -43,6 +43,11 @@ void VistleInteractor::removeParam(const std::string &name, const vistle::messag
    }
 }
 
+bool VistleInteractor::hasParams() const {
+
+    return !m_parameterMap.empty();
+}
+
 void VistleInteractor::applyParam(const std::string &name, const vistle::message::SetParameter &msg)
 {
    auto param = findParam(name);

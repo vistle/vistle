@@ -20,6 +20,7 @@ class VistleInteractor: public opencover::coInteractor {
    void addParam(const std::string &name, const vistle::message::AddParameter &msg);
    void removeParam(const std::string &name, const vistle::message::RemoveParameter &msg);
    void applyParam(const std::string &name, const vistle::message::SetParameter &msg);
+   bool hasParams() const;
 
    virtual void removedObject();
 
