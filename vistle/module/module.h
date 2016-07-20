@@ -274,6 +274,7 @@ protected:
    void updateOutputMode();
    std::streambuf *m_origStreambuf, *m_streambuf;
 
+   bool m_inParameterChanged;
    int m_traceMessages;
    bool m_benchmark;
    double m_benchmarkStart;

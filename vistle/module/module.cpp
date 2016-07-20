@@ -164,6 +164,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_syncMessageProcessing(false)
 , m_origStreambuf(nullptr)
 , m_streambuf(nullptr)
+, m_inParameterChanged(false)
 , m_traceMessages(message::Message::INVALID)
 , m_benchmark(false)
 , m_comm(MPI_COMM_WORLD, mpi::comm_attach)
@@ -981,6 +982,11 @@ bool Module::isConnected(const Port *port) const {
 
 bool Module::parameterChangedWrapper(const Parameter *p) {
 
+   if (m_inParameterChanged) {
+      return true;
+   }
+   m_inParameterChanged = true;
+
    std::string name = p->getName();
    if (name[0] == '_') {
 
@@ -998,10 +1004,13 @@ bool Module::parameterChangedWrapper(const Parameter *p) {
          enableBenchmark(getIntParameter(name), false);
       }
 
+      m_inParameterChanged = false;
       return true;
    }
 
-   return parameterChanged(p);
+   bool ret = parameterChanged(p);
+   m_inParameterChanged = false;
+   return ret;
 }
 
 bool Module::parameterChanged(const Parameter *p) {
