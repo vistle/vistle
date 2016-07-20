@@ -65,25 +65,21 @@ struct IsoDataFunctor {
       , m_direction(direction)
       , m_distance(vertex.dot(point))
       , m_option(option)
-      , m_vectorprod(m_direction.cross(m_point-m_vertex))
-      , m_cylinderradius2(m_vectorprod.squaredNorm())
-      , m_sphereradius2((m_vertex-m_point).squaredNorm())
+      , m_radius2((m_option==Sphere ? m_point-m_vertex : m_direction.cross(m_point-m_vertex)).squaredNorm())
    {}
-   __host__ __device__ Scalar operator()(Index i) {
 
+   __host__ __device__ Scalar operator()(Index i) {
+      Vector coordinates(m_x[i], m_y[i], m_z[i]);
       switch(m_option) {
          case Plane: {
-            Vector coordinates(m_x[i], m_y[i], m_z[i]);
             return m_vertex.dot(coordinates) - m_distance;
          }
          case Sphere: {
-            Vector coordinates(m_x[i], m_y[i], m_z[i]);
-            return coordinates.squaredNorm() - m_sphereradius2;
+            return (coordinates-m_vertex).squaredNorm() - m_radius2;
          }
          default: {
             // all cylinders
-            Vector coordinates(m_x[i], m_y[i], m_z[i]);
-            return (m_direction.cross(coordinates - m_vertex)).squaredNorm() - m_cylinderradius2;
+            return (m_direction.cross(coordinates - m_vertex)).squaredNorm() - m_radius2;
          }
       }
    }
@@ -95,9 +91,7 @@ struct IsoDataFunctor {
    const Vector m_direction;
    const Scalar m_distance;
    const int m_option;
-   const Vector m_vectorprod;
-   const Scalar m_cylinderradius2;
-   const Scalar m_sphereradius2;
+   const Scalar m_radius2;
 };
 
 #else
