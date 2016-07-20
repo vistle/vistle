@@ -14,12 +14,13 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(ThrustBackend,
                                     (Device)
 )
 
+// order has to match OpenCOVER's CuttingSurfaceInteraction
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(SurfaceOption,
    (Plane)
+   (Sphere)
    (CylinderX)
    (CylinderY)
    (CylinderZ)
-   (Sphere)
 )
 
 class Leveller  {
