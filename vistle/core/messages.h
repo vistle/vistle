@@ -623,6 +623,7 @@ class V_COREEXPORT SchedulingPolicy: public Message {
 
 public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Schedule,
+      (Ignore) //< prepare/compute/reduce not called at all (e.g. for renderers)
       (Single) //< compute called on each rank individually once per received object
       (Gang) //< compute called on all ranks together once per received object
       (LazyGang) //< compute called on all ranks together, but not necessarily for each received object

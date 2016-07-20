@@ -27,6 +27,7 @@ Renderer::Renderer(const std::string &description, const std::string &shmname,
    , m_fastestObjectReceivePolicy(message::ObjectReceivePolicy::Single)
 {
 
+   setSchedulingPolicy(message::SchedulingPolicy::Ignore); // compute does not have to be called at all
    setReducePolicy(message::ReducePolicy::Never); // because of COMBINE port
    createInputPort("data_in", "input data", Port::COMBINE);
 

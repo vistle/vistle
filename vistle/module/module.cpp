@@ -1030,7 +1030,7 @@ int Module::schedulingPolicy() const
 
 void Module::setSchedulingPolicy(int schedulingPolicy)
 {
-   vassert(schedulingPolicy >= message::SchedulingPolicy::Single);
+   vassert(schedulingPolicy >= message::SchedulingPolicy::Ignore);
    vassert(schedulingPolicy <= message::SchedulingPolicy::LazyGang);
 
    m_schedulingPolicy = schedulingPolicy;
@@ -1365,8 +1365,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
       case message::Message::EXECUTE: {
 
-         const Execute *exec =
-            static_cast<const Execute *>(message);
+         if (schedulingPolicy() == message::SchedulingPolicy::Ignore)
+             return true;
+
+         const Execute *exec = static_cast<const Execute *>(message);
 
          bool ret = true;
 
