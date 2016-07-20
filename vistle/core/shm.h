@@ -16,7 +16,7 @@
 #include "export.h"
 
 //#define USE_BOOST_VECTOR
-#define SHMDEBUG
+//#define SHMDEBUG
 //#define SHMPUBLISH
 
 #ifndef USE_BOOST_VECTOR
