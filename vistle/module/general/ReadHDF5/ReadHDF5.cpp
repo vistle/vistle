@@ -145,6 +145,8 @@ bool ReadHDF5::prepare() {
                 bGroupFound = H5Lexists(fileId, bIndexName.c_str(), H5P_DEFAULT);
                 if (!util_doesExist(bGroupFound)) { continue; }
 
+                sendInfo("block: %s", bIndexName.c_str());
+
                 for (unsigned v_c = 0;
                             util_doesExist(vGroupFound) || v_c == 0;
                             v_c++
@@ -177,7 +179,7 @@ bool ReadHDF5::prepare() {
 
 
     // sync nodes for collective reads
-    while (!util_readSync(false, comm(), fileId)) { /*wait for all nodes to finish reading*/ }
+    while (util_readSyncStandby(comm(), fileId) != 0.0) { /*wait for all nodes to finish reading*/ }
 
     // close all open h5 entities
     H5Dclose(m_dummyDatasetId);
@@ -213,14 +215,14 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
     H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
 
     // read type
-    util_readSync(true, linkIterData->callingModule->comm(), linkIterData->fileId);
     dataSetId = H5Dopen2(linkIterData->fileId, typeGroup.c_str(), H5P_DEFAULT);
+    util_syncAndGetReadSize(sizeof(int), linkIterData->callingModule->comm());
     status = H5Dread(dataSetId, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, readId, &objectType);
     H5Dclose(dataSetId);
 
     // read meta
-    util_readSync(true, linkIterData->callingModule->comm(), linkIterData->fileId);
     dataSetId = H5Dopen2(linkIterData->fileId, metaGroup.c_str(), H5P_DEFAULT);
+    util_syncAndGetReadSize(sizeof(double) * numMetaMembers, linkIterData->callingModule->comm());
     status = H5Dread(dataSetId, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, readId, objectMeta.data());
     H5Dclose(dataSetId);
 
@@ -374,41 +376,45 @@ bool ReadHDF5::util_checkFile() {
     return true;
 }
 
+// GENERIC UTILITY HELPER FUNCTION - SYNCHRONISE COLLECTIVE READS NULL READ VERSION
+// * returns wether or not all nodes are done
+//-------------------------------------------------------------------------
+long double ReadHDF5::util_readSyncStandby(const boost::mpi::communicator & comm, hid_t fileId) {
+    hid_t dataSetId;
+    hid_t readId;
+    int readDummy;
+    long double totalReadSize;
+    long double readSize = 0;
+
+
+    dataSetId = H5Dopen2(fileId, m_dummyObjectName.c_str(), H5P_DEFAULT);
+
+    boost::mpi::all_reduce(comm, readSize, totalReadSize, std::plus<long double>());
+
+    // obtain port number
+    readId = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
+
+    // perform write followed by read
+    H5Dread(dataSetId, m_dummyObjectType, H5S_ALL, H5S_ALL, readId, &readDummy);
+
+    // release resources
+    H5Pclose(readId);
+    H5Dclose(dataSetId);
+
+
+    return totalReadSize;
+}
+
 // GENERIC UTILITY HELPER FUNCTION - SYNCHRONISE COLLECTIVE READS
 // * returns wether or not all nodes are done
 //-------------------------------------------------------------------------
-bool ReadHDF5::util_readSync(bool isReader, const boost::mpi::communicator & comm, hid_t fileId) {
-    unsigned totalReadingNodes;
-    unsigned isReadingNode = (unsigned) isReader;
-    boost::mpi::all_reduce(comm, isReadingNode, totalReadingNodes, std::plus<unsigned>());
+long double ReadHDF5::util_syncAndGetReadSize(long double readSize, const boost::mpi::communicator & comm) {
+    long double totalReadSize;
 
-    // check if the read synchronisation is complete
-    if (totalReadingNodes == 0) {
-        return true;
-    }
+    boost::mpi::all_reduce(comm, readSize, totalReadSize, std::plus<long double>());
 
-    // sync for collective calls if not complete
-    if (!isReader) {
-        herr_t status;
-        hid_t dataSetId;
-        hid_t readId;
-        int readDummy;
-
-        // obtain port number
-        readId = H5Pcreate(H5P_DATASET_XFER);
-        H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
-
-        // perform write followed by read
-        dataSetId = H5Dopen2(fileId, m_dummyObjectName.c_str(), H5P_DEFAULT);
-        status = H5Dread(dataSetId, m_dummyObjectType, H5S_ALL, H5S_ALL, readId, &readDummy);
-
-        // release resources
-        H5Pclose(readId);
-        H5Dclose(dataSetId);
-
-    }
-
-    return false;
+    return totalReadSize;
 }
 
 // GENERIC UTILITY HELPER FUNCTION - VERIFY HERR_T STATUS
