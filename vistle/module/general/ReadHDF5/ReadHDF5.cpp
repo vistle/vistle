@@ -116,66 +116,11 @@ bool ReadHDF5::prepare() {
     // open dummy dataset id for read size 0 sync
     m_dummyDatasetId = H5Dopen2(fileId, m_dummyObjectName.c_str(), H5P_DEFAULT);
 
-    // o_c = origin counter
-    // t_c = timestep counter
-    // b_c = block counter
-    // v_c = variants counter
-    // timesteps and blocks can have values of -1;
-    for (unsigned o_c = 0;
-                o_c < m_numPorts;
-                o_c++
-         ) {
-        oIndexName = "/index/" + std::to_string(o_c);
-        oGroupFound = H5Lexists(fileId, oIndexName.c_str(), H5P_DEFAULT);
-        if (!util_doesExist(oGroupFound)) { break; }
 
-        for (long int t_c = -1;
-                    util_doesExist(tGroupFound) || t_c <= 0;
-                    t_c++
-             ) {
-            tIndexName = oIndexName + "/" + std::to_string(t_c);
-            tGroupFound = H5Lexists(fileId, tIndexName.c_str(), H5P_DEFAULT);
-            if (!util_doesExist(tGroupFound)) { continue; }
-
-            for (long int b_c = m_isRootNode ? -1 : rank();
-                        util_doesExist(bGroupFound) || b_c <= 0 || b_c == rank();
-                        b_c  = (b_c == -1) ? 0 : b_c + comm().size()
-                 ) {
-                bIndexName = tIndexName + "/" + std::to_string(b_c);
-                bGroupFound = H5Lexists(fileId, bIndexName.c_str(), H5P_DEFAULT);
-                if (!util_doesExist(bGroupFound)) { continue; }
-
-                sendInfo("block: %s", bIndexName.c_str());
-
-                for (unsigned v_c = 0;
-                            util_doesExist(vGroupFound) || v_c == 0;
-                            v_c++
-                     ) {
-                    vIndexName = bIndexName + "/" + std::to_string(v_c);
-                    vGroupFound = H5Lexists(fileId, vIndexName.c_str(), H5P_DEFAULT);
-
-                    // check dataset validity
-                    if (vGroupFound == 0) {
-                        // group does not exist
-                        sendInfo("not valid: %s", vIndexName.c_str());
-                        break;
-                    } else if (vGroupFound < 0) {
-                        // error has occurred
-                        sendInfo("error reading group: %s", vIndexName.c_str());
-                        return Module::prepare();
-                    } else {
-                        sendInfo("found index: %s", vIndexName.c_str());
-                    }
-
-                    // group exists; iterate to object
-                    LinkIterData linkIterData(this, fileId, o_c, b_c, t_c);
-                    status = H5Literate_by_name(fileId, vIndexName.c_str(), H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processObject, &linkIterData, H5P_DEFAULT);
-                    util_checkStatus(status);
-
-                }
-            }
-        }
-    }
+    // parse index to find objects
+    LinkIterData linkIterData(this, fileId);
+    status = H5Literate_by_name(fileId, "/index", H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateOrigin, &linkIterData, H5P_DEFAULT);
+    util_checkStatus(status);
 
 
     // sync nodes for collective reads
@@ -189,6 +134,63 @@ bool ReadHDF5::prepare() {
     m_objectPersistenceVector.clear();
 
     return Module::prepare();
+}
+
+
+// PREPARE UTILITY FUNCTION - ITERATE CALLBACK FOR ORIGIN
+// * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
+//-------------------------------------------------------------------------
+herr_t ReadHDF5::prepare_iterateOrigin(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
+    LinkIterData * linkIterData = (LinkIterData *) opData;
+
+    linkIterData->origin = std::stoul(std::string(name));
+
+    H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateTimestep, linkIterData, H5P_DEFAULT);
+
+    return 0;
+}
+
+// PREPARE UTILITY FUNCTION - ITERATE CALLBACK FOR TIMESTEP
+// * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
+//-------------------------------------------------------------------------
+herr_t ReadHDF5::prepare_iterateTimestep(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
+    LinkIterData * linkIterData = (LinkIterData *) opData;
+
+    linkIterData->timestep = std::stoi(std::string(name));
+
+    H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateBlock, linkIterData, H5P_DEFAULT);
+
+    return 0;
+}
+
+// PREPARE UTILITY FUNCTION - ITERATE CALLBACK FOR BLOCK
+// * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
+//-------------------------------------------------------------------------
+herr_t ReadHDF5::prepare_iterateBlock(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
+    LinkIterData * linkIterData = (LinkIterData *) opData;
+    int blockNum = std::stoi(std::string(name));
+
+    // only continue for correct blocks on each node
+    if (blockNum % linkIterData->callingModule->size() == linkIterData->callingModule->rank()
+            || linkIterData->callingModule->m_isRootNode && blockNum == -1) {
+
+        linkIterData->block = blockNum;
+
+        H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_INC, NULL, prepare_iterateVariant, linkIterData, H5P_DEFAULT);
+    }
+
+    return 0;
+}
+
+// PREPARE UTILITY FUNCTION - ITERATE CALLBACK FOR VARIANT
+// * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
+//-------------------------------------------------------------------------
+herr_t ReadHDF5::prepare_iterateVariant(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
+    LinkIterData * linkIterData = (LinkIterData *) opData;
+
+    H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processObject, linkIterData, H5P_DEFAULT);
+
+    return 0;
 }
 
 // PREPARE UTILITY FUNCTION - PROCESSES AN OBJECT
@@ -207,7 +209,6 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
     int objectType;
     std::vector<double> objectMeta(ReadHDF5::numMetaMembers - ArrayToMetaArchive::numExclusiveMembers);
     ShmVectorOArchive archive;
-
 
 
     // obtain port number

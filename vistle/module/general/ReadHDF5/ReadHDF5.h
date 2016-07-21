@@ -60,9 +60,15 @@ class ReadHDF5 : public vistle::Module {
    virtual bool reduce(int timestep) override;
 
    // private helper functions
+   static herr_t prepare_iterateOrigin(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+   static herr_t prepare_iterateTimestep(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+   static herr_t prepare_iterateBlock(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+   static herr_t prepare_iterateVariant(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+
    static herr_t prepare_processObject(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
    static herr_t prepare_processArrayContainer(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
    static herr_t prepare_processArrayLink(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+
    static long double util_readSyncStandby(const boost::mpi::communicator & comm, hid_t fileId);
    static long double util_syncAndGetReadSize(long double readSize, const boost::mpi::communicator & comm);
    void util_checkStatus(herr_t status);
@@ -151,12 +157,13 @@ struct ReadHDF5::LinkIterData {
     ShmVectorOArchive * archive;
     ReadHDF5 * callingModule;
     hid_t fileId;
+    std::string groupPath;
     unsigned origin;
     int block;
     int timestep;
 
-    LinkIterData(ReadHDF5 * _callingModule, hid_t _fileId, unsigned _origin, int _block, int _timestep)
-        : archive(nullptr), callingModule(_callingModule), fileId(_fileId), origin(_origin), block(_block), timestep(_timestep) {}
+    LinkIterData(ReadHDF5 * _callingModule, hid_t _fileId)
+        : archive(nullptr), callingModule(_callingModule), fileId(_fileId) {}
 
 };
 
