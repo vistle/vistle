@@ -22,6 +22,19 @@ Integrator::Integrator(vistle::Scalar h, vistle::Scalar hmin,
     m_ptcl(ptcl),
     m_forward(forward)
 {
+    UpdateBlock();
+}
+
+void Integrator::UpdateBlock() {
+
+    if (BlockData *bl = m_ptcl->m_block) {
+        Vec<Scalar, 3>::const_ptr vecfld = bl->getVecFld();
+        for (int i=0; i<3; ++i)
+            m_v[i] = &vecfld->x(i)[0];
+    }
+    else {
+        m_v[0] = m_v[1] = m_v[2] = nullptr;
+    }
 }
 
 void Integrator::hInit(){
@@ -155,15 +168,10 @@ Vector3 Integrator::Interpolator(BlockData* bl, Index el,const Vector3 &point){
 times::interp_start = times::start();
 #endif
     auto grid = bl->getGrid();
-    Vec<Scalar, 3>::const_ptr vecfld = bl->getVecFld();
-    Vec<Scalar>::const_ptr scfield = bl->getScalFld();
     GridInterface::Interpolator interpolator = grid->getInterpolator(el, point, bl->getVecMapping());
-    const Scalar* u = &vecfld->x()[0];
-    const Scalar* v = &vecfld->y()[0];
-    const Scalar* w = &vecfld->z()[0];
 #ifdef TIMING
 times::interp_dur += times::stop(times::interp_start);
 times::no_interp++;
 #endif
-    return interpolator(u,v,w);
+    return interpolator(m_v[0], m_v[1], m_v[2]);
 }

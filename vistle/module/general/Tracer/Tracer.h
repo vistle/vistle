@@ -86,8 +86,34 @@ class Particle {
 
     friend class Integrator;
 
+public:
+    DEFINE_ENUM_WITH_STRING_CONVERSIONS(StopReason,
+                                        (StillActive)
+                                        (InitiallyOutOfDomain)
+                                        (OutOfDomain)
+                                        (NotMoving)
+                                        (StepLimitReached)
+                                        (NumStopReasons)
+    )
+    Particle(vistle::Index i, const vistle::Vector3 &pos, vistle::Scalar h, vistle::Scalar hmin,
+             vistle::Scalar hmax, vistle::Scalar errtol, IntegrationMethod int_mode, const std::vector<std::unique_ptr<BlockData>> &bl,
+             vistle::Index stepsmax, bool forward);
+    ~Particle();
+    void PointsToLines();
+    bool isActive();
+    bool inGrid();
+    bool isMoving(vistle::Index maxSteps, vistle::Scalar minSpeed);
+    bool findCell(const std::vector<std::unique_ptr<BlockData>> &block);
+    void Deactivate(StopReason reason);
+    void EmitData(bool havePressure);
+    bool Step();
+    void Communicator(boost::mpi::communicator mpi_comm, int root, bool havePressure);
+    bool leftNode();
+    void UpdateBlock();
+    StopReason stopReason() const;
+
 private:
-    vistle::Index m_id; //!< particle id
+    vistle::Index m_id; //!< partcle id
     vistle::Vector3 m_x; //!< current position
     vistle::Vector3 m_xold; //!< previous position
     std::vector<vistle::Vector3> m_xhist; //!< trajectory
@@ -102,21 +128,6 @@ private:
     bool m_ingrid; //!< particle still within domain on some rank
     bool m_searchBlock; //!< particle is new - has to be initialized
     Integrator m_integrator;
-
-public:
-    Particle(vistle::Index i, const vistle::Vector3 &pos, vistle::Scalar h, vistle::Scalar hmin,
-             vistle::Scalar hmax, vistle::Scalar errtol, IntegrationMethod int_mode, const std::vector<std::unique_ptr<BlockData>> &bl,
-             vistle::Index stepsmax, bool forward);
-    ~Particle();
-    void PointsToLines();
-    bool isActive();
-    bool inGrid();
-    bool isMoving(vistle::Index maxSteps, vistle::Scalar minSpeed);
-    bool findCell(const std::vector<std::unique_ptr<BlockData>> &block);
-    void Deactivate();
-    void EmitData(bool havePressure);
-    bool Step();
-    void Communicator(boost::mpi::communicator mpi_comm, int root, bool havePressure);
-    bool leftNode();
+    StopReason m_stopReason; //! reason why particle was deactivated
 };
 #endif

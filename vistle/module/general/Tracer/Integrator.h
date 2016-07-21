@@ -21,16 +21,18 @@ private:
     IntegrationMethod m_mode;
     Particle* m_ptcl;
     bool m_forward;
+    const vistle::Scalar *m_v[3];
 
 public:
 
     Integrator(vistle::Scalar h, vistle::Scalar hmin,
                vistle::Scalar hmax, vistle::Scalar errtol,
                IntegrationMethod mode, Particle* ptcl, bool forward);
+    void UpdateBlock();
     bool Step();
     bool StepEuler();
     bool StepRK32();
-    vistle::Vector3 Interpolator(BlockData* bl, vistle::Index el,const vistle::Vector3 &point);
+    vistle::Vector3 Interpolator(BlockData* bl, vistle::Index el, const vistle::Vector3 &point);
     void hInit();
     bool hNew(vistle::Vector3 higher, vistle::Vector3 lower);
 };
