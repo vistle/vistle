@@ -347,7 +347,7 @@ bool WriteHDF5::compute() {
             // create block group
             groupName += "/" + std::to_string(currBlock);
             if (m_indexTracker[currOrigin][currTimestep].find(currBlock) == m_indexTracker[currOrigin][currTimestep].end()) {
-                m_indexTracker[currOrigin][currOrigin][currBlock] = 0;
+                m_indexTracker[currOrigin][currTimestep][currBlock] = 0;
 
                 groupId = H5Gcreate2(fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
                 status = H5Gclose(groupId);
@@ -357,7 +357,7 @@ bool WriteHDF5::compute() {
             // create variants group
             groupName += "/" + std::to_string(m_indexTracker[currOrigin][currOrigin][currBlock]);
             groupId = H5Gcreate2(fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            m_indexTracker[currOrigin][currOrigin][currBlock]++;
+            m_indexTracker[currOrigin][currTimestep][currBlock]++;
 
 
             // link index entry to object
