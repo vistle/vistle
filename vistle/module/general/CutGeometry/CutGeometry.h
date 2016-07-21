@@ -3,6 +3,7 @@
 
 #include <module/module.h>
 #include <core/vector.h>
+#include "../IsoSurface/IsoDataFunctor.h"
 
 class CutGeometry: public vistle::Module {
 
@@ -10,12 +11,12 @@ class CutGeometry: public vistle::Module {
    CutGeometry(const std::string &shmname, const std::string &name, int moduleID);
    ~CutGeometry();
 
-   vistle::Object::ptr cutGeometry(vistle::Object::const_ptr object,
-                                const vistle::Vector & point,
-                                const vistle::Vector & normal) const;
+   vistle::Object::ptr cutGeometry(vistle::Object::const_ptr object) const;
 
  private:
-   virtual bool compute();
+   virtual bool compute() override;
+   virtual bool parameterChanged(const vistle::Parameter *param) override;
+   IsoController isocontrol;
 };
 
 #endif

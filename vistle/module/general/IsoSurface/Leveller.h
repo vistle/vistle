@@ -9,30 +9,19 @@
 #include <core/triangles.h>
 #include <util/enum.h>
 
+#include "IsoDataFunctor.h"
+
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(ThrustBackend,
                                     (Host)
                                     (Device)
 )
 
-// order has to match OpenCOVER's CuttingSurfaceInteraction
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(SurfaceOption,
-   (Plane)
-   (Sphere)
-   (CylinderX)
-   (CylinderY)
-   (CylinderZ)
-)
-
 class Leveller  {
 
+   const IsoController &m_isocontrol;
    vistle::UnstructuredGrid::const_ptr m_grid;
 #ifndef CUTTINGSURFACE
    vistle::Vec<vistle::Scalar>::const_ptr m_data;
-#else
-   vistle::Vector vertex;
-   vistle::Vector point;
-   vistle::Vector direction;
-   int m_option;
 #endif
    std::vector<vistle::Object::const_ptr> m_vertexdata;
    std::vector<vistle::DataBase::const_ptr> m_celldata;
@@ -47,16 +36,10 @@ class Leveller  {
    vistle::Index calculateSurface(Data &data);
 
 public:
-   Leveller(vistle::UnstructuredGrid::const_ptr grid, const vistle::Scalar isovalue, vistle::Index processortype
-#ifdef CUTTINGSURFACE
-         , int option
-#endif
-         );
+   Leveller(const IsoController &isocontrol, vistle::UnstructuredGrid::const_ptr grid, const vistle::Scalar isovalue, vistle::Index processortype);
 
    bool process();
-#ifdef CUTTINGSURFACE
-   void setCutData(const vistle::Vector m_vertex, const vistle::Vector m_point, const vistle::Vector m_direction);
-#else
+#ifndef CUTTINGSURFACE
    void setIsoData(vistle::Vec<vistle::Scalar>::const_ptr obj);
 #endif
    void addMappedData(vistle::DataBase::const_ptr mapobj );

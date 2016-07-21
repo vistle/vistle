@@ -29,17 +29,12 @@ IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int 
 #else
 "extract isosurfaces"
 #endif
-, shmname, name, moduleID) {
+, shmname, name, moduleID)
+, isocontrol(this) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 #ifdef CUTTINGSURFACE
    m_mapDataIn = createInputPort("data_in");
-   addVectorParameter("point", "point on plane", ParamVector(0.0, 0.0, 0.0));
-   addVectorParameter("vertex", "normal on plane", ParamVector(1.0, 0.0, 0.0));
-   addFloatParameter("scalar", "distance to origin of ordinates", 0.0);
-   m_option = addIntParameter("option", "option", Plane, Parameter::Choice);
-   V_ENUM_SET_CHOICES(m_option, SurfaceOption);
-   addVectorParameter("direction", "direction for variable Cylinder", ParamVector(0.0, 0.0, 0.0));
 #else
    setReducePolicy(message::ReducePolicy::OverAll);
    m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
@@ -63,60 +58,11 @@ IsoSurface::~IsoSurface() {
 }
 
 bool IsoSurface::parameterChanged(const Parameter* param) {
-#ifdef CUTTINGSURFACE
-   switch(m_option->getValue()) {
-      case Plane: {
-         if(param->getName() == "point") {
-            Vector vertex = getVectorParameter("vertex");
-            Vector point = getVectorParameter("point");
-            setFloatParameter("scalar",point.dot(vertex));
-         }
-         break;
-      }
-      case Sphere: {
-         if(param->getName() == "point") {
-            Vector vertex = getVectorParameter("vertex");
-            Vector point = getVectorParameter("point");
-            Vector diff = vertex - point;
-            setFloatParameter("scalar",diff.norm());
-         }break;
-      }
-      default:/*cylinders*/ {
-         if(param->getName() == "option") {
-            switch(m_option->getValue()) {
 
-               case CylinderX:
-                  setVectorParameter("direction",ParamVector(1,0,0));
-                  break;
-               case CylinderY:
-                  setVectorParameter("direction",ParamVector(0,1,0));
-                  break;
-               case CylinderZ:
-                  setVectorParameter("direction",ParamVector(0,0,1));
-                  break;
-            }
-         }
-         if(param->getName() == "point") {
-            std::cerr<< "point" << std::endl;
-            Vector vertex = getVectorParameter("vertex");
-            Vector point = getVectorParameter("point");
-            Vector direction = getVectorParameter("direction");
-            Vector diff = direction.cross(vertex-point);
-            setFloatParameter("scalar",diff.norm());
-         }
-         if(param->getName() == "scalar") {
-            std::cerr<< "scalar" << std::endl;
-            Vector vertex = getVectorParameter("vertex");
-            Vector point = getVectorParameter("point");
-            Vector direction = getVectorParameter("direction");
-            Vector diff = direction.cross(vertex-point);
-            float scalar = getFloatParameter("scalar");
-            Vector newPoint = scalar*diff/diff.norm();
-            setVectorParameter("point",ParamVector(newPoint[0], newPoint[1], newPoint[2]));
-         }
-         break;
-      }
-   }
+    if (isocontrol.parameterChanged(param))
+        return true;
+
+#ifdef CUTTINGSURFACE
 #else
     if (param == m_isopoint) {
         setParameter(m_pointOrValue, (Integer)Point);
@@ -194,23 +140,13 @@ bool IsoSurface::work(vistle::UnstructuredGrid::const_ptr gridS,
    const int processorType = getIntParameter("processortype");
 #ifdef CUTTINGSURFACE
    const Scalar isoValue = 0.0;
-   int option = getIntParameter("option");
-   const Vector vertex = getVectorParameter("vertex");
-   const Vector point = getVectorParameter("point");
-   const Vector direction = getVectorParameter("direction");
 #else
    const Scalar isoValue = getFloatParameter("isovalue");
 #endif
 
-   Leveller l(gridS, isoValue, processorType
-#ifdef CUTTINGSURFACE
-              , option
-#endif
-              );
+   Leveller l(isocontrol, gridS, isoValue, processorType);
 
-#ifdef CUTTINGSURFACE
-   l.setCutData(vertex,point, direction);
-#else
+#ifndef CUTTINGSURFACE
    l.setIsoData(dataS);
 #endif
    if(mapdata){

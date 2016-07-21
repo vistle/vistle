@@ -1,7 +1,12 @@
 vistle_find_package(TBB)
 use_openmp()
 
-set(SOURCES "../IsoSurface/IsoSurface.cpp")
+set(SOURCES
+    ../IsoSurface/IsoSurface.cpp
+    ../IsoSurface/IsoSurface.h
+    ../IsoSurface/IsoDataFunctor.cpp
+    ../IsoSurface/IsoDataFunctor.h
+    )
 set(CUDA_OBJ "")
 #vistle_find_package(CUDA)
 if(NOT APPLE AND CUDA_FOUND AND FALSE)

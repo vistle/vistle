@@ -6,21 +6,21 @@
 #include <core/triangles.h>
 
 #include "CutGeometry.h"
+#include "../IsoSurface/IsoDataFunctor.h"
 
 MODULE_MAIN(CutGeometry)
 
 using namespace vistle;
 
 CutGeometry::CutGeometry(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("CutGeometry", shmname, name, moduleID) {
+   : Module("CutGeometry", shmname, name, moduleID)
+   , isocontrol(this)
+{
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
    createInputPort("grid_in");
    createOutputPort("grid_out");
-
-   addVectorParameter("point", "point on plane", ParamVector(0.0, 0.0, 0.0));
-   addVectorParameter("vertex", "normal on plane", ParamVector(0.0, 0.0, 1.0));
 }
 
 CutGeometry::~CutGeometry() {
@@ -33,8 +33,7 @@ class PlaneClip {
    Triangles::const_ptr m_tri;
    Polygons::const_ptr m_poly;
    std::vector<Object::const_ptr> m_data;
-   Vector m_point;
-   Vector m_normal;
+   IsoDataFunctor m_decider;
 
    bool haveCornerList; // triangle with trivial index list: every coordinate is used exactly once
    const Index *el;
@@ -63,11 +62,10 @@ class PlaneClip {
    Vec<Scalar>::ptr m_outData;
 
  public:
-   PlaneClip(Triangles::const_ptr grid, const Vector &point, const Vector &normal)
+   PlaneClip(Triangles::const_ptr grid, IsoDataFunctor decider)
       : m_coord(grid)
       , m_tri(grid)
-      , m_point(point)
-      , m_normal(normal)
+      , m_decider(decider)
       , haveCornerList(false)
       , el(nullptr)
       , cl(nullptr)
@@ -96,11 +94,10 @@ class PlaneClip {
          m_outCoords = m_outTri;
       }
 
-   PlaneClip(Polygons::const_ptr grid, const Vector &point, const Vector &normal)
+   PlaneClip(Polygons::const_ptr grid, IsoDataFunctor decider)
       : m_coord(grid)
       , m_poly(grid)
-      , m_point(point)
-      , m_normal(normal)
+      , m_decider(decider)
       , haveCornerList(true)
       , el(nullptr)
       , cl(nullptr)
@@ -260,7 +257,7 @@ class PlaneClip {
 #pragma omp parallel for
       for (Index i=0; i<nCoord; ++i) {
          const Vector p(x[i], y[i], z[i]);
-         vertexMap[i] = m_normal.dot(m_point - p) > 0 ? 1 : 0;
+         vertexMap[i] = m_decider(i) > 0 ? 1 : 0;
       }
 
       if (haveCornerList) {
@@ -293,12 +290,13 @@ class PlaneClip {
 
    inline Vector splitEdge(Index i, Index j) {
 
+      Scalar a = m_decider(i);
+      Scalar b = m_decider(j);
+      const Scalar t = tinterp(0, a, b);
+      assert(a * b <= 0);
       Vector p1(x[i], y[i], z[i]);
       Vector p2(x[j], y[j], z[j]);
-
-      Vector dist = p2 - p1;
-      Scalar s = m_normal.dot(m_point - p1) / m_normal.dot(dist);
-      return  p1 + dist * s;
+      return lerp(p1, p2, t);
    }
 
    void processTriangle(const Index element, Index &outIdxCorner, Index &outIdxCoord, bool numVertsOnly) {
@@ -638,21 +636,25 @@ class PlaneClip {
 };
 
 
-Object::ptr CutGeometry::cutGeometry(Object::const_ptr object,
-                                          const Vector & point,
-                                          const Vector & normal) const {
+Object::ptr CutGeometry::cutGeometry(Object::const_ptr object) const {
+
+   auto coords = Coords::as(object);
+   if (!coords)
+       return Object::ptr();
+
+   IsoDataFunctor decider = isocontrol.newFunc(&coords->x()[0], &coords->y()[0], &coords->z()[0]);
 
    switch (object->getType()) {
       case Object::TRIANGLES: {
 
-         PlaneClip cutter(Triangles::as(object), point, normal);
+         PlaneClip cutter(Triangles::as(object), decider);
          cutter.process();
          return cutter.result();
       }
 
       case Object::POLYGONS: {
 
-         PlaneClip cutter(Polygons::as(object), point, normal);
+         PlaneClip cutter(Polygons::as(object), decider);
          cutter.process();
          return cutter.result();
       }
@@ -663,19 +665,20 @@ Object::ptr CutGeometry::cutGeometry(Object::const_ptr object,
    return Object::ptr();
 }
 
-bool CutGeometry::compute() {
+bool CutGeometry::parameterChanged(const Parameter* param) {
+   if (isocontrol.parameterChanged(param))
+       return true;
 
-   const ParamVector pnormal = getVectorParameter("vertex");
-   Vector normal(pnormal[0], pnormal[1], pnormal[2]);
-   normal.normalize();
-   const ParamVector ppoint = getVectorParameter("point");
-   Vector point(ppoint[0], ppoint[1], ppoint[2]);
+   return true;
+}
+
+bool CutGeometry::compute() {
 
    Object::const_ptr oin = expect<Object>("grid_in");
    if (!oin)
       return false;
 
-   Object::ptr object = cutGeometry(oin, point, normal);
+   Object::ptr object = cutGeometry(oin);
    if (object) {
       object->copyAttributes(oin);
       addObject("grid_out", object);

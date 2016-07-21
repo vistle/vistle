@@ -25,88 +25,9 @@
 
 using namespace vistle;
 
-template<typename S>
-inline S lerp(S a, S b, Scalar t) {
-    return a+t*(b-a);
-}
 
-template<Index>
-inline Index lerp(Index a, Index b, Scalar t) {
-    return t > 0.5 ? b : a;
-}
-
-
-const Scalar EPSILON = 1.0e-10f;
 const int MaxNumData = 6;
 
-inline Scalar __host__ __device__ tinterp(Scalar iso, const Scalar &f0, const Scalar &f1) {
-
-   const Scalar diff = (f1 - f0);
-   const Scalar d0 = iso - f0;
-   if (fabs(diff) < EPSILON) {
-       const Scalar d1 = f1 - iso;
-      return fabs(d0) < fabs(d1) ? 1 : 0;
-   }
-
-   return std::min(Scalar(1), std::max(Scalar(0), d0 / diff));
-}
-
-#ifdef CUTTINGSURFACE
-
-//! generate data on the fly for creating cutting surfaces as isosurfaces
-struct IsoDataFunctor {
-
-   IsoDataFunctor(const Vector &vertex, const Vector &point, const Vector &direction, const Scalar* x, const Scalar* y, const Scalar* z, int option)
-      : m_x(x)
-      , m_y(y)
-      , m_z(z)
-      , m_vertex(vertex)
-      , m_point(point)
-      , m_direction(direction)
-      , m_distance(vertex.dot(point))
-      , m_option(option)
-      , m_radius2((m_option==Sphere ? m_point-m_vertex : m_direction.cross(m_point-m_vertex)).squaredNorm())
-   {}
-
-   __host__ __device__ Scalar operator()(Index i) {
-      Vector coordinates(m_x[i], m_y[i], m_z[i]);
-      switch(m_option) {
-         case Plane: {
-            return m_vertex.dot(coordinates) - m_distance;
-         }
-         case Sphere: {
-            return (coordinates-m_vertex).squaredNorm() - m_radius2;
-         }
-         default: {
-            // all cylinders
-            return (m_direction.cross(coordinates - m_vertex)).squaredNorm() - m_radius2;
-         }
-      }
-   }
-   const Scalar* m_x;
-   const Scalar* m_y;
-   const Scalar* m_z;
-   const Vector m_vertex;
-   const Vector m_point;
-   const Vector m_direction;
-   const Scalar m_distance;
-   const int m_option;
-   const Scalar m_radius2;
-};
-
-#else
-//! fetch data from scalar field for generating isosurface
-struct IsoDataFunctor {
-
-   IsoDataFunctor(const Scalar *data)
-      : m_volumedata(data)
-   {}
-   __host__ __device__ Scalar operator()(Index i) { return m_volumedata[i]; }
-
-   const Scalar *m_volumedata;
-
-};
-#endif
 
 struct HostData {
 
@@ -599,15 +520,9 @@ struct classify_cell {
    }
 };
 
-Leveller::Leveller(UnstructuredGrid::const_ptr grid, const Scalar isovalue, Index processortype
-         #ifdef CUTTINGSURFACE
-            , int option
-         #endif
-            )
-      : m_grid(grid)
-   #ifdef CUTTINGSURFACE
-      , m_option(option)
-   #endif
+Leveller::Leveller(const IsoController &isocontrol, UnstructuredGrid::const_ptr grid, const Scalar isovalue, Index processortype)
+      : m_isocontrol(isocontrol)
+      , m_grid(grid)
       , m_isoValue(isovalue)
       , m_processortype(processortype)
       , gmin(std::numeric_limits<Scalar>::max())
@@ -671,9 +586,9 @@ bool Leveller::process() {
 
          HostData HD(m_isoValue,
 #ifndef CUTTINGSURFACE
-               IsoDataFunctor(&dataobj->x()[0]),
+               m_isocontrol.newFunc(&dataobj->x()[0]),
 #else
-               IsoDataFunctor(vertex, point, direction, &m_grid->x()[0], &m_grid->y()[0], &m_grid->z()[0], m_option),
+               m_isocontrol.newFunc(&m_grid->x()[0], &m_grid->y()[0], &m_grid->z()[0]),
 #endif
                m_grid->el(), m_grid->tl(), m_grid->cl(), m_grid->x(), m_grid->y(), m_grid->z());
 
@@ -785,9 +700,9 @@ bool Leveller::process() {
 
          DeviceData DD(m_isoValue,
 #ifndef CUTTINGSURFACE
-               IsoDataFunctor(&dataobj->x()[0]),
+               m_isocontrol.newFunc(&dataobj->x()[0]),
 #else
-               IsoDataFunctor(vertex, point, direction, &m_grid->x()[0], &m_grid->y()[0], &m_grid->z()[0], m_option),
+               m_isocontrol.newFunc(&m_grid->x()[0], &m_grid->y()[0], &m_grid->z()[0]),
 #endif
                m_grid->getNumElements(), m_grid->el(), m_grid->tl(), m_grid->getNumCorners(), m_grid->cl(), m_grid->getSize(), m_grid->x(), m_grid->y(), m_grid->z());
 
@@ -834,13 +749,7 @@ bool Leveller::process() {
    return true;
 }
 
-#ifdef CUTTINGSURFACE
-void Leveller::setCutData(const Vector m_vertex, const Vector m_point, const Vector m_direction){
-   vertex = m_vertex;
-   point = m_point;
-   direction = m_direction;
-}
-#else    
+#ifndef CUTTINGSURFACE
 void Leveller::setIsoData(Vec<Scalar>::const_ptr obj) {
    m_data = obj;
 }

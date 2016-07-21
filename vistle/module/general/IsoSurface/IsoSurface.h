@@ -4,6 +4,7 @@
 #include <module/module.h>
 #include <core/vec.h>
 #include <core/unstr.h>
+#include "IsoDataFunctor.h"
 
 class IsoSurface: public vistle::Module {
 
@@ -38,11 +39,12 @@ class IsoSurface: public vistle::Module {
    vistle::VectorParameter *m_isopoint;
    vistle::IntParameter *m_pointOrValue;
    vistle::IntParameter *m_processortype;
-   vistle::IntParameter *m_option;
    vistle::Port *m_mapDataIn, *m_dataOut;
 
    vistle::Scalar m_min, m_max;
    vistle::Float m_paraMin, m_paraMax;
+
+   IsoController isocontrol;
 };
 
 #endif
