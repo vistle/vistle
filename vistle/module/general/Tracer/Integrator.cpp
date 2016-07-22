@@ -37,6 +37,26 @@ void Integrator::UpdateBlock() {
     }
 }
 
+bool Integrator::Step() {
+
+    switch(m_mode){
+    case Euler:
+        return StepEuler();
+    case RK32:
+        return StepRK32();
+    }
+    return false;
+}
+
+bool Integrator::StepEuler() {
+
+    if (m_forward)
+        m_ptcl->m_x = m_ptcl->m_x + m_ptcl->m_v*m_h;
+    else
+        m_ptcl->m_x = m_ptcl->m_x - m_ptcl->m_v*m_h;
+    return true;
+}
+
 void Integrator::hInit(){
     if (m_mode == Euler)
         return;
@@ -53,17 +73,6 @@ void Integrator::hInit(){
     m_h =0.5*chlen/vmax;
     if(m_h>m_hmax) {m_h = m_hmax;}
     if(m_h<m_hmin) {m_h = m_hmin;}
-}
-
-bool Integrator::Step() {
-
-    switch(m_mode){
-    case Euler:
-        return StepEuler();
-    case RK32:
-        return StepRK32();
-    }
-    return false;
 }
 
 bool Integrator::hNew(Vector3 higher, Vector3 lower){
@@ -96,24 +105,14 @@ bool Integrator::hNew(Vector3 higher, Vector3 lower){
    }
 }
 
-bool Integrator::StepEuler() {
-
-    if (m_forward)
-        m_ptcl->m_x = m_ptcl->m_x + m_ptcl->m_v*m_h;
-    else
-        m_ptcl->m_x = m_ptcl->m_x - m_ptcl->m_v*m_h;
-    return true;
-}
-
 bool Integrator::StepRK32() {
 
    bool accept = false;
    Index el=m_ptcl->m_el;
    Vector3 x3rd;
    Vector3 k[3];
-   k[0] = m_ptcl->m_v;
-   if (!m_forward)
-       k[0] = -k[0];
+   Scalar sign = m_forward ? 1. : -1.;
+   k[0] = sign*m_ptcl->m_v;
    Vector xtmp = m_ptcl->m_x + m_h*k[0];
    auto grid = m_ptcl->m_block->getGrid();
    do {
@@ -130,9 +129,7 @@ bool Integrator::StepRK32() {
             return false;
          }
       }
-      k[1] = Interpolator(m_ptcl->m_block,el, xtmp);
-      if (!m_forward)
-          k[1] = -k[1];
+      k[1] = sign*Interpolator(m_ptcl->m_block,el, xtmp);
       xtmp = m_ptcl->m_x +m_h*0.25*(k[0]+k[1]);
       if(!grid->inside(el,xtmp)){
 #ifdef TIMING
@@ -147,9 +144,7 @@ bool Integrator::StepRK32() {
             return false;
          }
       }
-      k[2] = Interpolator(m_ptcl->m_block,el,xtmp);
-      if (!m_forward)
-          k[2] = -k[2];
+      k[2] = sign*Interpolator(m_ptcl->m_block,el,xtmp);
       Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
       x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
 
