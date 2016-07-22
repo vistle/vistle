@@ -218,6 +218,19 @@ void BlockData::addLines(Index id, const std::vector<Vector3> &points,
        assert(numpoints == velocities.size());
        assert(!m_p || pressures.size()==numpoints);
 
+       size_t newSize = m_lines->x().size()+numpoints;
+       m_lines->x().reserve(newSize);
+       m_lines->y().reserve(newSize);
+       m_lines->z().reserve(newSize);
+       m_ivec[0]->x().reserve(newSize);
+       m_ivec[0]->y().reserve(newSize);
+       m_ivec[0]->z().reserve(newSize);
+       m_ids->x().reserve(newSize);
+       m_steps->x().reserve(newSize);
+       if (m_p) {
+           m_iscal[0]->x().reserve(newSize);
+       }
+
        for(Index i=0; i<numpoints; i++) {
 
           m_lines->x().push_back(points[i](0));
@@ -249,7 +262,7 @@ Particle::Particle(Index i, const Vector3 &pos, Scalar h, Scalar hmin,
 m_id(i),
 m_x(pos),
 m_xold(pos),
-m_v(Vector3(1,0,0)), // keep large enough so that particle moves initially
+m_v(Vector3(std::numeric_limits<Scalar>::max(),0,0)), // keep large enough so that particle moves initially
 m_p(0),
 m_stp(0),
 m_block(nullptr),
@@ -357,7 +370,8 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
 
 void Particle::PointsToLines(){
 
-    m_block->addLines(m_id,m_xhist,m_vhist,m_pressures,m_steps);
+    if (m_block)
+        m_block->addLines(m_id,m_xhist,m_vhist,m_pressures,m_steps);
 
     m_xhist.clear();
     m_vhist.clear();
