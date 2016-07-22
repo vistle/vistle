@@ -18,7 +18,7 @@
 #include <core/message.h>
 #include <core/vec.h>
 #include <core/unstr.h>
-#include <core/shmvectoroarchive.h>
+#include <core/findobjectreferenceoarchive.h>
 #include <core/placeholder.h>
 #include <core/object.h>
 #include <core/object_impl.h>
@@ -27,9 +27,9 @@
 
 #include "ReadHDF5.h"
 
-BOOST_SERIALIZATION_REGISTER_ARCHIVE(ShmVectorOArchive)
-
 using namespace vistle;
+
+BOOST_SERIALIZATION_REGISTER_ARCHIVE(FindObjectReferenceOArchive)
 
 //-------------------------------------------------------------------------
 // MACROS
@@ -209,7 +209,7 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
 
     int objectType;
     std::vector<double> objectMeta(ReadHDF5::numMetaMembers - ArrayToMetaArchive::numExclusiveMembers);
-    ShmVectorOArchive archive;
+    FindObjectReferenceOArchive archive;
 
 
     // obtain port number

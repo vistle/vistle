@@ -1,12 +1,12 @@
 //-------------------------------------------------------------------------
-// VISTLE OBJECT OARCHIVE H
+// FIND OBJECT REFERENCE OARCHIVE H
 // *
 // *
 // * Sever Topan, 2016
 //-------------------------------------------------------------------------
 
-#ifndef VISTLE_OBJECT_OARCHIVE_H
-#define VISTLE_OBJECT_OARCHIVE_H
+#ifndef FIND_OBJECT_REFERENCE_OARCHIVE_H
+#define FIND_OBJECT_REFERENCE_OARCHIVE_H
 
 #include <cstddef>
 #include <core/shm.h>
@@ -28,18 +28,22 @@
 #include <type_traits>
 
 #include "export.h"
+#include "object.h"
 #include "shm.h"
 
+namespace vistle {
+
+
 //-------------------------------------------------------------------------
-// VISTLE OBJECT OARCHIVE CLASS DECLARATION
+// FIND OBJECT REFERENCE OARCHIVE CLASS DECLARATION
 //-------------------------------------------------------------------------
-class V_COREEXPORT ShmVectorOArchive {
+class V_COREEXPORT FindObjectReferenceOArchive {
 public:
-    struct ArrayData;
+    struct ReferenceData;
 private:
 
     // private member variables
-    std::vector<ArrayData> m_arrayDataVector;
+    std::vector<ReferenceData> m_referenceDataVector;
     std::string m_currNvpTag;
     unsigned m_indexHint;
 
@@ -72,48 +76,48 @@ public:
 
     // the << operators
     template<class T>
-    ShmVectorOArchive & operator<<(T const & t);
+    FindObjectReferenceOArchive & operator<<(T const & t);
     template<class T>
-    ShmVectorOArchive & operator<<(T * const t);
+    FindObjectReferenceOArchive & operator<<(T * const t);
     template<class T, int N>
-    ShmVectorOArchive & operator<<(const T (&t)[N]);
+    FindObjectReferenceOArchive & operator<<(const T (&t)[N]);
     template<class T>
-    ShmVectorOArchive & operator<<(const boost::serialization::nvp<T> & t);
+    FindObjectReferenceOArchive & operator<<(const boost::serialization::nvp<T> & t);
     template<class T>
-    ShmVectorOArchive & operator<<(vistle::ShmVector<T> & t);
+    FindObjectReferenceOArchive & operator<<(vistle::ShmVector<T> & t);
 
     // the & operator
     template<class T>
-    ShmVectorOArchive & operator&(const T & t);
+    FindObjectReferenceOArchive & operator&(const T & t);
 
     // constructor
-    ShmVectorOArchive() : m_indexHint(0) {}
+    FindObjectReferenceOArchive() : m_indexHint(0) {}
 
     // get functions
-    std::vector<ArrayData> & getVector() { return m_arrayDataVector; }
-    ArrayData * getVectorEntryByNvpName(std::string name);
+    std::vector<ReferenceData> & getVector() { return m_referenceDataVector; }
+    ReferenceData * getVectorEntryByNvpName(std::string name);
 };
 
 
 //-------------------------------------------------------------------------
-// VISTLE OBJECT OARCHIVE CLASS DEFINITION
+// FIND OBJECT REFERENCE OARCHIVE CLASS DEFINITION
 //-------------------------------------------------------------------------
 
 // ARRAY DATA STRUCT
 //-------------------------------------------------------------------------
-struct ShmVectorOArchive::ArrayData {
+struct FindObjectReferenceOArchive::ReferenceData {
     std::string nvpName;
     std::string arrayName;
     void * ref;
 
-    ArrayData(std::string _nvpName, std::string _arrayName, void * _ref)
+    ReferenceData(std::string _nvpName, std::string _arrayName, void * _ref)
         : nvpName(_nvpName), arrayName(_arrayName), ref(_ref) {}
 };
 
 // SPECIALIZED SAVE FUNCTION: ENUMS
 //-------------------------------------------------------------------------
 template<class Archive>
-struct ShmVectorOArchive::save_enum_type {
+struct FindObjectReferenceOArchive::save_enum_type {
     template<class T>
     static void invoke(Archive &ar, const T &t){
 
@@ -126,7 +130,7 @@ struct ShmVectorOArchive::save_enum_type {
 // SPECIALIZED SAVE FUNCTION: PRIMITIVES
 //-------------------------------------------------------------------------
 template<class Archive>
-struct ShmVectorOArchive::save_primitive {
+struct FindObjectReferenceOArchive::save_primitive {
     template<class T>
     static void invoke(Archive & ar, const T & t){
 
@@ -140,7 +144,7 @@ struct ShmVectorOArchive::save_primitive {
 // * calls serialize on all non-primitive/non-enum types
 //-------------------------------------------------------------------------
 template<class Archive>
-struct ShmVectorOArchive::save_only {
+struct FindObjectReferenceOArchive::save_only {
     template<class T>
     static void invoke(Archive & ar, const T & t){
 
@@ -155,10 +159,10 @@ struct ShmVectorOArchive::save_only {
 // * delegates saving functionality based on the type of the incoming variable.
 //-------------------------------------------------------------------------
 template<class T>
-void ShmVectorOArchive::save(const T &t){
+void FindObjectReferenceOArchive::save(const T &t){
     typedef
         BOOST_DEDUCED_TYPENAME boost::mpl::eval_if<boost::is_enum< T >,
-            boost::mpl::identity<save_enum_type<ShmVectorOArchive> >,
+            boost::mpl::identity<save_enum_type<FindObjectReferenceOArchive> >,
         //else
         BOOST_DEDUCED_TYPENAME boost::mpl::eval_if<
             // if its primitive
@@ -166,9 +170,9 @@ void ShmVectorOArchive::save(const T &t){
                     boost::serialization::implementation_level< T >,
                     boost::mpl::int_<boost::serialization::primitive_type>
                 >,
-                boost::mpl::identity<save_primitive<ShmVectorOArchive> >,
+                boost::mpl::identity<save_primitive<FindObjectReferenceOArchive> >,
             // else
-            boost::mpl::identity<save_only<ShmVectorOArchive> >
+            boost::mpl::identity<save_only<FindObjectReferenceOArchive> >
         > >::type typex;
     typex::invoke(*this, t);
 }
@@ -178,7 +182,7 @@ void ShmVectorOArchive::save(const T &t){
 // << OPERATOR: UNSPECIALIZED
 //-------------------------------------------------------------------------
 template<class T>
-ShmVectorOArchive & ShmVectorOArchive::operator<<(T const & t) {
+FindObjectReferenceOArchive & FindObjectReferenceOArchive::operator<<(T const & t) {
 
     save(t);
 
@@ -188,7 +192,7 @@ ShmVectorOArchive & ShmVectorOArchive::operator<<(T const & t) {
 // << OPERATOR: POINTERS
 //-------------------------------------------------------------------------
 template<class T>
-ShmVectorOArchive & ShmVectorOArchive::operator<<(T * const t) {
+FindObjectReferenceOArchive & FindObjectReferenceOArchive::operator<<(T * const t) {
 
     if(t != nullptr) {
         *this << *t;
@@ -200,7 +204,7 @@ ShmVectorOArchive & ShmVectorOArchive::operator<<(T * const t) {
 // << OPERATOR: ARRAYS
 //-------------------------------------------------------------------------
 template<class T, int N>
-ShmVectorOArchive & ShmVectorOArchive::operator<<(const T (&t)[N]) {
+FindObjectReferenceOArchive & FindObjectReferenceOArchive::operator<<(const T (&t)[N]) {
 
     return *this << &t;
 }
@@ -208,7 +212,7 @@ ShmVectorOArchive & ShmVectorOArchive::operator<<(const T (&t)[N]) {
 // << OPERATOR: NVP
 //-------------------------------------------------------------------------
 template<class T>
-ShmVectorOArchive & ShmVectorOArchive::operator<<(const boost::serialization::nvp<T> & t) {
+FindObjectReferenceOArchive & FindObjectReferenceOArchive::operator<<(const boost::serialization::nvp<T> & t) {
 
     m_currNvpTag = t.name();
 
@@ -218,23 +222,36 @@ ShmVectorOArchive & ShmVectorOArchive::operator<<(const boost::serialization::nv
 // << OPERATOR: SHMVECTOR
 //-------------------------------------------------------------------------
 template<class T>
-ShmVectorOArchive & ShmVectorOArchive::operator<<(vistle::ShmVector<T> & t) {
+FindObjectReferenceOArchive & FindObjectReferenceOArchive::operator<<(vistle::ShmVector<T> & t) {
 
     // save shmName to archive
-    m_arrayDataVector.push_back(ArrayData(m_currNvpTag, std::string(t.name().name.data()), &t));
+    m_referenceDataVector.push_back(ReferenceData(m_currNvpTag, std::string(t.name().name.data()), &t));
 
     return *this;
 }
+
+//// << OPERATOR: SHMVECTOR
+////-------------------------------------------------------------------------
+//template<class T>
+//FindObjectReferenceOArchive & FindObjectReferenceOArchive::operator<<(vistle::shm_obj_ref<T> & t) {
+
+//    // save shmName to archive
+//    m_referenceDataVector.push_back(ReferenceData(m_currNvpTag, std::string(t.name().name.data()), &t));
+
+//    return *this;
+//}
 
 
 // & OPERATOR
 //-------------------------------------------------------------------------
 template<class T>
-ShmVectorOArchive & ShmVectorOArchive::operator&(const T & t){
+FindObjectReferenceOArchive & FindObjectReferenceOArchive::operator&(const T & t){
 
     // delegate to appropriate << operator
     return *this << t;
 }
 
+} // namespace vistle
 
-#endif /* VISTLE_OBJECT_OARCHIVE_H */
+
+#endif /* FIND_OBJECT_REFERENCE_OARCHIVE_H */

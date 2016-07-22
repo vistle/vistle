@@ -20,7 +20,7 @@ set(core_SOURCES
    porttracker.cpp
    statetracker.cpp
    allobjects.cpp
-   shmvectoroarchive.cpp
+   findobjectreferenceoarchive.cpp
    cellalgorithm.cpp
 )
 
@@ -109,7 +109,7 @@ set(core_HEADERS
    shm_reference.h
    shm_reference_impl.h
    shm_obj_ref.h
-   shmvectoroarchive.h
+   findobjectreferenceoarchive.h
    structuredgrid.h
    structuredgrid_impl.h
    structuredgridbase.h

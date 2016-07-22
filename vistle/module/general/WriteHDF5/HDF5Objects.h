@@ -29,7 +29,7 @@
 
 #include <core/vec.h>
 #include <core/unstr.h>
-#include <core/shmvectoroarchive.h>
+#include <core/findobjectreferenceoarchive.h>
 #include <core/shm.h>
 
 #include "hdf5.h"

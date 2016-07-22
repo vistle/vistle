@@ -22,7 +22,7 @@
 #include "uniformgrid.cpp"
 #include "rectilineargrid.cpp"
 #include "structuredgrid.cpp"
-#include "shmvectoroarchive.cpp"
+#include "findobjectreferenceoarchive.cpp"
 
 #else
 
@@ -47,7 +47,7 @@
 #include "uniformgrid.h"
 #include "rectilineargrid.h"
 #include "structuredgrid.h"
-#include "shmvectoroarchive.h"
+#include "findobjectreferenceoarchive.h"
 
 #endif
 

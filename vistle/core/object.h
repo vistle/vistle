@@ -23,7 +23,7 @@
 #include "scalars.h"
 #include "dimensions.h"
 #include "export.h"
-#include "shmvectoroarchive.h"
+
 
 namespace vistle {
 
@@ -33,6 +33,7 @@ typedef interprocess::managed_shared_memory::handle_t shm_handle_t;
 
 class oarchive;
 class iarchive;
+class FindObjectReferenceOArchive;
 
 class Shm;
 template<class T>
@@ -175,7 +176,7 @@ public:
    template<class Archive>
    void save(Archive &ar) const;
 
-   virtual void save(ShmVectorOArchive &ar) const = 0;
+   virtual void save(FindObjectReferenceOArchive &ar) const = 0;
 
  public:
    typedef ObjectData Data;
@@ -374,7 +375,7 @@ private:
    static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \
    static void registerIArchive(iarchive &ar); \
    static void registerOArchive(oarchive &ar); \
-   void save(ShmVectorOArchive &ar) const override { const_cast<ObjType *>(this)->serialize(ar, 0); } \
+   void save(FindObjectReferenceOArchive &ar) const override { const_cast<ObjType *>(this)->serialize(ar, 0); } \
    void refresh() const override { Base::refresh(); refreshImpl(); } \
    void refreshImpl() const; \
    ObjType(Object::InitializedFlags) : Base(ObjType::Data::create()) { refreshImpl(); }  \

@@ -12,6 +12,7 @@
 #include <boost/mpl/vector.hpp>
 
 #include "shm.h"
+#include "findobjectreferenceoarchive.h"
 
 namespace vistle {
 class oarchive;

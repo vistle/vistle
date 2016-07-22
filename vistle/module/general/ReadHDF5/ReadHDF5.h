@@ -18,7 +18,7 @@
 
 #include <core/object.h>
 #include <core/object_impl.h>
-#include <core/shmvectoroarchive.h>
+#include <core/findobjectreferenceoarchive.h>
 #include <core/shm.h>
 
 #include "hdf5.h"
@@ -154,7 +154,7 @@ const std::unordered_map<std::type_index, hid_t> ReadHDF5::nativeTypeMap = {
 //-------------------------------------------------------------------------
 struct ReadHDF5::LinkIterData {
     std::string nvpName;
-    ShmVectorOArchive * archive;
+    vistle::FindObjectReferenceOArchive * archive;
     ReadHDF5 * callingModule;
     hid_t fileId;
     std::string groupPath;
@@ -266,7 +266,7 @@ struct ReadHDF5::ShmVectorReader {
     typedef std::unordered_map<std::string, std::string> NameMap;
 
     // members
-    ShmVectorOArchive * archive;
+    vistle::FindObjectReferenceOArchive * archive;
     std::string arrayNameInFile;
     std::string nvpName;
     NameMap & arrayMap;
@@ -279,7 +279,7 @@ struct ReadHDF5::ShmVectorReader {
     const long double MPI_READ_LIMIT_GB = 2;
     long double MAX_READ_GB;
 
-    ShmVectorReader(ShmVectorOArchive * _archive,  std::string _arrayNameInFile, std::string _nvpName, NameMap & _arrayMap, hid_t _fileId, hid_t _dummyDatasetId, const boost::mpi::communicator & _comm)
+    ShmVectorReader(vistle::FindObjectReferenceOArchive * _archive,  std::string _arrayNameInFile, std::string _nvpName, NameMap & _arrayMap, hid_t _fileId, hid_t _dummyDatasetId, const boost::mpi::communicator & _comm)
         : archive(_archive), arrayNameInFile(_arrayNameInFile), nvpName(_nvpName), arrayMap(_arrayMap), fileId(_fileId), dummyDatasetId(_dummyDatasetId), comm(_comm) {
         // specify read limit while accounting for the max amount of space taken up by metadata reads, which are not split up when reads are too large
         MAX_READ_GB = MPI_READ_LIMIT_GB - (ReadHDF5::numMetaMembers - ReadHDF5::ArrayToMetaArchive::numExclusiveMembers) * sizeof(double) / BYTES_IN_GB;
