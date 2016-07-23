@@ -62,7 +62,7 @@ class WriteHDF5 : public vistle::Module {
    class MetaToArrayArchive;
 
    // overriden functions
-   virtual bool parameterChanged(const vistle::Parameter * p);
+   virtual bool parameterChanged(const vistle::Parameter * p) override;
    virtual bool prepare() override;
    virtual bool compute() override;
    virtual bool reduce(int timestep) override;

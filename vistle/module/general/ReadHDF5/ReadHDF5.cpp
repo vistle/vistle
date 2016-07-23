@@ -7,6 +7,7 @@
 
 
 #include <sstream>
+#include <fstream>
 #include <iomanip>
 #include <cfloat>
 #include <limits>
@@ -76,7 +77,7 @@ ReadHDF5::~ReadHDF5() {
 
 // PARAMETER CHANGED FUNCTION
 //-------------------------------------------------------------------------
-bool ReadHDF5::parameterChanged() {
+bool ReadHDF5::parameterChanged(const vistle::Parameter *param) {
     util_checkFile();
     return true;
 }
