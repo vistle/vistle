@@ -30,6 +30,7 @@ class RemoteRenderObject: public opencover::RenderObject {
    RenderObject *getNormals() const;
    RenderObject *getTexture() const;
    RenderObject *getVertexAttribute() const;
+   RenderObject *getColorMap(int idx) const;
 
    void setGeometry(RemoteRenderObject *);
    void setColors(RemoteRenderObject *);

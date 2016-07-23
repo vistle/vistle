@@ -105,6 +105,10 @@ RenderObject *RemoteRenderObject::getVertexAttribute() const {
    return NULL;
 }
 
+RenderObject *RemoteRenderObject::getColorMap(int idx) const {
+   return NULL;
+}
+
 size_t RemoteRenderObject::getNumAttributes() const {
 
    return m_attributes.size();

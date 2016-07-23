@@ -25,6 +25,7 @@ class BaseRenderObject: public opencover::RenderObject {
    bool isSet() const override { return false; }
    size_t getNumElements() const override { return 0; }
    RenderObject *getElement(size_t idx) const override { return NULL; }
+   RenderObject *getColorMap(int idx) const override { return NULL; }
 
    bool isUniformGrid() const override { return false; }
    void getSize(int &nx, int &ny, int &nz) const override { nx = ny = nz = 0; }
