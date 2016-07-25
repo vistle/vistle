@@ -48,11 +48,13 @@ class WriteHDF5 : public vistle::Module {
 
  private:
    // typedefs
+   typedef vistle::FindObjectReferenceOArchive::ReferenceType ReferenceType;
+
    // IndexTracker: maps: origin (vector) -> timestep (map) -> block (map) -> variants (unsigned)
    typedef std::vector<std::unordered_map<int, std::unordered_map<int, unsigned>>> IndexTracker;
 
    // structs/functors
-   struct ReservationInfoShmEntry;
+   struct ReservationInfoReferenceEntry;
    struct ReservationInfo;
 
    struct ShmVectorReserver;
@@ -82,6 +84,7 @@ class WriteHDF5 : public vistle::Module {
    bool m_hasObject;
    std::unordered_map<std::string, bool> m_arrayMap;
    std::unordered_set<std::string> m_objectSet;
+   std::vector<std::string> m_objectReferenceVector;
    IndexTracker m_indexTracker;
 
 
@@ -97,49 +100,6 @@ public:
 };
 
 
-
-// WRITE HDF5 STATIC MEMBER OUT OF CLASS INITIALIZATION
-//-------------------------------------------------------------------------
-const hid_t WriteHDF5::m_dummyObjectType = H5T_NATIVE_INT;
-const std::vector<hsize_t> WriteHDF5::m_dummyObjectDims = {1};
-const std::string WriteHDF5::m_dummyObjectName = "/file/dummy";
-
-unsigned WriteHDF5::numMetaMembers = 0;
-
-const std::unordered_map<std::type_index, hid_t> WriteHDF5::nativeTypeMap = {
-      { typeid(int), H5T_NATIVE_INT },
-      { typeid(unsigned int), H5T_NATIVE_UINT },
-
-      { typeid(char), H5T_NATIVE_CHAR },
-      { typeid(unsigned char), H5T_NATIVE_UCHAR },
-
-      { typeid(short), H5T_NATIVE_SHORT },
-      { typeid(unsigned short), H5T_NATIVE_USHORT },
-
-      { typeid(long), H5T_NATIVE_LONG },
-      { typeid(unsigned long), H5T_NATIVE_ULONG },
-      { typeid(long long), H5T_NATIVE_LLONG },
-      { typeid(unsigned long long), H5T_NATIVE_ULLONG },
-
-      { typeid(float), H5T_NATIVE_FLOAT },
-      { typeid(double), H5T_NATIVE_DOUBLE },
-      { typeid(long double), H5T_NATIVE_LDOUBLE }
-
-       // to implement? these are other accepted types
-       //        H5T_NATIVE_B8
-       //        H5T_NATIVE_B16
-       //        H5T_NATIVE_B32
-       //        H5T_NATIVE_B64
-
-       //        H5T_NATIVE_OPAQUE
-       //        H5T_NATIVE_HADDR
-       //        H5T_NATIVE_HSIZE
-       //        H5T_NATIVE_HSSIZE
-       //        H5T_NATIVE_HERR
-       //        H5T_NATIVE_HBOOL
-
-};
-
 //-------------------------------------------------------------------------
 // WRITE HDF5 STRUCT/FUNCTOR DEFINITIONS
 //-------------------------------------------------------------------------
@@ -147,16 +107,21 @@ const std::unordered_map<std::type_index, hid_t> WriteHDF5::nativeTypeMap = {
 // RESERVATION INFO SHM ENTRY STRUCT
 // * stores ShmVector data needed for reservation of space within the HDF5 file
 //-------------------------------------------------------------------------
-struct WriteHDF5::ReservationInfoShmEntry {
+struct WriteHDF5::ReservationInfoReferenceEntry {
+    typedef vistle::FindObjectReferenceOArchive::ReferenceType ReferenceType;
+
     std::string name;
     std::string nvpTag;
+    ReferenceType referenceType;
     hid_t type;
     unsigned size;
 
 
-    ReservationInfoShmEntry() {}
-    ReservationInfoShmEntry(std::string _name, std::string _nvpTag, hid_t _type, unsigned _size)
-        : name(_name), nvpTag(_nvpTag), type(_type), size(_size) {}
+    ReservationInfoReferenceEntry() {}
+    ReservationInfoReferenceEntry(std::string _name, std::string _nvpTag, hid_t _type, unsigned _size)
+        : name(_name), nvpTag(_nvpTag), type(_type), referenceType(ReferenceType::ShmVector), size(_size) {}
+    ReservationInfoReferenceEntry(std::string _name, std::string _nvpTag)
+        : name(_name), nvpTag(_nvpTag), referenceType(ReferenceType::ObjectReference) {}
 
     // serialization method for passing over mpi
     template <class Archive>
@@ -168,7 +133,7 @@ struct WriteHDF5::ReservationInfoShmEntry {
 //-------------------------------------------------------------------------
 struct WriteHDF5::ReservationInfo {
     std::string name;
-    std::vector<WriteHDF5::ReservationInfoShmEntry> shmVectors;
+    std::vector<WriteHDF5::ReservationInfoReferenceEntry> referenceVector;
     int block;
     int timestep;
     unsigned origin;
@@ -254,16 +219,16 @@ public:
 const int WriteHDF5::MetaToArrayArchive::numExclusiveMembers = 2;
 
 // SHM VECTOR RESERVER FUNCTOR
-// * used to construct ReservationInfoShmEntry entries within the shmVectors
+// * used to construct ReservationInfoReferenceEntry entries within the shmVectors
 // * member of ReservationInfo
 // * needed in order to iterate over all possible shm VectorTypes
 //-------------------------------------------------------------------------
 struct WriteHDF5::ShmVectorReserver {
     std::string name;
     std::string nvpTag;
-    ReservationInfo * reservationInfo;
+    WriteHDF5::ReservationInfo * reservationInfo;
 
-    ShmVectorReserver(std::string _name, std::string _nvpTag, ReservationInfo * _reservationInfo)
+    ShmVectorReserver(std::string _name, std::string _nvpTag, WriteHDF5::ReservationInfo * _reservationInfo)
         : name(_name), nvpTag(_nvpTag), reservationInfo(_reservationInfo) {}
 
     template<typename T>
@@ -305,9 +270,10 @@ struct WriteHDF5::ShmVectorWriter {
 // * needed for passing struct over mpi
 //-------------------------------------------------------------------------
 template <class Archive>
-void WriteHDF5::ReservationInfoShmEntry::serialize(Archive &ar, const unsigned int version) {
+void WriteHDF5::ReservationInfoReferenceEntry::serialize(Archive &ar, const unsigned int version) {
    ar & name;
    ar & nvpTag;
+   ar & referenceType;
    ar & type;
    ar & size;
 }
@@ -325,7 +291,7 @@ bool WriteHDF5::ReservationInfo::operator<(const ReservationInfo &other) const {
 template <class Archive>
 void WriteHDF5::ReservationInfo::serialize(Archive &ar, const unsigned int version) {
    ar & name;
-   ar & shmVectors;
+   ar & referenceVector;
    ar & isValid;
    ar & block;
    ar & timestep;
@@ -333,7 +299,7 @@ void WriteHDF5::ReservationInfo::serialize(Archive &ar, const unsigned int versi
 }
 
 // SHM VECTOR RESERVER - () OPERATOR
-// * manifests construction of ReservationInfoShmEntry entries when GetArrayFromName types match
+// * manifests construction of ReservationInfoReferenceEntry entries when GetArrayFromName types match
 //-------------------------------------------------------------------------
 template<typename T>
 void WriteHDF5::ShmVectorReserver::operator()(T) {
@@ -346,7 +312,7 @@ void WriteHDF5::ShmVectorReserver::operator()(T) {
         assert(nativeTypeMapIter != WriteHDF5::nativeTypeMap.end());
 
         // store reservation info
-        reservationInfo->shmVectors.push_back(ReservationInfoShmEntry(name, nvpTag, nativeTypeMapIter->second, vec->size()));
+        reservationInfo->referenceVector.push_back(ReservationInfoReferenceEntry(name, nvpTag, nativeTypeMapIter->second, vec->size()));
     }
 }
 
@@ -453,6 +419,7 @@ WriteHDF5::MetaToArrayArchive & WriteHDF5::MetaToArrayArchive::operator<<(T cons
 
     // do nothing - this archive assumes all members that need to be saved are stored as name-value pairs
 
+    return *this;
 }
 
 // META TO ARRAY - << OPERATOR: NVP

@@ -9,6 +9,15 @@
 
 namespace vistle {
 
+//-------------------------------------------------------------------------
+// STATIC CONST MEMBER OUT OF CLASS DEFINITIONS
+//-------------------------------------------------------------------------
+const std::string FindObjectReferenceOArchive::nullObjectReferenceName = "--NULL--";
+
+//-------------------------------------------------------------------------
+// METHOD DEFINITIONS
+//-------------------------------------------------------------------------
+
 // GET VECTOR ENTRY BY NAME
 // * often multiple consecutive searches for the same enrty will occur, therefore the hint aids performance
 //-------------------------------------------------------------------------

@@ -38,6 +38,8 @@ class ReadHDF5 : public vistle::Module {
    ~ReadHDF5();
 
  private:
+   // typedefs
+   typedef vistle::FindObjectReferenceOArchive::ReferenceType ReferenceType;
 
    // structs/functors
    struct LinkIterData;
@@ -85,8 +87,10 @@ class ReadHDF5 : public vistle::Module {
    unsigned m_numPorts;
 
    bool m_isRootNode;
-   std::unordered_map<std::string, std::string> m_arrayMap;         //< array name in file -> array name in memory
-   std::vector<vistle::Object::ptr> m_objectPersistenceVector;      //< stores pointers to objects so that they are not cleared from memory
+   std::unordered_map<std::string, std::string> m_arrayMap;                 //< array name in file -> array name in memory
+   std::unordered_map<std::string, std::string> m_objectMap;                //< object name in file -> object name in memory
+   std::vector<std::pair<void *, std::string>> m_objectReferenceVector;     //< pointer to shm_obj_ref member, object name in memory
+   std::vector<vistle::Object::ptr> m_objectPersistenceVector;              //< stores pointers to objects so that they are not cleared from memory
    hid_t m_dummyDatasetId;
 
 
@@ -98,50 +102,6 @@ class ReadHDF5 : public vistle::Module {
 public:
    static unsigned numMetaMembers;
    static const std::unordered_map<std::type_index, hid_t> nativeTypeMap;
-
-};
-
-
-
-// WRITE HDF5 STATIC MEMBER OUT OF CLASS INITIALIZATION
-//-------------------------------------------------------------------------
-const hid_t ReadHDF5::m_dummyObjectType = H5T_NATIVE_INT;
-const std::vector<hsize_t> ReadHDF5::m_dummyObjectDims = {1};
-const std::string ReadHDF5::m_dummyObjectName = "/file/dummy";
-
-unsigned ReadHDF5::numMetaMembers = 0;
-
-const std::unordered_map<std::type_index, hid_t> ReadHDF5::nativeTypeMap = {
-      { typeid(int), H5T_NATIVE_INT },
-      { typeid(unsigned int), H5T_NATIVE_UINT },
-
-      { typeid(char), H5T_NATIVE_CHAR },
-      { typeid(unsigned char), H5T_NATIVE_UCHAR },
-
-      { typeid(short), H5T_NATIVE_SHORT },
-      { typeid(unsigned short), H5T_NATIVE_USHORT },
-
-      { typeid(long), H5T_NATIVE_LONG },
-      { typeid(unsigned long), H5T_NATIVE_ULONG },
-      { typeid(long long), H5T_NATIVE_LLONG },
-      { typeid(unsigned long long), H5T_NATIVE_ULLONG },
-
-      { typeid(float), H5T_NATIVE_FLOAT },
-      { typeid(double), H5T_NATIVE_DOUBLE },
-      { typeid(long double), H5T_NATIVE_LDOUBLE }
-
-       // to implement? these are other accepted types
-       //        H5T_NATIVE_B8
-       //        H5T_NATIVE_B16
-       //        H5T_NATIVE_B32
-       //        H5T_NATIVE_B64
-
-       //        H5T_NATIVE_OPAQUE
-       //        H5T_NATIVE_HADDR
-       //        H5T_NATIVE_HSIZE
-       //        H5T_NATIVE_HSSIZE
-       //        H5T_NATIVE_HERR
-       //        H5T_NATIVE_HBOOL
 
 };
 
@@ -339,7 +299,7 @@ void ReadHDF5::ShmVectorReserver::operator()(T) {
 //-------------------------------------------------------------------------
 template<typename T>
 void ReadHDF5::ShmVectorReader::operator()(T) {
-    const vistle::ShmVector<T> foundArray = vistle::Shm::the().getArrayFromName<T>(archive->getVectorEntryByNvpName(nvpName)->arrayName);
+    const vistle::ShmVector<T> foundArray = vistle::Shm::the().getArrayFromName<T>(archive->getVectorEntryByNvpName(nvpName)->referenceName);
 
     if (foundArray) {
         auto arrayMapIter = arrayMap.find(arrayNameInFile);
@@ -363,7 +323,7 @@ void ReadHDF5::ShmVectorReader::operator()(T) {
             hsize_t maxDims[] = {0};
 
 
-            arrayMap[arrayNameInFile] = archive->getVectorEntryByNvpName(nvpName)->arrayName;
+            arrayMap[arrayNameInFile] = archive->getVectorEntryByNvpName(nvpName)->referenceName;
 
             while (areMultipleReadsNeeded || isFirstRead) {
                 // open dataset and obtain information needed for read
@@ -437,7 +397,7 @@ void ReadHDF5::ShmVectorReader::operator()(T) {
                 H5Sclose(dataSpaceId);
                 H5Dclose(dataSetId);
 
-                std::cerr << " --- write dims : " << arrayNameInFile << "->" << archive->getVectorEntryByNvpName(nvpName)->arrayName << " - " << dims[0] << std::endl;
+                std::cerr << " --- write dims : " << arrayNameInFile << "->" << archive->getVectorEntryByNvpName(nvpName)->referenceName << " - " << dims[0] << std::endl;
 
             }
 

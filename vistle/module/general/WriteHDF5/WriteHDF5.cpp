@@ -33,6 +33,49 @@ BOOST_SERIALIZATION_REGISTER_ARCHIVE(FindObjectReferenceOArchive)
 //-------------------------------------------------------------------------
 MODULE_MAIN(WriteHDF5)
 
+//-------------------------------------------------------------------------
+// WRITE HDF5 STATIC MEMBER OUT OF CLASS INITIALIZATION
+//-------------------------------------------------------------------------
+const hid_t WriteHDF5::m_dummyObjectType = H5T_NATIVE_INT;
+const std::vector<hsize_t> WriteHDF5::m_dummyObjectDims = {1};
+const std::string WriteHDF5::m_dummyObjectName = "/file/dummy";
+
+unsigned WriteHDF5::numMetaMembers = 0;
+
+const std::unordered_map<std::type_index, hid_t> WriteHDF5::nativeTypeMap = {
+      { typeid(int), H5T_NATIVE_INT },
+      { typeid(unsigned int), H5T_NATIVE_UINT },
+
+      { typeid(char), H5T_NATIVE_CHAR },
+      { typeid(unsigned char), H5T_NATIVE_UCHAR },
+
+      { typeid(short), H5T_NATIVE_SHORT },
+      { typeid(unsigned short), H5T_NATIVE_USHORT },
+
+      { typeid(long), H5T_NATIVE_LONG },
+      { typeid(unsigned long), H5T_NATIVE_ULONG },
+      { typeid(long long), H5T_NATIVE_LLONG },
+      { typeid(unsigned long long), H5T_NATIVE_ULLONG },
+
+      { typeid(float), H5T_NATIVE_FLOAT },
+      { typeid(double), H5T_NATIVE_DOUBLE },
+      { typeid(long double), H5T_NATIVE_LDOUBLE }
+
+       // to implement? these are other accepted types
+       //        H5T_NATIVE_B8
+       //        H5T_NATIVE_B16
+       //        H5T_NATIVE_B32
+       //        H5T_NATIVE_B64
+
+       //        H5T_NATIVE_OPAQUE
+       //        H5T_NATIVE_HADDR
+       //        H5T_NATIVE_HSIZE
+       //        H5T_NATIVE_HSSIZE
+       //        H5T_NATIVE_HERR
+       //        H5T_NATIVE_HBOOL
+
+};
+
 
 //-------------------------------------------------------------------------
 // METHOD DEFINITIONS
@@ -89,7 +132,6 @@ bool WriteHDF5::prepare() {
     hid_t dataSetId;
     hid_t fileSpaceId;
     hid_t groupId;
-    hsize_t dims[] = {1};
 
     // clear reused variables
     m_arrayMap.clear();
@@ -165,8 +207,29 @@ bool WriteHDF5::prepare() {
 
 
 // REDUCE FUNCTION
+// * check for unresolved reference
 //-------------------------------------------------------------------------
 bool WriteHDF5::reduce(int timestep) {
+    bool unresolvedReferencesExistInComm;
+    bool unresolvedReferencesExistOnNode = false;
+
+    for (unsigned i = 0; i < m_objectReferenceVector.size(); i++) {
+        if (m_objectSet.find(m_objectReferenceVector[i]) == m_objectSet.end()) {
+            unresolvedReferencesExistOnNode = true;
+            break;
+        }
+    }
+
+    // check and send warning message for unresolved references
+    if (m_isRootNode) {
+        boost::mpi::reduce(comm(), unresolvedReferencesExistOnNode, unresolvedReferencesExistInComm, boost::mpi::maximum<bool>(), 0);
+
+        if (unresolvedReferencesExistInComm) {
+            sendInfo("Warning: some object references are unresolved.");
+        }
+    } else {
+        boost::mpi::reduce(comm(), unresolvedReferencesExistOnNode, boost::mpi::maximum<bool>(), 0);
+    }
 
 
     return Module::reduce(timestep);
@@ -227,8 +290,14 @@ bool WriteHDF5::compute() {
 
         // populate reservationInfo shm vector
         for (unsigned i = 0; i < archive.getVector().size(); i++) {
-            ShmVectorReserver reserver(archive.getVector()[i].arrayName, archive.getVector()[i].nvpName, &reservationInfo);
-            boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorReserver>(reserver));
+            if (archive.getVector()[i].referenceType == ReferenceType::ShmVector) {
+                ShmVectorReserver reserver(archive.getVector()[i].referenceName, archive.getVector()[i].nvpName, &reservationInfo);
+                boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorReserver>(reserver));
+
+            } else if (archive.getVector()[i].referenceType == ReferenceType::ObjectReference) {
+                if (archive.getVector()[i].referenceName != FindObjectReferenceOArchive::nullObjectReferenceName)
+                    reservationInfo.referenceVector.push_back(ReservationInfoReferenceEntry(archive.getVector()[i].referenceName, archive.getVector()[i].nvpName));
+            }
         }
 
     } else {
@@ -296,26 +365,32 @@ bool WriteHDF5::compute() {
                 status = H5Gclose(groupId);
                 util_checkStatus(status);
 
-                // handle shmVectors and shmVector links
-                for (unsigned j = 0; j < reservationInfoGatherVector[i].shmVectors.size(); j++) {
-                    std::string arrayName = reservationInfoGatherVector[i].shmVectors[j].name;
-                    std::string arrayPath = "/array/" + arrayName;
+                // handle referenceVector and shmVector links
+                for (unsigned j = 0; j < reservationInfoGatherVector[i].referenceVector.size(); j++) {
+                    std::string referenceName = reservationInfoGatherVector[i].referenceVector[j].name;;
+                    std::string referencePath;
 
-                    if (m_arrayMap.find(arrayName) == m_arrayMap.end()) {
-                        m_arrayMap.insert({{arrayName, false}});
+                    if (reservationInfoGatherVector[i].referenceVector[j].referenceType == ReferenceType::ShmVector) {
+                        referencePath = "/array/" + referenceName;
 
-                        // create array dataset
-                        dims[0] = reservationInfoGatherVector[i].shmVectors[j].size;
-                        fileSpaceId = H5Screate_simple(1, dims, NULL);
-                        dataSetId = H5Dcreate(fileId, arrayPath.c_str(), reservationInfoGatherVector[i].shmVectors[j].type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                        H5Sclose(fileSpaceId);
-                        H5Dclose(dataSetId);
+                        if (m_arrayMap.find(referenceName) == m_arrayMap.end()) {
+                            m_arrayMap.insert({{referenceName, false}});
+
+                            // create array dataset
+                            dims[0] = reservationInfoGatherVector[i].referenceVector[j].size;
+                            fileSpaceId = H5Screate_simple(1, dims, NULL);
+                            dataSetId = H5Dcreate(fileId, referencePath.c_str(), reservationInfoGatherVector[i].referenceVector[j].type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                            H5Sclose(fileSpaceId);
+                            H5Dclose(dataSetId);
+                        }
+                    } else if (reservationInfoGatherVector[i].referenceVector[j].referenceType == ReferenceType::ObjectReference) {
+                        referencePath = "/object/" + referenceName;
                     }
 
-                    std::string linkGroupName = objectGroupName + "/" + reservationInfoGatherVector[i].shmVectors[j].nvpTag;
+                    std::string linkGroupName = objectGroupName + "/" + reservationInfoGatherVector[i].referenceVector[j].nvpTag;
                     groupId = H5Gcreate2(fileId, linkGroupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-                    status = H5Lcreate_soft(arrayPath.c_str(), groupId, arrayName.c_str(), H5P_DEFAULT, H5P_DEFAULT);
+                    status = H5Lcreate_soft(referencePath.c_str(), groupId, referenceName.c_str(), H5P_DEFAULT, H5P_DEFAULT);
                     util_checkStatus(status);
 
                     status = H5Gclose(groupId);
@@ -371,6 +446,13 @@ bool WriteHDF5::compute() {
         }
     }
 
+    // record object references for reference validity check in reduce function
+    for (unsigned i = 0; i < archive.getVector().size(); i++) {
+        if (archive.getVector()[i].referenceType == ReferenceType::ObjectReference) {
+            m_objectReferenceVector.push_back(archive.getVector()[i].referenceName);
+        }
+    }
+
 
     // ----- WRITE DATA TO THE HDF5 FILE ----- //
 
@@ -400,11 +482,13 @@ bool WriteHDF5::compute() {
 
     // write array info
     for (unsigned i = 0; i < maxVectorSize; i++) {
-        if (archive.getVector().size() > i && m_arrayMap[archive.getVector()[i].arrayName] == false) {
+        if (archive.getVector().size() > i
+                && archive.getVector()[i].referenceType == ReferenceType::ShmVector
+                && m_arrayMap[archive.getVector()[i].referenceName] == false) {
             // this node has an object to be written
-            m_arrayMap[archive.getVector()[i].arrayName] = true;
+            m_arrayMap[archive.getVector()[i].referenceName] = true;
 
-            ShmVectorWriter shmVectorWriter(archive.getVector()[i].arrayName, fileId, comm());
+            ShmVectorWriter shmVectorWriter(archive.getVector()[i].referenceName, fileId, comm());
             boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorWriter>(shmVectorWriter));
         } else {
              // this node does not have an object to be written

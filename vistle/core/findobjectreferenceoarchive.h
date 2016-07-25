@@ -34,12 +34,20 @@
 namespace vistle {
 
 
+// FORWARD DECLARATIONS
+//-------------------------------------------------------------------------
+template<class T>
+class shm_obj_ref;
+
 //-------------------------------------------------------------------------
 // FIND OBJECT REFERENCE OARCHIVE CLASS DECLARATION
 //-------------------------------------------------------------------------
 class V_COREEXPORT FindObjectReferenceOArchive {
 public:
+    enum ReferenceType { ShmVector, ObjectReference };
+
     struct ReferenceData;
+
 private:
 
     // private member variables
@@ -85,6 +93,8 @@ public:
     FindObjectReferenceOArchive & operator<<(const boost::serialization::nvp<T> & t);
     template<class T>
     FindObjectReferenceOArchive & operator<<(vistle::ShmVector<T> & t);
+    template<class T>
+    FindObjectReferenceOArchive & operator<<(vistle::shm_obj_ref<T> & t);
 
     // the & operator
     template<class T>
@@ -96,6 +106,9 @@ public:
     // get functions
     std::vector<ReferenceData> & getVector() { return m_referenceDataVector; }
     ReferenceData * getVectorEntryByNvpName(std::string name);
+
+    // public member variables
+    static const std::string nullObjectReferenceName;
 };
 
 
@@ -107,11 +120,12 @@ public:
 //-------------------------------------------------------------------------
 struct FindObjectReferenceOArchive::ReferenceData {
     std::string nvpName;
-    std::string arrayName;
+    std::string referenceName;
+    FindObjectReferenceOArchive::ReferenceType referenceType;
     void * ref;
 
-    ReferenceData(std::string _nvpName, std::string _arrayName, void * _ref)
-        : nvpName(_nvpName), arrayName(_arrayName), ref(_ref) {}
+    ReferenceData(std::string _nvpName, std::string _referenceName, FindObjectReferenceOArchive::ReferenceType _referenceType, void * _ref)
+        : nvpName(_nvpName), referenceName(_referenceName), referenceType(_referenceType), ref(_ref) {}
 };
 
 // SPECIALIZED SAVE FUNCTION: ENUMS
@@ -224,22 +238,29 @@ FindObjectReferenceOArchive & FindObjectReferenceOArchive::operator<<(const boos
 template<class T>
 FindObjectReferenceOArchive & FindObjectReferenceOArchive::operator<<(vistle::ShmVector<T> & t) {
 
+    // check for object validity
+    assert(t);
+
     // save shmName to archive
-    m_referenceDataVector.push_back(ReferenceData(m_currNvpTag, std::string(t.name().name.data()), &t));
+    m_referenceDataVector.push_back(ReferenceData(m_currNvpTag, std::string(t.name().name.data()), ReferenceType::ShmVector, &t));
 
     return *this;
 }
 
-//// << OPERATOR: SHMVECTOR
-////-------------------------------------------------------------------------
-//template<class T>
-//FindObjectReferenceOArchive & FindObjectReferenceOArchive::operator<<(vistle::shm_obj_ref<T> & t) {
+// << OPERATOR: SHM OBJECT REFERENCE
+//-------------------------------------------------------------------------
+template<class T>
+FindObjectReferenceOArchive & FindObjectReferenceOArchive::operator<<(vistle::shm_obj_ref<T> & t) {
 
-//    // save shmName to archive
-//    m_referenceDataVector.push_back(ReferenceData(m_currNvpTag, std::string(t.name().name.data()), &t));
+    // save shmName to archive
+    if (auto obj = t.getObject()) {
+        m_referenceDataVector.push_back(ReferenceData(m_currNvpTag, obj->getName(), ReferenceType::ObjectReference, &t));
+    } else {
+        m_referenceDataVector.push_back(ReferenceData(m_currNvpTag, nullObjectReferenceName, ReferenceType::ObjectReference, &t));
+    }
 
-//    return *this;
-//}
+    return *this;
+}
 
 
 // & OPERATOR

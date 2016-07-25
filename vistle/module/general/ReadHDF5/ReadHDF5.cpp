@@ -38,6 +38,49 @@ MODULE_MAIN(ReadHDF5)
 
 
 //-------------------------------------------------------------------------
+// WRITE HDF5 STATIC MEMBER OUT OF CLASS INITIALIZATION
+//-------------------------------------------------------------------------
+const hid_t ReadHDF5::m_dummyObjectType = H5T_NATIVE_INT;
+const std::vector<hsize_t> ReadHDF5::m_dummyObjectDims = {1};
+const std::string ReadHDF5::m_dummyObjectName = "/file/dummy";
+
+unsigned ReadHDF5::numMetaMembers = 0;
+
+const std::unordered_map<std::type_index, hid_t> ReadHDF5::nativeTypeMap = {
+      { typeid(int), H5T_NATIVE_INT },
+      { typeid(unsigned int), H5T_NATIVE_UINT },
+
+      { typeid(char), H5T_NATIVE_CHAR },
+      { typeid(unsigned char), H5T_NATIVE_UCHAR },
+
+      { typeid(short), H5T_NATIVE_SHORT },
+      { typeid(unsigned short), H5T_NATIVE_USHORT },
+
+      { typeid(long), H5T_NATIVE_LONG },
+      { typeid(unsigned long), H5T_NATIVE_ULONG },
+      { typeid(long long), H5T_NATIVE_LLONG },
+      { typeid(unsigned long long), H5T_NATIVE_ULLONG },
+
+      { typeid(float), H5T_NATIVE_FLOAT },
+      { typeid(double), H5T_NATIVE_DOUBLE },
+      { typeid(long double), H5T_NATIVE_LDOUBLE }
+
+       // to implement? these are other accepted types
+       //        H5T_NATIVE_B8
+       //        H5T_NATIVE_B16
+       //        H5T_NATIVE_B32
+       //        H5T_NATIVE_B64
+
+       //        H5T_NATIVE_OPAQUE
+       //        H5T_NATIVE_HADDR
+       //        H5T_NATIVE_HSIZE
+       //        H5T_NATIVE_HSSIZE
+       //        H5T_NATIVE_HERR
+       //        H5T_NATIVE_HBOOL
+
+};
+
+//-------------------------------------------------------------------------
 // METHOD DEFINITIONS
 //-------------------------------------------------------------------------
 
@@ -131,6 +174,35 @@ bool ReadHDF5::prepare() {
     H5Dclose(m_dummyDatasetId);
     H5Pclose(filePropertyListId);
     H5Fclose(fileId);
+
+
+
+    // resolve object references
+    bool unresolvedReferencesExistInComm;
+    bool unresolvedReferencesExistOnNode = false;
+    for (unsigned i = 0; i < m_objectReferenceVector.size(); i++) {
+        auto objectMapIter = m_objectMap.find(m_objectReferenceVector[i].second);
+
+        if (objectMapIter == m_objectMap.end()) {
+            unresolvedReferencesExistOnNode = true;
+        } else {
+            shm_obj_ref<Object> * objectReferencePtr = (shm_obj_ref<Object> *) m_objectReferenceVector[i].first;
+            *objectReferencePtr = vistle::Shm::the().getObjectFromName(objectMapIter->second);
+        }
+    }
+
+    // check and send warning message for unresolved references
+    if (m_isRootNode) {
+        boost::mpi::reduce(comm(), unresolvedReferencesExistOnNode, unresolvedReferencesExistInComm, boost::mpi::maximum<bool>(), 0);
+
+        if (unresolvedReferencesExistInComm) {
+            sendInfo("Warning: some object references are unresolved.");
+        }
+    } else {
+        boost::mpi::reduce(comm(), unresolvedReferencesExistOnNode, boost::mpi::maximum<bool>(), 0);
+    }
+
+
 
     m_objectPersistenceVector.clear();
 
@@ -232,6 +304,9 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
     // create empty object by type
     Object::ptr returnObject = ObjectTypeRegistry::getType(objectType).createEmpty();
 
+    // record in file name to in memory name relation
+    linkIterData->callingModule->m_objectMap[std::string(name)] = returnObject->getName();
+
     // construct meta
     ArrayToMetaArchive arrayToMetaArchive(objectMeta.data(), linkIterData->block, linkIterData->timestep);
     boost::serialization::serialize_adl(arrayToMetaArchive, const_cast<Meta &>(returnObject->meta()), ::boost::serialization::version< Meta >::value);
@@ -293,18 +368,24 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
 
     //linkIterData->callingModule->sendInfo("iteratedl: %s", name);
 
-    // read arrays
-    ShmVectorReader reader(
-                linkIterData->archive,
-                std::string(name),
-                linkIterData->nvpName,
-                linkIterData->callingModule->m_arrayMap,
-                linkIterData->fileId,
-                linkIterData->callingModule->m_dummyDatasetId,
-                linkIterData->callingModule->comm()
-                );
+    if (linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->referenceType == ReferenceType::ObjectReference) {
+        void * objectReference = linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->ref;
 
-    boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorReader>(reader));
+        linkIterData->callingModule->m_objectReferenceVector.push_back(std::make_pair(objectReference, std::string(name)));
+
+    } else if (linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->referenceType == ReferenceType::ShmVector) {
+        ShmVectorReader reader(
+                    linkIterData->archive,
+                    std::string(name),
+                    linkIterData->nvpName,
+                    linkIterData->callingModule->m_arrayMap,
+                    linkIterData->fileId,
+                    linkIterData->callingModule->m_dummyDatasetId,
+                    linkIterData->callingModule->comm()
+                    );
+
+        boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorReader>(reader));
+    }
 
     return 0;
 }
