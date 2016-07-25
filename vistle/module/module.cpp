@@ -1077,6 +1077,10 @@ bool Module::objectAdded(int sender, const std::string &senderPort, const Port *
    return true;
 }
 
+void Module::connectionAdded(const Port *from, const Port *to) {
+
+}
+
 void Module::connectionRemoved(const Port *from, const Port *to) {
 
 }
@@ -1294,6 +1298,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          Port *other = NULL;
          const Port::ConstPortSet *ports = NULL;
          std::string ownPortName;
+         bool inputConnection = false;
          //std::cerr << name() << " receiving connection: " << conn->getModuleA() << ":" << conn->getPortAName() << " -> " << conn->getModuleB() << ":" << conn->getPortBName() << std::endl;
          if (conn->getModuleA() == id()) {
             port = findOutputPort(conn->getPortAName());
@@ -1306,6 +1311,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          } else if (conn->getModuleB() == id()) {
             ownPortName = conn->getPortBName();
             port = findInputPort(conn->getPortBName());
+            inputConnection = true;
             if (port) {
                other = new Port(conn->getModuleA(), conn->getPortAName(), Port::OUTPUT);
                ports = &port->connections();
@@ -1316,10 +1322,15 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          }
 
          if (ports && port && other) {
-            if (ports->find(other) == ports->end())
+            if (ports->find(other) == ports->end()) {
                port->addConnection(other);
-            else
+               if (inputConnection)
+                  connectionAdded(other, port);
+               else
+                  connectionAdded(port, other);
+            } else {
                delete other;
+            }
          } else {
             if (!findParameter(ownPortName))
                std::cerr << name() << " did not find port " << ownPortName << std::endl;

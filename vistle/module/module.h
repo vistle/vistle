@@ -224,6 +224,7 @@ protected:
 
    bool isConnected(const Port *port) const;
    bool isConnected(const std::string &portname) const;
+   virtual void connectionAdded(const Port *from, const Port *to);
    virtual void connectionRemoved(const Port *from, const Port *to);
 
    std::string getModuleName(int id) const;
