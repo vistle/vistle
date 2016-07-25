@@ -1,6 +1,6 @@
 #vistle_find_package(Boost 1.40 REQUIRED COMPONENTS mpi)
 
-add_module(Tracer Tracer.cpp Integrator.cpp TracerTimes.cpp)
+add_module(Tracer Tracer.cpp BlockData.cpp Integrator.cpp Particle.cpp TracerTimes.cpp)
 
 use_openmp()
 
