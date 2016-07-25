@@ -249,8 +249,8 @@ struct ObjectData {
     V_COREEXPORT void *operator new (std::size_t size, void* ptr);
     V_COREEXPORT void operator delete(void *ptr);
     V_COREEXPORT void operator delete(void *ptr, void* voidptr2);
-    void ref() const;
-    void unref() const;
+    V_COREEXPORT void ref() const;
+    V_COREEXPORT void unref() const;
     static ObjectData *create(Object::Type id, const std::string &name, const Meta &m);
     bool isComplete() const; //! check whether all references have been resolved
     template<typename ShmVectorPtr>

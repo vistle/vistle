@@ -350,12 +350,12 @@ void instantiate_all_io() {
       mpl::for_each<OutputArchives, wrap<mpl::_1> >(instantiate_save());
 }
 
-void Object::Data::ref() const {
+void ObjectData::ref() const {
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_mutex> lock(ref_mutex);
    ++refcount;
 }
 
-void Object::Data::unref() const {
+void ObjectData::unref() const {
    ref_mutex.lock();
    --refcount;
    assert(refcount >= 0);
