@@ -11,7 +11,6 @@
 #include <limits.h>
 
 #include <util/valgrind.h>
-#include "message.h"
 #include "messagequeue.h"
 #include "scalars.h"
 #include "celltree.h"

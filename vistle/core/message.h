@@ -15,10 +15,6 @@
 
 namespace vistle {
 
-class Communicator;
-class Parameter;
-class Port;
-
 namespace message {
 
 struct Id {
@@ -70,8 +66,6 @@ typedef boost::uuids::uuid uuid_t;
 
 class V_COREEXPORT Message {
    // this is POD
-
-   friend class vistle::Communicator;
 
  public:
    static const size_t MESSAGE_SIZE = 1024; // fixed message size is imposed by boost::interprocess::message_queue

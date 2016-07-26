@@ -296,7 +296,7 @@ bool Communicator::sendMessage(const int moduleId, const message::Message &messa
    if (m_rank == destRank || destRank == -1) {
       return clusterManager().sendMessage(moduleId, message);
    } else {
-      MPI_Send(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, destRank, TagToRank, MPI_COMM_WORLD);
+      MPI_Send(const_cast<message::Message *>(&message), message.size(), MPI_BYTE, destRank, TagToRank, MPI_COMM_WORLD);
    }
    return true;
 }
@@ -306,7 +306,7 @@ bool Communicator::forwardToMaster(const message::Message &message) {
    vassert(m_rank != 0);
    if (m_rank != 0) {
 
-      MPI_Send(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD);
+      MPI_Send(const_cast<message::Message *>(&message), message.size(), MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD);
    }
 
    return true;
@@ -317,12 +317,13 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
    if (m_rank == 0) {
       std::vector<MPI_Request> s(m_size);
       for (int index = 0; index < m_size; ++index) {
-         if (index != m_rank)
-            MPI_Isend(const_cast<unsigned int *>(&message.m_size), 1, MPI_UNSIGNED, index, TagToAny,
-                  MPI_COMM_WORLD, &s[index]);
+         const unsigned int size = message.size();
+         if (index != m_rank) {
+            MPI_Isend(&size, 1, MPI_UNSIGNED, index, TagToAny, MPI_COMM_WORLD, &s[index]);
+         }
       }
 
-      MPI_Bcast(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, m_rank, MPI_COMM_WORLD);
+      MPI_Bcast(const_cast<message::Message *>(&message), message.size(), MPI_BYTE, m_rank, MPI_COMM_WORLD);
 
       const bool result = handleMessage(message);
 
@@ -337,7 +338,7 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 
       return result;
    } else {
-      MPI_Send(const_cast<message::Message *>(&message), message.m_size, MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD);
+      MPI_Send(const_cast<message::Message *>(&message), message.size(), MPI_BYTE, 0, TagToRank, MPI_COMM_WORLD);
 
       // message will be handled when received again from rank 0
       return true;

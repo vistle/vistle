@@ -25,7 +25,6 @@
 #include <boost/archive/impl/basic_binary_iarchive.ipp>
 
 #include "archives.h"
-#include "message.h"
 
 namespace ba = boost::archive;
 

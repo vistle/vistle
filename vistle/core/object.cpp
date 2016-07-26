@@ -21,8 +21,6 @@
 
 #include "object_impl.h"
 
-#include "message.h"
-#include "messagequeue.h"
 #include "shm.h"
 #include "archives.h"
 #include "assert.h"
