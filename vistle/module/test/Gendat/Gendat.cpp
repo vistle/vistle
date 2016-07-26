@@ -8,12 +8,20 @@
 #include <core/uniformgrid.h>
 #include <core/rectilineargrid.h>
 #include <core/structuredgrid.h>
+#include <util/enum.h>
 
 #include "Gendat.h"
 
 MODULE_MAIN(Gendat)
 
 using namespace vistle;
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(GeoMode,
+                                    (Triangle_Geometry)
+                                    (Polygon_Geometry)
+                                    (Uniform_Grid)
+                                    (Rectilinear_Grid)
+                                    (Structured_Grid))
 
 Gendat::Gendat(const std::string &shmname, const std::string &name, int moduleID)
    : Module("Gendat", shmname, name, moduleID) {
@@ -23,13 +31,7 @@ Gendat::Gendat(const std::string &shmname, const std::string &name, int moduleID
 
    std::vector<std::string> choices;
    m_geoMode = addIntParameter("geo_mode", "geometry generation mode", 0, Parameter::Choice);
-   choices.clear();
-   choices.push_back("Triangles");
-   choices.push_back("Polygons");
-   choices.push_back("Uniform");
-   choices.push_back("Rectilinear");
-   choices.push_back("Structured");
-   setParameterChoices(m_geoMode, choices);
+   V_ENUM_SET_CHOICES(m_geoMode, GeoMode);
 
    m_dataMode = addIntParameter("data_mode", "data generation mode", 0, Parameter::Choice);
    choices.clear();
@@ -59,9 +61,9 @@ bool Gendat::compute() {
    */
 #endif
    // output data: first if statement seperates coord-derived objects
-   if (m_geoMode->getValue() == M_TRIANGLES || m_geoMode->getValue() == M_POLYGONS) {
+   if (m_geoMode->getValue() == Triangle_Geometry || m_geoMode->getValue() == Polygon_Geometry) {
        Coords::ptr geo;
-       if (m_geoMode->getValue() == M_TRIANGLES) {
+       if (m_geoMode->getValue() == Triangle_Geometry) {
 
           Triangles::ptr t(new Triangles(6, 4));
           geo = t;
@@ -73,7 +75,7 @@ bool Gendat::compute() {
           t->cl()[3] = 0;
           t->cl()[4] = 3;
           t->cl()[5] = 2;
-       } else if (m_geoMode->getValue() == M_POLYGONS) {
+       } else if (m_geoMode->getValue() == Polygon_Geometry) {
 
           Polygons::ptr p(new Polygons(1, 4, 4));
           geo = p;
@@ -104,7 +106,7 @@ bool Gendat::compute() {
        geo->z()[3] = 0.0;
        addObject("grid_out", geo);
    } else {
-       if (rank() == 0 && m_geoMode->getValue() == M_UNIFORM) {
+       if (rank() == 0 && m_geoMode->getValue() == Uniform_Grid) {
            UniformGrid::ptr u(new UniformGrid(2,3,4));
 
            // generate test data
@@ -115,7 +117,7 @@ bool Gendat::compute() {
 
            addObject("grid_out", u);
 
-       } else if (rank() == 0 && m_geoMode->getValue() == M_RECTILINEAR){
+       } else if (rank() == 0 && m_geoMode->getValue() == Rectilinear_Grid){
            const unsigned eg_x = 5;
            const unsigned eg_y = 8;
            const unsigned eg_z = 9;
@@ -136,7 +138,7 @@ bool Gendat::compute() {
 
            addObject("grid_out", r);
 
-       } else if (rank() == 0 && m_geoMode->getValue() == M_STRUCTURED){
+       } else if (rank() == 0 && m_geoMode->getValue() == Structured_Grid){
            const unsigned eg_x = 8;
            const unsigned eg_y = 2;
            const unsigned eg_z = 3;
