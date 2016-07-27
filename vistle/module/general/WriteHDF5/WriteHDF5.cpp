@@ -6,6 +6,7 @@
 //-------------------------------------------------------------------------
 
 #define NO_PORT_REMOVAL
+#define HIDE_REFERENCE_WARNINGS
 
 #include <sstream>
 #include <iomanip>
@@ -247,9 +248,8 @@ bool WriteHDF5::prepare() {
 // * check for unresolved reference
 //-------------------------------------------------------------------------
 bool WriteHDF5::reduce(int timestep) {
-    bool unresolvedReferencesExistInComm;
+#ifndef HIDE_REFERENCE_WARNINGS
     bool unresolvedReferencesExistOnNode = false;
-
 
     for (unsigned i = 0; i < m_objectReferenceVector.size(); i++) {
         if (m_objectSet.find(m_objectReferenceVector[i]) == m_objectSet.end()) {
@@ -260,6 +260,8 @@ bool WriteHDF5::reduce(int timestep) {
 
     // check and send warning message for unresolved references
     if (m_isRootNode) {
+        bool unresolvedReferencesExistInComm;
+
         boost::mpi::reduce(comm(), unresolvedReferencesExistOnNode, unresolvedReferencesExistInComm, boost::mpi::maximum<bool>(), 0);
 
         if (unresolvedReferencesExistInComm) {
@@ -268,7 +270,7 @@ bool WriteHDF5::reduce(int timestep) {
     } else {
         boost::mpi::reduce(comm(), unresolvedReferencesExistOnNode, boost::mpi::maximum<bool>(), 0);
     }
-
+#endif
 
     return Module::reduce(timestep);
 }
