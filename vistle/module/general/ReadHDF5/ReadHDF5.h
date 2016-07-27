@@ -87,9 +87,9 @@ class ReadHDF5 : public vistle::Module {
    unsigned m_numPorts;
 
    bool m_isRootNode;
+   bool m_unresolvedReferencesExist;
    std::unordered_map<std::string, std::string> m_arrayMap;                 //< array name in file -> array name in memory
    std::unordered_map<std::string, std::string> m_objectMap;                //< object name in file -> object name in memory
-   std::vector<std::pair<void *, std::string>> m_objectReferenceVector;     //< pointer to shm_obj_ref member, object name in memory
    std::vector<vistle::Object::ptr> m_objectPersistenceVector;              //< stores pointers to objects so that they are not cleared from memory
    hid_t m_dummyDatasetId;
 
@@ -122,6 +122,8 @@ struct ReadHDF5::LinkIterData {
     int block;
     int timestep;
 
+    LinkIterData(LinkIterData * other)
+        : callingModule(other->callingModule), fileId(other->fileId), block(other->block), timestep(other->timestep) {}
     LinkIterData(ReadHDF5 * _callingModule, hid_t _fileId)
         : archive(nullptr), callingModule(_callingModule), fileId(_fileId) {}
 

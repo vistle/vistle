@@ -129,6 +129,8 @@ bool ReadHDF5::prepare() {
     hid_t fileId;
     hid_t filePropertyListId;
 
+    bool unresolvedReferencesExistInComm;
+
     htri_t oGroupFound;
     htri_t tGroupFound;
     htri_t bGroupFound;
@@ -146,6 +148,8 @@ bool ReadHDF5::prepare() {
 
     // clear persisitent variables
     m_arrayMap.clear();
+    m_objectMap.clear();
+    m_unresolvedReferencesExist = false;
 
     // create file access property list id
     filePropertyListId = H5Pcreate(H5P_FILE_ACCESS);
@@ -174,33 +178,15 @@ bool ReadHDF5::prepare() {
 
 
 
-    // resolve object references
-    bool unresolvedReferencesExistInComm;
-    bool unresolvedReferencesExistOnNode = false;
-    for (unsigned i = 0; i < m_objectReferenceVector.size(); i++) {
-        auto objectMapIter = m_objectMap.find(m_objectReferenceVector[i].second);
-
-        if(m_isRootNode) {
-            sendInfo("processing link :%d -> %s", i, m_objectReferenceVector[i].second.c_str());
-        }
-
-        if (objectMapIter == m_objectMap.end()) {
-            unresolvedReferencesExistOnNode = true;
-        } else {
-            shm_obj_ref<Object> * objectReferencePtr = (shm_obj_ref<Object> *) m_objectReferenceVector[i].first;
-            *objectReferencePtr = vistle::Shm::the().getObjectFromName(objectMapIter->second);
-        }
-    }
-
     // check and send warning message for unresolved references
     if (m_isRootNode) {
-        boost::mpi::reduce(comm(), unresolvedReferencesExistOnNode, unresolvedReferencesExistInComm, boost::mpi::maximum<bool>(), 0);
+        boost::mpi::reduce(comm(), m_unresolvedReferencesExist, unresolvedReferencesExistInComm, boost::mpi::maximum<bool>(), 0);
 
         if (unresolvedReferencesExistInComm) {
             sendInfo("Warning: some object references are unresolved.");
         }
     } else {
-        boost::mpi::reduce(comm(), unresolvedReferencesExistOnNode, boost::mpi::maximum<bool>(), 0);
+        boost::mpi::reduce(comm(), m_unresolvedReferencesExist, boost::mpi::maximum<bool>(), 0);
     }
 
 
@@ -260,9 +246,8 @@ herr_t ReadHDF5::prepare_iterateBlock(hid_t callingGroupId, const char *name, co
 // * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
 //-------------------------------------------------------------------------
 herr_t ReadHDF5::prepare_iterateVariant(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
-    LinkIterData * linkIterData = (LinkIterData *) opData;
 
-    H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processObject, linkIterData, H5P_DEFAULT);
+    H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processObject, opData, H5P_DEFAULT);
 
     return 0;
 }
@@ -284,6 +269,10 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
     std::vector<double> objectMeta(ReadHDF5::numMetaMembers - ArrayToMetaArchive::numExclusiveMembers);
     FindObjectReferenceOArchive archive;
 
+    // return if object has already been constructed
+    if (linkIterData->callingModule->m_objectMap.find(std::string(name)) != linkIterData->callingModule->m_objectMap.end()) {
+        return 0;
+    }
 
     // obtain port number
     readId = H5Pcreate(H5P_DATASET_XFER);
@@ -371,9 +360,90 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
 
     if (linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->referenceType == ReferenceType::ObjectReference) {
         void * objectReference = linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->ref;
+        shm_obj_ref<Object> * objectReferencePtr = (shm_obj_ref<Object> *) objectReference;
+        auto objectMapIter = linkIterData->callingModule->m_objectMap.find(std::string(name));
+        bool isCurrentReferenceUnresolved = false;
 
-        linkIterData->callingModule->m_objectReferenceVector.push_back(std::make_pair(objectReference, std::string(name)));
+        // check if reference object has been constructed, if not, construct it
+        if (objectMapIter == linkIterData->callingModule->m_objectMap.end()) {
+            std::string referenceObjectName = "/object/" + std::string(name);
+            htri_t referenceObjectExists = H5Lexists(linkIterData->fileId, referenceObjectName.c_str(), H5P_DEFAULT);
 
+            if (util_doesExist(referenceObjectExists)) {
+                LinkIterData referenceOpData(linkIterData);
+                referenceOpData.origin = std::numeric_limits<unsigned>::max();
+
+                // debug message
+                linkIterData->callingModule->sendInfo("Initializing reference object out of order creation");
+
+
+                // obtain origin - there are other ways to complete this processing step - think about which is best
+                std::string originObjectName;
+                htri_t originObjectExists;
+                bool objectFound = false;
+
+                for (unsigned i = 0; i < linkIterData->callingModule->m_numPorts && !objectFound; i++) {
+                    originObjectName = "/index/" + std::to_string(i);
+                    originObjectExists = H5Lexists(linkIterData->fileId, originObjectName.c_str(), H5P_DEFAULT);
+                    if (!util_doesExist(originObjectExists)) {
+                        continue;
+                    }
+
+                    originObjectName += "/" + std::to_string(linkIterData->timestep);
+                    originObjectExists = H5Lexists(linkIterData->fileId, originObjectName.c_str(), H5P_DEFAULT);
+                    if (!util_doesExist(originObjectExists)) {
+                        continue;
+                    }
+
+                    originObjectName += "/" + std::to_string(linkIterData->block);
+                    originObjectExists = H5Lexists(linkIterData->fileId, originObjectName.c_str(), H5P_DEFAULT);
+                    if (!util_doesExist(originObjectExists)) {
+                        continue;
+                    }
+
+                    for (unsigned j = 0; /* exit conditions handled within */; j++) {
+                        std::string variantGroupName = originObjectName + "/" + std::to_string(j);
+                        htri_t variantGroupExists = H5Lexists(linkIterData->fileId, variantGroupName.c_str(), H5P_DEFAULT);
+
+                        // exit condition
+                        if (!util_doesExist(variantGroupExists)) {
+                            break;
+                        }
+
+                        // check if variant object references match
+                        variantGroupName += "/" + std::string(name);
+                        variantGroupExists = H5Lexists(linkIterData->fileId, variantGroupName.c_str(), H5P_DEFAULT);
+
+                        if (util_doesExist(variantGroupExists)) {
+                            referenceOpData.origin = i;
+                            objectFound = true;
+                            break;
+                        }
+                    }
+                }
+
+                // only name and referenceOpData are needed within the function
+                prepare_processObject(0, name, nullptr, &referenceOpData);
+
+                if (linkIterData->callingModule->m_objectMap.find(std::string(name)) == linkIterData->callingModule->m_objectMap.end()) {
+                    linkIterData->callingModule->sendInfo("Error: reference object out of order creation failed");
+                }
+
+                // resolve reference
+                *objectReferencePtr = vistle::Shm::the().getObjectFromName(linkIterData->callingModule->m_objectMap[std::string(name)]);
+            } else {
+                linkIterData->callingModule->m_unresolvedReferencesExist = true;
+                isCurrentReferenceUnresolved = true;
+            }
+
+        } else {
+            // debug message
+            linkIterData->callingModule->sendInfo("Initializing reference object in order creation");
+
+            *objectReferencePtr = vistle::Shm::the().getObjectFromName(objectMapIter->second);
+        }
+
+        
     } else if (linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->referenceType == ReferenceType::ShmVector) {
         ShmVectorReader reader(
                     linkIterData->archive,
