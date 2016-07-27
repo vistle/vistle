@@ -5,6 +5,7 @@
 // * Sever Topan, 2016
 //-------------------------------------------------------------------------
 
+#define NO_PORT_REMOVAL
 
 #include <sstream>
 #include <iomanip>
@@ -114,11 +115,47 @@ WriteHDF5::~WriteHDF5() {
 
 }
 
-// PARAMETER CHANGED FUNCTION
+// CONNECTION REMOVED FUNCTION
 //-------------------------------------------------------------------------
-bool WriteHDF5::parameterChanged(const Parameter * p) {
+void WriteHDF5::connectionRemoved(const Port *from, const Port *to) {
 
-    return true;
+#ifndef NO_PORT_REMOVAL
+    unsigned numNotConnected = 0;
+
+    if (m_numPorts <= 1) {
+        return Module::connectionRemoved(from, to);
+    }
+
+    for (unsigned i = m_numPorts - 1; i >= 0; i--) {
+        std::string portName = "data" + std::to_string(i) + "_in";
+        if (!isConnected(portName)) {
+            numNotConnected++;
+        }
+    }
+
+    for (unsigned i = m_numPorts - 1; i > m_numPorts - numNotConnected; i--) {
+        std::string portName = "data" + std::to_string(i) + "_in";
+        destroyPort(portName);
+    }
+
+    m_numPorts -= (numNotConnected - 1);
+#endif
+
+    return Module::connectionRemoved(from, to);
+}
+
+// CONNECTION ADDED FUNCTION
+//-------------------------------------------------------------------------
+void WriteHDF5::connectionAdded(const Port *from, const Port *to) {
+    std::string lastPortName = "data" + std::to_string(m_numPorts - 1) + "_in";
+    std::string newPortName = "data" + std::to_string(m_numPorts) + "_in";
+
+    if (from->getName() == lastPortName || to->getName() == lastPortName) {
+        createInputPort(newPortName);
+        m_numPorts++;
+    }
+
+    return Module::connectionAdded(from, to);
 }
 
 // PREPARE FUNCTION
@@ -213,6 +250,7 @@ bool WriteHDF5::reduce(int timestep) {
     bool unresolvedReferencesExistInComm;
     bool unresolvedReferencesExistOnNode = false;
 
+
     for (unsigned i = 0; i < m_objectReferenceVector.size(); i++) {
         if (m_objectSet.find(m_objectReferenceVector[i]) == m_objectSet.end()) {
             unresolvedReferencesExistOnNode = true;
@@ -236,6 +274,18 @@ bool WriteHDF5::reduce(int timestep) {
 }
 
 // COMPUTE FUNCTION
+// * calls iterates through ports and calls compute_writePort for each of them
+//-------------------------------------------------------------------------
+bool WriteHDF5::compute() {
+
+    for (unsigned originPortNumber = 0; originPortNumber < m_numPorts; originPortNumber++) {
+        compute_writeForPort(originPortNumber);
+    }
+
+    return true;
+}
+
+// COMPUTE UTILITY FUNCTION - WRITE PORT DATA
 // * function procedure:
 // * - serailized incoming object data into a ShmArchive
 // * - transmits information regarding object data sizes to all nodes
@@ -244,28 +294,31 @@ bool WriteHDF5::reduce(int timestep) {
 // *   not present on the node, null data is written to a dummy object so that
 // *   the call is still made collectively
 //-------------------------------------------------------------------------
-bool WriteHDF5::compute() {
+void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
     Object::const_ptr obj = nullptr;
     FindObjectReferenceOArchive archive;
     m_hasObject = false;
-    unsigned originPortNumber = 0;
 
 
-    // ----- OBTAIN FIRST OBJECT FROM A PORT ----- //
+    // ----- OBTAIN OBJECT FROM A PORT ----- //
+    std::string portName = "data" + std::to_string(originPortNumber) + "_in";
 
-    for (/*defined above*/; originPortNumber < m_numPorts; originPortNumber++) {
-        std::string portName = "data" + std::to_string(originPortNumber) + "_in";
+    // acquire input data object
+    obj = expect<Object>(portName);
 
-        // acquire input data object
-        obj = expect<Object>(portName);
+    // save if available
+    if (obj) {
+        m_hasObject = true;
+        obj->save(archive);
+    }
 
-        // save if available
-        if (obj) {
-            m_hasObject = true;
-            obj->save(archive);
+    // check if all nodes have no object on port
+    bool doesAtLeastOnePortHaveObject;
+    boost::mpi::all_reduce(comm(), m_hasObject, doesAtLeastOnePortHaveObject, boost::mpi::maximum<bool>());
 
-            break;
-        }
+    // skip port if so
+    if (!doesAtLeastOnePortHaveObject) {
+        return;
     }
 
 
@@ -504,7 +557,7 @@ bool WriteHDF5::compute() {
     H5Pclose(filePropertyListId);
     H5Fclose(fileId);
 
-   return true;
+   return;
 }
 
 // GENERIC UTILITY HELPER FUNCTION - WRITE DATA TO HDF5 ABSTRACTION
@@ -557,6 +610,8 @@ void WriteHDF5::util_HDF5write(bool isWriter, std::string name, const void * dat
     H5Sclose(memSpaceId);
     H5Dclose(dataSetId);
     H5Pclose(writeId);
+
+    return;
 }
 
 // GENERIC UTILITY HELPER FUNCTION - VERIFY HERR_T STATUS

@@ -64,12 +64,14 @@ class WriteHDF5 : public vistle::Module {
    class MetaToArrayArchive;
 
    // overriden functions
-   virtual bool parameterChanged(const vistle::Parameter * p) override;
+   virtual void connectionRemoved(const vistle::Port *from, const vistle::Port *to) override;
+   virtual void connectionAdded(const vistle::Port *from, const vistle::Port *to) override;
    virtual bool prepare() override;
    virtual bool compute() override;
    virtual bool reduce(int timestep) override;
 
    // private helper functions
+   void compute_writeForPort(unsigned originPortNumber);
    static void util_checkStatus(herr_t status);
    static void util_HDF5write(bool isWriter, std::string name, const void * data, hid_t fileId, hsize_t * dims, hid_t dataType);
    static void util_HDF5write(hid_t fileId);

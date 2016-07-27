@@ -89,11 +89,6 @@ const std::unordered_map<std::type_index, hid_t> ReadHDF5::nativeTypeMap = {
 ReadHDF5::ReadHDF5(const std::string &shmname, const std::string &name, int moduleID)
    : Module("ReadHDF5", shmname, name, moduleID) {
 
-    // create ports
-    // add support for multiple ports
-    //util_checkFile();
-    createOutputPort("data0_out");
-
    // add module parameters
    m_fileName = addStringParameter("File Name", "Name of File that will read from", "");
 
@@ -102,6 +97,7 @@ ReadHDF5::ReadHDF5(const std::string &shmname, const std::string &name, int modu
 
    // variable setup
    m_isRootNode = (comm().rank() == 0);
+   m_numPorts = 0;
 
    // obtain meta member count
    PlaceHolder::ptr tempObject(new PlaceHolder("", Meta(), Object::Type::UNKNOWN));
@@ -109,7 +105,8 @@ ReadHDF5::ReadHDF5(const std::string &shmname, const std::string &name, int modu
    boost::serialization::serialize_adl(memberCounter, const_cast<Meta &>(tempObject->meta()), ::boost::serialization::version< Meta >::value);
    numMetaMembers = memberCounter.getCount();
 
-
+   // create ports
+//   util_checkFile();
 }
 
 // DESTRUCTOR
@@ -182,6 +179,10 @@ bool ReadHDF5::prepare() {
     bool unresolvedReferencesExistOnNode = false;
     for (unsigned i = 0; i < m_objectReferenceVector.size(); i++) {
         auto objectMapIter = m_objectMap.find(m_objectReferenceVector[i].second);
+
+        if(m_isRootNode) {
+            sendInfo("processing link :%d -> %s", i, m_objectReferenceVector[i].second.c_str());
+        }
 
         if (objectMapIter == m_objectMap.end()) {
             unresolvedReferencesExistOnNode = true;
@@ -414,12 +415,23 @@ bool ReadHDF5::util_checkFile() {
     hid_t dataSetId;
     hid_t readId;
 
+    unsigned numNewPorts;
+    std::string fileName = m_fileName->getValue();
+
+    // name size check
+    if (fileName.size() == 0) {
+        if (m_isRootNode) {
+            sendInfo("File name too short");
+        }
+        return false;
+    }
+
     // Set up file access property list with parallel I/O access
     filePropertyListId = H5Pcreate(H5P_FILE_ACCESS);
     H5Pset_fapl_mpio(filePropertyListId, comm(), MPI_INFO_NULL);
 
     // open file
-    fileId = H5Fopen(m_fileName->getValue().c_str(), H5P_DEFAULT, filePropertyListId);
+    fileId = H5Fopen(fileName.c_str(), H5P_DEFAULT, filePropertyListId);
 
     // check if file exists
     if (fileId < 0) {
@@ -428,6 +440,10 @@ bool ReadHDF5::util_checkFile() {
         }
 
         return false;
+    } else {
+        if (m_isRootNode) {
+            sendInfo("File found");
+        }
     }
 
 
@@ -436,17 +452,27 @@ bool ReadHDF5::util_checkFile() {
     H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
 
     dataSetId = H5Dopen2(fileId, "/file/numPorts", H5P_DEFAULT);
-    status = H5Dread(dataSetId, H5T_NATIVE_UINT, H5S_ALL, H5S_ALL, readId, &m_numPorts);
+    status = H5Dread(dataSetId, H5T_NATIVE_UINT, H5S_ALL, H5S_ALL, readId, &numNewPorts);
     if (status != 0) {
         sendInfo("File format not recognized");
         return false;
     }
 
-    // add support for multiple ports
-//    for (unsigned i = 0; i < m_numPorts; i++) {
-//        std::string portName = "data" + std::to_string(i) + "_out";
-//        createOutputPort(portName);
-//    }
+
+    // handle ports
+    if (numNewPorts > m_numPorts) {
+        for (unsigned i = m_numPorts; i < numNewPorts; i++) {
+            std::string portName = "data" + std::to_string(i) + "_out";
+            createOutputPort(portName);
+        }
+    } else {
+        for (unsigned i = numNewPorts; i < m_numPorts; i++) {
+            std::string portName = "data" + std::to_string(i) + "_out";
+            destroyPort(portName);
+        }
+    }
+
+    m_numPorts = numNewPorts;
 
 
     // close all open h5 entities
