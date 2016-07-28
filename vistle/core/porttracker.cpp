@@ -120,22 +120,16 @@ std::vector<message::Buffer> PortTracker::removePort(const Port &p) {
       assert(portMap);
    }
 
-#if 0
-   PortOrder *portOrder = NULL;
-   {
-      std::map<int, PortOrder *>::iterator i = m_portOrders.find(moduleID);
-      if (i == m_portOrders.end()) {
-         return ret;
-      }
-      portOrder = i->second;
-      assert(portOrder);
-   }
-   for (auto kv: *portOrder) {
-       if (kv.second == p.getName()) {
-           portOrder->erase(kv.first);
+   std::map<int, PortOrder *>::iterator i = m_portOrders.find(moduleID);
+   if (i != m_portOrders.end()) {
+       PortOrder *portOrder = i->second;
+       assert(portOrder);
+       for (auto kv: *portOrder) {
+           if (kv.second == p.getName()) {
+               portOrder->erase(kv.first);
+           }
        }
    }
-#endif
 
    PortMap::iterator pi = portMap->find(p.getName());
    assert(pi != portMap->end());

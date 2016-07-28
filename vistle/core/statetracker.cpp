@@ -778,11 +778,11 @@ bool StateTracker::handlePriv(const message::RemoveParameter &removeParam) {
    }
 
    if (portTracker()) {
-      portTracker()->removePort(Port(removeParam.senderId(), removeParam.getName(), Port::PARAMETER));
-
       for (StateObserver *o: m_observers) {
          o->deletePort(removeParam.senderId(), removeParam.getName());
       }
+
+      portTracker()->removePort(Port(removeParam.senderId(), removeParam.getName(), Port::PARAMETER));
    }
 
    for (StateObserver *o: m_observers) {
