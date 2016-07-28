@@ -420,6 +420,8 @@ bool Module::destroyPort(const std::string &portName) {
 bool Module::destroyPort(Port *port) {
 
    vassert(port);
+   message::RemovePort message(*port);
+   message.setDestId(Id::ForBroadcast);
    if (Port *p = findInputPort(port->getName())) {
        inputPorts.erase(port->getName());
        delete p;
@@ -430,8 +432,6 @@ bool Module::destroyPort(Port *port) {
        return false;
    }
 
-   message::RemovePort message(*port);
-   message.setDestId(Id::ForBroadcast);
    sendMessage(message);
    return true;
 }
