@@ -40,45 +40,7 @@ MODULE_MAIN(ReadHDF5)
 //-------------------------------------------------------------------------
 // WRITE HDF5 STATIC MEMBER OUT OF CLASS INITIALIZATION
 //-------------------------------------------------------------------------
-const hid_t ReadHDF5::m_dummyObjectType = H5T_NATIVE_INT;
-const std::vector<hsize_t> ReadHDF5::m_dummyObjectDims = {1};
-const std::string ReadHDF5::m_dummyObjectName = "/file/dummy";
-
-unsigned ReadHDF5::numMetaMembers = 0;
-
-const std::unordered_map<std::type_index, hid_t> ReadHDF5::nativeTypeMap = {
-      { typeid(int), H5T_NATIVE_INT },
-      { typeid(unsigned int), H5T_NATIVE_UINT },
-
-      { typeid(char), H5T_NATIVE_CHAR },
-      { typeid(unsigned char), H5T_NATIVE_UCHAR },
-
-      { typeid(short), H5T_NATIVE_SHORT },
-      { typeid(unsigned short), H5T_NATIVE_USHORT },
-
-      { typeid(long), H5T_NATIVE_LONG },
-      { typeid(unsigned long), H5T_NATIVE_ULONG },
-      { typeid(long long), H5T_NATIVE_LLONG },
-      { typeid(unsigned long long), H5T_NATIVE_ULLONG },
-
-      { typeid(float), H5T_NATIVE_FLOAT },
-      { typeid(double), H5T_NATIVE_DOUBLE },
-      { typeid(long double), H5T_NATIVE_LDOUBLE }
-
-       // to implement? these are other accepted types
-       //        H5T_NATIVE_B8
-       //        H5T_NATIVE_B16
-       //        H5T_NATIVE_B32
-       //        H5T_NATIVE_B64
-
-       //        H5T_NATIVE_OPAQUE
-       //        H5T_NATIVE_HADDR
-       //        H5T_NATIVE_HSIZE
-       //        H5T_NATIVE_HSSIZE
-       //        H5T_NATIVE_HERR
-       //        H5T_NATIVE_HBOOL
-
-};
+unsigned ReadHDF5::s_numMetaMembers = 0;
 
 //-------------------------------------------------------------------------
 // METHOD DEFINITIONS
@@ -103,10 +65,8 @@ ReadHDF5::ReadHDF5(const std::string &shmname, const std::string &name, int modu
    PlaceHolder::ptr tempObject(new PlaceHolder("", Meta(), Object::Type::UNKNOWN));
    MemberCounterArchive memberCounter;
    boost::serialization::serialize_adl(memberCounter, const_cast<Meta &>(tempObject->meta()), ::boost::serialization::version< Meta >::value);
-   numMetaMembers = memberCounter.getCount();
+   s_numMetaMembers = memberCounter.getCount();
 
-   // create ports
-//   util_checkFile();
 }
 
 // DESTRUCTOR
@@ -119,10 +79,12 @@ ReadHDF5::~ReadHDF5() {
 //-------------------------------------------------------------------------
 bool ReadHDF5::parameterChanged(const vistle::Parameter *param) {
     util_checkFile();
+
     return true;
 }
 
 // PREPARE FUNCTION
+// * handles iterating over index and loading objects from the HDF5 file
 //-------------------------------------------------------------------------
 bool ReadHDF5::prepare() {
     herr_t status;
@@ -130,16 +92,6 @@ bool ReadHDF5::prepare() {
     hid_t filePropertyListId;
 
     bool unresolvedReferencesExistInComm;
-
-    htri_t oGroupFound;
-    htri_t tGroupFound;
-    htri_t bGroupFound;
-    htri_t vGroupFound;
-    std::string oIndexName;
-    std::string tIndexName;
-    std::string bIndexName;
-    std::string vIndexName;
-
 
     // check file validity before beginning
     if (!util_checkFile()) {
@@ -159,7 +111,7 @@ bool ReadHDF5::prepare() {
     fileId = H5Fopen(m_fileName->getValue().c_str(), H5P_DEFAULT, filePropertyListId);
 
     // open dummy dataset id for read size 0 sync
-    m_dummyDatasetId = H5Dopen2(fileId, m_dummyObjectName.c_str(), H5P_DEFAULT);
+    m_dummyDatasetId = H5Dopen2(fileId, HDF5Const::DummyObject::name.c_str(), H5P_DEFAULT);
 
 
     // parse index to find objects
@@ -190,7 +142,7 @@ bool ReadHDF5::prepare() {
     }
 
 
-
+    // release references to objects so that they can be deleted when not needed anymore
     m_objectPersistenceVector.clear();
 
     return Module::prepare();
@@ -232,7 +184,7 @@ herr_t ReadHDF5::prepare_iterateBlock(hid_t callingGroupId, const char *name, co
 
     // only continue for correct blocks on each node
     if (blockNum % linkIterData->callingModule->size() == linkIterData->callingModule->rank()
-            || linkIterData->callingModule->m_isRootNode && blockNum == -1) {
+            || (linkIterData->callingModule->m_isRootNode && blockNum == -1)) {
 
         linkIterData->block = blockNum;
 
@@ -254,6 +206,8 @@ herr_t ReadHDF5::prepare_iterateVariant(hid_t callingGroupId, const char *name, 
 
 // PREPARE UTILITY FUNCTION - PROCESSES AN OBJECT
 // * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
+// * object creation and attatchment to port happens here
+// * object metadata reading also occurs here
 //-------------------------------------------------------------------------
 herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, const H5L_info_t * info, void * opData) {
     LinkIterData * linkIterData = (LinkIterData *) opData;
@@ -266,7 +220,7 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
     hid_t readId;
 
     int objectType;
-    std::vector<double> objectMeta(ReadHDF5::numMetaMembers - ArrayToMetaArchive::numExclusiveMembers);
+    std::vector<double> objectMeta(ReadHDF5::s_numMetaMembers - HDF5Const::numExclusiveMetaMembers);
     FindObjectReferenceOArchive archive;
 
     // return if object has already been constructed
@@ -286,7 +240,7 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
 
     // read meta
     dataSetId = H5Dopen2(linkIterData->fileId, metaGroup.c_str(), H5P_DEFAULT);
-    util_syncAndGetReadSize(sizeof(double) * numMetaMembers, linkIterData->callingModule->comm());
+    util_syncAndGetReadSize(sizeof(double) * s_numMetaMembers, linkIterData->callingModule->comm());
     status = H5Dread(dataSetId, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, readId, objectMeta.data());
     H5Dclose(dataSetId);
 
@@ -322,20 +276,18 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
 
 // PREPARE UTILITY FUNCTION - PROCESSES AN ARRAY CONTAINER
 // * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
+// * function processes the group within the object which contains either a ShmVector or an object reference
 //-------------------------------------------------------------------------
 herr_t ReadHDF5::prepare_processArrayContainer(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
     LinkIterData * linkIterData = (LinkIterData *) opData;
     H5O_info_t objectInfo;
     herr_t status;
 
-    // only iterate through array links
+    // only iterate through array links, not object meta datasets
     H5Oget_info_by_name(callingGroupId, name, &objectInfo, H5P_DEFAULT);
     if (objectInfo.type != H5O_TYPE_GROUP) {
         return 0;
     }
-
-    // debug output
-    //linkIterData->callingModule->sendInfo("iteratedg: %s", name);
 
     // check if current version of object contains the correct array name
     if (linkIterData->archive->getVectorEntryByNvpName(name) == nullptr) {
@@ -344,6 +296,7 @@ herr_t ReadHDF5::prepare_processArrayContainer(hid_t callingGroupId, const char 
 
     linkIterData->nvpName = name;
 
+    // use Literate to access ShmVector/object reference being linked
     status = H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_processArrayLink, linkIterData, H5P_DEFAULT);
     linkIterData->callingModule->util_checkStatus(status);
 
@@ -352,17 +305,18 @@ herr_t ReadHDF5::prepare_processArrayContainer(hid_t callingGroupId, const char 
 
 // PREPARE UTILITY FUNCTION - PROCESSES AN ARRAY LINK
 // * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
+// * determines wether the link points to a reference object or a ShmVector
+// * - if reference object, makes sure the object being referenced has already been loaded from the file,
+// *   then resolves reference
+// * - if ShmVector, loads and attatches the target array. If the array is already present in memory, the load step is skipped
 //-------------------------------------------------------------------------
 herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
     LinkIterData * linkIterData = (LinkIterData *) opData;
-
-    //linkIterData->callingModule->sendInfo("iteratedl: %s", name);
 
     if (linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->referenceType == ReferenceType::ObjectReference) {
         void * objectReference = linkIterData->archive->getVectorEntryByNvpName(linkIterData->nvpName)->ref;
         shm_obj_ref<Object> * objectReferencePtr = (shm_obj_ref<Object> *) objectReference;
         auto objectMapIter = linkIterData->callingModule->m_objectMap.find(std::string(name));
-        bool isCurrentReferenceUnresolved = false;
 
         // check if reference object has been constructed, if not, construct it
         if (objectMapIter == linkIterData->callingModule->m_objectMap.end()) {
@@ -372,10 +326,6 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
             if (util_doesExist(referenceObjectExists)) {
                 LinkIterData referenceOpData(linkIterData);
                 referenceOpData.origin = std::numeric_limits<unsigned>::max();
-
-                // debug message
-                linkIterData->callingModule->sendInfo("Initializing reference object out of order creation");
-
 
                 // obtain origin - there are other ways to complete this processing step - think about which is best
                 std::string originObjectName;
@@ -425,6 +375,7 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
                 // only name and referenceOpData are needed within the function
                 prepare_processObject(0, name, nullptr, &referenceOpData);
 
+                // error message
                 if (linkIterData->callingModule->m_objectMap.find(std::string(name)) == linkIterData->callingModule->m_objectMap.end()) {
                     linkIterData->callingModule->sendInfo("Error: reference object out of order creation failed");
                 }
@@ -432,14 +383,12 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
                 // resolve reference
                 *objectReferencePtr = vistle::Shm::the().getObjectFromName(linkIterData->callingModule->m_objectMap[std::string(name)]);
             } else {
+                // mark for unresolved references
                 linkIterData->callingModule->m_unresolvedReferencesExist = true;
-                isCurrentReferenceUnresolved = true;
             }
 
         } else {
-            // debug message
-            linkIterData->callingModule->sendInfo("Initializing reference object in order creation");
-
+            // resolve reference
             *objectReferencePtr = vistle::Shm::the().getObjectFromName(objectMapIter->second);
         }
 
@@ -477,6 +426,7 @@ bool ReadHDF5::reduce(int timestep) {
 }
 
 // GENERIC UTILITY HELPER FUNCTION - CHECK THE VALIDITY OF THE FILENAME PARAMETER
+// * also updates m_numPorts and handles port creation/deletion
 //-------------------------------------------------------------------------
 bool ReadHDF5::util_checkFile() {
     herr_t status;
@@ -556,7 +506,7 @@ bool ReadHDF5::util_checkFile() {
 }
 
 // GENERIC UTILITY HELPER FUNCTION - SYNCHRONISE COLLECTIVE READS NULL READ VERSION
-// * returns wether or not all nodes are done
+// * returns the total read size across the comm in bytes
 //-------------------------------------------------------------------------
 long double ReadHDF5::util_readSyncStandby(const boost::mpi::communicator & comm, hid_t fileId) {
     hid_t dataSetId;
@@ -566,7 +516,7 @@ long double ReadHDF5::util_readSyncStandby(const boost::mpi::communicator & comm
     long double readSize = 0;
 
 
-    dataSetId = H5Dopen2(fileId, m_dummyObjectName.c_str(), H5P_DEFAULT);
+    dataSetId = H5Dopen2(fileId, HDF5Const::DummyObject::name.c_str(), H5P_DEFAULT);
 
     boost::mpi::all_reduce(comm, readSize, totalReadSize, std::plus<long double>());
 
@@ -575,7 +525,7 @@ long double ReadHDF5::util_readSyncStandby(const boost::mpi::communicator & comm
     H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
 
     // perform write followed by read
-    H5Dread(dataSetId, m_dummyObjectType, H5S_ALL, H5S_ALL, readId, &readDummy);
+    H5Dread(dataSetId, HDF5Const::DummyObject::type, H5S_ALL, H5S_ALL, readId, &readDummy);
 
     // release resources
     H5Pclose(readId);

@@ -34,6 +34,42 @@
 
 #include "hdf5.h"
 
+//-------------------------------------------------------------------------
+// CLASS DECLARATIONS
+//-------------------------------------------------------------------------
+
+// CONTAINER FOR CONSTANTS SHARED ACROSS HDF5 MODULES
+//-------------------------------------------------------------------------
+struct HDF5Const {
+    struct DummyObject;
+
+    static const long double numBytesInGb;
+    static const long double mpiReadWriteLimitGb;
+
+    static const unsigned numExclusiveMetaMembers;
+};
+
+// cout-of-class init for static members
+const long double HDF5Const::numBytesInGb = 1073741824;
+const long double HDF5Const::mpiReadWriteLimitGb = 2;
+const unsigned HDF5Const::numExclusiveMetaMembers = 2;
+
+
+// CONTAINER FOR HDF5 DUMMY OBJECT CONSTANTS
+//-------------------------------------------------------------------------
+struct HDF5Const::DummyObject {
+    static const hid_t type;
+    static const std::vector<hsize_t> dims;
+    static const std::string name;
+};
+
+// cout-of-class init for static members
+const hid_t HDF5Const::DummyObject::type = H5T_NATIVE_INT;
+const std::vector<hsize_t> HDF5Const::DummyObject::dims = {1};
+const std::string HDF5Const::DummyObject::name = "/file/dummy";
+
+
+
 
 // MEMBER COUNTER ARCHIVE
 // * used to count members within ObjectMeta

@@ -44,13 +44,9 @@ class ReadHDF5 : public vistle::Module {
    // structs/functors
    struct LinkIterData;
 
-   struct ReservationInfoShmEntry;
-   struct ReservationInfo;
-
    struct MemberCounter;
    class ArrayToMetaArchive;
 
-   struct ShmVectorReserver;
    struct ShmVectorReader;
 
 
@@ -93,16 +89,8 @@ class ReadHDF5 : public vistle::Module {
    std::vector<vistle::Object::ptr> m_objectPersistenceVector;              //< stores pointers to objects so that they are not cleared from memory
    hid_t m_dummyDatasetId;
 
-
-   // private member constants
-   static const hid_t m_dummyObjectType;
-   static const std::vector<hsize_t> m_dummyObjectDims;
-   static const std::string m_dummyObjectName;
-
 public:
-   static unsigned numMetaMembers;
-   static const std::unordered_map<std::type_index, hid_t> nativeTypeMap;
-
+   static unsigned s_numMetaMembers;
 };
 
 //-------------------------------------------------------------------------
@@ -129,43 +117,8 @@ struct ReadHDF5::LinkIterData {
 
 };
 
-// RESERVATION INFO SHM ENTRY STRUCT
-// * stores ShmVector data needed for reservation of space within the HDF5 file
-//-------------------------------------------------------------------------
-struct ReadHDF5::ReservationInfoShmEntry {
-    std::string name;
-    hid_t type;
-    unsigned size;
-
-    ReservationInfoShmEntry() {}
-    ReservationInfoShmEntry(std::string _name, hid_t _type, unsigned _size)
-        : name(_name), type(_type), size(_size) {}
-
-    // serialization method for passing over mpi
-    template <class Archive>
-    void serialize(Archive &ar, const unsigned int version);
-};
-
-// RESERVATION INFO STRUCT
-// * stores data needed for reservation of space within the HDF5 file
-//-------------------------------------------------------------------------
-struct ReadHDF5::ReservationInfo {
-    std::string name;
-    std::vector<ReservationInfoShmEntry> shmVectors;
-    bool isValid;
-
-    // < overload for std::sort
-    bool operator<(const ReservationInfo &other) const;
-
-    // serialization method for passing over mpi
-    template <class Archive>
-    void serialize(Archive &ar, const unsigned int version);
-};
-
-
 // META TO ARRAY ARCHIVE
-// * used to convert metadata members to an array of doubles for storage
-// * into the HDF5 file
+// * used to convert metadata members from their stored array form to member form
 //-------------------------------------------------------------------------
 class ReadHDF5::ArrayToMetaArchive {
 private:
@@ -175,7 +128,6 @@ private:
     int m_timestep;
 
 public:
-    static const int numExclusiveMembers;
 
     // Implement requirements for archive concept
     typedef boost::mpl::bool_<false> is_loading;
@@ -188,7 +140,7 @@ public:
     void save_binary(const void *address, std::size_t count) {}
 
     ArrayToMetaArchive(double * _array, int _block, int _timestep) : m_insertIndex(0), m_block(_block), m_timestep(_timestep) {
-        m_array.assign(_array, _array + (ReadHDF5::numMetaMembers - numExclusiveMembers));
+        m_array.assign(_array, _array + (ReadHDF5::s_numMetaMembers - HDF5Const::numExclusiveMetaMembers));
     }
 
     // << operators
@@ -202,26 +154,8 @@ public:
     ArrayToMetaArchive & operator&(const T & t);
 };
 
-// static memeber out-of-class declaration
-const int ReadHDF5::ArrayToMetaArchive::numExclusiveMembers = 2;
-
-// SHM VECTOR RESERVER FUNCTOR
-// * used to construct ReservationInfoShmEntry entries within the shmVectors
-// * member of ReservationInfo
-// * needed in order to iterate over all possible shm VectorTypes
-//-------------------------------------------------------------------------
-struct ReadHDF5::ShmVectorReserver {
-    std::string name;
-    ReservationInfo * reservationInfo;
-
-    ShmVectorReserver(std::string _name, ReservationInfo * _reservationInfo) : name(_name), reservationInfo(_reservationInfo) {}
-
-    template<typename T>
-    void operator()(T);
-};
-
-// SHM VECTOR WRITER FUNCTOR
-// * calls util_HDF5Write for a shmVector
+// SHM VECTOR READER FUNCTOR
+// * reads a shmVector
 // * needed in order to iterate over all possible shm VectorTypes
 //-------------------------------------------------------------------------
 struct ReadHDF5::ShmVectorReader {
@@ -236,15 +170,26 @@ struct ReadHDF5::ShmVectorReader {
     hid_t dummyDatasetId;
     const boost::mpi::communicator & comm;
 
-    // constants
-    const long double BYTES_IN_GB = 1073741824;
-    const long double MPI_READ_LIMIT_GB = 2;
-    long double MAX_READ_GB;
+    long double maxReadSizeGb;
 
-    ShmVectorReader(vistle::FindObjectReferenceOArchive * _archive,  std::string _arrayNameInFile, std::string _nvpName, NameMap & _arrayMap, hid_t _fileId, hid_t _dummyDatasetId, const boost::mpi::communicator & _comm)
-        : archive(_archive), arrayNameInFile(_arrayNameInFile), nvpName(_nvpName), arrayMap(_arrayMap), fileId(_fileId), dummyDatasetId(_dummyDatasetId), comm(_comm) {
+    ShmVectorReader(vistle::FindObjectReferenceOArchive * _archive,
+            std::string _arrayNameInFile,
+            std::string _nvpName,
+            NameMap & _arrayMap,
+            hid_t _fileId,
+            hid_t _dummyDatasetId,
+            const boost::mpi::communicator & _comm
+            ) :
+        archive(_archive),
+        arrayNameInFile(_arrayNameInFile),
+        nvpName(_nvpName),
+        arrayMap(_arrayMap),
+        fileId(_fileId),
+        dummyDatasetId(_dummyDatasetId),
+        comm(_comm) {
+
         // specify read limit while accounting for the max amount of space taken up by metadata reads, which are not split up when reads are too large
-        MAX_READ_GB = MPI_READ_LIMIT_GB - (ReadHDF5::numMetaMembers - ReadHDF5::ArrayToMetaArchive::numExclusiveMembers) * sizeof(double) / BYTES_IN_GB;
+        maxReadSizeGb = HDF5Const::mpiReadWriteLimitGb - (ReadHDF5::s_numMetaMembers - HDF5Const::numExclusiveMetaMembers) * sizeof(double) / HDF5Const::numBytesInGb;
     }
 
     template<typename T>
@@ -260,44 +205,8 @@ struct ReadHDF5::ShmVectorReader {
 // WRITE HDF5 STRUCT/FUNCTOR FUNCTION DEFINITIONS
 //-------------------------------------------------------------------------
 
-// RESERVATION INFO SHM ENTRY - SERIALIZE
-// * needed for passing struct over mpi
-//-------------------------------------------------------------------------
-template <class Archive>
-void ReadHDF5::ReservationInfoShmEntry::serialize(Archive &ar, const unsigned int version) {
-   ar & name;
-   ar & type;
-   ar & size;
-}
-
-// RESERVATION INFO - < OPERATOR
-// * needed for std::sort of ReservationInfo
-//-------------------------------------------------------------------------
-bool ReadHDF5::ReservationInfo::operator<(const ReservationInfo &other) const {
-    return (name < other.name);
-}
-
-// RESERVATION INFO - SERIALIZE
-// * needed for passing struct over mpi
-//-------------------------------------------------------------------------
-template <class Archive>
-void ReadHDF5::ReservationInfo::serialize(Archive &ar, const unsigned int version) {
-   ar & name;
-   ar & shmVectors;
-   ar & isValid;
-}
-
-// SHM VECTOR RESERVER - () OPERATOR
-// * manifests construction of ReservationInfoShmEntry entries when GetArrayFromName types match
-//-------------------------------------------------------------------------
-template<typename T>
-void ReadHDF5::ShmVectorReserver::operator()(T) {
-    const vistle::ShmVector<T> &vec = vistle::Shm::the().getArrayFromName<T>(name);
-
-}
-
-// SHM VECTOR WRITER - () OPERATOR
-// * facilitates writing of shmVector data to the HDF5 file when GetArrayFromName types match
+// SHM VECTOR READER - () OPERATOR
+// * facilitates reading of shmVector data to the HDF5 file when GetArrayFromName types match
 //-------------------------------------------------------------------------
 template<typename T>
 void ReadHDF5::ShmVectorReader::operator()(T) {
@@ -356,16 +265,16 @@ void ReadHDF5::ShmVectorReader::operator()(T) {
                 if (nodeCurrentReadSizeElements == 0) {
                     // read size 0
                     double dummyVar;
-                    status = H5Dread(dummyDatasetId, m_dummyObjectType, H5S_ALL, H5S_ALL, readId, &dummyVar);
+                    status = H5Dread(dummyDatasetId, HDF5Const::DummyObject::type, H5S_ALL, H5S_ALL, readId, &dummyVar);
                     areMultipleReadsNeeded = false;
-                } else if (commWideReadSize / BYTES_IN_GB > MAX_READ_GB) {
+                } else if (commWideReadSize / HDF5Const::numBytesInGb > maxReadSizeGb) {
                     // comm-wide read of over the HDF5 parallel read limit
                     hsize_t offset[] = {readIndex};
                     hid_t fileSpaceId;
                     hid_t memSpaceId;
 
 
-                    nodeCurrentReadSizeBytes = (nodeCurrentReadSizeBytes / commWideReadSize) * MAX_READ_GB * BYTES_IN_GB;
+                    nodeCurrentReadSizeBytes = (nodeCurrentReadSizeBytes / commWideReadSize) * maxReadSizeGb * HDF5Const::numBytesInGb;
                     nodeCurrentReadSizeElements = std::floor(nodeCurrentReadSizeBytes / sizeof(T));
                     dims[0] = nodeCurrentReadSizeElements;
 
@@ -418,71 +327,7 @@ void ReadHDF5::ShmVectorReader::operator()(T) {
     }
 }
 
-// SHM VECTOR READER - RECURSIVE READ
-// * splits up arrays to read them recursively into the hdf5 file
-//-------------------------------------------------------------------------
-template<typename T>
-void ReadHDF5::ShmVectorReader::readRecursive(const vistle::ShmVector<T> & vec, long double totalReadSize, unsigned readSize, unsigned readIndex) {
-    if (totalReadSize / BYTES_IN_GB > MAX_READ_GB) {
-        readRecursive(vec, totalReadSize / 2, std::floor(readSize / 2), readIndex);
-        readRecursive(vec, totalReadSize / 2, std::ceil(readSize / 2), readIndex + std::floor(readIndex / 2));
-
-    } else {
-        std::string readName = "/array/" + arrayNameInFile;
-        hsize_t dims[] = {readSize};
-        hsize_t offset[] = {readIndex};
-        herr_t status;
-        hid_t dataType;
-        hid_t dataSetId;
-        hid_t fileSpaceId;
-        hid_t memSpaceId;
-        hid_t readId;
-
-        if (comm.rank() == 0)
-            std::cerr <<"writing boi" << std::endl;
-
-
-        // open dataset and obtain information needed for read
-        dataSetId = H5Dopen2(fileId, readName.c_str(), H5P_DEFAULT);
-        fileSpaceId = H5Dget_space(dataSetId);
-        dataType = H5Dget_type(dataSetId);
-        memSpaceId = H5Screate_simple(1, dims, NULL);
-        H5Sselect_hyperslab(fileSpaceId, H5S_SELECT_SET, offset, NULL, dims, NULL);
-
-        ReadHDF5::util_syncAndGetReadSize(vec->size() * sizeof(T), comm);
-
-
-        // perform read
-        readId = H5Pcreate(H5P_DATASET_XFER);
-        H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
-
-        // handle size 0 reads
-        if (dims[0] == 0) {
-
-            std::fstream fs;
-              fs.open ("log", std::fstream::in | std::fstream::out | std::fstream::app);
-              fs << " recurs reading 0\n";
-              fs.close();
-
-            double dummyVar;
-            status = H5Dread(dummyDatasetId, m_dummyObjectType, H5S_ALL, H5S_ALL, readId, &dummyVar);
-        } else {
-            status = H5Dread(dataSetId, dataType, memSpaceId, fileSpaceId, readId, vec->data() + readIndex);
-        }
-
-        if (status != 0) {
-            assert("error: in shmVector read" == NULL);
-        }
-
-        // release resources
-        H5Sclose(fileSpaceId);
-        H5Sclose(memSpaceId);
-        H5Pclose(readId);
-        H5Dclose(dataSetId);
-    }
-}
-
-// META TO ARRAY - << OPERATOR: UNSPECIALIZED
+// ARRAY TO META - << OPERATOR: UNSPECIALIZED
 //-------------------------------------------------------------------------
 template<class T>
 ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(T const & t) {
@@ -492,7 +337,7 @@ ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(T const 
     return *this;
 }
 
-// META TO ARRAY - << OPERATOR: NVP
+// ARRAY TO META - << OPERATOR: NVP
 // * saves Meta member value into appropriate variable
 //-------------------------------------------------------------------------
 template<class T>
@@ -513,7 +358,7 @@ ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(const bo
     return *this;
 }
 
-// META TO ARRAY - & OPERATOR: UNSPECIALIZED
+// ARRAY TO META - & OPERATOR: UNSPECIALIZED
 //-------------------------------------------------------------------------
 template<class T>
 ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator&(T const & t) {

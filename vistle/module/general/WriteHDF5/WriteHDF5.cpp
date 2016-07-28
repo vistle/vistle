@@ -38,13 +38,9 @@ MODULE_MAIN(WriteHDF5)
 //-------------------------------------------------------------------------
 // WRITE HDF5 STATIC MEMBER OUT OF CLASS INITIALIZATION
 //-------------------------------------------------------------------------
-const hid_t WriteHDF5::m_dummyObjectType = H5T_NATIVE_INT;
-const std::vector<hsize_t> WriteHDF5::m_dummyObjectDims = {1};
-const std::string WriteHDF5::m_dummyObjectName = "/file/dummy";
+unsigned WriteHDF5::s_numMetaMembers = 0;
 
-unsigned WriteHDF5::numMetaMembers = 0;
-
-const std::unordered_map<std::type_index, hid_t> WriteHDF5::nativeTypeMap = {
+const std::unordered_map<std::type_index, hid_t> WriteHDF5::s_nativeTypeMap = {
       { typeid(int), H5T_NATIVE_INT },
       { typeid(unsigned int), H5T_NATIVE_UINT },
 
@@ -107,7 +103,7 @@ WriteHDF5::WriteHDF5(const std::string &shmname, const std::string &name, int mo
    PlaceHolder::ptr tempObject(new PlaceHolder("", Meta(), Object::Type::UNKNOWN));
    MemberCounterArchive memberCounter;
    boost::serialization::serialize_adl(memberCounter, const_cast<Meta &>(tempObject->meta()), ::boost::serialization::version< Meta >::value);
-   numMetaMembers = memberCounter.getCount();
+   s_numMetaMembers = memberCounter.getCount();
 }
 
 // DESTRUCTOR
@@ -209,8 +205,8 @@ bool WriteHDF5::prepare() {
 
 
     // create dummy object
-    fileSpaceId = H5Screate_simple(1, m_dummyObjectDims.data(), NULL);
-    dataSetId = H5Dcreate(fileId, m_dummyObjectName.c_str(), m_dummyObjectType, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    fileSpaceId = H5Screate_simple(1, HDF5Const::DummyObject::dims.data(), NULL);
+    dataSetId = H5Dcreate(fileId, HDF5Const::DummyObject::name.c_str(), HDF5Const::DummyObject::type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5Sclose(fileSpaceId);
     H5Dclose(dataSetId);
 
@@ -248,6 +244,7 @@ bool WriteHDF5::prepare() {
 // * check for unresolved reference
 //-------------------------------------------------------------------------
 bool WriteHDF5::reduce(int timestep) {
+
 #ifndef HIDE_REFERENCE_WARNINGS
     bool unresolvedReferencesExistOnNode = false;
 
@@ -375,7 +372,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
     hid_t groupId;
     hid_t dataSetId;
     hid_t fileSpaceId;
-    hsize_t metaDims[] = {WriteHDF5::numMetaMembers - MetaToArrayArchive::numExclusiveMembers};
+    hsize_t metaDims[] = {WriteHDF5::s_numMetaMembers - HDF5Const::numExclusiveMetaMembers};
     hsize_t oneDims[] = {1};
     hsize_t dims[] = {0};
     double * metaData = nullptr;
@@ -581,9 +578,9 @@ void WriteHDF5::util_HDF5write(bool isWriter, std::string name, const void * dat
     hid_t writeId;
 
     // assign dummy object values if isWriter is false
-    const std::string writeName = isWriter ? name : m_dummyObjectName;
-    const hid_t writeType = isWriter ? dataType : m_dummyObjectType;
-    const hsize_t * writeDims = isWriter ? dims : m_dummyObjectDims.data();
+    const std::string writeName = isWriter ? name : HDF5Const::DummyObject::name;
+    const hid_t writeType = isWriter ? dataType : HDF5Const::DummyObject::type;
+    const hsize_t * writeDims = isWriter ? dims : HDF5Const::DummyObject::dims.data();
     const void * writeData = isWriter ? data : nullptr;
 
 
