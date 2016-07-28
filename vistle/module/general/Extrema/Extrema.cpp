@@ -12,6 +12,7 @@
 #include <core/message.h>
 #include <core/coords.h>
 #include <core/lines.h>
+#include <core/structuredgridbase.h>
 
 using namespace vistle;
 
@@ -185,8 +186,15 @@ bool Extrema::compute() {
 
    handled = false;
 
-   boost::mpl::for_each<Scalars>(Compute<1>(obj, this));
-   boost::mpl::for_each<Scalars>(Compute<3>(obj, this));
+   if (auto str = StructuredGridBase::as(obj)) {
+       auto mm = str->getBounds();
+       min = mm.first;
+       max = mm.second;
+       handled = true;
+   } else {
+       boost::mpl::for_each<Scalars>(Compute<1>(obj, this));
+       boost::mpl::for_each<Scalars>(Compute<3>(obj, this));
+   }
 
    if (!handled) {
       std::string error("could not handle input");
