@@ -51,11 +51,12 @@ bool TestInterpolation::compute() {
    }
 
    if (m_createCelltree->getValue()) {
-       auto celltree = grid->object()->getInterface<CelltreeInterface<3>>();
-       if (!celltree->hasCelltree()) {
-           celltree->getCelltree();
-           if (!celltree->validateCelltree()) {
-              sendInfo("celltree validation failed for block %d", (int)grid->object()->getBlock());
+       if (auto celltree = grid->object()->getInterface<CelltreeInterface<3>>()) {
+           if (!celltree->hasCelltree()) {
+               celltree->getCelltree();
+               if (!celltree->validateCelltree()) {
+                   sendInfo("celltree validation failed for block %d", (int)grid->object()->getBlock());
+               }
            }
        }
    }

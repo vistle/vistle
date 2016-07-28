@@ -267,8 +267,9 @@ bool Tracer::reduce(int timestep) {
        std::vector<std::unique_ptr<BlockData>> block(numblocks);
        for(Index i=0; i<numblocks; i++){
 
-           if (useCelltree) {
-               celltree[t][i].get();
+           if (useCelltree && celltree.size() > t) {
+               if (celltree[t].size() > i)
+                   celltree[t][i].get();
            }
            block[i].reset(new BlockData(i, grid_in[t][i], data_in0[t][i], data_in1[t][i]));
        }
