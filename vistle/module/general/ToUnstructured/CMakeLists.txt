@@ -1,4 +1,4 @@
-add_module(StructuredToUnstructured StructuredToUnstructured.cpp Cartesian3.h)
+add_module(ToUnstructured StructuredToUnstructured.cpp Cartesian3.h)
 
 use_openmp()
 
@@ -8,7 +8,7 @@ include_directories(
         ${PROJECT_SOURCE_DIR}
 )
 
-target_link_libraries(StructuredToUnstructured
+target_link_libraries(ToUnstructured
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
         vistle_module
