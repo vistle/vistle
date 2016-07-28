@@ -378,6 +378,7 @@ Port *Module::createInputPort(const std::string &name, const std::string &descri
    }
 
    Port *p = new Port(id(), name, Port::INPUT, flags);
+   p->setDescription(description);
    inputPorts[name] = p;
 
    message::AddPort message(*p);
@@ -395,6 +396,7 @@ Port *Module::createOutputPort(const std::string &name, const std::string &descr
    }
 
    Port *p = new Port(id(), name, Port::OUTPUT, flags);
+   p->setDescription(description);
    outputPorts[name] = p;
 
    message::AddPort message(*p);

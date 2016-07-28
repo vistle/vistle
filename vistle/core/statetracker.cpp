@@ -740,7 +740,7 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam) {
    }
 
    if (portTracker()) {
-      const Port *p = portTracker()->addPort(addParam.senderId(), addParam.getName(), Port::PARAMETER);
+      const Port *p = portTracker()->addPort(addParam.senderId(), addParam.getName(), addParam.description(), Port::PARAMETER);
 
       for (StateObserver *o: m_observers) {
          o->newPort(p->getModuleID(), p->getName());

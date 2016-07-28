@@ -28,7 +28,7 @@ StateTracker *PortTracker::tracker() const {
    return m_stateTracker;
 }
 
-const Port *PortTracker::addPort(const int moduleID, const std::string & name,
+const Port *PortTracker::addPort(const int moduleID, const std::string &name, const std::string &description,
                           const Port::Type type, int flags) {
 
    assert(type != Port::ANY);
@@ -74,6 +74,7 @@ const Port *PortTracker::addPort(const int moduleID, const std::string & name,
          }
       }
       Port *port = new Port(moduleID, name, type, flags);
+      port->setDescription(description);
       portMap->insert(std::make_pair(port->getName(), port));
 
       int paramNum = 0;
@@ -100,7 +101,7 @@ const Port *PortTracker::addPort(const int moduleID, const std::string & name,
 
 const Port *PortTracker::addPort(const Port &port) {
 
-   return addPort(port.getModuleID(), port.getName(), port.getType(), port.flags());
+   return addPort(port.getModuleID(), port.getName(), port.getDescription(), port.getType(), port.flags());
 }
 
 std::vector<message::Buffer> PortTracker::removePort(const Port &p) {

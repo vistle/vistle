@@ -23,7 +23,7 @@ class V_COREEXPORT PortTracker {
    void setTracker(StateTracker *tracker);
    StateTracker *tracker() const;
 
-   const Port *addPort(const int moduleID, const std::string & name,
+   const Port *addPort(const int moduleID, const std::string &name, const std::string &description,
                   const Port::Type type, int flags=0);
    const Port *addPort(const Port &port);
    virtual std::vector<message::Buffer> removePort(const Port &port);

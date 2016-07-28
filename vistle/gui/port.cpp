@@ -123,7 +123,13 @@ void Port::createTooltip() {
    QString toolTip = "Invalid!";
 
    if (m_port) {
-      toolTip = QString::fromStdString(m_port->getName());
+       QString desc = QString::fromStdString(m_port->getDescription());
+       QString name = QString::fromStdString(m_port->getName());
+       if (desc.isEmpty()) {
+           toolTip = name;
+       } else {
+           toolTip = name + ": " + desc;
+       }
    }
 
    setToolTip(toolTip);

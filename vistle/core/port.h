@@ -38,8 +38,10 @@ class V_COREEXPORT Port {
    )
 
    Port(int moduleID, const std::string &name, Port::Type type, int flags=0);
+   void setDescription(const std::string &desc);
    int getModuleID() const;
    const std::string & getName() const;
+   const std::string & getDescription() const;
    Type getType() const;
    int flags() const;
 
@@ -72,6 +74,7 @@ class V_COREEXPORT Port {
  private:
    int moduleID;
    std::string name;
+   std::string description;
    Type type;
    int m_flags;
    ObjectList m_objects;

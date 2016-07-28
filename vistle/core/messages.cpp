@@ -359,11 +359,14 @@ AddPort::AddPort(const Port &port)
 , m_flags(port.flags())
 {
    COPY_STRING(m_name, port.getName());
+   COPY_STRING(m_description, port.getDescription());
 }
 
 Port AddPort::getPort() const {
 
-   return Port(senderId(), m_name.data(), static_cast<Port::Type>(m_porttype), m_flags);
+   Port p(senderId(), m_name.data(), static_cast<Port::Type>(m_porttype), m_flags);
+   p.setDescription(m_description.data());
+   return p;
 }
 
 RemovePort::RemovePort(const Port &port)

@@ -7,6 +7,14 @@ Port::Port(int m, const std::string & n, const Port::Type t, int f)
 
 }
 
+void Port::setDescription(const std::string &desc) {
+    description = desc;
+}
+
+const std::string &Port::getDescription() const {
+    return description;
+}
+
 int Port::getModuleID() const {
 
    return moduleID;

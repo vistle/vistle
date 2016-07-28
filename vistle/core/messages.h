@@ -291,6 +291,7 @@ class V_COREEXPORT AddPort: public Message {
    Port getPort() const;
  private:
    port_name_t m_name;
+   text_t m_description;
    int m_porttype;
    int m_flags;
 };
