@@ -86,6 +86,7 @@ class WriteHDF5 : public vistle::Module {
 
    bool m_isRootNode;
    bool m_hasObject;
+   bool m_doNotWrite;
    std::unordered_map<std::string, bool> m_arrayMap;
    std::unordered_set<std::string> m_objectSet;
    std::vector<std::string> m_objectReferenceVector;
@@ -93,8 +94,8 @@ class WriteHDF5 : public vistle::Module {
 
 public:
    static unsigned s_numMetaMembers;
-   static const std::unordered_map<std::type_index, hid_t> s_nativeTypeMap;
 
+   static const std::unordered_map<std::type_index, hid_t> s_nativeTypeMap;
 };
 
 

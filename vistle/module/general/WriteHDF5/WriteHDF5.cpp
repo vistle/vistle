@@ -6,7 +6,7 @@
 //-------------------------------------------------------------------------
 
 #define NO_PORT_REMOVAL
-#define HIDE_REFERENCE_WARNINGS
+//#define HIDE_REFERENCE_WARNINGS
 
 #include <sstream>
 #include <iomanip>
@@ -167,6 +167,14 @@ bool WriteHDF5::prepare() {
     hid_t fileSpaceId;
     hid_t groupId;
 
+    m_doNotWrite = false;
+
+    // check for valid filename size
+    if (m_fileName->getValue().size() == 0) {
+        m_doNotWrite = true;
+        return Module::prepare();
+    }
+
     // clear reused variables
     m_arrayMap.clear();
     m_objectSet.clear();
@@ -176,6 +184,8 @@ bool WriteHDF5::prepare() {
     filePropertyListId = H5Pcreate(H5P_FILE_ACCESS);
     H5Pset_fapl_mpio(filePropertyListId, comm(), MPI_INFO_NULL);
 
+
+    // output warning for
     if (H5Fis_hdf5(m_fileName->getValue().c_str()) > 0 && m_isRootNode) {
         sendInfo("File already exists: Overwriting");
     }
@@ -249,7 +259,9 @@ bool WriteHDF5::reduce(int timestep) {
     bool unresolvedReferencesExistOnNode = false;
 
     for (unsigned i = 0; i < m_objectReferenceVector.size(); i++) {
-        if (m_objectSet.find(m_objectReferenceVector[i]) == m_objectSet.end()) {
+        if (m_objectSet.find(m_objectReferenceVector[i]) == m_objectSet.end()
+                && m_objectReferenceVector[i] != FindObjectReferenceOArchive::nullObjectReferenceName) {
+            sendInfo("ref: %s", m_objectReferenceVector[i].c_str());
             unresolvedReferencesExistOnNode = true;
             break;
         }
@@ -276,6 +288,10 @@ bool WriteHDF5::reduce(int timestep) {
 // * calls iterates through ports and calls compute_writePort for each of them
 //-------------------------------------------------------------------------
 bool WriteHDF5::compute() {
+
+    if (m_doNotWrite) {
+        return true;
+    }
 
     for (unsigned originPortNumber = 0; originPortNumber < m_numPorts; originPortNumber++) {
         compute_writeForPort(originPortNumber);
