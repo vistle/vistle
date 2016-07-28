@@ -23,7 +23,7 @@ public:
    typedef Object Base;
 
    // constructor
-   RectilinearGrid(const Index NumElements_x, const Index NumElements_y, const Index NumElements_z, const Meta &meta=Meta());
+   RectilinearGrid(const Index numDivX, const Index numDivY, const Index numDivZ, const Meta &meta=Meta());
 
    // get/set functions for metadata
    Index getNumDivisions(int c) override { return d()->coords[c]->size(); }
@@ -50,9 +50,9 @@ private:
 
    ShmVector<Scalar> coords[3]; //< coordinates of divisions in x, y, and z
 
-   Data(const Index NumElements_x, const Index NumElements_y, const Index NumElements_z, const std::string & name, const Meta &meta=Meta());
+   Data(const Index numDivX, const Index numDivY, const Index numDivZ, const std::string & name, const Meta &meta=Meta());
    ~Data();
-   static Data *create(const Index NumElements_x = 0, const Index NumElements_y = 0, const Index NumElements_z = 0, const Meta &meta = Meta());
+   static Data *create(const Index numDivX = 0, const Index numDivY = 0, const Index numDivZ = 0, const Meta &meta = Meta());
 
    V_DATA_END(RectilinearGrid);
 };

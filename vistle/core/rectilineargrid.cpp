@@ -11,8 +11,8 @@ namespace vistle {
 
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
-RectilinearGrid::RectilinearGrid(const Index NumElements_x, const Index NumElements_y, const Index NumElements_z, const Meta &meta)
-    : RectilinearGrid::Base(RectilinearGrid::Data::create(NumElements_x, NumElements_y, NumElements_z, meta))
+RectilinearGrid::RectilinearGrid(const Index numDivX, const Index numDivY, const Index numDivZ, const Meta &meta)
+    : RectilinearGrid::Base(RectilinearGrid::Data::create(numDivX, numDivY, numDivZ, meta))
 {
     refreshImpl();
 }
@@ -177,11 +177,11 @@ GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const V
 
 // DATA OBJECT - CONSTRUCTOR FROM NAME & META
 //-------------------------------------------------------------------------
-RectilinearGrid::Data::Data(const Index NumElements_x, const Index NumElements_y, const Index NumElements_z, const std::string & name, const Meta &meta)
+RectilinearGrid::Data::Data(const Index numDivX, const Index numDivY, const Index numDivZ, const std::string & name, const Meta &meta)
     : RectilinearGrid::Base::Data(Object::RECTILINEARGRID, name, meta) {
-    coords[0].construct(NumElements_x + 1);
-    coords[1].construct(NumElements_y + 1);
-    coords[2].construct(NumElements_z + 1);
+    coords[0].construct(numDivX);
+    coords[1].construct(numDivY);
+    coords[2].construct(numDivZ);
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM DATA OBJECT AND NAME
@@ -201,10 +201,10 @@ RectilinearGrid::Data::~Data() {
 
 // DATA OBJECT - CREATE FUNCTION
 //-------------------------------------------------------------------------
-RectilinearGrid::Data * RectilinearGrid::Data::create(const Index NumElements_x, const Index NumElements_y, const Index NumElements_z, const Meta &meta) {
+RectilinearGrid::Data * RectilinearGrid::Data::create(const Index numDivX, const Index numDivY, const Index numDivZ, const Meta &meta) {
 
     const std::string name = Shm::the().createObjectId();
-    Data *p = shm<Data>::construct(name)(NumElements_x, NumElements_y, NumElements_z, name, meta);
+    Data *p = shm<Data>::construct(name)(numDivX, numDivY, numDivZ, name, meta);
     publish(p);
 
     return p;
