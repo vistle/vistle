@@ -76,12 +76,13 @@ Index UniformGrid::findCell(const Vector &point, bool acceptGhost) const {
 
     Index n[3];
     for (int c=0; c<3; ++c) {
-        n[c] = (point[c]-m_min[c])/(m_max[c]-m_min[c]);
-        if (n[c] > m_numDivisions[c])
-            n[c] = m_numDivisions[c];
+        n[c] = (point[c]-m_min[c])/m_dist[c];
+        if (n[c] >= m_numDivisions[c]-1)
+            n[c] = m_numDivisions[c]-2;
     }
 
     Index el = cellIndex(n, m_numDivisions);
+    assert(inside(el, point));
     if (acceptGhost || !isGhostCell(el))
         return el;
     return InvalidIndex;
@@ -128,9 +129,9 @@ GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vecto
    std::array<Index,3> n = cellCoordinates(elem, m_numDivisions);
    std::array<Index,8> cl = cellVertices(elem, m_numDivisions);
 
-   Vector corner(m_min[0]*n[0]*m_dist[0],
-               m_min[1]*n[1]*m_dist[1],
-               m_min[1]*n[2]*m_dist[2]);
+   Vector corner(m_min[0]+n[0]*m_dist[0],
+               m_min[1]+n[1]*m_dist[1],
+               m_min[2]+n[2]*m_dist[2]);
    const Vector diff = point-corner;
 
    const Index nvert = 8;
@@ -145,9 +146,14 @@ GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vecto
        }
    } else if (mode == Linear) {
        vassert(nvert == 8);
+       for (Index i=0; i<nvert; ++i) {
+           indices[i] = cl[i];
+       }
        Vector ss = diff;
        for (int c=0; c<3; ++c) {
            ss[c] /= m_dist[c];
+           assert(ss[c] >= 0.0);
+           assert(ss[c] <= 1.0);
        }
        weights[0] = (1-ss[0])*(1-ss[1])*(1-ss[2]);
        weights[1] = ss[0]*(1-ss[1])*(1-ss[2]);
@@ -157,9 +163,7 @@ GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vecto
        weights[5] = ss[0]*(1-ss[1])*ss[2];
        weights[6] = ss[0]*ss[1]*ss[2];
        weights[7] = (1-ss[0])*ss[1]*ss[2];
-   }
-
-   if (mode != Linear && mode != Mean) {
+   } else {
       weights[0] = 1;
 
       if (mode == First) {

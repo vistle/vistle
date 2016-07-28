@@ -75,7 +75,7 @@ Index RectilinearGrid::findCell(const Vector &point, bool acceptGhost) const {
     Index n[3] = {0, 0, 0};
     for (int c=0; c<3; ++c) {
         for (Index i=0; i<m_numDivisions[c]; ++i) {
-            if (m_coords[c][i] > point[c])
+            if (m_coords[c][i] >= point[c])
                 break;
             n[c] = i;
         }
@@ -91,6 +91,9 @@ Index RectilinearGrid::findCell(const Vector &point, bool acceptGhost) const {
 bool RectilinearGrid::inside(Index elem, const Vector &point) const {
 
     std::array<Index,3> n = cellCoordinates(elem, m_numDivisions);
+    assert(n[0] < m_numDivisions[0]);
+    assert(n[1] < m_numDivisions[1]);
+    assert(n[2] < m_numDivisions[2]);
     for (int c=0; c<3; ++c) {
         Scalar x0 = m_coords[c][n[c]], x1 = m_coords[c][n[c]+1];
         if (point[c] < x0)
@@ -139,6 +142,9 @@ GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const V
        }
    } else if (mode == Linear) {
        vassert(nvert == 8);
+       for (Index i=0; i<nvert; ++i) {
+           indices[i] = cl[i];
+       }
        Vector ss = diff;
        for (int c=0; c<3; ++c) {
            ss[c] /= size[c];
@@ -151,9 +157,7 @@ GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const V
        weights[5] = ss[0]*(1-ss[1])*ss[2];
        weights[6] = ss[0]*ss[1]*ss[2];
        weights[7] = (1-ss[0])*ss[1]*ss[2];
-   }
-
-   if (mode != Linear && mode != Mean) {
+   } else {
       weights[0] = 1;
 
       if (mode == First) {

@@ -28,12 +28,18 @@ public:
 
    // static inline method to obtain a cell index from (x,y,z) indices and max grid dimensions
    static inline Index vertexIndex(const Index ix, const Index iy, const Index iz, const Index dims[3]) {
+       assert(ix < dims[0]);
+       assert(iy < dims[1]);
+       assert(iz < dims[2]);
        return (ix * dims[1] + iy) * dims[2] + iz;
    }
    static inline Index vertexIndex(const Index i[3], const Index dims[3]) {
        return vertexIndex(i[0], i[1], i[2], dims);
    }
    static inline Index cellIndex(const Index ix, const Index iy, const Index iz, const Index dims[3]) {
+       assert(ix < dims[0]-1);
+       assert(iy < dims[1]-1);
+       assert(iz < dims[2]-1);
        return (ix * (dims[1]-1) + iy) * (dims[2]-1) + iz;
    }
    static inline Index cellIndex(const Index i[3], const Index dims[3]) {
