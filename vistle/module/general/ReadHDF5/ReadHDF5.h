@@ -13,6 +13,7 @@
 #include <unordered_set>
 
 #include <boost/mpl/for_each.hpp>
+#include <boost/filesystem.hpp>
 
 #include <module/module.h>
 
@@ -307,8 +308,6 @@ void ReadHDF5::ShmVectorReader::operator()(T) {
                 H5Pclose(readId);
                 H5Sclose(dataSpaceId);
                 H5Dclose(dataSetId);
-
-                std::cerr << " --- write dims : " << arrayNameInFile << "->" << archive->getVectorEntryByNvpName(nvpName)->referenceName << " - " << dims[0] << std::endl;
 
             }
 

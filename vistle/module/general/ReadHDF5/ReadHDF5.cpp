@@ -438,6 +438,9 @@ bool ReadHDF5::util_checkFile() {
     unsigned numNewPorts;
     std::string fileName = m_fileName->getValue();
 
+    boost::filesystem::path path(fileName);
+    bool isDirectory;
+
     // name size check
     if (fileName.size() == 0) {
         if (m_isRootNode) {
@@ -445,6 +448,26 @@ bool ReadHDF5::util_checkFile() {
         }
         return false;
     }
+
+    // setup boost::filesystem
+    try {
+        isDirectory = boost::filesystem::is_directory(path);
+
+    } catch (const boost::filesystem::filesystem_error &error) {
+        std::cerr << "filesystem error - directory: " << error.what() << std::endl;
+        return false;
+    }
+
+
+    // make sure name isnt a directory - this causes H5Fopen to freeze
+    if (isDirectory) {
+        if (m_isRootNode) {
+            sendInfo("File name cannot be a directory");
+        }
+        return false;
+    }
+
+
 
     // Set up file access property list with parallel I/O access
     filePropertyListId = H5Pcreate(H5P_FILE_ACCESS);
@@ -456,13 +479,13 @@ bool ReadHDF5::util_checkFile() {
     // check if file exists
     if (fileId < 0) {
         if (m_isRootNode) {
-            sendInfo("File not found");
+            sendInfo("HDF5 file could not be opened");
         }
 
         return false;
     } else {
         if (m_isRootNode) {
-            sendInfo("File found");
+            sendInfo("HDF5 file found");
         }
     }
 
