@@ -1619,8 +1619,12 @@ Module::~Module() {
    CERR << "I'm quitting" << std::endl;
 #endif
 
+   std::vector<vistle::Parameter *> toRemove;
    for (auto &param: parameters) {
-       removeParameter(param.second.get());
+       toRemove.push_back(param.second.get());
+   }
+   for (auto &param: toRemove) {
+       removeParameter(param);
    }
 
    vistle::message::ModuleExit m;

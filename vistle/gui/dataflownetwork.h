@@ -10,6 +10,7 @@
 
 namespace vistle {
 class VistleConnection;
+class StateTracker;
 }
 
 namespace gui {
@@ -61,12 +62,13 @@ private:
 
     ///\todo push this functionality to vHandler
     vistle::VistleConnection *m_vistleConnection;
+    vistle::StateTracker &m_state;
 
     struct ConnectionKey {
        ConnectionKey(Port *p1, Port *p2)
        : port1(p1), port2(p2)
        {
-          if (port1 > port2)
+          if (*port2 < *port1)
              std::swap(port1, port2);
        }
 
@@ -74,14 +76,14 @@ private:
 
        bool operator<(const ConnectionKey &c) const {
 
-          if (port1 < c.port1) {
+          if (*port1 < *c.port1) {
              return true;
           }
-          if (c.port1 < port1) {
+          if (*c.port1 < *port1) {
              return false;
           }
 
-          return (port2 < c.port2);
+          return (*port2 < *c.port2);
        }
     };
 

@@ -1,7 +1,8 @@
-#ifndef VSLOT_H
-#define VSLOT_H
+#ifndef GUI_PORT_H
+#define GUI_PORT_H
 
 #include <QGraphicsItem>
+#include <boost/shared_ptr.hpp>
 
 namespace vistle {
 class Port;
@@ -31,10 +32,13 @@ public:
 
     Type portType() const;
     Module *module() const;
+    vistle::Port *vistlePort() const;
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
 
     QPointF scenePos() const;
+
+    bool operator<(const Port &other) const;
 
 signals:
     void clicked(Port *port);
@@ -49,7 +53,7 @@ private:
     void createGeometry();
 
     Type m_portType;						//< type of port
-    const vistle::Port *m_port;
+    boost::shared_ptr<vistle::Port> m_port;
     QColor m_color;
     Module *m_module;
 };

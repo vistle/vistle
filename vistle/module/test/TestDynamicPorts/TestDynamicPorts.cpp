@@ -1,0 +1,44 @@
+﻿#include "TestDynamicPorts.h"
+
+MODULE_MAIN(TestDynamicPorts)
+
+using namespace vistle;
+
+TestDynamicPorts::TestDynamicPorts(const std::string &shmname, const std::string &name, int moduleID)
+    : Module("test port removal", shmname, name, moduleID)
+    , m_numPorts(0)
+    , m_numPortsParam(nullptr)
+{
+
+       m_numPortsParam = addIntParameter("num_ports", "number of output ports", m_numPorts);
+       setParameterRange(m_numPortsParam, (Integer)0, (Integer)10);
+}
+
+TestDynamicPorts::~TestDynamicPorts() {
+
+}
+
+std::string portName(int num) {
+   std::stringstream str;
+   str << "data_out" << num;
+   return str.str();
+}
+
+bool TestDynamicPorts::parameterChanged(const Parameter *param) {
+
+   if (param == m_numPortsParam) {
+      int numPorts = m_numPortsParam->getValue();
+      for (int i=m_numPorts; i<numPorts; ++i) {
+         createOutputPort(portName(i));
+      }
+      for (int i=numPorts; i<m_numPorts; ++i) {
+         destroyPort(portName(i));
+      }
+      m_numPorts = numPorts;
+   }
+   return true;
+}
+
+bool TestDynamicPorts::compute() {
+   return true;
+}

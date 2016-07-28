@@ -913,9 +913,12 @@ bool StateTracker::handlePriv(const message::RemovePort &destroyPort) {
       int id = p.getModuleID();
       std::string name = p.getName();
 
-      for (StateObserver *o: m_observers) {
-         o->incModificationCount();
-         o->deletePort(id, name);
+      if (const Port *port = portTracker()->findPort(p)) {
+
+          for (StateObserver *o: m_observers) {
+              o->incModificationCount();
+              o->deletePort(id, name);
+          }
       }
 
       auto disconnect = portTracker()->removePort(p);

@@ -127,6 +127,7 @@ std::vector<message::Buffer> PortTracker::removePort(const Port &p) {
        for (auto kv: *portOrder) {
            if (kv.second == p.getName()) {
                portOrder->erase(kv.first);
+               break;
            }
        }
    }

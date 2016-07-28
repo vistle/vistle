@@ -10,6 +10,7 @@
 #include "dataflownetwork.h"
 #include "module.h"
 #include "connection.h"
+#include "vistleconsole.h"
 
 #include <core/statetracker.h>
 
@@ -30,6 +31,7 @@ DataFlowNetwork::DataFlowNetwork(vistle::VistleConnection *conn, QObject *parent
 , startModule(nullptr)
 , endModule(nullptr)
 , m_vistleConnection(conn)
+, m_state(conn->ui().state())
 {
     // Initialize starting scene information.
     m_LineColor = Qt::black;
@@ -88,7 +90,7 @@ void DataFlowNetwork::addModule(int moduleId, const boost::uuids::uuid &spawnUui
    }
 
    mod->setId(moduleId);
-   int hub = vistle::message::Id::MasterHub - m_vistleConnection->ui().state().getHub(moduleId);
+   int hub = vistle::message::Id::MasterHub - m_state.getHub(moduleId);
    mod->setHub(hub);
    mod->setName(QString("%1_%2").arg(name, QString::number(moduleId)));
 }
@@ -119,20 +121,22 @@ void DataFlowNetwork::moduleStateChanged(int moduleId, int stateBits)
 void DataFlowNetwork::newPort(int moduleId, QString portName)
 {
    if (Module *m = findModule(moduleId)) {
-      const vistle::Port *port = m_vistleConnection->ui().state().portTracker()->getPort(moduleId, portName.toStdString());
+      const vistle::Port *port = m_state.portTracker()->getPort(moduleId, portName.toStdString());
       if (port) {
-         m->addPort(port);
+         m->addPort(*port);
       }
    }
 }
 
 void DataFlowNetwork::deletePort(int moduleId, QString portName) {
 
+#if 0
+   QString text = "Delete port: " + QString::number(moduleId) + ":" + portName;
+   VistleConsole::the()->appendDebug(text);
+   std::cerr << text.toStdString() << std::endl;
+#endif
    if (Module *m = findModule(moduleId)) {
-      const vistle::Port *port = m_vistleConnection->ui().state().portTracker()->findPort(moduleId, portName.toStdString());
-      if (port) {
-         m->removePort(port);
-      }
+      m->removePort(vistle::Port(moduleId, portName.toStdString(), vistle::Port::ANY));
    }
 }
 
@@ -144,8 +148,8 @@ void DataFlowNetwork::newConnection(int fromId, QString fromName,
    m_console->appendDebug(text);
 #endif
 
-   const vistle::Port *portFrom = m_vistleConnection->ui().state().portTracker()->findPort(fromId, fromName.toStdString());
-   const vistle::Port *portTo = m_vistleConnection->ui().state().portTracker()->findPort(toId, toName.toStdString());
+   const vistle::Port *portFrom = m_state.portTracker()->findPort(fromId, fromName.toStdString());
+   const vistle::Port *portTo = m_state.portTracker()->findPort(toId, toName.toStdString());
 
    Module *mFrom = findModule(fromId);
    Module *mTo = findModule(toId);
@@ -163,8 +167,8 @@ void DataFlowNetwork::deleteConnection(int fromId, QString fromName,
    m_console->appendDebug(text);
 #endif
 
-   const vistle::Port *portFrom = m_vistleConnection->ui().state().portTracker()->findPort(fromId, fromName.toStdString());
-   const vistle::Port *portTo = m_vistleConnection->ui().state().portTracker()->findPort(toId, toName.toStdString());
+   const vistle::Port *portFrom = m_state.portTracker()->findPort(fromId, fromName.toStdString());
+   const vistle::Port *portTo = m_state.portTracker()->findPort(toId, toName.toStdString());
 
    Module *mFrom = findModule(fromId);
    Module *mTo = findModule(toId);

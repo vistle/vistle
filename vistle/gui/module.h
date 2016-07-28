@@ -1,5 +1,5 @@
-#ifndef VMODULE_H
-#define VMODULE_H
+#ifndef GUI_MODULE_H
+#define GUI_MODULE_H
 
 #include <QRect>
 #include <QPolygon>
@@ -50,8 +50,8 @@ public:
     QPointF portPos(const Port *port) const;
     void setStatus(Module::Status status);
 
-    void addPort(const vistle::Port *port);
-    void removePort(const vistle::Port *port);
+    void addPort(const vistle::Port &port);
+    void removePort(const vistle::Port &port);
 
     // vistle methods
     QString name() const;
@@ -111,8 +111,7 @@ private:
     QList<Port *> m_inPorts, m_outPorts, m_paramPorts;
     QColor m_color;
     qreal m_fontHeight;
-    std::map<const vistle::Port *, Port *> m_vistleToGui;
-    std::map<Port *, const vistle::Port *> m_guiToVistle;
+    std::map<vistle::Port, Port *> m_vistleToGui;
 
     QColor m_borderColor;
 };

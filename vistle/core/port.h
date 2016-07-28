@@ -59,11 +59,10 @@ class V_COREEXPORT Port {
    const PortSet &linkedPorts() const;
 
    bool operator<(const Port &other) const {
-      if (getModuleID() < other.getModuleID())
-         return true;
-      if (getModuleID() > other.getModuleID())
-         return false;
-      return getName() < other.getName();
+      if (getModuleID() == other.getModuleID()) {
+          return getName() < other.getName();
+      }
+      return getModuleID() < other.getModuleID();
    }
 
    //! children of 'MULTI' ports

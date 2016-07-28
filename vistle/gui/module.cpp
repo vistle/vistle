@@ -221,13 +221,12 @@ void Module::updatePosition(QPointF newPos) const
    }
 }
 
-void Module::addPort(const vistle::Port *port)
+void Module::addPort(const vistle::Port &port)
 {
-   Port *guiPort = new Port(port, this);
+   Port *guiPort = new Port(&port, this);
    m_vistleToGui[port] = guiPort;
-   m_guiToVistle[guiPort] = port;
 
-   switch(port->getType()) {
+   switch(port.getType()) {
       case vistle::Port::ANY:
          std::cerr << "cannot handle port type ANY" << std::endl;
          break;
@@ -245,16 +244,43 @@ void Module::addPort(const vistle::Port *port)
    doLayout();
 }
 
-void Module::removePort(const vistle::Port *port)
+void Module::removePort(const vistle::Port &port)
 {
-   auto vit = m_vistleToGui.find(port);
-   if (vit == m_vistleToGui.end())
+   auto it = m_vistleToGui.find(port);
+   //std::cerr << "removePort(" << port << "): found: " << (it!=m_vistleToGui.end()) << std::endl;
+   if (it == m_vistleToGui.end())
        return;
-   auto vport = vit->second;
-   auto git = m_guiToVistle.find(vport);
-   assert(git != m_guiToVistle.end());
-   m_vistleToGui.erase(vit);
-   m_guiToVistle.erase(git);
+   auto gport = it->second;
+   auto vport = gport->vistlePort();
+   if (!vport)
+       return;
+
+   switch(vport->getType()) {
+   case vistle::Port::ANY:
+       std::cerr << "cannot handle port type ANY" << std::endl;
+       break;
+   case vistle::Port::INPUT: {
+       auto it = std::find(m_inPorts.begin(), m_inPorts.end(), gport);
+       if (it != m_inPorts.end())
+           m_inPorts.erase(it);
+       break;
+   }
+   case vistle::Port::OUTPUT: {
+       auto it = std::find(m_outPorts.begin(), m_outPorts.end(), gport);
+       if (it != m_outPorts.end())
+           m_outPorts.erase(it);
+       break;
+   }
+   case vistle::Port::PARAMETER: {
+       auto it = std::find(m_paramPorts.begin(), m_paramPorts.end(), gport);
+       if (it != m_paramPorts.end())
+           m_paramPorts.erase(it);
+       break;
+   }
+   }
+
+   m_vistleToGui.erase(it);
+   delete gport;
 
    doLayout();
 }
@@ -323,7 +349,7 @@ void Module::setPositionValid() {
 
 Port *Module::getGuiPort(const vistle::Port *port) const {
 
-   const auto &it = m_vistleToGui.find(port);
+   const auto &it = m_vistleToGui.find(*port);
    if (it == m_vistleToGui.end())
       return nullptr;
 
@@ -332,11 +358,7 @@ Port *Module::getGuiPort(const vistle::Port *port) const {
 
 const vistle::Port *Module::getVistlePort(Port *port) const {
 
-   const auto &it = m_guiToVistle.find(port);
-   if (it == m_guiToVistle.end())
-      return nullptr;
-
-   return it->second;
+    return port->vistlePort();
 }
 
 DataFlowNetwork *Module::scene() const {

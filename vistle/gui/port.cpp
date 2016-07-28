@@ -25,7 +25,7 @@ static QColor ParamColor(30, 30, 200);
 
 Port::Port(const vistle::Port *port, Module *parent)
 : Base(parent)
-, m_port(port)
+, m_port(new vistle::Port(*port))
 , m_module(parent)
 {
    switch(port->getType()) {
@@ -54,6 +54,16 @@ Port::Port(Port::Type type, Module *parent)
 {
     createGeometry();
     createTooltip();
+}
+
+vistle::Port *Port::vistlePort() const {
+    return m_port.get();
+}
+
+bool Port::operator<(const Port &other) const {
+    if (!m_port)
+        return false;
+    return *m_port < *other.m_port;
 }
 
 Port::Type Port::portType() const {
