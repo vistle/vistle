@@ -51,15 +51,18 @@ StructuredToUnstructured::~StructuredToUnstructured() {
 bool StructuredToUnstructured::compute() {
 
     // acquire input data object
-    DataBase::const_ptr data;
-    Object::const_ptr gridObj = accept<Object>("data_in");
-    StructuredGridBase::const_ptr grid = StructuredGridBase::as(gridObj);
-    if (!grid) {
-        data = accept<DataBase>("data_in");
+    Object::const_ptr input = accept<Object>("data_in");
+    Object::const_ptr gridObj = input;
+    DataBase::const_ptr data = DataBase::as(gridObj);
+    if (data && data->grid()) {
         gridObj = data->grid();
-        grid = StructuredGridBase::as(gridObj);
+    }
+    if (UnstructuredGrid::as(gridObj)) {
+        passThroughObject("data_out", input);
+        return true;
     }
 
+    StructuredGridBase::const_ptr grid = StructuredGridBase::as(gridObj);
     // assert existence of useable data
     if (!grid) {
        sendInfo("Error: Unusable Input Data");
