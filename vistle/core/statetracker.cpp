@@ -757,6 +757,8 @@ bool StateTracker::handlePriv(const message::RemoveParameter &removeParam) {
 #endif
 
    auto mit = runningMap.find(removeParam.senderId());
+   if (mit == runningMap.end())
+       return false;
    vassert(mit != runningMap.end());
    auto &mod = mit->second;
    ParameterMap &pm = mod.parameters;
