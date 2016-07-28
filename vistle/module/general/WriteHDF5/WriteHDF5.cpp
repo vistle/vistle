@@ -6,7 +6,7 @@
 //-------------------------------------------------------------------------
 
 #define NO_PORT_REMOVAL
-//#define HIDE_REFERENCE_WARNINGS
+#define HIDE_REFERENCE_WARNINGS
 
 #include <sstream>
 #include <iomanip>
@@ -90,6 +90,7 @@ WriteHDF5::WriteHDF5(const std::string &shmname, const std::string &name, int mo
 
    // add module parameters
    m_fileName = addStringParameter("File Name", "Name of File that will be written to", "");
+   m_portDescriptions.push_back(addStringParameter("Port 0 Description", "Descrition will appear as tooltip on read", ""));
 
    // policies
    setReducePolicy(message::ReducePolicy::OverAll);
@@ -146,9 +147,13 @@ void WriteHDF5::connectionRemoved(const Port *from, const Port *to) {
 void WriteHDF5::connectionAdded(const Port *from, const Port *to) {
     std::string lastPortName = "data" + std::to_string(m_numPorts - 1) + "_in";
     std::string newPortName = "data" + std::to_string(m_numPorts) + "_in";
+    std::string newPortDescriptionName = "Port " + std::to_string(m_numPorts) + " Description";
 
     if (from->getName() == lastPortName || to->getName() == lastPortName) {
         createInputPort(newPortName);
+
+        m_portDescriptions.push_back(addStringParameter(newPortDescriptionName.c_str(), "Descrition will appear as tooltip on read", ""));
+
         m_numPorts++;
     }
 
@@ -166,6 +171,8 @@ bool WriteHDF5::prepare() {
     hid_t dataSetId;
     hid_t fileSpaceId;
     hid_t groupId;
+    hid_t writeId;
+    hsize_t oneDims[] = {1};
 
     m_doNotWrite = false;
 
@@ -213,7 +220,6 @@ bool WriteHDF5::prepare() {
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
-
     // create dummy object
     fileSpaceId = H5Screate_simple(1, HDF5Const::DummyObject::dims.data(), NULL);
     dataSetId = H5Dcreate(fileId, HDF5Const::DummyObject::name.c_str(), HDF5Const::DummyObject::type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -221,7 +227,6 @@ bool WriteHDF5::prepare() {
     H5Dclose(dataSetId);
 
     // store number of ports
-    hsize_t oneDims[] = {1};
     const std::string numPortsName("/file/numPorts");
     fileSpaceId = H5Screate_simple(1, oneDims, NULL);
     dataSetId = H5Dcreate(fileId, numPortsName.c_str(), H5T_NATIVE_UINT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -229,7 +234,7 @@ bool WriteHDF5::prepare() {
     H5Dclose(dataSetId);
     util_HDF5write(m_isRootNode, numPortsName.c_str(), &m_numPorts, fileId, oneDims, H5T_NATIVE_UINT);
 
-    // create folders for ports
+    // create folders for ports in index
     for (unsigned i = 0; i < m_numPorts; i++) {
         std::string name = "/index/" + std::to_string(i);
         groupId = H5Gcreate2(fileId, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -239,6 +244,39 @@ bool WriteHDF5::prepare() {
 
     // initialize first tracker layer
     m_indexTracker = IndexTracker(m_numPorts);
+
+
+    // save port descriptions
+    groupId = H5Gcreate2(fileId, "/file/ports", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    status = H5Gclose(groupId);
+    util_checkStatus(status);
+
+    for (unsigned i = 0; i < m_numPorts; i++) {
+        std::string name = "/file/ports/" + std::to_string(i);
+        std::string description = m_portDescriptions[i]->getValue();
+        hsize_t dims[1];
+
+        // make sure description isnt empty
+        if (description.size() == 0) {
+            description = "Port " + std::to_string(i);
+        }
+
+        dims[0] = description.size();
+
+        // store description
+        writeId = H5Pcreate(H5P_DATASET_XFER);
+        H5Pset_dxpl_mpio(writeId, H5FD_MPIO_COLLECTIVE);
+
+        fileSpaceId = H5Screate_simple(1, dims, NULL);
+        dataSetId = H5Dcreate2(fileId, name.c_str(), H5T_NATIVE_CHAR, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+        status = H5Dwrite(dataSetId, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL, writeId, description.data());
+        util_checkStatus(status);
+
+        H5Dclose(dataSetId);
+        H5Sclose(fileSpaceId);
+        H5Pclose(writeId);
+    }
 
 
     // close all open h5 entities
@@ -255,13 +293,14 @@ bool WriteHDF5::prepare() {
 //-------------------------------------------------------------------------
 bool WriteHDF5::reduce(int timestep) {
 
+    sendInfo("reduce");
+
 #ifndef HIDE_REFERENCE_WARNINGS
     bool unresolvedReferencesExistOnNode = false;
 
     for (unsigned i = 0; i < m_objectReferenceVector.size(); i++) {
         if (m_objectSet.find(m_objectReferenceVector[i]) == m_objectSet.end()
                 && m_objectReferenceVector[i] != FindObjectReferenceOArchive::nullObjectReferenceName) {
-            sendInfo("ref: %s", m_objectReferenceVector[i].c_str());
             unresolvedReferencesExistOnNode = true;
             break;
         }
@@ -526,24 +565,25 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
 
 
     // write meta info
-    if (m_hasObject && isNewObject) {
-        writeName = "/object/" + obj->getName() + "/meta";
-        metaData = metaToArrayArchive.getDataPtr();
+    if (isNewObject) {
+        if (m_hasObject) {
+            writeName = "/object/" + obj->getName() + "/meta";
+            metaData = metaToArrayArchive.getDataPtr();
+        }
+
+        util_HDF5write(m_hasObject, writeName, metaData, fileId, metaDims, H5T_NATIVE_DOUBLE);
+
+
+        // write type info
+        if (m_hasObject) {
+            writeName = "/object/" + obj->getName() + "/type";
+            typeValue = obj->getType();
+            typeData = &typeValue;
+        }
+
+        util_HDF5write(m_hasObject, writeName, typeData, fileId, oneDims, H5T_NATIVE_INT);
+
     }
-
-    util_HDF5write(m_hasObject, writeName, metaData, fileId, metaDims, H5T_NATIVE_DOUBLE);
-
-
-    // write type info
-    if (m_hasObject && isNewObject) {
-        writeName = "/object/" + obj->getName() + "/type";
-        typeValue = obj->getType();
-        typeData = &typeValue;
-    }
-
-    util_HDF5write(m_hasObject, writeName, typeData, fileId, oneDims, H5T_NATIVE_INT);
-
-
 
     // reduce vector size information for collective calls
     boost::mpi::all_reduce(comm(), (unsigned) archive.getVector().size(), maxVectorSize, boost::mpi::maximum<unsigned>());

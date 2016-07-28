@@ -433,7 +433,10 @@ bool ReadHDF5::util_checkFile() {
     hid_t fileId;
     hid_t filePropertyListId;
     hid_t dataSetId;
+    hid_t dataSpaceId;
     hid_t readId;
+    hsize_t dims[1];
+    hsize_t maxDims[1];
 
     unsigned numNewPorts;
     std::string fileName = m_fileName->getValue();
@@ -501,12 +504,31 @@ bool ReadHDF5::util_checkFile() {
         return false;
     }
 
+    H5Dclose(dataSetId);
+
 
     // handle ports
     if (numNewPorts > m_numPorts) {
         for (unsigned i = m_numPorts; i < numNewPorts; i++) {
             std::string portName = "data" + std::to_string(i) + "_out";
-            createOutputPort(portName);
+            std::string portDescriptionPath = "/file/ports/" + std::to_string(i);
+            std::vector<char> portDescription;
+
+            // obtain port description
+            dataSetId = H5Dopen2(fileId, portDescriptionPath.c_str(), H5P_DEFAULT);
+            dataSpaceId = H5Dget_space(dataSetId);
+            H5Sget_simple_extent_dims(dataSpaceId, dims, maxDims);
+
+            portDescription.resize(dims[0] + 1);
+            portDescription.back() = '\0';
+
+            status = H5Dread(dataSetId, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL, readId, portDescription.data());
+
+            H5Sclose(dataSpaceId);
+            H5Dclose(dataSetId);
+
+            // create output port
+            createOutputPort(portName, std::string(portDescription.data()));
         }
     } else {
         for (unsigned i = numNewPorts; i < m_numPorts; i++) {
@@ -520,8 +542,6 @@ bool ReadHDF5::util_checkFile() {
 
     // close all open h5 entities
     H5Pclose(readId);
-    H5Dclose(dataSetId);
-
     H5Pclose(filePropertyListId);
     H5Fclose(fileId);
 
