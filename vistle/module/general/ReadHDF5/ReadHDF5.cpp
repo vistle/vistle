@@ -154,10 +154,15 @@ bool ReadHDF5::prepare() {
 //-------------------------------------------------------------------------
 herr_t ReadHDF5::prepare_iterateOrigin(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
     LinkIterData * linkIterData = (LinkIterData *) opData;
+    std::string originPortName = "data" + std::string(name) + "_out";
 
     linkIterData->origin = std::stoul(std::string(name));
 
-    H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateTimestep, linkIterData, H5P_DEFAULT);
+    // only iterate over connected ports
+    // references will be handled when needed
+    if (linkIterData->callingModule->isConnected(originPortName)) {
+        H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateTimestep, linkIterData, H5P_DEFAULT);
+    }
 
     return 0;
 }
