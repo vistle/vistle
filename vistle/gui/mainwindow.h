@@ -31,6 +31,7 @@ public:
     Parameters *parameters() const;
     DataFlowView *dataFlowView() const;
     VistleConsole *console() const;
+    void setQuitOnExit(bool qoe);
 
 public slots:
     void setFilename(const QString &filename);

@@ -73,6 +73,19 @@ MainWindow::~MainWindow()
     /// scene; QDrag; mimeData;
 }
 
+void MainWindow::setQuitOnExit(bool qoe)
+{
+   if (ui->actionQuit) {
+      if (qoe) {
+         ui->actionQuit->setText("Quit");
+         ui->actionQuit->setToolTip("Quit Vistle Session");
+      } else {
+         ui->actionQuit->setText("Leave");
+         ui->actionQuit->setToolTip("Quit Vistle GUI");
+      }
+   }
+}
+
 void MainWindow::setModified(bool state)
 {
    setWindowModified(state);
