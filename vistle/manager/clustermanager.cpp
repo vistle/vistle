@@ -926,12 +926,12 @@ bool ClusterManager::handlePriv(const message::Execute &exec) {
                              }
                          }
                      }
-                     if (doExec) {
-                         //CERR << "having " << numObjects << ", executing " << exec.getModule() << std::endl;
-                         message::Buffer buf(exec);
-                         buf.setBroadcast(true);
-                         Communicator::the().broadcastAndHandleMessage(buf);
-                     }
+                 }
+                 if (doExec) {
+                     //CERR << "having " << numObjects << ", executing " << exec.getModule() << std::endl;
+                     message::Buffer buf(exec);
+                     buf.setBroadcast(true);
+                     Communicator::the().broadcastAndHandleMessage(buf);
                  }
              }
          }
