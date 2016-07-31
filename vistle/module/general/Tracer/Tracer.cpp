@@ -2,6 +2,8 @@
 #include <iostream>
 #include <limits>
 #include <algorithm>
+#include <cmath>
+#include <boost/chrono.hpp>
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpi/collectives/all_reduce.hpp>
 #include <boost/mpi/collectives/all_gather.hpp>
@@ -11,8 +13,10 @@
 #include <boost/mpi/packed_oarchive.hpp>
 #include <boost/mpi.hpp>
 #include <boost/mpi/operations.hpp>
+#include <eigen3/Eigen/Geometry>
+#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/Dense>
 #include <core/vec.h>
-#include <module/module.h>
 #include <core/scalars.h>
 #include <core/paramvector.h>
 #include <core/message.h>
@@ -22,13 +26,9 @@
 #include <core/structuredgridbase.h>
 #include <core/structuredgrid.h>
 #include <core/points.h>
-#include "Tracer.h"
 #include <core/celltree.h>
-#include <eigen3/Eigen/Geometry>
-#include <eigen3/Eigen/Core>
-#include <eigen3/Eigen/Dense>
-#include <math.h>
-#include <boost/chrono.hpp>
+#include <module/module.h>
+#include "Tracer.h"
 #include "Integrator.h"
 #include "BlockData.h"
 #include "Particle.h"
@@ -457,8 +457,8 @@ bool Tracer::reduce(int timestep) {
       }
    }
 
-   comm().barrier();
 #ifdef TIMING
+   comm().barrier();
    times::total_dur = times::stop(times::total_start);
    times::output();
 #endif

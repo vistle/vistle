@@ -124,7 +124,6 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
         m_searchBlock = false;
         for(Index i=0; i<block.size(); i++) {
 
-            auto grid = block[i]->getGrid();
             if (block[i].get() == m_block) {
                 // don't try previous block again
                 m_block = nullptr;
@@ -133,6 +132,7 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
 #ifdef TIMING
             times::celloc_start = times::start();
 #endif
+            auto grid = block[i]->getGrid();
             m_el = grid->findCell(m_x);
 #ifdef TIMING
             times::celloc_dur += times::stop(times::celloc_start);
