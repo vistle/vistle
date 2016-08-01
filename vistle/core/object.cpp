@@ -707,6 +707,10 @@ bool Object::Data::removeAttachment(const std::string &key) {
    return true;
 }
 
+void Object::Data::unresolvedReference() {
+    ++unresolvedReferences;
+}
+
 ObjectTypeRegistry::CreateFunc ObjectTypeRegistry::getCreator(int id) {
    return getType(id).create;
 }

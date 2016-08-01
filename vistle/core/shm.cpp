@@ -428,7 +428,6 @@ struct archive_instantiator {
       V p;
       const V c = p;
       Object::ptr obj;
-      obj->d()->arrayValid(c);
       V q = c;
       //q.construct(2);
       q->resize(1);

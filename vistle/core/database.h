@@ -6,6 +6,7 @@
 #include "shm.h"
 #include "object.h"
 #include "vector.h"
+#include "shm_obj_ref.h"
 
 
 namespace vistle {

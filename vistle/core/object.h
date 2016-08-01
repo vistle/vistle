@@ -36,8 +36,6 @@ class iarchive;
 class FindObjectReferenceOArchive;
 
 class Shm;
-template<class T>
-class shm_obj_ref;
 
 struct ObjectData;
 
@@ -253,10 +251,7 @@ struct ObjectData {
     V_COREEXPORT void unref() const;
     static ObjectData *create(Object::Type id, const std::string &name, const Meta &m);
     bool isComplete() const; //! check whether all references have been resolved
-    template<typename ShmVectorPtr>
-    void arrayValid(const ShmVectorPtr &p);
-    template<class ObjType>
-    void objectValid(const shm_obj_ref<ObjType> &o);
+    void unresolvedReference();
     void referenceResolved(const std::function<void()> &completeCallback);
 
     friend class boost::serialization::access;
@@ -535,5 +530,4 @@ V_ENUM_OUTPUT_OP(Type, Object)
 #include "object_impl.h"
 #endif
 
-#include "shm_obj_ref.h"
 #endif

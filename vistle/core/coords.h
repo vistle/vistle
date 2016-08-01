@@ -6,6 +6,7 @@
 #include "object.h"
 #include "vec.h"
 #include "normals.h"
+#include "shm_obj_ref.h"
 #include "export.h"
 
 namespace vistle {

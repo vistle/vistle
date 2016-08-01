@@ -39,8 +39,8 @@ void shm_ref<T>::load(Archive &ar, const unsigned int version) {
    } else {
       //std::cerr << "waiting for completion of " << name << std::endl;
       auto obj = ar.currentObject();
-      if (obj)
-         obj->arrayValid(*this);
+      if (obj && !valid())
+         obj->unresolvedReference();
    }
 }
 

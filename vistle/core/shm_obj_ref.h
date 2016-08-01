@@ -178,8 +178,9 @@ class shm_obj_ref {
          assert(!ref0);
          //std::cerr << "waiting for completion of object " << name << std::endl;
          auto obj = ar.currentObject();
-         if (obj)
-            obj->objectValid(*this);
+         if (obj && !valid()) {
+            obj->unresolvedReference();
+         }
       }
    }
 };
