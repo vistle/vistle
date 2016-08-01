@@ -16,13 +16,10 @@
 #include <vector>
 #include <ctime>
 
-#include <core/message.h>
-#include <core/vec.h>
-#include <core/unstr.h>
+#include <hdf5.h>
+
 #include <core/findobjectreferenceoarchive.h>
 #include <core/placeholder.h>
-
-#include "hdf5.h"
 
 #include "WriteHDF5.h"
 
@@ -89,8 +86,8 @@ WriteHDF5::WriteHDF5(const std::string &shmname, const std::string &name, int mo
    createInputPort("data0_in");
 
    // add module parameters
-   m_fileName = addStringParameter("File Name", "Name of File that will be written to", "");
-   m_portDescriptions.push_back(addStringParameter("Port 0 Description", "Descrition will appear as tooltip on read", ""));
+   m_fileName = addStringParameter("file_name", "Name of File that will be written to", "");
+   m_portDescriptions.push_back(addStringParameter("port_description_0", "Description will appear as tooltip on read", "port 0"));
 
    // policies
    setReducePolicy(message::ReducePolicy::OverAll);
@@ -147,12 +144,13 @@ void WriteHDF5::connectionRemoved(const Port *from, const Port *to) {
 void WriteHDF5::connectionAdded(const Port *from, const Port *to) {
     std::string lastPortName = "data" + std::to_string(m_numPorts - 1) + "_in";
     std::string newPortName = "data" + std::to_string(m_numPorts) + "_in";
-    std::string newPortDescriptionName = "Port " + std::to_string(m_numPorts) + " Description";
+    std::string newPortDescriptionName = "port_description_" + std::to_string(m_numPorts);
+    std::string newPortDescription = "port " + std::to_string(m_numPorts);
 
     if (from->getName() == lastPortName || to->getName() == lastPortName) {
         createInputPort(newPortName);
 
-        m_portDescriptions.push_back(addStringParameter(newPortDescriptionName.c_str(), "Descrition will appear as tooltip on read", ""));
+        m_portDescriptions.push_back(addStringParameter(newPortDescriptionName.c_str(), "Description will appear as tooltip on read", newPortDescription));
 
         m_numPorts++;
     }
@@ -371,7 +369,7 @@ bool WriteHDF5::compute() {
 void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
     Object::const_ptr obj = nullptr;
     FindObjectReferenceOArchive archive;
-    m_hasObject = false;
+    bool hasObject = false;
 
 
     // ----- OBTAIN OBJECT FROM A PORT ----- //
@@ -382,13 +380,13 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
 
     // save if available
     if (obj) {
-        m_hasObject = true;
+        hasObject = true;
         obj->save(archive);
     }
 
     // check if all nodes have no object on port
     bool doesAtLeastOnePortHaveObject;
-    boost::mpi::all_reduce(comm(), m_hasObject, doesAtLeastOnePortHaveObject, boost::mpi::maximum<bool>());
+    boost::mpi::all_reduce(comm(), hasObject, doesAtLeastOnePortHaveObject, boost::mpi::maximum<bool>());
 
     // skip port if so
     if (!doesAtLeastOnePortHaveObject) {
@@ -403,7 +401,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
     ReservationInfo reservationInfo;
     MetaToArrayArchive metaToArrayArchive;
 
-    if (m_hasObject) {
+    if (hasObject) {
 
         // obtain object metadata info
         boost::serialization::serialize_adl(metaToArrayArchive, const_cast<Meta &>(obj->meta()), ::boost::serialization::version< Object >::value);
@@ -579,23 +577,22 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
 
     // write meta info
     if (isNewObject) {
-        if (m_hasObject) {
+        if (hasObject) {
             writeName = "/object/" + obj->getName() + "/meta";
             metaData = metaToArrayArchive.getDataPtr();
         }
 
-        util_HDF5write(m_hasObject, writeName, metaData, m_fileId, metaDims, H5T_NATIVE_DOUBLE);
+        util_HDF5write(hasObject, writeName, metaData, m_fileId, metaDims, H5T_NATIVE_DOUBLE);
 
 
         // write type info
-        if (m_hasObject) {
+        if (hasObject) {
             writeName = "/object/" + obj->getName() + "/type";
             typeValue = obj->getType();
             typeData = &typeValue;
         }
 
-        util_HDF5write(m_hasObject, writeName, typeData, m_fileId, oneDims, H5T_NATIVE_INT);
-
+        util_HDF5write(hasObject, writeName, typeData, m_fileId, oneDims, H5T_NATIVE_INT);
     }
 
     // reduce vector size information for collective calls

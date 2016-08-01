@@ -88,7 +88,6 @@ class WriteHDF5 : public vistle::Module {
 
    hid_t m_fileId;
    bool m_isRootNode;
-   bool m_hasObject;
    bool m_doNotWrite;
    std::unordered_map<std::string, bool> m_arrayMap;
    std::unordered_set<std::string> m_objectSet;
