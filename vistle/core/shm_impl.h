@@ -9,6 +9,7 @@
 
 #include "scalars.h"
 #include "celltreenode.h"
+#include "shm_array.h"
 
 //#include "archives.h"
 

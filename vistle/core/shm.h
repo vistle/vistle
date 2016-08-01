@@ -4,8 +4,8 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
 
-#include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 
 #include <boost/serialization/access.hpp>
@@ -15,13 +15,10 @@
 #include "index.h"
 #include "export.h"
 
-//#define USE_BOOST_VECTOR
+#include "shm_array.h"
+
 //#define SHMDEBUG
 //#define SHMPUBLISH
-
-#ifndef USE_BOOST_VECTOR
-#include "shm_array.h"
-#endif
 
 namespace vistle {
 
@@ -85,12 +82,7 @@ struct shm {
    typedef boost::interprocess::allocator<T, boost::interprocess::managed_shared_memory::segment_manager> allocator;
    typedef boost::interprocess::basic_string<T, std::char_traits<T>, allocator> string;
    typedef boost::interprocess::vector<T, allocator> vector;
-   typedef boost::interprocess::offset_ptr<vector> ptr;
-#ifdef USE_BOOST_VECTOR
-   typedef boost::interprocess::vector<T, allocator> array;
-#else
    typedef vistle::shm_array<T, allocator> array;
-#endif
    typedef boost::interprocess::offset_ptr<array> array_ptr;
    static typename boost::interprocess::managed_shared_memory::segment_manager::template construct_proxy<T>::type construct(const std::string &name);
    static T *find(const std::string &name);
@@ -138,7 +130,7 @@ class V_COREEXPORT Shm {
    static bool cleanAll();
 
 #ifdef SHMDEBUG
-   static vistle::shm<ShmDebugInfo>::vector *s_shmdebug;
+   static boost::interprocess::vector<ShmDebugInfo, shm<ShmDebugInfo>::allocator> *s_shmdebug;
    static boost::interprocess::interprocess_recursive_mutex *s_shmdebugMutex;
    void markAsRemoved(const std::string &name);
    void addObject(const std::string &name, const shm_handle_t &handle);

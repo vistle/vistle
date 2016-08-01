@@ -204,7 +204,6 @@ int main(int argc, char *argv[]) {
       test_pb_int(v, "B:I vector", size);
    }
 
-#ifndef USE_BOOST_VECTOR
    {
       vistle::shm_array<int, std::allocator<int>> v;
       test_pb_int(v, "uninit array", size);
@@ -244,7 +243,6 @@ int main(int argc, char *argv[]) {
       test_pb(v, "uninit array reserve", size);
    }
 #endif
-#endif
 
 #if 0
    { 
@@ -281,7 +279,6 @@ int main(int argc, char *argv[]) {
 #endif
 
 #if 0
-#ifndef USE_BOOST_VECTOR
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
@@ -292,7 +289,6 @@ int main(int argc, char *argv[]) {
       }
       bi::shared_memory_object::remove(shmname.c_str());
    }
-#endif
 
    { 
       bi::shared_memory_object::remove(shmname.c_str());

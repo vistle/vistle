@@ -212,7 +212,6 @@ int main(int argc, char *argv[]) {
       bi::shared_memory_object::remove(shmname.c_str());
    }
 
-#ifndef USE_BOOST_VECTOR
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
@@ -228,12 +227,11 @@ int main(int argc, char *argv[]) {
 #endif
       bi::shared_memory_object::remove(shmname.c_str());
    }
-#endif
 
    { 
       bi::shared_memory_object::remove(shmname.c_str());
       vistle::Shm::create(shmname, 0, 0, NULL);
-      vistle::shm<DataType>::ptr v7p = Shm::the().shm().construct<vistle::shm<DataType>::vector>("testvector")(0, 0, Shm::the().allocator());
+      auto v7p = Shm::the().shm().construct<vistle::shm<DataType>::vector>("testvector")(0, 0, Shm::the().allocator());
       vistle::shm<DataType>::vector &v = *v7p;
       v.reserve(size);
       time_pb(v, "vistle explicit reserved+push_back", size);
