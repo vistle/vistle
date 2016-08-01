@@ -104,6 +104,7 @@ set(core_HEADERS
    scalars.h
    serialize.h
    shm.h
+   shmvector.h
    shm_array.h
    shm_impl.h
    shm_reference.h

@@ -188,15 +188,6 @@ bool shm<T>::destroy(const std::string &name) {
 
 #endif
 
-#include "shm_reference.h"
-
-namespace vistle {
-
-template<class T>
-using ShmVector = shm_ref<shm_array<T, typename shm<T>::allocator>>;
-
-}
-
 #ifdef VISTLE_IMPL
 #include "shm_impl.h"
 #endif

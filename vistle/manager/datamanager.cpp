@@ -10,6 +10,7 @@
 #include <core/object.h>
 #include <core/tcpmessage.h>
 #include <core/messages.h>
+#include <core/shmvector.h>
 #include <iostream>
 
 #define CERR std::cerr << "data [" << m_rank << "/" << m_size << "] "

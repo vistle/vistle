@@ -8,6 +8,7 @@
 #include "object.h"
 #include "vector.h"
 #include "geometry.h"
+#include "shmvector.h"
 
 namespace vistle {
 

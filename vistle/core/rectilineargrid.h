@@ -8,6 +8,7 @@
 
 #include "scalar.h"
 #include "shm.h"
+#include "shmvector.h"
 #include "structuredgridbase.h"
 #include "export.h"
 

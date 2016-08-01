@@ -15,6 +15,7 @@
 #include "scalars.h"
 #include "archives.h"
 #include "assert.h"
+#include "shmvector.h"
 
 #ifndef TEMPLATES_IN_HEADERS
 #define VISTLE_IMPL
