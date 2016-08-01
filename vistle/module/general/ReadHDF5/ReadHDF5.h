@@ -59,6 +59,8 @@ class ReadHDF5 : public vistle::Module {
    virtual bool reduce(int timestep) override;
 
    // private helper functions
+   static herr_t prepare_iterateMeta(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
+
    static herr_t prepare_iterateOrigin(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
    static herr_t prepare_iterateTimestep(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
    static herr_t prepare_iterateBlock(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
@@ -85,6 +87,7 @@ class ReadHDF5 : public vistle::Module {
 
    bool m_isRootNode;
    bool m_unresolvedReferencesExist;
+   std::unordered_map<std::string, unsigned> m_metaNvpMap;                  //< meta nvp tag -> index in boost::serialization order
    std::unordered_map<std::string, std::string> m_arrayMap;                 //< array name in file -> array name in memory
    std::unordered_map<std::string, std::string> m_objectMap;                //< object name in file -> object name in memory
    std::vector<vistle::Object::ptr> m_objectPersistenceVector;              //< stores pointers to objects so that they are not cleared from memory
@@ -124,7 +127,7 @@ struct ReadHDF5::LinkIterData {
 class ReadHDF5::ArrayToMetaArchive {
 private:
     std::vector<double> m_array;
-    unsigned m_insertIndex;
+    std::unordered_map<std::string, unsigned> * m_nvpMapPtr;
     int m_block;
     int m_timestep;
 
@@ -140,7 +143,8 @@ public:
     unsigned int get_library_version() { return 0; }
     void save_binary(const void *address, std::size_t count) {}
 
-    ArrayToMetaArchive(double * _array, int _block, int _timestep) : m_insertIndex(0), m_block(_block), m_timestep(_timestep) {
+    ArrayToMetaArchive(double * _array, std::unordered_map<std::string, unsigned> * _nvpMapPtr, int _block, int _timestep)
+        : m_nvpMapPtr(_nvpMapPtr), m_block(_block), m_timestep(_timestep) {
         m_array.assign(_array, _array + (ReadHDF5::s_numMetaMembers - HDF5Const::numExclusiveMetaMembers));
     }
 
@@ -350,8 +354,11 @@ ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(const bo
         t.value() = m_timestep;
 
     } else {
-        t.value() = m_array[m_insertIndex];
-        m_insertIndex++;
+        auto nvpMapIter = m_nvpMapPtr->find(memberName);
+
+        if (nvpMapIter != m_nvpMapPtr->end()) {
+            t.value() = m_array[nvpMapIter->second];
+        }
     }
 
     return *this;

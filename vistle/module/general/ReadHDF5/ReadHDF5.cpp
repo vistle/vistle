@@ -84,7 +84,9 @@ bool ReadHDF5::parameterChanged(const vistle::Parameter *param) {
 }
 
 // PREPARE FUNCTION
-// * handles iterating over index and loading objects from the HDF5 file
+// * handles:
+// * - constructing the nvp map
+// * - iterating over index and loading objects from the HDF5 file
 //-------------------------------------------------------------------------
 bool ReadHDF5::prepare() {
     herr_t status;
@@ -92,6 +94,12 @@ bool ReadHDF5::prepare() {
     hid_t filePropertyListId;
 
     bool unresolvedReferencesExistInComm;
+
+    sendInfo("prepare");
+    std::fstream fs;
+    fs.open ("log", std::fstream::in | std::fstream::out | std::fstream::app);
+    fs << rank() << " prepare \n";
+    fs.close();
 
     // check file validity before beginning
     if (!util_checkFile()) {
@@ -113,9 +121,14 @@ bool ReadHDF5::prepare() {
     // open dummy dataset id for read size 0 sync
     m_dummyDatasetId = H5Dopen2(fileId, HDF5Const::DummyObject::name.c_str(), H5P_DEFAULT);
 
+    // prepare data object that is passed to the functions
+    LinkIterData linkIterData(this, fileId);
+
+    // construct nvp map
+    status = H5Literate_by_name(fileId, "/file/metaTags", H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateMeta, &linkIterData, H5P_DEFAULT);
+    util_checkStatus(status);
 
     // parse index to find objects
-    LinkIterData linkIterData(this, fileId);
     status = H5Literate_by_name(fileId, "/index", H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateOrigin, &linkIterData, H5P_DEFAULT);
     util_checkStatus(status);
 
@@ -146,6 +159,47 @@ bool ReadHDF5::prepare() {
     m_objectPersistenceVector.clear();
 
     return Module::prepare();
+}
+
+// PREPARE UTILITY FUNCTION - ITERATE CALLBACK FOR META NVP TAGS
+// * constructs the metadata index to nvp map
+// * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
+//-------------------------------------------------------------------------
+herr_t ReadHDF5::prepare_iterateMeta(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
+    hid_t dataSetId;
+    hid_t dataSpaceId;
+    hid_t readId;
+    hsize_t dims[1];
+    hsize_t maxDims[1];
+
+    LinkIterData * linkIterData = (LinkIterData *) opData;
+
+    std::string groupPath = "/file/metaTags/" + std::string(name);
+    std::vector<char> nvpTag;
+
+    // obtain nvp tag
+    readId = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
+
+    dataSetId = H5Dopen2(linkIterData->fileId, groupPath.c_str(), H5P_DEFAULT);
+    dataSpaceId = H5Dget_space(dataSetId);
+    H5Sget_simple_extent_dims(dataSpaceId, dims, maxDims);
+
+    nvpTag.resize(dims[0] + 1);
+    nvpTag.back() = '\0';
+
+    H5Dread(dataSetId, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL, readId, nvpTag.data());
+
+    H5Sclose(dataSpaceId);
+    H5Dclose(dataSetId);
+    H5Pclose(readId);
+
+
+    // add to map
+    auto insertionPair = std::make_pair<std::string, unsigned>(std::string(nvpTag.data()), std::stoul(std::string(name)));
+    linkIterData->callingModule->m_metaNvpMap.insert(insertionPair);
+
+    return 0;
 }
 
 
@@ -257,7 +311,7 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
     linkIterData->callingModule->m_objectMap[std::string(name)] = returnObject->getName();
 
     // construct meta
-    ArrayToMetaArchive arrayToMetaArchive(objectMeta.data(), linkIterData->block, linkIterData->timestep);
+    ArrayToMetaArchive arrayToMetaArchive(objectMeta.data(), &linkIterData->callingModule->m_metaNvpMap, linkIterData->block, linkIterData->timestep);
     boost::serialization::serialize_adl(arrayToMetaArchive, const_cast<Meta &>(returnObject->meta()), ::boost::serialization::version< Meta >::value);
 
     // serialize object and prepare for array iteration
@@ -448,6 +502,7 @@ bool ReadHDF5::util_checkFile() {
 
     boost::filesystem::path path(fileName);
     bool isDirectory;
+    bool doesExist;
 
     // name size check
     if (fileName.size() == 0) {
@@ -460,6 +515,7 @@ bool ReadHDF5::util_checkFile() {
     // setup boost::filesystem
     try {
         isDirectory = boost::filesystem::is_directory(path);
+        doesExist = boost::filesystem::exists(path);
 
     } catch (const boost::filesystem::filesystem_error &error) {
         std::cerr << "filesystem error - directory: " << error.what() << std::endl;
@@ -475,6 +531,13 @@ bool ReadHDF5::util_checkFile() {
         return false;
     }
 
+    // check existence of file to remove error logs
+    if (!doesExist) {
+        if (m_isRootNode) {
+            sendInfo("File does not exist");
+        }
+        return false;
+    }
 
 
     // Set up file access property list with parallel I/O access

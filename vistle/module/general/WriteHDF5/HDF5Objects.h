@@ -77,6 +77,7 @@ const std::string HDF5Const::DummyObject::name = "/file/dummy";
 class MemberCounterArchive {
 private:
     unsigned m_counter;
+    std::vector<std::string> * m_nvpTagVectorPtr;
 
 public:
 
@@ -90,11 +91,12 @@ public:
     unsigned int get_library_version() { return 0; }
     void save_binary(const void *address, std::size_t count) {}
 
-    MemberCounterArchive() : m_counter(0) {}
+    MemberCounterArchive(std::vector<std::string> * _nvpTagVectorPtr = nullptr)
+        : m_counter(0), m_nvpTagVectorPtr(_nvpTagVectorPtr) {}
 
     // the & operator
     template<class T>
-    MemberCounterArchive & operator&(const T & t);
+    MemberCounterArchive & operator&(const boost::serialization::nvp<T> & t);
 
     // get functions
     unsigned getCount() { return m_counter; }
@@ -106,9 +108,15 @@ public:
 // MEMBER COUNTER - << OPERATOR: UNSPECIALIZED
 //-------------------------------------------------------------------------
 template<class T>
-MemberCounterArchive & MemberCounterArchive::operator&(T const & t) {
+MemberCounterArchive & MemberCounterArchive::operator&(const boost::serialization::nvp<T> & t) {
 
     m_counter++;
+
+    if (m_nvpTagVectorPtr != nullptr) {
+        if (t.name() != "block" && t.name() != "timestep") {
+            m_nvpTagVectorPtr->push_back(t.name());
+        }
+    }
 
     return *this;
 }

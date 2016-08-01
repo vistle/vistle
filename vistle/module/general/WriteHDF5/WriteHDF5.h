@@ -62,7 +62,6 @@ class WriteHDF5 : public vistle::Module {
    struct ShmVectorReserver;
    struct ShmVectorWriter;
 
-   class MemberCounterArchive;
    class MetaToArrayArchive;
 
    // overriden functions
@@ -91,6 +90,7 @@ class WriteHDF5 : public vistle::Module {
    std::unordered_map<std::string, bool> m_arrayMap;
    std::unordered_set<std::string> m_objectSet;
    std::vector<std::string> m_objectReferenceVector;
+   std::vector<std::string> m_metaNvpTags;
    IndexTracker m_indexTracker;
 
 public:
@@ -145,36 +145,6 @@ struct WriteHDF5::ReservationInfo {
     // serialization method for passing over mpi
     template <class Archive>
     void serialize(Archive &ar, const unsigned int version);
-};
-
-// MEMBER COUNTER ARCHIVE
-// * used to count members within ObjectMeta
-//-------------------------------------------------------------------------
-class WriteHDF5::MemberCounterArchive {
-private:
-    unsigned m_counter;
-
-public:
-
-    // Implement requirements for archive concept
-    typedef boost::mpl::bool_<false> is_loading;
-    typedef boost::mpl::bool_<true> is_saving;
-
-    template<class T>
-    void register_type(const T * = NULL) {}
-
-    unsigned int get_library_version() { return 0; }
-    void save_binary(const void *address, std::size_t count) {}
-
-    MemberCounterArchive() : m_counter(0) {}
-
-    // the & operator
-    template<class T>
-    MemberCounterArchive & operator&(const T & t);
-
-    // get functions
-    unsigned getCount() { return m_counter; }
-
 };
 
 // META TO ARRAY ARCHIVE
@@ -393,16 +363,6 @@ void WriteHDF5::ShmVectorWriter::writeDummy() {
         WriteHDF5::util_HDF5write(fileId);
     }
 
-}
-
-// MEMBER COUNTER - << OPERATOR: UNSPECIALIZED
-//-------------------------------------------------------------------------
-template<class T>
-WriteHDF5::MemberCounterArchive & WriteHDF5::MemberCounterArchive::operator&(T const & t) {
-
-    m_counter++;
-
-    return *this;
 }
 
 // META TO ARRAY - << OPERATOR: UNSPECIALIZED

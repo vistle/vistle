@@ -102,7 +102,7 @@ WriteHDF5::WriteHDF5(const std::string &shmname, const std::string &name, int mo
 
    // obtain meta member count
    PlaceHolder::ptr tempObject(new PlaceHolder("", Meta(), Object::Type::UNKNOWN));
-   MemberCounterArchive memberCounter;
+   MemberCounterArchive memberCounter(&m_metaNvpTags);
    boost::serialization::serialize_adl(memberCounter, const_cast<Meta &>(tempObject->meta()), ::boost::serialization::version< Meta >::value);
    s_numMetaMembers = memberCounter.getCount();
 }
@@ -271,6 +271,30 @@ bool WriteHDF5::prepare() {
         dataSetId = H5Dcreate2(fileId, name.c_str(), H5T_NATIVE_CHAR, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
         status = H5Dwrite(dataSetId, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL, writeId, description.data());
+        util_checkStatus(status);
+
+        H5Dclose(dataSetId);
+        H5Sclose(fileSpaceId);
+        H5Pclose(writeId);
+    }
+
+    // write meta nvp tags
+    groupId = H5Gcreate2(fileId, "/file/metaTags", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    status = H5Gclose(groupId);
+    util_checkStatus(status);
+
+    for (unsigned i = 0; i < m_metaNvpTags.size(); i++) {
+        std::string name = "/file/metaTags/" + std::to_string(i);
+        hsize_t dims[] = {m_metaNvpTags[i].size()};
+
+        // store description
+        writeId = H5Pcreate(H5P_DATASET_XFER);
+        H5Pset_dxpl_mpio(writeId, H5FD_MPIO_COLLECTIVE);
+
+        fileSpaceId = H5Screate_simple(1, dims, NULL);
+        dataSetId = H5Dcreate2(fileId, name.c_str(), H5T_NATIVE_CHAR, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+        status = H5Dwrite(dataSetId, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL, writeId, m_metaNvpTags[i].data());
         util_checkStatus(status);
 
         H5Dclose(dataSetId);
