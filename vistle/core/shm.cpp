@@ -13,7 +13,6 @@
 #include <util/valgrind.h>
 #include "messagequeue.h"
 #include "scalars.h"
-#include "celltree.h"
 #include "archives.h"
 #include "assert.h"
 
@@ -452,9 +451,6 @@ struct instantiator {
 void instantiate_shmvector() {
 
    mpl::for_each<VectorTypes>(instantiator());
-
-   typedef boost::mpl::vector<Celltree<Scalar, Index>::Node> CelltreeNodes;
-   mpl::for_each<CelltreeNodes>(instantiator());
 }
 
 } // namespace vistle
