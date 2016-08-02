@@ -356,7 +356,8 @@ ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(const bo
     } else {
         auto nvpMapIter = m_nvpMapPtr->find(memberName);
 
-        if (nvpMapIter != m_nvpMapPtr->end()) {
+        if (nvpMapIter != m_nvpMapPtr->end()
+                && nvpMapIter->second < m_array.size()) {
             t.value() = m_array[nvpMapIter->second];
         }
     }
