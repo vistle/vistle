@@ -84,6 +84,7 @@ class WriteHDF5 : public vistle::Module {
    std::vector<vistle::StringParameter *> m_portDescriptions;
    unsigned m_numPorts;
 
+   hid_t m_fileId;
    bool m_isRootNode;
    bool m_hasObject;
    bool m_doNotWrite;

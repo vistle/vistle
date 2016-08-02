@@ -166,7 +166,6 @@ void WriteHDF5::connectionAdded(const Port *from, const Port *to) {
 //-------------------------------------------------------------------------
 bool WriteHDF5::prepare() {
     herr_t status;
-    hid_t fileId;
     hid_t filePropertyListId;
     hid_t dataSetId;
     hid_t fileSpaceId;
@@ -198,46 +197,47 @@ bool WriteHDF5::prepare() {
     }
 
     // create new file
-    fileId = H5Fcreate(m_fileName->getValue().c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, filePropertyListId);
+    m_fileId = H5Fcreate(m_fileName->getValue().c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, filePropertyListId);
+    H5Pclose(filePropertyListId);
 
     // create basic vistle HDF5 Groups: index
-    groupId = H5Gcreate2(fileId, "/file", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    groupId = H5Gcreate2(m_fileId, "/file", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
     // create basic vistle HDF5 Groups: data
-    groupId = H5Gcreate2(fileId, "/object", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    groupId = H5Gcreate2(m_fileId, "/object", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
     // create basic vistle HDF5 Groups: data
-    groupId = H5Gcreate2(fileId, "/index", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    groupId = H5Gcreate2(m_fileId, "/index", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
     // create basic vistle HDF5 Groups: grid
-    groupId = H5Gcreate2(fileId, "/array", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    groupId = H5Gcreate2(m_fileId, "/array", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
     // create dummy object
     fileSpaceId = H5Screate_simple(1, HDF5Const::DummyObject::dims.data(), NULL);
-    dataSetId = H5Dcreate(fileId, HDF5Const::DummyObject::name.c_str(), HDF5Const::DummyObject::type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    dataSetId = H5Dcreate(m_fileId, HDF5Const::DummyObject::name.c_str(), HDF5Const::DummyObject::type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5Sclose(fileSpaceId);
     H5Dclose(dataSetId);
 
     // store number of ports
     const std::string numPortsName("/file/numPorts");
     fileSpaceId = H5Screate_simple(1, oneDims, NULL);
-    dataSetId = H5Dcreate(fileId, numPortsName.c_str(), H5T_NATIVE_UINT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    dataSetId = H5Dcreate(m_fileId, numPortsName.c_str(), H5T_NATIVE_UINT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5Sclose(fileSpaceId);
     H5Dclose(dataSetId);
-    util_HDF5write(m_isRootNode, numPortsName.c_str(), &m_numPorts, fileId, oneDims, H5T_NATIVE_UINT);
+    util_HDF5write(m_isRootNode, numPortsName.c_str(), &m_numPorts, m_fileId, oneDims, H5T_NATIVE_UINT);
 
     // create folders for ports in index
     for (unsigned i = 0; i < m_numPorts; i++) {
         std::string name = "/index/" + std::to_string(i);
-        groupId = H5Gcreate2(fileId, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        groupId = H5Gcreate2(m_fileId, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         status = H5Gclose(groupId);
         util_checkStatus(status);
     }
@@ -247,7 +247,7 @@ bool WriteHDF5::prepare() {
 
 
     // save port descriptions
-    groupId = H5Gcreate2(fileId, "/file/ports", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    groupId = H5Gcreate2(m_fileId, "/file/ports", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
@@ -268,7 +268,7 @@ bool WriteHDF5::prepare() {
         H5Pset_dxpl_mpio(writeId, H5FD_MPIO_COLLECTIVE);
 
         fileSpaceId = H5Screate_simple(1, dims, NULL);
-        dataSetId = H5Dcreate2(fileId, name.c_str(), H5T_NATIVE_CHAR, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        dataSetId = H5Dcreate2(m_fileId, name.c_str(), H5T_NATIVE_CHAR, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
         status = H5Dwrite(dataSetId, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL, writeId, description.data());
         util_checkStatus(status);
@@ -279,7 +279,7 @@ bool WriteHDF5::prepare() {
     }
 
     // write meta nvp tags
-    groupId = H5Gcreate2(fileId, "/file/metaTags", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    groupId = H5Gcreate2(m_fileId, "/file/metaTags", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
@@ -292,7 +292,7 @@ bool WriteHDF5::prepare() {
         H5Pset_dxpl_mpio(writeId, H5FD_MPIO_COLLECTIVE);
 
         fileSpaceId = H5Screate_simple(1, dims, NULL);
-        dataSetId = H5Dcreate2(fileId, name.c_str(), H5T_NATIVE_CHAR, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        dataSetId = H5Dcreate2(m_fileId, name.c_str(), H5T_NATIVE_CHAR, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
         status = H5Dwrite(dataSetId, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL, writeId, m_metaNvpTags[i].data());
         util_checkStatus(status);
@@ -301,12 +301,6 @@ bool WriteHDF5::prepare() {
         H5Sclose(fileSpaceId);
         H5Pclose(writeId);
     }
-
-
-    // close all open h5 entities
-    H5Pclose(filePropertyListId);
-    H5Fclose(fileId);
-
 
     return Module::prepare();
 }
@@ -317,7 +311,8 @@ bool WriteHDF5::prepare() {
 //-------------------------------------------------------------------------
 bool WriteHDF5::reduce(int timestep) {
 
-    sendInfo("reduce");
+    // close hdf5 file
+    H5Fclose(m_fileId);
 
 #ifndef HIDE_REFERENCE_WARNINGS
     bool unresolvedReferencesExistOnNode = false;
@@ -445,9 +440,6 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
 
     // open file
     herr_t status;
-    hid_t fileId;
-    hid_t filePropertyListId;
-
     hid_t groupId;
     hid_t dataSetId;
     hid_t fileSpaceId;
@@ -463,10 +455,6 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
 
     unsigned maxVectorSize;
 
-    // Set up file access property list with parallel I/O access and open
-    filePropertyListId = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(filePropertyListId, comm(), MPI_INFO_NULL);
-    fileId = H5Fopen(m_fileName->getValue().c_str(), H5F_ACC_RDWR, filePropertyListId);
 
     // reserve space for object
     for (unsigned i = 0; i < reservationInfoGatherVector.size(); i++) {
@@ -478,7 +466,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
                 m_objectSet.insert(reservationInfoGatherVector[i].name);
                 isNewObject = true;
 
-                groupId = H5Gcreate2(fileId, objectGroupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                groupId = H5Gcreate2(m_fileId, objectGroupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
                 // create metadata dataset
                 fileSpaceId = H5Screate_simple(1, metaDims, NULL);
@@ -510,7 +498,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
                             // create array dataset
                             dims[0] = reservationInfoGatherVector[i].referenceVector[j].size;
                             fileSpaceId = H5Screate_simple(1, dims, NULL);
-                            dataSetId = H5Dcreate(fileId, referencePath.c_str(), reservationInfoGatherVector[i].referenceVector[j].type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                            dataSetId = H5Dcreate(m_fileId, referencePath.c_str(), reservationInfoGatherVector[i].referenceVector[j].type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
                             H5Sclose(fileSpaceId);
                             H5Dclose(dataSetId);
                         }
@@ -519,7 +507,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
                     }
 
                     std::string linkGroupName = objectGroupName + "/" + reservationInfoGatherVector[i].referenceVector[j].nvpTag;
-                    groupId = H5Gcreate2(fileId, linkGroupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                    groupId = H5Gcreate2(m_fileId, linkGroupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
                     status = H5Lcreate_soft(referencePath.c_str(), groupId, referenceName.c_str(), H5P_DEFAULT, H5P_DEFAULT);
                     util_checkStatus(status);
@@ -543,7 +531,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
             if (m_indexTracker[currOrigin].find(currTimestep) == m_indexTracker[currOrigin].end()) {
                 m_indexTracker[currOrigin][currTimestep];
 
-                groupId = H5Gcreate2(fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
                 status = H5Gclose(groupId);
                 util_checkStatus(status);
             }
@@ -555,14 +543,14 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
             if (m_indexTracker[currOrigin][currTimestep].find(currBlock) == m_indexTracker[currOrigin][currTimestep].end()) {
                 m_indexTracker[currOrigin][currTimestep][currBlock] = 0;
 
-                groupId = H5Gcreate2(fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
                 status = H5Gclose(groupId);
                 util_checkStatus(status);
             }
 
             // create variants group
             groupName += "/" + std::to_string(m_indexTracker[currOrigin][currOrigin][currBlock]);
-            groupId = H5Gcreate2(fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             m_indexTracker[currOrigin][currTimestep][currBlock]++;
 
 
@@ -595,7 +583,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
             metaData = metaToArrayArchive.getDataPtr();
         }
 
-        util_HDF5write(m_hasObject, writeName, metaData, fileId, metaDims, H5T_NATIVE_DOUBLE);
+        util_HDF5write(m_hasObject, writeName, metaData, m_fileId, metaDims, H5T_NATIVE_DOUBLE);
 
 
         // write type info
@@ -605,7 +593,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
             typeData = &typeValue;
         }
 
-        util_HDF5write(m_hasObject, writeName, typeData, fileId, oneDims, H5T_NATIVE_INT);
+        util_HDF5write(m_hasObject, writeName, typeData, m_fileId, oneDims, H5T_NATIVE_INT);
 
     }
 
@@ -620,21 +608,16 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
             // this node has an object to be written
             m_arrayMap[archive.getVector()[i].referenceName] = true;
 
-            ShmVectorWriter shmVectorWriter(archive.getVector()[i].referenceName, fileId, comm());
+            ShmVectorWriter shmVectorWriter(archive.getVector()[i].referenceName, m_fileId, comm());
             boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorWriter>(shmVectorWriter));
         } else {
              // this node does not have an object to be written
-             ShmVectorWriter shmVectorWriter(fileId, comm());
+             ShmVectorWriter shmVectorWriter(m_fileId, comm());
              shmVectorWriter.writeDummy();
 
         }
 
     }
-
-
-    // close all open h5 entities
-    H5Pclose(filePropertyListId);
-    H5Fclose(fileId);
 
    return;
 }
