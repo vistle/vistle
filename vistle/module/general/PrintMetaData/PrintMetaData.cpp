@@ -281,6 +281,11 @@ void PrintMetaData::compute_printVerbose(vistle::Object::const_ptr data) {
 void PrintMetaData::reduce_printData() {
     std::string message;
 
+    if (!m_param_doPrintMinMax->getValue() && !m_param_doPrintTotals->getValue()) {
+        // nothing to print here
+        return;
+    }
+
     if (m_param_doPrintTotals->getValue()) {
          message = M_HORIZONTAL_RULER + "\nOBJECT METADATA:" + M_HORIZONTAL_RULER;
 
@@ -309,33 +314,64 @@ void PrintMetaData::reduce_printData() {
 
 
      // print object profile header
-     message += "\n\nObject Profile:";
-     if (m_param_doPrintMinMax->getValue()) {
-         message += " - Total, (Min/Max) ";
+     message += "\n\nObject Profile: ";
+
+     if (m_param_doPrintTotals->getValue()) {
+         message += "Total";
      }
 
+     // formatting
+     if (m_param_doPrintMinMax->getValue() && m_param_doPrintTotals->getValue()) {
+         message += ", ";
+     }
+
+     if (m_param_doPrintMinMax->getValue()) {
+         message += "(Min/Max) ";
+     }
+
+
      //print object profile
-     message += "\n   Number of Vertices: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.vertices, m_minProfile.vertices, m_maxProfile.vertices);
-     message += "\n   Number of Elements: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.elements, m_minProfile.elements, m_maxProfile.elements);
-     message += "\n   Number of Ghost Cells: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.ghostCells, m_minProfile.ghostCells, m_maxProfile.ghostCells);
-     message += "\n   Number of Blocks: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.blocks, m_minProfile.blocks, m_maxProfile.blocks);
-     message += "\n   Number of Grids: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.grids, m_minProfile.grids, m_maxProfile.grids);
-     message += "\n   Number of Normals: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.normals, m_minProfile.normals, m_maxProfile.normals);
-     message += "\n   Number of Vec 1: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.vecs[1], m_minProfile.vecs[1], m_maxProfile.vecs[1]);
-     message += "\n   Number of Vec 3: " + reduce_conditionalProfileEntryPrint(m_TotalsProfile.vecs[3], m_minProfile.vecs[3], m_maxProfile.vecs[3]);
-     message += "\n   Structured Grid Size: ("
+     message += reduce_conditionalProfileEntryPrint("\n   Number of Vertices: ", m_TotalsProfile.vertices, m_minProfile.vertices, m_maxProfile.vertices);
+     message += reduce_conditionalProfileEntryPrint("\n   Number of Elements: ", m_TotalsProfile.elements, m_minProfile.elements, m_maxProfile.elements);
+     message += reduce_conditionalProfileEntryPrint("\n   Number of Ghost Cells: ", m_TotalsProfile.ghostCells, m_minProfile.ghostCells, m_maxProfile.ghostCells);
+     message += reduce_conditionalProfileEntryPrint("\n   Number of Blocks: ", m_TotalsProfile.blocks, m_minProfile.blocks, m_maxProfile.blocks);
+     message += reduce_conditionalProfileEntryPrint("\n   Number of Grids: ", m_TotalsProfile.grids, m_minProfile.grids, m_maxProfile.grids);
+     message += reduce_conditionalProfileEntryPrint("\n   Number of Normals: ", m_TotalsProfile.normals, m_minProfile.normals, m_maxProfile.normals);
+     message += reduce_conditionalProfileEntryPrint("\n   Number of Vec 1: ", m_TotalsProfile.vecs[1], m_minProfile.vecs[1], m_maxProfile.vecs[1]);
+     message += reduce_conditionalProfileEntryPrint("\n   Number of Vec 3: ", m_TotalsProfile.vecs[3], m_minProfile.vecs[3], m_maxProfile.vecs[3]);
+
+     // print message that has been built
+     sendInfo("%s", message.c_str());
+     message.clear();
+
+     // print structured grid information
+     message += "\n   Structured Grid Size:";
+     if (m_param_doPrintTotals->getValue()) {
+         message += " ("
              + std::to_string(m_TotalsProfile.structuredGridSize[0]) + ", "
              + std::to_string(m_TotalsProfile.structuredGridSize[1]) + ", "
-             + std::to_string(m_TotalsProfile.structuredGridSize[2]) + "),  {("
+             + std::to_string(m_TotalsProfile.structuredGridSize[2]) + ")";
+         }
+
+     // formatting
+     if (m_param_doPrintMinMax->getValue() && m_param_doPrintTotals->getValue()) {
+         message += ",  ";
+     }
+
+     if (m_param_doPrintMinMax->getValue()) {
+         message += "{("
              + std::to_string(m_minProfile.structuredGridSize[0]) + ", "
              + std::to_string(m_minProfile.structuredGridSize[1]) + ", "
              + std::to_string(m_minProfile.structuredGridSize[2]) + ")/("
              + std::to_string(m_maxProfile.structuredGridSize[0]) + ", "
              + std::to_string(m_maxProfile.structuredGridSize[1]) + ", "
              + std::to_string(m_maxProfile.structuredGridSize[2]) + ")} ";
+     }
+
 
      // print uniform grid data
-     if (m_minProfile.unifMin[0] != std::numeric_limits<double>::max()) {
+     if (m_minProfile.unifMin[0] != std::numeric_limits<double>::max()
+             && m_param_doPrintMinMax->getValue()) {
          message += "\n   Uniform Grid Min/Max: ("
                  + std::to_string(m_minProfile.unifMin[0]) + ", "
                  + std::to_string(m_minProfile.unifMin[1]) + ", "
@@ -359,21 +395,31 @@ void PrintMetaData::reduce_printData() {
 
      // print message that has been built
      sendInfo("%s", message.c_str());
+
+     return;
 }
 
 // REDUCE HELPER FUNCTION - PRINT DATA
 //-------------------------------------------------------------------------
-std::string PrintMetaData::reduce_conditionalProfileEntryPrint(vistle::Index total, vistle::Index min, vistle::Index max) {
+std::string PrintMetaData::reduce_conditionalProfileEntryPrint(std::string message, vistle::Index total, vistle::Index min, vistle::Index max) {
 
     // initialize return message
-    std::string returnString = std::to_string(total) + ",  (";
+    if (m_param_doPrintTotals->getValue()) {
+        message += std::to_string(total);
+    }
 
     // append min/max info if desired
     if (m_param_doPrintMinMax->getValue()) {
-        returnString += std::to_string(min) + "/" + std::to_string(max) + ")";
+        // formatting
+        if (m_param_doPrintTotals->getValue()) {
+            message += ", ";
+        }
+
+        message += "(" + std::to_string(min) + "/" + std::to_string(max) + ")";
     }
 
-    return returnString;
+
+    return message;
 }
 
 

@@ -82,7 +82,7 @@ class PrintMetaData : public vistle::Module {
    void compute_acquireGridData(vistle::Object::const_ptr data);
    void compute_printVerbose(vistle::Object::const_ptr data);
    void reduce_printData();
-   std::string reduce_conditionalProfileEntryPrint(vistle::Index total, vistle::Index min, vistle::Index max);
+   std::string reduce_conditionalProfileEntryPrint(std::string message, vistle::Index total, vistle::Index min, vistle::Index max);
    void util_printMPIInfo(std::string printTag = "");
 
    // parameters
