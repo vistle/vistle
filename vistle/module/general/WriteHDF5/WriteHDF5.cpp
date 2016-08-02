@@ -39,7 +39,7 @@ MODULE_MAIN(WriteHDF5)
 // WRITE HDF5 STATIC MEMBER OUT OF CLASS INITIALIZATION
 //-------------------------------------------------------------------------
 unsigned WriteHDF5::s_numMetaMembers = 0;
-
+const int WriteHDF5::s_writeVersion = 0;
 const std::unordered_map<std::type_index, hid_t> WriteHDF5::s_nativeTypeMap = {
       { typeid(int), H5T_NATIVE_INT },
       { typeid(unsigned int), H5T_NATIVE_UINT },
@@ -223,6 +223,12 @@ bool WriteHDF5::prepare() {
     // create dummy object
     fileSpaceId = H5Screate_simple(1, HDF5Const::DummyObject::dims.data(), NULL);
     dataSetId = H5Dcreate(m_fileId, HDF5Const::DummyObject::name.c_str(), HDF5Const::DummyObject::type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    H5Sclose(fileSpaceId);
+    H5Dclose(dataSetId);
+
+    // create version number
+    fileSpaceId = H5Screate_simple(1, oneDims, NULL);
+    dataSetId = H5Dcreate(m_fileId, "/file/version", H5T_NATIVE_INT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5Sclose(fileSpaceId);
     H5Dclose(dataSetId);
 

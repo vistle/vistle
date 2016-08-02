@@ -93,13 +93,11 @@ bool ReadHDF5::prepare() {
     hid_t fileId;
     hid_t filePropertyListId;
 
-    bool unresolvedReferencesExistInComm;
+    hid_t dataSetId;
+    hid_t readId;
+    int fileVersion;
 
-    sendInfo("prepare");
-    std::fstream fs;
-    fs.open ("log", std::fstream::in | std::fstream::out | std::fstream::app);
-    fs << rank() << " prepare \n";
-    fs.close();
+    bool unresolvedReferencesExistInComm;
 
     // check file validity before beginning
     if (!util_checkFile()) {
@@ -120,6 +118,21 @@ bool ReadHDF5::prepare() {
 
     // open dummy dataset id for read size 0 sync
     m_dummyDatasetId = H5Dopen2(fileId, HDF5Const::DummyObject::name.c_str(), H5P_DEFAULT);
+
+    // read file version and print
+    readId = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
+    dataSetId = H5Dopen2(fileId, "/file/version", H5P_DEFAULT);
+
+    H5Dread(dataSetId, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, readId, &fileVersion);
+
+    H5Dclose(dataSetId);
+    H5Pclose(readId);
+
+    if (m_isRootNode) {
+        sendInfo("Reading File: %s - Vistle Version %d", m_fileName->getValue().c_str(), fileVersion);
+    }
+
 
     // prepare data object that is passed to the functions
     LinkIterData linkIterData(this, fileId);
