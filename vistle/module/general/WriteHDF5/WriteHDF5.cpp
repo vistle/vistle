@@ -161,8 +161,10 @@ void WriteHDF5::connectionAdded(const Port *from, const Port *to) {
 }
 
 // PREPARE FUNCTION
-// * creates basic groups within the HDF5 file and instantiates the dummy object used
-// * by nodes with null data for writing collectively
+// * - error checks incoming filename
+// * - creates basic groups within the HDF5 file and instantiates the dummy object used
+// *   by nodes with null data for writing collectively
+// * - writes auxiliary file metadata
 //-------------------------------------------------------------------------
 bool WriteHDF5::prepare() {
     herr_t status;
@@ -175,8 +177,8 @@ bool WriteHDF5::prepare() {
 
     m_doNotWrite = false;
 
-    // check for valid filename size
-    if (m_fileName->getValue().size() == 0) {
+    // error check incoming filename
+    if (!prepare_fileNameCheck()) {
         m_doNotWrite = true;
         return Module::prepare();
     }
@@ -185,16 +187,9 @@ bool WriteHDF5::prepare() {
     m_arrayMap.clear();
     m_objectSet.clear();
 
-
     // Set up file access property list with parallel I/O access
     filePropertyListId = H5Pcreate(H5P_FILE_ACCESS);
     H5Pset_fapl_mpio(filePropertyListId, comm(), MPI_INFO_NULL);
-
-
-    // output warning for
-    if (H5Fis_hdf5(m_fileName->getValue().c_str()) > 0 && m_isRootNode) {
-        sendInfo("File already exists: Overwriting");
-    }
 
     // create new file
     m_fileId = H5Fcreate(m_fileName->getValue().c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, filePropertyListId);
@@ -626,6 +621,57 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
     }
 
    return;
+}
+
+// PREPARE UTILITY HELPER FUNCTION - CHECK FOR VALID INPUT FILENAME
+//-------------------------------------------------------------------------
+bool WriteHDF5::prepare_fileNameCheck() {
+    std::string fileName = m_fileName->getValue();
+    boost::filesystem::path path(fileName);
+    bool isDirectory;
+    bool doesExist;
+
+    // check for valid filename size
+    if (m_fileName->getValue().size() == 0) {
+        return false;
+    }
+
+    // setup boost::filesystem
+    try {
+        isDirectory = boost::filesystem::is_directory(path);
+        doesExist = boost::filesystem::exists(path);
+
+    } catch (const boost::filesystem::filesystem_error &error) {
+        std::cerr << "filesystem error: " << error.what() << std::endl;
+        return false;
+    }
+
+
+    // make sure name isnt a directory
+    if (isDirectory) {
+        if (m_isRootNode) {
+            sendInfo("File name cannot be a directory");
+        }
+        return false;
+    }
+
+    // output warning for existing file
+    if (doesExist) {
+        if (H5Fis_hdf5(m_fileName->getValue().c_str()) > 0) {
+            if (m_isRootNode) {
+                sendInfo("HDF5 file already exists: Overwriting");
+            }
+            return true;
+        } else {
+            if (m_isRootNode) {
+                sendInfo("A non-HDF5 file already exists with this name: write aborted");
+            }
+            return false;
+        }
+    }
+
+    return true;
+
 }
 
 // GENERIC UTILITY HELPER FUNCTION - WRITE DATA TO HDF5 ABSTRACTION

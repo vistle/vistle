@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <boost/filesystem.hpp>
 #include <boost/mpl/for_each.hpp>
 #include <boost/config.hpp>
 #include <boost/type_traits/is_enum.hpp>
@@ -72,6 +73,7 @@ class WriteHDF5 : public vistle::Module {
    virtual bool reduce(int timestep) override;
 
    // private helper functions
+   bool prepare_fileNameCheck();
    void compute_writeForPort(unsigned originPortNumber);
    static void util_checkStatus(herr_t status);
    static void util_HDF5write(bool isWriter, std::string name, const void * data, hid_t fileId, hsize_t * dims, hid_t dataType);
