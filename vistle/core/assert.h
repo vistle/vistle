@@ -13,9 +13,9 @@
 #else
 #define vassert(true_expr) \
    if (!(true_expr)) { \
-      std::cerr << "assertion failure: " << __FILE__ << ":" << __LINE__ << ": " << #true_expr << std::endl; \
       std::stringstream str; \
       str << __FILE__ << ":" << __LINE__ << ": assertion failure: " << #true_expr; \
+      std::cerr << str.str() << std::endl << std::flush; \
       vistle::attach_debugger(); \
       throw(vistle::except::assertion_failure(str.str())); \
    }

@@ -44,12 +44,14 @@ std::string backtrace()
 
 bool attach_debugger() {
 
-   return true;
-
 #ifdef _WIN32
    DebugBreak();
    return true;
 #else
+   sleep(60);
+   abort();
+   return true;
+
    pid_t pid = fork();
    if (pid == -1) {
       std::cerr << "failed to fork for attaching debugger" << std::endl;
