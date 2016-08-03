@@ -2,6 +2,7 @@
 #include "assert.h"
 #include "indexed.h"
 #include "triangles.h"
+#include "structuredgridbase.h"
 #include "archives.h"
 
 #include <boost/mpl/vector.hpp>
@@ -111,6 +112,11 @@ DataBase::Mapping DataBase::guessMapping(Object::const_ptr g) const {
             if (getSize() == t->getNumVertices())
                 return Vertex;
             else if (getSize() == t->getNumElements())
+                return Element;
+        } else if (auto s = g->getInterface<StructuredGridBase>()) {
+            if (getSize() == s->getNumDivisions(0)*s->getNumDivisions(1)*s->getNumDivisions(2))
+                return Vertex;
+            else if (getSize() == s->getNumElements())
                 return Element;
         }
     }
