@@ -158,6 +158,7 @@ class V_COREEXPORT StateTracker {
 
    std::vector<message::Buffer> m_queue;
    void processQueue();
+   void cleanQueue(int moduleId);
 
  private:
    bool handlePriv(const message::AddHub &slave);

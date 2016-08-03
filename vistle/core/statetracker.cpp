@@ -517,6 +517,36 @@ void StateTracker::processQueue() {
    processing = false;
 }
 
+void StateTracker::cleanQueue(int id) {
+
+   using namespace message;
+
+   std::vector<message::Buffer> queue;
+   std::swap(m_queue, queue);
+
+   for (auto &msg: queue) {
+      if (msg.destId() == id)
+          continue;
+      switch(msg.type()) {
+      case Message::CONNECT: {
+          const auto &m = msg.as<Connect>();
+          if (m.getModuleA() == id || m.getModuleB() == id)
+              continue;
+          break;
+      }
+      case Message::DISCONNECT: {
+          const auto &m = msg.as<Disconnect>();
+          if (m.getModuleA() == id || m.getModuleB() == id)
+              continue;
+          break;
+      }
+      default:
+          break;
+      }
+      m_queue.emplace_back(msg);
+   }
+}
+
 bool StateTracker::handlePriv(const message::AddHub &slave) {
    boost::lock_guard<mutex> locker(m_slaveMutex);
    m_hubs.emplace_back(slave.id(), slave.name());
@@ -655,6 +685,8 @@ bool StateTracker::handlePriv(const message::ModuleExit &moduleExit) {
       if (it != busySet.end())
          busySet.erase(it);
    }
+
+   cleanQueue(mod);
 
    for (StateObserver *o: m_observers) {
       o->incModificationCount();

@@ -44,8 +44,9 @@ enum RoutingFlags {
 
    QueueIfUnhandled     = 0x040000,
    TriggerQueue         = 0x080000,
+   CleanQueue           = 0x100000,
 
-   OnlyRank0          = 0x100000,
+   OnlyRank0            = 0x200000,
 };
 
 class V_COREEXPORT Router {

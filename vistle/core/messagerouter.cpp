@@ -23,7 +23,7 @@ void Router::initRoutingTable() {
    rt[M::SPAWN]                 = Track|HandleOnMaster;
    rt[M::SPAWNPREPARED]         = DestLocalHub|HandleOnHub;
    rt[M::STARTED]               = Track|DestUi|DestManager|DestModules|OnlyRank0;
-   rt[M::MODULEEXIT]            = Track|DestUi|DestManager|DestModules|OnlyRank0;
+   rt[M::MODULEEXIT]            = Track|DestUi|DestManager|DestModules|OnlyRank0|CleanQueue;
    rt[M::KILL]                  = DestModules|HandleOnDest;
    rt[M::QUIT]                  = Broadcast|HandleOnMaster|HandleOnHub|HandleOnNode;
    rt[M::EXECUTE]               = Special|HandleOnMaster;
