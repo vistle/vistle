@@ -16,7 +16,7 @@ void Router::initRoutingTable() {
    rt[M::INVALID]               = 0;
    rt[M::IDENTIFY]              = Special;
    rt[M::SETID]                 = Special;
-   rt[M::ADDHUB]                = Broadcast|Track|DestUi;
+   rt[M::ADDHUB]                = Broadcast|Track|DestUi|TriggerQueue;
    rt[M::REMOVESLAVE]           = Broadcast|Track|DestUi;
    rt[M::REPLAYFINISHED]        = Special;
    rt[M::TRACE]                 = Broadcast|Track;
@@ -29,9 +29,9 @@ void Router::initRoutingTable() {
    rt[M::EXECUTE]               = Special|HandleOnMaster;
    rt[M::MODULEAVAILABLE]       = Track|DestHub|DestUi|HandleOnHub;
    rt[M::ADDPORT]               = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
-   rt[M::REMOVEPORT]            = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
+   rt[M::REMOVEPORT]            = Track|DestUi|DestManager|DestModules|OnlyRank0;
    rt[M::ADDPARAMETER]          = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
-   rt[M::REMOVEPARAMETER]       = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
+   rt[M::REMOVEPARAMETER]       = Track|DestUi|DestManager|DestModules|OnlyRank0;
    rt[M::SETPARAMETERCHOICES]   = Track|DestUi|DestModules|OnlyRank0;
    rt[M::CONNECT]               = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0;
    rt[M::DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0;

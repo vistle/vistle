@@ -122,10 +122,14 @@ class V_COREEXPORT Message {
    //! processing flags for messages of a type, composed of RoutingFlags
    unsigned long typeFlags() const;
 
-   //! message uuid - copied to related messages (i.e. responses or errors)
-   const uuid_t &uuid() const;
    //! set message uuid
    void setUuid(const uuid_t &uuid);
+   //! message uuid
+   const uuid_t &uuid() const;
+   //! set uuid of message which this message reacts to
+   void setReferrer(const uuid_t &ref);
+   //! message this message refers to
+   const uuid_t &referrer() const;
    //! message type
    Type type() const;
    //! sender ID
@@ -153,7 +157,7 @@ class V_COREEXPORT Message {
    //! set rank of destination
    void setDestRank(int r);
 
- private:
+private:
    //! message type
    Type m_type;
    //! message size
@@ -168,6 +172,8 @@ class V_COREEXPORT Message {
    int m_destRank;
    //! message uuid
    uuid_t m_uuid;
+   //! uuid of triggering message
+   uuid_t m_referrer;
   protected:
    //! broadcast to all ranks?
    bool m_broadcast;

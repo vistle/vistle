@@ -483,7 +483,7 @@ Parameter *Module::addParameterGeneric(const std::string &name, boost::shared_pt
    message::SetParameter set(m_id, name, param);
    set.setDestId(Id::ForBroadcast);
    set.setInit();
-   set.setUuid(add.uuid());
+   set.setReferrer(add.uuid());
    sendMessage(set);
 
    return param.get();
@@ -544,7 +544,7 @@ bool Module::updateParameter(const std::string &name, const Parameter *param, co
 
    message::SetParameter set(m_id, name, i->second, rt);
    if (inResponseTo) {
-      set.setUuid(inResponseTo->uuid());
+      set.setReferrer(inResponseTo->uuid());
    }
    set.setDestId(Id::ForBroadcast);
    sendMessage(set);
@@ -1277,7 +1277,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          }
          if (newport) {
             message::AddPort np(*newport);
-            np.setUuid(cp->uuid());
+            np.setReferrer(cp->uuid());
             sendMessage(np);
             const Port::PortSet &links = newport->linkedPorts();
             for (Port::PortSet::iterator it = links.begin();
@@ -1285,7 +1285,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                   ++it) {
                const Port *p = *it;
                message::AddPort linked(*p);
-               linked.setUuid(cp->uuid());
+               linked.setReferrer(cp->uuid());
                sendMessage(linked);
             }
          }
@@ -1386,7 +1386,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          bool ret = true;
 
          Busy busy;
-         busy.setUuid(exec->uuid());
+         busy.setReferrer(exec->uuid());
          busy.setDestId(Id::LocalManager);
          sendMessage(busy);
          if (exec->what() == Execute::ComputeExecute
@@ -1479,7 +1479,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             m_cache.clearOld();
          }
          message::Idle idle;
-         idle.setUuid(exec->uuid());
+         idle.setReferrer(exec->uuid());
          idle.setDestId(Id::LocalManager);
          sendMessage(idle);
 
@@ -1777,7 +1777,7 @@ bool Module::prepareWrapper(const message::Message *req) {
    m_reduced = false;
 
    message::ExecutionProgress start(message::ExecutionProgress::Start);
-   start.setUuid(req->uuid());
+   start.setReferrer(req->uuid());
    start.setDestId(Id::LocalManager);
    sendMessage(start);
 
@@ -1838,7 +1838,7 @@ bool Module::reduceWrapper(const message::Message *req) {
    }
 
    message::ExecutionProgress fin(message::ExecutionProgress::Finish);
-   fin.setUuid(req->uuid());
+   fin.setReferrer(req->uuid());
    fin.setDestId(Id::LocalManager);
    sendMessage(fin);
 

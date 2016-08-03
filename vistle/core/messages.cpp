@@ -167,7 +167,7 @@ char Ping::getCharacter() const {
 Pong::Pong(const Ping &ping)
    : Message(Message::PONG, sizeof(Pong)), character(ping.getCharacter()), module(ping.senderId()) {
 
-   setUuid(ping.uuid());
+   setReferrer(ping.uuid());
 }
 
 char Pong::getCharacter() const {
@@ -234,7 +234,7 @@ SpawnPrepared::SpawnPrepared(const Spawn &spawn)
    , m_spawnId(spawn.spawnId())
 {
 
-   setUuid(spawn.uuid());
+   setReferrer(spawn.uuid());
    COPY_STRING(name, std::string(spawn.getName()));
 }
 
@@ -1453,6 +1453,9 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
       << ", dest: " << m.destId()
       << ", rank: " << m.rank()
       << ", bcast: " << m.isBroadcast();
+
+   if (!m.referrer().is_nil())
+       s << ", ref: " << boost::lexical_cast<std::string>(m.referrer());
 
    switch (m.type()) {
       case Message::IDENTIFY: {

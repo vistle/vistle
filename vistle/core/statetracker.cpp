@@ -184,7 +184,7 @@ std::vector<message::Buffer> StateTracker::getState() const {
       if (m.initialized) {
          Started s(m.name);
          s.setSenderId(id);
-         s.setUuid(spawn.uuid());
+         s.setReferrer(spawn.uuid());
          appendMessage(state, s);
       }
 
@@ -280,6 +280,13 @@ const std::vector<AvailableModule> &StateTracker::availableModules() const {
 bool StateTracker::handle(const message::Message &msg, bool track) {
 
    using namespace vistle::message;
+
+#ifndef NDEBUG
+   if (m_alreadySeen.find(msg.uuid()) != m_alreadySeen.end()) {
+       CERR << "duplicate message: " << msg << std::endl;
+   }
+   m_alreadySeen.insert(msg.uuid());
+#endif
 
    if (m_traceId != Id::Invalid && m_traceType != Message::INVALID) {
 
@@ -484,6 +491,9 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
    } else {
       if (msg.typeFlags() & QueueIfUnhandled) {
          m_queue.emplace_back(msg);
+#ifndef NDEBUG
+         m_alreadySeen.erase(msg.uuid());
+#endif
       }
    }
 

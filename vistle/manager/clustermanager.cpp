@@ -787,13 +787,13 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
       std::swap(portFrom, portTo);
    }
    
-   m_stateTracker.handle(d);
-   if (portManager().removeConnection(modFrom, portFrom, modTo, portTo)) {
+   if (m_stateTracker.handle(d)) {
 
       if (m_stateTracker.getHub(modFrom) == Communicator::the().hubId())
          sendMessage(modFrom, d);
       if (m_stateTracker.getHub(modTo) == Communicator::the().hubId())
          sendMessage(modTo, d);
+      sendUi(d);
    } else {
 
       if (!m_messageQueue.empty()) {

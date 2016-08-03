@@ -54,6 +54,7 @@ Message::Message(const Type t, const unsigned int s)
 , m_destId(Id::NextHop)
 , m_destRank(-1)
 , m_uuid(t == Message::ANY ? boost::uuids::nil_generator()() : s_uuidGenerator())
+, m_referrer(boost::uuids::nil_generator()())
 , m_broadcast(false)
 {
 
@@ -83,6 +84,16 @@ const uuid_t &Message::uuid() const {
 void Message::setUuid(const uuid_t &uuid) {
 
    m_uuid = uuid;
+}
+
+const uuid_t &Message::referrer() const {
+
+   return m_referrer;
+}
+
+void Message::setReferrer(const uuid_t &uuid) {
+
+   m_referrer = uuid;
 }
 
 int Message::senderId() const {

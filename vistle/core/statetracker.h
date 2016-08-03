@@ -195,6 +195,8 @@ class V_COREEXPORT StateTracker {
 
    boost::shared_ptr<PortTracker> m_portTracker;
 
+   std::set<message::uuid_t> m_alreadySeen;
+
    mutex m_replyMutex;
    boost::condition_variable_any m_replyCondition;
    std::map<message::uuid_t, boost::shared_ptr<message::Buffer>> m_outstandingReplies;
