@@ -153,11 +153,13 @@ bool send(socket_t &sock, const Message &msg, const std::vector<char> *payload) 
       bool ret = asio::write(sock, buffers, ec);
       if (ec) {
           std::cerr << "message::send: error " << ec.message() << std::endl;
+          std::cerr << backtrace() << std::endl;
           ret = false;
       }
       return ret;
    } catch (std::exception &ex) {
       std::cerr << "message::send: exception: " << ex.what() << std::endl;
+      std::cerr << backtrace() << std::endl;
       return false;
    }
 }
