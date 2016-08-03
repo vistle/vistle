@@ -89,7 +89,7 @@ bool StructuredToUnstructured::compute() {
 
     // construct type list and element list
     for (Index i = 0; i < numElements; i++) {
-        unstrGridOut->tl()[i] = UnstructuredGrid::HEXAHEDRON;
+        unstrGridOut->tl()[i] = grid->isGhostCell(i) ? UnstructuredGrid::GHOST_HEXAHEDRON : UnstructuredGrid::HEXAHEDRON;
         unstrGridOut->el()[i] = i * M_NUM_CORNERS_HEXAHEDRON;
     }
 
