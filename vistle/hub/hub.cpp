@@ -275,12 +275,7 @@ bool Hub::dispatch() {
             // synthesize ModuleExit message for crashed modules
             message::ModuleExit m;
             m.setSenderId(id);
-            sendManager(m);
-            if (m_isMaster) {
-               sendSlaves(m);
-            } else {
-               sendMaster(m);
-            }
+            sendManager(m); // will be returned and forwarded to master hub
          }
       }
    }
