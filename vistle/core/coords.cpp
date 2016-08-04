@@ -26,6 +26,11 @@ bool Coords::checkImpl() const {
    return true;
 }
 
+std::pair<Vector, Vector> Coords::getBounds() const {
+
+    return getMinMax();
+}
+
 Coords::Data::Data(const Index numVertices,
       Type id, const std::string &name,
       const Meta &meta)

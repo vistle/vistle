@@ -5,13 +5,14 @@
 #include "shm.h"
 #include "object.h"
 #include "vec.h"
+#include "geometry.h"
 #include "normals.h"
 #include "shm_obj_ref.h"
 #include "export.h"
 
 namespace vistle {
 
-class V_COREEXPORT Coords: public Vec<Scalar,3> {
+class V_COREEXPORT Coords: public Vec<Scalar,3>, virtual public GeometryInterface {
    V_OBJECT(Coords);
 
  public:
@@ -20,6 +21,7 @@ class V_COREEXPORT Coords: public Vec<Scalar,3> {
    Coords(const Index numVertices,
              const Meta &meta=Meta());
 
+   std::pair<Vector, Vector> getBounds() const override;
    Index getNumCoords() const;
    Index getNumVertices() const;
    Normals::const_ptr normals() const;
