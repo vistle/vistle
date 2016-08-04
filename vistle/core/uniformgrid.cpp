@@ -27,6 +27,9 @@ void UniformGrid::refreshImpl() const {
         m_min[c] = (*d->min)[c];
         m_max[c] = (*d->max)[c];
         m_dist[c] = (m_max[c]-m_min[c])/(m_numDivisions[c]-1);
+
+        m_ghostLayers[c][0] = (*d->ghostLayers[c])[0];
+        m_ghostLayers[c][1] = (*d->ghostLayers[c])[1];
     }
 }
 
@@ -42,6 +45,11 @@ bool UniformGrid::checkImpl() const {
    V_CHECK(d()->min->size() == 3);
    V_CHECK(d()->max->size() == 3);
 
+   for (int c=0; c<3; c++) {
+       V_CHECK(d()->ghostLayers[c]->check());
+        V_CHECK(d()->ghostLayers[c]->size() == 2);
+   }
+
    return true;
 }
 
@@ -52,11 +60,42 @@ bool UniformGrid::isEmpty() const {
    return Base::isEmpty();
 }
 
+// GET FUNCTION - GHOST CELL LAYER
+//-------------------------------------------------------------------------
+Index UniformGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) {
+    unsigned layerPosition = (pos == Bottom) ? 0 : 1;
+
+    return (*d()->ghostLayers[dim])[layerPosition];
+}
+
+// GET FUNCTION - GHOST CELL LAYER CONST
+//-------------------------------------------------------------------------
+Index UniformGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const {
+    unsigned layerPosition = (pos == Bottom) ? 0 : 1;
+
+    return m_ghostLayers[dim][layerPosition];
+}
+
+// SET FUNCTION - GHOST CELL LAYER
+//-------------------------------------------------------------------------
+void UniformGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) {
+    unsigned layerPosition = (pos == Bottom) ? 0 : 1;
+
+    (*d()->ghostLayers[dim])[layerPosition] = value;
+    m_ghostLayers[dim][layerPosition] = value;
+
+    return;
+}
+
+// GET BOUNDS
+//-------------------------------------------------------------------------
 std::pair<Vector, Vector> UniformGrid::getBounds() const {
 
     return std::make_pair(Vector(m_min[0], m_min[1], m_min[2]), Vector(m_max[0], m_max[1], m_max[2]));
 }
 
+// CELL BOUNDS
+//-------------------------------------------------------------------------
 std::pair<Vector, Vector> UniformGrid::cellBounds(Index elem) const {
 
     auto n = cellCoordinates(elem, m_numDivisions);
@@ -65,6 +104,8 @@ std::pair<Vector, Vector> UniformGrid::cellBounds(Index elem) const {
     return std::make_pair(min, max);
 }
 
+// FIND CELL
+//-------------------------------------------------------------------------
 Index UniformGrid::findCell(const Vector &point, bool acceptGhost) const {
 
     for (int c=0; c<3; ++c) {
@@ -88,6 +129,8 @@ Index UniformGrid::findCell(const Vector &point, bool acceptGhost) const {
     return InvalidIndex;
 }
 
+// INSIDE CHECK
+//-------------------------------------------------------------------------
 bool UniformGrid::inside(Index elem, const Vector &point) const {
 
     for (int c=0; c<3; ++c) {
@@ -109,6 +152,8 @@ bool UniformGrid::inside(Index elem, const Vector &point) const {
     return true;
 }
 
+// GET INTERPOLATOR
+//-------------------------------------------------------------------------
 GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping, GridInterface::InterpolationMode mode) const {
 
    vassert(inside(elem, point));
@@ -195,6 +240,10 @@ UniformGrid::Data::Data(const std::string & name, Index xdim, Index ydim, Index 
     (*numDivisions)[0] = xdim;
     (*numDivisions)[1] = ydim;
     (*numDivisions)[2] = zdim;
+
+    for (int i=0; i<3; ++i) {
+        ghostLayers[i].construct(2);
+    }
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM DATA OBJECT AND NAME
@@ -209,6 +258,8 @@ UniformGrid::Data::Data(const UniformGrid::Data &o, const std::string &n)
         (*min)[i] = (*o.min)[i];
         (*max)[i] = (*o.max)[i];
         (*numDivisions)[i] = (*o.numDivisions)[i];
+
+        ghostLayers[i].construct(2);
     }
 }
 

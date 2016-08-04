@@ -26,9 +26,14 @@ public:
    // constructor
    RectilinearGrid(const Index numDivX, const Index numDivY, const Index numDivZ, const Meta &meta=Meta());
 
-   // get/set functions for metadata
+   // get functions for metadata
    Index getNumDivisions(int c) override { return d()->coords[c]->size(); }
    Index getNumDivisions(int c) const override { return m_numDivisions[c]; }
+   Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) override;
+   Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const override;
+
+   // virtual set functions
+   void setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) override;
 
    // get/set functions for shared memory members
    shm<Scalar>::array & coords(int c) { return *d()->coords[c]; }
@@ -45,11 +50,13 @@ private:
    // mutable pointers to ShmVectors
    mutable Index m_numDivisions[3];
    mutable const Scalar *m_coords[3];
+   mutable Index m_ghostLayers[3][2];
 
    // data object
    V_DATA_BEGIN(RectilinearGrid);
 
    ShmVector<Scalar> coords[3]; //< coordinates of divisions in x, y, and z
+   ShmVector<Index> ghostLayers[3]; //< number of ghost cell layers in each x, y, z directions
 
    Data(const Index numDivX, const Index numDivY, const Index numDivZ, const std::string & name, const Meta &meta=Meta());
    ~Data();

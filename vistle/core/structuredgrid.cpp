@@ -30,8 +30,14 @@ void StructuredGrid::refreshImpl() const {
     for (int c=0; c<3; ++c) {
         if (d && d->x[c].valid()) {
             m_numDivisions[c] = (*d->numDivisions)[c];
+
+            m_ghostLayers[c][0] = (*d->ghostLayers[c])[0];
+            m_ghostLayers[c][1] = (*d->ghostLayers[c])[1];
         } else {
             m_numDivisions[c] = 0;
+
+            m_ghostLayers[c][0] = 0;
+            m_ghostLayers[c][1] = 0;
         }
     }
 }
@@ -41,6 +47,11 @@ void StructuredGrid::refreshImpl() const {
 bool StructuredGrid::checkImpl() const {
 
    V_CHECK(getSize() == getNumDivisions(0)*getNumDivisions(1)*getNumDivisions(2));
+
+   for (int c=0; c<3; c++) {
+       V_CHECK(d()->ghostLayers[c]->check());
+        V_CHECK(d()->ghostLayers[c]->size() == 2);
+   }
 
    return true;
 }
@@ -52,12 +63,42 @@ bool StructuredGrid::isEmpty() const {
    return Base::isEmpty();
 }
 
+// GET FUNCTION - GHOST CELL LAYER
+//-------------------------------------------------------------------------
+Index StructuredGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) {
+    unsigned layerPosition = (pos == Bottom) ? 0 : 1;
+
+    return (*d()->ghostLayers[dim])[layerPosition];
+}
+
+// GET FUNCTION - GHOST CELL LAYER CONST
+//-------------------------------------------------------------------------
+Index StructuredGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const {
+    unsigned layerPosition = (pos == Bottom) ? 0 : 1;
+
+    return m_ghostLayers[dim][layerPosition];
+}
+
+// SET FUNCTION - GHOST CELL LAYER
+//-------------------------------------------------------------------------
+void StructuredGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) {
+    unsigned layerPosition = (pos == Bottom) ? 0 : 1;
+
+    (*d()->ghostLayers[dim])[layerPosition] = value;
+    m_ghostLayers[dim][layerPosition] = value;
+
+    return;
+}
+
+// HAS CELL TREE CHECK
+//-------------------------------------------------------------------------
 bool StructuredGrid::hasCelltree() const {
 
    return hasAttachment("celltree");
 }
 
-
+// GET FUNCTION - CELL TREE
+//-------------------------------------------------------------------------
 StructuredGrid::Celltree::const_ptr StructuredGrid::getCelltree() const {
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
@@ -71,6 +112,8 @@ StructuredGrid::Celltree::const_ptr StructuredGrid::getCelltree() const {
    return ct;
 }
 
+// VALIDATE CELL TREE CHECK
+//-------------------------------------------------------------------------
 bool StructuredGrid::validateCelltree() const {
 
    if (!hasCelltree())
@@ -81,6 +124,8 @@ bool StructuredGrid::validateCelltree() const {
    return ct->validateTree(boundFunc);
 }
 
+// CREATE CELL TREE
+//-------------------------------------------------------------------------
 void StructuredGrid::createCelltree(Index dims[3]) const {
 
    if (hasCelltree())
@@ -124,7 +169,8 @@ void StructuredGrid::createCelltree(Index dims[3]) const {
    addAttachment("celltree", ct);
 }
 
-
+// GET FUNCTION - BOUNDS
+//-------------------------------------------------------------------------
 std::pair<Vector, Vector> StructuredGrid::getBounds() const {
    if (hasCelltree()) {
       const auto &ct = getCelltree();
@@ -134,6 +180,8 @@ std::pair<Vector, Vector> StructuredGrid::getBounds() const {
    return Base::getMinMax();
 }
 
+// CELL BOUNDS
+//-------------------------------------------------------------------------
 std::pair<Vector,Vector> StructuredGrid::cellBounds(Index elem) const {
 
     const Scalar *x[3] = { &this->x()[0], &this->y()[0], &this->z()[0] };
@@ -150,6 +198,8 @@ std::pair<Vector,Vector> StructuredGrid::cellBounds(Index elem) const {
     return std::make_pair(min, max);
 }
 
+// FIND CELL
+//-------------------------------------------------------------------------
 Index StructuredGrid::findCell(const Vec::Vector &point, bool acceptGhost) const {
 
    if (hasCelltree()) {
@@ -173,6 +223,8 @@ Index StructuredGrid::findCell(const Vec::Vector &point, bool acceptGhost) const
    return InvalidIndex;
 }
 
+// INSIDE CHECK
+//-------------------------------------------------------------------------
 bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
 
     const Scalar *x = &this->x()[0];
@@ -210,6 +262,8 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
     return true;
 }
 
+// GET INTERPOLATOR
+//-------------------------------------------------------------------------
 GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Vec::Vector &point, DataBase::Mapping mapping, GridInterface::InterpolationMode mode) const {
 
    vassert(inside(elem, point));
@@ -294,6 +348,10 @@ StructuredGrid::Data::Data(const Index numVert_x, const Index numVert_y, const I
     (*numDivisions)[0] = numVert_x;
     (*numDivisions)[1] = numVert_y;
     (*numDivisions)[2] = numVert_z;
+
+    for (int i=0; i<3; ++i) {
+        ghostLayers[i].construct(2);
+    }
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM DATA OBJECT AND NAME
@@ -301,6 +359,10 @@ StructuredGrid::Data::Data(const Index numVert_x, const Index numVert_y, const I
 StructuredGrid::Data::Data(const StructuredGrid::Data &o, const std::string &n)
     : StructuredGrid::Base::Data(o, n)
     , numDivisions(o.numDivisions) {
+
+    for (int c=0; c<3; ++c) {
+        ghostLayers[c] = o.ghostLayers[c];
+    }
 }
 
 // DATA OBJECT - DESTRUCTOR

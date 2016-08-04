@@ -24,10 +24,16 @@ void RectilinearGrid::refreshImpl() const {
     for (int c=0; c<3; ++c) {
         if (d && d->coords[c].valid()) {
             m_numDivisions[c] = d->coords[c]->size();
-            m_coords[c] = (d && d->coords[c].valid()) ? d->coords[c]->data() : nullptr;
+            m_coords[c] = d->coords[c]->data();
+
+            m_ghostLayers[c][0] = (*d->ghostLayers[c])[0];
+            m_ghostLayers[c][1] = (*d->ghostLayers[c])[1];
         } else {
             m_numDivisions[c] = 0;
             m_coords[c] = nullptr;
+
+            m_ghostLayers[c][0] = 0;
+            m_ghostLayers[c][1] = 0;
         }
     }
 }
@@ -38,7 +44,10 @@ bool RectilinearGrid::checkImpl() const {
 
     for (int c=0; c<3; ++c) {
         V_CHECK(d()->coords[c]->check());
+        V_CHECK(d()->ghostLayers[c]->check());
+        V_CHECK(d()->ghostLayers[c]->size() == 2);
     }
+
 
    return true;
 }
@@ -50,12 +59,43 @@ bool RectilinearGrid::isEmpty() const {
    return (getNumDivisions(0) == 0 || getNumDivisions(1) == 0 || getNumDivisions(2) == 0);
 }
 
+// GET FUNCTION - GHOST CELL LAYER
+//-------------------------------------------------------------------------
+Index RectilinearGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) {
+    unsigned layerPosition = (pos == Bottom) ? 0 : 1;
+
+    return (*d()->ghostLayers[dim])[layerPosition];
+}
+
+// GET FUNCTION - GHOST CELL LAYER CONST
+//-------------------------------------------------------------------------
+Index RectilinearGrid::getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const {
+    unsigned layerPosition = (pos == Bottom) ? 0 : 1;
+
+    return m_ghostLayers[dim][layerPosition];
+}
+
+// SET FUNCTION - GHOST CELL LAYER
+//-------------------------------------------------------------------------
+void RectilinearGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) {
+    unsigned layerPosition = (pos == Bottom) ? 0 : 1;
+
+    (*d()->ghostLayers[dim])[layerPosition] = value;
+    m_ghostLayers[dim][layerPosition] = value;
+
+    return;
+}
+
+// GET FUNCTION - BOUNDS
+//-------------------------------------------------------------------------
 std::pair<Vector, Vector> RectilinearGrid::getBounds() const {
 
     return std::make_pair(Vector(m_coords[0][0], m_coords[1][0], m_coords[2][0]),
             Vector(m_coords[0][m_numDivisions[0]-1], m_coords[1][m_numDivisions[1]-1], m_coords[2][m_numDivisions[2]-1]));
 }
 
+// CELL BOUNDS
+//-------------------------------------------------------------------------
 std::pair<Vector, Vector> RectilinearGrid::cellBounds(Index elem) const {
     auto n = cellCoordinates(elem, m_numDivisions);
     Vector min(m_coords[0][n[0]], m_coords[1][n[1]], m_coords[2][n[2]]);
@@ -63,6 +103,8 @@ std::pair<Vector, Vector> RectilinearGrid::cellBounds(Index elem) const {
     return std::make_pair(min, max);
 }
 
+// FIND CELL
+//-------------------------------------------------------------------------
 Index RectilinearGrid::findCell(const Vector &point, bool acceptGhost) const {
 
     for (int c=0; c<3; ++c) {
@@ -88,6 +130,8 @@ Index RectilinearGrid::findCell(const Vector &point, bool acceptGhost) const {
 
 }
 
+// INSIDE CHECK
+//-------------------------------------------------------------------------
 bool RectilinearGrid::inside(Index elem, const Vector &point) const {
 
     std::array<Index,3> n = cellCoordinates(elem, m_numDivisions);
@@ -105,6 +149,8 @@ bool RectilinearGrid::inside(Index elem, const Vector &point) const {
     return true;
 }
 
+// GET INTERPOLATOR
+//-------------------------------------------------------------------------
 GridInterface::Interpolator RectilinearGrid::getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping, GridInterface::InterpolationMode mode) const {
 
    vassert(inside(elem, point));
@@ -186,6 +232,10 @@ RectilinearGrid::Data::Data(const Index numDivX, const Index numDivY, const Inde
     coords[0].construct(numDivX);
     coords[1].construct(numDivY);
     coords[2].construct(numDivZ);
+
+    for (int c=0; c<3; ++c) {
+        ghostLayers[c].construct(2);
+    }
 }
 
 // DATA OBJECT - CONSTRUCTOR FROM DATA OBJECT AND NAME
@@ -194,6 +244,7 @@ RectilinearGrid::Data::Data(const RectilinearGrid::Data &o, const std::string &n
     : RectilinearGrid::Base::Data(o, n) {
     for (int c=0; c<3; ++c) {
         coords[c] = o.coords[c];
+        ghostLayers[c].construct(2);
     }
 }
 

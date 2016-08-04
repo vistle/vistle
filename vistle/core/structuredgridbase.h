@@ -26,6 +26,11 @@ public:
    static boost::shared_ptr<const Class> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Class>(ptr); }
    static boost::shared_ptr<Class> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Class>(ptr); }
 
+   enum GhostLayerPosition {
+       Bottom,
+       Top
+   };
+
    // static inline method to obtain a cell index from (x,y,z) indices and max grid dimensions
    static inline Index vertexIndex(const Index ix, const Index iy, const Index iz, const Index dims[3]) {
        assert(ix < dims[0]);
@@ -68,13 +73,18 @@ public:
        return cl;
    }
 
-   virtual bool isGhostCell(Index elem) const override { (void)elem; return false; }
+   virtual bool isGhostCell(Index elem) const override;
 
-   // virtual get/set functions for metadata
+   // virtual get functions
    virtual Index getNumElements() { return (getNumDivisions(0)-1)*(getNumDivisions(1)-1)*(getNumDivisions(2)-1); }
    virtual Index getNumElements() const { return (getNumDivisions(0)-1)*(getNumDivisions(1)-1)*(getNumDivisions(2)-1); }
-   virtual Index getNumDivisions(int d) { return 1; }
-   virtual Index getNumDivisions(int d) const { return 1; }
+   virtual Index getNumDivisions(int d) { return 1; }           //< get number of vertices in dimension d
+   virtual Index getNumDivisions(int d) const { return 1; }     //< get number of vertices in dimension d
+   virtual Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) { return 0; }
+   virtual Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const { return 0; }
+
+   // virtual set functions
+   virtual void setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) { return; }
 };
 
 BOOST_SERIALIZATION_ASSUME_ABSTRACT(StructuredGridBase)

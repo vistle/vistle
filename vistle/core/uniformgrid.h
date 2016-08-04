@@ -26,9 +26,14 @@ public:
    // constructor
    UniformGrid(Index xdim, Index ydim, Index zdim, const Meta &meta=Meta());
 
-   // get/set functions for metadata
+   // get/set functions
    Index getNumDivisions(int c) override { return (*d()->numDivisions)[c]; }
    Index getNumDivisions(int c) const override { return m_numDivisions[c]; }
+   Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) override;
+   Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const override;
+
+   // virtual set functions
+   void setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) override;
 
    // get/set functions for shared memory members
    shm<Scalar>::array & min() { return *d()->min; }
@@ -49,6 +54,7 @@ private:
    mutable Scalar m_min[3];
    mutable Scalar m_max[3];
    mutable Scalar m_dist[3];
+   mutable Index m_ghostLayers[3][2];
 
    // data object
    V_DATA_BEGIN(UniformGrid);
@@ -57,6 +63,7 @@ private:
    ShmVector<Index> numDivisions; //< number of divisions on each axis (1 more than number of cells)
    ShmVector<Scalar> min; //< coordinates of minimum grid point
    ShmVector<Scalar> max; //< coordinates of maximum grid point
+   ShmVector<Index> ghostLayers[3]; //< number of ghost cell layers in each x, y, z directions
 
    Data(const std::string & name, Index xdim, Index ydim, Index zdim, const Meta &meta=Meta());
    ~Data();

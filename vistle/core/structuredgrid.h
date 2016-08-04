@@ -28,9 +28,14 @@ public:
    // constructor
    StructuredGrid(const Index numVert_x, const Index numVert_y, const Index numVert_z, const Meta &meta = Meta());
 
-   // get/set functions for metadata
+   // get functions for metadata
    Index getNumDivisions(int c) override { return (*d()->numDivisions)[c]; }
    Index getNumDivisions(int c) const override { return m_numDivisions[c]; }
+   Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) override;
+   Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) const override;
+
+   // virtual set functions
+   void setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) override;
 
    // GridInterface
    std::pair<Vector, Vector> getBounds() const override;
@@ -46,6 +51,7 @@ public:
 private:
    // mutable pointers to ShmVectors
    mutable Index m_numDivisions[3];
+   mutable Index m_ghostLayers[3][2];
 
    void createCelltree(Index dims[]) const;
 
@@ -53,6 +59,7 @@ private:
    V_DATA_BEGIN(StructuredGrid);
 
    ShmVector<Index> numDivisions; //< number of divisions on each axis (1 more than number of cells)
+   ShmVector<Index> ghostLayers[3]; //< number of ghost cell layers in each x, y, z directions
 
    Data(const Index numVert_x, const Index numVert_y, const Index numVert_z, const std::string & name, const Meta &meta = Meta());
    ~Data();
