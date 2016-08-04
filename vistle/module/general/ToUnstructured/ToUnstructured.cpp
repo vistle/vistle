@@ -56,6 +56,8 @@ bool ToUnstructured::compute() {
     DataBase::const_ptr data = DataBase::as(gridObj);
     if (data && data->grid()) {
         gridObj = data->grid();
+    } else {
+        data.reset();
     }
     if (UnstructuredGrid::as(gridObj)) {
         passThroughObject("data_out", input);
