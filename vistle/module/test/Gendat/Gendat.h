@@ -21,6 +21,8 @@ class Gendat: public vistle::Module {
    vistle::FloatParameter *m_dataScale[3];
    vistle::IntParameter *m_size[3];
    vistle::IntParameter *m_blocks[3];
+   vistle::IntParameter *m_ghostLayerWidth;
+
 };
 
 #endif

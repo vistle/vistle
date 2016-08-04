@@ -73,6 +73,8 @@ Gendat::Gendat(const std::string &shmname, const std::string &name, int moduleID
    m_blocks[0] = addIntParameter("blocks_x", "number of blocks in x-direction", 3);
    m_blocks[1] = addIntParameter("blocks_y", "number of blocks in y-direction", 3);
    m_blocks[2] = addIntParameter("blocks_z", "number of blocks in z-direction", 3);
+
+   m_ghostLayerWidth = addIntParameter("ghost_layers", "number of ghost layers on all sides of a grid", 0);
 }
 
 Gendat::~Gendat() {
@@ -124,13 +126,24 @@ void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mo
     }
 }
 
+void setStructuredGridGhostLayers(StructuredGridBase::ptr ptr, Index ghostWidth[3][2]) {
+    for (Index i=0; i<3; ++i) {
+            ptr->setNumGhostLayers(i, StructuredGridBase::Bottom, ghostWidth[i][0]);
+            ptr->setNumGhostLayers(i, StructuredGridBase::Top, ghostWidth[i][1]);
+    }
+}
+
 void Gendat::block(Index bx, Index by, Index bz) {
 
     Index dim[3];
     Vector dist;
+    Index maxBlocks[3];
+    Index currBlock[3] = {bx, by, bz};
+
     for (int i=0; i<3; ++i) {
         dim[i] = m_size[i]->getValue()+1;
         dist[i] = 1./m_size[i]->getValue();
+        maxBlocks[i] = m_blocks[i]->getValue();
     }
     GeoMode geoMode = (GeoMode)m_geoMode->getValue();
     Index numVert = dim[0]*dim[1]*dim[2];
@@ -186,6 +199,19 @@ void Gendat::block(Index bx, Index by, Index bz) {
         geo->z()[3] = min[0];
         geoOut = geo;
     } else {
+        // obtain dimenstions of current block while taking into consideration ghost cells
+        Index ghostWidth[3][2];
+
+        for (unsigned i = 0; i < 3; i++) {
+            ghostWidth[i][0] = (currBlock[i] == 0) ? 0 : m_ghostLayerWidth->getValue();
+            ghostWidth[i][1] = (currBlock[i] == maxBlocks[i] - 1) ? 0 : m_ghostLayerWidth->getValue();
+
+
+            dim[i] += ghostWidth[i][0] + ghostWidth[i][1];
+        }
+
+        numVert = dim[0]*dim[1]*dim[2];
+
         if (geoMode == Uniform_Grid) {
             UniformGrid::ptr u(new UniformGrid(dim[0], dim[1], dim[2]));
 
@@ -194,6 +220,8 @@ void Gendat::block(Index bx, Index by, Index bz) {
                 u->min()[i] = min[i];
                 u->max()[i] = max[i];
             }
+            setStructuredGridGhostLayers(u, ghostWidth);
+
             geoOut = u;
 
         } else if (geoMode == Rectilinear_Grid) {
@@ -205,6 +233,8 @@ void Gendat::block(Index bx, Index by, Index bz) {
                     r->coords(c)[i] = min[c]+i*dist[c];
                 }
             }
+            setStructuredGridGhostLayers(r, ghostWidth);
+
             geoOut = r;
 
         } else if (geoMode == Structured_Grid) {
@@ -223,7 +253,10 @@ void Gendat::block(Index bx, Index by, Index bz) {
                     }
                 }
             }
+            setStructuredGridGhostLayers(s, ghostWidth);
+
             geoOut = s;
+
         } else if (geoMode == Unstructured_Grid) {
             Index numElem = (dim[0]-1)*(dim[1]-1)*(dim[2]-1);
             UnstructuredGrid::ptr u(new UnstructuredGrid(numElem, numElem*8, numVert));
@@ -248,10 +281,10 @@ void Gendat::block(Index bx, Index by, Index bz) {
             Index *cl = u->cl().data();
             Index *el = u->el().data();
             unsigned char *tl = u->tl().data();
+
             for (Index ix=0; ix<nx; ++ix) {
                 for (Index iy=0; iy<ny; ++iy) {
                     for (Index iz=0; iz<nz; ++iz) {
-                        tl[elem] = UnstructuredGrid::HEXAHEDRON;
                         cl[idx++] = UniformGrid::vertexIndex(ix,   iy,   iz,   dim);       // 0       7 -------- 6
                         cl[idx++] = UniformGrid::vertexIndex(ix+1, iy,   iz,   dim);       // 1      /|         /|
                         cl[idx++] = UniformGrid::vertexIndex(ix+1, iy+1, iz,   dim);       // 2     / |        / |
@@ -260,6 +293,14 @@ void Gendat::block(Index bx, Index by, Index bz) {
                         cl[idx++] = UniformGrid::vertexIndex(ix+1, iy,   iz+1, dim);       // 5    | /        | /
                         cl[idx++] = UniformGrid::vertexIndex(ix+1, iy+1, iz+1, dim);       // 6    |/         |/
                         cl[idx++] = UniformGrid::vertexIndex(ix,   iy+1, iz+1, dim);       // 7    0----------1
+
+                        if ((ix < ghostWidth[0][0] || ix >= nx-ghostWidth[0][1])
+                                || (iy < ghostWidth[1][0] || iy >= ny-ghostWidth[1][1])
+                                || (iz < ghostWidth[2][0] || iz >= nz-ghostWidth[2][1])) {
+                            tl[elem] = UnstructuredGrid::GHOST_HEXAHEDRON;
+                        } else {
+                            tl[elem] = UnstructuredGrid::HEXAHEDRON;
+                        }
 
                         ++elem;
                         el[elem] = idx;
