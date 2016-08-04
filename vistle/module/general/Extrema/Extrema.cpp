@@ -44,8 +44,8 @@ class Extrema: public vistle::Module {
       for (int c=0; c<MaxDim; ++c) {
          gmin[c] =  std::numeric_limits<ParamVector::Scalar>::max();
          gmax[c] = -std::numeric_limits<ParamVector::Scalar>::max();
-         gminIndex[c] = -1;
-         gmaxIndex[c] = -1;
+         gminIndex[c] = InvalidIndex;
+         gmaxIndex[c] = InvalidIndex;
       }
 
       return true;
@@ -188,8 +188,24 @@ bool Extrema::compute() {
 
    if (auto str = StructuredGridBase::as(obj)) {
        auto mm = str->getBounds();
-       min = mm.first;
-       max = mm.second;
+       for (int c=0; c<3; ++c) {
+           if (mm.first[c] < min[c]) {
+               min[c] = mm.first[c];
+               minIndex[c] = InvalidIndex;
+               minBlock[c] = obj->getBlock();
+           }
+           if (mm.second[c] > max[c]) {
+               max[c] = mm.second[c];
+               maxIndex[c] = InvalidIndex;
+               maxBlock[c] = obj->getBlock();
+           }
+       }
+       min.dim = 3;
+       max.dim = 3;
+       minIndex.dim = 3;
+       maxIndex.dim = 3;
+       minBlock.dim = 3;
+       maxBlock.dim = 3;
        handled = true;
    } else {
        boost::mpl::for_each<Scalars>(Compute<1>(obj, this));
@@ -240,7 +256,7 @@ bool Extrema::compute() {
       }
    }
 
-   if (Coords::as(obj)) {
+   if (Coords::as(obj) || StructuredGridBase::as(obj)) {
       haveGeometry = true;
    }
 
