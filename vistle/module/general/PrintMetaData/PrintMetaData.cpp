@@ -185,11 +185,26 @@ void PrintMetaData::compute_acquireGridData(vistle::Object::const_ptr data) {
 
     // Structured Grids
     if (auto structured = StructuredGridBase::as(data)) {
-        for (int c=0; c<3; ++c) {
-            m_currentProfile.structuredGridSize[c] = structured->getNumDivisions(c);
+        Index totalDims[3];
+        Index nonGhostDims[3];
+
+        for (int i = 0; i < 3; i++) {
+            totalDims[i] = structured->getNumDivisions(i) - 1;
+            m_currentProfile.structuredGridSize[i] += totalDims[i];
+
+            // obtain non-ghost cells by dimension
+            nonGhostDims[i] = totalDims[i]
+                    - structured->getNumGhostLayers(i, StructuredGridBase::Top)
+                    - structured->getNumGhostLayers(i, StructuredGridBase::Bottom);
         }
 
-        m_currentProfile.elements = structured->getNumElements();
+        // calculate total ghost cell number
+        Index totalElements = totalDims[0] * totalDims[1] * totalDims[2];
+        Index nonGhostElements = nonGhostDims[0] * nonGhostDims[1] * nonGhostDims[2];
+        m_currentProfile.ghostCells += totalElements - nonGhostElements;
+
+
+        m_currentProfile.elements += structured->getNumElements();
 
         if (auto uniform = UniformGrid::as(data)) {
             //iterate and copy min/max coordinates

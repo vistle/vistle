@@ -147,6 +147,7 @@ PrintMetaData::ObjectProfile PrintMetaData::ObjectProfile::apply(const operation
       result.blocks = op(lhs.blocks, rhs.blocks);
       result.grids = op(lhs.grids, rhs.grids);
       result.normals = op(lhs.normals, rhs.normals);
+      result.ghostCells = op(lhs.ghostCells, rhs.ghostCells);
       result.elements = op(lhs.elements, rhs.elements);
       result.vertices = op(lhs.vertices, rhs.vertices);
 
