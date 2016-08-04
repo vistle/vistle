@@ -1,19 +1,19 @@
 //-------------------------------------------------------------------------
-// STRUCTURED TO UNSTRUCTURED H
-// * converts a structured grid to an unstructured grid
+// TO UNSTRUCTURED H
+// * converts a grid to an unstructured grid
 // *
 // * Sever Topan, 2016
 //-------------------------------------------------------------------------
 
 
-#include "StructuredToUnstructured.h"
+#include "ToUnstructured.h"
 
 using namespace vistle;
 
 //-------------------------------------------------------------------------
 // MACROS
 //-------------------------------------------------------------------------
-MODULE_MAIN(StructuredToUnstructured)
+MODULE_MAIN(ToUnstructured)
 
 
 //-------------------------------------------------------------------------
@@ -22,8 +22,8 @@ MODULE_MAIN(StructuredToUnstructured)
 
 // CONSTRUCTOR
 //-------------------------------------------------------------------------
-StructuredToUnstructured::StructuredToUnstructured(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("StructuredToUnstructured", shmname, name, moduleID) {
+ToUnstructured::ToUnstructured(const std::string &shmname, const std::string &name, int moduleID)
+   : Module("ToUnstructured", shmname, name, moduleID) {
 
    // create ports
    createInputPort("data_in");
@@ -42,13 +42,13 @@ StructuredToUnstructured::StructuredToUnstructured(const std::string &shmname, c
 
 // DESTRUCTOR
 //-------------------------------------------------------------------------
-StructuredToUnstructured::~StructuredToUnstructured() {
+ToUnstructured::~ToUnstructured() {
 
 }
 
 // COMPUTE FUNCTION
 //-------------------------------------------------------------------------
-bool StructuredToUnstructured::compute() {
+bool ToUnstructured::compute() {
 
     // acquire input data object
     Object::const_ptr input = accept<Object>("data_in");
@@ -151,7 +151,7 @@ bool StructuredToUnstructured::compute() {
 
 // COMPUTE HELPER FUNCTION - PROCESS UNIFORM GRID OBJECT
 //-------------------------------------------------------------------------
-void StructuredToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, UnstructuredGrid::ptr unstrGridOut,
+void ToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, UnstructuredGrid::ptr unstrGridOut,
                                                    const Cartesian3<Index> numVertices) {
     const Cartesian3<Scalar> min = Cartesian3<Scalar>(
                 obj->min()[0],
@@ -189,7 +189,7 @@ void StructuredToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, U
 
 // COMPUTE HELPER FUNCTION - PROCESS RECTILINEAR GRID OBJECT
 //-------------------------------------------------------------------------
-void StructuredToUnstructured::compute_rectilinearVecs(RectilinearGrid::const_ptr obj, UnstructuredGrid::ptr unstrGridOut,
+void ToUnstructured::compute_rectilinearVecs(RectilinearGrid::const_ptr obj, UnstructuredGrid::ptr unstrGridOut,
                                                        const Cartesian3<Index> numVertices) {
 
     const Index dim[3] = { numVertices.x, numVertices.y, numVertices.z };

@@ -1,4 +1,4 @@
-add_module(ToUnstructured StructuredToUnstructured.cpp Cartesian3.h)
+add_module(ToUnstructured ToUnstructured.cpp Cartesian3.h)
 
 use_openmp()
 

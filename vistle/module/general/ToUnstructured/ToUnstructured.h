@@ -1,12 +1,12 @@
 //-------------------------------------------------------------------------
-// STRUCTURED TO UNSTRUCTURED H
-// * converts a structured grid to an unstructured grid
+// TO UNSTRUCTURED H
+// * converts a grid to an unstructured grid
 // *
 // * Sever Topan, 2016
 //-------------------------------------------------------------------------
 
-#ifndef STRUCTURED_TO_UNSTRUCTURED_H
-#define STRUCTURED_TO_UNSTRUCTURED_H
+#ifndef TO_UNSTRUCTURED_H
+#define TO_UNSTRUCTURED_H
 
 #include <module/module.h>
 #include <core/object.h>
@@ -22,12 +22,12 @@
 //-------------------------------------------------------------------------
 // STRUCTURED TO UNSTRUCTURED CLASS DECLARATION
 //-------------------------------------------------------------------------
-class StructuredToUnstructured : public vistle::Module {
+class ToUnstructured : public vistle::Module {
  public:
 
 
-   StructuredToUnstructured(const std::string &shmname, const std::string &name, int moduleID);
-   ~StructuredToUnstructured();
+   ToUnstructured(const std::string &shmname, const std::string &name, int moduleID);
+   ~ToUnstructured();
 
  private:
    // overriden functions
@@ -45,4 +45,4 @@ class StructuredToUnstructured : public vistle::Module {
 
 
 
-#endif /* STRUCTURED_TO_UNSTRUCTURED_H */
+#endif /* TO_UNSTRUCTURED_H */
