@@ -267,6 +267,7 @@ const char * Started::getName() const {
 
 Kill::Kill(const int m)
    : Message(Message::KILL, sizeof(Kill)), module(m) {
+    assert(m >= Id::ModuleBase);
 }
 
 int Kill::getModule() const {
