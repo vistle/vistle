@@ -75,6 +75,7 @@ class WriteHDF5 : public vistle::Module {
    // private helper functions
    bool prepare_fileNameCheck();
    void compute_writeForPort(unsigned originPortNumber);
+   void util_checkId(hid_t group, const std::string &info) const;
    static void util_checkStatus(herr_t status);
    static void util_HDF5write(bool isWriter, std::string name, const void * data, hid_t fileId, hsize_t * dims, hid_t dataType);
    static void util_HDF5write(hid_t fileId);

@@ -195,23 +195,27 @@ bool WriteHDF5::prepare() {
     m_fileId = H5Fcreate(m_fileName->getValue().c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, filePropertyListId);
     H5Pclose(filePropertyListId);
 
-    // create basic vistle HDF5 Groups: index
+    // create basic vistle HDF5 Groups: meta information about this Vistle HDF5 file
     groupId = H5Gcreate2(m_fileId, "/file", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    util_checkId(groupId, "create group /file");
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
-    // create basic vistle HDF5 Groups: data
+    // create basic vistle HDF5 Groups: objects
     groupId = H5Gcreate2(m_fileId, "/object", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    util_checkId(groupId, "create group /object");
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
-    // create basic vistle HDF5 Groups: data
+    // create basic vistle HDF5 Groups: references to all the objects received on ports
     groupId = H5Gcreate2(m_fileId, "/index", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    util_checkId(groupId, "create group /index");
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
-    // create basic vistle HDF5 Groups: grid
+    // create basic vistle HDF5 Groups: array data
     groupId = H5Gcreate2(m_fileId, "/array", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    util_checkId(groupId, "create group /array");
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
@@ -239,6 +243,7 @@ bool WriteHDF5::prepare() {
     for (unsigned i = 0; i < m_numPorts; i++) {
         std::string name = "/index/" + std::to_string(i);
         groupId = H5Gcreate2(m_fileId, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        util_checkId(groupId, "create group "+name);
         status = H5Gclose(groupId);
         util_checkStatus(status);
     }
@@ -249,6 +254,7 @@ bool WriteHDF5::prepare() {
 
     // save port descriptions
     groupId = H5Gcreate2(m_fileId, "/file/ports", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    util_checkId(groupId, "create group /file/ports");
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
@@ -281,6 +287,7 @@ bool WriteHDF5::prepare() {
 
     // write meta nvp tags
     groupId = H5Gcreate2(m_fileId, "/file/metaTags", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    util_checkId(groupId, "create group /file/metaTags");
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
@@ -468,6 +475,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
                 isNewObject = true;
 
                 groupId = H5Gcreate2(m_fileId, objectGroupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                util_checkId(groupId, "create group "+objectGroupName);
 
                 // create metadata dataset
                 fileSpaceId = H5Screate_simple(1, metaDims, NULL);
@@ -509,6 +517,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
 
                     std::string linkGroupName = objectGroupName + "/" + reservationInfoGatherVector[i].referenceVector[j].nvpTag;
                     groupId = H5Gcreate2(m_fileId, linkGroupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                    util_checkId(groupId, "create group "+linkGroupName);
 
                     status = H5Lcreate_soft(referencePath.c_str(), groupId, referenceName.c_str(), H5P_DEFAULT, H5P_DEFAULT);
                     util_checkStatus(status);
@@ -533,6 +542,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
                 m_indexTracker[currOrigin][currTimestep];
 
                 groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                util_checkId(groupId, "create group "+groupName);
                 status = H5Gclose(groupId);
                 util_checkStatus(status);
             }
@@ -545,6 +555,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
                 m_indexTracker[currOrigin][currTimestep][currBlock] = 0;
 
                 groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                util_checkId(groupId, "create group "+groupName);
                 status = H5Gclose(groupId);
                 util_checkStatus(status);
             }
@@ -552,6 +563,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
             // create variants group
             groupName += "/" + std::to_string(m_indexTracker[currOrigin][currOrigin][currBlock]);
             groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            util_checkId(groupId, "create group "+groupName);
             m_indexTracker[currOrigin][currTimestep][currBlock]++;
 
 
@@ -742,4 +754,12 @@ void WriteHDF5::util_checkStatus(herr_t status) {
     }
 
     return;
+}
+
+
+void WriteHDF5::util_checkId(hid_t id, const std::string &info) const {
+
+    if (id < 0) {
+        sendInfo("Error: %s", info.c_str());
+    }
 }
