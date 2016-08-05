@@ -87,6 +87,7 @@ WriteHDF5::WriteHDF5(const std::string &shmname, const std::string &name, int mo
 
    // add module parameters
    m_fileName = addStringParameter("file_name", "Name of File that will be written to", "");
+   m_overwrite = addIntParameter("overwrite", "write even if output file exists", 0, Parameter::Boolean);
    m_portDescriptions.push_back(addStringParameter("port_description_0", "Description will appear as tooltip on read", "port 0"));
 
    // policies
@@ -178,6 +179,7 @@ bool WriteHDF5::prepare() {
     // error check incoming filename
     if (!prepare_fileNameCheck()) {
         m_doNotWrite = true;
+        m_doNotWrite = boost::mpi::all_reduce(comm(), m_doNotWrite, std::logical_and<bool>());
         return Module::prepare();
     }
 
@@ -625,8 +627,8 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
 bool WriteHDF5::prepare_fileNameCheck() {
     std::string fileName = m_fileName->getValue();
     boost::filesystem::path path(fileName);
-    bool isDirectory;
-    bool doesExist;
+    bool isDirectory = false;
+    bool doesExist = false;
 
     // check for valid filename size
     if (m_fileName->getValue().size() == 0) {
@@ -654,6 +656,12 @@ bool WriteHDF5::prepare_fileNameCheck() {
 
     // output warning for existing file
     if (doesExist) {
+        if (!m_overwrite->getValue()) {
+            if (m_isRootNode) {
+                sendInfo("file already exists: Not overwriting");
+            }
+            return false;
+        }
         if (H5Fis_hdf5(m_fileName->getValue().c_str()) > 0) {
             if (m_isRootNode) {
                 sendInfo("HDF5 file already exists: Overwriting");

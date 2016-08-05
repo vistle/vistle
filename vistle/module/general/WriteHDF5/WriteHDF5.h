@@ -83,6 +83,7 @@ class WriteHDF5 : public vistle::Module {
 
    // private member variables
    vistle::StringParameter *m_fileName;
+   vistle::IntParameter *m_overwrite;
    std::vector<vistle::StringParameter *> m_portDescriptions;
    unsigned m_numPorts;
 
