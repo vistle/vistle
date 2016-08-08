@@ -221,9 +221,9 @@ herr_t ReadHDF5::prepare_iterateMeta(hid_t callingGroupId, const char *name, con
 //-------------------------------------------------------------------------
 herr_t ReadHDF5::prepare_iterateOrigin(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
     LinkIterData * linkIterData = (LinkIterData *) opData;
-    std::string originPortName = "data" + std::string(name) + "_out";
+    std::string originPortName = "data" + std::string(name+1) + "_out";
 
-    linkIterData->origin = std::stoul(std::string(name));
+    linkIterData->origin = std::stoul(std::string(name+1));
 
     // only iterate over connected ports
     // references will be handled when needed
@@ -240,7 +240,7 @@ herr_t ReadHDF5::prepare_iterateOrigin(hid_t callingGroupId, const char *name, c
 herr_t ReadHDF5::prepare_iterateTimestep(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
     LinkIterData * linkIterData = (LinkIterData *) opData;
 
-    linkIterData->timestep = std::stoi(std::string(name));
+    linkIterData->timestep = std::stoi(std::string(name+1));
 
     H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateBlock, linkIterData, H5P_DEFAULT);
 
@@ -252,7 +252,7 @@ herr_t ReadHDF5::prepare_iterateTimestep(hid_t callingGroupId, const char *name,
 //-------------------------------------------------------------------------
 herr_t ReadHDF5::prepare_iterateBlock(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
     LinkIterData * linkIterData = (LinkIterData *) opData;
-    int blockNum = std::stoi(std::string(name));
+    int blockNum = std::stoi(std::string(name+1));
 
     // only continue for correct blocks on each node
     if (blockNum % linkIterData->callingModule->size() == linkIterData->callingModule->rank()
