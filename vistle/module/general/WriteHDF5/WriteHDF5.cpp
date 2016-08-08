@@ -561,7 +561,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
             }
 
             // create variants group
-            groupName += "/o" + std::to_string(m_indexTracker[currOrigin][currOrigin][currBlock]);
+            groupName += "/o" + std::to_string(m_indexTracker[currOrigin][currTimestep][currBlock]);
             groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             util_checkId(groupId, "create group "+groupName);
             m_indexTracker[currOrigin][currTimestep][currBlock]++;
