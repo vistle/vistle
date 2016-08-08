@@ -241,7 +241,7 @@ bool WriteHDF5::prepare() {
 
     // create folders for ports in index
     for (unsigned i = 0; i < m_numPorts; i++) {
-        std::string name = "/index/" + std::to_string(i);
+        std::string name = "/index/p" + std::to_string(i);
         groupId = H5Gcreate2(m_fileId, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         util_checkId(groupId, "create group "+name);
         status = H5Gclose(groupId);
@@ -537,7 +537,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
 
 
             // create timestep group
-            std::string groupName = "/index/" + std::to_string(currOrigin) + "/" + std::to_string(currTimestep);
+            std::string groupName = "/index/p" + std::to_string(currOrigin) + "/t" + std::to_string(currTimestep);
             if (m_indexTracker[currOrigin].find(currTimestep) == m_indexTracker[currOrigin].end()) {
                 m_indexTracker[currOrigin][currTimestep];
 
@@ -550,7 +550,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
 
 
             // create block group
-            groupName += "/" + std::to_string(currBlock);
+            groupName += "/b" + std::to_string(currBlock);
             if (m_indexTracker[currOrigin][currTimestep].find(currBlock) == m_indexTracker[currOrigin][currTimestep].end()) {
                 m_indexTracker[currOrigin][currTimestep][currBlock] = 0;
 
@@ -561,7 +561,7 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
             }
 
             // create variants group
-            groupName += "/" + std::to_string(m_indexTracker[currOrigin][currOrigin][currBlock]);
+            groupName += "/o" + std::to_string(m_indexTracker[currOrigin][currOrigin][currBlock]);
             groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             util_checkId(groupId, "create group "+groupName);
             m_indexTracker[currOrigin][currTimestep][currBlock]++;

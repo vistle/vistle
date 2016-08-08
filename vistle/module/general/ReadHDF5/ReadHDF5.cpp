@@ -405,26 +405,26 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
                 bool objectFound = false;
 
                 for (unsigned i = 0; i < linkIterData->callingModule->m_numPorts && !objectFound; i++) {
-                    originObjectName = "/index/" + std::to_string(i);
+                    originObjectName = "/index/p" + std::to_string(i);
                     originObjectExists = H5Lexists(linkIterData->fileId, originObjectName.c_str(), H5P_DEFAULT);
                     if (!util_doesExist(originObjectExists)) {
                         continue;
                     }
 
-                    originObjectName += "/" + std::to_string(linkIterData->timestep);
+                    originObjectName += "/t" + std::to_string(linkIterData->timestep);
                     originObjectExists = H5Lexists(linkIterData->fileId, originObjectName.c_str(), H5P_DEFAULT);
                     if (!util_doesExist(originObjectExists)) {
                         continue;
                     }
 
-                    originObjectName += "/" + std::to_string(linkIterData->block);
+                    originObjectName += "/b" + std::to_string(linkIterData->block);
                     originObjectExists = H5Lexists(linkIterData->fileId, originObjectName.c_str(), H5P_DEFAULT);
                     if (!util_doesExist(originObjectExists)) {
                         continue;
                     }
 
                     for (unsigned j = 0; /* exit conditions handled within */; j++) {
-                        std::string variantGroupName = originObjectName + "/" + std::to_string(j);
+                        std::string variantGroupName = originObjectName + "/o" + std::to_string(j);
                         htri_t variantGroupExists = H5Lexists(linkIterData->fileId, variantGroupName.c_str(), H5P_DEFAULT);
 
                         // exit condition
