@@ -1689,6 +1689,20 @@ static void sendTextVarArgs(const Module *self, message::SendText::TextType type
    }
    std::vector<char> text(strlen(fmt)+500);
    vsnprintf(text.data(), text.size(), fmt, args);
+   switch (type) {
+      case message::SendText::Error:
+         std::cout << "ERR:  ";
+         break;
+      case message::SendText::Warning:
+         std::cout << "WARN: ";
+         break;
+      case message::SendText::Info:
+         std::cout << "INFO: ";
+         break;
+      default:
+         break;
+   }
+   std::cout << text.data() << std::endl;
    message::SendText info(type, text.data());
    self->sendMessage(info);
 }
@@ -1703,6 +1717,7 @@ void Module::sendInfo(const char *fmt, ...) const {
 
 void Module::sendInfo(const std::string &text) const {
 
+   std::cout << "INFO: " << text << std::endl;
    message::SendText info(message::SendText::Info, text);
    sendMessage(info);
 }
@@ -1717,6 +1732,7 @@ void Module::sendWarning(const char *fmt, ...) const {
 
 void Module::sendWarning(const std::string &text) const {
 
+   std::cout << "WARN: " << text << std::endl;
    message::SendText info(message::SendText::Warning, text);
    sendMessage(info);
 }
@@ -1731,6 +1747,7 @@ void Module::sendError(const char *fmt, ...) const {
 
 void Module::sendError(const std::string &text) const {
 
+   std::cout << "ERR:  " << text << std::endl;
    message::SendText info(message::SendText::Error, text);
    sendMessage(info);
 }
@@ -1746,12 +1763,14 @@ void Module::sendError(const message::Message &msg, const char *fmt, ...) const 
    vsnprintf(text.data(), text.size(), fmt, args);
    va_end(args);
 
+   std::cout << "ERR:  " << text.data() << std::endl;
    message::SendText info(text.data(), msg);
    sendMessage(info);
 }
 
 void Module::sendError(const message::Message &msg, const std::string &text) const {
 
+   std::cout << "ERR:  " << text << std::endl;
    message::SendText info(text, msg);
    sendMessage(info);
 }
