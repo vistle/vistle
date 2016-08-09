@@ -668,22 +668,24 @@ bool WriteHDF5::prepare_fileNameCheck() {
 
     // output warning for existing file
     if (doesExist) {
-        if (!m_overwrite->getValue()) {
-            if (m_isRootNode) {
-                sendInfo("file already exists: Not overwriting");
-            }
-            return false;
-        }
-        if (H5Fis_hdf5(m_fileName->getValue().c_str()) > 0) {
-            if (m_isRootNode) {
-                sendInfo("HDF5 file already exists: Overwriting");
+        if (m_overwrite->getValue()) {
+            if (H5Fis_hdf5(m_fileName->getValue().c_str()) > 0) {
+                if (m_isRootNode) {
+                    sendInfo("A HDF5 file already exists: Overwriting");
+                }
+            } else {
+                if (m_isRootNode) {
+                    sendInfo("A non-HDF5 file already exists with this name: Overwriting");
+                }
             }
             return true;
+
         } else {
             if (m_isRootNode) {
-                sendInfo("A non-HDF5 file already exists with this name: write aborted");
+                sendInfo("A file with this name already exists: Not overwriting");
             }
             return false;
+
         }
     }
 
