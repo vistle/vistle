@@ -145,13 +145,15 @@ void WriteHDF5::connectionRemoved(const Port *from, const Port *to) {
 void WriteHDF5::connectionAdded(const Port *from, const Port *to) {
     std::string lastPortName = "data" + std::to_string(m_numPorts - 1) + "_in";
     std::string newPortName = "data" + std::to_string(m_numPorts) + "_in";
-    std::string newPortDescriptionName = "port_description_" + std::to_string(m_numPorts);
-    std::string newPortDescription = "port " + std::to_string(m_numPorts);
+    std::string newPortDescriptionName = "port_description_" + std::to_string(m_numPorts - 1);
+    std::string newPortDescription = "port " + std::to_string(m_numPorts - 1);
 
     if (from->getName() == lastPortName || to->getName() == lastPortName) {
         createInputPort(newPortName);
 
-        m_portDescriptions.push_back(addStringParameter(newPortDescriptionName.c_str(), "Description will appear as tooltip on read", newPortDescription));
+        if (m_numPorts != 1) {
+            m_portDescriptions.push_back(addStringParameter(newPortDescriptionName.c_str(), "Description will appear as tooltip on read", newPortDescription));
+        }
 
         m_numPorts++;
     }
@@ -175,6 +177,7 @@ bool WriteHDF5::prepare() {
     hsize_t oneDims[] = {1};
 
     m_doNotWrite = false;
+    m_numPorts -=1; // ignore extra port at end - it will never contain a connection
 
     // error check incoming filename
     if (!prepare_fileNameCheck()) {
@@ -321,6 +324,10 @@ bool WriteHDF5::reduce(int timestep) {
 
     // close hdf5 file
     H5Fclose(m_fileId);
+
+    //restore portnum value
+    m_numPorts += 1;
+
 
 #ifndef HIDE_REFERENCE_WARNINGS
     bool unresolvedReferencesExistOnNode = false;
