@@ -318,6 +318,19 @@ void Renderer::removeAllSentBy(int sender, const std::string &senderPort) {
       m_objectList.pop_back();
 }
 
+void Renderer::removeAllObjects() {
+   for (auto &ol: m_objectList) {
+      for (auto &ro: ol) {
+         if (ro) {
+            removeObject(ro);
+            ro.reset();
+         }
+      }
+      ol.clear();
+   }
+   m_objectList.clear();
+}
+
 bool Renderer::compute() {
    return true;
 }

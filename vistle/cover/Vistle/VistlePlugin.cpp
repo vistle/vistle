@@ -225,6 +225,7 @@ OsgRenderer::OsgRenderer(const std::string &shmname,
 
 OsgRenderer::~OsgRenderer() {
 
+   removeAllObjects();
    cover->getObjectsRoot()->removeChild(vistleRoot);
 }
 

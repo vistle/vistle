@@ -27,6 +27,7 @@ class V_RENDEREREXPORT Renderer: public Module {
    bool parameterChanged(const Parameter *p) override;
 
    int m_fastestObjectReceivePolicy;
+   void removeAllObjects();
 
  private:
    bool compute() override; // provide dummy implementation of Module::compute
