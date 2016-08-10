@@ -365,7 +365,7 @@ Object::ptr ReadCovise::readSTRSDT(const int fd, const bool skeleton) {
       std::vector<float> _x(n);
       covReadSTRSDT(fd, n, &_x[0], sx, sy, sz);
       auto x = array->x().data();
-      for (int i=0; i<n; ++i)
+      for (size_t i=0; i<n; ++i)
          x[i] = _x[i];
 
       return array;
@@ -395,7 +395,7 @@ Object::ptr ReadCovise::readSTRVDT(const int fd, const bool skeleton) {
       auto x = array->x().data();
       auto y = array->y().data();
       auto z = array->z().data();
-      for (int i=0; i<n; ++i) {
+      for (size_t i=0; i<n; ++i) {
          x[i] = _x[i];
          y[i] = _y[i];
          z[i] = _z[i];
