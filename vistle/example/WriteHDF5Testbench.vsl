@@ -12,7 +12,9 @@ setVectorParam(mPrintMetaData2, '_position', 71.0, -189.0)
 
 mWriteHDF53 = waitForSpawn(umWriteHDF53)
 setVectorParam(mWriteHDF53, '_position', -52.0, -190.0)
-setStringParam(mWriteHDF53, 'File Name', '/mnt/raid/home/hpcstopa/ayy.h5')
+setStringParam(mWriteHDF53, 'file_name', '/mnt/raid/home/hpcstopa/covisegeo.h5')
+setIntParam(mWriteHDF53, 'overwrite', 1)
+setStringParam(mWriteHDF53, 'port_description_0', 'geo')
 
-connect(mReadCovise1,'grid_out', mWriteHDF53,'data0_in')
 connect(mReadCovise1,'grid_out', mPrintMetaData2,'data_in')
+connect(mReadCovise1,'grid_out', mWriteHDF53,'data0_in')

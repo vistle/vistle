@@ -60,6 +60,9 @@ class WriteHDF5 : public vistle::Module {
    struct ReservationInfoReferenceEntry;
    struct ReservationInfo;
 
+   template<class T>
+   struct VectorConcatenator;
+
    struct ShmVectorReserver;
    struct ShmVectorWriter;
 
@@ -74,7 +77,6 @@ class WriteHDF5 : public vistle::Module {
 
    // private helper functions
    bool prepare_fileNameCheck();
-   void compute_writeForPort(unsigned originPortNumber);
    void util_checkId(hid_t group, const std::string &info) const;
    static void util_checkStatus(herr_t status);
    static void util_HDF5write(bool isWriter, std::string name, const void * data, hid_t fileId, hsize_t * dims, hid_t dataType);
@@ -141,7 +143,10 @@ struct WriteHDF5::ReservationInfo {
     int block;
     int timestep;
     unsigned origin;
-    bool isValid;
+
+    ReservationInfo() {}
+    ReservationInfo(std::string _name, int _block, int _timestep, unsigned _origin)
+        : name(_name), block(_block), timestep(_timestep), origin(_origin) {}
 
     // < overload for std::sort
     bool operator<(const ReservationInfo &other) const;
@@ -149,6 +154,17 @@ struct WriteHDF5::ReservationInfo {
     // serialization method for passing over mpi
     template <class Archive>
     void serialize(Archive &ar, const unsigned int version);
+};
+
+// VECTOR CONCATENATOR FUNCTOR
+// * used in mpi reduce call
+//-------------------------------------------------------------------------
+template<class T>
+struct WriteHDF5::VectorConcatenator {
+    std::vector<T> & operator()(std::vector<T> &vec1, const std::vector<T> &vec2) const {
+        vec1.insert(vec1.end(), vec2.begin(), vec2.end());
+        return vec1;
+    }
 };
 
 // META TO ARRAY ARCHIVE
@@ -172,7 +188,7 @@ public:
     unsigned int get_library_version() { return 0; }
     void save_binary(const void *address, std::size_t count) {}
 
-    MetaToArrayArchive() : m_insertIndex(0) { m_array.reserve(WriteHDF5::s_numMetaMembers - HDF5Const::numExclusiveMetaMembers); }
+    MetaToArrayArchive() : m_insertIndex(0) { m_array.resize(WriteHDF5::s_numMetaMembers - HDF5Const::numExclusiveMetaMembers); }
 
     // << operators
     template<class T>
@@ -259,7 +275,6 @@ template <class Archive>
 void WriteHDF5::ReservationInfo::serialize(Archive &ar, const unsigned int version) {
    ar & name;
    ar & referenceVector;
-   ar & isValid;
    ar & block;
    ar & timestep;
    ar & origin;
@@ -291,7 +306,7 @@ void WriteHDF5::ShmVectorWriter::operator()(T) {
     const vistle::ShmVector<T> &vec = vistle::Shm::the().getArrayFromName<T>(name);
 
     if (vec) {
-        long double totalWriteSize; // in bytes
+        long double totalWriteSize; // in num elements
         long double vecSize = vec->size();
         boost::mpi::all_reduce(commPtr, vecSize, totalWriteSize, std::plus<long double>());
 
@@ -313,6 +328,7 @@ void WriteHDF5::ShmVectorWriter::writeRecursive(const vistle::ShmVector<T> & vec
     } else {
         if (writeSize == 0) {
             WriteHDF5::util_HDF5write(fileId);
+
         } else {
             auto nativeTypeMapIter = WriteHDF5::s_nativeTypeMap.find(typeid(T));
             std::string writeName = "/array/" + name;
@@ -323,7 +339,6 @@ void WriteHDF5::ShmVectorWriter::writeRecursive(const vistle::ShmVector<T> & vec
             hid_t fileSpaceId;
             hid_t memSpaceId;
             hid_t writeId;
-
 
             // check wether the needed vector type is not supported within the nativeTypeMap
             assert(nativeTypeMapIter != WriteHDF5::s_nativeTypeMap.end());

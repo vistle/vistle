@@ -357,23 +357,7 @@ bool WriteHDF5::reduce(int timestep) {
     return Module::reduce(timestep);
 }
 
-// COMPUTE FUNCTION
-// * calls iterates through ports and calls compute_writePort for each of them
-//-------------------------------------------------------------------------
-bool WriteHDF5::compute() {
-
-    if (m_doNotWrite) {
-        return true;
-    }
-
-    for (unsigned originPortNumber = 0; originPortNumber < m_numPorts; originPortNumber++) {
-        compute_writeForPort(originPortNumber);
-    }
-
-    return true;
-}
-
-// COMPUTE UTILITY FUNCTION - WRITE PORT DATA
+// COMPUTE
 // * function procedure:
 // * - serailized incoming object data into a ShmArchive
 // * - transmits information regarding object data sizes to all nodes
@@ -382,71 +366,67 @@ bool WriteHDF5::compute() {
 // *   not present on the node, null data is written to a dummy object so that
 // *   the call is still made collectively
 //-------------------------------------------------------------------------
-void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
-    Object::const_ptr obj = nullptr;
-    FindObjectReferenceOArchive archive;
-    bool hasObject = false;
+bool WriteHDF5::compute() {
+    std::vector<FindObjectReferenceOArchive> objRefArchiveVector;
+    std::vector<MetaToArrayArchive> metaToArrayArchiveVector;
+    std::vector<ReservationInfo> reservationInfoVector;
+    std::vector<ReservationInfo> reservationInfoGatherVector;
+    std::vector<Object::const_ptr> objPtrVector; // for object persistence
 
+    unsigned numNodeObjects = 0;
+    unsigned numNodeArrays = 0;
 
     // ----- OBTAIN OBJECT FROM A PORT ----- //
-    std::string portName = "data" + std::to_string(originPortNumber) + "_in";
 
-    // acquire input data object
-    obj = expect<Object>(portName);
+    for (unsigned originPortNumber = 0; originPortNumber < m_numPorts; originPortNumber++) {
+        std::string portName = "data" + std::to_string(originPortNumber) + "_in";
 
-    // save if available
-    if (obj) {
-        hasObject = true;
-        obj->save(archive);
-    }
+        // acquire input data object
+        Object::const_ptr obj = expect<Object>(portName);
 
-    // check if all nodes have no object on port
-    bool doesAtLeastOnePortHaveObject;
-    boost::mpi::all_reduce(comm(), hasObject, doesAtLeastOnePortHaveObject, boost::mpi::maximum<bool>());
+        // save if available
+        if (obj) {
+            numNodeObjects++;
+            objPtrVector.push_back(obj);
 
-    // skip port if so
-    if (!doesAtLeastOnePortHaveObject) {
-        return;
+            // serialize object into archive
+            objRefArchiveVector.push_back(FindObjectReferenceOArchive());
+            obj->save(objRefArchiveVector.back());
+
+            // build meta array
+            metaToArrayArchiveVector.push_back(MetaToArrayArchive());
+            boost::serialization::serialize_adl(metaToArrayArchiveVector.back(), const_cast<Meta &>(obj->meta()), ::boost::serialization::version< Object >::value);
+
+            // fill in reservation info
+            reservationInfoVector.push_back(ReservationInfo(obj->getName(), obj->getBlock(), obj->getTimestep(), originPortNumber));
+
+            // populate reservationInfo shm vector
+            for (unsigned i = 0; i < objRefArchiveVector.back().getVector().size(); i++) {
+                if (objRefArchiveVector.back().getVector()[i].referenceType == ReferenceType::ShmVector) {
+                    ShmVectorReserver reserver(objRefArchiveVector.back().getVector()[i].referenceName, objRefArchiveVector.back().getVector()[i].nvpName, &reservationInfoVector.back());
+                    boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorReserver>(reserver));
+                    numNodeArrays++;
+
+                } else if (objRefArchiveVector.back().getVector()[i].referenceType == ReferenceType::ObjectReference) {
+                    if (objRefArchiveVector.back().getVector()[i].referenceName != FindObjectReferenceOArchive::nullObjectReferenceName) {
+                        reservationInfoVector.back().referenceVector.push_back(ReservationInfoReferenceEntry(objRefArchiveVector.back().getVector()[i].referenceName, objRefArchiveVector.back().getVector()[i].nvpName));
+
+                        // record object references for reference validity check in reduce function
+                        m_objectReferenceVector.push_back(objRefArchiveVector.back().getVector()[i].referenceName);
+                    }
+                }
+            }
+        }
+
+
     }
 
 
 
     // ----- TRANSMIT OBJECT DATA DIMENSIONS TO ALL NODES FOR RESERVATION OF FILE DATASPACE ----- //
 
-    std::vector<ReservationInfo> reservationInfoGatherVector;
-    ReservationInfo reservationInfo;
-    MetaToArrayArchive metaToArrayArchive;
-
-    if (hasObject) {
-
-        // obtain object metadata info
-        boost::serialization::serialize_adl(metaToArrayArchive, const_cast<Meta &>(obj->meta()), ::boost::serialization::version< Object >::value);
-
-        // fill i reservation info
-        reservationInfo.isValid = true;
-        reservationInfo.name = obj->getName();
-        reservationInfo.block = obj->getBlock();
-        reservationInfo.timestep = obj->getTimestep();
-        reservationInfo.origin = originPortNumber;
-
-        // populate reservationInfo shm vector
-        for (unsigned i = 0; i < archive.getVector().size(); i++) {
-            if (archive.getVector()[i].referenceType == ReferenceType::ShmVector) {
-                ShmVectorReserver reserver(archive.getVector()[i].referenceName, archive.getVector()[i].nvpName, &reservationInfo);
-                boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorReserver>(reserver));
-
-            } else if (archive.getVector()[i].referenceType == ReferenceType::ObjectReference) {
-                if (archive.getVector()[i].referenceName != FindObjectReferenceOArchive::nullObjectReferenceName)
-                    reservationInfo.referenceVector.push_back(ReservationInfoReferenceEntry(archive.getVector()[i].referenceName, archive.getVector()[i].nvpName));
-            }
-        }
-
-    } else {
-        reservationInfo.isValid = false;
-    }
-
     // transmit all reservation information
-    boost::mpi::all_gather(comm(), reservationInfo, reservationInfoGatherVector);
+    boost::mpi::all_reduce(comm(), reservationInfoVector, reservationInfoGatherVector, VectorConcatenator<ReservationInfo>());
 
     // sort for proper collective io ordering
     std::sort(reservationInfoGatherVector.begin(), reservationInfoGatherVector.end());
@@ -462,183 +442,180 @@ void WriteHDF5::compute_writeForPort(unsigned originPortNumber) {
     hsize_t oneDims[] = {1};
     hsize_t dims[] = {0};
     double * metaData = nullptr;
+    int typeValue;
     int * typeData = nullptr;
     std::string writeName;
-    int typeValue;
-
-    bool isNewObject = false;
-
-    unsigned maxVectorSize;
 
 
     // reserve space for object
     for (unsigned i = 0; i < reservationInfoGatherVector.size(); i++) {
-        if (reservationInfoGatherVector[i].isValid) {
-            std::string objectGroupName = "/object/" + reservationInfoGatherVector[i].name;
+        std::string objectGroupName = "/object/" + reservationInfoGatherVector[i].name;
 
-            // ----- create object group ----- //
-            if (m_objectSet.find(reservationInfoGatherVector[i].name) == m_objectSet.end()) {
-                m_objectSet.insert(reservationInfoGatherVector[i].name);
-                isNewObject = true;
+        // ----- create object group ----- //
+        if (m_objectSet.find(reservationInfoGatherVector[i].name) == m_objectSet.end()) {
+            m_objectSet.insert(reservationInfoGatherVector[i].name);
 
-                groupId = H5Gcreate2(m_fileId, objectGroupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                util_checkId(groupId, "create group "+objectGroupName);
+            groupId = H5Gcreate2(m_fileId, objectGroupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            util_checkId(groupId, "create group "+objectGroupName);
 
-                // create metadata dataset
-                fileSpaceId = H5Screate_simple(1, metaDims, NULL);
-                dataSetId = H5Dcreate(groupId, "meta", H5T_NATIVE_DOUBLE, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                H5Sclose(fileSpaceId);
-                H5Dclose(dataSetId);
+            // create metadata dataset
+            fileSpaceId = H5Screate_simple(1, metaDims, NULL);
+            dataSetId = H5Dcreate(groupId, "meta", H5T_NATIVE_DOUBLE, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            H5Sclose(fileSpaceId);
+            H5Dclose(dataSetId);
 
-                // create type dataset
-                fileSpaceId = H5Screate_simple(1, oneDims, NULL);
-                dataSetId = H5Dcreate(groupId, "type", H5T_NATIVE_INT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                H5Sclose(fileSpaceId);
-                H5Dclose(dataSetId);
-
-                // close group
-                status = H5Gclose(groupId);
-                util_checkStatus(status);
-
-                // handle referenceVector and shmVector links
-                for (unsigned j = 0; j < reservationInfoGatherVector[i].referenceVector.size(); j++) {
-                    std::string referenceName = reservationInfoGatherVector[i].referenceVector[j].name;;
-                    std::string referencePath;
-
-                    if (reservationInfoGatherVector[i].referenceVector[j].referenceType == ReferenceType::ShmVector) {
-                        referencePath = "/array/" + referenceName;
-
-                        if (m_arrayMap.find(referenceName) == m_arrayMap.end()) {
-                            m_arrayMap.insert({{referenceName, false}});
-
-                            // create array dataset
-                            dims[0] = reservationInfoGatherVector[i].referenceVector[j].size;
-                            fileSpaceId = H5Screate_simple(1, dims, NULL);
-                            dataSetId = H5Dcreate(m_fileId, referencePath.c_str(), reservationInfoGatherVector[i].referenceVector[j].type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                            H5Sclose(fileSpaceId);
-                            H5Dclose(dataSetId);
-                        }
-                    } else if (reservationInfoGatherVector[i].referenceVector[j].referenceType == ReferenceType::ObjectReference) {
-                        referencePath = "/object/" + referenceName;
-                    }
-
-                    std::string linkGroupName = objectGroupName + "/" + reservationInfoGatherVector[i].referenceVector[j].nvpTag;
-                    groupId = H5Gcreate2(m_fileId, linkGroupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                    util_checkId(groupId, "create group "+linkGroupName);
-
-                    status = H5Lcreate_soft(referencePath.c_str(), groupId, referenceName.c_str(), H5P_DEFAULT, H5P_DEFAULT);
-                    util_checkStatus(status);
-
-                    status = H5Gclose(groupId);
-                    util_checkStatus(status);
-                }
-            }
-
-
-
-
-            // ----- create index entry for object ----- //
-            unsigned currOrigin = reservationInfoGatherVector[i].origin;
-            int currTimestep = reservationInfoGatherVector[i].timestep;
-            int currBlock = reservationInfoGatherVector[i].block;
-
-
-            // create timestep group
-            std::string groupName = "/index/p" + std::to_string(currOrigin) + "/t" + std::to_string(currTimestep);
-            if (m_indexTracker[currOrigin].find(currTimestep) == m_indexTracker[currOrigin].end()) {
-                m_indexTracker[currOrigin][currTimestep];
-
-                groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                util_checkId(groupId, "create group "+groupName);
-                status = H5Gclose(groupId);
-                util_checkStatus(status);
-            }
-
-
-
-            // create block group
-            groupName += "/b" + std::to_string(currBlock);
-            if (m_indexTracker[currOrigin][currTimestep].find(currBlock) == m_indexTracker[currOrigin][currTimestep].end()) {
-                m_indexTracker[currOrigin][currTimestep][currBlock] = 0;
-
-                groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-                util_checkId(groupId, "create group "+groupName);
-                status = H5Gclose(groupId);
-                util_checkStatus(status);
-            }
-
-            // create variants group
-            groupName += "/o" + std::to_string(m_indexTracker[currOrigin][currTimestep][currBlock]);
-            groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            util_checkId(groupId, "create group "+groupName);
-            m_indexTracker[currOrigin][currTimestep][currBlock]++;
-
-
-            // link index entry to object
-            status = H5Lcreate_soft(objectGroupName.c_str(), groupId, reservationInfoGatherVector[i].name.c_str(), H5P_DEFAULT, H5P_DEFAULT);
-            util_checkStatus(status);
-
+            // create type dataset
+            fileSpaceId = H5Screate_simple(1, oneDims, NULL);
+            dataSetId = H5Dcreate(groupId, "type", H5T_NATIVE_INT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            H5Sclose(fileSpaceId);
+            H5Dclose(dataSetId);
 
             // close group
             status = H5Gclose(groupId);
             util_checkStatus(status);
-        }
-    }
 
-    // record object references for reference validity check in reduce function
-    for (unsigned i = 0; i < archive.getVector().size(); i++) {
-        if (archive.getVector()[i].referenceType == ReferenceType::ObjectReference) {
-            m_objectReferenceVector.push_back(archive.getVector()[i].referenceName);
+            // handle referenceVector and shmVector links
+            for (unsigned j = 0; j < reservationInfoGatherVector[i].referenceVector.size(); j++) {
+                std::string referenceName = reservationInfoGatherVector[i].referenceVector[j].name;;
+                std::string referencePath;
+
+                if (reservationInfoGatherVector[i].referenceVector[j].referenceType == ReferenceType::ShmVector) {
+                    referencePath = "/array/" + referenceName;
+
+                    if (m_arrayMap.find(referenceName) == m_arrayMap.end()) {
+                        m_arrayMap.insert({{referenceName, false}});
+
+                        // create array dataset
+                        dims[0] = reservationInfoGatherVector[i].referenceVector[j].size;
+                        fileSpaceId = H5Screate_simple(1, dims, NULL);
+                        dataSetId = H5Dcreate(m_fileId, referencePath.c_str(), reservationInfoGatherVector[i].referenceVector[j].type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                        H5Sclose(fileSpaceId);
+                        H5Dclose(dataSetId);
+                    }
+                } else if (reservationInfoGatherVector[i].referenceVector[j].referenceType == ReferenceType::ObjectReference) {
+                    referencePath = "/object/" + referenceName;
+                }
+
+                std::string linkGroupName = objectGroupName + "/" + reservationInfoGatherVector[i].referenceVector[j].nvpTag;
+                groupId = H5Gcreate2(m_fileId, linkGroupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                util_checkId(groupId, "create group "+linkGroupName);
+
+                status = H5Lcreate_soft(referencePath.c_str(), groupId, referenceName.c_str(), H5P_DEFAULT, H5P_DEFAULT);
+                util_checkStatus(status);
+
+                status = H5Gclose(groupId);
+                util_checkStatus(status);
+            }
         }
+
+
+
+
+        // ----- create index entry for object ----- //
+        unsigned currOrigin = reservationInfoGatherVector[i].origin;
+        int currTimestep = reservationInfoGatherVector[i].timestep;
+        int currBlock = reservationInfoGatherVector[i].block;
+
+
+        // create timestep group
+        std::string groupName = "/index/p" + std::to_string(currOrigin) + "/t" + std::to_string(currTimestep);
+        if (m_indexTracker[currOrigin].find(currTimestep) == m_indexTracker[currOrigin].end()) {
+            m_indexTracker[currOrigin][currTimestep];
+
+            groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            util_checkId(groupId, "create group "+groupName);
+            status = H5Gclose(groupId);
+            util_checkStatus(status);
+        }
+
+
+
+        // create block group
+        groupName += "/b" + std::to_string(currBlock);
+        if (m_indexTracker[currOrigin][currTimestep].find(currBlock) == m_indexTracker[currOrigin][currTimestep].end()) {
+            m_indexTracker[currOrigin][currTimestep][currBlock] = 0;
+
+            groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            util_checkId(groupId, "create group "+groupName);
+            status = H5Gclose(groupId);
+            util_checkStatus(status);
+        }
+
+        // create variants group
+        groupName += "/o" + std::to_string(m_indexTracker[currOrigin][currTimestep][currBlock]);
+        groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        util_checkId(groupId, "create group "+groupName);
+        m_indexTracker[currOrigin][currTimestep][currBlock]++;
+
+
+        // link index entry to object
+        status = H5Lcreate_soft(objectGroupName.c_str(), groupId, reservationInfoGatherVector[i].name.c_str(), H5P_DEFAULT, H5P_DEFAULT);
+        util_checkStatus(status);
+
+
+        // close group
+        status = H5Gclose(groupId);
+        util_checkStatus(status);
     }
 
 
     // ----- WRITE DATA TO THE HDF5 FILE ----- //
 
+    // reduce object number size information for collective calls
+    unsigned maxNumCommObjects;
+    boost::mpi::all_reduce(comm(), numNodeObjects, maxNumCommObjects, boost::mpi::maximum<unsigned>());
 
     // write meta info
-    if (isNewObject) {
-        if (hasObject) {
-            writeName = "/object/" + obj->getName() + "/meta";
-            metaData = metaToArrayArchive.getDataPtr();
+    for (unsigned i = 0; i < maxNumCommObjects; i++) {
+        bool nodeHasObject = (numNodeObjects > i);
+
+        if (nodeHasObject) {
+            writeName = "/object/" + reservationInfoVector[i].name + "/meta";
+            metaData = metaToArrayArchiveVector[i].getDataPtr();
         }
 
-        util_HDF5write(hasObject, writeName, metaData, m_fileId, metaDims, H5T_NATIVE_DOUBLE);
-
+        util_HDF5write(nodeHasObject, writeName, metaData, m_fileId, metaDims, H5T_NATIVE_DOUBLE);
 
         // write type info
-        if (hasObject) {
-            writeName = "/object/" + obj->getName() + "/type";
-            typeValue = obj->getType();
+        if (nodeHasObject) {
+            writeName = "/object/" + reservationInfoVector[i].name + "/type";
+            typeValue = objPtrVector[i]->getType();
             typeData = &typeValue;
         }
 
-        util_HDF5write(hasObject, writeName, typeData, m_fileId, oneDims, H5T_NATIVE_INT);
+        util_HDF5write(nodeHasObject, writeName, typeData, m_fileId, oneDims, H5T_NATIVE_INT);
     }
 
     // reduce vector size information for collective calls
-    boost::mpi::all_reduce(comm(), (unsigned) archive.getVector().size(), maxVectorSize, boost::mpi::maximum<unsigned>());
+    unsigned maxNumCommArrays;
+    boost::mpi::all_reduce(comm(), numNodeArrays, maxNumCommArrays, boost::mpi::maximum<unsigned>());
 
-    // write array info
-    for (unsigned i = 0; i < maxVectorSize; i++) {
-        if (archive.getVector().size() > i
-                && archive.getVector()[i].referenceType == ReferenceType::ShmVector
-                && m_arrayMap[archive.getVector()[i].referenceName] == false) {
-            // this node has an object to be written
-            m_arrayMap[archive.getVector()[i].referenceName] = true;
+    unsigned numArraysWritten = 0;
 
-            ShmVectorWriter shmVectorWriter(archive.getVector()[i].referenceName, m_fileId, comm());
-            boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorWriter>(shmVectorWriter));
-        } else {
-             // this node does not have an object to be written
-             ShmVectorWriter shmVectorWriter(m_fileId, comm());
-             shmVectorWriter.writeDummy();
+    // write neccessary arrays
+    for (unsigned i = 0; i < objRefArchiveVector.size(); i++) {
+        for (unsigned j = 0; j < objRefArchiveVector[i].getVector().size(); j++) {
+            if (objRefArchiveVector[i].getVector()[j].referenceType == ReferenceType::ShmVector
+                    && m_arrayMap[objRefArchiveVector[i].getVector()[j].referenceName] == false) {
+                // this is an array to be written
+                m_arrayMap[objRefArchiveVector[i].getVector()[j].referenceName] = true;
 
+                ShmVectorWriter shmVectorWriter(objRefArchiveVector[i].getVector()[j].referenceName, m_fileId, comm());
+                boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorWriter>(shmVectorWriter));
+
+                numArraysWritten++;
+            }
         }
-
     }
 
-   return;
+    // pad the rest of the collective calls with dummy writes
+    while (numArraysWritten < maxNumCommArrays) {
+        ShmVectorWriter shmVectorWriter(m_fileId, comm());
+        shmVectorWriter.writeDummy();
+        numArraysWritten++;
+    }
+
+   return true;
 }
 
 // PREPARE UTILITY HELPER FUNCTION - CHECK FOR VALID INPUT FILENAME
