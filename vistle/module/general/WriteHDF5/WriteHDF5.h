@@ -57,8 +57,9 @@ class WriteHDF5 : public vistle::Module {
    typedef std::vector<std::unordered_map<int, std::unordered_map<int, unsigned>>> IndexTracker;
 
    // structs/functors
-   struct ReservationInfoReferenceEntry;
-   struct ReservationInfo;
+   struct ObjectWriteInfoReferenceEntry;
+   struct ObjectWriteInfo;
+   struct IndexWriteInfo;
 
    template<class T>
    struct VectorConcatenator;
@@ -77,6 +78,12 @@ class WriteHDF5 : public vistle::Module {
 
    // private helper functions
    bool prepare_fileNameCheck();
+   void compute_addObjectToWrite(vistle::Object::const_ptr obj, unsigned originPortNumber, unsigned &numNodeObjects, unsigned &numNodeArrays,
+                                 std::vector<vistle::Object::const_ptr> &objPtrVector,
+                                 std::vector<vistle::FindObjectReferenceOArchive> &objRefArchiveVector,
+                                 std::vector<MetaToArrayArchive> &metaToArrayArchiveVector,
+                                 std::vector<ObjectWriteInfo> &objectWriteVector,
+                                 std::vector<IndexWriteInfo> &indexWriteVector);
    void util_checkId(hid_t group, const std::string &info) const;
    static void util_checkStatus(herr_t status);
    static void util_HDF5write(bool isWriter, std::string name, const void * data, hid_t fileId, hsize_t * dims, hid_t dataType);
@@ -93,9 +100,9 @@ class WriteHDF5 : public vistle::Module {
    hid_t m_fileId;
    bool m_isRootNode;
    bool m_doNotWrite;
-   std::unordered_map<std::string, bool> m_arrayMap;
-   std::unordered_set<std::string> m_objectSet;
-   std::vector<std::string> m_objectReferenceVector;
+   bool m_unresolvedReferencesExist;
+   std::unordered_map<std::string, bool> m_arrayMap;    //< existence determines wether space has been allocated in file, bool describes wether array has actually been written
+   std::unordered_set<std::string> m_objectSet;         //< existence determines wether entry has been written yet
    std::vector<std::string> m_metaNvpTags;
    IndexTracker m_indexTracker;
 
@@ -113,7 +120,7 @@ public:
 // RESERVATION INFO SHM ENTRY STRUCT
 // * stores ShmVector data needed for reservation of space within the HDF5 file
 //-------------------------------------------------------------------------
-struct WriteHDF5::ReservationInfoReferenceEntry {
+struct WriteHDF5::ObjectWriteInfoReferenceEntry {
     typedef vistle::FindObjectReferenceOArchive::ReferenceType ReferenceType;
 
     std::string name;
@@ -123,10 +130,10 @@ struct WriteHDF5::ReservationInfoReferenceEntry {
     unsigned size;
 
 
-    ReservationInfoReferenceEntry() {}
-    ReservationInfoReferenceEntry(std::string _name, std::string _nvpTag, hid_t _type, unsigned _size)
+    ObjectWriteInfoReferenceEntry() {}
+    ObjectWriteInfoReferenceEntry(std::string _name, std::string _nvpTag, hid_t _type, unsigned _size)
         : name(_name), nvpTag(_nvpTag), referenceType(ReferenceType::ShmVector), type(_type), size(_size) {}
-    ReservationInfoReferenceEntry(std::string _name, std::string _nvpTag)
+    ObjectWriteInfoReferenceEntry(std::string _name, std::string _nvpTag)
         : name(_name), nvpTag(_nvpTag), referenceType(ReferenceType::ObjectReference) {}
 
     // serialization method for passing over mpi
@@ -134,27 +141,47 @@ struct WriteHDF5::ReservationInfoReferenceEntry {
     void serialize(Archive &ar, const unsigned int version);
 };
 
-// RESERVATION INFO STRUCT
+// OBJECT WRITE RESERVATION INFO STRUCT
 // * stores data needed for reservation of space within the HDF5 file
 //-------------------------------------------------------------------------
-struct WriteHDF5::ReservationInfo {
+struct WriteHDF5::ObjectWriteInfo {
     std::string name;
-    std::vector<WriteHDF5::ReservationInfoReferenceEntry> referenceVector;
-    int block;
-    int timestep;
-    unsigned origin;
+    std::vector<WriteHDF5::ObjectWriteInfoReferenceEntry> referenceVector;
 
-    ReservationInfo() {}
-    ReservationInfo(std::string _name, int _block, int _timestep, unsigned _origin)
-        : name(_name), block(_block), timestep(_timestep), origin(_origin) {}
+    ObjectWriteInfo() {}
+    ObjectWriteInfo(std::string _name)
+        : name(_name) {}
 
     // < overload for std::sort
-    bool operator<(const ReservationInfo &other) const;
+    bool operator<(const ObjectWriteInfo &other) const;
 
     // serialization method for passing over mpi
     template <class Archive>
     void serialize(Archive &ar, const unsigned int version);
 };
+
+// INDEX WRITERESERVATION INFO STRUCT
+// * stores data needed for creation of index within the HDF5 file
+//-------------------------------------------------------------------------
+struct WriteHDF5::IndexWriteInfo {
+    std::string name;
+    int block;
+    int timestep;
+    unsigned origin;
+
+    IndexWriteInfo() {}
+    IndexWriteInfo(std::string _name, int _block, int _timestep, unsigned _origin)
+        : name(_name), block(_block), timestep(_timestep), origin(_origin) {}
+
+    // < overload for std::sort
+    bool operator<(const IndexWriteInfo &other) const;
+
+    // serialization method for passing over mpi
+    template <class Archive>
+    void serialize(Archive &ar, const unsigned int version);
+};
+
+
 
 // VECTOR CONCATENATOR FUNCTOR
 // * used in mpi reduce call
@@ -188,7 +215,7 @@ public:
     unsigned int get_library_version() { return 0; }
     void save_binary(const void *address, std::size_t count) {}
 
-    MetaToArrayArchive() : m_insertIndex(0) { m_array.resize(WriteHDF5::s_numMetaMembers - HDF5Const::numExclusiveMetaMembers); }
+    MetaToArrayArchive() : m_insertIndex(0) { m_array.resize(WriteHDF5::s_numMetaMembers); }
 
     // << operators
     template<class T>
@@ -205,16 +232,16 @@ public:
 };
 
 // SHM VECTOR RESERVER FUNCTOR
-// * used to construct ReservationInfoReferenceEntry entries within the shmVectors
-// * member of ReservationInfo
+// * used to construct ObjectWriteInfoReferenceEntry entries within the shmVectors
+// * member of ObjectWriteInfo
 // * needed in order to iterate over all possible shm VectorTypes
 //-------------------------------------------------------------------------
 struct WriteHDF5::ShmVectorReserver {
     std::string name;
     std::string nvpTag;
-    WriteHDF5::ReservationInfo * reservationInfo;
+    WriteHDF5::ObjectWriteInfo * reservationInfo;
 
-    ShmVectorReserver(std::string _name, std::string _nvpTag, WriteHDF5::ReservationInfo * _reservationInfo)
+    ShmVectorReserver(std::string _name, std::string _nvpTag, WriteHDF5::ObjectWriteInfo * _reservationInfo)
         : name(_name), nvpTag(_nvpTag), reservationInfo(_reservationInfo) {}
 
     template<typename T>
@@ -253,7 +280,7 @@ struct WriteHDF5::ShmVectorWriter {
 // * needed for passing struct over mpi
 //-------------------------------------------------------------------------
 template <class Archive>
-void WriteHDF5::ReservationInfoReferenceEntry::serialize(Archive &ar, const unsigned int version) {
+void WriteHDF5::ObjectWriteInfoReferenceEntry::serialize(Archive &ar, const unsigned int version) {
    ar & name;
    ar & nvpTag;
    ar & referenceType;
@@ -261,27 +288,42 @@ void WriteHDF5::ReservationInfoReferenceEntry::serialize(Archive &ar, const unsi
    ar & size;
 }
 
-// RESERVATION INFO - < OPERATOR
-// * needed for std::sort of ReservationInfo
+// OBJECT WRITE RESERVATION INFO - < OPERATOR
+// * needed for std::sort of ObjectWriteInfo
 //-------------------------------------------------------------------------
-bool WriteHDF5::ReservationInfo::operator<(const ReservationInfo &other) const {
+bool WriteHDF5::ObjectWriteInfo::operator<(const ObjectWriteInfo &other) const {
     return (name < other.name);
 }
 
-// RESERVATION INFO - SERIALIZE
+// INDEX WRITE RESERVATION INFO - < OPERATOR
+// * needed for std::sort of IndexWriteInfo
+//-------------------------------------------------------------------------
+bool WriteHDF5::IndexWriteInfo::operator<(const IndexWriteInfo &other) const {
+    return (name < other.name);
+}
+
+// OBJECT WRITE RESERVATION INFO - SERIALIZE
 // * needed for passing struct over mpi
 //-------------------------------------------------------------------------
 template <class Archive>
-void WriteHDF5::ReservationInfo::serialize(Archive &ar, const unsigned int version) {
+void WriteHDF5::ObjectWriteInfo::serialize(Archive &ar, const unsigned int version) {
    ar & name;
    ar & referenceVector;
+}
+
+// INDEX WRITE RESERVATION INFO - SERIALIZE
+// * needed for passing struct over mpi
+//-------------------------------------------------------------------------
+template <class Archive>
+void WriteHDF5::IndexWriteInfo::serialize(Archive &ar, const unsigned int version) {
+   ar & name;
    ar & block;
    ar & timestep;
    ar & origin;
 }
 
 // SHM VECTOR RESERVER - () OPERATOR
-// * manifests construction of ReservationInfoReferenceEntry entries when GetArrayFromName types match
+// * manifests construction of ObjectWriteInfoReferenceEntry entries when GetArrayFromName types match
 //-------------------------------------------------------------------------
 template<typename T>
 void WriteHDF5::ShmVectorReserver::operator()(T) {
@@ -294,7 +336,7 @@ void WriteHDF5::ShmVectorReserver::operator()(T) {
         assert(nativeTypeMapIter != WriteHDF5::s_nativeTypeMap.end());
 
         // store reservation info
-        reservationInfo->referenceVector.push_back(ReservationInfoReferenceEntry(name, nvpTag, nativeTypeMapIter->second, vec->size()));
+        reservationInfo->referenceVector.push_back(ObjectWriteInfoReferenceEntry(name, nvpTag, nativeTypeMapIter->second, vec->size()));
     }
 }
 
@@ -399,12 +441,8 @@ WriteHDF5::MetaToArrayArchive & WriteHDF5::MetaToArrayArchive::operator<<(T cons
 //-------------------------------------------------------------------------
 template<class T>
 WriteHDF5::MetaToArrayArchive & WriteHDF5::MetaToArrayArchive::operator<<(const boost::serialization::nvp<T> & t) {
-    std::string memberName(t.name());
-
-    if (memberName != "block" && memberName != "timestep") {
-        m_array[m_insertIndex] = (double) t.const_value();
-        m_insertIndex++;
-    }
+    m_array[m_insertIndex] = (double) t.const_value();
+    m_insertIndex++;
 
     return *this;
 }

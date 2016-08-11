@@ -45,14 +45,12 @@ struct HDF5Const {
 
     static const long double numBytesInGb;
     static const long double mpiReadWriteLimitGb;
-
-    static const unsigned numExclusiveMetaMembers;
 };
 
 // cout-of-class init for static members
 const long double HDF5Const::numBytesInGb = 1073741824;
 const long double HDF5Const::mpiReadWriteLimitGb = 2;
-const unsigned HDF5Const::numExclusiveMetaMembers = 2;
+
 
 
 // CONTAINER FOR HDF5 DUMMY OBJECT CONSTANTS

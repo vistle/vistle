@@ -292,7 +292,7 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
     hid_t readId;
 
     int objectType;
-    std::vector<double> objectMeta(ReadHDF5::s_numMetaMembers - HDF5Const::numExclusiveMetaMembers);
+    std::vector<double> objectMeta(ReadHDF5::s_numMetaMembers);
     FindObjectReferenceOArchive archive;
 
     // return if object has already been constructed
@@ -324,7 +324,7 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
     linkIterData->callingModule->m_objectMap[std::string(name)] = returnObject->getName();
 
     // construct meta
-    ArrayToMetaArchive arrayToMetaArchive(objectMeta.data(), &linkIterData->callingModule->m_metaNvpMap, linkIterData->block, linkIterData->timestep);
+    ArrayToMetaArchive arrayToMetaArchive(objectMeta.data(), &linkIterData->callingModule->m_metaNvpMap);
     boost::serialization::serialize_adl(arrayToMetaArchive, const_cast<Meta &>(returnObject->meta()), ::boost::serialization::version< Meta >::value);
 
     // serialize object and prepare for array iteration
@@ -339,10 +339,11 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
     // close all open h5 entities
     H5Pclose(readId);
 
-    // output object
+    // output object as long as it is not a pure reference
     linkIterData->callingModule->m_objectPersistenceVector.push_back(returnObject);
-    linkIterData->callingModule->addObject(std::string("data" + std::to_string(linkIterData->origin) + "_out"), returnObject);
-
+    if (linkIterData->origin != std::numeric_limits<unsigned>::max()) {
+        linkIterData->callingModule->addObject(std::string("data" + std::to_string(linkIterData->origin) + "_out"), returnObject);
+    }
     return 0;
 }
 
@@ -536,18 +537,18 @@ bool ReadHDF5::util_checkFile() {
     }
 
 
-    // make sure name isnt a directory - this causes H5Fopen to freeze
-    if (isDirectory) {
-        if (m_isRootNode) {
-            sendInfo("File name cannot be a directory");
-        }
-        return false;
-    }
-
     // check existence of file to remove error logs
     if (!doesExist) {
         if (m_isRootNode) {
             sendInfo("File does not exist");
+        }
+        return false;
+    }
+
+    // make sure name isnt a directory - this causes H5Fopen to freeze
+    if (isDirectory) {
+        if (m_isRootNode) {
+            sendInfo("File name cannot be a directory");
         }
         return false;
     }

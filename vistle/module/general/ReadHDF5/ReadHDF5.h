@@ -128,8 +128,6 @@ class ReadHDF5::ArrayToMetaArchive {
 private:
     std::vector<double> m_array;
     std::unordered_map<std::string, unsigned> * m_nvpMapPtr;
-    int m_block;
-    int m_timestep;
 
 public:
 
@@ -143,9 +141,9 @@ public:
     unsigned int get_library_version() { return 0; }
     void save_binary(const void *address, std::size_t count) {}
 
-    ArrayToMetaArchive(double * _array, std::unordered_map<std::string, unsigned> * _nvpMapPtr, int _block, int _timestep)
-        : m_nvpMapPtr(_nvpMapPtr), m_block(_block), m_timestep(_timestep) {
-        m_array.assign(_array, _array + (ReadHDF5::s_numMetaMembers - HDF5Const::numExclusiveMetaMembers));
+    ArrayToMetaArchive(double * _array, std::unordered_map<std::string, unsigned> * _nvpMapPtr)
+        : m_nvpMapPtr(_nvpMapPtr) {
+        m_array.assign(_array, _array + (ReadHDF5::s_numMetaMembers));
     }
 
     // << operators
@@ -194,7 +192,7 @@ struct ReadHDF5::ShmVectorReader {
         comm(_comm) {
 
         // specify read limit while accounting for the max amount of space taken up by metadata reads, which are not split up when reads are too large
-        maxReadSizeGb = HDF5Const::mpiReadWriteLimitGb - (ReadHDF5::s_numMetaMembers - HDF5Const::numExclusiveMetaMembers) * sizeof(double) / HDF5Const::numBytesInGb;
+        maxReadSizeGb = HDF5Const::mpiReadWriteLimitGb - (ReadHDF5::s_numMetaMembers) * sizeof(double) / HDF5Const::numBytesInGb;
     }
 
     template<typename T>
@@ -346,20 +344,11 @@ ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(T const 
 template<class T>
 ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(const boost::serialization::nvp<T> & t) {
     std::string memberName(t.name());
+    auto nvpMapIter = m_nvpMapPtr->find(memberName);
 
-    if (memberName == "block") {
-        t.value() = m_block;
-
-    } else if (memberName == "timestep") {
-        t.value() = m_timestep;
-
-    } else {
-        auto nvpMapIter = m_nvpMapPtr->find(memberName);
-
-        if (nvpMapIter != m_nvpMapPtr->end()
-                && nvpMapIter->second < m_array.size()) {
-            t.value() = m_array[nvpMapIter->second];
-        }
+    if (nvpMapIter != m_nvpMapPtr->end()
+            && nvpMapIter->second < m_array.size()) {
+        t.value() = m_array[nvpMapIter->second];
     }
 
     return *this;
