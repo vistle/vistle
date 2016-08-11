@@ -34,6 +34,8 @@
 //#include <future>
 #endif
 
+#define ICET_CALLBACK
+
 namespace mpi = boost::mpi;
 
 using namespace vistle;
@@ -115,7 +117,8 @@ class RayCaster: public vistle::Renderer {
 
    int m_currentView; //!< holds no. of view currently being rendered - not a problem is IceT is not reentrant anyway
    static void drawCallback(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image);
-   void renderRect(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image);
+   void renderRect(const vistle::Matrix4 &proj, const vistle::Matrix4 &mv, const IceTInt *viewport,
+                   int width, int height, unsigned char *rgba, float *depth);
 };
 
 RayCaster *RayCaster::s_instance = nullptr;
@@ -123,7 +126,11 @@ RayCaster *RayCaster::s_instance = nullptr;
 
 RayCaster::RayCaster(const std::string &shmname, const std::string &name, int moduleId)
 : Renderer("RayCaster", shmname, name, moduleId)
+#ifdef ICET_CALLBACK
 , m_renderManager(this, RayCaster::drawCallback)
+#else
+, m_renderManager(this, nullptr)
+#endif
 , rayPacketSize(8)
 , m_tilesize(64)
 , m_doShade(true)
@@ -719,12 +726,22 @@ bool RayCaster::render() {
        m_renderManager.getProjMat(i, proj);
        IceTFloat bg[4] = { 0., 0., 0., 0. };
 
-#if 1
+#ifdef ICET_CALLBACK
        IceTImage img = icetDrawFrame(proj, mv, bg);
 #else
-       IceTInt viewport[4] = {0, 0, width, height};
-       renderRect(proj, mv, bg, viewport, image);
-       IceTImage img = icetCompositeImage(mapColor[pbo], mapDepth[pbo], viewport, proj, mv, bg);
+       vistle::Matrix4 MV, P;
+       for (int i=0; i<4; ++i) {
+           for (int j=0; j<4; ++j) {
+               MV(i,j) = mv[j*4+i];
+               P(i,j) = proj[j*4+i];
+           }
+       }
+
+       IceTInt viewport[4] = {0, 0, vd.width, vd.height};
+       unsigned char *rgba = m_renderManager.rgba(i);
+       float *depth = m_renderManager.depth(i);
+       renderRect(P, MV, viewport, vd.width, vd.height, rgba, depth);
+       IceTImage img = icetCompositeImage(rgba, depth, viewport, proj, mv, bg);
 #endif
 
        m_renderManager.finishCurrentView(img, false);
@@ -734,13 +751,12 @@ bool RayCaster::render() {
     return true;
 }
 
-void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image) {
+void RayCaster::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV, const IceTInt *viewport,
+                           int width, int height, unsigned char *rgba, float *depth) {
 
    //StopWatch timer("RayCaster::render()");
 
 #if 0
-   IceTSizeType width = icetImageGetWidth(image);
-   IceTSizeType height = icetImageGetHeight(image);
    std::cerr << "IceT draw CB: vp=" << viewport[0] << ", " << viewport[1] << ", " << viewport[2] << ", " <<  viewport[3]
              << ", img: " << width << "x" << height
              << std::endl;
@@ -753,14 +769,6 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
    const int ht = ((h+ts-1)/ts)*ts;
    const int ntx = wt/ts;
    const int nty = ht/ts;
-
-   vistle::Matrix4 MV, P;
-   for (int i=0; i<4; ++i) {
-      for (int j=0; j<4; ++j) {
-         MV(i,j) = mv[j*4+i];
-         P(i,j) = proj[j*4+i];
-      }
-   }
 
    //std::cerr << "PROJ:" << P << std::endl << std::endl;
 
@@ -790,8 +798,8 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
    const Matrix4 depthTransform = MVP;
 
    TileTask renderTile(*this, m_renderManager.viewData(m_currentView));
-   renderTile.rgba = icetImageGetColorub(image);
-   renderTile.depth = icetImageGetDepthf(image);
+   renderTile.rgba = rgba;
+   renderTile.depth = depth;
    renderTile.depthTransform2 = depthTransform.row(2);
    renderTile.depthTransform3 = depthTransform.row(3);
    renderTile.ntx = ntx;
@@ -799,8 +807,8 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
    renderTile.yoff = viewport[1];
    renderTile.xlim = viewport[0] + viewport[2];
    renderTile.ylim = viewport[1] + viewport[3];
-   renderTile.imgWidth = icetImageGetWidth(image);
-   renderTile.imgHeight = icetImageGetHeight(image);
+   renderTile.imgWidth = width;
+   renderTile.imgHeight = height;
    renderTile.dx = (rbn-lbn)/renderTile.imgWidth;
    renderTile.dy = (ltn-lbn)/renderTile.imgHeight;
    renderTile.lowerBottom = lbn + 0.5*renderTile.dx + 0.5*renderTile.dy;
@@ -843,7 +851,9 @@ void RayCaster::renderRect(const IceTDouble *proj, const IceTDouble *mv, const I
    }
 #endif
 
-   m_renderManager.updateRect(m_currentView, viewport, image);
+#ifdef ICET_CALLBACK
+   //m_renderManager.updateRect(m_currentView, viewport, image);
+#endif
 
    int err = rtcDeviceGetError(m_device);
    if (err != 0) {
@@ -931,7 +941,20 @@ boost::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::stri
 
 void  RayCaster::drawCallback(const IceTDouble *proj, const IceTDouble *mv, const IceTFloat *bg, const IceTInt *viewport, IceTImage image) {
 
-   RayCaster::the().renderRect(proj, mv, bg, viewport, image);
+    vistle::Matrix4 MV, P;
+    for (int i=0; i<4; ++i) {
+        for (int j=0; j<4; ++j) {
+            MV(i,j) = mv[j*4+i];
+            P(i,j) = proj[j*4+i];
+        }
+    }
+
+    unsigned char *rgba = icetImageGetColorub(image);
+    float *depth = icetImageGetDepthf(image);
+    int width = icetImageGetWidth(image);
+    int height = icetImageGetHeight(image);
+
+    RayCaster::the().renderRect(P, MV, viewport, width, height, rgba, depth);
 }
 
 

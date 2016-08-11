@@ -155,9 +155,7 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
    if (m_continuousRendering->getValue())
       m_doRender = 1;
 
-   m_doRender = mpi::all_reduce(m_module->comm(), m_doRender, mpi::maximum<int>());
-
-   bool doRender = m_doRender;
+   bool doRender = mpi::all_reduce(m_module->comm(), m_doRender, mpi::maximum<int>());
    m_doRender = 0;
 
    if (doRender) {
@@ -165,9 +163,15 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
       mpi::broadcast(m_module->comm(), m_state, rootRank());
       mpi::broadcast(m_module->comm(), m_viewData, rootRank());
 
-      if (vnc && m_module->rank() != rootRank()) {
-          for (size_t i=0; i<m_viewData.size(); ++i) {
-              const PerViewState &vd = m_viewData[i];
+      if (m_rgba.size() != m_viewData.size())
+          m_rgba.resize(m_viewData.size());
+      if (m_depth.size() != m_viewData.size())
+          m_depth.resize(m_viewData.size());
+      for (size_t i=0; i<m_viewData.size(); ++i) {
+          const PerViewState &vd = m_viewData[i];
+          m_rgba[i].resize(vd.width*vd.height*4);
+          m_depth[i].resize(vd.width*vd.height);
+          if (vnc && m_module->rank() != rootRank()) {
               vnc->resize(i, vd.width, vd.height);
           }
       }
@@ -339,7 +343,17 @@ void ParallelRemoteRenderManager::getProjMat(size_t viewIdx, IceTDouble *mat) co
 
 const ParallelRemoteRenderManager::PerViewState &ParallelRemoteRenderManager::viewData(size_t viewIdx) const {
 
-   return m_viewData[viewIdx];
+    return m_viewData[viewIdx];
+}
+
+unsigned char *ParallelRemoteRenderManager::rgba(size_t viewIdx) {
+
+    return m_rgba[viewIdx].data();
+}
+
+float *ParallelRemoteRenderManager::depth(size_t viewIdx) {
+
+    return m_depth[viewIdx].data();
 }
 
 void ParallelRemoteRenderManager::updateRect(size_t viewIdx, const IceTInt *viewport, const IceTImage image) {
