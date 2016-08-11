@@ -51,6 +51,8 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    m_ui = new vistle::UserInterface(host, port, &m_observer);
    if (!m_ui->isConnected()) {
       std::cerr << "UI: not yet connected to " << host << ":" << port << std::endl;
+   } else {
+       m_mainWindow.enableConnectButton(false);
    }
    m_ui->registerObserver(&m_observer);
    m_vistleConnection = new vistle::VistleConnection(*m_ui);

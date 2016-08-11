@@ -37,6 +37,7 @@ public slots:
     void setFilename(const QString &filename);
     void setModified(bool state);
     void moduleAvailable(int hub, const QString &hubName, const QString &module, const QString &path);
+    void enableConnectButton(bool state);
 
 signals:
     void quitRequested(bool &allowed);

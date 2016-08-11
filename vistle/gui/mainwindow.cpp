@@ -96,6 +96,11 @@ void MainWindow::moduleAvailable(int hub, const QString &hubName, const QString 
     m_moduleBrowser->addModule(hub, hubName, mod, path);
 }
 
+void MainWindow::enableConnectButton(bool state) {
+
+    ui->actionConnect->setEnabled(state);
+}
+
 void MainWindow::setFilename(const QString &filename)
 {
    setWindowFilePath(filename);
