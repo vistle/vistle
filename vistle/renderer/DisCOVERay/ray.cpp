@@ -852,7 +852,7 @@ void RayCaster::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV, 
 #endif
 
 #ifdef ICET_CALLBACK
-   //m_renderManager.updateRect(m_currentView, viewport, image);
+   m_renderManager.updateRect(m_currentView, viewport);
 #endif
 
    int err = rtcDeviceGetError(m_device);

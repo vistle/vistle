@@ -356,7 +356,7 @@ float *ParallelRemoteRenderManager::depth(size_t viewIdx) {
     return m_depth[viewIdx].data();
 }
 
-void ParallelRemoteRenderManager::updateRect(size_t viewIdx, const IceTInt *viewport, const IceTImage image) {
+void ParallelRemoteRenderManager::updateRect(size_t viewIdx, const IceTInt *viewport) {
 
    auto vnc = m_vncControl.server();
    if (vnc && m_module->rank() != rootRank()) {
@@ -364,10 +364,8 @@ void ParallelRemoteRenderManager::updateRect(size_t viewIdx, const IceTInt *view
       const int bpp = 4;
       const int w = vnc->width(m_currentView);
       const int h = vnc->height(m_currentView);
-      vassert(w == icetImageGetWidth(image));
-      vassert(h == icetImageGetHeight(image));
 
-      const IceTUByte *color = icetImageGetColorcub(image);
+      const unsigned char *color = rgba(viewIdx);
 
       memset(vnc->rgba(m_currentView), 0, w*h*bpp);
 

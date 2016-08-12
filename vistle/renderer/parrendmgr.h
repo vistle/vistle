@@ -35,7 +35,7 @@ public:
    const PerViewState &viewData(size_t viewIdx) const;
    unsigned char *rgba(size_t viewIdx);
    float *depth(size_t viewIdx);
-   void updateRect(size_t viewIdx, const IceTInt *viewport, IceTImage image);
+   void updateRect(size_t viewIdx, const IceTInt *viewport);
    void setModified();
    void setLocalBounds(const Vector3 &min, const Vector3 &max);
    int rootRank() const {
