@@ -189,6 +189,7 @@ bool WriteHDF5::prepare() {
     // clear reused variables
     m_arrayMap.clear();
     m_objectSet.clear();
+    m_indexVariantTracker.clear();
 
     // Set up file access property list with parallel I/O access
     filePropertyListId = H5Pcreate(H5P_FILE_ACCESS);
@@ -243,19 +244,6 @@ bool WriteHDF5::prepare() {
     H5Sclose(fileSpaceId);
     H5Dclose(dataSetId);
     util_HDF5write(m_isRootNode, numPortsPath.c_str(), &m_numPorts, m_fileId, oneDims, H5T_NATIVE_UINT);
-
-    // create folders for ports in index
-    for (unsigned i = 0; i < m_numPorts; i++) {
-        std::string name = "/index/p" + std::to_string(i);
-        groupId = H5Gcreate2(m_fileId, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-        util_checkId(groupId, "create group "+name);
-        status = H5Gclose(groupId);
-        util_checkStatus(status);
-    }
-
-    // initialize first tracker layer
-    m_indexTracker = IndexTracker(m_numPorts);
-
 
     // save port descriptions
     groupId = H5Gcreate2(m_fileId, "/file/ports", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -480,15 +468,15 @@ bool WriteHDF5::compute() {
     // reserve space for index and write
     for (unsigned i = 0; i < indexWriteGatherVector.size(); i++) {
         std::string objectGroupName = "/object/" + objectWriteGatherVector[i].name;
-        unsigned currOrigin = indexWriteGatherVector[i].origin;
+        int currOrigin = indexWriteGatherVector[i].origin;
         int currTimestep = indexWriteGatherVector[i].timestep;
         int currBlock = indexWriteGatherVector[i].block;
 
 
-        // create timestep group
-        std::string groupName = "/index/p" + std::to_string(currOrigin) + "/t" + std::to_string(currTimestep);
-        if (m_indexTracker[currOrigin].find(currTimestep) == m_indexTracker[currOrigin].end()) {
-            m_indexTracker[currOrigin][currTimestep];
+        // create timestep group if it doesnt already exist
+        std::string groupName = "/index/t" + std::to_string(currTimestep);
+        if (m_indexVariantTracker.find(currTimestep) == m_indexVariantTracker.end()) {
+            m_indexVariantTracker[currTimestep];
 
             groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             util_checkId(groupId, "create group "+groupName);
@@ -496,12 +484,10 @@ bool WriteHDF5::compute() {
             util_checkStatus(status);
         }
 
-
-
-        // create block group
+        // create block group if it doesnt already exist
         groupName += "/b" + std::to_string(currBlock);
-        if (m_indexTracker[currOrigin][currTimestep].find(currBlock) == m_indexTracker[currOrigin][currTimestep].end()) {
-            m_indexTracker[currOrigin][currTimestep][currBlock] = 0;
+        if (m_indexVariantTracker[currTimestep].find(currBlock) == m_indexVariantTracker[currTimestep].end()) {
+            m_indexVariantTracker[currTimestep][currBlock];
 
             groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             util_checkId(groupId, "create group "+groupName);
@@ -509,11 +495,22 @@ bool WriteHDF5::compute() {
             util_checkStatus(status);
         }
 
-        // create variants group
-        groupName += "/o" + std::to_string(m_indexTracker[currOrigin][currTimestep][currBlock]);
+        // create port group if it doesnt already exist
+        groupName += "/p" + std::to_string(currOrigin);
+        if (m_indexVariantTracker[currTimestep][currBlock].find(currOrigin) == m_indexVariantTracker[currTimestep][currBlock].end()) {
+            m_indexVariantTracker[currTimestep][currBlock][currOrigin] = 0;
+
+            groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            util_checkId(groupId, "create group "+groupName);
+            status = H5Gclose(groupId);
+            util_checkStatus(status);
+        }
+
+        // create variants group if it doesnt already exist
+        groupName += "/v" + std::to_string(m_indexVariantTracker[currTimestep][currBlock][currOrigin]);
         groupId = H5Gcreate2(m_fileId, groupName.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         util_checkId(groupId, "create group "+groupName);
-        m_indexTracker[currOrigin][currTimestep][currBlock]++;
+        m_indexVariantTracker[currTimestep][currBlock][currOrigin]++;
 
 
         // link index entry to object

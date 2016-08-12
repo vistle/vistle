@@ -143,7 +143,7 @@ bool ReadHDF5::prepare() {
     util_checkStatus(status);
 
     // parse index to find objects
-    status = H5Literate_by_name(fileId, "/index", H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateOrigin, &linkIterData, H5P_DEFAULT);
+    status = H5Literate_by_name(fileId, "/index", H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateTimestep, &linkIterData, H5P_DEFAULT);
     util_checkStatus(status);
 
 
@@ -216,25 +216,6 @@ herr_t ReadHDF5::prepare_iterateMeta(hid_t callingGroupId, const char *name, con
     return 0;
 }
 
-
-// PREPARE UTILITY FUNCTION - ITERATE CALLBACK FOR ORIGIN
-// * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
-//-------------------------------------------------------------------------
-herr_t ReadHDF5::prepare_iterateOrigin(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
-    LinkIterData * linkIterData = (LinkIterData *) opData;
-    std::string originPortName = "data" + std::string(name+1) + "_out";
-
-    linkIterData->origin = std::stoul(std::string(name+1));
-
-    // only iterate over connected ports
-    // references will be handled when needed
-    if (linkIterData->callingModule->isConnected(originPortName)) {
-        H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateTimestep, linkIterData, H5P_DEFAULT);
-    }
-
-    return 0;
-}
-
 // PREPARE UTILITY FUNCTION - ITERATE CALLBACK FOR TIMESTEP
 // * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
 //-------------------------------------------------------------------------
@@ -261,7 +242,25 @@ herr_t ReadHDF5::prepare_iterateBlock(hid_t callingGroupId, const char *name, co
 
         linkIterData->block = blockNum;
 
-        H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_INC, NULL, prepare_iterateVariant, linkIterData, H5P_DEFAULT);
+        H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_INC, NULL, prepare_iterateOrigin, linkIterData, H5P_DEFAULT);
+    }
+
+    return 0;
+}
+
+// PREPARE UTILITY FUNCTION - ITERATE CALLBACK FOR ORIGIN
+// * function falls under the template  H5L_iterate_t as it is a callback from the HDF5 iterate API call
+//-------------------------------------------------------------------------
+herr_t ReadHDF5::prepare_iterateOrigin(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData) {
+    LinkIterData * linkIterData = (LinkIterData *) opData;
+    std::string originPortName = "data" + std::string(name+1) + "_out";
+
+    linkIterData->origin = std::stoul(std::string(name+1));
+
+    // only iterate over connected ports
+    // references will be handled when needed
+    if (linkIterData->callingModule->isConnected(originPortName)) {
+        H5Literate_by_name(callingGroupId, name, H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateVariant, linkIterData, H5P_DEFAULT);
     }
 
     return 0;
@@ -407,26 +406,17 @@ herr_t ReadHDF5::prepare_processArrayLink(hid_t callingGroupId, const char *name
                 bool objectFound = false;
 
                 for (unsigned i = 0; i < linkIterData->callingModule->m_numPorts && !objectFound; i++) {
-                    originObjectName = "/index/p" + std::to_string(i);
-                    originObjectExists = H5Lexists(linkIterData->fileId, originObjectName.c_str(), H5P_DEFAULT);
-                    if (!util_doesExist(originObjectExists)) {
-                        continue;
-                    }
+                    originObjectName = "/index/t" + std::to_string(linkIterData->timestep)
+                            + "/b" + std::to_string(linkIterData->block)
+                            + "/p" + std::to_string(i);
 
-                    originObjectName += "/t" + std::to_string(linkIterData->timestep);
-                    originObjectExists = H5Lexists(linkIterData->fileId, originObjectName.c_str(), H5P_DEFAULT);
-                    if (!util_doesExist(originObjectExists)) {
-                        continue;
-                    }
-
-                    originObjectName += "/b" + std::to_string(linkIterData->block);
                     originObjectExists = H5Lexists(linkIterData->fileId, originObjectName.c_str(), H5P_DEFAULT);
                     if (!util_doesExist(originObjectExists)) {
                         continue;
                     }
 
                     for (unsigned j = 0; /* exit conditions handled within */; j++) {
-                        std::string variantGroupName = originObjectName + "/o" + std::to_string(j);
+                        std::string variantGroupName = originObjectName + "/v" + std::to_string(j);
                         htri_t variantGroupExists = H5Lexists(linkIterData->fileId, variantGroupName.c_str(), H5P_DEFAULT);
 
                         // exit condition

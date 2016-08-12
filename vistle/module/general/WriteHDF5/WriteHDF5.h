@@ -53,8 +53,10 @@ class WriteHDF5 : public vistle::Module {
    // typedefs
    typedef vistle::FindObjectReferenceOArchive::ReferenceType ReferenceType;
 
-   // IndexTracker: maps: origin (vector) -> timestep (map) -> block (map) -> variants (unsigned)
-   typedef std::vector<std::unordered_map<int, std::unordered_map<int, unsigned>>> IndexTracker;
+   // IndexTracker: maps: timestep (map) -> block (map) -> portNumber (map) -> variants (unsigned)
+   // maps are needed for block and timestep because they can have values of -1
+   // a more performant IndexTracker could be achieved with vectors, but I chose to do it this way for reasons of code clarity
+   typedef std::unordered_map<int, std::unordered_map<int, std::unordered_map<int, unsigned>>> IndexTracker;
 
    // structs/functors
    struct ObjectWriteInfoReferenceEntry;
@@ -104,7 +106,7 @@ class WriteHDF5 : public vistle::Module {
    std::unordered_map<std::string, bool> m_arrayMap;    //< existence determines wether space has been allocated in file, bool describes wether array has actually been written
    std::unordered_set<std::string> m_objectSet;         //< existence determines wether entry has been written yet
    std::vector<std::string> m_metaNvpTags;
-   IndexTracker m_indexTracker;
+   IndexTracker m_indexVariantTracker;                  //< used to keep track of the number of variants in each timestep/block/port
 
 public:
    static unsigned s_numMetaMembers;
