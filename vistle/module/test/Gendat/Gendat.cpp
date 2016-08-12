@@ -133,7 +133,7 @@ void setStructuredGridGhostLayers(StructuredGridBase::ptr ptr, Index ghostWidth[
     }
 }
 
-void Gendat::block(Index bx, Index by, Index bz) {
+void Gendat::block(Index bx, Index by, Index bz, vistle::Index b) {
 
     Index dim[3];
     Vector dist;
@@ -312,9 +312,9 @@ void Gendat::block(Index bx, Index by, Index bz) {
     }
 
     Vec<Scalar,1>::ptr scalar(new Vec<Scalar,1>(numVert));
-    scalar->setBlock(rank());
+    scalar->setBlock(b);
     Vec<Scalar,3>::ptr vector(new Vec<Scalar,3>(numVert));
-    vector->setBlock(rank());
+    vector->setBlock(b);
 
     if (auto coord = Coords::as(geoOut)) {
         const Scalar *xx = coord->x().data();
@@ -333,7 +333,7 @@ void Gendat::block(Index bx, Index by, Index bz) {
     }
 
     if (geoOut) {
-        geoOut->setBlock(rank());
+        geoOut->setBlock(b);
         addObject("grid_out", geoOut);
         scalar->setGrid(geoOut);
         vector->setGrid(geoOut);
@@ -355,7 +355,7 @@ bool Gendat::compute() {
         for (Index by=0; by<blocks[1]; ++by) {
             for (Index bz=0; bz<blocks[2]; ++bz) {
                 if (b % size() == rank()) {
-                    block(bx, by, bz);
+                    block(bx, by, bz, b);
                 }
                 ++b;
             }

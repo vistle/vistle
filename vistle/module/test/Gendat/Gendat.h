@@ -11,7 +11,7 @@ class Gendat: public vistle::Module {
 
  private:
    virtual bool compute();
-   void block(vistle::Index bx, vistle::Index by, vistle::Index bz);
+   void block(vistle::Index bx, vistle::Index by, vistle::Index bz, vistle::Index b);
 
    // parameters
    vistle::IntParameter *m_geoMode;
