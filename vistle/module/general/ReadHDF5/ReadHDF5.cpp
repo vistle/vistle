@@ -130,7 +130,8 @@ bool ReadHDF5::prepare() {
     H5Pclose(readId);
 
     if (m_isRootNode) {
-        sendInfo("Reading File: %s - Vistle Version %d", m_fileName->getValue().c_str(), fileVersion);
+        sendInfo("Reading File: %s \n     Vistle HDF5 Version - File: %d / Application: %d",
+                 m_fileName->getValue().c_str(), fileVersion, HDF5Const::versionNumber);
     }
 
 

@@ -36,7 +36,6 @@ MODULE_MAIN(WriteHDF5)
 // WRITE HDF5 STATIC MEMBER OUT OF CLASS INITIALIZATION
 //-------------------------------------------------------------------------
 unsigned WriteHDF5::s_numMetaMembers = 0;
-const int WriteHDF5::s_writeVersion = 0;
 const std::unordered_map<std::type_index, hid_t> WriteHDF5::s_nativeTypeMap = {
       { typeid(int), H5T_NATIVE_INT },
       { typeid(unsigned int), H5T_NATIVE_UINT },
@@ -230,18 +229,20 @@ bool WriteHDF5::prepare() {
     H5Dclose(dataSetId);
 
     // create version number
+    const std::string versionPath("/file/version");
     fileSpaceId = H5Screate_simple(1, oneDims, NULL);
-    dataSetId = H5Dcreate(m_fileId, "/file/version", H5T_NATIVE_INT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    dataSetId = H5Dcreate(m_fileId, versionPath.c_str(), H5T_NATIVE_INT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5Sclose(fileSpaceId);
     H5Dclose(dataSetId);
+    util_HDF5write(m_isRootNode, versionPath.c_str(), &HDF5Const::versionNumber, m_fileId, oneDims, H5T_NATIVE_INT);
 
     // store number of ports
-    const std::string numPortsName("/file/numPorts");
+    const std::string numPortsPath("/file/numPorts");
     fileSpaceId = H5Screate_simple(1, oneDims, NULL);
-    dataSetId = H5Dcreate(m_fileId, numPortsName.c_str(), H5T_NATIVE_UINT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    dataSetId = H5Dcreate(m_fileId, numPortsPath.c_str(), H5T_NATIVE_UINT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5Sclose(fileSpaceId);
     H5Dclose(dataSetId);
-    util_HDF5write(m_isRootNode, numPortsName.c_str(), &m_numPorts, m_fileId, oneDims, H5T_NATIVE_UINT);
+    util_HDF5write(m_isRootNode, numPortsPath.c_str(), &m_numPorts, m_fileId, oneDims, H5T_NATIVE_UINT);
 
     // create folders for ports in index
     for (unsigned i = 0; i < m_numPorts; i++) {

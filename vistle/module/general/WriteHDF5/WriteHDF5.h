@@ -108,7 +108,6 @@ class WriteHDF5 : public vistle::Module {
 
 public:
    static unsigned s_numMetaMembers;
-   static const int s_writeVersion;
    static const std::unordered_map<std::type_index, hid_t> s_nativeTypeMap;
 };
 
