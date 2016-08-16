@@ -349,8 +349,8 @@ void WriteHDF5::ShmVectorWriter::operator()(T) {
     const vistle::ShmVector<T> &vec = vistle::Shm::the().getArrayFromName<T>(name);
 
     if (vec) {
-        long double totalWriteSize; // in num elements
-        long double vecSize = vec->size();
+        long double totalWriteSize; // in bytes
+        long double vecSize = vec->size() * sizeof(T);
         boost::mpi::all_reduce(commPtr, vecSize, totalWriteSize, std::plus<long double>());
 
         // write
