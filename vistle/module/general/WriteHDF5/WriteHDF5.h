@@ -198,6 +198,7 @@ struct WriteHDF5::VectorConcatenator {
 // META TO ARRAY ARCHIVE
 // * used to convert metadata members to an array of doubles for storage
 // * into the HDF5 file
+// * the last element in the array is the object type
 //-------------------------------------------------------------------------
 class WriteHDF5::MetaToArrayArchive {
 private:
@@ -216,7 +217,7 @@ public:
     unsigned int get_library_version() { return 0; }
     void save_binary(const void *address, std::size_t count) {}
 
-    MetaToArrayArchive() : m_insertIndex(0) { m_array.resize(WriteHDF5::s_numMetaMembers); }
+    MetaToArrayArchive(int objectType);
 
     // << operators
     template<class T>
@@ -425,6 +426,13 @@ void WriteHDF5::ShmVectorWriter::writeDummy() {
         WriteHDF5::util_HDF5write(fileId);
     }
 
+}
+
+// META TO ARRAY CONSTRUCTOR
+//-------------------------------------------------------------------------
+WriteHDF5::MetaToArrayArchive::MetaToArrayArchive(int objectType) : m_insertIndex(0) {
+    m_array.resize(WriteHDF5::s_numMetaMembers + HDF5Const::additionalMetaArrayMembers);
+    m_array.back() = objectType;
 }
 
 // META TO ARRAY - << OPERATOR: UNSPECIALIZED

@@ -155,6 +155,7 @@ public:
     // the & operator
     template<class T>
     ArrayToMetaArchive & operator&(const T & t);
+
 };
 
 // SHM VECTOR READER FUNCTOR
@@ -192,7 +193,8 @@ struct ReadHDF5::ShmVectorReader {
         comm(_comm) {
 
         // specify read limit while accounting for the max amount of space taken up by metadata reads, which are not split up when reads are too large
-        maxReadSizeGb = HDF5Const::mpiReadWriteLimitGb - (ReadHDF5::s_numMetaMembers) * sizeof(double) / HDF5Const::numBytesInGb;
+        unsigned totalMetaMembers = ReadHDF5::s_numMetaMembers + HDF5Const::additionalMetaArrayMembers;
+        maxReadSizeGb = HDF5Const::mpiReadWriteLimitGb - totalMetaMembers * sizeof(double) / HDF5Const::numBytesInGb;
     }
 
     template<typename T>

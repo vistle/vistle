@@ -398,12 +398,9 @@ bool WriteHDF5::compute() {
     hid_t groupId;
     hid_t dataSetId;
     hid_t fileSpaceId;
-    hsize_t metaDims[] = {WriteHDF5::s_numMetaMembers};
-    hsize_t oneDims[] = {1};
+    hsize_t metaDims[] = {WriteHDF5::s_numMetaMembers + HDF5Const::additionalMetaArrayMembers};
     hsize_t dims[] = {0};
     double * metaData = nullptr;
-    int typeValue;
-    int * typeData = nullptr;
     std::string writeName;
 
 
@@ -417,12 +414,6 @@ bool WriteHDF5::compute() {
         // create metadata dataset
         fileSpaceId = H5Screate_simple(1, metaDims, NULL);
         dataSetId = H5Dcreate(groupId, "meta", H5T_NATIVE_DOUBLE, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-        H5Sclose(fileSpaceId);
-        H5Dclose(dataSetId);
-
-        // create type dataset
-        fileSpaceId = H5Screate_simple(1, oneDims, NULL);
-        dataSetId = H5Dcreate(groupId, "type", H5T_NATIVE_INT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         H5Sclose(fileSpaceId);
         H5Dclose(dataSetId);
 
@@ -540,15 +531,6 @@ bool WriteHDF5::compute() {
         }
 
         util_HDF5write(nodeHasObject, writeName, metaData, m_fileId, metaDims, H5T_NATIVE_DOUBLE);
-
-        // write type info
-        if (nodeHasObject) {
-            writeName = "/object/" + objectWriteVector[i].name + "/type";
-            typeValue = objPtrVector[i]->getType();
-            typeData = &typeValue;
-        }
-
-        util_HDF5write(nodeHasObject, writeName, typeData, m_fileId, oneDims, H5T_NATIVE_INT);
     }
 
     // reduce vector size information for collective calls
@@ -615,7 +597,7 @@ void WriteHDF5::compute_addObjectToWrite(vistle::Object::const_ptr obj, unsigned
     obj->save(objRefArchiveVector.back());
 
     // build meta array
-    metaToArrayArchiveVector.push_back(MetaToArrayArchive());
+    metaToArrayArchiveVector.push_back(MetaToArrayArchive(obj->getType()));
     boost::serialization::serialize_adl(metaToArrayArchiveVector.back(), const_cast<Meta &>(obj->meta()), ::boost::serialization::version< Object >::value);
 
     // fill in reservation info

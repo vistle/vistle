@@ -292,7 +292,7 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
     hid_t readId;
 
     int objectType;
-    std::vector<double> objectMeta(ReadHDF5::s_numMetaMembers);
+    std::vector<double> objectMeta(ReadHDF5::s_numMetaMembers + HDF5Const::additionalMetaArrayMembers);
     FindObjectReferenceOArchive archive;
 
     // return if object has already been constructed
@@ -300,21 +300,18 @@ herr_t ReadHDF5::prepare_processObject(hid_t callingGroupId, const char * name, 
         return 0;
     }
 
-    // obtain port number
     readId = H5Pcreate(H5P_DATASET_XFER);
     H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
 
-    // read type
-    dataSetId = H5Dopen2(linkIterData->fileId, typeGroup.c_str(), H5P_DEFAULT);
-    util_syncAndGetReadSize(sizeof(int), linkIterData->callingModule->comm());
-    status = H5Dread(dataSetId, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, readId, &objectType);
-    H5Dclose(dataSetId);
-
-    // read meta
+    // read meta and type
     dataSetId = H5Dopen2(linkIterData->fileId, metaGroup.c_str(), H5P_DEFAULT);
-    util_syncAndGetReadSize(sizeof(double) * s_numMetaMembers, linkIterData->callingModule->comm());
+    util_syncAndGetReadSize(sizeof(double) * objectMeta.size(), linkIterData->callingModule->comm());
     status = H5Dread(dataSetId, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, readId, objectMeta.data());
     H5Dclose(dataSetId);
+
+    // extract object type from object meta
+    objectType = objectMeta.back();
+    objectMeta.pop_back();
 
 
     // create empty object by type
