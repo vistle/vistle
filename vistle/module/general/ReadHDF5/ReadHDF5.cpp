@@ -99,6 +99,8 @@ bool ReadHDF5::prepare() {
 
     bool unresolvedReferencesExistInComm;
 
+    MPI_Info mpiInfo;
+
     // check file validity before beginning
     if (!util_checkFile()) {
         return true;
@@ -109,9 +111,23 @@ bool ReadHDF5::prepare() {
     m_objectMap.clear();
     m_unresolvedReferencesExist = false;
 
+    // create specialized mpi info object
+    MPI_Info_create(&mpiInfo);
+
+    // Disables ROMIO's data-sieving
+    MPI_Info_set(mpiInfo, "romio_ds_read", "disable");
+    MPI_Info_set(mpiInfo, "romio_ds_write", "disable");
+
+    // Enable ROMIO's collective buffering
+    MPI_Info_set(mpiInfo, "romio_cb_read", "enable");
+    MPI_Info_set(mpiInfo, "romio_cb_write", "enable");
+
     // create file access property list id
     filePropertyListId = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(filePropertyListId, comm(), MPI_INFO_NULL);
+    H5Pset_fapl_mpio(filePropertyListId, comm(), mpiInfo);
+
+    // free resources
+    MPI_Info_free(&mpiInfo);
 
     // open file
     fileId = H5Fopen(m_fileName->getValue().c_str(), H5P_DEFAULT, filePropertyListId);

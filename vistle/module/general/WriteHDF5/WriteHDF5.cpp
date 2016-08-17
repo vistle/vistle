@@ -175,6 +175,8 @@ bool WriteHDF5::prepare() {
     hid_t writeId;
     hsize_t oneDims[] = {1};
 
+    MPI_Info mpiInfo;
+
     m_doNotWrite = false;
     m_unresolvedReferencesExist = false;
     m_numPorts -=1; // ignore extra port at end - it will never contain a connection
@@ -191,9 +193,23 @@ bool WriteHDF5::prepare() {
     m_objectSet.clear();
     m_indexVariantTracker.clear();
 
+    // Create info to be attached to HDF5 file
+    MPI_Info_create(&mpiInfo);
+
+    // Disables ROMIO's data-sieving
+    MPI_Info_set(mpiInfo, "romio_ds_read", "disable");
+    MPI_Info_set(mpiInfo, "romio_ds_write", "disable");
+
+    // Enable ROMIO's collective buffering
+    MPI_Info_set(mpiInfo, "romio_cb_read", "enable");
+    MPI_Info_set(mpiInfo, "romio_cb_write", "enable");
+
     // Set up file access property list with parallel I/O access
     filePropertyListId = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(filePropertyListId, comm(), MPI_INFO_NULL);
+    H5Pset_fapl_mpio(filePropertyListId, comm(), mpiInfo);
+
+    // free info
+    MPI_Info_free(&mpiInfo);
 
     // create new file
     m_fileId = H5Fcreate(m_fileName->getValue().c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, filePropertyListId);
