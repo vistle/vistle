@@ -28,6 +28,10 @@ bool scanModules(const std::string &dir, int hub, AvailableMap &available) {
       std::string stem = ent.stem().string();
       if (stem.size() > ModuleNameLength) {
          std::cerr << "scanModules: skipping " << stem << " - name too long" << std::endl;
+         continue;
+      } 
+      if (stem.empty()) {
+         continue;
       }
 
       std::string ext = ent.extension().string();
