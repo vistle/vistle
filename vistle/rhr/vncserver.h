@@ -20,6 +20,8 @@
 #undef max
 #endif
 
+#include <util/enum.h>
+#include <core/vector.h>
 #include <core/vector.h>
 
 #include <tbb/concurrent_queue.h>
@@ -31,11 +33,12 @@ class V_RHREXPORT VncServer
 {
 public:
 
-  enum ColorCodec {
-      Raw,
-      Jpeg,
-      Snappy,
-  };
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(ColorCodec,
+                                     (Raw)
+                                     (Jpeg_YUV411)
+                                     (Jpeg_YUV444)
+                                     (Snappy)
+                                     )
 
    // plugin methods
    VncServer(int w, int h, unsigned short port=5900);
@@ -187,6 +190,7 @@ public:
        bool depthSnappy; //!< whether depth should be entropy-encoded with SNAPPY
        bool rgbaJpeg;
        bool rgbaSnappy;
+       bool rgbaChromaSubsamp;
 
        ImageParameters()
        : timestep(0)
@@ -196,6 +200,7 @@ public:
        , depthSnappy(false)
        , rgbaJpeg(false)
        , rgbaSnappy(false)
+       , rgbaChromaSubsamp(false)
        {
        }
    };

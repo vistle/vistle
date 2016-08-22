@@ -175,9 +175,11 @@ void VncServer::setColorCodec(ColorCodec value) {
             m_imageParam.rgbaJpeg = false;
             m_imageParam.rgbaSnappy = false;
             break;
-        case Jpeg:
+        case Jpeg_YUV411:
+        case Jpeg_YUV444:
             m_imageParam.rgbaJpeg = true;
             m_imageParam.rgbaSnappy = false;
+            m_imageParam.rgbaChromaSubsamp = value==Jpeg_YUV411;
             break;
         case Snappy:
             m_imageParam.rgbaJpeg = false;
@@ -961,6 +963,7 @@ struct EncodeTask: public tbb::task {
     int viewNum;
     int x, y, w, h, stride;
     int bpp;
+    bool subsamp;
     float *depth;
     unsigned char *rgba;
     tileMsg *message;
@@ -975,6 +978,7 @@ struct EncodeTask: public tbb::task {
     , h(h)
     , stride(vp.width)
     , bpp(4)
+    , subsamp(false)
     , depth(depth)
     , rgba(nullptr)
     , message(nullptr)
@@ -1030,6 +1034,7 @@ struct EncodeTask: public tbb::task {
     , h(h)
     , stride(vp.width)
     , bpp(4)
+    , subsamp(param.rgbaChromaSubsamp)
     , depth(nullptr)
     , rgba(rgba)
     , message(nullptr)
@@ -1077,9 +1082,9 @@ struct EncodeTask: public tbb::task {
             if (msg.compression & rfbTileJpeg) {
                 int ret = -1;
 #ifdef HAVE_TURBOJPEG
-                TJSAMP subsamp = TJSAMP_420;
+                TJSAMP sampling = subsamp ? TJSAMP_420 : TJSAMP_444;
                 TjContext::reference tj = tjContexts.local();
-                size_t maxsize = tjBufSize(msg.width, msg.height, subsamp);
+                size_t maxsize = tjBufSize(msg.width, msg.height, sampling);
                 char *jpegbuf = new char[maxsize];
                 unsigned long sz = 0;
                 //unsigned char *src = reinterpret_cast<unsigned char *>(rgba);

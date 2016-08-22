@@ -12,7 +12,7 @@ VncController::VncController(vistle::Module *module, int displayRank)
 , m_vncReverse(nullptr)
 , m_vncRevPort(nullptr)
 , m_rgbaEncoding(nullptr)
-, m_rgbaCodec(VncServer::Jpeg)
+, m_rgbaCodec(VncServer::Jpeg_YUV444)
 , m_depthPrec(nullptr)
 , m_prec(24)
 , m_depthQuant(nullptr)
@@ -35,11 +35,7 @@ VncController::VncController(vistle::Module *module, int displayRank)
 
    std::vector<std::string> choices;
    m_rgbaEncoding = module->addIntParameter("color_codec", "codec for image data", m_rgbaCodec, Parameter::Choice);
-   choices.clear();
-   choices.push_back("Raw");
-   choices.push_back("JPEG");
-   choices.push_back("SNAPPY");
-   module->setParameterChoices(m_rgbaEncoding, choices);
+   module->V_ENUM_SET_CHOICES_SCOPE(m_rgbaEncoding, VncServer::ColorCodec, VncServer);
 
    m_depthSnappy = module->addIntParameter("depth_snappy", "compress depth with SNAPPY", (Integer)m_snappy, Parameter::Boolean);
    m_depthQuant = module->addIntParameter("depth_quant", "DXT-like depth quantization", (Integer)m_quant, Parameter::Boolean);
