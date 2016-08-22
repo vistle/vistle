@@ -136,7 +136,11 @@ void VncClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
    msg.time = cover->frameTime();
    const osg::Matrix &t = cover->getXformMat();
    const osg::Matrix &s = cover->getObjectsScale()->getMatrix();
-   const osg::Matrix model = s * t;
+   osg::Matrix model = s * t;
+   if (m_noModelUpdate)
+       model = m_oldModelMatrix;
+   else
+       m_oldModelMatrix = model;
 
    const channelStruct &chan = coVRConfig::instance()->channels[channel];
    if (chan.PBONum >= 0) {
@@ -983,7 +987,10 @@ bool VncClient::init()
 
    m_reproject = true;
    m_adapt = true;
+   m_adaptWithNeighbors = true;
    m_frameReady = false;
+   m_noModelUpdate = false;
+   m_oldModelMatrix = osg::Matrix::identity();
 
 #if 0
    std::cout << "COVER waiting for debugger: pid=" << getpid() << std::endl;
@@ -1061,7 +1068,7 @@ bool VncClient::init()
 
    m_drawer = new MultiChannelDrawer(numChannels, true /* flip top/bottom */);
    m_drawer->switchReprojection(m_reproject);
-   m_drawer->switchAdaptivePointSize(m_adapt);
+   m_drawer->switchAdaptivePointSize(m_adapt, m_adaptWithNeighbors);
 
 #ifdef VRUI
    m_menuItem = new coSubMenuItem("Hybrid Rendering...");
@@ -1097,6 +1104,12 @@ bool VncClient::init()
    m_adaptCheck->setPos(1,0);
    m_adaptCheck->setState(m_adapt);
 
+   m_adaptWithNeighborsCheck = mui::ToggleButton::create(muiId("adapt_with_neighbors"), m_tab);
+   m_adaptWithNeighborsCheck->setLabel("Adapt With Neighbors");
+   m_adaptWithNeighborsCheck->setEventListener(this);
+   m_adaptWithNeighborsCheck->setPos(2,0);
+   m_adaptWithNeighborsCheck->setState(m_adaptWithNeighbors);
+
    coTUITab *tab = dynamic_cast<coTUITab *>(m_tab->getTUI());
 
    m_hostLabel = new coTUILabel("Host:", tab->getID());
@@ -1124,6 +1137,12 @@ bool VncClient::init()
    m_connectCheck->setEventListener(this);
    m_connectCheck->setPos(0,3);
    m_connectCheck->setState(m_haveConnection);
+
+   m_inhibitModelUpdate = mui::ToggleButton::create(muiId("no_model_update"), m_tab);
+   m_inhibitModelUpdate->setLabel("No Model Update");
+   m_inhibitModelUpdate->setEventListener(this);
+   m_inhibitModelUpdate->setPos(0,4);
+   m_inhibitModelUpdate->setState(m_noModelUpdate);
 #endif
 
    return true;
@@ -1154,7 +1173,7 @@ void VncClient::menuEvent(coMenuItem *item) {
    }
    if (item == m_adaptCheck) {
        m_adapt = m_adaptCheck->getState();
-       m_drawer->switchAdaptivePointSize(m_adapt);
+       m_drawer->switchAdaptivePointSize(m_adapt, m_adaptWithNeighbors);
    }
 }
 #else
@@ -1165,7 +1184,11 @@ void VncClient::muiEvent(mui::Element *item) {
    }
    if (item == m_adaptCheck) {
        m_adapt = m_adaptCheck->getState();
-       m_drawer->switchAdaptivePointSize(m_adapt);
+       m_drawer->switchAdaptivePointSize(m_adapt, m_adaptWithNeighbors);
+   }
+   if (item == m_adaptWithNeighborsCheck) {
+       m_adaptWithNeighbors = m_adaptWithNeighborsCheck->getState();
+       m_drawer->switchAdaptivePointSize(m_adapt, m_adaptWithNeighbors);
    }
    if (item == m_connectCheck) {
       if (m_client)
@@ -1173,6 +1196,9 @@ void VncClient::muiEvent(mui::Element *item) {
       else
          connectClient();
       m_connectCheck->setState(m_haveConnection);
+   }
+   if (item == m_inhibitModelUpdate) {
+       m_noModelUpdate = m_inhibitModelUpdate->getState();
    }
 }
 void VncClient::tabletEvent(coTUIElement *item) {

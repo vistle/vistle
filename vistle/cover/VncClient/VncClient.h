@@ -178,12 +178,15 @@ private:
    coCheckboxMenuItem *m_allTilesCheck;
 #else
    mui::Tab *m_tab;
-   mui::ToggleButton *m_reprojCheck, *m_adaptCheck, *m_connectCheck;
+   mui::ToggleButton *m_reprojCheck, *m_adaptCheck, *m_connectCheck, *m_adaptWithNeighborsCheck;
    coTUILabel *m_hostLabel, *m_portLabel;
    coTUIEditTextField *m_hostEdit;
    coTUIEditIntField *m_portEdit;
+   mui::ToggleButton *m_inhibitModelUpdate;
 #endif
-   bool m_reproject, m_adapt;
+   bool m_reproject, m_adapt, m_adaptWithNeighbors;
+   bool m_noModelUpdate;
+   osg::Matrix m_oldModelMatrix;
 
    osg::ref_ptr<opencover::MultiChannelDrawer> m_drawer;
 };
