@@ -44,7 +44,7 @@
 class WriteHDF5 : public vistle::Module {
  public:
     friend class boost::serialization::access;
-    friend struct ShmVectorWriter;
+    friend struct ShmVectorWriterOrganized;
 
    WriteHDF5(const std::string &shmname, const std::string &name, int moduleID);
    ~WriteHDF5();
@@ -59,6 +59,7 @@ class WriteHDF5 : public vistle::Module {
    typedef std::unordered_map<int, std::unordered_map<int, std::unordered_map<int, unsigned>>> IndexTracker;
 
    // structs/functors
+   // used in organized mode:
    struct ObjectWriteInfoReferenceEntry;
    struct ObjectWriteInfo;
    struct IndexWriteInfo;
@@ -67,25 +68,45 @@ class WriteHDF5 : public vistle::Module {
    struct VectorConcatenator;
 
    struct ShmVectorReserver;
-   struct ShmVectorWriter;
+   struct ShmVectorWriterOrganized;
 
+   // used in performant mode:
+   struct WriteObjectContainer;
+
+   class WriteArrayBase;
+   template<class T>
+   class WriteArray;
+   struct WriteArrayAllocator;
+   struct ShmVectorWriterPerformant;
+   class WriteArrayContainer;
+   struct WriteArrayAppender;
+
+
+   // used in all write modes:
    class MetaToArrayArchive;
+
 
    // overriden functions
    virtual void connectionRemoved(const vistle::Port *from, const vistle::Port *to) override;
    virtual void connectionAdded(const vistle::Port *from, const vistle::Port *to) override;
+   bool parameterChanged(const int senderId, const std::string &name, const vistle::message::SetParameter &msg) override;
    virtual bool prepare() override;
    virtual bool compute() override;
    virtual bool reduce(int timestep) override;
 
    // private helper functions
    bool prepare_fileNameCheck();
-   void compute_addObjectToWrite(vistle::Object::const_ptr obj, unsigned originPortNumber, unsigned &numNodeObjects, unsigned &numNodeArrays,
+   void compute_organized();
+   void compute_performant();
+   void compute_organized_addObjectToWrite(vistle::Object::const_ptr obj, unsigned originPortNumber, unsigned &numNodeObjects, unsigned &numNodeArrays,
                                  std::vector<vistle::Object::const_ptr> &objPtrVector,
                                  std::vector<vistle::FindObjectReferenceOArchive> &objRefArchiveVector,
                                  std::vector<MetaToArrayArchive> &metaToArrayArchiveVector,
                                  std::vector<ObjectWriteInfo> &objectWriteVector,
                                  std::vector<IndexWriteInfo> &indexWriteVector);
+   void compute_performant_addObjectToWrite(vistle::Object::const_ptr obj, unsigned originPortNumber);
+   void reduce_organized();
+   void reduce_performant();
    void util_checkId(hid_t group, const std::string &info) const;
    static void util_checkStatus(herr_t status);
    static void util_HDF5write(bool isWriter, std::string name, const void * data, hid_t fileId, hsize_t * dims, hid_t dataType);
@@ -95,6 +116,7 @@ class WriteHDF5 : public vistle::Module {
 
    // private member variables
    vistle::StringParameter *m_fileName;
+   vistle::IntParameter *m_writeMode;
    vistle::IntParameter *m_overwrite;
    std::vector<vistle::StringParameter *> m_portDescriptions;
    unsigned m_numPorts;
@@ -103,10 +125,12 @@ class WriteHDF5 : public vistle::Module {
    bool m_isRootNode;
    bool m_doNotWrite;
    bool m_unresolvedReferencesExist;
-   std::unordered_map<std::string, bool> m_arrayMap;    //< existence determines wether space has been allocated in file, bool describes wether array has actually been written
-   std::unordered_set<std::string> m_objectSet;         //< existence determines wether entry has been written yet
+   std::unordered_map<std::string, bool> m_arrayMap;            //< existence determines wether space has been allocated in file, bool describes wether array has actually been written
+   std::unordered_set<std::string> m_objectSet;                 //< existence determines wether entry has been written yet
    std::vector<std::string> m_metaNvpTags;
-   IndexTracker m_indexVariantTracker;                  //< used to keep track of the number of variants in each timestep/block/port
+   IndexTracker m_indexVariantTracker;                          //< used to keep track of the number of variants in each timestep/block/port
+
+   std::vector<WriteObjectContainer> m_objContainerVector;     //< used to sort and store objects until the compute function is called when in performant mode
 
 public:
    static unsigned s_numMetaMembers;
@@ -254,14 +278,14 @@ struct WriteHDF5::ShmVectorReserver {
 // * calls util_HDF5Write for a shmVector
 // * needed in order to iterate over all possible shm VectorTypes
 //-------------------------------------------------------------------------
-struct WriteHDF5::ShmVectorWriter {
+struct WriteHDF5::ShmVectorWriterOrganized {
     std::string name;
     hid_t fileId;
     const boost::mpi::communicator & commPtr;
 
-    ShmVectorWriter(hid_t _fileId, const boost::mpi::communicator & _commPtr)
+    ShmVectorWriterOrganized(hid_t _fileId, const boost::mpi::communicator & _commPtr)
         : fileId(_fileId), commPtr(_commPtr) {}
-    ShmVectorWriter(std::string _name, hid_t _fileId, const boost::mpi::communicator & _commPtr)
+    ShmVectorWriterOrganized(std::string _name, hid_t _fileId, const boost::mpi::communicator & _commPtr)
         : name(_name), fileId(_fileId), commPtr(_commPtr) {}
 
     template<typename T>
@@ -272,6 +296,267 @@ struct WriteHDF5::ShmVectorWriter {
 
     void writeDummy();
 };
+
+// WRITE OBJECT CONTAINER
+// * used to store then sort object pointer vectors into block -> timestep -> port order
+//-------------------------------------------------------------------------
+struct WriteHDF5::WriteObjectContainer {
+    vistle::Object::const_ptr obj;
+    unsigned port;
+    unsigned order;
+    bool isDuplicate;
+
+    vistle::FindObjectReferenceOArchive objRefArchive;
+    WriteHDF5::MetaToArrayArchive metaToArrayArchive;
+
+    WriteObjectContainer(vistle::Object::const_ptr _obj, unsigned _port, unsigned _order, bool _isDuplicate)
+        : obj(_obj), port(_port), order(_order), isDuplicate(_isDuplicate), objRefArchive(vistle::FindObjectReferenceOArchive()), metaToArrayArchive(WriteHDF5::MetaToArrayArchive(obj->getType())) {
+
+        if (!isDuplicate) {
+            obj->save(objRefArchive);
+            boost::serialization::serialize_adl(metaToArrayArchive, const_cast<vistle::Meta &>(obj->meta()), ::boost::serialization::version<vistle::Object>::value);
+        }
+    }
+
+    bool operator<(const WriteObjectContainer &other) const {
+        if (obj->getBlock() != other.obj->getBlock()) {
+            return (obj->getBlock() < other.obj->getBlock());
+
+        } else {
+            if (obj->getTimestep() != other.obj->getTimestep()) {
+                return (obj->getTimestep() < other.obj->getTimestep());
+
+            } else {
+                if (port != other.port) {
+                    return (port < other.port);
+                } else {
+                    return (order < other.order);
+                }
+            }
+        }
+    }
+};
+
+
+// WRITE ARRAY ENTRY BASE
+//-------------------------------------------------------------------------
+class WriteHDF5::WriteArrayBase {
+public:
+    // virtual destructor need for class to be registered as polymorphic
+    // polymorphic characteristic used in dynamic_cast
+    virtual ~WriteArrayBase() {}
+};
+
+
+// WRITE ARRAY ENTRY
+//-------------------------------------------------------------------------
+template<class T>
+struct WriteHDF5::WriteArray : public WriteHDF5::WriteArrayBase {
+    std::vector<T> array;
+};
+
+// WRITE ARRAY ALLOCATOR
+//-------------------------------------------------------------------------
+struct WriteHDF5::WriteArrayAllocator {
+    typedef std::unordered_map<std::type_index, WriteHDF5::WriteArrayBase *> DataArrayMap;
+    DataArrayMap * writeArraysPtr;
+
+    WriteArrayAllocator(DataArrayMap * _writeArraysPtr) : writeArraysPtr(_writeArraysPtr) {}
+
+    template<typename T>
+    void operator()(T) {
+        writeArraysPtr->insert(std::make_pair<std::type_index, WriteHDF5::WriteArrayBase *>(typeid(T), new WriteHDF5::WriteArray<T>));
+    }
+};
+
+// SHM VECTOR WRITER - PERFORMANT
+//-------------------------------------------------------------------------
+struct WriteHDF5::ShmVectorWriterPerformant {
+    WriteHDF5::WriteArrayBase * basePtr;
+    hid_t fileId;
+    const boost::mpi::communicator & comm;
+
+
+    ShmVectorWriterPerformant(WriteHDF5::WriteArrayBase * _basePtr, hid_t _fileId, const boost::mpi::communicator & _comm)
+        : basePtr(_basePtr), fileId(_fileId), comm(_comm) {}
+
+    template<typename T>
+    void operator()(T) {
+        WriteHDF5::WriteArray<T> * writeArrayPtr = dynamic_cast<WriteHDF5::WriteArray<T> *>(basePtr);
+
+        if (writeArrayPtr) {
+            auto nativeTypeMapIter = WriteHDF5::s_nativeTypeMap.find(typeid(T));
+
+            std::cerr << "processing: type " << typeid(T).name() << std::endl;
+
+            // handle those VectorTypes unsupported currently. print warning
+            if (nativeTypeMapIter == WriteHDF5::s_nativeTypeMap.end()) {
+                std::cerr << "Warning: type " << typeid(T).name() << "is unsupported in the HDF5 Typemap" << std::endl;
+                return;
+            }
+
+
+
+            std::string writeName = "/array/" + std::to_string(nativeTypeMapIter->second);
+            hsize_t dims[] = {writeArrayPtr->array.size()};
+            hsize_t totalDims[1];
+            hsize_t offset[1];
+            herr_t status;
+            hid_t dataSetId;
+            hid_t fileSpaceId;
+            hid_t memSpaceId;
+            hid_t writeId;
+
+            // check wether the needed vector type is not supported within the nativeTypeMap
+            assert(nativeTypeMapIter != WriteHDF5::s_nativeTypeMap.end());
+
+            // obtain total size of the array
+            boost::mpi::all_reduce(comm, dims[0], totalDims[0], std::plus<hsize_t>());
+
+            // abort write if dataset is empty
+            if (totalDims[0] == 0) {
+                return;
+            }
+
+            // create dataset
+            fileSpaceId = H5Screate_simple(1, totalDims, NULL);
+            dataSetId = H5Dcreate(fileId, writeName.c_str(), nativeTypeMapIter->second, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            H5Sclose(fileSpaceId);
+
+            // transmit offset to required node
+            if (comm.size() == 1) {
+                offset[0] = 0;
+            } else {
+                if (comm.rank() == 0) {
+                    offset[0] = 0;
+                    comm.send(comm.rank()+1, 0, writeArrayPtr->array.size());
+
+                } else if (comm.rank() == comm.size()-1) {
+                    comm.recv(comm.rank()-1, 0, offset[0]);
+
+                } else {
+                    comm.recv(comm.rank()-1, 0, offset[0]);
+                    comm.send(comm.rank()+1, 0, offset[0] + writeArrayPtr->array.size());
+
+                }
+                comm.barrier();
+            }
+
+
+            // set up parallel write
+            writeId = H5Pcreate(H5P_DATASET_XFER);
+            H5Pset_dxpl_mpio(writeId, H5FD_MPIO_COLLECTIVE);
+
+
+            // allocate data spaces
+            fileSpaceId = H5Dget_space(dataSetId);
+            memSpaceId = H5Screate_simple(1, dims, NULL);
+            H5Sselect_hyperslab(fileSpaceId, H5S_SELECT_SET, offset, NULL, dims, NULL);
+
+            if (writeArrayPtr->array.empty()) {
+                H5Sselect_none(fileSpaceId);
+                H5Sselect_none(memSpaceId);
+            }
+
+
+            // write
+            status = H5Dwrite(dataSetId, nativeTypeMapIter->second, memSpaceId, fileSpaceId, writeId, writeArrayPtr->array.data());
+            util_checkStatus(status);
+
+            // release resources
+            H5Sclose(fileSpaceId);
+            H5Sclose(memSpaceId);
+            H5Dclose(dataSetId);
+            H5Pclose(writeId);
+        }
+    }
+};
+
+// CONCATENATED ARRAY CONTAINER BASE CLASS
+// * used to store the final product arrays that will be written into the hdh5 file
+//-------------------------------------------------------------------------
+class WriteHDF5::WriteArrayContainer {
+private:
+    std::unordered_map<std::type_index, WriteHDF5::WriteArrayBase *> m_writeArrays;
+
+public:
+    // constructor
+    WriteArrayContainer() {
+        // create entries into the m_writeArrays such that they will be in the same order when iterated over on every node
+        WriteHDF5::WriteArrayAllocator allocator(&m_writeArrays);
+        boost::mpl::for_each<vistle::VectorTypes>(boost::reference_wrapper<WriteHDF5::WriteArrayAllocator>(allocator));
+    }
+
+    // destructor
+    ~WriteArrayContainer() {
+        for (auto it : m_writeArrays) {
+            delete it.second;
+        }
+    }
+
+    template<class T>
+    std::vector<T> * getByType(T) {
+        if (WriteHDF5::s_nativeTypeMap.find(typeid(T)) != WriteHDF5::s_nativeTypeMap.end()) {
+            auto writeArrayIter = m_writeArrays.find(typeid(T));
+            if (writeArrayIter != m_writeArrays.end()) {
+                return &(static_cast<WriteHDF5::WriteArray<T> *>(writeArrayIter->second))->array;
+            } else {
+                // if vistle::VectorTypes doesnt contain the type T, but the call requires it
+                assert("m_writeArrays not built properly" == NULL);
+                return nullptr;
+            }
+
+        } else {
+            // the native typemap doesnt contain the necessary type - please add it if needed
+            assert("hdf5 type not found" == NULL);
+            return nullptr;
+        }
+    }
+
+    void writeToFile(hid_t fileId, const boost::mpi::communicator & comm) {
+        for (auto it : m_writeArrays) {
+            WriteHDF5::ShmVectorWriterPerformant writer(it.second, fileId, comm);
+            boost::mpl::for_each<vistle::VectorTypes>(boost::reference_wrapper<WriteHDF5::ShmVectorWriterPerformant>(writer));
+        }
+    }
+};
+
+
+// WRITE ARRAY APPENDER
+//-------------------------------------------------------------------------
+class WriteHDF5::WriteArrayAppender {
+private:
+    WriteHDF5::WriteArrayContainer * m_containerPtr;
+    std::string m_name;
+    unsigned m_size;
+
+public:
+    WriteArrayAppender(WriteHDF5::WriteArrayContainer * _containerPtr, std::string _name)
+        : m_containerPtr(_containerPtr), m_name(_name) {}
+
+    template<typename T>
+    void operator()(T) {
+        const vistle::ShmVector<T> &vec = vistle::Shm::the().getArrayFromName<T>(m_name);
+
+        if (vec) {
+            m_size = vec->size();
+            T type;
+            std::vector<T> * dataVecPtr = m_containerPtr->getByType(type);
+
+            // reserve size and append new vector elements
+            dataVecPtr->reserve(m_size);
+            for (unsigned i = 0; i < m_size; i++) {
+                dataVecPtr->push_back(*(vec->data() + i));
+            }
+        }
+    }
+
+    // get/set functions
+    unsigned getSize() const { return m_size; }
+};
+
+
+
 
 
 //-------------------------------------------------------------------------
@@ -346,7 +631,7 @@ void WriteHDF5::ShmVectorReserver::operator()(T) {
 // * facilitates writing of shmVector data to the HDF5 file when GetArrayFromName types match
 //-------------------------------------------------------------------------
 template<typename T>
-void WriteHDF5::ShmVectorWriter::operator()(T) {
+void WriteHDF5::ShmVectorWriterOrganized::operator()(T) {
     const vistle::ShmVector<T> &vec = vistle::Shm::the().getArrayFromName<T>(name);
 
     if (vec) {
@@ -363,7 +648,7 @@ void WriteHDF5::ShmVectorWriter::operator()(T) {
 // * splits up arrays to write them recursively into the hdf5 file
 //-------------------------------------------------------------------------
 template<typename T>
-void WriteHDF5::ShmVectorWriter::writeRecursive(const vistle::ShmVector<T> & vec, long double totalWriteSize, unsigned writeSize, unsigned writeIndex) {
+void WriteHDF5::ShmVectorWriterOrganized::writeRecursive(const vistle::ShmVector<T> & vec, long double totalWriteSize, unsigned writeSize, unsigned writeIndex) {
 
     if (totalWriteSize / HDF5Const::numBytesInGb > HDF5Const::mpiReadWriteLimitGb) {
         writeRecursive(vec, totalWriteSize / 2, std::floor(writeSize / 2), writeIndex);
@@ -415,7 +700,7 @@ void WriteHDF5::ShmVectorWriter::writeRecursive(const vistle::ShmVector<T> & vec
 // SHM VECTOR WRITER - WRITE DUMMY
 // * handles synchronisation and writing to the dummy object if no ShmVector is available to write
 //-------------------------------------------------------------------------
-void WriteHDF5::ShmVectorWriter::writeDummy() {
+void WriteHDF5::ShmVectorWriterOrganized::writeDummy() {
     long double totalWriteSize; // in bytes
     long double zero = 0;
 
