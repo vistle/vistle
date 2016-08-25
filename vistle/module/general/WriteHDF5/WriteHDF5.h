@@ -116,9 +116,12 @@ class WriteHDF5 : public vistle::Module {
    static void util_checkStatus(herr_t status);
    static void util_HDF5WriteOrganized(bool isWriter, std::string name, const void * data, hid_t fileId, hsize_t * dims, hid_t dataType);
    static void util_HDF5WriteOrganized(hid_t fileId);
-   void util_HDF5WritePerformant(char writeName[], unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const void * data);
+
+   template<class T>
+   void util_HDF5WritePerformant(char writeName[], unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const T * data);
+   template<class T>
    static void util_HDF5WritePerformant(hid_t fileId, const boost::mpi::communicator &comm, std::string &writeName,
-                                        unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const void * data);
+                                        unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const T * data);
 
    // private member variables
    vistle::StringParameter *m_fileName;
@@ -642,6 +645,111 @@ struct WriteHDF5::OffsetContainer {
 //-------------------------------------------------------------------------
 // WRITE HDF5 STRUCT/FUNCTOR FUNCTION DEFINITIONS
 //-------------------------------------------------------------------------
+
+// GENERIC UTILITY HELPER FUNCTION - WRITE DATA TO HDF5 ABSTRACTION - PERFORMANT
+// * non-static version
+//-------------------------------------------------------------------------
+template<class T>
+void WriteHDF5::util_HDF5WritePerformant(char writeName[], unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const T * data) {
+    std::string writeNameString(writeName);
+    util_HDF5WritePerformant(m_fileId, comm(), writeNameString, rank, nodeDims, nodeOffset, type, data);
+    return;
+}
+
+// GENERIC UTILITY HELPER FUNCTION - WRITE DATA TO HDF5 ABSTRACTION - PERFORMANT
+//-------------------------------------------------------------------------
+template<class T>
+void WriteHDF5::util_HDF5WritePerformant(hid_t fileId, const boost::mpi::communicator &comm, std::string &writeName,
+                                        unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const T * data) {
+
+       std::vector<hsize_t> dims;
+       std::vector<hsize_t> offset;
+       std::vector<hsize_t> totalDims(rank);
+       herr_t status;
+       hid_t dataSetId;
+       hid_t fileSpaceId;
+       hid_t memSpaceId;
+       hid_t writeId;
+
+       dims.assign(nodeDims, nodeDims + rank);
+       offset.assign(nodeOffset, nodeOffset + rank);
+
+       // obtain total size of the array
+       boost::mpi::all_reduce(comm, dims[0], totalDims[0], std::plus<hsize_t>());
+       for (unsigned i = 1; i < totalDims.size(); i++) {
+           totalDims[i] = dims[i];
+       }
+
+       // abort write if dataset is empty
+       if (totalDims[0] == 0) {
+           return;
+       }
+
+       // create dataset
+       fileSpaceId = H5Screate_simple(rank, totalDims.data(), NULL);
+       dataSetId = H5Dcreate(fileId, writeName.c_str(), type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+       H5Sclose(fileSpaceId);
+
+       // set up parallel write
+       writeId = H5Pcreate(H5P_DATASET_XFER);
+       H5Pset_dxpl_mpio(writeId, H5FD_MPIO_COLLECTIVE);
+
+       // obtain total write size
+       long double totalWriteSize = 1;
+       for (unsigned i = 0; i < rank; i++) {
+           totalWriteSize *= totalDims[i];
+       }
+
+       // obtain divisions and perform a set of neccessary writes in order to keep under the 2gb MPIO limit
+       // limit lies in number of elements collectively within a write, not total write size based off my tests (i.e. 2e8 elements, not 2e8 bytes)
+       const long double writeLimit = HDF5Const::mpiReadWriteLimitGb * HDF5Const::numBytesInGb;
+       unsigned numWriteDivisions = std::ceil(totalWriteSize / writeLimit);
+       unsigned nodeCutoffWriteIndex = std::ceil((double) nodeDims[0] / numWriteDivisions);
+       for (unsigned i = 0; i < numWriteDivisions; i++) {
+
+           // handle size zero nodeCutoffWriteIndex to avoid floating point exception with % operator
+           if (nodeDims[0] != 0) {
+               dims[0] = (i == numWriteDivisions - 1) ? nodeDims[0] % nodeCutoffWriteIndex : nodeCutoffWriteIndex;
+               offset[0] = nodeOffset[0] + i * nodeCutoffWriteIndex;
+
+               // handle case where % would evaluate to 0
+               if (nodeDims[0] % nodeCutoffWriteIndex == 0) {
+                   dims[0] = nodeCutoffWriteIndex;
+               }
+
+           } else {
+               dims[0] = 0;
+               offset[0] = 0;
+           }
+
+           // allocate data spaces
+           memSpaceId = H5Screate_simple(rank, dims.data(), NULL);
+           fileSpaceId = H5Dget_space(dataSetId);
+           H5Sselect_hyperslab(fileSpaceId, H5S_SELECT_SET, offset.data(), NULL, dims.data(), NULL);
+
+           if (dims[0] == 0 || data == nullptr) {
+               H5Sselect_none(fileSpaceId);
+               H5Sselect_none(memSpaceId);
+           }
+
+           unsigned dataOffset = i * nodeCutoffWriteIndex;
+           for (unsigned j = 1; j < rank; j++) {
+               dataOffset *= nodeDims[j];
+           }
+
+           // write
+           status = H5Dwrite(dataSetId, type, memSpaceId, fileSpaceId, writeId, data + dataOffset);
+           util_checkStatus(status);
+
+           // release resources
+           H5Sclose(fileSpaceId);
+           H5Sclose(memSpaceId);
+
+       }
+
+       H5Dclose(dataSetId);
+       H5Pclose(writeId);
+}
 
 // RESERVATION INFO SHM ENTRY - SERIALIZE
 // * needed for passing struct over mpi

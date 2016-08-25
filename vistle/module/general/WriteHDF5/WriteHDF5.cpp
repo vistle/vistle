@@ -36,9 +36,6 @@ BOOST_SERIALIZATION_REGISTER_ARCHIVE(FindObjectReferenceOArchive)
 
 MODULE_MAIN(WriteHDF5)
 
-DEFINE_ENUM_WITH_STRING_CONVERSIONS(WriteMode,
-                                    (Organized)
-                                    (Performant))
 
 //-------------------------------------------------------------------------
 // WRITE HDF5 STATIC MEMBER OUT OF CLASS INITIALIZATION
@@ -417,9 +414,9 @@ void WriteHDF5::reduce_performant() {
     std::vector<double> objectMetaArray;
     ContiguousMemoryMatrix<unsigned> objectDataArray(m_objectDataArraySize, 2);
 
-    ContiguousMemoryMatrix<unsigned> blockArray(m_objectDataArraySize, 3); //!!! can be optimized - value is greater than needed
+    ContiguousMemoryMatrix<unsigned> blockArray(m_objectDataArraySize, 3); //XXX can be optimized - value is greater than needed
     std::vector<unsigned> timestepArray;
-    ContiguousMemoryMatrix<unsigned> portArray(m_objectDataArraySize, 2); //!!! can be optimized - value is greater than needed
+    ContiguousMemoryMatrix<unsigned> portArray(m_objectDataArraySize, 2); //XXX can be optimized - value is greater than needed
     std::vector<unsigned> portObjectListArray;
 
     std::unordered_map<int, std::vector<std::pair<hid_t, std::string>>> objTypeToDataMap;
@@ -460,7 +457,7 @@ void WriteHDF5::reduce_performant() {
 */
 
     // construct object reference map
-    // !!! this can be done in compute as well to save time
+    // XXX this can be done in compute as well to save time
     unsigned index = 0;
     for (unsigned i = 0; i < m_objContainerVector.size(); i++) {
         if (!m_objContainerVector[i].isDuplicate) {
@@ -682,7 +679,7 @@ void WriteHDF5::reduce_performant() {
     }
 
     // transmit type to data map information
-    // !!! compile with boost serilaization for unordered_map to remove need for transfer vectors
+    // XXX compile with boost serilaization for unordered_map to remove need for transfer vectors
     if (size() > 1) {
         if (m_isRootNode) {
             for (unsigned i = 1; i < size(); i++) {
@@ -708,6 +705,7 @@ void WriteHDF5::reduce_performant() {
     }
 
     // timing metric
+    double writeBeginTime = Clock::time();
     if (m_isRootNode) sendInfo("done concatenating - %fs", Clock::time() - reduceBeginTime);
 
     // create & write type mapping arrays
@@ -758,13 +756,13 @@ void WriteHDF5::reduce_performant() {
         dims[1] = 3;
         offset[0] = 0;
         offset[1] = 0;
-        util_HDF5WritePerformant("object/type_to_object_element_info", 2, &dims[0], &offset[0], H5T_NATIVE_UINT, nullptr);
+        util_HDF5WritePerformant("object/type_to_object_element_info", 2, &dims[0], &offset[0], H5T_NATIVE_UINT, (const unsigned *) nullptr);
 
         dims[1] = 2;
-        util_HDF5WritePerformant("object/object_element_info", 2, &dims[0], &offset[0], H5T_NATIVE_UINT, nullptr);
+        util_HDF5WritePerformant("object/object_element_info", 2, &dims[0], &offset[0], H5T_NATIVE_UINT, (const unsigned *) nullptr);
 
         dims[1] = 1;
-        util_HDF5WritePerformant("object/nvp_tags", 1, &dims[0], &offset[0], H5T_NATIVE_CHAR, nullptr);
+        util_HDF5WritePerformant("object/nvp_tags", 1, &dims[0], &offset[0], H5T_NATIVE_CHAR, (const char *) nullptr);
     }
 
     dataArrayContainer.writeToFile(m_fileId, comm());
@@ -805,7 +803,7 @@ void WriteHDF5::reduce_performant() {
     util_HDF5WritePerformant("index/port_object_list", 1, &dims[0], &offset[0], H5T_NATIVE_UINT, portObjectListArray.data());
 
     // timing metric
-    if (m_isRootNode) sendInfo("done writing - %fs", Clock::time() - reduceBeginTime);
+    if (m_isRootNode) sendInfo("done writing - %fs", Clock::time() - writeBeginTime);
 }
 
 // COMPUTE
@@ -1075,7 +1073,7 @@ void WriteHDF5::compute_performant() {
 void WriteHDF5::compute_performant_addObjectToWrite(vistle::Object::const_ptr obj, unsigned originPortNumber) {
     bool isDuplicate = false;
 
-    // !!! optimize this?
+    // XXX optimize this?
     // check for duplicates - here we try to save memory, not speed
     // the limiting reactant is the incoming flow of objects not the performance of the compute function
     for (unsigned i = 0; i < m_objContainerVector.size(); i++) {
@@ -1315,69 +1313,6 @@ void WriteHDF5::util_HDF5WriteOrganized(bool isWriter, std::string name, const v
     return;
 }
 
-// GENERIC UTILITY HELPER FUNCTION - WRITE DATA TO HDF5 ABSTRACTION - PERFORMANT
-// * non-static version
-//-------------------------------------------------------------------------
-void WriteHDF5::util_HDF5WritePerformant(char writeName[], unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const void * data) {
-    std::string writeNameString(writeName);
-    util_HDF5WritePerformant(m_fileId, comm(), writeNameString, rank, nodeDims, nodeOffset, type, data);
-    return;
-}
-
-// GENERIC UTILITY HELPER FUNCTION - WRITE DATA TO HDF5 ABSTRACTION - PERFORMANT
-//-------------------------------------------------------------------------
-void WriteHDF5::util_HDF5WritePerformant(hid_t fileId, const boost::mpi::communicator &comm, std::string &writeName,
-                                        unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const void * data) {
-
-       hsize_t * dims = nodeDims;
-       hsize_t * offset = nodeOffset;
-       std::vector<hsize_t> totalDims(rank);
-       herr_t status;
-       hid_t dataSetId;
-       hid_t fileSpaceId;
-       hid_t memSpaceId;
-       hid_t writeId;
-
-       // obtain total size of the array
-       boost::mpi::all_reduce(comm, dims[0], totalDims[0], std::plus<hsize_t>());
-       for (unsigned i = 1; i < totalDims.size(); i++) {
-           totalDims[i] = dims[i];
-       }
-
-       // abort write if dataset is empty
-       if (totalDims[0] == 0) {
-           return;
-       }
-
-       // create dataset
-       fileSpaceId = H5Screate_simple(rank, totalDims.data(), NULL);
-       dataSetId = H5Dcreate(fileId, writeName.c_str(), type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-
-       // allocate data spaces
-       memSpaceId = H5Screate_simple(rank, dims, NULL);
-       H5Sselect_hyperslab(fileSpaceId, H5S_SELECT_SET, offset, NULL, dims, NULL);
-
-       if (dims[0] == 0 || data == nullptr) {
-           H5Sselect_none(fileSpaceId);
-           H5Sselect_none(memSpaceId);
-       }
-
-       // set up parallel write
-       writeId = H5Pcreate(H5P_DATASET_XFER);
-       H5Pset_dxpl_mpio(writeId, H5FD_MPIO_COLLECTIVE);
-
-
-       // write
-       status = H5Dwrite(dataSetId, type, memSpaceId, fileSpaceId, writeId, data);
-       util_checkStatus(status);
-
-       // release resources
-       H5Sclose(fileSpaceId);
-       H5Sclose(memSpaceId);
-       H5Dclose(dataSetId);
-       H5Pclose(writeId);
-   }
 
 // GENERIC UTILITY HELPER FUNCTION - VERIFY HERR_T STATUS
 //-------------------------------------------------------------------------
