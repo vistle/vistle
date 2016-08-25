@@ -52,6 +52,8 @@ class WriteHDF5 : public vistle::Module {
  private:
    // typedefs
    typedef vistle::FindObjectReferenceOArchive::ReferenceType ReferenceType;
+   typedef std::unordered_map<int, std::vector<std::pair<hid_t, std::string>>> ObjTypeToDataMap;
+   typedef std::vector<std::pair<int, std::vector<std::pair<hid_t, std::string>>>> ObjTypeToDataTransferVector;
 
    // IndexTracker: maps: timestep (map) -> block (map) -> portNumber (map) -> variants (unsigned)
    // maps are needed for block and timestep because they can have values of -1
@@ -72,6 +74,7 @@ class WriteHDF5 : public vistle::Module {
 
    // used in performant mode:
    struct WriteObjectContainer;
+   struct ShmVectorInfoGetter;
 
    class WriteArrayBase;
    template<class T>
@@ -80,7 +83,9 @@ class WriteHDF5 : public vistle::Module {
    struct ShmVectorWriterPerformant;
    class WriteArrayContainer;
    struct WriteArrayAppender;
+   struct WriteArraySizeFinder;
 
+   struct OffsetContainer;
 
    // used in all write modes:
    class MetaToArrayArchive;
@@ -109,10 +114,11 @@ class WriteHDF5 : public vistle::Module {
    void reduce_performant();
    void util_checkId(hid_t group, const std::string &info) const;
    static void util_checkStatus(herr_t status);
-   static void util_HDF5write(bool isWriter, std::string name, const void * data, hid_t fileId, hsize_t * dims, hid_t dataType);
-   static void util_HDF5write(hid_t fileId);
-
-
+   static void util_HDF5WriteOrganized(bool isWriter, std::string name, const void * data, hid_t fileId, hsize_t * dims, hid_t dataType);
+   static void util_HDF5WriteOrganized(hid_t fileId);
+   void util_HDF5WritePerformant(char writeName[], unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const void * data);
+   static void util_HDF5WritePerformant(hid_t fileId, const boost::mpi::communicator &comm, std::string &writeName,
+                                        unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const void * data);
 
    // private member variables
    vistle::StringParameter *m_fileName;
@@ -130,7 +136,9 @@ class WriteHDF5 : public vistle::Module {
    std::vector<std::string> m_metaNvpTags;
    IndexTracker m_indexVariantTracker;                          //< used to keep track of the number of variants in each timestep/block/port
 
-   std::vector<WriteObjectContainer> m_objContainerVector;     //< used to sort and store objects until the compute function is called when in performant mode
+   std::vector<WriteObjectContainer> m_objContainerVector;      //< used to sort and store objects until the compute function is called when in performant mode
+   ObjTypeToDataMap m_objTypeToDataMap;
+   unsigned m_objectDataArraySize;                              //< modified within compute to store the total size that the object_data array will need
 
 public:
    static unsigned s_numMetaMembers;
@@ -337,6 +345,30 @@ struct WriteHDF5::WriteObjectContainer {
     }
 };
 
+// SHM VECTOR INFO GETTER
+//-------------------------------------------------------------------------
+struct WriteHDF5::ShmVectorInfoGetter {
+    std::string name;
+    hid_t type;
+    unsigned size;
+
+    ShmVectorInfoGetter(std::string _name) : name(_name), type(0), size(0) {}
+
+    template<typename T>
+    void operator()(T) {
+        const vistle::ShmVector<T> &vec = vistle::Shm::the().getArrayFromName<T>(name);
+
+        if (vec) {
+            size = vec->size();
+
+            auto typeIter = WriteHDF5::s_nativeTypeMap.find(typeid(T));
+            if (typeIter != WriteHDF5::s_nativeTypeMap.end()) {
+                type = typeIter->second;
+            }
+        }
+    }
+};
+
 
 // WRITE ARRAY ENTRY BASE
 //-------------------------------------------------------------------------
@@ -386,8 +418,9 @@ struct WriteHDF5::ShmVectorWriterPerformant {
 
         if (writeArrayPtr) {
             auto nativeTypeMapIter = WriteHDF5::s_nativeTypeMap.find(typeid(T));
-
-            std::cerr << "processing: type " << typeid(T).name() << std::endl;
+            hsize_t offset[] = {0};
+            hsize_t dims[] = {writeArrayPtr->array.size()};
+            std::string writeName;
 
             // handle those VectorTypes unsupported currently. print warning
             if (nativeTypeMapIter == WriteHDF5::s_nativeTypeMap.end()) {
@@ -395,33 +428,7 @@ struct WriteHDF5::ShmVectorWriterPerformant {
                 return;
             }
 
-
-
-            std::string writeName = "/array/" + std::to_string(nativeTypeMapIter->second);
-            hsize_t dims[] = {writeArrayPtr->array.size()};
-            hsize_t totalDims[1];
-            hsize_t offset[1];
-            herr_t status;
-            hid_t dataSetId;
-            hid_t fileSpaceId;
-            hid_t memSpaceId;
-            hid_t writeId;
-
-            // check wether the needed vector type is not supported within the nativeTypeMap
-            assert(nativeTypeMapIter != WriteHDF5::s_nativeTypeMap.end());
-
-            // obtain total size of the array
-            boost::mpi::all_reduce(comm, dims[0], totalDims[0], std::plus<hsize_t>());
-
-            // abort write if dataset is empty
-            if (totalDims[0] == 0) {
-                return;
-            }
-
-            // create dataset
-            fileSpaceId = H5Screate_simple(1, totalDims, NULL);
-            dataSetId = H5Dcreate(fileId, writeName.c_str(), nativeTypeMapIter->second, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-            H5Sclose(fileSpaceId);
+            writeName = "/array/" + std::to_string(nativeTypeMapIter->second);
 
             // transmit offset to required node
             if (comm.size() == 1) {
@@ -442,32 +449,30 @@ struct WriteHDF5::ShmVectorWriterPerformant {
                 comm.barrier();
             }
 
+            WriteHDF5::util_HDF5WritePerformant(fileId, comm, writeName, 1, dims, offset, nativeTypeMapIter->second, writeArrayPtr->array.data());
 
-            // set up parallel write
-            writeId = H5Pcreate(H5P_DATASET_XFER);
-            H5Pset_dxpl_mpio(writeId, H5FD_MPIO_COLLECTIVE);
-
-
-            // allocate data spaces
-            fileSpaceId = H5Dget_space(dataSetId);
-            memSpaceId = H5Screate_simple(1, dims, NULL);
-            H5Sselect_hyperslab(fileSpaceId, H5S_SELECT_SET, offset, NULL, dims, NULL);
-
-            if (writeArrayPtr->array.empty()) {
-                H5Sselect_none(fileSpaceId);
-                H5Sselect_none(memSpaceId);
             }
+    }
+};
 
+// WRITE ARRAY SIZE FINDER
+//-------------------------------------------------------------------------
+struct WriteHDF5::WriteArraySizeFinder {
+    WriteHDF5::WriteArrayBase * basePtr;
+    std::vector<std::pair<hid_t, unsigned>> sizeVector;
 
-            // write
-            status = H5Dwrite(dataSetId, nativeTypeMapIter->second, memSpaceId, fileSpaceId, writeId, writeArrayPtr->array.data());
-            util_checkStatus(status);
+    WriteArraySizeFinder(WriteHDF5::WriteArrayBase * _basePtr) : basePtr(_basePtr) {}
 
-            // release resources
-            H5Sclose(fileSpaceId);
-            H5Sclose(memSpaceId);
-            H5Dclose(dataSetId);
-            H5Pclose(writeId);
+    template<typename T>
+    void operator()(T) {
+        WriteHDF5::WriteArray<T> * writeArrayPtr = dynamic_cast<WriteHDF5::WriteArray<T> *>(basePtr);
+
+        if (writeArrayPtr) {
+            auto typeIter = WriteHDF5::s_nativeTypeMap.find(typeid(T));
+
+            if (typeIter != WriteHDF5::s_nativeTypeMap.end()) {
+                sizeVector.push_back(std::make_pair(typeIter->second, writeArrayPtr->array.size()));
+            }
         }
     }
 };
@@ -495,21 +500,55 @@ public:
     }
 
     template<class T>
-    std::vector<T> * getByType(T) {
+    unsigned append(const T * data, unsigned size) {
         if (WriteHDF5::s_nativeTypeMap.find(typeid(T)) != WriteHDF5::s_nativeTypeMap.end()) {
             auto writeArrayIter = m_writeArrays.find(typeid(T));
+
             if (writeArrayIter != m_writeArrays.end()) {
-                return &(static_cast<WriteHDF5::WriteArray<T> *>(writeArrayIter->second))->array;
+                std::vector<T> * arrayPtr = &(static_cast<WriteHDF5::WriteArray<T> *>(writeArrayIter->second))->array;
+
+                arrayPtr->reserve(size);
+
+                // append
+                for (unsigned i = 0; i < size; i++) {
+                    arrayPtr->push_back(*(data + i));
+                }
+
+                return arrayPtr->size();
+
             } else {
-                // if vistle::VectorTypes doesnt contain the type T, but the call requires it
+                // if vistle::VectorTypes doesnt contain the type T, but the function call requires it
                 assert("m_writeArrays not built properly" == NULL);
-                return nullptr;
+                return 0;
             }
 
         } else {
             // the native typemap doesnt contain the necessary type - please add it if needed
             assert("hdf5 type not found" == NULL);
-            return nullptr;
+            return 0;
+        }
+    }
+
+    template<class T>
+    unsigned size(T) {
+        auto writeArrayIter = m_writeArrays.find(typeid(T));
+
+        if (writeArrayIter != m_writeArrays.end()) {
+            return (static_cast<WriteHDF5::WriteArray<T> *>(writeArrayIter->second))->array.size();
+
+        } else {
+            // if vistle::VectorTypes doesnt contain the type T, but the function call requires it
+            assert("m_writeArrays not built properly" == NULL);
+            return 0;
+        }
+    }
+
+    std::vector<std::pair<hid_t, unsigned>> getSizeVector() {
+        for (auto it : m_writeArrays) {
+            WriteHDF5::WriteArraySizeFinder sizeFinder(it.second);
+            boost::mpl::for_each<vistle::VectorTypes>(boost::reference_wrapper<WriteHDF5::WriteArraySizeFinder>(sizeFinder));
+
+            return sizeFinder.sizeVector;
         }
     }
 
@@ -528,7 +567,8 @@ class WriteHDF5::WriteArrayAppender {
 private:
     WriteHDF5::WriteArrayContainer * m_containerPtr;
     std::string m_name;
-    unsigned m_size;
+    unsigned m_appendArraySize;
+    unsigned m_newDataArraySize;
 
 public:
     WriteArrayAppender(WriteHDF5::WriteArrayContainer * _containerPtr, std::string _name)
@@ -539,24 +579,64 @@ public:
         const vistle::ShmVector<T> &vec = vistle::Shm::the().getArrayFromName<T>(m_name);
 
         if (vec) {
-            m_size = vec->size();
-            T type;
-            std::vector<T> * dataVecPtr = m_containerPtr->getByType(type);
-
-            // reserve size and append new vector elements
-            dataVecPtr->reserve(m_size);
-            for (unsigned i = 0; i < m_size; i++) {
-                dataVecPtr->push_back(*(vec->data() + i));
-            }
+            m_appendArraySize = vec->size();
+            m_newDataArraySize = m_containerPtr->append(vec->data(), m_appendArraySize);
         }
     }
 
     // get/set functions
-    unsigned getSize() const { return m_size; }
+    unsigned getAppendArraySize() const { return m_appendArraySize; }
+    unsigned getNewDataArraySize() const { return m_newDataArraySize; }
 };
 
+// OFFSET CONTAINER STRUCT
+//-------------------------------------------------------------------------
+struct WriteHDF5::OffsetContainer {
+    unsigned object;
+    unsigned objectData;
 
+    unsigned block;
+    unsigned timestep;
+    unsigned port;
+    unsigned portObjectList;
 
+    std::vector<std::pair<hid_t, unsigned>> dataArrays;
+
+    OffsetContainer(std::vector<std::pair<hid_t, unsigned>> templateArray)
+        : object(0), objectData(0), block(0), timestep(0), port(0), portObjectList(0), dataArrays(templateArray) {
+        for (unsigned i = 0; i < dataArrays.size(); i++) {
+            dataArrays[i].second = 0;
+        }
+    }
+
+    // serialization method for passing over mpi
+    template <class Archive>
+    void serialize(Archive &ar, const unsigned int version) {
+        ar & object;
+        ar & objectData;
+        ar & block;
+        ar & timestep;
+        ar & port;
+        ar & portObjectList;
+        ar & dataArrays;
+    }
+
+    OffsetContainer operator+(const OffsetContainer &rhs) {
+         OffsetContainer container(dataArrays);
+         container.object = object + rhs.object;
+         container.objectData = objectData + rhs.objectData;
+         container.block = block + rhs.block;
+         container.timestep = timestep + rhs.timestep;
+         container.port = port + rhs.port;
+         container.portObjectList = portObjectList + rhs.portObjectList;
+
+         for (unsigned i = 0; i < dataArrays.size(); i++) {
+             container.dataArrays[i].second = dataArrays[i].second + rhs.dataArrays[i].second;
+         }
+
+         return container;
+    }
+};
 
 
 //-------------------------------------------------------------------------
@@ -656,7 +736,7 @@ void WriteHDF5::ShmVectorWriterOrganized::writeRecursive(const vistle::ShmVector
 
     } else {
         if (writeSize == 0) {
-            WriteHDF5::util_HDF5write(fileId);
+            WriteHDF5::util_HDF5WriteOrganized(fileId);
 
         } else {
             auto nativeTypeMapIter = WriteHDF5::s_nativeTypeMap.find(typeid(T));
@@ -708,7 +788,7 @@ void WriteHDF5::ShmVectorWriterOrganized::writeDummy() {
 
     // handle synchronisation of collective writes when over 2gb mpio limit
     for (unsigned i = 0; i < (unsigned) std::ceil(totalWriteSize / (HDF5Const::numBytesInGb * HDF5Const::mpiReadWriteLimitGb)); i++) {
-        WriteHDF5::util_HDF5write(fileId);
+        WriteHDF5::util_HDF5WriteOrganized(fileId);
     }
 
 }

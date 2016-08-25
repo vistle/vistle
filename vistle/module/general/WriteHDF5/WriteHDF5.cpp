@@ -21,6 +21,8 @@
 #include <core/findobjectreferenceoarchive.h>
 #include <core/placeholder.h>
 
+#include <util/stopwatch.h>
+
 #include "WriteHDF5.h"
 
 using namespace vistle;
@@ -207,6 +209,7 @@ bool WriteHDF5::prepare() {
     m_doNotWrite = false;
     m_unresolvedReferencesExist = false;
     m_numPorts -=1; // ignore extra port at end - it will never contain a connection
+    m_objectDataArraySize = 0;
 
     // error check incoming filename
     if (!prepare_fileNameCheck()) {
@@ -220,6 +223,7 @@ bool WriteHDF5::prepare() {
     m_objectSet.clear();
     m_indexVariantTracker.clear();
     m_objContainerVector.clear();
+    m_objTypeToDataMap.clear();
 
     // Create info to be attached to HDF5 file
     MPI_Info_create(&mpiInfo);
@@ -279,15 +283,24 @@ bool WriteHDF5::prepare() {
     dataSetId = H5Dcreate(m_fileId, versionPath.c_str(), H5T_NATIVE_INT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5Sclose(fileSpaceId);
     H5Dclose(dataSetId);
-    util_HDF5write(m_isRootNode, versionPath.c_str(), &HDF5Const::versionNumber, m_fileId, oneDims, H5T_NATIVE_INT);
+    util_HDF5WriteOrganized(m_isRootNode, versionPath.c_str(), &HDF5Const::versionNumber, m_fileId, oneDims, H5T_NATIVE_INT);
+
+    // create version number
+    const std::string writeModePath("/file/write_mode");
+    int writeMode = m_writeMode->getValue();
+    fileSpaceId = H5Screate_simple(1, oneDims, NULL);
+    dataSetId = H5Dcreate(m_fileId, writeModePath.c_str(), H5T_NATIVE_INT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    H5Sclose(fileSpaceId);
+    H5Dclose(dataSetId);
+    util_HDF5WriteOrganized(m_isRootNode, writeModePath.c_str(), &writeMode, m_fileId, oneDims, H5T_NATIVE_INT);
 
     // store number of ports
-    const std::string numPortsPath("/file/numPorts");
+    const std::string numPortsPath("/file/num_ports");
     fileSpaceId = H5Screate_simple(1, oneDims, NULL);
     dataSetId = H5Dcreate(m_fileId, numPortsPath.c_str(), H5T_NATIVE_UINT, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5Sclose(fileSpaceId);
     H5Dclose(dataSetId);
-    util_HDF5write(m_isRootNode, numPortsPath.c_str(), &m_numPorts, m_fileId, oneDims, H5T_NATIVE_UINT);
+    util_HDF5WriteOrganized(m_isRootNode, numPortsPath.c_str(), &m_numPorts, m_fileId, oneDims, H5T_NATIVE_UINT);
 
     // save port descriptions
     groupId = H5Gcreate2(m_fileId, "/file/ports", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -323,13 +336,13 @@ bool WriteHDF5::prepare() {
     }
 
     // write meta nvp tags
-    groupId = H5Gcreate2(m_fileId, "/file/metaTags", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    util_checkId(groupId, "create group /file/metaTags");
+    groupId = H5Gcreate2(m_fileId, "/file/meta_tags", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    util_checkId(groupId, "create group /file/meta_tags");
     status = H5Gclose(groupId);
     util_checkStatus(status);
 
     for (unsigned i = 0; i < m_metaNvpTags.size(); i++) {
-        std::string name = "/file/metaTags/" + std::to_string(i);
+        std::string name = "/file/meta_tags/" + std::to_string(i);
         hsize_t dims[] = {m_metaNvpTags[i].size()};
 
         // store description
@@ -399,12 +412,31 @@ void WriteHDF5::reduce_organized() {
 //-------------------------------------------------------------------------
 void WriteHDF5::reduce_performant() {
     WriteArrayContainer dataArrayContainer;
+
     std::vector<unsigned> objectArray;
-    std::vector<std::vector<unsigned>> objectDataArray;
     std::vector<double> objectMetaArray;
+    ContiguousMemoryMatrix<unsigned> objectDataArray(m_objectDataArraySize, 2);
+
+    ContiguousMemoryMatrix<unsigned> blockArray(m_objectDataArraySize, 3); //!!! can be optimized - value is greater than needed
+    std::vector<unsigned> timestepArray;
+    ContiguousMemoryMatrix<unsigned> portArray(m_objectDataArraySize, 2); //!!! can be optimized - value is greater than needed
+    std::vector<unsigned> portObjectListArray;
+
+    std::unordered_map<int, std::vector<std::pair<hid_t, std::string>>> objTypeToDataMap;
+
+    std::unordered_map<std::string, unsigned> objectReferenceMap;
+
+    const unsigned numMetaElementsInArray = (WriteHDF5::s_numMetaMembers + HDF5Const::additionalMetaArrayMembers + 1);
+    hsize_t dims[2];
+    hsize_t offset[2];
+
+    // timing metric
+    double reduceBeginTime = Clock::time();
+    if (m_isRootNode) sendInfo("begin reduce");
 
     // reserve space for all arrays where the size is known/can be estimated
     objectArray.reserve(m_objContainerVector.size());
+    objectMetaArray.reserve(m_objContainerVector.size() * numMetaElementsInArray);
 
 
     // sorting allows for the assumption that all values appartaining to a particular
@@ -427,23 +459,353 @@ void WriteHDF5::reduce_performant() {
     }
 */
 
+    // construct object reference map
+    // !!! this can be done in compute as well to save time
+    unsigned index = 0;
     for (unsigned i = 0; i < m_objContainerVector.size(); i++) {
         if (!m_objContainerVector[i].isDuplicate) {
-            for (unsigned j = 0; j < m_objContainerVector[i].objRefArchive.getVector().size(); j++) {
-                FindObjectReferenceOArchive::ReferenceData * currRefData = &m_objContainerVector[i].objRefArchive.getVector()[j];
-
-                if (currRefData->referenceType == ReferenceType::ShmVector) {
-                    WriteArrayAppender appender(&dataArrayContainer, currRefData->referenceName);
-                    boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<WriteArrayAppender>(appender));
-                } else if (currRefData->referenceType == ReferenceType::ObjectReference) {
-
-                }
-
-            }
+            objectReferenceMap[m_objContainerVector[i].obj->getName()] = index;
+            index++;
         }
     }
 
+    for (unsigned i = 0; i < m_objContainerVector.size(); i++) {
+        // build object arrays
+        if (!m_objContainerVector[i].isDuplicate) {
+            std::vector<std::string> attributeKeyVector = m_objContainerVector[i].obj->getAttributeList();
+            unsigned objRefArchiveVecSize = m_objContainerVector[i].objRefArchive.getVector().size();
+
+            // get initial offsets for object array
+            if (objectArray.empty()) {
+                objectArray.push_back(0);
+            } else {
+                objectArray.push_back(objRefArchiveVecSize + objectArray.back());
+            }
+
+            // build data arrays and object reference related arrays
+            // namely: data arrays, array & ref entries within object_data
+            for (unsigned j = 0; j < objRefArchiveVecSize; j++) {
+                FindObjectReferenceOArchive::ReferenceData * currRefData = &m_objContainerVector[i].objRefArchive.getVector()[j];
+
+                if (currRefData->referenceType == ReferenceType::ShmVector) {
+                    // append shmvector data to data arrays
+                    WriteArrayAppender appender(&dataArrayContainer, currRefData->referenceName);
+                    boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<WriteArrayAppender>(appender));
+
+                    // append object_data entry
+                    unsigned dataArrayIndex = appender.getNewDataArraySize() - appender.getAppendArraySize();
+                    objectDataArray.push_back({dataArrayIndex, appender.getAppendArraySize()});
+
+                } else if (currRefData->referenceType == ReferenceType::ObjectReference
+                           && currRefData->referenceName != FindObjectReferenceOArchive::nullObjectReferenceName) {
+                    // append object_data entry
+                    objectDataArray.push_back({objectReferenceMap[currRefData->referenceName], HDF5Const::performantReferenceNullVal});
+                }
+            }
+
+            // append attributes to data arrays and object_data
+            for (unsigned j = 0; j < attributeKeyVector.size(); j++) {
+                std::string value = m_objContainerVector[i].obj->getAttribute(attributeKeyVector[j]);
+                unsigned dataArraySizeAfterKeyAppend;
+                unsigned objectDataIndex;
+
+                // append key followed by value within the char data array (both are null terminated)
+                dataArraySizeAfterKeyAppend = dataArrayContainer.append(attributeKeyVector[j].c_str(), attributeKeyVector[j].size());
+                dataArrayContainer.append(value.c_str(), value.size());
+
+                // append index of key into the object_data array
+                objectDataIndex = dataArraySizeAfterKeyAppend - (attributeKeyVector[j].size() + 1);
+                objectDataArray.push_back({objectDataIndex, HDF5Const::performantAttributeNullVal});
+            }
+
+            // build meta
+            double * metaDataPtr = m_objContainerVector[i].metaToArrayArchive.getDataPtr();
+            for (unsigned j = 0; j < WriteHDF5::s_numMetaMembers + HDF5Const::additionalMetaArrayMembers; j++) {
+                objectMetaArray.push_back(*metaDataPtr);
+                metaDataPtr++;
+            }
+            objectMetaArray.push_back(attributeKeyVector.size());
+        }     
+    }
+
+    // build index
+    const unsigned resetFlag = std::numeric_limits<unsigned>::max() - 1;
+    unsigned currBlock = resetFlag;
+    unsigned currBlockNumEl = 0;
+
+    unsigned currTimestep;
+
+    unsigned currPort;
+    unsigned currPortNumEl = 0;
+
+    for (unsigned i = 0; i < m_objContainerVector.size(); i++) {
+
+        // abort if object is only accessed by reference
+        if (m_objContainerVector[i].port == HDF5Const::performantReferenceNullVal) {
+            continue;
+        }
+
+        if (currBlock != m_objContainerVector[i].obj->getBlock()) {
+            currTimestep = resetFlag;
+            currPort = resetFlag;
+
+            if (i != 0) {
+                blockArray.back()[2] = currBlockNumEl;
+                currBlockNumEl = 0;
+            }
+
+            blockArray.push_back({m_objContainerVector[i].obj->getBlock(), timestepArray.size(), 0});
+
+            currBlock = m_objContainerVector[i].obj->getBlock();
+        }
+
+        if (currTimestep != m_objContainerVector[i].obj->getTimestep()) {
+            currPort = resetFlag;
+
+            timestepArray.push_back(portArray.size());
+
+            if (currTimestep == resetFlag) {
+                currBlockNumEl++;
+            }
+
+            currTimestep = m_objContainerVector[i].obj->getTimestep();
+        }
+
+        if (currPort != m_objContainerVector[i].port) {
+            if (i != 0) {
+                portArray.back()[1] = currPortNumEl;
+                currPortNumEl = 0;
+            }
+
+            portArray.push_back({portObjectListArray.size(), 0});
+
+            currPort = m_objContainerVector[i].port;
+        }
+        currPortNumEl++;
+
+        portObjectListArray.push_back(objectReferenceMap[m_objContainerVector[i].obj->getName()]);
+
+    }
+
+    if (!m_objContainerVector.empty()) {
+        portArray.back()[1] = currPortNumEl;
+        blockArray.back()[2] = currBlockNumEl;
+    }
+
+    // distribute offsets between nodes
+    std::vector<std::pair<hid_t, unsigned>> dataArraySizeVector = dataArrayContainer.getSizeVector();
+    OffsetContainer arrayWriteOffsets(dataArraySizeVector);
+    OffsetContainer nodeOffsetSizes(dataArraySizeVector);
+
+    nodeOffsetSizes.object = objectArray.size();
+    nodeOffsetSizes.objectData = objectDataArray.size();
+    nodeOffsetSizes.block = blockArray.size();
+    nodeOffsetSizes.timestep = timestepArray.size();
+    nodeOffsetSizes.port = portArray.size();
+    nodeOffsetSizes.portObjectList = portObjectListArray.size();
+    nodeOffsetSizes.dataArrays = dataArraySizeVector;
+
+
+    if (size() > 1) {
+        if (rank() == 0) {
+            comm().send(rank()+1, 0, nodeOffsetSizes);
+
+        } else if (rank() == size()-1) {
+            comm().recv(rank()-1, 0, arrayWriteOffsets);
+
+        } else {
+            comm().recv(rank()-1, 0, arrayWriteOffsets);
+            comm().send(rank()+1, 0, arrayWriteOffsets + nodeOffsetSizes);
+
+        }
+        comm().barrier();
+    }
+
+
+
+
+    // offset array indices
+    if (!m_isRootNode) {
+        for (unsigned i = 0; i < objectArray.size(); i++) {
+            // offset objectData entries
+            unsigned currObjType = objectMetaArray[i * numMetaElementsInArray + WriteHDF5::s_numMetaMembers];
+            unsigned numRefAndShmVecEntries = m_objTypeToDataMap[currObjType].size();
+            unsigned numAttributeEntries = objectMetaArray[i * numMetaElementsInArray + WriteHDF5::s_numMetaMembers + HDF5Const::additionalMetaArrayMembers];
+            unsigned numDataElements = numAttributeEntries + numRefAndShmVecEntries;
+
+            for (unsigned j = objectArray[i]; j < numDataElements; j++) {
+                if (objectDataArray(j, 1) == HDF5Const::performantReferenceNullVal) {
+                    objectDataArray(j, 0) += arrayWriteOffsets.object;
+
+                } else if (objectDataArray(j, 1) == HDF5Const::performantAttributeNullVal) {
+                    for (unsigned k = 0; k < arrayWriteOffsets.dataArrays.size(); k++) {
+                        if (arrayWriteOffsets.dataArrays[k].first == s_nativeTypeMap.find(typeid(char))->second) {
+                            objectDataArray(j, 0) += arrayWriteOffsets.dataArrays[k].second;
+                            break;
+                        }
+                    }
+
+                } else {
+                    for (unsigned k = 0; k < arrayWriteOffsets.dataArrays.size(); k++) {
+                        if (arrayWriteOffsets.dataArrays[k].first == m_objTypeToDataMap[currObjType][j].first) {
+                            objectDataArray(j, 0) += arrayWriteOffsets.dataArrays[k].second;
+                            break;
+                        }
+                    }
+
+                }
+            }
+
+            // offset object
+            objectArray[i] += arrayWriteOffsets.objectData;
+        }
+
+        // offset block;
+        for (unsigned i = 0; i < blockArray.size(); i++) {
+            blockArray(i, 1) += arrayWriteOffsets.block;
+        }
+
+        // offset timestep;
+        for (unsigned i = 0; i < timestepArray.size(); i++) {
+            timestepArray[i] += arrayWriteOffsets.timestep;
+        }
+
+        // offset port;
+        for (unsigned i = 0; i < portArray.size(); i++) {
+            portArray(i, 0) += arrayWriteOffsets.port;
+        }
+
+        // offset port_object_list;
+        for (unsigned i = 0; i < portObjectListArray.size(); i++) {
+            portObjectListArray[i] += arrayWriteOffsets.portObjectList;
+        }
+    }
+
+    // transmit type to data map information
+    // !!! compile with boost serilaization for unordered_map to remove need for transfer vectors
+    if (size() > 1) {
+        if (m_isRootNode) {
+            for (unsigned i = 1; i < size(); i++) {
+                ObjTypeToDataTransferVector newTypeToDataMap;
+
+                comm().recv(i, 1, newTypeToDataMap);
+
+                for (unsigned j = 0; j < newTypeToDataMap.size(); j++) {
+                    if (m_objTypeToDataMap.find(newTypeToDataMap[j].first) == m_objTypeToDataMap.end()) {
+                        m_objTypeToDataMap[newTypeToDataMap[j].first] = newTypeToDataMap[j].second;
+                    }
+                }
+            }
+        } else {
+            ObjTypeToDataTransferVector transferVector;
+
+            for (auto it : m_objTypeToDataMap) {
+                transferVector.push_back(std::make_pair(it.first, it.second));
+            }
+
+            comm().send(0, 1, transferVector);
+        }
+    }
+
+    // timing metric
+    if (m_isRootNode) sendInfo("done concatenating - %fs", Clock::time() - reduceBeginTime);
+
+    // create & write type mapping arrays
+    if (m_isRootNode) {
+        ContiguousMemoryMatrix<unsigned> typeToObjectDataElementInfoArray(m_objTypeToDataMap.size(), 3);
+        ContiguousMemoryMatrix<unsigned> objectDataElementInfoArray;
+        std::string nvpTagsArray;
+
+        // reserve size for objectDataElementInfoArray
+        unsigned numDataElements = 0;
+        for (auto it : m_objTypeToDataMap) {
+            numDataElements += it.second.size();
+        }
+        objectDataElementInfoArray.reserve(numDataElements, 2);
+
+        // fill arrays
+        for (auto it : m_objTypeToDataMap) {
+            std::vector<std::pair<hid_t, std::string>> &dataElementVector = it.second;
+
+            typeToObjectDataElementInfoArray.push_back({it.first, objectDataElementInfoArray.size(), dataElementVector.size()});
+
+            for (unsigned i = 0; i < dataElementVector.size(); i++) {
+                objectDataElementInfoArray.push_back({dataElementVector[i].first, nvpTagsArray.size()});
+
+                nvpTagsArray += dataElementVector[i].second + '\0';
+            }
+        }
+
+        // write arrays
+        dims[0] = typeToObjectDataElementInfoArray.size();
+        dims[1] = 3;
+        offset[0] = 0;
+        offset[1] = 0;
+        util_HDF5WritePerformant("object/type_to_object_element_info", 2, &dims[0], &offset[0], H5T_NATIVE_UINT, typeToObjectDataElementInfoArray.data());
+
+        dims[0] = objectDataElementInfoArray.size();
+        dims[1] = 2;
+        offset[0] = 0;
+        offset[1] = 0;
+        util_HDF5WritePerformant("object/object_element_info", 2, &dims[0], &offset[0], H5T_NATIVE_UINT, objectDataElementInfoArray.data());
+
+        dims[0] = nvpTagsArray.size();
+        offset[0] = 0;
+        util_HDF5WritePerformant("object/nvp_tags", 1, &dims[0], &offset[0], H5T_NATIVE_CHAR, nvpTagsArray.data());
+
+    } else {
+        dims[0] = 0;
+        dims[1] = 3;
+        offset[0] = 0;
+        offset[1] = 0;
+        util_HDF5WritePerformant("object/type_to_object_element_info", 2, &dims[0], &offset[0], H5T_NATIVE_UINT, nullptr);
+
+        dims[1] = 2;
+        util_HDF5WritePerformant("object/object_element_info", 2, &dims[0], &offset[0], H5T_NATIVE_UINT, nullptr);
+
+        dims[1] = 1;
+        util_HDF5WritePerformant("object/nvp_tags", 1, &dims[0], &offset[0], H5T_NATIVE_CHAR, nullptr);
+    }
+
     dataArrayContainer.writeToFile(m_fileId, comm());
+
+    dims[0] = objectArray.size();
+    offset[0] = arrayWriteOffsets.object;
+    util_HDF5WritePerformant("object/object", 1, &dims[0], &offset[0], H5T_NATIVE_UINT, objectArray.data());
+
+    dims[0] = objectMetaArray.size();
+    offset[0] = arrayWriteOffsets.object * numMetaElementsInArray;
+    util_HDF5WritePerformant("object/object_meta", 1, &dims[0], &offset[0], H5T_NATIVE_DOUBLE, objectMetaArray.data());
+
+    dims[0] = objectDataArray.size();
+    dims[1] = 2;
+    offset[0] = arrayWriteOffsets.objectData;
+    offset[1] = 0;
+    util_HDF5WritePerformant("object/object_data", 2, &dims[0], &offset[0], H5T_NATIVE_UINT, objectDataArray.data());
+
+    // write in pattern
+    dims[0] = blockArray.size();
+    dims[1] = 3;
+    offset[0] = arrayWriteOffsets.block;
+    offset[1] = 0;
+    util_HDF5WritePerformant("index/block", 2, &dims[0], &offset[0], H5T_NATIVE_UINT, blockArray.data());
+
+    dims[0] = timestepArray.size();
+    offset[0] = arrayWriteOffsets.timestep;
+    util_HDF5WritePerformant("index/timestep", 1, &dims[0], &offset[0], H5T_NATIVE_UINT, timestepArray.data());
+
+    dims[0] = portArray.size();
+    dims[1] = 2;
+    offset[0] = arrayWriteOffsets.port;
+    offset[1] = 0;
+    util_HDF5WritePerformant("index/port", 2, &dims[0], &offset[0], H5T_NATIVE_UINT, portArray.data());
+
+    dims[0] = portObjectListArray.size();
+    offset[0] = arrayWriteOffsets.portObjectList;
+    util_HDF5WritePerformant("index/port_object_list", 1, &dims[0], &offset[0], H5T_NATIVE_UINT, portObjectListArray.data());
+
+    // timing metric
+    if (m_isRootNode) sendInfo("done writing - %fs", Clock::time() - reduceBeginTime);
 }
 
 // COMPUTE
@@ -545,7 +907,7 @@ void WriteHDF5::compute_organized() {
 
         // handle referenceVector and shmVector links
         for (unsigned j = 0; j < objectWriteGatherVector[i].referenceVector.size(); j++) {
-            std::string referenceName = objectWriteGatherVector[i].referenceVector[j].name;;
+            std::string referenceName = objectWriteGatherVector[i].referenceVector[j].name;
             std::string referencePath;
 
             if (objectWriteGatherVector[i].referenceVector[j].referenceType == ReferenceType::ShmVector) {
@@ -652,7 +1014,7 @@ void WriteHDF5::compute_organized() {
             metaData = metaToArrayArchiveVector[i].getDataPtr();
         }
 
-        util_HDF5write(nodeHasObject, writeName, metaData, m_fileId, metaDims, H5T_NATIVE_DOUBLE);
+        util_HDF5WriteOrganized(nodeHasObject, writeName, metaData, m_fileId, metaDims, H5T_NATIVE_DOUBLE);
     }
 
     // reduce vector size information for collective calls
@@ -721,8 +1083,8 @@ void WriteHDF5::compute_performant_addObjectToWrite(vistle::Object::const_ptr ob
 
             // if this object was previously queued for write as a reference, and now it comes in as an
             // object from a port, we overwrite the port number to match its origin port
-            if (m_objContainerVector[i].port == std::numeric_limits<unsigned>::max()
-                    && originPortNumber != std::numeric_limits<unsigned>::max()) {
+            if (m_objContainerVector[i].port == HDF5Const::performantReferenceNullVal
+                    && originPortNumber != HDF5Const::performantReferenceNullVal) {
                 m_objContainerVector[i].port = originPortNumber;
             } else {
                 isDuplicate = true;
@@ -731,19 +1093,46 @@ void WriteHDF5::compute_performant_addObjectToWrite(vistle::Object::const_ptr ob
     }
 
     // store object
-    m_objContainerVector.push_back(WriteObjectContainer(obj, originPortNumber, m_objContainerVector.size(), isDuplicate));
-    vistle::FindObjectReferenceOArchive * archive = &m_objContainerVector.back().objRefArchive;
+    WriteObjectContainer container(obj, originPortNumber, m_objContainerVector.size(), isDuplicate);
+    vistle::FindObjectReferenceOArchive * archive = &container.objRefArchive;
 
-    // queue references
-    for (unsigned i = 0; i < archive->getVector().size(); i++) {
-        if (archive->getVector()[i].referenceType == ReferenceType::ObjectReference
-                && archive->getVector()[i].referenceName != FindObjectReferenceOArchive::nullObjectReferenceName) {
-            Object::const_ptr refObj = vistle::Shm::the().getObjectFromName(archive->getVector()[i].referenceName);
+    // calculate and store objectDataArraySize
+    if (!isDuplicate) {
+        m_objectDataArraySize += archive->getVector().size() + obj->getAttributeList().size();
 
-            // setting port number to max uint will order references at the end of all ports
-            compute_performant_addObjectToWrite(refObj, std::numeric_limits<unsigned>::max());
+        auto typeToDataMapIter = m_objTypeToDataMap.find(obj->getType());
+        if (typeToDataMapIter == m_objTypeToDataMap.end()) {
+            m_objTypeToDataMap[obj->getType()].reserve(archive->getVector().size());
+            std::vector<std::pair<hid_t, std::string>> & typeToDataEntry = m_objTypeToDataMap[obj->getType()];
+
+            // build object data needed for mapping
+            for (unsigned i = 0; i < archive->getVector().size(); i++) {
+                if (archive->getVector()[i].referenceType == ReferenceType::ObjectReference
+                        && archive->getVector()[i].referenceName != FindObjectReferenceOArchive::nullObjectReferenceName) {
+                    typeToDataEntry.push_back(std::make_pair(HDF5Const::performantReferenceTypeId, archive->getVector()[i].referenceName));
+
+                } else if (archive->getVector()[i].referenceType == ReferenceType::ShmVector) {
+                    ShmVectorInfoGetter infoGetter(archive->getVector()[i].referenceName);
+                    boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ShmVectorInfoGetter>(infoGetter));
+
+                    typeToDataEntry.push_back(std::make_pair(infoGetter.type, archive->getVector()[i].referenceName));
+                }
+            }
+        }
+
+        // queue references
+        for (unsigned i = 0; i < archive->getVector().size(); i++) {
+            if (archive->getVector()[i].referenceType == ReferenceType::ObjectReference
+                    && archive->getVector()[i].referenceName != FindObjectReferenceOArchive::nullObjectReferenceName) {
+                Object::const_ptr refObj = vistle::Shm::the().getObjectFromName(archive->getVector()[i].referenceName);
+
+                // setting port number to max uint will order references at the end of all ports
+                compute_performant_addObjectToWrite(refObj, HDF5Const::performantReferenceNullVal);
+            }
         }
     }
+
+    m_objContainerVector.push_back(container);
 }
 
 // COMPUTE HELPER FUNCTION - ORGANIZED - PREPARES AN OBJECT FOR WRITING
@@ -876,14 +1265,14 @@ bool WriteHDF5::prepare_fileNameCheck() {
 // * simplification of function call to be used for nodes which do not have objects
 // * forces dummy object write within other function call
 //-------------------------------------------------------------------------
-void WriteHDF5::util_HDF5write(hid_t fileId) {
-       util_HDF5write(false, "", nullptr, fileId, nullptr, 0);
+void WriteHDF5::util_HDF5WriteOrganized(hid_t fileId) {
+       util_HDF5WriteOrganized(false, "", nullptr, fileId, nullptr, 0);
    }
 
-// GENERIC UTILITY HELPER FUNCTION - WRITE DATA TO HDF5 ABSTRACTION
+// GENERIC UTILITY HELPER FUNCTION - WRITE DATA TO HDF5 ABSTRACTION - ORGANIZED
 // * isWriter determines if data will actually be written, otherwise a dummy object is written to
 //-------------------------------------------------------------------------
-void WriteHDF5::util_HDF5write(bool isWriter, std::string name, const void * data, hid_t fileId, hsize_t * dims, hid_t dataType) {
+void WriteHDF5::util_HDF5WriteOrganized(bool isWriter, std::string name, const void * data, hid_t fileId, hsize_t * dims, hid_t dataType) {
     herr_t status;
     hid_t dataSetId;
     hid_t fileSpaceId;
@@ -925,6 +1314,70 @@ void WriteHDF5::util_HDF5write(bool isWriter, std::string name, const void * dat
 
     return;
 }
+
+// GENERIC UTILITY HELPER FUNCTION - WRITE DATA TO HDF5 ABSTRACTION - PERFORMANT
+// * non-static version
+//-------------------------------------------------------------------------
+void WriteHDF5::util_HDF5WritePerformant(char writeName[], unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const void * data) {
+    std::string writeNameString(writeName);
+    util_HDF5WritePerformant(m_fileId, comm(), writeNameString, rank, nodeDims, nodeOffset, type, data);
+    return;
+}
+
+// GENERIC UTILITY HELPER FUNCTION - WRITE DATA TO HDF5 ABSTRACTION - PERFORMANT
+//-------------------------------------------------------------------------
+void WriteHDF5::util_HDF5WritePerformant(hid_t fileId, const boost::mpi::communicator &comm, std::string &writeName,
+                                        unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const void * data) {
+
+       hsize_t * dims = nodeDims;
+       hsize_t * offset = nodeOffset;
+       std::vector<hsize_t> totalDims(rank);
+       herr_t status;
+       hid_t dataSetId;
+       hid_t fileSpaceId;
+       hid_t memSpaceId;
+       hid_t writeId;
+
+       // obtain total size of the array
+       boost::mpi::all_reduce(comm, dims[0], totalDims[0], std::plus<hsize_t>());
+       for (unsigned i = 1; i < totalDims.size(); i++) {
+           totalDims[i] = dims[i];
+       }
+
+       // abort write if dataset is empty
+       if (totalDims[0] == 0) {
+           return;
+       }
+
+       // create dataset
+       fileSpaceId = H5Screate_simple(rank, totalDims.data(), NULL);
+       dataSetId = H5Dcreate(fileId, writeName.c_str(), type, fileSpaceId, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+
+       // allocate data spaces
+       memSpaceId = H5Screate_simple(rank, dims, NULL);
+       H5Sselect_hyperslab(fileSpaceId, H5S_SELECT_SET, offset, NULL, dims, NULL);
+
+       if (dims[0] == 0 || data == nullptr) {
+           H5Sselect_none(fileSpaceId);
+           H5Sselect_none(memSpaceId);
+       }
+
+       // set up parallel write
+       writeId = H5Pcreate(H5P_DATASET_XFER);
+       H5Pset_dxpl_mpio(writeId, H5FD_MPIO_COLLECTIVE);
+
+
+       // write
+       status = H5Dwrite(dataSetId, type, memSpaceId, fileSpaceId, writeId, data);
+       util_checkStatus(status);
+
+       // release resources
+       H5Sclose(fileSpaceId);
+       H5Sclose(memSpaceId);
+       H5Dclose(dataSetId);
+       H5Pclose(writeId);
+   }
 
 // GENERIC UTILITY HELPER FUNCTION - VERIFY HERR_T STATUS
 //-------------------------------------------------------------------------

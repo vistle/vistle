@@ -49,6 +49,10 @@ struct HDF5Const {
     static const int additionalMetaArrayMembers;
 
     static const int versionNumber;
+
+    static const unsigned performantReferenceNullVal;
+    static const unsigned performantAttributeNullVal;
+    static const hid_t performantReferenceTypeId;
 };
 
 // cout-of-class init for static members
@@ -58,6 +62,10 @@ const long double HDF5Const::mpiReadWriteLimitGb = 2;
 const int HDF5Const::additionalMetaArrayMembers = 1;
 
 const int HDF5Const::versionNumber = 1;
+
+const unsigned HDF5Const::performantReferenceNullVal = std::numeric_limits<unsigned>::max(); // < must not = resetFlag in WriteHDF5.cpp
+const unsigned HDF5Const::performantAttributeNullVal = std::numeric_limits<unsigned>::max() - 1;
+const hid_t HDF5Const::performantReferenceTypeId = std::numeric_limits<hid_t>::max();
 
 // CONTAINER FOR HDF5 DUMMY OBJECT CONSTANTS
 //-------------------------------------------------------------------------
@@ -100,31 +108,116 @@ public:
 
     // the & operator
     template<class T>
-    MemberCounterArchive & operator&(const boost::serialization::nvp<T> & t);
+    MemberCounterArchive & operator&(const boost::serialization::nvp<T> & t) {
+        m_counter++;
+
+        if (m_nvpTagVectorPtr != nullptr) {
+            if (t.name() != "block" && t.name() != "timestep") {
+                m_nvpTagVectorPtr->push_back(t.name());
+            }
+        }
+
+        return *this;
+    }
 
     // get functions
     unsigned getCount() { return m_counter; }
 
 };
 
-
-
-// MEMBER COUNTER - << OPERATOR: UNSPECIALIZED
+// CONTIGUOUS MEMORY ARRAY
+// * a wrapper for a 2d array so it can be interfaced with similarly to a std::vector
 //-------------------------------------------------------------------------
 template<class T>
-MemberCounterArchive & MemberCounterArchive::operator&(const boost::serialization::nvp<T> & t) {
+class ContiguousMemoryMatrix {
+private:
+    T * m_data;
+    unsigned m_size[2];
+    unsigned m_pushIndex;
 
-    m_counter++;
+    const double m_capacityIncreaseFactor = 1.2;
 
-    if (m_nvpTagVectorPtr != nullptr) {
-        if (t.name() != "block" && t.name() != "timestep") {
-            m_nvpTagVectorPtr->push_back(t.name());
+public:
+
+    ContiguousMemoryMatrix()
+        : m_data(nullptr), m_pushIndex(0) {
+        m_size[0] = 0;
+        m_size[1] = 0;
+    }
+
+    ContiguousMemoryMatrix(unsigned x, unsigned y)
+        : m_data(nullptr) {
+        reserve(x, y);
+    }
+
+    ~ContiguousMemoryMatrix() {
+        if (m_data) {
+            delete []m_data;
         }
     }
 
-    return *this;
-}
+    void reserve(unsigned x, unsigned y) {
+        T * newData = new T[x * y];
 
+        if (m_data) {
+            for (unsigned i = 0; (i < m_size[0] * m_size[1]) && (i < x * y); i++) {
+                newData[i] = m_data[i];
+            }
+
+            delete []m_data;
+        }
+
+        // create new matrix
+        m_pushIndex = 0;
+        m_size[0] = x;
+        m_size[1] = y;
+
+        m_data = newData;
+    }
+
+    void push_back(std::vector<T> values) {
+        push_back(values.data(), values.size());
+        return;
+    }
+
+    void push_back(T values[]) {
+        push_back(values, m_size[1]);
+        return;
+    }
+
+    void push_back(T values[], unsigned size) {
+        // bound check
+        if (size > m_size[1]) {
+            assert("segmentation fault - out of range in y dimension" == NULL);
+            return;
+        }
+
+        // increase capacity if needed
+        if (m_pushIndex == m_size[0]) {
+            reserve(m_size[0] * m_capacityIncreaseFactor, m_size[1]);
+        }
+
+        // copy data into array
+        for (unsigned i = 0; i < size; i++) {
+            m_data[index(m_pushIndex, i)] = values[i];
+        }
+        m_pushIndex++;
+    }
+
+    T * back() { return &m_data[index(m_pushIndex - 1, 0)]; }
+
+    T & operator()(unsigned x, unsigned y) {
+        return m_data[index(x, y)];
+    }
+
+    T * data() { return m_data; }
+    unsigned size() { return m_pushIndex; }
+
+    unsigned index(unsigned x, unsigned y) {
+        return x * m_size[1] + y;
+    }
+
+};
 
 
 #endif /* HDF5OBJECTS_H */
