@@ -84,12 +84,12 @@ bool ReadHDF5::parameterChanged(const vistle::Parameter *param) {
 }
 
 // PREPARE FUNCTION
-// * handles:
-// * - constructing the nvp map
-// * - iterating over index and loading objects from the HDF5 file
+// * executes commands common to both write modes
+// * delegates processing of file to appropriate prepare method based on writeMode
 //-------------------------------------------------------------------------
 bool ReadHDF5::prepare() {
-    herr_t status;
+    bool unresolvedReferencesExistInComm;
+    MPI_Info mpiInfo;
     hid_t fileId;
     hid_t filePropertyListId;
 
@@ -97,13 +97,10 @@ bool ReadHDF5::prepare() {
     hid_t readId;
     int fileVersion;
 
-    bool unresolvedReferencesExistInComm;
-
-    MPI_Info mpiInfo;
 
     // check file validity before beginning
     if (!util_checkFile()) {
-        return true;
+        Module::prepare();
     }
 
     // clear persisitent variables
@@ -131,9 +128,8 @@ bool ReadHDF5::prepare() {
 
     // open file
     fileId = H5Fopen(m_fileName->getValue().c_str(), H5P_DEFAULT, filePropertyListId);
+    H5Pclose(filePropertyListId);
 
-    // open dummy dataset id for read size 0 sync
-    m_dummyDatasetId = H5Dopen2(fileId, HDF5Const::DummyObject::name.c_str(), H5P_DEFAULT);
 
     // read file version and print
     readId = H5Pcreate(H5P_DATASET_XFER);
@@ -151,26 +147,12 @@ bool ReadHDF5::prepare() {
     }
 
 
-    // prepare data object that is passed to the functions
-    LinkIterData linkIterData(this, fileId);
-
-    // construct nvp map
-    status = H5Literate_by_name(fileId, "/file/metaTags", H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateMeta, &linkIterData, H5P_DEFAULT);
-    util_checkStatus(status);
-
-    // parse index to find objects
-    status = H5Literate_by_name(fileId, "/index", H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateTimestep, &linkIterData, H5P_DEFAULT);
-    util_checkStatus(status);
-
-
-    // sync nodes for collective reads
-    while (util_readSyncStandby(comm(), fileId) != 0.0) { /*wait for all nodes to finish reading*/ }
-
-    // close all open h5 entities
-    H5Dclose(m_dummyDatasetId);
-    H5Pclose(filePropertyListId);
-    H5Fclose(fileId);
-
+    // delegate prepare
+    if (m_writeMode == WriteMode::Organized) {
+        prepare_organized(fileId);
+    } else if (m_writeMode == WriteMode::Performant) {
+        prepare_performant(fileId);
+    }
 
 
     // check and send warning message for unresolved references
@@ -188,7 +170,207 @@ bool ReadHDF5::prepare() {
     // release references to objects so that they can be deleted when not needed anymore
     m_objectPersistenceVector.clear();
 
+    // close file
+    H5Fclose(fileId);
+
+
     return Module::prepare();
+}
+
+// PREPARE FUNCTION - PERFORMANT
+// * handles:
+// * - reading in of indices and object type information
+// * - iteratest through index and constructs output object
+//-------------------------------------------------------------------------
+void ReadHDF5::prepare_performant(hid_t fileId) {
+    ContiguousMemoryMatrix<unsigned> blockArray;
+    std::vector<unsigned> timestepArray;
+    ContiguousMemoryMatrix<unsigned> portArray;
+    std::vector<unsigned> portObjectListArray;
+
+    std::vector<unsigned> objectArray;
+
+    ContiguousMemoryMatrix<unsigned> typeToObjectDataElementInfoArray;
+    ContiguousMemoryMatrix<unsigned> objectDataElementInfoArray;
+    std::string nvpTagsArray;
+
+    std::unordered_map<int, std::vector<std::pair<hid_t, std::string>>> objTypeToDataMap;
+
+    std::unordered_map<std::string, unsigned> objectReferenceMap;
+
+    const unsigned numMetaElementsInArray = (ReadHDF5::s_numMetaMembers + HDF5Const::additionalMetaArrayMembers + 1);
+    std::vector<hsize_t> dims;
+    std::vector<hsize_t> offset;
+
+    // obtain array sizes and allocate memory
+    dims = prepare_performant_getArrayDims(fileId, "index/block");
+    blockArray.reserve(dims[0], dims[1]);
+
+    dims = prepare_performant_getArrayDims(fileId, "index/timestep");
+    timestepArray.reserve(dims[0]);
+
+    dims = prepare_performant_getArrayDims(fileId, "index/port");
+    portArray.reserve(dims[0], dims[1]);
+
+    dims = prepare_performant_getArrayDims(fileId, "index/port_object_list");
+    portObjectListArray.reserve(dims[0]);
+
+    dims = prepare_performant_getArrayDims(fileId, "object/object");
+    objectArray.reserve(dims[0]);
+
+    dims = prepare_performant_getArrayDims(fileId, "object/type_to_object_element_info");
+    typeToObjectDataElementInfoArray.reserve(dims[0], dims[1]);
+
+    dims = prepare_performant_getArrayDims(fileId, "object/object_element_info");
+    objectDataElementInfoArray.reserve(dims[0], dims[1]);
+
+    dims = prepare_performant_getArrayDims(fileId, "object/nvpTags");
+    nvpTagsArray.reserve(dims[0]);
+
+
+    // XXX this is where I left off:
+    // read in data for all above arrays
+    // implemented but havent tested all reads
+    dims[0] = blockArray.size();
+    dims[1] = 3;
+    offset[0] = 0;
+    offset[1] = 0;
+    prepare_performant_readHDF5(fileId, comm(), "index/block", 2, dims, offset, blockArray.data());
+
+    dims[0] = timestepArray.size();
+    offset[0] = 0;
+    prepare_performant_readHDF5(fileId, comm(), "index/timstep", 1, dims, offset, timestepArray.data());
+
+    dims[0] = portArray.size();
+    dims[1] = 2;
+    offset[0] = 0;
+    offset[1] = 0;
+    prepare_performant_readHDF5(fileId, comm(), "index/port", 2, dims, offset, portArray.data());
+
+    dims[0] = portObjectListArray.size();
+    offset[0] = 0;
+    prepare_performant_readHDF5(fileId, comm(), "index/port_object_list", 1, dims, offset, portObjectListArray.data());
+
+    dims[0] = objectArray.size();
+    offset[0] = 0;
+    prepare_performant_readHDF5(fileId, comm(), "object/object", 1, dims, offset, objectArray.data());
+
+    dims[0] = typeToObjectDataElementInfoArray.size();
+    dims[1] = 3;
+    offset[0] = 0;
+    offset[1] = 0;
+    prepare_performant_readHDF5(fileId, comm(), "object/type_to_object_element_info", 2, dims, offset, typeToObjectDataElementInfoArray.data());
+
+    dims[0] = objectDataElementInfoArray.size();
+    dims[1] = 2;
+    offset[0] = 0;
+    offset[1] = 0;
+    prepare_performant_readHDF5(fileId, comm(), "object/object_element_info", 2, dims, offset, objectDataElementInfoArray.data());
+
+    dims[0] = nvpTagsArray.size();
+    offset[0] = 0;
+    prepare_performant_readHDF5(fileId, comm(), "object/nvp_tags", 1, dims, offset, nvpTagsArray.data());
+
+
+
+    // parse index
+    // ib, it, ip, ipol : iterators for block, timestep, port and port_object_list (respectively)
+    for (unsigned ib = 0; ib < blockArray.size(); ib++) {
+        if (blockArray(ib, 0) % rank() != 0) {
+            continue;
+        }
+
+        for (unsigned it = blockArray(ib, 1); it < blockArray(ib, 2); it++) {
+            for (unsigned ip = timestepArray[it]; ip < m_numPorts; ip++) {
+                for (unsigned ipol = portArray(ip, 0); ipol < portArray(ip, 1); ipol++) {
+
+                    // XXX this is where I left off:
+                    // parse object: objectArray[portObjectListArray[ipol]]
+                    //
+                    // To Implement:
+                    // - read object_data entry
+                    // - read object_meta entry
+                    // - create empty object based off type (2nd last entry within object_meta array that was loaded)
+                    // - fill in metaData values (first $(totalMetaSize) - 2 entries in the retrieved metadata array)
+                    // - iterate through object_data elements: (select one of the following based on objectDataElementInfoArray(n, 0), described in documentation)
+                    //   - for ShmVectors: (this area will be similar to the existing prepare_processArrayLink, but a different ShmVectorReader is needed)
+                    //     - obtain appropriate nvp tags based on objectDataElementInfoArray(n, 1) (described in documentation)
+                    //     - call getVectorEntryByNvpName() with nvp tag on archive of new object to obtain each FindObjectOArchive::ReferenceData entry.
+                    //       a value of NULL means that the current object does not contain the nvp tag, meaning that the object structure has changed
+                    //       since the file was written - abort read on this condition.
+                    //     - create a struct to use with mpl::for_each that retrieves the new object's ShmVector with its appropriate type,
+                    //       resizes the array, then reads in the data.
+                    //   - for Object References:
+                    //     - check if object has already been written (uniquely identify objects based on their index in the objectArray)
+                    //     - if so, link the reference, else, queue the referenced object to be built at this point
+                    //   - for attributes:
+                    //     - obtain number of attributes (last entry within object_meta array that was loaded)
+                    //     - read attributes *see notes
+                    //     - fill in new object attributes
+                    // - Add the new object to its host port, pray everything works!
+                    //
+                    // Notes:
+                    // * every time a read is performed, a size and offset must be provided. See documentation for description of how to find each
+                    // * There is an error in the design of the performant file system. There is currently no way of finding the total read size needed
+                    //   for the reading of attributes. This can be added in the second column of the object_data array (currently it is set to
+                    //   HDF5Const::performantAttributeNullVal). However, some changes will need to be made where the global offsets are stored into the
+                    //   HDF5 file. See lines 647 and 523 of WriteHDF5.cpp.
+                }
+            }
+        }
+    }
+}
+
+// PREPARE UTILITY FUNCTION - OBTAIN ARRAY DIMENSIONS
+//-------------------------------------------------------------------------
+std::vector<hsize_t> ReadHDF5::prepare_performant_getArrayDims(hid_t fileId, char readName[]) {
+    hid_t dataSetId;
+    hid_t dataSpaceId;
+    std::vector<hsize_t> dims(2);
+
+    dataSetId = H5Dopen2(fileId, readName, H5P_DEFAULT);
+    dataSpaceId = H5Dget_space(dataSetId);
+
+    H5Sget_simple_extent_dims(dataSpaceId, dims.data(), NULL);
+
+    H5Sclose(dataSpaceId);
+    H5Dclose(dataSetId);
+
+    return dims;
+}
+
+// PREPARE FUNCTION - ORGANIZED
+// * handles:
+// * - constructing the nvp map
+// * - iterating over index and loading objects from the HDF5 file
+//-------------------------------------------------------------------------
+void ReadHDF5::prepare_organized(hid_t fileId) {
+    herr_t status;
+
+
+    // open dummy dataset id for read size 0 sync
+    m_dummyDatasetId = H5Dopen2(fileId, HDF5Const::DummyObject::name.c_str(), H5P_DEFAULT);
+
+    // prepare data object that is passed to the functions
+    LinkIterData linkIterData(this, fileId);
+
+    // construct nvp map
+    status = H5Literate_by_name(fileId, "/file/meta_tags", H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateMeta, &linkIterData, H5P_DEFAULT);
+    util_checkStatus(status);
+
+    // parse index to find objects
+    status = H5Literate_by_name(fileId, "/index", H5_INDEX_NAME, H5_ITER_NATIVE, NULL, prepare_iterateTimestep, &linkIterData, H5P_DEFAULT);
+    util_checkStatus(status);
+
+
+    // sync nodes for collective reads
+    while (util_readSyncStandby(comm(), fileId) != 0.0) { /*wait for all nodes to finish reading*/ }
+
+    // close all open h5 entities
+    H5Dclose(m_dummyDatasetId);
+
+
+    return;
 }
 
 // PREPARE UTILITY FUNCTION - ITERATE CALLBACK FOR META NVP TAGS
@@ -204,7 +386,7 @@ herr_t ReadHDF5::prepare_iterateMeta(hid_t callingGroupId, const char *name, con
 
     LinkIterData * linkIterData = (LinkIterData *) opData;
 
-    std::string groupPath = "/file/metaTags/" + std::string(name);
+    std::string groupPath = "/file/meta_tags/" + std::string(name);
     std::vector<char> nvpTag;
 
     // obtain nvp tag
@@ -583,8 +765,17 @@ bool ReadHDF5::util_checkFile() {
     readId = H5Pcreate(H5P_DATASET_XFER);
     H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
 
-    dataSetId = H5Dopen2(fileId, "/file/numPorts", H5P_DEFAULT);
+    dataSetId = H5Dopen2(fileId, "/file/num_ports", H5P_DEFAULT);
     status = H5Dread(dataSetId, H5T_NATIVE_UINT, H5S_ALL, H5S_ALL, readId, &numNewPorts);
+    if (status != 0) {
+        sendInfo("File format not recognized");
+        return false;
+    }
+
+    H5Dclose(dataSetId);
+
+    dataSetId = H5Dopen2(fileId, "/file/write_mode", H5P_DEFAULT);
+    status = H5Dread(dataSetId, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, readId, &m_writeMode);
     if (status != 0) {
         sendInfo("File format not recognized");
         return false;

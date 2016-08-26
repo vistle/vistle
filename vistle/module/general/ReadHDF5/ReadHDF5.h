@@ -59,6 +59,14 @@ class ReadHDF5 : public vistle::Module {
    virtual bool reduce(int timestep) override;
 
    // private helper functions
+   void prepare_organized(hid_t fileId);
+   void prepare_performant(hid_t fileId);
+
+   template<class T>
+   void prepare_performant_readHDF5(hid_t fileId, const boost::mpi::communicator &comm, char readName[],
+                                    unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, const T * data);
+   std::vector<hsize_t> prepare_performant_getArrayDims(hid_t fileId, char readName[]);
+
    static herr_t prepare_iterateMeta(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
 
    static herr_t prepare_iterateTimestep(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
@@ -84,6 +92,7 @@ class ReadHDF5 : public vistle::Module {
    // private member variables
    vistle::StringParameter *m_fileName;
    unsigned m_numPorts;
+   int m_writeMode;
 
    bool m_isRootNode;
    bool m_unresolvedReferencesExist;
@@ -209,6 +218,100 @@ struct ReadHDF5::ShmVectorReader {
 //-------------------------------------------------------------------------
 // WRITE HDF5 STRUCT/FUNCTOR FUNCTION DEFINITIONS
 //-------------------------------------------------------------------------
+
+// GENERIC UTILITY HELPER FUNCTION - READ DATA FROM HDF5 ABSTRACTION - PERFORMANT
+//-------------------------------------------------------------------------
+template<class T>
+void ReadHDF5::prepare_performant_readHDF5(hid_t fileId, const boost::mpi::communicator &comm, char readName[],
+                                            unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, const T * data) {
+
+       std::vector<hsize_t> dims;
+       std::vector<hsize_t> offset;
+       std::vector<hsize_t> totalDims(rank);
+       herr_t status;
+       hid_t dataSetId;
+       hid_t fileSpaceId;
+       hid_t memSpaceId;
+       hid_t readId;
+       hid_t dataType;
+
+       dims.assign(nodeDims, nodeDims + rank);
+       offset.assign(nodeOffset, nodeOffset + rank);
+
+       // obtain total size of the array
+       boost::mpi::all_reduce(comm, dims[0], totalDims[0], std::plus<hsize_t>());
+       for (unsigned i = 1; i < totalDims.size(); i++) {
+           totalDims[i] = dims[i];
+       }
+
+       // abort write if dataset is empty
+       if (totalDims[0] == 0) {
+           return;
+       }
+
+       // open dataspace
+       dataSetId = H5Dopen2(fileId, readName, H5P_DEFAULT);
+       dataType = H5Dget_type(dataSetId);
+
+       // set up parallel read
+       readId = H5Pcreate(H5P_DATASET_XFER);
+       H5Pset_dxpl_mpio(readId, H5FD_MPIO_COLLECTIVE);
+
+       long double totalWriteSize = 1;
+       for (unsigned i = 0; i < rank; i++) {
+           totalWriteSize *= totalDims[i];
+       }
+
+       // obtain divisions and perform a set of neccessary reads in order to keep under the 2gb MPIO limit
+       // limit lies in number of elements collectively within a write, not total write size based off my tests (i.e. 2e8 elements, not 2e8 bytes)
+       const long double writeLimit = HDF5Const::mpiReadWriteLimitGb * HDF5Const::numBytesInGb;
+       unsigned numWriteDivisions = std::ceil(totalWriteSize / writeLimit);
+       unsigned nodeCutoffWriteIndex = std::ceil((double) nodeDims[0] / numWriteDivisions);
+       for (unsigned i = 0; i < numWriteDivisions; i++) {
+
+           // handle size zero nodeCutoffWriteIndex to avoid floating point exception with % operator
+           if (nodeDims[0] != 0) {
+               dims[0] = (i == numWriteDivisions - 1) ? nodeDims[0] % nodeCutoffWriteIndex : nodeCutoffWriteIndex;
+               offset[0] = nodeOffset[0] + i * nodeCutoffWriteIndex;
+
+               // handle case where % would evaluate to 0
+               if (nodeDims[0] % nodeCutoffWriteIndex == 0) {
+                   dims[0] = nodeCutoffWriteIndex;
+               }
+
+           } else {
+               dims[0] = 0;
+               offset[0] = 0;
+           }
+
+           // allocate data spaces
+           memSpaceId = H5Screate_simple(rank, dims.data(), NULL);
+           fileSpaceId = H5Dget_space(dataSetId);
+           H5Sselect_hyperslab(fileSpaceId, H5S_SELECT_SET, offset.data(), NULL, dims.data(), NULL);
+
+           if (dims[0] == 0 || data == nullptr) {
+               H5Sselect_none(fileSpaceId);
+               H5Sselect_none(memSpaceId);
+           }
+
+           unsigned dataOffset = i * nodeCutoffWriteIndex;
+           for (unsigned j = 1; j < rank; j++) {
+               dataOffset *= nodeDims[j];
+           }
+
+           // write
+           status = H5Dread(dataSetId, dataType, memSpaceId, fileSpaceId, readId, data + dataOffset);
+           util_checkStatus(status);
+
+           // release resources
+           H5Sclose(fileSpaceId);
+           H5Sclose(memSpaceId);
+
+       }
+
+       H5Dclose(dataSetId);
+       H5Pclose(readId);
+}
 
 // SHM VECTOR READER - () OPERATOR
 // * facilitates reading of shmVector data to the HDF5 file when GetArrayFromName types match

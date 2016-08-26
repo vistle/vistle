@@ -134,7 +134,9 @@ public:
 };
 
 // CONTIGUOUS MEMORY ARRAY
-// * a wrapper for a 2d array so it can be interfaced with similarly to a std::vector
+// * a wrapper for a 2d array
+// * stored data in a contiguous memory buffes so that it can be used with the HDF5 library
+// * interfaces similar to a std::vector
 //-------------------------------------------------------------------------
 template<class T>
 class ContiguousMemoryMatrix {
@@ -147,6 +149,7 @@ private:
 
 public:
 
+    // constructors
     ContiguousMemoryMatrix()
         : m_data(nullptr), m_pushIndex(0) {
         m_size[0] = 0;
@@ -158,12 +161,14 @@ public:
         reserve(x, y);
     }
 
+    // destructor
     ~ContiguousMemoryMatrix() {
         if (m_data) {
             delete []m_data;
         }
     }
 
+    // resizes the array and copies data over
     void reserve(unsigned x, unsigned y) {
         T * newData = new T[x * y];
 
@@ -183,6 +188,7 @@ public:
         m_data = newData;
     }
 
+    // push_back methods, they also resize the array if needed
     void push_back(std::vector<T> values) {
         push_back(values.data(), values.size());
         return;
@@ -212,15 +218,23 @@ public:
         m_pushIndex++;
     }
 
+    // obtain a reference to the back element group of the matrix
     T * back() { return &m_data[index(m_pushIndex - 1, 0)]; }
 
+    // index into the matrix
     T & operator()(unsigned x, unsigned y) {
         return m_data[index(x, y)];
     }
 
+    T * operator[](unsigned x) {
+        return &m_data[index(x, 0)];
+    }
+
+    // obtain matrix data
     T * data() { return m_data; }
     unsigned size() { return m_pushIndex; }
 
+    // obtain 1 dimensional index from 2 dimensional index
     unsigned index(unsigned x, unsigned y) {
         return x * m_size[1] + y;
     }

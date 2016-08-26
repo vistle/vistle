@@ -61,7 +61,7 @@ const std::unordered_map<std::type_index, hid_t> WriteHDF5::s_nativeTypeMap = {
       { typeid(long double), H5T_NATIVE_LDOUBLE }
 
        // to implement? these are other accepted types
-       // must implement arrays within WriteArrayContainer if so
+       // must implement arrays within DataArrayContainer if so
        //        H5T_NATIVE_B8
        //        H5T_NATIVE_B16
        //        H5T_NATIVE_B32
@@ -406,9 +406,17 @@ void WriteHDF5::reduce_organized() {
 }
 
 // REDUCE UTILITY FUNCTION - PERFORMANT
+// * the following steps are executed:
+// * - builds object, object_data, data arrays
+// * - builds index
+// * - distributes global offsets between nodes
+// * - offsets necessary indices to reflect the global index
+// * - sends object type data to the root node
+// * - root node concatenates all type data and writes it
+// * - nodes collectively write all data
 //-------------------------------------------------------------------------
 void WriteHDF5::reduce_performant() {
-    WriteArrayContainer dataArrayContainer;
+    DataArrayContainer dataArrayContainer;
 
     std::vector<unsigned> objectArray;
     std::vector<double> objectMetaArray;
@@ -466,6 +474,7 @@ void WriteHDF5::reduce_performant() {
         }
     }
 
+    // construct object, object_data, data arrays
     for (unsigned i = 0; i < m_objContainerVector.size(); i++) {
         // build object arrays
         if (!m_objContainerVector[i].isDuplicate) {
@@ -486,8 +495,8 @@ void WriteHDF5::reduce_performant() {
 
                 if (currRefData->referenceType == ReferenceType::ShmVector) {
                     // append shmvector data to data arrays
-                    WriteArrayAppender appender(&dataArrayContainer, currRefData->referenceName);
-                    boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<WriteArrayAppender>(appender));
+                    DataArrayAppender appender(&dataArrayContainer, currRefData->referenceName);
+                    boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<DataArrayAppender>(appender));
 
                     // append object_data entry
                     unsigned dataArrayIndex = appender.getNewDataArraySize() - appender.getAppendArraySize();
@@ -511,6 +520,7 @@ void WriteHDF5::reduce_performant() {
                 dataArrayContainer.append(value.c_str(), value.size());
 
                 // append index of key into the object_data array
+                // XXX read size fix should occur here. see note 2 within ReadHDF5.cpp XXX comment
                 objectDataIndex = dataArraySizeAfterKeyAppend - (attributeKeyVector[j].size() + 1);
                 objectDataArray.push_back({objectDataIndex, HDF5Const::performantAttributeNullVal});
             }
@@ -602,7 +612,6 @@ void WriteHDF5::reduce_performant() {
     nodeOffsetSizes.portObjectList = portObjectListArray.size();
     nodeOffsetSizes.dataArrays = dataArraySizeVector;
 
-
     if (size() > 1) {
         if (rank() == 0) {
             comm().send(rank()+1, 0, nodeOffsetSizes);
@@ -634,6 +643,7 @@ void WriteHDF5::reduce_performant() {
                 if (objectDataArray(j, 1) == HDF5Const::performantReferenceNullVal) {
                     objectDataArray(j, 0) += arrayWriteOffsets.object;
 
+                // XXX read size fix should occur here. see note 2 within ReadHDF5.cpp XXX comment
                 } else if (objectDataArray(j, 1) == HDF5Const::performantAttributeNullVal) {
                     for (unsigned k = 0; k < arrayWriteOffsets.dataArrays.size(); k++) {
                         if (arrayWriteOffsets.dataArrays[k].first == s_nativeTypeMap.find(typeid(char))->second) {
@@ -765,6 +775,7 @@ void WriteHDF5::reduce_performant() {
         util_HDF5WritePerformant("object/nvp_tags", 1, &dims[0], &offset[0], H5T_NATIVE_CHAR, (const char *) nullptr);
     }
 
+    // write arrays
     dataArrayContainer.writeToFile(m_fileId, comm());
 
     dims[0] = objectArray.size();
@@ -1067,15 +1078,12 @@ void WriteHDF5::compute_performant() {
 }
 
 // COMPUTE HELPER FUNCTION - PERFORMANT - PREPARES AN OBJECT FOR WRITING
-// * all objects will be placed into the index write queue unless they are references
-// * all objects will be placed into the object write queue unless they have already been written
+// * adds objects and referenced objects into object container
 //-------------------------------------------------------------------------
 void WriteHDF5::compute_performant_addObjectToWrite(vistle::Object::const_ptr obj, unsigned originPortNumber) {
     bool isDuplicate = false;
 
-    // XXX optimize this?
-    // check for duplicates - here we try to save memory, not speed
-    // the limiting reactant is the incoming flow of objects not the performance of the compute function
+    // XXX optimize this? use unordered_map?
     for (unsigned i = 0; i < m_objContainerVector.size(); i++) {
         if (m_objContainerVector[i].obj->getName() == obj->getName()) {
 
