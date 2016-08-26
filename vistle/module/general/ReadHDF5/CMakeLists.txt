@@ -1,7 +1,7 @@
 include_directories("/usr/include/mpich-x86_64")
 FIND_PACKAGE(HDF5 COMPONENTS C)
 if (NOT HDF5_IS_PARALLEL)
-    message("Parallel HDF5 is required for WriteHDF5")
+    message("Parallel HDF5 is required for ReadHDF5")
     return()
 endif()
 
