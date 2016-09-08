@@ -302,8 +302,7 @@ bool CompositorIceT::init()
    }
 
    m_drawer = new MultiChannelDrawer(numChannels);
-   m_drawer->switchReprojection(false);
-   m_drawer->switchAdaptivePointSize(false);
+   m_drawer->setMode(MultiChannelDrawer::AsIs);
    cover->getScene()->addChild(m_drawer);
 
    if (coVRMSController::instance()->isMaster()) {
