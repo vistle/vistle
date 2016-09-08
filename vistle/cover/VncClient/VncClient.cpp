@@ -1245,29 +1245,33 @@ VncClient::preFrame()
    if (!connected)
       return;
 
-   osgViewer::GraphicsWindow *win = coVRConfig::instance()->windows[0].window;
-   int x,y,w,h;
-   win->getWindowRectangle(x, y, w, h);
-   if (activeConfig.nearValue != coVRConfig::instance()->nearClip()
-         || activeConfig.farValue != coVRConfig::instance()->farClip()
-         || activeConfig.width != w
-         || activeConfig.height != h) {
-      activeConfig.nearValue = coVRConfig::instance()->nearClip();
-      activeConfig.farValue = coVRConfig::instance()->farClip();
-      activeConfig.width = w;
-      activeConfig.height = h;
+#if 0
+   if (coVRConfig::instance()->numWindows() > 0) {
+      osgViewer::GraphicsWindow *win = coVRConfig::instance()->windows[0].window;
+      int x,y,w,h;
+      win->getWindowRectangle(x, y, w, h);
+      if (activeConfig.nearValue != coVRConfig::instance()->nearClip()
+            || activeConfig.farValue != coVRConfig::instance()->farClip()
+            || activeConfig.width != w
+            || activeConfig.height != h) {
+         activeConfig.nearValue = coVRConfig::instance()->nearClip();
+         activeConfig.farValue = coVRConfig::instance()->farClip();
+         activeConfig.width = w;
+         activeConfig.height = h;
 
-      activeConfig.vsize = coVRConfig::instance()->screens[0].vsize;
-      activeConfig.hsize = coVRConfig::instance()->screens[0].hsize;
-      activeConfig.screenPos[0] = coVRConfig::instance()->screens[0].xyz[0];
-      activeConfig.screenPos[1] = coVRConfig::instance()->screens[0].xyz[1];
-      activeConfig.screenPos[2] = coVRConfig::instance()->screens[0].xyz[2];
-      activeConfig.screenRot[0] = coVRConfig::instance()->screens[0].hpr[0];
-      activeConfig.screenRot[1] = coVRConfig::instance()->screens[0].hpr[1];
-      activeConfig.screenRot[2] = coVRConfig::instance()->screens[0].hpr[2];
+         activeConfig.vsize = coVRConfig::instance()->screens[0].vsize;
+         activeConfig.hsize = coVRConfig::instance()->screens[0].hsize;
+         activeConfig.screenPos[0] = coVRConfig::instance()->screens[0].xyz[0];
+         activeConfig.screenPos[1] = coVRConfig::instance()->screens[0].xyz[1];
+         activeConfig.screenPos[2] = coVRConfig::instance()->screens[0].xyz[2];
+         activeConfig.screenRot[0] = coVRConfig::instance()->screens[0].hpr[0];
+         activeConfig.screenRot[1] = coVRConfig::instance()->screens[0].hpr[1];
+         activeConfig.screenRot[2] = coVRConfig::instance()->screens[0].hpr[2];
 
-      sendApplicationMessage(m_client, rfbScreenConfig, sizeof(activeConfig), &activeConfig);
+         sendApplicationMessage(m_client, rfbScreenConfig, sizeof(activeConfig), &activeConfig);
+      }
    }
+#endif
 
    const int numChannels = coVRConfig::instance()->numChannels();
    std::vector<matricesMsg> messages(m_numViews);
