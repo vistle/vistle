@@ -985,9 +985,7 @@ bool VncClient::init()
    m_haveConnection = false;
    m_listen = false;
 
-   m_reproject = true;
-   m_adapt = true;
-   m_adaptWithNeighbors = true;
+   m_mode = MultiChannelDrawer::ReprojectMesh;
    m_frameReady = false;
    m_noModelUpdate = false;
    m_oldModelMatrix = osg::Matrix::identity();
@@ -1067,8 +1065,6 @@ bool VncClient::init()
    std::cerr << "numViews: " << m_numViews << ", m_channelBase: " << m_channelBase << std::endl;
 
    m_drawer = new MultiChannelDrawer(numChannels, true /* flip top/bottom */);
-   m_drawer->switchReprojection(m_reproject);
-   m_drawer->switchAdaptivePointSize(m_adapt, m_adaptWithNeighbors);
 
 #ifdef VRUI
    m_menuItem = new coSubMenuItem("Hybrid Rendering...");
@@ -1096,19 +1092,26 @@ bool VncClient::init()
    m_reprojCheck->setLabel("Reproject");
    m_reprojCheck->setEventListener(this);
    m_reprojCheck->setPos(0,0);
-   m_reprojCheck->setState(m_reproject);
 
    m_adaptCheck = mui::ToggleButton::create(muiId("adapt"), m_tab);
    m_adaptCheck->setLabel("Adapt Point Size");
    m_adaptCheck->setEventListener(this);
    m_adaptCheck->setPos(1,0);
-   m_adaptCheck->setState(m_adapt);
 
    m_adaptWithNeighborsCheck = mui::ToggleButton::create(muiId("adapt_with_neighbors"), m_tab);
    m_adaptWithNeighborsCheck->setLabel("Adapt With Neighbors");
    m_adaptWithNeighborsCheck->setEventListener(this);
    m_adaptWithNeighborsCheck->setPos(2,0);
-   m_adaptWithNeighborsCheck->setState(m_adaptWithNeighbors);
+
+   m_asMeshCheck = mui::ToggleButton::create(muiId("as_mesh"), m_tab);
+   m_asMeshCheck->setLabel("As Mesh");
+   m_asMeshCheck->setEventListener(this);
+   m_asMeshCheck->setPos(3,0);
+
+   m_withHolesCheck = mui::ToggleButton::create(muiId("with_holes"), m_tab);
+   m_withHolesCheck->setLabel("With Holes");
+   m_withHolesCheck->setEventListener(this);
+   m_withHolesCheck->setPos(4,0);
 
    coTUITab *tab = dynamic_cast<coTUITab *>(m_tab->getTUI());
 
@@ -1145,6 +1148,9 @@ bool VncClient::init()
    m_inhibitModelUpdate->setState(m_noModelUpdate);
 #endif
 
+   m_drawer->setMode(m_mode);
+   modeToUi(m_mode);
+
    return true;
 }
 
@@ -1164,31 +1170,117 @@ VncClient::~VncClient()
    plugin = NULL;
 }
 
+void VncClient::modeToUi(MultiChannelDrawer::Mode mode) {
+   switch(mode) {
+      case MultiChannelDrawer::AsIs:
+         m_reproject = false;
+         break;
+      case MultiChannelDrawer::Reproject:
+         m_reproject = true;
+         m_adapt = false;
+         m_asMesh = false;
+         break;
+      case MultiChannelDrawer::ReprojectAdaptive:
+         m_reproject = true;
+         m_adapt = true;
+         m_adaptWithNeighbors = false;
+         m_asMesh = false;
+         break;
+      case MultiChannelDrawer::ReprojectAdaptiveWithNeighbors:
+         m_reproject = true;
+         m_adapt = true;
+         m_adaptWithNeighbors = true;
+         m_asMesh = false;
+         break;
+      case MultiChannelDrawer::ReprojectMesh:
+         m_reproject = true;
+         m_adapt = false;
+         m_asMesh = true;
+         m_withHoles = false;
+         break;
+      case MultiChannelDrawer::ReprojectMeshWithHoles:
+         m_reproject = true;
+         m_adapt = false;
+         m_asMesh = true;
+         m_withHoles = true;
+         break;
+   }
+
+   m_reprojCheck->setState(m_reproject);
+   m_adaptCheck->setState(m_adapt);
+   m_adaptWithNeighborsCheck->setState(m_adaptWithNeighbors);
+   m_asMeshCheck->setState(m_asMesh);
+   m_withHolesCheck->setState(m_withHoles);
+}
+
+void VncClient::applyMode() {
+   MultiChannelDrawer::Mode mode = MultiChannelDrawer::AsIs;
+   if (m_reproject) {
+      if (m_asMesh) {
+         mode = MultiChannelDrawer::ReprojectMesh;
+         if (m_withHoles)
+            mode = MultiChannelDrawer::ReprojectMeshWithHoles;
+      } else {
+         if (m_adapt) {
+            if (m_adaptWithNeighbors)
+               mode = MultiChannelDrawer::ReprojectAdaptiveWithNeighbors;
+            else
+               mode = MultiChannelDrawer::ReprojectAdaptive;
+         } else {
+            mode = MultiChannelDrawer::Reproject;
+         }
+      }
+   }
+   modeToUi(mode);
+   m_mode = mode;
+   m_drawer->setMode(m_mode);
+}
+
 #ifdef VRUI
 void VncClient::menuEvent(coMenuItem *item) {
 
    if (item == m_reprojCheck) {
       m_reproject = m_reprojCheck->getState();
-      m_drawer->switchReprojection(m_reproject);
+      applyMode();
    }
    if (item == m_adaptCheck) {
        m_adapt = m_adaptCheck->getState();
-       m_drawer->switchAdaptivePointSize(m_adapt, m_adaptWithNeighbors);
+       applyMode();
    }
 }
 #else
 void VncClient::muiEvent(mui::Element *item) {
    if (item == m_reprojCheck) {
       m_reproject = m_reprojCheck->getState();
-      m_drawer->switchReprojection(m_reproject);
+      applyMode();
    }
    if (item == m_adaptCheck) {
        m_adapt = m_adaptCheck->getState();
-       m_drawer->switchAdaptivePointSize(m_adapt, m_adaptWithNeighbors);
+       if (m_adapt)
+          m_asMesh = false;
+      applyMode();
    }
    if (item == m_adaptWithNeighborsCheck) {
        m_adaptWithNeighbors = m_adaptWithNeighborsCheck->getState();
-       m_drawer->switchAdaptivePointSize(m_adapt, m_adaptWithNeighbors);
+       if (m_adaptWithNeighbors) {
+          m_adapt = true;
+          m_asMesh = false;
+       }
+      applyMode();
+   }
+   if (item == m_asMeshCheck) {
+      m_asMesh = m_asMeshCheck->getState();
+      if (m_asMesh)
+         m_adapt = false;
+      applyMode();
+   }
+   if (item == m_withHolesCheck) {
+      m_withHoles = m_withHolesCheck->getState();
+      if (m_withHoles) {
+         m_asMesh = true;
+         m_adapt = false;
+      }
+      applyMode();
    }
    if (item == m_connectCheck) {
       if (m_client)

@@ -171,6 +171,10 @@ private:
    int m_numViews;
    std::vector<int> m_numChannels;
 
+   MultiChannelDrawer::Mode m_mode;
+   void modeToUi(MultiChannelDrawer::Mode mode);
+   void applyMode();
+
 #ifdef VRUI
    coRowMenu *m_menu;
    coSubMenuItem *m_menuItem;
@@ -178,13 +182,13 @@ private:
    coCheckboxMenuItem *m_allTilesCheck;
 #else
    mui::Tab *m_tab;
-   mui::ToggleButton *m_reprojCheck, *m_adaptCheck, *m_connectCheck, *m_adaptWithNeighborsCheck;
+   mui::ToggleButton *m_reprojCheck, *m_adaptCheck, *m_connectCheck, *m_adaptWithNeighborsCheck, *m_asMeshCheck, *m_withHolesCheck;
    coTUILabel *m_hostLabel, *m_portLabel;
    coTUIEditTextField *m_hostEdit;
    coTUIEditIntField *m_portEdit;
    mui::ToggleButton *m_inhibitModelUpdate;
 #endif
-   bool m_reproject, m_adapt, m_adaptWithNeighbors;
+   bool m_reproject, m_adapt, m_adaptWithNeighbors, m_asMesh, m_withHoles;
    bool m_noModelUpdate;
    osg::Matrix m_oldModelMatrix;
 
