@@ -63,8 +63,8 @@ class ReadHDF5 : public vistle::Module {
    void prepare_performant(hid_t fileId);
 
    template<class T>
-   void prepare_performant_readHDF5(hid_t fileId, const boost::mpi::communicator &comm, char readName[],
-                                    unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, const T * data);
+   void prepare_performant_readHDF5(hid_t fileId, const boost::mpi::communicator &comm, const char *readName,
+                                    unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, T *data);
    std::vector<hsize_t> prepare_performant_getArrayDims(hid_t fileId, char readName[]);
 
    static herr_t prepare_iterateMeta(hid_t callingGroupId, const char *name, const H5L_info_t *info, void *opData);
@@ -222,8 +222,8 @@ struct ReadHDF5::ShmVectorReader {
 // GENERIC UTILITY HELPER FUNCTION - READ DATA FROM HDF5 ABSTRACTION - PERFORMANT
 //-------------------------------------------------------------------------
 template<class T>
-void ReadHDF5::prepare_performant_readHDF5(hid_t fileId, const boost::mpi::communicator &comm, char readName[],
-                                            unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, const T * data) {
+void ReadHDF5::prepare_performant_readHDF5(hid_t fileId, const boost::mpi::communicator &comm, const char *readName,
+                                            unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, T *data) {
 
        std::vector<hsize_t> dims;
        std::vector<hsize_t> offset;

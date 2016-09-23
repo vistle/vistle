@@ -192,7 +192,7 @@ void ReadHDF5::prepare_performant(hid_t fileId) {
 
     ContiguousMemoryMatrix<unsigned> typeToObjectDataElementInfoArray;
     ContiguousMemoryMatrix<unsigned> objectDataElementInfoArray;
-    std::string nvpTagsArray;
+    std::vector<char> nvpTagsArray;
 
     std::unordered_map<int, std::vector<std::pair<hid_t, std::string>>> objTypeToDataMap;
 
@@ -235,41 +235,41 @@ void ReadHDF5::prepare_performant(hid_t fileId) {
     dims[1] = 3;
     offset[0] = 0;
     offset[1] = 0;
-    prepare_performant_readHDF5(fileId, comm(), "index/block", 2, dims, offset, blockArray.data());
+    prepare_performant_readHDF5(fileId, comm(), "index/block", 2, dims.data(), offset.data(), blockArray.data());
 
     dims[0] = timestepArray.size();
     offset[0] = 0;
-    prepare_performant_readHDF5(fileId, comm(), "index/timstep", 1, dims, offset, timestepArray.data());
+    prepare_performant_readHDF5(fileId, comm(), "index/timstep", 1, dims.data(), offset.data(), timestepArray.data());
 
     dims[0] = portArray.size();
     dims[1] = 2;
     offset[0] = 0;
     offset[1] = 0;
-    prepare_performant_readHDF5(fileId, comm(), "index/port", 2, dims, offset, portArray.data());
+    prepare_performant_readHDF5(fileId, comm(), "index/port", 2, dims.data(), offset.data(), portArray.data());
 
     dims[0] = portObjectListArray.size();
     offset[0] = 0;
-    prepare_performant_readHDF5(fileId, comm(), "index/port_object_list", 1, dims, offset, portObjectListArray.data());
+    prepare_performant_readHDF5(fileId, comm(), "index/port_object_list", 1, dims.data(), offset.data(), portObjectListArray.data());
 
     dims[0] = objectArray.size();
     offset[0] = 0;
-    prepare_performant_readHDF5(fileId, comm(), "object/object", 1, dims, offset, objectArray.data());
+    prepare_performant_readHDF5(fileId, comm(), "object/object", 1, dims.data(), offset.data(), objectArray.data());
 
     dims[0] = typeToObjectDataElementInfoArray.size();
     dims[1] = 3;
     offset[0] = 0;
     offset[1] = 0;
-    prepare_performant_readHDF5(fileId, comm(), "object/type_to_object_element_info", 2, dims, offset, typeToObjectDataElementInfoArray.data());
+    prepare_performant_readHDF5(fileId, comm(), "object/type_to_object_element_info", 2, dims.data(), offset.data(), typeToObjectDataElementInfoArray.data());
 
     dims[0] = objectDataElementInfoArray.size();
     dims[1] = 2;
     offset[0] = 0;
     offset[1] = 0;
-    prepare_performant_readHDF5(fileId, comm(), "object/object_element_info", 2, dims, offset, objectDataElementInfoArray.data());
+    prepare_performant_readHDF5(fileId, comm(), "object/object_element_info", 2, dims.data(), offset.data(), objectDataElementInfoArray.data());
 
     dims[0] = nvpTagsArray.size();
     offset[0] = 0;
-    prepare_performant_readHDF5(fileId, comm(), "object/nvp_tags", 1, dims, offset, nvpTagsArray.data());
+    prepare_performant_readHDF5(fileId, comm(), "object/nvp_tags", 1, dims.data(), offset.data(), nvpTagsArray.data());
 
 
 
