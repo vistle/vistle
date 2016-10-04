@@ -23,13 +23,13 @@ void UniformGrid::refreshImpl() const {
     const Data *d = static_cast<Data *>(m_data);
 
     for (int c=0; c<3; ++c) {
-        m_numDivisions[c] = (*d->numDivisions)[c];
-        m_min[c] = (*d->min)[c];
-        m_max[c] = (*d->max)[c];
+        m_numDivisions[c] = d ? (*d->numDivisions)[c] : 1;
+        m_min[c] = d ? (*d->min)[c] : 0.f;
+        m_max[c] = d ? (*d->max)[c] : 0.f;
         m_dist[c] = (m_max[c]-m_min[c])/(m_numDivisions[c]-1);
 
-        m_ghostLayers[c][0] = (*d->ghostLayers[c])[0];
-        m_ghostLayers[c][1] = (*d->ghostLayers[c])[1];
+        m_ghostLayers[c][0] = d ? (*d->ghostLayers[c])[0] : 0;
+        m_ghostLayers[c][1] = d ? (*d->ghostLayers[c])[1] : 0;
     }
 }
 
