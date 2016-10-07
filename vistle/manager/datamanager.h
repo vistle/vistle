@@ -37,7 +37,6 @@ private:
     const int m_rank, m_size;
     boost::asio::io_service m_ioService;
     boost::asio::ip::tcp::socket m_dataSocket;
-    boost::mutex m_dataReadMutex, m_dataWriteMutex;
 
     struct AddObjectLess {
        bool operator()(const message::AddObject &a1, const message::AddObject &a2) const {

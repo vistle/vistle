@@ -50,7 +50,6 @@ bool DataManager::dispatch() {
    if (m_dataSocket.is_open()) {
       message::Buffer buf;
       bool gotMsg = false;
-      boost::lock_guard<boost::mutex> lock(m_dataReadMutex);
       if (!message::recv(m_dataSocket, buf, gotMsg)) {
          CERR << "Data communication error" << std::endl;
       } else if (gotMsg) {
