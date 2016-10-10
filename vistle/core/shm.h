@@ -130,7 +130,7 @@ class V_COREEXPORT Shm {
    static bool cleanAll();
 
 #ifdef SHMDEBUG
-   static boost::interprocess::vector<ShmDebugInfo, shm<ShmDebugInfo>::allocator> *s_shmdebug;
+   static boost::interprocess::vector<ShmDebugInfo, vistle::shm<ShmDebugInfo>::allocator> *s_shmdebug;
    static boost::interprocess::interprocess_recursive_mutex *s_shmdebugMutex;
    void markAsRemoved(const std::string &name);
    void addObject(const std::string &name, const shm_handle_t &handle);

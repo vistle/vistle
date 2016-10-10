@@ -11,6 +11,7 @@
 
 #include <core/shm.h>
 #include <core/object.h>
+#include <core/shmvector.h>
 
 using namespace vistle;
 
