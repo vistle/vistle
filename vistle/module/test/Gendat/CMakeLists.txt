@@ -1,3 +1,4 @@
+use_openmp()
 enable_testing()
 
 include_directories(
