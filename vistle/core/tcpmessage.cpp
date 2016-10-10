@@ -21,7 +21,7 @@ bool check(const Message &msg) {
         return false;
     }
 
-    if (msg.size() <= 0 || msg.size() > Message::MESSAGE_SIZE) {
+    if (msg.size() < sizeof(Message) || msg.size() > Message::MESSAGE_SIZE) {
         std::cerr << "check message: invalid size " << msg.size() << std::endl;
         return false;
     }
@@ -65,6 +65,10 @@ bool recv(socket_t &sock, Message &msg, bool &received, bool block) {
           received = false;
       } else {
           sz = ntohl(sz);
+          if (sz < sizeof(Message)) {
+             std::cerr << "message::recv: msg size too small: " << sz << ", min is " << sizeof(Message) << std::endl;
+          }
+          assert(sz >= sizeof(Message));
           if (sz > Message::MESSAGE_SIZE) {
              std::cerr << "message::recv: msg size too large: " << sz << ", max is " << Message::MESSAGE_SIZE << std::endl;
           }
