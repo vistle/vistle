@@ -1006,8 +1006,8 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
          if (localAdd) {
             // if object was generated locally, forward message to remote hubs with connected modules
             const int hub = m_stateTracker.getHub(destId);
-            a.setDestId(hub);
             if (receivingHubs.find(hub) == receivingHubs.end()) {
+               a.setDestId(hub);
                sendHub(a, hub);
                receivingHubs.insert(hub);
                Communicator::the().dataManager().prepareTransfer(a);

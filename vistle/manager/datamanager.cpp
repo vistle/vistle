@@ -140,11 +140,9 @@ bool DataManager::completeTransfer(const message::AddObjectCompleted &complete) 
       CERR << "AddObject message for completion notification not found: " << complete << ", still " << m_inTransitObjects.size() << " objects in transit" << std::endl;
       return true;
    }
-   const auto &add = *it;
-   auto obj = add.getObject();
-   obj->unref();
+   it->takeObject();
+   CERR << "AddObjectCompleted: found request " << *it << " for " << complete << ", still " << m_inTransitObjects.size()-1 << " outstanding" << std::endl;
    m_inTransitObjects.erase(it);
-   CERR << "AddObjectCompleted: found request " << add << " for " << complete << ", still " << m_inTransitObjects.size() << " outstanding" << std::endl;
    return true;
 }
 

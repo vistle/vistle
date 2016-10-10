@@ -497,11 +497,7 @@ Object::const_ptr AddObject::takeObject() const {
       }
       return obj;
    }
-   auto obj = Shm::the().getObjectFromName(m_name);
-   if (!obj) {
-      std::cerr << "did not find " << m_name << " by name" << std::endl;
-   }
-   return obj;
+   return getObject();
 }
 
 Object::const_ptr AddObject::getObject() const {
