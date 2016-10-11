@@ -789,11 +789,11 @@ bool ClusterManager::handlePriv(const message::Disconnect &disconnect) {
    
    if (m_stateTracker.handle(d)) {
 
-      if (m_stateTracker.getHub(modFrom) == Communicator::the().hubId())
+       if (Communicator::the().isMaster()) {
          sendMessage(modFrom, d);
-      if (m_stateTracker.getHub(modTo) == Communicator::the().hubId())
          sendMessage(modTo, d);
-      sendUi(d);
+         sendUi(d);
+      }
    } else {
 
       if (!m_messageQueue.empty()) {
