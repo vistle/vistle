@@ -14,7 +14,7 @@ PythonInterface::PythonInterface(const std::string &name)
    assert(s_singleton == NULL);
    s_singleton = this;
 
-#ifdef _WIN32
+#if PY_MAJOR_VERSION>2
    static std::wstring wideName = std::wstring(name.begin(), name.end());
    Py_SetProgramName((wchar_t *)wideName.c_str());
 #else
