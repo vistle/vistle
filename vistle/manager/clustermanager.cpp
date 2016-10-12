@@ -420,7 +420,7 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
    return true;
 }
 
-bool ClusterManager::handle(const message::Message &message) {
+bool ClusterManager::handle(const message::Buffer &message) {
 
    using namespace vistle::message;
 
@@ -483,8 +483,9 @@ bool ClusterManager::handle(const message::Message &message) {
 
       case Message::IDENTIFY: {
 
-         const Identify &id = static_cast<const message::Identify &>(message);
-         vassert(id.identity() == Identify::UNKNOWN);
+         const Identify &id = message.as<Identify>();
+         CERR << "Identify message: " << id << std::endl;
+         vassert(id.identity() == Identify::REQUEST);
          if (getRank() == 0) {
             sendHub(Identify(Identify::MANAGER));
             auto avail = availableModules();
@@ -502,127 +503,127 @@ bool ClusterManager::handle(const message::Message &message) {
       }
 
       case message::Message::TRACE: {
-         const Trace &trace = static_cast<const Trace &>(message);
+         const Trace &trace = message.as<Trace>();
          result = handlePriv(trace);
          break;
       }
 
       case message::Message::SPAWN: {
 
-         const message::Spawn &spawn = static_cast<const message::Spawn &>(message);
+         const message::Spawn &spawn = message.as<Spawn>();
          result = handlePriv(spawn);
          break;
       }
 
       case message::Message::CONNECT: {
 
-         const message::Connect &connect = static_cast<const message::Connect &>(message);
+         const message::Connect &connect = message.as<Connect>();
          result = handlePriv(connect);
          break;
       }
 
       case message::Message::DISCONNECT: {
 
-         const message::Disconnect &disc = static_cast<const message::Disconnect &>(message);
+         const message::Disconnect &disc = message.as<Disconnect>();
          result = handlePriv(disc);
          break;
       }
 
       case message::Message::MODULEEXIT: {
 
-         const message::ModuleExit &moduleExit = static_cast<const message::ModuleExit &>(message);
+         const message::ModuleExit &moduleExit = message.as<ModuleExit>();
          result = handlePriv(moduleExit);
          break;
       }
 
       case message::Message::EXECUTE: {
 
-         const message::Execute &exec = static_cast<const message::Execute &>(message);
+         const message::Execute &exec = message.as<Execute>();
          result = handlePriv(exec);
          break;
       }
 
       case message::Message::ADDOBJECT: {
 
-         const message::AddObject &m = static_cast<const message::AddObject &>(message);
+         const message::AddObject &m = message.as<AddObject>();
          result = handlePriv(m);
          break;
       }
 
       case message::Message::ADDOBJECTCOMPLETED: {
-         const message::AddObjectCompleted &m = static_cast<const message::AddObjectCompleted &>(message);
+         const message::AddObjectCompleted &m = message.as<AddObjectCompleted>();
          result = handlePriv(m);
          break;
       }
 
       case message::Message::EXECUTIONPROGRESS: {
 
-         const message::ExecutionProgress &prog = static_cast<const message::ExecutionProgress &>(message);
+         const message::ExecutionProgress &prog = message.as<ExecutionProgress>();
          result = handlePriv(prog);
          break;
       }
 
       case message::Message::BUSY: {
 
-         const message::Busy &busy = static_cast<const message::Busy &>(message);
+         const message::Busy &busy = message.as<Busy>();
          result = handlePriv(busy);
          break;
       }
 
       case message::Message::IDLE: {
 
-         const message::Idle &idle = static_cast<const message::Idle &>(message);
+         const message::Idle &idle = message.as<Idle>();
          result = handlePriv(idle);
          break;
       }
 
       case message::Message::OBJECTRECEIVED: {
-         const message::ObjectReceived &m = static_cast<const message::ObjectReceived &>(message);
+         const message::ObjectReceived &m = message.as<ObjectReceived>();
          result = handlePriv(m);
          break;
       }
 
       case message::Message::SETPARAMETER: {
 
-         const message::SetParameter &m = static_cast<const message::SetParameter &>(message);
+         const message::SetParameter &m = message.as<SetParameter>();
          result = handlePriv(m);
          break;
       }
 
       case Message::SETPARAMETERCHOICES: {
-         const message::SetParameterChoices &m = static_cast<const message::SetParameterChoices &>(message);
+         const message::SetParameterChoices &m = message.as<SetParameterChoices>();
          result = handlePriv(m);
          break;
       }
 
       case message::Message::BARRIER: {
 
-         const message::Barrier &m = static_cast<const message::Barrier &>(message);
+         const message::Barrier &m = message.as<Barrier>();
          result = handlePriv(m);
          break;
       }
 
       case message::Message::BARRIERREACHED: {
 
-         const message::BarrierReached &m = static_cast<const message::BarrierReached &>(message);
+         const message::BarrierReached &m = message.as<BarrierReached>();
          result = handlePriv(m);
          break;
       }
 
       case message::Message::SENDTEXT: {
-         const message::SendText &m = static_cast<const message::SendText &>(message);
+         const message::SendText &m = message.as<SendText>();
          result = handlePriv(m);
          break;
       }
 
       case message::Message::REQUESTTUNNEL: {
-         const message::RequestTunnel &m = static_cast<const message::RequestTunnel &>(message);
+         const message::RequestTunnel &m = message.as<RequestTunnel>();
          result = handlePriv(m);
          break;
       }
 
       case Message::PING: {
-         const message::Ping &m = static_cast<const message::Ping &>(message);
+         const message::Ping &m = message.as<Ping>();
          result = handlePriv(m);
          break;
       }

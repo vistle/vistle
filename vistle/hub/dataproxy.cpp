@@ -197,7 +197,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
 
    startAccept();
 
-   message::Identify ident; // trigger Identify message from remote
+   message::Identify ident(Identify::REQUEST); // trigger Identify message from remote
    if (message::send(*sock, ident)) {
       CERR << "sent ident msg to remote, sock.use_count()=" << sock.use_count() << std::endl;
    }
@@ -363,7 +363,7 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
             switch(msg->type()) {
             case Message::IDENTIFY: {
                 auto &ident = msg->as<const Identify>();
-                if (ident.identity() == Identify::UNKNOWN) {
+                if (ident.identity() == Identify::REQUEST) {
                     Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
                     async_send(*sock, ident, [this, sock](error_code ec){
                         if (ec) {

@@ -26,17 +26,18 @@ static T min(T a, T b) { return a<b ? a : b; }
    }
 
 Identify::Identify(Identity id, const std::string &name)
-: Message(Message::IDENTIFY, sizeof(Identify))
-, m_identity(id)
+: m_identity(id)
 , m_id(Id::Invalid)
 , m_rank(-1)
 {
+   if (id == UNKNOWN) {
+       std::cerr << backtrace() << std::endl;
+   }
    COPY_STRING(m_name, name);
 }
 
 Identify::Identify(Identity id, int rank)
-: Message(Message::IDENTIFY, sizeof(Identify))
-, m_identity(id)
+: m_identity(id)
 , m_id(Id::Invalid)
 , m_rank(rank)
 {
@@ -66,8 +67,7 @@ int Identify::rank() const {
 }
 
 AddHub::AddHub(int id, const std::string &name)
-: Message(Message::ADDHUB, sizeof(AddHub))
-, m_id(id)
+: m_id(id)
 , m_port(0)
 , m_dataPort(0)
 , m_addrType(AddHub::Unspecified)
@@ -155,8 +155,8 @@ void AddHub::setAddress(boost::asio::ip::address_v4 addr) {
 
 
 Ping::Ping(const char c)
-   : Message(Message::PING, sizeof(Ping)), character(c) {
-
+: character(c)
+{
 }
 
 char Ping::getCharacter() const {
@@ -165,8 +165,9 @@ char Ping::getCharacter() const {
 }
 
 Pong::Pong(const Ping &ping)
-   : Message(Message::PONG, sizeof(Pong)), character(ping.getCharacter()), module(ping.senderId()) {
-
+: character(ping.getCharacter())
+, module(ping.senderId())
+{
    setReferrer(ping.uuid());
 }
 
@@ -182,8 +183,7 @@ int Pong::getDestination() const {
 
 Spawn::Spawn(int hub,
              const std::string & n, int mpiSize, int baseRank, int rankSkip)
-   : Message(Message::SPAWN, sizeof(Spawn))
-   , m_hub(hub)
+   : m_hub(hub)
    , m_spawnId(Id::Invalid)
    , mpiSize(mpiSize)
    , baseRank(baseRank)
@@ -229,8 +229,7 @@ int Spawn::getRankSkip() const {
 }
 
 SpawnPrepared::SpawnPrepared(const Spawn &spawn)
-   : Message(Message::SPAWNPREPARED, sizeof(SpawnPrepared))
-   , m_hub(spawn.hubId())
+   : m_hub(spawn.hubId())
    , m_spawnId(spawn.spawnId())
 {
 
@@ -254,7 +253,6 @@ const char * SpawnPrepared::getName() const {
 }
 
 Started::Started(const std::string &n)
-: Message(Message::STARTED, sizeof(Started))
 {
 
    COPY_STRING(name, n);
@@ -266,7 +264,7 @@ const char * Started::getName() const {
 }
 
 Kill::Kill(const int m)
-   : Message(Message::KILL, sizeof(Kill)), module(m) {
+: module(m) {
     assert(m >= Id::ModuleBase || m == Id::Broadcast);
 }
 
@@ -276,12 +274,11 @@ int Kill::getModule() const {
 }
 
 Quit::Quit()
-   : Message(Message::QUIT, sizeof(Quit)) {
+{
 }
 
 ModuleExit::ModuleExit()
-: Message(Message::MODULEEXIT, sizeof(ModuleExit))
-, forwarded(false)
+: forwarded(false)
 {
 
 }
@@ -297,8 +294,7 @@ bool ModuleExit::isForwarded() const {
 }
 
 Execute::Execute(Execute::What what, const int module, const int count)
-   : Message(Message::EXECUTE, sizeof(Execute))
-   , m_allRanks(false)
+   : m_allRanks(false)
    , module(module)
    , executionCount(count)
    , m_what(what)
@@ -347,16 +343,15 @@ void Execute::setWhat(Execute::What what)
 
 
 Busy::Busy()
-: Message(Message::BUSY, sizeof(Busy)) {
+{
 }
 
 Idle::Idle()
-: Message(Message::IDLE, sizeof(Idle)) {
+{
 }
 
 AddPort::AddPort(const Port &port)
-: Message(Message::ADDPORT, sizeof(AddPort))
-, m_porttype(port.getType())
+: m_porttype(port.getType())
 , m_flags(port.flags())
 {
    COPY_STRING(m_name, port.getName());
@@ -371,7 +366,6 @@ Port AddPort::getPort() const {
 }
 
 RemovePort::RemovePort(const Port &port)
-: Message(Message::REMOVEPORT, sizeof(RemovePort))
 {
    COPY_STRING(m_name, port.getName());
 }
@@ -383,8 +377,7 @@ Port RemovePort::getPort() const {
 
 AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj,
       const std::string & dest)
-: Message(Message::ADDOBJECT, sizeof(AddObject))
-, m_name(obj->getName())
+: m_name(obj->getName())
 , m_meta(obj->meta())
 , m_objectType(obj->getType())
 , handle(obj->getHandle())
@@ -400,7 +393,7 @@ AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj,
 }
 
 AddObject::AddObject(const AddObject &o)
-: Message(o)
+: MessageBase<AddObject, Message::ADDOBJECT>(o)
 , senderPort(o.senderPort)
 , destPort(o.destPort)
 , m_name(o.m_name)
@@ -415,8 +408,7 @@ AddObject::AddObject(const AddObject &o)
 }
 
 AddObject::AddObject(const AddObjectCompleted &complete)
-: Message(Message::ADDOBJECT, sizeof(AddObject))
-, handle(0)
+: handle(0)
 , m_handleValid(false)
 {
     setUuid(complete.uuid());
@@ -510,8 +502,7 @@ Object::const_ptr AddObject::getObject() const {
 
 
 AddObjectCompleted::AddObjectCompleted(const AddObject &msg)
-: Message(Message::ADDOBJECTCOMPLETED, sizeof(AddObjectCompleted))
-, m_name(msg.objectName())
+: m_name(msg.objectName())
 , m_orgDestId(msg.destId())
 {
    setUuid(msg.uuid());
@@ -527,8 +518,7 @@ int AddObjectCompleted::originalDestination() const {
 }
 
 ObjectReceived::ObjectReceived(const AddObject &add, const std::string &p)
-: Message(Message::OBJECTRECEIVED, sizeof(ObjectReceived))
-, m_name(add.objectName())
+: m_name(add.objectName())
 , m_meta(add.meta())
 , m_objectType(add.objectType())
 {
@@ -567,8 +557,7 @@ Object::Type ObjectReceived::objectType() const {
 
 Connect::Connect(const int moduleIDA, const std::string & portA,
                  const int moduleIDB, const std::string & portB)
-   : Message(Message::CONNECT, sizeof(Connect)),
-     moduleA(moduleIDA), moduleB(moduleIDB) {
+   : moduleA(moduleIDA), moduleB(moduleIDB) {
 
         COPY_STRING(portAName, portA);
         COPY_STRING(portBName, portB);
@@ -602,8 +591,7 @@ void Connect::reverse() {
 
 Disconnect::Disconnect(const int moduleIDA, const std::string & portA,
                  const int moduleIDB, const std::string & portB)
-   : Message(Message::DISCONNECT, sizeof(Disconnect)),
-     moduleA(moduleIDA), moduleB(moduleIDB) {
+   : moduleA(moduleIDA), moduleB(moduleIDB) {
 
         COPY_STRING(portAName, portA);
         COPY_STRING(portBName, portB);
@@ -636,8 +624,7 @@ void Disconnect::reverse() {
 }
 
 AddParameter::AddParameter(const Parameter &param, const std::string &modname)
-: Message(Message::ADDPARAMETER, sizeof(AddParameter))
-, paramtype(param.type())
+: paramtype(param.type())
 , presentation(param.presentation())
 {
    vassert(paramtype > Parameter::Unknown);
@@ -723,8 +710,7 @@ boost::shared_ptr<Parameter> AddParameter::getParameter() const {
 }
 
 RemoveParameter::RemoveParameter(const Parameter &param, const std::string &modname)
-: Message(Message::REMOVEPARAMETER, sizeof(RemoveParameter))
-, paramtype(param.type())
+: paramtype(param.type())
 {
    vassert(paramtype > Parameter::Unknown);
    vassert(paramtype < Parameter::Invalid);
@@ -777,8 +763,7 @@ boost::shared_ptr<Parameter> RemoveParameter::getParameter() const {
 
 
 SetParameter::SetParameter(int module, const std::string &n, const boost::shared_ptr<Parameter> p, Parameter::RangeType rt)
-: Message(Message::SETPARAMETER, sizeof(SetParameter))
-, m_module(module)
+: m_module(module)
 , paramtype(p->type())
 , initialize(false)
 , reply(false)
@@ -810,8 +795,7 @@ SetParameter::SetParameter(int module, const std::string &n, const boost::shared
 }
 
 SetParameter::SetParameter(int module, const std::string &n, const Integer v)
-: Message(Message::SETPARAMETER, sizeof(SetParameter))
-, m_module(module)
+: m_module(module)
 , paramtype(Parameter::Integer)
 , initialize(false)
 , reply(false)
@@ -823,8 +807,7 @@ SetParameter::SetParameter(int module, const std::string &n, const Integer v)
 }
 
 SetParameter::SetParameter(int module, const std::string &n, const Float v)
-: Message(Message::SETPARAMETER, sizeof(SetParameter))
-, m_module(module)
+: m_module(module)
 , paramtype(Parameter::Float)
 , initialize(false)
 , reply(false)
@@ -836,8 +819,7 @@ SetParameter::SetParameter(int module, const std::string &n, const Float v)
 }
 
 SetParameter::SetParameter(int module, const std::string &n, const ParamVector &v)
-: Message(Message::SETPARAMETER, sizeof(SetParameter))
-, m_module(module)
+: m_module(module)
 , paramtype(Parameter::Vector)
 , initialize(false)
 , reply(false)
@@ -851,8 +833,7 @@ SetParameter::SetParameter(int module, const std::string &n, const ParamVector &
 }
 
 SetParameter::SetParameter(int module, const std::string &n, const IntParamVector &v)
-: Message(Message::SETPARAMETER, sizeof(SetParameter))
-, m_module(module)
+: m_module(module)
 , paramtype(Parameter::IntVector)
 , initialize(false)
 , reply(false)
@@ -866,8 +847,7 @@ SetParameter::SetParameter(int module, const std::string &n, const IntParamVecto
 }
 
 SetParameter::SetParameter(int module, const std::string &n, const std::string &v)
-: Message(Message::SETPARAMETER, sizeof(SetParameter))
-, m_module(module)
+: m_module(module)
 , paramtype(Parameter::String)
 , initialize(false)
 , reply(false)
@@ -985,8 +965,7 @@ bool SetParameter::apply(boost::shared_ptr<vistle::Parameter> param) const {
 }
 
 SetParameterChoices::SetParameterChoices(const std::string &n, const std::vector<std::string> &ch)
-: Message(Message::SETPARAMETERCHOICES, sizeof(SetParameterChoices))
-, numChoices(ch.size())
+: numChoices(ch.size())
 {
    COPY_STRING(name, n);
    if (numChoices > param_num_choices) {
@@ -1027,19 +1006,16 @@ bool SetParameterChoices::apply(boost::shared_ptr<vistle::Parameter> param) cons
 }
 
 Barrier::Barrier()
-: Message(Message::BARRIER, sizeof(Barrier))
 {
 }
 
 BarrierReached::BarrierReached(const vistle::message::uuid_t &uuid)
-: Message(Message::BARRIERREACHED, sizeof(BarrierReached))
 {
    setUuid(uuid);
 }
 
 SetId::SetId(const int id)
-: Message(Message::SETID, sizeof(SetId))
-, m_id(id)
+: m_id(id)
 {
 }
 
@@ -1049,13 +1025,11 @@ int SetId::getId() const {
 }
 
 ReplayFinished::ReplayFinished()
-   : Message(Message::REPLAYFINISHED, sizeof(ReplayFinished))
 {
 }
 
 SendText::SendText(const std::string &text, const Message &inResponseTo)
-: Message(Message::SENDTEXT, sizeof(SendText))
-, m_textType(TextType::Error)
+: m_textType(TextType::Error)
 , m_referenceUuid(inResponseTo.uuid())
 , m_referenceType(inResponseTo.type())
 , m_truncated(false)
@@ -1067,8 +1041,7 @@ SendText::SendText(const std::string &text, const Message &inResponseTo)
 }
 
 SendText::SendText(SendText::TextType type, const std::string &text)
-: Message(Message::SENDTEXT, sizeof(SendText))
-, m_textType(type)
+: m_textType(type)
 , m_referenceType(Message::INVALID)
 , m_truncated(false)
 {
@@ -1104,8 +1077,7 @@ bool SendText::truncated() const {
 }
 
 ObjectReceivePolicy::ObjectReceivePolicy(ObjectReceivePolicy::Policy pol)
-: Message(Message::OBJECTRECEIVEPOLICY, sizeof(ObjectReceivePolicy))
-, m_policy(pol)
+: m_policy(pol)
 {
 }
 
@@ -1115,8 +1087,7 @@ ObjectReceivePolicy::Policy ObjectReceivePolicy::policy() const {
 }
 
 SchedulingPolicy::SchedulingPolicy(SchedulingPolicy::Schedule pol)
-: Message(Message::SCHEDULINGPOLICY, sizeof(SchedulingPolicy))
-, m_policy(pol)
+: m_policy(pol)
 {
 }
 
@@ -1126,8 +1097,7 @@ SchedulingPolicy::Schedule SchedulingPolicy::policy() const {
 }
 
 ReducePolicy::ReducePolicy(ReducePolicy::Reduce red)
-: Message(Message::REDUCEPOLICY, sizeof(ReducePolicy))
-, m_reduce(red)
+: m_reduce(red)
 {
 }
 
@@ -1137,8 +1107,7 @@ ReducePolicy::Reduce ReducePolicy::policy() const {
 }
 
 ExecutionProgress::ExecutionProgress(Progress stage)
-: Message(Message::EXECUTIONPROGRESS, sizeof(ExecutionProgress))
-, m_stage(stage)
+: m_stage(stage)
 {
 }
 
@@ -1153,8 +1122,7 @@ void ExecutionProgress::setStage(ExecutionProgress::Progress stage) {
 }
 
 Trace::Trace(int module, Message::Type messageType, bool onoff)
-: Message(Message::TRACE, sizeof(Trace))
-, m_module(module)
+: m_module(module)
 , m_messageType(messageType)
 , m_on(onoff)
 {
@@ -1176,8 +1144,7 @@ bool Trace::on() const {
 }
 
 ModuleAvailable::ModuleAvailable(int hub, const std::string &name, const std::string &path)
-: Message(Message::MODULEAVAILABLE, sizeof(ModuleAvailable))
-, m_hub(hub)
+: m_hub(hub)
 {
 
    COPY_STRING(m_name, name);
@@ -1200,8 +1167,7 @@ const char *ModuleAvailable::path() const {
 }
 
 LockUi::LockUi(bool locked)
-: Message(Message::LOCKUI, sizeof(LockUi))
-, m_locked(locked)
+: m_locked(locked)
 {
 }
 
@@ -1211,8 +1177,7 @@ bool LockUi::locked() const {
 }
 
 RequestTunnel::RequestTunnel(unsigned short srcPort, const std::string &destHost, unsigned short destPort)
-: Message(Message::REQUESTTUNNEL, sizeof(RequestTunnel))
-, m_srcPort(srcPort)
+: m_srcPort(srcPort)
 , m_destType(RequestTunnel::Hostname)
 , m_destPort(destPort)
 , m_remove(false)
@@ -1221,8 +1186,7 @@ RequestTunnel::RequestTunnel(unsigned short srcPort, const std::string &destHost
 }
 
 RequestTunnel::RequestTunnel(unsigned short srcPort, const boost::asio::ip::address_v6 destAddr, unsigned short destPort)
-: Message(Message::REQUESTTUNNEL, sizeof(RequestTunnel))
-, m_srcPort(srcPort)
+: m_srcPort(srcPort)
 , m_destType(RequestTunnel::IPv6)
 , m_destPort(destPort)
 , m_remove(false)
@@ -1232,8 +1196,7 @@ RequestTunnel::RequestTunnel(unsigned short srcPort, const boost::asio::ip::addr
 }
 
 RequestTunnel::RequestTunnel(unsigned short srcPort, const boost::asio::ip::address_v4 destAddr, unsigned short destPort)
-: Message(Message::REQUESTTUNNEL, sizeof(RequestTunnel))
-, m_srcPort(srcPort)
+: m_srcPort(srcPort)
 , m_destType(RequestTunnel::IPv4)
 , m_destPort(destPort)
 , m_remove(false)
@@ -1243,8 +1206,7 @@ RequestTunnel::RequestTunnel(unsigned short srcPort, const boost::asio::ip::addr
 }
 
 RequestTunnel::RequestTunnel(unsigned short srcPort, unsigned short destPort)
-: Message(Message::REQUESTTUNNEL, sizeof(RequestTunnel))
-, m_srcPort(srcPort)
+: m_srcPort(srcPort)
 , m_destType(RequestTunnel::Unspecified)
 , m_destPort(destPort)
 , m_remove(false)
@@ -1254,8 +1216,7 @@ RequestTunnel::RequestTunnel(unsigned short srcPort, unsigned short destPort)
 }
 
 RequestTunnel::RequestTunnel(unsigned short srcPort)
-: Message(Message::REQUESTTUNNEL, sizeof(RequestTunnel))
-, m_srcPort(srcPort)
+: m_srcPort(srcPort)
 , m_destType(RequestTunnel::Unspecified)
 , m_destPort(0)
 , m_remove(true)
@@ -1319,8 +1280,7 @@ bool RequestTunnel::remove() const {
 }
 
 RequestObject::RequestObject(const AddObject &add, const std::string &objId, const std::string &referrer)
-: Message(Message::REQUESTOBJECT, sizeof(RequestObject))
-, m_objectId(objId)
+: m_objectId(objId)
 , m_referrer(referrer.empty() ? add.objectName() : referrer)
 , m_array(false)
 , m_arrayType(-1)
@@ -1331,8 +1291,7 @@ RequestObject::RequestObject(const AddObject &add, const std::string &objId, con
 }
 
 RequestObject::RequestObject(int destId, int destRank, const std::string &objId, const std::string &referrer)
-: Message(Message::REQUESTOBJECT, sizeof(RequestObject))
-, m_objectId(objId)
+: m_objectId(objId)
 , m_referrer(referrer)
 , m_array(false)
 , m_arrayType(-1)
@@ -1342,8 +1301,7 @@ RequestObject::RequestObject(int destId, int destRank, const std::string &objId,
 }
 
 RequestObject::RequestObject(int destId, int destRank, const std::string &arrayId, int type, const std::string &referrer)
-: Message(Message::REQUESTOBJECT, sizeof(RequestObject))
-, m_objectId(arrayId)
+: m_objectId(arrayId)
 , m_referrer(referrer)
 , m_array(true)
 , m_arrayType(type)
@@ -1370,8 +1328,7 @@ int RequestObject::arrayType() const {
 
 
 SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size_t payloadSize)
-: Message(Message::SENDOBJECT, sizeof(SendObject))
-, m_array(false)
+: m_array(false)
 , m_objectId(obj->getName())
 , m_referrer(request.referrer())
 , m_objectType(obj->getType())
@@ -1394,8 +1351,7 @@ SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size
 }
 
 SendObject::SendObject(const RequestObject &request, size_t payloadSize)
-: Message(Message::SENDOBJECT, sizeof(SendObject))
-, m_array(true)
+: m_array(true)
 , m_objectId(request.objectId())
 , m_referrer(request.referrer())
 , m_objectType(request.arrayType())

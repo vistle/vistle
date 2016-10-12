@@ -163,7 +163,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
    switch (message->type()) {
       case message::Message::IDENTIFY: {
          const message::Identify *id = static_cast<const message::Identify *>(message);
-         if (id->identity() == message::Identify::UNKNOWN) {
+         if (id->identity() == message::Identify::REQUEST) {
             const message::Identify reply(message::Identify::UI);
             sendMessage(reply);
          }

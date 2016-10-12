@@ -29,7 +29,7 @@ class Communicator {
 
    void run();
    bool dispatch(bool *work);
-   bool handleMessage(const message::Message &message);
+   bool handleMessage(const message::Buffer &message);
    bool handleDataMessage(const message::Message &message);
    bool forwardToMaster(const message::Message &message);
    bool broadcastAndHandleMessage(const message::Message &message);

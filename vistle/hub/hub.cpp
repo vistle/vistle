@@ -170,7 +170,7 @@ void Hub::handleAccept(shared_ptr<asio::ip::tcp::socket> sock, const boost::syst
 
    addClient(sock);
 
-   message::Identify ident;
+   message::Identify ident(message::Identify::REQUEST);
    sendMessage(sock, ident);
 
    startAccept();
@@ -501,11 +501,11 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
          auto &id = static_cast<const Identify &>(msg);
          CERR << "ident msg: " << id.identity() << std::endl;
-         if (id.identity() != Identify::UNKNOWN) {
+         if (id.identity() != Identify::UNKNOWN && id.identity() != Identify::REQUEST) {
             it->second = id.identity();
          }
          switch(id.identity()) {
-            case Identify::UNKNOWN: {
+            case Identify::REQUEST: {
                if (senderType == Identify::REMOTEBULKDATA) {
                   sendMessage(sock, Identify(Identify::REMOTEBULKDATA, m_hubId));
                } else if (senderType == Identify::LOCALBULKDATA) {

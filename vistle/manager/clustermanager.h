@@ -55,7 +55,7 @@ class ClusterManager {
 
    PortManager &portManager() const;
 
-   bool handle(const message::Message &msg);
+   bool handle(const message::Buffer &msg);
    //bool handleData(const message::Message &msg);
 
  private:

@@ -29,12 +29,22 @@ class Port;
 
 namespace message {
 
+template<class MessageClass, Message::Type MessageType>
+class MessageBase: public Message {
+public:
+    static const Message::Type s_type = MessageType;
+protected:
+    MessageBase(): Message(MessageType, sizeof(MessageClass)) {
+    }
+};
+
 //! indicate the kind of a communication partner
-class V_COREEXPORT Identify: public Message {
+class V_COREEXPORT Identify: public MessageBase<Identify, Message::IDENTIFY> {
 
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Identity,
          (UNKNOWN)
+         (REQUEST) //< request receiver to send its identity
          (UI) //< user interface
          (MANAGER) //< cluster manager
          (HUB) //< master hub
@@ -43,7 +53,7 @@ class V_COREEXPORT Identify: public Message {
          (REMOTEBULKDATA) //< bulk data transfer to remote hubs
          );
 
-   Identify(Identity id=UNKNOWN, const std::string &name = "");
+   Identify(Identity id, const std::string &name = "");
    Identify(Identity id, int rank);
    Identity identity() const;
    const char *name() const;
@@ -61,7 +71,7 @@ BOOST_STATIC_ASSERT(sizeof(Identify) <= Message::MESSAGE_SIZE);
 V_ENUM_OUTPUT_OP(Identity, Identify)
 
 //! announce that a slave hub has connected
-class V_COREEXPORT AddHub: public Message {
+class V_COREEXPORT AddHub: public MessageBase<AddHub, Message::ADDHUB> {
 
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(AddressType,
       (Hostname)
@@ -101,7 +111,7 @@ class V_COREEXPORT AddHub: public Message {
 BOOST_STATIC_ASSERT(sizeof(AddHub) <= Message::MESSAGE_SIZE);
 
 //! debug: request a reply containing character 'c'
-class V_COREEXPORT Ping: public Message {
+class V_COREEXPORT Ping: public MessageBase<Ping, Message::PING> {
 
  public:
    Ping(const char c);
@@ -114,7 +124,7 @@ class V_COREEXPORT Ping: public Message {
 BOOST_STATIC_ASSERT(sizeof(Ping) <= Message::MESSAGE_SIZE);
 
 //! debug: reply to pong
-class V_COREEXPORT Pong: public Message {
+class V_COREEXPORT Pong: public MessageBase<Pong, Message::PONG> {
 
  public:
    Pong(const Ping &ping);
@@ -129,7 +139,7 @@ class V_COREEXPORT Pong: public Message {
 BOOST_STATIC_ASSERT(sizeof(Pong) <= Message::MESSAGE_SIZE);
 
 //! spawn a module
-class V_COREEXPORT Spawn: public Message {
+class V_COREEXPORT Spawn: public MessageBase<Spawn, Message::SPAWN> {
 
  public:
    Spawn(int hubId, const std::string &name, int size=-1, int baserank=-1, int rankskip=-1);
@@ -159,7 +169,7 @@ class V_COREEXPORT Spawn: public Message {
 BOOST_STATIC_ASSERT(sizeof(Spawn) <= Message::MESSAGE_SIZE);
 
 //! notification of manager that spawning is possible (i.e. shmem has been set up)
-class V_COREEXPORT SpawnPrepared: public Message {
+class V_COREEXPORT SpawnPrepared: public MessageBase<SpawnPrepared, Message::SPAWNPREPARED> {
 
  public:
    SpawnPrepared(const Spawn &spawn);
@@ -180,7 +190,7 @@ class V_COREEXPORT SpawnPrepared: public Message {
 BOOST_STATIC_ASSERT(sizeof(SpawnPrepared) <= Message::MESSAGE_SIZE);
 
 //! acknowledge that a module has been spawned
-class V_COREEXPORT Started: public Message {
+class V_COREEXPORT Started: public MessageBase<Started, Message::STARTED> {
 
  public:
    Started(const std::string &name);
@@ -194,7 +204,7 @@ class V_COREEXPORT Started: public Message {
 BOOST_STATIC_ASSERT(sizeof(Started) <= Message::MESSAGE_SIZE);
 
 //! request a module to quit
-class V_COREEXPORT Kill: public Message {
+class V_COREEXPORT Kill: public MessageBase<Kill, Message::KILL> {
 
  public:
    Kill(const int module);
@@ -208,7 +218,7 @@ class V_COREEXPORT Kill: public Message {
 BOOST_STATIC_ASSERT(sizeof(Kill) <= Message::MESSAGE_SIZE);
 
 //! request all modules to quit for terminating the session
-class V_COREEXPORT Quit: public Message {
+class V_COREEXPORT Quit: public MessageBase<Quit, Message::QUIT> {
 
  public:
    Quit();
@@ -218,7 +228,7 @@ class V_COREEXPORT Quit: public Message {
 BOOST_STATIC_ASSERT(sizeof(Quit) <= Message::MESSAGE_SIZE);
 
 //! notify that a module has quit
-class V_COREEXPORT ModuleExit: public Message {
+class V_COREEXPORT ModuleExit: public MessageBase<ModuleExit, Message::MODULEEXIT> {
 
  public:
    ModuleExit();
@@ -231,7 +241,7 @@ class V_COREEXPORT ModuleExit: public Message {
 BOOST_STATIC_ASSERT(sizeof(ModuleExit) <= Message::MESSAGE_SIZE);
 
 //! trigger execution of a module function
-class V_COREEXPORT Execute: public Message {
+class V_COREEXPORT Execute: public MessageBase<Execute, Message::EXECUTE> {
 
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(What,
@@ -264,7 +274,7 @@ BOOST_STATIC_ASSERT(sizeof(Execute) <= Message::MESSAGE_SIZE);
 V_ENUM_OUTPUT_OP(What, Execute)
 
 //! indicate that a module has started computing
-class V_COREEXPORT Busy: public Message {
+class V_COREEXPORT Busy: public MessageBase<Busy, Message::BUSY> {
 
  public:
    Busy();
@@ -274,7 +284,7 @@ class V_COREEXPORT Busy: public Message {
 BOOST_STATIC_ASSERT(sizeof(Busy) <= Message::MESSAGE_SIZE);
 
 //! indicate that a module has finished computing
-class V_COREEXPORT Idle: public Message {
+class V_COREEXPORT Idle: public MessageBase<Idle, Message::IDLE> {
 
  public:
    Idle();
@@ -284,7 +294,7 @@ class V_COREEXPORT Idle: public Message {
 BOOST_STATIC_ASSERT(sizeof(Idle) <= Message::MESSAGE_SIZE);
 
 //! notification that a module has created an input/output port
-class V_COREEXPORT AddPort: public Message {
+class V_COREEXPORT AddPort: public MessageBase<AddPort, Message::ADDPORT> {
 
  public:
    AddPort(const Port &port);
@@ -298,7 +308,7 @@ class V_COREEXPORT AddPort: public Message {
 BOOST_STATIC_ASSERT(sizeof(AddPort) <= Message::MESSAGE_SIZE);
 
 //! notification that a module has destroyed an input/output port
-class V_COREEXPORT RemovePort: public Message {
+class V_COREEXPORT RemovePort: public MessageBase<RemovePort, Message::REMOVEPORT> {
 
  public:
    RemovePort(const Port &port);
@@ -311,7 +321,7 @@ BOOST_STATIC_ASSERT(sizeof(RemovePort) <= Message::MESSAGE_SIZE);
 class AddObjectCompleted;
 
 //! add an object to the input queue of an input port
-class V_COREEXPORT AddObject: public Message {
+class V_COREEXPORT AddObject: public MessageBase<AddObject, Message::ADDOBJECT> {
 
  public:
    AddObject(const std::string &senderPort, vistle::Object::const_ptr obj,
@@ -345,7 +355,7 @@ class V_COREEXPORT AddObject: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(AddObject) <= Message::MESSAGE_SIZE);
 
-class V_COREEXPORT AddObjectCompleted: public Message {
+class V_COREEXPORT AddObjectCompleted: public MessageBase<AddObjectCompleted, Message::ADDOBJECTCOMPLETED> {
 
  public:
    AddObjectCompleted(const AddObject &msg);
@@ -359,7 +369,7 @@ class V_COREEXPORT AddObjectCompleted: public Message {
 BOOST_STATIC_ASSERT(sizeof(AddObjectCompleted) <= Message::MESSAGE_SIZE);
 
 //! notify rank 0 controller that an object was received
-class V_COREEXPORT ObjectReceived: public Message {
+class V_COREEXPORT ObjectReceived: public MessageBase<ObjectReceived, Message::OBJECTRECEIVED> {
 
  public:
    ObjectReceived(const AddObject &add, const std::string &destPort="");
@@ -379,7 +389,7 @@ class V_COREEXPORT ObjectReceived: public Message {
 BOOST_STATIC_ASSERT(sizeof(ObjectReceived) <= Message::MESSAGE_SIZE);
 
 //! connect an output port to an input port of another module
-class V_COREEXPORT Connect: public Message {
+class V_COREEXPORT Connect: public MessageBase<Connect, Message::CONNECT> {
 
  public:
    Connect(const int moduleIDA, const std::string & portA,
@@ -403,7 +413,7 @@ class V_COREEXPORT Connect: public Message {
 BOOST_STATIC_ASSERT(sizeof(Connect) <= Message::MESSAGE_SIZE);
 
 //! disconnect an output port from an input port of another module
-class V_COREEXPORT Disconnect: public Message {
+class V_COREEXPORT Disconnect: public MessageBase<Disconnect, Message::DISCONNECT> {
 
  public:
    Disconnect(const int moduleIDA, const std::string & portA,
@@ -427,7 +437,7 @@ class V_COREEXPORT Disconnect: public Message {
 BOOST_STATIC_ASSERT(sizeof(Disconnect) <= Message::MESSAGE_SIZE);
 
 //! notification that a module has created a parameter
-class V_COREEXPORT AddParameter: public Message {
+class V_COREEXPORT AddParameter: public MessageBase<AddParameter, Message::ADDPARAMETER> {
    public:
       AddParameter(const Parameter &param, const std::string &moduleName);
 
@@ -450,7 +460,7 @@ class V_COREEXPORT AddParameter: public Message {
 BOOST_STATIC_ASSERT(sizeof(AddParameter) <= Message::MESSAGE_SIZE);
 
 //! notification that a module has removed a parameter
-class V_COREEXPORT RemoveParameter: public Message {
+class V_COREEXPORT RemoveParameter: public MessageBase<RemoveParameter, Message::REMOVEPARAMETER> {
    public:
       RemoveParameter(const Parameter &param, const std::string &moduleName);
 
@@ -468,7 +478,7 @@ class V_COREEXPORT RemoveParameter: public Message {
 BOOST_STATIC_ASSERT(sizeof(RemoveParameter) <= Message::MESSAGE_SIZE);
 
 //! request parameter value update or notify that a parameter value has been changed
-class V_COREEXPORT SetParameter: public Message {
+class V_COREEXPORT SetParameter: public MessageBase<SetParameter, Message::SETPARAMETER> {
    public:
       SetParameter(int module, const std::string & name, const boost::shared_ptr<Parameter> param, Parameter::RangeType rt=Parameter::Value);
       SetParameter(int module, const std::string & name, const Integer value);
@@ -516,7 +526,7 @@ class V_COREEXPORT SetParameter: public Message {
 BOOST_STATIC_ASSERT(sizeof(SetParameter) <= Message::MESSAGE_SIZE);
 
 //! set list of choice descriptions for a choice parameter
-class V_COREEXPORT SetParameterChoices: public Message {
+class V_COREEXPORT SetParameterChoices: public MessageBase<SetParameterChoices, Message::SETPARAMETERCHOICES> {
    public:
       SetParameterChoices(const std::string &name, const std::vector<std::string> &choices);
 
@@ -533,21 +543,21 @@ class V_COREEXPORT SetParameterChoices: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(SetParameterChoices) <= Message::MESSAGE_SIZE);
 
-class V_COREEXPORT Barrier: public Message {
+class V_COREEXPORT Barrier: public MessageBase<Barrier, Message::BARRIER> {
 
  public:
    Barrier();
 };
 BOOST_STATIC_ASSERT(sizeof(Barrier) <= Message::MESSAGE_SIZE);
 
-class V_COREEXPORT BarrierReached: public Message {
+class V_COREEXPORT BarrierReached: public MessageBase<BarrierReached, Message::BARRIERREACHED> {
 
  public:
    BarrierReached(const uuid_t &uuid);
 };
 BOOST_STATIC_ASSERT(sizeof(BarrierReached) <= Message::MESSAGE_SIZE);
 
-class V_COREEXPORT SetId: public Message {
+class V_COREEXPORT SetId: public MessageBase<SetId, Message::SETID> {
 
  public:
    SetId(const int id);
@@ -559,7 +569,7 @@ class V_COREEXPORT SetId: public Message {
 };
 BOOST_STATIC_ASSERT(sizeof(SetId) <= Message::MESSAGE_SIZE);
 
-class V_COREEXPORT ReplayFinished: public Message {
+class V_COREEXPORT ReplayFinished: public MessageBase<ReplayFinished, Message::REPLAYFINISHED> {
 
 public:
    ReplayFinished();
@@ -567,7 +577,7 @@ public:
 BOOST_STATIC_ASSERT(sizeof(ReplayFinished) <= Message::MESSAGE_SIZE);
 
 //! send text messages to user interfaces
-class V_COREEXPORT SendText: public Message {
+class V_COREEXPORT SendText: public MessageBase<SendText, Message::SENDTEXT> {
 
 public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(TextType,
@@ -604,7 +614,7 @@ private:
 BOOST_STATIC_ASSERT(sizeof(SendText) <= Message::MESSAGE_SIZE);
 V_ENUM_OUTPUT_OP(TextType, SendText)
 
-class V_COREEXPORT ObjectReceivePolicy: public Message {
+class V_COREEXPORT ObjectReceivePolicy: public MessageBase<ObjectReceivePolicy, Message::OBJECTRECEIVEPOLICY> {
 
 public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Policy,
@@ -620,7 +630,7 @@ private:
 BOOST_STATIC_ASSERT(sizeof(ObjectReceivePolicy) <= Message::MESSAGE_SIZE);
 V_ENUM_OUTPUT_OP(Policy, ObjectReceivePolicy)
 
-class V_COREEXPORT SchedulingPolicy: public Message {
+class V_COREEXPORT SchedulingPolicy: public MessageBase<SchedulingPolicy, Message::SCHEDULINGPOLICY> {
 
 public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Schedule,
@@ -638,7 +648,7 @@ BOOST_STATIC_ASSERT(sizeof(SchedulingPolicy) <= Message::MESSAGE_SIZE);
 V_ENUM_OUTPUT_OP(Schedule, SchedulingPolicy)
 
 //! control whether/when prepare() and reduce() are called
-class V_COREEXPORT ReducePolicy: public Message {
+class V_COREEXPORT ReducePolicy: public MessageBase<ReducePolicy, Message::REDUCEPOLICY> {
 
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Reduce,
@@ -661,7 +671,7 @@ V_ENUM_OUTPUT_OP(Reduce, ReducePolicy)
  *
  *
  */
-class V_COREEXPORT ExecutionProgress: public Message {
+class V_COREEXPORT ExecutionProgress: public MessageBase<ExecutionProgress, Message::EXECUTIONPROGRESS> {
 
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Progress,
@@ -679,7 +689,7 @@ BOOST_STATIC_ASSERT(sizeof(ExecutionProgress) <= Message::MESSAGE_SIZE);
 V_ENUM_OUTPUT_OP(Progress, ExecutionProgress)
 
 //! enable/disable message tracing for a module
-class V_COREEXPORT Trace: public Message {
+class V_COREEXPORT Trace: public MessageBase<Trace, Message::TRACE> {
 
  public:
    Trace(int module, Message::Type type, bool onoff);
@@ -695,7 +705,7 @@ class V_COREEXPORT Trace: public Message {
 BOOST_STATIC_ASSERT(sizeof(Trace) <= Message::MESSAGE_SIZE);
 
 //! announce availability of a module to UI
-class V_COREEXPORT ModuleAvailable: public Message {
+class V_COREEXPORT ModuleAvailable: public MessageBase<ModuleAvailable, Message::MODULEAVAILABLE> {
 
  public:
    ModuleAvailable(int hub, const std::string &name, const std::string &path = std::string());
@@ -711,7 +721,7 @@ class V_COREEXPORT ModuleAvailable: public Message {
 BOOST_STATIC_ASSERT(sizeof(ModuleAvailable) <= Message::MESSAGE_SIZE);
 
 //! lock UI (block user interaction)
-class V_COREEXPORT LockUi: public Message {
+class V_COREEXPORT LockUi: public MessageBase<LockUi, Message::LOCKUI> {
 
  public:
    LockUi(bool locked);
@@ -723,7 +733,7 @@ class V_COREEXPORT LockUi: public Message {
 BOOST_STATIC_ASSERT(sizeof(LockUi) <= Message::MESSAGE_SIZE);
 
 //! request hub to listen on TCP port and forward incoming connections
-class V_COREEXPORT RequestTunnel: public Message {
+class V_COREEXPORT RequestTunnel: public MessageBase<RequestTunnel, Message::REQUESTTUNNEL> {
 
  public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(AddressType,
@@ -765,7 +775,7 @@ class V_COREEXPORT RequestTunnel: public Message {
 BOOST_STATIC_ASSERT(sizeof(RequestTunnel) <= Message::MESSAGE_SIZE);
 
 //! request remote data object
-class V_COREEXPORT RequestObject: public Message {
+class V_COREEXPORT RequestObject: public MessageBase<RequestObject, Message::REQUESTOBJECT> {
 
  public:
    RequestObject(const AddObject &add, const std::string &objId, const std::string &referrer="");
@@ -785,7 +795,7 @@ class V_COREEXPORT RequestObject: public Message {
 BOOST_STATIC_ASSERT(sizeof(RequestObject) <= Message::MESSAGE_SIZE);
 
 //! header for data object transmission
-class V_COREEXPORT SendObject: public Message {
+class V_COREEXPORT SendObject: public MessageBase<SendObject, Message::SENDOBJECT> {
 
  public:
    SendObject(const RequestObject &request, vistle::Object::const_ptr obj, size_t payloadSize);

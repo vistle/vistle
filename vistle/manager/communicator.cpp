@@ -345,11 +345,11 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
    }
 }
 
-bool Communicator::handleMessage(const message::Message &message) {
+bool Communicator::handleMessage(const message::Buffer &message) {
 
    switch(message.type()) {
       case message::Message::SETID: {
-         auto &set = static_cast<const message::SetId &>(message);
+         auto &set = message.as<message::SetId>();
          m_hubId = set.getId();
          CERR << "got id " << m_hubId << std::endl;
          message::DefaultSender::init(m_hubId, m_rank);

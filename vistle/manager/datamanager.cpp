@@ -154,7 +154,7 @@ bool DataManager::handle(const message::Message &msg)
     switch (msg.type()) {
     case Message::IDENTIFY: {
         auto &mm = static_cast<const Identify &>(msg);
-        if (mm.identity() == Identify::UNKNOWN) {
+        if (mm.identity() == Identify::REQUEST) {
             return send(Identify(Identify::LOCALBULKDATA, m_rank));
         }
         return true;

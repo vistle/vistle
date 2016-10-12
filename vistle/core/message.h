@@ -2,6 +2,7 @@
 #define MESSAGE_H
 
 #include <array>
+#include <cassert>
 
 #include <boost/static_assert.hpp>
 
@@ -197,9 +198,9 @@ class V_COREEXPORT Buffer: public Message {
    }
 
    template<class SomeMessage>
-   SomeMessage &as() { return *static_cast<SomeMessage *>(static_cast<Message *>(this)); }
+   SomeMessage &as() { SomeMessage *m = static_cast<SomeMessage *>(static_cast<Message *>(this)); assert(m->type()==SomeMessage::s_type); return *m; }
    template<class SomeMessage>
-   SomeMessage const &as() const { return *static_cast<const SomeMessage *>(static_cast<const Message *>(this)); }
+   SomeMessage const &as() const { const SomeMessage *m = static_cast<const SomeMessage *>(static_cast<const Message *>(this)); assert(m->type()==SomeMessage::s_type); return *m; }
 
    size_t size() const { return Message::MESSAGE_SIZE; }
    char *data() { return static_cast<char *>(static_cast<void *>(this)); }
