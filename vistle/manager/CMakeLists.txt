@@ -1,4 +1,4 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS system thread filesystem)
+vistle_find_package(Boost 1.40 REQUIRED COMPONENTS system filesystem)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}

@@ -52,12 +52,13 @@ bool DataManager::dispatch() {
       message::Buffer buf;
       bool gotMsg = false;
       do {
-         if (!message::recv(m_dataSocket, buf, gotMsg)) {
+         std::vector<char> payload;
+         if (!message::recv(m_dataSocket, buf, gotMsg, false, &payload)) {
             CERR << "Data communication error" << std::endl;
          } else if (gotMsg) {
             work = true;
             //CERR << "Data received" << std::endl;
-            handle(buf);
+            handle(buf, &payload);
          }
       } while(gotMsg);
    }
@@ -68,10 +69,6 @@ bool DataManager::dispatch() {
 bool DataManager::send(const message::Message &message, const std::vector<char> *payload) {
 
    return message::send(m_dataSocket, message, payload);
-}
-
-bool DataManager::read(char *buf, size_t n) {
-   return asio::read(m_dataSocket, asio::buffer(buf, n));
 }
 
 bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const std::function<void()> &handler) {
@@ -150,7 +147,7 @@ bool DataManager::completeTransfer(const message::AddObjectCompleted &complete) 
    return true;
 }
 
-bool DataManager::handle(const message::Message &msg)
+bool DataManager::handle(const message::Message &msg, const std::vector<char> *payload)
 {
     CERR << "handle: " << msg << std::endl;
     using namespace message;
@@ -166,7 +163,7 @@ bool DataManager::handle(const message::Message &msg)
     case Message::REQUESTOBJECT:
         return handlePriv(static_cast<const RequestObject &>(msg));
     case Message::SENDOBJECT:
-        return handlePriv(static_cast<const SendObject &>(msg));
+        return handlePriv(static_cast<const SendObject &>(msg), payload);
     default:
         break;
     }
@@ -329,14 +326,11 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
    return true;
 }
 
-bool DataManager::handlePriv(const message::SendObject &snd) {
+bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<char> *payload) {
 
-   boost::shared_ptr<Fetcher> fetcher;
-   std::vector<char> buf(snd.payloadSize());
-   read(buf.data(), buf.size());
-   vecstreambuf<char> membuf(buf);
-   vistle::iarchive memar(membuf);
+   vecstreambuf<char> membuf(*payload);
    if (snd.isArray()) {
+       vistle::iarchive memar(membuf);
        ArrayLoader loader(snd.objectId(), snd.objectType(), memar);
        boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ArrayLoader>(loader));
        if (!loader.m_ok) {
@@ -351,8 +345,10 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
                completionHandler();
            m_outstandingArrays.erase(it);
        }
+
        return true;
    } else {
+       vistle::iarchive memar(membuf);
        std::string objName = snd.objectId();
        auto objIt = m_outstandingObjects.find(objName);
        if (objIt == m_outstandingObjects.end()) {
@@ -418,7 +414,7 @@ bool DataManager::handlePriv(const message::SendObject &snd) {
        };
        memar.setObjectCompletionHandler(completionHandler);
 
-       fetcher.reset(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
+       boost::shared_ptr<Fetcher> fetcher(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
        memar.setFetcher(fetcher);
        //CERR << "loading object " << objName << " from memar" << std::endl;
        objIt->second.obj = Object::load(memar);

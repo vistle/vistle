@@ -304,8 +304,7 @@ void Hub::handleWrite(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, cons
     auto it = m_sockets.find(sock);
     if (it != m_sockets.end())
        senderType = it->second;
-    message::Buffer buf;
-    message::Message &msg = buf;
+    message::Buffer msg;
     bool received = false;
     if (message::recv(*sock, msg, received) && received) {
        bool ok = true;

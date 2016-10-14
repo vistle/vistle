@@ -1,11 +1,15 @@
 #include <iostream>
+#include <functional>
 
 #include <boost/asio.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/lock_guard.hpp>
 
 #include <util/tools.h>
 #include <arpa/inet.h>
 #include "tcpmessage.h"
 #include "message.h"
+#include "messages.h"
 
 namespace asio = boost::asio;
 using boost::system::error_code;
@@ -14,6 +18,9 @@ namespace vistle {
 namespace message {
 
 typedef uint32_t SizeType;
+static const uint32_t VistleError = 12345;
+
+namespace {
 
 bool check(const Message &msg) {
     if (msg.type() <= Message::ANY || msg.type() >= Message::NumMessageTypes) {
@@ -39,7 +46,105 @@ bool check(const Message &msg) {
     return true;
 }
 
-bool recv(socket_t &sock, Message &msg, bool &received, bool block) {
+}
+
+namespace {
+
+struct SendRequest;
+boost::mutex sendQueueMutex;
+std::map<socket_t*, std::deque<boost::shared_ptr<SendRequest>>> sendQueues;
+void submitSendRequest(boost::shared_ptr<SendRequest> req);
+
+struct SendRequest {
+    socket_t &sock;
+    const message::Buffer msg;
+    boost::shared_ptr<std::vector<char>> payload;
+    std::function<void(error_code)> handler;
+    SendRequest(socket_t &sock, const message::Message &msg, boost::shared_ptr<std::vector<char>> payload, std::function<void(error_code)> handler)
+        : sock(sock)
+        , msg(msg)
+        , payload(payload)
+        , handler(handler)
+    {
+    }
+
+    void operator()() {
+
+        error_code ec;
+        if (!send(sock, msg, payload.get())) {
+            ec.assign(VistleError, boost::system::generic_category());
+        }
+        handler(ec);
+
+        boost::lock_guard<boost::mutex> locker(sendQueueMutex);
+        assert(!sendQueues[&sock].empty());
+        auto This = sendQueues[&sock].front();
+        sendQueues[&sock].pop_front();
+
+        if (!sendQueues[&sock].empty()) {
+            auto &req = sendQueues[&sock].front();
+            submitSendRequest(req);
+        }
+    }
+};
+
+
+void submitSendRequest(boost::shared_ptr<SendRequest> req) {
+    //std::cerr << "submitSendRequest: " << sendQueues[&req->sock].size() << " requests queued for " << &req->sock << std::endl;
+    req->sock.get_io_service().post(*req);
+}
+
+}
+
+namespace {
+
+struct RecvRequest;
+boost::mutex recvQueueMutex;
+std::map<socket_t *, std::deque<boost::shared_ptr<RecvRequest>>> recvQueues;
+void submitRecvRequest(boost::shared_ptr<RecvRequest> req);
+
+struct RecvRequest {
+
+    socket_t &sock;
+    message::Buffer &msg;
+    std::function<void(error_code, boost::shared_ptr<std::vector<char>>)> handler;
+
+    RecvRequest(socket_t &sock, message::Buffer &msg, std::function<void(error_code, boost::shared_ptr<std::vector<char>>)> handler)
+        : sock(sock)
+        , msg(msg)
+        , handler(handler)
+    {
+    }
+
+    void operator()() {
+        bool received = true;
+        error_code ec;
+        boost::shared_ptr<std::vector<char>> payload(new std::vector<char>);
+        if (!recv(sock, msg, received, true, payload.get())) {
+            ec.assign(VistleError, boost::system::generic_category());
+        }
+        handler(ec, payload);
+
+        boost::lock_guard<boost::mutex> locker(recvQueueMutex);
+        assert(!recvQueues[&sock].empty());
+        auto This = recvQueues[&sock].front();
+        recvQueues[&sock].pop_front();
+        if (!recvQueues[&sock].empty()) {
+            auto &req = recvQueues[&sock].front();
+            submitRecvRequest(req);
+        }
+    }
+
+};
+
+void submitRecvRequest(boost::shared_ptr<RecvRequest> req) {
+    //std::cerr << "submitRecvRequest: " << recvQueues[&req->sock].size() << " requests queued for " << &req->sock << std::endl;
+    req->sock.get_io_service().post(*req);
+}
+
+}
+
+bool recv(socket_t &sock, message::Buffer &msg, bool &received, bool block, std::vector<char> *payload) {
 
    SizeType sz = 0;
 
@@ -56,33 +161,51 @@ bool recv(socket_t &sock, Message &msg, bool &received, bool block) {
    bool result = true;
 
    try {
-      auto szbuf = boost::asio::buffer(&sz, sizeof(sz));
       boost::system::error_code ec;
-      asio::read(sock, szbuf, ec);
-      if (ec) {
-          std::cerr << "message::recv: size error " << ec.message() << std::endl;
-          result = false;
-          received = false;
-      } else {
-          sz = ntohl(sz);
-          if (sz < sizeof(Message)) {
-             std::cerr << "message::recv: msg size too small: " << sz << ", min is " << sizeof(Message) << std::endl;
-          }
-          assert(sz >= sizeof(Message));
-          if (sz > Message::MESSAGE_SIZE) {
-             std::cerr << "message::recv: msg size too large: " << sz << ", max is " << Message::MESSAGE_SIZE << std::endl;
-          }
-          assert(sz <= Message::MESSAGE_SIZE);
-          auto msgbuf = asio::buffer(&msg, sz);
-          asio::read(sock, msgbuf, ec);
+          auto szbuf = boost::asio::buffer(&sz, sizeof(sz));
+          asio::read(sock, szbuf, ec);
           if (ec) {
-              std::cerr << "message::recv: msg error " << ec.message() << std::endl;
+              std::cerr << "message::recv: size error " << ec.message() << std::endl;
               result = false;
               received = false;
           } else {
-              assert(check(msg));
+              sz = ntohl(sz);
+              if (sz < sizeof(Message)) {
+                  std::cerr << "message::recv: msg size too small: " << sz << ", min is " << sizeof(Message) << std::endl;
+              }
+              assert(sz >= sizeof(Message));
+              if (sz > Message::MESSAGE_SIZE) {
+                  std::cerr << "message::recv: msg size too large: " << sz << ", max is " << Message::MESSAGE_SIZE << std::endl;
+              }
+              assert(sz <= Message::MESSAGE_SIZE);
+              auto msgbuf = asio::buffer(&msg, sz);
+              asio::read(sock, msgbuf, ec);
+              if (ec) {
+                  std::cerr << "message::recv: msg error " << ec.message() << std::endl;
+                  result = false;
+                  received = false;
+              } else {
+                  assert(check(msg));
+                  if (msg.type() == Message::SENDOBJECT) {
+                      auto &snd = msg.as<SendObject>();
+                      if (snd.payloadSize() > 0) {
+                          std::vector<char> pl;
+                          if (!payload)
+                              payload = &pl;
+                          payload->resize(snd.payloadSize());
+                          auto buf = asio::buffer(payload->data(), payload->size());
+                          asio::read(sock, buf, ec);
+                          if (ec) {
+                              std::cerr << "message::recv: payload error " << ec.message() << std::endl;
+                              result = false;
+                              received = false;
+                          } else {
+                              //std::cerr << "message::recv: SendObject payload of size " << payload->size() << " received" << std::endl;
+                          }
+                      }
+                  }
+              }
           }
-      }
    } catch (std::exception &ex) {
       std::cerr << "message::recv: exception: " << ex.what() << std::endl;
       received = false;
@@ -92,51 +215,18 @@ bool recv(socket_t &sock, Message &msg, bool &received, bool block) {
    return result;
 }
 
-void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::system::error_code ec)> handler) {
+void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::system::error_code ec, boost::shared_ptr<std::vector<char>>)> handler) {
 
-   struct RecvData {
-       SizeType sz;
-       asio::mutable_buffers_1 buf;
-       message::Buffer &msg;
-       RecvData(message::Buffer &msg)
-           : buf(&sz, sizeof(sz))
-           , msg(msg)
-       {}
-   };
-   boost::shared_ptr<RecvData> recvData(new RecvData(msg));
-   asio::async_read(sock, recvData->buf, [recvData, &msg, &sock, handler](error_code ec, size_t n) {
-       if (ec) {
-           std::cerr << "message::async_recv err 1: ec=" << ec.message() << std::endl;
-           handler(ec);
-           return;
-       }
-       if (n != sizeof(SizeType)) {
-          std::cerr << "message::async_recv: expected " << sizeof(SizeType) << ", received " << n << std::endl;
-          handler(ec);
-          return;
-       }
-       recvData->sz = ntohl(recvData->sz);
-       if (recvData->sz > msg.size()) {
-           std::cerr << "message::async_recv err: buffer too small: have " << msg.size() << ", need " << recvData->sz << std::endl;
-           abort();
-           handler(error_code());
-           return;
-       }
-       recvData->buf = asio::buffer(&recvData->msg, recvData->sz);
-       asio::async_read(sock, recvData->buf, [recvData, &sock, handler](error_code ec, size_t n){
-          if (recvData->sz != n) {
-             std::cerr << "message::async_recv: expected " << recvData->sz << ", received " << n << std::endl;
-             handler(ec);
-             return;
-          }
-          if (ec) {
-              std::cerr << "message::async_recv err 2: ec=" << ec.message() << std::endl;
-          } else {
-              assert(check(recvData->msg));
-          }
-          handler(ec);
-       });
-   });
+   boost::shared_ptr<RecvRequest> req(new RecvRequest(sock, msg, handler));
+
+   boost::lock_guard<boost::mutex> locker(recvQueueMutex);
+   bool submit = recvQueues[&sock].empty();
+   recvQueues[&sock].push_back(req);
+   //std::cerr << "message::async_recv: " << recvQueues[&sock].size() << " requests queued for " << &sock << std::endl;
+
+   if (submit) {
+       submitRecvRequest(req);
+   }
 }
 
 bool send(socket_t &sock, const Message &msg, const std::vector<char> *payload) {
@@ -145,10 +235,13 @@ bool send(socket_t &sock, const Message &msg, const std::vector<char> *payload) 
    try {
       const SizeType sz = htonl(msg.size());
       std::vector<boost::asio::const_buffer> buffers;
+      //buffers.push_back(boost::asio::buffer(&InitialMark, sizeof(InitialMark)));
       buffers.push_back(boost::asio::buffer(&sz, sizeof(sz)));
       buffers.push_back(boost::asio::buffer(&msg, msg.size()));
-      if (payload)
+      if (payload && payload->size()) {
           buffers.push_back(boost::asio::buffer(*payload));
+          //buffers.push_back(boost::asio::buffer(&EndPayloadMark, sizeof(EndPayloadMark)));
+      }
       error_code ec;
       bool ret = asio::write(sock, buffers, ec);
       if (ec) {
@@ -164,35 +257,21 @@ bool send(socket_t &sock, const Message &msg, const std::vector<char> *payload) 
    }
 }
 
-void async_send(socket_t &sock, const message::Message &msg, const std::function<void(error_code ec)> handler,
-                boost::shared_ptr<std::vector<char>> payload) {
-
+void async_send(socket_t &sock, const message::Message &msg,
+                boost::shared_ptr<std::vector<char>> payload,
+                const std::function<void(error_code ec)> handler)
+{
    assert(check(msg));
-   std::cerr << "message::async_send: " << msg << std::endl;
-   struct SendData {
-      SizeType sz;
-      const message::Buffer msg;
-      boost::shared_ptr<std::vector<char>> payload;
-      std::vector<boost::asio::const_buffer> buffers;
-      SendData(const message::Message &msg, boost::shared_ptr<std::vector<char>> payload)
-         : sz(htonl(msg.size()))
-         , msg(msg)
-         , payload(payload)
-      {
-          buffers.push_back(boost::asio::buffer(&sz, sizeof(sz)));
-          buffers.push_back(boost::asio::buffer(&msg, msg.size()));
-          if (payload)
-              buffers.push_back(boost::asio::buffer(*payload));
-      }
-   };
-   boost::shared_ptr<SendData> sendData(new SendData(msg, payload));
+   boost::shared_ptr<SendRequest> req(new SendRequest(sock, msg, payload, handler));
 
-   asio::async_write(sock, sendData->buffers, [sendData, &sock, handler](error_code ec, size_t n){
-      if (ec) {
-         std::cerr << "message::async_send error: ec=" << ec.message() << std::endl;
-      }
-      handler(ec);
-   });
+   boost::lock_guard<boost::mutex> locker(sendQueueMutex);
+   bool submit = sendQueues[&sock].empty();
+   sendQueues[&sock].push_back(req);
+   //std::cerr << "message::async_send: " << sendQueues[&sock].size() << " requests queued for " << &sock << std::endl;
+
+   if (submit) {
+       submitSendRequest(req);
+   }
 }
 
 } // namespace message

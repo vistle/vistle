@@ -2,7 +2,6 @@
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
 #include <boost/asio.hpp>
-#include <boost/thread/lock_guard.hpp>
 
 #include <mpi.h>
 
@@ -62,7 +61,7 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts)
    if (m_size > 1) {
       MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
 
-      MPI_Irecv(m_recvBufToRank.data(), m_recvBufToRank.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank, MPI_COMM_WORLD, &m_reqToRank);
+      MPI_Irecv(m_recvBufToRank.data(), m_recvBufToRank.bufferSize(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank, MPI_COMM_WORLD, &m_reqToRank);
    }
 }
 
@@ -205,7 +204,7 @@ bool Communicator::dispatch(bool *work) {
                done = true;
             }
          }
-         MPI_Irecv(m_recvBufToRank.data(), m_recvBufToRank.size(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank, MPI_COMM_WORLD, &m_reqToRank);
+         MPI_Irecv(m_recvBufToRank.data(), m_recvBufToRank.bufferSize(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank, MPI_COMM_WORLD, &m_reqToRank);
       }
 
       // test for message size from another MPI node
@@ -216,10 +215,10 @@ bool Communicator::dispatch(bool *work) {
       MPI_Test(&m_reqAny, &flag, &status);
       if (flag && status.MPI_TAG == TagToAny) {
 
-         if (m_recvSize > m_recvBufToAny.size()) {
+         if (m_recvSize > m_recvBufToAny.bufferSize()) {
             CERR << "invalid m_recvSize: " << m_recvSize << ", flag=" << flag << ", status.MPI_SOURCE=" << status.MPI_SOURCE << std::endl;
          }
-         vassert(m_recvSize <= m_recvBufToAny.size());
+         vassert(m_recvSize <= m_recvBufToAny.bufferSize());
          MPI_Bcast(m_recvBufToAny.data(), m_recvSize, MPI_BYTE,
                status.MPI_SOURCE, MPI_COMM_WORLD);
          if (m_recvSize > 0) {

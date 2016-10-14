@@ -158,7 +158,12 @@ class V_COREEXPORT Message {
    //! set rank of destination
    void setDestRank(int r);
 
-private:
+   template<class SomeMessage>
+   SomeMessage &as() { SomeMessage *m = static_cast<SomeMessage *>(this); assert(m->type()==SomeMessage::s_type); return *m; }
+   template<class SomeMessage>
+   SomeMessage const &as() const { const SomeMessage *m = static_cast<const SomeMessage *>(this); assert(m->type()==SomeMessage::s_type); return *m; }
+
+ private:
    //! message type
    Type m_type;
    //! message size
@@ -202,7 +207,8 @@ class V_COREEXPORT Buffer: public Message {
    template<class SomeMessage>
    SomeMessage const &as() const { const SomeMessage *m = static_cast<const SomeMessage *>(static_cast<const Message *>(this)); assert(m->type()==SomeMessage::s_type); return *m; }
 
-   size_t size() const { return Message::MESSAGE_SIZE; }
+   size_t bufferSize() const { return Message::MESSAGE_SIZE; }
+   size_t size() const { return Message::size(); }
    char *data() { return static_cast<char *>(static_cast<void *>(this)); }
    const char *data() const { return static_cast<const char *>(static_cast<const void *>(this)); }
 

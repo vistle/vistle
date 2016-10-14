@@ -7,7 +7,6 @@
 #include <core/messages.h>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/thread/mutex.hpp>
 
 namespace vistle {
 
@@ -19,7 +18,7 @@ class DataManager {
 
 public:
     DataManager(int rank, int size);
-    bool handle(const message::Message &msg);
+    bool handle(const message::Message &msg, const std::vector<char> *payload);
     bool requestObject(const message::AddObject &add, const std::string &objId, const std::function<void()> &handler);
     bool requestObject(const std::string &referrer, const std::string &objId, int hub, int rank, const std::function<void()> &handler);
     bool requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const std::function<void()> &handler);
@@ -29,10 +28,10 @@ public:
     bool dispatch();
 
     bool send(const message::Message &message, const std::vector<char> *payload=nullptr);
-    bool read(char *buf, size_t n);
+
 private:
     bool handlePriv(const message::RequestObject &req);
-    bool handlePriv(const message::SendObject &snd);
+    bool handlePriv(const message::SendObject &snd, const std::vector<char> *payload);
 
     const int m_rank, m_size;
     boost::asio::io_service m_ioService;
