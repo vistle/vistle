@@ -11,7 +11,6 @@ include_directories(
         ${Boost_INCLUDE_DIRS}
         ${MPI_C_INCLUDE_PATH}
         ${PROJECT_SOURCE_DIR}
-        ${COVISE_FILE_INCLUDE_DIRS}
 )
 
 link_directories(
@@ -24,6 +23,5 @@ target_link_libraries(ReadModel
         ${ASSIMP_LIBRARIES}
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
-        ${COVISE_FILE_LIBRARY}
         vistle_module
 )
