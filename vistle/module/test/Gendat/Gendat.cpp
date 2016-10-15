@@ -75,6 +75,9 @@ Gendat::Gendat(const std::string &shmname, const std::string &name, int moduleID
    m_blocks[2] = addIntParameter("blocks_z", "number of blocks in z-direction", 3);
 
    m_ghostLayerWidth = addIntParameter("ghost_layers", "number of ghost layers on all sides of a grid", 0);
+
+   m_min = addVectorParameter("min", "minimum coordinates", ParamVector(-1., -1, -1.));
+   m_max = addVectorParameter("max", "maximum coordinates", ParamVector(1., 1., 1.));
 }
 
 Gendat::~Gendat() {
@@ -135,24 +138,32 @@ void setStructuredGridGhostLayers(StructuredGridBase::ptr ptr, SIndex ghostWidth
     }
 }
 
-void Gendat::block(Index bx, Index by, Index bz, vistle::Index b) {
+void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
 
     Index dim[3];
-    Vector dist;
+    Vector dist, bdist;
     Index maxBlocks[3];
     Index currBlock[3] = {bx, by, bz};
+    Vector gmin = m_min->getValue(), gmax = m_max->getValue();
+    Vector bmin;
 
     for (int i=0; i<3; ++i) {
         dim[i] = m_size[i]->getValue()+1;
-        dist[i] = 1./m_size[i]->getValue();
         maxBlocks[i] = m_blocks[i]->getValue();
+        bdist[i] = (gmax[i]-gmin[i])/maxBlocks[i];
+        bmin[i] = gmin[i]+currBlock[i]*bdist[i];
+        dist[i] = bdist[i]/m_size[i]->getValue();
     }
     GeoMode geoMode = (GeoMode)m_geoMode->getValue();
     Index numVert = dim[0]*dim[1]*dim[2];
 
     Object::ptr geoOut;
 
-    Vector min(bx, by, bz), max=min+Vector(1.,1.,1.);
+    Vector min, max;
+    for (int c=0; c<3; ++c) {
+        min[c] = bmin[c];
+        max[c] = bmin[c]+bdist[c];
+    }
 
     // output data: first if statement seperates coord-derived objects
     if (geoMode == Triangle_Geometry || geoMode == Polygon_Geometry) {
@@ -319,9 +330,9 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index b) {
     }
 
     Vec<Scalar,1>::ptr scalar(new Vec<Scalar,1>(numVert));
-    scalar->setBlock(b);
+    scalar->setBlock(block);
     Vec<Scalar,3>::ptr vector(new Vec<Scalar,3>(numVert));
-    vector->setBlock(b);
+    vector->setBlock(block);
 
     if (auto coord = Coords::as(geoOut)) {
         const Scalar *xx = coord->x().data();
@@ -340,7 +351,7 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index b) {
     }
 
     if (geoOut) {
-        geoOut->setBlock(b);
+        geoOut->setBlock(block);
         addObject("grid_out", geoOut);
         scalar->setGrid(geoOut);
         vector->setGrid(geoOut);
