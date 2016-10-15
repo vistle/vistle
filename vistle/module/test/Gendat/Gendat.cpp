@@ -128,7 +128,7 @@ void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mo
     }
 }
 
-void setStructuredGridGhostLayers(StructuredGridBase::ptr ptr, Index ghostWidth[3][2]) {
+void setStructuredGridGhostLayers(StructuredGridBase::ptr ptr, SIndex ghostWidth[3][2]) {
     for (Index i=0; i<3; ++i) {
             ptr->setNumGhostLayers(i, StructuredGridBase::Bottom, ghostWidth[i][0]);
             ptr->setNumGhostLayers(i, StructuredGridBase::Top, ghostWidth[i][1]);
@@ -202,7 +202,7 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index b) {
         geoOut = geo;
     } else {
         // obtain dimenstions of current block while taking into consideration ghost cells
-        Index ghostWidth[3][2];
+        SIndex ghostWidth[3][2];
 
         for (unsigned i = 0; i < 3; i++) {
             ghostWidth[i][0] = (currBlock[i] == 0) ? 0 : m_ghostLayerWidth->getValue();
@@ -211,7 +211,6 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index b) {
 
             dim[i] += ghostWidth[i][0] + ghostWidth[i][1];
         }
-
         numVert = dim[0]*dim[1]*dim[2];
 
         if (geoMode == Uniform_Grid) {
@@ -231,8 +230,8 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index b) {
 
             // generate test data
             for (int c=0; c<3; ++c) {
-                for (unsigned i = 0; i < dim[c]; ++i) {
-                    r->coords(c)[i] = min[c]+i*dist[c];
+                for (SIndex i = 0; i < dim[c]; ++i) {
+                    r->coords(c)[i] = min[c]+(i-ghostWidth[c][0])*dist[c];
                 }
             }
             setStructuredGridGhostLayers(r, ghostWidth);
@@ -246,15 +245,15 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index b) {
             Scalar *y = s->y().data();
             Scalar *z = s->z().data();
 #pragma omp parallel for
-            for (Index i=0; i<dim[0]; ++i) {
+            for (SIndex i=0; i<dim[0]; ++i) {
 #pragma omp parallel for
-                for (Index j=0; j<dim[1]; ++j) {
+                for (SIndex j=0; j<dim[1]; ++j) {
 #pragma omp parallel for
-                    for (Index k=0; k<dim[2]; ++k) {
+                    for (SIndex k=0; k<dim[2]; ++k) {
                         Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
-                        x[idx] = min[0]+i*dist[0];
-                        y[idx] = min[1]+j*dist[1];
-                        z[idx] = min[2]+k*dist[2];
+                        x[idx] = min[0]+(i-ghostWidth[0][0])*dist[0];
+                        y[idx] = min[1]+(j-ghostWidth[1][0])*dist[1];
+                        z[idx] = min[2]+(k-ghostWidth[2][0])*dist[2];
                     }
                 }
             }
@@ -269,15 +268,15 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index b) {
             Scalar *y = u->y().data();
             Scalar *z = u->z().data();
 #pragma omp parallel for
-            for (Index i=0; i<dim[0]; ++i) {
+            for (SIndex i=0; i<dim[0]; ++i) {
 #pragma omp parallel for
-                for (Index j=0; j<dim[1]; ++j) {
+                for (SIndex j=0; j<dim[1]; ++j) {
 #pragma omp parallel for
-                    for (Index k=0; k<dim[2]; ++k) {
+                    for (SIndex k=0; k<dim[2]; ++k) {
                         Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
-                        x[idx] = min[0]+i*dist[0];
-                        y[idx] = min[1]+j*dist[1];
-                        z[idx] = min[2]+k*dist[2];
+                        x[idx] = min[0]+(i-ghostWidth[0][0])*dist[0];
+                        y[idx] = min[1]+(j-ghostWidth[1][0])*dist[1];
+                        z[idx] = min[2]+(k-ghostWidth[2][0])*dist[2];
                     }
                 }
             }
