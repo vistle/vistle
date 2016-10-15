@@ -422,8 +422,8 @@ void WriteHDF5::reduce_performant() {
     std::vector<double> objectMetaArray;
     ContiguousMemoryMatrix<unsigned> objectDataArray(m_objectDataArraySize, 2);
 
-    ContiguousMemoryMatrix<unsigned> blockArray(m_objectDataArraySize, 3); //XXX can be optimized - value is greater than needed
-    std::vector<unsigned> timestepArray;
+    ContiguousMemoryMatrix<int> blockArray(m_objectDataArraySize, 3); //XXX can be optimized - value is greater than needed
+    std::vector<int> timestepArray;
     ContiguousMemoryMatrix<unsigned> portArray(m_objectDataArraySize, 2); //XXX can be optimized - value is greater than needed
     std::vector<unsigned> portObjectListArray;
 
@@ -561,7 +561,7 @@ void WriteHDF5::reduce_performant() {
                 currBlockNumEl = 0;
             }
 
-            blockArray.push_back({m_objContainerVector[i].obj->getBlock(), timestepArray.size(), 0});
+            blockArray.push_back({m_objContainerVector[i].obj->getBlock(), static_cast<int>(timestepArray.size()), 0});
 
             currBlock = m_objContainerVector[i].obj->getBlock();
         }
@@ -584,7 +584,7 @@ void WriteHDF5::reduce_performant() {
                 currPortNumEl = 0;
             }
 
-            portArray.push_back({portObjectListArray.size(), 0});
+            portArray.push_back({static_cast<unsigned>(portObjectListArray.size()), 0});
 
             currPort = m_objContainerVector[i].port;
         }
@@ -720,8 +720,8 @@ void WriteHDF5::reduce_performant() {
 
     // create & write type mapping arrays
     if (m_isRootNode) {
-        ContiguousMemoryMatrix<unsigned> typeToObjectDataElementInfoArray(m_objTypeToDataMap.size(), 3);
-        ContiguousMemoryMatrix<unsigned> objectDataElementInfoArray;
+        ContiguousMemoryMatrix<int> typeToObjectDataElementInfoArray(m_objTypeToDataMap.size(), 3);
+        ContiguousMemoryMatrix<int> objectDataElementInfoArray;
         std::string nvpTagsArray;
 
         // reserve size for objectDataElementInfoArray
@@ -735,10 +735,10 @@ void WriteHDF5::reduce_performant() {
         for (auto it : m_objTypeToDataMap) {
             std::vector<std::pair<hid_t, std::string>> &dataElementVector = it.second;
 
-            typeToObjectDataElementInfoArray.push_back({it.first, objectDataElementInfoArray.size(), dataElementVector.size()});
+            typeToObjectDataElementInfoArray.push_back({it.first, static_cast<int>(objectDataElementInfoArray.size()), static_cast<int>(dataElementVector.size())});
 
             for (unsigned i = 0; i < dataElementVector.size(); i++) {
-                objectDataElementInfoArray.push_back({dataElementVector[i].first, nvpTagsArray.size()});
+                objectDataElementInfoArray.push_back({dataElementVector[i].first, static_cast<int>(nvpTagsArray.size())});
 
                 nvpTagsArray += dataElementVector[i].second + '\0';
             }

@@ -1,3 +1,5 @@
+#include <util/tools.h>
+
 #include "message.h"
 #include "messages.h"
 #include "shm.h"

@@ -82,7 +82,7 @@ class WriteHDF5 : public vistle::Module {
    struct DataArrayAllocator;
    struct ShmVectorWriterPerformant;
    class DataArrayContainer;
-   struct DataArrayAppender;
+   class DataArrayAppender;
    struct DataArraySizeFinder;
 
    struct OffsetContainer;
@@ -118,7 +118,7 @@ class WriteHDF5 : public vistle::Module {
    static void util_HDF5WriteOrganized(hid_t fileId);
 
    template<class T>
-   void util_HDF5WritePerformant(char writeName[], unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const T * data);
+   void util_HDF5WritePerformant(const char writeName[], unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const T * data);
    template<class T>
    static void util_HDF5WritePerformant(hid_t fileId, const boost::mpi::communicator &comm, std::string &writeName,
                                         unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const T * data);
@@ -390,7 +390,8 @@ public:
 // * stores variable type arrays
 //-------------------------------------------------------------------------
 template<class T>
-struct WriteHDF5::DataArray : public WriteHDF5::DataArrayBase {
+class WriteHDF5::DataArray : public WriteHDF5::DataArrayBase {
+public:
     std::vector<T> array;
 };
 
@@ -564,6 +565,7 @@ public:
 
             return sizeFinder.sizeVector;
         }
+        return std::vector<std::pair<hid_t,unsigned>>();
     }
 
     // writes all data arrays to file
@@ -665,7 +667,7 @@ struct WriteHDF5::OffsetContainer {
 // * non-static version
 //-------------------------------------------------------------------------
 template<class T>
-void WriteHDF5::util_HDF5WritePerformant(char writeName[], unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const T * data) {
+void WriteHDF5::util_HDF5WritePerformant(const char writeName[], unsigned rank, hsize_t * nodeDims, hsize_t * nodeOffset, hid_t type, const T * data) {
     std::string writeNameString(writeName);
     util_HDF5WritePerformant(m_fileId, comm(), writeNameString, rank, nodeDims, nodeOffset, type, data);
     return;
