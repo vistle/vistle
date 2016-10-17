@@ -3,7 +3,7 @@
 
 #include <core/object.h>
 #include <core/triangles.h>
-#include <core/unstr.h>
+#include <core/geometry.h>
 #include <core/vec.h>
 
 #include "MetaData.h"
@@ -28,7 +28,7 @@ MetaData::MetaData(const std::string &shmname, const std::string &name, int modu
 
    m_kind = addIntParameter("attribute", "attribute to map to vertices", (Integer)BlockNumber, Parameter::Choice);
    V_ENUM_SET_CHOICES(m_kind, MetaAttribute);
-   m_range = addIntVectorParameter("range", "range to which data shall be clamped", 0);
+   m_range = addIntVectorParameter("range", "range to which data shall be clamped", IntParamVector(0,std::numeric_limits<Index>::max()));
    m_modulus = addIntParameter("modulus", "wrap around output value", -1);
 }
 
@@ -37,20 +37,26 @@ MetaData::~MetaData() {
 
 bool MetaData::compute() {
 
-   auto grid = accept<UnstructuredGrid>("grid_in");
+   auto obj = expect<Object>("grid_in");
+   if (!obj)
+       return true;
+   auto grid = obj->getInterface<GeometryInterface>();
    DataBase::const_ptr data;
-   if (!grid) {
-      data = expect<DataBase>("grid_in");
+   if (grid) {
+       data = DataBase::as(obj);
+       if (!data)
+           return true;
+   } else {
+      data = DataBase::as(obj);
       if (!data) {
          return true;
       }
-      grid = UnstructuredGrid::as(data->grid());
+      if (data->grid())
+          grid = data->grid()->getInterface<GeometryInterface>();
       if (!grid) {
          return true;
       }
    }
-   if (!data)
-      data = grid;
 
    Index N = data->getSize();
    Vec<Index>::ptr out(new Vec<Index>(N));
@@ -60,6 +66,9 @@ bool MetaData::compute() {
    const Index block = data->getBlock();
    const Index timestep = data->getTimestep();
 
+   const Index min = m_range->getValue()[0];
+   const Index max = m_range->getValue()[1];
+   const Index mod = m_modulus->getValue();
    for (Index i=0; i<N; ++i) {
       switch(kind) {
          case MpiRank: val[i] = rank(); break;
@@ -68,10 +77,16 @@ bool MetaData::compute() {
          case VertexIndex: val[i] = i; break;
          default: val[i] = 0; break;
       }
+      if (mod > 0)
+          val[i] %= mod;
+      if (val[i] < min)
+          val[i] = min;
+      if (val[i] > max)
+          val[i] = max;
    }
 
    out->setMeta(data->meta());
-   out->setGrid(grid);
+   out->setGrid(obj);
    addObject("data_out", out);
 
    return true;
