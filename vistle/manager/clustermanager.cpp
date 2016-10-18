@@ -633,6 +633,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
       case Message::STARTED:
       case Message::ADDPORT:
       case Message::ADDPARAMETER:
+      case Message::REMOVEPARAMETER:
       case Message::MODULEAVAILABLE:
       case Message::REPLAYFINISHED:
       case Message::REDUCEPOLICY:
