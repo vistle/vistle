@@ -19,9 +19,7 @@ Getting Vistle
 
 Getting Vistle is as easy as
 
-      git clone https://github.com/vistle/vistle.git
-      cd vistle
-      git submodule update --init --recursive
+      git clone https://github.com/vistle/vistle.git --recursive
 
 
 Build Requirements
