@@ -273,7 +273,7 @@ void Gendat::block(Index bx, Index by, Index bz, vistle::Index block) {
             geoOut = s;
 
         } else if (geoMode == Unstructured_Grid) {
-            Index numElem = (dim[0]-1+ghostWidth[0][0]+ghostWidth[0][1])*(dim[1]-1)*(dim[2]-1);
+            Index numElem = (dim[0]-1)*(dim[1]-1)*(dim[2]-1);
             UnstructuredGrid::ptr u(new UnstructuredGrid(numElem, numElem*8, numVert));
             Scalar *x = u->x().data();
             Scalar *y = u->y().data();
