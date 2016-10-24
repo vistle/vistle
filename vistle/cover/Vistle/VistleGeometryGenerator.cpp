@@ -31,11 +31,13 @@ using namespace vistle;
 
 std::mutex VistleGeometryGenerator::s_coverMutex;
 
-VistleGeometryGenerator::VistleGeometryGenerator(vistle::Object::const_ptr geo,
+VistleGeometryGenerator::VistleGeometryGenerator(boost::shared_ptr<vistle::RenderObject> ro,
+            vistle::Object::const_ptr geo,
             vistle::Object::const_ptr color,
             vistle::Object::const_ptr normal,
             vistle::Object::const_ptr tex)
-: m_geo(geo)
+: m_ro(ro)
+, m_geo(geo)
 , m_color(color)
 , m_normal(normal)
 , m_tex(tex)
@@ -101,6 +103,15 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
 #else
       state = new osg::StateSet;
 #endif
+   }
+
+   if (m_ro && m_ro->hasSolidColor) {
+       const auto &c = m_ro->solidColor;
+       osg::Material *mat = new osg::Material;
+       mat->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(c[0], c[1], c[2], c[3]));
+       mat->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(c[0], c[1], c[2], c[3]));
+       mat->setColorMode(osg::Material::AMBIENT_AND_DIFFUSE);
+       state->setAttribute(mat);
    }
 
    switch (m_geo->getType()) {
@@ -532,8 +543,8 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
                                      osg::Texture1D::NEAREST);
                }
             }
+         } else {
          }
-
       }
    }
 

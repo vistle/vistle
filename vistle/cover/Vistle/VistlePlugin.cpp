@@ -398,7 +398,7 @@ boost::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, con
          container, geometry, normals, colors, texture, variant));
 
    pro->coverRenderObject.reset(new VistleRenderObject(pro));
-   m_delayedObjects.push_back(DelayedObject(pro, VistleGeometryGenerator(geometry, colors, normals, texture)));
+   m_delayedObjects.push_back(DelayedObject(pro, VistleGeometryGenerator(pro, geometry, colors, normals, texture)));
 
    return pro;
 }

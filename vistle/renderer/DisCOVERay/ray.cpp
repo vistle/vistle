@@ -587,7 +587,7 @@ void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
          Vector4 color = rc.m_renderManager.m_defaultColor;
          if (rod->hasSolidColor) {
             for (int c=0; c<4; ++c) {
-               color[c] = rod->solidColor[c];
+               color[c] = rod->solidColor[c]*255.99f;
             }
          }
          if (rod->indexBuffer && rod->texData && rod->texCoords) {

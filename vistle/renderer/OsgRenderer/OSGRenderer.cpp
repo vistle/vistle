@@ -788,7 +788,7 @@ boost::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, con
             vistle::Object::const_ptr texture) {
 
    boost::shared_ptr<vistle::RenderObject> ro;
-   VistleGeometryGenerator gen(geometry, normals, colors, texture);
+   VistleGeometryGenerator gen(ro, geometry, normals, colors, texture);
    if (VistleGeometryGenerator::isSupported(geometry->getType()) || geometry->getType() == vistle::Object::PLACEHOLDER) {
       auto geode = gen(defaultState);
 

@@ -39,15 +39,15 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
          if (c > 0x00ffffffL) {
             c = 0x00ffffffL;
          }
-         float b = (c & 0xffL);
+         float b = (c & 0xffL)/255.f;
          c >>= 8;
-         float g = (c & 0xffL);
+         float g = (c & 0xffL)/255.f;
          c >>= 8;
-         float r = (c & 0xffL);
+         float r = (c & 0xffL)/255.f;
          c >>= 8;
 
          hasSolidColor = true;
-         solidColor = Vector4(r, g, b, 255.f);
+         solidColor = Vector4(r, g, b, 1.f);
       }
    }
 

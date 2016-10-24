@@ -2,6 +2,7 @@
 #define VISTLEGEOMETRYGENERATOR_H
 
 #include <core/object.h>
+#include <renderer/renderobject.h>
 #include <mutex>
 #include <osg/StateSet>
 #include <osg/ref_ptr>
@@ -12,7 +13,8 @@ namespace osg {
 
 class VistleGeometryGenerator {
    public:
-      VistleGeometryGenerator(vistle::Object::const_ptr geo,
+      VistleGeometryGenerator(boost::shared_ptr<vistle::RenderObject> ro,
+            vistle::Object::const_ptr geo,
             vistle::Object::const_ptr color,
             vistle::Object::const_ptr normal,
             vistle::Object::const_ptr tex);
@@ -22,6 +24,7 @@ class VistleGeometryGenerator {
       static bool isSupported(vistle::Object::Type t);
 
    private:
+      boost::shared_ptr<vistle::RenderObject> m_ro;
       vistle::Object::const_ptr m_geo;
       vistle::Object::const_ptr m_color;
       vistle::Object::const_ptr m_normal;
