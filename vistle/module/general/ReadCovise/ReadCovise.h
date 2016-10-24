@@ -12,6 +12,8 @@ typedef std::vector<std::pair<std::string, std::string> > AttributeList;
 struct Element {
    Element()
       : parent(NULL)
+      , referenced(NULL)
+      , is_timeset(false)
       , in_geometry(false)
       , objnum(-1)
       , index(-1)
@@ -21,7 +23,9 @@ struct Element {
 
    Element(const Element &other)
       : parent(other.parent)
+      , referenced(other.referenced)
       , obj(other.obj)
+      , is_timeset(other.is_timeset)
       , in_geometry(other.in_geometry)
       , objnum(other.objnum)
       , index(other.index)
@@ -34,7 +38,9 @@ struct Element {
    Element &operator=(const Element &rhs) {
       if (&rhs != this) {
          parent = rhs.parent;
+         referenced = rhs.referenced;
          obj = rhs.obj;
+         is_timeset = rhs.is_timeset;
          in_geometry = rhs.in_geometry;
          objnum = rhs.objnum;
          index = rhs.index;
@@ -46,10 +52,12 @@ struct Element {
    }
 
    Element *parent;
+   Element *referenced;
    vistle::Object::ptr obj;
+   bool is_timeset;
    bool in_geometry;
    ssize_t objnum;
-   int index;
+   int index, block;
    off_t offset;
    std::vector<Element *> subelems;
    AttributeList attribs;
@@ -68,7 +76,7 @@ class ReadCovise: public vistle::Module {
    void applyAttributes(vistle::Object::ptr obj, const Element &elem, int index=-1);
 
    bool readSETELE(const int fd, Element *parent);
-   vistle::Object::ptr readGEOTEX(const int fd, bool skeleton, Element *elem);
+   vistle::Object::ptr readGEOTEX(const int fd, bool skeleton, Element *elem, int timestep);
    vistle::Object::ptr readUNIGRD(const int fd, bool skeleton);
    vistle::Object::ptr readRCTGRD(const int fd, bool skeleton);
    vistle::Object::ptr readSTRGRD(const int fd, bool skeleton);
@@ -80,17 +88,18 @@ class ReadCovise: public vistle::Module {
    vistle::Object::ptr readPOINTS(const int fd, bool skeleton);
    vistle::Object::ptr readUSTVDT(const int fd, bool skeleton);
    vistle::Object::ptr readSTRVDT(const int fd, bool skeleton);
-   vistle::Object::ptr readOBJREF(const int fd, bool skeleton);
+   vistle::Object::ptr readOBJREF(const int fd, bool skeleton, Element *elem);
 
-   bool readRecursive(const int fd, const Element &elem);
+   bool readRecursive(const int fd, Element *elem, int timestep);
    void deleteRecursive(Element &elem);
-   vistle::Object::ptr readObject(const int fd, const Element &elem);
-   vistle::Object::ptr readObjectIntern(const int fd, bool skeleton, Element *elem, bool force=false);
+   vistle::Object::ptr readObject(const int fd, Element *elem, int timestep);
+   vistle::Object::ptr readObjectIntern(const int fd, bool skeleton, Element *elem, int timestep);
 
    bool load(const std::string & filename);
 
    virtual bool compute();
 
+   size_t m_numObj;
    std::vector<Element *> m_objects;
 };
 

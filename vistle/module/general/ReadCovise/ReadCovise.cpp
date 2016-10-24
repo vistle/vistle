@@ -54,34 +54,24 @@ static off_t seek(const int fd, off_t off) {
    return lseek(abs(fd), off, SEEK_SET);
 }
 
-static void checkFirstLast(const Element &elem, bool *first, bool *last) {
-
-   if (*first == false && *last == false)
-      return;
-
-   if (elem.parent) {
-      checkFirstLast(*elem.parent, first, last);
-
-      if (elem.index != 0)
-         *first = false;
-      if (elem.index != (int)(elem.parent->subelems.size()-1))
-         *last = false;
+int findBlockNum(const Element &elem) {
+   bool isTimestep = false;
+   for (size_t i=0; i<elem.attribs.size(); ++i) {
+      const std::pair<std::string, std::string> &att = elem.attribs[i];
+      if (att.first == "TIMESTEP")
+         isTimestep = true;
    }
+   int block = elem.index;
+   if (elem.parent && (isTimestep || block<0)) {
+       block = findBlockNum(*elem.parent);
+   }
+   return block;
 }
 
 void ReadCovise::applyAttributes(Object::ptr obj, const Element &elem, int index) {
 
    if (elem.parent) {
       applyAttributes(obj, *elem.parent, elem.index);
-   }
-
-   if (index == -1) {
-      bool first = true, last = true;
-      checkFirstLast(elem, &first, &last);
-      if (first)
-         obj->addAttribute("_mark_begin");
-      if (last)
-         obj->addAttribute("_mark_end");
    }
 
    bool isTimestep = false;
@@ -122,6 +112,17 @@ void ReadCovise::applyAttributes(Object::ptr obj, const Element &elem, int index
       }
    }
 }
+
+void parseAttributes(Element *elem) {
+   for (size_t i=0; i<elem->attribs.size(); ++i) {
+      const std::pair<std::string, std::string> &att = elem->attribs[i];
+      if (att.first == "TIMESTEP") {
+          elem->is_timeset = true;
+          break;
+      }
+   }
+}
+
 
 AttributeList ReadCovise::readAttributes(const int fd) {
 
@@ -525,7 +526,7 @@ Object::ptr ReadCovise::readPOLYGN(const int fd, const bool skeleton) {
    return Object::ptr();
 }
 
-Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *elem) {
+Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *elem, int timestep) {
 
    vassert(elem);
    // XXX: handle sets in GEOTEX
@@ -551,21 +552,21 @@ Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *e
       Coords::ptr grid;
 
       if (contains[0]) {
-         grid = Coords::as(readObject(fd, *elem->subelems[0]));
+         grid = Coords::as(readObject(fd, elem->subelems[0], timestep));
       }
 
       if (contains[2]) {
-         auto normals = Normals::clone<Vec<Scalar,3>>(Vec<Scalar,3>::as(readObject(fd, *elem->subelems[2])));
+         auto normals = Normals::clone<Vec<Scalar,3>>(Vec<Scalar,3>::as(readObject(fd, elem->subelems[2], timestep)));
          if (grid)
              grid->setNormals(normals);
       }
 
       if (contains[3]) {
-         data = DataBase::as(readObject(fd, *elem->subelems[3]));
+         data = DataBase::as(readObject(fd, elem->subelems[3], timestep));
       }
 
       if (!data && contains[1]) {
-         data = DataBase::as(readObject(fd, *elem->subelems[1]));
+         data = DataBase::as(readObject(fd, elem->subelems[1], timestep));
       }
 
       if (data) {
@@ -579,7 +580,7 @@ Object::ptr ReadCovise::readGEOTEX(const int fd, const bool skeleton, Element *e
    return Object::ptr();
 }
 
-vistle::Object::ptr ReadCovise::readOBJREF(const int fd, bool skeleton) {
+vistle::Object::ptr ReadCovise::readOBJREF(const int fd, bool skeleton, Element *elem) {
 
    int objNum = -1;
    if (covReadOBJREF(fd, &objNum) == -1) {
@@ -592,14 +593,14 @@ vistle::Object::ptr ReadCovise::readOBJREF(const int fd, bool skeleton) {
       return Object::ptr();
    }
 
-   Element *elem = m_objects[objNum];
-   if (!skeleton && !elem->obj) {
-      elem->obj = readObjectIntern(fd, skeleton, elem, true);
+   elem->referenced = m_objects[objNum];
+   if (!elem->referenced->obj) {
+      //std::cerr << "ReadCovise: OBJREF to SETELE - not supported" << std::endl;
    }
-   return elem->obj;
+   return elem->referenced->obj;
 }
 
-Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Element *elem, bool force) {
+Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Element *elem, int timestep) {
 
    Object::ptr object;
 
@@ -607,8 +608,17 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
       if (elem->objnum < 0)
          return object;
 
-      if (elem->objnum % size() != rank() && !force)
+      int block = findBlockNum(*elem);
+      if (block % size() != rank())
          return object;
+
+      if (elem->obj) {
+          if (elem->obj->getTimestep() == timestep)
+              return elem->obj;
+          object = elem->obj->clone();
+          object->setTimestep(timestep);
+          return object;
+      }
    }
 
    if (skeleton) {
@@ -624,7 +634,15 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
    }
    buf[6] = '\0';
    std::string type(buf);
-   //std::cerr << "ReadCovise::readObject " << type << std::endl;
+   //std::cerr << "ReadCovise::readObject " << type << " @ " << mytell(fd) << std::endl;
+
+   if (type == "OBJREF") {
+       object = readOBJREF(fd, skeleton, elem);
+       elem->objnum = -1;
+       return object;
+   } else if (skeleton) {
+       m_objects.push_back(elem);
+   }
 
    bool handled = false;
 #define HANDLE(t) \
@@ -645,39 +663,31 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
    HANDLE(POINTS);
 #undef HANDLE
 
-   bool leaf_object = handled;
-   bool objref = false;
-   if (!handled) {
+   if (handled) {
+       if (skeleton) {
+           elem->objnum = m_numObj;
+           ++m_numObj;
+       }
+   } else {
       if (type == "GEOTEX") {
-         object = readGEOTEX(fd, skeleton, elem);
-         leaf_object = true;
-      } else if (type == "OBJREF") {
-         object = readOBJREF(fd, skeleton);
-         objref = true;
-      } else {
-         if (type == "SETELE") {
+         object = readGEOTEX(fd, skeleton, elem, timestep);
+      } else  if (type == "SETELE") {
             if (skeleton) {
                readSETELE(fd, elem);
             }
-         } else {
-            std::stringstream str;
-            str << "Object type not supported: " << buf;
-            std::cerr << "ReadCovise: " << str.str() << std::endl;
-            throw vistle::exception(str.str());
-         }
+      } else {
+          std::stringstream str;
+          str << "Object type not supported: " << buf;
+          std::cerr << "ReadCovise: " << str.str() << std::endl;
+          throw vistle::exception(str.str());
       }
    }
 
    if (skeleton) {
-      if (leaf_object) {
-         elem->objnum = m_objects.size();;
-         m_objects.push_back(elem);
-      } else {
-         elem->objnum = -1;
-      }
       elem->attribs = readAttributes(fd);
+      parseAttributes(elem);
    } else {
-      if (object && !objref) {
+      if (object) {
          applyAttributes(object, *elem);
          elem->obj = object;
          std::cerr << "ReadCovise: " << type << " [ b# " << object->getBlock() << ", t# " << object->getTimestep() << " ]" << std::endl;
@@ -687,27 +697,32 @@ Object::ptr ReadCovise::readObjectIntern(const int fd, const bool skeleton, Elem
    return object;
 }
 
-Object::ptr ReadCovise::readObject(const int fd, const Element &elem) {
+Object::ptr ReadCovise::readObject(const int fd, Element *elem, int timestep) {
 
-   return readObjectIntern(fd, false, const_cast<Element *>(&elem));
+   return readObjectIntern(fd, false, elem, timestep);
 }
 
 bool ReadCovise::readSkeleton(const int fd, Element *elem) {
 
-   readObjectIntern(fd, true, elem);
+   readObjectIntern(fd, true, elem, -1);
    return true;
 }
 
-bool ReadCovise::readRecursive(const int fd, const Element &elem) {
+bool ReadCovise::readRecursive(const int fd, Element *elem, int timestep) {
 
-   if (Object::ptr obj = readObject(fd, elem)) {
+   if (Object::ptr obj = readObject(fd, elem, timestep)) {
       // obj is regular
       // do not recurse as subelems are abused for Geometry components
       addObject("grid_out", obj);
    } else {
+      const bool inTimeset = elem->is_timeset;
+      if (elem->referenced) {
+          elem = elem->referenced;
+      }
+      //std::cerr << "processing SET w/ " << elem->subelems.size() << " elements, timeset=" << inTimeset << std::endl;
       // obj corresponds to a Set, recurse
-      for (size_t i=0; i<elem.subelems.size(); ++i) {
-         readRecursive(fd, *elem.subelems[i]);
+      for (size_t i=0; i<elem->subelems.size(); ++i) {
+         readRecursive(fd, elem->subelems[i], inTimeset ? i : timestep);
       }
    }
    return true;
@@ -733,7 +748,7 @@ bool ReadCovise::load(const std::string & name) {
    try {
       readSkeleton(fd, &elem);
 
-      readRecursive(fd, elem);
+      readRecursive(fd, &elem, -1);
    } catch(vistle::exception &e) {
       covCloseInFile(fd);
       deleteRecursive(elem);
@@ -748,6 +763,7 @@ bool ReadCovise::load(const std::string & name) {
 
 bool ReadCovise::compute() {
 
+   m_numObj = 0;
    m_objects.clear();
    if (!load(getStringParameter("filename"))) {
       std::cerr << "cannot open " << getStringParameter("filename") << std::endl;
