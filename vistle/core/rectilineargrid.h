@@ -40,6 +40,7 @@ public:
    const Scalar * coords(int c) const { return m_coords[c]; }
 
    // GridInterface
+   Index getNumVertices() const override;
    std::pair<Vector, Vector> getBounds() const override;
    std::pair<Vector, Vector> cellBounds(Index elem) const override;
    Index findCell(const Vector &point, bool acceptGhost=false) const override;

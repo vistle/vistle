@@ -30,6 +30,10 @@ bool AttachGrid::compute() {
    if (!grid) {
        ok = false;
    }
+   Index numVert = 0;
+   if (auto gi = grid->getInterface<GeometryInterface>()) {
+       numVert = gi->getNumVertices();
+   }
 
    std::vector<DataBase::const_ptr> data;
    for (size_t i=0; i<m_dataIn.size(); ++i) {
@@ -60,6 +64,11 @@ bool AttachGrid::compute() {
            auto out = data[i]->clone();
            out->copyAttributes(data[i]);
            out->setGrid(grid);
+           if (out->getSize() == numVert) {
+               out->setMapping(DataBase::Vertex);
+           } else {
+               std::cerr << "cannot determine whether data is cell or vertex based: #vert grid=" << numVert << ", #vert data="  << out->getSize() << std::endl;
+           }
            addObject(pout, out);
        }
    }

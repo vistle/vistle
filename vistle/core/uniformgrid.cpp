@@ -87,6 +87,10 @@ void UniformGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsign
     return;
 }
 
+Index UniformGrid::getNumVertices() const {
+    return getNumDivisions(0)*getNumDivisions(1)*getNumDivisions(2);
+}
+
 // GET BOUNDS
 //-------------------------------------------------------------------------
 std::pair<Vector, Vector> UniformGrid::getBounds() const {

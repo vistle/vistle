@@ -86,6 +86,10 @@ void RectilinearGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, un
     return;
 }
 
+Index RectilinearGrid::getNumVertices() const {
+    return getNumDivisions(0)*getNumDivisions(1)*getNumDivisions(2);
+}
+
 // GET FUNCTION - BOUNDS
 //-------------------------------------------------------------------------
 std::pair<Vector, Vector> RectilinearGrid::getBounds() const {

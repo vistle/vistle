@@ -169,6 +169,10 @@ void StructuredGrid::createCelltree(Index dims[3]) const {
    addAttachment("celltree", ct);
 }
 
+Index StructuredGrid::getNumVertices() const {
+    return getNumDivisions(0)*getNumDivisions(1)*getNumDivisions(2);
+}
+
 // GET FUNCTION - BOUNDS
 //-------------------------------------------------------------------------
 std::pair<Vector, Vector> StructuredGrid::getBounds() const {

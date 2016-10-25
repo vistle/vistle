@@ -38,6 +38,7 @@ public:
    void setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) override;
 
    // GridInterface
+   Index getNumVertices() const override;
    std::pair<Vector, Vector> getBounds() const override;
    std::pair<Vector, Vector> cellBounds(Index elem) const override;
    Index findCell(const Vector &point, bool acceptGhost=false) const override;

@@ -41,8 +41,11 @@ public:
    const Scalar * min() const { return m_min; }
    const Scalar * max() const { return m_max; }
 
-   // GridInterface
+   // GeometryInterface
    std::pair<Vector, Vector> getBounds() const override;
+
+   // GridInterface
+   Index getNumVertices() const override;
    std::pair<Vector, Vector> cellBounds(Index elem) const override;
    Index findCell(const Vector &point, bool acceptGhost=false) const override;
    bool inside(Index elem, const Vector &point) const override;
