@@ -46,7 +46,7 @@ template<> size_t memorySize<8>() {
 #ifdef __APPLE__
       return (size_t)1 << 32;
 #else
-      return (size_t)1 << 36; // 64 GB
+      return (size_t)1 << 38; // 256 GB
 #endif
    }
 }
