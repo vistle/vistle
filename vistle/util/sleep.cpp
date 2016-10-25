@@ -5,6 +5,7 @@
 #ifdef _WIN32
 #else
 #include <unistd.h>
+#include <sched.h>
 #endif
 
 namespace vistle {
@@ -14,7 +15,7 @@ bool adaptive_wait(bool work, const void *client) {
    static std::map<const void *, long> idleMap;
    const long Sec = 1000000; // 1 s
    const long MinDelay = Sec/10000;
-   const long MaxDelay = Sec/10;
+   const long MaxDelay = Sec/100;
 
    auto it = idleMap.find(client);
    if (it == idleMap.end())
@@ -28,7 +29,7 @@ bool adaptive_wait(bool work, const void *client) {
    }
 
    
-   long delay = (float(idle)/Sec)*(float(idle)/Sec)*Sec;
+   long delay = (float(idle)/Sec)*Sec*0.1f;
    if (delay < MinDelay)
       delay = MinDelay;
    if (delay > MaxDelay)
@@ -52,6 +53,10 @@ bool adaptive_wait(bool work, const void *client) {
          sleep(delay/Sec);
          //std::cerr << "sleep " << delay/Sec << std::endl;
       }
+   } else {
+#ifdef _POSIX_PRIORITY_SCHEDULING
+       sched_yield();
+#endif
    }
 
    return true;
