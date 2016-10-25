@@ -13,9 +13,9 @@ class vecstreambuf: public std::basic_streambuf<CharT, TraitsT> {
    vecstreambuf() {
    }
 
-   vecstreambuf(std::vector<CharT> &vec) 
+   vecstreambuf(const std::vector<CharT> &vec)
    : m_vector(vec) {
-      this->setg(vec.data(), vec.data(), vec.data()+vec.size());
+      this->setg(m_vector.data(), m_vector.data(), m_vector.data()+m_vector.size());
    }
 
    int overflow(int ch) {
