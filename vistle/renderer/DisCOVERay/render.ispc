@@ -73,7 +73,7 @@ export void ispcRenderTile(uniform const SceneData *uniform scene, uniform const
 
             Vec4f color = scene->defaultColor;
             if (ro->hasSolidColor) {
-               color = make_Vec4f(ro->solidColor[0], ro->solidColor[1], ro->solidColor[2], ro->solidColor[3]);
+               color = make_Vec4f(ro->solidColor[0]*255.f, ro->solidColor[1]*255.f, ro->solidColor[2]*255.f, ro->solidColor[3]*255.f);
             }
             if (scene->uvVis) {
                const float &u = ray.u;
