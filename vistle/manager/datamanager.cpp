@@ -46,19 +46,23 @@ bool DataManager::connect(asio::ip::tcp::resolver::iterator &hub) {
 
 bool DataManager::dispatch() {
 
+   bool work = false;
    m_ioService.poll();
    if (m_dataSocket.is_open()) {
       message::Buffer buf;
       bool gotMsg = false;
-      if (!message::recv(m_dataSocket, buf, gotMsg)) {
-         CERR << "Data communication error" << std::endl;
-      } else if (gotMsg) {
-         //CERR << "Data received" << std::endl;
-         handle(buf);
-      }
+      do {
+         if (!message::recv(m_dataSocket, buf, gotMsg)) {
+            CERR << "Data communication error" << std::endl;
+         } else if (gotMsg) {
+            work = true;
+            //CERR << "Data received" << std::endl;
+            handle(buf);
+         }
+      } while(gotMsg);
    }
 
-    return true;
+    return work;
 }
 
 bool DataManager::send(const message::Message &message, const std::vector<char> *payload) {

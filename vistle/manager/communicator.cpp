@@ -257,7 +257,8 @@ bool Communicator::dispatch(bool *work) {
       }
    }
 
-   m_dataManager->dispatch();
+   if (m_dataManager->dispatch())
+       received = true;
 
    // test for messages from modules
    if (done) {
