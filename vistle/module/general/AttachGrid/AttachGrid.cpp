@@ -27,11 +27,10 @@ bool AttachGrid::compute() {
 
    bool ok = true;
    auto grid = expect<Object>(m_gridIn);
+   Index numVert = 0;
    if (!grid) {
        ok = false;
-   }
-   Index numVert = 0;
-   if (auto gi = grid->getInterface<GeometryInterface>()) {
+   } else if (auto gi = grid->getInterface<GeometryInterface>()) {
        numVert = gi->getNumVertices();
    }
 
