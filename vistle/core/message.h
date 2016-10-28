@@ -157,6 +157,8 @@ class V_COREEXPORT Message {
    int destRank() const;
    //! set rank of destination
    void setDestRank(int r);
+   //! number of additional data bytes following message
+   size_t payloadSize() const;
 
    template<class SomeMessage>
    SomeMessage &as() { SomeMessage *m = static_cast<SomeMessage *>(this); assert(m->type()==SomeMessage::s_type); return *m; }
@@ -181,6 +183,8 @@ class V_COREEXPORT Message {
    //! uuid of triggering message
    uuid_t m_referrer;
   protected:
+   //! payload size
+   uint64_t m_payloadSize;
    //! broadcast to all ranks?
    bool m_broadcast;
 };

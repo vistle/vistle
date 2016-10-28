@@ -161,51 +161,45 @@ bool recv(socket_t &sock, message::Buffer &msg, bool &received, bool block, std:
    bool result = true;
 
    try {
-      boost::system::error_code ec;
-          auto szbuf = boost::asio::buffer(&sz, sizeof(sz));
-          asio::read(sock, szbuf, ec);
-          if (ec) {
-              std::cerr << "message::recv: size error " << ec.message() << std::endl;
-              result = false;
-              received = false;
-          } else {
-              sz = ntohl(sz);
-              if (sz < sizeof(Message)) {
-                  std::cerr << "message::recv: msg size too small: " << sz << ", min is " << sizeof(Message) << std::endl;
-              }
-              assert(sz >= sizeof(Message));
-              if (sz > Message::MESSAGE_SIZE) {
-                  std::cerr << "message::recv: msg size too large: " << sz << ", max is " << Message::MESSAGE_SIZE << std::endl;
-              }
-              assert(sz <= Message::MESSAGE_SIZE);
-              auto msgbuf = asio::buffer(&msg, sz);
-              asio::read(sock, msgbuf, ec);
-              if (ec) {
-                  std::cerr << "message::recv: msg error " << ec.message() << std::endl;
-                  result = false;
-                  received = false;
-              } else {
-                  assert(check(msg));
-                  if (msg.type() == Message::SENDOBJECT) {
-                      auto &snd = msg.as<SendObject>();
-                      if (snd.payloadSize() > 0) {
-                          std::vector<char> pl;
-                          if (!payload)
-                              payload = &pl;
-                          payload->resize(snd.payloadSize());
-                          auto buf = asio::buffer(payload->data(), payload->size());
-                          asio::read(sock, buf, ec);
-                          if (ec) {
-                              std::cerr << "message::recv: payload error " << ec.message() << std::endl;
-                              result = false;
-                              received = false;
-                          } else {
-                              //std::cerr << "message::recv: SendObject payload of size " << payload->size() << " received" << std::endl;
-                          }
-                      }
-                  }
-              }
-          }
+       boost::system::error_code ec;
+       auto szbuf = boost::asio::buffer(&sz, sizeof(sz));
+       asio::read(sock, szbuf, ec);
+       if (ec) {
+           std::cerr << "message::recv: size error " << ec.message() << std::endl;
+           result = false;
+           received = false;
+       } else {
+           sz = ntohl(sz);
+           if (sz < sizeof(Message)) {
+               std::cerr << "message::recv: msg size too small: " << sz << ", min is " << sizeof(Message) << std::endl;
+           }
+           assert(sz >= sizeof(Message));
+           if (sz > Message::MESSAGE_SIZE) {
+               std::cerr << "message::recv: msg size too large: " << sz << ", max is " << Message::MESSAGE_SIZE << std::endl;
+           }
+           assert(sz <= Message::MESSAGE_SIZE);
+           auto msgbuf = asio::buffer(&msg, sz);
+           asio::read(sock, msgbuf, ec);
+           if (ec) {
+               std::cerr << "message::recv: msg error " << ec.message() << std::endl;
+               result = false;
+               received = false;
+           } else if (msg.payloadSize() > 0) {
+               std::vector<char> pl;
+               if (!payload)
+                   payload = &pl;
+               payload->resize(msg.payloadSize());
+               auto buf = asio::buffer(payload->data(), payload->size());
+               asio::read(sock, buf, ec);
+               if (ec) {
+                   std::cerr << "message::recv: payload error " << ec.message() << std::endl;
+                   result = false;
+                   received = false;
+               } else {
+                   //std::cerr << "message::recv: payload of size " << payload->size() << " received" << std::endl;
+               }
+           }
+       }
    } catch (std::exception &ex) {
       std::cerr << "message::recv: exception: " << ex.what() << std::endl;
       received = false;

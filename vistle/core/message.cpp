@@ -55,6 +55,7 @@ Message::Message(const Type t, const unsigned int s)
 , m_destRank(-1)
 , m_uuid(t == Message::ANY ? boost::uuids::nil_generator()() : s_uuidGenerator())
 , m_referrer(boost::uuids::nil_generator()())
+, m_payloadSize(0)
 , m_broadcast(false)
 {
 
@@ -142,6 +143,10 @@ Message::Type Message::type() const {
 size_t Message::size() const {
 
    return m_size;
+}
+
+size_t Message::payloadSize() const {
+   return m_payloadSize;
 }
 
 bool Message::isBroadcast() const {

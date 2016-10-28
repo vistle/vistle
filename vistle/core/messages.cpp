@@ -1334,10 +1334,10 @@ SendObject::SendObject(const RequestObject &request, Object::const_ptr obj, size
 , m_objectId(obj->getName())
 , m_referrer(request.referrer())
 , m_objectType(obj->getType())
-, m_payloadSize(payloadSize)
 , m_meta(obj->meta())
 {
    setUuid(request.uuid());
+   m_payloadSize = payloadSize;
 
    auto &meta = obj->meta();
    m_block = meta.block();
@@ -1357,9 +1357,9 @@ SendObject::SendObject(const RequestObject &request, size_t payloadSize)
 , m_objectId(request.objectId())
 , m_referrer(request.referrer())
 , m_objectType(request.arrayType())
-, m_payloadSize(payloadSize)
 {
    setUuid(request.uuid());
+   m_payloadSize = payloadSize;
 }
 
 const char *SendObject::objectId() const {
@@ -1368,10 +1368,6 @@ const char *SendObject::objectId() const {
 
 const char *SendObject::referrer() const {
    return m_referrer;
-}
-
-size_t SendObject::payloadSize() const {
-   return m_payloadSize;
 }
 
 const Meta &SendObject::meta() const {

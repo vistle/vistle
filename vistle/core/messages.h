@@ -802,7 +802,6 @@ class V_COREEXPORT SendObject: public MessageBase<SendObject, Message::SENDOBJEC
    SendObject(const RequestObject &request, size_t payloadSize);
    const char *objectId() const;
    const char *referrer() const;
-   size_t payloadSize() const;
    const Meta &meta() const;
    Object::Type objectType() const;
    Meta objectMeta() const;
@@ -813,7 +812,6 @@ class V_COREEXPORT SendObject: public MessageBase<SendObject, Message::SENDOBJEC
    shm_name_t m_objectId;
    shm_name_t m_referrer;
    int m_objectType;
-   uint64_t m_payloadSize;
    Meta m_meta;
    int32_t m_block, m_numBlocks;
    int32_t m_timestep, m_numTimesteps;
