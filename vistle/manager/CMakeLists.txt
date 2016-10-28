@@ -20,6 +20,7 @@ vistle_add_executable(vistle_manager
    portmanager.cpp
    )
 target_link_libraries(vistle_manager
+        vistle_boost_mpi
         ${Boost_LIBRARIES}
         ${MPI_C_LIBRARIES}
         vistle_core

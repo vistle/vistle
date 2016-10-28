@@ -18,14 +18,34 @@
 #define CERR std::cerr << "data [" << m_rank << "/" << m_size << "] "
 
 namespace asio = boost::asio;
+namespace mpi = boost::mpi;
 
 namespace vistle {
 
-DataManager::DataManager(int rank, int size)
-: m_rank(rank)
-, m_size(size)
+namespace {
+
+bool isLocal(int id) {
+
+   auto &comm = Communicator::the();
+   auto &state = comm.clusterManager().state();
+   return (state.getHub(id) == comm.hubId());
+}
+
+}
+
+DataManager::DataManager(mpi::communicator &comm)
+: m_comm(comm)
+, m_rank(comm.rank())
+, m_size(comm.size())
 , m_dataSocket(m_ioService)
 {
+    if (m_size > 1)
+        m_req = m_comm.irecv(boost::mpi::any_source, Communicator::TagData, &m_msgSize, 1);
+}
+
+DataManager::~DataManager() {
+    if (m_size > 1)
+        m_req.cancel();
 }
 
 bool DataManager::connect(asio::ip::tcp::resolver::iterator &hub) {
@@ -51,9 +71,9 @@ bool DataManager::dispatch() {
    bool work = false;
    m_ioService.poll();
    if (m_dataSocket.is_open()) {
-      message::Buffer buf;
       bool gotMsg = false;
       do {
+         message::Buffer buf;
          std::vector<char> payload;
          if (!message::recv(m_dataSocket, buf, gotMsg, false, &payload)) {
             CERR << "Data communication error" << std::endl;
@@ -61,6 +81,21 @@ bool DataManager::dispatch() {
             work = true;
             //CERR << "Data received" << std::endl;
             handle(buf, &payload);
+         } else if (m_size > 1) {
+             if (auto status = m_req.test()) {
+                 if (!status->cancelled()) {
+                     vassert(status->tag() == Communicator::TagData);
+                     m_comm.recv(status->source(), Communicator::TagData, buf.data(), m_msgSize);
+                     if (buf.payloadSize() > 0) {
+                         payload.resize(buf.payloadSize());
+                         m_comm.recv(status->source(), Communicator::TagData, payload.data(), buf.payloadSize());
+                     }
+                     work = true;
+                     gotMsg = true;
+                     handle(buf, &payload);
+                     m_req = m_comm.irecv(mpi::any_source, Communicator::TagData, &m_msgSize, 1);
+                 }
+             }
          }
       } while(gotMsg);
    }
@@ -70,7 +105,16 @@ bool DataManager::dispatch() {
 
 bool DataManager::send(const message::Message &message, const std::vector<char> *payload) {
 
-   return message::send(m_dataSocket, message, payload);
+   if (isLocal(message.destId())) {
+       const int sz = message.size();
+       m_comm.send(message.destRank(), Communicator::TagData, sz);
+       m_comm.send(message.destRank(), Communicator::TagData, (const char *)&message, sz);
+       if (payload && payload->size() > 0) {
+           m_comm.send(message.destRank(), Communicator::TagData, payload->data(), payload->size());
+       }
+   } else {
+       return message::send(m_dataSocket, message, payload);
+   }
 }
 
 bool DataManager::requestArray(const std::string &referrer, const std::string &arrayId, int type, int hub, int rank, const std::function<void()> &handler) {

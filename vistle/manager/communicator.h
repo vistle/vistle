@@ -4,8 +4,7 @@
 #include <vector>
 
 #include <boost/asio.hpp>
-
-#include <mpi.h>
+#include <boost/mpi.hpp>
 
 #include <core/message.h>
 
@@ -21,6 +20,13 @@ class Communicator {
    friend class DataManager;
 
  public:
+
+   enum MpiTags {
+       TagToRank,
+       TagForBroadcast,
+       TagData,
+   };
+
    Communicator(int rank, const std::vector<std::string> &hosts);
    ~Communicator();
    static Communicator &the();
@@ -51,6 +57,7 @@ class Communicator {
    bool scanModules(const std::string &dir);
 
 
+   boost::mpi::communicator m_comm;
    ClusterManager *m_clusterManager;
    DataManager *m_dataManager;
 

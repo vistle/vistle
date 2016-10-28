@@ -2,12 +2,14 @@
 #define DATAMANAGER_H
 
 #include <functional>
+#include <set>
 
 #include <core/message.h>
 #include <core/messages.h>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <set>
+#include <boost/mpi/request.hpp>
+#include <boost/mpi/communicator.hpp>
 
 namespace vistle {
 
@@ -18,7 +20,8 @@ class Object;
 class DataManager {
 
 public:
-    DataManager(int rank, int size);
+    DataManager(boost::mpi::communicator &comm);
+    ~DataManager();
     bool handle(const message::Message &msg, const std::vector<char> *payload);
     bool requestObject(const message::AddObject &add, const std::string &objId, const std::function<void()> &handler);
     bool requestObject(const std::string &referrer, const std::string &objId, int hub, int rank, const std::function<void()> &handler);
@@ -34,7 +37,11 @@ private:
     bool handlePriv(const message::RequestObject &req);
     bool handlePriv(const message::SendObject &snd, const std::vector<char> *payload);
 
+    boost::mpi::communicator m_comm;
     const int m_rank, m_size;
+    boost::mpi::request m_req;
+    int m_msgSize;
+
     boost::asio::io_service m_ioService;
     boost::asio::ip::tcp::socket m_dataSocket;
 

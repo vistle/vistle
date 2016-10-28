@@ -2,6 +2,7 @@
  * Visualization Testing Laboratory for Exascale Computing (VISTLE)
  */
 #include <boost/asio.hpp>
+#include <boost/mpi.hpp>
 
 #include <mpi.h>
 
@@ -27,21 +28,18 @@
 
 using namespace boost::interprocess;
 namespace asio = boost::asio;
+namespace mpi = boost::mpi;
 
 namespace vistle {
 
 using message::Id;
 
-enum MpiTags {
-   TagToRank,
-   TagToAny,
-};
-
 Communicator *Communicator::s_singleton = NULL;
 
 Communicator::Communicator(int r, const std::vector<std::string> &hosts)
-: m_clusterManager(new ClusterManager(r, hosts))
-, m_dataManager(new DataManager(r, hosts.size()))
+: m_comm(MPI_COMM_WORLD, mpi::comm_attach)
+, m_clusterManager(new ClusterManager(r, hosts))
+, m_dataManager(new DataManager(m_comm))
 , m_hubId(message::Id::Invalid)
 , m_rank(r)
 , m_size(hosts.size())
@@ -58,7 +56,7 @@ Communicator::Communicator(int r, const std::vector<std::string> &hosts)
 
    // post requests for length of next MPI message
    if (m_size > 1) {
-      MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
+      MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagForBroadcast, MPI_COMM_WORLD, &m_reqAny);
 
       MPI_Irecv(m_recvBufToRank.data(), m_recvBufToRank.bufferSize(), MPI_BYTE, MPI_ANY_SOURCE, TagToRank, MPI_COMM_WORLD, &m_reqToRank);
    }
@@ -227,7 +225,7 @@ bool Communicator::dispatch(bool *work) {
       //    - handle message
       //    - post another MPI receive for size of next message
       MPI_Test(&m_reqAny, &flag, &status);
-      if (flag && status.MPI_TAG == TagToAny) {
+      if (flag && status.MPI_TAG == TagForBroadcast) {
 
          if (m_recvSize > m_recvBufToAny.bufferSize()) {
             CERR << "invalid m_recvSize: " << m_recvSize << ", flag=" << flag << ", status.MPI_SOURCE=" << status.MPI_SOURCE << std::endl;
@@ -249,7 +247,7 @@ bool Communicator::dispatch(bool *work) {
             }
          }
 
-         MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagToAny, MPI_COMM_WORLD, &m_reqAny);
+         MPI_Irecv(&m_recvSize, 1, MPI_INT, MPI_ANY_SOURCE, TagForBroadcast, MPI_COMM_WORLD, &m_reqAny);
       }
    }
 
@@ -331,9 +329,9 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
    if (m_rank == 0) {
       std::vector<MPI_Request> s(m_size);
       for (int index = 0; index < m_size; ++index) {
-         const unsigned int size = message.size();
+         unsigned int size = message.size();
          if (index != m_rank) {
-            MPI_Isend((void *)&size, 1, MPI_UNSIGNED, index, TagToAny, MPI_COMM_WORLD, &s[index]);
+            MPI_Isend(&size, 1, MPI_UNSIGNED, index, TagForBroadcast, MPI_COMM_WORLD, &s[index]);
          }
       }
 
@@ -392,7 +390,7 @@ Communicator::~Communicator() {
    if (m_size > 1) {
       int dummy = 0;
       MPI_Request s;
-      MPI_Isend(&dummy, 1, MPI_INT, (m_rank + 1) % m_size, TagToAny, MPI_COMM_WORLD, &s);
+      MPI_Isend(&dummy, 1, MPI_INT, (m_rank + 1) % m_size, TagForBroadcast, MPI_COMM_WORLD, &s);
       MPI_Wait(&s, MPI_STATUS_IGNORE);
       CERR << "wait for sending to any" << std::endl;
       MPI_Wait(&m_reqAny, MPI_STATUS_IGNORE);
