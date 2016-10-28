@@ -15,8 +15,13 @@
 #include "findobjectreferenceoarchive.h"
 
 namespace vistle {
+
+template<class T>
+class shm_obj_ref;
+
 class shallow_oarchive;
 class shallow_iarchive;
+
 }
 
 namespace boost {
@@ -49,6 +54,25 @@ public:
     shallow_oarchive(std::streambuf &bsb, unsigned int flags=0);
     ~shallow_oarchive();
 
+};
+
+class V_COREEXPORT deep_oarchive: public shallow_oarchive {
+
+    typedef shallow_oarchive Base;
+public:
+    deep_oarchive(std::ostream &os, unsigned int flags=0);
+    deep_oarchive(std::streambuf &bsb, unsigned int flags=0);
+    ~deep_oarchive();
+
+    template<class T>
+    deep_oarchive &operator<<(vistle::ShmVector<T> &t) {
+        *this << *t;
+    }
+
+    template<class T>
+    deep_oarchive &operator<<(vistle::shm_obj_ref<T> &t) {
+        *this << *t;
+    }
 };
 
 class V_COREEXPORT Fetcher {
@@ -98,12 +122,34 @@ private:
     std::function<void()> m_completer;
 };
 
+class V_COREEXPORT deep_iarchive: public shallow_iarchive {
+
+    typedef shallow_iarchive Base;
+public:
+    deep_iarchive(std::istream &is, unsigned int flags=0);
+    deep_iarchive(std::streambuf &bsb, unsigned int flags=0);
+    ~deep_iarchive();
+
+    template<class T>
+    deep_iarchive &operator>>(vistle::ShmVector<T> &t) {
+        *this >> *t;
+    }
+
+    template<class T>
+    deep_iarchive &operator>>(vistle::shm_obj_ref<T> &t) {
+        *this >> *t;
+    }
+};
+
+
 typedef boost::mpl::vector<
-   shallow_iarchive
+   shallow_iarchive,
+   deep_iarchive
       > InputArchives;
 
 typedef boost::mpl::vector<
-   shallow_oarchive
+   shallow_oarchive,
+   deep_oarchive
       > OutputArchives;
 
 } // namespace vistle
@@ -111,7 +157,11 @@ typedef boost::mpl::vector<
 
 BOOST_SERIALIZATION_REGISTER_ARCHIVE(vistle::shallow_oarchive)
 BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(vistle::shallow_oarchive)
+BOOST_SERIALIZATION_REGISTER_ARCHIVE(vistle::deep_oarchive)
+BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(vistle::deep_oarchive)
 BOOST_SERIALIZATION_REGISTER_ARCHIVE(vistle::shallow_iarchive)
 BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(vistle::shallow_iarchive)
+BOOST_SERIALIZATION_REGISTER_ARCHIVE(vistle::deep_iarchive)
+BOOST_SERIALIZATION_USE_ARRAY_OPTIMIZATION(vistle::deep_iarchive)
 
 #endif

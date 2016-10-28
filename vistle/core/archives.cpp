@@ -76,6 +76,17 @@ shallow_oarchive::shallow_oarchive(std::streambuf &bsb, unsigned int flags)
 shallow_oarchive::~shallow_oarchive()
 {}
 
+deep_oarchive::deep_oarchive(std::ostream &os, unsigned int flags)
+: shallow_oarchive(os, flags)
+{}
+
+deep_oarchive::deep_oarchive(std::streambuf &bsb, unsigned int flags)
+: shallow_oarchive(bsb, flags)
+{}
+
+deep_oarchive::~deep_oarchive()
+{}
+
 
 Fetcher::~Fetcher() {
 }
@@ -112,5 +123,16 @@ void shallow_iarchive::setObjectCompletionHandler(const std::function<void()> &c
 const std::function<void()> &shallow_iarchive::objectCompletionHandler() const {
     return m_completer;
 }
+
+deep_iarchive::deep_iarchive(std::istream &is, unsigned int flags)
+: Base(is, flags)
+{}
+
+deep_iarchive::deep_iarchive(std::streambuf &bsb, unsigned int flags)
+: Base(bsb, flags)
+{}
+
+deep_iarchive::~deep_iarchive()
+{}
 
 } // namespace vistle
