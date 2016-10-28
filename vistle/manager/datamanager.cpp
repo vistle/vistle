@@ -261,7 +261,7 @@ public:
 
 struct ArraySaver {
 
-    ArraySaver(const std::string &name, int type, vistle::oarchive &ar): m_ok(false), m_name(name), m_type(type), m_ar(ar) {}
+    ArraySaver(const std::string &name, int type, vistle::shallow_oarchive &ar): m_ok(false), m_name(name), m_type(type), m_ar(ar) {}
     ArraySaver() = delete;
     ArraySaver(const ArraySaver &other) = delete;
 
@@ -290,7 +290,7 @@ struct ArraySaver {
     bool m_ok;
     std::string m_name;
     int m_type;
-    vistle::oarchive &m_ar;
+    vistle::shallow_oarchive &m_ar;
 };
 
 struct ArrayLoader {
@@ -305,7 +305,7 @@ struct ArrayLoader {
         ShmVector<T> m_ref;
     };
 
-    ArrayLoader(const std::string &name, int type, vistle::iarchive &ar): m_ok(false), m_name(name), m_type(type), m_ar(ar) {}
+    ArrayLoader(const std::string &name, int type, vistle::shallow_iarchive &ar): m_ok(false), m_name(name), m_type(type), m_ar(ar) {}
     ArrayLoader() = delete;
     ArrayLoader(const ArrayLoader &other) = delete;
 
@@ -338,7 +338,7 @@ struct ArrayLoader {
     bool m_ok;
     std::string m_name;
     int m_type;
-    vistle::iarchive &m_ar;
+    vistle::shallow_iarchive &m_ar;
 };
 
 
@@ -346,7 +346,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
    std::shared_ptr<message::SendObject> snd;
    vecstreambuf<char> buf;
    const std::vector<char> &mem = buf.get_vector();
-   vistle::oarchive memar(buf);
+   vistle::shallow_oarchive memar(buf);
    if (req.isArray()) {
       ArraySaver saver(req.objectId(), req.arrayType(), memar);
       boost::mpl::for_each<VectorTypes>(std::reference_wrapper<ArraySaver>(saver));
@@ -376,7 +376,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
 
    vecstreambuf<char> membuf(*payload);
    if (snd.isArray()) {
-       vistle::iarchive memar(membuf);
+       vistle::shallow_iarchive memar(membuf);
        ArrayLoader loader(snd.objectId(), snd.objectType(), memar);
        boost::mpl::for_each<VectorTypes>(std::reference_wrapper<ArrayLoader>(loader));
        if (!loader.m_ok) {
@@ -394,7 +394,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
 
        return true;
    } else {
-       vistle::iarchive memar(membuf);
+       vistle::shallow_iarchive memar(membuf);
        std::string objName = snd.objectId();
        auto objIt = m_outstandingObjects.find(objName);
        if (objIt == m_outstandingObjects.end()) {

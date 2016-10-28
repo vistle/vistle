@@ -81,9 +81,9 @@ Object *Object::load(Archive &ar) {
 }
 
 template<>
-V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(iarchive &ar);
+V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(shallow_iarchive &ar);
 template<>
-V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(oarchive &ar);
+V_COREEXPORT void ObjectTypeRegistry::registerArchiveType(shallow_oarchive &ar);
 
 } // namespace vistle
 

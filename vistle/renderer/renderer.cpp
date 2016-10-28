@@ -111,7 +111,7 @@ bool Renderer::dispatch() {
                         if (send) {
                            if (obj) {
                               vecstreambuf<char> memstr;
-                              vistle::oarchive memar(memstr);
+                              vistle::shallow_oarchive memar(memstr);
                               obj->save(memar);
                               const std::vector<char> &mem = memstr.get_vector();
                               uint64_t len = mem.size();
@@ -168,7 +168,7 @@ bool Renderer::dispatch() {
                               }
                               //std::cerr << "Rank " << rank() << ": Received " << len << " bytes for " << recv->objectName() << std::endl;
                               vecstreambuf<char> membuf(mem);
-                              vistle::iarchive memar(membuf);
+                              vistle::shallow_iarchive memar(membuf);
                               Object::ptr obj(Object::load(memar));
                               if (obj) {
                                  //std::cerr << "Rank " << rank() << ": Restored " << recv->objectName() << " as " << obj->getName() << ", type: " << obj->getType() << std::endl;

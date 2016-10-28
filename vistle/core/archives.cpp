@@ -31,30 +31,30 @@ namespace ba = boost::archive;
 namespace boost {
 namespace archive {
 
-template class V_COREEXPORT detail::archive_serializer_map<vistle::oarchive>;
+template class V_COREEXPORT detail::archive_serializer_map<vistle::shallow_oarchive>;
 template class basic_binary_oprimitive<
-    vistle::oarchive,
+    vistle::shallow_oarchive,
     std::ostream::char_type, 
     std::ostream::traits_type
 >;
 
-template class basic_binary_oarchive<vistle::oarchive> ;
+template class basic_binary_oarchive<vistle::shallow_oarchive> ;
 template class binary_oarchive_impl<
-    vistle::oarchive,
+    vistle::shallow_oarchive,
     std::ostream::char_type, 
     std::ostream::traits_type
 >;
 
 // explicitly instantiate for this type of stream
-template class V_COREEXPORT detail::archive_serializer_map<vistle::iarchive>;
+template class V_COREEXPORT detail::archive_serializer_map<vistle::shallow_iarchive>;
 template class basic_binary_iprimitive<
-    vistle::iarchive,
+    vistle::shallow_iarchive,
     std::istream::char_type,
     std::istream::traits_type
 >;
-template class basic_binary_iarchive<vistle::iarchive> ;
+template class basic_binary_iarchive<vistle::shallow_iarchive> ;
 template class binary_iarchive_impl<
-    vistle::iarchive,
+    vistle::shallow_iarchive,
     std::istream::char_type,
     std::istream::traits_type
 >;
@@ -65,51 +65,51 @@ template class binary_iarchive_impl<
 
 namespace vistle {
 
-oarchive::oarchive(std::ostream &os, unsigned int flags)
-: boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type>(os, flags)
+shallow_oarchive::shallow_oarchive(std::ostream &os, unsigned int flags)
+: boost::archive::binary_oarchive_impl<shallow_oarchive, std::ostream::char_type, std::ostream::traits_type>(os, flags)
 {}
 
-oarchive::oarchive(std::streambuf &bsb, unsigned int flags)
-: boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type>(bsb, flags)
+shallow_oarchive::shallow_oarchive(std::streambuf &bsb, unsigned int flags)
+: boost::archive::binary_oarchive_impl<shallow_oarchive, std::ostream::char_type, std::ostream::traits_type>(bsb, flags)
 {}
 
-oarchive::~oarchive()
+shallow_oarchive::~shallow_oarchive()
 {}
 
 
 Fetcher::~Fetcher() {
 }
 
-iarchive::iarchive(std::istream &is, unsigned int flags)
+shallow_iarchive::shallow_iarchive(std::istream &is, unsigned int flags)
 : Base(is, flags)
 , m_currentObject(nullptr)
 {}
 
-iarchive::iarchive(std::streambuf &bsb, unsigned int flags)
+shallow_iarchive::shallow_iarchive(std::streambuf &bsb, unsigned int flags)
 : Base(bsb, flags)
 , m_currentObject(nullptr)
 {}
 
-iarchive::~iarchive()
+shallow_iarchive::~shallow_iarchive()
 {}
 
-void iarchive::setFetcher(std::shared_ptr<Fetcher> fetcher) {
+void shallow_iarchive::setFetcher(std::shared_ptr<Fetcher> fetcher) {
     m_fetcher = fetcher;
 }
 
-void iarchive::setCurrentObject(ObjectData *data) {
+void shallow_iarchive::setCurrentObject(ObjectData *data) {
     m_currentObject = data;
 }
 
-ObjectData *iarchive::currentObject() const {
+ObjectData *shallow_iarchive::currentObject() const {
     return m_currentObject;
 }
 
-void iarchive::setObjectCompletionHandler(const std::function<void()> &completer) {
+void shallow_iarchive::setObjectCompletionHandler(const std::function<void()> &completer) {
     m_completer = completer;
 }
 
-const std::function<void()> &iarchive::objectCompletionHandler() const {
+const std::function<void()> &shallow_iarchive::objectCompletionHandler() const {
     return m_completer;
 }
 
