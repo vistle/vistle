@@ -58,6 +58,7 @@ class V_COREEXPORT shm_exception: public exception {
 };
 
 class Object;
+struct ObjectData;
 
 #ifdef SHMDEBUG
 struct ShmDebugInfo {
@@ -122,6 +123,7 @@ class V_COREEXPORT Shm {
    boost::shared_ptr<const Object> getObjectFromHandle(const shm_handle_t & handle) const;
    shm_handle_t getHandleFromObject(boost::shared_ptr<const Object> object) const;
    shm_handle_t getHandleFromObject(const Object *object) const;
+   ObjectData *getObjectDataFromName(const std::string &name) const;
    boost::shared_ptr<const Object> getObjectFromName(const std::string &name, bool onlyComplete=true) const;
    template<typename T>
    const ShmVector<T> getArrayFromName(const std::string &name) const;

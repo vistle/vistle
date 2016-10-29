@@ -399,10 +399,16 @@ Object::const_ptr Shm::getObjectFromHandle(const shm_handle_t & handle) const {
    return Object::const_ptr();
 }
 
+ObjectData *Shm::getObjectDataFromName(const std::string &name) const {
+
+   // we have to use char here, otherwise boost-internal consistency checks fail
+   return static_cast<Object::Data *>(static_cast<void *>(vistle::shm<char>::find(name)));
+}
+
 Object::const_ptr Shm::getObjectFromName(const std::string &name, bool onlyComplete) const {
 
    // we have to use char here, otherwise boost-internal consistency checks fail
-   auto mem = static_cast<Object::Data *>(static_cast<void *>(vistle::shm<char>::find(name)));
+   auto mem = getObjectDataFromName(name);
    if (mem) {
       if (mem->isComplete() || !onlyComplete)
           return Object::create(mem);

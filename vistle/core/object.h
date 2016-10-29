@@ -9,6 +9,7 @@
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/map.hpp>
 #include <boost/interprocess/containers/string.hpp>
+#include <boost/interprocess/exceptions.hpp>
 
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/assume_abstract.hpp>
@@ -510,8 +511,14 @@ private:
    ObjType::Data::Data(Object::Type id, const std::string &name, const Meta &meta) \
    : ObjType::Base::Data(id, name, meta) {} \
    ObjType::Data *ObjType::Data::createNamed(Object::Type id, const std::string &name) { \
-      Data *t = shm<Data>::construct(name)(id, name, Meta()); \
-      publish(t); \
+      Data *t = nullptr; \
+      try { \
+          t = shm<Data>::construct(name)(id, name, Meta()); \
+          publish(t); \
+      } catch (boost::interprocess::interprocess_exception ex) { \
+          t = static_cast<Data *>(Shm::the().getObjectDataFromName(name)); \
+          if (!t) throw(ex); \
+      } \
       return t; \
    }
 
