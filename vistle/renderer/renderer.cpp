@@ -110,7 +110,7 @@ bool Renderer::dispatch() {
                         Object::const_ptr obj = Shm::the().getObjectFromName(recv.objectName());
                         if (send) {
                            if (obj) {
-                              vecstreambuf<char> memstr;
+                              vecostreambuf<char> memstr;
                               vistle::deep_oarchive memar(memstr);
                               obj->save(memar);
                               const std::vector<char> &mem = memstr.get_vector();
@@ -167,7 +167,7 @@ bool Renderer::dispatch() {
                                  MPI_Wait(&r, MPI_STATUS_IGNORE);
                               }
                               //std::cerr << "Rank " << rank() << ": Received " << len << " bytes for " << recv->objectName() << std::endl;
-                              vecstreambuf<char> membuf(mem);
+                              vecistreambuf<char> membuf(mem);
                               vistle::deep_iarchive memar(membuf);
                               Object::ptr obj(Object::load(memar));
                               if (obj) {

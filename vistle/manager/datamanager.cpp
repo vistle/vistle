@@ -112,6 +112,7 @@ bool DataManager::send(const message::Message &message, const std::vector<char> 
        if (payload && payload->size() > 0) {
            m_comm.send(message.destRank(), Communicator::TagData, payload->data(), payload->size());
        }
+       return true;
    } else {
        return message::send(m_dataSocket, message, payload);
    }
@@ -339,12 +340,20 @@ struct ArrayLoader {
     std::string m_name;
     int m_type;
     vistle::shallow_iarchive &m_ar;
+
+    bool load() {
+       boost::mpl::for_each<VectorTypes>(std::reference_wrapper<ArrayLoader>(*this));
+       if (!m_ok) {
+           std::cerr << "ArrayLoader: failed to restore array " << m_name << " from archive" << std::endl;
+       }
+       return m_ok;
+    }
 };
 
 
 bool DataManager::handlePriv(const message::RequestObject &req) {
    std::shared_ptr<message::SendObject> snd;
-   vecstreambuf<char> buf;
+   vecostreambuf<char> buf;
    const std::vector<char> &mem = buf.get_vector();
    vistle::shallow_oarchive memar(buf);
    if (req.isArray()) {
@@ -374,15 +383,22 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
 
 bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<char> *payload) {
 
-   vecstreambuf<char> membuf(*payload);
+   vecistreambuf<char> membuf(*payload);
    if (snd.isArray()) {
        vistle::shallow_iarchive memar(membuf);
        ArrayLoader loader(snd.objectId(), snd.objectType(), memar);
+#if 0
        boost::mpl::for_each<VectorTypes>(std::reference_wrapper<ArrayLoader>(loader));
        if (!loader.m_ok) {
            CERR << "failed to restore array " << snd.objectId() << " from archive" << std::endl;
            return false;
        }
+#else
+       if (!loader.load()) {
+           return false;
+
+       }
+#endif
        //CERR << "restored array " << snd.objectId() << ", dangling in memory" << std::endl;
        auto it = m_outstandingArrays.find(snd.objectId());
        vassert(it != m_outstandingArrays.end());

@@ -7,15 +7,10 @@
 namespace vistle {
 
 template<typename CharT, typename TraitsT = std::char_traits<CharT> >
-class vecstreambuf: public std::basic_streambuf<CharT, TraitsT> {
+class vecostreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
  public:
-   vecstreambuf() {
-   }
-
-   vecstreambuf(const std::vector<CharT> &vec)
-   : m_vector(vec) {
-      this->setg(m_vector.data(), m_vector.data(), m_vector.data()+m_vector.size());
+   vecostreambuf() {
    }
 
    int overflow(int ch) {
@@ -40,6 +35,16 @@ class vecstreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
  private:
    std::vector<CharT> m_vector;
+};
+
+template<typename CharT, typename TraitsT = std::char_traits<CharT> >
+class vecistreambuf: public std::basic_streambuf<CharT, TraitsT> {
+
+ public:
+   vecistreambuf(const std::vector<CharT> &vec) {
+      auto &v = const_cast<std::vector<CharT> &>(vec);
+      this->setg(v.data(), v.data(), v.data()+v.size());
+   }
 };
 
 } // namespace vistle
