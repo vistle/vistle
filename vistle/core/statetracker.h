@@ -157,7 +157,7 @@ class V_COREEXPORT StateTracker {
       int state() const;
       bool isSink() const { return height==0; }
       Module(int id, int hub): id(id), hub(hub), initialized(false), killed(false), busy(false), height(0),
-         objectPolicy(message::ObjectReceivePolicy::Single), schedulingPolicy(message::SchedulingPolicy::Single), reducePolicy(message::ReducePolicy::Locally)
+         objectPolicy(message::ObjectReceivePolicy::Local), schedulingPolicy(message::SchedulingPolicy::Single), reducePolicy(message::ReducePolicy::Locally)
       {}
    };
 

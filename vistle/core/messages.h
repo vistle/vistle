@@ -626,7 +626,8 @@ class V_COREEXPORT ObjectReceivePolicy: public MessageBase<ObjectReceivePolicy, 
 
 public:
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(Policy,
-      (Single)
+      (Local)
+      (Master)
       (NotifyAll)
       (Distribute)
    )

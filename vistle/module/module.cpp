@@ -153,7 +153,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_executionCount(0)
 , m_iteration(-1)
 , m_stateTracker(new StateTracker(m_name))
-, m_receivePolicy(message::ObjectReceivePolicy::Single)
+, m_receivePolicy(message::ObjectReceivePolicy::Local)
 , m_schedulingPolicy(message::SchedulingPolicy::Single)
 , m_reducePolicy(message::ReducePolicy::Locally)
 , m_executionDepth(0)

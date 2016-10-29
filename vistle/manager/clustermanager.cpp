@@ -939,6 +939,8 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
        if (addObj.rank() == getRank()) {
            onThisRank = true;
            obj = addObj.takeObject();
+       } else {
+           obj = Shm::the().getObjectFromName(addObj.objectName());
        }
        //CERR << "ADDOBJECT: local, name=" << obj->getName() << ", refcount=" << obj->refcount() << std::endl;
    } else {
@@ -1020,9 +1022,21 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
          continue;
       }
 
+      auto it = m_stateTracker.runningMap.find(destId);
+      if (it == m_stateTracker.runningMap.end()) {
+         CERR << "port connection to module " << destId << ":" << destPort->getName() << ", which is not running" << std::endl;
+         vassert("port connection to module that is not running" == 0);
+         continue;
+      }
+
+      auto &destMod = it->second;
       a.setDestId(destId);
       a.setDestPort(destPort->getName());
       if (isLocal(destId) && localAdd && onThisRank) {
+          if (destMod.objectPolicy == message::ObjectReceivePolicy::Master) {
+              sendMessage(destId, a, 0);
+              continue;
+          }
           a.ref();
       }
       sendMessage(destId, a);
@@ -1031,13 +1045,6 @@ bool ClusterManager::handlePriv(const message::AddObject &addObj, bool synthesiz
       if (!checkExecuteObject(destId))
           return false;
 
-      auto it = m_stateTracker.runningMap.find(destId);
-      if (it == m_stateTracker.runningMap.end()) {
-         CERR << "port connection to module " << destId << ":" << destPort->getName() << ", which is not running" << std::endl;
-         vassert("port connection to module that is not running" == 0);
-         continue;
-      }
-      auto &destMod = it->second;
       if (destMod.objectPolicy == message::ObjectReceivePolicy::NotifyAll
           || destMod.objectPolicy == message::ObjectReceivePolicy::Distribute) {
          message::ObjectReceived recv(addObj, addObj.getDestPort());

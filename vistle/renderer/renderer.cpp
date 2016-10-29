@@ -24,7 +24,7 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(RenderMode,
 Renderer::Renderer(const std::string &description, const std::string &shmname,
                    const std::string &name, const int moduleID)
    : Module(description, shmname, name, moduleID)
-   , m_fastestObjectReceivePolicy(message::ObjectReceivePolicy::Single)
+   , m_fastestObjectReceivePolicy(message::ObjectReceivePolicy::Local)
 {
 
    setSchedulingPolicy(message::SchedulingPolicy::Ignore); // compute does not have to be called at all
@@ -91,14 +91,14 @@ bool Renderer::dispatch() {
 
             switch (message.type()) {
                case vistle::message::ADDOBJECT: {
-                  if (size() == 1 || objectReceivePolicy()==message::ObjectReceivePolicy::Single) {
+                  if (size() == 1 || objectReceivePolicy()==message::ObjectReceivePolicy::Local) {
                      auto &add = static_cast<const message::AddObject &>(message);
                      addInputObject(add.senderId(), add.getSenderPort(), add.getDestPort(), add.takeObject());
                   }
                   break;
                }
                case vistle::message::OBJECTRECEIVED: {
-                  vassert(objectReceivePolicy() != message::ObjectReceivePolicy::Single);
+                  vassert(objectReceivePolicy() != message::ObjectReceivePolicy::Local);
                   if (size() > 1) {
                      auto &recv = static_cast<const message::ObjectReceived &>(message);
                      PlaceHolder::ptr ph(new PlaceHolder(recv.objectName(), recv.meta(), recv.objectType()));
@@ -404,7 +404,7 @@ bool Renderer::changeParameter(const Parameter *p) {
             setObjectReceivePolicy(m_fastestObjectReceivePolicy);
             break;
         case MasterOnly:
-            setObjectReceivePolicy(message::ObjectReceivePolicy::NotifyAll);
+            setObjectReceivePolicy(message::ObjectReceivePolicy::Master);
             break;
         case AllNodes:
             setObjectReceivePolicy(message::ObjectReceivePolicy::Distribute);
