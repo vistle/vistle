@@ -11,6 +11,7 @@
 
 #include <boost/mpl/vector.hpp>
 
+#include <util/vecstreambuf.h>
 #include "shm.h"
 #include "findobjectreferenceoarchive.h"
 
@@ -59,21 +60,73 @@ public:
 class V_COREEXPORT deep_oarchive: public shallow_oarchive {
 
     typedef shallow_oarchive Base;
+    void move_subarchives(deep_oarchive &other) {
+        for (auto &p: other.objects)
+            objects.insert(std::move(p));
+        other.objects.clear();
+        for (auto &p: other.arrays)
+            arrays.insert(std::move(p));
+        other.arrays.clear();
+    }
+
 public:
     deep_oarchive(std::ostream &os, unsigned int flags=0);
     deep_oarchive(std::streambuf &bsb, unsigned int flags=0);
     ~deep_oarchive();
+    std::map<std::string, std::vector<char>> objects;
+    std::map<std::string, std::vector<char>> arrays;
 
     template<class T>
     deep_oarchive &operator<<(vistle::ShmVector<T> &t) {
-        *this << *t;
+        vecostreambuf<char> vb;
+        deep_oarchive ar(vb);
+        ar & *t;
+        ar.arrays.emplace(t->name(), vb.get_vector());
+        move_subarchives(ar);
+        return *this;
     }
 
     template<class T>
     deep_oarchive &operator<<(vistle::shm_obj_ref<T> &t) {
-        *this << *t;
+        vecostreambuf<char> vb;
+        deep_oarchive ar(vb);
+        ar & *t;
+        ar.arrays.emplace(t->name(), vb.get_vector());
+        move_subarchives(ar);
+        return *this;
+    }
+
+    struct directory_entry {
+        std::string name;
+        bool is_array;
+        size_t size;
+        char *data;
+
+        directory_entry(): is_array(false), size(0), data(nullptr) {}
+        directory_entry(const std::string &name, bool is_array, size_t size, char *data)
+            : name(name), is_array(is_array), size(size), data(data) {}
+
+        template<class Archive>
+        void serialize(Archive &ar, const unsigned int version) {
+            ar & name;
+            ar & is_array;
+            ar & size;
+        }
+    };
+
+    typedef std::vector<directory_entry> directory;
+    directory get_directory() {
+        directory dir;
+        for (auto &obj: objects) {
+            dir.emplace_back(obj.first, false, obj.second.size(), obj.second.data());
+        }
+        for (auto &arr: arrays) {
+            dir.emplace_back(arr.first, true, arr.second.size(), arr.second.data());
+        }
+        return dir;
     }
 };
+
 
 class V_COREEXPORT Fetcher {
 public:
@@ -100,14 +153,17 @@ public:
         if (!arr) {
             assert(m_fetcher);
             m_fetcher->requestArray(name, shm<T>::array::typeId(), completeCallback);
+            arr = Shm::the().getArrayFromName<T>(name);
         }
         return arr;
     }
+
     obj_const_ptr getObject(const std::string &name, const std::function<void()> &completeCallback) const {
         auto obj = Shm::the().getObjectFromName(name);
         if (!obj) {
             assert(m_fetcher);
             m_fetcher->requestObject(name, completeCallback);
+            obj = Shm::the().getObjectFromName(name);
         }
         return obj;
     }
@@ -116,11 +172,11 @@ public:
     const std::function<void()> &objectCompletionHandler() const;
 
 private:
-    //void *getArrayPointer(const std::string &name, int type, const std::function<void()> &completeCallback) const;
     std::shared_ptr<Fetcher> m_fetcher;
     ObjectData *m_currentObject;
     std::function<void()> m_completer;
 };
+
 
 class V_COREEXPORT deep_iarchive: public shallow_iarchive {
 
@@ -133,13 +189,16 @@ public:
     template<class T>
     deep_iarchive &operator>>(vistle::ShmVector<T> &t) {
         *this >> *t;
+        return *this;
     }
 
     template<class T>
     deep_iarchive &operator>>(vistle::shm_obj_ref<T> &t) {
         *this >> *t;
+        return *this;
     }
 };
+
 
 
 typedef boost::mpl::vector<

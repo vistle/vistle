@@ -59,6 +59,7 @@ endif()
 set(core_HEADERS
    assert.h
    archives.h
+   archive_loader.h
    celltree.h
    celltree_impl.h
    vertexownerlist.h

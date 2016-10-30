@@ -24,7 +24,15 @@
 #include <boost/archive/impl/basic_binary_oarchive.ipp>
 #include <boost/archive/impl/basic_binary_iarchive.ipp>
 
+//#include <boost/mpl/for_each.hpp>
+
 #include "archives.h"
+#if 0
+#include "assert.h"
+#include "shm.h"
+#include "shm_array.h"
+#include "shm_reference.h"
+#endif
 
 namespace ba = boost::archive;
 
@@ -90,6 +98,7 @@ deep_oarchive::~deep_oarchive()
 
 Fetcher::~Fetcher() {
 }
+
 
 shallow_iarchive::shallow_iarchive(std::istream &is, unsigned int flags)
 : Base(is, flags)

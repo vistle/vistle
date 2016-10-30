@@ -7,6 +7,7 @@
 #include "communicator.h"
 #include <util/vecstreambuf.h>
 #include <core/archives.h>
+#include <core/archive_loader.h>
 #include <core/statetracker.h>
 #include <core/object.h>
 #include <core/tcpmessage.h>
@@ -294,63 +295,6 @@ struct ArraySaver {
     vistle::shallow_oarchive &m_ar;
 };
 
-struct ArrayLoader {
-
-    struct BaseUnreffer {
-        virtual ~BaseUnreffer() {}
-    };
-
-    template<typename T>
-    struct Unreffer: public BaseUnreffer {
-        Unreffer(ShmVector<T> &ref): m_ref(ref) {}
-        ShmVector<T> m_ref;
-    };
-
-    ArrayLoader(const std::string &name, int type, vistle::shallow_iarchive &ar): m_ok(false), m_name(name), m_type(type), m_ar(ar) {}
-    ArrayLoader() = delete;
-    ArrayLoader(const ArrayLoader &other) = delete;
-
-    std::shared_ptr<BaseUnreffer> m_unreffer;
-
-    template<typename T>
-    void operator()(T) {
-        if (shm_array<T, typename shm<T>::allocator>::typeId() == m_type) {
-            if (m_ok) {
-                m_ok = false;
-                std::cerr << "ArrayLoader: type matches for data array " << m_name << std::endl;
-                return;
-            }
-            auto arr = Shm::the().getArrayFromName<T>(m_name);
-            if (arr) {
-                std::cerr << "ArrayLoader: have data array with name " << m_name << std::endl;
-                return;
-            }
-            std::string name;
-            m_ar & name;
-            vassert(name == m_name);
-            arr = ShmVector<T>((shm_name_t)m_name);
-            arr.construct();
-            m_ar & *arr;
-            m_unreffer.reset(new Unreffer<T>(arr));
-            m_ok = true;
-        }
-    }
-
-    bool m_ok;
-    std::string m_name;
-    int m_type;
-    vistle::shallow_iarchive &m_ar;
-
-    bool load() {
-       boost::mpl::for_each<VectorTypes>(std::reference_wrapper<ArrayLoader>(*this));
-       if (!m_ok) {
-           std::cerr << "ArrayLoader: failed to restore array " << m_name << " from archive" << std::endl;
-       }
-       return m_ok;
-    }
-};
-
-
 bool DataManager::handlePriv(const message::RequestObject &req) {
    std::shared_ptr<message::SendObject> snd;
    vecostreambuf<char> buf;
@@ -387,18 +331,9 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
    if (snd.isArray()) {
        vistle::shallow_iarchive memar(membuf);
        ArrayLoader loader(snd.objectId(), snd.objectType(), memar);
-#if 0
-       boost::mpl::for_each<VectorTypes>(std::reference_wrapper<ArrayLoader>(loader));
-       if (!loader.m_ok) {
-           CERR << "failed to restore array " << snd.objectId() << " from archive" << std::endl;
-           return false;
-       }
-#else
        if (!loader.load()) {
            return false;
-
        }
-#endif
        //CERR << "restored array " << snd.objectId() << ", dangling in memory" << std::endl;
        auto it = m_outstandingArrays.find(snd.objectId());
        vassert(it != m_outstandingArrays.end());
