@@ -1,7 +1,7 @@
 #pragma once
 
 #include "linalg/math.isph"
-#include "linalg/vec3f.isph"
+#include "linalg/vec.isph"
 #include <embree2/rtcore.isph>
 
 #include "spheres.isph"

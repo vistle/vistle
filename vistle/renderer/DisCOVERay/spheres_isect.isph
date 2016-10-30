@@ -16,9 +16,11 @@
 
 inline bool sphereIsect(const uniform Sphere &sphere, varying RTCRay &ray) {
 
-  const Vec3f v = ray.org-sphere.p;
-  const float A = dot(ray.dir,ray.dir);
-  const float B = dot(v,ray.dir);
+  const Vec3f org = make_Vec3f(ray.orgx,ray.orgy,ray.orgz);
+  const Vec3f dir = make_Vec3f(ray.dirx,ray.diry,ray.dirz);
+  const Vec3f v = org-sphere.p;
+  const float A = dot(dir,dir);
+  const float B = dot(v,dir);
   const float C = dot(v,v) - sqr(sphere.r);
   const float D = B*B - A*C;
   if (D < 0.0f) return false;
@@ -36,7 +38,10 @@ inline bool sphereIsect(const uniform Sphere &sphere, varying RTCRay &ray) {
      ray.tfar = t1;
   }
   if (hit) {
-     ray.Ng = ray.org+ray.tfar*ray.dir-sphere.p;
+     const Vec3f Ng = org+ray.tfar*dir-sphere.p;
+     ray.Ngx = Ng.x;
+     ray.Ngy = Ng.y;
+     ray.Ngz = Ng.z;
      ray.u = 0.f;
      ray.v = 0.f;
   }
@@ -45,9 +50,11 @@ inline bool sphereIsect(const uniform Sphere &sphere, varying RTCRay &ray) {
 
 inline bool sphereOcclude(const uniform Sphere &sphere, varying RTCRay &ray) {
 
-  const Vec3f v = ray.org-sphere.p;
-  const float A = dot(ray.dir,ray.dir);
-  const float B = dot(v,ray.dir);
+  const Vec3f org = make_Vec3f(ray.orgx,ray.orgy,ray.orgz);
+  const Vec3f dir = make_Vec3f(ray.dirx,ray.diry,ray.dirz);
+  const Vec3f v = org-sphere.p;
+  const float A = dot(dir,dir);
+  const float B = dot(v,dir);
   const float C = dot(v,v) - sqr(sphere.r);
   const float D = B*B - A*C;
   if (D < 0.0f) return false;

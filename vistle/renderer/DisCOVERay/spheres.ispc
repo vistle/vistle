@@ -17,12 +17,12 @@
 //#include "../common/tutorial/tutorial_device.isph"
 
 #include "linalg/math.isph"
-#include "linalg/vec3f.isph"
+#include "linalg/vec.isph"
 #include "linalg/affinespace.isph"
 
 #include <embree2/rtcore.isph>
-//#include <embree2/rtcore_ray.isph>
-#include "rtcray.isph"
+#include <embree2/rtcore_ray.isph>
+//#include "rtcray.isph"
 #include "render.isph"
 #include "spheres.isph"
 

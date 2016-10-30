@@ -166,7 +166,12 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    setParameterRange(m_pointSizeParam, (Float)0, (Float)1e6);
 
    m_device = rtcNewDevice("verbose=0");
+   if (!m_device) {
+       std::cerr << "Ray: failed to create device" << std::endl;
+       throw(vistle::exception("failed to create Embree device"));
+   }
    rtcDeviceSetErrorFunction(m_device, rtcErrorCallback);
+   //m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_DYNAMIC|sceneFlags, (RTCAlgorithmFlags)(/*intersections|*/RTC_SCENE_COHERENT|RTC_INTERSECT_STREAM));
    m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_DYNAMIC|sceneFlags, intersections);
    rtcCommit(m_scene);
 }
@@ -914,7 +919,7 @@ boost::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::stri
 
    auto rod = ro->data.get();
    if (rod->scene) {
-      rod->instId = rtcNewInstance(m_scene, rod->scene);
+      rod->instId = rtcNewInstance2(m_scene, rod->scene);
       if (instances.size() <= rod->instId)
          instances.resize(rod->instId+1);
       vassert(!instances[rod->instId]);

@@ -17,6 +17,7 @@
 #include "common.h"
 
 static const RTCAlgorithmFlags intersections = RTC_INTERSECT1|RTC_INTERSECT4|RTC_INTERSECT8|RTC_INTERSECT16;
+//static const RTCAlgorithmFlags intersections = (RTCAlgorithmFlags)(RTC_SCENE_COHERENT|RTC_INTERSECT_STREAM);
 
 struct RayRenderObject: public vistle::RenderObject {
 

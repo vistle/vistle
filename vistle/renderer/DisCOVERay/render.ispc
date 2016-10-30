@@ -1,12 +1,11 @@
 #include "render.isph"
 
 #include <embree2/rtcore.isph>
-//#include <embree2/rtcore_ray.isph>
-#include "rtcray.isph"
+#include <embree2/rtcore_ray.isph>
+//#include "rtcray.isph"
 
 #include "linalg/math.isph"
-#include "linalg/vec3f.isph"
-#include "linalg/vec4f.isph"
+#include "linalg/vec.isph"
 
 #include "common.h"
 
@@ -39,9 +38,14 @@ export void ispcRenderTile(uniform const SceneData *uniform scene, uniform const
    foreach_tiled(y=y0...y1, x=x0...x1) {
 
       RTCRay ray;
-      ray.org = origin;
+      ray.orgx = origin.x;
+      ray.orgy = origin.y;
+      ray.orgz = origin.z;
 
-      ray.dir = tile->corner + x*tile->dx + y*tile->dy;
+      const Vec3f rdir = tile->corner + x*tile->dx + y*tile->dy;
+      ray.dirx = rdir.x;
+      ray.diry = rdir.y;
+      ray.dirz = rdir.z;
 
       ray.tnear = tile->tNear;
       ray.tfar = tile->tFar;
@@ -59,8 +63,8 @@ export void ispcRenderTile(uniform const SceneData *uniform scene, uniform const
       float zValue = 1.f;
       if (ray.geomID != RTC_INVALID_GEOMETRY_ID) {
 
-         const Vec3f pos = origin + ray.tfar * ray.dir;
-         Vec3f dir = normalize(ray.dir);
+         const Vec3f pos = origin + ray.tfar * rdir;
+         Vec3f dir = normalize(rdir);
          const Vec4f pos4 = make_Vec4f(pos.x, pos.y, pos.z, 1);
          const float win2 = dot(depthTransform2, pos4);
          const float win3 = dot(depthTransform3, pos4);
@@ -128,7 +132,8 @@ export void ispcRenderTile(uniform const SceneData *uniform scene, uniform const
                ambientColor.x *= ambientFactor;
                ambientColor.y *= ambientFactor;
                ambientColor.z *= ambientFactor;
-               Vec3f normal = normalize(ray.Ng);
+               const Vec3f Ng = make_Vec3f(ray.Ngx,ray.Ngy,ray.Ngz);
+               Vec3f normal = normalize(Ng);
                if (twoSided && dot(normal, dir) > 0.f)
                   normal = neg(normal);
 

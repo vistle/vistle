@@ -17,12 +17,12 @@
 //#include "../common/tutorial/tutorial_device.isph"
 
 #include "linalg/math.isph"
-#include "linalg/vec3f.isph"
+#include "linalg/vec.isph"
 #include "linalg/affinespace.isph"
 
 #include <embree2/rtcore.isph>
-//#include <embree2/rtcore_ray.isph>
-#include "rtcray.isph"
+#include <embree2/rtcore_ray.isph>
+//#include "rtcray.isph"
 #include "render.isph"
 #include "tubes.isph"
 
@@ -47,8 +47,9 @@ bool coneSectionIsect(const uniform TubeSection &section0,
       cylinder = false;
   uniform const float Cos2 = cylinder ? 1.f : rcp(1.f+Tan2);
 
-  const float rayLenInv = rcp_safe(length(ray.dir));
-  const Vec3f rayDir = ray.dir*rayLenInv;
+  const Vec3f dir = make_Vec3f(ray.dirx,ray.diry,ray.dirz);
+  const float rayLenInv = rcp_safe(length(dir));
+  const Vec3f rayDir = dir*rayLenInv;
   uniform Vec3f tip = section0.p; // tip of cone
   uniform Vec3f top = tip; // top of cone section
   uniform float r = section0.r;
@@ -78,7 +79,8 @@ bool coneSectionIsect(const uniform TubeSection &section0,
      // on cone boundary
      return false;
   }
-  const Vec3f Delta = ray.org - tip;
+  const Vec3f org = make_Vec3f(ray.orgx,ray.orgy,ray.orgz);
+  const Vec3f Delta = org - tip;
   const Vec3f MxDelta = make_Vec3f(dot(M0, Delta), dot(M1, Delta), dot(M2, Delta));
   const float c1 = dot(rayDir, MxDelta);
   float c0 = dot(Delta, MxDelta);
@@ -100,27 +102,33 @@ bool coneSectionIsect(const uniform TubeSection &section0,
 
   bool hit = false;
   if ((ray.tnear < t0) & (t0 < ray.tfar)) {
-    const Vec3f pRel = ray.org+t0*ray.dir - top;
+    const Vec3f pRel = org+t0*dir - top;
     const float topDist = dot(coneDir, pRel);
     if (topDist >= 0 && topDist <= coneLength) {
        hit = true;
        const Vec3f pRelProj = coneDir * topDist;
 
        ray.tfar = t0;
-       ray.Ng = normalize(pRel - pRelProj) - coneDir*AbsTan;
+       const Vec3f Ng = normalize(pRel - pRelProj) - coneDir*AbsTan;
+       ray.Ngx = Ng.x;
+       ray.Ngy = Ng.y;
+       ray.Ngz = Ng.z;
        ray.u = widening ? topDist*coneLengthInv : 1.f - topDist*coneLengthInv;
        ray.v = cylinder ? 0.0f : 1.f-ray.u;
     }
   }
   if ((ray.tnear < t1) & (t1 < ray.tfar)) {
-    const Vec3f pRel = ray.org+t1*ray.dir - top;
+    const Vec3f pRel = org+t1*dir - top;
     const float topDist = dot(coneDir, pRel);
     if (topDist >= 0 && topDist <= coneLength) {
        hit = true;
        const Vec3f pRelProj = coneDir * topDist;
 
        ray.tfar = t1;
-       ray.Ng = normalize(pRel - pRelProj) - coneDir*AbsTan;
+       const Vec3f Ng = normalize(pRel - pRelProj) - coneDir*AbsTan;
+       ray.Ngx = Ng.x;
+       ray.Ngy = Ng.y;
+       ray.Ngz = Ng.z;
        ray.u = widening ? topDist*coneLengthInv : 1.f - topDist*coneLengthInv;
        ray.v = cylinder ? 0.0f : 1.f-ray.u;
     }
@@ -132,20 +140,25 @@ bool coneSectionIsect(const uniform TubeSection &section0,
 bool discIsect(const uniform TubeSection &center,
       const uniform Vec3f &normal, varying RTCRay &ray) {
 
-   const float prod = dot(normal, ray.dir);
+   const Vec3f dir = make_Vec3f(ray.dirx,ray.diry,ray.dirz);
+   const float prod = dot(normal, dir);
    if (abs(prod) < Epsilon) {
       // ray and disc are parallel
       return false;
    }
 
-   const float t = dot(normal, center.p - ray.org)/prod;
+   const Vec3f org = make_Vec3f(ray.orgx,ray.orgy,ray.orgz);
+   const float t = dot(normal, center.p - org)/prod;
    if ((ray.tnear < t) & (t < ray.tfar)) {
-      const Vec3f p = ray.org+t*ray.dir;
+      const Vec3f p = org+t*dir;
       if (length(center.p - p) <= center.r) {
          ray.u = 0.f;
          ray.v = 0.f;
          ray.tfar = t;
-         ray.Ng = normal;
+         const Vec3f Ng = normal;
+         ray.Ngx = Ng.x;
+         ray.Ngy = Ng.y;
+         ray.Ngz = Ng.z;
 
          return true;
       }
@@ -160,9 +173,11 @@ struct Plane {
 
 inline bool sphereSectorIsect(const uniform Sphere &sphere, const uniform Plane &plane0, const uniform Plane &plane1, varying RTCRay &ray) {
 
-  const Vec3f v = ray.org-sphere.p;
-  const float A = dot(ray.dir,ray.dir);
-  const float B = dot(v,ray.dir);
+  const Vec3f dir = make_Vec3f(ray.dirx,ray.diry,ray.dirz);
+  const Vec3f org = make_Vec3f(ray.orgx,ray.orgy,ray.orgz);
+  const Vec3f v = org-sphere.p;
+  const float A = dot(dir,dir);
+  const float B = dot(v,dir);
   const float C = dot(v,v) - sqr(sphere.r);
   const float D = B*B - A*C;
   if (D < 0.0f) return false;
@@ -181,7 +196,7 @@ inline bool sphereSectorIsect(const uniform Sphere &sphere, const uniform Plane 
      t = t1;
   }
   if (hit) {
-     const Vec3f p = ray.org+t*ray.dir;
+     const Vec3f p = org+t*dir;
      if (dot(plane0.normal, p) < plane0.dist-Epsilon) {
          return false;
      }
@@ -189,7 +204,10 @@ inline bool sphereSectorIsect(const uniform Sphere &sphere, const uniform Plane 
          return false;
      }
      ray.tfar = t;
-     ray.Ng = p-sphere.p;
+     const Vec3f Ng = p-sphere.p;
+     ray.Ngx = Ng.x;
+     ray.Ngy = Ng.y;
+     ray.Ngz = Ng.z;
      ray.u = 1.f; // at end of tube section
      ray.v = 0.f;
   }
@@ -308,12 +326,106 @@ void tubeIntersectFunc(const uniform RenderObjectData* uniform data, varying RTC
   }
 }
 
+#if 0
+void tubeIntersectFuncN(const uniform int* uniform valid, /*! pointer to valid mask */
+                                           RenderObjectData *uniform data,                /*!< pointer to geometry user data */
+                                           const uniform RTCIntersectContext* uniform context,  /*!< intersection context as passed to rtcIntersect/rtcOccluded */
+                                           RTCRayN* uniform rays,               /*!< ray packet of size N */
+                                           uniform size_t N,                 /*< number of rays in ray packet */
+                                           uniform size_t item              /*< item to intersect */)
+{
+    const uniform TubeSection& section0 = data->spheres[item];
+    const uniform TubeSection& section1 = data->spheres[item+1];
+    const uniform unsigned int flags = data->primitiveFlags[item];
+
+    varying RTCRay ray;
+    /* iterate over all rays in ray packet */
+    for (uniform unsigned int ui=0; ui<N; ui+=programCount)
+    {
+        /* calculate varying loop and execution mask */
+        unsigned int vi = ui+programIndex;
+        if (vi>=N) continue;
+
+        /* ignore inactive rays */
+        if (valid[vi] != -1) continue;
+
+        ray.org.x = RTCRayN_org_x(rays, N, ui);
+
+        if (flags & PFCone) {
+            if (coneSectionIsect(section0, section1, ray)) {
+                ray.geomID = data->geomId;
+                ray.primID = item;
+            }
+        }
+
+        if (flags & PFStartSphere) {
+            if (sphereIsect(section0, ray)) {
+                ray.geomID = data->geomId;
+                ray.primID = item;
+            }
+        }
+        if (flags & PFEndSphere) {
+            if (sphereIsect(section1, ray)) {
+                ray.geomID = data->geomId;
+                ray.primID = item;
+            }
+        }
+        if (flags & PFEndSphereSect) {
+            uniform Plane p0, p1;
+            p0.normal = normalize(section1.p-section0.p);
+            p0.dist = dot(p0.normal, section1.p);
+            p1.normal = normalize(section1.p-data->spheres[item+2].p);
+            p1.dist = dot(p1.normal, section1.p);
+            if (sphereSectorIsect(section1, p0, p1, ray)) {
+                ray.geomID = data->geomId;
+                ray.primID = item;
+            }
+        }
+
+        if (flags & PFStartDisc) {
+            uniform Vec3f coneDir = normalize(section1.p - section0.p);
+            if (discIsect(section0, coneDir, ray)) {
+                ray.geomID = data->geomId;
+                ray.primID = item;
+            }
+        }
+        if (flags & PFEndDisc) {
+            uniform Vec3f coneDir = normalize(section0.p - section1.p);
+            if (discIsect(section1, coneDir, ray)) {
+                ray.geomID = data->geomId;
+                ray.primID = item;
+            }
+        }
+        if (flags & PFArrow) {
+            uniform Vec3f coneDir = normalize(section1.p - section0.p);
+            uniform TubeSection a1, a2;
+            a1.p = section1.p;
+            a1.r = ArrowSize * section1.r;
+            a2.p = section1.p + coneDir * a1.r;
+            a2.r = 0.f;
+            if (coneSectionIsect(a1, a2, ray)) {
+                ray.geomID = data->geomId;
+                ray.primID = item;
+                ray.u = ray.v = 0.f;
+            }
+            if (discIsect(a1, coneDir, ray)) {
+                ray.geomID = data->geomId;
+                ray.primID = item;
+                ray.u = ray.v = 0.f;
+            }
+        }
+    }
+}
+#endif
+
 void tubeOccludedFunc(const uniform RenderObjectData* uniform data, varying RTCRay& ray, uniform size_t item)
 {
   const uniform TubeSection& section = data->spheres[item];
-  const Vec3f v = ray.org-section.p;
-  const float A = dot(ray.dir,ray.dir);
-  const float B = 2.0f*dot(v,ray.dir);
+  const Vec3f dir = make_Vec3f(ray.dirx,ray.diry,ray.dirz);
+  const Vec3f org = make_Vec3f(ray.orgx,ray.orgy,ray.orgz);
+  const Vec3f v = org-section.p;
+  const float A = dot(dir,dir);
+  const float B = 2.0f*dot(v,dir);
   const float C = dot(v,v) - sqr(section.r);
   const float D = B*B - 4.0f*A*C;
   if (D < 0.0f) return;
@@ -338,6 +450,7 @@ export uniform unsigned int registerTubes(uniform RTCScene scene, uniform Render
   rtcSetUserData(scene, geomID, data);
   rtcSetBoundsFunction(scene, geomID, (RTCBoundsFunc)&tubeBoundsFunc);
   rtcSetIntersectFunction(scene, geomID, (RTCIntersectFuncVarying)&tubeIntersectFunc);
+  //rtcSetIntersectFunctionN(scene, geomID, (RTCIntersectFuncN)&tubeIntersectFuncN);
   rtcSetOccludedFunction(scene, geomID, (RTCOccludedFuncVarying)&tubeOccludedFunc);
   return geomID;
 }

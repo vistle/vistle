@@ -4,8 +4,7 @@
 #include <embree2/rtcore.isph>
 
 #include "linalg/math.isph"
-#include "linalg/vec3f.isph"
-#include "linalg/vec4f.isph"
+#include "linalg/vec.isph"
 
 #include "renderobjectdata.isph"
 

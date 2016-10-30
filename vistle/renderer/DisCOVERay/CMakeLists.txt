@@ -158,7 +158,7 @@ if (ENABLE_ISPC_SUPPORT)
 else()
    add_module(DisCOVERay rayrenderobject.cpp ray.cpp render.ispc common.h  rayrenderobject.h)
 endif()
-add_custom_target(ispc SOURCES render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc render.isph  renderobjectdata.isph  rtcray.isph  spheres_isect.isph  spheres.isph  tubes.isph)
+add_custom_target(ispc SOURCES render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc render.isph  renderobjectdata.isph  spheres_isect.isph  spheres.isph  tubes.isph)
 
 
 include_directories(
