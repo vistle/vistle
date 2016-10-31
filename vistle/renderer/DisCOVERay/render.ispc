@@ -2,7 +2,6 @@
 
 #include <embree2/rtcore.isph>
 #include <embree2/rtcore_ray.isph>
-//#include "rtcray.isph"
 
 #include "linalg/math.isph"
 #include "linalg/vec.isph"

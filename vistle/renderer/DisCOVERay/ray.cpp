@@ -21,12 +21,9 @@
 #include "rayrenderobject.h"
 #include "common.h"
 
-#ifdef HAVE_ISPC
 #include "render_ispc.h"
-
 #include <xmmintrin.h>
 #include <pmmintrin.h>
-#endif
 
 #ifdef USE_TBB
 #include <tbb/parallel_for.h>
@@ -83,16 +80,12 @@ class RayCaster: public vistle::Renderer {
    ParallelRemoteRenderManager m_renderManager;
 
    // parameters
-   IntParameter *m_packetSize;
-   int rayPacketSize;
    IntParameter *m_renderTileSizeParam;
    int m_tilesize;
    IntParameter *m_shading;
    bool m_doShade;
    IntParameter *m_uvVisParam;
    bool m_uvVis;
-   IntParameter *m_useIspcParam;
-   bool m_useIspc;
    FloatParameter *m_pointSizeParam;
 
    // object lifetime management
@@ -131,11 +124,9 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
 #else
 , m_renderManager(this, nullptr)
 #endif
-, rayPacketSize(8)
 , m_tilesize(64)
 , m_doShade(true)
 , m_uvVis(false)
-, m_useIspc(false)
 , m_timestep(0)
 , m_currentView(-1)
 {
@@ -147,21 +138,14 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    vassert(s_instance == nullptr);
    s_instance = this;
 
-#ifdef HAVE_ISPC
-   m_useIspc = true;
-
    /* from embree examples: for best performance set FTZ and DAZ flags in MXCSR control and status * register */
    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
    _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
-#endif
 
-   m_packetSize = addIntParameter("ray_packet_size", "size of a ray packet (1, 4, 8, or 16)", (Integer)rayPacketSize);
-   setParameterRange(m_packetSize, (Integer)1, (Integer)16);
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
    m_uvVisParam = addIntParameter("uv_visualization", "show u/v coordinates", (Integer)m_uvVis, Parameter::Boolean);
    m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
    setParameterRange(m_renderTileSizeParam, (Integer)1, (Integer)16384);
-   m_useIspcParam = addIntParameter("use_ispc", "use SIMD implementation with ISPC", (Integer)m_useIspc, Parameter::Boolean);
    m_pointSizeParam = addFloatParameter("point_size", "size of points", RayRenderObject::pointSize);
    setParameterRange(m_pointSizeParam, (Float)0, (Float)1e6);
 
@@ -198,17 +182,6 @@ bool RayCaster::parameterChanged(const Parameter *p) {
 
         m_uvVis = m_uvVisParam->getValue();
         m_renderManager.setModified();
-    } else if (p == m_packetSize) {
-
-        rayPacketSize = m_packetSize->getValue();
-        if (rayPacketSize != 1 && rayPacketSize != 4 && rayPacketSize != 8 && rayPacketSize != 16) {
-           rayPacketSize = 1;
-           m_packetSize->setValue(rayPacketSize);
-           std::cerr << "invalid ray packet size, defaulting to " << rayPacketSize << std::endl;
-        }
-    } else if (p == m_useIspcParam) {
-
-       m_useIspc = m_useIspcParam->getValue();
     } else if (p == m_pointSizeParam) {
 
        RayRenderObject::pointSize = m_pointSizeParam->getValue();
@@ -217,158 +190,16 @@ bool RayCaster::parameterChanged(const Parameter *p) {
    return Renderer::parameterChanged(p);
 }
 
-template<class RayPacket>
-static void setRay(RayPacket &rayPacket, int i, const RTCRay &ray) {
-
-   rayPacket.orgx[i] = ray.org[0];
-   rayPacket.orgy[i] = ray.org[1];
-   rayPacket.orgz[i] = ray.org[2];
-
-   rayPacket.dirx[i] = ray.dir[0];
-   rayPacket.diry[i] = ray.dir[1];
-   rayPacket.dirz[i] = ray.dir[2];
-
-   rayPacket.tnear[i] = ray.tnear;
-   rayPacket.tfar[i] = ray.tfar;
-
-   rayPacket.geomID[i] = ray.geomID;
-   rayPacket.primID[i] = ray.primID;
-   rayPacket.instID[i] = ray.instID;
-
-   rayPacket.mask[i] = ray.mask;
-   rayPacket.time[i] = ray.time;
-}
-
-template<>
-void setRay<RTCRay>(RTCRay &packet, int i, const RTCRay &ray) {
-
-    packet = ray;
-}
-
-
-template<class RayPacket>
-static RTCRay getRay(const RayPacket &rays, int i) {
-
-   RTCRay ray;
-
-   ray.org[0] = rays.orgx[i];
-   ray.org[1] = rays.orgy[i];
-   ray.org[2] = rays.orgz[i];
-
-   ray.dir[0] = rays.dirx[i];
-   ray.dir[1] = rays.diry[i];
-   ray.dir[2] = rays.dirz[i];
-
-   ray.tnear = rays.tnear[i];
-   ray.tfar = rays.tfar[i];
-
-   ray.geomID = rays.geomID[i];
-   ray.primID = rays.primID[i];
-   ray.instID = rays.instID[i];
-
-   ray.mask = rays.mask[i];
-   ray.time = rays.time[i];
-
-   ray.Ng[0] = rays.Ngx[i];
-   ray.Ng[1] = rays.Ngy[i];
-   ray.Ng[2] = rays.Ngz[i];
-
-   ray.u = rays.u[i];
-   ray.v = rays.v[i];
-
-   return ray;
-}
-
-template<>
-RTCRay getRay<RTCRay>(const RTCRay &rays, int i) {
-    return rays;
-}
-
-
-static RTCRay makeRay(const Vector3 &origin, const Vector3 &direction, float tNear, float tFar) {
-
-   RTCRay ray;
-   ray.org[0] = origin[0];
-   ray.org[1] = origin[1];
-   ray.org[2] = origin[2];
-   ray.dir[0] = direction[0];
-   ray.dir[1] = direction[1];
-   ray.dir[2] = direction[2];
-   ray.tnear = tNear;
-   ray.tfar = tFar;
-   ray.geomID = RTC_INVALID_GEOMETRY_ID;
-   ray.primID = RTC_INVALID_GEOMETRY_ID;
-   ray.instID = RTC_INVALID_GEOMETRY_ID;
-   ray.mask = RayEnabled;
-   ray.time = 0.0f;
-   return ray;
-}
-
-namespace {
-   void packetIntersect(const void *validMask, RTCScene scene, RTCRay &ray) {
-      rtcIntersect(scene, ray);
-   }
-
-   void packetIntersect(const void *validMask, RTCScene scene, RTCRay4 &ray) {
-      rtcIntersect4(validMask, scene, ray);
-   }
-
-   void packetIntersect(const void *validMask, RTCScene scene, RTCRay8 &ray) {
-      rtcIntersect8(validMask, scene, ray);
-   }
-
-   void packetIntersect(const void *validMask, RTCScene scene, RTCRay16 &ray) {
-      rtcIntersect16(validMask, scene, ray);
-   }
-}
-
-template<class RayPacket>
-struct RayPacketTraits;
-
-template<>
-struct RayPacketTraits<RTCRay> {
-    static const int sizeX = 1;
-    static const int sizeY = 1;
-    static const int size = sizeX*sizeY;
-};
-
-template<>
-struct RayPacketTraits<RTCRay4> {
-    static const int sizeX = 2;
-    static const int sizeY = 2;
-    static const int size = sizeX*sizeY;
-};
-
-template<>
-struct RayPacketTraits<RTCRay8> {
-    static const int sizeX = 4;
-    static const int sizeY = 2;
-    static const int size = sizeX*sizeY;
-};
-
-template<>
-struct RayPacketTraits<RTCRay16> {
-    static const int sizeX = 4;
-    static const int sizeY = 4;
-    static const int size = sizeX*sizeY;
-};
-
 struct TileTask {
    TileTask(const RayCaster &rc, const ParallelRemoteRenderManager::PerViewState &vd, int tile=-1)
    : rc(rc)
    , vd(vd)
    , tile(tile)
    , tilesize(rc.m_tilesize)
-   , rayPacketSize(rc.rayPacketSize)
    {
    }
 
-   void shadeRay(const RTCRay &ray, int x, int y) const;
-
    void render(int tile) const;
-
-   template<class RayPacket>
-   void packetRender(int tile) const;
 
    void operator()(int tile) const {
       render(tile);
@@ -391,7 +222,6 @@ struct TileTask {
    Vector3 origin;
    Matrix4 modelView;
    float tNear, tFar;
-   const int rayPacketSize;
    int xoff, yoff;
    float *depth;
    unsigned char *rgba;
@@ -400,282 +230,99 @@ struct TileTask {
 
 void TileTask::render(int tile) const {
 
-   const int tx = tile%ntx;
-   const int ty = tile/ntx;
-
-#ifdef HAVE_ISPC
-   if (rc.m_useIspc) {
-      ispc::SceneData sceneData;
-      sceneData.scene = (ispc::__RTCScene *)rc.m_scene;
-      for (int i=0; i<4; ++i) {
-         auto row = modelView.block<1,4>(i,0);
-         sceneData.modelView[i].x = row[0];
-         sceneData.modelView[i].y = row[1];
-         sceneData.modelView[i].z = row[2];
-         sceneData.modelView[i].w = row[3];
-      }
-      sceneData.doShade = rc.m_doShade;
-      sceneData.uvVis = rc.m_uvVis;
-      sceneData.defaultColor.x = rc.m_renderManager.m_defaultColor[0];
-      sceneData.defaultColor.y = rc.m_renderManager.m_defaultColor[1];
-      sceneData.defaultColor.z = rc.m_renderManager.m_defaultColor[2];
-      sceneData.defaultColor.w = rc.m_renderManager.m_defaultColor[3];
-      sceneData.ro = rc.instances.data();
-      std::vector<ispc::Light> lights;
-      for (const auto &light: vd.lights) {
-         ispc::Light l;
-         l.enabled = light.enabled;
-         l.transformedPosition.x = light.transformedPosition[0];
-         l.transformedPosition.y = light.transformedPosition[1];
-         l.transformedPosition.z = light.transformedPosition[2];
-         for (int c=0; c<3; ++c) {
-            l.attenuation[c] = light.attenuation[c];
-         }
-         l.isDirectional = light.isDirectional;
-
-         l.ambient.x = light.ambient[0];
-         l.ambient.y = light.ambient[1];
-         l.ambient.z = light.ambient[2];
-         l.ambient.w = light.ambient[3];
-
-         l.diffuse.x = light.diffuse[0];
-         l.diffuse.y = light.diffuse[1];
-         l.diffuse.z = light.diffuse[2];
-         l.diffuse.w = light.diffuse[3];
-
-         l.specular.x = light.specular[0];
-         l.specular.y = light.specular[1];
-         l.specular.z = light.specular[2];
-         l.specular.w = light.specular[3];
-
-         lights.push_back(l);
-      }
-      sceneData.numLights = lights.size();
-      sceneData.lights = lights.data();
-
-      ispc::TileData data;
-      data.rgba = rgba;
-      data.depth = depth;
-      data.imgWidth = imgWidth;
-
-      data.x0=xoff+tx*tilesize;
-      data.x1=std::min(data.x0+tilesize, xlim);
-      data.y0=yoff+ty*tilesize;
-      data.y1=std::min(data.y0+tilesize, ylim);
-
-      data.origin.x = origin[0];
-      data.origin.y = origin[1];
-      data.origin.z = origin[2];
-
-      data.dx.x = dx[0];
-      data.dx.y = dx[1];
-      data.dx.z = dx[2];
-
-      data.dy.x = dy[0];
-      data.dy.y = dy[1];
-      data.dy.z = dy[2];
-
-      const Vector toLowerBottom = lowerBottom - origin;
-      data.corner.x = toLowerBottom[0];
-      data.corner.y = toLowerBottom[1];
-      data.corner.z = toLowerBottom[2];
-
-      data.tNear = tNear;
-      data.tFar = tFar;
-
-      data.depthTransform2.x = depthTransform2[0];
-      data.depthTransform2.y = depthTransform2[1];
-      data.depthTransform2.z = depthTransform2[2];
-      data.depthTransform2.w = depthTransform2[3];
-
-      data.depthTransform3.x = depthTransform3[0];
-      data.depthTransform3.y = depthTransform3[1];
-      data.depthTransform3.z = depthTransform3[2];
-      data.depthTransform3.w = depthTransform3[3];
-
-      ispcRenderTile(&sceneData, &data);
-   } else
-#endif
-   {
-      if (rayPacketSize == 16) {
-         packetRender<RTCRay16>(tile);
-      } else if (rayPacketSize == 8) {
-         packetRender<RTCRay8>(tile);
-      } else if (rayPacketSize == 4) {
-         packetRender<RTCRay4>(tile);
-      } else if (rayPacketSize == 1) {
-         packetRender<RTCRay>(tile);
-      } else {
-         vassert("unsupported ray packet size" == 0);
-      }
-   }
-}
-
-
-template<class RayPacket>
-void TileTask::packetRender(int tile) const {
-    RTCRay ray;
-    RayPacket packet;
-    RayPacketTraits<RayPacket> traits;
-    const int packetSizeX = traits.sizeX;
-    const int packetSizeY = traits.sizeY;
-    unsigned RTCORE_ALIGN(32) validMask[traits.size];
-
     const int tx = tile%ntx;
     const int ty = tile/ntx;
-    const int x0=xoff+tx*tilesize, x1=std::min(x0+tilesize, xlim);
-    const int y0=yoff+ty*tilesize, y1=std::min(y0+tilesize, ylim);
-    const Vector toLowerBottom = lowerBottom - origin;
-    for (int yy=y0; yy<y1; yy += packetSizeY) {
-       for (int xx=x0; xx<x1; xx += packetSizeX) {
 
-          int idx = 0;
-          for (int y=yy; y<yy+packetSizeY; ++y) {
-             for (int x=xx; x<xx+packetSizeX; ++x) {
-
-                if (x>=xlim || y>=ylim) {
-                   validMask[idx] = RayDisabled;
-                } else {
-                   validMask[idx] = RayEnabled;
-                   const Vector rd = toLowerBottom + x*dx + y*dy;
-                   ray = makeRay(origin, rd, tNear, tFar);
-                   setRay(packet, idx, ray);
-                }
-
-                ++idx;
-             }
-          }
-
-          packetIntersect(validMask, rc.m_scene, packet);
-
-          idx = 0;
-          for (int y=yy; y<yy+packetSizeY; ++y) {
-             for (int x=xx; x<xx+packetSizeX; ++x) {
-
-                if (validMask[idx] == RayEnabled) {
-                   ray = getRay(packet, idx);
-                   shadeRay(ray, x, y);
-                }
-
-                ++idx;
-             }
-          }
-       }
+    ispc::SceneData sceneData;
+    sceneData.scene = (ispc::__RTCScene *)rc.m_scene;
+    for (int i=0; i<4; ++i) {
+        auto row = modelView.block<1,4>(i,0);
+        sceneData.modelView[i].x = row[0];
+        sceneData.modelView[i].y = row[1];
+        sceneData.modelView[i].z = row[2];
+        sceneData.modelView[i].w = row[3];
     }
+    sceneData.doShade = rc.m_doShade;
+    sceneData.uvVis = rc.m_uvVis;
+    sceneData.defaultColor.x = rc.m_renderManager.m_defaultColor[0];
+    sceneData.defaultColor.y = rc.m_renderManager.m_defaultColor[1];
+    sceneData.defaultColor.z = rc.m_renderManager.m_defaultColor[2];
+    sceneData.defaultColor.w = rc.m_renderManager.m_defaultColor[3];
+    sceneData.ro = rc.instances.data();
+    std::vector<ispc::Light> lights;
+    for (const auto &light: vd.lights) {
+        ispc::Light l;
+        l.enabled = light.enabled;
+        l.transformedPosition.x = light.transformedPosition[0];
+        l.transformedPosition.y = light.transformedPosition[1];
+        l.transformedPosition.z = light.transformedPosition[2];
+        for (int c=0; c<3; ++c) {
+            l.attenuation[c] = light.attenuation[c];
+        }
+        l.isDirectional = light.isDirectional;
+
+        l.ambient.x = light.ambient[0];
+        l.ambient.y = light.ambient[1];
+        l.ambient.z = light.ambient[2];
+        l.ambient.w = light.ambient[3];
+
+        l.diffuse.x = light.diffuse[0];
+        l.diffuse.y = light.diffuse[1];
+        l.diffuse.z = light.diffuse[2];
+        l.diffuse.w = light.diffuse[3];
+
+        l.specular.x = light.specular[0];
+        l.specular.y = light.specular[1];
+        l.specular.z = light.specular[2];
+        l.specular.w = light.specular[3];
+
+        lights.push_back(l);
+    }
+    sceneData.numLights = lights.size();
+    sceneData.lights = lights.data();
+
+    ispc::TileData data;
+    data.rgba = rgba;
+    data.depth = depth;
+    data.imgWidth = imgWidth;
+
+    data.x0=xoff+tx*tilesize;
+    data.x1=std::min(data.x0+tilesize, xlim);
+    data.y0=yoff+ty*tilesize;
+    data.y1=std::min(data.y0+tilesize, ylim);
+
+    data.origin.x = origin[0];
+    data.origin.y = origin[1];
+    data.origin.z = origin[2];
+
+    data.dx.x = dx[0];
+    data.dx.y = dx[1];
+    data.dx.z = dx[2];
+
+    data.dy.x = dy[0];
+    data.dy.y = dy[1];
+    data.dy.z = dy[2];
+
+    const Vector toLowerBottom = lowerBottom - origin;
+    data.corner.x = toLowerBottom[0];
+    data.corner.y = toLowerBottom[1];
+    data.corner.z = toLowerBottom[2];
+
+    data.tNear = tNear;
+    data.tFar = tFar;
+
+    data.depthTransform2.x = depthTransform2[0];
+    data.depthTransform2.y = depthTransform2[1];
+    data.depthTransform2.z = depthTransform2[2];
+    data.depthTransform2.w = depthTransform2[3];
+
+    data.depthTransform3.x = depthTransform3[0];
+    data.depthTransform3.y = depthTransform3[1];
+    data.depthTransform3.z = depthTransform3[2];
+    data.depthTransform3.w = depthTransform3[3];
+
+    ispcRenderTile(&sceneData, &data);
 }
-
-void TileTask::shadeRay(const RTCRay &ray, int x, int y) const {
-
-    const float ambientFactor = 0.2f;
-    const Vector4 specColor(0.4f, 0.4f, 0.4f, 1.0f);
-    const float specExp = 16.f;
-    const Vector4 ambient(0.2f, 0.2f, 0.2f, 1.0f);
-    const bool twoSided = true;
-
-   Vector4 shaded(0, 0, 0, 0);
-   float zValue = 1.;
-   if (ray.geomID != RTC_INVALID_GEOMETRY_ID) {
-      Vector3 viewDir(ray.dir[0], ray.dir[1], ray.dir[2]);
-      const Vector3 pos = origin + ray.tfar * viewDir;
-      viewDir.normalize();
-      const Vector4 pos4(pos[0], pos[1], pos[2], 1);
-      const float win2 = depthTransform2.dot(pos4);
-      const float win3 = depthTransform3.dot(pos4);
-      zValue= (win2/win3+1.f)*0.5f;
-
-      if (rc.m_doShade) {
-
-         vassert(ray.instID < (int)rc.instances.size());
-         auto rod = rc.instances[ray.instID];
-         vassert(rod->geomId == ray.geomID);
-
-         Vector4 color = rc.m_renderManager.m_defaultColor;
-         if (rod->hasSolidColor) {
-            for (int c=0; c<4; ++c) {
-               color[c] = rod->solidColor[c]*255.99f;
-            }
-         }
-         if (rod->indexBuffer && rod->texData && rod->texCoords) {
-
-            const float &u = ray.u;
-            const float &v = ray.v;
-            const float w = 1.f - u - v;
-            const Index v0 = rod->indexBuffer[ray.primID].v0;
-            const Index v1 = rod->indexBuffer[ray.primID].v1;
-            const Index v2 = rod->indexBuffer[ray.primID].v2;
-
-            const float tc0 = rod->texCoords[v0];
-            const float tc1 = rod->texCoords[v1];
-            const float tc2 = rod->texCoords[v2];
-            float tc = w*tc0 + u*tc1 + v*tc2;
-            //vassert(tc >= 0.f);
-            //vassert(tc <= 1.f);
-            if (tc < 0.f)
-               tc = 0.f;
-            if (tc > 1.f)
-               tc = 1.f;
-            unsigned idx = tc * rod->texWidth;
-            if (idx >= rod->texWidth)
-               idx = rod->texWidth-1;
-            const unsigned char *c = &rod->texData[idx*4];
-            for (int i=0; i<4; ++i)
-               color[i] = c[i];
-         }
-
-         if (rod->lighted) {
-            Vector4 ambientColor = color;
-            ambientColor.block<3,1>(0,0) *= ambientFactor;
-            Vector3 normal(ray.Ng[0], ray.Ng[1], ray.Ng[2]);
-            normal.normalize();
-            if (twoSided && normal.dot(viewDir) > 0.f)
-               normal *= -1.f;
-            shaded += ambientColor.cwiseProduct(ambient);
-            for (const auto &light: vd.lights) {
-               if (light.enabled) {
-                  const Vector3 lv = light.isDirectional
-                     ? light.transformedPosition.block<3,1>(0,0).normalized()
-                     : (light.transformedPosition.block<3,1>(0,0)-pos).normalized();
-                  float atten = 1.f;
-                  if (!light.isDirectional) {
-                     atten = light.attenuation[0];
-                     if (light.attenuation[1]>0.f || light.attenuation[2]>0.f) {
-                        const float d = (modelView * (light.transformedPosition-pos4)).block<3,1>(0,0).norm();
-                        atten += (light.attenuation[1] + light.attenuation[2]*d)*d;
-                     }
-                     atten = 1.f/atten;
-                  }
-                  shaded += ambientColor.cwiseProduct(atten*light.ambient);
-                  const float ldot = std::max(0.f, normal.dot(lv));
-                  shaded += color.cwiseProduct(atten*ldot*light.diffuse);
-                  if (ldot > 0.f) {
-                     const Vector3 halfway = (lv-viewDir).normalized();
-                     const float hdot = std::max(0.f, normal.dot(halfway));
-                     if (hdot > 0) {
-                        shaded += specColor.cwiseProduct(atten*powf(hdot, specExp)*light.specular);
-                     }
-                  }
-               }
-            }
-         } else {
-            shaded = color;
-         }
-         for (int i=0; i<4; ++i)
-            if (shaded[i] > 255)
-               shaded[i] = 255;
-
-      } else {
-
-         shaded = rc.m_renderManager.m_defaultColor;
-      }
-   }
-
-   depth[y*imgWidth+x] = zValue;
-   unsigned char *rgba = this->rgba+(y*imgWidth+x)*4;
-   for (int i=0; i<4; ++i) {
-      rgba[i] = shaded[i];
-   }
-}
-
 
 
 bool RayCaster::render() {
