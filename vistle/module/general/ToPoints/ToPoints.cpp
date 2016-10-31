@@ -29,7 +29,7 @@ bool ToPoints::compute() {
       grid = Coords::as(d->grid());
    }
    if (!grid) {
-      grid = accept<Coords>("grid_in");
+      grid = Coords::as(d);
    }
    if (!grid) {
       sendError("no grid");
