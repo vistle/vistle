@@ -22,11 +22,13 @@
 
 #include <embree2/rtcore.isph>
 #include <embree2/rtcore_ray.isph>
-//#include "rtcray.isph"
+
 #include "render.isph"
 #include "spheres.isph"
 
 #include "spheres_isect.isph"
+
+#include "common.h"
 
 // ======================================================================== //
 //                     User defined sphere geometry                         //
@@ -52,12 +54,81 @@ void sphereIntersectFunc(const uniform RenderObjectData* uniform data, varying R
   }
 }
 
+void sphereIntersectFuncN(const uniform int* uniform valid, /*! pointer to valid mask */
+                                           RenderObjectData *uniform data,                /*!< pointer to geometry user data */
+                                           const uniform RTCIntersectContext* uniform context,  /*!< intersection context as passed to rtcIntersect/rtcOccluded */
+                                           RTCRayN* uniform rays,               /*!< ray packet of size N */
+                                           uniform size_t N,                 /*< number of rays in ray packet */
+                                           uniform size_t item              /*< item to intersect */)
+{
+    const uniform Sphere& sphere = data->spheres[item];
+
+    /* iterate over all rays in ray packet */
+    for (uniform unsigned int ui=0; ui<N; ui+=programCount)
+    {
+        /* calculate varying loop and execution mask */
+        unsigned int vi = ui+programIndex;
+        if (vi>=N) continue;
+
+        /* ignore inactive rays */
+        if (valid[vi] != -1) continue;
+
+        const Vec3f ray_org = make_Vec3f(RTCRayN_org_x(rays,N,ui),RTCRayN_org_y(rays,N,ui),RTCRayN_org_z(rays,N,ui));
+        const Vec3f ray_dir = make_Vec3f(RTCRayN_dir_x(rays,N,ui),RTCRayN_dir_y(rays,N,ui),RTCRayN_dir_z(rays,N,ui));
+
+        float tfar = RTCRayN_tfar(rays,N,ui);
+        Vec3f ray_Ng;
+        if (sphereIsect2(sphere, ray_org, ray_dir,
+                         RTCRayN_tnear(rays,N,ui), tfar, ray_Ng)) {
+            RTCRayN_geomID(rays,N,ui) = data->geomId;
+            RTCRayN_primID(rays,N,ui) = item;
+            RTCRayN_u(rays,N,ui) = 0.f;
+            RTCRayN_v(rays,N,ui) = 0.f;
+            RTCRayN_tfar(rays,N,ui) = tfar;
+            RTCRayN_Ng_x(rays,N,ui) = ray_Ng.x;
+            RTCRayN_Ng_y(rays,N,ui) = ray_Ng.y;
+            RTCRayN_Ng_z(rays,N,ui) = ray_Ng.z;
+        }
+    }
+}
+
 void sphereOccludedFunc(const uniform RenderObjectData* uniform data, varying RTCRay& ray, uniform size_t item)
 {
   const uniform Sphere& sphere = data->spheres[item];
   if (sphereOcclude(sphere, ray)) {
      ray.geomID = 0;
   }
+}
+
+void sphereOccludedFuncN(const uniform int* uniform valid, /*! pointer to valid mask */
+                                           RenderObjectData *uniform data,                /*!< pointer to geometry user data */
+                                           const uniform RTCIntersectContext* uniform context,  /*!< intersection context as passed to rtcIntersect/rtcOccluded */
+                                           RTCRayN* uniform rays,               /*!< ray packet of size N */
+                                           uniform size_t N,                 /*< number of rays in ray packet */
+                                           uniform size_t item              /*< item to intersect */)
+{
+    const uniform Sphere& sphere = data->spheres[item];
+
+    /* iterate over all rays in ray packet */
+    for (uniform unsigned int ui=0; ui<N; ui+=programCount)
+    {
+        /* calculate varying loop and execution mask */
+        unsigned int vi = ui+programIndex;
+        if (vi>=N) continue;
+
+        /* ignore inactive rays */
+        if (valid[vi] != -1) continue;
+
+        const Vec3f ray_org = make_Vec3f(RTCRayN_org_x(rays,N,ui),RTCRayN_org_y(rays,N,ui),RTCRayN_org_z(rays,N,ui));
+        const Vec3f ray_dir = make_Vec3f(RTCRayN_dir_x(rays,N,ui),RTCRayN_dir_y(rays,N,ui),RTCRayN_dir_z(rays,N,ui));
+
+        float tfar = RTCRayN_tfar(rays,N,ui);
+        Vec3f ray_Ng;
+        if (sphereOcclude2(sphere, ray_org, ray_dir,
+                         RTCRayN_tnear(rays,N,ui), RTCRayN_tfar(rays,N,ui))) {
+            RTCRayN_geomID(rays,N,ui) = 0;
+        }
+    }
 }
 
 export uniform unsigned int registerSpheres(uniform RTCScene scene, uniform RenderObjectData *uniform data, uniform size_t N) {
@@ -68,7 +139,12 @@ export uniform unsigned int registerSpheres(uniform RTCScene scene, uniform Rend
   data->geomId = geomID;
   rtcSetUserData(scene, geomID, data);
   rtcSetBoundsFunction(scene, geomID, (RTCBoundsFunc)&sphereBoundsFunc);
+#ifdef USE_STREAM
+  rtcSetIntersectFunctionN(scene, geomID, (RTCIntersectFuncN)&sphereIntersectFuncN);
+  rtcSetOccludedFunctionN(scene, geomID, (RTCIntersectFuncN)&sphereOccludedFuncN);
+#else
   rtcSetIntersectFunction(scene, geomID, (RTCIntersectFuncVarying)&sphereIntersectFunc);
   rtcSetOccludedFunction(scene, geomID, (RTCOccludedFuncVarying)&sphereOccludedFunc);
+#endif
   return geomID;
 }

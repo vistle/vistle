@@ -124,7 +124,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
 #else
 , m_renderManager(this, nullptr)
 #endif
-, m_tilesize(64)
+, m_tilesize(TileSize)
 , m_doShade(true)
 , m_uvVis(false)
 , m_timestep(0)
@@ -145,7 +145,7 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
    m_uvVisParam = addIntParameter("uv_visualization", "show u/v coordinates", (Integer)m_uvVis, Parameter::Boolean);
    m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
-   setParameterRange(m_renderTileSizeParam, (Integer)1, (Integer)16384);
+   setParameterRange(m_renderTileSizeParam, (Integer)1, (Integer)TileSize);
    m_pointSizeParam = addFloatParameter("point_size", "size of points", RayRenderObject::pointSize);
    setParameterRange(m_pointSizeParam, (Float)0, (Float)1e6);
 
@@ -155,7 +155,6 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
        throw(vistle::exception("failed to create Embree device"));
    }
    rtcDeviceSetErrorFunction(m_device, rtcErrorCallback);
-   //m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_DYNAMIC|sceneFlags, (RTCAlgorithmFlags)(/*intersections|*/RTC_SCENE_COHERENT|RTC_INTERSECT_STREAM));
    m_scene = rtcDeviceNewScene(m_device, RTC_SCENE_DYNAMIC|sceneFlags, intersections);
    rtcCommit(m_scene);
 }
@@ -185,6 +184,9 @@ bool RayCaster::parameterChanged(const Parameter *p) {
     } else if (p == m_pointSizeParam) {
 
        RayRenderObject::pointSize = m_pointSizeParam->getValue();
+    } else if (p == m_renderTileSizeParam) {
+
+        m_tilesize = m_renderTileSizeParam->getValue();
     }
 
    return Renderer::parameterChanged(p);
@@ -320,6 +322,7 @@ void TileTask::render(int tile) const {
     data.depthTransform3.y = depthTransform3[1];
     data.depthTransform3.z = depthTransform3[2];
     data.depthTransform3.w = depthTransform3[3];
+
 
     ispcRenderTile(&sceneData, &data);
 }

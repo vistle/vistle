@@ -48,6 +48,39 @@ inline bool sphereIsect(const uniform Sphere &sphere, varying RTCRay &ray) {
   return hit;
 }
 
+inline bool sphereIsect2(const uniform Sphere &sphere,
+   varying const Vec3f &ray_org,
+   varying const Vec3f &ray_dir,
+   varying const float &ray_tnear,
+   varying float &ray_tfar,
+   varying Vec3f &ray_Ng)
+{
+  const Vec3f v = ray_org-sphere.p;
+  const float A = dot(ray_dir,ray_dir);
+  const float B = dot(v,ray_dir);
+  const float C = dot(v,v) - sqr(sphere.r);
+  const float D = B*B - A*C;
+  if (D < 0.0f) return false;
+  const float Q = sqrt(D);
+  const float rcpA = rcp(A);
+  const float t0 = rcpA*(-B-Q);
+  const float t1 = rcpA*(-B+Q);
+  bool hit = false;
+  if ((ray_tnear < t0) & (t0 < ray_tfar)) {
+     hit = true;
+     ray_tfar = t0;
+  }
+  if ((ray_tnear < t1) & (t1 < ray_tfar)) {
+     hit = true;
+     ray_tfar = t1;
+  }
+  if (hit) {
+     ray_Ng = ray_org+ray_tfar*ray_dir-sphere.p;
+  }
+  return hit;
+}
+
+
 inline bool sphereOcclude(const uniform Sphere &sphere, varying RTCRay &ray) {
 
   const Vec3f org = make_Vec3f(ray.orgx,ray.orgy,ray.orgz);
@@ -66,6 +99,32 @@ inline bool sphereOcclude(const uniform Sphere &sphere, varying RTCRay &ray) {
      return true;
   }
   if ((ray.tnear < t1) & (t1 < ray.tfar)) {
+     return true;
+  }
+  return false;
+}
+
+inline bool sphereOcclude2(const uniform Sphere &sphere,
+   varying const Vec3f &ray_org,
+   varying const Vec3f &ray_dir,
+   varying const float &ray_tnear,
+   varying const float &ray_tfar)
+{
+  const Vec3f v = ray_org-sphere.p;
+  const float A = dot(ray_dir,ray_dir);
+  const float B = dot(v,ray_dir);
+  const float C = dot(v,v) - sqr(sphere.r);
+  const float D = B*B - A*C;
+  if (D < 0.0f) return false;
+  const float Q = sqrt(D);
+  const float rcpA = rcp(A);
+  const float t0 = rcpA*(-B-Q);
+  const float t1 = rcpA*(-B+Q);
+  bool hit = false;
+  if ((ray_tnear < t0) & (t0 < ray_tfar)) {
+     return true;
+  }
+  if ((ray_tnear < t1) & (t1 < ray_tfar)) {
      return true;
   }
   return false;
