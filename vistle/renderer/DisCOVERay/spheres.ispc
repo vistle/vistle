@@ -34,19 +34,21 @@
 //                     User defined sphere geometry                         //
 // ======================================================================== //
 
-void sphereBoundsFunc(const uniform RenderObjectData* uniform data, uniform size_t item, uniform RTCBounds* uniform bounds_o)
+unmasked void sphereBoundsFunc(void *uniform ptr, uniform size_t item, uniform RTCBounds &bounds_o)
 {
+  const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
   const uniform Sphere& sphere = data->spheres[item];
-  bounds_o->lower_x = sphere.p.x-sphere.r;
-  bounds_o->lower_y = sphere.p.y-sphere.r;
-  bounds_o->lower_z = sphere.p.z-sphere.r;
-  bounds_o->upper_x = sphere.p.x+sphere.r;
-  bounds_o->upper_y = sphere.p.y+sphere.r;
-  bounds_o->upper_z = sphere.p.z+sphere.r;
+  bounds_o.lower_x = sphere.p.x-sphere.r;
+  bounds_o.lower_y = sphere.p.y-sphere.r;
+  bounds_o.lower_z = sphere.p.z-sphere.r;
+  bounds_o.upper_x = sphere.p.x+sphere.r;
+  bounds_o.upper_y = sphere.p.y+sphere.r;
+  bounds_o.upper_z = sphere.p.z+sphere.r;
 }
 
-void sphereIntersectFunc(const uniform RenderObjectData* uniform data, varying RTCRay& ray, uniform size_t item)
+void sphereIntersectFunc(void *uniform ptr, varying RTCRay& ray, uniform size_t item)
 {
+  const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
   const uniform Sphere& sphere = data->spheres[item];
   if (sphereIsect(sphere, ray)) {
      ray.geomID = data->geomId;
@@ -54,13 +56,14 @@ void sphereIntersectFunc(const uniform RenderObjectData* uniform data, varying R
   }
 }
 
-void sphereIntersectFuncN(const uniform int* uniform valid, /*! pointer to valid mask */
-                                           RenderObjectData *uniform data,                /*!< pointer to geometry user data */
+unmasked void sphereIntersectFuncN(const uniform int* uniform valid, /*! pointer to valid mask */
+                                           void *uniform ptr,                /*!< pointer to geometry user data */
                                            const uniform RTCIntersectContext* uniform context,  /*!< intersection context as passed to rtcIntersect/rtcOccluded */
                                            RTCRayN* uniform rays,               /*!< ray packet of size N */
                                            uniform size_t N,                 /*< number of rays in ray packet */
                                            uniform size_t item              /*< item to intersect */)
 {
+    const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
     const uniform Sphere& sphere = data->spheres[item];
 
     /* iterate over all rays in ray packet */
@@ -92,21 +95,23 @@ void sphereIntersectFuncN(const uniform int* uniform valid, /*! pointer to valid
     }
 }
 
-void sphereOccludedFunc(const uniform RenderObjectData* uniform data, varying RTCRay& ray, uniform size_t item)
+void sphereOccludedFunc(void *uniform ptr, varying RTCRay& ray, uniform size_t item)
 {
+  const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
   const uniform Sphere& sphere = data->spheres[item];
   if (sphereOcclude(sphere, ray)) {
      ray.geomID = 0;
   }
 }
 
-void sphereOccludedFuncN(const uniform int* uniform valid, /*! pointer to valid mask */
-                                           RenderObjectData *uniform data,                /*!< pointer to geometry user data */
+unmasked void sphereOccludedFuncN(const uniform int* uniform valid, /*! pointer to valid mask */
+                                           void *uniform ptr,                /*!< pointer to geometry user data */
                                            const uniform RTCIntersectContext* uniform context,  /*!< intersection context as passed to rtcIntersect/rtcOccluded */
                                            RTCRayN* uniform rays,               /*!< ray packet of size N */
                                            uniform size_t N,                 /*< number of rays in ray packet */
                                            uniform size_t item              /*< item to intersect */)
 {
+    const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
     const uniform Sphere& sphere = data->spheres[item];
 
     /* iterate over all rays in ray packet */
@@ -138,13 +143,13 @@ export uniform unsigned int registerSpheres(uniform RTCScene scene, uniform Rend
   const uniform unsigned int geomID = rtcNewUserGeometry(scene,N);
   data->geomId = geomID;
   rtcSetUserData(scene, geomID, data);
-  rtcSetBoundsFunction(scene, geomID, (RTCBoundsFunc)&sphereBoundsFunc);
+  rtcSetBoundsFunction(scene, geomID, &sphereBoundsFunc);
 #ifdef USE_STREAM
-  rtcSetIntersectFunctionN(scene, geomID, (RTCIntersectFuncN)&sphereIntersectFuncN);
-  rtcSetOccludedFunctionN(scene, geomID, (RTCIntersectFuncN)&sphereOccludedFuncN);
+  rtcSetIntersectFunctionN(scene, geomID, &sphereIntersectFuncN);
+  rtcSetOccludedFunctionN(scene, geomID, &sphereOccludedFuncN);
 #else
-  rtcSetIntersectFunction(scene, geomID, (RTCIntersectFuncVarying)&sphereIntersectFunc);
-  rtcSetOccludedFunction(scene, geomID, (RTCOccludedFuncVarying)&sphereOccludedFunc);
+  rtcSetIntersectFunction(scene, geomID, &sphereIntersectFunc);
+  rtcSetOccludedFunction(scene, geomID, &sphereOccludedFunc);
 #endif
   return geomID;
 }

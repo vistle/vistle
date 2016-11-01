@@ -1,7 +1,7 @@
 #ifndef RAY_COMMON_H
 #define RAY_COMMON_H
 
-#define USE_STREAM
+#define USE_STREAM // use Embree stream interface
 
 static const int TileSize = 64;
 #define TILESIZE 64

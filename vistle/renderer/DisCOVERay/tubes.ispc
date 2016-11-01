@@ -220,7 +220,8 @@ inline bool sphereSectorIsect(const uniform Sphere &sphere, const uniform Plane 
 //                     User defined tube geometry                         //
 // ======================================================================== //
 
-void tubeBoundsFunc(const uniform RenderObjectData* uniform data, uniform size_t item, uniform RTCBounds* uniform bounds_o) {
+unmasked void tubeBoundsFunc(void *uniform ptr, uniform size_t item, uniform RTCBounds &bounds_o) {
+   const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
    const uniform unsigned int flags = data->primitiveFlags[item];
    if (flags == PFNone) {
       return;
@@ -247,16 +248,17 @@ void tubeBoundsFunc(const uniform RenderObjectData* uniform data, uniform size_t
       upper = section1.p+make_Vec3f(r2);
    }
 
-   bounds_o->lower_x = lower.x;
-   bounds_o->lower_y = lower.y;
-   bounds_o->lower_z = lower.z;
-   bounds_o->upper_x = upper.x;
-   bounds_o->upper_y = upper.y;
-   bounds_o->upper_z = upper.z;
+   bounds_o.lower_x = lower.x;
+   bounds_o.lower_y = lower.y;
+   bounds_o.lower_z = lower.z;
+   bounds_o.upper_x = upper.x;
+   bounds_o.upper_y = upper.y;
+   bounds_o.upper_z = upper.z;
 }
 
-void tubeIntersectFunc(const uniform RenderObjectData* uniform data, varying RTCRay& ray, uniform size_t item)
+void tubeIntersectFunc(void *uniform ptr, varying RTCRay& ray, uniform size_t item)
 {
+  const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
   const uniform TubeSection& section0 = data->spheres[item];
   const uniform TubeSection& section1 = data->spheres[item+1];
   const uniform unsigned int flags = data->primitiveFlags[item];
@@ -418,8 +420,9 @@ void tubeIntersectFuncN(const uniform int* uniform valid, /*! pointer to valid m
 }
 #endif
 
-void tubeOccludedFunc(const uniform RenderObjectData* uniform data, varying RTCRay& ray, uniform size_t item)
+void tubeOccludedFunc(void *uniform ptr, varying RTCRay& ray, uniform size_t item)
 {
+  const uniform RenderObjectData *uniform data = (const uniform RenderObjectData *uniform)ptr;
   const uniform TubeSection& section = data->spheres[item];
   const Vec3f dir = make_Vec3f(ray.dirx,ray.diry,ray.dirz);
   const Vec3f org = make_Vec3f(ray.orgx,ray.orgy,ray.orgz);
@@ -448,9 +451,9 @@ export uniform unsigned int registerTubes(uniform RTCScene scene, uniform Render
   const uniform unsigned int geomID = rtcNewUserGeometry(scene,N);
   data->geomId = geomID;
   rtcSetUserData(scene, geomID, data);
-  rtcSetBoundsFunction(scene, geomID, (RTCBoundsFunc)&tubeBoundsFunc);
-  rtcSetIntersectFunction(scene, geomID, (RTCIntersectFuncVarying)&tubeIntersectFunc);
+  rtcSetBoundsFunction(scene, geomID, &tubeBoundsFunc);
+  rtcSetIntersectFunction(scene, geomID, &tubeIntersectFunc);
   //rtcSetIntersectFunctionN(scene, geomID, (RTCIntersectFuncN)&tubeIntersectFuncN);
-  rtcSetOccludedFunction(scene, geomID, (RTCOccludedFuncVarying)&tubeOccludedFunc);
+  rtcSetOccludedFunction(scene, geomID, &tubeOccludedFunc);
   return geomID;
 }
