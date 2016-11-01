@@ -151,6 +151,9 @@ include_directories_ispc(${EMBREE_INCLUDE_DIRS})
 
 if (ENABLE_ISPC_SUPPORT)
    add_definitions(-DHAVE_ISPC)
+   if ((${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo") OR (${CMAKE_BUILD_TYPE} STREQUAL "Debug"))
+      set(ISPC_COMPILE_FLAGS "-g")
+   endif()
    add_ispc_executable(DisCOVERay rayrenderobject.cpp ray.cpp common.h  rayrenderobject.h
       render.ispc renderobjectdata.ispc spheres.ispc tubes.ispc)
    set_target_properties(DisCOVERay PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/libexec/module)

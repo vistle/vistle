@@ -52,7 +52,7 @@ SET(VISTLE_ISPC_ADDRESSING 32 CACHE INT "32vs64 bit addressing in ispc")
 MARK_AS_ADVANCED(VISTLE_ISPC_ADDRESSING)
 
 MACRO (ispc_compile)
-  SET(ISPC_ADDITIONAL_ARGS "")
+  SET(ISPC_ADDITIONAL_ARGS "${ISPC_COMPILE_FLAGS}")
 
   IF (__XEON__)
     SET (ISPC_TARGET_EXT ${CMAKE_CXX_OUTPUT_EXTENSION})
@@ -134,8 +134,10 @@ MACRO (ispc_compile)
       --addressing=${VISTLE_ISPC_ADDRESSING}
       -O3
       --target=${ISPC_TARGET_ARGS}
-      --woff
+      --math-lib=fast
       --opt=fast-math
+      --woff
+      #--wno-perf
       ${ISPC_ADDITIONAL_ARGS}
       -h ${outdirh}/${fname}_ispc.h
       -MMM  ${outdir}/${fname}.dev.idep
