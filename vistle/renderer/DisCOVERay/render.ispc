@@ -204,6 +204,7 @@ inline void ispcRenderTileStream(uniform const SceneData *uniform scene, uniform
    uniform const int x0=tile->x0, x1=tile->x1;
    uniform const int y0=tile->y0, y1=tile->y1;
 
+   bool valid_stream[TILESIZE*TILESIZE];
    RTCRay primary_stream[TILESIZE*TILESIZE];
 
    int x, y;
@@ -213,8 +214,13 @@ inline void ispcRenderTileStream(uniform const SceneData *uniform scene, uniform
       /* ISPC workaround for mask == 0 */
       if (all(__mask == 0)) continue;
 
+      bool mask = __mask; unmasked { valid_stream[N] = mask; }
       RTCRay &ray = primary_stream[N];
       setUpRay(tile, ray, x, y);
+      mask = __mask; unmasked { // invalidates inactive rays
+          ray.tnear = mask ? 0.0f         : (float)(pos_inf);
+          ray.tfar  = mask ? (float)(inf) : (float)(neg_inf);
+      }
 
       ++N;
    }
@@ -231,6 +237,9 @@ inline void ispcRenderTileStream(uniform const SceneData *uniform scene, uniform
       ++N;
       /* ISPC workaround for mask == 0 */
       if (all(__mask == 0)) continue;
+
+      /* ignore invalid rays */
+      if (valid_stream[N] == false) continue;
 
       RTCRay &ray = primary_stream[N];
       shadeRay(scene, tile, ray, x, y);

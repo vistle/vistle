@@ -452,8 +452,11 @@ export uniform unsigned int registerTubes(uniform RTCScene scene, uniform Render
   data->geomId = geomID;
   rtcSetUserData(scene, geomID, data);
   rtcSetBoundsFunction(scene, geomID, &tubeBoundsFunc);
-  rtcSetIntersectFunction(scene, geomID, &tubeIntersectFunc);
+#ifdef USE_STREAM
   //rtcSetIntersectFunctionN(scene, geomID, (RTCIntersectFuncN)&tubeIntersectFuncN);
+#else
+  rtcSetIntersectFunction(scene, geomID, &tubeIntersectFunc);
   rtcSetOccludedFunction(scene, geomID, &tubeOccludedFunc);
+#endif
   return geomID;
 }

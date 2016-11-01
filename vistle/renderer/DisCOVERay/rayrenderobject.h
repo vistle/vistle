@@ -17,7 +17,7 @@
 #include "common.h"
 
 #ifdef USE_STREAM
-static const RTCAlgorithmFlags intersections = RTC_INTERSECT_STREAM;
+static const RTCAlgorithmFlags intersections = RTC_INTERSECT1|RTC_INTERSECT4|RTC_INTERSECT8|RTC_INTERSECT16|RTC_INTERSECT_STREAM;
 #else
 static const RTCAlgorithmFlags intersections = RTC_INTERSECT1|RTC_INTERSECT4|RTC_INTERSECT8|RTC_INTERSECT16;
 #endif

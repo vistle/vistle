@@ -569,7 +569,7 @@ boost::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::stri
 
    auto rod = ro->data.get();
    if (rod->scene) {
-      rod->instId = rtcNewInstance2(m_scene, rod->scene);
+      rod->instId = rtcNewInstance(m_scene, rod->scene);
       if (instances.size() <= rod->instId)
          instances.resize(rod->instId+1);
       vassert(!instances[rod->instId]);
