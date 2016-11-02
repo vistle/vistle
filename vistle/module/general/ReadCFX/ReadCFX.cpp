@@ -10,6 +10,16 @@
 #include <core/points.h>
 #include <core/normals.h>
 
+// Includes für die CFX application programming interface (API)
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <io.h>
+
+#include <cfxExport.h>
+#include <getargs.h>
+
+
 #include "ReadCFX.h"
 
 MODULE_MAIN(ReadCFX)
@@ -39,7 +49,11 @@ ReadCFX::~ReadCFX() {
 
 }
 
+
+
 int ReadCFX::rankForBlock(int block) const {
+
+
 
     const int numBlocks = m_lastBlock-m_firstBlock+1;
     if (numBlocks == 0)
@@ -55,12 +69,16 @@ int ReadCFX::rankForBlock(int block) const {
 Object::ptr ReadCFX::load(const std::string &name) {
 
     Object::ptr ret;
+    //Open CFX result file and initialize Export API
+    //int cfxExportInit (char *resfile, int counts[cfxCNT_SIZE])
 
 
     return ret;
 }
 
 bool ReadCFX::compute() {
+
+    std::cerr << "Test einer Ausgabe. \n";
 
    m_firstBlock = getIntParameter("first_block");
    m_lastBlock = getIntParameter("last_block");
