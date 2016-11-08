@@ -10,15 +10,14 @@
 #include <core/points.h>
 #include <core/normals.h>
 
-// Includes für die CFX application programming interface (API)
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <io.h>
-
-#include <cfxExport.h>
-#include <getargs.h>
-
+// Includes for the CFX application programming interface (API)
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+// #include <io.h>         // unclear, what this library is doing
+#include <cfxExport.h>  // linked but still qtcreator doesn't find it
+#include <getargs.h>    // linked but still qtcreator doesn't find it
+#include <iostream>
 
 #include "ReadCFX.h"
 
@@ -26,13 +25,68 @@ MODULE_MAIN(ReadCFX)
 
 using namespace vistle;
 
+/*int checkFile(const char *filename)
+{
+    const int MIN_FILE_SIZE = 1024; // minimal size for .res files
+
+    const int MACIC_LEN = 5; // "magic" at the start
+    const char *magic = "*INFO";
+    char magicBuf[MACIC_LEN];
+
+    struct stat statRec;
+    off_t fileSize;
+#ifdef WIN32
+    HANDLE hFile = CreateFile(filename, GENERIC_READ,
+                              FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+                              FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        fprintf(stderr, "could not open file %s\n", filename);
+        return -1; // error condition, could call GetLastError to find out more
+    }
+
+    LARGE_INTEGER size;
+    if (!GetFileSizeEx(hFile, &size))
+    {
+        CloseHandle(hFile);
+        fprintf(stderr, "could not get filesize for %s\n", filename);
+        return -1; // error condition, could call GetLastError to find out more
+    }
+    fileSize = size.QuadPart;
+
+    CloseHandle(hFile);
+#else
+    if (stat(filename, &statRec) < 0)
+        return errno;
+    fileSize = statRec.st_size;
+#endif
+
+    FILE *fi = fopen(filename, "r");
+    if (!fi)
+        return errno;
+
+    if (fileSize < MIN_FILE_SIZE)
+        return -1;
+
+    size_t iret = fread(magicBuf, 1, MACIC_LEN, fi);
+    if (iret != MACIC_LEN)
+        std::cerr << "checkFile :: error reading MACIC_LEN " << endl;
+
+    if (strncasecmp(magicBuf, magic, MACIC_LEN) != 0)
+        return -2;
+
+    fclose(fi);
+
+    return 0;
+}*/
+
 ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int moduleID)
    : Module("ReadModel", shmname, name, moduleID)
 {
 
-   createOutputPort("grid_out");
+  // createOutputPort("grid_out");
    addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "");
-   addIntParameter("indexed_geometry", "create indexed geometry?", 0, Parameter::Boolean);
+   /*addIntParameter("indexed_geometry", "create indexed geometry?", 0, Parameter::Boolean);
    addIntParameter("triangulate", "only create triangles", 0, Parameter::Boolean);
 
    addIntParameter("first_block", "number of first block", 0);
@@ -43,17 +97,17 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    addIntParameter("step", "increment", 1);
 
    addIntParameter("ignore_errors", "ignore files that are not found", 0, Parameter::Boolean);
+*/
 }
 
 ReadCFX::~ReadCFX() {
 
 }
 
+    //Open CFX result file and initialize Export API
+    //int cfxExportInit (char *resfile, int counts[cfxCNT_SIZE])
 
-
-int ReadCFX::rankForBlock(int block) const {
-
-
+/*int ReadCFX::rankForBlock(int block) const {
 
     const int numBlocks = m_lastBlock-m_firstBlock+1;
     if (numBlocks == 0)
@@ -63,24 +117,42 @@ int ReadCFX::rankForBlock(int block) const {
         return -1;
 
     return block % size();
-}
+}*/
 
 
 Object::ptr ReadCFX::load(const std::string &name) {
 
     Object::ptr ret;
-    //Open CFX result file and initialize Export API
-    //int cfxExportInit (char *resfile, int counts[cfxCNT_SIZE])
-
 
     return ret;
 }
 
 bool ReadCFX::compute() {
 
-    std::cerr << "Test einer Ausgabe. \n";
+    std::cerr << "Compute Start. \n";
 
-   m_firstBlock = getIntParameter("first_block");
+    std::string resultfileName = getStringParameter("filename");
+
+   /* int checkValue = checkFile(resultfileName);
+    if (checkValue != 0)
+    {
+        if (checkValue > 0)
+            sendError("'%s':%s", resultfileName, strerror(checkValue));
+        else
+            switch (checkValue)
+            {
+
+            case -1:
+                sendError("'%s': too small to be a real result file",
+                          resultfileName);
+                break;
+            case -2:
+                sendError("'%s':does not start with '*INFO'",
+                          resultfileName);
+            }
+        return;
+    }*/
+ /*  m_firstBlock = getIntParameter("first_block");
    m_lastBlock = getIntParameter("last_block");
    m_firstStep = getIntParameter("first_step");
    m_lastStep = getIntParameter("last_step");
@@ -132,6 +204,7 @@ bool ReadCFX::compute() {
        }
        if (loaded)
            ++timeCounter;
-   }
+   }*/
+
    return true;
 }
