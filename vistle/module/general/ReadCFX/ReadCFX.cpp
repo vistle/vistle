@@ -25,7 +25,7 @@ MODULE_MAIN(ReadCFX)
 
 using namespace vistle;
 
-/*int checkFile(const char *filename)
+int checkFile(const char *filename)
 {
     const int MIN_FILE_SIZE = 1024; // minimal size for .res files
 
@@ -70,7 +70,7 @@ using namespace vistle;
 
     size_t iret = fread(magicBuf, 1, MACIC_LEN, fi);
     if (iret != MACIC_LEN)
-        std::cerr << "checkFile :: error reading MACIC_LEN " << endl;
+        std::cerr << "checkFile :: error reading MACIC_LEN " << std::endl;
 
     if (strncasecmp(magicBuf, magic, MACIC_LEN) != 0)
         return -2;
@@ -78,14 +78,15 @@ using namespace vistle;
     fclose(fi);
 
     return 0;
-}*/
+}
 
 ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int moduleID)
    : Module("ReadModel", shmname, name, moduleID)
 {
 
   // createOutputPort("grid_out");
-   addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "");
+   addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/home/jwinterstein/data/cfx/rohr/hlrs_002.res");
+
    /*addIntParameter("indexed_geometry", "create indexed geometry?", 0, Parameter::Boolean);
    addIntParameter("triangulate", "only create triangles", 0, Parameter::Boolean);
 
@@ -132,8 +133,11 @@ bool ReadCFX::compute() {
     std::cerr << "Compute Start. \n";
 
     std::string resultfileName = getStringParameter("filename");
+    const char *c = resultfileName.c_str();
 
-   /* int checkValue = checkFile(resultfileName);
+    int checkValue = checkFile(c);
+    std::cerr << "checkValue = " << checkValue << std::endl;
+/*
     if (checkValue != 0)
     {
         if (checkValue > 0)
