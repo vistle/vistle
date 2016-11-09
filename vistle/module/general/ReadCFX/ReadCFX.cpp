@@ -85,7 +85,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
 {
 
   // createOutputPort("grid_out");
-   addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/home/jwinterstein/data/cfx/rohr/hlrs_002.res");
+   addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res");
 
    /*addIntParameter("indexed_geometry", "create indexed geometry?", 0, Parameter::Boolean);
    addIntParameter("triangulate", "only create triangles", 0, Parameter::Boolean);
@@ -119,25 +119,14 @@ ReadCFX::~ReadCFX() {
 
     return block % size();
 }*/
+bool ReadCFX::parameterChanged(const Parameter *p)
+{
+    std::string c = getStringParameter("filename");
+    const char *resultfileName = c.c_str();
 
-
-Object::ptr ReadCFX::load(const std::string &name) {
-
-    Object::ptr ret;
-
-    return ret;
-}
-
-bool ReadCFX::compute() {
-
-    std::cerr << "Compute Start. \n";
-
-    std::string resultfileName = getStringParameter("filename");
-    const char *c = resultfileName.c_str();
-
-    int checkValue = checkFile(c);
+    int checkValue = checkFile(resultfileName);
     std::cerr << "checkValue = " << checkValue << std::endl;
-/*
+
     if (checkValue != 0)
     {
         if (checkValue > 0)
@@ -154,8 +143,17 @@ bool ReadCFX::compute() {
                 sendError("'%s':does not start with '*INFO'",
                           resultfileName);
             }
-        return;
-    }*/
+    }
+
+
+   return Module::parameterChanged(p);
+}
+
+bool ReadCFX::compute() {
+
+    std::cerr << "Compute Start. \n";
+
+
  /*  m_firstBlock = getIntParameter("first_block");
    m_lastBlock = getIntParameter("last_block");
    m_firstStep = getIntParameter("first_step");

@@ -16,10 +16,9 @@ class ReadCFX: public vistle::Module {
 
  private:
 
-   vistle::Object::ptr load(const std::string & filename);
-
+   bool parameterChanged(const vistle::Parameter *p);
    virtual bool compute();
-   int rankForBlock(int block) const;
+   //int rankForBlock(int block) const;
 
    vistle::Integer m_firstBlock, m_lastBlock;
    vistle::Integer m_firstStep, m_lastStep, m_step;
