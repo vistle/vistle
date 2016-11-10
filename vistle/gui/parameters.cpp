@@ -142,7 +142,7 @@ void Parameters::newParameter(int moduleId, QString parameterName)
    if (!p)
       return;
 
-   const auto &it = m_paramToProp.find(parameterName);
+   const auto it = m_paramToProp.find(parameterName);
    assert(it == m_paramToProp.end());
    if (it != m_paramToProp.end()) {
       //qDebug() << "duplicate parameter " << parameterName << " for module " << m_moduleId;
@@ -249,7 +249,7 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
       return;
 
    QtProperty *prop = nullptr;
-   const auto &it = m_paramToProp.find(parameterName);
+   const auto it = m_paramToProp.find(parameterName);
    if (it != m_paramToProp.end()) {
       prop = it->second;
    }
@@ -329,7 +329,7 @@ void Parameters::parameterChoicesChanged(int moduleId, QString parameterName)
    if (p->presentation() != vistle::Parameter::Choice)
       return;
 
-   const auto &it = m_paramToProp.find(parameterName);
+   const auto it = m_paramToProp.find(parameterName);
    if (it == m_paramToProp.end()) {
       return;
    }

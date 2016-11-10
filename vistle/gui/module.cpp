@@ -349,7 +349,7 @@ void Module::setPositionValid() {
 
 Port *Module::getGuiPort(const vistle::Port *port) const {
 
-   const auto &it = m_vistleToGui.find(*port);
+   const auto it = m_vistleToGui.find(*port);
    if (it == m_vistleToGui.end())
       return nullptr;
 

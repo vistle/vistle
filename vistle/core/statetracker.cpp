@@ -203,7 +203,7 @@ std::vector<message::Buffer> StateTracker::getState() const {
       for (const auto &it2: m.paramOrder) {
          //std::cerr << "module " << id << ": " << it2.first << " -> " << it2.second << std::endl;
          const std::string &name = it2.second;
-         const auto &it3 = pmap.find(name);
+         const auto it3 = pmap.find(name);
          assert(it3 != pmap.end());
          const auto param = it3->second;
 
@@ -770,7 +770,7 @@ bool StateTracker::handlePriv(const message::AddParameter &addParam) {
    } else {
       pm[addParam.getName()] = addParam.getParameter();
       int maxIdx = 0;
-      const auto &rit = po.rbegin();
+      const auto rit = po.rbegin();
       if (rit != po.rend())
          maxIdx = rit->first;
       po[maxIdx+1] = addParam.getName();

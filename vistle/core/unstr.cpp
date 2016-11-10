@@ -370,7 +370,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
             indices[i] = cl[i];
          }
          std::sort(indices.begin(), indices.end());
-         const auto &end = std::unique(indices.begin(), indices.end());
+         const auto end = std::unique(indices.begin(), indices.end());
          const Index n = end-indices.begin();
          indices.resize(n);
          weights.resize(n);
