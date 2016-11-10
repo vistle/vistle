@@ -236,7 +236,7 @@ bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, co
       plugin = plugin.substr(0, plugin.size()-3);
    if (plugin == "CutGeometry")
       plugin = "CuttingSurface";
-    std::cerr << "parameterAdded: sender=" <<  senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
+   // std::cerr << "parameterAdded: sender=" <<  senderId << ", name=" << name << ", plugin=" << plugin << std::endl;
 
    if (plugin == "CuttingSurface"
          || plugin == "Tracer"
