@@ -19,7 +19,13 @@
 #include <getargs.h>    // linked but still qtcreator doesn't find it
 #include <iostream>
 
+//#include <boost/filesystem.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/cstdint.hpp>
+
 #include "ReadCFX.h"
+
+namespace bf = boost::filesystem;
 
 MODULE_MAIN(ReadCFX)
 
@@ -27,43 +33,24 @@ using namespace vistle;
 
 int checkFile(const char *filename)
 {
-    const int MIN_FILE_SIZE = 1024; // minimal size for .res files
+    const int MIN_FILE_SIZE = 1024; //1024 minimal size for .res files [in Byte]
 
     const int MACIC_LEN = 5; // "magic" at the start
     const char *magic = "*INFO";
     char magicBuf[MACIC_LEN];
 
-    struct stat statRec;
-    off_t fileSize;
-#ifdef WIN32
-    HANDLE hFile = CreateFile(filename, GENERIC_READ,
-                              FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
-                              FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile == INVALID_HANDLE_VALUE)
-    {
-        fprintf(stderr, "could not open file %s\n", filename);
-        return -1; // error condition, could call GetLastError to find out more
-    }
-
-    LARGE_INTEGER size;
-    if (!GetFileSizeEx(hFile, &size))
-    {
-        CloseHandle(hFile);
-        fprintf(stderr, "could not get filesize for %s\n", filename);
-        return -1; // error condition, could call GetLastError to find out more
-    }
-    fileSize = size.QuadPart;
-
-    CloseHandle(hFile);
-#else
-    if (stat(filename, &statRec) < 0)
-        return errno;
-    fileSize = statRec.st_size;
-#endif
+    boost::uintmax_t fileSize;
+    boost::system::error_code ec;
 
     FILE *fi = fopen(filename, "r");
+
     if (!fi)
         return errno;
+    else {
+        fileSize = bf::file_size(filename, ec);
+        if (ec)
+            std::cout << "error code: " << ec << std::endl;
+    }
 
     if (fileSize < MIN_FILE_SIZE)
         return -1;
