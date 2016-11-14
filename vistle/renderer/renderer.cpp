@@ -115,7 +115,7 @@ bool Renderer::dispatch() {
                               obj->save(memar);
                               const std::vector<char> &mem = memstr.get_vector();
                               uint64_t len = mem.size();
-                              //std::cerr << "Rank " << rank() << ": Broadcasting " << len << " bytes, type=" << obj->getType() << " (" << obj->getName() << ")" << std::endl;
+                              std::cerr << "Rank " << rank() << ": Broadcasting " << len << " bytes, type=" << obj->getType() << " (" << obj->getName() << ")" << std::endl;
                               const char *data = mem.data();
                               if (bcast) {
                                  MPI_Bcast(&len, 1, MPI_UINT64_T, rank(), MPI_COMM_WORLD);
@@ -147,7 +147,7 @@ bool Renderer::dispatch() {
                      } else {
                         if (send) {
                            uint64_t len = 0;
-                           //std::cerr << "Rank " << rank() << ": Waiting to receive" << std::endl;
+                           std::cerr << "Rank " << rank() << ": Waiting to receive: bcast=" << bcast << std::endl;
                            if (bcast) {
                               MPI_Bcast(&len, 1, MPI_UINT64_T, recv.rank(), MPI_COMM_WORLD);
                            } else if (rank() == 0) {
