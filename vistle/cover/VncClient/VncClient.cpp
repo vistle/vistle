@@ -1434,37 +1434,58 @@ VncClient::preFrame()
          << std::endl;
    }
 #endif
-   const bool broadcastTiles = true;
-   coVRMSController::instance()->syncData(&ntiles, sizeof(ntiles));
+   const bool broadcastTiles = false;
    if (coVRMSController::instance()->isMaster()) {
-      for (int i=0; i<ntiles; ++i) {
-         TileMessage &tile = m_receivedTiles.front();
-         if (broadcastTiles) {
-            coVRMSController::instance()->sendSlaves(tile.msg.get(), sizeof(*tile.msg));
-            if (tile.msg->size > 0) {
-               coVRMSController::instance()->sendSlaves(tile.payload.get(), tile.msg->size);
-            }
-         } else {
-            int channelBase = coVRConfig::instance()->numChannels();
-            for (int s=0; s<coVRMSController::instance()->getNumSlaves(); ++s) {
-               int numChannels = m_numChannels[i];
-               size_t sz = tile.msg->size;
-               if (tile.msg->viewNum < channelBase || tile.msg->viewNum >= channelBase+numChannels) {
-                  //tile.msg->size = 0;
-               }
-               coVRMSController::instance()->sendSlave(s, tile.msg.get(), sizeof(*tile.msg));
+       if (broadcastTiles) {
+           std::cerr << "broadcasting " << ntiles << " tiles" << std::endl;
+           coVRMSController::instance()->sendSlaves(&ntiles, sizeof(ntiles));
+           for (int i=0; i<ntiles; ++i) {
+               TileMessage &tile = m_receivedTiles.front();
+               coVRMSController::instance()->sendSlaves(tile.msg.get(), sizeof(*tile.msg));
                if (tile.msg->size > 0) {
-                  coVRMSController::instance()->sendSlave(s, tile.payload.get(), tile.msg->size);
+                   coVRMSController::instance()->sendSlaves(tile.payload.get(), tile.msg->size);
                }
-               tile.msg->size = sz;
+               handleTileMessage(tile.msg, tile.payload);
+           }
+       } else {
+           int channelBase = coVRConfig::instance()->numChannels();
+           for (int s=0; s<coVRMSController::instance()->getNumSlaves(); ++s) {
+               const int numChannels = m_numChannels[s];
+               int stiles=0;
+               for (int i=0; i<ntiles; ++i) {
+                   TileMessage &tile = m_receivedTiles[i];
+                   if (tile.msg->flags & rfbTileFirst || tile.msg->flags & rfbTileLast) {
+                   } else if (tile.msg->viewNum < channelBase || tile.msg->viewNum >= channelBase+numChannels) {
+                       continue;
+                   }
+                   ++stiles;
+               }
+               std::cerr << "unicasting " << stiles << " tiles" << std::endl;
+               coVRMSController::instance()->sendSlave(s, &stiles, sizeof(stiles));
+               for (int i=0; i<ntiles; ++i) {
+                   TileMessage &tile = m_receivedTiles[i];
+                   size_t sz = tile.msg->size;
+                   if (tile.msg->flags & rfbTileFirst || tile.msg->flags & rfbTileLast) {
+                   } else if (tile.msg->viewNum < channelBase || tile.msg->viewNum >= channelBase+numChannels) {
+                       continue;
+                   }
+                   coVRMSController::instance()->sendSlave(s, tile.msg.get(), sizeof(*tile.msg));
+                   if (tile.msg->size > 0) {
+                       coVRMSController::instance()->sendSlave(s, tile.payload.get(), tile.msg->size);
+                   }
+               }
                channelBase += numChannels;
-            }
-         }
-         handleTileMessage(tile.msg, tile.payload);
-         m_receivedTiles.pop_front();
-      }
+           }
+       }
+       for (int i=0;i<ntiles;++i) {
+           TileMessage &tile = m_receivedTiles.front();
+           handleTileMessage(tile.msg, tile.payload);
+           m_receivedTiles.pop_front();
+       }
       //assert(m_receivedTiles.empty());
    } else {
+      coVRMSController::instance()->readMaster(&ntiles, sizeof(ntiles));
+      std::cerr << "receiving " << ntiles << " tiles" << std::endl;
       for (int i=0; i<ntiles; ++i) {
          boost::shared_ptr<tileMsg> msg(new tileMsg);
          coVRMSController::instance()->readMaster(msg.get(), sizeof(*msg));
