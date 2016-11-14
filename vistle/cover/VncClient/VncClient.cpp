@@ -1423,8 +1423,8 @@ VncClient::preFrame()
    if (m_lastTileAt >= 0) {
       ntiles = m_lastTileAt+1;
       m_lastTileAt = -1;
-   } else if (ntiles > 50) {
-      ntiles = 50;
+   } else if (ntiles > 100) {
+      ntiles = 100;
    }
 #ifdef CONNDEBUG
    if (ntiles > 0) {
