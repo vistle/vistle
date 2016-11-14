@@ -1412,7 +1412,7 @@ VncClient::preFrame()
             break;
       }
 
-      if ((haveMessage || cover->frameTime()-lastMatrices>0.10) && m_client && rfbClientGetClientData(m_client, (void *)rfbMatricesMessage)) {
+      if ((haveMessage || cover->frameTime()-lastMatrices>0.03) && m_client && rfbClientGetClientData(m_client, (void *)rfbMatricesMessage)) {
          sendLightsMessage(m_client);
          sendMatricesMessage(m_client, messages, m_matrixNum++);
          lastMatrices = cover->frameTime();
@@ -1442,7 +1442,7 @@ VncClient::preFrame()
    const bool broadcastTiles = false;
    if (coVRMSController::instance()->isMaster()) {
        if (broadcastTiles) {
-           std::cerr << "broadcasting " << ntiles << " tiles" << std::endl;
+           //std::cerr << "broadcasting " << ntiles << " tiles" << std::endl;
            coVRMSController::instance()->sendSlaves(&ntiles, sizeof(ntiles));
            for (int i=0; i<ntiles; ++i) {
                TileMessage &tile = m_receivedTiles.front();
@@ -1465,7 +1465,7 @@ VncClient::preFrame()
                    }
                    ++stiles;
                }
-               std::cerr << "unicasting " << stiles << " tiles" << std::endl;
+               //std::cerr << "unicasting " << stiles << " tiles" << std::endl;
                coVRMSController::instance()->sendSlave(s, &stiles, sizeof(stiles));
                for (int i=0; i<ntiles; ++i) {
                    TileMessage &tile = m_receivedTiles[i];
@@ -1490,7 +1490,7 @@ VncClient::preFrame()
       //assert(m_receivedTiles.empty());
    } else {
       coVRMSController::instance()->readMaster(&ntiles, sizeof(ntiles));
-      std::cerr << "receiving " << ntiles << " tiles" << std::endl;
+      //std::cerr << "receiving " << ntiles << " tiles" << std::endl;
       for (int i=0; i<ntiles; ++i) {
          boost::shared_ptr<tileMsg> msg(new tileMsg);
          coVRMSController::instance()->readMaster(msg.get(), sizeof(*msg));
