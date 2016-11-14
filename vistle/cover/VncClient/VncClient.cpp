@@ -708,6 +708,11 @@ bool VncClient::handleTileMessage(boost::shared_ptr<tileMsg> msg, boost::shared_
       << std::endl;
 #endif
 
+   if (msg->flags) {
+   } else if (msg->viewNum < m_channelBase || msg->viewNum >= m_channelBase+m_numViews) {
+       return true;
+   }
+
    DecodeTask *dt = new(tbb::task::allocate_root()) DecodeTask(m_resultQueue, msg, payload);
    if (canEnqueue()) {
       handleTileMeta(*msg);
@@ -1407,7 +1412,7 @@ VncClient::preFrame()
             break;
       }
 
-      if ((haveMessage || cover->frameTime()-lastMatrices>0.03) && m_client && rfbClientGetClientData(m_client, (void *)rfbMatricesMessage)) {
+      if ((haveMessage || cover->frameTime()-lastMatrices>0.10) && m_client && rfbClientGetClientData(m_client, (void *)rfbMatricesMessage)) {
          sendLightsMessage(m_client);
          sendMatricesMessage(m_client, messages, m_matrixNum++);
          lastMatrices = cover->frameTime();
@@ -1659,7 +1664,7 @@ int VncClient::handleRfbMessages()
    if (!m_client || m_listen)
       return -1;
 
-   const int n = WaitForMessage(m_client, 1);
+   const int n = WaitForMessage(m_client, 0);
    if (n<0) {
       clientCleanup(m_client);
       return n;
