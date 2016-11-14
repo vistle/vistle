@@ -35,6 +35,12 @@ case $(hostname) in
          MPIHOSTS=$(echo viscluster{50..60} viscluster{71..79} viscluster70|sed -e 's/ /,/g')
       fi
       ;;
+   vishexa|vishexb)
+      BIND=1
+      if [ -z "$MPIHOSTS" ]; then
+         MPIHOSTS="vishexa,vishexb"
+      fi
+      ;;
    *)
       if [ "$MPISIZE" = "" ]; then
          MPISIZE=1
