@@ -31,9 +31,6 @@
 #include <OpenVRUI/coPotiMenuItem.h>
 
 #include <osgGA/GUIEventAdapter>
-#include <OpenThreads/Thread>
-#include <OpenThreads/Mutex>
-#include <OpenThreads/Condition>
 #include <osg/Material>
 #include <osg/TexEnv>
 #include <osg/Depth>
@@ -66,6 +63,9 @@
 #include <tbb/enumerable_thread_specific.h>
 #include <boost/shared_ptr.hpp>
 
+#include <boost/thread.hpp>
+
+//#define CONNDEBUG
 
 #ifdef HAVE_SNAPPY
 #include <snappy.h>
@@ -91,6 +91,8 @@ typedef tbb::enumerable_thread_specific<TjDecomp> TjContext;
 static TjContext tjContexts;
 #endif
 
+typedef boost::lock_guard<boost::recursive_mutex> lock_guard;
+
 //! for use with shared_ptr and arrays allocated with new[]
 template <typename T>
 struct array_deleter {
@@ -102,6 +104,21 @@ struct array_deleter {
 };
 
 VncClient *VncClient::plugin = NULL;
+
+struct VncPoller {
+    VncClient *plugin;
+    VncPoller(VncClient *plugin): plugin(plugin) {
+    }
+
+    void operator()() {
+        for (;;) {
+            plugin->handleRfbMessages();
+            lock_guard locker(*plugin->m_clientMutex);
+            if (!plugin->m_runClient)
+                break;
+        }
+    }
+};
 
 static const std::string config("COVER.Plugin.VncClient");
 static std::string muiId(const std::string &id = "") {
@@ -685,9 +702,10 @@ rfbBool VncClient::rfbTileMessage(rfbClient *client, rfbServerToClientMsg *messa
       return TRUE;
    }
 
+   lock_guard locker(*plugin->m_clientMutex);
+   plugin->m_receivedTiles.push_back(TileMessage(msg, payload));
    if (msg->flags & rfbTileLast)
       plugin->m_lastTileAt = plugin->m_receivedTiles.size();
-   plugin->m_receivedTiles.push_back(TileMessage(msg, payload));
 
    return TRUE;
 }
@@ -983,12 +1001,14 @@ VncClient::VncClient()
 //! called after plug-in is loaded and scenegraph is initialized
 bool VncClient::init()
 {
+   m_clientMutex = new boost::recursive_mutex;
    m_serverHost = covise::coCoviseConfig::getEntry("rfbHost", config, "localhost");
    m_port = covise::coCoviseConfig::getInt("rfbPort", config, 31590);
 
    m_client = NULL;
    m_haveConnection = false;
    m_listen = false;
+   m_haveMessage = false;
 
    m_mode = MultiChannelDrawer::ReprojectMesh;
    m_frameReady = false;
@@ -1172,6 +1192,7 @@ VncClient::~VncClient()
 #endif
 
    clientCleanup(m_client);
+   delete m_clientMutex;
    plugin = NULL;
 }
 
@@ -1401,22 +1422,20 @@ VncClient::preFrame()
       }
    }
 
-   if (coVRMSController::instance()->isMaster()) {
-      bool haveMessage = false;
-      size_t oldFrame = m_remoteFrames;
-      while (handleRfbMessages() > 0) {
-         haveMessage = true;
-         lastUpdate = cover->frameTime();
+   {
+       lock_guard locker(*m_clientMutex);
+       if (coVRMSController::instance()->isMaster()) {
+           if (m_haveMessage) {
+               lastUpdate = cover->frameTime();
+           }
 
-         if (m_remoteFrames != oldFrame)
-            break;
-      }
-
-      if ((haveMessage || cover->frameTime()-lastMatrices>0.03) && m_client && rfbClientGetClientData(m_client, (void *)rfbMatricesMessage)) {
-         sendLightsMessage(m_client);
-         sendMatricesMessage(m_client, messages, m_matrixNum++);
-         lastMatrices = cover->frameTime();
-      }
+           if ((m_haveMessage || cover->frameTime()-lastMatrices>0.03) && m_client && rfbClientGetClientData(m_client, (void *)rfbMatricesMessage)) {
+               sendLightsMessage(m_client);
+               sendMatricesMessage(m_client, messages, m_matrixNum++);
+               lastMatrices = cover->frameTime();
+           }
+           m_haveMessage = false;
+       }
    }
    coVRMSController::instance()->syncData(&m_numRemoteTimesteps, sizeof(m_numRemoteTimesteps));
    if (m_numRemoteTimesteps > 0)
@@ -1424,33 +1443,43 @@ VncClient::preFrame()
    else
       coVRAnimationManager::instance()->removeTimestepProvider(this);
 
-   int ntiles = m_receivedTiles.size();
-   if (m_lastTileAt >= 0) {
-      ntiles = m_lastTileAt+1;
-      m_lastTileAt = -1;
-   } else if (ntiles > 100) {
-      ntiles = 100;
+   int ntiles = 0;
+   {
+       lock_guard locker(*m_clientMutex);
+       ntiles = m_receivedTiles.size();
+       if (m_lastTileAt >= 0) {
+           ntiles = m_lastTileAt;
+           m_lastTileAt = -1;
+       } else if (ntiles > 100) {
+           ntiles = 100;
+       }
    }
 #ifdef CONNDEBUG
-   if (ntiles > 0) {
-      std::cerr << "have " << ntiles << " image tiles"
-         << ", last tile for req: " << m_receivedTiles.back().msg->requestNumber
-         << ", last=" << (m_receivedTiles.back().msg->flags & rfbTileLast)
-         << std::endl;
-   }
+       if (ntiles > 0) {
+           std::cerr << "have " << ntiles << " image tiles"
+                     << ", last tile for req: " << m_receivedTiles.back().msg->requestNumber
+                     << ", last=" << (m_receivedTiles.back().msg->flags & rfbTileLast)
+                     << std::endl;
+       }
 #endif
+
    const bool broadcastTiles = false;
    if (coVRMSController::instance()->isMaster()) {
+       for (int i=0; i<ntiles; ++i) {
+           lock_guard locker(*m_clientMutex);
+           TileMessage &tile = m_receivedTiles[i];
+           handleTileMessage(tile.msg, tile.payload);
+       }
        if (broadcastTiles) {
            //std::cerr << "broadcasting " << ntiles << " tiles" << std::endl;
            coVRMSController::instance()->sendSlaves(&ntiles, sizeof(ntiles));
            for (int i=0; i<ntiles; ++i) {
-               TileMessage &tile = m_receivedTiles.front();
+               lock_guard locker(*m_clientMutex);
+               TileMessage &tile = m_receivedTiles[i];
                coVRMSController::instance()->sendSlaves(tile.msg.get(), sizeof(*tile.msg));
                if (tile.msg->size > 0) {
                    coVRMSController::instance()->sendSlaves(tile.payload.get(), tile.msg->size);
                }
-               handleTileMessage(tile.msg, tile.payload);
            }
        } else {
            int channelBase = coVRConfig::instance()->numChannels();
@@ -1458,6 +1487,8 @@ VncClient::preFrame()
                const int numChannels = m_numChannels[s];
                int stiles=0;
                for (int i=0; i<ntiles; ++i) {
+                   lock_guard locker(*m_clientMutex);
+                   //std::cerr << "ntiles=" << ntiles << ", have=" << m_receivedTiles.size() << ", i=" << i << std::endl;
                    TileMessage &tile = m_receivedTiles[i];
                    if (tile.msg->flags & rfbTileFirst || tile.msg->flags & rfbTileLast) {
                    } else if (tile.msg->viewNum < channelBase || tile.msg->viewNum >= channelBase+numChannels) {
@@ -1468,8 +1499,8 @@ VncClient::preFrame()
                //std::cerr << "unicasting " << stiles << " tiles" << std::endl;
                coVRMSController::instance()->sendSlave(s, &stiles, sizeof(stiles));
                for (int i=0; i<ntiles; ++i) {
+                   lock_guard locker(*m_clientMutex);
                    TileMessage &tile = m_receivedTiles[i];
-                   size_t sz = tile.msg->size;
                    if (tile.msg->flags & rfbTileFirst || tile.msg->flags & rfbTileLast) {
                    } else if (tile.msg->viewNum < channelBase || tile.msg->viewNum >= channelBase+numChannels) {
                        continue;
@@ -1482,25 +1513,26 @@ VncClient::preFrame()
                channelBase += numChannels;
            }
        }
+       lock_guard locker(*m_clientMutex);
        for (int i=0;i<ntiles;++i) {
-           TileMessage &tile = m_receivedTiles.front();
-           handleTileMessage(tile.msg, tile.payload);
            m_receivedTiles.pop_front();
        }
-      //assert(m_receivedTiles.empty());
+       if (m_lastTileAt >= 0)
+           m_lastTileAt -= ntiles;
+       //assert(m_receivedTiles.empty());
    } else {
-      coVRMSController::instance()->readMaster(&ntiles, sizeof(ntiles));
-      //std::cerr << "receiving " << ntiles << " tiles" << std::endl;
-      for (int i=0; i<ntiles; ++i) {
-         boost::shared_ptr<tileMsg> msg(new tileMsg);
-         coVRMSController::instance()->readMaster(msg.get(), sizeof(*msg));
-         boost::shared_ptr<char> payload;
-         if (msg->size > 0) {
-            payload.reset(new char[msg->size], array_deleter<char>());
-            coVRMSController::instance()->readMaster(payload.get(), msg->size);
-         }
-         handleTileMessage(msg, payload);
-      }
+       coVRMSController::instance()->readMaster(&ntiles, sizeof(ntiles));
+       //std::cerr << "receiving " << ntiles << " tiles" << std::endl;
+       for (int i=0; i<ntiles; ++i) {
+           boost::shared_ptr<tileMsg> msg(new tileMsg);
+           coVRMSController::instance()->readMaster(msg.get(), sizeof(*msg));
+           boost::shared_ptr<char> payload;
+           if (msg->size > 0) {
+               payload.reset(new char[msg->size], array_deleter<char>());
+               coVRMSController::instance()->readMaster(payload.get(), msg->size);
+           }
+           handleTileMessage(msg, payload);
+       }
    }
 
 #if 0
@@ -1590,6 +1622,7 @@ void VncClient::expandBoundingSphere(osg::BoundingSphere &bs) {
 
          BoundsData *bd = static_cast<BoundsData *>(rfbClientGetClientData(m_client, (void *)rfbBoundsMessage));
          if (bd) {
+            lock_guard locker(*m_clientMutex);
 
             boundsMsg msg;
             msg.type = rfbBounds;
@@ -1653,6 +1686,7 @@ void VncClient::requestTimestep(int t) {
          appAnimationTimestep msg;
          msg.current = t;
          msg.total = coVRAnimationManager::instance()->getNumTimesteps();
+         lock_guard locker(*m_clientMutex);
          sendApplicationMessage(m_client, rfbAnimationTimestep, sizeof(msg), &msg);
       }
    }
@@ -1664,7 +1698,7 @@ int VncClient::handleRfbMessages()
    if (!m_client || m_listen)
       return -1;
 
-   const int n = WaitForMessage(m_client, 0);
+   const int n = WaitForMessage(m_client, 1000000);
    if (n<0) {
       clientCleanup(m_client);
       return n;
@@ -1672,6 +1706,10 @@ int VncClient::handleRfbMessages()
    if (n==0) {
       return n;
    }
+
+
+   lock_guard locker(*m_clientMutex);
+   m_haveMessage = true;
    //std::cerr << n << " messages in queue" << std::endl;
    if(!HandleRFBServerMessage(m_client)) {
       if (n > 0)
@@ -1745,6 +1783,9 @@ bool VncClient::connectClient() {
    SendFramebufferUpdateRequest(m_client, 0, 0, m_client->width, m_client->height, FALSE);
    std::cerr << "RFB client: compress=" << m_client->appData.compressLevel << ", quality=" << m_client->appData.qualityLevel << std::endl;
 
+   m_runClient = true;
+   m_clientThread = new boost::thread(VncPoller(this));
+
    return true;
 }
 
@@ -1753,6 +1794,12 @@ void VncClient::clientCleanup(rfbClient *cl) {
 
    if (!cl)
       return;
+
+   {
+       lock_guard locker(*m_clientMutex);
+       m_runClient = false;
+   }
+   delete m_clientThread;
 
    std::cerr << "disconnected from server" << std::endl;
 

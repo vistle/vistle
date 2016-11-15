@@ -36,6 +36,11 @@
 
 #include <PluginUtil/MultiChannelDrawer.h>
 
+namespace boost {
+class thread;
+class recursive_mutex;
+}
+
 namespace osg {
 class TextureRectangle;
 }
@@ -94,7 +99,10 @@ public:
    static rfbBool rfbResize(rfbClient *client);
 
    void sendFeedback(const char *info, const char *key, const char *data=NULL);
+   int handleRfbMessages();
 
+   bool m_runClient;
+   boost::recursive_mutex *m_clientMutex;
 private:
    //! make plugin available to static member functions
    static VncClient *plugin;
@@ -111,7 +119,6 @@ private:
    size_t m_depthBytes, m_rgbBytes, m_depthBpp, m_numPixels;
    size_t m_depthBytesS, m_rgbBytesS, m_depthBppS, m_numPixelsS;
 
-   int handleRfbMessages();
    bool connectClient();
    void clientCleanup(rfbClient *client);
    void sendMatricesMessage(rfbClient *client, std::vector<matricesMsg> &messages, uint32_t requestNum);
@@ -121,8 +128,10 @@ private:
 
    //! server connection
    rfbClient *m_client;
+   boost::thread *m_clientThread;
    bool m_listen;
    bool m_haveConnection;
+   bool m_haveMessage;
 
    appScreenConfig activeConfig;
 
