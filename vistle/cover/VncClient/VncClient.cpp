@@ -1712,16 +1712,16 @@ void VncClient::requestTimestep(int t) {
    if (m_remoteTimestep==t || (m_remoteTimestep==-1 && m_visibleTimestep==t)) {
       //std::cerr << "VncClient::commitTimestep(" << t << ") A" << std::endl;
       commitTimestep(t);
-   } else {
-      m_requestedTimestep = t;
+   } else if (t != m_requestedTimestep) {
+       if (coVRMSController::instance()->isMaster()) {
+           appAnimationTimestep msg;
+           msg.current = t;
+           msg.total = coVRAnimationManager::instance()->getNumTimesteps();
+           lock_guard locker(*m_clientMutex);
+           sendApplicationMessage(m_client, rfbAnimationTimestep, sizeof(msg), &msg);
+       }
 
-      if (coVRMSController::instance()->isMaster()) {
-         appAnimationTimestep msg;
-         msg.current = t;
-         msg.total = coVRAnimationManager::instance()->getNumTimesteps();
-         lock_guard locker(*m_clientMutex);
-         sendApplicationMessage(m_client, rfbAnimationTimestep, sizeof(msg), &msg);
-      }
+       m_requestedTimestep = t;
    }
 }
 
