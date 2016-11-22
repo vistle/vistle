@@ -14,10 +14,10 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
-// #include <io.h>         // unclear, what this library is doing
 #include <cfxExport.h>  // linked but still qtcreator doesn't find it
 #include <getargs.h>    // linked but still qtcreator doesn't find it
 #include <iostream>
+//#include <unistd.h>
 
 //#include <boost/filesystem.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -68,11 +68,12 @@ int checkFile(const char *filename)
 }
 
 ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("ReadModel", shmname, name, moduleID)
+   : Module("ReadCFX", shmname, name, moduleID)
 {
 
   // createOutputPort("grid_out");
-   addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res");
+    //addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res");
+    addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/home/jwinterstein/data/cfx/rohr/hlrs_002.res");
 
    /*addIntParameter("indexed_geometry", "create indexed geometry?", 0, Parameter::Boolean);
    addIntParameter("triangulate", "only create triangles", 0, Parameter::Boolean);
@@ -106,10 +107,13 @@ ReadCFX::~ReadCFX() {
 
     return block % size();
 }*/
+
+
+
 bool ReadCFX::parameterChanged(const Parameter *p)
 {
     std::string c = getStringParameter("filename");
-    const char *resultfileName = c.c_str();
+    resultfileName = c.c_str();
 
     int checkValue = checkFile(resultfileName);
     std::cerr << "checkValue = " << checkValue << std::endl;
@@ -132,7 +136,113 @@ bool ReadCFX::parameterChanged(const Parameter *p)
             }
     }
 
+    static char *resultName = NULL;
+    if (resultName == NULL || strcmp(resultName, resultfileName) != 0) {
+        resultName = new char[strlen(resultfileName) + 1];
+        strcpy(resultName, resultfileName);
 
+        sendInfo("Please wait...");
+
+        if (nzones > 0)
+            cfxExportDone();
+
+        //nzones = cfxExportInit(resultName, NULL);
+        nzones = cfxExportInit(resultName, counts);
+
+        std::cerr << "cfxExportTimestepCount(): " << cfxExportTimestepCount() << std::endl;
+        std::cerr << "cfxExportTimestepNumGet(1): " << cfxExportTimestepNumGet(1) << std::endl;
+        std::cerr << "cfxExportTimestepTimeGet(1): " << cfxExportTimestepTimeGet(1) << std::endl;
+        std::cerr << "cfxExportNodeCount(): " << cfxExportNodeCount() << std::endl;
+        std::cerr << "cfxExportElementCount(): " << cfxExportElementCount() << std::endl;
+        std::cerr << "cfxExportZoneGet(): " << cfxExportZoneGet() << std::endl;
+        std::cerr << "cfxExportZoneCount(): " << cfxExportZoneCount() << std::endl;
+        std::cerr << "cfxExportRegionCount(): " << cfxExportRegionCount() << std::endl;
+        std::cerr << "cfxExportVolumeCount(): " << cfxExportVolumeCount() << std::endl;
+        std::cerr << "cfxExportBoundaryCount(): " << cfxExportBoundaryCount() << std::endl;
+        std::cerr << "nzones: " << nzones << std::endl;
+        std::cerr << "cfxCNT_SIZE: " << cfxCNT_SIZE << std::endl;
+        std::cerr << "cfxExportZoneSet(1,counts): " << cfxExportZoneSet(1,counts) << std::endl;
+
+        for(i=0;i<cfxCNT_SIZE;i++) {
+            std::cerr << "counts[" << i << "] = " << counts[i] << std::endl;
+        }
+
+        timeStepNum = cfxExportTimestepNumGet(1);
+        if (timeStepNum < 0) {
+            sendInfo("no timesteps");
+        }
+
+        iteration = cfxExportTimestepNumGet(1);
+        if (cfxExportTimestepSet(iteration) < 0)
+        {
+            sendInfo("Invalid timestep %d", iteration);
+        }
+
+        sendInfo("Found %d zones", nzones);
+
+        // @@@ cfxExportDone();
+        sendInfo("The initialisation was successfully done");
+
+    }
+
+
+
+ /* COVISE Initialisierung
+
+        if (!in_map_loading)
+        {
+
+            p_zone->updateValue(nzones + 1, ZoneChoiceVal, p_zone->getValue());
+
+            p_scalar->updateValue(nscalars + 1, ScalChoiceVal, p_scalar->getValue());
+            p_vector->updateValue(nvectors + 1, VectChoiceVal, p_vector->getValue());
+
+            p_boundScalar->updateValue(nscalars + 1, ScalChoiceVal, p_boundScalar->getValue());
+            p_boundVector->updateValue(nvectors + 1, VectChoiceVal, p_boundVector->getValue());
+
+            p_particleScalar->updateValue(npscalars + 1, pScalChoiceVal, p_particleScalar->getValue());
+            p_particleVector->updateValue(npvectors + 1, pVectChoiceVal, p_particleVector->getValue());
+        }
+    }
+    else
+    {
+        resultName = new char[strlen(resultfileName) + 1];
+        strcpy(resultName, resultfileName);
+    }
+}
+else if (strcmp(p_zone->getName(), paramName) == 0 && !in_map_loading)
+{
+    if (nzones > 0)
+    {
+        p_zone->updateValue(nzones + 1, ZoneChoiceVal, p_zone->getValue());
+        get_choice_fields(p_zone->getValue());
+        p_scalar->updateValue(nscalars + 1, ScalChoiceVal, p_scalar->getValue());
+        p_vector->updateValue(nvectors + 1, VectChoiceVal, p_vector->getValue());
+        p_boundScalar->updateValue(nscalars + 1, ScalChoiceVal, p_boundScalar->getValue());
+        p_boundVector->updateValue(nvectors + 1, VectChoiceVal, p_boundVector->getValue());
+        p_particleScalar->updateValue(npscalars + 1, pScalChoiceVal, p_particleScalar->getValue());
+        p_particleVector->updateValue(npvectors + 1, pVectChoiceVal, p_particleVector->getValue());
+    }
+}
+else if (strcmp(p_particleType->getName(), paramName) == 0 && !in_map_loading)
+{
+    setParticleVarChoice(p_particleType->getValue());
+}
+else if (strcmp(p_timesteps->getName(), paramName) == 0)
+{
+    if (nzones > 0)
+    {
+        p_zone->updateValue(nzones + 1, ZoneChoiceVal, p_zone->getValue());
+        //get_choice_fields(p_zone->getValue());
+        p_scalar->updateValue(nscalars + 1, ScalChoiceVal, p_scalar->getValue());
+        p_vector->updateValue(nvectors + 1, VectChoiceVal, p_vector->getValue());
+        p_boundScalar->updateValue(nscalars + 1, ScalChoiceVal, p_boundScalar->getValue());
+        p_boundVector->updateValue(nvectors + 1, VectChoiceVal, p_boundVector->getValue());
+        p_particleScalar->updateValue(npscalars + 1, pScalChoiceVal, p_particleScalar->getValue());
+        p_particleVector->updateValue(npvectors + 1, pVectChoiceVal, p_particleVector->getValue());
+    }
+}
+*/
    return Module::parameterChanged(p);
 }
 
