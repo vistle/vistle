@@ -24,6 +24,17 @@ class ReadCFX: public vistle::Module {
    vistle::Integer m_firstStep, m_lastStep, m_step;
 
    const char *resultfileName;
+   vistle::Port *p_outPort1;        //mesh
+   vistle::Port *p_outPort2;        //scalar data
+   vistle::Port *p_outPort3;        //vector data
+   vistle::Port *p_outPort4;        //region mesh
+   vistle::Port *p_outPort5;        //region scalar data
+   vistle::Port *p_outPort6;        //boundary
+   vistle::Port *p_outPort7;        //boundary scalar data
+   vistle::Port *p_outPort8;        //boundary vector data
+   vistle::Port *p_outPort9;        //particle
+   vistle::Port *p_outPort10;       //particle scalar data
+   vistle::Port *p_outPort11;       //particle vector data
 
    std::string _dir;
    std::string _theFile;

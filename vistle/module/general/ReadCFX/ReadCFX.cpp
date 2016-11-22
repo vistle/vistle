@@ -71,9 +71,21 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID)
 {
 
-  // createOutputPort("grid_out");
-    //addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res");
-    addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/home/jwinterstein/data/cfx/rohr/hlrs_002.res");
+    p_outPort1 = createOutputPort("GridOut0", "UnstructuredGrid: unstructured grid");
+    p_outPort2 = createOutputPort("DataOut0", "Float: scalar data");
+    p_outPort3 = createOutputPort("DataOut1", "Vec3: vector data");
+    p_outPort4 = createOutputPort("GridOut1", "Polygons: region grid");
+    p_outPort5 = createOutputPort("DataOut2", "Float: region scalar data");
+    p_outPort6 = createOutputPort("GridOut2", "Polygons: boundary grid");
+    p_outPort7 = createOutputPort("DataOut3", "Float: boundary scalar data");
+    p_outPort8 = createOutputPort("DataOut4", "Vec3: boundary vector data");
+    p_outPort9 = createOutputPort("GridOut3", "Points: particle points");
+    p_outPort10 = createOutputPort("DataOut5", "Float: particle scalar data");
+    p_outPort11 = createOutputPort("DataOut6", "Vec3: particle vector data");
+
+
+    addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res");
+    //addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/home/jwinterstein/data/cfx/rohr/hlrs_002.res");
 
    /*addIntParameter("indexed_geometry", "create indexed geometry?", 0, Parameter::Boolean);
    addIntParameter("triangulate", "only create triangles", 0, Parameter::Boolean);
@@ -149,23 +161,30 @@ bool ReadCFX::parameterChanged(const Parameter *p)
         //nzones = cfxExportInit(resultName, NULL);
         nzones = cfxExportInit(resultName, counts);
 
-        std::cerr << "cfxExportTimestepCount(): " << cfxExportTimestepCount() << std::endl;
-        std::cerr << "cfxExportTimestepNumGet(1): " << cfxExportTimestepNumGet(1) << std::endl;
-        std::cerr << "cfxExportTimestepTimeGet(1): " << cfxExportTimestepTimeGet(1) << std::endl;
-        std::cerr << "cfxExportNodeCount(): " << cfxExportNodeCount() << std::endl;
-        std::cerr << "cfxExportElementCount(): " << cfxExportElementCount() << std::endl;
-        std::cerr << "cfxExportZoneGet(): " << cfxExportZoneGet() << std::endl;
-        std::cerr << "cfxExportZoneCount(): " << cfxExportZoneCount() << std::endl;
-        std::cerr << "cfxExportRegionCount(): " << cfxExportRegionCount() << std::endl;
-        std::cerr << "cfxExportVolumeCount(): " << cfxExportVolumeCount() << std::endl;
-        std::cerr << "cfxExportBoundaryCount(): " << cfxExportBoundaryCount() << std::endl;
-        std::cerr << "nzones: " << nzones << std::endl;
-        std::cerr << "cfxCNT_SIZE: " << cfxCNT_SIZE << std::endl;
-        std::cerr << "cfxExportZoneSet(1,counts): " << cfxExportZoneSet(1,counts) << std::endl;
-
         for(i=0;i<cfxCNT_SIZE;i++) {
             std::cerr << "counts[" << i << "] = " << counts[i] << std::endl;
         }
+
+        std::cerr << "nzones: " << nzones << std::endl;
+        std::cerr << "cfxCNT_SIZE: " << cfxCNT_SIZE << std::endl;
+
+        for(i=0;i<nzones;i++) {
+            std::cerr << "cfxExportZoneSet(): " << cfxExportZoneSet(i,NULL) << std::endl;
+            std::cerr << "cfxExportZoneGet(): " << cfxExportZoneGet() << std::endl;
+            std::cerr << "cfxExportTimestepCount(): " << cfxExportTimestepCount() << std::endl;
+            std::cerr << "cfxExportTimestepNumGet(1): " << cfxExportTimestepNumGet(1) << std::endl;
+            std::cerr << "cfxExportTimestepTimeGet(1): " << cfxExportTimestepTimeGet(1) << std::endl;
+            std::cerr << "cfxExportNodeCount(): " << cfxExportNodeCount() << std::endl;
+            std::cerr << "cfxExportElementCount(): " << cfxExportElementCount() << std::endl;
+            std::cerr << "cfxExportZoneGet(): " << cfxExportZoneGet() << std::endl;
+            std::cerr << "cfxExportZoneCount(): " << cfxExportZoneCount() << std::endl;
+            std::cerr << "cfxExportRegionCount(): " << cfxExportRegionCount() << std::endl;
+            std::cerr << "cfxExportVolumeCount(): " << cfxExportVolumeCount() << std::endl;
+            std::cerr << "cfxExportBoundaryCount(): " << cfxExportBoundaryCount() << std::endl << std::endl;
+        }
+
+
+
 
         timeStepNum = cfxExportTimestepNumGet(1);
         if (timeStepNum < 0) {
