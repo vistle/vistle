@@ -31,47 +31,74 @@ MODULE_MAIN(ReadCFX)
 
 using namespace vistle;
 
-int checkFile(const char *filename)
-{
-    const int MIN_FILE_SIZE = 1024; //1024 minimal size for .res files [in Byte]
-
-    const int MACIC_LEN = 5; // "magic" at the start
-    const char *magic = "*INFO";
-    char magicBuf[MACIC_LEN];
-
-    boost::uintmax_t fileSize;
-    boost::system::error_code ec;
-
-    FILE *fi = fopen(filename, "r");
-
-    if (!fi)
-        return errno;
-    else {
-        fileSize = bf::file_size(filename, ec);
-        if (ec)
-            std::cout << "error code: " << ec << std::endl;
-    }
-
-    if (fileSize < MIN_FILE_SIZE)
-        return -1;
-
-    size_t iret = fread(magicBuf, 1, MACIC_LEN, fi);
-    if (iret != MACIC_LEN)
-        std::cerr << "checkFile :: error reading MACIC_LEN " << std::endl;
-
-    if (strncasecmp(magicBuf, magic, MACIC_LEN) != 0)
-        return -2;
-
-    fclose(fi);
-
-    return 0;
-}
 
 ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int moduleID)
-   : Module("ReadCFX", shmname, name, moduleID)
-{
+   : Module("ReadCFX", shmname, name, moduleID) {
 
-    p_outPort1 = createOutputPort("GridOut0", "UnstructuredGrid: unstructured grid");
+    // file browser parameter
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/", Parameter::Directory);
+    //addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res");
+    //addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/home/jwinterstein/data/cfx/rohr/hlrs_002.res");
+
+    // time parameters
+    m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
+    setParameterMinimum<Float>(m_starttime, 0.);
+    m_stoptime = addFloatParameter("stoptime", "stop reading at the last step before this time",
+          std::numeric_limits<double>::max());
+    setParameterMinimum<Float>(m_stoptime, 0.);
+    m_timeskip = addIntParameter("timeskip", "skip this many timesteps after reading one", 0);
+    setParameterMinimum<Integer>(m_timeskip, 0);
+    m_readGrid = addIntParameter("read_grid", "load the grid?", 1, Parameter::Boolean);
+
+    // mesh ports
+    m_gridOut = createOutputPort("grid_out1");
+
+    // data and data choice parameters
+    for (int i=0; i<NumPorts; ++i) {
+        // data ports
+        std::stringstream s;
+        s << "data_out" << i;
+        m_volumeDataOut.push_back(createOutputPort(s.str()));
+
+        // data choice parameters
+        /*std::stringstream s;
+        s << "Data" << i;
+        auto p =  addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
+        std::vector<std::string> choices;
+        choices.push_back("(NONE)");
+        setParameterChoices(p, choices);
+        m_fieldOut.push_back(p);
+       */ //choices muss mit CFX Mitteln implementiert werden
+    }
+    m_readBoundary = addIntParameter("read_boundary", "load the boundary?", 1, Parameter::Boolean);
+    //m_boundaryPatchesAsVariants = addIntParameter("patches_as_variants", "create sub-objects with variant attribute for boundary patches", 1, Parameter::Boolean);
+    //m_patchSelection = addStringParameter("patches", "select patches","all");
+
+    // 2d data and data choice parameters
+    for (int i=0; i<NumBoundaryPorts; ++i) {
+       {// 2d data ports
+          std::stringstream s;
+          s << "data_2d_out" << i;
+          m_boundaryDataOut.push_back(createOutputPort(s.str()));
+       }
+       /*{// 2d data choice parameters
+          std::stringstream s;
+          s << "Data2d" << i;
+          auto p =  addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
+          std::vector<std::string> choices;
+          choices.push_back("(NONE)");
+          setParameterChoices(p, choices);
+          m_boundaryOut.push_back(p);
+       }*/ //choiches mit CFX Mitteln
+    }
+    //m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);
+
+    //Prüfen for(...) { {aktion1} {aktion2} }
+
+
+
+    //Output Ports
+    /*p_outPort1 = createOutputPort("GridOut0", "UnstructuredGrid: unstructured grid");
     p_outPort2 = createOutputPort("DataOut0", "Float: scalar data");
     p_outPort3 = createOutputPort("DataOut1", "Vec3: vector data");
     p_outPort4 = createOutputPort("GridOut1", "Polygons: region grid");
@@ -81,11 +108,9 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     p_outPort8 = createOutputPort("DataOut4", "Vec3: boundary vector data");
     p_outPort9 = createOutputPort("GridOut3", "Points: particle points");
     p_outPort10 = createOutputPort("DataOut5", "Float: particle scalar data");
-    p_outPort11 = createOutputPort("DataOut6", "Vec3: particle vector data");
+    p_outPort11 = createOutputPort("DataOut6", "Vec3: particle vector data");*/
 
 
-    addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res");
-    //addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/home/jwinterstein/data/cfx/rohr/hlrs_002.res");
 
    /*addIntParameter("indexed_geometry", "create indexed geometry?", 0, Parameter::Boolean);
    addIntParameter("triangulate", "only create triangles", 0, Parameter::Boolean);
@@ -101,12 +126,39 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
 */
 }
 
+
+
+
 ReadCFX::~ReadCFX() {
 
 }
 
-    //Open CFX result file and initialize Export API
-    //int cfxExportInit (char *resfile, int counts[cfxCNT_SIZE])
+/*std::vector<std::string> ReadFOAM::getFieldList() const {
+
+   std::vector<std::string> choices;
+   choices.push_back("(NONE)");
+
+   if (m_case.valid) {
+      for (auto &field: m_case.constantFields)
+         choices.push_back(field.first);
+      for (auto &field: m_case.varyingFields)
+         choices.push_back(field.first);
+   }
+
+   return choices;
+}*/ //function mit CFX Mitteln schreiben (m_case.valid) geht in CFX nicht
+
+/*int ReadFOAM::rankForBlock(int processor) const {
+
+   if (m_case.numblocks == 0)
+      return 0;
+
+   if (processor == -1)
+      return -1;
+
+   return processor % size();
+}*/
+
 
 /*int ReadCFX::rankForBlock(int block) const {
 
@@ -121,153 +173,178 @@ ReadCFX::~ReadCFX() {
 }*/
 
 
-
-bool ReadCFX::parameterChanged(const Parameter *p)
+int checkFile(const char *filename)
 {
-    std::string c = getStringParameter("filename");
-    resultfileName = c.c_str();
+    const int MIN_FILE_SIZE = 1024; // minimal size for .res files [in Byte]
 
-    int checkValue = checkFile(resultfileName);
-    std::cerr << "checkValue = " << checkValue << std::endl;
+    const int MACIC_LEN = 5; // "magic" at the start
+    const char *magic = "*INFO";
+    char magicBuf[MACIC_LEN];
 
-    if (checkValue != 0)
-    {
-        if (checkValue > 0)
-            sendError("'%s':%s", resultfileName, strerror(checkValue));
-        else
-            switch (checkValue)
-            {
+    boost::uintmax_t fileSize;
+    boost::system::error_code ec;
 
-            case -1:
-                sendError("'%s': too small to be a real result file",
-                          resultfileName);
-                break;
-            case -2:
-                sendError("'%s':does not start with '*INFO'",
-                          resultfileName);
+    FILE *fi = fopen(filename, "r");
+
+    if (!fi) {
+        std::cout << filename << strerror(errno) << std::endl;
+        return -1;
+    }
+    else {
+        fileSize = bf::file_size(filename, ec);
+        if (ec)
+            std::cout << "error code: " << ec << std::endl;
+    }
+
+    if (fileSize < MIN_FILE_SIZE) {
+        std::cout << filename << "too small to be a real result file" << std::endl;
+        std::cout << fileSize << "filesize" << std::endl;
+        return -2;
+    }
+
+    size_t iret = fread(magicBuf, 1, MACIC_LEN, fi);
+    if (iret != MACIC_LEN) {
+        std::cout << "checkFile :: error reading MACIC_LEN " << std::endl;
+        return -3;
+    }
+
+    if (strncasecmp(magicBuf, magic, MACIC_LEN) != 0) {
+        std::cout << filename << "does not start with '*INFO'" << std::endl;
+        return -4;
+    }
+
+    fclose(fi);
+
+    return 0;
+}
+
+bool ReadCFX::parameterChanged(const Parameter *p) {
+    auto sp = dynamic_cast<const StringParameter *>(p);
+    if (sp == m_resultfiledir) {
+        std::string c = sp->getValue();
+        const char *resultfiledir;
+        resultfiledir = c.c_str();
+
+        int checkvalue = checkFile(resultfiledir);
+        if (checkvalue) {
+            std::cerr << "Checkvalue = " << checkvalue << std::endl;
+           std::cerr << resultfiledir << " is not a valid CFX .res file" << std::endl;
+           return false;
+        }
+        else {
+            static char *resultName = NULL;
+            std::cerr << "resultfiledir = " << resultfiledir << std::endl;
+            std::cerr << "resultName = " << resultName << std::endl;
+
+            if (resultName == NULL || strcmp(resultName, resultfiledir) != 0) {
+                resultName = new char[strlen(resultfiledir) + 1];
+                strcpy(resultName, resultfiledir);
+
+                sendInfo("Please wait...");
+
+                if (nzones > 0)
+                    cfxExportDone();
+
+                nzones = cfxExportInit(resultName, NULL);
+                /*nzones = cfxExportInit(resultName, counts);
+
+                for(i=0;i<cfxCNT_SIZE;i++) {
+                    std::cerr << "counts[" << i << "] = " << counts[i] << std::endl;
+                }*/
+
+                /*std::cerr << "nzones: " << nzones << std::endl;
+                std::cerr << "cfxCNT_SIZE: " << cfxCNT_SIZE << std::endl;
+
+                for(i=0;i<nzones;i++) {
+                    std::cerr << "cfxExportZoneSet(): " << cfxExportZoneSet(i,NULL) << std::endl;
+                    std::cerr << "cfxExportZoneGet(): " << cfxExportZoneGet() << std::endl;
+                    std::cerr << "cfxExportTimestepCount(): " << cfxExportTimestepCount() << std::endl;
+                    std::cerr << "cfxExportTimestepNumGet(1): " << cfxExportTimestepNumGet(1) << std::endl;
+                    std::cerr << "cfxExportTimestepTimeGet(1): " << cfxExportTimestepTimeGet(1) << std::endl;
+                    std::cerr << "cfxExportNodeCount(): " << cfxExportNodeCount() << std::endl;
+                    std::cerr << "cfxExportElementCount(): " << cfxExportElementCount() << std::endl;
+                    std::cerr << "cfxExportZoneGet(): " << cfxExportZoneGet() << std::endl;
+                    std::cerr << "cfxExportZoneCount(): " << cfxExportZoneCount() << std::endl;
+                    std::cerr << "cfxExportRegionCount(): " << cfxExportRegionCount() << std::endl;
+                    std::cerr << "cfxExportVolumeCount(): " << cfxExportVolumeCount() << std::endl;
+                    std::cerr << "cfxExportBoundaryCount(): " << cfxExportBoundaryCount() << std::endl << std::endl;
+                }*/
+
+
+
+
+                timeStepNum = cfxExportTimestepNumGet(1);
+                if (timeStepNum < 0) {
+                    sendInfo("no timesteps");
+                }
+
+                iteration = cfxExportTimestepNumGet(1);
+                if (cfxExportTimestepSet(iteration) < 0)
+                {
+                    sendInfo("Invalid timestep %d", iteration);
+                }
+
+                sendInfo("Found %d zones", nzones);
+
+                // @@@ cfxExportDone();
+                sendInfo("The initialisation was successfully done");
+
             }
-    }
 
-    static char *resultName = NULL;
-    if (resultName == NULL || strcmp(resultName, resultfileName) != 0) {
-        resultName = new char[strlen(resultfileName) + 1];
-        strcpy(resultName, resultfileName);
-
-        sendInfo("Please wait...");
-
-        if (nzones > 0)
-            cfxExportDone();
-
-        //nzones = cfxExportInit(resultName, NULL);
-        nzones = cfxExportInit(resultName, counts);
-
-        for(i=0;i<cfxCNT_SIZE;i++) {
-            std::cerr << "counts[" << i << "] = " << counts[i] << std::endl;
-        }
-
-        std::cerr << "nzones: " << nzones << std::endl;
-        std::cerr << "cfxCNT_SIZE: " << cfxCNT_SIZE << std::endl;
-
-        for(i=0;i<nzones;i++) {
-            std::cerr << "cfxExportZoneSet(): " << cfxExportZoneSet(i,NULL) << std::endl;
-            std::cerr << "cfxExportZoneGet(): " << cfxExportZoneGet() << std::endl;
-            std::cerr << "cfxExportTimestepCount(): " << cfxExportTimestepCount() << std::endl;
-            std::cerr << "cfxExportTimestepNumGet(1): " << cfxExportTimestepNumGet(1) << std::endl;
-            std::cerr << "cfxExportTimestepTimeGet(1): " << cfxExportTimestepTimeGet(1) << std::endl;
-            std::cerr << "cfxExportNodeCount(): " << cfxExportNodeCount() << std::endl;
-            std::cerr << "cfxExportElementCount(): " << cfxExportElementCount() << std::endl;
-            std::cerr << "cfxExportZoneGet(): " << cfxExportZoneGet() << std::endl;
-            std::cerr << "cfxExportZoneCount(): " << cfxExportZoneCount() << std::endl;
-            std::cerr << "cfxExportRegionCount(): " << cfxExportRegionCount() << std::endl;
-            std::cerr << "cfxExportVolumeCount(): " << cfxExportVolumeCount() << std::endl;
-            std::cerr << "cfxExportBoundaryCount(): " << cfxExportBoundaryCount() << std::endl << std::endl;
-        }
-
-
-
-
-        timeStepNum = cfxExportTimestepNumGet(1);
-        if (timeStepNum < 0) {
-            sendInfo("no timesteps");
-        }
-
-        iteration = cfxExportTimestepNumGet(1);
-        if (cfxExportTimestepSet(iteration) < 0)
-        {
-            sendInfo("Invalid timestep %d", iteration);
-        }
-
-        sendInfo("Found %d zones", nzones);
-
-        // @@@ cfxExportDone();
-        sendInfo("The initialisation was successfully done");
-
-    }
-
-
-
- /* COVISE Initialisierung
-
-        if (!in_map_loading)
-        {
-
-            p_zone->updateValue(nzones + 1, ZoneChoiceVal, p_zone->getValue());
-
-            p_scalar->updateValue(nscalars + 1, ScalChoiceVal, p_scalar->getValue());
-            p_vector->updateValue(nvectors + 1, VectChoiceVal, p_vector->getValue());
-
-            p_boundScalar->updateValue(nscalars + 1, ScalChoiceVal, p_boundScalar->getValue());
-            p_boundVector->updateValue(nvectors + 1, VectChoiceVal, p_boundVector->getValue());
-
-            p_particleScalar->updateValue(npscalars + 1, pScalChoiceVal, p_particleScalar->getValue());
-            p_particleVector->updateValue(npvectors + 1, pVectChoiceVal, p_particleVector->getValue());
+            //fill choice parameters
+            /*std::vector<std::string> choices = getFieldList();
+            for (auto out: m_fieldOut) {
+               setParameterChoices(out, choices);
+            }
+            for (auto out: m_boundaryOut) {
+               setParameterChoices(out, choices);
+            }*/ //auf CFX anpassen
         }
     }
-    else
-    {
-        resultName = new char[strlen(resultfileName) + 1];
-        strcpy(resultName, resultfileName);
-    }
-}
-else if (strcmp(p_zone->getName(), paramName) == 0 && !in_map_loading)
-{
-    if (nzones > 0)
-    {
-        p_zone->updateValue(nzones + 1, ZoneChoiceVal, p_zone->getValue());
-        get_choice_fields(p_zone->getValue());
-        p_scalar->updateValue(nscalars + 1, ScalChoiceVal, p_scalar->getValue());
-        p_vector->updateValue(nvectors + 1, VectChoiceVal, p_vector->getValue());
-        p_boundScalar->updateValue(nscalars + 1, ScalChoiceVal, p_boundScalar->getValue());
-        p_boundVector->updateValue(nvectors + 1, VectChoiceVal, p_boundVector->getValue());
-        p_particleScalar->updateValue(npscalars + 1, pScalChoiceVal, p_particleScalar->getValue());
-        p_particleVector->updateValue(npvectors + 1, pVectChoiceVal, p_particleVector->getValue());
-    }
-}
-else if (strcmp(p_particleType->getName(), paramName) == 0 && !in_map_loading)
-{
-    setParticleVarChoice(p_particleType->getValue());
-}
-else if (strcmp(p_timesteps->getName(), paramName) == 0)
-{
-    if (nzones > 0)
-    {
-        p_zone->updateValue(nzones + 1, ZoneChoiceVal, p_zone->getValue());
-        //get_choice_fields(p_zone->getValue());
-        p_scalar->updateValue(nscalars + 1, ScalChoiceVal, p_scalar->getValue());
-        p_vector->updateValue(nvectors + 1, VectChoiceVal, p_vector->getValue());
-        p_boundScalar->updateValue(nscalars + 1, ScalChoiceVal, p_boundScalar->getValue());
-        p_boundVector->updateValue(nvectors + 1, VectChoiceVal, p_boundVector->getValue());
-        p_particleScalar->updateValue(npscalars + 1, pScalChoiceVal, p_particleScalar->getValue());
-        p_particleVector->updateValue(npvectors + 1, pVectChoiceVal, p_particleVector->getValue());
-    }
-}
-*/
+
+
+
+
    return Module::parameterChanged(p);
 }
 
 bool ReadCFX::compute() {
 
     std::cerr << "Compute Start. \n";
+
+
+    //write nodes
+
+    nnodes = cfxExportNodeCount();
+    std::cerr << "nnodes = " << nnodes << std::endl;
+
+    nodes = cfxExportNodeList();
+
+    for(n=0;n<10;n++,nodes++) {
+
+        std::cerr << "x = " << nodes->x << " y = " << nodes->y << " z = " << nodes->z << std::endl;
+    }
+
+    cfxExportNodeFree();
+
+    //write elements
+    nelems = cfxExportElementCount();
+    std::cerr << "nelems = " << nelems << std::endl;
+
+    if (counts[cfxCNT_TET]) {
+           elems = cfxExportElementList();
+           for (n = 0; n < 1; n++, elems++) {
+               if (cfxELEM_TET == elems->type) {
+                   for (i = 0; i < elems->type; i++)
+                       std::cerr << "elems = " << elems->nodeid[i] << std::endl;
+               }
+           }
+       }
+
+
+
+    cfxExportElementFree();
+
 
 
  /*  m_firstBlock = getIntParameter("first_block");
