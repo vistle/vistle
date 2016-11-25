@@ -1471,7 +1471,7 @@ VncClient::preFrame()
        }
 #endif
 
-   const bool broadcastTiles = false;
+   const bool broadcastTiles = true;
    const int numSlaves = coVRMSController::instance()->getNumSlaves();
    if (coVRMSController::instance()->isMaster()) {
        std::vector<int> stiles(numSlaves);
@@ -1513,11 +1513,12 @@ VncClient::preFrame()
        }
        if (broadcastTiles) {
            //std::cerr << "broadcasting " << ntiles << " tiles" << std::endl;
-           coVRMSController::instance()->sendSlaves(&ntiles, sizeof(ntiles));
+           coVRMSController::instance()->syncData(&ntiles, sizeof(ntiles));
            for (int i=0; i<ntiles; ++i) {
-               coVRMSController::instance()->sendSlaves(md[i], ms[i]);
+               assert(ms[i] == sizeof(tileMsg));
+               coVRMSController::instance()->syncData(md[i], ms[i]);
                if (ps[i] > 0) {
-                   coVRMSController::instance()->sendSlaves(pd[i], ps[i]);
+                   coVRMSController::instance()->syncData(pd[i], ps[i]);
                }
            }
        } else {
@@ -1542,17 +1543,31 @@ VncClient::preFrame()
            m_lastTileAt -= ntiles;
        //assert(m_receivedTiles.empty());
    } else {
-       coVRMSController::instance()->readMaster(&ntiles, sizeof(ntiles));
-       //std::cerr << "receiving " << ntiles << " tiles" << std::endl;
-       for (int i=0; i<ntiles; ++i) {
-           boost::shared_ptr<tileMsg> msg(new tileMsg);
-           coVRMSController::instance()->readMaster(msg.get(), sizeof(*msg));
-           boost::shared_ptr<char> payload;
-           if (msg->size > 0) {
-               payload.reset(new char[msg->size], array_deleter<char>());
-               coVRMSController::instance()->readMaster(payload.get(), msg->size);
-           }
-           handleTileMessage(msg, payload);
+       if (broadcastTiles) {
+          coVRMSController::instance()->syncData(&ntiles, sizeof(ntiles));
+          for (int i=0; i<ntiles; ++i) {
+             boost::shared_ptr<tileMsg> msg(new tileMsg);
+             coVRMSController::instance()->syncData(msg.get(), sizeof(*msg));
+             boost::shared_ptr<char> payload;
+             if (msg->size > 0) {
+                payload.reset(new char[msg->size], array_deleter<char>());
+                coVRMSController::instance()->syncData(payload.get(), msg->size);
+             }
+             handleTileMessage(msg, payload);
+          }
+       } else {
+          coVRMSController::instance()->readMaster(&ntiles, sizeof(ntiles));
+          //std::cerr << "receiving " << ntiles << " tiles" << std::endl;
+          for (int i=0; i<ntiles; ++i) {
+             boost::shared_ptr<tileMsg> msg(new tileMsg);
+             coVRMSController::instance()->readMaster(msg.get(), sizeof(*msg));
+             boost::shared_ptr<char> payload;
+             if (msg->size > 0) {
+                payload.reset(new char[msg->size], array_deleter<char>());
+                coVRMSController::instance()->readMaster(payload.get(), msg->size);
+             }
+             handleTileMessage(msg, payload);
+          }
        }
    }
 
