@@ -92,7 +92,6 @@ public:
    static rfbBool rfbMatricesMessage(rfbClient *client, rfbServerToClientMsg *message);
    static rfbBool rfbLightsMessage(rfbClient *client, rfbServerToClientMsg *message);
    static rfbBool rfbBoundsMessage(rfbClient *client, rfbServerToClientMsg *message);
-   static rfbBool rfbDepthMessage(rfbClient *client, rfbServerToClientMsg *message);
    static rfbBool rfbTileMessage(rfbClient *client, rfbServerToClientMsg *message);
    static rfbBool rfbApplicationMessage(rfbClient *client, rfbServerToClientMsg *message);
    static void rfbUpdate(rfbClient *client, int x, int y, int w, int h);
