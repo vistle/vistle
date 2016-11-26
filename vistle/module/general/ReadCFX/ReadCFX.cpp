@@ -1,6 +1,5 @@
 #include <string>
-
-#include <boost/format.hpp>
+#include <sstream>
 
 #include <core/object.h>
 #include <core/vec.h>
@@ -20,6 +19,7 @@
 //#include <unistd.h>
 
 //#include <boost/filesystem.hpp>
+#include <boost/format.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/cstdint.hpp>
 
@@ -36,9 +36,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/", Parameter::Directory);
-    //addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res");
-    //addStringParameter("filename", "name of file (%1%: block, %2%: timestep)", "/home/jwinterstein/data/cfx/rohr/hlrs_002.res");
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/", Parameter::Directory);
 
     // time parameters
     m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
@@ -55,20 +54,20 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
 
     // data and data choice parameters
     for (int i=0; i<NumPorts; ++i) {
-        // data ports
-        std::stringstream s;
-        s << "data_out" << i;
-        m_volumeDataOut.push_back(createOutputPort(s.str()));
-
-        // data choice parameters
-        /*std::stringstream s;
-        s << "Data" << i;
-        auto p =  addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
-        std::vector<std::string> choices;
-        choices.push_back("(NONE)");
-        setParameterChoices(p, choices);
-        m_fieldOut.push_back(p);
-       */ //choices muss mit CFX Mitteln implementiert werden
+        {// data ports
+            std::stringstream s;
+            s << "data_out" << i;
+            m_volumeDataOut.push_back(createOutputPort(s.str()));
+        }
+        {// data choice parameters
+            std::stringstream s;
+            s << "Data" << i;
+            auto p =  addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
+            std::vector<std::string> choices;
+            choices.push_back("(NONE)");
+            setParameterChoices(p, choices);
+            m_fieldOut.push_back(p);
+        }
     }
     m_readBoundary = addIntParameter("read_boundary", "load the boundary?", 1, Parameter::Boolean);
     //m_boundaryPatchesAsVariants = addIntParameter("patches_as_variants", "create sub-objects with variant attribute for boundary patches", 1, Parameter::Boolean);
@@ -81,7 +80,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
           s << "data_2d_out" << i;
           m_boundaryDataOut.push_back(createOutputPort(s.str()));
        }
-       /*{// 2d data choice parameters
+       {// 2d data choice parameters
           std::stringstream s;
           s << "Data2d" << i;
           auto p =  addStringParameter(s.str(), "name of field", "(NONE)", Parameter::Choice);
@@ -89,12 +88,9 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
           choices.push_back("(NONE)");
           setParameterChoices(p, choices);
           m_boundaryOut.push_back(p);
-       }*/ //choiches mit CFX Mitteln
+       }
     }
-    //m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);
-
-    //Prüfen for(...) { {aktion1} {aktion2} }
-
+    //m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);ll
 
 
     //Output Ports

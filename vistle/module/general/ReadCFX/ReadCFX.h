@@ -32,6 +32,7 @@ class ReadCFX: public vistle::Module {
    vistle::FloatParameter *m_starttime, *m_stoptime;
    vistle::IntParameter *m_timeskip;
    vistle::IntParameter *m_readGrid, *m_readBoundary; // *m_boundaryPatchesAsVariants;
+   std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
 
    //Ports
    vistle::Port *m_gridOut;
