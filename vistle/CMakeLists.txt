@@ -55,8 +55,10 @@ endif(WIN32)
 
 #set(CMAKE_BUILD_TYPE Debug)
 
-set(PythonLibs_FIND_VERSION_MAJOR 2)
-set(PythonLibs_FIND_VERSION 2.7 2.6)
+if (NOT CMAKE_VERSION VERSION_LESS 3.6)
+   set(PythonLibs_FIND_VERSION_MAJOR 2)
+   set(PythonLibs_FIND_VERSION 2.7 2.6)
+endif()
 vistle_find_package(PythonLibs)
 
 set(ENABLE_INSTALLER TRUE)
