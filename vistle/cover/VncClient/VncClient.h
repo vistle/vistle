@@ -114,6 +114,7 @@ private:
    bool m_benchmark;
    double m_minDelay, m_maxDelay, m_accumDelay;
    double m_lastStat;
+   double m_avgDelay;
    size_t m_remoteFrames, m_localFrames;
    size_t m_depthBytes, m_rgbBytes, m_depthBpp, m_numPixels;
    size_t m_depthBytesS, m_rgbBytesS, m_depthBppS, m_numPixelsS;

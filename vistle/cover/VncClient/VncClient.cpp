@@ -534,6 +534,7 @@ void VncClient::finishFrame(const tileMsg &msg) {
       m_minDelay = delay;
    if (m_maxDelay < delay)
       m_maxDelay = delay;
+   m_avgDelay = 0.7*m_avgDelay + 0.3*delay;
 
    m_depthBytesS += m_depthBytes;
    m_rgbBytesS += m_rgbBytes;
@@ -1057,6 +1058,7 @@ bool VncClient::init()
    if (m_quality < 0) m_quality = 0;
    if (m_quality > 9) m_quality = 9;
    m_lastStat = cover->currentTime();
+   m_avgDelay = 0.;
    m_minDelay = DBL_MAX;
    m_maxDelay = 0.;
    m_accumDelay = 0.;
@@ -1468,7 +1470,7 @@ VncClient::preFrame()
                lastUpdate = cover->frameTime();
            }
 
-           if ((m_haveMessage || cover->frameTime()-lastMatrices>0.03) && m_client && rfbClientGetClientData(m_client, (void *)rfbMatricesMessage)) {
+           if ((m_lastTileAt >= 0 || cover->frameTime()-lastMatrices>m_avgDelay*0.7) && m_client && rfbClientGetClientData(m_client, (void *)rfbMatricesMessage)) {
                sendLightsMessage(m_client);
                sendMatricesMessage(m_client, messages, m_matrixNum++);
                lastMatrices = cover->frameTime();
@@ -1839,6 +1841,8 @@ bool VncClient::connectClient() {
       m_client = NULL;
       return false;
    }
+
+   m_avgDelay = 0.;
 
    SendFramebufferUpdateRequest(m_client, 0, 0, m_client->width, m_client->height, FALSE);
    std::cerr << "RFB client: compress=" << m_client->appData.compressLevel << ", quality=" << m_client->appData.qualityLevel << std::endl;
