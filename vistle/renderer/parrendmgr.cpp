@@ -81,8 +81,6 @@ bool ParallelRemoteRenderManager::handleParam(const Parameter *p) {
 
 bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
 
-   m_module->comm().barrier();
-
    m_state.numTimesteps = numTimesteps;
    m_state.numTimesteps = mpi::all_reduce(m_module->comm(), m_state.numTimesteps, mpi::maximum<unsigned>());
 
