@@ -542,8 +542,9 @@ void VncClient::finishFrame(const tileMsg &msg) {
    m_numPixelsS = m_numPixels;
 
    //std::cerr << "finishFrame: t=" << msg.timestep << ", req=" << m_requestedTimestep << std::endl;
-   if (m_remoteTimestep == m_requestedTimestep) {
-      m_timestepToCommit = m_remoteTimestep;
+   m_remoteTimestep = msg.timestep;
+   if (m_requestedTimestep>=0 && msg.timestep == m_requestedTimestep) {
+      m_timestepToCommit = msg.timestep;
       m_requestedTimestep = -1;
       m_frameReady = false;
    } else {
@@ -584,7 +585,7 @@ void VncClient::swapFrame() {
    assert(m_frameReady = true);
    m_frameReady = false;
 
-   m_visibleTimestep = m_remoteTimestep;
+   assert(m_visibleTimestep == m_remoteTimestep);
    m_remoteTimestep = -1;
 
    //std::cerr << "frame: timestep=" << m_visibleTimestep << std::endl;
@@ -613,7 +614,6 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
       m_numPixels += msg.width*msg.height;
    }
 
-   m_remoteTimestep = msg.timestep;
    osg::Matrix model, view, proj;
    for (int i=0; i<16; ++i) {
       view.ptr()[i] = msg.view[i];
@@ -1735,7 +1735,8 @@ void VncClient::setTimestep(int t) {
 
    //std::cerr << "setTimestep(" << t << ")" << std::endl;
    m_frameReady = true;
-   checkSwapFrame();
+   m_visibleTimestep = t;
+   //checkSwapFrame();
 }
 
 void VncClient::requestTimestep(int t) {
@@ -1744,9 +1745,15 @@ void VncClient::requestTimestep(int t) {
    if (t < 0)
       t = 0;
 
-   if (m_remoteTimestep==t || (m_remoteTimestep==-1 && m_visibleTimestep==t)) {
+   if (m_remoteTimestep == t) {
       //std::cerr << "VncClient::commitTimestep(" << t << ") A" << std::endl;
+      m_requestedTimestep = -1;
       commitTimestep(t);
+#if 0
+   } else if (m_visibleTimestep==t && m_remoteTimestep==-1) {
+      m_requestedTimestep = -1;
+      commitTimestep(t);
+#endif
    } else if (t != m_requestedTimestep) {
        if (coVRMSController::instance()->isMaster()) {
            appAnimationTimestep msg;
