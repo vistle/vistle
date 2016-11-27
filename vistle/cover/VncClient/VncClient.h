@@ -100,7 +100,7 @@ public:
    void sendFeedback(const char *info, const char *key, const char *data=NULL);
    int handleRfbMessages();
 
-   bool m_runClient;
+   bool m_runClient, m_clientRunning;
    boost::recursive_mutex *m_clientMutex;
 private:
    //! make plugin available to static member functions

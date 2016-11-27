@@ -112,11 +112,16 @@ struct VncPoller {
 
     void operator()() {
         for (;;) {
-            plugin->handleRfbMessages();
-            lock_guard locker(*plugin->m_clientMutex);
-            if (!plugin->m_runClient)
+            if (plugin->handleRfbMessages() < 0) {
                 break;
+            }
+            lock_guard locker(*plugin->m_clientMutex);
+            if (!plugin->m_runClient) {
+                break;
+            }
         }
+        lock_guard locker(*plugin->m_clientMutex);
+        plugin->m_clientRunning = false;
     }
 };
 
@@ -1322,10 +1327,11 @@ void VncClient::muiEvent(mui::Element *item) {
       applyMode();
    }
    if (item == m_connectCheck) {
-      if (m_client)
+      if (m_client) {
          clientCleanup(m_client);
-      else
+      }  else {
          connectClient();
+      }
       m_connectCheck->setState(m_haveConnection);
    }
    if (item == m_inhibitModelUpdate) {
@@ -1356,6 +1362,16 @@ VncClient::preFrame()
          lastConnectionTry = cover->frameTime();
          connectClient();
       }
+   }
+
+   if (m_client && !m_listen) {
+       bool running = false;
+       {
+           lock_guard locker(*plugin->m_clientMutex);
+           running = m_clientRunning;
+       }
+       if (!running)
+           clientCleanup(m_client);
    }
 
    bool connected = coVRMSController::instance()->syncBool(m_client && !m_listen);
@@ -1736,20 +1752,13 @@ int VncClient::handleRfbMessages()
       return -1;
 
    const int n = WaitForMessage(m_client, 1000000);
-   if (n<0) {
-      clientCleanup(m_client);
+   if (n<=0) {
       return n;
    }
-   if (n==0) {
-      return n;
-   }
-
 
    //std::cerr << n << " messages in queue" << std::endl;
    if(!HandleRFBServerMessage(m_client)) {
-      if (n > 0)
-         clientCleanup(m_client);
-      return n;
+      return -1;
    }
 
    lock_guard locker(*m_clientMutex);
@@ -1821,6 +1830,7 @@ bool VncClient::connectClient() {
    SendFramebufferUpdateRequest(m_client, 0, 0, m_client->width, m_client->height, FALSE);
    std::cerr << "RFB client: compress=" << m_client->appData.compressLevel << ", quality=" << m_client->appData.qualityLevel << std::endl;
 
+   m_clientRunning = true;
    m_runClient = true;
    m_clientThread = new boost::thread(VncPoller(this));
 
@@ -1832,12 +1842,20 @@ void VncClient::clientCleanup(rfbClient *cl) {
 
    if (!cl)
       return;
+   assert(cl == m_client);
 
-   {
-       lock_guard locker(*m_clientMutex);
-       m_runClient = false;
+   for (;;) {
+       {
+           lock_guard locker(*m_clientMutex);
+           if (!m_clientRunning)
+               break;
+           m_runClient = false;
+       }
+       usleep(10000);
    }
-   delete m_clientThread;
+
+   lock_guard locker(*m_clientMutex);
+   assert(!m_clientRunning);
 
    std::cerr << "disconnected from server" << std::endl;
 
@@ -1852,6 +1870,9 @@ void VncClient::clientCleanup(rfbClient *cl) {
    if (m_client == cl) {
       m_client = NULL;
    }
+
+   delete m_clientThread;
+   m_clientThread = nullptr;
 }
 
 //! forward interactor feedback to server
