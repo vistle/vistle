@@ -162,6 +162,8 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
 
 RayCaster::~RayCaster() {
 
+   removeAllObjects();
+
    vassert(s_instance == this);
    s_instance = nullptr;
    rtcDeleteScene(m_scene);
