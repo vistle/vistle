@@ -202,6 +202,7 @@ void VncClient::sendMatricesMessage(rfbClient *client, std::vector<matricesMsg> 
    if (!client)
       return;
 
+   lock_guard locker(*plugin->m_clientMutex);
    messages.back().last = 1;
    //std::cerr << "requesting " << messages.size() << " views" << std::endl;
    for (size_t i=0; i<messages.size(); ++i) {
@@ -291,6 +292,7 @@ void VncClient::sendLightsMessage(rfbClient *client) {
 #undef COPY_VEC
    }
 
+   lock_guard locker(*plugin->m_clientMutex);
    if (!WriteToRFBServer(client, (char *)&msg, sizeof(msg))) {
       rfbClientLog("sendLightsMessage: write error(%d: %s)", errno, strerror(errno));
    }
@@ -334,7 +336,6 @@ rfbBool VncClient::rfbBoundsMessage(rfbClient *client, rfbServerToClientMsg *mes
    if (message->type != rfbBounds)
       return FALSE;
 
-   lock_guard locker(*plugin->m_clientMutex);
    boundsMsg msg;
    if (!ReadFromRFBServer(client, ((char*)&msg)+1, sizeof(msg)-1))
       return TRUE;
@@ -788,7 +789,6 @@ rfbBool VncClient::rfbApplicationMessage(rfbClient *client, rfbServerToClientMsg
    if (message->type != rfbApplication)
       return FALSE;
 
-   lock_guard locker(*plugin->m_clientMutex);
    if (!rfbClientGetClientData(client, (void *)rfbApplicationMessage)) {
       rfbClientSetClientData(client, (void *)rfbApplicationMessage, (void *)1);
       std::cerr << "rfbApplication enabled" << std::endl;
@@ -799,6 +799,7 @@ rfbBool VncClient::rfbApplicationMessage(rfbClient *client, rfbServerToClientMsg
       msg.sendreply = 0;
       msg.version = 0;
       msg.size = 0;
+      lock_guard locker(*plugin->m_clientMutex);
       WriteToRFBServer(client, (char *)&msg, sizeof(msg));
    }
 
@@ -814,6 +815,7 @@ rfbBool VncClient::rfbApplicationMessage(rfbClient *client, rfbServerToClientMsg
    switch(msg.appType) {
       case rfbAddObject:
       {
+         // COVISE only
          appAddObject app;
          memcpy(&app, &buf[0], sizeof(app));
          size_t idx = sizeof(app);
@@ -900,6 +902,7 @@ rfbBool VncClient::rfbApplicationMessage(rfbClient *client, rfbServerToClientMsg
 
       case rfbRemoveObject:
       {
+         // COVISE only
          appRemoveObject app;
          memcpy(&app, &buf[0], sizeof(app));
          size_t idx = sizeof(app);
@@ -937,6 +940,7 @@ rfbBool VncClient::rfbApplicationMessage(rfbClient *client, rfbServerToClientMsg
       break;
 
       case rfbAnimationTimestep: {
+         lock_guard locker(*plugin->m_clientMutex);
          appAnimationTimestep app;
          memcpy(&app, &buf[0], sizeof(app));
          plugin->m_numRemoteTimesteps = app.total;
