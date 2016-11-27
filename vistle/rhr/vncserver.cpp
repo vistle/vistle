@@ -884,7 +884,7 @@ void VncServer::pointerEvent(int buttonmask, int ex, int ey, rfbClientPtr cl)
 void
 VncServer::preFrame()
 {
-   const int wait_msec=1;
+   const int wait_msec=0;
 
    if (m_delay) {
       usleep(m_delay);
