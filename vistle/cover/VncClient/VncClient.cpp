@@ -1202,6 +1202,10 @@ VncClient::~VncClient()
 {
    cover->getScene()->removeChild(m_drawer);
 
+   coVRAnimationManager::instance()->removeTimestepProvider(this);
+   if (m_requestedTimestep != -1)
+       commitTimestep(m_requestedTimestep);
+
 #ifdef VRUI
    delete m_menu;
    delete m_menuItem;
@@ -1387,6 +1391,10 @@ VncClient::preFrame()
           lock_guard locker(*plugin->m_clientMutex);
           m_numRemoteTimesteps = -1;
           coVRAnimationManager::instance()->removeTimestepProvider(this);
+          if (m_requestedTimestep != -1) {
+              commitTimestep(m_requestedTimestep);
+              m_requestedTimestep = -1;
+          }
        }
    }
 
