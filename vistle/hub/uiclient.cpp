@@ -34,7 +34,6 @@ bool UiClient::done() const {
    return m_done;
 }
 
-
 void UiClient::cancel() {
 
    m_done = true;

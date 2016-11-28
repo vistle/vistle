@@ -257,7 +257,9 @@ bool Hub::dispatch() {
          m_processMap.erase(it);
          if (id == 0) {
             // manager died
+            m_dataProxy.reset();
             if (!m_quitting) {
+               m_uiManager.requestQuit();
                CERR << "manager died - cannot continue" << std::endl;
                for (auto ent: m_processMap) {
                   vistle::kill_process(ent.first);
@@ -285,10 +287,10 @@ bool Hub::dispatch() {
          ret = false;
       } else {
 #if 0
-         CERR << "still " << m_processMap.size() << " processes running" << std::endl;
-         for (const auto &proc: m_processMap) {
-            std::cerr << "   id: " << proc.second << ", pid: " << proc.first << std::endl;
-         }
+          CERR << "still " << m_processMap.size() << " processes running" << std::endl;
+          for (const auto &proc: m_processMap) {
+              std::cerr << "   id: " << proc.second << ", pid: " << proc.first << std::endl;
+          }
 #endif
       }
    }

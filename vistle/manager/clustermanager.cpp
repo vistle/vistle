@@ -1637,7 +1637,7 @@ int ClusterManager::numRunning() const {
    int n = 0;
    for (auto &m: runningMap) {
       int state = m_stateTracker.getModuleState(m.first);
-      if ((state & StateObserver::Initialized) && !(state & StateObserver::Killed) && !(state & StateObserver::Quit))
+      if ((state & StateObserver::Initialized) && /* !(state & StateObserver::Killed) && */ !(state & StateObserver::Quit))
          ++n;
    }
    return n;

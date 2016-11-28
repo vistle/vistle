@@ -207,6 +207,7 @@ bool Renderer::dispatch() {
    int doQuit = 0;
    MPI_Allreduce(&quit, &doQuit, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
    if (doQuit) {
+      prepareQuit();
       vistle::message::ModuleExit m;
       sendMessageQueue->send(m);
    } else {

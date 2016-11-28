@@ -240,6 +240,29 @@ Module::Module(const std::string &desc, const std::string &shmname,
 }
 
 void Module::prepareQuit() {
+
+#ifdef DEBUG
+    CERR << "I'm quitting" << std::endl;
+#endif
+
+    if (!m_readyForQuit) {
+        std::vector<vistle::Parameter *> toRemove;
+        for (auto &param: parameters) {
+            toRemove.push_back(param.second.get());
+        }
+        for (auto &param: toRemove) {
+            removeParameter(param);
+        }
+
+        vistle::message::ModuleExit m;
+        m.setDestId(Id::ForBroadcast);
+        sendMessage(m);
+
+        m_cache.clear();
+        m_cache.clearOld();
+        Shm::the().detach();
+    }
+
     m_readyForQuit = true;
 }
 
@@ -1614,26 +1637,6 @@ std::string Module::getModuleName(int id) const {
 }
 
 Module::~Module() {
-
-#ifdef DEBUG
-   CERR << "I'm quitting" << std::endl;
-#endif
-
-   std::vector<vistle::Parameter *> toRemove;
-   for (auto &param: parameters) {
-       toRemove.push_back(param.second.get());
-   }
-   for (auto &param: toRemove) {
-       removeParameter(param);
-   }
-
-   vistle::message::ModuleExit m;
-   m.setDestId(Id::ForBroadcast);
-   sendMessage(m);
-
-   m_cache.clear();
-   m_cache.clearOld();
-   Shm::the().detach();
 
    if (m_origStreambuf)
       std::cerr.rdbuf(m_origStreambuf);

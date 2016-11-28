@@ -250,7 +250,7 @@ bool Communicator::dispatch(bool *work) {
       } else if (gotMsg) {
          received = true;
          if(!broadcastAndHandleMessage(buf)) {
-            CERR << "Quit reason: broadcast & handle 2" << std::endl;
+            CERR << "Quit reason: broadcast & handle 2: " << buf << std::endl;
             done = true;
          }
       }
