@@ -157,11 +157,12 @@ std::pair<Vector, Vector> UnstructuredGrid::cellBounds(Index elem) const {
 
    const Index *el = &this->el()[0];
    const Index *cl = &this->cl()[el[elem]];
+   const Index nvert = el[elem+1]-el[elem];
    const Scalar *x[3] = { &this->x()[0], &this->y()[0], &this->z()[0] };
 
    const Scalar smax = std::numeric_limits<Scalar>::max();
    Vector min(smax, smax, smax), max(-smax, -smax, -smax);
-   for (Index i=el[elem]; i<el[elem+1]; ++i) {
+   for (Index i=0; i<nvert; ++i) {
        Index v=cl[i];
        for (int c=0; c<3; ++c) {
            min[c] = std::min(min[c], x[c][v]);
