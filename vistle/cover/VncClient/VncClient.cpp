@@ -1660,24 +1660,30 @@ VncClient::preFrame()
       m_rgbBytesS = 0;
    }
 
-   const osg::Matrix &transform = cover->getXformMat();
-   const osg::Matrix &scale = cover->getObjectsScale()->getMatrix();
-   int viewIdx = 0;
-   for (int i=0; i<coVRConfig::instance()->numChannels(); ++i) {
-      const channelStruct &chan = coVRConfig::instance()->channels[i];
-      const bool left = chan.stereoMode == osg::DisplaySettings::LEFT_EYE;
-      const osg::Matrix &view = left ? chan.leftView : chan.rightView;
-      const osg::Matrix &proj = left ? chan.leftProj : chan.rightProj;
-      const osg::Matrix model = scale * transform;
-      m_drawer->reproject(viewIdx, model, view, proj);
-      ++viewIdx;
+   if (cover->isHighQuality()) {
+       m_drawer->setMode(MultiChannelDrawer::AsIs);
+   } else {
+       if (m_drawer->mode() != m_mode)
+           m_drawer->setMode(m_mode);
+       const osg::Matrix &transform = cover->getXformMat();
+       const osg::Matrix &scale = cover->getObjectsScale()->getMatrix();
+       int viewIdx = 0;
+       for (int i=0; i<coVRConfig::instance()->numChannels(); ++i) {
+           const channelStruct &chan = coVRConfig::instance()->channels[i];
+           const bool left = chan.stereoMode == osg::DisplaySettings::LEFT_EYE;
+           const osg::Matrix &view = left ? chan.leftView : chan.rightView;
+           const osg::Matrix &proj = left ? chan.leftProj : chan.rightProj;
+           const osg::Matrix model = scale * transform;
+           m_drawer->reproject(viewIdx, model, view, proj);
+           ++viewIdx;
 
-      if (chan.stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
-         const osg::Matrix &view = chan.leftView;
-         const osg::Matrix &proj = chan.leftProj;
-         m_drawer->reproject(viewIdx, model, view, proj);
-         ++viewIdx;
-      }
+           if (chan.stereoMode == osg::DisplaySettings::QUAD_BUFFER) {
+               const osg::Matrix &view = chan.leftView;
+               const osg::Matrix &proj = chan.leftProj;
+               m_drawer->reproject(viewIdx, model, view, proj);
+               ++viewIdx;
+           }
+       }
    }
 }
 
