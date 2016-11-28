@@ -543,12 +543,19 @@ void VncClient::finishFrame(const tileMsg &msg) {
 
    //std::cerr << "finishFrame: t=" << msg.timestep << ", req=" << m_requestedTimestep << std::endl;
    m_remoteTimestep = msg.timestep;
-   if (m_requestedTimestep>=0 && msg.timestep == m_requestedTimestep) {
-      m_timestepToCommit = msg.timestep;
-      m_requestedTimestep = -1;
-      m_frameReady = false;
+   if (m_requestedTimestep>=0) {
+       if (msg.timestep == m_requestedTimestep) {
+           m_timestepToCommit = msg.timestep;
+           m_requestedTimestep = -1;
+           m_frameReady = false;
+       } else if (msg.timestep == m_visibleTimestep) {
+           m_frameReady = true;
+           //std::cerr << "finishFrame: t=" << msg.timestep << ", but req=" << m_requestedTimestep  << " - still showing" << std::endl;
+       } else {
+           std::cerr << "finishFrame: t=" << msg.timestep << ", but req=" << m_requestedTimestep << std::endl;
+       }
    } else {
-      m_frameReady = true;
+       m_frameReady = true;
    }
 }
 
@@ -585,7 +592,7 @@ void VncClient::swapFrame() {
    assert(m_frameReady = true);
    m_frameReady = false;
 
-   assert(m_visibleTimestep == m_remoteTimestep);
+   //assert(m_visibleTimestep == m_remoteTimestep);
    m_remoteTimestep = -1;
 
    //std::cerr << "frame: timestep=" << m_visibleTimestep << std::endl;
@@ -1746,7 +1753,7 @@ void VncClient::requestTimestep(int t) {
       t = 0;
 
    if (m_remoteTimestep == t) {
-      //std::cerr << "VncClient::commitTimestep(" << t << ") A" << std::endl;
+      //std::cerr << "VncClient::commitTimestep(" << t << ") immed" << std::endl;
       m_requestedTimestep = -1;
       commitTimestep(t);
 #if 0
