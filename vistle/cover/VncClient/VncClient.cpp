@@ -1690,6 +1690,11 @@ void VncClient::expandBoundingSphere(osg::BoundingSphere &bs) {
             double start = cover->currentTime();
             bd->updated = false;
             do {
+               {
+                  lock_guard locker(*m_clientMutex);
+                  if (!m_clientRunning)
+                      break;
+               }
                double elapsed = cover->currentTime() - start;
                if (elapsed > 2.) {
                   lock_guard locker(*m_clientMutex);
