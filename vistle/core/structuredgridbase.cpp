@@ -12,6 +12,9 @@ namespace vistle {
 // IS GHOST CELL CHECK
 //-------------------------------------------------------------------------
 bool StructuredGridBase::isGhostCell(Index elem) const {
+      if (elem == InvalidIndex)
+          return false;
+
       Index dims[3];
       std::array<Index,3> cellCoords;
 

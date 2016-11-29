@@ -93,7 +93,7 @@ class PointInclusionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
    PointInclusionFunctor(const Grid *grid, const Vector &point)
       : m_grid(grid)
       , m_point(point)
-      , cell(-1)
+      , cell(InvalidIndex)
    {
    }
 
