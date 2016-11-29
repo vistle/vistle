@@ -750,6 +750,7 @@ rfbBool VncServer::handleApplicationMessage(rfbClientPtr cl, void *data,
          appAnimationTimestep app;
          memcpy(&app, &buf[0], sizeof(app));
          plugin->m_imageParam.timestep = app.current;
+         std::cerr << "vnc: app timestep: " << app.current << std::endl;
       }
       break;
    }
