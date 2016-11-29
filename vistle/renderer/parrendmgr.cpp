@@ -301,6 +301,7 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, bool l
             memcpy(vnc->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
          }
 
+         m_viewData[i].vncParam.timestep = timestep();
          vnc->invalidate(i, 0, 0, vnc->width(i), vnc->height(i), m_viewData[i].vncParam, lastView);
       }
    }
