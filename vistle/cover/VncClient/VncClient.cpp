@@ -546,20 +546,16 @@ void VncClient::finishFrame(const tileMsg &msg) {
    if (m_requestedTimestep>=0) {
        if (msg.timestep == m_requestedTimestep) {
            m_timestepToCommit = msg.timestep;
-           m_requestedTimestep = -1;
-           m_frameReady = false;
        } else if (msg.timestep == m_visibleTimestep) {
-           m_frameReady = true;
            //std::cerr << "finishFrame: t=" << msg.timestep << ", but req=" << m_requestedTimestep  << " - still showing" << std::endl;
        } else {
            std::cerr << "finishFrame: t=" << msg.timestep << ", but req=" << m_requestedTimestep << std::endl;
        }
-   } else {
-       m_frameReady = true;
    }
+   m_frameReady = true;
 }
 
-void VncClient::checkSwapFrame() {
+bool VncClient::checkSwapFrame() {
 
 #if 0
    static int count = 0;
@@ -581,10 +577,7 @@ void VncClient::checkSwapFrame() {
    } else {
       coVRMSController::instance()->sendMaster(&m_frameReady, sizeof(m_frameReady));
    }
-   doSwap = coVRMSController::instance()->syncBool(doSwap);
-   if (doSwap) {
-      swapFrame();
-   }
+   return coVRMSController::instance()->syncBool(doSwap);
 }
 
 void VncClient::swapFrame() {
@@ -606,7 +599,7 @@ void VncClient::handleTileMeta(const tileMsg &msg) {
    bool first = msg.flags&rfbTileFirst;
    bool last = msg.flags&rfbTileLast;
    if (first || last) {
-      std::cout << "TILE: " << (first?"F":" ") << "." << (last?"L":" ") << "req: " << msg.requestNumber << ", view: " << msg.viewNum << ", frame: " << msg.frameNumber << ", dt: " << cover->frameTime() - msg.requestTime  << std::endl;
+      std::cout << "TILE: " << (first?"F":" ") << "." << (last?"L":" ") << "t=" << msg.timestep << "req: " << msg.requestNumber << ", view: " << msg.viewNum << ", frame: " << msg.frameNumber << ", dt: " << cover->frameTime() - msg.requestTime  << std::endl;
    }
 #endif
   if (msg.flags & rfbTileFirst) {
@@ -1618,14 +1611,16 @@ VncClient::preFrame()
    while (updateTileQueue())
       ++remoteSkipped;
 
-   coVRMSController::instance()->syncData(&m_timestepToCommit, sizeof(m_timestepToCommit));
-   if (m_timestepToCommit >= 0) {
-      //std::cerr << "VncClient::commitTimestep(" << m_remoteTimestep << ") B" << std::endl;
-      commitTimestep(m_timestepToCommit);
-      m_timestepToCommit = -1;
+   if (checkSwapFrame()) {
+       coVRMSController::instance()->syncData(&m_timestepToCommit, sizeof(m_timestepToCommit));
+       if (m_timestepToCommit >= 0) {
+           //std::cerr << "VncClient::commitTimestep(" << m_remoteTimestep << ") B" << std::endl;
+           commitTimestep(m_timestepToCommit);
+           m_timestepToCommit = -1;
+       } else {
+           swapFrame();
+       }
    }
-
-   checkSwapFrame();
 
    ++m_localFrames;
    double diff = cover->frameTime() - m_lastStat;
@@ -1741,16 +1736,22 @@ void VncClient::expandBoundingSphere(osg::BoundingSphere &bs) {
 void VncClient::setTimestep(int t) {
 
    //std::cerr << "setTimestep(" << t << ")" << std::endl;
-   m_frameReady = true;
+    if (m_requestedTimestep == t) {
+        m_requestedTimestep = -1;
+    }
+    if (m_requestedTimestep >= 0) {
+        std::cerr << "setTimestep(" << t << "), but requested was " << m_requestedTimestep << std::endl;
+    }
    m_visibleTimestep = t;
-   //checkSwapFrame();
+   if (checkSwapFrame())
+       swapFrame();
 }
 
 void VncClient::requestTimestep(int t) {
 
    //std::cerr << "m_requestedTimestep: " << m_requestedTimestep << " -> " << t << std::endl;
    if (t < 0)
-      t = 0;
+      return;
 
    if (m_remoteTimestep == t) {
       //std::cerr << "VncClient::commitTimestep(" << t << ") immed" << std::endl;

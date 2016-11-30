@@ -156,7 +156,7 @@ private:
    void handleTileMeta(const tileMsg &msg);
    void finishFrame(const tileMsg &msg);
    void swapFrame();
-   void checkSwapFrame();
+   bool checkSwapFrame();
    bool canEnqueue() const;
    void enqueueTask(DecodeTask *task);
    osg::ref_ptr<osg::Image> m_fbImg;
