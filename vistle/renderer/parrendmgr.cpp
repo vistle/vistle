@@ -251,13 +251,13 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
          localBoundMin[2], localBoundMax[2]);
 }
 
-void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img) {
+void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int timestep) {
 
    const bool lastView = size_t(m_currentView)==m_viewData.size()-1;
-   finishCurrentView(img, lastView);
+   finishCurrentView(img, timestep, lastView);
 }
 
-void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, bool lastView) {
+void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int timestep, bool lastView) {
 
    vassert(m_currentView >= 0);
    const size_t i = m_currentView;
@@ -301,7 +301,7 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, bool l
             memcpy(vnc->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
          }
 
-         m_viewData[i].vncParam.timestep = timestep();
+         m_viewData[i].vncParam.timestep = timestep;
          vnc->invalidate(i, 0, 0, vnc->width(i), vnc->height(i), m_viewData[i].vncParam, lastView);
       }
    }
@@ -309,7 +309,7 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, bool l
    m_frameComplete = lastView;
 }
 
-bool ParallelRemoteRenderManager::finishFrame() {
+bool ParallelRemoteRenderManager::finishFrame(int timestep) {
 
    vassert(m_currentView == -1);
 
@@ -323,6 +323,7 @@ bool ParallelRemoteRenderManager::finishFrame() {
    if (m_module->rank() == rootRank()) {
       auto vnc = m_vncControl.server();
       vassert(vnc);
+      m_viewData[0].vncParam.timestep = timestep;
       vnc->invalidate(-1, 0, 0, 0, 0, m_viewData[0].vncParam, true);
    }
    m_frameComplete = true;

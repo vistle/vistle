@@ -68,7 +68,7 @@ struct OsgViewData {
    ~OsgViewData();
    void createCamera();
    bool update(bool frameQueued);
-   bool composite(size_t maxQueuedFrames, bool wait=true);
+   bool composite(size_t maxQueuedFrames, int timestep, bool wait=true);
 
    OSGRenderer &viewer;
    size_t viewIdx;
@@ -129,6 +129,7 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    std::vector<osg::ref_ptr<osg::LightSource>> lights;
    OpenThreads::Mutex *icetMutex;
    size_t m_numViewsToComposite, m_numFramesToComposite;
+   std::deque<int> m_previousTimesteps;
    int m_asyncFrames;
    ThreadingModel m_requestedThreadingModel;
 };

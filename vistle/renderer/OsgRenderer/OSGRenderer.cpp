@@ -375,7 +375,7 @@ bool OsgViewData::update(bool frameQueued) {
    return false;
 }
 
-bool OsgViewData::composite(size_t maxQueuedFrames, bool wait) {
+bool OsgViewData::composite(size_t maxQueuedFrames, int timestep, bool wait) {
 
     size_t queued = 0;
     GLsync sync = 0;
@@ -422,7 +422,7 @@ bool OsgViewData::composite(size_t maxQueuedFrames, bool wait) {
     viewer.m_renderManager.getModelViewMat(viewIdx, view);
     viewer.m_renderManager.getProjMat(viewIdx, proj);
     IceTImage image = icetCompositeImage(mapColor[pbo], mapDepth[pbo], viewport, proj, view, bg);
-    viewer.m_renderManager.finishCurrentView(image, false);
+    viewer.m_renderManager.finishCurrentView(image, timestep, false);
 
     return true;
 }
@@ -631,14 +631,15 @@ bool OSGRenderer::composite(size_t maxQueued) {
        return false;
 
    for (size_t i=0; i<m_viewData.size(); ++i) {
-      const bool progress = m_viewData[i]->composite(maxQueued);
+      const bool progress = m_viewData[i]->composite(maxQueued, m_previousTimesteps.front());
       vassert(progress);
       --m_numViewsToComposite;
    }
 
    vassert(m_numViewsToComposite%m_viewData.size() == 0);
    --m_numFramesToComposite;
-   m_renderManager.finishFrame();
+   m_renderManager.finishFrame(m_previousTimesteps.front());
+   m_previousTimesteps.pop_front();
 
    return true;
 }
@@ -732,6 +733,7 @@ bool OSGRenderer::render() {
        frame();
        ++m_numFramesToComposite;
        m_numViewsToComposite += m_viewData.size();
+       m_previousTimesteps.push_back(t);
 
        if (m_asyncFrames == 0)
           composite(0);

@@ -333,7 +333,7 @@ void TileTask::render(int tile) const {
 bool RayCaster::render() {
 
     // ensure that previous frame is completed
-    bool immed_resched = m_renderManager.finishFrame();
+    bool immed_resched = m_renderManager.finishFrame(m_timestep);
 
     //vistle::StopWatch timer("render");
 
@@ -401,7 +401,7 @@ bool RayCaster::render() {
        IceTImage img = icetCompositeImage(rgba, depth, viewport, proj, mv, bg);
 #endif
 
-       m_renderManager.finishCurrentView(img, false);
+       m_renderManager.finishCurrentView(img, m_timestep, false);
     }
     m_currentView = -1;
 
