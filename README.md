@@ -76,6 +76,11 @@ Build Requirements
 - **Qt**:
   Qt 5 is required by the graphical user interface
 
+### macOS with [Homebrew](https://brew.sh)
+
+  Install most of Vistle's dependencies by invoking `brew bundle` within
+  Vistle's root source directory.
+
 
 Building Vistle
 ---------------
