@@ -42,6 +42,37 @@ ParallelRemoteRenderManager::~ParallelRemoteRenderManager() {
    icetDestroyMPICommunicator(m_icetComm);
 }
 
+bool ParallelRemoteRenderManager::checkIceTError(const char *msg) const {
+
+   const char *err = "No error.";
+   switch(icetGetError()) {
+      case ICET_INVALID_VALUE:
+         err = "An inappropriate value has been passed to a function.";
+         break;
+      case ICET_INVALID_OPERATION:
+         err = "An inappropriate function has been called.";
+         break;
+      case ICET_OUT_OF_MEMORY:
+         err = "IceT has ran out of memory for buffer space.";
+         break;
+      case ICET_BAD_CAST:
+         err = "A function has been passed a value of the wrong type.";
+         break;
+      case ICET_INVALID_ENUM:
+         err = "A function has been passed an invalid constant.";
+         break;
+      case ICET_SANITY_CHECK_FAIL:
+         err = "An internal error (or warning) has occurred.";
+         break;
+      case ICET_NO_ERROR:
+         return false;
+         break;
+   }
+
+   std::cerr << "IceT error at " << msg << ": " << err << std::endl;
+   return true;
+}
+
 
 void ParallelRemoteRenderManager::setModified() {
 
@@ -188,6 +219,8 @@ size_t ParallelRemoteRenderManager::numViews() const {
 
 void ParallelRemoteRenderManager::setCurrentView(size_t i) {
 
+   checkIceTError("setCurrentView");
+
    vassert(m_currentView == -1);
    auto vnc = m_vncControl.server();
 
@@ -198,6 +231,10 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
       auto &icet = m_icet.back();
       icet.ctx = icetCreateContext(m_icetComm);
       icet.ctxValid = true;
+#ifndef NDEBUG
+      // that's too much output
+      //icetDiagnostics(ICET_DIAG_ALL_NODES | ICET_DIAG_DEBUG);
+#endif
    }
    vassert(i < m_icet.size());
    auto &icet = m_icet[i];
@@ -237,13 +274,16 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
             icetAddTile(icetTiles[i].x, icetTiles[i].y, icetTiles[i].width, icetTiles[i].height, i);
       }
 
-      icetDisable(ICET_COMPOSITE_ONE_BUFFER); // include depth buffer in compositing result
-      icetStrategy(ICET_STRATEGY_REDUCE);
-      icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
       icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
       icetSetDepthFormat(ICET_IMAGE_DEPTH_FLOAT);
+      icetCompositeMode(ICET_COMPOSITE_MODE_Z_BUFFER);
+      //icetStrategy(ICET_STRATEGY_REDUCE);
+      icetStrategy(ICET_STRATEGY_SEQUENTIAL);
+      icetDisable(ICET_COMPOSITE_ONE_BUFFER); // include depth buffer in compositing result
 
       icetDrawCallback(m_drawCallback);
+
+      checkIceTError("after reset tiles");
    }
 
    icetBoundingBoxf(localBoundMin[0], localBoundMax[0],
@@ -258,6 +298,8 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int ti
 }
 
 void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int timestep, bool lastView) {
+
+   checkIceTError("before finishCurrentView");
 
    vassert(m_currentView >= 0);
    const size_t i = m_currentView;

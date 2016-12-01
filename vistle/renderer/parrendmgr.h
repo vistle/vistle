@@ -43,6 +43,7 @@ public:
    }
    void addObject(boost::shared_ptr<RenderObject> ro);
    void removeObject(boost::shared_ptr<RenderObject> ro);
+   bool checkIceTError(const char *msg) const;
 
    Renderer *m_module;
    IceTDrawCallback m_drawCallback;
