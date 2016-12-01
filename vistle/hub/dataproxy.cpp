@@ -67,9 +67,19 @@ asio::io_service &DataProxy::io() {
 void DataProxy::cleanUp() {
 
    if (io().stopped()) {
+      m_acceptor.cancel();
+      m_acceptor.close();
+
+      boost::system::error_code ec;
+      for (auto &s: m_remoteDataSocket)
+          s.second->shutdown(tcp_socket::shutdown_both, ec);
+      for (auto &s: m_localDataSocket)
+          s.second->shutdown(tcp_socket::shutdown_both, ec);
       for (auto &t: m_threads)
          t.join();
       m_threads.clear();
+      m_remoteDataSocket.clear();
+      m_localDataSocket.clear();
       io().reset();
    }
 }
