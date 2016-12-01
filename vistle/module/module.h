@@ -190,7 +190,7 @@ class V_MODULEEXPORT Module {
    int reducePolicy() const;
    void setReducePolicy(int reduceRequirement /*< really message::ReducePolicy::Reduce */);
 
-   void prepareQuit();
+   void virtual prepareQuit();
 
 protected:
 

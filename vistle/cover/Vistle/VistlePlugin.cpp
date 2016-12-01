@@ -110,6 +110,7 @@ class OsgRenderer: public vistle::Renderer {
    bool parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) override;
    bool parameterChanged(const int senderId, const std::string &name, const message::SetParameter &msg) override;
    bool parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg) override;
+   void prepareQuit() override;
 
    typedef std::map<int, VistleInteractor *> InteractorMap;
    InteractorMap m_interactorMap;
@@ -225,8 +226,7 @@ OsgRenderer::OsgRenderer(const std::string &shmname,
 
 OsgRenderer::~OsgRenderer() {
 
-   removeAllObjects();
-   cover->getObjectsRoot()->removeChild(vistleRoot);
+   prepareQuit();
 }
 
 bool OsgRenderer::parameterAdded(const int senderId, const std::string &name, const message::AddParameter &msg, const std::string &moduleName) {
@@ -289,6 +289,15 @@ bool OsgRenderer::parameterChanged(const int senderId, const std::string &name, 
    coVRPluginList::instance()->newInteractor(inter->getObject(), inter);
 
    return true;
+}
+
+void OsgRenderer::prepareQuit() {
+
+   removeAllObjects();
+   cover->getObjectsRoot()->removeChild(vistleRoot);
+   vistleRoot.release();
+
+   Renderer::prepareQuit();
 }
 
 void OsgRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> vro) {
@@ -474,6 +483,7 @@ class VistlePlugin: public opencover::coVRPlugin, public vrui::coMenuListener {
    VistlePlugin();
    ~VistlePlugin();
    bool init() override;
+   bool destroy() override;
    void menuEvent(vrui::coMenuItem *item) override;
    void preFrame() override;
    void requestQuit(bool killSession) override;
@@ -521,7 +531,9 @@ VistlePlugin::~VistlePlugin() {
 
    if (m_module) {
       MPI_Barrier(MPI_COMM_WORLD);
+      m_module->prepareQuit();
       delete m_module;
+      m_module = nullptr;
    }
 
    plugin = nullptr;
@@ -544,6 +556,18 @@ bool VistlePlugin::init() {
    return m_module;
 }
 
+bool VistlePlugin::destroy() {
+
+   if (m_module) {
+      MPI_Barrier(MPI_COMM_WORLD);
+      m_module->prepareQuit();
+      delete m_module;
+      m_module = nullptr;
+   }
+
+    return true;
+}
+
 void VistlePlugin::menuEvent(vrui::coMenuItem *item) {
 
    if (item == executeButton) {
@@ -562,6 +586,8 @@ void VistlePlugin::preFrame() {
 
 void VistlePlugin::requestQuit(bool killSession)
 {
+   MPI_Barrier(MPI_COMM_WORLD);
+   m_module->prepareQuit();
    delete m_module;
    m_module = nullptr;
 }

@@ -67,6 +67,7 @@ class RayCaster: public vistle::Renderer {
 
    RayCaster(const std::string &shmname, const std::string &name, int moduleId);
    ~RayCaster();
+   void prepareQuit() override;
 
    static RayCaster &the() {
 
@@ -162,12 +163,18 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
 
 RayCaster::~RayCaster() {
 
-   removeAllObjects();
-
    vassert(s_instance == this);
    s_instance = nullptr;
+}
+
+void RayCaster::prepareQuit() {
+
+   removeAllObjects();
+
    rtcDeleteScene(m_scene);
    rtcDeleteDevice(m_device);
+
+   Renderer::prepareQuit();
 }
 
 
