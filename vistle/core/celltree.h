@@ -105,8 +105,7 @@ class V_COREEXPORT Celltree: public Object {
    bool traverseNode(Index curNode, const Node *nodes, const Index *cells, Scalar *min, Scalar *max, InnerNodeFunctor &visitNode, ElementFunctor &visitElement) const {
 
       const Node &node = nodes[curNode];
-      if (node.dim == NumDimensions) {
-         // leaf node
+      if (node.isLeaf()) {
          for (Index i = node.start; i < node.start+node.size; ++i) {
             const Index cell = cells[i];
             if (!visitElement(cell))
