@@ -39,9 +39,9 @@ struct CelltreeNode<8, NumDimensions> {
       , child(children)
       {}
 
-   bool isLeaf() { return dim == NumDimensions; }
-   Index left() { return child; }
-   Index right() { return child+1; }
+   bool isLeaf() const { return dim == NumDimensions; }
+   Index left() const { return child; }
+   Index right() const { return child+1; }
 
  private:
    friend class boost::serialization::access;
@@ -77,9 +77,9 @@ struct CelltreeNode<4, NumDimensions> {
       , child(children)
       {}
 
-   bool isLeaf() { return dim == NumDimensions; }
-   Index left() { return child; }
-   Index right() { return child+1; }
+   bool isLeaf() const { return dim == NumDimensions; }
+   Index left() const { return child; }
+   Index right() const { return child+1; }
 
  private:
    friend class boost::serialization::access;
