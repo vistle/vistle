@@ -248,7 +248,10 @@ struct CellBoundsFunctor: public Indexed::Celltree::CellBoundsFunctor {
 
    bool operator()(Index elem, Vector *min, Vector *max) const {
 
-      return m_indexed->getElementBounds(elem, min, max);
+      auto b = m_indexed->elementBounds(elem);
+      *min = b.first;
+      *max = b.second;
+      return true;
    }
 
    const Indexed *m_indexed;
@@ -264,33 +267,22 @@ bool Indexed::validateCelltree() const {
    return ct->validateTree(boundFunc);
 }
 
-bool Indexed::getElementBounds(Index elem, Vector *min, Vector *max) const {
+std::pair<Vector, Vector> Indexed::elementBounds(Index elem) const {
+   const Index *el = &this->el()[0];
+   const Index *cl = &this->cl()[0];
+   const Index begin = el[elem], end = el[elem+1];
+   const Scalar *x[3] = { &this->x()[0], &this->y()[0], &this->z()[0] };
 
    const Scalar smax = std::numeric_limits<Scalar>::max();
-   *min = Vector(smax, smax, smax);
-   *max = Vector(-smax, -smax, -smax);
-   const auto cl = &this->cl()[0];
-   const auto el = &this->el()[0];
-   const Scalar *coords[3] = {
-      &x()[0],
-      &y()[0],
-      &z()[0],
-   };
-
-   const Index begin = el[elem], end = el[elem+1];
-   for (Index c=begin; c<end; ++c) {
-      const Index v = cl[c];
-      for (int d=0; d<3; ++d) {
-         if ((*min)[d] > coords[d][v]) {
-            (*min)[d] = coords[d][v];
-         }
-         if ((*max)[d] < coords[d][v]) {
-            (*max)[d] = coords[d][v];
-         }
-      }
+   Vector min(smax, smax, smax), max(-smax, -smax, -smax);
+   for (Index i=begin; i<end; ++i) {
+       Index v=cl[i];
+       for (int c=0; c<3; ++c) {
+           min[c] = std::min(min[c], x[c][v]);
+           max[c] = std::max(max[c], x[c][v]);
+       }
    }
-
-   return true;
+   return std::make_pair(min, max);
 }
 
 void Indexed::refreshImpl() const {

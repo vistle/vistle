@@ -53,7 +53,7 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
    };
    NeighborFinder getNeighborFinder() const;
 
-   bool getElementBounds(Index elem, Vector *min, Vector *max) const;
+   std::pair<Vector, Vector> elementBounds(Index elem) const;
 
  private:
    mutable const Index *m_el;
