@@ -10,7 +10,7 @@ class ShowCelltree: public vistle::Module {
    ~ShowCelltree();
 
  private:
-   vistle::IntParameter *m_maxDepth;
+   vistle::IntParameter *m_maxDepth, *m_showLeft, *m_showRight, *m_showBox;
    virtual bool compute();
 };
 
