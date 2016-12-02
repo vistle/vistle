@@ -127,13 +127,13 @@ bool Tracer::compute() {
 
     if (!data0)
        return true;
-    auto unstr = UnstructuredGrid::as(data0->grid());
-    auto strb = StructuredGridBase::as(data0->grid());
+    auto grid = data0->grid();
+    auto unstr = UnstructuredGrid::as(grid);
+    auto strb = StructuredGridBase::as(grid);
     if (!strb && !unstr) {
         sendError("grid attachment required at data_in0");
         return true;
     }
-    auto grid = data0->grid();
 
     int t = data0->getTimestep();
     if (grid->getTimestep() >= 0) {
