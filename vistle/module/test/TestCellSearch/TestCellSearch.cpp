@@ -30,16 +30,18 @@ bool TestCellSearch::compute() {
 
    const Vector point = m_point->getValue();
 
-   const GridInterface *grid = expectInterface<GridInterface>("data_in");
+   auto gridObj = expect<Object>("data_in");
+   if (!gridObj) {
+       sendInfo("Did not receive valid object");
+       return true;
+   }
+   auto grid = gridObj->getInterface<GridInterface>();
    if (!grid) {
        sendInfo("Unstructured or structured grid required");
        return true;
    }
-   auto gridObj = grid->object();
-   auto celltree = gridObj->getInterface<CelltreeInterface<3>>();
-
    if (m_createCelltree->getValue()) {
-       if (celltree) {
+       if (auto celltree = gridObj->getInterface<CelltreeInterface<3>>()) {
            if (!celltree->hasCelltree()) {
                celltree->getCelltree();
                if (!celltree->validateCelltree()) {

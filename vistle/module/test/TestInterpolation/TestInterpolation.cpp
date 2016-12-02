@@ -44,7 +44,13 @@ bool TestInterpolation::compute() {
    const Index count = getIntParameter("count");
    const GridInterface::InterpolationMode mode = (GridInterface::InterpolationMode)m_mode->getValue();
 
-   const GridInterface *grid = expectInterface<GridInterface>("data_in");
+   auto obj = expect<Object>("data_in");
+   if (!obj) {
+       sendError("no valid object");
+       return true;
+   }
+
+   const GridInterface *grid = obj->getInterface<GridInterface>();
    if (!grid) {
        sendError("structured or unstructured grid required");
        return true;

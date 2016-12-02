@@ -136,10 +136,6 @@ class V_MODULEEXPORT Module {
    typename Type::const_ptr expect(Port *port);
    template<class Type>
    typename Type::const_ptr expect(const std::string &port);
-   template<class Interface>
-   const Interface *expectInterface(Port *port);
-   template<class Interface>
-   const Interface *expectInterface(const std::string &port);
 
    //! request hub to forward incoming connections on forwardPort to be forwarded to localPort
    void requestPortMapping(unsigned short forwardPort, unsigned short localPort);
