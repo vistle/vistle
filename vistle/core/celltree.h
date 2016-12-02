@@ -115,6 +115,7 @@ class V_COREEXPORT Celltree: public Object {
       }
 
       const typename VisitFunctor::Order order = visitNode(node, min, max);
+      assert(!((order&VisitFunctor::RightFirst) && (order&VisitFunctor::RightSecond)));
       const Scalar smin = min[node.dim];
       const Scalar smax = max[node.dim];
       bool continueTraversal = true;

@@ -88,23 +88,36 @@ void Indexed::createCelltree(Index nelem, const Index *el, const Index *cl) cons
       for (Index c = start; c<end; ++c) {
          const Index v = cl[c];
          for (int d=0; d<3; ++d) {
+            min[i][d] = std::min(min[i][d], coords[d][v]);
+#if 0
             if (min[i][d] > coords[d][v]) {
                min[i][d] = coords[d][v];
                if (gmin[d] > min[i][d])
                   gmin[d] = min[i][d];
             }
+#endif
+            max[i][d] = std::max(max[i][d], coords[d][v]);
+#if 0
             if (max[i][d] < coords[d][v]) {
                max[i][d] = coords[d][v];
                if (gmax[d] < max[i][d])
                   gmax[d] = max[i][d];
             }
+#endif
          }
+      }
+      for (int d=0; d<3; ++d) {
+         gmin[d] = std::min(gmin[d], min[i][d]);
+         gmax[d] = std::max(gmax[d], max[i][d]);
       }
    }
 
    typename Celltree::ptr ct(new Celltree(nelem));
    ct->init(min.data(), max.data(), gmin, gmax);
    addAttachment("celltree", ct);
+   if (!validateCelltree()) {
+       std::cerr << "ERROR: Celltree validation failed." << std::endl;
+   }
 }
 
 
@@ -264,7 +277,11 @@ bool Indexed::validateCelltree() const {
 
    CellBoundsFunctor boundFunc(this);
    auto ct = getCelltree();
-   return ct->validateTree(boundFunc);
+   if (!ct->validateTree(boundFunc)) {
+       std::cerr << "Indexed: Celltree validation failed with " << getNumElements() << " elements total, bounds: " << getBounds().first << "-" << getBounds().second << std::endl;
+       return false;
+   }
+   return true;
 }
 
 std::pair<Vector, Vector> Indexed::elementBounds(Index elem) const {

@@ -121,7 +121,11 @@ bool StructuredGrid::validateCelltree() const {
 
    CellBoundsFunctor<Scalar,Index> boundFunc(this);
    auto ct = getCelltree();
-   return ct->validateTree(boundFunc);
+   if (!ct->validateTree(boundFunc)) {
+       std::cerr << "StructuredGrid: Celltree validation failed with " << getNumElements() << " elements total, bounds: " << getBounds().first << "-" << getBounds().second << std::endl;
+       return false;
+   }
+   return true;
 }
 
 // CREATE CELL TREE
