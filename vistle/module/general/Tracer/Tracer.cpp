@@ -283,6 +283,7 @@ bool Tracer::reduce(int timestep) {
            for(; i<numpoints; i++){
 
                particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max, true));
+               particle[i]->enableCelltree(useCelltree);
 
 #ifdef TIMING
                times::comm_start = times::start();
@@ -301,6 +302,7 @@ bool Tracer::reduce(int timestep) {
            for(; i<numparticles; i++){
 
                particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max, false));
+               particle[i]->enableCelltree(useCelltree);
 
 #ifdef TIMING
                times::comm_start = times::start();

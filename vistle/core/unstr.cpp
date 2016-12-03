@@ -158,9 +158,12 @@ std::pair<Vector, Vector> UnstructuredGrid::cellBounds(Index elem) const {
    return elementBounds(elem);
 }
 
-Index UnstructuredGrid::findCell(const Vector &point, bool acceptGhost) const {
+Index UnstructuredGrid::findCell(const Vector &point, int flags) const {
 
-   if (hasCelltree()) {
+   const bool acceptGhost = flags&AcceptGhost;
+   const bool useCelltree = (flags&ForceCelltree) || (hasCelltree() && !(flags&NoCelltree));
+
+   if (useCelltree) {
 
       vistle::PointVisitationFunctor<Scalar, Index> nodeFunc(point);
       vistle::PointInclusionFunctor<UnstructuredGrid, Scalar, Index> elemFunc(this, point);

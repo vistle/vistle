@@ -53,8 +53,10 @@ m_el(InvalidIndex),
 m_ingrid(true),
 m_searchBlock(true),
 m_integrator(h,hmin,hmax,errtol,int_mode,this, forward),
-m_stopReason(StillActive)
+m_stopReason(StillActive),
+m_useCelltree(true)
 {
+   m_integrator.enableCelltree(m_useCelltree);
    if (findCell(bl)) {
       m_integrator.hInit();
    }
@@ -64,6 +66,12 @@ Particle::~Particle(){}
 
 Particle::StopReason Particle::stopReason() const {
     return m_stopReason;
+}
+
+void Particle::enableCelltree(bool value) {
+
+    m_useCelltree = value;
+    m_integrator.enableCelltree(value);
 }
 
 bool Particle::isActive(){
@@ -108,7 +116,7 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
 #ifdef TIMING
         times::celloc_start = times::start();
 #endif
-        m_el = grid->findCell(m_x);
+        m_el = grid->findCell(m_x, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
 #ifdef TIMING
         times::celloc_dur += times::stop(times::celloc_start);
 #endif
@@ -133,7 +141,7 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
             times::celloc_start = times::start();
 #endif
             auto grid = block[i]->getGrid();
-            m_el = grid->findCell(m_x);
+            m_el = grid->findCell(m_x, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
 #ifdef TIMING
             times::celloc_dur += times::stop(times::celloc_start);
 #endif

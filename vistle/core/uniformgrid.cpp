@@ -110,7 +110,9 @@ std::pair<Vector, Vector> UniformGrid::cellBounds(Index elem) const {
 
 // FIND CELL
 //-------------------------------------------------------------------------
-Index UniformGrid::findCell(const Vector &point, bool acceptGhost) const {
+Index UniformGrid::findCell(const Vector &point, int flags) const {
+
+    const bool acceptGhost = flags&AcceptGhost;
 
     for (int c=0; c<3; ++c) {
         if (point[c] < m_min[c])

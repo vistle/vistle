@@ -13,8 +13,15 @@ namespace vistle {
 
 class V_COREEXPORT GridInterface: virtual public GeometryInterface {
  public:
+
+   enum FindCellFlags { NoFlags=0,
+                        AcceptGhost=1,
+                        ForceCelltree=2,
+                        NoCelltree=4,
+                      };
+
    virtual bool isGhostCell(Index elem) const = 0;
-   virtual Index findCell(const Vector &point, bool acceptGhost=false) const = 0;
+   virtual Index findCell(const Vector &point, int flags=NoFlags) const = 0;
    virtual bool inside(Index elem, const Vector &point) const = 0;
    virtual std::pair<Vector, Vector> cellBounds(Index elem) const = 0;
 

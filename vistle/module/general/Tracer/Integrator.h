@@ -22,6 +22,7 @@ private:
     Particle* m_ptcl;
     bool m_forward;
     const vistle::Scalar *m_v[3];
+    int m_cellSearchFlags;
 
 public:
 
@@ -35,6 +36,7 @@ public:
     vistle::Vector3 Interpolator(BlockData* bl, vistle::Index el, const vistle::Vector3 &point);
     void hInit();
     bool hNew(vistle::Vector3 higher, vistle::Vector3 lower);
+    void enableCelltree(bool value);
 };
 
 #endif

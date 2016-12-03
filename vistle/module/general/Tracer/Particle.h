@@ -45,6 +45,7 @@ public:
     bool leftNode();
     void UpdateBlock();
     StopReason stopReason() const;
+    void enableCelltree(bool value);
 
 private:
     vistle::Index m_id; //!< partcle id
@@ -63,5 +64,6 @@ private:
     bool m_searchBlock; //!< particle is new - has to be initialized
     Integrator m_integrator;
     StopReason m_stopReason; //! reason why particle was deactivated
+    bool m_useCelltree; //! whether to use celltree for acceleration
 };
 #endif

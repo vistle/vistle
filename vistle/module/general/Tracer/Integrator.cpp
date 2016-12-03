@@ -23,7 +23,8 @@ Integrator::Integrator(vistle::Scalar h, vistle::Scalar hmin,
     m_errtol(errtol),
     m_mode(mode),
     m_ptcl(ptcl),
-    m_forward(forward)
+    m_forward(forward),
+    m_cellSearchFlags(GridInterface::NoFlags)
 {
     UpdateBlock();
 }
@@ -106,6 +107,16 @@ bool Integrator::hNew(Vector3 higher, Vector3 lower){
          return false;
       }
    }
+}
+
+void Integrator::enableCelltree(bool value) {
+
+    if (value) {
+        m_cellSearchFlags = GridInterface::NoFlags;
+    } else {
+
+        m_cellSearchFlags = GridInterface::NoCelltree;
+    }
 }
 
 bool Integrator::StepRK32() {
