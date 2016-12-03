@@ -39,6 +39,14 @@ endif()
 
 enable_testing()
 
+if (CMAKE_BUILD_TYPE STREQUAL "")
+   set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
+      "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel."
+      FORCE
+   )
+   message("Setting CMAKE_BUILD_TYPE to ${CMAKE_BUILD_TYPE}")
+endif()
+
 if (CMAKE_BUILD_TYPE STREQUAL "Release" OR "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
    # disable rpath - only rely on LD_LIBRARY_PATH and the likes
    set(CMAKE_SKIP_RPATH TRUE)
