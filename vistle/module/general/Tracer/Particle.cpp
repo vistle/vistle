@@ -149,6 +149,7 @@ void Particle::Deactivate(StopReason reason) {
     if (m_stopReason == StillActive)
         m_stopReason = reason;
     m_block = nullptr;
+    UpdateBlock();
     m_ingrid = false;
 }
 
@@ -183,15 +184,7 @@ bool Particle::Step() {
 
 void Particle::Communicator(boost::mpi::communicator mpi_comm, int root, bool havePressure){
 
-    boost::mpi::broadcast(mpi_comm, m_x, root);
-    boost::mpi::broadcast(mpi_comm, m_xold, root);
-    boost::mpi::broadcast(mpi_comm, m_v, root);
-    boost::mpi::broadcast(mpi_comm, m_stp, root);
-    if(havePressure)
-       boost::mpi::broadcast(mpi_comm, m_p, root);
-    boost::mpi::broadcast(mpi_comm, m_ingrid, root);
-    boost::mpi::broadcast(mpi_comm, m_integrator.m_h, root);
-    boost::mpi::broadcast(mpi_comm, m_stopReason, root);
+    boost::mpi::broadcast(mpi_comm, *this, root);
 
     if (mpi_comm.rank()!=root) {
 

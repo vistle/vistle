@@ -20,6 +20,7 @@ class BlockData;
 class Particle {
 
     friend class Integrator;
+    friend class boost::serialization::access;
 
 public:
     DEFINE_ENUM_WITH_STRING_CONVERSIONS(StopReason,
@@ -65,5 +66,18 @@ private:
     Integrator m_integrator;
     StopReason m_stopReason; //! reason why particle was deactivated
     bool m_useCelltree; //! whether to use celltree for acceleration
+
+    // just for Boost.MPI
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version) {
+        ar & m_x;
+        ar & m_xold;
+        ar & m_v;
+        ar & m_stp;
+        ar & m_p;
+        ar & m_ingrid;
+        ar & m_integrator.m_h;
+        ar & m_stopReason;
+    }
 };
 #endif
