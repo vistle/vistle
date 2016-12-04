@@ -1,8 +1,7 @@
 #include "scalars.h"
 #include "assert.h"
-#include "indexed.h"
-#include "triangles.h"
-#include "structuredgridbase.h"
+#include "database.h"
+#include "geometry.h"
 #include "archives.h"
 
 #include <boost/mpl/vector.hpp>
@@ -103,20 +102,10 @@ DataBase::Mapping DataBase::guessMapping(Object::const_ptr g) const {
     if (!g)
         g = grid();
     if (mapping() == Unspecified) {
-        if (auto i = Indexed::as(g)) {
-            if (getSize() == i->getNumVertices())
+        if (auto e = g->getInterface<ElementInterface>()) {
+            if (getSize() == e->getNumVertices())
                 return Vertex;
-            else if (getSize() == i->getNumElements())
-                return Element;
-        } else if (auto t = Triangles::as(g)) {
-            if (getSize() == t->getNumVertices())
-                return Vertex;
-            else if (getSize() == t->getNumElements())
-                return Element;
-        } else if (auto s = g->getInterface<StructuredGridBase>()) {
-            if (getSize() == s->getNumDivisions(0)*s->getNumDivisions(1)*s->getNumDivisions(2))
-                return Vertex;
-            else if (getSize() == s->getNumElements())
+            else if (getSize() == e->getNumElements())
                 return Element;
         }
     }

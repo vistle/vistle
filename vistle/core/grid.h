@@ -11,7 +11,7 @@
 
 namespace vistle {
 
-class V_COREEXPORT GridInterface: virtual public GeometryInterface {
+class V_COREEXPORT GridInterface: virtual public ElementInterface {
  public:
 
    enum FindCellFlags { NoFlags=0,

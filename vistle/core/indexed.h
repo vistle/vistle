@@ -23,7 +23,7 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
          const Index numVertices,
          const Meta &meta=Meta());
 
-   Index getNumElements() const;
+   Index getNumElements() const override;
    Index getNumCorners() const;
    Index getNumVertices() const override;
 

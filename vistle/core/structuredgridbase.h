@@ -76,8 +76,7 @@ public:
    virtual bool isGhostCell(Index elem) const override;
 
    // virtual get functions
-   virtual Index getNumElements() { return (getNumDivisions(0)-1)*(getNumDivisions(1)-1)*(getNumDivisions(2)-1); }
-   virtual Index getNumElements() const { return (getNumDivisions(0)-1)*(getNumDivisions(1)-1)*(getNumDivisions(2)-1); }
+   virtual Index getNumElements() const override { return (getNumDivisions(0)-1)*(getNumDivisions(1)-1)*(getNumDivisions(2)-1); }
    virtual Index getNumDivisions(int d) { return 1; }           //< get number of vertices in dimension d
    virtual Index getNumDivisions(int d) const { return 1; }     //< get number of vertices in dimension d
    virtual Index getNumGhostLayers(unsigned dim, GhostLayerPosition pos) { return 0; }

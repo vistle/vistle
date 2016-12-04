@@ -15,5 +15,10 @@ class V_COREEXPORT GeometryInterface: virtual public ObjectInterfaceBase {
    virtual Index getNumVertices() const = 0;
 };
 
+class V_COREEXPORT ElementInterface: virtual public GeometryInterface {
+ public:
+   virtual Index getNumElements() const = 0;
+};
+
 }
 #endif

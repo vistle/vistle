@@ -140,6 +140,9 @@ Index RectilinearGrid::findCell(const Vector &point, int flags) const {
 //-------------------------------------------------------------------------
 bool RectilinearGrid::inside(Index elem, const Vector &point) const {
 
+    if (elem == InvalidIndex)
+        return false;
+
     std::array<Index,3> n = cellCoordinates(elem, m_numDivisions);
     assert(n[0] < m_numDivisions[0]);
     assert(n[1] < m_numDivisions[1]);

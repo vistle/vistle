@@ -204,6 +204,9 @@ Index UnstructuredGrid::findCell(const Vector &point, int flags) const {
 
 bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
 
+   if(elem == InvalidIndex)
+       return false;
+
    const Index *el = &this->el()[0];
    const Index *cl = &this->cl()[el[elem]];
    const Scalar *x = &this->x()[0];

@@ -235,6 +235,9 @@ Index StructuredGrid::findCell(const Vec::Vector &point, int flags) const {
 //-------------------------------------------------------------------------
 bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
 
+    if (elem == InvalidIndex)
+        return false;
+
     const Scalar *x = &this->x()[0];
     const Scalar *y = &this->y()[0];
     const Scalar *z = &this->z()[0];

@@ -139,6 +139,9 @@ Index UniformGrid::findCell(const Vector &point, int flags) const {
 //-------------------------------------------------------------------------
 bool UniformGrid::inside(Index elem, const Vector &point) const {
 
+    if (elem == InvalidIndex)
+        return false;
+
     for (int c=0; c<3; ++c) {
         if (point[c] < m_min[c])
             return false;

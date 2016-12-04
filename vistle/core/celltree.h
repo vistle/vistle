@@ -152,7 +152,7 @@ typedef Celltree<Scalar, Index, 2> Celltree2;
 typedef Celltree<Scalar, Index, 3> Celltree3;
 
 template<int Dim>
-class V_COREEXPORT CelltreeInterface: virtual public GeometryInterface {
+class V_COREEXPORT CelltreeInterface: virtual public ElementInterface {
 
  public:
    typedef vistle::Celltree<Scalar, Index, Dim> Celltree;
