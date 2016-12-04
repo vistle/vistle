@@ -181,7 +181,7 @@ Index StructuredGrid::getNumVertices() const {
 //-------------------------------------------------------------------------
 std::pair<Vector, Vector> StructuredGrid::getBounds() const {
    if (hasCelltree()) {
-      const auto &ct = getCelltree();
+      const auto ct = getCelltree();
       return std::make_pair(Vector(ct->min()), Vector(ct->max()));
    }
 

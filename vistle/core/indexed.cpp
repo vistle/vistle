@@ -39,7 +39,7 @@ bool Indexed::checkImpl() const {
 
 std::pair<Vector, Vector> Indexed::getBounds() const {
    if (hasCelltree()) {
-      const auto &ct = getCelltree();
+      const auto ct = getCelltree();
       return std::make_pair(Vector(ct->min()), Vector(ct->max()));
    }
 
