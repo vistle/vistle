@@ -132,7 +132,7 @@ bool Integrator::StepRK32() {
 #ifdef TIMING
          times::celloc_start = times::start();
 #endif
-         el = grid->findCell(xtmp);
+         el = grid->findCell(xtmp, m_cellSearchFlags);
 #ifdef TIMING
          times::celloc_dur += times::stop(times::celloc_start);
 #endif
@@ -147,7 +147,7 @@ bool Integrator::StepRK32() {
 #ifdef TIMING
          times::celloc_start = times::start();
 #endif
-         el = grid->findCell(xtmp);
+         el = grid->findCell(xtmp, m_cellSearchFlags);
 #ifdef TIMING
          times::celloc_dur += times::stop(times::celloc_start);
 #endif
