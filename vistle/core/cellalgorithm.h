@@ -35,14 +35,10 @@ class PointVisitationFunctor: public Celltree<Scalar, Index>::VisitFunctor {
       return true;
    }
 
-   Order operator()(const typename Celltree::Node &node, Scalar *min, Scalar *max) {
+   Order operator()(const typename Celltree::Node &node) {
 
 #ifdef CT_DEBUG
-      std::cerr << "visit subtree: min: "
-         << min[0] << " " << min[1] << " " << min[2]
-         << ", max: " << max[0] << " " << max[1] << " " << max[2]
-         << ", node: Lmax: " << node.Lmax << ", Rmin: " << node.Rmin
-         << std::endl;
+      std::cerr << "visit subtree: Lmax: " << node.Lmax << ", Rmin: " << node.Rmin << std::endl;
 #endif
 
       const Scalar c = m_point[node.dim];
