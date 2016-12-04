@@ -457,6 +457,11 @@ bool Tracer::reduce(int timestep) {
       }
    }
 
+   grid_in.clear();
+   celltree.clear();
+   data_in0.clear();
+   data_in1.clear();
+
 #ifdef TIMING
    comm().barrier();
    times::total_dur = times::stop(times::total_start);

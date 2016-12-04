@@ -17,9 +17,9 @@ public:
 
 
  private:
-    virtual bool compute();
-    virtual bool prepare();
-    virtual bool reduce(int timestep);
+    bool compute() override;
+    bool prepare() override;
+    bool reduce(int timestep) override;
 
     std::vector<std::vector<vistle::Object::const_ptr>> grid_in;
     std::vector<std::vector<std::future<vistle::Celltree3::const_ptr>>> celltree;
