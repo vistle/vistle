@@ -44,7 +44,7 @@ public:
     void EmitData(bool havePressure);
     bool Step();
     void Communicator(boost::mpi::communicator mpi_comm, int root, bool havePressure);
-    void UpdateBlock();
+    void UpdateBlock(BlockData *block);
     StopReason stopReason() const;
     void enableCelltree(bool value);
 

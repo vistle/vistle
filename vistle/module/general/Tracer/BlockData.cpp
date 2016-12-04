@@ -14,7 +14,7 @@ BlockData::BlockData(Index i,
           Vec<Scalar, 3>::const_ptr vdata,
           Vec<Scalar>::const_ptr pdata):
 m_grid(grid),
-m_gridInterface(nullptr),
+m_gridInterface(m_grid->getInterface<GridInterface>()),
 m_vecfld(vdata),
 m_scafld(pdata),
 m_vecmap(DataBase::Vertex),
@@ -27,11 +27,6 @@ m_vy(nullptr),
 m_vz(nullptr),
 m_p(nullptr)
 {
-   if (UnstructuredGrid::as(m_grid)) {
-       m_gridInterface = dynamic_cast<const GridInterface *>(UnstructuredGrid::as(m_grid).get());
-   } else if (StructuredGridBase::as(m_grid)) {
-       m_gridInterface = dynamic_cast<const GridInterface *>(StructuredGridBase::as(m_grid).get());
-   }
    m_ivec.emplace_back(new Vec<Scalar, 3>(Object::Initialized));
 
    if (m_vecfld) {

@@ -94,11 +94,12 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
 #ifdef TIMING
         times::celloc_dur += times::stop(times::celloc_start);
 #endif
-        if (m_el!=InvalidIndex) {
-            return true;
-        } else {
+        if (m_el==InvalidIndex) {
             PointsToLines();
             m_searchBlock = true;
+        } else {
+            m_searchBlock = false;
+            return true;
         }
     }
 
@@ -121,14 +122,12 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
 #endif
             if (m_el!=InvalidIndex) {
 
-                m_block = block[i].get();
-                UpdateBlock();
+                UpdateBlock(block[i].get());
                 return true;
             }
         }
-        m_block = nullptr;
+        UpdateBlock(nullptr);
     }
-    UpdateBlock();
 
     return false;
 }
@@ -148,8 +147,7 @@ void Particle::Deactivate(StopReason reason) {
 
     if (m_stopReason == StillActive)
         m_stopReason = reason;
-    m_block = nullptr;
-    UpdateBlock();
+    UpdateBlock(nullptr);
     m_ingrid = false;
 }
 
@@ -192,7 +190,10 @@ void Particle::Communicator(boost::mpi::communicator mpi_comm, int root, bool ha
     }
 }
 
-void Particle::UpdateBlock() {
+A
 
+void Particle::UpdateBlock(BlockData *block) {
+
+    m_block = block;
     m_integrator.UpdateBlock();
 }
