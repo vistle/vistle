@@ -274,8 +274,6 @@ bool Tracer::reduce(int timestep) {
            block[i].reset(new BlockData(i, grid_in[t][i], data_in0[t][i], data_in1[t][i]));
        }
 
-       Index numActive = numparticles;
-
        //create particle objects
        std::vector<std::unique_ptr<Particle>> particle(numparticles);
        Index i = 0;
@@ -283,49 +281,41 @@ bool Tracer::reduce(int timestep) {
            for(; i<numpoints; i++){
 
                particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max, true));
-               particle[i]->enableCelltree(useCelltree);
-
-#ifdef TIMING
-               times::comm_start = times::start();
-#endif
-               bool active = boost::mpi::all_reduce(comm(), particle[i]->isActive(), std::logical_or<bool>());
-#ifdef TIMING
-               times::comm_dur += times::stop(times::comm_start);
-#endif
-               if(!active){
-                   particle[i]->Deactivate(Particle::InitiallyOutOfDomain);
-                   --numActive;
-               }
            }
        }
        if (traceDirection != Forward) {
            for(; i<numparticles; i++){
 
                particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max, false));
-               particle[i]->enableCelltree(useCelltree);
-
-#ifdef TIMING
-               times::comm_start = times::start();
-#endif
-               bool active = boost::mpi::all_reduce(comm(), particle[i]->isActive(), std::logical_or<bool>());
-#ifdef TIMING
-               times::comm_dur += times::stop(times::comm_start);
-#endif
-               if(!active){
-                   particle[i]->Deactivate(Particle::InitiallyOutOfDomain);
-                   --numActive;
-               }
            }
        }
-       const int mpisize = comm().size();
 
+       Index numActive = numparticles;
+       for(Index i=0; i<numparticles; ++i) {
+           particle[i]->enableCelltree(useCelltree);
+
+#ifdef TIMING
+           times::comm_start = times::start();
+#endif
+           bool active = boost::mpi::all_reduce(comm(), particle[i]->isActive(), std::logical_or<bool>());
+#ifdef TIMING
+           times::comm_dur += times::stop(times::comm_start);
+#endif
+           if(!active){
+               particle[i]->Deactivate(Particle::InitiallyOutOfDomain);
+               --numActive;
+           }
+       }
+
+       const int mpisize = comm().size();
+       //trace particles until none remain active
        while(numActive > 0) {
 
            std::vector<Index> sendlist;
 
            //#pragma omp parallel for
            // trace local particles
-           for(Index i=0; i<numparticles; i++) {
+           for (Index i=0; i<numparticles; i++) {
                bool traced = false;
                while(particle[i]->isMoving(steps_max, minspeed)
                      && particle[i]->findCell(block)) {
