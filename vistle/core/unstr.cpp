@@ -163,22 +163,40 @@ Index UnstructuredGrid::findCell(const Vector &point, int flags) const {
    const bool acceptGhost = flags&AcceptGhost;
    const bool useCelltree = (flags&ForceCelltree) || (hasCelltree() && !(flags&NoCelltree));
 
+   bool recheck = false;
    if (useCelltree) {
 
       vistle::PointVisitationFunctor<Scalar, Index> nodeFunc(point);
-      vistle::PointInclusionFunctor<UnstructuredGrid, Scalar, Index> elemFunc(this, point);
+      vistle::PointInclusionFunctor<UnstructuredGrid, Scalar, Index> elemFunc(this, point, acceptGhost);
       getCelltree()->traverse(nodeFunc, elemFunc);
-      if (acceptGhost ||!isGhostCell(elemFunc.cell))
-         return elemFunc.cell;
-      else
-         return InvalidIndex;
+      return elemFunc.cell;
    }
+#if 0
+      if (elemFunc.cell != InvalidIndex) {
+         if (!inside(elemFunc.cell, point)) {
+            std::cerr << "Celltree failed 1 for element " << elemFunc.cell << std::endl;
+            recheck = true;
+         } else {
+            if (acceptGhost ||!isGhostCell(elemFunc.cell))
+               return elemFunc.cell;
+            else
+               return InvalidIndex;
+         }
+      } else {
+         recheck = true;
+      }
+   }
+#endif
 
    Index size = getNumElements();
    for (Index i=0; i<size; ++i) {
       if (acceptGhost || !isGhostCell(i)) {
-         if (inside(i, point))
+         if (inside(i, point)) {
+            if (recheck) {
+                std::cerr << "Celltree failed 2 for element " << i << std::endl;
+            }
             return i;
+         }
       }
    }
    return InvalidIndex;

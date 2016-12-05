@@ -216,12 +216,9 @@ Index StructuredGrid::findCell(const Vec::Vector &point, int flags) const {
    if (useCelltree) {
 
       vistle::PointVisitationFunctor<Scalar, Index> nodeFunc(point);
-      vistle::PointInclusionFunctor<StructuredGrid, Scalar, Index> elemFunc(this, point);
+      vistle::PointInclusionFunctor<StructuredGrid, Scalar, Index> elemFunc(this, point, acceptGhost);
       getCelltree()->traverse(nodeFunc, elemFunc);
-      if (acceptGhost || !isGhostCell(elemFunc.cell))
-         return elemFunc.cell;
-      else
-         return InvalidIndex;
+      return elemFunc.cell;
    }
 
    Index size = getNumElements();

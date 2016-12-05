@@ -90,9 +90,10 @@ template<class Grid, typename Scalar, typename Index>
 class PointInclusionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
 
  public:
-   PointInclusionFunctor(const Grid *grid, const Vector &point)
+   PointInclusionFunctor(const Grid *grid, const Vector &point, bool acceptGhost=false)
       : m_grid(grid)
       , m_point(point)
+      , m_acceptGhost(acceptGhost)
       , cell(InvalidIndex)
    {
    }
@@ -101,17 +102,20 @@ class PointInclusionFunctor: public Celltree<Scalar, Index>::LeafFunctor {
 #ifdef CT_DEBUG
       std::cerr << "PointInclusionFunctor: checking cell: " << elem << std::endl;
 #endif
-      if (m_grid->inside(elem, m_point)) {
+      if (m_acceptGhost || !m_grid->isGhostCell(elem)) {
+          if (m_grid->inside(elem, m_point)) {
 #ifdef CT_DEBUG
-         std::cerr << "PointInclusionFunctor: found cell: " << elem << std::endl;
+              std::cerr << "PointInclusionFunctor: found cell: " << elem << std::endl;
 #endif
-         cell = elem;
-         return false; // stop traversal
+              cell = elem;
+              return false; // stop traversal
+          }
       }
       return true;
    }
    const Grid *m_grid;
    Vector m_point;
+   bool m_acceptGhost;
    Index cell;
 
 };
