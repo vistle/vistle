@@ -1817,9 +1817,17 @@ bool Module::reduceWrapper(const message::Message *req) {
       comm().barrier();
       double duration = Clock::time() - m_benchmarkStart;
       if (rank() == 0) {
-         sendInfo("compute() took %fs (OpenMP threads: %d)", duration, openmpThreads());
+#ifdef _OPENMP
+         int nthreads = -1;
+         nthreads = omp_get_max_threads();
+         sendInfo("compute() took %fs (OpenMP threads: %d)", duration, nthreads);
          printf("%s:%d: compute() took %fs (OpenMP threads: %d)",
-               name().c_str(), id(), duration, openmpThreads());
+               name().c_str(), id(), duration, nthreads);
+#else
+         sendInfo("compute() took %fs (no OpenMP)", duration);
+         printf("%s:%d: compute() took %fs (no OpenMP)",
+               name().c_str(), id(), duration);
+#endif
       }
    }
 
