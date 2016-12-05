@@ -27,6 +27,7 @@
 #include "propertybrowser/qtlongeditorfactory.h"
 #include "propertybrowser/qtvectorpropertymanager.h"
 #include "propertybrowser/qtlongvectorpropertymanager.h"
+#include "propertybrowser/vistledoublepropertymanager.h"
 
 namespace gui {
 
@@ -64,7 +65,7 @@ Parameters::Parameters(QWidget *parent, Qt::WindowFlags f)
    m_boolManager = addPropertyManager<QtBoolPropertyManager>(this);
    m_intManager = addPropertyManager<QtLongPropertyManager>(this);
    m_intChoiceManager = addPropertyManager<QtEnumPropertyManager>(this);
-   m_floatManager = addPropertyManager<QtDoublePropertyManager>(this);
+   m_floatManager = addPropertyManager<VistleDoublePropertyManager>(this);
    m_stringManager = addPropertyManager<QtStringPropertyManager>(this);
    m_stringChoiceManager = addPropertyManager<QtEnumPropertyManager>(this);
    m_vectorManager = addPropertyManager<QtVectorPropertyManager>(this);
@@ -303,6 +304,40 @@ void Parameters::parameterValueChanged(int moduleId, QString parameterName)
       }
       m_vectorManager->setValue(prop, value);
       m_vectorManager->setRange(prop, vp->minimum(), vp->maximum());
+      QString tip;
+      switch(value.dim) {
+      case 1:
+          tip = QString("%1 (%2)").arg(
+                      QString::fromStdString(p->description()),
+                      QString::number(value[0])
+                  );
+          break;
+      case 2:
+          tip = QString("%1 (%2, %3)").arg(
+                      QString::fromStdString(p->description()),
+                      QString::number(value[0]),
+                      QString::number(value[1])
+                  );
+          break;
+      case 3:
+          tip = QString("%1 (%2, %3, %4)").arg(
+                      QString::fromStdString(p->description()),
+                      QString::number(value[0]),
+                      QString::number(value[1]),
+                      QString::number(value[2])
+                  );
+          break;
+      case 4:
+          tip = QString("%1 (%2, %3, %4, %5)").arg(
+                      QString::fromStdString(p->description()),
+                      QString::number(value[0]),
+                      QString::number(value[1]),
+                      QString::number(value[2]),
+                      QString::number(value[3])
+                  );
+          break;
+      }
+      prop->setToolTip(tip);
    } else if (auto vp = boost::dynamic_pointer_cast<vistle::IntVectorParameter>(p)) {
       vistle::IntParamVector value = vp->getValue();
       if (!prop) {

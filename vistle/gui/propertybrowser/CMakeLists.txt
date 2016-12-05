@@ -22,6 +22,7 @@ set(SOURCES
    qtlongeditorfactory.cpp
    qtvectorpropertymanager.cpp
    qtlongvectorpropertymanager.cpp
+   vistledoublepropertymanager.cpp
 )
 
 set(HEADERS
@@ -39,6 +40,7 @@ set(HEADERS
    qtlongeditorfactory.h
    qtvectorpropertymanager.h
    qtlongvectorpropertymanager.h
+   vistledoublepropertymanager.h
 )
 
 set(FORMS

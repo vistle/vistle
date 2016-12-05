@@ -1,4 +1,5 @@
 #include "qtvectorpropertymanager.h"
+#include "vistledoublepropertymanager.h"
 
 #include "qtpropertymanager_helpers.cpp"
 
@@ -30,7 +31,7 @@ public:
     typedef QMap<const QtProperty *, Data> PropertyValueMap;
     PropertyValueMap m_values;
 
-    QtDoublePropertyManager *m_doublePropertyManager;
+    VistleDoublePropertyManager *m_doublePropertyManager;
 
     QMap<const QtProperty *, QtProperty *> m_toSub[vistle::MaxDimension];
     QMap<const QtProperty *, QtProperty *> m_fromSub[vistle::MaxDimension];
@@ -109,7 +110,7 @@ QtVectorPropertyManager::QtVectorPropertyManager(QObject *parent)
     d_ptr = new QtVectorPropertyManagerPrivate;
     d_ptr->q_ptr = this;
 
-    d_ptr->m_doublePropertyManager = new QtDoublePropertyManager(this);
+    d_ptr->m_doublePropertyManager = new VistleDoublePropertyManager(this);
     connect(d_ptr->m_doublePropertyManager, SIGNAL(valueChanged(QtProperty *, double)),
                 this, SLOT(slotDoubleChanged(QtProperty *, double)));
     connect(d_ptr->m_doublePropertyManager, SIGNAL(propertyDestroyed(QtProperty *)),
@@ -181,7 +182,7 @@ QString QtVectorPropertyManager::valueText(const QtProperty *property) const
     for (int i=0; i<v.dim; ++i) {
        if (i>0)
           res += ", ";
-       res += QString::number(v[i], 'f', 1 /*dec*/);
+       res += QString::number(v[i], 'g', 2 /*dec*/);
     }
     res = "(" + res + ")";
     return res;
