@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <core/vec.h>
+#include <core/celltree.h>
 #include <module/module.h>
 
 class Tracer: public vistle::Module {

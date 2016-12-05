@@ -190,8 +190,6 @@ void Particle::Communicator(boost::mpi::communicator mpi_comm, int root, bool ha
     }
 }
 
-A
-
 void Particle::UpdateBlock(BlockData *block) {
 
     m_block = block;
