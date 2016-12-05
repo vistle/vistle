@@ -1,10 +1,8 @@
 #include "Integrator.h"
-#include "Tracer.h"
 #include "Particle.h"
-#include <core/unstr.h>
+#include "BlockData.h"
 #include <core/vec.h>
 
-#include "BlockData.h"
 
 #ifdef TIMING
 #include "TracerTimes.h"

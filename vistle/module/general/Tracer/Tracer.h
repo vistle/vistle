@@ -5,9 +5,10 @@
 //#define TIMING
 
 #include <future>
+#include <vector>
 
+#include <core/vec.h>
 #include <module/module.h>
-#include <core/unstr.h>
 
 class Tracer: public vistle::Module {
 

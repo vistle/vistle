@@ -5,7 +5,8 @@
 //#define TIMING
 
 #include <vector>
-#include <memory>
+
+#include <boost/mpi/communicator.hpp>
 
 #include <util/enum.h>
 #include <core/vector.h>
