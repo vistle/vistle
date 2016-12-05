@@ -9,6 +9,7 @@
 #include <core/object.h>
 #include <core/grid.h>
 #include <core/lines.h>
+#include <boost/thread/mutex.hpp>
 
 
 class BlockData{
@@ -27,6 +28,7 @@ private:
     vistle::Vec<vistle::Index>::ptr m_ids;
     vistle::Vec<vistle::Index>::ptr m_steps;
     const vistle::Scalar *m_vx, *m_vy, *m_vz, *m_p;
+    boost::mutex m_mutex;
 
 public:
     BlockData(vistle::Index i,

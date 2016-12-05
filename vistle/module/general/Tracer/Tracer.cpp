@@ -247,29 +247,29 @@ bool Tracer::reduce(int timestep) {
        Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
 
        //create BlockData objects
-       std::vector<std::unique_ptr<BlockData>> block(numblocks);
+       std::vector<std::unique_ptr<BlockData>> blocks(numblocks);
        for(Index i=0; i<numblocks; i++){
 
            if (useCelltree && celltree.size() > t) {
                if (celltree[t].size() > i)
                    celltree[t][i].get();
            }
-           block[i].reset(new BlockData(i, grid_in[t][i], data_in0[t][i], data_in1[t][i]));
+           blocks[i].reset(new BlockData(i, grid_in[t][i], data_in0[t][i], data_in1[t][i]));
        }
 
-       //create particle objects
+       //create particle objects, 2 if traceDirecton==Both
        std::vector<std::unique_ptr<Particle>> particle(numparticles);
        Index i = 0;
        if (traceDirection != Backward) {
            for(; i<numpoints; i++){
 
-               particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max, true));
+               particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,blocks,steps_max, true));
            }
        }
        if (traceDirection != Forward) {
            for(; i<numparticles; i++){
 
-               particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,block,steps_max, false));
+               particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,blocks,steps_max, false));
            }
        }
 
@@ -296,12 +296,12 @@ bool Tracer::reduce(int timestep) {
 
            std::vector<Index> sendlist;
 
-           //#pragma omp parallel for
+           #pragma omp parallel for schedule(dynamic,1)
            // trace local particles
            for (Index i=0; i<numparticles; i++) {
                bool traced = false;
                while(particle[i]->isMoving(steps_max, minspeed)
-                     && particle[i]->findCell(block)) {
+                     && particle[i]->findCell(blocks)) {
 #ifdef TIMING
                    double celloc_old = times::celloc_dur;
                    double integr_old = times::integr_dur;
@@ -314,7 +314,10 @@ bool Tracer::reduce(int timestep) {
                    traced = true;
                }
                if(traced) {
-                   //#pragma omp critical
+#ifdef _OPENMP
+                   #pragma omp critical
+                   sendlist.push_back(i);
+#else
                    sendlist.push_back(i);
                    if (commthresh > 1.) {
                        if (sendlist.size() >= commthresh)
@@ -323,6 +326,7 @@ bool Tracer::reduce(int timestep) {
                        if (sendlist.size() >= commthresh*numActive)
                            break;
                    }
+#endif
                }
            }
 
@@ -359,7 +363,7 @@ bool Tracer::reduce(int timestep) {
                        for(Index i=0; i<num_recv; i++){
                            Index p_index = tmplist[i];
                            if (particle[p_index]->isMoving(steps_max, minspeed)
-                                   && particle[p_index]->findCell(block)) {
+                                   && particle[p_index]->findCell(blocks)) {
                                // if the particle trajectory continues in this block, repeat last data point from previous block
                                particle[p_index]->EmitData(havePressure);
                            }
@@ -405,14 +409,14 @@ bool Tracer::reduce(int timestep) {
          meta.setNumTimesteps(numtime);
          meta.setNumBlocks(numblocks);
 
-         block[i]->setMeta(meta);
-         Lines::ptr lines = block[i]->getLines();
-         block[i]->ids()->setGrid(lines);
-         addObject("particle_id", block[i]->ids());
-         block[i]->steps()->setGrid(lines);
-         addObject("timestep", block[i]->steps());
+         blocks[i]->setMeta(meta);
+         Lines::ptr lines = blocks[i]->getLines();
+         blocks[i]->ids()->setGrid(lines);
+         addObject("particle_id", blocks[i]->ids());
+         blocks[i]->steps()->setGrid(lines);
+         addObject("timestep", blocks[i]->steps());
 
-         std::vector<Vec<Scalar, 3>::ptr> v_vec = block[i]->getIplVec();
+         std::vector<Vec<Scalar, 3>::ptr> v_vec = blocks[i]->getIplVec();
          Vec<Scalar, 3>::ptr v;
          if(v_vec.size()>0){
             v = v_vec[0];
@@ -421,7 +425,7 @@ bool Tracer::reduce(int timestep) {
          }
 
          if(data_in1[t][0]){
-            std::vector<Vec<Scalar>::ptr> p_vec = block[i]->getIplScal();
+            std::vector<Vec<Scalar>::ptr> p_vec = blocks[i]->getIplScal();
             Vec<Scalar>::ptr p;
             if(p_vec.size()>0){
                p = p_vec[0];

@@ -81,6 +81,8 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
         return false;
     }
 
+    bool repeatDataFromLastBlock = false;
+
     if (m_block) {
 
         auto grid = m_block->getGrid();
@@ -97,6 +99,7 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
         if (m_el==InvalidIndex) {
             PointsToLines();
             m_searchBlock = true;
+            repeatDataFromLastBlock = true;
         } else {
             m_searchBlock = false;
             return true;
@@ -123,6 +126,8 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
             if (m_el!=InvalidIndex) {
 
                 UpdateBlock(block[i].get());
+                if (repeatDataFromLastBlock)
+                    EmitData(m_block->m_p);
                 return true;
             }
         }

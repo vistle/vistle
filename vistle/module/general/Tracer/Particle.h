@@ -59,7 +59,7 @@ private:
     std::vector<vistle::Scalar> m_pressures; //!< previous pressures
     std::vector<vistle::Index> m_steps; //!< previous steps
     vistle::Index m_stp; //!< current integration step
-    BlockData* m_block; //!< block for current particle position
+    BlockData *m_block; //!< current block for current particle position
     vistle::Index m_el; //!< index of cell for current particle position
     bool m_ingrid; //!< particle still within domain on some rank
     bool m_searchBlock; //!< particle is new - has to be initialized
