@@ -48,8 +48,12 @@ public:
     void UpdateBlock(BlockData *block);
     StopReason stopReason() const;
     void enableCelltree(bool value);
+    bool isTracing() const;
+    void setTracing(bool trace);
+    bool trace(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::Index maxSteps, double traceLen, double minSpeed);
 
 private:
+    bool m_tracing; //!< particle is currently tracing on this node
     bool m_forward; //!< trace direction
     vistle::Index m_id; //!< partcle id
     vistle::Vector3 m_x; //!< current position

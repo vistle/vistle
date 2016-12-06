@@ -84,7 +84,6 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addFloatParameter("h_min","minimum step size for rk32 integration", 1e-05);
     addFloatParameter("h_max", "maximum step size for rk32 integration", 1e-02);
     addFloatParameter("err_tol", "desired accuracy for rk32 integration", 1e-06);
-    addFloatParameter("comm_threshold", "ratio of active particles that have to leave current block for starting communication phase", 0.1);
     m_useCelltree = addIntParameter("use_celltree", "use celltree for accelerated cell location", (Integer)1, Parameter::Boolean);
 }
 
@@ -242,7 +241,6 @@ bool Tracer::reduce(int timestep) {
    Scalar dtmin = getFloatParameter("h_min");
    Scalar dtmax = getFloatParameter("h_max");
    Scalar errtol = getFloatParameter("err_tol");
-   Scalar commthresh = getFloatParameter("comm_threshold");
    Scalar minspeed = getFloatParameter("min_speed");
 
 
@@ -300,41 +298,38 @@ bool Tracer::reduce(int timestep) {
 
        const int mpisize = comm().size();
        //trace particles until none remain active
+       std::vector<std::future<bool>> traced(numparticles);
        while(numActive > 0) {
 
-           std::vector<Index> sendlist;
-
-           #pragma omp parallel for schedule(dynamic,1)
            // trace local particles
            for (Index i=0; i<numparticles; i++) {
-               bool traced = false;
-               while(particle[i]->isMoving(steps_max, trace_len, minspeed)
-                     && particle[i]->findCell(blocks)) {
-#ifdef TIMING
-                   double celloc_old = times::celloc_dur;
-                   double integr_old = times::integr_dur;
-                   times::integr_start = times::start();
-#endif
-                   particle[i]->Step();
-#ifdef TIMING
-                   times::integr_dur += times::stop(times::integr_start)-(times::celloc_dur-celloc_old)-(times::integr_dur-integr_old);
-#endif
-                   traced = true;
+               if (!particle[i]->isTracing() && particle[i]->isActive()) {
+                   particle[i]->setTracing(true);
+                   traced[i] = std::async(std::launch::async, [i, &particle, &blocks, steps_max, trace_len, minspeed]() -> bool { return particle[i]->trace(blocks, steps_max, trace_len, minspeed); });
                }
-               if(traced) {
-#ifdef _OPENMP
-                   #pragma omp critical
-                   sendlist.push_back(i);
+           }
+
+           std::vector<Index> sendlist;
+           for (Index i=0; i<numparticles; i++) {
+               if (!particle[i]->isTracing())
+                   continue;
+               auto &fut = traced[i];
+               if (!fut.valid()) {
+                   std::cerr << "Tracer::reduce(): future not valid" << std::endl;
+                   continue;
+               }
+               auto status = fut.wait_for(std::chrono::seconds(0));
+#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6)
+               if (!status)
+                   continue;
 #else
-                   sendlist.push_back(i);
-                   if (commthresh > 1.) {
-                       if (sendlist.size() >= commthresh)
-                           break;
-                   } else {
-                       if (sendlist.size() >= commthresh*numActive)
-                           break;
-                   }
+               if (status != std::future_status::ready)
+                   continue;
 #endif
+
+               particle[i]->setTracing(false);
+               if(traced[i].get()) {
+                   sendlist.push_back(i);
                }
            }
 

@@ -2,7 +2,7 @@
 
 add_module(Tracer Tracer.cpp BlockData.cpp Integrator.cpp Particle.cpp TracerTimes.cpp)
 
-use_openmp()
+#use_openmp()
 
 include_directories(
         ../../../3rdparty/${BOOST_MPI_DIR}/include

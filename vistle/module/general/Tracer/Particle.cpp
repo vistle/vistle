@@ -16,6 +16,7 @@ using namespace vistle;
 Particle::Particle(Index i, const Vector3 &pos, Scalar h, Scalar hmin,
       Scalar hmax, Scalar errtol, IntegrationMethod int_mode,const std::vector<std::unique_ptr<BlockData>> &bl,
       Index stepsmax, bool forward):
+m_tracing(false),
 m_forward(forward),
 m_id(i),
 m_x(pos),
@@ -203,6 +204,36 @@ bool Particle::Step() {
    bool ret = m_integrator.Step();
    ++m_stp;
    return ret;
+}
+
+void Particle::setTracing(bool trace) {
+
+    m_tracing = trace;
+}
+
+bool Particle::isTracing() const {
+
+    return m_tracing;
+}
+
+bool Particle::trace(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::Index steps_max, double trace_len, double minspeed) {
+    assert(m_tracing);
+
+    bool traced = false;
+    while(isMoving(steps_max, trace_len, minspeed)
+          && findCell(blocks)) {
+#ifdef TIMING
+        double celloc_old = times::celloc_dur;
+        double integr_old = times::integr_dur;
+        times::integr_start = times::start();
+#endif
+        Step();
+#ifdef TIMING
+        times::integr_dur += times::stop(times::integr_start)-(times::celloc_dur-celloc_old)-(times::integr_dur-integr_old);
+#endif
+        traced = true;
+    }
+    return traced;
 }
 
 void Particle::Communicator(boost::mpi::communicator mpi_comm, int root, bool havePressure){
