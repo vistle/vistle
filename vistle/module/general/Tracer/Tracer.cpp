@@ -245,8 +245,11 @@ bool Tracer::reduce(int timestep) {
    Scalar commthresh = getFloatParameter("comm_threshold");
    Scalar minspeed = getFloatParameter("min_speed");
 
+
    bool havePressure = boost::mpi::all_reduce(comm(), m_havePressure, std::logical_and<bool>());
    Index numtime = boost::mpi::all_reduce(comm(), grid_in.size(), [](Index a, Index b){ return std::max<Index>(a,b); });
+   Index totalParticles = 0;
+   std::vector<Index> stopReasonCount(Particle::NumStopReasons, 0);
    for (Index t=0; t<numtime; ++t) {
        Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
 
@@ -280,6 +283,7 @@ bool Tracer::reduce(int timestep) {
        Index numActive = numparticles;
        for(Index i=0; i<numparticles; ++i) {
            particle[i]->enableCelltree(useCelltree);
+           ++totalParticles;
 
 #ifdef TIMING
            times::comm_start = times::start();
@@ -393,17 +397,9 @@ bool Tracer::reduce(int timestep) {
        }
 
        if (rank() == 0) {
-           std::vector<Index> stopReasonCount(Particle::NumStopReasons, 0);
            for(Index i=0; i<numparticles; i++) {
                ++stopReasonCount[particle[i]->stopReason()];
            }
-           std::stringstream str;
-           str << "Stop stats for timestep " << t << ":";
-           for (size_t i=0; i<stopReasonCount.size(); ++i) {
-               str << " " << Particle::toString((Particle::StopReason)i) << ":" << stopReasonCount[i];
-           }
-           std::string s = str.str();
-           sendInfo("%s", s.c_str());
        }
 
       //add Lines-objects to output port
@@ -442,6 +438,16 @@ bool Tracer::reduce(int timestep) {
             }
          }
       }
+   }
+
+   if (rank() == 0) {
+       std::stringstream str;
+       str << "Stop stats for " << totalParticles << " particles:";
+       for (size_t i=0; i<stopReasonCount.size(); ++i) {
+           str << " " << Particle::toString((Particle::StopReason)i) << ":" << stopReasonCount[i];
+       }
+       std::string s = str.str();
+       sendInfo("%s", s.c_str());
    }
 
    grid_in.clear();
