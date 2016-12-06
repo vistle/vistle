@@ -48,7 +48,9 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     createOutputPort("data_out0");
     createOutputPort("data_out1");
     createOutputPort("particle_id");
-    createOutputPort("timestep");
+    createOutputPort("step");
+    createOutputPort("time");
+    createOutputPort("distance");
 
 #if 0
     const char *TracerInteraction::P_DIRECTION = "direction";
@@ -65,7 +67,8 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addIntParameter("no_startp", "number of startpoints", 2);
     setParameterRange("no_startp", (Integer)0, (Integer)10000);
     addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
-    //addFloatParameter("trace_len", "maximum number of integrations per particle", 1000);
+    auto tl = addFloatParameter("trace_len", "maximum trace distance", 1.0);
+    setParameterMinimum(tl, 0.0);
     IntParameter* tasktype = addIntParameter("taskType", "task type", 0, Parameter::Choice);
     std::vector<std::string> taskchoices;
     taskchoices.push_back("streamlines");
@@ -172,6 +175,7 @@ bool Tracer::reduce(int timestep) {
    TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
    Index steps_max = getIntParameter("steps_max");
    Index numpoints = getIntParameter("no_startp");
+   Scalar trace_len = getFloatParameter("trace_len");
 
    //determine startpoints
    std::vector<Vector3> startpoints;
@@ -284,7 +288,7 @@ bool Tracer::reduce(int timestep) {
 #ifdef TIMING
            times::comm_dur += times::stop(times::comm_start);
 #endif
-           if(!active){
+           if(!active) {
                particle[i]->Deactivate(Particle::InitiallyOutOfDomain);
                --numActive;
            }
@@ -300,7 +304,7 @@ bool Tracer::reduce(int timestep) {
            // trace local particles
            for (Index i=0; i<numparticles; i++) {
                bool traced = false;
-               while(particle[i]->isMoving(steps_max, minspeed)
+               while(particle[i]->isMoving(steps_max, trace_len, minspeed)
                      && particle[i]->findCell(blocks)) {
 #ifdef TIMING
                    double celloc_old = times::celloc_dur;
@@ -362,7 +366,7 @@ bool Tracer::reduce(int timestep) {
                    if (mpirank != rank()) {
                        for(Index i=0; i<num_recv; i++){
                            Index p_index = tmplist[i];
-                           if (particle[p_index]->isMoving(steps_max, minspeed)
+                           if (particle[p_index]->isMoving(steps_max, trace_len, minspeed)
                                    && particle[p_index]->findCell(blocks)) {
                                // if the particle trajectory continues in this block, repeat last data point from previous block
                                particle[p_index]->EmitData(havePressure);
@@ -414,7 +418,11 @@ bool Tracer::reduce(int timestep) {
          blocks[i]->ids()->setGrid(lines);
          addObject("particle_id", blocks[i]->ids());
          blocks[i]->steps()->setGrid(lines);
-         addObject("timestep", blocks[i]->steps());
+         addObject("step", blocks[i]->steps());
+         blocks[i]->times()->setGrid(lines);
+         addObject("time", blocks[i]->times());
+         blocks[i]->distances()->setGrid(lines);
+         addObject("distance", blocks[i]->distances());
 
          std::vector<Vec<Scalar, 3>::ptr> v_vec = blocks[i]->getIplVec();
          Vec<Scalar, 3>::ptr v;

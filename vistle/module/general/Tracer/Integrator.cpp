@@ -16,6 +16,7 @@ Integrator::Integrator(vistle::Scalar h, vistle::Scalar hmin,
            vistle::Scalar hmax, vistle::Scalar errtol,
            IntegrationMethod mode, Particle* ptcl, bool forward):
     m_h(h),
+    m_hact(m_h),
     m_hmin(hmin),
     m_hmax(hmax),
     m_errtol(errtol),
@@ -47,7 +48,6 @@ bool Integrator::Step() {
     case RK32:
         return StepRK32();
     }
-    return false;
 }
 
 bool Integrator::StepEuler() {
@@ -56,6 +56,7 @@ bool Integrator::StepEuler() {
         m_ptcl->m_x = m_ptcl->m_x + m_ptcl->m_v*m_h;
     else
         m_ptcl->m_x = m_ptcl->m_x - m_ptcl->m_v*m_h;
+    m_hact = m_h;
     return true;
 }
 
@@ -75,6 +76,7 @@ void Integrator::hInit(){
     m_h =0.5*chlen/vmax;
     if(m_h>m_hmax) {m_h = m_hmax;}
     if(m_h<m_hmin) {m_h = m_hmin;}
+    m_hact = m_h;
 }
 
 bool Integrator::hNew(Vector3 higher, Vector3 lower){
@@ -117,17 +119,22 @@ void Integrator::enableCelltree(bool value) {
     }
 }
 
+Scalar Integrator::h() const {
+
+    return m_hact;
+}
+
 bool Integrator::StepRK32() {
 
-   bool accept = false;
    Index el=m_ptcl->m_el;
-   Vector3 x3rd;
-   Vector3 k[3];
    Scalar sign = m_forward ? 1. : -1.;
+   Vector3 k[3];
    k[0] = sign*m_ptcl->m_v;
    Vector xtmp = m_ptcl->m_x + m_h*k[0];
+   m_hact = m_h;
    auto grid = m_ptcl->m_block->getGrid();
-   do {
+
+   for (;;) {
       if(!grid->inside(el,xtmp)){
 #ifdef TIMING
          times::celloc_start = times::start();
@@ -143,6 +150,7 @@ bool Integrator::StepRK32() {
       }
       k[1] = sign*Interpolator(m_ptcl->m_block,el, xtmp);
       xtmp = m_ptcl->m_x +m_h*0.25*(k[0]+k[1]);
+      m_hact = m_h*0.5;
       if(!grid->inside(el,xtmp)){
 #ifdef TIMING
          times::celloc_start = times::start();
@@ -153,21 +161,25 @@ bool Integrator::StepRK32() {
 #endif
          if(el==InvalidIndex){
             m_ptcl->m_x = m_ptcl->m_x + m_h*0.5*(k[0]+k[1]);
+            m_hact = m_h;
             return false;
          }
       }
       k[2] = sign*Interpolator(m_ptcl->m_block,el,xtmp);
       Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
-      x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
+      Vector3 x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
+      m_hact = m_h;
 
-      accept = hNew(x3rd,x2nd);
-      if(!accept){
-         el = m_ptcl->m_el;
-         xtmp = m_ptcl->m_x + m_h*k[0];
+      bool accept = hNew(x3rd,x2nd);
+      if (accept) {
+          m_ptcl->m_x = x3rd;
+          return true;
       }
-   } while(!accept);
-   m_ptcl->m_x = x3rd;
-   return true;
+
+      el = m_ptcl->m_el;
+      xtmp = m_ptcl->m_x + m_h*k[0];
+      m_hact = m_h;
+   }
 }
 
 Vector3 Integrator::Interpolator(BlockData* bl, Index el,const Vector3 &point){

@@ -16,12 +16,15 @@ using namespace vistle;
 Particle::Particle(Index i, const Vector3 &pos, Scalar h, Scalar hmin,
       Scalar hmax, Scalar errtol, IntegrationMethod int_mode,const std::vector<std::unique_ptr<BlockData>> &bl,
       Index stepsmax, bool forward):
+m_forward(forward),
 m_id(i),
 m_x(pos),
 m_xold(pos),
 m_v(Vector3(std::numeric_limits<Scalar>::max(),0,0)), // keep large enough so that particle moves initially
 m_p(0),
 m_stp(0),
+m_time(0),
+m_dist(0),
 m_block(nullptr),
 m_el(InvalidIndex),
 m_ingrid(true),
@@ -58,17 +61,22 @@ bool Particle::inGrid(){
     return m_ingrid;
 }
 
-bool Particle::isMoving(Index maxSteps, Scalar minSpeed) {
+bool Particle::isMoving(Index maxSteps, Scalar traceLen, Scalar minSpeed) {
 
     if (!m_ingrid) {
        return false;
     }
 
     bool moving = m_v.norm() > minSpeed;
-    if(m_stp > maxSteps || !moving){
+    if(m_dist > traceLen || m_stp > maxSteps || !moving){
 
        PointsToLines();
-       this->Deactivate(moving ? StepLimitReached : NotMoving);
+       if (std::abs(m_dist) > traceLen)
+           this->Deactivate(DistanceLimitReached);
+       else if (m_stp > maxSteps)
+           this->Deactivate(StepLimitReached);
+       else
+           this->Deactivate(NotMoving);
        return false;
     }
 
@@ -140,20 +148,14 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
 void Particle::PointsToLines(){
 
     if (m_block)
-        m_block->addLines(m_id,m_xhist,m_vhist,m_pressures,m_steps);
+        m_block->addLines(m_id,m_xhist,m_vhist,m_pressures,m_steps, m_times, m_dists);
 
     m_xhist.clear();
     m_vhist.clear();
     m_pressures.clear();
     m_steps.clear();
-}
-
-void Particle::Deactivate(StopReason reason) {
-
-    if (m_stopReason == StillActive)
-        m_stopReason = reason;
-    UpdateBlock(nullptr);
-    m_ingrid = false;
+    m_times.clear();
+    m_dists.clear();
 }
 
 void Particle::EmitData(bool havePressure) {
@@ -163,6 +165,16 @@ void Particle::EmitData(bool havePressure) {
    m_steps.push_back(m_stp);
    if (havePressure)
       m_pressures.push_back(m_p); // will be ignored later on
+   m_times.push_back(m_time);
+   m_dists.push_back(m_dist);
+}
+
+void Particle::Deactivate(StopReason reason) {
+
+    if (m_stopReason == StillActive)
+        m_stopReason = reason;
+    UpdateBlock(nullptr);
+    m_ingrid = false;
 }
 
 bool Particle::Step() {
@@ -175,10 +187,18 @@ bool Particle::Step() {
           inter = grid->getInterpolator(m_el, m_x, m_block->m_scamap);
       m_p = inter(m_block->m_p);
    }
-
+   Scalar ddist = (m_x-m_xold).norm();
    m_xold = m_x;
 
    EmitData(m_block->m_p);
+
+   if (m_forward) {
+       m_time += m_integrator.h();
+       m_dist += ddist;
+   } else {
+       m_time -= m_integrator.h();
+       m_dist -= ddist;
+   }
 
    bool ret = m_integrator.Step();
    ++m_stp;

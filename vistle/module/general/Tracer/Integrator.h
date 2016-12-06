@@ -14,7 +14,7 @@ class BlockData;
 class Integrator{
 friend class Particle;
 private:
-    vistle::Scalar m_h;
+    vistle::Scalar m_h, m_hact;
     vistle::Scalar m_hmin;
     vistle::Scalar m_hmax;
     vistle::Scalar m_errtol;
@@ -37,6 +37,7 @@ public:
     void hInit();
     bool hNew(vistle::Vector3 higher, vistle::Vector3 lower);
     void enableCelltree(bool value);
+    vistle::Scalar h() const;
 };
 
 #endif
