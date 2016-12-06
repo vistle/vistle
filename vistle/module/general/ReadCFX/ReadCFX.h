@@ -10,12 +10,11 @@
 
 class CaseInfo {
 public:
-    CaseInfo(bool m_valid = false);
-    ~CaseInfo();
+    CaseInfo();
     std::map<int, std::string> m_field_param, m_boundary_param;
     bool m_valid;
 
-    void getCaseInfo(const std::string &resultfiledir);
+    void getCaseInfo(const char *resultfiledir);
     int checkFile(const char *filename);
     void checkFields(std::map<int, std::string> &field_param, std::map<int, std::string> &boundary_param);
 };

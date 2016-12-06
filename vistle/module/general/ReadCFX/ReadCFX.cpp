@@ -92,7 +92,6 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     }
     //m_buildGhostcellsParam = addIntParameter("build_ghostcells", "whether to build ghost cells", 1, Parameter::Boolean);ll
 
-    m_case = new CaseInfo();
 
    /*addIntParameter("indexed_geometry", "create indexed geometry?", 0, Parameter::Boolean);
    addIntParameter("triangulate", "only create triangles", 0, Parameter::Boolean);
@@ -111,6 +110,12 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
 ReadCFX::~ReadCFX() {
 
 }
+
+CaseInfo::CaseInfo()
+    : m_valid(false) {
+
+}
+
 
 int CaseInfo::checkFile(const char *filename) {
     const int MIN_FILE_SIZE = 1024; // minimal size for .res files [in Byte]
@@ -185,16 +190,19 @@ void CaseInfo::checkFields(std::map<int, std::string> &field_param, std::map<int
     }
 }
 
-void CaseInfo::getCaseInfo(const std::string &resultfiledir) {
-    const char *c_resultfiledir;
-    c_resultfiledir = resultfiledir.c_str();
+void CaseInfo::getCaseInfo(const char *resultfiledir) {
+//    const char *c_resultfiledir;
+//    c_resultfiledir = resultfiledir.c_str();
 
-    m_valid = checkFile(c_resultfiledir);
-    checkFields(m_field_param, m_boundary_param);
-
+    m_valid = checkFile(resultfiledir);
+    if(!m_valid) {
+        checkFields(m_field_param, m_boundary_param);
+    }
+    else {
+        std::cerr << resultfiledir << " is not a valid CFX .res file" << std::endl;
+    }
     return;
 }
-
 
 
 std::vector<std::string> ReadCFX::getFieldList() const {
@@ -240,72 +248,46 @@ std::vector<std::string> ReadCFX::getFieldList() const {
 bool ReadCFX::parameterChanged(const Parameter *p) {
     auto sp = dynamic_cast<const StringParameter *>(p);
     if (sp == m_resultfiledir) {
-//        std::string c = sp->getValue();
-//        const char *resultfiledir;
-//        resultfiledir = c.c_str();
+        std::string c = sp->getValue();
+        const char *resultfiledir;
+        resultfiledir = c.c_str();
 
-
-        m_case.CaseInfo::getCaseInfo(m_resultfiledir);
+        m_case.getCaseInfo(resultfiledir);
         if (!m_case.m_valid) {
            std::cerr << m_resultfiledir << " is not a valid CFX .res file" << std::endl;
            return false;
         }
         else {
-//            static char *resultName = NULL;
-//            std::cerr << "resultfiledir = " << resultfiledir << std::endl;
-//            std::cerr << "resultName = " << resultName << std::endl;
+            sendInfo("Please wait...");
 
-//            if (resultName == NULL || strcmp(resultName, resultfiledir) != 0) {
-//                resultName = new char[strlen(resultfiledir) + 1];
-//                strcpy(resultName, resultfiledir);
-
-                sendInfo("Please wait...");
-
-                if (nzones > 0)
-                    cfxExportDone();
-
-                nzones = cfxExportInit(resultfiledir, NULL);
-                /*nzones = cfxExportInit(resultName, counts);
-
-                for(i=0;i<cfxCNT_SIZE;i++) {
-                    std::cerr << "counts[" << i << "] = " << counts[i] << std::endl;
-                }*/
-
-                /*std::cerr << "nzones: " << nzones << std::endl;
-                std::cerr << "cfxCNT_SIZE: " << cfxCNT_SIZE << std::endl;
-
-                for(int i=0;i<nzones;i++) {
-                    std::cerr << "cfxExportZoneSet(): " << cfxExportZoneSet(i,NULL) << std::endl;
-                    std::cerr << "cfxExportZoneGet(): " << cfxExportZoneGet() << std::endl;
-                    std::cerr << "cfxExportTimestepCount(): " << cfxExportTimestepCount() << std::endl;
-                    std::cerr << "cfxExportTimestepNumGet(1): " << cfxExportTimestepNumGet(1) << std::endl;
-                    std::cerr << "cfxExportTimestepTimeGet(1): " << cfxExportTimestepTimeGet(1) << std::endl;
-                    std::cerr << "cfxExportNodeCount(): " << cfxExportNodeCount() << std::endl;
-                    std::cerr << "cfxExportElementCount(): " << cfxExportElementCount() << std::endl;
-                    std::cerr << "cfxExportZoneGet(): " << cfxExportZoneGet() << std::endl;
-                    std::cerr << "cfxExportZoneCount(): " << cfxExportZoneCount() << std::endl;
-                    std::cerr << "cfxExportRegionCount(): " << cfxExportRegionCount() << std::endl;
-                    std::cerr << "cfxExportVolumeCount(): " << cfxExportVolumeCount() << std::endl;
-                    std::cerr << "cfxExportBoundaryCount(): " << cfxExportBoundaryCount() << std::endl << std::endl;
-                }*/
-
-                timeStepNum = cfxExportTimestepNumGet(1);
-                if (timeStepNum < 0) {
-                    sendInfo("no timesteps");
-                }
-
-                iteration = cfxExportTimestepNumGet(1);
-                if (cfxExportTimestepSet(iteration) < 0)
-                {
-                    sendInfo("Invalid timestep %d", iteration);
-                }
-
-                sendInfo("Found %d zones", nzones);
-
-                // @@@ cfxExportDone();
-                sendInfo("The initialisation was successfully done");
-
+            if (nzones > 0) {
+                cfxExportDone();
             }
+
+            char *resultfileName = strdup(resultfiledir);
+            nzones = cfxExportInit(resultfileName, NULL);
+            free(resultfileName);
+
+            if (nzones < 0) {
+                cfxExportDone();
+                sendError("cfxExportInit could not open %s", resultfileName);
+                return false;
+            }
+
+            timeStepNum = cfxExportTimestepNumGet(1);
+            if (timeStepNum < 0) {
+                sendInfo("no timesteps");
+            }
+
+            iteration = cfxExportTimestepNumGet(1);
+            if (cfxExportTimestepSet(iteration) < 0) {
+                sendInfo("Invalid timestep %d", iteration);
+            }
+
+            sendInfo("Found %d zones", nzones);
+
+            sendInfo("The initialisation was successfully done");
+
 
             //fill choice parameters
             std::vector<std::string> choices = getFieldList();
@@ -420,6 +402,8 @@ bool ReadCFX::compute() {
        if (loaded)
            ++timeCounter;
    }*/
+
+    cfxExportDone();
 
    return true;
 }
