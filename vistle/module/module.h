@@ -288,15 +288,16 @@ V_MODULEEXPORT Object::const_ptr Module::expect<Object>(Port *port);
 
 // MPI_THREAD_SINGLE seems to be ok for OpenMP with MPICH
 #ifdef MPICH_VERSION
-#define V_HAVE_MPICH 1
+#define V_HAVE_MPICH 0
 #else
 #define V_HAVE_MPICH 0
 #endif
 
+// MPI_THREAD_FUNNELED is sufficient, but apparantly not provided by the CentOS build of MVAPICH2
 #define MODULE_MAIN(X) \
    int main(int argc, char **argv) { \
       int provided = MPI_THREAD_SINGLE; \
-      MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided); \
+      MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided); \
       if (provided == MPI_THREAD_SINGLE && !V_HAVE_MPICH) { \
          std::cerr << "no thread support in MPI" << std::endl; \
          exit(1); \
