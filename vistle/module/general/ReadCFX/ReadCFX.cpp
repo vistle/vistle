@@ -36,8 +36,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
 
     // time parameters
     m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
@@ -69,7 +69,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
             m_fieldOut.push_back(p);
         }
     }
-    m_readBoundary = addIntParameter("read_boundary", "load the boundary?", 1, Parameter::Boolean);
+    m_readBoundary = addIntParameter("read_boundary", "load the boundary?", 0, Parameter::Boolean);
     //m_boundaryPatchesAsVariants = addIntParameter("patches_as_variants", "create sub-objects with variant attribute for boundary patches", 1, Parameter::Boolean);
     //m_patchSelection = addStringParameter("patches", "select patches","all");
 
@@ -117,7 +117,7 @@ CaseInfo::CaseInfo()
 }
 
 
-int CaseInfo::checkFile(const char *filename) {
+bool CaseInfo::checkFile(const char *filename) {
     const int MIN_FILE_SIZE = 1024; // minimal size for .res files [in Byte]
 
     const int MACIC_LEN = 5; // "magic" at the start
@@ -131,7 +131,7 @@ int CaseInfo::checkFile(const char *filename) {
 
     if (!fi) {
         std::cout << filename << strerror(errno) << std::endl;
-        return -1;
+        return false;
     }
     else {
         fileSize = bf::file_size(filename, ec);
@@ -142,79 +142,55 @@ int CaseInfo::checkFile(const char *filename) {
     if (fileSize < MIN_FILE_SIZE) {
         std::cout << filename << "too small to be a real result file" << std::endl;
         std::cout << fileSize << "filesize" << std::endl;
-        return -2;
+        return false;
     }
 
     size_t iret = fread(magicBuf, 1, MACIC_LEN, fi);
     if (iret != MACIC_LEN) {
         std::cout << "checkFile :: error reading MACIC_LEN " << std::endl;
-        return -3;
+        return false;
     }
 
     if (strncasecmp(magicBuf, magic, MACIC_LEN) != 0) {
         std::cout << filename << "does not start with '*INFO'" << std::endl;
-        return -4;
+        return false;
     }
 
     fclose(fi);
-
-    return 0;
+    return true;
 }
 
-void CaseInfo::checkFields(std::map<int, std::string> &field_param, std::map<int, std::string> &boundary_param) {
+void CaseInfo::readFields() {
 
     int usr_level = 0;
-    int i=0, j=0;
     int dimension, corrected_boundary_node;
     int nnodes = cfxExportNodeCount();
 
     int nvars = cfxExportVariableCount(usr_level);
-    //sendInfo("nvars = %d",nvars);
+    std::cerr << "nvars = " << nvars << std::endl;
 
-    for(int varnum=1;varnum<=nvars;varnum++) {
-        if(cfxExportVariableSize(varnum,&dimension,&nnodes,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
-            if(nnodes != 1) { //field parameter
-                field_param[i]=cfxExportVariableName(varnum,1); //0 is short form and 1 is long form of the variable name
-                i++;
-            }
-        }
-    }
-
-    for(int varnum=1;varnum<=nvars;varnum++) {
+    for(int varnum=1;varnum<=nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,1) only returnes values from 1 and higher
         if(cfxExportVariableSize(varnum,&dimension,&nnodes,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
             if(nnodes == 1) { //boundary parameter
-                boundary_param[j]=cfxExportVariableName(varnum,1); //0 is short form and 1 is long form of the variable name
-                j++;
+                m_boundary_param.push_back(cfxExportVariableName(varnum,1)); //0 is short form and 1 is long form of the variable name
+                //std::cerr << "cfxExportVariableName("<< varnum << ",1) = " << cfxExportVariableName(varnum,1) << std::endl;
+            }
+            else {  //field parameter
+                m_field_param.push_back(cfxExportVariableName(varnum,1)); //0 is short form and 1 is long form of the variable name
             }
         }
     }
 }
 
-void CaseInfo::getCaseInfo(const char *resultfiledir) {
-//    const char *c_resultfiledir;
-//    c_resultfiledir = resultfiledir.c_str();
 
-    m_valid = checkFile(resultfiledir);
-    if(!m_valid) {
-        checkFields(m_field_param, m_boundary_param);
-    }
-    else {
-        std::cerr << resultfiledir << " is not a valid CFX .res file" << std::endl;
-    }
-    return;
-}
+std::vector<std::string> CaseInfo::WriteFieldsInConstVector(bool valid, std::vector<std::string> field_vector) const {
 
+    std::vector<std::string> choices;
+    choices.push_back("(NONE)");
 
-std::vector<std::string> ReadCFX::getFieldList() const {
-
-   std::vector<std::string> choices;
-   choices.push_back("(NONE)");
-
-   if (m_case.m_valid) {
-      for (auto &field: m_case.m_field_param)
-         choices.push_back(field.second);
-      for (auto &field: m_case.m_boundary_param)
-         choices.push_back(field.second);
+   if (valid) {
+      for (auto field: field_vector)
+         choices.push_back(field);
    }
 
    return choices;
@@ -252,9 +228,9 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
         const char *resultfiledir;
         resultfiledir = c.c_str();
 
-        m_case.getCaseInfo(resultfiledir);
+        m_case.m_valid = m_case.checkFile(resultfiledir);
         if (!m_case.m_valid) {
-           std::cerr << m_resultfiledir << " is not a valid CFX .res file" << std::endl;
+           std::cerr << resultfiledir << " is not a valid CFX .res file" << std::endl;
            return false;
         }
         else {
@@ -288,20 +264,28 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
 
             sendInfo("The initialisation was successfully done");
 
+            //fill choice parameter
+            m_case.readFields();
 
-            //fill choice parameters
-            std::vector<std::string> choices = getFieldList();
-            std::vector<std::string>::iterator it;
-            for(it=choices.begin();it!=choices.end();it++) {
-                sendInfo("choices = %s \n",it->c_str());
-            }
-            //const std::vector<std::string> choices = {"none1","none2","none3"};
-
+            const std::vector<std::string> field_choices = m_case.WriteFieldsInConstVector(m_case.m_valid, m_case.m_field_param);
+//            const std::vector<std::string> field_choices = {"a","b","c"};
             for (auto out: m_fieldOut) {
-               setParameterChoices(out, choices);
+               setParameterChoices(out, field_choices);
             }
+            std::vector<std::string>::const_iterator it1;
+
+            for(it1=field_choices.begin();it1!=field_choices.end();++it1) {
+                std::cerr << "field_choices = " << *it1 << std::endl;
+            }
+
+
+            const std::vector<std::string> boundary_choices = m_case.WriteFieldsInConstVector(m_case.m_valid, m_case.m_boundary_param);
             for (auto out: m_boundaryOut) {
-               setParameterChoices(out, choices);
+               setParameterChoices(out, boundary_choices);
+            }
+
+            for(it1=boundary_choices.begin();it1!=boundary_choices.end();++it1) {
+                std::cerr << "boundary_choices = " << *it1 << std::endl;
             }
         }
     }

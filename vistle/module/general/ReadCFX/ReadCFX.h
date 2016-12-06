@@ -11,12 +11,12 @@
 class CaseInfo {
 public:
     CaseInfo();
-    std::map<int, std::string> m_field_param, m_boundary_param;
+    std::vector<std::string> m_field_param, m_boundary_param;
     bool m_valid;
 
-    void getCaseInfo(const char *resultfiledir);
-    int checkFile(const char *filename);
-    void checkFields(std::map<int, std::string> &field_param, std::map<int, std::string> &boundary_param);
+    bool checkFile(const char *filename);
+    void readFields();
+    std::vector<std::string> WriteFieldsInConstVector(bool valid, std::vector<std::string> field_vector) const;
 };
 
 class ReadCFX: public vistle::Module {
@@ -53,8 +53,6 @@ class ReadCFX: public vistle::Module {
    std::vector<vistle::Port *> m_volumeDataOut, m_boundaryDataOut;
 
    CaseInfo m_case;
-
-   std::vector<std::string> getFieldList() const;
 
    //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
    int rankForBlock(int processor) const;
