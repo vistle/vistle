@@ -310,6 +310,7 @@ bool Tracer::reduce(int timestep) {
            }
 
            std::vector<Index> sendlist;
+           bool wait = size()==0;
            for (Index i=0; i<numparticles; i++) {
                if (!particle[i]->isTracing())
                    continue;
@@ -318,7 +319,8 @@ bool Tracer::reduce(int timestep) {
                    std::cerr << "Tracer::reduce(): future not valid" << std::endl;
                    continue;
                }
-               auto status = fut.wait_for(std::chrono::seconds(0));
+               auto status = fut.wait_for(std::chrono::milliseconds(wait ? 10 : 0));
+               wait = false;
 #if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6)
                if (!status)
                    continue;
