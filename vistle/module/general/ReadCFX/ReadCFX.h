@@ -15,8 +15,7 @@ public:
     bool m_valid;
 
     bool checkFile(const char *filename);
-    void readFields();
-    std::vector<std::string> WriteFieldsInConstVector(bool valid, std::vector<std::string> field_vector) const;
+    void getFieldList();
 };
 
 class ReadCFX: public vistle::Module {

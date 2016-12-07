@@ -36,7 +36,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.r", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
 
     // time parameters
@@ -160,41 +160,33 @@ bool CaseInfo::checkFile(const char *filename) {
     return true;
 }
 
-void CaseInfo::readFields() {
+void CaseInfo::getFieldList() {
 
     int usr_level = 0;
     int dimension, corrected_boundary_node;
-    int nnodes = cfxExportNodeCount();
+    int length;
 
     int nvars = cfxExportVariableCount(usr_level);
-    std::cerr << "nvars = " << nvars << std::endl;
+    //std::cerr << "nvars = " << nvars << std::endl;
+
+    m_boundary_param.clear();
+    m_boundary_param.push_back("NONE");
+    m_field_param.clear();
+    m_field_param.push_back("NONE");
 
     for(int varnum=1;varnum<=nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,1) only returnes values from 1 and higher
-        if(cfxExportVariableSize(varnum,&dimension,&nnodes,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
-            if(nnodes == 1) { //boundary parameter
+        if(cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
+            if(length == 1) {
                 m_boundary_param.push_back(cfxExportVariableName(varnum,1)); //0 is short form and 1 is long form of the variable name
                 //std::cerr << "cfxExportVariableName("<< varnum << ",1) = " << cfxExportVariableName(varnum,1) << std::endl;
             }
-            else {  //field parameter
+            else {
                 m_field_param.push_back(cfxExportVariableName(varnum,1)); //0 is short form and 1 is long form of the variable name
             }
         }
     }
 }
 
-
-std::vector<std::string> CaseInfo::WriteFieldsInConstVector(bool valid, std::vector<std::string> field_vector) const {
-
-    std::vector<std::string> choices;
-    choices.push_back("(NONE)");
-
-   if (valid) {
-      for (auto field: field_vector)
-         choices.push_back(field);
-   }
-
-   return choices;
-}
 
 /*int ReadFOAM::rankForBlock(int processor) const {
 
@@ -261,32 +253,26 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
             }
 
             sendInfo("Found %d zones", nzones);
-
             sendInfo("The initialisation was successfully done");
 
             //fill choice parameter
-            m_case.readFields();
-
-            const std::vector<std::string> field_choices = m_case.WriteFieldsInConstVector(m_case.m_valid, m_case.m_field_param);
-//            const std::vector<std::string> field_choices = {"a","b","c"};
+            m_case.getFieldList();
             for (auto out: m_fieldOut) {
-               setParameterChoices(out, field_choices);
+               setParameterChoices(out, m_case.m_field_param);
             }
-            std::vector<std::string>::const_iterator it1;
 
-            for(it1=field_choices.begin();it1!=field_choices.end();++it1) {
+            std::vector<std::string>::const_iterator it1;
+            for(it1=m_case.m_field_param.begin();it1!=m_case.m_field_param.end();++it1) {
+                std::cerr << "field_choices = " << *it1 << std::endl;
+            }
+            for(it1=m_case.m_boundary_param.begin();it1!=m_case.m_boundary_param.end();++it1) {
                 std::cerr << "field_choices = " << *it1 << std::endl;
             }
 
-
-            const std::vector<std::string> boundary_choices = m_case.WriteFieldsInConstVector(m_case.m_valid, m_case.m_boundary_param);
             for (auto out: m_boundaryOut) {
-               setParameterChoices(out, boundary_choices);
+                setParameterChoices(out, m_case.m_boundary_param);
             }
 
-            for(it1=boundary_choices.begin();it1!=boundary_choices.end();++it1) {
-                std::cerr << "boundary_choices = " << *it1 << std::endl;
-            }
         }
     }
 
