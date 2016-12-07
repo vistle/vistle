@@ -9,6 +9,8 @@
 #include <core/points.h>
 #include <core/normals.h>
 
+#include <util/coRestraint.h>
+
 // Includes for the CFX application programming interface (API)
 #include <cstdio>
 #include <cstring>
@@ -36,7 +38,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.r", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
 
     // time parameters
@@ -48,6 +50,9 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     m_timeskip = addIntParameter("timeskip", "skip this many timesteps after reading one", 0);
     setParameterMinimum<Integer>(m_timeskip, 0);
     m_readGrid = addIntParameter("read_grid", "load the grid?", 1, Parameter::Boolean);
+
+    //zone selection
+    m_zoneSelection = addStringParameter("zones","select zones","all");
 
     // mesh ports
     m_gridOut = createOutputPort("grid_out1");
@@ -170,9 +175,9 @@ void CaseInfo::getFieldList() {
     //std::cerr << "nvars = " << nvars << std::endl;
 
     m_boundary_param.clear();
-    m_boundary_param.push_back("NONE");
+    m_boundary_param.push_back("(NONE)");
     m_field_param.clear();
-    m_field_param.push_back("NONE");
+    m_field_param.push_back("(NONE)");
 
     for(int varnum=1;varnum<=nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,1) only returnes values from 1 and higher
         if(cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
@@ -234,7 +239,6 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
 
             char *resultfileName = strdup(resultfiledir);
             nzones = cfxExportInit(resultfileName, NULL);
-            free(resultfileName);
 
             if (nzones < 0) {
                 cfxExportDone();
@@ -260,21 +264,28 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
             for (auto out: m_fieldOut) {
                setParameterChoices(out, m_case.m_field_param);
             }
-
-            std::vector<std::string>::const_iterator it1;
-            for(it1=m_case.m_field_param.begin();it1!=m_case.m_field_param.end();++it1) {
-                std::cerr << "field_choices = " << *it1 << std::endl;
-            }
-            for(it1=m_case.m_boundary_param.begin();it1!=m_case.m_boundary_param.end();++it1) {
-                std::cerr << "field_choices = " << *it1 << std::endl;
-            }
-
             for (auto out: m_boundaryOut) {
                 setParameterChoices(out, m_case.m_boundary_param);
             }
+//            std::vector<std::string>::const_iterator it1;
+//            for(it1=m_case.m_field_param.begin();it1!=m_case.m_field_param.end();++it1) {
+//                std::cerr << "field_choices = " << *it1 << std::endl;
+//            }
+//            for(it1=m_case.m_boundary_param.begin();it1!=m_case.m_boundary_param.end();++it1) {
+//                std::cerr << "field_choices = " << *it1 << std::endl;
+//            }
 
+            //print out zone names
+            for(int i=1;i<=nzones;i++) {
+                cfxExportZoneSet(i,NULL);
+                sendInfo("name of zone no. %d: %s \n",i,cfxExportZoneName(i));
+                cfxExportZoneFree();
+            }
+
+            free(resultfileName);
         }
     }
+
 
 
     return Module::parameterChanged(p);
@@ -284,38 +295,39 @@ bool ReadCFX::compute() {
 
     std::cerr << "Compute Start. \n";
 
+    m_zones.add(m_zoneSelection->getValue());
 
-    //write nodes
+//    //write nodes
 
-    nnodes = cfxExportNodeCount();
-    std::cerr << "nnodes = " << nnodes << std::endl;
+//    nnodes = cfxExportNodeCount();
+//    std::cerr << "nnodes = " << nnodes << std::endl;
 
-    nodes = cfxExportNodeList();
+//    nodes = cfxExportNodeList();
 
-    for(int n=0;n<10;n++,nodes++) {
+//    for(int n=0;n<10;n++,nodes++) {
 
-        std::cerr << "x = " << nodes->x << " y = " << nodes->y << " z = " << nodes->z << std::endl;
-    }
+//        std::cerr << "x = " << nodes->x << " y = " << nodes->y << " z = " << nodes->z << std::endl;
+//    }
 
-    cfxExportNodeFree();
+//    cfxExportNodeFree();
 
-    //write elements
-    nelems = cfxExportElementCount();
-    std::cerr << "nelems = " << nelems << std::endl;
+//    //write elements
+//    nelems = cfxExportElementCount();
+//    std::cerr << "nelems = " << nelems << std::endl;
 
-    if (counts[cfxCNT_TET]) {
-           elems = cfxExportElementList();
-           for (int n = 0; n < 1; n++, elems++) {
-               if (cfxELEM_TET == elems->type) {
-                   for (int i = 0; i < elems->type; i++)
-                       std::cerr << "elems = " << elems->nodeid[i] << std::endl;
-               }
-           }
-       }
+//    if (counts[cfxCNT_TET]) {
+//           elems = cfxExportElementList();
+//           for (int n = 0; n < 1; n++, elems++) {
+//               if (cfxELEM_TET == elems->type) {
+//                   for (int i = 0; i < elems->type; i++)
+//                       std::cerr << "elems = " << elems->nodeid[i] << std::endl;
+//               }
+//           }
+//       }
 
 
 
-    cfxExportElementFree();
+//    cfxExportElementFree();
 
 
 

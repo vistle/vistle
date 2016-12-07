@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <utility> // std::pair
+#include <util/coRestraint.h>
 
 #include <util/sysdep.h>
 #include <module/module.h>
@@ -28,7 +29,6 @@ class ReadCFX: public vistle::Module {
    virtual bool compute();
 
  private:
-
    bool parameterChanged(const vistle::Parameter *p);
 
    //int rankForBlock(int block) const;
@@ -38,11 +38,12 @@ class ReadCFX: public vistle::Module {
 
 
    //Parameter
-   vistle::StringParameter *m_resultfiledir;
+   vistle::StringParameter *m_resultfiledir, m_zoneSelection;
    vistle::FloatParameter *m_starttime, *m_stoptime;
    vistle::IntParameter *m_timeskip;
    vistle::IntParameter *m_readGrid, *m_readBoundary; // *m_boundaryPatchesAsVariants;
    std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
+   vistle::coRestraint m_zones;
 
    int nscalars, nvectors, nregions, nelems, nzones, nparticleTracks, nparticleTypes;
    int nnodes;
