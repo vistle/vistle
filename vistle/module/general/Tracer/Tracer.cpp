@@ -244,7 +244,6 @@ bool Tracer::reduce(int timestep) {
    Scalar minspeed = getFloatParameter("min_speed");
 
 
-   bool havePressure = boost::mpi::all_reduce(comm(), m_havePressure, std::logical_and<bool>());
    Index numtime = boost::mpi::all_reduce(comm(), grid_in.size(), [](Index a, Index b){ return std::max<Index>(a,b); });
    Index totalParticles = 0;
    std::vector<Index> stopReasonCount(Particle::NumStopReasons, 0);
@@ -263,141 +262,104 @@ bool Tracer::reduce(int timestep) {
        }
 
        //create particle objects, 2 if traceDirecton==Both
-       std::vector<std::unique_ptr<Particle>> particle(numparticles);
+       std::map<Index, std::unique_ptr<Particle>> particles;
        Index i = 0;
        if (traceDirection != Backward) {
            for(; i<numpoints; i++){
-
-               particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,blocks,steps_max, true));
+               particles.emplace(i, std::unique_ptr<Particle>(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,blocks,steps_max, true)));
            }
        }
        if (traceDirection != Forward) {
            for(; i<numparticles; i++){
-
-               particle[i].reset(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,blocks,steps_max, false));
+               particles.emplace(i, std::unique_ptr<Particle>(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,blocks,steps_max, false)));
            }
        }
 
        Index numActive = numparticles;
-       for(Index i=0; i<numparticles; ++i) {
-           particle[i]->enableCelltree(useCelltree);
+       for(auto it = particles.begin(), next=it; it!= particles.end(); it=next) {
+           next = it;
+           ++next;
+           auto &particle = it->second;
+           particle->enableCelltree(useCelltree);
            ++totalParticles;
 
 #ifdef TIMING
            times::comm_start = times::start();
 #endif
-           bool active = boost::mpi::all_reduce(comm(), particle[i]->isActive(), std::logical_or<bool>());
+           bool active = boost::mpi::all_reduce(comm(), particle->isActive(), std::logical_or<bool>());
 #ifdef TIMING
            times::comm_dur += times::stop(times::comm_start);
 #endif
            if(!active) {
-               particle[i]->Deactivate(Particle::InitiallyOutOfDomain);
+               particle->Deactivate(Particle::InitiallyOutOfDomain);
                --numActive;
+               //particles.erase(it);
+           } else {
+               particle->startTracing(blocks, steps_max, trace_len, minspeed);
            }
        }
 
        const int mpisize = comm().size();
+       bool working = numActive>0;
        //trace particles until none remain active
-       std::vector<std::future<bool>> traced(numparticles);
-       while(numActive > 0) {
-
-           // trace local particles
-           for (Index i=0; i<numparticles; i++) {
-               if (!particle[i]->isTracing() && particle[i]->isActive()) {
-                   particle[i]->setTracing(true);
-                   traced[i] = std::async(std::launch::async, [i, &particle, &blocks, steps_max, trace_len, minspeed]() -> bool { return particle[i]->trace(blocks, steps_max, trace_len, minspeed); });
-               }
-           }
-
+       while (working) {
+           working = false;
+           bool first = true;
            std::vector<Index> sendlist;
-           bool wait = size()==0;
-           for (Index i=0; i<numparticles; i++) {
-               if (!particle[i]->isTracing())
-                   continue;
-               auto &fut = traced[i];
-               if (!fut.valid()) {
-                   std::cerr << "Tracer::reduce(): future not valid" << std::endl;
-                   continue;
-               }
-               auto status = fut.wait_for(std::chrono::milliseconds(wait ? 10 : 0));
-               wait = false;
-#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6)
-               if (!status)
-                   continue;
-#else
-               if (status != std::future_status::ready)
-                   continue;
-#endif
+           for(auto it = particles.begin(), next=it; it!= particles.end(); it=next) {
+               next = it;
+               ++next;
 
-               particle[i]->setTracing(false);
-               if(traced[i].get()) {
-                   sendlist.push_back(i);
+               auto &particle = it->second;
+               if (!particle->inGrid())
+                   continue;
+
+               bool wait = mpisize==1 && first;
+               first = false;
+               if (particle->isTracing(wait)) {
+                   working = true;
+               } else if (particle->madeProgress()) {
+                   sendlist.push_back(particle->id());
+                   particle->sleep();
+                   working = true;
                }
            }
+
+           if (mpisize==1)
+               continue;
 
            // communicate
            Index num_send = sendlist.size();
            std::vector<Index> num_transmit(mpisize);
            boost::mpi::all_gather(comm(), num_send, num_transmit);
            for(int mpirank=0; mpirank<mpisize; mpirank++) {
-#ifdef TIMING
-               times::comm_start = times::start();
-               times::comm_dur += times::stop(times::comm_start);
-#endif
                Index num_recv = num_transmit[mpirank];
                if(num_recv>0) {
-                   std::vector<Index> tmplist = sendlist;
-#ifdef TIMING
-                   times::comm_start = times::start();
-#endif
-                   boost::mpi::broadcast(comm(), tmplist, mpirank);
-#ifdef TIMING
-                   times::comm_dur += times::stop(times::comm_start);
-#endif
+                   std::vector<Index> recvlist;
+                   auto &curlist = rank()==mpirank ? sendlist : recvlist;
+                   boost::mpi::broadcast(comm(), curlist, mpirank);
                    for(Index i=0; i<num_recv; i++){
-#ifdef TIMING
-                       times::comm_start = times::start();
-#endif
-                       Index p_index = tmplist[i];
-                       particle[p_index]->Communicator(comm(), mpirank, havePressure);
-#ifdef TIMING
-                       times::comm_dur += times::stop(times::comm_start);
-#endif
-                   }
-                   if (mpirank != rank()) {
-                       for(Index i=0; i<num_recv; i++){
-                           Index p_index = tmplist[i];
-                           if (particle[p_index]->isMoving(steps_max, trace_len, minspeed)
-                                   && particle[p_index]->findCell(blocks)) {
-                               // if the particle trajectory continues in this block, repeat last data point from previous block
-                               particle[p_index]->EmitData(havePressure);
-                           }
-                       }
-                   }
-                   for(Index i=0; i<num_recv; i++){
-                       Index p_index = tmplist[i];
-#ifdef TIMING
-                       times::comm_start = times::start();
-#endif
-                       bool active = particle[p_index]->isActive();
-                       active = boost::mpi::all_reduce(comm(), particle[p_index]->isActive(), std::logical_or<bool>());
-#ifdef TIMING
-                       times::comm_dur += times::stop(times::comm_start);
-#endif
-                       if(!active){
-                           particle[p_index]->Deactivate(Particle::OutOfDomain);
-                           --numActive;
+                       Index p_index = curlist[i];
+                       auto &p = particles[p_index];
+                       while(p->isTracing(true))
+                           ;
+                       p->broadcast(comm(), mpirank);
+                       if (rank() != mpirank) {
+                           p->startTracing(blocks, steps_max, trace_len, minspeed);
                        }
                    }
                }
            }
+           working = boost::mpi::all_reduce(comm(), working, std::logical_or<bool>());
        }
 
+#if 0
        if (rank() == 0) {
            for(Index i=0; i<numparticles; i++) {
-               ++stopReasonCount[particle[i]->stopReason()];
+               ++stopReasonCount[particles[i]->stopReason()];
            }
        }
+#endif
 
       //add Lines-objects to output port
       for(Index i=0; i<numblocks; i++){

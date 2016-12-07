@@ -48,6 +48,7 @@ bool Integrator::Step() {
     case RK32:
         return StepRK32();
     }
+    return false;
 }
 
 bool Integrator::StepEuler() {

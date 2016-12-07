@@ -5,6 +5,7 @@
 //#define TIMING
 
 #include <vector>
+#include <future>
 
 #include <boost/mpi/communicator.hpp>
 
@@ -36,23 +37,29 @@ public:
              vistle::Scalar hmax, vistle::Scalar errtol, IntegrationMethod int_mode, const std::vector<std::unique_ptr<BlockData>> &bl,
              vistle::Index stepsmax, bool forward);
     ~Particle();
+    vistle::Index id() const;
     void PointsToLines();
-    bool isActive();
-    bool inGrid();
+    bool isActive() const;
+    bool inGrid() const;
     bool isMoving(vistle::Index maxSteps, vistle::Scalar traceLen, vistle::Scalar minSpeed);
     bool findCell(const std::vector<std::unique_ptr<BlockData>> &block);
     void Deactivate(StopReason reason);
     void EmitData(bool havePressure);
     bool Step();
-    void Communicator(boost::mpi::communicator mpi_comm, int root, bool havePressure);
+    void broadcast(boost::mpi::communicator mpi_comm, int root);
     void UpdateBlock(BlockData *block);
     StopReason stopReason() const;
     void enableCelltree(bool value);
-    bool isTracing() const;
+    bool startTracing(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::Index maxSteps, double traceLen, double minSpeed);
+    bool isTracing(bool wait);
+    bool madeProgress() const;
+    void sleep();
     void setTracing(bool trace);
     bool trace(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::Index maxSteps, double traceLen, double minSpeed);
 
 private:
+    std::future<bool> m_progressFuture; //!< future on whether particle has made progress during trace()
+    bool m_progress;
     bool m_tracing; //!< particle is currently tracing on this node
     bool m_forward; //!< trace direction
     vistle::Index m_id; //!< partcle id

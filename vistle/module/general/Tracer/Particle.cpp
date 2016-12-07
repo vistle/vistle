@@ -16,6 +16,7 @@ using namespace vistle;
 Particle::Particle(Index i, const Vector3 &pos, Scalar h, Scalar hmin,
       Scalar hmax, Scalar errtol, IntegrationMethod int_mode,const std::vector<std::unique_ptr<BlockData>> &bl,
       Index stepsmax, bool forward):
+m_progress(false),
 m_tracing(false),
 m_forward(forward),
 m_id(i),
@@ -42,6 +43,10 @@ m_useCelltree(true)
 
 Particle::~Particle(){}
 
+Index Particle::id() const {
+    return m_id;
+}
+
 Particle::StopReason Particle::stopReason() const {
     return m_stopReason;
 }
@@ -52,12 +57,23 @@ void Particle::enableCelltree(bool value) {
     m_integrator.enableCelltree(value);
 }
 
-bool Particle::isActive(){
+bool Particle::startTracing(std::vector<std::unique_ptr<BlockData> > &blocks, Index maxSteps, double traceLen, double minSpeed) {
+    assert(!m_tracing);
+    if (isActive()) {
+        m_tracing = true;
+        m_progress = false;
+        m_progressFuture =  std::async(std::launch::async, [this, &blocks, maxSteps, traceLen, minSpeed]() -> bool { return trace(blocks, maxSteps, traceLen, minSpeed); });
+        return true;
+    }
+    return false;
+}
+
+bool Particle::isActive() const {
 
     return m_ingrid && (m_block || m_searchBlock);
 }
 
-bool Particle::inGrid(){
+bool Particle::inGrid() const {
 
     return m_ingrid;
 }
@@ -206,22 +222,52 @@ bool Particle::Step() {
    return ret;
 }
 
-void Particle::setTracing(bool trace) {
+bool Particle::isTracing(bool wait) {
 
-    m_tracing = trace;
+    if (!m_tracing) {
+        return false;
+    }
+
+    if (!m_progressFuture.valid()) {
+        std::cerr << "Particle::isTracing(): future not valid" << std::endl;
+        m_tracing = false;
+        return false;
+    }
+
+    auto status = m_progressFuture.wait_for(std::chrono::milliseconds(wait ? 10 : 0));
+#if !defined(__clang__) && defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ <= 6)
+    if (!status)
+        return true;
+#else
+    if (status != std::future_status::ready)
+        return true;
+#endif
+
+    m_tracing = false;
+    m_progress = m_progressFuture.get();
+    return false;
 }
 
-bool Particle::isTracing() const {
+bool Particle::madeProgress() const {
 
-    return m_tracing;
+    assert(!m_tracing);
+    return m_progress;
+}
+
+void Particle::sleep() {
+    assert(!m_tracing);
+    m_progress = false;
 }
 
 bool Particle::trace(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::Index steps_max, double trace_len, double minspeed) {
     assert(m_tracing);
 
     bool traced = false;
-    while(isMoving(steps_max, trace_len, minspeed)
-          && findCell(blocks)) {
+    while(isMoving(steps_max, trace_len, minspeed) && findCell(blocks)) {
+        if (!traced && m_stp>0) {
+            // repeat data from previous block for particle that was just received from remote node
+            EmitData(true);
+        }
 #ifdef TIMING
         double celloc_old = times::celloc_dur;
         double integr_old = times::integr_dur;
@@ -236,7 +282,10 @@ bool Particle::trace(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::In
     return traced;
 }
 
-void Particle::Communicator(boost::mpi::communicator mpi_comm, int root, bool havePressure){
+
+
+
+void Particle::broadcast(boost::mpi::communicator mpi_comm, int root) {
 
     boost::mpi::broadcast(mpi_comm, *this, root);
 
