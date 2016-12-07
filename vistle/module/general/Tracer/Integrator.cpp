@@ -126,15 +126,15 @@ Scalar Integrator::h() const {
 
 bool Integrator::StepRK32() {
 
-   Index el=m_ptcl->m_el;
    Scalar sign = m_forward ? 1. : -1.;
    Vector3 k[3];
    k[0] = sign*m_ptcl->m_v;
-   Vector xtmp = m_ptcl->m_x + m_h*k[0];
-   m_hact = m_h;
    auto grid = m_ptcl->m_block->getGrid();
 
    for (;;) {
+      Index el=m_ptcl->m_el;
+      Vector xtmp = m_ptcl->m_x + m_h*k[0];
+      m_hact = m_h;
       if(!grid->inside(el,xtmp)){
 #ifdef TIMING
          times::celloc_start = times::start();
@@ -148,6 +148,7 @@ bool Integrator::StepRK32() {
             return false;
          }
       }
+
       k[1] = sign*Interpolator(m_ptcl->m_block,el, xtmp);
       xtmp = m_ptcl->m_x +m_h*0.25*(k[0]+k[1]);
       m_hact = m_h*0.5;
@@ -165,6 +166,7 @@ bool Integrator::StepRK32() {
             return false;
          }
       }
+
       k[2] = sign*Interpolator(m_ptcl->m_block,el,xtmp);
       Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
       Vector3 x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
@@ -175,10 +177,6 @@ bool Integrator::StepRK32() {
           m_ptcl->m_x = x3rd;
           return true;
       }
-
-      el = m_ptcl->m_el;
-      xtmp = m_ptcl->m_x + m_h*k[0];
-      m_hact = m_h;
    }
 }
 
