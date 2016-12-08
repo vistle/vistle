@@ -262,24 +262,25 @@ bool Tracer::reduce(int timestep) {
        }
 
        //create particle objects, 2 if traceDirecton==Both
-       std::map<Index, std::unique_ptr<Particle>> particles;
+       std::vector<std::shared_ptr<Particle>> allParticles;
+       allParticles.reserve(numparticles);
        Index i = 0;
        if (traceDirection != Backward) {
            for(; i<numpoints; i++){
-               particles.emplace(i, std::unique_ptr<Particle>(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,blocks,steps_max, true)));
+               allParticles.emplace_back(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,blocks,steps_max, true));
            }
        }
        if (traceDirection != Forward) {
            for(; i<numparticles; i++){
-               particles.emplace(i, std::unique_ptr<Particle>(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,blocks,steps_max, false)));
+               allParticles.emplace_back(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,blocks,steps_max, false));
            }
        }
 
-       Index numActive = numparticles;
-       for(auto it = particles.begin(), next=it; it!= particles.end(); it=next) {
-           next = it;
-           ++next;
-           auto &particle = it->second;
+
+       std::set<Index> checkSet; // set of particles to check for deactivation because out of domain
+       std::set<std::shared_ptr<Particle>> activeParticles;
+       for(auto it = allParticles.begin(); it!= allParticles.end(); ++it) {
+           auto particle = it->get();
            particle->enableCelltree(useCelltree);
            ++totalParticles;
 
@@ -290,27 +291,41 @@ bool Tracer::reduce(int timestep) {
 #ifdef TIMING
            times::comm_dur += times::stop(times::comm_start);
 #endif
-           if(!active) {
-               particle->Deactivate(Particle::InitiallyOutOfDomain);
-               --numActive;
-               //particles.erase(it);
-           } else {
+           if (active) {
+               activeParticles.insert(*it);
                particle->startTracing(blocks, steps_max, trace_len, minspeed);
+               checkSet.insert(particle->id());
+           } else {
+               particle->Deactivate(Particle::InitiallyOutOfDomain);
            }
        }
 
+       auto checkActivity = [&checkSet, &allParticles](const boost::mpi::communicator &comm) -> Index {
+           for (auto it = checkSet.begin(), next=it; it != checkSet.end(); it=next) {
+               ++next;
+
+               auto particle = allParticles[*it];
+               bool active = boost::mpi::all_reduce(comm, particle->isActive(), std::logical_or<bool>());
+               if (!active) {
+                   particle->Deactivate(Particle::OutOfDomain);
+                   checkSet.erase(it);
+               }
+           }
+           return checkSet.size();
+       };
+
        const int mpisize = comm().size();
-       bool working = numActive>0;
+       bool working = activeParticles.size()>0;
        //trace particles until none remain active
        while (working) {
            working = false;
            bool first = true;
            std::vector<Index> sendlist;
-           for(auto it = particles.begin(), next=it; it!= particles.end(); it=next) {
+           for(auto it = activeParticles.begin(), next=it; it!= activeParticles.end(); it=next) {
                next = it;
                ++next;
 
-               auto &particle = it->second;
+               auto particle = it->get();
                if (!particle->inGrid())
                    continue;
 
@@ -318,12 +333,17 @@ bool Tracer::reduce(int timestep) {
                first = false;
                if (particle->isTracing(wait)) {
                    working = true;
-               } else if (particle->madeProgress()) {
-                   sendlist.push_back(particle->id());
-                   particle->sleep();
-                   working = true;
+               } else {
+                   if (mpisize==1) {
+                       particle->Deactivate(Particle::OutOfDomain);
+                   } else if (particle->madeProgress()) {
+                       sendlist.push_back(particle->id());
+                   }
+                   activeParticles.erase(it);
                }
            }
+
+           checkActivity(comm());
 
            if (mpisize==1)
                continue;
@@ -340,12 +360,16 @@ bool Tracer::reduce(int timestep) {
                    boost::mpi::broadcast(comm(), curlist, mpirank);
                    for(Index i=0; i<num_recv; i++){
                        Index p_index = curlist[i];
-                       auto &p = particles[p_index];
+                       auto &p = allParticles[p_index];
+                       // wait until former (fruitless) tracing attempts are finished
                        while(p->isTracing(true))
                            ;
                        p->broadcast(comm(), mpirank);
+                       checkSet.insert(p_index);
                        if (rank() != mpirank) {
+                           activeParticles.insert(p);
                            p->startTracing(blocks, steps_max, trace_len, minspeed);
+                           working = true;
                        }
                    }
                }
@@ -353,13 +377,7 @@ bool Tracer::reduce(int timestep) {
            working = boost::mpi::all_reduce(comm(), working, std::logical_or<bool>());
        }
 
-#if 0
-       if (rank() == 0) {
-           for(Index i=0; i<numparticles; i++) {
-               ++stopReasonCount[particles[i]->stopReason()];
-           }
-       }
-#endif
+       checkActivity(comm());
 
       //add Lines-objects to output port
       for(Index i=0; i<numblocks; i++){
@@ -396,6 +414,12 @@ bool Tracer::reduce(int timestep) {
                addObject("data_out1", p);
             }
          }
+      }
+
+      if (rank() == 0) {
+          for(Index i=0; i<numparticles; i++) {
+               ++stopReasonCount[allParticles[i]->stopReason()];
+           }
       }
    }
 

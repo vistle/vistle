@@ -30,7 +30,6 @@ m_dist(0),
 m_block(nullptr),
 m_el(InvalidIndex),
 m_ingrid(true),
-m_searchBlock(true),
 m_integrator(h,hmin,hmax,errtol,int_mode,this, forward),
 m_stopReason(StillActive),
 m_useCelltree(true)
@@ -59,9 +58,9 @@ void Particle::enableCelltree(bool value) {
 
 bool Particle::startTracing(std::vector<std::unique_ptr<BlockData> > &blocks, Index maxSteps, double traceLen, double minSpeed) {
     assert(!m_tracing);
-    if (isActive()) {
+    m_progress = false;
+    if (inGrid()) {
         m_tracing = true;
-        m_progress = false;
         m_progressFuture =  std::async(std::launch::async, [this, &blocks, maxSteps, traceLen, minSpeed]() -> bool { return trace(blocks, maxSteps, traceLen, minSpeed); });
         return true;
     }
@@ -70,7 +69,7 @@ bool Particle::startTracing(std::vector<std::unique_ptr<BlockData> > &blocks, In
 
 bool Particle::isActive() const {
 
-    return m_ingrid && (m_block || m_searchBlock);
+    return m_ingrid && (m_tracing || m_progress || m_block);
 }
 
 bool Particle::inGrid() const {
@@ -85,7 +84,7 @@ bool Particle::isMoving(Index maxSteps, Scalar traceLen, Scalar minSpeed) {
     }
 
     bool moving = m_v.norm() > minSpeed;
-    if(m_dist > traceLen || m_stp > maxSteps || !moving){
+    if(std::abs(m_dist) > traceLen || m_stp > maxSteps || !moving){
 
        PointsToLines();
        if (std::abs(m_dist) > traceLen)
@@ -123,42 +122,37 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
 #endif
         if (m_el==InvalidIndex) {
             PointsToLines();
-            m_searchBlock = true;
             repeatDataFromLastBlock = true;
         } else {
-            m_searchBlock = false;
             return true;
         }
     }
 
-    if (m_searchBlock) {
-        m_searchBlock = false;
-        for(Index i=0; i<block.size(); i++) {
+    for(Index i=0; i<block.size(); i++) {
 
-            if (block[i].get() == m_block) {
-                // don't try previous block again
-                m_block = nullptr;
-                continue;
-            }
-#ifdef TIMING
-            times::celloc_start = times::start();
-#endif
-            auto grid = block[i]->getGrid();
-            m_el = grid->findCell(m_x, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
-#ifdef TIMING
-            times::celloc_dur += times::stop(times::celloc_start);
-#endif
-            if (m_el!=InvalidIndex) {
-
-                UpdateBlock(block[i].get());
-                if (repeatDataFromLastBlock)
-                    EmitData(m_block->m_p);
-                return true;
-            }
+        if (block[i].get() == m_block) {
+            // don't try previous block again
+            m_block = nullptr;
+            continue;
         }
-        UpdateBlock(nullptr);
+#ifdef TIMING
+        times::celloc_start = times::start();
+#endif
+        auto grid = block[i]->getGrid();
+        m_el = grid->findCell(m_x, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
+#ifdef TIMING
+        times::celloc_dur += times::stop(times::celloc_start);
+#endif
+        if (m_el!=InvalidIndex) {
+
+            UpdateBlock(block[i].get());
+            if (repeatDataFromLastBlock)
+                EmitData();
+            return true;
+        }
     }
 
+    UpdateBlock(nullptr);
     return false;
 }
 
@@ -175,13 +169,12 @@ void Particle::PointsToLines(){
     m_dists.clear();
 }
 
-void Particle::EmitData(bool havePressure) {
+void Particle::EmitData() {
 
    m_xhist.push_back(m_xold);
    m_vhist.push_back(m_v);
    m_steps.push_back(m_stp);
-   if (havePressure)
-      m_pressures.push_back(m_p); // will be ignored later on
+   m_pressures.push_back(m_p); // will be ignored later on
    m_times.push_back(m_time);
    m_dists.push_back(m_dist);
 }
@@ -207,7 +200,7 @@ bool Particle::Step() {
    Scalar ddist = (m_x-m_xold).norm();
    m_xold = m_x;
 
-   EmitData(m_block->m_p);
+   EmitData();
 
    if (m_forward) {
        m_time += m_integrator.h();
@@ -254,11 +247,6 @@ bool Particle::madeProgress() const {
     return m_progress;
 }
 
-void Particle::sleep() {
-    assert(!m_tracing);
-    m_progress = false;
-}
-
 bool Particle::trace(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::Index steps_max, double trace_len, double minspeed) {
     assert(m_tracing);
 
@@ -266,7 +254,7 @@ bool Particle::trace(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::In
     while(isMoving(steps_max, trace_len, minspeed) && findCell(blocks)) {
         if (!traced && m_stp>0) {
             // repeat data from previous block for particle that was just received from remote node
-            EmitData(true);
+            EmitData();
         }
 #ifdef TIMING
         double celloc_old = times::celloc_dur;
@@ -288,11 +276,7 @@ bool Particle::trace(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::In
 void Particle::broadcast(boost::mpi::communicator mpi_comm, int root) {
 
     boost::mpi::broadcast(mpi_comm, *this, root);
-
-    if (mpi_comm.rank()!=root) {
-
-        m_searchBlock = true;
-    }
+    m_progress = false;
 }
 
 void Particle::UpdateBlock(BlockData *block) {

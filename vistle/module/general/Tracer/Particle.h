@@ -44,7 +44,7 @@ public:
     bool isMoving(vistle::Index maxSteps, vistle::Scalar traceLen, vistle::Scalar minSpeed);
     bool findCell(const std::vector<std::unique_ptr<BlockData>> &block);
     void Deactivate(StopReason reason);
-    void EmitData(bool havePressure);
+    void EmitData();
     bool Step();
     void broadcast(boost::mpi::communicator mpi_comm, int root);
     void UpdateBlock(BlockData *block);
@@ -53,7 +53,6 @@ public:
     bool startTracing(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::Index maxSteps, double traceLen, double minSpeed);
     bool isTracing(bool wait);
     bool madeProgress() const;
-    void sleep();
     void setTracing(bool trace);
     bool trace(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::Index maxSteps, double traceLen, double minSpeed);
 
@@ -75,7 +74,6 @@ private:
     BlockData *m_block; //!< current block for current particle position
     vistle::Index m_el; //!< index of cell for current particle position
     bool m_ingrid; //!< particle still within domain on some rank
-    bool m_searchBlock; //!< particle is new - has to be initialized
     Integrator m_integrator;
     StopReason m_stopReason; //! reason why particle was deactivated
     bool m_useCelltree; //! whether to use celltree for acceleration
