@@ -65,7 +65,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addVectorParameter("startpoint2", "2nd initial point", ParamVector(1,0,0));
     addVectorParameter("direction", "direction for plane", ParamVector(1,0,0));
     addIntParameter("no_startp", "number of startpoints", 2);
-    setParameterRange("no_startp", (Integer)0, (Integer)10000);
+    setParameterRange("no_startp", (Integer)1, (Integer)100000);
     addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
     auto tl = addFloatParameter("trace_len", "maximum trace distance", 1.0);
     setParameterMinimum(tl, 0.0);
@@ -220,10 +220,14 @@ bool Tracer::reduce(int timestep) {
    } else {
        startpoints.resize(numpoints);
 
-       Vector3 delta = (startpoint2-startpoint1)/(numpoints-1);
-       for(Index i=0; i<numpoints; i++){
+       if (numpoints == 1) {
+           startpoints[0] = (startpoint1+startpoint2)*0.5;
+       } else {
+           Vector3 delta = (startpoint2-startpoint1)/(numpoints-1);
+           for(Index i=0; i<numpoints; i++){
 
-           startpoints[i] = startpoint1 + i*delta;
+               startpoints[i] = startpoint1 + i*delta;
+           }
        }
    }
    Index numparticles = numpoints;
