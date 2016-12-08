@@ -13,13 +13,13 @@
 
 using namespace vistle;
 
-Particle::Particle(Index i, const Vector3 &pos, Scalar h, Scalar hmin,
-      Scalar hmax, Scalar errtol, IntegrationMethod int_mode,const std::vector<std::unique_ptr<BlockData>> &bl,
-      Index stepsmax, bool forward):
+Particle::Particle(Index id, const Vector3 &pos, bool forward, GlobalData &global, Index timestep):
+m_global(global),
+m_id(id),
+m_timestep(timestep),
 m_progress(false),
 m_tracing(false),
 m_forward(forward),
-m_id(i),
 m_x(pos),
 m_xold(pos),
 m_v(Vector3(std::numeric_limits<Scalar>::max(),0,0)), // keep large enough so that particle moves initially
@@ -30,12 +30,12 @@ m_dist(0),
 m_block(nullptr),
 m_el(InvalidIndex),
 m_ingrid(true),
-m_integrator(h,hmin,hmax,errtol,int_mode,this, forward),
+m_integrator(m_global.h_init, m_global.h_min, m_global.h_max, m_global.errtol, m_global.int_mode, this, forward),
 m_stopReason(StillActive),
 m_useCelltree(true)
 {
    m_integrator.enableCelltree(m_useCelltree);
-   if (findCell(bl)) {
+   if (findCell()) {
       m_integrator.hInit();
    }
 }
@@ -56,12 +56,12 @@ void Particle::enableCelltree(bool value) {
     m_integrator.enableCelltree(value);
 }
 
-bool Particle::startTracing(std::vector<std::unique_ptr<BlockData> > &blocks, Index maxSteps, double traceLen, double minSpeed) {
+bool Particle::startTracing() {
     assert(!m_tracing);
     m_progress = false;
     if (inGrid()) {
         m_tracing = true;
-        m_progressFuture =  std::async(std::launch::async, [this, &blocks, maxSteps, traceLen, minSpeed]() -> bool { return trace(blocks, maxSteps, traceLen, minSpeed); });
+        m_progressFuture =  std::async(std::launch::async, [this]() -> bool { return trace(); });
         return true;
     }
     return false;
@@ -77,19 +77,19 @@ bool Particle::inGrid() const {
     return m_ingrid;
 }
 
-bool Particle::isMoving(Index maxSteps, Scalar traceLen, Scalar minSpeed) {
+bool Particle::isMoving() {
 
     if (!m_ingrid) {
        return false;
     }
 
-    bool moving = m_v.norm() > minSpeed;
-    if(std::abs(m_dist) > traceLen || m_stp > maxSteps || !moving){
+    bool moving = m_v.norm() > m_global.min_vel;
+    if(std::abs(m_dist) > m_global.trace_len || m_stp > m_global.max_step || !moving){
 
        PointsToLines();
-       if (std::abs(m_dist) > traceLen)
+       if (std::abs(m_dist) > m_global.trace_len)
            this->Deactivate(DistanceLimitReached);
-       else if (m_stp > maxSteps)
+       else if (m_stp > m_global.max_step)
            this->Deactivate(StepLimitReached);
        else
            this->Deactivate(NotMoving);
@@ -99,7 +99,7 @@ bool Particle::isMoving(Index maxSteps, Scalar traceLen, Scalar minSpeed) {
     return true;
 }
 
-bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
+bool Particle::findCell() {
 
     if (!m_ingrid) {
         return false;
@@ -128,9 +128,9 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
         }
     }
 
-    for(Index i=0; i<block.size(); i++) {
+    for(auto &block: m_global.blocks[m_timestep]) {
 
-        if (block[i].get() == m_block) {
+        if (block.get() == m_block) {
             // don't try previous block again
             m_block = nullptr;
             continue;
@@ -138,14 +138,14 @@ bool Particle::findCell(const std::vector<std::unique_ptr<BlockData>> &block) {
 #ifdef TIMING
         times::celloc_start = times::start();
 #endif
-        auto grid = block[i]->getGrid();
+        auto grid = block->getGrid();
         m_el = grid->findCell(m_x, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
 #ifdef TIMING
         times::celloc_dur += times::stop(times::celloc_start);
 #endif
         if (m_el!=InvalidIndex) {
 
-            UpdateBlock(block[i].get());
+            UpdateBlock(block.get());
             if (repeatDataFromLastBlock)
                 EmitData();
             return true;
@@ -247,11 +247,11 @@ bool Particle::madeProgress() const {
     return m_progress;
 }
 
-bool Particle::trace(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::Index steps_max, double trace_len, double minspeed) {
+bool Particle::trace() {
     assert(m_tracing);
 
     bool traced = false;
-    while(isMoving(steps_max, trace_len, minspeed) && findCell(blocks)) {
+    while(isMoving() && findCell()) {
         if (!traced && m_stp>0) {
             // repeat data from previous block for particle that was just received from remote node
             EmitData();

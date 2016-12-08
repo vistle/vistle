@@ -17,6 +17,7 @@
 #include "Integrator.h"
 
 class BlockData;
+class GlobalData;
 
 class Particle {
 
@@ -33,16 +34,14 @@ public:
                                         (DistanceLimitReached)
                                         (NumStopReasons)
     )
-    Particle(vistle::Index i, const vistle::Vector3 &pos, vistle::Scalar h, vistle::Scalar hmin,
-             vistle::Scalar hmax, vistle::Scalar errtol, IntegrationMethod int_mode, const std::vector<std::unique_ptr<BlockData>> &bl,
-             vistle::Index stepsmax, bool forward);
+    Particle(vistle::Index id, const vistle::Vector3 &pos, bool forward, GlobalData &global, vistle::Index timestep);
     ~Particle();
     vistle::Index id() const;
     void PointsToLines();
     bool isActive() const;
     bool inGrid() const;
-    bool isMoving(vistle::Index maxSteps, vistle::Scalar traceLen, vistle::Scalar minSpeed);
-    bool findCell(const std::vector<std::unique_ptr<BlockData>> &block);
+    bool isMoving();
+    bool findCell();
     void Deactivate(StopReason reason);
     void EmitData();
     bool Step();
@@ -50,18 +49,19 @@ public:
     void UpdateBlock(BlockData *block);
     StopReason stopReason() const;
     void enableCelltree(bool value);
-    bool startTracing(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::Index maxSteps, double traceLen, double minSpeed);
+    bool startTracing();
     bool isTracing(bool wait);
     bool madeProgress() const;
-    void setTracing(bool trace);
-    bool trace(std::vector<std::unique_ptr<BlockData>> &blocks, vistle::Index maxSteps, double traceLen, double minSpeed);
+    bool trace();
 
 private:
+    GlobalData &m_global;
+    vistle::Index m_id; //!< partcle id
+    vistle::Index m_timestep; //! timestep of particle for streamlines
     std::future<bool> m_progressFuture; //!< future on whether particle has made progress during trace()
     bool m_progress;
     bool m_tracing; //!< particle is currently tracing on this node
     bool m_forward; //!< trace direction
-    vistle::Index m_id; //!< partcle id
     vistle::Vector3 m_x; //!< current position
     vistle::Vector3 m_xold; //!< previous position
     std::vector<vistle::Vector3> m_xhist; //!< trajectory

@@ -7,9 +7,37 @@
 #include <future>
 #include <vector>
 
+#include <util/enum.h>
 #include <core/vec.h>
 #include <core/celltree.h>
 #include <module/module.h>
+#include "Integrator.h"
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(TraceType,
+      (Streamlines)
+)
+
+class BlockData;
+
+class GlobalData {
+    friend class Particle;
+    friend class Tracer;
+
+public:
+
+private:
+    std::vector<std::vector<std::unique_ptr<BlockData>>> blocks;
+
+    TraceType task_type;
+    IntegrationMethod int_mode;
+
+    double errtol;
+    double h_min, h_max, h_init;
+    double min_vel;
+    double t_max;
+    double trace_len;
+    vistle::Index max_step;
+};
 
 class Tracer: public vistle::Module {
 

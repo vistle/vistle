@@ -70,9 +70,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     auto tl = addFloatParameter("trace_len", "maximum trace distance", 1.0);
     setParameterMinimum(tl, 0.0);
     IntParameter* tasktype = addIntParameter("taskType", "task type", 0, Parameter::Choice);
-    std::vector<std::string> taskchoices;
-    taskchoices.push_back("streamlines");
-    setParameterChoices(tasktype, taskchoices);
+    V_ENUM_SET_CHOICES(tasktype, TraceType);
     IntParameter *traceDirection = addIntParameter("tdirection", "direction in which to trace", 0, Parameter::Choice);
     V_ENUM_SET_CHOICES(traceDirection, TraceDirection);
     IntParameter *startStyle = addIntParameter("startStyle", "initial particle position configuration", (Integer)Line, Parameter::Choice);
@@ -174,7 +172,6 @@ bool Tracer::reduce(int timestep) {
    TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
    Index steps_max = getIntParameter("steps_max");
    Index numpoints = getIntParameter("no_startp");
-   Scalar trace_len = getFloatParameter("trace_len");
 
    //determine startpoints
    std::vector<Vector3> startpoints;
@@ -240,7 +237,8 @@ bool Tracer::reduce(int timestep) {
        }
    }
 
-   IntegrationMethod int_mode = (IntegrationMethod)getIntParameter("integration");
+   Index numtime = boost::mpi::all_reduce(comm(), grid_in.size(), [](Index a, Index b){ return std::max<Index>(a,b); });
+
    Scalar dt = getFloatParameter("h_euler");
    Scalar dtmin = getFloatParameter("h_min");
    Scalar dtmax = getFloatParameter("h_max");
@@ -248,21 +246,33 @@ bool Tracer::reduce(int timestep) {
    Scalar minspeed = getFloatParameter("min_speed");
 
 
-   Index numtime = boost::mpi::all_reduce(comm(), grid_in.size(), [](Index a, Index b){ return std::max<Index>(a,b); });
+   GlobalData global;
+   global.int_mode = (IntegrationMethod)getIntParameter("integration");
+   global.task_type = (TraceType)getIntParameter("taskType");
+   global.h_init = dt;
+   global.h_min = dtmin;
+   global.h_max = dtmax;
+   global.errtol = errtol;
+   global.trace_len = getFloatParameter("trace_len");
+   global.min_vel = minspeed;
+   global.max_step = steps_max;
+   global.blocks.resize(numtime);
+
    Index totalParticles = 0;
    std::vector<Index> stopReasonCount(Particle::NumStopReasons, 0);
    for (Index t=0; t<numtime; ++t) {
        Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
 
        //create BlockData objects
-       std::vector<std::unique_ptr<BlockData>> blocks(numblocks);
+       global.blocks[t].resize(numblocks);
+       auto &blocks = global.blocks[t];
        for(Index i=0; i<numblocks; i++){
 
            if (useCelltree && celltree.size() > t) {
                if (celltree[t].size() > i)
                    celltree[t][i].get();
            }
-           blocks[i].reset(new BlockData(i, grid_in[t][i], data_in0[t][i], data_in1[t][i]));
+           global.blocks[t][i].reset(new BlockData(i, grid_in[t][i], data_in0[t][i], data_in1[t][i]));
        }
 
        //create particle objects, 2 if traceDirecton==Both
@@ -271,12 +281,12 @@ bool Tracer::reduce(int timestep) {
        Index i = 0;
        if (traceDirection != Backward) {
            for(; i<numpoints; i++){
-               allParticles.emplace_back(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,blocks,steps_max, true));
+               allParticles.emplace_back(new Particle(i, startpoints[i], true, global, t));
            }
        }
        if (traceDirection != Forward) {
            for(; i<numparticles; i++){
-               allParticles.emplace_back(new Particle(i, startpoints[i],dt,dtmin,dtmax,errtol,int_mode,blocks,steps_max, false));
+               allParticles.emplace_back(new Particle(i, startpoints[i], false, global, t));
            }
        }
 
@@ -297,7 +307,7 @@ bool Tracer::reduce(int timestep) {
 #endif
            if (active) {
                activeParticles.insert(*it);
-               particle->startTracing(blocks, steps_max, trace_len, minspeed);
+               particle->startTracing();
                checkSet.insert(particle->id());
            } else {
                particle->Deactivate(Particle::InitiallyOutOfDomain);
@@ -372,7 +382,7 @@ bool Tracer::reduce(int timestep) {
                        checkSet.insert(p_index);
                        if (rank() != mpirank) {
                            activeParticles.insert(p);
-                           p->startTracing(blocks, steps_max, trace_len, minspeed);
+                           p->startTracing();
                            working = true;
                        }
                    }
