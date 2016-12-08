@@ -28,6 +28,7 @@ private:
 
     TraceType task_type;
     IntegrationMethod int_mode;
+    bool use_celltree;
 
     double errtolrel, errtolabs;
     double h_min, h_max, h_init;

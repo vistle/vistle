@@ -20,6 +20,7 @@ MODULE_MAIN(Tracer)
 
 
 using namespace vistle;
+namespace mpi = boost::mpi;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(StartStyle,
       (Line)
@@ -86,6 +87,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
 
     setCurrentParameterGroup("");
     m_useCelltree = addIntParameter("use_celltree", "use celltree for accelerated cell location", (Integer)1, Parameter::Boolean);
+    addIntParameter("num_active", "number of particles to trace simultaneously", 1000);
 }
 
 Tracer::~Tracer() {
@@ -171,6 +173,7 @@ bool Tracer::reduce(int timestep) {
    bool useCelltree = m_useCelltree->getValue();
    TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
    Index numpoints = getIntParameter("no_startp");
+   Index maxNumActive = getIntParameter("num_active");
 
    //determine startpoints
    std::vector<Vector3> startpoints;
@@ -236,7 +239,7 @@ bool Tracer::reduce(int timestep) {
        }
    }
 
-   Index numtime = boost::mpi::all_reduce(comm(), grid_in.size(), [](Index a, Index b){ return std::max<Index>(a,b); });
+   Index numtime = mpi::all_reduce(comm(), grid_in.size(), [](Index a, Index b){ return std::max<Index>(a,b); });
 
    GlobalData global;
    global.int_mode = (IntegrationMethod)getIntParameter("integration");
@@ -246,6 +249,7 @@ bool Tracer::reduce(int timestep) {
    global.h_max = getFloatParameter("h_max");
    global.errtolrel = getFloatParameter("err_tol_rel");
    global.errtolabs = getFloatParameter("err_tol_abs");
+   global.use_celltree = getIntParameter("use_celltree");
    global.trace_len = getFloatParameter("trace_len");
    global.min_vel = getFloatParameter("min_speed");
    global.max_step = getIntParameter("steps_max");
@@ -253,18 +257,17 @@ bool Tracer::reduce(int timestep) {
    global.velocity_relative = getIntParameter("velocity_relative");
    global.blocks.resize(numtime);
 
-   Index totalParticles = 0;
    std::vector<Index> stopReasonCount(Particle::NumStopReasons, 0);
    std::vector<std::shared_ptr<Particle>> allParticles;
    std::set<std::shared_ptr<Particle>> activeParticles;
 
    std::set<Index> checkSet; // set of particles to check for deactivation because out of domain
-   auto checkActivity = [&checkSet, &allParticles](const boost::mpi::communicator &comm) -> Index {
+   auto checkActivity = [&checkSet, &allParticles](const mpi::communicator &comm) -> Index {
        for (auto it = checkSet.begin(), next=it; it != checkSet.end(); it=next) {
            ++next;
 
            auto particle = allParticles[*it];
-           bool active = boost::mpi::all_reduce(comm, particle->isActive(), std::logical_or<bool>());
+           bool active = mpi::all_reduce(comm, particle->isActive(), std::logical_or<bool>());
            if (!active) {
                particle->Deactivate(Particle::OutOfDomain);
                checkSet.erase(it);
@@ -273,6 +276,8 @@ bool Tracer::reduce(int timestep) {
        return checkSet.size();
    };
 
+   // create particles
+   Index id=0;
    for (Index t=0; t<numtime; ++t) {
        Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
 
@@ -292,99 +297,104 @@ bool Tracer::reduce(int timestep) {
        Index i = 0;
        if (traceDirection != Backward) {
            for(; i<numpoints; i++){
-               allParticles.emplace_back(new Particle(i, startpoints[i], true, global, t));
+               allParticles.emplace_back(new Particle(id++, startpoints[i], true, global, t));
            }
        }
        if (traceDirection != Forward) {
            for(; i<numparticles; i++){
-               allParticles.emplace_back(new Particle(i, startpoints[i], false, global, t));
+               allParticles.emplace_back(new Particle(id++, startpoints[i], false, global, t));
            }
        }
    }
 
-   for(auto it = allParticles.begin(); it!= allParticles.end(); ++it) {
-       auto particle = it->get();
-       particle->enableCelltree(useCelltree);
-       ++totalParticles;
+   Index nextParticleToStart = 0;
+   auto startParticles = [this, &nextParticleToStart, &allParticles, &activeParticles, &checkSet](int toStart) -> int {
+       int started = 0;
+       while (nextParticleToStart < allParticles.size()) {
+           if (started >= toStart)
+               break;
 
-       bool active = boost::mpi::all_reduce(comm(), particle->isActive(), std::logical_or<bool>());
-       if (active) {
-           activeParticles.insert(*it);
-           particle->startTracing();
-           checkSet.insert(particle->id());
-       } else {
-           particle->Deactivate(Particle::InitiallyOutOfDomain);
+           Index idx = nextParticleToStart;
+           ++nextParticleToStart;
+           auto particle = allParticles[idx];
+
+           bool active = mpi::all_reduce(comm(), particle->isActive(), std::logical_or<bool>());
+           if (active) {
+               activeParticles.insert(particle);
+               particle->startTracing();
+               checkSet.insert(particle->id());
+               ++started;
+           } else {
+               particle->Deactivate(Particle::InitiallyOutOfDomain);
+           }
        }
-   }
+       return started;
+   };
+
+   const int mpisize = comm().size();
+   Index numActive = 0;
+   do {
+      startParticles(maxNumActive-numActive);
+
+      bool first = true;
+      std::vector<Index> sendlist;
+      for(auto it = activeParticles.begin(), next=it; it!= activeParticles.end(); it=next) {
+          next = it;
+          ++next;
+
+          auto particle = it->get();
+
+          bool wait = mpisize==1 && first;
+          first = false;
+          if (!particle->isTracing(wait)) {
+              if (mpisize==1) {
+                  particle->Deactivate(Particle::OutOfDomain);
+              } else if (particle->madeProgress()) {
+                  sendlist.push_back(particle->id());
+              }
+              activeParticles.erase(it);
+          }
+      }
+
+      if (mpisize==1) {
+          checkSet.clear();
+          numActive = activeParticles.size();
+          continue;
+      }
+
+      // communicate
+      checkActivity(comm());
+
+      Index num_send = sendlist.size();
+      std::vector<Index> num_transmit(mpisize);
+      mpi::all_gather(comm(), num_send, num_transmit);
+      for(int mpirank=0; mpirank<mpisize; mpirank++) {
+          Index num_recv = num_transmit[mpirank];
+          if(num_recv>0) {
+              std::vector<Index> recvlist;
+              auto &curlist = rank()==mpirank ? sendlist : recvlist;
+              mpi::broadcast(comm(), curlist, mpirank);
+              for(Index i=0; i<num_recv; i++){
+                  Index p_index = curlist[i];
+                  auto p = allParticles[p_index];
+                  // wait until former (fruitless) tracing attempts are finished
+                  while(p->isTracing(true))
+                      ;
+                  p->broadcast(comm(), mpirank);
+                  checkSet.insert(p_index);
+                  if (rank() != mpirank) {
+                      activeParticles.insert(p);
+                      p->startTracing();
+                  }
+              }
+          }
+      }
+      numActive = mpi::all_reduce(comm(), activeParticles.size(), std::plus<Index>());
+   } while (numActive > 0 || nextParticleToStart<allParticles.size() || !checkSet.empty());
 
    for (Index t=0; t<numtime; ++t) {
        Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
        auto &blocks = global.blocks[t];
-
-       const int mpisize = comm().size();
-       bool working = activeParticles.size()>0;
-       //trace particles until none remain active
-       while (working) {
-           working = false;
-           bool first = true;
-           std::vector<Index> sendlist;
-           for(auto it = activeParticles.begin(), next=it; it!= activeParticles.end(); it=next) {
-               next = it;
-               ++next;
-
-               auto particle = it->get();
-               if (!particle->inGrid())
-                   continue;
-
-               bool wait = mpisize==1 && first;
-               first = false;
-               if (particle->isTracing(wait)) {
-                   working = true;
-               } else {
-                   if (mpisize==1) {
-                       particle->Deactivate(Particle::OutOfDomain);
-                   } else if (particle->madeProgress()) {
-                       sendlist.push_back(particle->id());
-                   }
-                   activeParticles.erase(it);
-               }
-           }
-
-           checkActivity(comm());
-
-           if (mpisize==1)
-               continue;
-
-           // communicate
-           Index num_send = sendlist.size();
-           std::vector<Index> num_transmit(mpisize);
-           boost::mpi::all_gather(comm(), num_send, num_transmit);
-           for(int mpirank=0; mpirank<mpisize; mpirank++) {
-               Index num_recv = num_transmit[mpirank];
-               if(num_recv>0) {
-                   std::vector<Index> recvlist;
-                   auto &curlist = rank()==mpirank ? sendlist : recvlist;
-                   boost::mpi::broadcast(comm(), curlist, mpirank);
-                   for(Index i=0; i<num_recv; i++){
-                       Index p_index = curlist[i];
-                       auto &p = allParticles[p_index];
-                       // wait until former (fruitless) tracing attempts are finished
-                       while(p->isTracing(true))
-                           ;
-                       p->broadcast(comm(), mpirank);
-                       checkSet.insert(p_index);
-                       if (rank() != mpirank) {
-                           activeParticles.insert(p);
-                           p->startTracing();
-                           working = true;
-                       }
-                   }
-               }
-           }
-           working = boost::mpi::all_reduce(comm(), working, std::logical_or<bool>());
-       }
-
-       checkActivity(comm());
 
       //add Lines-objects to output port
       for(Index i=0; i<numblocks; i++){
@@ -432,7 +442,7 @@ bool Tracer::reduce(int timestep) {
 
    if (rank() == 0) {
        std::stringstream str;
-       str << "Stop stats for " << totalParticles << " particles:";
+       str << "Stop stats for " << allParticles.size() << " particles:";
        for (size_t i=0; i<stopReasonCount.size(); ++i) {
            str << " " << Particle::toString((Particle::StopReason)i) << ":" << stopReasonCount[i];
        }

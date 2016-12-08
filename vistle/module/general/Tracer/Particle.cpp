@@ -28,7 +28,7 @@ m_el(InvalidIndex),
 m_ingrid(true),
 m_integrator(this, forward),
 m_stopReason(StillActive),
-m_useCelltree(true)
+m_useCelltree(m_global.use_celltree)
 {
    m_integrator.enableCelltree(m_useCelltree);
    if (findCell()) {
