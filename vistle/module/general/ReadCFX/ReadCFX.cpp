@@ -8,6 +8,7 @@
 #include <core/lines.h>
 #include <core/points.h>
 #include <core/normals.h>
+#include <core/unstr.h>
 
 #include <util/coRestraint.h>
 
@@ -239,20 +240,29 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
             char *resultfileName = strdup(resultfiledir);
             nzones = cfxExportInit(resultfileName, NULL);
 
+
+
             if (nzones < 0) {
                 cfxExportDone();
                 sendError("cfxExportInit could not open %s", resultfileName);
                 return false;
             }
 
-            timeStepNum = cfxExportTimestepNumGet(1);
+            int timeStepNum = cfxExportTimestepNumGet(1);
             if (timeStepNum < 0) {
                 sendInfo("no timesteps");
             }
 
-            iteration = cfxExportTimestepNumGet(1);
-            if (cfxExportTimestepSet(iteration) < 0) {
-                sendInfo("Invalid timestep %d", iteration);
+//            std::cerr << "cfxExportTimestepCount()" << cfxExportTimestepCount() << std::endl;
+//            std::cerr << "cfxExportTimestepSet(timeStepNum)" << cfxExportTimestepSet(timeStepNum) << std::endl;
+//            std::cerr << "cfxExportTimestepNumGet(1)" << cfxExportTimestepNumGet(1) << std::endl;
+//            //std::cerr << "cfxExportTimestepNumGet(2)" << cfxExportTimestepNumGet(2) << std::endl;
+
+//            std::cerr << "cfxExportTimestepTimeGet(1200)" << cfxExportTimestepTimeGet(1200) << std::endl;
+//            std::cerr << "cfxExportTimestepTimeGet(cfxExportTimestepNumGet(2))" << cfxExportTimestepTimeGet(cfxExportTimestepNumGet(2)) << std::endl;
+
+            if (cfxExportTimestepSet(timeStepNum) < 0) {
+                sendInfo("Invalid timestep %d", timeStepNum);
             }
 
             sendInfo("Found %d zones", nzones);
@@ -285,10 +295,25 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
         }
     }
 
-
-
     return Module::parameterChanged(p);
 }
+
+/*void loadGrid(vistle::UnstructuredGrid::ptr grid) {
+
+
+//            if (cfxExportZoneSet (zone, counts) < 0)
+//                     cfxExportFatal ("invalid zone number");
+//            nnodes = cfxExportNodeCount();
+//            nelems = cfxExportElementCount();
+//            if (counts[cfxCNT_PYR]) {
+//               printf ("%d pyramid elements found - they are being ignored\n",
+//                  counts[cfxCNT_PYR]);
+//               nelems -= counts[cfxCNT_PYR];
+//            }
+//            if (!nnodes || !nelems)
+//               cfxExportFatal ("no nodes and/or elements");
+    return;
+}*/
 
 bool ReadCFX::compute() {
 
@@ -304,6 +329,7 @@ bool ReadCFX::compute() {
     ssize_t group;
     m_zones.get(val,group);
 
+    //loadGrid(grid);
 
 
 

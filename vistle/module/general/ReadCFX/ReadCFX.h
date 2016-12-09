@@ -5,6 +5,7 @@
 #include <vector>
 #include <utility> // std::pair
 #include <util/coRestraint.h>
+#include <core/unstr.h>
 
 #include <util/sysdep.h>
 #include <module/module.h>
@@ -29,7 +30,6 @@ class ReadCFX: public vistle::Module {
    virtual bool compute();
 
  private:
-
    bool parameterChanged(const vistle::Parameter *p);
 
    //int rankForBlock(int block) const;
@@ -55,25 +55,19 @@ class ReadCFX: public vistle::Module {
 
    CaseInfo m_case;
 
-   //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
-   int rankForBlock(int processor) const;
-
+   cfxNode *nodes;
+   cfxElement *elems;
+   // number of digits in transient file suffix
+   //char zoneExt[256];
+   //int counts[cfxCNT_SIZE];
    //std::string _dir;
    //std::string _theFile;
 
-   int counts[cfxCNT_SIZE];
-   int timeStepNum, iteration;
+   //vistle::UnstructuredGrid::ptr grid;
 
-   cfxNode *nodes;
-   cfxElement *elems;
-
-   //int npscalars, npvectors, numTracks;
-
-   //int level = 1, zone = 0, alias = 1, bndfix = 0, bnddat = 0;
-
-   // number of digits in transient file suffix
-   char zoneExt[256];
-
+   //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
+   int rankForBlock(int processor) const;
+   //void loadGrid(vistle::UnstructuredGrid::ptr grid);
 
 };
 
