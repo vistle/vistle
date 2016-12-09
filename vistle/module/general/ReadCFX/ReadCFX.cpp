@@ -52,7 +52,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     m_readGrid = addIntParameter("read_grid", "load the grid?", 1, Parameter::Boolean);
 
     //zone selection
-    m_zoneSelection = addStringParameter("zones","select zones","all");
+    m_zoneSelection = addStringParameter("zones","select zone numbers e.g. 1,4,6-10","all");
 
     // mesh ports
     m_gridOut = createOutputPort("grid_out1");
@@ -76,7 +76,6 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     }
     m_readBoundary = addIntParameter("read_boundary", "load the boundary?", 0, Parameter::Boolean);
     //m_boundaryPatchesAsVariants = addIntParameter("patches_as_variants", "create sub-objects with variant attribute for boundary patches", 1, Parameter::Boolean);
-    //m_patchSelection = addStringParameter("patches", "select patches","all");
 
     // 2d data ports and 2d data choice parameters
     for (int i=0; i<NumBoundaryPorts; ++i) {
@@ -295,9 +294,20 @@ bool ReadCFX::compute() {
 
     std::cerr << "Compute Start. \n";
 
-    m_zones.add(m_zoneSelection->getValue());
 
-//    //write nodes
+    //m_zone(zone) = 1 Zone ist selektiert
+    //m_zone(zone) = 0 Zone ist nicht selektiert
+    //group = -1 alle Zonen sind selektiert
+    m_zones.clear();
+    m_zones.add(m_zoneSelection->getValue());
+    ssize_t val = m_zones.getNumGroups();
+    ssize_t group;
+    m_zones.get(val,group);
+
+
+
+
+    //    //write nodes
 
 //    nnodes = cfxExportNodeCount();
 //    std::cerr << "nnodes = " << nnodes << std::endl;

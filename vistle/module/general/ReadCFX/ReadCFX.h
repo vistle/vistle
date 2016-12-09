@@ -29,6 +29,7 @@ class ReadCFX: public vistle::Module {
    virtual bool compute();
 
  private:
+
    bool parameterChanged(const vistle::Parameter *p);
 
    //int rankForBlock(int block) const;
@@ -38,7 +39,7 @@ class ReadCFX: public vistle::Module {
 
 
    //Parameter
-   vistle::StringParameter *m_resultfiledir, m_zoneSelection;
+   vistle::StringParameter *m_resultfiledir, *m_zoneSelection;
    vistle::FloatParameter *m_starttime, *m_stoptime;
    vistle::IntParameter *m_timeskip;
    vistle::IntParameter *m_readGrid, *m_readBoundary; // *m_boundaryPatchesAsVariants;
