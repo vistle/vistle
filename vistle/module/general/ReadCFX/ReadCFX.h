@@ -63,11 +63,11 @@ class ReadCFX: public vistle::Module {
    //std::string _dir;
    //std::string _theFile;
 
-   //vistle::UnstructuredGrid::ptr grid;
+   vistle::UnstructuredGrid::ptr grid;
 
    //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
    int rankForBlock(int processor) const;
-   //void loadGrid(vistle::UnstructuredGrid::ptr grid);
+   void loadGrid();
 
 };
 

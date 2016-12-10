@@ -39,8 +39,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
 
     // time parameters
     m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
@@ -256,11 +256,8 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
 //            std::cerr << "cfxExportTimestepCount()" << cfxExportTimestepCount() << std::endl;
 //            std::cerr << "cfxExportTimestepSet(timeStepNum)" << cfxExportTimestepSet(timeStepNum) << std::endl;
 //            std::cerr << "cfxExportTimestepNumGet(1)" << cfxExportTimestepNumGet(1) << std::endl;
-//            //std::cerr << "cfxExportTimestepNumGet(2)" << cfxExportTimestepNumGet(2) << std::endl;
 
-//            std::cerr << "cfxExportTimestepTimeGet(1200)" << cfxExportTimestepTimeGet(1200) << std::endl;
-//            std::cerr << "cfxExportTimestepTimeGet(cfxExportTimestepNumGet(2))" << cfxExportTimestepTimeGet(cfxExportTimestepNumGet(2)) << std::endl;
-
+            cfxExportTimestepSet(timeStepNum);
             if (cfxExportTimestepSet(timeStepNum) < 0) {
                 sendInfo("Invalid timestep %d", timeStepNum);
             }
@@ -298,9 +295,16 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
     return Module::parameterChanged(p);
 }
 
-/*void loadGrid(vistle::UnstructuredGrid::ptr grid) {
+void ReadCFX::loadGrid() {
+    bool readGrid = m_readGrid->getValue();
+    if(readGrid) {
+        //grid(new UnstructuredGrid(0, 0, 0)); //initialized with number of elements, number of connectivities, number of coordinates
+
+       // grid->x.push_back();
+        //grid->tl.
 
 
+    }
 //            if (cfxExportZoneSet (zone, counts) < 0)
 //                     cfxExportFatal ("invalid zone number");
 //            nnodes = cfxExportNodeCount();
@@ -313,7 +317,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
 //            if (!nnodes || !nelems)
 //               cfxExportFatal ("no nodes and/or elements");
     return;
-}*/
+}
 
 bool ReadCFX::compute() {
 
@@ -329,7 +333,7 @@ bool ReadCFX::compute() {
     ssize_t group;
     m_zones.get(val,group);
 
-    //loadGrid(grid);
+    loadGrid();
 
 
 
