@@ -44,7 +44,7 @@ class ReadCFX: public vistle::Module {
    vistle::IntParameter *m_timeskip;
    vistle::IntParameter *m_readGrid, *m_readBoundary; // *m_boundaryPatchesAsVariants;
    std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
-   vistle::coRestraint m_zones;
+   vistle::coRestraint m_zonesSelected;
 
    int nscalars, nvectors, nregions, nelems, nzones, nparticleTracks, nparticleTypes;
    int nnodes;
@@ -55,8 +55,8 @@ class ReadCFX: public vistle::Module {
 
    CaseInfo m_case;
 
-   cfxNode *nodes;
-   cfxElement *elems;
+   cfxNode *nodeList;
+   cfxElement *elmList;
    // number of digits in transient file suffix
    //char zoneExt[256];
    //int counts[cfxCNT_SIZE];

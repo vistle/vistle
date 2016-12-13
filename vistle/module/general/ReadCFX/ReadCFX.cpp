@@ -39,8 +39,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
 
     // time parameters
     m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
@@ -298,13 +298,43 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
 void ReadCFX::loadGrid() {
     bool readGrid = m_readGrid->getValue();
     if(readGrid) {
-        //grid(new UnstructuredGrid(0, 0, 0)); //initialized with number of elements, number of connectivities, number of coordinates
+        UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0)); //initialized with number of elements, number of connectivities, number of coordinates
 
-       // grid->x.push_back();
-        //grid->tl.
+        cfxExportZoneSet(0,NULL); //0 means global zone (all zones)
+
+        //load nodes into unstructured grid
+        double *x_coord = new double, *y_coord = new double, *z_coord = new double;
+
+        nnodes = cfxExportNodeCount();
+        nodeList = cfxExportNodeList(); //load coordinates into array with structs, each struct containing x,y,z of one node
+        for(int nodeid=1;nodeid<=nnodes;++nodeid) {
+            if(!cfxExportNodeGet(nodeid,x_coord,y_coord,z_coord)) {  //get access to coordinates
+                std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
+            }
+            grid->x().push_back(*(x_coord));
+            grid->y().push_back(*(y_coord));
+            grid->z().push_back(*(z_coord));
+        }
 
 
+        //Test, ob Einlesen funktioniert hat
+        std::cerr << "nnodes = " << nnodes << std::endl;
+        std::cerr << "grid->getNumCoords()" << grid->getNumCoords() << std::endl;
+        std::cerr << "x,y,z (1)" << grid->x().at(1) << ", " << grid->y().at(1) << ", " << grid->z().at(1) << std::endl;
+        std::cerr << "x,y,z (10)" << grid->x().at(10) << ", " << grid->y().at(10) << ", " << grid->z().at(10) << std::endl;
+        std::cerr << "x,y,z (nnodes-1)" << grid->x().at(nnodes-1) << ", " << grid->y().at(nnodes-1) << ", " << grid->z().at(nnodes-1) << std::endl;
+
+        cfxExportNodeFree();
+        delete[] x_coord;
+        delete[] y_coord;
+        delete[] z_coord;
     }
+
+
+
+
+    //grid->tl.
+
 //            if (cfxExportZoneSet (zone, counts) < 0)
 //                     cfxExportFatal ("invalid zone number");
 //            nnodes = cfxExportNodeCount();
@@ -324,14 +354,16 @@ bool ReadCFX::compute() {
     std::cerr << "Compute Start. \n";
 
 
+    // read zone selection; m_zonesSelected contains a bool array of which zones are selected
+
     //m_zone(zone) = 1 Zone ist selektiert
     //m_zone(zone) = 0 Zone ist nicht selektiert
     //group = -1 alle Zonen sind selektiert
-    m_zones.clear();
-    m_zones.add(m_zoneSelection->getValue());
-    ssize_t val = m_zones.getNumGroups();
+    m_zonesSelected.clear();
+    m_zonesSelected.add(m_zoneSelection->getValue());
+    ssize_t val = m_zonesSelected.getNumGroups();
     ssize_t group;
-    m_zones.get(val,group);
+    m_zonesSelected.get(val,group);
 
     loadGrid();
 
@@ -342,11 +374,11 @@ bool ReadCFX::compute() {
 //    nnodes = cfxExportNodeCount();
 //    std::cerr << "nnodes = " << nnodes << std::endl;
 
-//    nodes = cfxExportNodeList();
+//    nodeList = cfxExportNodeList();
 
-//    for(int n=0;n<10;n++,nodes++) {
+//    for(int n=0;n<10;n++,nodeList++) {
 
-//        std::cerr << "x = " << nodes->x << " y = " << nodes->y << " z = " << nodes->z << std::endl;
+//        std::cerr << "x = " << nodeList->x << " y = " << nodeList->y << " z = " << nodeList->z << std::endl;
 //    }
 
 //    cfxExportNodeFree();
