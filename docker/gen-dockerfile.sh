@@ -9,8 +9,8 @@ case $1 in
       ;;
 esac
 
-export UBUNTU=15.10
-export PAR=-j8
+export UBUNTU=16.04
+export PAR=-j4
 export ISPCVER=1.9.1
 export EMBREETAG=v2.13.0
 export BUILDTYPE=Release
