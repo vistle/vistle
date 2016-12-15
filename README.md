@@ -49,7 +49,7 @@ Build Requirements
 
          b2 --with-filesystem --with-iostreams --with-python \
              --with-serialization --with-system --with-thread \
-             --with-regex --with-chrono --with-date_time \
+             --with-regex --with-date_time \
              --with-program_options
      Notes:
 

@@ -3,7 +3,7 @@ MAINTAINER "Martin Aumüller" <aumueller@hlrs.de>
 
 WORKDIR /build
 
-RUN apt-get update -y && apt-get install --no-install-recommends -y        libtbb-dev        libmpich-dev mpich        git cmake make file        libjpeg-dev        libvncserver-dev        libsnappy-dev zlib1g-dev libreadline-dev        libassimp-dev        libboost-atomic-dev libboost-chrono-dev libboost-date-time-dev libboost-exception-dev libboost-filesystem-dev        libboost-iostreams-dev libboost-locale-dev libboost-log-dev libboost-math-dev libboost-program-options-dev libboost-python-dev        libboost-random-dev libboost-regex-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev libboost-timer-dev        libboost-tools-dev libboost-dev
+RUN apt-get update -y && apt-get install --no-install-recommends -y        libtbb-dev        libmpich-dev mpich        git cmake make file        libjpeg-dev        libvncserver-dev        libsnappy-dev zlib1g-dev libreadline-dev        libassimp-dev        libboost-atomic-dev libboost-date-time-dev libboost-exception-dev libboost-filesystem-dev        libboost-iostreams-dev libboost-locale-dev libboost-log-dev libboost-math-dev libboost-program-options-dev libboost-python-dev        libboost-random-dev libboost-regex-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev libboost-timer-dev        libboost-tools-dev libboost-dev
 
 # dependencies for OpenGL/UI components
 #RUN apt-get install --no-install-recommends -y libxmu-dev libxi-dev #       libopenscenegraph-dev libglew-dev #       qttools5-dev qtscript5-dev libqt5scripttools5 libqt5svg5-dev libqt5opengl5-dev libqt5webkit5-dev 

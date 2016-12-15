@@ -1,4 +1,4 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS chrono system filesystem)
+vistle_find_package(Boost 1.40 REQUIRED COMPONENTS system filesystem)
 
 set(util_SOURCES
    coRestraint.cpp

@@ -1,4 +1,4 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS chrono system)
+vistle_find_package(Boost 1.40 REQUIRED COMPONENTS system)
 vistle_find_package(CUDA)
 vistle_find_package(GLEW)
 vistle_find_package(OpenGL)

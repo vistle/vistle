@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <vector>
 #include <limits>
+#include <iostream>
 
 using vistle::Clock;
 
