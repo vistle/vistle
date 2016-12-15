@@ -42,7 +42,7 @@ RUN apt-get update -y && apt-get install --no-install-recommends -y \
        libassimp-dev \
        libboost-atomic-dev libboost-date-time-dev libboost-exception-dev libboost-filesystem-dev \
        libboost-iostreams-dev libboost-locale-dev libboost-log-dev libboost-math-dev libboost-program-options-dev libboost-python-dev \
-       libboost-random-dev libboost-regex-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev libboost-timer-dev \
+       libboost-random-dev libboost-serialization-dev libboost-system-dev libboost-thread-dev libboost-timer-dev \
        libboost-tools-dev libboost-dev
 
 # dependencies for OpenGL/UI components
