@@ -6,9 +6,12 @@
 #include <utility> // std::pair
 #include <util/coRestraint.h>
 #include <core/unstr.h>
+#include <core/index.h>
 
 #include <util/sysdep.h>
 #include <module/module.h>
+
+typedef vistle::Index index_t;
 
 class CaseInfo {
 public:
@@ -46,8 +49,8 @@ class ReadCFX: public vistle::Module {
    std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
    vistle::coRestraint m_zonesSelected;
 
-   int nscalars, nvectors, nregions, nelems, nzones, nparticleTracks, nparticleTypes;
-   int nnodes;
+   vistle::Index nscalars, nvectors, nregions, nelems, nzones, nparticleTracks, nparticleTypes, nnodes;
+
 
    //Ports
    vistle::Port *m_gridOut;
@@ -59,7 +62,7 @@ class ReadCFX: public vistle::Module {
    cfxElement *elmList;
    // number of digits in transient file suffix
    //char zoneExt[256];
-   //int counts[cfxCNT_SIZE];
+   int counts[cfxCNT_SIZE];
    //std::string _dir;
    //std::string _theFile;
 
