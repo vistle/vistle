@@ -3,7 +3,6 @@
  */
 #include <util/sysdep.h>
 #include <boost/foreach.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <mpi.h>

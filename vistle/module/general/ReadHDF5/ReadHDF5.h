@@ -13,7 +13,6 @@
 #include <unordered_set>
 
 #include <boost/mpl/for_each.hpp>
-#include <boost/filesystem.hpp>
 
 #include <module/module.h>
 

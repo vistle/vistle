@@ -1,12 +1,12 @@
 #include <iostream>
-#include <boost/filesystem.hpp>
+#include "filesystem.h"
 #include "directory.h"
 
 namespace vistle {
 
 bool scanModules(const std::string &dir, int hub, AvailableMap &available) {
 
-   namespace bf = boost::filesystem;
+   namespace bf = vistle::filesystem;
    bf::path p(dir);
    try {
       if (!bf::is_directory(p)) {
