@@ -229,16 +229,16 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
         else {
             sendInfo("Please wait...");
 
-            if (nzones > 0) {
+            if (m_nzones > 0) {
                 cfxExportDone();
             }
 
             char *resultfileName = strdup(resultfiledir);
-            nzones = cfxExportInit(resultfileName, NULL);
+            m_nzones = cfxExportInit(resultfileName, NULL);
 
 
 
-            if (nzones < 0) {
+            if (m_nzones < 0) {
                 cfxExportDone();
                 sendError("cfxExportInit could not open %s", resultfileName);
                 return false;
@@ -258,7 +258,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
                 sendInfo("Invalid timestep %d", timeStepNum);
             }
 
-            sendInfo("Found %d zones", nzones);
+            sendInfo("Found %d zones", m_nzones);
             sendInfo("The initialisation was successfully done");
 
             //fill choice parameter
@@ -278,7 +278,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
 //            }
 
             //print out zone names
-            for(index_t i=1;i<=nzones;i++) {
+            for(index_t i=1;i<=m_nzones;i++) {
                 cfxExportZoneSet(i,NULL);
                 sendInfo("name of zone no. %d: %s \n",i,cfxExportZoneName(i));
                 cfxExportZoneFree();
@@ -303,9 +303,9 @@ void ReadCFX::loadGrid() {
         //load nodes into unstructured grid
         double *x_coord = new double, *y_coord = new double, *z_coord = new double;
 
-        nnodes = cfxExportNodeCount();
+        m_nnodes = cfxExportNodeCount();
         nodeList = cfxExportNodeList(); //load coordinates into array with structs, each struct containing x,y,z of one node
-        for(index_t nodeid=1;nodeid<=nnodes;++nodeid) {
+        for(index_t nodeid=1;nodeid<=m_nnodes;++nodeid) {
             if(!cfxExportNodeGet(nodeid,x_coord,y_coord,z_coord)) {  //get access to coordinates
                 std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
             }
@@ -316,12 +316,12 @@ void ReadCFX::loadGrid() {
 
 
         //Test, ob Einlesen funktioniert hat
-//        std::cerr << "nnodes = " << nnodes << std::endl;
+//        std::cerr << "m_nnodes = " << m_nnodes << std::endl;
 //        std::cerr << "grid->getNumCoords()" << grid->getNumCoords() << std::endl;
 //        std::cerr << "x,y,z (0)" << grid->x().at(0) << ", " << grid->y().at(0) << ", " << grid->z().at(0) << std::endl;
 //        std::cerr << "x,y,z (1)" << grid->x().at(1) << ", " << grid->y().at(1) << ", " << grid->z().at(1) << std::endl;
 //        std::cerr << "x,y,z (10)" << grid->x().at(10) << ", " << grid->y().at(10) << ", " << grid->z().at(10) << std::endl;
-//        std::cerr << "x,y,z (nnodes-1)" << grid->x().at(nnodes-1) << ", " << grid->y().at(nnodes-1) << ", " << grid->z().at(nnodes-1) << std::endl;
+//        std::cerr << "x,y,z (m_nnodes-1)" << grid->x().at(m_nnodes-1) << ", " << grid->y().at(m_nnodes-1) << ", " << grid->z().at(m_nnodes-1) << std::endl;
 
         cfxExportNodeFree();
         delete[] x_coord;
@@ -334,10 +334,10 @@ void ReadCFX::loadGrid() {
     int elemListCounter=0;
     int *nodelist = new int[8], *elemtype = new int;
 
-    nelems = cfxExportElementCount();
+    m_nelems = cfxExportElementCount();
     elmList = cfxExportElementList(); //load elements into array with structs, each struct containing type and array with nodeid's which belong to the element
 
-    for(index_t elemid=1;elemid<=nelems;++elemid) {
+    for(index_t elemid=1;elemid<=m_nelems;++elemid) {
         if(!cfxExportElementGet(elemid,elemtype,nodelist)) {
             std::cerr << "error while reading elements out of .res file: elemid is out of range" << std::endl;
         }
@@ -385,7 +385,7 @@ void ReadCFX::loadGrid() {
 
     //Test, ob Einlesen funktioniert hat
 //    std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
-//    std::cerr <<"no. elems = " << nelems << std::endl;
+//    std::cerr <<"no. elems = " << m_nelems << std::endl;
 //    std::cerr <<"grid->getNumElements" << grid->getNumElements() << std::endl;
 //    for(index_t i = 0;i<19;++i) {
 //        std::cerr << "tl(" << i << ") = " << grid->tl().at(i) << std::endl;
@@ -402,47 +402,62 @@ void ReadCFX::loadGrid() {
     return;
 }
 
+void ReadCFX::loadField() {
+
+
+    std::cerr << "m_boundaryOut[0] = " << m_boundaryOut[0]->getValue() << std::endl;
+    std::cerr << "m_boundaryOut[1] = " << m_boundaryOut[1]->getValue() << std::endl;
+    std::cerr << "m_boundaryOut[2] = " << m_boundaryOut[2]->getValue() << std::endl;
+
+
+    return;
+}
+
 bool ReadCFX::compute() {
 
     std::cerr << "Compute Start. \n";
 
+    loadGrid();
 
     // read zone selection; m_zonesSelected contains a bool array of which zones are selected
-
-    //m_zone(zone) = 1 Zone ist selektiert
-    //m_zone(zone) = 0 Zone ist nicht selektiert
-    //group = -1 alle Zonen sind selektiert
+        //m_zone(zone) = 1 Zone ist selektiert
+        //m_zone(zone) = 0 Zone ist nicht selektiert
+        //group = -1 alle Zonen sind selektiert
     m_zonesSelected.clear();
     m_zonesSelected.add(m_zoneSelection->getValue());
     ssize_t val = m_zonesSelected.getNumGroups();
     ssize_t group;
     m_zonesSelected.get(val,group);
 
-    loadGrid();
+    cfxExportZoneSet(0,counts);
+    m_nregions = counts[cfxCNT_REGION];
+//    m_nnodes = counts[cfxCNT_NODE];
+//    m_nelems = counts[cfxCNT_ELEMENT];
+//    m_nvolumes = counts[cfxCNT_VOLUME];
+//    m_nvariables = counts[cfxCNT_VARIABLE];
+
+
+    for(index_t i=1;i<=m_nzones;++i) {
+        if(m_zonesSelected(i)) {
+            if(cfxExportZoneSet(i,counts)<0) {
+                std::cerr << "invalid zone number" << std::endl;
+            }
+
+            loadField();
 
 
 
 
-
-//    //write elements
-//    nelems = cfxExportElementCount();
-//    std::cerr << "nelems = " << nelems << std::endl;
-
-//    if (counts[cfxCNT_TET]) {
-//           elems = cfxExportElementList();
-//           for (int n = 0; n < 1; n++, elems++) {
-//               if (cfxELEM_TET == elems->type) {
-//                   for (int i = 0; i < elems->type; i++)
-//                       std::cerr << "elems = " << elems->nodeid[i] << std::endl;
-//               }
-//           }
-//       }
+        }
+    }
 
 
 
-//    cfxExportElementFree();
-
-
+//    for(t = t1; t <= t2; t++) {
+//    ts = cfxExportTimestepNumGet(t);
+//    if(cfxExportTimestepSet(ts) < 0) {
+//    continue;
+//    }
 
  /*  m_firstBlock = getIntParameter("first_block");
    m_lastBlock = getIntParameter("last_block");
