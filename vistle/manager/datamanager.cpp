@@ -1,5 +1,6 @@
 #include <boost/mpl/for_each.hpp>
-#include <boost/ref.hpp>
+#include <boost/asio/connect.hpp>
+#include <boost/mpi/communicator.hpp>
 
 #include "datamanager.h"
 #include "clustermanager.h"
@@ -12,6 +13,7 @@
 #include <core/messages.h>
 #include <core/shmvector.h>
 #include <iostream>
+#include <functional>
 
 #define CERR std::cerr << "data [" << m_rank << "/" << m_size << "] "
 
@@ -303,7 +305,7 @@ bool DataManager::handlePriv(const message::RequestObject &req) {
    vistle::oarchive memar(buf);
    if (req.isArray()) {
       ArraySaver saver(req.objectId(), req.arrayType(), memar);
-      boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ArraySaver>(saver));
+      boost::mpl::for_each<VectorTypes>(std::reference_wrapper<ArraySaver>(saver));
       if (!saver.m_ok) {
          CERR << "failed to serialize array " << req.objectId() << std::endl;
          return true;
@@ -332,7 +334,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
    if (snd.isArray()) {
        vistle::iarchive memar(membuf);
        ArrayLoader loader(snd.objectId(), snd.objectType(), memar);
-       boost::mpl::for_each<VectorTypes>(boost::reference_wrapper<ArrayLoader>(loader));
+       boost::mpl::for_each<VectorTypes>(std::reference_wrapper<ArrayLoader>(loader));
        if (!loader.m_ok) {
            CERR << "failed to restore array " << snd.objectId() << " from archive" << std::endl;
            return false;

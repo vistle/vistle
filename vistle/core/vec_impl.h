@@ -115,7 +115,7 @@ template <class T, int Dim>
 Object::Type Vec<T,Dim>::type() {
 
    static const size_t pos = boost::mpl::find<Scalars, T>::type::pos::value;
-   BOOST_STATIC_ASSERT(pos < boost::mpl::size<Scalars>::value);
+   static_assert(pos < boost::mpl::size<Scalars>::value, "Scalar type not found");
    return (Object::Type)(Object::VEC + (MaxDim+1)*pos + Dim);
 }
 

@@ -145,7 +145,7 @@ class V_COREEXPORT Celltree: public Object {
 
 #include "celltreenode.h"
 
-BOOST_STATIC_ASSERT(sizeof(Celltree<Scalar, Index>::Node) % 8 == 0);
+static_assert(sizeof(Celltree<Scalar, Index>::Node) % 8 == 0, "bad padding");
 
 typedef Celltree<Scalar, Index, 1> Celltree1;
 typedef Celltree<Scalar, Index, 2> Celltree2;

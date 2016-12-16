@@ -4,12 +4,11 @@
 #include <core/assert.h>
 #include <cstring>
 #include <limits>
-#include <boost/static_assert.hpp>
 #include <boost/lexical_cast.hpp>
 
 namespace vistle {
 
-BOOST_STATIC_ASSERT(MaxDimension >= 4);
+static_assert(MaxDimension >= 4, "ParameterVector does not support more than 4 arrays");
 
 #define VINIT(d) \
   dim(d) \
@@ -47,7 +46,7 @@ template<int Dim>
 ParameterVector<S>::ParameterVector(const ScalarVector<Dim> &_v)
 : VINIT(Dim)
 {
-   BOOST_STATIC_ASSERT(MaxDimension >= Dim);
+   static_assert(MaxDimension >= Dim, "Dim too large for ParameterVector");
 
    for (int i=0; i<Dim; ++i)
        v[i] = _v[i];

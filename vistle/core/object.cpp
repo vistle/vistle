@@ -3,7 +3,6 @@
 
 #include <limits.h>
 
-#include <boost/scoped_ptr.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/foreach.hpp>
 

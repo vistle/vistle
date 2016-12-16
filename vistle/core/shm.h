@@ -2,7 +2,6 @@
 #define SHM_H
 
 #include <memory>
-#include <boost/scoped_ptr.hpp>
 
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/interprocess/containers/vector.hpp>

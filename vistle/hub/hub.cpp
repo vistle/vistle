@@ -21,7 +21,6 @@
 #include <core/shm.h>
 
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
 #include <boost/program_options.hpp>
 
 #include "uimanager.h"

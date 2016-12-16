@@ -4,8 +4,6 @@
 #include <array>
 #include <cassert>
 
-#include <boost/static_assert.hpp>
-
 #include <util/enum.h>
 #include <util/directory.h> // ModuleNameLength
 #include "uuid.h"
@@ -220,7 +218,7 @@ class V_COREEXPORT Buffer: public Message {
    std::array<char, Message::MESSAGE_SIZE - sizeof(Message)> payload;
 
 };
-BOOST_STATIC_ASSERT(sizeof(Buffer) == Message::MESSAGE_SIZE);
+static_assert(sizeof(Buffer) == Message::MESSAGE_SIZE, "message too large");
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

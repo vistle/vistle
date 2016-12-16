@@ -1,5 +1,4 @@
 #include <memory>
-#include <boost/scoped_ptr.hpp>
 
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/string.hpp>

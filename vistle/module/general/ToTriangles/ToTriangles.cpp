@@ -164,8 +164,8 @@ bool ToTriangles::compute() {
 
       const int NumLat = 8;
       const int NumLong = 13;
-      BOOST_STATIC_ASSERT(NumLat >= 3);
-      BOOST_STATIC_ASSERT(NumLong >= 3);
+      static_assert(NumLat >= 3, "too few vertices");
+      static_assert(NumLong >= 3, "too few vertices");
       Index TriPerSphere = NumLong * (NumLat-2) * 2;
       Index CoordPerSphere = NumLong * (NumLat - 2) + 2;
 
@@ -274,7 +274,7 @@ bool ToTriangles::compute() {
    } else  if (auto tube = Tubes::as(obj)) {
 
       const int NumSect = 5;
-      BOOST_STATIC_ASSERT(NumSect >= 3);
+      static_assert(NumSect >= 3, "too few sectors");
       Index TriPerSection = NumSect * 2;
 
       Index n = tube->getNumTubes();

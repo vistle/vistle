@@ -5,7 +5,6 @@
 #include <IceTMPI.h>
 
 #include <vector>
-#include <boost/static_assert.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <osg/DisplaySettings>
@@ -31,7 +30,7 @@
 
 //#define USE_FBO
 const int MaxAsyncFrames = 2;
-BOOST_STATIC_ASSERT(MaxAsyncFrames > 0);
+static_assert(MaxAsyncFrames > 0, "MaxAsyncFrames needs to be positive");
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(OsgThreadingModel,
    (Single_Threaded)
