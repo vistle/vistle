@@ -18,7 +18,7 @@
 namespace vistle {
 
 class Parameter;
-typedef std::set<boost::shared_ptr<Parameter>> ParameterSet;
+typedef std::set<std::shared_ptr<Parameter>> ParameterSet;
 class PortTracker;
 
 class V_COREEXPORT StateObserver {
@@ -76,7 +76,7 @@ class V_COREEXPORT StateTracker {
    friend class PortTracker;
 
  public:
-   StateTracker(const std::string &name, boost::shared_ptr<PortTracker> portTracker=boost::shared_ptr<PortTracker>());
+   StateTracker(const std::string &name, std::shared_ptr<PortTracker> portTracker=std::shared_ptr<PortTracker>());
    ~StateTracker();
 
    typedef std::recursive_mutex mutex;
@@ -96,13 +96,13 @@ class V_COREEXPORT StateTracker {
    int getModuleState(int id) const;
 
    std::vector<std::string> getParameters(int id) const;
-   boost::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;
+   std::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;
 
    ParameterSet getConnectedParameters(const Parameter &param) const;
 
    bool handle(const message::Message &msg, bool track=true);
 
-   boost::shared_ptr<PortTracker> portTracker() const;
+   std::shared_ptr<PortTracker> portTracker() const;
 
    std::vector<message::Buffer> getState() const;
 
@@ -111,16 +111,16 @@ class V_COREEXPORT StateTracker {
    void registerObserver(StateObserver *observer);
 
    bool registerRequest(const message::uuid_t &uuid);
-   boost::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid);
+   std::shared_ptr<message::Buffer> waitForReply(const message::uuid_t &uuid);
 
    std::vector<int> waitForSlaveHubs(size_t count);
    std::vector<int> waitForSlaveHubs(const std::vector<std::string> &names);
 
  protected:
-   boost::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
+   std::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
    bool registerReply(const message::uuid_t &uuid, const message::Message &msg);
 
-   typedef std::map<std::string, boost::shared_ptr<Parameter>> ParameterMap;
+   typedef std::map<std::string, std::shared_ptr<Parameter>> ParameterMap;
    typedef std::map<int, std::string> ParameterOrder;
    struct Module {
       int id;
@@ -193,13 +193,13 @@ class V_COREEXPORT StateTracker {
    bool handlePriv(const message::SchedulingPolicy &pol);
    bool handlePriv(const message::RequestTunnel &tunnel);
 
-   boost::shared_ptr<PortTracker> m_portTracker;
+   std::shared_ptr<PortTracker> m_portTracker;
 
    std::set<message::uuid_t> m_alreadySeen;
 
    mutex m_replyMutex;
    std::condition_variable_any m_replyCondition;
-   std::map<message::uuid_t, boost::shared_ptr<message::Buffer>> m_outstandingReplies;
+   std::map<message::uuid_t, std::shared_ptr<message::Buffer>> m_outstandingReplies;
 
    mutex m_slaveMutex;
    std::condition_variable_any m_slaveCondition;

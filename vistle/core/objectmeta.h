@@ -2,7 +2,7 @@
 #define OBJECTMETA_H
 
 #include <vector>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/map.hpp>

@@ -73,7 +73,7 @@ class V_UIEXPORT UserInterface {
       RequestedMessage(): received(false) {}
    };
 
-   typedef std::map<message::uuid_t, boost::shared_ptr<RequestedMessage>> MessageMap;
+   typedef std::map<message::uuid_t, std::shared_ptr<RequestedMessage>> MessageMap;
    MessageMap m_messageMap;
    std::mutex m_messageMutex; //< protect access to m_messageMap
    bool m_locked;

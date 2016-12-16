@@ -96,13 +96,13 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    ~OSGRenderer();
 
  private:
-   boost::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
+   std::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
          vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture) override;
-   void removeObject(boost::shared_ptr<vistle::RenderObject> ro) override;
+   void removeObject(std::shared_ptr<vistle::RenderObject> ro) override;
    bool parameterChanged(const vistle::Parameter *p) override;
 
    bool render() override;
@@ -113,7 +113,7 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
    vistle::IntParameter *m_visibleView;
    vistle::IntParameter *m_threading;
    vistle::IntParameter *m_async;
-   std::vector<boost::shared_ptr<OsgViewData>> m_viewData;
+   std::vector<std::shared_ptr<OsgViewData>> m_viewData;
 
    vistle::ParallelRemoteRenderManager m_renderManager;
 

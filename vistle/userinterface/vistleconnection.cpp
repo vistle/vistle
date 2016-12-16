@@ -123,7 +123,7 @@ bool VistleConnection::sendMessage(const vistle::message::Message &msg) const
    return ui().sendMessage(msg);
 }
 
-boost::shared_ptr<vistle::Parameter> VistleConnection::getParameter(int id, const std::string &name) const
+std::shared_ptr<vistle::Parameter> VistleConnection::getParameter(int id, const std::string &name) const
 {
    mutex_lock lock(m_mutex);
    auto p = ui().state().getParameter(id, name);
@@ -133,7 +133,7 @@ boost::shared_ptr<vistle::Parameter> VistleConnection::getParameter(int id, cons
    return p;
 }
 
-bool vistle::VistleConnection::sendParameter(const boost::shared_ptr<Parameter> p) const
+bool vistle::VistleConnection::sendParameter(const std::shared_ptr<Parameter> p) const
 {
    mutex_lock lock(m_mutex);
    vistle::message::SetParameter set(p->module(), p->getName(), p);

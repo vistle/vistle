@@ -2,7 +2,7 @@
 #define GUI_PORT_H
 
 #include <QGraphicsItem>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 namespace vistle {
 class Port;
@@ -53,7 +53,7 @@ private:
     void createGeometry();
 
     Type m_portType;						//< type of port
-    boost::shared_ptr<vistle::Port> m_port;
+    std::shared_ptr<vistle::Port> m_port;
     QColor m_color;
     Module *m_module;
 };

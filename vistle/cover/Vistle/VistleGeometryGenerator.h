@@ -13,7 +13,7 @@ namespace osg {
 
 class VistleGeometryGenerator {
    public:
-      VistleGeometryGenerator(boost::shared_ptr<vistle::RenderObject> ro,
+      VistleGeometryGenerator(std::shared_ptr<vistle::RenderObject> ro,
             vistle::Object::const_ptr geo,
             vistle::Object::const_ptr color,
             vistle::Object::const_ptr normal,
@@ -24,7 +24,7 @@ class VistleGeometryGenerator {
       static bool isSupported(vistle::Object::Type t);
 
    private:
-      boost::shared_ptr<vistle::RenderObject> m_ro;
+      std::shared_ptr<vistle::RenderObject> m_ro;
       vistle::Object::const_ptr m_geo;
       vistle::Object::const_ptr m_color;
       vistle::Object::const_ptr m_normal;

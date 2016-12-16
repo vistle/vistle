@@ -33,10 +33,10 @@ public:
    bool waitForReply(const vistle::message::Message &send, vistle::message::Message &reply) const;
 
    std::vector<std::string> getParameters(int id) const;
-   boost::shared_ptr<vistle::Parameter> getParameter(int id, const std::string &name) const;
+   std::shared_ptr<vistle::Parameter> getParameter(int id, const std::string &name) const;
    template<class T>
    void setParameter(int id, const std::string &name, const T &value) const;
-   bool sendParameter(const boost::shared_ptr<Parameter> p) const;
+   bool sendParameter(const std::shared_ptr<Parameter> p) const;
 
    bool connect(const Port *from, const Port *to) const;
    bool disconnect(const Port *from, const Port *to) const;
@@ -73,7 +73,7 @@ void VistleConnection::setParameter(int id, const std::string &name, const T &va
       std::cerr << "VistleConnection:setParameter: no such parameter: " << id << ":" << name << std::endl;
       return;
    }
-   auto p = boost::dynamic_pointer_cast<vistle::ParameterBase<T>>(generic);
+   auto p = std::dynamic_pointer_cast<vistle::ParameterBase<T>>(generic);
    if (!p) {
       std::cerr << "VistleConnection:setParameter: parameter not of appropriate type: " << id << ":" << name << std::endl;
       return;

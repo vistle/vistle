@@ -31,7 +31,7 @@ using namespace vistle;
 
 std::mutex VistleGeometryGenerator::s_coverMutex;
 
-VistleGeometryGenerator::VistleGeometryGenerator(boost::shared_ptr<vistle::RenderObject> ro,
+VistleGeometryGenerator::VistleGeometryGenerator(std::shared_ptr<vistle::RenderObject> ro,
             vistle::Object::const_ptr geo,
             vistle::Object::const_ptr color,
             vistle::Object::const_ptr normal,

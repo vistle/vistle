@@ -146,7 +146,7 @@ bool VncController::handleParam(const vistle::Parameter *p) {
    return false;
 }
 
-boost::shared_ptr<VncServer> VncController::server() const {
+std::shared_ptr<VncServer> VncController::server() const {
    return m_vnc;
 }
 

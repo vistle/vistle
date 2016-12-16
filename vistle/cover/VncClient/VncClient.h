@@ -22,7 +22,7 @@
 #include <rhr/rfbext.h>
 
 #include <tbb/concurrent_queue.h>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include <osg/Geometry>
 #include <osg/MatrixTransform>
@@ -142,12 +142,12 @@ private:
 
    int m_requestedTimestep, m_remoteTimestep, m_visibleTimestep, m_numRemoteTimesteps, m_timestepToCommit;
 
-   bool handleTileMessage(boost::shared_ptr<tileMsg> msg, boost::shared_ptr<char> payload);
+   bool handleTileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<char> payload);
    // work queue management for decoding tiles
    bool m_waitForDecode;
    int m_queued;
    std::deque<DecodeTask *> m_deferred;
-   typedef tbb::concurrent_queue<boost::shared_ptr<tileMsg> > ResultQueue;
+   typedef tbb::concurrent_queue<std::shared_ptr<tileMsg> > ResultQueue;
    ResultQueue m_resultQueue;
    bool updateTileQueue();
    void handleTileMeta(const tileMsg &msg);
@@ -164,11 +164,11 @@ private:
    uint32_t m_matrixNum;
 
    struct TileMessage {
-      TileMessage(boost::shared_ptr<tileMsg> msg, boost::shared_ptr<char> payload)
+      TileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<char> payload)
       : msg(msg), payload(payload) {}
 
-      boost::shared_ptr<tileMsg> msg;
-      boost::shared_ptr<char> payload;
+      std::shared_ptr<tileMsg> msg;
+      std::shared_ptr<char> payload;
    };
    std::deque<TileMessage> m_receivedTiles;
    int m_lastTileAt;

@@ -6,8 +6,7 @@
 #include <set>
 #include <list>
 #include <ostream>
-
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include <util/enum.h>
 #include "export.h"
@@ -15,7 +14,7 @@
 namespace vistle {
 
 class Object;
-typedef boost::shared_ptr<const Object> obj_const_ptr;
+typedef std::shared_ptr<const Object> obj_const_ptr;
 typedef std::list<obj_const_ptr> ObjectList;
 
 template <class T>

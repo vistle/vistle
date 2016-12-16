@@ -109,14 +109,14 @@ public:
     std::ifstream *stream;
 };
 
-boost::shared_ptr<std::istream> getStreamForFile(const std::string &filename)
+std::shared_ptr<std::istream> getStreamForFile(const std::string &filename)
 {
 
     std::ifstream *s = new std::ifstream(filename.c_str(), std::ios_base::in | std::ios_base::binary);
     if (!s->is_open())
     {
         std::cerr << "failed to open " << filename << std::endl;
-        return boost::shared_ptr<std::istream>();
+        return std::shared_ptr<std::istream>();
     }
 
     bi::filtering_istream *fi = new bi::filtering_istream;
@@ -126,10 +126,10 @@ boost::shared_ptr<std::istream> getStreamForFile(const std::string &filename)
         fi->push(bi::gzip_decompressor());
     }
     fi->push(*s);
-    return boost::shared_ptr<std::istream>(fi, FilteringStreamDeleter(fi, s));
+    return std::shared_ptr<std::istream>(fi, FilteringStreamDeleter(fi, s));
 }
 
-boost::shared_ptr<std::istream> getStreamForFile(const std::string &dir, const std::string &basename)
+std::shared_ptr<std::istream> getStreamForFile(const std::string &dir, const std::string &basename)
 {
 
     bf::path zipped(dir + "/" + basename + ".gz");
@@ -854,7 +854,7 @@ Boundaries loadBoundary(const std::string &meshdir)
 {
 
     Boundaries bounds;
-    boost::shared_ptr<std::istream> stream = getStreamForFile(meshdir, "boundary");
+    std::shared_ptr<std::istream> stream = getStreamForFile(meshdir, "boundary");
     if (!stream)
         return bounds;
 

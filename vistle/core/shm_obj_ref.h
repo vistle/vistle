@@ -90,7 +90,7 @@ class shm_obj_ref {
     }
 
     const shm_obj_ref &operator=(typename ObjType::ptr rhs) {
-        return boost::const_pointer_cast<const ObjType>(rhs);
+        return std::const_pointer_cast<const ObjType>(rhs);
     }
 
    bool valid() const {

@@ -329,7 +329,7 @@ static T getParameterValue(int id, const std::string &name) {
       return T();
    }
 
-   const auto tparam = boost::dynamic_pointer_cast<const ParameterBase<T>>(param);
+   const auto tparam = std::dynamic_pointer_cast<const ParameterBase<T>>(param);
    if (!tparam) {
       std::cerr << "Python: getParameterValue: type mismatch" << std::endl;
       return T();

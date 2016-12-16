@@ -263,7 +263,7 @@ struct ArrayLoader {
     ArrayLoader() = delete;
     ArrayLoader(const ArrayLoader &other) = delete;
 
-    boost::shared_ptr<BaseUnreffer> m_unreffer;
+    std::shared_ptr<BaseUnreffer> m_unreffer;
 
     template<typename T>
     void operator()(T) {
@@ -297,7 +297,7 @@ struct ArrayLoader {
 
 
 bool DataManager::handlePriv(const message::RequestObject &req) {
-   boost::shared_ptr<message::SendObject> snd;
+   std::shared_ptr<message::SendObject> snd;
    vecstreambuf<char> buf;
    const std::vector<char> &mem = buf.get_vector();
    vistle::oarchive memar(buf);
@@ -414,7 +414,7 @@ bool DataManager::handlePriv(const message::SendObject &snd, const std::vector<c
        };
        memar.setObjectCompletionHandler(completionHandler);
 
-       boost::shared_ptr<Fetcher> fetcher(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
+       std::shared_ptr<Fetcher> fetcher(new RemoteFetcher(this, snd.referrer(), snd.senderId(), snd.rank()));
        memar.setFetcher(fetcher);
        //CERR << "loading object " << objName << " from memar" << std::endl;
        objIt->second.obj = Object::load(memar);

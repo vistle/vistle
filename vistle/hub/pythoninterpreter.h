@@ -20,9 +20,9 @@ class PythonInterpreter {
    bool executeFile(const std::string &filename);
 
  private:
-   boost::shared_ptr<PythonInterface> m_interpreter;
-   boost::shared_ptr<PythonModule> m_module;
-   boost::shared_ptr<Executor> m_executor;
+   std::shared_ptr<PythonInterface> m_interpreter;
+   std::shared_ptr<PythonModule> m_module;
+   std::shared_ptr<Executor> m_executor;
    std::thread m_thread;
 };
 

@@ -419,11 +419,11 @@ void ParallelRemoteRenderManager::updateRect(size_t viewIdx, const IceTInt *view
    }
 }
 
-void ParallelRemoteRenderManager::addObject(boost::shared_ptr<RenderObject> ro) {
+void ParallelRemoteRenderManager::addObject(std::shared_ptr<RenderObject> ro) {
    m_updateBounds = 1;
 }
 
-void ParallelRemoteRenderManager::removeObject(boost::shared_ptr<RenderObject> ro) {
+void ParallelRemoteRenderManager::removeObject(std::shared_ptr<RenderObject> ro) {
    m_updateBounds = 1;
 }
 

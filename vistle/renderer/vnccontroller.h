@@ -11,7 +11,7 @@ class V_RENDEREREXPORT VncController {
  public:
    VncController(vistle::Module *module, int displayRank);
    bool handleParam(const vistle::Parameter *p);
-   boost::shared_ptr<VncServer> server() const;
+   std::shared_ptr<VncServer> server() const;
    int rootRank() const;
 
  private:
@@ -40,7 +40,7 @@ class V_RENDEREREXPORT VncController {
    IntVectorParameter *m_sendTileSizeParam;
    IntParamVector m_sendTileSize;
 
-   boost::shared_ptr<VncServer> m_vnc;
+   std::shared_ptr<VncServer> m_vnc;
 };
 
 }

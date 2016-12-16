@@ -3,8 +3,7 @@
 
 #include <vector>
 #include <util/sysdep.h>
-#include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
+#include <memory>
 
 #include <boost/interprocess/containers/vector.hpp>
 #include <boost/interprocess/containers/map.hpp>
@@ -43,13 +42,13 @@ struct ObjectData;
 class Object;
 class V_COREEXPORT ObjectInterfaceBase {
 public:
-    //boost::shared_ptr<const Object> object() const { static_cast<const Object *>(this)->shared_from_this(); }
-    virtual boost::shared_ptr<const Object> object() const = 0;
+    //std::shared_ptr<const Object> object() const { static_cast<const Object *>(this)->shared_from_this(); }
+    virtual std::shared_ptr<const Object> object() const = 0;
 protected:
     virtual ~ObjectInterfaceBase() {}
 };
 
-class V_COREEXPORT Object: public boost::enable_shared_from_this<Object>, virtual public ObjectInterfaceBase {
+class V_COREEXPORT Object: public std::enable_shared_from_this<Object>, virtual public ObjectInterfaceBase {
    friend class Shm;
    friend class ObjectTypeRegistry;
    friend struct ObjectData;
@@ -60,14 +59,14 @@ class V_COREEXPORT Object: public boost::enable_shared_from_this<Object>, virtua
 #endif
 
 public:
-   typedef boost::shared_ptr<Object> ptr;
-   typedef boost::shared_ptr<const Object> const_ptr;
+   typedef std::shared_ptr<Object> ptr;
+   typedef std::shared_ptr<const Object> const_ptr;
    template<class Interface>
    const Interface *getInterface() const {
        return dynamic_cast<const Interface *>(this);
    }
 
-   boost::shared_ptr<const Object> object() const override { return static_cast<const Object *>(this)->shared_from_this(); }
+   std::shared_ptr<const Object> object() const override { return static_cast<const Object *>(this)->shared_from_this(); }
 
    enum InitializedFlags {
       Initialized
@@ -122,9 +121,9 @@ public:
    virtual bool isEmpty() const;
 
    template<class ObjectType>
-   static boost::shared_ptr<const Object> as(boost::shared_ptr<const ObjectType> ptr) { return boost::static_pointer_cast<const Object>(ptr); }
+   static std::shared_ptr<const Object> as(std::shared_ptr<const ObjectType> ptr) { return std::static_pointer_cast<const Object>(ptr); }
    template<class ObjectType>
-   static boost::shared_ptr<Object> as(boost::shared_ptr<ObjectType> ptr) { return boost::static_pointer_cast<Object>(ptr); }
+   static std::shared_ptr<Object> as(std::shared_ptr<ObjectType> ptr) { return std::static_pointer_cast<Object>(ptr); }
 
    shm_handle_t getHandle() const;
 
@@ -327,15 +326,15 @@ private:
 //! declare a new Object type
 #define V_OBJECT(ObjType) \
    public: \
-   typedef boost::shared_ptr<ObjType> ptr; \
-   typedef boost::shared_ptr<const ObjType> const_ptr; \
+   typedef std::shared_ptr<ObjType> ptr; \
+   typedef std::shared_ptr<const ObjType> const_ptr; \
    typedef ObjType Class; \
    static Object::Type type(); \
    static const char *typeName() { return #ObjType; } \
-   static boost::shared_ptr<const ObjType> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const ObjType>(ptr); } \
-   static boost::shared_ptr<ObjType> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<ObjType>(ptr); } \
+   static std::shared_ptr<const ObjType> as(std::shared_ptr<const Object> ptr) { return std::dynamic_pointer_cast<const ObjType>(ptr); } \
+   static std::shared_ptr<ObjType> as(std::shared_ptr<Object> ptr) { return std::dynamic_pointer_cast<ObjType>(ptr); } \
    static Object::ptr createFromData(Object::Data *data) { return Object::ptr(new ObjType(static_cast<ObjType::Data *>(data))); } \
-   boost::shared_ptr<const Object> object() const override { return static_cast<const Object *>(this)->shared_from_this(); } \
+   std::shared_ptr<const Object> object() const override { return static_cast<const Object *>(this)->shared_from_this(); } \
    Object::ptr cloneInternal() const override { \
       const std::string n(Shm::the().createObjectId()); \
             Data *data = shm<Data>::construct(n)(*d(), n); \
@@ -366,7 +365,7 @@ private:
    } \
    template<class OtherType> \
    static ObjType::ptr clone(typename OtherType::const_ptr other) { \
-      return ObjType::clone<OtherType>(boost::const_pointer_cast<OtherType>(other)); \
+      return ObjType::clone<OtherType>(std::const_pointer_cast<OtherType>(other)); \
    } \
    static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \
    static void registerIArchive(iarchive &ar); \
@@ -411,9 +410,9 @@ private:
          ar & V_NAME("type", type); \
          const_cast<Data *>(d())->template serialize<Archive>(ar, version); \
       } \
-   friend boost::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &) const; \
-   friend shm_handle_t Shm::getHandleFromObject(boost::shared_ptr<const Object>) const; \
-   friend boost::shared_ptr<Object> Object::create(Object::Data *); \
+   friend std::shared_ptr<const Object> Shm::getObjectFromHandle(const shm_handle_t &) const; \
+   friend shm_handle_t Shm::getHandleFromObject(std::shared_ptr<const Object>) const; \
+   friend std::shared_ptr<Object> Object::create(Object::Data *); \
    friend class ObjectTypeRegistry
 
 #define V_DATA_BEGIN(ObjType) \

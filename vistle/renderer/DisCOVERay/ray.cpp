@@ -90,19 +90,19 @@ class RayCaster: public vistle::Renderer {
    FloatParameter *m_pointSizeParam;
 
    // object lifetime management
-   boost::shared_ptr<RenderObject> addObject(int sender, const std::string &senderPort,
+   std::shared_ptr<RenderObject> addObject(int sender, const std::string &senderPort,
          vistle::Object::const_ptr container,
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
          vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture) override;
 
-   void removeObject(boost::shared_ptr<RenderObject> ro) override;
+   void removeObject(std::shared_ptr<RenderObject> ro) override;
 
    std::vector<ispc::RenderObjectData *> instances;
 
-   std::vector<boost::shared_ptr<RayRenderObject>> static_geometry;
-   std::vector<std::vector<boost::shared_ptr<RayRenderObject>>> anim_geometry;
+   std::vector<std::shared_ptr<RayRenderObject>> static_geometry;
+   std::vector<std::vector<std::shared_ptr<RayRenderObject>>> anim_geometry;
 
    RTCDevice m_device;
    RTCScene m_scene;
@@ -526,9 +526,9 @@ void RayCaster::renderRect(const vistle::Matrix4 &P, const vistle::Matrix4 &MV, 
 }
 
 
-void RayCaster::removeObject(boost::shared_ptr<RenderObject> vro) {
+void RayCaster::removeObject(std::shared_ptr<RenderObject> vro) {
 
-   auto ro = boost::static_pointer_cast<RayRenderObject>(vro);
+   auto ro = std::static_pointer_cast<RayRenderObject>(vro);
    auto rod = ro->data.get();
 
    if (rod->scene) {
@@ -558,14 +558,14 @@ void RayCaster::removeObject(boost::shared_ptr<RenderObject> vro) {
 }
 
 
-boost::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::string &senderPort,
+std::shared_ptr<RenderObject> RayCaster::addObject(int sender, const std::string &senderPort,
                                  vistle::Object::const_ptr container,
                                  vistle::Object::const_ptr geometry,
                                  vistle::Object::const_ptr normals,
                                  vistle::Object::const_ptr colors,
                                  vistle::Object::const_ptr texture) {
 
-   boost::shared_ptr<RayRenderObject> ro(new RayRenderObject(m_device, sender, senderPort, container, geometry, normals, colors, texture));
+   std::shared_ptr<RayRenderObject> ro(new RayRenderObject(m_device, sender, senderPort, container, geometry, normals, colors, texture));
 
    const int t = ro->timestep;
    if (t == -1) {

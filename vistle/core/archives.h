@@ -38,8 +38,8 @@ namespace vistle {
 
 class Object;
 struct ObjectData;
-typedef boost::shared_ptr<Object> obj_ptr;
-typedef boost::shared_ptr<const Object> obj_const_ptr;
+typedef std::shared_ptr<Object> obj_ptr;
+typedef std::shared_ptr<const Object> obj_const_ptr;
 
 class V_COREEXPORT oarchive: public boost::archive::binary_oarchive_impl<oarchive, std::ostream::char_type, std::ostream::traits_type> {
 
@@ -66,7 +66,7 @@ public:
     iarchive(std::streambuf &bsb, unsigned int flags=0);
     ~iarchive();
 
-    void setFetcher(boost::shared_ptr<Fetcher> fetcher);
+    void setFetcher(std::shared_ptr<Fetcher> fetcher);
     void setCurrentObject(ObjectData *data);
     ObjectData *currentObject() const;
 
@@ -93,7 +93,7 @@ public:
 
 private:
     //void *getArrayPointer(const std::string &name, int type, const std::function<void()> &completeCallback) const;
-    boost::shared_ptr<Fetcher> m_fetcher;
+    std::shared_ptr<Fetcher> m_fetcher;
     ObjectData *m_currentObject;
     std::function<void()> m_completer;
 };

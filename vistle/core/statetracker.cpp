@@ -36,7 +36,7 @@ int StateTracker::Module::state() const {
    return s;
 }
 
-StateTracker::StateTracker(const std::string &name, boost::shared_ptr<PortTracker> portTracker)
+StateTracker::StateTracker(const std::string &name, std::shared_ptr<PortTracker> portTracker)
 : m_portTracker(portTracker)
 , m_traceType(message::Message::INVALID)
 , m_traceId(Id::Invalid)
@@ -1054,7 +1054,7 @@ StateTracker::~StateTracker() {
     }
 }
 
-boost::shared_ptr<PortTracker> StateTracker::portTracker() const {
+std::shared_ptr<PortTracker> StateTracker::portTracker() const {
 
    return m_portTracker;
 }
@@ -1076,15 +1076,15 @@ std::vector<std::string> StateTracker::getParameters(int id) const {
    return result;
 }
 
-boost::shared_ptr<Parameter> StateTracker::getParameter(int id, const std::string &name) const {
+std::shared_ptr<Parameter> StateTracker::getParameter(int id, const std::string &name) const {
 
    RunningMap::const_iterator rit = runningMap.find(id);
    if (rit == runningMap.end())
-      return boost::shared_ptr<Parameter>();
+      return std::shared_ptr<Parameter>();
 
    ParameterMap::const_iterator pit = rit->second.parameters.find(name);
    if (pit == rit->second.parameters.end())
-      return boost::shared_ptr<Parameter>();
+      return std::shared_ptr<Parameter>();
 
    return pit->second;
 }
@@ -1100,14 +1100,14 @@ bool StateTracker::registerRequest(const message::uuid_t &uuid) {
    }
 
    //CERR << "waiting for " << uuid  << std::endl;
-   m_outstandingReplies[uuid] = boost::shared_ptr<message::Buffer>();
+   m_outstandingReplies[uuid] = std::shared_ptr<message::Buffer>();
    return true;
 }
 
-boost::shared_ptr<message::Buffer> StateTracker::waitForReply(const message::uuid_t &uuid) {
+std::shared_ptr<message::Buffer> StateTracker::waitForReply(const message::uuid_t &uuid) {
 
    std::unique_lock<mutex> locker(m_replyMutex);
-   boost::shared_ptr<message::Buffer> ret = removeRequest(uuid);
+   std::shared_ptr<message::Buffer> ret = removeRequest(uuid);
    while (!ret) {
       m_replyCondition.wait(locker);
       ret = removeRequest(uuid);
@@ -1115,10 +1115,10 @@ boost::shared_ptr<message::Buffer> StateTracker::waitForReply(const message::uui
    return ret;
 }
 
-boost::shared_ptr<message::Buffer> StateTracker::removeRequest(const message::uuid_t &uuid) {
+std::shared_ptr<message::Buffer> StateTracker::removeRequest(const message::uuid_t &uuid) {
 
    //CERR << "remove request try: " << uuid << std::endl;
-   boost::shared_ptr<message::Buffer> ret;
+   std::shared_ptr<message::Buffer> ret;
    auto it = m_outstandingReplies.find(uuid);
    if (it != m_outstandingReplies.end() && it->second) {
       ret = it->second;

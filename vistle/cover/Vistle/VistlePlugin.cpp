@@ -58,7 +58,7 @@ class PluginRenderObject: public vistle::RenderObject {
    ~PluginRenderObject() {
    }
 
-   boost::shared_ptr<VistleRenderObject> coverRenderObject;
+   std::shared_ptr<VistleRenderObject> coverRenderObject;
    std::string variant;
 };
 
@@ -97,13 +97,13 @@ class OsgRenderer: public vistle::Renderer {
    ~OsgRenderer();
 
    bool render() override;
-   boost::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
+   std::shared_ptr<vistle::RenderObject> addObject(int senderId, const std::string &senderPort,
       vistle::Object::const_ptr container,
       vistle::Object::const_ptr geometry,
       vistle::Object::const_ptr normals,
       vistle::Object::const_ptr colors,
       vistle::Object::const_ptr texture) override;
-   void removeObject(boost::shared_ptr<vistle::RenderObject> ro) override;
+   void removeObject(std::shared_ptr<vistle::RenderObject> ro) override;
 
    osg::ref_ptr<osg::Group> vistleRoot;
 
@@ -116,12 +116,12 @@ class OsgRenderer: public vistle::Renderer {
    InteractorMap m_interactorMap;
 
    struct DelayedObject {
-      DelayedObject(boost::shared_ptr<PluginRenderObject> ro, VistleGeometryGenerator generator)
+      DelayedObject(std::shared_ptr<PluginRenderObject> ro, VistleGeometryGenerator generator)
          : ro(ro)
          , generator(generator)
          , node_future(std::async(std::launch::async, generator))
       {}
-      boost::shared_ptr<PluginRenderObject> ro;
+      std::shared_ptr<PluginRenderObject> ro;
       VistleGeometryGenerator generator;
       std::future<osg::Node *> node_future;
    };
@@ -300,8 +300,8 @@ void OsgRenderer::prepareQuit() {
    Renderer::prepareQuit();
 }
 
-void OsgRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> vro) {
-   auto pro = boost::static_pointer_cast<PluginRenderObject>(vro);
+void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
+   auto pro = std::static_pointer_cast<PluginRenderObject>(vro);
    auto ro = pro->coverRenderObject;
    std::string variant = pro->variant;
 
@@ -356,7 +356,7 @@ void OsgRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> vro) {
    pro->coverRenderObject.reset();
 }
 
-boost::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const std::string &senderPort,
+std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const std::string &senderPort,
       vistle::Object::const_ptr container,
       vistle::Object::const_ptr geometry,
       vistle::Object::const_ptr normals,
@@ -403,7 +403,7 @@ boost::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, con
    if (!variant.empty()) {
       cover->addPlugin("Variant");
    }
-   boost::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
+   std::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
          container, geometry, normals, colors, texture, variant));
 
    pro->coverRenderObject.reset(new VistleRenderObject(pro));

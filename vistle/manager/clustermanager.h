@@ -51,7 +51,7 @@ class ClusterManager {
 
    std::string getModuleName(int id) const;
    std::vector<std::string> getParameters(int id) const;
-   boost::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;
+   std::shared_ptr<Parameter> getParameter(int id, const std::string &name) const;
 
    PortManager &portManager() const;
 
@@ -64,7 +64,7 @@ class ClusterManager {
    bool isLocal(int id) const;
    std::vector<message::Buffer> m_messageQueue;
 
-   boost::shared_ptr<PortManager> m_portManager;
+   std::shared_ptr<PortManager> m_portManager;
    StateTracker m_stateTracker;
    message::Message::Type m_traceMessages;
 

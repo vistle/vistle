@@ -25,7 +25,7 @@ UiManager::~UiManager() {
    disconnect();
 }
 
-bool UiManager::handleMessage(const message::Message &msg, boost::shared_ptr<boost::asio::ip::tcp::socket> sock) {
+bool UiManager::handleMessage(const message::Message &msg, std::shared_ptr<boost::asio::ip::tcp::socket> sock) {
 
    using namespace vistle::message;
 
@@ -58,7 +58,7 @@ bool UiManager::handleMessage(const message::Message &msg, boost::shared_ptr<boo
 
 void UiManager::sendMessage(const message::Message &msg) {
 
-   std::vector<boost::shared_ptr<UiClient>> toRemove;
+   std::vector<std::shared_ptr<UiClient>> toRemove;
 
    for(auto ent: m_clients) {
       if (!sendMessage(ent.second, msg)) {
@@ -71,7 +71,7 @@ void UiManager::sendMessage(const message::Message &msg) {
    }
 }
 
-bool UiManager::sendMessage(boost::shared_ptr<UiClient> c, const message::Message &msg) const {
+bool UiManager::sendMessage(std::shared_ptr<UiClient> c, const message::Message &msg) const {
 
    auto &ioService = c->socket()->get_io_service();
    bool ret = message::send(*c->socket(), msg);
@@ -96,10 +96,10 @@ void UiManager::disconnect() {
    m_clients.clear();
 }
 
-void UiManager::addClient(boost::shared_ptr<boost::asio::ip::tcp::socket> sock) {
+void UiManager::addClient(std::shared_ptr<boost::asio::ip::tcp::socket> sock) {
 
    ++m_uiCount;
-   boost::shared_ptr<UiClient> c(new UiClient(*this, m_uiCount, sock));
+   std::shared_ptr<UiClient> c(new UiClient(*this, m_uiCount, sock));
 
    m_clients.insert(std::make_pair(sock, c));
 
@@ -121,7 +121,7 @@ void UiManager::addClient(boost::shared_ptr<boost::asio::ip::tcp::socket> sock) 
    }
 }
 
-bool UiManager::removeClient(boost::shared_ptr<UiClient> c) {
+bool UiManager::removeClient(std::shared_ptr<UiClient> c) {
 
    for (auto &ent: m_clients) {
       if (ent.second == c) {

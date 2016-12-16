@@ -211,7 +211,7 @@ bool UserInterface::getLockForMessage(const message::uuid_t &uuid) {
    std::lock_guard<std::mutex> lock(m_messageMutex);
    MessageMap::iterator it = m_messageMap.find(uuid);
    if (it == m_messageMap.end()) {
-      it = m_messageMap.insert(std::make_pair(uuid, boost::shared_ptr<RequestedMessage>(new RequestedMessage()))).first;
+      it = m_messageMap.insert(std::make_pair(uuid, std::shared_ptr<RequestedMessage>(new RequestedMessage()))).first;
    }
    it->second->mutex.lock();
    //m_messageMap[const_cast<message::uuid_t &>(uuid)]->mutex.lock();

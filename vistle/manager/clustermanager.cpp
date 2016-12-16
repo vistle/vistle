@@ -1382,7 +1382,7 @@ bool ClusterManager::handlePriv(const message::SetParameter &setParam) {
    bool handled = true;
    int sender = setParam.senderId();
    int dest = setParam.destId();
-   boost::shared_ptr<Parameter> applied;
+   std::shared_ptr<Parameter> applied;
    if (message::Id::isModule(dest)) {
       // message to owning module
       auto param = getParameter(dest, setParam.getName());
@@ -1606,7 +1606,7 @@ std::vector<std::string> ClusterManager::getParameters(int id) const {
    return m_stateTracker.getParameters(id);
 }
 
-boost::shared_ptr<Parameter> ClusterManager::getParameter(int id, const std::string &name) const {
+std::shared_ptr<Parameter> ClusterManager::getParameter(int id, const std::string &name) const {
 
    return m_stateTracker.getParameter(id, name);
 }

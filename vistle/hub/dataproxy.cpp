@@ -17,7 +17,7 @@ using vistle::message::Identify;
 using vistle::message::async_send;
 using vistle::message::async_recv;
 
-using boost::shared_ptr;
+using std::shared_ptr;
 
 DataProxy::DataProxy(Hub &hub, unsigned short basePort)
 : m_hub(hub)
@@ -99,13 +99,13 @@ void DataProxy::startThread() {
 void DataProxy::startAccept() {
 
    CERR << "(re-)starting accept" << std::endl;
-   boost::shared_ptr<tcp_socket> sock(new tcp_socket(io()));
+   std::shared_ptr<tcp_socket> sock(new tcp_socket(io()));
    m_acceptor.async_accept(*sock, [this, sock](boost::system::error_code ec){handleAccept(ec, sock);});
    startThread();
    startThread();
 }
 
-void DataProxy::handleAccept(const boost::system::error_code &error, boost::shared_ptr<tcp_socket> sock) {
+void DataProxy::handleAccept(const boost::system::error_code &error, std::shared_ptr<tcp_socket> sock) {
 
    if (error) {
       CERR << "error in accept: " << error.message() << std::endl;
@@ -121,8 +121,8 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
 
    using namespace message;
 
-   boost::shared_ptr<message::Buffer> buf(new message::Buffer);
-   message::async_recv(*sock, *buf, [this, sock, buf](const error_code ec, boost::shared_ptr<std::vector<char>> payload){
+   std::shared_ptr<message::Buffer> buf(new message::Buffer);
+   message::async_recv(*sock, *buf, [this, sock, buf](const error_code ec, std::shared_ptr<std::vector<char>> payload){
       if (ec) {
           CERR << "recv error after accept: " << ec.message() << ", sock.use_count()=" << sock.use_count() << std::endl;
           return;
@@ -181,13 +181,13 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
    });
 }
 
-void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
+void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
 
     lock_guard lock(m_mutex);
     using namespace vistle::message;
 
-    boost::shared_ptr<message::Buffer> msg(new message::Buffer);
-    async_recv(*sock, *msg, [this, sock, msg](error_code ec, boost::shared_ptr<std::vector<char>> payload){
+    std::shared_ptr<message::Buffer> msg(new message::Buffer);
+    async_recv(*sock, *msg, [this, sock, msg](error_code ec, std::shared_ptr<std::vector<char>> payload){
         if (ec) {
             CERR << "recv: error " << ec.message() << std::endl;
             return;
@@ -242,15 +242,15 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
     });
 }
 
-void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
+void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
 
     //CERR << "remoteMsgRecv posted on sock " << sock.get() << std::endl;
     lock_guard lock(m_mutex);
 
     using namespace vistle::message;
 
-    boost::shared_ptr<message::Buffer> msg(new message::Buffer);
-    async_recv(*sock, *msg, [this, sock, msg](error_code ec, boost::shared_ptr<std::vector<char>> payload){
+    std::shared_ptr<message::Buffer> msg(new message::Buffer);
+    async_recv(*sock, *msg, [this, sock, msg](error_code ec, std::shared_ptr<std::vector<char>> payload){
         if (ec) {
             CERR << "recv: error " << ec.message() << " on sock " << sock.get() << std::endl;
             return;
@@ -325,7 +325,7 @@ bool DataProxy::connectRemoteData(int hubId) {
 
    for (auto &hubData: m_hub.stateTracker().m_hubs) {
       if (hubData.id == hubId) {
-         boost::shared_ptr<asio::ip::tcp::socket> sock(new boost::asio::ip::tcp::socket(io()));
+         std::shared_ptr<asio::ip::tcp::socket> sock(new boost::asio::ip::tcp::socket(io()));
          boost::asio::ip::tcp::endpoint dest(hubData.address, hubData.dataPort);
 
          boost::system::error_code ec;
@@ -362,7 +362,7 @@ bool DataProxy::connectRemoteData(int hubId) {
    return false;
 }
 
-boost::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getLocalDataSock(int rank) {
+std::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getLocalDataSock(int rank) {
 
    lock_guard lock(m_mutex);
    auto it = m_localDataSocket.find(rank);
@@ -370,7 +370,7 @@ boost::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getLocalDataSock(int 
    return it->second;
 }
 
-boost::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getRemoteDataSock(int hubId) {
+std::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getRemoteDataSock(int hubId) {
 
    lock_guard lock(m_mutex);
    auto it = m_remoteDataSocket.find(hubId);
@@ -378,7 +378,7 @@ boost::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getRemoteDataSock(int
    if (it == m_remoteDataSocket.end()) {
       if (!connectRemoteData(hubId)) {
          CERR << "failed to establish data connection to remote hub with id " << hubId << std::endl;
-         return boost::shared_ptr<asio::ip::tcp::socket>();
+         return std::shared_ptr<asio::ip::tcp::socket>();
       }
    }
    it = m_remoteDataSocket.find(hubId);

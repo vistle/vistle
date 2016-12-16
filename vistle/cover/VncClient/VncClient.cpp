@@ -62,7 +62,7 @@
 #include <tbb/parallel_for.h>
 #include <tbb/concurrent_queue.h>
 #include <tbb/enumerable_thread_specific.h>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include <thread>
 #include <mutex>
@@ -372,7 +372,7 @@ rfbBool VncClient::rfbBoundsMessage(rfbClient *client, rfbServerToClientMsg *mes
 //! Task structure for submitting to Intel Threading Building Blocks work //queue
 struct DecodeTask: public tbb::task {
 
-   DecodeTask(tbb::concurrent_queue<boost::shared_ptr<tileMsg> > &resultQueue, boost::shared_ptr<tileMsg> msg, boost::shared_ptr<char> payload)
+   DecodeTask(tbb::concurrent_queue<std::shared_ptr<tileMsg> > &resultQueue, std::shared_ptr<tileMsg> msg, std::shared_ptr<char> payload)
    : resultQueue(resultQueue)
    , msg(msg)
    , payload(payload)
@@ -380,9 +380,9 @@ struct DecodeTask: public tbb::task {
    , depth(NULL)
    {}
 
-   tbb::concurrent_queue<boost::shared_ptr<tileMsg> > &resultQueue;
-   boost::shared_ptr<tileMsg> msg;
-   boost::shared_ptr<char> payload;
+   tbb::concurrent_queue<std::shared_ptr<tileMsg> > &resultQueue;
+   std::shared_ptr<tileMsg> msg;
+   std::shared_ptr<char> payload;
    char *rgba, *depth;
 
    tbb::task* execute() {
@@ -422,7 +422,7 @@ struct DecodeTask: public tbb::task {
          return NULL;
       }
 
-      boost::shared_ptr<char> decompbuf = payload;
+      std::shared_ptr<char> decompbuf = payload;
       if (msg->compression & rfbTileSnappy) {
 #ifdef HAVE_SNAPPY
          decompbuf.reset(new char[sz], array_deleter<char>());
@@ -467,7 +467,7 @@ struct DecodeTask: public tbb::task {
 bool VncClient::updateTileQueue() {
 
    //std::cerr << "tiles: " << m_queued << " queued, " << m_deferred.size() << " deferred" << std::endl;
-   boost::shared_ptr<tileMsg> msg;
+   std::shared_ptr<tileMsg> msg;
    while (m_resultQueue.try_pop(msg)) {
 
       --m_queued;
@@ -695,11 +695,11 @@ rfbBool VncClient::rfbTileMessage(rfbClient *client, rfbServerToClientMsg *messa
    }
 
 
-   boost::shared_ptr<tileMsg> msg(new tileMsg);
+   std::shared_ptr<tileMsg> msg(new tileMsg);
    if (!ReadFromRFBServer(client, ((char*)(&*msg))+1, sizeof(*msg)-1)) {
       return TRUE;
    }
-   boost::shared_ptr<char> payload;
+   std::shared_ptr<char> payload;
 #ifdef CONNDEBUG
    int flags = msg->flags;
    bool first = flags&rfbTileFirst;
@@ -726,7 +726,7 @@ rfbBool VncClient::rfbTileMessage(rfbClient *client, rfbServerToClientMsg *messa
    return TRUE;
 }
 
-bool VncClient::handleTileMessage(boost::shared_ptr<tileMsg> msg, boost::shared_ptr<char> payload) {
+bool VncClient::handleTileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<char> payload) {
 
 #ifdef CONNDEBUG
    bool first = msg->flags & rfbTileFirst;
@@ -1578,9 +1578,9 @@ VncClient::preFrame()
        if (broadcastTiles) {
           coVRMSController::instance()->syncData(&ntiles, sizeof(ntiles));
           for (int i=0; i<ntiles; ++i) {
-             boost::shared_ptr<tileMsg> msg(new tileMsg);
+             std::shared_ptr<tileMsg> msg(new tileMsg);
              coVRMSController::instance()->syncData(msg.get(), sizeof(*msg));
-             boost::shared_ptr<char> payload;
+             std::shared_ptr<char> payload;
              if (msg->size > 0) {
                 payload.reset(new char[msg->size], array_deleter<char>());
                 coVRMSController::instance()->syncData(payload.get(), msg->size);
@@ -1591,9 +1591,9 @@ VncClient::preFrame()
           coVRMSController::instance()->readMaster(&ntiles, sizeof(ntiles));
           //std::cerr << "receiving " << ntiles << " tiles" << std::endl;
           for (int i=0; i<ntiles; ++i) {
-             boost::shared_ptr<tileMsg> msg(new tileMsg);
+             std::shared_ptr<tileMsg> msg(new tileMsg);
              coVRMSController::instance()->readMaster(msg.get(), sizeof(*msg));
-             boost::shared_ptr<char> payload;
+             std::shared_ptr<char> payload;
              if (msg->size > 0) {
                 payload.reset(new char[msg->size], array_deleter<char>());
                 coVRMSController::instance()->readMaster(payload.get(), msg->size);

@@ -671,9 +671,9 @@ const char *AddParameter::group() const {
    return m_group.data();
 }
 
-boost::shared_ptr<Parameter> AddParameter::getParameter() const {
+std::shared_ptr<Parameter> AddParameter::getParameter() const {
 
-   boost::shared_ptr<Parameter> p;
+   std::shared_ptr<Parameter> p;
    switch (getParameterType()) {
       case Parameter::Integer:
          p.reset(new IntParameter(senderId(), getName()));
@@ -736,9 +736,9 @@ int RemoveParameter::getParameterType() const {
    return paramtype;
 }
 
-boost::shared_ptr<Parameter> RemoveParameter::getParameter() const {
+std::shared_ptr<Parameter> RemoveParameter::getParameter() const {
 
-   boost::shared_ptr<Parameter> p;
+   std::shared_ptr<Parameter> p;
    switch (getParameterType()) {
       case Parameter::Integer:
          p.reset(new IntParameter(senderId(), getName()));
@@ -764,7 +764,7 @@ boost::shared_ptr<Parameter> RemoveParameter::getParameter() const {
 }
 
 
-SetParameter::SetParameter(int module, const std::string &n, const boost::shared_ptr<Parameter> p, Parameter::RangeType rt)
+SetParameter::SetParameter(int module, const std::string &n, const std::shared_ptr<Parameter> p, Parameter::RangeType rt)
 : m_module(module)
 , paramtype(p->type())
 , initialize(false)
@@ -932,7 +932,7 @@ std::string SetParameter::getString() const {
    return v_string.data();
 }
 
-bool SetParameter::apply(boost::shared_ptr<vistle::Parameter> param) const {
+bool SetParameter::apply(std::shared_ptr<vistle::Parameter> param) const {
 
    if (paramtype != param->type()) {
       std::cerr << "SetParameter::apply(): type mismatch for " << param->module() << ":" << param->getName() << std::endl;
@@ -940,23 +940,23 @@ bool SetParameter::apply(boost::shared_ptr<vistle::Parameter> param) const {
    }
 
    const int rt = rangeType();
-   if (auto pint = boost::dynamic_pointer_cast<IntParameter>(param)) {
+   if (auto pint = std::dynamic_pointer_cast<IntParameter>(param)) {
       if (rt == Parameter::Value) pint->setValue(v_int, initialize);
       if (rt == Parameter::Minimum) pint->setMinimum(v_int);
       if (rt == Parameter::Maximum) pint->setMaximum(v_int);
-   } else if (auto pfloat = boost::dynamic_pointer_cast<FloatParameter>(param)) {
+   } else if (auto pfloat = std::dynamic_pointer_cast<FloatParameter>(param)) {
       if (rt == Parameter::Value) pfloat->setValue(v_scalar, initialize);
       if (rt == Parameter::Minimum) pfloat->setMinimum(v_scalar);
       if (rt == Parameter::Maximum) pfloat->setMaximum(v_scalar);
-   } else if (auto pvec = boost::dynamic_pointer_cast<VectorParameter>(param)) {
+   } else if (auto pvec = std::dynamic_pointer_cast<VectorParameter>(param)) {
       if (rt == Parameter::Value) pvec->setValue(ParamVector(dim, &v_vector[0]), initialize);
       if (rt == Parameter::Minimum) pvec->setMinimum(ParamVector(dim, &v_vector[0]));
       if (rt == Parameter::Maximum) pvec->setMaximum(ParamVector(dim, &v_vector[0]));
-   } else if (auto pivec = boost::dynamic_pointer_cast<IntVectorParameter>(param)) {
+   } else if (auto pivec = std::dynamic_pointer_cast<IntVectorParameter>(param)) {
       if (rt == Parameter::Value) pivec->setValue(IntParamVector(dim, &v_ivector[0]), initialize);
       if (rt == Parameter::Minimum) pivec->setMinimum(IntParamVector(dim, &v_ivector[0]));
       if (rt == Parameter::Maximum) pivec->setMaximum(IntParamVector(dim, &v_ivector[0]));
-   } else if (auto pstring = boost::dynamic_pointer_cast<StringParameter>(param)) {
+   } else if (auto pstring = std::dynamic_pointer_cast<StringParameter>(param)) {
       if (rt == Parameter::Value) pstring->setValue(v_string.data(), initialize);
    } else {
       std::cerr << "SetParameter::apply(): type " << param->type() << " not handled" << std::endl;
@@ -984,7 +984,7 @@ const char *SetParameterChoices::getName() const
    return name.data();
 }
 
-bool SetParameterChoices::apply(boost::shared_ptr<vistle::Parameter> param) const {
+bool SetParameterChoices::apply(std::shared_ptr<vistle::Parameter> param) const {
 
    if (param->type() != Parameter::Integer
          && param->type() != Parameter::String) {

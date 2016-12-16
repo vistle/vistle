@@ -45,7 +45,7 @@ struct Flatten {
       typename V::const_ptr in(V::as(object));
       if (!in)
          return;
-      typename V::ptr out(boost::dynamic_pointer_cast<V>(result));
+      typename V::ptr out(std::dynamic_pointer_cast<V>(result));
       if (!out)
           return;
       if (out->getSize() != tri->getNumCorners())

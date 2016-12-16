@@ -51,15 +51,15 @@ namespace {
 
 struct SendRequest;
 std::mutex sendQueueMutex;
-std::map<socket_t*, std::deque<boost::shared_ptr<SendRequest>>> sendQueues;
-void submitSendRequest(boost::shared_ptr<SendRequest> req);
+std::map<socket_t*, std::deque<std::shared_ptr<SendRequest>>> sendQueues;
+void submitSendRequest(std::shared_ptr<SendRequest> req);
 
 struct SendRequest {
     socket_t &sock;
     const message::Buffer msg;
-    boost::shared_ptr<std::vector<char>> payload;
+    std::shared_ptr<std::vector<char>> payload;
     std::function<void(error_code)> handler;
-    SendRequest(socket_t &sock, const message::Message &msg, boost::shared_ptr<std::vector<char>> payload, std::function<void(error_code)> handler)
+    SendRequest(socket_t &sock, const message::Message &msg, std::shared_ptr<std::vector<char>> payload, std::function<void(error_code)> handler)
         : sock(sock)
         , msg(msg)
         , payload(payload)
@@ -88,7 +88,7 @@ struct SendRequest {
 };
 
 
-void submitSendRequest(boost::shared_ptr<SendRequest> req) {
+void submitSendRequest(std::shared_ptr<SendRequest> req) {
     //std::cerr << "submitSendRequest: " << sendQueues[&req->sock].size() << " requests queued for " << &req->sock << std::endl;
     req->sock.get_io_service().post(*req);
 }
@@ -99,16 +99,16 @@ namespace {
 
 struct RecvRequest;
 std::mutex recvQueueMutex;
-std::map<socket_t *, std::deque<boost::shared_ptr<RecvRequest>>> recvQueues;
-void submitRecvRequest(boost::shared_ptr<RecvRequest> req);
+std::map<socket_t *, std::deque<std::shared_ptr<RecvRequest>>> recvQueues;
+void submitRecvRequest(std::shared_ptr<RecvRequest> req);
 
 struct RecvRequest {
 
     socket_t &sock;
     message::Buffer &msg;
-    std::function<void(error_code, boost::shared_ptr<std::vector<char>>)> handler;
+    std::function<void(error_code, std::shared_ptr<std::vector<char>>)> handler;
 
-    RecvRequest(socket_t &sock, message::Buffer &msg, std::function<void(error_code, boost::shared_ptr<std::vector<char>>)> handler)
+    RecvRequest(socket_t &sock, message::Buffer &msg, std::function<void(error_code, std::shared_ptr<std::vector<char>>)> handler)
         : sock(sock)
         , msg(msg)
         , handler(handler)
@@ -118,7 +118,7 @@ struct RecvRequest {
     void operator()() {
         bool received = true;
         error_code ec;
-        boost::shared_ptr<std::vector<char>> payload(new std::vector<char>);
+        std::shared_ptr<std::vector<char>> payload(new std::vector<char>);
         if (!recv(sock, msg, received, true, payload.get())) {
             ec.assign(VistleError, boost::system::generic_category());
         }
@@ -136,7 +136,7 @@ struct RecvRequest {
 
 };
 
-void submitRecvRequest(boost::shared_ptr<RecvRequest> req) {
+void submitRecvRequest(std::shared_ptr<RecvRequest> req) {
     //std::cerr << "submitRecvRequest: " << recvQueues[&req->sock].size() << " requests queued for " << &req->sock << std::endl;
     req->sock.get_io_service().post(*req);
 }
@@ -208,9 +208,9 @@ bool recv(socket_t &sock, message::Buffer &msg, bool &received, bool block, std:
    return result;
 }
 
-void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::system::error_code ec, boost::shared_ptr<std::vector<char>>)> handler) {
+void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::system::error_code ec, std::shared_ptr<std::vector<char>>)> handler) {
 
-   boost::shared_ptr<RecvRequest> req(new RecvRequest(sock, msg, handler));
+   std::shared_ptr<RecvRequest> req(new RecvRequest(sock, msg, handler));
 
    std::lock_guard<std::mutex> locker(recvQueueMutex);
    bool submit = recvQueues[&sock].empty();
@@ -251,11 +251,11 @@ bool send(socket_t &sock, const Message &msg, const std::vector<char> *payload) 
 }
 
 void async_send(socket_t &sock, const message::Message &msg,
-                boost::shared_ptr<std::vector<char>> payload,
+                std::shared_ptr<std::vector<char>> payload,
                 const std::function<void(error_code ec)> handler)
 {
    assert(check(msg));
-   boost::shared_ptr<SendRequest> req(new SendRequest(sock, msg, payload, handler));
+   std::shared_ptr<SendRequest> req(new SendRequest(sock, msg, payload, handler));
 
    std::lock_guard<std::mutex> locker(sendQueueMutex);
    bool submit = sendQueues[&sock].empty();

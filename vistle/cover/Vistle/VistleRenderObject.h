@@ -9,7 +9,7 @@
 #include <osg/ref_ptr>
 #include <osg/Node>
 #include <renderer/renderobject.h>
-#include <boost/weak_ptr.hpp>
+#include <memory>
 
 namespace opencover {
 class coInteractor;
@@ -48,13 +48,13 @@ class BaseRenderObject: public opencover::RenderObject {
 class VistleRenderObject: public BaseRenderObject {
 
    public:
-   VistleRenderObject(boost::shared_ptr<const vistle::RenderObject> ro);
+   VistleRenderObject(std::shared_ptr<const vistle::RenderObject> ro);
    VistleRenderObject(vistle::Object::const_ptr obj);
    ~VistleRenderObject();
 
    void setNode(osg::Node *node);
    osg::Node *node() const;
-   boost::shared_ptr<const vistle::RenderObject> renderObject() const;
+   std::shared_ptr<const vistle::RenderObject> renderObject() const;
    int getCreator() const;
 
    const char *getName() const override;
@@ -69,7 +69,7 @@ class VistleRenderObject: public BaseRenderObject {
 
    protected:
 
-   boost::weak_ptr<const vistle::RenderObject> m_vistleRo;
+   std::weak_ptr<const vistle::RenderObject> m_vistleRo;
    vistle::Object::const_ptr m_obj;
    osg::ref_ptr<osg::Node> m_node;
 

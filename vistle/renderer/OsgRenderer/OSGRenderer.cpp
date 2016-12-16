@@ -782,14 +782,14 @@ bool OSGRenderer::parameterChanged(const vistle::Parameter *p) {
    return Renderer::parameterChanged(p);
 }
 
-boost::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, const std::string &senderPort,
+std::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, const std::string &senderPort,
             vistle::Object::const_ptr container,
             vistle::Object::const_ptr geometry,
             vistle::Object::const_ptr normals,
             vistle::Object::const_ptr colors,
             vistle::Object::const_ptr texture) {
 
-   boost::shared_ptr<vistle::RenderObject> ro;
+   std::shared_ptr<vistle::RenderObject> ro;
    VistleGeometryGenerator gen(ro, geometry, normals, colors, texture);
    if (VistleGeometryGenerator::isSupported(geometry->getType()) || geometry->getType() == vistle::Object::PLACEHOLDER) {
       auto geode = gen(defaultState);
@@ -805,9 +805,9 @@ boost::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, con
    return ro;
 }
 
-void OSGRenderer::removeObject(boost::shared_ptr<vistle::RenderObject> ro) {
+void OSGRenderer::removeObject(std::shared_ptr<vistle::RenderObject> ro) {
 
-   auto oro = boost::static_pointer_cast<OsgRenderObject>(ro);
+   auto oro = std::static_pointer_cast<OsgRenderObject>(ro);
    timesteps->removeObject(oro->node, oro->timestep);
    m_renderManager.removeObject(ro);
 }

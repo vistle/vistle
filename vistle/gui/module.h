@@ -68,7 +68,7 @@ public:
     template<class T>
     void setParameter(QString name, const T &value) const;
     template<class T>
-    boost::shared_ptr<vistle::ParameterBase<T>> getParameter(QString name) const;
+    std::shared_ptr<vistle::ParameterBase<T>> getParameter(QString name) const;
     void sendPosition() const;
     bool isPositionValid() const;
     void setPositionValid();
@@ -123,9 +123,9 @@ void Module::setParameter(QString name, const T &value) const {
 }
 
 template <class T>
-boost::shared_ptr<vistle::ParameterBase<T>> Module::getParameter(QString name) const {
+std::shared_ptr<vistle::ParameterBase<T>> Module::getParameter(QString name) const {
 
-   return boost::dynamic_pointer_cast<vistle::ParameterBase<T>>(vistle::VistleConnection::the().getParameter(id(), name.toStdString()));
+   return std::dynamic_pointer_cast<vistle::ParameterBase<T>>(vistle::VistleConnection::the().getParameter(id(), name.toStdString()));
 }
 
 } //namespace gui

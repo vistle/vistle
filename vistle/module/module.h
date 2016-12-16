@@ -66,7 +66,7 @@ class V_MODULEEXPORT Module {
    void setCurrentParameterGroup(const std::string &group);
    const std::string &currentParameterGroup() const;
 
-   Parameter *addParameterGeneric(const std::string &name, boost::shared_ptr<Parameter> parameter);
+   Parameter *addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> parameter);
    bool updateParameter(const std::string &name, const Parameter *parameter, const message::SetParameter *inResponseTo, Parameter::RangeType rt=Parameter::Value);
 
    template<class T>
@@ -239,14 +239,14 @@ protected:
    bool reduceWrapper(const message::Message *req);
    bool prepareWrapper(const message::Message *req);
 
-   boost::shared_ptr<StateTracker> m_stateTracker;
+   std::shared_ptr<StateTracker> m_stateTracker;
    int m_receivePolicy;
    int m_schedulingPolicy;
    int m_reducePolicy;
    int m_executionDepth; //< number of input ports that have sent ExecutionProgress::Start
 
    bool havePort(const std::string &name); //< check whether a port or parameter already exists
-   boost::shared_ptr<Parameter> findParameter(const std::string &name) const;
+   std::shared_ptr<Parameter> findParameter(const std::string &name) const;
    Port *findInputPort(const std::string &name) const;
    Port *findOutputPort(const std::string &name) const;
 
@@ -262,7 +262,7 @@ protected:
    std::map<std::string, Port*> inputPorts;
 
    std::string m_currentParameterGroup;
-   std::map<std::string, boost::shared_ptr<Parameter>> parameters;
+   std::map<std::string, std::shared_ptr<Parameter>> parameters;
    ObjectCache m_cache;
    ObjectCache::CacheMode m_defaultCacheMode;
    void updateCacheMode();

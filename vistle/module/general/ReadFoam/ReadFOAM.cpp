@@ -33,7 +33,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include "foamtoolbox.h"
 #include <util/coRestraint.h>
@@ -183,7 +183,7 @@ bool ReadFOAM::parameterChanged(const Parameter *p)
 
 bool loadCoords(const std::string &meshdir, Coords::ptr grid) {
 
-   boost::shared_ptr<std::istream> pointsIn = getStreamForFile(meshdir, "points");
+   std::shared_ptr<std::istream> pointsIn = getStreamForFile(meshdir, "points");
    if (!pointsIn)
       return false;
    HeaderInfo pointsH = readFoamHeader(*pointsIn);
@@ -204,7 +204,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
    bool readBoundary = m_readBoundary->getValue();
    bool patchesAsVariants = m_boundaryPatchesAsVariants->getValue();
 
-   boost::shared_ptr<Boundaries> boundaries(new Boundaries());
+   std::shared_ptr<Boundaries> boundaries(new Boundaries());
    *boundaries = loadBoundary(topologyDir);
    UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0));
    std::vector<Polygons::ptr> polyList;
@@ -218,14 +218,14 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
    for (size_t i=0; i<(patchesAsVariants ? numPatches : 1); ++i) {
        polyList.emplace_back(new Polygons(0, 0, 0));
    }
-   boost::shared_ptr<std::vector<Index> > owners(new std::vector<Index>());
+   std::shared_ptr<std::vector<Index> > owners(new std::vector<Index>());
    GridDataContainer result(grid,polyList,owners,boundaries);
    if (!readGrid && !readBoundary) {
       return result;
    }
 
    //read mesh files
-   boost::shared_ptr<std::istream> ownersIn = getStreamForFile(topologyDir, "owner");
+   std::shared_ptr<std::istream> ownersIn = getStreamForFile(topologyDir, "owner");
    if (!ownersIn)
       return result;
    HeaderInfo ownerH = readFoamHeader(*ownersIn);
@@ -238,7 +238,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
 
    {
 
-      boost::shared_ptr<std::istream> facesIn = getStreamForFile(topologyDir, "faces");
+      std::shared_ptr<std::istream> facesIn = getStreamForFile(topologyDir, "faces");
       if (!facesIn)
          return result;
       HeaderInfo facesH = readFoamHeader(*facesIn);
@@ -248,7 +248,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
          return result;
       }
 
-      boost::shared_ptr<std::istream> neighboursIn = getStreamForFile(topologyDir, "neighbour");
+      std::shared_ptr<std::istream> neighboursIn = getStreamForFile(topologyDir, "neighbour");
       if (!neighboursIn)
          return result;
       HeaderInfo neighbourH = readFoamHeader(*neighboursIn);
@@ -590,7 +590,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
 
 DataBase::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &field) {
 
-   boost::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
+   std::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
    if (!stream) {
       std::cerr << "failed to open " << meshdir << "/" << field << std::endl;
       return DataBase::ptr();
@@ -651,7 +651,7 @@ std::vector<DataBase::ptr> ReadFOAM::loadBoundaryField(const std::string &meshdi
        }
    }
 
-   boost::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
+   std::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
    if (!stream) {
       std::cerr << "failed to open " << meshdir << "/" << field << std::endl;
    }
@@ -934,7 +934,7 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
 
    for (const auto &b :boundaries.procboundaries) {
       Index neighborProc=b.neighborProc;
-      boost::shared_ptr<GhostCells> out(new GhostCells()); //object that will be sent to neighbor processor
+      std::shared_ptr<GhostCells> out(new GhostCells()); //object that will be sent to neighbor processor
       m_GhostCellsOut[processor][neighborProc] = out;
       std::vector<Index> &procBoundaryVertices = m_procBoundaryVertices[processor][neighborProc];
       std::unordered_set<Index> &procGhostCellCandidates = m_procGhostCellCandidates[processor][neighborProc];
@@ -1019,10 +1019,10 @@ bool ReadFOAM::buildGhostCells(int processor, GhostMode mode) {
       Index neighborProc=b.neighborProc;
       int myRank=rank();
       int neighborRank = rankForBlock(neighborProc);
-      boost::shared_ptr<GhostCells> out = m_GhostCellsOut[processor][neighborProc];
+      std::shared_ptr<GhostCells> out = m_GhostCellsOut[processor][neighborProc];
       if (myRank != neighborRank) {
          m_requests.push_back(comm().isend(neighborRank, tag(processor,neighborProc), *out));
-         boost::shared_ptr<GhostCells> in(new GhostCells());
+         std::shared_ptr<GhostCells> in(new GhostCells());
          m_GhostCellsIn[processor][neighborProc] = in;
          m_requests.push_back(comm().irecv(neighborRank, tag(neighborProc,processor), *in));
       } else {
@@ -1052,14 +1052,14 @@ bool ReadFOAM::buildGhostCellData(int processor) {
             continue;
          }
          if (v1) {
-            boost::shared_ptr<GhostData> dataOut(new GhostData(1));
+            std::shared_ptr<GhostData> dataOut(new GhostData(1));
             m_GhostDataOut[processor][neighborProc][i] = dataOut;
             auto &d=v1->x(0);
             for (const Index& cell: procGhostCellCandidates) {
                (*dataOut).x[0].push_back(d[cell]);
             }
          } else if (v3) {
-            boost::shared_ptr<GhostData> dataOut(new GhostData(3));
+            std::shared_ptr<GhostData> dataOut(new GhostData(3));
             m_GhostDataOut[processor][neighborProc][i] = dataOut;
             auto &d1=v3->x(0);
             auto &d2=v3->x(1);
@@ -1079,13 +1079,13 @@ bool ReadFOAM::buildGhostCellData(int processor) {
       int myRank=rank();
       int neighborRank = rankForBlock(neighborProc);
 
-      std::map<int, boost::shared_ptr<GhostData> > &m = m_GhostDataOut[processor][neighborProc];
+      std::map<int, std::shared_ptr<GhostData> > &m = m_GhostDataOut[processor][neighborProc];
       for (Index i=0; i<NumPorts; ++i) {
          if (m.find(i) != m.end()) {
-            boost::shared_ptr<GhostData> dataOut = m[i];
+            std::shared_ptr<GhostData> dataOut = m[i];
             if (myRank != neighborRank) {
                m_requests.push_back(comm().isend(neighborRank, tag(processor,neighborProc,i+1), *dataOut));
-               boost::shared_ptr<GhostData> dataIn(new GhostData((*dataOut).dim));
+               std::shared_ptr<GhostData> dataIn(new GhostData((*dataOut).dim));
                m_GhostDataIn[processor][neighborProc][i] = dataIn;
                m_requests.push_back(comm().irecv(neighborRank, tag(neighborProc,processor,i+1), *dataIn));
             } else {
@@ -1128,7 +1128,7 @@ void ReadFOAM::applyGhostCells(int processor, GhostMode mode) {
               sharedVerticesMapping.push_back(v);
           }
        }
-       boost::shared_ptr<GhostCells> in = m_GhostCellsIn[processor][neighborProc];
+       std::shared_ptr<GhostCells> in = m_GhostCellsIn[processor][neighborProc];
        std::vector<Index> &elIn = in->el;
        std::vector<SIndex> &clIn = in->cl;
        std::vector<unsigned char> &tlIn = in->tl;
@@ -1190,12 +1190,12 @@ void ReadFOAM::applyGhostCellsData(int processor) {
          }
          //append ghost cell data to old data objects
          if (v1) {
-            boost::shared_ptr<GhostData> dataIn = m_GhostDataIn[processor][neighborProc][i];
+            std::shared_ptr<GhostData> dataIn = m_GhostDataIn[processor][neighborProc][i];
             auto &d=v1->x(0);
             std::vector<Scalar> &x=(*dataIn).x[0];
             std::copy(x.begin(), x.end(), std::back_inserter(d));
          } else if (v3) {
-            boost::shared_ptr<GhostData> dataIn = m_GhostDataIn[processor][neighborProc][i];
+            std::shared_ptr<GhostData> dataIn = m_GhostDataIn[processor][neighborProc][i];
             for (Index j=0; j<3; ++j) {
                auto &d=v3->x(j);
                std::vector<Scalar> &x=(*dataIn).x[j];

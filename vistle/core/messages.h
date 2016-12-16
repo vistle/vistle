@@ -447,7 +447,7 @@ class V_COREEXPORT AddParameter: public MessageBase<AddParameter, Message::ADDPA
       const char *group() const;
       int getParameterType() const;
       int getPresentation() const;
-      boost::shared_ptr<Parameter> getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
+      std::shared_ptr<Parameter> getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
 
    private:
       param_name_t name;
@@ -467,7 +467,7 @@ class V_COREEXPORT RemoveParameter: public MessageBase<RemoveParameter, Message:
       const char *getName() const;
       const char *moduleName() const;
       int getParameterType() const;
-      boost::shared_ptr<Parameter> getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
+      std::shared_ptr<Parameter> getParameter() const; //< allocates a new Parameter object, caller is responsible for deletion
 
    private:
       param_name_t name;
@@ -480,7 +480,7 @@ BOOST_STATIC_ASSERT(sizeof(RemoveParameter) <= Message::MESSAGE_SIZE);
 //! request parameter value update or notify that a parameter value has been changed
 class V_COREEXPORT SetParameter: public MessageBase<SetParameter, Message::SETPARAMETER> {
    public:
-      SetParameter(int module, const std::string & name, const boost::shared_ptr<Parameter> param, Parameter::RangeType rt=Parameter::Value);
+      SetParameter(int module, const std::string & name, const std::shared_ptr<Parameter> param, Parameter::RangeType rt=Parameter::Value);
       SetParameter(int module, const std::string & name, const Integer value);
       SetParameter(int module, const std::string & name, const Float value);
       SetParameter(int module, const std::string & name, const ParamVector &value);
@@ -505,7 +505,7 @@ class V_COREEXPORT SetParameter: public MessageBase<SetParameter, Message::SETPA
       ParamVector getVector() const;
       IntParamVector getIntVector() const;
 
-      bool apply(boost::shared_ptr<Parameter> param) const;
+      bool apply(std::shared_ptr<Parameter> param) const;
 
    private:
       int m_module; //!< destination module
@@ -534,7 +534,7 @@ class V_COREEXPORT SetParameterChoices: public MessageBase<SetParameterChoices, 
       int getNumChoices() const;
       const char *getChoice(int idx) const;
 
-      bool apply(boost::shared_ptr<Parameter> param) const;
+      bool apply(std::shared_ptr<Parameter> param) const;
 
    private:
       int numChoices;

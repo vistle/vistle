@@ -19,11 +19,11 @@ VistleInteractor::~VistleInteractor()
    m_parameterMap.clear();
 }
 
-boost::shared_ptr<vistle::Parameter> VistleInteractor::findParam(const std::string &name) const
+std::shared_ptr<vistle::Parameter> VistleInteractor::findParam(const std::string &name) const
 {
    ParameterMap::const_iterator it = m_parameterMap.find(name);
    if (it == m_parameterMap.end())
-      return boost::shared_ptr<vistle::Parameter>();
+      return std::shared_ptr<vistle::Parameter>();
 
    return it->second;
 }
@@ -115,7 +115,7 @@ int VistleInteractor::getIntScalarParam(const std::string &paraName, int &value)
    auto param = findParam(paraName);
    if (!param)
       return -1;
-   auto iparam = boost::dynamic_pointer_cast<IntParameter>(param);
+   auto iparam = std::dynamic_pointer_cast<IntParameter>(param);
    if (!iparam)
       return -1;
 
@@ -129,7 +129,7 @@ int VistleInteractor::getFloatScalarParam(const std::string &paraName, float &va
    auto param = findParam(paraName);
    if (!param)
       return -1;
-   auto fparam = boost::dynamic_pointer_cast<FloatParameter>(param);
+   auto fparam = std::dynamic_pointer_cast<FloatParameter>(param);
    if (!fparam)
       return -1;
 
@@ -143,7 +143,7 @@ int VistleInteractor::getIntSliderParam(const std::string &paraName, int &min, i
    auto param = findParam(paraName);
    if (!param)
       return -1;
-   auto iparam = boost::dynamic_pointer_cast<IntParameter>(param);
+   auto iparam = std::dynamic_pointer_cast<IntParameter>(param);
    if (!iparam)
       return -1;
 
@@ -166,7 +166,7 @@ int VistleInteractor::getFloatSliderParam(const std::string &paraName, float &mi
    auto param = findParam(paraName);
    if (!param)
       return -1;
-   auto fparam = boost::dynamic_pointer_cast<FloatParameter>(param);
+   auto fparam = std::dynamic_pointer_cast<FloatParameter>(param);
    if (!fparam)
       return -1;
 
@@ -189,7 +189,7 @@ int VistleInteractor::getIntVectorParam(const std::string &paraName, int &numEle
    auto param = findParam(paraName);
    if (!param)
       return -1;
-   auto vparam = boost::dynamic_pointer_cast<IntVectorParameter>(param);
+   auto vparam = std::dynamic_pointer_cast<IntVectorParameter>(param);
    if (!vparam)
       return -1;
 
@@ -207,7 +207,7 @@ int VistleInteractor::getFloatVectorParam(const std::string &paraName, int &numE
    auto param = findParam(paraName);
    if (!param)
       return -1;
-   auto vparam = boost::dynamic_pointer_cast<VectorParameter>(param);
+   auto vparam = std::dynamic_pointer_cast<VectorParameter>(param);
    if (!vparam)
       return -1;
 
@@ -226,7 +226,7 @@ int VistleInteractor::VistleInteractor::getStringParam(const std::string &paraNa
    if (!param)
       return -1;
 
-   auto sparam = boost::dynamic_pointer_cast<StringParameter>(param);
+   auto sparam = std::dynamic_pointer_cast<StringParameter>(param);
    if (!sparam)
       return -1;
 
@@ -246,7 +246,7 @@ int VistleInteractor::getChoiceParam(const std::string &paraName, int &num, char
    if (param->presentation() != Parameter::Choice)
       return -1;
 
-   if (auto sparam = boost::dynamic_pointer_cast<StringParameter>(param)) {
+   if (auto sparam = std::dynamic_pointer_cast<StringParameter>(param)) {
       s_choices = sparam->choices();
       std::string val = sparam->getValue();
       size_t idx = 0;
@@ -263,7 +263,7 @@ int VistleInteractor::getChoiceParam(const std::string &paraName, int &num, char
       } else {
          return -1;
       }
-   } else if (auto iparam = boost::dynamic_pointer_cast<IntParameter>(param)) {
+   } else if (auto iparam = std::dynamic_pointer_cast<IntParameter>(param)) {
       s_choices = iparam->choices();
       num = s_choices.size();
       active = iparam->getValue();
@@ -294,7 +294,7 @@ void VistleInteractor::sendMessage(const message::Message &msg) const
    m_owner->sendMessage(msg);
 }
 
-void VistleInteractor::sendParamMessage(const boost::shared_ptr<Parameter> param) const
+void VistleInteractor::sendParamMessage(const std::shared_ptr<Parameter> param) const
 {
    message::SetParameter m(m_moduleId, param->getName(), param);
    m.setDestId(m_moduleId);
@@ -314,7 +314,7 @@ void VistleInteractor::setBooleanParam(const char *name, int val)
 void VistleInteractor::setScalarParam(const char *name, float val)
 {
    auto param = findParam(name);
-   auto fparam = boost::dynamic_pointer_cast<FloatParameter>(param);
+   auto fparam = std::dynamic_pointer_cast<FloatParameter>(param);
    if (!fparam)
       return;
    fparam->setValue(val);
@@ -325,7 +325,7 @@ void VistleInteractor::setScalarParam(const char *name, float val)
 void VistleInteractor::setScalarParam(const char *name, int val)
 {
    auto param = findParam(name);
-   auto iparam = boost::dynamic_pointer_cast<IntParameter>(param);
+   auto iparam = std::dynamic_pointer_cast<IntParameter>(param);
    if (!iparam)
       return;
    iparam->setValue(val);
@@ -336,7 +336,7 @@ void VistleInteractor::setScalarParam(const char *name, int val)
 void VistleInteractor::setSliderParam(const char *name,float min,float max, float value)
 {
    auto param = findParam(name);
-   auto fparam = boost::dynamic_pointer_cast<FloatParameter>(param);
+   auto fparam = std::dynamic_pointer_cast<FloatParameter>(param);
    if (!fparam)
       return;
    fparam->setValue(value);
@@ -347,7 +347,7 @@ void VistleInteractor::setSliderParam(const char *name,float min,float max, floa
 void VistleInteractor::setSliderParam(const char *name, int min, int max, int value)
 {
    auto param = findParam(name);
-   auto iparam = boost::dynamic_pointer_cast<IntParameter>(param);
+   auto iparam = std::dynamic_pointer_cast<IntParameter>(param);
    if (!iparam)
       return;
    iparam->setValue(value);
@@ -358,7 +358,7 @@ void VistleInteractor::setSliderParam(const char *name, int min, int max, int va
 void VistleInteractor::setVectorParam(const char *name, int numElem, float *field)
 {
    auto param = findParam(name);
-   auto vparam = boost::dynamic_pointer_cast<VectorParameter>(param);
+   auto vparam = std::dynamic_pointer_cast<VectorParameter>(param);
    if (!vparam)
       return;
    assert(vparam->getValue().dim == numElem);
@@ -379,7 +379,7 @@ void VistleInteractor::setVectorParam(const char *name, float u, float v, float 
 void VistleInteractor::setVectorParam(const char *name, int numElem, int *field)
 {
    auto param = findParam(name);
-   auto vparam = boost::dynamic_pointer_cast<IntVectorParameter>(param);
+   auto vparam = std::dynamic_pointer_cast<IntVectorParameter>(param);
    if (!vparam)
       return;
    assert(vparam->getValue().dim == numElem);
@@ -400,7 +400,7 @@ void VistleInteractor::setVectorParam(const char *name, int u, int v, int w)
 void VistleInteractor::setStringParam(const char *name, const char *val)
 {
    auto param = findParam(name);
-   auto sparam = boost::dynamic_pointer_cast<StringParameter>(param);
+   auto sparam = std::dynamic_pointer_cast<StringParameter>(param);
    if (!sparam)
       return;
    sparam->setValue(val);
@@ -432,11 +432,11 @@ void VistleInteractor::setChoiceParam(const char *name, int num , const char * c
    }
 #endif
 
-   if (auto sparam = boost::dynamic_pointer_cast<StringParameter>(param)) {
+   if (auto sparam = std::dynamic_pointer_cast<StringParameter>(param)) {
       auto val = choices[pos];
       sparam->setValue(val);
       sendParamMessage(sparam);
-   } else if (auto iparam = boost::dynamic_pointer_cast<IntParameter>(param)) {
+   } else if (auto iparam = std::dynamic_pointer_cast<IntParameter>(param)) {
       iparam->setValue(pos);
       sendParamMessage(iparam);
    } else {

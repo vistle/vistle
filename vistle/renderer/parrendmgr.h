@@ -41,8 +41,8 @@ public:
    int rootRank() const {
       return m_displayRank==-1 ? 0 : m_displayRank;
    }
-   void addObject(boost::shared_ptr<RenderObject> ro);
-   void removeObject(boost::shared_ptr<RenderObject> ro);
+   void addObject(std::shared_ptr<RenderObject> ro);
+   void removeObject(std::shared_ptr<RenderObject> ro);
    bool checkIceTError(const char *msg) const;
 
    Renderer *m_module;

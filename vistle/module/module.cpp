@@ -490,7 +490,7 @@ Port *Module::findOutputPort(const std::string &name) const {
 }
 
 
-Parameter *Module::addParameterGeneric(const std::string &name, boost::shared_ptr<Parameter> param) {
+Parameter *Module::addParameterGeneric(const std::string &name, std::shared_ptr<Parameter> param) {
 
    vassert(!havePort(name));
    if (havePort(name)) {
@@ -594,7 +594,7 @@ void Module::setParameterChoices(Parameter *param, const std::vector<std::string
 template<class T>
 Parameter *Module::addParameter(const std::string &name, const std::string &description, const T &value, Parameter::Presentation pres) {
 
-   boost::shared_ptr<Parameter> p(new ParameterBase<T>(id(), name, value));
+   std::shared_ptr<Parameter> p(new ParameterBase<T>(id(), name, value));
    p->setDescription(description);
    p->setGroup(currentParameterGroup());
    p->setPresentation(pres);
@@ -602,12 +602,12 @@ Parameter *Module::addParameter(const std::string &name, const std::string &desc
    return addParameterGeneric(name, p);
 }
 
-boost::shared_ptr<Parameter> Module::findParameter(const std::string &name) const {
+std::shared_ptr<Parameter> Module::findParameter(const std::string &name) const {
 
    auto i = parameters.find(name);
 
    if (i == parameters.end())
-      return boost::shared_ptr<Parameter>();
+      return std::shared_ptr<Parameter>();
 
    return i->second;
 }

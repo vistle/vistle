@@ -20,9 +20,9 @@ class V_RENDEREREXPORT Renderer: public Module {
    void getBounds(Vector3 &min, Vector3 &max, int time);
 
  protected:
-   virtual boost::shared_ptr<RenderObject> addObject(int senderId, const std::string &senderPort,
+   virtual std::shared_ptr<RenderObject> addObject(int senderId, const std::string &senderPort,
          Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr colors, Object::const_ptr texture) = 0;
-   virtual void removeObject(boost::shared_ptr<RenderObject> ro);
+   virtual void removeObject(std::shared_ptr<RenderObject> ro);
 
    bool parameterChanged(const Parameter *p) override;
 
@@ -58,7 +58,7 @@ class V_RENDEREREXPORT Renderer: public Module {
    typedef std::map<int, Creator> CreatorMap;
    CreatorMap m_creatorMap;
 
-   std::vector<std::vector<boost::shared_ptr<RenderObject>>> m_objectList;
+   std::vector<std::vector<std::shared_ptr<RenderObject>>> m_objectList;
    IntParameter *m_renderMode;
 };
 

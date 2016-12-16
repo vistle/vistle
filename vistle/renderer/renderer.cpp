@@ -249,7 +249,7 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
    Creator &creator = it->second;
    creator.age = object->getExecutionCounter();
 
-   boost::shared_ptr<RenderObject> ro;
+   std::shared_ptr<RenderObject> ro;
 #if 0
    std::cout << "++++++Renderer addInputObject " << object->getType()
              << " creator " << object->getCreator()
@@ -286,7 +286,7 @@ void Renderer::connectionRemoved(const Port *from, const Port *to) {
    removeAllSentBy(from->getModuleID(), from->getName());
 }
 
-void Renderer::removeObject(boost::shared_ptr<RenderObject> ro) {
+void Renderer::removeObject(std::shared_ptr<RenderObject> ro) {
 }
 
 void Renderer::removeAllCreatedBy(int creatorId) {
@@ -298,7 +298,7 @@ void Renderer::removeAllCreatedBy(int creatorId) {
             ro.reset();
          }
       }
-      ol.erase(std::remove_if(ol.begin(), ol.end(), [](boost::shared_ptr<vistle::RenderObject> ro) { return !ro; }), ol.end());
+      ol.erase(std::remove_if(ol.begin(), ol.end(), [](std::shared_ptr<vistle::RenderObject> ro) { return !ro; }), ol.end());
    }
    while (!m_objectList.empty() && m_objectList.back().empty())
       m_objectList.pop_back();
@@ -313,7 +313,7 @@ void Renderer::removeAllSentBy(int sender, const std::string &senderPort) {
             ro.reset();
          }
       }
-      ol.erase(std::remove_if(ol.begin(), ol.end(), [](boost::shared_ptr<vistle::RenderObject> ro) { return !ro; }), ol.end());
+      ol.erase(std::remove_if(ol.begin(), ol.end(), [](std::shared_ptr<vistle::RenderObject> ro) { return !ro; }), ol.end());
    }
    while (!m_objectList.empty() && m_objectList.back().empty())
       m_objectList.pop_back();

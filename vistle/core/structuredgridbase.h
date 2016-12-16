@@ -21,10 +21,10 @@ class V_COREEXPORT StructuredGridBase: public GridInterface {
 
 public:
    typedef StructuredGridBase Class;
-   typedef boost::shared_ptr<Class> ptr;
-   typedef boost::shared_ptr<const Class> const_ptr;
-   static boost::shared_ptr<const Class> as(boost::shared_ptr<const Object> ptr) { return boost::dynamic_pointer_cast<const Class>(ptr); }
-   static boost::shared_ptr<Class> as(boost::shared_ptr<Object> ptr) { return boost::dynamic_pointer_cast<Class>(ptr); }
+   typedef std::shared_ptr<Class> ptr;
+   typedef std::shared_ptr<const Class> const_ptr;
+   static std::shared_ptr<const Class> as(std::shared_ptr<const Object> ptr) { return std::dynamic_pointer_cast<const Class>(ptr); }
+   static std::shared_ptr<Class> as(std::shared_ptr<Object> ptr) { return std::dynamic_pointer_cast<Class>(ptr); }
 
    enum GhostLayerPosition {
        Bottom,

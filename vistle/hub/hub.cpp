@@ -35,7 +35,7 @@
 //#define DEBUG_DISTRIBUTED
 
 namespace asio = boost::asio;
-using boost::shared_ptr;
+using std::shared_ptr;
 using namespace vistle;
 using message::Router;
 using message::Id;
@@ -229,7 +229,7 @@ bool Hub::dispatch() {
    bool work = false;
    size_t avail = 0;
    do {
-      boost::shared_ptr<boost::asio::ip::tcp::socket> sock;
+      std::shared_ptr<boost::asio::ip::tcp::socket> sock;
       avail = 0;
       for (auto &s: m_clients) {
          boost::asio::socket_base::bytes_readable command(true);
@@ -300,7 +300,7 @@ bool Hub::dispatch() {
    return ret;
 }
 
-void Hub::handleWrite(boost::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
+void Hub::handleWrite(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
 
     message::Identify::Identity senderType = message::Identify::UNKNOWN;
     auto it = m_sockets.find(sock);

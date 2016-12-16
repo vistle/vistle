@@ -10,7 +10,7 @@ BaseRenderObject::BaseRenderObject() {
 BaseRenderObject::~BaseRenderObject() {
 }
 
-VistleRenderObject::VistleRenderObject(boost::shared_ptr<const vistle::RenderObject> ro)
+VistleRenderObject::VistleRenderObject(std::shared_ptr<const vistle::RenderObject> ro)
 : m_vistleRo(ro)
 , m_roGeo(NULL)
 , m_roCol(NULL)
@@ -36,7 +36,7 @@ VistleRenderObject::~VistleRenderObject() {
    delete m_roTex;
 }
 
-boost::shared_ptr<const  vistle::RenderObject> VistleRenderObject::renderObject() const {
+std::shared_ptr<const  vistle::RenderObject> VistleRenderObject::renderObject() const {
 
    return m_vistleRo.lock();
 }
