@@ -8,7 +8,7 @@
 
 namespace asio = boost::asio;
 using boost::system::error_code;
-typedef boost::lock_guard<boost::recursive_mutex> lock_guard;
+typedef std::lock_guard<std::recursive_mutex> lock_guard;
 
 
 namespace vistle {
@@ -85,8 +85,8 @@ void DataProxy::cleanUp() {
 }
 
 void DataProxy::startThread() {
-   boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
-   if (true || m_threads.size() < boost::thread::hardware_concurrency()) {
+   lock_guard lock(m_mutex);
+   if (true || m_threads.size() < std::thread::hardware_concurrency()) {
    //if (m_threads.size() < 1) {
       auto &io = m_io;
       m_threads.emplace_back([&io](){ io.run(); });
@@ -137,7 +137,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
          switch(id.identity()) {
          case Identify::REMOTEBULKDATA: {
             {
-                 boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+                 lock_guard lock(m_mutex);
                  m_remoteDataSocket[id.senderId()] = sock;
             }
             Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
@@ -152,7 +152,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
          }
          case Identify::LOCALBULKDATA: {
             {
-                 boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+                 lock_guard lock(m_mutex);
                  m_localDataSocket[id.rank()] = sock;
             }
 
@@ -183,7 +183,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, boost::shar
 
 void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
 
-    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+    lock_guard lock(m_mutex);
     using namespace vistle::message;
 
     boost::shared_ptr<message::Buffer> msg(new message::Buffer);
@@ -245,7 +245,7 @@ void DataProxy::localMsgRecv(boost::shared_ptr<tcp_socket> sock) {
 void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
 
     //CERR << "remoteMsgRecv posted on sock " << sock.get() << std::endl;
-    boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+    lock_guard lock(m_mutex);
 
     using namespace vistle::message;
 
@@ -319,7 +319,7 @@ void DataProxy::remoteMsgRecv(boost::shared_ptr<tcp_socket> sock) {
 }
 
 bool DataProxy::connectRemoteData(int hubId) {
-   boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+   lock_guard lock(m_mutex);
 
    vassert(m_remoteDataSocket.find(hubId) == m_remoteDataSocket.end());
 
@@ -364,7 +364,7 @@ bool DataProxy::connectRemoteData(int hubId) {
 
 boost::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getLocalDataSock(int rank) {
 
-   boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+   lock_guard lock(m_mutex);
    auto it = m_localDataSocket.find(rank);
    vassert(it != m_localDataSocket.end());
    return it->second;
@@ -372,7 +372,7 @@ boost::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getLocalDataSock(int 
 
 boost::shared_ptr<boost::asio::ip::tcp::socket> DataProxy::getRemoteDataSock(int hubId) {
 
-   boost::lock_guard<boost::recursive_mutex> lock(m_mutex);
+   lock_guard lock(m_mutex);
    auto it = m_remoteDataSocket.find(hubId);
 #if 0
    if (it == m_remoteDataSocket.end()) {

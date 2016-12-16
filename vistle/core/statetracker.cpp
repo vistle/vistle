@@ -1,5 +1,4 @@
 #include <boost/foreach.hpp>
-#include <boost/thread.hpp>
 
 #include "message.h"
 #include "messages.h"
@@ -548,7 +547,7 @@ void StateTracker::cleanQueue(int id) {
 }
 
 bool StateTracker::handlePriv(const message::AddHub &slave) {
-   boost::lock_guard<mutex> locker(m_slaveMutex);
+   std::lock_guard<mutex> locker(m_slaveMutex);
    m_hubs.emplace_back(slave.id(), slave.name());
    m_hubs.back().port = slave.port();
    m_hubs.back().dataPort = slave.dataPort();
@@ -1092,7 +1091,7 @@ boost::shared_ptr<Parameter> StateTracker::getParameter(int id, const std::strin
 
 bool StateTracker::registerRequest(const message::uuid_t &uuid) {
 
-   boost::lock_guard<mutex> locker(m_replyMutex);
+   std::lock_guard<mutex> locker(m_replyMutex);
 
    auto it = m_outstandingReplies.find(uuid);
    if (it != m_outstandingReplies.end()) {
@@ -1107,7 +1106,7 @@ bool StateTracker::registerRequest(const message::uuid_t &uuid) {
 
 boost::shared_ptr<message::Buffer> StateTracker::waitForReply(const message::uuid_t &uuid) {
 
-   boost::unique_lock<mutex> locker(m_replyMutex);
+   std::unique_lock<mutex> locker(m_replyMutex);
    boost::shared_ptr<message::Buffer> ret = removeRequest(uuid);
    while (!ret) {
       m_replyCondition.wait(locker);
@@ -1131,7 +1130,7 @@ boost::shared_ptr<message::Buffer> StateTracker::removeRequest(const message::uu
 
 bool StateTracker::registerReply(const message::uuid_t &uuid, const message::Message &msg) {
 
-   boost::lock_guard<mutex> locker(m_replyMutex);
+   std::lock_guard<mutex> locker(m_replyMutex);
    auto it = m_outstandingReplies.find(uuid);
    if (it == m_outstandingReplies.end()) {
       return false;
@@ -1155,7 +1154,7 @@ std::vector<int> StateTracker::waitForSlaveHubs(size_t count) {
 
    auto hubIds = getSlaveHubs();
    while (hubIds.size() < count) {
-      boost::unique_lock<mutex> locker(m_slaveMutex);
+      std::unique_lock<mutex> locker(m_slaveMutex);
       m_slaveCondition.wait(locker);
       hubIds = getSlaveHubs();
    }
@@ -1189,7 +1188,7 @@ std::vector<int> StateTracker::waitForSlaveHubs(const std::vector<std::string> &
 
    std::vector<int> ids;
    while (!findAll(names, ids)) {
-      boost::unique_lock<mutex> locker(m_slaveMutex);
+      std::unique_lock<mutex> locker(m_slaveMutex);
       m_slaveCondition.wait(locker);
    }
    return ids;

@@ -44,16 +44,17 @@
 #include <rfb/rfb.h>
 #include <rfb/rfbclient.h>
 
-#include "VncClient.h"
-
-#include <rhr/rfbext.h>
-
 #ifdef max
 #undef max
 #endif
 #ifdef min
 #undef min
 #endif
+
+#include "VncClient.h"
+
+#include <rhr/rfbext.h>
+
 
 #include "RemoteRenderObject.h"
 #include "coRemoteCoviseInteractor.h"
@@ -63,7 +64,8 @@
 #include <tbb/enumerable_thread_specific.h>
 #include <boost/shared_ptr.hpp>
 
-#include <boost/thread.hpp>
+#include <thread>
+#include <mutex>
 
 //#define CONNDEBUG
 
@@ -91,7 +93,7 @@ typedef tbb::enumerable_thread_specific<TjDecomp> TjContext;
 static TjContext tjContexts;
 #endif
 
-typedef boost::lock_guard<boost::recursive_mutex> lock_guard;
+typedef std::lock_guard<std::recursive_mutex> lock_guard;
 
 //! for use with shared_ptr and arrays allocated with new[]
 template <typename T>
@@ -1020,7 +1022,7 @@ VncClient::VncClient()
 //! called after plug-in is loaded and scenegraph is initialized
 bool VncClient::init()
 {
-   m_clientMutex = new boost::recursive_mutex;
+   m_clientMutex = new std::recursive_mutex;
    m_serverHost = covise::coCoviseConfig::getEntry("rfbHost", config, "localhost");
    m_port = covise::coCoviseConfig::getInt("rfbPort", config, 31590);
 
@@ -1870,7 +1872,7 @@ bool VncClient::connectClient() {
 
    m_clientRunning = true;
    m_runClient = true;
-   m_clientThread = new boost::thread(VncPoller(this));
+   m_clientThread = new std::thread(VncPoller(this));
 
    return true;
 }
@@ -1909,6 +1911,7 @@ void VncClient::clientCleanup(rfbClient *cl) {
       m_client = NULL;
    }
 
+   m_clientThread->join();
    delete m_clientThread;
    m_clientThread = nullptr;
 }

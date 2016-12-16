@@ -10,9 +10,11 @@
 #ifndef VNC_CLIENT_H
 #define VNC_CLIENT_H
 
-#include <cover/coVRPluginSupport.h>
-
 #include <string>
+#include <mutex>
+#include <thread>
+
+#include <cover/coVRPluginSupport.h>
 
 #include <rfb/rfb.h>
 #include <rfb/rfbclient.h>
@@ -35,11 +37,6 @@
 #endif
 
 #include <PluginUtil/MultiChannelDrawer.h>
-
-namespace boost {
-class thread;
-class recursive_mutex;
-}
 
 namespace osg {
 class TextureRectangle;
@@ -101,7 +98,7 @@ public:
    int handleRfbMessages();
 
    bool m_runClient, m_clientRunning;
-   boost::recursive_mutex *m_clientMutex;
+   std::recursive_mutex *m_clientMutex;
 private:
    //! make plugin available to static member functions
    static VncClient *plugin;
@@ -128,7 +125,7 @@ private:
 
    //! server connection
    rfbClient *m_client;
-   boost::thread *m_clientThread;
+   std::thread *m_clientThread;
    bool m_listen;
    bool m_haveConnection;
    bool m_haveMessage;

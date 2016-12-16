@@ -1,5 +1,5 @@
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
+#include <thread>
+#include <mutex>
 
 #include <userinterface/pythoninterface.h>
 #include <userinterface/pythonmodule.h>
@@ -23,18 +23,18 @@ class Executor {
       if (!m_filename.empty())
          m_interpreter.executeFile(m_filename);
 
-      boost::lock_guard<boost::mutex> locker(m_mutex);
+      std::lock_guard<std::mutex> locker(m_mutex);
       m_done = true;
    }
 
    bool done() const {
 
-      boost::lock_guard<boost::mutex> locker(m_mutex);
+      std::lock_guard<std::mutex> locker(m_mutex);
       return m_done;
    }
 
  private:
-   mutable boost::mutex m_mutex;
+   mutable std::mutex m_mutex;
    bool m_done;
    PythonInterpreter &m_interpreter;
    const std::string &m_filename;
@@ -44,7 +44,7 @@ PythonInterpreter::PythonInterpreter(const std::string &file, const std::string 
 : m_interpreter(new PythonInterface("vistle"))
 , m_module(new PythonModule(path))
 , m_executor(new Executor(*this, file))
-, m_thread(boost::ref(*m_executor))
+, m_thread(std::ref(*m_executor))
 {
 }
 
@@ -55,6 +55,7 @@ bool PythonInterpreter::executeFile(const std::string &filename) {
 
 PythonInterpreter::~PythonInterpreter() {
 
+   m_thread.join();
 }
 
 bool PythonInterpreter::check() {

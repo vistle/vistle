@@ -15,7 +15,7 @@ namespace vistle {
 class VistleConnectionLocker: public VistleConnection::Locker {
 
 public:
-   VistleConnectionLocker(boost::recursive_mutex &mtx)
+   VistleConnectionLocker(std::recursive_mutex &mtx)
    : m_mutex(mtx)
    {
       m_mutex.lock();
@@ -27,7 +27,7 @@ public:
    }
 
    private:
-   boost::recursive_mutex &m_mutex;
+   std::recursive_mutex &m_mutex;
 };
 
 VistleConnection *VistleConnection::s_instance = nullptr;

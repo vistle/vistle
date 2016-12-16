@@ -2,8 +2,7 @@
 #include <functional>
 
 #include <boost/asio.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/lock_guard.hpp>
+#include <mutex>
 
 #include <util/tools.h>
 #include <arpa/inet.h>
@@ -51,7 +50,7 @@ bool check(const Message &msg) {
 namespace {
 
 struct SendRequest;
-boost::mutex sendQueueMutex;
+std::mutex sendQueueMutex;
 std::map<socket_t*, std::deque<boost::shared_ptr<SendRequest>>> sendQueues;
 void submitSendRequest(boost::shared_ptr<SendRequest> req);
 
@@ -76,7 +75,7 @@ struct SendRequest {
         }
         handler(ec);
 
-        boost::lock_guard<boost::mutex> locker(sendQueueMutex);
+        std::lock_guard<std::mutex> locker(sendQueueMutex);
         assert(!sendQueues[&sock].empty());
         auto This = sendQueues[&sock].front();
         sendQueues[&sock].pop_front();
@@ -99,7 +98,7 @@ void submitSendRequest(boost::shared_ptr<SendRequest> req) {
 namespace {
 
 struct RecvRequest;
-boost::mutex recvQueueMutex;
+std::mutex recvQueueMutex;
 std::map<socket_t *, std::deque<boost::shared_ptr<RecvRequest>>> recvQueues;
 void submitRecvRequest(boost::shared_ptr<RecvRequest> req);
 
@@ -125,7 +124,7 @@ struct RecvRequest {
         }
         handler(ec, payload);
 
-        boost::lock_guard<boost::mutex> locker(recvQueueMutex);
+        std::lock_guard<std::mutex> locker(recvQueueMutex);
         assert(!recvQueues[&sock].empty());
         auto This = recvQueues[&sock].front();
         recvQueues[&sock].pop_front();
@@ -213,7 +212,7 @@ void async_recv(socket_t &sock, message::Buffer &msg, std::function<void(boost::
 
    boost::shared_ptr<RecvRequest> req(new RecvRequest(sock, msg, handler));
 
-   boost::lock_guard<boost::mutex> locker(recvQueueMutex);
+   std::lock_guard<std::mutex> locker(recvQueueMutex);
    bool submit = recvQueues[&sock].empty();
    recvQueues[&sock].push_back(req);
    //std::cerr << "message::async_recv: " << recvQueues[&sock].size() << " requests queued for " << &sock << std::endl;
@@ -258,7 +257,7 @@ void async_send(socket_t &sock, const message::Message &msg,
    assert(check(msg));
    boost::shared_ptr<SendRequest> req(new SendRequest(sock, msg, payload, handler));
 
-   boost::lock_guard<boost::mutex> locker(sendQueueMutex);
+   std::lock_guard<std::mutex> locker(sendQueueMutex);
    bool submit = sendQueues[&sock].empty();
    sendQueues[&sock].push_back(req);
    //std::cerr << "message::async_send: " << sendQueues[&sock].size() << " requests queued for " << &sock << std::endl;

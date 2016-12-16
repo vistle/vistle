@@ -195,7 +195,7 @@ if(WIN32)
 	
 endif(WIN32)
 
-vistle_find_package(Boost 1.40 REQUIRED thread system)
+vistle_find_package(Boost 1.40 REQUIRED system)
 add_definitions(-DBOOST_LIB_DIAGNOSTIC=1)
 if (Boost_VERSION VERSION_GREATER 106099)
    set(BOOST_MPI_DIR "boost-mpi")

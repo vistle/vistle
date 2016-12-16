@@ -4,7 +4,8 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
 #include <boost/asio.hpp>
-#include <boost/thread.hpp>
+#include <mutex>
+#include <thread>
 
 #include <core/message.h>
 
@@ -28,14 +29,14 @@ public:
 
 private:
    io_service &io();
-   boost::recursive_mutex m_mutex;
+   std::recursive_mutex m_mutex;
    Hub &m_hub;
    unsigned short m_port;
    io_service m_io;
    acceptor m_acceptor;
    //boost::shared_ptr<tcp_socket> m_listeningSocket;
    //std::vector<boost::weak_ptr<TunnelStream>> m_streams;
-   std::vector<boost::thread> m_threads;
+   std::vector<std::thread> m_threads;
    std::map<int, boost::shared_ptr<tcp_socket>> m_localDataSocket; // MPI rank -> socket
    std::map<int, boost::shared_ptr<tcp_socket>> m_remoteDataSocket; // hub id -> socket
    void startAccept();

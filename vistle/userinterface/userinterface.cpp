@@ -150,7 +150,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
    bool ret = m_stateTracker.handle(*message);
 
    {
-      boost::mutex::scoped_lock lock(m_messageMutex);
+      std::lock_guard<std::mutex> lock(m_messageMutex);
       MessageMap::iterator it = m_messageMap.find(const_cast<message::uuid_t &>(message->uuid()));
       if (it != m_messageMap.end()) {
          it->second->buf.resize(message->size());
@@ -208,7 +208,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
 
 bool UserInterface::getLockForMessage(const message::uuid_t &uuid) {
 
-   boost::mutex::scoped_lock lock(m_messageMutex);
+   std::lock_guard<std::mutex> lock(m_messageMutex);
    MessageMap::iterator it = m_messageMap.find(uuid);
    if (it == m_messageMap.end()) {
       it = m_messageMap.insert(std::make_pair(uuid, boost::shared_ptr<RequestedMessage>(new RequestedMessage()))).first;
@@ -227,9 +227,9 @@ bool UserInterface::getMessage(const message::uuid_t &uuid, message::Message &ms
    }
 
    if (!it->second->received) {
-      boost::mutex &mutex = it->second->mutex;
-      boost::condition_variable &cond = it->second->cond;
-      boost::unique_lock<boost::mutex> lock(mutex, boost::adopt_lock_t());
+      std::mutex &mutex = it->second->mutex;
+      std::condition_variable &cond = it->second->cond;
+      std::unique_lock<std::mutex> lock(mutex, std::adopt_lock_t());
 
       m_messageMutex.unlock();
       cond.wait(lock);

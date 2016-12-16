@@ -8,7 +8,7 @@
 #include <userinterface/pythonmodule.h>
 #include <util/findself.h>
 
-#include <boost/thread.hpp>
+#include <thread>
 
 #include <QDir>
 #include <QFileDialog>
@@ -58,7 +58,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    m_vistleConnection = new vistle::VistleConnection(*m_ui);
    m_vistleConnection->setQuitOnExit(quitOnExit);
    m_pythonMod = new vistle::PythonModule(m_vistleConnection, vistle::getbindir(argc, argv) + "/../share/vistle/");
-   m_thread = new boost::thread(boost::ref(*m_vistleConnection));
+   m_thread = new std::thread(std::ref(*m_vistleConnection));
    m_mainWindow.parameters()->setVistleConnection(m_vistleConnection);
 
     ///\todo declare the scene pointer in the header, then de-allocate in the destructor.

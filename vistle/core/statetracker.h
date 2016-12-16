@@ -6,9 +6,8 @@
 #include <set>
 #include <string>
 
-#include <boost/scoped_ptr.hpp>
-#include <boost/thread/recursive_mutex.hpp>
-#include <boost/thread/condition_variable.hpp>
+#include <mutex>
+#include <condition_variable>
 
 #include <util/directory.h>
 
@@ -80,8 +79,8 @@ class V_COREEXPORT StateTracker {
    StateTracker(const std::string &name, boost::shared_ptr<PortTracker> portTracker=boost::shared_ptr<PortTracker>());
    ~StateTracker();
 
-   typedef boost::recursive_mutex mutex;
-   typedef boost::unique_lock<mutex> mutex_locker;
+   typedef std::recursive_mutex mutex;
+   typedef std::unique_lock<mutex> mutex_locker;
    mutex &getMutex();
 
    bool dispatch(bool &received);
@@ -199,11 +198,11 @@ class V_COREEXPORT StateTracker {
    std::set<message::uuid_t> m_alreadySeen;
 
    mutex m_replyMutex;
-   boost::condition_variable_any m_replyCondition;
+   std::condition_variable_any m_replyCondition;
    std::map<message::uuid_t, boost::shared_ptr<message::Buffer>> m_outstandingReplies;
 
    mutex m_slaveMutex;
-   boost::condition_variable_any m_slaveCondition;
+   std::condition_variable_any m_slaveCondition;
 
    message::Message::Type m_traceType;
    int m_traceId;

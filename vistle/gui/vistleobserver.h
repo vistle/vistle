@@ -3,8 +3,6 @@
 
 #include <QObject>
 
-#include <boost/thread/recursive_mutex.hpp>
-
 #include <userinterface/userinterface.h>
 #include <userinterface/vistleconnection.h>
 

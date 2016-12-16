@@ -2,7 +2,7 @@
 #define VISTLECONNECTION_H
 
 #include <string>
-#include <boost/thread/recursive_mutex.hpp>
+#include <mutex>
 #include <userinterface/userinterface.h>
 
 namespace vistle {
@@ -56,8 +56,8 @@ private:
    bool m_done;
    bool m_quitOnExit;
 
-   typedef boost::recursive_mutex mutex;
-   typedef mutex::scoped_lock mutex_lock;
+   typedef std::recursive_mutex mutex;
+   typedef std::lock_guard<mutex> mutex_lock;
    mutable mutex m_mutex;
 
 private:

@@ -4,7 +4,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
 #include <boost/asio.hpp>
-#include <boost/thread.hpp>
+#include <thread>
 
 #include <core/message.h>
 #include <core/messages.h>
@@ -81,7 +81,7 @@ class TunnelManager {
    void startThread();
    io_service m_io;
    std::map<unsigned short, boost::shared_ptr<Tunnel>> m_tunnels;
-   std::vector<boost::thread> m_threads;
+   std::vector<std::thread> m_threads;
 };
 
 }

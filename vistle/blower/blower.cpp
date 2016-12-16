@@ -4,9 +4,9 @@
 #include <userinterface/vistleconnection.h>
 #include <util/findself.h>
 
-#include <boost/ref.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/mutex.hpp>
+#include <functional>
+#include <thread>
+#include <mutex>
 
 #include <util/sleep.h>
 
@@ -21,20 +21,20 @@ class UiRunner {
       {
       }
    void cancel() {
-      boost::unique_lock<boost::mutex> lock(m_mutex);
+      std::unique_lock<std::mutex> lock(m_mutex);
       m_done = true;
    }
    void operator()() {
 
       while(m_ui.dispatch()) {
          {
-            boost::unique_lock<boost::mutex> lock(m_mutex);
+            std::unique_lock<std::mutex> lock(m_mutex);
             if (m_done)
                break;
          }
       }
       {
-         boost::unique_lock<boost::mutex> lock(m_mutex);
+         std::unique_lock<std::mutex> lock(m_mutex);
          m_done = true;
       }
    }
@@ -42,7 +42,7 @@ class UiRunner {
  private:
    UserInterface &m_ui;
    bool m_done;
-   boost::mutex m_mutex;
+   std::mutex m_mutex;
 };
 
 class StatePrinter: public StateObserver {
@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
       VistleConnection conn(ui);
       conn.setQuitOnExit(quitOnExit);
       PythonModule pythonmodule(&conn, getbindir(argc, argv) + "/../share/vistle/");
-      boost::thread runnerThread(boost::ref(conn));
+      std::thread runnerThread(std::ref(conn));
 
       while(!std::cin.eof() && !conn.done()) {
          std::string line;

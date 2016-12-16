@@ -1,7 +1,7 @@
 #ifndef PYTHONINTERPRETER_H
 #define PYTHONINTERPRETER_H
 
-#include <boost/thread.hpp>
+#include <thread>
 
 namespace vistle {
 
@@ -23,7 +23,7 @@ class PythonInterpreter {
    boost::shared_ptr<PythonInterface> m_interpreter;
    boost::shared_ptr<PythonModule> m_module;
    boost::shared_ptr<Executor> m_executor;
-   boost::thread m_thread;
+   std::thread m_thread;
 };
 
 } // namespace vistle

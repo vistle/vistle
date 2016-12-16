@@ -1,7 +1,7 @@
 ﻿#include "BlockData.h"
 #include "Integrator.h"
 #include <core/vec.h>
-#include <boost/thread/lock_guard.hpp>
+#include <mutex>
 
 #ifdef TIMING
 #include "TracerTimes.h"
@@ -129,7 +129,7 @@ void BlockData::addLines(Index id, const std::vector<Vector3> &points,
              const std::vector<Scalar> &times,
              const std::vector<Scalar> &dists) {
 
-    boost::lock_guard<boost::mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
 
 //#pragma omp critical
     {

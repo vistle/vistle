@@ -25,7 +25,7 @@
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpl/transform.hpp>
-#include <boost/thread/recursive_mutex.hpp>
+#include <mutex>
 #include <boost/asio.hpp>
 
 #include <util/sysdep.h>
@@ -70,7 +70,7 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
 
    ~msgstreambuf() {
 
-      boost::unique_lock<boost::recursive_mutex> scoped_lock(m_mutex);
+      std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
       flush();
       for (const auto &s: m_backlog) {
          std::cout << s << std::endl;
@@ -81,7 +81,7 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
    }
 
    void flush(ssize_t count=-1) {
-      boost::unique_lock<boost::recursive_mutex> scoped_lock(m_mutex);
+      std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
       size_t size = count<0 ? m_buf.size() : count;
       if (size > 0) {
          std::string msg(m_buf.data(), size);
@@ -102,7 +102,7 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
    }
 
    int overflow(int ch) {
-      boost::unique_lock<boost::recursive_mutex> scoped_lock(m_mutex);
+      std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
       if (ch != EOF) {
          m_buf.push_back(ch);
          if (ch == '\n')
@@ -114,7 +114,7 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
    }
 
    std::streamsize xsputn (const CharT *s, std::streamsize num) {
-      boost::unique_lock<boost::recursive_mutex> scoped_lock(m_mutex);
+      std::unique_lock<std::recursive_mutex> scoped_lock(m_mutex);
       size_t end = m_buf.size();
       m_buf.resize(end+num);
       memcpy(m_buf.data()+end, s, num);
@@ -141,7 +141,7 @@ class msgstreambuf: public std::basic_streambuf<CharT, TraitsT> {
    const size_t BacklogSize = 10;
    Module *m_module;
    std::vector<char> m_buf;
-   boost::recursive_mutex m_mutex;
+   std::recursive_mutex m_mutex;
    bool m_console, m_gui;
    std::deque<std::string> m_backlog;
 };

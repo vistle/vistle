@@ -2,7 +2,6 @@
 #define UICLIENT_H
 
 #include <boost/asio.hpp>
-#include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 #include <core/message.h>
 #include <core/messagequeue.h>

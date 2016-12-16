@@ -1,4 +1,4 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS thread system OPTIONAL_COMPONENTS python)
+vistle_find_package(Boost 1.40 REQUIRED COMPONENTS system OPTIONAL_COMPONENTS python)
 vistle_find_package(Readline)
 
 set(EXTRA_LIBRARIES)

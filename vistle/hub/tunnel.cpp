@@ -1,6 +1,5 @@
 #include "tunnel.h"
-#include <boost/bind.hpp>
-#include <boost/thread.hpp>
+#include <thread>
 #include <boost/system/error_code.hpp>
 
 #include <core/messages.h>
@@ -46,7 +45,8 @@ void TunnelManager::cleanUp() {
 }
 
 void TunnelManager::startThread() {
-   m_threads.emplace_back(boost::bind(&asio::io_service::run, &m_io));
+   auto &io = m_io;
+   m_threads.emplace_back([&io](){ io.run(); });
    CERR << "now " << m_threads.size() << " threads in pool" << std::endl;
 }
 
@@ -94,7 +94,7 @@ bool TunnelManager::addTunnel(const message::RequestTunnel &msg) {
    try {
       boost::shared_ptr<Tunnel> tun(new Tunnel(*this, listenPort, destAddr, destPort));
       m_tunnels[listenPort] = tun;
-      if (m_threads.size() < boost::thread::hardware_concurrency())
+      if (m_threads.size() < std::thread::hardware_concurrency())
          startThread();
    } catch(...) {
       CERR << "error during tunnel creation" << std::endl;
@@ -204,7 +204,7 @@ void Tunnel::handleAccept(const boost::system::error_code &error) {
    boost::asio::ip::tcp::endpoint dest(m_destAddr, m_destPort);
    CERR << "forwarding to " << dest << std::endl;
    sock->async_connect(dest,
-       boost::bind(&Tunnel::handleConnect, this, m_listeningSocket, sock, boost::asio::placeholders::error));
+         [this, sock](boost::system::error_code ec){ handleConnect(m_listeningSocket, sock, ec); });
 
    startAccept();
 }

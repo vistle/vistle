@@ -7,9 +7,7 @@
 #include "vistleobserver.h"
 #include "mainwindow.h"
 
-namespace boost {
-class thread;
-}
+#include <thread>
 
 namespace vistle {
 class PythonInterface;
@@ -53,7 +51,7 @@ private:
     vistle::UserInterface *m_ui;
     vistle::PythonInterface *m_python;
     vistle::PythonModule *m_pythonMod;
-    boost::thread *m_thread;
+    std::thread *m_thread;
     DataFlowNetwork *m_scene;
 
     VistleObserver m_observer;
