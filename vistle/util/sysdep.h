@@ -1,8 +1,10 @@
 #ifndef SYSDEP_H
 #define SYSDEP_H
 
-#ifdef WIN32
-#include <stdio.h>
+#ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <cstdio>
 #include <process.h>
 #include <windows.h>
 

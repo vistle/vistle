@@ -4,10 +4,12 @@
 #include <string>
 #include <vector>
 #include "export.h"
+#include "sysdep.h"
 
 namespace vistle {
 
 #ifdef _WIN32
+typedef HANDLE process_handle;
 #else
 typedef long process_handle;
 #endif

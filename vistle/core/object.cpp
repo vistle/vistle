@@ -24,9 +24,6 @@
 #include "archives.h"
 #include "assert.h"
 
-template<typename T>
-static T min(T a, T b) { return a<b ? a : b; }
-
 using namespace boost::interprocess;
 
 namespace mpl = boost::mpl;

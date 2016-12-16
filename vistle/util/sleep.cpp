@@ -1,9 +1,9 @@
 #include "sleep.h"
+#include "sysdep.h"
 #include <map>
 #include <iostream>
 
-#ifdef _WIN32
-#else
+#ifndef _WIN32
 #include <unistd.h>
 #include <sched.h>
 #endif
