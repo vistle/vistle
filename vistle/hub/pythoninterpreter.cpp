@@ -50,7 +50,12 @@ PythonInterpreter::PythonInterpreter(const std::string &file, const std::string 
 
 bool PythonInterpreter::executeFile(const std::string &filename) {
 
-   return m_interpreter->exec_file(filename);
+   try {
+      return m_interpreter->exec_file(filename);
+   } catch (...) {
+      std::cerr << "executing Python file " << filename << " failed" << std::endl;
+   }
+   return false;
 }
 
 PythonInterpreter::~PythonInterpreter() {

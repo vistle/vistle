@@ -1,4 +1,5 @@
-vistle_find_package(Boost 1.40 REQUIRED program_options system OPTIONAL_COMPONENTS python)
+vistle_find_package(Boost 1.40 REQUIRED COMPONENTS program_options system)
+vistle_find_package(Boost 1.40 COMPONENTS program_options system python)
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
@@ -13,12 +14,12 @@ set(hub_SOURCES
    dataproxy.cpp
    )
 
-if(PYTHONLIBS_FOUND)
+if(Boost_PYTHON_FOUND)
+   include_directories(${PYTHON_INCLUDE_DIRS})
    add_definitions(-DHAVE_PYTHON)
    add_definitions(-DVISTLE_CONTROL)
    set(hub_SOURCES ${hub_SOURCES} ../userinterface/pythoninterface.cpp ../userinterface/pythonmodule.cpp pythoninterpreter.cpp)
    set(hub_HEADERS ${hub_HEADERS} ../userinterface/pythoninterface.h ../userinterface/pythonmodule.h pythoninterpreter.h)
-   include_directories(${PYTHON_INCLUDE_PATH})
    set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES} ${PYTHON_LIBRARIES})
 endif()
 

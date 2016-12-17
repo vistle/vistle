@@ -36,72 +36,72 @@ class _stdin:
 #   python_help(current_module)
 
 def showHubs():
-   hubs = getAllHubs()
+   hubs = _vistle.getAllHubs()
    for id in hubs:
-      print id
+      print(id)
 
 def showAvailable():
-   avail = getAvailable()
+   avail = _vistle.getAvailable()
    for name in avail:
-      print name
+      print(name)
 
 def getNumRunning():
-   return len(getRunning())
+   return len(_vistle.getRunning())
 
 def showRunning():
-   running = getRunning()
-   print "id\tname\thub"
+   running = _vistle.getRunning()
+   print("id\tname\thub")
    for id in running:
-      name = getModuleName(id)
-      hub = getHub(id)
-      print id, "\t", name, "\t", hub
+      name = _vistle.getModuleName(id)
+      hub = _vistle.getHub(id)
+      print("%s\t%s\t%s" % (id, name, hub))
 
 def showBusy():
    busy = getBusy()
-   print "id\tname"
+   print("id\tname")
    for id in busy:
-      name = getModuleName(id)
-      print id, "\t", name
+      name = _vistle.getModuleName(id)
+      print("%s\t%s" % (id, name))
 
 def showInputPorts(id):
-   ports = getInputPorts(id)
+   ports = _vistle.getInputPorts(id)
    for p in ports:
-      print p
+      print(p)
 
 def showOutputPorts(id):
-   ports = getOutputPorts(id)
+   ports = _vistle.getOutputPorts(id)
    for p in ports:
-      print p
+      print(p)
 
 def showConnections(id, port):
-   conns = getConnections(id, port)
-   print "id\tportname"
+   conns = _vistle.getConnections(id, port)
+   print("id\tportname")
    for c in conns:
-      print c.first, "\t", c.second
+      print("%s\t%s" % (c.first, c.second))
 
 def showAllConnections():
-   mods = getRunning()
+   mods = _vistle.getRunning()
    for m in mods:
-      ports = getOutputPorts(m)
+      ports = _vistle.getOutputPorts(m)
       ports.extend(getParameters(m))
       for p in ports:
-         conns = getConnections(m, p)
+         conns = _vistle.getConnections(m, p)
          for c in conns:
-            print m, p, " -> ", c.first, c.second
+            print("%s:%s -> %s:%s" % (m, p, c.first, c.second))
 
 def getParameter(id, name):
-   t = getParameterType(id, name)
+   t = _vistle.getParameterType(id, name)
 
    if t == "Int":
-      return getIntParam(id, name)
+      return _vistle.getIntParam(id, name)
    elif t == "Float":
-      return getFloatParam(id, name)
+      return _vistle.getFloatParam(id, name)
    elif t == "Vector":
-      return getVectorParam(id, name)
+      return _vistle.getVectorParam(id, name)
    elif t == "IntVector":
-      return getIntVectorParam(id, name)
+      return _vistle.getIntVectorParam(id, name)
    elif t == "String":
-      return getStringParam(id, name)
+      return _vistle.getStringParam(id, name)
    elif t == "None":
       return None
 
@@ -135,28 +135,28 @@ def getSavableParam(id, name):
       return getParameter(id, name)
 
 def showParameter(id, name):
-   print getParameter(id, name)
+   print(getParameter(id, name))
 
 def showParameters(id):
    params = getParameters(id)
-   print "name\ttype\tvalue"
+   print("name\ttype\tvalue")
    for p in params:
-      print p, "\t", getParameterType(id, p), "\t", getParameter(id, p)
+      print("%s\t%s\t%s" % (p, getParameterType(id, p), getParameter(id, p)))
 
 def showAllParameters():
-   mods = getRunning()
-   print "id\tmodule\tname\ttype\tvalue"
+   mods = _vistle.getRunning()
+   print("id\tmodule\tname\ttype\tvalue")
    for m in mods:
-      name = getModuleName(m)
+      name = _vistle.getModuleName(m)
       params = getParameters(m)
       for p in params:
-          print m, "\t", name, "\t", p, "\t", getParameterType(m, p), "\t", getSavableParam(m, p)
+          print("%s\t%s\t%s\t%s\t%s" % (m, name, p, getParameterType(m, p), getSavableParam(m, p)))
 
 def modvar(id):
-   return "m" + getModuleName(id) + str(id)
+   return "m" + _vistle.getModuleName(id) + str(id)
 
 def hubvar(id, numSlaves):
-   hub = getHub(id)
+   hub = _vistle.getHub(id)
    if (hub == getMasterHub()):
       return "MasterHub"
    if (numSlaves == 1):
@@ -172,31 +172,31 @@ def save(filename = None):
       return
 
    f = open(filename, 'w')
-   mods = getRunning()
+   mods = _vistle.getRunning()
 
    master = getMasterHub()
    f.write("MasterHub="+str(master)+"\n")
 
    slavehubs = set()
    for m in mods:
-      h = getHub(m)
+      h = _vistle.getHub(m)
       if h != master:
          slavehubs.add(h)
    numSlaves = len(slavehubs)
    if numSlaves > 1:
-      print "slave hubs:", slavehubs
+      print("slave hubs: %s" % slavehubs)
       f.write("waitForSlaves()\n")
       f.write("waitForHub()\n")
    elif numSlaves > 0:
-      print "slave hubs:", slavehubs
-      f.write("print 'waiting for a slave hub to connect...'\n")
+      print("slave hubs: %s" % slavehubs)
+      f.write("print('waiting for a slave hub to connect...')\n")
       f.write("SlaveHub=waitForHub()\n")
-      f.write("print 'slave hub ', SlaveHub, ' connected\\n'\n")
+      f.write("print('slave hub %s connected\\n' % SlaveHub)\n")
 
    f.write("uuids = {}\n");
    for m in mods:
-      #f.write(modvar(m)+" = spawn('"+getModuleName(m)+"')\n")
-      f.write("u"+modvar(m)+" = spawnAsync("+hubvar(m, numSlaves)+", '"+getModuleName(m)+"')\n")
+      #f.write(modvar(m)+" = spawn('"+_vistle.getModuleName(m)+"')\n")
+      f.write("u"+modvar(m)+" = spawnAsync("+hubvar(m, numSlaves)+", '"+_vistle.getModuleName(m)+"')\n")
 
    for m in mods:
       f.write(modvar(m)+" = waitForSpawn(u"+modvar(m)+")\n")
@@ -220,7 +220,7 @@ def save(filename = None):
 
 def reset():
    global _loaded_file
-   mods = getRunning()
+   mods = _vistle.getRunning()
    for m in mods:
       kill(m)
    barrier()
@@ -232,7 +232,7 @@ def load(filename = None):
    if filename == None:
       filename = _loaded_file
    if filename == None:
-      print "File name required"
+      print("File name required")
       return
 
    reset()

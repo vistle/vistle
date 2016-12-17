@@ -1,11 +1,11 @@
+#include <userinterface/pythoninterface.h>
+#include <userinterface/pythonmodule.h>
 #include "uicontroller.h"
 #include "modifieddialog.h"
 #include "dataflownetwork.h"
 #include "dataflowview.h"
 #include "parameters.h"
 #include "vistleconsole.h"
-#include <userinterface/pythoninterface.h>
-#include <userinterface/pythonmodule.h>
 #include <util/findself.h>
 
 #include <thread>

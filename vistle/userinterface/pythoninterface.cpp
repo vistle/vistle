@@ -1,4 +1,4 @@
-#include <Python.h>
+//#include <Python.h>
 #include <boost/python.hpp>
 
 #include "pythoninterface.h"
@@ -30,7 +30,8 @@ PythonInterface::PythonInterface(const std::string &name)
 
 PythonInterface::~PythonInterface() {
 
-   Py_Finalize();
+   // not with Boost.Python
+   //Py_Finalize();
 }
 
 PythonInterface &PythonInterface::the() {

@@ -622,6 +622,7 @@ bool PythonModule::import(boost::python::object *ns, const std::string &path) {
       .def(bp::vector_indexing_suite<ParameterVector<Integer> >());
 
    try {
+      PyImport_AddModule("_vistle");
 #if PY_VERSION_HEX >= 0x03000000
       PyInit__vistle();
 #else
