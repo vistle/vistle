@@ -4,12 +4,14 @@ vistle_find_package(TBB)
 set(renderer_SOURCES
    renderer.cpp
    renderobject.cpp
+   rhrcontroller.cpp
 )
 
 set(renderer_HEADERS
    export.h
    renderer.h
    renderobject.h
+   rhrcontroller.h
 )
 
 if(LIBVNCSERVER_FOUND AND TBB_FOUND)
