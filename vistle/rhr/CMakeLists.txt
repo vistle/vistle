@@ -35,12 +35,14 @@ endif()
 
 set(RHR_SOURCES
    depthquant.cpp
+   rhrserver.cpp
    )
 
 set(RHR_HEADERS
    depthquant.h
    rfbext.h
    ReadBackCuda.h
+   rhrserver.h
    )
 
 if(LIBVNCSERVER_FOUND AND TBB_FOUND)
