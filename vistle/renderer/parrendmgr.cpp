@@ -16,13 +16,13 @@ ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module, IceTD
 : m_module(module)
 , m_drawCallback(drawCallback)
 , m_displayRank(0)
-, m_vncControl(module, m_displayRank)
+, m_rhrControl(module, m_displayRank)
 , m_delay(nullptr)
 , m_delaySec(0.)
 , m_defaultColor(Vector4(255, 255, 255, 255))
 , m_updateBounds(1)
 , m_doRender(1)
-, m_lightsUpdateCount(1000) // start with a value that is different from the one managed by VncServer
+, m_lightsUpdateCount(1000) // start with a value that is different from the one managed by RhrServer
 , m_currentView(-1)
 , m_frameComplete(true)
 {
@@ -107,7 +107,7 @@ bool ParallelRemoteRenderManager::handleParam(const Parameter *p) {
        m_delaySec = m_delay->getValue();
     }
 
-    return m_vncControl.handleParam(p);
+    return m_rhrControl.handleParam(p);
 }
 
 bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
@@ -127,56 +127,56 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
       mpi::all_reduce(m_module->comm(), localBoundMax.data(), 3, m_state.bMax.data(), mpi::maximum<Scalar>());
    }
 
-   auto vnc = m_vncControl.server();
-   if (vnc) {
+   auto rhr = m_rhrControl.server();
+   if (rhr) {
       if (m_updateBounds) {
          Vector center = 0.5*(m_state.bMin+m_state.bMax);
          Scalar radius = (m_state.bMax-m_state.bMin).norm()*0.5;
-         vnc->setBoundingSphere(center, radius);
+         rhr->setBoundingSphere(center, radius);
       }
 
-      vnc->setNumTimesteps(m_state.numTimesteps);
+      rhr->setNumTimesteps(m_state.numTimesteps);
 
-      vnc->preFrame();
+      rhr->preFrame();
       if (m_module->rank() == rootRank()) {
 
-          if (m_state.timestep != vnc->timestep())
+          if (m_state.timestep != rhr->timestep())
               m_doRender = 1;
       }
-      m_state.timestep = vnc->timestep();
+      m_state.timestep = rhr->timestep();
 
-      if (vnc->lightsUpdateCount != m_lightsUpdateCount) {
+      if (rhr->lightsUpdateCount != m_lightsUpdateCount) {
           m_doRender = 1;
-          m_lightsUpdateCount = vnc->lightsUpdateCount;
+          m_lightsUpdateCount = rhr->lightsUpdateCount;
       }
 
-      for (size_t i=m_viewData.size(); i<vnc->numViews(); ++i) {
+      for (size_t i=m_viewData.size(); i<rhr->numViews(); ++i) {
           std::cerr << "new view no. " << i << std::endl;
           m_doRender = 1;
           m_viewData.emplace_back();
       }
 
-      for (size_t i=0; i<vnc->numViews(); ++i) {
+      for (size_t i=0; i<rhr->numViews(); ++i) {
 
           PerViewState &vd = m_viewData[i];
 
-          if (vd.width != vnc->width(i)
-                  || vd.height != vnc->height(i)
-                  || vd.proj != vnc->projMat(i)
-                  || vd.view != vnc->viewMat(i)
-                  || vd.model != vnc->modelMat(i)) {
+          if (vd.width != rhr->width(i)
+                  || vd.height != rhr->height(i)
+                  || vd.proj != rhr->projMat(i)
+                  || vd.view != rhr->viewMat(i)
+                  || vd.model != rhr->modelMat(i)) {
               m_doRender = 1;
           }
 
-          vd.vncParam = vnc->getViewParameters(i);
+          vd.rhrParam = rhr->getViewParameters(i);
 
-          vd.width = vnc->width(i);
-          vd.height = vnc->height(i);
-          vd.model = vnc->modelMat(i);
-          vd.view = vnc->viewMat(i);
-          vd.proj = vnc->projMat(i);
+          vd.width = rhr->width(i);
+          vd.height = rhr->height(i);
+          vd.model = rhr->modelMat(i);
+          vd.view = rhr->viewMat(i);
+          vd.proj = rhr->projMat(i);
 
-          vd.lights = vnc->lights;
+          vd.lights = rhr->lights;
       }
    }
    m_updateBounds = 0;
@@ -200,8 +200,8 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
           const PerViewState &vd = m_viewData[i];
           m_rgba[i].resize(vd.width*vd.height*4);
           m_depth[i].resize(vd.width*vd.height);
-          if (vnc && m_module->rank() != rootRank()) {
-              vnc->resize(i, vd.width, vd.height);
+          if (rhr && m_module->rank() != rootRank()) {
+              rhr->resize(i, vd.width, vd.height);
           }
       }
    }
@@ -222,7 +222,7 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
    checkIceTError("setCurrentView");
 
    vassert(m_currentView == -1);
-   auto vnc = m_vncControl.server();
+   auto rhr = m_rhrControl.server();
 
    int resetTiles = 0;
    while (m_icet.size() <= i) {
@@ -242,8 +242,8 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
    icetSetContext(icet.ctx);
    m_currentView = i;
 
-   if (vnc) {
-      if (icet.width != vnc->width(i) || icet.height != vnc->height(i))
+   if (rhr) {
+      if (icet.width != rhr->width(i) || icet.height != rhr->height(i))
          resetTiles = 1;
    }
    resetTiles = mpi::all_reduce(m_module->comm(), resetTiles, mpi::maximum<int>());
@@ -252,8 +252,8 @@ void ParallelRemoteRenderManager::setCurrentView(size_t i) {
       std::cerr << "resetting IceT tiles for view " << i << "..." << std::endl;
       icet.width = icet.height = 0;
       if (m_module->rank() == rootRank()) {
-         icet.width =  vnc->width(i);
-         icet.height = vnc->height(i);
+         icet.width =  rhr->width(i);
+         icet.height = rhr->height(i);
          std::cerr << "IceT dims on rank " << m_module->rank() << ": " << icet.width << "x" << icet.height << std::endl;
       }
 
@@ -306,11 +306,11 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int ti
    vassert(i < numViews());
    //std::cerr << "finishCurrentView: " << i << std::endl;
    if (m_module->rank() == rootRank()) {
-      auto vnc = m_vncControl.server();
-      vassert(vnc);
+      auto rhr = m_rhrControl.server();
+      vassert(rhr);
       const int bpp = 4;
-      const int w = vnc->width(i);
-      const int h = vnc->height(i);
+      const int w = rhr->width(i);
+      const int h = rhr->height(i);
       vassert(w == icetImageGetWidth(img));
       vassert(h == icetImageGetHeight(img));
 
@@ -339,12 +339,12 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int ti
 
       if (color && depth) {
          for (int y=0; y<h; ++y) {
-            memcpy(vnc->rgba(i)+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
-            memcpy(vnc->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
+            memcpy(rhr->rgba(i)+w*bpp*y, color+w*(h-1-y)*bpp, bpp*w);
+            memcpy(rhr->depth(i)+w*y, depth+w*(h-1-y), sizeof(float)*w);
          }
 
-         m_viewData[i].vncParam.timestep = timestep;
-         vnc->invalidate(i, 0, 0, vnc->width(i), vnc->height(i), m_viewData[i].vncParam, lastView);
+         m_viewData[i].rhrParam.timestep = timestep;
+         rhr->invalidate(i, 0, 0, rhr->width(i), rhr->height(i), m_viewData[i].rhrParam, lastView);
       }
    }
    m_currentView = -1;
@@ -363,10 +363,10 @@ bool ParallelRemoteRenderManager::finishFrame(int timestep) {
    }
 
    if (m_module->rank() == rootRank()) {
-      auto vnc = m_vncControl.server();
-      vassert(vnc);
-      m_viewData[0].vncParam.timestep = timestep;
-      vnc->invalidate(-1, 0, 0, 0, 0, m_viewData[0].vncParam, true);
+      auto rhr = m_rhrControl.server();
+      vassert(rhr);
+      m_viewData[0].rhrParam.timestep = timestep;
+      rhr->invalidate(-1, 0, 0, 0, 0, m_viewData[0].rhrParam, true);
    }
    m_frameComplete = true;
    return true;
@@ -400,22 +400,22 @@ float *ParallelRemoteRenderManager::depth(size_t viewIdx) {
 
 void ParallelRemoteRenderManager::updateRect(size_t viewIdx, const IceTInt *viewport) {
 
-   auto vnc = m_vncControl.server();
-   if (vnc && m_module->rank() != rootRank()) {
+   auto rhr = m_rhrControl.server();
+   if (rhr && m_module->rank() != rootRank()) {
       // observe what slaves are rendering
       const int bpp = 4;
-      const int w = vnc->width(m_currentView);
-      const int h = vnc->height(m_currentView);
+      const int w = rhr->width(m_currentView);
+      const int h = rhr->height(m_currentView);
 
       const unsigned char *color = rgba(viewIdx);
 
-      memset(vnc->rgba(m_currentView), 0, w*h*bpp);
+      memset(rhr->rgba(m_currentView), 0, w*h*bpp);
 
       for (int y=viewport[1]; y<viewport[1]+viewport[3]; ++y) {
-         memcpy(vnc->rgba(m_currentView)+(w*y+viewport[0])*bpp, color+(w*(h-1-y)+viewport[0])*bpp, bpp*viewport[2]);
+         memcpy(rhr->rgba(m_currentView)+(w*y+viewport[0])*bpp, color+(w*(h-1-y)+viewport[0])*bpp, bpp*viewport[2]);
       }
 
-      vnc->invalidate(m_currentView, 0, 0, vnc->width(m_currentView), vnc->height(m_currentView), vnc->getViewParameters(m_currentView), true);
+      rhr->invalidate(m_currentView, 0, 0, rhr->width(m_currentView), rhr->height(m_currentView), rhr->getViewParameters(m_currentView), true);
    }
 }
 

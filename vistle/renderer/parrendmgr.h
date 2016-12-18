@@ -3,7 +3,7 @@
 
 #include <IceT.h>
 #include <IceTMPI.h>
-#include "vnccontroller.h"
+#include "rhrcontroller.h"
 
 namespace vistle {
 
@@ -48,7 +48,7 @@ public:
    Renderer *m_module;
    IceTDrawCallback m_drawCallback;
    int m_displayRank;
-   VncController m_vncControl;
+   RhrController m_rhrControl;
    IntParameter *m_continuousRendering;
 
    FloatParameter *m_delay;
@@ -71,8 +71,8 @@ public:
       Matrix4 model;
       Matrix4 view;
       Matrix4 proj;
-      std::vector<VncServer::Light> lights;
-      VncServer::ViewParameters vncParam;
+      std::vector<RhrServer::Light> lights;
+      RhrServer::ViewParameters rhrParam;
       int width, height;
 
       PerViewState()
