@@ -18,15 +18,9 @@ class V_RENDEREREXPORT RhrController {
    vistle::Module *m_module;
    int m_displayRank;
 
-   IntParameter *m_vncOnSlaves;
-
-   IntParameter *m_vncBasePort;
-   IntParameter *m_vncForward;
+   IntParameter *m_rhrBasePort;
+   IntParameter *m_rhrForward;
    unsigned short m_forwardPort; //< current port mapping
-
-   IntParameter *m_vncReverse;
-   StringParameter *m_vncRevHost;
-   IntParameter *m_vncRevPort;
 
    IntParameter *m_rgbaEncoding;
    RhrServer::ColorCodec m_rgbaCodec;

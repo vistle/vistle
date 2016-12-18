@@ -6,11 +6,9 @@ namespace vistle {
 RhrController::RhrController(vistle::Module *module, int displayRank)
 : m_module(module)
 , m_displayRank(displayRank)
-, m_vncBasePort(nullptr)
-, m_vncForward(nullptr)
+, m_rhrBasePort(nullptr)
+, m_rhrForward(nullptr)
 , m_forwardPort(0)
-, m_vncReverse(nullptr)
-, m_vncRevPort(nullptr)
 , m_rgbaEncoding(nullptr)
 , m_rgbaCodec(RhrServer::Jpeg_YUV444)
 , m_depthPrec(nullptr)
@@ -22,14 +20,9 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 , m_sendTileSizeParam(nullptr)
 , m_sendTileSize((vistle::Integer)256, (vistle::Integer)256)
 {
-   m_vncBasePort = module->addIntParameter("vnc_base_port", "listen port for VNC server", 31590);
-   m_vncOnSlaves = module->addIntParameter("vnc_on_slaves", "start VNC servers on slave ranks", 0, Parameter::Boolean);
-   module->setParameterRange(m_vncBasePort, (Integer)1, (Integer)((1<<16)-1));
-   m_vncReverse = module->addIntParameter("vnc_reverse", "establish VNC connection from server to client", 0, Parameter::Boolean);
-   m_vncRevHost = module->addStringParameter("vnc_reverse_host", "establish reverse connection to client on host", "localhost");
-   m_vncRevPort = module->addIntParameter("vnc_reverse_port", "establish reverse connection to client on port", 31059);
-   m_vncForward = module->addIntParameter("vnc_tunnel", "let client connect through hub", 0, Parameter::Boolean);
-   module->setParameterRange(m_vncRevPort, (Integer)1, (Integer)((1<<16)-1));
+   m_rhrBasePort = module->addIntParameter("rhr_base_port", "listen port for RHR server", 31590);
+   module->setParameterRange(m_rhrBasePort, (Integer)1, (Integer)((1<<16)-1));
+   m_rhrForward = module->addIntParameter("rhr_tunnel", "let client connect through hub", 0, Parameter::Boolean);
    m_sendTileSizeParam = module->addIntVectorParameter("send_tile_size", "edge lengths of tiles used during sending", m_sendTileSize);
    module->setParameterRange(m_sendTileSizeParam, IntParamVector(1,1), IntParamVector(16384, 16384));
 
@@ -46,59 +39,32 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
    choices.push_back("24 bit + 3 bits/pixel");
    module->setParameterChoices(m_depthPrec, choices);
 
-   if (module->rank() == rootRank() || m_vncOnSlaves->getValue())
-      m_rhr.reset(new RhrServer(1024, 768, m_vncBasePort->getValue()));
+   if (module->rank() == rootRank())
+      m_rhr.reset(new RhrServer(1024, 768, m_rhrBasePort->getValue()));
 }
 
 bool RhrController::handleParam(const vistle::Parameter *p) {
 
-   if (p == m_vncOnSlaves) {
+   if (p == m_rhrBasePort) {
 
-      if (m_module->rank() != rootRank()) {
-
-         if (m_vncOnSlaves->getValue()) {
-            if (!m_rhr) {
-               m_rhr.reset(new RhrServer(1024, 768, m_vncBasePort->getValue()));
-            }
-         } else {
-            m_rhr.reset();
-         }
-      }
-      return true;
-   } else if (p == m_vncBasePort
-         || p == m_vncReverse
-         || p == m_vncRevHost
-         || p == m_vncRevPort) {
-
-      if (m_vncReverse->getValue()) {
-         if (m_module->rank() == rootRank()) {
-            if (!m_rhr || m_rhr->port() != m_vncRevPort->getValue() || m_rhr->host() != m_vncRevHost->getValue()) {
-               m_rhr.reset(); // make sure that dtor runs for ctor of new RhrServer
-               m_rhr.reset(new RhrServer(1024, 768, m_vncRevHost->getValue(), m_vncRevPort->getValue()));
-            }
-         } else {
-            m_rhr.reset();
+      if (m_module->rank() == rootRank()) {
+         if (!m_rhr || m_rhr->port() != m_rhrBasePort->getValue()) {
+            m_rhr.reset(); // make sure that dtor runs for ctor of new RhrServer
+            m_rhr.reset(new RhrServer(1024, 768, m_rhrBasePort->getValue()));
          }
       } else {
-         if (m_module->rank() == rootRank() || m_vncOnSlaves->getValue()) {
-            if (!m_rhr || m_rhr->port() != m_vncBasePort->getValue()) {
-               m_rhr.reset(); // make sure that dtor runs for ctor of new RhrServer
-               m_rhr.reset(new RhrServer(1024, 768, m_vncBasePort->getValue()));
-            }
-         } else {
-            m_rhr.reset();
-         }
+         m_rhr.reset();
       }
       return true;
-   } else if (p == m_vncForward) {
-      if (m_vncForward->getValue()) {
-         if (m_forwardPort != m_vncBasePort->getValue()) {
+   } else if (p == m_rhrForward) {
+      if (m_rhrForward->getValue()) {
+         if (m_forwardPort != m_rhrBasePort->getValue()) {
             if (m_forwardPort) {
                m_module->removePortMapping(m_forwardPort);
             }
-            m_forwardPort = m_vncBasePort->getValue();
+            m_forwardPort = m_rhrBasePort->getValue();
             if (m_module->rank() == 0)
-               m_module->requestPortMapping(m_forwardPort, m_vncBasePort->getValue());
+               m_module->requestPortMapping(m_forwardPort, m_rhrBasePort->getValue());
          }
       } else {
          if (m_module->rank() == 0) {
