@@ -14,11 +14,10 @@
 #include <deque>
 #include <string>
 
+#include <boost/asio.hpp>
+
 #include <rfb/rfb.h>
 #include <rhr/rfbext.h>
-#ifdef max
-#undef max
-#endif
 
 #include <util/enum.h>
 #include <core/vector.h>
@@ -28,10 +27,17 @@
 
 #include "export.h"
 
-//! Implement remote hybrid rendering server based on VNC protocol
+namespace vistle {
+
+namespace asio = boost::asio;
+
+//! Implement remote hybrid rendering server
 class V_RHREXPORT RhrServer
 {
 public:
+   typedef asio::ip::tcp::socket socket;
+   typedef asio::ip::tcp::acceptor acceptor;
+   typedef asio::ip::address address;
 
    DEFINE_ENUM_WITH_STRING_CONVERSIONS(ColorCodec,
                                      (Raw)
@@ -40,13 +46,11 @@ public:
                                      (Snappy)
                                      )
 
-   // plugin methods
-   RhrServer(int w, int h, unsigned short port=5900);
-   RhrServer(int w, int h, const std::string &host, unsigned short port=5900);
+   RhrServer(unsigned short port=31313);
    ~RhrServer();
 
    unsigned short port() const;
-   std::string host() const;
+   asio::io_service &ioService();
 
    int width(int viewNum) const;
    int height(int viewNum) const;
@@ -57,10 +61,8 @@ public:
 
    void resize(int viewNum, int w, int h);
 
-   int numClients() const;
-   int numRhrClients() const;
-
-   bool init(int w, int h, unsigned short port);
+   bool init(unsigned short port);
+   bool start(unsigned short port);
    void preFrame();
 
    typedef bool (*AppMessageHandlerFunc)(int type, const std::vector<char> &msg);
@@ -79,28 +81,22 @@ public:
    unsigned timestep() const;
    void setNumTimesteps(unsigned num);
 
-   void key(int type, int keySym, int mod);
-
-   // other methods
-   static rfbBool enableMatrices(rfbClientPtr cl, void **data, int encoding);
    static rfbBool handleMatricesMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
 
-   static rfbBool enableLights(rfbClientPtr cl, void **data, int encoding);
    static rfbBool handleLightsMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
 
-   static rfbBool enableBounds(rfbClientPtr cl, void **data, int encoding);
    static rfbBool handleBoundsMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
 
-   static rfbBool enableTile(rfbClientPtr cl, void **data, int encoding);
    static rfbBool handleTileMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
 
-   static rfbBool enableApplication(rfbClientPtr cl, void **data, int encoding);
    static rfbBool handleApplicationMessage(rfbClientPtr cl, void *data,
          const rfbClientToServerMsg *message);
+
+
 
    int numViews() const;
    const vistle::Matrix4 &viewMat(int viewNum) const;
@@ -115,8 +111,6 @@ public:
       vistle::Vector3 hpr;
       vistle::Scalar vsize;
    };
-
-   const Screen &screen() const;
 
    struct Light {
       EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -231,7 +225,6 @@ public:
       template<class Archive>
       void serialize(Archive &ar, const unsigned int version) {
 
-         std::cout << "SER ViewParameters" << std::endl << std::flush;
          ar & frameNumber;
          ar & requestNumber;
          ar & timestep;
@@ -259,20 +252,17 @@ public:
    void broadcastApplicationMessage(int type, int length, const char *data);
 private:
    static RhrServer *plugin; //<! access to plug-in from static member functions
+   asio::io_service m_io;
+   asio::ip::tcp::acceptor m_acceptor;
+   std::shared_ptr<asio::ip::tcp::socket> m_clientSocket;
+   unsigned short m_port;
    AppMessageHandlerFunc m_appHandler;
+
+   bool startAccept();
+   void handleAccept(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
 
    int m_tileWidth, m_tileHeight;
 
-   //! address of client to which a connection should be established (reverse connection)
-   struct Client
-   {
-      std::string host; //!< host name
-      unsigned short port; //!< TCP port number
-
-      Client(): port(0) {}
-      Client(const std::string &host, unsigned short port): host(host), port(port) {}
-   };
-   std::vector<Client> m_clientList; //!< list of clients to which reverse connections should be tried
    std::vector<ViewData, Eigen::aligned_allocator<ViewData>> m_viewData;
    
    bool m_benchmark; //!< whether timing information should be printed
@@ -283,21 +273,11 @@ private:
    ImageParameters m_imageParam; //!< parameters for color/depth codec
    bool m_resizeBlocked, m_resizeDeferred;
 
-   Screen m_screenConfig; //!< configuration for physical screen
-
-   rfbScreenInfoPtr m_screen; //!< RFB protocol handler
-   int m_numClients, m_numRhrClients;
-
    vistle::Vector3 m_boundCenter;
    vistle::Scalar m_boundRadius;
 
    unsigned m_numTimesteps;
 
-   static void keyEvent(rfbBool down, rfbKeySym sym, rfbClientPtr cl);
-   static void pointerEvent(int buttonmask, int x, int y, rfbClientPtr cl);
-
-   static enum rfbNewClientAction newClientHook(rfbClientPtr cl);
-   static void clientGoneHook(rfbClientPtr cl);
    static void sendBoundsMessage(rfbClientPtr cl);
    static void sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data);
 
@@ -322,4 +302,6 @@ private:
 
    void deferredResize();
 };
+
+} // namespace vistle
 #endif

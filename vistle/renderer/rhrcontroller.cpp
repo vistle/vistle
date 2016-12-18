@@ -40,7 +40,7 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
    module->setParameterChoices(m_depthPrec, choices);
 
    if (module->rank() == rootRank())
-      m_rhr.reset(new RhrServer(1024, 768, m_rhrBasePort->getValue()));
+      m_rhr.reset(new RhrServer(m_rhrBasePort->getValue()));
 }
 
 bool RhrController::handleParam(const vistle::Parameter *p) {
@@ -50,7 +50,7 @@ bool RhrController::handleParam(const vistle::Parameter *p) {
       if (m_module->rank() == rootRank()) {
          if (!m_rhr || m_rhr->port() != m_rhrBasePort->getValue()) {
             m_rhr.reset(); // make sure that dtor runs for ctor of new RhrServer
-            m_rhr.reset(new RhrServer(1024, 768, m_rhrBasePort->getValue()));
+            m_rhr.reset(new RhrServer(m_rhrBasePort->getValue()));
          }
       } else {
          m_rhr.reset();

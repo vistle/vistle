@@ -31,6 +31,11 @@
 #ifdef HAVE_TURBOJPEG
 #include <turbojpeg.h>
 
+#define CERR std::cerr << "RHR: "
+
+
+namespace vistle {
+
 struct TjComp {
 
        TjComp()
@@ -50,118 +55,27 @@ static TjContext tjContexts;
 
 RhrServer *RhrServer::plugin = NULL;
 
-//! per-client data: supported extensions
-struct ClientData {
-   ClientData()
-      : supportsBounds(false)
-      , supportsTile(false)
-      , tileCompressions(0)
-      , supportsApplication(false)
-      , supportsLights(false)
-   {
-   }
-   bool supportsBounds;
-   uint8_t depthCompressions;
-   bool supportsTile;
-   uint8_t tileCompressions;
-   std::vector<char> buf;
-   bool supportsApplication;
-   bool supportsLights;
-};
 
-static rfbProtocolExtension matricesExt = {
-   NULL, // newClient
-   NULL, // init
-   matricesEncodings, // pseudoEncodings
-   RhrServer::enableMatrices, // enablePseudoEncoding
-   RhrServer::handleMatricesMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-
-static rfbProtocolExtension lightsExt = {
-   NULL, // newClient
-   NULL, // init
-   lightsEncodings, // pseudoEncodings
-   RhrServer::enableLights, // enablePseudoEncoding
-   RhrServer::handleLightsMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-
-static rfbProtocolExtension boundsExt = {
-   NULL, // newClient
-   NULL, // init
-   boundsEncodings, // pseudoEncodings
-   RhrServer::enableBounds, // enablePseudoEncoding
-   RhrServer::handleBoundsMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-
-static rfbProtocolExtension tileExt = {
-   NULL, // newClient
-   NULL, // init
-   tileEncodings, // pseudoEncodings
-   RhrServer::enableTile, // enablePseudoEncoding
-   RhrServer::handleTileMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-
-static rfbProtocolExtension applicationExt = {
-   NULL, // newClient
-   NULL, // init
-   applicationEncodings, // pseudoEncodings
-   RhrServer::enableApplication, // enablePseudoEncoding
-   RhrServer::handleApplicationMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
 
 
 //! called when plugin is loaded
-RhrServer::RhrServer(int w, int h, unsigned short port)
+RhrServer::RhrServer(unsigned short port)
+: m_acceptor(m_io)
+, m_port(0)
 {
    vassert(plugin == NULL);
    plugin = this;
 
    //fprintf(stderr, "new RhrServer plugin\n");
 
-   init(w, h, port);
-}
-
-//! called when plugin is loaded
-RhrServer::RhrServer(int w, int h, const std::string &host, unsigned short port) {
-   vassert(plugin == NULL);
-   plugin = this;
-
-   //fprintf(stderr, "new RhrServer plugin\n");
-
-   init(w, h, port);
-
-   Client c(host, port);
-   m_clientList.push_back(c);
+   init(port);
 }
 
 // this is called if the plugin is removed at runtime
 RhrServer::~RhrServer()
 {
    vassert(plugin);
-
-   rfbShutdownServer(m_screen, true);
-   rfbScreenCleanup(m_screen);
-   m_screen = nullptr;
+   m_clientSocket.reset();
 
    //fprintf(stderr,"RhrServer::~RhrServer\n");
 
@@ -205,18 +119,7 @@ void RhrServer::setDepthPrecision(int bits) {
 
 unsigned short RhrServer::port() const {
 
-   if (m_clientList.empty())
-      return m_screen->port;
-   else
-      return m_clientList.front().port;
-}
-
-std::string RhrServer::host() const {
-
-   if (m_clientList.empty())
-      return "";
-   else
-      return m_clientList.front().host;
+   return m_port;
 }
 
 int RhrServer::numViews() const {
@@ -275,13 +178,8 @@ void RhrServer::setBoundingSphere(const vistle::Vector3 &center, const vistle::S
    m_boundRadius = radius;
 }
 
-const RhrServer::Screen &RhrServer::screen() const {
-
-   return m_screenConfig;
-}
-
 //! called after plug-in is loaded and scenegraph is initialized
-bool RhrServer::init(int w, int h, unsigned short port) {
+bool RhrServer::init(unsigned short port) {
 
    lightsUpdateCount = 0;
 
@@ -292,19 +190,10 @@ bool RhrServer::init(int w, int h, unsigned short port) {
 
    m_numTimesteps = 0;
 
-   m_numClients = 0;
-   m_numRhrClients = 0;
    m_boundCenter = vistle::Vector3(0., 0., 0.);
    m_boundRadius = 1.;
 
-   rfbRegisterProtocolExtension(&matricesExt);
-   rfbRegisterProtocolExtension(&lightsExt);
-   rfbRegisterProtocolExtension(&boundsExt);
-   rfbRegisterProtocolExtension(&tileExt);
-   rfbRegisterProtocolExtension(&applicationExt);
-
    m_delay = 0;
-   std::string config("COVER.Plugin.RhrServer");
 
    m_benchmark = false;
    m_errormetric = false;
@@ -321,47 +210,60 @@ bool RhrServer::init(int w, int h, unsigned short port) {
    m_queuedTiles = 0;
    m_firstTile = false;
 
-   int argc = 1;
-   char *argv[] = { (char *)"DisCOVERay", NULL };
+   return start(port);
+}
 
-   m_screen = rfbGetScreen(&argc, argv, 0, 0, 8, 3, 4);
-   m_screen->desktopName = "DisCOVERay";
+bool RhrServer::start(unsigned short port) {
 
-   m_screen->autoPort = FALSE;
-   m_screen->port = port;
-   m_screen->ipv6port = port;
+    asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), port);
+    m_acceptor.open(endpoint.protocol());
+    m_acceptor.set_option(acceptor::reuse_address(true));
+    try {
+        m_acceptor.bind(endpoint);
+    } catch(const boost::system::system_error &err) {
+        if (err.code() == boost::system::errc::address_in_use) {
+            m_acceptor.close();
+            CERR << "failed to listen on port " << port << " - address already in use" << std::endl;
+            return false;
+        } else {
+            CERR << "listening on port " << port << " failed" << std::endl;
+      }
+      throw(err);
+   }
+   m_acceptor.listen();
+   CERR << "forwarding connections on port " << port << std::endl;
 
-   m_screen->kbdAddEvent = &keyEvent;
-   m_screen->ptrAddEvent = &pointerEvent;
-   m_screen->newClientHook = &newClientHook;
+   m_port = port;
 
-   m_screen->deferUpdateTime = 0;
-   m_screen->maxRectsPerUpdate = 10000000;
-   rfbInitServer(m_screen);
-   m_screen->deferUpdateTime = 0;
-   m_screen->maxRectsPerUpdate = 10000000;
-   m_screen->handleEventsEagerly = 1;
+   return startAccept();
+}
 
-   m_screen->cursor = NULL; // don't show a cursor
+bool RhrServer::startAccept() {
 
-   resize(0, w, h);
+   assert(!m_clientSocket);
+   auto sock = std::make_shared<asio::ip::tcp::socket>(m_io);
 
+   m_acceptor.async_accept(*sock, [this, sock](boost::system::error_code ec){handleAccept(sock, ec);});
    return true;
 }
+
+void RhrServer::handleAccept(std::shared_ptr<asio::ip::tcp::socket> sock, const boost::system::error_code &error) {
+
+   assert(!m_clientSocket);
+   if (error) {
+      CERR << "error in accept: " << error.message() << std::endl;
+      return;
+   }
+
+   CERR << "incoming connection..." << std::endl;
+
+   m_clientSocket = sock;
+}
+
 
 void RhrServer::setAppMessageHandler(AppMessageHandlerFunc handler) {
 
    m_appHandler = handler;
-}
-
-int RhrServer::numClients() const {
-
-   return m_numClients;
-}
-
-int RhrServer::numRhrClients() const {
-
-   return m_numRhrClients;
 }
 
 void RhrServer::resize(int viewNum, int w, int h) {
@@ -399,14 +301,6 @@ void RhrServer::resize(int viewNum, int w, int h) {
 
       vd.rgba.resize(w*h*4);
       vd.depth.resize(w*h);
-
-#if 0
-      if (viewNum == 0) {
-          m_screen->frameBuffer = reinterpret_cast<char *>(vd.rgba.data());
-          rfbNewFramebuffer(m_screen, m_screen->frameBuffer,
-                  w, h, 8, 3, 4);
-      }
-#endif
    }
 }
 
@@ -417,44 +311,6 @@ void RhrServer::deferredResize() {
         resize(i, -1, -1);
     }
     m_resizeDeferred = false;
-}
-
-//! count connected clients
-enum rfbNewClientAction RhrServer::newClientHook(rfbClientPtr cl) {
-
-   ++plugin->m_numClients;
-   cl->clientGoneHook = clientGoneHook;
-
-   return RFB_CLIENT_ACCEPT;
-}
-
-
-//! clean up per-client data when client disconnects
-void RhrServer::clientGoneHook(rfbClientPtr cl) {
-
-   --plugin->m_numClients;
-
-   ClientData *cd = static_cast<ClientData *>(cl->clientData);
-   if (cd->supportsTile) {
-      --plugin->m_numRhrClients;
-      std::cerr << "RhrServer: RHR client gone (#RHR: " << plugin->m_numClients << ", #total: " << plugin->m_numClients << ")" << std::endl;
-   }
-   delete cd;
-}
-
-//! enable sending of matrices
-rfbBool RhrServer::enableMatrices(rfbClientPtr cl, void **data, int encoding) {
-
-   if (encoding != rfbMatrices)
-      return FALSE;
-
-   matricesMsg msg;
-   msg.type = rfbMatrices;
-   if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-         rfbLogPerror("enableMatrices: write");
-   }
-
-   return TRUE;
 }
 
 //! handle matrix update message
@@ -504,20 +360,6 @@ rfbBool RhrServer::handleMatricesMessage(rfbClientPtr cl, void *data,
    return TRUE;
 }
 
-//! enable sending of lighting parameters
-rfbBool RhrServer::enableLights(rfbClientPtr cl, void **data, int encoding) {
-
-   if (encoding != rfbLights)
-      return FALSE;
-
-   lightsMsg msg;
-   if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-         rfbLogPerror("enableLights: write");
-   }
-
-   return TRUE;
-}
-
 //! handle light update message
 rfbBool RhrServer::handleLightsMessage(rfbClientPtr cl, void *data,
       const rfbClientToServerMsg *message) {
@@ -534,12 +376,6 @@ rfbBool RhrServer::handleLightsMessage(rfbClientPtr cl, void *data,
       rfbCloseClient(cl);
       return TRUE;
    }
-
-   if (!cl->clientData) {
-      cl->clientData = new ClientData();
-   }
-   ClientData *cd = static_cast<ClientData *>(cl->clientData);
-   cd->supportsLights = true;
 
 #define SET_VEC(d, dst, src) \
       do { \
@@ -579,36 +415,12 @@ rfbBool RhrServer::handleLightsMessage(rfbClientPtr cl, void *data,
    return TRUE;
 }
 
-//! enable sending of image tiles
-rfbBool RhrServer::enableTile(rfbClientPtr cl, void **data, int encoding) {
-
-   if (encoding != rfbTile)
-      return FALSE;
-
-   tileMsg msg;
-   if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-         rfbLogPerror("enableTile: write");
-   }
-
-   return TRUE;
-}
-
 //! handle image tile request by client
 rfbBool RhrServer::handleTileMessage(rfbClientPtr cl, void *data,
       const rfbClientToServerMsg *message) {
 
    if (message->type != rfbTile)
       return FALSE;
-
-   if (!cl->clientData) {
-      cl->clientData = new ClientData();
-   }
-   ClientData *cd = static_cast<ClientData *>(cl->clientData);
-   if (!cd->supportsTile) {
-      ++plugin->m_numRhrClients;
-      std::cerr << "RhrServer: RHR client connected (#RHR: " << plugin->m_numClients << ", #total: " << plugin->m_numClients << ")" << std::endl;
-   }
-   cd->supportsTile = true;
 
    tileMsg msg;
    int n = rfbReadExact(cl, ((char *)&msg)+1, sizeof(msg)-1);
@@ -618,7 +430,6 @@ rfbBool RhrServer::handleTileMessage(rfbClientPtr cl, void *data,
       rfbCloseClient(cl);
       return TRUE;
    }
-   cd->tileCompressions = msg.compression;
    std::vector<char> buf(msg.size);
    n = rfbReadExact(cl, &buf[0], msg.size);
    if (n <= 0) {
@@ -637,25 +448,6 @@ rfbBool RhrServer::handleTileMessage(rfbClientPtr cl, void *data,
    return TRUE;
 }
 
-
-//! enable generic application messages
-rfbBool RhrServer::enableApplication(rfbClientPtr cl, void **data, int encoding) {
-
-   if (encoding != rfbApplication)
-      return FALSE;
-
-   applicationMsg msg;
-   msg.type = rfbApplication;
-   msg.appType = 0;
-   msg.sendreply = 0;
-   msg.version = 0;
-   msg.size = 0;
-   if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-         rfbLogPerror("enableApplication: write");
-   }
-
-   return TRUE;
-}
 
 //! send generic application message to a client
 void RhrServer::sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data) {
@@ -678,13 +470,7 @@ void RhrServer::sendApplicationMessage(rfbClientPtr cl, int type, int length, co
 //! send generic application message to all connected clients
 void RhrServer::broadcastApplicationMessage(int type, int length, const char *data) {
 
-   rfbClientIteratorPtr it = rfbGetClientIterator(m_screen);
-   while (rfbClientPtr cl = rfbClientIteratorNext(it)) {
-      struct ClientData *cd = static_cast<ClientData *>(cl->clientData);
-      if (cd && cd->supportsApplication)
-         sendApplicationMessage(cl, type, length, data);
-   }
-   rfbReleaseClientIterator(it);
+   sendApplicationMessage(nullptr, type, length, data);
 }
 
 //! handle generic application message
@@ -694,17 +480,14 @@ rfbBool RhrServer::handleApplicationMessage(rfbClientPtr cl, void *data,
    if (message->type != rfbApplication)
       return FALSE;
 
-   if (!cl->clientData) {
-      cl->clientData = new ClientData();
-      std::cerr << "new client -> sending num timesteps: " << plugin->m_numTimesteps << std::endl;
-
-      appAnimationTimestep app;
-      app.current = plugin->m_imageParam.timestep;
-      app.total = plugin->m_numTimesteps;
-      sendApplicationMessage(cl, rfbAnimationTimestep, sizeof(app), (char *)&app);
+   if (true /* TODO: how to check for new client */ )
+   {
+       std::cerr << "new client -> sending num timesteps: " << plugin->m_numTimesteps << std::endl;
+       appAnimationTimestep app;
+       app.current = plugin->m_imageParam.timestep;
+       app.total = plugin->m_numTimesteps;
+       sendApplicationMessage(cl, rfbAnimationTimestep, sizeof(app), (char *)&app);
    }
-   ClientData *cd = static_cast<ClientData *>(cl->clientData);
-   cd->supportsApplication = true;
 
    applicationMsg msg;
    int n = rfbReadExact(cl, ((char *)&msg)+1, sizeof(msg)-1);
@@ -730,19 +513,6 @@ rfbBool RhrServer::handleApplicationMessage(rfbClientPtr cl, void *data,
    }
 
    switch (msg.appType) {
-      case rfbScreenConfig:
-      {
-         appScreenConfig app;
-         memcpy(&app, &buf[0], sizeof(app));
-         plugin->resize(0, app.width, app.height);
-         plugin->m_screenConfig.hsize = app.hsize;
-         plugin->m_screenConfig.vsize = app.vsize;
-         for (int i=0; i<3; ++i) {
-            plugin->m_screenConfig.pos[i] = app.screenPos[i];
-            plugin->m_screenConfig.hpr[i] = app.screenRot[i];
-         }
-      }
-      break;
       case rfbFeedback:
       {
          // not needed: handled via vistle connection
@@ -795,37 +565,12 @@ void RhrServer::sendBoundsMessage(rfbClientPtr cl) {
 }
 
 
-//! enable bounding sphere messages
-rfbBool RhrServer::enableBounds(rfbClientPtr cl, void **data, int encoding) {
-
-   if (encoding != rfbBounds)
-      return FALSE;
-
-   boundsMsg msg;
-   msg.type = rfbBounds;
-   msg.center[0] = 0.;
-   msg.center[1] = 0.;
-   msg.center[2] = 0.;
-   msg.radius = 0.;
-   if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-         rfbLogPerror("enableBounds: write");
-   }
-
-   return TRUE;
-}
-
 //! handle request for a bounding sphere update
 rfbBool RhrServer::handleBoundsMessage(rfbClientPtr cl, void *data,
       const rfbClientToServerMsg *message) {
 
    if (message->type != rfbBounds)
       return FALSE;
-
-   if (!cl->clientData) {
-      cl->clientData = new ClientData();
-   }
-   ClientData *cd = static_cast<ClientData *>(cl->clientData);
-   cd->supportsBounds = true;
 
    boundsMsg msg;
    int n = rfbReadExact(cl, ((char *)&msg)+1, sizeof(msg)-1);
@@ -845,85 +590,36 @@ rfbBool RhrServer::handleBoundsMessage(rfbClientPtr cl, void *data,
 }
 
 
-//! handler for VNC key event
-void RhrServer::keyEvent(rfbBool down, rfbKeySym sym, rfbClientPtr cl)
-{
-   static int modifiermask = 0;
-   int modifierbit = 0;
-   switch(sym) {
-      case 0xffe1: // shift
-         modifierbit = 0x01;
-         break;
-      case 0xffe3: // control
-         modifierbit = 0x04;
-         break;
-      case 0xffe7: // meta
-         modifierbit = 0x40;
-         break;
-      case 0xffe9: // alt
-         modifierbit = 0x10;
-         break;
-   }
-   if (modifierbit) {
-      if (down)
-         modifiermask |= modifierbit;
-      else
-         modifiermask &= ~modifierbit;
-   }
-   fprintf(stderr, "key %d %s, mod=%02x\n", sym, down?"down":"up", modifiermask);
-   //OpenCOVER::instance()->handleEvents(down ? osgGA::GUIEventAdapter::KEYDOWN : osgGA::GUIEventAdapter::KEYUP, modifiermask, sym);
-}
-
-
-//! handler for VNC pointer event
-void RhrServer::pointerEvent(int buttonmask, int ex, int ey, rfbClientPtr cl)
-{
-   // necessary to update other clients
-   rfbDefaultPtrAddEvent(buttonmask, ex, ey, cl);
-}
-
-
 //! this is called before every frame, used for polling for RFB messages
 void
 RhrServer::preFrame()
 {
+
    const int wait_msec=0;
 
    if (m_delay) {
       usleep(m_delay);
    }
 
-   if (m_numClients == 0) {
-      for (size_t i=0; i<m_clientList.size(); ++i) {
-         if (rfbReverseConnection(m_screen, const_cast<char *>(m_clientList[i].host.c_str()), m_clientList[i].port)) {
-            break;
-         }
+   m_io.poll();
+   if (m_clientSocket) {
+      std::shared_ptr<boost::asio::ip::tcp::socket> sock;
+      size_t avail = 0;
+      asio::socket_base::bytes_readable command(true);
+      m_clientSocket->io_control(command);
+      if (command.get() > 0) {
+          avail = command.get();
+      }
+      if (avail > 0) {
+          //handleClient(sock);
       }
    }
-
-   rfbCheckFds(m_screen, wait_msec*1000);
-   rfbHttpCheckFds(m_screen);
-
-   rfbClientIteratorPtr i = rfbGetClientIterator(m_screen);
-   while (rfbClientPtr cl = rfbClientIteratorNext(i)) {
-      if (rfbUpdateClient(cl)) {
-      }
-   }
-   rfbReleaseClientIterator(i);
 }
 
 void RhrServer::invalidate(int viewNum, int x, int y, int w, int h, const RhrServer::ViewParameters &param, bool lastView) {
 
-#if 0
-    if (m_numClients - m_numRhrClients > 0) {
-        std::cerr << "Non-RHR clients: " << m_numClients - m_numRhrClients << std::endl;
-        rfbMarkRectAsModified(m_screen, x, y, w, h);
-    }
-#endif
-
-    if (m_numRhrClients > 0) {
-        encodeAndSend(viewNum, x, y, w, h, param, lastView);
-    }
+   if (m_clientSocket)
+      encodeAndSend(viewNum, x, y, w, h, param, lastView);
 }
 
 namespace {
@@ -1218,6 +914,8 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
            }
            msg->frameNumber = framecount;
 
+
+#if 0
            rfbCheckFds(m_screen, 0);
            rfbHttpCheckFds(m_screen);
            rfbClientIteratorPtr i = rfbGetClientIterator(m_screen);
@@ -1236,6 +934,7 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
               rfbUpdateClient(cl);
            }
            rfbReleaseClientIterator(i);
+#endif
         }
         delete[] result.payload;
         delete msg;
@@ -1246,10 +945,11 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
         m_resizeBlocked = false;
         deferredResize();
     }
-    //sleep(1);
 }
 
 RhrServer::ViewParameters RhrServer::getViewParameters(int viewNum) const {
 
     return m_viewData[viewNum].param;
 }
+
+} // namespace vistle
