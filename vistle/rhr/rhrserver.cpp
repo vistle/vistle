@@ -388,7 +388,7 @@ bool RhrServer::handleLights(std::shared_ptr<socket> sock, const RemoteRenderMes
    return true;
 }
 
-
+#if 0
 //! send generic application message to a client
 void RhrServer::sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data) {
 
@@ -412,6 +412,7 @@ void RhrServer::broadcastApplicationMessage(int type, int length, const char *da
 
    sendApplicationMessage(nullptr, type, length, data);
 }
+#endif
 
 #if 0
 //! handle generic application message
@@ -481,10 +482,14 @@ void RhrServer::setNumTimesteps(unsigned num) {
 
    if (num != m_numTimesteps) {
       m_numTimesteps = num;
-      appAnimationTimestep app;
-      app.current = m_imageParam.timestep;
-      app.total = num;
-      broadcastApplicationMessage(rfbAnimationTimestep, sizeof(app), (char *)&app);
+
+      if (m_clientSocket) {
+          animationMsg anim;
+          anim.current = m_imageParam.timestep;
+          anim.total = num;
+          RemoteRenderMessage r(anim);
+          message::send(*m_clientSocket, r);
+      }
    }
 }
 
@@ -524,6 +529,7 @@ bool RhrServer::handleAnimation(std::shared_ptr<RhrServer::socket> sock, const v
 
     CERR << "app timestep: " << anim.current << std::endl;
     m_imageParam.timestep = anim.current;
+    return true;
 }
 
 //! this is called before every frame, used for polling for RFB messages

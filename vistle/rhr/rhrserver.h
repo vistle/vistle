@@ -16,7 +16,6 @@
 
 #include <boost/asio.hpp>
 
-#include <rfb/rfb.h>
 #include <rhr/rfbext.h>
 
 #include <util/enum.h>
@@ -238,7 +237,6 @@ public:
        ViewData(): newWidth(-1), newHeight(-1) {}
    };
 
-   void broadcastApplicationMessage(int type, int length, const char *data);
 private:
    static RhrServer *plugin; //<! access to plug-in from static member functions
    asio::io_service m_io;
@@ -268,7 +266,6 @@ private:
    unsigned m_numTimesteps;
 
    void sendBoundsMessage(std::shared_ptr<socket> sock);
-   static void sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data);
 
    void encodeAndSend(int viewNum, int x, int y, int w, int h, const ViewParameters &param, bool lastView);
 

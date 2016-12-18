@@ -9,5 +9,6 @@ message("Building COVER plugins for ARCHSUFFIX ${COVISE_ARCHSUFFIX}, destination
 
 add_subdirectory(Vistle)
 add_subdirectory(CompositorIceT)
+add_subdirectory(RhrClient)
 add_subdirectory(VncClient)
 add_subdirectory(VncServer)
