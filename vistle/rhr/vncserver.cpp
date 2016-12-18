@@ -71,67 +71,6 @@ struct ClientData {
    bool supportsLights;
 };
 
-static rfbProtocolExtension matricesExt = {
-   NULL, // newClient
-   NULL, // init
-   matricesEncodings, // pseudoEncodings
-   VncServer::enableMatrices, // enablePseudoEncoding
-   VncServer::handleMatricesMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-
-static rfbProtocolExtension lightsExt = {
-   NULL, // newClient
-   NULL, // init
-   lightsEncodings, // pseudoEncodings
-   VncServer::enableLights, // enablePseudoEncoding
-   VncServer::handleLightsMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-
-static rfbProtocolExtension boundsExt = {
-   NULL, // newClient
-   NULL, // init
-   boundsEncodings, // pseudoEncodings
-   VncServer::enableBounds, // enablePseudoEncoding
-   VncServer::handleBoundsMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-
-static rfbProtocolExtension tileExt = {
-   NULL, // newClient
-   NULL, // init
-   tileEncodings, // pseudoEncodings
-   VncServer::enableTile, // enablePseudoEncoding
-   VncServer::handleTileMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-
-static rfbProtocolExtension applicationExt = {
-   NULL, // newClient
-   NULL, // init
-   applicationEncodings, // pseudoEncodings
-   VncServer::enableApplication, // enablePseudoEncoding
-   VncServer::handleApplicationMessage, // handleMessage
-   NULL, // close
-   NULL, // usage
-   NULL, // processArgument
-   NULL, // next extension
-};
-
-
 //! called when plugin is loaded
 VncServer::VncServer(int w, int h, unsigned short port)
 {
@@ -298,12 +237,6 @@ bool VncServer::init(int w, int h, unsigned short port) {
    m_numRhrClients = 0;
    m_boundCenter = vistle::Vector3(0., 0., 0.);
    m_boundRadius = 1.;
-
-   rfbRegisterProtocolExtension(&matricesExt);
-   rfbRegisterProtocolExtension(&lightsExt);
-   rfbRegisterProtocolExtension(&boundsExt);
-   rfbRegisterProtocolExtension(&tileExt);
-   rfbRegisterProtocolExtension(&applicationExt);
 
    m_delay = 0;
    std::string config("COVER.Plugin.VncServer");

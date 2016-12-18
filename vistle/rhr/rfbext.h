@@ -47,6 +47,8 @@
 
 namespace vistle {
 
+const size_t RhrMessageSize = 840;
+
 //! RFB protocol extension message types for remote hybrid rendering (RHR)
 enum {
    rfbMatrices =  156, //!< send matrices from client to server
@@ -54,6 +56,8 @@ enum {
    rfbTile = 158, //!< send image tile from server to client
    rfbBounds = 159, //!< send scene bounds from server to client
    rfbApplication = 160, //!< generic messages between server and client
+   rfbViewConfig, //!< resize a window/view
+   rfbAnimation, //!< current/total animation time steps
 };
 
 //! basic RFB message header
@@ -91,7 +95,7 @@ struct V_RHREXPORT matricesMsg: public rfbMsg {
    double view[16]; //!< view matrix
    double proj[16]; //!< projection matrix
 };
-static int matricesEncodings[] = { rfbMatrices, 0 };
+static_assert(sizeof(matricesMsg) < RhrMessageSize, "RHR message too large");
 
 //! send lighting parameters from client to server
 struct V_RHREXPORT lightsMsg: public rfbMsg {
@@ -148,7 +152,7 @@ struct V_RHREXPORT lightsMsg: public rfbMsg {
    //! all light sources
    Light lights[NumLights];
 };
-static int lightsEncodings[] = { rfbLights, 0 };
+static_assert(sizeof(lightsMsg) < RhrMessageSize, "RHR message too large");
 
 //! send scene bounding sphere from server to client
 struct V_RHREXPORT boundsMsg: public rfbMsg {
@@ -166,7 +170,7 @@ struct V_RHREXPORT boundsMsg: public rfbMsg {
    double center[3]; //!< center of bounding sphere
    double radius; //!< radius of bounding sphere
 };
-static int boundsEncodings[] = { rfbBounds, 0 };
+static_assert(sizeof(boundsMsg) < RhrMessageSize, "RHR message too large");
 
 enum rfbTileFlags {
    rfbTileNone = 0,
@@ -236,7 +240,47 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
    double model[16]; //!< model matrix from request
    double requestTime; //!< time copied from matrices request
 };
-static int tileEncodings[] = { rfbTile, 0 };
+static_assert(sizeof(tileMsg) < RhrMessageSize, "RHR message too large");
+
+//! view/window config on client changed
+struct V_RHREXPORT viewConfigMsg: public rfbMsg {
+   viewConfigMsg()
+   : rfbMsg(rfbViewConfig)
+   , viewNum(-1)
+   , width(0)
+   , height(0)
+   , nearValue(0.)
+   , farValue(0.)
+   , hsize(0.)
+   , vsize(0.)
+   {
+      memset(screenPos, '\0', sizeof(screenPos));
+      memset(screenRot, '\0', sizeof(screenRot));
+   }
+
+   int16_t viewNum; //!< number of view/window
+   uint16_t width; //!< window width
+   uint16_t height; //!< window height
+   double nearValue; //!< near clipping plane
+   double farValue; //!< far clipping plane
+   double hsize, vsize; //!< physical screen dimensions
+   double screenPos[3]; //!< physical screen position
+   double screenRot[3]; //!< physical screen rotation
+};
+static_assert(sizeof(viewConfigMsg) < RhrMessageSize, "RHR message too large");
+
+//! animation time step on client or no. of animation steps on server changed
+struct V_RHREXPORT animationMsg: public rfbMsg {
+   animationMsg()
+   : rfbMsg(rfbAnimation)
+   , total(0)
+   , current(0)
+   {}
+
+   uint32_t total; //!< total number of animation timesteps
+   uint32_t current; //!< timestep currently displayed
+};
+static_assert(sizeof(animationMsg) < RhrMessageSize, "RHR message too large");
 
 //! paylod of application dependent messages, \see applicationMsg
 enum rfbApplicationTypes {
@@ -368,7 +412,7 @@ struct V_RHREXPORT applicationMsg: public rfbMsg {
    uint32_t size; //!< payload size
    // followed by message-specific sub-header
 };
-static int applicationEncodings[] = { rfbApplication, 0 };
+static_assert(sizeof(applicationMsg) < RhrMessageSize, "RHR message too large");
 
 //! header for remote hybrid rendering message
 typedef rfbMsg RhrSubMessage;
@@ -380,7 +424,7 @@ public:
     RemoteRenderMessage(const RhrSubMessage &rhr, size_t payloadSize);
     const RhrSubMessage &rhr() const;
 private:
-    std::array<char, 500> m_rhr;
+    std::array<char, RhrMessageSize> m_rhr;
 };
 static_assert(sizeof(RemoteRenderMessage) <= Message::MESSAGE_SIZE, "message too large");
 

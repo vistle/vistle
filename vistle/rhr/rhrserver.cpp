@@ -315,68 +315,40 @@ void RhrServer::deferredResize() {
 }
 
 //! handle matrix update message
-rfbBool RhrServer::handleMatricesMessage(rfbClientPtr cl, void *data,
-      const rfbClientToServerMsg *message) {
+bool RhrServer::handleMatrices(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const matricesMsg &mat) {
 
-   if (message->type != rfbMatrices)
-      return FALSE;
-
-   matricesMsg msg;
-
-   int n = rfbReadExact(cl, ((char *)&msg)+1, sizeof(msg)-1);
-   if (n <= 0) {
-      if (n!= 0)
-         rfbLogPerror("handleMatricesMessage: read");
-      rfbCloseClient(cl);
-      return TRUE;
-   }
-
-   size_t viewNum = msg.viewNum >= 0 ? msg.viewNum : 0;
-   if (viewNum >= plugin->m_viewData.size()) {
-       plugin->m_viewData.resize(viewNum+1);
+   size_t viewNum = mat.viewNum >= 0 ? mat.viewNum : 0;
+   if (viewNum >= m_viewData.size()) {
+       m_viewData.resize(viewNum+1);
    }
    
-   plugin->resize(viewNum, msg.width, msg.height);
+   resize(viewNum, mat.width, mat.height);
 
-   ViewData &vd = plugin->m_viewData[viewNum];
+   ViewData &vd = m_viewData[viewNum];
 
-   vd.nparam.timestep = plugin->timestep();
-   vd.nparam.matrixTime = msg.time;
-   vd.nparam.requestNumber = msg.requestNumber;
+   vd.nparam.timestep = timestep();
+   vd.nparam.matrixTime = mat.time;
+   vd.nparam.requestNumber = mat.requestNumber;
 
    for (int i=0; i<16; ++i) {
-      vd.nparam.proj.data()[i] = msg.proj[i];
-      vd.nparam.view.data()[i] = msg.view[i];
-      vd.nparam.model.data()[i] = msg.model[i];
+      vd.nparam.proj.data()[i] = mat.proj[i];
+      vd.nparam.view.data()[i] = mat.view[i];
+      vd.nparam.model.data()[i] = mat.model[i];
    }
 
-   //std::cerr << "handleMatrices: view " << msg.viewNum << ", proj: " << vd.nparam.proj << std::endl;
+   //std::cerr << "handleMatrices: view " << mat.viewNum << ", proj: " << vd.nparam.proj << std::endl;
 
-   if (msg.last) {
-       for (int i=0; i<plugin->numViews(); ++i) {
-           plugin->m_viewData[i].param = plugin->m_viewData[i].nparam;
+   if (mat.last) {
+       for (int i=0; i<numViews(); ++i) {
+           m_viewData[i].param = m_viewData[i].nparam;
        }
    }
 
-   return TRUE;
+   return true;
 }
 
 //! handle light update message
-rfbBool RhrServer::handleLightsMessage(rfbClientPtr cl, void *data,
-      const rfbClientToServerMsg *message) {
-
-   if (message->type != rfbLights)
-      return FALSE;
-
-   lightsMsg msg;
-
-   int n = rfbReadExact(cl, ((char *)&msg)+1, sizeof(msg)-1);
-   if (n <= 0) {
-      if (n!= 0)
-         rfbLogPerror("handleLightsMessage: read");
-      rfbCloseClient(cl);
-      return TRUE;
-   }
+bool RhrServer::handleLights(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const lightsMsg &light) {
 
 #define SET_VEC(d, dst, src) \
       do { \
@@ -388,7 +360,7 @@ rfbBool RhrServer::handleLightsMessage(rfbClientPtr cl, void *data,
    std::vector<Light> newLights;
    for (int i=0; i<lightsMsg::NumLights; ++i) {
 
-      const auto &cl = msg.lights[i];
+      const auto &cl = light.lights[i];
       newLights.emplace_back();
       auto &l = newLights.back();
 
@@ -405,48 +377,15 @@ rfbBool RhrServer::handleLightsMessage(rfbClientPtr cl, void *data,
       //std::cerr << "Light " << i << ": diffuse: " << l.diffuse << std::endl;
    }
 
-   std::swap(plugin->lights, newLights);
-   if (plugin->lights != newLights) {
-       ++plugin->lightsUpdateCount;
+   std::swap(lights, newLights);
+   if (lights != newLights) {
+       ++lightsUpdateCount;
        std::cerr << "handleLightsMessage: lights changed" << std::endl;
    }
 
-   //std::cerr << "handleLightsMessage: " << plugin->lights.size() << " lights received" << std::endl;
+   //std::cerr << "handleLightsMessage: " << lights.size() << " lights received" << std::endl;
 
-   return TRUE;
-}
-
-//! handle image tile request by client
-rfbBool RhrServer::handleTileMessage(rfbClientPtr cl, void *data,
-      const rfbClientToServerMsg *message) {
-
-   if (message->type != rfbTile)
-      return FALSE;
-
-   tileMsg msg;
-   int n = rfbReadExact(cl, ((char *)&msg)+1, sizeof(msg)-1);
-   if (n <= 0) {
-      if (n!= 0)
-         rfbLogPerror("handleTileMessage: read");
-      rfbCloseClient(cl);
-      return TRUE;
-   }
-   std::vector<char> buf(msg.size);
-   n = rfbReadExact(cl, &buf[0], msg.size);
-   if (n <= 0) {
-      if (n!= 0)
-         rfbLogPerror("handleTileMessage: read data");
-      rfbCloseClient(cl);
-      return TRUE;
-   }
-
-   if (msg.flags & rfbTileRequest) {
-       std::cerr << "RhrServer: tile request ignored" << std::endl;
-      // FIXME
-      //sendDepthMessage(cl);
-   }
-
-   return TRUE;
+   return true;
 }
 
 
@@ -474,8 +413,9 @@ void RhrServer::broadcastApplicationMessage(int type, int length, const char *da
    sendApplicationMessage(nullptr, type, length, data);
 }
 
+#if 0
 //! handle generic application message
-rfbBool RhrServer::handleApplicationMessage(rfbClientPtr cl, void *data,
+bool RhrServer::handleApplicationMessage(rfbClientPtr cl, void *data,
       const rfbClientToServerMsg *message) {
 
    if (message->type != rfbApplication)
@@ -530,6 +470,7 @@ rfbBool RhrServer::handleApplicationMessage(rfbClientPtr cl, void *data,
 
    return TRUE;
 }
+#endif
 
 unsigned RhrServer::timestep() const {
 
@@ -548,53 +489,46 @@ void RhrServer::setNumTimesteps(unsigned num) {
 }
 
 //! send bounding sphere of scene to a client
-void RhrServer::sendBoundsMessage(rfbClientPtr cl) {
+void RhrServer::sendBoundsMessage(std::shared_ptr<socket> sock) {
 
 #if 0
    std::cerr << "sending bounds: "
-             << "c: " << plugin->m_boundCenter
-             << "r: " << plugin->m_boundRadius << std::endl;
+             << "c: " << m_boundCenter
+             << "r: " << m_boundRadius << std::endl;
 #endif
 
    boundsMsg msg;
    msg.type = rfbBounds;
-   msg.center[0] = plugin->m_boundCenter[0];
-   msg.center[1] = plugin->m_boundCenter[1];
-   msg.center[2] = plugin->m_boundCenter[2];
-   msg.radius = plugin->m_boundRadius;
-   rfbWriteExact(cl, (char *)&msg, sizeof(msg));
+   msg.center[0] = m_boundCenter[0];
+   msg.center[1] = m_boundCenter[1];
+   msg.center[2] = m_boundCenter[2];
+   msg.radius = m_boundRadius;
+
+   RemoteRenderMessage r(msg, 0);
+   message::send(*sock, r);
 }
 
 
 //! handle request for a bounding sphere update
-rfbBool RhrServer::handleBoundsMessage(rfbClientPtr cl, void *data,
-      const rfbClientToServerMsg *message) {
+bool RhrServer::handleBounds(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const boundsMsg &bound) {
 
-   if (message->type != rfbBounds)
-      return FALSE;
-
-   boundsMsg msg;
-   int n = rfbReadExact(cl, ((char *)&msg)+1, sizeof(msg)-1);
-   if (n <= 0) {
-      if (n!= 0)
-         rfbLogPerror("handleBoundsMessage: read");
-      rfbCloseClient(cl);
-      return TRUE;
-   }
-
-   if (msg.sendreply) {
+   if (bound.sendreply) {
        std::cout << "SENDING BOUNDS" << std::endl;
-      sendBoundsMessage(cl);
+      sendBoundsMessage(sock);
    }
 
-   return TRUE;
+   return true;
 }
 
+bool RhrServer::handleAnimation(std::shared_ptr<RhrServer::socket> sock, const vistle::message::RemoteRenderMessage &msg, const animationMsg &anim) {
+
+    CERR << "app timestep: " << anim.current << std::endl;
+    m_imageParam.timestep = anim.current;
+}
 
 //! this is called before every frame, used for polling for RFB messages
 void
-RhrServer::preFrame()
-{
+RhrServer::preFrame() {
 
    const int wait_msec=0;
 
@@ -611,7 +545,50 @@ RhrServer::preFrame()
       if (command.get() > 0) {
           avail = command.get();
       }
-      if (avail > 0) {
+      if (avail >= sizeof(message::RemoteRenderMessage)) {
+          message::Buffer msg;
+          bool received = false;
+          std::vector<char> payload;
+          if (message::recv(*m_clientSocket, msg, received, false, &payload) && received) {
+              switch(msg.type()) {
+              case message::Message::REMOTERENDERING: {
+                  auto &m = msg.as<message::RemoteRenderMessage>();
+                  auto &rhr = m.rhr();
+                  switch (rhr.type) {
+                  case rfbMatrices: {
+                      auto &mat = static_cast<const matricesMsg &>(rhr);
+                      handleMatrices(m_clientSocket, m, mat);
+                      break;
+                  }
+                  case rfbLights: {
+                      auto &light = static_cast<const lightsMsg &>(rhr);
+                      handleLights(m_clientSocket, m, light);
+                      break;
+                  }
+                  case rfbAnimation: {
+                      auto &anim = static_cast<const animationMsg &>(rhr);
+                      handleAnimation(m_clientSocket, m, anim);
+                      break;
+                  }
+                  case rfbBounds: {
+                      auto &bound = static_cast<const boundsMsg &>(rhr);
+                      handleBounds(m_clientSocket, m, bound);
+                      break;
+                  }
+                  case rfbTile:
+                  case rfbApplication:
+                  default:
+                      CERR << "invalid RHR message subtype received" << std::endl;
+                      break;
+                  }
+                  break;
+              }
+              default: {
+                  CERR << "invalid message type received" << std::endl;
+                  break;
+              }
+              }
+          }
           //handleClient(sock);
       }
    }

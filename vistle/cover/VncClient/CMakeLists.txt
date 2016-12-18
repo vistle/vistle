@@ -1,3 +1,4 @@
+return()
 vistle_find_package(LibVncServer)
 vistle_find_package(TBB)
 vistle_find_package(JPEGTURBO)

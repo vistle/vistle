@@ -30,6 +30,7 @@
 namespace vistle {
 
 namespace asio = boost::asio;
+using message::RemoteRenderMessage;
 
 //! Implement remote hybrid rendering server
 class V_RHREXPORT RhrServer
@@ -81,22 +82,10 @@ public:
    unsigned timestep() const;
    void setNumTimesteps(unsigned num);
 
-   static rfbBool handleMatricesMessage(rfbClientPtr cl, void *data,
-         const rfbClientToServerMsg *message);
-
-   static rfbBool handleLightsMessage(rfbClientPtr cl, void *data,
-         const rfbClientToServerMsg *message);
-
-   static rfbBool handleBoundsMessage(rfbClientPtr cl, void *data,
-         const rfbClientToServerMsg *message);
-
-   static rfbBool handleTileMessage(rfbClientPtr cl, void *data,
-         const rfbClientToServerMsg *message);
-
-   static rfbBool handleApplicationMessage(rfbClientPtr cl, void *data,
-         const rfbClientToServerMsg *message);
-
-
+   bool handleMatrices(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const matricesMsg &mat);
+   bool handleLights(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const lightsMsg &light);
+   bool handleBounds(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const boundsMsg &bound);
+   bool handleAnimation(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const animationMsg &anim);
 
    int numViews() const;
    const vistle::Matrix4 &viewMat(int viewNum) const;
@@ -278,7 +267,7 @@ private:
 
    unsigned m_numTimesteps;
 
-   static void sendBoundsMessage(rfbClientPtr cl);
+   void sendBoundsMessage(std::shared_ptr<socket> sock);
    static void sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data);
 
    void encodeAndSend(int viewNum, int x, int y, int w, int h, const ViewParameters &param, bool lastView);
