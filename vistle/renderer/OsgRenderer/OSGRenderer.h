@@ -6,7 +6,6 @@
 #include <osg/MatrixTransform>
 
 #include <renderer/renderer.h>
-#include <renderer/vnccontroller.h>
 #include <renderer/parrendmgr.h>
 
 namespace osg {

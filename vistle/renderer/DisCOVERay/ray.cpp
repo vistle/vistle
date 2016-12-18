@@ -15,8 +15,6 @@
 
 #include <util/stopwatch.h>
 
-#include <rhr/vncserver.h>
-#include <renderer/vnccontroller.h>
 #include <renderer/parrendmgr.h>
 #include "rayrenderobject.h"
 #include "common.h"
