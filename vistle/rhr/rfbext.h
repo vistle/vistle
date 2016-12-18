@@ -43,6 +43,10 @@
 #include "depthquant.h"
 #include "export.h"
 
+#include <core/message.h>
+
+namespace vistle {
+
 //! RFB protocol extension message types for remote hybrid rendering (RHR)
 enum {
    rfbMatrices =  156, //!< send matrices from client to server
@@ -50,7 +54,6 @@ enum {
    rfbTile = 158, //!< send image tile from server to client
    rfbBounds = 159, //!< send scene bounds from server to client
    rfbApplication = 160, //!< generic messages between server and client
-   rfbDepth = 161, //!< send depth buffer from server to client
 };
 
 //! basic RFB message header
@@ -367,4 +370,21 @@ struct V_RHREXPORT applicationMsg: public rfbMsg {
 };
 static int applicationEncodings[] = { rfbApplication, 0 };
 
+//! header for remote hybrid rendering message
+typedef rfbMsg RhrSubMessage;
+
+namespace message {
+
+class V_RHREXPORT RemoteRenderMessage: public MessageBase<RemoteRenderMessage, Message::REMOTERENDERING> {
+public:
+    RemoteRenderMessage(const RhrSubMessage &rhr, size_t payloadSize);
+    const RhrSubMessage &rhr() const;
+private:
+    std::array<char, 500> m_rhr;
+};
+static_assert(sizeof(RemoteRenderMessage) <= Message::MESSAGE_SIZE, "message too large");
+
+} // namespace message
+
+} // namespace vistle
 #endif

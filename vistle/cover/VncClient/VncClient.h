@@ -60,6 +60,9 @@ class RemoteRenderObject;
 
 struct DecodeTask;
 
+using namespace vistle;
+
+
 
 //! implement remote hybrid rendering client based on VNC protocol
 class VncClient: public coVRPlugin

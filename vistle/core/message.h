@@ -112,6 +112,7 @@ class V_COREEXPORT Message {
       (REQUESTTUNNEL)
       (REQUESTOBJECT)
       (SENDOBJECT)
+      (REMOTERENDERING)
       (NumMessageTypes) // keep last
    )
 
@@ -219,6 +220,15 @@ class V_COREEXPORT Buffer: public Message {
 
 };
 static_assert(sizeof(Buffer) == Message::MESSAGE_SIZE, "message too large");
+
+template<class MessageClass, Message::Type MessageType>
+class MessageBase: public Message {
+public:
+    static const Message::Type s_type = MessageType;
+protected:
+    MessageBase(): Message(MessageType, sizeof(MessageClass)) {
+    }
+};
 
 V_COREEXPORT std::ostream &operator<<(std::ostream &s, const Message &msg);
 

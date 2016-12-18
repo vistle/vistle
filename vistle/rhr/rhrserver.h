@@ -287,11 +287,10 @@ private:
 
        EncodeResult(tileMsg *msg=nullptr)
            : message(msg)
-           , payload(nullptr)
            {}
 
        tileMsg *message;
-       const char *payload;
+       std::vector<char> payload;
    };
 
    friend struct EncodeTask;

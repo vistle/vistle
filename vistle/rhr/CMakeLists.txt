@@ -29,6 +29,7 @@ endif()
 
 set(RHR_SOURCES
    depthquant.cpp
+   rfbext.cpp
    rhrserver.cpp
    )
 
@@ -78,6 +79,7 @@ endif()
 
 target_link_libraries(vistle_rhr
         vistle_util
+        vistle_core
         ${Boost_LIBRARIES}
         ${TBB_LIBRARIES}
         ${JPEG_LIBRARIES}

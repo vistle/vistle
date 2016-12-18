@@ -24,6 +24,7 @@
 #include <tbb/enumerable_thread_specific.h>
 
 #include <util/stopwatch.h>
+#include <core/tcpmessage.h>
 
 //#define QUANT_ERROR
 //#define TIMING
@@ -761,21 +762,21 @@ struct EncodeTask: public tbb::task {
             if (msg.compression & rfbTileDepthQuantize) {
                 const int ds = msg.format == rfbDepth16Bit ? 2 : 3;
                 msg.size = depthquant_size(DepthFloat, ds, w, h);
-                char *qbuf = new char[msg.size];
-                depthquant(qbuf, zbuf, DepthFloat, ds, x, y, w, h, stride);
+                std::vector<char> qbuf(msg.size);
+                depthquant(qbuf.data(), zbuf, DepthFloat, ds, x, y, w, h, stride);
 #ifdef QUANT_ERROR
                 std::vector<char> dequant(sizeof(float)*w*h);
                 depthdequant(dequant.data(), qbuf, DepthFloat, ds, 0, 0, w, h);
                 //depthquant(qbuf, dequant.data(), DepthFloat, ds, x, y, w, h, stride); // test depthcompare
                 depthcompare(zbuf, dequant.data(), DepthFloat, ds, x, y, w, h, stride);
 #endif
-                result.payload = qbuf;
+                result.payload = std::move(qbuf);
             } else {
-                char *tilebuf = new char[msg.size];
+                std::vector<char> tilebuf(msg.size);
                 for (int yy=0; yy<h; ++yy) {
-                    memcpy(tilebuf+yy*bpp*w, zbuf+((yy+y)*stride+x)*bpp, w*bpp);
+                    memcpy(tilebuf.data()+yy*bpp*w, zbuf+((yy+y)*stride+x)*bpp, w*bpp);
                 }
-                result.payload = tilebuf;
+                result.payload = std::move(tilebuf);
             }
         } else if (rgba) {
             if (msg.compression & rfbTileJpeg) {
@@ -784,7 +785,7 @@ struct EncodeTask: public tbb::task {
                 TJSAMP sampling = subsamp ? TJSAMP_420 : TJSAMP_444;
                 TjContext::reference tj = tjContexts.local();
                 size_t maxsize = tjBufSize(msg.width, msg.height, sampling);
-                char *jpegbuf = new char[maxsize];
+                std::vector<char> jpegbuf(maxsize);
                 unsigned long sz = 0;
                 //unsigned char *src = reinterpret_cast<unsigned char *>(rgba);
                 rgba += (msg.totalwidth*msg.y+msg.x)*bpp;
@@ -792,7 +793,7 @@ struct EncodeTask: public tbb::task {
 #ifdef TIMING
                    double start = vistle::Clock::time();
 #endif
-                   ret = tjCompress(tj.handle, rgba, msg.width, msg.totalwidth*bpp, msg.height, bpp, reinterpret_cast<unsigned char *>(jpegbuf), &sz, subsamp, 90, TJ_BGR);
+                   ret = tjCompress(tj.handle, rgba, msg.width, msg.totalwidth*bpp, msg.height, bpp, reinterpret_cast<unsigned char *>(jpegbuf.data()), &sz, subsamp, 90, TJ_BGR);
 #ifdef TIMING
                    double dur = vistle::Clock::time() - start;
                    std::cerr << "JPEG compression: " << dur << "s, " << msg.width*(msg.height/dur)/1e6 << " MPix/s" << std::endl;
@@ -800,30 +801,30 @@ struct EncodeTask: public tbb::task {
                 }
                 if (ret >= 0) {
                     msg.size = sz;
-                    result.payload = jpegbuf;
+                    result.payload = std::move(jpegbuf);
                 }
 #endif
                 if (ret < 0)
                     msg.compression &= ~rfbTileJpeg;
             }
             if (!(msg.compression & rfbTileJpeg)) {
-                char *tilebuf = new char[msg.size];
+                std::vector<char> tilebuf(msg.size);
                 for (int yy=0; yy<h; ++yy) {
-                    memcpy(tilebuf+yy*bpp*w, rgba+((yy+y)*stride+x)*bpp, w*bpp);
+                    memcpy(tilebuf.data()+yy*bpp*w, rgba+((yy+y)*stride+x)*bpp, w*bpp);
                 }
-                result.payload = tilebuf;
+                result.payload = std::move(tilebuf);
             }
         }
 #ifdef HAVE_SNAPPY
         if((msg.compression & rfbTileSnappy) && !(msg.compression & rfbTileJpeg)) {
             size_t maxsize = snappy::MaxCompressedLength(msg.size);
-            char *sbuf = new char[maxsize];
+            std::vector<char> sbuf(maxsize);
             size_t compressed = 0;
             { 
 #ifdef TIMING
                double start = vistle::Clock::time();
 #endif
-               snappy::RawCompress(result.payload, msg.size, sbuf, &compressed);
+               snappy::RawCompress(result.payload.data(), msg.size, sbuf.data(), &compressed);
 #ifdef TIMING
                vistle::StopWatch timer(rgba ? "snappy RGBA" : "snappy depth");
                double dur = vistle::Clock::time() - start;
@@ -833,12 +834,12 @@ struct EncodeTask: public tbb::task {
             msg.size = compressed;
 
             //std::cerr << "compressed " << msg.size << " to " << compressed << " (buf: " << cd->buf.size() << ")" << std::endl;
-            delete[] result.payload;
-            result.payload = sbuf;
+            result.payload = std::move(sbuf);
         } else {
             msg.compression &= ~rfbTileSnappy;
         }
 #endif
+        assert(result.payload.size() == msg.size);
         resultQueue.push(result);
         return nullptr; // or a pointer to a new task to be executed immediately
     }
@@ -914,29 +915,10 @@ void RhrServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const R
            }
            msg->frameNumber = framecount;
 
-
-#if 0
-           rfbCheckFds(m_screen, 0);
-           rfbHttpCheckFds(m_screen);
-           rfbClientIteratorPtr i = rfbGetClientIterator(m_screen);
-           while (rfbClientPtr cl = rfbClientIteratorNext(i)) {
-              if (cl->clientData) {
-                 rfbUpdateClient(cl);
-                 if (rfbWriteExact(cl, (char *)msg, sizeof(*msg)) < 0) {
-                    rfbLogPerror("sendTileMessage: write header");
-                 }
-                 if (result.payload && msg->size > 0) {
-                    if (rfbWriteExact(cl, result.payload, msg->size) < 0) {
-                       rfbLogPerror("sendTileMessage: write paylod");
-                    }
-                 }
-              }
-              rfbUpdateClient(cl);
-           }
-           rfbReleaseClientIterator(i);
-#endif
+           message::RemoteRenderMessage vmsg(*msg, result.payload.size());
+           message::send(*m_clientSocket, vmsg, &result.payload);
         }
-        delete[] result.payload;
+        result.payload.clear();
         delete msg;
     } while (m_queuedTiles > 0 && (tileReady || lastView));
 

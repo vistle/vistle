@@ -31,6 +31,8 @@
 #ifdef HAVE_TURBOJPEG
 #include <turbojpeg.h>
 
+namespace vistle {
+
 struct TjComp {
 
        TjComp()
@@ -1250,4 +1252,6 @@ void VncServer::encodeAndSend(int viewNum, int x0, int y0, int w, int h, const V
 VncServer::ViewParameters VncServer::getViewParameters(int viewNum) const {
 
     return m_viewData[viewNum].param;
+}
+
 }

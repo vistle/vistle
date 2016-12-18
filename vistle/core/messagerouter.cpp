@@ -59,6 +59,7 @@ void Router::initRoutingTable() {
 
    rt[M::REQUESTOBJECT]         = Special;
    rt[M::SENDOBJECT]            = Special;
+   rt[M::REMOTERENDERING]       = Special;
 
    for (int i=M::ANY+1; i<M::NumMessageTypes; ++i) {
       if (rt[i] == 0) {

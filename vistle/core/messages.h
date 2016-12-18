@@ -29,15 +29,6 @@ class Port;
 
 namespace message {
 
-template<class MessageClass, Message::Type MessageType>
-class MessageBase: public Message {
-public:
-    static const Message::Type s_type = MessageType;
-protected:
-    MessageBase(): Message(MessageType, sizeof(MessageClass)) {
-    }
-};
-
 //! indicate the kind of a communication partner
 class V_COREEXPORT Identify: public MessageBase<Identify, Message::IDENTIFY> {
 
