@@ -39,8 +39,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
 
     // time parameters
     m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
@@ -103,13 +103,10 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
 
    addIntParameter("first_block", "number of first block", 0);
    addIntParameter("last_block", "number of last block", 0);
-
-   addIntParameter("first_step", "number of first timestep", 0);
-   addIntParameter("last_step", "number of last timestep", 0);
-   addIntParameter("step", "increment", 1);
-
-   addIntParameter("ignore_errors", "ignore files that are not found", 0, Parameter::Boolean);
 */
+//   addIntParameter("first_step", "number of first timestep", 0);
+//   addIntParameter("last_step", "number of last timestep", 0);
+//   addIntParameter("step", "increment", 1);
 }
 
 ReadCFX::~ReadCFX() {
@@ -301,17 +298,21 @@ void ReadCFX::loadGrid() {
         }
 
         //load nodes into unstructured grid
-        double *x_coord = new double, *y_coord = new double, *z_coord = new double;
+        //double *x_coord = new double, *y_coord = new double, *z_coord = new double;
+        boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
 
         m_nnodes = cfxExportNodeCount();
         nodeList = cfxExportNodeList(); //load coordinates into array with structs, each struct containing x,y,z of one node
         for(index_t nodeid=1;nodeid<=m_nnodes;++nodeid) {
-            if(!cfxExportNodeGet(nodeid,x_coord,y_coord,z_coord)) {  //get access to coordinates
+            if(!cfxExportNodeGet(nodeid,x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates
                 std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
             }
-            grid->x().push_back(*(x_coord));
-            grid->y().push_back(*(y_coord));
-            grid->z().push_back(*(z_coord));
+//            grid->x().push_back(*(x_coord));
+//            grid->y().push_back(*(y_coord));
+//            grid->z().push_back(*(z_coord));
+            grid->x().push_back(*x_coord.get());
+            grid->y().push_back(*y_coord.get());
+            grid->z().push_back(*z_coord.get());
         }
 
 
@@ -324,32 +325,31 @@ void ReadCFX::loadGrid() {
 //        std::cerr << "x,y,z (m_nnodes-1)" << grid->x().at(m_nnodes-1) << ", " << grid->y().at(m_nnodes-1) << ", " << grid->z().at(m_nnodes-1) << std::endl;
 
         cfxExportNodeFree();
-        delete[] x_coord;
-        delete[] y_coord;
-        delete[] z_coord;
+//        delete[] x_coord;
+//        delete[] y_coord;
+//        delete[] z_coord;
     }
 
 
     //load element types, element list and connectivity list into unstructured grid
     int elemListCounter=0;
-    int *nodelist = new int[8], *elemtype = new int;
+//    int *nodelist = new int[8], *elemtype = new int;
+    boost::shared_ptr<std::int32_t> nodelist(new int[8]), elemtype(new int);
 
     m_nelems = cfxExportElementCount();
     elmList = cfxExportElementList(); //load elements into array with structs, each struct containing type and array with nodeid's which belong to the element
 
     for(index_t elemid=1;elemid<=m_nelems;++elemid) {
-        if(!cfxExportElementGet(elemid,elemtype,nodelist)) {
+        if(!cfxExportElementGet(elemid,elemtype.get(),nodelist.get())) {
             std::cerr << "error while reading elements out of .res file: elemid is out of range" << std::endl;
         }
-        switch(*elemtype) {
+        switch(*elemtype.get()) {
             case 4: {
                 elemListCounter += 4;
                 grid->tl().push_back(UnstructuredGrid::TETRAHEDRON);
                 grid->el().push_back(elemListCounter);
-//                std::cerr << "elemid = " << elemid << "; elemtype = " << *elemtype <<  std::endl;
                 for (int nodelist_counter=0;nodelist_counter<4;++nodelist_counter) {
-                    grid->cl().push_back(nodelist[nodelist_counter]-1);
-//                    std::cerr << "nodelist(" << nodelist_counter << ") = " << nodelist[nodelist_counter]-1 << std::endl;
+                    grid->cl().push_back(nodelist.get()[nodelist_counter]-1);
                 }
                 break;
             }
@@ -358,7 +358,7 @@ void ReadCFX::loadGrid() {
                 grid->tl().push_back(UnstructuredGrid::PYRAMID);
                 grid->el().push_back(elemListCounter);
                 for (int nodelist_counter=0;nodelist_counter<5;++nodelist_counter) {
-                    grid->cl().push_back(nodelist[nodelist_counter]-1);
+                    grid->cl().push_back(nodelist.get()[nodelist_counter]-1);
                 }
                 break;
             }
@@ -367,7 +367,7 @@ void ReadCFX::loadGrid() {
                 grid->tl().push_back(UnstructuredGrid::PRISM);
                 grid->el().push_back(elemListCounter);
                 for (int nodelist_counter=0;nodelist_counter<6;++nodelist_counter) {
-                    grid->cl().push_back(nodelist[nodelist_counter]-1);
+                    grid->cl().push_back(nodelist.get()[nodelist_counter]-1);
                 }
                 break;
             }
@@ -375,8 +375,10 @@ void ReadCFX::loadGrid() {
                 elemListCounter += 8;
                 grid->tl().push_back(UnstructuredGrid::HEXAHEDRON);
                 grid->el().push_back(elemListCounter);
+                //std::cerr << "elemid = " << elemid << "; elemtype = " << *elemtype.get() <<  std::endl;
                 for (int nodelist_counter=0;nodelist_counter<8;++nodelist_counter) {
-                    grid->cl().push_back(nodelist[nodelist_counter]-1);
+                    grid->cl().push_back(nodelist.get()[nodelist_counter]-1);
+                    //std::cerr << "nodelist(" << nodelist_counter << ") = " << nodelist.get()[nodelist_counter]-1 << std::endl;
                 }
                 break;
             }
@@ -384,20 +386,20 @@ void ReadCFX::loadGrid() {
     }
 
     //Test, ob Einlesen funktioniert hat
-//    std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
-//    std::cerr <<"no. elems = " << m_nelems << std::endl;
-//    std::cerr <<"grid->getNumElements" << grid->getNumElements() << std::endl;
-//    for(index_t i = 0;i<19;++i) {
-//        std::cerr << "tl(" << i << ") = " << grid->tl().at(i) << std::endl;
-//        std::cerr << "el(" << i << ") = " << grid->el().at(i) << std::endl;
-//        for(index_t j = 0;j<8;++j) {
-//            std::cerr << "cl(" << i*8+j << ") = " << grid->cl().at(i*8+j) << std::endl;
+//        std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
+//        std::cerr <<"no. elems = " << m_nelems << std::endl;
+//        std::cerr <<"grid->getNumElements" << grid->getNumElements() << std::endl;
+//        for(index_t i = 0;i<19;++i) {
+//            std::cerr << "tl(" << i << ") = " << grid->tl().at(i) << std::endl;
+//            std::cerr << "el(" << i << ") = " << grid->el().at(i) << std::endl;
+//            for(index_t j = 0;j<8;++j) {
+//                std::cerr << "cl(" << i*8+j << ") = " << grid->cl().at(i*8+j) << std::endl;
+//            }
 //        }
-//    }
 
     cfxExportElementFree();
-    delete[] elemtype;
-    delete[] nodelist;
+//    delete[] elemtype;
+//    delete[] nodelist;
 
     return;
 }
