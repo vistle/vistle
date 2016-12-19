@@ -113,9 +113,30 @@ class RemoteConnection {
     }
 
     ~RemoteConnection() {
+
         if (!m_thread) {
             assert(!m_sock);
             return;
+        }
+
+        stopThread();
+
+        m_thread->join();
+        delete m_mutex;
+    }
+
+    void stopThread() {
+
+        {
+            lock_guard locker(*m_mutex);
+            m_interrupt = true;
+        }
+        {
+            lock_guard locker(*m_mutex);
+            if (m_sock) {
+                boost::system::error_code ec;
+                m_sock->shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+            }
         }
 
         for (;;) {
@@ -123,7 +144,6 @@ class RemoteConnection {
                 lock_guard locker(*m_mutex);
                 if (!m_running)
                     break;
-                m_interrupt = true;
             }
             usleep(10000);
         }
@@ -134,15 +154,14 @@ class RemoteConnection {
         std::cerr << "disconnected from server" << std::endl;
 
         m_sock.reset();
-
-        m_thread->join();
-        delete m_mutex;
     }
 
     void operator()() {
         m_running = true;
         for (;;) {
-            receive();
+            if (!receive()) {
+                usleep(10000);
+            }
             lock_guard locker(*m_mutex);
             if (m_interrupt) {
                 break;
@@ -155,7 +174,6 @@ class RemoteConnection {
         }
         lock_guard locker(*m_mutex);
         m_running = false;
-        plugin->m_clientRunning = false;
     }
 
 
@@ -219,7 +237,7 @@ class RemoteConnection {
 
         if (buf.type() != message::Message::REMOTERENDERING) {
             std::cerr << "invalid message type received" << std::endl;
-            return -1;
+            return false;
         }
 
         lock_guard locker(*m_mutex);
@@ -244,6 +262,11 @@ class RemoteConnection {
         return m_running;
     }
 
+    bool isConnected() const {
+        lock_guard locker(*m_mutex);
+        return m_sock.get();
+    }
+
     bool messageReceived() {
         lock_guard locker(*m_mutex);
         bool ret = haveMessage;
@@ -260,7 +283,10 @@ class RemoteConnection {
 
     bool send(const message::Message &msg, const std::vector<char> *payload=nullptr) {
         lock_guard locker(*m_mutex);
-        message::send(*m_sock, msg, payload);
+        if (m_sock)
+            return message::send(*m_sock, msg, payload);
+        else
+            return false;
     }
 
     void requestBounds() {
@@ -341,9 +367,9 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
 }
 
 //! send matrices to server
-void RhrClient::sendMatricesMessage(std::shared_ptr<asio::ip::tcp::socket> sock, std::vector<matricesMsg> &messages, uint32_t requestNum) {
+void RhrClient::sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, std::vector<matricesMsg> &messages, uint32_t requestNum) {
    
-   if (!sock)
+   if (!remote)
       return;
 
    messages.back().last = 1;
@@ -357,9 +383,9 @@ void RhrClient::sendMatricesMessage(std::shared_ptr<asio::ip::tcp::socket> sock,
 }
 
 //! send lighting parameters to server
-void RhrClient::sendLightsMessage(std::shared_ptr<asio::ip::tcp::socket> sock) {
+void RhrClient::sendLightsMessage(std::shared_ptr<RemoteConnection> remote) {
 
-   if (!sock)
+   if (!remote)
       return;
 
    //std::cerr << "sending lights" << std::endl;
@@ -417,7 +443,7 @@ void RhrClient::sendLightsMessage(std::shared_ptr<asio::ip::tcp::socket> sock) {
    }
 
    RemoteRenderMessage rrm(msg);
-   m_remote->send(rrm);
+   remote->send(rrm);
 }
 
 //! Task structure for submitting to Intel Threading Building Blocks work //queue
@@ -886,7 +912,6 @@ bool RhrClient::init()
    m_serverHost = covise::coCoviseConfig::getEntry("rfbHost", config, "localhost");
    m_port = covise::coCoviseConfig::getInt("rfbPort", config, 31590);
 
-   m_sock.reset();
    m_haveConnection = false;
 
    m_mode = MultiChannelDrawer::ReprojectMesh;
@@ -1185,7 +1210,7 @@ void RhrClient::muiEvent(mui::Element *item) {
       applyMode();
    }
    if (item == m_connectCheck) {
-       if (m_remote) {
+       if (m_remote && m_remote->isConnected()) {
            m_remote.reset();
        } else {
            connectClient();
@@ -1290,9 +1315,9 @@ RhrClient::preFrame()
                lastUpdate = cover->frameTime();
            }
 
-           if ((m_lastTileAt >= 0 || cover->frameTime()-lastMatrices>m_avgDelay*0.7) && m_sock) {
-               sendLightsMessage(m_sock);
-               sendMatricesMessage(m_sock, messages, m_matrixNum++);
+           if ((m_lastTileAt >= 0 || cover->frameTime()-lastMatrices>m_avgDelay*0.7) && m_remote && m_remote->isConnected()) {
+               sendLightsMessage(m_remote);
+               sendMatricesMessage(m_remote, messages, m_matrixNum++);
                lastMatrices = cover->frameTime();
            }
        }
@@ -1629,7 +1654,7 @@ int RhrClient::handleRfbMessages()
 
 bool RhrClient::connectClient() {
 
-   if (m_sock)
+   if (m_remote)
       return true;
 
 #if 0
@@ -1648,42 +1673,18 @@ bool RhrClient::connectClient() {
 
    m_avgDelay = 0.;
 
-   m_clientRunning = true;
-   m_runClient = true;
    m_remote.reset(new RemoteConnection(this, coVRMSController::instance()->isMaster()));
 
    return true;
 }
 
-#if 0
 //! clean up when connection to server is lost
-void RhrClient::clientCleanup(std::shared_ptr<asio::ip::tcp::socket> sock) {
+void RhrClient::clientCleanup(std::shared_ptr<RemoteConnection> &remote) {
 
-   if (!sock)
-      return;
-   assert(sock == m_sock);
-
-   for (;;) {
-       {
-           lock_guard locker(*m_clientMutex);
-           if (!m_clientRunning)
-               break;
-           m_runClient = false;
-       }
-       usleep(10000);
+   if (remote) {
+       remote->stopThread();
    }
-
-   lock_guard locker(*m_clientMutex);
-   assert(!m_clientRunning);
-
-   std::cerr << "disconnected from server" << std::endl;
-
-   if (sock == m_sock) {
-       m_sock.reset();
-   }
-
-   m_remote.reset();
+   remote.reset();
 }
-#endif
 
 COVERPLUGIN(RhrClient)

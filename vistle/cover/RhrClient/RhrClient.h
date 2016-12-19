@@ -102,8 +102,6 @@ public:
 
    int handleRfbMessages();
 
-   bool m_runClient, m_clientRunning;
-   //std::recursive_mutex *m_clientMutex;
 private:
    //! make plugin available to static member functions
    static RhrClient *plugin;
@@ -122,15 +120,14 @@ private:
    size_t m_depthBytesS, m_rgbBytesS, m_depthBppS, m_numPixelsS;
 
    bool connectClient();
-   void clientCleanup(std::shared_ptr<asio::ip::tcp::socket> sock);
-   void sendMatricesMessage(std::shared_ptr<asio::ip::tcp::socket> sock, std::vector<matricesMsg> &messages, uint32_t requestNum);
-   void sendLightsMessage(std::shared_ptr<asio::ip::tcp::socket> sock);
-   //void sendApplicationMessage(rfbClient *client, int type, int length, const void *data);
+   void clientCleanup(std::shared_ptr<RemoteConnection> &remote);
+   void sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, std::vector<matricesMsg> &messages, uint32_t requestNum);
+   void sendLightsMessage(std::shared_ptr<RemoteConnection> remote);
    void fillMatricesMessage(matricesMsg &msg, int channel, int view, bool second=false);
 
    //! server connection
    asio::io_service m_io;
-   std::shared_ptr<asio::ip::tcp::socket> m_sock;
+   //std::shared_ptr<asio::ip::tcp::socket> m_sock;
    bool m_haveConnection;
    std::shared_ptr<RemoteConnection> m_remote;
 
