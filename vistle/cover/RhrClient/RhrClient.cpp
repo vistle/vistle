@@ -102,6 +102,8 @@ class RemoteConnection {
     bool m_interrupt = false;
     bool m_isMaster = false;
 
+    RemoteConnection() = delete;
+    RemoteConnection(const RemoteConnection& other) = delete;
     RemoteConnection(RhrClient *plugin, bool isMaster)
         : plugin(plugin)
     {
@@ -109,7 +111,7 @@ class RemoteConnection {
         m_mutex = new std::recursive_mutex;
         m_running = true;
         if (isMaster)
-            m_thread = new std::thread(*this);
+            m_thread = new std::thread(std::ref(*this));
     }
 
     ~RemoteConnection() {
@@ -123,6 +125,7 @@ class RemoteConnection {
 
         m_thread->join();
         delete m_mutex;
+        delete m_thread;
     }
 
     void stopThread() {
@@ -157,7 +160,10 @@ class RemoteConnection {
     }
 
     void operator()() {
-        m_running = true;
+        {
+            lock_guard locker(*m_mutex);
+            assert(m_running);
+        }
         for (;;) {
             if (!receive()) {
                 usleep(10000);
@@ -378,7 +384,7 @@ void RhrClient::sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, st
       matricesMsg &msg = messages[i];
       msg.requestNumber = requestNum;
       RemoteRenderMessage rrm(msg, 0);
-      m_remote->send(rrm);
+      remote->send(rrm);
    }
 }
 
@@ -1085,7 +1091,7 @@ RhrClient::~RhrClient()
    if (m_requestedTimestep != -1)
        commitTimestep(m_requestedTimestep);
 
-   m_remote.reset();
+   clientCleanup(m_remote);
 
 #ifdef VRUI
    delete m_menu;
@@ -1211,7 +1217,7 @@ void RhrClient::muiEvent(mui::Element *item) {
    }
    if (item == m_connectCheck) {
        if (m_remote && m_remote->isConnected()) {
-           m_remote.reset();
+           clientCleanup(m_remote);
        } else {
            connectClient();
        }
@@ -1249,10 +1255,8 @@ RhrClient::preFrame()
       }
    }
 
-   if (m_remote) {
-       if (!m_remote->isRunning()) {
-           m_remote.reset();
-       }
+   if (m_remote && !m_remote->isRunning()) {
+       clientCleanup(m_remote);
    }
 
    bool connected = coVRMSController::instance()->syncBool(m_remote.get());
@@ -1673,6 +1677,7 @@ bool RhrClient::connectClient() {
 
    m_avgDelay = 0.;
 
+   std::cerr << "starting new RemoteConnection" << std::endl;
    m_remote.reset(new RemoteConnection(this, coVRMSController::instance()->isMaster()));
 
    return true;
