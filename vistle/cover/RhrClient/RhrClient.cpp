@@ -429,10 +429,10 @@ void RhrClient::fillMatricesMessage(matricesMsg &msg, int channel, int viewNum, 
 }
 
 //! send matrices to server
-void RhrClient::sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, std::vector<matricesMsg> &messages, uint32_t requestNum) {
+bool RhrClient::sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, std::vector<matricesMsg> &messages, uint32_t requestNum) {
    
    if (!remote)
-      return;
+      return false;
 
    messages.back().last = 1;
    //std::cerr << "requesting " << messages.size() << " views" << std::endl;
@@ -440,15 +440,17 @@ void RhrClient::sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, st
       matricesMsg &msg = messages[i];
       msg.requestNumber = requestNum;
       RemoteRenderMessage rrm(msg, 0);
-      remote->send(rrm);
+      if (!remote->send(rrm))
+          return false;
    }
+   return true;
 }
 
 //! send lighting parameters to server
-void RhrClient::sendLightsMessage(std::shared_ptr<RemoteConnection> remote) {
+bool RhrClient::sendLightsMessage(std::shared_ptr<RemoteConnection> remote) {
 
    if (!remote)
-      return;
+      return false;
 
    //std::cerr << "sending lights" << std::endl;
    lightsMsg msg;
@@ -505,7 +507,7 @@ void RhrClient::sendLightsMessage(std::shared_ptr<RemoteConnection> remote) {
    }
 
    RemoteRenderMessage rrm(msg);
-   remote->send(rrm);
+   return remote->send(rrm);
 }
 
 //! Task structure for submitting to Intel Threading Building Blocks work //queue

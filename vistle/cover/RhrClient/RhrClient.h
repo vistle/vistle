@@ -122,8 +122,8 @@ private:
 
    bool connectClient();
    void clientCleanup(std::shared_ptr<RemoteConnection> &remote);
-   void sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, std::vector<matricesMsg> &messages, uint32_t requestNum);
-   void sendLightsMessage(std::shared_ptr<RemoteConnection> remote);
+   bool sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, std::vector<matricesMsg> &messages, uint32_t requestNum);
+   bool sendLightsMessage(std::shared_ptr<RemoteConnection> remote);
    void fillMatricesMessage(matricesMsg &msg, int channel, int view, bool second=false);
 
    //! server connection
