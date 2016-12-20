@@ -232,7 +232,7 @@ bool RhrServer::start(unsigned short port) {
       throw(err);
    }
    m_acceptor.listen();
-   CERR << "forwarding connections on port " << port << std::endl;
+   CERR << "listening for connections on port " << port << std::endl;
 
    m_port = port;
 
@@ -536,8 +536,6 @@ bool RhrServer::handleAnimation(std::shared_ptr<RhrServer::socket> sock, const v
 void
 RhrServer::preFrame() {
 
-   const int wait_msec=0;
-
    if (m_delay) {
       usleep(m_delay);
    }
@@ -610,8 +608,8 @@ namespace {
 
 tileMsg *newTileMsg(const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp, int viewNum, int x, int y, int w, int h) {
 
-   assert(x+w <= vp.width);
-   assert(y+h <= vp.height);
+   assert(x+w <= std::max(0,vp.width));
+   assert(y+h <= std::max(0,vp.height));
 
    tileMsg *message = new tileMsg;
 
@@ -822,7 +820,7 @@ struct EncodeTask: public tbb::task {
             msg.compression &= ~rfbTileSnappy;
         }
 #endif
-        assert(result.payload.size() == msg.size);
+        //assert(result.payload.size() == msg.size);
         resultQueue.push(result);
         return nullptr; // or a pointer to a new task to be executed immediately
     }

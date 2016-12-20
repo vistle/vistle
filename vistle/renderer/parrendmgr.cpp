@@ -311,8 +311,8 @@ void ParallelRemoteRenderManager::finishCurrentView(const IceTImage &img, int ti
       const int bpp = 4;
       const int w = rhr->width(i);
       const int h = rhr->height(i);
-      vassert(w == icetImageGetWidth(img));
-      vassert(h == icetImageGetHeight(img));
+      vassert(std::max(0,w) == icetImageGetWidth(img));
+      vassert(std::max(0,h) == icetImageGetHeight(img));
 
 
       const IceTUByte *color = nullptr;

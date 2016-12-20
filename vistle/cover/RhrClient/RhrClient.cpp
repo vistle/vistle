@@ -54,6 +54,8 @@
 #include <thread>
 #include <mutex>
 
+#include <boost/lexical_cast.hpp>
+
 //#define CONNDEBUG
 
 #ifdef HAVE_SNAPPY
@@ -94,7 +96,9 @@ class RemoteConnection {
     bool m_boundsUpdated = false;
     osg::ref_ptr<osg::Node> boundsNode;
 
-    std::shared_ptr<asio::ip::tcp::socket> m_sock;
+    std::string m_host;
+    unsigned short m_port;
+    asio::ip::tcp::socket m_sock;
     std::recursive_mutex *m_mutex = nullptr;
     std::thread *m_thread = nullptr;
     bool haveMessage = false;
@@ -104,28 +108,31 @@ class RemoteConnection {
 
     RemoteConnection() = delete;
     RemoteConnection(const RemoteConnection& other) = delete;
-    RemoteConnection(RhrClient *plugin, bool isMaster)
+    RemoteConnection(RhrClient *plugin, std::string host, unsigned short port, bool isMaster)
         : plugin(plugin)
+        , m_host(host)
+        , m_port(port)
+        , m_sock(plugin->m_io)
     {
         boundsNode = new osg::Node;
         m_mutex = new std::recursive_mutex;
-        m_running = true;
-        if (isMaster)
+        if (isMaster) {
+            m_running = true;
             m_thread = new std::thread(std::ref(*this));
+        }
+        //m_endpoint
     }
 
     ~RemoteConnection() {
 
         if (!m_thread) {
-            assert(!m_sock);
-            return;
+            assert(!m_sock.is_open());
+        } else {
+            stopThread();
+            m_thread->join();
+            delete m_thread;
         }
-
-        stopThread();
-
-        m_thread->join();
         delete m_mutex;
-        delete m_thread;
     }
 
     void stopThread() {
@@ -136,9 +143,9 @@ class RemoteConnection {
         }
         {
             lock_guard locker(*m_mutex);
-            if (m_sock) {
+            if (m_sock.is_open()) {
                 boost::system::error_code ec;
-                m_sock->shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+                m_sock.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
             }
         }
 
@@ -155,8 +162,6 @@ class RemoteConnection {
         assert(!m_running);
 
         std::cerr << "disconnected from server" << std::endl;
-
-        m_sock.reset();
     }
 
     void operator()() {
@@ -164,10 +169,61 @@ class RemoteConnection {
             lock_guard locker(*m_mutex);
             assert(m_running);
         }
+
+        asio::ip::tcp::resolver resolver(plugin->m_io);
+        asio::ip::tcp::resolver::query query(m_host, boost::lexical_cast<std::string>(m_port));
+        asio::ip::tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
+        boost::system::error_code ec;
+        asio::connect(m_sock, endpoint_iterator, ec);
+        if (ec) {
+            std::cerr << "RhrClient: could not establish connection to " << m_host << ":" << m_port << std::endl;
+            lock_guard locker(*m_mutex);
+            m_running = false;
+            return;
+        }
+
         for (;;) {
-            if (!receive()) {
-                usleep(10000);
+            if (!m_sock.is_open())
+                break;
+
+            message::Buffer buf;
+            auto payload = std::make_shared<std::vector<char>>();
+            bool received = false;
+            bool ok = message::recv(m_sock, buf, received, false, payload.get());
+            if (!ok) {
+                break;
             }
+            if (!received) {
+                lock_guard locker(*m_mutex);
+                if (m_interrupt) {
+                    break;
+                }
+                usleep(10000);
+                continue;
+            }
+
+            if (buf.type() != message::Message::REMOTERENDERING) {
+                std::cerr << "invalid message type received" << std::endl;
+                break;
+            }
+
+            {
+                lock_guard locker(*m_mutex);
+                haveMessage = true;
+                auto &msg = buf.as<RemoteRenderMessage>();
+                auto &rhr = msg.rhr();
+                switch (rhr.type) {
+                case rfbBounds: {
+                    handleBounds(msg, static_cast<const boundsMsg &>(rhr));
+                    break;
+                }
+                case rfbTile: {
+                    handleTile(msg, static_cast<const tileMsg &>(rhr), payload);
+                    break;
+                }
+                }
+            }
+
             lock_guard locker(*m_mutex);
             if (m_interrupt) {
                 break;
@@ -227,13 +283,13 @@ class RemoteConnection {
 
     bool receive() {
 
-        if (!m_sock)
+        if (!m_sock.is_open())
             return false;
 
         message::Buffer buf;
         auto payload = std::make_shared<std::vector<char>>();
         bool received = false;
-        bool ok = message::recv(*m_sock, buf, received, false, payload.get());
+        bool ok = message::recv(m_sock, buf, received, false, payload.get());
         if (!ok) {
             return false;
         }
@@ -268,9 +324,14 @@ class RemoteConnection {
         return m_running;
     }
 
+    bool isConnecting() const {
+        lock_guard locker(*m_mutex);
+        return m_sock.is_open();
+    }
+
     bool isConnected() const {
         lock_guard locker(*m_mutex);
-        return m_sock.get();
+        return m_sock.is_open();
     }
 
     bool messageReceived() {
@@ -289,13 +350,13 @@ class RemoteConnection {
 
     bool send(const message::Message &msg, const std::vector<char> *payload=nullptr) {
         lock_guard locker(*m_mutex);
-        if (m_sock)
-            return message::send(*m_sock, msg, payload);
+        if (m_sock.is_open())
+            return message::send(m_sock, msg, payload);
         else
             return false;
     }
 
-    void requestBounds() {
+    bool requestBounds() {
         lock_guard locker(*m_mutex);
         m_boundsUpdated = false;
 
@@ -303,7 +364,7 @@ class RemoteConnection {
         msg.type = rfbBounds;
         msg.sendreply = 1;
         RemoteRenderMessage rrm(msg);
-        send(rrm);
+        return send(rrm);
     }
 
     void lock() {
@@ -1357,8 +1418,7 @@ RhrClient::preFrame()
        std::vector<void *> md(ntiles), pd(ntiles);
        std::vector<size_t> ms(ntiles), ps(ntiles);
        {
-           if (m_remote)
-               m_remote->lock();
+           std::lock_guard<RemoteConnection> locker(*m_remote);
            for (int i=0; i<ntiles; ++i) {
                TileMessage &tile = m_receivedTiles[i];
                handleTileMessage(tile.msg, tile.payload);
@@ -1389,8 +1449,6 @@ RhrClient::preFrame()
                    channelBase += numChannels;
                }
            }
-           if (m_remote)
-               m_remote->unlock();
        }
        if (broadcastTiles) {
            //std::cerr << "broadcasting " << ntiles << " tiles" << std::endl;
@@ -1416,15 +1474,12 @@ RhrClient::preFrame()
                }
            }
        }
-       if (m_remote)
-           m_remote->lock();
+       std::lock_guard<RemoteConnection> locker(*m_remote);
        for (int i=0;i<ntiles;++i) {
            m_receivedTiles.pop_front();
        }
        if (m_lastTileAt >= 0)
            m_lastTileAt -= ntiles;
-       if (m_remote)
-           m_remote->unlock();
        //assert(m_receivedTiles.empty());
    } else {
        if (broadcastTiles) {
@@ -1546,15 +1601,14 @@ void RhrClient::expandBoundingSphere(osg::BoundingSphere &bs) {
 
     if (coVRMSController::instance()->isMaster()) {
 
-        if (m_remote) {
-            m_remote->requestBounds();
+        if (m_remote && m_remote->requestBounds()) {
 
             double start = cover->currentTime();
             while(m_remote->isRunning()) {
                 double elapsed = cover->currentTime() - start;
                 if (elapsed > 2.) {
                     start = cover->currentTime();
-#if 0
+#if 1
                     std::cerr << "RhrClient: still waiting for bounding sphere from server" << std::endl;
 #else
                     std::cerr << "RhrClient: re-requesting bounding sphere from server" << std::endl;
@@ -1606,15 +1660,18 @@ void RhrClient::requestTimestep(int t) {
 #endif
     } else if (t != m_requestedTimestep) {
         m_requestedTimestep = t;
+        bool requested = false;
         if (m_remote) {
             if (coVRMSController::instance()->isMaster()) {
                 animationMsg msg;
                 msg.current = t;
                 msg.total = coVRAnimationManager::instance()->getNumTimesteps();
                 RemoteRenderMessage rrm(msg);
-                m_remote->send(rrm);
+                requested = m_remote->send(rrm);
             }
-        } else {
+            requested = coVRMSController::instance()->syncBool(requested);
+        }
+        if (!requested) {
             commitTimestep(t);
         }
     }
@@ -1678,7 +1735,7 @@ bool RhrClient::connectClient() {
    m_avgDelay = 0.;
 
    std::cerr << "starting new RemoteConnection" << std::endl;
-   m_remote.reset(new RemoteConnection(this, coVRMSController::instance()->isMaster()));
+   m_remote.reset(new RemoteConnection(this, m_serverHost, m_port, coVRMSController::instance()->isMaster()));
 
    return true;
 }
