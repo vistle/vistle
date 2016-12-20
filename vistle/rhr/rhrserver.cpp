@@ -580,7 +580,6 @@ RhrServer::preFrame() {
                       break;
                   }
                   case rfbTile:
-                  case rfbApplication:
                   default:
                       CERR << "invalid RHR message subtype received" << std::endl;
                       break;

@@ -105,6 +105,7 @@ public:
 private:
    //! make plugin available to static member functions
    static RhrClient *plugin;
+   std::mutex m_mutex;
 
    std::string m_serverHost;
    int m_port;

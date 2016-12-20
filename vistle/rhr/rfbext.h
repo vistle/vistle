@@ -55,8 +55,6 @@ enum {
    rfbLights = 157, //!< send lighting parameters from client to server
    rfbTile = 158, //!< send image tile from server to client
    rfbBounds = 159, //!< send scene bounds from server to client
-   rfbApplication = 160, //!< generic messages between server and client
-   rfbViewConfig, //!< resize a window/view
    rfbAnimation, //!< current/total animation time steps
 };
 
@@ -242,33 +240,6 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
 };
 static_assert(sizeof(tileMsg) < RhrMessageSize, "RHR message too large");
 
-//! view/window config on client changed
-struct V_RHREXPORT viewConfigMsg: public rfbMsg {
-   viewConfigMsg()
-   : rfbMsg(rfbViewConfig)
-   , viewNum(-1)
-   , width(0)
-   , height(0)
-   , nearValue(0.)
-   , farValue(0.)
-   , hsize(0.)
-   , vsize(0.)
-   {
-      memset(screenPos, '\0', sizeof(screenPos));
-      memset(screenRot, '\0', sizeof(screenRot));
-   }
-
-   int16_t viewNum; //!< number of view/window
-   uint16_t width; //!< window width
-   uint16_t height; //!< window height
-   double nearValue; //!< near clipping plane
-   double farValue; //!< far clipping plane
-   double hsize, vsize; //!< physical screen dimensions
-   double screenPos[3]; //!< physical screen position
-   double screenRot[3]; //!< physical screen rotation
-};
-static_assert(sizeof(viewConfigMsg) < RhrMessageSize, "RHR message too large");
-
 //! animation time step on client or no. of animation steps on server changed
 struct V_RHREXPORT animationMsg: public rfbMsg {
    animationMsg()
@@ -394,25 +365,6 @@ struct V_RHREXPORT appAnimationTimestep: public appSubMessage {
    uint32_t total; //!< total number of animation timesteps
    uint32_t current; //!< timestep currently displayed
 };
-
-//! send arbitrary, application dependent messages between server and client
-struct V_RHREXPORT applicationMsg: public rfbMsg {
-   applicationMsg()
-   : rfbMsg(rfbApplication)
-   , appType(0)
-   , version(0)
-   , sendreply(0)
-   , size(0)
-   {
-   }
-
-   uint8_t appType; //!< type of RFB application message
-   uint8_t version; //!< protocol version of RFB application message
-   uint8_t sendreply; //!< request reply
-   uint32_t size; //!< payload size
-   // followed by message-specific sub-header
-};
-static_assert(sizeof(applicationMsg) < RhrMessageSize, "RHR message too large");
 
 //! header for remote hybrid rendering message
 typedef rfbMsg RhrSubMessage;

@@ -228,11 +228,6 @@ class RemoteConnection {
             if (m_interrupt) {
                 break;
             }
-#if 0
-            if (plugin->handleRfbMessages() < 0) {
-                break;
-            }
-#endif
         }
         lock_guard locker(*m_mutex);
         m_running = false;
@@ -272,8 +267,8 @@ class RemoteConnection {
             return true;
         }
 
-        lock_guard locker(*m_mutex);
         auto t = std::make_shared<tileMsg>(tile);
+        std::lock_guard<std::mutex> locker(plugin->m_mutex);
         plugin->m_receivedTiles.push_back(TileMessage(t, payload));
         if (tile.flags & rfbTileLast)
             plugin->m_lastTileAt = plugin->m_receivedTiles.size();
@@ -814,42 +809,6 @@ void RhrClient::enqueueTask(DecodeTask *task) {
    tbb::task::enqueue(*task);
 }
 
-#if 0
-//! handle RFB image tile message
-rfbBool RhrClient::rfbTileMessage(rfbClient *client, rfbServerToClientMsg *message) {
-
-   std::shared_ptr<tileMsg> msg(new tileMsg);
-   if (!ReadFromRFBServer(client, ((char*)(&*msg))+1, sizeof(*msg)-1)) {
-      return TRUE;
-   }
-   std::shared_ptr<char> payload;
-#ifdef CONNDEBUG
-   int flags = msg->flags;
-   bool first = flags&rfbTileFirst;
-   bool last = flags&rfbTileLast;
-   std::cerr << "rfbTileMessage: req: " << msg->requestNumber << ", first: " << first << ", last: " << last << std::endl;
-#endif
-   if (msg->size > 0) {
-      payload.reset(new char[msg->size], array_deleter<char>());
-      if (!ReadFromRFBServer(client, &*payload, msg->size)) {
-         return TRUE;
-      }
-   }
-
-   if (msg->size==0 && msg->width==0 && msg->height==0 && msg->flags == 0) {
-      std::cerr << "received initial tile - ignoring" << std::endl;
-      return TRUE;
-   }
-
-   lock_guard locker(*plugin->m_clientMutex);
-   plugin->m_receivedTiles.push_back(TileMessage(msg, payload));
-   if (msg->flags & rfbTileLast)
-      plugin->m_lastTileAt = plugin->m_receivedTiles.size();
-
-   return TRUE;
-}
-#endif
-
 bool RhrClient::handleTileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<std::vector<char>> payload) {
 
 #ifdef CONNDEBUG
@@ -1320,7 +1279,7 @@ RhrClient::preFrame()
        clientCleanup(m_remote);
    }
 
-   bool connected = coVRMSController::instance()->syncBool(m_remote.get());
+   bool connected = coVRMSController::instance()->syncBool(m_remote && m_remote->isConnected());
    if (m_haveConnection != connected) {
        if (connected)
            cover->getScene()->addChild(m_drawer);
@@ -1380,7 +1339,12 @@ RhrClient::preFrame()
                lastUpdate = cover->frameTime();
            }
 
-           if ((m_lastTileAt >= 0 || cover->frameTime()-lastMatrices>m_avgDelay*0.7) && m_remote && m_remote->isConnected()) {
+           bool sendUpdate = false;
+           {
+               std::lock_guard<std::mutex> locker(m_mutex);
+               sendUpdate = (m_lastTileAt >= 0 || cover->frameTime()-lastMatrices>m_avgDelay*0.7) && m_remote && m_remote->isConnected();
+           }
+           if (sendUpdate) {
                sendLightsMessage(m_remote);
                sendMatricesMessage(m_remote, messages, m_matrixNum++);
                lastMatrices = cover->frameTime();
@@ -1393,6 +1357,7 @@ RhrClient::preFrame()
        else
            coVRAnimationManager::instance()->removeTimestepProvider(this);
 
+       std::lock_guard<std::mutex> locker(m_mutex);
        ntiles = m_receivedTiles.size();
        if (m_lastTileAt >= 0) {
            ntiles = m_lastTileAt;
@@ -1418,7 +1383,7 @@ RhrClient::preFrame()
        std::vector<void *> md(ntiles), pd(ntiles);
        std::vector<size_t> ms(ntiles), ps(ntiles);
        {
-           std::lock_guard<RemoteConnection> locker(*m_remote);
+           std::lock_guard<std::mutex> locker(m_mutex);
            for (int i=0; i<ntiles; ++i) {
                TileMessage &tile = m_receivedTiles[i];
                handleTileMessage(tile.msg, tile.payload);
@@ -1474,7 +1439,8 @@ RhrClient::preFrame()
                }
            }
        }
-       std::lock_guard<RemoteConnection> locker(*m_remote);
+
+       std::lock_guard<std::mutex> locker(m_mutex);
        for (int i=0;i<ntiles;++i) {
            m_receivedTiles.pop_front();
        }
@@ -1717,20 +1683,6 @@ bool RhrClient::connectClient() {
 
    if (m_remote)
       return true;
-
-#if 0
-   if (!m_client) {
-      m_client = rfbGetClient(8, 3, 4);
-      m_client->canHandleNewFBSize = TRUE;
-      m_client->serverHost = NULL;
-
-      m_client->appData.compressLevel = m_compress;
-      m_client->appData.qualityLevel = m_quality;
-
-      m_client->serverHost = strdup(m_serverHost.c_str());
-      m_client->serverPort = m_port;
-   }
-#endif
 
    m_avgDelay = 0.;
 

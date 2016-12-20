@@ -16,11 +16,11 @@ set(renderer_HEADERS
 
 if(LIBVNCSERVER_FOUND AND TBB_FOUND)
    set(renderer_SOURCES ${renderer_SOURCES}
-      vnccontroller.cpp
+      #vnccontroller.cpp
       parrendmgr.cpp
    )
    set(renderer_HEADERS ${renderer_HEADERS}
-      vnccontroller.h
+      #vnccontroller.h
       parrendmgr.h
    )
    include_directories(

@@ -1,6 +1,3 @@
-vistle_find_package(Boost 1.40 REQUIRED COMPONENTS system)
-vistle_find_package(CUDA)
-vistle_find_package(GLEW)
 vistle_find_package(OpenGL)
 vistle_find_package(LibVncServer)
 vistle_find_package(TBB)
@@ -40,7 +37,7 @@ set(RHR_HEADERS
    rhrserver.h
    )
 
-if(LIBVNCSERVER_FOUND AND TBB_FOUND)
+if(LIBVNCSERVER_FOUND AND TBB_FOUND AND FALSE)
    set(RHR_SOURCES ${RHR_SOURCES} vncserver.cpp)
    set(RHR_HEADERS ${RHR_HEADERS} vncserver.h)
    include_directories(
