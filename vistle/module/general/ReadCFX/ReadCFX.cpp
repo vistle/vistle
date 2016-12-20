@@ -233,8 +233,6 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
             char *resultfileName = strdup(resultfiledir);
             m_nzones = cfxExportInit(resultfileName, NULL);
 
-
-
             if (m_nzones < 0) {
                 cfxExportDone();
                 sendError("cfxExportInit could not open %s", resultfileName);
@@ -288,7 +286,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
     return Module::parameterChanged(p);
 }
 
-void ReadCFX::loadGrid() {
+bool ReadCFX::loadGrid() {
     bool readGrid = m_readGrid->getValue();
     UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0)); //initialized with number of elements, number of connectivities, number of coordinates
 
@@ -401,26 +399,21 @@ void ReadCFX::loadGrid() {
 //    delete[] elemtype;
 //    delete[] nodelist;
 
-    return;
+    return true;
 }
 
-void ReadCFX::loadField() {
+bool ReadCFX::loadField() {
 
 
-    std::cerr << "m_boundaryOut[0] = " << m_boundaryOut[0]->getValue() << std::endl;
-    std::cerr << "m_boundaryOut[1] = " << m_boundaryOut[1]->getValue() << std::endl;
-    std::cerr << "m_boundaryOut[2] = " << m_boundaryOut[2]->getValue() << std::endl;
+//    std::cerr << "m_boundaryOut[0] = " << m_boundaryOut[0]->getValue() << std::endl;
+//    std::cerr << "m_boundaryOut[1] = " << m_boundaryOut[1]->getValue() << std::endl;
+//    std::cerr << "m_boundaryOut[2] = " << m_boundaryOut[2]->getValue() << std::endl;
 
 
-    return;
+    return true;
 }
 
-bool ReadCFX::compute() {
-
-    std::cerr << "Compute Start. \n";
-
-    loadGrid();
-
+bool ReadCFX::gatherSelectedRegions() {
     // read zone selection; m_zonesSelected contains a bool array of which zones are selected
         //m_zone(zone) = 1 Zone ist selektiert
         //m_zone(zone) = 0 Zone ist nicht selektiert
@@ -433,25 +426,36 @@ bool ReadCFX::compute() {
 
     cfxExportZoneSet(0,counts);
     m_nregions = counts[cfxCNT_REGION];
-//    m_nnodes = counts[cfxCNT_NODE];
-//    m_nelems = counts[cfxCNT_ELEMENT];
+    m_nnodes = counts[cfxCNT_NODE];
+    m_nelems = counts[cfxCNT_ELEMENT];
 //    m_nvolumes = counts[cfxCNT_VOLUME];
 //    m_nvariables = counts[cfxCNT_VARIABLE];
 
+    return true;
+}
 
-    for(index_t i=1;i<=m_nzones;++i) {
-        if(m_zonesSelected(i)) {
-            if(cfxExportZoneSet(i,counts)<0) {
-                std::cerr << "invalid zone number" << std::endl;
-            }
+bool ReadCFX::compute() {
 
-            loadField();
+    std::cerr << "Compute Start. \n";
 
+    gatherSelectedRegions();
 
+    loadGrid();
 
 
-        }
-    }
+//    for(index_t i=1;i<=m_nzones;++i) {
+//        if(m_zonesSelected(i)) {
+//            if(cfxExportZoneSet(i,counts)<0) {
+//                std::cerr << "invalid zone number" << std::endl;
+//            }
+
+//            loadField();
+
+
+
+
+//        }
+//    }
 
 
 

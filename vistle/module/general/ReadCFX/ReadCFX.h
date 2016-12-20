@@ -49,7 +49,7 @@ class ReadCFX: public vistle::Module {
    std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
    vistle::coRestraint m_zonesSelected;
 
-   vistle::Index m_nregions, m_nelems, m_nzones, m_nnodes; //nscalars, nvectors, nparticleTracks, nparticleTypes
+   vistle::Index m_nregions, m_nelems, m_nzones, m_nnodes; // m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
 
 
    //Ports
@@ -70,8 +70,9 @@ class ReadCFX: public vistle::Module {
 
    //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
    int rankForBlock(int processor) const;
-   void loadGrid();
-   void loadField();
+   bool loadGrid();
+   bool loadField();
+   bool gatherSelectedRegions();
 
 };
 
