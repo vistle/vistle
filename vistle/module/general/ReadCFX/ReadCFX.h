@@ -49,7 +49,7 @@ class ReadCFX: public vistle::Module {
    std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
    vistle::coRestraint m_zonesSelected;
 
-   vistle::Index m_nregions, m_nelems, m_nzones, m_nnodes; // m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
+   vistle::Index m_nelems, m_nzones, m_nnodes; // m_nregions, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
 
 
    //Ports
