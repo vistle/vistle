@@ -67,11 +67,13 @@ class ReadCFX: public vistle::Module {
    //std::string _theFile;
 
    vistle::UnstructuredGrid::ptr grid;
+   boost::shared_ptr<std::int32_t> m_selectedRegions;
 
    //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
    int rankForBlock(int processor) const;
-   void loadGrid();
-   void loadField();
+   bool loadGrid();
+   bool loadField();
+   bool collectRegions();
 
 };
 
