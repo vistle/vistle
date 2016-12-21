@@ -288,6 +288,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
 
 bool ReadCFX::loadGrid() {
     bool readGrid = m_readGrid->getValue();
+    //Unstructured Grid mit nnodes initialisieren
     UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0)); //initialized with number of elements, number of connectivities, number of coordinates
 
     if(readGrid) {
@@ -308,6 +309,8 @@ bool ReadCFX::loadGrid() {
 //            grid->x().push_back(*(x_coord));
 //            grid->y().push_back(*(y_coord));
 //            grid->z().push_back(*(z_coord));
+            // grid mit .data() befuellen
+
             grid->x().push_back(*x_coord.get());
             grid->y().push_back(*y_coord.get());
             grid->z().push_back(*z_coord.get());
@@ -413,23 +416,40 @@ bool ReadCFX::loadField() {
     return true;
 }
 
-bool ReadCFX::gatherSelectedRegions() {
+bool ReadCFX::collectRegions() {
     // read zone selection; m_zonesSelected contains a bool array of which zones are selected
-        //m_zone(zone) = 1 Zone ist selektiert
-        //m_zone(zone) = 0 Zone ist nicht selektiert
+        //m_zonesSelected(zone) = 1 Zone ist selektiert
+        //m_zonesSelected(zone) = 0 Zone ist nicht selektiert
         //group = -1 alle Zonen sind selektiert
     m_zonesSelected.clear();
     m_zonesSelected.add(m_zoneSelection->getValue());
-    ssize_t val = m_zonesSelected.getNumGroups();
-    ssize_t group;
+    ssize_t val = m_zonesSelected.getNumGroups(), group;
     m_zonesSelected.get(val,group);
 
-    cfxExportZoneSet(0,counts);
-    m_nregions = counts[cfxCNT_REGION];
-    m_nnodes = counts[cfxCNT_NODE];
-    m_nelems = counts[cfxCNT_ELEMENT];
+
+//    cfxExportZoneSet(0,counts);
+//    m_nregions = counts[cfxCNT_REGION];
+//    std::cerr << "m_nregions = " << m_nregions << std::endl;
+//    for(index_t i=1;i<m_nregions+1;++i) {
+//        std::cerr << "regionName1 = " << cfxExportRegionName((int) i) << std::endl;
+//    }
+//    m_nnodes = counts[cfxCNT_NODE];
+//    m_nelems = counts[cfxCNT_ELEMENT];
 //    m_nvolumes = counts[cfxCNT_VOLUME];
 //    m_nvariables = counts[cfxCNT_VARIABLE];
+
+    for(index_t i=1;i<=m_nzones;++i) {
+        if(m_zonesSelected(i)) {
+            if(cfxExportZoneSet(i,NULL)<0) {
+                std::cerr << "invalid zone number" << std::endl;
+            }
+            int nregions = cfxExportRegionCount();
+            for(int j=1;j<nregions+1;++j) {
+                std::cerr << "regionName = " << cfxExportRegionName((int) j) << std::endl;
+                //m_selectedRegions.get()[]=j;
+            }
+        }
+    }
 
     return true;
 }
@@ -438,25 +458,9 @@ bool ReadCFX::compute() {
 
     std::cerr << "Compute Start. \n";
 
-    gatherSelectedRegions();
-
     loadGrid();
-
-
-//    for(index_t i=1;i<=m_nzones;++i) {
-//        if(m_zonesSelected(i)) {
-//            if(cfxExportZoneSet(i,counts)<0) {
-//                std::cerr << "invalid zone number" << std::endl;
-//            }
-
-//            loadField();
-
-
-
-
-//        }
-//    }
-
+    loadField();
+    collectRegions();
 
 
 //    for(t = t1; t <= t2; t++) {
