@@ -39,7 +39,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+//    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
 
     // time parameters
@@ -291,6 +292,26 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
 }
 
 bool ReadCFX::loadGrid(int regionNr) {
+
+    if(cfxExportZoneSet(m_selectedRegions[regionNr].zoneFlag,counts) < 0) {
+        std::cerr << "invalid zone number" << std::endl;
+    }
+    std::cerr << "m_selectedRegions[regionNr].regionID = " << m_selectedRegions[regionNr].regionID << "; m_selectedRegions[regionNr].zoneFlag = " << m_selectedRegions[regionNr].zoneFlag << std::endl;
+
+    //boost::shared_ptr<std::int32_t> nodesInSelRegion(new int), elmtsInSelRegion(new int);
+    int *nodesInSelRegion = new int;
+    nodesInSelRegion = cfxExportRegionList(m_selectedRegions[regionNr].regionID,cfxREG_NODES);
+    for(int i=0;i<10;++i) {
+        std::cerr << "*nodesInSelRegion[i] = " << nodesInSelRegion[i] << std::endl;
+    }
+    std::cerr << "Anzahl der Nodes in Zone = " << cfxExportNodeCount() << std::endl;
+
+    //std::cerr << "m_nnodes = " << m_nnodes << std::endl;
+
+
+
+    cfxExportRegionFree(m_selectedRegions[regionNr].regionID);
+
     //Unstructured Grid mit nnodes initialisieren
     UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0)); //initialized with number of elements, number of connectivities, number of coordinates
 
@@ -453,9 +474,36 @@ bool ReadCFX::compute() {
     int numbSelRegions = collectRegions();
 //for Schleife über alle Regions, für jede Region ein unstructured grid
     for(int i=0;i<numbSelRegions;++i) {
-        loadGrid(i);
-        loadField(i);
+        //loadGrid(i);
+        //loadField(i);
     }
+
+
+      int *nodesinVolume;
+    for(index_t i=0;i<=m_nzones;++i) {
+        cfxExportZoneSet(i,counts);
+        std::cerr << "Zone = " << i << "; Nodes = " << counts[cfxCNT_NODE] << "; volumes = " << counts[cfxCNT_VOLUME] << std::endl << std::endl;
+
+        for(int j=1;j<=counts[cfxCNT_VOLUME];++j) {
+            std::cerr << "Size of nodes in region = " << cfxExportVolumeSize(j,cfxVOL_NODES) << std::endl;
+            std::cerr << "Name of region = " << cfxExportVolumeName(j) << std::endl;
+            nodesinVolume = cfxExportVolumeList(j,cfxVOL_NODES);
+//            for(int k=0;k<10;k++) {
+//                std::cerr << "nodes = " << nodesinVolume[k] << std::endl;
+//            }
+            cfxExportVolumeFree(j);
+        }
+
+
+
+
+    }
+
+
+
+
+
+
 
 
 //    for(t = t1; t <= t2; t++) {
