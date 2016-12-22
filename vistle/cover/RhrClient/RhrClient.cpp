@@ -585,9 +585,9 @@ struct DecodeTask: public tbb::task {
          TjContext::reference tj = tjContexts.local();
          char *dest = msg->format==rfbColorRGBA ? rgba : depth;
          int w=-1, h=-1;
-         tjDecompressHeader(tj.handle, reinterpret_cast<unsigned char *>(payload.get()), msg->size, &w, &h);
+         tjDecompressHeader(tj.handle, reinterpret_cast<unsigned char *>(payload->data()), msg->size, &w, &h);
          dest += (msg->y*msg->totalwidth+msg->x)*bpp;
-         int ret = tjDecompress(tj.handle, reinterpret_cast<unsigned char *>(payload.get()), msg->size, reinterpret_cast<unsigned char *>(dest), msg->width, msg->totalwidth*bpp, msg->height, bpp, TJPF_BGR);
+         int ret = tjDecompress(tj.handle, reinterpret_cast<unsigned char *>(payload->data()), msg->size, reinterpret_cast<unsigned char *>(dest), msg->width, msg->totalwidth*bpp, msg->height, bpp, TJPF_BGR);
          if (ret == -1)
             std::cerr << "RhrClient: JPEG error: " << tjGetErrorStr() << std::endl;
 #else
