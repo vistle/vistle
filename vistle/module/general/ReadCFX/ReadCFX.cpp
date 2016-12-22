@@ -50,7 +50,6 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     setParameterMinimum<Float>(m_stoptime, 0.);
     m_timeskip = addIntParameter("timeskip", "skip this many timesteps after reading one", 0);
     setParameterMinimum<Integer>(m_timeskip, 0);
-    m_readGrid = addIntParameter("read_grid", "load the grid?", 1, Parameter::Boolean);
 
     //zone selection
     m_zoneSelection = addStringParameter("zones","select zone numbers e.g. 1,4,6-10","all");
@@ -234,9 +233,9 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
             m_nzones = cfxExportInit(resultfileName, counts);
                 m_nnodes = counts[cfxCNT_NODE];
                 m_nelems = counts[cfxCNT_ELEMENT];
+                m_nregions = counts[cfxCNT_REGION];
                 //m_nvolumes = counts[cfxCNT_VOLUME];
                 //m_nvars = counts[cfxCNT_VARIABLE];
-                m_nregions = counts[cfxCNT_REGION];
 
             if (m_nzones < 0) {
                 cfxExportDone();
@@ -291,44 +290,43 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
     return Module::parameterChanged(p);
 }
 
-bool ReadCFX::loadGrid() {
-    bool readGrid = m_readGrid->getValue();
+bool ReadCFX::loadGrid(int regionNr) {
     //Unstructured Grid mit nnodes initialisieren
     UnstructuredGrid::ptr grid(new UnstructuredGrid(0, 0, 0)); //initialized with number of elements, number of connectivities, number of coordinates
 
-    if(readGrid) {
-        if(cfxExportZoneSet(0,NULL)<0) { //0 means global zone (all zones)
-            std::cerr << "invalid zone number" << std::endl;
-        }
 
-        //load nodes into unstructured grid
-        boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
-
-        m_nnodes = cfxExportNodeCount();
-        nodeList = cfxExportNodeList(); //load coordinates into array with structs, each struct containing x,y,z of one node
-        for(index_t nodeid=1;nodeid<=m_nnodes;++nodeid) {
-            if(!cfxExportNodeGet(nodeid,x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates
-                std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
-            }
-
-            // grid mit .data() befuellen
-
-            grid->x().push_back(*x_coord.get());
-            grid->y().push_back(*y_coord.get());
-            grid->z().push_back(*z_coord.get());
-        }
-
-
-        //Test, ob Einlesen funktioniert hat
-//        std::cerr << "m_nnodes = " << m_nnodes << std::endl;
-//        std::cerr << "grid->getNumCoords()" << grid->getNumCoords() << std::endl;
-//        std::cerr << "x,y,z (0)" << grid->x().at(0) << ", " << grid->y().at(0) << ", " << grid->z().at(0) << std::endl;
-//        std::cerr << "x,y,z (1)" << grid->x().at(1) << ", " << grid->y().at(1) << ", " << grid->z().at(1) << std::endl;
-//        std::cerr << "x,y,z (10)" << grid->x().at(10) << ", " << grid->y().at(10) << ", " << grid->z().at(10) << std::endl;
-//        std::cerr << "x,y,z (m_nnodes-1)" << grid->x().at(m_nnodes-1) << ", " << grid->y().at(m_nnodes-1) << ", " << grid->z().at(m_nnodes-1) << std::endl;
-
-        cfxExportNodeFree();
+    if(cfxExportZoneSet(0,NULL)<0) { //0 means global zone (all zones)
+        std::cerr << "invalid zone number" << std::endl;
     }
+
+    //load nodes into unstructured grid
+    boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
+
+    m_nnodes = cfxExportNodeCount();
+    nodeList = cfxExportNodeList(); //load coordinates into array with structs, each struct containing x,y,z of one node
+    for(index_t nodeid=1;nodeid<=m_nnodes;++nodeid) {
+        if(!cfxExportNodeGet(nodeid,x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates
+            std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
+        }
+
+        // grid mit .data() befuellen
+
+        grid->x().push_back(*x_coord.get());
+        grid->y().push_back(*y_coord.get());
+        grid->z().push_back(*z_coord.get());
+    }
+
+
+    //Test, ob Einlesen funktioniert hat
+    //        std::cerr << "m_nnodes = " << m_nnodes << std::endl;
+    //        std::cerr << "grid->getNumCoords()" << grid->getNumCoords() << std::endl;
+    //        std::cerr << "x,y,z (0)" << grid->x().at(0) << ", " << grid->y().at(0) << ", " << grid->z().at(0) << std::endl;
+    //        std::cerr << "x,y,z (1)" << grid->x().at(1) << ", " << grid->y().at(1) << ", " << grid->z().at(1) << std::endl;
+    //        std::cerr << "x,y,z (10)" << grid->x().at(10) << ", " << grid->y().at(10) << ", " << grid->z().at(10) << std::endl;
+    //        std::cerr << "x,y,z (m_nnodes-1)" << grid->x().at(m_nnodes-1) << ", " << grid->y().at(m_nnodes-1) << ", " << grid->z().at(m_nnodes-1) << std::endl;
+
+    cfxExportNodeFree();
+
 
 
     //load element types, element list and connectivity list into unstructured grid
@@ -401,7 +399,7 @@ bool ReadCFX::loadGrid() {
     return true;
 }
 
-bool ReadCFX::loadField() {
+bool ReadCFX::loadField(int regionNr) {
 
 
 //    std::cerr << "m_boundaryOut[0] = " << m_boundaryOut[0]->getValue() << std::endl;
@@ -412,7 +410,7 @@ bool ReadCFX::loadField() {
     return true;
 }
 
-bool ReadCFX::collectRegions() {
+int ReadCFX::collectRegions() {
     // read zone selection; m_zonesSelected contains a bool array of which zones are selected
         //m_zonesSelected(zone) = 1 Zone ist selektiert
         //m_zonesSelected(zone) = 0 Zone ist nicht selektiert
@@ -422,9 +420,8 @@ bool ReadCFX::collectRegions() {
     ssize_t val = m_zonesSelected.getNumGroups(), group;
     m_zonesSelected.get(val,group);
 
-    index_t k=0;
-//    m_selectedRegions.reserve(m_nregions);
-    m_selectedRegions.reserve(4);
+    int k=0;
+    m_selectedRegions.reserve(m_nregions);
 
     for(index_t i=1;i<=m_nzones;++i) {
         if(m_zonesSelected(i)) {
@@ -433,7 +430,7 @@ bool ReadCFX::collectRegions() {
             }
             int nregions = cfxExportRegionCount();
             for(int j=1;j<nregions+1;++j) {
-                std::cerr << "regionName = " << cfxExportRegionName((int) j) << std::endl;
+                //std::cerr << "regionName = " << cfxExportRegionName((int) j) << std::endl;
                 m_selectedRegions[k]=RegionIdWithZoneFlag(j,i);
                 k++;
             }
@@ -441,21 +438,25 @@ bool ReadCFX::collectRegions() {
     }
 
     //zum Testen
-    for(index_t i=0;i<k;++i) {
-        std::cerr << "m_selectedRegions[" << i << "].regionID = " << m_selectedRegions[i].regionID << " m_selectedRegions.zoneFlag" << m_selectedRegions[i].zoneFlag << std::endl;
-    }
+//    for(index_t i=0;i<k;++i) {
+//        std::cerr << "m_selectedRegions[" << i << "].regionID = " << m_selectedRegions[i].regionID << " m_selectedRegions.zoneFlag" << m_selectedRegions[i].zoneFlag << std::endl;
+//    }
 
-    return true;
+    return k;
 }
 
 bool ReadCFX::compute() {
 
     std::cerr << "Compute Start. \n";
 
-    collectRegions();
+
+    int numbSelRegions = collectRegions();
 //for Schleife über alle Regions, für jede Region ein unstructured grid
-    loadGrid();
-    loadField();
+    for(int i=0;i<numbSelRegions;++i) {
+        loadGrid(i);
+        loadField(i);
+    }
+
 
 //    for(t = t1; t <= t2; t++) {
 //    ts = cfxExportTimestepNumGet(t);

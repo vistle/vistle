@@ -57,7 +57,7 @@ class ReadCFX: public vistle::Module {
    vistle::StringParameter *m_resultfiledir, *m_zoneSelection;
    vistle::FloatParameter *m_starttime, *m_stoptime;
    vistle::IntParameter *m_timeskip;
-   vistle::IntParameter *m_readGrid, *m_readBoundary; // *m_boundaryPatchesAsVariants;
+   vistle::IntParameter *m_readBoundary; // *m_boundaryPatchesAsVariants;
    std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
    vistle::coRestraint m_zonesSelected;
 
@@ -83,9 +83,9 @@ class ReadCFX: public vistle::Module {
 
    //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
    int rankForBlock(int processor) const;
-   bool loadGrid();
-   bool loadField();
-   bool collectRegions();
+   bool loadGrid(int regionNr);
+   bool loadField(int regionNr);
+   int collectRegions();
 
 };
 
