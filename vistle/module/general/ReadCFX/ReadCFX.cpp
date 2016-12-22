@@ -39,8 +39,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
 
     // time parameters
     m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
@@ -236,7 +236,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
                 m_nelems = counts[cfxCNT_ELEMENT];
                 //m_nvolumes = counts[cfxCNT_VOLUME];
                 //m_nvars = counts[cfxCNT_VARIABLE];
-                //m_nregions = counts[cfxCNT_REGION];
+                m_nregions = counts[cfxCNT_REGION];
 
             if (m_nzones < 0) {
                 cfxExportDone();
@@ -422,12 +422,9 @@ bool ReadCFX::collectRegions() {
     ssize_t val = m_zonesSelected.getNumGroups(), group;
     m_zonesSelected.get(val,group);
 
-
-//    std::cerr << "m_nregions = " << m_nregions << std::endl;
-//    for(index_t i=1;i<m_nregions+1;++i) {
-//        std::cerr << "regionName1 = " << cfxExportRegionName((int) i) << std::endl;
-//    }
-
+    index_t k=0;
+//    m_selectedRegions.reserve(m_nregions);
+    m_selectedRegions.reserve(4);
 
     for(index_t i=1;i<=m_nzones;++i) {
         if(m_zonesSelected(i)) {
@@ -437,9 +434,15 @@ bool ReadCFX::collectRegions() {
             int nregions = cfxExportRegionCount();
             for(int j=1;j<nregions+1;++j) {
                 std::cerr << "regionName = " << cfxExportRegionName((int) j) << std::endl;
-                //m_selectedRegions.get()[]=j;
+                m_selectedRegions[k]=RegionIdWithZoneFlag(j,i);
+                k++;
             }
         }
+    }
+
+    //zum Testen
+    for(index_t i=0;i<k;++i) {
+        std::cerr << "m_selectedRegions[" << i << "].regionID = " << m_selectedRegions[i].regionID << " m_selectedRegions.zoneFlag" << m_selectedRegions[i].zoneFlag << std::endl;
     }
 
     return true;

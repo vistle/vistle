@@ -13,6 +13,18 @@
 
 typedef vistle::Index index_t;
 
+struct RegionIdWithZoneFlag {
+
+    RegionIdWithZoneFlag(index_t r
+                         , index_t z) {
+        regionID=r;
+        zoneFlag=z;
+    }
+
+    index_t regionID;
+    index_t zoneFlag;
+};
+
 class CaseInfo {
 public:
     CaseInfo();
@@ -49,7 +61,7 @@ class ReadCFX: public vistle::Module {
    std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
    vistle::coRestraint m_zonesSelected;
 
-   vistle::Index m_nelems, m_nzones, m_nnodes; // m_nregions, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
+   vistle::Index m_nelems, m_nzones, m_nnodes, m_nregions; // m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
 
 
    //Ports
@@ -67,7 +79,7 @@ class ReadCFX: public vistle::Module {
    //std::string _theFile;
 
    vistle::UnstructuredGrid::ptr grid;
-   boost::shared_ptr<std::int32_t> m_selectedRegions;
+   std::vector<RegionIdWithZoneFlag> m_selectedRegions;
 
    //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
    int rankForBlock(int processor) const;
