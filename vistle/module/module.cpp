@@ -561,11 +561,9 @@ void Module::setParameterChoices(const std::string &name, const std::vector<std:
 
 void Module::setParameterChoices(Parameter *param, const std::vector<std::string> &choices)
 {
-   if (choices.size() <= message::param_num_choices) {
-      message::SetParameterChoices sc(param->getName(), choices);
-      sc.setDestId(Id::ForBroadcast);
-      sendMessage(sc);
-   }
+    message::SetParameterChoices sc(param->getName(), choices);
+    sc.setDestId(Id::ForBroadcast);
+    sendMessage(sc);
 }
 
 template<class T>
