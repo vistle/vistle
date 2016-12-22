@@ -51,10 +51,10 @@ const size_t RhrMessageSize = 840;
 
 //! RFB protocol extension message types for remote hybrid rendering (RHR)
 enum {
-   rfbMatrices =  156, //!< send matrices from client to server
-   rfbLights = 157, //!< send lighting parameters from client to server
-   rfbTile = 158, //!< send image tile from server to client
-   rfbBounds = 159, //!< send scene bounds from server to client
+   rfbMatrices, //!< send matrices from client to server
+   rfbLights, //!< send lighting parameters from client to server
+   rfbTile, //!< send image tile from server to client
+   rfbBounds, //!< send scene bounds from server to client
    rfbAnimation, //!< current/total animation time steps
 };
 
@@ -252,119 +252,6 @@ struct V_RHREXPORT animationMsg: public rfbMsg {
    uint32_t current; //!< timestep currently displayed
 };
 static_assert(sizeof(animationMsg) < RhrMessageSize, "RHR message too large");
-
-//! paylod of application dependent messages, \see applicationMsg
-enum rfbApplicationTypes {
-
-   rfbInvalid, //!< invalid application message type
-   rfbScreenConfig, //!< update screen configuration
-   rfbAddObject, //!< data object was added on server
-   rfbRemoveObject, //!< data object was removed on server
-   rfbFeedback, //!< send feedback info (module parameter changes, ...) from client to server
-   rfbAnimationTimestep, //!< send number of timesteps and current timestep from client to server or number of timesteps from server to client
-};
-
-//! paylod of rfbApplication message, \see applicationMsg
-struct V_RHREXPORT appSubMessage {
-};
-
-//! screen config on client changed
-struct V_RHREXPORT appScreenConfig: public appSubMessage {
-   appScreenConfig()
-   : viewNum(-1)
-   , width(0)
-   , height(0)
-   , nearValue(0.)
-   , farValue(0.)
-   , hsize(0.)
-   , vsize(0.)
-   {
-      memset(screenPos, '\0', sizeof(screenPos));
-      memset(screenRot, '\0', sizeof(screenRot));
-   }
-
-   int16_t viewNum; //!< number of view/window
-   uint16_t width; //!< window width
-   uint16_t height; //!< window height
-   double nearValue; //!< near clipping plane
-   double farValue; //!< far clipping plane
-   double hsize, vsize; //!< physical screen dimensions
-   double screenPos[3]; //!< physical screen position
-   double screenRot[3]; //!< physical screen rotation
-};
-
-//! data object was added on server, sub-header of corresponding message
-struct V_RHREXPORT appAddObject: public appSubMessage {
-   appAddObject()
-   : namelen(0)
-   , nattrib(0)
-   , geonamelen(0)
-   , normnamelen(0)
-   , colnamelen(0)
-   , texnamelen(0)
-   , isbase(0)
-   {}
-
-   uint32_t namelen; //!< length of name of object being added
-   uint32_t nattrib; //!< number of attributes
-   uint32_t geonamelen; //!< length of name of referenced geometry object
-   uint32_t normnamelen; //!< length of name of referenced normals object
-   uint32_t colnamelen; //!< length of name of referenced color object
-   uint32_t texnamelen; //!< length of name of referenced texture object
-   uint8_t isbase; //!< wether object is a container object
-   // followed by name; names for geometry, normals, colors and texture
-   // objects; and attributes
-};
-
-//! header for a single attribute
-struct V_RHREXPORT appAttribute {
-   appAttribute()
-   : namelen(0)
-   , valuelen(0)
-   {}
-
-   uint32_t namelen; //!< length of attribute name
-   uint32_t valuelen; //!< length of attribute value
-   // followed by name and value
-};
-
-
-//! send feedback info (module parameter changes, ...) from client to server, sub-header of corresponding message
-struct V_RHREXPORT appFeedback: public appSubMessage {
-   appFeedback()
-   : infolen(0)
-   , keylen(0)
-   , datalen(0)
-   {}
-
-   uint32_t infolen; //!< length of feedback info
-   uint32_t keylen; //!< length of feedback key
-   uint32_t datalen; //!< length of additional feedback data
-   // followed by info, key, and data
-};
-
-//! data object was removed on server, sub-header of corresponding message
-struct V_RHREXPORT appRemoveObject: public appSubMessage {
-   appRemoveObject()
-   : namelen(0)
-   , replace(0)
-   {}
-
-   uint32_t namelen; //!< length of name of object to be removed
-   uint8_t replace; //!< whether object will be replaced
-   // followed by name
-};
-
-//! control animation timesteps
-struct V_RHREXPORT appAnimationTimestep: public appSubMessage {
-   appAnimationTimestep()
-   : total(0)
-   , current(0)
-   {}
-
-   uint32_t total; //!< total number of animation timesteps
-   uint32_t current; //!< timestep currently displayed
-};
 
 //! header for remote hybrid rendering message
 typedef rfbMsg RhrSubMessage;

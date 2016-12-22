@@ -52,12 +52,13 @@ struct TjComp {
 
 typedef tbb::enumerable_thread_specific<TjComp> TjContext;
 static TjContext tjContexts;
+
+}
 #endif
 
+namespace vistle {
+
 RhrServer *RhrServer::plugin = NULL;
-
-
-
 
 //! called when plugin is loaded
 RhrServer::RhrServer(unsigned short port)
@@ -389,91 +390,6 @@ bool RhrServer::handleLights(std::shared_ptr<socket> sock, const RemoteRenderMes
 
    return true;
 }
-
-#if 0
-//! send generic application message to a client
-void RhrServer::sendApplicationMessage(rfbClientPtr cl, int type, int length, const char *data) {
-
-   applicationMsg msg;
-   msg.type = rfbApplication;
-   msg.appType = type;
-   msg.sendreply = 0;
-   msg.version = 0;
-   msg.size = length;
-
-   if (rfbWriteExact(cl, (char *)&msg, sizeof(msg)) < 0) {
-      rfbLogPerror("sendApplicationMessage: write");
-   }
-   if (rfbWriteExact(cl, data, msg.size) < 0) {
-      rfbLogPerror("sendApplicationMessage: write data");
-   }
-}
-
-//! send generic application message to all connected clients
-void RhrServer::broadcastApplicationMessage(int type, int length, const char *data) {
-
-   sendApplicationMessage(nullptr, type, length, data);
-}
-#endif
-
-#if 0
-//! handle generic application message
-bool RhrServer::handleApplicationMessage(rfbClientPtr cl, void *data,
-      const rfbClientToServerMsg *message) {
-
-   if (message->type != rfbApplication)
-      return FALSE;
-
-   if (true /* TODO: how to check for new client */ )
-   {
-       std::cerr << "new client -> sending num timesteps: " << plugin->m_numTimesteps << std::endl;
-       appAnimationTimestep app;
-       app.current = plugin->m_imageParam.timestep;
-       app.total = plugin->m_numTimesteps;
-       sendApplicationMessage(cl, rfbAnimationTimestep, sizeof(app), (char *)&app);
-   }
-
-   applicationMsg msg;
-   int n = rfbReadExact(cl, ((char *)&msg)+1, sizeof(msg)-1);
-   if (n <= 0) {
-      if (n!= 0)
-         rfbLogPerror("handleApplicationMessage: read");
-      rfbCloseClient(cl);
-      return TRUE;
-   }
-   std::vector<char> buf(msg.size);
-   n = rfbReadExact(cl, &buf[0], msg.size);
-   if (n <= 0) {
-      if (n!= 0)
-         rfbLogPerror("handleApplicationMessage: read data");
-      rfbCloseClient(cl);
-      return TRUE;
-   }
-
-   if (plugin->m_appHandler) {
-      bool handled = plugin->m_appHandler(msg.appType, buf);
-      if (handled)
-         return TRUE;
-   }
-
-   switch (msg.appType) {
-      case rfbFeedback:
-      {
-         // not needed: handled via vistle connection
-      }
-      break;
-      case rfbAnimationTimestep: {
-         appAnimationTimestep app;
-         memcpy(&app, &buf[0], sizeof(app));
-         plugin->m_imageParam.timestep = app.current;
-         std::cerr << "vnc: app timestep: " << app.current << std::endl;
-      }
-      break;
-   }
-
-   return TRUE;
-}
-#endif
 
 unsigned RhrServer::timestep() const {
 

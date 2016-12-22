@@ -855,74 +855,6 @@ bool RhrClient::handleTileMessage(std::shared_ptr<tileMsg> msg, std::shared_ptr<
    return true;
 }
 
-#if 0
-//! send RFB application message to server
-void RhrClient::sendApplicationMessage(rfbClient *client, int type, int length, const void *data) {
-
-   if (!client)
-      return;
-
-   applicationMsg msg;
-   msg.type = rfbApplication;
-   msg.appType = type;
-   msg.version = 0;
-   msg.sendreply = 0;
-   msg.size = length;
-
-   lock_guard locker(*plugin->m_clientMutex);
-   if(!WriteToRFBServer(client, (char *)&msg, sizeof(msg))) {
-      rfbClientLog("sendApplicationMessage: write error(%d: %s)", errno, strerror(errno));
-   }
-   if(!WriteToRFBServer(client, (char *)data, length)) {
-      rfbClientLog("sendApplicationMessage: write data error(%d: %s)", errno, strerror(errno));
-   }
-}
-#endif
-
-#if 0
-//! handle RFB application message
-rfbBool RhrClient::rfbApplicationMessage(rfbClient *client, rfbServerToClientMsg *message) {
-
-   if (message->type != rfbApplication)
-      return FALSE;
-
-   if (!rfbClientGetClientData(client, (void *)rfbApplicationMessage)) {
-      rfbClientSetClientData(client, (void *)rfbApplicationMessage, (void *)1);
-      std::cerr << "rfbApplication enabled" << std::endl;
-
-      applicationMsg msg;
-      msg.type = rfbApplication;
-      msg.appType = 0;
-      msg.sendreply = 0;
-      msg.version = 0;
-      msg.size = 0;
-      lock_guard locker(*plugin->m_clientMutex);
-      WriteToRFBServer(client, (char *)&msg, sizeof(msg));
-   }
-
-   applicationMsg msg;
-   if (!ReadFromRFBServer(client, ((char*)&msg)+1, sizeof(msg)-1))
-      return TRUE;
-
-   std::vector<char> buf(msg.size);
-   if (!ReadFromRFBServer(client, &buf[0], msg.size)) {
-         return TRUE;
-   }
-
-
-   switch(msg.appType) {
-      case rfbAnimationTimestep: {
-         lock_guard locker(*plugin->m_clientMutex);
-         appAnimationTimestep app;
-         memcpy(&app, &buf[0], sizeof(app));
-         plugin->m_numRemoteTimesteps = app.total;
-      }
-      break;
-   }
-
-   return TRUE;
-}
-#endif
 
 //! called when plugin is loaded
 RhrClient::RhrClient()
@@ -1646,42 +1578,6 @@ void RhrClient::requestTimestep(int t) {
         }
     }
 }
-
-#if 0
-//! returns number of handled messages, -1 on error
-int RhrClient::handleRfbMessages()
-{
-   if (!m_sock)
-      return -1;
-
-   message::Buffer buf;
-   std::vector<char> payload;
-   bool received = false;
-   bool ok = message::recv(*m_sock, buf, received, false, &payload);
-   if (!ok) {
-       return -1;
-   }
-   if (!received) {
-       return 0;
-   }
-
-   if (buf.type() != message::Message::REMOTERENDERING) {
-       std::cerr << "invalid message type received" << std::endl;
-       return -1;
-   }
-
-   lock_guard locker(*m_clientMutex);
-   auto &msg = buf.as<RemoteRenderMessage>();
-   auto &rhr = msg.rhr();
-   switch (rhr.type) {
-   case rfbBounds: {
-       break;
-   }
-   }
-
-   return 1;
-}
-#endif
 
 bool RhrClient::connectClient() {
 

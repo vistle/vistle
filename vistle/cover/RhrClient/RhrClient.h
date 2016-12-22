@@ -16,11 +16,6 @@
 
 #include <cover/coVRPluginSupport.h>
 
-#if 0
-#include <rfb/rfb.h>
-#include <rfb/rfbclient.h>
-#endif
-
 #include <rhr/rfbext.h>
 
 #include <tbb/concurrent_queue.h>
