@@ -193,11 +193,13 @@ class RemoteConnection {
             if (!ok) {
                 break;
             }
-            if (!received) {
+            {
                 lock_guard locker(*m_mutex);
                 if (m_interrupt) {
                     break;
                 }
+            }
+            if (!received) {
                 usleep(10000);
                 continue;
             }
