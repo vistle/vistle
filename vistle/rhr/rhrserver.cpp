@@ -29,10 +29,10 @@
 //#define QUANT_ERROR
 //#define TIMING
 
+#define CERR std::cerr << "RHR: "
+
 #ifdef HAVE_TURBOJPEG
 #include <turbojpeg.h>
-
-#define CERR std::cerr << "RHR: "
 
 
 namespace vistle {
@@ -542,58 +542,59 @@ RhrServer::preFrame() {
 
    m_io.poll();
    if (m_clientSocket) {
-      std::shared_ptr<boost::asio::ip::tcp::socket> sock;
-      size_t avail = 0;
-      asio::socket_base::bytes_readable command(true);
-      m_clientSocket->io_control(command);
-      if (command.get() > 0) {
-          avail = command.get();
-      }
-      if (avail >= sizeof(message::RemoteRenderMessage)) {
-          message::Buffer msg;
-          bool received = false;
-          std::vector<char> payload;
-          if (message::recv(*m_clientSocket, msg, received, false, &payload) && received) {
-              switch(msg.type()) {
-              case message::Message::REMOTERENDERING: {
-                  auto &m = msg.as<message::RemoteRenderMessage>();
-                  auto &rhr = m.rhr();
-                  switch (rhr.type) {
-                  case rfbMatrices: {
-                      auto &mat = static_cast<const matricesMsg &>(rhr);
-                      handleMatrices(m_clientSocket, m, mat);
+      bool received = false;
+      do {
+          received = false;
+          size_t avail = 0;
+          asio::socket_base::bytes_readable command(true);
+          m_clientSocket->io_control(command);
+          if (command.get() > 0) {
+              avail = command.get();
+          }
+          if (avail >= sizeof(message::RemoteRenderMessage)) {
+              message::Buffer msg;
+              std::vector<char> payload;
+              if (message::recv(*m_clientSocket, msg, received, false, &payload) && received) {
+                  switch(msg.type()) {
+                  case message::Message::REMOTERENDERING: {
+                      auto &m = msg.as<message::RemoteRenderMessage>();
+                      auto &rhr = m.rhr();
+                      switch (rhr.type) {
+                      case rfbMatrices: {
+                          auto &mat = static_cast<const matricesMsg &>(rhr);
+                          handleMatrices(m_clientSocket, m, mat);
+                          break;
+                      }
+                      case rfbLights: {
+                          auto &light = static_cast<const lightsMsg &>(rhr);
+                          handleLights(m_clientSocket, m, light);
+                          break;
+                      }
+                      case rfbAnimation: {
+                          auto &anim = static_cast<const animationMsg &>(rhr);
+                          handleAnimation(m_clientSocket, m, anim);
+                          break;
+                      }
+                      case rfbBounds: {
+                          auto &bound = static_cast<const boundsMsg &>(rhr);
+                          handleBounds(m_clientSocket, m, bound);
+                          break;
+                      }
+                      case rfbTile:
+                      default:
+                          CERR << "invalid RHR message subtype received" << std::endl;
+                          break;
+                      }
                       break;
                   }
-                  case rfbLights: {
-                      auto &light = static_cast<const lightsMsg &>(rhr);
-                      handleLights(m_clientSocket, m, light);
+                  default: {
+                      CERR << "invalid message type received" << std::endl;
                       break;
                   }
-                  case rfbAnimation: {
-                      auto &anim = static_cast<const animationMsg &>(rhr);
-                      handleAnimation(m_clientSocket, m, anim);
-                      break;
                   }
-                  case rfbBounds: {
-                      auto &bound = static_cast<const boundsMsg &>(rhr);
-                      handleBounds(m_clientSocket, m, bound);
-                      break;
-                  }
-                  case rfbTile:
-                  default:
-                      CERR << "invalid RHR message subtype received" << std::endl;
-                      break;
-                  }
-                  break;
-              }
-              default: {
-                  CERR << "invalid message type received" << std::endl;
-                  break;
-              }
               }
           }
-          //handleClient(sock);
-      }
+      } while (received);
    }
 }
 
@@ -767,13 +768,13 @@ struct EncodeTask: public tbb::task {
                 size_t maxsize = tjBufSize(msg.width, msg.height, sampling);
                 std::vector<char> jpegbuf(maxsize);
                 unsigned long sz = 0;
-                //unsigned char *src = reinterpret_cast<unsigned char *>(rgba);
-                rgba += (msg.totalwidth*msg.y+msg.x)*bpp;
                 {
+                   auto col = rgba + (msg.totalwidth*msg.y+msg.x)*bpp;
 #ifdef TIMING
                    double start = vistle::Clock::time();
 #endif
-                   ret = tjCompress(tj.handle, rgba, msg.width, msg.totalwidth*bpp, msg.height, bpp, reinterpret_cast<unsigned char *>(jpegbuf.data()), &sz, subsamp, 90, TJ_BGR);
+                   ret = tjCompress(tj.handle, col, msg.width, msg.totalwidth*bpp, msg.height, bpp, reinterpret_cast<unsigned char *>(jpegbuf.data()), &sz, subsamp, 90, TJ_BGR);
+                   jpegbuf.resize(sz);
 #ifdef TIMING
                    double dur = vistle::Clock::time() - start;
                    std::cerr << "JPEG compression: " << dur << "s, " << msg.width*(msg.height/dur)/1e6 << " MPix/s" << std::endl;
@@ -811,6 +812,7 @@ struct EncodeTask: public tbb::task {
                std::cerr << "SNAPPY " << (rgba ? "RGB" : "depth") << ": " << dur << "s, " << msg.width*(msg.height/dur)/1e6 << " MPix/s" << std::endl;
 #endif
             }
+            sbuf.resize(compressed);
             msg.size = compressed;
 
             //std::cerr << "compressed " << msg.size << " to " << compressed << " (buf: " << cd->buf.size() << ")" << std::endl;
@@ -819,7 +821,7 @@ struct EncodeTask: public tbb::task {
             msg.compression &= ~rfbTileSnappy;
         }
 #endif
-        //assert(result.payload.size() == msg.size);
+        assert(result.payload.size() == msg.size);
         resultQueue.push(result);
         return nullptr; // or a pointer to a new task to be executed immediately
     }
