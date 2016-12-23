@@ -56,6 +56,13 @@
 
 #include <boost/lexical_cast.hpp>
 
+#ifdef __linux
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <pthread.h>
+#endif
+
 //#define CONNDEBUG
 
 #ifdef HAVE_SNAPPY
@@ -165,6 +172,9 @@ class RemoteConnection {
     }
 
     void operator()() {
+#ifdef __linux
+        pthread_setname_np(pthread_self(), "RhrClient");
+#endif
         {
             lock_guard locker(*m_mutex);
             assert(m_running);
