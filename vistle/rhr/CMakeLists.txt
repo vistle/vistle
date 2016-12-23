@@ -13,7 +13,7 @@ if(NOT TURBOJPEG_HAVE_TJMCUWIDTH)
    return()
 endif()
 
-use_openmp()
+#use_openmp()
 
 if(JPEGTURBO_FOUND)
    add_definitions(-DHAVE_TURBOJPEG)
