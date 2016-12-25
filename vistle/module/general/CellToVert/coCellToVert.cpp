@@ -191,7 +191,7 @@ coCellToVert::weightedAlgo( Index num_elem, Index num_conn, Index num_point,
       (*xc) = (*yc) = (*zc) = 0.0;
 
       // the center can be calculated now
-      if ((el_type&~UnstructuredGrid::GHOST_BIT)==UnstructuredGrid::POLYHEDRON) {
+      if ((el_type&UnstructuredGrid::TYPE_MASK)==UnstructuredGrid::POLYHEDRON) {
          int num_averaged=0;
          int facestart=conn_list[elem_list[elem]];
          bool face_done=true;

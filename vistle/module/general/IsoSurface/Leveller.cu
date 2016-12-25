@@ -236,7 +236,7 @@ struct process_Cell {
           }
       }
 
-      switch (m_data.m_tl[CellNr]) {
+      switch (m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT) {
 
          case UnstructuredGrid::HEXAHEDRON: {
 
@@ -464,7 +464,7 @@ struct classify_cell {
       uint tableIndex = 0;
       Index Start = m_data.m_el[CellNr];
       Index diff = m_data.m_el[CellNr+1]-Start;
-      unsigned char CellType = m_data.m_tl[CellNr];
+      unsigned char CellType = m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT;
       int numVerts = 0;
       if (CellType != UnstructuredGrid::POLYHEDRON) {
          for (int idx = 0; idx < diff; idx ++) {

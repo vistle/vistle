@@ -146,6 +146,12 @@ bool UnstructuredGrid::checkImpl() const {
    return true;
 }
 
+bool UnstructuredGrid::isConvex(const Index elem) const {
+   if (elem == InvalidIndex)
+      return false;
+   return tl()[elem] & CONVEX_BIT;
+}
+
 bool UnstructuredGrid::isGhostCell(const Index elem) const {
 
    if (elem == InvalidIndex)
@@ -213,7 +219,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
    const Scalar *y = &this->y()[0];
    const Scalar *z = &this->z()[0];
 
-   const auto type(tl()[elem] & ~GHOST_BIT);
+   const auto type(tl()[elem] & TYPE_MASK);
    if (type == UnstructuredGrid::POLYHEDRON) {
       const Index nVert = el[elem+1] - el[elem];
       Index startVert = InvalidIndex;
@@ -376,7 +382,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
    std::vector<Index> indices((mode==Linear || mode==Mean) ? nvert : 1);
 
    if (mode == Mean) {
-      if ((tl[elem] & ~GHOST_BIT) == POLYHEDRON) {
+      if ((tl[elem] & TYPE_MASK) == POLYHEDRON) {
          for (Index i=0; i<nvert; ++i) {
             indices[i] = cl[i];
          }
@@ -396,7 +402,7 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
          }
       }
    } else if (mode == Linear) {
-      switch(tl[elem] & ~GHOST_BIT) {
+      switch(tl[elem] & TYPE_MASK) {
          case TETRAHEDRON: {
             vassert(nvert == 4);
             Vector coord[4];

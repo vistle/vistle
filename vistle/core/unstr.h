@@ -17,7 +17,9 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
 
    // make sure that these types match those from COVISE: src/kernel/do/coDoUnstructuredGrid.h
    enum Type {
-      GHOST_BIT = 0x80,
+      GHOST_BIT   = 0x80,
+      CONVEX_BIT  = 0x40, //<! cell was checked to be convex
+      TYPE_MASK   = 0x3f,
 
       NONE        =  0,
       BAR         =  1,
@@ -53,6 +55,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
    shm<unsigned char>::array &tl() { return *d()->tl; }
    const unsigned char *tl() const { return m_tl; }
 
+   bool isConvex(Index elem) const;
    bool isGhostCell(Index elem) const override;
    std::pair<Vector, Vector> cellBounds(Index elem) const override;
    Index findCell(const Vector &point, int flags=NoFlags) const override;

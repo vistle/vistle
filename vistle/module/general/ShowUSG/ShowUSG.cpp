@@ -63,7 +63,7 @@ bool ShowUSG::compute() {
           const bool show = (showgho && ghost) || (shownor && !ghost);
           if (!show)
               continue;
-          type &= ~vistle::UnstructuredGrid::GHOST_BIT;
+          type &= vistle::UnstructuredGrid::TYPE_MASK;
 
           if (type==vistle::UnstructuredGrid::TETRAHEDRON && showtet) {
               out->cl().push_back(in->cl()[in->el()[index]]);
