@@ -149,7 +149,7 @@ bool UnstructuredGrid::checkImpl() const {
 bool UnstructuredGrid::isConvex(const Index elem) const {
    if (elem == InvalidIndex)
       return false;
-   return tl()[elem] & CONVEX_BIT;
+   return tl()[elem] & CONVEX_BIT || (tl()[elem]&TYPE_MASK) == TETRAHEDRON;
 }
 
 bool UnstructuredGrid::isGhostCell(const Index elem) const {
@@ -264,7 +264,9 @@ Index UnstructuredGrid::findCell(const Vector &point, int flags) const {
    return InvalidIndex;
 }
 
-bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
+bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const {
+
+   const Scalar Tolerance = 1e-5;
 
    if(elem == InvalidIndex)
        return false;
@@ -286,7 +288,8 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
          const Index v = cl[i];
          if (v == startVert) {
             startVert = InvalidIndex;
-            if (normal.dot(point-v0) > 0)
+            normal.normalize();
+            if (normal.dot(point-v0) > Tolerance)
                return false;
             continue;
          }
@@ -323,16 +326,34 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
             edge -= v0;
             n += edge1.cross(edge);
          }
+         n.normalize();
 
          //std::cerr << "normal: " << n.transpose() << ", v0: " << v0.transpose() << ", rel: " << (point-v0).transpose() << ", dot: " << n.dot(point-v0) << std::endl;
 
-         if (n.dot(point-v0) > 0)
+         if (n.dot(point-v0) > Tolerance)
             return false;
       }
       return true;
    }
 
    return false;
+}
+
+bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
+
+    if (isConvex(elem))
+        return insideConvex(elem, point);
+
+    auto t = tl()[elem];
+    switch (t&TYPE_MASK) {
+    case TETRAHEDRON:
+        assert("already handled in insideConvex"==0);
+        break;
+    case PYRAMID:
+        break;
+    }
+
+    return insideConvex(elem, point);
 }
 
 namespace {
@@ -408,6 +429,46 @@ bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorn
 
    return true;
 }
+
+bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, const Vector &normal) {
+
+   // project into 2D and transform point into origin
+   Index max = 0;
+   normal.cwiseAbs().maxCoeff(&max);
+   int c1=0, c2=1;
+   if (max == 0) {
+      c1 = 1;
+      c2 = 2;
+   } else if (max == 1) {
+      c1 = 0;
+      c2 = 2;
+   }
+   Vector2 point2;
+   point2 << point[c1], point[c2];
+   std::vector<Vector2> corners2(nCorners);
+   for (Index i=0; i<nCorners; ++i) {
+      corners2[i] << corners[i][c1], corners[i][c2];
+      corners2[i] -= point2;
+   }
+
+   // count intersections of edges with positive x-axis
+   int nisect = 0;
+   for (Index i=0; i<nCorners; ++i) {
+      Vector2 c0 = corners2[i];
+      Vector2 c1 = corners2[(i+1)%nCorners];
+      if (c0[1] * c1[1] > 0)
+          continue;
+      if (c0[0] < 0 && c1[0] < 0)
+          continue;
+      Scalar mInv = (c1[0]-c0[0])/(c1[1]-c0[1]);
+      Scalar x=c0[1]*mInv+c0[0];
+      if (x > 0)
+          ++nisect;
+   }
+
+   return (nisect%2) == 1;
+}
+
 
 } // anon namespace
 
