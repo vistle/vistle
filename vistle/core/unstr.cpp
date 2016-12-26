@@ -225,7 +225,6 @@ Index UnstructuredGrid::findCell(const Vector &point, int flags) const {
    const bool acceptGhost = flags&AcceptGhost;
    const bool useCelltree = (flags&ForceCelltree) || (hasCelltree() && !(flags&NoCelltree));
 
-   bool recheck = false;
    if (useCelltree) {
 
       vistle::PointVisitationFunctor<Scalar, Index> nodeFunc(point);
@@ -233,30 +232,11 @@ Index UnstructuredGrid::findCell(const Vector &point, int flags) const {
       getCelltree()->traverse(nodeFunc, elemFunc);
       return elemFunc.cell;
    }
-#if 0
-      if (elemFunc.cell != InvalidIndex) {
-         if (!inside(elemFunc.cell, point)) {
-            std::cerr << "Celltree failed 1 for element " << elemFunc.cell << std::endl;
-            recheck = true;
-         } else {
-            if (acceptGhost ||!isGhostCell(elemFunc.cell))
-               return elemFunc.cell;
-            else
-               return InvalidIndex;
-         }
-      } else {
-         recheck = true;
-      }
-   }
-#endif
 
    Index size = getNumElements();
    for (Index i=0; i<size; ++i) {
       if (acceptGhost || !isGhostCell(i)) {
          if (inside(i, point)) {
-            if (recheck) {
-                std::cerr << "Celltree failed 2 for element " << i << std::endl;
-            }
             return i;
          }
       }
@@ -264,12 +244,65 @@ Index UnstructuredGrid::findCell(const Vector &point, int flags) const {
    return InvalidIndex;
 }
 
-bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const {
+std::pair<Vector,Vector> faceNormalAndCenter(Index nVert, const Index *verts, const Scalar *x, const Scalar *y, const Scalar *z) {
+    Vector normal(0,0,0);
+    Vector center(0,0,0);
+    const Index last = nVert-1;
+    for (Index i=0; i<nVert-2; ++i) {
+        Index v0, v1, v2;
+        const Index i2 = i/2;
+        if (i%2) {
+            v0 = verts[i2+1];
+            v1 = verts[last-i2-1];
+            v2 = verts[last-i2];
+        } else {
+            v0 = verts[i2+1];
+            v1 = verts[i2];
+            v2 = verts[last-i2];
+        }
+        Vector c0(x[v0], y[v0], z[v0]);
+        Vector c1(x[v1], y[v1], z[v1]);
+        Vector c2(x[v2], y[v2], z[v2]);
+        normal += (c1-c0).cross(c2-c1);
+    }
+    for (Index i=0; i<nVert; ++i) {
+        Index v = verts[i];
+        Vector c(x[v], y[v], z[v]);
+        center += c;
+    }
 
-   const Scalar Tolerance = 1e-5;
+    return std::make_pair(normal.normalized(), center/nVert);
+}
+
+std::pair<Vector,Vector> faceNormalAndCenter(unsigned char type, Index f, const Index *cl, const Scalar *x, const Scalar *y, const Scalar *z) {
+    const auto &faces = UnstructuredGrid::FaceVertices[type];
+    const auto &sizes = UnstructuredGrid::FaceSizes[type];
+    const auto &face = faces[f];
+    int N = sizes[f];
+    Index c0 = cl[face[0]];
+    Index c1 = cl[face[1]];
+    Index c2 = cl[face[2]];
+    Index c3 = N>3 ? cl[face[3]] : c2;
+    Vector v0(x[c0], y[c0], z[c0]);
+    Vector v1(x[c1], y[c1], z[c1]);
+    Vector v2(x[c2], y[c2], z[c2]);
+    Vector v3(x[c3], y[c3], z[c3]);
+    Vector center = v0+v1+v2;
+    Vector normal = (v1-v0).cross(v2-v1);
+    if (N > 3) {
+        assert(N == 4);
+        normal += (v3-v2).cross(v0-v3);
+        center += v3;
+    }
+    return std::make_pair(normal.normalized(), center/N);
+}
+
+bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const {
 
    if(elem == InvalidIndex)
        return false;
+
+   const Scalar Tolerance = 1e-3*cellDiameter(elem);
 
    const Index *el = &this->el()[0];
    const Index *cl = &this->cl()[el[elem]];
@@ -279,58 +312,26 @@ bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const {
 
    const auto type(tl()[elem] & TYPE_MASK);
    if (type == UnstructuredGrid::POLYHEDRON) {
-      const Index nVert = el[elem+1] - el[elem];
-      Index startVert = InvalidIndex;
-      Vector normal(0,0,0);
-      Vector v0(0,0,0), edge1(0,0,0);
-      Index faceVert = 0;
-      for (Index i=0; i<nVert; ++i) {
-         const Index v = cl[i];
-         if (v == startVert) {
-            startVert = InvalidIndex;
-            normal.normalize();
-            if (normal.dot(point-v0) > Tolerance)
-               return false;
-            continue;
-         }
-         if (startVert == InvalidIndex) {
-            startVert = v;
-            faceVert = 0;
-            normal = Vector(0,0,0);
-         } else {
-            ++faceVert;
-         }
-         if (faceVert == 0) {
-            v0 = Vector(x[v], y[v], z[v]);
-         } else if (faceVert == 1) {
-            edge1 = Vector(x[v], y[v], z[v])-v0;
-         } else {
-            normal += edge1.cross(Vector(x[v], y[v], z[v])-v0);
-         }
+      Index begin=el[elem], end=el[elem+1];
+      Index nvert = end - begin;
+      for (Index i=0; i<nvert; i+=cl[i]+1) {
+          auto nc = faceNormalAndCenter(cl[i], &cl[i+1], x, y, z);
+          auto normal = nc.first;
+          auto center = nc.second;
+          if (normal.dot(point-center) > Tolerance)
+              return false;
       }
       return true;
    } else {
       const auto numFaces = NumFaces[type];
-      const auto &faces = UnstructuredGrid::FaceVertices[type];
-      const auto &sizes = UnstructuredGrid::FaceSizes[type];
       for (int f=0; f<numFaces; ++f) {
-         Index first = cl[faces[f][0]];
-         Index second = cl[faces[f][1]];
-         Vector v0(x[first], y[first], z[first]);
-         Vector edge1(x[second], y[second], z[second]);
-         edge1 -= v0;
-         Vector n(0, 0, 0);
-         for (int i=2; i<sizes[f]; ++i) {
-            Index other = cl[faces[f][i]];
-            Vector edge(x[other], y[other], z[other]);
-            edge -= v0;
-            n += edge1.cross(edge);
-         }
-         n.normalize();
+         auto nc = faceNormalAndCenter(type, f, cl, x, y, z);
+         auto normal = nc.first;
+         auto center = nc.second;
 
          //std::cerr << "normal: " << n.transpose() << ", v0: " << v0.transpose() << ", rel: " << (point-v0).transpose() << ", dot: " << n.dot(point-v0) << std::endl;
 
-         if (n.dot(point-v0) > Tolerance)
+         if (normal.dot(point-center) > Tolerance)
             return false;
       }
       return true;
