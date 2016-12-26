@@ -60,6 +60,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
    std::pair<Vector, Vector> cellBounds(Index elem) const override;
    Index findCell(const Vector &point, int flags=NoFlags) const override;
    bool inside(Index elem, const Vector &point) const override;
+   bool checkConvexity();
 
    Interpolator getInterpolator(Index elem, const Vector &point, Mapping mapping=Vertex, InterpolationMode mode=Linear) const override;
 

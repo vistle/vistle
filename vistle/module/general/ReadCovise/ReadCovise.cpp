@@ -288,6 +288,7 @@ Object::ptr ReadCovise::readUNSGRD(const int fd, const bool skeleton) {
          z[index] = _z[index];
       }
 
+      usg->checkConvexity();
       return usg;
    }
 

@@ -563,6 +563,7 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
 
    if (readGrid) {
       loadCoords(meshdir, grid);
+      grid->checkConvexity();
 
       if (readBoundary) {
           //if grid has been read already and boundary polygons are read also -> re-use coordinate lists for the boundary-plygon
