@@ -20,6 +20,9 @@ ShowUSG::ShowUSG(const std::string &shmname, const std::string &name, int module
 
    addIntParameter("normalcells", "Show normal (non ghost) cells", 1, Parameter::Boolean);
    addIntParameter("ghostcells", "Show ghost cells", 0, Parameter::Boolean);
+   addIntParameter("convex", "Show convex cells", 1, Parameter::Boolean);
+   addIntParameter("nonconvex", "Show non-convex cells", 1, Parameter::Boolean);
+
    addIntParameter("tetrahedron", "Show tetrahedron", 1, Parameter::Boolean);
    addIntParameter("pyramid", "Show pyramid", 1, Parameter::Boolean);
    addIntParameter("prism", "Show prism", 1, Parameter::Boolean);
@@ -38,6 +41,9 @@ bool ShowUSG::compute() {
 
    const bool shownor = getIntParameter("normalcells");
    const bool showgho = getIntParameter("ghostcells");
+   const bool showconv = getIntParameter("convex");
+   const bool shownonconv = getIntParameter("nonconvex");
+
    const bool showtet = getIntParameter("tetrahedron");
    const bool showpyr = getIntParameter("pyramid");
    const bool showpri = getIntParameter("prism");
@@ -60,7 +66,10 @@ bool ShowUSG::compute() {
       for (Index index = begin; index < end; ++index) {
           auto type=in->tl()[index];
           const bool ghost = type & UnstructuredGrid::GHOST_BIT;
-          const bool show = (showgho && ghost) || (shownor && !ghost);
+          const bool conv = type & UnstructuredGrid::CONVEX_BIT;
+
+          const bool show = ((showgho && ghost) || (shownor && !ghost))
+                  && ((showconv && conv) || (shownonconv && !conv));
           if (!show)
               continue;
           type &= vistle::UnstructuredGrid::TYPE_MASK;
