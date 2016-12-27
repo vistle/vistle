@@ -40,8 +40,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
 
     // file browser parameter
 //    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+   // m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
 
     // time parameters
     m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
@@ -289,7 +289,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
 
 bool ReadCFX::loadGrid(int volumeNr) {
 
-    if(cfxExportZoneSet(m_selectedVolumes[volumeNr].zoneFlag,counts) < 0) {
+    if(cfxExportZoneSet(m_selectedVolumes[volumeNr].zoneFlag,NULL) < 0) {
         std::cerr << "invalid zone number" << std::endl;
     }
     std::cerr << "m_selectedVolumes[volumeNr].volumeID = " << m_selectedVolumes[volumeNr].volumeID << "; m_selectedVolumes[volumeNr].zoneFlag = " << m_selectedVolumes[volumeNr].zoneFlag << std::endl;
@@ -297,12 +297,13 @@ bool ReadCFX::loadGrid(int volumeNr) {
     index_t nnodesInVolume, nelmsInVolume;
     nnodesInVolume = cfxExportVolumeSize(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES);
     nelmsInVolume = cfxExportVolumeSize(m_selectedVolumes[volumeNr].volumeID,cfxVOL_ELEMS);
+        //std::cerr << "nodesInVolume = " << nnodesInVolume << std::endl;
+        //std::cerr << "nelmsInVolume = " << nelmsInVolume << std::endl;
 
-    UnstructuredGrid::ptr grid(new UnstructuredGrid(nelmsInVolume, 8*nelmsInVolume, nnodesInVolume)); //initialized with number of elements, number of connectivities, number of coordinates
+    UnstructuredGrid::ptr grid(new UnstructuredGrid(nelmsInVolume, 8*nelmsInVolume+1, nnodesInVolume)); //initialized with number of elements, number of connectivities, number of coordinates
 
     //load nodes into unstructured grid
     boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
-    //double *x_coord = new double, *y_coord = new double, *z_coord = new double;
     //boost::shared_ptr<std::int32_t> nodeListOfVolume(new int);
     int *nodeListOfVolume = new int;
 
@@ -312,15 +313,9 @@ bool ReadCFX::loadGrid(int volumeNr) {
     auto ptrOnZdata = grid->z().data();
 
     nodeListOfVolume = cfxExportVolumeList(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES); //query the nodes that define the volume
-    std::cerr << "nnodesInVolume = " << nnodesInVolume << std::endl;
-    for(index_t i=1;i<=nnodesInVolume;++i) {
+    for(index_t i=0;i<nnodesInVolume;++i) {
         if(!cfxExportNodeGet(nodeListOfVolume[i],x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates: [IN] nodeid [OUT] x,y,z
             std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
-        }
-
-        if(i<40) {
-            std::cerr << "x,y,z (" << i << ") = " << *x_coord.get() << ", " << *y_coord.get() << ", " << *z_coord.get() << std::endl;
-            std::cerr << "nodeListOfVolume[" <<i<< "] = " << nodeListOfVolume[i] << std::endl;
         }
         ptrOnXdata[i] = *x_coord.get();
         ptrOnYdata[i] = *y_coord.get();
@@ -331,87 +326,95 @@ bool ReadCFX::loadGrid(int volumeNr) {
     //Test, ob Einlesen funktioniert hat
     //        std::cerr << "m_nnodes = " << m_nnodes << std::endl;
     //        std::cerr << "grid->getNumCoords()" << grid->getNumCoords() << std::endl;
-    for(int i=0;i<20;++i) {
-            std::cerr << "x,y,z (" << i << ") = " << grid->x().at(i) << ", " << grid->y().at(i) << ", " << grid->z().at(i) << std::endl;
-    }
+//    for(int i=0;i<20;++i) {
+//            std::cerr << "x,y,z (" << i << ") = " << grid->x().at(i) << ", " << grid->y().at(i) << ", " << grid->z().at(i) << std::endl;
+//    }
     //        std::cerr << "x,y,z (10)" << grid->x().at(10) << ", " << grid->y().at(10) << ", " << grid->z().at(10) << std::endl;
     //        std::cerr << "x,y,z (m_nnodes-1)" << grid->x().at(m_nnodes-1) << ", " << grid->y().at(m_nnodes-1) << ", " << grid->z().at(m_nnodes-1) << std::endl;
 
 
     cfxExportNodeFree();
     cfxExportVolumeFree(m_selectedVolumes[volumeNr].volumeID);
-    delete[] nodeListOfVolume;
 
 
 
 
-/*    //load element types, element list and connectivity list into unstructured grid
+    //load element types, element list and connectivity list into unstructured grid
     int elemListCounter=0;
-    boost::shared_ptr<std::int32_t> nodelist(new int[8]), elemtype(new int);
+    boost::shared_ptr<std::int32_t> nodesOfElm(new int[8]), elemtype(new int);
+    int *elmListOfVolume = new int;
 
-    m_nelems = cfxExportElementCount();
-    elmList = cfxExportElementList(); //load elements into array with structs, each struct containing type and array with nodeid's which belong to the element
+    auto ptrOnTl = grid->tl().data();
+    auto ptrOnEl = grid->el().data();
+    auto ptrOnCl = grid->cl().data();
 
-    for(index_t elemid=1;elemid<=m_nelems;++elemid) {
-        if(!cfxExportElementGet(elemid,elemtype.get(),nodelist.get())) {
+    elmListOfVolume = cfxExportVolumeList(m_selectedVolumes[volumeNr].volumeID,cfxVOL_ELEMS); //query the elements that define the volume
+
+    for(index_t i=0;i<nelmsInVolume;++i) {
+        if(!cfxExportElementGet(elmListOfVolume[i],elemtype.get(),nodesOfElm.get())) {
             std::cerr << "error while reading elements out of .res file: elemid is out of range" << std::endl;
         }
         switch(*elemtype.get()) {
             case 4: {
-                elemListCounter += 4;
-                grid->tl().push_back(UnstructuredGrid::TETRAHEDRON);
-                grid->el().push_back(elemListCounter);
-                for (int nodelist_counter=0;nodelist_counter<4;++nodelist_counter) {
-                    grid->cl().push_back(nodelist.get()[nodelist_counter]-1);
+                ptrOnTl[i] = (UnstructuredGrid::TETRAHEDRON);
+                ptrOnEl[i] = elemListCounter;
+                for (int nodesOfElm_counter=0;nodesOfElm_counter<4;++nodesOfElm_counter) {
+                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
                 }
+                elemListCounter += 4;
                 break;
             }
             case 5: {
-                elemListCounter += 5;
-                grid->tl().push_back(UnstructuredGrid::PYRAMID);
-                grid->el().push_back(elemListCounter);
-                for (int nodelist_counter=0;nodelist_counter<5;++nodelist_counter) {
-                    grid->cl().push_back(nodelist.get()[nodelist_counter]-1);
+                ptrOnTl[i] = (UnstructuredGrid::PYRAMID);
+                ptrOnEl[i] = elemListCounter;
+                for (int nodesOfElm_counter=0;nodesOfElm_counter<5;++nodesOfElm_counter) {
+                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
                 }
+                elemListCounter += 5;
                 break;
             }
             case 6: {
-                elemListCounter += 6;
-                grid->tl().push_back(UnstructuredGrid::PRISM);
-                grid->el().push_back(elemListCounter);
-                for (int nodelist_counter=0;nodelist_counter<6;++nodelist_counter) {
-                    grid->cl().push_back(nodelist.get()[nodelist_counter]-1);
+                ptrOnTl[i] = (UnstructuredGrid::PRISM);
+                ptrOnEl[i] = elemListCounter;
+                for (int nodesOfElm_counter=0;nodesOfElm_counter<6;++nodesOfElm_counter) {
+                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
                 }
+                elemListCounter += 6;
                 break;
             }
             case 8: {
-                elemListCounter += 8;
-                grid->tl().push_back(UnstructuredGrid::HEXAHEDRON);
-                grid->el().push_back(elemListCounter);
+                ptrOnTl[i] = (UnstructuredGrid::HEXAHEDRON);
+                ptrOnEl[i] = elemListCounter;
                 //std::cerr << "elemid = " << elemid << "; elemtype = " << *elemtype.get() <<  std::endl;
-                for (int nodelist_counter=0;nodelist_counter<8;++nodelist_counter) {
-                    grid->cl().push_back(nodelist.get()[nodelist_counter]-1);
-                    //std::cerr << "nodelist(" << nodelist_counter << ") = " << nodelist.get()[nodelist_counter]-1 << std::endl;
+                for (int nodesOfElm_counter=0;nodesOfElm_counter<8;++nodesOfElm_counter) {
+                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
+//                        std::cerr << "nodesOfElm(" << nodesOfElm_counter << ") = " << nodesOfElm.get()[nodesOfElm_counter]-1 << std::endl;
                 }
+                elemListCounter += 8;
                 break;
             }
         }
     }
 
+    //element after last element
+    ptrOnEl[nelmsInVolume] = elemListCounter;
+    ptrOnCl[elemListCounter] = 0;
+
     //Test, ob Einlesen funktioniert hat
 //        std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
-//        std::cerr <<"no. elems = " << m_nelems << std::endl;
+//        std::cerr <<"no. elems total = " << m_nelems << std::endl;
 //        std::cerr <<"grid->getNumElements" << grid->getNumElements() << std::endl;
-//        for(index_t i = 0;i<19;++i) {
-//            std::cerr << "tl(" << i << ") = " << grid->tl().at(i) << std::endl;
+//        for(index_t i = nelmsInVolume-5;i<nelmsInVolume+1;++i) {
+//            //std::cerr << "tl(" << i << ") = " << grid->tl().at(i) << std::endl;
 //            std::cerr << "el(" << i << ") = " << grid->el().at(i) << std::endl;
-//            for(index_t j = 0;j<8;++j) {
+//            for(index_t j = 0;j<1;++j) {
 //                std::cerr << "cl(" << i*8+j << ") = " << grid->cl().at(i*8+j) << std::endl;
 //            }
 //        }
 
     cfxExportElementFree();
-*/
+    cfxExportVolumeFree(m_selectedVolumes[volumeNr].volumeID);
+
     return true;
 }
 
@@ -466,7 +469,6 @@ bool ReadCFX::compute() {
     std::cerr << "Compute Start. \n";
 
     int numbSelVolumes = collectVolumes();
-    //for Schleife über alle Volumes, für jedes Volume ein unstructured grid
     sendInfo("Schleife über Volumes Start");
     for(int i=0;i<numbSelVolumes;++i) {
         loadGrid(i);
@@ -474,28 +476,15 @@ bool ReadCFX::compute() {
     }
     sendInfo("Schleife über Volumes End");
 
-//    int *nodesinVolume;
-//    for(index_t i=0;i<=m_nzones;++i) {
-//        cfxExportZoneSet(i,counts);
-//        std::cerr << "Zone = " << i << "; Nodes = " << counts[cfxCNT_NODE] << "; volumes = " << counts[cfxCNT_VOLUME] << std::endl << std::endl;
 
-//        for(int j=1;j<=counts[cfxCNT_VOLUME];++j) {
-//            std::cerr << "Size of nodes in volume = " << cfxExportVolumeSize(j,cfxVOL_NODES) << std::endl;
-//            std::cerr << "Name of region = " << cfxExportVolumeName(j) << std::endl;
-//           // nodesinVolume = cfxExportVolumeList(j,cfxVOL_NODES);
-//            for(int k=0;k<3;k++) {
-//                std::cerr << "nodes = " << nodesinVolume[k] << std::endl;
-//            }
-//            cfxExportVolumeFree(j);
+
+
+
+//    nodeList = cfxExportNodeList();
+//        for (int n = 0; n < 20; n++, nodeList++) {
+//            std::cerr << "x,y,z[" << n << "] = " << nodeList->x << ", " << nodeList->y << ", " << nodeList->z << std::endl;
 //        }
-//    }
-
-
-
-
-
-
-
+//        cfxExportNodeFree();
 
 //    for(t = t1; t <= t2; t++) {
 //    ts = cfxExportTimestepNumGet(t);

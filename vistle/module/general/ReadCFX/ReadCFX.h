@@ -71,7 +71,7 @@ class ReadCFX: public vistle::Module {
    CaseInfo m_case;
 
    //cfxNode *nodeList;
-   cfxElement *elmList;
+   //cfxElement *elmList;
    // number of digits in transient file suffix
    //char zoneExt[256];
    int counts[cfxCNT_SIZE];
