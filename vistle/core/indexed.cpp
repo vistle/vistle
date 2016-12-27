@@ -226,8 +226,8 @@ Index Indexed::NeighborFinder::getNeighborElement(Index elem, Index v1, Index v2
    }
 
    const Index *elems = &vol[vl[v1]];
-   Index nvert = vl[v1+1] - vl[v1];
-   for (Index j=0; j<nvert; ++j) {
+   Index nelem = vl[v1+1] - vl[v1];
+   for (Index j=0; j<nelem; ++j) {
        Index e = elems[j];
        if (e == elem)
            continue;
@@ -246,6 +246,12 @@ Index Indexed::NeighborFinder::getNeighborElement(Index elem, Index v1, Index v2
        }
    }
    return InvalidIndex;
+}
+
+std::vector<Index> Indexed::NeighborFinder::getNeighborElements(Index vert) {
+
+   const Index begin = vl[vert], end = vl[vert+1];
+   return std::vector<Index>(&vol[begin], &vol[end]);
 }
 
 Indexed::NeighborFinder Indexed::getNeighborFinder() const {
