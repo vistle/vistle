@@ -176,13 +176,14 @@ void CaseInfo::getFieldList() {
     m_field_param.push_back("(NONE)");
 
     for(index_t varnum=1;varnum<=nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,1) only returnes values from 1 and higher
+        m_allParameters[varnum]=cfxExportVariableName(varnum,1); //0 is short form and 1 is long form of the variable name
         if(cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
             if(length == 1) {
-                m_boundary_param.push_back(cfxExportVariableName(varnum,1)); //0 is short form and 1 is long form of the variable name
+                m_boundary_param.push_back(m_allParameters[varnum]);
                 //std::cerr << "cfxExportVariableName("<< varnum << ",1) = " << cfxExportVariableName(varnum,1) << std::endl;
             }
             else {
-                m_field_param.push_back(cfxExportVariableName(varnum,1)); //0 is short form and 1 is long form of the variable name
+                m_field_param.push_back(m_allParameters[varnum]);
             }
         }
     }
@@ -292,7 +293,7 @@ bool ReadCFX::loadGrid(int volumeNr) {
     if(cfxExportZoneSet(m_selectedVolumes[volumeNr].zoneFlag,NULL) < 0) {
         std::cerr << "invalid zone number" << std::endl;
     }
-    std::cerr << "m_selectedVolumes[volumeNr].volumeID = " << m_selectedVolumes[volumeNr].volumeID << "; m_selectedVolumes[volumeNr].zoneFlag = " << m_selectedVolumes[volumeNr].zoneFlag << std::endl;
+    //std::cerr << "m_selectedVolumes[volumeNr].volumeID = " << m_selectedVolumes[volumeNr].volumeID << "; m_selectedVolumes[volumeNr].zoneFlag = " << m_selectedVolumes[volumeNr].zoneFlag << std::endl;
 
     index_t nnodesInVolume, nelmsInVolume;
     nnodesInVolume = cfxExportVolumeSize(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES);
@@ -335,9 +336,6 @@ bool ReadCFX::loadGrid(int volumeNr) {
 
     cfxExportNodeFree();
     cfxExportVolumeFree(m_selectedVolumes[volumeNr].volumeID);
-
-
-
 
     //load element types, element list and connectivity list into unstructured grid
     int elemListCounter=0;
@@ -420,10 +418,20 @@ bool ReadCFX::loadGrid(int volumeNr) {
 
 bool ReadCFX::loadField(int volumeNr) {
 
+    if(cfxExportZoneSet(m_selectedVolumes[volumeNr].zoneFlag,NULL) < 0) {
+        std::cerr << "invalid zone number" << std::endl;
+    }
+    std::cerr << "m_selectedVolumes[volumeNr].volumeID = " << m_selectedVolumes[volumeNr].volumeID << "; m_selectedVolumes[volumeNr].zoneFlag = " << m_selectedVolumes[volumeNr].zoneFlag << std::endl;
 
 //    std::cerr << "m_boundaryOut[0] = " << m_boundaryOut[0]->getValue() << std::endl;
 //    std::cerr << "m_boundaryOut[1] = " << m_boundaryOut[1]->getValue() << std::endl;
 //    std::cerr << "m_boundaryOut[2] = " << m_boundaryOut[2]->getValue() << std::endl;
+
+//    cfxExportVariableGet(varnum,correct,index,*value)
+//            varnum = die Variable, welche man haben möchte
+//            correct = 0 im Feld, 1 am Rand (correct boundary node data)
+//            index = Knotennummer, an welcher man Daten haben möchte -> Liste aus Region List durchgehen
+//            *value = Der Wert an dem mit index gewählten Knoten
 
 
     return true;

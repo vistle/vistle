@@ -30,6 +30,7 @@ public:
     CaseInfo();
     std::vector<std::string> m_field_param, m_boundary_param;
     bool m_valid;
+    std::map<int, std::string> m_allParameters;
 
     bool checkFile(const char *filename);
     void getFieldList();
@@ -80,6 +81,8 @@ class ReadCFX: public vistle::Module {
 
    vistle::UnstructuredGrid::ptr grid;
    std::vector<VolumeIdWithZoneFlag> m_selectedVolumes;
+
+
 
    //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
    int rankForBlock(int processor) const;
