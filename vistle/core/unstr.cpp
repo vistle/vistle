@@ -247,17 +247,21 @@ Index UnstructuredGrid::findCell(const Vector &point, int flags) const {
 std::pair<Vector,Vector> faceNormalAndCenter(Index nVert, const Index *verts, const Scalar *x, const Scalar *y, const Scalar *z) {
     Vector normal(0,0,0);
     Vector center(0,0,0);
+    assert(nVert >= 3);
+    if (nVert < 3)
+        return std::make_pair(normal, center);
+
     const Index last = nVert-1;
     for (Index i=0; i<nVert-2; ++i) {
         Index v0, v1, v2;
         const Index i2 = i/2;
         if (i%2) {
-            v0 = verts[i2+1];
-            v1 = verts[last-i2-1];
-            v2 = verts[last-i2];
+            v0 = verts[last-i2];
+            v1 = verts[i2+1];
+            v2 = verts[last-i2-1];
         } else {
-            v0 = verts[i2+1];
-            v1 = verts[i2];
+            v0 = verts[i2];
+            v1 = verts[i2+1];
             v2 = verts[last-i2];
         }
         Vector c0(x[v0], y[v0], z[v0]);
@@ -265,6 +269,7 @@ std::pair<Vector,Vector> faceNormalAndCenter(Index nVert, const Index *verts, co
         Vector c2(x[v2], y[v2], z[v2]);
         normal += (c1-c0).cross(c2-c1);
     }
+
     for (Index i=0; i<nVert; ++i) {
         Index v = verts[i];
         Vector c(x[v], y[v], z[v]);
@@ -279,20 +284,20 @@ std::pair<Vector,Vector> faceNormalAndCenter(unsigned char type, Index f, const 
     const auto &sizes = UnstructuredGrid::FaceSizes[type];
     const auto &face = faces[f];
     int N = sizes[f];
-    Index c0 = cl[face[0]];
-    Index c1 = cl[face[1]];
-    Index c2 = cl[face[2]];
-    Index c3 = N>3 ? cl[face[3]] : c2;
-    Vector v0(x[c0], y[c0], z[c0]);
-    Vector v1(x[c1], y[c1], z[c1]);
-    Vector v2(x[c2], y[c2], z[c2]);
-    Vector v3(x[c3], y[c3], z[c3]);
-    Vector center = v0+v1+v2;
-    Vector normal = (v1-v0).cross(v2-v1);
+    Index v0 = cl[face[0]];
+    Index v1 = cl[face[1]];
+    Index v2 = cl[face[2]];
+    Index v3 = N>3 ? cl[face[3]] : v2;
+    Vector c0(x[v0], y[v0], z[v0]);
+    Vector c1(x[v1], y[v1], z[v1]);
+    Vector c2(x[v2], y[v2], z[v2]);
+    Vector c3(x[v3], y[v3], z[v3]);
+    Vector center = c0+c1+c2;
+    Vector normal = (c1-c0).cross(c2-c1);
     if (N > 3) {
         assert(N == 4);
-        normal += (v3-v2).cross(v0-v3);
-        center += v3;
+        normal += (c3-c2).cross(c0-c3);
+        center += c3;
     }
     return std::make_pair(normal.normalized(), center/N);
 }
@@ -312,8 +317,8 @@ bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const {
 
    const auto type(tl()[elem] & TYPE_MASK);
    if (type == UnstructuredGrid::POLYHEDRON) {
-      Index begin=el[elem], end=el[elem+1];
-      Index nvert = end - begin;
+      const Index begin=el[elem], end=el[elem+1];
+      const Index nvert = end-begin;
       for (Index i=0; i<nvert; i+=cl[i]+1) {
           auto nc = faceNormalAndCenter(cl[i], &cl[i+1], x, y, z);
           auto normal = nc.first;
@@ -616,106 +621,128 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                interpolate within pyramid containing point */
 
             // polyhedron compute center
-            std::vector<Vector> coord(nvert);
-            Vector center(0, 0, 0);
-            Index startVert = InvalidIndex;
-            Index nfaces = 0;
-            for (Index i=0; i<nvert; ++i) {
-               const Index k = cl[i];
-               indices[i] = k;
-               for (int c=0; c<3; ++c) {
-                  coord[i][c] = x[c][k];
-               }
-               if (k == startVert) {
-                  startVert = InvalidIndex;
-                  ++nfaces;
-                  continue;
-               }
-               if (startVert == InvalidIndex) {
-                  startVert = k;
-               }
-               center += coord[i];
+            std::vector<Index> verts = cellVertices(elem);
+            Vector center(0,0,0);
+            for (auto v: verts) {
+                Vector c(x[0][v], x[1][v], x[2][v]);
+                center += c;
             }
-            center /= (nvert-nfaces);
+            center /= verts.size();
 #ifdef INTERPOL_DEBUG
             std::cerr << "center: " << center.transpose() << std::endl;
             assert(inside(elem, center));
 #endif
 
+            std::vector<Vector> coord(nvert);
+            Index nfaces = 0;
+            Index n=0;
+            for (Index i=0; i<nvert; i+=cl[i]+1) {
+                const Index N = cl[i];
+                ++nfaces;
+                for (Index k=i+1; k<i+N+1; ++k) {
+                    indices[n] = cl[k];
+                    for (int c=0; c<3; ++c) {
+                        coord[n][c] = x[c][cl[k]];
+                    }
+                    ++n;
+                }
+            }
+            Index ncoord = n;
+            coord.resize(ncoord);
+            weights.resize(ncoord);
+
             // find face that is hit by ray from polyhedron center through query point
-            Index nFaceVert = 0;
-            Vector normal, edge1, isect;
-            startVert = InvalidIndex;
-            Index startIndex = 0;
             Scalar scale = 0;
+            Vector isect;
             bool foundFace = false;
-            for (Index i=0; i<nvert; ++i) {
-               const Index k = cl[i];
-               if (k == startVert) {
-                  startVert = InvalidIndex;
-                  const Vector dir = point-center;
-                  scale = normal.dot(dir) / normal.dot(coord[startIndex]-center);
+            n = 0;
+            Index nFaceVert = 0;
+            Vector faceCenter(0,0,0);
+            for (Index i=0; i<nvert; i+=cl[i]+1) {
+               nFaceVert = cl[i];
+               auto nc = faceNormalAndCenter(nFaceVert, &cl[i+1], x[0], x[1], x[2]);
+               const Vector dir = point-center;
+               Vector normal = nc.first;
+               faceCenter = nc.second;
+               scale = normal.dot(dir) / normal.dot(faceCenter-center);
 #ifdef INTERPOL_DEBUG
-                  std::cerr << "face: endvert=" << i << ", numvert=" << i-startIndex << ", scale=" << scale << std::endl;
+               std::cerr << "face: normal=" << normal.transpose() << ", center=" << faceCenter.transpose() << ", endvert=" << i << ", numvert=" << nFaceVert << ", scale=" << scale << std::endl;
 #endif
-                  assert(scale <= 1); // otherwise, point is outside of the polyhedron
-                  if (scale > 0) {
-                     isect = center + dir/scale;
-                     std::cerr << "isect: " << isect.transpose() << std::endl;
-                     if (insideConvexPolygon(isect, &coord[startIndex], nFaceVert, normal)) {
+               assert(scale <= 1.01); // otherwise, point is outside of the polyhedron
+               if (scale >= 0) {
+                   scale = std::min(Scalar(1), scale);
+                   if (scale > 0.001) {
+                       isect = center + dir/scale;
 #ifdef INTERPOL_DEBUG
-                        std::cerr << "found face: normal: " << normal.transpose() << ", first: " << coord[startIndex].transpose() << ", dir: " << dir.transpose() << ", isect: " << isect.transpose() << std::endl;
+                       std::cerr << "isect: " << isect.transpose() << std::endl;
 #endif
-                        foundFace = true;
+                       if (insideConvexPolygon(isect, &coord[n], nFaceVert, normal)) {
+#ifdef INTERPOL_DEBUG
+                           std::cerr << "found face: normal: " << normal.transpose() << ", first: " << coord[n].transpose() << ", dir: " << dir.transpose() << ", isect: " << isect.transpose() << std::endl;
+                           assert(insidePolygon(isect, &coord[n], nFaceVert, normal));
+#endif
+                           foundFace = true;
+                           break;
+                       } else {
+#ifdef INTERPOL_DEBUG
+                           assert(!insidePolygon(isect, &coord[n], nFaceVert, normal));
+#endif
+                       }
+                   } else {
+                       scale = 0;
+                       break;
+                   }
+               }
+               n += nFaceVert;
+            }
+            const Index startIndex = n;
+
+            // compute contribution of polyhedron center
+            Scalar centerWeight = 1 - scale;
+#ifdef INTERPOL_DEBUG
+            std::cerr << "center weight: " << centerWeight << ", scale: " << scale << std::endl;
+#endif
+            Scalar sum = 0;
+            if (centerWeight >= 0.0001) {
+                std::set<Index> usedIndices;
+                for (Index i=0; i<ncoord; ++i) {
+                    if (!usedIndices.insert(indices[i]).second) {
+                        weights[i] = 0;
+                        continue;
+                    }
+                    Scalar centerDist = (coord[i] - center).norm();
+#ifdef INTERPOL_DEBUG
+                    //std::cerr << "ind " << i << ", centerDist: " << centerDist << std::endl;
+#endif
+                    if (std::abs(centerDist) > 0) {
+                        weights[i] = 1/centerDist;
+                        sum += weights[i];
+                    } else {
+                        for (int j=0; j<ncoord; ++j) {
+                            weights[j] = 0;
+
+                        }
+                        weights[i] = 1;
+                        sum = weights[i];
                         break;
-                     }
-                  }
-                  continue;
-               }
-               if (startVert == InvalidIndex) {
-                  startVert = k;
-                  startIndex = i;
-                  nFaceVert = 0;
-                  normal = Vector(0, 0, 0);
-               } else if (nFaceVert == 1) {
-                  edge1 = coord[i]-coord[i-1];
-               } else {
-                  normal += edge1.cross(coord[i]-coord[i-1]);
-               }
-               ++nFaceVert;
+                    }
+                }
+#ifdef INTERPOL_DEBUG
+                std::cerr << "sum: " << sum << std::endl;
+#endif
+            }
+
+            if (sum > 0) {
+                for (Index i=0; i<ncoord; ++i) {
+                    weights[i] *= centerWeight/sum;
+                }
+            } else {
+                for (Index i=0; i<ncoord; ++i) {
+                    weights[i] = 0;
+                }
             }
 
             if (foundFace) {
-               // compute contribution of polyhedron center
-               Scalar centerWeight = 1 - scale;
-#ifdef INTERPOL_DEBUG
-               std::cerr << "center weight: " << centerWeight << ", scale: " << scale << std::endl;
-#endif
-               Index startVert = InvalidIndex;
-               Scalar sum = 0;
-               for (Index i=0; i<nvert; ++i) {
-                  const Index k = cl[i];
-                  if (startVert == InvalidIndex) {
-                     startVert = k;
-                  } else if (k == startVert) {
-                     startVert = InvalidIndex;
-                     weights[i] = 0;
-                     continue;
-                  }
-                  Scalar centerDist = (coord[i] - center).norm();
-#ifdef INTERPOL_DEBUG
-                  //std::cerr << "ind " << i << ", centerDist: " << centerDist << std::endl;
-#endif
-                  weights[i] = 1/centerDist;
-                  sum += weights[i];
-               }
-#ifdef INTERPOL_DEBUG
-               std::cerr << "sum: " << sum << std::endl;
-#endif
-               for (Index i=0; i<nvert; ++i) {
-                  weights[i] *= centerWeight/sum;
-               }
-
                // contribution of hit face,
                // interpolate compatible with simple cells for faces with 3 or 4 vertices
                if (nFaceVert == 3) {
@@ -731,14 +758,8 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
                   weights[startIndex+1] += ss[0]*(1-ss[1])*(1-centerWeight);
                   weights[startIndex+2] += ss[0]*ss[1]*(1-centerWeight);
                   weights[startIndex+3] += (1-ss[0])*ss[1]*(1-centerWeight);
-               } else {
-                  // compute center of face and subdivide face into triangles
-                  Vector3 faceCenter(0, 0, 0);
-                  for (Index i=0; i<nFaceVert; ++i) {
-                     faceCenter += coord[startIndex+i];
-                  }
-                  faceCenter /= nFaceVert;
-
+               } else if (nFaceVert > 0) {
+                  // subdivide face into triangles around faceCenter
                   Scalar sum = 0;
                   std::vector<Scalar> fweights(nFaceVert);
                   for (Index i=0; i<nFaceVert; ++i) {
