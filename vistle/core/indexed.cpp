@@ -315,6 +315,38 @@ std::vector<Index> Indexed::cellVertices(Index elem) const {
     return std::vector<Index>(&cl[begin], &cl[end]);
 }
 
+Scalar Indexed::cellDiameter(Index elem) const {
+    // compute distance of some vertices which are distant to each other
+    const Scalar *x = &this->x()[0];
+    const Scalar *y = &this->y()[0];
+    const Scalar *z = &this->z()[0];
+    Scalar dist(0);
+    auto verts = cellVertices(elem);
+    if (verts.empty())
+        return dist;
+    Index v0 = verts[0];
+    Vector p(x[v0], y[v0], z[v0]);
+    Vector far(p);
+    for (Index i=1; i<verts.size(); ++i) {
+        Index v = verts[i];
+        Vector q(x[v], y[v], z[v]);
+        Scalar d = (p-q).norm();
+        if (d > dist) {
+            far = q;
+            dist = d;
+        }
+    }
+    for (Index i=0; i<verts.size(); ++i) {
+        Index v = verts[i];
+        Vector q(x[v], y[v], z[v]);
+        Scalar d = (far-q).norm();
+        if (d > dist) {
+            dist = d;
+        }
+    }
+    return dist;
+}
+
 void Indexed::refreshImpl() const {
 
     const Data *d = static_cast<Data *>(m_data);
