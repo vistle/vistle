@@ -7,6 +7,7 @@
 #include <util/coRestraint.h>
 #include <core/unstr.h>
 #include <core/index.h>
+#include <map>
 
 #include <util/sysdep.h>
 #include <module/module.h>
@@ -87,7 +88,7 @@ class ReadCFX: public vistle::Module {
    //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
    int rankForBlock(int processor) const;
    bool loadGrid(int volumeNr);
-   bool loadField(int volumeNr);
+   vistle::DataBase::ptr loadField(int volumeNr);
    int collectVolumes();
 
 };
