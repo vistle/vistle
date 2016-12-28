@@ -13,6 +13,7 @@
 #include <module/module.h>
 
 typedef vistle::Index index_t;
+typedef vistle::Scalar scalar_t;
 
 struct VolumeIdWithZoneFlag {
 
@@ -31,7 +32,9 @@ public:
     CaseInfo();
     std::vector<std::string> m_field_param, m_boundary_param;
     bool m_valid;
-    std::map<int, std::string> m_allParameters;
+    std::map<int, std::string> m_allParam;
+    std::map<int, int> m_ParamDimension;
+    index_t nvars;
 
     bool checkFile(const char *filename);
     void getFieldList();

@@ -167,24 +167,31 @@ void CaseInfo::getFieldList() {
     int dimension, corrected_boundary_node;
     int length;
 
-    index_t nvars = cfxExportVariableCount(usr_level);
+    nvars = cfxExportVariableCount(usr_level);
     //std::cerr << "nvars = " << nvars << std::endl;
 
     m_boundary_param.clear();
     m_boundary_param.push_back("(NONE)");
     m_field_param.clear();
     m_field_param.push_back("(NONE)");
-    m_allParameters[0] = "(NONE)";
+    m_allParam[0] = "(NONE)";
 
     for(index_t varnum=1;varnum<=nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,1) only returnes values from 1 and higher
-        m_allParameters[varnum]=cfxExportVariableName(varnum,1); //0 is short form and 1 is long form of the variable name
+        m_allParam[varnum]=cfxExportVariableName(varnum,1); //0 is short form and 1 is long form of the variable name
         if(cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
             if(length == 1) {
-                m_boundary_param.push_back(m_allParameters[varnum]);
+                m_boundary_param.push_back(m_allParam[varnum]);
                 //std::cerr << "cfxExportVariableName("<< varnum << ",1) = " << cfxExportVariableName(varnum,1) << std::endl;
             }
             else {
-                m_field_param.push_back(m_allParameters[varnum]);
+                m_field_param.push_back(m_allParam[varnum]);
+            }
+
+            if(dimension == 1) {
+                m_ParamDimension[varnum] = 1;
+            }
+            else if(dimension == 3) {
+                m_ParamDimension[varnum] = 3;
             }
         }
     }
@@ -425,17 +432,66 @@ DataBase::ptr ReadCFX::loadField(int volumeNr) {
         std::cerr << "invalid zone number" << std::endl;
     }
     std::cerr << "m_selectedVolumes[volumeNr].volumeID = " << m_selectedVolumes[volumeNr].volumeID << "; m_selectedVolumes[volumeNr].zoneFlag = " << m_selectedVolumes[volumeNr].zoneFlag << std::endl;
+//    int nnodesInVolume;
+//    int *nodeListOfVolume;
+//    nnodesInVolume = cfxExportVolumeSize(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES);
+//    nodeListOfVolume = cfxExportVolumeList(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES); //query the nodes that define the volume
 
-    for(int i=0;i<10;++i) {
-        std::cerr << "CaseInfo.m_allParameters[" << i << "] = " << m_case.m_allParameters[i] << std::endl;
-    }
-    std::cerr << "m_boundaryOut[0] = " << m_boundaryOut[0]->getValue() << std::endl;
-    std::cerr << "m_boundaryOut[1] = " << m_boundaryOut[1]->getValue() << std::endl;
-    std::cerr << "m_boundaryOut[2] = " << m_boundaryOut[2]->getValue() << std::endl;
-    std::cerr << "m_fieldOut[0] = " << m_fieldOut[0]->getValue() << std::endl;
-    std::cerr << "m_fieldOut[1] = " << m_fieldOut[1]->getValue() << std::endl;
-    std::cerr << "m_fieldOut[2] = " << m_fieldOut[2]->getValue() << std::endl;
+//    for(int i=0;i<10;++i) {
+//        std::cerr << "m_case.m_allParam[" << i << "] = " << m_case.m_allParam[i] << std::endl;
+//    }
+//    std::cerr << "m_boundaryOut[0] = " << m_boundaryOut[0]->getValue() << std::endl;
+//    std::cerr << "m_boundaryOut[1] = " << m_boundaryOut[1]->getValue() << std::endl;
+//    std::cerr << "m_boundaryOut[2] = " << m_boundaryOut[2]->getValue() << std::endl;
+//    std::cerr << "m_fieldOut[0] = " << m_fieldOut[0]->getValue() << std::endl;
+//    std::cerr << "m_fieldOut[1] = " << m_fieldOut[1]->getValue() << std::endl;
+//    std::cerr << "m_fieldOut[2] = " << m_fieldOut[2]->getValue() << std::endl;
 
+//    index_t varnum;
+//    for(index_t i=0;i<NumPorts;++i) {
+//        for(index_t k=0;k<m_case.nvars;++k) {
+//            if(strcmp(m_fieldOut[i]->getValue(),m_case.m_allParam[k])==0) {     //aus getValue, was ein String ist, wieder die Variablen Nummer rekonstruieren
+//                varnum = k;
+//            }
+//        }
+
+//        if(m_case.m_ParamDimension[varnum] == 1) {
+//            Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
+//            boost::shared_ptr<int32_t> value(new int);
+//            boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
+//            ptrOnScalarData.get() = s->x().data();
+//            for(index_t j=0;j<nnodesInVolume;++j) {
+//                cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
+//                ptrOnScalarData[j] = *value.get();
+//            }
+//            cfxExportVariableFree(varnum);
+//            //addObject(m_volumeDataOut[i],s);
+
+//        }
+//        else if(m_case.m_ParamDimension[varnum] == 3) {
+//            Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
+//            boost::shared_ptr<int32_t> value(new int[3]);
+//            boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
+//            ptrOnScalarData = v->x().data();
+//            for(index_t j=0;j<nnodesInVolume;++j) {
+//                cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
+//                *value.get()[0];
+//                *value.get()[1];
+//                *value.get()[2];
+
+//            }
+//            cfxExportVariableFree(varnum);
+//        }
+
+//    }
+
+
+    //was machen mit boundary fields? -> eigentlich nur Werte an boundary ausgeben; Frage: wie bekomme ich die Knoten an den boundaries
+
+    //wie die Daten an die Ports geben (addObject); außerhalb von loadFields; wie die Vec verpacken?
+
+
+//    cfxExportVolumeFree(m_selectedVolumes[volumeNr].volumeID);
     //get varnum through strcmp
 //    DataBase::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &field) {
 
@@ -569,7 +625,7 @@ bool ReadCFX::compute() {
            ++timeCounter;
    }*/
 
-    //CaseInfo.m_allParameters.clear();
+    //CaseInfo.m_allParam.clear();
     cfxExportDone();
 
    return true;
