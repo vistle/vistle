@@ -92,6 +92,7 @@ class ReadCFX: public vistle::Module {
    int rankForBlock(int processor) const;
    bool loadGrid(int volumeNr);
    vistle::DataBase::ptr loadField(int volumeNr);
+   vistle::DataBase::ptr loadBoundaryField(int volumeNr);
    int collectVolumes();
 
 };
