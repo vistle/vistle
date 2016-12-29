@@ -175,6 +175,7 @@ void CaseInfo::getFieldList() {
     m_field_param.clear();
     m_field_param.push_back("(NONE)");
     m_allParam[0] = "(NONE)";
+    m_ParamDimension[0] = 0;
 
     for(index_t varnum=1;varnum<=nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,1) only returnes values from 1 and higher
         m_allParam[varnum]=cfxExportVariableName(varnum,1); //0 is short form and 1 is long form of the variable name
@@ -431,11 +432,11 @@ DataBase::ptr ReadCFX::loadField(int volumeNr) {
     if(cfxExportZoneSet(m_selectedVolumes[volumeNr].zoneFlag,NULL) < 0) {
         std::cerr << "invalid zone number" << std::endl;
     }
-    std::cerr << "m_selectedVolumes[volumeNr].volumeID = " << m_selectedVolumes[volumeNr].volumeID << "; m_selectedVolumes[volumeNr].zoneFlag = " << m_selectedVolumes[volumeNr].zoneFlag << std::endl;
-//    int nnodesInVolume;
-//    int *nodeListOfVolume;
-//    nnodesInVolume = cfxExportVolumeSize(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES);
-//    nodeListOfVolume = cfxExportVolumeList(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES); //query the nodes that define the volume
+//    std::cerr << "m_selectedVolumes[volumeNr].volumeID = " << m_selectedVolumes[volumeNr].volumeID << "; m_selectedVolumes[volumeNr].zoneFlag = " << m_selectedVolumes[volumeNr].zoneFlag << std::endl;
+    index_t nnodesInVolume;
+    int *nodeListOfVolume;
+    nnodesInVolume = cfxExportVolumeSize(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES);
+    nodeListOfVolume = cfxExportVolumeList(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES); //query the nodes that define the volume
 
 //    for(int i=0;i<10;++i) {
 //        std::cerr << "m_case.m_allParam[" << i << "] = " << m_case.m_allParam[i] << std::endl;
@@ -447,86 +448,62 @@ DataBase::ptr ReadCFX::loadField(int volumeNr) {
 //    std::cerr << "m_fieldOut[1] = " << m_fieldOut[1]->getValue() << std::endl;
 //    std::cerr << "m_fieldOut[2] = " << m_fieldOut[2]->getValue() << std::endl;
 
-//    index_t varnum;
-//    for(index_t i=0;i<NumPorts;++i) {
-//        for(index_t k=0;k<m_case.nvars;++k) {
-//            if(strcmp(m_fieldOut[i]->getValue(),m_case.m_allParam[k])==0) {     //aus getValue, was ein String ist, wieder die Variablen Nummer rekonstruieren
-//                varnum = k;
-//            }
-//        }
 
-//        if(m_case.m_ParamDimension[varnum] == 1) {
-//            Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
-//            boost::shared_ptr<int32_t> value(new int);
-//            boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
-//            ptrOnScalarData.get() = s->x().data();
-//            for(index_t j=0;j<nnodesInVolume;++j) {
-//                cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
-//                ptrOnScalarData[j] = *value.get();
-//            }
-//            cfxExportVariableFree(varnum);
-//            //addObject(m_volumeDataOut[i],s);
+    //read field parameters
+    index_t varnum;
+    for(index_t i=0;i<NumPorts;++i) {
+        for(index_t k=0;k<m_case.nvars;++k) {
+            if(!strcmp(m_fieldOut[i]->getValue().c_str(),m_case.m_allParam[k].c_str())) {
+                varnum = k;
+//                std::cerr << "m_fieldOut[" << i <<"] = " << m_fieldOut[i]->getValue() << "varnum = " << varnum << std::endl;
+            }
+        }
 
-//        }
-//        else if(m_case.m_ParamDimension[varnum] == 3) {
-//            Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
-//            boost::shared_ptr<int32_t> value(new int[3]);
-//            boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
-//            ptrOnScalarData = v->x().data();
-//            for(index_t j=0;j<nnodesInVolume;++j) {
-//                cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
-//                *value.get()[0];
-//                *value.get()[1];
-//                *value.get()[2];
-
-//            }
-//            cfxExportVariableFree(varnum);
-//        }
-
-//    }
+        if(m_case.m_ParamDimension[varnum] == 1) {
+            Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
+            boost::shared_ptr<float_t> value(new float);
+            //boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
+            scalar_t *ptrOnScalarData;
+            ptrOnScalarData = s->x().data();
+            for(index_t j=0;j<nnodesInVolume;++j) {
+                cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
+                ptrOnScalarData[j] = *value.get();
+//                if(j<20) {
+//                    std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+//                }
+            }
+            cfxExportVariableFree(varnum);
+            return s;
+        }
+        else if(m_case.m_ParamDimension[varnum] == 3) {
+            Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
+            boost::shared_ptr<float_t> value(new float[3]);
+            //boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
+            scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
+            ptrOnVectorXData = v->x().data();
+            ptrOnVectorYData = v->y().data();
+            ptrOnVectorZData = v->z().data();
+            for(index_t j=0;j<nnodesInVolume;++j) {
+                cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
+                ptrOnVectorXData[j] = value.get()[0];
+                ptrOnVectorYData[j] = value.get()[1];
+                ptrOnVectorZData[j] = value.get()[2];
+//                if(j<20) {
+//                    std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
+//                    std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
+//                    std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
+//                }
+            }
+            cfxExportVariableFree(varnum);
+            return v;
+        }
+   }
 
 
     //was machen mit boundary fields? -> eigentlich nur Werte an boundary ausgeben; Frage: wie bekomme ich die Knoten an den boundaries
 
     //wie die Daten an die Ports geben (addObject); außerhalb von loadFields; wie die Vec verpacken?
-
-
-//    cfxExportVolumeFree(m_selectedVolumes[volumeNr].volumeID);
-    //get varnum through strcmp
-//    DataBase::ptr ReadFOAM::loadField(const std::string &meshdir, const std::string &field) {
-
-//       boost::shared_ptr<std::istream> stream = getStreamForFile(meshdir, field);
-//       if (!stream) {
-//          std::cerr << "failed to open " << meshdir << "/" << field << std::endl;
-//          return DataBase::ptr();
-//       }
-//       HeaderInfo header = readFoamHeader(*stream);
-//       if (header.fieldclass == "volScalarField") {
-//          Vec<Scalar>::ptr s(new Vec<Scalar>(header.lines));
-//          if (!readFloatArray(header, *stream, s->x().data(), s->x().size())) {
-//             std::cerr << "readFloatArray for " << meshdir << "/" << field << " failed" << std::endl;
-//             return DataBase::ptr();
-//          }
-//          return s;
-//       } else if (header.fieldclass == "volVectorField") {
-//          Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(header.lines));
-//          if (!readFloatVectorArray(header, *stream, v->x().data(), v->y().data(), v->z().data(), v->x().size())) {
-//             std::cerr << "readFloatVectorArray for " << meshdir << "/" << field << " failed" << std::endl;
-//             return DataBase::ptr();
-//          }
-//          return v;
-//       }
-
-//       std::cerr << "cannot interpret " << meshdir << "/" << field << std::endl;
-//       return DataBase::ptr();
-//    }
-
-//    cfxExportVariableGet(varnum,correct,index,*value)
-//            varnum = die Variable, welche man haben möchte
-//            correct = 0 im Feld, 1 am Rand (correct boundary node data)
-//            index = Knotennummer, an welcher man Daten haben möchte -> Liste aus Region List durchgehen
-//            *value = Der Wert an dem mit index gewählten Knoten
-
+    //addObject(m_volumeDataOut[i],s);
 
     return DataBase::ptr();
 }
