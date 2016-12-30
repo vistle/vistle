@@ -89,7 +89,7 @@ bool TestInterpolation::compute() {
 
        Vector dist=max-min;
        for (int c=0; c<3; ++c) {
-           dist[c] /= uni->getNumDivisions(c);
+           dist[c] /= uni->getNumDivisions(c)-1;
        }
        const Index dim[3] = { uni->getNumDivisions(0), uni->getNumDivisions(1), uni->getNumDivisions(2) };
        for (Index i = 0; i < dim[0]; i++) {
