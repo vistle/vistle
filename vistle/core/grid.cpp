@@ -1,13 +1,22 @@
 #include "grid.h"
 #include "scalar.h"
 
+#include <cmath>
+
 namespace vistle {
 
 bool GridInterface::Interpolator::check() const {
 
 #ifndef NDEBUG
-    Scalar total = 0;
     bool ok = true;
+    for (const auto w: weights) {
+        if (!std::isfinite(w)) {
+            std::cerr << "invalid interpolation weight" << std::endl;
+            ok = false;
+        }
+    }
+
+    Scalar total = 0;
     for (const auto w: weights) {
         if (w < -1e-4)
             ok = false;
