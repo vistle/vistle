@@ -186,14 +186,30 @@ bool UnstructuredGrid::checkConvexity() {
             break;
         case PRISM:
         case PYRAMID:
-        case HEXAHEDRON:
-        case POLYHEDRON: {
+        case HEXAHEDRON: {
             bool conv = true;
             const Index begin = el[elem], end = el[elem+1];
             for (Index idx = begin; idx<end; ++idx) {
                 const Index v = cl[idx];
                 const Vector p(x[v], y[v], z[v]);
-                if (!inside(elem, p)) {
+                if (!insideConvex(elem, p)) {
+                    conv = false;
+                    break;
+                }
+            }
+            if (conv) {
+                tl[elem] |= CONVEX_BIT;
+            } else {
+                convex = false;
+            }
+            break;
+        }
+        case POLYHEDRON: {
+            bool conv = true;
+            std::vector<Index> vert = cellVertices(elem);
+            for (Index v: vert) {
+                const Vector p(x[v], y[v], z[v]);
+                if (!insideConvex(elem, p)) {
                     conv = false;
                     break;
                 }
@@ -243,6 +259,8 @@ Index UnstructuredGrid::findCell(const Vector &point, int flags) const {
    }
    return InvalidIndex;
 }
+
+namespace {
 
 std::pair<Vector,Vector> faceNormalAndCenter(Index nVert, const Index *verts, const Scalar *x, const Scalar *y, const Scalar *z) {
     Vector normal(0,0,0);
@@ -302,67 +320,6 @@ std::pair<Vector,Vector> faceNormalAndCenter(unsigned char type, Index f, const 
     return std::make_pair(normal.normalized(), center/N);
 }
 
-bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const {
-
-   if(elem == InvalidIndex)
-       return false;
-
-   const Scalar Tolerance = 1e-3*cellDiameter(elem);
-
-   const Index *el = &this->el()[0];
-   const Index *cl = &this->cl()[el[elem]];
-   const Scalar *x = &this->x()[0];
-   const Scalar *y = &this->y()[0];
-   const Scalar *z = &this->z()[0];
-
-   const auto type(tl()[elem] & TYPE_MASK);
-   if (type == UnstructuredGrid::POLYHEDRON) {
-      const Index begin=el[elem], end=el[elem+1];
-      const Index nvert = end-begin;
-      for (Index i=0; i<nvert; i+=cl[i]+1) {
-          auto nc = faceNormalAndCenter(cl[i], &cl[i+1], x, y, z);
-          auto normal = nc.first;
-          auto center = nc.second;
-          if (normal.dot(point-center) > Tolerance)
-              return false;
-      }
-      return true;
-   } else {
-      const auto numFaces = NumFaces[type];
-      for (int f=0; f<numFaces; ++f) {
-         auto nc = faceNormalAndCenter(type, f, cl, x, y, z);
-         auto normal = nc.first;
-         auto center = nc.second;
-
-         //std::cerr << "normal: " << n.transpose() << ", v0: " << v0.transpose() << ", rel: " << (point-v0).transpose() << ", dot: " << n.dot(point-v0) << std::endl;
-
-         if (normal.dot(point-center) > Tolerance)
-            return false;
-      }
-      return true;
-   }
-
-   return false;
-}
-
-bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
-
-    if (isConvex(elem))
-        return insideConvex(elem, point);
-
-    auto t = tl()[elem];
-    switch (t&TYPE_MASK) {
-    case TETRAHEDRON:
-        assert("already handled in insideConvex"==0);
-        break;
-    case PYRAMID:
-        break;
-    }
-
-    return insideConvex(elem, point);
-}
-
-namespace {
 
 // cf. http://stackoverflow.com/questions/808441/inverse-bilinear-interpolation
 Vector2 bilinearInverse(const Vector &p0, const Vector p[4]) {
@@ -419,8 +376,10 @@ bool insideConvexPolygon(const Vector &point, const Vector *corners, Index nCorn
       Vector2 n = corners2[(i+1)%nCorners] - corners2[i];
       std::swap(n[0],n[1]);
       n[0] *= -1;
-      if (i==0) {
+      if (sign==0) {
           sign = n.dot(corners2[i]);
+          if (std::abs(sign) < 1e-5)
+              sign = 0;
       } else if (n.dot(corners2[i])*sign < 0) {
 #ifdef INTERPOL_DEBUG
          std::cerr << "outside: normal: " << normal.transpose() << ", point: " << point.transpose() << ", p2: " << point2.transpose() << std::endl;
@@ -462,10 +421,16 @@ bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, c
    for (Index i=0; i<nCorners; ++i) {
       Vector2 c0 = corners2[i];
       Vector2 c1 = corners2[(i+1)%nCorners];
-      if (c0[1] * c1[1] > 0)
+      if (c0[1]<0 && c1[1]<0)
+          continue;
+      if (c0[1]>0 && c1[1]>0)
           continue;
       if (c0[0] < 0 && c1[0] < 0)
           continue;
+      if ((c0[0]>=0 && c1[0]<=0) || (c0[0]<=0 && c1[0]>=0)) {
+          ++nisect;
+          continue;
+      }
       Scalar mInv = (c1[0]-c0[0])/(c1[1]-c0[1]);
       Scalar x=c0[1]*mInv+c0[0];
       if (x > 0)
@@ -477,6 +442,149 @@ bool insidePolygon(const Vector &point, const Vector *corners, Index nCorners, c
 
 
 } // anon namespace
+
+
+bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const {
+
+   const Scalar Tolerance = 1e-3*cellDiameter(elem);
+
+   const Index *el = &this->el()[0];
+   const Index *cl = &this->cl()[el[elem]];
+   const Scalar *x = &this->x()[0];
+   const Scalar *y = &this->y()[0];
+   const Scalar *z = &this->z()[0];
+
+   const auto type(tl()[elem] & TYPE_MASK);
+   if (type == UnstructuredGrid::POLYHEDRON) {
+      const Index begin=el[elem], end=el[elem+1];
+      const Index nvert = end-begin;
+      for (Index i=0; i<nvert; i+=cl[i]+1) {
+          auto nc = faceNormalAndCenter(cl[i], &cl[i+1], x, y, z);
+          auto normal = nc.first;
+          auto center = nc.second;
+          if (normal.dot(point-center) > Tolerance)
+              return false;
+      }
+      return true;
+   } else {
+      const auto numFaces = NumFaces[type];
+      for (int f=0; f<numFaces; ++f) {
+         auto nc = faceNormalAndCenter(type, f, cl, x, y, z);
+         auto normal = nc.first;
+         auto center = nc.second;
+
+         //std::cerr << "normal: " << n.transpose() << ", v0: " << v0.transpose() << ", rel: " << (point-v0).transpose() << ", dot: " << n.dot(point-v0) << std::endl;
+
+         if (normal.dot(point-center) > Tolerance)
+            return false;
+      }
+      return true;
+   }
+
+   return false;
+}
+
+bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
+
+   if(elem == InvalidIndex)
+       return false;
+
+#if 0
+    if (isConvex(elem))
+        return insideConvex(elem, point);
+#endif
+
+    const Scalar Tolerance = 1e-3*cellDiameter(elem);
+    //std::cerr << "inside(" << elem << "): tol=" << Tolerance << std::endl;
+    const Vector raydir = Vector(1,1,1).normalized();
+    const auto type = tl()[elem] & TYPE_MASK;
+    switch (type) {
+    case TETRAHEDRON:
+        return insideConvex(elem, point);
+        assert("already handled in insideConvex"==0);
+        break;
+    case PYRAMID:
+    case PRISM:
+    case HEXAHEDRON: {
+        const Index begin = el()[elem];
+        const Index *cl = &this->cl()[begin];
+        const Scalar *x = &this->x()[0];
+        const Scalar *y = &this->y()[0];
+        const Scalar *z = &this->z()[0];
+        int nisect = 0;
+        const auto numFaces = NumFaces[type];
+        Vector corners[4];
+        for (int f=0; f<numFaces; ++f) {
+            auto nc = faceNormalAndCenter(type, f, cl, x, y, z);
+            auto normal = nc.first;
+            auto center = nc.second;
+
+            const Scalar cosa = normal.dot(raydir);
+            if (std::abs(cosa) <= 1e-7) {
+                continue;
+            }
+            const Scalar t = normal.dot(point-center)/cosa;
+            if (t > 0) {
+                continue;
+            }
+            const Index nCorners = FaceSizes[type][f];
+            for (int i=0; i<nCorners; ++i) {
+                const Index v = cl[FaceVertices[type][f][i]];
+                corners[i] = Vector(x[v], y[v], z[v]);
+            }
+            const auto isect = point + t*raydir;
+            //assert(std::abs(normal.dot(isect - center)) < Tolerance);
+            if (insidePolygon(isect, corners, nCorners, normal)) {
+                ++nisect;
+            }
+        }
+        return (nisect%2) == 1;
+        break;
+        }
+    case POLYHEDRON: {
+        const Index begin=el()[elem], end=el()[elem+1];
+        const Index *cl = &this->cl()[0];
+        const Scalar *x = &this->x()[0];
+        const Scalar *y = &this->y()[0];
+        const Scalar *z = &this->z()[0];
+
+        int nisect = 0;
+        for (Index i=begin; i<end; i+=cl[i]+1) {
+            const Index nCorners = cl[i];
+
+            auto nc = faceNormalAndCenter(nCorners, &cl[i+1], x, y, z);
+            auto normal = nc.first;
+            auto center = nc.second;
+
+            const Scalar cosa = normal.dot(raydir);
+            if (std::abs(cosa) <= 1e-7) {
+                continue;
+            }
+            const Scalar t = normal.dot(point-center)/cosa;
+            if (t > 0) {
+                continue;
+            }
+            std::vector<Vector> corners(nCorners);
+            for (int k=0; k<nCorners; ++k) {
+                const Index v = cl[i+k+1];
+                corners[k] = Vector(x[v], y[v], z[v]);
+            }
+            const auto isect = point + t*raydir;
+            //assert(std::abs(normal.dot(isect - center)) < Tolerance);
+            if (insidePolygon(isect, corners.data(), nCorners, normal)) {
+                ++nisect;
+            }
+        }
+
+        return (nisect%2) == 1;
+        break;
+    }
+    default:
+        std::cerr << "UnstructuredGrid::inside(" << elem << "): unhandled cell type " << type << std::endl;
+    }
+
+    return insideConvex(elem, point);
+}
 
 GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const Vector &point, Mapping mapping, InterpolationMode mode) const {
 
