@@ -62,6 +62,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
    bool insideConvex(Index elem, const Vector &point) const;
    bool inside(Index elem, const Vector &point) const override;
    bool checkConvexity();
+   Scalar exitDistance(Index elem, const Vector &point, const Vector &dir) const override;
 
    Interpolator getInterpolator(Index elem, const Vector &point, Mapping mapping=Vertex, InterpolationMode mode=Linear) const override;
    std::pair<Vector, Vector> elementBounds(Index elem) const override;

@@ -5,6 +5,8 @@
 //-------------------------------------------------------------------------
 
 #include "rectilineargrid.h"
+#include "cellalgorithm.h"
+#include "unstr.h"
 #include "assert.h"
 
 namespace vistle {
@@ -157,6 +159,40 @@ bool RectilinearGrid::inside(Index elem, const Vector &point) const {
 
     return true;
 }
+
+Scalar RectilinearGrid::exitDistance(Index elem, const Vector &point, const Vector &dir) const {
+
+    if (elem == InvalidIndex)
+        return false;
+
+    Vector raydir(dir.normalized());
+
+    std::array<Index,3> n = cellCoordinates(elem, m_numDivisions);
+    assert(n[0] < m_numDivisions[0]);
+    assert(n[1] < m_numDivisions[1]);
+    assert(n[2] < m_numDivisions[2]);
+    Scalar exitDist = -1;
+    Scalar t0[3], t1[3];
+    for (int c=0; c<3; ++c) {
+        Scalar x0 = m_coords[c][n[c]], x1 = m_coords[c][n[c]+1];
+        t0[c] = (x0-point[c])/raydir[c];
+        t1[c] = (x1-point[c])/raydir[c];
+    }
+
+    for (int c=0; c<3; ++c) {
+        if (t0[c] > 0) {
+           if (exitDist<0 || exitDist>t0[c])
+              exitDist = t0[c];
+        }
+        if (t1[c] > 0) {
+           if (exitDist<0 || exitDist>t1[c])
+              exitDist = t1[c];
+        }
+    }
+
+    return exitDist;
+}
+
 
 // GET INTERPOLATOR
 //-------------------------------------------------------------------------

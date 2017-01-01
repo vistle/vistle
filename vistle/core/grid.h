@@ -25,6 +25,7 @@ class V_COREEXPORT GridInterface: virtual public ElementInterface {
    virtual bool inside(Index elem, const Vector &point) const = 0;
    virtual std::pair<Vector, Vector> cellBounds(Index elem) const = 0;
    virtual Scalar cellDiameter(Index elem) const = 0; //< approximate diameter of cell
+   virtual Scalar exitDistance(Index elem, const Vector &point, const Vector &dir) const = 0;
 
    class Interpolator {
       std::vector<Scalar> weights;

@@ -275,6 +275,50 @@ bool StructuredGrid::inside(Index elem, const Vec::Vector &point) const {
     return true;
 }
 
+Scalar StructuredGrid::exitDistance(Index elem, const Vec::Vector &point, const Vec::Vector &dir) const {
+
+    refresh();
+    auto cl = cellVertices(elem, m_numDivisions);
+
+    const Scalar *x = &this->x()[0];
+    const Scalar *y = &this->y()[0];
+    const Scalar *z = &this->z()[0];
+
+    const Vector raydir(dir.normalized());
+
+    Scalar exitDist = -1;
+    const UnstructuredGrid::Type type = UnstructuredGrid::HEXAHEDRON;
+    const auto numFaces = UnstructuredGrid::NumFaces[type];
+    const auto &faces = UnstructuredGrid::FaceVertices[type];
+    const auto &sizes = UnstructuredGrid::FaceSizes[type];
+    Vector corners[4];
+    for (int f=0; f<numFaces; ++f) {
+        auto nc = faceNormalAndCenter(type, f, cl.data(), x, y, z);
+        auto normal = nc.first;
+        auto center = nc.second;
+
+        const Scalar cosa = normal.dot(raydir);
+        if (std::abs(cosa) <= 1e-7) {
+            continue;
+        }
+        const Scalar t = normal.dot(center-point)/cosa;
+        if (t < 0) {
+            continue;
+        }
+        const Index nCorners = sizes[f];
+        for (int i=0; i<nCorners; ++i) {
+            const Index v = cl[faces[f][i]];
+            corners[i] = Vector(x[v], y[v], z[v]);
+        }
+        const auto isect = point + t*raydir;
+        if (insidePolygon(isect, corners, nCorners, normal)) {
+            if (exitDist<0 || t<exitDist)
+                exitDist = t;
+        }
+    }
+    return exitDist;
+}
+
 // GET INTERPOLATOR
 //-------------------------------------------------------------------------
 GridInterface::Interpolator StructuredGrid::getInterpolator(Index elem, const Vec::Vector &point, DataBase::Mapping mapping, GridInterface::InterpolationMode mode) const {
