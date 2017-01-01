@@ -22,11 +22,12 @@ class BlockData;
 class GlobalData {
     friend class Particle;
     friend class Tracer;
+    friend class Integrator;
 
 public:
 
 private:
-    std::vector<std::vector<std::unique_ptr<BlockData>>> blocks;
+    std::vector<std::vector<std::shared_ptr<BlockData>>> blocks;
 
     TraceType task_type;
     IntegrationMethod int_mode;
@@ -37,6 +38,7 @@ private:
     double t_max;
     double trace_len;
     vistle::Index max_step;
+    bool cell_relative;
 };
 
 class Tracer: public vistle::Module {

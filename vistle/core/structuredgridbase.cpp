@@ -33,7 +33,12 @@ bool StructuredGridBase::isGhostCell(Index elem) const {
 
       return false;
 
-  }
+}
 
+Scalar StructuredGridBase::cellDiameter(Index elem) const {
+
+    auto bounds = cellBounds(elem);
+    return (bounds.second-bounds.first).norm();
+}
 
 } // namespace vistle

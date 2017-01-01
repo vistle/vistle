@@ -66,6 +66,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
    Interpolator getInterpolator(Index elem, const Vector &point, Mapping mapping=Vertex, InterpolationMode mode=Linear) const override;
    std::pair<Vector, Vector> elementBounds(Index elem) const override;
    std::vector<Index> cellVertices(Index elem) const override;
+   Scalar cellDiameter(Index elem) const override;
 
  private:
    mutable const unsigned char *m_tl;

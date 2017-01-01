@@ -84,6 +84,8 @@ public:
 
    // virtual set functions
    virtual void setNumGhostLayers(unsigned dim, GhostLayerPosition pos, unsigned value) { return; }
+
+   virtual Scalar cellDiameter(Index elem) const override;
 };
 
 BOOST_SERIALIZATION_ASSUME_ABSTRACT(StructuredGridBase)

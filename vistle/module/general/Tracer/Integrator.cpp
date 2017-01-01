@@ -1,6 +1,7 @@
 #include "Integrator.h"
 #include "Particle.h"
 #include "BlockData.h"
+#include "Tracer.h"
 #include <core/vec.h>
 
 
@@ -53,11 +54,19 @@ bool Integrator::Step() {
 
 bool Integrator::StepEuler() {
 
-    if (m_forward)
-        m_ptcl->m_x = m_ptcl->m_x + m_ptcl->m_v*m_h;
-    else
-        m_ptcl->m_x = m_ptcl->m_x - m_ptcl->m_v*m_h;
-    m_hact = m_h;
+    Scalar unit = 1.;
+    if (m_ptcl->m_global.cell_relative) {
+        Index el=m_ptcl->m_el;
+        auto grid = m_ptcl->m_block->getGrid();
+        Scalar cellSize = grid->cellDiameter(el);
+        unit = cellSize;
+    }
+
+    Vector vel = m_forward ? m_ptcl->m_v : -m_ptcl->m_v;
+    Scalar v = std::max(vel.norm(), Scalar(1e-7));
+    unit /= v;
+    m_ptcl->m_x = m_ptcl->m_x + vel*m_h*unit;
+    m_hact = m_h*unit;
     return true;
 }
 
@@ -65,49 +74,55 @@ void Integrator::hInit(){
     if (m_mode == Euler)
         return;
 
-    Vector3 v = Interpolator(m_ptcl->m_block, m_ptcl->m_el, m_ptcl->m_x);
-    Vector3::Index dimmax = 0, dummy;
-    v.maxCoeff(&dimmax, &dummy);
-    Scalar vmax = std::abs(v(dimmax));
+    Index el=m_ptcl->m_el;
     auto grid = m_ptcl->m_block->getGrid();
-    const auto bounds = grid->cellBounds(m_ptcl->m_el);
-    const auto &min = bounds.first, &max = bounds.second;
+    Scalar unit = 1.;
+    if (m_ptcl->m_global.cell_relative) {
+        Scalar cellSize = grid->cellDiameter(el);
+        unit = cellSize;
+    }
 
-    Scalar chlen = max[dimmax]-min[dimmax];
-    m_h =0.5*chlen/vmax;
-    if(m_h>m_hmax) {m_h = m_hmax;}
-    if(m_h<m_hmin) {m_h = m_hmin;}
+    Vector3 vel = Interpolator(m_ptcl->m_block, m_ptcl->m_el, m_ptcl->m_x);
+    Scalar v = std::max(vel.norm(), Scalar(1e-7));
+    unit /= v;
+
+    m_h = .5 * unit * std::sqrt(m_hmin*m_hmax);
     m_hact = m_h;
 }
 
-bool Integrator::hNew(Vector3 higher, Vector3 lower){
+bool Integrator::hNew(Vector3 higher, Vector3 lower, Vector vel, Scalar unit){
 
-   Scalar xerr = std::abs(higher(0)-lower(0));
-   Scalar yerr = std::abs(higher(1)-lower(1));
-   Scalar zerr = std::abs(higher(2)-lower(2));
-   Scalar errest = std::max(std::max(xerr,yerr),zerr);
+   Scalar errest = (higher-lower).lpNorm<Eigen::Infinity>();
+
+   if (!m_ptcl->m_global.cell_relative) {
+       unit = 1.;
+   }
+   Scalar v = std::max(vel.norm(), Scalar(1e-7));
+   unit /= v;
 
    if (!std::isfinite(errest)) {
-       m_h = m_hmin;
+       m_h = m_hmin*unit;
        std::cerr << "Integrator: invalid input for error estimation: higher=" << higher.transpose() << ", lower=" << lower.transpose() <<  std::endl;
        return true;
    }
 
    Scalar h = 0.9*m_h*std::pow(Scalar(m_errtol/errest),Scalar(1.0/3.0));
+   h = std::min(h, 2*m_h);
+   //Scalar h = 0.9*m_h*std::pow(Scalar(m_errtol/errest),Scalar(1.0/3.0))*unit;
    if(errest<=m_errtol) {
-      if(h<m_hmin) {
-         m_h=m_hmin;
+      if(h<m_hmin*unit) {
+         m_h=m_hmin*unit;
          return true;
-      } else if(h>m_hmax) {
-         m_h=m_hmax;
+      } else if(h>m_hmax*unit) {
+         m_h=m_hmax*unit;
          return true;
       } else {
          m_h = h;
          return true;
       }
    } else {
-      if (h<m_hmin) {
-         m_h = m_hmin;
+      if (h<m_hmin*unit) {
+         m_h = m_hmin*unit;
          return true;
       } else {
          m_h = h;
@@ -137,9 +152,11 @@ bool Integrator::StepRK32() {
    Vector3 k[3];
    k[0] = sign*m_ptcl->m_v;
    auto grid = m_ptcl->m_block->getGrid();
+   Scalar cellSize = grid->cellDiameter(m_ptcl->m_el);
 
    for (;;) {
       Index el=m_ptcl->m_el;
+
       Vector xtmp = m_ptcl->m_x + m_h*k[0];
       m_hact = m_h;
       if(!grid->inside(el,xtmp)){
@@ -154,6 +171,7 @@ bool Integrator::StepRK32() {
             m_ptcl->m_x = xtmp;
             return false;
          }
+         cellSize = std::min(grid->cellDiameter(el), cellSize);
       }
 
       k[1] = sign*Interpolator(m_ptcl->m_block,el, xtmp);
@@ -172,6 +190,7 @@ bool Integrator::StepRK32() {
             m_hact = m_h;
             return false;
          }
+         cellSize = std::min(grid->cellDiameter(el), cellSize);
       }
 
       k[2] = sign*Interpolator(m_ptcl->m_block,el,xtmp);
@@ -179,7 +198,7 @@ bool Integrator::StepRK32() {
       Vector3 x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
       m_hact = m_h;
 
-      bool accept = hNew(x3rd,x2nd);
+      bool accept = hNew(x3rd, x2nd, k[0], cellSize);
       if (accept) {
           m_ptcl->m_x = x3rd;
           return true;

@@ -61,7 +61,6 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
 
    virtual std::pair<Vector, Vector> elementBounds(Index elem) const;
    virtual std::vector<Index> cellVertices(Index elem) const;
-   Scalar cellDiameter(Index elem) const; //< approximate diameter of cell
 
  private:
    mutable const Index *m_el;
