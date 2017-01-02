@@ -142,6 +142,7 @@ Scalar Integrator::h() const {
     return m_hact;
 }
 
+// 3rd-order Runge-Kutta with embedded Heun
 bool Integrator::StepRK32() {
 
    Scalar sign = m_forward ? 1. : -1.;
@@ -153,10 +154,9 @@ bool Integrator::StepRK32() {
    for (;;) {
       Index el=m_ptcl->m_el;
 
-      Vector xtmp = m_ptcl->m_x + m_h*k[0];
-      m_hact = m_h;
-      if(!grid->inside(el,xtmp)){
-         el = grid->findCell(xtmp, m_cellSearchFlags);
+      const Vector x1 = m_ptcl->m_x + 0.5*m_h*k[0];
+      if(!grid->inside(el,x1)){
+         el = grid->findCell(x1, m_cellSearchFlags);
          if(el==InvalidIndex){
             m_ptcl->m_x = x1;
             m_hact = 0.5*m_h;
@@ -165,17 +165,14 @@ bool Integrator::StepRK32() {
          cellSize = std::min(grid->cellDiameter(el), cellSize);
       }
 
-      k[1] = sign*Interpolator(m_ptcl->m_block,el, xtmp);
-      xtmp = m_ptcl->m_x +m_h*0.25*(k[0]+k[1]);
-      m_hact = m_h*0.5;
-      if(!grid->inside(el,xtmp)){
-         el = grid->findCell(xtmp, m_cellSearchFlags);
       k[1] = sign*Interpolator(m_ptcl->m_block,el, x1);
-      Vector x2 = m_ptcl->m_x +m_h*(-k[0]+2*k[1]);
+      Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
+
+      const Vector x2 = m_ptcl->m_x +m_h*(-k[0]+2*k[1]);
       if(!grid->inside(el,x2)){
          el = grid->findCell(x2, m_cellSearchFlags);
          if(el==InvalidIndex){
-            m_ptcl->m_x = m_ptcl->m_x + m_h*0.5*(k[0]+k[1]);
+            m_ptcl->m_x = x2nd;
             m_hact = m_h;
             return false;
          }
@@ -183,11 +180,9 @@ bool Integrator::StepRK32() {
       }
 
       k[2] = sign*Interpolator(m_ptcl->m_block,el,x2);
-      Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
-      Vector3 x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
+      Vector3 x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + 2*k[1]/3.0 + k[2]/6.0);
       m_hact = m_h;
 
-      m_hact = m_h;
       bool accept = hNew(x3rd, x2nd, k[0], cellSize);
       if (accept) {
           m_ptcl->m_x = x3rd;
