@@ -549,8 +549,9 @@ GridDataContainer ReadFOAM::loadGrid(const std::string &meshdir, std::string top
                         std::reverse(a.begin(), a.end());
                      }
 
-                     for (index_t k=0; k<=a.size(); ++k) {
-                        connectivities.push_back(a[k % a.size()]);
+                     connectivities.push_back(a.size());
+                     for (index_t k=0; k<a.size(); ++k) {
+                        connectivities.push_back(a[k]);
                      }
                   }
                }

@@ -188,16 +188,25 @@ bool ShowUSG::compute() {
           }
 
           else if (type==vistle::UnstructuredGrid::POLYHEDRON && showpol) {
-              Index sidebegin = InvalidIndex;
-              for (Index i = in->el()[index]; i < in->el()[index+1]; i++) {
+              bool newFace = true;
+              Index numFaceVert = 0, faceVertCount = 0;
+              Index faceStart = 0;
+              const Index begin=in->el()[index], end=in->el()[index+1];
+              for (Index i = begin; i < end; i++) {
+                  if (newFace) {
+                      newFace = false;
+                      faceStart = i+1;
+                      numFaceVert = in->cl()[i];
+                      faceVertCount = 0;
+                      continue;
+                  }
 
                   out->cl().push_back(in->cl()[i]);
 
-                  if (in->cl()[i] == sidebegin){// Wenn die Seite endet
-                      sidebegin = InvalidIndex;
-                      out->el().push_back(out->cl().size());
-                  } else if(sidebegin == InvalidIndex) { //Wenn die Neue Seite beginnt
-                      sidebegin = in->cl()[i];
+                  ++faceVertCount;
+                  if (faceVertCount == numFaceVert) {
+                      newFace = true;
+                      out->cl().push_back(in->cl()[faceStart]);
                   }
               }
           }

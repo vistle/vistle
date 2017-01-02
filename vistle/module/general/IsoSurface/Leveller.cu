@@ -291,13 +291,13 @@ struct process_Cell {
          }
 
          case UnstructuredGrid::POLYHEDRON: {
+            /* find all iso-points on each edge of each face,
+               build a triangle for each consecutive pair and a center point,
+               orient outwards towards smaller values */
 
-            Index sidebegin = InvalidIndex;
-            bool vertexSaved = false;
-            Scalar savedData [MaxNumData];
-            Index savedDataI[MaxNumData];
-            Index numTri = 0;
-            int flag = 0;
+            const auto &cl = m_data.m_cl;
+
+            Index numAvg = 0;
             Scalar middleData[MaxNumData];
             Index middleDataI[MaxNumData];
             for(int i = 0; i < MaxNumData; i++ ){
@@ -308,103 +308,68 @@ struct process_Cell {
             Index cd1I[MaxNumData], cd2I[MaxNumData];
 
             Index outIdx = m_data.m_LocationList[ValidCellIndex];
-            for (Index i = Cellbegin; i < Cellend; i++) {
+            for (Index i = Cellbegin; i < Cellend; i += cl[i]+1) {
 
-               const Index c1 = m_data.m_cl[i];
-               const Index c2 = m_data.m_cl[i+1];
+               const Index nvert = cl[i];
+               Index c1 = cl[i+nvert];
+               bool flipped = false, haveIsect = false;
+               for (Index k=i+1; k<i+nvert+1; ++k) {
+                   const Index c2 = cl[k];
 
-               if (c1 == sidebegin) {
+                   for(int i = 0; i < m_data.m_numInVertData; i++){
+                       cd1[i] = m_data.m_inVertPtr[i][c1];
+                       cd2[i] = m_data.m_inVertPtr[i][c2];
+                   }
+                   for(int i = 0; i < m_data.m_numInVertDataI; i++){
+                       cd1I[i] = m_data.m_inVertPtrI[i][c1];
+                       cd2I[i] = m_data.m_inVertPtrI[i][c2];
+                   }
 
-                  sidebegin = InvalidIndex;
-                  if (vertexSaved) {
+                   Scalar d1 = m_data.m_isoFunc(c1);
+                   Scalar d2 = m_data.m_isoFunc(c2);
 
-                     for(Index i = 0; i < m_data.m_numInVertData; i++){
-                        m_data.m_outVertPtr[i][outIdx] = savedData[i];
-                     }
-                     for(Index i = 0; i < m_data.m_numInVertDataI; i++){
-                        m_data.m_outVertPtrI[i][outIdx] = savedDataI[i];
-                     }
+                   bool smallToBig = d1 <= m_data.m_isovalue && d2 > m_data.m_isovalue;
+                   bool bigToSmall = d1 > m_data.m_isovalue && d2 <= m_data.m_isovalue;
 
-                     outIdx += 2;
-                     vertexSaved=false;
-                  }
-                  continue;
-               } else if(sidebegin == InvalidIndex) { //Wenn die Neue Seite beginnt
+                   if (smallToBig || bigToSmall) {
+                       if (!haveIsect) {
+                           flipped = bigToSmall;
+                           haveIsect = true;
+                       }
+                       Index out = outIdx;
+                       if (flipped) {
+                           if (bigToSmall)
+                               out += 1;
+                           else
+                               out -= 1;
+                       }
+                       Scalar t = tinterp(m_data.m_isovalue, d1, d2);
+                       for(Index i = 0; i < m_data.m_numInVertData; i++) {
+                           Scalar v = lerp(cd1[i], cd2[i], t);
+                           middleData[i] += v;
+                           m_data.m_outVertPtr[i][out] = v;
+                       }
+                       for(Index i = 0; i < m_data.m_numInVertDataI; i++){
+                           Index vI = lerp(cd1I[i], cd2I[i], t);
+                           middleDataI[i] += vI;
+                           m_data.m_outVertPtrI[i][out] = vI;
+                       }
 
-                  flag = 0;
-                  sidebegin = c1;
-                  vertexSaved = false;
-               }
+                       ++outIdx;
+                       if (bigToSmall^flipped)
+                           ++outIdx;
+                       ++numAvg;
+                   }
 
-               for(int i = 0; i < m_data.m_numInVertData; i++){
-                  cd1[i] = m_data.m_inVertPtr[i][c1];
-                  cd2[i] = m_data.m_inVertPtr[i][c2];
-               }
-               for(int i = 0; i < m_data.m_numInVertDataI; i++){
-                  cd1I[i] = m_data.m_inVertPtrI[i][c1];
-                  cd2I[i] = m_data.m_inVertPtrI[i][c2];
-               }
-
-               Scalar d1 = m_data.m_isoFunc(c1);
-               Scalar d2 = m_data.m_isoFunc(c2);
-               Scalar t = tinterp(m_data.m_isovalue, d1, d2);
-
-               if (d1 <= m_data.m_isovalue && d2 > m_data.m_isovalue) {
-                  for(Index i = 0; i < m_data.m_numInVertData; i++){
-                     Scalar v = lerp(cd1[i], cd2[i], t);
-                     middleData[i] += v;
-                     m_data.m_outVertPtr[i][outIdx] = v;
-                  }
-                  for(Index i = 0; i < m_data.m_numInVertDataI; i++){
-                     Index vI = lerp(cd1I[i], cd2I[i], t);
-                     middleDataI[i] += vI;
-                     m_data.m_outVertPtrI[i][outIdx] = vI;
-                  };
-
-                  ++outIdx;
-                  ++numTri;
-                  flag = 1;
-
-               } else if (d1 > m_data.m_isovalue && d2 <= m_data.m_isovalue) {
-
-                  Scalar v [MaxNumData];
-                  Index vI[MaxNumData];
-
-                  for(Index i = 0; i < m_data.m_numInVertData; i++){
-                     v[i] = lerp(cd1[i], cd2[i], t);
-                     middleData[i] += v[i];
-                  }
-                  for(Index i = 0; i < m_data.m_numInVertDataI; i++){
-                     vI[i] = lerp(cd1I[i], cd2I[i], t);
-                     middleDataI[i] += vI[i];
-                  }
-                  ++numTri;
-                  if (flag == 1) { //fall 2 nach fall 1
-                     for(Index i = 0; i < m_data.m_numInVertData; i++){
-                        m_data.m_outVertPtr[i][outIdx] = v[i];
-                     }
-                     for(Index i = 0; i < m_data.m_numInVertDataI; i++){
-                        m_data.m_outVertPtrI[i][outIdx] = vI[i];
-                     }
-                     outIdx += 2;
-                  } else { //fall 2 zuerst
-
-                     for(Index i = 0; i < m_data.m_numInVertData; i++){
-                        savedData[i] = v[i];
-                     }
-                     for(Index i = 0; i < m_data.m_numInVertDataI; i++){
-                        savedDataI[i] = vI[i];
-                     }
-                     vertexSaved=true;
-                  }
+                   c1 = c2;
                }
             }
-            if (numTri > 0) {
+            if (numAvg > 0) {
                 for(Index i = 0; i < m_data.m_numInVertData; i++){
-                    middleData[i] /= numTri;
+                    middleData[i] /= numAvg;
                 }
                 for(Index i = 0; i < m_data.m_numInVertDataI; i++){
-                    middleDataI[i] /= numTri;
+                    middleDataI[i] /= numAvg;
                 }
             }
             for (Index i = 2; i < numVert; i += 3) {
@@ -461,14 +426,16 @@ struct classify_cell {
 
    __host__ __device__ thrust::tuple<Index,Index> operator()(Index CellNr) {
 
+      const auto &cl = m_data.m_cl;
+
       uint tableIndex = 0;
-      Index Start = m_data.m_el[CellNr];
-      Index diff = m_data.m_el[CellNr+1]-Start;
+      Index begin = m_data.m_el[CellNr], end = m_data.m_el[CellNr+1];
+      Index nvert = end-begin;
       unsigned char CellType = m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT;
       int numVerts = 0;
       if (CellType != UnstructuredGrid::POLYHEDRON) {
-         for (int idx = 0; idx < diff; idx ++) {
-            tableIndex += (((int) (m_data.m_isoFunc(m_data.m_cl[Start+idx]) > m_data.m_isovalue)) << idx);
+         for (int idx = 0; idx < nvert; idx ++) {
+            tableIndex += (((int) (m_data.m_isoFunc(m_data.m_cl[begin+idx]) > m_data.m_isovalue)) << idx);
          }
       }
       switch (CellType) {
@@ -491,25 +458,20 @@ struct classify_cell {
 
          case UnstructuredGrid::POLYHEDRON: {
 
-            Index sidebegin = InvalidIndex;
             Index vertcounter = 0;
-            for (Index i = Start; i < Start + diff; i++) {
+            for (Index i = begin; i < end; i += cl[i]+1) {
+               const Index N = cl[i];
+               Index prev = cl[i+N];
+               for (Index k=i+1; k<i+N+1; ++k) {
+                   Index v = cl[k];
 
-               if (m_data.m_cl[i] == sidebegin) {
-                  sidebegin = InvalidIndex;
-                  continue;
-               }
+                   if (m_data.m_isoFunc(prev) <= m_data.m_isovalue && m_data.m_isoFunc(v) > m_data.m_isovalue) {
+                       ++vertcounter;
+                   } else if(m_data.m_isoFunc(prev) > m_data.m_isovalue && m_data.m_isoFunc(v) <= m_data.m_isovalue) {
+                       ++vertcounter;
+                   }
 
-               if (sidebegin == InvalidIndex) {
-                  sidebegin = m_data.m_cl[i];
-               }
-
-               if (m_data.m_isoFunc(m_data.m_cl[i]) <= m_data.m_isovalue && m_data.m_isoFunc(m_data.m_cl[i+1]) > m_data.m_isovalue) {
-
-                  vertcounter += 1;
-               } else if(m_data.m_isoFunc(m_data.m_cl[i]) > m_data.m_isovalue && m_data.m_isoFunc(m_data.m_cl[i+1]) <= m_data.m_isovalue) {
-
-                  vertcounter += 1;
+                   prev = v;
                }
             }
             numVerts = vertcounter + vertcounter/2;

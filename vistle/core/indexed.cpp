@@ -308,6 +308,13 @@ std::pair<Vector, Vector> Indexed::elementBounds(Index elem) const {
    return std::make_pair(min, max);
 }
 
+std::vector<Index> Indexed::cellVertices(Index elem) const {
+    const Index *el = &this->el()[0];
+    const Index *cl = &this->cl()[0];
+    const Index begin = el[elem], end = el[elem+1];
+    return std::vector<Index>(&cl[begin], &cl[end]);
+}
+
 void Indexed::refreshImpl() const {
 
     const Data *d = static_cast<Data *>(m_data);

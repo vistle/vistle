@@ -500,13 +500,8 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
 
    if (mode == Mean) {
       if ((tl[elem] & TYPE_MASK) == POLYHEDRON) {
-         for (Index i=0; i<nvert; ++i) {
-            indices[i] = cl[i];
-         }
-         std::sort(indices.begin(), indices.end());
-         const auto end = std::unique(indices.begin(), indices.end());
-         const Index n = end-indices.begin();
-         indices.resize(n);
+         indices = cellVertices(elem);
+         const Index n = indices.size();
          weights.resize(n);
          Scalar w = Scalar(1)/n;
          for (Index i=0; i<n; ++i)
@@ -779,6 +774,56 @@ GridInterface::Interpolator UnstructuredGrid::getInterpolator(Index elem, const 
    }
 
    return Interpolator(weights, indices);
+}
+
+std::pair<Vector, Vector> UnstructuredGrid::elementBounds(Index elem) const {
+
+    if ((tl()[elem]&UnstructuredGrid::TYPE_MASK) != UnstructuredGrid::POLYHEDRON) {
+        return Base::elementBounds(elem);
+    }
+
+    const Index *el = &this->el()[0];
+    const Index *cl = &this->cl()[0];
+    const Scalar *x[3] = { &this->x()[0], &this->y()[0], &this->z()[0] };
+    const Scalar smax = std::numeric_limits<Scalar>::max();
+    Vector min(smax, smax, smax), max(-smax, -smax, -smax);
+    const Index begin = el[elem], end = el[elem+1];
+    for (Index j=begin; j<end; j+=cl[j]+1) {
+        Index nvert = cl[j];
+        for (Index k=j+1; k<j+nvert+1; ++k) {
+            Index v=cl[k];
+            for (int c=0; c<3; ++c) {
+                min[c] = std::min(min[c], x[c][v]);
+                max[c] = std::max(max[c], x[c][v]);
+            }
+        }
+    }
+    return std::make_pair(min, max);
+}
+
+std::vector<Index> UnstructuredGrid::cellVertices(Index elem) const {
+    if ((tl()[elem]&UnstructuredGrid::TYPE_MASK) != UnstructuredGrid::POLYHEDRON) {
+        return Base::cellVertices(elem);
+    }
+
+    const Index *el = &this->el()[0];
+    const Index *cl = &this->cl()[0];
+    const Index begin = el[elem], end = el[elem+1];
+    std::vector<Index> verts;
+    verts.reserve(end-begin);
+    Index j=begin;
+    while(j<end) {
+        Index nvert = cl[j];
+        ++j;
+        for (Index k=j; k<j+nvert; ++k) {
+            verts.push_back(cl[k]);
+        }
+        j += nvert;
+    }
+    std::sort(verts.begin(), verts.end());
+    auto last = std::unique(verts.begin(), verts.end());
+    verts.resize(last - verts.begin());
+    return verts;
 }
 
 void UnstructuredGrid::refreshImpl() const {

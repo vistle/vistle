@@ -72,7 +72,7 @@ coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, In
       switch( algo_option )
       {
          case SIMPLE:     return simpleAlgo( num_elem, num_conn, num_point,
-                                elem_list, conn_list, numComp, in_data, out_data);
+                                elem_list, conn_list, type_list, numComp, in_data, out_data);
 
          case SQR_WEIGHT: return weightedAlgo( num_elem, num_conn, num_point,
                                 elem_list, conn_list, type_list, neighbour_cells, neighbour_idx, 
@@ -84,7 +84,7 @@ coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, In
    else
    {
       return simpleAlgo( num_elem, num_conn, num_point,
-            elem_list, conn_list,
+            elem_list, conn_list, nullptr,
             numComp, in_data, out_data);
    }
 
@@ -93,7 +93,7 @@ coCellToVert::interpolate( bool unstructured, Index num_elem, Index num_conn, In
 
 bool
 coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
-      const Index *elem_list, const Index *conn_list,
+      const Index *elem_list, const Index *conn_list, const unsigned char *type_list,
       Index numComp, const Scalar *in_data[], Scalar *out_data[])
 {
    // reset everything to 0, != 0 to prevent div/0 errors
@@ -107,13 +107,37 @@ coCellToVert::simpleAlgo( Index num_elem, Index num_conn, Index num_point,
    if (elem_list) {
        for(Index i=0; i<num_elem; i++ )
        {
-           const Index n = elem_list[i+1]-elem_list[i];
-           for(Index j=0; j<n; j++ )
-           {
-               Index vertex = conn_list[ elem_list[i]+j ];
-               weight_num[ vertex ] += 1.0;
-               for (int c=0; c<numComp; ++c) {
-                   out_data[c][vertex] += in_data[c][i];
+           if (type_list && (type_list[i]&UnstructuredGrid::TYPE_MASK) == UnstructuredGrid::POLYHEDRON) {
+               Index begin = elem_list[i], end = elem_list[i+1];
+               std::vector<Index> verts;
+               verts.reserve(end-begin);
+               Index j=begin;
+               while(j<end) {
+                   Index nvert = conn_list[j];
+                   ++j;
+                   for (Index k=j; k<j+nvert; ++k) {
+                       verts.push_back(conn_list[k]);
+                   }
+                   j += nvert;
+               }
+               std::sort(verts.begin(), verts.end());
+               auto last = std::unique(verts.begin(), verts.end());
+               for (auto it = verts.begin(); it != last; ++it) {
+                   Index vertex = *it;
+                   weight_num[ vertex ] += 1.0;
+                   for (int c=0; c<numComp; ++c) {
+                       out_data[c][vertex] += in_data[c][i];
+                   }
+               }
+           } else {
+               const Index n = elem_list[i+1]-elem_list[i];
+               for(Index j=0; j<n; j++ )
+               {
+                   Index vertex = conn_list[ elem_list[i]+j ];
+                   weight_num[ vertex ] += 1.0;
+                   for (int c=0; c<numComp; ++c) {
+                       out_data[c][vertex] += in_data[c][i];
+                   }
                }
            }
        }
@@ -192,6 +216,7 @@ coCellToVert::weightedAlgo( Index num_elem, Index num_conn, Index num_point,
 
       // the center can be calculated now
       if ((el_type&UnstructuredGrid::TYPE_MASK)==UnstructuredGrid::POLYHEDRON) {
+         assert("broken and more broken b/c of face stream");
          int num_averaged=0;
          int facestart=conn_list[elem_list[elem]];
          bool face_done=true;

@@ -129,31 +129,22 @@ bool DomainSurface::createSurface() {
       unsigned char t = tl[i];
       if (t == UnstructuredGrid::POLYHEDRON) {
           if (showpol) {
-              bool facecomplete=true;
-              Index start=0;
-              std::vector<Index> face;
-              for (Index j=el[i]; j<el[i+1]; ++j) {
-                  Index vertex=cl[j];
-                  if (facecomplete) {
-                      facecomplete=false;
-                      start=vertex;
-                      face.push_back(vertex);
-                  } else if (vertex==start) {
-                      facecomplete=true;
+              Index j=el[i];
+              while (j<el[i+1]) {
+                  Index numVert = cl[j];
+                  if (numVert >= 3) {
+                      auto face = &cl[j+1];
                       Index neighbour = nf.getNeighborElement(i, face[0], face[1], face[2]);
                       if (neighbour == InvalidIndex) {
-                          std::reverse(face.begin(), face.end());
-                          for (const Index &v : face) {
-                              pcl.push_back(v);
-                          }
+                          const Index *begin = &face[0], *end=&face[numVert];
+                          auto rbegin = std::reverse_iterator<const Index *>(end), rend = std::reverse_iterator<const Index *>(begin);
+                          std::copy(rbegin, rend, std::back_inserter(pcl));
                           pl.push_back(pcl.size());
                       }
-                      face.clear();
-                  } else {
-                      face.push_back(vertex);
                   }
+                  j += numVert+1;
               }
-              if (!facecomplete) {
+              if (j != el[i+1]) {
                   std::cerr << "WARNING: Polyhedron incomplete: " << i << std::endl;
               }
           }
