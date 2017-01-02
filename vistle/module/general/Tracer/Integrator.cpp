@@ -69,6 +69,8 @@ bool Integrator::StepEuler() {
 }
 
 void Integrator::hInit(){
+    return;
+
     if (m_mode != RK32)
         return;
 
