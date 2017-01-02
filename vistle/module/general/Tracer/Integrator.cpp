@@ -87,6 +87,12 @@ bool Integrator::hNew(Vector3 higher, Vector3 lower){
    Scalar zerr = std::abs(higher(2)-lower(2));
    Scalar errest = std::max(std::max(xerr,yerr),zerr);
 
+   if (!std::isfinite(errest)) {
+       m_h = m_hmin;
+       std::cerr << "Integrator: invalid input for error estimation: higher=" << higher.transpose() << ", lower=" << lower.transpose() <<  std::endl;
+       return true;
+   }
+
    Scalar h = 0.9*m_h*std::pow(Scalar(m_errtol/errest),Scalar(1.0/3.0));
    if(errest<=m_errtol) {
       if(h<m_hmin) {
