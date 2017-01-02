@@ -16,10 +16,6 @@
 #include <core/structuredgridbase.h>
 #include <core/structuredgrid.h>
 
-#ifdef TIMING
-#include "TracerTimes.h"
-#endif
-
 MODULE_MAIN(Tracer)
 
 
@@ -158,16 +154,6 @@ bool Tracer::compute() {
 
 bool Tracer::reduce(int timestep) {
 
-#ifdef TIMING
-   times::celloc_dur =0;
-   times::integr_dur =0;
-   times::interp_dur =0;
-   times::comm_dur =0;
-   times::total_dur=0;
-   times::no_interp =0;
-   times::total_start = times::start();
-#endif
-
    //get parameters
    bool useCelltree = m_useCelltree->getValue();
    TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
@@ -300,13 +286,7 @@ bool Tracer::reduce(int timestep) {
            particle->enableCelltree(useCelltree);
            ++totalParticles;
 
-#ifdef TIMING
-           times::comm_start = times::start();
-#endif
            bool active = boost::mpi::all_reduce(comm(), particle->isActive(), std::logical_or<bool>());
-#ifdef TIMING
-           times::comm_dur += times::stop(times::comm_start);
-#endif
            if (active) {
                activeParticles.insert(*it);
                particle->startTracing();
@@ -454,10 +434,5 @@ bool Tracer::reduce(int timestep) {
    data_in0.clear();
    data_in1.clear();
 
-#ifdef TIMING
-   comm().barrier();
-   times::total_dur = times::stop(times::total_start);
-   times::output();
-#endif
    return true;
 }

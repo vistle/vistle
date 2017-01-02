@@ -1,9 +1,6 @@
 #ifndef TRACER_BLOCKDATA_H
 #define TRACER_BLOCKDATA_H
 
-// define for profiling
-//#define TIMING
-
 #include <vector>
 
 #include <core/object.h>

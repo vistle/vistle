@@ -3,10 +3,6 @@
 #include <core/vec.h>
 #include <mutex>
 
-#ifdef TIMING
-#include "TracerTimes.h"
-#endif
-
 
 using namespace vistle;
 

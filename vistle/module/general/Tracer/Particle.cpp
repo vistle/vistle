@@ -7,10 +7,6 @@
 #include "Particle.h"
 #include "BlockData.h"
 
-#ifdef TIMING
-#include "TracerTimes.h"
-#endif
-
 using namespace vistle;
 
 Particle::Particle(Index id, const Vector3 &pos, bool forward, GlobalData &global, Index timestep):
@@ -135,14 +131,8 @@ bool Particle::findCell() {
             m_block = nullptr;
             continue;
         }
-#ifdef TIMING
-        times::celloc_start = times::start();
-#endif
         auto grid = block->getGrid();
         m_el = grid->findCell(m_x, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
-#ifdef TIMING
-        times::celloc_dur += times::stop(times::celloc_start);
-#endif
         if (m_el!=InvalidIndex) {
 
             UpdateBlock(block.get());
@@ -256,15 +246,7 @@ bool Particle::trace() {
             // repeat data from previous block for particle that was just received from remote node
             EmitData();
         }
-#ifdef TIMING
-        double celloc_old = times::celloc_dur;
-        double integr_old = times::integr_dur;
-        times::integr_start = times::start();
-#endif
         Step();
-#ifdef TIMING
-        times::integr_dur += times::stop(times::integr_start)-(times::celloc_dur-celloc_old)-(times::integr_dur-integr_old);
-#endif
         traced = true;
     }
     return traced;

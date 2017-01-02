@@ -1,9 +1,6 @@
 #ifndef TRACER_PARTICLE_H
 #define TRACER_PARTICLE_H
 
-// define for profiling
-//#define TIMING
-
 #include <vector>
 #include <future>
 

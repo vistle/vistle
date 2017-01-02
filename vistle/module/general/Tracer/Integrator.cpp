@@ -5,10 +5,6 @@
 #include <core/vec.h>
 
 
-#ifdef TIMING
-#include "TracerTimes.h"
-#endif
-
 using namespace vistle;
 
 
@@ -160,15 +156,10 @@ bool Integrator::StepRK32() {
       Vector xtmp = m_ptcl->m_x + m_h*k[0];
       m_hact = m_h;
       if(!grid->inside(el,xtmp)){
-#ifdef TIMING
-         times::celloc_start = times::start();
-#endif
          el = grid->findCell(xtmp, m_cellSearchFlags);
-#ifdef TIMING
-         times::celloc_dur += times::stop(times::celloc_start);
-#endif
          if(el==InvalidIndex){
-            m_ptcl->m_x = xtmp;
+            m_ptcl->m_x = x1;
+            m_hact = 0.5*m_h;
             return false;
          }
          cellSize = std::min(grid->cellDiameter(el), cellSize);
@@ -178,13 +169,11 @@ bool Integrator::StepRK32() {
       xtmp = m_ptcl->m_x +m_h*0.25*(k[0]+k[1]);
       m_hact = m_h*0.5;
       if(!grid->inside(el,xtmp)){
-#ifdef TIMING
-         times::celloc_start = times::start();
-#endif
          el = grid->findCell(xtmp, m_cellSearchFlags);
-#ifdef TIMING
-         times::celloc_dur += times::stop(times::celloc_start);
-#endif
+      k[1] = sign*Interpolator(m_ptcl->m_block,el, x1);
+      Vector x2 = m_ptcl->m_x +m_h*(-k[0]+2*k[1]);
+      if(!grid->inside(el,x2)){
+         el = grid->findCell(x2, m_cellSearchFlags);
          if(el==InvalidIndex){
             m_ptcl->m_x = m_ptcl->m_x + m_h*0.5*(k[0]+k[1]);
             m_hact = m_h;
@@ -193,11 +182,12 @@ bool Integrator::StepRK32() {
          cellSize = std::min(grid->cellDiameter(el), cellSize);
       }
 
-      k[2] = sign*Interpolator(m_ptcl->m_block,el,xtmp);
+      k[2] = sign*Interpolator(m_ptcl->m_block,el,x2);
       Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
       Vector3 x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + k[1]/6.0 + 2*k[2]/3.0);
       m_hact = m_h;
 
+      m_hact = m_h;
       bool accept = hNew(x3rd, x2nd, k[0], cellSize);
       if (accept) {
           m_ptcl->m_x = x3rd;
@@ -207,14 +197,7 @@ bool Integrator::StepRK32() {
 }
 
 Vector3 Integrator::Interpolator(BlockData* bl, Index el,const Vector3 &point){
-#ifdef TIMING
-times::interp_start = times::start();
-#endif
     auto grid = bl->getGrid();
     GridInterface::Interpolator interpolator = grid->getInterpolator(el, point, bl->getVecMapping());
-#ifdef TIMING
-times::interp_dur += times::stop(times::interp_start);
-times::no_interp++;
-#endif
     return interpolator(m_v[0], m_v[1], m_v[2]);
 }
