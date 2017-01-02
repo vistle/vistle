@@ -448,31 +448,29 @@ Scalar UnstructuredGrid::cellDiameter(Index elem) const {
     const Scalar *x = &this->x()[0];
     const Scalar *y = &this->y()[0];
     const Scalar *z = &this->z()[0];
-    Scalar dist(0);
     auto verts = cellVertices(elem);
     if (verts.empty())
-        return dist;
+        return 0;
     Index v0 = verts[0];
     Vector p(x[v0], y[v0], z[v0]);
     Vector far(p);
-    for (Index i=1; i<verts.size(); ++i) {
-        Index v = verts[i];
+    Scalar dist2(0);
+    for (Index v: verts) {
         Vector q(x[v], y[v], z[v]);
-        Scalar d = (p-q).norm();
-        if (d > dist) {
+        Scalar d = (p-q).squaredNorm();
+        if (d > dist2) {
             far = q;
-            dist = d;
+            dist2 = d;
         }
     }
-    for (Index i=0; i<verts.size(); ++i) {
-        Index v = verts[i];
+    for (Index v: verts) {
         Vector q(x[v], y[v], z[v]);
-        Scalar d = (far-q).norm();
-        if (d > dist) {
-            dist = d;
+        Scalar d = (far-q).squaredNorm();
+        if (d > dist2) {
+            dist2 = d;
         }
     }
-    return dist;
+    return sqrt(dist2);
 }
 
 
@@ -973,14 +971,11 @@ std::vector<Index> UnstructuredGrid::cellVertices(Index elem) const {
     const Index begin = el[elem], end = el[elem+1];
     std::vector<Index> verts;
     verts.reserve(end-begin);
-    Index j=begin;
-    while(j<end) {
+    for (Index j=begin; j<end; j+= cl[j]+1) {
         Index nvert = cl[j];
-        ++j;
-        for (Index k=j; k<j+nvert; ++k) {
+        for (Index k=j+1; k<j+nvert+1; ++k) {
             verts.push_back(cl[k]);
         }
-        j += nvert;
     }
     std::sort(verts.begin(), verts.end());
     auto last = std::unique(verts.begin(), verts.end());
