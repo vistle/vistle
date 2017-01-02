@@ -53,6 +53,7 @@ private:
    // mutable pointers to ShmVectors
    mutable Index m_numDivisions[3];
    mutable Index m_ghostLayers[3][2];
+   mutable Celltree::const_ptr m_celltree;
 
    void createCelltree(Index dims[]) const;
 

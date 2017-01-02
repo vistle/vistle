@@ -102,14 +102,16 @@ bool StructuredGrid::hasCelltree() const {
 StructuredGrid::Celltree::const_ptr StructuredGrid::getCelltree() const {
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
+   if (m_celltree)
+       return m_celltree;
    if (!hasAttachment("celltree")) {
       refresh();
       createCelltree(m_numDivisions);
    }
 
-   Celltree::const_ptr ct = Celltree::as(getAttachment("celltree"));
-   vassert(ct);
-   return ct;
+   m_celltree = Celltree::as(getAttachment("celltree"));
+   vassert(m_celltree);
+   return m_celltree;
 }
 
 // VALIDATE CELL TREE CHECK
