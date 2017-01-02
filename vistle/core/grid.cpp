@@ -18,7 +18,7 @@ bool GridInterface::Interpolator::check() const {
 
     Scalar total = 0;
     for (const auto w: weights) {
-        if (w < -1e-4)
+        if (w < -1e-3)
             ok = false;
         total += w;
     }
