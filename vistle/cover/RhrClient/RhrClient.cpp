@@ -112,6 +112,7 @@ class RemoteConnection {
     bool m_running = false;
     bool m_interrupt = false;
     bool m_isMaster = false;
+    std::deque<TileMessage> m_receivedTiles;
 
     RemoteConnection() = delete;
     RemoteConnection(const RemoteConnection& other) = delete;
@@ -280,10 +281,14 @@ class RemoteConnection {
         }
 
         auto t = std::make_shared<tileMsg>(tile);
-        std::lock_guard<std::mutex> locker(plugin->m_mutex);
+        m_receivedTiles.push_back(TileMessage(t, payload));
+
+#if 0
+        std::lock_guard<std::mutex> locker(plugin->m_pluginMutex);
         plugin->m_receivedTiles.push_back(TileMessage(t, payload));
         if (tile.flags & rfbTileLast)
             plugin->m_lastTileAt = plugin->m_receivedTiles.size();
+#endif
 
         return true;
     }
@@ -1287,7 +1292,7 @@ RhrClient::preFrame()
 
            bool sendUpdate = false;
            {
-               std::lock_guard<std::mutex> locker(m_mutex);
+               std::lock_guard<std::mutex> locker(m_pluginMutex);
                sendUpdate = (m_lastTileAt >= 0 || cover->frameTime()-lastMatrices>m_avgDelay*0.7) && m_remote && m_remote->isConnected();
            }
            if (sendUpdate) {
@@ -1303,7 +1308,17 @@ RhrClient::preFrame()
        else
            coVRAnimationManager::instance()->removeTimestepProvider(this);
 
-       std::lock_guard<std::mutex> locker(m_mutex);
+       {
+           std::lock_guard<RemoteConnection> remote_locker(*m_remote);
+           std::lock_guard<std::mutex> locker(m_pluginMutex);
+           for (auto tile: m_remote->m_receivedTiles) {
+               if (tile.msg->flags & rfbTileLast)
+                   m_lastTileAt = m_receivedTiles.size();
+               m_receivedTiles.push_back(tile);
+           }
+           m_remote->m_receivedTiles.clear();
+       }
+       std::lock_guard<std::mutex> locker(m_pluginMutex);
        ntiles = m_receivedTiles.size();
        if (m_lastTileAt >= 0) {
            ntiles = m_lastTileAt;
@@ -1329,7 +1344,7 @@ RhrClient::preFrame()
        std::vector<void *> md(ntiles), pd(ntiles);
        std::vector<size_t> ms(ntiles), ps(ntiles);
        {
-           std::lock_guard<std::mutex> locker(m_mutex);
+           std::lock_guard<std::mutex> locker(m_pluginMutex);
            for (int i=0; i<ntiles; ++i) {
                TileMessage &tile = m_receivedTiles[i];
                handleTileMessage(tile.msg, tile.payload);
@@ -1386,7 +1401,7 @@ RhrClient::preFrame()
            }
        }
 
-       std::lock_guard<std::mutex> locker(m_mutex);
+       std::lock_guard<std::mutex> locker(m_pluginMutex);
        for (int i=0;i<ntiles;++i) {
            m_receivedTiles.pop_front();
        }
