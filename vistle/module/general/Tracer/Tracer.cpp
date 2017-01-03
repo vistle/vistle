@@ -140,6 +140,13 @@ bool Tracer::compute() {
        }
     }
 
+    if (getIntParameter("integration") == ConstantVelocity) {
+        // initialize VertexOwnerList
+        if (unstr) {
+            unstr->getNeighborElements(InvalidIndex);
+        }
+    }
+
     grid_in[t].push_back(grid);
     data_in0[t].push_back(data0);
     data_in1[t].push_back(data1);

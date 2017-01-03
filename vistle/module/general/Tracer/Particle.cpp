@@ -106,16 +106,20 @@ bool Particle::findCell() {
     if (m_block) {
 
         auto grid = m_block->getGrid();
-        if(grid->inside(m_el, m_x)){
-            return true;
+        if (m_global.int_mode == ConstantVelocity) {
+            const auto neigh = grid->getNeighborElements(m_el);
+            for (auto el: neigh) {
+                if(grid->inside(el, m_x)) {
+                    m_el = el;
+                    return true;
+                }
+            }
+        } else {
+            if(grid->inside(m_el, m_x)){
+                return true;
+            }
         }
-#ifdef TIMING
-        times::celloc_start = times::start();
-#endif
         m_el = grid->findCell(m_x, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
-#ifdef TIMING
-        times::celloc_dur += times::stop(times::celloc_start);
-#endif
         if (m_el==InvalidIndex) {
             PointsToLines();
             repeatDataFromLastBlock = true;

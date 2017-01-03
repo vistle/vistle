@@ -203,8 +203,15 @@ bool Integrator::StepConstantVelocity() {
     if (t < 0)
         return false;
 
-    m_ptcl->m_x = m_ptcl->m_x + vel.normalized()*t;
+    const auto cellsize = grid->cellDiameter(el);
+
     Scalar v = vel.norm();
+    const auto dir = vel.normalized();
+    m_ptcl->m_x += dir*t;
+    while (grid->inside(el, m_ptcl->m_x)) {
+        m_ptcl->m_x += dir*cellsize*0.001;
+        t += cellsize*0.001;
+    }
     m_hact = m_h = t/v;
 
     return true;
