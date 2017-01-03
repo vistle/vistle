@@ -12,8 +12,13 @@
 #include <util/sysdep.h>
 #include <module/module.h>
 
+#include <boost/config.hpp>
+#include <boost/bimap.hpp>
+
+
 typedef vistle::Index index_t;
 typedef vistle::Scalar scalar_t;
+typedef boost::bimap<int, std::string> bm_type;
 
 struct VolumeIdWithZoneFlag {
 
@@ -32,7 +37,8 @@ public:
     CaseInfo();
     std::vector<std::string> m_field_param, m_boundary_param;
     bool m_valid;
-    std::map<int, std::string> m_allParam;
+    //std::map<int,std::string> m_allParam;
+    bm_type m_allParam;
     std::map<int, int> m_ParamDimension;
     index_t nvars;
 
@@ -85,14 +91,16 @@ class ReadCFX: public vistle::Module {
 
    vistle::UnstructuredGrid::ptr grid;
    std::vector<VolumeIdWithZoneFlag> m_selectedVolumes;
+   std::map<int, vistle::DataBase::ptr> m_currentvolumedata;
 
 
 
    //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
    int rankForBlock(int processor) const;
-   bool loadGrid(int volumeNr);
-   vistle::DataBase::ptr loadField(int volumeNr);
-   vistle::DataBase::ptr loadBoundaryField(int volumeNr);
+   vistle::UnstructuredGrid::ptr loadGrid(int volumeNr);
+   vistle::DataBase::ptr loadField(int volumeNr, int variableID);
+   vistle::DataBase::ptr loadBoundaryField(int volumeNr, int variableID);
+   bool loadFields(int volumeNr);
    int collectVolumes();
 
 };

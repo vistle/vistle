@@ -174,18 +174,21 @@ void CaseInfo::getFieldList() {
     m_boundary_param.push_back("(NONE)");
     m_field_param.clear();
     m_field_param.push_back("(NONE)");
-    m_allParam[0] = "(NONE)";
     m_ParamDimension[0] = 0;
+    //m_allParam[0] = "(NONE)";
+    m_allParam.insert(bm_type::value_type(0,"(NONE)"));
+
 
     for(index_t varnum=1;varnum<=nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,1) only returnes values from 1 and higher
-        m_allParam[varnum]=cfxExportVariableName(varnum,1); //0 is short form and 1 is long form of the variable name
+        //m_allParam[varnum]=cfxExportVariableName(varnum,1); //0 is short form and 1 is long form of the variable name
+        m_allParam.insert(bm_type::value_type(varnum,cfxExportVariableName(varnum,1)));
         if(cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
             if(length == 1) {
-                m_boundary_param.push_back(m_allParam[varnum]);
+                m_boundary_param.push_back(cfxExportVariableName(varnum,1));
                 //std::cerr << "cfxExportVariableName("<< varnum << ",1) = " << cfxExportVariableName(varnum,1) << std::endl;
             }
             else {
-                m_field_param.push_back(m_allParam[varnum]);
+                m_field_param.push_back(cfxExportVariableName(varnum,1));
             }
 
             if(dimension == 1) {
@@ -273,6 +276,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
             for (auto out: m_boundaryOut) {
                 setParameterChoices(out, m_case.m_boundary_param);
             }
+
 //            std::vector<std::string>::const_iterator it1;
 //            for(it1=m_case.m_field_param.begin();it1!=m_case.m_field_param.end();++it1) {
 //                std::cerr << "field_choices = " << *it1 << std::endl;
@@ -297,7 +301,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
     return Module::parameterChanged(p);
 }
 
-bool ReadCFX::loadGrid(int volumeNr) {
+UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
 
     if(cfxExportZoneSet(m_selectedVolumes[volumeNr].zoneFlag,NULL) < 0) {
         std::cerr << "invalid zone number" << std::endl;
@@ -319,7 +323,7 @@ bool ReadCFX::loadGrid(int volumeNr) {
     //boost::shared_ptr<std::int32_t> nodeListOfVolume(new int);
     int *nodeListOfVolume = new int;
 
-    //boost::shared_ptr<std::double_t> ptrOnXdata(new double);
+    //boost::shared_ptr<std::double_t> ptrOnXdata(new double); //vielleicht mal mit scalar_t probieren
     auto ptrOnXdata = grid->x().data();
     auto ptrOnYdata = grid->y().data();
     auto ptrOnZdata = grid->z().data();
@@ -424,10 +428,10 @@ bool ReadCFX::loadGrid(int volumeNr) {
     cfxExportElementFree();
     cfxExportVolumeFree(m_selectedVolumes[volumeNr].volumeID);
 
-    return true;
+    return grid;
 }
 
-DataBase::ptr ReadCFX::loadField(int volumeNr) {
+DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID) {
 
     if(cfxExportZoneSet(m_selectedVolumes[volumeNr].zoneFlag,NULL) < 0) {
         std::cerr << "invalid zone number" << std::endl;
@@ -438,76 +442,52 @@ DataBase::ptr ReadCFX::loadField(int volumeNr) {
     nnodesInVolume = cfxExportVolumeSize(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES);
     nodeListOfVolume = cfxExportVolumeList(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES); //query the nodes that define the volume
 
-//    for(int i=0;i<10;++i) {
-//        std::cerr << "m_case.m_allParam[" << i << "] = " << m_case.m_allParam[i] << std::endl;
-//    }
-//    std::cerr << "m_boundaryOut[0] = " << m_boundaryOut[0]->getValue() << std::endl;
-//    std::cerr << "m_boundaryOut[1] = " << m_boundaryOut[1]->getValue() << std::endl;
-//    std::cerr << "m_boundaryOut[2] = " << m_boundaryOut[2]->getValue() << std::endl;
-//    std::cerr << "m_fieldOut[0] = " << m_fieldOut[0]->getValue() << std::endl;
-//    std::cerr << "m_fieldOut[1] = " << m_fieldOut[1]->getValue() << std::endl;
-//    std::cerr << "m_fieldOut[2] = " << m_fieldOut[2]->getValue() << std::endl;
-
-
     //read field parameters
-    index_t varnum;
-    for(index_t i=0;i<NumPorts;++i) {
-        for(index_t k=0;k<m_case.nvars;++k) {
-            if(!strcmp(m_fieldOut[i]->getValue().c_str(),m_case.m_allParam[k].c_str())) {
-                varnum = k;
-//                std::cerr << "m_fieldOut[" << i <<"] = " << m_fieldOut[i]->getValue() << "varnum = " << varnum << std::endl;
-            }
-        }
+    index_t varnum = variableID;
 
-        if(m_case.m_ParamDimension[varnum] == 1) {
-            Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
-            boost::shared_ptr<float_t> value(new float);
-            //boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
-            scalar_t *ptrOnScalarData;
-            ptrOnScalarData = s->x().data();
-            for(index_t j=0;j<nnodesInVolume;++j) {
-                cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
-                ptrOnScalarData[j] = *value.get();
-//                if(j<20) {
-//                    std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-//                }
-            }
-            cfxExportVariableFree(varnum);
-            return s;
+    if(m_case.m_ParamDimension[varnum] == 1) {
+        Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
+        boost::shared_ptr<float_t> value(new float);
+        //boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
+        scalar_t *ptrOnScalarData;
+        ptrOnScalarData = s->x().data();
+        for(index_t j=0;j<nnodesInVolume;++j) {
+            cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
+            ptrOnScalarData[j] = *value.get();
+            //                if(j<20) {
+            //                    std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+            //                }
         }
-        else if(m_case.m_ParamDimension[varnum] == 3) {
-            Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
-            boost::shared_ptr<float_t> value(new float[3]);
-            //boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
-            scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
-            ptrOnVectorXData = v->x().data();
-            ptrOnVectorYData = v->y().data();
-            ptrOnVectorZData = v->z().data();
-            for(index_t j=0;j<nnodesInVolume;++j) {
-                cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
-                ptrOnVectorXData[j] = value.get()[0];
-                ptrOnVectorYData[j] = value.get()[1];
-                ptrOnVectorZData[j] = value.get()[2];
-//                if(j<20) {
-//                    std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
-//                    std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
-//                    std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
-//                }
-            }
-            cfxExportVariableFree(varnum);
-            return v;
+        cfxExportVariableFree(varnum);
+        return s;
+    }
+    else if(m_case.m_ParamDimension[varnum] == 3) {
+        Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
+        boost::shared_ptr<float_t> value(new float[3]);
+        //boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
+        scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
+        ptrOnVectorXData = v->x().data();
+        ptrOnVectorYData = v->y().data();
+        ptrOnVectorZData = v->z().data();
+        for(index_t j=0;j<nnodesInVolume;++j) {
+            cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
+            ptrOnVectorXData[j] = value.get()[0];
+            ptrOnVectorYData[j] = value.get()[1];
+            ptrOnVectorZData[j] = value.get()[2];
+            //                if(j<20) {
+            //                    std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
+            //                    std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
+            //                    std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
+            //                }
         }
-   }
-
-    //was machen mit boundary fields? -> eigentlich nur Werte an boundary ausgeben; Frage: wie bekomme ich die Knoten an den boundaries
-
-    //wie die Daten an die Ports geben (addObject); außerhalb von loadFields; wie die Vec verpacken?
-    //addObject(m_volumeDataOut[i],s);
+        cfxExportVariableFree(varnum);
+        return v;
+    }
 
     return DataBase::ptr();
 }
 
-DataBase::ptr ReadCFX::loadBoundaryField(int volumeNr) {
+DataBase::ptr ReadCFX::loadBoundaryField(int volumeNr, int variableID) {
 
     if(cfxExportZoneSet(m_selectedVolumes[volumeNr].zoneFlag,NULL) < 0) {
         std::cerr << "invalid zone number" << std::endl;
@@ -518,64 +498,52 @@ DataBase::ptr ReadCFX::loadBoundaryField(int volumeNr) {
     nnodesInVolume = cfxExportVolumeSize(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES);
     nodeListOfVolume = cfxExportVolumeList(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES); //query the nodes that define the volume
 
-//    for(int i=0;i<10;++i) {
-//        std::cerr << "m_case.m_allParam[" << i << "] = " << m_case.m_allParam[i] << std::endl;
-//    }
 //    std::cerr << "m_boundaryOut[0] = " << m_boundaryOut[0]->getValue() << std::endl;
 //    std::cerr << "m_boundaryOut[1] = " << m_boundaryOut[1]->getValue() << std::endl;
 //    std::cerr << "m_boundaryOut[2] = " << m_boundaryOut[2]->getValue() << std::endl;
 
-//Untersuchen, wie viele nodesInVolume und ob boundaryfield Werte vernünftig sind und ob strcmp gut funktioniert
-
     //read boundary field parameters
-    index_t varnum;
-    for(index_t i=0;i<NumBoundaryPorts;++i) {
-        for(index_t k=0;k<m_case.nvars;++k) {
-            if(!strcmp(m_boundaryOut[i]->getValue().c_str(),m_case.m_allParam[k].c_str())) {
-                varnum = k;
-                std::cerr << "m_boundaryOut[" << i <<"] = " << m_boundaryOut[i]->getValue() << "varnum = " << varnum << std::endl;
-            }
-        }
+    index_t varnum = variableID;
 
-        if(m_case.m_ParamDimension[varnum] == 1) {
-            Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
-            boost::shared_ptr<float_t> value(new float);
-            //boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
-            scalar_t *ptrOnScalarData;
-            ptrOnScalarData = s->x().data();
-            for(index_t j=0;j<nnodesInVolume;++j) {
-                cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
-                ptrOnScalarData[j] = *value.get();
-                if(j<20) {
-                    std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-                }
+    if(m_case.m_ParamDimension[varnum] == 1) {
+        Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
+        boost::shared_ptr<float_t> value(new float);
+        //boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
+        scalar_t *ptrOnScalarData;
+        ptrOnScalarData = s->x().data();
+        for(index_t j=0;j<nnodesInVolume;++j) {
+            cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
+            ptrOnScalarData[j] = *value.get();
+            if(j<20) {
+                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
             }
-            cfxExportVariableFree(varnum);
-            return s;
         }
-        else if(m_case.m_ParamDimension[varnum] == 3) {
-            Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
-            boost::shared_ptr<float_t> value(new float[3]);
-            //boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
-            scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
-            ptrOnVectorXData = v->x().data();
-            ptrOnVectorYData = v->y().data();
-            ptrOnVectorZData = v->z().data();
-            for(index_t j=0;j<nnodesInVolume;++j) {
-                cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
-                ptrOnVectorXData[j] = value.get()[0];
-                ptrOnVectorYData[j] = value.get()[1];
-                ptrOnVectorZData[j] = value.get()[2];
-//                if(j<20) {
-//                    std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
-//                    std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
-//                    std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
-//                }
-            }
-            cfxExportVariableFree(varnum);
-            return v;
+        cfxExportVariableFree(varnum);
+        return s;
+    }
+    else if(m_case.m_ParamDimension[varnum] == 3) {
+        Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
+        boost::shared_ptr<float_t> value(new float[3]);
+        //boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
+        scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
+        ptrOnVectorXData = v->x().data();
+        ptrOnVectorYData = v->y().data();
+        ptrOnVectorZData = v->z().data();
+        for(index_t j=0;j<nnodesInVolume;++j) {
+            cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
+            ptrOnVectorXData[j] = value.get()[0];
+            ptrOnVectorYData[j] = value.get()[1];
+            ptrOnVectorZData[j] = value.get()[2];
+            //                if(j<20) {
+            //                    std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
+            //                    std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
+            //                    std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
+            //                }
         }
-   }
+        cfxExportVariableFree(varnum);
+        return v;
+    }
+
     return DataBase::ptr();
 }
 
@@ -614,6 +582,37 @@ int ReadCFX::collectVolumes() {
     return k;
 }
 
+bool ReadCFX::loadFields(int volumeNr) {
+   for (int i=0; i<NumPorts; ++i) {
+      std::string field = m_fieldOut[i]->getValue();
+      bm_type::right_const_iterator right_iter = m_case.m_allParam.right.find(field);
+      std::cerr << "right_iter->first = " << right_iter->first << std::endl;
+      std::cerr << "right_iter->second = " << right_iter->second << std::endl;
+
+//      if (right_iter->first == m_case.m_allParam.right.end())
+//         continue;
+      DataBase::ptr obj = loadField(volumeNr, right_iter->second);
+      //setMeta(obj, processor, timestep);
+      m_currentvolumedata[i]= obj;
+   }
+   return true;
+}
+
+//bool ReadFOAM::addVolumeDataToPorts(int processor) {
+
+//    for (int portnum=0; portnum<NumPorts; ++portnum) {
+//        auto &volumedata = m_currentvolumedata[processor];
+//        if (volumedata.find(portnum) != volumedata.end()) {
+//            volumedata[portnum]->setGrid(m_currentgrid[processor]);
+//            volumedata[portnum]->setMapping(DataBase::Element);
+//            addObject(m_volumeDataOut[portnum], volumedata[portnum]);
+//        } else {
+//            addObject(m_volumeDataOut[portnum], m_currentgrid[processor]);
+//        }
+//    }
+//   return true;
+//}
+
 bool ReadCFX::compute() {
 
     std::cerr << "Compute Start. \n";
@@ -621,11 +620,15 @@ bool ReadCFX::compute() {
     int numbSelVolumes = collectVolumes();
     sendInfo("Schleife über Volumes Start");
     for(int i=0;i<numbSelVolumes;++i) {
-        loadGrid(i);
-        loadField(i);
-        loadBoundaryField(i);
+//        loadGrid(i);
+//        loadField(i);
+//        loadBoundaryField(i);
+        loadFields(i);
+        //addVolumeDataToPorts();
     }
     sendInfo("Schleife über Volumes End");
+
+
 
 
 //    for(t = t1; t <= t2; t++) {
