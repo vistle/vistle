@@ -44,6 +44,8 @@ bool Integrator::Step() {
         return StepEuler();
     case RK32:
         return StepRK32();
+    case ConstantVelocity:
+        return StepConstantVelocity();
     }
     return false;
 }
@@ -67,7 +69,7 @@ bool Integrator::StepEuler() {
 }
 
 void Integrator::hInit(){
-    if (m_mode == Euler)
+    if (m_mode != RK32)
         return;
 
     Index el=m_ptcl->m_el;
@@ -189,6 +191,23 @@ bool Integrator::StepRK32() {
           return true;
       }
    }
+}
+
+bool Integrator::StepConstantVelocity() {
+
+    Index el=m_ptcl->m_el;
+    auto grid = m_ptcl->m_block->getGrid();
+
+    Vector vel = m_forward ? m_ptcl->m_v : -m_ptcl->m_v;
+    Scalar t = grid->exitDistance(el, m_ptcl->m_x, vel);
+    if (t < 0)
+        return false;
+
+    m_ptcl->m_x = m_ptcl->m_x + vel.normalized()*t;
+    Scalar v = vel.norm();
+    m_hact = m_h = t/v;
+
+    return true;
 }
 
 Vector3 Integrator::Interpolator(BlockData* bl, Index el,const Vector3 &point){

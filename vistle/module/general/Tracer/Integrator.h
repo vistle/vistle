@@ -6,6 +6,7 @@
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(IntegrationMethod,
    (Euler)
    (RK32)
+   (ConstantVelocity)
 )
 
 class Particle;
@@ -33,6 +34,7 @@ public:
     bool Step();
     bool StepEuler();
     bool StepRK32();
+    bool StepConstantVelocity();
     vistle::Vector3 Interpolator(BlockData* bl, vistle::Index el, const vistle::Vector3 &point);
     void hInit();
     bool hNew(vistle::Vector3 higher, vistle::Vector3 lower, vistle::Vector vel, vistle::Scalar unit);
