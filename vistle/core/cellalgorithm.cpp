@@ -3,7 +3,7 @@
 namespace vistle {
 
 // cf. http://stackoverflow.com/questions/808441/inverse-bilinear-interpolation
-Vector trilinearInverse(const Vector &p0, const Vector p[8]) {
+Vector trilinearInverse(const Vector &pp0, const Vector pp[8]) {
 // Computes the inverse of the trilinear map from [0,1]^3 to the box defined
 // by points p[0],...,p[7], where the points are ordered consistent with our hexahedron order:
 // p[0]~(0,0,0), p[1]~(0,0,1), p[2]~(0,1,1), p[3]~(0,1,0),
@@ -11,13 +11,18 @@ Vector trilinearInverse(const Vector &p0, const Vector p[8]) {
 // Uses Gauss-Newton method. Inputs must be column vectors.
 
     const int iter = 5;
-    const Scalar tol = 1e-6;
-    Vector ss(0.5, 0.5, 0.5); // initial guess
+    const double tol = 1e-10;
+    DoubleVector3 ss(0.5, 0.5, 0.5); // initial guess
 
-    const Scalar tol2 = tol*tol;
+    DoubleVector3 p0(pp0.cast<double>());
+    DoubleVector3 p[8];
+    for (int i=0; i<8; ++i)
+        p[i] = pp[i].cast<double>();
+
+    const double tol2 = tol*tol;
     for (int k=0; k<iter; ++k) {
-       const Scalar s(ss[0]), t(ss[1]), w(ss[2]);
-       const Vector res
+       const double s(ss[0]), t(ss[1]), w(ss[2]);
+       const DoubleVector3 res
              = p[0]*(1-s)*(1-t)*(1-w) + p[1]*s*(1-t)*(1-w)
              + p[2]*s*t*(1-w)         + p[3]*(1-s)*t*(1-w)
              + p[4]*(1-s)*(1-t)*w     + p[5]*s*(1-t)*w
@@ -44,13 +49,15 @@ Vector trilinearInverse(const Vector &p0, const Vector p[8]) {
              + -p[2]*s*t         - p[3]*(1-s)*t
              +  p[4]*(1-s)*(1-t) + p[5]*s*(1-t)
              +  p[6]*s*t         + p[7]*(1-s)*t;
-       Matrix3 J;
+       DoubleMatrix3 J;
        J << Js, Jt, Jw;
        //ss = ss - (J'*J)\(J'*r);
        ss -= (J.transpose()*J).llt().solve(J.transpose()*res);
+       for (int c=0; c<3; ++c)
+           ss[c] = std::min(std::max(ss[c], double(0)), double(1));
     }
 
-    return ss;
+    return ss.cast<Scalar>();
 }
 
 }
