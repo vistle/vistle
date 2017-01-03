@@ -47,6 +47,8 @@ std::pair<Vector, Vector> Indexed::getBounds() const {
 }
 
 bool Indexed::hasCelltree() const {
+   if (m_celltree)
+       return true;
 
    return hasAttachment("celltree");
 }
@@ -126,10 +128,16 @@ void Indexed::createCelltree(Index nelem, const Index *el, const Index *cl) cons
 
 bool Indexed::hasVertexOwnerList() const {
 
+   if (m_vertexOwnerList)
+       return true;
+
    return hasAttachment("vertexownerlist");
 }
 
 Indexed::VertexOwnerList::const_ptr Indexed::getVertexOwnerList() const {
+
+   if (m_vertexOwnerList)
+       return m_vertexOwnerList;
 
    boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
    if (!hasAttachment("vertexownerlist")) {
@@ -137,9 +145,9 @@ Indexed::VertexOwnerList::const_ptr Indexed::getVertexOwnerList() const {
       createVertexOwnerList();
    }
 
-   VertexOwnerList::const_ptr vol = VertexOwnerList::as(getAttachment("vertexownerlist"));
-   vassert(vol);
-   return vol;
+   m_vertexOwnerList = VertexOwnerList::as(getAttachment("vertexownerlist"));
+   vassert(m_vertexOwnerList);
+   return m_vertexOwnerList;
 }
 
 void Indexed::createVertexOwnerList() const {
@@ -280,8 +288,10 @@ std::vector<Index> Indexed::NeighborFinder::getNeighborElements(Index elem) cons
 
 const Indexed::NeighborFinder &Indexed::getNeighborFinder() const {
 
-    if (!m_neighborfinder)
+    if (!m_neighborfinder) {
+        refresh();
         m_neighborfinder.reset(new NeighborFinder(this));
+    }
 
     return *m_neighborfinder;
 }

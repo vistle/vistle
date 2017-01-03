@@ -93,6 +93,8 @@ void StructuredGrid::setNumGhostLayers(unsigned dim, GhostLayerPosition pos, uns
 // HAS CELL TREE CHECK
 //-------------------------------------------------------------------------
 bool StructuredGrid::hasCelltree() const {
+   if (m_celltree)
+       return true;
 
    return hasAttachment("celltree");
 }

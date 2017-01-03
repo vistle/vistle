@@ -66,6 +66,7 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
    mutable const Index *m_el;
    mutable const Index *m_cl;
    mutable Celltree::const_ptr m_celltree;
+   mutable VertexOwnerList::const_ptr m_vertexOwnerList;
    mutable std::unique_ptr<const NeighborFinder> m_neighborfinder;
 
    void createVertexOwnerList() const;
