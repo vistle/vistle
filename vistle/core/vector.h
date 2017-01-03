@@ -16,6 +16,10 @@ typedef Eigen::AngleAxis<vistle::Scalar> AngleAxis;
 #if __cplusplus >= 201103L
 template<int d>
 using ScalarVector = Eigen::Matrix<Scalar, d, 1>;
+template<int d>
+using DoubleVector = Eigen::Matrix<double, d, 1>;
+template<int d>
+using FloatVector = Eigen::Matrix<float, d, 1>;
 #endif
 
 template<int d>
@@ -37,6 +41,21 @@ typedef Eigen::Matrix<Scalar, 1, 1> Matrix1;
 typedef Eigen::Matrix<Scalar, 2, 2> Matrix2;
 typedef Eigen::Matrix<Scalar, 3, 3> Matrix3;
 typedef Eigen::Matrix<Scalar, 4, 4> Matrix4;
+
+
+
+typedef Eigen::Matrix<double, 1, 1> DoubleVector1;
+typedef Eigen::Matrix<double, 2, 1> DoubleVector2;
+typedef Eigen::Matrix<double, 3, 1> DoubleVector3;
+typedef Eigen::Matrix<double, 4, 1> DoubleVector4;
+
+typedef Eigen::Matrix<double, 2, 3> DoubleMatrix2x3;
+typedef Eigen::Matrix<double, 3, 2> DoubleMatrix3x2;
+
+typedef Eigen::Matrix<double, 1, 1> DoubleMatrix1;
+typedef Eigen::Matrix<double, 2, 2> DoubleMatrix2;
+typedef Eigen::Matrix<double, 3, 3> DoubleMatrix3;
+typedef Eigen::Matrix<double, 4, 4> DoubleMatrix4;
 
 template<class Archive, class M>
 void serializeMatrix(Archive & ar, M &m, const unsigned int version) {
