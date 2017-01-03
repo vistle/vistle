@@ -211,7 +211,9 @@ void Indexed::removeVertexOwnerList() const {
     removeAttachment("vertexownerlist");
 }
 
-Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed) {
+Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed)
+    : indexed(indexed)
+{
     auto ol = indexed->getVertexOwnerList();
     numElem = indexed->getNumElements();
     numVert = indexed->getNumCorners();
@@ -251,10 +253,29 @@ Index Indexed::NeighborFinder::getNeighborElement(Index elem, Index v1, Index v2
    return InvalidIndex;
 }
 
-std::vector<Index> Indexed::NeighborFinder::getNeighborElements(Index vert) {
+std::vector<Index> Indexed::NeighborFinder::getContainingElements(Index vert) {
 
    const Index begin = vl[vert], end = vl[vert+1];
    return std::vector<Index>(&vol[begin], &vol[end]);
+}
+
+std::vector<Index> Indexed::NeighborFinder::getNeighborElements(Index elem) {
+
+   std::vector<Index> elems;
+   if (elem == InvalidIndex)
+       return elems;
+
+   const auto vert = indexed->cellVertices(elem);
+   for (auto v: vert) {
+       const auto e = getContainingElements(v);
+       std::copy_if(e.begin(), e.end(), std::back_inserter(elems), [elem](Index el) -> bool { return el!=elem; });
+   }
+
+   std::sort(elems.begin(), elems.end());
+   auto last = std::unique(elems.begin(), elems.end());
+
+   elems.resize(last - elems.begin());
+   return elems;
 }
 
 Indexed::NeighborFinder Indexed::getNeighborFinder() const {

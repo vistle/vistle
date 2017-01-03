@@ -47,9 +47,12 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
        //! find neighboring element to elem containing vertices v1, v2, and v3
        Index getNeighborElement(Index elem, Index v1, Index v2, Index v3);
        //! return all elements containing vertex vert
-       std::vector<Index> getNeighborElements(Index vert);
+       std::vector<Index> getContainingElements(Index vert);
+       //! return all elements neighboring element
+       std::vector<Index> getNeighborElements(Index elem);
    private:
        NeighborFinder(const Indexed *indexed);
+       const Indexed *indexed;
        Index numElem, numVert;
        const Index *el, *cl;
        const Index *vl, *vol;
