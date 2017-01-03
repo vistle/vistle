@@ -8,7 +8,7 @@
 #include <osg/ref_ptr>
 
 namespace osg {
-   class Node;
+   class MatrixTransform;
 };
 
 class VistleGeometryGenerator {
@@ -19,7 +19,7 @@ class VistleGeometryGenerator {
             vistle::Object::const_ptr normal,
             vistle::Object::const_ptr tex);
 
-      osg::Node *operator()(osg::ref_ptr<osg::StateSet> state = NULL);
+      osg::MatrixTransform *operator()(osg::ref_ptr<osg::StateSet> state = NULL);
 
       static bool isSupported(vistle::Object::Type t);
 

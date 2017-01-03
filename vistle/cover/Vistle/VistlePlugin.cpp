@@ -8,6 +8,7 @@
 #include <cover/coCommandLine.h>
 #include <cover/OpenCOVER.h>
 #include <cover/coVRPluginList.h>
+#include <cover/coVRFileManager.h>
 
 // vistle
 #include <renderer/renderer.h>
@@ -112,6 +113,9 @@ class OsgRenderer: public vistle::Renderer {
    bool parameterRemoved(const int senderId, const std::string &name, const message::RemoveParameter &msg) override;
    void prepareQuit() override;
 
+   typedef std::map<VistleRenderObject *, std::string> FileAttachmentMap;
+   FileAttachmentMap m_fileAttachmentMap;
+
    typedef std::map<int, VistleInteractor *> InteractorMap;
    InteractorMap m_interactorMap;
 
@@ -123,7 +127,7 @@ class OsgRenderer: public vistle::Renderer {
       {}
       std::shared_ptr<PluginRenderObject> ro;
       VistleGeometryGenerator generator;
-      std::future<osg::Node *> node_future;
+      std::future<osg::MatrixTransform *> node_future;
    };
    std::deque<DelayedObject> m_delayedObjects;
 
@@ -310,6 +314,12 @@ void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
       return;
    }
 
+   auto it = m_fileAttachmentMap.find(ro.get());
+   if (it != m_fileAttachmentMap.end()) {
+       coVRFileManager::instance()->unloadFile(it->second.c_str());
+       m_fileAttachmentMap.erase(it);
+   }
+
    if (!ro->isGeometry()) {
       std::cerr << "removeObject: Node is not geometry: " << ro->getName() << std::endl;
       return;
@@ -442,13 +452,13 @@ bool OsgRenderer::render() {
    for (int i=0; i<numAdd; ++i) {
       auto &node_future = m_delayedObjects.front().node_future;
       auto &ro = m_delayedObjects.front().ro;
-      osg::Node *node = node_future.get();
-      if (ro->coverRenderObject && node) {
+      osg::MatrixTransform *transform = node_future.get();
+      if (ro->coverRenderObject && transform) {
          int creatorId = ro->coverRenderObject->getCreator();
          Creator &creator = getCreator(creatorId);
 
-         ro->coverRenderObject->setNode(node);
-         node->setName(ro->coverRenderObject->getName());
+         ro->coverRenderObject->setNode(transform);
+         transform->setName(ro->coverRenderObject->getName());
          const std::string variant = ro->variant;
          const auto &vro = creator.getVariant(variant).ro;
          osg::ref_ptr<osg::Group> parent = creator.constant(variant);
@@ -465,10 +475,17 @@ bool OsgRenderer::render() {
             assert(parent);
             coVRAnimationManager::instance()->addSequence(creator.animated(variant));
          }
-         parent->addChild(node);
+         std::string filename = ro->coverRenderObject->getAttribute("_model_file");
+         if (!filename.empty()) {
+             osg::Node *filenode = coVRFileManager::instance()->loadFile(filename.c_str(), NULL, transform, ro->coverRenderObject->getName());
+             if (filenode) {
+                 m_fileAttachmentMap.emplace(ro->coverRenderObject.get(), filename);
+             }
+         }
+         parent->addChild(transform);
       } else if (!ro->coverRenderObject) {
          std::cerr << rank() << ": discarding delayed object - already deleted" << std::endl;
-      } else if (!node) {
+      } else if (!transform) {
          //std::cerr << rank() << ": discarding delayed object " << ro->coverRenderObject->getName() << ": no node created" << std::endl;
       }
       m_delayedObjects.pop_front();

@@ -10,6 +10,7 @@
 #include <osg/Texture1D>
 #include <osg/Point>
 #include <osg/LineWidth>
+#include <osg/MatrixTransform>
 
 #include <core/polygons.h>
 #include <core/points.h>
@@ -61,10 +62,13 @@ bool VistleGeometryGenerator::isSupported(vistle::Object::Type t) {
    }
 }
 
-osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defaultState) {
+osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defaultState) {
 
    if (!m_geo)
       return NULL;
+
+   osg::MatrixTransform *transform = new osg::MatrixTransform();
+   std::string nodename = m_geo->getName();
 
    std::stringstream debug;
    debug << "[";
@@ -123,8 +127,9 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
          if (isSupported(ph->originalType())) {
             osg::Node *node = new osg::Node();
             node->setName(ph->originalName());
+            nodename = ph->originalName();
             std::cerr << debug.str() << std::endl;
-            return node;
+            transform->addChild(node);
          }
          break;
       }
@@ -424,7 +429,7 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
 
    if (geode) {
       assert(m_geo->getType() == vistle::Object::PLACEHOLDER || isSupported(m_geo->getType()) == true);
-      geode->setName(m_geo->getName());
+      geode->setName(nodename);
 
       std::map<std::string, std::string> parammap;
       std::string name = m_geo->getAttribute("shader");
@@ -546,9 +551,11 @@ osg::Node *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::StateSet> defau
          } else {
          }
       }
+      transform->addChild(geode);
    }
 
    //std::cerr << debug.str() << std::endl;
 
-   return geode;
+   transform->setName(nodename+".t");
+   return transform;
 }
