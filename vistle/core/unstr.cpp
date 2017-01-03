@@ -440,6 +440,7 @@ bool UnstructuredGrid::inside(Index elem, const Vector &point) const {
    if(elem == InvalidIndex)
        return false;
 
+   return insideConvex(elem, point);
 #if 0
     if (isConvex(elem))
         return insideConvex(elem, point);

@@ -3,7 +3,7 @@
 
 namespace vistle {
 
-#define CT_DEBUG
+//#define CT_DEBUG
 //#define CT_DEBUG_VERBOSE
 
 //const Scalar Epsilon = std::numeric_limits<Scalar>::epsilon();
