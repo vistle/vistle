@@ -53,10 +53,10 @@ bool Indexed::hasCelltree() const {
 
 Indexed::Celltree::const_ptr Indexed::getCelltree() const {
 
-   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
    if (m_celltree)
        return m_celltree;
 
+   boost::interprocess::scoped_lock<boost::interprocess::interprocess_recursive_mutex> lock(d()->attachment_mutex);
    if (!hasAttachment("celltree")) {
       refresh();
       createCelltree(getNumElements(), &el()[0], &cl()[0]);
