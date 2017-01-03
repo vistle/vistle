@@ -323,6 +323,11 @@ Scalar UnstructuredGrid::cellDiameter(Index elem) const {
     return sqrt(dist2);
 }
 
+std::vector<Index> UnstructuredGrid::getNeighborElements(Index elem) const {
+
+    return getNeighborFinder().getNeighborElements(elem);
+}
+
 
 bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const {
 

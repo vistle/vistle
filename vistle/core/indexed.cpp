@@ -223,7 +223,7 @@ Indexed::NeighborFinder::NeighborFinder(const Indexed *indexed)
     vol = ol->cellList();
 }
 
-Index Indexed::NeighborFinder::getNeighborElement(Index elem, Index v1, Index v2, Index v3) {
+Index Indexed::NeighborFinder::getNeighborElement(Index elem, Index v1, Index v2, Index v3) const {
 
    if (v1 == v2 || v1 == v3 || v2 == v3) {
       std::cerr << "WARNING: getNeighborElement was not called with 3 unique vertices." << std::endl;
@@ -253,13 +253,13 @@ Index Indexed::NeighborFinder::getNeighborElement(Index elem, Index v1, Index v2
    return InvalidIndex;
 }
 
-std::vector<Index> Indexed::NeighborFinder::getContainingElements(Index vert) {
+std::vector<Index> Indexed::NeighborFinder::getContainingElements(Index vert) const {
 
    const Index begin = vl[vert], end = vl[vert+1];
    return std::vector<Index>(&vol[begin], &vol[end]);
 }
 
-std::vector<Index> Indexed::NeighborFinder::getNeighborElements(Index elem) {
+std::vector<Index> Indexed::NeighborFinder::getNeighborElements(Index elem) const {
 
    std::vector<Index> elems;
    if (elem == InvalidIndex)
@@ -278,9 +278,12 @@ std::vector<Index> Indexed::NeighborFinder::getNeighborElements(Index elem) {
    return elems;
 }
 
-Indexed::NeighborFinder Indexed::getNeighborFinder() const {
+const Indexed::NeighborFinder &Indexed::getNeighborFinder() const {
 
-    return NeighborFinder(this);
+    if (!m_neighborfinder)
+        m_neighborfinder.reset(new NeighborFinder(this));
+
+    return *m_neighborfinder;
 }
 
 struct CellBoundsFunctor: public Indexed::Celltree::CellBoundsFunctor {

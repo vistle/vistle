@@ -45,11 +45,11 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
        friend class Indexed;
    public:
        //! find neighboring element to elem containing vertices v1, v2, and v3
-       Index getNeighborElement(Index elem, Index v1, Index v2, Index v3);
+       Index getNeighborElement(Index elem, Index v1, Index v2, Index v3) const;
        //! return all elements containing vertex vert
-       std::vector<Index> getContainingElements(Index vert);
+       std::vector<Index> getContainingElements(Index vert) const;
        //! return all elements neighboring element
-       std::vector<Index> getNeighborElements(Index elem);
+       std::vector<Index> getNeighborElements(Index elem) const;
    private:
        NeighborFinder(const Indexed *indexed);
        const Indexed *indexed;
@@ -57,7 +57,7 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
        const Index *el, *cl;
        const Index *vl, *vol;
    };
-   NeighborFinder getNeighborFinder() const;
+   const NeighborFinder &getNeighborFinder() const;
 
    virtual std::pair<Vector, Vector> elementBounds(Index elem) const;
    virtual std::vector<Index> cellVertices(Index elem) const;
@@ -66,6 +66,7 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
    mutable const Index *m_el;
    mutable const Index *m_cl;
    mutable Celltree::const_ptr m_celltree;
+   mutable std::unique_ptr<const NeighborFinder> m_neighborfinder;
 
    void createVertexOwnerList() const;
    void createCelltree(Index nelem, const Index *el, const Index *cl) const;
