@@ -14,6 +14,7 @@ using namespace vistle;
 ShowUSG::ShowUSG(const std::string &shmname, const std::string &name, int moduleID)
    : Module("ShowUSG", shmname, name, moduleID) {
 
+   setDefaultCacheMode(ObjectCache::CacheDeleteLate);
 
    createInputPort("grid_in");
    createOutputPort("grid_out");
