@@ -246,9 +246,11 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
                 //m_nregions = counts[cfxCNT_REGION];
                 m_nvolumes = counts[cfxCNT_VOLUME];
                 //m_nvars = counts[cfxCNT_VARIABLE];
+                ExportDone = false;
             if (m_nzones < 0) {
                 cfxExportDone();
                 sendError("cfxExportInit could not open %s", resultfileName);
+                ExportDone = true;
                 return false;
             }
 
@@ -626,12 +628,20 @@ bool ReadCFX::addVolumeDataToPorts(int volumeNr) {
 //            addObject(m_volumeDataOut[portnum], m_currentGrid[processor]);
 //        }
     }
+    for (int portnum=0; portnum<NumBoundaryPorts; ++portnum) {
+        m_currentBoundaryVolumedata[portnum]->setGrid(m_currentGrid[volumeNr]);
+        addObject(m_boundaryDataOut[portnum],m_currentBoundaryVolumedata[portnum]);
+    }
    return true;
 }
 
 bool ReadCFX::compute() {
 
     std::cerr << "Compute Start. \n";
+
+    if(ExportDone) {
+        parameterChanged(m_resultfiledir);
+    }
 
     int numbSelVolumes = collectVolumes();
     sendInfo("Schleife über Volumes Start");
@@ -687,6 +697,7 @@ bool ReadCFX::compute() {
     m_currentBoundaryVolumedata.clear();
     m_currentGrid.clear();
     cfxExportDone();
+    ExportDone = true;
 
    return true;
 }

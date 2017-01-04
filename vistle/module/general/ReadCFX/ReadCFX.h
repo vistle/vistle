@@ -56,6 +56,7 @@ class ReadCFX: public vistle::Module {
 
  private:
    bool parameterChanged(const vistle::Parameter *p);
+   bool ExportDone;
 
    //int rankForBlock(int block) const;
 
