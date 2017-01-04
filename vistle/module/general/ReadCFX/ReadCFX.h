@@ -37,7 +37,6 @@ public:
     CaseInfo();
     std::vector<std::string> m_field_param, m_boundary_param;
     bool m_valid;
-    //std::map<int,std::string> m_allParam;
     bm_type m_allParam;
     std::map<int, int> m_ParamDimension;
     index_t nvars;
@@ -91,7 +90,10 @@ class ReadCFX: public vistle::Module {
 
    vistle::UnstructuredGrid::ptr grid;
    std::vector<VolumeIdWithZoneFlag> m_selectedVolumes;
-   std::map<int, vistle::DataBase::ptr> m_currentvolumedata;
+   std::map<int, vistle::DataBase::ptr> m_currentVolumedata;
+   std::map<int, vistle::DataBase::ptr> m_currentBoundaryVolumedata;
+   std::map<int, vistle::UnstructuredGrid::ptr>  m_currentGrid;
+
 
 
 
@@ -102,6 +104,7 @@ class ReadCFX: public vistle::Module {
    vistle::DataBase::ptr loadBoundaryField(int volumeNr, int variableID);
    bool loadFields(int volumeNr);
    int collectVolumes();
+   bool addVolumeDataToPorts(int volumeNr);
 
 };
 
