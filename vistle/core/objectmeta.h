@@ -11,6 +11,7 @@
 #include <boost/serialization/access.hpp>
 
 #include "shm.h"
+#include "vector.h"
 #include "export.h"
 
 //#define DEBUG_SERIALIZATION
@@ -54,10 +55,13 @@ class V_COREEXPORT Meta {
       void setExecutionCounter(int count) { m_executionCount = count; }
       int creator() const { return m_creator; }
       void setCreator(int id) { m_creator = id; }
+      Matrix4 transform() const;
+      void setTransform(const Matrix4 &transform);
 
    private:
       int m_block, m_numBlocks, m_timestep, m_numTimesteps, m_animationstep, m_numAnimationsteps, m_iteration, m_executionCount, m_creator;
       double m_realtime;
+      std::array<double, 16> m_transform;
 
       friend class boost::serialization::access;
       template<class Archive>

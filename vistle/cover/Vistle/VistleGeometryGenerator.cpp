@@ -66,6 +66,14 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
       return NULL;
 
    osg::MatrixTransform *transform = new osg::MatrixTransform();
+   osg::Matrix osgMat;
+   vistle::Matrix4 vistleMat = m_geo->getTransform();
+   for (int i=0; i<4; ++i) {
+       for (int j=0; j<4; ++j) {
+           osgMat(i,j) = vistleMat.col(i)[j];
+       }
+   }
+   transform->setMatrix(osgMat);
    std::string nodename = m_geo->getName();
 
    std::stringstream debug;

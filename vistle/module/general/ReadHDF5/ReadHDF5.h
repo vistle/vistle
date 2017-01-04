@@ -159,6 +159,8 @@ public:
     ArrayToMetaArchive & operator<<(T const & t);
     template<class T>
     ArrayToMetaArchive & operator<<(const boost::serialization::nvp<T> & t);
+    template<class U>
+    ArrayToMetaArchive & operator<<(const boost::serialization::nvp<const boost::serialization::array_wrapper<U>> & t);
 
     // the & operator
     template<class T>
@@ -453,6 +455,23 @@ ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(const bo
     if (nvpMapIter != m_nvpMapPtr->end()
             && nvpMapIter->second < m_array.size()) {
         t.value() = m_array[nvpMapIter->second];
+    }
+
+    return *this;
+}
+
+template<class U>
+ReadHDF5::ArrayToMetaArchive & ReadHDF5::ArrayToMetaArchive::operator<<(const boost::serialization::nvp<const boost::serialization::array_wrapper<U>> & t) {
+    std::string memberName(t.name());
+    auto nvpMapIter = m_nvpMapPtr->find(memberName);
+
+    if (nvpMapIter != m_nvpMapPtr->end()
+            && nvpMapIter->second < m_array.size()) {
+#if 0
+        t.value() = m_array[nvpMapIter->second];
+#else
+        std::cerr << "not implemented" << std::endl;
+#endif
     }
 
     return *this;

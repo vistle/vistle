@@ -4,6 +4,8 @@
 #include "archives.h"
 #include "serialize.h"
 
+#include <boost/serialization/array.hpp>
+
 namespace vistle {
 
 template<class Archive>
@@ -24,6 +26,7 @@ void Meta::serialize(Archive &ar, const unsigned int version) {
    ar & V_NAME("creator", m_creator);
    ar & V_NAME("executioncount", m_executionCount);
    ar & V_NAME("realtime", m_realtime);
+   ar & V_NAME("transform", boost::serialization::make_array(m_transform.data(), m_transform.size()));
 #ifdef DEBUG_SERIALIZATION
    unsigned int check2 = check;
    ar & V_NAME("check2", check2);

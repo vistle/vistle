@@ -139,6 +139,7 @@ public:
    int getIteration() const;
    int getExecutionCounter() const;
    int getCreator() const;
+   Matrix4 getTransform() const;
 
    void setBlock(const int block);
    void setNumBlocks(const int num);
@@ -148,6 +149,7 @@ public:
    void setIteration(const int num);
    void setExecutionCounter(const int count);
    void setCreator(const int id);
+   void setTransform(const Matrix4 &transform);
 
    const Meta &meta() const;
    void setMeta(const Meta &meta);

@@ -15,6 +15,29 @@ Meta::Meta(int block, int timestep, int animstep, int iteration, int execcount, 
 , m_creator(creator)
 , m_realtime(0.0)
 {
+    for (int i=0; i<4; ++i)
+        for (int j=0; j<4; ++j)
+            m_transform[i*4+j] = i==j ? 1. : 0.;
+}
+
+Matrix4 Meta::transform() const {
+
+    Matrix4 t;
+    for (int i=0; i<4; ++i) {
+        for (int j=0; j<4; ++j) {
+            t.coeffRef(i,j) = m_transform[i*4+j];
+        }
+    }
+    return t;
+}
+
+void Meta::setTransform(const Matrix4 &transform) {
+
+    for (int i=0; i<4; ++i) {
+        for (int j=0; j<4; ++j) {
+            m_transform[i*4+j] = transform.coeff(i,j);
+        }
+    }
 }
 
 std::ostream &operator<<(std::ostream &out, const Meta &meta) {

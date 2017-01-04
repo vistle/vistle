@@ -258,6 +258,8 @@ public:
     MetaToArrayArchive & operator<<(T const & t);
     template<class T>
     MetaToArrayArchive & operator<<(const boost::serialization::nvp<T> & t);
+    template<class U>
+    MetaToArrayArchive & operator<<(const boost::serialization::nvp<const boost::serialization::array_wrapper<U>> & t);
 
     // the & operator
     template<class T>
@@ -941,6 +943,16 @@ template<class T>
 WriteHDF5::MetaToArrayArchive & WriteHDF5::MetaToArrayArchive::operator<<(const boost::serialization::nvp<T> & t) {
     m_array[m_insertIndex] = (double) t.const_value();
     m_insertIndex++;
+
+    return *this;
+}
+
+template<class U>
+WriteHDF5::MetaToArrayArchive & WriteHDF5::MetaToArrayArchive::operator<<(const boost::serialization::nvp<const boost::serialization::array_wrapper<U>> & t) {
+    for (auto i=0; i<t.const_value().count(); ++i) {
+        m_array[m_insertIndex] = t.const_value().address()[i];
+        m_insertIndex++;
+    }
 
     return *this;
 }

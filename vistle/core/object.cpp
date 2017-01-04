@@ -426,6 +426,10 @@ int Object::getCreator() const {
    return d()->meta.creator();
 }
 
+Matrix4 Object::getTransform() const {
+    return d()->meta.transform();
+}
+
 void Object::setRealTime(const double time) {
 
    d()->meta.setRealTime(time);
@@ -459,6 +463,11 @@ void Object::setExecutionCounter(const int count) {
 void Object::setCreator(const int id) {
 
    d()->meta.setCreator(id);
+}
+
+void Object::setTransform(const Matrix4 &transform) {
+
+    d()->meta.setTransform(transform);
 }
 
 const struct ObjectTypeRegistry::FunctionTable &ObjectTypeRegistry::getType(int id) {
@@ -504,6 +513,7 @@ void Object::copyAttributes(Object::const_ptr src, bool replace) {
       m.setAnimationStep(sm.animationStep());
       m.setNumAnimationSteps(sm.numAnimationSteps());
       m.setIteration(sm.iteration());
+      m.setTransform(sm.transform());
    }
 
    d()->copyAttributes(src->d(), replace);
