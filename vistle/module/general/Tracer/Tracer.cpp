@@ -255,12 +255,29 @@ bool Tracer::reduce(int timestep) {
 
    Index totalParticles = 0;
    std::vector<Index> stopReasonCount(Particle::NumStopReasons, 0);
+   std::vector<std::shared_ptr<Particle>> allParticles;
+   std::set<std::shared_ptr<Particle>> activeParticles;
+
+   std::set<Index> checkSet; // set of particles to check for deactivation because out of domain
+   auto checkActivity = [&checkSet, &allParticles](const boost::mpi::communicator &comm) -> Index {
+       for (auto it = checkSet.begin(), next=it; it != checkSet.end(); it=next) {
+           ++next;
+
+           auto particle = allParticles[*it];
+           bool active = boost::mpi::all_reduce(comm, particle->isActive(), std::logical_or<bool>());
+           if (!active) {
+               particle->Deactivate(Particle::OutOfDomain);
+               checkSet.erase(it);
+           }
+       }
+       return checkSet.size();
+   };
+
    for (Index t=0; t<numtime; ++t) {
        Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
 
        //create BlockData objects
        global.blocks[t].resize(numblocks);
-       auto &blocks = global.blocks[t];
        for(Index i=0; i<numblocks; i++){
 
            if (useCelltree && celltree.size() > t) {
@@ -271,8 +288,7 @@ bool Tracer::reduce(int timestep) {
        }
 
        //create particle objects, 2 if traceDirecton==Both
-       std::vector<std::shared_ptr<Particle>> allParticles;
-       allParticles.reserve(numparticles);
+       allParticles.reserve(allParticles.size()+numparticles);
        Index i = 0;
        if (traceDirection != Backward) {
            for(; i<numpoints; i++){
@@ -284,38 +300,26 @@ bool Tracer::reduce(int timestep) {
                allParticles.emplace_back(new Particle(i, startpoints[i], false, global, t));
            }
        }
+   }
 
+   for(auto it = allParticles.begin(); it!= allParticles.end(); ++it) {
+       auto particle = it->get();
+       particle->enableCelltree(useCelltree);
+       ++totalParticles;
 
-       std::set<Index> checkSet; // set of particles to check for deactivation because out of domain
-       std::set<std::shared_ptr<Particle>> activeParticles;
-       for(auto it = allParticles.begin(); it!= allParticles.end(); ++it) {
-           auto particle = it->get();
-           particle->enableCelltree(useCelltree);
-           ++totalParticles;
-
-           bool active = boost::mpi::all_reduce(comm(), particle->isActive(), std::logical_or<bool>());
-           if (active) {
-               activeParticles.insert(*it);
-               particle->startTracing();
-               checkSet.insert(particle->id());
-           } else {
-               particle->Deactivate(Particle::InitiallyOutOfDomain);
-           }
+       bool active = boost::mpi::all_reduce(comm(), particle->isActive(), std::logical_or<bool>());
+       if (active) {
+           activeParticles.insert(*it);
+           particle->startTracing();
+           checkSet.insert(particle->id());
+       } else {
+           particle->Deactivate(Particle::InitiallyOutOfDomain);
        }
+   }
 
-       auto checkActivity = [&checkSet, &allParticles](const boost::mpi::communicator &comm) -> Index {
-           for (auto it = checkSet.begin(), next=it; it != checkSet.end(); it=next) {
-               ++next;
-
-               auto particle = allParticles[*it];
-               bool active = boost::mpi::all_reduce(comm, particle->isActive(), std::logical_or<bool>());
-               if (!active) {
-                   particle->Deactivate(Particle::OutOfDomain);
-                   checkSet.erase(it);
-               }
-           }
-           return checkSet.size();
-       };
+   for (Index t=0; t<numtime; ++t) {
+       Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
+       auto &blocks = global.blocks[t];
 
        const int mpisize = comm().size();
        bool working = activeParticles.size()>0;
