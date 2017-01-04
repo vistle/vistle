@@ -101,6 +101,7 @@ class ReadCovise: public vistle::Module {
 
    size_t m_numObj;
    std::vector<Element *> m_objects;
+   int m_firstTimestep, m_skipTimesteps;
 };
 
 #endif
