@@ -49,6 +49,7 @@ public:
    Celltree::const_ptr getCelltree() const override;
    bool validateCelltree() const override;
    Scalar exitDistance(Index elem, const Vector &point, const Vector &dir) const override;
+   Vector getVertex(Index v) const override;
 
 private:
    // mutable pointers to ShmVectors

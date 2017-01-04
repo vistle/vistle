@@ -47,6 +47,7 @@ public:
    bool inside(Index elem, const Vector &point) const override;
    Interpolator getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping=DataBase::Vertex, InterpolationMode mode=Linear) const override;
    Scalar exitDistance(Index elem, const Vector &point, const Vector &dir) const override;
+   Vector getVertex(Index v) const override;
 
 private:
    // mutable pointers to ShmVectors

@@ -193,6 +193,11 @@ Scalar RectilinearGrid::exitDistance(Index elem, const Vector &point, const Vect
     return exitDist;
 }
 
+Vector RectilinearGrid::getVertex(Index v) const {
+    auto n = vertexCoordinates(v, m_numDivisions);
+    return Vector(m_coords[0][n[0]], m_coords[1][n[1]], m_coords[2][n[2]]);
+}
+
 
 // GET INTERPOLATOR
 //-------------------------------------------------------------------------

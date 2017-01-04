@@ -194,6 +194,11 @@ Scalar UniformGrid::exitDistance(Index elem, const Vector &point, const Vector &
     return exitDist;
 }
 
+Vector UniformGrid::getVertex(Index v) const {
+    auto n = vertexCoordinates(v, m_numDivisions);
+    return Vector(m_min[0]+n[0]*m_dist[0], m_min[1]+n[1]*m_dist[1], m_min[2]+n[2]*m_dist[2]);
+}
+
 // GET INTERPOLATOR
 //-------------------------------------------------------------------------
 GridInterface::Interpolator UniformGrid::getInterpolator(Index elem, const Vector &point, DataBase::Mapping mapping, GridInterface::InterpolationMode mode) const {
