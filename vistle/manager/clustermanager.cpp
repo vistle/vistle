@@ -1193,8 +1193,8 @@ bool ClusterManager::handlePriv(const message::ExecutionProgress &prog) {
                 if (mod.ranksStarted != m_size) {
                    CERR << "mismatch for module " << prog.senderId() << ": m_size=" << m_size << ", started=" << mod.ranksStarted << std::endl;
                 }
-                vassert(mod.ranksStarted == m_size);
-                mod.ranksStarted = 0;
+                vassert(mod.ranksStarted >= m_size);
+                mod.ranksStarted -= m_size;
                 mod.ranksFinished = 0;
                 unqueueExecute = true;
              } else {
