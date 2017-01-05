@@ -61,8 +61,11 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addVectorParameter("startpoint1", "1st initial point", ParamVector(0,0.2,0));
     addVectorParameter("startpoint2", "2nd initial point", ParamVector(1,0,0));
     addVectorParameter("direction", "direction for plane", ParamVector(1,0,0));
+    const Integer max_no_startp = 300;
     addIntParameter("no_startp", "number of startpoints", 2);
-    setParameterRange("no_startp", (Integer)1, (Integer)100000);
+    setParameterRange("no_startp", (Integer)1, max_no_startp);
+    addIntParameter("max_no_startp", "maximum number of startpoints", max_no_startp);
+    setParameterRange("max_no_startp", (Integer)2, (Integer)10000);
     addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
     auto tl = addFloatParameter("trace_len", "maximum trace distance", 1.0);
     setParameterMinimum(tl, 0.0);
@@ -75,17 +78,23 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     IntParameter* integration = addIntParameter("integration", "integration method", (Integer)RK32, Parameter::Choice);
     V_ENUM_SET_CHOICES(integration, IntegrationMethod);
     addFloatParameter("min_speed", "miniumum particle speed", 1e-4);
+    setParameterRange("min_speed", 0.0, 1e6);
 
     setCurrentParameterGroup("Step Length Control");
     addFloatParameter("h_init", "initial step size/fixed step size for euler integration", 1e-03);
+    setParameterRange("h_init", 0.0, 1e6);
     addFloatParameter("h_min","minimum step size for rk32 integration", 1e-04);
+    setParameterRange("h_min", 0.0, 1e6);
     addFloatParameter("h_max", "maximum step size for rk32 integration", .5);
-    addFloatParameter("err_tol_abs", "absolute error tolerance for rk32 integration", 1e-05);
-    addFloatParameter("err_tol_rel", "relative error tolerance for rk32 integration", 1e-04);
+    setParameterRange("h_max", 0.0, 1e6);
+    addFloatParameter("err_tol_abs", "absolute error tolerance for rk32 integration", 1e-04);
+    setParameterRange("err_tol_abs", 0.0, 1e6);
+    addFloatParameter("err_tol_rel", "relative error tolerance for rk32 integration", 1e-03);
+    setParameterRange("err_tol_rel", 0.0, 1.0);
     addIntParameter("cell_relative", "whether step length control should take into account cell size", 1, Parameter::Boolean);
     addIntParameter("velocity_relative", "whether step length control should take into account velocity", 1, Parameter::Boolean);
 
-    setCurrentParameterGroup("");
+    setCurrentParameterGroup("Performance Tuning");
     m_useCelltree = addIntParameter("use_celltree", "use celltree for accelerated cell location", (Integer)1, Parameter::Boolean);
     addIntParameter("num_active", "number of particles to trace simultaneously", 1000);
 }
