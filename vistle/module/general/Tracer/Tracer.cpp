@@ -42,6 +42,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
 
     createInputPort("data_in0");
     createInputPort("data_in1");
+    createOutputPort("lines");
     createOutputPort("data_out0");
     createOutputPort("data_out1");
     createOutputPort("particle_id");
@@ -215,7 +216,9 @@ bool Tracer::reduce(int timestep) {
                n1 = 2;
        }
        numpoints = n0*n1;
-       setIntParameter("no_startp", numpoints);
+       //setIntParameter("no_startp", numpoints);
+       if (rank() == 0)
+           sendInfo("actually using %d*%d=%d start points", n0, n1, numpoints);
        startpoints.resize(numpoints);
 
        Scalar s0 = Scalar(1)/(n0-1);
@@ -241,11 +244,6 @@ bool Tracer::reduce(int timestep) {
    Index numparticles = numpoints;
    if (traceDirection == Both) {
        numparticles *= 2;
-       startpoints.resize(numparticles);
-
-       for(Index i=0; i<numpoints; i++){
-           startpoints[i+numpoints] = startpoints[i];
-       }
    }
 
    Index numtime = mpi::all_reduce(comm(), grid_in.size(), [](Index a, Index b){ return std::max<Index>(a,b); });
@@ -265,6 +263,28 @@ bool Tracer::reduce(int timestep) {
    global.cell_relative = getIntParameter("cell_relative");
    global.velocity_relative = getIntParameter("velocity_relative");
    global.blocks.resize(numtime);
+   Meta meta;
+   meta.setNumTimesteps(numtime);
+   meta.setNumBlocks(size());
+   for (int i=0; i<numtime; ++i) {
+       meta.setBlock(rank());
+       meta.setTimeStep(i);
+       global.lines.emplace_back(new Lines(0,0,0));
+       global.lines[i]->setMeta(meta);
+
+       global.vecField.emplace_back(new Vec<Scalar,3>(Index(0)));
+       global.vecField[i]->setMeta(meta);
+       global.scalField.emplace_back(new Vec<Scalar>(Index(0)));
+       global.scalField[i]->setMeta(meta);
+       global.idField.emplace_back(new Vec<Index>(Index(0)));
+       global.idField[i]->setMeta(meta);
+       global.stepField.emplace_back(new Vec<Index>(Index(0)));
+       global.stepField[i]->setMeta(meta);
+       global.timeField.emplace_back(new Vec<Scalar>(Index(0)));
+       global.timeField[i]->setMeta(meta);
+       global.distField.emplace_back(new Vec<Scalar>(Index(0)));
+       global.distField[i]->setMeta(meta);
+   }
 
    std::vector<Index> stopReasonCount(Particle::NumStopReasons, 0);
    std::vector<std::shared_ptr<Particle>> allParticles;
@@ -304,14 +324,12 @@ bool Tracer::reduce(int timestep) {
        //create particle objects, 2 if traceDirecton==Both
        allParticles.reserve(allParticles.size()+numparticles);
        Index i = 0;
-       if (traceDirection != Backward) {
-           for(; i<numpoints; i++){
-               allParticles.emplace_back(new Particle(id++, startpoints[i], true, global, t));
+       for(; i<numpoints; i++) {
+           if (traceDirection != Backward) {
+               allParticles.emplace_back(new Particle(id++, i%size(), i, startpoints[i], true, global, t));
            }
-       }
-       if (traceDirection != Forward) {
-           for(; i<numparticles; i++){
-               allParticles.emplace_back(new Particle(id++, startpoints[i], false, global, t));
+           if (traceDirection != Forward) {
+               allParticles.emplace_back(new Particle(id++, i%size(), i, startpoints[i], false, global, t));
            }
        }
    }
@@ -374,6 +392,7 @@ bool Tracer::reduce(int timestep) {
       // communicate
       checkActivity(comm());
 
+      std::vector<std::pair<Index, int>> datarecvlist; // particle id, source mpi rank
       Index num_send = sendlist.size();
       std::vector<Index> num_transmit(mpisize);
       mpi::all_gather(comm(), num_send, num_transmit);
@@ -392,61 +411,76 @@ bool Tracer::reduce(int timestep) {
                   p->broadcast(comm(), mpirank);
                   checkSet.insert(p_index);
                   if (rank() != mpirank) {
+                      if (p->rank() == rank())
+                          datarecvlist.emplace_back(p->id(), mpirank);
                       activeParticles.insert(p);
                       p->startTracing();
+                  } else {
+                      if (p->rank() == rank())
+                          p->finishSegment();
                   }
               }
           }
       }
+      //std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << std::endl;
       numActive = mpi::all_reduce(comm(), activeParticles.size(), std::plus<Index>());
+      for(int i=1; i<mpisize; ++i) {
+          int dst = (rank()+i)%size();
+          int src = (rank()-i+size())%size();
+          for (auto id: sendlist) {
+              auto p = allParticles[id];
+              if (p->rank() == dst) {
+                  //std::cerr << "sending " << p->id() << " to " << dst << std::endl;
+                  p->sendData(comm());
+              }
+          }
+          for (const auto &part: datarecvlist) {
+              auto id = part.first;
+              auto rank = part.second;
+              auto p = allParticles[id];
+              assert(p->rank() == this->rank());
+              if (rank == src) {
+                  //std::cerr << "receiving " << p->id() << " from " << src << std::endl;
+                  p->receiveData(comm(), src);
+              }
+          }
+      }
    } while (numActive > 0 || nextParticleToStart<allParticles.size() || !checkSet.empty());
 
-   for (Index t=0; t<numtime; ++t) {
-       Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
-       auto &blocks = global.blocks[t];
+   if (mpisize == 1) {
+       for (auto p: allParticles) {
+           p->finishSegment();
+       }
+   }
 
-      //add Lines-objects to output port
-      for(Index i=0; i<numblocks; i++){
-
-         Meta meta(i, t);
-         meta.setNumTimesteps(numtime);
-         meta.setNumBlocks(numblocks);
-
-         blocks[i]->setMeta(meta);
-         Lines::ptr lines = blocks[i]->getLines();
-         blocks[i]->ids()->setGrid(lines);
-         addObject("particle_id", blocks[i]->ids());
-         blocks[i]->steps()->setGrid(lines);
-         addObject("step", blocks[i]->steps());
-         blocks[i]->times()->setGrid(lines);
-         addObject("time", blocks[i]->times());
-         blocks[i]->distances()->setGrid(lines);
-         addObject("distance", blocks[i]->distances());
-
-         std::vector<Vec<Scalar, 3>::ptr> v_vec = blocks[i]->getIplVec();
-         Vec<Scalar, 3>::ptr v;
-         if(v_vec.size()>0){
-            v = v_vec[0];
-            v->setGrid(lines);
-            addObject("data_out0", v);
-         }
-
-         if(data_in1[t][0]){
-            std::vector<Vec<Scalar>::ptr> p_vec = blocks[i]->getIplScal();
-            Vec<Scalar>::ptr p;
-            if(p_vec.size()>0){
-               p = p_vec[0];
-               p->setGrid(lines);
-               addObject("data_out1", p);
-            }
-         }
-      }
-
-      if (rank() == 0) {
-          for(Index i=0; i<numparticles; i++) {
-               ++stopReasonCount[allParticles[i]->stopReason()];
+   for (auto &p: allParticles) {
+       if (rank() == 0)
+           ++stopReasonCount[p->stopReason()];
+       if (p->rank() == rank()) {
+           if (traceDirection == Both && p->isForward()) {
+               auto other = allParticles[p->id()+1];
+               p->fetchSegments(*other);
            }
-      }
+           p->addToOutput();
+       }
+   }
+
+   for (Index t=0; t<numtime; ++t) {
+       auto lines = global.lines[t];
+       addObject("lines", global.lines[t]);
+
+       global.idField[t]->setGrid(lines);
+       addObject("particle_id", global.idField[t]);
+       global.stepField[t]->setGrid(lines);
+       addObject("step", global.stepField[t]);
+       global.timeField[t]->setGrid(lines);
+       addObject("time", global.timeField[t]);
+       global.distField[t]->setGrid(lines);
+       addObject("distance", global.distField[t]);
+       global.vecField[t]->setGrid(lines);
+       addObject("data_out0", global.vecField[t]);
+       global.scalField[t]->setGrid(lines);
+       addObject("data_out1", global.scalField[t]);
    }
 
    if (rank() == 0) {

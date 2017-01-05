@@ -6,6 +6,7 @@
 
 #include <util/enum.h>
 #include <core/vec.h>
+#include <core/lines.h>
 #include <core/celltree.h>
 #include <module/module.h>
 #include "Integrator.h"
@@ -38,6 +39,13 @@ private:
     bool cell_relative, velocity_relative;
 
     vistle::Index max_step;
+
+    std::vector<vistle::Lines::ptr> lines; // lines objects for each timestep
+    std::vector<vistle::Vec<vistle::Scalar, 3>::ptr> vecField;
+    std::vector<vistle::Vec<vistle::Scalar>::ptr> scalField;
+    std::vector<vistle::Vec<vistle::Index>::ptr> idField, stepField;
+    std::vector<vistle::Vec<vistle::Scalar>::ptr> timeField, distField;
+    std::mutex mutex;
 };
 
 class Tracer: public vistle::Module {
