@@ -326,7 +326,8 @@ Scalar UnstructuredGrid::cellDiameter(Index elem) const {
 
 bool UnstructuredGrid::insideConvex(Index elem, const Vector &point) const {
 
-   const Scalar Tolerance = 1e-3*cellDiameter(elem);
+   //const Scalar Tolerance = 1e-3*cellDiameter(elem); // too slow: halves particle tracing speed
+   const Scalar Tolerance = 1e-5;
 
    const Index *el = &this->el()[0];
    const Index *cl = &this->cl()[el[elem]];

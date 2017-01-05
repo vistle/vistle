@@ -160,15 +160,15 @@ std::pair<Vector,Vector> faceNormalAndCenter(unsigned char type, Index f, const 
     Index v0 = cl[face[0]];
     Index v1 = cl[face[1]];
     Index v2 = cl[face[2]];
-    Index v3 = N>3 ? cl[face[3]] : v2;
     Vector c0(x[v0], y[v0], z[v0]);
     Vector c1(x[v1], y[v1], z[v1]);
     Vector c2(x[v2], y[v2], z[v2]);
-    Vector c3(x[v3], y[v3], z[v3]);
     Vector center = c0+c1+c2;
     Vector normal = (c1-c0).cross(c2-c1);
     if (N > 3) {
         assert(N == 4);
+        Index v3 = cl[face[3]];
+        Vector c3(x[v3], y[v3], z[v3]);
         normal += (c3-c2).cross(c0-c3);
         center += c3;
     }
