@@ -74,11 +74,16 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     IntParameter* integration = addIntParameter("integration", "integration method", (Integer)RK32, Parameter::Choice);
     V_ENUM_SET_CHOICES(integration, IntegrationMethod);
     addFloatParameter("min_speed", "miniumum particle speed", 1e-4);
+
+    setCurrentParameterGroup("Step Length Control");
     addFloatParameter("h_init", "initial step size/fixed step size for euler integration", 1e-03);
     addFloatParameter("h_min","minimum step size for rk32 integration", 1e-04);
     addFloatParameter("h_max", "maximum step size for rk32 integration", .5);
     addFloatParameter("err_tol", "desired accuracy for rk32 integration", 1e-07);
     addIntParameter("cell_relative", "whether step length control should take into account cell size", 1, Parameter::Boolean);
+    addIntParameter("velocity_relative", "whether step length control should take into account velocity", 1, Parameter::Boolean);
+
+    setCurrentParameterGroup("");
     m_useCelltree = addIntParameter("use_celltree", "use celltree for accelerated cell location", (Integer)1, Parameter::Boolean);
 }
 
@@ -251,6 +256,7 @@ bool Tracer::reduce(int timestep) {
    global.min_vel = minspeed;
    global.max_step = steps_max;
    global.cell_relative = getIntParameter("cell_relative");
+   global.velocity_relative = getIntParameter("velocity_relative");
    global.blocks.resize(numtime);
 
    Index totalParticles = 0;

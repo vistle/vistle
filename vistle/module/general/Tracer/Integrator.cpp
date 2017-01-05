@@ -62,7 +62,8 @@ bool Integrator::StepEuler() {
 
     Vector vel = m_forward ? m_ptcl->m_v : -m_ptcl->m_v;
     Scalar v = std::max(vel.norm(), Scalar(1e-7));
-    unit /= v;
+    if (m_ptcl->m_global.velocity_relative)
+        unit /= v;
     m_ptcl->m_x = m_ptcl->m_x + vel*m_h*unit;
     m_hact = m_h*unit;
     return true;
@@ -82,9 +83,11 @@ void Integrator::hInit(){
         unit = cellSize;
     }
 
-    Vector3 vel = Interpolator(m_ptcl->m_block, m_ptcl->m_el, m_ptcl->m_x);
-    Scalar v = std::max(vel.norm(), Scalar(1e-7));
-    unit /= v;
+    if (m_ptcl->m_global.velocity_relative) {
+        Vector3 vel = Interpolator(m_ptcl->m_block, m_ptcl->m_el, m_ptcl->m_x);
+        Scalar v = std::max(vel.norm(), Scalar(1e-7));
+        unit /= v;
+    }
 
     m_h = .5 * unit * std::sqrt(m_hmin*m_hmax);
     m_hact = m_h;
@@ -94,11 +97,13 @@ bool Integrator::hNew(Vector3 higher, Vector3 lower, Vector vel, Scalar unit){
 
    Scalar errest = (higher-lower).lpNorm<Eigen::Infinity>();
 
-   if (!m_ptcl->m_global.cell_relative) {
+   if (!global.cell_relative) {
        unit = 1.;
    }
-   Scalar v = std::max(vel.norm(), Scalar(1e-7));
-   unit /= v;
+   if (global.velocity_relative) {
+       Scalar v = std::max(vel.norm(), Scalar(1e-7));
+       unit /= v;
+   }
 
    if (!std::isfinite(errest)) {
        m_h = m_hmin*unit;

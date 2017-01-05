@@ -34,8 +34,9 @@ private:
     double min_vel;
     double t_max;
     double trace_len;
+    bool cell_relative, velocity_relative;
+
     vistle::Index max_step;
-    bool cell_relative;
 };
 
 class Tracer: public vistle::Module {
