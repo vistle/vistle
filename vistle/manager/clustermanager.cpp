@@ -399,7 +399,7 @@ bool ClusterManager::sendMessage(const int moduleId, const message::Message &mes
       if (it == runningMap.end()) {
          CERR << "sendMessage: module " << moduleId << " not found" << std::endl;
          std::cerr << "  message: " << message << std::endl;
-         return false;
+         return true;
       }
 
       if (destRank == -1 || destRank == getRank()) {
