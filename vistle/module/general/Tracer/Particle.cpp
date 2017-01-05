@@ -26,7 +26,7 @@ m_dist(0),
 m_block(nullptr),
 m_el(InvalidIndex),
 m_ingrid(true),
-m_integrator(m_global.h_init, m_global.h_min, m_global.h_max, m_global.errtol, m_global.int_mode, this, forward),
+m_integrator(this, forward),
 m_stopReason(StillActive),
 m_useCelltree(true)
 {

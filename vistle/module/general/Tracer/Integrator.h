@@ -16,10 +16,6 @@ class Integrator{
 friend class Particle;
 private:
     vistle::Scalar m_h, m_hact;
-    vistle::Scalar m_hmin;
-    vistle::Scalar m_hmax;
-    vistle::Scalar m_errtol;
-    IntegrationMethod m_mode;
     Particle* m_ptcl;
     bool m_forward;
     const vistle::Scalar *m_v[3];
@@ -27,9 +23,7 @@ private:
 
 public:
 
-    Integrator(vistle::Scalar h, vistle::Scalar hmin,
-               vistle::Scalar hmax, vistle::Scalar errtol,
-               IntegrationMethod mode, Particle* ptcl, bool forward);
+    Integrator(Particle *ptcl, bool forward);
     void UpdateBlock();
     bool Step();
     bool StepEuler();
@@ -37,7 +31,7 @@ public:
     bool StepConstantVelocity();
     vistle::Vector3 Interpolator(BlockData* bl, vistle::Index el, const vistle::Vector3 &point);
     void hInit();
-    bool hNew(vistle::Vector3 higher, vistle::Vector3 lower, vistle::Vector vel, vistle::Scalar unit);
+    bool hNew(vistle::Vector3 cur, vistle::Vector3 higher, vistle::Vector3 lower, vistle::Vector vel, vistle::Scalar unit);
     void enableCelltree(bool value);
     vistle::Scalar h() const;
 };

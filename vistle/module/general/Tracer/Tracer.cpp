@@ -79,7 +79,8 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addFloatParameter("h_init", "initial step size/fixed step size for euler integration", 1e-03);
     addFloatParameter("h_min","minimum step size for rk32 integration", 1e-04);
     addFloatParameter("h_max", "maximum step size for rk32 integration", .5);
-    addFloatParameter("err_tol", "desired accuracy for rk32 integration", 1e-07);
+    addFloatParameter("err_tol_abs", "absolute error tolerance for rk32 integration", 1e-05);
+    addFloatParameter("err_tol_rel", "relative error tolerance for rk32 integration", 1e-04);
     addIntParameter("cell_relative", "whether step length control should take into account cell size", 1, Parameter::Boolean);
     addIntParameter("velocity_relative", "whether step length control should take into account velocity", 1, Parameter::Boolean);
 
@@ -169,7 +170,6 @@ bool Tracer::reduce(int timestep) {
    //get parameters
    bool useCelltree = m_useCelltree->getValue();
    TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
-   Index steps_max = getIntParameter("steps_max");
    Index numpoints = getIntParameter("no_startp");
 
    //determine startpoints
@@ -238,23 +238,17 @@ bool Tracer::reduce(int timestep) {
 
    Index numtime = boost::mpi::all_reduce(comm(), grid_in.size(), [](Index a, Index b){ return std::max<Index>(a,b); });
 
-   Scalar dt = getFloatParameter("h_init");
-   Scalar dtmin = getFloatParameter("h_min");
-   Scalar dtmax = getFloatParameter("h_max");
-   Scalar errtol = getFloatParameter("err_tol");
-   Scalar minspeed = getFloatParameter("min_speed");
-
-
    GlobalData global;
    global.int_mode = (IntegrationMethod)getIntParameter("integration");
    global.task_type = (TraceType)getIntParameter("taskType");
-   global.h_init = dt;
-   global.h_min = dtmin;
-   global.h_max = dtmax;
-   global.errtol = errtol;
+   global.h_init = getFloatParameter("h_init");
+   global.h_min = getFloatParameter("h_min");
+   global.h_max = getFloatParameter("h_max");
+   global.errtolrel = getFloatParameter("err_tol_rel");
+   global.errtolabs = getFloatParameter("err_tol_abs");
    global.trace_len = getFloatParameter("trace_len");
-   global.min_vel = minspeed;
-   global.max_step = steps_max;
+   global.min_vel = getFloatParameter("min_speed");
+   global.max_step = getIntParameter("steps_max");
    global.cell_relative = getIntParameter("cell_relative");
    global.velocity_relative = getIntParameter("velocity_relative");
    global.blocks.resize(numtime);

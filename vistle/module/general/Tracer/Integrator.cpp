@@ -9,19 +9,15 @@ using namespace vistle;
 
 
 
-Integrator::Integrator(vistle::Scalar h, vistle::Scalar hmin,
-           vistle::Scalar hmax, vistle::Scalar errtol,
-           IntegrationMethod mode, Particle* ptcl, bool forward):
-    m_h(h),
-    m_hact(m_h),
-    m_hmin(hmin),
-    m_hmax(hmax),
-    m_errtol(errtol),
-    m_mode(mode),
+Integrator::Integrator(Particle* ptcl, bool forward):
     m_ptcl(ptcl),
     m_forward(forward),
     m_cellSearchFlags(GridInterface::NoFlags)
 {
+    const auto &global = m_ptcl->m_global;
+    m_h = global.h_init;
+    m_hact = m_h;
+
     UpdateBlock();
 }
 
@@ -39,7 +35,7 @@ void Integrator::UpdateBlock() {
 
 bool Integrator::Step() {
 
-    switch(m_mode){
+    switch(m_ptcl->m_global.int_mode){
     case Euler:
         return StepEuler();
     case RK32:
@@ -72,7 +68,11 @@ bool Integrator::StepEuler() {
 void Integrator::hInit(){
     return;
 
-    if (m_mode != RK32)
+    const auto &global = m_ptcl->m_global;
+    const auto h_max = global.h_max;
+    const auto h_min = global.h_min;
+    const auto mode = global.int_mode;
+    if (mode != RK32)
         return;
 
     Index el=m_ptcl->m_el;
@@ -89,13 +89,20 @@ void Integrator::hInit(){
         unit /= v;
     }
 
-    m_h = .5 * unit * std::sqrt(m_hmin*m_hmax);
+    m_h = .5 * unit * std::sqrt(h_min*h_max);
     m_hact = m_h;
 }
 
-bool Integrator::hNew(Vector3 higher, Vector3 lower, Vector vel, Scalar unit){
+bool Integrator::hNew(Vector3 cur, Vector3 higher, Vector3 lower, Vector vel, Scalar unit){
 
-   Scalar errest = (higher-lower).lpNorm<Eigen::Infinity>();
+   const auto &global = m_ptcl->m_global;
+   const auto h_max = global.h_max;
+   const auto h_min = global.h_min;
+   const auto tol_rel = global.errtolrel;
+   const auto tol_abs = global.errtolabs;
+
+   Scalar errestabs = (higher-lower).lpNorm<Eigen::Infinity>();
+   Scalar errestrel = (higher-lower).lpNorm<Eigen::Infinity>()/(higher-cur).lpNorm<Eigen::Infinity>();
 
    if (!global.cell_relative) {
        unit = 1.;
@@ -105,29 +112,30 @@ bool Integrator::hNew(Vector3 higher, Vector3 lower, Vector vel, Scalar unit){
        unit /= v;
    }
 
-   if (!std::isfinite(errest)) {
-       m_h = m_hmin*unit;
+   if (!std::isfinite(errestabs) || !std::isfinite(errestrel)) {
+       m_h = h_min*unit;
        std::cerr << "Integrator: invalid input for error estimation: higher=" << higher.transpose() << ", lower=" << lower.transpose() <<  std::endl;
        return true;
    }
 
-   Scalar h = 0.9*m_h*std::pow(Scalar(m_errtol/errest),Scalar(1.0/3.0));
-   h = std::min(h, 2*m_h);
+   Scalar h_abs = 0.9*m_h*std::pow(Scalar(tol_abs/errestabs),Scalar(1.0/3.0));
+   Scalar h_rel = 0.9*m_h*std::pow(Scalar(tol_rel/errestrel),Scalar(1.0/3.0));
+   Scalar h = std::min(std::max(h_abs,h_rel), 2*m_h);
    //Scalar h = 0.9*m_h*std::pow(Scalar(m_errtol/errest),Scalar(1.0/3.0))*unit;
-   if(errest<=m_errtol) {
-      if(h<m_hmin*unit) {
-         m_h=m_hmin*unit;
+   if(errestabs<=tol_abs || errestrel<=tol_rel) {
+      if(h<h_min*unit) {
+         m_h=h_min*unit;
          return true;
-      } else if(h>m_hmax*unit) {
-         m_h=m_hmax*unit;
+      } else if(h>h_max*unit) {
+         m_h=h_max*unit;
          return true;
       } else {
          m_h = h;
          return true;
       }
    } else {
-      if (h<m_hmin*unit) {
-         m_h = m_hmin*unit;
+      if (h<h_min*unit) {
+         m_h = h_min*unit;
          return true;
       } else {
          m_h = h;
@@ -192,7 +200,7 @@ bool Integrator::StepRK32() {
       Vector3 x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + 2*k[1]/3.0 + k[2]/6.0);
       m_hact = m_h;
 
-      bool accept = hNew(x3rd, x2nd, k[0], cellSize);
+      bool accept = hNew(m_ptcl->m_x, x3rd, x2nd, k[0], cellSize);
       if (accept) {
           m_ptcl->m_x = x3rd;
           return true;

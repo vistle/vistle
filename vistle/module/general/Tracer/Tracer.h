@@ -29,7 +29,7 @@ private:
     TraceType task_type;
     IntegrationMethod int_mode;
 
-    double errtol;
+    double errtolrel, errtolabs;
     double h_min, h_max, h_init;
     double min_vel;
     double t_max;
