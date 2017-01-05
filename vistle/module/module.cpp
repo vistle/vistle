@@ -1773,7 +1773,7 @@ bool Module::prepareWrapper(const message::Message *req) {
       m_benchmarkStart = Clock::time();
    }
 
-   CERR << "prepareWrapper: prepared=" << m_prepared << std::endl;
+   //CERR << "prepareWrapper: prepared=" << m_prepared << std::endl;
    m_prepared = true;
 
    if (reducePolicy() == message::ReducePolicy::Never)
@@ -1793,7 +1793,7 @@ bool Module::prepare() {
 
 bool Module::reduceWrapper(const message::Message *req) {
 
-   CERR << "reduceWrapper: prepared=" << m_prepared << std::endl;
+   //CERR << "reduceWrapper: prepared=" << m_prepared << std::endl;
 
    vassert(m_prepared);
    if (m_reducePolicy != message::ReducePolicy::Never) {
