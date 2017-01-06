@@ -182,11 +182,12 @@ void CaseInfo::getFieldList() {
         m_allParam.insert(bm_type::value_type(varnum,cfxExportVariableName(varnum,1)));
         if(cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
             if(length == 1) {
-                m_boundary_param.push_back(cfxExportVariableName(varnum,1));
+                m_boundary_param.push_back(m_allParam.left.at(varnum));
                 //std::cerr << "cfxExportVariableName("<< varnum << ",1) = " << cfxExportVariableName(varnum,1) << std::endl;
+                //std::cerr << "m_allParam.left.at(varnum) = " << m_allParam.left.at(varnum) << std::endl;
             }
             else {
-                m_field_param.push_back(cfxExportVariableName(varnum,1));
+                m_field_param.push_back(m_allParam.left.at(varnum));
             }
 
             if(dimension == 1) {
