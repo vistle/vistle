@@ -223,7 +223,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 
    addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
 
-   auto em = addIntParameter("_error_output_mode", "where stderr is shown", size()==1 ? 1 : 0, Parameter::Choice);
+   auto em = addIntParameter("_error_output_mode", "where stderr is shown", size()==1 ? 1 : 1, Parameter::Choice);
    std::vector<std::string> errmodes;
    errmodes.push_back("No output");
    errmodes.push_back("Console only");
@@ -231,7 +231,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
    errmodes.push_back("Console & GUI");
    setParameterChoices(em, errmodes);
 
-   auto outrank = addIntParameter("_error_output_rank", "rank from which to show stderr (-1: all ranks)", 0);
+   auto outrank = addIntParameter("_error_output_rank", "rank from which to show stderr (-1: all ranks)", -1);
    setParameterRange<Integer>(outrank, -1, size()-1);
 
    auto openmp_threads = addIntParameter("_openmp_threads", "number of OpenMP threads (0: system default)", 0);
