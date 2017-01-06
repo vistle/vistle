@@ -41,7 +41,8 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     // file browser parameter
 //    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
    // m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+//    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_.res", Parameter::Directory);
 
     // time parameters
     m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
@@ -524,9 +525,9 @@ DataBase::ptr ReadCFX::loadBoundaryField(int volumeNr, int variableID) {
         for(index_t j=0;j<nnodesInVolume;++j) {
             cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
             ptrOnScalarData[j] = *value.get();
-            if(j<20) {
-                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-            }
+//            if(j<2000) {
+//                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+//            }
         }
         cfxExportVariableFree(varnum);
         return s;
@@ -544,11 +545,11 @@ DataBase::ptr ReadCFX::loadBoundaryField(int volumeNr, int variableID) {
             ptrOnVectorXData[j] = value.get()[0];
             ptrOnVectorYData[j] = value.get()[1];
             ptrOnVectorZData[j] = value.get()[2];
-            //                if(j<20) {
-            //                    std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
-            //                    std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
-            //                    std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
-            //                }
+//            if(j<2000) {
+//                std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
+//                std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
+//                std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
+//            }
         }
         cfxExportVariableFree(varnum);
         return v;
@@ -608,8 +609,7 @@ bool ReadCFX::loadFields(int volumeNr) {
       bm_type::right_const_iterator right_iter = m_case.m_allParam.right.find(boundField);
 //      std::cerr << "right_iter->first = " << right_iter->first << std::endl;
 //      std::cerr << "right_iter->second = " << right_iter->second << std::endl;
-
-      DataBase::ptr obj = loadField(volumeNr, right_iter->second);
+      DataBase::ptr obj = loadBoundaryField(volumeNr, right_iter->second);
       //setMeta(obj, processor, timestep);
       m_currentBoundaryVolumedata[i]= obj;
    }
@@ -640,65 +640,70 @@ bool ReadCFX::compute() {
 
     std::cerr << "Compute Start. \n";
 
-    if(ExportDone) {
-        parameterChanged(m_resultfiledir);
+    if(!m_case.m_valid) {
+        sendInfo("not a valid .res file entered: initialisation not yet done");
     }
+    else {
+        if(ExportDone) {
+            parameterChanged(m_resultfiledir);
+        }
 
-    int numbSelVolumes = collectVolumes();
-    sendInfo("Schleife über Volumes Start");
-    for(int i=0;i<numbSelVolumes;++i) {
-        m_currentGrid[i] = loadGrid(i);
-        loadFields(i);
-        addVolumeDataToPorts(i);
-    }
-    sendInfo("Schleife über Volumes End");
+        int numbSelVolumes = collectVolumes();
+        sendInfo("Schleife über Volumes Start");
+        for(int i=0;i<numbSelVolumes;++i) {
+            m_currentGrid[i] = loadGrid(i);
+            loadFields(i);
+            //addVolumeDataToPorts(i);
+        }
+        sendInfo("Schleife über Volumes End");
 
 
 
 
-//    for(t = t1; t <= t2; t++) {
-//    ts = cfxExportTimestepNumGet(t);
-//    if(cfxExportTimestepSet(ts) < 0) {
-//    continue;
-//    }
+    //    for(t = t1; t <= t2; t++) {
+    //    ts = cfxExportTimestepNumGet(t);
+    //    if(cfxExportTimestepSet(ts) < 0) {
+    //    continue;
+    //    }
 
- /*  m_firstBlock = getIntParameter("first_block");
-   m_lastBlock = getIntParameter("last_block");
-   m_firstStep = getIntParameter("first_step");
-   m_lastStep = getIntParameter("last_step");
-   m_step = getIntParameter("step");
-   if ((m_lastStep-m_firstStep)*m_step < 0)
-       m_step *= -1;
-   bool reverse = false;
-   int step = m_step, first = m_firstStep, last = m_lastStep;
-   if (step < 0) {
-       reverse = true;
-       step *= -1;
-       first *= -1;
-       last *= -1;
-   }
-
-   std::string filename = getStringParameter("filename");
-
-   int timeCounter = 0;
-   for (int t=first; t<=last; t += step) {
-       int timestep = reverse ? -t : t;
-       bool loaded = false;
-       for (int b=m_firstBlock; b<=m_lastBlock; ++b) {
-           if (rankForBlock(b) == rank()) {
-               std::string f;
-
+     /*  m_firstBlock = getIntParameter("first_block");
+       m_lastBlock = getIntParameter("last_block");
+       m_firstStep = getIntParameter("first_step");
+       m_lastStep = getIntParameter("last_step");
+       m_step = getIntParameter("step");
+       if ((m_lastStep-m_firstStep)*m_step < 0)
+           m_step *= -1;
+       bool reverse = false;
+       int step = m_step, first = m_firstStep, last = m_lastStep;
+       if (step < 0) {
+           reverse = true;
+           step *= -1;
+           first *= -1;
+           last *= -1;
        }
-       if (loaded)
-           ++timeCounter;
-   }*/
 
-    m_case.m_ParamDimension.clear();
-    m_currentVolumedata.clear();
-    m_currentBoundaryVolumedata.clear();
-    m_currentGrid.clear();
-    cfxExportDone();
-    ExportDone = true;
+       std::string filename = getStringParameter("filename");
 
-   return true;
+       int timeCounter = 0;
+       for (int t=first; t<=last; t += step) {
+           int timestep = reverse ? -t : t;
+           bool loaded = false;
+           for (int b=m_firstBlock; b<=m_lastBlock; ++b) {
+               if (rankForBlock(b) == rank()) {
+                   std::string f;
+
+           }
+           if (loaded)
+               ++timeCounter;
+       }*/
+
+        m_case.m_ParamDimension.clear();
+        m_currentVolumedata.clear();
+        m_currentBoundaryVolumedata.clear();
+        m_currentGrid.clear();
+        cfxExportDone();
+        ExportDone = true;
+    }
+
+    return true;
 }
