@@ -57,6 +57,7 @@ public:
     void finishSegment();
     void fetchSegments(Particle &other); //! move segments from other particle to this one
     void addToOutput();
+    vistle::Scalar time() const;
 
 private:
     GlobalData &m_global;

@@ -274,83 +274,172 @@ void Particle::fetchSegments(Particle &other) {
     other.m_segments.clear();
 }
 
+inline Scalar interp(Scalar f, const Scalar f0, const Scalar f1) {
+
+    const Scalar EPSILON = 1e-6;
+    const Scalar diff = (f1 - f0);
+    const Scalar d0 = f - f0;
+    if (fabs(diff) < EPSILON) {
+        const Scalar d1 = f1 - f;
+        return fabs(d0) < fabs(d1) ? 1 : 0;
+    }
+
+    return std::min(vistle::Scalar(1), std::max(vistle::Scalar(0), d0 / diff));
+}
+
+template<class Value>
+Value lerp(Scalar t, Value v0, Value v1) {
+
+    return v0 + t*(v1- v0);
+}
+
 void Particle::addToOutput() {
 
    if (m_segments.empty())
        return;
 
-   std::lock_guard<std::mutex> locker(m_global.mutex);
+   if (m_global.task_type == MovingPoints) {
 
-   auto lines = m_global.lines[m_timestep];
-   Index numPoints = 0;
-   for (auto &ent: m_segments) {
-       const auto &seg = *ent.second;
-       numPoints += seg.m_xhist.size();
-   }
-
-   Index sz = lines->getNumVertices();
-   Index nsz = sz+numPoints;
-   auto &x = lines->x(), &y = lines->y(), &z = lines->z();
-   auto &cl = lines->cl();
-   assert(sz == cl.size());
-   x.reserve(nsz);
-   y.reserve(nsz);
-   z.reserve(nsz);
-   cl.reserve(nsz);
-
-   auto &vec_x = m_global.vecField[m_timestep]->x(), &vec_y = m_global.vecField[m_timestep]->y(), &vec_z = m_global.vecField[m_timestep]->z();
-   auto &scal = m_global.scalField[m_timestep]->x();
-   auto &step = m_global.stepField[m_timestep]->x(), &id = m_global.idField[m_timestep]->x();
-   auto &time = m_global.timeField[m_timestep]->x(), &dist = m_global.distField[m_timestep]->x();
-
-   vec_x.reserve(nsz);
-   vec_y.reserve(nsz);
-   vec_z.reserve(nsz);
-   scal.reserve(nsz);
-   id.reserve(nsz);
-   step.reserve(nsz);
-   time.reserve(nsz);
-   dist.reserve(nsz);
-
-   auto addStep = [this, &x, &y, &z, &cl, &vec_x, &vec_y, &vec_z, &scal, &id, &step, &time, &dist](const Segment &seg, Index i){
-       const auto &vec = seg.m_xhist[i];
-       x.push_back(vec[0]);
-       y.push_back(vec[1]);
-       z.push_back(vec[2]);
-       cl.push_back(cl.size());
-
-       const auto &vel = seg.m_vhist[i];
-       vec_x.push_back(vel[0]);
-       vec_y.push_back(vel[1]);
-       vec_z.push_back(vel[2]);
-       scal.push_back(seg.m_pressures[i]);
-       step.push_back(seg.m_steps[i]);
-       time.push_back(seg.m_times[i]);
-       dist.push_back(seg.m_dists[i]);
-       id.push_back(m_startId);
-   };
-
-   for (auto &ent: m_segments) {
-       const auto &seg = *ent.second;
-       auto N = seg.m_xhist.size();
-       if (seg.m_num < 0) {
-           for (Index i=N; i>1; --i) {
-               if (i>1 || seg.m_num != -1 || !m_forward) {
-                   // avoid duplicate entry for startpoint when tracing in both directions
-                   addStep(seg, i-1);
-               }
+       std::lock_guard<std::mutex> locker(m_global.mutex);
+       Scalar lastTime(0), prevTime(0), nextTime(m_global.dt_step);
+       std::shared_ptr<Segment> lastSeg;
+       Index lastIdx = 0;
+       Index timestep = 0;
+       for (auto &ent: m_segments) {
+           const auto &seg = *ent.second;
+           if (seg.m_num < 0) {
+               continue;
            }
-       } else {
+           auto N = seg.m_xhist.size();
            for (Index i=0; i<N; ++i) {
-               addStep(seg, i);
+               auto time = seg.m_times[i];
+               prevTime = time;
+
+               if (time < nextTime) {
+                   lastSeg = ent.second;
+                   lastTime = time;
+                   continue;
+               }
+
+               while (nextTime < time) {
+                   Scalar t = interp(nextTime, prevTime, time);
+
+                   const auto pos1 = seg.m_xhist[i];
+                   const auto pos0 = lastSeg ? lastSeg->m_xhist[lastIdx] : pos1;
+                   auto points = m_global.points[timestep];
+                   Vector pos = lerp(t, pos0, pos1);
+                   points->x().push_back(pos[0]);
+                   points->y().push_back(pos[1]);
+                   points->z().push_back(pos[2]);
+
+                   const auto vel1 = seg.m_vhist[i];
+                   const auto vel0 = lastSeg ? lastSeg->m_vhist[lastIdx] : vel1;
+                   Vector vel = lerp(t, vel0, vel1);
+                   auto vout = m_global.vecField[timestep];
+                   vout->x().push_back(vel[0]);
+                   vout->y().push_back(vel[1]);
+                   vout->z().push_back(vel[2]);
+
+                   const auto pres1 = seg.m_pressures[i];
+                   const auto pres0 = lastSeg ? lastSeg->m_pressures[lastIdx] : pres1;
+                   Scalar pres = lerp(t, pres0, pres1);
+                   m_global.scalField[timestep]->x().push_back(pres);
+
+                   const auto dist1 = seg.m_dists[i];
+                   const auto dist0 = lastSeg ? lastSeg->m_dists[lastIdx] : dist1;
+                   Scalar dist = lerp(t, dist0, dist1);
+                   m_global.distField[timestep]->x().push_back(dist);
+
+                   m_global.stepField[timestep]->x().push_back(seg.m_steps[i]);
+                   m_global.timeField[timestep]->x().push_back(nextTime);
+                   m_global.idField[timestep]->x().push_back(m_startId);
+
+                   lastTime = time;
+                   nextTime += m_global.dt_step;
+                   ++timestep;
+               }
+               lastSeg = ent.second;
+               lastIdx = i;
            }
        }
+   } else {
+       Index numPoints = 0;
+       for (auto &ent: m_segments) {
+           const auto &seg = *ent.second;
+           numPoints += seg.m_xhist.size();
+       }
+
+       std::lock_guard<std::mutex> locker(m_global.mutex);
+       auto lines = m_global.lines[m_timestep];
+       Index sz = lines->getNumVertices();
+       Index nsz = sz+numPoints;
+       auto &x = lines->x(), &y = lines->y(), &z = lines->z();
+       auto &cl = lines->cl();
+       assert(sz == cl.size());
+       x.reserve(nsz);
+       y.reserve(nsz);
+       z.reserve(nsz);
+       cl.reserve(nsz);
+
+       auto &vec_x = m_global.vecField[m_timestep]->x(), &vec_y = m_global.vecField[m_timestep]->y(), &vec_z = m_global.vecField[m_timestep]->z();
+       auto &scal = m_global.scalField[m_timestep]->x();
+       auto &step = m_global.stepField[m_timestep]->x(), &id = m_global.idField[m_timestep]->x();
+       auto &time = m_global.timeField[m_timestep]->x(), &dist = m_global.distField[m_timestep]->x();
+
+       vec_x.reserve(nsz);
+       vec_y.reserve(nsz);
+       vec_z.reserve(nsz);
+       scal.reserve(nsz);
+       id.reserve(nsz);
+       step.reserve(nsz);
+       time.reserve(nsz);
+       dist.reserve(nsz);
+
+       auto addStep = [this, &x, &y, &z, &cl, &vec_x, &vec_y, &vec_z, &scal, &id, &step, &time, &dist](const Segment &seg, Index i){
+           const auto &vec = seg.m_xhist[i];
+           x.push_back(vec[0]);
+           y.push_back(vec[1]);
+           z.push_back(vec[2]);
+           cl.push_back(cl.size());
+
+           const auto &vel = seg.m_vhist[i];
+           vec_x.push_back(vel[0]);
+           vec_y.push_back(vel[1]);
+           vec_z.push_back(vel[2]);
+           scal.push_back(seg.m_pressures[i]);
+           step.push_back(seg.m_steps[i]);
+           time.push_back(seg.m_times[i]);
+           dist.push_back(seg.m_dists[i]);
+           id.push_back(m_startId);
+       };
+
+       for (auto &ent: m_segments) {
+           const auto &seg = *ent.second;
+           auto N = seg.m_xhist.size();
+           if (seg.m_num < 0) {
+               for (Index i=N; i>1; --i) {
+                   if (i>1 || seg.m_num != -1 || !m_forward) {
+                       // avoid duplicate entry for startpoint when tracing in both directions
+                       addStep(seg, i-1);
+                   }
+               }
+           } else {
+               for (Index i=0; i<N; ++i) {
+                   addStep(seg, i);
+               }
+           }
+       }
+       lines->el().push_back(cl.size());
    }
-   lines->el().push_back(cl.size());
 
    //std::cerr << "Tracer: line for particle " << m_id << " of length " << numPoints << std::endl;
 
    m_segments.clear();
+}
+
+Scalar Particle::time() const {
+
+    return m_time;
 }
 
 

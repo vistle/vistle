@@ -80,6 +80,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     V_ENUM_SET_CHOICES(integration, IntegrationMethod);
     addFloatParameter("min_speed", "miniumum particle speed", 1e-4);
     setParameterRange("min_speed", 0.0, 1e6);
+    addFloatParameter("dt_step", "duration of a timestep (for moving points or when data does not specify realtime", 1./25);
 
     setCurrentParameterGroup("Step Length Control");
     addFloatParameter("h_init", "initial step size/fixed step size for euler integration", 1e-03);
@@ -181,9 +182,13 @@ bool Tracer::reduce(int timestep) {
 
    //get parameters
    bool useCelltree = m_useCelltree->getValue();
-   TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
    Index numpoints = getIntParameter("no_startp");
    Index maxNumActive = getIntParameter("num_active");
+   auto taskType = (TraceType)getIntParameter("taskType");
+   TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
+   if (taskType != Streamlines) {
+       traceDirection = Forward;
+   }
 
    //determine startpoints
    std::vector<Vector3> startpoints;
@@ -251,6 +256,7 @@ bool Tracer::reduce(int timestep) {
    GlobalData global;
    global.int_mode = (IntegrationMethod)getIntParameter("integration");
    global.task_type = (TraceType)getIntParameter("taskType");
+   global.dt_step = getFloatParameter("dt_step");
    global.h_init = getFloatParameter("h_init");
    global.h_min = getFloatParameter("h_min");
    global.h_max = getFloatParameter("h_max");
@@ -263,28 +269,6 @@ bool Tracer::reduce(int timestep) {
    global.cell_relative = getIntParameter("cell_relative");
    global.velocity_relative = getIntParameter("velocity_relative");
    global.blocks.resize(numtime);
-   Meta meta;
-   meta.setNumTimesteps(numtime);
-   meta.setNumBlocks(size());
-   for (int i=0; i<numtime; ++i) {
-       meta.setBlock(rank());
-       meta.setTimeStep(i);
-       global.lines.emplace_back(new Lines(0,0,0));
-       global.lines[i]->setMeta(meta);
-
-       global.vecField.emplace_back(new Vec<Scalar,3>(Index(0)));
-       global.vecField[i]->setMeta(meta);
-       global.scalField.emplace_back(new Vec<Scalar>(Index(0)));
-       global.scalField[i]->setMeta(meta);
-       global.idField.emplace_back(new Vec<Index>(Index(0)));
-       global.idField[i]->setMeta(meta);
-       global.stepField.emplace_back(new Vec<Index>(Index(0)));
-       global.stepField[i]->setMeta(meta);
-       global.timeField.emplace_back(new Vec<Scalar>(Index(0)));
-       global.timeField[i]->setMeta(meta);
-       global.distField.emplace_back(new Vec<Scalar>(Index(0)));
-       global.distField[i]->setMeta(meta);
-   }
 
    std::vector<Index> stopReasonCount(Particle::NumStopReasons, 0);
    std::vector<std::shared_ptr<Particle>> allParticles;
@@ -453,6 +437,32 @@ bool Tracer::reduce(int timestep) {
        }
    }
 
+   Scalar maxTime = 0;
+   for (auto &p: allParticles) {
+       maxTime = std::max(p->time(), maxTime);
+   }
+   maxTime = mpi::all_reduce(comm(), maxTime, mpi::maximum<Scalar>());
+   if (taskType == MovingPoints) {
+       numtime = maxTime / global.dt_step;
+       if (numtime < 1)
+           numtime = 1;
+   }
+
+   for (int i=0; i<numtime; ++i) {
+       if (taskType == MovingPoints) {
+           global.points.emplace_back(new Points(Index(0)));
+       } else {
+           global.lines.emplace_back(new Lines(0,0,0));
+       }
+
+       global.vecField.emplace_back(new Vec<Scalar,3>(Index(0)));
+       global.scalField.emplace_back(new Vec<Scalar>(Index(0)));
+       global.idField.emplace_back(new Vec<Index>(Index(0)));
+       global.stepField.emplace_back(new Vec<Index>(Index(0)));
+       global.timeField.emplace_back(new Vec<Scalar>(Index(0)));
+       global.distField.emplace_back(new Vec<Scalar>(Index(0)));
+   }
+
    for (auto &p: allParticles) {
        if (rank() == 0)
            ++stopReasonCount[p->stopReason()];
@@ -465,21 +475,38 @@ bool Tracer::reduce(int timestep) {
        }
    }
 
+   Meta meta;
+   meta.setNumTimesteps(numtime);
+   meta.setNumBlocks(size());
    for (Index t=0; t<numtime; ++t) {
-       auto lines = global.lines[t];
-       addObject("lines", global.lines[t]);
+       meta.setBlock(rank());
+       meta.setTimeStep(t);
 
-       global.idField[t]->setGrid(lines);
+       Object::ptr geo = taskType==MovingPoints ? Object::ptr(global.points[t]) : Object::ptr(global.lines[t]);
+       geo->setMeta(meta);
+
+       global.idField[t]->setGrid(geo);
+       global.idField[t]->setMeta(meta);
        addObject("particle_id", global.idField[t]);
-       global.stepField[t]->setGrid(lines);
+
+       global.stepField[t]->setGrid(geo);
+       global.stepField[t]->setMeta(meta);
        addObject("step", global.stepField[t]);
-       global.timeField[t]->setGrid(lines);
+
+       global.timeField[t]->setGrid(geo);
+       global.timeField[t]->setMeta(meta);
        addObject("time", global.timeField[t]);
-       global.distField[t]->setGrid(lines);
+
+       global.distField[t]->setGrid(geo);
+       global.distField[t]->setMeta(meta);
        addObject("distance", global.distField[t]);
-       global.vecField[t]->setGrid(lines);
+
+       global.vecField[t]->setGrid(geo);
+       global.vecField[t]->setMeta(meta);
        addObject("data_out0", global.vecField[t]);
-       global.scalField[t]->setGrid(lines);
+
+       global.scalField[t]->setGrid(geo);
+       global.scalField[t]->setMeta(meta);
        addObject("data_out1", global.scalField[t]);
    }
 
