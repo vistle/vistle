@@ -120,6 +120,8 @@ Extrema::Extrema(const std::string &shmname, const std::string &name, int module
    Port *gin = createInputPort("grid_in", "input data", Port::MULTI);
    Port *gout = createOutputPort("grid_out", "bounding box", Port::MULTI);
    gin->link(gout);
+
+   addIntParameter("per_block", "create bounding box for each block", false, Parameter::Boolean);
 #else
    Port *din = createInputPort("data_in", "input data", Port::MULTI);
    Port *dout = createOutputPort("data_out", "output data", Port::MULTI);
@@ -157,6 +159,53 @@ Extrema::Extrema(const std::string &shmname, const std::string &name, int module
 Extrema::~Extrema() {
 
 }
+
+Lines::ptr makeBox(Vector min, Vector max) {
+
+    Lines::ptr box(new Lines(4, 16, 8));
+    Scalar *x[3];
+    for (int i=0; i<3; ++i) {
+        x[i] = box->x(i).data();
+    }
+    auto corners = box->cl().data();
+    auto elements = box->el().data();
+    for (int i=0; i<=4; ++i) { // include sentinel
+        elements[i] = 4*i;
+    }
+    corners[0] = 0;
+    corners[1] = 1;
+    corners[2] = 3;
+    corners[3] = 2;
+
+    corners[4] = 1;
+    corners[5] = 5;
+    corners[6] = 7;
+    corners[7] = 3;
+
+    corners[8] = 5;
+    corners[9] = 4;
+    corners[10] = 6;
+    corners[11] = 7;
+
+    corners[12] = 4;
+    corners[13] = 0;
+    corners[14] = 2;
+    corners[15] = 6;
+
+    for (int c=0; c<3; ++c) {
+        int p = 1 << c;
+        for (int i=0; i<8; ++i) {
+            if (i & p)
+                x[c][i] = max[c];
+            else
+                x[c][i] = min[c];
+
+        }
+    }
+
+    return box;
+}
+
 
 bool Extrema::compute() {
 
@@ -232,6 +281,14 @@ bool Extrema::compute() {
       throw(vistle::exception(error));
    }
 
+#ifdef BOUNDINGBOX
+   bool perBlock = getIntParameter("per_block");
+   if (perBlock) {
+       Lines::ptr box = makeBox(min, max);
+       box->copyAttributes(obj);
+       addObject("grid_out", box);
+   }
+#else
    Object::ptr out = obj->clone();
    out->addAttribute("min", min.str());
    out->addAttribute("max", max.str());
@@ -239,7 +296,6 @@ bool Extrema::compute() {
    out->addAttribute("maxIndex", maxIndex.str());
    //std::cerr << "Extrema: min " << min << ", max " << max << std::endl;
 
-#ifndef BOUNDINGBOX
    addObject("data_out", out);
 #endif
 
@@ -284,49 +340,11 @@ bool Extrema::reduce(int timestep) {
    setIntVectorParameter("max_index", gmaxIndex);
 
 #ifdef BOUNDINGBOX
-   if (haveGeometry && rank() == 0) {
+   bool perBlock = getIntParameter("per_block");
+   if (!perBlock && haveGeometry && rank() == 0) {
 
-      Lines::ptr box(new Lines(4, 16, 8));
-      Scalar *x[3];
-      for (int i=0; i<3; ++i) {
-         x[i] = box->x(i).data();
-      }
-      auto corners = box->cl().data();
-      auto elements = box->el().data();
-      for (int i=0; i<=4; ++i) { // include sentinel
-         elements[i] = 4*i;
-      }
-      corners[0] = 0;
-      corners[1] = 1;
-      corners[2] = 3;
-      corners[3] = 2;
 
-      corners[4] = 1;
-      corners[5] = 5;
-      corners[6] = 7;
-      corners[7] = 3;
-
-      corners[8] = 5;
-      corners[9] = 4;
-      corners[10] = 6;
-      corners[11] = 7;
-
-      corners[12] = 4;
-      corners[13] = 0;
-      corners[14] = 2;
-      corners[15] = 6;
-
-      for (int c=0; c<3; ++c) {
-         int p = 1 << c;
-         for (int i=0; i<8; ++i) {
-            if (i & p)
-               x[c][i] = gmax[c];
-            else
-               x[c][i] = gmin[c];
-
-         }
-      }
-
+      Lines::ptr box = makeBox(gmin, gmax);
       addObject("grid_out", box);
    }
 #endif
