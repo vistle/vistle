@@ -24,12 +24,94 @@
 #include "ReadVtk.h"
 #include "coVtk.h"
 #include <util/filesystem.h>
+#include <tinyxml2.h>
 
 MODULE_MAIN(ReadVtk)
 
+namespace xml = tinyxml2;
 using namespace vistle;
 
 const std::string Invalid("(NONE)");
+
+
+struct VtkFile {
+    std::string filename;
+    int part = -1;
+    double realtime = 0.;
+};
+
+
+std::map<double, std::vector<VtkFile>> readPvd(const std::string &filename) {
+
+    std::map<double, std::vector<VtkFile>> files;
+
+    vistle::filesystem::path pvdpath(filename);
+    if (!vistle::filesystem::is_regular_file(pvdpath)) {
+        std::cerr << "readPvd: " << filename << " is not a regular file" << std::endl;
+        return files;
+    }
+    xml::XMLDocument doc;
+    doc.LoadFile(filename.c_str());
+    auto VTKFile = doc.FirstChildElement("VTKFile");
+    if (!VTKFile) {
+        std::cerr << "readPvd: did not find VTKFile element" << std::endl;
+        return files;
+    }
+    const char *type = VTKFile->Attribute("type");
+    if (!type || std::string(type) != "Collection") {
+        std::cerr << "readPvd: VTKFile not of required type 'Collection'" << std::endl;
+        return files;
+    }
+
+    auto Collection = VTKFile->FirstChildElement("Collection");
+    if (!Collection) {
+        std::cerr << "readPvd: did not find Collection element" << std::endl;
+        return files;
+    }
+    auto DataSet = Collection->FirstChildElement("DataSet");
+    if (!DataSet) {
+        std::cerr << "readPvd: did not find a DataSet element" << std::endl;
+        return files;
+    }
+
+    int numBlocks = 0;
+    while (DataSet) {
+        double time = 0.;
+        int p = 0;
+        const char *file = DataSet->Attribute("file");
+        const char *realtime = DataSet->Attribute("timestep");
+        if (realtime)
+            time = atof(realtime);
+        const char *part = DataSet->Attribute("part");
+        if (part) {
+            p = atoi(part);
+        }
+
+        if (file) {
+            VtkFile vtkFile;
+            vistle::filesystem::path fp(file);
+            if (fp.is_relative()) {
+                auto p = pvdpath.parent_path();
+                p /= fp;
+                vtkFile.filename = p.string();
+            } else {
+                vtkFile.filename = file;
+            }
+            vtkFile.part = p;
+            vtkFile.realtime = time;
+            auto &timestep = files[time];
+            timestep.push_back(vtkFile);
+            ++numBlocks;
+        }
+
+        DataSet = DataSet->NextSiblingElement("DataSet");
+    }
+
+    std::cerr << "readPvd(" << filename << "): num timesteps: " << files.size() << ", num blocks: " << numBlocks <<  std::endl;
+
+    return files;
+}
+
 
 template<class Reader>
 vtkDataSet *readFile(const std::string &filename) {
@@ -131,21 +213,35 @@ ReadVtk::~ReadVtk() {
 
 bool ReadVtk::parameterChanged(const vistle::Parameter *p) {
    if (p == m_filename) {
-      setChoices(getDataSet(m_filename->getValue()));
+      const std::string filename = m_filename->getValue();
+      if (boost::algorithm::ends_with(filename, ".pvd")) {
+          auto files = readPvd(m_filename->getValue());
+          if (!files.empty()) {
+              auto firstts = files.begin()->second;
+              if (!firstts.empty()) {
+                  setChoices(getDataSet(firstts[0].filename));
+              }
+          }
+      } else {
+          setChoices(getDataSet(filename));
+      }
    }
 
    return Module::parameterChanged(p);
 }
 
-bool ReadVtk::compute() {
+bool ReadVtk::load(const std::string &filename, const Meta &meta) {
 
-   auto ds = getDataSet(m_filename->getValue());
+   auto ds = getDataSet(filename);
    if (!ds) {
-       sendError("could not read data set '%s'", m_filename->getValue().c_str());
+       sendError("could not read data set '%s'", filename.c_str());
        return true;
    }
 
    auto grid = vistle::vtk::toGrid(ds);
+   if (grid) {
+       grid->setMeta(meta);
+   }
    addObject("grid_out", grid);
 
    vtkFieldData *fieldData = ds->GetFieldData();
@@ -154,8 +250,10 @@ bool ReadVtk::compute() {
    for (int i=0; i<NumPorts; ++i) {
        if (m_cellDataChoice[i]->getValue() != Invalid) {
            auto field = vistle::vtk::getField(cellData, m_cellDataChoice[i]->getValue(), grid);
-           if (field)
+           if (field) {
                field->setMapping(DataBase::Element);
+               field->setMeta(meta);
+           }
            addObject(m_cellPort[i], field);
        }
 
@@ -164,12 +262,44 @@ bool ReadVtk::compute() {
            if (!field) {
                field = vistle::vtk::getField(fieldData, m_pointDataChoice[i]->getValue(), grid);
            }
-           if (field)
+           if (field) {
+               field->setMeta(meta);
                field->setMapping(DataBase::Vertex);
+           }
            addObject(m_pointPort[i], field);
        }
 
    }
 
    return true;
+}
+
+bool ReadVtk::compute() {
+
+   const std::string filename = m_filename->getValue();
+
+   if (boost::algorithm::ends_with(filename, ".pvd")) {
+
+       auto files = readPvd(m_filename->getValue());
+       int time = 0;
+       for (auto timestep: files) {
+           int block=0;
+           for (auto file: timestep.second) {
+               Meta meta;
+               meta.setBlock(file.part);
+               meta.setBlock(block);
+               meta.setNumBlocks(timestep.second.size());
+               meta.setTimeStep(time);
+               meta.setNumTimesteps(files.size());
+               meta.setRealTime(file.realtime);
+               if (block%size() == rank())
+                   load(file.filename, meta);
+               ++block;
+           }
+           ++time;
+       }
+       return true;
+   }
+
+   return load(filename);
 }

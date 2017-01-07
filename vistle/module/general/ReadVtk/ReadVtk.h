@@ -17,6 +17,7 @@ class ReadVtk: public vistle::Module {
    bool parameterChanged(const vistle::Parameter *p) override;
    bool compute() override;
 
+   bool load(const std::string &filename, const vistle::Meta &meta = vistle::Meta());
    void setChoices(vtkDataSet *ds);
 
    vistle::StringParameter *m_filename;

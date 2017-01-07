@@ -2,6 +2,11 @@ vistle_find_package(VTK
    COMPONENTS vtkIOLegacy vtkIOXML vtkFiltersCore vtkCommonCore vtkImagingCore vtkCommonDataModel vtkCommonExecutionModel
    NO_MODULE)
 
+vistle_find_package(TinyXML2)
+if (NOT TINYXML2_FOUND)
+   return()
+endif()
+
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS ${VTK_DEFINITIONS})
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated")
@@ -21,11 +26,13 @@ include_directories(
    ${Boost_INCLUDE_DIRS}
    ${MPI_C_INCLUDE_PATH}
    ${PROJECT_SOURCE_DIR}
+   ${TINYXML2_INCLUDE_DIRS}
 )
 
 target_link_libraries(ReadVtk
    ${Boost_LIBRARIES}
    ${MPI_C_LIBRARIES}
    ${VTK_LIBRARIES}
+   ${TINYXML2_LIBRARIES}
    vistle_module
 )
