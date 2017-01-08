@@ -1,6 +1,5 @@
-#include <sysdep.h>
+#include "sysdep.h"
 #ifdef WIN32
-#include <stdint.h>
 #include <stdlib.h>
 #include <Windows.h>
 #include <sddl.h>

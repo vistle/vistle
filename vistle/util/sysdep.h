@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <process.h>
 #include <windows.h>
+#include <stdint.h>
 
 typedef uint32_t uid_t;
 
