@@ -338,13 +338,14 @@ void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
                gr->removeChild(node);
                if (gr->getNumChildren() == 0) {
                   bool removed = false;
-                  for (size_t i=cr.animated(variant)->getNumChildren()-1; i>0; --i) {
-                     osg::Group *g = cr.animated(variant)->getChild(i)->asGroup();
+                  for (size_t i=cr.animated(variant)->getNumChildren(); i>1; --i) {
+                     size_t idx = i-1;
+                     osg::Group *g = cr.animated(variant)->getChild(idx)->asGroup();
                      if (!g)
                         break;
                      if (g->getNumChildren() > 0)
                         break;
-                     cr.animated(variant)->removeChildren(i, 1);
+                     cr.animated(variant)->removeChildren(idx, 1);
                      removed = true;
                   }
                   if (removed) {
