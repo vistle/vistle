@@ -1700,9 +1700,9 @@ Object::ptr vtkUniGrid2Vistle(vtkUniformGrid *vugrid)
 {
     int n[3];
     vugrid->GetDimensions(n);
-    double origin[3];
+    double origin[3] = { 0., 0., 0. };
     vugrid->GetOrigin(origin);
-    double spacing[3];
+    double spacing[3] = { 1., 1., 1. };
     vugrid->GetSpacing(spacing);
     UniformGrid::ptr ug(new UniformGrid(n[0], n[1], n[2]));
     for (int c=0; c<3; ++c) {
