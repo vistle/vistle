@@ -359,9 +359,9 @@ bool Tracer::reduce(int timestep) {
    };
 
    const int mpisize = comm().size();
-   Index numActive = 0;
+   Index numActiveLocal = 0, numActiveMax = 0;
    do {
-      startParticles(maxNumActive-numActive);
+      startParticles(maxNumActive-numActiveLocal);
 
       bool first = true;
       std::vector<Index> sendlist;
@@ -385,7 +385,7 @@ bool Tracer::reduce(int timestep) {
 
       if (mpisize==1) {
           checkSet.clear();
-          numActive = activeParticles.size();
+          numActiveMax = numActiveLocal = activeParticles.size();
           continue;
       }
 
@@ -423,7 +423,7 @@ bool Tracer::reduce(int timestep) {
           }
       }
       //std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << std::endl;
-      numActive = mpi::all_reduce(comm(), activeParticles.size(), std::plus<Index>());
+      numActiveMax = mpi::all_reduce(comm(), activeParticles.size(), mpi::maximum<Index>());
       for(int i=1; i<mpisize; ++i) {
           int dst = (rank()+i)%size();
           int src = (rank()-i+size())%size();
@@ -445,7 +445,7 @@ bool Tracer::reduce(int timestep) {
               }
           }
       }
-   } while (numActive > 0 || nextParticleToStart<allParticles.size() || !checkSet.empty());
+   } while (numActiveMax > 0 || nextParticleToStart<allParticles.size() || !checkSet.empty());
 
    if (mpisize == 1) {
        for (auto p: allParticles) {
