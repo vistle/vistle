@@ -3,8 +3,9 @@ vistle_find_package(VTK
    NO_MODULE)
 
 vistle_find_package(TinyXML2)
-if (NOT TINYXML2_FOUND)
-   return()
+if (TINYXML2_FOUND)
+   add_definitions(-DHAVE_TINYXML2)
+   include_directories(${TINYXML2_INCLUDE_DIRS})
 endif()
 
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS ${VTK_DEFINITIONS})
@@ -26,13 +27,15 @@ include_directories(
    ${Boost_INCLUDE_DIRS}
    ${MPI_C_INCLUDE_PATH}
    ${PROJECT_SOURCE_DIR}
-   ${TINYXML2_INCLUDE_DIRS}
 )
 
 target_link_libraries(ReadVtk
    ${Boost_LIBRARIES}
    ${MPI_C_LIBRARIES}
    ${VTK_LIBRARIES}
-   ${TINYXML2_LIBRARIES}
    vistle_module
 )
+
+if (TINYXML2_FOUND)
+   target_link_libraries(ReadVtk ${TINYXML2_LIBRARIES})
+endif()
