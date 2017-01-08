@@ -9,6 +9,7 @@ set(util_SOURCES
    spawnprocess.cpp
    directory.cpp
    sleep.cpp
+   sysdep.cpp
 )
 
 set(util_HEADERS

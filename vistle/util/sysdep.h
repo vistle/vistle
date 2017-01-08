@@ -12,6 +12,9 @@
 #include <process.h>
 #include <windows.h>
 
+typedef uint32_t uid_t;
+
+uid_t getuid();
 
 inline void sleep(int x) { Sleep(x*1000); }; 
 inline void usleep(__int64 usec) 
