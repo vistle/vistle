@@ -9,7 +9,7 @@
 namespace vistle {
 
 #ifdef _WIN32
-typedef HANDLE process_handle;
+typedef intptr_t process_handle;
 #else
 typedef long process_handle;
 #endif
