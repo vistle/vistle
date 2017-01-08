@@ -42,7 +42,6 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
 
     createInputPort("data_in0");
     createInputPort("data_in1");
-    createOutputPort("lines");
     createOutputPort("data_out0");
     createOutputPort("data_out1");
     createOutputPort("particle_id");
@@ -63,10 +62,10 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addVectorParameter("startpoint2", "2nd initial point", ParamVector(1,0,0));
     addVectorParameter("direction", "direction for plane", ParamVector(1,0,0));
     const Integer max_no_startp = 300;
-    addIntParameter("no_startp", "number of startpoints", 2);
-    setParameterRange("no_startp", (Integer)1, max_no_startp);
-    addIntParameter("max_no_startp", "maximum number of startpoints", max_no_startp);
-    setParameterRange("max_no_startp", (Integer)2, (Integer)10000);
+    m_numStartpoints = addIntParameter("no_startp", "number of startpoints", 2);
+    setParameterRange(m_numStartpoints, (Integer)1, max_no_startp);
+    m_maxStartpoints = addIntParameter("max_no_startp", "maximum number of startpoints", max_no_startp);
+    setParameterRange(m_maxStartpoints, (Integer)2, (Integer)10000);
     addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
     auto tl = addFloatParameter("trace_len", "maximum trace distance", 1.0);
     setParameterMinimum(tl, 0.0);
@@ -182,7 +181,7 @@ bool Tracer::reduce(int timestep) {
 
    //get parameters
    bool useCelltree = m_useCelltree->getValue();
-   Index numpoints = getIntParameter("no_startp");
+   Index numpoints = m_numStartpoints->getValue();
    Index maxNumActive = getIntParameter("num_active");
    auto taskType = (TraceType)getIntParameter("taskType");
    TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
@@ -526,4 +525,12 @@ bool Tracer::reduce(int timestep) {
    data_in1.clear();
 
    return true;
+}
+
+bool Tracer::parameterChanged(const Parameter *param) {
+
+    if (param == m_maxStartpoints) {
+        setParameterRange(m_numStartpoints, (Integer)1, m_maxStartpoints->getValue());
+    }
+    return true;
 }
