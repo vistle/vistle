@@ -71,6 +71,8 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
     auto tl = addFloatParameter("trace_len", "maximum trace distance", 1.0);
     setParameterMinimum(tl, 0.0);
+    auto tt = addFloatParameter("trace_time", "maximum trace time", 100.0);
+    setParameterMinimum(tt, 0.0);
     IntParameter *traceDirection = addIntParameter("tdirection", "direction in which to trace", Both, Parameter::Choice);
     V_ENUM_SET_CHOICES(traceDirection, TraceDirection);
     IntParameter *startStyle = addIntParameter("startStyle", "initial particle position configuration", (Integer)Line, Parameter::Choice);
@@ -263,6 +265,7 @@ bool Tracer::reduce(int timestep) {
    global.errtolabs = getFloatParameter("err_tol_abs");
    global.use_celltree = getIntParameter("use_celltree");
    global.trace_len = getFloatParameter("trace_len");
+   global.trace_time = getFloatParameter("trace_time");
    global.min_vel = getFloatParameter("min_speed");
    global.max_step = getIntParameter("steps_max");
    global.cell_relative = getIntParameter("cell_relative");

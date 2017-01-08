@@ -90,10 +90,12 @@ bool Particle::isMoving() {
     }
 
     bool moving = m_v.norm() > m_global.min_vel;
-    if(std::abs(m_dist) > m_global.trace_len || m_stp > m_global.max_step || !moving){
+    if(std::abs(m_dist) > m_global.trace_len || std::abs(m_time) > m_global.trace_time || m_stp > m_global.max_step || !moving){
 
        if (std::abs(m_dist) > m_global.trace_len)
            this->Deactivate(DistanceLimitReached);
+       else if (std::abs(m_time) > m_global.trace_time)
+           this->Deactivate(TimeLimitReached);
        else if (m_stp > m_global.max_step)
            this->Deactivate(StepLimitReached);
        else

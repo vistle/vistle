@@ -30,6 +30,7 @@ public:
                                         (NotMoving)
                                         (StepLimitReached)
                                         (DistanceLimitReached)
+                                        (TimeLimitReached)
                                         (NumStopReasons)
     )
     Particle(vistle::Index id, int rank, vistle::Index startId, const vistle::Vector3 &pos, bool forward, GlobalData &global, vistle::Index timestep);

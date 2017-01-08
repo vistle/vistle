@@ -37,6 +37,7 @@ private:
     double h_min, h_max, h_init;
     double min_vel;
     double dt_step;
+    double trace_time;
     double trace_len;
     bool cell_relative, velocity_relative;
 
