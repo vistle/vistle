@@ -58,6 +58,8 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     const char *TracerInteraction::P_FREE_STARTPOINTS = "FreeStartPoints";
 #endif
 
+    IntParameter* tasktype = addIntParameter("taskType", "task type", Streamlines, Parameter::Choice);
+    V_ENUM_SET_CHOICES(tasktype, TraceType);
     addVectorParameter("startpoint1", "1st initial point", ParamVector(0,0.2,0));
     addVectorParameter("startpoint2", "2nd initial point", ParamVector(1,0,0));
     addVectorParameter("direction", "direction for plane", ParamVector(1,0,0));
@@ -69,9 +71,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
     auto tl = addFloatParameter("trace_len", "maximum trace distance", 1.0);
     setParameterMinimum(tl, 0.0);
-    IntParameter* tasktype = addIntParameter("taskType", "task type", 0, Parameter::Choice);
-    V_ENUM_SET_CHOICES(tasktype, TraceType);
-    IntParameter *traceDirection = addIntParameter("tdirection", "direction in which to trace", 0, Parameter::Choice);
+    IntParameter *traceDirection = addIntParameter("tdirection", "direction in which to trace", Both, Parameter::Choice);
     V_ENUM_SET_CHOICES(traceDirection, TraceDirection);
     IntParameter *startStyle = addIntParameter("startStyle", "initial particle position configuration", (Integer)Line, Parameter::Choice);
     V_ENUM_SET_CHOICES(startStyle, StartStyle);
