@@ -72,7 +72,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     setParameterRange("steps_max", (Integer)1, (Integer)1000000);
     auto tl = addFloatParameter("trace_len", "maximum trace distance", 1.0);
     setParameterMinimum(tl, 0.0);
-    auto tt = addFloatParameter("trace_time", "maximum trace time", 100.0);
+    auto tt = addFloatParameter("trace_time", "maximum trace time", 10000.0);
     setParameterMinimum(tt, 0.0);
     IntParameter *traceDirection = addIntParameter("tdirection", "direction in which to trace", Both, Parameter::Choice);
     V_ENUM_SET_CHOICES(traceDirection, TraceDirection);
