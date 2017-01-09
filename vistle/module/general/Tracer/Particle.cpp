@@ -63,7 +63,6 @@ void Particle::enableCelltree(bool value) {
 }
 
 bool Particle::startTracing() {
-    assert(!m_currentSegment);
     assert(!m_tracing);
     m_progress = false;
     if (inGrid()) {
@@ -125,16 +124,19 @@ bool Particle::findCell() {
             for (auto el: neigh) {
                 if(grid->inside(el, m_x)) {
                     m_el = el;
+                    assert(m_currentSegment);
                     return true;
                 }
             }
         } else {
             if(grid->inside(m_el, m_x)){
+                assert(m_currentSegment);
                 return true;
             }
         }
         m_el = grid->findCell(m_x, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
         if (m_el!=InvalidIndex) {
+            assert(m_currentSegment);
             return true;
         }
     }
@@ -161,6 +163,7 @@ bool Particle::findCell() {
             }
 
             UpdateBlock(block.get());
+            assert(m_currentSegment);
             return true;
         }
     }
@@ -244,6 +247,9 @@ bool Particle::isTracing(bool wait) {
 bool Particle::madeProgress() const {
 
     assert(!m_tracing);
+    if (m_progress && !m_currentSegment) {
+        std::cerr << "inconsistency for particle " << id() << ": made progress, but no line segment" << std::endl;
+    }
     return m_progress;
 }
 
