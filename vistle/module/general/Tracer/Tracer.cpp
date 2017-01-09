@@ -69,6 +69,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     m_maxStartpoints = addIntParameter("max_no_startp", "maximum number of startpoints", max_no_startp);
     setParameterRange(m_maxStartpoints, (Integer)2, (Integer)10000);
     addIntParameter("steps_max", "maximum number of integrations per particle", 1000);
+    setParameterRange("steps_max", (Integer)1, (Integer)1000000);
     auto tl = addFloatParameter("trace_len", "maximum trace distance", 1.0);
     setParameterMinimum(tl, 0.0);
     auto tt = addFloatParameter("trace_time", "maximum trace time", 100.0);
@@ -82,6 +83,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     addFloatParameter("min_speed", "miniumum particle speed", 1e-4);
     setParameterRange("min_speed", 0.0, 1e6);
     addFloatParameter("dt_step", "duration of a timestep (for moving points or when data does not specify realtime", 1./25);
+    setParameterRange("dt_step", 0.0, 1e6);
 
     setCurrentParameterGroup("Step Length Control");
     addFloatParameter("h_init", "initial step size/fixed step size for euler integration", 1e-03);
