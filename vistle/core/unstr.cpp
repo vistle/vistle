@@ -295,6 +295,7 @@ Vector2 bilinearInverse(const Vector &p0, const Vector p[4]) {
 } // anon namespace
 
 Scalar UnstructuredGrid::cellDiameter(Index elem) const {
+#if 0
     // compute distance of some vertices which are distant to each other
     const Scalar *x = &this->x()[0];
     const Scalar *y = &this->y()[0];
@@ -322,6 +323,10 @@ Scalar UnstructuredGrid::cellDiameter(Index elem) const {
         }
     }
     return sqrt(dist2);
+#else
+    auto bounds = cellBounds(elem);
+    return (bounds.second-bounds.first).norm();
+#endif
 }
 
 std::vector<Index> UnstructuredGrid::getNeighborElements(Index elem) const {
