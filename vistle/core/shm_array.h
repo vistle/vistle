@@ -12,10 +12,6 @@
 
 namespace vistle {
 
-#if __cplusplus < 201103L
-#define nullptr 0
-#endif
-
 template<typename T, class allocator>
 class shm_array {
 
@@ -106,7 +102,6 @@ class shm_array {
       ++m_size;
    }
 
-#if __cplusplus >= 201103L
    template <class... Args>
    void emplace_back(Args &&...args) {
       if (m_size >= m_capacity)
@@ -115,7 +110,6 @@ class shm_array {
       new(&m_data[m_size])T(std::forward<Args>(args)...);
       ++m_size;
    }
-#endif
 
    T &back() { return m_data[m_size-1]; }
    T &front() { return m_data[0]; }
@@ -150,10 +144,7 @@ class shm_array {
             ::memcpy(&*new_data, &*m_data, sizeof(T)*n);
          } else {
             for (size_t i=0; i<n; ++i) {
-#if __cplusplus >= 201103L
                new(&new_data[i])T(std::move(m_data[i]));
-#else
-#endif
             }
          }
       }
