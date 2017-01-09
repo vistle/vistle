@@ -23,6 +23,7 @@
 #include "scalars.h"
 #include "dimensions.h"
 #include "export.h"
+#include "vector.h"
 
 
 namespace vistle {
@@ -354,7 +355,7 @@ private:
       return Object::ptr(new ObjType(Object::Initialized)); \
    } \
    template<class OtherType> \
-   static ptr clone(typename ptr other) { \
+   static ptr clone(typename OtherType::ptr other) { \
       const std::string n(Shm::the().createObjectId()); \
       typename ObjType::Data *data = shm<typename ObjType::Data>::construct(n)(*other->d(), n); \
       assert(data->type == ObjType::type()); \
