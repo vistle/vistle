@@ -209,7 +209,9 @@ VistleConsole::VistleConsole(QWidget *parent)
     //set the Python Prompt
     setNormalPrompt(true);
 
-    Py_Initialize();
+    // already done in PythonInterface::the() from UiController
+    //Py_Initialize();
+
     /* NOTE: In previous implementaion, local name and global name
              were allocated separately.  And it causes a problem that
              a function declared in this console cannot be called.  By

@@ -21,7 +21,6 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
 : QObject(parent)
 , m_vistleConnection(nullptr)
 , m_ui(nullptr)
-, m_python(nullptr)
 , m_pythonMod(nullptr)
 , m_thread(nullptr)
 , m_scene(nullptr)
@@ -43,8 +42,6 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    if (argc > 2) {
       port = atoi(argv[2]);
    }
-
-   m_python = new vistle::PythonInterface("Vistle GUI");
 
    m_mainWindow.parameters()->setVistleObserver(&m_observer);
    m_mainWindow.setQuitOnExit(quitOnExit);
@@ -128,9 +125,6 @@ void UiController::finish() {
 
    delete m_vistleConnection;
    m_vistleConnection = nullptr;
-
-   delete m_python;
-   m_python = nullptr;
 }
 
 void UiController::quitRequested(bool &allowed) {

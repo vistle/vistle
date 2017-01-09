@@ -6,6 +6,7 @@
  */
 /**********************************************************************************/
 #include "uicontroller.h"
+#include <userinterface/pythoninterface.h>
 #include <util/exception.h>
 #include <QApplication>
 #include <QIcon>
@@ -23,6 +24,7 @@ int main(int argc, char *argv[])
    qRegisterMetaType<boost::uuids::uuid>();
 
    try {
+      vistle::PythonInterface python("Vistle GUI");
       QApplication a(argc, argv);
       QIcon icon(":/vistle.png");
       a.setWindowIcon(icon);
