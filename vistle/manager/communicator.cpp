@@ -319,7 +319,7 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
       for (int index = 0; index < m_size; ++index) {
          const unsigned int size = message.size();
          if (index != m_rank) {
-            MPI_Isend(&size, 1, MPI_UNSIGNED, index, TagToAny, MPI_COMM_WORLD, &s[index]);
+            MPI_Isend((void *)&size, 1, MPI_UNSIGNED, index, TagToAny, MPI_COMM_WORLD, &s[index]);
          }
       }
 

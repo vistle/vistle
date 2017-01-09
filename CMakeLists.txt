@@ -191,6 +191,7 @@ if(WIN32)
     add_definitions("-DWIN32_LEAN_AND_MEAN")
     add_definitions("-DNOMINMAX")
     add_definitions("-DBOOST_ALL_NO_LIB")
+	add_definitions(-D_WIN32_WINNT=0x0601) # windows 7
 	
 	
 endif(WIN32)
