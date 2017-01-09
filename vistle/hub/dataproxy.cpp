@@ -90,7 +90,7 @@ void DataProxy::startThread() {
    //if (m_threads.size() < 1) {
       auto &io = m_io;
       m_threads.emplace_back([&io](){ io.run(); });
-      CERR << "now " << m_threads.size() << " threads in pool" << std::endl;
+      //CERR << "now " << m_threads.size() << " threads in pool" << std::endl;
    } else {
       CERR << "not starting a new thread, already have " << m_threads.size() << " threads" << std::endl;
    }
@@ -98,7 +98,7 @@ void DataProxy::startThread() {
 
 void DataProxy::startAccept() {
 
-   CERR << "(re-)starting accept" << std::endl;
+   //CERR << "(re-)starting accept" << std::endl;
    std::shared_ptr<tcp_socket> sock(new tcp_socket(io()));
    m_acceptor.async_accept(*sock, [this, sock](boost::system::error_code ec){handleAccept(ec, sock);});
    startThread();
@@ -116,7 +116,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
 
    message::Identify ident(Identify::REQUEST); // trigger Identify message from remote
    if (message::send(*sock, ident)) {
-      CERR << "sent ident msg to remote, sock.use_count()=" << sock.use_count() << std::endl;
+      //CERR << "sent ident msg to remote, sock.use_count()=" << sock.use_count() << std::endl;
    }
 
    using namespace message;
@@ -130,7 +130,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
       if (payload && payload->size()>0) {
           CERR << "recv error after accept: cannot handle payload of size " << payload->size() << std::endl;
       }
-      CERR << "received initial message on incoming connection: type=" << buf->type() << std::endl;
+      //CERR << "received initial message on incoming connection: type=" << buf->type() << std::endl;
       switch(buf->type()) {
       case message::IDENTIFY: {
          auto &id = buf->as<message::Identify>();
