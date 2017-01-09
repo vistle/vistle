@@ -36,8 +36,6 @@ inline void usleep(__int64 usec)
 
 typedef SSIZE_T ssize_t;
 
-typedef int socklen_t;
-
 #endif
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef VECTOR_H
-#define VECTOR_H
+#ifndef VISTLE_VECTOR_H
+#define VISTLE_VECTOR_H
 
 #include "scalar.h"
 #include <cmath>

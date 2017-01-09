@@ -99,7 +99,8 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
 
     setCurrentParameterGroup("Performance Tuning");
     m_useCelltree = addIntParameter("use_celltree", "use celltree for accelerated cell location", (Integer)1, Parameter::Boolean);
-    addIntParameter("num_active", "number of particles to trace simultaneously", 1000);
+    auto num_active = addIntParameter("num_active", "number of particles to trace simultaneously on each node (0: no. of cores)", 0);
+    setParameterRange(num_active, (Integer)0, (Integer)10000);
 }
 
 Tracer::~Tracer() {
@@ -185,6 +186,10 @@ bool Tracer::reduce(int timestep) {
    bool useCelltree = m_useCelltree->getValue();
    Index numpoints = m_numStartpoints->getValue();
    Index maxNumActive = getIntParameter("num_active");
+   if (maxNumActive <= 0) {
+       maxNumActive = std::thread::hardware_concurrency();
+   }
+   maxNumActive = mpi::all_reduce(comm(), maxNumActive, mpi::minimum<Index>());
    auto taskType = (TraceType)getIntParameter("taskType");
    TraceDirection traceDirection = (TraceDirection)getIntParameter("tdirection");
    if (taskType != Streamlines) {
@@ -345,9 +350,10 @@ bool Tracer::reduce(int timestep) {
    };
 
    const int mpisize = comm().size();
-   Index numActiveLocal = 0, numActiveMax = 0;
+   Index numActiveMax = 0, numActiveMin = std::numeric_limits<Index>::max();
    do {
-      startParticles(maxNumActive-numActiveLocal);
+      Index numStart = numActiveMin>maxNumActive ? maxNumActive : maxNumActive-numActiveMin;
+      startParticles(numStart);
 
       bool first = true;
       std::vector<Index> sendlist;
@@ -371,7 +377,7 @@ bool Tracer::reduce(int timestep) {
 
       if (mpisize==1) {
           checkSet.clear();
-          numActiveMax = numActiveLocal = activeParticles.size();
+          numActiveMax = numActiveMin = activeParticles.size();
           continue;
       }
 
@@ -409,6 +415,7 @@ bool Tracer::reduce(int timestep) {
           }
       }
       //std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << std::endl;
+      numActiveMin = mpi::all_reduce(comm(), activeParticles.size(), mpi::minimum<Index>());
       numActiveMax = mpi::all_reduce(comm(), activeParticles.size(), mpi::maximum<Index>());
       for(int i=1; i<mpisize; ++i) {
           int dst = (rank()+i)%size();

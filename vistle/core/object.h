@@ -23,6 +23,7 @@
 #include "scalars.h"
 #include "dimensions.h"
 #include "export.h"
+#include "vector.h"
 
 
 namespace vistle {
