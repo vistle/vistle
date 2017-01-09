@@ -165,10 +165,14 @@ void ToUnstructured::compute_uniformVecs(UniformGrid::const_ptr obj, Unstructure
                 obj->max()[1],
                 obj->max()[2]
                 );
+    Cartesian3<Index> div = numVertices;
+    if (div.x <= 2) div.x = 2;
+    if (div.y <= 2) div.y = 2;
+    if (div.z <= 2) div.z = 2;
     const Cartesian3<Scalar> delta = Cartesian3<Scalar>(
-                ((max.x - min.x) / (numVertices.x-1)),
-                ((max.y - min.y) / (numVertices.y-1)),
-                ((max.z - min.z) / (numVertices.z-1))
+                ((max.x - min.x) / (div.x-1)),
+                ((max.y - min.y) / (div.y-1)),
+                ((max.z - min.z) / (div.z-1))
                 );
 
 

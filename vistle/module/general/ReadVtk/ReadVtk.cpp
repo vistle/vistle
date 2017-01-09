@@ -24,11 +24,14 @@
 #include "ReadVtk.h"
 #include "coVtk.h"
 #include <util/filesystem.h>
+
+#ifdef HAVE_TINYXML2
 #include <tinyxml2.h>
+namespace xml = tinyxml2;
+#endif
 
 MODULE_MAIN(ReadVtk)
 
-namespace xml = tinyxml2;
 using namespace vistle;
 
 const std::string Invalid("(NONE)");
@@ -45,6 +48,7 @@ std::map<double, std::vector<VtkFile>> readPvd(const std::string &filename) {
 
     std::map<double, std::vector<VtkFile>> files;
 
+#ifdef HAVE_TINYXML2
     vistle::filesystem::path pvdpath(filename);
     if (!vistle::filesystem::is_regular_file(pvdpath)) {
         std::cerr << "readPvd: " << filename << " is not a regular file" << std::endl;
@@ -106,8 +110,9 @@ std::map<double, std::vector<VtkFile>> readPvd(const std::string &filename) {
 
         DataSet = DataSet->NextSiblingElement("DataSet");
     }
+#endif
 
-    std::cerr << "readPvd(" << filename << "): num timesteps: " << files.size() << ", num blocks: " << numBlocks <<  std::endl;
+    //std::cerr << "readPvd(" << filename << "): num timesteps: " << files.size() << ", num blocks: " << numBlocks <<  std::endl;
 
     return files;
 }
@@ -279,6 +284,10 @@ bool ReadVtk::compute() {
    const std::string filename = m_filename->getValue();
 
    if (boost::algorithm::ends_with(filename, ".pvd")) {
+
+#ifndef HAVE_TINYXML2
+       sendError("not compiled against TinyXML2 - no support for parsing .pvd files");
+#endif
 
        auto files = readPvd(m_filename->getValue());
        int time = 0;

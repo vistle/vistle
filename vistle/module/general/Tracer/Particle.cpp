@@ -9,9 +9,11 @@
 
 using namespace vistle;
 
-Particle::Particle(Index id, const Vector3 &pos, bool forward, GlobalData &global, Index timestep):
+Particle::Particle(Index id, int rank, Index startId, const Vector3 &pos, bool forward, GlobalData &global, Index timestep):
 m_global(global),
 m_id(id),
+m_startId(startId),
+m_rank(rank),
 m_timestep(timestep),
 m_progress(false),
 m_tracing(false),
@@ -23,6 +25,8 @@ m_p(0),
 m_stp(0),
 m_time(0),
 m_dist(0),
+m_segment(forward ? 0 : -1),
+m_segmentStart(0),
 m_block(nullptr),
 m_el(InvalidIndex),
 m_ingrid(true),
@@ -42,6 +46,11 @@ Index Particle::id() const {
     return m_id;
 }
 
+int Particle::rank() {
+
+    return m_rank;
+}
+
 Particle::StopReason Particle::stopReason() const {
     return m_stopReason;
 }
@@ -53,6 +62,7 @@ void Particle::enableCelltree(bool value) {
 }
 
 bool Particle::startTracing() {
+    assert(!m_currentSegment);
     assert(!m_tracing);
     m_progress = false;
     if (inGrid()) {
@@ -80,11 +90,12 @@ bool Particle::isMoving() {
     }
 
     bool moving = m_v.norm() > m_global.min_vel;
-    if(std::abs(m_dist) > m_global.trace_len || m_stp > m_global.max_step || !moving){
+    if(std::abs(m_dist) > m_global.trace_len || std::abs(m_time) > m_global.trace_time || m_stp > m_global.max_step || !moving){
 
-       PointsToLines();
        if (std::abs(m_dist) > m_global.trace_len)
            this->Deactivate(DistanceLimitReached);
+       else if (std::abs(m_time) > m_global.trace_time)
+           this->Deactivate(TimeLimitReached);
        else if (m_stp > m_global.max_step)
            this->Deactivate(StepLimitReached);
        else
@@ -95,13 +106,15 @@ bool Particle::isMoving() {
     return true;
 }
 
+bool Particle::isForward() const {
+    return m_forward;
+}
+
 bool Particle::findCell() {
 
     if (!m_ingrid) {
         return false;
     }
-
-    bool repeatDataFromLastBlock = false;
 
     if (m_block) {
 
@@ -120,10 +133,7 @@ bool Particle::findCell() {
             }
         }
         m_el = grid->findCell(m_x, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
-        if (m_el==InvalidIndex) {
-            PointsToLines();
-            repeatDataFromLastBlock = true;
-        } else {
+        if (m_el!=InvalidIndex) {
             return true;
         }
     }
@@ -139,9 +149,17 @@ bool Particle::findCell() {
         m_el = grid->findCell(m_x, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
         if (m_el!=InvalidIndex) {
 
+            if (!m_currentSegment) {
+                m_currentSegment = std::make_shared<Segment>();
+                m_currentSegment->m_startStep = m_stp;
+                m_currentSegment->m_num = m_segment;
+                if (m_forward)
+                    ++m_segment;
+                else
+                    --m_segment;
+            }
+
             UpdateBlock(block.get());
-            if (repeatDataFromLastBlock)
-                EmitData();
             return true;
         }
     }
@@ -150,27 +168,14 @@ bool Particle::findCell() {
     return false;
 }
 
-void Particle::PointsToLines(){
-
-    if (m_block)
-        m_block->addLines(m_id,m_xhist,m_vhist,m_pressures,m_steps, m_times, m_dists);
-
-    m_xhist.clear();
-    m_vhist.clear();
-    m_pressures.clear();
-    m_steps.clear();
-    m_times.clear();
-    m_dists.clear();
-}
-
 void Particle::EmitData() {
 
-   m_xhist.push_back(m_xold);
-   m_vhist.push_back(m_v);
-   m_steps.push_back(m_stp);
-   m_pressures.push_back(m_p); // will be ignored later on
-   m_times.push_back(m_time);
-   m_dists.push_back(m_dist);
+   m_currentSegment->m_xhist.push_back(m_xold);
+   m_currentSegment->m_vhist.push_back(m_v);
+   m_currentSegment->m_steps.push_back(m_stp);
+   m_currentSegment->m_pressures.push_back(m_p); // will be ignored later on
+   m_currentSegment->m_times.push_back(m_time);
+   m_currentSegment->m_dists.push_back(m_dist);
 }
 
 void Particle::Deactivate(StopReason reason) {
@@ -246,14 +251,197 @@ bool Particle::trace() {
 
     bool traced = false;
     while(isMoving() && findCell()) {
-        if (!traced && m_stp>0) {
-            // repeat data from previous block for particle that was just received from remote node
-            EmitData();
-        }
         Step();
         traced = true;
     }
     return traced;
+}
+
+void Particle::finishSegment() {
+
+    if (m_currentSegment) {
+        m_segments[m_currentSegment->m_num] = m_currentSegment;
+        m_currentSegment.reset();
+    }
+}
+
+void Particle::fetchSegments(Particle &other) {
+
+    assert(m_rank == other.m_rank);
+    assert(!m_currentSegment);
+    assert(!other.m_currentSegment);
+    for (auto seg: other.m_segments) {
+        m_segments.emplace(seg);
+    }
+    other.m_segments.clear();
+}
+
+inline Scalar interp(Scalar f, const Scalar f0, const Scalar f1) {
+
+    const Scalar EPSILON = 1e-6;
+    const Scalar diff = (f1 - f0);
+    const Scalar d0 = f - f0;
+    if (fabs(diff) < EPSILON) {
+        const Scalar d1 = f1 - f;
+        return fabs(d0) < fabs(d1) ? 1 : 0;
+    }
+
+    return std::min(vistle::Scalar(1), std::max(vistle::Scalar(0), d0 / diff));
+}
+
+template<class Value>
+Value lerp(Scalar t, Value v0, Value v1) {
+
+    return v0 + t*(v1- v0);
+}
+
+void Particle::addToOutput() {
+
+   if (m_segments.empty())
+       return;
+
+   if (m_global.task_type == MovingPoints) {
+
+       std::lock_guard<std::mutex> locker(m_global.mutex);
+       Scalar lastTime(0), prevTime(0), nextTime(m_global.dt_step);
+       std::shared_ptr<Segment> lastSeg;
+       Index lastIdx = 0;
+       Index timestep = 0;
+       for (auto &ent: m_segments) {
+           const auto &seg = *ent.second;
+           if (seg.m_num < 0) {
+               continue;
+           }
+           auto N = seg.m_xhist.size();
+           for (Index i=0; i<N; ++i) {
+               auto time = seg.m_times[i];
+               prevTime = time;
+
+               if (time < nextTime) {
+                   lastSeg = ent.second;
+                   lastTime = time;
+                   continue;
+               }
+
+               while (nextTime < time) {
+                   Scalar t = interp(nextTime, prevTime, time);
+
+                   const auto pos1 = seg.m_xhist[i];
+                   const auto pos0 = lastSeg ? lastSeg->m_xhist[lastIdx] : pos1;
+                   auto points = m_global.points[timestep];
+                   Vector pos = lerp(t, pos0, pos1);
+                   points->x().push_back(pos[0]);
+                   points->y().push_back(pos[1]);
+                   points->z().push_back(pos[2]);
+
+                   const auto vel1 = seg.m_vhist[i];
+                   const auto vel0 = lastSeg ? lastSeg->m_vhist[lastIdx] : vel1;
+                   Vector vel = lerp(t, vel0, vel1);
+                   auto vout = m_global.vecField[timestep];
+                   vout->x().push_back(vel[0]);
+                   vout->y().push_back(vel[1]);
+                   vout->z().push_back(vel[2]);
+
+                   const auto pres1 = seg.m_pressures[i];
+                   const auto pres0 = lastSeg ? lastSeg->m_pressures[lastIdx] : pres1;
+                   Scalar pres = lerp(t, pres0, pres1);
+                   m_global.scalField[timestep]->x().push_back(pres);
+
+                   const auto dist1 = seg.m_dists[i];
+                   const auto dist0 = lastSeg ? lastSeg->m_dists[lastIdx] : dist1;
+                   Scalar dist = lerp(t, dist0, dist1);
+                   m_global.distField[timestep]->x().push_back(dist);
+
+                   m_global.stepField[timestep]->x().push_back(seg.m_steps[i]);
+                   m_global.timeField[timestep]->x().push_back(nextTime);
+                   m_global.idField[timestep]->x().push_back(m_startId);
+
+                   lastTime = time;
+                   nextTime += m_global.dt_step;
+                   ++timestep;
+               }
+               lastSeg = ent.second;
+               lastIdx = i;
+           }
+       }
+   } else {
+       Index numPoints = 0;
+       for (auto &ent: m_segments) {
+           const auto &seg = *ent.second;
+           numPoints += seg.m_xhist.size();
+       }
+
+       std::lock_guard<std::mutex> locker(m_global.mutex);
+       auto lines = m_global.lines[m_timestep];
+       Index sz = lines->getNumVertices();
+       Index nsz = sz+numPoints;
+       auto &x = lines->x(), &y = lines->y(), &z = lines->z();
+       auto &cl = lines->cl();
+       assert(sz == cl.size());
+       x.reserve(nsz);
+       y.reserve(nsz);
+       z.reserve(nsz);
+       cl.reserve(nsz);
+
+       auto &vec_x = m_global.vecField[m_timestep]->x(), &vec_y = m_global.vecField[m_timestep]->y(), &vec_z = m_global.vecField[m_timestep]->z();
+       auto &scal = m_global.scalField[m_timestep]->x();
+       auto &step = m_global.stepField[m_timestep]->x(), &id = m_global.idField[m_timestep]->x();
+       auto &time = m_global.timeField[m_timestep]->x(), &dist = m_global.distField[m_timestep]->x();
+
+       vec_x.reserve(nsz);
+       vec_y.reserve(nsz);
+       vec_z.reserve(nsz);
+       scal.reserve(nsz);
+       id.reserve(nsz);
+       step.reserve(nsz);
+       time.reserve(nsz);
+       dist.reserve(nsz);
+
+       auto addStep = [this, &x, &y, &z, &cl, &vec_x, &vec_y, &vec_z, &scal, &id, &step, &time, &dist](const Segment &seg, Index i){
+           const auto &vec = seg.m_xhist[i];
+           x.push_back(vec[0]);
+           y.push_back(vec[1]);
+           z.push_back(vec[2]);
+           cl.push_back(cl.size());
+
+           const auto &vel = seg.m_vhist[i];
+           vec_x.push_back(vel[0]);
+           vec_y.push_back(vel[1]);
+           vec_z.push_back(vel[2]);
+           scal.push_back(seg.m_pressures[i]);
+           step.push_back(seg.m_steps[i]);
+           time.push_back(seg.m_times[i]);
+           dist.push_back(seg.m_dists[i]);
+           id.push_back(m_startId);
+       };
+
+       for (auto &ent: m_segments) {
+           const auto &seg = *ent.second;
+           auto N = seg.m_xhist.size();
+           if (seg.m_num < 0) {
+               for (Index i=N; i>1; --i) {
+                   if (i>1 || seg.m_num != -1 || !m_forward) {
+                       // avoid duplicate entry for startpoint when tracing in both directions
+                       addStep(seg, i-1);
+                   }
+               }
+           } else {
+               for (Index i=0; i<N; ++i) {
+                   addStep(seg, i);
+               }
+           }
+       }
+       lines->el().push_back(cl.size());
+   }
+
+   //std::cerr << "Tracer: line for particle " << m_id << " of length " << numPoints << std::endl;
+
+   m_segments.clear();
+}
+
+Scalar Particle::time() const {
+
+    return m_time;
 }
 
 
@@ -263,6 +451,29 @@ void Particle::broadcast(boost::mpi::communicator mpi_comm, int root) {
 
     boost::mpi::broadcast(mpi_comm, *this, root);
     m_progress = false;
+}
+
+void Particle::sendData(boost::mpi::communicator mpi_comm) {
+
+    m_currentSegment->m_rank = mpi_comm.rank();
+    assert(rank() != mpi_comm.rank());
+    mpi_comm.send(rank(), 0, id());
+    mpi_comm.send(rank(), 0, *m_currentSegment);
+    m_currentSegment.reset();
+}
+
+void Particle::receiveData(boost::mpi::communicator mpi_comm, int rank) {
+
+    Index recvId;
+    mpi_comm.recv(rank, 0, recvId);
+    if (id() != recvId) {
+        std::cerr << "MPI rank " << this->rank() << " received invalid id " << recvId << " for particle " << id() << " from rank " << rank << std::endl;
+    }
+    assert(id() == recvId);
+    auto seg = std::make_shared<Segment>();
+    mpi_comm.recv(rank, 0, *seg);
+    m_segments[seg->m_num] = seg;
+    //std::cerr << "Particle " << id() << ": added segment " << seg->m_num << " with " << seg->m_xhist.size() << " points" << std::endl;
 }
 
 void Particle::UpdateBlock(BlockData *block) {
