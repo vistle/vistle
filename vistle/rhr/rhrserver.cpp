@@ -474,7 +474,7 @@ RhrServer::preFrame() {
               std::vector<char> payload;
               if (message::recv(*m_clientSocket, msg, received, false, &payload) && received) {
                   switch(msg.type()) {
-                  case message::Message::REMOTERENDERING: {
+                  case message::REMOTERENDERING: {
                       auto &m = msg.as<message::RemoteRenderMessage>();
                       auto &rhr = m.rhr();
                       switch (rhr.type) {

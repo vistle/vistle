@@ -348,7 +348,7 @@ bool Communicator::broadcastAndHandleMessage(const message::Message &message) {
 bool Communicator::handleMessage(const message::Buffer &message) {
 
    switch(message.type()) {
-      case message::Message::SETID: {
+      case message::SETID: {
          auto &set = message.as<message::SetId>();
          m_hubId = set.getId();
          CERR << "got id " << m_hubId << std::endl;

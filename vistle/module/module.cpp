@@ -165,7 +165,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_origStreambuf(nullptr)
 , m_streambuf(nullptr)
 , m_inParameterChanged(false)
-, m_traceMessages(message::Message::INVALID)
+, m_traceMessages(message::INVALID)
 , m_benchmark(false)
 , m_comm(MPI_COMM_WORLD, mpi::comm_attach)
 , m_prepared(false)
@@ -1089,8 +1089,8 @@ bool Module::dispatch() {
          int sync = 0, allsync = 0;
 
          switch (buf.type()) {
-            case vistle::message::Message::OBJECTRECEIVED:
-            case vistle::message::Message::QUIT:
+            case vistle::message::OBJECTRECEIVED:
+            case vistle::message::QUIT:
                sync = 1;
                break;
             default:
@@ -1101,8 +1101,8 @@ bool Module::dispatch() {
 
          do {
             switch (buf.type()) {
-               case vistle::message::Message::OBJECTRECEIVED:
-               case vistle::message::Message::QUIT:
+               case vistle::message::OBJECTRECEIVED:
+               case vistle::message::QUIT:
                   sync = 1;
                   break;
                default:
@@ -1136,8 +1136,8 @@ bool Module::dispatch() {
 void Module::sendMessage(const message::Message &message) const {
 
    // exclude SendText messages to avoid circular calls
-   if (message.type() != message::Message::SENDTEXT
-         && (m_traceMessages == message::Message::ANY || m_traceMessages == message.type())) {
+   if (message.type() != message::SENDTEXT
+         && (m_traceMessages == message::ANY || m_traceMessages == message.type())) {
       CERR << "SEND: " << message << std::endl;
    }
    sendMessageQueue->send(message);
@@ -1147,13 +1147,13 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
    using namespace vistle::message;
 
-   if (m_traceMessages == message::Message::ANY || message->type() == m_traceMessages) {
+   if (m_traceMessages == message::ANY || message->type() == m_traceMessages) {
       CERR << "RECV: " << *message << std::endl;
    }
 
    switch (message->type()) {
 
-      case vistle::message::Message::PING: {
+      case vistle::message::PING: {
 
          const vistle::message::Ping *ping =
             static_cast<const vistle::message::Ping *>(message);
@@ -1167,7 +1167,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case vistle::message::Message::PONG: {
+      case vistle::message::PONG: {
 
          const vistle::message::Pong *pong =
             static_cast<const vistle::message::Pong *>(message);
@@ -1178,13 +1178,13 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case vistle::message::Message::TRACE: {
+      case vistle::message::TRACE: {
 
          const Trace *trace = static_cast<const Trace *>(message);
          if (trace->on()) {
             m_traceMessages = trace->messageType();
          } else {
-            m_traceMessages = message::Message::INVALID;
+            m_traceMessages = message::INVALID;
          }
 
          std::cerr << "    module [" << name() << "] [" << id() << "] ["
@@ -1193,7 +1193,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::QUIT: {
+      case message::QUIT: {
 
          const message::Quit *quit =
             static_cast<const message::Quit *>(message);
@@ -1205,7 +1205,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::KILL: {
+      case message::KILL: {
 
          const message::Kill *kill =
             static_cast<const message::Kill *>(message);
@@ -1221,7 +1221,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::ADDPORT: {
+      case message::ADDPORT: {
 
          const message::AddPort *cp =
             static_cast<const message::AddPort *>(message);
@@ -1279,7 +1279,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::CONNECT: {
+      case message::CONNECT: {
 
          const message::Connect *conn =
             static_cast<const message::Connect *>(message);
@@ -1327,7 +1327,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::DISCONNECT: {
+      case message::DISCONNECT: {
 
          const message::Disconnect *disc = static_cast<const message::Disconnect *>(message);
          Port *port = NULL;
@@ -1363,7 +1363,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::EXECUTE: {
+      case message::EXECUTE: {
 
          if (schedulingPolicy() == message::SchedulingPolicy::Ignore)
              return true;
@@ -1474,7 +1474,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::ADDOBJECT: {
+      case message::ADDOBJECT: {
 
          const message::AddObject *add = static_cast<const message::AddObject *>(message);
          auto obj = add->takeObject();
@@ -1495,7 +1495,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::SETPARAMETER: {
+      case message::SETPARAMETER: {
 
          const message::SetParameter *param =
             static_cast<const message::SetParameter *>(message);
@@ -1533,7 +1533,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::SETPARAMETERCHOICES: {
+      case message::SETPARAMETERCHOICES: {
          const message::SetParameterChoices *choices = static_cast<const message::SetParameterChoices *>(message);
          if (choices->senderId() != id()) {
             //FIXME: handle somehow
@@ -1542,7 +1542,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::ADDPARAMETER: {
+      case message::ADDPARAMETER: {
 
          const message::AddParameter *param =
             static_cast<const message::AddParameter *>(message);
@@ -1551,7 +1551,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::REMOVEPARAMETER: {
+      case message::REMOVEPARAMETER: {
 
          const message::RemoveParameter *param =
             static_cast<const message::RemoveParameter *>(message);
@@ -1560,7 +1560,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::BARRIER: {
+      case message::BARRIER: {
 
          const message::Barrier *barrier = static_cast<const message::Barrier *>(message);
          message::BarrierReached reached(barrier->uuid());
@@ -1569,19 +1569,19 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::OBJECTRECEIVED:
+      case message::OBJECTRECEIVED:
          // currently only relevant for renderers
          break;
 
-      //case Message::ADDPORT:
-      //case Message::ADDPARAMETER:
-      case Message::MODULEEXIT:
-      case Message::SPAWN:
-      case Message::STARTED:
-      case Message::MODULEAVAILABLE:
-      case Message::REPLAYFINISHED:
-      case Message::ADDHUB:
-      case Message::REMOVESLAVE:
+      //case message::ADDPORT:
+      //case message::ADDPARAMETER:
+      case message::MODULEEXIT:
+      case message::SPAWN:
+      case message::STARTED:
+      case message::MODULEAVAILABLE:
+      case message::REPLAYFINISHED:
+      case message::ADDHUB:
+      case message::REMOVESLAVE:
          break;
 
       default:

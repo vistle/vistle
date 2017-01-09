@@ -5,7 +5,7 @@
 using namespace vistle;
 using namespace vistle::message;
 
-#define M(t, T) case Message::t: { \
+#define M(t, T) case message::t: { \
    const T m = msg.as<T>(); \
    std::cerr << i << " size: " << sizeof(m) << ", type: " << type << std::endl; \
    break; \
@@ -14,13 +14,13 @@ using namespace vistle::message;
 int main() {
 
    Buffer msg;
-   for (int i=Message::INVALID; i<Message::NumMessageTypes; ++i) {
+   for (int i=message::INVALID; i<message::NumMessageTypes; ++i) {
 
-      const Message::Type type = static_cast<Message::Type>(i);
+      const message::Type type = static_cast<message::Type>(i);
       switch(type) {
-         case Message::INVALID: {
-         case Message::ANY:
-         case Message::NumMessageTypes:
+         case message::INVALID: {
+         case message::ANY:
+         case message::NumMessageTypes:
             break;
          }
 

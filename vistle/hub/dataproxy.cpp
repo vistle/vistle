@@ -132,7 +132,7 @@ void DataProxy::handleAccept(const boost::system::error_code &error, std::shared
       }
       CERR << "received initial message on incoming connection: type=" << buf->type() << std::endl;
       switch(buf->type()) {
-      case message::Message::IDENTIFY: {
+      case message::IDENTIFY: {
          auto &id = buf->as<message::Identify>();
          switch(id.identity()) {
          case Identify::REMOTEBULKDATA: {
@@ -194,7 +194,7 @@ void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
         }
         //CERR << "localMsgRecv: msg received, type=" << msg->type() << std::endl;
         switch(msg->type()) {
-        case Message::SENDOBJECT: {
+        case SENDOBJECT: {
             auto &send = msg->as<const SendObject>();
             int hubId = m_hub.idToHub(send.destId());
             //CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
@@ -211,7 +211,7 @@ void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
             }
             break;
         }
-        case Message::REQUESTOBJECT: {
+        case REQUESTOBJECT: {
             auto &req = msg->as<const RequestObject>();
             int hubId = m_hub.idToHub(req.destId());
             //CERR << "localMsgRecv on " << m_hub.id() << ": sending to " << hubId << std::endl;
@@ -226,7 +226,7 @@ void DataProxy::localMsgRecv(std::shared_ptr<tcp_socket> sock) {
             }
             break;
         }
-        case Message::IDENTIFY: {
+        case IDENTIFY: {
             auto &ident = msg->as<const Identify>();
             if (ident.identity() != Identify::LOCALBULKDATA) {
                 CERR << "invalid identity " << ident.identity() << " connected to local data port" << std::endl;
@@ -257,7 +257,7 @@ void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
         }
         //CERR << "remoteMsgRecv success on sock " << sock.get() << ", msg=" << *msg << std::endl;
         switch(msg->type()) {
-        case Message::IDENTIFY: {
+        case IDENTIFY: {
             auto &ident = msg->as<const Identify>();
             if (ident.identity() == Identify::REQUEST) {
                 Identify ident(Identify::REMOTEBULKDATA, m_hub.id());
@@ -273,7 +273,7 @@ void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
             }
             break;
         }
-        case Message::SENDOBJECT: {
+        case SENDOBJECT: {
             auto &send = msg->as<const SendObject>();
             //int hubId = m_hub.idToHub(send.senderId());
             //CERR << "remoteMsgRecv on " << m_hub.id() << ": SendObject from " << hubId << std::endl;
@@ -292,7 +292,7 @@ void DataProxy::remoteMsgRecv(std::shared_ptr<tcp_socket> sock) {
             }
             break;
         }
-        case Message::REQUESTOBJECT: {
+        case REQUESTOBJECT: {
             auto &req = msg->as<const RequestObject>();
             int hubId = m_hub.idToHub(req.destId());
             int rank = req.destRank();

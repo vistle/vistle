@@ -161,7 +161,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
    }
 
    switch (message->type()) {
-      case message::Message::IDENTIFY: {
+      case message::IDENTIFY: {
          const message::Identify *id = static_cast<const message::Identify *>(message);
          if (id->identity() == message::Identify::REQUEST) {
             const message::Identify reply(message::Identify::UI);
@@ -171,7 +171,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::SETID: {
+      case message::SETID: {
          const message::SetId *id = static_cast<const message::SetId *>(message);
          m_id = id->getId();
          assert(m_id > 0);
@@ -180,7 +180,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::LOCKUI: {
+      case message::LOCKUI: {
          auto lock = static_cast<const message::LockUi *>(message);
          m_locked = lock->locked();
          if (!m_locked) {
@@ -192,7 +192,7 @@ bool UserInterface::handleMessage(const vistle::message::Message *message) {
          break;
       }
 
-      case message::Message::QUIT: {
+      case message::QUIT: {
          const message::Quit *quit = static_cast<const message::Quit *>(message);
          (void)quit;
          return false;

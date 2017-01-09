@@ -395,7 +395,7 @@ AddObject::AddObject(const std::string &sender, vistle::Object::const_ptr obj,
 }
 
 AddObject::AddObject(const AddObject &o)
-: MessageBase<AddObject, Message::ADDOBJECT>(o)
+: MessageBase<AddObject, ADDOBJECT>(o)
 , senderPort(o.senderPort)
 , destPort(o.destPort)
 , m_name(o.m_name)
@@ -1044,7 +1044,7 @@ SendText::SendText(const std::string &text, const Message &inResponseTo)
 
 SendText::SendText(SendText::TextType type, const std::string &text)
 : m_textType(type)
-, m_referenceType(Message::INVALID)
+, m_referenceType(INVALID)
 , m_truncated(false)
 {
    if (text.size() >= sizeof(m_text)) {
@@ -1058,7 +1058,7 @@ SendText::TextType SendText::textType() const {
    return m_textType;
 }
 
-Message::Type SendText::referenceType() const {
+Type SendText::referenceType() const {
 
    return m_referenceType;
 }
@@ -1123,7 +1123,7 @@ void ExecutionProgress::setStage(ExecutionProgress::Progress stage) {
    m_stage = stage;
 }
 
-Trace::Trace(int module, Message::Type messageType, bool onoff)
+Trace::Trace(int module, Type messageType, bool onoff)
 : m_module(module)
 , m_messageType(messageType)
 , m_on(onoff)
@@ -1135,7 +1135,7 @@ int Trace::module() const {
    return m_module;
 }
 
-Message::Type Trace::messageType() const {
+Type Trace::messageType() const {
 
    return m_messageType;
 }
@@ -1409,97 +1409,97 @@ std::ostream &operator<<(std::ostream &s, const Message &m) {
        s << ", ref: " << boost::lexical_cast<std::string>(m.referrer());
 
    switch (m.type()) {
-      case Message::IDENTIFY: {
+      case IDENTIFY: {
          auto &mm = static_cast<const Identify &>(m);
          s << ", identity: " << Identify::toString(mm.identity());
          break;
       }
-      case Message::EXECUTE: {
+      case EXECUTE: {
          auto &mm = static_cast<const Execute &>(m);
          s << ", module: " << mm.getModule() << ", what: " << mm.what() << ", execcount: " << mm.getExecutionCount();
          break;
       }
-      case Message::EXECUTIONPROGRESS: {
+      case EXECUTIONPROGRESS: {
          auto &mm = static_cast<const ExecutionProgress &>(m);
          s << ", stage: " << ExecutionProgress::toString(mm.stage());
          break;
       }
-      case Message::ADDPARAMETER: {
+      case ADDPARAMETER: {
          auto &mm = static_cast<const AddParameter &>(m);
          s << ", name: " << mm.getName();
          break;
       }
-      case Message::REMOVEPARAMETER: {
+      case REMOVEPARAMETER: {
          auto &mm = static_cast<const RemoveParameter &>(m);
          s << ", name: " << mm.getName();
          break;
       }
-      case Message::SETPARAMETER: {
+      case SETPARAMETER: {
          auto &mm = static_cast<const SetParameter &>(m);
          s << ", name: " << mm.getName();
          break;
       }
-      case Message::SETPARAMETERCHOICES: {
+      case SETPARAMETERCHOICES: {
          auto &mm = static_cast<const SetParameterChoices &>(m);
          s << ", name: " << mm.getName();
          break;
       }
-      case Message::ADDPORT: {
+      case ADDPORT: {
          auto &mm = static_cast<const AddPort &>(m);
          s << ", name: " << mm.getPort();
          break;
       }
-      case Message::REMOVEPORT: {
+      case REMOVEPORT: {
          auto &mm = static_cast<const RemovePort &>(m);
          s << ", name: " << mm.getPort();
          break;
       }
-      case Message::CONNECT: {
+      case CONNECT: {
          auto &mm = static_cast<const Connect &>(m);
          s << ", from: " << mm.getModuleA() << ":" << mm.getPortAName() << ", to: " << mm.getModuleB() << ":" << mm.getPortBName();
          break;
       }
-      case Message::DISCONNECT: {
+      case DISCONNECT: {
          auto &mm = static_cast<const Disconnect &>(m);
          s << ", from: " << mm.getModuleA() << ":" << mm.getPortAName() << ", to: " << mm.getModuleB() << ":" << mm.getPortBName();
          break;
       }
-      case Message::MODULEAVAILABLE: {
+      case MODULEAVAILABLE: {
          auto &mm = static_cast<const ModuleAvailable &>(m);
          s << ", name: " << mm.name() << ", hub: " << mm.hub();
          break;
       }
-      case Message::SPAWN: {
+      case SPAWN: {
          auto &mm = static_cast<const Spawn &>(m);
          s << ", name: " << mm.getName() << ", id: " << mm.spawnId() << ", hub: " << mm.hubId();
          break;
       }
-      case Message::ADDHUB: {
+      case ADDHUB: {
          auto &mm = static_cast<const AddHub &>(m);
          s << ", name: " << mm.name() << ", id: " << mm.id();
          break;
       }
-      case Message::SENDTEXT: {
+      case SENDTEXT: {
          auto &mm = static_cast<const SendText &>(m);
          s << ", text: " << mm.text();
          break;
       }
-      case Message::ADDOBJECT: {
+      case ADDOBJECT: {
          auto &mm = static_cast<const AddObject &>(m);
          s << ", obj: " << mm.objectName() << ", " << mm.getSenderPort() << " -> " << mm.getDestPort() << " (handle: " << (mm.handleValid()?"valid":"invalid") << ")";
          break;
       }
-      case Message::ADDOBJECTCOMPLETED: {
+      case ADDOBJECTCOMPLETED: {
          auto &mm = static_cast<const AddObjectCompleted &>(m);
          s << ", obj: " << mm.objectName() << ", original destination: " << mm.originalDestination() << std::endl;
          break;
       }
-      case Message::REQUESTOBJECT: {
+      case REQUESTOBJECT: {
          auto &mm = static_cast<const RequestObject &>(m);
          s << ", " << (mm.isArray() ? "array" : "object") << ": " << mm.objectId() << ", ref: " << mm.referrer();
          break;
       }
-      case Message::SENDOBJECT: {
+      case SENDOBJECT: {
          auto &mm = static_cast<const SendObject &>(m);
          s << ", " << (mm.isArray() ? "array" : "object") << ": " << mm.objectId() << ", ref: " << mm.referrer() << ", payload size: " << mm.payloadSize();
          break;

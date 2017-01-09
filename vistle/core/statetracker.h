@@ -57,7 +57,7 @@ class V_COREEXPORT StateObserver {
    virtual void deleteConnection(int fromId, const std::string &fromName,
          int toId, const std::string &toName) = 0;
 
-   virtual void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Message::Type refType, const message::uuid_t &refUuid) = 0;
+   virtual void info(const std::string &text, message::SendText::TextType textType, int senderId, int senderRank, message::Type refType, const message::uuid_t &refUuid) = 0;
 
    virtual void quitRequested();
 
@@ -204,7 +204,7 @@ class V_COREEXPORT StateTracker {
    mutex m_slaveMutex;
    std::condition_variable_any m_slaveCondition;
 
-   message::Message::Type m_traceType;
+   message::Type m_traceType;
    int m_traceId;
    std::string m_name;
    struct HubData {

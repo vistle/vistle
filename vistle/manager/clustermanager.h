@@ -66,7 +66,7 @@ class ClusterManager {
 
    std::shared_ptr<PortManager> m_portManager;
    StateTracker m_stateTracker;
-   message::Message::Type m_traceMessages;
+   message::Type m_traceMessages;
 
    bool m_quitFlag;
 

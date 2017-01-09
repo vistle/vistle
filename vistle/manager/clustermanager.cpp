@@ -137,7 +137,7 @@ bool  ClusterManager::Module::processDelayed() {
                 auto type = msg.type();
                 ret = Communicator::the().broadcastAndHandleMessage(delayedMessages.front());
                 delayedMessages.pop_front();
-                if (type == message::Message::EXECUTE)
+                if (type == message::EXECUTE)
                     break;
             }
         }
@@ -154,7 +154,7 @@ bool ClusterManager::Module::haveDelayed() const {
 ClusterManager::ClusterManager(int r, const std::vector<std::string> &hosts)
 : m_portManager(new PortManager(this))
 , m_stateTracker(std::string("ClusterManager state rk")+boost::lexical_cast<std::string>(r), m_portManager)
-, m_traceMessages(message::Message::INVALID)
+, m_traceMessages(message::INVALID)
 , m_quitFlag(false)
 , m_rank(r)
 , m_size(hosts.size())
@@ -427,13 +427,13 @@ bool ClusterManager::handle(const message::Buffer &message) {
        return sendHub(message);
    }
 
-   if (message.type() == m_traceMessages || m_traceMessages==Message::ANY) {
+   if (message.type() == m_traceMessages || m_traceMessages==ANY) {
        CERR << "handle: " << message << std::endl;
    }
 
    switch (message.type()) {
-      case Message::CONNECT:
-      case Message::DISCONNECT:
+      case CONNECT:
+      case DISCONNECT:
          // handled in handlePriv(...)
          break;
       default:
@@ -465,7 +465,7 @@ bool ClusterManager::handle(const message::Buffer &message) {
    if (message::Id::isModule(message.destId())) {
       if (destHub == hubId) {
          //CERR << "module: " << message << std::endl;
-         if (message.type() != message::Message::EXECUTE) {
+         if (message.type() != message::EXECUTE) {
             return sendMessage(message.destId(), message);
          }
       } else {
@@ -473,14 +473,14 @@ bool ClusterManager::handle(const message::Buffer &message) {
       }
    }
    if (message::Id::isHub(message.destId())) {
-       if (destHub != hubId || message.type() == message::Message::EXECUTE) {
+       if (destHub != hubId || message.type() == message::EXECUTE) {
            return sendHub(message);
        }
    }
 
    switch (message.type()) {
 
-      case Message::IDENTIFY: {
+      case IDENTIFY: {
 
          const Identify &id = message.as<Identify>();
          CERR << "Identify message: " << id << std::endl;
@@ -495,150 +495,150 @@ bool ClusterManager::handle(const message::Buffer &message) {
          break;
       }
 
-      case message::Message::QUIT: {
+      case message::QUIT: {
 
          result = false;
          break;
       }
 
-      case message::Message::TRACE: {
+      case message::TRACE: {
          const Trace &trace = message.as<Trace>();
          result = handlePriv(trace);
          break;
       }
 
-      case message::Message::SPAWN: {
+      case message::SPAWN: {
 
          const message::Spawn &spawn = message.as<Spawn>();
          result = handlePriv(spawn);
          break;
       }
 
-      case message::Message::CONNECT: {
+      case message::CONNECT: {
 
          const message::Connect &connect = message.as<Connect>();
          result = handlePriv(connect);
          break;
       }
 
-      case message::Message::DISCONNECT: {
+      case message::DISCONNECT: {
 
          const message::Disconnect &disc = message.as<Disconnect>();
          result = handlePriv(disc);
          break;
       }
 
-      case message::Message::MODULEEXIT: {
+      case message::MODULEEXIT: {
 
          const message::ModuleExit &moduleExit = message.as<ModuleExit>();
          result = handlePriv(moduleExit);
          break;
       }
 
-      case message::Message::EXECUTE: {
+      case message::EXECUTE: {
 
          const message::Execute &exec = message.as<Execute>();
          result = handlePriv(exec);
          break;
       }
 
-      case message::Message::ADDOBJECT: {
+      case message::ADDOBJECT: {
 
          const message::AddObject &m = message.as<AddObject>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::ADDOBJECTCOMPLETED: {
+      case message::ADDOBJECTCOMPLETED: {
          const message::AddObjectCompleted &m = message.as<AddObjectCompleted>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::EXECUTIONPROGRESS: {
+      case message::EXECUTIONPROGRESS: {
 
          const message::ExecutionProgress &prog = message.as<ExecutionProgress>();
          result = handlePriv(prog);
          break;
       }
 
-      case message::Message::BUSY: {
+      case message::BUSY: {
 
          const message::Busy &busy = message.as<Busy>();
          result = handlePriv(busy);
          break;
       }
 
-      case message::Message::IDLE: {
+      case message::IDLE: {
 
          const message::Idle &idle = message.as<Idle>();
          result = handlePriv(idle);
          break;
       }
 
-      case message::Message::OBJECTRECEIVED: {
+      case message::OBJECTRECEIVED: {
          const message::ObjectReceived &m = message.as<ObjectReceived>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::SETPARAMETER: {
+      case message::SETPARAMETER: {
 
          const message::SetParameter &m = message.as<SetParameter>();
          result = handlePriv(m);
          break;
       }
 
-      case Message::SETPARAMETERCHOICES: {
+      case message::SETPARAMETERCHOICES: {
          const message::SetParameterChoices &m = message.as<SetParameterChoices>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::BARRIER: {
+      case message::BARRIER: {
 
          const message::Barrier &m = message.as<Barrier>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::BARRIERREACHED: {
+      case message::BARRIERREACHED: {
 
          const message::BarrierReached &m = message.as<BarrierReached>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::SENDTEXT: {
+      case message::SENDTEXT: {
          const message::SendText &m = message.as<SendText>();
          result = handlePriv(m);
          break;
       }
 
-      case message::Message::REQUESTTUNNEL: {
+      case message::REQUESTTUNNEL: {
          const message::RequestTunnel &m = message.as<RequestTunnel>();
          result = handlePriv(m);
          break;
       }
 
-      case Message::PING: {
+      case message::PING: {
          const message::Ping &m = message.as<Ping>();
          result = handlePriv(m);
          break;
       }
 
-      case Message::ADDHUB:
-      case Message::REMOVESLAVE:
-      case Message::STARTED:
-      case Message::ADDPORT:
-      case Message::ADDPARAMETER:
-      case Message::REMOVEPARAMETER:
-      case Message::MODULEAVAILABLE:
-      case Message::REPLAYFINISHED:
-      case Message::REDUCEPOLICY:
-      case Message::SCHEDULINGPOLICY:
-      case Message::OBJECTRECEIVEPOLICY:
-      case Message::PONG:
+      case message::ADDHUB:
+      case message::REMOVESLAVE:
+      case message::STARTED:
+      case message::ADDPORT:
+      case message::ADDPARAMETER:
+      case message::REMOVEPARAMETER:
+      case message::MODULEAVAILABLE:
+      case message::REPLAYFINISHED:
+      case message::REDUCEPOLICY:
+      case message::SCHEDULINGPOLICY:
+      case message::OBJECTRECEIVEPOLICY:
+      case message::PONG:
          break;
 
       default:
@@ -680,7 +680,7 @@ bool ClusterManager::handlePriv(const message::Trace &trace) {
       if (trace.on())
          m_traceMessages = trace.messageType();
       else
-         m_traceMessages = message::Message::INVALID;
+         m_traceMessages = message::INVALID;
    }
 
    return true;

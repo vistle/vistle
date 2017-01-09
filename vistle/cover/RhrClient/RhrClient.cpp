@@ -215,7 +215,7 @@ class RemoteConnection {
                 continue;
             }
 
-            if (buf.type() != message::Message::REMOTERENDERING) {
+            if (buf.type() != message::REMOTERENDERING) {
                 std::cerr << "invalid message type received" << std::endl;
                 break;
             }
@@ -309,7 +309,7 @@ class RemoteConnection {
             return false;
         }
 
-        if (buf.type() != message::Message::REMOTERENDERING) {
+        if (buf.type() != message::REMOTERENDERING) {
             std::cerr << "invalid message type received" << std::endl;
             return false;
         }

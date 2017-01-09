@@ -178,13 +178,13 @@ bool vistle::VistleConnection::barrier() const {
       }
 
       switch(buf.type()) {
-         case message::Message::BARRIERREACHED: {
+         case message::BARRIERREACHED: {
             auto &reached = buf.as<message::BarrierReached>();
             assert(m.uuid() == reached.uuid());
             return true;
             break;
          }
-         case message::Message::BARRIER: {
+         case message::BARRIER: {
             continue;
             break;
          }

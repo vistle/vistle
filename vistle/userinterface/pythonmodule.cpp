@@ -88,7 +88,7 @@ static void ping(int dest=message::Id::Broadcast, char c='.') {
 }
 BOOST_PYTHON_FUNCTION_OVERLOADS(ping_overloads, ping, 0, 2)
 
-static void trace(int id=message::Id::Broadcast, message::Message::Type type=message::Message::ANY, bool onoff = true) {
+static void trace(int id=message::Id::Broadcast, message::Type type=message::ANY, bool onoff = true) {
 
 #ifdef DEBUG
    auto cerrflags = std::cerr.flags();
@@ -107,7 +107,7 @@ static bool barrier() {
    if (!sendMessage(m))
       return false;
    auto buf = MODULEMANAGER.waitForReply(m.uuid());
-   if (buf->type() == message::Message::BARRIERREACHED) {
+   if (buf->type() == message::BARRIERREACHED) {
       return true;
    }
    return false;
@@ -141,7 +141,7 @@ static int waitForSpawn(const std::string &uuid) {
    boost::uuids::string_generator gen;
    message::uuid_t u = gen(uuid);
    auto buf = MODULEMANAGER.waitForReply(u);
-   if (buf->type() == message::Message::SPAWN) {
+   if (buf->type() == message::SPAWN) {
       auto &spawn = buf->as<message::Spawn>();
       return spawn.spawnId();
    } else {
@@ -510,8 +510,8 @@ BOOST_PYTHON_MODULE(_vistle)
 {
     using namespace boost::python;
 
-    // make values of vistle::message::Message::Type enum known to Python as Message.xxx
-    vistle::message::Message::enumForPython_Type("Message");
+    // make values of vistle::message::Type enum known to Python as Message.xxx
+    vistle::message::enumForPython_Type("Message");
 
     def("source", source, "execute commands from file `arg1`");
     def("spawn", spawn, spawn_overloads(args("hub", "modulename", "numspawn", "baserank", "rankskip"), "spawn new module `arg1`\n" "return its ID"));

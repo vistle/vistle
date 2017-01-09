@@ -44,9 +44,9 @@ Renderer::~Renderer() {
 static bool needsSync(const message::Message &m) {
 
    switch (m.type()) {
-      case vistle::message::Message::OBJECTRECEIVED:
-      case vistle::message::Message::QUIT:
-      case vistle::message::Message::KILL:
+      case vistle::message::OBJECTRECEIVED:
+      case vistle::message::QUIT:
+      case vistle::message::KILL:
          return true;
       default:
          return false;
@@ -79,14 +79,14 @@ bool Renderer::dispatch() {
          if (haveMessage) {
 
             switch (message.type()) {
-               case vistle::message::Message::ADDOBJECT: {
+               case vistle::message::ADDOBJECT: {
                   if (size() == 1 || objectReceivePolicy()==message::ObjectReceivePolicy::Single) {
                      auto &add = static_cast<const message::AddObject &>(message);
                      addInputObject(add.senderId(), add.getSenderPort(), add.getDestPort(), add.takeObject());
                   }
                   break;
                }
-               case vistle::message::Message::OBJECTRECEIVED: {
+               case vistle::message::OBJECTRECEIVED: {
                   vassert(objectReceivePolicy() != message::ObjectReceivePolicy::Single);
                   if (size() > 1) {
                      auto &recv = static_cast<const message::ObjectReceived &>(message);

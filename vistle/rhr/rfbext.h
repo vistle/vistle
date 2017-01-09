@@ -258,7 +258,7 @@ typedef rfbMsg RhrSubMessage;
 
 namespace message {
 
-class V_RHREXPORT RemoteRenderMessage: public MessageBase<RemoteRenderMessage, Message::REMOTERENDERING> {
+class V_RHREXPORT RemoteRenderMessage: public MessageBase<RemoteRenderMessage, REMOTERENDERING> {
 public:
     RemoteRenderMessage(const RhrSubMessage &rhr, size_t payloadSize=0);
     const RhrSubMessage &rhr() const;

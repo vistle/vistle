@@ -6,64 +6,64 @@ namespace vistle {
 namespace message {
 
 
-unsigned Router::rt[Message::NumMessageTypes];
+unsigned Router::rt[NumMessageTypes];
 
 void Router::initRoutingTable() {
 
    typedef Message M;
    memset(&rt, '\0', sizeof(rt));
 
-   rt[M::INVALID]               = 0;
-   rt[M::IDENTIFY]              = Special;
-   rt[M::SETID]                 = Special;
-   rt[M::ADDHUB]                = Broadcast|Track|DestUi|TriggerQueue;
-   rt[M::REMOVESLAVE]           = Broadcast|Track|DestUi;
-   rt[M::REPLAYFINISHED]        = Special;
-   rt[M::TRACE]                 = Broadcast|Track;
-   rt[M::SPAWN]                 = Track|HandleOnMaster;
-   rt[M::SPAWNPREPARED]         = DestLocalHub|HandleOnHub;
-   rt[M::STARTED]               = Track|DestUi|DestManager|DestModules|OnlyRank0;
-   rt[M::MODULEEXIT]            = Track|DestUi|DestManager|DestModules|OnlyRank0|CleanQueue;
-   rt[M::KILL]                  = DestModules|HandleOnDest;
-   rt[M::QUIT]                  = Broadcast|HandleOnMaster|HandleOnHub|HandleOnNode;
-   rt[M::EXECUTE]               = Special|HandleOnMaster;
-   rt[M::MODULEAVAILABLE]       = Track|DestHub|DestUi|HandleOnHub;
-   rt[M::ADDPORT]               = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
-   rt[M::REMOVEPORT]            = Track|DestUi|DestManager|DestModules|OnlyRank0;
-   rt[M::ADDPARAMETER]          = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
-   rt[M::REMOVEPARAMETER]       = Track|DestUi|DestManager|DestModules|OnlyRank0;
-   rt[M::SETPARAMETERCHOICES]   = Track|DestUi|DestModules|OnlyRank0;
-   rt[M::CONNECT]               = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0;
-   rt[M::DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0;
-   rt[M::SETPARAMETER]          = Track|QueueIfUnhandled|DestManager|DestUi|DestModules|OnlyRank0;
-   rt[M::PING]                  = DestManager|DestModules|HandleOnDest;
-   rt[M::PONG]                  = DestUi|HandleOnDest;
-   rt[M::BUSY]                  = Special;
-   rt[M::IDLE]                  = Special;
-   rt[M::LOCKUI]                = DestUi;
-   rt[M::SENDTEXT]              = DestUi|DestMasterHub;
+   rt[INVALID]               = 0;
+   rt[IDENTIFY]              = Special;
+   rt[SETID]                 = Special;
+   rt[ADDHUB]                = Broadcast|Track|DestUi|TriggerQueue;
+   rt[REMOVESLAVE]           = Broadcast|Track|DestUi;
+   rt[REPLAYFINISHED]        = Special;
+   rt[TRACE]                 = Broadcast|Track;
+   rt[SPAWN]                 = Track|HandleOnMaster;
+   rt[SPAWNPREPARED]         = DestLocalHub|HandleOnHub;
+   rt[STARTED]               = Track|DestUi|DestManager|DestModules|OnlyRank0;
+   rt[MODULEEXIT]            = Track|DestUi|DestManager|DestModules|OnlyRank0|CleanQueue;
+   rt[KILL]                  = DestModules|HandleOnDest;
+   rt[QUIT]                  = Broadcast|HandleOnMaster|HandleOnHub|HandleOnNode;
+   rt[EXECUTE]               = Special|HandleOnMaster;
+   rt[MODULEAVAILABLE]       = Track|DestHub|DestUi|HandleOnHub;
+   rt[ADDPORT]               = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
+   rt[REMOVEPORT]            = Track|DestUi|DestManager|DestModules|OnlyRank0;
+   rt[ADDPARAMETER]          = Track|DestUi|DestManager|DestModules|TriggerQueue|OnlyRank0;
+   rt[REMOVEPARAMETER]       = Track|DestUi|DestManager|DestModules|OnlyRank0;
+   rt[SETPARAMETERCHOICES]   = Track|DestUi|DestModules|OnlyRank0;
+   rt[CONNECT]               = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0;
+   rt[DISCONNECT]            = Track|Broadcast|QueueIfUnhandled|DestManager|DestModules|OnlyRank0;
+   rt[SETPARAMETER]          = Track|QueueIfUnhandled|DestManager|DestUi|DestModules|OnlyRank0;
+   rt[PING]                  = DestManager|DestModules|HandleOnDest;
+   rt[PONG]                  = DestUi|HandleOnDest;
+   rt[BUSY]                  = Special;
+   rt[IDLE]                  = Special;
+   rt[LOCKUI]                = DestUi;
+   rt[SENDTEXT]              = DestUi|DestMasterHub;
 
-   rt[M::OBJECTRECEIVEPOLICY]   = DestLocalManager|Track;
-   rt[M::SCHEDULINGPOLICY]      = DestLocalManager|Track;
-   rt[M::REDUCEPOLICY]          = DestLocalManager|Track;
-   rt[M::EXECUTIONPROGRESS]     = DestManager|HandleOnRank0;
+   rt[OBJECTRECEIVEPOLICY]   = DestLocalManager|Track;
+   rt[SCHEDULINGPOLICY]      = DestLocalManager|Track;
+   rt[REDUCEPOLICY]          = DestLocalManager|Track;
+   rt[EXECUTIONPROGRESS]     = DestManager|HandleOnRank0;
 
-   rt[M::ADDOBJECT]             = DestManager|HandleOnNode;
-   rt[M::ADDOBJECTCOMPLETED]    = DestManager|HandleOnNode;
+   rt[ADDOBJECT]             = DestManager|HandleOnNode;
+   rt[ADDOBJECTCOMPLETED]    = DestManager|HandleOnNode;
 
-   rt[M::BARRIER]               = HandleOnDest;
-   rt[M::BARRIERREACHED]        = HandleOnDest;
-   rt[M::OBJECTRECEIVED]        = HandleOnRank0;
+   rt[BARRIER]               = HandleOnDest;
+   rt[BARRIERREACHED]        = HandleOnDest;
+   rt[OBJECTRECEIVED]        = HandleOnRank0;
 
-   rt[M::REQUESTTUNNEL]         = HandleOnNode|HandleOnHub;
+   rt[REQUESTTUNNEL]         = HandleOnNode|HandleOnHub;
 
-   rt[M::REQUESTOBJECT]         = Special;
-   rt[M::SENDOBJECT]            = Special;
-   rt[M::REMOTERENDERING]       = Special;
+   rt[REQUESTOBJECT]         = Special;
+   rt[SENDOBJECT]            = Special;
+   rt[REMOTERENDERING]       = Special;
 
-   for (int i=M::ANY+1; i<M::NumMessageTypes; ++i) {
+   for (int i=ANY+1; i<NumMessageTypes; ++i) {
       if (rt[i] == 0) {
-         std::cerr << "message routing table not initialized for " << (Message::Type)i << std::endl;
+         std::cerr << "message routing table not initialized for " << (Type)i << std::endl;
       }
       vassert(rt[i] != 0);
    }

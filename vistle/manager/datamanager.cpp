@@ -155,16 +155,16 @@ bool DataManager::handle(const message::Message &msg, const std::vector<char> *p
     using namespace message;
 
     switch (msg.type()) {
-    case Message::IDENTIFY: {
+    case message::IDENTIFY: {
         auto &mm = static_cast<const Identify &>(msg);
         if (mm.identity() == Identify::REQUEST) {
             return send(Identify(Identify::LOCALBULKDATA, m_rank));
         }
         return true;
     }
-    case Message::REQUESTOBJECT:
+    case message::REQUESTOBJECT:
         return handlePriv(static_cast<const RequestObject &>(msg));
-    case Message::SENDOBJECT:
+    case message::SENDOBJECT:
         return handlePriv(static_cast<const SendObject &>(msg), payload);
     default:
         break;

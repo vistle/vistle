@@ -69,7 +69,7 @@ Hub::Hub()
 , m_slaveCount(0)
 , m_hubId(Id::Invalid)
 , m_moduleCount(0)
-, m_traceMessages(message::Message::INVALID)
+, m_traceMessages(message::INVALID)
 , m_execCount(0)
 , m_barrierActive(false)
 , m_barrierReached(0)
@@ -497,7 +497,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
    bool masterAdded = false;
    switch (msg.type()) {
-      case message::Message::IDENTIFY: {
+      case message::IDENTIFY: {
 
          auto &id = static_cast<const Identify &>(msg);
          CERR << "ident msg: " << id.identity() << std::endl;
@@ -557,7 +557,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
          }
          return true;
       }
-      case message::Message::ADDHUB: {
+      case message::ADDHUB: {
          auto &mm = static_cast<const AddHub &>(msg);
          if (m_isMaster) {
             auto it = m_slaves.find(mm.id());
@@ -634,10 +634,10 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
            }
        }
 
-       if (m_traceMessages == Message::ANY || msg.type() == m_traceMessages
+       if (m_traceMessages == message::ANY || msg.type() == m_traceMessages
 #ifdef DEBUG_DISTRIBUTED
-               || msg.type() == Message::ADDOBJECT
-               || msg.type() == Message::ADDOBJECTCOMPLETED
+               || msg.type() == message::ADDOBJECT
+               || msg.type() == message::ADDOBJECTCOMPLETED
 #endif
                ) {
            if (track) std::cerr << "t"; else std::cerr << ".";
@@ -652,7 +652,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
       switch(msg.type()) {
 
-         case Message::SPAWN: {
+         case message::SPAWN: {
             auto &spawn = static_cast<const Spawn &>(msg);
             if (m_isMaster) {
                auto notify = spawn;
@@ -682,7 +682,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
 
-         case Message::SPAWNPREPARED: {
+         case message::SPAWNPREPARED: {
 
             auto &spawn = static_cast<const SpawnPrepared &>(msg);
             vassert(spawn.hubId() == m_hubId);
@@ -715,7 +715,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
 
-         case Message::SETID: {
+         case message::SETID: {
 
             vassert(!m_isMaster);
             auto &set = static_cast<const SetId &>(msg);
@@ -745,7 +745,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
 
-         case Message::QUIT: {
+         case message::QUIT: {
 
             std::cerr << "hub: got quit: " << msg << std::endl;
             auto &quit = static_cast<const Quit &>(msg);
@@ -772,25 +772,25 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
 
-         case Message::EXECUTE: {
+         case message::EXECUTE: {
             auto &exec = static_cast<const Execute &>(msg);
             handlePriv(exec);
             break;
          }
 
-         case Message::BARRIER: {
+         case message::BARRIER: {
             auto &barr = static_cast<const Barrier &>(msg);
             handlePriv(barr);
             break;
          }
 
-         case Message::BARRIERREACHED: {
+         case message::BARRIERREACHED: {
             auto &reached = static_cast<const BarrierReached &>(msg);
             handlePriv(reached);
             break;
          }
 
-         case Message::REQUESTTUNNEL: {
+         case message::REQUESTTUNNEL: {
             auto &tunnel = static_cast<const RequestTunnel &>(msg);
             handlePriv(tunnel);
             break;

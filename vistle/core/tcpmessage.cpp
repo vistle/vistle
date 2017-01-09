@@ -25,7 +25,7 @@ static const uint32_t VistleError = 12345;
 namespace {
 
 bool check(const Message &msg) {
-    if (msg.type() <= Message::ANY || msg.type() >= Message::NumMessageTypes) {
+    if (msg.type() <= ANY || msg.type() >= NumMessageTypes) {
         std::cerr << "check message: invalid type " << msg.type() << std::endl;
         return false;
     }

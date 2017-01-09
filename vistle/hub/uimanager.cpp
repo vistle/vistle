@@ -30,8 +30,8 @@ bool UiManager::handleMessage(const message::Message &msg, std::shared_ptr<boost
    using namespace vistle::message;
 
    switch(msg.type()) {
-   case Message::MODULEEXIT:
-   case Message::QUIT: {
+   case MODULEEXIT:
+   case QUIT: {
        auto it = m_clients.find(sock);
        if (it == m_clients.end()) {
            std::cerr << "UiManager: unknown UI quit" << std::endl;
@@ -39,7 +39,7 @@ bool UiManager::handleMessage(const message::Message &msg, std::shared_ptr<boost
            it->second->cancel();
            removeClient(it->second);
        }
-       if (msg.type() == Message::MODULEEXIT)
+       if (msg.type() == MODULEEXIT)
            return true;
        break;
    }
