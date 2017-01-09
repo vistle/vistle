@@ -10,7 +10,6 @@ unsigned Router::rt[NumMessageTypes];
 
 void Router::initRoutingTable() {
 
-   typedef Message M;
    memset(&rt, '\0', sizeof(rt));
 
    rt[INVALID]               = 0;
