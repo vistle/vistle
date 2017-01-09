@@ -27,9 +27,6 @@
 
 // modified by YoungTaek Oh.
 
-#ifdef WIN32
-#   undef _DEBUG
-#endif
 #include <Python.h>
 #include <boost/python.hpp>
 #include "vistleconsole.h"

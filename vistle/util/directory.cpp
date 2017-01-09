@@ -7,7 +7,16 @@ namespace vistle {
 bool scanModules(const std::string &dir, int hub, AvailableMap &available) {
 
    namespace bf = vistle::filesystem;
+#ifdef WIN32
+#ifdef _DEBUG
+   std::cerr << dir + "/../../../libexec/module/Debug" << std::endl;
+   bf::path p(dir + "/../../../libexec/module/Debug");
+#else
+   bf::path p(dir + "/../../../libexec/module/Release");
+#endif
+#else
    bf::path p(dir);
+#endif
    try {
       if (!bf::is_directory(p)) {
          std::cerr << "scanModules: " << dir << " is not a directory" << std::endl;

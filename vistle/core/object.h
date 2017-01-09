@@ -417,7 +417,7 @@ private:
 
 #define V_DATA_BEGIN(ObjType) \
    public: \
-   struct Data: public Base::Data { \
+   struct V_COREEXPORT Data: public Base::Data { \
       static Data *createNamed(Object::Type id, const std::string &name); \
       Data(Object::Type id, const std::string &name, const Meta &meta); \
       Data(const Data &other, const std::string &name) \

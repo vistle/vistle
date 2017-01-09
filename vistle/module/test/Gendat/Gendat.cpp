@@ -1,6 +1,8 @@
 #include <sstream>
 #include <iomanip>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
 #include <core/object.h>
 #include <core/vec.h>
 #include <core/triangles.h>
@@ -12,7 +14,6 @@
 #include <util/enum.h>
 
 #include "Gendat.h"
-#include <math.h>
 
 MODULE_MAIN(Gendat)
 
@@ -106,7 +107,7 @@ inline Scalar computeData(Scalar x, Scalar y, Scalar z, DataMode mode, Scalar sc
 
 void setDataCoords(Scalar *d, Index numVert, const Scalar *xx, const Scalar *yy, const Scalar *zz, DataMode mode, Scalar scale) {
 #pragma omp parallel for
-    for (Index idx=0; idx<numVert; ++idx) {
+    for (SIndex idx=0; idx<numVert; ++idx) {
         Scalar x = xx[idx], y=yy[idx], z=zz[idx];
         d[idx] = computeData(x, y, z, mode, scale);
     }
@@ -118,9 +119,9 @@ void setDataUniform(Scalar *d, Index dim[3], Vector min, Vector max, DataMode mo
         dist[c] /= dim[c]-1;
     }
 #pragma omp parallel for
-    for (Index i=0; i<dim[0]; ++i) {
-        for (Index j=0; j<dim[1]; ++j) {
-            for (Index k=0; k<dim[2]; ++k) {
+    for (SIndex i=0; i<dim[0]; ++i) {
+        for (SIndex j=0; j<dim[1]; ++j) {
+            for (SIndex k=0; k<dim[2]; ++k) {
                 Index idx = StructuredGrid::vertexIndex(i, j, k, dim);
                 Scalar x = min[0]+i*dist[0];
                 Scalar y = min[1]+j*dist[1];
