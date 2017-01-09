@@ -15,6 +15,7 @@ set(util_SOURCES
 set(util_HEADERS
    export.h
    coRestraint.h
+   enum.h
    exception.h
    findself.h
    sysdep.h
