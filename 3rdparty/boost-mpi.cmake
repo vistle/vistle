@@ -6,7 +6,10 @@ set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_C_LINK_FLAGS})
 vistle_find_package(Boost 1.40 REQUIRED COMPONENTS serialization system)
 
 add_definitions(-DBOOST_MPI_SOURCE)
+if(NOT WIN32)
 add_definitions(-DBOOST_MPI_DECL=__attribute__\ \(\(visibility\(\"default\"\)\)\))
+endif(NOT WIN32)
+
 
 
 set(boost_mpi_SOURCES

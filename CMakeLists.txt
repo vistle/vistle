@@ -6,6 +6,9 @@ if(POLICY CMP0042)
    cmake_policy(SET CMP0042 NEW)
 endif()
 
+# Automatically link Qt executables to qtmain target on Windows
+cmake_policy(SET CMP0020 NEW)
+
 # vim's YouCompleteMe can make use of this
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
@@ -187,11 +190,15 @@ if(WIN32)
     STRING(REGEX REPLACE "\\\\" "/" BOOST_ROOT ${BOOST_ROOT}) 
     set(MPI_HOME "$ENV{EXTERNLIBS}/OpenMPI")
     set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/vistle/cmake/Modules/windows;${CMAKE_MODULE_PATH}")
-    add_definitions("-DOMPI_IMPORTS")
-    add_definitions("-DWIN32_LEAN_AND_MEAN")
-    add_definitions("-DNOMINMAX")
-    add_definitions("-DBOOST_ALL_NO_LIB")
+    add_definitions(-DOMPI_IMPORTS)
+    add_definitions(-DWIN32_LEAN_AND_MEAN)
+    add_definitions(-DNOMINMAX)
+    add_definitions(-DBOOST_ALL_NO_LIB)
+    add_definitions(-DBOOST_MPI_DYN_LINK)
 	add_definitions(-D_WIN32_WINNT=0x0601) # windows 7
+	add_definitions(-DMS_WIN64) # Python
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251 /wd4275 /EHsc")
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4251 /wd4275 /EHsc")
 	
 	
 endif(WIN32)

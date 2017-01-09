@@ -12,6 +12,7 @@
 #include <util/enum.h>
 
 #include "Gendat.h"
+#include <math.h>
 
 MODULE_MAIN(Gendat)
 

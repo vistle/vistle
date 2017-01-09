@@ -129,7 +129,8 @@ void coRestraint::clear()
 //==========================================================================
 ssize_t coRestraint::lower() const
 {
-   ssize_t i=0, low;
+   size_t i=0;
+   ssize_t low;
    if (!min.empty())
       low = min[0];
    else
@@ -151,7 +152,8 @@ ssize_t coRestraint::lower() const
 //==========================================================================
 ssize_t coRestraint::upper() const
 {
-   ssize_t i=0, up;
+	size_t i = 0;
+	ssize_t up;
    if (!max.empty())
       up = max[0];
    else
@@ -176,7 +178,7 @@ bool coRestraint::operator ()(ssize_t val) const
    if (all)
       return true;
 
-   ssize_t i=0;
+   size_t i=0;
    while (i<min.size())
    {
       if ( (val>=min[i]) && (val<=max[i]) )
