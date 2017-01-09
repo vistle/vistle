@@ -341,10 +341,10 @@ private:
             publish(data); \
             return createFromData(data); \
    } \
-   ObjType::ptr clone() const { \
+   ptr clone() const { \
       return ObjType::as(cloneInternal()); \
    } \
-   ObjType::ptr cloneType() const { \
+   ptr cloneType() const { \
       return ObjType::as(cloneTypeInternal()); \
    } \
    Object::ptr cloneTypeInternal() const override { \
@@ -354,17 +354,17 @@ private:
       return Object::ptr(new ObjType(Object::Initialized)); \
    } \
    template<class OtherType> \
-   static ObjType::ptr clone(typename OtherType::ptr other) { \
+   static ptr clone(typename ptr other) { \
       const std::string n(Shm::the().createObjectId()); \
       typename ObjType::Data *data = shm<typename ObjType::Data>::construct(n)(*other->d(), n); \
       assert(data->type == ObjType::type()); \
-      ObjType::ptr ret = ObjType::as(createFromData(data)); \
+      ptr ret = ObjType::as(createFromData(data)); \
       assert(ret); \
       publish(data); \
       return ret; \
    } \
    template<class OtherType> \
-   static ObjType::ptr clone(typename OtherType::const_ptr other) { \
+   static ptr clone(typename OtherType::const_ptr other) { \
       return ObjType::clone<OtherType>(std::const_pointer_cast<OtherType>(other)); \
    } \
    static void destroy(const std::string &name) { shm<ObjType::Data>::destroy(name); } \

@@ -1,13 +1,12 @@
 #ifndef VEC_H
 #define VEC_H
-
 #include "index.h"
 #include "dimensions.h"
 #include "shm.h"
-#include "shmvector.h"
 #include "object.h"
 #include "vector.h"
 #include "database.h"
+#include "shmvector.h"
 
 namespace vistle {
 

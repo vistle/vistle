@@ -3,6 +3,7 @@
 #include <algorithm>
 #include "archives.h"
 #include "cellalgorithm.h"
+#include <set>
 
 //#define INTERPOL_DEBUG
 
@@ -303,19 +304,19 @@ Scalar UnstructuredGrid::cellDiameter(Index elem) const {
         return 0;
     Index v0 = verts[0];
     Vector p(x[v0], y[v0], z[v0]);
-    Vector far(p);
+    Vector farAway(p);
     Scalar dist2(0);
     for (Index v: verts) {
         Vector q(x[v], y[v], z[v]);
         Scalar d = (p-q).squaredNorm();
         if (d > dist2) {
-            far = q;
+			farAway = q;
             dist2 = d;
         }
     }
     for (Index v: verts) {
         Vector q(x[v], y[v], z[v]);
-        Scalar d = (far-q).squaredNorm();
+        Scalar d = (farAway -q).squaredNorm();
         if (d > dist2) {
             dist2 = d;
         }

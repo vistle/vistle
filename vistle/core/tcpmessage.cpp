@@ -5,10 +5,13 @@
 #include <mutex>
 
 #include <util/tools.h>
+#ifndef WIN32
 #include <arpa/inet.h>
+#endif
 #include "tcpmessage.h"
 #include "message.h"
 #include "messages.h"
+#include <deque>
 
 namespace asio = boost::asio;
 using boost::system::error_code;

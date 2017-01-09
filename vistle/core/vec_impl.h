@@ -18,7 +18,7 @@ Vec<T,Dim>::Vec()
 }
 
 template <class T, int Dim>
-Vec<T,Dim>::Vec(Vec::Data *data)
+Vec<T,Dim>::Vec(Data *data)
       : Base(data)
 {
    refreshImpl();

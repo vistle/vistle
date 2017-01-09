@@ -1,6 +1,7 @@
 #ifndef SYSDEP_H
 #define SYSDEP_H
 
+#include "export.h"
 #ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -15,7 +16,7 @@
 
 typedef uint32_t uid_t;
 
-uid_t getuid();
+uid_t V_UTILEXPORT getuid();
 
 inline void sleep(int x) { Sleep(x*1000); }; 
 inline void usleep(__int64 usec) 

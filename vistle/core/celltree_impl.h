@@ -19,8 +19,8 @@ V_COREEXPORT void Celltree<Scalar, Index, NumDimensions>::refreshImpl() const {
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-void Celltree<Scalar, Index, NumDimensions>::init(const Celltree::Vector *min, const Celltree::Vector *max,
-      const Celltree::Vector &gmin, const Celltree::Vector &gmax) {
+void Celltree<Scalar, Index, NumDimensions>::init(const Vector *min, const Vector *max,
+      const Vector &gmin, const Vector &gmax) {
 
    assert(nodes().size() == 1);
    for (int i=0; i<NumDimensions; ++i)
@@ -29,14 +29,14 @@ void Celltree<Scalar, Index, NumDimensions>::init(const Celltree::Vector *min, c
       this->max()[i] = gmax[i];
 #ifdef CT_DEBUG
    struct MinMaxBoundsFunctor: public Celltree::CellBoundsFunctor {
-      const Celltree::Vector *m_min, *m_max;
+      const Vector *m_min, *m_max;
 
-      MinMaxBoundsFunctor(const Celltree::Vector *min, const Celltree::Vector *max)
+      MinMaxBoundsFunctor(const Vector *min, const Vector *max)
          : m_min(min)
          , m_max(max)
          {}
 
-      bool operator()(Index elem, Celltree::Vector *min, Celltree::Vector *max) const {
+      bool operator()(Index elem, Vector *min, Vector *max) const {
 
          auto vmin = m_min[elem], vmax = m_max[elem];
          *min = vmin;
@@ -56,8 +56,8 @@ void Celltree<Scalar, Index, NumDimensions>::init(const Celltree::Vector *min, c
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min, const Celltree::Vector *max, Index curNode,
-      const Celltree::Vector &gmin, const Celltree::Vector &gmax) {
+void Celltree<Scalar, Index, NumDimensions>::refine(const Vector *min, const Vector *max, Index curNode,
+      const Vector &gmin, const Vector &gmax) {
 
    const Scalar smax = std::numeric_limits<Scalar>::max();
 
@@ -104,7 +104,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
    // sort cells into buckets
    const Vector crange = cmax - cmin;
 
-   auto getBucket = [cmin, cmax, crange] (Vector center, int d) -> int { return crange[d] == 0 ? 0 : std::min(int((center[d] - cmin[d])/crange[d] * NumBuckets), NumBuckets-1); };
+   auto getBucket = [cmin, cmax, crange, NumBuckets] (Vector center, int d) -> int { return crange[d] == 0 ? 0 : std::min(int((center[d] - cmin[d])/crange[d] * NumBuckets), NumBuckets -1); };
 
    for (Index i=node->start; i<node->start+node->size; ++i) {
       const Index cell = cells[i];
@@ -171,7 +171,7 @@ void Celltree<Scalar, Index, NumDimensions>::refine(const Celltree::Vector *min,
    const Index D = best_dim;
 
    auto centerD = [min, max, D](Index c) -> Scalar { return Scalar(0.5)*(min[c][D]+max[c][D]); };
-   auto getBucketD = [cmin, cmax, crange, D] (Scalar center) -> int { return crange[D] == 0 ? 0 : std::min(int((center - cmin[D])/crange[D] * NumBuckets), NumBuckets-1); };
+   auto getBucketD = [cmin, cmax, crange, D, NumBuckets] (Scalar center) -> int { return crange[D] == 0 ? 0 : std::min(int((center - cmin[D])/crange[D] * NumBuckets), NumBuckets -1); };
 
 #ifdef CT_DEBUG
    const Scalar split = cmin[D] + crange[D] / NumBuckets * (best_bucket+1);
@@ -279,7 +279,7 @@ bool Celltree<Scalar, Index, NumDimensions>::validateTree(BoundsFunctor &boundFu
 
 template<typename Scalar, typename Index, int NumDimensions>
 template<class BoundsFunctor>
-bool Celltree<Scalar, Index, NumDimensions>::validateNode(BoundsFunctor &boundFunc, Index nodenum, const Celltree::Vector &min, const Celltree::Vector &max) const {
+bool Celltree<Scalar, Index, NumDimensions>::validateNode(BoundsFunctor &boundFunc, Index nodenum, const Vector &min, const Vector &max) const {
 
    bool valid = true;
    const Index *cells = d()->m_cells->data();
@@ -356,7 +356,7 @@ Celltree<Scalar, Index, NumDimensions>::Celltree()
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-Celltree<Scalar, Index, NumDimensions>::Celltree(Celltree::Data *data)
+Celltree<Scalar, Index, NumDimensions>::Celltree(Data *data)
 : Base(data)
 {
     refreshImpl();
@@ -384,7 +384,7 @@ bool Celltree<Scalar, Index, NumDimensions>::checkImpl() const {
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
-Celltree<Scalar, Index, NumDimensions>::Data::Data(const Celltree::Data &o, const std::string &n)
+Celltree<Scalar, Index, NumDimensions>::Data::Data(const Data &o, const std::string &n)
 : Celltree::Base::Data(o, n)
 , m_bounds(o.m_bounds)
 , m_cells(o.m_cells)
@@ -394,14 +394,14 @@ Celltree<Scalar, Index, NumDimensions>::Data::Data(const Celltree::Data &o, cons
 
 template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Data::Data(Object::Type id, const std::string &name, const Meta &meta)
-: Celltree::Base::Data(id, name, meta)
+: Base::Data(id, name, meta)
 {
 }
 
 template<typename Scalar, typename Index, int NumDimensions>
 Celltree<Scalar, Index, NumDimensions>::Data::Data(const std::string &name, const Index numCells,
                      const Meta &meta)
-: Celltree::Base::Data(Object::Type(Object::CELLTREE1-1+NumDimensions), name, meta)
+: Base::Data(Object::Type(Object::CELLTREE1-1+NumDimensions), name, meta)
 {
    m_bounds.construct(2*NumDimensions);
    m_cells.construct(numCells);

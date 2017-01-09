@@ -47,7 +47,7 @@ bool VertexOwnerList::isEmpty() const {
 }
 
 Index VertexOwnerList::getNumVertices() const {
-   return d()->vertexList->size() - 1;
+   return (Index)(d()->vertexList->size() - 1);
 }
 
 std::pair<const Index*,Index> VertexOwnerList::getSurroundingCells(Index v) const {
@@ -60,12 +60,15 @@ std::pair<const Index*,Index> VertexOwnerList::getSurroundingCells(Index v) cons
 
 Index VertexOwnerList::getNeighbor(Index cell, Index vertex1, Index vertex2, Index vertex3) const {
    std::map<Index,Index> cellCount;
-   std::array<Index, 3> vertices({vertex1, vertex2, vertex3});
+   std::array<Index, 3> vertices;
 
    if (vertex1 == vertex2 || vertex1 == vertex3 || vertex2 == vertex3) {
       std::cerr << "WARNING: getNeighbor was not called with 3 unique vertices." << std::endl;
       return InvalidIndex;
    }
+   vertices[0] = vertex1;
+   vertices[1] = vertex2;
+   vertices[2] = vertex3;
 
    for (Index i=0; i<3; ++i) {
       const auto cells_num = getSurroundingCells(vertices[i]);

@@ -98,7 +98,7 @@ class V_COREEXPORT Celltree: public Object {
 
  private:
    template<class BoundsFunctor>
-   bool validateNode(BoundsFunctor &func, Index nodenum, const Celltree::Vector &min, const Celltree::Vector &max) const;
+   bool validateNode(BoundsFunctor &func, Index nodenum, const Vector &min, const Vector &max) const;
    template<class InnerNodeFunctor, class ElementFunctor>
    bool traverseNode(Index curNode, const Node *nodes, const Index *cells, InnerNodeFunctor &visitNode, ElementFunctor &visitElement) const {
 

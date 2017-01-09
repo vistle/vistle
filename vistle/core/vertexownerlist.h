@@ -5,9 +5,10 @@
 #include "scalar.h"
 #include "index.h"
 #include "shm.h"
-#include "shmvector.h"
 #include "object.h"
 #include "vector.h"
+#include "shmvector.h"
+
 
 namespace vistle {
 

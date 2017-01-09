@@ -35,7 +35,7 @@ class V_COREEXPORT GridInterface: virtual public ElementInterface {
     public:
       Interpolator() {}
       Interpolator(std::vector<Scalar> &weights, std::vector<Index> &indices)
-#if __cplusplus >= 201103L
+#if __cplusplus >= 199711L //201103L
       : weights(std::move(weights)), indices(std::move(indices))
 #else
       : weights(weights), indices(indices)

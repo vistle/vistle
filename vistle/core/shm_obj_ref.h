@@ -161,7 +161,7 @@ class shm_obj_ref {
 
       auto obj = ar.currentObject();
       auto handler = ar.objectCompletionHandler();
-      auto ref0 = ar.template getObject(name, [this, name, obj, handler]() -> void {
+      auto ref0 = ar.getObject(name, [this, name, obj, handler]() -> void {
          //std::cerr << "object completion handler: " << name << std::endl;
          auto ref2 = T::as(Shm::the().getObjectFromName(name));
          assert(ref2);

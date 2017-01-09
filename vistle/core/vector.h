@@ -13,7 +13,8 @@ namespace vistle {
 typedef Eigen::Quaternion<vistle::Scalar> Quaternion;
 typedef Eigen::AngleAxis<vistle::Scalar> AngleAxis;
 
-#if __cplusplus >= 201103L
+template<int d>
+#if __cplusplus >= 199711L //201103L
 template<int d>
 using ScalarVector = Eigen::Matrix<Scalar, d, 1>;
 template<int d>
