@@ -118,7 +118,12 @@ typename Type::const_ptr Module::accept(const std::string &port) {
 
 template<class Type>
 typename Type::const_ptr Module::expect(Port *port) {
-   Object::const_ptr obj;
+   if (!port) {
+       std::stringstream str;
+       str << "invalid port" << std::endl;
+       sendError(str.str());
+       return nullptr;
+   }
    if (port->objects().empty()) {
       if (schedulingPolicy() == message::SchedulingPolicy::Single) {
           std::stringstream str;
@@ -127,7 +132,7 @@ typename Type::const_ptr Module::expect(Port *port) {
       }
       return nullptr;
    }
-   obj = port->objects().front();
+   Object::const_ptr obj = port->objects().front();
    typename Type::const_ptr ret = Type::as(obj);
    port->objects().pop_front();
    if (!obj) {

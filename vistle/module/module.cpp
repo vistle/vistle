@@ -903,16 +903,21 @@ vistle::Object::const_ptr Module::takeFirstObject(Port *port) {
 // specialized for avoiding Object::type(), which does not exist
 template<>
 Object::const_ptr Module::expect<Object>(Port *port) {
-   Object::const_ptr obj;
+   if (!port) {
+       std::stringstream str;
+       str << "invalid port" << std::endl;
+       sendError(str.str());
+       return nullptr;
+   }
    if (port->objects().empty()) {
        if (schedulingPolicy() == message::SchedulingPolicy::Single) {
            std::stringstream str;
            str << "no object available at " << port->getName() << ", but one is required" << std::endl;
            sendError(str.str());
        }
-      return obj;
+      return nullptr;
    }
-   obj = port->objects().front();
+   Object::const_ptr obj = port->objects().front();
    port->objects().pop_front();
    if (!obj) {
       std::stringstream str;
