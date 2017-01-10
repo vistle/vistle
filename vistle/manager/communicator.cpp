@@ -15,7 +15,6 @@
 #include <core/tcpmessage.h>
 #include <core/object.h>
 #include <core/parameter.h>
-#include <util/findself.h>
 #include <util/sleep.h>
 #include <util/tools.h>
 

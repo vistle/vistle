@@ -23,7 +23,7 @@
 #include <core/object.h>
 #include <core/shm.h>
 #include <core/parameter.h>
-#include <util/findself.h>
+#include <util/directory.h>
 
 #include "clustermanager.h"
 #include "datamanager.h"

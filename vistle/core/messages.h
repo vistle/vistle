@@ -9,7 +9,6 @@
 #include <boost/asio/ip/address_v4.hpp>
 
 #include <util/enum.h>
-#include <util/directory.h>
 #include "uuid.h"
 #include "object.h"
 #include "scalar.h"

@@ -9,7 +9,7 @@
 #include <sstream>
 
 #include <core/assert.h>
-#include <util/findself.h>
+#include <util/directory.h>
 #include <util/spawnprocess.h>
 #include <util/sleep.h>
 #include <core/object.h>
@@ -38,6 +38,7 @@ using std::shared_ptr;
 using namespace vistle;
 using message::Router;
 using message::Id;
+namespace dir = vistle::directory;
 
 #define CERR std::cerr << "Hub " << m_hubId << ": " 
 
@@ -808,7 +809,7 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
 
 bool Hub::init(int argc, char *argv[]) {
 
-   m_bindir = getbindir(argc, argv);
+   m_prefix = dir::prefix(argc, argv);
 
    m_name = hostname();
 
@@ -894,7 +895,7 @@ bool Hub::init(int argc, char *argv[]) {
    }
 
    if (!uiCmd.empty()) {
-      std::string uipath = m_bindir + "/" + uiCmd;
+      std::string uipath = dir::bin(m_prefix) + "/" + uiCmd;
       startUi(uipath);
    }
 
@@ -909,7 +910,7 @@ bool Hub::init(int argc, char *argv[]) {
    std::string dataPort = boost::lexical_cast<std::string>(m_dataProxy->port());
 
    // start manager on cluster
-   std::string cmd = m_bindir + "/vistle_manager";
+   std::string cmd = dir::bin(m_prefix) + "/vistle_manager";
    std::vector<std::string> args;
    args.push_back("spawn_vistle.sh");
    args.push_back(cmd);
@@ -939,7 +940,7 @@ bool Hub::startCleaner() {
    }
 
    // run clean_vistle on cluster
-   std::string cmd = m_bindir + "/clean_vistle";
+   std::string cmd = dir::bin(m_prefix) + "/clean_vistle";
    std::vector<std::string> args;
    args.push_back("spawn_vistle.sh");
    args.push_back(cmd);
@@ -1005,7 +1006,7 @@ bool Hub::processScript() {
    vassert(m_uiManager.isLocked());
 #ifdef HAVE_PYTHON
    if (!m_scriptPath.empty()) {
-      PythonInterpreter inter(m_scriptPath, m_bindir + "/../share/vistle/");
+      PythonInterpreter inter(m_scriptPath, dir::share(m_prefix));
       while(inter.check()) {
          dispatch();
       }

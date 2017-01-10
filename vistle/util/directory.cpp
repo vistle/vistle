@@ -1,6 +1,7 @@
 #include <iostream>
 #include "filesystem.h"
 #include "directory.h"
+#include "findself.h"
 
 namespace vistle {
 
@@ -51,5 +52,60 @@ bool scanModules(const std::string &dir, int hub, AvailableMap &available) {
 
    return true;
 }
+
+namespace directory {
+
+std::string prefix(int argc, char *argv[]) {
+
+    return prefix(getbindir(argc, argv));
+}
+
+std::string prefix(const std::string &bindir) {
+
+   namespace bf = vistle::filesystem;
+   bf::path p(bindir);
+#ifdef WIN32
+   p += "/../..";
+#else
+   p += "/..";
+#endif
+   p = bf::canonical(p);
+
+   return p.string();
+}
+
+std::string bin(const std::string &prefix) {
+
+#ifdef WIN32
+#ifdef _DEBUG
+    return prefix + "/Debug/bin";
+#else
+    return prefix + "/Release/bin";
+#endif
+#else
+    return prefix + "/bin";
+#endif
+}
+
+std::string module(const std::string &prefix) {
+
+#ifdef WIN32
+#ifdef _DEBUG
+    return prefix + "/Debug/libexec/module";
+#else
+    return prefix + "/Release/libexec/module";
+#endif
+#else
+    return prefix + "/libexec/module";
+#endif
+
+}
+
+std::string share(const std::string &prefix) {
+
+    return prefix + "/share/vistle";
+}
+
+} // namespace directory
 
 }
