@@ -33,5 +33,6 @@ add_subdirectory(ToUnstructured)
 add_subdirectory(Tracer)
 add_subdirectory(Variant)
 add_subdirectory(VecToScalar)
+add_subdirectory(VectorField)
 add_subdirectory(WriteHDF5)
 
