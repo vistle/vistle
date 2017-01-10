@@ -6,8 +6,6 @@
 
 #include "export.h"
 
-#define SCAN_MODULES_ON_HUB
-
 namespace vistle {
 
 const int ModuleNameLength = 50;

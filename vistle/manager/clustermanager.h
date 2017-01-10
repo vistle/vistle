@@ -29,8 +29,6 @@ class ClusterManager {
    ClusterManager(int rank, const std::vector<std::string> &hosts);
    ~ClusterManager();
 
-   bool scanModules(const std::string &dir);
-
    bool dispatch(bool &received);
    const StateTracker &state() const;
 

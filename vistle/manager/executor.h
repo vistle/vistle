@@ -25,7 +25,7 @@ class Executor {
 
       void run();
 
-      bool scanModules(const std::string &directory) const;
+      void setModuleDir(const std::string &directory);
 
       int getRank() const { return m_rank; }
       int getSize() const { return m_size; }

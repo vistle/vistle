@@ -193,24 +193,6 @@ bool ClusterManager::isLocal(int id) const {
    return hub == Communicator::the().hubId();
 }
 
-bool ClusterManager::scanModules(const std::string &dir) {
-
-#ifdef SCAN_MODULES_ON_HUB
-    return true;
-#else
-   bool result = true;
-   if (getRank() == 0) {
-      AvailableMap availableModules;
-      result = vistle::scanModules(dir, Communicator::the().hubId(), availableModules);
-      for (auto &p: availableModules) {
-         const auto &m = p.second;
-         sendHub(message::ModuleAvailable(m.hub, m.name, m.path));
-      }
-   }
-   return result;
-#endif
-}
-
 std::vector<AvailableModule> ClusterManager::availableModules() const {
 
    return m_stateTracker.availableModules();

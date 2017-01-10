@@ -130,9 +130,9 @@ Executor::~Executor()
    Shm::the().detach();
 }
 
-bool Executor::scanModules(const std::string &dir) const {
+void Executor::setModuleDir(const std::string &dir) {
 
-    return m_comm->scanModules(dir);
+    return m_comm->setModuleDir(dir);
 }
 
 bool Executor::config(int argc, char *argv[]) {

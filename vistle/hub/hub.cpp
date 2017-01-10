@@ -726,15 +726,6 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             if (m_managerConnected) {
                sendManager(set);
             }
-#ifdef SCAN_MODULES_ON_HUB
-            scanModules(m_bindir + "/../libexec/module", m_hubId, m_availableModules);
-            for (auto &am: m_availableModules) {
-               message::ModuleAvailable m(m_hubId, am.second.name, am.second.path);
-               m.setDestId(Id::MasterHub);
-               sendMaster(m);
-               m_stateTracker.handle(m);
-            }
-#endif
             if (m_managerConnected) {
                auto state = m_stateTracker.getState();
                for (auto &m: state) {
@@ -745,6 +736,16 @@ bool Hub::handleMessage(const message::Message &recv, shared_ptr<asio::ip::tcp::
             break;
          }
 
+         case message::MODULEAVAILABLE: {
+            auto &mm = static_cast<ModuleAvailable &>(msg);
+            AvailableModule mod;
+            mod.hub = mm.hub();
+            mod.name = mm.name();
+            mod.path = mm.path();
+            AvailableModule::Key key(mm.hub(), mm.name());
+            m_availableModules.emplace(key, mod);
+            break;
+         }
          case message::QUIT: {
 
             std::cerr << "hub: got quit: " << msg << std::endl;
@@ -874,14 +875,6 @@ bool Hub::init(int argc, char *argv[]) {
       master.setPort(m_port);
       master.setDataPort(m_dataProxy->port());
       m_stateTracker.handle(master);
-
-#ifdef SCAN_MODULES_ON_HUB
-      scanModules(m_bindir + "/../libexec/module", m_hubId, m_availableModules);
-      for (auto &am: m_availableModules) {
-         message::ModuleAvailable m(m_hubId, am.second.name, am.second.path);
-         m_stateTracker.handle(m);
-      }
-#endif
    }
 
    // start UI

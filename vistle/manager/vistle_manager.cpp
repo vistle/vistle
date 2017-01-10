@@ -23,7 +23,8 @@ class Vistle: public Executor {
    bool config(int argc, char *argv[]) {
 
       std::string bindir = getbindir(argc, argv);
-      return scanModules(bindir + "/../libexec/module");
+      setModuleDir(bindir + "/../libexec/module");
+      return true;
    }
 };
 

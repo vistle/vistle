@@ -37,6 +37,7 @@ bool scanModules(const std::string &dir, int hub, AvailableMap &available) {
       std::string ext = ent.extension().string();
 
       AvailableModule mod;
+      mod.hub = hub;
       mod.name = stem;
       mod.path = bf::path(*it).string();
 
