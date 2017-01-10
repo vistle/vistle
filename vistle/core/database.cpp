@@ -3,6 +3,7 @@
 #include "database.h"
 #include "geometry.h"
 #include "archives.h"
+#include "coords.h"
 
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/vector_c.hpp>
@@ -107,6 +108,9 @@ DataBase::Mapping DataBase::guessMapping(Object::const_ptr g) const {
                 return Vertex;
             else if (getSize() == e->getNumElements())
                 return Element;
+        } else if (auto coords = Coords::as(g)) {
+            if (getSize() == coords->getSize())
+                return Vertex;
         }
     }
     return mapping();
