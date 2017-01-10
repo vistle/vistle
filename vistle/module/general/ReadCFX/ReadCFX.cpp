@@ -321,10 +321,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
 
     //load nodes into unstructured grid
     boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
-    //boost::shared_ptr<std::int32_t> nodeListOfVolume(new int);
-    //int *nodeListOfVolume = new int;
 
-    //boost::shared_ptr<std::double_t> ptrOnXdata(new double); //vielleicht mal mit scalar_t probieren
     auto ptrOnXdata = grid->x().data();
     auto ptrOnYdata = grid->y().data();
     auto ptrOnZdata = grid->z().data();
@@ -356,13 +353,11 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     //load element types, element list and connectivity list into unstructured grid
     int elemListCounter=0;
     boost::shared_ptr<std::int32_t> nodesOfElm(new int[8]), elemtype(new int);
-    int *elmListOfVolume = new int;
-
     auto ptrOnTl = grid->tl().data();
     auto ptrOnEl = grid->el().data();
     auto ptrOnCl = grid->cl().data();
 
-    elmListOfVolume = cfxExportVolumeList(m_selectedVolumes[volumeNr].volumeID,cfxVOL_ELEMS); //query the elements that define the volume
+    int *elmListOfVolume = cfxExportVolumeList(m_selectedVolumes[volumeNr].volumeID,cfxVOL_ELEMS); //query the elements that define the volume
 
     for(index_t i=0;i<nelmsInVolume;++i) {
         if(!cfxExportElementGet(elmListOfVolume[i],elemtype.get(),nodesOfElm.get())) {
@@ -564,6 +559,7 @@ bool ReadCFX::addVolumeDataToPorts(int volumeNr) {
         if(volumedata.find(portnum) != volumedata.end()) {
             if(volumedata[portnum]) {
                 volumedata[portnum] ->setGrid(m_currentGrid[volumeNr]);
+                volumedata[portnum] ->setMapping(DataBase::Vertex);
                 addObject(m_volumeDataOut[portnum], volumedata[portnum]);
             }
         }
@@ -579,6 +575,7 @@ bool ReadCFX::addVolumeDataToPorts(int volumeNr) {
         if(boundaryVolumedata.find(portnum) != boundaryVolumedata.end()) {
             if(boundaryVolumedata[portnum]) {
                 boundaryVolumedata[portnum] ->setGrid(m_currentGrid[volumeNr]);
+                boundaryVolumedata[portnum] ->setMapping(DataBase::Vertex);
                 addObject(m_boundaryDataOut[portnum], boundaryVolumedata[portnum]);
             }
         }
