@@ -21,6 +21,7 @@ ToSpheres::ToSpheres(const std::string &shmname, const std::string &name, int mo
    : Module("Spheres", shmname, name, moduleID) {
 
    createInputPort("grid_in");
+   createInputPort("map_in");
    createOutputPort("grid_out");
 
    auto MaxRad = std::numeric_limits<Scalar>::max();
@@ -61,6 +62,8 @@ bool ToSpheres::compute() {
       return true;
    }
 
+   auto data = accept<DataBase>("map_in");
+
    const MapMode mode = (MapMode)m_mapMode->getValue();
    if (mode != Fixed && !radius && !radius3) {
       sendError("data input required for varying radius");
@@ -94,7 +97,14 @@ bool ToSpheres::compute() {
    }
    spheres->setMeta(points->meta());
    spheres->copyAttributes(points);
-   addObject("grid_out", spheres);
+
+   if (data) {
+       auto dout = data->clone();
+       dout->setGrid(spheres);
+       addObject("grid_out", dout);
+   } else {
+       addObject("grid_out", spheres);
+   }
 
    return true;
 }
