@@ -322,14 +322,14 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     //load nodes into unstructured grid
     boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
     //boost::shared_ptr<std::int32_t> nodeListOfVolume(new int);
-    int *nodeListOfVolume = new int;
+    //int *nodeListOfVolume = new int;
 
     //boost::shared_ptr<std::double_t> ptrOnXdata(new double); //vielleicht mal mit scalar_t probieren
     auto ptrOnXdata = grid->x().data();
     auto ptrOnYdata = grid->y().data();
     auto ptrOnZdata = grid->z().data();
 
-    nodeListOfVolume = cfxExportVolumeList(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES); //query the nodes that define the volume
+    int *nodeListOfVolume = cfxExportVolumeList(m_selectedVolumes[volumeNr].volumeID,cfxVOL_NODES); //query the nodes that define the volume
     for(index_t i=0;i<nnodesInVolume;++i) {
         if(!cfxExportNodeGet(nodeListOfVolume[i],x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates: [IN] nodeid [OUT] x,y,z
             std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
@@ -562,20 +562,31 @@ bool ReadCFX::addVolumeDataToPorts(int volumeNr) {
     for (int portnum=0; portnum<NumPorts; ++portnum) {
         auto &volumedata = m_currentVolumedata;
         if(volumedata.find(portnum) != volumedata.end()) {
-            volumedata[portnum] ->setGrid(m_currentGrid[volumeNr]);
-            addObject(m_volumeDataOut[portnum], volumedata[portnum]);
+            if(volumedata[portnum]) {
+                volumedata[portnum] ->setGrid(m_currentGrid[volumeNr]);
+                addObject(m_volumeDataOut[portnum], volumedata[portnum]);
+            }
         }
         else {
             addObject(m_volumeDataOut[portnum], m_currentGrid[volumeNr]);
         }
-
 //        m_currentVolumedata[portnum]->setGrid(m_currentGrid[volumeNr]);
 //        addObject(m_volumeDataOut[portnum],m_currentVolumedata[portnum]);
-
     }
+
     for (int portnum=0; portnum<NumBoundaryPorts; ++portnum) {
-        m_currentBoundaryVolumedata[portnum]->setGrid(m_currentGrid[volumeNr]);
-        addObject(m_boundaryDataOut[portnum],m_currentBoundaryVolumedata[portnum]);
+        auto &boundaryVolumedata = m_currentBoundaryVolumedata;
+        if(boundaryVolumedata.find(portnum) != boundaryVolumedata.end()) {
+            if(boundaryVolumedata[portnum]) {
+                boundaryVolumedata[portnum] ->setGrid(m_currentGrid[volumeNr]);
+                addObject(m_boundaryDataOut[portnum], boundaryVolumedata[portnum]);
+            }
+        }
+        else {
+            addObject(m_boundaryDataOut[portnum], m_currentGrid[volumeNr]);
+        }
+//        m_currentBoundaryVolumedata[portnum]->setGrid(m_currentGrid[volumeNr]);
+//        addObject(m_boundaryDataOut[portnum],m_currentBoundaryVolumedata[portnum]);
     }
    return true;
 }
@@ -597,7 +608,7 @@ bool ReadCFX::compute() {
         for(int i=0;i<numbSelVolumes;++i) {
             m_currentGrid[i] = loadGrid(i);
             loadFields(i);
-            //addVolumeDataToPorts(i);
+            addVolumeDataToPorts(i);
         }
         sendInfo("Schleife über Volumes End");
 
