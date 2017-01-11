@@ -39,20 +39,26 @@ public:
     bool m_valid;
     bm_type m_allParam;
     std::map<int, int> m_ParamDimension;
-    index_t nvars;
+    index_t m_nvars;
 
     bool checkFile(const char *filename);
+    void parseResultfile();
     void getFieldList();
 };
 
 class ReadCFX: public vistle::Module {
     static const int NumPorts = 3;
     static const int NumBoundaryPorts = 3;
+    static const int correct = 1; //correct indicates whether to correct boundary node data according to the boundary condition (correct=1)
+                                  //or not (correct=0) (result out of calculation), assuming that it exists.
+
 
  public:
    ReadCFX(const std::string &shmname, const std::string &name, int moduleID);
    ~ReadCFX();
    virtual bool compute();
+   static const int usr_level = 0; // Query the number of variables at interest level usr_level or below. If usr_level is 0, then the
+                                   // total number of variables is returned.
 
  private:
    bool parameterChanged(const vistle::Parameter *p);
@@ -101,7 +107,7 @@ class ReadCFX: public vistle::Module {
    //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
    int rankForBlock(int processor) const;
    vistle::UnstructuredGrid::ptr loadGrid(int volumeNr);
-   vistle::DataBase::ptr loadField(int volumeNr, int variableID, int portnum);
+   vistle::DataBase::ptr loadField(int volumeNr, int variableID);
    bool loadFields(int volumeNr);
    int collectVolumes();
    bool addVolumeDataToPorts(int volumeNr);

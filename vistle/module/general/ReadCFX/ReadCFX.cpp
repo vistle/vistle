@@ -161,25 +161,39 @@ bool CaseInfo::checkFile(const char *filename) {
     return true;
 }
 
+void CaseInfo::parseResultfile() {
+    int dimension, corrected_boundary_node, length;
+
+    m_nvars = cfxExportVariableCount(ReadCFX::usr_level);
+    m_ParamDimension[0] = 0;
+    m_allParam.clear();
+    m_allParam.insert(bm_type::value_type(0,"(NONE)"));
+
+    for(index_t varnum=1;varnum<=m_nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,1) only returnes values from 1 and higher
+        m_allParam.insert(bm_type::value_type(varnum,cfxExportVariableName(varnum,1)));
+        if(cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
+            if(dimension == 1) {
+                m_ParamDimension[varnum] = 1;
+            }
+            else if(dimension == 3) {
+                m_ParamDimension[varnum] = 3;
+            }
+        }
+    }
+    return;
+}
+
 void CaseInfo::getFieldList() {
 
-    int usr_level = 0;
-    int dimension, corrected_boundary_node;
-    int length;
-
-    nvars = cfxExportVariableCount(usr_level);
-    //std::cerr << "nvars = " << nvars << std::endl;
+    int dimension, corrected_boundary_node, length;
 
     m_boundary_param.clear();
     m_boundary_param.push_back("(NONE)");
     m_field_param.clear();
     m_field_param.push_back("(NONE)");
-    m_ParamDimension[0] = 0;
-    m_allParam.insert(bm_type::value_type(0,"(NONE)"));
 
 
-    for(index_t varnum=1;varnum<=nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,1) only returnes values from 1 and higher
-        m_allParam.insert(bm_type::value_type(varnum,cfxExportVariableName(varnum,1)));
+    for(index_t varnum=1;varnum<=m_nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,1) only returnes values from 1 and higher
         if(cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
             if(length == 1) {
                 m_boundary_param.push_back(m_allParam.left.at(varnum));
@@ -189,15 +203,9 @@ void CaseInfo::getFieldList() {
             else {
                 m_field_param.push_back(m_allParam.left.at(varnum));
             }
-
-            if(dimension == 1) {
-                m_ParamDimension[varnum] = 1;
-            }
-            else if(dimension == 3) {
-                m_ParamDimension[varnum] = 3;
-            }
         }
     }
+    return;
 }
 
 /*int ReadFOAM::rankForBlock(int processor) const {
@@ -239,6 +247,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
 
             if (m_nzones > 0) {
                 cfxExportDone();
+                ExportDone = true;
             }
             char *resultfileName = strdup(resultfiledir);
             m_nzones = cfxExportInit(resultfileName, counts);
@@ -270,6 +279,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
             }
 
             //fill choice parameter
+            m_case.parseResultfile();
             m_case.getFieldList();
             for (auto out: m_fieldOut) {
                setParameterChoices(out, m_case.m_field_param);
@@ -441,7 +451,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     return grid;
 }
 
-DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID, int portnum) {
+DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID) {
 
     if(cfxExportZoneSet(m_selectedVolumes[volumeNr].zoneFlag,NULL) < 0) {
         std::cerr << "invalid zone number" << std::endl;
@@ -462,11 +472,11 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID, int portnum) {
         scalar_t *ptrOnScalarData;
         ptrOnScalarData = s->x().data();
         for(index_t j=0;j<nnodesInVolume;++j) {
-            cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
+            cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
             ptrOnScalarData[j] = *value.get();
-            //                if(j<20) {
-            //                    std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-            //                }
+            if(j<20) {
+                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+            }
         }
         cfxExportVariableFree(varnum);
         return s;
@@ -480,7 +490,7 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID, int portnum) {
         ptrOnVectorYData = v->y().data();
         ptrOnVectorZData = v->z().data();
         for(index_t j=0;j<nnodesInVolume;++j) {
-            cfxExportVariableGet(varnum,1,nodeListOfVolume[j],value.get());
+            cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
             ptrOnVectorXData[j] = value.get()[0];
             ptrOnVectorYData[j] = value.get()[1];
             ptrOnVectorZData[j] = value.get()[2];
@@ -493,9 +503,8 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID, int portnum) {
         cfxExportVariableFree(varnum);
         return v;
     }
-    else {
-        std::cerr << "Data port number " << portnum << " (" << m_case.m_allParam.left.at(varnum) << ") could not be loaded - not a valid variable" << std::endl;
-    }
+//    else {
+//    }
 
     return DataBase::ptr();
 }
@@ -539,14 +548,17 @@ bool ReadCFX::loadFields(int volumeNr) {
    for (int i=0; i<NumPorts; ++i) {
       std::string field = m_fieldOut[i]->getValue();
       bm_type::right_const_iterator right_iter = m_case.m_allParam.right.find(field);
-      DataBase::ptr obj = loadField(volumeNr, right_iter->second, i);
+      DataBase::ptr obj = loadField(volumeNr, right_iter->second);
+      if(!obj) {
+          std::cerr << "Data port number " << i << " (" << m_case.m_allParam.left.at(right_iter->second) << ") is empty - not a valid variable" << std::endl;
+      }
       //setMeta(obj, processor, timestep);
       m_currentVolumedata[i]= obj;
    }
    for (int i=0; i<NumBoundaryPorts; ++i) {
       std::string boundField = m_boundaryOut[i]->getValue();
       bm_type::right_const_iterator right_iter = m_case.m_allParam.right.find(boundField);
-      DataBase::ptr obj = loadField(volumeNr, right_iter->second, i);
+      DataBase::ptr obj = loadField(volumeNr, right_iter->second);
       //setMeta(obj, processor, timestep);
       m_currentBoundaryVolumedata[i]= obj;
    }
