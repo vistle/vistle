@@ -164,7 +164,7 @@ class Leveller {
          Scalar tmin = std::numeric_limits<Scalar>::max();
          Scalar tmax = -std::numeric_limits<Scalar>::max();
 #pragma omp for
-         for (SIndex elem=0; elem<numElem; ++elem) {
+         for (ssize_t elem=0; elem<numElem; ++elem) {
 
             Index n = 0;
             switch (tl[elem]) {

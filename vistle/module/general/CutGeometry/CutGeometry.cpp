@@ -148,7 +148,7 @@ class PlaneClip {
          outIdxCorner[0] = 0;
          outIdxCoord[0] = numCoordsIn;
 #pragma omp parallel for schedule (dynamic)
-         for (SIndex elem=0; elem<numElem; ++elem) {
+         for (ssize_t elem=0; elem<numElem; ++elem) {
 
             Index numCorner=0, numCoord=0;
             processTriangle(elem, numCorner, numCoord, true);
@@ -181,7 +181,7 @@ class PlaneClip {
          }
 
 #pragma omp parallel for schedule (dynamic)
-         for (SIndex elem = 0; elem<numElem; ++elem) {
+         for (ssize_t elem = 0; elem<numElem; ++elem) {
             processTriangle(elem, outIdxCorner[elem], outIdxCoord[elem], false);
          }
          //std::cerr << "CuttingSurface: << " << m_outData->x().size() << " vert, " << m_outData->x().size() << " data elements" << std::endl;
@@ -196,7 +196,7 @@ class PlaneClip {
          outIdxCorner[0] = 0;
          outIdxCoord[0] = numCoordsIn;
 #pragma omp parallel for schedule (dynamic)
-         for (SIndex elem=0; elem<numElem; ++elem) {
+         for (ssize_t elem=0; elem<numElem; ++elem) {
 
             Index numPoly=0, numCorner=0, numCoord=0;
             processPolygon(elem, numPoly, numCorner, numCoord, true);
@@ -231,7 +231,7 @@ class PlaneClip {
          }
 
 #pragma omp parallel for schedule (dynamic)
-         for (SIndex elem = 0; elem<numElem; ++elem) {
+         for (ssize_t elem = 0; elem<numElem; ++elem) {
             processPolygon(elem, outIdxPoly[elem], outIdxCorner[elem], outIdxCoord[elem], false);
          }
 
@@ -255,7 +255,7 @@ class PlaneClip {
       m_vertexMap.resize(nCoord);
       auto vertexMap = m_vertexMap.data();
 #pragma omp parallel for
-      for (SIndex i=0; i<nCoord; ++i) {
+      for (ssize_t i=0; i<nCoord; ++i) {
          const Vector p(x[i], y[i], z[i]);
          vertexMap[i] = m_decider(i) > 0 ? 1 : 0;
       }
@@ -274,7 +274,7 @@ class PlaneClip {
          out_y = m_outCoords->y().data();
          out_z = m_outCoords->z().data();
 #pragma omp parallel for schedule(dynamic)
-         for (SIndex i=0; i<nCoord; ++i) {
+         for (ssize_t i=0; i<nCoord; ++i) {
             Index idx = vertexMap[i];
             vassert(idx >= 0);
             if (idx > 0) {
