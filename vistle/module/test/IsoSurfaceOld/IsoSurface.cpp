@@ -164,7 +164,7 @@ class Leveller {
          Scalar tmin = std::numeric_limits<Scalar>::max();
          Scalar tmax = -std::numeric_limits<Scalar>::max();
 #pragma omp for
-         for (Index elem=0; elem<numElem; ++elem) {
+         for (SIndex elem=0; elem<numElem; ++elem) {
 
             Index n = 0;
             switch (tl[elem]) {
@@ -250,7 +250,7 @@ class Leveller {
          field[idx] = d[index[idx]];
       }
 
-      uint tableIndex = 0;
+      int tableIndex = 0;
       for (int idx = 0; idx < 8; idx ++)
          tableIndex += (((int) (field[idx] < m_isoValue)) << idx);
 

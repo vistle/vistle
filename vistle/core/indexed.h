@@ -41,7 +41,7 @@ class  V_COREEXPORT Indexed: public Coords, virtual public CelltreeInterface<3> 
    bool hasVertexOwnerList() const;
    VertexOwnerList::const_ptr getVertexOwnerList() const;
    void removeVertexOwnerList() const;
-   class NeighborFinder {
+   class V_COREEXPORT NeighborFinder {
        friend class Indexed;
    public:
        //! find neighboring element to elem containing vertices v1, v2, and v3

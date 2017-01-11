@@ -165,7 +165,7 @@ void Color::getMinMax(vistle::DataBase::const_ptr object,
          Index tmin = std::numeric_limits<Index>::max();
          Index tmax = -std::numeric_limits<Index>::min();
 #pragma omp for
-         for (size_t index = 0; index < numElements; index ++) {
+         for (ssize_t index = 0; index < numElements; index ++) {
             if (x[index] < tmin)
                tmin = x[index];
             if (x[index] > tmax)
@@ -186,7 +186,7 @@ void Color::getMinMax(vistle::DataBase::const_ptr object,
          Scalar tmin = std::numeric_limits<Scalar>::max();
          Scalar tmax = -std::numeric_limits<Scalar>::max();
 #pragma omp for
-         for (size_t index = 0; index < numElements; index ++) {
+         for (ssize_t index = 0; index < numElements; index ++) {
             if (x[index] < tmin)
                tmin = x[index];
             if (x[index] > tmax)
@@ -209,7 +209,7 @@ void Color::getMinMax(vistle::DataBase::const_ptr object,
          Scalar tmin = std::numeric_limits<Scalar>::max();
          Scalar tmax = -std::numeric_limits<Scalar>::max();
 #pragma omp for
-         for (size_t index = 0; index < numElements; index ++) {
+         for (ssize_t index = 0; index < numElements; index ++) {
             Scalar v = Vector(x[index], y[index], z[index]).norm();
             if (v < tmin)
                tmin = v;
@@ -247,14 +247,14 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
       const vistle::Scalar *x = &f->x()[0];
 
 #pragma omp parallel for
-      for (size_t index = 0; index < numElem; index ++)
+      for (ssize_t index = 0; index < numElem; index ++)
          tc[index] = (x[index] - min) * invRange;
    } else if (Vec<Index>::const_ptr f = Vec<Index>::as(object)) {
 
       const vistle::Index *x = &f->x()[0];
 
 #pragma omp parallel for
-      for (size_t index = 0; index < numElem; index ++)
+      for (ssize_t index = 0; index < numElem; index ++)
          tc[index] = (x[index] - min) * invRange;
    } else  if (Vec<Scalar,3>::const_ptr f = Vec<Scalar,3>::as(object)) {
 
@@ -263,7 +263,7 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
       const vistle::Scalar *z = &f->z()[0];
 
 #pragma omp parallel for
-      for (size_t index = 0; index < numElem; index ++) {
+      for (ssize_t index = 0; index < numElem; index ++) {
          const Scalar v = Vector(x[index], y[index], z[index]).norm();
          tc[index] = (v - min) * invRange;
       }
@@ -271,7 +271,7 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
        std::cerr << "Color: cannot handle input of type " << object->getType() << std::endl;
 
 #pragma omp parallel for
-      for (size_t index = 0; index < numElem; index ++) {
+      for (ssize_t index = 0; index < numElem; index ++) {
          tc[index] = 0.;
       }
    }

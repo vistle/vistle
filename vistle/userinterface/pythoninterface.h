@@ -3,6 +3,9 @@
 
 #include <string>
 #include <iostream>
+#ifdef slots // QT defines slots which breaks python qobject.h
+#undef slots
+#endif
 #include <boost/python/object.hpp>
 #include <boost/python/exec.hpp>
 

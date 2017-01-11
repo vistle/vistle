@@ -4,6 +4,7 @@
 #include <core/lines.h>
 #include <core/points.h>
 #include <util/enum.h>
+#include <bitset>
 
 #include "GenIsoDat.h"
 

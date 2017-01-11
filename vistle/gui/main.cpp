@@ -8,10 +8,10 @@
 #include "uicontroller.h"
 #include <userinterface/pythoninterface.h>
 #include <util/exception.h>
+#include <core/uuid.h>
 #include <QApplication>
 #include <QIcon>
 
-#include <core/uuid.h>
 
 Q_DECLARE_METATYPE(boost::uuids::uuid);
 

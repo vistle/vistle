@@ -196,9 +196,8 @@ if(WIN32)
     add_definitions(-DBOOST_ALL_NO_LIB)
     add_definitions(-DBOOST_MPI_DYN_LINK)
 	add_definitions(-D_WIN32_WINNT=0x0601) # windows 7
-	add_definitions(-DMS_WIN64) # Python
-	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251 /wd4275 /EHsc")
-	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4251 /wd4275 /EHsc")
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4251 /wd4275 /wd4910 /EHsc")
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4251 /wd4275 /wd4910 /EHsc")
 	
 	
 endif(WIN32)

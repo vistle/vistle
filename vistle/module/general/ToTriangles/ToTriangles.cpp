@@ -1,5 +1,7 @@
 #include <sstream>
 #include <iomanip>
+#define _USE_MATH_DEFINES
+#include <cmath>
 
 #include <boost/mpl/for_each.hpp>
 

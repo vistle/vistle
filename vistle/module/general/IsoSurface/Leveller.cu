@@ -428,7 +428,7 @@ struct classify_cell {
 
       const auto &cl = m_data.m_cl;
 
-      uint tableIndex = 0;
+      int tableIndex = 0;
       Index begin = m_data.m_el[CellNr], end = m_data.m_el[CellNr+1];
       Index nvert = end-begin;
       unsigned char CellType = m_data.m_tl[CellNr] & ~UnstructuredGrid::CONVEX_BIT;

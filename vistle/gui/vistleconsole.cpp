@@ -291,7 +291,8 @@ std::string python2String(PyObject *obj, bool *ok=nullptr) {
       if (bytes) {
          if (ok)
             *ok = true;
-         result = PyBytes_AS_STRING(bytes); // Borrowed pointer
+		 // does not work for python3 result = PyBytes_AS_STRING(bytes); // Borrowed pointer
+		 result = PyBytes_AsString(bytes); 
          Py_DECREF(bytes);
       } else {
          result = "<cannot interpret unicode>";

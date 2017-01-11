@@ -16,10 +16,10 @@ PythonInterface::PythonInterface(const std::string &name)
 
 #if PY_MAJOR_VERSION>2
    static std::wstring wideName = std::wstring(name.begin(), name.end());
-   Py_SetProgramName((wchar_t *)wideName.c_str());
+   Py_SetProgramName(const_cast<wchar_t*>(wideName.c_str()));
 #else
    static std::string namebuf(name);
-   Py_SetProgramName((char *)namebuf.c_str());
+   Py_SetProgramName(const_cast<char *>(namebuf.c_str()));
 #endif
    Py_Initialize();
 
@@ -103,3 +103,9 @@ bool PythonInterface::exec_wrapper(const std::string &param, PythonInterface::ex
 }
 
 } // namespace vistle
+
+#include "d:/src/gitbase/boost_1_62_0/libs/python/test/module_tail.cpp"
+#if 0
+#include "c:/src/externlibs/zebu/boost/lib/" 
+#include "$BOOST_ROOT/libs/python/test/module_tail.cpp" 
+#endif

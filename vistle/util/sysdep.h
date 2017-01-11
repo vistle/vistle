@@ -13,6 +13,7 @@
 #include <process.h>
 #include <windows.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 typedef uint32_t uid_t;
 
@@ -31,8 +32,20 @@ inline void usleep(__int64 usec)
     WaitForSingleObject(timer, INFINITE); 
     CloseHandle(timer); 
 };
+inline int setenv(const char *name, const char *value, int overwrite)
+{
+	int errcode = 0;
+	if (!overwrite) {
+		size_t envsize = 0;
+		errcode = getenv_s(&envsize, NULL, 0, name);
+		if (errcode || envsize) return errcode;
+	}
+	return _putenv_s(name, value);
+}
 
 #define getpid _getpid
+#define popen _popen
+#define pclose _pclose
 
 typedef SSIZE_T ssize_t;
 
