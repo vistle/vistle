@@ -103,9 +103,3 @@ bool PythonInterface::exec_wrapper(const std::string &param, PythonInterface::ex
 }
 
 } // namespace vistle
-
-#include "d:/src/gitbase/boost_1_62_0/libs/python/test/module_tail.cpp"
-#if 0
-#include "c:/src/externlibs/zebu/boost/lib/" 
-#include "$BOOST_ROOT/libs/python/test/module_tail.cpp" 
-#endif
