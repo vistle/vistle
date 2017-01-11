@@ -474,9 +474,9 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID) {
         for(index_t j=0;j<nnodesInVolume;++j) {
             cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
             ptrOnScalarData[j] = *value.get();
-            if(j<20) {
-                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-            }
+//            if(j<20) {
+//                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+//            }
         }
         cfxExportVariableFree(varnum);
         return s;
@@ -503,8 +503,6 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID) {
         cfxExportVariableFree(varnum);
         return v;
     }
-//    else {
-//    }
 
     return DataBase::ptr();
 }
@@ -575,11 +573,6 @@ bool ReadCFX::addVolumeDataToPorts(int volumeNr) {
                 addObject(m_volumeDataOut[portnum], volumedata[portnum]);
             }
         }
-        else {
-            addObject(m_volumeDataOut[portnum], m_currentGrid[volumeNr]);
-        }
-//        m_currentVolumedata[portnum]->setGrid(m_currentGrid[volumeNr]);
-//        addObject(m_volumeDataOut[portnum],m_currentVolumedata[portnum]);
     }
 
     for (int portnum=0; portnum<NumBoundaryPorts; ++portnum) {
@@ -591,13 +584,13 @@ bool ReadCFX::addVolumeDataToPorts(int volumeNr) {
                 addObject(m_boundaryDataOut[portnum], boundaryVolumedata[portnum]);
             }
         }
-        else {
-            addObject(m_boundaryDataOut[portnum], m_currentGrid[volumeNr]);
-        }
-//        m_currentBoundaryVolumedata[portnum]->setGrid(m_currentGrid[volumeNr]);
-//        addObject(m_boundaryDataOut[portnum],m_currentBoundaryVolumedata[portnum]);
     }
    return true;
+}
+
+bool ReadCFX::addGridToPort(int volumeNr) {
+    addObject(m_gridOut,m_currentGrid[volumeNr]);
+    return true;
 }
 
 bool ReadCFX::compute() {
@@ -617,6 +610,7 @@ bool ReadCFX::compute() {
         for(int i=0;i<numbSelVolumes;++i) {
             m_currentGrid[i] = loadGrid(i);
             loadFields(i);
+            addGridToPort(i);
             addVolumeDataToPorts(i);
         }
         sendInfo("Schleife über Volumes End");

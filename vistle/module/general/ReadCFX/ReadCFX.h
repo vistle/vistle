@@ -111,6 +111,7 @@ class ReadCFX: public vistle::Module {
    bool loadFields(int volumeNr);
    int collectVolumes();
    bool addVolumeDataToPorts(int volumeNr);
+   bool addGridToPort(int volumeNr);
 
 };
 
