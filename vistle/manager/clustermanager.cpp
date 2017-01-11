@@ -33,14 +33,6 @@
 #define BARRIER_DEBUG
 //#define DEBUG
 
-#ifdef NOHUB
-#ifdef _WIN32
-#define SPAWN_WITH_MPI
-#else
-#include <unistd.h>
-#endif
-#endif
-
 #define CERR \
    std::cerr << "ClusterManager [" << m_rank << "/" << m_size << "] "
 

@@ -5,8 +5,8 @@
  * thread.
  */
 /**********************************************************************************/
-#include "uicontroller.h"
 #include <userinterface/pythoninterface.h>
+#include "uicontroller.h"
 #include <util/exception.h>
 #include <core/uuid.h>
 #include <QApplication>
