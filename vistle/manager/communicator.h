@@ -25,8 +25,7 @@ class Communicator {
    ~Communicator();
    static Communicator &the();
 
-   bool scanModules(const std::string &dir);
-
+   void setModuleDir(const std::string &dir);
    void run();
    bool dispatch(bool *work);
    bool handleMessage(const message::Buffer &message);
@@ -49,6 +48,8 @@ class Communicator {
  private:
    bool sendHub(const message::Message &message);
    bool connectData();
+   bool scanModules(const std::string &dir);
+
 
    ClusterManager *m_clusterManager;
    DataManager *m_dataManager;
@@ -57,6 +58,7 @@ class Communicator {
    int m_hubId;
    const int m_rank;
    const int m_size;
+   std::string m_moduleDir;
 
    bool m_quitFlag;
 

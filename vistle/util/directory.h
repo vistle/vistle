@@ -6,8 +6,6 @@
 
 #include "export.h"
 
-#define SCAN_MODULES_ON_HUB
-
 namespace vistle {
 
 const int ModuleNameLength = 50;
@@ -39,6 +37,16 @@ struct AvailableModule {
 typedef std::map<AvailableModule::Key, AvailableModule> AvailableMap;
 
 V_UTILEXPORT bool scanModules(const std::string &directory, int hub, AvailableMap &available);
+
+namespace directory {
+
+V_UTILEXPORT std::string prefix(int argc, char *argv[]);
+V_UTILEXPORT std::string prefix(const std::string &bindir);
+V_UTILEXPORT std::string bin(const std::string &prefix);
+V_UTILEXPORT std::string module(const std::string &prefix);
+V_UTILEXPORT std::string share(const std::string &prefix);
+
+} // namespace directory
 
 }
 

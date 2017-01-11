@@ -15,7 +15,6 @@
 #include <core/tcpmessage.h>
 #include <core/object.h>
 #include <core/parameter.h>
-#include <util/findself.h>
 #include <util/sleep.h>
 #include <util/tools.h>
 
@@ -71,6 +70,11 @@ Communicator &Communicator::the() {
    if (!s_singleton)
       exit(1);
    return *s_singleton;
+}
+
+void Communicator::setModuleDir(const std::string &dir) {
+
+    m_moduleDir = dir;
 }
 
 int Communicator::hubId() const {
@@ -140,7 +144,17 @@ bool Communicator::sendHub(const message::Message &message) {
 
 bool Communicator::scanModules(const std::string &dir) {
 
-    return m_clusterManager->scanModules(dir);
+   bool result = true;
+   if (getRank() == 0) {
+      AvailableMap availableModules;
+      result = vistle::scanModules(dir, m_hubId, availableModules);
+      for (auto &p: availableModules) {
+         const auto &m = p.second;
+         message::ModuleAvailable msg(m.hub, m.name, m.path);
+         sendHub(msg);
+      }
+   }
+   return result;
 }
 
 void Communicator::setQuitFlag() {
@@ -353,6 +367,7 @@ bool Communicator::handleMessage(const message::Buffer &message) {
          m_hubId = set.getId();
          CERR << "got id " << m_hubId << std::endl;
          message::DefaultSender::init(m_hubId, m_rank);
+         scanModules(m_moduleDir);
          return connectData();
          break;
       }

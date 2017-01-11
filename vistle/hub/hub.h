@@ -79,7 +79,7 @@ private:
    std::map<process_handle, int> m_processMap;
    bool m_managerConnected;
 
-   std::string m_bindir;
+   std::string m_prefix;
    std::string m_scriptPath;
    bool m_quitting;
 

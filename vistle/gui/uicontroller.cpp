@@ -6,7 +6,7 @@
 #include "dataflowview.h"
 #include "parameters.h"
 #include "vistleconsole.h"
-#include <util/findself.h>
+#include <util/directory.h>
 
 #include <thread>
 
@@ -14,6 +14,8 @@
 #include <QFileDialog>
 #include <QDockWidget>
 #include <QGuiApplication>
+
+namespace dir = vistle::directory;
 
 namespace gui {
 
@@ -54,7 +56,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    m_ui->registerObserver(&m_observer);
    m_vistleConnection = new vistle::VistleConnection(*m_ui);
    m_vistleConnection->setQuitOnExit(quitOnExit);
-   m_pythonMod = new vistle::PythonModule(m_vistleConnection, vistle::getbindir(argc, argv) + "/../share/vistle/");
+   m_pythonMod = new vistle::PythonModule(m_vistleConnection, dir::share(dir::prefix(argc, argv)));
    m_thread = new std::thread(std::ref(*m_vistleConnection));
    m_mainWindow.parameters()->setVistleConnection(m_vistleConnection);
 

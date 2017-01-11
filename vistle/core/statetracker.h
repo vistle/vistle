@@ -9,8 +9,6 @@
 #include <mutex>
 #include <condition_variable>
 
-#include <util/directory.h>
-
 #include "export.h"
 #include "message.h"
 #include "messages.h"

@@ -2,7 +2,7 @@
 #include <userinterface/pythonmodule.h>
 #include <userinterface/userinterface.h>
 #include <userinterface/vistleconnection.h>
-#include <util/findself.h>
+#include <util/directory.h>
 
 #include <functional>
 #include <thread>
@@ -11,6 +11,7 @@
 #include <util/sleep.h>
 
 using namespace vistle;
+namespace dir = vistle::directory;
 
 class UiRunner {
 
@@ -150,7 +151,7 @@ int main(int argc, char *argv[]) {
       PythonInterface python("blower");
       VistleConnection conn(ui);
       conn.setQuitOnExit(quitOnExit);
-      PythonModule pythonmodule(&conn, getbindir(argc, argv) + "/../share/vistle/");
+      PythonModule pythonmodule(&conn, dir::share(dir::prefix(argc, argv)));
       std::thread runnerThread(std::ref(conn));
 
       while(!std::cin.eof() && !conn.done()) {

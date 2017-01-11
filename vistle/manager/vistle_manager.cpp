@@ -10,20 +10,22 @@
 #include <cstdlib>
 #include <sstream>
 
-#include <util/findself.h>
+#include <util/directory.h>
 #include <core/objectmeta.h>
 #include <core/object.h>
 #include "executor.h"
 
 using namespace vistle;
+namespace dir = vistle::directory;
 
 class Vistle: public Executor {
    public:
    Vistle(int argc, char *argv[]) : Executor(argc, argv) {}
    bool config(int argc, char *argv[]) {
 
-      std::string bindir = getbindir(argc, argv);
-      return scanModules(bindir + "/../libexec/module");
+      std::string prefix = dir::prefix(argc, argv);
+      setModuleDir(dir::module(prefix));
+      return true;
    }
 };
 
