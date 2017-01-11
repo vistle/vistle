@@ -4,6 +4,7 @@
 #include <core/object.h>
 #include <core/lines.h>
 #include <core/tubes.h>
+#include <util/math.h>
 
 #include "Tubes.h"
 
@@ -44,11 +45,6 @@ ToTubes::ToTubes(const std::string &shmname, const std::string &name, int module
 
 ToTubes::~ToTubes() {
 
-}
-
-template<typename S>
-S clamp(S v, S vmin, S vmax) {
-   return std::min(std::max(v, vmin), vmax);
 }
 
 bool ToTubes::compute() {

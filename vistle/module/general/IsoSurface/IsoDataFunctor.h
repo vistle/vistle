@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <thrust/execution_policy.h>
 #include <util/enum.h>
+#include <util/math.h>
 #include <core/scalar.h>
 #include <core/index.h>
 #include <core/vector.h>
@@ -21,11 +22,6 @@ DEFINE_ENUM_WITH_STRING_CONVERSIONS(SurfaceOption,
    (CylinderY)
    (CylinderZ)
 )
-
-template<typename S>
-inline S lerp(S a, S b, vistle::Scalar t) {
-    return a+t*(b-a);
-}
 
 template<vistle::Index>
 inline vistle::Index lerp(vistle::Index a, vistle::Index b, vistle::Scalar t) {

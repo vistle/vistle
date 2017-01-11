@@ -7,10 +7,9 @@
 #include <core/vec.h>
 #include <core/texture1d.h>
 #include <core/coords.h>
+#include <util/math.h>
 
 #include "Color.h"
-
-#define lerp(a, b, t) ( a + t * (b - a) )
 
 MODULE_MAIN(Color)
 

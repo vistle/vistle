@@ -3,6 +3,7 @@
 
 #include <core/object.h>
 #include <core/spheres.h>
+#include <util/math.h>
 
 #include "Spheres.h"
 
@@ -36,11 +37,6 @@ ToSpheres::ToSpheres(const std::string &shmname, const std::string &name, int mo
 
 ToSpheres::~ToSpheres() {
 
-}
-
-template<typename S>
-S clamp(S v, S vmin, S vmax) {
-   return std::min(std::max(v, vmin), vmax);
 }
 
 bool ToSpheres::compute() {

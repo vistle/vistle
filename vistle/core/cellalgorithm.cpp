@@ -1,5 +1,6 @@
 #include "cellalgorithm.h"
 #include "unstr.h"
+#include <util/math.h>
 
 namespace vistle {
 
@@ -55,7 +56,7 @@ Vector trilinearInverse(const Vector &pp0, const Vector pp[8]) {
        //ss = ss - (J'*J)\(J'*r);
        ss -= (J.transpose()*J).llt().solve(J.transpose()*res);
        for (int c=0; c<3; ++c)
-           ss[c] = std::min(std::max(ss[c], double(0)), double(1));
+           ss[c] = clamp(ss[c], double(0), double(1));
     }
 
     return ss.cast<Scalar>();

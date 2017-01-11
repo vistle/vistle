@@ -4,6 +4,7 @@
 #include <core/object.h>
 #include <core/lines.h>
 #include <core/coords.h>
+#include <util/math.h>
 
 #include "VectorField.h"
 
@@ -35,11 +36,6 @@ VectorField::VectorField(const std::string &shmname, const std::string &name, in
 
 VectorField::~VectorField() {
 
-}
-
-template<typename S>
-S clamp(S v, S vmin, S vmax) {
-   return std::min(std::max(v, vmin), vmax);
 }
 
 bool VectorField::compute() {

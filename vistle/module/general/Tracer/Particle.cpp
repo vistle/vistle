@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <boost/mpi/collectives/broadcast.hpp>
 #include <core/vec.h>
+#include <util/math.h>
 #include "Tracer.h"
 #include "Integrator.h"
 #include "Particle.h"
@@ -289,12 +290,6 @@ inline Scalar interp(Scalar f, const Scalar f0, const Scalar f1) {
     return std::min(vistle::Scalar(1), std::max(vistle::Scalar(0), d0 / diff));
 }
 
-template<class Value>
-Value lerp(Scalar t, Value v0, Value v1) {
-
-    return v0 + t*(v1- v0);
-}
-
 void Particle::addToOutput() {
 
    if (m_segments.empty())
@@ -329,14 +324,14 @@ void Particle::addToOutput() {
                    const auto pos1 = seg.m_xhist[i];
                    const auto pos0 = lastSeg ? lastSeg->m_xhist[lastIdx] : pos1;
                    auto points = m_global.points[timestep];
-                   Vector pos = lerp(t, pos0, pos1);
+                   Vector pos = lerp(pos0, pos1, t);
                    points->x().push_back(pos[0]);
                    points->y().push_back(pos[1]);
                    points->z().push_back(pos[2]);
 
                    const auto vel1 = seg.m_vhist[i];
                    const auto vel0 = lastSeg ? lastSeg->m_vhist[lastIdx] : vel1;
-                   Vector vel = lerp(t, vel0, vel1);
+                   Vector vel = lerp(vel0, vel1, t);
                    auto vout = m_global.vecField[timestep];
                    vout->x().push_back(vel[0]);
                    vout->y().push_back(vel[1]);
@@ -344,12 +339,12 @@ void Particle::addToOutput() {
 
                    const auto pres1 = seg.m_pressures[i];
                    const auto pres0 = lastSeg ? lastSeg->m_pressures[lastIdx] : pres1;
-                   Scalar pres = lerp(t, pres0, pres1);
+                   Scalar pres = lerp(pres0, pres1, t);
                    m_global.scalField[timestep]->x().push_back(pres);
 
                    const auto dist1 = seg.m_dists[i];
                    const auto dist0 = lastSeg ? lastSeg->m_dists[lastIdx] : dist1;
-                   Scalar dist = lerp(t, dist0, dist1);
+                   Scalar dist = lerp(dist0, dist1, t);
                    m_global.distField[timestep]->x().push_back(dist);
 
                    m_global.stepField[timestep]->x().push_back(seg.m_steps[i]);

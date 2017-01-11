@@ -18,6 +18,7 @@ set(util_HEADERS
    enum.h
    exception.h
    findself.h
+   math.h
    sysdep.h
    tools.h
    triple.h

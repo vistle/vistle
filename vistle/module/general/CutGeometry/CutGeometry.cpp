@@ -4,6 +4,7 @@
 #include <core/object.h>
 #include <core/polygons.h>
 #include <core/triangles.h>
+#include <util/math.h>
 
 #include "CutGeometry.h"
 #include "../IsoSurface/IsoDataFunctor.h"
