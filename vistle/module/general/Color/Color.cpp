@@ -6,6 +6,7 @@
 #include <core/object.h>
 #include <core/vec.h>
 #include <core/texture1d.h>
+#include <core/coords.h>
 
 #include "Color.h"
 
@@ -281,32 +282,39 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
 
 bool Color::compute() {
 
+   Coords::const_ptr coords = accept<Coords>("data_in");
+   if (coords) {
+      passThroughObject("data_out", coords);
+   }
+   DataBase::const_ptr data = accept<DataBase>("data_in");
+   if (!data) {
+      Object::const_ptr obj = accept<Object>("data_in");
+      passThroughObject("data_out", obj);
+      return true;
+   }
+
    auto pins = transferFunctions[getIntParameter("map")];
    if (pins.empty()) {
        pins = transferFunctions[COVISE];
    }
    ColorMap cmap(pins, 32);
 
-   DataBase::const_ptr obj = expect<DataBase>("data_in");
-   if (!obj)
-      return true;
-
    Scalar min = std::numeric_limits<Scalar>::max();
    Scalar max = -std::numeric_limits<Scalar>::max();
 
-   if (getFloatParameter("min") >= getFloatParameter("max"))
-      getMinMax(obj, min, max);
-   else {
+   if (getFloatParameter("min") >= getFloatParameter("max")) {
+      getMinMax(data, min, max);
+   } else {
       min = getFloatParameter("min");
       max = getFloatParameter("max");
    }
 
    //std::cerr << "Color: [" << min << "--" << max << "]" << std::endl;
 
-   auto out(addTexture(obj, min, max, cmap));
-   out->setGrid(obj->grid());
-   out->setMeta(obj->meta());
-   out->copyAttributes(obj);
+   auto out(addTexture(data, min, max, cmap));
+   out->setGrid(data->grid());
+   out->setMeta(data->meta());
+   out->copyAttributes(data);
 
    addObject("data_out", out);
 
