@@ -2,7 +2,7 @@
 #include <iomanip>
 
 #define _USE_MATH_DEFINES
-#include <math.h>
+#include <cmath>
 #include <core/object.h>
 #include <core/vec.h>
 #include <core/triangles.h>
