@@ -64,7 +64,7 @@ bool ToSpheres::compute() {
 
    auto data = accept<DataBase>("map_in");
 
-   const MapMode mode = (MapMode)m_mapMode->getValue();
+   MapMode mode = (MapMode)m_mapMode->getValue();
    if (mode != Fixed && !radius && !radius3) {
       sendError("data input required for varying radius");
       return true;
@@ -73,7 +73,19 @@ bool ToSpheres::compute() {
    Spheres::ptr spheres = Spheres::clone<Vec<Scalar, 3>>(points);
    auto r = spheres->r().data();
 
+   std::vector<Scalar> rad3;
    auto rad = radius ? &radius->x()[0] : nullptr;
+   if (!rad && radius3) {
+       rad3.resize(radius3->getSize());
+       auto x=&radius3->x()[0], y=&radius3->y()[0], z=&radius3->z()[0];
+       for (Index i=0; i<rad3.size(); ++i) {
+           rad3[i] = Vector(x[i], y[i], z[i]).norm();
+       }
+       rad = rad3.data();
+   }
+   if (!rad) {
+       mode = Fixed;
+   }
    const Scalar scale = m_radius->getValue();
    const Scalar rmin = m_range->getValue()[0];
    const Scalar rmax = m_range->getValue()[1];
