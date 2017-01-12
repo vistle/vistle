@@ -1,5 +1,5 @@
 vistle_find_package(Boost 1.40 REQUIRED COMPONENTS program_options system)
-vistle_find_package(Boost 1.40 COMPONENTS program_options system python)
+vistle_find_package(Boost 1.40 COMPONENTS program_options system ${BOOST_PYTHON})
 
 include_directories(
         ${Boost_INCLUDE_DIRS}
@@ -14,7 +14,7 @@ set(hub_SOURCES
    dataproxy.cpp
    )
 
-if(Boost_PYTHON_FOUND)
+if(Boost_PYTHON_FOUND OR Boost_PYTHON3_FOUND)
    include_directories(${PYTHON_INCLUDE_DIRS})
    add_definitions(-DHAVE_PYTHON)
    add_definitions(-DVISTLE_CONTROL)
