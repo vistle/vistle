@@ -19,6 +19,7 @@ class MainWindow;
 
 class MainWindow : public QMainWindow
 {
+    friend class UiController;
     Q_OBJECT
     
 public:

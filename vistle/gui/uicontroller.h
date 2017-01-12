@@ -25,6 +25,7 @@ class UiController : public QObject
 public:
    explicit UiController(int argc, char *argv[], QObject *parent=nullptr);
    ~UiController();
+   void init();
    void finish();
 
 signals:
@@ -57,6 +58,7 @@ private:
     MainWindow m_mainWindow;
 
     QString m_currentFile;
+    std::string m_pythonDir;
 };
 
 } // namespace gui

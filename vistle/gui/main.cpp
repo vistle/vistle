@@ -29,6 +29,8 @@ int main(int argc, char *argv[])
       QIcon icon(":/vistle.png");
       a.setWindowIcon(icon);
       UiController control(argc, argv, &a);
+      python.init();
+      control.init();
       int val = a.exec();
       control.finish();
       return val;

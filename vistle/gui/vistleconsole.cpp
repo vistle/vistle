@@ -206,6 +206,17 @@ VistleConsole::VistleConsole(QWidget *parent)
     //set the Python Prompt
     setNormalPrompt(true);
 
+#if PY_VERSION_HEX >= 0x03000000
+    PyImport_AppendInittab("_redirector", PyInit__redirector);
+    PyImport_AppendInittab("_console", PyInit__console);
+#else
+    PyImport_AppendInittab("_redirector", init_redirector);
+    PyImport_AppendInittab("_console", init_console);
+#endif
+}
+
+void VistleConsole::init() {
+
     // already done in PythonInterface::the() from UiController
     //Py_Initialize();
 
@@ -217,30 +228,6 @@ VistleConsole::VistleConsole(QWidget *parent)
     */
     bp::object main_module = bp::import("__main__");
     loc = glb = main_module.attr("__dict__");
-
-    try {
-       PyImport_AddModule("_redirector");
-#if PY_VERSION_HEX >= 0x03000000
-       PyInit__redirector();
-#else
-       init_redirector();
-#endif
-       bp::import("_redirector");
-    } catch (...) {
-       std::cerr << "error importing redirector" << std::endl;
-    }
-
-    try {
-       PyImport_AddModule("_console");
-#if PY_VERSION_HEX >= 0x03000000
-       PyInit__console();
-#else
-       init_console();
-#endif
-       bp::import("_console");
-    } catch (...) {
-       std::cerr << "error importing console" << std::endl;
-    }
 
     try {
        bp::import("rlcompleter");

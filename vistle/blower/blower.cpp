@@ -152,6 +152,8 @@ int main(int argc, char *argv[]) {
       VistleConnection conn(ui);
       conn.setQuitOnExit(quitOnExit);
       PythonModule pythonmodule(&conn, dir::share(dir::prefix(argc, argv)));
+      python.init();
+      pythonmodule.import(&python.nameSpace(), dir::share(dir::prefix(argc, argv)));
       std::thread runnerThread(std::ref(conn));
 
       while(!std::cin.eof() && !conn.done()) {

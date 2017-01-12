@@ -14,12 +14,14 @@ class PythonInterpreter {
  public:
    PythonInterpreter(const std::string &filename, const std::string &path);
    ~PythonInterpreter();
+   void init();
 
    bool check();
 
    bool executeFile(const std::string &filename);
 
  private:
+   std::string m_pythonPath;
    std::shared_ptr<PythonInterface> m_interpreter;
    std::shared_ptr<PythonModule> m_module;
    std::shared_ptr<Executor> m_executor;

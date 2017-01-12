@@ -57,6 +57,7 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
    m_vistleConnection = new vistle::VistleConnection(*m_ui);
    m_vistleConnection->setQuitOnExit(quitOnExit);
    m_pythonMod = new vistle::PythonModule(m_vistleConnection, dir::share(dir::prefix(argc, argv)));
+   m_pythonDir = dir::share(dir::prefix(argc, argv));
    m_thread = new std::thread(std::ref(*m_vistleConnection));
    m_mainWindow.parameters()->setVistleConnection(m_vistleConnection);
 
@@ -103,6 +104,11 @@ UiController::UiController(int argc, char *argv[], QObject *parent)
            &m_mainWindow, SLOT(moduleAvailable(int, QString, QString, QString)));
 
    m_mainWindow.show();
+}
+
+void UiController::init() {
+   m_mainWindow.m_console->init();
+   m_pythonMod->import(&vistle::PythonInterface::the().nameSpace(), m_pythonDir);
 }
 
 UiController::~UiController()

@@ -16,6 +16,7 @@ class Executor {
    , m_interpreter(inter)
    , m_filename(filename)
    {
+       m_interpreter.init();
    }
 
    void operator()() {
@@ -41,11 +42,17 @@ class Executor {
 };
 
 PythonInterpreter::PythonInterpreter(const std::string &file, const std::string &path)
-: m_interpreter(new PythonInterface("vistle"))
+: m_pythonPath(path)
+, m_interpreter(new PythonInterface("vistle"))
 , m_module(new PythonModule(path))
 , m_executor(new Executor(*this, file))
 , m_thread(std::ref(*m_executor))
 {
+}
+
+void PythonInterpreter::init() {
+   m_interpreter->init();
+   m_module->import(&vistle::PythonInterface::the().nameSpace(), m_pythonPath);
 }
 
 bool PythonInterpreter::executeFile(const std::string &filename) {

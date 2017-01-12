@@ -572,9 +572,11 @@ PythonModule::PythonModule(const std::string &path)
    assert(s_instance == nullptr);
    s_instance = this;
 
-   if (!import(&PythonInterface::the().nameSpace(), path)) {
-      throw(vistle::except::exception("vistle python import failure"));
-   }
+#if PY_VERSION_HEX >= 0x03000000
+   PyImport_AppendInittab("_vistle", PyInit__vistle);
+#else
+   PyImport_AppendInittab("_vistle", init_vistle);
+#endif
 }
 
 PythonModule::PythonModule(VistleConnection *vc, const std::string &path)
@@ -583,9 +585,11 @@ PythonModule::PythonModule(VistleConnection *vc, const std::string &path)
    assert(s_instance == nullptr);
    s_instance = this;
 
-   if (!import(&PythonInterface::the().nameSpace(), path)) {
-      throw(vistle::except::exception("vistle python import failure"));
-   }
+#if PY_VERSION_HEX >= 0x03000000
+   PyImport_AppendInittab("_vistle", PyInit__vistle);
+#else
+   PyImport_AppendInittab("_vistle", init_vistle);
+#endif
 }
 
 PythonModule &PythonModule::the()
@@ -620,23 +624,6 @@ bool PythonModule::import(boost::python::object *ns, const std::string &path) {
 
    bp::class_<ParameterVector<Integer> >("ParameterVector<Integer>")
       .def(bp::vector_indexing_suite<ParameterVector<Integer> >());
-
-   try {
-      PyImport_AddModule("_vistle");
-#if PY_VERSION_HEX >= 0x03000000
-      PyInit__vistle();
-#else
-      init_vistle();
-#endif
-   } catch (bp::error_already_set) {
-      std::cerr << "vistle Python module initialisation failed: " << std::endl;
-      if (PyErr_Occurred()) {
-         std::cerr << PythonInterface::errorString() << std::endl;
-      }
-      bp::handle_exception();
-      PyErr_Clear();
-      return false;
-   }
 
    // load boost::python wrapper - statically linked into binary
    try {

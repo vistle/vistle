@@ -21,10 +21,6 @@ PythonInterface::PythonInterface(const std::string &name)
    static std::string namebuf(name);
    Py_SetProgramName(const_cast<char *>(namebuf.c_str()));
 #endif
-   Py_Initialize();
-
-   bp::object main = bp::import("__main__");
-   m_namespace = main.attr("__dict__");
 }
 
 
@@ -42,7 +38,17 @@ PythonInterface &PythonInterface::the() {
 
 boost::python::object &PythonInterface::nameSpace()
 {
-   return m_namespace;
+    return m_namespace;
+}
+
+bool PythonInterface::init() {
+
+   Py_Initialize();
+
+   bp::object main = bp::import("__main__");
+   m_namespace = main.attr("__dict__");
+
+   return true;
 }
 
 // cf. http://stackoverflow.com/questions/1418015/how-to-get-python-exception-text

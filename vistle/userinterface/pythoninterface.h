@@ -19,6 +19,7 @@ class V_UIEXPORT PythonInterface {
       ~PythonInterface();
       static PythonInterface &the();
       boost::python::object &nameSpace();
+      bool init();
 
       bool exec(const std::string &python);
       bool exec_file(const std::string &filename);
