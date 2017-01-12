@@ -59,6 +59,7 @@ class ReadCFX: public vistle::Module {
    virtual bool compute();
    static const int usr_level = 0; // Query the number of variables at interest level usr_level or below. If usr_level is 0, then the
                                    // total number of variables is returned.
+   static const int alias = 1; // alias = 1 -> long variable name; alias = 0 -> short variable name
 
  private:
    bool parameterChanged(const vistle::Parameter *p);
@@ -78,7 +79,7 @@ class ReadCFX: public vistle::Module {
    std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
    vistle::coRestraint m_zonesSelected;
 
-   vistle::Index m_nelems, m_nzones, m_nnodes, m_nvolumes; // m_nregions, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
+   vistle::Index m_nelems, m_nzones, m_nnodes, m_nvolumes, m_nregions; // m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
 
 
    //Ports

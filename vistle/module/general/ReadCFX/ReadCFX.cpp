@@ -169,8 +169,8 @@ void CaseInfo::parseResultfile() {
     m_allParam.clear();
     m_allParam.insert(bm_type::value_type(0,"(NONE)"));
 
-    for(index_t varnum=1;varnum<=m_nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,1) only returnes values from 1 and higher
-        m_allParam.insert(bm_type::value_type(varnum,cfxExportVariableName(varnum,1)));
+    for(index_t varnum=1;varnum<=m_nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,ReadCFX::alias) only returnes values from 1 and higher
+        m_allParam.insert(bm_type::value_type(varnum,cfxExportVariableName(varnum,ReadCFX::alias)));
         if(cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
             if(dimension == 1) {
                 m_ParamDimension[varnum] = 1;
@@ -193,11 +193,11 @@ void CaseInfo::getFieldList() {
     m_field_param.push_back("(NONE)");
 
 
-    for(index_t varnum=1;varnum<=m_nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,1) only returnes values from 1 and higher
+    for(index_t varnum=1;varnum<=m_nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,ReadCFX::alias) only returnes values from 1 and higher
         if(cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
             if(length == 1) {
                 m_boundary_param.push_back(m_allParam.left.at(varnum));
-                //std::cerr << "cfxExportVariableName("<< varnum << ",1) = " << cfxExportVariableName(varnum,1) << std::endl;
+                //std::cerr << "cfxExportVariableName("<< varnum << ",ReadCFX::alias) = " << cfxExportVariableName(varnum,ReadCFX::alias) << std::endl;
                 //std::cerr << "m_allParam.left.at(varnum) = " << m_allParam.left.at(varnum) << std::endl;
             }
             else {
@@ -253,7 +253,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
             m_nzones = cfxExportInit(resultfileName, counts);
                 m_nnodes = counts[cfxCNT_NODE];
                 m_nelems = counts[cfxCNT_ELEMENT];
-                //m_nregions = counts[cfxCNT_REGION];
+                m_nregions = counts[cfxCNT_REGION];
                 m_nvolumes = counts[cfxCNT_VOLUME];
                 //m_nvars = counts[cfxCNT_VARIABLE];
                 ExportDone = false;
@@ -264,6 +264,12 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
                 return false;
             }
 
+//            for(int i = 1;i<=m_nvolumes;++i) {
+//                std::cerr << "Volume(" << i << ")= " << cfxExportVolumeName(i) << std::endl;
+//            }
+//            for(int i = 1;i<=m_nregions;++i) {
+//                std::cerr << "Regions(" << i << ")= " << cfxExportRegionName(i) << std::endl;
+//            }
             int timeStepNum = cfxExportTimestepNumGet(1);
             if (timeStepNum < 0) {
                 sendInfo("no timesteps");
@@ -547,9 +553,9 @@ bool ReadCFX::loadFields(int volumeNr) {
       std::string field = m_fieldOut[i]->getValue();
       bm_type::right_const_iterator right_iter = m_case.m_allParam.right.find(field);
       DataBase::ptr obj = loadField(volumeNr, right_iter->second);
-      if(!obj) {
-          std::cerr << "Data port number " << i << " (" << m_case.m_allParam.left.at(right_iter->second) << ") is empty - not a valid variable" << std::endl;
-      }
+//      if(!obj) {
+//          std::cerr << "Data port number " << i << " (" << m_case.m_allParam.left.at(right_iter->second) << ") is empty - not a valid variable" << std::endl;
+//      }
       //setMeta(obj, processor, timestep);
       m_currentVolumedata[i]= obj;
    }
@@ -614,9 +620,6 @@ bool ReadCFX::compute() {
             addVolumeDataToPorts(i);
         }
         sendInfo("Schleife über Volumes End");
-
-
-
 
     //    for(t = t1; t <= t2; t++) {
     //    ts = cfxExportTimestepNumGet(t);
