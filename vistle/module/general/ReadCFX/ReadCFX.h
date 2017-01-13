@@ -20,15 +20,15 @@ typedef vistle::Index index_t;
 typedef vistle::Scalar scalar_t;
 typedef boost::bimap<int, std::string> bm_type;
 
-struct VolumeIdWithZoneFlag {
+struct IdWithZoneFlag {
 
-    VolumeIdWithZoneFlag(index_t r
+    IdWithZoneFlag(index_t r
                          , index_t z) {
-        volumeID=r;
+        ID=r;
         zoneFlag=z;
     }
 
-    index_t volumeID;
+    index_t ID;
     index_t zoneFlag;
 };
 
@@ -61,6 +61,7 @@ class ReadCFX: public vistle::Module {
                                    // total number of variables is returned.
    static const int alias = 1; // alias = 1 -> long variable name; alias = 0 -> short variable name
 
+
  private:
    bool parameterChanged(const vistle::Parameter *p);
    bool ExportDone;
@@ -72,14 +73,14 @@ class ReadCFX: public vistle::Module {
 
 
    //Parameter
-   vistle::StringParameter *m_resultfiledir, *m_zoneSelection;
+   vistle::StringParameter *m_resultfiledir, *m_zoneSelection, *m_boundarySelection;
    vistle::FloatParameter *m_starttime, *m_stoptime;
    vistle::IntParameter *m_timeskip;
    vistle::IntParameter *m_readBoundary; // *m_boundaryPatchesAsVariants;
    std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
-   vistle::coRestraint m_zonesSelected;
+   vistle::coRestraint m_zonesSelected, m_boundariesSelected;
 
-   vistle::Index m_nelems, m_nzones, m_nnodes, m_nvolumes, m_nregions; // m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
+   index_t m_nzones, m_nvolumes, m_nboundaries; // m_nregions, m_nnodes, m_nelems, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
 
 
    //Ports
@@ -97,7 +98,7 @@ class ReadCFX: public vistle::Module {
    //std::string _theFile;
 
    vistle::UnstructuredGrid::ptr grid;
-   std::vector<VolumeIdWithZoneFlag> m_selectedVolumes;
+   std::vector<IdWithZoneFlag> m_selectedVolumes, m_selectedBoundaries;
    std::map<int, vistle::DataBase::ptr> m_currentVolumedata;
    std::map<int, vistle::DataBase::ptr> m_currentBoundaryVolumedata;
    std::map<int, vistle::UnstructuredGrid::ptr>  m_currentGrid;
@@ -111,8 +112,10 @@ class ReadCFX: public vistle::Module {
    vistle::DataBase::ptr loadField(int volumeNr, int variableID);
    bool loadFields(int volumeNr);
    int collectVolumes();
+   int collectBoundaries();
    bool addVolumeDataToPorts(int volumeNr);
    bool addGridToPort(int volumeNr);
+   std::vector<vistle::DataBase::ptr> loadBoundaryField();
 
 };
 
