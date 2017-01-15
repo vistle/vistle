@@ -257,20 +257,34 @@ VistleConsole::VistleConsole(QWidget *parent)
 
                        "sys.path.insert(0, \".\")\n" // add current path
 
-                       "import __builtin__\n"
-
                        "import _console\n"
-                       "__builtin__.clear=_console.clear\n"
-                       "__builtin__.reset=_console.reset\n"
-                       "__builtin__.save=_console.save\n"
-                       "__builtin__.load=_console.load\n"
-                       "__builtin__.history=_console.history\n"
-                       //"__builtin__.quit=_console.quit\n"
-                       //"__builtin__.exit=_console.quit\n"
-                       "__builtin__.raw_input=_console.raw_input\n"
-
                        "import rlcompleter\n"
-                       "__builtin__.completer=rlcompleter.Completer()\n"
+
+                       "if sys.version_info >= (3,0):\n"
+                       "    import builtins\n"
+                       "    builtins.clear=_console.clear\n"
+                       "    builtins.reset=_console.reset\n"
+                       "    builtins.save=_console.save\n"
+                       "    builtins.load=_console.load\n"
+                       "    builtins.history=_console.history\n"
+                       //"    builtins.quit=_console.quit\n"
+                       //"    builtins.exit=_console.quit\n"
+                       "    builtins.input=_console.raw_input\n"
+
+                       "    builtins.completer=rlcompleter.Completer()\n"
+                       "else:\n"
+                       "    import __builtin__\n"
+                       "    __builtin__.clear=_console.clear\n"
+                       "    __builtin__.reset=_console.reset\n"
+                       "    __builtin__.save=_console.save\n"
+                       "    __builtin__.load=_console.load\n"
+                       "    __builtin__.history=_console.history\n"
+                       //"    __builtin__.quit=_console.quit\n"
+                       //"    __builtin__.exit=_console.quit\n"
+                       "    __builtin__.raw_input=_console.raw_input\n"
+
+                       "    __builtin__.completer=rlcompleter.Completer()\n"
+
         );
     } catch (...) {
        std::cerr << "error running Python initialisation" << std::endl;
