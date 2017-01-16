@@ -78,7 +78,7 @@ class ReadCFX: public vistle::Module {
    vistle::IntParameter *m_timeskip;
    vistle::IntParameter *m_readBoundary; // *m_boundaryPatchesAsVariants;
    std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
-   vistle::coRestraint m_zonesSelected, m_boundariesSelected;
+   vistle::coRestraint m_coRestraintZones, m_coRestraintBoundaries;
 
    index_t m_nzones, m_nvolumes, m_nboundaries; // m_nregions, m_nnodes, m_nelems, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
 
@@ -98,7 +98,8 @@ class ReadCFX: public vistle::Module {
    //std::string _theFile;
 
    vistle::UnstructuredGrid::ptr grid;
-   std::vector<IdWithZoneFlag> m_selectedVolumes, m_selectedBoundaries;
+   std::vector<IdWithZoneFlag> m_volumesSelected;
+   std::vector<std::int32_t> m_boundariesSelected;
    std::map<int, vistle::DataBase::ptr> m_currentVolumedata;
    std::map<int, vistle::DataBase::ptr> m_currentBoundaryVolumedata;
    std::map<int, vistle::UnstructuredGrid::ptr>  m_currentGrid;
@@ -115,7 +116,7 @@ class ReadCFX: public vistle::Module {
    int collectBoundaries();
    bool addVolumeDataToPorts(int volumeNr);
    bool addGridToPort(int volumeNr);
-   std::vector<vistle::DataBase::ptr> loadBoundaryField();
+   std::vector<vistle::DataBase::ptr> loadBoundaryField(int boundaryNr);
 
 };
 
