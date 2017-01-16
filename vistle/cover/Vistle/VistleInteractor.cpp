@@ -1,5 +1,6 @@
 #include "VistleInteractor.h"
 #include "VistleRenderObject.h"
+#include <cover/coVRAnimationManager.h>
 #include <core/parameter.h>
 #include <module/module.h>
 
@@ -80,7 +81,13 @@ bool VistleInteractor::isSame(coInteractor* i) const
 /// execute the Module
 void VistleInteractor::executeModule()
 {
-   message::Execute m(message::Execute::ComputeExecute, m_moduleId); // Communicator will update execution count
+   auto &anim = *opencover::coVRAnimationManager::instance();
+   double dt = 0.;
+   if (anim.animationRunning() && std::abs(anim.getCurrentSpeed()) > 0.) {
+       dt = 1. / anim.getCurrentSpeed();
+   }
+   double t = anim.getAnimationFrame();
+   message::Execute m(m_moduleId, t, dt); // Communicator will update execution count
    m.setDestId(message::Id::MasterHub);
    sendMessage(m);
 }

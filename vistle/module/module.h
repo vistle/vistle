@@ -275,6 +275,7 @@ protected:
    int m_traceMessages;
    bool m_benchmark;
    double m_benchmarkStart;
+   double m_avgComputeTime;
    boost::mpi::communicator m_comm;
 
    bool m_prepared, m_computed, m_reduced;

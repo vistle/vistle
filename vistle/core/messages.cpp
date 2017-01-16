@@ -300,6 +300,18 @@ Execute::Execute(Execute::What what, const int module, const int count)
    , module(module)
    , executionCount(count)
    , m_what(what)
+   , m_realtime(0.)
+   , m_animationStep(1./25.)
+{
+}
+
+Execute::Execute(const int module, double realtime, double step)
+: m_allRanks(false)
+, module(module)
+, executionCount(-1)
+, m_what(ComputeExecute)
+, m_realtime(realtime)
+, m_animationStep(step)
 {
 }
 
@@ -340,7 +352,15 @@ Execute::What Execute::what() const
 
 void Execute::setWhat(Execute::What what)
 {
-   m_what = what;
+    m_what = what;
+}
+
+double Execute::animationRealTime() const {
+    return m_realtime;
+}
+
+double Execute::animationStep() const {
+    return m_animationStep;
 }
 
 

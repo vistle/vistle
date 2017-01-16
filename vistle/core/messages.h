@@ -242,6 +242,7 @@ class V_COREEXPORT Execute: public MessageBase<Execute, EXECUTE> {
    )
 
    Execute(What what=Execute::ComputeExecute, const int module=Id::Broadcast, const int count=-1);
+   Execute(const int module, double realtime, double step);
 
    void setModule(int );
    int getModule() const;
@@ -254,11 +255,16 @@ class V_COREEXPORT Execute: public MessageBase<Execute, EXECUTE> {
    What what() const;
    void setWhat(What r);
 
+   double animationRealTime() const;
+   double animationStep() const;
+
 private:
    bool m_allRanks; //!< whether execute should be broadcasted across all MPI ranks
    int module; //!< destination module, -1: all sources
    int executionCount; //!< count of execution which triggered this execute
    What m_what; //!< reason why this message was generated
+   double m_realtime; //!< realtime/timestep currently displayed
+   double m_animationStep; //!< duration of a single timestep
 };
 static_assert(sizeof(Execute) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(What, Execute)

@@ -167,6 +167,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_inParameterChanged(false)
 , m_traceMessages(message::INVALID)
 , m_benchmark(false)
+, m_avgComputeTime(1.)
 , m_comm(MPI_COMM_WORLD, mpi::comm_attach)
 , m_prepared(false)
 , m_computed(false)
@@ -1416,6 +1417,64 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                      return false;
                   }
                }
+
+               if (numObject > 0 && !gang && !exec->allRanks() && (exec->animationRealTime() != 0.0 || exec->animationStep() != 0.0)) {
+
+                   struct TimeIndex {
+                       double t = 0.;
+                       size_t idx = 0;
+
+                       bool operator<(const TimeIndex &other) const {
+                           return t < other.t;
+                       }
+                   };
+                   std::vector<TimeIndex> sortKey(numObject);
+                   for (auto &port: inputPorts) {
+                       const auto &objs = port.second->objects();
+                       size_t i=0;
+                       for (auto &obj: objs) {
+                           sortKey[i].idx = i;
+                           if (sortKey[i].t == 0. && obj->getTimestep() != 0)
+                               sortKey[i].t = obj->getTimestep();
+                           ++i;
+                       }
+                   }
+                   std::sort(sortKey.begin(), sortKey.end());
+                   auto best = sortKey[0];
+                   ssize_t idx=0, bestIdx=0;
+                   for (auto &ti: sortKey) {
+                       if (std::abs(ti.t - exec->animationRealTime()) < std::abs(best.t - exec->animationRealTime())) {
+                           best = ti;
+                           bestIdx = idx;
+                       }
+                       ++idx;
+                   }
+
+                   int headStart = 0;
+                   if (std::abs(exec->animationStep()) > 1e-5)
+                       headStart = m_avgComputeTime / std::abs(exec->animationStep());
+                   headStart = std::max(1, headStart)+2;
+
+                   for (auto &port: inputPorts) {
+                       if (!isConnected(port.second))
+                           continue;
+                       port.second->objects().clear();
+                       auto objs = m_cache.getObjects(port.first);
+                       ssize_t start = bestIdx;
+                       int step = 1;
+                       if (exec->animationStep() < 0.0) {
+                           start = (bestIdx+numObject-headStart)%numObject;
+                           step = -1;
+                       }  else if (exec->animationStep() > 0.0) {
+                           start = (bestIdx+numObject+headStart)%numObject;
+                       }
+                       ssize_t cur = start;
+                       for (size_t i=0; i<numObject; ++i) {
+                           port.second->objects().push_back(objs[sortKey[cur].idx]);
+                           cur = (cur+step+numObject)%numObject;
+                       }
+                   }
+               }
                if (numConnected == 0) {
                   // call compute at least once, e.g. for readers
                   numObject = 1;
@@ -1441,7 +1500,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             for (Index i=0; i<numObject; ++i) {
                bool computeOk = false;
                try {
+                  double start = Clock::time();
                   computeOk = compute();
+                  double duration = Clock::time() - start;
+                  m_avgComputeTime = 0.95 * m_avgComputeTime + 0.05 * duration;
                } catch (boost::interprocess::interprocess_exception &e) {
                   std::cout << name() << "::compute(): interprocess_exception: " << e.what()
                      << ", error code: " << e.get_error_code()

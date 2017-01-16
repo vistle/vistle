@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <set>
-#include <list>
+#include <deque>
 #include <ostream>
 #include <memory>
 
@@ -15,7 +15,7 @@ namespace vistle {
 
 class Object;
 typedef std::shared_ptr<const Object> obj_const_ptr;
-typedef std::list<obj_const_ptr> ObjectList;
+typedef std::deque<obj_const_ptr> ObjectList;
 
 template <class T>
 struct deref_compare: std::binary_function<T*, T*, bool> {
