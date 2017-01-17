@@ -746,7 +746,7 @@ bool OSGRenderer::render() {
     return true;
 }
 
-bool OSGRenderer::parameterChanged(const vistle::Parameter *p) {
+bool OSGRenderer::changeParameter(const vistle::Parameter *p) {
 
    m_renderManager.handleParam(p);
 
@@ -778,7 +778,7 @@ bool OSGRenderer::parameterChanged(const vistle::Parameter *p) {
        m_asyncFrames = m_async->getValue();
    }
 
-   return Renderer::parameterChanged(p);
+   return Renderer::changeParameter(p);
 }
 
 std::shared_ptr<vistle::RenderObject> OSGRenderer::addObject(int senderId, const std::string &senderPort,

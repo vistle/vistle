@@ -216,7 +216,7 @@ ReadVtk::~ReadVtk() {
 
 }
 
-bool ReadVtk::parameterChanged(const vistle::Parameter *p) {
+bool ReadVtk::changeParameter(const vistle::Parameter *p) {
    if (p == m_filename) {
       const std::string filename = m_filename->getValue();
       if (boost::algorithm::ends_with(filename, ".pvd")) {
@@ -232,7 +232,7 @@ bool ReadVtk::parameterChanged(const vistle::Parameter *p) {
       }
    }
 
-   return Module::parameterChanged(p);
+   return Module::changeParameter(p);
 }
 
 bool ReadVtk::load(const std::string &filename, const Meta &meta) {

@@ -14,7 +14,7 @@ class ReadVtk: public vistle::Module {
  private:
    static const int NumPorts = 3;
 
-   bool parameterChanged(const vistle::Parameter *p) override;
+   bool changeParameter(const vistle::Parameter *p) override;
    bool compute() override;
 
    bool load(const std::string &filename, const vistle::Meta &meta = vistle::Meta());

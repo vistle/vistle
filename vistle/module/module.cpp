@@ -1003,12 +1003,12 @@ bool Module::parameterChangedWrapper(const Parameter *p) {
       return true;
    }
 
-   bool ret = parameterChanged(p);
+   bool ret = changeParameter(p);
    m_inParameterChanged = false;
    return ret;
 }
 
-bool Module::parameterChanged(const Parameter *p) {
+bool Module::changeParameter(const Parameter *p) {
 
    return true;
 }

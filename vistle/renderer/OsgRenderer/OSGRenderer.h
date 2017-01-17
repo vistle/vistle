@@ -102,7 +102,7 @@ class OSGRenderer: public vistle::Renderer, public osgViewer::Viewer {
          vistle::Object::const_ptr colors,
          vistle::Object::const_ptr texture) override;
    void removeObject(std::shared_ptr<vistle::RenderObject> ro) override;
-   bool parameterChanged(const vistle::Parameter *p) override;
+   bool changeParameter(const vistle::Parameter *p) override;
 
    bool render() override;
    bool composite(size_t maxQueued);

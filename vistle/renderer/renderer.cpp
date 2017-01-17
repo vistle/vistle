@@ -336,7 +336,7 @@ bool Renderer::compute() {
    return true;
 }
 
-bool Renderer::parameterChanged(const Parameter *p) {
+bool Renderer::changeParameter(const Parameter *p) {
     if (p == m_renderMode) {
         switch(m_renderMode->getValue()) {
         case LocalOnly:

@@ -31,7 +31,7 @@ class IsoSurface: public vistle::Module {
    virtual bool compute() override;
    virtual bool prepare() override;
    virtual bool reduce(int timestep) override;
-   bool parameterChanged(const vistle::Parameter *param) override;
+   bool changeParameter(const vistle::Parameter *param) override;
 
 
 

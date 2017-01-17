@@ -57,9 +57,9 @@ IsoSurface::~IsoSurface() {
 
 }
 
-bool IsoSurface::parameterChanged(const Parameter* param) {
+bool IsoSurface::changeParameter(const Parameter* param) {
 
-    if (isocontrol.parameterChanged(param))
+    if (isocontrol.changeParameter(param))
         return true;
 
 #ifdef CUTTINGSURFACE

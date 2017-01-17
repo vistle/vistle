@@ -225,7 +225,7 @@ protected:
 
    std::string getModuleName(int id) const;
 
-   virtual bool parameterChanged(const Parameter *p);
+   virtual bool changeParameter(const Parameter *p);
 
    int openmpThreads() const;
    void setOpenmpThreads(int, bool updateParam=true);

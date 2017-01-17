@@ -666,8 +666,8 @@ Object::ptr CutGeometry::cutGeometry(Object::const_ptr object) const {
    return Object::ptr();
 }
 
-bool CutGeometry::parameterChanged(const Parameter* param) {
-   if (isocontrol.parameterChanged(param))
+bool CutGeometry::changeParameter(const Parameter* param) {
+   if (isocontrol.changeParameter(param))
        return true;
 
    return true;

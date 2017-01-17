@@ -74,7 +74,7 @@ class RayCaster: public vistle::Renderer {
 
    bool render() override;
 
-   bool parameterChanged(const Parameter *p) override;
+   bool changeParameter(const Parameter *p) override;
 
    ParallelRemoteRenderManager m_renderManager;
 
@@ -176,7 +176,7 @@ void RayCaster::prepareQuit() {
 }
 
 
-bool RayCaster::parameterChanged(const Parameter *p) {
+bool RayCaster::changeParameter(const Parameter *p) {
 
     m_renderManager.handleParam(p);
 
@@ -196,7 +196,7 @@ bool RayCaster::parameterChanged(const Parameter *p) {
         m_tilesize = m_renderTileSizeParam->getValue();
     }
 
-   return Renderer::parameterChanged(p);
+   return Renderer::changeParameter(p);
 }
 
 struct TileTask {

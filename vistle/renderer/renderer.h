@@ -24,7 +24,7 @@ class V_RENDEREREXPORT Renderer: public Module {
          Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr colors, Object::const_ptr texture) = 0;
    virtual void removeObject(std::shared_ptr<RenderObject> ro);
 
-   bool parameterChanged(const Parameter *p) override;
+   bool changeParameter(const Parameter *p) override;
 
    int m_fastestObjectReceivePolicy;
    void removeAllObjects();

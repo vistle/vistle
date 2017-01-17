@@ -78,7 +78,7 @@ ReadHDF5::~ReadHDF5() {
 
 // PARAMETER CHANGED FUNCTION
 //-------------------------------------------------------------------------
-bool ReadHDF5::parameterChanged(const vistle::Parameter *param) {
+bool ReadHDF5::changeParameter(const vistle::Parameter *param) {
     util_checkFile();
 
     return true;

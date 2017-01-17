@@ -125,7 +125,7 @@ class ReadFOAM: public vistle::Module
 
       //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
       int rankForBlock(int processor) const;
-      bool parameterChanged(const vistle::Parameter *p);
+      bool changeParameter(const vistle::Parameter *p);
       bool readDirectory(const std::string &dir, int processor, int timestep);
       bool buildGhostCells(int processor, GhostMode mode);
       bool buildGhostCellData(int processor);

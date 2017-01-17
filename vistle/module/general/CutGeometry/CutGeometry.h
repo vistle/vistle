@@ -15,7 +15,7 @@ class CutGeometry: public vistle::Module {
 
  private:
    virtual bool compute() override;
-   virtual bool parameterChanged(const vistle::Parameter *param) override;
+   virtual bool changeParameter(const vistle::Parameter *param) override;
    IsoController isocontrol;
 };
 

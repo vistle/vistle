@@ -133,7 +133,7 @@ int ReadFOAM::rankForBlock(int processor) const {
    return processor % size();
 }
 
-bool ReadFOAM::parameterChanged(const Parameter *p)
+bool ReadFOAM::changeParameter(const Parameter *p)
 {
    auto sp = dynamic_cast<const StringParameter *>(p);
    if (sp == m_casedir) {
@@ -178,7 +178,7 @@ bool ReadFOAM::parameterChanged(const Parameter *p)
       }
    }
 
-   return Module::parameterChanged(p);
+   return Module::changeParameter(p);
 }
 
 bool loadCoords(const std::string &meshdir, Coords::ptr grid) {

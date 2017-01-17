@@ -106,7 +106,7 @@ class IsoController {
 
 public:
     IsoController(vistle::Module *module);
-    bool parameterChanged(const vistle::Parameter* param);
+    bool changeParameter(const vistle::Parameter* param);
 #ifdef CUTTINGSURFACE
     IsoDataFunctor newFunc(const vistle::Scalar *x, const vistle::Scalar *y, const vistle::Scalar *z) const;
 #else

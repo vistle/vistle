@@ -537,7 +537,7 @@ bool Tracer::reduce(int timestep) {
    return true;
 }
 
-bool Tracer::parameterChanged(const Parameter *param) {
+bool Tracer::changeParameter(const Parameter *param) {
 
     if (param == m_maxStartpoints) {
         setParameterRange(m_numStartpoints, (Integer)1, m_maxStartpoints->getValue());
