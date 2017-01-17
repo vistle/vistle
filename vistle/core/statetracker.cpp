@@ -355,6 +355,9 @@ bool StateTracker::handle(const message::Message &msg, bool track) {
       case EXECUTE: {
          break;
       }
+      case CANCELEXECUTE: {
+         break;
+      }
       case ADDOBJECT: {
          break;
       }

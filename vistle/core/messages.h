@@ -269,6 +269,18 @@ private:
 static_assert(sizeof(Execute) <= Message::MESSAGE_SIZE, "message too large");
 V_ENUM_OUTPUT_OP(What, Execute)
 
+//! trigger execution of a module function
+class V_COREEXPORT CancelExecute: public MessageBase<CancelExecute, CANCELEXECUTE> {
+
+public:
+    CancelExecute(const int module);
+    int getModule() const;
+
+    private:
+    int m_module;
+};
+static_assert(sizeof(CancelExecute) <= Message::MESSAGE_SIZE, "message too large");
+
 //! indicate that a module has started computing
 class V_COREEXPORT Busy: public MessageBase<Busy, BUSY> {
 

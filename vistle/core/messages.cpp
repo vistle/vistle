@@ -364,6 +364,16 @@ double Execute::animationStep() const {
 }
 
 
+CancelExecute::CancelExecute(const int module)
+    : m_module(module) {
+}
+
+int CancelExecute::getModule() const {
+
+    return m_module;
+}
+
+
 Busy::Busy()
 {
 }

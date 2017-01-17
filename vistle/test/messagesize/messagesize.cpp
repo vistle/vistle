@@ -39,6 +39,7 @@ int main() {
          M(EXECUTIONPROGRESS, Idle)
          
          M(EXECUTE, Execute)
+         M(CANCELEXECUTE, CancelExecute)
          M(ADDOBJECT, AddObject)
          M(ADDOBJECTCOMPLETED, AddObjectCompleted)
          M(OBJECTRECEIVED, ObjectReceived)

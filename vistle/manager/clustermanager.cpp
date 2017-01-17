@@ -518,6 +518,12 @@ bool ClusterManager::handle(const message::Buffer &message) {
          break;
       }
 
+      case message::CANCELEXECUTE: {
+
+         const message::CancelExecute &cancel = message.as<CancelExecute>();
+         break;
+      }
+
       case message::ADDOBJECT: {
 
          const message::AddObject &m = message.as<AddObject>();

@@ -44,6 +44,7 @@ Renderer::~Renderer() {
 static bool needsSync(const message::Message &m) {
 
    switch (m.type()) {
+      case vistle::message::CANCELEXECUTE:
       case vistle::message::OBJECTRECEIVED:
       case vistle::message::QUIT:
       case vistle::message::KILL:
@@ -62,7 +63,14 @@ bool Renderer::dispatch() {
    bool checkAgain = false;
    int numSync = 0;
    do {
-      bool haveMessage = receiveMessageQueue->tryReceive(message);
+      bool haveMessage = false;
+      if (messageBacklog.empty()) {
+          haveMessage = receiveMessageQueue->tryReceive(message);
+      } else {
+          buf = messageBacklog.front();
+          messageBacklog.pop_front();
+          haveMessage = true;
+      }
 
       int sync = 0, allsync = 0;
 
@@ -190,13 +198,19 @@ bool Renderer::dispatch() {
          }
 
          if (allsync && !sync) {
-            receiveMessageQueue->receive(message);
+            if (messageBacklog.empty()) {
+                receiveMessageQueue->receive(message);
+            } else {
+                 buf = messageBacklog.front();
+                 messageBacklog.pop_front();
+            }
+
             haveMessage = true;
          }
 
       } while(allsync && !sync);
 
-      int numMessages = receiveMessageQueue->getNumMessages();
+      int numMessages = messageBacklog.size() + receiveMessageQueue->getNumMessages();
       int maxNumMessages = 0;
       MPI_Allreduce(&numMessages, &maxNumMessages, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
       ++numSync;

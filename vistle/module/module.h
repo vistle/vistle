@@ -20,6 +20,7 @@
 #include <core/parameter.h>
 #include <core/port.h>
 #include <core/grid.h>
+#include <core/message.h>
 
 #include "objectcache.h"
 #include "export.h"
@@ -32,6 +33,7 @@ class Renderer;
 
 namespace message {
 class Message;
+class Buffer;
 class AddParameter;
 class SetParameter;
 class RemoveParameter;
@@ -212,7 +214,9 @@ protected:
 
    message::MessageQueue *sendMessageQueue;
    message::MessageQueue *receiveMessageQueue;
+   std::deque<message::Buffer> messageBacklog;
    bool handleMessage(const message::Message *message);
+   bool cancelRequested();
 
    virtual bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,
                                Object::const_ptr object);
@@ -237,6 +241,7 @@ protected:
 
    virtual bool prepare(); //< prepare execution - called on each rank individually
    virtual bool reduce(int timestep); //< do reduction for timestep (-1: global) - called on all ranks
+   virtual bool cancelExecute(); //< if execution has been canceled early before all objects have been processed
 
  private:
    bool reduceWrapper(const message::Message *req);

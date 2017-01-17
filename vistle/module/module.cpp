@@ -51,8 +51,8 @@
 
 #define CERR std::cerr << m_name << "_" << id() << " [" << rank() << "/" << size() << "] "
 
-using namespace boost::interprocess;
-namespace mpi = boost::mpi;
+namespace interprocess = ::boost::interprocess;
+namespace mpi = ::boost::mpi;
 
 namespace vistle {
 
@@ -192,7 +192,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 
    try {
       Shm::attach(shmname, id(), rank());
-   } catch (interprocess_exception &ex) {
+   } catch (interprocess::interprocess_exception &ex) {
       std::stringstream str;
       throw vistle::exception(std::string("attaching to shared memory ") + shmname + ": " + ex.what());
    }
@@ -201,14 +201,14 @@ Module::Module(const std::string &desc, const std::string &shmname,
    std::string smqName = message::MessageQueue::createName("rmq", id(), rank());
    try {
       sendMessageQueue = message::MessageQueue::open(smqName);
-   } catch (interprocess_exception &ex) {
+   } catch (interprocess::interprocess_exception &ex) {
       throw vistle::exception(std::string("opening send message queue ") + smqName + ": " + ex.what());
    }
 
    std::string rmqName = message::MessageQueue::createName("smq", id(), rank());
    try {
       receiveMessageQueue = message::MessageQueue::open(rmqName);
-   } catch (interprocess_exception &ex) {
+   } catch (interprocess::interprocess_exception &ex) {
       throw vistle::exception(std::string("opening receive message queue ") + rmqName + ": " + ex.what());
    }
 
@@ -1101,7 +1101,12 @@ bool Module::dispatch() {
          throw(except::parent_died());
 
       message::Buffer buf;
-      receiveMessageQueue->receive(buf);
+      if (!messageBacklog.empty()) {
+          buf = messageBacklog.front();
+          messageBacklog.pop_front();
+      } else {
+          receiveMessageQueue->receive(buf);
+      }
 
       if (syncMessageProcessing()) {
          int sync = 0, allsync = 0;
@@ -1131,7 +1136,12 @@ bool Module::dispatch() {
             again &= handleMessage(&buf);
 
             if (allsync && !sync) {
-               receiveMessageQueue->receive(buf);
+                if (!messageBacklog.empty()) {
+                    buf = messageBacklog.front();
+                    messageBacklog.pop_front();
+                } else {
+                    receiveMessageQueue->receive(buf);
+                }
             }
 
          } while(allsync && !sync);
@@ -1399,6 +1409,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             ret &= prepareWrapper(exec);
          }
 
+         bool cancel = false;
          if (exec->what() == Execute::ComputeExecute
              || exec->what() == Execute::ComputeObject) {
             //vassert(m_executionDepth == 0);
@@ -1520,6 +1531,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                << rank() << "/" << size << "] compute" << std::endl;
             */
             for (Index i=0; i<numObject; ++i) {
+               if (cancelRequested()) {
+                   cancel = true;
+                   break;
+               }
                bool computeOk = false;
                try {
                   double start = Clock::time();
@@ -1551,7 +1566,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
          if (exec->what() == Execute::ComputeExecute
              || exec->what() == Execute::Reduce) {
-            ret &= reduceWrapper(exec);
+            if (!cancel && !cancelRequested())
+                ret &= reduceWrapper(exec);
             m_cache.clearOld();
          }
          message::Idle idle;
@@ -1662,8 +1678,10 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          // currently only relevant for renderers
          break;
 
-      //case message::ADDPORT:
-      //case message::ADDPARAMETER:
+      case message::CANCELEXECUTE:
+         // not relevant if not within prepare/compute/reduce
+         break;
+
       case message::MODULEEXIT:
       case message::SPAWN:
       case message::STARTED:
@@ -1891,7 +1909,7 @@ bool Module::reduceWrapper(const message::Message *req) {
       vassert(!m_reduced);
    }
 
-   m_numTimesteps = mpi::all_reduce(comm(), m_numTimesteps, mpi::maximum<int>());
+   m_numTimesteps = boost::mpi::all_reduce(comm(), m_numTimesteps, boost::mpi::maximum<int>());
 
    m_reduced = true;
 
@@ -1948,6 +1966,28 @@ bool Module::reduce(int timestep) {
       comm().barrier();
 #endif
    return true;
+}
+
+bool Module::cancelExecute() {
+
+    return true;
+}
+
+bool Module::cancelRequested() {
+
+    message::Buffer buf;
+    if (receiveMessageQueue->tryReceive(buf)) {
+        messageBacklog.push_back(buf);
+        if (buf.type() == message::CANCELEXECUTE) {
+            const auto &cancel = buf.as<message::CancelExecute>();
+            if (cancel.getModule() == id()) {
+                cancelExecute();
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 } // namespace vistle

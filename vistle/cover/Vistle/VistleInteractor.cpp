@@ -87,9 +87,14 @@ void VistleInteractor::executeModule()
        dt = 1. / anim.getCurrentSpeed();
    }
    double t = anim.getAnimationFrame();
-   message::Execute m(m_moduleId, t, dt); // Communicator will update execution count
-   m.setDestId(message::Id::MasterHub);
-   sendMessage(m);
+
+   message::CancelExecute cancel(m_moduleId);
+   cancel.setDestId(m_moduleId);
+   sendMessage(cancel);
+
+   message::Execute exec(m_moduleId, t, dt); // Communicator will update execution count
+   exec.setDestId(message::Id::MasterHub);
+   sendMessage(exec);
 }
 
 /// copy the Module to same host
