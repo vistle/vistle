@@ -170,6 +170,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_benchmark(false)
 , m_avgComputeTime(1.)
 , m_comm(MPI_COMM_WORLD, mpi::comm_attach)
+, m_numTimesteps(false)
 , m_prepared(false)
 , m_computed(false)
 , m_reduced(false)
@@ -1503,6 +1504,16 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                m_executionCount = mpi::all_reduce(comm(), m_executionCount, mpi::maximum<int>());
             }
 
+            for (auto &port: inputPorts) {
+                if (!isConnected(port.second))
+                    continue;
+                const auto &objs = port.second->objects();
+                for (Index i=0; i<numObject && i<objs.size(); ++i) {
+                    const auto obj = objs[i];
+                    int t = obj->getTimestep();
+                    m_numTimesteps = std::max(t+1, m_numTimesteps);
+                }
+            }
 
             /*
             std::cerr << "    module [" << name() << "] [" << id() << "] ["
@@ -1833,6 +1844,8 @@ int Module::objectReceivePolicy() const {
 
 bool Module::prepareWrapper(const message::Message *req) {
 
+   m_numTimesteps = 0;
+
    if (m_reducePolicy != message::ReducePolicy::Never) {
       vassert(!m_prepared);
    }
@@ -1878,14 +1891,22 @@ bool Module::reduceWrapper(const message::Message *req) {
       vassert(!m_reduced);
    }
 
+   m_numTimesteps = mpi::all_reduce(comm(), m_numTimesteps, mpi::maximum<int>());
+
    m_reduced = true;
 
    bool ret = false;
    try {
-      if (reducePolicy() == message::ReducePolicy::Never)
+      if (reducePolicy() == message::ReducePolicy::Never) {
          ret = true;
-      else
+      } else if (reducePolicy() == message::ReducePolicy::PerTimestep && m_numTimesteps > 0) {
+         ret = true;
+         for (int t=0; t<m_numTimesteps; ++t) {
+             ret &= reduce(t);
+         }
+      } else {
          ret = reduce(-1);
+      }
    } catch (std::exception &e) {
       std::cout << name() << "::reduce(): exception - " << e.what() << std::endl << std::flush;
       std::cerr << name() << "::reduce(): exception - " << e.what() << std::endl;

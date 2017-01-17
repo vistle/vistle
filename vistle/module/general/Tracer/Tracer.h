@@ -70,6 +70,7 @@ public:
     std::vector<std::vector<vistle::Vec<vistle::Scalar,3>::const_ptr>> data_in0;
     std::vector<std::vector<vistle::Vec<vistle::Scalar>::const_ptr>> data_in1;
 
+    vistle::IntParameter *m_taskType;
     vistle::IntParameter *m_maxStartpoints, *m_numStartpoints;
     vistle::IntParameter *m_useCelltree;
     bool m_havePressure;

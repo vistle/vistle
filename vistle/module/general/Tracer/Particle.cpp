@@ -371,8 +371,11 @@ void Particle::addToOutput() {
            numPoints += seg.m_xhist.size();
        }
 
+       int t = m_timestep;
+       t = 0;
+
        std::lock_guard<std::mutex> locker(m_global.mutex);
-       auto lines = m_global.lines[m_timestep];
+       auto lines = m_global.lines[t];
        Index sz = lines->getNumVertices();
        Index nsz = sz+numPoints;
        auto &x = lines->x(), &y = lines->y(), &z = lines->z();
@@ -383,10 +386,10 @@ void Particle::addToOutput() {
        z.reserve(nsz);
        cl.reserve(nsz);
 
-       auto &vec_x = m_global.vecField[m_timestep]->x(), &vec_y = m_global.vecField[m_timestep]->y(), &vec_z = m_global.vecField[m_timestep]->z();
-       auto &scal = m_global.scalField[m_timestep]->x();
-       auto &step = m_global.stepField[m_timestep]->x(), &id = m_global.idField[m_timestep]->x();
-       auto &time = m_global.timeField[m_timestep]->x(), &dist = m_global.distField[m_timestep]->x();
+       auto &vec_x = m_global.vecField[t]->x(), &vec_y = m_global.vecField[t]->y(), &vec_z = m_global.vecField[t]->z();
+       auto &scal = m_global.scalField[t]->x();
+       auto &step = m_global.stepField[t]->x(), &id = m_global.idField[t]->x();
+       auto &time = m_global.timeField[t]->x(), &dist = m_global.distField[t]->x();
 
        vec_x.reserve(nsz);
        vec_y.reserve(nsz);

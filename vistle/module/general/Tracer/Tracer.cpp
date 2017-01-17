@@ -38,7 +38,7 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
    : Module("Tracer", shmname, name, moduleID) {
 
    setDefaultCacheMode(ObjectCache::CacheDeleteLate);
-   setReducePolicy(message::ReducePolicy::OverAll);
+   setReducePolicy(message::ReducePolicy::PerTimestep);
 
     createInputPort("data_in0");
     createInputPort("data_in1");
@@ -58,8 +58,8 @@ Tracer::Tracer(const std::string &shmname, const std::string &name, int moduleID
     const char *TracerInteraction::P_FREE_STARTPOINTS = "FreeStartPoints";
 #endif
 
-    IntParameter* tasktype = addIntParameter("taskType", "task type", Streamlines, Parameter::Choice);
-    V_ENUM_SET_CHOICES(tasktype, TraceType);
+    m_taskType = addIntParameter("taskType", "task type", Streamlines, Parameter::Choice);
+    V_ENUM_SET_CHOICES(m_taskType, TraceType);
     addVectorParameter("startpoint1", "1st initial point", ParamVector(0,0.2,0));
     addVectorParameter("startpoint2", "2nd initial point", ParamVector(1,0,0));
     addVectorParameter("direction", "direction for plane", ParamVector(1,0,0));
@@ -259,7 +259,9 @@ bool Tracer::reduce(int timestep) {
        numparticles *= 2;
    }
 
-   Index numtime = mpi::all_reduce(comm(), grid_in.size(), [](Index a, Index b){ return std::max<Index>(a,b); });
+   Index numtime = mpi::all_reduce(comm(), grid_in.size(), mpi::maximum<int>());
+   std::cerr << "reduce(" << timestep << ") with " << numtime << " steps" << std::endl;
+
 
    GlobalData global;
    global.int_mode = (IntegrationMethod)getIntParameter("integration");
@@ -301,6 +303,8 @@ bool Tracer::reduce(int timestep) {
    // create particles
    Index id=0;
    for (Index t=0; t<numtime; ++t) {
+       if (timestep != t && timestep != -1)
+           continue;
        Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
 
        //create BlockData objects
@@ -460,6 +464,8 @@ bool Tracer::reduce(int timestep) {
    }
 
    for (int i=0; i<numtime; ++i) {
+       if (timestep != i && timestep != -1)
+           continue;
        if (taskType == MovingPoints) {
            global.points.emplace_back(new Points(Index(0)));
        } else {
@@ -489,36 +495,41 @@ bool Tracer::reduce(int timestep) {
    Meta meta;
    meta.setNumTimesteps(numtime);
    meta.setNumBlocks(size());
+   Index i = 0;
    for (Index t=0; t<numtime; ++t) {
+       if (timestep != t && timestep != -1)
+           continue;
        meta.setBlock(rank());
        meta.setTimeStep(t);
 
-       Object::ptr geo = taskType==MovingPoints ? Object::ptr(global.points[t]) : Object::ptr(global.lines[t]);
+       Object::ptr geo = taskType==MovingPoints ? Object::ptr(global.points[i]) : Object::ptr(global.lines[i]);
        geo->setMeta(meta);
 
-       global.idField[t]->setGrid(geo);
-       global.idField[t]->setMeta(meta);
-       addObject("particle_id", global.idField[t]);
+       global.idField[i]->setGrid(geo);
+       global.idField[i]->setMeta(meta);
+       addObject("particle_id", global.idField[i]);
 
-       global.stepField[t]->setGrid(geo);
-       global.stepField[t]->setMeta(meta);
-       addObject("step", global.stepField[t]);
+       global.stepField[i]->setGrid(geo);
+       global.stepField[i]->setMeta(meta);
+       addObject("step", global.stepField[i]);
 
-       global.timeField[t]->setGrid(geo);
-       global.timeField[t]->setMeta(meta);
-       addObject("time", global.timeField[t]);
+       global.timeField[i]->setGrid(geo);
+       global.timeField[i]->setMeta(meta);
+       addObject("time", global.timeField[i]);
 
-       global.distField[t]->setGrid(geo);
-       global.distField[t]->setMeta(meta);
-       addObject("distance", global.distField[t]);
+       global.distField[i]->setGrid(geo);
+       global.distField[i]->setMeta(meta);
+       addObject("distance", global.distField[i]);
 
-       global.vecField[t]->setGrid(geo);
-       global.vecField[t]->setMeta(meta);
-       addObject("data_out0", global.vecField[t]);
+       global.vecField[i]->setGrid(geo);
+       global.vecField[i]->setMeta(meta);
+       addObject("data_out0", global.vecField[i]);
 
-       global.scalField[t]->setGrid(geo);
-       global.scalField[t]->setMeta(meta);
-       addObject("data_out1", global.scalField[t]);
+       global.scalField[i]->setGrid(geo);
+       global.scalField[i]->setMeta(meta);
+       addObject("data_out1", global.scalField[i]);
+
+       ++t;
    }
 
    if (rank() == 0) {
@@ -531,11 +542,6 @@ bool Tracer::reduce(int timestep) {
        sendInfo("%s", s.c_str());
    }
 
-   grid_in.clear();
-   celltree.clear();
-   data_in0.clear();
-   data_in1.clear();
-
    return true;
 }
 
@@ -543,6 +549,11 @@ bool Tracer::changeParameter(const Parameter *param) {
 
     if (param == m_maxStartpoints) {
         setParameterRange(m_numStartpoints, (Integer)1, m_maxStartpoints->getValue());
+    } else if (param == m_taskType) {
+        if (m_taskType->getValue() == Streamlines)
+            setReducePolicy(message::ReducePolicy::PerTimestep);
+        else
+            setReducePolicy(message::ReducePolicy::OverAll);
     }
     return true;
 }

@@ -282,6 +282,7 @@ protected:
    double m_avgComputeTime;
    boost::mpi::communicator m_comm;
 
+   int m_numTimesteps;
    bool m_prepared, m_computed, m_reduced;
    bool m_readyForQuit;
 };
