@@ -7,6 +7,7 @@
 #include <util/coRestraint.h>
 #include <core/unstr.h>
 #include <core/index.h>
+#include <core/polygons.h>
 #include <map>
 
 #include <util/sysdep.h>
@@ -94,8 +95,6 @@ class ReadCFX: public vistle::Module {
    // number of digits in transient file suffix
    //char zoneExt[256];
    int counts[cfxCNT_SIZE];
-   //std::string _dir;
-   //std::string _theFile;
 
    vistle::UnstructuredGrid::ptr grid;
    std::vector<IdWithZoneFlag> m_volumesSelected;
@@ -110,13 +109,16 @@ class ReadCFX: public vistle::Module {
    //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
    int rankForBlock(int processor) const;
    vistle::UnstructuredGrid::ptr loadGrid(int volumeNr);
+   vistle::Polygons::ptr loadPolygon(int boundaryNr);
    vistle::DataBase::ptr loadField(int volumeNr, int variableID);
+   vistle::DataBase::ptr loadBoundaryField(int boundaryNr, int variableID);
    bool loadFields(int volumeNr);
+   bool loadBoundaryFields(int boundaryNr);
    int collectVolumes();
    int collectBoundaries();
    bool addVolumeDataToPorts(int volumeNr);
    bool addGridToPort(int volumeNr);
-   std::vector<vistle::DataBase::ptr> loadBoundaryField(int boundaryNr);
+
 
 };
 

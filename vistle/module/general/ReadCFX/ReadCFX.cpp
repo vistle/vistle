@@ -39,9 +39,9 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
    : Module("ReadCFX", shmname, name, moduleID) {
 
     // file browser parameter
-    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
 
     // time parameters
     m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
@@ -286,14 +286,6 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
                 setParameterChoices(out, m_case.m_boundary_param);
             }
 
-//            std::vector<std::string>::const_iterator it1;
-//            for(it1=m_case.m_field_param.begin();it1!=m_case.m_field_param.end();++it1) {
-//                std::cerr << "field_choices = " << *it1 << std::endl;
-//            }
-//            for(it1=m_case.m_boundary_param.begin();it1!=m_case.m_boundary_param.end();++it1) {
-//                std::cerr << "field_choices = " << *it1 << std::endl;
-//            }
-
             //print out zone names
             sendInfo("Found %d zones", m_nzones);
             for(index_t i=1;i<=m_nzones;i++) {
@@ -335,21 +327,21 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
 
     UnstructuredGrid::ptr grid(new UnstructuredGrid(nelmsInVolume, nconnectivities, nnodesInVolume)); //initialized with number of elements, number of connectivities, number of coordinates
 
-    //load nodes into unstructured grid
+    //load coords into unstructured grid
     boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
 
-    auto ptrOnXdata = grid->x().data();
-    auto ptrOnYdata = grid->y().data();
-    auto ptrOnZdata = grid->z().data();
+    auto ptrOnXcoords = grid->x().data();
+    auto ptrOnYcoords = grid->y().data();
+    auto ptrOnZcoords = grid->z().data();
 
     int *nodeListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_NODES); //query the nodes that define the volume
     for(index_t i=0;i<nnodesInVolume;++i) {
         if(!cfxExportNodeGet(nodeListOfVolume[i],x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates: [IN] nodeid [OUT] x,y,z
             std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
         }
-        ptrOnXdata[i] = *x_coord.get();
-        ptrOnYdata[i] = *y_coord.get();
-        ptrOnZdata[i] = *z_coord.get();
+        ptrOnXcoords[i] = *x_coord.get();
+        ptrOnYcoords[i] = *y_coord.get();
+        ptrOnZcoords[i] = *z_coord.get();
     }
 
 
@@ -425,8 +417,6 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     ptrOnEl[nelmsInVolume] = elemListCounter;
     ptrOnCl[elemListCounter] = 0;
 
-
-
     //Test, ob Einlesen funktioniert hat
 //        std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
 //        std::cerr <<"no. elems total = " << m_nelems << std::endl;
@@ -457,6 +447,57 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
     return grid;
 }
 
+Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
+    if(cfxExportZoneSet(0,counts) < 0) {        //(0,counts) 0 means all zones are selected, counts is a vector for statistics of the zone
+        std::cerr << "invalid zone number" << std::endl;
+    }
+
+    index_t nnodesInBoundary, nelmsInBoundary, nconnectInBoundary;
+    nnodesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr],cfxREG_NODES);
+    nelmsInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr],cfxREG_FACES);
+    nconnectInBoundary = 4*counts[cfxCNT_TET]+5*counts[cfxCNT_PYR]+6*counts[cfxCNT_WDG]+8*counts[cfxCNT_HEX];
+    std::cerr << "tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
+
+    Polygons::ptr polygon(new Polygons(nelmsInBoundary,nconnectInBoundary,nnodesInBoundary)); //initialize Polygon with numElements, numCorners, numVertices
+
+    //load coords into polygon
+    boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
+
+    auto ptrOnXcoords = polygon->x().data();
+    auto ptrOnYcoords = polygon->y().data();
+    auto ptrOnZcoords = polygon->z().data();
+
+    int *nodeListOfBoundary = cfxExportBoundaryList(m_boundariesSelected[boundaryNr],cfxREG_NODES); //query the nodes that define the boundary
+    for(index_t i=0;i<nnodesInBoundary;++i) {
+        if(!cfxExportNodeGet(nodeListOfBoundary[i],x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates: [IN] nodeid [OUT] x,y,z
+            std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
+        }
+        ptrOnXcoords[i] = *x_coord.get();
+        ptrOnYcoords[i] = *y_coord.get();
+        ptrOnZcoords[i] = *z_coord.get();
+        //std::cerr << "x,y,z at(" << i << ") = " << *x_coord.get() << ", " << *y_coord.get() << ", " << *z_coord.get() << std::endl;
+    }
+
+
+    //Test, ob Einlesen funktioniert hat
+//    std::cerr << "nnodesInBoundary = " << nnodesInBoundary << std::endl;
+//    std::cerr << "polygon->getNumCoords()" << polygon->getNumCoords() << std::endl;
+    cfxExportZoneSet(0,NULL);
+    for(int i=0;i<100;++i) {
+        //std::cerr << "x,y,z (" << i << ") = " << polygon->x().at(i) << ", " << polygon->y().at(i) << ", " << polygon->z().at(i) << std::endl;
+        std::cerr << "nodeget = " << cfxExportNodeGet(i+1,x_coord.get(),y_coord.get(),z_coord.get()) << std::endl;
+        std::cerr << "x,y,z (" << i+1 << ") = " << *x_coord.get() << ", " << *y_coord.get() << ", " << *z_coord.get() << std::endl;
+
+    }
+
+
+    cfxExportNodeFree();
+    cfxExportBoundaryFree(m_boundariesSelected[boundaryNr]);
+
+
+    return polygon;
+}
+
 DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID) {
 
     if(cfxExportZoneSet(m_volumesSelected[volumeNr].zoneFlag,NULL) < 0) {
@@ -480,9 +521,9 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID) {
         for(index_t j=0;j<nnodesInVolume;++j) {
             cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
             ptrOnScalarData[j] = *value.get();
-//            if(j<20) {
-//                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-//            }
+            if(j<200) {
+                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+            }
         }
         cfxExportVariableFree(varnum);
         return s;
@@ -513,10 +554,14 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID) {
     return DataBase::ptr();
 }
 
-std::vector<DataBase::ptr> ReadCFX::loadBoundaryField(int boundaryNr) {
-    std::vector<DataBase::ptr> result;
+DataBase::ptr ReadCFX::loadBoundaryField(int boundaryNr, int variableID) {
+    DataBase::ptr result;
+
+
     //hier muss mit cfxExportBoundaryGet für jede vom User angegebene Boundary die Faces  ausgelesen werden
     //und dann mit cfxExportFaceNodes die Knoten
+
+    //oder mit cfxExportBoundaryList die Knoten einer Boundary condition
     // und dann mit cfxExportVariableGet die Daten dazu
     return result;
 }
@@ -574,13 +619,13 @@ int ReadCFX::collectBoundaries() {
     for(index_t i=1;i<=m_nboundaries;++i) {
         if(m_coRestraintBoundaries(i)) {
             m_boundariesSelected[numberOfSelectedBoundaries]=i;
-            std::cerr << "BoundaryName(" << i << ") = " << cfxExportBoundaryName(i) << std::endl;
+            numberOfSelectedBoundaries++;
         }
     }
 
     //zum Testen
-//    for(index_t i=0;i<k;++i) {
-//        std::cerr << "m_volumesSelected[" << i << "].ID = " << m_volumesSelected[i].ID << " m_volumesSelected.zoneFlag" << m_volumesSelected[i].zoneFlag << std::endl;
+//    for(int i=0;i<numberOfSelectedBoundaries;++i) {
+//        std::cerr << "m_boundariesSelected[" << i << "] = " << m_boundariesSelected[i] << std::endl;
 //    }
     cfxExportZoneFree();
     return numberOfSelectedBoundaries;
@@ -597,14 +642,20 @@ bool ReadCFX::loadFields(int volumeNr) {
       //setMeta(obj, processor, timestep);
       m_currentVolumedata[i]= obj;
    }
-//   for (int i=0; i<NumBoundaryPorts; ++i) {
-//      std::string boundField = m_boundaryOut[i]->getValue();
-//      bm_type::right_const_iterator right_iter = m_case.m_allParam.right.find(boundField);
-//      DataBase::ptr obj = loadField(volumeNr, right_iter->second);
-//      //setMeta(obj, processor, timestep);
-//      m_currentBoundaryVolumedata[i]= obj;
-//   }
    return true;
+}
+
+bool ReadCFX::loadBoundaryFields(int boundaryNr) {
+    for (int i=0; i<NumBoundaryPorts; ++i) {
+        std::string boundField = m_boundaryOut[i]->getValue();
+        bm_type::right_const_iterator right_iter = m_case.m_allParam.right.find(boundField);
+        DataBase::ptr obj = loadBoundaryField(boundaryNr, right_iter->second);
+        //setMeta(obj, processor, timestep);
+        obj ->setGrid(loadPolygon(boundaryNr));
+        obj ->setMapping(DataBase::Vertex);
+        addObject(m_boundaryDataOut[i],obj);
+    }
+    return true;
 }
 
 bool ReadCFX::addVolumeDataToPorts(int volumeNr) {
@@ -618,17 +669,6 @@ bool ReadCFX::addVolumeDataToPorts(int volumeNr) {
             }
         }
     }
-
-//    for (int portnum=0; portnum<NumBoundaryPorts; ++portnum) {
-//        auto &boundaryVolumedata = m_currentBoundaryVolumedata;
-//        if(boundaryVolumedata.find(portnum) != boundaryVolumedata.end()) {
-//            if(boundaryVolumedata[portnum]) {
-//                boundaryVolumedata[portnum] ->setGrid(m_currentGrid[volumeNr]);
-//                boundaryVolumedata[portnum] ->setMapping(DataBase::Vertex);
-//                addObject(m_boundaryDataOut[portnum], boundaryVolumedata[portnum]);
-//            }
-//        }
-//    }
    return true;
 }
 
@@ -661,9 +701,8 @@ bool ReadCFX::compute() {
 
         int numSelBoundaries = collectBoundaries();
         for(int i=0;i<numSelBoundaries;++i) {
-            //m_currentBound[i];
-            loadBoundaryField(i);
-
+            //loadBoundaryFields(i);
+            loadPolygon(i);
         }
 
     //    for(t = t1; t <= t2; t++) {
