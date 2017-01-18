@@ -59,12 +59,20 @@ Module::~Module()
 {
     delete m_moduleMenu;
     delete m_execAct;
+    delete m_cancelExecAct;
     delete m_deleteAct;
 }
 
 void Module::execModule()
 {
    vistle::message::Execute m(vistle::message::Execute::ComputeExecute, m_id);
+   vistle::VistleConnection::the().sendMessage(m);
+}
+
+void Module::cancelExecModule()
+{
+   vistle::message::CancelExecute m(m_id);
+   m.setDestId(m_id);
    vistle::VistleConnection::the().sendMessage(m);
 }
 
@@ -99,6 +107,10 @@ void Module::createActions()
     m_execAct = new QAction("Execute", this);
     m_execAct->setStatusTip("Execute the module");
     connect(m_execAct, SIGNAL(triggered()), this, SLOT(execModule()));
+
+    m_cancelExecAct = new QAction("Cancel Execution", this);
+    m_cancelExecAct->setStatusTip("Interrupt execution of module");
+    connect(m_cancelExecAct, SIGNAL(triggered()), this, SLOT(cancelExecModule()));
 }
 
 /*!
@@ -108,6 +120,7 @@ void Module::createMenus()
 {
    m_moduleMenu = new QMenu();
    m_moduleMenu->addAction(m_execAct);
+   m_moduleMenu->addAction(m_cancelExecAct);
    m_moduleMenu->addSeparator();
    m_moduleMenu->addAction(m_deleteAct);
 }
@@ -443,6 +456,8 @@ void Module::setStatus(Module::Status status)
       m_borderColor = Qt::red;
       break;
    }
+
+   m_cancelExecAct->setEnabled(status == BUSY);
 
    update();
 }

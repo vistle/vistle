@@ -87,6 +87,7 @@ protected:
 
 public slots:
     void execModule();
+    void cancelExecModule();
     void deleteModule();
 
 private:
@@ -98,6 +99,7 @@ private:
     QMenu *m_moduleMenu;
     QAction *m_deleteAct;
     QAction *m_execAct;
+    QAction *m_cancelExecAct;
 
     int m_hub;
     int m_id;

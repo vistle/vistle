@@ -465,6 +465,15 @@ static void compute(int id=message::Id::Broadcast) {
 }
 BOOST_PYTHON_FUNCTION_OVERLOADS(compute_overloads, compute, 0, 1)
 
+static void cancelCompute(int id) {
+#ifdef DEBUG
+   std::cerr << "Python: cancelCompute " << id << std::endl;
+#endif
+   message::CancelExecute m(id);
+   m.setDestId(id);
+   sendMessage(m);
+}
+
 static void requestTunnel(unsigned short listenPort, const std::string &destHost, unsigned short destPort=0) {
 #ifdef DEBUG
    std::cerr << "Python: requestTunnel " << listenPort << " -> " << destHost << ":" << destPort << std::endl;
@@ -551,6 +560,7 @@ BOOST_PYTHON_MODULE(_vistle)
     def("connect", connect, "connect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
     def("disconnect", disconnect, "disconnect output `arg2` of module with ID `arg1` to input `arg4` of module with ID `arg3`");
     def("compute", compute, compute_overloads(args("module id"), "trigger execution of module with ID `arg1`"));
+    def("interrupt", cancelCompute, "interrupt execution of module with ID `arg1`");
     def("quit", quit, "quit vistle session");
     def("ping", ping, ping_overloads(args("id", "data"), "send first character of `arg2` to destination `arg1`"));
     def("trace", trace, trace_overloads(args("id", "enable"), "enable/disable message tracing for module `arg1`"));
