@@ -212,10 +212,14 @@ std::pair<Vector,Vector> StructuredGrid::cellBounds(Index elem) const {
 
 // FIND CELL
 //-------------------------------------------------------------------------
-Index StructuredGrid::findCell(const Vec::Vector &point, int flags) const {
+Index StructuredGrid::findCell(const Vec::Vector &point, Index hint, int flags) const {
 
    const bool acceptGhost = flags&AcceptGhost;
    const bool useCelltree = (flags&ForceCelltree) || (hasCelltree() && !(flags&NoCelltree));
+
+   if (hint != InvalidIndex && inside(hint, point)) {
+      return hint;
+   }
 
    if (useCelltree) {
 
@@ -227,7 +231,7 @@ Index StructuredGrid::findCell(const Vec::Vector &point, int flags) const {
 
    Index size = getNumElements();
    for (Index i=0; i<size; ++i) {
-      if (acceptGhost || !isGhostCell(i)) {
+      if (acceptGhost || !isGhostCell(i) && i!=hint) {
          if (inside(i, point))
             return i;
       }

@@ -36,7 +36,10 @@ m_stopReason(StillActive),
 m_useCelltree(m_global.use_celltree)
 {
    m_integrator.enableCelltree(m_useCelltree);
-   if (findCell()) {
+
+   if (!global.blocks[timestep].empty())
+       m_time = global.blocks[timestep][0]->m_grid->getRealTime();
+   if (findCell(m_time)) {
       m_integrator.hInit();
    }
 }
@@ -110,7 +113,7 @@ bool Particle::isForward() const {
     return m_forward;
 }
 
-bool Particle::findCell() {
+bool Particle::findCell(double time) {
 
     if (!m_ingrid) {
         return false;
@@ -129,13 +132,9 @@ bool Particle::findCell() {
                 }
             }
         } else {
-            if(grid->inside(m_el, m_x)){
-                assert(m_currentSegment);
-                return true;
-            }
+           m_el = grid->findCell(m_x, m_el, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
         }
-        m_el = grid->findCell(m_x, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
-        if (m_el!=InvalidIndex) {
+        if (m_el != InvalidIndex) {
             assert(m_currentSegment);
             return true;
         }
@@ -149,7 +148,7 @@ bool Particle::findCell() {
             continue;
         }
         auto grid = block->getGrid();
-        m_el = grid->findCell(m_x, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
+        m_el = grid->findCell(m_x, InvalidIndex, m_useCelltree?GridInterface::NoFlags:GridInterface::NoCelltree);
         if (m_el!=InvalidIndex) {
 
             if (!m_currentSegment) {
@@ -257,7 +256,7 @@ bool Particle::trace() {
     assert(m_tracing);
 
     bool traced = false;
-    while(isMoving() && findCell()) {
+    while(isMoving() && findCell(m_time)) {
         Step();
         traced = true;
     }

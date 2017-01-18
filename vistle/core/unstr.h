@@ -58,7 +58,7 @@ class V_COREEXPORT UnstructuredGrid: public Indexed, virtual public GridInterfac
    bool isConvex(Index elem) const;
    bool isGhostCell(Index elem) const override;
    std::pair<Vector, Vector> cellBounds(Index elem) const override;
-   Index findCell(const Vector &point, int flags=NoFlags) const override;
+   Index findCell(const Vector &point, Index hint=InvalidIndex, int flags=NoFlags) const override;
    bool insideConvex(Index elem, const Vector &point) const;
    bool inside(Index elem, const Vector &point) const override;
    bool checkConvexity();

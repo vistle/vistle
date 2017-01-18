@@ -21,7 +21,7 @@ class V_COREEXPORT GridInterface: virtual public ElementInterface {
                       };
 
    virtual bool isGhostCell(Index elem) const = 0;
-   virtual Index findCell(const Vector &point, int flags=NoFlags) const = 0;
+   virtual Index findCell(const Vector &point, Index hint=InvalidIndex, int flags=NoFlags) const = 0;
    virtual bool inside(Index elem, const Vector &point) const = 0;
    virtual std::pair<Vector, Vector> cellBounds(Index elem) const = 0;
    virtual Scalar cellDiameter(Index elem) const = 0; //< approximate diameter of cell

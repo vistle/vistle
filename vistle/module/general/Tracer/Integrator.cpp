@@ -172,31 +172,31 @@ bool Integrator::StepRK32() {
       Index el=m_ptcl->m_el;
 
       const Vector x1 = m_ptcl->m_x + 0.5*m_h*k[0];
-      if(!grid->inside(el,x1)){
-         el = grid->findCell(x1, m_cellSearchFlags);
-         if(el==InvalidIndex){
-            m_ptcl->m_x = x1;
-            m_hact = 0.5*m_h;
-            return false;
-         }
-         cellSize = std::min(grid->cellDiameter(el), cellSize);
+      Index el1 = grid->findCell(x1, m_ptcl->m_el, m_cellSearchFlags);
+      if (el1==InvalidIndex){
+         m_ptcl->m_x = x1;
+         m_hact = 0.5*m_h;
+         return false;
+      }
+      if (el1 != m_ptcl->m_el) {
+         cellSize = std::min(grid->cellDiameter(el1), cellSize);
       }
 
       k[1] = sign*Interpolator(m_ptcl->m_block,el, x1);
       Vector3 x2nd = m_ptcl->m_x + m_h*(k[0]*0.5 + k[1]*0.5);
 
       const Vector x2 = m_ptcl->m_x +m_h*(-k[0]+2*k[1]);
-      if(!grid->inside(el,x2)){
-         el = grid->findCell(x2, m_cellSearchFlags);
-         if(el==InvalidIndex){
-            m_ptcl->m_x = x2nd;
-            m_hact = m_h;
-            return false;
-         }
-         cellSize = std::min(grid->cellDiameter(el), cellSize);
+      Index el2 = grid->findCell(x2, el1, m_cellSearchFlags);
+      if(el2==InvalidIndex){
+         m_ptcl->m_x = x2nd;
+         m_hact = m_h;
+         return false;
+      }
+      if (el2 != el1) {
+         cellSize = std::min(grid->cellDiameter(el2), cellSize);
       }
 
-      k[2] = sign*Interpolator(m_ptcl->m_block,el,x2);
+      k[2] = sign*Interpolator(m_ptcl->m_block,el2,x2);
       Vector3 x3rd = m_ptcl->m_x + m_h*(k[0]/6.0 + 2*k[1]/3.0 + k[2]/6.0);
       m_hact = m_h;
 

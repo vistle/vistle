@@ -41,7 +41,6 @@ public:
     bool inGrid() const;
     bool isMoving();
     bool isForward() const;
-    bool findCell();
     void Deactivate(StopReason reason);
     void EmitData();
     bool Step();
@@ -61,6 +60,8 @@ public:
     vistle::Scalar time() const;
 
 private:
+    bool findCell(double time);
+
     GlobalData &m_global;
     vistle::Index m_id; //!< particle id
     vistle::Index m_startId; //!< id of start point;
