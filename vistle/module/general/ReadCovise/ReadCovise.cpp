@@ -742,6 +742,10 @@ bool ReadCovise::readSkeleton(const int fd, Element *elem) {
 
 bool ReadCovise::readRecursive(const int fd, Element *elem, int timestep) {
 
+   if (cancelRequested()) {
+      return true;
+   }
+
    if (Object::ptr obj = readObject(fd, elem, timestep)) {
       // obj is regular
       // do not recurse as subelems are abused for Geometry components

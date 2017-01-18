@@ -304,8 +304,13 @@ bool ReadVtk::compute() {
                if (block%size() == rank())
                    load(file.filename, meta);
                ++block;
+               if (cancelRequested()) {
+                   break;
+               }
            }
            ++time;
+           if (cancelRequested())
+               break;
        }
        return true;
    }

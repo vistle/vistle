@@ -217,10 +217,15 @@ bool ReadModel::compute() {
                    loaded = true;
                    addObject("grid_out", obj);
                }
+               if (cancelRequested()) {
+                   break;
+               }
            }
        }
        if (loaded)
            ++timeCounter;
+       if (cancelRequested())
+           break;
    }
    return true;
 }

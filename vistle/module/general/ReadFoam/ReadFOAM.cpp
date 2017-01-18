@@ -1363,9 +1363,11 @@ bool ReadFOAM::compute()     //Compute is called when Module is executed
    }
    int skipfactor = m_timeskip->getValue()+1;
    for (Index timestep=0; timestep<m_case.timedirs.size()/skipfactor; ++timestep) {
-      if (!readTime(casedir, timestep)) {
-         std::cerr << "reading of data for timestep " << timestep << " failed" << std::endl;
-      }
+       if (cancelRequested())
+           break;
+       if (!readTime(casedir, timestep)) {
+           std::cerr << "reading of data for timestep " << timestep << " failed" << std::endl;
+       }
    }
    vassert(m_requests.empty());
    vassert(m_GhostCellsOut.empty());
