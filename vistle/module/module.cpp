@@ -161,6 +161,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_reducePolicy(message::ReducePolicy::Locally)
 , m_executionDepth(0)
 , m_defaultCacheMode(ObjectCache::CacheNone)
+, m_prioritizeVisible(true)
 , m_syncMessageProcessing(false)
 , m_origStreambuf(nullptr)
 , m_streambuf(nullptr)
@@ -221,6 +222,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 
    auto cm = addIntParameter("_cache_mode", "input object caching", ObjectCache::CacheDefault, Parameter::Choice);
    V_ENUM_SET_CHOICES_SCOPE(cm, CacheMode, ObjectCache);
+   addIntParameter("_prioritize_visible", "prioritize currently visible timestep", m_prioritizeVisible, Parameter::Boolean);
 
    addVectorParameter("_position", "position in GUI", ParamVector(0., 0.));
 
@@ -997,6 +999,9 @@ bool Module::parameterChangedWrapper(const Parameter *p) {
       } else if (name == "_benchmark") {
 
          enableBenchmark(getIntParameter(name), false);
+      } else if (name == "_prioritize_visible") {
+
+          m_prioritizeVisible = getIntParameter("_prioritize_visible");
       }
 
       m_inParameterChanged = false;
@@ -1418,7 +1423,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                   }
                }
 
-               if (numObject > 0 && !gang && !exec->allRanks() && (exec->animationRealTime() != 0.0 || exec->animationStep() != 0.0)) {
+               if (m_prioritizeVisible && numObject > 0 && !gang && !exec->allRanks() && (exec->animationRealTime() != 0.0 || exec->animationStep() != 0.0)) {
 
                    struct TimeIndex {
                        double t = 0.;

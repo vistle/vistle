@@ -265,6 +265,7 @@ protected:
    std::map<std::string, std::shared_ptr<Parameter>> parameters;
    ObjectCache m_cache;
    ObjectCache::CacheMode m_defaultCacheMode;
+   bool m_prioritizeVisible;
    void updateCacheMode();
    bool m_syncMessageProcessing;
 
