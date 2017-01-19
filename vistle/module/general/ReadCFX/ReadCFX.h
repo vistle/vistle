@@ -108,7 +108,7 @@ class ReadCFX: public vistle::Module {
    //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
    int rankForBlock(int processor) const;
    vistle::UnstructuredGrid::ptr loadGrid(int volumeNr);
-   //vistle::Polygons::ptr loadPolygon(int boundaryNr);
+   vistle::Polygons::ptr loadPolygon(int boundaryNr);
    vistle::DataBase::ptr loadField(int volumeNr, int variableID);
    vistle::DataBase::ptr loadBoundaryField(int boundaryNr, int variableID);
    bool loadFields(int volumeNr);
