@@ -38,9 +38,9 @@ public:
     CaseInfo();
     std::vector<std::string> m_field_param, m_boundary_param;
     bool m_valid;
-    bm_type m_allParam;
+    bm_type m_allParam, m_allBoundaries;
     std::map<int, int> m_ParamDimension;
-    index_t m_nvars;
+    index_t m_nvars, m_nbounds;
 
     bool checkFile(const char *filename);
     void parseResultfile();
@@ -97,8 +97,7 @@ class ReadCFX: public vistle::Module {
    int counts[cfxCNT_SIZE];
 
    vistle::UnstructuredGrid::ptr grid;
-   std::vector<IdWithZoneFlag> m_volumesSelected;
-   std::vector<std::int32_t> m_boundariesSelected;
+   std::vector<IdWithZoneFlag> m_volumesSelected, m_boundariesSelected;
    std::map<int, vistle::DataBase::ptr> m_currentVolumedata;
    std::map<int, vistle::DataBase::ptr> m_currentBoundaryVolumedata;
    std::map<int, vistle::UnstructuredGrid::ptr>  m_currentGrid;
@@ -109,7 +108,7 @@ class ReadCFX: public vistle::Module {
    //! return MPI rank on which a block should be processed, takes OpenFOAM case, especially no. of blocks, into account
    int rankForBlock(int processor) const;
    vistle::UnstructuredGrid::ptr loadGrid(int volumeNr);
-   vistle::Polygons::ptr loadPolygon(int boundaryNr);
+   //vistle::Polygons::ptr loadPolygon(int boundaryNr);
    vistle::DataBase::ptr loadField(int volumeNr, int variableID);
    vistle::DataBase::ptr loadBoundaryField(int boundaryNr, int variableID);
    bool loadFields(int volumeNr);
