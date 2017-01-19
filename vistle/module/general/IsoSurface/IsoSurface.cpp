@@ -212,7 +212,7 @@ bool IsoSurface::compute() {
     if (m_pointOrValue->getValue() == Value) {
         return work(gridS, dataS, mapdata);
     } else {
-        gridS->getCelltree();
+        //gridS->getCelltree();
         m_grids.push_back(gridS);
         m_datas.push_back(dataS);
         m_mapdatas.push_back(mapdata);
