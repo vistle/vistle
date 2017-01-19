@@ -1555,9 +1555,6 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             bool computeOk = false;
             for (Index i=0; i<numObject; ++i) {
                computeOk = false;
-               if (cancelRequested()) {
-                   break;
-               }
                try {
                   double start = Clock::time();
                   int timestep = -1;
@@ -1569,28 +1566,36 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                       if (t != -1)
                           timestep = t;
                   }
-                  computeOk = compute();
+                  if (cancelRequested()) {
+                      computeOk = true;
+                  } else {
+                      computeOk = compute();
+                  }
+                  auto runReduce = [this, &numReductions](int timestep) -> bool {
+                      ++numReductions;
+                      m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
+                      if (m_cancelRequested)
+                          return true;
+                      return reduce(timestep);
+                  };
                   if (computeOk && reordered && m_numTimesteps>0 && reducePolicy() == message::ReducePolicy::PerTimestep) {
                       if (exec->animationStep() >= 0.0) {
                           if (prevTimestep > timestep) {
                               for (int t=prevTimestep; t<m_numTimesteps; ++t) {
-                                  ++numReductions;
-                                  computeOk = reduce(t);
+                                  computeOk = runReduce(t);
                                   if (!computeOk)
                                       break;
                               }
                               if (computeOk) {
                                   for (int t=0; t<timestep; ++t) {
-                                      ++numReductions;
-                                      computeOk = reduce(t);
+                                      computeOk = runReduce(t);
                                       if (!computeOk)
                                           break;
                                   }
                               }
                           } else {
                               for (int t=prevTimestep; t<timestep; ++t) {
-                                  ++numReductions;
-                                  computeOk = reduce(t);
+                                  computeOk = runReduce(t);
                                   if (!computeOk)
                                       break;
                               }
@@ -1598,23 +1603,20 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                       } else {
                           if (prevTimestep < timestep) {
                               for (int t=prevTimestep; t>=0; --t) {
-                                  ++numReductions;
-                                  computeOk = reduce(t);
+                                  computeOk = runReduce(t);
                                   if (!computeOk)
                                       break;
                               }
                               if (computeOk) {
                                   for (int t=m_numTimesteps-1; t>timestep; --t) {
-                                      ++numReductions;
-                                      computeOk = reduce(t);
+                                      computeOk = runReduce(t);
                                       if (!computeOk)
                                           break;
                                   }
                               }
                           } else {
                               for (int t=prevTimestep; t>timestep; --t) {
-                                  ++numReductions;
-                                  computeOk = reduce(t);
+                                  computeOk = runReduce(t);
                                   if (!computeOk)
                                       break;
                               }
@@ -2004,6 +2006,7 @@ bool Module::reduceWrapper(const message::Message *req) {
       vassert(!m_reduced);
    }
 
+   m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
    m_numTimesteps = boost::mpi::all_reduce(comm(), m_numTimesteps, boost::mpi::maximum<int>());
 
    m_reduced = true;
