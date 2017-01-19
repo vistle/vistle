@@ -242,6 +242,7 @@ protected:
    virtual bool prepare(); //< prepare execution - called on each rank individually
    virtual bool reduce(int timestep); //< do reduction for timestep (-1: global) - called on all ranks
    virtual bool cancelExecute(); //< if execution has been canceled early before all objects have been processed
+   int numTimesteps() const;
 
  private:
    bool reduceWrapper(const message::Message *req);
@@ -288,6 +289,7 @@ protected:
    boost::mpi::communicator m_comm;
 
    int m_numTimesteps;
+   bool m_cancelRequested;
    bool m_prepared, m_computed, m_reduced;
    bool m_readyForQuit;
 };

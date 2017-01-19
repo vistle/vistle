@@ -228,10 +228,10 @@ bool Tracer::reduce(int timestep) {
            if (n1 <= 1)
                n1 = 2;
        }
-       numpoints = n0*n1;
        //setIntParameter("no_startp", numpoints);
-       if (rank() == 0)
-           sendInfo("actually using %d*%d=%d start points", n0, n1, numpoints);
+       if (rank() == 0 && numpoints != n0*n1)
+           sendInfo("actually using %d*%d=%d start points", n0, n1, n0*n1);
+       numpoints = n0*n1;
        startpoints.resize(numpoints);
 
        Scalar s0 = Scalar(1)/(n0-1);
@@ -259,7 +259,7 @@ bool Tracer::reduce(int timestep) {
        numparticles *= 2;
    }
 
-   Index numtime = mpi::all_reduce(comm(), grid_in.size(), mpi::maximum<int>());
+   int numtime = numTimesteps();
    std::cerr << "reduce(" << timestep << ") with " << numtime << " steps" << std::endl;
 
 
@@ -302,7 +302,7 @@ bool Tracer::reduce(int timestep) {
 
    // create particles
    Index id=0;
-   for (Index t=0; t<numtime; ++t) {
+   for (int t=0; t<numtime; ++t) {
        if (timestep != t && timestep != -1)
            continue;
        Index numblocks = t>=grid_in.size() ? 0 : grid_in[t].size();
@@ -496,7 +496,7 @@ bool Tracer::reduce(int timestep) {
    meta.setNumTimesteps(numtime);
    meta.setNumBlocks(size());
    Index i = 0;
-   for (Index t=0; t<numtime; ++t) {
+   for (int t=0; t<numtime; ++t) {
        if (timestep != t && timestep != -1)
            continue;
        meta.setBlock(rank());
