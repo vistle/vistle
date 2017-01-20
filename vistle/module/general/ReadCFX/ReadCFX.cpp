@@ -458,14 +458,12 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
     if(cfxExportZoneSet(m_boundariesSelected[boundaryNr].zoneFlag,counts) < 0) { //counts is a vector for statistics of the zone
         std::cerr << "invalid zone number" << std::endl;
     }
-    std::cerr << "zone is set to = " << m_boundariesSelected[boundaryNr].zoneFlag << std::endl;
 
 //    index_t nNodesInBoundary, nFacesInBoundary, nConnectInBoundary;
     index_t nNodesInBoundary, nFacesInBoundary;
     nNodesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES);
     nFacesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_FACES);
 //    nConnectInBoundary = 4*nFacesInBoundary; //passt nur, wenn alle Faces 4 Knoten haben. Das ist nicht immer der Fall!!
-    //std::cerr << "tets = " << counts[cfxCNT_TET] << ", " << "pyramid = " << counts[cfxCNT_PYR] << ", "<< "prism = " << counts[cfxCNT_WDG] << ", "<< "hex = " << counts[cfxCNT_HEX] << std::endl;
 
 //    Polygons::ptr polygon(new Polygons(nFacesInBoundary,nConnectInBoundary,nNodesInBoundary)); //initialize Polygon with numFaces, numCorners, numVertices
     Polygons::ptr polygon(new Polygons(nFacesInBoundary,0,nNodesInBoundary)); //initialize Polygon with numFaces, numCorners, numVertices
@@ -552,31 +550,29 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
     ptrOnEl[nFacesInBoundary] = elemListCounter;
 //    ptrOnCl[elemListCounter] = 0;
     ptrOnCl.push_back(0);
+    ptrOnCl.resize(elemListCounter);
 
     //Test, ob Einlesen funktioniert hat
-//    std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
-    std::cerr << "nodes = " << nNodesInBoundary << "; faces = " << nFacesInBoundary << "; connect = " << ptrOnCl.size() << std::endl;
-    std::cerr <<"polygon->getNumVertices" << polygon->getNumVertices() << std::endl;
-    std::cerr <<"polygon->getNumElements" << polygon->getNumElements() << std::endl;
-    std::cerr <<"polygon->getNumCorners" << polygon->getNumCorners() << std::endl;
-//    for(index_t i = nFacesInBoundary-5;i<nFacesInBoundary+1;++i) {
-//        std::cerr << "el(" << i << ") = " << polygon->el().at(i) << std::endl;
-//        for(index_t j = 0;j<1;++j) {
-//            std::cerr << "cl(" << i*4+j << ") = " << polygon->cl().at(i*4+j) << std::endl;
-//        }
-//    }
+// //   std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
+// //   std::cerr << "nodes = " << nNodesInBoundary << "; faces = " << nFacesInBoundary << "; connect = " << nConnectInBoundary << std::endl;
+//    std::cerr << "nodes = " << nNodesInBoundary << "; faces = " << nFacesInBoundary << "; connect = " << ptrOnCl.size() << std::endl;
+    std::cerr <<"polygon->getNumVertices = " << polygon->getNumVertices() << std::endl;
+//    std::cerr <<"polygon->getNumElements = " << polygon->getNumElements() << std::endl;
+    std::cerr <<"polygon->getNumCorners = " << polygon->getNumCorners() << std::endl;
 
-    std::cerr << "polygon->el().at(polygon->getNumElements())"
-                 ""
-                 "" << polygon->el().at(polygon->getNumElements()) << std::endl;
-    std::cerr << "polygon->getNumCorners()" << polygon->getNumCorners() << std::endl;
-    std::cerr << "nconnectivities = " << ptrOnCl.size() << std::endl;
-    std::cerr << "elemListCounter = " << elemListCounter << std::endl;
+    std::cerr << "polygon->el().at(polygon->getNumElements()) = " << polygon->el().at(polygon->getNumElements()) << std::endl;
+    std::cerr << "polygon->cl().at(polygon->getNumCorners()-1) = " << polygon->cl().at(polygon->getNumCorners()-1) << std::endl;
+// //   std::cerr << "nconnectivities = " << nConnectInBoundary << std::endl;
+//    std::cerr << "nconnectivities = " << ptrOnCl.size() << std::endl;
+//    std::cerr << "elemListCounter = " << elemListCounter << std::endl;
 
     for(index_t i=nFacesInBoundary-10;i<=nFacesInBoundary;++i) {
         std::cerr << "ptrOnEl[" << i << "] = " << ptrOnEl[i] << std::endl;
     }
     for(int i=elemListCounter-10;i<=elemListCounter;++i) {
+        std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
+    }
+    for(int i=0;i<=5;++i) {
         std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
     }
 
@@ -591,10 +587,8 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID) {
         std::cerr << "invalid zone number" << std::endl;
     }
 //    std::cerr << "m_volumesSelected[volumeNr].ID = " << m_volumesSelected[volumeNr].ID << "; m_volumesSelected[volumeNr].zoneFlag = " << m_volumesSelected[volumeNr].zoneFlag << std::endl;
-    index_t nnodesInVolume;
-    int *nodeListOfVolume;
-    nnodesInVolume = cfxExportVolumeSize(m_volumesSelected[volumeNr].ID,cfxVOL_NODES);
-    nodeListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_NODES); //query the nodes that define the volume
+    index_t nnodesInVolume = cfxExportVolumeSize(m_volumesSelected[volumeNr].ID,cfxVOL_NODES);
+    int *nodeListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_NODES); //query the nodes that define the volume
 
     //read field parameters
     index_t varnum = variableID;
@@ -602,9 +596,7 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID) {
     if(m_case.m_ParamDimension[varnum] == 1) {
         Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
         boost::shared_ptr<float_t> value(new float);
-        //boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
-        scalar_t *ptrOnScalarData;
-        ptrOnScalarData = s->x().data();
+        scalar_t *ptrOnScalarData = s->x().data();
         for(index_t j=0;j<nnodesInVolume;++j) {
             cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
             ptrOnScalarData[j] = *value.get();
@@ -613,12 +605,12 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID) {
 //            }
         }
         cfxExportVariableFree(varnum);
+        cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
         return s;
     }
     else if(m_case.m_ParamDimension[varnum] == 3) {
         Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
         boost::shared_ptr<float_t> value(new float[3]);
-        //boost::shared_ptr<scalar_t> ptrOnScalarData(new scalar_t);
         scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
         ptrOnVectorXData = v->x().data();
         ptrOnVectorYData = v->y().data();
@@ -635,22 +627,66 @@ DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID) {
 //            }
         }
         cfxExportVariableFree(varnum);
+        cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
         return v;
     }
 
+    cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
     return DataBase::ptr();
 }
 
 DataBase::ptr ReadCFX::loadBoundaryField(int boundaryNr, int variableID) {
-    DataBase::ptr result;
+
+    if(cfxExportZoneSet(m_boundariesSelected[boundaryNr].zoneFlag,NULL) < 0) {
+        std::cerr << "invalid zone number" << std::endl;
+    }
+    index_t nNodesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES);
+    int *nodeListOfBoundary = cfxExportBoundaryList(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES); //query the nodes that define the boundary
+
+    //read field parameters
+    index_t varnum = variableID;
+
+    if(m_case.m_ParamDimension[varnum] == 1) {
+        Vec<Scalar>::ptr s(new Vec<Scalar>(nNodesInBoundary));
+        boost::shared_ptr<float_t> value(new float);
+        scalar_t *ptrOnScalarData = s->x().data();
+        for(index_t j=0;j<nNodesInBoundary;++j) {
+            cfxExportVariableGet(varnum,correct,nodeListOfBoundary[j],value.get());
+            ptrOnScalarData[j] = *value.get();
+//            if(j<200) {
+//                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+//            }
+        }
+        cfxExportVariableFree(varnum);
+        cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
+        return s;
+    }
+    else if(m_case.m_ParamDimension[varnum] == 3) {
+        Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nNodesInBoundary));
+        boost::shared_ptr<float_t> value(new float[3]);
+        scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
+        ptrOnVectorXData = v->x().data();
+        ptrOnVectorYData = v->y().data();
+        ptrOnVectorZData = v->z().data();
+        for(index_t j=0;j<nNodesInBoundary;++j) {
+            cfxExportVariableGet(varnum,correct,nodeListOfBoundary[j],value.get());
+            ptrOnVectorXData[j] = value.get()[0];
+            ptrOnVectorYData[j] = value.get()[1];
+            ptrOnVectorZData[j] = value.get()[2];
+//            if(j<200) {
+//                std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
+//                std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
+//                std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
+//            }
+        }
+        cfxExportVariableFree(varnum);
+        cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
+        return v;
+    }
 
 
-    //hier muss mit cfxExportBoundaryGet für jede vom User angegebene Boundary die Faces  ausgelesen werden
-    //und dann mit cfxExportFaceNodes die Knoten
-
-    //oder mit cfxExportBoundaryList die Knoten einer Boundary condition
-    // und dann mit cfxExportVariableGet die Daten dazu
-    return result;
+    cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
+    return DataBase::ptr();
 }
 
 int ReadCFX::collectVolumes() {
@@ -742,9 +778,12 @@ bool ReadCFX::loadBoundaryFields(int boundaryNr) {
         bm_type::right_const_iterator right_iter = m_case.m_allParam.right.find(boundField);
         DataBase::ptr obj = loadBoundaryField(boundaryNr, right_iter->second);
         //setMeta(obj, processor, timestep);
-        //obj ->setGrid(loadPolygon(boundaryNr));
-        obj ->setMapping(DataBase::Vertex);
-        addObject(m_boundaryDataOut[i],obj);
+        if(obj) {
+            //loadPolygon(boundaryNr);
+            obj ->setGrid(loadPolygon(boundaryNr));
+            obj ->setMapping(DataBase::Vertex);
+            addObject(m_boundaryDataOut[i],obj);
+        }
     }
     return true;
 }
@@ -792,9 +831,9 @@ bool ReadCFX::compute() {
 
         int numSelBoundaries = collectBoundaries();
         for(int i=0;i<numSelBoundaries;++i) {
-            //loadBoundaryFields(i);
-            loadPolygon(i);
+            loadBoundaryFields(i);
         }
+
 
     //    for(t = t1; t <= t2; t++) {
     //    ts = cfxExportTimestepNumGet(t);
