@@ -234,6 +234,10 @@ class RemoteConnection {
                     handleTile(msg, static_cast<const tileMsg &>(rhr), payload);
                     break;
                 }
+                case rfbAnimation: {
+                    handleAnimation(msg, static_cast<const animationMsg &>(rhr));
+                    break;
+                }
                 }
             }
 
@@ -244,6 +248,11 @@ class RemoteConnection {
         }
         lock_guard locker(*m_mutex);
         m_running = false;
+    }
+
+    bool handleAnimation(const RemoteRenderMessage &msg, const animationMsg &anim) {
+        std::lock_guard<std::mutex> locker(plugin->m_pluginMutex);
+        plugin->m_numRemoteTimesteps = anim.total;
     }
 
 
@@ -1240,6 +1249,7 @@ RhrClient::preFrame()
        m_connectCheck->setState(m_haveConnection);
        if (!connected)
        {
+          std::lock_guard<std::mutex> locker(m_pluginMutex);
           m_numRemoteTimesteps = -1;
           coVRAnimationManager::instance()->removeTimestepProvider(this);
           if (m_requestedTimestep != -1) {
@@ -1302,11 +1312,14 @@ RhrClient::preFrame()
            }
        }
 
-       coVRMSController::instance()->syncData(&m_numRemoteTimesteps, sizeof(m_numRemoteTimesteps));
-       if (m_numRemoteTimesteps > 0)
-           coVRAnimationManager::instance()->setNumTimesteps(m_numRemoteTimesteps, this);
-       else
-           coVRAnimationManager::instance()->removeTimestepProvider(this);
+       {
+           std::lock_guard<std::mutex> locker(m_pluginMutex);
+           coVRMSController::instance()->syncData(&m_numRemoteTimesteps, sizeof(m_numRemoteTimesteps));
+           if (m_numRemoteTimesteps > 0)
+               coVRAnimationManager::instance()->setNumTimesteps(m_numRemoteTimesteps, this);
+           else
+               coVRAnimationManager::instance()->removeTimestepProvider(this);
+       }
 
        {
            std::lock_guard<RemoteConnection> remote_locker(*m_remote);
