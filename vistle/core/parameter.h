@@ -238,7 +238,8 @@ struct ParameterCheck<std::string> {
          return true;
       }
       if (std::find(choices.begin(), choices.end(), value) == choices.end()) {
-         std::cerr << "StringParameter: choice \"" << value << "\" not valid" << std::endl;
+         if (!value.empty())
+            std::cerr << "StringParameter: choice \"" << value << "\" not valid" << std::endl;
          return false;
       }
       return true;
