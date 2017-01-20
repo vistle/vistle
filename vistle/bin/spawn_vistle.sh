@@ -2,6 +2,15 @@
 
 #echo SPAWN "$@"
 
+LOGFILE="$(basename $1)"-$$.log
+
+if [ -n "$4" ]; then
+   # include module ID
+   LOGFILE="$(basename $1)"-$4-$$.log
+fi
+
+echo "spawn_vistle.sh: $@" > "$LOGFILE"
+
 export MV2_ENABLE_AFFINITY=0
 export MPI_UNBUFFERED_STDIO=1
 export DYLD_LIBRARY_PATH="$VISTLE_DYLD_LIBRARY_PATH"
@@ -60,11 +69,11 @@ if [ "$OPENMPI" = "1" ]; then
    fi
 else
    if [ -z "$MPIHOSTS" ]; then
-      exec mpirun -envall -prepend-rank -np ${MPISIZE} $VALGRIND "$@" > "$(basename $1)"-$$.log 2>&1 < /dev/null
+      exec mpirun -envall -prepend-rank -np ${MPISIZE} $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
    elif [ "$BIND" = "1" ]; then
-      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $VALGRIND "$@" > "$(basename $1)"-$$.log 2>&1 < /dev/null
+      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} -bind-to none $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
    else
-      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} $VALGRIND "$@" > "$(basename $1)"-$$.log 2>&1 < /dev/null
+      exec mpirun -envall -prepend-rank -np ${MPISIZE} -hosts ${MPIHOSTS} $VALGRIND "$@" >> "$LOGFILE" 2>&1 < /dev/null
    fi
 fi
 
