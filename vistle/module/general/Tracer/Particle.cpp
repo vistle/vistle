@@ -39,9 +39,6 @@ m_useCelltree(m_global.use_celltree)
 
    if (!global.blocks[timestep].empty())
        m_time = global.blocks[timestep][0]->m_grid->getRealTime();
-   if (findCell(m_time)) {
-      m_integrator.hInit();
-   }
 }
 
 Particle::~Particle(){}
@@ -65,15 +62,26 @@ void Particle::enableCelltree(bool value) {
     m_integrator.enableCelltree(value);
 }
 
-bool Particle::startTracing() {
+int Particle::startTracing(boost::mpi::communicator mpi_comm) {
+
     assert(!m_tracing);
+    assert(!m_currentSegment);
     m_progress = false;
-    if (inGrid()) {
+
+    int rank = -1;
+
+    if (findCell(m_time)) {
+        m_integrator.hInit();
+        rank = mpi_comm.rank();
+    }
+
+    rank = boost::mpi::all_reduce(mpi_comm, rank, boost::mpi::maximum<int>());
+    if (rank == mpi_comm.rank()) {
+        assert(inGrid());
         m_tracing = true;
         m_progressFuture =  std::async(std::launch::async, [this]() -> bool { return trace(); });
-        return true;
     }
-    return false;
+    return rank;
 }
 
 bool Particle::isActive() const {

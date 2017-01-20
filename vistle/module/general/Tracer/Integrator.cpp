@@ -10,6 +10,8 @@ using namespace vistle;
 
 
 Integrator::Integrator(Particle* ptcl, bool forward):
+    m_h(-1.),
+    m_hact(m_h),
     m_ptcl(ptcl),
     m_forward(forward),
     m_cellSearchFlags(GridInterface::NoFlags)
@@ -20,6 +22,39 @@ Integrator::Integrator(Particle* ptcl, bool forward):
 
     UpdateBlock();
 }
+
+void Integrator::hInit() {
+
+    return;
+
+    if (m_h <= 0.) {
+
+        const auto &global = m_ptcl->m_global;
+        const auto h_max = global.h_max;
+        const auto h_min = global.h_min;
+        const auto mode = global.int_mode;
+        if (mode != RK32)
+            return;
+
+        Index el=m_ptcl->m_el;
+        auto grid = m_ptcl->m_block->getGrid();
+        Scalar unit = 1.;
+        if (m_ptcl->m_global.cell_relative) {
+            Scalar cellSize = grid->cellDiameter(el);
+            unit = cellSize;
+        }
+
+        if (m_ptcl->m_global.velocity_relative) {
+            Vector3 vel = Interpolator(m_ptcl->m_block, m_ptcl->m_el, m_ptcl->m_x);
+            Scalar v = std::max(vel.norm(), Scalar(1e-7));
+            unit /= v;
+        }
+
+        m_h = .5 * unit * std::sqrt(h_min*h_max);
+        m_hact = m_h;
+    }
+}
+
 
 void Integrator::UpdateBlock() {
 
@@ -63,34 +98,6 @@ bool Integrator::StepEuler() {
     m_ptcl->m_x = m_ptcl->m_x + vel*m_h*unit;
     m_hact = m_h*unit;
     return true;
-}
-
-void Integrator::hInit(){
-    return;
-
-    const auto &global = m_ptcl->m_global;
-    const auto h_max = global.h_max;
-    const auto h_min = global.h_min;
-    const auto mode = global.int_mode;
-    if (mode != RK32)
-        return;
-
-    Index el=m_ptcl->m_el;
-    auto grid = m_ptcl->m_block->getGrid();
-    Scalar unit = 1.;
-    if (m_ptcl->m_global.cell_relative) {
-        Scalar cellSize = grid->cellDiameter(el);
-        unit = cellSize;
-    }
-
-    if (m_ptcl->m_global.velocity_relative) {
-        Vector3 vel = Interpolator(m_ptcl->m_block, m_ptcl->m_el, m_ptcl->m_x);
-        Scalar v = std::max(vel.norm(), Scalar(1e-7));
-        unit /= v;
-    }
-
-    m_h = .5 * unit * std::sqrt(h_min*h_max);
-    m_hact = m_h;
 }
 
 bool Integrator::hNew(Vector3 cur, Vector3 higher, Vector3 lower, Vector vel, Scalar unit){

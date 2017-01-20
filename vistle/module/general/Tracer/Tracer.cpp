@@ -261,6 +261,8 @@ bool Tracer::reduce(int timestep) {
 
    int numtime = numTimesteps();
    std::cerr << "reduce(" << timestep << ") with " << numtime << " steps" << std::endl;
+   if (numtime == 0)
+       numtime = 1;
 
 
    GlobalData global;
@@ -341,11 +343,8 @@ bool Tracer::reduce(int timestep) {
            Index idx = nextParticleToStart;
            ++nextParticleToStart;
            auto particle = allParticles[idx];
-
-           bool active = mpi::all_reduce(comm(), particle->isActive(), std::logical_or<bool>());
-           if (active) {
+           if (particle->startTracing(comm()) >= 0) {
                activeParticles.insert(particle);
-               particle->startTracing();
                checkSet.insert(particle->id());
                ++started;
            } else {
@@ -403,19 +402,18 @@ bool Tracer::reduce(int timestep) {
               for(Index i=0; i<num_recv; i++){
                   Index p_index = curlist[i];
                   auto p = allParticles[p_index];
-                  // wait until former (fruitless) tracing attempts are finished
-                  while(p->isTracing(true))
-                      ;
+                  assert(!p->isTracing(false));
                   p->broadcast(comm(), mpirank);
                   checkSet.insert(p_index);
-                  if (rank() != mpirank) {
-                      if (p->rank() == rank())
-                          datarecvlist.emplace_back(p->id(), mpirank);
-                      activeParticles.insert(p);
-                      p->startTracing();
-                  } else {
-                      if (p->rank() == rank())
+                  if (p->rank() == rank()) {
+                      if (rank() == mpirank) {
                           p->finishSegment();
+                      } else {
+                          datarecvlist.emplace_back(p->id(), mpirank);
+                      }
+                  }
+                  if (p->startTracing(comm()) >= 0) {
+                      activeParticles.insert(p);
                   }
               }
           }
@@ -423,6 +421,7 @@ bool Tracer::reduce(int timestep) {
       //std::cerr << "recvlist: " << datarecvlist.size() << ", sendlist: " << sendlist.size() << std::endl;
       numActiveMin = mpi::all_reduce(comm(), activeParticles.size(), mpi::minimum<Index>());
       numActiveMax = mpi::all_reduce(comm(), activeParticles.size(), mpi::maximum<Index>());
+      // iterate over all other ranks
       for(int i=1; i<mpisize; ++i) {
           int dst = (rank()+i)%size();
           int src = (rank()-i+size())%size();
