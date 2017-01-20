@@ -231,7 +231,7 @@ Index StructuredGrid::findCell(const Vec::Vector &point, Index hint, int flags) 
 
    Index size = getNumElements();
    for (Index i=0; i<size; ++i) {
-      if (acceptGhost || !isGhostCell(i) && i!=hint) {
+      if ((acceptGhost || !isGhostCell(i)) && i!=hint) {
          if (inside(i, point))
             return i;
       }

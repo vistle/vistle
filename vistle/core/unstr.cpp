@@ -256,7 +256,7 @@ Index UnstructuredGrid::findCell(const Vector &point, Index hint, int flags) con
 
    Index size = getNumElements();
    for (Index i=0; i<size; ++i) {
-      if (acceptGhost || !isGhostCell(i) && i!=hint) {
+      if ((acceptGhost || !isGhostCell(i)) && i!=hint) {
          if (inside(i, point)) {
             return i;
          }
