@@ -48,6 +48,7 @@
 #include "module.h"
 
 //#define DEBUG
+//#define REDUCE_DEBUG
 
 #define CERR std::cerr << m_name << "_" << id() << " [" << rank() << "/" << size() << "] "
 
@@ -1539,12 +1540,6 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                numObject = 1;
             }
 
-            if (m_executionCount < exec->getExecutionCount())
-               m_executionCount = exec->getExecutionCount();
-            if (exec->allRanks() || gang) {
-               m_executionCount = mpi::all_reduce(comm(), m_executionCount, mpi::maximum<int>());
-            }
-
             for (auto &port: inputPorts) {
                 if (!isConnected(port.second))
                     continue;
@@ -1555,14 +1550,26 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                     m_numTimesteps = std::max(t+1, m_numTimesteps);
                 }
             }
-            if (exec->what() == Execute::ComputeExecute) {
-                m_numTimesteps = boost::mpi::all_reduce(comm(), m_numTimesteps, boost::mpi::maximum<int>());
+#ifdef REDUCE_DEBUG
+            CERR << "compute with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
+#endif
+
+            if (m_executionCount < exec->getExecutionCount())
+               m_executionCount = exec->getExecutionCount();
+            if (exec->allRanks() || gang || exec->what() == Execute::ComputeExecute) {
+#ifdef REDUCE_DEBUG
+               CERR << "all_reduce for execCount with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
+#endif
+               m_executionCount = mpi::all_reduce(comm(), m_executionCount, mpi::maximum<int>());
+#ifdef REDUCE_DEBUG
+               CERR << "all_reduce for timesteps with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
+#endif
+               m_numTimesteps = mpi::all_reduce(comm(), m_numTimesteps, mpi::maximum<int>());
+#ifdef REDUCE_DEBUG
+               CERR << "all_reduce for timesteps finished with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
+#endif
             }
 
-            /*
-            std::cerr << "    module [" << name() << "] [" << id() << "] ["
-               << rank() << "/" << size << "] compute" << std::endl;
-            */
             int prevTimestep = -1;
             if (m_numTimesteps > 0)
                 prevTimestep = (startTimestep+m_numTimesteps-1)%m_numTimesteps;
@@ -1969,6 +1976,13 @@ bool Module::prepareWrapper(const message::Message *req) {
 
    m_reduced = false;
 
+#ifdef REDUCE_DEBUG
+   if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never) {
+      std::cerr << "prepare(): barrier for reduce policy " << reducePolicy() << std::endl;
+      comm().barrier();
+   }
+#endif
+
    message::ExecutionProgress start(message::ExecutionProgress::Start);
    start.setReferrer(req->uuid());
    start.setDestId(Id::LocalManager);
@@ -2007,8 +2021,19 @@ bool Module::reduceWrapper(const message::Message *req) {
       vassert(!m_reduced);
    }
 
-   m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
-   m_numTimesteps = boost::mpi::all_reduce(comm(), m_numTimesteps, boost::mpi::maximum<int>());
+#ifdef REDUCE_DEBUG
+   if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never) {
+      std::cerr << "reduce(): barrier for reduce policy " << reducePolicy() << ", request was " << *req << std::endl;
+      comm().barrier();
+   }
+#endif
+
+   bool sync = false;
+   if (reducePolicy() != message::ReducePolicy::Never && reducePolicy() != message::ReducePolicy::Locally) {
+       sync = true;
+       m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
+       m_numTimesteps = boost::mpi::all_reduce(comm(), m_numTimesteps, boost::mpi::maximum<int>());
+   }
 
    m_reduced = true;
 
@@ -2032,7 +2057,7 @@ bool Module::reduceWrapper(const message::Message *req) {
                }
                if (dored) {
                    for (int t=0; t<m_numTimesteps; ++t) {
-                       if (!cancelRequested(true))
+                       if (!cancelRequested(sync))
                            ret &= reduce(t);
                    }
                }
@@ -2041,7 +2066,7 @@ bool Module::reduceWrapper(const message::Message *req) {
        }
        case message::ReducePolicy::Locally:
        case message::ReducePolicy::OverAll: {
-           if (!cancelRequested(true)) {
+           if (!cancelRequested(sync)) {
                ret = reduce(-1);
            }
            break;
@@ -2101,8 +2126,6 @@ int Module::numTimesteps() const {
 }
 
 bool Module::cancelRequested(bool sync) {
-
-    return false;
 
     if (sync) {
         m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
