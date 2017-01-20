@@ -190,8 +190,10 @@ def save(filename = None):
    elif numSlaves > 0:
       print("slave hubs: %s" % slavehubs)
       f.write("print('waiting for a slave hub to connect...')\n")
+      f.write("printInfo('waiting for a slave hub to connect...')\n")
       f.write("SlaveHub=waitForHub()\n")
       f.write("print('slave hub %s connected\\n' % SlaveHub)\n")
+      f.write("printInfo('slave hub %s connected\\n' % SlaveHub)\n")
 
    f.write("uuids = {}\n");
    for m in mods:
