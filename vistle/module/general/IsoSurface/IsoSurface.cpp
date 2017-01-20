@@ -36,7 +36,7 @@ IsoSurface::IsoSurface(const std::string &shmname, const std::string &name, int 
 #ifdef CUTTINGSURFACE
    m_mapDataIn = createInputPort("data_in");
 #else
-   setReducePolicy(message::ReducePolicy::OverAll);
+   setReducePolicy(message::ReducePolicy::PerTimestepZeroFirst);
    m_isovalue = addFloatParameter("isovalue", "isovalue", 0.0);
    m_isopoint = addVectorParameter("isopoint", "isopoint", ParamVector(0.0, 0.0, 0.0));
    m_pointOrValue = addIntParameter("Interactor", "point or value interaction", Value, Parameter::Choice);
@@ -62,18 +62,28 @@ bool IsoSurface::changeParameter(const Parameter* param) {
     if (isocontrol.changeParameter(param))
         return true;
 
-#ifdef CUTTINGSURFACE
-#else
+#ifndef CUTTINGSURFACE
     if (param == m_isopoint) {
         setParameter(m_pointOrValue, (Integer)Point);
+        setReducePolicy(message::ReducePolicy::PerTimestepZeroFirst);
     } else if (param == m_isovalue) {
         setParameter(m_pointOrValue, (Integer)Value);
+        setReducePolicy(message::ReducePolicy::Locally);
+    } else if (param == m_pointOrValue) {
+        if (m_pointOrValue->getValue() == Point)
+            setReducePolicy(message::ReducePolicy::PerTimestepZeroFirst);
+        else
+            setReducePolicy(message::ReducePolicy::Locally);
     }
 #endif
    return true;
 }
 
 bool IsoSurface::prepare() {
+
+   m_grids.clear();
+   m_datas.clear();
+   m_mapdatas.clear();
 
    m_min = std::numeric_limits<Scalar>::max() ;
    m_max = -std::numeric_limits<Scalar>::max();
@@ -83,7 +93,7 @@ bool IsoSurface::prepare() {
 bool IsoSurface::reduce(int timestep) {
 
 #ifndef CUTTINGSURFACE
-   if (m_pointOrValue->getValue() == Point) {
+   if (timestep <=0 && m_pointOrValue->getValue() == Point) {
        Scalar value = m_isovalue->getValue();
        int found = 0;
        Vector point = m_isopoint->getValue();
@@ -108,13 +118,16 @@ bool IsoSurface::reduce(int timestep) {
            setParameter(m_isovalue, (Float)value);
            setParameter(m_pointOrValue, (Integer)Point);
        }
+   }
 
-       for (size_t i=0; i<m_grids.size(); ++i) {
+   for (size_t i=0; i<m_grids.size(); ++i) {
+       int t = m_grids[i] ? m_grids[i]->getTimestep() : -1;
+       if (m_datas[i])
+           t = std::max(t, m_datas[i]->getTimestep());
+       if (m_mapdatas[i])
+           t = std::max(t, m_mapdatas[i]->getTimestep());
+       if (t == timestep)
            work(m_grids[i], m_datas[i], m_mapdatas[i]);
-       }
-       m_grids.clear();
-       m_datas.clear();
-       m_mapdatas.clear();
    }
 
    Scalar min, max;

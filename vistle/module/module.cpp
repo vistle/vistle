@@ -172,6 +172,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_comm(MPI_COMM_WORLD, mpi::comm_attach)
 , m_numTimesteps(-1)
 , m_cancelRequested(false)
+, m_cancelExecuteCalled(false)
 , m_prepared(false)
 , m_computed(false)
 , m_reduced(false)
@@ -1411,12 +1412,13 @@ bool Module::handleMessage(const vistle::message::Message *message) {
          }
 
          bool reordered = false;
+         int direction = 1;
          if (exec->what() == Execute::ComputeExecute
              || exec->what() == Execute::ComputeObject) {
             //vassert(m_executionDepth == 0);
             ++m_executionDepth;
 
-            if (m_reducePolicy != message::ReducePolicy::Never) {
+            if (reducePolicy() != message::ReducePolicy::Never) {
                vassert(m_prepared);
                vassert(!m_reduced);
             }
@@ -1481,6 +1483,14 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                        headStart = m_avgComputeTime / std::abs(exec->animationStep());
                    headStart = std::max(1, headStart)+2;
 
+                   if (exec->animationStep() > 0.) {
+                       direction = 1;
+                   } else if (exec->animationStep() < 0.) {
+                       direction = -1;
+                   } else {
+                       direction = 0;
+                   }
+
                    for (auto &port: inputPorts) {
                        if (!isConnected(port.second))
                            continue;
@@ -1488,12 +1498,12 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                        auto objs = m_cache.getObjects(port.first);
                        ssize_t start = bestIdx;
                        int step = 1;
-                       if (exec->animationStep() < 0.0) {
+                       if (direction < 0) {
                            start = (bestIdx+numObject-headStart)%numObject;
                            step = -1;
                            if (start > startTimestep)
                                startTimestep = start;
-                       }  else if (exec->animationStep() > 0.0) {
+                       }  else if (direction > 0) {
                            start = (bestIdx+numObject+headStart)%numObject;
                            if (start < startTimestep && start >= 0)
                                startTimestep = start;
@@ -1507,10 +1517,15 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
                    if (startTimestep == -1)
                        startTimestep = 0;
-                   if (exec->animationStep() < 0.0) {
+                   if (direction < 0) {
                        startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::maximum<int>());
                    } else {
                        startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::minimum<int>());
+                   }
+
+                   if (reducePolicy() == message::ReducePolicy::PerTimestepOrdered || reducePolicy() == message::ReducePolicy::PerTimestepZeroFirst) {
+                       startTimestep = 0;
+                       direction = 1;
                    }
                }
                if (numConnected == 0) {
@@ -1552,6 +1567,7 @@ bool Module::handleMessage(const vistle::message::Message *message) {
             if (m_numTimesteps > 0)
                 prevTimestep = (startTimestep+m_numTimesteps-1)%m_numTimesteps;
             int numReductions = 0;
+            bool reducePerTimestep = reducePolicy()==message::ReducePolicy::PerTimestep || reducePolicy()==message::ReducePolicy::PerTimestepZeroFirst || reducePolicy()==message::ReducePolicy::PerTimestepOrdered;
             bool computeOk = false;
             for (Index i=0; i<numObject; ++i) {
                computeOk = false;
@@ -1572,53 +1588,37 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                       computeOk = compute();
                   }
                   auto runReduce = [this, &numReductions](int timestep) -> bool {
-                      ++numReductions;
-                      m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
-                      if (m_cancelRequested)
+                      std::cerr << "running reduce for timestep " << timestep << std::endl;
+                      if (cancelRequested(true))
                           return true;
+                      ++numReductions;
                       return reduce(timestep);
                   };
-                  if (computeOk && reordered && m_numTimesteps>0 && reducePolicy() == message::ReducePolicy::PerTimestep) {
-                      if (exec->animationStep() >= 0.0) {
+                  if (reordered && m_numTimesteps>0 && reducePerTimestep) {
+                      if (direction >= 0) {
                           if (prevTimestep > timestep) {
                               for (int t=prevTimestep; t<m_numTimesteps; ++t) {
-                                  computeOk = runReduce(t);
-                                  if (!computeOk)
-                                      break;
+                                  computeOk &= runReduce(t);
                               }
-                              if (computeOk) {
-                                  for (int t=0; t<timestep; ++t) {
-                                      computeOk = runReduce(t);
-                                      if (!computeOk)
-                                          break;
-                                  }
+                              for (int t=0; t<timestep; ++t) {
+                                  computeOk &= runReduce(t);
                               }
                           } else {
                               for (int t=prevTimestep; t<timestep; ++t) {
-                                  computeOk = runReduce(t);
-                                  if (!computeOk)
-                                      break;
+                                  computeOk &= runReduce(t);
                               }
                           }
                       } else {
                           if (prevTimestep < timestep) {
                               for (int t=prevTimestep; t>=0; --t) {
-                                  computeOk = runReduce(t);
-                                  if (!computeOk)
-                                      break;
+                                  computeOk &= runReduce(t);
                               }
-                              if (computeOk) {
-                                  for (int t=m_numTimesteps-1; t>timestep; --t) {
-                                      computeOk = runReduce(t);
-                                      if (!computeOk)
-                                          break;
-                                  }
+                              for (int t=m_numTimesteps-1; t>timestep; --t) {
+                                  computeOk &= runReduce(t);
                               }
                           } else {
                               for (int t=prevTimestep; t>timestep; --t) {
-                                  computeOk = runReduce(t);
-                                  if (!computeOk)
-                                      break;
+                                  computeOk &= runReduce(t);
                               }
                           }
                       }
@@ -1645,11 +1645,11 @@ bool Module::handleMessage(const vistle::message::Message *message) {
                }
             }
 
-            if (computeOk && reordered && m_numTimesteps>0 && reducePolicy() == message::ReducePolicy::PerTimestep) {
+            if (reordered && m_numTimesteps>0 && reducePerTimestep) {
                 while (numReductions < m_numTimesteps) {
                     ++numReductions;
                     reduce(prevTimestep);
-                    if (exec->animationStep() > 0.0) {
+                    if (direction >= 0) {
                         prevTimestep = (prevTimestep+1)%m_numTimesteps;
                     } else {
                         prevTimestep = (prevTimestep+m_numTimesteps-1)%m_numTimesteps;
@@ -1960,8 +1960,9 @@ bool Module::prepareWrapper(const message::Message *req) {
 
    m_numTimesteps = 0;
    m_cancelRequested = false;
+   m_cancelExecuteCalled = false;
 
-   if (m_reducePolicy != message::ReducePolicy::Never) {
+   if (reducePolicy() != message::ReducePolicy::Never) {
       vassert(!m_prepared);
    }
    vassert(!m_computed);
@@ -2002,7 +2003,7 @@ bool Module::reduceWrapper(const message::Message *req) {
    //CERR << "reduceWrapper: prepared=" << m_prepared << std::endl;
 
    vassert(m_prepared);
-   if (m_reducePolicy != message::ReducePolicy::Never) {
+   if (reducePolicy() != message::ReducePolicy::Never) {
       vassert(!m_reduced);
    }
 
@@ -2013,25 +2014,38 @@ bool Module::reduceWrapper(const message::Message *req) {
 
    bool ret = false;
    try {
-       if (reducePolicy() == message::ReducePolicy::Never) {
+       switch(reducePolicy()) {
+       case message::ReducePolicy::Never: {
            ret = true;
-       } else if (reducePolicy() == message::ReducePolicy::PerTimestep && m_numTimesteps > 0) {
-           ret = true;
-           bool dored = true;
-           if (req && req->type()==message::EXECUTE) {
-               auto exec = static_cast<const message::Execute *>(req);
-               if (exec->what() == message::Execute::ComputeExecute)
-                   dored = false;
-           }
-           if (dored) {
-               for (int t=0; t<m_numTimesteps; ++t) {
-                   if (cancelRequested())
-                       break;
-                   ret &= reduce(t);
+           break;
+       }
+       case message::ReducePolicy::PerTimestep:
+       case message::ReducePolicy::PerTimestepZeroFirst:
+       case message::ReducePolicy::PerTimestepOrdered: {
+           if (m_numTimesteps > 0) {
+               ret = true;
+               bool dored = true;
+               if (req && req->type()==message::EXECUTE) {
+                   auto exec = static_cast<const message::Execute *>(req);
+                   if (exec->what() == message::Execute::ComputeExecute)
+                       dored = false;
                }
+               if (dored) {
+                   for (int t=0; t<m_numTimesteps; ++t) {
+                       if (!cancelRequested(true))
+                           ret &= reduce(t);
+                   }
+               }
+               break;
            }
-       } else if (!cancelRequested()) {
-           ret = reduce(-1);
+       }
+       case message::ReducePolicy::Locally:
+       case message::ReducePolicy::OverAll: {
+           if (!cancelRequested(true)) {
+               ret = reduce(-1);
+           }
+           break;
+       }
        }
    } catch (std::exception &e) {
            std::cout << name() << "::reduce(): exception - " << e.what() << std::endl << std::flush;
@@ -2086,26 +2100,47 @@ int Module::numTimesteps() const {
     return m_numTimesteps;
 }
 
-bool Module::cancelRequested() {
+bool Module::cancelRequested(bool sync) {
+
+    return false;
+
+    if (sync) {
+        m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
+        if (m_cancelRequested && !m_cancelExecuteCalled) {
+            cancelExecute();
+            m_cancelExecuteCalled = true;
+        }
+    }
 
     if (m_cancelRequested)
         return true;
 
+    bool justCanceled = false;
     message::Buffer buf;
     if (receiveMessageQueue->tryReceive(buf)) {
         messageBacklog.push_back(buf);
         if (buf.type() == message::CANCELEXECUTE) {
             const auto &cancel = buf.as<message::CancelExecute>();
             if (cancel.getModule() == id()) {
-                std::cerr << "canceling execution" << std::endl;
-                cancelExecute();
-                m_cancelRequested = true;
-                return true;
+                std::cerr << "canceling execution requested" << std::endl;
+                justCanceled = true;
             }
         }
     }
 
-    return false;
+    if (sync) {
+        justCanceled = boost::mpi::all_reduce(comm(), justCanceled, std::logical_or<bool>());
+
+        if (justCanceled) {
+            m_cancelRequested = true;
+            std::cerr << "canceling execution" << std::endl;
+            cancelExecute();
+            m_cancelExecuteCalled = true;
+            return true;
+        }
+    }
+
+    return justCanceled;
 }
 
 } // namespace vistle

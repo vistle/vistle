@@ -663,6 +663,8 @@ class V_COREEXPORT ReducePolicy: public MessageBase<ReducePolicy, REDUCEPOLICY> 
       (Never) //< module's prepare()/reduce() methods will never be called - only for modules with COMBINE port (renderers)
       (Locally) //< module's prepare()/reduce() methods will be called unsynchronized on each rank
       (PerTimestep) //< module's reduce() method will be called on all ranks together once per timestep
+      (PerTimestepOrdered) //< module's reduce() method will be called on all ranks together once per timestep in ascending order
+      (PerTimestepZeroFirst) //< module's reduce() method will be called on all ranks together once per timestep in arbitrary order, but zero first
       (OverAll) //< module's prepare()/reduce() method will be called on all ranks together after all timesteps have been received
    )
    ReducePolicy(Reduce red);

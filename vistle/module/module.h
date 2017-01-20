@@ -216,7 +216,7 @@ protected:
    message::MessageQueue *receiveMessageQueue;
    std::deque<message::Buffer> messageBacklog;
    bool handleMessage(const message::Message *message);
-   bool cancelRequested();
+   bool cancelRequested(bool sync=false);
 
    virtual bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,
                                Object::const_ptr object);
@@ -289,7 +289,7 @@ protected:
    boost::mpi::communicator m_comm;
 
    int m_numTimesteps;
-   bool m_cancelRequested;
+   bool m_cancelRequested, m_cancelExecuteCalled;
    bool m_prepared, m_computed, m_reduced;
    bool m_readyForQuit;
 };
