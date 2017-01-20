@@ -502,6 +502,34 @@ static void removeTunnel(unsigned short listenPort) {
    sendMessage(m);
 }
 
+static void printInfo(const std::string &message) {
+#ifdef DEBUG
+   std::cerr << "Python: printInfo " << message << std::endl;
+#endif
+
+   message::SendText m(message::SendText::Info, message);
+   sendMessage(m);
+}
+
+static void printWarning(const std::string &message) {
+#ifdef DEBUG
+   std::cerr << "Python: printWarning " << message << std::endl;
+#endif
+
+   message::SendText m(message::SendText::Warning, message);
+   sendMessage(m);
+}
+
+static void printError(const std::string &message) {
+#ifdef DEBUG
+   std::cerr << "Python: printError " << message << std::endl;
+#endif
+
+   message::SendText m(message::SendText::Error, message);
+   sendMessage(m);
+}
+
+
 #define param(T, f) \
    def("set" #T "Param", f, "set parameter `arg2` of module with ID `arg1` to `arg3`"); \
    def("setParam", f, "set parameter `arg2` of module with ID `arg1` to `arg3`");
@@ -530,6 +558,9 @@ BOOST_PYTHON_MODULE(_vistle)
     def("requestTunnel", requestTunnel, requestTunnel_overloads(args("listen port", "dest port", "dest addr"), "start TCP tunnel listening on port `arg1` on hub forwarding incoming connections to `arg2`:`arg3`"));
     def("removeTunnel", removeTunnel, "remove TCP tunnel listening on port `arg1` on hub");
     //def("checkMessageQueue", checkMessageQueue, "check whether all messages have been processed");
+    def("printInfo", printInfo, "show info message to user");
+    def("printWarning", printInfo, "show info message to user");
+    def("printError", printInfo, "show info message to user");
 
     param(Int, setIntParam);
     param(Float, setFloatParam);
