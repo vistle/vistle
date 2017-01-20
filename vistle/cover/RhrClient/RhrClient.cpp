@@ -253,6 +253,7 @@ class RemoteConnection {
     bool handleAnimation(const RemoteRenderMessage &msg, const animationMsg &anim) {
         std::lock_guard<std::mutex> locker(plugin->m_pluginMutex);
         plugin->m_numRemoteTimesteps = anim.total;
+        return true;
     }
 
 
