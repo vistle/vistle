@@ -42,6 +42,7 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
     m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+//    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
 
     // time parameters
     m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
@@ -274,10 +275,6 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
                 sendInfo("no timesteps");
             }
 
-//            std::cerr << "cfxExportTimestepCount()" << cfxExportTimestepCount() << std::endl;
-//            std::cerr << "cfxExportTimestepSet(timeStepNum)" << cfxExportTimestepSet(timeStepNum) << std::endl;
-//            std::cerr << "cfxExportTimestepNumGet(1)" << cfxExportTimestepNumGet(1) << std::endl;
-
             cfxExportTimestepSet(timeStepNum);
             if (cfxExportTimestepSet(timeStepNum) < 0) {
                 sendInfo("Invalid timestep %d", timeStepNum);
@@ -485,7 +482,6 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
         ptrOnZcoords[nodeListOfBoundary[i]-1] = *z_coord.get();
     }
 
-
     //Test, ob Einlesen funktioniert hat
     //    std::cerr << "nNodesInBoundary = " << nNodesInBoundary << std::endl;
     //    std::cerr << "polygon->getNumCoords()" << polygon->getNumCoords() << std::endl;
@@ -496,18 +492,14 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
     cfxExportNodeFree();
     cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
 
-    //cfxExportZoneFree();
-
     //load face types, element list and connectivity list into polygon
     int elemListCounter=0;
-    boost::shared_ptr<std::int32_t> nodesOfFace(new int[4]); // elemtype(new int);
-    //auto ptrOnTl = polygon->tl().data();
+    boost::shared_ptr<std::int32_t> nodesOfFace(new int[4]);
     auto ptrOnEl = polygon->el().data();
     auto ptrOnCl = polygon->cl().data();
 //    auto &ptrOnCl = polygon->cl();
 
     int *faceListofBoundary = cfxExportBoundaryList(m_boundariesSelected[boundaryNr].ID,cfxREG_FACES); //query the faces that define the boundary
-
 
     for(index_t i=0;i<nFacesInBoundary;++i) {
         int NumOfVerticesDefiningFace = cfxExportFaceNodes(faceListofBoundary[i],nodesOfFace.get());
@@ -557,18 +549,15 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
 
 
     //Test, ob Einlesen funktioniert hat
-// //   std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
 //    std::cerr << "nodes = " << nNodesInBoundary << "; faces = " << nFacesInBoundary << "; connect = " << nConnectInBoundary << std::endl;
 //    std::cerr << "nodes_total = " << m_nnodes << "; node Count() = " << cfxExportNodeCount() << std::endl;
-// //    std::cerr << "nodes = " << nNodesInBoundary << "; faces = " << nFacesInBoundary << "; connect = " << ptrOnCl.size() << std::endl;
+//    std::cerr << "nodes = " << nNodesInBoundary << "; faces = " << nFacesInBoundary << "; connect = " << polygon->cl().size() << std::endl;
 //    std::cerr <<"polygon->getNumVertices = " << polygon->getNumVertices() << std::endl;
-// //    std::cerr <<"polygon->getNumElements = " << polygon->getNumElements() << std::endl;
+//    std::cerr <<"polygon->getNumElements = " << polygon->getNumElements() << std::endl;
 //    std::cerr <<"polygon->getNumCorners = " << polygon->getNumCorners() << std::endl;
 
 //    std::cerr << "polygon->el().at(polygon->getNumElements()) = " << polygon->el().at(polygon->getNumElements()) << std::endl;
 //    std::cerr << "polygon->cl().at(polygon->getNumCorners()-1) = " << polygon->cl().at(polygon->getNumCorners()-1) << std::endl;
-// //   std::cerr << "nconnectivities = " << nConnectInBoundary << std::endl;
-//    std::cerr << "nconnectivities = " << ptrOnCl.size() << std::endl;
 //    std::cerr << "elemListCounter = " << elemListCounter << std::endl;
 
 //    for(index_t i=nFacesInBoundary-10;i<=nFacesInBoundary;++i) {
@@ -577,9 +566,7 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
 //    for(int i=elemListCounter-10;i<=elemListCounter;++i) {
 //        std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
 //    }
-//    for(int i=0;i<=5;++i) {
-//        std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
-//    }
+
 
     cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
 
@@ -784,7 +771,6 @@ bool ReadCFX::loadBoundaryFields(int boundaryNr) {
         DataBase::ptr obj = loadBoundaryField(boundaryNr, right_iter->second);
         //setMeta(obj, processor, timestep);
         if(obj) {
-            //loadPolygon(boundaryNr);
             obj ->setGrid(loadPolygon(boundaryNr));
             obj ->setMapping(DataBase::Vertex);
             addObject(m_boundaryDataOut[i],obj);
@@ -839,6 +825,13 @@ bool ReadCFX::compute() {
             loadBoundaryFields(i);
         }
 
+        std::cerr << "cfxExportTimestepCount() = " << cfxExportTimestepCount() << std::endl;
+        float timecount_float = (float) cfxExportTimestepCount();
+        std::cerr << "timecount_float = " << timecount_float << std::endl;
+        std::cerr << "cfxExportTimestepNumGet(1) = " << cfxExportTimestepNumGet(1) << std::endl;
+        int timeStepNum = cfxExportTimestepNumGet(1);
+        std::cerr << "cfxExportTimestepSet(timeStepNum) = " << cfxExportTimestepSet(timeStepNum) << std::endl;
+        std::cerr << "cfxExportTimestepTimeGet(1) = " << cfxExportTimestepTimeGet(1) << std::endl;
 
     //    for(t = t1; t <= t2; t++) {
     //    ts = cfxExportTimestepNumGet(t);
@@ -878,8 +871,8 @@ bool ReadCFX::compute() {
        }*/
 
         m_case.m_ParamDimension.clear();
-        //m_case.m_allParam.clear();
-        //m_case.m_allBoundaries.clear();
+        m_case.m_allParam.clear();
+        m_case.m_allBoundaries.clear();
         m_currentVolumedata.clear();
         m_currentBoundaryVolumedata.clear();
         m_currentGrid.clear();
