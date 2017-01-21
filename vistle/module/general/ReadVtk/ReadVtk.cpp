@@ -96,7 +96,8 @@ std::pair<vtkDataSet *, int> getDataSet(const std::string &filename, int piece=-
 
 struct VtkFile {
     std::string filename;
-    int part = -1;
+    std::string part;
+    int partNum = -1;
     int pieces = 1;
     double realtime = 0.;
 };
@@ -159,7 +160,9 @@ std::map<double, std::vector<VtkFile>> readPvd(const std::string &filename, bool
             } else {
                 vtkFile.filename = file;
             }
-            vtkFile.part = p;
+            vtkFile.partNum = p;
+            if (part)
+                vtkFile.part = part;
             vtkFile.realtime = time;
             auto &timestep = files[time];
             if (piecesAsBlocks) {
@@ -269,7 +272,7 @@ bool ReadVtk::changeParameter(const vistle::Parameter *p) {
    return Module::changeParameter(p);
 }
 
-bool ReadVtk::load(const std::string &filename, const Meta &meta, int piece, bool ghost) {
+bool ReadVtk::load(const std::string &filename, const Meta &meta, int piece, bool ghost, const std::string &part) {
 
    auto ds_pieces = getDataSet(filename, piece, ghost);
    auto ds = ds_pieces.first;
@@ -281,6 +284,8 @@ bool ReadVtk::load(const std::string &filename, const Meta &meta, int piece, boo
    auto grid = vistle::vtk::toGrid(ds);
    if (grid) {
        grid->setMeta(meta);
+       if (!part.empty())
+           grid->addAttribute("_part", part);
    }
    addObject("grid_out", grid);
 
@@ -293,6 +298,8 @@ bool ReadVtk::load(const std::string &filename, const Meta &meta, int piece, boo
            if (field) {
                field->setMapping(DataBase::Element);
                field->setMeta(meta);
+               if (!part.empty())
+                   field->addAttribute("_part", part);
            }
            addObject(m_cellPort[i], field);
        }
@@ -305,6 +312,8 @@ bool ReadVtk::load(const std::string &filename, const Meta &meta, int piece, boo
            if (field) {
                field->setMeta(meta);
                field->setMapping(DataBase::Vertex);
+               if (!part.empty())
+                   field->addAttribute("_part", part);
            }
            addObject(m_pointPort[i], field);
        }
@@ -349,7 +358,7 @@ bool ReadVtk::compute() {
                    meta.setNumTimesteps(files.size());
                    meta.setRealTime(file.realtime);
                    if (block%size() == rank())
-                       load(file.filename, meta, readPieces ? piece : -1, ghostCells);
+                       load(file.filename, meta, readPieces ? piece : -1, ghostCells, file.part);
                    ++block;
                }
                if (cancelRequested())
