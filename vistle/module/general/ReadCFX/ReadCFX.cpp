@@ -255,7 +255,7 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
             }
             char *resultfileName = strdup(resultfiledir);
             m_nzones = cfxExportInit(resultfileName, counts);
-                //m_nnodes = counts[cfxCNT_NODE];
+                m_nnodes = counts[cfxCNT_NODE];
                 //m_nelems = counts[cfxCNT_ELEMENT];
                 //m_nregions = counts[cfxCNT_REGION];
                 m_nvolumes = counts[cfxCNT_VOLUME];
@@ -459,14 +459,14 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
         std::cerr << "invalid zone number" << std::endl;
     }
 
-//    index_t nNodesInBoundary, nFacesInBoundary, nConnectInBoundary;
-    index_t nNodesInBoundary, nFacesInBoundary;
+    index_t nNodesInBoundary, nFacesInBoundary, nConnectInBoundary;
+//    index_t nNodesInBoundary, nFacesInBoundary;
     nNodesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES);
     nFacesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_FACES);
-//    nConnectInBoundary = 4*nFacesInBoundary; //passt nur, wenn alle Faces 4 Knoten haben. Das ist nicht immer der Fall!!
+    nConnectInBoundary = 4*nFacesInBoundary+5; //maximum of conncectivities. If there are 3 vertices faces, it is correct with resize at the end of the function
 
-//    Polygons::ptr polygon(new Polygons(nFacesInBoundary,nConnectInBoundary,nNodesInBoundary)); //initialize Polygon with numFaces, numCorners, numVertices
-    Polygons::ptr polygon(new Polygons(nFacesInBoundary,0,nNodesInBoundary)); //initialize Polygon with numFaces, numCorners, numVertices
+    Polygons::ptr polygon(new Polygons(nFacesInBoundary,nConnectInBoundary,nNodesInBoundary)); //initialize Polygon with numFaces, numCorners, numVertices
+//    Polygons::ptr polygon(new Polygons(nFacesInBoundary,0,nNodesInBoundary)); //initialize Polygon with numFaces, numCorners, numVertices
 
     //load coords into polygon
     boost::shared_ptr<std::double_t> x_coord(new double), y_coord(new double), z_coord(new double);
@@ -503,9 +503,11 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
     boost::shared_ptr<std::int32_t> nodesOfFace(new int[4]); // elemtype(new int);
     //auto ptrOnTl = polygon->tl().data();
     auto ptrOnEl = polygon->el().data();
-    auto &ptrOnCl = polygon->cl();
+    auto ptrOnCl = polygon->cl().data();
+//    auto &ptrOnCl = polygon->cl();
 
     int *faceListofBoundary = cfxExportBoundaryList(m_boundariesSelected[boundaryNr].ID,cfxREG_FACES); //query the faces that define the boundary
+
 
     for(index_t i=0;i<nFacesInBoundary;++i) {
         int NumOfVerticesDefiningFace = cfxExportFaceNodes(faceListofBoundary[i],nodesOfFace.get());
@@ -517,8 +519,8 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
         case 3: {
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<3;++nodesOfElm_counter) {
-//                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
-                ptrOnCl.push_back(nodesOfFace.get()[nodesOfElm_counter]-1); //-1 because cfx starts to count with 1; 1st node is in x().at(0)
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
+//                ptrOnCl.push_back(nodesOfFace.get()[nodesOfElm_counter]-1); //-1 because cfx starts to count with 1; 1st node is in x().at(0)
             }
             elemListCounter += 3;
             break;
@@ -526,8 +528,8 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
         case 4: {
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<4;++nodesOfElm_counter) {
-//                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
-                ptrOnCl.push_back(nodesOfFace.get()[nodesOfElm_counter]-1); //-1 because cfx starts to count with 1; 1st node is in x().at(0)
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
+//                ptrOnCl.push_back(nodesOfFace.get()[nodesOfElm_counter]-1); //-1 because cfx starts to count with 1; 1st node is in x().at(0)
             }
             elemListCounter += 4;
             break;
@@ -548,33 +550,36 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
 
     //element after last element in element list and connectivity list
     ptrOnEl[nFacesInBoundary] = elemListCounter;
-//    ptrOnCl[elemListCounter] = 0;
-    ptrOnCl.push_back(0);
-    ptrOnCl.resize(elemListCounter);
+    ptrOnCl[elemListCounter] = 0;
+//    ptrOnCl.push_back(0);
+//    ptrOnCl.resize(elemListCounter);
+    polygon->cl().resize(elemListCounter);
+
 
     //Test, ob Einlesen funktioniert hat
 // //   std::cerr << "tets = " << counts[cfxCNT_TET] << "; pyramids = " << counts[cfxCNT_PYR] << "; prism = " << counts[cfxCNT_WDG] << "; hexaeder = " << counts[cfxCNT_HEX] << std::endl;
-// //   std::cerr << "nodes = " << nNodesInBoundary << "; faces = " << nFacesInBoundary << "; connect = " << nConnectInBoundary << std::endl;
-//    std::cerr << "nodes = " << nNodesInBoundary << "; faces = " << nFacesInBoundary << "; connect = " << ptrOnCl.size() << std::endl;
-    std::cerr <<"polygon->getNumVertices = " << polygon->getNumVertices() << std::endl;
-//    std::cerr <<"polygon->getNumElements = " << polygon->getNumElements() << std::endl;
-    std::cerr <<"polygon->getNumCorners = " << polygon->getNumCorners() << std::endl;
+//    std::cerr << "nodes = " << nNodesInBoundary << "; faces = " << nFacesInBoundary << "; connect = " << nConnectInBoundary << std::endl;
+//    std::cerr << "nodes_total = " << m_nnodes << "; node Count() = " << cfxExportNodeCount() << std::endl;
+// //    std::cerr << "nodes = " << nNodesInBoundary << "; faces = " << nFacesInBoundary << "; connect = " << ptrOnCl.size() << std::endl;
+//    std::cerr <<"polygon->getNumVertices = " << polygon->getNumVertices() << std::endl;
+// //    std::cerr <<"polygon->getNumElements = " << polygon->getNumElements() << std::endl;
+//    std::cerr <<"polygon->getNumCorners = " << polygon->getNumCorners() << std::endl;
 
-    std::cerr << "polygon->el().at(polygon->getNumElements()) = " << polygon->el().at(polygon->getNumElements()) << std::endl;
-    std::cerr << "polygon->cl().at(polygon->getNumCorners()-1) = " << polygon->cl().at(polygon->getNumCorners()-1) << std::endl;
+//    std::cerr << "polygon->el().at(polygon->getNumElements()) = " << polygon->el().at(polygon->getNumElements()) << std::endl;
+//    std::cerr << "polygon->cl().at(polygon->getNumCorners()-1) = " << polygon->cl().at(polygon->getNumCorners()-1) << std::endl;
 // //   std::cerr << "nconnectivities = " << nConnectInBoundary << std::endl;
 //    std::cerr << "nconnectivities = " << ptrOnCl.size() << std::endl;
 //    std::cerr << "elemListCounter = " << elemListCounter << std::endl;
 
-    for(index_t i=nFacesInBoundary-10;i<=nFacesInBoundary;++i) {
-        std::cerr << "ptrOnEl[" << i << "] = " << ptrOnEl[i] << std::endl;
-    }
-    for(int i=elemListCounter-10;i<=elemListCounter;++i) {
-        std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
-    }
-    for(int i=0;i<=5;++i) {
-        std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
-    }
+//    for(index_t i=nFacesInBoundary-10;i<=nFacesInBoundary;++i) {
+//        std::cerr << "ptrOnEl[" << i << "] = " << ptrOnEl[i] << std::endl;
+//    }
+//    for(int i=elemListCounter-10;i<=elemListCounter;++i) {
+//        std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
+//    }
+//    for(int i=0;i<=5;++i) {
+//        std::cerr << "ptrOnCl[" << i << "] = " << ptrOnCl[i] << std::endl;
+//    }
 
     cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
 
@@ -779,8 +784,8 @@ bool ReadCFX::loadBoundaryFields(int boundaryNr) {
         DataBase::ptr obj = loadBoundaryField(boundaryNr, right_iter->second);
         //setMeta(obj, processor, timestep);
         if(obj) {
-            //loadPolygon(boundaryNr);
-            obj ->setGrid(loadPolygon(boundaryNr));
+            loadPolygon(boundaryNr);
+            //obj ->setGrid(loadPolygon(boundaryNr));
             obj ->setMapping(DataBase::Vertex);
             addObject(m_boundaryDataOut[i],obj);
         }
