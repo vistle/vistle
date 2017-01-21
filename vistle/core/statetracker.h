@@ -114,6 +114,8 @@ class V_COREEXPORT StateTracker {
    std::vector<int> waitForSlaveHubs(size_t count);
    std::vector<int> waitForSlaveHubs(const std::vector<std::string> &names);
 
+   int graphChangeCount() const;
+
  protected:
    std::shared_ptr<message::Buffer> removeRequest(const message::uuid_t &uuid);
    bool registerReply(const message::uuid_t &uuid, const message::Message &msg);
@@ -148,6 +150,7 @@ class V_COREEXPORT StateTracker {
    RunningMap quitMap; //< history of already terminated modules - for module -> hub mapping
    typedef std::set<int> ModuleSet;
    ModuleSet busySet;
+   int m_graphChangeCount = 0;
 
    std::vector<AvailableModule> m_availableModules;
 

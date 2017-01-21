@@ -585,6 +585,8 @@ bool StateTracker::handlePriv(const message::Trace &trace) {
 
 bool StateTracker::handlePriv(const message::Spawn &spawn) {
 
+   ++m_graphChangeCount;
+
    int moduleId = spawn.spawnId();
    if (moduleId == Id::Invalid) {
       // don't track when master hub has not yet provided a module id
@@ -608,6 +610,8 @@ bool StateTracker::handlePriv(const message::Spawn &spawn) {
 }
 
 bool StateTracker::handlePriv(const message::Started &started) {
+
+   ++m_graphChangeCount;
 
    int moduleId = started.senderId();
    auto it = runningMap.find(moduleId);
@@ -633,6 +637,8 @@ bool StateTracker::handlePriv(const message::Started &started) {
 
 bool StateTracker::handlePriv(const message::Connect &connect) {
 
+   ++m_graphChangeCount;
+
    bool ret = true;
    if (portTracker()) {
       ret = portTracker()->addConnection(connect.getModuleA(),
@@ -648,6 +654,8 @@ bool StateTracker::handlePriv(const message::Connect &connect) {
 
 bool StateTracker::handlePriv(const message::Disconnect &disconnect) {
 
+   ++m_graphChangeCount;
+
    bool ret = true;
    if (portTracker()) {
       ret = portTracker()->removeConnection(disconnect.getModuleA(),
@@ -662,6 +670,8 @@ bool StateTracker::handlePriv(const message::Disconnect &disconnect) {
 }
 
 bool StateTracker::handlePriv(const message::ModuleExit &moduleExit) {
+
+   ++m_graphChangeCount;
 
    const int mod = moduleExit.senderId();
    portTracker()->removeModule(mod);
@@ -1268,6 +1278,11 @@ void StateTracker::computeHeights() {
          }
       }
    }
+}
+
+int StateTracker::graphChangeCount() const {
+
+    return m_graphChangeCount;
 }
 
 void StateObserver::quitRequested() {

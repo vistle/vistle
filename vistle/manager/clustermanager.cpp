@@ -229,19 +229,21 @@ bool ClusterManager::dispatch(bool &received) {
 
    bool done = false;
 
-   // handle messages from modules closer to sink first
-   // - should allow for objects to travel through the pipeline more quickly
-   typedef StateTracker::Module Module;
-   struct Comp {
-      bool operator()(const Module &a, const Module &b) {
-         return a.height > b.height;
-      }
-   };
-   std::priority_queue<Module, std::vector<Module>, Comp> modules;
-   for (auto m: m_stateTracker.runningMap) {
-      const auto &mod = m.second;
-      modules.emplace(mod);
+   if (m_modulePriorityChange != m_stateTracker.graphChangeCount()) {
+
+       // handle messages from modules closer to sink first
+       // - should allow for objects to travel through the pipeline more quickly
+       while (!m_modulePriority.empty()) {
+           m_modulePriority.pop();
+       }
+       m_modulePriorityChange = m_stateTracker.graphChangeCount();
+       for (auto m: m_stateTracker.runningMap) {
+           const auto &mod = m.second;
+           m_modulePriority.emplace(mod);
+       }
    }
+
+   auto modules = m_modulePriority;
 
    // handle messages from modules
    while (!modules.empty()) {

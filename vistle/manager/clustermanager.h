@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <map>
+#include <queue>
 
 #include <util/directory.h>
 
@@ -65,6 +66,14 @@ class ClusterManager {
    std::shared_ptr<PortManager> m_portManager;
    StateTracker m_stateTracker;
    message::Type m_traceMessages;
+
+   struct CompModuleHeight {
+      bool operator()(const StateTracker::Module &a, const StateTracker::Module &b) {
+         return a.height > b.height;
+      }
+   };
+   std::priority_queue<StateTracker::Module, std::vector<StateTracker::Module>, CompModuleHeight> m_modulePriority;
+   int m_modulePriorityChange = -1;
 
    bool m_quitFlag;
 
