@@ -17,13 +17,13 @@ class ReadVtk: public vistle::Module {
    bool changeParameter(const vistle::Parameter *p) override;
    bool compute() override;
 
-   bool load(const std::string &filename, const vistle::Meta &meta = vistle::Meta(), int piece=-1);
+   bool load(const std::string &filename, const vistle::Meta &meta = vistle::Meta(), int piece=-1, bool ghost=false);
    void setChoices(vtkDataSet *ds);
 
    vistle::StringParameter *m_filename;
    vistle::StringParameter *m_cellDataChoice[NumPorts], *m_pointDataChoice[NumPorts];
    vistle::Port *m_cellPort[NumPorts], *m_pointPort[NumPorts];
-   vistle::IntParameter *m_readPieces;
+   vistle::IntParameter *m_readPieces, *m_ghostCells;
 };
 
 #endif

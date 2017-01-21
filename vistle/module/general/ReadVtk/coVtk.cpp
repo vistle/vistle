@@ -1423,6 +1423,7 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid) {
         zc[i] = vugrid->GetPoint(i)[2];
     }
 
+    const auto *ghostArray = vugrid->GetCellGhostArray();
     vtkUnsignedCharArray *vtypearray = vugrid->GetCellTypesArray();
     for (int i = 0; i < nelem; ++i) {
         switch (vtypearray->GetValue(i))
@@ -1460,6 +1461,9 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid) {
             std::cerr << "VTK cell type " << vtypearray->GetValue(i) << " not handled" << std::endl;
             typelist[i] = 0;
             break;
+        }
+        if (ghostArray && ghostArray->GetValue(i)&vtkDataSetAttributes::DUPLICATECELL) {
+            typelist[i] |= UnstructuredGrid::GHOST_BIT;
         }
     }
 

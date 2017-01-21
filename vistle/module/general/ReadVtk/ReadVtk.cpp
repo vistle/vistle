@@ -45,7 +45,7 @@ const std::string Invalid("(NONE)");
 
 
 template<class Reader>
-std::pair<vtkDataSet *, int> readFile(const std::string &filename, int piece=-1) {
+std::pair<vtkDataSet *, int> readFile(const std::string &filename, int piece=-1, bool ghost=false) {
    if (!vistle::filesystem::is_regular_file(filename)) {
        return std::make_pair<vtkDataSet *, int>(nullptr, 0);
    }
@@ -62,6 +62,7 @@ std::pair<vtkDataSet *, int> readFile(const std::string &filename, int piece=-1)
        auto info = vtkSmartPointer<vtkInformation>::New();
        info->Set(vtkStreamingDemandDrivenPipeline::UPDATE_PIECE_NUMBER(), piece);
        info->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_PIECES(), numPieces);
+       info->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), ghost ? 1 : 0);
        reader->Update(info);
    }
    if (reader->GetOutput())
@@ -70,24 +71,24 @@ std::pair<vtkDataSet *, int> readFile(const std::string &filename, int piece=-1)
 }
 
 
-std::pair<vtkDataSet *, int> getDataSet(const std::string &filename, int piece=-1) {
+std::pair<vtkDataSet *, int> getDataSet(const std::string &filename, int piece=-1, bool ghost=false) {
    auto ds_pieces = std::make_pair<vtkDataSet *, int>(nullptr, 0);
    bool triedLegacy = false;
    if (boost::algorithm::ends_with(filename, ".vtk")) {
-      ds_pieces = readFile<vtkDataSetReader>(filename, piece);
+      ds_pieces = readFile<vtkDataSetReader>(filename, piece, ghost);
       triedLegacy = true;
    }
    if (!ds_pieces.first) {
-      ds_pieces = readFile<vtkXMLUnstructuredGridReader>(filename, piece);
+      ds_pieces = readFile<vtkXMLUnstructuredGridReader>(filename, piece, ghost);
    }
    if (!ds_pieces.first) {
-      ds_pieces = readFile<vtkXMLMultiBlockDataReader>(filename, piece);
+      ds_pieces = readFile<vtkXMLMultiBlockDataReader>(filename, piece, ghost);
    }
    if (!ds_pieces.first) {
-      ds_pieces = readFile<vtkXMLGenericDataObjectReader>(filename, piece);
+      ds_pieces = readFile<vtkXMLGenericDataObjectReader>(filename, piece, ghost);
    }
    if (!triedLegacy && !ds_pieces.first) {
-      ds_pieces = readFile<vtkDataSetReader>(filename, piece);
+      ds_pieces = readFile<vtkDataSetReader>(filename, piece, ghost);
    }
    return ds_pieces;
 }
@@ -223,6 +224,7 @@ ReadVtk::ReadVtk(const std::string &shmname, const std::string &name, int module
    createOutputPort("grid_out");
    m_filename = addStringParameter("filename", "name of VTK file", "");
    m_readPieces = addIntParameter("read_pieces", "create block for every piece in an unstructured grid", true, Parameter::Boolean);
+   m_ghostCells = addIntParameter("create_ghost_cells", "create ghost cells for multi-piece unstructured grids", true, Parameter::Boolean);
 
    for (int i=0; i<NumPorts; ++i) {
       std::stringstream spara;
@@ -267,9 +269,9 @@ bool ReadVtk::changeParameter(const vistle::Parameter *p) {
    return Module::changeParameter(p);
 }
 
-bool ReadVtk::load(const std::string &filename, const Meta &meta, int piece) {
+bool ReadVtk::load(const std::string &filename, const Meta &meta, int piece, bool ghost) {
 
-   auto ds_pieces = getDataSet(filename, piece);
+   auto ds_pieces = getDataSet(filename, piece, ghost);
    auto ds = ds_pieces.first;
    if (!ds) {
        sendError("could not read data set '%s'", filename.c_str());
@@ -316,6 +318,7 @@ bool ReadVtk::compute() {
 
    const std::string filename = m_filename->getValue();
    const bool readPieces = m_readPieces->getValue();
+   const bool ghostCells = m_ghostCells->getValue();
 
    if (boost::algorithm::ends_with(filename, ".pvd")) {
 
@@ -346,7 +349,7 @@ bool ReadVtk::compute() {
                    meta.setNumTimesteps(files.size());
                    meta.setRealTime(file.realtime);
                    if (block%size() == rank())
-                       load(file.filename, meta, readPieces ? piece : -1);
+                       load(file.filename, meta, readPieces ? piece : -1, ghostCells);
                    ++block;
                }
                if (cancelRequested())
@@ -370,7 +373,7 @@ bool ReadVtk::compute() {
            meta.setBlock(piece);
            meta.setNumBlocks(numPieces);
            if (piece%size() == rank())
-               load(filename, meta, piece);
+               load(filename, meta, piece, ghostCells);
        }
        return true;
    }
