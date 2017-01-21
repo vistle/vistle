@@ -15,6 +15,12 @@
 #include <vtkDataSet.h>
 #include <vtkPointData.h>
 #include <vtkCellData.h>
+#include <vtkXMLUnstructuredGridReader.h>
+#include <vtkXMLMultiBlockDataReader.h>
+#include <vtkUnstructuredGrid.h>
+#include <vtkInformation.h>
+#include <vtkCompositeDataPipeline.h>
+#include <vtkCompositeDataSet.h>
 #if VTK_MAJOR_VERSION < 5
 #include <vtkIdType.h>
 #endif
@@ -37,14 +43,65 @@ using namespace vistle;
 const std::string Invalid("(NONE)");
 
 
+
+template<class Reader>
+std::pair<vtkDataSet *, int> readFile(const std::string &filename, int piece=-1) {
+   if (!vistle::filesystem::is_regular_file(filename)) {
+       return std::make_pair<vtkDataSet *, int>(nullptr, 0);
+   }
+   vtkSmartPointer<Reader> reader = vtkSmartPointer<Reader>::New();
+   reader->SetFileName(filename.c_str());
+   reader->Update();
+   int numPieces = 1;
+   if (auto unstr = vtkXMLUnstructuredDataReader::SafeDownCast(reader)) {
+       numPieces = unstr->GetNumberOfPieces();
+   } else if (auto multi = vtkXMLMultiBlockDataReader::SafeDownCast(reader)) {
+       numPieces = unstr->GetNumberOfPieces();
+   }
+   if (piece >= 0 && numPieces > 1) {
+       auto info = vtkSmartPointer<vtkInformation>::New();
+       info->Set(vtkStreamingDemandDrivenPipeline::UPDATE_PIECE_NUMBER(), piece);
+       info->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_PIECES(), numPieces);
+       reader->Update(info);
+   }
+   if (reader->GetOutput())
+      reader->GetOutput()->Register(reader);
+   return std::make_pair(vtkDataSet::SafeDownCast(reader->GetOutput()), numPieces);
+}
+
+
+std::pair<vtkDataSet *, int> getDataSet(const std::string &filename, int piece=-1) {
+   auto ds_pieces = std::make_pair<vtkDataSet *, int>(nullptr, 0);
+   bool triedLegacy = false;
+   if (boost::algorithm::ends_with(filename, ".vtk")) {
+      ds_pieces = readFile<vtkDataSetReader>(filename, piece);
+      triedLegacy = true;
+   }
+   if (!ds_pieces.first) {
+      ds_pieces = readFile<vtkXMLUnstructuredGridReader>(filename, piece);
+   }
+   if (!ds_pieces.first) {
+      ds_pieces = readFile<vtkXMLMultiBlockDataReader>(filename, piece);
+   }
+   if (!ds_pieces.first) {
+      ds_pieces = readFile<vtkXMLGenericDataObjectReader>(filename, piece);
+   }
+   if (!triedLegacy && !ds_pieces.first) {
+      ds_pieces = readFile<vtkDataSetReader>(filename, piece);
+   }
+   return ds_pieces;
+}
+
+
 struct VtkFile {
     std::string filename;
     int part = -1;
+    int pieces = 1;
     double realtime = 0.;
 };
 
 
-std::map<double, std::vector<VtkFile>> readPvd(const std::string &filename) {
+std::map<double, std::vector<VtkFile>> readPvd(const std::string &filename, bool piecesAsBlocks=false) {
 
     std::map<double, std::vector<VtkFile>> files;
 
@@ -104,6 +161,10 @@ std::map<double, std::vector<VtkFile>> readPvd(const std::string &filename) {
             vtkFile.part = p;
             vtkFile.realtime = time;
             auto &timestep = files[time];
+            if (piecesAsBlocks) {
+                auto ds_pieces = getDataSet(vtkFile.filename);
+                vtkFile.pieces = ds_pieces.second;
+            }
             timestep.push_back(vtkFile);
             ++numBlocks;
         }
@@ -115,36 +176,6 @@ std::map<double, std::vector<VtkFile>> readPvd(const std::string &filename) {
     //std::cerr << "readPvd(" << filename << "): num timesteps: " << files.size() << ", num blocks: " << numBlocks <<  std::endl;
 
     return files;
-}
-
-
-template<class Reader>
-vtkDataSet *readFile(const std::string &filename) {
-   if (!vistle::filesystem::is_regular_file(filename)) {
-       return nullptr;
-   }
-   vtkSmartPointer<Reader> reader = vtkSmartPointer<Reader>::New();
-   reader->SetFileName(filename.c_str());
-   reader->Update();
-   if (reader->GetOutput())
-      reader->GetOutput()->Register(reader);
-   return vtkDataSet::SafeDownCast(reader->GetOutput());
-}
-
-vtkDataSet *getDataSet(const std::string &filename) {
-   vtkDataSet *ds = nullptr;
-   bool triedLegacy = false;
-   if (boost::algorithm::ends_with(filename, ".vtk")) {
-      ds = readFile<vtkDataSetReader>(filename);
-      triedLegacy = true;
-   }
-   if (!ds) {
-      ds = readFile<vtkXMLGenericDataObjectReader>(filename);
-   }
-   if (!triedLegacy && !ds) {
-      ds = readFile<vtkDataSetReader>(filename);
-   }
-   return ds;
 }
 
 std::vector<std::string> getFields(vtkFieldData *dsa)
@@ -191,6 +222,7 @@ ReadVtk::ReadVtk(const std::string &shmname, const std::string &name, int module
 
    createOutputPort("grid_out");
    m_filename = addStringParameter("filename", "name of VTK file", "");
+   m_readPieces = addIntParameter("read_pieces", "create block for every piece in an unstructured grid", true, Parameter::Boolean);
 
    for (int i=0; i<NumPorts; ++i) {
       std::stringstream spara;
@@ -224,20 +256,21 @@ bool ReadVtk::changeParameter(const vistle::Parameter *p) {
           if (!files.empty()) {
               auto firstts = files.begin()->second;
               if (!firstts.empty()) {
-                  setChoices(getDataSet(firstts[0].filename));
+                  setChoices(getDataSet(firstts[0].filename).first);
               }
           }
       } else {
-          setChoices(getDataSet(filename));
+          setChoices(getDataSet(filename).first);
       }
    }
 
    return Module::changeParameter(p);
 }
 
-bool ReadVtk::load(const std::string &filename, const Meta &meta) {
+bool ReadVtk::load(const std::string &filename, const Meta &meta, int piece) {
 
-   auto ds = getDataSet(filename);
+   auto ds_pieces = getDataSet(filename, piece);
+   auto ds = ds_pieces.first;
    if (!ds) {
        sendError("could not read data set '%s'", filename.c_str());
        return true;
@@ -282,6 +315,7 @@ bool ReadVtk::load(const std::string &filename, const Meta &meta) {
 bool ReadVtk::compute() {
 
    const std::string filename = m_filename->getValue();
+   const bool readPieces = m_readPieces->getValue();
 
    if (boost::algorithm::ends_with(filename, ".pvd")) {
 
@@ -289,24 +323,34 @@ bool ReadVtk::compute() {
        sendError("not compiled against TinyXML2 - no support for parsing .pvd files");
 #endif
 
-       auto files = readPvd(m_filename->getValue());
+       auto files = readPvd(filename, readPieces);
        int time = 0;
        for (auto timestep: files) {
+           int numBlocks=0;
+           for (auto file: timestep.second) {
+               if (readPieces)
+                   numBlocks += file.pieces;
+               else
+                   ++numBlocks;
+           }
            int block=0;
            for (auto file: timestep.second) {
-               Meta meta;
-               meta.setBlock(file.part);
-               meta.setBlock(block);
-               meta.setNumBlocks(timestep.second.size());
-               meta.setTimeStep(time);
-               meta.setNumTimesteps(files.size());
-               meta.setRealTime(file.realtime);
-               if (block%size() == rank())
-                   load(file.filename, meta);
-               ++block;
-               if (cancelRequested()) {
-                   break;
+               for (int piece=0; piece<file.pieces; ++piece) {
+                   if (cancelRequested()) {
+                       break;
+                   }
+                   Meta meta;
+                   meta.setBlock(block);
+                   meta.setNumBlocks(numBlocks);
+                   meta.setTimeStep(time);
+                   meta.setNumTimesteps(files.size());
+                   meta.setRealTime(file.realtime);
+                   if (block%size() == rank())
+                       load(file.filename, meta, readPieces ? piece : -1);
+                   ++block;
                }
+               if (cancelRequested())
+                   break;
            }
            ++time;
            if (cancelRequested())
@@ -315,5 +359,24 @@ bool ReadVtk::compute() {
        return true;
    }
 
-   return load(filename);
+   if (readPieces) {
+
+       auto numPieces = getDataSet(filename).second;
+       for (int piece=0; piece<numPieces; ++piece) {
+           if (cancelRequested()) {
+               break;
+           }
+           Meta meta;
+           meta.setBlock(piece);
+           meta.setNumBlocks(numPieces);
+           if (piece%size() == rank())
+               load(filename, meta, piece);
+       }
+       return true;
+   }
+
+   if (rank() == 0)
+       load(filename);
+
+   return true;
 }
