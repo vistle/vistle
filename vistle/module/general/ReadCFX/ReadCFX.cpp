@@ -383,7 +383,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 ptrOnTl[i] = (UnstructuredGrid::TETRAHEDRON);
                 ptrOnEl[i] = elemListCounter;
                 for (int nodesOfElm_counter=0;nodesOfElm_counter<4;++nodesOfElm_counter) {
-                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
+                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
                 }
                 elemListCounter += 4;
                 break;
@@ -392,7 +392,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 ptrOnTl[i] = (UnstructuredGrid::PYRAMID);
                 ptrOnEl[i] = elemListCounter;
                 for (int nodesOfElm_counter=0;nodesOfElm_counter<5;++nodesOfElm_counter) {
-                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
+                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
                 }
                 elemListCounter += 5;
                 break;
@@ -401,7 +401,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 ptrOnTl[i] = (UnstructuredGrid::PRISM);
                 ptrOnEl[i] = elemListCounter;
                 for (int nodesOfElm_counter=0;nodesOfElm_counter<6;++nodesOfElm_counter) {
-                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
+                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
                 }
                 elemListCounter += 6;
                 break;
@@ -411,7 +411,7 @@ UnstructuredGrid::ptr ReadCFX::loadGrid(int volumeNr) {
                 ptrOnEl[i] = elemListCounter;
                 //std::cerr << "elemid = " << elemid << "; elemtype = " << *elemtype.get() <<  std::endl;
                 for (int nodesOfElm_counter=0;nodesOfElm_counter<8;++nodesOfElm_counter) {
-                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
+                    ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfElm.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
 //                        std::cerr << "nodesOfElm(" << nodesOfElm_counter << ") = " << nodesOfElm.get()[nodesOfElm_counter]-1 << std::endl;
                 }
                 elemListCounter += 8;
@@ -459,13 +459,13 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
         std::cerr << "invalid zone number" << std::endl;
     }
 
-    index_t nNodesInBoundary, nFacesInBoundary, nConnectInBoundary;
-//    index_t nNodesInBoundary, nFacesInBoundary;
+    index_t nNodesInZone, nNodesInBoundary, nFacesInBoundary, nConnectInBoundary;
     nNodesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES);
+    nNodesInZone = cfxExportNodeCount();
     nFacesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_FACES);
-    nConnectInBoundary = 4*nFacesInBoundary+5; //maximum of conncectivities. If there are 3 vertices faces, it is correct with resize at the end of the function
+    nConnectInBoundary = 4*nFacesInBoundary; //maximum of conncectivities. If there are 3 vertices faces, it is correct with resize at the end of the function
 
-    Polygons::ptr polygon(new Polygons(nFacesInBoundary,nConnectInBoundary,nNodesInBoundary)); //initialize Polygon with numFaces, numCorners, numVertices
+    Polygons::ptr polygon(new Polygons(nFacesInBoundary,nConnectInBoundary,nNodesInZone)); //initialize Polygon with numFaces, numCorners, numVertices
 //    Polygons::ptr polygon(new Polygons(nFacesInBoundary,0,nNodesInBoundary)); //initialize Polygon with numFaces, numCorners, numVertices
 
     //load coords into polygon
@@ -480,9 +480,9 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
         if(!cfxExportNodeGet(nodeListOfBoundary[i],x_coord.get(),y_coord.get(),z_coord.get())) {  //get access to coordinates: [IN] nodeid [OUT] x,y,z
             std::cerr << "error while reading nodes out of .res file: nodeid is out of range" << std::endl;
         }
-        ptrOnXcoords[i] = *x_coord.get();
-        ptrOnYcoords[i] = *y_coord.get();
-        ptrOnZcoords[i] = *z_coord.get();
+        ptrOnXcoords[nodeListOfBoundary[i]-1] = *x_coord.get(); //-1 start array with 0; nodeListofBoundary gives nodeID's starting minimum with 1
+        ptrOnYcoords[nodeListOfBoundary[i]-1] = *y_coord.get();
+        ptrOnZcoords[nodeListOfBoundary[i]-1] = *z_coord.get();
     }
 
 
@@ -519,7 +519,7 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
         case 3: {
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<3;++nodesOfElm_counter) {
-                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
 //                ptrOnCl.push_back(nodesOfFace.get()[nodesOfElm_counter]-1); //-1 because cfx starts to count with 1; 1st node is in x().at(0)
             }
             elemListCounter += 3;
@@ -528,7 +528,7 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
         case 4: {
             ptrOnEl[i] = elemListCounter;
             for (int nodesOfElm_counter=0;nodesOfElm_counter<4;++nodesOfElm_counter) {
-                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; 1st node is in x().at(0)
+                ptrOnCl[elemListCounter+nodesOfElm_counter] = nodesOfFace.get()[nodesOfElm_counter]-1; //-1 because cfx starts to count with 1; e.g. node with nodeid = 1 is in x().at(0)
 //                ptrOnCl.push_back(nodesOfFace.get()[nodesOfElm_counter]-1); //-1 because cfx starts to count with 1; 1st node is in x().at(0)
             }
             elemListCounter += 4;
@@ -784,8 +784,8 @@ bool ReadCFX::loadBoundaryFields(int boundaryNr) {
         DataBase::ptr obj = loadBoundaryField(boundaryNr, right_iter->second);
         //setMeta(obj, processor, timestep);
         if(obj) {
-            loadPolygon(boundaryNr);
-            //obj ->setGrid(loadPolygon(boundaryNr));
+            //loadPolygon(boundaryNr);
+            obj ->setGrid(loadPolygon(boundaryNr));
             obj ->setMapping(DataBase::Vertex);
             addObject(m_boundaryDataOut[i],obj);
         }
