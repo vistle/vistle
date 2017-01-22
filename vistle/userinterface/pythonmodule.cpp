@@ -569,8 +569,8 @@ BOOST_PYTHON_MODULE(_vistle)
     def("removeTunnel", removeTunnel, "remove TCP tunnel listening on port `arg1` on hub");
     //def("checkMessageQueue", checkMessageQueue, "check whether all messages have been processed");
     def("printInfo", printInfo, "show info message to user");
-    def("printWarning", printInfo, "show info message to user");
-    def("printError", printInfo, "show info message to user");
+    def("printWarning", printWarning, "show warning message to user");
+    def("printError", printError, "show error message to user");
 
     param(Int, setIntParam);
     param(Float, setFloatParam);
