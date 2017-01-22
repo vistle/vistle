@@ -5,6 +5,8 @@
 #include <core/vector.h>
 #include <core/texture1d.h>
 
+#include <deque>
+
 class ColorMap {
 
 public:
@@ -28,10 +30,23 @@ class Color: public vistle::Module {
 
    void getMinMax(vistle::DataBase::const_ptr object, vistle::Scalar & min, vistle::Scalar & max);
 
-   virtual bool compute();
+   bool changeParameter(const vistle::Parameter *p) override;
+   bool prepare() override;
+   bool compute() override;
+   bool reduce(int timestep) override;
+
+   void process(const vistle::DataBase::const_ptr data);
 
    typedef std::map<vistle::Scalar, vistle::Vector> TF;
    std::map<int, TF> transferFunctions;
+
+   std::shared_ptr<ColorMap> m_colors;
+
+   bool m_autoRange = false;
+   vistle::IntParameter *m_autoRangePara;
+   std::deque<vistle::DataBase::const_ptr> m_inputQueue;
+
+   vistle::Scalar m_min, m_max;
 };
 
 #endif

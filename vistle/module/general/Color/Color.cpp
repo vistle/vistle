@@ -35,12 +35,14 @@ ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
 
    for (size_t index = 0; index < width; index ++) {
 
-      if (((vistle::Scalar) index) / width > next->first) {
-         if (next != pins.end()) {
-            current ++;
-            next ++;
-         }
-      }
+       Scalar x = 0.5;
+       if (width > 1) {
+           x = index / (vistle::Scalar) (width-1);
+       }
+       while (next != pins.end() && x > next->first) {
+           ++next;
+           ++current;
+       }
 
       if (next == pins.end()) {
          data[index * 4] = current->second[0];
@@ -52,14 +54,14 @@ ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
          vistle::Scalar a = current->first;
          vistle::Scalar b = next->first;
 
-         vistle::Scalar t = ((index / (vistle::Scalar) width) - a) / (b - a);
+         vistle::Scalar t = (x-a)/(b-a);
 
          data[index * 4] =
-            (lerp(current->second[0], next->second[0], t) * 255.0);
+            (lerp(current->second[0], next->second[0], t) * 255.99);
          data[index * 4 + 1] =
-            (lerp(current->second[1], next->second[1], t) * 255.0);
+            (lerp(current->second[1], next->second[1], t) * 255.99);
          data[index * 4 + 2] =
-            (lerp(current->second[2], next->second[2], t) * 255.0);
+            (lerp(current->second[2], next->second[2], t) * 255.99);
          data[index * 4 + 3] = 1.0;
       }
    }
@@ -78,8 +80,13 @@ Color::Color(const std::string &shmname, const std::string &name, int moduleID)
 
    addFloatParameter("min", "minimum value of range to map", 0.0);
    addFloatParameter("max", "maximum value of range to map", 0.0);
-   auto p = addIntParameter("map", "transfer function name", 0, Parameter::Choice);
-   V_ENUM_SET_CHOICES(p, TransferFunction);
+   auto map = addIntParameter("map", "transfer function name", 0, Parameter::Choice);
+   V_ENUM_SET_CHOICES(map, TransferFunction);
+   
+   auto res = addIntParameter("resolution", "number of steps to compute", 32);
+   setParameterRange(res, (Integer)1, (Integer)1024);
+
+   m_autoRangePara = addIntParameter("auto_range", "compute range automatically", m_autoRange, Parameter::Boolean);
 
    TF pins;
 
@@ -163,7 +170,7 @@ void Color::getMinMax(vistle::DataBase::const_ptr object,
 #pragma omp parallel
       {
          Index tmin = std::numeric_limits<Index>::max();
-         Index tmax = -std::numeric_limits<Index>::min();
+         Index tmax = std::numeric_limits<Index>::min();
 #pragma omp for
          for (ssize_t index = 0; index < numElements; index ++) {
             if (x[index] < tmin)
@@ -227,6 +234,20 @@ void Color::getMinMax(vistle::DataBase::const_ptr object,
    }
 }
 
+bool Color::changeParameter(const Parameter *p) {
+
+    if (p == m_autoRangePara) {
+        m_autoRange = m_autoRangePara->getValue();
+        if (m_autoRange) {
+            setReducePolicy(message::ReducePolicy::OverAll);
+        } else {
+            setReducePolicy(message::ReducePolicy::Locally);
+        }
+    }
+
+    return true;
+}
+
 vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
       const vistle::Scalar min, const vistle::Scalar max,
       const ColorMap & cmap) {
@@ -279,6 +300,29 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
    return tex;
 }
 
+bool Color::prepare() {
+
+   m_min = std::numeric_limits<Scalar>::max();
+   m_max = -std::numeric_limits<Scalar>::max();
+
+   if (!m_autoRange) {
+      m_min = getFloatParameter("min");
+      m_max = getFloatParameter("max");
+      if (m_min >= m_max)
+          m_max = m_min + 1.;
+   }
+
+   auto pins = transferFunctions[getIntParameter("map")];
+   if (pins.empty()) {
+       pins = transferFunctions[COVISE];
+   }
+   m_colors.reset(new ColorMap(pins, getIntParameter("resolution")));
+
+   m_inputQueue.clear();
+
+   return true;
+}
+
 bool Color::compute() {
 
    Coords::const_ptr coords = accept<Coords>("data_in");
@@ -292,30 +336,45 @@ bool Color::compute() {
       return true;
    }
 
-   auto pins = transferFunctions[getIntParameter("map")];
-   if (pins.empty()) {
-       pins = transferFunctions[COVISE];
-   }
-   ColorMap cmap(pins, 32);
-
-   Scalar min = std::numeric_limits<Scalar>::max();
-   Scalar max = -std::numeric_limits<Scalar>::max();
-
-   if (getFloatParameter("min") >= getFloatParameter("max")) {
-      getMinMax(data, min, max);
+   if (m_autoRange) {
+       getMinMax(data, m_min, m_max);
+       m_inputQueue.push_back(data);
    } else {
-      min = getFloatParameter("min");
-      max = getFloatParameter("max");
+       process(data);
    }
 
-   //std::cerr << "Color: [" << min << "--" << max << "]" << std::endl;
+   return true;
+}
 
-   auto out(addTexture(data, min, max, cmap));
+bool Color::reduce(int timestep) {
+
+    assert(timestep == -1);
+
+    if (m_autoRange) {
+        m_min = boost::mpi::all_reduce(comm(), m_min, boost::mpi::minimum<Scalar>());
+        m_max = boost::mpi::all_reduce(comm(), m_max, boost::mpi::maximum<Scalar>());
+        setFloatParameter("min", m_min);
+        setFloatParameter("max", m_max);
+    }
+
+    while(!m_inputQueue.empty()) {
+        if (cancelRequested())
+            break;
+
+        auto data = m_inputQueue.front();
+        m_inputQueue.pop_front();
+        process(data);
+    }
+
+    return true;
+}
+
+void Color::process(const DataBase::const_ptr data) {
+
+   auto out(addTexture(data, m_min, m_max, *m_colors));
    out->setGrid(data->grid());
    out->setMeta(data->meta());
    out->copyAttributes(data);
 
    addObject("data_out", out);
-
-   return true;
 }
