@@ -1974,7 +1974,7 @@ int Module::objectReceivePolicy() const {
    return m_receivePolicy;
 }
 
-bool Module::prepareWrapper(const message::Message *req) {
+bool Module::prepareWrapper(const message::Execute *exec) {
 
    m_numTimesteps = 0;
    m_cancelRequested = false;
@@ -1995,7 +1995,7 @@ bool Module::prepareWrapper(const message::Message *req) {
 #endif
 
    message::ExecutionProgress start(message::ExecutionProgress::Start);
-   start.setReferrer(req->uuid());
+   start.setReferrer(exec->uuid());
    start.setDestId(Id::LocalManager);
    sendMessage(start);
 
@@ -2023,7 +2023,7 @@ bool Module::prepare() {
    return true;
 }
 
-bool Module::reduceWrapper(const message::Message *req) {
+bool Module::reduceWrapper(const message::Execute *exec) {
 
    //CERR << "reduceWrapper: prepared=" << m_prepared << std::endl;
 
@@ -2034,7 +2034,7 @@ bool Module::reduceWrapper(const message::Message *req) {
 
 #ifdef REDUCE_DEBUG
    if (reducePolicy() != message::ReducePolicy::Locally && reducePolicy() != message::ReducePolicy::Never) {
-      std::cerr << "reduce(): barrier for reduce policy " << reducePolicy() << ", request was " << *req << std::endl;
+      std::cerr << "reduce(): barrier for reduce policy " << reducePolicy() << ", request was " << *exec << std::endl;
       comm().barrier();
    }
 #endif
@@ -2060,13 +2060,7 @@ bool Module::reduceWrapper(const message::Message *req) {
        case message::ReducePolicy::PerTimestepOrdered: {
            if (m_numTimesteps > 0) {
                ret = true;
-               bool dored = true;
-               if (req && req->type()==message::EXECUTE) {
-                   auto exec = static_cast<const message::Execute *>(req);
-                   if (exec->what() == message::Execute::ComputeExecute)
-                       dored = false;
-               }
-               if (dored) {
+               if (exec->what() != message::Execute::ComputeExecute) {
                    for (int t=0; t<m_numTimesteps; ++t) {
                        if (!cancelRequested(sync))
                            ret &= reduce(t);
@@ -2107,7 +2101,7 @@ bool Module::reduceWrapper(const message::Message *req) {
    }
 
    message::ExecutionProgress fin(message::ExecutionProgress::Finish);
-   fin.setReferrer(req->uuid());
+   fin.setReferrer(exec->uuid());
    fin.setDestId(Id::LocalManager);
    sendMessage(fin);
 

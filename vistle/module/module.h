@@ -247,8 +247,8 @@ protected:
    int numTimesteps() const;
 
  private:
-   bool reduceWrapper(const message::Message *req);
-   bool prepareWrapper(const message::Message *req);
+   bool reduceWrapper(const message::Execute *exec);
+   bool prepareWrapper(const message::Execute *exec);
 
    std::shared_ptr<StateTracker> m_stateTracker;
    int m_receivePolicy;
