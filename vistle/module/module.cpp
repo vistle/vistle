@@ -1543,7 +1543,6 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
     }
 
     bool reordered = false;
-    int direction = 1;
     if (exec->what() == Execute::ComputeExecute
             || exec->what() == Execute::ComputeObject) {
         //vassert(m_executionDepth == 0);
@@ -1556,6 +1555,8 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
         m_computed = true;
         const bool gang = schedulingPolicy() == message::SchedulingPolicy::Gang
                 || schedulingPolicy() == message::SchedulingPolicy::LazyGang;
+
+        int direction = 1;
 
         Index numObject = 0;
         int startTimestep = -1;
@@ -1576,8 +1577,21 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 }
             }
 
-            if (m_prioritizeVisible && numObject > 0 && !gang && !exec->allRanks()) {
+            if (m_prioritizeVisible && !gang && !exec->allRanks()) {
                 reordered = true;
+
+                if (exec->animationStep() > 0.) {
+                    direction = 1;
+                } else if (exec->animationStep() < 0.) {
+                    direction = -1;
+                } else {
+                    direction = 0;
+                }
+
+                int headStart = 0;
+                if (std::abs(exec->animationStep()) > 1e-5)
+                    headStart = m_avgComputeTime / std::abs(exec->animationStep());
+                headStart = std::max(1, headStart)+2;
 
                 struct TimeIndex {
                     double t = 0.;
@@ -1593,56 +1607,46 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                     size_t i=0;
                     for (auto &obj: objs) {
                         sortKey[i].idx = i;
-                        if (sortKey[i].t == 0. && obj->getTimestep() != 0)
+                        if (sortKey[i].t == 0. && obj->getTimestep() != -1)
                             sortKey[i].t = obj->getTimestep();
                         ++i;
                     }
                 }
-                std::sort(sortKey.begin(), sortKey.end());
-                auto best = sortKey[0];
-                ssize_t idx=0, bestIdx=0;
-                for (auto &ti: sortKey) {
-                    if (std::abs(ti.t - exec->animationRealTime()) < std::abs(best.t - exec->animationRealTime())) {
-                        best = ti;
-                        bestIdx = idx;
+                size_t bestIdx = 0;
+                if (numObject > 0) {
+                    std::sort(sortKey.begin(), sortKey.end());
+                    auto best = sortKey[0];
+                    ssize_t idx=0;
+                    for (auto &ti: sortKey) {
+                        if (std::abs(ti.t - exec->animationRealTime()) < std::abs(best.t - exec->animationRealTime())) {
+                            best = ti;
+                            bestIdx = idx;
+                        }
+                        ++idx;
                     }
-                    ++idx;
-                }
 
-                int headStart = 0;
-                if (std::abs(exec->animationStep()) > 1e-5)
-                    headStart = m_avgComputeTime / std::abs(exec->animationStep());
-                headStart = std::max(1, headStart)+2;
-
-                if (exec->animationStep() > 0.) {
-                    direction = 1;
-                } else if (exec->animationStep() < 0.) {
-                    direction = -1;
-                } else {
-                    direction = 0;
-                }
-
-                for (auto &port: inputPorts) {
-                    if (!isConnected(port.second))
-                        continue;
-                    port.second->objects().clear();
-                    auto objs = m_cache.getObjects(port.first);
-                    ssize_t start = bestIdx;
-                    int step = 1;
-                    if (direction < 0) {
-                        start = (bestIdx+numObject-headStart)%numObject;
-                        step = -1;
-                        if (start > startTimestep)
-                            startTimestep = start;
-                    }  else if (direction > 0) {
-                        start = (bestIdx+numObject+headStart)%numObject;
-                        if (start < startTimestep && start >= 0)
-                            startTimestep = start;
-                    }
-                    ssize_t cur = start;
-                    for (size_t i=0; i<numObject; ++i) {
-                        port.second->objects().push_back(objs[sortKey[cur].idx]);
-                        cur = (cur+step+numObject)%numObject;
+                    for (auto &port: inputPorts) {
+                        if (!isConnected(port.second))
+                            continue;
+                        port.second->objects().clear();
+                        auto objs = m_cache.getObjects(port.first);
+                        ssize_t start = bestIdx;
+                        int step = 1;
+                        if (direction < 0) {
+                            start = (bestIdx+numObject-headStart)%numObject;
+                            step = -1;
+                            if (start > startTimestep)
+                                startTimestep = start;
+                        }  else if (direction > 0) {
+                            start = (bestIdx+numObject+headStart)%numObject;
+                            if (start < startTimestep && start >= 0)
+                                startTimestep = start;
+                        }
+                        ssize_t cur = start;
+                        for (size_t i=0; i<numObject; ++i) {
+                            port.second->objects().push_back(objs[sortKey[cur].idx]);
+                            cur = (cur+step+numObject)%numObject;
+                        }
                     }
                 }
 
@@ -1667,6 +1671,7 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
                 numObject = mpi::all_reduce(comm(), numObject, mpi::maximum<int>());
             }
         } else {
+            // just process one tuple of objects at a time
             numObject = 1;
         }
 
