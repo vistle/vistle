@@ -33,6 +33,7 @@ class Renderer;
 
 namespace message {
 class Message;
+class Execute;
 class Buffer;
 class AddParameter;
 class SetParameter;
@@ -216,6 +217,7 @@ protected:
    message::MessageQueue *receiveMessageQueue;
    std::deque<message::Buffer> messageBacklog;
    bool handleMessage(const message::Message *message);
+   bool handleExecute(const message::Execute *exec);
    bool cancelRequested(bool sync=false);
 
    virtual bool addInputObject(int sender, const std::string &senderPort, const std::string & portName,

@@ -1396,289 +1396,8 @@ bool Module::handleMessage(const vistle::message::Message *message) {
 
       case message::EXECUTE: {
 
-         if (schedulingPolicy() == message::SchedulingPolicy::Ignore)
-             return true;
-
          const Execute *exec = static_cast<const Execute *>(message);
-
-         bool ret = true;
-
-         Busy busy;
-         busy.setReferrer(exec->uuid());
-         busy.setDestId(Id::LocalManager);
-         sendMessage(busy);
-         if (exec->what() == Execute::ComputeExecute
-             || exec->what() == Execute::Prepare ) {
-            ret &= prepareWrapper(exec);
-         }
-
-         bool reordered = false;
-         int direction = 1;
-         if (exec->what() == Execute::ComputeExecute
-             || exec->what() == Execute::ComputeObject) {
-            //vassert(m_executionDepth == 0);
-            ++m_executionDepth;
-
-            if (reducePolicy() != message::ReducePolicy::Never) {
-               vassert(m_prepared);
-               vassert(!m_reduced);
-            }
-            m_computed = true;
-            const bool gang = schedulingPolicy() == message::SchedulingPolicy::Gang
-                       || schedulingPolicy() == message::SchedulingPolicy::LazyGang;
-
-            Index numObject = 0;
-            int startTimestep = -1;
-            if (exec->what() == Execute::ComputeExecute) {
-               // Compute not triggered by adding an object, get objects from cache
-               Index numConnected = 0;
-               for (auto &port: inputPorts) {
-                  port.second->objects() = m_cache.getObjects(port.first);
-                  if (!isConnected(port.second))
-                     continue;
-                  ++numConnected;
-                  if (numObject == 0) {
-                     numObject = port.second->objects().size();
-                  } else if (numObject != port.second->objects().size()) {
-                     std::cerr << name() << "::compute(): input mismatch - expected " << numObject << " objects, have " << port.second->objects().size() << std::endl;
-                     throw vistle::except::exception("input object mismatch");
-                     return false;
-                  }
-               }
-
-               if (m_prioritizeVisible && numObject > 0 && !gang && !exec->allRanks()) {
-                   reordered = true;
-
-                   struct TimeIndex {
-                       double t = 0.;
-                       size_t idx = 0;
-
-                       bool operator<(const TimeIndex &other) const {
-                           return t < other.t;
-                       }
-                   };
-                   std::vector<TimeIndex> sortKey(numObject);
-                   for (auto &port: inputPorts) {
-                       const auto &objs = port.second->objects();
-                       size_t i=0;
-                       for (auto &obj: objs) {
-                           sortKey[i].idx = i;
-                           if (sortKey[i].t == 0. && obj->getTimestep() != 0)
-                               sortKey[i].t = obj->getTimestep();
-                           ++i;
-                       }
-                   }
-                   std::sort(sortKey.begin(), sortKey.end());
-                   auto best = sortKey[0];
-                   ssize_t idx=0, bestIdx=0;
-                   for (auto &ti: sortKey) {
-                       if (std::abs(ti.t - exec->animationRealTime()) < std::abs(best.t - exec->animationRealTime())) {
-                           best = ti;
-                           bestIdx = idx;
-                       }
-                       ++idx;
-                   }
-
-                   int headStart = 0;
-                   if (std::abs(exec->animationStep()) > 1e-5)
-                       headStart = m_avgComputeTime / std::abs(exec->animationStep());
-                   headStart = std::max(1, headStart)+2;
-
-                   if (exec->animationStep() > 0.) {
-                       direction = 1;
-                   } else if (exec->animationStep() < 0.) {
-                       direction = -1;
-                   } else {
-                       direction = 0;
-                   }
-
-                   for (auto &port: inputPorts) {
-                       if (!isConnected(port.second))
-                           continue;
-                       port.second->objects().clear();
-                       auto objs = m_cache.getObjects(port.first);
-                       ssize_t start = bestIdx;
-                       int step = 1;
-                       if (direction < 0) {
-                           start = (bestIdx+numObject-headStart)%numObject;
-                           step = -1;
-                           if (start > startTimestep)
-                               startTimestep = start;
-                       }  else if (direction > 0) {
-                           start = (bestIdx+numObject+headStart)%numObject;
-                           if (start < startTimestep && start >= 0)
-                               startTimestep = start;
-                       }
-                       ssize_t cur = start;
-                       for (size_t i=0; i<numObject; ++i) {
-                           port.second->objects().push_back(objs[sortKey[cur].idx]);
-                           cur = (cur+step+numObject)%numObject;
-                       }
-                   }
-
-                   if (startTimestep == -1)
-                       startTimestep = 0;
-                   if (direction < 0) {
-                       startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::maximum<int>());
-                   } else {
-                       startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::minimum<int>());
-                   }
-
-                   if (reducePolicy() == message::ReducePolicy::PerTimestepOrdered || reducePolicy() == message::ReducePolicy::PerTimestepZeroFirst) {
-                       startTimestep = 0;
-                       direction = 1;
-                   }
-               }
-               if (numConnected == 0) {
-                  // call compute at least once, e.g. for readers
-                  numObject = 1;
-               }
-               if (gang) {
-                   numObject = mpi::all_reduce(comm(), numObject, mpi::maximum<int>());
-               }
-            } else {
-               numObject = 1;
-            }
-
-            for (auto &port: inputPorts) {
-                if (!isConnected(port.second))
-                    continue;
-                const auto &objs = port.second->objects();
-                for (Index i=0; i<numObject && i<objs.size(); ++i) {
-                    const auto obj = objs[i];
-                    int t = obj->getTimestep();
-                    m_numTimesteps = std::max(t+1, m_numTimesteps);
-                }
-            }
-#ifdef REDUCE_DEBUG
-            CERR << "compute with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
-#endif
-
-            if (m_executionCount < exec->getExecutionCount())
-               m_executionCount = exec->getExecutionCount();
-            if (exec->allRanks() || gang || exec->what() == Execute::ComputeExecute) {
-#ifdef REDUCE_DEBUG
-               CERR << "all_reduce for execCount with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
-#endif
-               m_executionCount = mpi::all_reduce(comm(), m_executionCount, mpi::maximum<int>());
-#ifdef REDUCE_DEBUG
-               CERR << "all_reduce for timesteps with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
-#endif
-               m_numTimesteps = mpi::all_reduce(comm(), m_numTimesteps, mpi::maximum<int>());
-#ifdef REDUCE_DEBUG
-               CERR << "all_reduce for timesteps finished with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
-#endif
-            }
-
-            int prevTimestep = -1;
-            if (m_numTimesteps > 0)
-                prevTimestep = (startTimestep+m_numTimesteps-1)%m_numTimesteps;
-            int numReductions = 0;
-            bool reducePerTimestep = reducePolicy()==message::ReducePolicy::PerTimestep || reducePolicy()==message::ReducePolicy::PerTimestepZeroFirst || reducePolicy()==message::ReducePolicy::PerTimestepOrdered;
-            bool computeOk = false;
-            for (Index i=0; i<numObject; ++i) {
-               computeOk = false;
-               try {
-                  double start = Clock::time();
-                  int timestep = -1;
-                  for (auto &port: inputPorts) {
-                      if (!isConnected(port.second))
-                          continue;
-                      const auto &objs = port.second->objects();
-                      int t = objs.front()->getTimestep();
-                      if (t != -1)
-                          timestep = t;
-                  }
-                  if (cancelRequested()) {
-                      computeOk = true;
-                  } else {
-                      computeOk = compute();
-                  }
-                  auto runReduce = [this, &numReductions](int timestep) -> bool {
-                      std::cerr << "running reduce for timestep " << timestep << std::endl;
-                      if (cancelRequested(true))
-                          return true;
-                      ++numReductions;
-                      return reduce(timestep);
-                  };
-                  if (reordered && m_numTimesteps>0 && reducePerTimestep) {
-                      if (direction >= 0) {
-                          if (prevTimestep > timestep) {
-                              for (int t=prevTimestep; t<m_numTimesteps; ++t) {
-                                  computeOk &= runReduce(t);
-                              }
-                              for (int t=0; t<timestep; ++t) {
-                                  computeOk &= runReduce(t);
-                              }
-                          } else {
-                              for (int t=prevTimestep; t<timestep; ++t) {
-                                  computeOk &= runReduce(t);
-                              }
-                          }
-                      } else {
-                          if (prevTimestep < timestep) {
-                              for (int t=prevTimestep; t>=0; --t) {
-                                  computeOk &= runReduce(t);
-                              }
-                              for (int t=m_numTimesteps-1; t>timestep; --t) {
-                                  computeOk &= runReduce(t);
-                              }
-                          } else {
-                              for (int t=prevTimestep; t>timestep; --t) {
-                                  computeOk &= runReduce(t);
-                              }
-                          }
-                      }
-                  }
-                  prevTimestep = timestep;
-                  double duration = Clock::time() - start;
-                  m_avgComputeTime = 0.95 * m_avgComputeTime + 0.05 * duration;
-               } catch (boost::interprocess::interprocess_exception &e) {
-                  std::cout << name() << "::compute(): interprocess_exception: " << e.what()
-                     << ", error code: " << e.get_error_code()
-                     << ", native error: " << e.get_native_error()
-                     << std::endl << std::flush;
-                  std::cerr << name() << "::compute(): interprocess_exception: " << e.what()
-                     << ", error code: " << e.get_error_code()
-                     << ", native error: " << e.get_native_error()
-                     << std::endl;
-               } catch (std::exception &e) {
-                  std::cout << name() << "::compute(" << i << "): exception - " << e.what() << std::endl << std::flush;
-                  std::cerr << name() << "::compute(" << i << "): exception - " << e.what() << std::endl;
-               }
-               ret &= computeOk;
-               if (!computeOk) {
-                  break;
-               }
-            }
-
-            if (reordered && m_numTimesteps>0 && reducePerTimestep) {
-                while (numReductions < m_numTimesteps) {
-                    ++numReductions;
-                    reduce(prevTimestep);
-                    if (direction >= 0) {
-                        prevTimestep = (prevTimestep+1)%m_numTimesteps;
-                    } else {
-                        prevTimestep = (prevTimestep+m_numTimesteps-1)%m_numTimesteps;
-                    }
-                }
-            }
-
-            --m_executionDepth;
-            //vassert(m_executionDepth == 0);
-         }
-
-         if (exec->what() == Execute::ComputeExecute
-             || exec->what() == Execute::Reduce) {
-             ret &= reduceWrapper(exec);
-             m_cache.clearOld();
-         }
-         message::Idle idle;
-         idle.setReferrer(exec->uuid());
-         idle.setDestId(Id::LocalManager);
-         sendMessage(idle);
-
-         return ret;
+         return handleExecute(exec);
          break;
       }
 
@@ -1803,6 +1522,293 @@ bool Module::handleMessage(const vistle::message::Message *message) {
    }
 
    return true;
+}
+
+bool Module::handleExecute(const vistle::message::Execute *exec) {
+
+    using namespace vistle::message;
+
+    if (schedulingPolicy() == message::SchedulingPolicy::Ignore)
+        return true;
+
+    bool ret = true;
+
+    Busy busy;
+    busy.setReferrer(exec->uuid());
+    busy.setDestId(Id::LocalManager);
+    sendMessage(busy);
+    if (exec->what() == Execute::ComputeExecute
+            || exec->what() == Execute::Prepare ) {
+        ret &= prepareWrapper(exec);
+    }
+
+    bool reordered = false;
+    int direction = 1;
+    if (exec->what() == Execute::ComputeExecute
+            || exec->what() == Execute::ComputeObject) {
+        //vassert(m_executionDepth == 0);
+        ++m_executionDepth;
+
+        if (reducePolicy() != message::ReducePolicy::Never) {
+            vassert(m_prepared);
+            vassert(!m_reduced);
+        }
+        m_computed = true;
+        const bool gang = schedulingPolicy() == message::SchedulingPolicy::Gang
+                || schedulingPolicy() == message::SchedulingPolicy::LazyGang;
+
+        Index numObject = 0;
+        int startTimestep = -1;
+        if (exec->what() == Execute::ComputeExecute) {
+            // Compute not triggered by adding an object, get objects from cache
+            Index numConnected = 0;
+            for (auto &port: inputPorts) {
+                port.second->objects() = m_cache.getObjects(port.first);
+                if (!isConnected(port.second))
+                    continue;
+                ++numConnected;
+                if (numObject == 0) {
+                    numObject = port.second->objects().size();
+                } else if (numObject != port.second->objects().size()) {
+                    std::cerr << name() << "::compute(): input mismatch - expected " << numObject << " objects, have " << port.second->objects().size() << std::endl;
+                    throw vistle::except::exception("input object mismatch");
+                    return false;
+                }
+            }
+
+            if (m_prioritizeVisible && numObject > 0 && !gang && !exec->allRanks()) {
+                reordered = true;
+
+                struct TimeIndex {
+                    double t = 0.;
+                    size_t idx = 0;
+
+                    bool operator<(const TimeIndex &other) const {
+                        return t < other.t;
+                    }
+                };
+                std::vector<TimeIndex> sortKey(numObject);
+                for (auto &port: inputPorts) {
+                    const auto &objs = port.second->objects();
+                    size_t i=0;
+                    for (auto &obj: objs) {
+                        sortKey[i].idx = i;
+                        if (sortKey[i].t == 0. && obj->getTimestep() != 0)
+                            sortKey[i].t = obj->getTimestep();
+                        ++i;
+                    }
+                }
+                std::sort(sortKey.begin(), sortKey.end());
+                auto best = sortKey[0];
+                ssize_t idx=0, bestIdx=0;
+                for (auto &ti: sortKey) {
+                    if (std::abs(ti.t - exec->animationRealTime()) < std::abs(best.t - exec->animationRealTime())) {
+                        best = ti;
+                        bestIdx = idx;
+                    }
+                    ++idx;
+                }
+
+                int headStart = 0;
+                if (std::abs(exec->animationStep()) > 1e-5)
+                    headStart = m_avgComputeTime / std::abs(exec->animationStep());
+                headStart = std::max(1, headStart)+2;
+
+                if (exec->animationStep() > 0.) {
+                    direction = 1;
+                } else if (exec->animationStep() < 0.) {
+                    direction = -1;
+                } else {
+                    direction = 0;
+                }
+
+                for (auto &port: inputPorts) {
+                    if (!isConnected(port.second))
+                        continue;
+                    port.second->objects().clear();
+                    auto objs = m_cache.getObjects(port.first);
+                    ssize_t start = bestIdx;
+                    int step = 1;
+                    if (direction < 0) {
+                        start = (bestIdx+numObject-headStart)%numObject;
+                        step = -1;
+                        if (start > startTimestep)
+                            startTimestep = start;
+                    }  else if (direction > 0) {
+                        start = (bestIdx+numObject+headStart)%numObject;
+                        if (start < startTimestep && start >= 0)
+                            startTimestep = start;
+                    }
+                    ssize_t cur = start;
+                    for (size_t i=0; i<numObject; ++i) {
+                        port.second->objects().push_back(objs[sortKey[cur].idx]);
+                        cur = (cur+step+numObject)%numObject;
+                    }
+                }
+
+                if (startTimestep == -1)
+                    startTimestep = 0;
+                if (direction < 0) {
+                    startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::maximum<int>());
+                } else {
+                    startTimestep = mpi::all_reduce(comm(), startTimestep, mpi::minimum<int>());
+                }
+
+                if (reducePolicy() == message::ReducePolicy::PerTimestepOrdered || reducePolicy() == message::ReducePolicy::PerTimestepZeroFirst) {
+                    startTimestep = 0;
+                    direction = 1;
+                }
+            }
+            if (numConnected == 0) {
+                // call compute at least once, e.g. for readers
+                numObject = 1;
+            }
+            if (gang) {
+                numObject = mpi::all_reduce(comm(), numObject, mpi::maximum<int>());
+            }
+        } else {
+            numObject = 1;
+        }
+
+        for (auto &port: inputPorts) {
+            if (!isConnected(port.second))
+                continue;
+            const auto &objs = port.second->objects();
+            for (Index i=0; i<numObject && i<objs.size(); ++i) {
+                const auto obj = objs[i];
+                int t = obj->getTimestep();
+                m_numTimesteps = std::max(t+1, m_numTimesteps);
+            }
+        }
+#ifdef REDUCE_DEBUG
+        CERR << "compute with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
+#endif
+
+        if (m_executionCount < exec->getExecutionCount())
+            m_executionCount = exec->getExecutionCount();
+        if (exec->allRanks() || gang || exec->what() == Execute::ComputeExecute) {
+#ifdef REDUCE_DEBUG
+            CERR << "all_reduce for execCount with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
+#endif
+            m_executionCount = mpi::all_reduce(comm(), m_executionCount, mpi::maximum<int>());
+#ifdef REDUCE_DEBUG
+            CERR << "all_reduce for timesteps with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
+#endif
+            m_numTimesteps = mpi::all_reduce(comm(), m_numTimesteps, mpi::maximum<int>());
+#ifdef REDUCE_DEBUG
+            CERR << "all_reduce for timesteps finished with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
+#endif
+        }
+
+        int prevTimestep = -1;
+        if (m_numTimesteps > 0)
+            prevTimestep = (startTimestep+m_numTimesteps-1)%m_numTimesteps;
+        int numReductions = 0;
+        bool reducePerTimestep = reducePolicy()==message::ReducePolicy::PerTimestep || reducePolicy()==message::ReducePolicy::PerTimestepZeroFirst || reducePolicy()==message::ReducePolicy::PerTimestepOrdered;
+        bool computeOk = false;
+        for (Index i=0; i<numObject; ++i) {
+            computeOk = false;
+            try {
+                double start = Clock::time();
+                int timestep = -1;
+                for (auto &port: inputPorts) {
+                    if (!isConnected(port.second))
+                        continue;
+                    const auto &objs = port.second->objects();
+                    int t = objs.front()->getTimestep();
+                    if (t != -1)
+                        timestep = t;
+                }
+                if (cancelRequested()) {
+                    computeOk = true;
+                } else {
+                    computeOk = compute();
+                }
+                auto runReduce = [this, &numReductions](int timestep) -> bool {
+                    std::cerr << "running reduce for timestep " << timestep << std::endl;
+                    if (cancelRequested(true))
+                        return true;
+                    ++numReductions;
+                    return reduce(timestep);
+                };
+                if (reordered && m_numTimesteps>0 && reducePerTimestep) {
+                    if (direction >= 0) {
+                        if (prevTimestep > timestep) {
+                            for (int t=prevTimestep; t<m_numTimesteps; ++t) {
+                                computeOk &= runReduce(t);
+                            }
+                            for (int t=0; t<timestep; ++t) {
+                                computeOk &= runReduce(t);
+                            }
+                        } else {
+                            for (int t=prevTimestep; t<timestep; ++t) {
+                                computeOk &= runReduce(t);
+                            }
+                        }
+                    } else {
+                        if (prevTimestep < timestep) {
+                            for (int t=prevTimestep; t>=0; --t) {
+                                computeOk &= runReduce(t);
+                            }
+                            for (int t=m_numTimesteps-1; t>timestep; --t) {
+                                computeOk &= runReduce(t);
+                            }
+                        } else {
+                            for (int t=prevTimestep; t>timestep; --t) {
+                                computeOk &= runReduce(t);
+                            }
+                        }
+                    }
+                }
+                prevTimestep = timestep;
+                double duration = Clock::time() - start;
+                m_avgComputeTime = 0.95 * m_avgComputeTime + 0.05 * duration;
+            } catch (boost::interprocess::interprocess_exception &e) {
+                std::cout << name() << "::compute(): interprocess_exception: " << e.what()
+                          << ", error code: " << e.get_error_code()
+                          << ", native error: " << e.get_native_error()
+                          << std::endl << std::flush;
+                std::cerr << name() << "::compute(): interprocess_exception: " << e.what()
+                          << ", error code: " << e.get_error_code()
+                          << ", native error: " << e.get_native_error()
+                          << std::endl;
+            } catch (std::exception &e) {
+                std::cout << name() << "::compute(" << i << "): exception - " << e.what() << std::endl << std::flush;
+                std::cerr << name() << "::compute(" << i << "): exception - " << e.what() << std::endl;
+            }
+            ret &= computeOk;
+            if (!computeOk) {
+                break;
+            }
+        }
+
+        if (reordered && m_numTimesteps>0 && reducePerTimestep) {
+            while (numReductions < m_numTimesteps) {
+                ++numReductions;
+                reduce(prevTimestep);
+                if (direction >= 0) {
+                    prevTimestep = (prevTimestep+1)%m_numTimesteps;
+                } else {
+                    prevTimestep = (prevTimestep+m_numTimesteps-1)%m_numTimesteps;
+                }
+            }
+        }
+
+        --m_executionDepth;
+        //vassert(m_executionDepth == 0);
+    }
+
+    if (exec->what() == Execute::ComputeExecute
+            || exec->what() == Execute::Reduce) {
+        ret &= reduceWrapper(exec);
+        m_cache.clearOld();
+    }
+    message::Idle idle;
+    idle.setReferrer(exec->uuid());
+    idle.setDestId(Id::LocalManager);
+    sendMessage(idle);
+
+    return ret;
 }
 
 std::string Module::getModuleName(int id) const {
