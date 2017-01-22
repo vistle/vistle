@@ -53,6 +53,7 @@ std::pair<vtkDataSet *, int> readFile(const std::string &filename, int piece=-1,
    reader->SetFileName(filename.c_str());
    reader->Update();
    int numPieces = 1;
+#if VTK_MAJOR_VERSION >= 7
    if (auto unstr = vtkXMLUnstructuredDataReader::SafeDownCast(reader)) {
        numPieces = unstr->GetNumberOfPieces();
    } else if (auto multi = vtkXMLMultiBlockDataReader::SafeDownCast(reader)) {
@@ -65,6 +66,7 @@ std::pair<vtkDataSet *, int> readFile(const std::string &filename, int piece=-1,
        info->Set(vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), ghost ? 1 : 0);
        reader->Update(info);
    }
+#endif
    if (reader->GetOutput())
       reader->GetOutput()->Register(reader);
    return std::make_pair(vtkDataSet::SafeDownCast(reader->GetOutput()), numPieces);

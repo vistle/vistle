@@ -1423,7 +1423,9 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid) {
         zc[i] = vugrid->GetPoint(i)[2];
     }
 
+#if VTK_MAJOR_VERSION >= 7
     const auto *ghostArray = vugrid->GetCellGhostArray();
+#endif
     vtkUnsignedCharArray *vtypearray = vugrid->GetCellTypesArray();
     for (int i = 0; i < nelem; ++i) {
         switch (vtypearray->GetValue(i))
@@ -1462,9 +1464,11 @@ Object::ptr vtkUGrid2Vistle(vtkUnstructuredGrid *vugrid) {
             typelist[i] = 0;
             break;
         }
+#if VTK_MAJOR_VERSION >= 7
         if (ghostArray && ghostArray->GetValue(i)&vtkDataSetAttributes::DUPLICATECELL) {
             typelist[i] |= UnstructuredGrid::GHOST_BIT;
         }
+#endif
     }
 
     vcellarray->InitTraversal();
