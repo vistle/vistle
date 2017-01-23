@@ -261,7 +261,9 @@ void RhrServer::handleAccept(std::shared_ptr<asio::ip::tcp::socket> sock, const 
 
    m_clientSocket = sock;
 
-   setNumTimesteps(m_numTimesteps);
+   int nt = m_numTimesteps;
+   ++m_numTimesteps;
+   setNumTimesteps(nt);
 }
 
 
