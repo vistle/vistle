@@ -1,6 +1,7 @@
 add_subdirectory(AttachGrid)
 add_subdirectory(AttachNormals)
 add_subdirectory(AttachShader)
+add_subdirectory(AttributeToVariants)
 add_subdirectory(BoundingBox)
 add_subdirectory(Cache)
 add_subdirectory(CellToVert)
