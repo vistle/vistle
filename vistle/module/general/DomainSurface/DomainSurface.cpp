@@ -126,7 +126,7 @@ bool DomainSurface::createSurface() {
 
    auto nf = m_grid_in->getNeighborFinder();
    for (Index i=0; i<num_elem; ++i) {
-      unsigned char t = tl[i];
+      unsigned char t = tl[i] & UnstructuredGrid::TYPE_MASK;
       if (t == UnstructuredGrid::POLYHEDRON) {
           if (showpol) {
               Index j=el[i];
