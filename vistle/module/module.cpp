@@ -2135,6 +2135,8 @@ bool Module::cancelRequested(bool sync) {
     if (sync) {
         m_cancelRequested = boost::mpi::all_reduce(comm(), m_cancelRequested, std::logical_or<bool>());
         if (m_cancelRequested && !m_cancelExecuteCalled) {
+            if (rank() == 0)
+                sendInfo("canceling execution");
             cancelExecute();
             m_cancelExecuteCalled = true;
         }
@@ -2162,6 +2164,8 @@ bool Module::cancelRequested(bool sync) {
         if (justCanceled) {
             m_cancelRequested = true;
             std::cerr << "canceling execution" << std::endl;
+            if (rank() == 0)
+                sendInfo("canceling execution");
             cancelExecute();
             m_cancelExecuteCalled = true;
             return true;
