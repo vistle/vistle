@@ -90,6 +90,7 @@ Color::Color(const std::string &shmname, const std::string &name, int moduleID)
    setParameterRange(steps, (Integer)1, (Integer)1024);
 
    m_autoRangePara = addIntParameter("auto_range", "compute range automatically", m_autoRange, Parameter::Boolean);
+   addIntParameter("preview", "use preliminary colormap for showing preview when determining bounds", true, Parameter::Boolean);
 
    setCurrentParameterGroup("Nested Color Map");
    m_nestPara = addIntParameter("nest", "inset another color map", m_nest, Parameter::Boolean);
@@ -451,6 +452,12 @@ bool Color::prepare() {
 
    computeMap();
 
+   bool preview = getIntParameter("preview");
+   if (m_autoRange || (m_nest && m_autoInsetCenter)) {
+       if (preview)
+           startIteration();
+   }
+
    return true;
 }
 
@@ -467,11 +474,16 @@ bool Color::compute() {
       return true;
    }
 
+   bool preview = getIntParameter("preview");
    if (m_autoRange) {
        getMinMax(data, m_min, m_max);
        m_inputQueue.push_back(data);
+       if (preview)
+           process(data);
    } else if (m_nest && m_autoInsetCenter) {
        m_inputQueue.push_back(data);
+       if (preview)
+           process(data);
    } else {
        process(data);
    }
@@ -482,6 +494,7 @@ bool Color::compute() {
 bool Color::reduce(int timestep) {
 
     assert(timestep == -1);
+    bool preview = getIntParameter("preview");
 
     if (m_autoRange) {
         m_min = boost::mpi::all_reduce(comm(), m_min, boost::mpi::minimum<Scalar>());
@@ -531,8 +544,11 @@ bool Color::reduce(int timestep) {
         }
     }
 
-    if (m_autoRange || (m_nest && m_autoInsetCenter))
+    if (m_autoRange || (m_nest && m_autoInsetCenter)) {
         computeMap();
+        if (preview)
+            startIteration();
+    }
 
     while(!m_inputQueue.empty()) {
         if (cancelRequested())
@@ -546,12 +562,13 @@ bool Color::reduce(int timestep) {
     return true;
 }
 
-void Color::process(const DataBase::const_ptr data) {
+void Color::process(const DataBase::const_ptr data, int iteration) {
 
    auto out(addTexture(data, m_min, m_max, *m_colors));
    out->setGrid(data->grid());
    out->setMeta(data->meta());
    out->copyAttributes(data);
+   out->setIteration(iteration);
 
    addObject("data_out", out);
 }

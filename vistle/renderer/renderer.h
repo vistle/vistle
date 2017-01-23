@@ -45,6 +45,7 @@ class V_RENDEREREXPORT Renderer: public Module {
       Creator(int id, const std::string &basename)
       : id(id)
       , age(0)
+      , iter(-1)
       {
          std::stringstream s;
          s << basename << "_" << id;
@@ -53,6 +54,7 @@ class V_RENDEREREXPORT Renderer: public Module {
       }
       int id;
       int age;
+      int iter;
       std::string name;
    };
    typedef std::map<int, Creator> CreatorMap;

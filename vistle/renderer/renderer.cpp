@@ -252,8 +252,14 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
       if (it->second.age < object->getExecutionCounter()) {
          //std::cerr << "removing all created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
          removeAllCreatedBy(creatorId);
+      } else if (it->second.age == object->getExecutionCounter() && it->second.iter < object->getIteration()) {
+         std::cerr << "removing all created by " << creatorId << ", age " << object->getExecutionCounter() << ": new iteration " << object->getIteration() << std::endl;
+         removeAllCreatedBy(creatorId);
       } else if (it->second.age > object->getExecutionCounter()) {
          std::cerr << "received outdated object created by " << creatorId << ", age " << object->getExecutionCounter() << ", was " << it->second.age << std::endl;
+         return false;
+      } else if (it->second.age == object->getExecutionCounter() && it->second.iter > object->getIteration()) {
+         std::cerr << "received outdated object created by " << creatorId << ", age " << object->getExecutionCounter() << ": old iteration " << object->getIteration() << std::endl;
          return false;
       }
    } else {
@@ -262,6 +268,7 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
    }
    Creator &creator = it->second;
    creator.age = object->getExecutionCounter();
+   creator.iter = object->getIteration();
 
    std::shared_ptr<RenderObject> ro;
 #if 0

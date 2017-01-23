@@ -156,6 +156,7 @@ Module::Module(const std::string &desc, const std::string &shmname,
 , m_size(-1)
 , m_id(moduleId)
 , m_executionCount(0)
+, m_iteration(-1)
 , m_stateTracker(new StateTracker(m_name))
 , m_receivePolicy(message::ObjectReceivePolicy::Single)
 , m_schedulingPolicy(message::SchedulingPolicy::Single)
@@ -760,6 +761,8 @@ void Module::updateMeta(vistle::Object::ptr obj) const {
    if (obj) {
       obj->setCreator(id());
       obj->setExecutionCounter(m_executionCount);
+      if (obj->getIteration() == -1)
+          obj->setIteration(m_iteration);
    }
 }
 
@@ -954,8 +957,14 @@ bool Module::addInputObject(int sender, const std::string &senderPort, const std
    if (object)
       vassert(object->check());
 
-   if (m_executionCount < object->getExecutionCounter())
+   if (m_executionCount < object->getExecutionCounter()) {
       m_executionCount = object->getExecutionCounter();
+      m_iteration = object->getIteration();
+   }
+   if (m_executionCount == object->getExecutionCounter()) {
+       if (m_iteration < object->getIteration())
+           m_iteration = object->getIteration();
+   }
 
    Port *p = findInputPort(portName);
 
@@ -1689,13 +1698,19 @@ bool Module::handleExecute(const vistle::message::Execute *exec) {
         CERR << "compute with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
 #endif
 
-        if (m_executionCount < exec->getExecutionCount())
+        if (m_executionCount < exec->getExecutionCount()) {
             m_executionCount = exec->getExecutionCount();
+            m_iteration = -1;
+        }
         if (exec->allRanks() || gang || exec->what() == Execute::ComputeExecute) {
 #ifdef REDUCE_DEBUG
             CERR << "all_reduce for execCount with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
 #endif
+            int oldExecCount = m_executionCount;
             m_executionCount = mpi::all_reduce(comm(), m_executionCount, mpi::maximum<int>());
+            if (oldExecCount < m_executionCount) {
+                m_iteration = -1;
+            }
 #ifdef REDUCE_DEBUG
             CERR << "all_reduce for timesteps with #objects=" << numObject << ", #timesteps=" << m_numTimesteps << std::endl;
 #endif
@@ -1971,7 +1986,12 @@ void Module::setObjectReceivePolicy(int pol) {
 
 int Module::objectReceivePolicy() const {
 
-   return m_receivePolicy;
+    return m_receivePolicy;
+}
+
+void Module::startIteration() {
+
+    ++m_iteration;
 }
 
 bool Module::prepareWrapper(const message::Execute *exec) {

@@ -136,6 +136,7 @@ public:
    double getRealTime() const;
    int getTimestep() const;
    int getNumTimesteps() const;
+   int getIteration() const;
    int getExecutionCounter() const;
    int getCreator() const;
 
@@ -144,6 +145,7 @@ public:
    void setRealTime(double time);
    void setTimestep(const int timestep);
    void setNumTimesteps(const int num);
+   void setIteration(const int num);
    void setExecutionCounter(const int count);
    void setCreator(const int id);
 

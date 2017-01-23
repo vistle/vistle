@@ -202,13 +202,14 @@ protected:
 
    void setObjectReceivePolicy(int pol);
    int objectReceivePolicy() const;
+   void startIteration(); //< increase iteration counter
 
    const std::string m_name;
    int m_rank;
    int m_size;
    const int m_id;
 
-   int m_executionCount;
+   int m_executionCount, m_iteration;
 
    void setDefaultCacheMode(ObjectCache::CacheMode mode);
    void updateMeta(vistle::Object::ptr object) const;

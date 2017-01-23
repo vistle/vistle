@@ -411,6 +411,16 @@ int Object::getNumBlocks() const {
    return d()->meta.numBlocks();
 }
 
+int Object::getIteration() const {
+
+   return d()->meta.iteration();
+}
+
+void Object::setIteration(const int num) {
+
+   d()->meta.setIteration(num);
+}
+
 int Object::getExecutionCounter() const {
 
    return d()->meta.executionCounter();
