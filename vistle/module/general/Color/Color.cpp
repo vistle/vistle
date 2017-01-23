@@ -17,16 +17,19 @@ using namespace vistle;
 
 DEFINE_ENUM_WITH_STRING_CONVERSIONS(TransferFunction,
                                     (COVISE)
+                                    (CoolWarmBrewer)
                                     (Star)
                                     (ITSM)
                                     (Rainbow)
                                     (Blue_Light)
                                     (ANSYS)
                                     (CoolWarm)
+                                    (Frosty)
+                                    (Dolomiti)
                                     )
 
 ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
-                   const size_t w): width(w) {
+                   const size_t steps, const size_t w): width(w) {
 
    data = new unsigned char[width * 4];
 
@@ -36,8 +39,9 @@ ColorMap::ColorMap(std::map<vistle::Scalar, vistle::Vector> & pins,
    for (size_t index = 0; index < width; index ++) {
 
        Scalar x = 0.5;
-       if (width > 1) {
-           x = index / (vistle::Scalar) (width-1);
+       if (steps > 1) {
+           int step = Scalar(index)/(Scalar(width)/Scalar(steps));
+           x = step / (vistle::Scalar) (steps-1);
        }
        while (next != pins.end() && x > next->first) {
            ++next;
@@ -80,13 +84,25 @@ Color::Color(const std::string &shmname, const std::string &name, int moduleID)
 
    addFloatParameter("min", "minimum value of range to map", 0.0);
    addFloatParameter("max", "maximum value of range to map", 0.0);
-   auto map = addIntParameter("map", "transfer function name", 0, Parameter::Choice);
+   auto map = addIntParameter("map", "transfer function name", CoolWarmBrewer, Parameter::Choice);
    V_ENUM_SET_CHOICES(map, TransferFunction);
-   
-   auto res = addIntParameter("resolution", "number of steps to compute", 32);
-   setParameterRange(res, (Integer)1, (Integer)1024);
+   auto steps = addIntParameter("steps", "number of color map steps", 32);
+   setParameterRange(steps, (Integer)1, (Integer)1024);
 
    m_autoRangePara = addIntParameter("auto_range", "compute range automatically", m_autoRange, Parameter::Boolean);
+
+   setCurrentParameterGroup("Nested Color Map");
+   m_nestPara = addIntParameter("nest", "inset another color map", m_nest, Parameter::Boolean);
+   m_autoInsetCenterPara = addIntParameter("auto_center", "compute center of nested color map", m_autoInsetCenter, Parameter::Boolean);
+   addIntParameter("inset_relative", "width and center of inset are relative to range", true, Parameter::Boolean);
+   addFloatParameter("inset_center", "where to inset other color map (auto range: 0.5=middle)", 0.5);
+   addFloatParameter("inset_width", "range covered by inseted color map (auto range: relative)", 0.1);
+   auto inset_map = addIntParameter("inset_map", "transfer function to inset", COVISE, Parameter::Choice);
+   V_ENUM_SET_CHOICES(inset_map, TransferFunction);
+   auto inset_steps = addIntParameter("inset_steps", "number of color map steps for inset (0: as outer map)", 0);
+   setParameterRange(inset_steps, (Integer)0, (Integer)1024);
+   auto res = addIntParameter("resolution", "number of steps to compute", 1024);
+   setParameterRange(res, (Integer)1, (Integer)1024);
 
    TF pins;
 
@@ -136,11 +152,35 @@ Color::Color(const std::string &shmname, const std::string &name, int moduleID)
    transferFunctions[CoolWarm] = pins;
    pins.clear();
 
+   pins[0.00] = Vector(1,133,113)/255.;
+   pins[0.25] = Vector(128,205,193)/255.;
+   pins[0.50] = Vector(245,245,245)/255.;
+   pins[0.75] = Vector(223,194,125)/255.;
+   pins[1.00] = Vector(166, 97, 26)/255.;
+   transferFunctions[Frosty] = pins;
+   pins.clear();
+
+   pins[0.00] = Vector(77,172,38)/255.;
+   pins[0.25] = Vector(184,225,134)/255.;
+   pins[0.50] = Vector(247,247,247)/255.;
+   pins[0.75] = Vector(241,182,218)/255.;
+   pins[1.00] = Vector(208,28,139)/255.;
+   transferFunctions[Dolomiti] = pins;
+   pins.clear();
+
+   pins[0.00] = Vector(44,123,182)/255.;
+   pins[0.25] = Vector(171,217,233)/255.;
+   pins[0.50] = Vector(255,255,191)/255.;
+   pins[0.75] = Vector(253,174,97)/255.;
+   pins[1.00] = Vector(215,25,28)/255.;
+   transferFunctions[CoolWarmBrewer] = pins;
+   pins.clear();
+
    pins[0.00] = Vector(0.00, 0.00, 0.35);
    pins[0.05] = Vector(0.00, 0.00, 1.00);
    pins[0.26] = Vector(0.00, 1.00, 1.00);
    pins[0.50] = Vector(0.00, 0.00, 1.00);
-   pins[0.74] = Vector(1.00, 1.00, 1.00);
+   pins[0.74] = Vector(1.00, 1.00, 0.00);
    pins[0.95] = Vector(1.00, 0.00, 0.00);
    pins[1.00] = Vector(0.40, 0.00, 0.00);
    transferFunctions[ITSM] = pins;
@@ -234,11 +274,55 @@ void Color::getMinMax(vistle::DataBase::const_ptr object,
    }
 }
 
+void Color::binData(vistle::DataBase::const_ptr object, std::vector<unsigned long> &binsVec) {
+
+   const int numBins = binsVec.size();
+
+   const size_t numElements = object->getSize();
+   const Scalar w = m_max-m_min;
+   unsigned long *bins = binsVec.data();
+
+   if (Vec<Index>::const_ptr scal = Vec<Index>::as(object)) {
+      const vistle::Index *x = &scal->x()[0];
+      for (ssize_t index = 0; index < numElements; index ++) {
+          const int bin = clamp<int>((x[index]-m_min)/w*numBins, 0, numBins-1);
+          ++bins[bin];
+      }
+   } else  if (Vec<Scalar>::const_ptr scal = Vec<Scalar>::as(object)) {
+      const vistle::Scalar *x = &scal->x()[0];
+      for (ssize_t index = 0; index < numElements; index ++) {
+          const int bin = clamp<int>((x[index]-m_min)/w*numBins, 0, numBins-1);
+          ++bins[bin];
+      }
+   } else  if (Vec<Scalar,3>::const_ptr vec = Vec<Scalar,3>::as(object)) {
+      const vistle::Scalar *x = &vec->x()[0];
+      const vistle::Scalar *y = &vec->y()[0];
+      const vistle::Scalar *z = &vec->z()[0];
+      for (ssize_t index = 0; index < numElements; index ++) {
+          const Scalar v = Vector(x[index], y[index], z[index]).norm();
+          const int bin = clamp<int>((v-m_min)/w*numBins, 0, numBins-1);
+          ++bins[bin];
+      }
+   }
+}
+
+
 bool Color::changeParameter(const Parameter *p) {
 
+    bool changeReduce = false;
     if (p == m_autoRangePara) {
         m_autoRange = m_autoRangePara->getValue();
-        if (m_autoRange) {
+        changeReduce = true;
+    } else if (p == m_autoInsetCenterPara) {
+        m_autoInsetCenter = m_autoInsetCenterPara->getValue();
+        changeReduce = true;
+    } else if (p == m_nestPara) {
+        m_nest = m_nestPara->getValue();
+        changeReduce = true;
+    }
+
+    if (changeReduce) {
+        if (m_autoRange || (m_nest && m_autoInsetCenter)) {
             setReducePolicy(message::ReducePolicy::OverAll);
         } else {
             setReducePolicy(message::ReducePolicy::Locally);
@@ -300,6 +384,58 @@ vistle::Texture1D::ptr Color::addTexture(vistle::DataBase::const_ptr object,
    return tex;
 }
 
+void Color::computeMap() {
+
+   auto pins = transferFunctions[getIntParameter("map")];
+   if (pins.empty()) {
+       pins = transferFunctions[COVISE];
+   }
+   int steps = getIntParameter("steps");
+   int resolution = steps;
+   bool relative = getIntParameter("inset_relative");
+   if (m_nest) {
+       resolution = getIntParameter("resolution");
+       double width = getFloatParameter("inset_width");
+       int inset_steps = getIntParameter("inset_steps");
+       if (inset_steps <= 0)
+           inset_steps = steps;
+       if (relative && width > 0.) {
+           int res2 = inset_steps/width;
+           if (resolution < res2)
+               resolution = std::min(res2, 0x1000);
+       }
+   }
+   //std::cerr << "computing color map with " << steps << " steps and a resolution of " << resolution << std::endl;
+   m_colors.reset(new ColorMap(pins, steps, resolution));
+
+   if (m_nest) {
+       auto inset_pins = transferFunctions[getIntParameter("inset_map")];
+       if (inset_pins.empty()) {
+           inset_pins = transferFunctions[COVISE];
+       }
+       int inset_steps = getIntParameter("inset_steps");
+       if (inset_steps <= 0)
+           inset_steps = steps;
+       double width = getFloatParameter("inset_width");
+       double center = getFloatParameter("inset_center");
+       if (!relative) {
+           width /= m_max-m_min;
+           center = (center-m_min)/(m_max-m_min);
+       }
+       int insetStart = clamp(center-0.5*width, 0., 1.) * (resolution-1);
+       int insetEnd = clamp(center+0.5*width, 0., 1.) * (resolution-1);
+       int insetRes = insetEnd - insetStart + 1;
+       assert(insetEnd >= insetStart);
+       assert(insetStart >= 0);
+       assert(insetEnd < m_colors->width);
+       ColorMap inset(inset_pins, inset_steps, insetRes);
+       for (int i=insetStart; i<=insetEnd; ++i) {
+           for (int c=0; c<4; ++c)
+               m_colors->data[i*4+c] = inset.data[(i-insetStart)*4+c];
+       }
+   }
+}
+
 bool Color::prepare() {
 
    m_min = std::numeric_limits<Scalar>::max();
@@ -311,14 +447,9 @@ bool Color::prepare() {
       if (m_min >= m_max)
           m_max = m_min + 1.;
    }
-
-   auto pins = transferFunctions[getIntParameter("map")];
-   if (pins.empty()) {
-       pins = transferFunctions[COVISE];
-   }
-   m_colors.reset(new ColorMap(pins, getIntParameter("resolution")));
-
    m_inputQueue.clear();
+
+   computeMap();
 
    return true;
 }
@@ -339,6 +470,8 @@ bool Color::compute() {
    if (m_autoRange) {
        getMinMax(data, m_min, m_max);
        m_inputQueue.push_back(data);
+   } else if (m_nest && m_autoInsetCenter) {
+       m_inputQueue.push_back(data);
    } else {
        process(data);
    }
@@ -355,7 +488,51 @@ bool Color::reduce(int timestep) {
         m_max = boost::mpi::all_reduce(comm(), m_max, boost::mpi::maximum<Scalar>());
         setFloatParameter("min", m_min);
         setFloatParameter("max", m_max);
+    } else {
+        m_min = getFloatParameter("min");
+        m_max = getFloatParameter("max");
     }
+
+    if (m_nest && m_autoInsetCenter) {
+        std::vector<unsigned long> bins(getIntParameter("resolution"));
+        for (auto data: m_inputQueue) {
+            binData(data, bins);
+        }
+        for (size_t i=0; i<bins.size(); ++i) {
+            bins[i] = boost::mpi::all_reduce(comm(), bins[i], std::plus<unsigned long>());
+        }
+
+        bool relative = getIntParameter("inset_relative");
+        double width = getFloatParameter("inset_width");
+        if (!relative) {
+            width /= m_max-m_min;
+        }
+        int insetRes = width*bins.size();
+        unsigned long numEnt=0;
+        for (size_t i=0; i<insetRes; ++i) {
+            numEnt += bins[i];
+        }
+        unsigned long maxEnt = numEnt;
+        size_t maxIdx = 0;
+        for (size_t i=0; i<bins.size()-insetRes; ++i) {
+            numEnt -= bins[i];
+            numEnt += bins[i+insetRes];
+            if (numEnt >= maxEnt) {
+                maxIdx = i+1;
+                maxEnt = numEnt;
+            }
+        }
+        if (bins.size() > 1) {
+            if (relative) {
+                setFloatParameter("inset_center", (maxIdx+0.5*insetRes)/(bins.size()-1));
+            } else {
+                setFloatParameter("inset_center", (maxIdx+0.5*insetRes)/(bins.size()-1)*(m_max-m_min)+m_min);
+            }
+        }
+    }
+
+    if (m_autoRange || (m_nest && m_autoInsetCenter))
+        computeMap();
 
     while(!m_inputQueue.empty()) {
         if (cancelRequested())
