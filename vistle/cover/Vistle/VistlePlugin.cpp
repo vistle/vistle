@@ -49,10 +49,8 @@ class PluginRenderObject: public vistle::RenderObject {
          vistle::Object::const_ptr geometry,
          vistle::Object::const_ptr normals,
          vistle::Object::const_ptr colors,
-         vistle::Object::const_ptr texture,
-         const std::string &variant)
+         vistle::Object::const_ptr texture)
       : vistle::RenderObject(senderId, senderPort, container, geometry, normals, colors, texture)
-      , variant(variant)
       {
       }
 
@@ -60,34 +58,6 @@ class PluginRenderObject: public vistle::RenderObject {
    }
 
    std::shared_ptr<VistleRenderObject> coverRenderObject;
-   std::string variant;
-};
-
-class VariantRenderObject: public BaseRenderObject {
-public:
-    VariantRenderObject(const std::string &variantName)
-    : variant(variantName)
-    {}
-
-    const char *getName() const override { return ""; }
-    bool isGeometry() const override { return false; }
-    RenderObject *getGeometry() const override { return nullptr; }
-    RenderObject *getColors() const override { return nullptr; }
-    RenderObject *getNormals() const override { return nullptr; }
-    RenderObject *getTexture() const override { return nullptr; }
-    RenderObject *getVertexAttribute() const override { return nullptr; }
-
-   const char *getAttribute(const char *key) const override {
-       if (key) {
-           std::string k(key);
-           if (k == "VARIANT")
-               return variant.c_str();
-       }
-       return nullptr;
-   }
-
-private:
-    std::string variant;
 };
 
 class OsgRenderer: public vistle::Renderer {
@@ -409,15 +379,11 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
    if (geometry->getType() != vistle::Object::PLACEHOLDER && !VistleGeometryGenerator::isSupported(geometry->getType()))
       return nullptr;
 
-   std::string variant = container->getAttribute("_variant");
-   if (variant.empty()) {
-       variant = geometry->getAttribute("_variant");
-   }
-   if (!variant.empty()) {
+   std::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
+         container, geometry, normals, colors, texture));
+   if (!pro->variant.empty()) {
       cover->addPlugin("Variant");
    }
-   std::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
-         container, geometry, normals, colors, texture, variant));
 
    pro->coverRenderObject.reset(new VistleRenderObject(pro));
    m_delayedObjects.push_back(DelayedObject(pro, VistleGeometryGenerator(pro, geometry, colors, normals, texture)));
@@ -469,7 +435,6 @@ bool OsgRenderer::render() {
          ro->coverRenderObject->setNode(transform);
          transform->setName(ro->coverRenderObject->getName());
          const std::string variant = ro->variant;
-         const auto &vro = creator.getVariant(variant).ro;
          osg::ref_ptr<osg::Group> parent = creator.constant(variant);
          const int t = ro->timestep;
          if (t >= 0) {

@@ -84,6 +84,9 @@ RenderObject::RenderObject(int senderId, const std::string &senderPort,
       timestep = texture->getTimestep();
    }
 
+   variant = container->getAttribute("_variant");
+   if (variant.empty())
+       variant = geometry->getAttribute("_variant");
 }
 
 RenderObject::~RenderObject() {

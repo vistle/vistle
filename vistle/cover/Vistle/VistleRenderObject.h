@@ -103,4 +103,31 @@ class ModuleRenderObject: public BaseRenderObject {
    int m_moduleId;
    std::string m_name;
 };
+
+class VariantRenderObject: public BaseRenderObject {
+public:
+    VariantRenderObject(const std::string &variantName)
+    : variant(variantName)
+    {}
+
+    const char *getName() const override { return ""; }
+    bool isGeometry() const override { return false; }
+    RenderObject *getGeometry() const override { return nullptr; }
+    RenderObject *getColors() const override { return nullptr; }
+    RenderObject *getNormals() const override { return nullptr; }
+    RenderObject *getTexture() const override { return nullptr; }
+    RenderObject *getVertexAttribute() const override { return nullptr; }
+
+   const char *getAttribute(const char *key) const override {
+       if (key) {
+           std::string k(key);
+           if (k == "VARIANT")
+               return variant.c_str();
+       }
+       return nullptr;
+   }
+
+private:
+    std::string variant;
+};
 #endif

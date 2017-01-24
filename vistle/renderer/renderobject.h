@@ -27,6 +27,7 @@ class V_RENDEREREXPORT RenderObject {
    int creatorId;
    int senderId;
    std::string senderPort;
+   std::string variant;
 
    vistle::Object::const_ptr container;
    vistle::Object::const_ptr geometry;

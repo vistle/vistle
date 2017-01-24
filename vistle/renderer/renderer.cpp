@@ -281,15 +281,15 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
 
    if (auto tex = vistle::Texture1D::as(object)) {
        if (auto grid = vistle::Coords::as(tex->grid())) {
-         ro = addObject(sender, senderPort, object, grid, grid->normals(), nullptr, tex);
+         ro = addObjectWrapper(sender, senderPort, object, grid, grid->normals(), nullptr, tex);
        }
    } else if (auto data = vistle::DataBase::as(object)) {
        if (auto grid = vistle::Coords::as(data->grid())) {
-         ro = addObject(sender, senderPort, object, grid, grid->normals(), nullptr, nullptr);
+         ro = addObjectWrapper(sender, senderPort, object, grid, grid->normals(), nullptr, nullptr);
        }
    }
    if (!ro) {
-      ro = addObject(sender, senderPort, object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
+      ro = addObjectWrapper(sender, senderPort, object, object, vistle::Object::ptr(), vistle::Object::ptr(), vistle::Object::ptr());
    }
 
    if (ro) {
@@ -300,6 +300,20 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
    }
 
    return true;
+}
+
+std::shared_ptr<RenderObject> Renderer::addObjectWrapper(int senderId, const std::string &senderPort, Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr colors, Object::const_ptr texture) {
+
+    auto ro = addObject(senderId, senderPort, container, geom, normal, colors, texture);
+    if (ro && !ro->variant.empty()) {
+        //addToVariant(ro->variant, ro);
+    }
+    return ro;
+}
+
+void Renderer::removeObjectWrapper(std::shared_ptr<RenderObject> ro) {
+
+    removeObject(ro);
 }
 
 void Renderer::connectionRemoved(const Port *from, const Port *to) {
@@ -315,7 +329,7 @@ void Renderer::removeAllCreatedBy(int creatorId) {
    for (auto &ol: m_objectList) {
       for (auto &ro: ol) {
          if (ro && ro->container && ro->container->getCreator() == creatorId) {
-            removeObject(ro);
+            removeObjectWrapper(ro);
             ro.reset();
          }
       }
@@ -330,7 +344,7 @@ void Renderer::removeAllSentBy(int sender, const std::string &senderPort) {
    for (auto &ol: m_objectList) {
       for (auto &ro: ol) {
          if (ro && ro->senderId == sender && ro->senderPort == senderPort) {
-            removeObject(ro);
+            removeObjectWrapper(ro);
             ro.reset();
          }
       }
@@ -344,7 +358,7 @@ void Renderer::removeAllObjects() {
    for (auto &ol: m_objectList) {
       for (auto &ro: ol) {
          if (ro) {
-            removeObject(ro);
+            removeObjectWrapper(ro);
             ro.reset();
          }
       }
