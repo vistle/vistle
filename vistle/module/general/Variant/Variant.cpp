@@ -15,6 +15,9 @@ class Variant: public vistle::Module {
 
    StringParameter *p_variant;
    IntParameter *p_visible;
+
+   IntParameter *p_fromAttribute;
+   StringParameter *p_attribute;
 };
 
 
@@ -33,6 +36,9 @@ Variant::Variant(const std::string &shmname, const std::string &name, int module
    p_variant = addStringParameter("variant", "variant name", "NULL");
    p_visible = addIntParameter("visibility_default", "control visibility default", Visible, Parameter::Choice);
    V_ENUM_SET_CHOICES(p_visible, Visibility);
+
+   p_fromAttribute = addIntParameter("from_attribute", "use another attribute as variant name", false, Parameter::Boolean);
+   p_attribute = addStringParameter("attribute", "name of attribute to copy to variant", "_part");
 }
 
 Variant::~Variant() {
@@ -43,7 +49,23 @@ bool Variant::compute() {
 
    //std::cerr << "Variant: compute: execcount=" << m_executionCount << std::endl;
 
+   Object::const_ptr obj = expect<Object>("data_in");
+   if (!obj)
+      return true;
+
    std::string variant = p_variant->getValue();
+   if (p_fromAttribute->getValue()) {
+       auto attr = p_attribute->getValue();
+       if (attr.empty())
+           variant.clear();
+       variant = obj->getAttribute(attr);
+   }
+
+   if (variant.empty()) {
+      passThroughObject("data_out", obj);
+      return true;
+   }
+
    switch (p_visible->getValue()) {
       case Visible:
          variant += "_on";
@@ -52,10 +74,6 @@ bool Variant::compute() {
          variant += "_off";
          break;
    }
-
-   Object::const_ptr obj = expect<Object>("data_in");
-   if (!obj)
-      return true;
 
    Object::ptr out = obj->clone();
    out->addAttribute("_variant", variant);
