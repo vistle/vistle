@@ -3,6 +3,7 @@
 
 #include "renderer.h"
 #include <rhr/rhrserver.h>
+#include <boost/asio/ip/address.hpp>
 
 namespace vistle {
 
@@ -13,6 +14,9 @@ class V_RENDEREREXPORT RhrController {
    bool handleParam(const vistle::Parameter *p);
    std::shared_ptr<RhrServer> server() const;
    int rootRank() const;
+
+   unsigned short listenPort() const;
+   boost::asio::ip::address listenAddress() const;
 
  private:
    vistle::Module *m_module;

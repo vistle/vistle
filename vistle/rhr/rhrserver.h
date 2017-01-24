@@ -50,6 +50,7 @@ public:
    ~RhrServer();
 
    unsigned short port() const;
+   address listenAddress() const;
    asio::io_service &ioService();
 
    int width(int viewNum) const;
@@ -243,6 +244,7 @@ private:
    asio::ip::tcp::acceptor m_acceptor;
    std::shared_ptr<asio::ip::tcp::socket> m_clientSocket;
    unsigned short m_port;
+   asio::ip::address m_listenAddress;
    AppMessageHandlerFunc m_appHandler;
 
    bool startAccept();

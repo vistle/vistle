@@ -67,6 +67,22 @@ private:
    long m_modificationCount;
 };
 
+struct V_COREEXPORT HubData {
+
+    HubData(int id, const std::string &name)
+        : id(id)
+        , name(name)
+        , port(0)
+        , dataPort(0)
+    {}
+
+    int id;
+    std::string name;
+    unsigned short port;
+    unsigned short dataPort;
+    boost::asio::ip::address address;
+};
+
 class V_COREEXPORT StateTracker {
    friend class ClusterManager;
    friend class Hub;
@@ -90,6 +106,7 @@ class V_COREEXPORT StateTracker {
    std::vector<int> getRunningList() const;
    std::vector<int> getBusyList() const;
    int getHub(int id) const;
+   const HubData &getHubData(int id) const;
    std::string getModuleName(int id) const;
    int getModuleState(int id) const;
 
@@ -208,21 +225,6 @@ class V_COREEXPORT StateTracker {
    message::Type m_traceType;
    int m_traceId;
    std::string m_name;
-   struct HubData {
-
-      HubData(int id, const std::string &name)
-      : id(id)
-      , name(name)
-      , port(0)
-      , dataPort(0)
-      {}
-
-      int id;
-      std::string name;
-      unsigned short port;
-      unsigned short dataPort;
-      boost::asio::ip::address address;
-   };
    std::vector<HubData> m_hubs;
 };
 

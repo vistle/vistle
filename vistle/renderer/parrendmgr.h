@@ -22,6 +22,8 @@ public:
    ParallelRemoteRenderManager(Renderer *module, IceTDrawCallback drawCallback);
    ~ParallelRemoteRenderManager();
 
+   Object::ptr getConfigObject();
+
    bool handleParam(const Parameter *p);
    bool prepareFrame(size_t numTimesteps);
    size_t timestep() const;

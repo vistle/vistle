@@ -84,6 +84,16 @@ public:
    ~RhrClient();
 
    bool init() override;
+   void addObject(RenderObject *baseObj,
+                           RenderObject *geomObj, RenderObject *normObj,
+                           RenderObject *colorObj, RenderObject *texObj,
+                           osg::Group *parent,
+                           int numCol, int colorBinding, int colorPacking,
+                           float *r, float *g, float *b, int *packedCol,
+                           int numNormals, int normalBinding,
+                           float *xn, float *yn, float *zn,
+                           float transparency) override;
+   void removeObject(const char *objName, bool replaceFlag) override;
    void preFrame() override;
    void expandBoundingSphere(osg::BoundingSphere &bs) override;
 #ifdef VRUI
@@ -102,8 +112,6 @@ private:
    static RhrClient *plugin;
    std::mutex m_pluginMutex;
 
-   std::string m_serverHost;
-   int m_port;
    int m_compress; //!< VNC compression level (0: lowest, 9: highest)
    int m_quality; //!< VNC quality (0: lowest, 9: highest)
    //! do timings
@@ -115,7 +123,7 @@ private:
    size_t m_depthBytes, m_rgbBytes, m_depthBpp, m_numPixels;
    size_t m_depthBytesS, m_rgbBytesS, m_depthBppS, m_numPixelsS;
 
-   bool connectClient();
+   bool connectClient(const std::string &connectionName, const std::string &address, unsigned short port);
    void clientCleanup(std::shared_ptr<RemoteConnection> &remote);
    bool sendMatricesMessage(std::shared_ptr<RemoteConnection> remote, std::vector<matricesMsg> &messages, uint32_t requestNum);
    bool sendLightsMessage(std::shared_ptr<RemoteConnection> remote);
@@ -171,10 +179,7 @@ private:
    coCheckboxMenuItem *m_allTilesCheck;
 #else
    mui::Tab *m_tab;
-   mui::ToggleButton *m_reprojCheck, *m_adaptCheck, *m_connectCheck, *m_adaptWithNeighborsCheck, *m_asMeshCheck, *m_withHolesCheck;
-   coTUILabel *m_hostLabel, *m_portLabel;
-   coTUIEditTextField *m_hostEdit;
-   coTUIEditIntField *m_portEdit;
+   mui::ToggleButton *m_reprojCheck, *m_adaptCheck, *m_adaptWithNeighborsCheck, *m_asMeshCheck, *m_withHolesCheck;
    mui::ToggleButton *m_inhibitModelUpdate;
 #endif
    bool m_reproject, m_adapt, m_adaptWithNeighbors, m_asMesh, m_withHoles;
@@ -182,5 +187,6 @@ private:
    osg::Matrix m_oldModelMatrix;
 
    osg::ref_ptr<opencover::MultiChannelDrawer> m_drawer;
+   std::map<std::string, std::shared_ptr<RemoteConnection>> m_remotes;
 };
 #endif

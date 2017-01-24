@@ -75,8 +75,11 @@ class RayCaster: public vistle::Renderer {
    bool render() override;
 
    bool changeParameter(const Parameter *p) override;
+   void connectionAdded(const Port *from, const Port *to) override;
 
    ParallelRemoteRenderManager m_renderManager;
+
+   Port *m_outPort;
 
    // parameters
    IntParameter *m_renderTileSizeParam;
@@ -141,6 +144,8 @@ RayCaster::RayCaster(const std::string &shmname, const std::string &name, int mo
    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
    _MM_SET_DENORMALS_ZERO_MODE(_MM_DENORMALS_ZERO_ON);
 
+   m_outPort = createOutputPort("image_out", "connect to COVER");
+
    m_shading = addIntParameter("shading", "shade and light objects", (Integer)m_doShade, Parameter::Boolean);
    m_uvVisParam = addIntParameter("uv_visualization", "show u/v coordinates", (Integer)m_uvVis, Parameter::Boolean);
    m_renderTileSizeParam = addIntParameter("render_tile_size", "edge length of square tiles used during rendering", m_tilesize);
@@ -173,6 +178,13 @@ void RayCaster::prepareQuit() {
    rtcDeleteDevice(m_device);
 
    Renderer::prepareQuit();
+}
+
+void RayCaster::connectionAdded(const Port *from, const Port *to) {
+
+    if (from == m_outPort || to == m_outPort) {
+        Module::addObject(m_outPort, m_renderManager.getConfigObject());
+    }
 }
 
 

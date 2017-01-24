@@ -18,6 +18,7 @@
 #include <cover/VRSceneGraph.h>
 #include <cover/coVRLighting.h>
 #include <cover/coVRAnimationManager.h>
+#include <cover/RenderObject.h>
 
 #include <cover/mui/Tab.h>
 #include <cover/mui/ToggleButton.h>
@@ -896,9 +897,6 @@ RhrClient::RhrClient()
 //! called after plug-in is loaded and scenegraph is initialized
 bool RhrClient::init()
 {
-   m_serverHost = covise::coCoviseConfig::getEntry("rfbHost", config, "localhost");
-   m_port = covise::coCoviseConfig::getInt("rfbPort", config, 31590);
-
    m_haveConnection = false;
 
    m_mode = MultiChannelDrawer::ReprojectMesh;
@@ -1024,32 +1022,6 @@ bool RhrClient::init()
 
    coTUITab *tab = dynamic_cast<coTUITab *>(m_tab->getTUI());
 
-   m_hostLabel = new coTUILabel("Host:", tab->getID());
-   m_hostLabel->setEventListener(this);
-   m_hostLabel->setPos(0,1);
-
-   m_hostEdit = new coTUIEditTextField("host", tab->getID());
-   m_hostEdit->setEventListener(this);
-   m_hostEdit->setPos(1,1);
-   m_hostEdit->setText(m_serverHost);
-
-   m_portLabel = new coTUILabel("Port:", tab->getID());
-   m_portLabel->setEventListener(this);
-   m_portLabel->setPos(0,2);
-
-   m_portEdit = new coTUIEditIntField("port", tab->getID());
-   m_portEdit->setEventListener(this);
-   m_portEdit->setPos(1,2);
-   m_portEdit->setValue(m_port);
-   m_portEdit->setMin(1);
-   m_portEdit->setMax(0xffff);
-
-   m_connectCheck = mui::ToggleButton::create(muiId("connect"), m_tab);
-   m_connectCheck->setLabel("Connected");
-   m_connectCheck->setEventListener(this);
-   m_connectCheck->setPos(0,3);
-   m_connectCheck->setState(m_haveConnection);
-
    m_inhibitModelUpdate = mui::ToggleButton::create(muiId("no_model_update"), m_tab);
    m_inhibitModelUpdate->setLabel("No Model Update");
    m_inhibitModelUpdate->setEventListener(this);
@@ -1061,6 +1033,43 @@ bool RhrClient::init()
    modeToUi(m_mode);
 
    return true;
+}
+
+void RhrClient::addObject(RenderObject *baseObj, RenderObject *geomObj, RenderObject *normObj, RenderObject *colorObj, RenderObject *texObj, osg::Group *parent, int numCol, int colorBinding, int colorPacking, float *r, float *g, float *b, int *packedCol, int numNormals, int normalBinding, float *xn, float *yn, float *zn, float transparency) {
+
+    if (!baseObj)
+        return;
+    auto attr = baseObj->getAttribute("_rhr_config");
+    if (!attr)
+        return;
+    std::cerr << "RhrClient: connection config string=" << attr << std::endl;
+
+    std::stringstream config(attr);
+    unsigned short port;
+    std::string method, address;
+    config >> method >> address >> port;
+    std::cerr << "RhrClient: connection config: method=" << method << ", address=" << address << ", port=" << port << std::endl;
+
+    if (method == "connect") {
+        if (address.empty()) {
+            std::cerr << "RhrClient: no connection attempt: invalid dest address: " << address << std::endl;
+        } else if (port == 0) {
+            std::cerr << "RhrClient: no connection attempt: invalid dest port: " << port << std::endl;
+        } else {
+            connectClient(baseObj->getName(), address, port);
+        }
+    }
+}
+
+void RhrClient::removeObject(const char *objName, bool replaceFlag) {
+    if (!objName)
+        return;
+    const std::string name(objName);
+    auto it = m_remotes.find(name);
+    if (it == m_remotes.end())
+        return;
+    clientCleanup(m_remote);
+    m_remotes.erase(it);
 }
 
 //! this is called if the plugin is removed at runtime
@@ -1196,25 +1205,11 @@ void RhrClient::muiEvent(mui::Element *item) {
       }
       applyMode();
    }
-   if (item == m_connectCheck) {
-       if (m_remote && m_remote->isConnected()) {
-           clientCleanup(m_remote);
-       } else {
-           connectClient();
-       }
-       m_connectCheck->setState(m_haveConnection);
-   }
    if (item == m_inhibitModelUpdate) {
        m_noModelUpdate = m_inhibitModelUpdate->getState();
    }
 }
 void RhrClient::tabletEvent(coTUIElement *item) {
-   if (item == m_hostEdit) {
-      m_serverHost = m_hostEdit->getText();
-   }
-   if (item == m_portEdit) {
-      m_port = m_portEdit->getValue();
-   }
 }
 #endif
 
@@ -1227,14 +1222,7 @@ RhrClient::preFrame()
    static double lastConnectionTry = -DBL_MAX;
    static int remoteSkipped = 0;
 
-   if (coVRMSController::instance()->isMaster()) {
-      m_io.poll();
-
-      if (cover->frameTime() - lastConnectionTry > 3.) {
-         lastConnectionTry = cover->frameTime();
-         connectClient();
-      }
-   }
+   m_io.poll();
 
    if (m_remote && !m_remote->isRunning()) {
        clientCleanup(m_remote);
@@ -1247,7 +1235,6 @@ RhrClient::preFrame()
        else
            cover->getScene()->removeChild(m_drawer);
        m_haveConnection = connected;
-       m_connectCheck->setState(m_haveConnection);
        if (!connected)
        {
           std::lock_guard<std::mutex> locker(m_pluginMutex);
@@ -1618,15 +1605,13 @@ void RhrClient::requestTimestep(int t) {
     }
 }
 
-bool RhrClient::connectClient() {
-
-   if (m_remote)
-      return true;
+bool RhrClient::connectClient(const std::string &connectionName, const std::string &address, unsigned short port) {
 
    m_avgDelay = 0.;
 
-   std::cerr << "starting new RemoteConnection" << std::endl;
-   m_remote.reset(new RemoteConnection(this, m_serverHost, m_port, coVRMSController::instance()->isMaster()));
+   std::cerr << "starting new RemoteConnection to " << address << ":" << port << std::endl;
+   m_remote.reset(new RemoteConnection(this, address, port, coVRMSController::instance()->isMaster()));
+   m_remotes[connectionName] = m_remote;
 
    return true;
 }

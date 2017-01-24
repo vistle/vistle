@@ -121,7 +121,12 @@ void RhrServer::setDepthPrecision(int bits) {
 
 unsigned short RhrServer::port() const {
 
-   return m_port;
+    return m_port;
+}
+
+asio::ip::address RhrServer::listenAddress() const {
+
+    return m_listenAddress;
 }
 
 int RhrServer::numViews() const {
@@ -232,6 +237,9 @@ bool RhrServer::start(unsigned short port) {
       }
       throw(err);
    }
+
+   m_listenAddress = endpoint.address();
+
    m_acceptor.listen();
    CERR << "listening for connections on port " << port << std::endl;
 

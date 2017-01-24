@@ -1,5 +1,6 @@
 #include "rhrcontroller.h"
 #include <core/parameter.h>
+#include <core/statetracker.h>
 
 namespace vistle {
 
@@ -118,7 +119,29 @@ std::shared_ptr<RhrServer> RhrController::server() const {
 
 int RhrController::rootRank() const {
 
-   return m_displayRank==-1 ? 0 : m_displayRank;
+    return m_displayRank==-1 ? 0 : m_displayRank;
+}
+
+unsigned short RhrController::listenPort() const {
+
+    if (m_forwardPort)
+        return m_forwardPort;
+    else if (m_rhr)
+        return m_rhr->port();
+
+    return 0;
+}
+
+asio::ip::address RhrController::listenAddress() const {
+
+    if (m_forwardPort) {
+        auto hub = m_module->getHub();
+        return hub.address;
+    } else if (m_rhr) {
+        return m_rhr->listenAddress();
+    }
+
+    return asio::ip::address();
 }
 
 }

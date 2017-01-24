@@ -1,6 +1,7 @@
 #include "parrendmgr.h"
 #include "renderobject.h"
 #include "renderer.h"
+#include <core/points.h>
 
 namespace mpi = boost::mpi;
 
@@ -40,6 +41,19 @@ ParallelRemoteRenderManager::~ParallelRemoteRenderManager() {
          icetDestroyContext(icet.ctx);
    }
    icetDestroyMPICommunicator(m_icetComm);
+}
+
+Object::ptr ParallelRemoteRenderManager::getConfigObject() {
+
+    Points::ptr points(new Points(Index(0)));
+    auto addr = m_rhrControl.listenAddress();
+    auto host = addr.to_string();
+    unsigned short port = m_rhrControl.listenPort();
+    std::stringstream config;
+    config << "connect " << host << " " << port;
+    points->addAttribute("_rhr_config", config.str());
+    points->addAttribute("_plugin", "RhrClient");
+    return points;
 }
 
 bool ParallelRemoteRenderManager::checkIceTError(const char *msg) const {

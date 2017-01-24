@@ -124,6 +124,16 @@ int StateTracker::getHub(int id) const {
    return it->second.hub;
 }
 
+const HubData &StateTracker::getHubData(int id) const {
+
+    for (const auto &hub: m_hubs) {
+        if (hub.id == id)
+            return hub;
+    }
+
+    return HubData(0, "");
+}
+
 std::string StateTracker::getModuleName(int id) const {
 
    RunningMap::const_iterator it = runningMap.find(id);

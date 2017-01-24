@@ -27,6 +27,7 @@
 namespace vistle {
 
 class StateTracker;
+struct HubData;
 class Renderer;
 
 namespace message {
@@ -191,6 +192,8 @@ class V_MODULEEXPORT Module {
    void setReducePolicy(int reduceRequirement /*< really message::ReducePolicy::Reduce */);
 
    void virtual prepareQuit();
+
+   const HubData &getHub() const;
 
 protected:
 

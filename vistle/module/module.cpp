@@ -269,6 +269,12 @@ void Module::prepareQuit() {
     m_readyForQuit = true;
 }
 
+const HubData &Module::getHub() const {
+
+    int hubId = m_stateTracker->getHub(id());
+    return m_stateTracker->getHubData(hubId);
+}
+
 void Module::initDone() {
 
    m_streambuf = new msgstreambuf<char>(this);
