@@ -5,6 +5,20 @@
 
 namespace mpi = boost::mpi;
 
+
+namespace boost { namespace  serialization {
+
+template<class Archive>
+inline void serialize(Archive &ar, vistle::Renderer::Variant &t, const unsigned int file_version) {
+
+    ar & t.name;
+    ar & t.objectCount;
+    ar & t.visible;
+}
+
+} }
+
+
 namespace vistle {
 
 void toIcet(IceTDouble *imat, const vistle::Matrix4 &vmat) {
@@ -22,6 +36,8 @@ ParallelRemoteRenderManager::ParallelRemoteRenderManager(Renderer *module, IceTD
 , m_delaySec(0.)
 , m_defaultColor(Vector4(255, 255, 255, 255))
 , m_updateBounds(1)
+, m_updateVariants(1)
+, m_updateScene(0)
 , m_doRender(1)
 , m_lightsUpdateCount(1000) // start with a value that is different from the one managed by RhrServer
 , m_currentView(-1)
@@ -93,6 +109,28 @@ void ParallelRemoteRenderManager::setModified() {
    m_doRender = 1;
 }
 
+bool ParallelRemoteRenderManager::sceneChanged() const {
+
+    return m_updateScene;
+}
+
+bool ParallelRemoteRenderManager::isVariantVisible(const std::string &variant) const {
+
+    if (variant.empty())
+        return true;
+    const auto it = m_clientVariants.find(variant);
+    if (it != m_clientVariants.end()) {
+        return it->second;
+    }
+    auto it2 = m_localVariants.find(variant);
+    if (it2 != m_localVariants.end()) {
+        return it2->second.visible != RenderObject::Hidden;
+    }
+
+    std::cerr << "ParallelRemoteRenderManager: isVariantVisible(" << variant << "): unknown variant" << std::endl;
+    return true;
+}
+
 void ParallelRemoteRenderManager::setLocalBounds(const Vector3 &min, const Vector3 &max) {
 
    localBoundMin = min;
@@ -124,6 +162,65 @@ bool ParallelRemoteRenderManager::handleParam(const Parameter *p) {
     return m_rhrControl.handleParam(p);
 }
 
+void ParallelRemoteRenderManager::updateVariants() {
+
+   auto rhr = m_rhrControl.server();
+   if (rhr) {
+       m_clientVariants = rhr->getVariants();
+   }
+   mpi::broadcast(m_module->comm(), m_clientVariants, rootRank());
+
+   std::vector<Renderer::VariantMap> all;
+   mpi::gather(m_module->comm(), m_module->variants(), all, rootRank());
+   Renderer::VariantMap newState;
+   if (m_module->rank() == 0) {
+       for (const auto &varmap: all) {
+           for (const auto &var: varmap) {
+               auto it = newState.find(var.first);
+               if (it == newState.end()) {
+                   it = newState.emplace(var.first, var.second).first;
+               } else {
+                   it->second.objectCount += var.second.objectCount;
+                   if (it->second.visible == RenderObject::DontChange) {
+                       it->second.visible = var.second.visible;
+                   }
+               }
+           }
+       }
+   }
+   mpi::broadcast(m_module->comm(), newState, rootRank());
+   std::vector<std::pair<std::string, vistle::RenderObject::InitialVariantVisibility>> addedVariants;
+   std::vector<std::string> removedVariants;
+   for (const auto &var: newState) {
+       auto it = m_localVariants.find(var.first);
+       if (it == m_localVariants.end()) {
+           if (var.second.objectCount>0) {
+               addedVariants.emplace_back(var.first, var.second.visible);
+           }
+       } else {
+           if (it->second.objectCount==0 && var.second.objectCount>0) {
+               addedVariants.emplace_back(var.first, var.second.visible);
+           }
+       }
+   }
+   for (const auto &var: m_localVariants) {
+       auto it = newState.find(var.first);
+       if (it == newState.end()) {
+           if (var.second.objectCount>0)
+               removedVariants.push_back(var.first);
+       } else {
+           if (var.second.objectCount>0 && it->second.objectCount==0)
+               removedVariants.push_back(var.first);
+       }
+   }
+
+   m_localVariants = std::move(newState);
+
+   if (rhr) {
+       rhr->updateVariants(addedVariants, removedVariants);
+   }
+}
+
 bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
 
    m_state.numTimesteps = numTimesteps;
@@ -141,6 +238,7 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
       mpi::all_reduce(m_module->comm(), localBoundMax.data(), 3, m_state.bMax.data(), mpi::maximum<Scalar>());
    }
 
+   m_updateScene = 0;
    auto rhr = m_rhrControl.server();
    if (rhr) {
       if (m_updateBounds) {
@@ -192,12 +290,28 @@ bool ParallelRemoteRenderManager::prepareFrame(size_t numTimesteps) {
 
           vd.lights = rhr->lights;
       }
+
+      if (rhr->updateCount() != m_updateCount) {
+          m_updateScene = 1;
+          m_updateCount = rhr->updateCount();
+      }
    }
    m_updateBounds = 0;
+
+   m_updateVariants = mpi::all_reduce(m_module->comm(), m_updateVariants, mpi::maximum<int>());
+   if (m_updateVariants) {
+       updateVariants();
+       m_updateVariants = 0;
+   }
 
    if (m_continuousRendering->getValue())
       m_doRender = 1;
 
+   m_updateScene = mpi::all_reduce(m_module->comm(), m_updateScene, mpi::maximum<int>());
+   if (m_updateScene) {
+       updateVariants();
+       m_doRender = 1;
+   }
    bool doRender = mpi::all_reduce(m_module->comm(), m_doRender, mpi::maximum<int>());
    m_doRender = 0;
 
@@ -435,10 +549,16 @@ void ParallelRemoteRenderManager::updateRect(size_t viewIdx, const IceTInt *view
 
 void ParallelRemoteRenderManager::addObject(std::shared_ptr<RenderObject> ro) {
    m_updateBounds = 1;
+   if (!ro->variant.empty()) {
+       m_updateVariants = 1;
+   }
 }
 
 void ParallelRemoteRenderManager::removeObject(std::shared_ptr<RenderObject> ro) {
    m_updateBounds = 1;
+   if (!ro->variant.empty()) {
+       m_updateVariants = 1;
+   }
 }
 
 }

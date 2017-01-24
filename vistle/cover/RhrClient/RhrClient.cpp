@@ -9,6 +9,8 @@
 
 #include <config/CoviseConfig.h>
 
+#include <net/tokenbuffer.h>
+
 #include <cover/coVRConfig.h>
 #include <cover/OpenCOVER.h>
 #include <cover/coVRMSController.h>
@@ -54,6 +56,7 @@
 
 #include <thread>
 #include <mutex>
+#include <map>
 
 #include <boost/lexical_cast.hpp>
 
@@ -72,6 +75,8 @@
 
 using message::RemoteRenderMessage;
 #include <core/tcpmessage.h>
+
+#include <VistlePluginUtil/VistleRenderObject.h>
 
 #ifdef HAVE_TURBOJPEG
 #include <turbojpeg.h>
@@ -107,13 +112,16 @@ class RemoteConnection {
     std::string m_host;
     unsigned short m_port;
     asio::ip::tcp::socket m_sock;
-    std::recursive_mutex *m_mutex = nullptr;
+    std::recursive_mutex *m_mutex=nullptr, *m_sendMutex=nullptr;
     std::thread *m_thread = nullptr;
     bool haveMessage = false;
     bool m_running = false;
     bool m_interrupt = false;
     bool m_isMaster = false;
     std::deque<TileMessage> m_receivedTiles;
+    std::map<std::string, vistle::RenderObject::InitialVariantVisibility> m_variantsToAdd;
+    std::set<std::string> m_variantsToRemove;
+    std::map<std::string, std::shared_ptr<VariantRenderObject>> m_variants;
 
     RemoteConnection() = delete;
     RemoteConnection(const RemoteConnection& other) = delete;
@@ -125,6 +133,7 @@ class RemoteConnection {
     {
         boundsNode = new osg::Node;
         m_mutex = new std::recursive_mutex;
+        m_sendMutex = new std::recursive_mutex;
         if (isMaster) {
             m_running = true;
             m_thread = new std::thread(std::ref(*this));
@@ -194,6 +203,11 @@ class RemoteConnection {
             return;
         }
 
+        {
+            lock_guard locker(*m_mutex);
+            connectionEstablished();
+        }
+
         for (;;) {
             if (!m_sock.is_open())
                 break;
@@ -255,6 +269,25 @@ class RemoteConnection {
         m_running = false;
     }
 
+    void connectionEstablished() {
+        std::lock_guard<std::mutex> locker(plugin->m_pluginMutex);
+        if (coVRMSController::instance()->isMaster()) {
+            for (const auto &var: plugin->m_coverVariants) {
+                variantMsg msg;
+                strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
+                msg.visible = var.second;
+                RemoteRenderMessage rrm(msg);
+                send(rrm);
+            }
+
+            animationMsg msg;
+            msg.current = plugin->m_visibleTimestep;
+            msg.total = coVRAnimationManager::instance()->getNumTimesteps();
+            RemoteRenderMessage rrm(msg);
+            send(rrm);
+        }
+    }
+
     bool handleAnimation(const RemoteRenderMessage &msg, const animationMsg &anim) {
         std::lock_guard<std::mutex> locker(plugin->m_pluginMutex);
         plugin->m_numRemoteTimesteps = anim.total;
@@ -262,8 +295,43 @@ class RemoteConnection {
     }
 
     bool handleVariant(const RemoteRenderMessage &msg, const variantMsg &variant) {
-        std::lock_guard<std::mutex> locker(plugin->m_pluginMutex);
+        std::string name = variant.name;
+        if (variant.remove) {
+            m_variantsToRemove.emplace(name);
+            std::cerr << "Variant: remove " << name << std::endl;
+        } else {
+            vistle::RenderObject::InitialVariantVisibility vis = vistle::RenderObject::DontChange;
+            if (variant.configureVisibility)
+                vis = variant.visible ? vistle::RenderObject::Visible : vistle::RenderObject::Hidden;
+            m_variantsToAdd.emplace(name, vis);
+            std::cerr << "Variant: add " << name << std::endl;
+        }
         return true;
+    }
+    void update() {
+        lock_guard locker(*m_mutex);
+        updateVariants();
+    }
+
+    void updateVariants() {
+        if (!m_variantsToAdd.empty())
+            cover->addPlugin("Variant");
+        for (auto &var: m_variantsToAdd) {
+            auto it = m_variants.find(var.first);
+            if (it == m_variants.end()) {
+                it = m_variants.emplace(var.first, std::make_shared<VariantRenderObject>(var.first, var.second)).first;
+            }
+            coVRPluginList::instance()->addNode(it->second->node(), it->second.get(), plugin);
+        }
+        m_variantsToAdd.clear();
+        for (auto &var: m_variantsToRemove) {
+            auto it = m_variants.find(var);
+            if (it != m_variants.end()) {
+                coVRPluginList::instance()->removeNode(it->second->node(), it->second.get());
+                m_variants.erase(it);
+            }
+        }
+        m_variantsToRemove.clear();
     }
 
 
@@ -313,44 +381,6 @@ class RemoteConnection {
         return true;
     }
 
-    bool receive() {
-
-        if (!m_sock.is_open())
-            return false;
-
-        message::Buffer buf;
-        auto payload = std::make_shared<std::vector<char>>();
-        bool received = false;
-        bool ok = message::recv(m_sock, buf, received, false, payload.get());
-        if (!ok) {
-            return false;
-        }
-        if (!received) {
-            return false;
-        }
-
-        if (buf.type() != message::REMOTERENDERING) {
-            std::cerr << "invalid message type received" << std::endl;
-            return false;
-        }
-
-        lock_guard locker(*m_mutex);
-        haveMessage = true;
-        auto &msg = buf.as<RemoteRenderMessage>();
-        auto &rhr = msg.rhr();
-        switch (rhr.type) {
-        case rfbBounds: {
-            handleBounds(msg, static_cast<const boundsMsg &>(rhr));
-            break;
-        }
-        case rfbTile: {
-            handleTile(msg, static_cast<const tileMsg &>(rhr), payload);
-            break;
-        }
-        }
-        return true;
-    }
-
     bool isRunning() const {
         lock_guard locker(*m_mutex);
         return m_running;
@@ -381,7 +411,7 @@ class RemoteConnection {
     }
 
     bool send(const message::Message &msg, const std::vector<char> *payload=nullptr) {
-        lock_guard locker(*m_mutex);
+        lock_guard locker(*m_sendMutex);
         if (m_sock.is_open())
             return message::send(m_sock, msg, payload);
         else
@@ -1259,6 +1289,8 @@ RhrClient::preFrame()
    if (!connected)
       return;
 
+   m_remote->update();
+
    const int numChannels = coVRConfig::instance()->numChannels();
    std::vector<matricesMsg> messages(m_numViews);
    int view=0;
@@ -1611,6 +1643,28 @@ void RhrClient::requestTimestep(int t) {
         if (!requested) {
             commitTimestep(t);
         }
+    }
+}
+
+void RhrClient::message(int type, int len, const void *msg) {
+
+    switch (type) {
+    case PluginMessageTypes::VariantHide:
+    case PluginMessageTypes::VariantShow: {
+        covise::TokenBuffer tb((char *)msg, len);
+        std::string VariantName;
+        tb >> VariantName;
+        bool visible = type==PluginMessageTypes::VariantShow;
+        m_coverVariants[VariantName] = visible;
+        if (coVRMSController::instance()->isMaster()) {
+            variantMsg msg;
+            msg.visible = visible;
+            strncpy(msg.name, VariantName.c_str(), sizeof(msg.name));
+            RemoteRenderMessage rrm(msg);
+            m_remote->send(rrm);
+        }
+        break;
+    }
     }
 }
 

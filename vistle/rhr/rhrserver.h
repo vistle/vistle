@@ -13,6 +13,7 @@
 #include <vector>
 #include <deque>
 #include <string>
+#include <map>
 
 #include <boost/asio.hpp>
 
@@ -20,7 +21,7 @@
 
 #include <util/enum.h>
 #include <core/vector.h>
-#include <core/vector.h>
+#include <renderer/renderobject.h>
 
 #include <tbb/concurrent_queue.h>
 
@@ -81,6 +82,10 @@ public:
 
    unsigned timestep() const;
    void setNumTimesteps(unsigned num);
+   size_t updateCount() const;
+   typedef std::map<std::string, vistle::RenderObject::InitialVariantVisibility> InitialVariantVisibilityMap;
+   typedef std::map<std::string, bool> VariantVisibilityMap;
+   const VariantVisibilityMap &getVariants() const;
 
    bool handleMatrices(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const matricesMsg &mat);
    bool handleLights(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const lightsMsg &light);
@@ -238,6 +243,7 @@ public:
 
        ViewData(): newWidth(-1), newHeight(-1) {}
    };
+   void updateVariants(const std::vector<std::pair<std::string, vistle::RenderObject::InitialVariantVisibility> > &added, const std::vector<std::string> &removed);
 
 private:
    static RhrServer *plugin; //<! access to plug-in from static member functions
@@ -250,6 +256,8 @@ private:
 
    bool startAccept();
    void handleAccept(std::shared_ptr<boost::asio::ip::tcp::socket> sock, const boost::system::error_code &error);
+
+   size_t m_updateCount = 0;
 
    int m_tileWidth, m_tileHeight;
 
@@ -289,6 +297,9 @@ private:
    bool m_firstTile;
 
    void deferredResize();
+
+   VariantVisibilityMap m_clientVariants;
+   InitialVariantVisibilityMap m_localVariants;
 };
 
 } // namespace vistle

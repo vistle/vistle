@@ -191,3 +191,32 @@ const char *ModuleRenderObject::getAttribute(const char *attrname) const
 
    return NULL;
 }
+
+VariantRenderObject::VariantRenderObject(const std::string &variantName, vistle::RenderObject::InitialVariantVisibility visible)
+: variant(variantName)
+, m_node(new osg::Group)
+, m_visible(visible)
+{
+    std::string nn("RhrClient:Variant:");
+    m_node->setName(nn+variant);
+    variant_onoff = variant;
+    if (visible == vistle::RenderObject::Hidden)
+        variant_onoff += "_off";
+    else if (visible == vistle::RenderObject::Visible)
+        variant_onoff += "_on";
+}
+
+const char *VariantRenderObject::getAttribute(const char *key) const {
+    if (key) {
+        std::string k(key);
+        if (k == "VARIANT") {
+            return variant_onoff.c_str();
+        }
+    }
+    return nullptr;
+}
+
+osg::ref_ptr<osg::Node> VariantRenderObject::node() const {
+
+    return m_node;
+}

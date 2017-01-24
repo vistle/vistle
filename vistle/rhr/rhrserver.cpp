@@ -185,6 +185,39 @@ void RhrServer::setBoundingSphere(const vistle::Vector3 &center, const vistle::S
    m_boundRadius = radius;
 }
 
+void RhrServer::updateVariants(const std::vector<std::pair<std::string, vistle::RenderObject::InitialVariantVisibility>> &added, const std::vector<std::string> &removed) {
+
+    for (const auto &var: removed) {
+        auto it = m_localVariants.find(var);
+        if (it != m_localVariants.end())
+            m_localVariants.erase(it);
+        if (m_clientSocket) {
+            variantMsg msg;
+            strncpy(msg.name, var.c_str(), sizeof(msg.name));
+            msg.remove = 1;
+            RemoteRenderMessage r(msg);
+            message::send(*m_clientSocket, r);
+        }
+    }
+
+    for (const auto &var: added) {
+        auto it = m_localVariants.find(var.first);
+        if (it == m_localVariants.end()) {
+            m_localVariants.emplace(var.first, var.second);
+        }
+        if (m_clientSocket) {
+            variantMsg msg;
+            strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
+            if (var.second != vistle::RenderObject::DontChange) {
+                msg.configureVisibility = 1;
+                msg.visible = var.second==vistle::RenderObject::Visible ? 1 : 0;
+            }
+            RemoteRenderMessage r(msg);
+            message::send(*m_clientSocket, r);
+        }
+    }
+}
+
 //! called after plug-in is loaded and scenegraph is initialized
 bool RhrServer::init(unsigned short port) {
 
@@ -272,6 +305,15 @@ void RhrServer::handleAccept(std::shared_ptr<asio::ip::tcp::socket> sock, const 
    int nt = m_numTimesteps;
    ++m_numTimesteps;
    setNumTimesteps(nt);
+
+   for (auto &var: m_localVariants) {
+        variantMsg msg;
+        strncpy(msg.name, var.first.c_str(), sizeof(msg.name));
+        msg.visible = var.second;
+        RemoteRenderMessage r(msg);
+        message::send(*m_clientSocket, r);
+
+   }
 }
 
 
@@ -421,6 +463,16 @@ void RhrServer::setNumTimesteps(unsigned num) {
    }
 }
 
+size_t RhrServer::updateCount() const {
+
+    return m_updateCount;
+}
+
+const RhrServer::VariantVisibilityMap &RhrServer::getVariants() const {
+
+    return m_clientVariants;
+}
+
 //! send bounding sphere of scene to a client
 void RhrServer::sendBoundsMessage(std::shared_ptr<socket> sock) {
 
@@ -455,13 +507,17 @@ bool RhrServer::handleBounds(std::shared_ptr<socket> sock, const RemoteRenderMes
 
 bool RhrServer::handleAnimation(std::shared_ptr<RhrServer::socket> sock, const vistle::message::RemoteRenderMessage &msg, const animationMsg &anim) {
 
-    CERR << "app timestep: " << anim.current << std::endl;
+    //CERR << "app timestep: " << anim.current << std::endl;
     m_imageParam.timestep = anim.current;
     return true;
 }
 
 bool RhrServer::handleVariant(std::shared_ptr<RhrServer::socket> sock, const vistle::message::RemoteRenderMessage &msg, const variantMsg &variant) {
     CERR << "app variant: " << variant.name << ", visible: " << variant.visible << std::endl;
+    std::string name(variant.name);
+    bool visible = variant.visible;
+    m_clientVariants[name] = visible;
+    ++m_updateCount;
     return true;
 }
 

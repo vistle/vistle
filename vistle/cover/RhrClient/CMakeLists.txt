@@ -22,6 +22,7 @@ endif()
 
 
 include_directories(
+   .. # VistlePluginUtil
    ${PROJECT_SOURCE_DIR}
    ${TBB_INCLUDE_DIR}
    ${JPEGTURBO_INCLUDE_DIR}
@@ -43,7 +44,7 @@ if(NOT WIN32)
 endif()
 
 cover_add_plugin(RhrClient ${HEADER} ${SOURCES})
-target_link_libraries(RhrClient vistle_rhr ${TURBOJPEG_LIBRARIES} ${TBB_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(RhrClient VistlePluginUtil vistle_rhr ${TURBOJPEG_LIBRARIES} ${TBB_LIBRARIES} ${Boost_LIBRARIES})
 if(UNIX AND NOT APPLE)
    target_link_libraries(RhrClient
         -lpthread                                                                                                                                                                                                                                                                           

@@ -257,12 +257,14 @@ static_assert(sizeof(animationMsg) < RhrMessageSize, "RHR message too large");
 struct V_RHREXPORT variantMsg: public rfbMsg {
     variantMsg()
     : rfbMsg(rfbVariant)
+    , configureVisibility(0)
     , visible(0)
     , remove(0)
     {
         memset(name, '\0', sizeof(name));
     }
 
+    uint32_t configureVisibility;
     uint32_t visible;
     uint32_t remove;
     char name[200];

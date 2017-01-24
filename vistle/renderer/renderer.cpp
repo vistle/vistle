@@ -306,14 +306,29 @@ std::shared_ptr<RenderObject> Renderer::addObjectWrapper(int senderId, const std
 
     auto ro = addObject(senderId, senderPort, container, geom, normal, colors, texture);
     if (ro && !ro->variant.empty()) {
-        //addToVariant(ro->variant, ro);
+        auto it = m_variants.find(ro->variant);
+        if (it == m_variants.end()) {
+            it = m_variants.emplace(ro->variant, Variant(ro->variant)).first;
+        }
+        ++it->second.objectCount;
+        if (it->second.visible == RenderObject::DontChange)
+            it->second.visible = ro->visibility;
     }
     return ro;
 }
 
 void Renderer::removeObjectWrapper(std::shared_ptr<RenderObject> ro) {
 
+    std::string variant;
+    if (ro)
+        variant = ro->variant;
     removeObject(ro);
+    if (variant.empty()) {
+        auto it = m_variants.find(ro->variant);
+        if (it != m_variants.end()) {
+            --it->second.objectCount;
+        }
+    }
 }
 
 void Renderer::connectionRemoved(const Port *from, const Port *to) {
@@ -365,6 +380,11 @@ void Renderer::removeAllObjects() {
       ol.clear();
    }
    m_objectList.clear();
+}
+
+const Renderer::VariantMap &Renderer::variants() const {
+
+    return m_variants;
 }
 
 bool Renderer::compute() {

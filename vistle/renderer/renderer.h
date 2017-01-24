@@ -19,6 +19,19 @@ class V_RENDEREREXPORT Renderer: public Module {
    void getBounds(Vector3 &min, Vector3 &max);
    void getBounds(Vector3 &min, Vector3 &max, int time);
 
+   struct Variant {
+       friend class boost::serialization::access;
+
+       Variant(const std::string &name=std::string())
+       : name(name) {}
+
+       std::string name;
+       int objectCount = 0;
+       RenderObject::InitialVariantVisibility visible = RenderObject::DontChange;
+   };
+   typedef std::map<std::string, Variant> VariantMap;
+   const VariantMap &variants() const;
+
  protected:
    virtual std::shared_ptr<RenderObject> addObject(int senderId, const std::string &senderPort,
          Object::const_ptr container, Object::const_ptr geom, Object::const_ptr normal, Object::const_ptr colors, Object::const_ptr texture) = 0;
@@ -65,6 +78,8 @@ class V_RENDEREREXPORT Renderer: public Module {
 
    std::vector<std::vector<std::shared_ptr<RenderObject>>> m_objectList;
    IntParameter *m_renderMode;
+
+   VariantMap m_variants;
 };
 
 } // namespace vistle

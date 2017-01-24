@@ -4,6 +4,7 @@
 #include <IceT.h>
 #include <IceTMPI.h>
 #include "rhrcontroller.h"
+#include "renderobject.h"
 
 namespace vistle {
 
@@ -39,6 +40,8 @@ public:
    float *depth(size_t viewIdx);
    void updateRect(size_t viewIdx, const IceTInt *viewport);
    void setModified();
+   bool sceneChanged() const;
+   bool isVariantVisible(const std::string &variant) const;
    void setLocalBounds(const Vector3 &min, const Vector3 &max);
    int rootRank() const {
       return m_displayRank==-1 ? 0 : m_displayRank;
@@ -61,7 +64,10 @@ public:
 
    Vector3 localBoundMin, localBoundMax;
 
+   size_t m_updateCount = -1;
    int m_updateBounds;
+   int m_updateVariants;
+   int m_updateScene;
    int m_doRender;
    size_t m_lightsUpdateCount;
 
@@ -165,6 +171,10 @@ public:
    };
    std::vector<IceTData> m_icet; // managed locally
    IceTCommunicator m_icetComm; // common for all contexts
+
+   void updateVariants();
+   RhrServer::VariantVisibilityMap m_clientVariants;
+   Renderer::VariantMap m_localVariants;
 };
 
 }

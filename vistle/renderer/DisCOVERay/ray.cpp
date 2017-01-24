@@ -360,17 +360,33 @@ bool RayCaster::render() {
     }
 
     // switch time steps in embree scene
-    if (m_timestep != m_renderManager.timestep()) {
-       if (anim_geometry.size() > m_timestep) {
+    if (m_timestep != m_renderManager.timestep() || m_renderManager.sceneChanged()) {
+       if (anim_geometry.size() > m_timestep && m_timestep != m_renderManager.timestep()) {
           for (auto &ro: anim_geometry[m_timestep])
              if (ro->data->scene)
                 rtcDisable(m_scene, ro->data->instId);
        }
        m_timestep = m_renderManager.timestep();
        if (anim_geometry.size() > m_timestep) {
-          for (auto &ro: anim_geometry[m_timestep])
-             if (ro->data->scene)
-                rtcEnable(m_scene, ro->data->instId);
+           for (auto &ro: anim_geometry[m_timestep])
+               if (ro->data->scene) {
+                   if (m_renderManager.isVariantVisible(ro->variant)) {
+                       rtcEnable(m_scene, ro->data->instId);
+                   } else {
+                       rtcDisable(m_scene, ro->data->instId);
+                   }
+               }
+       }
+       if (m_renderManager.sceneChanged()) {
+           for (auto &ro: static_geometry) {
+               if (ro->data->scene) {
+                   if (m_renderManager.isVariantVisible(ro->variant)) {
+                       rtcEnable(m_scene, ro->data->instId);
+                   } else {
+                       rtcDisable(m_scene, ro->data->instId);
+                   }
+               }
+           }
        }
        rtcCommit(m_scene);
     }

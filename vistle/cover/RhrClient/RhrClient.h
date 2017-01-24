@@ -105,6 +105,8 @@ public:
    void setTimestep(int t) override;
    void requestTimestep(int t) override;
 
+   void message(int type, int len, const void *msg) override;
+
    int handleRfbMessages();
 
 private:
@@ -188,5 +190,6 @@ private:
 
    osg::ref_ptr<opencover::MultiChannelDrawer> m_drawer;
    std::map<std::string, std::shared_ptr<RemoteConnection>> m_remotes;
+   std::map<std::string, bool> m_coverVariants; //< whether a Variant is visible
 };
 #endif

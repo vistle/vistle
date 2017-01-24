@@ -108,9 +108,7 @@ class V_PLUGINUTILEXPORT ModuleRenderObject: public BaseRenderObject {
 
 class V_PLUGINUTILEXPORT VariantRenderObject: public BaseRenderObject {
 public:
-    VariantRenderObject(const std::string &variantName)
-    : variant(variantName)
-    {}
+    VariantRenderObject(const std::string &variantName, vistle::RenderObject::InitialVariantVisibility visible = vistle::RenderObject::DontChange);
 
     const char *getName() const override { return ""; }
     bool isGeometry() const override { return false; }
@@ -120,16 +118,13 @@ public:
     RenderObject *getTexture() const override { return nullptr; }
     RenderObject *getVertexAttribute() const override { return nullptr; }
 
-   const char *getAttribute(const char *key) const override {
-       if (key) {
-           std::string k(key);
-           if (k == "VARIANT")
-               return variant.c_str();
-       }
-       return nullptr;
-   }
+   const char *getAttribute(const char *key) const override;
+
+   osg::ref_ptr<osg::Node> node() const;
 
 private:
-    std::string variant;
+    std::string variant, variant_onoff;
+    osg::ref_ptr<osg::Node> m_node; //< dummy osg node
+    vistle::RenderObject::InitialVariantVisibility m_visible;
 };
 #endif
