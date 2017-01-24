@@ -41,15 +41,15 @@ ReadCFX::ReadCFX(const std::string &shmname, const std::string &name, int module
     // file browser parameter
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/mnt/raid/home/hpcjwint/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
     //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/eckerle/HLRS_Visualisierung_01122016/Betriebspunkt_250_3000/Configuration3_001.res", Parameter::Directory);
-    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
+    //m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_002.res", Parameter::Directory);
 //    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/home/jwinterstein/data/cfx/rohr/hlrs_inst_002.res", Parameter::Directory);
+    m_resultfiledir = addStringParameter("resultfiledir", "CFX case directory","/data/MundP/3d_Visualisierung_CFX/Transient_003.res", Parameter::Directory);
 
-    // time parameters
-    m_starttime = addFloatParameter("starttime", "start reading at the first step after this time", 0.);
-    setParameterMinimum<Float>(m_starttime, 0.);
-    m_stoptime = addFloatParameter("stoptime", "stop reading at the last step before this time",
-          std::numeric_limits<double>::max());
-    setParameterMinimum<Float>(m_stoptime, 0.);
+    // timestep parameters
+    m_firsttimestep = addIntParameter("firstTimestep", "start reading the first step at this timestep number", 0);
+    setParameterMinimum<Integer>(m_firsttimestep, 0);
+    m_lasttimestep = addIntParameter("lastTimestep", "stop reading timesteps at this timestep number", 0);
+    setParameterMinimum<Integer>(m_lasttimestep, 0);
     m_timeskip = addIntParameter("timeskip", "skip this many timesteps after reading one", 0);
     setParameterMinimum<Integer>(m_timeskip, 0);
 
@@ -164,17 +164,21 @@ bool CaseInfo::checkFile(const char *filename) {
 }
 
 void CaseInfo::parseResultfile() {
-    cfxExportZoneSet(0,NULL);
     int dimension, corrected_boundary_node, length;
 
-    m_nvars = cfxExportVariableCount(ReadCFX::usr_level);
-    m_nbounds = cfxExportBoundaryCount();
+    m_ParamDimension.clear();
     m_ParamDimension[0] = 0;
     m_allParam.clear();
     m_allParam.insert(bm_type::value_type(0,"(NONE)"));
+    m_allBoundaries.clear();
+
+    cfxExportZoneSet(1,NULL);
+    m_nvars = cfxExportVariableCount(ReadCFX::usr_level);
 
     for(index_t varnum=1;varnum<=m_nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,ReadCFX::alias) only returnes values from 1 and higher
         m_allParam.insert(bm_type::value_type(varnum,cfxExportVariableName(varnum,ReadCFX::alias)));
+        //            std::cerr << "cfxExportVariableName(" << varnum << ",ReadCFX::alias) = " << cfxExportVariableName(varnum,ReadCFX::alias) << std::endl;
+        //            std::cerr << "cfxExportVariableSize(" << varnum << ",&dimension,&length,&corrected_boundary_node) = " << cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node) << std::endl;
         if(cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
             if(dimension == 1) {
                 m_ParamDimension[varnum] = 1;
@@ -183,16 +187,31 @@ void CaseInfo::parseResultfile() {
                 m_ParamDimension[varnum] = 3;
             }
         }
+        cfxExportVariableFree(varnum);
     }
+
+    cfxExportZoneSet(0,NULL);
+    m_nbounds = cfxExportBoundaryCount();
     for(index_t boundnum=1;boundnum<=m_nbounds;boundnum++) {
         m_allBoundaries.insert(bm_type::value_type(boundnum,cfxExportBoundaryName(boundnum)));
     }
+
     cfxExportZoneFree();
+
+
+
+//    typedef bm_type::left_map::const_iterator left_const_iterator;
+//    for( left_const_iterator left_iter = m_allParam.left.begin(), iend = m_allParam.left.end(); left_iter != iend; ++left_iter )
+//    {
+//        std::cerr << left_iter->first << "-->" << left_iter->second << std::endl;
+//    }
+
+
     return;
 }
 
 void CaseInfo::getFieldList() {
-    cfxExportZoneSet(0,NULL);
+    cfxExportZoneSet(1,NULL);
     int dimension, corrected_boundary_node, length;
 
     m_boundary_param.clear();
@@ -238,14 +257,15 @@ void CaseInfo::getFieldList() {
 
 bool ReadCFX::parameterChanged(const Parameter *p) {
     auto sp = dynamic_cast<const StringParameter *>(p);
+
     if (sp == m_resultfiledir) {
         std::string c = sp->getValue();
         const char *resultfiledir;
         resultfiledir = c.c_str();
         m_case.m_valid = m_case.checkFile(resultfiledir);
         if (!m_case.m_valid) {
-           std::cerr << resultfiledir << " is not a valid CFX .res file" << std::endl;
-           return false;
+            std::cerr << resultfiledir << " is not a valid CFX .res file" << std::endl;
+            return false;
         }
         else {
             sendInfo("Please wait...");
@@ -256,19 +276,18 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
             }
             char *resultfileName = strdup(resultfiledir);
             m_nzones = cfxExportInit(resultfileName, counts);
-                m_nnodes = counts[cfxCNT_NODE];
-                //m_nelems = counts[cfxCNT_ELEMENT];
-                //m_nregions = counts[cfxCNT_REGION];
-                m_nvolumes = counts[cfxCNT_VOLUME];
-                //m_nvars = counts[cfxCNT_VARIABLE];
-                ExportDone = false;
+            m_nnodes = counts[cfxCNT_NODE];
+            //m_nelems = counts[cfxCNT_ELEMENT];
+            //m_nregions = counts[cfxCNT_REGION];
+            m_nvolumes = counts[cfxCNT_VOLUME];
+            //m_nvars = counts[cfxCNT_VARIABLE];
+            ExportDone = false;
             if (m_nzones < 0) {
                 cfxExportDone();
                 sendError("cfxExportInit could not open %s", resultfileName);
                 ExportDone = true;
                 return false;
             }
-
 
             int timeStepNum = cfxExportTimestepNumGet(1);
             if (timeStepNum < 0) {
@@ -279,38 +298,38 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
             if (cfxExportTimestepSet(timeStepNum) < 0) {
                 sendInfo("Invalid timestep %d", timeStepNum);
             }
-
             //fill choice parameter
             m_case.parseResultfile();
             m_case.getFieldList();
             for (auto out: m_fieldOut) {
-               setParameterChoices(out, m_case.m_field_param);
+                setParameterChoices(out, m_case.m_field_param);
             }
             for (auto out: m_boundaryOut) {
                 setParameterChoices(out, m_case.m_boundary_param);
             }
-
-            //print out zone names
-            sendInfo("Found %d zones", m_nzones);
-            for(index_t i=1;i<=m_nzones;i++) {
-                cfxExportZoneSet(i,NULL);
-                sendInfo("zone no. %d: %s",i,cfxExportZoneName(i));
-                cfxExportZoneFree();
-            }
-            //print out boundary names
-            cfxExportZoneSet(0,NULL);
-            m_nboundaries = cfxExportBoundaryCount();
-            sendInfo("Found %d boundaries", m_nboundaries);
-            for(index_t i=1;i<=m_nboundaries;++i) {
-                sendInfo("boundary no. %d: %s",i,cfxExportBoundaryName(i));
+            if(rank() == 0) {
+                //print out zone names
+                sendInfo("Found %d zones", m_nzones);
+                for(index_t i=1;i<=m_nzones;i++) {
+                    cfxExportZoneSet(i,NULL);
+                    sendInfo("zone no. %d: %s",i,cfxExportZoneName(i));
+                    cfxExportZoneFree();
+                }
+                //print out boundary names
+                cfxExportZoneSet(0,NULL);
+                m_nboundaries = cfxExportBoundaryCount();
+                sendInfo("Found %d boundaries", m_nboundaries);
+                for(index_t i=1;i<=m_nboundaries;++i) {
+                    sendInfo("boundary no. %d: %s",i,cfxExportBoundaryName(i));
+                }
             }
             cfxExportZoneFree();
 
             free(resultfileName);
             sendInfo("The initialisation was successfully done");
+
         }
     }
-
     return Module::parameterChanged(p);
 }
 
@@ -754,12 +773,16 @@ bool ReadCFX::loadFields(int volumeNr) {
    for (int i=0; i<NumPorts; ++i) {
       std::string field = m_fieldOut[i]->getValue();
       bm_type::right_const_iterator right_iter = m_case.m_allParam.right.find(field);
-      DataBase::ptr obj = loadField(volumeNr, right_iter->second);
-//      if(!obj) {
-//          std::cerr << "Data port number " << i << " (" << m_case.m_allParam.left.at(right_iter->second) << ") is empty - not a valid variable" << std::endl;
-//      }
-      //setMeta(obj, processor, timestep);
-      m_currentVolumedata[i]= obj;
+      if(right_iter == m_case.m_allParam.right.end()) {
+          m_currentVolumedata[i]= DataBase::ptr();
+      }
+      else {
+          DataBase::ptr obj = loadField(volumeNr, right_iter->second);
+          //setMeta(obj, processor, timestep);
+          m_currentVolumedata[i]= obj;
+      }
+
+
    }
    return true;
 }
@@ -768,12 +791,14 @@ bool ReadCFX::loadBoundaryFields(int boundaryNr) {
     for (int i=0; i<NumBoundaryPorts; ++i) {
         std::string boundField = m_boundaryOut[i]->getValue();
         bm_type::right_const_iterator right_iter = m_case.m_allParam.right.find(boundField);
-        DataBase::ptr obj = loadBoundaryField(boundaryNr, right_iter->second);
-        //setMeta(obj, processor, timestep);
-        if(obj) {
-            obj ->setGrid(loadPolygon(boundaryNr));
-            obj ->setMapping(DataBase::Vertex);
-            addObject(m_boundaryDataOut[i],obj);
+        if(!(right_iter == m_case.m_allParam.right.end())) {
+            DataBase::ptr obj = loadBoundaryField(boundaryNr, right_iter->second);
+            //setMeta(obj, processor, timestep);
+            if(obj) {
+                obj ->setGrid(loadPolygon(boundaryNr));
+                obj ->setMapping(DataBase::Vertex);
+                addObject(m_boundaryDataOut[i],obj);
+            }
         }
     }
     return true;
@@ -870,14 +895,14 @@ bool ReadCFX::compute() {
                ++timeCounter;
        }*/
 
-        m_case.m_ParamDimension.clear();
-        m_case.m_allParam.clear();
-        m_case.m_allBoundaries.clear();
+        //m_case.m_ParamDimension.clear();
+        //m_case.m_allParam.clear();
+        //m_case.m_allBoundaries.clear();
         m_currentVolumedata.clear();
         m_currentBoundaryVolumedata.clear();
         m_currentGrid.clear();
-        cfxExportDone();
-        ExportDone = true;
+//        cfxExportDone();
+//        ExportDone = true;
     }
 
     return true;

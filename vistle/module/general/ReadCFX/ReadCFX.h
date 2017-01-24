@@ -75,7 +75,7 @@ class ReadCFX: public vistle::Module {
 
    //Parameter
    vistle::StringParameter *m_resultfiledir, *m_zoneSelection, *m_boundarySelection;
-   vistle::FloatParameter *m_starttime, *m_stoptime;
+   vistle::IntParameter *m_firsttimestep, *m_lasttimestep;
    vistle::IntParameter *m_timeskip;
    vistle::IntParameter *m_readBoundary; // *m_boundaryPatchesAsVariants;
    std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
