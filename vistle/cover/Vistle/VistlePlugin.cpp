@@ -28,7 +28,7 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 
-#include "VistleRenderObject.h"
+#include <VistlePluginUtil/VistleRenderObject.h>
 #include "VistleGeometryGenerator.h"
 #include "VistleInteractor.h"
 

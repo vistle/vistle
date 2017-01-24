@@ -1,6 +1,8 @@
 #ifndef VISTLERENDEROBJECT_H
 #define VISTLERENDEROBJECT_H
 
+#include "export.h"
+
 #include <cover/RenderObject.h>
 
 #include <core/polygons.h>
@@ -15,7 +17,7 @@ namespace opencover {
 class coInteractor;
 }
 
-class BaseRenderObject: public opencover::RenderObject {
+class V_PLUGINUTILEXPORT BaseRenderObject: public opencover::RenderObject {
 
    public:
    BaseRenderObject();
@@ -45,7 +47,7 @@ class BaseRenderObject: public opencover::RenderObject {
 };
 
 
-class VistleRenderObject: public BaseRenderObject {
+class V_PLUGINUTILEXPORT VistleRenderObject: public BaseRenderObject {
 
    public:
    VistleRenderObject(std::shared_ptr<const vistle::RenderObject> ro);
@@ -81,7 +83,7 @@ class VistleRenderObject: public BaseRenderObject {
 };
 
 // pseudo RenderObject for handling module parameters
-class ModuleRenderObject: public BaseRenderObject {
+class V_PLUGINUTILEXPORT ModuleRenderObject: public BaseRenderObject {
 
  public:
    ModuleRenderObject(const std::string &moduleName, int moduleId);
@@ -104,7 +106,7 @@ class ModuleRenderObject: public BaseRenderObject {
    std::string m_name;
 };
 
-class VariantRenderObject: public BaseRenderObject {
+class V_PLUGINUTILEXPORT VariantRenderObject: public BaseRenderObject {
 public:
     VariantRenderObject(const std::string &variantName)
     : variant(variantName)

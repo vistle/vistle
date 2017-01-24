@@ -7,6 +7,8 @@ endif()
 
 message("Building COVER plugins for ARCHSUFFIX ${COVISE_ARCHSUFFIX}, destination is ${COVISE_DESTDIR}")
 
+add_subdirectory(VistlePluginUtil)
+
 add_subdirectory(Vistle)
 add_subdirectory(CompositorIceT)
 add_subdirectory(RhrClient)

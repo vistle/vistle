@@ -1,5 +1,5 @@
 #include "VistleInteractor.h"
-#include "VistleRenderObject.h"
+#include <VistlePluginUtil/VistleRenderObject.h>
 #include <cover/coVRAnimationManager.h>
 #include <core/parameter.h>
 #include <module/module.h>
