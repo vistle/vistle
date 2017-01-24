@@ -1,5 +1,6 @@
 #include <module/module.h>
 #include <core/points.h>
+#include <util/enum.h>
 
 using namespace vistle;
 
@@ -13,7 +14,11 @@ class Variant: public vistle::Module {
    virtual bool compute();
 
    StringParameter *p_variant;
+   IntParameter *p_visible;
 };
+
+
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(Visibility, (DontChange)(Visible)(Hidden));
 
 using namespace vistle;
 
@@ -26,6 +31,8 @@ Variant::Variant(const std::string &shmname, const std::string &name, int module
    din->link(dout);
 
    p_variant = addStringParameter("variant", "variant name", "NULL");
+   p_visible = addIntParameter("visibility_default", "control visibility default", Visible, Parameter::Choice);
+   V_ENUM_SET_CHOICES(p_visible, Visibility);
 }
 
 Variant::~Variant() {
@@ -36,7 +43,16 @@ bool Variant::compute() {
 
    //std::cerr << "Variant: compute: execcount=" << m_executionCount << std::endl;
 
-   auto variant = p_variant->getValue();
+   std::string variant = p_variant->getValue();
+   switch (p_visible->getValue()) {
+      case Visible:
+         variant += "_on";
+         break;
+      case Hidden:
+         variant += "_off";
+         break;
+   }
+
    Object::const_ptr obj = expect<Object>("data_in");
    if (!obj)
       return true;
