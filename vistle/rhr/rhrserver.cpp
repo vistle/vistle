@@ -460,6 +460,11 @@ bool RhrServer::handleAnimation(std::shared_ptr<RhrServer::socket> sock, const v
     return true;
 }
 
+bool RhrServer::handleVariant(std::shared_ptr<RhrServer::socket> sock, const vistle::message::RemoteRenderMessage &msg, const variantMsg &variant) {
+    CERR << "app variant: " << variant.name << ", visible: " << variant.visible << std::endl;
+    return true;
+}
+
 //! this is called before every frame, used for polling for RFB messages
 void
 RhrServer::preFrame() {
@@ -506,6 +511,11 @@ RhrServer::preFrame() {
                       case rfbBounds: {
                           auto &bound = static_cast<const boundsMsg &>(rhr);
                           handleBounds(m_clientSocket, m, bound);
+                          break;
+                      }
+                      case rfbVariant: {
+                          auto &var = static_cast<const variantMsg &>(rhr);
+                          handleVariant(m_clientSocket, m, var);
                           break;
                       }
                       case rfbTile:

@@ -21,6 +21,9 @@ vistle::message::RemoteRenderMessage::RemoteRenderMessage(const vistle::RhrSubMe
     case rfbAnimation:
         sz = sizeof(animationMsg);
         break;
+    case rfbVariant:
+        sz = sizeof(variantMsg);
+        break;
     }
     memcpy(m_rhr.data(), &rhr, sz);
 }

@@ -86,6 +86,7 @@ public:
    bool handleLights(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const lightsMsg &light);
    bool handleBounds(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const boundsMsg &bound);
    bool handleAnimation(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const animationMsg &anim);
+   bool handleVariant(std::shared_ptr<socket> sock, const RemoteRenderMessage &msg, const variantMsg &variant);
 
    int numViews() const;
    const vistle::Matrix4 &viewMat(int viewNum) const;

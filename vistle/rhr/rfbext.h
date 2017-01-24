@@ -56,6 +56,7 @@ enum {
    rfbTile, //!< send image tile from server to client
    rfbBounds, //!< send scene bounds from server to client
    rfbAnimation, //!< current/total animation time steps
+   rfbVariant, //!< control visibility of variants
 };
 
 //! basic RFB message header
@@ -252,6 +253,21 @@ struct V_RHREXPORT animationMsg: public rfbMsg {
    uint32_t current; //!< timestep currently displayed
 };
 static_assert(sizeof(animationMsg) < RhrMessageSize, "RHR message too large");
+
+struct V_RHREXPORT variantMsg: public rfbMsg {
+    variantMsg()
+    : rfbMsg(rfbVariant)
+    , visible(0)
+    , remove(0)
+    {
+        memset(name, '\0', sizeof(name));
+    }
+
+    uint32_t visible;
+    uint32_t remove;
+    char name[200];
+};
+static_assert(sizeof(variantMsg) < RhrMessageSize, "RHR message too large");
 
 //! header for remote hybrid rendering message
 typedef rfbMsg RhrSubMessage;
