@@ -2,7 +2,7 @@
  * \brief RhrServer plugin class
  * 
  * \author Martin Aumüller <aumueller@hlrs.de>
- * \author (c) 2012, 2013, 2014 HLRS
+ * \author (c) 2012, 2013, 2014, 2015, 2016, 2017 HLRS
  *
  * \copyright GPL2+
  */
@@ -13,6 +13,10 @@
 
 #ifdef HAVE_SNAPPY
 #include <snappy.h>
+#endif
+
+#ifdef HAVE_ZFP
+#include <zfp.h>
 #endif
 
 #include "rfbext.h"
@@ -124,6 +128,11 @@ void RhrServer::setColorCodec(ColorCodec value) {
     }
 }
 
+void RhrServer::enableDepthZfp(bool value) {
+
+    m_imageParam.depthZfp = value;
+}
+
 void RhrServer::enableQuantization(bool value) {
 
    m_imageParam.depthQuant = value;
@@ -137,6 +146,11 @@ void RhrServer::enableDepthSnappy(bool value) {
 void RhrServer::setDepthPrecision(int bits) {
 
     m_imageParam.depthPrecision = bits;
+}
+
+void RhrServer::setZfpMode(ZfpMode mode) {
+
+    m_imageParam.depthZfpMode = mode;
 }
 
 unsigned short RhrServer::port() const {
@@ -258,10 +272,12 @@ bool RhrServer::init(unsigned short port) {
    m_compressionrate = false;
 
    m_imageParam.depthPrecision = 32;
+   m_imageParam.depthZfp = true;
    m_imageParam.depthQuant = true;
    m_imageParam.depthSnappy = true;
    m_imageParam.rgbaSnappy = true;
    m_imageParam.depthFloat = true;
+   m_imageParam.depthZfpMode = ZfpFixedRate;
 
    m_resizeBlocked = false;
    m_resizeDeferred = false;
@@ -663,6 +679,7 @@ tileMsg *newTileMsg(const RhrServer::ImageParameters &param, const RhrServer::Vi
    message->totalheight = vp.height;
    message->size = 0;
    message->compression = rfbTileRaw;
+   message->unzippedsize = 0;
 
    message->frameNumber = vp.frameNumber;
    message->requestNumber = vp.requestNumber;
@@ -689,6 +706,7 @@ struct EncodeTask: public tbb::task {
     float *depth;
     unsigned char *rgba;
     tileMsg *message;
+    const RhrServer::ImageParameters &param;
 
     EncodeTask(tbb::concurrent_queue<RhrServer::EncodeResult> &resultQueue, int viewNum, int x, int y, int w, int h,
           float *depth, const RhrServer::ImageParameters &param, const RhrServer::ViewParameters &vp)
@@ -704,6 +722,7 @@ struct EncodeTask: public tbb::task {
     , depth(depth)
     , rgba(nullptr)
     , message(nullptr)
+    , param(param)
     {
         assert(depth);
         message = newTileMsg(param, vp, viewNum, x, y, w, h);
@@ -735,6 +754,12 @@ struct EncodeTask: public tbb::task {
 
         message->size = bpp * message->width * message->height;
 
+#ifdef HAVE_ZFP
+        if (param.depthZfp) {
+            message->format = rfbDepthFloat;
+            message->compression |= rfbTileDepthZfp;
+        } else
+#endif
         if (param.depthQuant) {
             message->format = param.depthPrecision<=16 ? rfbDepth16Bit : rfbDepth24Bit;
             message->compression |= rfbTileDepthQuantize;
@@ -760,6 +785,7 @@ struct EncodeTask: public tbb::task {
     , depth(nullptr)
     , rgba(rgba)
     , message(nullptr)
+    , param(param)
     {
        assert(rgba);
        message = newTileMsg(param, vp, viewNum, x, y, w, h);
@@ -781,9 +807,53 @@ struct EncodeTask: public tbb::task {
         RhrServer::EncodeResult result(message);
         if (depth) {
             const char *zbuf = reinterpret_cast<const char *>(depth);
-            if (msg.compression & rfbTileDepthQuantize) {
+            if (msg.compression & rfbTileDepthZfp) {
+#ifdef HAVE_ZFP
+                zfp_type type = zfp_type_float;
+                zfp_field *field = zfp_field_2d(const_cast<float *>(depth+y*stride+x), type, w, h);
+                zfp_field_set_stride_2d(field, 0, stride);
+
+                zfp_stream *zfp = zfp_stream_open(nullptr);
+                switch (param.depthZfpMode) {
+                default:
+                    CERR << "invalid ZfpMode " << param.depthZfpMode << std::endl;
+                    BOOST_FALLTHROUGH;
+                case RhrServer::ZfpFixedRate:
+                    zfp_stream_set_rate(zfp, 8, type, 2, 0);
+                    break;
+                case RhrServer::ZfpPrecision:
+                    zfp_stream_set_precision(zfp, 16, type);
+                    break;
+                case RhrServer::ZfpAccuracy:
+                    zfp_stream_set_accuracy(zfp, -4, type);
+                    break;
+                }
+                size_t bufsize = zfp_stream_maximum_size(zfp, field);
+                std::vector<char> zfpbuf(bufsize);
+                bitstream *stream = stream_open(zfpbuf.data(), bufsize);
+                zfp_stream_set_bit_stream(zfp, stream);
+
+                zfp_stream_rewind(zfp);
+                zfp_write_header(zfp, field, ZFP_HEADER_FULL);
+                size_t zfpsize = zfp_compress(zfp, field);
+                if (zfpsize == 0) {
+                    CERR << "zfp compression failed" << std::endl;
+                    msg.compression &= ~rfbTileDepthZfp;
+                } else {
+                    zfpbuf.resize(zfpsize);
+                    result.payload = std::move(zfpbuf);
+                    msg.size = zfpsize;
+                    msg.unzippedsize = zfpsize;
+                    msg.compression &= ~rfbTileDepthQuantize;
+                }
+                zfp_field_free(field);
+                zfp_stream_close(zfp);
+                stream_close(stream);
+#endif
+            } else if (msg.compression & rfbTileDepthQuantize) {
                 const int ds = msg.format == rfbDepth16Bit ? 2 : 3;
                 msg.size = depthquant_size(DepthFloat, ds, w, h);
+                msg.unzippedsize = msg.size;
                 std::vector<char> qbuf(msg.size);
                 depthquant(qbuf.data(), zbuf, DepthFloat, ds, x, y, w, h, stride);
 #ifdef QUANT_ERROR
@@ -795,6 +865,7 @@ struct EncodeTask: public tbb::task {
                 result.payload = std::move(qbuf);
             } else {
                 std::vector<char> tilebuf(msg.size);
+                msg.unzippedsize = msg.size;
                 for (int yy=0; yy<h; ++yy) {
                     memcpy(tilebuf.data()+yy*bpp*w, zbuf+((yy+y)*stride+x)*bpp, w*bpp);
                 }
@@ -823,6 +894,7 @@ struct EncodeTask: public tbb::task {
                 }
                 if (ret >= 0) {
                     msg.size = sz;
+                    msg.unzippedsize = sz;
                     result.payload = std::move(jpegbuf);
                 }
 #endif
@@ -830,6 +902,7 @@ struct EncodeTask: public tbb::task {
                     msg.compression &= ~rfbTileJpeg;
             }
             if (!(msg.compression & rfbTileJpeg)) {
+                msg.unzippedsize = msg.size;
                 std::vector<char> tilebuf(msg.size);
                 for (int yy=0; yy<h; ++yy) {
                     memcpy(tilebuf.data()+yy*bpp*w, rgba+((yy+y)*stride+x)*bpp, w*bpp);

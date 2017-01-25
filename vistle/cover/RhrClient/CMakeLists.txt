@@ -2,6 +2,7 @@ vistle_find_package(TBB)
 vistle_find_package(JPEGTURBO)
 vistle_find_package(GLEW)
 vistle_find_package(Boost 1.40 REQUIRED)
+vistle_find_package(ZFP)
 using(SNAPPY optional)
 using(GLEW)
 using(BOOST)
@@ -18,6 +19,11 @@ endif()
 
 if(JPEGTURBO_FOUND)
    add_definitions(-DHAVE_TURBOJPEG)
+endif()
+
+if(ZFP_FOUND)
+   add_definitions(-DHAVE_ZFP)
+   include_directories(${ZFP_INCLUDE_DIRS})
 endif()
 
 
@@ -49,5 +55,8 @@ if(UNIX AND NOT APPLE)
    target_link_libraries(RhrClient
         -lpthread                                                                                                                                                                                                                                                                           
    )
+endif()
+if (ZFP_FOUND)
+    target_link_libraries(RhrClient ${ZFP_LIBRARIES})
 endif()
 

@@ -73,6 +73,10 @@
 #include <snappy.h>
 #endif
 
+#ifdef HAVE_ZFP
+#include <zfp.h>
+#endif
+
 using message::RemoteRenderMessage;
 #include <core/tcpmessage.h>
 
@@ -605,12 +609,11 @@ struct DecodeTask: public tbb::task {
          return NULL;
       }
 
-      size_t sz = 0;
+      size_t sz = msg->unzippedsize;
       int bpp = 0;
       if (msg->format == rfbColorRGBA) {
          assert(rgba);
          bpp = 4;
-         sz = msg->width * msg->height * bpp;
       } else {
          assert(depth);
          switch (msg->format) {
@@ -619,13 +622,6 @@ struct DecodeTask: public tbb::task {
          case rfbDepth16Bit: bpp=2; break;
          case rfbDepth24Bit: bpp=4; break;
          case rfbDepth32Bit: bpp=4; break;
-         }
-
-         if (msg->compression & rfbTileDepthQuantize) {
-            assert(msg->format != rfbDepthFloat);
-            sz = depthquant_size(bpp==4 ? DepthFloat : DepthInteger, bpp, msg->width, msg->height);
-         } else {
-            sz = msg->width * msg->height * bpp;
          }
       }
 
@@ -645,7 +641,39 @@ struct DecodeTask: public tbb::task {
 #endif
       }
 
-      if (msg->format!=rfbColorRGBA && (msg->compression & rfbTileDepthQuantize)) {
+      if (msg->format!=rfbColorRGBA && (msg->compression & rfbTileDepthZfp)) {
+
+#ifndef HAVE_ZFP
+          std::cerr << "RhrClient: not compiled with zfp support, cannot decompress" << std::endl;
+#else
+          if (msg->format==rfbDepthFloat) {
+              zfp_type type = zfp_type_float;
+              bitstream *stream = stream_open(decompbuf->data(), decompbuf->size());
+              zfp_stream *zfp = zfp_stream_open(stream);
+              zfp_stream_rewind(zfp);
+              zfp_field *field = zfp_field_2d(depth, type, msg->width, msg->height);
+              if (!zfp_read_header(zfp, field, ZFP_HEADER_FULL)) {
+                  std::cerr << "RhrClient: reading zfp compression parameters failed" << std::endl;
+              }
+              if (field->type != type) {
+                  std::cerr << "RhrClient: zfp type not float" << std::endl;
+              }
+              if (field->nx != msg->width || field->ny != msg->height) {
+                  std::cerr << "RhrClient: zfp size mismatch: " << field->nx << "x" << field->ny << " != " << msg->width << "x" << msg->height << std::endl;
+              }
+              zfp_field_set_pointer(field, depth+(msg->y*msg->totalwidth+msg->x)*bpp);
+              zfp_field_set_stride_2d(field, 1, msg->totalwidth);
+              if (!zfp_decompress(zfp, field)) {
+                  std::cerr << "RhrClient: zfp decompression failed" << std::endl;
+              }
+              zfp_stream_close(zfp);
+              zfp_field_free(field);
+              stream_close(stream);
+          } else {
+              std::cerr << "RhrClient: zfp not in float format, cannot decompress" << std::endl;
+          }
+#endif
+      } else  if (msg->format!=rfbColorRGBA && (msg->compression & rfbTileDepthQuantize)) {
 
          depthdequant(depth, decompbuf->data(), bpp==4 ? DepthFloat : DepthInteger, bpp, msg->x, msg->y, msg->width, msg->height, msg->totalwidth);
       } else if (msg->compression == rfbTileJpeg) {
@@ -849,6 +877,7 @@ void RhrClient::handleTileMeta(const tileMsg &msg) {
          case rfbDepth16Bit: format = GL_UNSIGNED_SHORT; m_depthBpp=2; break;
          case rfbDepth24Bit: format = GL_FLOAT; m_depthBpp=4; break;
          case rfbDepth32Bit: format = GL_FLOAT; m_depthBpp=4; break;
+         default: std::cerr << "unhandled image format " << msg.format << std::endl;
       }
       m_drawer->resizeView(viewIdx, w, h, format);
    }

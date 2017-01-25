@@ -22,6 +22,10 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 , m_quant(true)
 , m_depthSnappy(nullptr)
 , m_snappy(true)
+, m_depthZfp(nullptr)
+, m_zfp(false)
+, m_depthZfpMode(nullptr)
+, m_zfpMode(RhrServer::ZfpFixedRate)
 , m_sendTileSizeParam(nullptr)
 , m_sendTileSize((vistle::Integer)256, (vistle::Integer)256)
 {
@@ -38,6 +42,9 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
    m_rgbaEncoding = module->addIntParameter("color_codec", "codec for image data", m_rgbaCodec, Parameter::Choice);
    module->V_ENUM_SET_CHOICES_SCOPE(m_rgbaEncoding, RhrServer::ColorCodec, RhrServer);
 
+   m_depthZfp = module->addIntParameter("depth_zfp", "compress depth with zfp floating point compressor", (Integer)m_zfp, Parameter::Boolean);
+   m_depthZfpMode = module->addIntParameter("zfp_mode", "Accuracy:, Precision:, Rate: ", (Integer)m_zfpMode, Parameter::Choice);
+   module->V_ENUM_SET_CHOICES_SCOPE(m_depthZfpMode, RhrServer::ZfpMode, RhrServer);
    m_depthSnappy = module->addIntParameter("depth_snappy", "compress depth with SNAPPY", (Integer)m_snappy, Parameter::Boolean);
    m_depthQuant = module->addIntParameter("depth_quant", "DXT-like depth quantization", (Integer)m_quant, Parameter::Boolean);
 
@@ -98,6 +105,16 @@ bool RhrController::handleParam(const vistle::Parameter *p) {
       if (m_rhr)
          m_rhr->setDepthPrecision(m_prec);
       return true;
+   } else if (p == m_depthZfp) {
+
+      m_zfp = m_depthZfp->getValue();
+      if (m_rhr)
+         m_rhr->enableDepthZfp(m_zfp);
+      return true;
+   } else if (p == m_depthZfpMode) {
+       m_zfpMode = (RhrServer::ZfpMode)m_depthZfpMode->getValue();
+       if (m_rhr)
+           m_rhr->setZfpMode(m_zfpMode);
    } else if (p == m_depthSnappy) {
 
       m_snappy = m_depthSnappy->getValue();

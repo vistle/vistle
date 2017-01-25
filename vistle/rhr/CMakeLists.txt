@@ -4,6 +4,7 @@ vistle_find_package(TBB)
 vistle_find_package(ZLIB)
 vistle_find_package(JPEGTURBO)
 vistle_find_package(SNAPPY)
+vistle_find_package(ZFP)
 
 if(NOT JPEGTURBO_FOUND)
    RETURN()
@@ -22,6 +23,11 @@ endif()
 if(SNAPPY_FOUND)
    add_definitions(-DHAVE_SNAPPY)
    include_directories(${SNAPPY_INCLUDE_DIR})
+endif()
+
+if(ZFP_FOUND)
+   add_definitions(-DHAVE_ZFP)
+   include_directories(${ZFP_INCLUDE_DIRS})
 endif()
 
 set(RHR_SOURCES
@@ -89,6 +95,10 @@ target_link_libraries(vistle_rhr
 
 if(SNAPPY_FOUND)
    target_link_libraries(vistle_rhr ${SNAPPY_LIBRARIES})
+endif()
+
+if (ZFP_FOUND)
+   target_link_libraries(vistle_rhr ${ZFP_LIBRARIES})
 endif()
 
 if(LIBVNCSERVER_FOUND)

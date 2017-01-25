@@ -47,6 +47,8 @@ public:
                                      (Snappy)
                                      )
 
+   DEFINE_ENUM_WITH_STRING_CONVERSIONS(ZfpMode, (ZfpFixedRate)(ZfpPrecision)(ZfpAccuracy))
+
    RhrServer(unsigned short port=31313);
    ~RhrServer();
 
@@ -75,10 +77,12 @@ public:
    void invalidate(int viewNum, int x, int y, int w, int h, const ViewParameters &param, bool lastView);
 
    void setColorCodec(ColorCodec value);
+   void enableDepthZfp(bool value);
    void enableQuantization(bool value);
    void enableDepthSnappy(bool value);
    void setDepthPrecision(int bits);
    void setTileSize(int w, int h);
+   void setZfpMode(ZfpMode mode);
 
    unsigned timestep() const;
    void setNumTimesteps(unsigned num);
@@ -175,21 +179,25 @@ public:
        unsigned timestep;
        bool depthFloat; //!< whether depth should be retrieved as floating point
        int depthPrecision; //!< depth buffer read-back precision (bits) for integer formats
+       bool depthZfp; //!< whether depth should be compressed with floating point compressor zfp
        bool depthQuant; //!< whether depth should be sent quantized
        bool depthSnappy; //!< whether depth should be entropy-encoded with SNAPPY
        bool rgbaJpeg;
        bool rgbaSnappy;
        bool rgbaChromaSubsamp;
+       ZfpMode depthZfpMode;
 
        ImageParameters()
        : timestep(0)
        , depthFloat(false)
        , depthPrecision(24)
+       , depthZfp(false)
        , depthQuant(false)
        , depthSnappy(false)
        , rgbaJpeg(false)
        , rgbaSnappy(false)
        , rgbaChromaSubsamp(false)
+       , depthZfpMode(ZfpAccuracy)
        {
        }
    };

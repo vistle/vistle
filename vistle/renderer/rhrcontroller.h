@@ -36,6 +36,10 @@ class V_RENDEREREXPORT RhrController {
    bool m_quant;
    IntParameter *m_depthSnappy;
    bool m_snappy;
+   IntParameter *m_depthZfp;
+   bool m_zfp;
+   IntParameter *m_depthZfpMode;
+   RhrServer::ZfpMode m_zfpMode;
 
    IntVectorParameter *m_sendTileSizeParam;
    IntParamVector m_sendTileSize;

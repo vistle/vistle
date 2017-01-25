@@ -192,7 +192,8 @@ enum rfbTileCompressions {
    rfbTileSnappy = 1,
    rfbTileDepthQuantize = 2,
    rfbTileJpeg = 4,
-   rfbTileClear = 8,
+   rfbTileDepthZfp = 8,
+   rfbTileClear = 16,
 };
 
 //! send image tile from server to client
@@ -213,6 +214,7 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
    , totalwidth(0)
    , totalheight(0)
    , timestep(-1)
+   , unzippedsize(0)
    , requestTime(0.)
    {
       memset(model, '\0', sizeof(model));
@@ -234,6 +236,7 @@ struct V_RHREXPORT tileMsg: public rfbMsg {
    uint16_t totalwidth; //!< total width of image
    uint16_t totalheight; //!< total height of image
    int32_t timestep; //! number of rendered timestep 
+   int32_t unzippedsize; //! payload size before snappy compression
    double view[16]; //!< view matrix from request
    double proj[16]; //!< projection matrix from request
    double model[16]; //!< model matrix from request
