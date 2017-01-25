@@ -14,17 +14,13 @@
 #include <module/module.h>
 
 #include <boost/config.hpp>
-#include <boost/bimap.hpp>
-
 
 typedef vistle::Index index_t;
 typedef vistle::Scalar scalar_t;
-typedef boost::bimap<int, std::string> bm_type;
 
 struct IdWithZoneFlag {
-
     IdWithZoneFlag(index_t r
-                         , index_t z) {
+                   , index_t z) {
         ID=r;
         zoneFlag=z;
     }
@@ -33,18 +29,38 @@ struct IdWithZoneFlag {
     index_t zoneFlag;
 };
 
+class Variable {
+public:
+    Variable(std::string Name, int Dimension, int onlyMeaningful, int ID, int zone);
+    std::string m_VarName;
+    int m_VarDimension;
+    int m_onlyMeaningfulOnBoundary; //if 1 than variable has only meaningful values on the boundary
+    std::vector<IdWithZoneFlag> m_vectorIdwithZone;
+};
+
+class Boundary {
+public:
+    Boundary(std::string Name, int ID, int zone);
+    std::string m_BoundName;
+    std::vector<IdWithZoneFlag> m_vectorIdwithZone;
+};
+
 class CaseInfo {
 public:
     CaseInfo();
     std::vector<std::string> m_field_param, m_boundary_param;
     bool m_valid;
-    bm_type m_allParam, m_allBoundaries;
+    std::vector<Variable> m_allParam;
+    std::vector<Boundary> m_allBoundaries;
     std::map<int, int> m_ParamDimension;
-    index_t m_nvars, m_nbounds;
+    index_t m_numberOfVariables, m_numberOfBoundaries;
 
     bool checkFile(const char *filename);
     void parseResultfile();
     void getFieldList();
+    std::vector<Variable> getCopyOfAllParam();
+    std::vector<Boundary> getCopyOfAllBoundaries();
+    index_t getNumberOfBoundaries();
 };
 
 class ReadCFX: public vistle::Module {
@@ -81,7 +97,7 @@ class ReadCFX: public vistle::Module {
    std::vector<vistle::StringParameter *> m_fieldOut, m_boundaryOut;
    vistle::coRestraint m_coRestraintZones, m_coRestraintBoundaries;
 
-   index_t m_nzones, m_nvolumes, m_nboundaries, m_nnodes; // m_nregions, m_nnodes, m_nelems, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
+   index_t m_nzones, m_nvolumes, m_nnodes; // m_nboundaries, m_nregions, m_nnodes, m_nelems, m_nvars, nscalars, nvectors, nparticleTracks, nparticleTypes
 
 
    //Ports
@@ -109,8 +125,8 @@ class ReadCFX: public vistle::Module {
    int rankForBlock(int processor) const;
    vistle::UnstructuredGrid::ptr loadGrid(int volumeNr);
    vistle::Polygons::ptr loadPolygon(int boundaryNr);
-   vistle::DataBase::ptr loadField(int volumeNr, int variableID);
-   vistle::DataBase::ptr loadBoundaryField(int boundaryNr, int variableID);
+   vistle::DataBase::ptr loadField(int volumeNr, Variable var);
+   vistle::DataBase::ptr loadBoundaryField(int boundaryNr, Variable var);
    bool loadFields(int volumeNr);
    bool loadBoundaryFields(int boundaryNr);
    int collectVolumes();

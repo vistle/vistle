@@ -115,6 +115,18 @@ ReadCFX::~ReadCFX() {
 
 }
 
+Variable::Variable(std::string Name, int Dimension, int onlyMeaningful, int ID, int zone)
+    : m_VarName(Name),
+      m_VarDimension(Dimension),
+      m_onlyMeaningfulOnBoundary(onlyMeaningful) {
+    m_vectorIdwithZone.push_back(IdWithZoneFlag(ID,zone));
+}
+
+Boundary::Boundary(std::string Name, int ID, int zone)
+    : m_BoundName(Name) {
+    m_vectorIdwithZone.push_back(IdWithZoneFlag(ID,zone));
+}
+
 CaseInfo::CaseInfo()
     : m_valid(false) {
 
@@ -163,73 +175,110 @@ bool CaseInfo::checkFile(const char *filename) {
     return true;
 }
 
+
 void CaseInfo::parseResultfile() {
     int dimension, corrected_boundary_node, length;
+    index_t nvars, nzones, nbounds;
+    m_numberOfBoundaries = 0;
+    m_numberOfVariables = 0;
 
-    m_ParamDimension.clear();
-    m_ParamDimension[0] = 0;
+    nzones = cfxExportZoneCount();
     m_allParam.clear();
-    m_allParam.insert(bm_type::value_type(0,"(NONE)"));
     m_allBoundaries.clear();
 
-    cfxExportZoneSet(1,NULL);
-    m_nvars = cfxExportVariableCount(ReadCFX::usr_level);
+    for(index_t i=1;i<=nzones;++i) {
+        cfxExportZoneSet(i,NULL);
 
-    for(index_t varnum=1;varnum<=m_nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,ReadCFX::alias) only returnes values from 1 and higher
-        m_allParam.insert(bm_type::value_type(varnum,cfxExportVariableName(varnum,ReadCFX::alias)));
-        //            std::cerr << "cfxExportVariableName(" << varnum << ",ReadCFX::alias) = " << cfxExportVariableName(varnum,ReadCFX::alias) << std::endl;
-        //            std::cerr << "cfxExportVariableSize(" << varnum << ",&dimension,&length,&corrected_boundary_node) = " << cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node) << std::endl;
-        if(cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
-            if(dimension == 1) {
-                m_ParamDimension[varnum] = 1;
+        //read all Variable into m_allParam vector
+        nvars = cfxExportVariableCount(ReadCFX::usr_level);
+        //std::cerr << "nvars in zone(" << i << ") = " << nvars << std::endl;
+
+        for(index_t varnum=1;varnum<=nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,ReadCFX::alias) only returnes values from 1 and higher
+            const char *VariableName = cfxExportVariableName(varnum,ReadCFX::alias);
+            //bm_type::right_const_iterator right_iter = m_allParam.right.find(VariableName);
+
+            auto it = find_if(m_allParam.begin(), m_allParam.end(), [&VariableName](const Variable& obj) {
+                return obj.m_VarName == VariableName;
+            });
+            if (it == m_allParam.end()) {
+                if(!cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) {
+                    std::cerr << "variable if out of range in (parseResultfile -> cfxExportVariableSize)" << std::endl;
+                }
+                m_allParam.push_back(Variable(VariableName,dimension,length,varnum,i));
+                m_numberOfVariables++;
             }
-            else if(dimension == 3) {
-                m_ParamDimension[varnum] = 3;
+            else {
+                auto index = std::distance(m_allParam.begin(), it);
+                m_allParam[index].m_vectorIdwithZone.push_back(IdWithZoneFlag(varnum,i));
+            }
+
+            cfxExportVariableFree(varnum);
+        }
+
+        //read all Boundaries into m_allBoundaries vector
+        nbounds = cfxExportBoundaryCount();
+        for(index_t boundnum=1;boundnum<=nbounds;boundnum++) {
+            const char *BoundaryName = cfxExportBoundaryName(boundnum);
+            auto it = find_if(m_allBoundaries.begin(), m_allBoundaries.end(), [&BoundaryName](const Boundary& obj) {
+                return obj.m_BoundName == BoundaryName;
+            });
+            if (it == m_allBoundaries.end()) {
+                m_allBoundaries.push_back(Boundary(BoundaryName,boundnum,i));
+                m_numberOfBoundaries++;
+            }
+            else {
+                auto index = std::distance(m_allBoundaries.begin(), it);
+                m_allBoundaries[index].m_vectorIdwithZone.push_back(IdWithZoneFlag(boundnum,i));
             }
         }
-        cfxExportVariableFree(varnum);
+        cfxExportZoneFree();
     }
 
-    cfxExportZoneSet(0,NULL);
-    m_nbounds = cfxExportBoundaryCount();
-    for(index_t boundnum=1;boundnum<=m_nbounds;boundnum++) {
-        m_allBoundaries.insert(bm_type::value_type(boundnum,cfxExportBoundaryName(boundnum)));
-    }
-
-    cfxExportZoneFree();
-
-
-
-//    typedef bm_type::left_map::const_iterator left_const_iterator;
-//    for( left_const_iterator left_iter = m_allParam.left.begin(), iend = m_allParam.left.end(); left_iter != iend; ++left_iter )
-//    {
-//        std::cerr << left_iter->first << "-->" << left_iter->second << std::endl;
+//    for(index_t i=0;i<m_allParam.size();++i) {
+//        std::cerr << "m_allParam[" << i << "].m_VarName = " << m_allParam[i].m_VarName << std::endl;
+//        std::cerr << "m_allParam[" << i << "].Dimension = " << m_allParam[i].m_VarDimension << std::endl;
+//        std::cerr << "m_allParam[" << i << "].onlyMeaningful = " << m_allParam[i].m_onlyMeaningfulOnBoundary << std::endl;
+//        for(index_t j=0;j<m_allParam[i].m_vectorIdwithZone.size();++j) {
+//            std::cerr << "m_allParam[" << i << "].IdwZone.ID = " << m_allParam[i].m_vectorIdwithZone[j].ID << std::endl;
+//            std::cerr << "m_allParam[" << i << "].IdwZone.zoneFlag = " << m_allParam[i].m_vectorIdwithZone[j].zoneFlag << std::endl;
+//        }
 //    }
-
+//    for(index_t i=0;i<m_allBoundaries.size();++i) {
+//        std::cerr << "m_allBoundaries[" << i << "].m_BoundName = " << m_allBoundaries[i].m_BoundName << std::endl;
+//        for(index_t j=0;j<m_allBoundaries[i].m_vectorIdwithZone.size();++j) {
+//            std::cerr << "m_allBoundaries[" << i << "].IdwZone.ID = " << m_allBoundaries[i].m_vectorIdwithZone[j].ID << std::endl;
+//            std::cerr << "m_allBoundaries[" << i << "].IdwZone.zoneFlag = " << m_allBoundaries[i].m_vectorIdwithZone[j].zoneFlag << std::endl;
+//        }
+//    }
 
     return;
 }
 
 void CaseInfo::getFieldList() {
-    cfxExportZoneSet(1,NULL);
-    int dimension, corrected_boundary_node, length;
-
     m_boundary_param.clear();
     m_boundary_param.push_back("(NONE)");
     m_field_param.clear();
     m_field_param.push_back("(NONE)");
 
-
-    for(index_t varnum=1;varnum<=m_nvars;varnum++) {   //starts from 1 because cfxExportVariableName(varnum,ReadCFX::alias) only returnes values from 1 and higher
-        if(cfxExportVariableSize(varnum,&dimension,&length,&corrected_boundary_node)) { //cfxExportVariableSize returns 1 if successful or 0 if the variable is out of range
-            if(length != 1) {
-                m_field_param.push_back(m_allParam.left.at(varnum));
-            }
-            m_boundary_param.push_back(m_allParam.left.at(varnum));
+    for(index_t varnum=0;varnum<m_numberOfVariables;varnum++) {
+        if(m_allParam[varnum].m_onlyMeaningfulOnBoundary != 1) {
+            m_field_param.push_back(m_allParam[varnum].m_VarName);
         }
+        m_boundary_param.push_back(m_allParam[varnum].m_VarName);
     }
-    cfxExportZoneFree();
     return;
+}
+
+std::vector<Variable> CaseInfo::getCopyOfAllParam() {
+    return m_allParam;
+}
+
+std::vector<Boundary> CaseInfo::getCopyOfAllBoundaries() {
+    return m_allBoundaries;
+}
+
+index_t CaseInfo::getNumberOfBoundaries() {
+    return m_numberOfBoundaries;
 }
 
 /*int ReadFOAM::rankForBlock(int processor) const {
@@ -316,11 +365,10 @@ bool ReadCFX::parameterChanged(const Parameter *p) {
                     cfxExportZoneFree();
                 }
                 //print out boundary names
-                cfxExportZoneSet(0,NULL);
-                m_nboundaries = cfxExportBoundaryCount();
-                sendInfo("Found %d boundaries", m_nboundaries);
-                for(index_t i=1;i<=m_nboundaries;++i) {
-                    sendInfo("boundary no. %d: %s",i,cfxExportBoundaryName(i));
+                sendInfo("Found %d boundaries", m_case.getNumberOfBoundaries());
+                std::vector<Boundary> allBoundaries = m_case.getCopyOfAllBoundaries();
+                for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
+                    sendInfo("boundary no. %d: %s",i,(allBoundaries[i-1].m_BoundName).c_str());
                 }
             }
             cfxExportZoneFree();
@@ -592,111 +640,119 @@ Polygons::ptr ReadCFX::loadPolygon(int boundaryNr) {
     return polygon;
 }
 
-DataBase::ptr ReadCFX::loadField(int volumeNr, int variableID) {
+DataBase::ptr ReadCFX::loadField(int volumeNr, Variable var) {
 
-    if(cfxExportZoneSet(m_volumesSelected[volumeNr].zoneFlag,NULL) < 0) {
-        std::cerr << "invalid zone number" << std::endl;
-    }
-//    std::cerr << "m_volumesSelected[volumeNr].ID = " << m_volumesSelected[volumeNr].ID << "; m_volumesSelected[volumeNr].zoneFlag = " << m_volumesSelected[volumeNr].zoneFlag << std::endl;
-    index_t nnodesInVolume = cfxExportVolumeSize(m_volumesSelected[volumeNr].ID,cfxVOL_NODES);
-    int *nodeListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_NODES); //query the nodes that define the volume
+    for(index_t i=0;i<var.m_vectorIdwithZone.size();++i) {
+        if(var.m_vectorIdwithZone[i].zoneFlag == m_volumesSelected[volumeNr].zoneFlag) {
+            if(cfxExportZoneSet(m_volumesSelected[volumeNr].zoneFlag,NULL) < 0) {
+                std::cerr << "invalid zone number" << std::endl;
+            }
+            //    std::cerr << "m_volumesSelected[volumeNr].ID = " << m_volumesSelected[volumeNr].ID << "; m_volumesSelected[volumeNr].zoneFlag = " << m_volumesSelected[volumeNr].zoneFlag << std::endl;
+            index_t nnodesInVolume = cfxExportVolumeSize(m_volumesSelected[volumeNr].ID,cfxVOL_NODES);
+            int *nodeListOfVolume = cfxExportVolumeList(m_volumesSelected[volumeNr].ID,cfxVOL_NODES); //query the nodes that define the volume
 
-    //read field parameters
-    index_t varnum = variableID;
+            //read field parameters
+            index_t varnum = var.m_vectorIdwithZone[i].ID;
 
-    if(m_case.m_ParamDimension[varnum] == 1) {
-        Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
-        boost::shared_ptr<float_t> value(new float);
-        scalar_t *ptrOnScalarData = s->x().data();
-        for(index_t j=0;j<nnodesInVolume;++j) {
-            cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
-            ptrOnScalarData[j] = *value.get();
-//            if(j<200) {
-//                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-//            }
+            if(var.m_VarDimension == 1) {
+                Vec<Scalar>::ptr s(new Vec<Scalar>(nnodesInVolume));
+                boost::shared_ptr<float_t> value(new float);
+                scalar_t *ptrOnScalarData = s->x().data();
+                for(index_t j=0;j<nnodesInVolume;++j) {
+                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
+                    ptrOnScalarData[j] = *value.get();
+                    //            if(j<200) {
+                    //                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+                    //            }
+                }
+                cfxExportVariableFree(varnum);
+                cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
+                return s;
+            }
+            else if(var.m_VarDimension == 3) {
+                Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
+                boost::shared_ptr<float_t> value(new float[3]);
+                scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
+                ptrOnVectorXData = v->x().data();
+                ptrOnVectorYData = v->y().data();
+                ptrOnVectorZData = v->z().data();
+                for(index_t j=0;j<nnodesInVolume;++j) {
+                    cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
+                    ptrOnVectorXData[j] = value.get()[0];
+                    ptrOnVectorYData[j] = value.get()[1];
+                    ptrOnVectorZData[j] = value.get()[2];
+                    //            if(j<2000) {
+                    //                std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
+                    //                std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
+                    //                std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
+                    //            }
+                }
+                cfxExportVariableFree(varnum);
+                cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
+                return v;
+            }
+
+            cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
         }
-        cfxExportVariableFree(varnum);
-        cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
-        return s;
-    }
-    else if(m_case.m_ParamDimension[varnum] == 3) {
-        Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nnodesInVolume));
-        boost::shared_ptr<float_t> value(new float[3]);
-        scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
-        ptrOnVectorXData = v->x().data();
-        ptrOnVectorYData = v->y().data();
-        ptrOnVectorZData = v->z().data();
-        for(index_t j=0;j<nnodesInVolume;++j) {
-            cfxExportVariableGet(varnum,correct,nodeListOfVolume[j],value.get());
-            ptrOnVectorXData[j] = value.get()[0];
-            ptrOnVectorYData[j] = value.get()[1];
-            ptrOnVectorZData[j] = value.get()[2];
-//            if(j<2000) {
-//                std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
-//                std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
-//                std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
-//            }
-        }
-        cfxExportVariableFree(varnum);
-        cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
-        return v;
     }
 
-    cfxExportVolumeFree(m_volumesSelected[volumeNr].ID);
     return DataBase::ptr();
 }
 
-DataBase::ptr ReadCFX::loadBoundaryField(int boundaryNr, int variableID) {
+DataBase::ptr ReadCFX::loadBoundaryField(int boundaryNr, Variable var) {
+    for(index_t i=0;i<var.m_vectorIdwithZone.size();++i) {
+        if(var.m_vectorIdwithZone[i].zoneFlag == m_boundariesSelected[boundaryNr].zoneFlag) {
+            if(cfxExportZoneSet(m_boundariesSelected[boundaryNr].zoneFlag,NULL) < 0) {
+                std::cerr << "invalid zone number" << std::endl;
+            }
+            index_t nNodesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES);
+            int *nodeListOfBoundary = cfxExportBoundaryList(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES); //query the nodes that define the boundary
 
-    if(cfxExportZoneSet(m_boundariesSelected[boundaryNr].zoneFlag,NULL) < 0) {
-        std::cerr << "invalid zone number" << std::endl;
-    }
-    index_t nNodesInBoundary = cfxExportBoundarySize(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES);
-    int *nodeListOfBoundary = cfxExportBoundaryList(m_boundariesSelected[boundaryNr].ID,cfxREG_NODES); //query the nodes that define the boundary
+            //read field parameters
+            index_t varnum = var.m_vectorIdwithZone[i].ID;
+            if(var.m_VarDimension == 1) {
+                Vec<Scalar>::ptr s(new Vec<Scalar>(nNodesInBoundary));
+                boost::shared_ptr<float_t> value(new float);
+                scalar_t *ptrOnScalarData = s->x().data();
+                for(index_t j=0;j<nNodesInBoundary;++j) {
+                    cfxExportVariableGet(varnum,correct,nodeListOfBoundary[j],value.get());
+                    ptrOnScalarData[j] = *value.get();
+                    //            if(j<200) {
+                    //                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
+                    //            }
+                }
+                cfxExportVariableFree(varnum);
+                cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
+                return s;
+            }
+            else if(var.m_VarDimension == 3) {
+                Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nNodesInBoundary));
+                boost::shared_ptr<float_t> value(new float[3]);
+                scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
+                ptrOnVectorXData = v->x().data();
+                ptrOnVectorYData = v->y().data();
+                ptrOnVectorZData = v->z().data();
+                for(index_t j=0;j<nNodesInBoundary;++j) {
+                    cfxExportVariableGet(varnum,correct,nodeListOfBoundary[j],value.get());
+                    ptrOnVectorXData[j] = value.get()[0];
+                    ptrOnVectorYData[j] = value.get()[1];
+                    ptrOnVectorZData[j] = value.get()[2];
+                    //            if(j<200) {
+                    //                std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
+                    //                std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
+                    //                std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
+                    //            }
+                }
+                cfxExportVariableFree(varnum);
+                cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
+                return v;
+            }
 
-    //read field parameters
-    index_t varnum = variableID;
 
-    if(m_case.m_ParamDimension[varnum] == 1) {
-        Vec<Scalar>::ptr s(new Vec<Scalar>(nNodesInBoundary));
-        boost::shared_ptr<float_t> value(new float);
-        scalar_t *ptrOnScalarData = s->x().data();
-        for(index_t j=0;j<nNodesInBoundary;++j) {
-            cfxExportVariableGet(varnum,correct,nodeListOfBoundary[j],value.get());
-            ptrOnScalarData[j] = *value.get();
-//            if(j<200) {
-//                std::cerr << "ptrOnScalarData[" << j << "] = " << ptrOnScalarData[j] << std::endl;
-//            }
+            cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
         }
-        cfxExportVariableFree(varnum);
-        cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
-        return s;
-    }
-    else if(m_case.m_ParamDimension[varnum] == 3) {
-        Vec<Scalar, 3>::ptr v(new Vec<Scalar, 3>(nNodesInBoundary));
-        boost::shared_ptr<float_t> value(new float[3]);
-        scalar_t *ptrOnVectorXData, *ptrOnVectorYData, *ptrOnVectorZData;
-        ptrOnVectorXData = v->x().data();
-        ptrOnVectorYData = v->y().data();
-        ptrOnVectorZData = v->z().data();
-        for(index_t j=0;j<nNodesInBoundary;++j) {
-            cfxExportVariableGet(varnum,correct,nodeListOfBoundary[j],value.get());
-            ptrOnVectorXData[j] = value.get()[0];
-            ptrOnVectorYData[j] = value.get()[1];
-            ptrOnVectorZData[j] = value.get()[2];
-//            if(j<200) {
-//                std::cerr << "ptrOnVectorXData[" << j << "] = " << ptrOnVectorXData[j] << std::endl;
-//                std::cerr << "ptrOnVectorYData[" << j << "] = " << ptrOnVectorYData[j] << std::endl;
-//                std::cerr << "ptrOnVectorZData[" << j << "] = " << ptrOnVectorZData[j] << std::endl;
-//            }
-        }
-        cfxExportVariableFree(varnum);
-        cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
-        return v;
     }
 
-
-    cfxExportBoundaryFree(m_boundariesSelected[boundaryNr].ID);
     return DataBase::ptr();
 }
 
@@ -747,24 +803,23 @@ int ReadCFX::collectBoundaries() {
     m_coRestraintBoundaries.get(val,group);
 
     int numberOfSelectedBoundaries=0;
-    m_boundariesSelected.reserve(m_nboundaries);
+    m_boundariesSelected.reserve(m_case.getNumberOfBoundaries());
+    std::vector<Boundary> allBoundaries = m_case.getCopyOfAllBoundaries();
 
-    for(index_t i=1;i<=m_nzones;++i) {
-        cfxExportZoneSet(i,NULL);
-        int nboundaries_in_zone = cfxExportBoundaryCount();
-        for(int j=1;j<=nboundaries_in_zone;++j) {
-            bm_type::right_const_iterator right_iter = m_case.m_allBoundaries.right.find(cfxExportBoundaryName(j));
-            if(m_coRestraintBoundaries(right_iter->second)) {
-                m_boundariesSelected[numberOfSelectedBoundaries]=IdWithZoneFlag(j,i);
+    for(index_t i=1;i<=m_case.getNumberOfBoundaries();++i) {
+        if(m_coRestraintBoundaries(i)) {
+            for(index_t j=0;j<allBoundaries[i-1].m_vectorIdwithZone.size();++j) {
+                std::cerr << "boundary name selected = " << allBoundaries[i-1].m_BoundName << std::endl;
+                m_boundariesSelected[numberOfSelectedBoundaries]=IdWithZoneFlag(allBoundaries[i-1].m_vectorIdwithZone[j].ID,allBoundaries[i-1].m_vectorIdwithZone[j].zoneFlag);
                 numberOfSelectedBoundaries++;
             }
         }
     }
-
     //zum Testen
 //    for(int i=0;i<numberOfSelectedBoundaries;++i) {
 //        std::cerr << "m_boundariesSelected[" << i << "] = " << m_boundariesSelected[i].ID << "; zoneflag = " << m_boundariesSelected[i].zoneFlag << std::endl;
 //    }
+
     cfxExportZoneFree();
     return numberOfSelectedBoundaries;
 }
@@ -772,17 +827,17 @@ int ReadCFX::collectBoundaries() {
 bool ReadCFX::loadFields(int volumeNr) {
    for (int i=0; i<NumPorts; ++i) {
       std::string field = m_fieldOut[i]->getValue();
-      bm_type::right_const_iterator right_iter = m_case.m_allParam.right.find(field);
-      if(right_iter == m_case.m_allParam.right.end()) {
+      std::vector<Variable> allParam = m_case.getCopyOfAllParam();
+      auto it = find_if(allParam.begin(), allParam.end(), [&field](const Variable& obj) {
+          return obj.m_VarName == field;});
+      if (it == allParam.end()) {
           m_currentVolumedata[i]= DataBase::ptr();
       }
       else {
-          DataBase::ptr obj = loadField(volumeNr, right_iter->second);
-          //setMeta(obj, processor, timestep);
+          auto index = std::distance(allParam.begin(), it);
+          DataBase::ptr obj = loadField(volumeNr, allParam[index]);
           m_currentVolumedata[i]= obj;
       }
-
-
    }
    return true;
 }
@@ -790,10 +845,12 @@ bool ReadCFX::loadFields(int volumeNr) {
 bool ReadCFX::loadBoundaryFields(int boundaryNr) {
     for (int i=0; i<NumBoundaryPorts; ++i) {
         std::string boundField = m_boundaryOut[i]->getValue();
-        bm_type::right_const_iterator right_iter = m_case.m_allParam.right.find(boundField);
-        if(!(right_iter == m_case.m_allParam.right.end())) {
-            DataBase::ptr obj = loadBoundaryField(boundaryNr, right_iter->second);
-            //setMeta(obj, processor, timestep);
+        std::vector<Variable> allParam = m_case.getCopyOfAllParam();
+        auto it = find_if(allParam.begin(), allParam.end(), [&boundField](const Variable& obj) {
+            return obj.m_VarName == boundField;});
+        if (!(it == allParam.end())) {
+            auto index = std::distance(allParam.begin(), it);
+            DataBase::ptr obj = loadBoundaryField(boundaryNr, allParam[index]);
             if(obj) {
                 obj ->setGrid(loadPolygon(boundaryNr));
                 obj ->setMapping(DataBase::Vertex);
@@ -850,13 +907,13 @@ bool ReadCFX::compute() {
             loadBoundaryFields(i);
         }
 
-        std::cerr << "cfxExportTimestepCount() = " << cfxExportTimestepCount() << std::endl;
-        float timecount_float = (float) cfxExportTimestepCount();
-        std::cerr << "timecount_float = " << timecount_float << std::endl;
-        std::cerr << "cfxExportTimestepNumGet(1) = " << cfxExportTimestepNumGet(1) << std::endl;
-        int timeStepNum = cfxExportTimestepNumGet(1);
-        std::cerr << "cfxExportTimestepSet(timeStepNum) = " << cfxExportTimestepSet(timeStepNum) << std::endl;
-        std::cerr << "cfxExportTimestepTimeGet(1) = " << cfxExportTimestepTimeGet(1) << std::endl;
+//        std::cerr << "cfxExportTimestepCount() = " << cfxExportTimestepCount() << std::endl;
+//        float timecount_float = (float) cfxExportTimestepCount();
+//        std::cerr << "timecount_float = " << timecount_float << std::endl;
+//        std::cerr << "cfxExportTimestepNumGet(1) = " << cfxExportTimestepNumGet(1) << std::endl;
+//        int timeStepNum = cfxExportTimestepNumGet(1);
+//        std::cerr << "cfxExportTimestepSet(timeStepNum) = " << cfxExportTimestepSet(timeStepNum) << std::endl;
+//        std::cerr << "cfxExportTimestepTimeGet(1) = " << cfxExportTimestepTimeGet(1) << std::endl;
 
     //    for(t = t1; t <= t2; t++) {
     //    ts = cfxExportTimestepNumGet(t);
