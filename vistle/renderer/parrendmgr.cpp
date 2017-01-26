@@ -62,13 +62,13 @@ ParallelRemoteRenderManager::~ParallelRemoteRenderManager() {
 Object::ptr ParallelRemoteRenderManager::getConfigObject() {
 
     Points::ptr points(new Points(Index(0)));
-    auto addr = m_rhrControl.listenAddress();
-    auto host = addr.to_string();
+    auto host = m_rhrControl.listenHost();
     unsigned short port = m_rhrControl.listenPort();
     std::stringstream config;
     config << "connect " << host << " " << port;
     points->addAttribute("_rhr_config", config.str());
     points->addAttribute("_plugin", "RhrClient");
+    std::cerr << "ParallelRemoteRenderManager: creating config object: " << config.str() << std::endl;
     return points;
 }
 

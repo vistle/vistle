@@ -4,11 +4,14 @@
 
 namespace vistle {
 
+DEFINE_ENUM_WITH_STRING_CONVERSIONS(ConnectionMethod, (AutomaticHostname)(UserHostname)(ViaHub))
+
 RhrController::RhrController(vistle::Module *module, int displayRank)
 : m_module(module)
 , m_displayRank(displayRank)
+, m_rhrConnectionMethod(nullptr)
+, m_rhrLocalEndpoint(nullptr)
 , m_rhrBasePort(nullptr)
-, m_rhrForward(nullptr)
 , m_forwardPort(0)
 , m_rgbaEncoding(nullptr)
 , m_rgbaCodec(RhrServer::Jpeg_YUV444)
@@ -21,9 +24,12 @@ RhrController::RhrController(vistle::Module *module, int displayRank)
 , m_sendTileSizeParam(nullptr)
 , m_sendTileSize((vistle::Integer)256, (vistle::Integer)256)
 {
+   m_rhrConnectionMethod = module->addIntParameter("rhr_connection_method", "how local endpoint should be determined", AutomaticHostname, Parameter::Choice);
+   module->V_ENUM_SET_CHOICES(m_rhrConnectionMethod, ConnectionMethod);
    m_rhrBasePort = module->addIntParameter("rhr_base_port", "listen port for RHR server", 31590);
    module->setParameterRange(m_rhrBasePort, (Integer)1, (Integer)((1<<16)-1));
-   m_rhrForward = module->addIntParameter("rhr_tunnel", "let client connect through hub", 0, Parameter::Boolean);
+   m_rhrLocalEndpoint = module->addStringParameter("rhr_local_address", "address where clients should connect to", "localhost");
+
    m_sendTileSizeParam = module->addIntVectorParameter("send_tile_size", "edge lengths of tiles used during sending", m_sendTileSize);
    module->setParameterRange(m_sendTileSizeParam, IntParamVector(1,1), IntParamVector(16384, 16384));
 
@@ -57,22 +63,29 @@ bool RhrController::handleParam(const vistle::Parameter *p) {
          m_rhr.reset();
       }
       return true;
-   } else if (p == m_rhrForward) {
-      if (m_rhrForward->getValue()) {
-         if (m_forwardPort != m_rhrBasePort->getValue()) {
-            if (m_forwardPort) {
-               m_module->removePortMapping(m_forwardPort);
-            }
-            m_forwardPort = m_rhrBasePort->getValue();
-            if (m_module->rank() == 0)
-               m_module->requestPortMapping(m_forwardPort, m_rhrBasePort->getValue());
-         }
-      } else {
-         if (m_module->rank() == 0) {
+   } else if (p == m_rhrConnectionMethod) {
+      if ((m_rhrConnectionMethod->getValue() != ViaHub && m_forwardPort != 0) || m_forwardPort != m_rhrBasePort->getValue()) {
+          if (m_module->rank() == 0) {
             if (m_forwardPort)
                m_module->removePortMapping(m_forwardPort);
          }
          m_forwardPort = 0;
+      }
+      switch (m_rhrConnectionMethod->getValue()) {
+      case AutomaticHostname: {
+          break;
+      }
+      case UserHostname: {
+          break;
+      }
+      case ViaHub: {
+          if (m_forwardPort != m_rhrBasePort->getValue()) {
+              m_forwardPort = m_rhrBasePort->getValue();
+              if (m_module->rank() == 0)
+                  m_module->requestPortMapping(m_forwardPort, m_rhrBasePort->getValue());
+          }
+          break;
+      }
       }
       return true;
    } else if (p == m_depthPrec) {
@@ -124,24 +137,29 @@ int RhrController::rootRank() const {
 
 unsigned short RhrController::listenPort() const {
 
-    if (m_forwardPort)
-        return m_forwardPort;
-    else if (m_rhr)
+    if (m_rhr)
         return m_rhr->port();
 
     return 0;
 }
 
-asio::ip::address RhrController::listenAddress() const {
+std::string RhrController::listenHost() const {
 
-    if (m_forwardPort) {
-        auto hub = m_module->getHub();
-        return hub.address;
-    } else if (m_rhr) {
-        return m_rhr->listenAddress();
+    switch(m_rhrConnectionMethod->getValue()) {
+    case UserHostname: {
+        return m_rhrLocalEndpoint->getValue();
+        break;
     }
+    case ViaHub: {
+        auto hubdata = m_module->getHub();
+        return hubdata.address.to_string();
+    }
+    default: {
 
-    return asio::ip::address();
+        break;
+    }
+    }
+    return "localhost";
 }
 
 }

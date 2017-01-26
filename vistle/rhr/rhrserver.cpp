@@ -255,30 +255,32 @@ bool RhrServer::init(unsigned short port) {
 
 bool RhrServer::start(unsigned short port) {
 
-    asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), port);
-    m_acceptor.open(endpoint.protocol());
-    m_acceptor.set_option(acceptor::reuse_address(true));
-    try {
-        m_acceptor.bind(endpoint);
-    } catch(const boost::system::system_error &err) {
-        if (err.code() == boost::system::errc::address_in_use) {
-            m_acceptor.close();
-            CERR << "failed to listen on port " << port << " - address already in use" << std::endl;
-            return false;
-        } else {
-            CERR << "listening on port " << port << " failed" << std::endl;
-      }
-      throw(err);
-   }
+    for (;;) {
+        asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v6(), port);
+        m_acceptor.open(endpoint.protocol());
+        m_acceptor.set_option(acceptor::reuse_address(true));
+        try {
+            m_acceptor.bind(endpoint);
+        } catch(const boost::system::system_error &err) {
+            if (err.code() == boost::system::errc::address_in_use) {
+                m_acceptor.close();
+                CERR << "failed to listen on port " << port << " - address already in use" << std::endl;
+                ++port;
+                continue;
+            } else {
+                CERR << "listening on port " << port << " failed" << std::endl;
+            }
+            throw(err);
+        }
+        m_listenAddress = endpoint.address();
+        break;
+    }
+    m_acceptor.listen();
+    CERR << "listening for connections on port " << port << std::endl;
 
-   m_listenAddress = endpoint.address();
+    m_port = port;
 
-   m_acceptor.listen();
-   CERR << "listening for connections on port " << port << std::endl;
-
-   m_port = port;
-
-   return startAccept();
+    return startAccept();
 }
 
 bool RhrServer::startAccept() {

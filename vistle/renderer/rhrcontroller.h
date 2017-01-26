@@ -4,6 +4,7 @@
 #include "renderer.h"
 #include <rhr/rhrserver.h>
 #include <boost/asio/ip/address.hpp>
+#include <string>
 
 namespace vistle {
 
@@ -16,14 +17,15 @@ class V_RENDEREREXPORT RhrController {
    int rootRank() const;
 
    unsigned short listenPort() const;
-   boost::asio::ip::address listenAddress() const;
+   std::string listenHost() const;
 
  private:
    vistle::Module *m_module;
    int m_displayRank;
 
+   IntParameter *m_rhrConnectionMethod;
+   StringParameter *m_rhrLocalEndpoint;
    IntParameter *m_rhrBasePort;
-   IntParameter *m_rhrForward;
    unsigned short m_forwardPort; //< current port mapping
 
    IntParameter *m_rgbaEncoding;

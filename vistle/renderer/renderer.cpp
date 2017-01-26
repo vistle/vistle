@@ -271,7 +271,7 @@ bool Renderer::addInputObject(int sender, const std::string &senderPort, const s
    creator.iter = object->getIteration();
 
    std::shared_ptr<RenderObject> ro;
-#if 0
+#if 1
    std::cout << "++++++Renderer addInputObject " << object->getType()
              << " creator " << object->getCreator()
              << " exec " << object->getExecutionCounter()
