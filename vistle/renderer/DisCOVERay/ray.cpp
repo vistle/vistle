@@ -183,7 +183,10 @@ void RayCaster::prepareQuit() {
 void RayCaster::connectionAdded(const Port *from, const Port *to) {
 
     if (from == m_outPort || to == m_outPort) {
-        Module::addObject(m_outPort, m_renderManager.getConfigObject());
+        if (rank() == 0) {
+            std::cerr << "sending rhr config object" << std::endl;
+            Module::addObject(m_outPort, m_renderManager.getConfigObject());
+        }
     }
 }
 
