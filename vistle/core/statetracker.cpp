@@ -125,13 +125,14 @@ int StateTracker::getHub(int id) const {
 }
 
 const HubData &StateTracker::getHubData(int id) const {
+    static HubData invalidHub(0, "");
 
     for (const auto &hub: m_hubs) {
         if (hub.id == id)
             return hub;
     }
 
-    return HubData(0, "");
+    return invalidHub;
 }
 
 std::string StateTracker::getModuleName(int id) const {
