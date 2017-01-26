@@ -4,7 +4,10 @@
 #include "archives.h"
 #include "serialize.h"
 
+#include <boost/serialization/string.hpp>
+
 BOOST_CLASS_IMPLEMENTATION(vistle::shm<char>::string, boost::serialization::primitive_type)
+//BOOST_CLASS_IMPLEMENTATION(vistle::shm<char>::string, boost::serialization::object_serializable)
 
 namespace boost {
 namespace serialization {
@@ -26,14 +29,6 @@ void access::destroy(const vistle::Object::Data::AttributeMapValueType *t);
 
 template<>
 void access::construct(vistle::Object::Data::AttributeMapValueType *t);
-
-#if 0
-template<>
-void access::destroy(const vistle::Object *t);
-
-template<>
-void access::construct(vistle::Object *t);
-#endif
 
 } // namespace serialization
 } // namespace boost
@@ -58,7 +53,7 @@ void Object::Data::serialize(Archive &ar, const unsigned int version) {
    assert(checktype1 == type);
 #endif
    ar & V_NAME("meta", meta);
-   ar & V_NAME("attributes", *attributes);
+   ar & V_NAME("attributes", attributes);
 #ifdef DEBUG_SERIALIZATION
    int checktype2 = type;
    ar & V_NAME("checktype2", checktype2);

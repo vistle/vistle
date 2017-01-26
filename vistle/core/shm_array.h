@@ -28,7 +28,9 @@ class shm_array {
    , m_capacity(0)
    , m_data(nullptr)
    , m_allocator(alloc)
-   {}
+   {
+       resize(0);
+   }
 
    shm_array(const size_t size, const allocator &alloc = allocator())
    : m_type(typeId())

@@ -221,7 +221,7 @@ struct ObjectData {
     typedef std::pair<const Key, AttributeList> AttributeMapValueType;
     typedef shm<AttributeMapValueType>::allocator AttributeMapAllocator;
     typedef interprocess::map<Key, AttributeList, std::less<Key>, AttributeMapAllocator> AttributeMap;
-    interprocess::offset_ptr<AttributeMap> attributes;
+    AttributeMap attributes;
     void addAttribute(const std::string &key, const std::string &value = "");
     void setAttributeList(const std::string &key, const std::vector<std::string> &values);
     void copyAttributes(const ObjectData *src, bool replace);
@@ -235,7 +235,7 @@ struct ObjectData {
     typedef std::pair<const Key, Attachment> AttachmentMapValueType;
     typedef shm<AttachmentMapValueType>::allocator AttachmentMapAllocator;
     typedef interprocess::map<Key, Attachment, std::less<Key>, AttachmentMapAllocator> AttachmentMap;
-    interprocess::offset_ptr<AttachmentMap> attachments;
+    AttachmentMap attachments;
     bool addAttachment(const std::string &key, Object::const_ptr att);
     void copyAttachments(const ObjectData *src, bool replace);
     bool hasAttachment(const std::string &key) const;
@@ -244,7 +244,6 @@ struct ObjectData {
 
     V_COREEXPORT ObjectData(Object::Type id = Object::UNKNOWN, const std::string &name = "", const Meta &m=Meta());
     V_COREEXPORT ObjectData(const ObjectData &other, const std::string &name, Object::Type id=Object::UNKNOWN); //! shallow copy, except for attributes
-    V_COREEXPORT ObjectData(const std::string &name, const Meta &meta);
     V_COREEXPORT ~ObjectData();
     V_COREEXPORT void *operator new(size_t size);
     V_COREEXPORT void *operator new (std::size_t size, void* ptr);
