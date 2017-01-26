@@ -144,22 +144,24 @@ osg::MatrixTransform *VistleGeometryGenerator::operator()(osg::ref_ptr<osg::Stat
          geode = new osg::Geode();
          geom = new osg::Geometry();
 
-         const vistle::Scalar *x = &points->x()[0];
-         const vistle::Scalar *y = &points->y()[0];
-         const vistle::Scalar *z = &points->z()[0];
-         osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
-         for (Index v = 0; v < numVertices; v ++)
-            vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
+         if (numVertices > 0) {
+             const vistle::Scalar *x = &points->x()[0];
+             const vistle::Scalar *y = &points->y()[0];
+             const vistle::Scalar *z = &points->z()[0];
+             osg::ref_ptr<osg::Vec3Array> vertices = new osg::Vec3Array();
+             for (Index v = 0; v < numVertices; v ++)
+                 vertices->push_back(osg::Vec3(x[v], y[v], z[v]));
 
-         geom->setVertexArray(vertices.get());
-         osg::ref_ptr<osg::DrawElementsUInt> idx = new osg::DrawElementsUInt(osg::PrimitiveSet::POINTS, 0);
-         for (Index p=0; p<numVertices; ++p)
-            idx->push_back(p);
+             geom->setVertexArray(vertices.get());
+             osg::ref_ptr<osg::DrawElementsUInt> idx = new osg::DrawElementsUInt(osg::PrimitiveSet::POINTS, 0);
+             for (Index p=0; p<numVertices; ++p)
+                 idx->push_back(p);
 
-         geom->addPrimitiveSet(idx.get());
+             geom->addPrimitiveSet(idx.get());
 
-         state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
-         state->setAttribute(new osg::Point(2.0f), osg::StateAttribute::ON);
+             state->setMode(GL_CULL_FACE, osg::StateAttribute::OFF);
+             state->setAttribute(new osg::Point(2.0f), osg::StateAttribute::ON);
+         }
 
          geode->addDrawable(geom.get());
          break;

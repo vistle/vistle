@@ -314,6 +314,8 @@ void OsgRenderer::removeObject(std::shared_ptr<vistle::RenderObject> vro) {
       return;
    }
 
+   coVRPluginList::instance()->removeObject(ro->getName(), false);
+
    auto it = m_fileAttachmentMap.find(ro.get());
    if (it != m_fileAttachmentMap.end()) {
        coVRFileManager::instance()->unloadFile(it->second.c_str());
@@ -419,6 +421,12 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
 
    pro->coverRenderObject.reset(new VistleRenderObject(pro));
    m_delayedObjects.push_back(DelayedObject(pro, VistleGeometryGenerator(pro, geometry, colors, normals, texture)));
+
+   coVRPluginList::instance()->addObject(pro->coverRenderObject.get(), nullptr, nullptr, nullptr, nullptr, nullptr,
+                                         0, 0, 0,
+                                         nullptr, nullptr, nullptr, nullptr,
+                                         0, 0, nullptr, nullptr, nullptr,
+                                         0.0);
 
    return pro;
 }
