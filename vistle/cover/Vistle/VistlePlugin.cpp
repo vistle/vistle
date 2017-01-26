@@ -348,15 +348,16 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
 
    if (!container)
       return nullptr;
-   if (!geometry)
-      return nullptr;
 
    std::string plugin = container->getAttribute("_plugin");
    if (!plugin.empty())
       cover->addPlugin(plugin.c_str());
-   plugin = geometry->getAttribute("_plugin");
-   if (!plugin.empty())
-      cover->addPlugin(plugin.c_str());
+
+   if (geometry) {
+       plugin = geometry->getAttribute("_plugin");
+       if (!plugin.empty())
+           cover->addPlugin(plugin.c_str());
+   }
    if (normals) {
       plugin = normals->getAttribute("_plugin");
       if (!plugin.empty())
@@ -373,26 +374,31 @@ std::shared_ptr<vistle::RenderObject> OsgRenderer::addObject(int senderId, const
          cover->addPlugin(plugin.c_str());
    }
 
-   int creatorId = container->getCreator();
-   getCreator(creatorId);
+   if (!geometry)
+       return nullptr;
 
    if (geometry->getType() != vistle::Object::PLACEHOLDER && !VistleGeometryGenerator::isSupported(geometry->getType()))
       return nullptr;
 
+   int creatorId = container->getCreator();
+   getCreator(creatorId);
+
    std::shared_ptr<PluginRenderObject> pro(new PluginRenderObject(senderId, senderPort,
          container, geometry, normals, colors, texture));
+
    if (!pro->variant.empty()) {
       cover->addPlugin("Variant");
    }
-
    pro->coverRenderObject.reset(new VistleRenderObject(pro));
    m_delayedObjects.push_back(DelayedObject(pro, VistleGeometryGenerator(pro, geometry, colors, normals, texture)));
 
+#if 0
    coVRPluginList::instance()->addObject(pro->coverRenderObject.get(), nullptr, nullptr, nullptr, nullptr, nullptr,
                                          0, 0, 0,
                                          nullptr, nullptr, nullptr, nullptr,
                                          0, 0, nullptr, nullptr, nullptr,
                                          0.0);
+#endif
 
    return pro;
 }
@@ -457,6 +463,11 @@ bool OsgRenderer::render() {
              }
          }
          parent->addChild(transform);
+         auto cro = ro->coverRenderObject;
+         coVRPluginList::instance()->addObject(cro.get(), cro->getGeometry(), cro->getNormals(), cro->getColors(), cro->getTexture(), parent,
+                                               0, 0, 0, nullptr, nullptr, nullptr, nullptr,
+                                               0, 0, nullptr, nullptr, nullptr,
+                                               0.);
       } else if (!ro->coverRenderObject) {
          std::cerr << rank() << ": discarding delayed object - already deleted" << std::endl;
       } else if (!transform) {
