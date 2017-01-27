@@ -125,11 +125,15 @@ int VistleInteractor::getBooleanParam(const std::string &paraName, int &value) c
 int VistleInteractor::getIntScalarParam(const std::string &paraName, int &value) const
 {
    auto param = findParam(paraName);
-   if (!param)
+   if (!param) {
+      value = 0;
       return -1;
+   }
    auto iparam = std::dynamic_pointer_cast<IntParameter>(param);
-   if (!iparam)
+   if (!iparam) {
+      value = 0;
       return -1;
+   }
 
    value = iparam->getValue();
 
@@ -139,11 +143,15 @@ int VistleInteractor::getIntScalarParam(const std::string &paraName, int &value)
 int VistleInteractor::getFloatScalarParam(const std::string &paraName, float &value) const
 {
    auto param = findParam(paraName);
-   if (!param)
+   if (!param) {
+      value = 0.;
       return -1;
+   }
    auto fparam = std::dynamic_pointer_cast<FloatParameter>(param);
-   if (!fparam)
+   if (!fparam) {
+      value = 0.;
       return -1;
+   }
 
    value = fparam->getValue();
 
@@ -153,11 +161,19 @@ int VistleInteractor::getFloatScalarParam(const std::string &paraName, float &va
 int VistleInteractor::getIntSliderParam(const std::string &paraName, int &min, int &max, int &val) const
 {
    auto param = findParam(paraName);
-   if (!param)
+   if (!param) {
+      min = 0;
+      val = 0;
+      max = 100;
       return -1;
+   }
    auto iparam = std::dynamic_pointer_cast<IntParameter>(param);
-   if (!iparam)
+   if (!iparam) {
+      min = 0;
+      val = 0;
+      max = 100;
       return -1;
+   }
 
    val = iparam->getValue();
 
@@ -176,11 +192,19 @@ int VistleInteractor::getIntSliderParam(const std::string &paraName, int &min, i
 int VistleInteractor::getFloatSliderParam(const std::string &paraName, float &min, float &max, float &val) const
 {
    auto param = findParam(paraName);
-   if (!param)
+   if (!param) {
+      min = -1.;
+      val = 0.;
+      max = 1.;
       return -1;
+   }
    auto fparam = std::dynamic_pointer_cast<FloatParameter>(param);
-   if (!fparam)
+   if (!fparam) {
+      min = -1.;
+      val = 0.;
+      max = 1.;
       return -1;
+   }
 
    val = fparam->getValue();
 
@@ -199,11 +223,13 @@ int VistleInteractor::getFloatSliderParam(const std::string &paraName, float &mi
 int VistleInteractor::getIntVectorParam(const std::string &paraName, int &numElem, int *&val) const
 {
    auto param = findParam(paraName);
-   if (!param)
+   if (!param) {
       return -1;
+   }
    auto vparam = std::dynamic_pointer_cast<IntVectorParameter>(param);
-   if (!vparam)
+   if (!vparam) {
       return -1;
+   }
 
    const IntParamVector &v = vparam->getValue();
    numElem = v.dim;
